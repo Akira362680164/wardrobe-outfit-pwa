@@ -1,12 +1,16 @@
-## 2026-06-25 / v1.1.29 / Claude Code — 固定签名重置
+## 2026-06-25 / v1.1.29 / Claude Code — 固定签名重置为方正个人签名 + APK 交付
 
-- **目的**：固定签名文件在 v1.1.29 工作区恢复时丢失，本机无备份；用户确认重置签名。
+- **目的**：固定签名文件在 v1.1.29 工作区恢复时丢失；用户确认重置签名并升级为个人证书（CN=fangzheng），备份至 `~/Documents/wardrobe-signing-backup/`，重新打包 APK。
 - **改动文件**：
-  - `android/signing/wardrobe-fixed.jks`：新增，RSA 2048，alias `wardrobe-fixed`，CN=Wardrobe Outfit，有效期至 2126-06-01。
-  - `android/signing/wardrobe-signing.properties`：新增，指向 `signing/wardrobe-fixed.jks`。
+  - `android/signing/wardrobe-fixed.jks`：重新生成，RSA 2048，alias `wardrobe-fixed`，CN=fangzheng，有效期至 2126-06-01。
+  - `android/signing/wardrobe-signing.properties`：保持不变，指向 `signing/wardrobe-fixed.jks`。
+  - `衣橱穿搭助手-v1.1.29.apk`：新增（根目录），v2 scheme 签名通过，7.8MB。
+  - `AGENTS.md`：签名描述更新为方正个人证书，补充备份路径。
+  - `~/Documents/wardrobe-signing-backup/`：签名文件备份目录。
 - **版本**：`package.json` 保持 **1.1.29**，无源码改动。
-- **影响**：新 key 签出的 APK 与历史签名不同；手机有旧版需先卸载再安装。
-- **风险门禁**：**medium**（签名凭据重建）。
+- **验证**：`apksigner verify --verbose` 通过，v2 scheme，signer CN=fangzheng，SHA-256 匹配。
+- **影响**：此前未成功打出签名 APK，无签名冲突问题。
+- **风险门禁**：**medium**（签名凭据重建，触及 APK 交付链路）。
 
 ---
 

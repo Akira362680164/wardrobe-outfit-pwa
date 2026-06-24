@@ -59,7 +59,7 @@
 - 提交前必须检查 `git status --short` 和 staged 文件清单；最终回复要给出 commit hash，并说明是否仍有非本次遗留的未提交改动。
 - commit 信息要包含版本号或任务名，例如 `v0.9.9 git baseline`、`docs: update agent rules`。
 - 不要提交生成产物和本机文件，包括 `node_modules`、`.next`、`out`、`android/app/src/main/assets/public`、Gradle build 目录、`*.apk`、`.env*`、`android/local.properties`、签名 keystore 和签名 properties。
-- 固定签名文件仍是本机交付 APK 的必要文件，但它们是敏感凭据，不进入 Git；需要由用户在本机单独备份。构建 APK 前仍必须检查 `android/signing/wardrobe-fixed.jks` 和 `android/signing/wardrobe-signing.properties` 是否存在。
+- 固定签名文件仍是本机交付 APK 的必要文件，但它们是敏感凭据，不进入 Git；备份位于 `~/Documents/wardrobe-signing-backup/`。构建 APK 前仍必须检查 `android/signing/wardrobe-fixed.jks` 和 `android/signing/wardrobe-signing.properties` 是否存在。
 - 禁止使用 `git reset --hard`、`git checkout -- <file>`、强制清理、强推等会丢失改动的操作，除非用户明确要求。
 
 ## 代码约定
@@ -109,7 +109,7 @@
 
 - 必须递增 `package.json` 的 `version`。
 - Android `versionName` 和 `versionCode` 由 `android/app/build.gradle` 从 `package.json` 推导，不要手工写死不一致版本。
-- Android APK 必须使用项目固定签名，不允许使用每台机器默认的 debug keystore，也不允许不同 agent 自行生成新 key。固定签名配置为 `android/signing/wardrobe-signing.properties`，固定签名文件为 `android/signing/wardrobe-fixed.jks`，alias 为 `wardrobe-fixed`；`android/app/build.gradle` 的 debug/release 构建都必须使用它。
+- Android APK 必须使用方正的固定个人签名 `CN=fangzheng`，不允许使用每台机器默认的 debug keystore，也不允许不同 agent 自行生成新 key。固定签名配置为 `android/signing/wardrobe-signing.properties`，固定签名文件为 `android/signing/wardrobe-fixed.jks`，alias 为 `wardrobe-fixed`；`android/app/build.gradle` 的 debug/release 构建都必须使用它。
 - 不要删除、替换、重命名、重新生成 `android/signing/wardrobe-fixed.jks`，也不要修改 `android/signing/wardrobe-signing.properties` 的路径、alias 或口令字段，除非用户明确要求重置签名。若固定签名文件缺失，必须停止并询问用户，不得临时改用默认 debug 签名打包。
 - 如果手机上已安装的是历史 MiniMax/Codex/Claude 用其他 key 签出来的 APK，Android 会提示签名冲突；这是一次性历史问题，必须先导出备份、卸载旧 App，再安装固定签名版。固定签名版安装后，后续同包名同固定 key 的 APK 才能覆盖升级。
 - 应用名保持 `衣橱穿搭助手`，除非用户明确要求改名。
