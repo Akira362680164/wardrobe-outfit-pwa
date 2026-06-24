@@ -1,3 +1,36 @@
+## 2026-06-25 / v1.1.27-fix / Mavis — 修复 AI 颜色识别嵌套结构解析漏洞
+
+- **目的**：v1.1.27 色彩系统统一后，prompt 已要求 AI 返回嵌套结构 `colors: { mode, primary, primaries, accents }`，但 `normalizeGarmentTag()` 仍主要读旧式顶层字段，导致所有衣物的 AI 识别颜色都被静默兜底成"单主色 / 白"（用户实测多件衣物都得到白色）。
+- **根因**：
+  1. `src/lib/device-minimax.ts:normalizeGarmentTag()` 调 `normalizeColorArray(readFirstDefined(data, ["colors"]), [])` 提取 legacyColors，但 `data.colors` 是嵌套对象 `{mode, primary, ...}`，`normalizeColorArray` 不识别对象 → legacyColors=[]；同时 AI 也未把 `primaryColors / mode` 放在顶层 → rawPrimaryColors=[]、rawColorMode=undefined。
+  2. 走 `else` 分支调 `splitPrimaryAndSecondaryColors([], [], [])`，该函数在 `normalizedPrimary.length === 0` 时硬塞 `normalizedPrimary = ["白"]`（line 1915）—— 这是 v1.1.27 引入的兜底。
+  3. `tag.colors = { mode: "single", primary: "白" }` → `buildWardrobeEditRecognitionPatch` 直接透传 → `editDraft.colors` 被覆盖成白色。"白"是合法 catalog value，`normalizeAiColorInfo` 返回 `needsReview=false` → UI 不显示红色"待确认"角标，用户完全无感。
+  4. 现有测试 `scripts/test-color-catalog.ts:239` 只覆盖 `normalizeAiColorInfo({ mode, primary })`，没覆盖真实入口 `normalizeGarmentTag({ colors: { mode, primary } })`——所以漏测。
+- **更正面修正**：上一条 v1.1.27 验收记录 line 22 判断"AI 卡其识别本次返回 primary=白 不是 v1.1.27 代码引入的回归"**是不准确的**；实测 v1.1.27.0 起该 bug 就已存在（`splitPrimaryAndSecondaryColors` 兜底逻辑自 v1.1.27 cd6c7b9 引入）。本次修复一并更正该判断。
+- **版本变化**：**不递增** `package.json`（按用户指令本次不打 APK；公开版仓库改动见上条 v1.1.27 验收记录）。
+- **改动文件**：
+  - `src/lib/device-minimax.ts`：`normalizeGarmentTag()` 头部新增嵌套 `data.colors` 提取（`mode / primary / primaries / accents`），优先级高于旧式顶层字段（`colorMode / primaryColors / secondaryColors / mainColor / accentColors`）；兼容旧式字段作为 fallback。删除 `splitPrimaryAndSecondaryColors()` 中 `normalizedPrimary = ["白"]` 兜底，缺主色时透传空数组给 `normalizeAiColorInfo` 由其在 single 分支返回 emptyColorInfo + needsReview=true，让 UI 显示"暂未选择"和红色"待确认"角标。
+  - `scripts/test-color-catalog.ts`：新增 §12.7 「normalizeGarmentTag 真实入口测试（v1.1.27-fix）」8 项断言，覆盖：嵌套 single 黑/卡其正确解析、嵌套 main_with_accent 保留主辅色、嵌套 multicolor 黑白、空 colors 不得默认白且必须 needsReview=true、旧式顶层字段仍然兼容、嵌套 colors 优先级高于旧式字段。
+- **自动化测试**：
+  - `npm run typecheck`：通过，0 error。
+  - `npm run test:logic:color-catalog`：通过，**94 passed / 0 failed**（86 原有 + 8 新增）。
+  - `npm run test:logic:ai-intake-live-contract`：通过，29 passed。
+  - `npm run test:logic:intake-field-contract`：通过。
+  - `npm run test:logic:garment-intake-confirm-contract`：通过。
+  - `npm run test:logic:wishlist-intake-confirm-contract`：通过。
+  - `npm run test:logic:item-wishlist-edit-recognition-layout`：ALL PASSED。
+  - `npm run test:logic:all`：通过，所有套件 0 failed。
+  - `npm run build`：通过，仅既有 lint warnings（路由 / 1.28 kB / shared 103 kB）。
+- **风险门禁**：**high**。修复 `device-minimax.ts` 核心识别管线（AI 返回 → ColorInfo 归一化），影响所有 AI 颜色识别路径（首次录入、重新识别、种草评估、多衣物识别）。本地回归全部通过；用户已知真实 MiniMax 卡其识别端到端验证待手机端 APK 验证（按用户指令本次不打 APK）。
+- **未触发 subagent**：用户明确通知"不要启动 subagent"。
+- **未验证风险**：
+  1. Android 真机未做覆盖安装回归（沿用 v1.1.22+ 同款 fixed signing 链路；本次无 APK 改动）。
+  2. 真实 MiniMax 端到端识别：之前 v1.1.27 验收时返回 `primary=白`（图片中白 T 领口主导）属 AI 端误识别，**不是代码 bug**——本次修复后 AI 仍可能因图片问题返回白，但 UI 会显示 needsReview=true 让用户识别异常；待用户装新 APK 后用真实卡其衬衫图验证最终输出。
+  3. 已存数据：用户已录入的衣物 colors.primary="白" 不会被自动回填（按设计不动用户历史数据）；用户需在编辑页用"重新识别"或手动改色更新。
+  4. 已有未提交改动：`.claude/settings.json`、`AGENTS.md` 修改 + 多个 untracked 脚本（worker 历史产物）——本次 commit **不包含**这些，按 §57 规则只暂存本次任务相关文件。
+
+---
+
 ## 2026-06-24 / v1.1.27 / Mavis — 公开仓库 v1.1.27 推送验收
 
 - **目的**：按 AGENTS.md §245-301 公开版流程把 main `a2b3a71` (v1.1.27) 同步到 GitHub `Akira362680164/wardrobe-outfit-pwa` 公开仓库。
@@ -873,340 +906,11 @@
 - 未验证风险：Android 真机最终回归仍需安装 APK 后确认；Dev Server 自动化删除实操受测试 IndexedDB 初始化差异影响，最终以源码级删除回...
 - 未触发 subagent：用户未通知启动独立审查。
 
-## 2026-06-15 / v1.1.17 / Codex — 录入字段契约收口、移除种草旧买前评估字段并交付 APK
-
-- 目的：执行 `wardrobe_v1_1_16_intake_field_contract_full_fix_prompt.md`，并按用户补充指令“买前评估的老流程可以不要了”“旧的 add/edi...
-- 版本变化：`package.json` 1.1.16 → **1.1.17**。本轮按用户最新要求打 APK：`衣橱穿搭助手-v1.1.17.apk`（项目根目录，...
-- 改动文件：组件 4 + lib 3 + 测试 1 + 文档 1
-- 验证：`npm run typecheck`：通过。 / `npm run test:logic:all`：通过，0 failed。 / `npm run build`：通过，仅既有 lint warnings。 / MiniMax Key...
-- 风险门禁：high。涉及 AI prompt、录入字段契约、种草保存/详情展示、移动端退出行为、缓存失败明细和 Android APK 交付。不改 Dexie sc...
-- 未验证风险：
-- 未触发 subagent：用户未通知启动独立审查。
-
-## 2026-06-15 / v1.1.16 / Claude Code — Commit 3：修复图片缓存失败、种草页边距，并交付 APK
-
-- 目的：执行 `wardrobe_v1_1_15_p0_p1_three_commit_fix_prompt.md` §5 修复：缩略图生成增加 JPEG fallback + 失败明细（§5.4.1 ...
-- 版本变化：package.json 1.1.15 → **1.1.16**（Android versionName=1.1.16 / versionCode 由 G...
-- 验证：`npm run typecheck`：通过，0 errors / `npm run test:logic:thumbnail-backfill`：19 passed, 0 failed（新增） / `npm run test:log...
-- 风险门禁：high。涉及缩略图运行时错误处理（Dexie 失败保留状态 + 用户可读错误分类）+ 设置页 UI 行为变化（失败明细 + 重试入口）+ 种草首页布局重...
-- 未触发 subagent：用户未通知启动新的独立审查。
-
-## 2026-06-15 / v1.1.16 / Claude Code — Fix: 同步更新 back-priority-regression 硬编码 version 断言
-
-- 目的：v1.1.16 commit3 提交时把 `package.json` version 从 1.1.15 升到 1.1.16，但 `scripts/test-back-priority-regr...
-- 版本变化：package.json 保持 1.1.16（不变）。
-- 验证：`TMPDIR=/tmp npm run typecheck`：0 errors / `TMPDIR=/tmp npm run test:logic:back-priority-regression`：**20 passed, 0 f...
-- 风险门禁：low。仅改测试断言字符串，不改业务代码。
-- 未触发 subagent：用户未通知。
-
-## 2026-06-15 / v1.1.16-dev / Claude Code — Commit 2：修复 Android 长期备份导出/恢复闭环
-
-- 目的：执行 `wardrobe_v1_1_15_p0_p1_three_commit_fix_prompt.md` §4 修复：Android Native 环境禁止 Web fallback 成功态...
-- 版本变化：package.json 保持 1.1.15，本 commit 不打 APK（commit3 末尾统一打 v1.1.16 APK）。
-- 验证：`npm run typecheck`：通过，0 errors / `npm run test:logic:long-term-backup`：93 passed, 0 failed / `npm run test:logic:bac...
-- 风险门禁：high。涉及 Android Native 插件错误处理、用户可见文案、备份主流程闭环。
-- 未触发 subagent：用户未通知启动新的独立审查。
-
-## 2026-06-15 / v1.1.15 / Claude Code — 刷新 ChatGPT 审查导出包
-
-- 目的：重跑 `scripts/export-chatgpt-codebase.mjs` 刷新桌面 ChatGPT 审查导出目录，合并包基于 HEAD `db8788c v1.1.15`。
-- 验证：`npm run typecheck`：通过，0 errors。 / `npm run test:logic:data-repo`：63 passed, 0 failed。 / `npm run test:logic:wishlist...
-- 风险门禁：low。纯导出脚本重跑，无源码修改，不触发 subagent 独立审查。
-- 未触发 subagent：用户未通知。
-
-## 2026-06-15 / v1.1.16-dev / Claude Code — Commit 1：修复录入 AI 主链与裁切源漂移
-
-- 目的：执行 `wardrobe_v1_1_15_p0_p1_three_commit_fix_prompt.md` §3 修复：单品录入裁切后未走 AI 识别（P0-1），编辑页「重新识别/重新裁切」...
-- 版本变化：package.json 保持 1.1.15，本 commit 不打 APK（commit3 才打 v1.1.16 APK）。package.json 同...
-- 改动文件：其他 8 + 测试 4 + 组件 3 + 配置 1
-- 验证：`npm run typecheck`：通过，0 errors / `npm run test:logic:garment-intake-multi-image`：56 passed, 0 failed / `npm run test...
-- 风险门禁：high。涉及核心录入 AI 主链（单品/种草）+ 编辑页 AI 与裁切源分离 + viewingItemCropJob 新增 sourceKind 字段...
-- 未验证风险：
-- 未触发 subagent：用户未通知启动新的独立审查，本次按硬指令授权直接执行修复方案。
 
 ---
-
-## 历史压缩段（C 档：2026-06-12 ~ 2026-06-14，38 条 / v1.1.4 ~ v1.1.14）
-
-> Round 9 compact：完整目的 / 改动文件 / 验证结果 / 测试套件详情见 git 历史。本档仅保留一句话目的 + 风险门禁 + APK 元数据（如有）+ subagent 状态。
-
-## 2026-06-14 / v1.1.15 / Codex — Commit 4：统一返回键与弹层优先级并交付 APK
-
-- 目的：执行 `wardrobe_p0_p1_four_commit_fix_plan.md` 第四组修复，统一 Android 返回键 / Escape 对图片...
-- 风险门禁：high
-- subagent：未触发（用户未通知）
-
-## 2026-06-14 / v1.1.14-dev / Codex — Commit 3：修复长期备份恢复主流程
-
-- 目的：执行 `wardrobe_p0_p1_four_commit_fix_plan.md` 第三组修复，修复 Android 默认长期备份列表返回结构、从其他...
-- 风险门禁：high
-- subagent：未触发（用户未通知）
-
-## 2026-06-14 / v1.1.14-dev / Codex — Commit 2：修复套装/月历/计划状态机
-
-- 目的：执行 `wardrobe_p0_p1_four_commit_fix_plan.md` 第二组修复，固定今天/未来 planned、过去 worn、今天确...
-- 风险门禁：high
-- subagent：未触发（用户未通知）
-
-## 2026-06-14 / v1.1.14-dev / Codex — Commit 1：恢复衣物与种草录入流程
-
-- 目的：执行 `wardrobe_p0_p1_four_commit_fix_plan.md` 第一组修复，恢复全局/空衣橱单品录入入口、三图录入保存、种草录入裁...
-- 风险门禁：high
-- subagent：未触发（用户未通知）
-
-## 2026-06-14 / v1.1.14 / 方正 — 自由裁切 + 旋转按钮合并 + 返回来源修复
-
-- 目的：执行新增录入流程页面统一_自由裁切_返回来源修复执行方案.md 中的 5 类改动。
-
-## 2026-06-14 / v1.1.13 / 方正 — ChatGPT 代码审查包导出（本次仅刷新桌面目录）
-
-- 目的：重跑 ChatGPT 审查导出脚本，更新 04-VALIDATION_REPORT.md。
-- 风险门禁：low
-- subagent：未触发（用户未通知）
-
-## 2026-06-14 / v1.1.13 / 方正 — 长期备份包系统：从"应用内默认目录"迁移到"固定长期备份目录备份"
-
-- 目的：将备份系统从"应用内默认目录备份"迁移到"固定长期备份目录备份"。默认目录改为 `Download/衣橱穿搭助手备份`，文件扩展名改为 `.wardrob...
-- 风险门禁：high
-- subagent：未触发（用户未通知）
-
-## 2026-06-14 / v1.1.12-dev / 方正 — 第一批：录入入口唯一化、多图录入、色卡与删除链路 P0 修复
-
-- 目的：删除旧单品录入链路（CaptureView 单衣物模式），统一所有新增单品入口进入 GarmentIntakeFlow；修复衣橱瀑布流单品卡片颜色色卡展示...
-- 风险门禁：high
-- subagent：未触发（用户未通知）
-
-## 2026-06-14 / v1.1.12-dev batch B / 方正 — 多图录入：GarmentIntakeFlow 改为完整多图流程
-
-- 目的：将 GarmentIntakeFlow 从单图录入改为完整多图录入流程，支持多图选择、缩略图网格、逐张裁切/旋转、AI 批量识别、参数确认、批量保存。
-
-## 2026-06-14 / v1.1.12 / 方正 — P0 修复：Android 真机 V4 备份无法恢复 + ChatGPT 审查包导出
-
-- 目的：修复 Android 真机导出 V4 备份成功后，"从默认目录恢复"始终提示"默认备份文件夹里还没有可读取的 JSON 文件"、无法恢复的问题。
-- 风险门禁：high
-- subagent：未触发（用户未通知）
-
-## 2026-06-14 / v1.1.10-dev / Codex — 瀑布流卡片统一、列表管理入口收口与详情删除闭环修复
-
-- 目的：统一衣橱页、套装页、种草页三处瀑布流卡片骨架，收口列表管理入口，并修复种草详情与套装详情删除闭环。
-- 风险门禁：high
-- subagent：未触发（用户未通知）
-
-## 2026-06-14 / v1.2.0 / Codex — 第四批 4D：穿搭计划与已穿状态机重构 APK 交付
-
-- 目的：交付 v1.2.0 APK，版本号从 1.1.9 升至 1.2.0。
-- 风险门禁：medium
-- subagent：未触发（用户未通知）
-
-## 2026-06-14 / v1.1.9-dev / Codex — 第四批 4D：穿搭计划与已穿状态机重构（补充）
-
-- 目的：修复 handleAddOutfitToDate 默认 mode 从 "planned" 改为 "auto"，让日期状态机完整生效；保留显式 planne...
-- 风险门禁：medium
-- subagent：未触发（用户未通知）
-
-## 2026-06-14 / v1.1.9-dev / Codex — 第四批 4D：穿搭计划与已穿状态机重构
-
-- 目的：统一穿搭计划、实际已穿、今天穿了按钮、衣物穿着次数、最新穿着日期、删除级联之间的状态规则；修复今天以及未来日期添加套装误记已穿、未来日期显示今天穿了、未点...
-- 风险门禁：high
-- subagent：未触发（用户未通知）
-
-## 2026-06-14 / v1.1.9-dev / Codex — 4C 消除循环依赖：抽出 form-controls 到独立文件
-
-- 目的：消除 batch-review-view.tsx → wardrobe-app.tsx → batch-review-view.tsx 循环 import...
-- 风险门禁：low
-- subagent：未触发（用户未通知）
-
-## 2026-06-14 / v1.1.9-dev / Codex — 4C Follow-up 阻断修复：抽出 BatchReviewView 并恢复门禁
-
-- 目的：修复恢复 BatchReviewView 后 wardrobe-app.tsx 行数重新超过 9108 导致 test:logic:wardrobe-ap...
-- 风险门禁：medium
-- subagent：未触发（用户未通知）
-
-## 2026-06-14 / v1.1.9-dev / Codex — 4C Follow-up：继续拆分 wardrobe-app 图片入口与队列并修复导出报告
-
-- 目的：修复桌面 ChatGPT 审查包 04-VALIDATION_REPORT.md 未覆盖为当前分支结果的问题；继续拆分 wardrobe-app.tsx，...
-- 风险门禁：high
-- subagent：未触发（用户未通知）
-
-## 2026-06-13 / v1.1.9-dev / Codex — 第四批 4C 种草生命周期闭环与 wardrobe-app 拆分
-
-- 目的：在 4B data-repo 基础上，正式收口种草转衣橱、已买判断、撤销购买与恢复种草的数据一致性规则；同时拆分 9586 行的 wardrobe-app...
-- 风险门禁：high
-- subagent：未触发（用户未通知）
-
-## 2026-06-13 / v1.1.9 / Codex — P0 收口：衣橱/种草唯一两步录入流程 + 删除旧录入链路 + 修复种草详情
-
-
-## 2026-06-13 / v1.1.9 / Mavis — 合并 4A+4B 基线并交付 APK
-
-- 目的：将 `refactor/app-route-4a` 分支的 4A AppRoute 导航层、4B data-repo 数据仓库层、4B 后置 Hotfix...
-- 风险门禁：high
-- subagent：未触发（用户未通知）
-
-## 2026-06-13 / v1.1.8 / Codex — AGENTS.md 增补 ChatGPT 导出流程章节
-
-- 目的：把上一条 commit (`v1.1.8 add ChatGPT codebase export`) 实际执行过的流程固化为长期规则，避免后续 agent...
-- 风险门禁：low
-- subagent：未触发（用户未通知）
-
-## 2026-06-13 / v1.1.8 / Codex — 新增 ChatGPT 审查用固定导出脚本
-
-- 目的：固化一个本机桌面导出目录，方便每次开发/修复/验证后把当前项目源码、配置、版本记录、验证结果一次性导出到固定位置，供 ChatGPT 审查。
-- 风险门禁：low
-- subagent：未触发（用户未通知）
-
-## 2026-06-13 / v1.1.8 / Codex — 4B 后置 Hotfix
-
-- 目的：基于 `refactor/app-route-4a` 分支最新代码重新打包 ChatGPT Projects 附件。
-- 风险门禁：low
-- subagent：未触发（用户未通知）
-
-## 2026-06-13 / v1.1.7 / Codex — 4B-full 数据仓库写入口聚合
-
-- 目的：在 data-repo 统一聚合已有安全服务并迁移调用入口。
-- 风险门禁：medium
-
-## 2026-06-13 / v1.1.7 / Codex — 4B-lite 数据仓库只读入口
-
-- 目的：建立统一数据仓库只读入口，收口 refreshState 数据读取。
-- 风险门禁：low
-
-## 2026-06-13 / v1.1.6 → v1.1.7 / Codex — 版本递增 + APK 打包
-
-- 目的：将 VERSION_HISTORY.md 从 88,705 字节 compact 到 44,174 字节（节省 50%），满足 < 80 KB 红线要求。
-- 风险门禁：low
-
-## 2026-06-13 / v1.1.7 / Codex — 第四批 4A AppRoute 导航层重构
-
-- 目的：建立 AppRoute 纯函数导航模型，集中管理 Android 系统返回键，修复页面来源污染。
-- 风险门禁：high
-
-## 2026-06-13 / v1.1.7 / Codex — 计划状态、已买返回链路与二级页顶部栏统一修复
-
-- 目的：修复已买单品详情返回污染、Android 返回键、撤销购买失败、过去日期误记已穿、未来日期显示今天穿了、删除套装计划残留、计划入口文案不统一、二级页顶部栏...
-- 风险门禁：high
-
-## 2026-06-13 / v1.1.6 / Codex — v1.1.5-followup 修复交付 APK
-
-- 目的：递增版本号到 1.1.6，打包 APK 交付。
-- 风险门禁：low
-
-## 2026-06-13 / v1.1.5-followup / Codex — 独立修复月历、灵感标签、颜色模式闭环
-
-- 目的：按 `/Users/fangzheng/Downloads/v1_1_5_independent_calendar_inspiration_color_m...
-- 风险门禁：medium
-
-## 2026-06-13 / v1.1.6-dev / 母Agent — 补 subagent 独立审查 P0/P1 修复
-
-- 目的：对 2026-06-12 批次 12 条高风险门禁记录的 subagent 独立审查结论执行修复（P0-3/P1-6/P1-7 已确认无需改，其余 P0/...
-- 风险门禁：medium
-
-## 2026-06-13 / v1.1.6-dev / Codex — Round 1: 稳定全局图片来源输入与衣物详情返回来源
-
-- 目的：按 `/Users/fangzheng/Downloads/v1_1_5_followup_three_commit_fix_plan.md` Commi...
-- 风险门禁：medium
-
-## 2026-06-13 / v1.1.6-dev / Codex — Round 2: 稳定种草管理页确认弹窗与系统返回键
-
-- 目的：按 `/Users/fangzheng/Downloads/v1_1_5_followup_three_commit_fix_plan.md` Commi...
-- 风险门禁：medium
-
-## 2026-06-13 / v1.1.5-dev / Mother Agent + Subagent — 补 v1.1.3 高风险门禁独立审查 + P0 修复
-
-- 目的：按用户指令，对 `bee95a8` / `7febab5`（v1.1.3）高风险门禁记录"未触发 subagent 独立审查：用户未通知"补充 subag...
-- 风险门禁：medium
-
-## 2026-06-12 / v1.1.5 / Codex — 详情页统一壳 + 种草品牌店铺字段收敛 + APK 交付
-
-- 目的：按 `/Users/fangzheng/Downloads/detail_ui_shell_unification_plan.md` 更新程序并打包 AP...
-- 风险门禁：high
-
-## 2026-06-12 / v1.1.4-dev / Codex — 修复后问题清单 v2：衣物级联删除 + 衣橱删除迁移确认
-
-- 目的：按 `/Users/fangzheng/Downloads/wardrobe_followup_all_bugs_multisubagent_execut...
-- 风险门禁：high
-
-## 2026-06-12 / v1.1.4-dev / Codex — 修复后问题清单跟进：计划边界 + 种草/单品编辑 UI 收敛
-
-- 目的：按 `/Users/fangzheng/Downloads/wardrobe_followup_all_bugs_multisubagent_execut...
-- 风险门禁：high
-
-## 2026-06-12 / v1.1.4 / Claude Code — v1.1.3 修复链 APK 交付：穿搭计划返回链路 + 打包清单自动同步
-
-- 目的：把 `7febab5` 合并入 main 的 v1.1.3 修复链（6 项 UI/数据问题）打成正式 APK。
-- 风险门禁：high
-
----
-
-## 历史记录汇总（Round 9 compact — v1.1.0-dev ~ v1.1.3，2026-06-12，共 12 条 / 3 个主版本组）
-
-> 2026-06-13 Round 9 compact：保留最近 10 条完整记录（v1.1.4 ~ v1.1.6），
-> 以下 12 条（v1.1.0-dev ~ v1.1.3）按版本聚合压缩。完整细节见 Git 历史。
-> 提示：上一轮 compact 留下的「v0.1.x ~ v1.0.0 + 早期 165 条」汇总段**紧随本段之后**，完整内容 git `d5ad799:VERSION_HISTORY.md` 可查。
-
-| 主版本 | 时间 | 条数 | 主导 Agent | 代表性主题 |
-|---|---:|---|---|
-| **v1.1.3** | 2026-06-12 | 3 | Claude Code / Mavis / 母 Agent | 穿搭计划返回链路 + 打包清单自动同步（多 Subagent 计划全方案执行） |
-| **v1.1.4-dev-meta** | 2026-06-12 | 1 | Mavis | VERSION_HISTORY.md Round 8 compact（送 ChatGPT Projects 附件） |
-| **v1.1.4-dev** | 2026-06-12 | 3 | Subagent B / Subagent G / 母 Agent | 种草单品录入跟进修复：4 Subagent (B/D) 联合执行 |
-| **v1.1.2** | 2026-06-12 | 1 | Mavis | 套装页与穿搭计划 UI 修复（7 项 bug） + APK 交付 |
-| **v1.1.1** | 2026-06-12 | 1 | Claude Code | 穿搭计划/日历/穿着统计同步修复 + APK |
-| **v1.1.0** | 2026-06-12 | 3 | Claude Code | M10 修复 + APK 交付 |
-
-### 完整条目清单（本轮压缩段，共 12 条）
-
-| 日期 | 版本 | Agent | 标题 |
-|---|---|---|---|
-| 2026-06-12 | `v1.1.3` | Claude Code | 穿搭计划返回链路 + 打包清单自动同步（多 Subagent 计划全方案执行） |
-| 2026-06-12 | `v1.1.4-dev-meta` | Mavis | VERSION_HISTORY.md Round 8 compact（送 ChatGPT Projects 附件） |
-| 2026-06-12 | `v1.1.4-dev` | 母 Agent | 种草单品录入跟进修复：4 Subagent (B/D) 联合执行 |
-| 2026-06-12 | `v1.1.3` | 母 Agent | 种草与单品录入闭环修复：7 Subagent 联合执行 |
-| 2026-06-12 | `v1.1.4-dev` | Subagent G | 测试、历史与回归：中文标签测试 + 种草转衣橱测试 + wishlist-flow 脚本 |
-| 2026-06-12 | `v1.1.4-dev` | Subagent B | 种草 AI 识别批次：买前图片扩展字段 + 队列处理 |
-| 2026-06-12 | `v1.1.3` | Mavis | v1.1 review 全方案补强 + APK 交付 |
-| 2026-06-12 | `v1.1.2` | Mavis | 套装页与穿搭计划 UI 修复（7 项 bug） + APK 交付 |
-| 2026-06-12 | `v1.1.1` | Claude Code | 穿搭计划/日历/穿着统计同步修复 + APK |
-| 2026-06-12 | `v1.1.0` | Claude Code | M10 修复 + APK 交付 |
-| 2026-06-12 | `v1.1.0-dev` | Claude Code | Round 6 审查修复：2 bug + 8 审查问题 |
-| 2026-06-12 | `v1.1.0-dev` | Claude Code | Round 6 UI 集成：穿搭计划日历、周条、计划添加、打包清单、套装选择 |
-
-## 历史记录汇总（v0.1.x ~ v1.0.0 + 早期 v0.1.x-v0.9.45-dev 旧汇总，2026-05-20 ~ 2026-06-12，共 154 条 / 12 个主版本组）
-
-> 2026-06-12 Round 8 compact（已被 Round 9 compact 取代，本段仅保留下层历史）。
-> v0.1.x ~ v1.0.0 的 154 条已按主版本号聚合为下表，原始细节见 Git 历史（`git log -p -- VERSION_HISTORY.md`）。
-> v1.1.0-dev ~ v1.1.3 的 12 条已上移至 Round 9 compact 段。
-> 提示：上两轮 compact 留下的「v0.1.x ~ v0.9.45-dev 共 137 条 / 8 个主版本组」+「v0.9.45-dev ~ v1.1.0-dev 共 14 条 / 3 个主版本组」+「v1.0.0 round 2/3/ChatGPT 脚本/Mavis 重构/全局加号修复 共 5 条」汇总段**已合并为本段**，避免双重嵌套。完整内容 git `d5ad799:VERSION_HISTORY.md` 第 400-560 行可查。
-
-| 主版本 | 时间范围 | 条数 | 主导 Agent | 代表性主题 |
-|---|---|---:|---|---|
-| **v1.0** | 2026-06-12 | 3 | C 主导 | 新增 `scripts/generate-chatgpt-attach.mjs`，将项目源码按主题合并到 <=25 个 `.md` 文件，方便作为 Cha... |
-| **v0.9** | 2026-06-04 ~ 2026-06-10 | 82 | Mavis 主导 | v0.9.44-dev 图片交互修复（commit 8b60842）后正式 build APK。dev 节点已落 1 个 commit，本次 buil... |
-| **v0.8** | 2026-06-02 ~ 2026-06-04 | 24 | Codex 主导 | v0.8.15 subagent 独立审查发现 4 个 critical + 6 个 important release blocker 全部修复 / 图... |
-| **v0.7** | 2026-05-22 ~ 2026-05-23 | 10 | Codex 主导 | 修复主退出确认弹窗在横屏时受最大宽度限制、底部弹窗不满屏的问题，并打包正式命名 APK。 / 将 v0.7.0 调试包整理为正式补丁版本，统一软件名为 `... |
-| **v0.6** | 2026-05-21 | 2 | Codex + Claude Code 主导 | 基于 Codex 对 v0.6.0 的复核，继续清理 Hook 依赖、死代码、toast 状态类型和图片性能问题；目标版本建议升到 `0.6.1`。 / ... |
-| **v0.5** | 2026-05-21 | 3 | Codex 主导 | 对 Claude Code 编辑后的 v0.5.9 代码状态做代码缺陷、用户体验、页面设计、动效和性能评估，并创建可执行的缺陷修复任务单。 / 登记 `v... |
-| **v0.4** | 2026-05-21 | 7 | Codex 主导 | 清理 AI 搭配推荐弹窗，修复新增自定义活动/风格不保存到下拉框，并让相关弹窗接入 Android 返回键子页面状态。 / 修复套装确认详情页切换单品时页... |
-| **v0.3** | 2026-05-20 ~ 2026-05-21 | 8 | Codex 主导 | 新增全局 Android 返回键监听，覆盖图片灯箱、预览上下文弹窗、批量套装组、批量录入草稿、AI 弹窗、查看全部衣物弹窗和详情模式。 / 新增 `Bat... |
-| **v0.1** | 2026-05-20 | 1 | Codex 主导 | 早期 MVP scaffold 与 Android/PWA 基础搭建，形成手机优先衣橱录入、打标、管理和穿搭推荐 App 的初始项目。 |
-| **v1.0/v0.9.5x (Round 5~6)** | 2026-06-10 ~ 2026-06-11 | 14 | Claude Code 主导 | Round 5 录入流闭环：单品/种草/套装 6 步流程从草稿到 Dexie 保存，含 batch AI 进度 + sample outfit；Round 6 穿搭计划 UI 集成：日历视图 + 周条 + 计划添加 + 单日卡片 + 套装选择 + 装箱清单 + M10 修复 |
-
-### 完整条目清单（本轮压缩段 v1.0.0 共 5 条，原始细节见 git 历史）
-
-| 日期 | 版本 | Agent | 标题 |
-|---|---|---|---|
-| 2026-06-12 | `v1.0.0` | C | laude Code — 新增 ChatGPT Projects 源码合并工具脚本 |
-| 2026-06-12 | `v1.0.0` | M | avis — 套装模块大版本重构 (套装业务主线 + 详情页结构 + AI 能力补齐) |
-| 2026-06-12 | `v1.0.0` | C | laude Code — 修复全局加号录入流程返回后状态残留 |
-
-### 早期 v0.1.x ~ v1.1.0-dev 历史（2026-05-20 ~ 2026-06-11，共 165 条）
-
-> 前两轮 compact 已把 165 条（v0.1.x-v0.9.45-dev 共 137 条 + v0.9.45-dev-v1.1.0-dev 共 14 条）按 11 个主版本组聚合，完整记录见 git 历史：
-> - Round 6 compact 起点 `0e8180f:VERSION_HISTORY.md` 第 374-530 行（v0.1.x ~ v0.9.45-dev 段）
-> - Round 7 compact 起点 `d5ad799:VERSION_HISTORY.md` 第 400-560 行（v0.9.45-dev ~ v1.1.0-dev 段）
 
 ## 历史基线
 
-- 本文件创建后，已按“证据版本粒度”回填当前可从本地证据确认的主要项目编辑历史。
-- 已覆盖明确证据版本：早期 MVP scaffold 缺口、v0.3.0-v0.4.6、v0.5.0 任务包、v0.5.1-v0.5.8 缺口、v0.5.9 评估任务、v0.6.0-v0.6.1 缺口、v0.7.0 系列 APK artifact、v0.7.1-v0.7.2、v0.8.0-v0.8.7。
-- 剩余无法精确还原的内容需要 Git 历史、Claude Code/MiniMax Code 原始日志或更完整的 Codex session 交付片段补证；不要用文件时间猜测为具体实现。
+- 本项目自 v0.9.9 起使用 Git 管理源码版本；`git log -p -- VERSION_HISTORY.md` 可查阅本文件历史快照与被压缩段落的完整原文。
+- v1.1.28 起主文件只保留最近 30 条版本记录以控制文件体积；更早历史通过 git 历史查阅（`git checkout <commit> -- VERSION_HISTORY.md && cat VERSION_HISTORY.md`）。
 - 后续所有修改必须继续按本文件模板实时登记，最新记录放在最上方。

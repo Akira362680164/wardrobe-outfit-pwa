@@ -17,6 +17,7 @@ import {
   buildColorRecognitionPrompt,
 } from "../src/lib/color-catalog";
 import { normalizeAiColorInfo } from "../src/lib/color-fields";
+import { normalizeGarmentTag } from "../src/lib/device-minimax";
 
 const root = process.cwd();
 const typesTs = readFileSync(join(root, "src/lib/types.ts"), "utf8");
@@ -295,6 +296,89 @@ check("4. 未知主色标记复核", normalizeAiColorInfo({ mode: "single", prim
   check(
     "12. 非法字符串不得进入最终 ColorInfo",
     c.primary !== "燕麦拿铁色" && !(c.accents ?? []).includes("燕麦拿铁色"),
+  );
+}
+
+console.log("\n=== §12.7 normalizeGarmentTag 真实入口测试（v1.1.27-fix） ===");
+// v1.1.27 修复：AI 按新 prompt 返回嵌套 colors: { mode, primary, primaries, accents }，
+// normalizeGarmentTag 必须优先解析嵌套对象，旧式顶层字段作为兼容 fallback。
+// 此前缺主色时 splitPrimaryAndSecondaryColors 会静默兜底为 "白"，导致所有识别结果都变白色。
+{
+  const tag = normalizeGarmentTag({ colors: { mode: "single", primary: "黑" } as never }, "garment.jpg");
+  const c = tag.colors as { mode: string; primary: string };
+  check(
+    "1. 嵌套 colors={mode:single, primary:黑} → single 黑（不得变白）",
+    c.mode === "single" && c.primary === "黑",
+  );
+}
+{
+  const tag = normalizeGarmentTag({ colors: { mode: "single", primary: "卡其" } as never }, "garment.jpg");
+  const c = tag.colors as { mode: string; primary: string };
+  check(
+    "2. 嵌套 colors={mode:single, primary:卡其} → single 卡其",
+    c.mode === "single" && c.primary === "卡其",
+  );
+}
+{
+  const tag = normalizeGarmentTag(
+    { colors: { mode: "main_with_accent", primary: "卡其", accents: ["白"] } as never },
+    "garment.jpg",
+  );
+  const c = tag.colors as { mode: string; primary: string; accents: string[] };
+  check(
+    "3. 嵌套 colors={mode:main_with_accent, primary:卡其, accents:[白]} → 保留主辅色",
+    c.mode === "main_with_accent" && c.primary === "卡其" && JSON.stringify(c.accents) === JSON.stringify(["白"]),
+  );
+}
+{
+  const tag = normalizeGarmentTag(
+    { colors: { mode: "multicolor", primaries: ["黑", "白"] } as never },
+    "garment.jpg",
+  );
+  const c = tag.colors as { mode: string; primaries: string[] };
+  check(
+    "4. 嵌套 colors={mode:multicolor, primaries:[黑,白]} → multicolor 黑白",
+    c.mode === "multicolor" && JSON.stringify(c.primaries) === JSON.stringify(["黑", "白"]),
+  );
+}
+{
+  const tag = normalizeGarmentTag(
+    { colors: {} as never },
+    "garment.jpg",
+  );
+  const c = tag.colors as { mode: string; primary: string };
+  check(
+    "5a. 嵌套 colors={} → 不得默认白，必须 primary=空",
+    c.mode === "single" && c.primary === "",
+  );
+  check(
+    "5b. 嵌套 colors={} → 必须 needsReview=true 待确认",
+    tag.needsReview === true,
+  );
+}
+// 兼容旧式顶层字段仍然生效
+{
+  const tag = normalizeGarmentTag({ mode: "single", primary: "蓝" }, "garment.jpg");
+  const c = tag.colors as { mode: string; primary: string };
+  check(
+    "6. 旧式顶层 { mode:single, primary:蓝 } → single 蓝（兼容）",
+    c.mode === "single" && c.primary === "蓝",
+  );
+}
+// 嵌套 colors 优先级高于旧式顶层字段
+{
+  const tag = normalizeGarmentTag(
+    {
+      colors: { mode: "single", primary: "卡其" } as never,
+      mode: "single",
+      primary: "白", // 旧式字段冲突时，嵌套 colors 必须胜出
+    },
+    "garment.jpg",
+  );
+  const c = tag.colors as { mode: string; primary: string };
+  check(
+    "7. 嵌套 colors.primary=卡其 优先于 旧式 primary=白 → 最终卡其",
+    c.mode === "single" && c.primary === "卡其",
   );
 }
 

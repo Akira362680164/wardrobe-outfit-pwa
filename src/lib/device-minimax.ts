@@ -1690,17 +1690,42 @@ function buildCatalogDictionaryPrompt(): string {
 
 export function normalizeGarmentTag(data: LooseGarmentTagPayload, fallbackName: string): GarmentTagResult {
   const confidence = clampNumber(data.confidence, 0.5, 0, 1);
-  const legacyColors = normalizeColorArray(readFirstDefined(data, ["colors", "颜色"]), []);
-  const rawColorMode = readFirstDefined(data, ["colorMode", "color_mode", "mode", "颜色模式"]);
+
+  // v1.1.27-fix: 优先从嵌套 data.colors 对象读取（v1.1.27 prompt 要求的新结构）。
+  // 旧式顶层字段（colorMode / primaryColors / secondaryColors / mainColor / accentColors）作为兼容 fallback。
+  // 优先级：嵌套 colors > 旧式顶层字段 > legacy 数组/字符串。
+  const nestedColorsObj =
+    data && typeof data === "object" && data.colors && typeof data.colors === "object" && !Array.isArray(data.colors)
+      ? (data.colors as Record<string, unknown>)
+      : null;
+  const nestedColorMode =
+    nestedColorsObj && typeof nestedColorsObj.mode === "string" ? nestedColorsObj.mode : undefined;
+  const nestedColorPrimary =
+    nestedColorsObj && typeof nestedColorsObj.primary === "string" ? nestedColorsObj.primary : undefined;
+  const nestedColorPrimaries =
+    nestedColorsObj && Array.isArray(nestedColorsObj.primaries)
+      ? nestedColorsObj.primaries.filter((v): v is string => typeof v === "string")
+      : undefined;
+  const nestedColorAccents =
+    nestedColorsObj && Array.isArray(nestedColorsObj.accents)
+      ? nestedColorsObj.accents.filter((v): v is string => typeof v === "string")
+      : undefined;
+
+  const legacyColors = (() => {
+    if (nestedColorPrimaries && nestedColorPrimaries.length > 0) return nestedColorPrimaries;
+    if (nestedColorPrimary) return [nestedColorPrimary];
+    return normalizeColorArray(readFirstDefined(data, ["colors", "颜色"]), []);
+  })();
+  const rawColorMode = nestedColorMode ?? readFirstDefined(data, ["colorMode", "color_mode", "mode", "颜色模式"]);
   const explicitColorMode = rawColorMode === "single" || rawColorMode === "multicolor" || rawColorMode === "main_with_accent"
     ? rawColorMode
     : undefined;
-  const rawMainColor = readFirstDefined(data, ["mainColor", "main_color", "primary", "主色"]);
-  const rawPrimaryColors = normalizeColorArray(
+  const rawMainColor = nestedColorPrimary ?? readFirstDefined(data, ["mainColor", "main_color", "primary", "主色"]);
+  const rawPrimaryColors = nestedColorPrimaries ?? normalizeColorArray(
     readFirstDefined(data, ["primaryColors", "primary_colors", "primaries", "primaryColor", "mainColors", "main_colors", "dominantColors", "dominant_colors", "主色", "主体色"]),
     [],
   );
-  const rawSecondaryColors = normalizeColorArray(
+  const rawSecondaryColors = nestedColorAccents ?? normalizeColorArray(
     readFirstDefined(data, [
       "secondaryColors",
       "secondary_colors",
@@ -1886,9 +1911,9 @@ function splitPrimaryAndSecondaryColors(primaryColors: string[], secondaryColors
   let normalizedPrimary = primaryColors.length > 0 ? primaryColors : legacyColors.slice(0, 1);
   let normalizedSecondary = secondaryColors;
 
-  if (normalizedPrimary.length === 0) {
-    normalizedPrimary = ["白"];
-  }
+  // v1.1.27-fix: 缺主色时不再静默兜底为"白"。
+  // 透传空数组给 normalizeAiColorInfo，由其在 single 分支返回 emptyColorInfo + needsReview=true，
+  // 让 UI 显示"暂未选择"和红色"待确认"角标，避免用户拿到错误的"白"识别结果。
 
   if (normalizedSecondary.length === 0) {
     const legacySecondary = legacyColors.filter((color) => !normalizedPrimary.includes(color));
