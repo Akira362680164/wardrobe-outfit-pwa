@@ -1,0 +1,38 @@
+node_modules
+.next
+out
+dist
+coverage
+
+# Generated Android/build outputs
+android/.gradle
+android/app/build
+android/build
+android/app/src/main/assets/public
+*.apk
+*.aab
+*.aar
+
+# Local machine files
+.DS_Store
+*.log
+*.tsbuildinfo
+.env
+.env.local
+.env.*.local
+android/local.properties
+
+# Signing credentials stay local; keep a separate backup outside Git.
+android/signing/*.jks
+android/signing/*.keystore
+android/signing/*signing*.properties
+
+# Tooling local caches / agent scratch
+.claude/
+.mavis/
+.opencode/
+.playwright-screenshots/
+
+# Archive directories (local only, not tracked)
+apk-archive/
+docs/archive/

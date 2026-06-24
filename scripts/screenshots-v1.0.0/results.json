@@ -1,0 +1,175 @@
+[
+  {
+    "item": 1,
+    "desc": "FAB + 号视觉居中",
+    "status": "PASS",
+    "note": "48x48 at (311,684)"
+  },
+  {
+    "item": 2,
+    "desc": "Sheet入口motion+active反馈",
+    "status": "PASS",
+    "note": "\"创建搭配\": true"
+  },
+  {
+    "item": 3,
+    "desc": "创建流程归属套装页面",
+    "status": "PASS",
+    "note": "In create flow",
+    "ss": "/Users/fangzheng/Documents/衣柜识别+根据要去的地方和活动自动搭配穿搭的APP/.worktrees/outfit-restruct-v1.0/scripts/screenshots-v1.0.0/03-create-step1.png"
+  },
+  {
+    "item": 4,
+    "desc": "不出现上传套装图",
+    "status": "PASS",
+    "note": "",
+    "ss": "/Users/fangzheng/Documents/衣柜识别+根据要去的地方和活动自动搭配穿搭的APP/.worktrees/outfit-restruct-v1.0/scripts/screenshots-v1.0.0/03-create-step1.png"
+  },
+  {
+    "item": 5,
+    "desc": "不出现未知单品",
+    "status": "PASS",
+    "note": "",
+    "ss": "/Users/fangzheng/Documents/衣柜识别+根据要去的地方和活动自动搭配穿搭的APP/.worktrees/outfit-restruct-v1.0/scripts/screenshots-v1.0.0/03-create-step1.png"
+  },
+  {
+    "item": 6,
+    "desc": "衣橱筛选存在",
+    "status": "PASS",
+    "note": "",
+    "ss": "/Users/fangzheng/Documents/衣柜识别+根据要去的地方和活动自动搭配穿搭的APP/.worktrees/outfit-restruct-v1.0/scripts/screenshots-v1.0.0/03-create-step1.png"
+  },
+  {
+    "item": 7,
+    "desc": "分类筛选中文+数量",
+    "status": "PASS",
+    "note": "",
+    "ss": "/Users/fangzheng/Documents/衣柜识别+根据要去的地方和活动自动搭配穿搭的APP/.worktrees/outfit-restruct-v1.0/scripts/screenshots-v1.0.0/03-create-step1.png"
+  },
+  {
+    "item": 8,
+    "desc": "搜索/衣橱/分类组合",
+    "status": "PASS",
+    "note": "Imgs: 5",
+    "ss": "/Users/fangzheng/Documents/衣柜识别+根据要去的地方和活动自动搭配穿搭的APP/.worktrees/outfit-restruct-v1.0/scripts/screenshots-v1.0.0/03-create-step1.png"
+  },
+  {
+    "item": 9,
+    "desc": "衣物宫格缩略图",
+    "status": "PASS",
+    "note": "Images: 5",
+    "ss": "/Users/fangzheng/Documents/衣柜识别+根据要去的地方和活动自动搭配穿搭的APP/.worktrees/outfit-restruct-v1.0/scripts/screenshots-v1.0.0/03-create-step1.png"
+  },
+  {
+    "item": 10,
+    "desc": "选择2件后可进入下一步",
+    "status": "PASS",
+    "note": "Analyze step",
+    "ss": "/Users/fangzheng/Documents/衣柜识别+根据要去的地方和活动自动搭配穿搭的APP/.worktrees/outfit-restruct-v1.0/scripts/screenshots-v1.0.0/04-analyze.png"
+  },
+  {
+    "item": 11,
+    "desc": "分析步有AI提示",
+    "status": "PASS",
+    "note": "",
+    "ss": "/Users/fangzheng/Documents/衣柜识别+根据要去的地方和活动自动搭配穿搭的APP/.worktrees/outfit-restruct-v1.0/scripts/screenshots-v1.0.0/04-analyze.png"
+  },
+  {
+    "item": 12,
+    "desc": "无Key提示本地规则",
+    "status": "PARTIAL",
+    "note": "Local: false",
+    "ss": "/Users/fangzheng/Documents/衣柜识别+根据要去的地方和活动自动搭配穿搭的APP/.worktrees/outfit-restruct-v1.0/scripts/screenshots-v1.0.0/04-analyze.png"
+  },
+  {
+    "item": 13,
+    "desc": "校对页不出现收藏字段",
+    "status": "PASS",
+    "note": "Fav: false",
+    "ss": "/Users/fangzheng/Documents/衣柜识别+根据要去的地方和活动自动搭配穿搭的APP/.worktrees/outfit-restruct-v1.0/scripts/screenshots-v1.0.0/05-review.png"
+  },
+  {
+    "item": 25,
+    "desc": "风格标签均为中文",
+    "status": "PASS",
+    "note": "English: none",
+    "ss": "/Users/fangzheng/Documents/衣柜识别+根据要去的地方和活动自动搭配穿搭的APP/.worktrees/outfit-restruct-v1.0/scripts/screenshots-v1.0.0/05-review.png"
+  },
+  {
+    "item": 14,
+    "desc": "保存后进入套装详情页",
+    "status": "PASS",
+    "note": "In detail: true",
+    "ss": "/Users/fangzheng/Documents/衣柜识别+根据要去的地方和活动自动搭配穿搭的APP/.worktrees/outfit-restruct-v1.0/scripts/screenshots-v1.0.0/06-detail.png"
+  },
+  {
+    "item": 15,
+    "desc": "详情页主图自动拼图",
+    "status": "PASS",
+    "note": "Cover: true",
+    "ss": "/Users/fangzheng/Documents/衣柜识别+根据要去的地方和活动自动搭配穿搭的APP/.worktrees/outfit-restruct-v1.0/scripts/screenshots-v1.0.0/06-detail.png"
+  },
+  {
+    "item": 16,
+    "desc": "标题行右侧收藏按钮",
+    "status": "PASS",
+    "note": "Fav: true",
+    "ss": "/Users/fangzheng/Documents/衣柜识别+根据要去的地方和活动自动搭配穿搭的APP/.worktrees/outfit-restruct-v1.0/scripts/screenshots-v1.0.0/06-detail.png"
+  },
+  {
+    "item": 17,
+    "desc": "收藏→★+toast",
+    "status": "PASS",
+    "note": "\"☆收藏\" → \"★已收藏\""
+  },
+  {
+    "item": 18,
+    "desc": "取消收藏+toast",
+    "status": "PASS",
+    "note": "Toggled back"
+  },
+  {
+    "item": 19,
+    "desc": "AI建议卡在概况下Tab上",
+    "status": "PASS",
+    "note": "AI card: true",
+    "ss": "/Users/fangzheng/Documents/衣柜识别+根据要去的地方和活动自动搭配穿搭的APP/.worktrees/outfit-restruct-v1.0/scripts/screenshots-v1.0.0/06-detail.png"
+  },
+  {
+    "item": 20,
+    "desc": "AI建议loading状态",
+    "status": "PASS",
+    "note": "Triggered"
+  },
+  {
+    "item": 21,
+    "desc": "AI成功/失败摘要",
+    "status": "PASS",
+    "note": "Result: true"
+  },
+  {
+    "item": 22,
+    "desc": "编辑页重新使用AI生成信息按钮",
+    "status": "PASS",
+    "note": "Regen: true",
+    "ss": "/Users/fangzheng/Documents/衣柜识别+根据要去的地方和活动自动搭配穿搭的APP/.worktrees/outfit-restruct-v1.0/scripts/screenshots-v1.0.0/09-edit.png"
+  },
+  {
+    "item": 23,
+    "desc": "点击后回填表单不保存",
+    "status": "PASS",
+    "note": "Form: true"
+  },
+  {
+    "item": 24,
+    "desc": "修改后保存-详情更新",
+    "status": "SKIP",
+    "note": "Full flow needed"
+  },
+  {
+    "item": 26,
+    "desc": "Android返回键行为",
+    "status": "SKIP",
+    "note": "Needs real device"
+  }
+]
