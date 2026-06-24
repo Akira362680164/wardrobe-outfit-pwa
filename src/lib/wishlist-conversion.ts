@@ -19,7 +19,9 @@ export type WardrobeItemLike = Pick<
   WardrobeItem,
   | "name"
   | "imageDataUrl"
+  | "sourceImageDataUrl"
   | "thumbnailDataUrl"
+  | "cropBox"
   | "category"
   | "subcategory"
   | "colors"
@@ -90,7 +92,9 @@ export function wishlistToVirtualWardrobeItem(
     name: wishlist.name?.trim() || "未命名种草单品",
 
     imageDataUrl: wishlist.imageDataUrl || "",
+    sourceImageDataUrl: wishlist.sourceImageDataUrl,
     thumbnailDataUrl: wishlist.thumbnailDataUrl,
+    cropBox: wishlist.cropBox,
 
     category: wishlist.category ?? "tops",
     subcategory: wishlist.subcategory,
@@ -145,6 +149,7 @@ export function wishlistToWardrobeItem(input: {
     imageDataUrl: wishlistItem.imageDataUrl || "",
     sourceImageDataUrl: wishlistItem.sourceImageDataUrl,
     thumbnailDataUrl: wishlistItem.thumbnailDataUrl,
+    cropBox: wishlistItem.cropBox,
 
     category: wishlistItem.category ?? "tops",
     subcategory: wishlistItem.subcategory,

@@ -1,3 +1,123 @@
+## 2026-06-25 / v1.1.29 / MiniMax worker + Mavis 主会话 — 种草编辑图片区对齐衣橱 + 工作区恢复
+
+- **目的**：基于 MiniMax worker 第一阶段修复与主会话复核结果，将种草编辑图片区对齐衣橱编辑页（左侧小图 + 右侧重新裁切/重新识别），补齐种草裁切源、`cropBox` 转换/迁移/首录沉淀链路，并在第二阶段 worker 误清空主项目目录后，由主会话从 `wardrobe-main-merge-v1129` 快照恢复源码、以公开仓库 v1.1.28 历史重建本地 Git 基线。
+- **版本变化**：`package.json` **1.1.28 → 1.1.29**（`package-lock.json` 同步更新）。原计划打 APK，因固定签名文件在误清空中丢失，APK 交付被阻断，未生成 `衣橱穿搭助手-v1.1.29.apk`。
+- **改动文件**：
+  - `src/components/wishlist-view-2.0.tsx`：种草编辑图片区改为与衣橱编辑页一致的小图 + 「重新裁切」「重新识别」双按钮；复用 `ImageCropEditor`；裁切确认时回填缺失的 `sourceImageDataUrl` 并更新/清空缩略图；重新识别使用 `formSourceImageDataUrl || formImageDataUrl`。
+  - `src/lib/wishlist-conversion.ts` / `src/lib/migrate.ts`：保留并传递 `sourceImageDataUrl`、`cropBox`、`thumbnailDataUrl`，确保种草单品转衣橱后裁切不丢。
+  - `src/lib/intake-draft.ts` / `src/lib/intake-local-draft.ts` / `src/lib/intake-save-adapters.ts` / `src/components/garment-intake-flow.tsx`：首录流程透传并沉淀 `cropBox`。
+  - `scripts/test-item-wishlist-edit-recognition-layout.ts`：新增布局、裁切源回填、转换/迁移/首录 cropBox 链路静态断言。
+  - `package.json` / `package-lock.json`：版本更新到 1.1.29。
+  - `VERSION_HISTORY.md`：记录本次修复、恢复、验证结果，并修正 v1.1.28 worker entry 的 subagent 表述。
+- **工作区恢复说明**：
+  - MiniMax worker 第二阶段误操作导致原主项目路径 `.git` 与源码被清空；主会话随后从 `/Users/fangzheng/Documents/wardrobe-main-merge-v1129` 恢复 v1.1.29 源码，保留原路径 `node_modules` / `.next` / `.vscode`，并用 `/Users/fangzheng/Documents/wardrobe-tmp-recover` 的公开 v1.1.28 Git 历史重建本地仓库。
+  - 原本未提交的历史脏文件（例如 `.claude/settings.json`、旧 `AGENTS.md` 本地修改、review artifacts 等）未能完整恢复；本次只恢复并提交 v1.1.29 必要源码与项目规则文件。
+- **验证结果**（恢复后主会话重新执行）：
+  - `npm run typecheck`: ✅ 0 error。
+  - `npm run test:logic:item-wishlist-edit-recognition-layout`: ✅ ALL PASSED。
+  - `npm run test:logic:wishlist-flow`: ✅ pass=55 fail=0。
+  - `npm run test:logic:all`: ✅ 全套件 0 failed。
+  - `npm run build`: ✅ 通过，仍有仓库既有 lint warnings。
+  - 固定签名核验：❌ `android/signing/wardrobe-fixed.jks` 与 `android/signing/wardrobe-signing.properties` 缺失；已在 Documents/Desktop/Downloads 与系统索引中查找，未找到可恢复副本。
+  - `npm run android:apk`: 未执行；按项目规则，固定签名缺失时不能改用默认 debug key 或重新生成新 key。
+- **风险门禁**：**high**。触及种草编辑页核心 UI、裁切/图片源语义、Wishlist → Wardrobe 转换、migration/intake 链路，并发生第二阶段 worker 工作区误清空后的恢复。
+- **subagent 触发**：用户**明确通知**触发 → MiniMax worker 执行第一阶段修复；Ark worker 暂不可用未使用。第二阶段发布链路由 MiniMax worker 启动但发生误清空，主会话接管恢复。
+- **未验证风险**：
+  1. **Android APK 未交付**：固定签名文件缺失，无法安全打包覆盖安装版 APK。
+  2. **Android 真机端到端验证未做**：需待固定签名恢复后再装包验证种草编辑页裁切/识别与转衣橱 cropBox 保留。
+  3. **本地 Git 历史为恢复后重建**：原主项目完整本地历史已不可用；当前仓库以公开 v1.1.28 历史为基线继续。
+
+---
+
+## 2026-06-25 / v1.1.28 / Mavis worker — 种草编辑图片区对齐衣橱编辑页 (裁切 + 识别 source 拆分)
+
+- **目的**：种草编辑页图片区与衣橱编辑页对齐：左侧 3:4 小图 (GarmentImage, aspect-[3/4] w-28) + 右侧竖排两个 outline/blue 按钮 (重新裁切 / 重新识别)。复用衣橱编辑页 ImageCropEditor 不另写裁切器。识别 input.imageDataUrl 用当前裁切图, sourceImageDataUrl 用真实原图字段兜底 (不能固定等于当前图)。wishlistToWardrobeItem / wishlistToVirtualWardrobeItem 同步通用字段, 转入衣橱后 cropBox 不丢。migrateWishlistItemRecord 保留合法 cropBox。低成本首录沉淀: intake-draft / buildLocalGarmentDraft / garment-intake-flow / intake-save-adapters 全链路透传 cropBox。
+- **版本变化**：`package.json` 保持 **1.1.28** 不递增（按用户要求本轮不出 APK, 1.1.28 release hash 已在上一轮 v1.1.28 记录中封版；本次仅代码修复 + 本地验证 + commit, 第二阶段打 APK / 合并 main / 推 GitHub 由主会话确认后再启动）。
+- **改动文件**：
+  - `src/components/wishlist-view-2.0.tsx`：新增 `Crop` / `RefreshCw` / `Loader2` 图标 + `ImageCropEditor` + `GarmentImage` + `generateThumbnailSafe` + `NormalizedCropBox` 引入；新增 `formSourceImageDataUrl` / `formCropBox` / `formThumbnailDataUrl` / `wishlistCropJob` 状态；`resetForm` / `checkFormDirty` / `openEditForm` / `formInitialSnapshotRef` 一并包含新字段；`handleAddImage` 同步设置 sourceImageDataUrl 并清空旧 cropBox / thumbnailDataUrl；`handleSaveForm` base 写入 sourceImageDataUrl / cropBox / thumbnailDataUrl；`handleRescanAI` 使用 `formSourceImageDataUrl || formImageDataUrl` 作为 sourceImageDataUrl（不再固定等于当前图）；新增 `handleStartCrop` 打开 ImageCropEditor；移除原 `h-[280px]` 大图块与「重新 AI 识别商品信息」按钮, 替换为与衣橱编辑页一致的 ItemSectionCard (左 3:4 w-28 小图 + 右 Crop / RefreshCw 双按钮), 无图时左图区域改为添加图片入口；主会话复核补充小图容器 `relative` 定位, 并在老数据缺 `sourceImageDataUrl` 时于裁切确认后回填本次裁切源、缩略图生成失败时清空旧缩略图, 避免 cropBox 坐标失去对应原图或保存陈旧 thumbnail。
+  - `src/lib/wishlist-conversion.ts`：`WardrobeItemLike` Pick 增加 `sourceImageDataUrl` / `cropBox`; `wishlistToVirtualWardrobeItem` 返回 `sourceImageDataUrl` / `cropBox` / `thumbnailDataUrl`; `wishlistToWardrobeItem` 写入 `sourceImageDataUrl` / `cropBox` / `thumbnailDataUrl`（颜色字段维持新版 ColorInfo, 未触动）。
+  - `src/lib/migrate.ts`：`migrateWishlistItemRecord` return 增加 `cropBox: isCropBox(o.cropBox) ? o.cropBox : undefined`, 与衣橱 migrate 同款防御写法。
+  - `src/lib/intake-draft.ts`：`GarmentIntakeDraft` / `WishlistIntakeDraft` 增加可选 `cropBox?: { x; y; width; height }` 字段。
+  - `src/lib/intake-local-draft.ts`：`BuildLocalGarmentDraftInput` 增加 `cropBox`; `buildLocalGarmentDraft` 输出 draft.cropBox（`buildLocalWishlistDraft` 自动继承）。
+  - `src/lib/intake-save-adapters.ts`：`garmentDraftToWardrobeItem` / `garmentDraftToWishlistItem` 写入 `cropBox: draft.cropBox`, 转衣橱与转种草沉淀 cropBox。
+  - `src/components/garment-intake-flow.tsx`：`buildLocalGarmentDraft` 调用处新增 `cropBox: item.cropBox`, 首次录入裁切后 cropBox 自动沉淀到 WishlistItem / WardrobeItem。
+  - `scripts/test-item-wishlist-edit-recognition-layout.ts`：新增 §16.8 段落, 覆盖布局 (移除 h-[280px] / 「重新 AI 识别商品信息」, 引入 ItemSectionCard + `relative` 3:4 w-28 + 重新裁切 / 重新识别 + ImageCropEditor + GarmentImage + generateThumbnailSafe + formSourceImageDataUrl + formCropBox)、handleRescanAI 不再固定 `sourceImageDataUrl: formImageDataUrl` 且回退链为 `formSourceImageDataUrl || formImageDataUrl`、裁切确认在缺原图时回填 `wishlistCropJob.dataUrl`、缩略图失败时清空旧值、wishlistToWardrobeItem / wishlistToVirtualWardrobeItem 写入 cropBox + sourceImageDataUrl、WardrobeItemLike Pick 含 sourceImageDataUrl / cropBox、migrateWishlistItemRecord 保留 cropBox、intake-save-adapters / garment-intake-flow / intake-draft 透传 cropBox。
+- **验证结果**（本任务第一阶段, 不打 APK）：
+  - `npm run typecheck`: ✅ 0 error。
+  - `npm run test:logic:item-wishlist-edit-recognition-layout`: ✅ ALL PASSED (含 16.1-16.8 共 60+ 断言)。
+  - `npm run test:logic:wishlist-flow`: ✅ pass=55 fail=0。
+  - `npm run test:logic:wishlist-management-followup`: ✅ 52 passed, 0 failed。
+  - `npm run test:logic:wishlist`: ✅ pass=100 fail=0。
+  - `npm run test:logic:detail-shell`: ✅ pass (detail-shell-ui + wishlist-fields)。
+  - `npm run test:logic:data-repo`: ✅ 63 passed, 0 failed。
+  - `npm run test:logic:app-route`: ✅ 40 passed, 0 failed。
+  - `npm run test:logic:intake`: ✅ pass (intake-draft + batch-ai-progress)。
+  - `npm run test:logic:wishlist-intake-confirm-contract`: ✅ pass。
+  - `npm run test:logic:garment-intake-confirm-contract`: ✅ pass。
+  - `npm run test:logic:all`: ✅ 全套件 0 failed（含 color-catalog 94 passed / ai-intake-live-contract / intake-field-contract / outfit-intake-confirm-contract / diagnostic-events / thumbnail-backfill 等）。
+  - `npm run build`: ✅ 通过 (route / 1.28 kB / shared 103 kB；2 个 ESLint warning 为仓库预存在, 非本次引入)。
+- **风险门禁**：**high**。触及 Dexie schema 衍生 (intake draft.cropBox)、AI 识别管线 input source 语义 (`sourceImageDataUrl` 与 `imageDataUrl` 拆分)、转换函数 (WishlistItem → WardrobeItem) 字段集变化、UI 控件复用 (与衣橱编辑页同一 ImageCropEditor)、跨 5+ 文件 + 260 行 diff + 核心大文件 `wishlist-view-2.0.tsx`。
+- **subagent 触发**：用户**明确通知**触发 → MiniMax worker 执行第一阶段代码修复与本地验证（typecheck / item-wishlist-edit-recognition-layout / wishlist-flow / wishlist-management-followup / wishlist / detail-shell / data-repo / app-route / intake / wishlist-intake-confirm-contract / garment-intake-confirm-contract / build 全绿），主会话复核并补充小图容器 `relative` 定位 + 老数据缺 `sourceImageDataUrl` 时于裁切确认后回填本次裁切源 + 缩略图生成失败时清空旧值，最终落在 `b670bcb` (commit message v1.1.28 align wishlist edit image crop controls)。Ark worker 本次暂不可用, 未使用。
+- **未验证风险**：
+  1. **Android 真机端到端验证未做**：用户需装 v1.1.28+ APK 后在种草编辑页实测「重新裁切」「重新识别」两个按钮 —— 期望图片区与衣橱编辑页同款 (左 3:4 w-28 小图, 右竖排两按钮), 「重新识别」基于真实原图 (若 sourceImageDataUrl 丢失则回退到 imageDataUrl), 识别结果回填 name/category/colors/seasons/styles/temperatureRange/formality/warmth/material/fitGender/fitNotes/notes 字段, 不覆盖用户已填字段。
+  2. **保存种草 → 转入衣橱链路未做 UI 走查**：convertWishlistItemToWardrobe 已在 wishlistToWardrobeItem 写入 cropBox / sourceImageDataUrl, 转入衣橱后编辑页应可见 cropBox 状态; 但未做 UI 走查 (WebView + 真机), 实际图片是否仍按 cropBox 正确显示, 需主会话复核后做真机验证。
+  3. **首次录入沉淀路径只在静态测试层验证**：garment-intake-flow → buildLocalGarmentDraft → intake-save-adapters → Dexie 写入已通过 typecheck + 静态检查, 未在真机或浏览器跑端到端流程确认 cropBox 不丢。
+  4. **AGENTS.md / .claude/settings.json 历史未提交改动继续保留**, 按 §57 不进本次 commit; 主会话复核后请独立处理。
+  5. **未做 build 后的 Android WebView 兼容性回归**: 新引入的 ImageCropEditor 已在衣橱编辑页通过验证, 种草编辑页直接复用同一组件, 风险低但需真机回归。
+- **后续阶段（待主会话确认）**:
+  1. 主会话复核本次 diff + 验证结果。
+  2. 真机端到端验证 (上述 1-3)。
+  3. 确认无误后由主会话启动 APK 打包 / 合并 main / 推 GitHub 流程。
+
+---
+
+## 2026-06-25 / v1.1.28 / Mavis — 修复嵌套 AI 颜色字段解析漏洞 + 打包 APK + 推送 GitHub + 压缩 history
+
+- **目的**：把 db36b54 修复（v1.1.27-fix）作为 v1.1.28 release 端到端交付：递增 package.json + 打包 release APK + 公开版推送 + VERSION_HISTORY.md 裁剪历史保留最近 30 条。
+- **版本变化**：`package.json` **1.1.27 → 1.1.28**。
+- **改动文件**：
+  - `package.json`：`version` 1.1.27 → 1.1.28（按 §122 打 APK 必须递增）。
+  - `VERSION_HISTORY.md`：主文件 1245 行 → 916 行，75 条记录 → 31 条（30 条真实记录 + 末尾"## 历史基线"段），最旧保留到 v1.1.18 (2026-06-15)；删除 `VERSION_HISTORY.md.precompact8.bak`（1890 行 / 209KB 临时备份，按 §255 不进公开版）。
+  - `衣橱穿搭助手-v1.1.28.apk`：**新增** 8.17 MB release APK（项目根），沿用 §125 fixed signing (`android/signing/wardrobe-fixed.jks` + `wardrobe-signing.properties`)。
+- **Commit 历史**（本地 main）：
+  - `d16e0c7` chore: bump version 1.1.27 → 1.1.28
+  - `e83a7fc` chore: trim VERSION_HISTORY.md to recent 30 records + drop precompact bak (1 file changed, 2 insertions(+), 331 deletions(-))
+  - `db36b54` fix: parse nested AI color fields（上一轮 v1.1.27-fix 已 commit，本轮 e2b5d82 之后）
+  - `e2b5d82` docs: append Mavis 验收 record for v1.1.27 public repo push
+- **APK 交付**（§120-128）：
+  - `npm run android:apk`：**BUILD SUCCESSFUL** in 8s，290 actionable tasks（47 executed / 243 up-to-date）。
+  - APK 路径：`/Users/fangzheng/Documents/衣柜识别+根据要去的地方和活动自动搭配穿搭的APP/衣橱穿搭助手-v1.1.28.apk`
+  - 大小：8,174,973 bytes (≈ 8.17 MB)
+  - SHA256：`c606829ea1118fa318cbf013789abb1bf61f64a0e1f9d6b10e70ccb3e7d7b04d`
+- **公开版推送**（AGENTS.md §245-301）：
+  - **staging 目录**：`/Users/fangzheng/Documents/wardrobe-github-public-main`（保留 `.git` + remote，清空工作区 → `git archive main` 重新导出 → 删除 §257-286 排除项）。
+  - 排除项核验：`.claude/` `AGENTS.md` `CLAUDE.md` `MINIMAX.md` `STRICT_INTAKE_FIELD_CONTRACT_VALIDATION_REPORT.md` `.DS_Store` 全部已删；26 项排除规则核验 ✅ 全部通过。
+  - **历史遗留清理**：`git archive main` 输出含 2 个历史 APK (`衣橱穿搭助手-v1.1.16.apk` / `衣橱穿搭助手-v1.1.22.apk`)——这两个 APK 违反 §61"不要提交 `*.apk`"但已被历史 commit tracked，本轮 mavis-trash 删除。**已存数据无影响**（它们没在 main 主仓库的 recent commits 里，但 git archive 拉取了完整历史）。
+  - 公开版 staging 本地核验：`npm run typecheck` ✅ 0 error；`npm run test:logic:color-catalog` ✅ **94 passed / 0 failed**（86 原有 + 8 v1.1.27-fix 新增）；`npm run test:logic:intake-field-contract` ✅ pass；`npm run test:logic:item-wishlist-edit-recognition-layout` ✅ ALL PASSED。
+  - staging 本地 commit：`dc623f9 v1.1.28: fix nested AI color fields + history trim`（4 files changed, +153/-340）。
+  - **GitHub 推送**：`git push --force-with-lease origin main` 成功，远端 `Akira362680164/wardrobe-outfit-pwa` `main` SHA 从 `5e9a957` (v1.1.27) 重置为 `dc623f9` (v1.1.28)；`git rev-parse main` 与 `git rev-parse origin/main` 相等 ✅。
+- **自动化测试**（本地 main）：
+  - `npm run typecheck`：✅ 0 error。
+  - `npm run test:logic:color-catalog`：✅ **94 passed / 0 failed**。
+  - `npm run test:logic:ai-intake-live-contract`：✅ 29 passed。
+  - `npm run test:logic:intake-field-contract`：✅ pass。
+  - `npm run test:logic:garment-intake-confirm-contract`：✅ pass。
+  - `npm run test:logic:wishlist-intake-confirm-contract`：✅ pass。
+  - `npm run test:logic:item-wishlist-edit-recognition-layout`：✅ ALL PASSED。
+  - `npm run test:logic:all`：✅ 全部套件 0 failed。
+  - `npm run build`：✅ 通过（路由 / 1.28 kB / shared 103 kB）。
+  - `npm run android:apk`：✅ BUILD SUCCESSFUL。
+- **风险门禁**：**high**。fix `device-minimax.ts` 核心识别管线 + 推送公开版 + force-push 覆盖远端 v1.1.25/v1.1.26/v1.1.27 历史。
+- **未触发 subagent**：用户明确通知"不要启动 subagent"。
+- **未验证风险**：
+  1. **Android 真机端到端验证未做**：用户需装 v1.1.28 APK 后用真实卡其衬衫图测试"重新识别"——期望 colors.primary="卡其"（v1.1.27 返回"白"）。如果还是"白"说明 AI 端在原图（白 T 主导）上仍误识别，UI 现在会显示 needsReview=true 让用户识别异常。
+  2. **公开版历史回退**：force-push 覆盖了远端 v1.1.25 + v1.1.26 + v1.1.27 三个 commit（公开仓库变成单一 commit `dc623f9`）。如需保留这些 commit 的公开版 hash，须从原 staging 删除前的 git history 备份中提取（v1.1.25 `c8a3b8d` / v1.1.26 `77227d9` / v1.1.27 `5e9a957` 已在 e2b5d82 记录中）。
+  3. **已存数据不自动回填**：用户之前用 v1.1.27 录入的"白"色衣物不会自动更新（按设计不动历史数据）；用户需在编辑页"重新识别"或手动改色。
+  4. **history 裁剪**：v1.1.18 之前 ~45 条记录已从主文件裁掉；通过 `git log -p -- VERSION_HISTORY.md` 可查阅完整原文（已被 git 跟踪保存）。
+  5. **遗留未提交改动**（按 §57 不进本次 release commit）：`.claude/settings.json` / `AGENTS.md` 修改 + `scripts/subagent-*.mjs` × 8 / `scripts/review-*.mjs` / `scripts/test-*.mjs` 等 worker 历史产物 untracked。
+
+---
+
 ## 2026-06-25 / v1.1.27-fix / Mavis — 修复 AI 颜色识别嵌套结构解析漏洞
 
 - **目的**：v1.1.27 色彩系统统一后，prompt 已要求 AI 返回嵌套结构 `colors: { mode, primary, primaries, accents }`，但 `normalizeGarmentTag()` 仍主要读旧式顶层字段，导致所有衣物的 AI 识别颜色都被静默兜底成"单主色 / 白"（用户实测多件衣物都得到白色）。

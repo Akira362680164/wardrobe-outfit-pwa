@@ -55,6 +55,7 @@ export interface GarmentIntakeDraft {
   imageDataUrl?: string;
   sourceImageDataUrl?: string;
   croppedImageDataUrl?: string;
+  cropBox?: { x: number; y: number; width: number; height: number };
   thumbnailDataUrl?: string;
   transparentImageDataUrl?: string;
   useTransparentImage: IntakeField<boolean>;
@@ -88,6 +89,7 @@ export interface WishlistIntakeDraft {
   imageDataUrl?: string;
   sourceImageDataUrl?: string;
   croppedImageDataUrl?: string;
+  cropBox?: { x: number; y: number; width: number; height: number };
   thumbnailDataUrl?: string;
   imageKind: IntakeField<"product_photo" | "product_screenshot" | "manual">;
   name: IntakeField<string>;
