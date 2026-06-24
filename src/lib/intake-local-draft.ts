@@ -40,6 +40,7 @@ export interface BuildLocalGarmentDraftInput extends LocalImageProcessingResult 
   id?: string;
   imageDataUrl: string;
   sourceImageDataUrl?: string;
+  cropBox?: { x: number; y: number; width: number; height: number };
   nameGuess?: string;
   categoryGuess?: GarmentCategory;
   subcategory?: string;
@@ -100,6 +101,7 @@ export function buildLocalGarmentDraft(input: BuildLocalGarmentDraftInput): Garm
     imageDataUrl: input.transparentImageDataUrl || input.imageDataUrl,
     sourceImageDataUrl: input.sourceImageDataUrl,
     croppedImageDataUrl: input.imageDataUrl,
+    cropBox: input.cropBox,
     thumbnailDataUrl: input.thumbnailDataUrl,
     transparentImageDataUrl: input.transparentImageDataUrl,
     useTransparentImage: createIntakeField(Boolean(input.transparentImageDataUrl), input.transparentImageDataUrl ? "local" : "default", "high", { needsReview: false }),

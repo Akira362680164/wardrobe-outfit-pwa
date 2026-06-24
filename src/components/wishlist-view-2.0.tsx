@@ -10,6 +10,7 @@ import {
   ArrowLeft, Edit3, ChevronRight, Package,
   AlertCircle, CheckCircle2, HelpCircle, ThumbsUp,
   ThumbsDown, MinusCircle, ChevronDown, Check, Shirt,
+  Crop, RefreshCw, Loader2,
 } from "lucide-react";
 
 import type {
@@ -48,9 +49,13 @@ import { isConvertedWishlistLinkDeleted } from "@/lib/wardrobe-reference-sync";
 
 import { useSoftAiProgress } from "@/lib/use-soft-ai-progress";
 import { fileToCompressedDataUrl } from "@/lib/image";
+import type { NormalizedCropBox } from "@/lib/image";
 import { GarmentIntakeFlow } from "@/components/garment-intake-flow";
+import { ImageCropEditor } from "@/components/image-crop-editor";
+import { GarmentImage } from "@/components/garment-image";
 import { garmentDraftToWishlistItem } from "@/lib/intake-save-adapters";
 import type { GarmentIntakeDraft } from "@/lib/intake-draft";
+import { generateThumbnailSafe } from "@/lib/thumbnail-runtime";
 import { useStableBackHandler } from "@/lib/use-stable-back-handler";
 import { AppSubPageTopBar } from "@/components/app-sub-page-top-bar";
 import { TemperatureRangeSlider } from "@/components/temperature-range-slider";
@@ -220,7 +225,10 @@ export function WishlistView20({
   // Subagent F: 通过快照比较判断表单是否有未保存修改（定义在 handler 之前，以便 handler 引用）
   const checkFormDirty = () => {
     const current = JSON.stringify({
-      name: formName, imageDataUrl: formImageDataUrl, category: formCategory,
+      name: formName, imageDataUrl: formImageDataUrl,
+      sourceImageDataUrl: formSourceImageDataUrl,
+      cropBox: formCropBox, thumbnailDataUrl: formThumbnailDataUrl,
+      category: formCategory,
       subcategory: formSubcategory, colorMode: formColorMode, mainColor: formMainColor,
       primaryColors: formPrimaryColors, accentColors: formAccentColors, seasons: formSeasons,
       styles: formStyles, temperatureRange: formTemperatureRange,
@@ -324,6 +332,14 @@ export function WishlistView20({
   const [formMaterial, setFormMaterial] = useState("");
   const [formNote, setFormNote] = useState("");
   const [formStatus, setFormStatus] = useState<WishlistStatus>("interested");
+  // v1.1.28 commit: 种草编辑复用衣橱裁切控件, 维护 sourceImageDataUrl / cropBox / thumbnailDataUrl
+  const [formSourceImageDataUrl, setFormSourceImageDataUrl] = useState<string>("");
+  const [formCropBox, setFormCropBox] = useState<NormalizedCropBox | undefined>(undefined);
+  const [formThumbnailDataUrl, setFormThumbnailDataUrl] = useState<string | undefined>(undefined);
+  const [wishlistCropJob, setWishlistCropJob] = useState<{
+    dataUrl: string;
+    startBox?: NormalizedCropBox;
+  } | null>(null);
   const addFileInputRef = useRef<HTMLInputElement>(null);
 
   const aiProgress = useSoftAiProgress("shopping_assessment");
@@ -413,12 +429,14 @@ export function WishlistView20({
 
   const resetForm = useCallback(() => {
     setEditId(null); setFormName(""); setFormImageDataUrl("");
+    setFormSourceImageDataUrl(""); setFormCropBox(undefined); setFormThumbnailDataUrl(undefined);
     setFormCategory(""); setFormSubcategory(undefined); setFormColorMode("");
     setFormPrimaryColors([]); setFormMainColor(""); setFormAccentColors([]); setFormSeasons([]);
     setFormStyles([]); setFormTemperatureRange(undefined); setFormFitGender(undefined);
     setFormFitNotes(""); setFormPrice(""); setFormProductUrl("");
     setFormFormality(""); setFormWarmth(""); setFormMaterial(""); setFormNote("");
     setFormStatus("interested");
+    setWishlistCropJob(null);
     formDirtyRef.current = false;
     formInitialSnapshotRef.current = "";
   }, []);
@@ -436,6 +454,9 @@ export function WishlistView20({
     setEditId(item.id);
     setFormName(item.name ?? "");
     setFormImageDataUrl(item.imageDataUrl ?? "");
+    setFormSourceImageDataUrl(item.sourceImageDataUrl ?? "");
+    setFormCropBox(item.cropBox);
+    setFormThumbnailDataUrl(item.thumbnailDataUrl);
     setFormCategory(item.category ?? "");
     setFormSubcategory(item.subcategory);
     setFormColorMode(item.colors.mode);
@@ -458,6 +479,9 @@ export function WishlistView20({
     formInitialSnapshotRef.current = JSON.stringify({
       name: item.name ?? "",
       imageDataUrl: item.imageDataUrl ?? "",
+      sourceImageDataUrl: item.sourceImageDataUrl ?? "",
+      cropBox: item.cropBox,
+      thumbnailDataUrl: item.thumbnailDataUrl,
       category: item.category ?? "",
       subcategory: item.subcategory ?? "",
       colorMode: item.colors.mode,
@@ -498,6 +522,9 @@ export function WishlistView20({
     const base = {
       name: formName.trim(),
       imageDataUrl: formImageDataUrl,
+      sourceImageDataUrl: formSourceImageDataUrl || undefined,
+      cropBox: formCropBox,
+      thumbnailDataUrl: formThumbnailDataUrl,
       category: (formCategory || "tops") as WishlistItem["category"],
       subcategory: formSubcategory || undefined,
       colors: buildColorInfo((formColorMode || "single") as WishlistItem["colors"]["mode"], formPrimaryColors.length > 0 ? formPrimaryColors : (formMainColor ? [formMainColor] : []), formAccentColors),
@@ -535,7 +562,7 @@ export function WishlistView20({
     }
     setSubPage("home");
     resetForm();
-  }, [editId, formName, formImageDataUrl, formCategory, formSubcategory, formColorMode, formPrimaryColors, formMainColor, formAccentColors, formSeasons, formStyles, formTemperatureRange, formFitGender, formFitNotes, formPrice, formProductUrl, formFormality, formWarmth, formMaterial, formNote, formStatus, onMessage, resetForm, setWishlistItems]);
+  }, [editId, formName, formImageDataUrl, formSourceImageDataUrl, formCropBox, formThumbnailDataUrl, formCategory, formSubcategory, formColorMode, formPrimaryColors, formMainColor, formAccentColors, formSeasons, formStyles, formTemperatureRange, formFitGender, formFitNotes, formPrice, formProductUrl, formFormality, formWarmth, formMaterial, formNote, formStatus, onMessage, resetForm, setWishlistItems]);
 
   const handleSaveIntakeDrafts = useCallback(async (drafts: GarmentIntakeDraft[]) => {
     const now = new Date().toISOString();
@@ -555,11 +582,27 @@ export function WishlistView20({
       // 4MB JPEG → 4MB base64 → Dexie 50MB 配额容易被种草图撑爆。复用 fileToCompressedDataUrl。
       const compressed = await fileToCompressedDataUrl(file);
       setFormImageDataUrl(compressed);
+      // v1.1.28 commit: 首次添加图片时同步设置 sourceImageDataUrl（同源）,
+      // 清空旧 cropBox / thumbnailDataUrl, 避免继续引用之前单品的裁切/缩略图。
+      setFormSourceImageDataUrl(compressed);
+      setFormCropBox(undefined);
+      setFormThumbnailDataUrl(undefined);
     } catch (e) {
       onMessage("图片处理失败，请重试", "error");
     }
     if (addFileInputRef.current) addFileInputRef.current.value = "";
   }, [onMessage]);
+
+  /* ---- v1.1.28 commit: 重新裁切 —— 复用 ImageCropEditor, 与衣橱编辑页共用同一底层能力 ---- */
+  const handleStartCrop = useCallback(() => {
+    if (!formImageDataUrl) {
+      onMessage("请先添加图片", "info");
+      return;
+    }
+    // sourceImageDataUrl 优先作为原图（裁切器内部从原图裁切）; 缺失则用当前主图。
+    const src = formSourceImageDataUrl || formImageDataUrl;
+    setWishlistCropJob({ dataUrl: src, startBox: formCropBox });
+  }, [formImageDataUrl, formSourceImageDataUrl, formCropBox, onMessage]);
 
   /* ---- C3: AI re-scan for edit page ---- */
   const [isRescanning, setIsRescanning] = useState(false);
@@ -580,9 +623,13 @@ export function WishlistView20({
     setIsRescanning(true);
     try {
       aiProgress.start();
+      // v1.1.28 commit: 重新识别时用裁切图作为 imageDataUrl, 真实原图作为 sourceImageDataUrl。
+      // 若未单独保留原图，回退到 formImageDataUrl（与衣橱编辑页 §3.4.6 同款契约）。
+      const rescanImage = formImageDataUrl;
+      const rescanSource = formSourceImageDataUrl || formImageDataUrl;
       const result = await onProcessIntakeImage({
-        imageDataUrl: formImageDataUrl,
-        sourceImageDataUrl: formImageDataUrl,
+        imageDataUrl: rescanImage,
+        sourceImageDataUrl: rescanSource,
       });
       const tag = result?.aiTag;
       if (!tag) {
@@ -619,7 +666,7 @@ export function WishlistView20({
     } finally {
       setIsRescanning(false);
     }
-  }, [formImageDataUrl, formName, formNote, settings, onProcessIntakeImage, aiProgress, onMessage]);
+  }, [formImageDataUrl, formSourceImageDataUrl, formName, formNote, settings, onProcessIntakeImage, aiProgress, onMessage]);
 
   /* ---- reject / restore ---- */
 
@@ -817,33 +864,71 @@ export function WishlistView20({
         </div>
 
         <div className="flex-1 overflow-y-auto overflow-x-hidden">
-          {/* C3: Image preview - h-[280px], rounded-3xl, bg-mist */}
+          {/* v1.1.28 commit: 种草图片区对齐衣橱编辑页 —— 左侧 3:4 小图, 右侧竖排 重新裁切 / 重新识别 */}
           <div className="mt-3">
-            {formImageDataUrl ? (
-              <div className="relative h-[280px] rounded-3xl overflow-hidden bg-mist">
-                <img src={formImageDataUrl} alt="商品图" className="h-full w-full object-contain" />
-                <button type="button" onClick={() => setFormImageDataUrl("")}
-                  className="absolute right-2 top-2 grid h-8 w-8 place-items-center rounded-full bg-black/50 text-white active:scale-95 transition-transform">
-                  <X size={16} />
-                </button>
+            <ItemSectionCard className="p-3">
+              <div className="flex items-center gap-3">
+                <div className="relative aspect-[3/4] w-28 shrink-0 overflow-hidden rounded-xl bg-mist" aria-label="商品图预览">
+                  {formImageDataUrl ? (
+                    <>
+                      <GarmentImage
+                        src={formImageDataUrl}
+                        alt={formName || "商品图"}
+                        fallbackSize={34}
+                        imageClassName="bg-transparent"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setFormImageDataUrl("");
+                          setFormSourceImageDataUrl("");
+                          setFormCropBox(undefined);
+                          setFormThumbnailDataUrl(undefined);
+                        }}
+                        className="absolute right-1 top-1 grid h-7 w-7 place-items-center rounded-full bg-black/50 text-white active:scale-95 transition-transform"
+                        aria-label="移除图片"
+                      >
+                        <X size={14} />
+                      </button>
+                    </>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => addFileInputRef.current?.click()}
+                      className="grid h-full w-full place-items-center text-ink/40"
+                      aria-label="添加图片"
+                    >
+                      <div className="text-center">
+                        <ImageIcon size={28} />
+                        <span className="mt-1 block text-[11px]">添加图片</span>
+                      </div>
+                    </button>
+                  )}
+                </div>
+                <div className="grid min-w-0 flex-1 gap-2">
+                  <button
+                    type="button"
+                    onClick={handleStartCrop}
+                    disabled={!formImageDataUrl}
+                    className="inline-flex h-10 items-center justify-center gap-2 rounded-lg border border-ink/10 bg-white px-3 text-sm font-semibold text-ink/70 disabled:opacity-45"
+                  >
+                    <Crop size={15} aria-hidden="true" />
+                    重新裁切
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleRescanAI}
+                    disabled={isRescanning || !formImageDataUrl}
+                    className="inline-flex h-10 items-center justify-center gap-2 rounded-lg bg-denim px-3 text-sm font-semibold text-white disabled:opacity-60"
+                  >
+                    {isRescanning ? <Loader2 size={15} className="animate-spin" aria-hidden="true" /> : <RefreshCw size={15} aria-hidden="true" />}
+                    {isRescanning ? "识别中" : "重新识别"}
+                  </button>
+                </div>
               </div>
-            ) : (
-              <button type="button" onClick={() => addFileInputRef.current?.click()}
-                className="grid h-[280px] w-full place-items-center rounded-3xl border-2 border-dashed border-ink/20 text-ink/40">
-                <div className="text-center"><ImageIcon size={36} /><span className="block text-sm mt-2">添加图片</span></div>
-              </button>
-            )}
+            </ItemSectionCard>
             <input ref={addFileInputRef} type="file" accept="image/jpeg,image/png,image/webp" className="hidden"
               onChange={(e) => handleAddImage(e.target.files?.[0])} />
-          </div>
-
-          {/* C3: AI 操作区 - "重新 AI 识别商品信息" button */}
-          <div className="mt-3">
-            <button type="button" onClick={handleRescanAI} disabled={isRescanning}
-              className="w-full h-11 rounded-xl bg-denim/10 text-sm font-medium text-denim flex items-center justify-center gap-2 disabled:opacity-50 active:scale-[0.98] transition-transform">
-              <Sparkles size={16} />
-              {isRescanning ? "识别中..." : "重新 AI 识别商品信息"}
-            </button>
           </div>
 
           {/* C3: Form fields */}
@@ -975,6 +1060,40 @@ export function WishlistView20({
         </div>
 
       </div>
+    );
+  }
+
+  // v1.1.28 commit: 种草编辑页 ImageCropEditor —— 与衣橱编辑页共用同一组件, 不另写裁切器
+  if (wishlistCropJob) {
+    subPageNode = (
+      <ImageCropEditor
+        source={wishlistCropJob.dataUrl}
+        initialCropBox={wishlistCropJob.startBox}
+        aspectRatio="free"
+        onCancel={() => setWishlistCropJob(null)}
+        onConfirm={async (newImageDataUrl, cropBox) => {
+          if (!newImageDataUrl) {
+            setWishlistCropJob(null);
+            return;
+          }
+          // v1.1.28 commit: 裁切确认后同步更新缩略图,
+          // 保留 formSourceImageDataUrl (原图), 更新 formImageDataUrl / formCropBox。
+          try {
+            const thumb = await generateThumbnailSafe(newImageDataUrl);
+            setFormImageDataUrl(newImageDataUrl);
+            setFormSourceImageDataUrl((current) => current || wishlistCropJob.dataUrl);
+            setFormCropBox(cropBox);
+            setFormThumbnailDataUrl(thumb.thumbnailDataUrl);
+          } catch {
+            setFormImageDataUrl(newImageDataUrl);
+            setFormSourceImageDataUrl((current) => current || wishlistCropJob.dataUrl);
+            setFormCropBox(cropBox);
+            setFormThumbnailDataUrl(undefined);
+          }
+          setWishlistCropJob(null);
+          onMessage("裁切已更新，请保存种草", "success");
+        }}
+      />
     );
   }
 
