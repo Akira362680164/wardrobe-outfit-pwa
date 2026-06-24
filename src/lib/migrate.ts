@@ -540,6 +540,7 @@ export function migrateWishlistItemRecord(input: unknown): WishlistItem | null {
     imageDataUrl,
     sourceImageDataUrl: typeof o.sourceImageDataUrl === "string" ? o.sourceImageDataUrl : undefined,
     thumbnailDataUrl: typeof o.thumbnailDataUrl === "string" ? o.thumbnailDataUrl : undefined,
+    cropBox: isCropBox(o.cropBox) ? o.cropBox : undefined,
     category,
     subcategory,
     colors,

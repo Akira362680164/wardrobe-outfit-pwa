@@ -375,6 +375,7 @@ export function GarmentIntakeFlow({
             ...(aiTag ? mapAiTagToGarmentDraftInput(aiTag, item.fileName) : {}),
             imageDataUrl: imageToProcess,
             sourceImageDataUrl: item.originalDataUrl,
+            cropBox: item.cropBox,
             thumbnailDataUrl: item.thumbnailDataUrl,
             locationId: defaultLocationId,
           });
