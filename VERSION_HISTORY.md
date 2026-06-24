@@ -1,3 +1,15 @@
+## 2026-06-25 / v1.1.29 / Claude Code — 固定签名重置
+
+- **目的**：固定签名文件在 v1.1.29 工作区恢复时丢失，本机无备份；用户确认重置签名。
+- **改动文件**：
+  - `android/signing/wardrobe-fixed.jks`：新增，RSA 2048，alias `wardrobe-fixed`，CN=Wardrobe Outfit，有效期至 2126-06-01。
+  - `android/signing/wardrobe-signing.properties`：新增，指向 `signing/wardrobe-fixed.jks`。
+- **版本**：`package.json` 保持 **1.1.29**，无源码改动。
+- **影响**：新 key 签出的 APK 与历史签名不同；手机有旧版需先卸载再安装。
+- **风险门禁**：**medium**（签名凭据重建）。
+
+---
+
 ## 2026-06-25 / v1.1.29 / MiniMax worker + Mavis 主会话 — 种草编辑图片区对齐衣橱 + 工作区恢复
 
 - **目的**：基于 MiniMax worker 第一阶段修复与主会话复核结果，将种草编辑图片区对齐衣橱编辑页（左侧小图 + 右侧重新裁切/重新识别），补齐种草裁切源、`cropBox` 转换/迁移/首录沉淀链路，并在第二阶段 worker 误清空主项目目录后，由主会话从 `wardrobe-main-merge-v1129` 快照恢复源码、以公开仓库 v1.1.28 历史重建本地 Git 基线。
