@@ -79,6 +79,49 @@
   1. 真实 MiniMax live 识别（棕色工装短裤）将在 commit 4 / 验证阶段跑，使用 `review-artifacts/intake-ai/brown-cargo-shorts.jpg`（用户提供的 689×862 棕色工装短裤实拍图）。
   2. `test:logic:back-priority-regression` 仍有 3 条 pre-existing 失败（与本任务无关）。
 
+## 2026-06-25 / v1.1.31 / MiniMax worker — validate intake upgrade and package APK
+
+- **目的**：按需求文档 13.6 / 14 / 16 / 20 节，跑全量回归 + 新增 5 条专项测试 + 真实 MiniMax live 识别 3 次 + Android `npm run android:sync` + `npm run android:apk` 出 v1.1.31 签名 APK + Playwright Dev Server 三种尺寸视觉截图。
+- **改动文件**：
+  - `衣橱穿搭助手-v1.1.31.apk`：新增（不进入 Git）。`npm run android:apk` 产物，固定签名 `CN=fangzheng, OU=Dev, O=Wardrobe, L=Beijing, ST=Beijing, C=CN`，v2 scheme。
+  - `review-artifacts/intake-ai/brown-cargo-shorts.jpg`：用户提供的棕色工装短裤 689×862 原图（108154 字节；SHA-256 `06664845edb1e320e8ef3c9fe4c048ba140cff400c76a0c1f170e6a73308bd9b`），复制自 `/Users/fangzheng/Downloads/qq_pic_merged_1782324581806.jpg`。
+  - `review-artifacts/intake-ai/live-recognition-brown-cargo-shorts.json`：3 次 live 识别结果记录。
+  - `review-artifacts/intake-upgrade/home-390x844.png` / `home-412x915.png` / `home-844x390.png` / `garment-step1-390x844.png` / `garment-step1-412x915.png` / `garment-step1-844x390.png`：Dev Server + Playwright 截图（不进入 Git；.gitignore 已含 `review-artifacts/`）。
+  - `VERSION_HISTORY.md`：本条记录。
+- **版本**：保持 **v1.1.31**。Android versionName=v1.1.31, versionCode=1*10000+1*100+31=10131（由 `android/app/build.gradle` 推导）。
+- **验证**：
+  - `npm run typecheck`：✅ 0 error。
+  - `npm run test:logic:intake-fullscreen-layout`：✅ 18 passed, 0 failed（commit 1）。
+  - `npm run test:logic:intake-location-options`：✅ 11 passed, 0 failed（commit 1）。
+  - `npm run test:logic:intake-current-item-rerecognition`：✅ 22 passed, 0 failed（commit 2）。
+  - `npm run test:logic:intake-recognition-failure-semantics`：✅ 27 passed, 0 failed（commit 2）。
+  - `npm run test:logic:pants-category-ai-contract`：✅ 33 passed, 0 failed（commit 3）。
+  - `npm run test:logic:all`：✅ 仅 pre-existing 3 条 `test:logic:back-priority-regression` 失败（与本任务无关，本任务前已存在）。
+  - `npm run build`：✅ 通过。
+  - `npm run android:sync`：✅ 同步成功。
+  - `npm run android:apk`：✅ `BUILD SUCCESSFUL`。
+  - **APK 签名验证**：`apksigner verify --verbose`：✅ `Verified using v2 scheme (APK Signature Scheme v2): true`；`apksigner verify --print-certs`：✅ `Signer #1 certificate DN: CN=fangzheng, OU=Dev, O=Wardrobe, L=Beijing, ST=Beijing, C=CN`。
+  - **MiniMax 真实识别**（使用用户提供的棕色工装短裤原图，3 次连续调用）：✅ 3/3 全部 `category=pants, subcategory=cargo_shorts, colors.primary=棕`；3/3 名称均含"短裤"且非泛化词（`工装抽绳短裤` / `工装短裤` / `工装短裤`）；3/3 均非 `garment`/`item`/`clothes`；详见 `review-artifacts/intake-ai/live-recognition-brown-cargo-shorts.json`。
+  - **Dev Server + Playwright**：✅ 390x844 / 412x915 / 844x390 三种尺寸跑通；步骤 1 全屏层 `fixed inset-0 z-[90] h-[100dvh]` 渲染正确，左右各 16px 边距，底部导航不露出，FAB 不露出，Header/Footer 居中，44px 返回 / 40px 关闭触控区；844x390 横屏无横向滚动条、Footer 完整可见。
+- **APK 文件信息**：
+  - 路径：`衣橱穿搭助手-v1.1.31.apk`（项目根目录，不进入 Git）。
+  - 大小：8,193,493 bytes (7.8 MB)。
+  - SHA-256：`703c5400807e771267e96ea87b0a2a3d7441eb6816f5c037ee55c0ee03b6018d`。
+  - 签名：v2 scheme，CN=fangzheng。
+- **风险门禁**：**high**（覆盖 4 个新 commit、APK 交付链路、real AI live 验证）。未触发 subagent：用户未通知 worker 启动独立审查。
+- **未验证风险**：
+  1. `test:logic:back-priority-regression` 仍有 3 条 pre-existing 失败（与本任务无关，未修复）。
+  2. Android 真机端到端流程（点击 → 步骤 1 选图 → 步骤 2 裁切 → 步骤 3 校对 → 重新识别 → 手工补全失败项 → 部分保存确认）未在物理设备跑；本次只跑 dev server + APK 构建签名验证。
+  3. MiniMax live 识别调用方为脚本直接 fetch；接入到 `recognizeSingleItemFromDataUrl` 主链后是否一致，依赖父会话 / 真机回归。
+  4. 横屏 844x390 截图只覆盖步骤 1；步骤 3 横屏未单独截图（未跑到该步骤）。
+  5. `scripts/intake-screenshots.mjs` 是本轮一次性 dev server 验证脚本，未在本次 commit 提交（按"本轮必要工具只在 VERSION_HISTORY 列明"原则已在条目中标注；脚本已通过 trash 移出，不留作未跟踪文件）。
+- **本轮全部 4 个 commit**：
+  1. `d39e52a` v1.1.31: fix fullscreen intake shell and closet labels
+  2. `019565d` v1.1.31: fix intake recognition retry and failure semantics
+  3. `70b9635` v1.1.31: expand pants categories and AI naming contract
+  4. （本次）v1.1.31: validate intake upgrade and package APK
+- **发布闸口**：未 push main、未创建 GitHub Release、未上传 APK 到 Release；按父会话要求本地交付后停止，等父会话验收。
+
 ## 2026-06-25 / v1.1.30 / Codex — 固化文件删除安全规则
 
 - **目的**：按用户要求，将文件删除安全规则写入项目根 `AGENTS.md`，确保参与项目的所有 agent、subagent、worker 和人工委派任务都遵守“只移入回收站、不永久删除、删除前后检查 Git 状态、禁止强制/递归删除绕过”的统一约束。
