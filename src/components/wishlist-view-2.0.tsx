@@ -630,6 +630,7 @@ export function WishlistView20({
       const result = await onProcessIntakeImage({
         imageDataUrl: rescanImage,
         sourceImageDataUrl: rescanSource,
+        fileName: formName ? `${formName}.jpg` : "wishlist-rescan.jpg",
       });
       const tag = result?.aiTag;
       if (!tag) {

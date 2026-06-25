@@ -1,4 +1,4 @@
-import type { GarmentIntakeDraft } from "@/lib/intake-draft";
+import { calculateDraftReviewSummary, type GarmentIntakeDraft } from "@/lib/intake-draft";
 import type { NormalizedCropBox } from "@/lib/image";
 
 export const GARMENT_INTAKE_MAX_IMAGES = 20;
@@ -171,8 +171,48 @@ export function getRecognizedGarmentIntakeImages(
 export function getSavableGarmentIntakeImages(
   current: GarmentIntakeImageItem[],
 ): GarmentIntakeImageItem[] {
+  // v1.1.31 commit2: 改为依赖 canSave，避免失败草稿 + 缺失字段被误判可保存。
+  return current.filter((item) => {
+    if (!item.draft) return false;
+    if (item.status !== "recognized" && item.status !== "failed") return false;
+    return calculateDraftReviewSummary(item.draft).canSave;
+  });
+}
+// v1.1.31 commit2: 失败草稿 + 步骤 3 候选名单 + 成功名单 + 严格 savable。
+// getReviewableGarmentIntakeImages: recognized + failed 都进步骤 3。
+// getSuccessfullyRecognizedGarmentIntakeImages: 仅 recognized，便于统计“已识别 N 件”。
+// getSavableGarmentIntakeImages: 仅依赖 draft.calculateDraftReviewSummary().canSave。
+// setGarmentIntakeImageRecognitionFailure: 写失败草稿 + status=failed + error。
+
+export function setGarmentIntakeImageRecognitionFailure(
+  current: GarmentIntakeImageItem[],
+  id: string,
+  draft: GarmentIntakeDraft,
+  error: string,
+): GarmentIntakeImageItem[] {
+  const now = new Date().toISOString();
+  return current.map((item) => {
+    if (item.id !== id) return item;
+    return {
+      ...item,
+      draft,
+      status: "failed" as const,
+      error,
+      updatedAt: now,
+    };
+  });
+}
+
+export function getReviewableGarmentIntakeImages(
+  current: GarmentIntakeImageItem[],
+): GarmentIntakeImageItem[] {
   return current.filter(
-    (item) =>
-      (item.status === "recognized" || item.status === "cropped") && item.draft,
+    (item) => (item.status === "recognized" || item.status === "failed") && Boolean(item.draft),
   );
+}
+
+export function getSuccessfullyRecognizedGarmentIntakeImages(
+  current: GarmentIntakeImageItem[],
+): GarmentIntakeImageItem[] {
+  return current.filter((item) => item.status === "recognized" && Boolean(item.draft));
 }

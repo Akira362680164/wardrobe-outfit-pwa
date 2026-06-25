@@ -368,6 +368,26 @@ function extractMiniMaxContent(response: MiniMaxResponse): string {
   return "";
 }
 
+// v1.1.31 commit2: 显式结构化识别错误。
+export type GarmentRecognitionFailureCode =
+  | "not_configured"
+  | "network"
+  | "timeout"
+  | "service"
+  | "invalid_json"
+  | "invalid_result";
+
+export class GarmentRecognitionError extends Error {
+  code: GarmentRecognitionFailureCode;
+  retryable: boolean;
+  constructor(code: GarmentRecognitionFailureCode, message: string, retryable: boolean) {
+    super(message);
+    this.name = "GarmentRecognitionError";
+    this.code = code;
+    this.retryable = retryable;
+  }
+}
+
 export type AiProgressCallback = (stage: string, percent: number) => void;
 
 export async function tagGarmentOnDevice(
@@ -526,60 +546,42 @@ export interface SingleItemRecognition {
  sourceImageDataUrl: string;
 }
 
-function buildSingleItemFallback(fileName: string): GarmentTagResult {
- return {
- candidateNames: [cleanFallbackFileName(fileName)],
- category: "tops",
- colors: emptyColorInfo(),
- seasons: ["all"],
- styles: ["casual"],
- formality:2,
- warmth:2,
- confidence:0.4,
- needsReview: true,
- notes: "未配置 MiniMax Key，已生成可编辑的默认标签",
- fitGender: "unknown",
- };
-}
-
-function cleanFallbackFileName(fileName: string): string {
- return fileName.replace(/\.[^.]+$/, "").replace(/[-_]+/g, " ").trim() || "新衣服";
-}
-
 export async function recognizeSingleItemFromDataUrl(
- aiRequestDataUrl: string,
- originalDataUrl: string,
- fileName: string,
- settings: DeviceMiniMaxSettings,
- onProgress?: AiProgressCallback,
+  aiRequestDataUrl: string,
+  originalDataUrl: string,
+  fileName: string,
+  settings: DeviceMiniMaxSettings,
+  onProgress?: AiProgressCallback,
 ): Promise<SingleItemRecognition> {
- if (!hasDeviceMiniMaxKey(settings)) {
- onProgress?.("未配置 Key，使用默认标签",100);
- return {
- tag: buildSingleItemFallback(fileName),
- imageDataUrl: originalDataUrl,
- sourceImageDataUrl: originalDataUrl,
- };
- }
- try {
- onProgress?.("识别衣物属性",30);
- const tag = await tagGarmentOnDevice(aiRequestDataUrl, fileName, settings, onProgress);
- return {
- tag,
- imageDataUrl: originalDataUrl,
- sourceImageDataUrl: originalDataUrl,
- };
- } catch (error) {
- if (typeof console !== "undefined") {
- console.warn("[recognizeSingleItemFromDataUrl] MiniMax tag失败，使用默认标签:", error);
- }
- onProgress?.("识别失败，使用默认标签",100);
- return {
- tag: buildSingleItemFallback(fileName),
- imageDataUrl: originalDataUrl,
- sourceImageDataUrl: originalDataUrl,
- };
- }
+  if (!hasDeviceMiniMaxKey(settings)) {
+    onProgress?.("未配置 Key", 100);
+    throw new GarmentRecognitionError(
+      "not_configured",
+      "未配置 MiniMax Key，无法进行 AI 识别。",
+      false,
+    );
+  }
+  try {
+    onProgress?.("识别衣物属性", 30);
+    const tag = await tagGarmentOnDevice(aiRequestDataUrl, fileName, settings, onProgress);
+    return {
+      tag,
+      imageDataUrl: originalDataUrl,
+      sourceImageDataUrl: originalDataUrl,
+    };
+  } catch (error) {
+    // v1.1.31 commit2: 失败时抛结构化错误，禁止返回 buildSingleItemFallback 假成功。
+    const code: GarmentRecognitionFailureCode =
+      error instanceof GarmentRecognitionError ? error.code : "service";
+    const retryable = error instanceof GarmentRecognitionError ? error.retryable : true;
+    const message =
+      error instanceof Error && error.message ? error.message : "MiniMax 识别失败，请稍后重试。";
+    if (typeof console !== "undefined") {
+      console.warn("[recognizeSingleItemFromDataUrl] MiniMax tag失败", code, error);
+    }
+    onProgress?.("识别失败", 100);
+    throw new GarmentRecognitionError(code, message, retryable);
+  }
 }
 
 export async function recommendOutfitsOnDevice(

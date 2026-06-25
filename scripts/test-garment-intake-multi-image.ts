@@ -112,13 +112,13 @@ check("GarmentIntakeFlow 步骤2缩略图不再展示末尾 +N", !/\+{imageItems
 check("GarmentIntakeFlow 展示动态「保存 X 件」文案", /保存\s*\$\{savableItems\.length\}\s*件\$\{flowNoun\}/.test(garmentIntakeFlow));
 
 // GarmentIntakeFlow calls onProcessImage with croppedImageDataUrl
-check("GarmentIntakeFlow 调用 onProcessImage 时使用 croppedImageDataUrl", /croppedImageDataUrl\s*\?\?\s*item\.originalDataUrl/.test(garmentIntakeFlow) || /\.croppedImageDataUrl\s*\?\?\s*item\.originalDataUrl/.test(garmentIntakeFlow));
+check("GarmentIntakeFlow 调用 onProcessImage 时使用 croppedImageDataUrl", /croppedImageDataUrl\s*\?\?\s*item\.displayDataUrl\s*\?\?\s*item\.originalDataUrl/.test(garmentIntakeFlow));
 
 // GarmentIntakeFlow processes images one by one
 check("GarmentIntakeFlow 逐张识别", /for\s*\(\s*const\s+item\s+of\s+pendingItems\s*\)/.test(garmentIntakeFlow) || /forEach/.test(garmentIntakeFlow));
 
 // GarmentIntakeFlow single image failure doesn't interrupt batch
-check("GarmentIntakeFlow 单张失败不中断整批", /continue/.test(garmentIntakeFlow) || /单张失败/.test(garmentIntakeFlow));
+check("GarmentIntakeFlow 单张失败不中断整批", /buildFailedRecognitionDraft/.test(garmentIntakeFlow) || /catch \(err\)[\s\S]{0,200}setGarmentIntakeImageRecognitionFailure/.test(garmentIntakeFlow));
 
 // WardrobeApp has onPickImages
 check("WardrobeApp 接入 onPickImages", /onPickImages=\{pickGarmentIntakeImages/.test(wardrobeApp));

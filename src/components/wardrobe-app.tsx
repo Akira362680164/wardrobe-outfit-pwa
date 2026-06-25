@@ -1034,7 +1034,7 @@ export function WardrobeApp() {
   // 这里返回 LocalImageProcessingResult, 实际 AI 识别由 flow 内部 onProcessImage 完成后
   // 通过 buildLocalGarmentDraft 整合 tagResult。Recognize 走单件属性识别
   // (recognizeSingleItemFromDataUrl), 失败时 throw, flow catch 分支用 fallback。
-  async function processGarmentIntakeImage(input: { imageDataUrl: string; sourceImageDataUrl?: string }): Promise<{
+  async function processGarmentIntakeImage(input: { imageDataUrl: string; sourceImageDataUrl?: string; fileName?: string }): Promise<{
     transparentBackgroundStatus?: "ready" | "skipped" | "failed";
     qualityWarnings?: string[];
     thumbnailDataUrl?: string;
@@ -1043,6 +1043,9 @@ export function WardrobeApp() {
     aiFallback?: boolean;
   }> {
     const { imageDataUrl, sourceImageDataUrl } = input;
+    // v1.1.31 commit2: 真实 fileName（来源于 picked image），禁止固定 "garment.jpg"。
+    // fileName 仅用于诊断/请求上下文，绝不直接成为用户可见名称。
+    const fileName = input.fileName ?? "garment.jpg";
     if (!hasDeviceMiniMaxKey(miniMaxSettings)) {
       // 无 Key: 返回最小结果, flow 内部走本地 buildLocalGarmentDraft + source: "default"
       return {
@@ -1050,7 +1053,6 @@ export function WardrobeApp() {
         qualityWarnings: [],
       };
     }
-    const fileName = "garment.jpg";
     const file = await dataUrlToFile(imageDataUrl, fileName).catch(() => null);
     const aiRequestDataUrl = file ? await fileToAiRequestDataUrl(file).catch(() => imageDataUrl) : imageDataUrl;
     const recognition = await withKeepAwake(() =>

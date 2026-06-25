@@ -25,15 +25,17 @@ check(
   "GarmentIntakeFlow 状态机含 recognizing",
   /"recognizing"/.test(garmentFlow) && /setGarmentIntakeImageError[\s\S]+?setGarmentIntakeImageDraft/.test(garmentFlow),
 );
-// 2. 单品 AI 请求源使用 croppedImageDataUrl
+// 2. 单品 AI 请求源使用 croppedImageDataUrl（v1.1.31 commit2 顺序：cropped > display > original）
 check(
   "GarmentIntakeFlow processAllImagesForRecognition 优先 croppedImageDataUrl",
-  /imageToProcess = item\.croppedImageDataUrl \?\? item\.originalDataUrl/.test(garmentFlow),
+  /croppedImageDataUrl\s*\?\?\s*item\.displayDataUrl\s*\?\?\s*item\.originalDataUrl/.test(garmentFlow) ||
+    /item\.croppedImageDataUrl\s*\?\?\s*item\.originalDataUrl/.test(garmentFlow),
 );
-// 3. 单品 fallback 只在 AI catch 分支出现
+// 3. 单品 fallback 只在 AI catch 分支出现 (v1.1.31 commit2: buildFailedRecognitionDraft 写失败草稿)
 check(
   "GarmentIntakeFlow fallback 仅在 catch 分支",
-  /catch \(err\)[\s\S]+?setGarmentIntakeImageError\(prev, item\.id, formatIntakeError/.test(garmentFlow),
+  /catch \(err\)[\s\S]+?buildFailedRecognitionDraft/.test(garmentFlow) ||
+    /catch \(err\)[\s\S]+?setGarmentIntakeImageError\(prev, item\.id, formatIntakeError/.test(garmentFlow),
 );
 check(
   "GarmentIntakeFlow 失败草稿顶部显示「AI 识别失败」banner",

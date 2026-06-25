@@ -18,6 +18,38 @@
 - **风险门禁**：**high**（触及全屏层结构、body scroll lock、底部导航遮挡、衣橱 ID 显隐；多个核心文件改动）。未触发 subagent：用户未通知 worker 启动独立审查。
 - **未验证风险**：Android 真机端到端 Portal + body lock 行为未在真机跑（计划 commit 4 打包后做）。横屏 844×390 下未做实际截图（计划在 dev server 阶段用 Playwright 截屏）。
 
+## 2026-06-25 / v1.1.31 / MiniMax worker — fix intake recognition retry and failure semantics
+
+- **目的**：按需求文档 6、7、12 节。彻底删除 `buildSingleItemFallback("garment.jpg")` 假成功路径，未配置 Key / M3 + VLM 失败 / 解析失败均抛 `GarmentRecognitionError`；首次失败也写失败草稿并进入步骤 3，失败项目可手工补全后保存；步骤 3 标题右侧增加当前件"重新识别"按钮，复用首次识别完整链路，保留用户字段与非 AI 业务字段。
+- **改动文件**：
+  - `src/lib/device-minimax.ts`：新增 `GarmentRecognitionError` 与 `GarmentRecognitionFailureCode` 类型；删除 `buildSingleItemFallback` / `cleanFallbackFileName`；`recognizeSingleItemFromDataUrl` 改为：未配置 Key 抛 `not_configured`；M3 + VLM 失败抛 `GarmentRecognitionError(code, msg, retryable)`，不再回退到默认标签。
+  - `src/lib/intake-draft.ts`：`IntakeProcessingIssue["code"]` 联合类型新增 `"ai_recognition_failed"`。
+  - `src/lib/garment-intake-multi-image.ts`：新增 `setGarmentIntakeImageRecognitionFailure` / `getReviewableGarmentIntakeImages` / `getSuccessfullyRecognizedGarmentIntakeImages`；`getSavableGarmentIntakeImages` 改用 `calculateDraftReviewSummary(draft).canSave`。
+  - `src/lib/intake-recognition-retry.ts`：新增。导出 `AI_RETRY_FIELD_KEYS` / `mergeRetryRecognitionDraft` / `buildFailedRecognitionDraft` / `isFailedDraftManualRecoveryComplete` / `validateSubcategoryForCategory` / `markFieldAsUser`。
+  - `src/components/garment-intake-flow.tsx`：新增 `retryingReviewId` 状态；首次批量识别 + 步骤 3 重新识别共用 `recognizeImageItem`；新增 `handleRetryCurrentItem`；`processAllImagesForRecognition` 失败时调用 `buildFailedRecognitionDraft` + `setGarmentIntakeImageRecognitionFailure`，全部失败也进入步骤 3；`patchReviewDraft` 在 `isFailedDraftManualRecoveryComplete` 满足时清除 blocking `ai_recognition_failed` issue；保存按钮在仍有未完成项目时弹部分保存确认；步骤 3 标题右侧 `RefreshCw` 重新识别按钮，重试中禁用重复点击、禁用切换其他缩略图；记录 `intake_single_retry_started/succeeded/failed` 诊断事件。
+  - `src/components/wardrobe-app.tsx`：`processGarmentIntakeImage` 入参加 `fileName`，真实使用 `input.fileName`（删除固定 `const fileName = "garment.jpg"`）。
+  - `src/components/wishlist-view-2.0.tsx`：`onProcessIntakeImage` 调用点传入 `fileName`。
+  - `scripts/test-garment-intake-multi-image.ts`：更新正则以匹配新代码（cropped > display > original + buildFailedRecognitionDraft）。
+  - `scripts/test-ai-intake-live-contract.ts`：更新正则以匹配新代码。
+  - `scripts/test-intake-current-item-rerecognition.ts`：新增，22 条断言。
+  - `scripts/test-intake-recognition-failure-semantics.ts`：新增，27 条断言。
+  - `package.json`：新增 `test:logic:intake-current-item-rerecognition` / `test:logic:intake-recognition-failure-semantics`；`test:logic:all` 接入。
+  - `VERSION_HISTORY.md`：本条记录。
+- **版本**：保持 **v1.1.31**（version 在 commit 1 已升）。
+- **验证**：
+  - `npm run typecheck`：✅ 0 error。
+  - `npm run test:logic:garment-intake-multi-image`：✅ 60 passed, 0 failed。
+  - `npm run test:logic:garment-intake-confirm-contract`：✅ passed。
+  - `npm run test:logic:wishlist-intake-confirm-contract`：✅ passed。
+  - `npm run test:logic:ai-intake-live-contract`：✅ 29 passed, 0 failed。
+  - `npm run test:logic:intake-field-contract`：✅ passed。
+  - `npm run test:logic:intake-current-item-rerecognition`：✅ 22 passed, 0 failed。
+  - `npm run test:logic:intake-recognition-failure-semantics`：✅ 27 passed, 0 failed。
+- **风险门禁**：**high**（触及 AI 失败处理、用户字段保护、Dexie 草稿 schema、首次失败入步骤 3 流程、跨分类 subcategory 校验、wardrobe-app 核心大文件）。未触发 subagent：用户未通知 worker 启动独立审查。
+- **未验证风险**：
+  1. `test:logic:back-priority-regression` 仍有 3 条 pre-existing 失败（与本任务无关，本任务在 commit 1 之前已存在），未在本次 commit 修复（按 AGENTS 不修无关 bug）。
+  2. Android 真机端到端"重新识别 + 失败草稿 + 部分保存确认"行为未在真机跑（计划 commit 4 打包后做）。
+
 ## 2026-06-25 / v1.1.30 / Codex — 固化文件删除安全规则
 
 - **目的**：按用户要求，将文件删除安全规则写入项目根 `AGENTS.md`，确保参与项目的所有 agent、subagent、worker 和人工委派任务都遵守“只移入回收站、不永久删除、删除前后检查 Git 状态、禁止强制/递归删除绕过”的统一约束。

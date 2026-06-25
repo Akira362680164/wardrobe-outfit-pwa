@@ -7,6 +7,8 @@ import {
   ChevronLeft,
   ChevronRight,
   ImageIcon,
+  Loader2,
+  RefreshCw,
   RotateCw,
   Save,
   Shirt,
@@ -63,10 +65,18 @@ import {
   setGarmentIntakeImageDraft,
   setGarmentIntakeImageError,
   getRecognizedGarmentIntakeImages,
+  getReviewableGarmentIntakeImages,
   getSavableGarmentIntakeImages,
+  setGarmentIntakeImageRecognitionFailure,
   type GarmentIntakeImageItem,
   type GarmentIntakePickedImage,
 } from "@/lib/garment-intake-multi-image";
+import {
+  buildFailedRecognitionDraft,
+  isFailedDraftManualRecoveryComplete,
+  mergeRetryRecognitionDraft,
+  validateSubcategoryForCategory,
+} from "@/lib/intake-recognition-retry";
 
 export type IntakeAsyncResult<T> = T | Promise<T>;
 
@@ -75,6 +85,8 @@ export type GarmentImageSource = "camera" | "album";
 export interface GarmentImageProcessingInput {
   imageDataUrl: string;
   sourceImageDataUrl?: string;
+  /** v1.1.31 commit2: 真实 fileName，从 picked image 传入。仅用于诊断/请求上下文。 */
+  fileName?: string;
 }
 
 export interface GarmentIntakeFlowProps {
@@ -147,13 +159,22 @@ export function GarmentIntakeFlow({
   const [recognitionProgress, setRecognitionProgress] = useState<{ current: number; total: number } | null>(null);
   const [isSavingBatch, setIsSavingBatch] = useState(false);
   const [error, setError] = useState("");
+  // v1.1.31 commit2: 当前单件重新识别状态。
+  const [retryingReviewId, setRetryingReviewId] = useState<string | null>(null);
+  // v1.1.31 commit2: 部分保存确认
+  const [pendingSaveDrafts, setPendingSaveDrafts] = useState<GarmentIntakeDraft[] | null>(null);
 
   const activeImage = useMemo(
     () => imageItems.find((item) => item.id === activeImageId) ?? null,
     [imageItems, activeImageId],
   );
 
-  const recognizedItems = useMemo(() => getRecognizedGarmentIntakeImages(imageItems), [imageItems]);
+  // v1.1.31 commit2: 步骤 3 候选名单 = recognized + failed。
+  const recognizedItems = useMemo(() => getReviewableGarmentIntakeImages(imageItems), [imageItems]);
+  const successCount = useMemo(
+    () => getRecognizedGarmentIntakeImages(imageItems).length,
+    [imageItems],
+  );
   const savableItems = useMemo(() => getSavableGarmentIntakeImages(imageItems), [imageItems]);
 
   const activeReviewIndex = useMemo(() => {
@@ -162,7 +183,7 @@ export function GarmentIntakeFlow({
     return idx >= 0 ? idx : 0;
   }, [recognizedItems, activeReviewId]);
 
-  const locked = isPicking || isCropping || isRecognizing || isSavingBatch || isSaving;
+  const locked = isPicking || isCropping || isRecognizing || isSavingBatch || isSaving || retryingReviewId !== null;
   const flowNoun = flowKind === "wishlist" ? "种草" : "单品";
 
   // Initialize activeImageId when entering step 2
@@ -343,62 +364,175 @@ export function GarmentIntakeFlow({
     setRecognitionProgress(null);
     setError("");
     try {
-      const pendingItems = imageItems.filter((item) => item.status !== "failed" && item.status !== "recognized");
+      const pendingItems = imageItems.filter(
+        (item) => item.status !== "failed" && item.status !== "recognized",
+      );
       const total = pendingItems.length;
+      const reviewableBefore = imageItems.filter(
+        (item) => (item.status === "recognized" || item.status === "failed") && item.draft,
+      ).length;
       let completed = 0;
-      let recognizedCount = imageItems.filter((item) => item.status === "recognized" && item.draft).length;
+      let newlyResolved = 0;
 
       if (total === 0) {
-        if (recognizedCount > 0) {
+        if (reviewableBefore > 0) {
           setStepIndex("confirm_params");
-        } else {
-          setError("全部图片识别失败，请重新裁切或重试");
         }
         return;
       }
 
       for (const item of pendingItems) {
-        if (item.status === "failed") continue;
-        if (item.status === "recognized") continue;
         completed += 1;
         setRecognitionProgress({ current: completed, total });
-        const imageToProcess = item.croppedImageDataUrl ?? item.originalDataUrl;
         setImageItems((prev) =>
-          prev.map((it) => (it.id === item.id ? { ...it, status: "recognizing" as const } : it)),
+          prev.map((it) =>
+            it.id === item.id ? { ...it, status: "recognizing" as const } : it,
+          ),
         );
         try {
-          const processed = onProcessImage
-            ? await onProcessImage({ imageDataUrl: imageToProcess, sourceImageDataUrl: item.originalDataUrl })
-            : fallbackImageProcessingResult(imageToProcess, "garment");
-          // v1.1.16-dev commit1 §3.4.1: 若 onProcessImage 返回 aiTag,
-          // 把 GarmentTagResult 合并到 buildLocalGarmentDraft 的字段,
-          // 名称/分类/颜色等字段填入 AI 值, 状态为 ai + needsReview。
-          const aiTag = (processed as { aiTag?: import("@/lib/types").GarmentTagResult }).aiTag;
-          const draft = buildLocalGarmentDraft({
-            ...processed,
-            ...(aiTag ? mapAiTagToGarmentDraftInput(aiTag, item.fileName) : {}),
+          const draft = await recognizeImageItem(item);
+          setImageItems((prev) => setGarmentIntakeImageDraft(prev, item.id, draft));
+          newlyResolved += 1;
+        } catch (err) {
+          // v1.1.31 commit2: 失败写失败草稿 + status=failed + 错误文案，绝不假成功。
+          const message = err instanceof Error ? err.message : "识别失败";
+          const imageToProcess = item.croppedImageDataUrl ?? item.displayDataUrl ?? item.originalDataUrl;
+          const failedDraft = buildFailedRecognitionDraft({
+            id: item.draft?.id,
             imageDataUrl: imageToProcess,
             sourceImageDataUrl: item.originalDataUrl,
             cropBox: item.cropBox,
             thumbnailDataUrl: item.thumbnailDataUrl,
+            transparentImageDataUrl: item.draft?.transparentImageDataUrl,
             locationId: defaultLocationId,
           });
-          setImageItems((prev) => setGarmentIntakeImageDraft(prev, item.id, draft));
-          recognizedCount += 1;
-        } catch (err) {
           setImageItems((prev) =>
-            setGarmentIntakeImageError(prev, item.id, formatIntakeError(err, "识别失败")),
+            setGarmentIntakeImageRecognitionFailure(prev, item.id, failedDraft, message),
           );
         }
       }
-      if (recognizedCount === 0) {
-        setError("全部图片识别失败，请重新裁切或重试");
-        return;
+      // v1.1.31 commit2: 即使全部失败，只要存在失败草稿也进入步骤 3。
+      const totalReviewable = reviewableBefore + newlyResolved + (total - newlyResolved);
+      if (totalReviewable > 0) {
+        // 找到第一个 reviewable item 作为 activeReviewId
+        const firstReviewable = imageItems.find(
+          (it) => (it.status === "recognized" || it.status === "failed") && it.draft,
+        );
+        if (firstReviewable) setActiveReviewId(firstReviewable.id);
+        setStepIndex("confirm_params");
       }
-      setStepIndex("confirm_params");
     } finally {
       setIsRecognizing(false);
       setRecognitionProgress(null);
+    }
+  }
+
+  // v1.1.31 commit2: 共享的"识别一张"函数，首次批量识别 + 步骤 3 重新识别都走这里。
+  async function recognizeImageItem(item: GarmentIntakeImageItem): Promise<GarmentIntakeDraft> {
+    const imageToProcess =
+      item.croppedImageDataUrl ?? item.displayDataUrl ?? item.originalDataUrl;
+    if (!onProcessImage) {
+      // 无 onProcessImage：返回 default 草稿。
+      const result = fallbackImageProcessingResult(imageToProcess, "garment");
+      return buildLocalGarmentDraft({
+        ...result,
+        imageDataUrl: imageToProcess,
+        sourceImageDataUrl: item.originalDataUrl,
+        cropBox: item.cropBox,
+        thumbnailDataUrl: item.thumbnailDataUrl,
+        locationId: defaultLocationId,
+      });
+    }
+    const processed = await onProcessImage({
+      imageDataUrl: imageToProcess,
+      sourceImageDataUrl: item.originalDataUrl,
+      fileName: item.fileName,
+    });
+    const aiTag = (processed as { aiTag?: import("@/lib/types").GarmentTagResult }).aiTag;
+    const localDraft = buildLocalGarmentDraft({
+      ...processed,
+      ...(aiTag ? mapAiTagToGarmentDraftInput(aiTag, item.fileName) : {}),
+      imageDataUrl: imageToProcess,
+      sourceImageDataUrl: item.originalDataUrl,
+      cropBox: item.cropBox,
+      thumbnailDataUrl: item.thumbnailDataUrl,
+      locationId: defaultLocationId,
+    });
+    if (aiTag) {
+      // v1.1.31 commit3: 跨分类 subcategory 校验。
+      const safe = validateSubcategoryForCategory(
+        localDraft.category.value,
+        localDraft.subcategory?.value,
+      );
+      if (!safe && localDraft.subcategory) {
+        localDraft.subcategory = {
+          ...localDraft.subcategory,
+          value: "",
+          needsReview: true,
+        };
+      }
+    }
+    return localDraft;
+  }
+
+  // v1.1.31 commit2: 步骤 3 重新识别当前件。
+  async function handleRetryCurrentItem(reviewId: string) {
+    if (retryingReviewId) return; // 防重复点击
+    const item = imageItems.find((it) => it.id === reviewId);
+    if (!item) return;
+    setRetryingReviewId(reviewId);
+    setError("");
+    const startedAt = Date.now();
+    recordDiagnosticEvent("intake_single_retry_started", {
+      flowKind,
+      imageItemId: reviewId,
+    });
+    try {
+      setImageItems((prev) =>
+        prev.map((it) =>
+          it.id === reviewId ? { ...it, status: "recognizing" as const, error: undefined } : it,
+        ),
+      );
+      const newDraft = await recognizeImageItem(item);
+      const merged = item.draft
+        ? mergeRetryRecognitionDraft(item.draft, newDraft)
+        : newDraft;
+      setImageItems((prev) =>
+        prev.map((it) => {
+          if (it.id !== reviewId) return it;
+          return {
+            ...it,
+            draft: merged,
+            status: "recognized" as const,
+            error: undefined,
+            updatedAt: new Date().toISOString(),
+          };
+        }),
+      );
+      recordDiagnosticEvent("intake_single_retry_succeeded", {
+        flowKind,
+        imageItemId: reviewId,
+        attemptDurationMs: Date.now() - startedAt,
+      });
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "重新识别失败";
+      recordDiagnosticEvent("intake_single_retry_failed", {
+        flowKind,
+        imageItemId: reviewId,
+        attemptDurationMs: Date.now() - startedAt,
+        errorCode: (err as { code?: string })?.code ?? "service",
+      });
+      // 失败时保留现有草稿，绝不重置为 garment 假成功。
+      setImageItems((prev) =>
+        prev.map((it) =>
+          it.id === reviewId
+            ? { ...it, status: "failed" as const, error: msg, updatedAt: new Date().toISOString() }
+            : it,
+        ),
+      );
+      setError(`重新识别失败：${msg}`);
+    } finally {
+      setRetryingReviewId(null);
     }
   }
 
@@ -435,6 +569,12 @@ export function GarmentIntakeFlow({
         setError(`没有可保存的${flowNoun}`);
         return;
       }
+      // v1.1.31 commit2: 还有未完成项目时弹出部分保存确认。
+      const remainingFailed = recognizedItems.length - savableItems.length;
+      if (remainingFailed > 0) {
+        setPendingSaveDrafts(drafts);
+        return;
+      }
       setIsSavingBatch(true);
       try {
         await onSaveBatch(drafts);
@@ -455,6 +595,22 @@ export function GarmentIntakeFlow({
         const merged = patch.category && patch.category.value !== item.draft.category.value
           ? { ...item.draft, ...patch, subcategory: userField<string>("") }
           : { ...item.draft, ...patch };
+        // v1.1.31 commit2: 用户手动补全失败草稿后移除 blocking issue。
+        if (
+          merged.processingIssues.some((issue) => issue.code === "ai_recognition_failed" && issue.severity === "blocking") &&
+          isFailedDraftManualRecoveryComplete(merged)
+        ) {
+          merged.processingIssues = merged.processingIssues.filter(
+            (issue) => issue.code !== "ai_recognition_failed",
+          );
+        }
+        // v1.1.31 commit3: 跨分类 subcategory 校验
+        if (merged.subcategory && merged.subcategory.value) {
+          const safe = validateSubcategoryForCategory(merged.category.value, merged.subcategory.value);
+          if (!safe) {
+            merged.subcategory = { ...merged.subcategory, value: "", needsReview: true };
+          }
+        }
         const updatedDraft = { ...merged, updatedAt: new Date().toISOString() };
         return { ...item, draft: updatedDraft };
       }),
@@ -558,15 +714,51 @@ export function GarmentIntakeFlow({
       {stepIndex === "confirm_params" && recognizedItems.length > 0 ? (
         <MultiImageReviewStep
           recognizedItems={recognizedItems}
+          successCount={successCount}
           activeReviewId={activeReviewId}
           activeReviewIndex={activeReviewIndex}
           onPatchDraft={patchReviewDraft}
           onPrev={handlePrevReview}
           onNext={handleNextReview}
           onSelectItem={setActiveReviewId}
+          onRetryCurrent={handleRetryCurrentItem}
+          retryingReviewId={retryingReviewId}
           flowKind={flowKind}
           locations={locations}
         />
+      ) : null}
+      {pendingSaveDrafts ? (
+        <div className="fixed inset-0 z-[110] grid place-items-center bg-black/35 px-4" onClick={() => setPendingSaveDrafts(null)}>
+          <div className="w-full max-w-sm rounded-2xl bg-white p-5 shadow-xl" onClick={(event) => event.stopPropagation()}>
+            <h2 className="text-base font-semibold">还有 {recognizedItems.length - pendingSaveDrafts.length} 件{flowNoun}尚未完成确认</h2>
+            <p className="mt-2 text-sm leading-relaxed text-ink/58">
+              本次将保存 {pendingSaveDrafts.length} 件，未完成的 {recognizedItems.length - pendingSaveDrafts.length} 件不会入库。
+            </p>
+            <div className="mt-5 grid grid-cols-2 gap-2">
+              <button type="button" onClick={() => setPendingSaveDrafts(null)} className="h-11 rounded-lg border border-ink/10 bg-white text-sm font-semibold">
+                继续修改
+              </button>
+              <button
+                type="button"
+                onClick={async () => {
+                  const drafts = pendingSaveDrafts;
+                  setPendingSaveDrafts(null);
+                  setIsSavingBatch(true);
+                  try {
+                    await onSaveBatch(drafts);
+                  } catch (err) {
+                    setError(formatIntakeError(err, `保存${flowNoun}失败，请重试`));
+                  } finally {
+                    setIsSavingBatch(false);
+                  }
+                }}
+                className="h-11 rounded-lg bg-denim text-sm font-semibold text-white"
+              >
+                保存 {pendingSaveDrafts.length} 件
+              </button>
+            </div>
+          </div>
+        </div>
       ) : null}
     </IntakeFlowShell>
   );
@@ -881,22 +1073,28 @@ function MultiImageCropStep({
 // Step 3: Multi-image review
 function MultiImageReviewStep({
   recognizedItems,
+  successCount,
   activeReviewId,
   activeReviewIndex,
   onPatchDraft,
   onPrev,
   onNext,
   onSelectItem,
+  onRetryCurrent,
+  retryingReviewId,
   flowKind,
   locations,
 }: {
   recognizedItems: GarmentIntakeImageItem[];
+  successCount: number;
   activeReviewId: string | null;
   activeReviewIndex: number;
   onPatchDraft: (patch: Partial<GarmentIntakeDraft>) => void;
   onPrev: () => void;
   onNext: () => void;
   onSelectItem: (id: string) => void;
+  onRetryCurrent: (reviewId: string) => void;
+  retryingReviewId: string | null;
   flowKind: "garment" | "wishlist";
   locations: ClosetLocation[];
 }) {
@@ -919,8 +1117,35 @@ function MultiImageReviewStep({
         </div>
       ) : null}
       <IntakeStepSection
-        title={`已识别 ${recognizedItems.length} 件${flowNoun}`}
+        title={
+          successCount < recognizedItems.length
+            ? `已识别 ${successCount} / ${recognizedItems.length} 件${flowNoun}`
+            : `已识别 ${recognizedItems.length} 件${flowNoun}`
+        }
         icon={<Tag size={16} aria-hidden="true" />}
+        right={
+          activeReviewId ? (
+            retryingReviewId === activeReviewId ? (
+              <span
+                className="inline-flex items-center gap-1 rounded-md bg-denim/10 px-2 py-1 text-[11px] font-medium text-denim"
+                aria-live="polite"
+              >
+                <Loader2 size={12} className="animate-spin" aria-hidden="true" /> 识别中
+              </span>
+            ) : (
+              <button
+                type="button"
+                onClick={() => onRetryCurrent(activeReviewId)}
+                disabled={retryingReviewId !== null}
+                className="inline-flex items-center gap-1 rounded-md bg-denim/10 px-2 py-1 text-[11px] font-medium text-denim active:bg-denim/20 disabled:opacity-50"
+                aria-label="重新识别当前单品"
+                data-intake-action="retry-current-item"
+              >
+                <RefreshCw size={12} aria-hidden="true" /> 重新识别
+              </button>
+            )
+          ) : null
+        }
       >
         {previewDataUrl ? (
           <div className="mb-3 overflow-hidden rounded-lg bg-mist">
@@ -936,16 +1161,25 @@ function MultiImageReviewStep({
             <button
               key={item.id}
               type="button"
-              onClick={() => onSelectItem(item.id)}
-              className={`shrink-0 w-12 h-12 rounded-lg overflow-hidden border-2 ${
+              onClick={() => {
+                if (retryingReviewId) return;
+                onSelectItem(item.id);
+              }}
+              disabled={retryingReviewId !== null && retryingReviewId !== item.id}
+              className={`relative shrink-0 w-12 h-12 rounded-lg overflow-hidden border-2 ${
                 item.id === activeReviewId ? "border-denim" : "border-transparent"
-              }`}
+              } ${retryingReviewId && retryingReviewId !== item.id ? "opacity-50" : ""}`}
             >
               <img
                 src={item.draft?.thumbnailDataUrl ?? item.displayDataUrl}
                 alt={`单品${idx + 1}`}
                 className="w-full h-full object-cover"
               />
+              {retryingReviewId === item.id ? (
+                <span className="absolute inset-0 grid place-items-center bg-denim/55 text-[8px] font-semibold text-white">
+                  识别中
+                </span>
+              ) : null}
             </button>
           ))}
         </div>

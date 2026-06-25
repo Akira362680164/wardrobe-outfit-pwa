@@ -43,7 +43,8 @@ export interface IntakeProcessingIssue {
     | "main_color_failed"
     | "image_quality_low"
     | "unknown_item_detected"
-    | "missing_required_field";
+    | "missing_required_field"
+    | "ai_recognition_failed";
   severity: IntakeIssueSeverity;
   message: string;
   recoverable: boolean;
