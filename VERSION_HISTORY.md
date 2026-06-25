@@ -1,3 +1,29 @@
+## 2026-06-26 / v1.1.37 / Codex — cloud 1A A3 registration and development verification
+
+- **目的**：按 V4 执行方案完成阶段 1A 的 A3：注册申请、状态查询、完成注册、development_cli 验证、注册限流和注册审计事件。
+- **改动文件**：
+  - `services/wardrobe-api/src/auth/rate-limit.ts`：新增固定窗口限流器，返回 `retryAfterSeconds`。
+  - `services/wardrobe-api/src/auth/registrations.ts`：新增手机号规范化/脱敏、注册服务、PostgreSQL store、clientSecret hash 校验、pending 过期处理、development_cli 验证、完成注册时创建用户/手机号身份/密码凭据/设备会话、注册审计事件。
+  - `services/wardrobe-api/src/auth/routes.ts` / `src/app.ts`：新增 `POST /api/auth/registrations`、`POST /api/auth/registrations/:registrationId/status`、`POST /api/auth/registrations/:registrationId/complete`；状态查询不使用 GET body，拒绝 query 里的 `clientSecret`。
+  - `services/wardrobe-api/src/cli/verify-pending-registration.ts`：新增开发期人工验证 CLI，设置 `verificationSource = development_cli`，不写微信身份。
+  - `services/wardrobe-api/tsconfig.build.json` / `services/wardrobe-api/package.json`：将 API build 收窄到 `src`，确保生成 `dist/server.js` 与 `dist/cli/verify-pending-registration.js`，匹配部署脚本和执行方案 CLI 路径。
+  - `services/wardrobe-api/tests/registration.test.ts`：新增 A3 注册链路测试，覆盖未验证不能 complete、错误 clientSecret 不能查状态、CLI 验证后可 complete、同一申请只能 complete 一次、限流、重复正式账号拒绝、development_cli 不含微信路径。
+- **范围说明**：仅完成 A3；未实现 A4 的 login / refresh / logout / logout-all / change-password / account/me，也未签发 Access Token 或 Refresh Token。
+- **验证结果**：
+  - `security find-generic-password -s MINIMAX_API_KEY`：✅ Keychain 中存在 MiniMax Key 服务项；未打印密钥内容。后续 MiniMax worker 可从 Keychain 注入环境变量。
+  - `npm run api:typecheck`：✅ 通过。
+  - `npm run api:test`：✅ 3 files / 20 tests passed。
+  - `npm --workspace @wardrobe/wardrobe-api run build`：✅ 通过。
+  - `test -f services/wardrobe-api/dist/server.js && test -f services/wardrobe-api/dist/cli/verify-pending-registration.js`：✅ 通过。
+  - `npm run cloud:contracts:typecheck`：✅ 通过。
+  - `npm run typecheck`：✅ 通过。
+  - `npm run test:logic:app-route`：✅ 40 passed, 0 failed。
+  - `npm run test:logic:data-repo`：✅ 63 passed, 0 failed。
+  - `npm run build`：✅ 通过；仅保留仓库既有 ESLint warnings。
+  - `git diff --check`：✅ 通过。
+- **风险门禁**：**high**。新增注册 API、数据库写路径、限流、审计事件、CLI 和 API build 输出路径修正；未触发独立审查 subagent：用户未通知。
+- **未验证风险 / 下一步**：未连接真实 PostgreSQL 执行注册端到端；当前 A3 行为通过内存 fake store 覆盖路由与服务约束。A4 需要实现会话 API、JWT 签发、Refresh Token 轮换/重放处理和密码修改。
+
 ## 2026-06-26 / v1.1.37 / Codex — cloud 1A A2 auth schema and security primitives
 
 - **目的**：按 V4 执行方案完成阶段 1A 的 A2：认证表 migration、Drizzle runtime migrator、Argon2id 参数常量、JWT 公私钥加载、Refresh Token hash、Refresh 幂等 AES-256-GCM 加密基础、脱敏日志 serializer。

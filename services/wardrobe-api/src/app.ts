@@ -6,6 +6,8 @@ import {
 } from "@wardrobe/cloud-contracts";
 import Fastify, { type FastifyInstance } from "fastify";
 
+import { registerAuthRoutes } from "./auth/routes.js";
+import { type RegistrationService } from "./auth/registrations.js";
 import { checkDatabaseReady } from "./db/client.js";
 import { getApiVersion } from "./version.js";
 
@@ -13,6 +15,7 @@ export type ReadinessCheck = () => Promise<{ database: "ready" }>;
 
 export interface BuildAppOptions {
   readinessCheck?: ReadinessCheck;
+  registrationService?: RegistrationService;
 }
 
 export function buildApp(options: BuildAppOptions = {}): FastifyInstance {
@@ -58,6 +61,8 @@ export function buildApp(options: BuildAppOptions = {}): FastifyInstance {
       serverTime: new Date().toISOString(),
     }),
   );
+
+  registerAuthRoutes(app, options.registrationService);
 
   return app;
 }
