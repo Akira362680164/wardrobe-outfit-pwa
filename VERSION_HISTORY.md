@@ -1,3 +1,15 @@
+## 2026-06-25 / v1.1.36 / Claude Code — push to public GitHub (force-with-lease)
+
+- **目的**：把本地 `main` v1.1.36（共享父组件重构与阴影修复）推到公开 GitHub 仓库 `Akira362680164/wardrobe-outfit-pwa`，并用 `force-with-lease` 覆盖旧的 v1.1.34 历史。
+- **推送前主仓库 main tip**：`7d84f58` test(release): add shared shell regressions and bump version to v1.1.36
+- **推送前远端 main tip**：`5a4d2b3` v1.1.34: push to public GitHub
+- **推送后远端 main tip**：`108747e` v1.1.36: shared item shells refactor
+- **推送策略**：force-with-lease（公开仓库脱敏重新初始化，覆盖旧提交）
+- **标准脱敏**：`git archive main` → 删除 `AGENTS.md` / `CLAUDE.md` / `MINIMAX.md` / `.eslintrc.json` / `STRICT_INTAKE_FIELD_CONTRACT_VALIDATION_REPORT.md` → 删除 `.DS_Store` → fresh `git init -b main`
+- **阶段 3 核验**：`npm install --prefer-offline --no-audit --no-fund` → `npm run typecheck` → `npm run test:logic:shared-item-shells` → `npm run test:logic:catalog-card-content` → `npm run test:logic:home-card-edit-wishlist-delete-hotfix`，全部通过
+- **待续**：v1.1.36 尚未打 APK，共享父组件重构未在真机上回归
+- **未验证风险**：未在远端 `git clone` 二次校验；签名密钥 `android/signing/wardrobe-fixed.jks` 没公开（属预期）；staging 使用 `/tmp` 而非默认 `~/Documents`（因后者 AFP 权限导致 trash 失败）
+
 ## 2026-06-25 / v1.1.36 / Claude Code — 共享父组件重构与阴影修复
 
 - **目的**：建立三类共享父组件（瀑布流卡片、详情页、编辑页），统一衣橱与种草两类页面的结构、间距、圆角和阴影；移除首页大面积灰影。
