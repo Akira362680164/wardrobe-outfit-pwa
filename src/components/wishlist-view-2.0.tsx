@@ -422,7 +422,10 @@ export function WishlistView20({
   const refreshItem = useCallback(async (id: string) => {
     const db = getWardrobeDb();
     const fresh = await db.wishlistItems.get(id);
-    if (fresh) setWishlistItems((prev) => prev.map((w) => w.id === id ? fresh : w));
+    if (fresh) {
+      setWishlistItems((prev) => prev.map((w) => w.id === id ? fresh : w));
+      setSelectedItem((current) => current?.id === id ? fresh : current);
+    }
   }, [setWishlistItems]);
 
   /* ---- add/edit form ---- */
@@ -762,6 +765,7 @@ export function WishlistView20({
       });
 
       let assessment: WishlistAssessment;
+      let usedLocalFallback = false;
       if (hasDeviceMiniMaxKey(settings)) {
         try {
           const { assessWishlistItemOnDevice } = await import("@/lib/device-minimax");
@@ -772,10 +776,11 @@ export function WishlistView20({
           );
         } catch {
           assessment = buildFallbackWishlistAssessment(ruleAssessment);
-          onMessage("AI 评估失败，已生成本地规则评估", "info");
+          usedLocalFallback = true;
         }
       } else {
         assessment = buildFallbackWishlistAssessment(ruleAssessment);
+        usedLocalFallback = true;
       }
 
       // v0.9.49-dev auto-fix: runId 检查防 stale 写入。如果用户在请求中又点了另一个种草单品,
@@ -788,6 +793,7 @@ export function WishlistView20({
       });
       await refreshItem(wishlistItem.id);
       aiProgress.complete(true);
+      onMessage(usedLocalFallback ? "已生成本地规则评估" : "AI 评估已更新", usedLocalFallback ? "info" : "success");
       // 只有最后一次 run 才能清空 assessingId, 否则会过早清空让新 run 的 loading 状态丢失
       if (runId === assessmentRunIdRef.current) setAssessingId(null);
     } catch (e) {

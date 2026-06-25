@@ -128,6 +128,28 @@ check(
   /<WishlistView20\b[\s\S]+?onDataChanged=\{refreshState\}[\s\S]+?\/>/.test(wardrobeApp),
 );
 
+// 12b. 买前评估刷新当前详情对象：评估写库后当前详情页应立即显示新 aiAssessment
+const refreshItemStart = wishlist.indexOf("const refreshItem = useCallback");
+const refreshItemEnd = wishlist.indexOf("}, [setWishlistItems]", refreshItemStart);
+const refreshItemBlock = refreshItemStart >= 0 && refreshItemEnd >= 0
+  ? wishlist.slice(refreshItemStart, refreshItemEnd)
+  : "";
+check(
+  "refreshItem 同步更新 selectedItem，详情页无需退出重进即可显示最新买前评估",
+  /setSelectedItem\(\(current\)\s*=>\s*current\?\.id\s*===\s*id\s*\?\s*fresh\s*:\s*current\)/.test(refreshItemBlock),
+);
+
+const assessmentHandlerStart = wishlist.indexOf("const handleGenerateAssessment = useCallback");
+const assessmentHandlerEnd = wishlist.indexOf("const handleDeleteRecord", assessmentHandlerStart);
+const assessmentHandlerBlock = assessmentHandlerStart >= 0 && assessmentHandlerEnd >= 0
+  ? wishlist.slice(assessmentHandlerStart, assessmentHandlerEnd)
+  : "";
+check(
+  "买前评估 fallback 成功写入后不再弹 AI 评估失败误导提示",
+  !assessmentHandlerBlock.includes("AI 评估失败，已生成本地规则评估") &&
+    assessmentHandlerBlock.includes("已生成本地规则评估"),
+);
+
 /* ------------------------------------------------------------------ */
 /*  P0 收口: 种草详情页打不开修复 — 单出口渲染 + homeNode 抽取 + 5 个子页分支不 return */
 /* ------------------------------------------------------------------ */

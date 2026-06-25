@@ -1,3 +1,17 @@
+## 2026-06-25 / v1.1.32 / Codex — 修复 AI 买前评估详情页不即时刷新
+
+- **目的**：修复用户真机反馈的 AI 买前评估回归：点击“生成评估/刷新评估”后结果已写入本地数据库，退出详情页再进入能看到新评估，但当前详情页不刷新；AI 调用失败但本地规则评估成功落库时，界面仍弹出“AI 评估失败”误导提示。
+- **改动文件**：
+  - `src/components/wishlist-view-2.0.tsx`：`refreshItem` 在刷新 `wishlistItems` 列表的同时同步更新当前 `selectedItem`，让详情页无需退出重进即可显示最新 `aiAssessment`；买前评估 fallback 改为结果成功写入后显示中性提示“已生成本地规则评估”，AI 成功时显示“AI 评估已更新”。
+  - `scripts/test-wishlist-management-followup.ts`：新增静态回归，覆盖 `refreshItem` 同步更新详情对象，以及 fallback 不再弹旧的失败误导提示。
+- **版本**：保持 **v1.1.32**；用户明确要求本次修复后先不打包，因此不生成 APK、不递增版本号。
+- **验证**：
+  - `npm run typecheck`：✅ 0 error。
+  - `npm run test:logic:wishlist-management-followup`：✅ 54 passed, 0 failed。
+  - `npm run build`：✅ 通过，仅仓库既有 lint warnings。
+- **风险门禁**：**medium**。触及种草详情页状态刷新和 AI 买前评估提示语，不改评估 prompt、不改数据库 schema、不打 APK。未触发独立审查 subagent：用户未通知启动独立审查。
+- **未验证风险**：未做真机 live MiniMax 重新评估；本次只修本地状态同步与提示语。
+
 ## 2026-06-25 / v1.1.32 / Codex — 修复录入确认页滚动与编辑页重新识别名称覆盖
 
 - **目的**：修复用户真机反馈的两个 v1.1.31 回归：单品/种草录入步骤 3 确认页无法继续下拉，页面卡在图片卡片附近；单品/种草编辑页手工填写 `test名称自动生成` 后点击“重新识别”，AI 新名称不会覆盖当前名称。
