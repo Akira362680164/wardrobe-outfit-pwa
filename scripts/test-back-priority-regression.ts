@@ -25,7 +25,7 @@ const handler = handlerMatch?.[1] ?? "";
 check("WardrobeApp 定义 handleTopLevelBack", Boolean(handlerMatch));
 
 const expandedIdx = handler.indexOf("if (expandedImage)");
-const backupIdx = handler.indexOf("if (backupDialog)");
+const backupIdx = handler.indexOf("if (backupOperation)");
 const createIdx = handler.indexOf("if (showCreateSheet)");
 const imageSourceIdx = handler.indexOf("if (showImageSourceSheet)");
 const cropIdx = handler.indexOf("if (captureCropJob)");
@@ -33,14 +33,14 @@ const subPageIdx = handler.indexOf("if (wardrobeSubPageActive || outfitSubPageAc
 const routeIdx = handler.indexOf("if (isDetailRoute(route))");
 
 check("back handler 优先处理 expandedImage", expandedIdx >= 0 && expandedIdx < backupIdx);
-check("back handler 优先处理 backupDialog", backupIdx >= 0 && backupIdx < createIdx);
+check("back handler 优先处理 backupOperation", backupIdx >= 0 && backupIdx < createIdx);
 check("back handler 优先处理 showCreateSheet", createIdx >= 0 && createIdx < imageSourceIdx);
 check("back handler 优先处理 showImageSourceSheet", imageSourceIdx >= 0 && imageSourceIdx < cropIdx);
 check("back handler 在路由返回前处理顶层浮层", cropIdx >= 0 && cropIdx < routeIdx);
 check("back handler 在详情路由返回前让子页先处理", subPageIdx >= 0 && subPageIdx < routeIdx);
 
-check("backupDialog 进行中不直接关闭", /backupInProgress[\s\S]*showMessage\("备份正在进行，请等待完成"/.test(handler));
-check("completed/error/confirm backupDialog 可关闭", /if \(backupDialog\)[\s\S]*setBackupDialog\(null\);[\s\S]*return true;/.test(handler));
+check("backupOperation 进行中不直接关闭", /backupInProgress[\s\S]*showMessage\("备份正在进行，请等待完成"/.test(handler));
+check("completed/error/confirm backupOperation 可关闭", /if \(backupOperation\)[\s\S]*setBackupOperation\(null\);[\s\S]*return true;/.test(handler));
 check("关闭全局 create sheet 时清理 pendingCreateAction", /if \(showCreateSheet\)[\s\S]*setShowCreateSheet\(false\);[\s\S]*setPendingCreateAction\(null\);/.test(handler));
 check("关闭图片来源 sheet 时清理 pendingCreateAction", /if \(showImageSourceSheet\)[\s\S]*setShowImageSourceSheet\(false\);[\s\S]*setPendingCreateAction\(null\);/.test(handler));
 

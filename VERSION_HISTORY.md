@@ -1,3 +1,20 @@
+## 2026-06-25 / v1.1.33 / Codex — 修复长期备份导出 100% 卡住
+
+- **目的**：修复用户真机反馈的备份严重回归：点击“导出到默认长期备份目录”后底部面板很快到 100%，但仍显示“处理中”，返回键提示“备份正在进行，请等待完成”，无法正常关闭。
+- **根因**：导出成功/失败以及默认目录扫描完成后只 patch 了 `progress: 100/status`，没有把 `BackupOperationState.phase` 从 `exporting/scanning` 切到 `success/failed/backup_list`；底部面板和返回键仍按“忙碌中”处理。
+- **改动文件**：
+  - `src/components/wardrobe-app.tsx`：默认导出、另存为导出成功后直接进入 `success`；失败进入 `failed`；默认备份目录扫描无文件进入可关闭的 `success`，有文件进入 `backup_list`；列表项点击从 `backup_list` 切到 `reading` 后再读取，避免被 `backupOperation != null` 拦截。
+  - `scripts/test-long-term-backup.ts`：新增导出/另存为/默认目录扫描状态断言，并更新已过期的 Android 插件目录读取断言。
+  - `scripts/test-back-priority-regression.ts`：将旧 `backupDialog` 断言对齐为当前 `backupOperation`，覆盖进行中不可关、完成/失败/确认状态可关。
+  - `package.json` / `package-lock.json`：版本 **1.1.32 → 1.1.33**，用于本轮 APK 交付。
+- **验证**：
+  - `npm run typecheck`：✅ 0 error。
+  - `npm run test:logic:long-term-backup`：✅ 106 passed, 0 failed。
+  - `npm run test:logic:back-priority-regression`：✅ 23 passed, 0 failed。
+  - `npm run build`：✅ 通过，仅仓库既有 lint warnings。
+- **风险门禁**：**high**。触及长期备份/恢复状态机、返回键拦截和发布版本号；不改备份文件格式、不改 Dexie schema、不改 Android 原生插件。用户明确要求合并 main 并打 APK；合并和 APK 打包按用户要求交给 ark-worker subagent 执行。
+- **未验证风险**：本 commit 未做 Android 真机端到端备份导出实测；APK 尚未在本条记录完成时生成。
+
 ## 2026-06-25 / v1.1.32 / Codex — 修复 AI 买前评估详情页不即时刷新
 
 - **目的**：修复用户真机反馈的 AI 买前评估回归：点击“生成评估/刷新评估”后结果已写入本地数据库，退出详情页再进入能看到新评估，但当前详情页不刷新；AI 调用失败但本地规则评估成功落库时，界面仍弹出“AI 评估失败”误导提示。

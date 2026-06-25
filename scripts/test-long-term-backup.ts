@@ -192,6 +192,18 @@ console.log("\n=== exportBackup function ===");
 // 34. exportBackup function calls exportLongTermBackupToDefault
 check("exportBackup calls exportLongTermBackupToDefault",
   /exportLongTermBackupToDefault[\s\S]*?\{/.test(wardrobeApp));
+const exportBackupIdx = wardrobeApp.indexOf("async function exportBackup()");
+const exportBackupSection = wardrobeApp.substring(exportBackupIdx, exportBackupIdx + 4500);
+check("exportBackup success switches to success phase",
+  /phase:\s*"success"[\s\S]*operation:\s*"export_default"/.test(exportBackupSection));
+check("exportBackup failure switches to failed phase",
+  /phase:\s*"failed"[\s\S]*operation:\s*"export_default"[\s\S]*retryable:\s*true/.test(exportBackupSection));
+const saveAsBackupIdx = wardrobeApp.indexOf("async function saveAsBackup()");
+const saveAsBackupSection = wardrobeApp.substring(saveAsBackupIdx, saveAsBackupIdx + 2500);
+check("saveAsBackup success switches to success phase",
+  /phase:\s*"success"[\s\S]*operation:\s*"export_save_as"/.test(saveAsBackupSection));
+check("saveAsBackup failure switches to failed phase",
+  /phase:\s*"failed"[\s\S]*operation:\s*"export_save_as"[\s\S]*retryable:\s*true/.test(saveAsBackupSection));
 
 // 35. wardrobe-app.tsx does NOT contain saveBackupToDefaultFolder (deleted in v1.1.30)
 check("wardrobe-app.tsx does NOT contain saveBackupToDefaultFolder",
@@ -200,6 +212,14 @@ check("wardrobe-app.tsx does NOT contain saveBackupToDefaultFolder",
 // 36. openDefaultBackupFolder function calls listDefaultLongTermBackups
 check("openDefaultBackupFolder calls listDefaultLongTermBackups",
   /await\s+listDefaultLongTermBackups\s*\(/.test(wardrobeApp));
+const openDefaultIdxForState = wardrobeApp.indexOf("async function openDefaultBackupFolder()");
+const openDefaultSectionForState = wardrobeApp.substring(openDefaultIdxForState, openDefaultIdxForState + 3000);
+check("openDefaultBackupFolder switches scan results to backup_list",
+  /phase:\s*"backup_list"[\s\S]*operation:\s*"restore_default"[\s\S]*files:\s*files/.test(openDefaultSectionForState));
+check("openDefaultBackupFolder empty result is closable success",
+  /phase:\s*"success"[\s\S]*title:\s*"未找到长期备份"/.test(openDefaultSectionForState));
+check("openDefaultBackupFolder errors switch to failed phase",
+  /phase:\s*"failed"[\s\S]*operation:\s*"restore_default"[\s\S]*retryable:\s*true/.test(openDefaultSectionForState));
 
 console.log("\n=== LongTermBackupPlugin.java content ===");
 
@@ -263,7 +283,7 @@ check("Frontend listDefaultLongTermBackups normalizes array/object files",
 
 // 51. Web fallback default restore message is explicit
 check("Web fallback default restore message asks for Android device validation",
-  /浏览器无法读取 Android 默认长期备份目录，请在 Android 真机验证/.test(ltb) && /浏览器无法读取 Android 默认长期备份目录，请在 Android 真机验证/.test(wardrobeApp));
+  /浏览器无法读取 Android 默认长期备份目录，请在 Android 真机验证/.test(ltb) && /title:\s*"无法读取默认目录"/.test(wardrobeApp));
 
 // 52. Web fallback export text is explicitly browser debug
 check("Web fallback export text says browser debug backup",
@@ -373,7 +393,7 @@ check("Empty list text mentions .wardrobebackup",
 const openIdx2 = wardrobeApp.indexOf("async function openDefaultBackupFolder()");
 const openSection2 = wardrobeApp.substring(openIdx2, openIdx2 + 2000);
 check("openDefaultBackupFolder has separate catch block",
-  /catch[\s\S]*?status:\s*"读取长期备份文件夹失败"|status:\s*"浏览器无法读取/.test(openSection2));
+  /catch[\s\S]*?title:\s*"读取失败"|title:\s*"无法读取默认目录"/.test(openSection2));
 
 console.log("\n=== Restore confirm uses real filename (commit2 §4.4.4) ===");
 
@@ -396,6 +416,12 @@ check("pickBackupFile destructures fileName from restorePickedLongTermBackup",
 // 76. There is a pickLtbFileFromList function for picking from ltbFiles list
 check("pickLtbFileFromList function exists",
   /async function pickLtbFileFromList\(/.test(wardrobeApp));
+const pickListIdx = wardrobeApp.indexOf("async function pickLtbFileFromList(");
+const pickListSection = wardrobeApp.substring(pickListIdx, pickListIdx + 1200);
+check("pickLtbFileFromList allows backup_list state",
+  /backupOperation\?\.phase !== "backup_list"/.test(pickListSection));
+check("pickLtbFileFromList switches to reading phase",
+  /phase:\s*"reading"[\s\S]*operation:\s*"restore_default"/.test(pickListSection));
 
 // 77. ltb.ts restorePickedLongTermBackup returns fileName
 check("ltb restorePickedLongTermBackup returns { backup, fileName }",
@@ -407,16 +433,16 @@ check("ltb restoreDefaultLongTermBackup returns { backup, fileName }",
 
 console.log("\n=== Native plugin reads and writes the same directory (commit2 §4.4.3) ===");
 
-// 79. Android plugin uses the same BACKUP_DIR_NAME for read and write
+// 79. Android plugin uses the same backup directory for read and write
 const commitDefaultIdx = plugin.indexOf("public void commitDefaultExport");
 const listDefaultIdx = plugin.indexOf("public void listDefaultBackups");
 const openDefaultIdx = plugin.indexOf("public void openDefaultBackup");
 const commitDefaultSec = plugin.substring(commitDefaultIdx, commitDefaultIdx + 1200);
 const listDefaultSec = plugin.substring(listDefaultIdx, listDefaultIdx + 1500);
 const openDefaultSec = plugin.substring(openDefaultIdx, openDefaultIdx + 1500);
-check("commitDefaultExport uses getBackupDirectory()", /getBackupDirectory\s*\(\s*\)/.test(commitDefaultSec));
-check("listDefaultBackups uses getBackupDirectory()", /getBackupDirectory\s*\(\s*\)/.test(listDefaultSec));
-check("openDefaultBackup uses getBackupDirectory()", /getBackupDirectory\s*\(\s*\)/.test(openDefaultSec));
+check("commitDefaultExport writes via MediaStore/File API helpers", /writeViaMediaStore/.test(commitDefaultSec) && /writeViaFileApi/.test(commitDefaultSec));
+check("listDefaultBackups reads via MediaStore/File API helpers", /listViaMediaStore/.test(listDefaultSec) && /listViaFileApi/.test(listDefaultSec));
+check("openDefaultBackup reads RELATIVE_PATH or BACKUP_DIR_NAME", /openViaMediaStore/.test(openDefaultSec) && /new\s+File\s*\(\s*downloadsDir\s*,\s*BACKUP_DIR_NAME\s*\)/.test(openDefaultSec));
 
 // 80. commitDefaultExport writes both latest and timestamp files
 check("commitDefaultExport writes latest file",

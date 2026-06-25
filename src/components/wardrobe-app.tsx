@@ -1248,8 +1248,10 @@ export function WardrobeApp() {
         appVersion,
       });
       if (result.webFallback) {
-        await updateBackupOperation({
-          progress: 100,
+        setBackupOperation({
+          phase: "success" as const,
+          operation: "export_default" as const,
+          title: "导出完成",
           status: "已下载浏览器调试备份文件。浏览器不能验证 Android 默认长期备份目录。",
           resultLabel: `文件：${result.timestampFileName}\n图片：${result.imageCount} 张`,
         });
@@ -1258,8 +1260,10 @@ export function WardrobeApp() {
         const outfitCount = outfits.length;
         const wishlistCount = wishlistItems.length;
         const imageCount = result.imageCount;
-        await updateBackupOperation({
-          progress: 100,
+        setBackupOperation({
+          phase: "success" as const,
+          operation: "export_default" as const,
+          title: "导出完成",
           status: "已保存到默认长期备份目录",
           resultLabel:
             `保存位置：Download/衣橱穿搭助手备份\n` +
@@ -1274,16 +1278,20 @@ export function WardrobeApp() {
     } catch (error) {
       const errMsg = getErrorMessage(error);
       if (errMsg.includes("无法写入") || errMsg.includes("Permission")) {
-        await updateBackupOperation({
-          progress: 100,
+        setBackupOperation({
+          phase: "failed" as const,
+          operation: "export_default" as const,
+          title: "导出失败",
           error: "无法写入默认长期备份目录",
-          status: "无法写入默认长期备份目录",
+          retryable: true,
         });
       } else {
-        await updateBackupOperation({
-          progress: 100,
+        setBackupOperation({
+          phase: "failed" as const,
+          operation: "export_default" as const,
+          title: "导出失败",
           error: errMsg,
-          status: "备份导出失败",
+          retryable: true,
         });
       }
     }
@@ -1302,37 +1310,42 @@ export function WardrobeApp() {
     try {
       const files = await listDefaultLongTermBackups();
       if (files.length === 0) {
-        await updateBackupOperation({
-          progress: 100,
-          files: [],
+        setBackupOperation({
+          phase: "success" as const,
+          operation: "restore_default" as const,
+          title: "未找到长期备份",
           status: "默认长期备份目录中还没有 .wardrobebackup 文件。请先导出长期备份。",
         });
       } else if (files.length === 1) {
-        await updateBackupOperation({
-          progress: 100,
+        setBackupOperation({
+          phase: "backup_list" as const,
+          operation: "restore_default" as const,
           files: files,
-          status: "找到 1 个长期备份",
         });
       } else {
-        await updateBackupOperation({
-          progress: 100,
+        setBackupOperation({
+          phase: "backup_list" as const,
+          operation: "restore_default" as const,
           files: files,
-          status: `找到 ${files.length} 个长期备份`,
         });
       }
     } catch (error) {
       const errMsg = getErrorMessage(error);
       if (errMsg.includes("浏览器无法读取") || !Capacitor.isNativePlatform()) {
-        await updateBackupOperation({
-          progress: 100,
+        setBackupOperation({
+          phase: "failed" as const,
+          operation: "restore_default" as const,
+          title: "无法读取默认目录",
           error: errMsg,
-          status: "浏览器无法读取 Android 默认长期备份目录，请在 Android 真机验证。",
+          retryable: true,
         });
       } else {
-        await updateBackupOperation({
-          progress: 100,
+        setBackupOperation({
+          phase: "failed" as const,
+          operation: "restore_default" as const,
+          title: "读取失败",
           error: errMsg,
-          status: "读取长期备份文件夹失败",
+          retryable: true,
         });
       }
     }
@@ -1363,23 +1376,29 @@ export function WardrobeApp() {
         appVersion,
       });
       if (result.webFallback) {
-        await updateBackupOperation({
-          progress: 100,
+        setBackupOperation({
+          phase: "success" as const,
+          operation: "export_save_as" as const,
+          title: "导出完成",
           status: "已下载浏览器调试备份文件。浏览器不能验证 Android 默认长期备份目录。",
           resultLabel: `文件：${result.filePath || "浏览器调试下载"}`,
         });
       } else {
-        await updateBackupOperation({
-          progress: 100,
+        setBackupOperation({
+          phase: "success" as const,
+          operation: "export_save_as" as const,
+          title: "导出完成",
           status: "长期备份已保存",
           resultLabel: `保存位置：${result.filePath || "用户选择的位置"}\n文件：${result.filePath || "用户选择的位置"}`,
         });
       }
     } catch (error) {
-      await updateBackupOperation({
-        progress: 100,
+      setBackupOperation({
+        phase: "failed" as const,
+        operation: "export_save_as" as const,
+        title: "导出失败",
         error: getErrorMessage(error),
-        status: "保存失败",
+        retryable: true,
       });
     }
   }
@@ -1400,13 +1419,25 @@ export function WardrobeApp() {
   }
 
   async function pickLtbFileFromList(file: LongTermBackupFileEntry) {
-    if (backupOperation != null) return;
+    if (backupOperation?.phase !== "backup_list") return;
+    setBackupOperation({
+      phase: "reading" as const, operation: "restore_default" as const,
+      title: `正在读取 ${file.name}`,
+      status: "正在解析长期备份",
+      progress: 45,
+    });
+    await waitForNextFrame();
     try {
       const { backup, fileName } = await restoreDefaultLongTermBackup(file.name);
       await restoreLongTermBackupData(backup, fileName);
     } catch (error) {
       const errMsg = getErrorMessage(error);
-      showMessage("恢复失败: " + errMsg, "error");
+      setBackupOperation({
+        phase: "failed" as const, operation: "restore_default" as const,
+        title: "读取失败",
+        error: errMsg,
+        retryable: true,
+      });
     }
   }
 
