@@ -169,42 +169,106 @@ export async function buildLongTermBackupEntries(input: LongTermBackupSourceData
 
 // Collect image token indices from metadata JSON
 export function collectLatestImageTokenIndices(metadataJson: string): number[] {
-  const re = /%%IMG_(\d+)%%/g;
+  const parsed = parseLongTermBackupMetadataJson(metadataJson);
   const indices = new Set<number>();
-  let match: RegExpExecArray | null;
-  while ((match = re.exec(metadataJson)) !== null) {
-    indices.add(parseInt(match[1], 10));
-  }
+  collectImageTokenIndicesFromValue(parsed, indices);
   return Array.from(indices).sort((a, b) => a - b);
+}
+
+function parseLongTermBackupMetadataJson(metadataJson: string): unknown {
+  try {
+    return JSON.parse(metadataJson);
+  } catch {
+    throw new Error("备份文件格式不正确：metadata JSON 无法解析");
+  }
+}
+
+function collectImageTokenIndicesFromValue(value: unknown, indices: Set<number>) {
+  const match = typeof value === "string" ? /^%%IMG_(\d+)%%$/.exec(value) : null;
+  if (match) {
+    indices.add(Number.parseInt(match[1], 10));
+    return;
+  }
+  if (Array.isArray(value)) {
+    for (const item of value) collectImageTokenIndicesFromValue(item, indices);
+    return;
+  }
+  if (value && typeof value === "object") {
+    for (const item of Object.values(value as Record<string, unknown>)) {
+      collectImageTokenIndicesFromValue(item, indices);
+    }
+  }
+}
+
+function replaceImageTokensInValue(value: unknown, imageMap: Map<number, string>): unknown {
+  const match = typeof value === "string" ? /^%%IMG_(\d+)%%$/.exec(value) : null;
+  if (match) {
+    const idx = Number.parseInt(match[1], 10);
+    const image = imageMap.get(idx);
+    if (!image) throw new Error(`备份图片缺失：images/img_${String(idx).padStart(3, "0")}.txt`);
+    return image;
+  }
+  if (Array.isArray(value)) return value.map((item) => replaceImageTokensInValue(item, imageMap));
+  if (value && typeof value === "object") {
+    const result: Record<string, unknown> = {};
+    for (const [key, item] of Object.entries(value as Record<string, unknown>)) {
+      result[key] = replaceImageTokensInValue(item, imageMap);
+    }
+    return result;
+  }
+  return value;
+}
+
+export function normalizeBackupImageText(text: string, path: string): string {
+  const normalized = text.replace(/^﻿/, "").trim();
+
+  if (!normalized) {
+    throw new Error(`备份图片内容为空：${path}`);
+  }
+  if (!normalized.startsWith("data:image/")) {
+    throw new Error(`备份图片格式不正确：${path}`);
+  }
+  if (!normalized.includes(";base64,")) {
+    throw new Error(`备份图片不是 Base64 Data URL：${path}`);
+  }
+  if (/[\r\n]/.test(normalized)) {
+    throw new Error(`备份图片内容包含非法换行：${path}`);
+  }
+
+  return normalized;
 }
 
 // Resolve image tokens strictly - throws on any missing image
 export async function resolveLatestImageTokensStrict(
   metadataJson: string,
   readImageText: (fileName: string) => Promise<string>,
+  expectedImageCount?: number,
 ): Promise<string> {
-  const imageMap = new Map<number, string>();
-  const re = /%%IMG_(\d+)%%/g;
+  const parsed = parseLongTermBackupMetadataJson(metadataJson);
   const indices = new Set<number>();
-  let match: RegExpExecArray | null;
-  while ((match = re.exec(metadataJson)) !== null) {
-    indices.add(parseInt(match[1], 10));
+  collectImageTokenIndicesFromValue(parsed, indices);
+
+  const actualCount = indices.size;
+  if (expectedImageCount != null && expectedImageCount !== actualCount) {
+    throw new Error(`备份图片数量不一致：manifest=${expectedImageCount}，metadata=${actualCount}`);
   }
-  const maxIdx = indices.size > 0 ? Math.max(...indices) : -1;
-  for (let i = 0; i <= maxIdx; i++) {
-    const fileName = `img_${String(i).padStart(3, "0")}.txt`;
-    const text = await readImageText(fileName);
-    if (!text || !text.startsWith("data:image/")) {
-      throw new Error(`备份图片缺失：images/${fileName}`);
+
+  const sortedIndices = Array.from(indices).sort((a, b) => a - b);
+  for (let position = 0; position < sortedIndices.length; position++) {
+    if (sortedIndices[position] !== position) {
+      throw new Error(`备份图片 Token 索引不连续：缺少 IMG_${position}`);
     }
-    imageMap.set(i, text);
   }
-  return metadataJson.replace(re, (_, digits) => {
-    const idx = parseInt(digits, 10);
-    const img = imageMap.get(idx);
-    if (!img) throw new Error(`备份图片缺失：images/img_${String(idx).padStart(3, "0")}.txt`);
-    return img;
-  });
+
+  const imageMap = new Map<number, string>();
+  for (const idx of sortedIndices) {
+    const fileName = `img_${String(idx).padStart(3, "0")}.txt`;
+    const path = `${LONG_TERM_BACKUP_IMAGE_DIR}/${fileName}`;
+    const text = await readImageText(fileName);
+    imageMap.set(idx, normalizeBackupImageText(text, path));
+  }
+
+  return JSON.stringify(replaceImageTokensInValue(parsed, imageMap));
 }
 
 // Restore long-term backup from package
@@ -219,7 +283,7 @@ export async function restoreLongTermBackupFromPackage(input: {
     throw new Error(`不支持的备份版本: ${manifest.backupVersion}，当前支持版本 5`);
   }
 
-  const resolvedMetadata = await resolveLatestImageTokensStrict(input.metadataJson, input.readImageText);
+  const resolvedMetadata = await resolveLatestImageTokensStrict(input.metadataJson, input.readImageText, manifest.imageCount);
   const { parseLatestBackupMetadata } = await import("@/lib/backup-data");
   return parseLatestBackupMetadata(resolvedMetadata);
 }

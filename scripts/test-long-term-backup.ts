@@ -521,5 +521,51 @@ const allStatusLabels = loggerErrorLines.every((line) =>
 );
 check("All plugin log labels are status words (no payload data)", allStatusLabels);
 
+
+// v1.1.35 restore correctness / UI state-machine assertions
+check("Android exact text IO helper exists",
+  existsSync(join(root, "android/app/src/main/java/com/wardrobe/outfit/LongTermBackupTextIO.java")));
+const textIo = readFileSync(join(root, "android/app/src/main/java/com/wardrobe/outfit/LongTermBackupTextIO.java"), "utf8");
+check("Android exact text IO reads char blocks",
+  /char\[\]\s+buffer\s*=\s*new char\[8192\]/.test(textIo) && /reader\.read\(buffer\)/.test(textIo));
+check("Android plugin no longer uses readLine for backup text",
+  !/readLine\s*\(/.test(plugin));
+check("Android plugin no longer appends newline while rebuilding backup text",
+  !/append\(line\)\.append\("\\n"\)/.test(plugin));
+check("Android plugin calls LongTermBackupTextIO.readUtf8Exactly",
+  /LongTermBackupTextIO\.readUtf8Exactly/.test(plugin));
+check("Android plugin parses _info.txt with split \\R and validates two names",
+  /split\("\\\\R",\s*-1\)/.test(plugin) && /备份导出信息格式不正确/.test(plugin));
+check("openDefaultBackup catch cleans temp read session",
+  /openDefaultBackup[\s\S]*catch \(Exception e\)[\s\S]*readSessions\.remove\(tempDir\.getAbsolutePath\(\)\)[\s\S]*deleteDirectory\(tempDir\)/.test(plugin));
+check("handlePickedBackupResult catch cleans temp read session",
+  /handlePickedBackupResult[\s\S]*catch \(Exception e\)[\s\S]*readSessions\.remove\(tempDir\.getAbsolutePath\(\)\)[\s\S]*deleteDirectory\(tempDir\)/.test(plugin));
+check("Token restore parses metadata before replacing",
+  /const parsed = parseLongTermBackupMetadataJson\(metadataJson\)/.test(ltb));
+check("Token restore does not use metadataJson.replace for Data URL injection",
+  !/metadataJson\.replace/.test(ltb));
+check("Token restore validates normalized image text",
+  /function normalizeBackupImageText/.test(ltb) && /备份图片内容包含非法换行/.test(ltb));
+check("Token restore enforces manifest imageCount",
+  /expectedImageCount != null && expectedImageCount !== actualCount/.test(ltb));
+check("Token restore enforces continuous indices",
+  /备份图片 Token 索引不连续/.test(ltb));
+check("backup_list is not a busy state",
+  /const isBusy = state\.phase === "exporting" \|\| state\.phase === "scanning" \|\| state\.phase === "reading" \|\| state\.phase === "restoring"/.test(wardrobeApp));
+check("backup_list does not render progress bar",
+  /const showProgress = isBusy \|\| isDone/.test(wardrobeApp));
+check("backup_list shows click helper text",
+  /点击一个备份文件继续/.test(wardrobeApp));
+check("backup_list uses static FileJson icon",
+  /state\.phase === "backup_list" \? <FileJson/.test(wardrobeApp));
+check("backup_list file name is not truncated",
+  !/block truncate text-sm font-semibold/.test(wardrobeApp) && /whitespace-normal break-all/.test(wardrobeApp));
+check("restoreLongTermBackupData validates references before confirmation",
+  /const validatedPreview = validateLatestBackupReferences\(backup\)/.test(wardrobeApp));
+check("pendingRestoreRef saves restore operation",
+  /pendingRestoreRef = useRef<[\s\S]*operation: "restore_default" \| "restore_picker"/.test(wardrobeApp));
+check("confirmRestore uses saved restore operation",
+  /const \{ backup, preview, operation \} = ref/.test(wardrobeApp) && /phase: "restoring" as const, operation/.test(wardrobeApp));
+
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail > 0 ? 1 : 0);

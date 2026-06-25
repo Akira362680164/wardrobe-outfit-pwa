@@ -184,8 +184,17 @@ export function validateLatestBackupReferences(
     planCount: (backup.outfitPlanEntries ?? []).length,
     travelPlanCount: (backup.outfitCalendarPlans ?? []).length,
     packingCount: (backup.planPackingChecklistItems ?? []).length,
-    imageCount: 0,
+    imageCount: countBackupImages(backup),
   };
+}
+
+export function countBackupImages(value: unknown): number {
+  if (typeof value === "string") return value.startsWith("data:image/") ? 1 : 0;
+  if (Array.isArray(value)) return value.reduce<number>((sum, item) => sum + countBackupImages(item), 0);
+  if (value && typeof value === "object") {
+    return Object.values(value as Record<string, unknown>).reduce<number>((sum, item) => sum + countBackupImages(item), 0);
+  }
+  return 0;
 }
 
 export async function applyLatestWardrobeBackup(

@@ -82,8 +82,8 @@ async function main() {
 
   // 2. 包构建后图片 Token 数正确
   const entries = await buildLongTermBackupEntries({ items, locations, outfits, wishlistItems, outfitPlanEntries, outfitCalendarPlans, planPackingChecklistItems, tryOnProfile, appVersion: "1.1.30" });
-  // items[0,3] + outfits[0] + wishlistItems[0] + tryOnProfile = 5 images with data:image
-  const dataImageCount = [items[0], items[3], wishlistItems[0]].filter(i => i.imageDataUrl).length +
+  // items[0,1,3] + outfits[0] + wishlistItems[0] + tryOnProfile = 6 images with data:image
+  const dataImageCount = [items[0], items[1], items[3], wishlistItems[0]].filter(i => i.imageDataUrl).length +
     (outfits[0].coverImageDataUrl ? 1 : 0) +
     (tryOnProfile.fullBodyImageDataUrl ? 1 : 0);
   check("图片 Token 数正确", entries.imageCount === dataImageCount);
@@ -92,8 +92,79 @@ async function main() {
   const resolved = await resolveLatestImageTokensStrict(entries.metadataJson, async (fileName) => {
     const entry = entries.imageEntries.find(e => e.fileName === fileName);
     return entry?.text ?? "";
-  });
+  }, entries.imageCount);
   check("还原后包含所有图片 data:image", (resolved.match(/data:image\//g) ?? []).length === dataImageCount);
+
+  const imageEntry = entries.imageEntries[0];
+  const cleanImageDataUrl = imageEntry.text;
+  const pollutionCases: Array<[string, string]> = [
+    ["旧 Android 尾部 LF", `${cleanImageDataUrl}\n`],
+    ["旧 Android 尾部 CRLF", `${cleanImageDataUrl}\r\n`],
+    ["UTF-8 BOM", `﻿${cleanImageDataUrl}`],
+    ["首尾空白", `  ${cleanImageDataUrl}  `],
+  ];
+  for (const [name, polluted] of pollutionCases) {
+    const pollutedResolved = await resolveLatestImageTokensStrict(entries.metadataJson, async (fileName) => {
+      const entry = entries.imageEntries.find(e => e.fileName === fileName);
+      return entry?.fileName === imageEntry.fileName ? polluted : (entry?.text ?? "");
+    }, entries.imageCount);
+    const pollutedParsed = parseLatestBackupMetadata(pollutedResolved);
+    check(`${name} 可恢复且图片逐字一致`, pollutedParsed.items[0].imageDataUrl === cleanImageDataUrl);
+  }
+
+  async function expectResolveFailure(name: string, metadataJson: string, imageText: string, expectedImageCount = entries.imageCount) {
+    try {
+      await resolveLatestImageTokensStrict(metadataJson, async (fileName) => {
+        const entry = entries.imageEntries.find(e => e.fileName === fileName);
+        return entry?.fileName === imageEntry.fileName ? imageText : (entry?.text ?? "");
+      }, expectedImageCount);
+      check(name, false);
+    } catch {
+      check(name, true);
+    }
+  }
+
+  await expectResolveFailure("图片正文中间换行会失败", entries.metadataJson, cleanImageDataUrl.replace(",", ",\n"));
+  await expectResolveFailure("图片条目为空会失败", entries.metadataJson, "");
+  await expectResolveFailure("非 data:image 会失败", entries.metadataJson, "data:text/plain;base64,abc");
+  await expectResolveFailure("缺少 ;base64, 会失败", entries.metadataJson, "data:image/png,abc");
+  await expectResolveFailure("manifest imageCount 少于 Token 数量会失败", entries.metadataJson, cleanImageDataUrl, entries.imageCount - 1);
+  await expectResolveFailure("manifest imageCount 多于 Token 数量会失败", entries.metadataJson, cleanImageDataUrl, entries.imageCount + 1);
+  await expectResolveFailure("metadata JSON 损坏会失败", entries.metadataJson.slice(0, -1), cleanImageDataUrl);
+
+  const discontinuousMetadata = entries.metadataJson.replace("%%IMG_1%%", "%%IMG_2%%");
+  await expectResolveFailure("Token 索引不连续会失败", discontinuousMetadata, cleanImageDataUrl);
+
+  const noteTokenMetadata = JSON.stringify({
+    version: 5,
+    exportedAt: now,
+    locations,
+    items: [{ ...items[2], note: "abc%%IMG_0%%xyz" }],
+    outfits: [],
+    wishlistItems: [],
+    outfitPlanEntries: [],
+    outfitCalendarPlans: [],
+    planPackingChecklistItems: [],
+  });
+  const noteTokenResolved = await resolveLatestImageTokensStrict(noteTokenMetadata, async () => cleanImageDataUrl, 0);
+  check("普通备注中的局部 Token 不会被替换", JSON.parse(noteTokenResolved).items[0].note === "abc%%IMG_0%%xyz");
+
+  const duplicatedTokenMetadata = JSON.stringify({
+    version: 5,
+    exportedAt: now,
+    locations,
+    items: [
+      { ...items[0], imageDataUrl: "%%IMG_0%%" },
+      { ...items[1], imageDataUrl: "%%IMG_0%%" },
+    ],
+    outfits: [],
+    wishlistItems: [],
+    outfitPlanEntries: [],
+    outfitCalendarPlans: [],
+    planPackingChecklistItems: [],
+  });
+  const duplicatedTokenResolved = await resolveLatestImageTokensStrict(duplicatedTokenMetadata, async () => cleanImageDataUrl, 1);
+  check("同一个 Token 多次出现复用同一图片", (duplicatedTokenResolved.match(new RegExp(cleanImageDataUrl, "g")) ?? []).length >= 2);
 
   // 4. metadata roundtrip
   const parsed = parseLatestBackupMetadata(resolved);

@@ -495,6 +495,7 @@ export function WardrobeApp() {
   const pendingRestoreRef = useRef<{
     backup: WardrobeBackup;
     preview: BackupRestorePreview;
+    operation: "restore_default" | "restore_picker";
   } | null>(null);
  	 const [showCreateSheet, setShowCreateSheet] = useState(false);
   // v0.9.24-dev: onClearAllData 进行中锁, lift 到 WardrobeApp 级, 父级 backButton handler
@@ -1404,16 +1405,26 @@ export function WardrobeApp() {
 
   async function pickBackupFile() {
     if (backupOperation != null) return;
+    setBackupOperation({
+      phase: "reading" as const,
+      operation: "restore_picker" as const,
+      title: "正在读取长期备份",
+      status: "正在等待选择备份文件",
+      progress: 12,
+    });
+    await waitForNextFrame();
     try {
       const { backup, fileName } = await restorePickedLongTermBackup();
       await restoreLongTermBackupData(backup, fileName, "restore_picker");
     } catch (error) {
       const errMsg = getErrorMessage(error);
-      if (errMsg.includes(".wardrobebackup")) {
-        showMessage("请选择 .wardrobebackup 长期备份文件。", "error");
-      } else {
-        showMessage("恢复失败: " + errMsg, "error");
-      }
+      setBackupOperation({
+        phase: "failed" as const,
+        operation: "restore_picker" as const,
+        title: errMsg.includes(".wardrobebackup") ? "文件类型不正确" : "读取失败",
+        error: errMsg.includes(".wardrobebackup") ? "请选择 .wardrobebackup 长期备份文件。" : errMsg,
+        retryable: true,
+      });
     }
   }
 
@@ -1421,8 +1432,8 @@ export function WardrobeApp() {
     if (backupOperation?.phase !== "backup_list") return;
     setBackupOperation({
       phase: "reading" as const, operation: "restore_default" as const,
-      title: `正在读取 ${file.name}`,
-      status: "正在解析长期备份",
+      title: "正在读取长期备份",
+      status: `正在解析 ${file.name}`,
       progress: 45,
     });
     await waitForNextFrame();
@@ -1441,33 +1452,36 @@ export function WardrobeApp() {
   }
 
   async function restoreLongTermBackupData(backup: WardrobeBackup, fileName: string, operation: "restore_default" | "restore_picker" = "restore_default") {
-    const preview: BackupRestorePreview = {
-      fileName: fileName || "衣橱穿搭助手-未知时间.wardrobebackup",
-      appVersion: "",
-      exportedAt: backup.exportedAt,
-      itemCount: backup.items?.length ?? 0,
-      locationCount: backup.locations?.length ?? 0,
-      outfitCount: backup.outfits?.length ?? 0,
-      wishlistCount: backup.wishlistItems?.length ?? 0,
-      planCount: backup.outfitPlanEntries?.length ?? 0,
-      travelPlanCount: backup.outfitCalendarPlans?.length ?? 0,
-      packingCount: backup.planPackingChecklistItems?.length ?? 0,
-      imageCount: 0,
-    };
-    pendingRestoreRef.current = { backup, preview };
-    setBackupOperation({
-      phase: "awaiting_confirmation" as const, operation,
-      preview,
-    });
-    await waitForNextFrame();
+    try {
+      const validatedPreview = validateLatestBackupReferences(backup);
+      const preview: BackupRestorePreview = {
+        ...validatedPreview,
+        fileName: fileName || "衣橱穿搭助手-未知时间.wardrobebackup",
+        appVersion: validatedPreview.appVersion || "",
+      };
+      pendingRestoreRef.current = { backup, preview, operation };
+      setBackupOperation({
+        phase: "awaiting_confirmation" as const, operation,
+        preview,
+      });
+      await waitForNextFrame();
+    } catch (error) {
+      setBackupOperation({
+        phase: "failed" as const,
+        operation,
+        title: "引用校验失败",
+        error: getErrorMessage(error),
+        retryable: true,
+      });
+    }
   }
 
   async function confirmRestore() {
     const ref = pendingRestoreRef.current;
     if (!ref) return;
-    const { backup, preview } = ref;
+    const { backup, preview, operation } = ref;
     setBackupOperation({
-      phase: "restoring" as const, operation: "restore_default" as const,
+      phase: "restoring" as const, operation,
       title: `正在恢复 ${preview.fileName}`,
       status: "正在写入数据库...",
       progress: 75,
@@ -1476,18 +1490,18 @@ export function WardrobeApp() {
     try {
       await applyLatestWardrobeBackup(backup);
       setBackupOperation({
-        phase: "success" as const, operation: "restore_default" as const,
+        phase: "success" as const, operation,
         title: "恢复完成",
         status: `已恢复 ${preview.itemCount} 件衣物、${preview.outfitCount} 套套装`,
-        resultLabel: `文件：${preview.fileName}\n衣物：${preview.itemCount} 件\n套装：${preview.outfitCount} 套\n种草：${preview.wishlistCount} 件`,
+        resultLabel: `文件：${preview.fileName}\n衣物：${preview.itemCount} 件\n套装：${preview.outfitCount} 套\n种草：${preview.wishlistCount} 件\n计划：${preview.planCount} 条\n旅行计划：${preview.travelPlanCount} 条\n打包清单：${preview.packingCount} 项\n图片：${preview.imageCount} 张`,
       });
       pendingRestoreRef.current = null;
       await refreshState();
     } catch (error) {
       const errMsg = getErrorMessage(error);
       setBackupOperation({
-        phase: "failed" as const, operation: "restore_default" as const,
-        title: "恢复失败",
+        phase: "failed" as const, operation,
+        title: "数据库写入失败",
         error: errMsg,
         retryable: true,
       });
@@ -6443,10 +6457,11 @@ function BackupProgressSheet({
     state.title;
 
   const errorMsg = state.phase === "failed" ? state.error : undefined;
+  const showProgress = isBusy || isDone;
   const statusText =
     state.phase === "failed" ? state.error :
     state.phase === "awaiting_confirmation" ? "恢复会覆盖当前衣橱数据，确认继续？" :
-    state.phase === "backup_list" ? "" :
+    state.phase === "backup_list" ? "点击一个备份文件继续" :
     state.status;
 
   const progress = isBusy ? state.progress : (isDone ? 100 : 0);
@@ -6460,7 +6475,7 @@ function BackupProgressSheet({
       <div className="grid gap-4">
         <div className="flex items-start gap-3">
           <div className={`mt-0.5 grid h-10 w-10 shrink-0 place-items-center rounded-lg ${errorMsg ? "bg-red-50 text-red-500" : completed ? "bg-denim/10 text-denim" : "bg-clay/10 text-clay"}`}>
-            {errorMsg ? <Trash2 size={18} aria-hidden="true" /> : completed ? <Check size={18} aria-hidden="true" /> : <Loader2 size={18} className="animate-spin" aria-hidden="true" />}
+            {errorMsg ? <Trash2 size={18} aria-hidden="true" /> : completed ? <Check size={18} aria-hidden="true" /> : state.phase === "backup_list" ? <FileJson size={18} aria-hidden="true" /> : <Loader2 size={18} className="animate-spin" aria-hidden="true" />}
           </div>
           <div className="min-w-0">
             <h3 className="text-base font-semibold">{title}</h3>
@@ -6470,18 +6485,20 @@ function BackupProgressSheet({
           </div>
         </div>
 
-        <div className="grid gap-2">
-          <div className="h-2.5 overflow-hidden rounded-full bg-mist">
-            <div
-              className={`h-full rounded-full transition-all duration-300 ${errorMsg ? "bg-red-400" : "bg-denim"}`}
-              style={{ width: `${Math.max(0, Math.min(100, progress))}%` }}
-            />
+        {showProgress ? (
+          <div className="grid gap-2">
+            <div className="h-2.5 overflow-hidden rounded-full bg-mist">
+              <div
+                className={`h-full rounded-full transition-all duration-300 ${errorMsg ? "bg-red-400" : "bg-denim"}`}
+                style={{ width: `${Math.max(0, Math.min(100, progress))}%` }}
+              />
+            </div>
+            <div className="flex items-center justify-between text-[11px] text-ink/45">
+              <span>{completed ? (errorMsg ? "失败" : "完成") : "处理中"}</span>
+              <span>{Math.round(Math.max(0, Math.min(100, progress)))}%</span>
+            </div>
           </div>
-          <div className="flex items-center justify-between text-[11px] text-ink/45">
-            <span>{completed ? (errorMsg ? "失败" : "完成") : "处理中"}</span>
-            <span>{Math.round(Math.max(0, Math.min(100, progress)))}%</span>
-          </div>
-        </div>
+        ) : null}
 
         {resultLabel ? (
           <div className="rounded-lg border border-ink/10 bg-white p-3">
@@ -6501,7 +6518,7 @@ function BackupProgressSheet({
               >
                 <FileJson size={18} className="shrink-0 text-denim" aria-hidden="true" />
                 <span className="min-w-0 flex-1">
-                  <span className="block truncate text-sm font-semibold">{file.name}{file.isLatest ? "（最新）" : ""}</span>
+                  <span className="block whitespace-normal break-all text-sm font-semibold">{file.name}{file.isLatest ? "（最新）" : ""}</span>
                   <span className="mt-0.5 block text-xs text-ink/45">{(file.size / 1024).toFixed(1)} KB · {new Date(file.mtime).toLocaleString("zh-CN")}</span>
                 </span>
                 <ChevronRight size={16} className="shrink-0 text-ink/35" aria-hidden="true" />
@@ -6520,6 +6537,9 @@ function BackupProgressSheet({
               <span>套装：{preview.outfitCount} 套</span>
               <span>种草：{preview.wishlistCount} 件</span>
               <span>计划：{preview.planCount} 条</span>
+              <span>旅行计划：{preview.travelPlanCount} 条</span>
+              <span>打包清单：{preview.packingCount} 项</span>
+              <span>图片：{preview.imageCount} 张</span>
             </div>
           </div>
         ) : null}

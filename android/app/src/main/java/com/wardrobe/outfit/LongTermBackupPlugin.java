@@ -23,12 +23,10 @@ import com.getcapacitor.PluginMethod;
 import com.getcapacitor.annotation.ActivityCallback;
 import com.getcapacitor.annotation.CapacitorPlugin;
 
-import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.InputStream;
-import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
@@ -141,7 +139,10 @@ public class LongTermBackupPlugin extends Plugin {
 
         try {
             File infoFile = new File(tempDir, "_info.txt");
-            String[] infoLines = readFileContent(infoFile).split("\n");
+            String[] infoLines = LongTermBackupTextIO.readUtf8Exactly(infoFile).split("\\R", -1);
+            if (infoLines.length < 2 || infoLines[0].trim().isEmpty() || infoLines[1].trim().isEmpty()) {
+                throw new IllegalArgumentException("备份导出信息格式不正确");
+            }
             String timestampFileName = infoLines[0].trim();
             String latestFileName = infoLines[1].trim();
 
@@ -381,8 +382,10 @@ public class LongTermBackupPlugin extends Plugin {
             return;
         }
 
+        File tempDir = new File(getContext().getCacheDir(), "read_" + System.currentTimeMillis());
+        boolean sessionOpened = false;
+
         try {
-            File tempDir = new File(getContext().getCacheDir(), "read_" + System.currentTimeMillis());
             tempDir.mkdirs();
 
             InputStream inputStream = null;
@@ -421,11 +424,16 @@ public class LongTermBackupPlugin extends Plugin {
                 inputStream.close();
             }
             readSessions.put(tempDir.getAbsolutePath(), tempDir);
+            sessionOpened = true;
 
             JSObject result = new JSObject();
             result.put("readSessionId", tempDir.getAbsolutePath());
             call.resolve(result);
         } catch (Exception e) {
+            readSessions.remove(tempDir.getAbsolutePath());
+            if (!sessionOpened) {
+                deleteDirectory(tempDir);
+            }
             Logger.error("LongTermBackup openDefaultBackup failed: " + e.getClass().getSimpleName(), null);
             JSObject errorResult = new JSObject();
             errorResult.put("code", ERROR_READ_REQUIRES_PICKER);
@@ -502,7 +510,7 @@ public class LongTermBackupPlugin extends Plugin {
                 return;
             }
 
-            String content = readFileContent(targetFile);
+            String content = LongTermBackupTextIO.readUtf8Exactly(targetFile);
 
             JSObject result = new JSObject();
             result.put("text", content);
@@ -556,17 +564,20 @@ public class LongTermBackupPlugin extends Plugin {
         }
 
         Uri uri = result.getData().getData();
+        File tempDir = new File(getContext().getCacheDir(), "read_" + System.currentTimeMillis());
+        boolean sessionOpened = false;
         try {
-            File tempDir = new File(getContext().getCacheDir(), "read_" + System.currentTimeMillis());
             tempDir.mkdirs();
             try (InputStream inputStream = getContext().getContentResolver().openInputStream(uri)) {
                 if (inputStream == null) {
+                    deleteDirectory(tempDir);
                     call.reject("无法读取选择的备份文件");
                     return;
                 }
                 extractZipSecure(inputStream, tempDir);
             }
             readSessions.put(tempDir.getAbsolutePath(), tempDir);
+            sessionOpened = true;
 
             String displayName = null;
             try (Cursor cursor = getContext().getContentResolver().query(uri, null, null, null, null)) {
@@ -602,6 +613,10 @@ public class LongTermBackupPlugin extends Plugin {
             response.put("fileName", displayName);
             call.resolve(response);
         } catch (Exception e) {
+            readSessions.remove(tempDir.getAbsolutePath());
+            if (!sessionOpened) {
+                deleteDirectory(tempDir);
+            }
             Logger.error("LongTermBackup handlePickedBackupResult failed: " + e.getClass().getSimpleName(), null);
             call.reject("无法读取选择的备份文件: " + e.getMessage());
         }
@@ -758,17 +773,6 @@ public class LongTermBackupPlugin extends Plugin {
     }
 
     // ===== Utility methods =====
-
-    private String readFileContent(File file) throws Exception {
-        StringBuilder content = new StringBuilder();
-        try (BufferedReader reader = new BufferedReader(new InputStreamReader(new FileInputStream(file), StandardCharsets.UTF_8))) {
-            String line;
-            while ((line = reader.readLine()) != null) {
-                content.append(line).append("\n");
-            }
-        }
-        return content.toString();
-    }
 
     private void deleteDirectory(File dir) {
         if (dir.isDirectory()) {
