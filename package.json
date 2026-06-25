@@ -1,6 +1,6 @@
 {
   "name": "wardrobe-outfit-pwa",
-  "version": "1.1.35",
+  "version": "1.1.36",
   "private": true,
   "scripts": {
     "dev": "next dev",
@@ -62,7 +62,9 @@
     "test:logic:item-wishlist-edit-recognition-layout": "tsx scripts/test-item-wishlist-edit-recognition-layout.ts",
     "test:logic:color-catalog": "tsx scripts/test-color-catalog.ts",
     "test:logic:intake-upgrade-patch5": "tsx scripts/test-intake-upgrade-patch5.ts",
-    "test:logic:real-user-zip-contract": "tsx scripts/test-real-user-zip-contract.ts"
+    "test:logic:real-user-zip-contract": "tsx scripts/test-real-user-zip-contract.ts",
+    "test:logic:shared-item-shells": "tsx scripts/test-shared-item-shells.ts",
+    "test:logic:catalog-card-content": "tsx scripts/test-catalog-card-content.ts"
   },
   "dependencies": {
     "@capacitor-community/keep-awake": "^8.0.1",
