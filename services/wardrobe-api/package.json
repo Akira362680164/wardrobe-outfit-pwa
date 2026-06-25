@@ -16,8 +16,10 @@
   },
   "dependencies": {
     "@wardrobe/cloud-contracts": "file:../../packages/cloud-contracts",
+    "argon2": "^0.44.0",
     "drizzle-orm": "^0.44.7",
     "fastify": "^5.5.0",
+    "jose": "^6.2.3",
     "pg": "^8.16.3",
     "zod": "^3.25.76"
   },

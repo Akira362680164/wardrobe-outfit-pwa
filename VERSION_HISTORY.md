@@ -1,3 +1,34 @@
+## 2026-06-26 / v1.1.37 / Codex — cloud 1A A2 auth schema and security primitives
+
+- **目的**：按 V4 执行方案完成阶段 1A 的 A2：认证表 migration、Drizzle runtime migrator、Argon2id 参数常量、JWT 公私钥加载、Refresh Token hash、Refresh 幂等 AES-256-GCM 加密基础、脱敏日志 serializer。
+- **改动文件**：
+  - `services/wardrobe-api/migrations/0000_auth_schema.sql` / `migrations/meta/_journal.json`：新增认证表迁移，包含 `users`、`phone_identities`、`password_credentials`、`pending_registrations`、`device_sessions`、`refresh_tokens`、`account_security_events`；未创建 `wechat_identities`。
+  - `services/wardrobe-api/src/db/schema.ts`：新增认证表 Drizzle schema。
+  - `services/wardrobe-api/src/db/migrate.ts` / `src/server.ts`：新增 Drizzle runtime migrator，并在 API 启动前执行 migration。
+  - `services/wardrobe-api/src/security/password.ts`：新增 Argon2id 参数与 hash/verify。
+  - `services/wardrobe-api/src/security/token-hash.ts`：新增随机 opaque token 与 SHA-256 token hash。
+  - `services/wardrobe-api/src/security/jwt-keys.ts`：新增 `/run/secrets/jwt-private.pem`、`/run/secrets/jwt-public.pem` 文件加载与 `jose` PEM import。
+  - `services/wardrobe-api/src/security/refresh-idempotency.ts`：新增 60 秒窗口、AES-256-GCM 加密/解密、AAD 绑定 `sessionId + oldRefreshTokenHash + refreshRequestId + deviceId`。
+  - `services/wardrobe-api/src/security/refresh-idempotency-cleanup.ts`：新增过期幂等密文清理入口。
+  - `services/wardrobe-api/src/shared/redact.ts`：新增敏感字段和手机号脱敏 serializer。
+  - `services/wardrobe-api/tests/security.test.ts`：新增 A2 安全基础测试。
+  - `services/wardrobe-api/package.json` / `package-lock.json`：新增 `argon2`、`jose`。
+- **范围说明**：仅完成 A2 安全基础；未实现注册、登录、Refresh API、CLI 验证、AuthGate、客户端认证 UI 或业务同步。
+- **验证结果**：
+  - `npm install --workspace @wardrobe/wardrobe-api argon2 jose`：✅ 通过；npm audit 剩余 5 个依赖漏洞（4 moderate / 1 high），本轮未自动升级。
+  - `npm run api:typecheck`：✅ 通过。
+  - `npm run api:test`：✅ 2 files / 12 tests passed。
+  - `npm --workspace @wardrobe/wardrobe-api run build`：✅ 通过。
+  - `npm run cloud:contracts:typecheck`：✅ 通过。
+  - `npm run typecheck`：✅ 通过。
+  - `npm run test:logic:app-route`：✅ 40 passed, 0 failed。
+  - `npm run test:logic:data-repo`：✅ 63 passed, 0 failed。
+  - `npm run build`：✅ 通过；仅保留仓库既有 ESLint warnings。
+  - `git diff --check`：✅ 通过。
+  - `node scripts/review-gate.mjs --staged`：✅ `risk_gate=high`，`subagent_trigger=user_request_only`。
+- **风险门禁**：**high**。新增认证 schema、migration、安全加密/哈希模块、JWT key loading 和锁文件变更；未触发独立审查 subagent：用户未通知。
+- **未验证风险 / 下一步**：未连接真实 PostgreSQL 执行 migration（本机缺 Compose v2/测试 PG 环境）；A3 需要在此基础上实现 registration + development_cli，并补数据库集成验证。
+
 ## 2026-06-26 / v1.1.37 / Codex — cloud 1A Worker A deploy shell
 
 - **目的**：按 V4 执行方案在 A1 稳定后触发 Worker A，补齐阶段 1A 的服务器外围部署文件：生产 compose、Caddy 配置、运维脚本、部署文档和部署敏感路径忽略规则。

@@ -1,8 +1,10 @@
 import { drizzle, type NodePgDatabase } from "drizzle-orm/node-postgres";
 import { Pool } from "pg";
 
+import * as schema from "./schema.js";
+
 let pool: Pool | null = null;
-let db: NodePgDatabase | null = null;
+let db: NodePgDatabase<typeof schema> | null = null;
 
 export function assertSafeTestDatabaseUrl(
   databaseUrl: string,
@@ -30,7 +32,7 @@ export function getPostgresPool() {
 }
 
 export function getDb() {
-  db ??= drizzle(getPostgresPool());
+  db ??= drizzle(getPostgresPool(), { schema });
   return db;
 }
 
