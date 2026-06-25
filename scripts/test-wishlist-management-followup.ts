@@ -6,7 +6,7 @@ import { join } from "node:path";
 const root = join(__dirname, "..");
 const wishlist = readFileSync(join(root, "src/components/wishlist-view-2.0.tsx"), "utf8");
 const wardrobeApp = readFileSync(join(root, "src/components/wardrobe-app.tsx"), "utf8");
-const wishlistCardStart = wishlist.indexOf('<div className="grid grid-cols-2 gap-3">');
+const wishlistCardStart = wishlist.indexOf("<CatalogWaterfallGrid");
 const wishlistCardEnd = wishlist.indexOf("<WishlistGlobalDialogs", wishlistCardStart);
 const wishlistCardBlock = wishlistCardStart >= 0 && wishlistCardEnd > wishlistCardStart
   ? wishlist.slice(wishlistCardStart, wishlistCardEnd)

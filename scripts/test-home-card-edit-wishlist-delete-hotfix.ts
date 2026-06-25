@@ -40,8 +40,8 @@ assert(wardrobeApp.includes("overflow-hidden rounded-2xl"), "Wardrobe home cards
 assert(!wardrobeApp.includes("h-[210px] overflow-hidden rounded-t-2xl bg-mist"), "Wardrobe home image well relies on card clipping instead of its own top radius");
 assert(
   catalogFormat.includes("return getAllColors(item.colors)") &&
-    catalogFormat.includes("colors: getGarmentCardColors(item)"),
-  "formatGarmentCategoryColorLine uses ColorInfo colors",
+    catalogFormat.includes("getGarmentCardColors(item"),
+  "formatGarmentCategoryColorLine accepts WardrobeItem and { category, colors }",
 );
 assert(!wardrobeApp.includes("onCropFromSource"), "WardrobeEditPage props no longer include onCropFromSource");
 assert(!wardrobeApp.includes("从原图重新裁切"), "user-visible recrop-from-original copy is absent");

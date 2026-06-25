@@ -69,9 +69,9 @@ export function getColorSwatchStyle(colorName: string): { backgroundColor: strin
   };
 }
 
-export function formatGarmentCategoryColorLine(item: WardrobeItem): { categoryLabel: string; colors: string[] } {
+export function formatGarmentCategoryColorLine(item: WardrobeItem | { category: string; colors: WardrobeItem["colors"] }): { categoryLabel: string; colors: string[] } {
   return {
-    categoryLabel: CATEGORY_LABELS[item.category] ?? "未分类",
-    colors: getGarmentCardColors(item),
+    categoryLabel: CATEGORY_LABELS[item.category as keyof typeof CATEGORY_LABELS] ?? "未分类",
+    colors: getGarmentCardColors(item as WardrobeItem),
   };
 }

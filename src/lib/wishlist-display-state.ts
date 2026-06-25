@@ -82,10 +82,12 @@ export function getWishlistCardSubtitle(
   const state = getWishlistDisplayState(item);
 
   if (state === "purchased") return "已加入衣橱";
-  if (state === "rejected") return "可从不感兴趣中恢复";
-  if (state === "archived") return "历史记录";
+  if (state === "rejected") return "不感兴趣";
+  if (state === "archived") return "已归档";
 
-  if (!item.aiAssessment && !ruleAssessment) return "点击查看";
+  if (state === "pending_assessment" || (!item.aiAssessment && !ruleAssessment)) {
+    return "待评估";
+  }
 
   const matchCount = ruleAssessment?.matchCount
     ?? item.aiAssessment?.suggestedOutfits?.length
@@ -94,15 +96,17 @@ export function getWishlistCardSubtitle(
     ?? item.aiAssessment?.similarOwnedItemIds?.length
     ?? 0;
 
+  const label = getWishlistDisplayLabel(state);
+
   if (state === "not_recommended") {
-    if (similarCount > 0) return `相似 ${similarCount} 件`;
-    return "重复或适配风险较高";
+    if (similarCount > 0) return `${label} · 相似 ${similarCount} 件`;
+    return `${label} · 适配风险高`;
   }
 
-  if (matchCount > 0) return `可搭 ${matchCount} 件`;
-  if (similarCount > 0) return `相似 ${similarCount} 件`;
+  if (similarCount > 0) return `${label} · 相似 ${similarCount} 件`;
+  if (matchCount > 0) return `${label} · 可搭 ${matchCount} 件`;
 
-  return "点击查看";
+  return label;
 }
 
 /* ------------------------------------------------------------------ */

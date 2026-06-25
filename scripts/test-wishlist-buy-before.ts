@@ -190,15 +190,15 @@ console.log("\n=== 1c. Card Subtitle ===");
   assertEq("purchased subtitle", getWishlistCardSubtitle(purchased), "已加入衣橱");
 
   const rejected = makeWishlistItem({ id: "s2", status: "rejected" });
-  assertEq("rejected subtitle", getWishlistCardSubtitle(rejected), "可从不感兴趣中恢复");
+  assertEq("rejected subtitle", getWishlistCardSubtitle(rejected), "不感兴趣");
 
   const archived = makeWishlistItem({ id: "s3", status: "archived" });
-  assertEq("archived subtitle", getWishlistCardSubtitle(archived), "历史记录");
+  assertEq("archived subtitle", getWishlistCardSubtitle(archived), "已归档");
 
   const pending = makeWishlistItem({ id: "s4", status: "interested" });
-  assertEq("pending no assessment → click", getWishlistCardSubtitle(pending), "点击查看");
+  assertEq("pending no assessment → pending", getWishlistCardSubtitle(pending), "待评估");
 
-  const withAssessment = makeWishlistItem({ id: "s5", status: "interested", aiAssessment: { suggestedOutfits: [{ itemIds: [1, 2] }] } as any });
+  const withAssessment = makeWishlistItem({ id: "s5", status: "interested", aiAssessment: { verdict: "worth_buying", suggestedOutfits: [{ title: "", itemIds: [1, 2], reason: "" }] } as any });
   check("has suggested outfits subtitle", getWishlistCardSubtitle(withAssessment).includes("可搭"));
 
   const withNotRec = makeWishlistItem({ id: "s6", status: "interested", aiAssessment: { verdict: "not_recommended", similarOwnedItemIds: [1, 2] } as any });

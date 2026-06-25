@@ -89,7 +89,7 @@ import { GarmentImage } from "@/components/garment-image";
 // v1.1.23 six-page design: 共享的 item/ 编辑/详情展示小组件。
 import { ItemField } from "@/components/item/field";
 import { WardrobeExtras } from "@/components/item/wardrobe-extras";
-import { ItemSectionCard } from "@/components/item/section-card";
+import { EditSectionCard } from "@/components/item-shell/edit-section-card";
 import { ItemColorFields } from "@/components/item/color-fields";
 import { CategorySubcategoryPicker } from "@/components/category-subcategory-picker";
 import { TemperatureRangeSlider } from "@/components/temperature-range-slider";
@@ -98,7 +98,9 @@ import { buildWardrobeEditRecognitionPatch } from "@/lib/item-recognition-patch"
 import { SwipeImageCarousel, type SwipeSlide } from "@/components/swipe-image-carousel";
 import { COLOR_SWATCHES, COLOR_OPTIONS, type SystemColor } from "@/lib/color-catalog";
 import { GarmentImmersiveDetail } from "@/components/garment-immersive-detail";
-import { GarmentColorInline } from "@/components/catalog-waterfall-card";
+import { CatalogWaterfallCardShell } from "@/components/item-shell/catalog-waterfall-card-shell";
+import { CatalogWaterfallGrid } from "@/components/item-shell/catalog-waterfall-grid";
+import { CategoryColorLine } from "@/components/item-shell/category-color-line";
 import { formatGarmentCategoryColorLine, formatGarmentWearLine } from "@/lib/catalog-card-format";
 import { exportWardrobeDiagnosticLog, recordDiagnosticEvent } from "@/lib/diagnostic-log";
 import {
@@ -4222,10 +4224,8 @@ function WardrobeView(props: WardrobeViewProps) {
         <div className="surface rounded-lg p-6"><div className="grid gap-4 sm:grid-cols-[1fr_auto] sm:items-center"><div><h2 className="text-xl font-semibold">还没有衣服</h2><p className="mt-1 text-sm text-ink/60">先录入几件常穿单品，推荐会立即可用。</p></div><div className="flex flex-wrap gap-2"><button type="button" onClick={onStartGarmentIntake} className="inline-flex h-11 items-center gap-2 rounded-lg bg-denim px-4 text-sm font-semibold text-white"><Camera size={17} />录入第一件</button><button type="button" onClick={onSeed} className="inline-flex h-11 items-center gap-2 rounded-lg border border-ink/10 bg-white px-4 text-sm font-semibold"><GalleryVerticalEnd size={17} />示例衣橱</button></div></div></div>
       ) : null}
 
- <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-4">
+ <CatalogWaterfallGrid>
 {items.map((item) => {
-// v0.9.32-dev:卡片图片列表(主图 + 手动参考 + SavedOutfit 派生,统一去重)。
-// 派生逻辑抽到 deriveGarmentImageList,与详情页共享。
 const cardEntries = deriveGarmentImageList(item, outfits);
 const hasMultiple = cardEntries.length >1;
 const itemKey = String(item.id ?? item.name ?? "");
@@ -4233,43 +4233,38 @@ const currentIdx = waterfallImageIndex[itemKey] ??0;
 const isItemSelected = !!(multiSelectMode && item.id && selectedItemIds.has(item.id));
 const categoryColorLine = formatGarmentCategoryColorLine(item);
 return (
-<MotionCard
+<CatalogWaterfallCardShell
   key={item.id ?? item.name}
   selected={isItemSelected}
   disableTap={multiSelectMode}
-  className="relative flex h-[304px] flex-col overflow-hidden rounded-2xl border border-ink/8 bg-white text-left shadow-soft"
+  ariaLabel={item.name?.trim() || "未命名单品"}
   onClick={() => { if (multiSelectMode) { toggleMultiSelect(item); } else { openWardrobeItemDetail(item, { name: "wardrobe_home" }); } }}
   onContextMenu={(e: React.MouseEvent) => { e.preventDefault(); toggleMultiSelect(item); }}
-  >
-  <div className="relative h-[210px] overflow-hidden bg-mist">
-  <WaterfallCardImage
-  item={item}
-  cardEntries={cardEntries}
-  currentIdx={currentIdx}
-  hasMultiple={hasMultiple}
-  isSelected={isItemSelected}
-  allItems={allItems}
-  outfits={outfits}
-  onSwipe={(next) => {
-  if (!hasMultiple) return;
-  setWaterfallImageIndex((prev) => ({ ...prev, [itemKey]: next }));
-  }}
-  onClick={() => { if (multiSelectMode) { toggleMultiSelect(item); } else { openWardrobeItemDetail(item, { name: "wardrobe_home" }); } }}
-  />
-  </div>
-  <div className="flex h-[94px] shrink-0 flex-col gap-1 overflow-hidden p-3">
-  <p className="truncate text-sm font-semibold text-ink">{item.name?.trim() || "未命名单品"}</p>
-  <p className="inline-flex min-w-0 items-center gap-1 overflow-hidden truncate text-xs text-ink/54">
-  <span className="shrink-0">{categoryColorLine.categoryLabel}</span>
-  {categoryColorLine.colors.length > 0 ? <span className="shrink-0 text-ink/32">·</span> : null}
-  <GarmentColorInline colors={categoryColorLine.colors} />
-  </p>
-  <p className="truncate text-xs text-ink/38">{formatGarmentWearLine(item)}</p>
-  </div>
-              </MotionCard>
-              );
-              })}
-              </div>
+  media={
+    <div className="absolute inset-0">
+    <WaterfallCardImage
+    item={item}
+    cardEntries={cardEntries}
+    currentIdx={currentIdx}
+    hasMultiple={hasMultiple}
+    isSelected={isItemSelected}
+    allItems={allItems}
+    outfits={outfits}
+    onSwipe={(next) => {
+    if (!hasMultiple) return;
+    setWaterfallImageIndex((prev) => ({ ...prev, [itemKey]: next }));
+    }}
+    onClick={() => { if (multiSelectMode) { toggleMultiSelect(item); } else { openWardrobeItemDetail(item, { name: "wardrobe_home" }); } }}
+    />
+    </div>
+  }
+  title={item.name?.trim() || "未命名单品"}
+  meta={<CategoryColorLine categoryLabel={categoryColorLine.categoryLabel} colors={categoryColorLine.colors} />}
+  summary={formatGarmentWearLine(item)}
+/>
+);
+})}
+</CatalogWaterfallGrid>
 
       {multiSelectMode && selectedItemIds.size > 0 ? (
         <div className="safe-bottom fixed inset-x-0 bottom-0 z-40 border-t border-ink/10 bg-[#fbfbf8]/98 px-4 py-3 backdrop-blur-xl">
@@ -4492,7 +4487,7 @@ function WardrobeEditPage({
         </button>
       </div>
 
-      <ItemSectionCard className="p-3">
+      <EditSectionCard className="p-3">
         <div className="flex items-center gap-3">
           <div className="aspect-[3/4] w-28 shrink-0 overflow-hidden rounded-xl bg-mist" aria-label="衣物图片预览">
             <GarmentImage src={draft.imageDataUrl || draft.sourceImageDataUrl || undefined} alt={draft.name || "衣物图片"} fallbackSize={34} imageClassName="bg-transparent" />
@@ -4518,9 +4513,9 @@ function WardrobeEditPage({
             </button>
           </div>
         </div>
-      </ItemSectionCard>
+      </EditSectionCard>
 
-      <ItemSectionCard title="基础信息" bodyClassName="grid gap-3" className="item-edit-section">
+      <EditSectionCard title="基础信息" bodyClassName="grid gap-3" className="item-edit-section">
           <ItemField label="名称" required>
             <input
               value={draft.name}
@@ -4567,17 +4562,17 @@ function WardrobeEditPage({
               inputMode="url"
             />
           </ItemField>
-      </ItemSectionCard>
+      </EditSectionCard>
 
-      <ItemSectionCard title="颜色" className="item-edit-section">
+      <EditSectionCard title="颜色" className="item-edit-section">
           <ItemColorFields
             mode="edit"
             colors={draft.colors}
             onChange={(colors) => onPatch({ colors })}
           />
-      </ItemSectionCard>
+      </EditSectionCard>
 
-      <ItemSectionCard title="穿着属性" bodyClassName="grid gap-4" className="item-edit-section">
+      <EditSectionCard title="穿着属性" bodyClassName="grid gap-4" className="item-edit-section">
           <SelectableChipGroup
             title="季节（最多 4 个）"
             options={seasonOptions}
@@ -4635,9 +4630,9 @@ function WardrobeEditPage({
               placeholder={`最多 ${FIT_NOTES_MAX_LEN} 字，例如「宽松男款衬衫，肩线下落」`}
             />
           </ItemField>
-      </ItemSectionCard>
+      </EditSectionCard>
 
-      <ItemSectionCard title="备注" className="item-edit-section">
+      <EditSectionCard title="备注" className="item-edit-section">
         <label className="grid gap-1 text-sm font-medium">
           <textarea
             ref={notesRef}
@@ -4674,7 +4669,7 @@ function WardrobeEditPage({
           />
           <span className="justify-self-end text-[11px] text-ink/40">{(draft.notes ?? "").length}/100</span>
         </label>
-      </ItemSectionCard>
+      </EditSectionCard>
 
       {/* v0.9.28-dev: 底部 in-flow 保存按钮 (与顶部 header 按钮共用 onSave + isSaving + canSave)。
           移除 fixed save bar (录屏 52479.mp4 复现: v0.9.21-dev/v0.9.26-dev 的"fixed 条件隐藏"

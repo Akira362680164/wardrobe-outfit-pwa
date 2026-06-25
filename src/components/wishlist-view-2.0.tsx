@@ -61,7 +61,10 @@ import { AppSubPageTopBar } from "@/components/app-sub-page-top-bar";
 import { TemperatureRangeSlider } from "@/components/temperature-range-slider";
 import { FitGenderChips } from "@/components/fit-gender-chips";
 import { CategorySubcategoryPicker } from "@/components/category-subcategory-picker";
-import { CatalogWaterfallCard } from "@/components/catalog-waterfall-card";
+import { CatalogWaterfallCardShell } from "@/components/item-shell/catalog-waterfall-card-shell";
+import { CatalogWaterfallGrid } from "@/components/item-shell/catalog-waterfall-grid";
+import { CategoryColorLine } from "@/components/item-shell/category-color-line";
+import { formatGarmentCategoryColorLine } from "@/lib/catalog-card-format";
 import { buildColorInfo, getAccentColors, getPrimaryColor, getPrimaryColors } from "@/lib/color-fields";
 import {
   DetailAiCard,
@@ -78,7 +81,8 @@ import { WishlistExtras } from "@/components/item/wishlist-extras";
 import { SeasonStyleChips } from "@/components/item/season-style-chips";
 import { FormalityWarmthStepper } from "@/components/item/formality-warmth-stepper";
 import { ItemDetailSections } from "@/components/item/detail-sections";
-import { ItemSectionCard } from "@/components/item/section-card";
+import { EditSectionCard } from "@/components/item-shell/edit-section-card";
+import { DetailSectionCard } from "@/components/item-shell/detail-section-card";
 import { ItemColorFields } from "@/components/item/color-fields";
 
 /* ------------------------------------------------------------------ */
@@ -872,7 +876,7 @@ export function WishlistView20({
         <div className="flex-1 overflow-y-auto overflow-x-hidden">
           {/* v1.1.28 commit: 种草图片区对齐衣橱编辑页 —— 左侧 3:4 小图, 右侧竖排 重新裁切 / 重新识别 */}
           <div className="mt-3">
-            <ItemSectionCard className="p-3">
+            <EditSectionCard className="p-3">
               <div className="flex items-center gap-3">
                 <div className="relative aspect-[3/4] w-28 shrink-0 overflow-hidden rounded-xl bg-mist" aria-label="商品图预览">
                   {formImageDataUrl ? (
@@ -932,7 +936,7 @@ export function WishlistView20({
                   </button>
                 </div>
               </div>
-            </ItemSectionCard>
+            </EditSectionCard>
             <input ref={addFileInputRef} type="file" accept="image/jpeg,image/png,image/webp" className="hidden"
               onChange={(e) => handleAddImage(e.target.files?.[0])} />
           </div>
@@ -940,7 +944,7 @@ export function WishlistView20({
           {/* C3: Form fields */}
           <div className="py-4 space-y-4 max-w-full min-w-0">
             {/* 基础信息卡片 */}
-            <ItemSectionCard title="基础信息" className="item-edit-section" bodyClassName="space-y-3 min-w-0">
+            <EditSectionCard title="基础信息" className="item-edit-section" bodyClassName="space-y-3 min-w-0">
                 <ItemField label="名称" required className="min-w-0">
                   <input value={formName} onChange={(e) => setFormName(e.target.value)}
                     className="h-11 w-full min-w-0 rounded-lg border border-ink/10 bg-white px-3 text-base outline-none focus:border-denim"
@@ -982,10 +986,10 @@ export function WishlistView20({
                     className="h-11 w-full min-w-0 rounded-lg border border-ink/10 bg-white px-3 text-base outline-none focus:border-denim"
                     placeholder="https://..." />
                 </ItemField>
-            </ItemSectionCard>
+            </EditSectionCard>
 
             {/* 颜色卡片 */}
-            <ItemSectionCard title="颜色" className="item-edit-section" bodyClassName="space-y-3 min-w-0">
+            <EditSectionCard title="颜色" className="item-edit-section" bodyClassName="space-y-3 min-w-0">
                 <ItemColorFields
                   mode="edit"
                   colors={buildColorInfo(
@@ -1000,10 +1004,10 @@ export function WishlistView20({
                     setFormAccentColors(getAccentColors(colors));
                   }}
                 />
-            </ItemSectionCard>
+            </EditSectionCard>
 
             {/* 穿着属性卡片 */}
-            <ItemSectionCard title="穿着属性" className="item-edit-section" bodyClassName="space-y-3 min-w-0">
+            <EditSectionCard title="穿着属性" className="item-edit-section" bodyClassName="space-y-3 min-w-0">
                 <SeasonStyleChips mode="edit" kind="season" values={formSeasons} onChange={setFormSeasons} />
                 <SeasonStyleChips mode="edit" kind="style" values={formStyles} onChange={setFormStyles} />
                 {/* 适穿温度 - 双端点可拖动滑块（Step 2 拆出 + Step 5+6 接入种草 add_edit） */}
@@ -1049,9 +1053,9 @@ export function WishlistView20({
                   <input value={formMaterial} onChange={(e) => setFormMaterial(e.target.value)}
                     className="h-11 w-full min-w-0 rounded-lg border border-ink/10 bg-white px-3 text-base outline-none focus:border-denim" placeholder="例如 皮革 / 棉 / 羊毛" />
                 </ItemField>
-            </ItemSectionCard>
+            </EditSectionCard>
 
-            <ItemSectionCard title="备注" className="item-edit-section">
+            <EditSectionCard title="备注" className="item-edit-section">
                 <NotesBlock
                   mode="edit"
                   value={formNote}
@@ -1061,7 +1065,7 @@ export function WishlistView20({
                   placeholder="想买来搭通勤裤和风衣……"
                   counter={`${formNote.length}/100`}
                 />
-            </ItemSectionCard>
+            </EditSectionCard>
           </div>
         </div>
 
@@ -1700,31 +1704,32 @@ export function WishlistView20({
               <p className="text-xs text-ink/30">种草商品可记录商品图、链接、价格和评估状态。</p>
             </div>
           ) : (
-            <div className="grid grid-cols-2 gap-3">
+            <CatalogWaterfallGrid>
               {mainItems.map((w) => {
-                const state = getWishlistDisplayState(w);
                 const rule = ruleAssessmentMap.get(w.id);
-                const subtitle = getWishlistCardSubtitle(w, rule);
+                const colorLine = formatGarmentCategoryColorLine(w);
 
                 return (
-                  <CatalogWaterfallCard
+                  <CatalogWaterfallCardShell
                     key={w.id}
                     onClick={() => openDetail(w)}
+                    ariaLabel={w.name?.trim() || "待确认种草单品"}
                     title={w.name?.trim() || "待确认种草单品"}
-                    subtitle={`${getWishlistDisplayLabel(state)} · ${subtitle}`}
-                    record={w.price != null ? `¥${w.price}` : "暂无价格"}
-                  >
-                      {w.imageDataUrl ? (
-                        <img src={w.imageDataUrl} alt={w.name} className="h-full w-full object-cover" />
+                    meta={<CategoryColorLine categoryLabel={colorLine.categoryLabel} colors={colorLine.colors} />}
+                    summary={getWishlistCardSubtitle(w, rule)}
+                    media={
+                      w.imageDataUrl ? (
+                        <img src={w.imageDataUrl} alt={w.name} className="h-full w-full object-contain" />
                       ) : (
                         <div className="grid h-full w-full place-items-center text-ink/20">
                           <ImageIcon size={36} />
                         </div>
-                      )}
-                  </CatalogWaterfallCard>
+                      )
+                    }
+                  />
                 );
               })}
-            </div>
+            </CatalogWaterfallGrid>
           )}
         </div>
       </div>
