@@ -40,6 +40,7 @@ export interface PendingRegistrationRecord {
 export interface CompletedRegistration {
   userId: string;
   sessionId: string;
+  deviceId: string;
   maskedPhone: string;
 }
 
@@ -225,6 +226,7 @@ export class PostgresRegistrationStore implements RegistrationStore {
       return {
         userId: createdUser.id,
         sessionId: session.id,
+        deviceId: input.deviceId,
         maskedPhone: registration.maskedPhone,
       };
     });
@@ -361,6 +363,7 @@ export class RegistrationService {
       status: "completed" as const,
       userId: completed.userId,
       sessionId: completed.sessionId,
+      deviceId: completed.deviceId,
       maskedPhone: completed.maskedPhone,
       serverTime: now.toISOString(),
     };

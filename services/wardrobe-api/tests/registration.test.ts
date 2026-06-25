@@ -107,7 +107,7 @@ class MemoryRegistrationStore implements RegistrationStore {
     this.phoneIdentities.set(registration.phoneE164, { userId, maskedPhone: registration.maskedPhone });
     this.passwordHashes.set(userId, registration.passwordHash);
     this.sessions.set(sessionId, { userId, deviceId: input.deviceId });
-    return { userId, sessionId, maskedPhone: registration.maskedPhone };
+    return { userId, sessionId, deviceId: input.deviceId, maskedPhone: registration.maskedPhone };
   }
 
   async recordSecurityEvent(input: SecurityEventInput) {

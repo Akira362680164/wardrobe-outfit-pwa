@@ -8,6 +8,8 @@ import Fastify, { type FastifyInstance } from "fastify";
 
 import { registerAuthRoutes } from "./auth/routes.js";
 import { type RegistrationService } from "./auth/registrations.js";
+import { registerSessionRoutes } from "./auth/session-routes.js";
+import { SessionService } from "./auth/session.js";
 import { checkDatabaseReady } from "./db/client.js";
 import { getApiVersion } from "./version.js";
 
@@ -16,6 +18,7 @@ export type ReadinessCheck = () => Promise<{ database: "ready" }>;
 export interface BuildAppOptions {
   readinessCheck?: ReadinessCheck;
   registrationService?: RegistrationService;
+  sessionService?: SessionService;
 }
 
 export function buildApp(options: BuildAppOptions = {}): FastifyInstance {
@@ -62,7 +65,11 @@ export function buildApp(options: BuildAppOptions = {}): FastifyInstance {
     }),
   );
 
-  registerAuthRoutes(app, options.registrationService);
+  const sharedSessionService =
+    options.sessionService ?? (options.registrationService ? undefined : new SessionService());
+
+  registerAuthRoutes(app, options.registrationService, sharedSessionService);
+  registerSessionRoutes(app, sharedSessionService);
 
   return app;
 }

@@ -2,6 +2,7 @@ import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 import { z } from "zod";
 
 import { AuthApiError, RegistrationService } from "./registrations.js";
+import { type SessionService } from "./session.js";
 
 const RegistrationParamsSchema = z.object({
   registrationId: z.string().uuid(),
@@ -17,7 +18,11 @@ const RegistrationSecretBodySchema = z.object({
   deviceId: z.string().min(1).max(200),
 });
 
-export function registerAuthRoutes(app: FastifyInstance, registrationService = new RegistrationService()) {
+export function registerAuthRoutes(
+  app: FastifyInstance,
+  registrationService = new RegistrationService(),
+  sessionService?: SessionService,
+) {
   app.post("/api/auth/registrations", async (request, reply) => {
     try {
       const body = RegistrationRequestBodySchema.parse(request.body);
@@ -52,11 +57,14 @@ export function registerAuthRoutes(app: FastifyInstance, registrationService = n
       rejectClientSecretInQuery(request);
       const params = RegistrationParamsSchema.parse(request.params);
       const body = RegistrationSecretBodySchema.parse(request.body);
-      return await registrationService.completeRegistration({
+      const completed = await registrationService.completeRegistration({
         registrationId: params.registrationId,
         clientSecret: body.clientSecret,
         deviceId: body.deviceId,
       });
+      if (!sessionService) return completed;
+      const tokens = await sessionService.issueTokensForExistingSession(completed);
+      return { status: "completed" as const, ...tokens };
     } catch (error) {
       return sendAuthError(reply, error);
     }

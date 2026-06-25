@@ -1,3 +1,27 @@
+## 2026-06-26 / v1.1.37 / Codex — cloud 1A A4 session API and refresh rotation
+
+- **目的**：按 V4 执行方案完成阶段 1A 的 A4：登录、Refresh、退出、退出所有设备、更改密码、`account/me`、会话限流、Refresh Token 轮换和重放处理。
+- **改动文件**：
+  - `services/wardrobe-api/src/auth/session.ts`：新增会话服务、PostgreSQL session store、JWT access token 签发/校验、Refresh Token 30 天绝对过期、15 分钟 access token、登录/refresh 限流、Refresh 丢响应 AES-GCM 幂等返回、不同 `refreshRequestId` 旧 token 重放判定、token family 吊销、退出/退出全部设备、更改密码吊销其他设备。
+  - `services/wardrobe-api/src/auth/session-routes.ts` / `src/app.ts`：新增 `POST /api/auth/login`、`POST /api/auth/refresh`、`POST /api/auth/logout`、`POST /api/auth/logout-all`、`POST /api/auth/change-password`、`GET /api/account/me`。
+  - `services/wardrobe-api/src/auth/routes.ts` / `src/auth/registrations.ts`：注册 complete 在生产默认服务下返回 `status=completed` 及会话 token，保持注册完成即登录；测试注入 fake registration service 时不强行接真实数据库。
+  - `services/wardrobe-api/tests/session.test.ts`：新增 A4 会话测试，覆盖错误密码统一错误、限流 `retryAfterSeconds`、Refresh 丢响应同 requestId 返回同结果、旧 token 不同 requestId 判重放、改密码吊销其他设备、`account/me` 与 logout。
+  - `services/wardrobe-api/tests/registration.test.ts`：同步 complete 返回 `deviceId`。
+- **范围说明**：仅完成后端会话 API；未实现 A5 AuthProvider/AuthGate/安全存储/UI，也未将现有衣橱业务读写切到云端或多账号工作区。
+- **验证结果**：
+  - `npm run api:typecheck`：✅ 通过。
+  - `npm run api:test`：✅ 4 files / 26 tests passed。
+  - `npm --workspace @wardrobe/wardrobe-api run build`：✅ 通过。
+  - `npm run cloud:contracts:typecheck`：✅ 通过。
+  - `npm run typecheck`：✅ 通过。
+  - `npm run test:logic:app-route`：✅ 40 passed, 0 failed。
+  - `npm run test:logic:data-repo`：✅ 63 passed, 0 failed。
+  - `test -f services/wardrobe-api/dist/server.js && test -f services/wardrobe-api/dist/cli/verify-pending-registration.js`：✅ 通过。
+  - `git diff --check`：✅ 通过。
+  - `npm run build`：✅ 通过；仅保留仓库既有 ESLint warnings。
+- **风险门禁**：**high**。新增后端认证会话、Refresh Token 轮换/重放、JWT、密码修改和设备会话吊销逻辑；未触发独立审查 subagent：用户未通知。
+- **未验证风险 / 下一步**：未连接真实 PostgreSQL、真实 JWT secret 文件和真实 refresh-idempotency secret 执行端到端；当前通过内存 store 覆盖行为约束。A5 需要接入客户端 Auth shell、Android Keystore/浏览器 sessionStorage、AuthGate 和账号 UI，生产默认开关仍应保持关闭。
+
 ## 2026-06-26 / v1.1.37 / Codex — cloud 1A A3 registration and development verification
 
 - **目的**：按 V4 执行方案完成阶段 1A 的 A3：注册申请、状态查询、完成注册、development_cli 验证、注册限流和注册审计事件。
