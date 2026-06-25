@@ -1,3 +1,27 @@
+## 2026-06-25 / v1.1.37 / Claude Code — push to public GitHub (force-with-lease)
+
+- **目的**：把本地 `main` v1.1.37（共享多选删除重构）推到公开 GitHub 仓库 `Akira362680164/wardrobe-outfit-pwa`。
+- **推送前主仓库 main tip**：`aaecd80` (merge commit)
+- **推送后远端 main tip**：`65595b1` v1.1.37: shared catalog multi-select and wishlist bulk delete
+- **推送策略**：force-with-lease（公开仓库脱敏重新初始化）
+- **标准脱敏**：`git archive main` → 删除 `AGENTS.md` / `CLAUDE.md` / `MINIMAX.md` / `.DS_Store` / `.eslintrc.json` → fresh `git init -b main`
+
+## 2026-06-25 / v1.1.37 / Claude Code — 共享多选删除重构
+
+- **目的**：将衣橱首页瀑布流多选能力抽取为共享 Hook 与组件，让衣橱与种草首页同时接入同一套选择/删除能力。
+- **新增目录**：`src/components/catalog-selection/`（6 个文件）：
+  - `use-catalog-multi-select.ts`：泛型多选状态 Hook
+  - `use-catalog-bulk-delete.ts`：泛型批量删除状态 Hook
+  - `catalog-selection-check.tsx`：选中角标（28px 圆形 denim Check）
+  - `catalog-multi-select-bar.tsx`：底部操作栏（取消 + 删除 N 件）
+  - `catalog-bulk-delete-sheet.tsx`：删除确认 Sheet
+  - `index.ts`：统一导出
+- **升级卡片**：`CatalogWaterfallCardShell` 不再暴露 `disableTap`/`onClick`/`onContextMenu`，改为 `selectionMode`/`onOpen`/`onToggleSelection`，内部统一处理点击分流与长按阻止原生长按菜单。
+- **衣橱迁移**：移除页面内旧 `multiSelectMode` / `selectedItemIds` / `deleteConfirm` / `deleteSubmitting` / `deleteError` 状态与 JSX，改用共享 Hook 与组件。
+- **种草接入**：新增长按多选、选中角标、底部操作栏、批量删除确认 Sheet、Android 返回键多选优先退出。
+- **种草删除业务**：新增 `deleteWishlistRecords(ids)` 到 `data-repo.ts`，单条删除与批量删除共用同一函数。
+- **测试**：新增 `test-catalog-multi-select.ts` / `test-catalog-multi-select-integration.ts` / `test-wishlist-bulk-delete.ts`
+
 ## 2026-06-25 / v1.1.36 / Claude Code — push to public GitHub (force-with-lease)
 
 - **目的**：把本地 `main` v1.1.36（共享父组件重构与阴影修复）推到公开 GitHub 仓库 `Akira362680164/wardrobe-outfit-pwa`，并用 `force-with-lease` 覆盖旧的 v1.1.34 历史。
