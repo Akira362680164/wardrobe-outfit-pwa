@@ -63,6 +63,7 @@ import { useWardrobeMessageController } from "@/components/use-wardrobe-message-
 import { useWardrobeLightboxController } from "@/components/use-wardrobe-lightbox-controller";
 import { WardrobeImageSourceSheet } from "@/components/wardrobe-image-source-sheet";
 import { WardrobeHiddenImageInputs } from "@/components/wardrobe-hidden-image-inputs";
+import { AccountManagementView, ChangePasswordView, type WardrobeCloudAuth } from "@/components/auth/account-views";
 import { createActionsForView, preferredCreateActionByView, type CreateActionType, type CreateActionItem, type ViewKey } from "@/components/wardrobe-create-actions";
 import { useWardrobeImageIntakeController } from "@/components/use-wardrobe-image-intake-controller";
 import { useWardrobeCaptureQueueController } from "@/components/use-wardrobe-capture-queue-controller";
@@ -377,7 +378,7 @@ function waitForNextFrame() {
 
 const hasSubPageRef: React.RefObject<boolean | null> = { current: false };
 
-export function WardrobeApp() {
+export function WardrobeApp({ cloudAuth }: { cloudAuth?: WardrobeCloudAuth } = {}) {
   // v1.1.20-dev (方案 C): 消除独立 activeView useState — view 完全由 navigation.route 派生。
   // Bug 1 根因: 旧版 activeView 独立 state + useEffect 异步同步 + switchView 强制切 view
   //   导致 create_outfit / add_wishlist_item 退出时 activeView 卡在非原 tab,
@@ -393,6 +394,7 @@ export function WardrobeApp() {
     if (route.name === "intake_single_item") return "capture";
     if (route.name === "intake_outfit") return "recommend";
     if (route.name === "intake_wishlist") return "shopping";
+    if (route.name === "account_management" || route.name === "change_password") return "settings";
     if (route.name === "settings_home") return "settings";
     if (route.name === "outfit_home" || route.name === "outfit_detail" || route.name === "outfit_calendar") return "recommend";
     if (route.name.startsWith("wishlist_")) return "shopping";
@@ -685,6 +687,11 @@ export function WardrobeApp() {
     if (route.name === "outfit_calendar") {
       navigation.goBack();
       logTopLevelBack("outfitCalendar");
+      return true;
+    }
+    if (route.name === "account_management" || route.name === "change_password") {
+      navigation.goBack();
+      logTopLevelBack("accountRoute");
       return true;
     }
     setShowExitDialog(true);
@@ -1912,6 +1919,8 @@ export function WardrobeApp() {
           {route.name === "settings_home" ? (
 	            <SettingsView
 	              items={items} locations={locations} outfits={outfits} wishlistItems={wishlistItems} activeView={activeViewForCreateActions} route={route}
+              cloudAuth={cloudAuth}
+              onOpenAccount={() => navigation.openRoute({ name: "account_management" })}
 	              miniMaxSettings={miniMaxSettings} onSaveMiniMaxSettings={saveSettings}
 	              onExport={exportBackup} onOpenBackupFolder={openDefaultBackupFolder} onSaveAs={saveAsBackup} onPickFile={pickBackupFile}
 	              isBackupBusy={Boolean(backupOperation != null)}
@@ -1974,6 +1983,25 @@ export function WardrobeApp() {
               setIsClearingAll={setIsClearingAll}
               onMessage={showMessage} onExpandImage={lightbox.openExpandedImage}
               onRefreshState={refreshState}
+            />
+          ) : null}
+
+          {route.name === "account_management" && cloudAuth ? (
+            <AccountManagementView
+              auth={cloudAuth}
+              onBack={() => navigation.goBack()}
+              onChangePassword={() => navigation.openRoute({ name: "change_password" })}
+            />
+          ) : null}
+
+          {route.name === "change_password" && cloudAuth ? (
+            <ChangePasswordView
+              auth={cloudAuth}
+              onBack={() => navigation.goBack()}
+              onDone={() => {
+                showMessage("密码已更新");
+                navigation.openRoute({ name: "account_management" });
+              }}
             />
           ) : null}
           </motion.div>
@@ -6677,6 +6705,8 @@ function SettingsView({
   wishlistItems,
   activeView,
   route,
+  cloudAuth,
+  onOpenAccount,
 	  miniMaxSettings,
 	  onSaveMiniMaxSettings,
 	  onExport,
@@ -6703,6 +6733,8 @@ function SettingsView({
   wishlistItems: WishlistItem[];
   activeView: ViewKey;
   route: AppRoute;
+  cloudAuth?: WardrobeCloudAuth;
+  onOpenAccount?: () => void;
 	  miniMaxSettings: DeviceMiniMaxSettings;
 	  onSaveMiniMaxSettings: (settings: DeviceMiniMaxSettings) => void;
 	  onExport: () => void;
@@ -6935,6 +6967,30 @@ function SettingsView({
     <div className="grid gap-3.5">
       {/* Header - 与 AppSubPageTopBar / 衣橱首页按钮行 / 套装/种草首页 header 一致 h-14 (56px) */}
       <h1 className="flex h-14 items-center px-4 pt-2 text-xl font-bold tracking-tight">设置</h1>
+
+      {cloudAuth ? (
+        <article className="surface rounded-lg px-4 py-3.5">
+          <div className="flex items-start justify-between gap-3">
+            <div className="flex min-w-0 items-start gap-3">
+              <div className="grid h-10 w-10 shrink-0 place-items-center rounded-lg bg-denim/10 text-denim">
+                <User size={19} aria-hidden="true" />
+              </div>
+              <div className="min-w-0">
+                <h2 className="text-base font-semibold">账号服务</h2>
+                <p className="mt-0.5 truncate text-xs text-ink/55">{cloudAuth.user.maskedPhone} · {cloudAuth.deviceLabel}</p>
+                <p className="mt-1 text-[11px] leading-relaxed text-ink/45">本地衣橱、图片缓存和 MiniMax Key 仍保留在本机。</p>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={onOpenAccount}
+              className="inline-flex h-9 shrink-0 items-center gap-1 rounded-lg border border-ink/10 bg-white px-3 text-xs font-semibold active:scale-95 transition-transform"
+            >
+              管理 <ChevronRight size={12} aria-hidden="true" />
+            </button>
+          </div>
+        </article>
+      ) : null}
 
       {/* 1. 衣橱设置 (紧凑列表行, 超过 3 个折叠) */}
       <article className="surface rounded-lg px-4 py-3.5">

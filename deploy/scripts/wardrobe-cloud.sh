@@ -8,6 +8,7 @@ ENV_FILE="${REMOTE_ROOT}/.env"
 CADDYFILE="/etc/caddy/Caddyfile"
 PROJECT_CADDYFILE="${REMOTE_ROOT}/caddy/Caddyfile"
 BACKUP_DIR="${REMOTE_ROOT}/backups"
+HEALTH_HOST="${HEALTH_HOST:-api.zhengfangapps.cloud}"
 
 compose_cmd() {
   docker compose --project-name "${PROJECT_NAME}" --env-file "${ENV_FILE}" -f "${COMPOSE_FILE}" "$@"
@@ -28,7 +29,15 @@ audit_caddy() {
   systemctl is-active caddy || true
   systemctl status caddy --no-pager || true
   sudo caddy validate --config "${CADDYFILE}"
-  sudo sed -n "1,240p" "${CADDYFILE}"
+  sudo awk '
+    /^api\.zhengfangapps\.cloud[[:space:]]*\{/ { printing=1 }
+    printing {
+      print
+      depth += gsub(/\{/, "{")
+      depth -= gsub(/\}/, "}")
+      if (depth <= 0) exit
+    }
+  ' "${CADDYFILE}" || true
   sudo ss -lntp | grep -E ":(80|443|3000)[[:space:]]" || true
   sudo ls -ld /var/lib/caddy /var/log/caddy /etc/caddy 2>/dev/null || true
 }
@@ -42,21 +51,40 @@ apply_caddy() {
 
   local stamp
   stamp="$(date +%Y%m%d-%H%M%S)"
-  sudo mkdir -p /etc/caddy "${BACKUP_DIR}/caddy"
+  sudo mkdir -p /etc/caddy /var/log/caddy "${BACKUP_DIR}/caddy"
+  if id caddy >/dev/null 2>&1; then
+    sudo chown caddy:caddy /var/log/caddy
+  fi
   sudo cp "${CADDYFILE}" "${BACKUP_DIR}/caddy/Caddyfile.${stamp}.bak"
   sudo cp "${PROJECT_CADDYFILE}" "${CADDYFILE}.candidate"
   sudo caddy validate --config "${CADDYFILE}.candidate"
   sudo mv "${CADDYFILE}.candidate" "${CADDYFILE}"
   sudo systemctl reload caddy
+  sleep 1
+  sudo caddy validate --config "${CADDYFILE}"
+  sudo systemctl is-active caddy >/dev/null
 }
 
 health() {
-  curl -fsS https://api.zhengfangapps.cloud/api/health
+  curl -fsS "https://${HEALTH_HOST}/api/health"
   printf "\n"
-  curl -fsS https://api.zhengfangapps.cloud/api/ready
+  curl -fsS "https://${HEALTH_HOST}/api/ready"
   printf "\n"
-  curl -fsS https://api.zhengfangapps.cloud/api/version
+  curl -fsS "https://${HEALTH_HOST}/api/version"
   printf "\n"
+}
+
+wait_ready() {
+  local attempt
+  for attempt in {1..30}; do
+    if curl -fsS http://127.0.0.1:3000/api/ready >/dev/null 2>&1; then
+      return 0
+    fi
+    sleep 2
+  done
+  echo "wardrobe-api did not become ready in time" >&2
+  compose_cmd ps
+  return 1
 }
 
 backup_db() {
@@ -70,13 +98,14 @@ backup_db() {
 restore_db_drill() {
   local dump_file="${1:?usage: restore-db-drill <dump.sql>}"
   local restore_db="${RESTORE_DB:-wardrobe_restore_test}"
-  compose_cmd exec -T postgres sh -lc 'createdb -U "$POSTGRES_USER" "$1"' sh "${restore_db}" || true
-  compose_cmd exec -T postgres sh -lc 'psql -U "$POSTGRES_USER" -d "$1"' sh "${restore_db}" < "${dump_file}"
+  compose_cmd exec -T -e RESTORE_DB="${restore_db}" postgres sh -lc 'dropdb -U "$POSTGRES_USER" --if-exists "$RESTORE_DB"; createdb -U "$POSTGRES_USER" "$RESTORE_DB"'
+  compose_cmd exec -T -e RESTORE_DB="${restore_db}" postgres sh -lc 'psql -U "$POSTGRES_USER" -d "$RESTORE_DB"' < "${dump_file}"
 }
 
 rollback_image() {
   local image="${1:?usage: rollback-image <image>}"
   WARDROBE_API_IMAGE="${image}" compose_cmd up -d wardrobe-api
+  wait_ready
 }
 
 usage() {
@@ -109,6 +138,7 @@ case "${1:-}" in
   deploy)
     compose_cmd pull
     compose_cmd up -d
+    wait_ready
     ;;
   rollback-image)
     shift

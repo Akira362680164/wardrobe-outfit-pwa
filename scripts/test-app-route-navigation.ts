@@ -31,6 +31,8 @@ check("wishlist_purchased → shopping", getMainTabFromRoute({ name: "wishlist_p
 check("wishlist_rejected → shopping", getMainTabFromRoute({ name: "wishlist_rejected" }) === "shopping");
 check("wishlist_archived → shopping", getMainTabFromRoute({ name: "wishlist_archived" }) === "shopping");
 check("settings_home → settings", getMainTabFromRoute({ name: "settings_home" }) === "settings");
+check("account_management → settings", getMainTabFromRoute({ name: "account_management" }) === "settings");
+check("change_password → settings", getMainTabFromRoute({ name: "change_password" }) === "settings");
 
 // ===== getBackRoute =====
 console.log("\n=== getBackRoute ===");
@@ -71,6 +73,10 @@ check("wishlist_home → wishlist_home",
   JSON.stringify(getBackRoute({ name: "wishlist_home" })) === JSON.stringify({ name: "wishlist_home" }));
 check("settings_home → settings_home",
   JSON.stringify(getBackRoute({ name: "settings_home" })) === JSON.stringify({ name: "settings_home" }));
+check("account_management → settings_home",
+  JSON.stringify(getBackRoute({ name: "account_management" })) === JSON.stringify({ name: "settings_home" }));
+check("change_password → account_management",
+  JSON.stringify(getBackRoute({ name: "change_password" })) === JSON.stringify({ name: "account_management" }));
 
 // ===== isDetailRoute =====
 console.log("\n=== isDetailRoute ===");
@@ -92,6 +98,8 @@ console.log("\n=== routeToDebugLabel ===");
 check("debug label returns string", typeof routeToDebugLabel({ name: "wardrobe_home" }) === "string");
 check("debug label garment_detail includes itemId", routeToDebugLabel({ name: "garment_detail", itemId: 42, returnTo: "wardrobe_home" }).includes("42"));
 check("debug label outfit_detail includes outfitId", routeToDebugLabel({ name: "outfit_detail", outfitId: "abc", returnTo: "outfit_home" }).includes("abc"));
+check("debug label account_management", routeToDebugLabel({ name: "account_management" }) === "账号管理");
+check("debug label change_password", routeToDebugLabel({ name: "change_password" }) === "修改密码");
 
 // ===== Summary =====
 console.log(`\n${pass} passed, ${fail} failed`);

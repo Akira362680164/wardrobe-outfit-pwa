@@ -1,9 +1,19 @@
 api.zhengfangapps.cloud {
     encode zstd gzip
 
+    header {
+        Strict-Transport-Security "max-age=63072000; includeSubDomains"
+        X-Content-Type-Options "nosniff"
+        X-Frame-Options "DENY"
+        Referrer-Policy "no-referrer"
+    }
+
     reverse_proxy 127.0.0.1:3000 {
+        header_up X-Real-IP {remote_host}
         transport http {
             dial_timeout 10s
+            read_timeout 120s
+            write_timeout 120s
             response_header_timeout 60s
         }
     }
@@ -15,5 +25,9 @@ api.zhengfangapps.cloud {
             roll_keep_for 336h
         }
         format json
+    }
+
+    handle_errors {
+        respond "Service temporarily unavailable" 502
     }
 }

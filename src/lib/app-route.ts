@@ -14,6 +14,8 @@ export type AppRouteName =
   | "wishlist_rejected"
   | "wishlist_archived"
   | "settings_home"
+  | "account_management"
+  | "change_password"
   | "intake_single_item"
   | "intake_outfit"
   | "intake_wishlist";
@@ -31,6 +33,8 @@ export type AppRoute =
   | { name: "wishlist_rejected" }
   | { name: "wishlist_archived" }
   | { name: "settings_home" }
+  | { name: "account_management" }
+  | { name: "change_password" }
   | { name: "intake_single_item"; returnTo: AppRouteName }
   | { name: "intake_outfit"; returnTo: AppRouteName }
   | { name: "intake_wishlist"; returnTo: AppRouteName };
@@ -54,6 +58,8 @@ export function getMainTabFromRoute(route: AppRoute): MainTabKey {
     case "intake_wishlist":
       return "shopping";
     case "settings_home":
+    case "account_management":
+    case "change_password":
       return "settings";
     case "intake_single_item":
       return "wardrobe";
@@ -81,6 +87,10 @@ export function getBackRoute(route: AppRoute): AppRoute {
       return { name: "wishlist_home" };
     case "outfit_calendar":
       return { name: "outfit_home" };
+    case "account_management":
+      return { name: "settings_home" };
+    case "change_password":
+      return { name: "account_management" };
     case "intake_single_item":
     case "intake_outfit":
     case "intake_wishlist":
@@ -133,6 +143,8 @@ export function routeToDebugLabel(route: AppRoute): string {
     case "wishlist_rejected": return "不感兴趣";
     case "wishlist_archived": return "已归档";
     case "settings_home": return "设置";
+    case "account_management": return "账号管理";
+    case "change_password": return "修改密码";
     case "intake_single_item": return `单品录入→${route.returnTo}`;
     case "intake_outfit": return `套装录入→${route.returnTo}`;
     case "intake_wishlist": return `种草录入→${route.returnTo}`;

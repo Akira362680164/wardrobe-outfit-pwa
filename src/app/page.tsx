@@ -1,5 +1,5 @@
-import { WardrobeApp } from "@/components/wardrobe-app";
+import { AppRoot } from "@/components/app-root";
 
 export default function Home() {
-  return <WardrobeApp />;
+  return <AppRoot />;
 }

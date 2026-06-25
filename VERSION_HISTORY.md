@@ -1,3 +1,39 @@
+## 2026-06-26 / v1.1.37 / Codex — cloud 1A A5 auth client shell + Worker A deploy hardening
+
+- **目的**：按 V4 执行方案完成阶段 1A 的 A5 客户端认证壳层，并根据 MiniMax Worker A 的部署壳层复核结果补齐生产部署高优先级缺口。
+- **Worker 执行**：
+  - `multi_agent_v1` 的 `minimax-worker` 在当前 Codex 后端进程中仍报 `MINIMAX_API_KEY` 缺失。
+  - 改为由主 Codex 从 macOS Keychain 读取 `MINIMAX_API_KEY`，仅注入一次性 `codex exec -m MiniMax-M3` 子进程环境，未打印、未写入密钥。
+  - MiniMax Worker A 只读复核完成，指出 Caddy 安全头/IP 透传、API healthcheck、reload 后自检、restore drill 吞错等高优先级问题；主 Codex 已采纳并落地 HIGH 子集。
+- **改动文件**：
+  - `src/app/page.tsx` / `src/components/app-root.tsx`：新增 `AppRoot`；`NEXT_PUBLIC_CLOUD_AUTH_ENABLED=false` 时直接渲染原 `WardrobeApp`，不初始化 AuthProvider、不显示账号卡。
+  - `src/components/auth/auth-provider.tsx` / `auth-gate.tsx` / `account-views.tsx`：新增 AuthProvider、AuthGate、登录、注册、等待验证、本机衣橱账号阻断页、账号管理页、修改密码页；阶段 1A 注册验证文案为 development_cli 占位，不接微信路径。
+  - `src/lib/cloud-auth-api.ts`：新增认证 API client，接入 `POST /api/auth/registrations`、`POST /api/auth/registrations/:id/status`、`complete`、`login`、`refresh`、`logout`、`logout-all`、`change-password`、`account/me`；Refresh 使用 mutex，Android 可走 CapacitorHttp。
+  - `src/lib/auth-session-store.ts`：新增认证会话存储；Android 优先走 `WardrobeSecureStorage`，浏览器开发环境仅用 `sessionStorage`，不使用 `localStorage` 保存 Refresh Token；同时记录 deviceId、pending registration、localOwner。
+  - `android/app/src/main/java/com/wardrobe/outfit/WardrobeSecureStoragePlugin.java` / `MainActivity.java`：新增并注册 Android Keystore + AES-GCM 安全存储插件，密文落 SharedPreferences。
+  - `src/lib/app-route.ts` / `src/components/wardrobe-app.tsx`：新增 `account_management`、`change_password` 路由；设置页在认证开启并登录时显示账号服务卡片；账号页明确阶段 1A 不展示云端同步状态，MiniMax Key 仍是设备级设置。
+  - `scripts/test-app-route-navigation.ts` / `scripts/test-auth-client-shell.ts` / `package.json`：新增账号路由与认证壳层源码级约束测试，并接入 `test:logic:all`。
+  - `deploy/caddy/Caddyfile`：补 HSTS、nosniff、X-Frame-Options、Referrer-Policy、`X-Real-IP`、transport read/write timeout 和统一 502 响应。
+  - `deploy/compose.production.yaml`：给 `wardrobe-api` 增加 healthcheck、`no-new-privileges`、`cap_drop: ALL`、`pids_limit`；不对 Postgres 做 cap_drop，避免官方镜像数据目录初始化风险。
+  - `deploy/scripts/wardrobe-cloud.sh`：`apply-caddy` 创建/授权 `/var/log/caddy`、reload 后 validate + is-active；部署/回滚后等待 `/api/ready`；`restore-db-drill` 改为先 drop 测试库、再 createdb，建库失败不再吞错；health host 支持 `HEALTH_HOST` override；audit 只打印目标站点块。
+  - `deploy/.env.production.example`：将弱口令 `change-me` 改为必须替换的强占位。
+- **范围说明**：A5 只接认证壳层，不把衣橱结构化数据同步到云端，不切换多账号 Dexie 工作区；本机衣橱通过 `localOwner` 做阶段 1A 防串号阻断。Worker A 补丁只改部署外围，不改认证业务核心。
+- **验证结果**：
+  - MiniMax CLI worker Keychain 启动探测：✅ `MiniMax worker OK`，未输出密钥。
+  - MiniMax Worker A 只读复核：✅ 完成，主 Codex 已应用 HIGH 子集。
+  - `npm run typecheck`：✅ 通过。
+  - `npm run test:logic:app-route`：✅ 46 passed, 0 failed。
+  - `npm run test:logic:auth-client-shell`：✅ 18 passed, 0 failed。
+  - `npm run test:logic:followup-navigation`：✅ 82 passed, 0 failed。
+  - `npm run build`：✅ 通过；仅保留仓库既有 ESLint warnings。
+  - `bash -n deploy/scripts/wardrobe-cloud.sh`：✅ 通过。
+  - `cd android && ./gradlew :app:assembleDebug`：✅ BUILD SUCCESSFUL。
+  - `node scripts/review-gate.mjs --staged`：✅ `risk_gate=high`，`subagent_trigger=user_request_only`。
+  - `docker compose --env-file deploy/.env.production.example -f deploy/compose.production.yaml config`：⚠️ 未通过，本机 Docker 不提供 Compose v2（`unknown flag: --env-file`）。
+  - 本机 `caddy validate --config deploy/caddy/Caddyfile`：⚠️ 未运行，本机缺 `caddy` 命令。
+- **风险门禁**：**high**。新增客户端认证状态机、Refresh Token 安全存储、Android 原生 Keystore 插件、账号路由、部署 Caddy/compose/script 行为；已按用户要求触发 MiniMax Worker A 只读复核，主 Codex 审查后合入高优先级部署补丁。
+- **未验证风险 / 下一步**：未在真实服务器执行 `docker compose config`、`caddy validate`、`apply-caddy`、`deploy` 或远程 `/api/health` / `/api/ready`；未真机安装内部测试 APK 验证 AuthGate、Android Keystore 持久化、CapacitorHttp Origin/CORS 和 Android 返回链路。下一步应进入 A6 联调和内部测试 APK。
+
 ## 2026-06-26 / v1.1.37 / Codex — cloud 1A A4 session API and refresh rotation
 
 - **目的**：按 V4 执行方案完成阶段 1A 的 A4：登录、Refresh、退出、退出所有设备、更改密码、`account/me`、会话限流、Refresh Token 轮换和重放处理。

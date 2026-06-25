@@ -13,6 +13,7 @@ public class MainActivity extends BridgeActivity {
         registerPlugin(NativeProgressNotificationPlugin.class);
         registerPlugin(NativeHeicConverterPlugin.class);
         registerPlugin(LongTermBackupPlugin.class);
+        registerPlugin(WardrobeSecureStoragePlugin.class);
         super.onCreate(savedInstanceState);
     }
 }
