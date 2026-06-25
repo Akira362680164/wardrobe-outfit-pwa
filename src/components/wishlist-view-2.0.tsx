@@ -639,7 +639,6 @@ export function WishlistView20({
         return;
       }
       const patch = buildWishlistEditRecognitionPatch(tag, {
-        currentName: formName,
         currentNotes: formNote,
       });
       if (patch.name != null) setFormName(patch.name);

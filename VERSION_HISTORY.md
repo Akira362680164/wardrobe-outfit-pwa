@@ -1,3 +1,25 @@
+## 2026-06-25 / v1.1.32 / Codex — 修复录入确认页滚动与编辑页重新识别名称覆盖
+
+- **目的**：修复用户真机反馈的两个 v1.1.31 回归：单品/种草录入步骤 3 确认页无法继续下拉，页面卡在图片卡片附近；单品/种草编辑页手工填写 `test名称自动生成` 后点击“重新识别”，AI 新名称不会覆盖当前名称。
+- **改动文件**：
+  - `src/components/intake-flow-shell.tsx`：全屏 Portal 根节点改为 `flex h-[100dvh] flex-col overflow-hidden`，`main` 改为 `min-h-0 flex-1 overflow-y-auto`，让录入页在锁定 body 滚动后由自身内容层接管纵向滚动。
+  - `src/components/wardrobe-app.tsx`：单品编辑页重新识别调用 `buildWardrobeEditRecognitionPatch` 时不再传入 `currentName`，允许 AI 新名称覆盖当前名称。
+  - `src/components/wishlist-view-2.0.tsx`：种草编辑页重新识别同样不再传入 `currentName`，允许 AI 新名称覆盖当前名称。
+  - `scripts/test-intake-fullscreen-layout.ts`：补充录入壳滚动容器断言。
+  - `scripts/test-item-wishlist-edit-recognition-layout.ts`：补充单品/种草编辑重新识别覆盖名称断言。
+  - `package.json` / `package-lock.json`：版本 **1.1.31 → 1.1.32**。
+- **验证**：
+  - `npm run typecheck`：✅ 0 error。
+  - `npm run test:logic:intake-fullscreen-layout`：✅ 20 passed, 0 failed。
+  - `npm run test:logic:item-wishlist-edit-recognition-layout`：✅ ALL PASSED。
+  - Playwright 390×844 走单品录入：选图 → 下一步 → 开始识别 → 步骤 3；确认页 `main.scrollHeight=3099`、`clientHeight=769`、`scrollTop` 可从 `0` 滚到 `2330`，截图 `/private/tmp/intake-step3-scrolled-bottom.png`。
+  - `npm run build`：✅ 通过，仅仓库既有 lint warnings。
+  - `npm run android:apk`：✅ BUILD SUCCESSFUL。
+  - `apksigner verify --verbose --print-certs 衣橱穿搭助手-v1.1.32.apk`：✅ v2 scheme，证书 `CN=fangzheng, OU=Dev, O=Wardrobe, L=Beijing, ST=Beijing, C=CN`。
+- **APK 文件信息**：根目录 `衣橱穿搭助手-v1.1.32.apk`，7.8 MB，SHA-256 `53fb2b09879f441d3a6f2bdedb5290056656a4d746df35a8c6aad343d64b3aef`。
+- **风险门禁**：**high**。触及录入全屏滚动容器、单品/种草编辑页 AI 重新识别字段覆盖规则和 Android 可安装版本号。未触发独立审查 subagent：用户未通知启动独立审查。
+- **未验证风险**：Android 真机安装后的端到端滚动和编辑页 live 重新识别仍未在物理设备复测；本地 Playwright 已覆盖单品录入步骤 3 滚动，静态回归已覆盖单品/种草编辑页名称覆盖规则。
+
 ## 2026-06-25 / v1.1.31 / Codex — 合并远端 main 并刷新 GitHub 发布包
 
 - **目的**：在接手 MiniMax worker 交付后，按需求文档的发布前要求补齐 `origin/main` 合并；远端 `main` 位于 `62fa7501c78b85ae900a61a401fc449aa3399f2d`，本地 v1.1.31 与其存在非线性历史，因此先合并远端 `v1.1.29` 种草编辑记录，再重新构建最终 APK，确保准备推送与发布的代码树包含远端 main。

@@ -2936,7 +2936,6 @@ function WardrobeView(props: WardrobeViewProps) {
       );
       const tag = recognition.tag;
       const patch = buildWardrobeEditRecognitionPatch(tag, {
-        currentName: editDraft.name,
         currentNotes: editDraft.notes,
       });
       setEditDraft((current) =>

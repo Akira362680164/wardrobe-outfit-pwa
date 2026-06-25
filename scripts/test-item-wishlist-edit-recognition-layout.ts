@@ -44,12 +44,17 @@ ok(recogStart > 0, "recognizeEditDraftAgain 函数存在");
 ok(recogFnBody.includes("recognizeSingleItemFromDataUrl"), "编辑页重新识别调用 recognizeSingleItemFromDataUrl");
 ok(!recogFnBody.includes("detectGarmentsOnDevice"), "编辑页重新识别不再调用 detectGarmentsOnDevice");
 ok(wardrobeApp.includes("buildWardrobeEditRecognitionPatch"), "使用统一识别补丁");
+ok(!/buildWardrobeEditRecognitionPatch\(tag,\s*\{[\s\S]{0,120}currentName:/.test(recogFnBody), "单品编辑重新识别会用 AI 新名称覆盖当前名称");
 
 // ────── 16.4 种草识别路径 ──────
 console.log("\n# 16.4 种草识别路径");
 ok(wishlistView.includes("onProcessIntakeImage"), "种草编辑使用 onProcessIntakeImage 回调");
 ok(!wishlistView.includes("analyzeWishlistIntakeImageOnDevice"), "种草编辑不再调用 analyzeWishlistIntakeImageOnDevice");
 ok(wishlistView.includes("buildWishlistEditRecognitionPatch"), "使用统一识别补丁");
+const wishlistRescanStart = wishlistView.indexOf("const handleRescanAI = useCallback");
+const wishlistRescanEnd = wishlistView.indexOf("/* ---- C4", wishlistRescanStart);
+const wishlistRescanBody = wishlistView.slice(wishlistRescanStart, wishlistRescanEnd);
+ok(!/buildWishlistEditRecognitionPatch\(tag,\s*\{[\s\S]{0,120}currentName:/.test(wishlistRescanBody), "种草编辑重新识别会用 AI 新名称覆盖当前名称");
 
 // ────── 16.5 手工字段保护 ──────
 console.log("\n# 16.5 手工字段保护");

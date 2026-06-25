@@ -105,7 +105,7 @@ export function IntakeFlowShell({
   if (!mounted || typeof document === "undefined") return null;
 
   return createPortal(
-    <div className="fixed inset-0 z-[90] h-[100dvh] bg-[#fbfbf8]">
+    <div className="fixed inset-0 z-[90] flex h-[100dvh] flex-col overflow-hidden bg-[#fbfbf8]">
       <header className="sticky top-0 z-30 border-b border-ink/8 bg-[#fbfbf8]/95 px-4 pb-3 pt-[calc(env(safe-area-inset-top)+0.5rem)] backdrop-blur-xl">
         <div className="flex h-10 items-center justify-between gap-2">
           <button
@@ -159,7 +159,7 @@ export function IntakeFlowShell({
         </div>
       ) : null}
 
-      <main className="mx-auto w-full max-w-md px-4 pb-[calc(env(safe-area-inset-bottom)+104px)] pt-3">
+      <main className="mx-auto min-h-0 w-full max-w-md flex-1 overflow-y-auto px-4 pb-[calc(env(safe-area-inset-bottom)+104px)] pt-3">
         {children}
       </main>
 

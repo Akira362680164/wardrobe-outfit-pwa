@@ -19,10 +19,12 @@ function check(name: string, cond: boolean, detail?: string) {
 check("IntakeFlowShell 引入 createPortal", /import\s*\{[^}]*createPortal[^}]*\}\s*from\s*"react-dom"/.test(intakeShell));
 check("IntakeFlowShell Portal 目标为 document.body", /createPortal\([\s\S]*?document\.body/.test(intakeShell));
 check("IntakeFlowShell 根节点含 fixed inset-0", /<div className="fixed inset-0/.test(intakeShell));
-check("IntakeFlowShell 根节点含 h-[100dvh]", /fixed inset-0 z-\[90\] h-\[100dvh\]/.test(intakeShell));
+check("IntakeFlowShell 根节点含 h-[100dvh]", /fixed inset-0 z-\[90\][^"]*h-\[100dvh\]/.test(intakeShell));
+check("IntakeFlowShell 根节点锁住自身 overflow", /fixed inset-0 z-\[90\][^"]*overflow-hidden/.test(intakeShell));
 check("IntakeFlowShell z-index 高于底部导航 (z-40 nav, z-90 shell)", /z-\[90\]/.test(intakeShell));
-check("IntakeFlowShell main 区统一 max-w-md", /<main className="mx-auto w-full max-w-md/.test(intakeShell));
-check("IntakeFlowShell main 区只保留一层 px-4", /<main className="mx-auto w-full max-w-md px-4 /.test(intakeShell));
+check("IntakeFlowShell main 区统一 max-w-md", /<main className="mx-auto [^"]*w-full max-w-md/.test(intakeShell));
+check("IntakeFlowShell main 区接管纵向滚动", /<main className="[^"]*flex-1 overflow-y-auto/.test(intakeShell));
+check("IntakeFlowShell main 区只保留一层 px-4", /<main className="[^"]* px-4 /.test(intakeShell));
 check("IntakeFlowShell 锁定 body overflow = hidden", /document\.body\.style\.overflow\s*=\s*"hidden"/.test(intakeShell));
 check("IntakeFlowShell unmount 恢复 body overflow", /document\.body\.style\.overflow\s*=\s*previous/.test(intakeShell));
 check("IntakeFlowShell 卸载时 handle.remove() 清理", /handle\?\.remove\(\)/.test(intakeShell));
