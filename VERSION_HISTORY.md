@@ -50,6 +50,35 @@
   1. `test:logic:back-priority-regression` 仍有 3 条 pre-existing 失败（与本任务无关，本任务在 commit 1 之前已存在），未在本次 commit 修复（按 AGENTS 不修无关 bug）。
   2. Android 真机端到端"重新识别 + 失败草稿 + 部分保存确认"行为未在真机跑（计划 commit 4 打包后做）。
 
+## 2026-06-25 / v1.1.31 / MiniMax worker — expand pants categories and AI naming contract
+
+- **目的**：按需求文档 8、9 节。裤装二级分类展开为 12 项（长裤 + 短裤 + 工装）；优化 AI Prompt（裤长判断、工装特征、名称规则、动态 catalog 数量）；删除 `buildCatalogDictionaryPrompt` 硬编码 "9 组 90 项"；新增 `isGenericGarmentName` / `buildConcreteGarmentName` 名称归一化；`normalizeGarmentTag` 在 AI 名称为泛化词时尝试从结构字段生成具体名称。
+- **改动文件**：
+  - `src/lib/garment-category-catalog.ts`：`pants` 组展开 12 项：保留历史 ID `jeans` / `casual_pants` / `sports_pants` / `suit_pants` / `leggings` / `leather_pants` / `other_pants`；新增 `denim_shorts` / `casual_shorts` / `sports_shorts` / `cargo_pants` / `cargo_shorts`；label 调整为"牛仔/休闲/运动长裤"。
+  - `src/lib/device-minimax.ts`：
+    - `tagGarmentOnDevice` Prompt 新增【裤装判断规则】、【工装裤特征】、【名称规则】、【名称正例】四个段落。
+    - `buildCatalogDictionaryPrompt` 改为动态 `groupCount` / `subcategoryCount`，不再硬编码 "9 组 90 项"。
+    - 新增 `GENERIC_GARMENT_NAMES`（英文 + 中文泛化词）、`isGenericGarmentName` / `buildConcreteGarmentName` 导出。
+    - `normalizeGarmentTag` 在 AI 名称为空 / 英文泛化词 / 中文泛化词时，调用 `buildConcreteGarmentName({ colors, category, subcategory })` 生成"主色+subLabel"具体名称；subcategory 为空时返回 `[""]` 由 `buildLocalGarmentDraft` 标记 `needsReview`。
+    - 顶部 types import 新增 `ColorInfo`，catalog import 新增 `getSubcategoryLabel`。
+  - `src/lib/intake-recognition-retry.ts`：`validateSubcategoryForCategory` 已存在（commit 2 写入），commit 3 中 `garment-intake-flow` 在 `recognizeImageItem` 和 `patchReviewDraft` 中调用：当 AI 返回跨分类 subcategory（如 `category=tops, subcategory=cargo_shorts`）时清空 `subcategory.value` 并标记 `needsReview: true`。
+  - `scripts/test-pants-category-ai-contract.ts`：新增，33 条断言。
+  - `package.json`：新增 `test:logic:pants-category-ai-contract`；`test:logic:all` 接入。
+  - `VERSION_HISTORY.md`：本条记录。
+- **版本**：保持 **v1.1.31**。
+- **验证**：
+  - `npm run typecheck`：✅ 0 error。
+  - `npm run test:logic:catalog`：✅ 39 pass / 0 fail（commit 2 时为 38；裤装 +4 项 = 12，总计 92）。
+  - `npm run test:logic:garment-intake-multi-image`：✅ 60 passed, 0 failed。
+  - `npm run test:logic:intake`：✅ passed。
+  - `npm run test:logic:pants-category-ai-contract`：✅ 33 passed, 0 failed。
+  - `npm run test:logic:all`：✅ 仅 pre-existing 3 条 `test:logic:back-priority-regression` 失败（与本任务无关）。
+  - `npm run build`：✅ 通过。
+- **风险门禁**：**high**（裤装目录为业务核心目录，AI Prompt 改动直接影响识别结果，名称归一化影响 UI 文案）。未触发 subagent：用户未通知 worker 启动独立审查。
+- **未验证风险**：
+  1. 真实 MiniMax live 识别（棕色工装短裤）将在 commit 4 / 验证阶段跑，使用 `review-artifacts/intake-ai/brown-cargo-shorts.jpg`（用户提供的 689×862 棕色工装短裤实拍图）。
+  2. `test:logic:back-priority-regression` 仍有 3 条 pre-existing 失败（与本任务无关）。
+
 ## 2026-06-25 / v1.1.30 / Codex — 固化文件删除安全规则
 
 - **目的**：按用户要求，将文件删除安全规则写入项目根 `AGENTS.md`，确保参与项目的所有 agent、subagent、worker 和人工委派任务都遵守“只移入回收站、不永久删除、删除前后检查 Git 状态、禁止强制/递归删除绕过”的统一约束。

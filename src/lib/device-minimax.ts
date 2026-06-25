@@ -4,6 +4,7 @@ import {
   FIT_NOTES_MAX_LEN,
   type DetectedGarmentCandidate,
   type ClosetLocation,
+  type ColorInfo,
   type GarmentCategory,
   type GarmentCropBox,
   type GarmentStyle,
@@ -31,7 +32,7 @@ import {
   normalizeSystemColorList,
 } from "@/lib/color-catalog";
 import { recordDiagnosticEvent } from "@/lib/diagnostic-log";
-import { GARMENT_CATEGORY_CATALOG } from "@/lib/garment-category-catalog";
+import { GARMENT_CATEGORY_CATALOG, getSubcategoryLabel } from "@/lib/garment-category-catalog";
 
 const DEFAULT_API_HOST = "https://api.minimaxi.com";
 const DEFAULT_MODEL = "MiniMax-M3";
@@ -401,7 +402,25 @@ export async function tagGarmentOnDevice(
     "你必须使用系统固定枚举，不允许自由创造字段值。",
     buildCatalogDictionaryPrompt(),
     ...buildColorRecognitionPrompt(),
-    "版型倾向判断：不要按颜色刻板判断版型，不要因为粉色判女装，不要因为黑灰蓝判男装。",
+    "【裤装判断规则】",
+    "短裤：衣物真实裤脚终止于大腿或膝盖附近。",
+    "长裤：衣物真实裤脚延伸至小腿、脚踝附近。",
+    "不要根据模特腿部是否被截图裁切判断裤长，必须寻找衣物自身真实裤脚。",
+    "【工装裤特征】",
+    "工装裤特征：明显贴袋、翻盖袋、多口袋、工具袋结构、功能抽绳、粗犷机能设计。",
+    "具备工装特征且裤脚在大腿或膝盖附近时，输出 cargo_shorts。",
+    "具备工装特征且裤脚延伸至小腿或脚踝时，输出 cargo_pants。",
+    "【名称规则】",
+    "candidateNames[0] 必须是具体中文衣物名称。",
+    "不得返回 garment、clothes、clothing、item、product、单品、衣物、衣服、新衣服、商品、服装。",
+    "不得只返回「上衣」「裤子」「鞋」等一级分类名称。",
+    "名称必须包含明确衣物品类。",
+    "优先使用：主色 + 版型/功能特征 + 标准二级分类名称。",
+    "名称控制在 4 至 12 个中文字符。",
+    "不要把图片文件名当作衣物名称。",
+    "【名称正例】",
+    "棕色宽松工装短裤 / 黑色阔腿休闲长裤 / 蓝色直筒牛仔长裤 / 灰色束脚运动长裤。",
+    "【版型倾向】不要按颜色刻板判断版型，不要因为粉色判女装，不要因为黑灰蓝判男装。",
     "优先根据剪裁、品类、肩线、腰线、裙摆、裤型、鞋型、包型、饰品风格判断。",
     "卫衣、T恤、牛仔裤、运动鞋、棒球帽等可优先判断为 unisex，除非剪裁明显偏男装或女装。",
     "男装识别重点：肩线、胸围宽松度、衣长、裤腰/裤裆结构、鞋型厚重度、商务/休闲/运动属性。",
@@ -1678,11 +1697,18 @@ function extractFirstBalancedJson(cleaned: string): string | null {
 }
 
 /**
- * v2: 把完整 catalog 9 组 90 项渲染成 AI prompt 的字典段。
+ * v1.1.31 commit3: catalog 字典动态计算 group/subcategory 数量。
  * 强制 AI 输出 catalog id（subcategory），不输出中文细分。
  */
 function buildCatalogDictionaryPrompt(): string {
-  const lines: string[] = ["[catalog 字典] 9 组 90 项，subcategory 必须输出 id（例如 shirt），不输出中文："];
+  const groupCount = GARMENT_CATEGORY_CATALOG.length;
+  const subcategoryCount = GARMENT_CATEGORY_CATALOG.reduce(
+    (sum, group) => sum + group.subcategories.length,
+    0,
+  );
+  const lines: string[] = [
+    `[catalog 字典] ${groupCount} 组 ${subcategoryCount} 项，subcategory 必须输出 id（例如 shirt），不输出中文：`,
+  ];
   for (const group of GARMENT_CATEGORY_CATALOG) {
     const parts = group.subcategories.map((s) => `${s.id}(${s.label})`).join("、");
     lines.push(`- ${group.id} (${group.label}): ${parts}`);
@@ -1772,7 +1798,24 @@ export function normalizeGarmentTag(data: LooseGarmentTagPayload, fallbackName: 
   const colorResult = normalizeAiColorInfo(colorPayload);
 
   return {
-    candidateNames: normalizeStringArray(data.candidateNames, [cleanName(fallbackName)]).slice(0, 3),
+    // v1.1.31 commit3: 名称归一化。若 AI 名称是泛化词或为空，尝试从结构字段构造具体名称。
+    candidateNames: (() => {
+      const raw = normalizeStringArray(data.candidateNames, [cleanName(fallbackName)]).slice(0, 3);
+      const first = raw[0];
+      if (!isGenericGarmentName(first)) return raw;
+      const sub = sanitizeOptionalText(readFirstDefined(data, ["subcategory", "sub_category", "细分", "二级分类"]));
+      const categoryId = (data.category as GarmentCategory | undefined) ?? "tops";
+      const concrete = buildConcreteGarmentName({
+        colors: colorResult.colors,
+        category: categoryId,
+        subcategory: sub,
+      });
+      if (concrete) {
+        return [concrete, ...raw.filter((n) => !isGenericGarmentName(n))].slice(0, 3);
+      }
+      // 无法生成具体名：返回空数组（由 buildLocalGarmentDraft 标记 needsReview）
+      return [""];
+    })(),
     category: (data.category as GarmentCategory) ?? "tops",
     subcategory: sanitizeOptionalText(readFirstDefined(data, ["subcategory", "sub_category", "细分", "二级分类"])),
     colors: colorResult.colors,
@@ -2419,4 +2462,72 @@ export async function generateOutfitMetadataOnDevice(
 
  const raw = parseOutfitMetadataJson(content);
  return sanitizeOutfitMetadata(raw, { currentName: input.name });
+}
+// v1.1.31 commit3: 名称归一化与兜底。
+// AI 名称合法时保留；为空 / 英文泛化词 / 中文泛化词时尝试从结构字段生成。
+const GENERIC_GARMENT_NAMES: ReadonlySet<string> = new Set([
+  // 英文泛化词
+  "garment",
+  "clothes",
+  "clothing",
+  "item",
+  "product",
+  "apparel",
+  "outfit",
+  "wear",
+  "top",
+  "bottom",
+  "shoe",
+  "bag",
+  "hat",
+  // 中文泛化词
+  "单品",
+  "衣物",
+  "衣服",
+  "新衣服",
+  "商品",
+  "服装",
+  "上衣",
+  "裤子",
+  "半身裙",
+  "连体装",
+  "鞋",
+  "包",
+  "帽子",
+  "首饰",
+  "配饰",
+]);
+
+export function isGenericGarmentName(value: string | undefined | null): boolean {
+  if (!value) return true;
+  const cleaned = value.trim();
+  if (!cleaned) return true;
+  if (GENERIC_GARMENT_NAMES.has(cleaned)) return true;
+  if (GENERIC_GARMENT_NAMES.has(cleaned.toLowerCase())) return true;
+  return false;
+}
+
+/**
+ * v1.1.31 commit3: 从结构字段生成具体中文名称。
+ * - 颜色 + subcategory label → "棕色工装短裤"
+ * - 颜色为空 → 仅 subcategory label
+ * - subcategory 为空 → 返回 undefined（不生成"棕色裤子"这种泛化兜底）
+ */
+export function buildConcreteGarmentName(input: {
+  colors?: ColorInfo;
+  primaryColorText?: string;
+  category?: GarmentCategory;
+  subcategory?: string;
+}): string | undefined {
+  const subLabel = getSubcategoryLabel(input.category ?? "", input.subcategory);
+  if (!subLabel) return undefined;
+  // 尝试主色中文：优先从 primaryColorText（已标准化），否则从 colors.primary。
+  const mainColor = (input.primaryColorText && input.primaryColorText.trim()) ||
+    (input.colors?.mode === "single" ? input.colors.primary.trim() : "") ||
+    (input.colors?.mode === "main_with_accent" ? input.colors.primary.trim() : "") ||
+    (input.colors?.mode === "multicolor" ? (input.colors.primaries[0] ?? "").trim() : "");
+  if (mainColor) {
+    return `${mainColor}${subLabel}`;
+  }
+  return subLabel;
 }

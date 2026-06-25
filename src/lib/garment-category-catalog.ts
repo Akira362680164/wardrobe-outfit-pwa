@@ -46,9 +46,16 @@ export const GARMENT_CATEGORY_CATALOG: GarmentCategoryGroup[] = [
     id: "pants",
     label: "裤子",
     subcategories: [
-      { id: "jeans", label: "牛仔裤" },
-      { id: "casual_pants", label: "休闲裤" },
-      { id: "sports_pants", label: "运动裤" },
+      // v1.1.31 commit3: 裤装细分展开 — 牛仔/休闲/运动区分长裤与短裤，新增工装长裤与工装短裤。
+      // 历史 jeans / casual_pants / sports_pants 保留 ID，仅改 label：牛仔/休闲/运动长裤。
+      { id: "jeans", label: "牛仔长裤" },
+      { id: "denim_shorts", label: "牛仔短裤" },
+      { id: "casual_pants", label: "休闲长裤" },
+      { id: "casual_shorts", label: "休闲短裤" },
+      { id: "sports_pants", label: "运动长裤" },
+      { id: "sports_shorts", label: "运动短裤" },
+      { id: "cargo_pants", label: "工装长裤" },
+      { id: "cargo_shorts", label: "工装短裤" },
       { id: "suit_pants", label: "西装裤" },
       { id: "leggings", label: "打底裤" },
       { id: "leather_pants", label: "皮裤" },
