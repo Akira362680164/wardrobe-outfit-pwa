@@ -288,19 +288,74 @@ deliverable-commit*.md
 VERSION_HISTORY.md.precompact*.bak
 ```
 
-执行顺序：
+执行顺序（前置准备 / 导出脱敏 / 核验 / 推送 / 主仓库记一笔，五阶段）：
 
-1. 先确认当前仓库状态：`git branch --show-current`、`git status --short`、`git worktree list`。如当前不在 `main`，必须从 `main` 导出，不要从工作分支导出。
-2. 使用 `git archive main` 或等价的只读导出方式生成公开版目录，例如 `$HOME/Documents/wardrobe-github-public-main`；不要复制 `.git`。
-3. 在公开版目录中删除上述排除项，尤其是 `.claude/`、`AGENTS.md`、`CLAUDE.md`、`MINIMAX.md`、`*.apk`、`android/signing/`、`.env*`、`review-artifacts/`。
-4. 运行公开目录核验：
-   - 确认不存在 `.git` 历史、APK、签名文件、`.env*`、agent 配置、review artifacts、浏览器 profile、IndexedDB/Local Storage、备份文件。
-   - 确认 `README.md`、`VERSION_HISTORY.md`、源码和必要配置存在。
-   - 在公开目录运行 `npm install` 后，至少执行 `npm run typecheck`；如时间允许再执行 `npm run test:logic:all` 和 `npm run build`。
-5. 只有核验通过后，才在公开目录 `git init`、创建新的首个 commit，并按用户指定的 GitHub 仓库地址添加 remote 和 push。
+**阶段 1：前置准备（在主仓库做）**
+
+1. 确认主仓库状态干净：
+   - `git -C <main-repo> branch --show-current` 必须是 `main`，否则停止（只能从 `main` 导出）。
+   - `git -C <main-repo> status --short` 无未提交改动；如有，先按本项目 Git 规则 commit 或 stash。
+   - `git -C <main-repo> worktree list` 确认没有额外 worktree 在用。
+2. **关键**：在主仓库先跑一遍 `npm run typecheck` 和 `npm run test:logic:all`，确认所有断言和代码现状一致。staging 跑测试时最容易暴露主仓库代码已经改了但测试断言没跟上的 stale 断言（例如 `scripts/test-diagnostic-events.ts` 里 `dbTransactionWrapCount >= 7` 实际只有 5）。在主仓库修完、commit 完，再走下面流程，避免 stage → 发现 → 改主仓 → re-archive 的反复。
+3. 决定 staging 目录路径：默认 `$HOME/Documents/wardrobe-github-public-main`，与历史 v1.1.28 push 一致，可复用。
+4. 决定推送策略（看远端是空还是非空）：
+   - 远端是空的（首次推送）：直接 `git push -u origin main`。
+   - 远端有内容、要覆盖：`git push --force-with-lease origin main`。**注意**：fresh staging repo 没有记住远端 ref，第一次 `force-with-lease` 会报 `stale info`，必须先 `git fetch origin`（见阶段 5）。
+
+**阶段 2：导出公开版目录到 staging**
+
+1. 准备 staging 目录（用 `mavis-trash` 不用 `rm -rf`）：
+   - 如果 staging 目录已存在（之前 push 留下的）：`mavis-trash <staging>/.git`（只删 `.git`、保留 working tree，省掉一次 archive 导出时间），不要动 working tree。
+   - 如果 staging 目录不存在：`mkdir -p <staging>`。
+   - 在 staging 目录里：`git init -b main && git remote add origin <user-specified-github-url>`。staging 是独立 git repo，**没有** `main` ref 也**没有** `origin/main` ref。
+2. 从主仓库导出 tree（**必须用 `-C` 指定主仓库目录**，staging 是独立 repo 跑 archive 会报 `fatal: not a valid object name: main`）：
+   - `git -C <main-repo> archive main | tar -x -C <staging>`
+3. 删除 staging 里属于排除清单的本地文件（用 `mavis-trash`，**不要**把 `mavis-trash` 跟 `heredoc` 拼同一行）：
+   - `mavis-trash <staging>/.DS_Store <staging>/.eslintrc.json <staging>/AGENTS.md <staging>/CLAUDE.md <staging>/MINIMAX.md <staging>/STRICT_INTAKE_FIELD_CONTRACT_VALIDATION_REPORT.md`
+   - `node_modules/` / `.next/` / `out/` / `dist/` / `coverage/` / `apk-archive/` / `*.apk` / `*.aab` / `*.aar` / `review-artifacts/` / `FULL_CODE_REVIEW*` / `deliverable-commit*.md` / `VERSION_HISTORY.md.precompact*.bak` / `.claude/` / `.mavis/` / `.opencode/` / `.env*` / `android/signing/` / `android/local.properties` 这些已经在主仓库 `.gitignore` 里，archive 出来的 tree 本来就没有，**不需要在 staging 手动删**。
+
+**阶段 3：staging 核验**
+
+1. 在 staging 配 local git user（fresh repo 没 user，配 `--local` 不要碰 `--global`）：
+   - `git -C <staging> config user.name "<user-name>"`
+   - `git -C <staging> config user.email "<user-email>"`
+   - 这个 name/email 跟主仓库最后一次 commit 作者一致即可。
+2. 列出 staging 根目录 + `ls <staging>/android/`，**手动确认**没有 `.git/`（除 staging 自己的）、APK、签名文件、`.env*`、agent 配置目录、review artifacts。
+3. 跑 staging 依赖 + 测试：
+   - `cd <staging> && npm install --prefer-offline --no-audit --no-fund`
+   - `cd <staging> && npm run typecheck`（必跑）
+   - `cd <staging> && npm run test:logic:all`（有时间就跑，能抓出阶段 1 没抓到的 stale 断言）
+   - 如失败：**回主仓库修代码、commit、再 re-archive 一次**（从阶段 2 第 2 步开始重做）。
+
+**阶段 4：推送**
+
+1. 提交 staging：
+   - `git -C <staging> add -A && git -C <staging> commit -m "v<X.Y.Z>: push to public GitHub"`
+2. **远端非空 + 用 force-with-lease 覆盖**（最常见情况）：
+   - 先 `git -C <staging> fetch origin` —— **必须**，否则 force-with-lease 报 `! [rejected] ... (stale info)`。
+   - 再 `git -C <staging> push --force-with-lease origin main`。
+   - 期望输出：`+ <old-tip>...<new-tip> main -> main (forced update)`。
+3. **远端空（首次 push）**：`git -C <staging> push -u origin main`。
+4. 验证推送结果：
+   - `git -C <staging> log -1 --format='%h %s'` 看本地 commit。
+   - `git -C <staging> fetch origin && git rev-parse origin/main` 应等于本地 main tip。
+
+**阶段 5：主仓库记一笔**
+
+1. 回到主仓库：`git -C <main-repo> status --short` 确认没有意外未提交改动。
+2. 编辑 `VERSION_HISTORY.md`，**在最顶部新增一条**记录本次推送，标题格式 `## YYYY-MM-DD / v<X.Y.Z> / <agent> — push to public GitHub (force-with-lease)` 或 `(...init)`，条目必含：
+   - 推送前主仓库 main tip（commit hash + 短描述）
+   - 推送前远端 main tip（commit hash + 短描述）
+   - 推送后远端 main tip（commit hash）
+   - 推送策略（force-with-lease / 首次 `-u`）
+   - 阶段 3 期间修过的任何 stale 断言（主仓库 commit hash + 一句话说明）
+   - 未验证风险：未在远端 `git clone` 二次校验 / 签名密钥 `android/signing/wardrobe-fixed.jks` 没公开（属预期）
+3. 提交到主仓库：
+   - `git -C <main-repo> add VERSION_HISTORY.md`
+   - `git -C <main-repo> commit -m "v<X.Y.Z>: record public GitHub push"`
 
 提交与记录：
 
-- 如果只是生成公开版目录，不修改本项目源码或规则，不需要提交当前仓库。
-- 如果修改本文件、`.gitignore`、`README.md`、`VERSION_HISTORY.md` 或公开上传脚本，必须按本项目 Git 规则更新 `VERSION_HISTORY.md` 并提交。
+- 阶段 1 第 2 步如果修了 stale 断言并 commit 到主仓库，那是**主仓库的一个真 commit**，按本项目 Git 规则登记到 `VERSION_HISTORY.md`。
+- 阶段 5 第 3 步的 `record public GitHub push` commit 是**主仓库元数据 commit**，不入公开仓库（公开仓库推送发生在它之前），但要进 `VERSION_HISTORY.md`。
 - 公开仓库初始化 commit 不应包含 APK、签名、构建产物、本机 agent 配置、审查产物或旧 Git 历史。
