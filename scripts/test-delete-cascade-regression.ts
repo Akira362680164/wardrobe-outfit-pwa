@@ -44,7 +44,7 @@ check("套装详情删除成功后 setViewingOutfitId(null)", /setViewingOutfitI
 const wishlistDeleteStart = wishlistView.indexOf("const handleDeleteRecord = useCallback");
 const wishlistDeleteEnd = wishlistView.indexOf("/* ---- view detail ---- */", wishlistDeleteStart);
 const wishlistDeleteBlock = wishlistView.slice(wishlistDeleteStart, wishlistDeleteEnd);
-check("种草删除 handleDeleteRecord 调用 db.wishlistItems.delete", /wishlistItems\.delete/.test(wishlistDeleteBlock));
+check("种草删除 handleDeleteRecord 调用 deleteWishlistRecords", /deleteWishlistRecords/.test(wishlistDeleteBlock));
 check("种草删除成功后 setSelectedItem(null)", /setSelectedItem\(null\)/.test(wishlistDeleteBlock));
 
 // 6. 撤销购买删除失败不得恢复种草状态

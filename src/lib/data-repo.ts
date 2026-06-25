@@ -159,6 +159,22 @@ export async function undoWishlistPurchaseFromRepo(input: {
   });
 }
 
+export async function deleteWishlistRecords(
+  ids: readonly WishlistItem["id"][],
+): Promise<void> {
+  if (ids.length === 0) return;
+  const db = getWardrobeDb();
+  await db.transaction("rw", db.wishlistItems, async () => {
+    const records = await db.wishlistItems.bulkGet([...ids]);
+    const validIds = records
+      .filter((r): r is WishlistItem => r != null)
+      .map((r) => r.id);
+    if (validIds.length > 0) {
+      await db.wishlistItems.bulkDelete(validIds);
+    }
+  });
+}
+
 export function getWishlistUndoPurchaseRisk(input: {
   convertedItemId: number;
   wardrobeItems: WardrobeItem[];
@@ -196,4 +212,5 @@ export const wardrobeDataRepo = {
   undoWishlistPurchaseFromRepo,
   getWishlistPurchasedStateFromRepo,
   getWishlistUndoPurchaseRisk,
+  deleteWishlistRecords,
 };

@@ -101,6 +101,7 @@ import { GarmentImmersiveDetail } from "@/components/garment-immersive-detail";
 import { CatalogWaterfallCardShell } from "@/components/item-shell/catalog-waterfall-card-shell";
 import { CatalogWaterfallGrid } from "@/components/item-shell/catalog-waterfall-grid";
 import { CategoryColorLine } from "@/components/item-shell/category-color-line";
+import { useCatalogMultiSelect, useCatalogBulkDelete, CatalogMultiSelectBar, CatalogBulkDeleteSheet } from "@/components/catalog-selection";
 import { formatGarmentCategoryColorLine, formatGarmentWearLine } from "@/lib/catalog-card-format";
 import { exportWardrobeDiagnosticLog, recordDiagnosticEvent } from "@/lib/diagnostic-log";
 import {
@@ -2411,11 +2412,8 @@ function WardrobeView(props: WardrobeViewProps) {
   // 搜索页本地筛选状态（不与首页联动；搜索结果也用 allItems，不受 wardrobeScope 影响）
   const [searchLocationFilter, setSearchLocationFilter] = useState("all");
   const [searchCategoryFilter, setSearchCategoryFilter] = useState<GarmentCategory | "all">("all");
-  const [multiSelectMode, setMultiSelectMode] = useState(false);
-  const [selectedItemIds, setSelectedItemIds] = useState<Set<number>>(new Set());
-  const [deleteConfirm, setDeleteConfirm] = useState<WardrobeItem | WardrobeItem[] | null>(null);
-  const [deleteSubmitting, setDeleteSubmitting] = useState(false);
-  const [deleteError, setDeleteError] = useState<string | null>(null);
+  const wardrobeSelection = useCatalogMultiSelect<number>();
+  const wardrobeBulkDelete = useCatalogBulkDelete<number>();
   const [viewingItem, setViewingItem] = useState<WardrobeItem | null>(null);
   // v1.1.20-dev (Bug 2 修复): garmentDetailReturnTarget 扩展为完整 AppRoute,
   // 支持从 outfit_detail / outfit_calendar / wishlist_* 等任意来源打开衣物详情后
@@ -2630,14 +2628,9 @@ function WardrobeView(props: WardrobeViewProps) {
     setDiagnosisState("hidden");
   }, []);
 
-  const cancelMultiSelect = useCallback(() => {
-    setMultiSelectMode(false);
-    setSelectedItemIds(new Set());
-  }, []);
-
   useEffect(() => {
-    hasSubPageRef.current = !!(showWearStatistics || isSearchOpen || viewingItem || editingItem || viewingItemCropJob || showEditExitDialog || multiSelectMode || deleteConfirm);
-  }, [showWearStatistics, isSearchOpen, viewingItem, editingItem, viewingItemCropJob, showEditExitDialog, multiSelectMode, deleteConfirm]);
+    hasSubPageRef.current = !!(showWearStatistics || isSearchOpen || viewingItem || editingItem || viewingItemCropJob || showEditExitDialog || wardrobeSelection.selectionMode || wardrobeBulkDelete.deleteOpen);
+  }, [showWearStatistics, isSearchOpen, viewingItem, editingItem, viewingItemCropJob, showEditExitDialog, wardrobeSelection.selectionMode, wardrobeBulkDelete.deleteOpen]);
 
   useEffect(() => {
     onSubPageChange?.(!!(showWearStatistics || viewingItem || editingItem || viewingItemCropJob));
@@ -2649,7 +2642,7 @@ function WardrobeView(props: WardrobeViewProps) {
   const wardrobeSubPageName =
     isSearchOpen ? "search" :
     showWearStatistics ? "wearStatistics" :
-    multiSelectMode ? "multiSelect" :
+    wardrobeSelection.selectionMode ? "multiSelect" :
     viewingItemCropJob ? "crop" :
     editingItem ? "edit" :
     viewingItem ? "detail" :
@@ -2750,22 +2743,29 @@ function WardrobeView(props: WardrobeViewProps) {
   }, [showWearStatistics]);
 
   useEffect(() => {
-    if (!multiSelectMode) return;
+    if (!wardrobeSelection.selectionMode && !wardrobeBulkDelete.deleteOpen) return;
     let removed = false; let h: { remove: () => void } | null = null;
     App.addListener("backButton", () => {
       if (removed) return;
-      if (deleteConfirm) {
-        if (deleteSubmitting) {
+      if (wardrobeBulkDelete.deleteOpen) {
+        if (wardrobeBulkDelete.deleting) {
           onMessage("正在删除，请稍候", "info");
           return;
         }
-        setDeleteConfirm(null);
+        wardrobeBulkDelete.cancelDelete();
         return;
       }
-      cancelMultiSelect();
+      wardrobeSelection.clear();
     }).then((x) => { if (!removed) h = x; });
     return () => { removed = true; h?.remove(); };
-  }, [multiSelectMode, deleteConfirm, deleteSubmitting, cancelMultiSelect, onMessage]);
+  }, [wardrobeSelection.selectionMode, wardrobeBulkDelete.deleteOpen, wardrobeBulkDelete.deleting, wardrobeBulkDelete.cancelDelete, wardrobeSelection.clear, onMessage]);
+
+  // 页面切换清理选择状态
+  useEffect(() => {
+    wardrobeSelection.clear();
+    wardrobeBulkDelete.resetDeleteState();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isSearchOpen, viewingItem, wardrobeScope]);
 
   // 顶部衣橱切换浮层：点击浮层外部关闭（trigger / popover 自身不关）
   useEffect(() => {
@@ -3162,33 +3162,6 @@ function WardrobeView(props: WardrobeViewProps) {
     setSearchCategoryFilter("all");
   }
 
-  async function confirmDeleteItem(target: WardrobeItem | WardrobeItem[]) {
-    setDeleteError(null);
-    setDeleteConfirm(target);
-  }
-
-  async function executeDelete() {
-    if (!deleteConfirm) return;
-    const targets = Array.isArray(deleteConfirm) ? deleteConfirm : [deleteConfirm];
-    const ids = targets.map((i) => i.id).filter((id): id is number => typeof id === "number");
-    if (ids.length === 0) { setDeleteConfirm(null); return; }
-    setDeleteSubmitting(true);
-    setDeleteError(null);
-    recordDiagnosticEvent("delete_items_started", { mode: Array.isArray(deleteConfirm) ? "bulk" : "single", ids });
-    try {
-      await onDeleteItems(ids);
-      recordDiagnosticEvent("delete_items_succeeded", { ids });
-      setDeleteConfirm(null);
-      setMultiSelectMode(false);
-      setSelectedItemIds(new Set());
-    } catch (error) {
-      recordDiagnosticEvent("delete_items_failed", { ids, error: error instanceof Error ? error.message : String(error) });
-      setDeleteError(error instanceof Error ? error.message : "删除失败，请重试");
-    } finally {
-      setDeleteSubmitting(false);
-    }
-  }
-
   async function handleDetailDelete(itemId: number): Promise<void> {
     recordDiagnosticEvent("delete_item_detail_started", { itemId });
     try {
@@ -3202,10 +3175,18 @@ function WardrobeView(props: WardrobeViewProps) {
     }
   }
 
-  function toggleMultiSelect(item: WardrobeItem) {
-    if (!multiSelectMode) { setMultiSelectMode(true); if (item.id) setSelectedItemIds(new Set([item.id])); return; }
-    setSelectedItemIds((prev) => { const next = new Set(prev); if (item.id) { if (next.has(item.id)) next.delete(item.id); else next.add(item.id); } if (next.size === 0) setMultiSelectMode(false); return next; });
-  }
+  const executeWardrobeBulkDelete = useCallback(async () => {
+    const ids = Array.from(wardrobeSelection.selectedIds);
+    if (ids.length === 0) return;
+    recordDiagnosticEvent("delete_items_started", { mode: "bulk", ids });
+    const ok = await wardrobeBulkDelete.executeDelete(ids, async (deleteIds) => {
+      await onDeleteItems([...deleteIds]);
+      recordDiagnosticEvent("delete_items_succeeded", { ids: [...deleteIds] });
+    });
+    if (ok) {
+      wardrobeSelection.clear();
+    }
+  }, [wardrobeSelection, wardrobeBulkDelete, onDeleteItems]);
 
   // v0.9.27-dev: AI 衣橱诊断进度同步到 Android 系统通知栏。
   //  - "loading"  → startProgressNotification (持续 1-15s, 显示"分析衣橱数据")
@@ -4230,16 +4211,22 @@ const cardEntries = deriveGarmentImageList(item, outfits);
 const hasMultiple = cardEntries.length >1;
 const itemKey = String(item.id ?? item.name ?? "");
 const currentIdx = waterfallImageIndex[itemKey] ??0;
-const isItemSelected = !!(multiSelectMode && item.id && selectedItemIds.has(item.id));
+const isItemSelected = wardrobeSelection.isSelected(item.id!);
 const categoryColorLine = formatGarmentCategoryColorLine(item);
 return (
 <CatalogWaterfallCardShell
   key={item.id ?? item.name}
   selected={isItemSelected}
-  disableTap={multiSelectMode}
+  selectionMode={wardrobeSelection.selectionMode}
   ariaLabel={item.name?.trim() || "未命名单品"}
-  onClick={() => { if (multiSelectMode) { toggleMultiSelect(item); } else { openWardrobeItemDetail(item, { name: "wardrobe_home" }); } }}
-  onContextMenu={(e: React.MouseEvent) => { e.preventDefault(); toggleMultiSelect(item); }}
+  onOpen={() => openWardrobeItemDetail(item, { name: "wardrobe_home" })}
+  onToggleSelection={() => {
+    if (!wardrobeSelection.selectionMode) {
+      wardrobeSelection.enter(item.id!);
+      return;
+    }
+    wardrobeSelection.toggle(item.id!);
+  }}
   media={
     <div className="absolute inset-0">
     <WaterfallCardImage
@@ -4247,14 +4234,12 @@ return (
     cardEntries={cardEntries}
     currentIdx={currentIdx}
     hasMultiple={hasMultiple}
-    isSelected={isItemSelected}
     allItems={allItems}
     outfits={outfits}
     onSwipe={(next) => {
     if (!hasMultiple) return;
     setWaterfallImageIndex((prev) => ({ ...prev, [itemKey]: next }));
     }}
-    onClick={() => { if (multiSelectMode) { toggleMultiSelect(item); } else { openWardrobeItemDetail(item, { name: "wardrobe_home" }); } }}
     />
     </div>
   }
@@ -4266,25 +4251,22 @@ return (
 })}
 </CatalogWaterfallGrid>
 
-      {multiSelectMode && selectedItemIds.size > 0 ? (
-        <div className="safe-bottom fixed inset-x-0 bottom-0 z-40 border-t border-ink/10 bg-[#fbfbf8]/98 px-4 py-3 backdrop-blur-xl">
-          <div className="mx-auto grid max-w-md grid-cols-2 gap-2">
-            <button type="button" onClick={cancelMultiSelect} className="inline-flex h-12 items-center justify-center rounded-lg border border-ink/10 bg-white text-sm font-semibold text-ink/70">取消</button>
-            <button type="button" onClick={() => confirmDeleteItem(allItems.filter((i) => i.id && selectedItemIds.has(i.id)))} className="inline-flex h-12 items-center justify-center gap-2 rounded-lg bg-red-600 text-sm font-semibold text-white"><Trash2 size={16} />批量删除 {selectedItemIds.size} 件</button>
-          </div>
-        </div>
-      ) : null}
+      <CatalogMultiSelectBar
+        selectedCount={wardrobeSelection.selectedCount}
+        onCancel={wardrobeSelection.clear}
+        onDelete={wardrobeBulkDelete.requestDelete}
+      />
 
-      <MotionSheet open={!!deleteConfirm} onClose={() => { if (!deleteSubmitting) setDeleteConfirm(null); }} panelClassName="!max-w-xs">
-        <p className="text-sm font-semibold mb-2">确认删除</p>
-        <p className="text-xs text-ink/60 mb-4">{deleteConfirm ? (Array.isArray(deleteConfirm) ? `将删除 ${deleteConfirm.length} 件衣物，不可恢复。` : `将删除「${deleteConfirm.name}」，不可恢复。`) : ""}</p>
-        {deleteError ? (
-          <p className="mb-4 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-600">
-            删除失败：{deleteError}
-          </p>
-        ) : null}
-        <div className="grid grid-cols-2 gap-2"><button type="button" onClick={() => setDeleteConfirm(null)} disabled={deleteSubmitting} className="h-10 rounded-lg border border-ink/10 text-sm disabled:opacity-45">取消</button><button type="button" onClick={executeDelete} disabled={deleteSubmitting} className="h-10 rounded-lg bg-red-600 text-sm font-semibold text-white disabled:opacity-60">{deleteSubmitting ? "删除中..." : "确认删除"}</button></div>
-      </MotionSheet>
+      <CatalogBulkDeleteSheet
+        open={wardrobeBulkDelete.deleteOpen}
+        count={wardrobeSelection.selectedCount}
+        title="确认删除"
+        description={`将删除 ${wardrobeSelection.selectedCount} 件衣物，操作不可恢复。相关套装引用将同步更新。`}
+        submitting={wardrobeBulkDelete.deleting}
+        error={wardrobeBulkDelete.deleteError}
+        onClose={wardrobeBulkDelete.cancelDelete}
+        onConfirm={executeWardrobeBulkDelete}
+      />
     </div>
   );
 }
@@ -8574,7 +8556,6 @@ function WaterfallCardImage({
  cardEntries,
  currentIdx,
  hasMultiple,
- isSelected,
  onSwipe,
  onClick,
  allItems,
@@ -8584,9 +8565,8 @@ function WaterfallCardImage({
  cardEntries: GarmentImageEntry[];
  currentIdx: number;
  hasMultiple: boolean;
- isSelected: boolean;
  onSwipe: (next: number) => void;
- onClick: () => void;
+ onClick?: () => void;
  allItems: WardrobeItem[];
  outfits: SavedOutfit[];
 }) {
@@ -8655,7 +8635,7 @@ function WaterfallCardImage({
  }, [currentIdx, onSwipe, safeIdx]);
 
   // Click handler for outfit custom slides: still navigate to item detail
-  const handleCustomClick = useCallback(() => onClick(), [onClick]);
+  const handleCustomClick = useCallback(() => onClick?.(), [onClick]);
 
  return (
  <div className="relative h-[210px] w-full shrink-0 overflow-hidden bg-mist">
@@ -8663,7 +8643,7 @@ function WaterfallCardImage({
  slides={slides}
  index={safeIdx}
  onIndexChange={onSwipe}
- onImageClick={() => onClick()}
+ onImageClick={() => onClick?.()}
  onCustomClick={handleCustomClick}
  className="absolute inset-0"
  imageClassName="object-contain"
@@ -8671,11 +8651,6 @@ function WaterfallCardImage({
  variant="card"
  ariaLabel="衣物图片组"
  />
- {isSelected ? (
- <span className="absolute top-2 right-2 z-10 grid h-6 w-6 place-items-center rounded-full bg-denim text-white" aria-label="已勾选">
- <Check size={12} />
- </span>
- ) : null}
  </div>
  );
 }
