@@ -1,3 +1,47 @@
+## 2026-06-25 / v1.1.36 / Claude Code — 共享父组件重构与阴影修复
+
+- **目的**：建立三类共享父组件（瀑布流卡片、详情页、编辑页），统一衣橱与种草两类页面的结构、间距、圆角和阴影；移除首页大面积灰影。
+- **改动文件**：
+  - 新增 `src/components/item-shell/`（8 个文件）：
+    - `catalog-waterfall-card-shell.tsx`：瀑布流卡片父组件（H304/W210/H94，shadow-none）
+    - `catalog-waterfall-grid.tsx`：2/3/4 列响应式网格
+    - `item-detail-page-shell.tsx`：详情页父组件（hero/filmstrip/actions/title/tabs/content/overlays 插槽）
+    - `detail-section-card.tsx`：详情内容卡（shadow-none）
+    - `item-edit-page-shell.tsx`：编辑页父组件（topBar/scroll/5 个分区插槽）
+    - `edit-section-card.tsx`：编辑分区卡（shadow-none，支持 icon/description/required/right）
+    - `category-color-line.tsx`：分类标签 + 色卡行（最多 3 色 + N）
+    - `item-surface-tokens.ts`：共用视觉 class 常量
+  - 修改：
+    - `src/lib/catalog-card-format.ts`：`formatGarmentCategoryColorLine` 接受 `WardrobeItem | {category, colors}`
+    - `src/lib/wishlist-display-state.ts`：`getWishlistCardSubtitle` 返回完整第三行摘要（状态 + 可搭/相似 + 适配风险高兜底）
+    - `src/components/wardrobe-app.tsx`：衣橱首页卡片用 `CatalogWaterfallCardShell` + `CatalogWaterfallGrid` + `CategoryColorLine`；编辑页用 `EditSectionCard`
+    - `src/components/wishlist-view-2.0.tsx`：种草首页/详情/编辑页用共享壳组件；图片 `object-contain`；移除价格行
+    - `src/components/detail-shell.tsx`：`DetailSurfaceCard` → `DetailSectionCard`；`DetailAiCard` 无阴影
+    - `src/components/item/detail-sections.tsx`：`ItemSectionCard` → `DetailSectionCard`
+    - `src/components/garment-intake-flow.tsx`：`ItemSectionCard` → `EditSectionCard`
+  - 删除：`src/components/item/section-card.tsx`（移入回收站）
+  - 测试：
+    - 新增 `scripts/test-shared-item-shells.ts`、`scripts/test-catalog-card-content.ts`
+    - 更新 `scripts/test-detail-shell-ui.ts`、`scripts/test-wishlist-buy-before.ts`、`scripts/test-home-card-edit-wishlist-delete-hotfix.ts`、`scripts/test-wishlist-management-followup.ts`、`scripts/test-navigation-and-intake-entry.ts`、`scripts/test-intake-confirm-pill-row.ts`
+  - `package.json`：v1.1.35 → v1.1.36；新增 `test:logic:shared-item-shells`、`test:logic:catalog-card-content`
+- **提交**：
+  - `780fda0`：refactor(ui): add shared catalog detail and edit shells
+  - `cbfcf76`：refactor(ui): migrate wardrobe and wishlist catalog cards
+  - `27c547a`：refactor(ui): migrate detail and edit pages to shared section cards
+  - 本条 version history commit 待创建
+- **验证结果**：
+  - `npm run typecheck`：✅ 0 error
+  - `npm run test:logic:shared-item-shells`：✅ 通过
+  - `npm run test:logic:catalog-card-content`：✅ 通过
+  - `npm run test:logic:detail-shell`：✅ 通过
+  - `npm run test:logic:wishlist`：✅ 100 pass, 0 fail
+  - `npm run test:logic:home-card-edit-wishlist-delete-hotfix`：✅ 通过
+  - `npm run test:logic:wishlist-management-followup`：✅ 54 pass, 0 fail
+  - `npm run test:logic:followup-navigation`：✅ 82 pass, 0 fail
+  - `npm run build`：✅ 通过
+- **风险门禁**：**high**。涉及三类共享父组件、详情/编辑页结构变更、阴影全局修改、旧组件删除、6 个测试文件更新。未触发独立审查 subagent：用户未通知启动独立审查。
+- **未验证风险**：未做浏览器实操回归；未做 Android 真机回归；未生成 APK。`ItemDetailPageShell` 和 `ItemEditPageShell` 已建立但尚未作为页面容器接入（当前详情/编辑页使用共享分区卡但保留原有页面骨架）。
+
 ## 2026-06-25 / v1.1.35 / Claude Code — 修复含图片长期备份无法恢复
 
 - **目的**：修复 Android 真机在 `Download/衣橱穿搭助手备份` 能列出 `.wardrobebackup` / `.wardrobebackup.zip`，但点击含图片备份后恢复失败的问题；同步修正恢复列表状态机不应显示旋转图标、“处理中”和 `0%`。
