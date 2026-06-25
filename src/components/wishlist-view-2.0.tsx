@@ -43,7 +43,7 @@ import {
 } from "@/lib/wishlist-assessment";
 
 import { buildFallbackWishlistAssessment } from "@/lib/wishlist-ai-prompt";
-import { convertWishlistToWardrobe, undoWishlistPurchaseFromRepo } from "@/lib/data-repo";
+import { convertWishlistToWardrobe, undoWishlistPurchaseFromRepo, deleteWishlistRecords } from "@/lib/data-repo";
 import { isWishlistPurchased } from "@/lib/wishlist-conversion";
 import { isConvertedWishlistLinkDeleted } from "@/lib/wardrobe-reference-sync";
 
@@ -64,6 +64,7 @@ import { CategorySubcategoryPicker } from "@/components/category-subcategory-pic
 import { CatalogWaterfallCardShell } from "@/components/item-shell/catalog-waterfall-card-shell";
 import { CatalogWaterfallGrid } from "@/components/item-shell/catalog-waterfall-grid";
 import { CategoryColorLine } from "@/components/item-shell/category-color-line";
+import { useCatalogMultiSelect, useCatalogBulkDelete, CatalogMultiSelectBar, CatalogBulkDeleteSheet } from "@/components/catalog-selection";
 import { formatGarmentCategoryColorLine } from "@/lib/catalog-card-format";
 import { buildColorInfo, getAccentColors, getPrimaryColor, getPrimaryColors } from "@/lib/color-fields";
 import {
@@ -208,10 +209,23 @@ export function WishlistView20({
   const [mainFilter, setMainFilter] = useState<WishlistMainFilter>("all");
   const [menuOpen, setMenuOpen] = useState(false);
 
+  type WishlistId = WishlistItem["id"];
+  const wishlistSelection = useCatalogMultiSelect<WishlistId>();
+  const wishlistBulkDelete = useCatalogBulkDelete<WishlistId>();
+
   useEffect(() => {
     onSubPageChange?.(subPage !== "home");
     return () => onSubPageChange?.(false);
   }, [onSubPageChange, subPage]);
+
+  // 页面切换清理选择状态
+  useEffect(() => {
+    if (subPage !== "home") {
+      wishlistSelection.clear();
+      wishlistBulkDelete.resetDeleteState();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [subPage]);
 
   useEffect(() => {
     if (!initialSubPage) return;
@@ -250,6 +264,16 @@ export function WishlistView20({
   // 此时 expandedImage 已由父级关闭，子的 handler 不需要重复处理。
   const isSubPage = subPage !== "home";
   useStableBackHandler(() => {
+    // 0. 批量删除确认 Sheet / 选择模式优先
+    if (wishlistBulkDelete.deleteOpen) {
+      if (wishlistBulkDelete.deleting) return true;
+      wishlistBulkDelete.cancelDelete();
+      return true;
+    }
+    if (wishlistSelection.selectionMode) {
+      wishlistSelection.clear();
+      return true;
+    }
     // 1. 衣橱点选 sheet 关闭
     if (showLocationSheet) { setShowLocationSheet(false); return true; }
     // 2. 各种确认弹窗优先关闭 (子页有弹窗时按返回键只关弹窗)
@@ -808,17 +832,12 @@ export function WishlistView20({
   }, [items, outfits, fallbackLocationId, settings, refreshItem, aiProgress, onMessage]);
 
   const handleDeleteRecord = useCallback(async (item: WishlistItem) => {
-    try {
-      await getWardrobeDb().wishlistItems.delete(item.id);
-      setWishlistItems((prev) => prev.filter((w) => w.id !== item.id));
-      await onDataChanged?.();
-      onMessage("已删除记录");
-      setSubPage("home");
-      setSelectedItem(null);
-    } catch (error) {
-      onMessage(error instanceof Error ? error.message : "删除失败，请重试", "error");
-      throw error;
-    }
+    await deleteWishlistRecords([item.id]);
+    setWishlistItems((prev) => prev.filter((w) => w.id !== item.id));
+    await onDataChanged?.();
+    onMessage("已删除记录");
+    setSubPage("home");
+    setSelectedItem(null);
   }, [setWishlistItems, onMessage, onDataChanged]);
 
   /* ---- view detail ---- */
@@ -1612,6 +1631,24 @@ export function WishlistView20({
   // 底部再叠加全局确认弹窗 (覆盖已买单品 / 不感兴趣 / 已归档子页打开弹窗 + 系统返回键)。
   // P0 收口: 把首页 JSX 抽到 homeNode 常量, 统一出口固定为 {subPageNode ?? homeNode},
   // 避免子页分支末尾的 return; 阻断统一出口 (种草详情页打不开即由此引起)。
+  const executeSelectedWishlistDelete = useCallback(async () => {
+    const selectedIds = Array.from(wishlistSelection.selectedIds);
+    const selectedItems = mainItems.filter((w) => selectedIds.includes(w.id));
+    if (selectedItems.length === 0) return;
+    const ok = await wishlistBulkDelete.executeDelete(
+      selectedItems.map((w) => w.id),
+      async (ids) => {
+        await deleteWishlistRecords(ids);
+      },
+    );
+    if (ok) {
+      setWishlistItems((prev) => prev.filter((w) => !selectedIds.includes(w.id)));
+      wishlistSelection.clear();
+      onDataChanged?.();
+      onMessage(`已删除 ${selectedItems.length} 件种草单品`, "success");
+    }
+  }, [wishlistSelection, wishlistBulkDelete, mainItems, setWishlistItems, onDataChanged, onMessage]);
+
   // v1.1.16 commit3 §5.4.4: 拉平种草首页与套装首页的页边距 + header + chips 布局,
   // 标题 / 数量 / 右上角菜单按钮 / 筛选条左边界 / 空状态居中与 outfit-list-view.tsx 一致。
   const homeNode: React.ReactNode = (
@@ -1712,14 +1749,23 @@ export function WishlistView20({
                 return (
                   <CatalogWaterfallCardShell
                     key={w.id}
-                    onClick={() => openDetail(w)}
+                    selected={wishlistSelection.isSelected(w.id)}
+                    selectionMode={wishlistSelection.selectionMode}
+                    onOpen={() => openDetail(w)}
+                    onToggleSelection={() => {
+                      if (!wishlistSelection.selectionMode) {
+                        wishlistSelection.enter(w.id);
+                        return;
+                      }
+                      wishlistSelection.toggle(w.id);
+                    }}
                     ariaLabel={w.name?.trim() || "待确认种草单品"}
                     title={w.name?.trim() || "待确认种草单品"}
                     meta={<CategoryColorLine categoryLabel={colorLine.categoryLabel} colors={colorLine.colors} />}
                     summary={getWishlistCardSubtitle(w, rule)}
                     media={
                       w.imageDataUrl ? (
-                        <img src={w.imageDataUrl} alt={w.name} className="h-full w-full object-contain" />
+                        <img src={w.imageDataUrl} alt={w.name} className="h-full w-full object-contain" draggable={false} />
                       ) : (
                         <div className="grid h-full w-full place-items-center text-ink/20">
                           <ImageIcon size={36} />
@@ -1732,6 +1778,23 @@ export function WishlistView20({
             </CatalogWaterfallGrid>
           )}
         </div>
+
+        <CatalogMultiSelectBar
+          selectedCount={wishlistSelection.selectedCount}
+          onCancel={wishlistSelection.clear}
+          onDelete={wishlistBulkDelete.requestDelete}
+        />
+
+        <CatalogBulkDeleteSheet
+          open={wishlistBulkDelete.deleteOpen}
+          count={wishlistSelection.selectedCount}
+          title="确认删除"
+          description={`将删除 ${wishlistSelection.selectedCount} 件种草单品。删除后不可恢复，不会删除衣橱中的已有单品。`}
+          submitting={wishlistBulkDelete.deleting}
+          error={wishlistBulkDelete.deleteError}
+          onClose={wishlistBulkDelete.cancelDelete}
+          onConfirm={executeSelectedWishlistDelete}
+        />
       </div>
   );
   return (
