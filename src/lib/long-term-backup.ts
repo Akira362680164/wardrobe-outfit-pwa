@@ -1,7 +1,6 @@
 import { Capacitor, registerPlugin } from "@capacitor/core";
 import {
-  LONG_TERM_BACKUP_EXTENSION,
-  LONG_TERM_BACKUP_LATEST_FILE_NAME,
+  isLongTermBackupFileName,
   LONG_TERM_BACKUP_MANIFEST_FILE,
   LONG_TERM_BACKUP_METADATA_FILE,
   LONG_TERM_BACKUP_IMAGE_DIR,
@@ -155,10 +154,12 @@ export async function buildLongTermBackupEntries(input: LongTermBackupSourceData
     text,
   }));
 
+  // ponytail: v1.1.34+ 让 latestFileName == timestampFileName，
+  // Android 原生插件据此只写一份文件，不再生成"最新备份"别名。
   return {
     exportedAt,
     timestampFileName,
-    latestFileName: LONG_TERM_BACKUP_LATEST_FILE_NAME,
+    latestFileName: timestampFileName,
     manifestJson,
     metadataJson,
     imageEntries,
@@ -372,8 +373,8 @@ export async function listDefaultLongTermBackups(): Promise<LongTermBackupFileEn
     name: f.name ?? f.displayName ?? "",
     size: f.size ?? 0,
     mtime: f.mtime ?? f.modifiedAt ?? 0,
-    isLatest: f.isLatest ?? f.name === LONG_TERM_BACKUP_LATEST_FILE_NAME,
-  })).filter((f) => f.name.endsWith(LONG_TERM_BACKUP_EXTENSION)));
+    isLatest: false,
+  })).filter((f) => isLongTermBackupFileName(f.name)));
 }
 
 // Restore from default long-term backup
@@ -395,10 +396,12 @@ export async function restoreDefaultLongTermBackup(fileName?: string): Promise<R
     throw new Error("浏览器无法读取 Android 默认长期备份目录，请在 Android 真机验证。");
   }
 
-  // Resolve the actual file name we'll display. We use the explicit file name when
-  // the caller provides one (e.g. user picked a historical file from the list);
-  // otherwise default to the constant latest file name.
-  const resolvedFileName = fileName || LONG_TERM_BACKUP_LATEST_FILE_NAME;
+  // ponytail: v1.1.34+ 不再有"最新备份"别名，调用方必须显式提供从
+  // listDefaultLongTermBackups 取到的 timestampFileName。给一个清晰报错。
+  if (!fileName) {
+    throw new Error("请先从备份列表中选择要恢复的备份文件。");
+  }
+  const resolvedFileName = fileName;
 
   const result = await plugin.openDefaultBackup({ fileName: resolvedFileName });
   if (!result.readSessionId) throw new Error(result.message ?? "无法读取默认长期备份");
@@ -461,7 +464,8 @@ export async function restorePickedLongTermBackup(): Promise<RestorePickedLongTe
   // The Android plugin returns the user-friendly display name (best effort).
   // Fallback to the constant latest file name if for some reason the plugin
   // did not include it.
-  const fileName = result.fileName || LONG_TERM_BACKUP_LATEST_FILE_NAME;
+  // ponytail: v1.1.34+ 不再默认到 latest 别名；从 picker 拿不到名时给出清晰提示。
+  const fileName = result.fileName || "衣橱穿搭助手-未知时间.wardrobebackup";
 
   try {
     // Read manifest

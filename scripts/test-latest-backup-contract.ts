@@ -12,7 +12,7 @@
  * Run: npx tsx scripts/test-latest-backup-contract.ts
  */
 
-import { LONG_TERM_BACKUP_EXTENSION } from "../src/lib/long-term-backup-package";
+import { LONG_TERM_BACKUP_EXTENSION, LONG_TERM_BACKUP_ZIP_FALLBACK_EXTENSION, isLongTermBackupFileName } from "../src/lib/long-term-backup-package";
 import { LATEST_BACKUP_VERSION } from "../src/lib/backup-data";
 import { assertLongTermBackupManifest, createLongTermBackupManifest } from "../src/lib/long-term-backup-package";
 import { readFileSync, existsSync } from "fs";
@@ -30,8 +30,14 @@ function check(name: string, cond: unknown): void {
   }
 }
 
-// 1. 唯一扩展名为 .wardrobebackup
-check("唯一扩展名为 .wardrobebackup", LONG_TERM_BACKUP_EXTENSION === ".wardrobebackup");
+// 1. 主扩展名为 .wardrobebackup
+check("主扩展名为 .wardrobebackup", LONG_TERM_BACKUP_EXTENSION === ".wardrobebackup");
+// 1b. 兼容扩展名为 .wardrobebackup.zip（v1.1.34+ Android/QQ 自动改名后缀）
+check("兼容扩展名为 .wardrobebackup.zip", LONG_TERM_BACKUP_ZIP_FALLBACK_EXTENSION === ".wardrobebackup.zip");
+// 1c. isLongTermBackupFileName 同时接受两种扩展名
+check("isLongTermBackupFileName 接受 .wardrobebackup", isLongTermBackupFileName("衣橱穿搭助手-2026-06-25-08-14-26.wardrobebackup"));
+check("isLongTermBackupFileName 接受 .wardrobebackup.zip", isLongTermBackupFileName("衣橱穿搭助手-latest.wardrobebackup.zip"));
+check("isLongTermBackupFileName 拒绝非备份文件", !isLongTermBackupFileName("notes.txt"));
 
 // 2. backupVersion 固定 5
 check("backupVersion 固定 5", LATEST_BACKUP_VERSION === 5);

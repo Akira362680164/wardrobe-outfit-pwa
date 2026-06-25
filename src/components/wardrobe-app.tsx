@@ -1267,8 +1267,7 @@ export function WardrobeApp() {
           status: "已保存到默认长期备份目录",
           resultLabel:
             `保存位置：Download/衣橱穿搭助手备份\n` +
-            `最新备份：衣橱穿搭助手-latest.wardrobebackup\n` +
-            `历史备份：${result.timestampFileName}\n` +
+            `备份文件：${result.timestampFileName}\n` +
             `衣物：${itemCount} 件\n` +
             `套装：${outfitCount} 套\n` +
             `种草：${wishlistCount} 件\n` +
@@ -1443,7 +1442,7 @@ export function WardrobeApp() {
 
   async function restoreLongTermBackupData(backup: WardrobeBackup, fileName: string, operation: "restore_default" | "restore_picker" = "restore_default") {
     const preview: BackupRestorePreview = {
-      fileName: fileName || "衣橱穿搭助手-latest.wardrobebackup",
+      fileName: fileName || "衣橱穿搭助手-未知时间.wardrobebackup",
       appVersion: "",
       exportedAt: backup.exportedAt,
       itemCount: backup.items?.length ?? 0,
@@ -7335,7 +7334,7 @@ function SettingsView({
             </span>
             <span className="min-w-0">
               <span className="block text-sm font-semibold text-ink">从默认长期备份恢复</span>
-              <span className="mt-0.5 block text-[11px] text-ink/50">优先读取 Download/衣橱穿搭助手备份/衣橱穿搭助手-latest.wardrobebackup</span>
+              <span className="mt-0.5 block text-[11px] text-ink/50">读取 Download/衣橱穿搭助手备份 下的时间戳备份，按修改时间倒序</span>
             </span>
           </button>
         </div>

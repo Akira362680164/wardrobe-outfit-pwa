@@ -62,6 +62,9 @@ const ltbPkg = readFileSync(join(root, "src/lib/long-term-backup-package.ts"), "
 // 6. LONG_TERM_BACKUP_EXTENSION = ".wardrobebackup"
 check("LONG_TERM_BACKUP_EXTENSION = \".wardrobebackup\"",
   /export\s+const\s+LONG_TERM_BACKUP_EXTENSION\s*=\s*["']\.wardrobebackup["']/.test(ltbPkg));
+// 6b. LONG_TERM_BACKUP_ZIP_FALLBACK_EXTENSION = ".wardrobebackup.zip" (v1.1.34+)
+check("LONG_TERM_BACKUP_ZIP_FALLBACK_EXTENSION = \".wardrobebackup.zip\"",
+  /export\s+const\s+LONG_TERM_BACKUP_ZIP_FALLBACK_EXTENSION\s*=\s*["']\.wardrobebackup\.zip["']/.test(ltbPkg));
 
 // 7. LONG_TERM_BACKUP_DIR_LABEL
 check("LONG_TERM_BACKUP_DIR_LABEL = \"Download/衣橱穿搭助手备份\"",
@@ -225,6 +228,10 @@ console.log("\n=== LongTermBackupPlugin.java content ===");
 
 const plugin = readFileSync(join(root, "android/app/src/main/java/com/wardrobe/outfit/LongTermBackupPlugin.java"), "utf8");
 
+// 36b. Plugin MIME_TYPE is application/octet-stream (v1.1.34+ avoids auto .zip append)
+check("Plugin MIME_TYPE switched to application/octet-stream",
+  /private static final String MIME_TYPE = "application\/octet-stream"/.test(plugin));
+
 // 37. Plugin uses @CapacitorPlugin(name = "LongTermBackup")
 check("Plugin uses @CapacitorPlugin(name = \"LongTermBackup\")",
   /@CapacitorPlugin\s*\(\s*name\s*=\s*"LongTermBackup"\s*\)/.test(plugin));
@@ -264,6 +271,12 @@ check("Plugin listDefaultBackups returns files array",
 // 46. listDefaultBackups no longer uses filename as object key
 check("Plugin listDefaultBackups does not key files by filename",
   !/filesArray\.put\(\s*file\.getName\(\)\s*,/.test(plugin));
+// 46b. isBackupFileName helper accepts both extensions (v1.1.34+)
+check("Plugin defines isBackupFileName accepting both extensions",
+  /private boolean isBackupFileName\([\s\S]*?\.wardrobebackup[\s\S]*?\.wardrobebackup\.zip/.test(plugin));
+check("Plugin list filters use isBackupFileName",
+  /if\s*\(\s*!isBackupFileName\(name\)\)\s*continue/.test(plugin) &&
+  /listFiles\(\(dir,\s*name\)\s*->\s*isBackupFileName\(name\)\)/.test(plugin));
 
 // 47. openPickedBackup is implemented with ACTION_OPEN_DOCUMENT
 check("Plugin openPickedBackup uses ACTION_OPEN_DOCUMENT",
@@ -276,6 +289,9 @@ check("Plugin openPickedBackup is not fixed reject",
 // 49. commitSaveAsExport uses ACTION_CREATE_DOCUMENT
 check("Plugin commitSaveAsExport uses ACTION_CREATE_DOCUMENT",
   /Intent\.ACTION_CREATE_DOCUMENT/.test(plugin));
+// 49b. commitSaveAsExport setType uses application/octet-stream first (v1.1.34+)
+check("Plugin commitSaveAsExport prefers application/octet-stream",
+  /setType\("application\/octet-stream"\)/.test(plugin));
 
 // 50. Frontend listDefaultLongTermBackups supports array and object results
 check("Frontend listDefaultLongTermBackups normalizes array/object files",
@@ -294,10 +310,14 @@ console.log("\n=== getLongTermBackupTimestampFileName ===");
 // 53. getLongTermBackupTimestampFileName produces .wardrobebackup extension
 check("getLongTermBackupTimestampFileName produces .wardrobebackup extension",
   /\.wardrobebackup/.test(ltbPkg));
+// 53b. isLongTermBackupFileName accepts both extensions (v1.1.34+)
+check("isLongTermBackupFileName accepts both .wardrobebackup and .wardrobebackup.zip",
+  /LONG_TERM_BACKUP_ZIP_FALLBACK_EXTENSION/.test(ltbPkg) &&
+  /function isLongTermBackupFileName[\s\S]*?LONG_TERM_BACKUP_EXTENSION[\s\S]*?LONG_TERM_BACKUP_ZIP_FALLBACK_EXTENSION[\s\S]*?\}/.test(ltbPkg));
 
-// 54. sortLongTermBackupFiles puts latest first
-check("sortLongTermBackupFiles puts latest first",
-  /a\.isLatest.*return\s+-1/.test(ltbPkg));
+// 54. sortLongTermBackupFiles sorts by mtime only
+check("sortLongTermBackupFiles sorts by mtime descending only",
+  /return\s+\[\.\.\.files\]\.sort\(\(a,\s*b\)\s*=>\s*b\.mtime\s*-\s*a\.mtime\)/.test(ltbPkg));
 
 console.log("\n=== Old restoreBackupFromRaw deleted (v1.1.30) ===");
 
@@ -344,8 +364,10 @@ check("exportLongTermBackupToDefault result has webFallback flag",
 // 63. Native success result in wardrobe-app.tsx shows new text labels
 check("Native export success shows 保存位置",
   /保存位置：Download\/衣橱穿搭助手备份/.test(wardrobeApp));
-check("Native export success shows 最新备份",
-  /最新备份：衣橱穿搭助手-latest\.wardrobebackup/.test(wardrobeApp));
+check("Native export success shows 备份文件 line",
+  /备份文件：\$\{result\.timestampFileName\}/.test(wardrobeApp));
+check("Native export success no longer shows 最新备份 line",
+  !/最新备份：衣橱穿搭助手-latest\.wardrobebackup/.test(wardrobeApp));
 check("Native export success shows 衣物件数",
   /衣物：\$\{itemCount\}\s*件/.test(wardrobeApp));
 check("Native export success shows 套装数",
@@ -381,13 +403,18 @@ check("listDefaultLongTermBackups handles array form",
 check("listDefaultLongTermBackups handles object form via Object.values",
   /Object\.values\(rawFiles\)/.test(ltb));
 
-// 70. sortLongTermBackupFiles puts latest first
-check("sortLongTermBackupFiles in package puts latest first",
-  /a\.isLatest[\s\S]*?return\s+-1/.test(ltbPkg));
+// 70. sortLongTermBackupFiles no longer puts latest first
+check("sortLongTermBackupFiles in package ignores latest aliases",
+  !/a\.isLatest[\s\S]*?return\s+-1/.test(ltbPkg));
 
 // 71. Empty list text in wardrobe-app.tsx mentions .wardrobebackup
 check("Empty list text mentions .wardrobebackup",
   /默认长期备份目录中还没有\s*\.wardrobebackup\s*文件/.test(wardrobeApp));
+// 71b. Restore button no longer advertises 衣橱穿搭助手-latest.wardrobebackup
+check("Restore button caption no longer advertises latest alias",
+  !/优先读取 Download\/衣橱穿搭助手备份\/衣橱穿搭助手-latest\.wardrobebackup/.test(wardrobeApp));
+check("Restore button caption points at timestamp backups",
+  /读取 Download\/衣橱穿搭助手备份 下的时间戳备份/.test(wardrobeApp));
 
 // 72. openDefaultBackupFolder distinguishes empty vs error paths
 const openIdx2 = wardrobeApp.indexOf("async function openDefaultBackupFolder()");
@@ -412,6 +439,16 @@ const pickIdx = wardrobeApp.indexOf("async function pickBackupFile()");
 const pickSection = wardrobeApp.substring(pickIdx, pickIdx + 1000);
 check("pickBackupFile destructures fileName from restorePickedLongTermBackup",
   /const\s*\{\s*backup\s*,\s*fileName\s*\}\s*=\s*await\s+restorePickedLongTermBackup/.test(pickSection));
+
+// 72b. v1.1.34+ buildLongTermBackupEntries latestFileName mirrors timestampFileName
+check("buildLongTermBackupEntries latestFileName mirrors timestampFileName",
+  /latestFileName:\s*timestampFileName/.test(ltb));
+// 72c. restoreDefaultLongTermBackup requires an explicit fileName (no latest alias)
+check("restoreDefaultLongTermBackup rejects empty fileName",
+  /restoreDefaultLongTermBackup[\s\S]*?if\s*\(\s*!fileName\s*\)[\s\S]*?throw new Error\("请先从备份列表中选择要恢复的备份文件/.test(ltb));
+// 72d. listDefaultLongTermBackups uses isLongTermBackupFileName (accepts both extensions)
+check("listDefaultLongTermBackups uses isLongTermBackupFileName filter",
+  /isLongTermBackupFileName\(f\.name\)/.test(ltb));
 
 // 76. There is a pickLtbFileFromList function for picking from ltbFiles list
 check("pickLtbFileFromList function exists",
@@ -443,6 +480,15 @@ const openDefaultSec = plugin.substring(openDefaultIdx, openDefaultIdx + 1500);
 check("commitDefaultExport writes via MediaStore/File API helpers", /writeViaMediaStore/.test(commitDefaultSec) && /writeViaFileApi/.test(commitDefaultSec));
 check("listDefaultBackups reads via MediaStore/File API helpers", /listViaMediaStore/.test(listDefaultSec) && /listViaFileApi/.test(listDefaultSec));
 check("openDefaultBackup reads RELATIVE_PATH or BACKUP_DIR_NAME", /openViaMediaStore/.test(openDefaultSec) && /new\s+File\s*\(\s*downloadsDir\s*,\s*BACKUP_DIR_NAME\s*\)/.test(openDefaultSec));
+// 79b. openViaMediaStore has .zip fallback for QQ/系统 auto-renamed files
+check("openViaMediaStore falls back to .wardrobebackup.zip",
+  /queryMediaStoreInputStream\(resolver,\s*fileName\s*\+\s*"\.zip"\)/.test(plugin));
+// 79c. File API openDefaultBackup also tries .wardrobebackup.zip
+check("File API openDefaultBackup tries .zip fallback",
+  /targetFile\s*=\s*new File\s*\(\s*backupDir\s*,\s*fileName\s*\+\s*"\.zip"\s*\)/.test(plugin));
+// 79d. picker extension validation accepts .wardrobebackup.zip too
+check("Picked backup validation uses isBackupFileName",
+  /if\s*\(\s*!isBackupFileName\(displayName\)\s*\)/.test(plugin));
 
 // 80. commitDefaultExport writes both latest and timestamp files
 check("commitDefaultExport writes latest file",
@@ -452,6 +498,9 @@ check("commitDefaultExport writes timestamp file",
 check("commitDefaultExport creates both ZIPs",
   /createZipFromDirectory\s*\(\s*tempDir\s*,\s*latestZip\s*\)/.test(plugin) &&
   /createZipFromDirectory\s*\(\s*tempDir\s*,\s*timestampZip\s*\)/.test(plugin));
+// 80b. v1.1.34+ commitDefaultExport skips latest write when timestamp == latest
+check("commitDefaultExport skips latest write when names match",
+  /if\s*\(\s*timestampFileName\.equals\(latestFileName\)\s*\)\s*\{\s*return;\s*\}/.test(plugin));
 
 console.log("\n=== MainActivity plugin registration (commit2 §4.5 #8) ===");
 

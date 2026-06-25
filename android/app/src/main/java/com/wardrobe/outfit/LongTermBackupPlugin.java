@@ -45,7 +45,9 @@ public class LongTermBackupPlugin extends Plugin {
 
     private static final String BACKUP_DIR_NAME = "衣橱穿搭助手备份";
     private static final String RELATIVE_PATH = "Download/" + BACKUP_DIR_NAME + "/";
-    private static final String MIME_TYPE = "application/zip";
+    // ponytail: 改用 application/octet-stream 避免 Android 文件下载器在 DISPLAY_NAME
+    // 已带 .wardrobebackup 时仍强行追加 .zip 扩展名。
+    private static final String MIME_TYPE = "application/octet-stream";
     private static final String ERROR_READ_REQUIRES_PICKER = "DEFAULT_BACKUP_READ_REQUIRES_PICKER";
 
     // ZIP security limits
@@ -153,7 +155,9 @@ public class LongTermBackupPlugin extends Plugin {
             deleteDirectory(tempDir);
 
             JSObject result = new JSObject();
-            result.put("latestPath", latestFileName);
+            // ponytail: latest 与 timestamp 同名时 latestPath 留空字符串，
+            // 前端根据空值判断"无 latest 文件"。
+            result.put("latestPath", timestampFileName.equals(latestFileName) ? "" : latestFileName);
             result.put("timestampPath", timestampFileName);
             call.resolve(result);
         } catch (Exception e) {
@@ -173,7 +177,12 @@ public class LongTermBackupPlugin extends Plugin {
         }
         markMediaStoreComplete(resolver, timestampUri);
 
-        // Write latest file (replace existing)
+        // ponytail: 当 latestFileName 与 timestampFileName 相同（v1.1.34+ 默认行为），
+        // 不要再写第二份，避免覆盖用户真实的时间戳备份或出现"最新备份"歧义。
+        if (timestampFileName.equals(latestFileName)) {
+            return;
+        }
+        // Write latest file (replace existing) - 仅在 latest 与 timestamp 不一致时执行
         Uri existingUri = findMediaStoreFile(resolver, latestFileName);
         if (existingUri != null) {
             resolver.delete(existingUri, null, null);
@@ -228,8 +237,11 @@ public class LongTermBackupPlugin extends Plugin {
         File latestZip = new File(backupDir, latestFileName);
         File timestampZip = new File(backupDir, timestampFileName);
 
-        createZipFromDirectory(tempDir, latestZip);
         createZipFromDirectory(tempDir, timestampZip);
+        // ponytail: 同名时不再写第二份。
+        if (!timestampFileName.equals(latestFileName)) {
+            createZipFromDirectory(tempDir, latestZip);
+        }
     }
 
     @PluginMethod
@@ -260,11 +272,13 @@ public class LongTermBackupPlugin extends Plugin {
             pendingSaveAsSessions.put(call.getCallbackId(), tempDir);
             Intent intent = new Intent(Intent.ACTION_CREATE_DOCUMENT);
             intent.addCategory(Intent.CATEGORY_OPENABLE);
-            intent.setType("application/zip");
+            // ponytail: 主类型用 application/octet-stream，避免部分系统在 EXTRA_TITLE
+            // 已带 .wardrobebackup 时仍强行追加 .zip。
+            intent.setType("application/octet-stream");
             intent.putExtra(Intent.EXTRA_TITLE, fileName);
             intent.putExtra(Intent.EXTRA_MIME_TYPES, new String[] {
-                "application/zip",
                 "application/octet-stream",
+                "application/zip",
                 "application/x-zip-compressed",
                 "*/*"
             });
@@ -295,11 +309,15 @@ public class LongTermBackupPlugin extends Plugin {
         }
     }
 
+    // ponytail: 接受 .wardrobebackup 与系统/QQ 网盘追加的 .wardrobebackup.zip 两种扩展名。
+    private boolean isBackupFileName(String name) {
+        if (name == null) return false;
+        return name.endsWith(".wardrobebackup") || name.endsWith(".wardrobebackup.zip");
+    }
+
     private JSArray listViaMediaStore() {
         JSArray filesArray = new JSArray();
         ContentResolver resolver = getContext().getContentResolver();
-        String latestName = "衣橱穿搭助手-latest.wardrobebackup";
-
         try (Cursor cursor = resolver.query(
                 MediaStore.Downloads.EXTERNAL_CONTENT_URI,
                 new String[]{
@@ -313,7 +331,7 @@ public class LongTermBackupPlugin extends Plugin {
             if (cursor != null) {
                 while (cursor.moveToNext()) {
                     String name = cursor.getString(0);
-                    if (name == null || !name.endsWith(".wardrobebackup")) continue;
+                    if (!isBackupFileName(name)) continue;
                     long size = cursor.getLong(1);
                     long mtime = cursor.getLong(2) * 1000L;
                     JSObject fileInfo = new JSObject();
@@ -322,7 +340,7 @@ public class LongTermBackupPlugin extends Plugin {
                     fileInfo.put("size", size);
                     fileInfo.put("modifiedAt", mtime);
                     fileInfo.put("mtime", mtime);
-                    fileInfo.put("isLatest", name.equals(latestName));
+                    fileInfo.put("isLatest", false);
                     filesArray.put(fileInfo);
                 }
             }
@@ -337,10 +355,9 @@ public class LongTermBackupPlugin extends Plugin {
 
         if (!backupDir.exists()) return filesArray;
 
-        File[] files = backupDir.listFiles((dir, name) -> name.endsWith(".wardrobebackup"));
+        File[] files = backupDir.listFiles((dir, name) -> isBackupFileName(name));
         if (files == null) return filesArray;
 
-        String latestName = "衣橱穿搭助手-latest.wardrobebackup";
         for (File file : files) {
             JSObject fileInfo = new JSObject();
             fileInfo.put("name", file.getName());
@@ -349,7 +366,7 @@ public class LongTermBackupPlugin extends Plugin {
             fileInfo.put("size", file.length());
             fileInfo.put("modifiedAt", file.lastModified());
             fileInfo.put("mtime", file.lastModified());
-            fileInfo.put("isLatest", file.getName().equals(latestName));
+            fileInfo.put("isLatest", false);
             filesArray.put(fileInfo);
         }
         return filesArray;
@@ -375,6 +392,9 @@ public class LongTermBackupPlugin extends Plugin {
                 File downloadsDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS);
                 File backupDir = new File(downloadsDir, BACKUP_DIR_NAME);
                 File targetFile = new File(backupDir, fileName);
+                if (!targetFile.exists() && isBackupFileName(fileName) && !fileName.endsWith(".wardrobebackup.zip")) {
+                    targetFile = new File(backupDir, fileName + ".zip");
+                }
                 if (!targetFile.exists()) {
                     deleteDirectory(tempDir);
                     JSObject errorResult = new JSObject();
@@ -416,6 +436,15 @@ public class LongTermBackupPlugin extends Plugin {
 
     private InputStream openViaMediaStore(String fileName) throws Exception {
         ContentResolver resolver = getContext().getContentResolver();
+        // ponytail: 兼容 Android/QQ 把 .wardrobebackup 自动改名为 .wardrobebackup.zip 的情况。
+        InputStream stream = queryMediaStoreInputStream(resolver, fileName);
+        if (stream == null && isBackupFileName(fileName) && !fileName.endsWith(".wardrobebackup.zip")) {
+            stream = queryMediaStoreInputStream(resolver, fileName + ".zip");
+        }
+        return stream;
+    }
+
+    private InputStream queryMediaStoreInputStream(ContentResolver resolver, String fileName) throws Exception {
         try (Cursor cursor = resolver.query(
                 MediaStore.Downloads.EXTERNAL_CONTENT_URI,
                 new String[]{MediaStore.MediaColumns._ID},
@@ -561,7 +590,7 @@ public class LongTermBackupPlugin extends Plugin {
             }
 
             // Verify extension
-            if (!displayName.endsWith(".wardrobebackup")) {
+            if (!isBackupFileName(displayName)) {
                 deleteDirectory(tempDir);
                 readSessions.remove(tempDir.getAbsolutePath());
                 call.reject("请选择 .wardrobebackup 长期备份文件");

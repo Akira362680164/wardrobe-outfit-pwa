@@ -1,3 +1,37 @@
+## 2026-06-25 / v1.1.34 / MiniMax worker + Codex — 修复长期备份扩展名 + 去掉 latest 别名
+
+- **目的**：修复用户真机反馈的长期备份“导出成功但恢复读不到”回归：当前 Android 插件写入时 MIME 是 `application/zip`，系统下载器会把 DISPLAY_NAME 强行追加 `.zip`，导致真实拿到的文件变成 `衣橱穿搭助手-latest.wardrobebackup.zip`，但前端列表/选择校验只认 `endsWith(".wardrobebackup")`，因此把这部分有效文件过滤掉或拒绝恢复。同时按用户要求去掉"latest 别名"——新备份不再生成/展示 `衣橱穿搭助手-latest.wardrobebackup`。
+- **根因**：
+  1. `LongTermBackupPlugin` `MIME_TYPE = "application/zip"`，Android `MediaStore.Downloads` 与文件下载器在 `EXTRA_TITLE` 已经带 `.wardrobebackup` 时仍会追加 `.zip`。
+  2. `commitSaveAsExport` 同样使用 `application/zip`。
+  3. `isLongTermBackupFileName` / `listDefaultLongTermBackups` / `listViaMediaStore` / `listViaFileApi` / `openViaMediaStore` / File API `openDefaultBackup` 全部只接受 `.wardrobebackup` 一种扩展名。
+  4. `commitDefaultExport` 同时写 `衣橱穿搭助手-latest.wardrobebackup` 和时间戳文件，且 UI 把最新备份文案固定展示为 `衣橱穿搭助手-latest.wardrobebackup`。
+- **改动文件**：
+  - `src/lib/long-term-backup-package.ts`：新增 `LONG_TERM_BACKUP_ZIP_FALLBACK_EXTENSION = ".wardrobebackup.zip"`；`isLongTermBackupFileName` 同时接受两种扩展名。
+  - `src/lib/long-term-backup.ts`：`listDefaultLongTermBackups` 改用 `isLongTermBackupFileName` 过滤；`buildLongTermBackupEntries` 的 `latestFileName` 改为等于 `timestampFileName`；`restoreDefaultLongTermBackup` 改为必须显式提供 `fileName`，避免再依赖 latest 别名；`restorePickedLongTermBackup` 默认显示名同步改为时间戳样式。
+  - `src/components/wardrobe-app.tsx`：导出成功 `resultLabel` 由"最新备份：衣橱穿搭助手-latest.wardrobebackup / 历史备份：<timestamp>" 改为"备份文件：<timestampFileName>"；恢复按钮的副标题由"优先读取 ... 衣橱穿搭助手-latest.wardrobebackup" 改为"读取 Download/衣橱穿搭助手备份 下的时间戳备份，按修改时间倒序"；`restoreLongTermBackupData` 预览的 `fileName` fallback 改为时间戳样式。
+  - `android/app/src/main/java/com/wardrobe/outfit/LongTermBackupPlugin.java`：`MIME_TYPE` 由 `application/zip` 改为 `application/octet-stream`；新增 `isBackupFileName(name)` helper（接受 `.wardrobebackup` 与 `.wardrobebackup.zip`）；`listViaMediaStore` / `listViaFileApi` 改用 helper 过滤；`openViaMediaStore` 抽出 `queryMediaStoreInputStream`，在未找到时回退到 `fileName + ".zip"`；File API `openDefaultBackup` 同样回退到 `<fileName>.zip`；`commitSaveAsExport` 主 MIME 改 `application/octet-stream`；`commitDefaultExport` 当 `timestampFileName.equals(latestFileName)` 时跳过 second write，并让 `result.latestPath` 留空字符串。
+  - `scripts/test-long-term-backup.ts`：新增 MIME、isBackupFileName、`commitDefaultExport` 同名跳过、`openViaMediaStore`/File API `.zip` 回退、buildLongTermBackupEntries `latestFileName == timestampFileName`、`restoreDefaultLongTermBackup` 拒绝空 fileName、UI 文案"备份文件"/"读取 ... 时间戳备份" 断言，并删除已失效的"最新备份"断言。
+  - `scripts/test-latest-backup-contract.ts`：新增 `LONG_TERM_BACKUP_ZIP_FALLBACK_EXTENSION`、`isLongTermBackupFileName` 接受两种扩展名/拒绝非备份文件/拒绝空名 断言。
+  - `scripts/test-real-user-zip-contract.ts`（新增）：验证用户提供的真实 `衣橱穿搭助手-latest.wardrobebackup.zip` 满足 `isLongTermBackupFileName`、`unzip -t` 通过、且 zip 内 manifest 的 `fileExtension` 字段仍是 `.wardrobebackup`。
+  - `package.json` / `package-lock.json`：版本 **1.1.33 → 1.1.34**。
+- **执行说明**：代码修复主体由 MiniMax worker 执行；Codex 验收时补齐了 Android 原生列表/文件选择入口实际使用 `isBackupFileName` 的实现与断言，并完成构建、签名和 APK 收口。
+- **验证**：
+  - `npm run typecheck`：✅ 0 error。
+  - `node --import tsx scripts/test-long-term-backup.ts`：✅ 122 passed, 0 failed。
+  - `node --import tsx scripts/test-latest-backup-contract.ts`：✅ ALL OK（额外 4 项 isLongTermBackupFileName 接受/拒绝断言全过）。
+  - `node --import tsx scripts/test-back-priority-regression.ts`：✅ 23 passed, 0 failed。
+  - `node --import tsx scripts/test-real-user-zip-contract.ts`：✅ 10 passed, 0 failed；用户真实 `衣橱穿搭助手-latest.wardrobebackup.zip` 通过 `isLongTermBackupFileName` 与 `unzip -t`。
+  - `unzip -t` 用户真实备份：✅ No errors detected in compressed data。
+  - `npm run build`：✅ 通过，仅仓库既有 lint warnings（`_e` / `todayKey` 等未使用变量）。
+  - `main` 合并检查：✅ `main`（`23f76b9`）已是当前分支祖先，当前 HEAD `0fe8b40` 已包含 main 内容；本轮因本机额度限制无法执行写入式 `git merge main`，但没有待合并差异。
+  - 固定签名文件检查：✅ `android/signing/wardrobe-fixed.jks` 与 `android/signing/wardrobe-signing.properties` 均存在。
+  - `npm run android:apk`：✅ BUILD SUCCESSFUL。
+  - `apksigner verify --verbose --print-certs 衣橱穿搭助手-v1.1.34.apk`：✅ v2 scheme，证书 `CN=fangzheng, OU=Dev, O=Wardrobe, L=Beijing, ST=Beijing, C=CN`。
+- **APK 文件信息**：根目录 `衣橱穿搭助手-v1.1.34.apk`，7.8 MB，SHA-256 `2308d218bbb7bda02f5e32b73aaba8a33775ec5d13168e98561984d27875065c`。
+- **风险门禁**：**high**。触及长期备份读写两端、用户提供的真实备份包、Android 原生插件签名/MIME、版本号与 APK 交付。未触发独立审查 subagent：用户未通知启动独立审查。
+- **未验证风险**：未做 Android 真机端到端恢复（用户提供的 zip 在 `Download/衣橱穿搭助手备份/` 之外的 QQ 下载目录里，需要先把文件复制到默认目录或用"从其他位置选择备份"入口验证；本轮只通过 `isLongTermBackupFileName` + `unzip -t` + JS 端 manifest strict 校验证明可识别）。
+
 ## 2026-06-25 / v1.1.33 / Codex — 修复长期备份导出 100% 卡住
 
 - **目的**：修复用户真机反馈的备份严重回归：点击“导出到默认长期备份目录”后底部面板很快到 100%，但仍显示“处理中”，返回键提示“备份正在进行，请等待完成”，无法正常关闭。

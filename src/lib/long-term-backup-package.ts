@@ -2,7 +2,12 @@ import type { WardrobeBackup } from "@/lib/types";
 
 // Long-term backup package constants
 export const LONG_TERM_BACKUP_EXTENSION = ".wardrobebackup";
+// ponytail: Android 文件下载器在 MIME=application/zip 时会强制把扩展名改成 .zip，
+// 真实从手机/QQ 拿到的文件会变成 .wardrobebackup.zip。
+// 读写两端必须接受两种扩展名，文件内容仍是 ZIP 备份包。
+export const LONG_TERM_BACKUP_ZIP_FALLBACK_EXTENSION = ".wardrobebackup.zip";
 export const LONG_TERM_BACKUP_DIR_LABEL = "Download/衣橱穿搭助手备份";
+// ponytail: latest 别名只保留为只读兼容字段，不再有 UI 展示或新建路径。
 export const LONG_TERM_BACKUP_LATEST_FILE_NAME = "衣橱穿搭助手-latest.wardrobebackup";
 export const LONG_TERM_BACKUP_MANIFEST_FILE = "manifest.json";
 export const LONG_TERM_BACKUP_METADATA_FILE = "metadata.json";
@@ -76,20 +81,16 @@ export function assertLongTermBackupManifest(input: unknown): LongTermBackupMani
   return m as unknown as LongTermBackupManifest;
 }
 
-// Check if filename is a long-term backup file
+// Check if filename is a long-term backup file (accepts both .wardrobebackup and .wardrobebackup.zip)
 export function isLongTermBackupFileName(fileName: string): boolean {
-  return fileName.endsWith(LONG_TERM_BACKUP_EXTENSION);
+  if (!fileName) return false;
+  return fileName.endsWith(LONG_TERM_BACKUP_EXTENSION) ||
+    fileName.endsWith(LONG_TERM_BACKUP_ZIP_FALLBACK_EXTENSION);
 }
 
-// Sort backup files: latest first, then by mtime descending
+// Sort backup files by mtime descending. Legacy latest aliases are treated as normal files.
 export function sortLongTermBackupFiles(files: LongTermBackupFileEntry[]): LongTermBackupFileEntry[] {
-  return [...files].sort((a, b) => {
-    // latest always first
-    if (a.isLatest && !b.isLatest) return -1;
-    if (!a.isLatest && b.isLatest) return 1;
-    // then by mtime descending
-    return b.mtime - a.mtime;
-  });
+  return [...files].sort((a, b) => b.mtime - a.mtime);
 }
 
 // Build result from long-term backup entries
