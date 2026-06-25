@@ -10,6 +10,16 @@
 - **待续**：v1.1.36 尚未打 APK，共享父组件重构未在真机上回归
 - **未验证风险**：未在远端 `git clone` 二次校验；签名密钥 `android/signing/wardrobe-fixed.jks` 没公开（属预期）；staging 使用 `/tmp` 而非默认 `~/Documents`（因后者 AFP 权限导致 trash 失败）
 
+## 2026-06-25 / v1.1.36 / Claude Code — APK 交付
+
+- **APK 文件**：`衣橱穿搭助手-v1.1.36.apk`
+- **大小**：7.8 MB
+- **SHA-256**：`47d71719807dc58c19f2126882b9a10fdce242a478460d4c340bf44af6adaa9a`
+- **签名**：固定签名 `CN=fangzheng`（`android/signing/wardrobe-fixed.jks`，alias `wardrobe-fixed`）
+- **构建命令**：`npm run android:apk` → `cp android/app/build/outputs/apk/release/app-release.apk 衣橱穿搭助手-v1.1.36.apk`
+- **风险门禁**：**high**（APK 交付）。未触发独立审查 subagent：用户未通知。
+- **未验证风险**：未做 Android 真机安装回归；未做浏览器实操回归；共享父组件重构（阴影修复、新壳组件）需在真机验证无灰带/晕染
+
 ## 2026-06-25 / v1.1.36 / Claude Code — 共享父组件重构与阴影修复
 
 - **目的**：建立三类共享父组件（瀑布流卡片、详情页、编辑页），统一衣橱与种草两类页面的结构、间距、圆角和阴影；移除首页大面积灰影。
