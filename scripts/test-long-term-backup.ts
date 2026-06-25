@@ -15,9 +15,21 @@ function check(name: string, cond: boolean, detail?: string) {
 
 console.log("\n=== Long-term backup file existence ===");
 
+// 0a. src/lib/backup-data.ts exists (new in v1.1.30)
+check("src/lib/backup-data.ts exists",
+  existsSync(join(root, "src/lib/backup-data.ts")));
+
+// 0b. src/lib/backup-restore.ts exists (new in v1.1.30)
+check("src/lib/backup-restore.ts exists",
+  existsSync(join(root, "src/lib/backup-restore.ts")));
+
 // 1. src/lib/long-term-backup.ts exists
 check("src/lib/long-term-backup.ts exists",
   existsSync(join(root, "src/lib/long-term-backup.ts")));
+
+// 1b. src/lib/backup.ts does NOT exist (deleted in v1.1.30)
+check("src/lib/backup.ts does NOT exist",
+  !existsSync(join(root, "src/lib/backup.ts")));
 
 // 2. src/lib/long-term-backup-package.ts exists
 check("src/lib/long-term-backup-package.ts exists",
@@ -111,6 +123,10 @@ console.log("\n=== wardrobe-app.tsx backup UI ===");
 
 const wardrobeApp = readFileSync(join(root, "src/components/wardrobe-app.tsx"), "utf8");
 
+// 19b. confirmRestore function exists in wardrobe-app.tsx (new in v1.1.30)
+check("confirmRestore function exists in wardrobe-app.tsx",
+  /async function confirmRestore/.test(wardrobeApp));
+
 // 20. Settings page shows "数据备份与恢复"
 check("Settings page shows \"数据备份与恢复\"",
   /数据备份与恢复/.test(wardrobeApp));
@@ -135,41 +151,41 @@ check("Settings page shows \"另存为...\"",
 check("Settings page shows \"从其他位置选择备份...\"",
   /从其他位置选择备份\.\.\./.test(wardrobeApp));
 
-// 26. Settings page shows "高级恢复旧版备份"
-check("Settings page shows \"高级恢复旧版备份\"",
-  /高级恢复旧版备份/.test(wardrobeApp));
+// 26. Settings page does NOT show "高级恢复旧版备份" (old backup UI deleted in v1.1.30)
+check("Settings page does NOT show \"高级恢复旧版备份\"",
+  !/高级恢复旧版备份/.test(wardrobeApp));
 
 console.log("\n=== wardrobe-app.tsx forbidden strings ===");
 
-// 27. Main backup section does NOT show "应用内备份" in main flow
-check("Main backup section does NOT show \"应用内备份\" in main flow",
-  !/应用内备份/.test(wardrobeApp.split("高级恢复旧版备份")[0]));
+// 27. wardrobe-app.tsx does NOT contain "应用内备份" (old backup system deleted in v1.1.30)
+check("wardrobe-app.tsx does NOT contain \"应用内备份\"",
+  !/应用内备份/.test(wardrobeApp));
 
-// 28. Main backup section does NOT show "默认备份文件夹" in main flow
-check("Main backup section does NOT show \"默认备份文件夹\" in main flow",
-  wardrobeApp.split("高级恢复旧版备份")[0].indexOf("默认备份文件夹") === -1);
+// 28. wardrobe-app.tsx does NOT contain "默认备份文件夹"
+check("wardrobe-app.tsx does NOT contain \"默认备份文件夹\"",
+  !/默认备份文件夹/.test(wardrobeApp));
 
-// 29. Main backup section does NOT show "从默认目录恢复" in main flow
-check("Main backup section does NOT show \"从默认目录恢复\" in main flow",
-  wardrobeApp.split("高级恢复旧版备份")[0].indexOf("从默认目录恢复") === -1);
+// 29. wardrobe-app.tsx does NOT contain "从默认目录恢复"
+check("wardrobe-app.tsx does NOT contain \"从默认目录恢复\"",
+  !/从默认目录恢复/.test(wardrobeApp));
 
-// 30. Main backup section does NOT show "Documents/WardrobeBackups" in main flow
-check("Main backup section does NOT show \"Documents/WardrobeBackups\" in main flow",
-  wardrobeApp.split("高级恢复旧版备份")[0].indexOf("Documents/WardrobeBackups") === -1);
+// 30. wardrobe-app.tsx does NOT contain "Documents/WardrobeBackups" (deleted in v1.1.30)
+check("wardrobe-app.tsx does NOT contain \"Documents/WardrobeBackups\"",
+  !/Documents\/WardrobeBackups/.test(wardrobeApp));
 
-console.log("\n=== BackupDialogState kind values ===");
+console.log("\n=== BackupOperationState phase values ===");
 
-// 31. BackupDialogState includes "ltb_export"
-check("BackupDialogState kind includes \"ltb_export\"",
-  /kind:\s*"ltb_export"/.test(wardrobeApp));
+// 31. BackupOperationState type exists
+check("BackupOperationState type exists",
+  /type BackupOperationState/.test(wardrobeApp));
 
-// 32. BackupDialogState includes "ltb_scan"
-check("BackupDialogState kind includes \"ltb_scan\"",
-  /kind:\s*"ltb_scan"/.test(wardrobeApp));
+// 32. BackupOperationState uses "exporting" phase
+check("BackupOperationState includes phase \"exporting\"",
+  /phase:\s*"exporting"/.test(wardrobeApp));
 
-// 33. BackupDialogState includes "ltb_confirm"
-check("BackupDialogState kind includes \"ltb_confirm\"",
-  /kind:\s*"ltb_confirm"/.test(wardrobeApp));
+// 33. BackupOperationState uses "awaiting_confirmation" phase
+check("BackupOperationState includes phase \"awaiting_confirmation\"",
+  /phase:\s*"awaiting_confirmation"/.test(wardrobeApp));
 
 console.log("\n=== exportBackup function ===");
 
@@ -177,12 +193,9 @@ console.log("\n=== exportBackup function ===");
 check("exportBackup calls exportLongTermBackupToDefault",
   /exportLongTermBackupToDefault[\s\S]*?\{/.test(wardrobeApp));
 
-// 35. exportBackup function does NOT call saveBackupToDefaultFolder
-const exportIdx = wardrobeApp.indexOf("async function exportBackup()");
-const nextFuncIdx = wardrobeApp.indexOf("async function openDefaultBackupFolder()");
-const exportSection = wardrobeApp.substring(exportIdx, nextFuncIdx > 0 ? nextFuncIdx : exportIdx + 2000);
-check("exportBackup does NOT call saveBackupToDefaultFolder",
-  !/saveBackupToDefaultFolder/.test(exportSection));
+// 35. wardrobe-app.tsx does NOT contain saveBackupToDefaultFolder (deleted in v1.1.30)
+check("wardrobe-app.tsx does NOT contain saveBackupToDefaultFolder",
+  !/saveBackupToDefaultFolder/.test(wardrobeApp));
 
 // 36. openDefaultBackupFolder function calls listDefaultLongTermBackups
 check("openDefaultBackupFolder calls listDefaultLongTermBackups",
@@ -266,11 +279,11 @@ check("getLongTermBackupTimestampFileName produces .wardrobebackup extension",
 check("sortLongTermBackupFiles puts latest first",
   /a\.isLatest.*return\s+-1/.test(ltbPkg));
 
-console.log("\n=== restoreBackupFromRaw error handling ===");
+console.log("\n=== Old restoreBackupFromRaw deleted (v1.1.30) ===");
 
-// 55. restoreBackupFromRaw checks for metadata.json
-check("restoreBackupFromRaw checks sourceName === \"metadata.json\"",
-  /sourceName\s*===\s*["']metadata\.json["']/.test(wardrobeApp));
+// 55. wardrobe-app.tsx does NOT contain restoreBackupFromRaw
+check("wardrobe-app.tsx does NOT contain restoreBackupFromRaw",
+  !/\brestoreBackupFromRaw\b/.test(wardrobeApp));
 
 // 56. Error message for wrong file type includes .wardrobebackup
 check("Error message for wrong file includes .wardrobebackup",
@@ -284,9 +297,9 @@ console.log("\n=== Native fallback throws when plugin missing (commit2 §4.4.1) 
 check("long-term-backup.ts exports assertNativeLongTermBackupAvailable",
   /export\s+function\s+assertNativeLongTermBackupAvailable/.test(ltb));
 
-// 58. LTB_NATIVE_PLUGIN_MISSING_MESSAGE is the fixed string
+// 58. LTB_NATIVE_PLUGIN_MISSING_MESSAGE is the fixed string (updated v1.1.30)
 check("LTB_NATIVE_PLUGIN_MISSING_MESSAGE is fixed text",
-  /Android 长期备份插件未注册，无法导出。请重新同步并打包 APK。/.test(ltb));
+  /Android 长期备份服务不可用。请安装包含长期备份插件的最新 APK。/.test(ltb));
 
 // 59. LTB_NATIVE_PLUGIN_METHOD_MISSING_MESSAGE is the fixed string
 check("LTB_NATIVE_PLUGIN_METHOD_MISSING_MESSAGE is fixed text",
@@ -326,14 +339,13 @@ check("Native export success shows 图片数",
 check("wardrobe-app.tsx no longer references WEB_DEBUG_DOWNLOAD",
   !/WEB_DEBUG_DOWNLOAD/.test(wardrobeApp));
 
-// 65. wardrobe-app.tsx no longer mentions "JSON 调试导出" in user-facing main flow
-const mainBackupFlow = wardrobeApp.split("高级恢复旧版备份")[0];
-check("Main backup flow no longer mentions JSON 调试导出",
-  !/JSON 调试导出/.test(mainBackupFlow));
+// 65. wardrobe-app.tsx no longer contains "JSON 调试导出"
+check("wardrobe-app.tsx no longer contains JSON 调试导出",
+  !/JSON 调试导出/.test(wardrobeApp));
 
-// 66. wardrobe-app.tsx no longer mentions "ZIP 包验证" in user-facing main flow
-check("Main backup flow no longer mentions ZIP 包验证",
-  !/ZIP 包验证/.test(mainBackupFlow));
+// 66. wardrobe-app.tsx no longer mentions "ZIP 包验证"
+check("wardrobe-app.tsx no longer mentions ZIP 包验证",
+  !/ZIP 包验证/.test(wardrobeApp));
 
 // 67. Browser fallback text in wardrobe-app.tsx is the fixed 调试 message
 check("Browser fallback shows debug message with 不能验证",
@@ -365,15 +377,15 @@ check("openDefaultBackupFolder has separate catch block",
 
 console.log("\n=== Restore confirm uses real filename (commit2 §4.4.4) ===");
 
-// 73. restoreLongTermBackupData accepts a fileName parameter
+// 73. restoreLongTermBackupData accepts fileName and operation parameters
 const restoreFuncIdx = wardrobeApp.indexOf("async function restoreLongTermBackupData(");
 const restoreSection = wardrobeApp.substring(restoreFuncIdx, restoreFuncIdx + 2000);
 check("restoreLongTermBackupData accepts a fileName parameter",
   /async function restoreLongTermBackupData\(\s*backup:\s*WardrobeBackup\s*,\s*fileName:\s*string/.test(restoreSection));
 
-// 74. previewData.fileName uses the passed fileName (not hard-coded latest)
-check("previewData.fileName uses fileName argument",
-  /previewData:\s*\{[\s\S]*?fileName:\s*fileName/.test(restoreSection));
+// 74. preview uses BackupRestorePreview with fileName field
+check("preview uses fileName argument",
+  /fileName:\s*fileName/.test(restoreSection));
 
 // 75. restorePickedLongTermBackup is called destructured as { backup, fileName }
 const pickIdx = wardrobeApp.indexOf("async function pickBackupFile()");

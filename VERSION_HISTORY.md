@@ -1,3 +1,23 @@
+## 2026-06-25 / v1.1.30 / Claude Code — P0 修复：最新版长期备份与恢复
+
+- **目的**：彻底删除旧版备份恢复方案（JSON、backup-* 文件夹），统一为 `.wardrobebackup` ZIP 格式，修复 Android 长期备份插件桥接、MediaStore 写入、ZIP 安全校验，重写备份恢复 UI 状态机。
+- **改动文件**：
+  - `src/lib/backup-data.ts`：新增，唯一备份数据层（v5 格式），提供 `createLatestBackup` / `parseLatestBackupMetadata`。
+  - `src/lib/backup-restore.ts`：新增，备份引用校验 + Dexie 八表原子恢复。
+  - `src/lib/backup.ts`：删除，旧版全部备份函数已删除。
+  - `src/lib/long-term-backup.ts`：重写插件桥接（`registerPlugin` 替代 `Capacitor.getPlugin`），严格图片还原。
+  - `src/lib/long-term-backup-package.ts`：Manifest 严格校验（packageVersion=1，backupVersion=5，appName 固定）。
+  - `src/lib/types.ts`：`WardrobeBackup.version` 从 `1|2|3|4|5` 收口为 `5`。
+  - `android/app/src/main/java/com/wardrobe/outfit/LongTermBackupPlugin.java`：MediaStore.Downloads + RELATIVE_PATH + IS_PENDING（API 29+），ZIP 安全（Zip Slip 规范路径校验、条目白名单、大小/数量限制、临时目录清理）。
+  - `android/app/src/main/AndroidManifest.xml`：存储权限限制 `maxSdkVersion="28"`。
+  - `src/components/wardrobe-app.tsx`：`BackupDialogState` 替换为 `BackupOperationState` 可辨识联合类型，`pendingRestoreRef` 避免 Base64 入 React state，`confirmRestore` 接入原子事务，`getRuntimeAppVersion` 替代硬编码版本号，删除旧通知 useEffect、旧备份 UI、旧函数（`importBackup`、`restoreBackupFromRaw`、`restoreV4Backup`）。
+  - `package.json`：版本 1.1.29 → 1.1.30，新增 `test:logic:latest-backup-contract`、`test:logic:latest-backup-roundtrip`、`test:logic:latest-backup-security`，删除 `test:logic:foundation`、`test:logic:backup-import-export`。
+  - `scripts/test-latest-backup-contract.ts`：新增，契约测试。
+  - `scripts/test-latest-backup-restore-roundtrip.ts`：新增，Dexie 往返测试。
+  - `scripts/test-latest-backup-native-security.ts`：新增，Android 安全静态检查。
+  - `scripts/test-foundation-infra.ts`、`scripts/test-backup-import-export.ts`：删除。
+- **版本**：`package.json` **1.1.30**。
+
 ## 2026-06-25 / v1.1.29 / Claude Code — 固定签名重置为方正个人签名 + APK 交付
 
 - **目的**：固定签名文件在 v1.1.29 工作区恢复时丢失；用户确认重置签名并升级为个人证书（CN=fangzheng），备份至 `~/Documents/wardrobe-signing-backup/`，重新打包 APK。
