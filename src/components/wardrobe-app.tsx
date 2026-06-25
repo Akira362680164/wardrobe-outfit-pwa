@@ -106,23 +106,7 @@ import {
   SelectableChipGroup,
   RangeField,
 } from "@/components/wardrobe-form-controls";
-import {
- DEFAULT_BACKUP_FOLDER_LABEL,
- createBackup,
- exportBackupV4,
- isV4Metadata,
- isNativeBackupFolderAvailable,
- listDefaultBackupFiles,
- listV4BackupFolders,
- parseBackup,
- readDefaultBackupFile,
- readV4ImageFile,
- readV4Metadata,
- resolveV4Tokens,
- saveBackupToDefaultFolder,
- type BackupFileEntry,
- type V4BackupFolder,
-} from "@/lib/backup";
+import { validateLatestBackupReferences, applyLatestWardrobeBackup, type BackupRestorePreview } from "@/lib/backup-restore";
 import {
  LONG_TERM_BACKUP_EXTENSION,
  LONG_TERM_BACKUP_DIR_LABEL,
@@ -308,29 +292,67 @@ export interface CaptureCropJob {
   onConfirm?: (newImageDataUrl: string, newBox: NormalizedCropBox) => void;
 }
 
-interface BackupDialogState {
-  kind: "ltb_export" | "ltb_scan" | "ltb_select" | "ltb_import" | "ltb_confirm" | "folder" | "import";
-  title: string;
-  status: string;
-  progress: number;
-  completed: boolean;
-  error?: string;
-  resultLabel?: string;
-  files?: BackupFileEntry[];
-  ltbFiles?: LongTermBackupFileEntry[];
-  allowManualPick?: boolean;
-  // For confirm state
-  previewData?: {
-    fileName: string;
-    exportedAt: string;
-    itemCount: number;
-    outfitCount: number;
-    wishlistCount: number;
-    planCount: number;
-    travelPlanCount: number;
-    packingCount: number;
-    imageCount: number;
-  };
+type BackupOperationState =
+  | {
+      phase: "exporting";
+      operation: "export_default" | "export_save_as";
+      title: string;
+      status: string;
+      progress: number;
+    }
+  | {
+      phase: "scanning";
+      operation: "restore_default";
+      title: string;
+      status: string;
+      progress: number;
+    }
+  | {
+      phase: "backup_list";
+      operation: "restore_default";
+      files: LongTermBackupFileEntry[];
+    }
+  | {
+      phase: "reading";
+      operation: "restore_default" | "restore_picker";
+      title: string;
+      status: string;
+      progress: number;
+    }
+  | {
+      phase: "awaiting_confirmation";
+      operation: "restore_default" | "restore_picker";
+      preview: BackupRestorePreview;
+    }
+  | {
+      phase: "restoring";
+      operation: "restore_default" | "restore_picker";
+      title: string;
+      status: string;
+      progress: number;
+    }
+  | {
+      phase: "success";
+      operation: "export_default" | "export_save_as" | "restore_default" | "restore_picker";
+      title: string;
+      status: string;
+      resultLabel?: string;
+    }
+  | {
+      phase: "failed";
+      operation: "export_default" | "export_save_as" | "restore_default" | "restore_picker";
+      title: string;
+      error: string;
+      retryable: boolean;
+    };
+
+async function getRuntimeAppVersion(): Promise<string> {
+  try {
+    const info = await App.getInfo();
+    return info.version || "1.1.30";
+  } catch {
+    return "1.1.30";
+  }
 }
 
 async function withKeepAwake<T>(fn: () => Promise<T>): Promise<T> {
@@ -469,9 +491,12 @@ export function WardrobeApp() {
    const lightbox = useWardrobeLightboxController();
   const { expandedImage } = lightbox;
  	 const [showExitDialog, setShowExitDialog] = useState(false);
- 	 const [backupDialog, setBackupDialog] = useState<BackupDialogState | null>(null);
+ 	 const [backupOperation, setBackupOperation] = useState<BackupOperationState | null>(null);
+  const pendingRestoreRef = useRef<{
+    backup: WardrobeBackup;
+    preview: BackupRestorePreview;
+  } | null>(null);
  	 const [showCreateSheet, setShowCreateSheet] = useState(false);
-  const backupInputRef = useRef<HTMLInputElement>(null);
   // v0.9.24-dev: onClearAllData 进行中锁, lift 到 WardrobeApp 级, 父级 backButton handler
   // (line 297 下方) 也要感知, 否则在清空中按 Android 返回键会同时弹"退出 App?"对话框
   // (subagent I-3)。ref 锁用于 click handler / backButton handler 的同步守卫 (避免 React
@@ -602,20 +627,18 @@ export function WardrobeApp() {
       logTopLevelBack("lightbox");
       return true;
     }
-    if (backupDialog) {
-      const backupInProgress = !backupDialog.completed && (
-        backupDialog.kind === "ltb_export" ||
-        backupDialog.kind === "ltb_scan" ||
-        backupDialog.kind === "ltb_import" ||
-        backupDialog.kind === "folder" ||
-        backupDialog.kind === "import"
-      );
+    if (backupOperation) {
+      const backupInProgress =
+        backupOperation.phase === "exporting" ||
+        backupOperation.phase === "scanning" ||
+        backupOperation.phase === "reading" ||
+        backupOperation.phase === "restoring";
       if (backupInProgress) {
         showMessage("备份正在进行，请等待完成", "info");
         logTopLevelBack("backup_in_progress");
         return true;
       }
-      setBackupDialog(null);
+      setBackupOperation(null);
       logTopLevelBack("backup");
       return true;
     }
@@ -664,7 +687,7 @@ export function WardrobeApp() {
     logTopLevelBack("exit");
     return true;
   }, [
-    backupDialog,
+    backupOperation,
     captureCropJob,
     expandedImage,
     lightbox,
@@ -759,44 +782,6 @@ export function WardrobeApp() {
     };
   }, []);
 
-  // v0.9.27-dev: 备份导出 / 导入 / 读取长期备份的进度同步到 Android 系统通知栏。
-  //  - kind === "export" → backup_export; kind === "import" → backup_import; kind === "folder" → 暂不通知 (秒级操作, 没必要)。
-  //  - 节流由 shouldSyncNotification 控: 1% 整数变化或 ≥ 800ms 间隔才发。
-  //  - 完成后调 completeProgressNotification (1.5s 自动消失); 失败调 failProgressNotification (2.5s 自动消失)。
-  useEffect(() => {
-    if (!isNativeProgressNotificationSupported()) return;
-    if (!backupDialog) return;
-    if (backupDialog.kind === "folder") {
-      // 读取长期备份是秒级操作, 不发系统通知, 保持 App 内 sheet 即可。
-      return;
-    }
-    const taskId: NativeProgressTaskId = backupDialog.kind === "ltb_export" ? "backup_export" : "backup_import";
-    const title = backupDialog.kind === "ltb_export" ? "正在导出备份" : "正在导入备份";
-    const status = backupDialog.status;
-    const progress = Math.max(0, Math.min(100, Math.round(backupDialog.progress)));
-
-    if (backupDialog.completed && progress >= 100) {
-      // 完成 / 失败终态: 一次显式同步, complete 会自带 1.5s/2.5s auto-dismiss。
-      if (backupDialog.error) {
-        void failProgressNotification(taskId, title, summarizeErrorMessage(backupDialog.error, "请稍后重试"));
-      } else {
-        const finalText = backupDialog.kind === "ltb_export" ? "备份已保存" : "衣橱数据已恢复";
-        void completeProgressNotification(taskId, title, finalText);
-      }
-      resetThrottle(taskId);
-      return;
-    }
-
-    if (!shouldSyncNotification(taskId, progress, status)) return;
-    markSynced(taskId, progress, status);
-    void updateProgressNotification({
-      taskId,
-      title,
-      text: status,
-      percent: progress,
-      ongoing: true,
-    });
-  }, [backupDialog]);
 
 
   function patchItemInItemsState(itemId: number, patch: Partial<WardrobeItem>) {
@@ -1235,409 +1220,255 @@ export function WardrobeApp() {
     }
   }
 
-	  async function updateBackupDialog(patch: Partial<BackupDialogState>) {
-	    setBackupDialog((current) => (current ? { ...current, ...patch } : current));
-	    await waitForNextFrame();
-	  }
+	  async function updateBackupOperation(patch: Record<string, unknown>) {
+    setBackupOperation((current) => (current ? { ...current, ...patch } as BackupOperationState : current));
+    await waitForNextFrame();
+  }
 
-	  async function exportBackup() {
-	    if (backupDialog && !backupDialog.completed) return;
-	    setBackupDialog({
-	      kind: "ltb_export",
-	      title: "正在导出长期备份",
-	      status: "正在整理本机衣橱数据",
-	      progress: 8,
-	      completed: false,
-	    });
-	    await waitForNextFrame();
+  async function exportBackup() {
+    if (backupOperation != null) return;
+    setBackupOperation({
+      phase: "exporting" as const, operation: "export_default" as const,
+      title: "正在导出长期备份",
+      status: "正在整理本机衣橱数据",
+      progress: 8,
+    });
+    await waitForNextFrame();
 
-	    try {
-	      const appVersion = "1.1.14";
-	      await updateBackupDialog({ progress: 28, status: "正在生成备份文件" });
-	      const result = await exportLongTermBackupToDefault({
-	        items,
-	        locations,
-	        outfits,
-	        wishlistItems,
-	        outfitPlanEntries,
-	        outfitCalendarPlans,
-	        planPackingChecklistItems,
-	        tryOnProfile,
-	        appVersion,
-	      });
-	      if (result.webFallback) {
-	        // Browser debug environment only. Show the explicit message, never
-	        // an Android-native success state.
-	        await updateBackupDialog({
-	          progress: 100,
-	          completed: true,
-	          status: "已下载浏览器调试备份文件。浏览器不能验证 Android 默认长期备份目录。",
-	          resultLabel: `文件：${result.timestampFileName}\n图片：${result.imageCount} 张`,
-	        });
-	      } else {
-	        const itemCount = items.length;
-	        const outfitCount = outfits.length;
-	        const wishlistCount = wishlistItems.length;
-	        const imageCount = result.imageCount;
-	        await updateBackupDialog({
-	          progress: 100,
-	          completed: true,
-	          status: "已保存到默认长期备份目录",
-	          resultLabel:
-	            `保存位置：Download/衣橱穿搭助手备份\n` +
-	            `最新备份：衣橱穿搭助手-latest.wardrobebackup\n` +
-	            `历史备份：${result.timestampFileName}\n` +
-	            `衣物：${itemCount} 件\n` +
-	            `套装：${outfitCount} 套\n` +
-	            `种草：${wishlistCount} 件\n` +
-	            `图片：${imageCount} 张`,
-	        });
-	      }
-	    } catch (error) {
-	      const errMsg = getErrorMessage(error);
-	      if (errMsg.includes("无法写入") || errMsg.includes("Permission")) {
-	        await updateBackupDialog({
-	          progress: 100,
-	          completed: true,
-	          error: "无法写入默认长期备份目录",
-	          status: "无法写入默认长期备份目录",
-	        });
-	      } else {
-	        await updateBackupDialog({
-	          progress: 100,
-	          completed: true,
-	          error: errMsg,
-	          status: "备份导出失败",
-	        });
-	      }
-	    }
-	  }
+    try {
+      const appVersion = await getRuntimeAppVersion();
+      await updateBackupOperation({ progress: 28, status: "正在生成备份文件" });
+      const result = await exportLongTermBackupToDefault({
+        items,
+        locations,
+        outfits,
+        wishlistItems,
+        outfitPlanEntries,
+        outfitCalendarPlans,
+        planPackingChecklistItems,
+        tryOnProfile,
+        appVersion,
+      });
+      if (result.webFallback) {
+        await updateBackupOperation({
+          progress: 100,
+          status: "已下载浏览器调试备份文件。浏览器不能验证 Android 默认长期备份目录。",
+          resultLabel: `文件：${result.timestampFileName}\n图片：${result.imageCount} 张`,
+        });
+      } else {
+        const itemCount = items.length;
+        const outfitCount = outfits.length;
+        const wishlistCount = wishlistItems.length;
+        const imageCount = result.imageCount;
+        await updateBackupOperation({
+          progress: 100,
+          status: "已保存到默认长期备份目录",
+          resultLabel:
+            `保存位置：Download/衣橱穿搭助手备份\n` +
+            `最新备份：衣橱穿搭助手-latest.wardrobebackup\n` +
+            `历史备份：${result.timestampFileName}\n` +
+            `衣物：${itemCount} 件\n` +
+            `套装：${outfitCount} 套\n` +
+            `种草：${wishlistCount} 件\n` +
+            `图片：${imageCount} 张`,
+        });
+      }
+    } catch (error) {
+      const errMsg = getErrorMessage(error);
+      if (errMsg.includes("无法写入") || errMsg.includes("Permission")) {
+        await updateBackupOperation({
+          progress: 100,
+          error: "无法写入默认长期备份目录",
+          status: "无法写入默认长期备份目录",
+        });
+      } else {
+        await updateBackupOperation({
+          progress: 100,
+          error: errMsg,
+          status: "备份导出失败",
+        });
+      }
+    }
+  }
 
-	  async function openDefaultBackupFolder() {
-	    if (backupDialog && !backupDialog.completed) return;
-	    setBackupDialog({
-	      kind: "ltb_scan",
-	      title: "正在查找长期备份",
-	      status: "正在读取 Download/衣橱穿搭助手备份",
-	      progress: 12,
-	      completed: false,
-	    });
-	    await waitForNextFrame();
+  async function openDefaultBackupFolder() {
+    if (backupOperation != null) return;
+    setBackupOperation({
+      phase: "scanning" as const, operation: "restore_default" as const,
+      title: "正在查找长期备份",
+      status: "正在读取 Download/衣橱穿搭助手备份",
+      progress: 12,
+    });
+    await waitForNextFrame();
 
-	    try {
-	      const files = await listDefaultLongTermBackups();
-	      if (files.length === 0) {
-	        // Empty directory - fixed text per prompt §4.4.3. We deliberately do
-	        // NOT swallow plugin errors here; the catch block handles them.
-	        await updateBackupDialog({
-	          progress: 100,
-	          completed: true,
-	          ltbFiles: [],
-	          status: "默认长期备份目录中还没有 .wardrobebackup 文件。请先导出长期备份。",
-	        });
-	      } else if (files.length === 1) {
-	        await updateBackupDialog({
-	          progress: 100,
-	          completed: true,
-	          ltbFiles: files,
-	          status: "找到 1 个长期备份",
-	        });
-	      } else {
-	        await updateBackupDialog({
-	          progress: 100,
-	          completed: true,
-	          ltbFiles: files,
-	          status: `找到 ${files.length} 个长期备份`,
-	        });
-	      }
-	    } catch (error) {
-	      // Plugin error path - separate from the empty-list path.
-	      const errMsg = getErrorMessage(error);
-	      if (errMsg.includes("浏览器无法读取") || !Capacitor.isNativePlatform()) {
-	        await updateBackupDialog({
-	          progress: 100,
-	          completed: true,
-	          error: errMsg,
-	          status: "浏览器无法读取 Android 默认长期备份目录，请在 Android 真机验证。",
-	        });
-	      } else {
-	        await updateBackupDialog({
-	          progress: 100,
-	          completed: true,
-	          error: errMsg,
-	          status: "读取长期备份文件夹失败",
-	        });
-	      }
-	    }
-	  }
+    try {
+      const files = await listDefaultLongTermBackups();
+      if (files.length === 0) {
+        await updateBackupOperation({
+          progress: 100,
+          files: [],
+          status: "默认长期备份目录中还没有 .wardrobebackup 文件。请先导出长期备份。",
+        });
+      } else if (files.length === 1) {
+        await updateBackupOperation({
+          progress: 100,
+          files: files,
+          status: "找到 1 个长期备份",
+        });
+      } else {
+        await updateBackupOperation({
+          progress: 100,
+          files: files,
+          status: `找到 ${files.length} 个长期备份`,
+        });
+      }
+    } catch (error) {
+      const errMsg = getErrorMessage(error);
+      if (errMsg.includes("浏览器无法读取") || !Capacitor.isNativePlatform()) {
+        await updateBackupOperation({
+          progress: 100,
+          error: errMsg,
+          status: "浏览器无法读取 Android 默认长期备份目录，请在 Android 真机验证。",
+        });
+      } else {
+        await updateBackupOperation({
+          progress: 100,
+          error: errMsg,
+          status: "读取长期备份文件夹失败",
+        });
+      }
+    }
+  }
 
-		  async function saveAsBackup() {
-		    if (backupDialog && !backupDialog.completed) return;
-		    setBackupDialog({
-		      kind: "ltb_export",
-		      title: "正在导出长期备份",
-		      status: "正在保存到指定位置",
-		      progress: 8,
-		      completed: false,
-		    });
-		    await waitForNextFrame();
+  async function saveAsBackup() {
+    if (backupOperation != null) return;
+    setBackupOperation({
+      phase: "exporting" as const, operation: "export_save_as" as const,
+      title: "正在导出长期备份",
+      status: "正在保存到指定位置",
+      progress: 8,
+    });
+    await waitForNextFrame();
 
-		    try {
-		      const appVersion = "1.1.14";
-		      await updateBackupDialog({ progress: 28, status: "正在生成备份文件" });
-		      const result = await exportLongTermBackupSaveAs({
-		        items,
-		        locations,
-		        outfits,
-		        wishlistItems,
-		        outfitPlanEntries,
-		        outfitCalendarPlans,
-		        planPackingChecklistItems,
-		        tryOnProfile,
-		        appVersion,
-		      });
-		      if (result.webFallback) {
-		        await updateBackupDialog({
-		          progress: 100,
-		          completed: true,
-		          status: "已下载浏览器调试备份文件。浏览器不能验证 Android 默认长期备份目录。",
-		          resultLabel: `文件：${result.filePath || "浏览器调试下载"}`,
-		        });
-		      } else {
-		        await updateBackupDialog({
-		          progress: 100,
-		          completed: true,
-		          status: "长期备份已保存",
-		          resultLabel: `保存位置：${result.filePath || "用户选择的位置"}\n文件：${result.filePath || "用户选择的位置"}`,
-		        });
-		      }
-		    } catch (error) {
-		      await updateBackupDialog({
-		        progress: 100,
-		        completed: true,
-		        error: getErrorMessage(error),
-		        status: "保存失败",
-		      });
-		    }
-		  }
+    try {
+      const appVersion = await getRuntimeAppVersion();
+      await updateBackupOperation({ progress: 28, status: "正在生成备份文件" });
+      const result = await exportLongTermBackupSaveAs({
+        items,
+        locations,
+        outfits,
+        wishlistItems,
+        outfitPlanEntries,
+        outfitCalendarPlans,
+        planPackingChecklistItems,
+        tryOnProfile,
+        appVersion,
+      });
+      if (result.webFallback) {
+        await updateBackupOperation({
+          progress: 100,
+          status: "已下载浏览器调试备份文件。浏览器不能验证 Android 默认长期备份目录。",
+          resultLabel: `文件：${result.filePath || "浏览器调试下载"}`,
+        });
+      } else {
+        await updateBackupOperation({
+          progress: 100,
+          status: "长期备份已保存",
+          resultLabel: `保存位置：${result.filePath || "用户选择的位置"}\n文件：${result.filePath || "用户选择的位置"}`,
+        });
+      }
+    } catch (error) {
+      await updateBackupOperation({
+        progress: 100,
+        error: getErrorMessage(error),
+        status: "保存失败",
+      });
+    }
+  }
 
-		  async function pickBackupFile() {
-		    if (backupDialog && !backupDialog.completed) return;
-		    try {
-		      const { backup, fileName } = await restorePickedLongTermBackup();
-		      await restoreLongTermBackupData(backup, fileName);
-		    } catch (error) {
-		      const errMsg = getErrorMessage(error);
-		      if (errMsg.includes(".wardrobebackup")) {
-		        showMessage("请选择 .wardrobebackup 长期备份文件。旧版 JSON 请在高级恢复旧版备份中导入。", "error");
-		      } else {
-		        showMessage("恢复失败: " + errMsg, "error");
-		      }
-		    }
-		  }
+  async function pickBackupFile() {
+    if (backupOperation != null) return;
+    try {
+      const { backup, fileName } = await restorePickedLongTermBackup();
+      await restoreLongTermBackupData(backup, fileName, "restore_picker");
+    } catch (error) {
+      const errMsg = getErrorMessage(error);
+      if (errMsg.includes(".wardrobebackup")) {
+        showMessage("请选择 .wardrobebackup 长期备份文件。", "error");
+      } else {
+        showMessage("恢复失败: " + errMsg, "error");
+      }
+    }
+  }
 
-		  async function pickLtbFileFromList(file: LongTermBackupFileEntry) {
-		    if (backupDialog && !backupDialog.completed) return;
-		    try {
-		      const { backup, fileName } = await restoreDefaultLongTermBackup(file.name);
-		      await restoreLongTermBackupData(backup, fileName);
-		    } catch (error) {
-		      const errMsg = getErrorMessage(error);
-		      showMessage("恢复失败: " + errMsg, "error");
-		    }
-		  }
+  async function pickLtbFileFromList(file: LongTermBackupFileEntry) {
+    if (backupOperation != null) return;
+    try {
+      const { backup, fileName } = await restoreDefaultLongTermBackup(file.name);
+      await restoreLongTermBackupData(backup, fileName);
+    } catch (error) {
+      const errMsg = getErrorMessage(error);
+      showMessage("恢复失败: " + errMsg, "error");
+    }
+  }
 
-		  async function restoreLongTermBackupData(backup: WardrobeBackup, fileName: string) {
-		    setBackupDialog({
-		      kind: "ltb_confirm",
-		      title: "确认恢复长期备份",
-		      status: "恢复会覆盖当前衣橱数据",
-		      progress: 0,
-		      completed: false,
-		      previewData: {
-		        fileName: fileName || "衣橱穿搭助手-latest.wardrobebackup",
-		        exportedAt: backup.exportedAt,
-		        itemCount: backup.items?.length ?? 0,
-		        outfitCount: backup.outfits?.length ?? 0,
-		        wishlistCount: backup.wishlistItems?.length ?? 0,
-		        planCount: backup.outfitPlanEntries?.length ?? 0,
-		        travelPlanCount: backup.outfitCalendarPlans?.length ?? 0,
-		        packingCount: backup.planPackingChecklistItems?.length ?? 0,
-		        imageCount: 0,
-		      },
-		    });
-		    await waitForNextFrame();
-		  }
+  async function restoreLongTermBackupData(backup: WardrobeBackup, fileName: string, operation: "restore_default" | "restore_picker" = "restore_default") {
+    const preview: BackupRestorePreview = {
+      fileName: fileName || "衣橱穿搭助手-latest.wardrobebackup",
+      appVersion: "",
+      exportedAt: backup.exportedAt,
+      itemCount: backup.items?.length ?? 0,
+      locationCount: backup.locations?.length ?? 0,
+      outfitCount: backup.outfits?.length ?? 0,
+      wishlistCount: backup.wishlistItems?.length ?? 0,
+      planCount: backup.outfitPlanEntries?.length ?? 0,
+      travelPlanCount: backup.outfitCalendarPlans?.length ?? 0,
+      packingCount: backup.planPackingChecklistItems?.length ?? 0,
+      imageCount: 0,
+    };
+    pendingRestoreRef.current = { backup, preview };
+    setBackupOperation({
+      phase: "awaiting_confirmation" as const, operation,
+      preview,
+    });
+    await waitForNextFrame();
+  }
+
+  async function confirmRestore() {
+    const ref = pendingRestoreRef.current;
+    if (!ref) return;
+    const { backup, preview } = ref;
+    setBackupOperation({
+      phase: "restoring" as const, operation: "restore_default" as const,
+      title: `正在恢复 ${preview.fileName}`,
+      status: "正在写入数据库...",
+      progress: 75,
+    });
+    await waitForNextFrame();
+    try {
+      await applyLatestWardrobeBackup(backup);
+      setBackupOperation({
+        phase: "success" as const, operation: "restore_default" as const,
+        title: "恢复完成",
+        status: `已恢复 ${preview.itemCount} 件衣物、${preview.outfitCount} 套套装`,
+        resultLabel: `文件：${preview.fileName}\n衣物：${preview.itemCount} 件\n套装：${preview.outfitCount} 套\n种草：${preview.wishlistCount} 件`,
+      });
+      pendingRestoreRef.current = null;
+      await refreshState();
+    } catch (error) {
+      const errMsg = getErrorMessage(error);
+      setBackupOperation({
+        phase: "failed" as const, operation: "restore_default" as const,
+        title: "恢复失败",
+        error: errMsg,
+        retryable: true,
+      });
+    }
+  }
 
   async function saveSettings(nextSettings: DeviceMiniMaxSettings) { const normalizedSettings = { ...nextSettings, model: "MiniMax-M3" }; saveMiniMaxSettings(normalizedSettings); setMiniMaxSettings(normalizedSettings); if (!hasDeviceMiniMaxKey(normalizedSettings)) { showMessage("MiniMax 设置已保存在本机"); return; } showMessage("正在验证 MiniMax Key..."); const result = await withKeepAwake(() => validateMiniMaxKey(normalizedSettings)); if (result.valid) setShowKeyBanner(false); showMessage(result.message); }
 
-	  async function importBackup(file: File | undefined) {
-	    if (!file) return;
-	    try {
-	      await restoreBackupFromRaw(() => file.text(), file.name);
-	    } finally {
-	      if (backupInputRef.current) backupInputRef.current.value = "";
-	    }
-	  }
-
-	  async function importDefaultBackupFile(file: BackupFileEntry) {
-	    if (file.isV4) {
-	      await restoreV4Backup(file.path, file.name);
-	    } else {
-	      await restoreBackupFromRaw(() => readDefaultBackupFile(file.name), file.name);
-	    }
-	  }
-
-	  async function restoreBackupFromRaw(readRaw: () => Promise<string>, sourceName: string) {
-	    if (backupDialog && !backupDialog.completed) return;
-	    setBackupDialog({
-	      kind: "import",
-	      title: "正在加载备份",
-	      status: `正在读取 ${sourceName}`,
-	      progress: 8,
-	      completed: false,
-	      resultLabel: sourceName,
-	    });
-	    await waitForNextFrame();
-
-try {
-	      const raw = await readRaw();
-	      if (sourceName === "metadata.json" || isV4Metadata(raw)) {
-	        throw new Error("这是新版完整备份的 metadata.json，不能单独导入。请使用「从应用备份目录恢复」选择 backup-* 备份。");
-	      }
-	      await updateBackupDialog({ progress: 34, status: "正在校验备份格式" });
-	      const backup = parseBackup(raw);
-await updateBackupDialog({ progress: 58, status: "正在写入本地衣橱数据库" });
-	      const db = getWardrobeDb();
-	      // v0.9.42-dev C-4: filter(Boolean) 防御 db.outfits / db.tryOnProfile 为 undefined 时
-	      // Dexie throw TypeError (参考同文件 line 1315 已有同款修法)
-	      await runLoggedDbTransaction("restore_backup_from_raw", () =>
-	        db.transaction("rw", [db.items, db.locations, db.outfits, db.wishlistItems, db.tryOnProfile, db.outfitPlanEntries, db.outfitCalendarPlans, db.planPackingChecklistItems].filter(Boolean), async () => {
-	          await db.items.clear();
-	          await db.locations.clear();
-	          if (db.outfits) await db.outfits.clear();
-	          if (db.wishlistItems) await db.wishlistItems.clear();
-	          if (db.outfitPlanEntries) await db.outfitPlanEntries.clear();
-	          if (db.outfitCalendarPlans) await db.outfitCalendarPlans.clear();
-	          if (db.planPackingChecklistItems) await db.planPackingChecklistItems.clear();
-	          await db.locations.bulkPut(backup.locations);
-	          await db.items.bulkPut(backup.items);
-	          if (backup.outfits && db.outfits) await db.outfits.bulkPut(backup.outfits);
-	          if (backup.wishlistItems && db.wishlistItems) await db.wishlistItems.bulkPut(backup.wishlistItems);
-	          if (backup.outfitPlanEntries && db.outfitPlanEntries) await db.outfitPlanEntries.bulkPut(backup.outfitPlanEntries);
-	          if (backup.outfitCalendarPlans && db.outfitCalendarPlans) await db.outfitCalendarPlans.bulkPut(backup.outfitCalendarPlans);
-	          if (backup.planPackingChecklistItems && db.planPackingChecklistItems) await db.planPackingChecklistItems.bulkPut(backup.planPackingChecklistItems);
-	          if (backup.tryOnProfile) await db.tryOnProfile.put(backup.tryOnProfile);
-	        }),
-	      );
-      await updateBackupDialog({ progress: 84, status: "正在刷新衣橱页面" });
-      await refreshState();
-      const tp = await readTryOnProfile().catch(() => null);
-      if (tp) {
-        setTryOnProfile(tp);
-        setUsePersonRef(tp.enabled);
-      }
-      // v0.9.43-dev 批次 5: 导入完成后统计缩略图, 按数量提示。
-      // - 缺失 0: 不提示 (UI 上"所有图片已生成缓存"已经显示)
-      // - 缺失 <= 10: 直接入队 + 后台优化提示 (按 §3 纪律"低优先级 enqueue")
-      // - 缺失 > 10: 引导去设置页 (按 §3 纪律"提示用户去设置页")
-      const importStats = countMissingThumbnails(backup.items);
-      const importMissing = importStats.mainMissing + importStats.referenceMissing;
-      if (importMissing > 0 && importMissing <= 10) {
-        backfill.enqueueVisibleItems(backup.items);
-        showMessage(`导入完成, ${importMissing} 张图片正在后台优化`, "info");
-      } else if (importMissing > 10) {
-        showMessage(`导入完成, ${importMissing} 张图片可优化, 前往设置页 → 优化图片缓存`, "info");
-      }
-      await updateBackupDialog({
-        progress: 100,
-        completed: true,
-        status: `加载完成：${backup.items.length} 件衣物、${backup.locations.length} 个衣橱位置${importMissing > 0 ? ` · ${importMissing} 张图待优化` : ""}`,
-      });
-    } catch (error) {
-      await updateBackupDialog({
-        progress: 100,
-        completed: true,
-        error: getErrorMessage(error),
-        status: "备份加载失败",
-      });
-    }
-  }
-
-  async function restoreV4Backup(folderPath: string, sourceName: string) {
-	    if (backupDialog && !backupDialog.completed) return;
-	    setBackupDialog({
-	      kind: "import",
-	      title: "正在加载备份",
-	      status: `正在读取 ${sourceName}`,
-	      progress: 8,
-	      completed: false,
-	      resultLabel: sourceName,
-	    });
-	    await waitForNextFrame();
-
-	    try {
-	      await updateBackupDialog({ progress: 28, status: "正在读取备份元数据" });
-const raw = await readV4Metadata(folderPath);
-	      await updateBackupDialog({ progress: 44, status: "正在读取图片文件" });
-	      const resolved = await resolveV4Tokens(raw, (fileName) => readV4ImageFile(folderPath, fileName));
-	      await updateBackupDialog({ progress: 58, status: "正在校验备份格式" });
-const backup = parseBackup(resolved);
-	      await updateBackupDialog({ progress: 68, status: "正在写入本地衣橱数据库" });
-	      const db = getWardrobeDb();
-	      // v0.9.42-dev C-4: filter(Boolean) 防御 db.outfits / db.tryOnProfile 为 undefined 时
-	      // Dexie throw TypeError (参考同文件 line 1315 已有同款修法)
-	      await runLoggedDbTransaction("restore_v4_backup", () =>
-	        db.transaction("rw", [db.items, db.locations, db.outfits, db.wishlistItems, db.tryOnProfile, db.outfitPlanEntries, db.outfitCalendarPlans, db.planPackingChecklistItems].filter(Boolean), async () => {
-	          await db.items.clear();
-	          await db.locations.clear();
-	          if (db.outfits) await db.outfits.clear();
-	          if (db.wishlistItems) await db.wishlistItems.clear();
-	          if (db.outfitPlanEntries) await db.outfitPlanEntries.clear();
-	          if (db.outfitCalendarPlans) await db.outfitCalendarPlans.clear();
-	          if (db.planPackingChecklistItems) await db.planPackingChecklistItems.clear();
-	          await db.locations.bulkPut(backup.locations);
-	          await db.items.bulkPut(backup.items);
-	          if (backup.outfits && db.outfits) await db.outfits.bulkPut(backup.outfits);
-	          if (backup.wishlistItems && db.wishlistItems) await db.wishlistItems.bulkPut(backup.wishlistItems);
-	          if (backup.outfitPlanEntries && db.outfitPlanEntries) await db.outfitPlanEntries.bulkPut(backup.outfitPlanEntries);
-	          if (backup.outfitCalendarPlans && db.outfitCalendarPlans) await db.outfitCalendarPlans.bulkPut(backup.outfitCalendarPlans);
-	          if (backup.planPackingChecklistItems && db.planPackingChecklistItems) await db.planPackingChecklistItems.bulkPut(backup.planPackingChecklistItems);
-	          if (backup.tryOnProfile) await db.tryOnProfile.put(backup.tryOnProfile);
-	        }),
-	      );
-      await updateBackupDialog({ progress: 84, status: "正在刷新衣橱页面" });
-      await refreshState();
-      const tp = await readTryOnProfile().catch(() => null);
-      if (tp) {
-        setTryOnProfile(tp);
-        setUsePersonRef(tp.enabled);
-      }
-      // v0.9.43-dev 批次 5: 导入完成后统计缩略图, 按数量提示 (同 restoreBackupFromRaw)
-      const importStats = countMissingThumbnails(backup.items);
-      const importMissing = importStats.mainMissing + importStats.referenceMissing;
-      if (importMissing > 0 && importMissing <= 10) {
-        backfill.enqueueVisibleItems(backup.items);
-        showMessage(`导入完成, ${importMissing} 张图片正在后台优化`, "info");
-      } else if (importMissing > 10) {
-        showMessage(`导入完成, ${importMissing} 张图片可优化, 前往设置页 → 优化图片缓存`, "info");
-      }
-      await updateBackupDialog({
-        progress: 100,
-        completed: true,
-        status: `加载完成：${backup.items.length} 件衣物、${backup.locations.length} 个衣橱位置${importMissing > 0 ? ` · ${importMissing} 张图待优化` : ""}`,
-      });
-    } catch (error) {
-      await updateBackupDialog({
-        progress: 100,
-        completed: true,
-        error: getErrorMessage(error),
-        status: "备份加载失败",
-      });
-    }
-  }
-
-  async function seedDemoItems() {
+	  async function seedDemoItems() {
     const now = new Date().toISOString();
     // v0.9.33-dev: 给每件示例衣物预填 1 张 demo 参考穿搭图, 让瀑布流 + 详情页立刻多图,
     // 用户能验证 v0.9.32-dev 横滑手感。预填的数据是"搭配卡" SVG(主色 + "参考图 N"水印),
@@ -1723,7 +1554,7 @@ const backup = parseBackup(resolved);
     route.name !== "settings_home" &&
     !isIntakeRouteName(route.name) &&
     !outfitSubPageActive &&
-    !backupDialog &&
+    !backupOperation &&
     !showExitDialog &&
     !showCreateSheet;
 
@@ -2034,10 +1865,10 @@ const backup = parseBackup(resolved);
 
           {route.name === "settings_home" ? (
 	            <SettingsView
-	              items={items} locations={locations} outfits={outfits} wishlistItems={wishlistItems} activeView={activeViewForCreateActions} route={route} backupInputRef={backupInputRef}
+	              items={items} locations={locations} outfits={outfits} wishlistItems={wishlistItems} activeView={activeViewForCreateActions} route={route}
 	              miniMaxSettings={miniMaxSettings} onSaveMiniMaxSettings={saveSettings}
-	              onExport={exportBackup} onOpenBackupFolder={openDefaultBackupFolder} onSaveAs={saveAsBackup} onPickFile={pickBackupFile} onImport={importBackup}
-	              isBackupBusy={Boolean(backupDialog && !backupDialog.completed)}
+	              onExport={exportBackup} onOpenBackupFolder={openDefaultBackupFolder} onSaveAs={saveAsBackup} onPickFile={pickBackupFile}
+	              isBackupBusy={Boolean(backupOperation != null)}
 	              onAddWardrobe={async (name, note) => { const now = new Date().toISOString(); await getWardrobeDb().locations.put({ id: `custom-${globalThis.crypto?.randomUUID?.() ?? Date.now()}`, name, note, sortOrder: locations.length + 1, createdAt: now, updatedAt: now }); await refreshState(); }}
               onUpdateWardrobe={async (id, name, note) => { const db = getWardrobeDb(); await db.locations.update(id, { name, note, updatedAt: new Date().toISOString() }); await refreshState(); }}
               onDeleteWardrobe={async (id, action) => {
@@ -2153,14 +1984,10 @@ const backup = parseBackup(resolved);
 	      )}
 
 	      <BackupProgressSheet
-	        state={backupDialog}
-	        onClose={() => setBackupDialog(null)}
-	        onPickFile={importDefaultBackupFile}
+	        state={backupOperation}
+	        onClose={() => setBackupOperation(null)}
 	        onPickLtbFile={pickLtbFileFromList}
-	        onManualPick={() => {
-	          setBackupDialog(null);
-	          window.setTimeout(() => backupInputRef.current?.click(), 0);
-	        }}
+	        onConfirmRestore={confirmRestore}
 	      />
 
         {/* v1.0: 全局浮动 — Plus居中 + active反馈 + 按钮 */}
@@ -6566,133 +6393,131 @@ function ResultBlock({ title, items, tone = "ink" }: { title: string; items: str
 function BackupProgressSheet({
   state,
   onClose,
-  onPickFile,
-  onManualPick,
   onPickLtbFile,
+  onConfirmRestore,
 }: {
-  state: BackupDialogState | null;
+  state: BackupOperationState | null;
   onClose: () => void;
-  onPickFile: (file: BackupFileEntry) => void;
-  onManualPick: () => void;
   onPickLtbFile?: (file: LongTermBackupFileEntry) => void;
+  onConfirmRestore?: () => void;
 }) {
   if (!state) return null;
 
-  const canClose = state.completed;
-  const files = state.files ?? [];
-  const ltbFiles = state.ltbFiles ?? [];
+  const isBusy = state.phase === "exporting" || state.phase === "scanning" || state.phase === "reading" || state.phase === "restoring";
+  const isDone = state.phase === "success" || state.phase === "failed";
+  const canClose = isDone || state.phase === "backup_list" || state.phase === "awaiting_confirmation";
+
+  const title =
+    state.phase === "awaiting_confirmation" ? "确认恢复长期备份" :
+    state.phase === "backup_list" ? "选择长期备份" :
+    state.phase === "success" ? state.title :
+    state.phase === "failed" ? state.title :
+    state.title;
+
+  const errorMsg = state.phase === "failed" ? state.error : undefined;
+  const statusText =
+    state.phase === "failed" ? state.error :
+    state.phase === "awaiting_confirmation" ? "恢复会覆盖当前衣橱数据，确认继续？" :
+    state.phase === "backup_list" ? "" :
+    state.status;
+
+  const progress = isBusy ? state.progress : (isDone ? 100 : 0);
+  const completed = isDone;
+  const resultLabel = state.phase === "success" ? state.resultLabel : undefined;
+  const preview = state.phase === "awaiting_confirmation" ? state.preview : undefined;
+  const files = state.phase === "backup_list" ? state.files : [];
 
   return (
     <MotionSheet open={!!state} onClose={() => { if (canClose) onClose(); }} panelClassName="sm:max-w-md">
       <div className="grid gap-4">
         <div className="flex items-start gap-3">
-          <div className={`mt-0.5 grid h-10 w-10 shrink-0 place-items-center rounded-lg ${state.error ? "bg-red-50 text-red-500" : state.completed ? "bg-denim/10 text-denim" : "bg-clay/10 text-clay"}`}>
-            {state.error ? <Trash2 size={18} aria-hidden="true" /> : state.completed ? <Check size={18} aria-hidden="true" /> : <Loader2 size={18} className="animate-spin" aria-hidden="true" />}
+          <div className={`mt-0.5 grid h-10 w-10 shrink-0 place-items-center rounded-lg ${errorMsg ? "bg-red-50 text-red-500" : completed ? "bg-denim/10 text-denim" : "bg-clay/10 text-clay"}`}>
+            {errorMsg ? <Trash2 size={18} aria-hidden="true" /> : completed ? <Check size={18} aria-hidden="true" /> : <Loader2 size={18} className="animate-spin" aria-hidden="true" />}
           </div>
           <div className="min-w-0">
-            <h3 className="text-base font-semibold">{state.title}</h3>
-            <p className={`mt-1 text-sm leading-relaxed ${state.error ? "text-red-500" : "text-ink/60"}`}>{state.error ?? state.status}</p>
+            <h3 className="text-base font-semibold">{title}</h3>
+            {statusText ? (
+              <p className={`mt-1 text-sm leading-relaxed ${errorMsg ? "text-red-500" : "text-ink/60"}`}>{statusText}</p>
+            ) : null}
           </div>
         </div>
 
         <div className="grid gap-2">
           <div className="h-2.5 overflow-hidden rounded-full bg-mist">
             <div
-              className={`h-full rounded-full transition-all duration-300 ${state.error ? "bg-red-400" : "bg-denim"}`}
-              style={{ width: `${Math.max(0, Math.min(100, state.progress))}%` }}
+              className={`h-full rounded-full transition-all duration-300 ${errorMsg ? "bg-red-400" : "bg-denim"}`}
+              style={{ width: `${Math.max(0, Math.min(100, progress))}%` }}
             />
           </div>
           <div className="flex items-center justify-between text-[11px] text-ink/45">
-            <span>{state.completed ? "完成" : "处理中"}</span>
-            <span>{Math.round(Math.max(0, Math.min(100, state.progress)))}%</span>
+            <span>{completed ? (errorMsg ? "失败" : "完成") : "处理中"}</span>
+            <span>{Math.round(Math.max(0, Math.min(100, progress)))}%</span>
           </div>
         </div>
 
-        {state.resultLabel ? (
+        {resultLabel ? (
           <div className="rounded-lg border border-ink/10 bg-white p-3">
-            <p className="text-xs font-semibold text-ink/50">文件</p>
-            <p className="mt-1 break-all whitespace-pre-line text-sm font-medium text-ink/75">{state.resultLabel}</p>
+            <p className="text-xs font-semibold text-ink/50">结果</p>
+            <p className="mt-1 break-all whitespace-pre-line text-sm font-medium text-ink/75">{resultLabel}</p>
           </div>
         ) : null}
 
-        {state.kind === "folder" && state.completed ? (
+        {state.phase === "backup_list" && files.length > 0 ? (
           <div className="grid gap-2">
-            {files.length > 0 ? (
-              files.map((file) => (
-                <button
-                  key={file.path}
-                  type="button"
-                  onClick={() => onPickFile(file)}
-                  className="flex min-h-14 w-full items-center gap-3 rounded-lg border border-ink/10 bg-white px-3 py-2 text-left hover:border-denim/30"
-                >
-                  <FileJson size={18} className="shrink-0 text-denim" aria-hidden="true" />
-                  <span className="min-w-0 flex-1">
-                    <span className="block truncate text-sm font-semibold">{file.name}</span>
-                    <span className="mt-0.5 block text-xs text-ink/45">{file.isV4 ? "新版完整备份" : "旧版 JSON 备份"} · {formatBackupFileMeta(file)}</span>
-                  </span>
-                  <ChevronRight size={16} className="shrink-0 text-ink/35" aria-hidden="true" />
-                </button>
-              ))
-            ) : (
-              <div className="rounded-lg border border-dashed border-ink/15 bg-white p-4 text-sm text-ink/55">
-                默认备份文件夹里没有找到可恢复备份。新版备份应为 backup-* 文件夹，旧版备份应为 .json 文件。
-              </div>
-            )}
+            {files.map((file) => (
+              <button
+                key={file.name}
+                type="button"
+                onClick={() => onPickLtbFile?.(file)}
+                className="flex min-h-14 w-full items-center gap-3 rounded-lg border border-ink/10 bg-white px-3 py-2 text-left hover:border-denim/30"
+              >
+                <FileJson size={18} className="shrink-0 text-denim" aria-hidden="true" />
+                <span className="min-w-0 flex-1">
+                  <span className="block truncate text-sm font-semibold">{file.name}{file.isLatest ? "（最新）" : ""}</span>
+                  <span className="mt-0.5 block text-xs text-ink/45">{(file.size / 1024).toFixed(1)} KB · {new Date(file.mtime).toLocaleString("zh-CN")}</span>
+                </span>
+                <ChevronRight size={16} className="shrink-0 text-ink/35" aria-hidden="true" />
+              </button>
+            ))}
           </div>
         ) : null}
 
-        {state.kind === "ltb_scan" && state.completed && !state.error ? (
-          <div className="grid gap-2">
-            {ltbFiles.length > 0 ? (
-              ltbFiles.map((file) => (
-                <button
-                  key={file.name}
-                  type="button"
-                  onClick={() => onPickLtbFile?.(file)}
-                  className="flex min-h-14 w-full items-center gap-3 rounded-lg border border-ink/10 bg-white px-3 py-2 text-left hover:border-denim/30"
-                >
-                  <FileJson size={18} className="shrink-0 text-denim" aria-hidden="true" />
-                  <span className="min-w-0 flex-1">
-                    <span className="block truncate text-sm font-semibold">{file.name}{file.isLatest ? "（最新）" : ""}</span>
-                    <span className="mt-0.5 block text-xs text-ink/45">{(file.size / 1024).toFixed(1)} KB · {new Date(file.mtime).toLocaleString("zh-CN")}</span>
-                  </span>
-                  <ChevronRight size={16} className="shrink-0 text-ink/35" aria-hidden="true" />
-                </button>
-              ))
-            ) : (
-              <div className="rounded-lg border border-dashed border-ink/15 bg-white p-4 text-sm text-ink/55">
-                默认长期备份目录中还没有 .wardrobebackup 文件。请先导出长期备份。
-              </div>
-            )}
-          </div>
-        ) : null}
-
-        {state.kind === "ltb_confirm" && state.completed && state.previewData ? (
+        {preview ? (
           <div className="rounded-lg border border-ink/10 bg-white p-3 text-sm text-ink/70">
             <p className="text-xs font-semibold text-ink/50">即将恢复</p>
-            <p className="mt-1 break-all text-sm font-semibold text-ink/80">{state.previewData.fileName}</p>
-            <p className="mt-1 text-xs text-ink/55">导出时间：{new Date(state.previewData.exportedAt).toLocaleString("zh-CN")}</p>
+            <p className="mt-1 break-all text-sm font-semibold text-ink/80">{preview.fileName}</p>
+            <p className="mt-1 text-xs text-ink/55">导出时间：{preview.exportedAt ? new Date(preview.exportedAt).toLocaleString("zh-CN") : "未知"}</p>
             <div className="mt-2 grid grid-cols-2 gap-1 text-xs text-ink/60">
-              <span>衣物：{state.previewData.itemCount} 件</span>
-              <span>套装：{state.previewData.outfitCount} 套</span>
-              <span>种草：{state.previewData.wishlistCount} 件</span>
-              <span>计划：{state.previewData.planCount} 条</span>
+              <span>衣物：{preview.itemCount} 件</span>
+              <span>套装：{preview.outfitCount} 套</span>
+              <span>种草：{preview.wishlistCount} 件</span>
+              <span>计划：{preview.planCount} 条</span>
             </div>
           </div>
         ) : null}
 
-        <div className={`grid gap-2 ${state.kind === "folder" && (state.allowManualPick || files.length === 0) ? "grid-cols-2" : ""}`}>
-          {state.kind === "folder" && (state.allowManualPick || files.length === 0) ? (
-            <button type="button" onClick={onManualPick} className="h-10 rounded-lg border border-ink/10 bg-white text-sm font-semibold">
-              选择旧版 JSON 文件
-            </button>
-          ) : null}
-          {state.completed ? (
-            <button type="button" onClick={onClose} className="h-10 rounded-lg bg-denim text-sm font-semibold text-white">
-              {state.kind === "folder" ? "关闭" : "确认"}
-            </button>
-          ) : null}
-        </div>
+        {canClose ? (
+          <div className="grid gap-2">
+            {state.phase === "awaiting_confirmation" ? (
+              <div className="grid grid-cols-2 gap-2">
+                <button type="button" onClick={onClose} className="h-10 rounded-lg border border-ink/10 bg-white text-sm font-semibold">
+                  取消
+                </button>
+                <button type="button" onClick={onConfirmRestore} className="h-10 rounded-lg bg-denim text-sm font-semibold text-white">
+                  确认恢复
+                </button>
+              </div>
+            ) : state.phase === "backup_list" ? (
+              <button type="button" onClick={onClose} className="h-10 rounded-lg bg-denim text-sm font-semibold text-white">
+                关闭
+              </button>
+            ) : (
+              <button type="button" onClick={onClose} className="h-10 rounded-lg bg-denim text-sm font-semibold text-white">
+                {state.phase === "success" ? "完成" : "关闭"}
+              </button>
+            )}
+          </div>
+        ) : null}
       </div>
     </MotionSheet>
   );
@@ -6827,14 +6652,12 @@ function SettingsView({
   wishlistItems,
   activeView,
   route,
-  backupInputRef,
 	  miniMaxSettings,
 	  onSaveMiniMaxSettings,
 	  onExport,
 	  onOpenBackupFolder,
 	  onSaveAs,
 	  onPickFile,
-	  onImport,
 	  isBackupBusy,
 	  onAddWardrobe,
   onUpdateWardrobe,
@@ -6855,14 +6678,12 @@ function SettingsView({
   wishlistItems: WishlistItem[];
   activeView: ViewKey;
   route: AppRoute;
-  backupInputRef: React.RefObject<HTMLInputElement | null>;
 	  miniMaxSettings: DeviceMiniMaxSettings;
 	  onSaveMiniMaxSettings: (settings: DeviceMiniMaxSettings) => void;
 	  onExport: () => void;
 	  onOpenBackupFolder: () => void;
 	  onSaveAs: () => void;
 	  onPickFile: () => void;
-	  onImport: (file: File | undefined) => void;
 	  isBackupBusy: boolean;
 	  onAddWardrobe: (name: string, note: string) => Promise<void>;
   onUpdateWardrobe: (id: string, name: string, note: string) => Promise<void>;
@@ -6892,7 +6713,6 @@ function SettingsView({
   const [wardrobeFormNote, setWardrobeFormNote] = useState("");
   const [wardrobeListExpanded, setWardrobeListExpanded] = useState(false);
   const [showClearAllConfirm, setShowClearAllConfirm] = useState(false);
-  const [showImportSheet, setShowImportSheet] = useState(false);
   const [isDiagnosticExporting, setIsDiagnosticExporting] = useState(false);
   // v0.9.43-dev 批次 4: 图片缓存优化
   // - thumbnailStats: 仅看字段, 不解码图片, 不写库 (批次 4 §2)
@@ -7463,7 +7283,7 @@ function SettingsView({
         <div className="mt-3 grid gap-2">
           <button
             type="button"
-            onClick={() => { setShowImportSheet(false); onExport(); }}
+            onClick={onExport}
             className="flex items-center gap-3 rounded-xl border border-ink/10 bg-white px-4 py-3.5 text-left active:bg-mist"
             disabled={isBackupBusy}
           >
@@ -7477,7 +7297,7 @@ function SettingsView({
           </button>
           <button
             type="button"
-            onClick={() => { setShowImportSheet(false); onOpenBackupFolder(); }}
+            onClick={onOpenBackupFolder}
             className="flex items-center gap-3 rounded-xl border border-ink/10 bg-white px-4 py-3.5 text-left active:bg-mist"
             disabled={isBackupBusy}
           >
@@ -7493,7 +7313,7 @@ function SettingsView({
         <div className="mt-2 grid grid-cols-2 gap-2">
           <button
             type="button"
-            onClick={() => { setShowImportSheet(false); onSaveAs(); }}
+            onClick={onSaveAs}
             className="inline-flex h-9 items-center justify-center gap-1.5 rounded-lg border border-ink/10 bg-white px-3 text-xs font-semibold text-ink active:bg-mist"
             disabled={isBackupBusy}
           >
@@ -7501,54 +7321,14 @@ function SettingsView({
           </button>
           <button
             type="button"
-            onClick={() => { setShowImportSheet(false); onPickFile(); }}
+            onClick={onPickFile}
             className="inline-flex h-9 items-center justify-center gap-1.5 rounded-lg border border-ink/10 bg-white px-3 text-xs font-semibold text-ink active:bg-mist"
             disabled={isBackupBusy}
           >
             从其他位置选择备份...
           </button>
         </div>
-        <button
-          type="button"
-          onClick={() => setShowImportSheet(!showImportSheet)}
-          className="mt-2 inline-flex h-8 w-full items-center justify-center gap-1 text-xs text-ink/55 active:text-denim"
-        >
-          高级恢复旧版备份 <ChevronDown size={12} aria-hidden="true" className={`transition-transform ${showImportSheet ? "rotate-180" : ""}`} />
-        </button>
-        <MotionSheet open={showImportSheet} onClose={() => setShowImportSheet(false)} panelClassName="!max-w-sm">
-          <h3 className="mb-1 text-base font-semibold">高级恢复旧版备份</h3>
-          <p className="mb-4 text-xs text-ink/55">仅用于恢复旧版本导出的 JSON 或 backup-* 备份。新备份请使用 .wardrobebackup。</p>
-          <div className="grid gap-2">
-            <button
-              type="button"
-              onClick={() => { setShowImportSheet(false); window.setTimeout(() => backupInputRef.current?.click(), 0); }}
-              className="flex items-center gap-3 rounded-xl border border-ink/10 bg-white px-4 py-3.5 text-left active:bg-mist"
-            >
-              <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-clay/10 text-clay">
-                <FileJson size={18} aria-hidden="true" />
-              </span>
-              <span className="min-w-0">
-                <span className="block text-sm font-semibold text-ink">恢复旧版 JSON 文件</span>
-                <span className="mt-0.5 block text-[11px] text-ink/50">选取设备上的 .json 备份文件</span>
-              </span>
-            </button>
-            <button
-              type="button"
-              onClick={() => { setShowImportSheet(false); onOpenBackupFolder(); }}
-              className="flex items-center gap-3 rounded-xl border border-ink/10 bg-white px-4 py-3.5 text-left active:bg-mist"
-            >
-              <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-clay/10 text-clay">
-                <FolderOpen size={18} aria-hidden="true" />
-              </span>
-              <span className="min-w-0">
-                <span className="block text-sm font-semibold text-ink">恢复旧版 backup-* 备份</span>
-                <span className="mt-0.5 block text-[11px] text-ink/50">{DEFAULT_BACKUP_FOLDER_LABEL}</span>
-              </span>
-            </button>
-          </div>
-        </MotionSheet>
-        <input ref={backupInputRef} type="file" accept=".json,application/json,text/json,text/plain,application/octet-stream" className="hidden" onChange={(event) => onImport(event.target.files?.[0])} />
-        <button
+                <button
           type="button"
           onClick={() => setShowClearAllConfirm(true)}
           className="mt-3 inline-flex h-9 w-full items-center justify-center gap-1.5 rounded-lg border border-red-200 bg-red-50 px-3 text-xs font-semibold text-red-500 active:bg-red-100"
@@ -9234,14 +9014,6 @@ function toggle<T>(values: T[], value: T) {
   return values.includes(value) ? values.filter((item) => item !== value) : [...values, value];
 }
 
-function formatBackupFileMeta(file: BackupFileEntry) {
-  const size =
-    file.size >= 1024 * 1024
-      ? `${(file.size / 1024 / 1024).toFixed(1)} MB`
-      : `${Math.max(1, Math.round(file.size / 1024))} KB`;
-  const time = file.mtime ? new Date(file.mtime).toLocaleString("zh-CN", { hour12: false }) : "时间未知";
-  return `${time} · ${size}`;
-}
 
 function getErrorMessage(error: unknown) {
   return error instanceof Error ? error.message : "操作失败";
