@@ -1,3 +1,15 @@
+## 2026-06-25 / v1.1.30 / Codex — 固化文件删除安全规则
+
+- **目的**：按用户要求，将文件删除安全规则写入项目根 `AGENTS.md`，确保参与项目的所有 agent、subagent、worker 和人工委派任务都遵守“只移入回收站、不永久删除、删除前后检查 Git 状态、禁止强制/递归删除绕过”的统一约束。
+- **改动文件**：
+  - `AGENTS.md`：新增“文件删除安全规则”小节，覆盖 `rm` / `git clean` / `find -delete` / 脚本递归删除 / Node.js `fs.rm(..., { recursive: true, force: true })` 等禁止项，以及 macOS 回收站、逐项核对路径、永久删除二次确认等要求。
+  - `VERSION_HISTORY.md`：记录本次文档治理。
+- **版本**：`package.json` 保持 **1.1.30**，不递增；本次不涉及 APK。
+- **验证**：文档级检查 + `git diff --check`。
+- **风险门禁**：**low**。纯文档治理，不改源码、不改 Android、不改 MiniMax、不打 APK。
+- **未触发 subagent**：用户未通知启动独立审查。
+- **未验证风险**：未运行 typecheck / logic / build；本次只修改项目规则文档和版本历史。
+
 ## 2026-06-25 / v1.1.30 / Claude Code — P0 修复：最新版长期备份与恢复
 
 - **目的**：彻底删除旧版备份恢复方案（JSON、backup-* 文件夹），统一为 `.wardrobebackup` ZIP 格式，修复 Android 长期备份插件桥接、MediaStore 写入、ZIP 安全校验，重写备份恢复 UI 状态机。

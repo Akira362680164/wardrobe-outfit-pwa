@@ -40,6 +40,22 @@
 - 不要执行破坏性操作，例如清空数据库、删除用户备份、重置工作区、覆盖 APK 历史文件，除非用户明确要求。
 - 不要回滚不属于本次任务的改动；如果遇到其他 agent 或用户留下的变更，先理解并与之兼容。
 
+## 文件删除安全规则
+
+本节适用于参与本项目的所有 agent、subagent、worker 和人工委派任务。任何删除文件或目录的操作都必须先遵守本节，再遵守具体任务说明。
+
+- 禁止执行 `rm -rf`、`rm -r`、`rm -f`、`sudo rm`，以及任何包含等效递归删除、强制删除语义的命令。
+- 禁止使用 `find ... -delete`、`git clean -f`、`git clean -fd`、`git clean -fdx`、脚本递归删除、Node.js `fs.rm(..., { recursive: true, force: true })` 等方式绕过本规则。
+- 删除任何文件或目录时，必须将目标移动到操作系统回收站，不得永久删除。
+- macOS 环境优先使用 `trash <路径>`。如果系统没有安装 `trash` 命令，使用 Finder、系统回收站接口或其他明确执行“移到废纸篓”的安全方式。
+- 不得为了完成任务自行安装删除工具。缺少可靠的回收站操作能力时，停止删除操作，保留目标文件，并在最终回复中说明。
+- 删除前必须执行 `git status --short`，确认目标文件及目录不包含用户或其他 agent 的未提交改动。
+- 删除多个目标前必须逐项列出并核对路径。禁止使用未经展开确认的通配符删除，例如 `*`、`**`、变量拼接路径和根目录相对路径。
+- 移入回收站后必须再次执行 `git status --short`，确认只删除了本次任务明确要求删除的文件。
+- 对 Git 跟踪文件，不得使用 `git checkout -- <file>`、`git restore <file>`、`git reset --hard` 等命令伪装成删除或回滚。
+- 构建工具自身清理其专属生成目录不视为 agent 手工删除，但 agent 不得额外执行永久删除命令清理 `.next`、`out`、Android build、缓存目录或测试产物。
+- 用户明确要求永久删除时，agent 仍必须先说明风险并获得用户对具体路径的再次明确确认，之后才允许执行。
+
 ## API Key 存储与隐私
 
 - MiniMax API Key 当前以**明文**形式存在 `window.localStorage`（key: `wardrobe-minimax-settings`）。这符合"本机优先"原则——数据不离开用户手机——但 Android WebView 的 localStorage 在 `/data/data/<pkg>/app_webview/` 下以明文 SQLite 落盘，root / adb backup 可读。
