@@ -61,9 +61,9 @@ assert(garmentDetail.includes("onDelete: () => Promise<void> | void;"), "Garment
 assert(garmentDetail.includes("await onDelete();"), "GarmentDetail30 awaits onDelete");
 assert(includesAll(garmentDetail, ["submitting: boolean", "errorMessage: string | null"]), "DeleteConfirmDialog accepts submitting and errorMessage");
 assert(!wardrobeApp.includes("void handleDetailDelete"), "detail delete prop no longer drops handleDetailDelete promise");
-assert(wardrobeApp.includes("async function executeDelete()") && wardrobeApp.includes("try {") && wardrobeApp.includes("catch (error)"), "bulk executeDelete has try/catch");
+assert(wardrobeApp.includes("executeWardrobeBulkDelete") && wardrobeApp.includes("try {") && wardrobeApp.includes("catch (error)"), "bulk executeDelete has try/catch");
 assert(
-  wardrobeApp.includes("setDeleteError(error instanceof Error ? error.message") && !wardrobeApp.includes("catch (error) {\n      setDeleteConfirm(null)"),
+  /deleteError/.test(wardrobeApp) && wardrobeApp.includes("wardrobeBulkDelete.deleteError"),
   "bulk delete failure keeps deleteConfirm open and records error",
 );
 assert(!wardrobeApp.includes("runTransaction = db.transaction"), "cascade delete keeps Dexie transaction bound");

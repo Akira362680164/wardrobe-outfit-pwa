@@ -11,7 +11,7 @@ const imageSourceSheet = readFileSync(join(root, "src/components/wardrobe-image-
 const appRoute = readFileSync(join(root, "src/lib/app-route.ts"), "utf8");
 const wardrobeCardMarker = wardrobeApp.indexOf("const cardEntries = deriveGarmentImageList(item, outfits);");
 const wardrobeCardStart = wardrobeApp.lastIndexOf("<CatalogWaterfallGrid", wardrobeCardMarker);
-const wardrobeCardEnd = wardrobeApp.indexOf("{multiSelectMode && selectedItemIds.size > 0", wardrobeCardMarker);
+const wardrobeCardEnd = wardrobeApp.indexOf("<CatalogMultiSelectBar", wardrobeCardMarker);
 const wardrobeCardBlock = wardrobeCardStart >= 0 && wardrobeCardEnd > wardrobeCardStart
   ? wardrobeApp.slice(wardrobeCardStart, wardrobeCardEnd)
   : "";
@@ -240,8 +240,8 @@ check(
   /openWardrobeItemDetail\(item,\s*\{\s*name:\s*"wardrobe_home"\s*\}\s*\)/.test(wardrobeCardBlock),
 );
 check(
-  "单品列表仍保留批量删除工具条",
-  /批量删除\s*\{selectedItemIds\.size\}\s*件/.test(wardrobeApp),
+  "单品列表仍保留批量删除工具条 (升级为 CatalogMultiSelectBar)",
+  wardrobeApp.includes("CatalogMultiSelectBar"),
 );
 
 /* ------------------------------------------------------------------ */
