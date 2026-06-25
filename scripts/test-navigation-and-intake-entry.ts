@@ -10,7 +10,7 @@ const hiddenInputs = readFileSync(join(root, "src/components/wardrobe-hidden-ima
 const imageSourceSheet = readFileSync(join(root, "src/components/wardrobe-image-source-sheet.tsx"), "utf8");
 const appRoute = readFileSync(join(root, "src/lib/app-route.ts"), "utf8");
 const wardrobeCardMarker = wardrobeApp.indexOf("const cardEntries = deriveGarmentImageList(item, outfits);");
-const wardrobeCardStart = wardrobeApp.lastIndexOf('<div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-4">', wardrobeCardMarker);
+const wardrobeCardStart = wardrobeApp.lastIndexOf("<CatalogWaterfallGrid", wardrobeCardMarker);
 const wardrobeCardEnd = wardrobeApp.indexOf("{multiSelectMode && selectedItemIds.size > 0", wardrobeCardMarker);
 const wardrobeCardBlock = wardrobeCardStart >= 0 && wardrobeCardEnd > wardrobeCardStart
   ? wardrobeApp.slice(wardrobeCardStart, wardrobeCardEnd)

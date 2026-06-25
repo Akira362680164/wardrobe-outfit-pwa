@@ -5,7 +5,7 @@ import type { RefObject } from "react";
 import { ChevronLeft, Loader2, MoreHorizontal, Plus, RefreshCw, Sparkles } from "lucide-react";
 import { AppSubPageTopBar, type AppSubPageTopBarProps } from "@/components/app-sub-page-top-bar";
 import { SwipeImageCarousel, type SwipeImageSlide } from "@/components/swipe-image-carousel";
-import { ItemSectionCard } from "@/components/item/section-card";
+import { DetailSectionCard } from "@/components/item-shell/detail-section-card";
 
 export type DetailSlideKind = "garment_main" | "garment_reference" | "outfit_cover" | "outfit_real" | "wishlist_product";
 
@@ -308,8 +308,9 @@ export function DetailTabs<T extends string>({
   );
 }
 
+// ponytail: DetailSurfaceCard kept as thin alias — outfit-list-view still imports it
 export function DetailSurfaceCard({ title, children }: { title?: string; children: ReactNode }) {
-  return <ItemSectionCard title={title}>{children}</ItemSectionCard>;
+  return <DetailSectionCard title={title}>{children}</DetailSectionCard>;
 }
 
 export function DetailInfoRow({ label, value }: { label: string; value?: ReactNode }) {

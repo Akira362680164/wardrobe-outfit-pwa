@@ -25,7 +25,7 @@ import { TemperatureRangeSlider } from "@/components/temperature-range-slider";
 import { getIntakeSourceLabel } from "@/components/intake-source-badge";
 import { AiConfidencePill, calculateDraftConfidenceScore } from "@/components/item/ai-confidence-pill";
 import { ReviewPill } from "@/components/item/review-pill";
-import { ItemSectionCard } from "@/components/item/section-card";
+import { EditSectionCard } from "@/components/item-shell/edit-section-card";
 import { ItemColorFields } from "@/components/item/color-fields";
 import {
   createIntakeField,
@@ -1203,7 +1203,7 @@ function MultiImageReviewStep({
 
       {draft ? (
         <>
-          <ItemSectionCard
+          <EditSectionCard
             title={flowKind === "wishlist" ? "校对种草草稿" : "校对衣物草稿"}
             icon={<Tag size={16} aria-hidden="true" />}
             right={
@@ -1218,9 +1218,9 @@ function MultiImageReviewStep({
             <p className="text-xs leading-relaxed text-ink/50">
               核对 AI 识别结果，红色“待确认”字段建议手动确认后再保存。
             </p>
-          </ItemSectionCard>
+          </EditSectionCard>
 
-          <ItemSectionCard title="基础信息">
+          <EditSectionCard title="基础信息">
             <div className="grid gap-3" data-item-form-section="intake-basic">
               <TextField
                 label="名称"
@@ -1289,9 +1289,9 @@ function MultiImageReviewStep({
                 />
               ) : null}
             </div>
-          </ItemSectionCard>
+          </EditSectionCard>
 
-          <ItemSectionCard title="颜色">
+          <EditSectionCard title="颜色">
             <div className="grid gap-3" data-item-form-section="intake-color">
               <ItemColorFields
                 mode="edit"
@@ -1300,9 +1300,9 @@ function MultiImageReviewStep({
                 onChange={(colors) => onPatchDraft({ colors: userField(colors) })}
               />
             </div>
-          </ItemSectionCard>
+          </EditSectionCard>
 
-          <ItemSectionCard title="穿着属性">
+          <EditSectionCard title="穿着属性">
             <div className="grid gap-3" data-item-form-section="intake-wear">
               <FitGenderChips
                 value={draft.fitGender?.value ?? "unknown"}
@@ -1358,9 +1358,9 @@ function MultiImageReviewStep({
                 onChange={(value) => onPatchDraft({ temperatureRange: userField<TemperatureRange | null>(value) })}
               />
             </div>
-          </ItemSectionCard>
+          </EditSectionCard>
 
-          <ItemSectionCard title="备注">
+          <EditSectionCard title="备注">
             <div data-item-form-section="intake-notes">
               <TextareaField
                 label="备注"
@@ -1371,7 +1371,7 @@ function MultiImageReviewStep({
                 optional
               />
             </div>
-          </ItemSectionCard>
+          </EditSectionCard>
         </>
       ) : null}
 
@@ -1411,9 +1411,9 @@ export function IntakeStepSection({
   children: ReactNode;
 }) {
   return (
-    <ItemSectionCard title={title} icon={icon} right={right}>
+    <EditSectionCard title={title} icon={icon} right={right}>
       {children}
-    </ItemSectionCard>
+    </EditSectionCard>
   );
 }
 

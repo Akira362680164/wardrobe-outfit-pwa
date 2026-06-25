@@ -5,7 +5,7 @@ import type { ColorInfo, TemperatureRange } from "@/lib/types";
 import { TemperatureRangeBar } from "@/components/temperature-range-bar";
 import { ItemRow } from "@/components/item/row";
 import { NotesBlock } from "@/components/item/notes-block";
-import { ItemSectionCard } from "@/components/item/section-card";
+import { DetailSectionCard } from "@/components/item-shell/detail-section-card";
 import { ItemColorFields } from "@/components/item/color-fields";
 
 export interface ItemDetailSectionsProps {
@@ -47,7 +47,7 @@ export function ItemDetailSections({
 }: ItemDetailSectionsProps) {
   return (
     <>
-      <ItemSectionCard title="基础信息">
+      <DetailSectionCard title="基础信息">
         <div className="grid gap-3">
           <ItemRow label="名称" value={name} />
           <ItemRow label="分类" value={categoryLabel} />
@@ -56,13 +56,13 @@ export function ItemDetailSections({
           <ItemRow label="商品链接" value={productUrl} />
           {basicExtraRows}
         </div>
-      </ItemSectionCard>
+      </DetailSectionCard>
 
-      <ItemSectionCard title="颜色">
+      <DetailSectionCard title="颜色">
         <ItemColorFields mode="view" colors={colors} />
-      </ItemSectionCard>
+      </DetailSectionCard>
 
-      <ItemSectionCard title="穿着属性">
+      <DetailSectionCard title="穿着属性">
         <div className="grid gap-3">
           <ItemRow label="季节" value={seasonLabel} />
           <ItemRow label="风格" value={styleLabel} />
@@ -73,11 +73,11 @@ export function ItemDetailSections({
           <ItemRow label="版型倾向" value={fitGenderLabel} />
           <ItemRow label="版型说明" value={fitNotes} />
         </div>
-      </ItemSectionCard>
+      </DetailSectionCard>
 
-      <ItemSectionCard title="备注">
+      <DetailSectionCard title="备注">
         <NotesBlock value={notes} mode="view" />
-      </ItemSectionCard>
+      </DetailSectionCard>
     </>
   );
 }

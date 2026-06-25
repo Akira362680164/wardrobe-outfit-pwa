@@ -99,11 +99,11 @@ assert.ok(
   "Step 3 必须拆成基础信息 / 颜色 / 穿着属性 / 备注四个统一模块",
 );
 assert.ok(
-  (garment.match(/<ItemSectionCard title="基础信息"/g) ?? []).length >= 1
-    && (garment.match(/<ItemSectionCard title="颜色"/g) ?? []).length >= 1
-    && (garment.match(/<ItemSectionCard title="穿着属性"/g) ?? []).length >= 1
-    && (garment.match(/<ItemSectionCard title="备注"/g) ?? []).length >= 1,
-  "Step 3 字段模块必须使用 ItemSectionCard",
+  (garment.match(/<EditSectionCard title="基础信息"/g) ?? []).length >= 1
+    && (garment.match(/<EditSectionCard title="颜色"/g) ?? []).length >= 1
+    && (garment.match(/<EditSectionCard title="穿着属性"/g) ?? []).length >= 1
+    && (garment.match(/<EditSectionCard title="备注"/g) ?? []).length >= 1,
+  "Step 3 字段模块必须使用 EditSectionCard",
 );
 assert.ok(
   /<ItemColorFields[\s\S]{0,80}mode="edit"[\s\S]{0,160}colors=\{draft\.colors\.value\}/.test(garment),

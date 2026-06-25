@@ -13,7 +13,7 @@ const detailShell = readFileSync(join(root, "src/components/detail-shell.tsx"), 
 const garmentDetail = readFileSync(join(root, "src/components/garment-detail-3.0.tsx"), "utf8");
 const wishlistView = readFileSync(join(root, "src/components/wishlist-view-2.0.tsx"), "utf8");
 const itemDetailSections = readFileSync(join(root, "src/components/item/detail-sections.tsx"), "utf8");
-const itemSectionCard = readFileSync(join(root, "src/components/item/section-card.tsx"), "utf8");
+const itemSurfaceTokens = readFileSync(join(root, "src/components/item-shell/item-surface-tokens.ts"), "utf8");
 const itemColorFields = readFileSync(join(root, "src/components/item/color-fields.tsx"), "utf8");
 const appSubPageTopBar = readFileSync(join(root, "src/components/app-sub-page-top-bar.tsx"), "utf8");
 
@@ -130,8 +130,13 @@ assert.match(
 assert.doesNotMatch(detailShell, /className="(?:mx|px)-4 mt-/, "DetailShell 不再叠加详情页横向边距");
 assert.doesNotMatch(garmentDetail, /className="px-4 mt-4 pb-8"/, "GarmentDetail30 tab 内容不再叠加详情页横向边距");
 assert.doesNotMatch(appSubPageTopBar, /min-h-\[76px\] px-4 border-b/, "AppSubPageTopBar 不再叠加二级页横向边距");
-assert.match(detailShell, /<ItemSectionCard title=\{title\}>/, "DetailSurfaceCard 必须委托 ItemSectionCard");
-assert.match(itemSectionCard, /rounded-2xl[\s\S]{0,80}bg-white[\s\S]{0,80}p-4[\s\S]{0,80}shadow-soft/, "ItemSectionCard 应统一卡片圆角、背景、内距和阴影");
+assert.match(detailShell, /<DetailSectionCard title=\{title\}>/, "DetailSurfaceCard 必须委托 DetailSectionCard");
+assert.ok(
+  itemSurfaceTokens.includes("rounded-2xl") &&
+    itemSurfaceTokens.includes("bg-white") &&
+    itemSurfaceTokens.includes("shadow-none"),
+  "ITEM_SURFACE_CLASS 应统一卡片圆角、背景、无阴影",
+);
 assert.match(garmentDetail, /<ItemDetailSections[\s\S]{0,800}basicExtraRows=\{\([\s\S]{0,260}<WardrobeExtras[\s\S]{0,80}mode="view"/, "衣橱详情必须通过 ItemDetailSections + WardrobeExtras 渲染字段");
 assert.match(wishlistView, /<ItemDetailSections[\s\S]{0,800}basicExtraRows=\{<WishlistExtras mode="view"/, "种草详情必须通过 ItemDetailSections + WishlistExtras 渲染字段");
 assert.match(garmentDetail, /<ItemDetailSections[\s\S]{0,500}colors=\{item\.colors\}/, "衣橱详情颜色必须由 ItemDetailSections 统一接收 colors");
@@ -156,8 +161,8 @@ assert.match(wishlistView, /<FormalityWarmthStepper[\s\S]{0,120}label="保暖度
 assert.match(wishlistView, /<NotesBlock\s+[\s\S]{0,120}mode="edit"/, "种草编辑页应使用 NotesBlock edit 编辑备注");
 assert.ok((wishlistView.match(/className="item-edit-section"/g) ?? []).length >= 4, "种草编辑页必须至少 4 个统一 item-edit-section");
 assert.ok((wardrobeAppForBackfill.match(/className="item-edit-section"/g) ?? []).length >= 4, "衣橱编辑页必须至少 4 个统一 item-edit-section");
-assert.match(wardrobeAppForBackfill, /<ItemSectionCard title="颜色"/, "衣橱编辑页颜色模块标题必须统一为颜色");
-assert.match(wardrobeAppForBackfill, /<ItemSectionCard title="穿着属性"/, "衣橱编辑页穿着模块标题必须统一为穿着属性");
+assert.match(wardrobeAppForBackfill, /<EditSectionCard title="颜色"/, "衣橱编辑页颜色模块标题必须统一为颜色");
+assert.match(wardrobeAppForBackfill, /<EditSectionCard title="穿着属性"/, "衣橱编辑页穿着模块标题必须统一为穿着属性");
 assert.match(wishlistView, /<ItemColorFields[\s\S]{0,80}mode="edit"/, "种草编辑页颜色编辑必须使用 ItemColorFields edit");
 assert.match(wardrobeAppForBackfill, /<ItemColorFields[\s\S]{0,80}mode="edit"[\s\S]{0,120}colors=\{draft\.colors\}/, "衣橱编辑页颜色编辑必须使用 ItemColorFields edit");
 assert.doesNotMatch(wishlistView, /ColorSwatchButton/, "种草编辑页不应再使用独立 ColorSwatchButton 色卡逻辑");
