@@ -1,0 +1,19 @@
+api.zhengfangapps.cloud {
+    encode zstd gzip
+
+    reverse_proxy 127.0.0.1:3000 {
+        transport http {
+            dial_timeout 10s
+            response_header_timeout 60s
+        }
+    }
+
+    log {
+        output file /var/log/caddy/wardrobe-api-access.log {
+            roll_size 10MiB
+            roll_keep 10
+            roll_keep_for 336h
+        }
+        format json
+    }
+}

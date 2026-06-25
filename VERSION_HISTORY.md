@@ -1,3 +1,34 @@
+## 2026-06-26 / v1.1.37 / Codex — cloud 1A Worker A deploy shell
+
+- **目的**：按 V4 执行方案在 A1 稳定后触发 Worker A，补齐阶段 1A 的服务器外围部署文件：生产 compose、Caddy 配置、运维脚本、部署文档和部署敏感路径忽略规则。
+- **Worker 执行**：
+  - MiniMax Worker A 启动失败：当前 Codex 进程缺少 `MINIMAX_API_KEY` 环境变量。
+  - 随后使用普通 worker 执行同一 Worker A 只读任务；worker 未写文件、未提交，只输出分析与文件计划。
+  - 主 Codex 审查后采纳外围部署方向，删去 `install-compose` 等可能越界动作，由主 Codex 落地文件。
+- **改动文件**：
+  - `.dockerignore`：排除 Git、依赖、构建产物、Android build、APK、签名、`.env*`、agent 本机目录和审查产物。
+  - `.gitignore`：补充 `deploy/.env.production`、`deploy/secrets/`、`deploy/backups/`。
+  - `deploy/.env.production.example`：新增生产 compose 示例变量，不含真实密钥。
+  - `deploy/compose.production.yaml`：新增 PostgreSQL 16 + `wardrobe-api` 服务，API 仅绑定 `127.0.0.1:3000:3000`，PostgreSQL 不发布端口，secret 文件以只读 bind mount 挂载到 `/run/secrets`。
+  - `deploy/caddy/Caddyfile`：新增 `api.zhengfangapps.cloud` 反代到 `127.0.0.1:3000`，不重写 `/api`。
+  - `deploy/scripts/wardrobe-cloud.sh`：新增只接管现有 Caddy 的审计、校验、备份、reload、固定 compose、部署、回滚、数据库备份/恢复演练和 health 检查脚本。
+  - `deploy/docs/production-deploy.md`：新增阶段 1A 部署说明、Caddy 接管、固定 compose、备份/恢复、回滚和禁止打印密钥说明。
+- **验证结果**：
+  - `bash -n deploy/scripts/wardrobe-cloud.sh`：✅ 通过。
+  - `npm run typecheck`：✅ 通过。
+  - `npm run test:logic:app-route`：✅ 40 passed, 0 failed。
+  - `npm run test:logic:data-repo`：✅ 63 passed, 0 failed。
+  - `npm run build`：✅ 通过；仅保留仓库既有 ESLint warnings。
+  - `git diff --check`：✅ 通过。
+  - `docker --version`：✅ Docker CLI 存在，版本 29.6.0。
+  - `docker compose version`：⚠️ 未通过，本机 Docker 没有 Compose v2 plugin（`unknown command: docker compose`）。
+  - `docker compose --env-file deploy/.env.production.example -f deploy/compose.production.yaml config`：⚠️ 未通过，本机缺 Compose v2 plugin。
+  - `docker compose -f deploy/compose.test.yaml config`：⚠️ 未通过，本机缺 Compose v2 plugin。
+  - 本机 `caddy`：⚠️ 未安装，Caddy validate 需在服务器或安装 Caddy 的环境运行。
+  - `node scripts/review-gate.mjs --staged`：✅ `risk_gate=high`，`subagent_trigger=user_request_only`。
+- **风险门禁**：**high**。本次只改部署外围文件和文档，不改业务源码/API 核心/包管理；但涉及生产部署脚本和 Caddy/compose 操作，且 diff 超过风险门禁阈值。未触发独立审查 subagent：用户未通知。
+- **未验证风险 / 下一步**：未在服务器执行 `docker compose config`、`caddy validate`、远程 health/ready/version；这些应由后续 Worker D 在主 Codex 审查命令后只读/演练验证。
+
 ## 2026-06-26 / v1.1.37 / Codex — cloud 1A A1 workspace + API skeleton
 
 - **目的**：按 V4 执行方案启动阶段 1A，在 `codex/cloud-phase1-auth` 分支建立云端化第一组边界：npm workspaces、contracts 包、API 服务骨架、测试 PostgreSQL compose。

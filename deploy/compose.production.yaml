@@ -1,0 +1,45 @@
+services:
+  postgres:
+    image: postgres:16
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - wardrobe-postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    networks:
+      - wardrobe-cloud
+
+  wardrobe-api:
+    image: ${WARDROBE_API_IMAGE}
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      NODE_ENV: production
+      HOST: 0.0.0.0
+      PORT: 3000
+      DATABASE_URL: ${DATABASE_URL}
+      GIT_COMMIT: ${GIT_COMMIT:-unknown}
+    ports:
+      - "127.0.0.1:3000:3000"
+    volumes:
+      - /opt/wardrobe-cloud/secrets/jwt-private.pem:/run/secrets/jwt-private.pem:ro
+      - /opt/wardrobe-cloud/secrets/jwt-public.pem:/run/secrets/jwt-public.pem:ro
+      - /opt/wardrobe-cloud/secrets/refresh-idempotency.key:/run/secrets/refresh-idempotency.key:ro
+    networks:
+      - wardrobe-cloud
+
+networks:
+  wardrobe-cloud:
+    driver: bridge
+
+volumes:
+  wardrobe-postgres-data:
