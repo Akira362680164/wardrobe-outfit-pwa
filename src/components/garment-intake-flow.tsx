@@ -45,6 +45,7 @@ import {
   SEASON_LABELS,
   STATUS_LABELS,
   STYLE_LABELS,
+  type ClosetLocation,
   type GarmentCategory,
   type GarmentFitGender,
   type GarmentStatus,
@@ -81,6 +82,8 @@ export interface GarmentIntakeFlowProps {
   flowKind?: "garment" | "wishlist";
   initialImages?: GarmentIntakePickedImage[];
   initialDrafts?: GarmentIntakeDraft[];
+  /** v1.1.31 commit1: 真实衣橱位置列表，必传。种草流程也会传入但 UI 不展示。 */
+  locations: ClosetLocation[];
   defaultLocationId?: string;
   isSaving?: boolean;
   onPickImages: (source: GarmentImageSource, remaining: number) => IntakeAsyncResult<GarmentIntakePickedImage[]>;
@@ -120,6 +123,7 @@ export function GarmentIntakeFlow({
   initialImages,
   initialDrafts,
   defaultLocationId = "home",
+  locations,
   isSaving = false,
   onPickImages,
   onProcessImage,
@@ -561,6 +565,7 @@ export function GarmentIntakeFlow({
           onNext={handleNextReview}
           onSelectItem={setActiveReviewId}
           flowKind={flowKind}
+          locations={locations}
         />
       ) : null}
     </IntakeFlowShell>
@@ -883,6 +888,7 @@ function MultiImageReviewStep({
   onNext,
   onSelectItem,
   flowKind,
+  locations,
 }: {
   recognizedItems: GarmentIntakeImageItem[];
   activeReviewId: string | null;
@@ -892,6 +898,7 @@ function MultiImageReviewStep({
   onNext: () => void;
   onSelectItem: (id: string) => void;
   flowKind: "garment" | "wishlist";
+  locations: ClosetLocation[];
 }) {
   const activeItem = recognizedItems.find((item) => item.id === activeReviewId);
   const draft = activeItem?.draft;
@@ -982,7 +989,7 @@ function MultiImageReviewStep({
                   <SelectField
                     label="衣橱位置"
                     value={draft.locationId.value}
-                    options={[{ value: draft.locationId.value || "home", label: draft.locationId.value || "默认衣橱" }]}
+                    options={(locations ?? []).map((loc) => ({ value: loc.id, label: loc.name }))}
                     onChange={(value) => onPatchDraft({ locationId: userField(value) })}
                   />
                   <SelectField

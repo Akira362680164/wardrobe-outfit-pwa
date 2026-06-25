@@ -1,3 +1,23 @@
+## 2026-06-25 / v1.1.31 / MiniMax worker — fix fullscreen intake shell and closet labels
+
+- **目的**：按需求文档 4、5 节，将单品与种草录入层从主页面容器/动画容器中脱离，挂载到 `document.body` 的 `fixed inset-0 z-[90] h-[100dvh] bg-[#fbfbf8]` 全屏层；解锁 32px 双层页面边距、底部导航露出、页面切换动画底色露出等问题；衣橱位置下拉改为真实 `locations` 列表，UI 永远显示 `location.name`，不出现 `home` 内部 ID。
+- **改动文件**：
+  - `src/components/intake-flow-shell.tsx`：引入 `createPortal` 与 mounted 守卫；`document.body.style.overflow` 锁定/还原；根节点改为 `fixed inset-0 z-[90] h-[100dvh]`；main/footer 内层统一 `mx-auto w-full max-w-md`；main padding 收紧为 `px-4 pb-[calc(env(safe-area-inset-bottom)+104px)] pt-3`；返回键监听增加 `active` 守卫避免 stale 触发；确认弹窗 z-index 升到 120。
+  - `src/components/garment-intake-flow.tsx`：`locations: ClosetLocation[]` 改为必传 prop；`MultiImageReviewStep` 同步接受 `locations`；衣橱位置下拉 `options = (locations ?? []).map(loc => ({ value: loc.id, label: loc.name }))`；删除 `[{ value: draft.locationId.value || "home", label: draft.locationId.value || "默认衣橱" }]` 单选项假下拉。
+  - `src/components/wardrobe-app.tsx`：在 `route.name === "intake_single_item"` 的 GarmentIntakeFlow 调用点传入 `locations={locations}`。
+  - `src/components/wishlist-view-2.0.tsx`：种草分支同样传入 `locations={locations}`。
+  - `scripts/test-intake-fullscreen-layout.ts`：新增，18 条断言覆盖 Portal/root/z-index/max-w-md/body lock/back listener 清理/safe-area。
+  - `scripts/test-intake-location-options.ts`：新增，11 条断言覆盖 `home` 隐藏、`loc.id`/`loc.name` 映射、种草不显示衣橱位置、wardrobe/wishlist 调用点。
+  - `package.json` / `package-lock.json`：版本 1.1.30 → 1.1.31；新增 `test:logic:intake-fullscreen-layout`、`test:logic:intake-location-options`；`test:logic:all` 接入这两条。
+  - `VERSION_HISTORY.md`：本条记录。
+- **版本**：`package.json` **1.1.30 → 1.1.31**。Android versionName/versionCode 由 `android/app/build.gradle` 推导；正式 APK 在 commit 4 一并打出。
+- **验证**：
+  - `npm run typecheck`：✅ 0 error。
+  - `npm run test:logic:intake-fullscreen-layout`：✅ 18 passed, 0 failed。
+  - `npm run test:logic:intake-location-options`：✅ 11 passed, 0 failed。
+- **风险门禁**：**high**（触及全屏层结构、body scroll lock、底部导航遮挡、衣橱 ID 显隐；多个核心文件改动）。未触发 subagent：用户未通知 worker 启动独立审查。
+- **未验证风险**：Android 真机端到端 Portal + body lock 行为未在真机跑（计划 commit 4 打包后做）。横屏 844×390 下未做实际截图（计划在 dev server 阶段用 Playwright 截屏）。
+
 ## 2026-06-25 / v1.1.30 / Codex — 固化文件删除安全规则
 
 - **目的**：按用户要求，将文件删除安全规则写入项目根 `AGENTS.md`，确保参与项目的所有 agent、subagent、worker 和人工委派任务都遵守“只移入回收站、不永久删除、删除前后检查 Git 状态、禁止强制/递归删除绕过”的统一约束。

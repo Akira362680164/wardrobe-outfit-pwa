@@ -1744,6 +1744,7 @@ export function WardrobeApp() {
            {route.name === "intake_single_item" ? (
  showGarmentIntakeFlow ? (
               <GarmentIntakeFlow
+                locations={locations}
                 defaultLocationId={locations[0]?.id ?? "home"}
                 onPickImages={pickGarmentIntakeImages}
                 // v1.1.16-dev commit1 §3.4.1: 接通 AI 主链

@@ -36,3 +36,6 @@ android/signing/*signing*.properties
 # Archive directories (local only, not tracked)
 apk-archive/
 docs/archive/
+
+# review artifacts (visual QA, intake AI fixtures) — local only
+review-artifacts/

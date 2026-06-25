@@ -1102,6 +1102,7 @@ export function WishlistView20({
       <GarmentIntakeFlow
         title="添加种草"
         flowKind="wishlist"
+        locations={locations}
         defaultLocationId={locations[0]?.id ?? "home"}
         onPickImages={onPickIntakeImages}
         onProcessImage={onProcessIntakeImage}

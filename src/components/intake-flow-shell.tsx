@@ -3,6 +3,7 @@
 import { App } from "@capacitor/app";
 import { AlertCircle, ChevronLeft, Loader2, X } from "lucide-react";
 import { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 
 export interface IntakeFlowStep {
   id: string;
@@ -45,9 +46,24 @@ export function IntakeFlowShell({
   onExit,
 }: IntakeFlowShellProps) {
   const [confirmExit, setConfirmExit] = useState(false);
+  const [mounted, setMounted] = useState(false);
   const safeIndex = Math.min(Math.max(currentStepIndex, 0), Math.max(steps.length - 1, 0));
   const currentStep = steps[safeIndex];
   const progress = steps.length === 0 ? 0 : ((safeIndex + 1) / steps.length) * 100;
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  // v1.1.31 commit1: 锁定 body 滚动 + 还原。Portal 期间禁止主页面滚动。
+  useEffect(() => {
+    if (typeof document === "undefined") return;
+    const previous = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = previous;
+    };
+  }, []);
 
   function requestExit() {
     if (hasUnsavedDraft || isProcessing) {
@@ -59,9 +75,10 @@ export function IntakeFlowShell({
 
   useEffect(() => {
     let removed = false;
+    let active = true;
     let handle: { remove: () => void } | null = null;
     App.addListener("backButton", () => {
-      if (removed) return;
+      if (!active || removed) return;
       if (isProcessing) {
         setConfirmExit(true);
         return;
@@ -76,16 +93,19 @@ export function IntakeFlowShell({
       }
       onExit?.();
     }).then((nextHandle) => {
-      if (!removed) handle = nextHandle;
+      if (!removed && active) handle = nextHandle;
     });
     return () => {
+      active = false;
       removed = true;
       handle?.remove();
     };
   }, [backDisabled, hasUnsavedDraft, isProcessing, onBack, onExit, safeIndex]);
 
-  return (
-    <div className="min-h-[100dvh] bg-[#fbfbf8] pb-[calc(env(safe-area-inset-bottom)+88px)]">
+  if (!mounted || typeof document === "undefined") return null;
+
+  return createPortal(
+    <div className="fixed inset-0 z-[90] h-[100dvh] bg-[#fbfbf8]">
       <header className="sticky top-0 z-30 border-b border-ink/8 bg-[#fbfbf8]/95 px-4 pb-3 pt-[calc(env(safe-area-inset-top)+0.5rem)] backdrop-blur-xl">
         <div className="flex h-10 items-center justify-between gap-2">
           <button
@@ -126,20 +146,22 @@ export function IntakeFlowShell({
       </header>
 
       {error ? (
-        <div className="mx-4 mt-3 flex items-start gap-2 rounded-lg border border-clay/20 bg-clay/5 px-3 py-2 text-xs text-clay">
+        <div className="mx-auto mt-3 flex w-full max-w-md items-start gap-2 rounded-lg border border-clay/20 bg-clay/5 px-3 py-2 text-xs text-clay">
           <AlertCircle size={14} className="mt-0.5 shrink-0" aria-hidden="true" />
           <p className="min-w-0 flex-1 leading-relaxed">{error}</p>
         </div>
       ) : null}
 
       {isProcessing ? (
-        <div className="mx-4 mt-3 flex items-center gap-2 rounded-lg bg-denim/5 px-3 py-2 text-xs text-ink/65">
+        <div className="mx-auto mt-3 flex w-full max-w-md items-center gap-2 rounded-lg bg-denim/5 px-3 py-2 text-xs text-ink/65">
           <Loader2 size={14} className="animate-spin text-denim" aria-hidden="true" />
           <span>{processingText || "正在处理，请稍候……"}</span>
         </div>
       ) : null}
 
-      <main className="px-4 py-4">{children}</main>
+      <main className="mx-auto w-full max-w-md px-4 pb-[calc(env(safe-area-inset-bottom)+104px)] pt-3">
+        {children}
+      </main>
 
       <footer className="safe-bottom fixed inset-x-0 bottom-0 z-40 border-t border-ink/10 bg-[#fbfbf8]/98 px-4 py-3 backdrop-blur-xl">
         <div className="mx-auto grid max-w-md grid-cols-[1fr_1.6fr] gap-2">
@@ -163,7 +185,7 @@ export function IntakeFlowShell({
       </footer>
 
       {confirmExit ? (
-        <div className="fixed inset-0 z-[100] grid place-items-center bg-black/35 px-4" onClick={() => setConfirmExit(false)}>
+        <div className="fixed inset-0 z-[120] grid place-items-center bg-black/35 px-4" onClick={() => setConfirmExit(false)}>
           <div className="w-full max-w-sm rounded-2xl bg-white p-5 shadow-xl" onClick={(event) => event.stopPropagation()}>
             <h2 className="text-base font-semibold">{isProcessing ? "退出录入？" : "退出本次录入？"}</h2>
             <p className="mt-2 text-sm leading-relaxed text-ink/58">
@@ -180,7 +202,8 @@ export function IntakeFlowShell({
           </div>
         </div>
       ) : null}
-    </div>
+    </div>,
+    document.body,
   );
 }
 
