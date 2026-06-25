@@ -12,8 +12,13 @@
   - `npm run test:logic:long-term-backup`：✅ 106 passed, 0 failed。
   - `npm run test:logic:back-priority-regression`：✅ 23 passed, 0 failed。
   - `npm run build`：✅ 通过，仅仓库既有 lint warnings。
-- **风险门禁**：**high**。触及长期备份/恢复状态机、返回键拦截和发布版本号；不改备份文件格式、不改 Dexie schema、不改 Android 原生插件。用户明确要求合并 main 并打 APK；合并和 APK 打包按用户要求交给 ark-worker subagent 执行。
-- **未验证风险**：本 commit 未做 Android 真机端到端备份导出实测；APK 尚未在本条记录完成时生成。
+  - `git merge main`：✅ Already up to date。
+  - 固定签名文件检查：✅ `android/signing/wardrobe-fixed.jks` 与 `android/signing/wardrobe-signing.properties` 均存在。
+  - `npm run android:apk`：✅ BUILD SUCCESSFUL。
+  - `apksigner verify --verbose --print-certs 衣橱穿搭助手-v1.1.33.apk`：✅ v2 scheme，证书 `CN=fangzheng, OU=Dev, O=Wardrobe, L=Beijing, ST=Beijing, C=CN`。
+- **APK 文件信息**：根目录 `衣橱穿搭助手-v1.1.33.apk`，7.8 MB，SHA-256 `988a50cf766872e6caaf9b7e3a4a2aae12bca4ae1dea87d1858c008664ac9c8f`。
+- **风险门禁**：**high**。触及长期备份/恢复状态机、返回键拦截、发布版本号和 APK 交付；不改备份文件格式、不改 Dexie schema、不改 Android 原生插件。用户明确要求合并 main 并打 APK；按要求启动 ark-worker subagent 两次，但两次均返回 `completed: null` 且未产生仓库或 APK 变化，最终由 Codex 接手完成合并检查与 APK 打包。
+- **未验证风险**：未做 Android 真机端到端备份导出实测；本轮只完成本地逻辑/构建/签名验证。
 
 ## 2026-06-25 / v1.1.32 / Codex — 修复 AI 买前评估详情页不即时刷新
 
