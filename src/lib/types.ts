@@ -453,7 +453,7 @@ export interface OutfitRealImage {
 }
 
 export interface WardrobeBackup {
-  version: 1 | 2 | 3 | 4 | 5;
+  version: 5;
   exportedAt: string;
   locations: ClosetLocation[];
   items: WardrobeItem[];

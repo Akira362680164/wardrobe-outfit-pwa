@@ -58,14 +58,21 @@ export function createLongTermBackupManifest(input: {
   };
 }
 
-// Assert manifest from unknown input
+// Assert manifest from unknown input - strict validation
 export function assertLongTermBackupManifest(input: unknown): LongTermBackupManifest {
-  if (!input || typeof input !== "object") throw new Error("Invalid manifest format");
+  if (!input || typeof input !== "object") throw new Error("备份包格式不正确：manifest 必须是对象");
   const m = input as Record<string, unknown>;
-  if (typeof m.packageVersion !== "number") throw new Error("Missing packageVersion");
-  if (typeof m.appName !== "string") throw new Error("Missing appName");
-  if (typeof m.backupVersion !== "number") throw new Error("Missing backupVersion");
-  if (typeof m.exportedAt !== "string") throw new Error("Missing exportedAt");
+
+  if (m.packageVersion !== 1) throw new Error(`不支持的包版本: ${m.packageVersion}，当前只支持版本 1`);
+  if (m.appName !== "衣橱穿搭助手") throw new Error(`备份包应用名不正确: ${m.appName}`);
+  if (typeof m.appVersion !== "string" || !m.appVersion) throw new Error("备份包缺少 App 版本号");
+  if (m.backupVersion !== 5) throw new Error(`不支持的备份版本: ${m.backupVersion}，当前只支持版本 5`);
+  if (typeof m.exportedAt !== "string" || isNaN(Date.parse(m.exportedAt))) throw new Error("备份包缺少有效的导出时间");
+  if (typeof m.imageCount !== "number" || m.imageCount < 0 || !Number.isInteger(m.imageCount)) throw new Error("备份包图片数量无效");
+  if (m.metadataFile !== "metadata.json") throw new Error("备份包 metadata 文件名不正确");
+  if (m.imageDir !== "images") throw new Error("备份包图片目录名不正确");
+  if (m.fileExtension !== ".wardrobebackup") throw new Error("备份包文件扩展名不正确");
+
   return m as unknown as LongTermBackupManifest;
 }
 

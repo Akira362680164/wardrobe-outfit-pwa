@@ -32,36 +32,34 @@ import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Map;
+import java.util.Set;
+import java.util.regex.Pattern;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
 import java.util.zip.ZipOutputStream;
 
-/**
- * LongTermBackupPlugin (v1.1.13-dev)
- *
- * Manages long-term backup files in the public Downloads directory.
- *
- * Key design decisions:
- * - Android 10+ uses MediaStore.Downloads with RELATIVE_PATH
- * - Android 9 uses getExternalStoragePublicDirectory(DIRECTORY_DOWNLOADS)
- * - Temporary ZIP files are created in cache dir during export
- * - Session-based: startExportSession -> writeTextEntry x N -> commit
- * - Read sessions: openDefaultBackup/openPickedBackup -> readTextEntry -> closeReadSession
- */
 @CapacitorPlugin(name = "LongTermBackup")
 public class LongTermBackupPlugin extends Plugin {
 
     private static final String BACKUP_DIR_NAME = "衣橱穿搭助手备份";
+    private static final String RELATIVE_PATH = "Download/" + BACKUP_DIR_NAME + "/";
+    private static final String MIME_TYPE = "application/zip";
     private static final String ERROR_READ_REQUIRES_PICKER = "DEFAULT_BACKUP_READ_REQUIRES_PICKER";
 
-    // Export sessions: sessionId -> temp directory for collecting entries
+    // ZIP security limits
+    private static final int MAX_ENTRY_COUNT = 20000;
+    private static final long MAX_MANIFEST_BYTES = 1_000_000L;
+    private static final long MAX_METADATA_BYTES = 64_000_000L;
+    private static final long MAX_IMAGE_ENTRY_BYTES = 40_000_000L;
+    private static final long MAX_TOTAL_UNCOMPRESSED_BYTES = 2_000_000_000L;
+
+    private static final Pattern ALLOWED_ENTRY_PATTERN =
+        Pattern.compile("^(manifest\\.json|metadata\\.json|images/img_\\d{3}\\.txt)$");
+
     private final Map<String, File> exportSessions = new HashMap<>();
-
-    // Read sessions: readSessionId -> extracted temp dir
     private final Map<String, File> readSessions = new HashMap<>();
-
-    // Save-as sessions: saved PluginCall callbackId -> temp dir
     private final Map<String, File> pendingSaveAsSessions = new HashMap<>();
 
     @PluginMethod
@@ -75,12 +73,10 @@ public class LongTermBackupPlugin extends Plugin {
         }
 
         try {
-            // Create temp directory to collect files before zipping
             File tempDir = new File(getContext().getCacheDir(), "export_" + System.currentTimeMillis());
             tempDir.mkdirs();
             exportSessions.put(tempDir.getAbsolutePath(), tempDir);
 
-            // Store the filenames for later use
             File infoFile = new File(tempDir, "_info.txt");
             String info = timestampFileName + "\n" + latestFileName;
             FileOutputStream fos = new FileOutputStream(infoFile);
@@ -91,9 +87,6 @@ public class LongTermBackupPlugin extends Plugin {
             result.put("sessionId", tempDir.getAbsolutePath());
             call.resolve(result);
         } catch (Exception e) {
-            // Log only the status label + exception type. Do NOT log e.getMessage()
-            // or stack trace: they may include user data (e.g. file path) that we
-            // do not want surfaced to adb logcat in production builds.
             Logger.error("LongTermBackup startExportSession failed: " + e.getClass().getSimpleName(), null);
             call.reject("Failed to start export session: " + e.getMessage());
         }
@@ -117,7 +110,6 @@ public class LongTermBackupPlugin extends Plugin {
         }
 
         try {
-            // Write file to temp directory
             File outFile = new File(tempDir, path);
             outFile.getParentFile().mkdirs();
             FileOutputStream fos = new FileOutputStream(outFile);
@@ -125,7 +117,6 @@ public class LongTermBackupPlugin extends Plugin {
             fos.close();
             call.resolve();
         } catch (Exception e) {
-            // Status only: do not log the entry content (no JSON / base64 / images).
             Logger.error("LongTermBackup writeTextEntry failed: " + e.getClass().getSimpleName(), null);
             call.reject("Failed to write entry: " + e.getMessage());
         }
@@ -147,40 +138,98 @@ public class LongTermBackupPlugin extends Plugin {
         }
 
         try {
-            // Read info file for filenames
             File infoFile = new File(tempDir, "_info.txt");
             String[] infoLines = readFileContent(infoFile).split("\n");
             String timestampFileName = infoLines[0].trim();
             String latestFileName = infoLines[1].trim();
 
-            // Get backup directory
-            File backupDir = getBackupDirectory();
-            if (backupDir == null) {
-                call.reject("Cannot access backup directory");
-                return;
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                writeViaMediaStore(tempDir, timestampFileName, latestFileName);
+            } else {
+                writeViaFileApi(tempDir, timestampFileName, latestFileName);
             }
 
-            // Create ZIP files
-            File latestZip = new File(backupDir, latestFileName);
-            File timestampZip = new File(backupDir, timestampFileName);
-
-            // Create ZIP from temp directory contents
-            createZipFromDirectory(tempDir, latestZip);
-            createZipFromDirectory(tempDir, timestampZip);
-
-            // Clean up session
             exportSessions.remove(sessionId);
             deleteDirectory(tempDir);
 
             JSObject result = new JSObject();
-            result.put("latestPath", latestZip.getAbsolutePath());
-            result.put("timestampPath", timestampZip.getAbsolutePath());
+            result.put("latestPath", latestFileName);
+            result.put("timestampPath", timestampFileName);
             call.resolve(result);
         } catch (Exception e) {
-            // Status only. We do not log the resulting zip paths or sizes to logcat.
             Logger.error("LongTermBackup commitDefaultExport failed: " + e.getClass().getSimpleName(), null);
             call.reject("Failed to commit export: " + e.getMessage());
         }
+    }
+
+    private void writeViaMediaStore(File tempDir, String timestampFileName, String latestFileName) throws Exception {
+        ContentResolver resolver = getContext().getContentResolver();
+
+        // Write timestamp file
+        Uri timestampUri = insertMediaStorePending(resolver, timestampFileName);
+        try (OutputStream os = resolver.openOutputStream(timestampUri)) {
+            if (os == null) throw new Exception("Cannot open timestamp output stream");
+            createZipFromDirectory(tempDir, os);
+        }
+        markMediaStoreComplete(resolver, timestampUri);
+
+        // Write latest file (replace existing)
+        Uri existingUri = findMediaStoreFile(resolver, latestFileName);
+        if (existingUri != null) {
+            resolver.delete(existingUri, null, null);
+        }
+        Uri latestUri = insertMediaStorePending(resolver, latestFileName);
+        try (OutputStream os = resolver.openOutputStream(latestUri)) {
+            if (os == null) throw new Exception("Cannot open latest output stream");
+            createZipFromDirectory(tempDir, os);
+        }
+        markMediaStoreComplete(resolver, latestUri);
+    }
+
+    private Uri insertMediaStorePending(ContentResolver resolver, String displayName) {
+        ContentValues values = new ContentValues();
+        values.put(MediaStore.MediaColumns.DISPLAY_NAME, displayName);
+        values.put(MediaStore.MediaColumns.MIME_TYPE, MIME_TYPE);
+        values.put(MediaStore.MediaColumns.RELATIVE_PATH, RELATIVE_PATH);
+        values.put(MediaStore.MediaColumns.IS_PENDING, 1);
+        return resolver.insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI, values);
+    }
+
+    private void markMediaStoreComplete(ContentResolver resolver, Uri uri) {
+        ContentValues values = new ContentValues();
+        values.put(MediaStore.MediaColumns.IS_PENDING, 0);
+        resolver.update(uri, values, null, null);
+    }
+
+    private Uri findMediaStoreFile(ContentResolver resolver, String displayName) {
+        try (Cursor cursor = resolver.query(
+                MediaStore.Downloads.EXTERNAL_CONTENT_URI,
+                new String[]{MediaStore.MediaColumns._ID},
+                MediaStore.MediaColumns.RELATIVE_PATH + "=? AND " + MediaStore.MediaColumns.DISPLAY_NAME + "=?",
+                new String[]{RELATIVE_PATH, displayName},
+                null)) {
+            if (cursor != null && cursor.moveToFirst()) {
+                long id = cursor.getLong(0);
+                return Uri.withAppendedPath(MediaStore.Downloads.EXTERNAL_CONTENT_URI, String.valueOf(id));
+            }
+        } catch (Exception e) {
+            // best-effort
+        }
+        return null;
+    }
+
+    private void writeViaFileApi(File tempDir, String timestampFileName, String latestFileName) throws Exception {
+        File downloadsDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS);
+        File backupDir = new File(downloadsDir, BACKUP_DIR_NAME);
+        if (!backupDir.exists()) {
+            backupDir.mkdirs();
+        }
+
+        File latestZip = new File(backupDir, latestFileName);
+        File timestampZip = new File(backupDir, timestampFileName);
+
+        createZipFromDirectory(tempDir, latestZip);
+        createZipFromDirectory(tempDir, timestampZip);
     }
 
     @PluginMethod
@@ -221,7 +270,6 @@ public class LongTermBackupPlugin extends Plugin {
             });
             startActivityForResult(call, intent, "handleSaveAsResult");
         } catch (Exception e) {
-            // Status only.
             Logger.error("LongTermBackup commitSaveAsExport failed: " + e.getClass().getSimpleName(), null);
             call.reject("Failed to save backup: " + e.getMessage());
         }
@@ -230,46 +278,81 @@ public class LongTermBackupPlugin extends Plugin {
     @PluginMethod
     public void listDefaultBackups(PluginCall call) {
         try {
-            File backupDir = getBackupDirectory();
+            JSArray filesArray;
+
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                filesArray = listViaMediaStore();
+            } else {
+                filesArray = listViaFileApi();
+            }
 
             JSObject result = new JSObject();
-            JSArray filesArray = new JSArray();
-
-            if (backupDir == null || !backupDir.exists()) {
-                result.put("files", filesArray);
-                call.resolve(result);
-                return;
-            }
-
-            File[] files = backupDir.listFiles((dir, name) -> name.endsWith(".wardrobebackup"));
-            if (files == null || files.length == 0) {
-                result.put("files", filesArray);
-                call.resolve(result);
-                return;
-            }
-
-            String latestName = "衣橱穿搭助手-latest.wardrobebackup";
-
-            for (File file : files) {
-                JSObject fileInfo = new JSObject();
-                fileInfo.put("name", file.getName());
-                fileInfo.put("displayName", file.getName());
-                fileInfo.put("path", file.getAbsolutePath());
-                fileInfo.put("size", file.length());
-                fileInfo.put("modifiedAt", file.lastModified());
-                fileInfo.put("mtime", file.lastModified());
-                fileInfo.put("isLatest", file.getName().equals(latestName));
-                filesArray.put(fileInfo);
-            }
-
             result.put("files", filesArray);
             call.resolve(result);
         } catch (Exception e) {
-            // Status only. We log the exception class name but not the message,
-            // which could include user-specific path info on some devices.
             Logger.error("LongTermBackup listDefaultBackups failed: " + e.getClass().getSimpleName(), null);
             call.reject("无法读取默认长期备份目录: " + e.getMessage());
         }
+    }
+
+    private JSArray listViaMediaStore() {
+        JSArray filesArray = new JSArray();
+        ContentResolver resolver = getContext().getContentResolver();
+        String latestName = "衣橱穿搭助手-latest.wardrobebackup";
+
+        try (Cursor cursor = resolver.query(
+                MediaStore.Downloads.EXTERNAL_CONTENT_URI,
+                new String[]{
+                    MediaStore.MediaColumns.DISPLAY_NAME,
+                    MediaStore.MediaColumns.SIZE,
+                    MediaStore.MediaColumns.DATE_MODIFIED,
+                },
+                MediaStore.MediaColumns.RELATIVE_PATH + "=?",
+                new String[]{RELATIVE_PATH},
+                null)) {
+            if (cursor != null) {
+                while (cursor.moveToNext()) {
+                    String name = cursor.getString(0);
+                    if (name == null || !name.endsWith(".wardrobebackup")) continue;
+                    long size = cursor.getLong(1);
+                    long mtime = cursor.getLong(2) * 1000L;
+                    JSObject fileInfo = new JSObject();
+                    fileInfo.put("name", name);
+                    fileInfo.put("displayName", name);
+                    fileInfo.put("size", size);
+                    fileInfo.put("modifiedAt", mtime);
+                    fileInfo.put("mtime", mtime);
+                    fileInfo.put("isLatest", name.equals(latestName));
+                    filesArray.put(fileInfo);
+                }
+            }
+        }
+        return filesArray;
+    }
+
+    private JSArray listViaFileApi() {
+        JSArray filesArray = new JSArray();
+        File downloadsDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS);
+        File backupDir = new File(downloadsDir, BACKUP_DIR_NAME);
+
+        if (!backupDir.exists()) return filesArray;
+
+        File[] files = backupDir.listFiles((dir, name) -> name.endsWith(".wardrobebackup"));
+        if (files == null) return filesArray;
+
+        String latestName = "衣橱穿搭助手-latest.wardrobebackup";
+        for (File file : files) {
+            JSObject fileInfo = new JSObject();
+            fileInfo.put("name", file.getName());
+            fileInfo.put("displayName", file.getName());
+            fileInfo.put("path", file.getAbsolutePath());
+            fileInfo.put("size", file.length());
+            fileInfo.put("modifiedAt", file.lastModified());
+            fileInfo.put("mtime", file.lastModified());
+            fileInfo.put("isLatest", file.getName().equals(latestName));
+            filesArray.put(fileInfo);
+        }
+        return filesArray;
     }
 
     @PluginMethod
@@ -282,42 +365,70 @@ public class LongTermBackupPlugin extends Plugin {
         }
 
         try {
-            File backupDir = getBackupDirectory();
-            if (backupDir == null || !backupDir.exists()) {
-                JSObject errorResult = new JSObject();
-                errorResult.put("code", ERROR_READ_REQUIRES_PICKER);
-                errorResult.put("message", "默认备份目录不存在");
-                call.resolve(errorResult);
-                return;
-            }
-
-            File targetFile = new File(backupDir, fileName);
-            if (!targetFile.exists()) {
-                JSObject errorResult = new JSObject();
-                errorResult.put("code", ERROR_READ_REQUIRES_PICKER);
-                errorResult.put("message", "文件不存在: " + fileName);
-                call.resolve(errorResult);
-                return;
-            }
-
-            // Extract to temp directory
             File tempDir = new File(getContext().getCacheDir(), "read_" + System.currentTimeMillis());
             tempDir.mkdirs();
 
-            extractZip(targetFile, tempDir);
+            InputStream inputStream = null;
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                inputStream = openViaMediaStore(fileName);
+            } else {
+                File downloadsDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS);
+                File backupDir = new File(downloadsDir, BACKUP_DIR_NAME);
+                File targetFile = new File(backupDir, fileName);
+                if (!targetFile.exists()) {
+                    deleteDirectory(tempDir);
+                    JSObject errorResult = new JSObject();
+                    errorResult.put("code", ERROR_READ_REQUIRES_PICKER);
+                    errorResult.put("message", "文件不存在: " + fileName);
+                    call.resolve(errorResult);
+                    return;
+                }
+                inputStream = new FileInputStream(targetFile);
+            }
+
+            if (inputStream == null) {
+                deleteDirectory(tempDir);
+                JSObject errorResult = new JSObject();
+                errorResult.put("code", ERROR_READ_REQUIRES_PICKER);
+                errorResult.put("message", "默认备份目录不存在或文件不存在");
+                call.resolve(errorResult);
+                return;
+            }
+
+            try {
+                extractZipSecure(inputStream, tempDir);
+            } finally {
+                inputStream.close();
+            }
             readSessions.put(tempDir.getAbsolutePath(), tempDir);
 
             JSObject result = new JSObject();
             result.put("readSessionId", tempDir.getAbsolutePath());
             call.resolve(result);
         } catch (Exception e) {
-            // Status only.
             Logger.error("LongTermBackup openDefaultBackup failed: " + e.getClass().getSimpleName(), null);
             JSObject errorResult = new JSObject();
             errorResult.put("code", ERROR_READ_REQUIRES_PICKER);
             errorResult.put("message", "无法读取备份文件: " + e.getMessage());
             call.resolve(errorResult);
         }
+    }
+
+    private InputStream openViaMediaStore(String fileName) throws Exception {
+        ContentResolver resolver = getContext().getContentResolver();
+        try (Cursor cursor = resolver.query(
+                MediaStore.Downloads.EXTERNAL_CONTENT_URI,
+                new String[]{MediaStore.MediaColumns._ID},
+                MediaStore.MediaColumns.RELATIVE_PATH + "=? AND " + MediaStore.MediaColumns.DISPLAY_NAME + "=?",
+                new String[]{RELATIVE_PATH, fileName},
+                null)) {
+            if (cursor != null && cursor.moveToFirst()) {
+                long id = cursor.getLong(0);
+                Uri uri = Uri.withAppendedPath(MediaStore.Downloads.EXTERNAL_CONTENT_URI, String.valueOf(id));
+                return resolver.openInputStream(uri);
+            }
+        }
+        return null;
     }
 
     @PluginMethod
@@ -334,7 +445,6 @@ public class LongTermBackupPlugin extends Plugin {
             });
             startActivityForResult(call, intent, "handlePickedBackupResult");
         } catch (Exception e) {
-            // Status only.
             Logger.error("LongTermBackup openPickedBackup failed: " + e.getClass().getSimpleName(), null);
             call.reject("无法打开系统文件选择器: " + e.getMessage());
         }
@@ -369,7 +479,6 @@ public class LongTermBackupPlugin extends Plugin {
             result.put("text", content);
             call.resolve(result);
         } catch (Exception e) {
-            // Status only. We deliberately do not log the path or the content size.
             Logger.error("LongTermBackup readTextEntry failed: " + e.getClass().getSimpleName(), null);
             call.reject("Failed to read entry: " + e.getMessage());
         }
@@ -426,12 +535,10 @@ public class LongTermBackupPlugin extends Plugin {
                     call.reject("无法读取选择的备份文件");
                     return;
                 }
-                extractZip(inputStream, tempDir);
+                extractZipSecure(inputStream, tempDir);
             }
             readSessions.put(tempDir.getAbsolutePath(), tempDir);
-            // Resolve a user-friendly display name. We try the ContentResolver DISPLAY_NAME
-            // first, falling back to the URI's last path segment. We deliberately do NOT
-            // log the full URI or its query parameters (per §4.4.5).
+
             String displayName = null;
             try (Cursor cursor = getContext().getContentResolver().query(uri, null, null, null, null)) {
                 if (cursor != null && cursor.moveToFirst()) {
@@ -452,12 +559,20 @@ public class LongTermBackupPlugin extends Plugin {
             if (displayName == null) {
                 displayName = "衣橱穿搭助手-已选备份.wardrobebackup";
             }
+
+            // Verify extension
+            if (!displayName.endsWith(".wardrobebackup")) {
+                deleteDirectory(tempDir);
+                readSessions.remove(tempDir.getAbsolutePath());
+                call.reject("请选择 .wardrobebackup 长期备份文件");
+                return;
+            }
+
             JSObject response = new JSObject();
             response.put("readSessionId", tempDir.getAbsolutePath());
             response.put("fileName", displayName);
             call.resolve(response);
         } catch (Exception e) {
-            // Status only. The display name is user-visible but should not appear in logcat.
             Logger.error("LongTermBackup handlePickedBackupResult failed: " + e.getClass().getSimpleName(), null);
             call.reject("无法读取选择的备份文件: " + e.getMessage());
         }
@@ -491,33 +606,12 @@ public class LongTermBackupPlugin extends Plugin {
             response.put("filePath", uri.toString());
             call.resolve(response);
         } catch (Exception e) {
-            // Status only. We do not log the user-selected URI (it could be sensitive).
             Logger.error("LongTermBackup handleSaveAsResult failed: " + e.getClass().getSimpleName(), null);
             call.reject("无法保存备份: " + e.getMessage());
         }
     }
 
-    // ===== Helper methods =====
-
-    private File getBackupDirectory() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-            // Android 10+: use Downloads via MediaStore
-            File downloadsDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS);
-            File backupDir = new File(downloadsDir, BACKUP_DIR_NAME);
-            if (!backupDir.exists()) {
-                backupDir.mkdirs();
-            }
-            return backupDir;
-        } else {
-            // Android 9 and below
-            File downloadsDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS);
-            File backupDir = new File(downloadsDir, BACKUP_DIR_NAME);
-            if (!backupDir.exists()) {
-                backupDir.mkdirs();
-            }
-            return backupDir;
-        }
-    }
+    // ===== ZIP helpers =====
 
     private void createZipFromDirectory(File sourceDir, File destZip) throws Exception {
         try (ZipOutputStream zos = new ZipOutputStream(new FileOutputStream(destZip))) {
@@ -537,13 +631,10 @@ public class LongTermBackupPlugin extends Plugin {
 
         for (File file : files) {
             if (file.isDirectory()) {
-                // Skip info file (internal use)
                 if (file.getName().startsWith("_")) continue;
                 addDirectoryToZip(baseDir, file, zos);
             } else {
-                // Skip info file (internal use)
                 if (file.getName().startsWith("_")) continue;
-
                 String entryName = file.getAbsolutePath().substring(baseDir.getAbsolutePath().length() + 1);
                 ZipEntry entry = new ZipEntry(entryName);
                 zos.putNextEntry(entry);
@@ -560,37 +651,84 @@ public class LongTermBackupPlugin extends Plugin {
         }
     }
 
-    private void extractZip(File zipFile, File destDir) throws Exception {
-        try (ZipInputStream zis = new ZipInputStream(new FileInputStream(zipFile))) {
-            extractZipEntries(zis, destDir);
-        }
-    }
+    // ===== ZIP security extraction =====
 
-    private void extractZip(InputStream inputStream, File destDir) throws Exception {
+    private void extractZipSecure(InputStream inputStream, File destDir) throws Exception {
+        String destinationRoot = destDir.getCanonicalPath() + File.separator;
+        Set<String> seenEntries = new HashSet<>();
+        int entryCount = 0;
+        long totalBytesRead = 0;
+
         try (ZipInputStream zis = new ZipInputStream(inputStream)) {
-            extractZipEntries(zis, destDir);
-        }
-    }
+            ZipEntry entry;
+            while ((entry = zis.getNextEntry()) != null) {
+                entryCount++;
+                if (entryCount > MAX_ENTRY_COUNT) {
+                    throw new SecurityException("备份包条目数超过限制");
+                }
 
-    private void extractZipEntries(ZipInputStream zis, File destDir) throws Exception {
-        ZipEntry entry;
-        while ((entry = zis.getNextEntry()) != null) {
-            File newFile = new File(destDir, entry.getName());
-            if (entry.isDirectory()) {
-                newFile.mkdirs();
-            } else {
-                newFile.getParentFile().mkdirs();
-                try (OutputStream fos = new FileOutputStream(newFile)) {
-                    byte[] buffer = new byte[8192];
-                    int len;
-                    while ((len = zis.read(buffer)) > 0) {
-                        fos.write(buffer, 0, len);
+                String name = entry.getName();
+                if (name == null || name.isEmpty()) {
+                    throw new SecurityException("非法备份文件路径：空名称");
+                }
+
+                // Validate against whitelist
+                if (!ALLOWED_ENTRY_PATTERN.matcher(name).matches()) {
+                    throw new SecurityException("非法备份文件路径：" + name);
+                }
+
+                // Check duplicates
+                if (seenEntries.contains(name)) {
+                    throw new SecurityException("备份包包含重复条目：" + name);
+                }
+                seenEntries.add(name);
+
+                File outputFile = new File(destDir, name);
+                String outputPath = outputFile.getCanonicalPath();
+
+                // Zip Slip protection
+                if (!outputPath.startsWith(destinationRoot)) {
+                    throw new SecurityException("非法备份文件路径");
+                }
+
+                if (entry.isDirectory()) {
+                    outputFile.mkdirs();
+                } else {
+                    outputFile.getParentFile().mkdirs();
+
+                    // Determine size limit based on file type
+                    long maxBytes;
+                    if ("manifest.json".equals(name)) {
+                        maxBytes = MAX_MANIFEST_BYTES;
+                    } else if ("metadata.json".equals(name)) {
+                        maxBytes = MAX_METADATA_BYTES;
+                    } else {
+                        maxBytes = MAX_IMAGE_ENTRY_BYTES;
+                    }
+
+                    long entryBytesRead = 0;
+                    try (OutputStream fos = new FileOutputStream(outputFile)) {
+                        byte[] buffer = new byte[8192];
+                        int len;
+                        while ((len = zis.read(buffer)) > 0) {
+                            entryBytesRead += len;
+                            if (entryBytesRead > maxBytes) {
+                                throw new SecurityException("备份包条目过大：" + name);
+                            }
+                            totalBytesRead += len;
+                            if (totalBytesRead > MAX_TOTAL_UNCOMPRESSED_BYTES) {
+                                throw new SecurityException("备份包解压后总大小超过限制");
+                            }
+                            fos.write(buffer, 0, len);
+                        }
                     }
                 }
+                zis.closeEntry();
             }
-            zis.closeEntry();
         }
     }
+
+    // ===== Utility methods =====
 
     private String readFileContent(File file) throws Exception {
         StringBuilder content = new StringBuilder();

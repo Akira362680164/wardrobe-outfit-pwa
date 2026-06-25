@@ -1,4 +1,4 @@
-import { Capacitor } from "@capacitor/core";
+import { Capacitor, registerPlugin } from "@capacitor/core";
 import {
   LONG_TERM_BACKUP_EXTENSION,
   LONG_TERM_BACKUP_LATEST_FILE_NAME,
@@ -13,7 +13,7 @@ import {
   type LongTermBackupManifest,
   type LongTermBackupEntryBuildResult,
 } from "@/lib/long-term-backup-package";
-import { createBackup, parseBackup, resolveV4Tokens } from "@/lib/backup";
+import { createLatestBackup } from "@/lib/backup-data";
 import type { ClosetLocation, OutfitCalendarPlan, OutfitPlanEntry, PlanPackingChecklistItem, SavedOutfit, TryOnProfile, WardrobeBackup, WardrobeItem, WishlistItem } from "@/lib/types";
 
 const IMG_TOKEN_PREFIX = "%%IMG_";
@@ -32,6 +32,8 @@ interface LongTermBackupPluginInterface {
   cancelExportSession(args: { sessionId: string }): Promise<void>;
 }
 
+const LongTermBackup = registerPlugin<LongTermBackupPluginInterface>("LongTermBackup");
+
 // Required plugin methods - any missing method indicates a broken plugin registration/build
 const REQUIRED_PLUGIN_METHODS: Array<keyof LongTermBackupPluginInterface> = [
   "startExportSession",
@@ -46,33 +48,17 @@ const REQUIRED_PLUGIN_METHODS: Array<keyof LongTermBackupPluginInterface> = [
 // Error code for when default backup read requires picker
 export const DEFAULT_BACKUP_READ_REQUIRES_PICKER = "DEFAULT_BACKUP_READ_REQUIRES_PICKER";
 
-// Fixed error messages (per prompt §4.4.1 - must not vary)
-export const LTB_NATIVE_PLUGIN_MISSING_MESSAGE = "Android 长期备份插件未注册，无法导出。请重新同步并打包 APK。";
+// Fixed error messages
+export const LTB_NATIVE_PLUGIN_MISSING_MESSAGE = "Android 长期备份服务不可用。请安装包含长期备份插件的最新 APK。";
 export const LTB_NATIVE_PLUGIN_METHOD_MISSING_MESSAGE = "Android 长期备份插件方法缺失，无法完成长期备份。";
 
-// Get plugin instance. Returns null on Web (not native) - native environment must have plugin
-// available, otherwise we throw with LTB_NATIVE_PLUGIN_MISSING_MESSAGE (or method-missing message).
-function getLongTermBackupPlugin(): LongTermBackupPluginInterface | null {
-  if (!Capacitor.isNativePlatform()) return null;
-  try {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const capacitor = Capacitor as any;
-    const plugin = capacitor.getPlugin("LongTermBackup");
-    return plugin as LongTermBackupPluginInterface;
-  } catch {
-    return null;
-  }
-}
-
 // Assert that we can perform a real Android native long-term backup operation.
-// In native environment, this throws if plugin is not registered or required methods are missing.
-// In web environment, this returns null and callers should branch to web fallback if intended.
 export function assertNativeLongTermBackupAvailable(methods: Array<keyof LongTermBackupPluginInterface> = REQUIRED_PLUGIN_METHODS): LongTermBackupPluginInterface | null {
   if (!Capacitor.isNativePlatform()) return null;
-  const plugin = getLongTermBackupPlugin();
-  if (!plugin) {
+  if (!Capacitor.isPluginAvailable("LongTermBackup")) {
     throw new Error(LTB_NATIVE_PLUGIN_MISSING_MESSAGE);
   }
+  const plugin = LongTermBackup;
   for (const method of methods) {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     if (typeof (plugin as any)[method] !== "function") {
@@ -118,7 +104,7 @@ export interface LongTermBackupExportResult {
 
 // Build long-term backup entries from source data
 export async function buildLongTermBackupEntries(input: LongTermBackupSourceData & { appVersion: string }): Promise<LongTermBackupEntryBuildResult> {
-  const backup = createBackup(
+  const backup = createLatestBackup(
     input.items,
     input.locations,
     input.outfits,
@@ -180,6 +166,46 @@ export async function buildLongTermBackupEntries(input: LongTermBackupSourceData
   };
 }
 
+// Collect image token indices from metadata JSON
+export function collectLatestImageTokenIndices(metadataJson: string): number[] {
+  const re = /%%IMG_(\d+)%%/g;
+  const indices = new Set<number>();
+  let match: RegExpExecArray | null;
+  while ((match = re.exec(metadataJson)) !== null) {
+    indices.add(parseInt(match[1], 10));
+  }
+  return Array.from(indices).sort((a, b) => a - b);
+}
+
+// Resolve image tokens strictly - throws on any missing image
+export async function resolveLatestImageTokensStrict(
+  metadataJson: string,
+  readImageText: (fileName: string) => Promise<string>,
+): Promise<string> {
+  const imageMap = new Map<number, string>();
+  const re = /%%IMG_(\d+)%%/g;
+  const indices = new Set<number>();
+  let match: RegExpExecArray | null;
+  while ((match = re.exec(metadataJson)) !== null) {
+    indices.add(parseInt(match[1], 10));
+  }
+  const maxIdx = indices.size > 0 ? Math.max(...indices) : -1;
+  for (let i = 0; i <= maxIdx; i++) {
+    const fileName = `img_${String(i).padStart(3, "0")}.txt`;
+    const text = await readImageText(fileName);
+    if (!text || !text.startsWith("data:image/")) {
+      throw new Error(`备份图片缺失：images/${fileName}`);
+    }
+    imageMap.set(i, text);
+  }
+  return metadataJson.replace(re, (_, digits) => {
+    const idx = parseInt(digits, 10);
+    const img = imageMap.get(idx);
+    if (!img) throw new Error(`备份图片缺失：images/img_${String(idx).padStart(3, "0")}.txt`);
+    return img;
+  });
+}
+
 // Restore long-term backup from package
 export async function restoreLongTermBackupFromPackage(input: {
   manifestJson: string;
@@ -188,16 +214,13 @@ export async function restoreLongTermBackupFromPackage(input: {
 }): Promise<WardrobeBackup> {
   const manifest = assertLongTermBackupManifest(JSON.parse(input.manifestJson));
 
-  // Check backup version compatibility
   if (manifest.backupVersion !== 5) {
     throw new Error(`不支持的备份版本: ${manifest.backupVersion}，当前支持版本 5`);
   }
 
-  // Resolve image tokens
-  const resolvedMetadata = await resolveV4Tokens(input.metadataJson, input.readImageText);
-
-  // Parse the backup
-  return parseBackup(resolvedMetadata);
+  const resolvedMetadata = await resolveLatestImageTokensStrict(input.metadataJson, input.readImageText);
+  const { parseLatestBackupMetadata } = await import("@/lib/backup-data");
+  return parseLatestBackupMetadata(resolvedMetadata);
 }
 
 // Export long-term backup to default location (Android native)
@@ -394,17 +417,13 @@ export async function restoreDefaultLongTermBackup(fileName?: string): Promise<R
       path: LONG_TERM_BACKUP_METADATA_FILE,
     });
 
-    // Read images
+    // Read images - strict: any missing image throws
     const readImageText = async (fileName: string): Promise<string> => {
-      try {
-        const imgResult = await plugin.readTextEntry({
-          readSessionId,
-          path: `${LONG_TERM_BACKUP_IMAGE_DIR}/${fileName}`,
-        });
-        return imgResult.text;
-      } catch {
-        return "";
-      }
+      const imgResult = await plugin.readTextEntry({
+        readSessionId,
+        path: `${LONG_TERM_BACKUP_IMAGE_DIR}/${fileName}`,
+      });
+      return imgResult.text;
     };
 
     const backup = await restoreLongTermBackupFromPackage({
@@ -457,17 +476,13 @@ export async function restorePickedLongTermBackup(): Promise<RestorePickedLongTe
       path: LONG_TERM_BACKUP_METADATA_FILE,
     });
 
-    // Read images
+    // Read images - strict: any missing image throws
     const readImageText = async (fileName: string): Promise<string> => {
-      try {
-        const imgResult = await plugin.readTextEntry({
-          readSessionId,
-          path: `${LONG_TERM_BACKUP_IMAGE_DIR}/${fileName}`,
-        });
-        return imgResult.text;
-      } catch {
-        return "";
-      }
+      const imgResult = await plugin.readTextEntry({
+        readSessionId,
+        path: `${LONG_TERM_BACKUP_IMAGE_DIR}/${fileName}`,
+      });
+      return imgResult.text;
     };
 
     const backup = await restoreLongTermBackupFromPackage({
