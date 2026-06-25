@@ -1,4 +1,41 @@
-## 2026-06-25 / v1.1.34 / Mavis — push v1.1.34 to public GitHub (force-with-lease)
+## 2026-06-25 / v1.1.35 / Claude Code — 修复含图片长期备份无法恢复
+
+- **目的**：修复 Android 真机在 `Download/衣橱穿搭助手备份` 能列出 `.wardrobebackup` / `.wardrobebackup.zip`，但点击含图片备份后恢复失败的问题；同步修正恢复列表状态机不应显示旋转图标、“处理中”和 `0%`。
+- **用户真机现象**：默认长期备份目录已经能显示备份文件，但选择备份后无法完成恢复；列表静止等待用户选择时仍被渲染成忙碌进度态。
+- **根因**：
+  1. Android 原生 `LongTermBackupPlugin` 用 `BufferedReader.readLine()` 重建文本，给单行 Data URL 额外追加 `\n`。
+  2. 前端 `resolveLatestImageTokensStrict()` 把 Data URL 直接替换进原始 JSON 字符串，带真实换行时导致 `JSON.parse()` 失败。
+  3. `backup_list` 被进度 UI 当成非完成态，显示 Loader、进度条、“处理中”和 `0%`。
+- **改动文件**：
+  - `android/app/src/main/java/com/wardrobe/outfit/LongTermBackupTextIO.java`（新增）：按 UTF-8 字符块精确读取，不使用 `readLine()`，不增删换行。
+  - `android/app/src/main/java/com/wardrobe/outfit/LongTermBackupPlugin.java`：`_info.txt` / manifest / metadata / 图片文本读取切到精确读取；`_info.txt` 用 `split("\\R", -1)` 并校验两行文件名；打开默认目录和系统文件选择器失败时清理临时目录和 read session。
+  - `android/app/src/test/java/com/wardrobe/outfit/LongTermBackupTextIOTest.java`（新增）：覆盖无末尾换行、`\n`、`\r\n`、多行 JSON、中文 UTF-8、Data URL 和空文件。
+  - `src/lib/long-term-backup.ts`：先解析 tokenized metadata，再按完整 `%%IMG_<n>%%` 字符串递归替换；图片文本清 BOM/首尾空白，接受旧 Android 尾部 `\n` / `\r\n`，拒绝中间换行、空内容、非 `data:image/` 和缺失 `;base64,`；严格校验 manifest `imageCount` 与 Token 数量、索引连续性。
+  - `src/lib/backup-restore.ts`：恢复前引用校验继续保留，并统计恢复预览中的图片数量。
+  - `src/components/wardrobe-app.tsx`：进入确认页前调用 `validateLatestBackupReferences()`；`pendingRestoreRef` 保留 `operation`，`confirmRestore()` 不再硬编码 `restore_default`；`backup_list` 使用静态文件图标、不显示进度条/处理中/0%、文件名完整换行；成功摘要增加计划、旅行计划、清单和图片数。
+  - `scripts/test-long-term-backup.ts`：新增 Android 精确读取、禁止 `readLine()`、状态机、引用校验和 operation 保留断言。
+  - `scripts/test-latest-backup-restore-roundtrip.ts`：覆盖旧 Android `\n` / `\r\n`、BOM、首尾空白、非法图片、Token 不连续、manifest 数量不一致、metadata 损坏和普通备注局部 Token 不替换。
+  - `package.json` / `package-lock.json`：版本 **1.1.34 → 1.1.35**；补充 `fake-indexeddb` devDependency，使既有 Dexie roundtrip 测试可真实运行。
+- **提交**：
+  - Commit 1：`cae1b8f fix: restore Android long-term backups with images`。
+  - Commit 2：本条发布元数据提交待创建。
+- **验证结果**：
+  - `npm run typecheck`：✅ 0 error。
+  - `npm run test:logic:long-term-backup`：✅ 143 passed, 0 failed。
+  - `npm run test:logic:latest-backup-contract`：✅ 通过。
+  - `npm run test:logic:latest-backup-roundtrip`：✅ 通过，含尾部 LF/CRLF/BOM/首尾空白与非法图片失败用例。
+  - `npm run test:logic:latest-backup-security`：✅ 通过。
+  - `npm run test:logic:real-user-zip-contract`：✅ 10 passed, 0 failed。
+  - `npm run test:logic:back-priority-regression`：✅ 23 passed, 0 failed。
+  - `npm run test:logic:all`：✅ 通过。
+  - `npm run build`：✅ 通过；仅保留仓库既有 lint warnings。
+  - `cd android && ./gradlew testDebugUnitTest`：✅ BUILD SUCCESSFUL。
+  - Dev Server + Playwright：✅ 浏览器实际打开设置页并触发默认目录恢复失败态，显示“无法读取默认目录 / 浏览器无法读取 Android 默认长期备份目录，请在 Android 真机验证”；浏览器无法真实触发 Android 原生 `scanning` / `backup_list` / `reading` 目录读取链路，相关状态由静态/逻辑测试覆盖。
+- **main 合并结果**：按用户当前指令在当前本地 `main` 执行；未合并公开脱敏 `origin/main`，因为远端公开历史会删除 `AGENTS.md` / `CLAUDE.md` / `MINIMAX.md` 等本地规则文件。
+- **APK**：待最终 `main` 验证后构建并回填文件名、大小、SHA-256 与签名验证。
+- **风险门禁**：**high**。触及长期备份恢复链路、Android 原生读取、Dexie 恢复前校验、核心 UI 状态机、测试依赖、版本和 APK 交付。未触发独立审查 subagent：用户未通知启动独立审查。
+- **未验证风险**：尚未完成 Android 真机端到端恢复；当前环境稍后会检查 `adb devices`，如果没有已授权设备，将明确要求用户使用交付 APK 做真机回归。
+
 
 - **目的**：把本地 `main` v1.1.34（含 v1.1.32-v1.1.34 全部 dev 节点 + v1.1.34 测试期望修正）推到公开 GitHub 仓库 `Akira362680164/wardrobe-outfit-pwa`，并用 `force-with-lease` 覆盖旧的 v1.1.28 历史。
 - **前置合并**：
