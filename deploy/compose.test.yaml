@@ -1,0 +1,16 @@
+services:
+  postgres-test:
+    image: postgres:16
+    environment:
+      POSTGRES_DB: wardrobe_test
+      POSTGRES_USER: wardrobe_test
+      POSTGRES_PASSWORD: wardrobe_test_password
+    ports:
+      - "127.0.0.1:55432:5432"
+    tmpfs:
+      - /var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U wardrobe_test -d wardrobe_test"]
+      interval: 5s
+      timeout: 3s
+      retries: 10

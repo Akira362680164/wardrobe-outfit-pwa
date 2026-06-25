@@ -1,3 +1,28 @@
+## 2026-06-26 / v1.1.37 / Codex — cloud 1A A1 workspace + API skeleton
+
+- **目的**：按 V4 执行方案启动阶段 1A，在 `codex/cloud-phase1-auth` 分支建立云端化第一组边界：npm workspaces、contracts 包、API 服务骨架、测试 PostgreSQL compose。
+- **基线**：从 `main` 的 `07c7f2d` 创建 `codex/cloud-phase1-auth`；开始时仅有未跟踪 `.vscode/`，本次不纳入提交。
+- **改动文件**：
+  - `package.json` / `package-lock.json`：新增 `packages/cloud-contracts`、`services/wardrobe-api` workspaces；新增 `cloud:contracts:typecheck`、`api:typecheck`、`api:test` 脚本；同步锁文件版本与 workspace 依赖。
+  - `packages/cloud-contracts/`：新增 health / ready / version response Zod 契约和 TypeScript 包配置。
+  - `services/wardrobe-api/`：新增 Fastify app、`/api/health`、`/api/ready`、`/api/version`、Drizzle/PostgreSQL 连接、测试库生产 IP 防护、Vitest 骨架。
+  - `deploy/compose.test.yaml`：新增 PostgreSQL 16 测试库 `wardrobe_test`，使用独立账号、127.0.0.1 端口和 tmpfs 数据目录。
+- **范围说明**：仅完成 A1 骨架；未实现认证表、注册、登录、Refresh、AuthGate、工作区同步、旧 Dexie 导入、COS 图片或微信小程序目录。
+- **验证结果**：
+  - `npm install`：✅ 通过；npm audit 提示 9 个依赖漏洞（8 moderate / 1 high），本轮未自动升级，避免扩大 A1 diff。
+  - `npm run cloud:contracts:typecheck`：✅ 通过。
+  - `npm run api:typecheck`：✅ 通过。
+  - `npm run api:test`：✅ 5 tests passed。
+  - `npm --workspace @wardrobe/wardrobe-api run build`：✅ 通过。
+  - `npm run typecheck`：✅ 通过。
+  - `npm run test:logic:app-route`：✅ 40 passed, 0 failed。
+  - `npm run test:logic:data-repo`：✅ 63 passed, 0 failed。
+  - `npm run build`：✅ 通过；仅保留仓库既有 ESLint warnings。
+  - `node scripts/review-gate.mjs --staged`：✅ `risk_gate=high`，`subagent_trigger=user_request_only`。
+  - `docker compose -f deploy/compose.test.yaml config`：⚠️ 未运行成功，本机缺少 `docker` 命令（`command not found`）。
+- **风险门禁**：**high**。新增 npm workspace、后端服务、API 契约、PostgreSQL/Drizzle 依赖和较大的 `package-lock.json` 变更；未触发独立审查 subagent：用户未通知。
+- **未验证风险 / 下一步**：本机未验证 Docker compose 语法与真实 PostgreSQL 启动；A2 前需在具备 Docker 的环境补跑 compose config，并继续实现 auth schema 与 security primitives。
+
 ## 2026-06-25 / v1.1.37 / Claude Code — push to public GitHub (force-with-lease)
 
 - **目的**：把本地 `main` v1.1.37（共享多选删除重构）推到公开 GitHub 仓库 `Akira362680164/wardrobe-outfit-pwa`。

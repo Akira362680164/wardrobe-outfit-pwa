@@ -2,6 +2,10 @@
   "name": "wardrobe-outfit-pwa",
   "version": "1.1.37",
   "private": true,
+  "workspaces": [
+    "packages/cloud-contracts",
+    "services/wardrobe-api"
+  ],
   "scripts": {
     "dev": "next dev",
     "build": "next build",
@@ -13,6 +17,9 @@
     "start": "next start",
     "lint": "next lint",
     "typecheck": "tsc --noEmit",
+    "cloud:contracts:typecheck": "npm --workspace @wardrobe/cloud-contracts run typecheck",
+    "api:typecheck": "npm --workspace @wardrobe/wardrobe-api run typecheck",
+    "api:test": "npm --workspace @wardrobe/wardrobe-api run test",
     "test:logic": "tsx scripts/test-recommendations.ts",
     "test:logic:cropper": "tsx scripts/test-cropper-math.ts",
     "test:logic:images": "tsx scripts/test-garment-image-source.ts",

@@ -1,0 +1,31 @@
+{
+  "name": "@wardrobe/wardrobe-api",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "main": "dist/server.js",
+  "scripts": {
+    "dev": "tsx watch src/server.ts",
+    "prebuild": "npm --workspace @wardrobe/cloud-contracts run build",
+    "build": "tsc -p tsconfig.json",
+    "pretypecheck": "npm --workspace @wardrobe/cloud-contracts run build",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "pretest": "npm --workspace @wardrobe/cloud-contracts run build",
+    "test": "vitest run",
+    "start": "node dist/server.js"
+  },
+  "dependencies": {
+    "@wardrobe/cloud-contracts": "file:../../packages/cloud-contracts",
+    "drizzle-orm": "^0.44.7",
+    "fastify": "^5.5.0",
+    "pg": "^8.16.3",
+    "zod": "^3.25.76"
+  },
+  "devDependencies": {
+    "@types/pg": "^8.15.5",
+    "drizzle-kit": "^0.31.4",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.3",
+    "vitest": "^3.2.4"
+  }
+}
