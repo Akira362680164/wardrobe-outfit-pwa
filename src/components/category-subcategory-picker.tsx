@@ -69,10 +69,13 @@ export function CategorySubcategoryPicker({
                 role="radio"
                 aria-checked={active}
                 onClick={() => {
-                  if (g.id === category) return;
+                  // v1.1.31 patch5: 点击当前已选中的分类也要调用 onCategoryChange，
+                  // 让调用方把 category.source 升级为 "user"，满足失败草稿手工恢复门禁。
+                  // 仅当 subcategory 与新分类不兼容时清空二级；点击当前分类时
+                  // subcategory 一定仍属当前分类，无需清空。
+                  const switching = g.id !== category;
                   onCategoryChange(g.id as GarmentCategory);
-                  // 切大类时强制清空二级（P1-6 fix）
-                  if (subcategory != null && subcategory !== "") {
+                  if (switching && subcategory != null && subcategory !== "") {
                     onSubcategoryChange(undefined);
                   }
                 }}

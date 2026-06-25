@@ -1,3 +1,27 @@
+## 2026-06-25 / v1.1.31 / MiniMax worker + Codex — patch5: 修复失败草稿保存、当前分类确认与无 Key 假成功
+
+- **目的**：按 Codex 验收反馈修复 v1.1.31 录入升级的 3 个 P0/P1 漏洞：失败草稿手工补全后仍因自身 `ai_recognition_failed` blocking issue 无法保存；点击当前已选分类不会把 `category.source` 升级为 `user`；未配置 MiniMax Key 时仍会返回最小成功结果并生成默认草稿。另补齐重新识别失败时已成功项目不降级为 failed 的保护。
+- **改动文件**：
+  - `src/lib/intake-recognition-retry.ts`：`isFailedDraftManualRecoveryComplete` 不再因 `calculateDraftReviewSummary().blockingIssues` 短路，改为只检查名称非空、分类为用户确认、颜色已由用户选择。
+  - `src/components/category-subcategory-picker.tsx`：点击当前已选中一级分类也调用 `onCategoryChange`，仅切换到不同一级分类时清空二级分类。
+  - `src/components/wardrobe-app.tsx`：`processGarmentIntakeImage` 删除无 Key 短路，统一走 `recognizeSingleItemFromDataUrl` 抛 `not_configured`。
+  - `src/components/garment-intake-flow.tsx`：无 `aiTag` 时抛 `GarmentRecognitionError("not_configured")` 进入失败草稿路径；当前件重新识别失败时保留原草稿，原本已识别成功的项目保持 `recognized` 状态。
+  - `scripts/test-intake-upgrade-patch5.ts`：新增 28 条函数级/源码级回归，直接验证失败草稿补全后可保存、当前分类点击语义、无 Key 不再假成功。
+  - `scripts/test-intake-entry-and-crop-regression.ts`：更新图片识别来源优先级断言为 `croppedImageDataUrl ?? displayDataUrl ?? originalDataUrl`。
+  - `package.json`：新增 `test:logic:intake-upgrade-patch5` 并接入 `test:logic:all`。
+- **版本与 APK**：保持 **v1.1.31**；重新执行 `npm run android:apk` 并覆盖根目录 `衣橱穿搭助手-v1.1.31.apk`（8,193,541 bytes，SHA-256 `2d9c7e291d64b7b2333559128fa81f5427362293e123d4353761aa557441c72c`）；`apksigner verify --verbose --print-certs` 通过，v2 scheme，证书 `CN=fangzheng`。
+- **验证**：
+  - `npm run test:logic:intake-upgrade-patch5`：✅ 28 passed, 0 failed。
+  - `npm run typecheck`：✅ 0 error。
+  - `npm run test:logic:intake-recognition-failure-semantics && npm run test:logic:intake-current-item-rerecognition && npm run test:logic:intake-location-options`：✅ 全部通过。
+  - `npm run build`：✅ 通过，仅仓库既有 lint warnings。
+  - `npm run test:logic:all`：❌ 停在既有 `test:logic:back-priority-regression` 3 条失败（`expandedImage`、`backupDialog`、completed/error/confirm backupDialog），本轮未改该模块。
+  - 手动补跑 `test:logic:all` 中断后的后半段：`delete-cascade-regression`、`garment-intake-multi-image`、`intake-entry-crop-regression`、`ai-intake-live-contract`、`thumbnail-backfill`、`intake-field-contract`、`home-card-edit-wishlist-delete-hotfix`、`garment-intake-confirm-contract`、`wishlist-intake-confirm-contract`、`outfit-intake-confirm-contract`、`intake-fullscreen-layout`、`intake-location-options`、`intake-current-item-rerecognition`、`intake-recognition-failure-semantics`、`pants-category-ai-contract`、`intake-upgrade-patch5`、`item-wishlist-edit-recognition-layout` 均 ✅；`diagnostic-events` 仍有既有 1 条失败（期望 7 处 db transaction 打点，当前/ab7b294 均为 5 处）；`color-catalog`、`latest-backup-contract` ✅；`latest-backup-roundtrip` 因既有缺失依赖 `fake-indexeddb/auto` 失败（`package.json`/lockfile 在 a0846c9、ab7b294、HEAD 均未声明）。
+  - `npm run android:apk`：✅ BUILD SUCCESSFUL。
+- **风险门禁**：**high**。触及共享录入流、AI 失败门禁、无 Key 失败语义、当前件重新识别状态和测试总线。
+- **执行与审查说明**：用户明确要求代码开发、测试、打包由 MiniMax worker 执行，Codex 负责验收；MiniMax worker 小时额度不足后，用户要求 Codex 接手测试与后续收口。未触发独立审查 subagent：用户未通知启动独立审查。
+- **未验证风险**：Android 真机端到端仍未安装实测；844×390 横屏步骤 3 未单独截图；既有 `back-priority-regression` / `diagnostic-events` / `latest-backup-roundtrip` 失败未在本轮修复，避免扩大到返回键、诊断打点和备份依赖线。
+
 ## 2026-06-25 / v1.1.31 / MiniMax worker — fix fullscreen intake shell and closet labels
 
 - **目的**：按需求文档 4、5 节，将单品与种草录入层从主页面容器/动画容器中脱离，挂载到 `document.body` 的 `fixed inset-0 z-[90] h-[100dvh] bg-[#fbfbf8]` 全屏层；解锁 32px 双层页面边距、底部导航露出、页面切换动画底色露出等问题；衣橱位置下拉改为真实 `locations` 列表，UI 永远显示 `location.name`，不出现 `home` 内部 ID。

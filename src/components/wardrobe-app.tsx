@@ -1046,13 +1046,9 @@ export function WardrobeApp() {
     // v1.1.31 commit2: 真实 fileName（来源于 picked image），禁止固定 "garment.jpg"。
     // fileName 仅用于诊断/请求上下文，绝不直接成为用户可见名称。
     const fileName = input.fileName ?? "garment.jpg";
-    if (!hasDeviceMiniMaxKey(miniMaxSettings)) {
-      // 无 Key: 返回最小结果, flow 内部走本地 buildLocalGarmentDraft + source: "default"
-      return {
-        transparentBackgroundStatus: "skipped",
-        qualityWarnings: [],
-      };
-    }
+    // v1.1.31 patch5: 取消无 Key 短路。无 Key 必须走到 recognizeSingleItemFromDataUrl
+    // 让其抛 GarmentRecognitionError("not_configured")，flow 内部走 failed draft + blocking
+    // issue 路径，绝不返回默认"成功"草稿伪装为可编辑。
     const file = await dataUrlToFile(imageDataUrl, fileName).catch(() => null);
     const aiRequestDataUrl = file ? await fileToAiRequestDataUrl(file).catch(() => imageDataUrl) : imageDataUrl;
     const recognition = await withKeepAwake(() =>

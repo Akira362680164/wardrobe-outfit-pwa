@@ -39,6 +39,7 @@ import {
   type LocalImageProcessingResult,
 } from "@/lib/intake-local-draft";
 import { fileToCompressedDataUrl } from "@/lib/image";
+import { GarmentRecognitionError } from "@/lib/device-minimax";
 import { generateThumbnailSafe } from "@/lib/thumbnail-runtime";
 import { recordDiagnosticEvent } from "@/lib/diagnostic-log";
 import {
@@ -449,9 +450,19 @@ export function GarmentIntakeFlow({
       fileName: item.fileName,
     });
     const aiTag = (processed as { aiTag?: import("@/lib/types").GarmentTagResult }).aiTag;
+    if (!aiTag) {
+      // v1.1.31 patch5: 任何"无 aiTag"的结果都不应伪装为可编辑默认草稿。
+      // 由 processAllImagesForRecognition / handleRetryCurrentItem 的 catch 走 failed draft
+      // 路径（status=failed + blocking ai_recognition_failed issue + 错误文案）。
+      throw new GarmentRecognitionError(
+        "not_configured",
+        "未配置 MiniMax Key，无法进行 AI 识别。",
+        false,
+      );
+    }
     const localDraft = buildLocalGarmentDraft({
       ...processed,
-      ...(aiTag ? mapAiTagToGarmentDraftInput(aiTag, item.fileName) : {}),
+      ...mapAiTagToGarmentDraftInput(aiTag, item.fileName),
       imageDataUrl: imageToProcess,
       sourceImageDataUrl: item.originalDataUrl,
       cropBox: item.cropBox,
@@ -526,7 +537,12 @@ export function GarmentIntakeFlow({
       setImageItems((prev) =>
         prev.map((it) =>
           it.id === reviewId
-            ? { ...it, status: "failed" as const, error: msg, updatedAt: new Date().toISOString() }
+            ? {
+                ...it,
+                status: item.status === "recognized" ? "recognized" as const : "failed" as const,
+                error: msg,
+                updatedAt: new Date().toISOString(),
+              }
             : it,
         ),
       );

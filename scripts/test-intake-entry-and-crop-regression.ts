@@ -62,7 +62,7 @@ check("GarmentIntakeFlow 将 onReadyChange 传给 ImageCropEditor", /onReadyChan
 check("GarmentIntakeFlow 确认图片按钮 disabled 依赖 cropReady", /disabled=\{!cropReady\}/.test(garmentIntakeFlow));
 check("GarmentIntakeFlow 裁切空结果回退当前图片", /onCropConfirm\(croppedDataUrl \|\| imageItem\.displayDataUrl\)/.test(garmentIntakeFlow));
 check("GarmentIntakeFlow 步骤2不再强制保存并下一张", !/handleSaveCurrentAndContinue|保存并下一张/.test(garmentIntakeFlow));
-check("GarmentIntakeFlow 允许未裁切直接开始识别", !/请先裁切所有图片/.test(garmentIntakeFlow) && /imageToProcess = item\.croppedImageDataUrl \?\? item\.originalDataUrl/.test(garmentIntakeFlow));
+check("GarmentIntakeFlow 允许未裁切直接开始识别", !/请先裁切所有图片/.test(garmentIntakeFlow) && /imageToProcess =[\s\S]{0,120}item\.croppedImageDataUrl \?\? item\.displayDataUrl \?\? item\.originalDataUrl/.test(garmentIntakeFlow));
 check("GarmentIntakeFlow 相册/拍照取消直接返回空结果", /catch \(error\) \{[\s\S]{0,80}isImagePickerCancelError\(error\)[\s\S]{0,40}return \[\]/.test(wardrobeApp));
 check("GarmentIntakeFlow 相册 fallback 超时会清理 pendingGalleryResolverRef", /const finish = \(files: File\[\] \| null\)[\s\S]+?pendingGalleryResolverRef\.current = null[\s\S]+?timeout = setTimeout\(\(\) => finish\(null\), 30000\)/.test(wardrobeApp));
 check("隐藏 gallery input 优先回传当前录入流, 不落到旧图片队列", /if \(pendingGalleryResolverRef\.current\) \{[\s\S]{0,140}pendingGalleryResolverRef\.current\(files\)[\s\S]{0,140}return;[\s\S]{0,120}imageIntake\.handleGallerySelect\(e\.target\.files\)/.test(wardrobeApp));

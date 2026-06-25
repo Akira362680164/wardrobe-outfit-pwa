@@ -7,7 +7,7 @@
 // - validateSubcategoryForCategory: 跨分类 subcategory 校验
 
 import type { GarmentIntakeDraft, IntakeField, IntakeFieldSource } from "@/lib/intake-draft";
-import { createIntakeField, createIntakeIssue, calculateDraftReviewSummary } from "@/lib/intake-draft";
+import { createIntakeField, createIntakeIssue } from "@/lib/intake-draft";
 import type { ColorInfo, GarmentCategory } from "@/lib/types";
 import { getCategoryGroupById } from "@/lib/garment-category-catalog";
 
@@ -143,12 +143,14 @@ export function buildFailedRecognitionDraft(
 
 /** v1.1.31 commit2: 失败草稿在用户手工补全后是否达到保存门禁。 */
 export function isFailedDraftManualRecoveryComplete(draft: GarmentIntakeDraft): boolean {
-  const summary = calculateDraftReviewSummary(draft);
-  if (summary.blockingIssues > 0) return false;
   // 必须满足：名称非空 + 分类为 user source + 颜色有 primary
   if (!draft.name.value.trim()) return false;
   if (draft.category.source !== "user") return false;
   if (!draft.colors.value || (draft.colors.value.mode === "single" && !draft.colors.value.primary)) return false;
+  // v1.1.31 patch5: 不再依赖 calculateDraftReviewSummary().blockingIssues。
+  // 失败草稿带 blocking ai_recognition_failed issue 正是要由本函数判定满足后被
+  // patchReviewDraft 移除；若再以 blockingIssues > 0 短路会陷入死循环：
+  //   用户填齐 → 仍然 false → issue 删不掉 → calculateDraftReviewSummary().canSave=false。
   return true;
 }
 
