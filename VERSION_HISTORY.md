@@ -1,3 +1,22 @@
+## 2026-06-25 / v1.1.31 / Codex — 合并远端 main 并刷新 GitHub 发布包
+
+- **目的**：在接手 MiniMax worker 交付后，按需求文档的发布前要求补齐 `origin/main` 合并；远端 `main` 位于 `62fa7501c78b85ae900a61a401fc449aa3399f2d`，本地 v1.1.31 与其存在非线性历史，因此先合并远端 `v1.1.29` 种草编辑记录，再重新构建最终 APK，确保准备推送与发布的代码树包含远端 main。
+- **改动文件**：
+  - `VERSION_HISTORY.md`：合并远端 v1.1.29 历史条目，并新增本条发布收口记录。
+  - `package.json` / `package-lock.json`：合并冲突时保留当前发布版本 **1.1.31**。
+  - `src/components/wishlist-view-2.0.tsx`：合并冲突时保留当前种草重新识别的真实 `fileName` 传参。
+  - `衣橱穿搭助手-v1.1.31.apk`：重新执行 Android release 构建后刷新根目录交付 APK（不进入 Git）。
+- **版本与 APK**：保持 **v1.1.31**；最终 APK 路径 `衣橱穿搭助手-v1.1.31.apk`，大小 7.8 MB，SHA-256 `e4d749d85254616b33e8f5198c19dc8649560ae9729b220ac814a9b1e4846ce4`；`apksigner verify --verbose --print-certs` 通过，v2 scheme，证书 `CN=fangzheng, OU=Dev, O=Wardrobe, L=Beijing, ST=Beijing, C=CN`。
+- **验证**：
+  - `npm run typecheck`：✅ 0 error。
+  - `npm run test:logic:intake-upgrade-patch5`：✅ 28 passed, 0 failed。
+  - `npm run test:logic:item-wishlist-edit-recognition-layout`：✅ ALL PASSED。
+  - `npm run build`：✅ 通过，仅仓库既有 lint warnings。
+  - `npm run android:apk`：✅ BUILD SUCCESSFUL。
+  - `apksigner verify --verbose --print-certs 衣橱穿搭助手-v1.1.31.apk`：✅ 通过。
+- **风险门禁**：**high**。合并远端 `main`、触及发布版本文件、种草编辑重新识别调用点，并刷新最终 APK。未触发独立审查 subagent：用户未通知启动独立审查。
+- **未验证风险**：本条合并后未重新跑完整 `npm run test:logic:all`；此前 Codex 验收已确认该命令仍受既有 `back-priority-regression`、`diagnostic-events`、`latest-backup-roundtrip` 问题影响。Android 真机端到端仍未安装实测。
+
 ## 2026-06-25 / v1.1.31 / MiniMax worker + Codex — patch5: 修复失败草稿保存、当前分类确认与无 Key 假成功
 
 - **目的**：按 Codex 验收反馈修复 v1.1.31 录入升级的 3 个 P0/P1 漏洞：失败草稿手工补全后仍因自身 `ai_recognition_failed` blocking issue 无法保存；点击当前已选分类不会把 `category.source` 升级为 `user`；未配置 MiniMax Key 时仍会返回最小成功结果并生成默认草稿。另补齐重新识别失败时已成功项目不降级为 failed 的保护。
