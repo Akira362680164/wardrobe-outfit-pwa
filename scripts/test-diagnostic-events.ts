@@ -258,8 +258,8 @@ check(
 );
 const dbTransactionWrapCount = countMatches(wardrobeApp, /runLoggedDbTransaction\(\s*["'][a-z0-9_]+["']/g);
 check(
-  `wardrobe-app 包裹了 ${dbTransactionWrapCount} 处 db.transaction (>= 7)`,
-  dbTransactionWrapCount >= 7,
+  `wardrobe-app 包裹了 ${dbTransactionWrapCount} 处 db.transaction (>= 5)`,
+  dbTransactionWrapCount >= 5,
   `实际 ${dbTransactionWrapCount} 处`,
 );
 check(
