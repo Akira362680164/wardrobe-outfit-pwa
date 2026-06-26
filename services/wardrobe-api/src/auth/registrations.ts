@@ -25,8 +25,8 @@ export interface PendingRegistrationRecord {
   id: string;
   phoneE164: string;
   maskedPhone: string;
-  passwordHash: string;
-  clientSecretHash: string;
+  passwordHash: string | null;
+  clientSecretHash: string | null;
   status: RegistrationStatus;
   verificationSource: string | null;
   verifiedAt: Date | null;
@@ -101,7 +101,7 @@ export class PostgresRegistrationStore implements RegistrationStore {
   async cancelPendingRegistrations(phoneE164: string, now: Date) {
     await getDb()
       .update(pendingRegistrations)
-      .set({ status: "cancelled", cancelledAt: now, updatedAt: now })
+      .set({ status: "cancelled", cancelledAt: now, updatedAt: now, passwordHash: null, clientSecretHash: null })
       .where(and(eq(pendingRegistrations.phoneE164, phoneE164), eq(pendingRegistrations.status, "pending")));
   }
 
@@ -142,7 +142,7 @@ export class PostgresRegistrationStore implements RegistrationStore {
   async markRegistrationExpired(registrationId: string, now: Date) {
     await getDb()
       .update(pendingRegistrations)
-      .set({ status: "expired", updatedAt: now })
+      .set({ status: "expired", updatedAt: now, passwordHash: null, clientSecretHash: null })
       .where(
         and(
           eq(pendingRegistrations.id, registrationId),
@@ -182,6 +182,8 @@ export class PostgresRegistrationStore implements RegistrationStore {
           status: "completed",
           completedAt: input.now,
           updatedAt: input.now,
+          passwordHash: null,
+          clientSecretHash: null,
         })
         .where(
           and(
@@ -194,6 +196,10 @@ export class PostgresRegistrationStore implements RegistrationStore {
 
       if (!registration) {
         return null;
+      }
+
+      if (!registration.passwordHash) {
+        throw new AuthApiError(500, "REGISTRATION_CORRUPTED", "Registration missing password hash");
       }
 
       const [createdUser] = await tx.insert(users).values({}).returning({ id: users.id });
@@ -392,7 +398,7 @@ export class RegistrationService {
   private async requireRegistrationWithSecret(registrationId: string, clientSecret: string) {
     const registration = await this.store.findPendingRegistration(registrationId);
 
-    if (!registration || !safeEqual(registration.clientSecretHash, hashToken(clientSecret))) {
+    if (!registration?.clientSecretHash || !safeEqual(registration.clientSecretHash, hashToken(clientSecret))) {
       throw new AuthApiError(401, "invalid_registration_secret", "Invalid registration secret");
     }
 
