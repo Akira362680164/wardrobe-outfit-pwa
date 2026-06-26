@@ -95,4 +95,11 @@ export {
   schedulePendingUploads,
 } from "@/lib/cloud-sync/asset-upload-coordinator";
 
+export {
+  type ImageCacheStorage,
+  type CachedImage,
+  type ImageCacheDeps,
+  AccountImageCache,
+} from "@/lib/cloud-sync/image-cache";
+
 export { isNetworkOnline, subscribeNetworkChanges } from "@/lib/cloud-sync/connectivity";

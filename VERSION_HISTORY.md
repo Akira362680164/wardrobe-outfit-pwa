@@ -1,3 +1,21 @@
+## 2026-06-26 / v1.1.37 / Claude Code — cloud 1C C3b account-isolated image cache
+
+- **目的**：按 V4 1C-C3b 实现账号隔离图片缓存：`AccountImageCache` 按 `userIdHash` 隔离缓存 key 空间，下载后校验 SHA-256，写文件使用临时 key + 原子替换（tmp → final + meta），存储后端可注入（默认内存实现，可切换 Capacitor Filesystem）。
+- **改动文件**：
+  - `src/lib/cloud-sync/image-cache.ts`（新增）：`AccountImageCache` 类，提供 `get`/`put`/`downloadAndCache` 三个核心方法；`ImageCacheStorage` 接口（get/set/delete）；默认 `memoryStorage()` 实现；`downloadBlob` 双轨 CapacitorHttp/fetch。
+  - `src/lib/cloud-sync/index.ts`：导出 `AccountImageCache`、`ImageCacheStorage`、`CachedImage`、`ImageCacheDeps`。
+  - `scripts/test-cloud-image-cache.ts`（新增）/ `package.json`：新增 C3b 守护测试，并接入 `test:logic:all`。
+- **范围说明**：本轮不做 UI 接入、不切主 UI 图片渲染、不删除旧 DataURL、不做软删除清理器、不做 Capacitor Filesystem 集成（仅内存存储，生产就绪时注入 `@capacitor/filesystem` 适配器）、不打 APK。
+- **验证结果**：
+  - `npm run test:logic:cloud-image-cache`：✅ 12 passed, 0 failed（put+get roundtrip、SHA-256 校验、账号隔离、key 格式、tmp 清理）。
+  - `npm run test:logic:cloud-assets-api`：✅ 11 passed, 0 failed。
+  - `npm run test:logic:cloud-assets-local`：✅ 12 passed, 0 failed。
+  - `npm run test:logic:cloud-assets-bridge`：✅ 10 passed, 0 failed。
+  - `npm run test:logic:cloud-assets-upload`：✅ 20 passed, 0 failed。
+  - `npm run typecheck`：✅ 通过。
+- **风险门禁**：**high**。涉及跨账号缓存隔离、SHA-256 校验、原子写入、下载双轨和 token 传递；本轮加强 image cache 完整测试（含隔离和校验）、所有既有 cloud assets 测试回归、类型检查。未触发独立审查 subagent：用户未通知。
+- **未验证风险 / 下一步**：未在真实 COS 环境验证 downloadAndCache 端到端；未集成 Capacitor Filesystem 适配器；未在 UI 层接入缓存（仍走旧 DataURL 路径）。下一步进入 C3c：新设备恢复与缩略图优先下载，实现 bootstrap 后首屏缩略图任务、后台补齐原图、按需下载详情图。
+
 ## 2026-06-26 / v1.1.37 / Claude Code — cloud 1C C3a download auth & asset manifest API
 
 - **目的**：按 V4 1C-C3a 新增图片下载授权与资产清单 API：cloud-contracts 新增下载授权和 manifest 契约，服务端新增 `/api/assets/download-url`（COS GET 预签名 URL）和 `/api/assets/manifest`（用户资产清单），客户端新增对应调用封装。API 只返回 URL 和元数据，不转发图片二进制。
