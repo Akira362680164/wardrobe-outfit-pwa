@@ -49,6 +49,7 @@ export interface WorkspaceGarmentRecord extends WorkspaceSyncEntity {
 }
 
 export interface WorkspaceOutfitRecord extends WorkspaceSyncEntity {
+  legacyOutfitId?: string;
   name?: string;
   payload?: unknown;
 }

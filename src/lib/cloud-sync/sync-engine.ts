@@ -312,6 +312,151 @@ export async function deleteGarment(
   );
 }
 
+export type WorkspaceOutfitWriteOperation = "create" | "update";
+
+export type WorkspaceOutfitWriteRecord = Omit<
+  WorkspaceOutfitRecord,
+  "id" | "userId" | "originDeviceId" | "revision" | "createdAt" | "updatedAt"
+> & {
+  id?: string;
+};
+
+export type WorkspaceOutfitItemWriteRecord = Omit<
+  WorkspaceOutfitItemRecord,
+  "id" | "userId" | "originDeviceId" | "revision" | "createdAt" | "updatedAt"
+> & {
+  id?: string;
+  baseRevision?: number;
+};
+
+export async function writeOutfitBundle(
+  db: AccountWorkspaceDatabase,
+  ctx: WriteContext,
+  input: {
+    operation: WorkspaceOutfitWriteOperation;
+    outfit: WorkspaceOutfitWriteRecord;
+    outfitItems: WorkspaceOutfitItemWriteRecord[];
+    removedOutfitItems?: WorkspaceOutfitItemRecord[];
+  },
+): Promise<WorkspaceOutfitRecord> {
+  const now = new Date().toISOString();
+  const outfitRecord: WorkspaceOutfitRecord = {
+    ...input.outfit,
+    id: input.outfit.id ?? createWorkspaceUuidV7(),
+    userId: ctx.workspace.userId,
+    originDeviceId: ctx.originDeviceId,
+    revision: ctx.baseRevision + 1,
+    createdAt: now,
+    updatedAt: now,
+  } as WorkspaceOutfitRecord;
+
+  await runWorkspaceWrite(
+    db,
+    ["outfits", "outfitItems", "syncOutbox"],
+    async () => {
+      await db.outfits.put(outfitRecord);
+      await enqueueOutboxMutation(db, {
+        workspace: ctx.workspace,
+        entityType: "outfit",
+        entityId: outfitRecord.id,
+        operation: input.operation,
+        payload: ctx.payload,
+        baseRevision: ctx.baseRevision,
+      });
+
+      for (const item of input.outfitItems) {
+        const baseRevision = item.baseRevision ?? 0;
+        const itemRecord: WorkspaceOutfitItemRecord = {
+          id: item.id ?? createWorkspaceUuidV7(),
+          userId: ctx.workspace.userId,
+          outfitId: outfitRecord.id,
+          garmentId: item.garmentId,
+          sortOrder: item.sortOrder,
+          originDeviceId: ctx.originDeviceId,
+          revision: baseRevision + 1,
+          createdAt: now,
+          updatedAt: now,
+        };
+        await db.outfitItems.put(itemRecord);
+        await enqueueOutboxMutation(db, {
+          workspace: ctx.workspace,
+          entityType: "outfitItem",
+          entityId: itemRecord.id,
+          operation: baseRevision > 0 ? "update" : "create",
+          payload: {
+            outfitId: itemRecord.outfitId,
+            garmentId: itemRecord.garmentId,
+            sortOrder: itemRecord.sortOrder,
+          },
+          baseRevision,
+        });
+      }
+
+      for (const removed of input.removedOutfitItems ?? []) {
+        const deletedAt = new Date().toISOString();
+        await db.outfitItems.update(removed.id, {
+          deletedAt,
+          revision: removed.revision + 1,
+          updatedAt: deletedAt,
+        });
+        await enqueueOutboxMutation(db, {
+          workspace: ctx.workspace,
+          entityType: "outfitItem",
+          entityId: removed.id,
+          operation: "delete",
+          payload: {},
+          baseRevision: removed.revision,
+        });
+      }
+    },
+  );
+  return outfitRecord;
+}
+
+export async function deleteOutfitBundle(
+  db: AccountWorkspaceDatabase,
+  ctx: WriteContext,
+  outfit: WorkspaceOutfitRecord,
+  outfitItems: WorkspaceOutfitItemRecord[],
+): Promise<void> {
+  const deletedAt = new Date().toISOString();
+  await runWorkspaceWrite(
+    db,
+    ["outfits", "outfitItems", "syncOutbox"],
+    async () => {
+      await db.outfits.update(outfit.id, {
+        deletedAt,
+        revision: outfit.revision + 1,
+        updatedAt: deletedAt,
+      });
+      await enqueueOutboxMutation(db, {
+        workspace: ctx.workspace,
+        entityType: "outfit",
+        entityId: outfit.id,
+        operation: "delete",
+        payload: {},
+        baseRevision: outfit.revision,
+      });
+      for (const item of outfitItems) {
+        if (item.deletedAt) continue;
+        await db.outfitItems.update(item.id, {
+          deletedAt,
+          revision: item.revision + 1,
+          updatedAt: deletedAt,
+        });
+        await enqueueOutboxMutation(db, {
+          workspace: ctx.workspace,
+          entityType: "outfitItem",
+          entityId: item.id,
+          operation: "delete",
+          payload: {},
+          baseRevision: item.revision,
+        });
+      }
+    },
+  );
+}
+
 // ============================================================
 // apply-remote: 把 server pull results 写入本地（带三重检查）
 // ============================================================

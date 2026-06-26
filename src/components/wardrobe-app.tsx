@@ -132,6 +132,7 @@ import {
 } from "@/components/selected-images-review";
 import { getWardrobeDb, readTryOnProfile, saveTryOnProfile } from "@/lib/db";
 import { bridgeGarmentCreate } from "@/lib/cloud-sync/garment-bridge";
+import { bridgeOutfitDelete, bridgeOutfitUpsert } from "@/lib/cloud-sync/outfit-bridge";
 import { migrateWishlistItemRecord } from "@/lib/migrate";
 import {
  defaultMiniMaxSettings,
@@ -1202,8 +1203,10 @@ export function WardrobeApp({ cloudAuth }: { cloudAuth?: WardrobeCloudAuth } = {
     }
     const now = new Date().toISOString();
     const name = options?.name?.trim() || `${request.destination || "手工套装"} · ${itemIds.length} 件`;
+    const db = getWardrobeDb();
     if (options?.outfitId) {
-      await getWardrobeDb().outfits.update(options.outfitId, {
+      const existingOutfit = outfits.find((outfit) => outfit.id === options.outfitId);
+      const patch = {
         name,
         itemIds,
         ...buildOutfitCoverRefreshPatch(itemIds, selectedItems),
@@ -1211,11 +1214,13 @@ export function WardrobeApp({ cloudAuth }: { cloudAuth?: WardrobeCloudAuth } = {
         activity: request.activity,
         style: request.stylePreference,
         updatedAt: now,
-      });
+      };
+      await db.outfits.update(options.outfitId, patch);
+      if (existingOutfit) void bridgeOutfitUpsert({ ...existingOutfit, ...patch }, "update");
       await refreshState();
       showMessage("已更新收藏套装");
     } else {
-      await getWardrobeDb().outfits.put({
+      const outfit: SavedOutfit = {
         id: `manual-${globalThis.crypto?.randomUUID?.() ?? Date.now()}`,
         name,
         itemIds,
@@ -1228,7 +1233,9 @@ export function WardrobeApp({ cloudAuth }: { cloudAuth?: WardrobeCloudAuth } = {
         favorite: true,
         createdAt: now,
         updatedAt: now,
-      });
+      };
+      await db.outfits.put(outfit);
+      void bridgeOutfitUpsert(outfit, "create");
       await refreshState();
       showMessage("已收藏当前套装");
     }
@@ -5319,7 +5326,9 @@ function RecommendationView({
   async function saveSavedOutfitName() {
     if (!viewingOutfit) return;
     const name = savedOutfitNameDraft.trim() || viewingOutfit.name;
-    await getWardrobeDb().outfits.update(viewingOutfit.id, { name, updatedAt: new Date().toISOString() });
+    const patch = { name, updatedAt: new Date().toISOString() };
+    await getWardrobeDb().outfits.update(viewingOutfit.id, patch);
+    void bridgeOutfitUpsert({ ...viewingOutfit, ...patch }, "update");
     setOutfitDisplayName(name);
     await onRefreshState();
     setEditingSavedOutfitName(false);
@@ -5328,6 +5337,7 @@ function RecommendationView({
 
   async function removeSavedOutfit(outfitId: string) {
     await getWardrobeDb().outfits.delete(outfitId);
+    void bridgeOutfitDelete(outfitId);
     if (viewingSavedOutfitId === outfitId) {
       setViewingSavedOutfitId(null);
       setViewingOutfitItem(null);

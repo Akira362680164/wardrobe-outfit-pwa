@@ -8,14 +8,8 @@
 "use client";
 
 import type { WardrobeItem } from "@/lib/types";
-import {
-  isAccountWorkspaceEnabled,
-  isCloudSyncEnabled,
-  loadWorkspaceRegistry,
-  type AccountWorkspaceRecord,
-} from "@/lib/workspace-registry";
 import { getAccountWorkspaceDb } from "@/lib/account-workspace-db";
-import { loadAuthSessionSnapshot } from "@/lib/auth-session-store";
+import { loadCloudBridgeContext } from "@/lib/cloud-sync/bridge-context";
 import { writeGarment } from "@/lib/cloud-sync/sync-engine";
 import type { WorkspaceGarmentRecord } from "@/lib/account-workspace-db";
 
@@ -29,44 +23,25 @@ export interface BridgeGarmentResult {
     | "write_failed";
 }
 
-interface BridgeContext {
-  workspace: AccountWorkspaceRecord;
-  deviceId: string;
-}
-
-async function loadBridgeContext(): Promise<BridgeContext | null> {
-  if (!isAccountWorkspaceEnabled() || !isCloudSyncEnabled()) return null;
-  const registry = loadWorkspaceRegistry();
-  const activeUserId = registry.activeUserId;
-  const activeDbName = registry.activeDbName;
-  const activeGen = registry.activeWorkspaceGeneration;
-  if (!activeUserId || !activeDbName || activeGen == null) return null;
-  const workspace = registry.workspaces[activeUserId];
-  if (!workspace) return null;
-  if (workspace.dbName !== activeDbName || workspace.activeWorkspaceGeneration !== activeGen) return null;
-  const session = await loadAuthSessionSnapshot();
-  if (!session.accessToken || !session.user) return null;
-  if (session.user.id !== workspace.userId) return null;
-  return { workspace, deviceId: session.deviceId };
-}
-
 export async function bridgeGarmentCreate(item: WardrobeItem): Promise<BridgeGarmentResult> {
-  const ctx = await loadBridgeContext();
+  const ctx = await loadCloudBridgeContext();
   if (!ctx) return { bridged: false, reason: "no_workspace" };
 
   try {
     const db = getAccountWorkspaceDb(ctx.workspace);
-    const payload = item as unknown as Record<string, unknown>;
+    const payload = toCloudGarmentPayload(item);
     await writeGarment(
       db,
       {
         workspace: ctx.workspace,
         originDeviceId: ctx.deviceId,
         baseRevision: 0,
-        payload,
+        payload: { payload },
       },
       {
         legacyItemId: typeof item.id === "number" ? item.id : undefined,
+        locationId: item.locationId,
+        name: item.name,
         payload,
       } as Omit<WorkspaceGarmentRecord, "userId" | "originDeviceId" | "revision" | "createdAt" | "updatedAt">,
     );
@@ -77,4 +52,14 @@ export async function bridgeGarmentCreate(item: WardrobeItem): Promise<BridgeGar
     }
     return { bridged: false, reason: "write_failed" };
   }
+}
+
+export function toCloudGarmentPayload(item: WardrobeItem): Record<string, unknown> {
+  const {
+    imageDataUrl,
+    sourceImageDataUrl,
+    referenceOutfitImages,
+    ...safe
+  } = item;
+  return safe as Record<string, unknown>;
 }
