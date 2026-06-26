@@ -29,7 +29,15 @@ export interface LocalAssetUploadVariant {
 }
 
 export interface LocalAssetPayload {
-  uploads: Partial<Record<AssetVariant, LocalAssetImageMetadata & { status: LocalAssetUploadStatus; dataUrl?: string }>>;
+  uploads: Partial<Record<AssetVariant, LocalAssetImageMetadata & {
+    status: LocalAssetUploadStatus;
+    dataUrl?: string;
+    attemptCount?: number;
+    lastErrorCode?: string;
+    lastErrorAt?: string;
+    retryable?: boolean;
+    nextAttemptAt?: string;
+  }>>;
   source?: {
     kind: "legacy_entity_image" | "local_uri";
     localUri?: string;

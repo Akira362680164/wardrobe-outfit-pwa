@@ -100,7 +100,7 @@ async function uploadOneVariant(
     const blob = await toBlob(upload.dataUrl);
     const putResult = await putTo(auth.uploadUrl, blob, auth.headers ?? {});
     if (!putResult.ok) {
-      await updateVariantStatus(db, ctx, record, variant, "failed");
+      await updateVariantStatus(db, ctx, record, variant, "failed", `COS_PUT_${putResult.status}`);
       return { assetId: record.id, variant, status: "failed", error: `PUT ${putResult.status}` };
     }
 
@@ -119,7 +119,7 @@ async function uploadOneVariant(
     return { assetId: record.id, variant, status: "uploaded" };
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
-    await updateVariantStatusSafe(db, ctx, record, variant, "failed");
+    await updateVariantStatusSafe(db, ctx, record, variant, "failed", "UPLOAD_NETWORK_ERROR");
     return { assetId: record.id, variant, status: "failed", error: message };
   }
 }
@@ -130,6 +130,7 @@ async function updateVariantStatus(
   record: WorkspaceAssetRecord,
   variant: AssetVariant,
   status: "uploading" | "uploaded" | "failed",
+  errorCode?: string,
 ): Promise<void> {
   if (!guardAllowsWrite(ctx)) return;
   const fresh = await db.assets.get(record.id);
@@ -138,7 +139,18 @@ async function updateVariantStatus(
   const uploads = { ...payload.uploads };
   const entry = uploads[variant];
   if (entry) {
-    uploads[variant] = { ...entry, status };
+    const next: typeof entry = { ...entry, status };
+    if (status === "failed" && errorCode != null) {
+      next.attemptCount = (entry.attemptCount ?? 0) + 1;
+      next.lastErrorCode = errorCode;
+      next.lastErrorAt = new Date().toISOString();
+      next.retryable = isAssetUploadErrorRetryable(errorCode);
+      if (next.retryable) {
+        const ms = computeAssetUploadBackoffMs(next.attemptCount);
+        next.nextAttemptAt = new Date(Date.now() + ms).toISOString();
+      }
+    }
+    uploads[variant] = next;
   }
   await db.assets.update(record.id, {
     payload: { ...payload, uploads },
@@ -153,9 +165,10 @@ async function updateVariantStatusSafe(
   record: WorkspaceAssetRecord,
   variant: AssetVariant,
   status: "failed",
+  errorCode?: string,
 ): Promise<void> {
   try {
-    await updateVariantStatus(db, ctx, record, variant, status);
+    await updateVariantStatus(db, ctx, record, variant, status, errorCode);
   } catch {
     // best-effort: status update failure must not throw
   }
@@ -169,12 +182,41 @@ function guardAllowsWrite(ctx: CloudBridgeContext): boolean {
   return true;
 }
 
+const RETRYABLE_UPLOAD_ERRORS = new Set([
+  "UPLOAD_NETWORK_ERROR",
+  "COS_PUT_500",
+  "COS_PUT_502",
+  "COS_PUT_503",
+  "COS_PUT_504",
+  "COS_PUT_408",
+  "COS_PUT_429",
+]);
+
+function isAssetUploadErrorRetryable(errorCode: string): boolean {
+  if (RETRYABLE_UPLOAD_ERRORS.has(errorCode)) return true;
+  // 4xx COS errors (except 408/429) are non-retryable (auth, bad request)
+  if (errorCode.startsWith("COS_PUT_4")) return false;
+  // other errors are retryable by default (network, timeout, DNS)
+  return true;
+}
+
+function computeAssetUploadBackoffMs(attemptCount: number): number {
+  const steps = [30_000, 60_000, 120_000, 300_000];
+  const idx = Math.min(attemptCount - 1, steps.length - 1);
+  return steps[idx] ?? 300_000;
+}
+
 async function findPendingAssets(db: AccountWorkspaceDatabase): Promise<WorkspaceAssetRecord[]> {
   const all = await db.assets.filter((r) => !r.deletedAt).toArray();
+  const now = new Date().toISOString();
   return all.filter((r) => {
     const payload = r.payload as LocalAssetPayload | undefined;
     if (!payload?.uploads) return false;
-    return Object.values(payload.uploads).some((v) => v?.status === "local_pending");
+    return Object.values(payload.uploads).some((v) => {
+      if (v?.status === "local_pending") return true;
+      if (v?.status === "failed" && v?.retryable === true && (v?.nextAttemptAt ?? "") <= now) return true;
+      return false;
+    });
   });
 }
 
