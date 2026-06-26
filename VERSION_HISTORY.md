@@ -1,3 +1,22 @@
+## 2026-06-26 / v1.1.37 / Codex — cloud 1A temporary IP endpoint and CORS
+
+- **目的**：按用户确认的临时策略，在 `zhengfangapps.cloud` 完成腾讯云备案前，使用公网 IP `111.231.98.86` 继续阶段 1A 联调；同时补齐浏览器 dev flow 所需的真实 CORS 白名单能力。
+- **改动文件**：
+  - `deploy/caddy/Caddyfile`：新增 `http://111.231.98.86` 临时 HTTP 入口，直接反代到 `127.0.0.1:3000`；不新增自签证书、不继续触发 ACME。
+  - `deploy/scripts/wardrobe-cloud.sh`：`health` 支持 `HEALTH_BASE_URL`，可用 `HEALTH_BASE_URL=http://111.231.98.86` 验证 IP 临时入口。
+  - `deploy/compose.production.yaml` / `deploy/.env.production.example`：新增 `ALLOWED_ORIGINS` 环境变量，用于 API CORS 白名单。
+  - `services/wardrobe-api/src/app.ts`：新增最小 CORS hook，仅回显 `ALLOWED_ORIGINS` 中的 Origin，不使用 `*`。
+  - `services/wardrobe-api/tests/health.test.ts`：新增 CORS 白名单测试，覆盖允许的 IP Origin 和未允许 Origin。
+  - `deploy/docs/production-deploy.md`：记录备案前临时 IP 验证方式和 CORS 配置。
+- **范围说明**：本轮不把 IP 入口作为正式生产 URL；不改认证业务逻辑、不改数据库 schema、不改 APK 版本、不绕过真机验收要求。
+- **验证结果**：
+  - `npm run api:test`：✅ 4 files / 27 tests passed。
+  - `npm run api:typecheck`：✅ 通过。
+  - `bash -n deploy/scripts/wardrobe-cloud.sh`：✅ 通过。
+  - `git diff --check`：✅ 通过。
+- **风险门禁**：**medium**。涉及 API CORS 行为和 Caddy 临时公网入口；未触发独立审查 subagent：用户未通知。
+- **未验证风险 / 下一步**：尚未同步到服务器、重建 API 镜像、reload Caddy 或用 `http://111.231.98.86/api/*` 做远程 smoke；下一步在服务器部署本 commit 后补验证记录。Android 真机验收按用户指示暂不执行。
+
 ## 2026-06-26 / v1.1.37 / Codex — cloud 1A A6 server drill + internal APK evidence
 
 - **目的**：完成阶段 1A 的服务器部署演练、内部测试 APK 证据收集和公网阻塞归因，明确哪些能力已经可用、哪些仍不能宣称完成。

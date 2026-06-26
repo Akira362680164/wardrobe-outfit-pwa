@@ -67,11 +67,13 @@ apply_caddy() {
 }
 
 health() {
-  curl -fsS "https://${HEALTH_HOST}/api/health"
+  local base_url="${HEALTH_BASE_URL:-https://${HEALTH_HOST}}"
+  base_url="${base_url%/}"
+  curl -fsS "${base_url}/api/health"
   printf "\n"
-  curl -fsS "https://${HEALTH_HOST}/api/ready"
+  curl -fsS "${base_url}/api/ready"
   printf "\n"
-  curl -fsS "https://${HEALTH_HOST}/api/version"
+  curl -fsS "${base_url}/api/version"
   printf "\n"
 }
 
@@ -141,7 +143,7 @@ Commands:
   rollback-image X  Restart wardrobe-api with image X.
   backup-db         Write pg_dump to /opt/wardrobe-cloud/backups/postgres.
   restore-db-drill  Restore a dump into wardrobe_restore_test.
-  health            Curl health, ready, and version endpoints.
+  health            Curl health, ready, and version endpoints. Override with HEALTH_BASE_URL.
 USAGE
 }
 

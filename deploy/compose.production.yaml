@@ -33,6 +33,7 @@ services:
       PORT: 3000
       DATABASE_URL: ${DATABASE_URL}
       GIT_COMMIT: ${GIT_COMMIT:-unknown}
+      ALLOWED_ORIGINS: ${ALLOWED_ORIGINS:-}
     ports:
       - "127.0.0.1:3000:3000"
     volumes:

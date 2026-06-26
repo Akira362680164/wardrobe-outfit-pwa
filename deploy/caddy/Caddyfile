@@ -31,3 +31,36 @@ api.zhengfangapps.cloud {
         respond "Service temporarily unavailable" 502
     }
 }
+
+http://111.231.98.86 {
+    encode zstd gzip
+
+    header {
+        X-Content-Type-Options "nosniff"
+        X-Frame-Options "DENY"
+        Referrer-Policy "no-referrer"
+    }
+
+    reverse_proxy 127.0.0.1:3000 {
+        header_up X-Real-IP {remote_host}
+        transport http {
+            dial_timeout 10s
+            read_timeout 120s
+            write_timeout 120s
+            response_header_timeout 60s
+        }
+    }
+
+    log {
+        output file /var/log/caddy/wardrobe-api-access.log {
+            roll_size 10MiB
+            roll_keep 10
+            roll_keep_for 336h
+        }
+        format json
+    }
+
+    handle_errors {
+        respond "Service temporarily unavailable" 502
+    }
+}

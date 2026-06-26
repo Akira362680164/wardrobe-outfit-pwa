@@ -36,6 +36,12 @@ docker compose \
 
 `postgres` is internal only. `wardrobe-api` binds to `127.0.0.1:3000:3000` for Caddy.
 
+`ALLOWED_ORIGINS` is a comma-separated CORS allowlist. For the temporary IP drill, include:
+
+```text
+http://111.231.98.86,http://localhost:3000,http://127.0.0.1:3000,capacitor://localhost
+```
+
 ## Caddy
 
 The server already has Caddy at `/usr/bin/caddy`. Do not reinstall, downgrade, or clear `/var/lib/caddy`.
@@ -48,6 +54,14 @@ deploy/scripts/wardrobe-cloud.sh apply-caddy
 ```
 
 `apply-caddy` backs up `/etc/caddy/Caddyfile`, validates the candidate config, then reloads Caddy.
+
+Before `zhengfangapps.cloud` completes ICP filing, use the temporary HTTP IP endpoint:
+
+```bash
+HEALTH_BASE_URL=http://111.231.98.86 deploy/scripts/wardrobe-cloud.sh health
+```
+
+The temporary IP endpoint is only for stage 1A testing. Do not treat it as the final production URL.
 
 ## External TLS Troubleshooting
 

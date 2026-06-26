@@ -27,6 +27,18 @@ export function buildApp(options: BuildAppOptions = {}): FastifyInstance {
     logger: process.env.NODE_ENV !== "test",
   });
 
+  app.addHook("onRequest", async (request, reply) => {
+    const origin = request.headers.origin;
+    if (origin && getAllowedOrigins().has(origin)) {
+      reply.header("Access-Control-Allow-Origin", origin);
+      reply.header("Access-Control-Allow-Credentials", "true");
+      reply.header("Access-Control-Allow-Headers", "Authorization, Content-Type");
+      reply.header("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
+      reply.header("Vary", "Origin");
+    }
+    if (request.method === "OPTIONS") return reply.code(204).send();
+  });
+
   app.get("/api/health", async () =>
     HealthResponseSchema.parse({
       status: "ok",
@@ -72,4 +84,13 @@ export function buildApp(options: BuildAppOptions = {}): FastifyInstance {
   registerSessionRoutes(app, sharedSessionService);
 
   return app;
+}
+
+function getAllowedOrigins() {
+  return new Set(
+    (process.env.ALLOWED_ORIGINS ?? "")
+      .split(",")
+      .map((origin) => origin.trim())
+      .filter(Boolean),
+  );
 }
