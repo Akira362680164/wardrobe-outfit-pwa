@@ -1,3 +1,20 @@
+## 2026-06-26 / v1.1.37 / Codex — cloud 1A IP auth and browser gate validation
+
+- **目的**：在用户确认“真机先不验收、备案前使用 `111.231.98.86` 继续”后，补做阶段 1A A6 中可在当前环境完成的浏览器开关构建、IP API 账号链路和退出验证。
+- **改动文件**：
+  - `VERSION_HISTORY.md`：记录本次验证结果；无业务代码改动。
+- **验证结果**：
+  - `npm run test:logic:auth-client-shell`：✅ 22 passed, 0 failed。
+  - `npm run test:logic:app-route`：✅ 46 passed, 0 failed。
+  - `npm run typecheck`：✅ 通过。
+  - `npm run api:test`：✅ 4 files / 27 tests passed。
+  - `NEXT_PUBLIC_CLOUD_AUTH_ENABLED=false NEXT_PUBLIC_WARDROBE_API_BASE_URL=http://111.231.98.86 npm run build`：✅ 通过；保留仓库既有 lint warnings。
+  - `NEXT_PUBLIC_CLOUD_AUTH_ENABLED=true NEXT_PUBLIC_WARDROBE_API_BASE_URL=http://111.231.98.86 npm run build`：✅ 通过；保留仓库既有 lint warnings。
+  - 远程 IP 账号链路：✅ 通过 `http://111.231.98.86` 完成注册、`development_cli` 验证、complete、`GET /api/account/me`、refresh、logout；输出仅保留脱敏手机号 `137****8074`，未输出 token/clientSecret。
+  - logout 复核：✅ logout 返回 `ok` 后，用同一 access token 访问 `GET /api/account/me` 返回 `401` / `AUTH_SESSION_REVOKED`；输出仅保留脱敏手机号 `136****8099`。
+- **风险门禁**：**low**。仅补验证记录；未触发独立审查 subagent：用户未通知。
+- **未验证风险 / 下一步**：Android 真机安装验收按用户指示暂不执行；域名 HTTPS 待腾讯云备案或可用域名完成后再恢复。阶段 1B 仍需按执行方案先停下，由用户确认分支和范围。
+
 ## 2026-06-26 / v1.1.37 / Codex — cloud 1A deploy temporary IP endpoint
 
 - **目的**：将上一条 `a831463` 的临时 IP 入口和 CORS 改动部署到腾讯云服务器，使用 `111.231.98.86` 继续阶段 1A 联调，绕开 `zhengfangapps.cloud` 备案前不可访问的问题。
