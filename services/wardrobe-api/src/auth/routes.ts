@@ -52,6 +52,21 @@ export function registerAuthRoutes(
     }
   });
 
+  app.post("/api/auth/registrations/:registrationId/cancel", async (request, reply) => {
+    try {
+      rejectClientSecretInQuery(request);
+      const params = RegistrationParamsSchema.parse(request.params);
+      const body = RegistrationSecretBodySchema.parse(request.body);
+      await registrationService.cancelRegistration({
+        registrationId: params.registrationId,
+        clientSecret: body.clientSecret,
+      });
+      return { status: "cancelled" as const };
+    } catch (error) {
+      return sendAuthError(reply, error);
+    }
+  });
+
   app.post("/api/auth/registrations/:registrationId/complete", async (request, reply) => {
     try {
       rejectClientSecretInQuery(request);

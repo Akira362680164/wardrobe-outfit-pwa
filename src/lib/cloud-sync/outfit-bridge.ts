@@ -74,7 +74,7 @@ export async function bridgeOutfitUpsert(outfit: SavedOutfit): Promise<BridgeOut
         removedOutfitItems,
       },
     );
-    await putPreparedEntityImageAssets(db, assets);
+    await putPreparedEntityImageAssets(db, ctx.workspace, assets);
     schedulePendingUploads(db);
     return { bridged: true };
   } catch (err) {

@@ -23,9 +23,11 @@ type WorkspaceGateState =
 export function WorkspaceGate({
   session,
   children,
+  onReady,
 }: {
   session: AuthSessionSnapshot;
   children: React.ReactNode;
+  onReady?: (workspace: AccountWorkspaceRecord) => void;
 }) {
   const [state, setState] = useState<WorkspaceGateState>({ status: "preparing" });
   const workspaceRef = useRef<AccountWorkspaceRecord | null>(null);
@@ -33,29 +35,39 @@ export function WorkspaceGate({
   useEffect(() => {
     let cancelled = false;
     let syncTimer: number | null = null;
+    let syncInFlight = false;
     let attemptCount = 0;
 
     const scheduleSync = (workspace: AccountWorkspaceRecord, cloud: ConnectivityState = "unknown") => {
       if (cancelled || !session.accessToken || !isCloudSyncEnabled()) return;
       if (syncTimer) window.clearTimeout(syncTimer);
       syncTimer = window.setTimeout(async () => {
+        // P1-N03: 防止重叠 runSyncOnce
+        if (syncInFlight) return;
         const nextCloud = cloud === "cloud_ready" ? cloud : await probeCloudConnectivity();
         if (cancelled || nextCloud !== "cloud_ready") {
           attemptCount++;
           scheduleSync(workspace);
           return;
         }
-        const result = await runSyncOnce({
-          workspace,
-          accessToken: session.accessToken!,
-          deviceId: session.deviceId,
-        });
-        if (cancelled) return;
-        if (result.skipped && result.reason !== "sync_disabled") {
-          attemptCount++;
-          scheduleSync(workspace);
-        } else {
-          attemptCount = 0;
+        syncInFlight = true;
+        try {
+          const result = await runSyncOnce({
+            workspace,
+            accessToken: session.accessToken!,
+            deviceId: session.deviceId,
+          });
+          if (cancelled) return;
+          if (result.skipped && result.reason !== "sync_disabled") {
+            attemptCount++;
+            scheduleSync(workspace);
+          } else {
+            attemptCount = 0;
+            // P1-N02: 成功后若队列未空则立即安排下一轮
+            if (!result.skipped) scheduleSync(workspace, nextCloud);
+          }
+        } finally {
+          syncInFlight = false;
         }
       }, computeBackoffMs(attemptCount));
     };
@@ -85,7 +97,7 @@ export function WorkspaceGate({
         if (existing && isWorkspaceOfflineAuthorized(existing)) {
           const workspace = openWorkspaceForSession(session);
           workspaceRef.current = workspace;
-          if (!cancelled) setState({ status: "ready", workspace });
+          if (!cancelled) { setState({ status: "ready", workspace }); onReady?.(workspace); }
           void probeAndSync(workspace);
           return;
         }
@@ -113,7 +125,7 @@ export function WorkspaceGate({
           scheduleAssetRecovery(imageCache);
         }
         workspaceRef.current = workspace;
-        if (!cancelled) setState({ status: "ready", workspace });
+        if (!cancelled) { setState({ status: "ready", workspace }); onReady?.(workspace); }
         scheduleSync(workspace, cloud);
       } catch (error) {
         const message = error instanceof Error ? error.message : "本机衣橱工作区准备失败";

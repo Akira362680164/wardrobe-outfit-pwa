@@ -34,6 +34,10 @@ services:
       DATABASE_URL: ${DATABASE_URL}
       GIT_COMMIT: ${GIT_COMMIT:-unknown}
       ALLOWED_ORIGINS: ${ALLOWED_ORIGINS:-}
+      COS_BUCKET: ${COS_BUCKET}
+      COS_REGION: ${COS_REGION}
+      COS_SECRET_ID: ${COS_SECRET_ID}
+      COS_SECRET_KEY: ${COS_SECRET_KEY}
     ports:
       - "127.0.0.1:3000:3000"
     volumes:

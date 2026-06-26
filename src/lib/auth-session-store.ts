@@ -158,9 +158,11 @@ async function readSecureValue(key: string): Promise<string | null> {
       const result = await secureStorage.get({ key });
       return result.value ?? null;
     } catch {
-      // Native plugin is registered by the Android shell. Browser dev and older builds fall through.
+      // P1-N06: 原生平台安全存储失败时抛错，要求重新登录，禁止降级到 sessionStorage
+      throw new Error("本机安全存储不可用，请重新登录");
     }
   }
+  // 仅浏览器开发环境使用 sessionStorage
   return getSessionStorage()?.getItem(key) ?? null;
 }
 
@@ -170,7 +172,7 @@ async function writeSecureValue(key: string, value: string): Promise<void> {
       await secureStorage.set({ key, value });
       return;
     } catch {
-      // Native plugin unavailable in web dev or pre-A5 APKs.
+      throw new Error("本机安全存储不可用，请重新登录");
     }
   }
   getSessionStorage()?.setItem(key, value);

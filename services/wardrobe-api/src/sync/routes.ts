@@ -14,6 +14,7 @@ import {
   ResolveConflictRequestSchema,
 } from "@wardrobe/cloud-contracts";
 
+import { AuthApiError } from "../auth/registrations.js";
 import { SyncApiError, SyncService } from "./service.js";
 
 export function registerSyncRoutes(
@@ -74,18 +75,18 @@ function sendSyncError(reply: FastifyReply, error: unknown) {
     return reply.code(error.statusCode).send(body);
   }
 
+  // P1-N01: 直接捕获 AuthApiError，避免 "Invalid access token" 等消息未被匹配
+  if (error instanceof AuthApiError) {
+    return reply.code(401).send({
+      code: "AUTH_REQUIRED",
+      message: "Authentication required",
+    });
+  }
+
   if (error instanceof z.ZodError) {
     return reply.code(400).send({
       code: "invalid_request",
       message: "Invalid sync request",
-    });
-  }
-
-  // JWT 验证失败已被 SessionService 抛 AuthApiError，会被 ZodError 之前 catch
-  if (error instanceof Error && error.message.includes("Authentication")) {
-    return reply.code(401).send({
-      code: "AUTH_REQUIRED",
-      message: "Authentication required",
     });
   }
 

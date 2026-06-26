@@ -745,6 +745,7 @@ const ENTITY_TABLE: Record<WorkspaceEntityType, keyof AccountWorkspaceDatabase> 
   tripPlan: "tripPlans",
   outfitPlan: "outfitPlans",
   asset: "assets",
+  closetLocation: "locations",
 };
 
 export async function applyRemoteChanges(
@@ -800,15 +801,16 @@ export async function applyBootstrap(
 ): Promise<{ applied: number }> {
   let applied = 0;
   const { entities } = response;
-  const bundles: Array<[WorkspaceEntityType, SyncEntity[]]> = [
-    ["garment", entities.garments],
-    ["outfit", entities.outfits],
-    ["outfitItem", entities.outfitItems],
-    ["wishlistItem", entities.wishlistItems],
-    ["wearEvent", entities.wearEvents],
-    ["tripPlan", entities.tripPlans],
-    ["outfitPlan", entities.outfitPlans],
-    ["asset", entities.assets],
+  const bundles: Array<[WorkspaceEntityType, Record<string, unknown>[]]> = [
+    ["garment", entities.garments as Record<string, unknown>[]],
+    ["outfit", entities.outfits as Record<string, unknown>[]],
+    ["outfitItem", entities.outfitItems as Record<string, unknown>[]],
+    ["wishlistItem", entities.wishlistItems as Record<string, unknown>[]],
+    ["wearEvent", entities.wearEvents as Record<string, unknown>[]],
+    ["tripPlan", entities.tripPlans as Record<string, unknown>[]],
+    ["outfitPlan", entities.outfitPlans as Record<string, unknown>[]],
+    ["asset", entities.assets as Record<string, unknown>[]],
+    ["closetLocation", entities.closetLocations as Record<string, unknown>[]],
   ];
   for (const [entityType, list] of bundles) {
     for (const e of list) {
@@ -831,6 +833,23 @@ export function computeBackoffMs(attemptCount: number): number {
   if (attemptCount <= 0) return 0;
   const idx = Math.min(attemptCount - 1, SYNC_BACKOFF_STEPS_MS.length - 1);
   return SYNC_BACKOFF_STEPS_MS[idx];
+}
+
+// P1-N12: 清理 7 天前的 applied/failed Outbox 和已解决 conflict
+export async function cleanupOutboxAndConflicts(db: AccountWorkspaceDatabase): Promise<{ deletedOutbox: number; deletedConflicts: number }> {
+  const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
+
+  const oldOutbox = await db.syncOutbox
+    .filter(r => (r.status === "applied" || r.status === "failed") && Boolean(r.updatedAt < sevenDaysAgo))
+    .toArray();
+  const oldConflicts = await db.syncConflicts
+    .filter(r => Boolean(r.resolvedAt && r.resolvedAt < sevenDaysAgo))
+    .toArray();
+
+  if (oldOutbox.length > 0) await db.syncOutbox.bulkDelete(oldOutbox.map(r => r.mutationId));
+  if (oldConflicts.length > 0) await db.syncConflicts.bulkDelete(oldConflicts.map(r => r.id));
+
+  return { deletedOutbox: oldOutbox.length, deletedConflicts: oldConflicts.length };
 }
 
 // ============================================================
@@ -889,9 +908,15 @@ export async function runSyncOnce(input: SyncRunInput): Promise<SyncRunResult> {
       if (!isGuardCurrent(guard)) {
         return { bootstrapped: false, pushed, pulled: 0, conflicts, skipped: true, reason: "workspace_switched" };
       }
-      for (let i = 0; i < pushResponse.results.length; i++) {
-        const result = pushResponse.results[i];
-        const original = pending[i];
+      // P2-N02: 按 mutationId 建立映射，不依赖数组位置
+      const resultByMutationId = new Map(pushResponse.results.map(r => [r.mutationId, r]));
+      for (const original of pending) {
+        const result = resultByMutationId.get(original.mutationId);
+        if (!result) {
+          // 服务端未返回此 mutation 的结果，标记失败等待重试
+          await markOutboxFailed(db, original.mutationId, "SERVER_MISSING_RESULT");
+          continue;
+        }
         if (result.status === "accepted") {
           await markOutboxApplied(db, original.mutationId);
           pushed++;

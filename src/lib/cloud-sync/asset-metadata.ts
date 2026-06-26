@@ -11,7 +11,7 @@ import {
 import type { AccountWorkspaceRecord } from "@/lib/workspace-registry";
 import { generateThumbnailSafe } from "@/lib/thumbnail-runtime";
 
-export type AssetOwnerEntityType = Exclude<WorkspaceEntityType, "asset">;
+export type AssetOwnerEntityType = Exclude<WorkspaceEntityType, "asset" | "closetLocation">;
 export type LocalAssetUploadStatus = "local_pending" | "uploading" | "uploaded" | "failed";
 
 export interface LocalAssetImageMetadata {

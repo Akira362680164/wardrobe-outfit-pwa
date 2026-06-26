@@ -264,8 +264,25 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     try {
       const current = session ?? await loadAuthSessionSnapshot();
       markCurrentWorkspaceLoggedOut(current);
+      // P1-N07: Token 过期时先受控 Refresh 再 logout，确保服务端会话被吊销
       if (current.accessToken) {
-        await authApi.logout(current.accessToken).catch(() => undefined);
+        if (!isAccessTokenFresh(current)) {
+          try {
+            if (current.refreshToken) {
+              const tokens = await authApi.refreshWithMutex({
+                refreshToken: current.refreshToken,
+                refreshRequestId: createRefreshRequestId(),
+                deviceId: current.deviceId,
+              });
+              await authApi.logout(tokens.accessToken);
+            }
+          } catch {
+            // Refresh 失败时仍尝试用旧 token 注销（best-effort）
+            await authApi.logout(current.accessToken).catch(() => undefined);
+          }
+        } else {
+          await authApi.logout(current.accessToken).catch(() => undefined);
+        }
       }
       const cleared = await clearAuthTokens(current);
       setSession(cleared);
@@ -318,6 +335,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const returnToLoginFromBlocked = useCallback(async () => {
     const current = session ?? await loadAuthSessionSnapshot();
+    // 6.3: 离开等待验证页时通知服务端取消注册
+    if (current.pendingRegistration) {
+      authApi.cancelRegistration({
+        registrationId: current.pendingRegistration.registrationId,
+        clientSecret: current.pendingRegistration.clientSecret,
+      }).catch(() => undefined);
+    }
     const next = await clearAuthTokens(current);
     await saveAuthSessionSnapshot(next);
     setSession(next);

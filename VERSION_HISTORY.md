@@ -1,4 +1,44 @@
-## 2026-06-27 / v2.0.0-test / Claude Code — push to public GitHub (force-with-lease)
+## 2026-06-27 / v2.0.0-test / Claude Code — V4 待修复项全批次（P0/P1/P2/次级观察）fix
+
+- **目的**：按 `WARDROBE_CLOUD_V4_待修复项与方案.md` 逐项修复全部 5 批次共 33 项（P2-N01 暂缓）。
+- **改动文件**：
+  - `packages/cloud-contracts/src/sync/contracts.ts`：实体专用 schema + closetLocation + payload 安全
+  - `packages/cloud-contracts/src/common/health.ts`：deps 使用 passthrough
+  - `services/wardrobe-api/src/sync/service.ts`：P0-N02 payload 消毒 / P0-N03 状态机 / P0-N04 实体序列化 / P1-N12 清理
+  - `services/wardrobe-api/src/sync/routes.ts`：P1-N01 AuthApiError catch
+  - `services/wardrobe-api/src/sync/entity-tables.ts`：closetLocation 映射
+  - `services/wardrobe-api/src/db/schema.ts`：locations 表 + closetLocation 枚举
+  - `services/wardrobe-api/src/auth/registrations.ts`：6.2 cancel verified registrations
+  - `services/wardrobe-api/src/auth/routes.ts`：6.3 cancel 端点
+  - `services/wardrobe-api/src/auth/rate-limit.ts`：P2-N05 过期 bucket 清理
+  - `services/wardrobe-api/src/auth/session.ts`：P2-9~P2-13 安全修复
+  - `services/wardrobe-api/src/assets/service.ts`：P1-N08 COS HEAD 验证 / P1-N09 owner 校验 / P1-N10 manifest 过滤 / 7.1 COS DELETE URL
+  - `services/wardrobe-api/src/app.ts`：P1-N13 COS/JWT 就绪检查 + P2-N05 trustProxy
+  - `src/lib/data-repo.ts`：P0-N01 workspace 感知
+  - `src/lib/cloud-sync/sync-engine.ts`：P0-N05 Outbox / P1-N12 清理 / P2-N02 mutationId Map
+  - `src/lib/cloud-sync/workspace-ui-mapper.ts`：P0-N01 workspace→UI 映射（新文件）
+  - `src/lib/cloud-sync/garment-bridge.ts`：P1-N11 原子事务
+  - `src/lib/cloud-sync/asset-bridge.ts`：P0-N07 Outbox 生成
+  - `src/lib/cloud-sync/asset-upload-coordinator.ts`、`asset-metadata.ts`：类型修正
+  - `src/lib/cloud-auth-api.ts`：P1-N04 auto-refresh / P1-N05 mutex Map / P2-N03 30s timeout / 6.3 cancelRegistration
+  - `src/lib/auth-session-store.ts`：P1-N06 安全存储失败抛错
+  - `src/lib/account-workspace-db.ts`：locations 表
+  - `src/components/auth/auth-provider.tsx`：P1-N07 logout refresh / 6.3 cancel 调用
+  - `src/components/auth/workspace-gate.tsx`：P1-N02/N03 sync 调度 / P2-N04 onReady
+  - `src/components/auth/account-views.tsx`：closetLocation 标签
+  - `src/components/app-root.tsx`：P2-N04 workspace useState
+  - `package.json`：P2-N06 test:publish 门禁
+  - `deploy/compose.production.yaml`、`deploy/.env.production.example`：P0-N06 COS 配置
+  - `deploy/scripts/wardrobe-cloud.sh`：7.2 COS 一致性注释 / 7.3 chmod
+  - `scripts/test-cloud-assets-bridge.ts`：函数签名更新
+- **验证结果**：
+  - `npm run typecheck`（客户端）：✅ 零错误。
+  - `npm run api:typecheck`（服务端）：✅ 零错误。
+- **未完成项**：P2-N01 Bootstrap 分页暂缓。
+- **风险门禁**：**high**。跨 30+ 文件，涉及同步协议（push/pull/bootstrap）、认证流程（registration cancel/auto-refresh/logout）、资产安全（COS HEAD 验证/owner 校验）、数据库 schema（locations 表）、安全（trustProxy/rate-limit/安全存储）等核心链路。未触发独立审查 subagent：用户未通知。
+- **未验证风险**：未跑 `npm run test:logic:all` / `npm run build` / APK 构建；api:test 未在真实 PG/COS 环境联调。
+
+
 
 - **目的**：将 v2.0.0-test（含全部云功能 1A/1B/1C）合并到 main 并推送公开 GitHub。
 - **操作**：

@@ -40,6 +40,7 @@ export const syncEntityType = pgEnum("sync_entity_type", [
   "tripPlan",
   "outfitPlan",
   "asset",
+  "closetLocation",
 ]);
 
 export const syncMutationOperation = pgEnum("sync_mutation_operation", [
@@ -198,6 +199,17 @@ export const wardrobes = pgTable(
   }),
 );
 
+export const locations = pgTable(
+  "locations",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    ...syncEntityColumns,
+  },
+  (table) => ({
+    userUpdatedIdx: index("locations_user_updated_idx").on(table.userId, table.updatedAt),
+  }),
+);
+
 export const garments = pgTable(
   "garments",
   {
@@ -318,7 +330,7 @@ export const assets = pgTable(
     height: integer("height"),
     originalObjectKey: text("original_object_key"),
     thumbnailObjectKey: text("thumbnail_object_key"),
-    uploadStatus: text("upload_status").notNull().default("pending"),
+    uploadStatus: text("upload_status").notNull().default("uploading"),
     ...syncEntityColumns,
   },
   (table) => ({

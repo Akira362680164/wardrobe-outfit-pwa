@@ -324,6 +324,7 @@ function entityLabel(entityType: WorkspaceEntityType): string {
     tripPlan: "旅行计划",
     outfitPlan: "穿搭计划",
     asset: "图片资产",
+    closetLocation: "衣橱位置",
   };
   return labels[entityType];
 }

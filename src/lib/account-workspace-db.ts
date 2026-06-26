@@ -12,6 +12,7 @@ export const ACCOUNT_WORKSPACE_DB_STORES = {
   tripPlans: "id, userId, startDate, endDate, revision, updatedAt, deletedAt",
   outfitPlans: "id, userId, tripPlanId, outfitId, date, revision, updatedAt, deletedAt",
   assets: "id, userId, ownerEntityType, ownerEntityId, sha256, revision, updatedAt, deletedAt",
+  locations: "id, userId, revision, updatedAt, deletedAt, originDeviceId",
   syncOutbox: "mutationId, userId, entityType, entityId, status, createdAt, attemptCount",
   syncState: "id, userId, updatedAt",
   syncConflicts: "id, userId, entityType, entityId, createdAt, resolvedAt",
@@ -29,7 +30,8 @@ export type WorkspaceEntityType =
   | "wearEvent"
   | "tripPlan"
   | "outfitPlan"
-  | "asset";
+  | "asset"
+  | "closetLocation";
 
 export interface WorkspaceSyncEntity {
   id: string;
@@ -101,6 +103,13 @@ export interface WorkspaceAssetRecord extends WorkspaceSyncEntity {
   payload?: unknown;
 }
 
+export interface WorkspaceLocationRecord extends WorkspaceSyncEntity {
+  name?: string;
+  note?: string;
+  sortOrder?: number;
+  payload?: unknown;
+}
+
 export interface WorkspaceSyncOutboxRecord {
   mutationId: string;
   userId: string;
@@ -160,6 +169,7 @@ export class AccountWorkspaceDatabase extends Dexie {
   tripPlans!: Table<WorkspaceTripPlanRecord, string>;
   outfitPlans!: Table<WorkspaceOutfitPlanRecord, string>;
   assets!: Table<WorkspaceAssetRecord, string>;
+  locations!: Table<WorkspaceLocationRecord, string>;
   syncOutbox!: Table<WorkspaceSyncOutboxRecord, string>;
   syncState!: Table<WorkspaceSyncStateRecord, string>;
   syncConflicts!: Table<WorkspaceSyncConflictRecord, string>;

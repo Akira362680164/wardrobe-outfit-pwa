@@ -22,6 +22,12 @@ export class FixedWindowRateLimiter {
     const current = this.buckets.get(key);
 
     if (!current || current.resetAtMs <= nowMs) {
+      // ponytail: 按需清理过期 bucket，避免 Map 无限增长
+      if (this.buckets.size > 10_000) {
+        for (const [k, v] of this.buckets) {
+          if (v.resetAtMs <= nowMs) this.buckets.delete(k);
+        }
+      }
       this.buckets.set(key, {
         count: 1,
         resetAtMs: nowMs + this.options.windowMs,

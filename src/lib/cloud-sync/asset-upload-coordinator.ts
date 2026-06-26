@@ -87,7 +87,7 @@ async function uploadOneVariant(
 
     const auth = await authorize({
       assetId: record.id,
-      ownerEntityType: record.ownerEntityType as Exclude<WorkspaceEntityType, "asset">,
+      ownerEntityType: record.ownerEntityType as Exclude<WorkspaceEntityType, "asset" | "closetLocation">,
       ownerEntityId: record.ownerEntityId,
       variant,
       sha256: upload.sha256,

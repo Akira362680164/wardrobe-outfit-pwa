@@ -9,6 +9,7 @@ export const SyncEntityTypeSchema = z.enum([
   "tripPlan",
   "outfitPlan",
   "asset",
+  "closetLocation",
 ]);
 
 export const SyncOperationSchema = z.enum(["create", "update", "delete"]);
@@ -24,15 +25,60 @@ export const SyncEntitySchema = z.object({
   payload: z.record(z.unknown()).default({}),
 });
 
+// 实体专用字段：Bootstrap 序列化时不丢失 payload 之外的列
+export const SyncGarmentSchema = SyncEntitySchema.extend({
+  wardrobeId: z.string().uuid().nullish(),
+});
+export const SyncOutfitItemSchema = z.object({
+  id: z.string().uuid(),
+  userId: z.string().uuid(),
+  outfitId: z.string().uuid(),
+  garmentId: z.string().uuid(),
+  revision: z.number().int().nonnegative(),
+  createdAt: z.string().datetime(),
+  updatedAt: z.string().datetime(),
+  deletedAt: z.string().datetime().nullish(),
+  originDeviceId: z.string().min(1),
+  sortOrder: z.number().int().nullish(),
+});
+export const SyncWearEventSchema = SyncEntitySchema.extend({
+  garmentId: z.string().uuid().nullish(),
+  outfitId: z.string().uuid().nullish(),
+  wornAt: z.string().datetime(),
+});
+export const SyncTripPlanSchema = SyncEntitySchema.extend({
+  startDate: z.string().nullish(),
+  endDate: z.string().nullish(),
+});
+export const SyncOutfitPlanSchema = SyncEntitySchema.extend({
+  tripPlanId: z.string().uuid().nullish(),
+  outfitId: z.string().uuid().nullish(),
+  planDate: z.string().nullish(),
+});
+export const SyncAssetSchema = SyncEntitySchema.extend({
+  ownerEntityType: SyncEntityTypeSchema,
+  ownerEntityId: z.string().uuid(),
+  sha256: z.string().nullish(),
+  mimeType: z.string().nullish(),
+  storageKey: z.string().nullish(),
+  sizeBytes: z.number().int().nullish(),
+  width: z.number().int().nullish(),
+  height: z.number().int().nullish(),
+  originalObjectKey: z.string().nullish(),
+  thumbnailObjectKey: z.string().nullish(),
+  uploadStatus: z.string(),
+});
+
 export const SyncEntityBundleSchema = z.object({
-  garments: z.array(SyncEntitySchema),
+  garments: z.array(SyncGarmentSchema),
   outfits: z.array(SyncEntitySchema),
-  outfitItems: z.array(SyncEntitySchema),
+  outfitItems: z.array(SyncOutfitItemSchema),
   wishlistItems: z.array(SyncEntitySchema),
-  wearEvents: z.array(SyncEntitySchema),
-  tripPlans: z.array(SyncEntitySchema),
-  outfitPlans: z.array(SyncEntitySchema),
-  assets: z.array(SyncEntitySchema),
+  wearEvents: z.array(SyncWearEventSchema),
+  tripPlans: z.array(SyncTripPlanSchema),
+  outfitPlans: z.array(SyncOutfitPlanSchema),
+  assets: z.array(SyncAssetSchema),
+  closetLocations: z.array(SyncEntitySchema),
 });
 
 export const AssetManifestEntrySchema = z.object({

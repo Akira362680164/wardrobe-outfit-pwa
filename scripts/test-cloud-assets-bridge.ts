@@ -87,7 +87,7 @@ async function main() {
     { id: garmentId, legacyItemId: garment.id, locationId: garment.locationId, name: garment.name, payload: garmentPayload },
     "create",
   );
-  await putPreparedEntityImageAssets(db, garmentAssets);
+  await putPreparedEntityImageAssets(db, workspace, garmentAssets);
   const garmentAssetRows = await db.assets.where("ownerEntityId").equals(garmentId).toArray();
   check("garment 写入 asset 记录", garmentAssetRows.length === 1 && garmentAssetRows[0].ownerEntityType === "garment");
   check("garment asset payload 保存 dataUrl 用于上传暂存", JSON.stringify(garmentAssetRows[0].payload).includes("data:image"));
@@ -120,7 +120,7 @@ async function main() {
     { id: wishlistId, legacyWishlistId: wishlist.id, status: wishlist.status, payload: wishlistPayload },
     "create",
   );
-  await putPreparedEntityImageAssets(db, wishlistAssets);
+  await putPreparedEntityImageAssets(db, workspace, wishlistAssets);
   check("wishlist payload 不含 DataURL 且含 asset 引用", !JSON.stringify(wishlistPayload).includes("data:image") && typeof (wishlistPayload.cloudAssetRefs as Record<string, unknown> | undefined)?.imageDataUrl === "object");
   check("wishlist 写入 asset 记录", (await db.assets.where("ownerEntityId").equals(wishlistId).count()) === 1);
 
@@ -170,7 +170,7 @@ async function main() {
       outfitItems: [{ outfitId, garmentId, sortOrder: 0 }],
     },
   );
-  await putPreparedEntityImageAssets(db, outfitAssets);
+  await putPreparedEntityImageAssets(db, workspace, outfitAssets);
   const outfitAssetRows = await db.assets.where("ownerEntityId").equals(outfitId).toArray();
   check("outfit payload 不含 DataURL", !JSON.stringify(outfitPayload).includes("data:image"));
   check("outfit payload 包含套装实图 asset 引用", typeof (outfitPayload.cloudAssetRefs as Record<string, unknown> | undefined)?.["outfitRealImages.real-1.imageDataUrl"] === "object");

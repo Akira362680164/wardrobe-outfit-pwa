@@ -5,6 +5,7 @@
 // push 路径上对每条 mutation 做 userId 归属校验 + baseRevision 检查 + 幂等 mutationId 派发。
 
 import { and, asc, eq, inArray, sql } from "drizzle-orm";
+import { z } from "zod";
 
 import {
   garments,
@@ -15,6 +16,7 @@ import {
   tripPlans,
   outfitPlans,
   assets,
+  locations,
   syncChanges,
   syncMutations,
 } from "../db/schema.js";
@@ -31,9 +33,15 @@ import {
   PushResponseSchema,
   ResolveConflictRequestSchema,
   ResolveConflictResponseSchema,
+  SyncAssetSchema,
   SyncChangeSchema,
   SyncEntityBundleSchema,
   SyncEntitySchema,
+  SyncGarmentSchema,
+  SyncOutfitItemSchema,
+  SyncOutfitPlanSchema,
+  SyncTripPlanSchema,
+  SyncWearEventSchema,
   type AssetManifestEntry,
   type BootstrapRequest,
   type BootstrapResponse,
@@ -55,6 +63,22 @@ import { encodeCursor, decodeCursor } from "./cursor.js";
 
 const BOOTSTRAP_BATCH_LIMIT = 500;
 const PULL_BATCH_LIMIT = 500;
+
+// P0-N02: payload 中不得覆盖的服务端控制字段
+const PROTECTED_COLUMNS = new Set([
+  "id", "userId", "revision", "originDeviceId",
+  "createdAt", "updatedAt", "deletedAt",
+]);
+
+function sanitizePayload(payload: Record<string, unknown>): Record<string, unknown> {
+  const safe: Record<string, unknown> = {};
+  for (const [key, value] of Object.entries(payload)) {
+    if (!PROTECTED_COLUMNS.has(key)) {
+      safe[key] = value;
+    }
+  }
+  return safe;
+}
 
 export class SyncApiError extends Error {
   constructor(
@@ -157,7 +181,7 @@ export class SyncService {
           // 2. 取得 entityType 对应的 drizzle table
           const table = getTableForEntityType(mutation.entityType);
 
-          // 3. baseRevision 检查：若实体已存在，对比 server revision
+          // 3. 查实体当前状态 + 跨账号校验
           const existingEntities = await tx
             .select({ id: (table as any).id, revision: (table as any).revision, userId: (table as any).userId })
             .from(table as any)
@@ -166,13 +190,13 @@ export class SyncService {
 
           const existingEntity = existingEntities[0];
           if (existingEntity && existingEntity.userId !== userId) {
-            // 跨账号访问：必须拒绝（即使 entityId 撞库）
             throw new SyncApiError(403, "CROSS_ACCOUNT_ACCESS", "Mutation targets another account");
           }
 
-          if (existingEntity && mutation.operation !== "create" && existingEntity.revision !== mutation.baseRevision) {
-            // revision mismatch → conflict。记录 sync_conflicts 由后续 B7 处理
-            // （B4 服务端只返回 status，客户端记录）
+          // P0-N03: 严格操作状态机
+          const operation = mutation.operation;
+          if (operation === "create" && existingEntity) {
+            // create 命中已存在实体 → 拒绝
             const [nextSeqRow] = await tx
               .insert(syncMutations)
               .values({
@@ -182,8 +206,8 @@ export class SyncService {
                 entityId: mutation.entityId,
                 operation: mutation.operation,
                 baseRevision: mutation.baseRevision ?? null,
-                status: "conflict",
-                errorCode: "REVISION_MISMATCH",
+                status: "rejected",
+                errorCode: "ENTITY_ALREADY_EXISTS",
                 payload: mutation.payload ?? {},
               })
               .returning();
@@ -191,46 +215,75 @@ export class SyncService {
               mutationId: mutation.mutationId,
               entityType: mutation.entityType,
               entityId: mutation.entityId,
+              status: "rejected" as const,
+              errorCode: "ENTITY_ALREADY_EXISTS",
+              serverRevision: existingEntity.revision,
+            };
+          }
+          if ((operation === "update" || operation === "delete") && !existingEntity) {
+            return {
+              mutationId: mutation.mutationId,
+              entityType: mutation.entityType,
+              entityId: mutation.entityId,
+              status: "rejected" as const,
+              errorCode: "ENTITY_NOT_FOUND",
+            };
+          }
+          // revision 检查（create 实体不存在时跳过）
+          if (existingEntity && existingEntity.revision !== mutation.baseRevision) {
+            await tx.insert(syncMutations).values({
+              userId,
+              mutationId: mutation.mutationId,
+              entityType: mutation.entityType,
+              entityId: mutation.entityId,
+              operation: mutation.operation,
+              baseRevision: mutation.baseRevision ?? null,
+              status: "conflict",
+              errorCode: "REVISION_MISMATCH",
+              payload: mutation.payload ?? {},
+            });
+            return {
+              mutationId: mutation.mutationId,
+              entityType: mutation.entityType,
+              entityId: mutation.entityId,
               status: "conflict" as const,
               errorCode: "REVISION_MISMATCH",
+              serverRevision: existingEntity.revision,
             };
           }
 
-          // 4. 应用 mutation：按 operation 写 entity 表
-          const serverRevision = (mutation.baseRevision ?? 0) + 1;
+          // 4. 应用 mutation：serverRevision 基于服务端当前值
+          const serverRevision = existingEntity ? existingEntity.revision + 1 : 1;
           const now = new Date();
+          const safePayload = sanitizePayload((mutation.payload ?? {}) as Record<string, unknown>);
 
-          if (mutation.operation === "delete") {
-            // 软删除：写 deletedAt + 升 revision
-            if (existingEntity) {
-              await tx
-                .update(table as any)
-                .set({ deletedAt: now, updatedAt: now, revision: serverRevision })
-                .where(eq((table as any).id, mutation.entityId));
-            }
-          } else {
-            // create / update：upsert + revision + originDeviceId
-            const payload = (mutation.payload ?? {}) as Record<string, unknown>;
-            if (existingEntity) {
-              await tx
-                .update(table as any)
-                .set({
-                  ...payload,
-                  updatedAt: now,
-                  revision: serverRevision,
-                })
-                .where(eq((table as any).id, mutation.entityId));
-            } else {
-              await tx.insert(table as any).values({
-                id: mutation.entityId,
+          if (operation === "delete") {
+            await tx
+              .update(table as any)
+              .set({ deletedAt: now, updatedAt: now, revision: serverRevision })
+              .where(eq((table as any).id, mutation.entityId));
+          } else if (existingEntity) {
+            // update：safePayload 在前，服务端字段在后覆盖
+            await tx
+              .update(table as any)
+              .set({
+                ...safePayload,
                 userId,
-                originDeviceId: deviceId,
-                createdAt: now,
                 updatedAt: now,
                 revision: serverRevision,
-                ...payload,
-              });
-            }
+              })
+              .where(eq((table as any).id, mutation.entityId));
+          } else {
+            // create：safePayload 在前，服务端字段在后覆盖
+            await tx.insert(table as any).values({
+              ...safePayload,
+              id: mutation.entityId,
+              userId,
+              originDeviceId: deviceId,
+              createdAt: now,
+              updatedAt: now,
+              revision: serverRevision,
+            });
           }
 
           // 5. 写 sync_changes（advisory lock 保护并发序号分配）
@@ -392,6 +445,23 @@ export class SyncService {
 
     return ResolveConflictResponseSchema.parse({ status: "ok" });
   }
+
+  // P1-N12: 定期清理过期记录
+  async cleanup(): Promise<{ deletedChanges: number; deletedMutations: number }> {
+    const db = getDb();
+    const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+    const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+
+    const [changesResult, mutationsResult] = await Promise.all([
+      db.delete(syncChanges).where(sql`${syncChanges.createdAt} < ${thirtyDaysAgo.toISOString()}`).returning(),
+      db.delete(syncMutations).where(sql`${syncMutations.createdAt} < ${sevenDaysAgo.toISOString()}`).returning(),
+    ]);
+
+    return {
+      deletedChanges: changesResult.length,
+      deletedMutations: mutationsResult.length,
+    };
+  }
 }
 
 // 默认实现：8 张表全部读，组成 SyncEntityBundle 返回
@@ -405,6 +475,7 @@ async function defaultFetchBundle(userId: string, db: NodePgDatabase<typeof sche
     tripPlanRows,
     outfitPlanRows,
     assetRows,
+    locationRows,
   ] = await Promise.all([
     db.select().from(garments).where(eq(garments.userId, userId)),
     db.select().from(outfits).where(eq(outfits.userId, userId)),
@@ -414,17 +485,19 @@ async function defaultFetchBundle(userId: string, db: NodePgDatabase<typeof sche
     db.select().from(tripPlans).where(eq(tripPlans.userId, userId)),
     db.select().from(outfitPlans).where(eq(outfitPlans.userId, userId)),
     db.select().from(assets).where(eq(assets.userId, userId)),
+    db.select().from(locations).where(eq(locations.userId, userId)),
   ]);
 
   return SyncEntityBundleSchema.parse({
-    garments: garmentRows.map(toSyncEntity),
+    garments: garmentRows.map(toGarmentSyncEntity),
     outfits: outfitRows.map(toSyncEntity),
-    outfitItems: outfitItemRows.map(toSyncEntity),
+    outfitItems: outfitItemRows.map(toOutfitItemSyncEntity),
     wishlistItems: wishlistRows.map(toSyncEntity),
-    wearEvents: wearEventRows.map(toSyncEntity),
-    tripPlans: tripPlanRows.map(toSyncEntity),
-    outfitPlans: outfitPlanRows.map(toSyncEntity),
-    assets: assetRows.map(toSyncEntity),
+    wearEvents: wearEventRows.map(toWearEventSyncEntity),
+    tripPlans: tripPlanRows.map(toTripPlanSyncEntity),
+    outfitPlans: outfitPlanRows.map(toOutfitPlanSyncEntity),
+    assets: assetRows.map(toAssetSyncEntity),
+    closetLocations: locationRows.map(toSyncEntity),
   });
 }
 
@@ -443,6 +516,107 @@ async function defaultFetchAssetManifest(userId: string, db: NodePgDatabase<type
       thumbnailReady: Boolean(row.storageKey),
     }),
   );
+}
+
+// P0-N04: 每种实体专用序列化器，合并专用列 + payload
+function toGarmentSyncEntity(row: typeof garments.$inferSelect): z.infer<typeof SyncGarmentSchema> {
+  return SyncGarmentSchema.parse({
+    id: row.id,
+    userId: row.userId,
+    revision: row.revision,
+    createdAt: row.createdAt.toISOString(),
+    updatedAt: row.updatedAt.toISOString(),
+    deletedAt: row.deletedAt?.toISOString() ?? null,
+    originDeviceId: row.originDeviceId,
+    wardrobeId: row.wardrobeId ?? undefined,
+    payload: (row.payload as Record<string, unknown>) ?? {},
+  });
+}
+
+function toOutfitItemSyncEntity(row: typeof outfitItems.$inferSelect): z.infer<typeof SyncOutfitItemSchema> {
+  return SyncOutfitItemSchema.parse({
+    id: row.id,
+    userId: row.userId,
+    outfitId: row.outfitId,
+    garmentId: row.garmentId,
+    revision: row.revision,
+    createdAt: row.createdAt.toISOString(),
+    updatedAt: row.updatedAt.toISOString(),
+    deletedAt: row.deletedAt?.toISOString() ?? null,
+    originDeviceId: row.originDeviceId,
+    sortOrder: row.sortOrder ?? undefined,
+  });
+}
+
+function toWearEventSyncEntity(row: typeof wearEvents.$inferSelect): z.infer<typeof SyncWearEventSchema> {
+  return SyncWearEventSchema.parse({
+    id: row.id,
+    userId: row.userId,
+    revision: row.revision,
+    createdAt: row.createdAt.toISOString(),
+    updatedAt: row.updatedAt.toISOString(),
+    deletedAt: row.deletedAt?.toISOString() ?? null,
+    originDeviceId: row.originDeviceId,
+    garmentId: row.garmentId ?? undefined,
+    outfitId: row.outfitId ?? undefined,
+    wornAt: row.wornAt.toISOString(),
+    payload: (row.payload as Record<string, unknown>) ?? {},
+  });
+}
+
+function toTripPlanSyncEntity(row: typeof tripPlans.$inferSelect): z.infer<typeof SyncTripPlanSchema> {
+  return SyncTripPlanSchema.parse({
+    id: row.id,
+    userId: row.userId,
+    revision: row.revision,
+    createdAt: row.createdAt.toISOString(),
+    updatedAt: row.updatedAt.toISOString(),
+    deletedAt: row.deletedAt?.toISOString() ?? null,
+    originDeviceId: row.originDeviceId,
+    startDate: row.startDate ?? undefined,
+    endDate: row.endDate ?? undefined,
+    payload: (row.payload as Record<string, unknown>) ?? {},
+  });
+}
+
+function toOutfitPlanSyncEntity(row: typeof outfitPlans.$inferSelect): z.infer<typeof SyncOutfitPlanSchema> {
+  return SyncOutfitPlanSchema.parse({
+    id: row.id,
+    userId: row.userId,
+    revision: row.revision,
+    createdAt: row.createdAt.toISOString(),
+    updatedAt: row.updatedAt.toISOString(),
+    deletedAt: row.deletedAt?.toISOString() ?? null,
+    originDeviceId: row.originDeviceId,
+    tripPlanId: row.tripPlanId ?? undefined,
+    outfitId: row.outfitId ?? undefined,
+    planDate: row.planDate ?? undefined,
+    payload: (row.payload as Record<string, unknown>) ?? {},
+  });
+}
+
+function toAssetSyncEntity(row: typeof assets.$inferSelect): z.infer<typeof SyncAssetSchema> {
+  return SyncAssetSchema.parse({
+    id: row.id,
+    userId: row.userId,
+    revision: row.revision,
+    createdAt: row.createdAt.toISOString(),
+    updatedAt: row.updatedAt.toISOString(),
+    deletedAt: row.deletedAt?.toISOString() ?? null,
+    originDeviceId: row.originDeviceId,
+    ownerEntityType: row.ownerEntityType as SyncEntityTypeContract,
+    ownerEntityId: row.ownerEntityId,
+    sha256: row.sha256 ?? undefined,
+    mimeType: row.mimeType ?? undefined,
+    storageKey: row.storageKey ?? undefined,
+    sizeBytes: row.sizeBytes ?? undefined,
+    width: row.width ?? undefined,
+    height: row.height ?? undefined,
+    originalObjectKey: row.originalObjectKey ?? undefined,
+    thumbnailObjectKey: row.thumbnailObjectKey ?? undefined,
+    uploadStatus: row.uploadStatus,
+    payload: (row.payload as Record<string, unknown>) ?? {},
+  });
 }
 
 function toSyncEntity(row: {

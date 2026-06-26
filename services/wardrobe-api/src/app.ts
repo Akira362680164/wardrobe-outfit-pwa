@@ -12,6 +12,7 @@ import { registerSessionRoutes } from "./auth/session-routes.js";
 import { SessionService } from "./auth/session.js";
 import { registerAssetRoutes } from "./assets/routes.js";
 import { AssetService } from "./assets/service.js";
+import { readFile } from "node:fs/promises";
 import { checkDatabaseReady } from "./db/client.js";
 import { getApiVersion } from "./version.js";
 import { registerSyncRoutes } from "./sync/routes.js";
@@ -31,6 +32,7 @@ export interface BuildAppOptions {
 export function buildApp(options: BuildAppOptions = {}): FastifyInstance {
   const readinessCheck = options.readinessCheck ?? checkDatabaseReady;
   const app = Fastify({
+    trustProxy: true,
     logger: process.env.NODE_ENV !== "test"
       ? { serializers: { req: redactedLogSerializer as never, res: redactedLogSerializer as never } }
       : false,
@@ -57,24 +59,41 @@ export function buildApp(options: BuildAppOptions = {}): FastifyInstance {
 
   app.get("/api/ready", async (_request, reply) => {
     const serverTime = new Date().toISOString();
+    const deps: ReadyResponse["dependencies"] = { database: "unavailable" };
 
     try {
       await readinessCheck();
-      const body: ReadyResponse = {
-        status: "ok",
-        dependencies: { database: "ready" },
-        serverTime,
-      };
-      return ReadyResponseSchema.parse(body);
+      deps.database = "ready";
     } catch {
-      reply.code(503);
-      const body: ReadyResponse = {
-        status: "degraded",
-        dependencies: { database: "unavailable" },
-        serverTime,
-      };
-      return ReadyResponseSchema.parse(body);
+      // database check failed
     }
+
+    // P1-N13: 检查 COS 配置和 JWT 密钥文件
+    const cosConfigured = Boolean(
+      process.env.COS_BUCKET?.trim() && process.env.COS_REGION?.trim() &&
+      process.env.COS_SECRET_ID?.trim() && process.env.COS_SECRET_KEY?.trim(),
+    );
+    const jwtReady = await checkJwtKeysReady();
+
+    const allReady = deps.database === "ready" && cosConfigured && jwtReady;
+    if (!allReady) {
+      reply.code(503);
+      return ReadyResponseSchema.parse({
+        status: "degraded",
+        dependencies: {
+          database: deps.database,
+          ...(cosConfigured ? {} : { cos: "unavailable" as const }),
+          ...(jwtReady ? {} : { jwt: "unavailable" as const }),
+        },
+        serverTime,
+      });
+    }
+
+    return ReadyResponseSchema.parse({
+      status: "ok",
+      dependencies: { database: "ready" },
+      serverTime,
+    });
   });
 
   app.get("/api/version", async () =>
@@ -95,6 +114,17 @@ export function buildApp(options: BuildAppOptions = {}): FastifyInstance {
   registerAssetRoutes(app, options.assetService ?? new AssetService(), sharedSessionService ?? new SessionService());
 
   return app;
+}
+
+async function checkJwtKeysReady(): Promise<boolean> {
+  try {
+    const privatePath = process.env.JWT_PRIVATE_KEY_PATH ?? "/run/secrets/jwt-private.pem";
+    const publicPath = process.env.JWT_PUBLIC_KEY_PATH ?? "/run/secrets/jwt-public.pem";
+    await Promise.all([readFile(privatePath), readFile(publicPath)]);
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 function getAllowedOrigins() {

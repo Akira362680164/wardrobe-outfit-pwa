@@ -102,7 +102,7 @@ export class PostgresRegistrationStore implements RegistrationStore {
     await getDb()
       .update(pendingRegistrations)
       .set({ status: "cancelled", cancelledAt: now, updatedAt: now, passwordHash: null, clientSecretHash: null })
-      .where(and(eq(pendingRegistrations.phoneE164, phoneE164), eq(pendingRegistrations.status, "pending")));
+      .where(and(eq(pendingRegistrations.phoneE164, phoneE164), inArray(pendingRegistrations.status, ["pending", "verified"])));
   }
 
   async createPendingRegistration(input: {
@@ -373,6 +373,16 @@ export class RegistrationService {
       maskedPhone: completed.maskedPhone,
       serverTime: now.toISOString(),
     };
+  }
+
+  async cancelRegistration(input: { registrationId: string; clientSecret: string }) {
+    const registration = await this.requireRegistrationWithSecret(input.registrationId, input.clientSecret);
+    const now = this.now();
+    if (registration.status === "completed" || registration.status === "cancelled" || registration.status === "expired") {
+      return { status: registration.status as RegistrationStatus };
+    }
+    await this.store.cancelPendingRegistrations(registration.phoneE164, now);
+    return { status: "cancelled" as const };
   }
 
   async verifyPendingRegistrationWithDevelopmentCli(registrationId: string) {

@@ -51,7 +51,7 @@ export async function bridgeWishlistUpsert(item: WishlistItem): Promise<BridgeWi
       },
       existing ? "update" : "create",
     );
-    await putPreparedEntityImageAssets(db, assets);
+    await putPreparedEntityImageAssets(db, ctx.workspace, assets);
     schedulePendingUploads(db);
     return { bridged: true };
   } catch (err) {

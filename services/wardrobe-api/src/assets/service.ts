@@ -58,7 +58,7 @@ export class AssetService {
     }
 
     const existing = await this.getAsset(input.assetId);
-    assertAssetCanBind(existing, input);
+    await assertAssetCanBind(existing, input, verifyOwnerEntity);
 
     const now = new Date();
     const objectKey = buildAssetObjectKey(input.userId, input.assetId, input.variant, input.sha256, input.mimeType);
@@ -99,6 +99,16 @@ export class AssetService {
       throw new AssetApiError(409, "asset_upload_mismatch", "Asset upload metadata does not match authorization");
     }
 
+    // P1-N08: 向 COS 发 HEAD 验证对象已上传且尺寸/类型匹配
+    if (this.cosConfig) {
+      await verifyCosObject({
+        config: this.cosConfig,
+        objectKey: input.objectKey,
+        expectedSizeBytes: input.sizeBytes,
+        expectedMimeType: input.mimeType,
+      });
+    }
+
     const now = new Date();
     const payload = mergeUploadPayload(existing.payload, input.variant, {
       ...expected,
@@ -107,10 +117,14 @@ export class AssetService {
       completedAt: now.toISOString(),
       status: "uploaded",
     });
+    // P1-N10: 只有所有已授权变体都已 uploaded 才设全局 uploaded
+    const otherVariant = input.variant === "original" ? "thumbnail" : "original";
+    const otherPayload = getUploadPayload(existing.payload, otherVariant);
+    const globalStatus = otherPayload && otherPayload.status === "uploaded" ? "uploaded" : "uploading";
     await this.database()
       .update(assets)
       .set({
-        uploadStatus: "uploaded",
+        uploadStatus: globalStatus,
         ...(input.variant === "thumbnail" ? { storageKey: input.objectKey } : {}),
         updatedAt: now,
         payload,
@@ -167,16 +181,18 @@ export class AssetService {
     const db = this.database();
     const cursor = input.cursor ? parseManifestCursor(input.cursor) : null;
 
+    // P1-N10: 排除已删除资产
+    const baseWhere = and(eq(assets.userId, input.userId), sql`${assets.deletedAt} IS NULL`);
     let query = db
       .select()
       .from(assets)
       .where(
         cursor
           ? and(
-              eq(assets.userId, input.userId),
+              baseWhere,
               sql`(${assets.updatedAt}, ${assets.id}) > (${cursor.updatedAt}::timestamptz, ${cursor.id}::uuid)`,
             )
-          : eq(assets.userId, input.userId),
+          : baseWhere,
       )
       .orderBy(sql`${assets.updatedAt} ASC, ${assets.id} ASC`)
       .limit(input.limit + 1);
@@ -187,12 +203,19 @@ export class AssetService {
     const items = (hasMore ? rows.slice(0, input.limit) : rows).map((row) => {
       const originalPayload = getUploadPayload(row.payload, "original");
       const thumbnailPayload = getUploadPayload(row.payload, "thumbnail");
+      // P1-N10: 只返回真正 uploaded 的变体
+      const originalReady = originalPayload && originalPayload.status === "uploaded";
+      const thumbnailReady = thumbnailPayload && thumbnailPayload.status === "uploaded";
+      const derivedStatus: "uploading" | "uploaded" | "failed" =
+        originalReady && (!thumbnailPayload || thumbnailReady) ? "uploaded"
+        : !originalPayload && !thumbnailPayload ? "uploading"
+        : "uploading";
       return {
         assetId: row.id,
         ownerEntityType: row.ownerEntityType,
         ownerEntityId: row.ownerEntityId,
-        uploadStatus: row.uploadStatus as "uploading" | "uploaded" | "failed",
-        ...(originalPayload ? {
+        uploadStatus: derivedStatus,
+        ...(originalReady ? {
           original: {
             sha256: originalPayload.sha256 as string,
             mimeType: originalPayload.mimeType as string,
@@ -201,7 +224,7 @@ export class AssetService {
             height: originalPayload.height as number | undefined,
           },
         } : {}),
-        ...(thumbnailPayload ? {
+        ...(thumbnailReady ? {
           thumbnail: {
             sha256: thumbnailPayload.sha256 as string,
             mimeType: thumbnailPayload.mimeType as string,
@@ -338,6 +361,64 @@ export function createCosPutObjectPresignedUrl(input: {
   return url.toString();
 }
 
+// P1-N08: 向 COS 发 HEAD 请求验证对象存在且元数据匹配
+async function verifyCosObject(input: {
+  config: CosUploadConfig;
+  objectKey: string;
+  expectedSizeBytes: number;
+  expectedMimeType: string;
+}): Promise<void> {
+  const now = new Date();
+  const host = `${input.config.bucket}.cos.${input.config.region}.myqcloud.com`;
+  const uri = `/${input.objectKey.split("/").map(encodeURIComponent).join("/")}`;
+  const headUrl = createCosHeadObjectPresignedUrl({
+    config: input.config,
+    objectKey: input.objectKey,
+    now,
+  });
+
+  const response = await fetch(headUrl, { method: "HEAD" });
+  if (!response.ok) {
+    throw new AssetApiError(422, "asset_upload_incomplete", `COS object not found or not accessible (status ${response.status})`);
+  }
+  const contentLength = response.headers.get("content-length");
+  const contentType = response.headers.get("content-type");
+  if (contentLength && Number(contentLength) !== input.expectedSizeBytes) {
+    throw new AssetApiError(422, "asset_size_mismatch", `COS object size ${contentLength} does not match expected ${input.expectedSizeBytes}`);
+  }
+  if (contentType && contentType.toLowerCase() !== input.expectedMimeType.toLowerCase()) {
+    throw new AssetApiError(422, "asset_type_mismatch", `COS object type ${contentType} does not match expected ${input.expectedMimeType}`);
+  }
+}
+
+function createCosHeadObjectPresignedUrl(input: {
+  config: CosUploadConfig;
+  objectKey: string;
+  now: Date;
+}): string {
+  const start = Math.floor(input.now.getTime() / 1000);
+  const end = start + 300; // HEAD 只需 5 分钟有效期
+  const keyTime = `${start};${end}`;
+  const host = `${input.config.bucket}.cos.${input.config.region}.myqcloud.com`;
+  const uri = `/${input.objectKey.split("/").map(encodeURIComponent).join("/")}`;
+  const httpString = `head\n${uri}\n\nhost=${host}\n`;
+  const stringToSign = `sha1\n${keyTime}\n${sha1Hex(httpString)}\n`;
+  const signKey = hmacSha1Hex(input.config.secretKey, keyTime);
+  const signature = hmacSha1Hex(signKey, stringToSign);
+  const authorization = [
+    "q-sign-algorithm=sha1",
+    `q-ak=${input.config.secretId}`,
+    `q-sign-time=${keyTime}`,
+    `q-key-time=${keyTime}`,
+    "q-header-list=host",
+    "q-url-param-list=",
+    `q-signature=${signature}`,
+  ].join("&");
+  const url = new URL(`${input.config.protocol}://${host}${uri}`);
+  url.searchParams.set("sign", authorization);
+  return url.toString();
+}
+
 export function createCosGetObjectPresignedUrl(input: {
   config: CosUploadConfig;
   objectKey: string;
@@ -366,13 +447,41 @@ export function createCosGetObjectPresignedUrl(input: {
   return url.toString();
 }
 
-function assertAssetCanBind(existing: AssetRow | null, input: AssetUploadAuthorizeRequest & { userId: string }): void {
-  if (!existing) return;
-  if (existing.userId !== input.userId) {
-    throw new AssetApiError(404, "asset_not_found", "Asset was not found");
+// P1-N09: 新 asset 也需验证 owner 实体存在且属于当前用户
+async function assertAssetCanBind(
+  existing: AssetRow | null,
+  input: AssetUploadAuthorizeRequest & { userId: string },
+  verifyOwner: (ownerEntityType: string, ownerEntityId: string, userId: string) => Promise<void>,
+): Promise<void> {
+  if (existing) {
+    if (existing.userId !== input.userId) {
+      throw new AssetApiError(404, "asset_not_found", "Asset was not found");
+    }
+    if (existing.ownerEntityType !== input.ownerEntityType || existing.ownerEntityId !== input.ownerEntityId) {
+      throw new AssetApiError(409, "asset_owner_mismatch", "Asset already belongs to a different entity");
+    }
+    return;
   }
-  if (existing.ownerEntityType !== input.ownerEntityType || existing.ownerEntityId !== input.ownerEntityId) {
-    throw new AssetApiError(409, "asset_owner_mismatch", "Asset already belongs to a different entity");
+  await verifyOwner(input.ownerEntityType, input.ownerEntityId, input.userId);
+}
+
+async function verifyOwnerEntity(
+  ownerEntityType: string,
+  ownerEntityId: string,
+  userId: string,
+): Promise<void> {
+  const { getTableForEntityType } = await import("../sync/entity-tables.js");
+  const table = getTableForEntityType(ownerEntityType as Parameters<typeof getTableForEntityType>[0]);
+  const rows = await getDb()
+    .select({ id: (table as any).id, userId: (table as any).userId, deletedAt: (table as any).deletedAt })
+    .from(table as any)
+    .where(and(eq((table as any).id, ownerEntityId), eq((table as any).userId, userId)))
+    .limit(1);
+  if (!rows[0]) {
+    throw new AssetApiError(404, "owner_entity_not_found", "Owner entity does not exist or does not belong to this account");
+  }
+  if (rows[0].deletedAt) {
+    throw new AssetApiError(409, "owner_entity_deleted", "Cannot bind asset to a deleted entity");
   }
 }
 
@@ -398,6 +507,35 @@ function extensionForMimeType(mimeType: string): string {
   if (mimeType === "image/heic") return "heic";
   if (mimeType === "image/heif") return "heif";
   return "img";
+}
+
+// 7.1: COS DELETE Object 预签名 URL，供清理流程使用
+export function createCosDeleteObjectPresignedUrl(input: {
+  config: CosUploadConfig;
+  objectKey: string;
+  now: Date;
+}): string {
+  const start = Math.floor(input.now.getTime() / 1000);
+  const end = start + 300;
+  const keyTime = `${start};${end}`;
+  const host = `${input.config.bucket}.cos.${input.config.region}.myqcloud.com`;
+  const uri = `/${input.objectKey.split("/").map(encodeURIComponent).join("/")}`;
+  const httpString = `delete\n${uri}\n\nhost=${host}\n`;
+  const stringToSign = `sha1\n${keyTime}\n${sha1Hex(httpString)}\n`;
+  const signKey = hmacSha1Hex(input.config.secretKey, keyTime);
+  const signature = hmacSha1Hex(signKey, stringToSign);
+  const authorization = [
+    "q-sign-algorithm=sha1",
+    `q-ak=${input.config.secretId}`,
+    `q-sign-time=${keyTime}`,
+    `q-key-time=${keyTime}`,
+    "q-header-list=host",
+    "q-url-param-list=",
+    `q-signature=${signature}`,
+  ].join("&");
+  const url = new URL(`${input.config.protocol}://${host}${uri}`);
+  url.searchParams.set("sign", authorization);
+  return url.toString();
 }
 
 function sha1Hex(value: string): string {
