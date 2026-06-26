@@ -9,19 +9,17 @@ import {
   loadAuthSessionSnapshot,
   saveAuthSessionSnapshot,
   saveAuthTokens,
-  savePendingRegistration,
   type AuthSessionSnapshot,
   type AuthTokenPayload,
   type AuthUserSnapshot,
   type LocalOwnerSnapshot,
-  type PendingRegistrationSnapshot,
 } from "@/lib/auth-session-store";
 import { closeAccountWorkspaceDb } from "@/lib/account-workspace-db";
 import * as authApi from "@/lib/cloud-auth-api";
 import { probeCloudConnectivity, subscribeNetworkChanges, type ConnectivityState } from "@/lib/cloud-sync/connectivity";
 import { isAccountWorkspaceEnabled, isWorkspaceOfflineAuthorized, loadWorkspaceRegistry, markWorkspaceLoggedOut, WORKSPACE_SCHEMA_VERSION } from "@/lib/workspace-registry";
 
-export type AuthPhase = "initializing" | "anonymous" | "pending_verification" | "authenticated" | "blocked";
+export type AuthPhase = "initializing" | "anonymous" | "authenticated" | "blocked";
 
 export interface AuthBlockedState {
   owner: LocalOwnerSnapshot;
@@ -34,15 +32,12 @@ interface AuthContextValue {
   user: AuthUserSnapshot | null;
   deviceId: string;
   deviceLabel: string;
-  pendingRegistration: PendingRegistrationSnapshot | null;
   blocked: AuthBlockedState | null;
   isBusy: boolean;
   error: string | null;
   connectivity: ConnectivityState;
   login: (phone: string, password: string) => Promise<void>;
   register: (phone: string, password: string) => Promise<void>;
-  checkRegistration: () => Promise<authApi.RegistrationStatusResponse | null>;
-  completePendingRegistration: () => Promise<void>;
   refreshSession: () => Promise<AuthSessionSnapshot | null>;
   logout: () => Promise<void>;
   logoutAll: () => Promise<void>;
@@ -129,8 +124,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     let cancelled = false;
     (async () => {
       try {
-        const loaded = await loadAuthSessionSnapshot();
+        let loaded = await loadAuthSessionSnapshot();
         if (cancelled) return;
+
+        // Clean up legacy pendingRegistration from old v2.0.0-test data
+        if (loaded.pendingRegistration) {
+          const { pendingRegistration: _removed, ...cleaned } = loaded;
+          loaded = cleaned as AuthSessionSnapshot;
+          await saveAuthSessionSnapshot(loaded);
+        }
+
         setSession(loaded);
         if (loaded.user && isAccessTokenFresh(loaded)) {
           setPhase("authenticated");
@@ -162,10 +165,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             return;
           }
         }
-        if (loaded.pendingRegistration) {
-          setPhase("pending_verification");
-          return;
-        }
         setPhase("anonymous");
       } catch (err) {
         if (!cancelled) {
@@ -184,7 +183,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setError(null);
     try {
       const current = session ?? await loadAuthSessionSnapshot();
-      await ensureCloudReady(updateConnectivity, "登录");
       const tokens = await authApi.login({
         phone,
         password,
@@ -192,8 +190,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         deviceLabel: current.deviceLabel,
       });
       await setTokenSession(current, tokens);
+      setConnectivity("cloud_ready");
     } catch (err) {
       setError(toUserMessage(err));
+      updateConnectivity().catch(() => undefined);
       throw err;
     } finally {
       setIsBusy(false);
@@ -205,58 +205,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setError(null);
     try {
       const current = session ?? await loadAuthSessionSnapshot();
-      await ensureCloudReady(updateConnectivity, "注册");
-      const registration = await authApi.requestRegistration({ phone, password });
-      const saved = await savePendingRegistration(current, {
-        registrationId: registration.registrationId,
-        clientSecret: registration.clientSecret,
-        maskedPhone: registration.maskedPhone,
-        expiresAt: registration.expiresAt,
+      const tokens = await authApi.register({
+        phone,
+        password,
+        deviceId: current.deviceId,
+        deviceLabel: current.deviceLabel,
       });
-      setSession(saved);
-      setPhase("pending_verification");
+      await setTokenSession(current, tokens);
     } catch (err) {
       setError(toUserMessage(err));
+      updateConnectivity().catch(() => undefined);
       throw err;
     } finally {
       setIsBusy(false);
     }
-  }, [session, updateConnectivity]);
-
-  const completePendingRegistration = useCallback(async () => {
-    const current = session ?? await loadAuthSessionSnapshot();
-    const pending = current.pendingRegistration;
-    if (!pending) return;
-    await ensureCloudReady(updateConnectivity, "完成注册");
-    const tokens = await authApi.completeRegistration({
-      registrationId: pending.registrationId,
-      clientSecret: pending.clientSecret,
-      deviceId: current.deviceId,
-    });
-    await setTokenSession(current, tokens);
   }, [session, setTokenSession, updateConnectivity]);
-
-  const checkRegistration = useCallback(async () => {
-    const pending = session?.pendingRegistration;
-    if (!session || !pending) return null;
-    setIsBusy(true);
-    setError(null);
-    try {
-      await ensureCloudReady(updateConnectivity, "检查验证状态");
-      const status = await authApi.requestRegistrationStatus({
-        registrationId: pending.registrationId,
-        clientSecret: pending.clientSecret,
-        deviceId: session.deviceId,
-      });
-      if (status.status === "verified") await completePendingRegistration();
-      return status;
-    } catch (err) {
-      setError(toUserMessage(err));
-      throw err;
-    } finally {
-      setIsBusy(false);
-    }
-  }, [completePendingRegistration, session, updateConnectivity]);
 
   const logout = useCallback(async () => {
     setIsBusy(true);
@@ -264,7 +227,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     try {
       const current = session ?? await loadAuthSessionSnapshot();
       markCurrentWorkspaceLoggedOut(current);
-      // P1-N07: Token 过期时先受控 Refresh 再 logout，确保服务端会话被吊销
       if (current.accessToken) {
         if (!isAccessTokenFresh(current)) {
           try {
@@ -277,7 +239,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
               await authApi.logout(tokens.accessToken);
             }
           } catch {
-            // Refresh 失败时仍尝试用旧 token 注销（best-effort）
             await authApi.logout(current.accessToken).catch(() => undefined);
           }
         } else {
@@ -298,9 +259,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setError(null);
     try {
       const current = session ?? await loadAuthSessionSnapshot();
-      await ensureCloudReady(updateConnectivity, "退出所有设备");
       markCurrentWorkspaceLoggedOut(current);
-      if (current.accessToken) await authApi.logoutAll(current.accessToken);
+      if (current.accessToken) await authApi.logoutAll(current.accessToken).catch(() => undefined);
       const cleared = await clearAuthTokens(current);
       setSession(cleared);
       setBlocked(null);
@@ -311,14 +271,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     } finally {
       setIsBusy(false);
     }
-  }, [session, updateConnectivity]);
+  }, [session]);
 
   const changePassword = useCallback(async (currentPassword: string, newPassword: string) => {
     setIsBusy(true);
     setError(null);
     try {
       const current = session && isAccessTokenFresh(session) ? session : await refreshSession();
-      await ensureCloudReady(updateConnectivity, "修改密码");
       if (!current?.accessToken) throw new Error("请重新登录后再修改密码");
       await authApi.changePassword({
         accessToken: current.accessToken,
@@ -331,11 +290,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     } finally {
       setIsBusy(false);
     }
-  }, [refreshSession, session, updateConnectivity]);
+  }, [refreshSession, session]);
 
   const returnToLoginFromBlocked = useCallback(async () => {
     const current = session ?? await loadAuthSessionSnapshot();
-    // 6.3: 离开等待验证页时通知服务端取消注册
     if (current.pendingRegistration) {
       authApi.cancelRegistration({
         registrationId: current.pendingRegistration.registrationId,
@@ -355,15 +313,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     user: session?.user ?? null,
     deviceId: session?.deviceId ?? "",
     deviceLabel: session?.deviceLabel ?? "",
-    pendingRegistration: session?.pendingRegistration ?? null,
     blocked,
     isBusy,
     error,
     connectivity,
     login,
     register,
-    checkRegistration,
-    completePendingRegistration,
     refreshSession,
     logout,
     logoutAll,
@@ -379,8 +334,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     connectivity,
     login,
     register,
-    checkRegistration,
-    completePendingRegistration,
     refreshSession,
     logout,
     logoutAll,
@@ -400,10 +353,11 @@ export function useAuth() {
 function toUserMessage(error: unknown): string {
   if (error instanceof authApi.CloudAuthApiError) {
     if (error.code === "invalid_credentials") return "手机号或密码不正确";
-    if (error.code === "rate_limited") return "尝试次数过多，请稍后再试";
+    if (error.code === "rate_limited") return "操作过于频繁，请稍后再试";
     if (error.code === "phone_already_registered") return "该手机号已注册，请直接登录";
-    if (error.code === "registration_not_verified") return "账号还没有完成验证";
-    return error.message;
+    if (error.code === "network_unavailable") return "网络连接失败，请检查网络后重试";
+    if (error.code === "service_unavailable") return "账号服务暂时不可用，请稍后重试";
+    return "操作失败，请稍后重试";
   }
   if (error instanceof Error) return error.message;
   return "账号服务暂时不可用";
@@ -421,14 +375,6 @@ function canUseCachedSession(snapshot: AuthSessionSnapshot): boolean {
 
 function isAuthInvalidError(error: unknown): boolean {
   return error instanceof authApi.CloudAuthApiError && (error.status === 401 || error.status === 403);
-}
-
-async function ensureCloudReady(
-  updateConnectivity: () => Promise<ConnectivityState>,
-  action: string,
-): Promise<void> {
-  const cloud = await updateConnectivity();
-  if (cloud !== "cloud_ready") throw new Error(`${action}需要连接云端`);
 }
 
 function markCurrentWorkspaceLoggedOut(snapshot: AuthSessionSnapshot): void {

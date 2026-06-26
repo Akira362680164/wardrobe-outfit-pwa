@@ -82,18 +82,6 @@ export async function saveAuthTokens(snapshot: AuthSessionSnapshot, tokens: Auth
   return next;
 }
 
-export async function savePendingRegistration(
-  snapshot: AuthSessionSnapshot,
-  pendingRegistration: PendingRegistrationSnapshot,
-): Promise<AuthSessionSnapshot> {
-  const next = {
-    ...snapshot,
-    pendingRegistration,
-  };
-  await saveAuthSessionSnapshot(next);
-  return next;
-}
-
 export async function clearAuthTokens(snapshot: AuthSessionSnapshot): Promise<AuthSessionSnapshot> {
   const next: AuthSessionSnapshot = {
     deviceId: snapshot.deviceId,
