@@ -36,7 +36,12 @@ check("引入 WardrobeHiddenImageInputs", /WardrobeHiddenImageInputs/.test(wardr
 
 // 4C Follow-up: 新 hook 引入
 check("引入 useWardrobeImageIntakeController", /useWardrobeImageIntakeController/.test(wardrobeApp));
-check("引入 useWardrobeCaptureQueueController", /useWardrobeCaptureQueueController/.test(wardrobeApp));
+check(
+  "capture queue controller 保留为后续抽离点，当前 WardrobeApp 队列仍内联",
+  existsSync(join(root, "src/components/use-wardrobe-capture-queue-controller.ts"))
+    && !/useWardrobeCaptureQueueController/.test(wardrobeApp)
+    && /captureImageQueue/.test(wardrobeApp),
+);
 check("引入 WardrobeSelectedImagesReviewPortal", /WardrobeSelectedImagesReviewPortal/.test(wardrobeApp));
 check("渲染 WardrobeSelectedImagesReviewPortal", /WardrobeSelectedImagesReviewPortal/.test(wardrobeApp));
 

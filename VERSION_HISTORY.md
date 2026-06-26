@@ -1,3 +1,28 @@
+## 2026-06-26 / v1.1.37 / Codex — cloud 1B B9 regression and feature-flag closeout
+
+- **目的**：按 V4 执行方案完成阶段 1B-B9 收口：确认账号工作区和结构化同步可在测试构建中打开，生产默认开关继续关闭，跑完整逻辑回归，并输出阶段 1B 收口报告。
+- **改动文件**：
+  - `docs/cloud/phase1b-regression-report.md`（新增）：记录 B9 验证命令、功能开关状态、1B 覆盖范围、未验证风险、已知限制和进入 1C 前的停止确认要求。
+  - `docs/cloud/account-and-sync.md`：顶部补充 B9 收口报告入口，避免旧 B3 标题被误认为当前实现只到 B3。
+  - `scripts/test-navigation-and-intake-entry.ts`：对齐当前 route-driven 源码，旧 `saveGarmentIntakeDraft` / `switchView` 已删除，测试改为确认当前 `navigation.openRoute` / `closeCreateFlow` 主链路。
+  - `scripts/test-wardrobe-app-split.ts`：对齐当前拆分状态，`use-wardrobe-capture-queue-controller.ts` 保留为后续抽离点，当前 `WardrobeApp` 队列状态仍内联，并在阶段报告列为已知限制。
+  - `scripts/test-color-catalog.ts`：对齐当前颜色目录使用方式，`wardrobe-app.tsx` 不再直接导入未使用的 `COLOR_OPTIONS`，颜色控件仍走共享目录。
+- **范围说明**：本轮不改业务运行逻辑、不打开生产默认同步开关、不打 APK、不做真实腾讯云 HTTP smoke、不进入 1C 图片资产同步；仅修正 stale 静态测试、补阶段报告和验证 1B 当前代码状态。
+- **验证结果**：
+  - `npm run test:logic:followup-navigation`：✅ 82 passed, 0 failed。
+  - `npm run test:logic:wardrobe-app-split`：✅ 47 passed, 0 failed。
+  - `npm run test:logic:color-catalog`：✅ 94 passed, 0 failed。
+  - `npm run test:logic:all`：✅ 通过。
+  - `npm run typecheck`：✅ 通过。
+  - `npm run cloud:contracts:typecheck`：✅ 通过。
+  - `npm --workspace @wardrobe/wardrobe-api run typecheck`：✅ 通过。
+  - `npm run build`：✅ 通过；仍有项目既有 unused/img/hooks warnings。
+  - `NEXT_PUBLIC_CLOUD_AUTH_ENABLED=true NEXT_PUBLIC_ACCOUNT_WORKSPACE_ENABLED=true NEXT_PUBLIC_CLOUD_SYNC_ENABLED=true NEXT_PUBLIC_WARDROBE_API_BASE_URL=http://111.231.98.86 npm run build`：✅ 通过；验证测试构建可打开 auth / workspace / sync 并使用备案前临时 IP。
+  - `git diff --check`：✅ 通过。
+  - `node scripts/review-gate.mjs --staged`：✅ `risk_gate=high`，`files=6`，未触发 subagent：用户未通知。
+- **风险门禁**：**high**。B9 虽主要是测试和文档，但属于阶段 1B 同步能力收口，且涉及全量回归脚本口径；本轮加强 `test:logic:all`、类型检查、默认构建和全开关测试构建。未触发独立审查 subagent：用户未通知，本轮由主 Codex 实现。
+- **未验证风险 / 下一步**：未在真机 WebView 验证历史旧库导入；未对 `111.231.98.86` 做真实登录 / bootstrap / push / pull smoke；未打 APK；未处理图片资产云化。进入阶段 1C 前按执行方案停下确认分支和范围。
+
 ## 2026-06-26 / v1.1.37 / Codex — cloud 1B B8 legacy Dexie import
 
 - **目的**：按 V4 执行方案推进阶段 1B-B8，补齐旧 `wardrobe-outfit-pwa` Dexie 衣橱到当前账号本地工作区的手动导入能力。旧库只作为只读迁移源，用户在账号管理页选择导入后，结构化数据写入当前账号专属工作区并进入 `syncOutbox`，后续由同步引擎上传。

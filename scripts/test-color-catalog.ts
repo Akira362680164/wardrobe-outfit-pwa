@@ -406,8 +406,8 @@ check(
   !/from\s+["']@\/components\/color-chip["']/.test(wardrobeFormControlsTsx),
 );
 check(
-  "wardrobe-app.tsx 从 color-catalog 导入 COLOR_OPTIONS",
-  /import\s*\{[^}]*COLOR_OPTIONS[^}]*\}\s*from\s*["']@\/lib\/color-catalog["']/.test(wardrobeAppTsx),
+  "wardrobe-app.tsx 不直接导入未使用的 COLOR_OPTIONS",
+  !/import\s*\{[^}]*COLOR_OPTIONS[^}]*\}\s*from\s*["']@\/lib\/color-catalog["']/.test(wardrobeAppTsx),
 );
 check(
   "wardrobe-app.tsx 不再从 color-chip 导入 COLOR_SWATCHES",

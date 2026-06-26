@@ -49,8 +49,8 @@ const saveGarmentBlock = saveGarmentMatch?.[0] ?? "";
 const saveBatchMatch = /async function saveBatchGarmentIntakeDrafts[\s\S]*?\n  async function updateItemStatus/.exec(wardrobeApp);
 const saveBatchBlock = saveBatchMatch?.[0] ?? "";
 check(
-  "saveGarmentIntakeDraft 保存后关闭 showGarmentIntakeFlow",
-  /setShowGarmentIntakeFlow\(false\)/.test(saveGarmentBlock),
+  "WardrobeApp 已删除旧 saveGarmentIntakeDraft 单件保存函数",
+  !/async function saveGarmentIntakeDraft/.test(wardrobeApp),
 );
 check(
   "saveGarmentIntakeDraft 不再强制 switchView(\"wardrobe\")",
@@ -302,8 +302,10 @@ check(
   /activeViewForCreateActions[\s\S]{0,300}intake_single_item[\s\S]{0,200}return\s*"capture"/.test(wardrobeApp),
 );
 check(
-  "wardrobe-app switchView 改用 navigation.openRoute 替代 setActiveView",
-  /function\s+switchView[\s\S]{0,1500}navigation\.openRoute\(targetRoute\)/.test(wardrobeApp),
+  "wardrobe-app 已删除 switchView 旧入口，route 切换使用 navigation",
+  !/function\s+switchView/.test(wardrobeApp)
+    && /navigation\.resetToMainTab/.test(wardrobeApp)
+    && /navigation\.openRoute/.test(wardrobeApp),
 );
 check(
   "wardrobe-app handleCreateAction add_single_item 走 intake_single_item route",
