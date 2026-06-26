@@ -1,3 +1,22 @@
+## 2026-06-26 / v1.1.37 / Codex — cloud 1B B2 account workspace schema and repository
+
+- **目的**：按 V4 执行方案推进阶段 1B-B2，新增每账号独立 Dexie 工作区 schema、纯读取 repository 和事务写入封装；不接入真实 UI，不改现有业务页面读写路径。
+- **改动文件**：
+  - `src/lib/account-workspace-db.ts`：新增账号工作区 Dexie 数据库，数据库名由 B1 registry 的 `wardrobe_account_<stableUserIdHash>` 提供；包含 `garments`、`outfits`、`outfitItems`、`wishlistItems`、`wearEvents`、`tripPlans`、`outfitPlans`、`assets`、`syncOutbox`、`syncState`、`syncConflicts`、`migrationState`；新增统一可同步实体字段、UUIDv7 生成器、DB cache / close helper 和 `runWorkspaceWrite()` 事务封装。
+  - `src/lib/account-workspace-repo.ts`：新增只读 repository，提供全量 snapshot 和各表读取函数；不导入 React，不调用旧 UI。
+  - `scripts/test-account-workspace-db.ts` / `package.json`：新增真实 Dexie + `fake-indexeddb` 测试，覆盖 schema 表清单、UUIDv7 形态、repository 读取、空表返回、事务失败回滚和 dbName 缓存，并接入 `test:logic:all`。
+  - `docs/cloud/account-and-sync.md`：更新说明到阶段 1B-B2，明确新 schema 已存在但业务 UI 仍未迁移，生产开关仍保持关闭。
+- **范围说明**：本轮不实现 bootstrap、push、pull、云端业务表、Outbox 引擎、旧 Dexie 导入、图片资产同步或账号切换状态机；不改变 `NEXT_PUBLIC_ACCOUNT_WORKSPACE_ENABLED` / `NEXT_PUBLIC_CLOUD_SYNC_ENABLED` 生产默认值；不交付 APK。
+- **验证结果**：
+  - `npm run test:logic:account-workspace-db`：✅ 10 passed, 0 failed。
+  - `npm run test:logic:workspace-registry`：✅ 18 passed, 0 failed。
+  - `npm run typecheck`：✅ 通过。此前与 `npm run build` 并行时再次出现 `.next/types` 重建竞态，已按顺序重跑排除。
+  - `NEXT_PUBLIC_CLOUD_AUTH_ENABLED=true NEXT_PUBLIC_ACCOUNT_WORKSPACE_ENABLED=true NEXT_PUBLIC_CLOUD_SYNC_ENABLED=false NEXT_PUBLIC_WARDROBE_API_BASE_URL=http://111.231.98.86 npm run build`：✅ 通过；保留仓库既有 lint warnings。
+  - `git diff --check`：✅ 通过。
+  - `node scripts/review-gate.mjs --staged`：✅ `risk_gate=high`，`subagent_trigger=user_request_only`。
+- **风险门禁**：**high**。涉及 Dexie schema、事务写入和账号工作区数据层；未触发独立审查 subagent：用户未通知，本轮由主 Codex 实现核心代码。
+- **未验证风险 / 下一步**：未在 Android WebView 真机上创建新工作区库；未将现有衣橱业务读写迁移到新库；下一步按执行方案进入 B3 云端业务 schema 与同步契约。
+
 ## 2026-06-26 / v1.1.37 / Codex — cloud 1B B1 workspace registry and endpoint switch points
 
 - **目的**：在用户确认继续使用当前 `codex/cloud-phase1-auth` 分支、备案前临时使用 `http://111.231.98.86` 后，启动阶段 1B-B1：补齐每账号本机工作区 registry / Gate 骨架，并把临时 IP 到正式域名的切换点收敛到配置层，避免后续在业务代码里硬编码。

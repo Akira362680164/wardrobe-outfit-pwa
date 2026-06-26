@@ -1,11 +1,11 @@
-# 账号与同步说明（阶段 1A / 1B-B1 · 内部测试）
+# 账号与同步说明（阶段 1A / 1B-B2 · 内部测试）
 
-> 适用版本：阶段 1A（账号认证 + 服务器底座 + AuthGate）到阶段 1B-B1（每账号本机工作区 registry，默认相关开关关闭）。
+> 适用版本：阶段 1A（账号认证 + 服务器底座 + AuthGate）到阶段 1B-B2（每账号本机工作区 registry、新本地 schema 与纯读取 repository，默认相关开关关闭）。
 > 不构成对后续阶段功能的承诺。后续阶段会单独更新本文档。
 
 ## 1. 阶段 1A 实际提供的能力
 
-| 能力 | 是否在 1A / 1B-B1 | 备注 |
+| 能力 | 是否在 1A / 1B-B2 | 备注 |
 | --- | --- | --- |
 | 手机号 + 密码注册 | ✅ | 密码 Argon2id 哈希保存，注册申请 30 分钟过期 |
 | 手机号 + 密码登录 | ✅ | 返回 Access Token + Refresh Token |
@@ -16,6 +16,7 @@
 | 退出当前设备 | ✅ | 只吊销本设备的 Refresh Token |
 | `NEXT_PUBLIC_CLOUD_AUTH_ENABLED` 开关 | ✅ | 默认 `false` |
 | 每账号本机工作区 registry | ✅ B1 | 由 `NEXT_PUBLIC_ACCOUNT_WORKSPACE_ENABLED` 控制，默认 `false` |
+| 每账号新 Dexie schema 与读取 repository | ✅ B2 | 仅数据层，不接业务 UI |
 
 ## 2. 阶段 1A 明确**不**提供的能力
 
@@ -48,7 +49,7 @@ NEXT_PUBLIC_CLOUD_SYNC_ENABLED=false （默认）
 
 阶段 1A / 1B 的内部测试 APK 由构建配置决定开关取值。生产默认值保持关闭，直到结构化同步整段验收通过并由用户另行确认。
 
-## 3.1 阶段 1B-B1 工作区 registry
+## 3.1 阶段 1B-B1 / B2 本机工作区数据层
 
 B1 只新增每账号本机工作区登记表和 Gate，不迁移现有衣橱业务读写，也不启用云端同步。registry 保存在本机 `localStorage`，内容不包含 token、密码或 MiniMax Key，只包含：
 
@@ -62,6 +63,23 @@ B1 只新增每账号本机工作区登记表和 Gate，不迁移现有衣橱业
 - `offlineAccessUntil`
 
 开启 `NEXT_PUBLIC_ACCOUNT_WORKSPACE_ENABLED=true` 后，登录成功会登记当前账号的本机工作区；退出账号会保留工作区记录，但写入主动退出标记并清空该账号离线授权。后续同步、bootstrap、repository 和图片缓存隔离仍按 1B 后续提交接入。
+
+B2 新增每账号独立 Dexie schema，数据库名仍使用 `wardrobe_account_<stableUserIdHash>`。已存在的数据表：
+
+- `garments`
+- `outfits`
+- `outfitItems`
+- `wishlistItems`
+- `wearEvents`
+- `tripPlans`
+- `outfitPlans`
+- `assets`
+- `syncOutbox`
+- `syncState`
+- `syncConflicts`
+- `migrationState`
+
+B2 只提供纯读取 repository 和事务写入封装；现有衣橱首页、录入、套装、种草、穿着统计和计划页面仍读取旧本机库，直到 1B 后续 B5a-B5d 逐段迁移。
 
 ## 4. 账号 = 身份认证，不是云端衣橱
 
