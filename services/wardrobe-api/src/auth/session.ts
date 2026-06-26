@@ -31,6 +31,17 @@ export const LOGIN_RATE_LIMIT_WINDOW_MS = 15 * 60 * 1000;
 export const REFRESH_RATE_LIMIT_MAX = 20;
 export const REFRESH_RATE_LIMIT_WINDOW_MS = 60 * 1000;
 
+// 防用户枚举：延迟初始化一个真实 Argon2 hash 用于固定时间比对
+let dummyHashPromise: Promise<string> | null = null;
+function getDummyHash(): Promise<string> {
+  if (!dummyHashPromise) dummyHashPromise = hashPassword("00000000000000000000000000000000");
+  return dummyHashPromise;
+}
+
+async function verifyPasswordSafe(): Promise<void> {
+  try { await verifyPassword(await getDummyHash(), "nonsense_password_32_bytes_xx"); } catch { /* timing only */ }
+}
+
 export interface AccessTokenClaims {
   userId: string;
   sessionId: string;
@@ -519,7 +530,11 @@ export class SessionService {
     }
 
     const user = await this.store.findUserByPhone(phoneE164);
-    if (!user || user.disabledAt || !(await verifyPassword(user.passwordHash, input.password))) {
+    // 防用户枚举：即使号码不存在也执行一次 Argon2 verify 消除时序差
+    const pwValid = user && !user.disabledAt
+      ? await verifyPassword(user.passwordHash, input.password)
+      : (await verifyPasswordSafe(), false);
+    if (!pwValid || !user) {
       await this.store.recordSecurityEvent({
         eventType: "login.failed",
         ip: input.ip,
