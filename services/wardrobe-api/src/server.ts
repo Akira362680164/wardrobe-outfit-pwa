@@ -1,12 +1,17 @@
 import { buildApp } from "./app.js";
 import { closeDatabase } from "./db/client.js";
 import { runMigrations } from "./db/migrate.js";
+import { cleanupExpiredRefreshIdempotencyPayloads } from "./security/refresh-idempotency-cleanup.js";
 
 const port = Number(process.env.PORT ?? 3000);
 const host = process.env.HOST ?? "0.0.0.0";
 const app = buildApp();
 
+const CLEANUP_INTERVAL_MS = 60 * 60 * 1000; // hourly
+let cleanupTimer: ReturnType<typeof setInterval> | null = null;
+
 async function shutdown() {
+  if (cleanupTimer) { clearInterval(cleanupTimer); cleanupTimer = null; }
   await app.close();
   await closeDatabase();
 }
@@ -21,3 +26,10 @@ process.on("SIGTERM", () => {
 
 await runMigrations();
 await app.listen({ host, port });
+
+// periodic cleanup of expired refresh idempotency ciphertext
+void cleanupExpiredRefreshIdempotencyPayloads().catch(() => {});
+cleanupTimer = setInterval(() => {
+  cleanupExpiredRefreshIdempotencyPayloads().catch(() => {});
+}, CLEANUP_INTERVAL_MS);
+cleanupTimer.unref();
