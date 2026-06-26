@@ -38,8 +38,9 @@ console.log("\n=== Auth B6 Rules ===");
 check("离线授权最长 30 天且不超过 refresh 过期", computeOfflineAccessUntil("2026-08-01T00:00:00.000Z", new Date("2026-06-26T00:00:00.000Z")) === "2026-07-26T00:00:00.000Z");
 check("refresh 401/403 才清认证凭证", /isAuthInvalidError/.test(authProvider) && /error\.status === 401 \|\| error\.status === 403/.test(authProvider) && /clearAuthTokens\(loaded\)/.test(authProvider) && /clearAuthTokens\(current\)/.test(authProvider));
 check("refresh 网络失败/降级可保留 cached session", /canUseCachedSession\(loaded\)/.test(authProvider) && /setPhase\("authenticated"\)/.test(authProvider));
-check("登录/注册需要 cloud_ready", /ensureCloudReady\(updateConnectivity, "登录"\)/.test(authProvider) && /ensureCloudReady\(updateConnectivity, "注册"\)/.test(authProvider));
-check("登录/注册按钮离线禁用", /auth\.connectivity !== "cloud_ready"/.test(authGate) && /登录需要连接云端/.test(authGate) && /注册需要连接云端/.test(authGate));
+// v2.0.1: login/register no longer require cloud_ready
+check("登录/注册不依赖 ensureCloudReady", !/ensureCloudReady/.test(authProvider));
+check("登录/注册按钮不依赖 connectivity 禁用", !/auth.connectivity !== "cloud_ready"/.test(authGate));
 
 console.log("\n=== Workspace B6 Rules ===");
 check("主动退出递增 generation 并失效离线授权", /activeWorkspaceGeneration: current\.activeWorkspaceGeneration \+ 1/.test(workspaceRegistry) && /offlineAccessUntil: undefined/.test(workspaceRegistry));

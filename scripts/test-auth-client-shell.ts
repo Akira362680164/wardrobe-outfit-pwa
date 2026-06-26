@@ -1,4 +1,4 @@
-// Phase 1A auth client shell source-level guardrails
+// v2.0.1 auth client shell guardrails — direct registration flow
 import { strict as assert } from "node:assert";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
@@ -37,31 +37,64 @@ function check(name: string, cond: boolean, detail?: string) {
   }
 }
 
-console.log("\n=== Auth Client Shell ===");
+console.log("\n=== Auth Client Shell v2.0.1 ===");
 check("page.tsx 接入 AppRoot", /import \{ AppRoot \} from "@\/components\/app-root"/.test(page) && /<AppRoot \/>/.test(page));
 check("Next 活跃根路由接入 AppRoot", /import \{ AppRoot \} from "@\/components\/app-root"/.test(activeAppPage) && /<AppRoot \/>/.test(activeAppPage));
 check("Next 活跃根布局保留 motion 与 service worker", /<MotionProvider>\{children\}<\/MotionProvider>/.test(activeAppLayout) && /<ServiceWorkerRegister \/>/.test(activeAppLayout));
 check("Next 活跃法律页转发到 src/app/legal", /@\/app\/legal\/terms\/page/.test(activeTermsPage) && /@\/app\/legal\/privacy\/page/.test(activePrivacyPage));
 check("AppRoot 默认关闭认证时直接渲染 WardrobeApp", /NEXT_PUBLIC_CLOUD_AUTH_ENABLED === "true"/.test(appRoot) && /if \(!cloudAuthEnabled\) return <WardrobeApp \/>/.test(appRoot));
 check("AuthProvider 只在认证开启路径挂载", /<AuthProvider>[\s\S]*<AuthGate>[\s\S]*<AuthenticatedWardrobeApp \/>/.test(appRoot));
-check("AppRoot 用账号工作区开关挂载 WorkspaceGate", /NEXT_PUBLIC_ACCOUNT_WORKSPACE_ENABLED/.test(workspaceRegistry) && /<WorkspaceGate session=\{auth\.session\}>\{app\}<\/WorkspaceGate>/.test(appRoot));
+check("AppRoot 用账号工作区开关挂载 WorkspaceGate", /NEXT_PUBLIC_ACCOUNT_WORKSPACE_ENABLED/.test(workspaceRegistry) && /<WorkspaceGate/.test(appRoot) && /session=\{auth\.session\}/.test(appRoot));
 check("AuthSessionStore 浏览器开发环境使用 sessionStorage", /window\.sessionStorage/.test(sessionStore));
 check("AuthSessionStore 不使用 localStorage 保存认证会话", !/localStorage/.test(sessionStore));
 check("AuthSessionStore 声明 Android secure storage 插件", /registerPlugin<WardrobeSecureStoragePlugin>\("WardrobeSecureStorage"\)/.test(sessionStore));
 check("Android 原生插件使用 AndroidKeyStore", /AndroidKeyStore/.test(securePlugin) && /AES\/GCM\/NoPadding/.test(securePlugin));
 check("MainActivity 注册 WardrobeSecureStoragePlugin", /registerPlugin\(WardrobeSecureStoragePlugin\.class\)/.test(mainActivity));
-check("API 客户端使用 POST 注册状态接口", /\/api\/auth\/registrations\/\$\{encodeURIComponent\(input\.registrationId\)\}\/status/.test(authApi) && /method: "POST"/.test(authApi));
-check("API 客户端有 refresh mutex", /let refreshPromise: Promise<AuthTokenPayload> \| null = null/.test(authApi) && /refreshPromise \?\?=/.test(authApi));
-check("AuthProvider 默认绑定 localOwner 防止阶段 1A 本机串号", /!isAccountWorkspaceEnabled\(\)[\s\S]*bindLocalOwnerIfNeeded/.test(authProvider) && /setPhase\("blocked"\)/.test(authProvider));
+check("API 客户端有 refresh mutex", /refreshPromiseMap/.test(authApi) && /const key = /.test(authApi));
+check("AuthProvider 默认绑定 localOwner 防止本机串号", /!isAccountWorkspaceEnabled\(\)[\s\S]*bindLocalOwnerIfNeeded/.test(authProvider) && /setPhase\("blocked"\)/.test(authProvider));
 check("AuthProvider 退出时标记账号工作区主动退出", /markCurrentWorkspaceLoggedOut\(current\)/.test(authProvider) && /markWorkspaceLoggedOut\(snapshot\.user\.id\)/.test(authProvider));
 check("WorkspaceGate 打开当前账号工作区后再渲染子节点", /openWorkspaceForSession/.test(workspaceGate) && /state\.status === "ready"[\s\S]*children/.test(workspaceGate));
 check("WorkspaceRegistry 包含 dbName/schema/generation/logout/offline 字段", /dbName: string/.test(workspaceRegistry) && /schemaVersion: number/.test(workspaceRegistry) && /activeWorkspaceGeneration: number/.test(workspaceRegistry) && /explicitlyLoggedOutAt/.test(workspaceRegistry) && /offlineAccessUntil/.test(workspaceRegistry));
 check("WorkspaceRegistry 提供迟到响应三重检查", /isWorkspaceResponseCurrent/.test(workspaceRegistry) && /current\.userId === response\.userId/.test(workspaceRegistry) && /current\.dbName === response\.dbName/.test(workspaceRegistry) && /current\.activeWorkspaceGeneration === response\.workspaceGeneration/.test(workspaceRegistry));
-check("注册页明确阶段 1A 开发验证占位", /阶段 1A 使用开发验证/.test(authGate));
-check("注册页链接到阶段 1A 用户协议和隐私政策", /href="\/legal\/terms"/.test(authGate) && /href="\/legal\/privacy"/.test(authGate));
+
+// v2.0.1: direct registration assertions
+check("AuthPhase 不包含 pending_verification", !/pending_verification/.test(authProvider) && /"initializing" \| "anonymous" \| "authenticated" \| "blocked"/.test(authProvider));
+check("客户端 register() 调用 /api/auth/register", /\/api\/auth\/register/.test(authApi) && /export async function register/.test(authApi));
+check("客户端不包含 requestRegistrationStatus", !/requestRegistrationStatus/.test(authApi));
+check("客户端不包含 completeRegistration", !/completeRegistration/.test(authApi));
+check("客户端不包含 requestRegistration(除 cancel)", !/export async function requestRegistration\b/.test(authApi));
+check("AuthProvider login 不调用 ensureCloudReady", !/ensureCloudReady/.test(authProvider));
+check("AuthProvider register 直接调用 authApi.register", /authApi\.register/.test(authProvider));
+check("注册页不使用 Next Link 跳转法律页", !/href=.legal/.test(authGate));
+check("AuthView 包含 login/register/terms/privacy", /"login" \| "register" \| "terms" \| "privacy"/.test(authGate));
+check("登录页包含退出确认弹窗", /showExitDialog/.test(authGate) && /退出应用/.test(authGate) && /App\.exitApp/.test(authGate));
+check("auth-gate 包含 backButton 监听", /backButton/.test(authGate) && /App\.addListener/.test(authGate));
+check("旧 pendingRegistration 会被清理", /pendingRegistration/.test(authProvider) && /_removed/.test(authProvider));
+check("密码不写入 storage 和 history state", !/setItem.*password/.test(authGate) && !/JSON\.stringify.*password/.test(authGate));
+
+// v2.0.1: text cleanup
+check("登录页无阶段 1A 话术", !/阶段 1A/.test(authGate) && !/登录需要连接云端/.test(authGate) && !/登录后打开本机账号工作区/.test(authGate));
+check("注册页无开发验证话术", !/开发验证/.test(authGate) && !/注册需要连接云端/.test(authGate) && !/暂不接入短信/.test(authGate));
+check("账号页无阶段 1A 话术", !/阶段 1A 不显示/.test(accountViews));
+check("法律页无内部测试标签", !/内部测试/.test(activeTermsPage) && !/内部测试/.test(activePrivacyPage));
+check("法律页无阶段 1A 描述", !/阶段 1A/.test(activeTermsPage) && !/阶段 1A/.test(activePrivacyPage));
+check("Blocked 页改为新标题", /本机已有其他账号数据/.test(authGate));
+
+// v2.0.1: form validation
+check("auth-form-validation 存在", /isValidAuthPhone/.test(read("src/lib/auth-form-validation.ts")));
+check("auth-form-validation 导出 login/register 校验", /isLoginFormValid/.test(read("src/lib/auth-form-validation.ts")) && /isRegisterFormValid/.test(read("src/lib/auth-form-validation.ts")));
+check("登录按钮不依赖 connectivity", !/auth\.connectivity/.test(authGate) || /isLoginFormValid/.test(authGate));
+check("legal-document-view 组件存在", /LegalDocumentView/.test(read("src/components/auth/legal-document-view.tsx")));
+
+// v2.0.1: Android config
+check("AndroidManifest 允许 cleartext traffic", /usesCleartextTraffic="true"/.test(read("android/app/src/main/AndroidManifest.xml")));
+check("构建环境校验脚本存在", read("scripts/validate-cloud-build-env.mjs").includes("validate-cloud-build-env") || read("scripts/validate-cloud-build-env.mjs").includes("Cloud Build Env"));
+check("android:sync 包含校验", /validate-cloud-build-env/.test(packageJson));
+check("版本号为 2.0.1", /"version": "2.0.1"/.test(packageJson));
+
+// Existing checks that still apply
 check("WardrobeApp 接收 cloudAuth 可选参数", /export function WardrobeApp\(\{ cloudAuth \}: \{ cloudAuth\?: WardrobeCloudAuth \} = \{\}\)/.test(wardrobeApp));
 check("设置页账号卡只在 cloudAuth 存在时渲染", /\{cloudAuth \? \([\s\S]*账号服务[\s\S]*\) : null\}/.test(wardrobeApp));
-check("账号页说明阶段 1A 不显示云端同步状态", /阶段 1A 不显示云端同步状态/.test(accountViews));
 check("账号页说明 MiniMax Key 属于本机", /MiniMax Key 属于本机/.test(accountViews));
 check("package.json 暴露 auth-client-shell 测试", /"test:logic:auth-client-shell": "tsx scripts\/test-auth-client-shell\.ts"/.test(packageJson));
 check("test:logic:all 包含 auth-client-shell", /test:logic:auth-client-shell/.test(packageJson));
