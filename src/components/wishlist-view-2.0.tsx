@@ -27,6 +27,8 @@ import type { DeviceMiniMaxSettings } from "@/lib/device-minimax";
 import { hasDeviceMiniMaxKey } from "@/lib/device-minimax";
 import { buildWishlistEditRecognitionPatch } from "@/lib/item-recognition-patch";
 import { getWardrobeDb } from "@/lib/db";
+import { bridgeGarmentCreate } from "@/lib/cloud-sync/garment-bridge";
+import { bridgeWishlistDelete, bridgeWishlistUpsert } from "@/lib/cloud-sync/wishlist-bridge";
 
 import {
   getWishlistDisplayState, getWishlistDisplayLabel, getWishlistStatusCapsuleColor,
@@ -444,8 +446,10 @@ export function WishlistView20({
     const now = new Date().toISOString();
     const updated = { ...patch, updatedAt: now };
     await getWardrobeDb().wishlistItems.update(id, updated);
+    const currentItem = wishlistItems.find((w) => w.id === id);
+    if (currentItem) void bridgeWishlistUpsert({ ...currentItem, ...updated });
     setWishlistItems((prev) => prev.map((w) => w.id === id ? { ...w, ...updated } : w));
-  }, [setWishlistItems]);
+  }, [setWishlistItems, wishlistItems]);
 
   const refreshItem = useCallback(async (id: string) => {
     const db = getWardrobeDb();
@@ -577,7 +581,9 @@ export function WishlistView20({
     const db = getWardrobeDb();
 
     if (editId) {
+      const existingItem = wishlistItems.find((w) => w.id === editId);
       await db.wishlistItems.update(editId, base);
+      if (existingItem) void bridgeWishlistUpsert({ ...existingItem, ...base });
       setWishlistItems((prev) => prev.map((w) => w.id === editId ? { ...w, ...base } : w));
       onMessage("已更新种草单品");
     } else {
@@ -588,18 +594,20 @@ export function WishlistView20({
         createdAt: now,
       };
       await db.wishlistItems.put(newItem);
+      void bridgeWishlistUpsert(newItem);
       setWishlistItems((prev) => [newItem, ...prev]);
       onMessage("已添加种草单品");
     }
     setSubPage("home");
     resetForm();
-  }, [editId, formName, formImageDataUrl, formSourceImageDataUrl, formCropBox, formThumbnailDataUrl, formCategory, formSubcategory, formColorMode, formPrimaryColors, formMainColor, formAccentColors, formSeasons, formStyles, formTemperatureRange, formFitGender, formFitNotes, formPrice, formProductUrl, formFormality, formWarmth, formMaterial, formNote, formStatus, onMessage, resetForm, setWishlistItems]);
+  }, [editId, formName, formImageDataUrl, formSourceImageDataUrl, formCropBox, formThumbnailDataUrl, formCategory, formSubcategory, formColorMode, formPrimaryColors, formMainColor, formAccentColors, formSeasons, formStyles, formTemperatureRange, formFitGender, formFitNotes, formPrice, formProductUrl, formFormality, formWarmth, formMaterial, formNote, formStatus, onMessage, resetForm, setWishlistItems, wishlistItems]);
 
   const handleSaveIntakeDrafts = useCallback(async (drafts: GarmentIntakeDraft[]) => {
     const now = new Date().toISOString();
     const newItems = drafts.map((draft) => garmentDraftToWishlistItem(draft, { now }));
     const db = getWardrobeDb();
     await db.wishlistItems.bulkPut(newItems);
+    for (const item of newItems) void bridgeWishlistUpsert(item);
     setWishlistItems((prev) => [...newItems, ...prev]);
     onMessage(newItems.length > 1 ? `已添加 ${newItems.length} 件种草单品` : "已添加种草单品");
     setSubPage("home");
@@ -738,6 +746,13 @@ export function WishlistView20({
       const newItemId = await convertWishlistToWardrobe({
         wishlistItem: selectedItem, locationId: selectedLocationId,
       });
+      const db = getWardrobeDb();
+      const [createdItem, updatedWishlistItem] = await Promise.all([
+        db.items.get(newItemId),
+        db.wishlistItems.get(selectedItem.id),
+      ]);
+      if (createdItem) void bridgeGarmentCreate(createdItem);
+      if (updatedWishlistItem) void bridgeWishlistUpsert(updatedWishlistItem);
       await refreshItem(selectedItem.id);
       setSubPage("home");
       setSelectedItem(null);
@@ -761,6 +776,8 @@ export function WishlistView20({
     }
     try {
       await undoWishlistPurchaseFromRepo({ wishlistItem: selectedItem });
+      const updatedWishlistItem = await getWardrobeDb().wishlistItems.get(selectedItem.id);
+      if (updatedWishlistItem) void bridgeWishlistUpsert(updatedWishlistItem);
       await refreshItem(selectedItem.id);
       await onDataChanged?.();
       setShowUndoPurchaseConfirm(false);
@@ -815,10 +832,12 @@ export function WishlistView20({
       // 当前 await 完成后 runId !== assessmentRunIdRef.current, 直接 return 不写库。
       if (runId !== assessmentRunIdRef.current) return;
 
+      const updatedAt = new Date().toISOString();
       await getWardrobeDb().wishlistItems.update(wishlistItem.id, {
         aiAssessment: assessment,
-        updatedAt: new Date().toISOString(),
+        updatedAt,
       });
+      void bridgeWishlistUpsert({ ...wishlistItem, aiAssessment: assessment, updatedAt });
       await refreshItem(wishlistItem.id);
       aiProgress.complete(true);
       onMessage(usedLocalFallback ? "已生成本地规则评估" : "AI 评估已更新", usedLocalFallback ? "info" : "success");
@@ -833,6 +852,7 @@ export function WishlistView20({
 
   const handleDeleteRecord = useCallback(async (item: WishlistItem) => {
     await deleteWishlistRecords([item.id]);
+    void bridgeWishlistDelete(item.id);
     setWishlistItems((prev) => prev.filter((w) => w.id !== item.id));
     await onDataChanged?.();
     onMessage("已删除记录");
@@ -1639,6 +1659,7 @@ export function WishlistView20({
       selectedItems.map((w) => w.id),
       async (ids) => {
         await deleteWishlistRecords(ids);
+        for (const id of ids) void bridgeWishlistDelete(id);
       },
     );
     if (ok) {

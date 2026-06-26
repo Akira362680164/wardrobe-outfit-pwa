@@ -3,7 +3,7 @@
 import type { SavedOutfit } from "@/lib/types";
 import { getAccountWorkspaceDb, createWorkspaceUuidV7, type WorkspaceGarmentRecord, type WorkspaceOutfitRecord } from "@/lib/account-workspace-db";
 import { loadCloudBridgeContext } from "@/lib/cloud-sync/bridge-context";
-import { deleteOutfitBundle, writeOutfitBundle, type WorkspaceOutfitWriteOperation } from "@/lib/cloud-sync/sync-engine";
+import { deleteOutfitBundle, writeOutfitBundle } from "@/lib/cloud-sync/sync-engine";
 
 export interface BridgeOutfitResult {
   bridged: boolean;
@@ -14,10 +14,7 @@ export interface BridgeOutfitResult {
     | "write_failed";
 }
 
-export async function bridgeOutfitUpsert(
-  outfit: SavedOutfit,
-  operation: WorkspaceOutfitWriteOperation,
-): Promise<BridgeOutfitResult> {
+export async function bridgeOutfitUpsert(outfit: SavedOutfit): Promise<BridgeOutfitResult> {
   const ctx = await loadCloudBridgeContext();
   if (!ctx) return { bridged: false, reason: "no_workspace" };
 
@@ -107,16 +104,13 @@ export async function bridgeOutfitDelete(legacyOutfitId: string): Promise<Bridge
 }
 
 export function toCloudOutfitPayload(outfit: SavedOutfit): Record<string, unknown> {
-  const {
-    itemIds,
-    coverImageDataUrl,
-    previewImageDataUrl,
-    sourceImageDataUrl,
-    thumbnailDataUrl,
-    autoCoverImageDataUrl,
-    outfitRealImages,
-    ...safe
-  } = outfit;
+  const { itemIds, ...safe } = outfit as SavedOutfit & Record<string, unknown>;
+  delete safe.coverImageDataUrl;
+  delete safe.previewImageDataUrl;
+  delete safe.sourceImageDataUrl;
+  delete safe.thumbnailDataUrl;
+  delete safe.autoCoverImageDataUrl;
+  delete safe.outfitRealImages;
   return {
     ...safe,
     legacyOutfitId: outfit.id,

@@ -457,6 +457,68 @@ export async function deleteOutfitBundle(
   );
 }
 
+export async function writeWishlistItem(
+  db: AccountWorkspaceDatabase,
+  ctx: WriteContext,
+  wishlistItem: Omit<WorkspaceWishlistItemRecord, "userId" | "originDeviceId" | "revision" | "createdAt" | "updatedAt">,
+  operation: "create" | "update",
+): Promise<WorkspaceWishlistItemRecord> {
+  const now = new Date().toISOString();
+  const record: WorkspaceWishlistItemRecord = {
+    ...wishlistItem,
+    id: wishlistItem.id ?? createWorkspaceUuidV7(),
+    userId: ctx.workspace.userId,
+    originDeviceId: ctx.originDeviceId,
+    revision: ctx.baseRevision + 1,
+    createdAt: now,
+    updatedAt: now,
+  } as WorkspaceWishlistItemRecord;
+
+  await runWorkspaceWrite(
+    db,
+    ["wishlistItems", "syncOutbox"],
+    async () => {
+      await db.wishlistItems.put(record);
+      await enqueueOutboxMutation(db, {
+        workspace: ctx.workspace,
+        entityType: "wishlistItem",
+        entityId: record.id,
+        operation,
+        payload: ctx.payload,
+        baseRevision: ctx.baseRevision,
+      });
+    },
+  );
+  return record;
+}
+
+export async function deleteWishlistItem(
+  db: AccountWorkspaceDatabase,
+  ctx: WriteContext,
+  wishlistItem: WorkspaceWishlistItemRecord,
+): Promise<void> {
+  const deletedAt = new Date().toISOString();
+  await runWorkspaceWrite(
+    db,
+    ["wishlistItems", "syncOutbox"],
+    async () => {
+      await db.wishlistItems.update(wishlistItem.id, {
+        deletedAt,
+        revision: wishlistItem.revision + 1,
+        updatedAt: deletedAt,
+      });
+      await enqueueOutboxMutation(db, {
+        workspace: ctx.workspace,
+        entityType: "wishlistItem",
+        entityId: wishlistItem.id,
+        operation: "delete",
+        payload: {},
+        baseRevision: wishlistItem.revision,
+      });
+    },
+  );
+}
+
 // ============================================================
 // apply-remote: 把 server pull results 写入本地（带三重检查）
 // ============================================================

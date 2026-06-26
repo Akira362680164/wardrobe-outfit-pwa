@@ -133,6 +133,7 @@ import {
 import { getWardrobeDb, readTryOnProfile, saveTryOnProfile } from "@/lib/db";
 import { bridgeGarmentCreate } from "@/lib/cloud-sync/garment-bridge";
 import { bridgeOutfitDelete, bridgeOutfitUpsert } from "@/lib/cloud-sync/outfit-bridge";
+import { bridgeWishlistUpsert } from "@/lib/cloud-sync/wishlist-bridge";
 import { migrateWishlistItemRecord } from "@/lib/migrate";
 import {
  defaultMiniMaxSettings,
@@ -1216,7 +1217,7 @@ export function WardrobeApp({ cloudAuth }: { cloudAuth?: WardrobeCloudAuth } = {
         updatedAt: now,
       };
       await db.outfits.update(options.outfitId, patch);
-      if (existingOutfit) void bridgeOutfitUpsert({ ...existingOutfit, ...patch }, "update");
+      if (existingOutfit) void bridgeOutfitUpsert({ ...existingOutfit, ...patch });
       await refreshState();
       showMessage("已更新收藏套装");
     } else {
@@ -1235,7 +1236,7 @@ export function WardrobeApp({ cloudAuth }: { cloudAuth?: WardrobeCloudAuth } = {
         updatedAt: now,
       };
       await db.outfits.put(outfit);
-      void bridgeOutfitUpsert(outfit, "create");
+      void bridgeOutfitUpsert(outfit);
       await refreshState();
       showMessage("已收藏当前套装");
     }
@@ -1781,7 +1782,14 @@ export function WardrobeApp({ cloudAuth }: { cloudAuth?: WardrobeCloudAuth } = {
               onStatusChange={updateItemStatus}
               onDeleteItems={async (ids) => {
                 const db = getWardrobeDb();
-                await deleteItemsWithCascade({ itemIds: ids, source: "manual_delete" });
+                const result = await deleteItemsWithCascade({ itemIds: ids, source: "manual_delete" });
+                const touchedWishlistIds = [...result.markedDeletedWishlistIds, ...result.clearedWishlistConvertedIds];
+                if (touchedWishlistIds.length > 0) {
+                  const touchedWishlistItems = await db.wishlistItems.bulkGet(touchedWishlistIds);
+                  for (const item of touchedWishlistItems) {
+                    if (item) void bridgeWishlistUpsert(item);
+                  }
+                }
                 await refreshState();
               }}
               outfits={outfits} wishlistItems={wishlistItems} setOutfits={setOutfits} setWishlistItems={setWishlistItems} miniMaxSettings={miniMaxSettings}
@@ -2439,6 +2447,7 @@ function WardrobeView(props: WardrobeViewProps) {
    for (const wishlistItem of relatedWishlistItems) {
      const patch = buildSyncedPurchasedWishlistPatch(updatedItem, now);
      await db.wishlistItems.update(wishlistItem.id, patch);
+     void bridgeWishlistUpsert({ ...wishlistItem, ...patch });
      setWishlistItems((prev) => prev.map((entry) => (entry.id === wishlistItem.id ? { ...entry, ...patch } : entry)));
    }
  }, [allItems, outfits, wishlistItems, setOutfits, setWishlistItems]);
@@ -5328,7 +5337,7 @@ function RecommendationView({
     const name = savedOutfitNameDraft.trim() || viewingOutfit.name;
     const patch = { name, updatedAt: new Date().toISOString() };
     await getWardrobeDb().outfits.update(viewingOutfit.id, patch);
-    void bridgeOutfitUpsert({ ...viewingOutfit, ...patch }, "update");
+    void bridgeOutfitUpsert({ ...viewingOutfit, ...patch });
     setOutfitDisplayName(name);
     await onRefreshState();
     setEditingSavedOutfitName(false);

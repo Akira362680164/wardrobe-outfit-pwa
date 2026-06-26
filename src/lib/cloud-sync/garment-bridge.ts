@@ -55,11 +55,9 @@ export async function bridgeGarmentCreate(item: WardrobeItem): Promise<BridgeGar
 }
 
 export function toCloudGarmentPayload(item: WardrobeItem): Record<string, unknown> {
-  const {
-    imageDataUrl,
-    sourceImageDataUrl,
-    referenceOutfitImages,
-    ...safe
-  } = item;
-  return safe as Record<string, unknown>;
+  const safe = { ...item } as Record<string, unknown>;
+  delete safe.imageDataUrl;
+  delete safe.sourceImageDataUrl;
+  delete safe.referenceOutfitImages;
+  return safe;
 }

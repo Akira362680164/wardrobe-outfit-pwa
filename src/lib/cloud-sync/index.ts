@@ -27,6 +27,8 @@ export {
   deleteGarment,
   writeOutfitBundle,
   deleteOutfitBundle,
+  writeWishlistItem,
+  deleteWishlistItem,
   applyRemoteChanges,
   applyBootstrap,
   runSyncOnce,

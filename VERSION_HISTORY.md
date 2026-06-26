@@ -1,3 +1,26 @@
+## 2026-06-26 / v1.1.37 / Codex — cloud 1B B5c wishlist bridge
+
+- **目的**：按 V4 执行方案继续阶段 1B-B5c，把种草记录 `wishlistItems` 的新增 / 编辑 / 买前评估 / 删除 / 转入衣橱状态变更桥接到账号工作区 + `syncOutbox`。旧 Dexie 仍是业务主源，bridge 仅做 best-effort 镜像。
+- **改动文件**：
+  - `src/lib/cloud-sync/sync-engine.ts` / `src/lib/cloud-sync/index.ts`：新增 `writeWishlistItem`、`deleteWishlistItem`，在同一 Dexie 事务里写 `wishlistItems` 与 `syncOutbox`。
+  - `src/lib/cloud-sync/wishlist-bridge.ts`（新增）：`bridgeWishlistUpsert`、`bridgeWishlistDelete`；通过 `legacyWishlistId` 映射旧 `WishlistItem.id` 到 workspace UUID；payload 剔除 `imageDataUrl` / `sourceImageDataUrl` / `thumbnailDataUrl` / `cropBox`，保留买前评估结构化结果。
+  - `src/components/wishlist-view-2.0.tsx`：在表单新增/编辑、批量录入、AI 买前评估、删除、批量删除、转入衣橱、撤销购买后追加 wishlist bridge；转入衣橱后复用 B5a `bridgeGarmentCreate` 镜像新衣橱单品。
+  - `src/components/wardrobe-app.tsx`：衣物删除级联影响已买种草记录、衣物编辑同步已买种草引用时，追加 wishlist bridge。
+  - `scripts/test-cloud-sync-wishlist-bridge.ts` / `package.json`：新增 B5c 守护测试，并接入 `test:logic:all`。
+- **范围说明**：本轮不切换 wishlist 读取主源，不打开生产默认同步开关，不做真实服务器 HTTP smoke，不桥接撤销购买时被删除的 garment（garment update/delete 留给 B5d），不处理备份恢复批量导入；旧库全量导入仍归 B8。
+- **验证结果**：
+  - `npm run test:logic:cloud-sync-wishlist`：✅ 10 passed, 0 failed。
+  - `npm run test:logic:wishlist-flow`：✅ 通过。
+  - `npm run test:logic:wishlist-management-followup`：✅ 54 passed, 0 failed。
+  - `npm run test:logic:cloud-sync-outfit`：✅ 12 passed, 0 failed。
+  - `npm run typecheck`：✅ 通过。
+  - `npm --workspace @wardrobe/wardrobe-api run typecheck`：✅ 通过。
+  - `npm run cloud:contracts:typecheck`：✅ 通过。
+  - `npm run build`：✅ 通过。
+  - `git diff --check`：✅ 通过。
+- **风险门禁**：**high**。涉及种草写入路径、转换入衣橱、账号工作区与 Outbox；本轮加强本地逻辑与类型验证。未触发独立审查 subagent：用户未通知，本轮由主 Codex 实现。
+- **未验证风险 / 下一步**：未在腾讯云镜像跑 `wishlistItem -> push -> pull/bootstrap` 端到端；撤销购买删除的 garment 仍待 B5d 的 garment update/delete 覆盖；下一步按执行方案进入 B5d：wearEvent + tripPlans + outfitPlans + garment update/delete。
+
 ## 2026-06-26 / v1.1.37 / Codex — cloud 1B B5b outfit and outfitItems bridge
 
 - **目的**：在已合并 MiniMax 分支 `minimax/cloud-1b-engine`（当前分支已有 merge commit `434c771`）后，继续阶段 1B-B5b：把已保存套装的收藏 / 更新 / 删除桥接到账号工作区 `outfits` + `outfitItems` + `syncOutbox`。按用户纠正，本轮不把旧 `captureMode === "outfit"` 代码视为当前业务主入口，不新增或恢复整套拍照保存入口；当前主流程只接已保存套装的业务操作。
