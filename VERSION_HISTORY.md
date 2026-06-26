@@ -1,3 +1,29 @@
+## 2026-06-26 / v1.1.37 / Claude Code — cloud 1C C2c pending asset upload coordinator
+
+- **目的**：按 V4 1C-C2c 实现 pending asset 上传协调器：扫描 workspace `assets` 表 `local_pending` 变体，请求 COS 预签名上传授权、客户端直传 COS、成功后通知 API complete-upload；上传纯 best-effort，不阻塞结构化实体保存；晚到回调做 userId/dbName/workspaceGeneration 三重检查。
+- **改动文件**：
+  - `src/lib/cloud-sync/asset-upload-coordinator.ts`（新增）：`uploadPendingAssets` 扫描 pending 资产、逐变体授权→PUT COS→complete-upload→更新本地状态；`schedulePendingUploads` fire-and-forget 入口；`guardAllowsWrite` 三重检查；`defaultPutToUrl` 双轨 CapacitorHttp/fetch；全部关键依赖可注入。
+  - `src/lib/cloud-sync/asset-metadata.ts`：`LocalAssetPayload.uploads` 变体条目新增 `dataUrl` 字段，`prepareLocalAsset` 写入 dataUrl 用于上传暂存；仅本地 staging，云 payload 仍不含 DataURL。
+  - `src/lib/cloud-sync/garment-bridge.ts` / `outfit-bridge.ts` / `wishlist-bridge.ts`：`putPreparedEntityImageAssets` 后 fire-and-forget `schedulePendingUploads`。
+  - `src/lib/cloud-sync/index.ts`：导出 `uploadPendingAssets`、`schedulePendingUploads`、`UploadOneResult`、`UploadCoordinatorDeps`。
+  - `scripts/test-cloud-assets-upload.ts`（新增）/ `package.json`：新增 C2c 守护测试，并接入 `test:logic:all`。
+  - `scripts/test-cloud-assets-local.ts`：更新 payload 断言：dataUrl 现在保存在 payload 中（本地暂存）。
+  - `scripts/test-cloud-assets-bridge.ts`：更新 asset payload 断言同步 C2c 变更。
+- **范围说明**：本轮不做上传失败自动重试调度器、网络恢复触发、上传进度 UI；不做下载/缓存/新设备恢复；不打 APK。`schedulePendingUploads` 当前只在 bridge 写入后触发一次，后续可从 connectivity hook 或 App 启动时补充触发点。
+- **验证结果**：
+  - `npm run test:logic:cloud-assets-upload`：✅ 20 passed, 0 failed。
+  - `npm run test:logic:cloud-assets-local`：✅ 12 passed, 0 failed。
+  - `npm run test:logic:cloud-assets-bridge`：✅ 10 passed, 0 failed。
+  - `npm run test:logic:cloud-sync-outfit`：✅ 12 passed, 0 failed。
+  - `npm run test:logic:cloud-sync-wishlist`：✅ 10 passed, 0 failed。
+  - `npm run test:logic:cloud-sync-plans`：✅ 9 passed, 0 failed。
+  - `npm run cloud:contracts:typecheck`：✅ 通过。
+  - `npm run typecheck`：✅ 通过。
+  - `git diff --check`：✅ 通过。
+  - `node scripts/review-gate.mjs`：✅ `risk_gate=high`，`files=10`（含 2 个新增 untracked），未触发 subagent：用户未通知。
+- **风险门禁**：**high**。涉及 COS 上传、网络 PUT、CapacitorHttp 双轨、auth token 使用、workspace 三重守卫和本地状态写入；本轮加强 upload 全链路测试（含失败路径和 guard race）、所有既有 asset/local/bridge/sync 测试回归、类型检查。未触发独立审查 subagent：用户未通知，本轮由 Claude Code 实现。
+- **未验证风险 / 下一步**：未在真机网络环境中验证 COS 直传和 complete-upload 端到端；未在 UI 保存路径上人工验证 fire-and-forget 行为；未做上传进度提示或失败重试 UI。下一步进入 C3a：下载授权 API / asset manifest，为图片下载和缓存打基础。
+
 ## 2026-06-26 / v1.1.37 / Claude Code — cloud 1C C2b image asset bridge records
 
 - **目的**：按 V4 1C-C2b 接入业务图片保存后的本地 asset 记录生成：garment / wishlist / outfit 云桥接在写结构化实体时同步准备图片资产引用和账号工作区 `assets` 记录；结构化云 payload 只保留 `cloudAssetRefs`，不携带 DataURL / base64。

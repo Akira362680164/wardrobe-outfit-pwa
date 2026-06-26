@@ -4,6 +4,7 @@ import type { SavedOutfit } from "@/lib/types";
 import { getAccountWorkspaceDb, createWorkspaceUuidV7, type WorkspaceGarmentRecord, type WorkspaceOutfitRecord } from "@/lib/account-workspace-db";
 import { imageAssetInputsForOutfit, prepareEntityImageAssets, putPreparedEntityImageAssets, withCloudAssetRefs, type CloudAssetReferenceMap } from "@/lib/cloud-sync/asset-bridge";
 import { loadCloudBridgeContext } from "@/lib/cloud-sync/bridge-context";
+import { schedulePendingUploads } from "@/lib/cloud-sync/asset-upload-coordinator";
 import { deleteOutfitBundle, writeOutfitBundle } from "@/lib/cloud-sync/sync-engine";
 
 export interface BridgeOutfitResult {
@@ -73,6 +74,7 @@ export async function bridgeOutfitUpsert(outfit: SavedOutfit): Promise<BridgeOut
       },
     );
     await putPreparedEntityImageAssets(db, assets);
+    schedulePendingUploads(db);
     return { bridged: true };
   } catch (err) {
     if (typeof console !== "undefined") {

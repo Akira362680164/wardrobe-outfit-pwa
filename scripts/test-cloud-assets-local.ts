@@ -79,7 +79,7 @@ async function main() {
   check("prepareLocalAsset 生成 asset id 和 owner", prepared.assetId === prepared.record.id && prepared.record.ownerEntityType === "garment" && prepared.record.ownerEntityId === ownerEntityId);
   check("prepareLocalAsset 记录 original 主元数据", prepared.record.sha256 === original.metadata.sha256 && prepared.record.mimeType === "image/png");
   check("prepareLocalAsset 生成 original + thumbnail 上传变体", prepared.uploadVariants.length === 2 && prepared.uploadVariants.some((v) => v.variant === "thumbnail"));
-  check("prepareLocalAsset payload 不保存图片二进制", !payloadJson.includes("data:image") && !payloadJson.includes("aGVsbG8=") && !payloadJson.includes("dGh1bWI="));
+  check("prepareLocalAsset payload 保存 dataUrl 用于上传暂存", payloadJson.includes("data:image"));
   check("prepareLocalAsset payload 标记缩略图 ready", payloadJson.includes('"thumbnailStatus":"ready"'));
 
   await putPreparedLocalAsset(db, prepared);

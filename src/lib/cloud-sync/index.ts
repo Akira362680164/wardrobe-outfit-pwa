@@ -86,4 +86,11 @@ export {
   imageAssetInputsForOutfit,
 } from "@/lib/cloud-sync/asset-bridge";
 
+export {
+  type UploadOneResult,
+  type UploadCoordinatorDeps,
+  uploadPendingAssets,
+  schedulePendingUploads,
+} from "@/lib/cloud-sync/asset-upload-coordinator";
+
 export { isNetworkOnline, subscribeNetworkChanges } from "@/lib/cloud-sync/connectivity";

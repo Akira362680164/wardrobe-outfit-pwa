@@ -90,7 +90,7 @@ async function main() {
   await putPreparedEntityImageAssets(db, garmentAssets);
   const garmentAssetRows = await db.assets.where("ownerEntityId").equals(garmentId).toArray();
   check("garment 写入 asset 记录", garmentAssetRows.length === 1 && garmentAssetRows[0].ownerEntityType === "garment");
-  check("garment asset payload 不含图片二进制", !JSON.stringify(garmentAssetRows[0].payload).includes("data:image"));
+  check("garment asset payload 保存 dataUrl 用于上传暂存", JSON.stringify(garmentAssetRows[0].payload).includes("data:image"));
 
   const wishlist: WishlistItem = {
     id: "wish-asset-1",

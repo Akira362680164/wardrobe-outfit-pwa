@@ -11,6 +11,7 @@ import type { WardrobeItem } from "@/lib/types";
 import { createWorkspaceUuidV7, getAccountWorkspaceDb } from "@/lib/account-workspace-db";
 import { imageAssetInputsForGarment, prepareEntityImageAssets, putPreparedEntityImageAssets, withCloudAssetRefs, type CloudAssetReferenceMap } from "@/lib/cloud-sync/asset-bridge";
 import { loadCloudBridgeContext } from "@/lib/cloud-sync/bridge-context";
+import { schedulePendingUploads } from "@/lib/cloud-sync/asset-upload-coordinator";
 import { deleteGarment, writeGarment } from "@/lib/cloud-sync/sync-engine";
 import type { WorkspaceGarmentRecord } from "@/lib/account-workspace-db";
 
@@ -58,6 +59,7 @@ export async function bridgeGarmentCreate(item: WardrobeItem): Promise<BridgeGar
       existing ? "update" : "create",
     );
     await putPreparedEntityImageAssets(db, assets);
+    schedulePendingUploads(db);
     return { bridged: true };
   } catch (err) {
     if (typeof console !== "undefined") {

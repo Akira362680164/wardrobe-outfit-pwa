@@ -4,6 +4,7 @@ import type { WishlistItem } from "@/lib/types";
 import { createWorkspaceUuidV7, getAccountWorkspaceDb, type WorkspaceWishlistItemRecord } from "@/lib/account-workspace-db";
 import { imageAssetInputsForWishlist, prepareEntityImageAssets, putPreparedEntityImageAssets, withCloudAssetRefs, type CloudAssetReferenceMap } from "@/lib/cloud-sync/asset-bridge";
 import { loadCloudBridgeContext } from "@/lib/cloud-sync/bridge-context";
+import { schedulePendingUploads } from "@/lib/cloud-sync/asset-upload-coordinator";
 import { deleteWishlistItem, writeWishlistItem } from "@/lib/cloud-sync/sync-engine";
 
 export interface BridgeWishlistResult {
@@ -50,6 +51,7 @@ export async function bridgeWishlistUpsert(item: WishlistItem): Promise<BridgeWi
       existing ? "update" : "create",
     );
     await putPreparedEntityImageAssets(db, assets);
+    schedulePendingUploads(db);
     return { bridged: true };
   } catch (err) {
     if (typeof console !== "undefined") {

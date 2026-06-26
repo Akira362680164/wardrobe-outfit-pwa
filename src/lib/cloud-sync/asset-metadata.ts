@@ -29,7 +29,7 @@ export interface LocalAssetUploadVariant {
 }
 
 export interface LocalAssetPayload {
-  uploads: Partial<Record<AssetVariant, LocalAssetImageMetadata & { status: LocalAssetUploadStatus }>>;
+  uploads: Partial<Record<AssetVariant, LocalAssetImageMetadata & { status: LocalAssetUploadStatus; dataUrl?: string }>>;
   source?: {
     kind: "legacy_entity_image" | "local_uri";
     localUri?: string;
@@ -71,10 +71,10 @@ export async function prepareLocalAsset(input: PrepareLocalAssetInput, deps: Pre
   const original = await buildUploadVariant("original", input.sourceDataUrl, deps);
   const thumbnail = await resolveThumbnailVariant(input, deps);
   const uploads: LocalAssetPayload["uploads"] = {
-    original: { ...original.metadata, status: "local_pending" },
+    original: { ...original.metadata, dataUrl: original.dataUrl, status: "local_pending" },
   };
   if (thumbnail.variant) {
-    uploads.thumbnail = { ...thumbnail.variant.metadata, status: "local_pending" };
+    uploads.thumbnail = { ...thumbnail.variant.metadata, dataUrl: thumbnail.variant.dataUrl, status: "local_pending" };
   }
 
   const payload: LocalAssetPayload = {
