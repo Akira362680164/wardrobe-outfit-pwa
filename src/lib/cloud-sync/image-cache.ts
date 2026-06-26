@@ -126,12 +126,23 @@ async function downloadBlob(url: string): Promise<Blob> {
   return resp.blob();
 }
 
+// ponytail: module-level Map — survives page switches within same session.
+// Full persistence (IndexedDB / Capacitor Filesystem) via ImageCacheStorage interface.
+const memoryStore = new Map<string, ArrayBuffer>();
+const MAX_MEMORY_CACHE_ENTRIES = 500;
+
 function memoryStorage(): ImageCacheStorage {
-  const store = new Map<string, ArrayBuffer>();
   return {
-    get: async (key) => store.get(key) ?? null,
-    set: async (key, data) => { store.set(key, data); },
-    delete: async (key) => { store.delete(key); },
+    get: async (key) => memoryStore.get(key) ?? null,
+    set: async (key, data) => {
+      if (memoryStore.size >= MAX_MEMORY_CACHE_ENTRIES && !memoryStore.has(key)) {
+        // drop oldest entry to keep cache bounded
+        const oldest = memoryStore.keys().next().value;
+        if (oldest != null) memoryStore.delete(oldest);
+      }
+      memoryStore.set(key, data);
+    },
+    delete: async (key) => { memoryStore.delete(key); },
   };
 }
 
