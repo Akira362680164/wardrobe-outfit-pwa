@@ -68,7 +68,6 @@ import { createActionsForView, preferredCreateActionByView, type CreateActionTyp
 import { useWardrobeImageIntakeController } from "@/components/use-wardrobe-image-intake-controller";
 import { useWardrobeCaptureQueueController } from "@/components/use-wardrobe-capture-queue-controller";
 import { WardrobeSelectedImagesReviewPortal } from "@/components/wardrobe-selected-images-review-portal";
-import { BatchReviewView } from "@/components/batch-review-view";
 import {
   AnimatedPage,
   AiTaskProgressCard,
@@ -143,7 +142,6 @@ import {
  assessShoppingItemOnDevice,
  assessShoppingOutfitOnDevice,
  diagnoseWardrobeOnDevice,
- detectGarmentsOnDevice,
  generateOutfitNameOnDevice,
  generateGarmentStyleAdviceOnDevice,
  generateOutfitPreviewOnDevice,
@@ -405,7 +403,6 @@ export function WardrobeApp({ cloudAuth }: { cloudAuth?: WardrobeCloudAuth } = {
     if (route.name.startsWith("wishlist_")) return "shopping";
     return "wardrobe";
   }, [route.name]);
-  const [outfitCaptureDetailActive, setOutfitCaptureDetailActive] = useState(false);  // v0.9.8: BatchReviewView isDetail 状态
  	  const [wardrobeSubPageActive, setWardrobeSubPageActive] = useState(false);
   const [outfitSubPageActive, setOutfitSubPageActive] = useState(false);
   // v1.1 review fix: 扩展为子页 key，让 wardrobe-app 能识别当前 outfit 子页（library / detail / planning_calendar / plan_add / packing_list …），
@@ -479,14 +476,6 @@ export function WardrobeApp({ cloudAuth }: { cloudAuth?: WardrobeCloudAuth } = {
   // v1.1.20-dev (方案 C): 删除 v1.1.7 4A 的 route.mainTab → activeView useEffect 同步逻辑。
   // 旧逻辑是 Bug 1 根因之一 — useEffect 异步同步 + showGarmentIntakeFlow guard + React 18 同值 bail out
   // 共同导致 create_outfit / add_wishlist_item 退出时 activeView 卡住。view 现在完全从 route 派生。
-		  const [outfitCaptureDrafts, setOutfitCaptureDrafts] = useState<WardrobeDraft[]>([]);
-	  const [outfitCaptureGroups, setOutfitCaptureGroups] = useState<WardrobeDraft[][]>([]);
-  const [outfitCaptureStatuses, setOutfitCaptureStatuses] = useState<("pending" | "confirmed" | "cancelled")[]>([]);
-  const [outfitCaptureNames, setOutfitCaptureNames] = useState<string[]>([]);
-  
-		  const [outfitCaptureLocationId, setOutfitCaptureLocationId] = useState("");
-		  const [outfitCaptureSaveAsOutfit, setOutfitCaptureSaveAsOutfit] = useState(true);
-		  const [outfitCaptureReviewIndex, setOutfitCaptureReviewIndex] = useState(0);
 	  const [manualSelectedItemIds, setManualSelectedItemIds] = useState<number[]>([]);
 	  const [editingOutfitId, setEditingOutfitId] = useState<string | null>(null);
       const [usePersonRef, setUsePersonRef] = useState(tryOnProfile.enabled);
@@ -595,7 +584,7 @@ export function WardrobeApp({ cloudAuth }: { cloudAuth?: WardrobeCloudAuth } = {
 
 
 
-  useEffect(() => { if (locations.length === 0) return; setOutfitCaptureLocationId((c) => c || locations[0].id); setRequest((c) => ({ ...c, availableLocationIds: c.availableLocationIds.length > 0 ? c.availableLocationIds : locations.map((l) => l.id) })); }, [locations]);
+  useEffect(() => { if (locations.length === 0) return; setRequest((c) => ({ ...c, availableLocationIds: c.availableLocationIds.length > 0 ? c.availableLocationIds : locations.map((l) => l.id) })); }, [locations]);
 
   useEffect(() => { setUsePersonRef(tryOnProfile.enabled); }, [tryOnProfile.enabled]);
 
@@ -678,7 +667,7 @@ export function WardrobeApp({ cloudAuth }: { cloudAuth?: WardrobeCloudAuth } = {
     }
     if (showGarmentIntakeFlow) { logTopLevelBack("intakeFlow"); return true; }
     if (wardrobeSubPageActive || outfitSubPageActive || shoppingSubPageActive) { logTopLevelBack("subPage"); return true; }
-    if (hasSubPageRef.current || outfitCaptureDetailActive) { logTopLevelBack("hasSubPageRef"); return true; }
+    if (hasSubPageRef.current) { logTopLevelBack("hasSubPageRef"); return true; }
     if (isDetailRoute(route)) {
       navigation.goBack();
       logTopLevelBack("detailRoute");
@@ -708,7 +697,6 @@ export function WardrobeApp({ cloudAuth }: { cloudAuth?: WardrobeCloudAuth } = {
     expandedImage,
     lightbox,
     navigation,
-    outfitCaptureDetailActive,
     outfitSubPageActive,
     route,
     setImageIntakePurpose,
@@ -802,135 +790,6 @@ export function WardrobeApp({ cloudAuth }: { cloudAuth?: WardrobeCloudAuth } = {
 
   function patchItemInItemsState(itemId: number, patch: Partial<WardrobeItem>) {
     setItems((prev) => prev.map((item) => (item.id === itemId ? { ...item, ...patch } : item)));
-  }
-
- async function prepareQueueItemForSingleRecognition(item: CaptureImageQueueItem) {
- const recognitionSourceDataUrl = item.cropped && item.cropBox
- ? await cropFromOriginal(item.originalDataUrl, item.cropBox).catch(() => item.imageDataUrl)
- : item.imageDataUrl || item.originalDataUrl;
- const recognitionFile = await dataUrlToFile(recognitionSourceDataUrl, item.fileName);
- const aiRequestDataUrl = await fileToAiRequestDataUrl(recognitionFile).catch(() => recognitionSourceDataUrl);
- return {
- recognitionSourceDataUrl,
- aiRequestDataUrl,
- sourceImageDataUrl: item.originalDataUrl,
- cropBox: item.cropBox,
- };
- }
-
- async function processSingleCaptureImage(originalDataUrl: string, fileName: string, mode: CaptureMode) {
-	setIsRecognizing(true);
-    // v0.9.27-dev: 通知栏 taskId 按 mode 切 — 单件 garment_detection, 整套 / 批量 batch_garment_detection。
-    // 切回单件 mode 之后恢复, 避免 "整套识别" 通知残留。
-    const nativeTaskId: NativeProgressTaskId =
-      mode === "item" ? "garment_detection" : "batch_garment_detection";
-    tagProgress.setNotificationTaskId(nativeTaskId);
-    tagProgress.start();
-    clearMessage();
-    try {
-      // 新链路: 生成 AI 识别图 (2400px q=0.90 自适应降级) 给 AI, 原图保留供裁切
-      const originalFile = await dataUrlToFile(originalDataUrl, fileName);
-      const aiRequestDataUrl = await fileToAiRequestDataUrl(originalFile).catch(() => originalDataUrl);
-
-      if (mode === "outfit") {
-        const locationId = outfitCaptureLocationId || locations[0]?.id || "home";
-        const candidates = await recognizeImageCandidatesFromDataUrl(aiRequestDataUrl, originalDataUrl, fileName, locationId, "outfit");
-        candidates.forEach((d) => { d.batchGroupId = 0; });
-        setOutfitCaptureDrafts(candidates);
-        setOutfitCaptureGroups([candidates]);
-        setOutfitCaptureStatuses(["pending"]);
-        setOutfitCaptureNames([generateLocalOutfitName(candidates)]);
-        setOutfitCaptureReviewIndex(0);
-	        tagProgress.complete(true);
-        showMessage(`已识别 1 套穿搭候选，共 ${candidates.length} 件单品，请点击图片堆叠确认`);
-        return;
-      }
-    } catch (error) {
-      tagProgress.fail(getErrorMessage(error));
-      showMessage(getErrorMessage(error), "error");
-    } finally {
-      setIsRecognizing(false);
-    }
-  }
-
-  async function recognizeImageCandidatesFromDataUrl(
-    aiRequestDataUrl: string,
-    originalDataUrl: string,
-    fileName: string,
-    locationId: string,
-    source: WardrobeDraft["captureSource"],
-  ) {
-    const useAi = hasDeviceMiniMaxKey(miniMaxSettings);
-    const candidates = useAi
-      ? await withKeepAwake(() => detectGarmentsOnDevice(aiRequestDataUrl, fileName, miniMaxSettings))
-      : [{ id: "fallback-1", tag: fallbackTagResult(fileName), imageDataUrl: originalDataUrl, sourceImageDataUrl: originalDataUrl }];
-    return Promise.all(candidates.map(async (candidate, index) => {
-      // 新链路: AI 返回 cropBox → 自动外扩 10% (避免裁掉衣物) → 从原图高清裁切
-      let draft: WardrobeDraft;
-      if (candidate.cropBox) {
-        const expandedBox = expandAiCropBox(candidate.cropBox, 0.10);
-        const croppedHighRes = await cropFromOriginal(originalDataUrl, expandedBox).catch(() => candidate.imageDataUrl);
-        draft = tagResultToDraft(candidate.tag, croppedHighRes, originalDataUrl, locationId, source, `${fileName}-${index}`);
-        draft.cropBox = expandedBox;  // 保存外扩后的 box (二次裁切基于此)
-      } else {
-        draft = tagResultToDraft(candidate.tag, candidate.imageDataUrl, originalDataUrl, locationId, source, `${fileName}-${index}`);
-        draft.cropBox = undefined;
-      }
-      return { ...draft, similarMatches: findSimilarWardrobeItems(draft, items) };
-    }));
-  }
-
-	  function updateOutfitCaptureDraft(index: number, patch: Partial<WardrobeDraft>) { setOutfitCaptureDrafts((c) => c.map((d, i) => (i === index ? { ...d, ...patch } : d))); }
-
-	  async function saveOutfitCaptureDrafts() { if (outfitCaptureDrafts.length === 0) return; const now = new Date().toISOString(); const selectedDrafts = outfitCaptureDrafts.filter((d) => d.selected !== false); if (selectedDrafts.length === 0) { showMessage("请至少选择 1 件要录入的衣物", "info"); return; } const db = getWardrobeDb(); const draftItemIds: number[] = []; let addedCount = 0; for (const sd of selectedDrafts) { if (sd.useExistingItemId) { draftItemIds.push(sd.useExistingItemId); continue; } const id = await db.items.add(outfitCaptureDraftToWardrobeItem(sd, now)); draftItemIds.push(id); addedCount += 1; } if (captureMode === "outfit" && outfitCaptureSaveAsOutfit && draftItemIds.length > 0 && outfitCaptureGroups.length > 0) { const og = new Map<number, number[]>(); for (let di = 0; di < selectedDrafts.length; di++) { const d = selectedDrafts[di]; const gid = d.batchGroupId ?? 0; if (!og.has(gid)) og.set(gid, []); og.get(gid)!.push(draftItemIds[di]); } let gi = 0; for (const gids of og.values()) { if (gids.length > 0) { const name = gi < outfitCaptureNames.length ? outfitCaptureNames[gi] : undefined; await db.outfits.put(createSavedOutfit(gids.filter((id) => id > 0), selectedDrafts, "capture", now, name)); } gi++; } } await refreshState(); setOutfitCaptureDrafts([]); showMessage(captureMode === "outfit" ? `已保存套装，新增 ${addedCount} 件衣物` : `已保存 ${selectedDrafts.length} 件衣物，新增 ${addedCount} 件`); }
-
-  // v0.9.7: 录入当前这一件 (入库 + 删除 drafts 中这一项 + 跳下一件 / 关闭详情)
-  async function saveCurrentOutfitCaptureDraft(index: number, nextReviewIndex?: number) {
-    if (index < 0 || index >= outfitCaptureDrafts.length) return;
-    const current = outfitCaptureDrafts[index];
-    if (!current) return;
-    if (!current.name?.trim()) {
-      showMessage("请先填写衣物名称", "info");
-      return;
-    }
-    try {
-      const now = new Date().toISOString();
-      const db = getWardrobeDb();
-      if (current.useExistingItemId) {
-        // 关联到现有衣物: 不写入新衣物, 只更新关联 (此处简化, 实际逻辑跟 saveOutfitCaptureDrafts 一样)
-        showMessage(`已关联到现有衣物: ${current.name}`);
-      } else {
-        await db.items.add(outfitCaptureDraftToWardrobeItem(current, now));
-        showMessage(`已录入: ${current.name}`);
-      }
-      // 从 drafts 列表移除这一件
-      const newDrafts = outfitCaptureDrafts.filter((_, i) => i !== index);
-      setOutfitCaptureDrafts(newDrafts);
-      // 跳下一件 (如果当前是最后, 跳到 0). isDetail 由 BatchReviewView 内 useEffect [drafts.length] 检测关闭
-      if (newDrafts.length > 0) {
-        const nextIndex = typeof nextReviewIndex === "number"
-          ? Math.max(0, Math.min(nextReviewIndex, newDrafts.length - 1))
-          : index >= newDrafts.length ? 0 : index;
-        setOutfitCaptureReviewIndex(nextIndex);
-      }
-      await refreshState();
-    } catch (err) {
-      showMessage(getErrorMessage(err), "error");
-    }
-  }
-
-  function cancelOutfitCapture() { setOutfitCaptureDrafts([]); setOutfitCaptureGroups([]); setOutfitCaptureStatuses([]); setOutfitCaptureNames([]); }
-
-  function resetCaptureTransientState() {
-    setOutfitCaptureDrafts([]);
-    setOutfitCaptureGroups([]);
-    setOutfitCaptureStatuses([]);
-    setOutfitCaptureNames([]);
-    setCaptureImageQueue([]);
-    setCaptureQueueIndex(0);
-    setReferenceOutfitTargetItemId(null);
-    setCaptureCropJob(null);
-    setPendingCreateAction(null);
   }
 
   async function saveGarmentIntakeDraft(intakeDraft: GarmentIntakeDraft) {
@@ -1600,8 +1459,7 @@ export function WardrobeApp({ cloudAuth }: { cloudAuth?: WardrobeCloudAuth } = {
     return locations.reduce<Record<string, string>>((r, l) => { r[l.id] = l.name; return r; }, {});
   }, [locations]);
   // v0.9.38-dev P0 §6: hideMobileNav 补全 (md 模板)
-  // - outfitCaptureDetailActive / wardrobeSubPageActive: 已有 (BatchDetail / WardrobeView 子页面)
-  //   - wardrobeSubPageActive 已包含 viewingItem / editingItem / viewingItemCropJob 三态
+  // - wardrobeSubPageActive 已包含 viewingItem / editingItem / viewingItemCropJob 三态
   //     (WardrobeView 内部 useEffect line 1690 显式声明), 衣物详情页裁切不需重复加
   // - expandedImage: 大图全屏 lightbox
   // - captureCropJob: 录入裁切器 (全屏 portal)
@@ -1610,7 +1468,6 @@ export function WardrobeApp({ cloudAuth }: { cloudAuth?: WardrobeCloudAuth } = {
   // v0.9.39-dev 统一加 onSubPageChange prop, 本轮范围控制。
   // v1.1.20-dev (方案 C): showGarmentIntakeFlow 改为 isIntakeRouteName(route.name), 与 route 状态同步。
   const hideMobileNav =
-    outfitCaptureDetailActive ||
     wardrobeSubPageActive ||
     outfitSubPageActive ||
     shoppingSubPageActive ||
@@ -1673,7 +1530,6 @@ export function WardrobeApp({ cloudAuth }: { cloudAuth?: WardrobeCloudAuth } = {
         rememberCreateReturnRoute();
         recordDiagnosticEvent("create_outfit_started", { activeView: activeViewForCreateActions, route });
         setPendingCreateAction("create_outfit");
-        setCaptureMode("outfit");
         navigation.openRoute({ name: "intake_outfit", returnTo: route.name });
         // pendingCreateAction 会在 useEffect (line 1670) 里触发 createOutfitTrigger, OutfitListView 看到 trigger 打开 intake subPage。
         break;
@@ -1848,41 +1704,7 @@ export function WardrobeApp({ cloudAuth }: { cloudAuth?: WardrobeCloudAuth } = {
                   closeCreateFlow();
                 }}
               />
-            ) :
- captureImageQueue.length >0 ? null : (
- captureMode === "outfit" && outfitCaptureGroups.length >0 ? (
- <BatchOutfitGroupsView
-                groups={outfitCaptureGroups} statuses={outfitCaptureStatuses}
-                names={outfitCaptureNames} setNames={setOutfitCaptureNames}
-                saveAsOutfitDefault={outfitCaptureSaveAsOutfit}
-                onDetailChange={setOutfitCaptureDetailActive}
-                onExpandImage={lightbox.openExpandedImage}
-                onSaveGroup={async (groupIndex, editedGroup, saveAsOutfit) => {
-                  if (outfitCaptureStatuses[groupIndex] === "confirmed") return false;
-                  const g = editedGroup ?? outfitCaptureGroups[groupIndex]; if (!g) return false;
-                  const selectedDrafts = g.filter((d) => d.selected !== false);
-                  if (selectedDrafts.length === 0) { showMessage("请至少选择 1 件要录入的单品", "info"); return false; }
-                  const now = new Date().toISOString(); const db = getWardrobeDb(); const ids: number[] = [];
-                  let addedCount = 0;
-                  for (const d of selectedDrafts) {
-                    if (d.useExistingItemId) { ids.push(d.useExistingItemId); continue; }
-                    ids.push(await db.items.add(outfitCaptureDraftToWardrobeItem(d, now)));
-                    addedCount += 1;
-                  }
-                  const outfitName = outfitCaptureNames[groupIndex] || undefined;
-                  if (saveAsOutfit) await db.outfits.put(createSavedOutfit(ids.filter((id) => id > 0), selectedDrafts, "capture", now, outfitName));
-                  await refreshState();
-                  setOutfitCaptureGroups((groups) => groups.map((group, i) => i === groupIndex ? g : group));
-                  setOutfitCaptureDrafts((drafts) => drafts.map((draft) => draft.batchGroupId === groupIndex ? (g.find((next) => next.clientId === draft.clientId) ?? draft) : draft));
-                  setOutfitCaptureStatuses((s) => s.map((st, i) => i === groupIndex ? "confirmed" as const : st));
-                  showMessage(saveAsOutfit ? `已保存此套，新增 ${addedCount} 件衣物` : `已录入 ${selectedDrafts.length} 件衣物，未加入套装收藏`);
-                  return true;
-                }}
-                onCancelGroup={(groupIndex) => { setOutfitCaptureStatuses((s) => s.map((st, i) => i === groupIndex ? "cancelled" as const : st)); }}
-	                onCancelAll={() => { setOutfitCaptureGroups([]); setOutfitCaptureStatuses([]); setOutfitCaptureNames([]); setOutfitCaptureDrafts([]); }}
-              />
             ) : null
-          )
           ) : null}
 
           {/* v1.1.20-dev (方案 C): recommend tab 包含 outfit_home / outfit_detail / outfit_calendar / intake_outfit 四种 route。 */}
@@ -2093,11 +1915,7 @@ export function WardrobeApp({ cloudAuth }: { cloudAuth?: WardrobeCloudAuth } = {
 	            if (!job) return;
 	            setCaptureCropJob(null);
 	            await waitForNextFrame();
-	            if (job.onConfirm) {
-	              job.onConfirm(croppedDataUrl, newBox);
-	              return;
-	            }
-	            await processSingleCaptureImage(croppedDataUrl, job.fileName, job.mode);
+            job.onConfirm?.(croppedDataUrl, newBox);
 	          }}
 	        />
 	      )}
@@ -2165,7 +1983,7 @@ export function WardrobeApp({ cloudAuth }: { cloudAuth?: WardrobeCloudAuth } = {
         onGalleryClick={imageIntake.triggerGalleryInput}
       />
 
-	      {!hideMobileNav ? <nav className={`safe-bottom fixed inset-x-0 bottom-0 z-30 border-t border-ink/10 bg-[#fbfbf8]/94 ${outfitCaptureDetailActive ? "px-1 py-0.5" : "px-2 pt-2"} backdrop-blur-xl lg:hidden`}>
+	      {!hideMobileNav ? <nav className="safe-bottom fixed inset-x-0 bottom-0 z-30 border-t border-ink/10 bg-[#fbfbf8]/94 px-2 pt-2 backdrop-blur-xl lg:hidden">
         <div className="mx-auto grid max-w-md grid-cols-4 gap-1">
           {viewItems.map((view) => (<MobileNavButton key={view.key} view={view} active={navigation.mainTab === view.key} onClick={() => {
             const routeBefore = navigation.route;
@@ -2178,7 +1996,7 @@ export function WardrobeApp({ cloudAuth }: { cloudAuth?: WardrobeCloudAuth } = {
               routeAfter: { name: view.key === "wardrobe" ? "wardrobe_home" : view.key === "recommend" ? "outfit_home" : view.key === "shopping" ? "wishlist_home" : "settings_home" },
             });
             navigation.resetToMainTab(view.key as "wardrobe" | "recommend" | "shopping" | "settings");
-          }} compact={outfitCaptureDetailActive} />))}
+          }} />))}
         </div>
       </nav> : null}
       <MotionImageLightbox open={!!expandedImage} src={expandedImage?.src ?? ""} alt={expandedImage?.alt ?? ""} onClose={lightbox.closeExpandedImage} />
@@ -4759,390 +4577,6 @@ function WardrobeEditPage({
   );
 }
 
-
-type BatchOutfitGroupStatus = "pending" | "confirmed" | "cancelled";
-
-function BatchOutfitGroupsView({
-  groups,
-  statuses,
-  names,
-  setNames,
-  saveAsOutfitDefault,
-  onSaveGroup,
-  onCancelGroup,
-  onCancelAll,
-  onDetailChange,
-  onExpandImage,
-}: {
-  groups: WardrobeDraft[][];
-  statuses: BatchOutfitGroupStatus[];
-  names: string[];
-  setNames: React.Dispatch<React.SetStateAction<string[]>>;
-  saveAsOutfitDefault: boolean;
-  onSaveGroup: (groupIndex: number, editedGroup: WardrobeDraft[] | undefined, saveAsOutfit: boolean) => Promise<boolean>;
-  onCancelGroup: (groupIndex: number) => void;
-  onCancelAll: () => void;
-  // v0.9.11: 组内详情态通知父级 (5 tab 缩窄 + 浮动条 z-40 避让)
-  onDetailChange?: (isOpen: boolean) => void;
-  onExpandImage: (image: { src: string; alt: string }) => void;
-}) {
-  const [reviewGroupIndex, setReviewGroupIndex] = useState<number | null>(null);
-
-  useEffect(() => { hasSubPageRef.current = true; return () => { hasSubPageRef.current = false; }; }, []);
-  const [reviewDraftIndex, setReviewDraftIndex] = useState(0);
-  const [localDrafts, setLocalDrafts] = useState<WardrobeDraft[]>([]);
-  const [showFinishConfirm, setShowFinishConfirm] = useState(false);
-  const [editingOutfitName, setEditingOutfitName] = useState(false);
-  const [outfitNameDraft, setOutfitNameDraft] = useState("");
-  const [saveCurrentOutfit, setSaveCurrentOutfit] = useState(saveAsOutfitDefault);
-  const [showOutfitAdjust, setShowOutfitAdjust] = useState(false);
-  const [outfitCropJob, setOutfitCropJob] = useState<{ dataUrl: string; startBox?: WardrobeDraft["cropBox"]; onConfirm: (newImageDataUrl: string, newBox: NormalizedCropBox) => void } | null>(null);
-  const bogvPrimaryRef = useRef<HTMLDivElement>(null);
-  const bogvSecondaryRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    if (reviewGroupIndex === null) return;
-    let removed = false;
-    let handle: { remove: () => void } | null = null;
-	    App.addListener("backButton", () => {
-	      if (removed) return;
-	      if (outfitCropJob) { setOutfitCropJob(null); return; }
-	      if (editingOutfitName) { setEditingOutfitName(false); setOutfitNameDraft(""); return; }
-	      setReviewGroupIndex(null);
-	    }).then((h) => { if (!removed) handle = h; });
-	    return () => { removed = true; handle?.remove(); };
-	  }, [reviewGroupIndex, editingOutfitName, outfitCropJob]);
-
-  useEffect(() => {
-    if (reviewGroupIndex !== null) return;
-    let removed = false;
-    let handle: { remove: () => void } | null = null;
-    App.addListener("backButton", () => {
-      if (removed) return;
-      if (showFinishConfirm) { setShowFinishConfirm(false); return; }
-      onCancelAll();
-    }).then((h) => { if (!removed) handle = h; });
-    return () => { removed = true; handle?.remove(); };
-  }, [reviewGroupIndex, showFinishConfirm, onCancelAll]);
-
-  function openGroup(index: number) {
-    if (statuses[index] === "confirmed") return;
-    setReviewGroupIndex(index);
-    setReviewDraftIndex(0);
-    setLocalDrafts(groups[index].map((d) => ({ ...d })));
-    setEditingOutfitName(false);
-    setOutfitNameDraft(names[index] || "");
-    setSaveCurrentOutfit(saveAsOutfitDefault);
-    setShowOutfitAdjust(false);
-    setOutfitCropJob(null);
-  }
-
-  function switchReviewDraft(nextIndex: number) {
-    const next = Math.max(0, Math.min(localDrafts.length - 1, nextIndex));
-    if (next === reviewDraftIndex) return;
-    setOutfitCropJob(null);
-    setShowOutfitAdjust(false);
-    const scrollY = window.scrollY;
-    const restoreScroll = () => window.scrollTo({ top: scrollY, behavior: "instant" as ScrollBehavior });
-    setReviewDraftIndex(next);
-    window.requestAnimationFrame(() => { restoreScroll(); window.requestAnimationFrame(restoreScroll); });
-    window.setTimeout(restoreScroll, 80);
-  }
-
-  useEffect(() => {
-    if (reviewGroupIndex !== null) window.scrollTo({ top: 0, behavior: "instant" as ScrollBehavior });
-  }, [reviewGroupIndex]);
-
-  const inReview = reviewGroupIndex !== null && localDrafts.length > 0;
-  const currentDraft = inReview ? (localDrafts[reviewDraftIndex] ?? localDrafts[0]) : null;
-  const selectedDraftCount = localDrafts.filter((d) => d.selected !== false).length;
-  const currentDraftPrimaryColors = currentDraft ? getPrimaryColors(currentDraft.colors) : [];
-  const currentDraftAccentColors = currentDraft ? getAccentColors(currentDraft.colors) : [];
-
-  // eslint-disable-next-line react-hooks/exhaustive-deps -- currentDraft derived from reviewGroupIndex/reviewDraftIndex
-  useEffect(() => {
-    if (!currentDraft || reviewGroupIndex === null) return;
-    if (currentDraftPrimaryColors.length > 0 && bogvPrimaryRef.current) {
-      const first = bogvPrimaryRef.current.querySelector("[data-active=true]") as HTMLElement | null;
-      centerElementHorizontally(bogvPrimaryRef.current, first);
-    }
-  // eslint-disable-next-line react-hooks/exhaustive-deps -- currentDraft derived from reviewGroupIndex/reviewDraftIndex
-  }, [reviewGroupIndex, reviewDraftIndex]);
-
-  // eslint-disable-next-line react-hooks/exhaustive-deps -- currentDraft derived from reviewGroupIndex/reviewDraftIndex
-  useEffect(() => {
-    if (!currentDraft || reviewGroupIndex === null) return;
-    if (currentDraftAccentColors.length > 0 && bogvSecondaryRef.current) {
-      const first = bogvSecondaryRef.current.querySelector("[data-active=true]") as HTMLElement | null;
-      centerElementHorizontally(bogvSecondaryRef.current, first);
-    }
-  // eslint-disable-next-line react-hooks/exhaustive-deps -- currentDraft derived from reviewGroupIndex/reviewDraftIndex
-  }, [reviewGroupIndex, reviewDraftIndex]);
-
-  // v0.9.11: inReview 变化通知父级, 让 5 tab 在组内详情页缩窄 (与 BatchReviewView isDetail 行为一致)
-  useEffect(() => { onDetailChange?.(inReview); }, [inReview, onDetailChange]);
-  useEffect(() => () => { onDetailChange?.(false); }, [onDetailChange]);
-  useEffect(() => {
-    if (reviewGroupIndex === null && outfitCropJob) setOutfitCropJob(null);
-  }, [reviewGroupIndex, outfitCropJob]);
-
-  if (inReview && currentDraft) {
-    return (
-      <div className="grid gap-4">
-        {/* v0.9.11 重做: 沉浸式详情壳 + 套装名称 + 两个开关 + 浮动操作条 (z-40 避开 5 tab 导航 z-30) + onDetailChange 让 5 tab 缩窄 */}
-        <GarmentImmersiveDetail
-          item={{
-            name: currentDraft.name || "候选衣物",
-            imageDataUrl: currentDraft.imageDataUrl,
-            sourceImageDataUrl: currentDraft.sourceImageDataUrl,
-            categoryLabel: CATEGORY_LABELS[currentDraft.category],
-            seasonLabels: currentDraft.seasons.map((s) => SEASON_LABELS[s]),
-            statusLabel: STATUS_LABELS[currentDraft.status],
-            primaryColors: currentDraftPrimaryColors,
-            secondaryColors: currentDraftAccentColors,
-            confidenceLabel: currentDraft.aiConfidence !== undefined ? `识别置信度 ${Math.round(currentDraft.aiConfidence * 100)}%` : undefined,
-            needsReview: currentDraft.needsReview,
-            notes: currentDraft.notes,
-          }}
-          counterText={`第 ${reviewGroupIndex! + 1} 套 · ${reviewDraftIndex + 1} / ${localDrafts.length} 件`}
-          onBack={() => {
-            if (outfitCropJob) {
-              setOutfitCropJob(null);
-              return;
-            }
-            setReviewGroupIndex(null);
-          }}
-          onOpenImage={() => onExpandImage({ src: currentDraft.sourceImageDataUrl || currentDraft.imageDataUrl, alt: currentDraft.name || "候选衣物" })}
-          onCrop={currentDraft.sourceImageDataUrl ? () => {
-            setOutfitCropJob({
-              dataUrl: currentDraft.sourceImageDataUrl!,
-              startBox: currentDraft.cropBox,
-              onConfirm: (newImageDataUrl, newBox) => {
-                setLocalDrafts((prev) => prev.map((draft, i) => i === reviewDraftIndex ? { ...draft, imageDataUrl: newImageDataUrl, cropBox: newBox } : draft));
-                setOutfitCropJob(null);
-              },
-            });
-          } : undefined}
-          topActions={
-            <button
-              type="button"
-              disabled={statuses[reviewGroupIndex!] === "confirmed"}
-              onClick={() => { setOutfitCropJob(null); onCancelGroup(reviewGroupIndex!); setReviewGroupIndex(null); }}
-              className="inline-flex h-8 items-center gap-1 rounded-lg border border-ink/10 bg-white px-2.5 text-xs font-medium text-ink/65 disabled:opacity-40"
-            >
-              取消此套
-            </button>
-          }
-          detailEditor={
-            <div className="grid gap-3">
-              {/* 套装名称编辑 (在 metadata 面板下方, 不在主 metadata 行) */}
-              <div className="grid gap-1.5">
-                <span className="text-[11px] font-medium text-ink/55">套装名称</span>
-                {editingOutfitName ? (
-                  <div className="flex items-center gap-2">
-                    <input
-                      value={outfitNameDraft}
-                      onChange={(e) => setOutfitNameDraft(e.target.value)}
-                      autoFocus
-                      className="flex-1 h-10 rounded-lg border border-ink/10 bg-white px-3 text-sm font-semibold outline-none focus:border-denim"
-                      placeholder="输入套装名称"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => { setNames((prev) => { const n = [...prev]; n[reviewGroupIndex!] = outfitNameDraft.trim() || n[reviewGroupIndex!]; return n; }); setEditingOutfitName(false); }}
-                      className="inline-flex h-10 items-center gap-1 rounded-lg bg-clay px-3 text-sm font-semibold text-white"
-                    >
-                      <Check size={16} />
-                      确认
-                    </button>
-                  </div>
-                ) : (
-                  <div className="flex items-center gap-2">
-                    <span className="flex-1 truncate text-sm font-semibold">{names[reviewGroupIndex!] || `第 ${reviewGroupIndex! + 1} 套`}</span>
-                    <button
-                      type="button"
-                      onClick={() => { setOutfitNameDraft(names[reviewGroupIndex!] || ""); setEditingOutfitName(true); }}
-                      className="inline-flex h-9 items-center gap-1 rounded-lg border border-ink/10 bg-white px-3 text-xs font-semibold"
-                    >
-                      编辑名称
-                    </button>
-                  </div>
-                )}
-              </div>
-
-              {/* 两个开关 */}
-              <div className="grid gap-2 sm:grid-cols-2">
-                <label className="flex min-h-10 items-center gap-2 rounded-lg border border-ink/10 bg-white px-3 text-sm font-medium">
-                  <input
-                    type="checkbox"
-                    checked={currentDraft.selected !== false}
-                    onChange={(event) => setLocalDrafts((prev) => prev.map((d, i) => i === reviewDraftIndex ? { ...d, selected: event.target.checked } : d))}
-                    className="h-4 w-4 accent-denim"
-                  />
-                  录入这件
-                </label>
-                <label className="flex min-h-10 items-center gap-2 rounded-lg border border-ink/10 bg-white px-3 text-sm font-medium">
-                  <input
-                    type="checkbox"
-                    checked={saveCurrentOutfit}
-                    onChange={(event) => setSaveCurrentOutfit(event.target.checked)}
-                    className="h-4 w-4 accent-denim"
-                  />
-                  加入套装收藏
-                </label>
-              </div>
-
-              {/* 折叠属性编辑 */}
-              <details
-                open={showOutfitAdjust}
-                onToggle={(event) => setShowOutfitAdjust((event.currentTarget as HTMLDetailsElement).open)}
-                className="rounded-lg overflow-hidden"
-              >
-                <summary className="cursor-pointer select-none py-2 flex items-center justify-between text-sm font-semibold">
-                  <span>调整属性</span>
-                  <span className="text-ink/40 text-xs">{showOutfitAdjust ? "收起" : "展开"}</span>
-                </summary>
-                <div className="border-t border-ink/10 pt-3 grid gap-4">
-                  <label className="grid gap-1 text-sm font-medium">名称
-                    <input value={currentDraft.name} onChange={(e) => setLocalDrafts((prev) => prev.map((d, i) => i === reviewDraftIndex ? { ...d, name: e.target.value } : d))} className="h-11 rounded-lg border border-ink/10 bg-white px-3 text-base outline-none focus:border-denim" />
-                  </label>
-                  <label className="grid gap-1 text-sm font-medium">类别
-                    <select value={currentDraft.category} onChange={(e) => setLocalDrafts((prev) => prev.map((d, i) => i === reviewDraftIndex ? { ...d, category: e.target.value as GarmentCategory } : d))} className="h-11 rounded-lg border border-ink/10 bg-white px-3 text-base outline-none focus:border-denim">
-                      {categoryOptions.map((c) => (<option key={c} value={c}>{CATEGORY_LABELS[c]}</option>))}
-                    </select>
-                  </label>
-                  <ChipGroup title="主色" options={[...COLOR_OPTIONS]} values={currentDraftPrimaryColors} onChange={(v) => setLocalDrafts((prev) => prev.map((d, i) => i === reviewDraftIndex ? { ...d, colors: colorInfoFromChipGroups(v, getAccentColors(d.colors)) } : d))} scrollRef={bogvPrimaryRef} />
-                  <ChipGroup title="配色" options={[...COLOR_OPTIONS]} values={currentDraftAccentColors} onChange={(v) => setLocalDrafts((prev) => prev.map((d, i) => i === reviewDraftIndex ? { ...d, colors: colorInfoFromChipGroups(getPrimaryColors(d.colors), v) } : d))} scrollRef={bogvSecondaryRef} />
-                  <ChipGroup title="季节" options={seasonOptions} labels={SEASON_LABELS} values={currentDraft.seasons} onChange={(v) => setLocalDrafts((prev) => prev.map((d, i) => i === reviewDraftIndex ? { ...d, seasons: v } : d))} />
-                  <ChipGroup title="风格" options={styleOptions} labels={STYLE_LABELS} values={currentDraft.styles} onChange={(v) => setLocalDrafts((prev) => prev.map((d, i) => i === reviewDraftIndex ? { ...d, styles: v } : d))} />
-                  <SelectableChipGroup
-                    title="版型倾向"
-                    options={["menswear", "womenswear", "unisex", "unknown"] as GarmentFitGender[]}
-                    labels={{ menswear: "男装", womenswear: "女装", unisex: "中性", unknown: "未判断" }}
-                    values={currentDraft.fitGender ? [currentDraft.fitGender] : []}
-                    onChange={(v) => setLocalDrafts((prev) => prev.map((d, i) => i === reviewDraftIndex ? { ...d, fitGender: v[0] ?? "unknown" } : d))}
-                    mode="single"
-                    maxSelected={1}
-                    selectedFirst
-                  />
-                  <div className="grid gap-3 sm:grid-cols-2">
-                    <RangeField label="正式度" value={currentDraft.formality ?? 3} onChange={(v) => setLocalDrafts((prev) => prev.map((d, i) => i === reviewDraftIndex ? { ...d, formality: v } : d))} />
-                    <RangeField label="保暖度" value={currentDraft.warmth ?? 3} onChange={(v) => setLocalDrafts((prev) => prev.map((d, i) => i === reviewDraftIndex ? { ...d, warmth: v } : d))} />
-                  </div>
-                  <label className="grid gap-1 text-sm font-medium">备注
-                    <textarea value={currentDraft.notes ?? ""} onChange={(e) => setLocalDrafts((prev) => prev.map((d, i) => i === reviewDraftIndex ? { ...d, notes: e.target.value } : d))} rows={2} className="resize-none rounded-lg border border-ink/10 bg-white px-3 py-2 text-sm outline-none focus:border-denim" />
-                  </label>
-                </div>
-              </details>
-            </div>
-          }
-        />
-
-        {/* 底部浮动操作条 - z-40 避开 5 tab 导航 z-30; pb-safe 避开 iPhone home indicator */}
-        <div className="fixed bottom-20 left-0 right-0 z-40 px-3 pb-[env(safe-area-inset-bottom)] pointer-events-none">
-          <div className="mx-auto max-w-md bg-white border border-ink/10 rounded-2xl shadow-lg p-1.5 flex items-center gap-1.5 pointer-events-auto">
-            <button
-              type="button"
-              onClick={() => reviewDraftIndex > 0 && switchReviewDraft(reviewDraftIndex - 1)}
-              disabled={reviewDraftIndex === 0}
-              aria-label="上一件"
-              className="grid h-10 w-10 place-items-center rounded-full bg-mist text-ink disabled:opacity-30 hover:bg-ink/10 transition-colors"
-            >
-              <ChevronLeft size={18} aria-hidden="true" />
-            </button>
-            <span className="text-xs font-medium text-ink/60 tabular-nums px-1">
-              <b className="text-ink">{reviewDraftIndex + 1}</b> / {localDrafts.length}
-            </span>
-            <button
-              type="button"
-              onClick={() => reviewDraftIndex < localDrafts.length - 1 && switchReviewDraft(reviewDraftIndex + 1)}
-              disabled={reviewDraftIndex >= localDrafts.length - 1}
-              aria-label="下一件"
-              className="grid h-10 w-10 place-items-center rounded-full bg-mist text-ink disabled:opacity-30 hover:bg-ink/10 transition-colors"
-            >
-              <ChevronRight size={18} aria-hidden="true" />
-            </button>
-            <div className="flex-1" />
-            <button
-              type="button"
-              disabled={statuses[reviewGroupIndex!] === "confirmed" || selectedDraftCount === 0}
-              onClick={async () => { const saved = await onSaveGroup(reviewGroupIndex!, localDrafts, saveCurrentOutfit); if (saved) { setOutfitCropJob(null); setReviewGroupIndex(null); } }}
-              className="inline-flex h-10 items-center gap-1.5 rounded-xl bg-clay px-4 text-sm font-semibold text-white active:scale-95 transition-transform disabled:opacity-40"
-            >
-              <SaveAll size={15} />
-              {statuses[reviewGroupIndex!] === "confirmed" ? "已录入" : `确认录入 ${selectedDraftCount} 件`}
-            </button>
-          </div>
-        </div>
-        <div className="h-20" /> {/* 占位: 避开底部浮动条 + 底栏 */}
-
-        {outfitCropJob ? (
-          <ImageCropEditor
-            source={outfitCropJob.dataUrl}
-            initialCropBox={outfitCropJob.startBox}
-            aspectRatio="free"
-            onCancel={() => setOutfitCropJob(null)}
-            onConfirm={(newImageDataUrl, newBox) => {
-              outfitCropJob.onConfirm(newImageDataUrl, newBox);
-            }}
-          />
-        ) : null}
-      </div>
-    );
-  }
-
-  return (
-    <div className="grid gap-4">
-      <div className="surface rounded-lg p-3 flex items-center gap-3 flex-wrap">
-        <Layers size={20} className="text-denim" />
-        <span className="text-sm font-semibold">已确认 {statuses.filter((s) => s === "confirmed").length}/{groups.length} 套穿搭</span>
-        <span className="text-xs text-ink/50">点击图片堆叠确认每套穿搭</span>
-        <div className="flex-1" />
-        <button type="button" onClick={() => { const unconfirmed = statuses.filter((s) => s !== "confirmed" && s !== "cancelled").length; if (unconfirmed > 0) { setShowFinishConfirm(true); } else { onCancelAll(); }}} className="inline-flex h-9 items-center gap-2 rounded-lg bg-moss px-3 text-sm font-semibold text-white">
-          <Check size={15} />确认完成
-        </button>
-      </div>
-
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4">
-        {groups.map((group, index) => {
-          const status = statuses[index] ?? "pending";
-          return (
-            <button key={index} type="button" onClick={() => status !== "cancelled" && openGroup(index)} disabled={status === "cancelled"}
-              className={`overflow-hidden rounded-lg border bg-white shadow-sm transition-all text-left ${status === "confirmed" ? "border-moss/50 opacity-80" : status === "cancelled" ? "border-ink/10 opacity-40" : "border-ink/10 hover:border-denim"}`}>
-              <div className="relative">
-                <div className="aspect-[4/5] bg-mist grid grid-cols-2 grid-rows-2 gap-px p-px">
-                  {group.slice(0, 4).map((d, di) => (
-                    <div key={di} className="overflow-hidden bg-mist">
-                      <GarmentImage src={d.imageDataUrl || undefined} alt={d.name} fallbackSize={14} />
-                    </div>
-                  ))}
-                  {group.length > 4 ? <div className="absolute right-1.5 bottom-1.5 rounded-full bg-ink/70 px-1.5 py-0.5 text-[10px] text-white font-medium">+{group.length - 4}</div> : null}
-                </div>
-              </div>
-              <div className="p-2">
-                <p className="truncate text-xs font-semibold">{names[index] ? `第 ${index + 1} 套 · ${names[index]}` : `第 ${index + 1} 套`}</p>
-                <p className="truncate text-[11px]">{group.length} 件单品</p>
-                <span className={`inline-block mt-1 rounded-md px-1.5 py-0.5 text-[10px] font-medium ${status === "confirmed" ? "bg-moss/10 text-moss" : status === "cancelled" ? "bg-ink/10 text-ink/40" : "bg-clay/10 text-clay"}`}>
-                  {status === "confirmed" ? "已录入" : status === "cancelled" ? "已取消" : "待确认"}
-                </span>
-              </div>
-            </button>
-          );
-        })}
-
-      </div>
-
-      <MotionSheet open={showFinishConfirm} onClose={() => setShowFinishConfirm(false)} panelClassName="!max-w-xs text-center">
-        <p className="text-base font-semibold mb-1">是否确认退出？</p>
-        <p className="text-xs text-ink/50 mb-4">未确认的套装将会取消录入</p>
-        <div className="grid grid-cols-2 gap-2">
-          <button type="button" onClick={() => setShowFinishConfirm(false)} className="h-10 rounded-lg border border-ink/10 text-sm">取消退出</button>
-          <button type="button" onClick={() => { setShowFinishConfirm(false); onCancelAll(); }} className="h-10 rounded-lg bg-red-600 text-sm font-semibold text-white">确认退出</button>
-        </div>
-      </MotionSheet>
-    </div>
-  );
-}
 
 function RecommendationView({
   items,
@@ -8805,66 +8239,6 @@ function editSnapshotFromDraft(draft: WardrobeDraft): EditSnapshot {
 function snapshotsEqual(a: EditSnapshot | null, b: EditSnapshot | null) {
   if (!a || !b) return false;
   return JSON.stringify(a) === JSON.stringify(b);
-}
-
-function outfitCaptureDraftToWardrobeItem(draft: WardrobeDraft, now: string): WardrobeItem {
-  return {
-    name: draft.name.trim() || "新衣服",
-    imageDataUrl: draft.imageDataUrl,
-    sourceImageDataUrl: draft.sourceImageDataUrl,
-    cropBox: draft.cropBox,
-    category: draft.category,
-    subcategory: draft.subcategory,
-    colors: draft.colors,
-    seasons: draft.seasons.length > 0 ? draft.seasons : ["all"],
-    styles: draft.styles.length > 0 ? draft.styles : ["casual"],
-    formality: draft.formality,
-    warmth: draft.warmth,
-    locationId: draft.locationId,
-    status: draft.status,
-    notes: draft.notes,
-    aiConfidence: draft.aiConfidence,
-    needsReview: draft.needsReview,
-    fitGender: draft.fitGender ?? "unknown",
-    fitNotes: draft.fitNotes?.trim() || undefined,
-    wornDates: [],
-    createdAt: now,
-    updatedAt: now,
-  };
-}
-
-function createSavedOutfit(itemIds: number[], drafts: WardrobeDraft[], source: SavedOutfit["source"], now: string, name?: string): SavedOutfit {
-  return {
-    id: `${source}-${globalThis.crypto?.randomUUID?.() ?? Date.now()}`,
-    name: name?.trim() || `${source === "capture" ? "图片套装" : "收藏套装"} · ${itemIds.length} 件`,
-    itemIds,
-    coverImageDataUrl: drafts.find((draft) => draft.imageDataUrl)?.imageDataUrl,
-    source,
-    favorite: true,
-    createdAt: now,
-    updatedAt: now,
-  };
-}
-
-const OUTFIT_NAME_FALLBACKS: Record<string, string> = {
-  casual: "休闲", sweet: "甜美", elegant: "优雅", commute: "通勤",
-  outdoor: "户外", dinner: "吃饭", vacation: "旅行",
-};
-const OUTFIT_NAME_COLORS: Record<string, string> = {
-  黑: "黑色", 白: "白色", 灰: "灰色", 蓝: "蓝色", 牛仔蓝: "牛仔蓝",
-  棕: "棕色", 米: "米色", 红: "红色", 粉: "粉色", 绿: "绿色",
-  黄: "黄色", 紫: "紫色",
-};
-
-function generateLocalOutfitName(drafts: WardrobeDraft[]): string {
-  const allStyles = [...new Set(drafts.flatMap((d) => d.styles))];
-  const allColors = [...new Set(drafts.flatMap((d) => getAllColors(d.colors)))];
-  const styleStr = allStyles.slice(0, 2).map((s) => OUTFIT_NAME_FALLBACKS[s] || s).join("");
-  const colorStr = allColors.slice(0, 2).map((c) => OUTFIT_NAME_COLORS[c] || c).join("");
-  if (styleStr && colorStr) return `${colorStr}${styleStr}套装`;
-  if (styleStr) return `${styleStr}套装`;
-  if (colorStr) return `${colorStr}套装`;
-  return `${drafts.length}件搭配`;
 }
 
 function estimateWeatherInsight(request: Pick<OutfitRequest, "destination" | "date">): WeatherInsight {

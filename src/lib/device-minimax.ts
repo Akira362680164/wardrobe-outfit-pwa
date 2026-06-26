@@ -552,12 +552,11 @@ export async function detectGarmentsOnDevice(
 // ============================================================
 // v0.9.32-dev: 单件属性识别（单件录入专用）
 // ------------------------------------------------------------
-// 与 `detectGarmentsOnDevice`（多衣物检测 /拆分）的区别：
-// -走 `tagGarmentOnDevice`（单件衣物属性识别），不会调用多衣物检测 prompt
-// - 只返回单件属性标签 + 原图地址,不返回 cropBox / 多候选
-// - 单件录入模式（captureMode === "item"）下必须走这里,禁止调用多衣物检测
-// -套装录入（captureMode === "outfit"）继续走 `detectGarmentsOnDevice` / `recognizeImageCandidatesFromDataUrl`
-// -失败 fallback：返回可编辑默认 `GarmentTagResult`，由 caller 转 WardrobeDraft
+// 与 `detectGarmentsOnDevice`（多衣物检测 / 拆分）的区别：
+// - 走 `tagGarmentOnDevice`（单件衣物属性识别），不会调用多衣物检测 prompt
+// - 只返回单件属性标签 + 原图地址，不返回 cropBox / 多候选
+// - 正式单件录入必须走这里，禁止调用多衣物检测
+// - 失败 fallback：返回可编辑默认 `GarmentTagResult`，由 caller 转 WardrobeDraft
 // ============================================================
 export interface SingleItemRecognition {
  tag: GarmentTagResult;

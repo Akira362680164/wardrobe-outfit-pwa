@@ -1,3 +1,15 @@
+## 2026-06-26 / v1.1.37 / Claude Code — legacy outfit capture cleanup
+
+- **目的**：按遗留代码报告第一批清理旧“图片识别整套穿搭”入口，避免 `captureMode === "outfit"` / `BatchOutfitGroupsView` 与当前 `OutfitIntakeFlow` 套装创建主链路并存。
+- **改动文件**：
+  - `src/components/wardrobe-app.tsx`：移除旧套装拍照分组确认状态、`BatchOutfitGroupsView` 内联组件、旧 `processSingleCaptureImage` / `recognizeImageCandidatesFromDataUrl` / `saveOutfitCaptureDrafts` 分支，以及 `setCaptureMode("outfit")` 入口残留；全局裁切器仅执行显式 `onConfirm`。
+  - `src/lib/device-minimax.ts`：更新单件识别注释，删除已废弃的套装拍照分支说明。
+  - `scripts/test-wardrobe-app-split.ts`：把旧 `BatchReviewView` import 断言改为确认主 App 不再导入、不再定义旧分组视图。
+- **范围说明**：本轮不删除独立 `src/components/batch-review-view.tsx` 文件，不处理旧推荐 / 种草 / 备份页面，不清理 `.vscode/` 本机目录。
+- **验证结果**：`npm run test:logic:wardrobe-app-split` ✅ 44 passed, 0 failed；`npm run test:logic:followup-navigation` ✅ 82 passed, 0 failed；`npm run test:logic:garment-intake-multi-image` ✅ 60 passed, 0 failed；`npm run typecheck` ✅ 通过；`git diff --check` ✅ 通过。
+- **风险门禁**：**medium**。删除旧 UI 入口和主 App 大块死分支，但不改变当前 `OutfitIntakeFlow` 套装创建主链路；未触发 subagent：用户未通知。
+- **未验证风险 / 下一步**：未做浏览器/真机视觉回归；下一批继续清理 `wardrobe-app.tsx` 中未使用旧推荐、旧种草与旧备份组件。
+
 ## 2026-06-26 / v1.1.37 / Claude Code — legacy code cleanup report
 
 - **目的**：按用户要求把当前分支基线上的旧入口、旧函数、旧页面与构建 unused warning 调查结果整理成 Markdown 报告，便于后续修复 agent 对照 `codex/cloud-phase1-auth` / `4fc186f` 继续清理。

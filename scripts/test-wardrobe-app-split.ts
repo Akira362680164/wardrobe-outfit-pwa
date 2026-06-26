@@ -69,10 +69,11 @@ check("不再定义 triggerCameraInput", !/function triggerCameraInput\(\): void
 check("不再定义 triggerGalleryInput", !/function triggerGalleryInput\(\): void \{[\s\S]*?galleryInputRef\.current[\s\S]*?showMessage\("相册入口未就绪，请重试"/.test(wardrobeApp));
 check("不再内联 SelectedImagesReview portal", !/<SelectedImagesReview[\s\S]{0,500}createPortal/.test(wardrobeApp) || /WardrobeSelectedImagesReviewPortal/.test(wardrobeApp));
 
-// BatchReviewView extraction
-check("batch-review-view.tsx exists", existsSync(join(root, "src/components/batch-review-view.tsx")));
-check("wardrobe-app.tsx imports BatchReviewView from @/components/batch-review-view", /import\s*{\s*BatchReviewView\s*}\s*from\s*["']@\/components\/batch-review-view["']/.test(wardrobeApp));
+// BatchReviewView legacy cleanup
+check("batch-review-view.tsx remains isolated from WardrobeApp", existsSync(join(root, "src/components/batch-review-view.tsx")));
+check("wardrobe-app.tsx no longer imports BatchReviewView", !/import\s*{\s*BatchReviewView\s*}\s*from\s*["']@\/components\/batch-review-view["']/.test(wardrobeApp));
 check("wardrobe-app.tsx does not define function BatchReviewView", !/^function BatchReviewView/.test(wardrobeApp));
+check("wardrobe-app.tsx does not define BatchOutfitGroupsView", !/function BatchOutfitGroupsView/.test(wardrobeApp));
 
 // Line count
 const lines = wardrobeApp.split("\n").length;
