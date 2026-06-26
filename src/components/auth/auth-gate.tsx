@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useState } from "react";
 import { Check, Loader2, Lock, Shield, User } from "lucide-react";
 import { useAuth } from "@/components/auth/auth-provider";
@@ -98,22 +99,30 @@ function RegisterForm({ onSwitch }: { onSwitch: () => void }) {
         await auth.register(phone, password).catch(() => undefined);
       }}
     >
-      <AuthHeader title="注册衣橱账号" subtitle="阶段 1A 使用开发验证，后续接入微信验证" />
+      <AuthHeader title="注册衣橱账号" subtitle="阶段 1A 使用开发验证，暂不接入短信或微信验证" />
       <AuthError override={localError} />
       <TextField label="手机号" value={phone} onChange={setPhone} autoComplete="tel" inputMode="tel" />
       <TextField label="密码" value={password} onChange={setPassword} type="password" autoComplete="new-password" />
       <TextField label="确认密码" value={confirm} onChange={setConfirm} type="password" autoComplete="new-password" />
-      <label className="flex items-start gap-2 text-xs leading-relaxed text-ink/60">
+      <div className="flex items-start gap-2 text-xs leading-relaxed text-ink/60">
         <input
+          id="auth-terms-accepted"
           type="checkbox"
           checked={accepted}
           onChange={(event) => setAccepted(event.target.checked)}
           className="mt-0.5 h-4 w-4 accent-denim"
         />
         <span>
-          我已阅读并同意用户协议和隐私政策
+          <label htmlFor="auth-terms-accepted">我已阅读并同意</label>
+          <Link href="/legal/terms" className="font-semibold text-denim underline-offset-2 hover:underline">
+            用户协议
+          </Link>
+          <span>和</span>
+          <Link href="/legal/privacy" className="font-semibold text-denim underline-offset-2 hover:underline">
+            隐私政策
+          </Link>
         </span>
-      </label>
+      </div>
       <button type="submit" disabled={auth.isBusy} className="inline-flex h-11 items-center justify-center gap-2 rounded-lg bg-denim text-sm font-semibold text-white disabled:opacity-60">
         {auth.isBusy ? <Loader2 size={16} className="animate-spin" aria-hidden="true" /> : <User size={16} aria-hidden="true" />}
         注册

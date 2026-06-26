@@ -7,6 +7,10 @@ const root = join(__dirname, "..");
 const read = (path: string) => readFileSync(join(root, path), "utf8");
 
 const page = read("src/app/page.tsx");
+const activeAppPage = read("app/page.tsx");
+const activeAppLayout = read("app/layout.tsx");
+const activeTermsPage = read("app/legal/terms/page.tsx");
+const activePrivacyPage = read("app/legal/privacy/page.tsx");
 const appRoot = read("src/components/app-root.tsx");
 const sessionStore = read("src/lib/auth-session-store.ts");
 const authApi = read("src/lib/cloud-auth-api.ts");
@@ -33,6 +37,9 @@ function check(name: string, cond: boolean, detail?: string) {
 
 console.log("\n=== Auth Client Shell ===");
 check("page.tsx 接入 AppRoot", /import \{ AppRoot \} from "@\/components\/app-root"/.test(page) && /<AppRoot \/>/.test(page));
+check("Next 活跃根路由接入 AppRoot", /import \{ AppRoot \} from "@\/components\/app-root"/.test(activeAppPage) && /<AppRoot \/>/.test(activeAppPage));
+check("Next 活跃根布局保留 motion 与 service worker", /<MotionProvider>\{children\}<\/MotionProvider>/.test(activeAppLayout) && /<ServiceWorkerRegister \/>/.test(activeAppLayout));
+check("Next 活跃法律页转发到 src/app/legal", /@\/app\/legal\/terms\/page/.test(activeTermsPage) && /@\/app\/legal\/privacy\/page/.test(activePrivacyPage));
 check("AppRoot 默认关闭认证时直接渲染 WardrobeApp", /NEXT_PUBLIC_CLOUD_AUTH_ENABLED === "true"/.test(appRoot) && /if \(!cloudAuthEnabled\) return <WardrobeApp \/>/.test(appRoot));
 check("AuthProvider 只在认证开启路径挂载", /<AuthProvider>[\s\S]*<AuthGate>[\s\S]*<AuthenticatedWardrobeApp \/>/.test(appRoot));
 check("AuthSessionStore 浏览器开发环境使用 sessionStorage", /window\.sessionStorage/.test(sessionStore));
@@ -44,6 +51,7 @@ check("API 客户端使用 POST 注册状态接口", /\/api\/auth\/registrations
 check("API 客户端有 refresh mutex", /let refreshPromise: Promise<AuthTokenPayload> \| null = null/.test(authApi) && /refreshPromise \?\?=/.test(authApi));
 check("AuthProvider 绑定 localOwner 防止阶段 1A 本机串号", /bindLocalOwnerIfNeeded/.test(authProvider) && /setPhase\("blocked"\)/.test(authProvider));
 check("注册页明确阶段 1A 开发验证占位", /阶段 1A 使用开发验证/.test(authGate));
+check("注册页链接到阶段 1A 用户协议和隐私政策", /href="\/legal\/terms"/.test(authGate) && /href="\/legal\/privacy"/.test(authGate));
 check("WardrobeApp 接收 cloudAuth 可选参数", /export function WardrobeApp\(\{ cloudAuth \}: \{ cloudAuth\?: WardrobeCloudAuth \} = \{\}\)/.test(wardrobeApp));
 check("设置页账号卡只在 cloudAuth 存在时渲染", /\{cloudAuth \? \([\s\S]*账号服务[\s\S]*\) : null\}/.test(wardrobeApp));
 check("账号页说明阶段 1A 不显示云端同步状态", /阶段 1A 不显示云端同步状态/.test(accountViews));

@@ -1,3 +1,25 @@
+## 2026-06-26 / v1.1.37 / Codex — cloud 1A Worker B legal docs + active app route fix
+
+- **目的**：按 V4 执行方案补齐阶段 1A 内部测试用用户协议、隐私政策、账号与同步说明，并修正 A5 后发现的 Next 活跃路由树问题，确保认证壳层和法律页真实进入生产构建 / APK 静态产物。
+- **Worker 执行**：
+  - MiniMax Worker B 通过 Keychain 注入 `MINIMAX_API_KEY` 的方式启动并产出文案草稿；密钥未打印、未落盘。
+  - Worker B 子进程后续卡住并被主 Codex 中断；主 Codex 对草稿逐条审查，删除或收紧了“设备列表、自助删号、离线本机模式、微信验证承诺”等阶段 1A 尚未实现或不应承诺的表述。
+- **改动文件**：
+  - `src/app/legal/terms/page.tsx` / `src/app/legal/privacy/page.tsx`：新增阶段 1A 内部测试用户协议与隐私政策，明确账号服务范围、默认认证开关关闭、无衣橱/图片云同步、无短信/微信验证、无客服/SLA 承诺、MiniMax AI Key 为设备级本机存储。
+  - `docs/cloud/account-and-sync.md`：新增账号与同步边界说明，列出 1A 已提供和明确不提供的能力；说明退出账号不删除本机衣橱、图片缓存或 AI Key，且 1A 不生成假的离线账号。
+  - `src/components/auth/auth-gate.tsx`：注册页协议勾选文案改为链接到 `/legal/terms` 与 `/legal/privacy`；注册副标题改为“暂不接入短信或微信验证”，避免形成后续路径承诺。
+  - `app/page.tsx` / `app/layout.tsx`：修正生产实际使用的根目录 `app/` 路由树，接入 `AppRoot`、`MotionProvider` 和 `ServiceWorkerRegister`。此前 A5 接入的是 `src/app/page.tsx`，但项目同时存在根目录 `app/`，Next 实际采用根目录 `app/`。
+  - `app/legal/terms/page.tsx` / `app/legal/privacy/page.tsx`：新增活跃路由包装器，复用 `src/app/legal` 文案页面，确保静态导出和 APK 产物包含法律页。
+  - `scripts/test-auth-client-shell.ts`：扩展源码级守护测试，覆盖活跃根路由接入 `AppRoot`、根布局保留 motion/service worker、活跃法律页转发、注册页链接到协议和隐私政策。
+- **范围说明**：本轮不实现衣橱结构化云同步、图片云同步、多账号 Dexie 工作区、短信验证码、微信验证、客服渠道或账号自助删除；仅补齐阶段 1A 内部测试法律/说明边界，并修正认证壳层进入实际构建入口的问题。
+- **验证结果**：
+  - `npm run test:logic:auth-client-shell`：✅ 22 passed, 0 failed。
+  - `npm run typecheck`：✅ 通过。
+  - `npm run build`：✅ 通过；构建路由清单包含 `/legal/privacy` 与 `/legal/terms`；仍保留仓库既有 ESLint warnings。
+  - `test -f out/legal/terms/index.html && test -f out/legal/privacy/index.html`：✅ 通过。
+- **风险门禁**：**high**。本轮除文档和法律页外，还修正了生产实际使用的 App Router 根入口，使 A5 认证壳层真实进入构建产物；未另触发独立审查 subagent，当前为 MiniMax Worker B 草稿 + 主 Codex 审查修订 + 本地验证。
+- **未验证风险 / 下一步**：未在 Android 真机安装内部测试 APK 验证法律页跳转、AuthGate、Keystore 持久化、CapacitorHttp Origin/CORS；这些继续进入 A6 联调和内部测试 APK。
+
 ## 2026-06-26 / v1.1.37 / Codex — cloud 1A A5 auth client shell + Worker A deploy hardening
 
 - **目的**：按 V4 执行方案完成阶段 1A 的 A5 客户端认证壳层，并根据 MiniMax Worker A 的部署壳层复核结果补齐生产部署高优先级缺口。
