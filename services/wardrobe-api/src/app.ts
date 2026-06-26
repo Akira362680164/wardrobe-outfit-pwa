@@ -16,6 +16,7 @@ import { checkDatabaseReady } from "./db/client.js";
 import { getApiVersion } from "./version.js";
 import { registerSyncRoutes } from "./sync/routes.js";
 import { SyncService } from "./sync/service.js";
+import { redactedLogSerializer } from "./shared/redact.js";
 
 export type ReadinessCheck = () => Promise<{ database: "ready" }>;
 
@@ -30,7 +31,9 @@ export interface BuildAppOptions {
 export function buildApp(options: BuildAppOptions = {}): FastifyInstance {
   const readinessCheck = options.readinessCheck ?? checkDatabaseReady;
   const app = Fastify({
-    logger: process.env.NODE_ENV !== "test",
+    logger: process.env.NODE_ENV !== "test"
+      ? { serializers: { req: redactedLogSerializer as never, res: redactedLogSerializer as never } }
+      : false,
   });
 
   app.addHook("onRequest", async (request, reply) => {
