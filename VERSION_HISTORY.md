@@ -1,3 +1,20 @@
+## 2026-06-27 / v2.0.0-test / Claude Code — 升级测试版本号并重新打包 APK
+
+- **目的**：从 v1.1.37 升级到 v2.0.0-test，重新打包 APK 交付测试。
+- **改动文件**：
+  - `package.json`：版本号 `1.1.37` → `2.0.0-test`。
+  - `Android versionCode`：自动推导为 `20000`。
+  - 根目录 `衣橱穿搭助手-v2.0.0-test.apk`：构建产物（不进入 Git）。
+- **APK 信息**：
+  - 大小：7.8 MB
+  - SHA-256：`92ce2635187c525460cb753e7153d5065a625fe881c54ba360ef3cd368ffca08`
+  - 签名：CN=fangzheng（固定签名）
+  - 类型：内部测试包
+- **验证结果**：
+  - `npm run android:apk`：✅ BUILD SUCCESSFUL。
+- **风险门禁**：**low**。仅版本号递增，无代码逻辑改动。未触发 subagent。
+- **未验证风险**：未在真机安装验证。
+
 ## 2026-06-26 / v1.1.37 / Claude Code — cloud 1C C4 full regression & internal test APK
 
 - **目的**：阶段 1C 收口：全量逻辑回归、typecheck、build、内部测试 APK。验证图片资产云同步全链路（C1-C3c）无回归。
