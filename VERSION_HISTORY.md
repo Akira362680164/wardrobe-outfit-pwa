@@ -1,3 +1,13 @@
+## 2026-06-26 / v1.1.37 / Claude Code — wardrobe app unused import cleanup
+
+- **目的**：按遗留清理计划第三批处理 `wardrobe-app.tsx` 的高噪音 unused warning，先清理低风险的未使用 import、旧图片入口别名和已废弃进度状态。
+- **改动文件**：
+  - `src/components/wardrobe-app.tsx`：删除未使用的 Capacitor Camera 顶层 import、旧 motion / 表单 / 颜色 / 备份 / selected-images / MiniMax / 图片 / 通知 / 类型 import，并移除未使用的 imageIntake 局部别名与 wishlist 队列进度状态。
+- **范围说明**：本轮只做低风险 unused import / 变量清理，不删除仍需进一步核验的旧 helper 函数，不处理 `outfit-list-view.tsx`、`wishlist-view-2.0.tsx` 等其他文件 warning；`.vscode/` 本机目录不纳入提交。
+- **验证结果**：`npm run typecheck` ✅ 通过；`npm run build` ✅ 通过，`wardrobe-app.tsx` warning 从 81 降至 32。
+- **风险门禁**：**low**。仅删除编译器确认的未使用符号，不改变当前 UI 主链路；未触发 subagent：用户未通知。
+- **未验证风险 / 下一步**：未做浏览器/真机视觉回归；下一批可继续清理 `wardrobe-app.tsx` 剩余旧 helper，或转向 `outfit-list-view.tsx` / `wishlist-view-2.0.tsx`。
+
 ## 2026-06-26 / v1.1.37 / Claude Code — legacy main app pages cleanup
 
 - **目的**：按遗留代码报告第二批清理主 App 中未渲染的旧推荐页、旧种草页和旧紧凑备份按钮，继续降低 `wardrobe-app.tsx` 的 unused warning 噪音。

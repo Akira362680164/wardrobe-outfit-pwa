@@ -2,7 +2,6 @@
 
 import { App } from "@capacitor/app";
 import { KeepAwake } from "@capacitor-community/keep-awake";
-import { Camera as CapacitorCamera, CameraResultType, CameraSource } from "@capacitor/camera";
 import { Capacitor } from "@capacitor/core";
 import { useAppNavigationController } from "@/components/use-app-navigation-controller";
 import type { AppRoute } from "@/lib/app-route";
@@ -22,14 +21,10 @@ import {
   Eye,
   EyeOff,
   FileJson,
-  FolderOpen,
   GalleryVerticalEnd,
-  ImageIcon,
   KeyRound,
-  Layers,
   Loader2,
   Lock,
-  MoreHorizontal,
   Plus,
   RefreshCw,
   SaveAll,
@@ -64,23 +59,17 @@ import { useWardrobeLightboxController } from "@/components/use-wardrobe-lightbo
 import { WardrobeImageSourceSheet } from "@/components/wardrobe-image-source-sheet";
 import { WardrobeHiddenImageInputs } from "@/components/wardrobe-hidden-image-inputs";
 import { AccountManagementView, ChangePasswordView, type WardrobeCloudAuth } from "@/components/auth/account-views";
-import { createActionsForView, preferredCreateActionByView, type CreateActionType, type CreateActionItem, type ViewKey } from "@/components/wardrobe-create-actions";
+import { createActionsForView, preferredCreateActionByView, type ViewKey } from "@/components/wardrobe-create-actions";
 import { useWardrobeImageIntakeController } from "@/components/use-wardrobe-image-intake-controller";
-import { useWardrobeCaptureQueueController } from "@/components/use-wardrobe-capture-queue-controller";
 import { WardrobeSelectedImagesReviewPortal } from "@/components/wardrobe-selected-images-review-portal";
 import {
   AnimatedPage,
-  AiTaskProgressCard,
   MotionAccordion,
-  MotionCard,
-  MotionCheckBadge,
   MotionImageLightbox,
-  MotionPopoverMenu,
   MotionSheet,
-  MotionShimmer,
   MotionToast,
 } from "@/components/motion-common";
-import { duration, ease, staggerReveal, spring } from "@/lib/motion-tokens";
+import { ease, spring } from "@/lib/motion-tokens";
 import { generateThumbnailSafe } from "@/lib/thumbnail-runtime";
 import { backfill } from "@/lib/thumbnail-backfill";
 import { countMissingThumbnails } from "@/lib/thumbnail";
@@ -96,8 +85,6 @@ import { TemperatureRangeSlider } from "@/components/temperature-range-slider";
 import { FIT_NOTES_MAX_LEN } from "@/lib/types";
 import { buildWardrobeEditRecognitionPatch } from "@/lib/item-recognition-patch";
 import { SwipeImageCarousel, type SwipeSlide } from "@/components/swipe-image-carousel";
-import { COLOR_SWATCHES, COLOR_OPTIONS, type SystemColor } from "@/lib/color-catalog";
-import { GarmentImmersiveDetail } from "@/components/garment-immersive-detail";
 import { CatalogWaterfallCardShell } from "@/components/item-shell/catalog-waterfall-card-shell";
 import { CatalogWaterfallGrid } from "@/components/item-shell/catalog-waterfall-grid";
 import { CategoryColorLine } from "@/components/item-shell/category-color-line";
@@ -105,15 +92,11 @@ import { useCatalogMultiSelect, useCatalogBulkDelete, CatalogMultiSelectBar, Cat
 import { formatGarmentCategoryColorLine, formatGarmentWearLine } from "@/lib/catalog-card-format";
 import { exportWardrobeDiagnosticLog, recordDiagnosticEvent } from "@/lib/diagnostic-log";
 import {
-  ChipGroup,
   SelectableChipGroup,
   RangeField,
 } from "@/components/wardrobe-form-controls";
 import { validateLatestBackupReferences, applyLatestWardrobeBackup, type BackupRestorePreview } from "@/lib/backup-restore";
 import {
- LONG_TERM_BACKUP_EXTENSION,
- LONG_TERM_BACKUP_DIR_LABEL,
- sortLongTermBackupFiles,
  type LongTermBackupFileEntry,
 } from "@/lib/long-term-backup-package";
 import {
@@ -122,11 +105,9 @@ import {
  listDefaultLongTermBackups,
  restoreDefaultLongTermBackup,
  restorePickedLongTermBackup,
- DEFAULT_BACKUP_READ_REQUIRES_PICKER,
 } from "@/lib/long-term-backup";
 import {
  CaptureImageQueueItem,
- SelectedImagesReview,
  type SelectedImagesReviewMode,
 } from "@/components/selected-images-review";
 import { getWardrobeDb, readTryOnProfile, saveTryOnProfile } from "@/lib/db";
@@ -135,11 +116,9 @@ import { bridgeOutfitDelete, bridgeOutfitUpsert } from "@/lib/cloud-sync/outfit-
 import { bridgeOutfitPlanDelete } from "@/lib/cloud-sync/plan-bridge";
 import { bridgeWearEventsForGarment } from "@/lib/cloud-sync/wear-bridge";
 import { bridgeWishlistUpsert } from "@/lib/cloud-sync/wishlist-bridge";
-import { migrateWishlistItemRecord } from "@/lib/migrate";
 import {
  defaultMiniMaxSettings,
  diagnoseWardrobeOnDevice,
- generateOutfitNameOnDevice,
  generateGarmentStyleAdviceOnDevice,
  hasDeviceMiniMaxKey,
  loadMiniMaxSettings,
@@ -149,8 +128,7 @@ import {
  type DeviceMiniMaxSettings,
 } from "@/lib/device-minimax";
 import { ImageCropEditor } from "@/components/image-crop-editor";
-import { cropFromOriginal, dataUrlToFile, expandAiCropBox, fileToAiRequestDataUrl, fileToCompressedDataUrl, fileToOriginalDataUrl, isHeicFile, type NormalizedCropBox } from "@/lib/image";
-import { fallbackWishlistItem } from "@/lib/wishlist-intake-from-ai";
+import { dataUrlToFile, fileToAiRequestDataUrl, fileToCompressedDataUrl, fileToOriginalDataUrl, isHeicFile, type NormalizedCropBox } from "@/lib/image";
 import { useSoftAiProgress } from "@/lib/use-soft-ai-progress";
 import {
   completeProgressNotification,
@@ -158,22 +136,16 @@ import {
   ensureProgressNotificationPermission,
   failProgressNotification,
   isNativeProgressNotificationSupported,
-  markSynced,
   resetThrottle,
-  shouldSyncNotification,
   startProgressNotification,
-  summarizeErrorMessage,
-  updateProgressNotification,
   type NativeProgressTaskId,
 } from "@/lib/native-progress-notification";
 import { deriveGarmentImageList, type GarmentImageEntry } from "@/lib/garment-image-source";
-import { buildOutfitCoverRefreshPatch } from "@/lib/outfit-cover";
 import { buildSyncedOutfitPatch, buildSyncedPurchasedWishlistPatch } from "@/lib/wardrobe-reference-sync";
 import { getWearSummary, toggleTodayWornDate } from "@/lib/wear-records";
 import { useLocalDateKey } from "@/lib/use-local-date-key";
 import {
   CATEGORY_LABELS,
-  DEFAULT_LOCATIONS,
   SEASON_LABELS,
   STATUS_LABELS,
   STYLE_LABELS,
@@ -194,13 +166,9 @@ import {
   type WardrobeBackup,
   type WardrobeItem,
   type WishlistItem,
-  type OutfitPlanEntry,
-  type OutfitCalendarPlan,
-  type PlanPackingChecklistItem,
   type GarmentCropBox,
   type ReferenceOutfitImage,
 } from "@/lib/types";
-import { COLOR_MODE_LABELS } from "@/lib/display-labels";
 import { buildColorInfo, emptyColorInfo, getAccentColors, getAllColors, getPrimaryColor, getPrimaryColors, uniqueTrimmed } from "@/lib/color-fields";
 import type { GarmentIntakeDraft } from "@/lib/intake-draft";
 
@@ -419,7 +387,7 @@ export function WardrobeApp({ cloudAuth }: { cloudAuth?: WardrobeCloudAuth } = {
   const [captureCropJob, setCaptureCropJob] = useState<CaptureCropJob | null>(null);
   const [captureImageQueue, setCaptureImageQueue] = useState<CaptureImageQueueItem[]>([]);
   const [captureQueueIndex, setCaptureQueueIndex] = useState(0);
-  const [captureQueueMode, setCaptureQueueMode] = useState<SelectedImagesReviewMode>("capture");
+  const [captureQueueMode] = useState<SelectedImagesReviewMode>("capture");
   const [referenceOutfitTargetItemId, setReferenceOutfitTargetItemId] = useState<number | null>(null);
 
   // 4C Follow-up: 图片入口控制器（依赖 capture queue 的 setCaptureCropJob）
@@ -431,25 +399,19 @@ export function WardrobeApp({ cloudAuth }: { cloudAuth?: WardrobeCloudAuth } = {
 
   // 4C Follow-up: 为保持 JSX 兼容性，创建局部别名（后续逐步迁移到直接使用 imageIntake.xxx）
   const captureMode = imageIntake.captureMode;
-  const setCaptureMode = imageIntake.setCaptureMode;
   const imageIntakePurpose = imageIntake.imageIntakePurpose;
   const setImageIntakePurpose = imageIntake.setImageIntakePurpose;
   const showImageSourceSheet = imageIntake.showImageSourceSheet;
   const setShowImageSourceSheet = imageIntake.setShowImageSourceSheet;
-  const triggerCameraInput = imageIntake.triggerCameraInput;
   const triggerGalleryInput = imageIntake.triggerGalleryInput;
-  const handleCameraCapture = imageIntake.handleCameraCapture;
-  const handleGallerySelect = imageIntake.handleGallerySelect;
 
   const [query, setQuery] = useState("");
   // 首页当前浏览范围："all" 或某个衣橱 id。搜索不受该状态影响。
   const [wardrobeScope, setWardrobeScope] = useState<WardrobeScope>("all");
   // 首页分类筛选（横向 chip 行）；不影响全局搜索。
   const [homeCategoryFilter, setHomeCategoryFilter] = useState<GarmentCategory | "all">("all");
-  const [isRecognizing, setIsRecognizing] = useState(false);
+  const [isRecognizing] = useState(false);
   const tagProgress = useSoftAiProgress("garment_detection", { label: "AI 识别衣物" });
-	  // v1.1.4-dev 种草 AI 识别批次: 种草图片队列处理专用进度
-	  const wishlistQueueProgress = useSoftAiProgress("shopping_image_analysis", { label: "AI 分析购物图片" });
 	  const [miniMaxSettings, setMiniMaxSettings] = useState<DeviceMiniMaxSettings>(() => defaultMiniMaxSettings());
   const [showKeyBanner, setShowKeyBanner] = useState(true);
   const [showGarmentIntakeFlow, setShowGarmentIntakeFlow] = useState(false);
