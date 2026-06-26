@@ -62,7 +62,7 @@ check("MotionPopoverMenu 注册 pointerdown 空白关闭", /document\.addEventLi
 check("MotionPopoverMenu 注册 Escape 关闭逻辑", /handleDocKeyDown[\s\S]*e\.key !== "Escape"[\s\S]*onClose\(\)/.test(motionCommon));
 check("MotionPopoverMenu 清理 keydown 监听", /document\.removeEventListener\("keydown", handleDocKeyDown, true\)/.test(motionCommon));
 
-check("package.json version uses semver", /^\d+\.\d+\.\d+$/.test(String(packageJson.version ?? "")));
+check("package.json version uses semver", /^\d+\.\d+\.\d+(-[a-z0-9.]+)?$/.test(String(packageJson.version ?? "")));
 check("package.json 包含 test:logic:back-priority-regression", "test:logic:back-priority-regression" in (packageJson.scripts ?? {}));
 check("test:logic:all 包含 back-priority-regression", String(packageJson.scripts?.["test:logic:all"] ?? "").includes("test:logic:back-priority-regression"));
 
