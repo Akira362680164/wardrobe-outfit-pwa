@@ -663,7 +663,7 @@ export class SessionService {
     });
 
     if (!rotated) {
-      return this.refresh(input);
+      return this.handleRotationRace(oldRefreshTokenHash, input, now);
     }
 
     await this.store.recordSecurityEvent({
@@ -673,6 +673,26 @@ export class SessionService {
     });
 
     return payload;
+  }
+
+  private async handleRotationRace(
+    oldRefreshTokenHash: string,
+    input: { refreshToken: string; refreshRequestId: string; deviceId: string },
+    now: Date,
+  ) {
+    // re-read after rotation race — one controlled retry, not unbounded recursion
+    const refreshed = await this.store.findRefreshTokenByHash(oldRefreshTokenHash);
+    if (!refreshed) {
+      throw new AuthApiError(401, "AUTH_TOKEN_INVALID", "Refresh token no longer exists");
+    }
+    if (refreshed.status === "active") {
+      // another concurrent refresh won the rotation race — conflict
+      throw new AuthApiError(409, "AUTH_REFRESH_RACE", "Concurrent refresh detected, retry with new token");
+    }
+    if (refreshed.status === "used" || refreshed.status === "revoked") {
+      return this.handleUsedRefreshToken(refreshed, input.refreshRequestId, input.deviceId, now);
+    }
+    throw new AuthApiError(401, "AUTH_TOKEN_INVALID", "Invalid refresh token state after rotation race");
   }
 
   async logout(claims: AccessTokenClaims) {
