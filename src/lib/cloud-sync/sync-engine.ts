@@ -119,7 +119,12 @@ export async function listPendingOutbox(
   userId: string,
   limit = 100,
 ): Promise<WorkspaceSyncOutboxRecord[]> {
-  const rows = await db.syncOutbox.where("userId").equals(userId).filter((row) => row.status === "pending").toArray();
+  const now = new Date().toISOString();
+  const rows = await db.syncOutbox
+    .where("userId")
+    .equals(userId)
+    .filter((row) => row.status === "pending" || (row.status === "failed" && row.retryable === true && (row.nextAttemptAt ?? "") <= now))
+    .toArray();
   return rows.sort((a, b) => a.createdAt.localeCompare(b.createdAt)).slice(0, limit);
 }
 
@@ -150,12 +155,33 @@ export async function markOutboxFailed(
 ): Promise<void> {
   const existing = await db.syncOutbox.get(mutationId);
   if (!existing) return;
+  const nextAttemptCount = existing.attemptCount + 1;
+  const retryable = isOutboxErrorRetryable(errorCode);
+  const now = new Date();
+  const nextAttemptAt = retryable
+    ? new Date(now.getTime() + computeBackoffMs(nextAttemptCount)).toISOString()
+    : undefined;
   await db.syncOutbox.update(mutationId, {
     status: "failed",
-    attemptCount: existing.attemptCount + 1,
+    attemptCount: nextAttemptCount,
     lastErrorCode: errorCode,
-    updatedAt: new Date().toISOString(),
-  });
+    lastErrorAt: now.toISOString(),
+    retryable,
+    nextAttemptAt,
+    updatedAt: now.toISOString(),
+  } as Partial<WorkspaceSyncOutboxRecord>);
+}
+
+const RETRYABLE_OUTBOX_ERRORS = new Set([
+  "NETWORK_ERROR",
+  "SERVER_ERROR",
+  "CLOUD_UNREACHABLE",
+  "TIMEOUT",
+  "DNS_FAILURE",
+]);
+
+function isOutboxErrorRetryable(errorCode: string): boolean {
+  return RETRYABLE_OUTBOX_ERRORS.has(errorCode);
 }
 
 export async function recordConflict(
