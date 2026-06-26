@@ -1,11 +1,11 @@
-# 账号与同步说明（阶段 1A / 1B-B2 · 内部测试）
+# 账号与同步说明（阶段 1A / 1B-B3 · 内部测试）
 
-> 适用版本：阶段 1A（账号认证 + 服务器底座 + AuthGate）到阶段 1B-B2（每账号本机工作区 registry、新本地 schema 与纯读取 repository，默认相关开关关闭）。
+> 适用版本：阶段 1A（账号认证 + 服务器底座 + AuthGate）到阶段 1B-B3（每账号本机工作区、本地 schema、云端业务 schema 与同步契约，默认相关开关关闭）。
 > 不构成对后续阶段功能的承诺。后续阶段会单独更新本文档。
 
 ## 1. 阶段 1A 实际提供的能力
 
-| 能力 | 是否在 1A / 1B-B2 | 备注 |
+| 能力 | 是否在 1A / 1B-B3 | 备注 |
 | --- | --- | --- |
 | 手机号 + 密码注册 | ✅ | 密码 Argon2id 哈希保存，注册申请 30 分钟过期 |
 | 手机号 + 密码登录 | ✅ | 返回 Access Token + Refresh Token |
@@ -17,6 +17,7 @@
 | `NEXT_PUBLIC_CLOUD_AUTH_ENABLED` 开关 | ✅ | 默认 `false` |
 | 每账号本机工作区 registry | ✅ B1 | 由 `NEXT_PUBLIC_ACCOUNT_WORKSPACE_ENABLED` 控制，默认 `false` |
 | 每账号新 Dexie schema 与读取 repository | ✅ B2 | 仅数据层，不接业务 UI |
+| 云端业务 schema 与同步契约 | ✅ B3 | 仅 migration / Drizzle schema / Zod contracts，不启用同步引擎 |
 
 ## 2. 阶段 1A 明确**不**提供的能力
 
@@ -80,6 +81,14 @@ B2 新增每账号独立 Dexie schema，数据库名仍使用 `wardrobe_account_
 - `migrationState`
 
 B2 只提供纯读取 repository 和事务写入封装；现有衣橱首页、录入、套装、种草、穿着统计和计划页面仍读取旧本机库，直到 1B 后续 B5a-B5d 逐段迁移。
+
+B3 新增云端业务 schema 和共享同步契约，包含：
+
+- PostgreSQL 表：`wardrobes`、`garments`、`outfits`、`outfit_items`、`wishlist_items`、`wear_events`、`trip_plans`、`outfit_plans`、`assets`、`sync_changes`、`sync_mutations`
+- 共享契约：bootstrap、push、pull、resolve-conflict
+- 约束：`sync_changes` 按 `user_id + change_seq` 唯一，`sync_mutations` 按 `user_id + mutation_id` 幂等
+
+B3 仍不注册 `/api/sync/*` 可用业务接口；真正执行 bootstrap / push / pull 属于 B4 及后续。
 
 ## 4. 账号 = 身份认证，不是云端衣橱
 

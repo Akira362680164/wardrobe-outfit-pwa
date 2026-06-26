@@ -1,3 +1,22 @@
+## 2026-06-26 / v1.1.37 / Codex — cloud 1B B3 business schema and sync contracts
+
+- **目的**：按 V4 执行方案推进阶段 1B-B3，新增云端业务 PostgreSQL schema 与前后端共享同步契约，为后续 B4 Outbox / push / pull 引擎提供固定边界。
+- **改动文件**：
+  - `services/wardrobe-api/src/db/schema.ts`：新增 `wardrobes`、`garments`、`outfits`、`outfitItems`、`wishlistItems`、`wearEvents`、`tripPlans`、`outfitPlans`、`assets`、`syncChanges`、`syncMutations` Drizzle schema；包含软删除、revision、originDeviceId、payload、用户归属和同步索引。
+  - `services/wardrobe-api/migrations/0001_business_sync_schema.sql` / `migrations/meta/_journal.json`：新增业务同步 SQL migration；`sync_changes` 通过 `user_id + change_seq` 固定每用户游标序列约束，`sync_mutations` 通过 `user_id + mutation_id` 固定幂等约束。
+  - `packages/cloud-contracts/src/sync/contracts.ts` / `src/index.ts`：新增 bootstrap、push、pull、resolve-conflict Zod 合同与类型导出。
+  - `services/wardrobe-api/tests/sync-contracts.test.ts`：新增 schema / migration / contract 守护测试。
+  - `docs/cloud/account-and-sync.md`：更新说明到阶段 1B-B3，明确本轮仍不启用同步引擎。
+- **范围说明**：本轮不注册可用 `/api/sync/*` 业务接口，不执行 bootstrap / push / pull，不做服务端级联写入、不做冲突处理、不修改前端业务读写、不交付 APK。
+- **验证结果**：
+  - `npm run cloud:contracts:typecheck`：✅ 通过。
+  - `npm run api:typecheck`：✅ 通过。
+  - `npm run api:test`：✅ 5 files / 32 tests passed。
+  - `git diff --check`：✅ 通过。
+  - `node scripts/review-gate.mjs --staged`：✅ `risk_gate=high`，`subagent_trigger=user_request_only`。
+- **风险门禁**：**high**。涉及 PostgreSQL schema、migration、同步契约和服务端类型；未触发独立审查 subagent：用户未通知，本轮由主 Codex 实现核心代码。
+- **未验证风险 / 下一步**：未在腾讯云生产库运行 migration；未进行真实 `/api/sync/*` 请求验证，因为 B3 只固定 schema/contracts。下一步按执行方案进入 B4 Outbox 与同步引擎。
+
 ## 2026-06-26 / v1.1.37 / Codex — cloud 1B B2 account workspace schema and repository
 
 - **目的**：按 V4 执行方案推进阶段 1B-B2，新增每账号独立 Dexie 工作区 schema、纯读取 repository 和事务写入封装；不接入真实 UI，不改现有业务页面读写路径。

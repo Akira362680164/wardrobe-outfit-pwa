@@ -1,4 +1,5 @@
 import {
+  bigint,
   boolean,
   index,
   integer,
@@ -28,6 +29,29 @@ export const refreshTokenStatus = pgEnum("refresh_token_status", [
   "active",
   "used",
   "revoked",
+]);
+
+export const syncEntityType = pgEnum("sync_entity_type", [
+  "garment",
+  "outfit",
+  "outfitItem",
+  "wishlistItem",
+  "wearEvent",
+  "tripPlan",
+  "outfitPlan",
+  "asset",
+]);
+
+export const syncMutationOperation = pgEnum("sync_mutation_operation", [
+  "create",
+  "update",
+  "delete",
+]);
+
+export const syncMutationStatus = pgEnum("sync_mutation_status", [
+  "accepted",
+  "conflict",
+  "rejected",
 ]);
 
 export const users = pgTable("users", {
@@ -148,5 +172,192 @@ export const accountSecurityEvents = pgTable(
   (table) => ({
     userCreatedIdx: index("account_security_events_user_created_idx").on(table.userId, table.createdAt),
     eventTypeIdx: index("account_security_events_event_type_idx").on(table.eventType),
+  }),
+);
+
+const syncEntityColumns = {
+  userId: uuid("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  revision: integer("revision").notNull().default(1),
+  originDeviceId: text("origin_device_id").notNull(),
+  payload: jsonb("payload").notNull().default({}),
+  deletedAt: timestamp("deleted_at", { withTimezone: true }),
+  ...timestamps,
+};
+
+export const wardrobes = pgTable(
+  "wardrobes",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: uuid("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+    name: text("name").notNull().default("默认衣橱"),
+    deletedAt: timestamp("deleted_at", { withTimezone: true }),
+    ...timestamps,
+  },
+  (table) => ({
+    userUpdatedIdx: index("wardrobes_user_updated_idx").on(table.userId, table.updatedAt),
+  }),
+);
+
+export const garments = pgTable(
+  "garments",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    wardrobeId: uuid("wardrobe_id").references(() => wardrobes.id, { onDelete: "set null" }),
+    ...syncEntityColumns,
+  },
+  (table) => ({
+    userRevisionIdx: index("garments_user_revision_idx").on(table.userId, table.revision),
+    userUpdatedIdx: index("garments_user_updated_idx").on(table.userId, table.updatedAt),
+  }),
+);
+
+export const outfits = pgTable(
+  "outfits",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    ...syncEntityColumns,
+  },
+  (table) => ({
+    userRevisionIdx: index("outfits_user_revision_idx").on(table.userId, table.revision),
+    userUpdatedIdx: index("outfits_user_updated_idx").on(table.userId, table.updatedAt),
+  }),
+);
+
+export const outfitItems = pgTable(
+  "outfit_items",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: uuid("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+    outfitId: uuid("outfit_id").notNull().references(() => outfits.id, { onDelete: "cascade" }),
+    garmentId: uuid("garment_id").notNull().references(() => garments.id, { onDelete: "cascade" }),
+    revision: integer("revision").notNull().default(1),
+    originDeviceId: text("origin_device_id").notNull(),
+    sortOrder: integer("sort_order"),
+    deletedAt: timestamp("deleted_at", { withTimezone: true }),
+    ...timestamps,
+  },
+  (table) => ({
+    outfitIdx: index("outfit_items_outfit_id_idx").on(table.outfitId),
+    garmentIdx: index("outfit_items_garment_id_idx").on(table.garmentId),
+    userRevisionIdx: index("outfit_items_user_revision_idx").on(table.userId, table.revision),
+  }),
+);
+
+export const wishlistItems = pgTable(
+  "wishlist_items",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    ...syncEntityColumns,
+  },
+  (table) => ({
+    userRevisionIdx: index("wishlist_items_user_revision_idx").on(table.userId, table.revision),
+    userUpdatedIdx: index("wishlist_items_user_updated_idx").on(table.userId, table.updatedAt),
+  }),
+);
+
+export const wearEvents = pgTable(
+  "wear_events",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: uuid("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+    garmentId: uuid("garment_id").references(() => garments.id, { onDelete: "set null" }),
+    outfitId: uuid("outfit_id").references(() => outfits.id, { onDelete: "set null" }),
+    wornAt: timestamp("worn_at", { withTimezone: true }).notNull(),
+    revision: integer("revision").notNull().default(1),
+    originDeviceId: text("origin_device_id").notNull(),
+    payload: jsonb("payload").notNull().default({}),
+    deletedAt: timestamp("deleted_at", { withTimezone: true }),
+    ...timestamps,
+  },
+  (table) => ({
+    userWornIdx: index("wear_events_user_worn_idx").on(table.userId, table.wornAt),
+    garmentIdx: index("wear_events_garment_id_idx").on(table.garmentId),
+    outfitIdx: index("wear_events_outfit_id_idx").on(table.outfitId),
+  }),
+);
+
+export const tripPlans = pgTable(
+  "trip_plans",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    startDate: text("start_date"),
+    endDate: text("end_date"),
+    ...syncEntityColumns,
+  },
+  (table) => ({
+    userUpdatedIdx: index("trip_plans_user_updated_idx").on(table.userId, table.updatedAt),
+  }),
+);
+
+export const outfitPlans = pgTable(
+  "outfit_plans",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    tripPlanId: uuid("trip_plan_id").references(() => tripPlans.id, { onDelete: "set null" }),
+    outfitId: uuid("outfit_id").references(() => outfits.id, { onDelete: "set null" }),
+    planDate: text("plan_date"),
+    ...syncEntityColumns,
+  },
+  (table) => ({
+    userDateIdx: index("outfit_plans_user_date_idx").on(table.userId, table.planDate),
+    tripPlanIdx: index("outfit_plans_trip_plan_id_idx").on(table.tripPlanId),
+  }),
+);
+
+export const assets = pgTable(
+  "assets",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    ownerEntityType: syncEntityType("owner_entity_type").notNull(),
+    ownerEntityId: uuid("owner_entity_id").notNull(),
+    sha256: text("sha256"),
+    mimeType: text("mime_type"),
+    storageKey: text("storage_key"),
+    ...syncEntityColumns,
+  },
+  (table) => ({
+    userOwnerIdx: index("assets_user_owner_idx").on(table.userId, table.ownerEntityType, table.ownerEntityId),
+    shaIdx: index("assets_sha256_idx").on(table.sha256),
+  }),
+);
+
+export const syncChanges = pgTable(
+  "sync_changes",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: uuid("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+    changeSeq: bigint("change_seq", { mode: "number" }).notNull(),
+    entityType: syncEntityType("entity_type").notNull(),
+    entityId: uuid("entity_id").notNull(),
+    operation: syncMutationOperation("operation").notNull(),
+    revision: integer("revision").notNull(),
+    payload: jsonb("payload").notNull().default({}),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => ({
+    userSeqUnique: uniqueIndex("sync_changes_user_seq_unique").on(table.userId, table.changeSeq),
+    userEntityIdx: index("sync_changes_user_entity_idx").on(table.userId, table.entityType, table.entityId),
+  }),
+);
+
+export const syncMutations = pgTable(
+  "sync_mutations",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: uuid("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+    mutationId: uuid("mutation_id").notNull(),
+    entityType: syncEntityType("entity_type").notNull(),
+    entityId: uuid("entity_id").notNull(),
+    operation: syncMutationOperation("operation").notNull(),
+    baseRevision: integer("base_revision"),
+    status: syncMutationStatus("status").notNull(),
+    resultRevision: integer("result_revision"),
+    errorCode: text("error_code"),
+    payload: jsonb("payload").notNull().default({}),
+    ...timestamps,
+  },
+  (table) => ({
+    userMutationUnique: uniqueIndex("sync_mutations_user_mutation_unique").on(table.userId, table.mutationId),
+    userEntityIdx: index("sync_mutations_user_entity_idx").on(table.userId, table.entityType, table.entityId),
   }),
 );
