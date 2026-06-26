@@ -4,18 +4,19 @@ import { z } from "zod";
 import { AuthApiError, RegistrationService } from "./registrations.js";
 import { type SessionService } from "./session.js";
 
+const RegisterBodySchema = z.object({
+  phone: z.string().min(1),
+  password: z.string().min(8).max(256),
+  deviceId: z.string().min(1).max(200),
+  deviceLabel: z.string().max(200).optional(),
+});
+
 const RegistrationParamsSchema = z.object({
   registrationId: z.string().uuid(),
 });
 
-const RegistrationRequestBodySchema = z.object({
-  phone: z.string().min(1),
-  password: z.string().min(8).max(256),
-});
-
 const RegistrationSecretBodySchema = z.object({
   clientSecret: z.string().min(16),
-  deviceId: z.string().min(1).max(200),
 });
 
 export function registerAuthRoutes(
@@ -23,29 +24,24 @@ export function registerAuthRoutes(
   registrationService = new RegistrationService(),
   sessionService?: SessionService,
 ) {
-  app.post("/api/auth/registrations", async (request, reply) => {
+  app.post("/api/auth/register", async (request, reply) => {
     try {
-      const body = RegistrationRequestBodySchema.parse(request.body);
-      return await registrationService.requestRegistration({
+      const body = RegisterBodySchema.parse(request.body);
+      const result = await registrationService.directRegister({
         phone: body.phone,
         password: body.password,
         rateLimitKey: request.ip,
         ip: request.ip,
         userAgent: request.headers["user-agent"],
       });
-    } catch (error) {
-      return sendAuthError(reply, error);
-    }
-  });
-
-  app.post("/api/auth/registrations/:registrationId/status", async (request, reply) => {
-    try {
-      rejectClientSecretInQuery(request);
-      const params = RegistrationParamsSchema.parse(request.params);
-      const body = RegistrationSecretBodySchema.parse(request.body);
-      return await registrationService.getRegistrationStatus({
-        registrationId: params.registrationId,
-        clientSecret: body.clientSecret,
+      if (!sessionService) {
+        return reply.code(500).send({ code: "internal_error", message: "Session service unavailable" });
+      }
+      return await sessionService.completeNewRegistration({
+        userId: result.userId,
+        maskedPhone: result.maskedPhone,
+        deviceId: body.deviceId,
+        deviceLabel: body.deviceLabel,
       });
     } catch (error) {
       return sendAuthError(reply, error);
@@ -62,24 +58,6 @@ export function registerAuthRoutes(
         clientSecret: body.clientSecret,
       });
       return { status: "cancelled" as const };
-    } catch (error) {
-      return sendAuthError(reply, error);
-    }
-  });
-
-  app.post("/api/auth/registrations/:registrationId/complete", async (request, reply) => {
-    try {
-      rejectClientSecretInQuery(request);
-      const params = RegistrationParamsSchema.parse(request.params);
-      const body = RegistrationSecretBodySchema.parse(request.body);
-      const completed = await registrationService.completeRegistration({
-        registrationId: params.registrationId,
-        clientSecret: body.clientSecret,
-        deviceId: body.deviceId,
-      });
-      if (!sessionService) return completed;
-      const tokens = await sessionService.issueTokensForExistingSession(completed);
-      return { status: "completed" as const, ...tokens };
     } catch (error) {
       return sendAuthError(reply, error);
     }

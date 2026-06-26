@@ -44,6 +44,11 @@ export interface CompletedRegistration {
   maskedPhone: string;
 }
 
+export interface DirectRegistrationResult {
+  userId: string;
+  maskedPhone: string;
+}
+
 export interface SecurityEventInput {
   userId?: string | null;
   eventType: string;
@@ -75,6 +80,12 @@ export interface RegistrationStore {
     now: Date;
   }): Promise<CompletedRegistration | null>;
   recordSecurityEvent(input: SecurityEventInput): Promise<void>;
+  createDirectRegistration(input: {
+    phoneE164: string;
+    maskedPhone: string;
+    passwordHash: string;
+    now: Date;
+  }): Promise<DirectRegistrationResult>;
 }
 
 export class AuthApiError extends Error {
@@ -248,6 +259,33 @@ export class PostgresRegistrationStore implements RegistrationStore {
       redacted: true,
     });
   }
+
+  async createDirectRegistration(input: {
+    phoneE164: string;
+    maskedPhone: string;
+    passwordHash: string;
+    now: Date;
+  }) {
+    return getDb().transaction(async (tx) => {
+      const [createdUser] = await tx.insert(users).values({}).returning({ id: users.id });
+      await tx.insert(phoneIdentities).values({
+        userId: createdUser.id,
+        phoneE164: input.phoneE164,
+        maskedPhone: input.maskedPhone,
+        verifiedAt: null,
+        createdAt: input.now,
+        updatedAt: input.now,
+      });
+      await tx.insert(passwordCredentials).values({
+        userId: createdUser.id,
+        passwordHash: input.passwordHash,
+        changedAt: input.now,
+        createdAt: input.now,
+        updatedAt: input.now,
+      });
+      return { userId: createdUser.id, maskedPhone: input.maskedPhone };
+    });
+  }
 }
 
 export class RegistrationService {
@@ -383,6 +421,61 @@ export class RegistrationService {
     }
     await this.store.cancelPendingRegistrations(registration.phoneE164, now);
     return { status: "cancelled" as const };
+  }
+
+  async directRegister(input: {
+    phone: string;
+    password: string;
+    rateLimitKey: string;
+    ip?: string;
+    userAgent?: string;
+  }) {
+    const now = this.now();
+    const phoneE164 = normalizePhoneE164(input.phone);
+    const maskedPhone = maskPhoneE164(phoneE164);
+    const rate = this.limiter.take(`registration:${input.rateLimitKey}:${phoneE164}`, now.getTime());
+
+    if (!rate.allowed) {
+      await this.store.recordSecurityEvent({
+        eventType: "registration.rate_limited",
+        ip: input.ip,
+        userAgent: input.userAgent,
+        metadata: { maskedPhone },
+      });
+      throw new AuthApiError(429, "rate_limited", "Too many registration attempts", rate.retryAfterSeconds);
+    }
+
+    try {
+      if (await this.store.hasUserForPhone(phoneE164)) {
+        throw new AuthApiError(409, "phone_already_registered", "Phone is already registered");
+      }
+
+      const result = await this.store.createDirectRegistration({
+        phoneE164,
+        maskedPhone,
+        passwordHash: await hashPassword(input.password),
+        now,
+      });
+
+      await this.store.recordSecurityEvent({
+        userId: result.userId,
+        eventType: "registration.succeeded",
+        ip: input.ip,
+        userAgent: input.userAgent,
+        metadata: { maskedPhone },
+      });
+
+      return result;
+    } catch (error) {
+      if (error instanceof AuthApiError) throw error;
+      await this.store.recordSecurityEvent({
+        eventType: "registration.failed",
+        ip: input.ip,
+        userAgent: input.userAgent,
+        metadata: { maskedPhone },
+      });
+      throw error;
+    }
   }
 
   async verifyPendingRegistrationWithDevelopmentCli(registrationId: string) {

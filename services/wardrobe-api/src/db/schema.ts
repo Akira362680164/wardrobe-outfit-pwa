@@ -69,7 +69,7 @@ export const phoneIdentities = pgTable(
     userId: uuid("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
     phoneE164: text("phone_e164").notNull(),
     maskedPhone: text("masked_phone").notNull(),
-    verifiedAt: timestamp("verified_at", { withTimezone: true }).notNull(),
+    verifiedAt: timestamp("verified_at", { withTimezone: true }),
     ...timestamps,
   },
   (table) => ({
