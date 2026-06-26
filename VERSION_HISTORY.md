@@ -1,3 +1,22 @@
+## 2026-06-26 / v1.1.37 / Codex — cloud 1A unblock full logic validation
+
+- **目的**：修复 Worker C 在 A6 验证阶段发现的过期测试断言，解除 `npm run test:logic:all` 阻断，便于继续内部测试 APK 收口。
+- **Worker 执行**：
+  - MiniMax Worker C 通过显式 `model_provider="minimax"`、`model_catalog_json="/Users/fangzheng/.codex/model-catalogs/custom-catalog.json"` 与 Keychain 注入的 `MINIMAX_API_KEY` 成功启动。
+  - Worker C 按只读验证边界执行，确认签名文件存在，`npm run typecheck` 通过，但 `npm run test:logic:all` 在 `test:logic:data-repo` 旧断言处失败；Worker C 未改源码、未提交、未打 APK。
+- **改动文件**：
+  - `scripts/test-data-repo.ts`：将 v1.1.8 后加固断言从“`test:logic:app-route` 与 `test:logic:data-repo` 必须相邻”改为“二者都存在且 `app-route` 位于 `data-repo` 之前”，避免新增中间子套件时误报，同时继续防止历史损坏拼接。
+- **范围说明**：只修测试断言，不改变业务代码、不改变 `package.json` 测试顺序、不改 Android 或认证实现。
+- **验证结果**：
+  - Worker C `git status --short`：✅ 仅 `?? .vscode/`。
+  - Worker C 签名文件存在性检查：✅ `android/signing/wardrobe-fixed.jks` 与 `android/signing/wardrobe-signing.properties` 均存在，未读取 properties 内容。
+  - Worker C `npm run typecheck`：✅ 通过。
+  - Worker C `npm run test:logic:all`：❌ 失败于过期断言，已由本记录修复。
+  - `npm run test:logic:data-repo`：✅ 63 passed, 0 failed。
+  - `npm run test:logic:all`：✅ 通过。
+- **风险门禁**：**low**。仅修测试断言；未触发独立审查 subagent：用户未通知。
+- **未验证风险 / 下一步**：尚未在修复后重跑 Worker C 的 APK 打包和签名摘要收集；下一步继续 A6。
+
 ## 2026-06-26 / v1.1.37 / Codex — cloud 1A Worker B legal docs + active app route fix
 
 - **目的**：按 V4 执行方案补齐阶段 1A 内部测试用用户协议、隐私政策、账号与同步说明，并修正 A5 后发现的 Next 活跃路由树问题，确保认证壳层和法律页真实进入生产构建 / APK 静态产物。

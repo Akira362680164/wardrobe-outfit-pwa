@@ -76,9 +76,11 @@ check("WardrobeApp no longer directly imports deleteWardrobeItemsWithCascade", !
 console.log("\n=== v1.1.8 post-hotfix package.json ===");
 const pkg = JSON.parse(packageJson) as { scripts: Record<string, string> };
 const testLogicAll = pkg.scripts["test:logic:all"] ?? "";
+const appRouteTestIndex = testLogicAll.indexOf("npm run test:logic:app-route");
+const dataRepoTestIndex = testLogicAll.indexOf("npm run test:logic:data-repo");
 check(
-  "package.json test:logic:all 包含 npm run test:logic:app-route && npm run test:logic:data-repo",
-  testLogicAll.includes("npm run test:logic:app-route && npm run test:logic:data-repo"),
+  "package.json test:logic:all 包含 app-route 和 data-repo 且顺序正确",
+  appRouteTestIndex >= 0 && dataRepoTestIndex > appRouteTestIndex,
 );
 check(
   "package.json test:logic:all 不包含损坏拼接 'app-route npm run test:logic:data-repo'",
