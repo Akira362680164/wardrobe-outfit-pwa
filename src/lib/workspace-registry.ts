@@ -152,6 +152,7 @@ export function markWorkspaceLoggedOut(
 
   const nextRecord: AccountWorkspaceRecord = {
     ...current,
+    activeWorkspaceGeneration: current.activeWorkspaceGeneration + 1,
     explicitlyLoggedOutAt: loggedOutAt,
     offlineAccessUntil: undefined,
   };

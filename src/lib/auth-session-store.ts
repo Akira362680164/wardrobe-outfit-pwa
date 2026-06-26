@@ -76,6 +76,7 @@ export async function saveAuthTokens(snapshot: AuthSessionSnapshot, tokens: Auth
     refreshTokenExpiresAt: tokens.refreshTokenExpiresAt,
     user: tokens.user,
     pendingRegistration: undefined,
+    offlineAccessUntil: computeOfflineAccessUntil(tokens.refreshTokenExpiresAt),
   };
   await saveAuthSessionSnapshot(next);
   return next;
@@ -132,6 +133,12 @@ export function isAccessTokenFresh(snapshot: AuthSessionSnapshot, skewMs = 60_00
 
 export function createRefreshRequestId(): string {
   return globalThis.crypto?.randomUUID?.() ?? `refresh-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+}
+
+export function computeOfflineAccessUntil(refreshTokenExpiresAt: string, now = new Date()): string {
+  const refreshExpiry = Date.parse(refreshTokenExpiresAt);
+  const maxOffline = now.getTime() + 30 * 24 * 60 * 60 * 1000;
+  return new Date(Math.min(refreshExpiry, maxOffline)).toISOString();
 }
 
 function parseSessionSnapshot(raw: string | null): AuthSessionSnapshot | null {

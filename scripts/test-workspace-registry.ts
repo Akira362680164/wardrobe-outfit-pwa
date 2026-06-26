@@ -81,6 +81,7 @@ const loggedOutB = loggedOut.workspaces[userB.id];
 check("主动退出保留工作区记录", Boolean(loggedOutB) && loggedOutB.dbName === openedB.dbName);
 check("主动退出清 active workspace", loggedOut.activeUserId === undefined && loggedOut.activeDbName === undefined);
 check("主动退出写标记并失效离线授权", loggedOutB.explicitlyLoggedOutAt === "2026-06-26T10:20:00.000Z" && !isWorkspaceOfflineAuthorized(loggedOutB));
+check("主动退出递增 generation", loggedOutB.activeWorkspaceGeneration === openedB.activeWorkspaceGeneration + 1);
 
 const reloggedB = openWorkspaceForUser({
   user: userB,

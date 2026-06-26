@@ -50,6 +50,7 @@ function LoginForm({ onSwitch }: { onSwitch: () => void }) {
   const auth = useAuth();
   const [phone, setPhone] = useState("");
   const [password, setPassword] = useState("");
+  const authUnavailable = auth.connectivity !== "cloud_ready";
 
   return (
     <form
@@ -61,9 +62,10 @@ function LoginForm({ onSwitch }: { onSwitch: () => void }) {
     >
       <AuthHeader title="登录衣橱账号" subtitle="登录后打开本机账号工作区" />
       <AuthError />
+      {authUnavailable ? <p className="rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-700">登录需要连接云端</p> : null}
       <TextField label="手机号" value={phone} onChange={setPhone} autoComplete="tel" inputMode="tel" />
       <TextField label="密码" value={password} onChange={setPassword} type="password" autoComplete="current-password" />
-      <button type="submit" disabled={auth.isBusy} className="inline-flex h-11 items-center justify-center gap-2 rounded-lg bg-denim text-sm font-semibold text-white disabled:opacity-60">
+      <button type="submit" disabled={auth.isBusy || authUnavailable} className="inline-flex h-11 items-center justify-center gap-2 rounded-lg bg-denim text-sm font-semibold text-white disabled:opacity-60">
         {auth.isBusy ? <Loader2 size={16} className="animate-spin" aria-hidden="true" /> : <Lock size={16} aria-hidden="true" />}
         登录
       </button>
@@ -81,6 +83,7 @@ function RegisterForm({ onSwitch }: { onSwitch: () => void }) {
   const [confirm, setConfirm] = useState("");
   const [accepted, setAccepted] = useState(false);
   const [localError, setLocalError] = useState<string | null>(null);
+  const authUnavailable = auth.connectivity !== "cloud_ready";
 
   return (
     <form
@@ -101,6 +104,7 @@ function RegisterForm({ onSwitch }: { onSwitch: () => void }) {
     >
       <AuthHeader title="注册衣橱账号" subtitle="阶段 1A 使用开发验证，暂不接入短信或微信验证" />
       <AuthError override={localError} />
+      {authUnavailable ? <p className="rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-700">注册需要连接云端</p> : null}
       <TextField label="手机号" value={phone} onChange={setPhone} autoComplete="tel" inputMode="tel" />
       <TextField label="密码" value={password} onChange={setPassword} type="password" autoComplete="new-password" />
       <TextField label="确认密码" value={confirm} onChange={setConfirm} type="password" autoComplete="new-password" />
@@ -123,7 +127,7 @@ function RegisterForm({ onSwitch }: { onSwitch: () => void }) {
           </Link>
         </span>
       </div>
-      <button type="submit" disabled={auth.isBusy} className="inline-flex h-11 items-center justify-center gap-2 rounded-lg bg-denim text-sm font-semibold text-white disabled:opacity-60">
+      <button type="submit" disabled={auth.isBusy || authUnavailable} className="inline-flex h-11 items-center justify-center gap-2 rounded-lg bg-denim text-sm font-semibold text-white disabled:opacity-60">
         {auth.isBusy ? <Loader2 size={16} className="animate-spin" aria-hidden="true" /> : <User size={16} aria-hidden="true" />}
         注册
       </button>

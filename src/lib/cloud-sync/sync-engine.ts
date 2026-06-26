@@ -40,7 +40,7 @@ import {
   requestPush,
   requestResolveConflict,
 } from "@/lib/cloud-sync/cloud-sync-api";
-import { isNetworkOnline } from "@/lib/cloud-sync/connectivity";
+import { probeCloudConnectivity } from "@/lib/cloud-sync/connectivity";
 import type {
   BootstrapResponse,
   PullResponse,
@@ -788,8 +788,9 @@ export async function runSyncOnce(input: SyncRunInput): Promise<SyncRunResult> {
   if (!isAccountWorkspaceEnabled() || !isCloudSyncEnabled()) {
     return { bootstrapped: false, pushed: 0, pulled: 0, conflicts: 0, skipped: true, reason: "sync_disabled" };
   }
-  if (!isNetworkOnline()) {
-    return { bootstrapped: false, pushed: 0, pulled: 0, conflicts: 0, skipped: true, reason: "offline" };
+  const connectivity = await probeCloudConnectivity();
+  if (connectivity !== "cloud_ready") {
+    return { bootstrapped: false, pushed: 0, pulled: 0, conflicts: 0, skipped: true, reason: connectivity };
   }
 
   const db = getAccountWorkspaceDb(input.workspace);
@@ -886,8 +887,9 @@ export async function runBootstrap(input: SyncRunInput): Promise<SyncRunResult> 
   if (!isAccountWorkspaceEnabled() || !isCloudSyncEnabled()) {
     return { bootstrapped: false, pushed: 0, pulled: 0, conflicts: 0, skipped: true, reason: "sync_disabled" };
   }
-  if (!isNetworkOnline()) {
-    return { bootstrapped: false, pushed: 0, pulled: 0, conflicts: 0, skipped: true, reason: "offline" };
+  const connectivity = await probeCloudConnectivity();
+  if (connectivity !== "cloud_ready") {
+    return { bootstrapped: false, pushed: 0, pulled: 0, conflicts: 0, skipped: true, reason: connectivity };
   }
   const db = getAccountWorkspaceDb(input.workspace);
   const guard = currentWorkspaceGuard(input.workspace);

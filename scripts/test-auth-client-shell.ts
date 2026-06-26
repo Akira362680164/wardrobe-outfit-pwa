@@ -53,7 +53,7 @@ check("MainActivity 注册 WardrobeSecureStoragePlugin", /registerPlugin\(Wardro
 check("API 客户端使用 POST 注册状态接口", /\/api\/auth\/registrations\/\$\{encodeURIComponent\(input\.registrationId\)\}\/status/.test(authApi) && /method: "POST"/.test(authApi));
 check("API 客户端有 refresh mutex", /let refreshPromise: Promise<AuthTokenPayload> \| null = null/.test(authApi) && /refreshPromise \?\?=/.test(authApi));
 check("AuthProvider 默认绑定 localOwner 防止阶段 1A 本机串号", /!isAccountWorkspaceEnabled\(\)[\s\S]*bindLocalOwnerIfNeeded/.test(authProvider) && /setPhase\("blocked"\)/.test(authProvider));
-check("AuthProvider 退出时标记账号工作区主动退出", /markWorkspaceLoggedOut/.test(authProvider) && /current\.user/.test(authProvider));
+check("AuthProvider 退出时标记账号工作区主动退出", /markCurrentWorkspaceLoggedOut\(current\)/.test(authProvider) && /markWorkspaceLoggedOut\(snapshot\.user\.id\)/.test(authProvider));
 check("WorkspaceGate 打开当前账号工作区后再渲染子节点", /openWorkspaceForSession/.test(workspaceGate) && /state\.status === "ready"[\s\S]*children/.test(workspaceGate));
 check("WorkspaceRegistry 包含 dbName/schema/generation/logout/offline 字段", /dbName: string/.test(workspaceRegistry) && /schemaVersion: number/.test(workspaceRegistry) && /activeWorkspaceGeneration: number/.test(workspaceRegistry) && /explicitlyLoggedOutAt/.test(workspaceRegistry) && /offlineAccessUntil/.test(workspaceRegistry));
 check("WorkspaceRegistry 提供迟到响应三重检查", /isWorkspaceResponseCurrent/.test(workspaceRegistry) && /current\.userId === response\.userId/.test(workspaceRegistry) && /current\.dbName === response\.dbName/.test(workspaceRegistry) && /current\.activeWorkspaceGeneration === response\.workspaceGeneration/.test(workspaceRegistry));

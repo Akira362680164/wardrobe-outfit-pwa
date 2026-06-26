@@ -1,11 +1,20 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { AuthSessionSnapshot } from "@/lib/auth-session-store";
-import { openWorkspaceForSession, type AccountWorkspaceRecord } from "@/lib/workspace-registry";
+import { computeBackoffMs, runBootstrap, runSyncOnce } from "@/lib/cloud-sync/sync-engine";
+import { probeCloudConnectivity, subscribeNetworkChanges, type ConnectivityState } from "@/lib/cloud-sync/connectivity";
+import {
+  isCloudSyncEnabled,
+  isWorkspaceOfflineAuthorized,
+  loadWorkspaceRegistry,
+  openWorkspaceForSession,
+  type AccountWorkspaceRecord,
+} from "@/lib/workspace-registry";
 
 type WorkspaceGateState =
   | { status: "preparing" }
+  | { status: "bootstrapping"; message: string }
   | { status: "ready"; workspace: AccountWorkspaceRecord }
   | { status: "failed"; message: string };
 
@@ -17,19 +26,102 @@ export function WorkspaceGate({
   children: React.ReactNode;
 }) {
   const [state, setState] = useState<WorkspaceGateState>({ status: "preparing" });
+  const workspaceRef = useRef<AccountWorkspaceRecord | null>(null);
 
   useEffect(() => {
     let cancelled = false;
+    let syncTimer: number | null = null;
+    let attemptCount = 0;
+
+    const scheduleSync = (workspace: AccountWorkspaceRecord, cloud: ConnectivityState = "unknown") => {
+      if (cancelled || !session.accessToken || !isCloudSyncEnabled()) return;
+      if (syncTimer) window.clearTimeout(syncTimer);
+      syncTimer = window.setTimeout(async () => {
+        const nextCloud = cloud === "cloud_ready" ? cloud : await probeCloudConnectivity();
+        if (cancelled || nextCloud !== "cloud_ready") {
+          attemptCount++;
+          scheduleSync(workspace);
+          return;
+        }
+        const result = await runSyncOnce({
+          workspace,
+          accessToken: session.accessToken!,
+          deviceId: session.deviceId,
+        });
+        if (cancelled) return;
+        if (result.skipped && result.reason !== "sync_disabled") {
+          attemptCount++;
+          scheduleSync(workspace);
+        } else {
+          attemptCount = 0;
+        }
+      }, computeBackoffMs(attemptCount));
+    };
+
+    const probeAndSync = async (workspace: AccountWorkspaceRecord) => {
+      const cloud = await probeCloudConnectivity();
+      if (!cancelled && cloud === "cloud_ready") scheduleSync(workspace, cloud);
+    };
+
     setState({ status: "preparing" });
-    try {
-      const workspace = openWorkspaceForSession(session);
-      if (!cancelled) setState({ status: "ready", workspace });
-    } catch (error) {
-      const message = error instanceof Error ? error.message : "本机衣橱工作区准备失败";
-      if (!cancelled) setState({ status: "failed", message });
-    }
+    workspaceRef.current = null;
+    const listener = subscribeNetworkChanges(() => {
+      const workspace = workspaceRef.current;
+      if (workspace) void probeAndSync(workspace);
+    });
+    const handleVisibility = () => {
+      const workspace = workspaceRef.current;
+      if (workspace && document.visibilityState === "visible") void probeAndSync(workspace);
+    };
+    document.addEventListener("visibilitychange", handleVisibility);
+
+    void (async () => {
+      try {
+        if (!session.user) throw new Error("账号会话缺少用户信息");
+        const existing = loadWorkspaceRegistry().workspaces[session.user.id];
+        const hasLocalWorkspace = Boolean(existing && !existing.explicitlyLoggedOutAt);
+        if (existing && isWorkspaceOfflineAuthorized(existing)) {
+          const workspace = openWorkspaceForSession(session);
+          workspaceRef.current = workspace;
+          if (!cancelled) setState({ status: "ready", workspace });
+          void probeAndSync(workspace);
+          return;
+        }
+
+        const cloud = await probeCloudConnectivity();
+        if (cloud !== "cloud_ready") {
+          throw new Error(hasLocalWorkspace ? "离线授权已失效，请联网重新登录" : "首次打开账号衣橱需要连接云端");
+        }
+        if (!session.accessToken) throw new Error("请重新登录后再打开账号衣橱");
+
+        const workspace = openWorkspaceForSession(session);
+        if (!hasLocalWorkspace) {
+          if (!isCloudSyncEnabled()) throw new Error("云端同步未开启，无法首次准备账号衣橱");
+          if (!cancelled) setState({ status: "bootstrapping", message: "正在从云端准备账号衣橱" });
+          const result = await runBootstrap({
+            workspace,
+            accessToken: session.accessToken,
+            deviceId: session.deviceId,
+          });
+          if (!result.bootstrapped && result.reason !== "sync_disabled") {
+            throw new Error("云端衣橱初始化失败，请稍后重试");
+          }
+        }
+        workspaceRef.current = workspace;
+        if (!cancelled) setState({ status: "ready", workspace });
+        scheduleSync(workspace, cloud);
+      } catch (error) {
+        const message = error instanceof Error ? error.message : "本机衣橱工作区准备失败";
+        if (!cancelled) setState({ status: "failed", message });
+      }
+    })();
+
     return () => {
       cancelled = true;
+      workspaceRef.current = null;
+      if (syncTimer) window.clearTimeout(syncTimer);
+      listener.disconnect();
+      document.removeEventListener("visibilitychange", handleVisibility);
     };
   }, [session]);
 
