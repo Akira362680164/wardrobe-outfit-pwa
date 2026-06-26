@@ -14,6 +14,7 @@
 import { isAccountWorkspaceEnabled, isCloudSyncEnabled, isWorkspaceResponseCurrent, type AccountWorkspaceRecord } from "@/lib/workspace-registry";
 import {
   type AccountWorkspaceDatabase,
+  type AccountWorkspaceTableName,
   type WorkspaceEntityType,
   type WorkspaceGarmentRecord,
   type WorkspaceOutfitRecord,
@@ -254,10 +255,15 @@ export interface WriteContext {
   payload: Record<string, unknown>;
 }
 
+type WorkspaceSyncWriteRecord<T extends WorkspaceSyncEntity> = Omit<T, "userId" | "originDeviceId" | "revision" | "createdAt" | "updatedAt"> & {
+  id?: string;
+};
+
 export async function writeGarment(
   db: AccountWorkspaceDatabase,
   ctx: WriteContext,
   garment: Omit<WorkspaceGarmentRecord, "userId" | "originDeviceId" | "revision" | "createdAt" | "updatedAt">,
+  operation: "create" | "update" = "create",
 ): Promise<WorkspaceGarmentRecord> {
   const now = new Date().toISOString();
   const record: WorkspaceGarmentRecord = {
@@ -280,7 +286,7 @@ export async function writeGarment(
         workspace: ctx.workspace,
         entityType: "garment",
         entityId: record.id,
-        operation: "create",
+        operation,
         payload: ctx.payload,
         baseRevision: ctx.baseRevision,
       });
@@ -310,6 +316,123 @@ export async function deleteGarment(
       });
     },
   );
+}
+
+async function writeWorkspaceSyncEntity<T extends WorkspaceSyncEntity>(
+  db: AccountWorkspaceDatabase,
+  ctx: WriteContext,
+  tableName: AccountWorkspaceTableName,
+  entityType: WorkspaceEntityType,
+  entity: WorkspaceSyncWriteRecord<T>,
+  operation: "create" | "update",
+): Promise<T> {
+  const now = new Date().toISOString();
+  const record: T = {
+    ...entity,
+    id: entity.id ?? createWorkspaceUuidV7(),
+    userId: ctx.workspace.userId,
+    originDeviceId: ctx.originDeviceId,
+    revision: ctx.baseRevision + 1,
+    createdAt: now,
+    updatedAt: now,
+  } as T;
+
+  await runWorkspaceWrite(
+    db,
+    [tableName, "syncOutbox"],
+    async () => {
+      await db.table(tableName).put(record);
+      await enqueueOutboxMutation(db, {
+        workspace: ctx.workspace,
+        entityType,
+        entityId: record.id,
+        operation,
+        payload: ctx.payload,
+        baseRevision: ctx.baseRevision,
+      });
+    },
+  );
+  return record;
+}
+
+async function deleteWorkspaceSyncEntity<T extends WorkspaceSyncEntity>(
+  db: AccountWorkspaceDatabase,
+  ctx: WriteContext,
+  tableName: AccountWorkspaceTableName,
+  entityType: WorkspaceEntityType,
+  record: T,
+): Promise<void> {
+  const deletedAt = new Date().toISOString();
+  await runWorkspaceWrite(
+    db,
+    [tableName, "syncOutbox"],
+    async () => {
+      await db.table(tableName).update(record.id, {
+        deletedAt,
+        revision: record.revision + 1,
+        updatedAt: deletedAt,
+      });
+      await enqueueOutboxMutation(db, {
+        workspace: ctx.workspace,
+        entityType,
+        entityId: record.id,
+        operation: "delete",
+        payload: {},
+        baseRevision: record.revision,
+      });
+    },
+  );
+}
+
+export function writeWearEvent(
+  db: AccountWorkspaceDatabase,
+  ctx: WriteContext,
+  wearEvent: WorkspaceSyncWriteRecord<WorkspaceWearEventRecord>,
+  operation: "create" | "update",
+): Promise<WorkspaceWearEventRecord> {
+  return writeWorkspaceSyncEntity(db, ctx, "wearEvents", "wearEvent", wearEvent, operation);
+}
+
+export function deleteWearEvent(
+  db: AccountWorkspaceDatabase,
+  ctx: WriteContext,
+  wearEvent: WorkspaceWearEventRecord,
+): Promise<void> {
+  return deleteWorkspaceSyncEntity(db, ctx, "wearEvents", "wearEvent", wearEvent);
+}
+
+export function writeTripPlan(
+  db: AccountWorkspaceDatabase,
+  ctx: WriteContext,
+  tripPlan: WorkspaceSyncWriteRecord<WorkspaceTripPlanRecord>,
+  operation: "create" | "update",
+): Promise<WorkspaceTripPlanRecord> {
+  return writeWorkspaceSyncEntity(db, ctx, "tripPlans", "tripPlan", tripPlan, operation);
+}
+
+export function deleteTripPlan(
+  db: AccountWorkspaceDatabase,
+  ctx: WriteContext,
+  tripPlan: WorkspaceTripPlanRecord,
+): Promise<void> {
+  return deleteWorkspaceSyncEntity(db, ctx, "tripPlans", "tripPlan", tripPlan);
+}
+
+export function writeOutfitPlan(
+  db: AccountWorkspaceDatabase,
+  ctx: WriteContext,
+  outfitPlan: WorkspaceSyncWriteRecord<WorkspaceOutfitPlanRecord>,
+  operation: "create" | "update",
+): Promise<WorkspaceOutfitPlanRecord> {
+  return writeWorkspaceSyncEntity(db, ctx, "outfitPlans", "outfitPlan", outfitPlan, operation);
+}
+
+export function deleteOutfitPlan(
+  db: AccountWorkspaceDatabase,
+  ctx: WriteContext,
+  outfitPlan: WorkspaceOutfitPlanRecord,
+): Promise<void> {
+  return deleteWorkspaceSyncEntity(db, ctx, "outfitPlans", "outfitPlan", outfitPlan);
 }
 
 export type WorkspaceOutfitWriteOperation = "create" | "update";

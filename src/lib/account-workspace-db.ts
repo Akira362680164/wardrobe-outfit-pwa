@@ -67,12 +67,15 @@ export interface WorkspaceWishlistItemRecord extends WorkspaceSyncEntity {
 }
 
 export interface WorkspaceWearEventRecord extends WorkspaceSyncEntity {
+  legacyWearEventKey?: string;
   garmentId?: string;
   outfitId?: string;
   wornAt: string;
+  payload?: unknown;
 }
 
 export interface WorkspaceTripPlanRecord extends WorkspaceSyncEntity {
+  legacyCalendarPlanId?: string;
   title?: string;
   startDate?: string;
   endDate?: string;
@@ -80,6 +83,7 @@ export interface WorkspaceTripPlanRecord extends WorkspaceSyncEntity {
 }
 
 export interface WorkspaceOutfitPlanRecord extends WorkspaceSyncEntity {
+  legacyPlanEntryId?: string;
   tripPlanId?: string;
   outfitId?: string;
   date?: string;

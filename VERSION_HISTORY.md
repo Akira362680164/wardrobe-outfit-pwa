@@ -1,3 +1,32 @@
+## 2026-06-26 / v1.1.37 / Codex — cloud 1B B5d wear events and plans bridge
+
+- **目的**：按 V4 执行方案继续阶段 1B-B5d，把单品 update/delete、穿着记录、旅行/计划与打包清单镜像到账号工作区 + `syncOutbox`。旧 Dexie 仍是业务主源，bridge 仅做 best-effort 镜像。
+- **改动文件**：
+  - `src/lib/cloud-sync/sync-engine.ts` / `src/lib/cloud-sync/index.ts`：新增 `writeWearEvent`、`deleteWearEvent`、`writeTripPlan`、`deleteTripPlan`、`writeOutfitPlan`、`deleteOutfitPlan`；`writeGarment` 支持 update outbox。
+  - `src/lib/cloud-sync/garment-bridge.ts`：补齐 `bridgeGarmentUpdate` / `bridgeGarmentDelete`，继续剔除图片 DataURL / 灵感图字段。
+  - `src/lib/cloud-sync/plan-bridge.ts`（新增）：桥接 `OutfitCalendarPlan -> tripPlans`、`OutfitPlanEntry -> outfitPlans`；打包清单没有独立云表，随 tripPlan payload 镜像。
+  - `src/lib/cloud-sync/wear-bridge.ts`（新增）：按当前 `wornDates` 派生 `wearEvents`，取消穿着时软删除已不存在日期的旧 event。
+  - `src/lib/account-workspace-db.ts`：为 B5d 的旧 ID 映射补普通字段（不改 Dexie store 索引、不升 schema version）。
+  - `src/lib/outfit-wear-sync.ts`：穿着同步结果返回 touched/deleted plan entry ids，供 UI 成功写旧库后统一 bridge。
+  - `src/components/outfit-list-view.tsx` / `src/components/wardrobe-app.tsx`：在套装穿着、计划、打包清单、单品编辑/移动/穿着/删除级联路径追加 best-effort bridge。
+  - `scripts/test-cloud-sync-plans-bridge.ts` / `package.json`：新增 B5d 守护测试，并接入 `test:logic:all`。
+- **范围说明**：本轮不切换业务读取主源，不打开生产默认同步开关，不做真实服务器 HTTP smoke，不做 COS 图片云化，不处理旧 Dexie 全量导入；参考图/主图二进制仍归阶段 1C 图片资产云化。
+- **验证结果**：
+  - `npm run test:logic:cloud-sync-plans`：✅ 9 passed, 0 failed。
+  - `npm run test:logic:wear`：✅ 通过。
+  - `npm run test:logic:outfit-planning`：✅ 34 + 51 + 40 passed, 0 failed。
+  - `npm run test:logic:outfit-plan-wear-state`：✅ 36 passed, 0 failed。
+  - `npm run test:logic:cloud-sync-outfit`：✅ 12 passed, 0 failed。
+  - `npm run test:logic:cloud-sync-wishlist`：✅ 10 passed, 0 failed。
+  - `npm run test:logic:delete-cascade-regression`：✅ 22 passed, 0 failed。
+  - `npm run typecheck`：✅ 通过。
+  - `npm run cloud:contracts:typecheck`：✅ 通过。
+  - `npm --workspace @wardrobe/wardrobe-api run typecheck`：✅ 通过。
+  - `npm run build`：✅ 通过；仍有项目既有 unused warnings，本轮新增 bridge 文件无新增告警。
+  - `git diff --check`：✅ 通过。
+- **风险门禁**：**high**。涉及穿着统计、计划/打包清单、单品删除级联、账号工作区与 Outbox；本轮加强相关逻辑、类型与构建验证。未触发独立审查 subagent：用户未通知，本轮由主 Codex 实现。
+- **未验证风险 / 下一步**：未在腾讯云镜像跑 `wearEvent/tripPlan/outfitPlan -> push -> pull/bootstrap` 端到端；B5 仍未把业务读取主源切到账号工作区，旧库全量导入仍归 B8；下一步按执行方案进入 B6：在线/离线状态机与账号切换。
+
 ## 2026-06-26 / v1.1.37 / Codex — cloud 1B B5c wishlist bridge
 
 - **目的**：按 V4 执行方案继续阶段 1B-B5c，把种草记录 `wishlistItems` 的新增 / 编辑 / 买前评估 / 删除 / 转入衣橱状态变更桥接到账号工作区 + `syncOutbox`。旧 Dexie 仍是业务主源，bridge 仅做 best-effort 镜像。

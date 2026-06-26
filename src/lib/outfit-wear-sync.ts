@@ -51,6 +51,8 @@ export interface AddOutfitToDateInput {
 
 export interface OutfitWearSyncResult {
   changedEntryIds: string[];
+  touchedEntryIds?: string[];
+  deletedEntryIds?: string[];
   updatedOutfitIds: string[];
   updatedItemIds: number[];
   messageHint?: "planned" | "worn" | "cancelled";
@@ -123,13 +125,19 @@ export function shouldSyncWardrobeWearStats(entry: OutfitPlanEntry): boolean {
 // 按日期添加套装（自动模式）
 // ============================================================
 
-export async function addOutfitToDate(input: AddOutfitToDateInput): Promise<void> {
+export async function addOutfitToDate(input: AddOutfitToDateInput): Promise<OutfitWearSyncResult> {
   const intent = resolveAddOutfitIntent(input.dateKey, input.todayKey, input.mode ?? "auto");
   if (intent === "planned") {
-    await addPlannedOutfitForDate(input);
-  } else {
-    await recordActualOutfitWear(input);
+    const entry = await addPlannedOutfitForDate(input);
+    return {
+      changedEntryIds: [],
+      touchedEntryIds: [entry.id],
+      updatedOutfitIds: [],
+      updatedItemIds: [],
+      messageHint: "planned",
+    };
   }
+  return recordActualOutfitWear(input);
 }
 
 // ============================================================
@@ -208,6 +216,7 @@ export async function recordActualOutfitWear(input: AddOutfitToDateInput): Promi
       // 已有 worn entry，直接返回
       return {
         changedEntryIds: [],
+        touchedEntryIds: [],
         updatedOutfitIds: [outfitId],
         updatedItemIds: [],
         messageHint: "worn",
@@ -255,6 +264,7 @@ export async function recordActualOutfitWear(input: AddOutfitToDateInput): Promi
     // 7. 写入 worn entry
     let wearOrigin: OutfitWearOrigin = "manual_actual";
     let plannedBeforeWorn = false;
+    let wornEntryId = "";
 
     if (plannedEntry) {
       // 原来是计划 entry，转为 worn
@@ -270,6 +280,7 @@ export async function recordActualOutfitWear(input: AddOutfitToDateInput): Promi
       });
       wearOrigin = "planned_confirmed";
       plannedBeforeWorn = true;
+      wornEntryId = plannedEntry.id;
     } else {
       // 没有计划 entry，是手动补录的实际穿着
       const newEntry: OutfitPlanEntry = {
@@ -285,6 +296,7 @@ export async function recordActualOutfitWear(input: AddOutfitToDateInput): Promi
         updatedAt: now,
       };
       await db.outfitPlanEntries.add(newEntry);
+      wornEntryId = newEntry.id;
     }
 
     // 8. 将其他 planned primary entry 改为 changed
@@ -302,6 +314,7 @@ export async function recordActualOutfitWear(input: AddOutfitToDateInput): Promi
 
     return {
       changedEntryIds,
+      touchedEntryIds: [wornEntryId, ...changedEntryIds].filter(Boolean),
       updatedOutfitIds: [outfitId],
       updatedItemIds: outfit.itemIds,
       messageHint: "worn",
@@ -330,7 +343,7 @@ export async function cancelActualOutfitWearForDate(input: {
     );
 
     if (!wornEntry) {
-      return { changedEntryIds: [], updatedOutfitIds: [], updatedItemIds: [] };
+      return { changedEntryIds: [], touchedEntryIds: [], deletedEntryIds: [], updatedOutfitIds: [], updatedItemIds: [] };
     }
 
     // 2. 读取 outfit
@@ -371,6 +384,9 @@ export async function cancelActualOutfitWearForDate(input: {
     }
 
     // 5. 处理 worn entry 本身
+    const deletedEntryIds: string[] = [];
+    const touchedEntryIds: string[] = [];
+
     if (wornEntry.wearOrigin === "planned_confirmed" || wornEntry.plannedBeforeWorn) {
       // 原来是计划 entry，恢复为 planned
       const otherPlannedEntries = sameDayEntries.filter(
@@ -386,9 +402,11 @@ export async function cancelActualOutfitWearForDate(input: {
         plannedBeforeWorn: undefined,
         updatedAt: now,
       });
+      touchedEntryIds.push(wornEntry.id);
     } else {
       // 原来是纯实际 entry，删除
       await db.outfitPlanEntries.delete(wornEntry.id);
+      deletedEntryIds.push(wornEntry.id);
     }
 
     // 6. 处理 changed entries：如果 actualOutfitId === outfitId，需要修复
@@ -404,6 +422,7 @@ export async function cancelActualOutfitWearForDate(input: {
           updatedAt: now,
         });
         changedEntryIds.push(ce.id);
+        touchedEntryIds.push(ce.id);
       }
     } else {
       // 还有其他实际穿着，changed 继续指向新的主实际穿搭
@@ -415,11 +434,14 @@ export async function cancelActualOutfitWearForDate(input: {
           updatedAt: now,
         });
         changedEntryIds.push(ce.id);
+        touchedEntryIds.push(ce.id);
       }
     }
 
     return {
       changedEntryIds,
+      touchedEntryIds,
+      deletedEntryIds,
       updatedOutfitIds: [outfitId],
       updatedItemIds: outfit.itemIds,
       messageHint: "cancelled",
