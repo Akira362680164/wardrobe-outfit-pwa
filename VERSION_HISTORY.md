@@ -1,3 +1,28 @@
+## 2026-06-26 / v1.1.37 / Codex — cloud 1B B7 sync conflict UI
+
+- **目的**：按 V4 执行方案推进阶段 1B-B7，补齐本地同步冲突记录的用户可见处理入口：列出冲突、保留本机版本、采用云端版本，并修正冲突重试所需的本机 mutation 保留语义。
+- **改动文件**：
+  - `src/lib/cloud-sync/sync-engine.ts`：新增 `listOpenSyncConflicts` / `resolveSyncConflict`；保留本机时删除旧 conflict mutation 并生成新的 pending mutation，采用云端时删除本地 conflict mutation；冲突发生时不再用服务器冲突摘要覆盖原 outbox payload；顺手把 `listPendingOutbox` / `getSyncState` 改为使用现有 `userId` 索引过滤，避免依赖不存在的 Dexie 复合索引；`isGuardCurrent` 改为读取当前 registry，退出或切号后的 generation 变化可拦截迟到响应。
+  - `src/components/auth/account-views.tsx`：账号管理页新增“同步冲突”区块，展示未解决冲突列表，并提供“保留本机 / 采用云端”两个处理动作。
+  - `src/components/app-root.tsx`：把当前 accessToken 与账号工作区传给账号页；账号页同时从 registry 兜底读取 workspace，避免 `WorkspaceGate` 首次打开后父组件未重渲染导致冲突入口不可用。
+  - `scripts/test-cloud-sync-conflicts.ts` / `package.json`：新增 B7 守护测试，并接入 `test:logic:all`。
+- **范围说明**：本轮不做复杂三方 merge，不新增独立主导航页，不切换业务读取主源，不做真实腾讯云冲突 HTTP smoke，不打开生产默认同步开关；云端版本的实际落库仍依赖后续 pull/apply。
+- **验证结果**：
+  - `npm run test:logic:cloud-sync-conflicts`：✅ 11 passed, 0 failed。
+  - `npm run test:logic:auth-client-shell`：✅ 29 passed, 0 failed。
+  - `npm run test:logic:account-workspace-db`：✅ 10 passed, 0 failed。
+  - `npm run test:logic:cloud-connectivity`：✅ 17 passed, 0 failed。
+  - `npm run test:logic:cloud-sync-outfit`：✅ 12 passed, 0 failed。
+  - `npm run test:logic:cloud-sync-wishlist`：✅ 10 passed, 0 failed。
+  - `npm run test:logic:cloud-sync-plans`：✅ 9 passed, 0 failed。
+  - `npm run typecheck`：✅ 通过。
+  - `npm run cloud:contracts:typecheck`：✅ 通过。
+  - `npm --workspace @wardrobe/wardrobe-api run typecheck`：✅ 通过。
+  - `npm run build`：✅ 通过；仍有项目既有 unused/img warnings，本轮触碰文件无新增 warning。
+  - `git diff --check`：✅ 通过。
+- **风险门禁**：**high**。涉及同步冲突处理、账号工作区 outbox、registry generation 守卫和账号页用户操作；本轮加强本地 IndexedDB 逻辑测试、同步 bridge 回归、类型和构建验证。未触发独立审查 subagent：用户未通知，本轮由主 Codex 实现。
+- **未验证风险 / 下一步**：未在腾讯云镜像构造真实 revision conflict 并点击 UI 处理；`keep_local` 仍是重发完整本机 payload，不做字段级 merge；`use_cloud` 删除本地 conflict mutation 后依赖后续 pull 把云端实体覆盖进本地工作区。下一步按执行方案进入 B8：旧 Dexie 导入当前账号工作区。
+
 ## 2026-06-26 / v1.1.37 / Claude Code — wardrobe app dead helper cleanup
 
 - **目的**：按遗留清理计划第四批，grep 全项目逐一确认无调用后，删除 `wardrobe-app.tsx` 中 24 个死函数/常量/未使用 prop。

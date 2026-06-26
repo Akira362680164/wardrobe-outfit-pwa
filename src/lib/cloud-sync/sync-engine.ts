@@ -11,7 +11,7 @@
 
 "use client";
 
-import { isAccountWorkspaceEnabled, isCloudSyncEnabled, isWorkspaceResponseCurrent, type AccountWorkspaceRecord } from "@/lib/workspace-registry";
+import { isAccountWorkspaceEnabled, isCloudSyncEnabled, isWorkspaceResponseCurrent, loadWorkspaceRegistry, type AccountWorkspaceRecord } from "@/lib/workspace-registry";
 import {
   type AccountWorkspaceDatabase,
   type AccountWorkspaceTableName,
@@ -23,7 +23,6 @@ import {
   type WorkspaceWearEventRecord,
   type WorkspaceTripPlanRecord,
   type WorkspaceOutfitPlanRecord,
-  type WorkspaceAssetRecord,
   type WorkspaceSyncOutboxRecord,
   type WorkspaceSyncStateRecord,
   type WorkspaceSyncConflictRecord,
@@ -73,7 +72,7 @@ export function isGuardCurrent(
   workspace: AccountWorkspaceRecord,
   response: WorkspaceGuardSnapshot,
 ): boolean {
-  return isWorkspaceResponseCurrent(workspace, response);
+  return isWorkspaceResponseCurrent(loadWorkspaceRegistry().workspaces[workspace.userId], response);
 }
 
 // ============================================================
@@ -116,11 +115,8 @@ export async function listPendingOutbox(
   userId: string,
   limit = 100,
 ): Promise<WorkspaceSyncOutboxRecord[]> {
-  return db.syncOutbox
-    .where("[userId+status]")
-    .equals([userId, "pending"] as unknown as [string, string])
-    .limit(limit)
-    .toArray();
+  const rows = await db.syncOutbox.where("userId").equals(userId).filter((row) => row.status === "pending").toArray();
+  return rows.sort((a, b) => a.createdAt.localeCompare(b.createdAt)).slice(0, limit);
 }
 
 export async function markOutboxApplied(
@@ -134,13 +130,11 @@ export async function markOutboxConflict(
   db: AccountWorkspaceDatabase,
   mutationId: string,
   errorCode: string,
-  payload: unknown,
 ): Promise<void> {
   await db.syncOutbox.update(mutationId, {
     status: "conflict",
     attemptCount: (await db.syncOutbox.get(mutationId))?.attemptCount ?? 0,
     lastErrorCode: errorCode,
-    payload,
     updatedAt: new Date().toISOString(),
   } as Partial<WorkspaceSyncOutboxRecord>);
 }
@@ -186,6 +180,68 @@ export async function recordConflict(
   return record;
 }
 
+export async function listOpenSyncConflicts(
+  workspace: AccountWorkspaceRecord,
+): Promise<WorkspaceSyncConflictRecord[]> {
+  const db = getAccountWorkspaceDb(workspace);
+  const rows = await db.syncConflicts
+    .where("userId")
+    .equals(workspace.userId)
+    .filter((row) => !row.resolvedAt)
+    .toArray();
+  return rows.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+}
+
+export async function resolveSyncConflict(input: {
+  workspace: AccountWorkspaceRecord;
+  accessToken: string;
+  deviceId: string;
+  conflictId: string;
+  resolution: "keep_local" | "use_cloud";
+  resolveRemote?: typeof requestResolveConflict;
+}): Promise<{ resolved: boolean; mutationId?: string; reason?: string }> {
+  const db = getAccountWorkspaceDb(input.workspace);
+  const guard = currentWorkspaceGuard(input.workspace);
+  const conflict = await db.syncConflicts.get(input.conflictId);
+  if (!conflict || conflict.userId !== input.workspace.userId || conflict.resolvedAt) {
+    return { resolved: false, reason: "conflict_not_found" };
+  }
+  const original = await db.syncOutbox.get(conflict.localMutationId);
+  if (!original) return { resolved: false, reason: "mutation_not_found" };
+
+  await (input.resolveRemote ?? requestResolveConflict)(
+    { conflictId: conflict.localMutationId, resolution: input.resolution },
+    { accessToken: input.accessToken, deviceId: input.deviceId },
+  );
+  if (!isGuardCurrent(input.workspace, guard)) return { resolved: false, reason: "workspace_switched" };
+
+  const now = new Date().toISOString();
+  if (input.resolution === "use_cloud") {
+    await runWorkspaceWrite(db, ["syncConflicts", "syncOutbox"], async (tx) => {
+      await tx.syncConflicts.update(conflict.id, { resolvedAt: now });
+      await tx.syncOutbox.delete(original.mutationId);
+    });
+    return { resolved: true };
+  }
+
+  const nextMutation: WorkspaceSyncOutboxRecord = {
+    ...original,
+    mutationId: createWorkspaceUuidV7(),
+    status: "pending",
+    attemptCount: 0,
+    lastErrorCode: undefined,
+    baseRevision: conflict.serverRevision ?? original.baseRevision,
+    createdAt: now,
+    updatedAt: now,
+  };
+  await runWorkspaceWrite(db, ["syncConflicts", "syncOutbox"], async (tx) => {
+    await tx.syncConflicts.update(conflict.id, { resolvedAt: now });
+    await tx.syncOutbox.delete(original.mutationId);
+    await tx.syncOutbox.add(nextMutation);
+  });
+  return { resolved: true, mutationId: nextMutation.mutationId };
+}
+
 // ============================================================
 // sync-state: pull cursor 持久化
 // ============================================================
@@ -194,7 +250,7 @@ export async function getSyncState(
   db: AccountWorkspaceDatabase,
   userId: string,
 ): Promise<WorkspaceSyncStateRecord | null> {
-  const rows = await db.syncState.where("[userId+id]").equals([userId, "default"] as unknown as [string, string]).toArray();
+  const rows = await db.syncState.where("userId").equals(userId).filter((row) => row.id === "default").toArray();
   return rows[0] ?? null;
 }
 
@@ -828,7 +884,7 @@ export async function runSyncOnce(input: SyncRunInput): Promise<SyncRunResult> {
           await markOutboxApplied(db, original.mutationId);
           pushed++;
         } else if (result.status === "conflict") {
-          await markOutboxConflict(db, original.mutationId, result.errorCode ?? "REVISION_MISMATCH", result);
+          await markOutboxConflict(db, original.mutationId, result.errorCode ?? "REVISION_MISMATCH");
           await recordConflict(db, {
             entityType: original.entityType,
             entityId: original.entityId,
