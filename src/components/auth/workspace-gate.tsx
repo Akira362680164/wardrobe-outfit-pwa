@@ -4,6 +4,8 @@ import { useEffect, useRef, useState } from "react";
 import type { AuthSessionSnapshot } from "@/lib/auth-session-store";
 import { computeBackoffMs, runBootstrap, runSyncOnce } from "@/lib/cloud-sync/sync-engine";
 import { probeCloudConnectivity, subscribeNetworkChanges, type ConnectivityState } from "@/lib/cloud-sync/connectivity";
+import { scheduleAssetRecovery } from "@/lib/cloud-sync/asset-recovery";
+import { AccountImageCache } from "@/lib/cloud-sync/image-cache";
 import {
   isCloudSyncEnabled,
   isWorkspaceOfflineAuthorized,
@@ -106,6 +108,9 @@ export function WorkspaceGate({
           if (!result.bootstrapped && result.reason !== "sync_disabled") {
             throw new Error("云端衣橱初始化失败，请稍后重试");
           }
+          // fire-and-forget: 新设备恢复首屏缩略图，不阻塞进入App
+          const imageCache = new AccountImageCache(workspace.userIdHash);
+          scheduleAssetRecovery(imageCache);
         }
         workspaceRef.current = workspace;
         if (!cancelled) setState({ status: "ready", workspace });
