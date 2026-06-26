@@ -131,6 +131,7 @@ import {
  type SelectedImagesReviewMode,
 } from "@/components/selected-images-review";
 import { getWardrobeDb, readTryOnProfile, saveTryOnProfile } from "@/lib/db";
+import { bridgeGarmentCreate } from "@/lib/cloud-sync/garment-bridge";
 import { migrateWishlistItemRecord } from "@/lib/migrate";
 import {
  defaultMiniMaxSettings,
@@ -935,7 +936,9 @@ export function WardrobeApp({ cloudAuth }: { cloudAuth?: WardrobeCloudAuth } = {
       showMessage("请先选择衣物图片", "info");
       return;
     }
-    await getWardrobeDb().items.add(item);
+    const itemId = await getWardrobeDb().items.add(item);
+    // B5a: best-effort 镜像到账号工作区 + Outbox，失败仅 console.warn 不阻塞 UI
+    void bridgeGarmentCreate({ ...item, id: itemId });
     await refreshState();
     setShowGarmentIntakeFlow(false);
     setPendingViewingItemReturnTarget("wardrobe_home");
@@ -1087,8 +1090,10 @@ export function WardrobeApp({ cloudAuth }: { cloudAuth?: WardrobeCloudAuth } = {
           for (const draft of drafts) {
             const item = garmentDraftToWardrobeItem(draft, { now });
             if (item.imageDataUrl) {
-              await db.items.add(item);
+              const newId = await db.items.add(item);
               saved++;
+              // B5a: best-effort 镜像到账号工作区 + Outbox，失败仅 console.warn 不阻塞 UI
+              void bridgeGarmentCreate({ ...item, id: newId });
             }
           }
         }),
