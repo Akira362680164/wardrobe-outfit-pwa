@@ -1,3 +1,26 @@
+## 2026-06-26 / v1.1.37 / Codex — cloud 1B B8 legacy Dexie import
+
+- **目的**：按 V4 执行方案推进阶段 1B-B8，补齐旧 `wardrobe-outfit-pwa` Dexie 衣橱到当前账号本地工作区的手动导入能力。旧库只作为只读迁移源，用户在账号管理页选择导入后，结构化数据写入当前账号专属工作区并进入 `syncOutbox`，后续由同步引擎上传。
+- **改动文件**：
+  - `src/lib/cloud-sync/legacy-import.ts`（新增）：只读扫描旧 Dexie 的衣物、套装、种草、穿着日期、旅行计划、穿搭计划和打包清单；计算导入预览与 source fingerprint；按当前 `userId / dbName / workspaceGeneration` 守卫写入目标账号工作区；同一 Dexie 事务内写业务表、`syncOutbox` 和 `migrationState`；重复导入通过 `migrationId` 幂等跳过。
+  - `src/components/auth/account-views.tsx`：账号管理页新增“导入本机旧衣橱”区块，显示旧库结构化数据数量，用户手动点击后导入；未发现旧数据或已导入时禁用按钮。
+  - `src/lib/account-workspace-db.ts`：`WorkspaceMigrationStateRecord` 增加 `status` 字段，用于记录 started / completed / skipped 状态。
+  - `scripts/test-legacy-dexie-import.ts` / `package.json`：新增 B8 守护测试并接入 `test:logic:all`。
+- **范围说明**：本轮不自动导入、不删除旧 Dexie、不做跨账号自动共享、不新增独立主导航 route、不打开生产默认同步开关；图片 DataURL 不进入结构化 payload，DataURL → asset / COS 云资产化留到阶段 1C。
+- **验证结果**：
+  - `npm run test:logic:legacy-dexie-import`：✅ 17 passed, 0 failed。
+  - `npm run test:logic:account-workspace-db`：✅ 10 passed, 0 failed。
+  - `npm run test:logic:cloud-sync-conflicts`：✅ 11 passed, 0 failed。
+  - `npm run test:logic:cloud-sync-plans`：✅ 9 passed, 0 failed。
+  - `npm run typecheck`：✅ 通过。
+  - `npm run cloud:contracts:typecheck`：✅ 通过。
+  - `npm --workspace @wardrobe/wardrobe-api run typecheck`：✅ 通过。
+  - `npm run build`：✅ 通过；仍有项目既有 unused/img/hooks warnings，本轮新增文件和账号页入口未造成构建失败。
+  - `git diff --check`：✅ 通过。
+  - `node scripts/review-gate.mjs --staged`：✅ `risk_gate=high`，未触发 subagent：用户未通知。
+- **风险门禁**：**high**。涉及旧 Dexie 迁移、账号工作区多表写入、Outbox、迁移幂等和跨账号写入守卫；本轮加强本地 fake-indexeddb 守护测试、相关同步回归、类型和构建验证。未触发独立审查 subagent：用户未通知，本轮由主 Codex 实现。
+- **未验证风险 / 下一步**：未在真实手机 WebView 上用历史真实旧库执行导入；未把业务读取主源切到账号工作区；未在腾讯云镜像上跑导入后 outbox push / pull / bootstrap 端到端；未做图片资产云化。下一步按执行方案进入 B9：阶段 1B 测试构建开关、全量回归和阶段报告。
+
 ## 2026-06-26 / v1.1.37 / Codex — cloud 1B B7 sync conflict UI
 
 - **目的**：按 V4 执行方案推进阶段 1B-B7，补齐本地同步冲突记录的用户可见处理入口：列出冲突、保留本机版本、采用云端版本，并修正冲突重试所需的本机 mutation 保留语义。

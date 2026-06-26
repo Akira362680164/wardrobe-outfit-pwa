@@ -1,11 +1,12 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { AlertTriangle, CheckCircle2, ChevronLeft, ChevronRight, KeyRound, Loader2, Lock, LogOut, ShieldCheck, User } from "lucide-react";
+import { AlertTriangle, CheckCircle2, ChevronLeft, ChevronRight, Database, KeyRound, Loader2, Lock, LogOut, ShieldCheck, User } from "lucide-react";
 import type { AuthUserSnapshot } from "@/lib/auth-session-store";
 import { loadWorkspaceRegistry, type AccountWorkspaceRecord } from "@/lib/workspace-registry";
 import type { WorkspaceEntityType, WorkspaceSyncConflictRecord } from "@/lib/account-workspace-db";
 import { listOpenSyncConflicts, resolveSyncConflict } from "@/lib/cloud-sync/sync-engine";
+import { getLegacyImportPreview, importLegacyDexieToWorkspace, type LegacyImportPreview } from "@/lib/cloud-sync/legacy-import";
 
 export interface WardrobeCloudAuth {
   user: AuthUserSnapshot;
@@ -69,6 +70,7 @@ export function AccountManagementView({
       </article>
 
       <SyncConflictsPanel auth={auth} />
+      <LegacyImportPanel auth={auth} />
 
       <div className="grid gap-2">
         <button
@@ -99,6 +101,109 @@ export function AccountManagementView({
       </div>
     </div>
   );
+}
+
+function LegacyImportPanel({ auth }: { auth: WardrobeCloudAuth }) {
+  const [preview, setPreview] = useState<LegacyImportPreview | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
+  const [isImporting, setIsImporting] = useState(false);
+  const [message, setMessage] = useState<string | null>(null);
+
+  const getWorkspace = useCallback(() => auth.workspace ?? loadWorkspaceRegistry().workspaces[auth.user.id], [auth.user.id, auth.workspace]);
+
+  const loadPreview = useCallback(async () => {
+    const workspace = getWorkspace();
+    if (!workspace) {
+      setPreview(null);
+      return;
+    }
+    setIsLoading(true);
+    try {
+      setPreview(await getLegacyImportPreview(workspace));
+    } finally {
+      setIsLoading(false);
+    }
+  }, [getWorkspace]);
+
+  useEffect(() => {
+    void loadPreview();
+  }, [loadPreview]);
+
+  async function importLegacy() {
+    const workspace = getWorkspace();
+    if (!workspace) {
+      setMessage("当前账号工作区尚未准备好");
+      return;
+    }
+    setIsImporting(true);
+    setMessage(null);
+    try {
+      const result = await importLegacyDexieToWorkspace({ workspace, originDeviceId: auth.deviceId });
+      if (result.status === "imported") {
+        setMessage(`已导入 ${legacyImportTotal(result.counts)} 条本机旧衣橱数据，稍后会随同步队列上传。`);
+      } else if (result.status === "already_imported") {
+        setMessage("当前账号已经导入过本机旧衣橱。");
+      } else if (result.status === "workspace_switched") {
+        setMessage("账号工作区已变化，请重新进入后再导入。");
+      } else {
+        setMessage("未发现可导入的旧衣橱数据。");
+      }
+      await loadPreview();
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "导入旧衣橱失败");
+    } finally {
+      setIsImporting(false);
+    }
+  }
+
+  const counts = preview?.counts;
+  const hasLegacyData = Boolean(preview?.hasLegacyData);
+  const imported = Boolean(preview?.imported);
+
+  return (
+    <article className="surface rounded-lg px-4 py-3.5">
+      <div className="flex items-start gap-3">
+        <Database className="mt-0.5 shrink-0 text-denim" size={18} aria-hidden="true" />
+        <div className="min-w-0 flex-1">
+          <h2 className="text-sm font-semibold">导入本机旧衣橱</h2>
+          <p className="mt-1 text-xs leading-relaxed text-ink/55">
+            {isLoading
+              ? "正在检查本机旧衣橱..."
+              : imported
+                ? "当前账号已导入过本机旧衣橱。"
+                : hasLegacyData
+                  ? `发现 ${counts ? legacyImportTotal(counts) : 0} 条可导入的结构化数据。`
+                  : "未发现可导入的旧衣橱数据。"}
+          </p>
+          {counts && hasLegacyData ? (
+            <p className="mt-1 text-[11px] leading-relaxed text-ink/45">
+              衣物 {counts.garments}，套装 {counts.outfits}，种草 {counts.wishlistItems}，计划 {counts.tripPlans + counts.outfitPlans}，穿着 {counts.wearEvents}
+            </p>
+          ) : null}
+        </div>
+      </div>
+      {message ? <p className="mt-2 rounded-lg bg-mist px-3 py-2 text-xs text-ink/65">{message}</p> : null}
+      <button
+        type="button"
+        onClick={importLegacy}
+        disabled={isLoading || isImporting || !hasLegacyData || imported}
+        className="mt-3 inline-flex h-10 w-full items-center justify-center gap-2 rounded-lg bg-denim text-sm font-semibold text-white disabled:opacity-50"
+      >
+        {isImporting ? <Loader2 size={16} className="animate-spin" aria-hidden="true" /> : <Database size={16} aria-hidden="true" />}
+        {imported ? "已导入" : "导入本机旧衣橱"}
+      </button>
+    </article>
+  );
+}
+
+function legacyImportTotal(counts: LegacyImportPreview["counts"]): number {
+  return counts.garments
+    + counts.outfits
+    + counts.outfitItems
+    + counts.wishlistItems
+    + counts.wearEvents
+    + counts.tripPlans
+    + counts.outfitPlans;
 }
 
 function SyncConflictsPanel({ auth }: { auth: WardrobeCloudAuth }) {

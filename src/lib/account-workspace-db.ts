@@ -141,6 +141,7 @@ export interface WorkspaceMigrationStateRecord {
   userId: string;
   sourceDatabaseFingerprint: string;
   targetUserId: string;
+  status: "started" | "completed" | "skipped";
   startedAt: string;
   completedAt?: string;
   skippedAt?: string;
