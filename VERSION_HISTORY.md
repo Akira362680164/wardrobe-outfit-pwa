@@ -1,3 +1,44 @@
+## 2026-06-26 / v1.1.37 / Codex — cloud 1A A6 server drill + internal APK evidence
+
+- **目的**：完成阶段 1A 的服务器部署演练、内部测试 APK 证据收集和公网阻塞归因，明确哪些能力已经可用、哪些仍不能宣称完成。
+- **MiniMax Worker 纠偏**：
+  - 初次 Worker 启动失败不是 Keychain 不可用，而是只传了 `MiniMax-M3` 模型名，未同时传 `model_provider="minimax"` 和 `model_catalog_json="/Users/fangzheng/.codex/model-catalogs/custom-catalog.json"`，导致 Codex 仍按默认 OpenAI/ChatGPT provider 解析模型。
+  - 已改为从 macOS Keychain 读取 `MINIMAX_API_KEY`，只注入一次性 `codex exec` 子进程环境；MiniMax Worker smoke 返回 `MiniMax worker OK`，未打印或落盘密钥。
+- **Worker C 内部测试 APK 验证结果**：
+  - Worker C 修复前发现 `npm run test:logic:all` 被 `scripts/test-data-repo.ts` 旧断言阻断；主 Codex 已在上一条记录修复并提交。
+  - Worker C 修复后重跑：`npm run typecheck` ✅、`npm run test:logic:all` ✅、`npm run build` ✅、`npm run android:apk` ✅。
+  - 生成 APK：`android/app/build/outputs/apk/release/app-release.apk`，大小 `8232120` bytes，SHA-256 `72fdb37a59c789d4a3c3a763e4b775c6700d34bd343d2bf54d5f8a16c7df7083`。
+  - APK 签名校验：`apksigner verify` ✅；证书 DN `CN=fangzheng, OU=Dev, O=Wardrobe, L=Beijing, ST=Beijing, C=CN`；证书 SHA-256 `895e7d49da1cb7ac709aaba5d17e5bf8ec76f1c87d1f7939cd6ce1b2128327f6`。
+  - `package.json` 版本 `1.1.37` 对应 APK `versionName=1.1.37`、`versionCode=10137`、`applicationId=com.wardrobe.outfit`。
+  - 注意：阶段 1A 只要求内部测试 APK，不作为正式发布 APK 交付；根目录 `衣橱穿搭助手-v1.1.37.apk` 是旧产物，未被本轮覆盖。
+- **远程服务器 A6 执行结果**：
+  - 服务器：Ubuntu 24.04；Caddy 已存在并 active；本轮安装 Docker Engine / Compose v2，并配置腾讯云 Docker registry mirror 以绕过 Docker Hub 拉取超时。
+  - 已创建 `/opt/wardrobe-cloud` 生产目录、`.env`、compose、Caddyfile、JWT 公私钥、refresh idempotency secret、源码目录和备份目录；密钥只在服务器生成，未打印。
+  - 已将本仓库 `HEAD=5d1c16bc35f4` 同步到 `/opt/wardrobe-cloud/source`，构建镜像 `wardrobe-api:5d1c16bc35f4` 并启动 compose；`postgres` 与 `wardrobe-api` 均 healthy。
+  - 服务器内部 API 验证：`http://127.0.0.1:3000/api/health` ✅、`/api/ready` ✅、`/api/version` ✅，版本响应包含 `gitCommit=5d1c16bc35f4`。
+  - 真实注册链路验证：创建测试注册、容器内 `development_cli` 验证、`complete`、`GET /api/account/me` 全链路通过；测试账号输出仅保留脱敏手机号 `139****5940` 和 userId 前缀，未输出 token 或 clientSecret。
+  - 数据库备份恢复演练：`backup-db` 生成 `/opt/wardrobe-cloud/backups/postgres/wardrobe-20260626-090708.sql`，大小 `18964` bytes；恢复到 `wardrobe_restore_test` 后关键表计数与主库一致，顺序为 `users,phone_identities,password_credentials,pending_registrations,device_sessions,refresh_tokens,account_security_events`，主库与恢复库均为 `2,2,2,2,2,2,6`。
+  - 回滚脚本演练：`rollback-image wardrobe-api:local` 与 `rollback-image wardrobe-api:5d1c16bc35f4` 均能重建 API 容器并通过 `/api/ready`、`/api/version`；当前已切回 `wardrobe-api:5d1c16bc35f4` 且 healthy。`wardrobe-api:local` 与当前 tag 指向同一镜像 ID，因此本次验证的是回滚脚本和 ready 检查，不是旧代码行为差异。
+  - Caddy 失败保护演练：用无效指令 `unknown_directive_should_fail` 临时替换项目侧 Caddyfile 后，`apply-caddy` 返回 `failure_code=1`，`/etc/caddy/Caddyfile` hash 在失败前后保持一致；恢复项目配置后 `apply-caddy` 成功，Caddy `active`。无效候选文件已移动到 `/opt/wardrobe-cloud/backups/caddy/` 保留。
+- **公网 HTTPS 阻塞归因**：
+  - `https://api.zhengfangapps.cloud/api/health` 仍未通；服务器本机 curl 报 TLS alert internal error，本机外部 curl 报 TLS handshake failure。
+  - Caddy 日志显示 ACME HTTP-01 请求被导向 DNSPod webblock 页面 `https://dnspod.qcloud.com/static/webblock.html?d=api.zhengfangapps.cloud`，TLS-ALPN-01 报 `111.231.98.86: Connection reset by peer`，随后 Let's Encrypt 触发 1 小时失败授权限流。
+  - 结论：API 容器、数据库和 Caddy 本地反代配置已通过内部验证；公网 HTTPS 需要先处理域名/DNS/ICP/webblock 或切换 DNS-01 证书签发，不能继续反复 reload Caddy 宣称 A6 公网完成。
+- **改动文件**：
+  - `deploy/docs/production-deploy.md`：新增公网 TLS 故障处理说明，记录 DNSPod webblock / TLS-ALPN reset / Let's Encrypt failed-authorization rate limit 的处理边界。
+  - `VERSION_HISTORY.md`：记录本次 A6 验收结果、阻塞项、Worker C APK 证据和远程演练证据。
+- **验证结果**：
+  - `bash -n deploy/scripts/wardrobe-cloud.sh`：✅ 通过。
+  - `npm run test:logic:all`：✅ 已由 Worker C 修复后验证通过。
+  - `npm run android:apk`：✅ 已由 Worker C 生成内部测试 APK。
+  - 服务器 `compose ps`：✅ `postgres` 与 `wardrobe-api:5d1c16bc35f4` 均 healthy。
+  - 服务器内部 API / 注册 / 备份恢复 / 回滚 / Caddy 失败保护：✅ 通过。
+- **风险门禁**：**high**。涉及服务器部署、Docker、数据库备份恢复、Caddy、APK 构建和认证端到端验证；已按用户要求使用 MiniMax Worker C 做只读验证并由主 Codex 收口。
+- **未验证风险 / 下一步**：
+  - 未完成公网 HTTPS 验收：需先解决 `api.zhengfangapps.cloud` 的 DNSPod webblock / 备案 / DNS-01 证书路径问题。
+  - 未完成 Android 真机安装验收：当前 `adb devices` 无已连接设备，因此未验证真机 AuthGate、Android Keystore 持久化、CapacitorHttp Origin/CORS、后台恢复和返回键链路。
+  - 未验证正式发布 APK：阶段 1A 明确只构建内部测试 APK，不复制或覆盖根目录正式 APK 文件。
+
 ## 2026-06-26 / v1.1.37 / Codex — cloud 1A build-image reads env image tag
 
 - **目的**：修正远程构建时 `sudo` 不继承 `WARDROBE_API_IMAGE` 导致 `build-image` 默认打成 `wardrobe-api:local` 的问题。

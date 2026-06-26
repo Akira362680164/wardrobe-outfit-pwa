@@ -49,6 +49,16 @@ deploy/scripts/wardrobe-cloud.sh apply-caddy
 
 `apply-caddy` backs up `/etc/caddy/Caddyfile`, validates the candidate config, then reloads Caddy.
 
+## External TLS Troubleshooting
+
+If server-local `http://127.0.0.1:3000/api/health` works but public `https://api.zhengfangapps.cloud/api/health` fails during TLS handshake, check Caddy ACME logs before retrying:
+
+```bash
+journalctl -u caddy --since "20 minutes ago" --no-pager
+```
+
+For the 2026-06-26 A6 drill, Caddy was active and the API was healthy internally, but ACME failed because Let's Encrypt HTTP-01 reached a DNSPod webblock page for `api.zhengfangapps.cloud`, and TLS-ALPN-01 reported `111.231.98.86: Connection reset by peer`. Repeated retries then hit the Let's Encrypt failed-authorization rate limit. In this state, do not keep reloading Caddy. Fix the domain/DNS/ICP/webblock path first, or switch to a DNS-01 flow with explicit DNS credentials.
+
 ## Deploy
 
 `WARDROBE_API_IMAGE` must point to a built API image. The stage 1A deployment script can build the local server image from `/opt/wardrobe-cloud/source`:
