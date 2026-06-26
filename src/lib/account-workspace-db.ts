@@ -98,6 +98,7 @@ export interface WorkspaceAssetRecord extends WorkspaceSyncEntity {
   mimeType?: string;
   width?: number;
   height?: number;
+  payload?: unknown;
 }
 
 export interface WorkspaceSyncOutboxRecord {

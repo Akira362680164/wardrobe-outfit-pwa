@@ -1,3 +1,26 @@
+## 2026-06-26 / v1.1.37 / Claude Code — cloud 1C C2a local asset metadata utilities
+
+- **目的**：按已更新的 V4 1C 执行文档进入 C2a，先建立本地资产记录与图片元数据工具：从图片 DataURL 解析 MIME、计算 SHA-256、读取尺寸、准备 original / thumbnail 上传变体，并生成不含图片二进制的账号工作区 `assets` 记录。C2a 只提供本地工具和守护测试，不接业务图片保存路径。
+- **改动文件**：
+  - `src/lib/cloud-sync/asset-metadata.ts`（新增）：新增 `prepareLocalAsset`、`buildUploadVariant`、`imageDataUrlToBlob`、`sha256Hex`、`parseImageDataUrlMimeType`、`putPreparedLocalAsset`；支持注入缩略图生成器 / 尺寸读取器，payload 只保存上传元数据、状态和来源字段，不保存 DataURL / base64。
+  - `src/lib/account-workspace-db.ts`：为 `WorkspaceAssetRecord` 补 `payload?: unknown`，对齐本地 asset 元数据记录和服务端资产 payload 形态。
+  - `src/lib/cloud-sync/index.ts`：导出 C2a 本地资产工具和类型。
+  - `scripts/test-cloud-assets-local.ts`（新增）/ `package.json`：新增 C2a 守护测试，并接入 `test:logic:all`。
+- **范围说明**：本轮不接 `wardrobe-app.tsx` / `wishlist-view-2.0.tsx` / `outfit-list-view.tsx` 等业务保存路径，不调用真实 COS，不请求 upload-url，不做图片下载/缓存目录/新设备恢复，不打 APK；`/Users/fangzheng/Downloads/WARDROBE_CLOUD_V4_EXECUTION_PLAN_FOR_REVIEW.md` 已按用户确认同步 C2/C3/C4 细分，但该文件不属于本仓库提交范围。
+- **验证结果**：
+  - `npm run test:logic:cloud-assets-local`：✅ 12 passed, 0 failed。
+  - `npm run test:logic:cloud-assets-api`：✅ 9 passed, 0 failed。
+  - `npm run test:logic:account-workspace-db`：✅ 10 passed, 0 failed。
+  - `npm run test:logic:data-repo`：✅ 63 passed, 0 failed。
+  - `npm run test:logic:app-route`：✅ 46 passed, 0 failed。
+  - `npm run cloud:contracts:typecheck`：✅ 通过。
+  - `npm run typecheck`：✅ 通过。
+  - `npm run build`：✅ 通过；仍有项目既有 unused/img/hooks warnings。
+  - `git diff --check`：✅ 通过。
+  - `node scripts/review-gate.mjs`：✅ `risk_gate=high`，`files=6`（含遗留未跟踪 `.vscode/settings.json`），未触发 subagent：用户未通知。
+- **风险门禁**：**high**。涉及云资产本地元数据、账号工作区类型、图片哈希和后续上传链路基础；本轮加强新增 assets 本地测试、C1 API 守护测试、账号工作区/数据仓库/路由回归、类型检查和构建验证。未触发独立审查 subagent：用户未通知，本轮由 Claude Code 实现。
+- **未验证风险 / 下一步**：未在真实浏览器 canvas 环境验证默认 `generateThumbnailSafe` 输出；未接业务保存路径生成 asset 记录；未调用真实 COS upload-url / PUT / complete-upload；未做缩略图下载和新设备恢复。下一步进入 C2b：业务图片保存成功后生成 asset 记录，并确保结构化云 payload 只保存 `assetId` / thumbnail 引用，不携带 DataURL。
+
 ## 2026-06-26 / v1.1.37 / Codex — cloud 1C C1 assets API and COS upload authorization
 
 - **目的**：按 V4 执行方案进入阶段 1C-C1，补齐图片资产上传授权的最小闭环：客户端向 API 请求授权，API 校验账号和资产归属后返回腾讯云 COS 私有 Bucket 预签名 PUT URL，客户端上传完成后可通知 API 更新资产状态。C1 只建立资产 API 边界，不接入业务图片保存路径。

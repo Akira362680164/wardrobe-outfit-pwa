@@ -56,4 +56,21 @@ export {
   requestAssetUploadComplete,
 } from "@/lib/cloud-sync/cloud-assets-api";
 
+export {
+  type AssetOwnerEntityType,
+  type LocalAssetUploadStatus,
+  type LocalAssetImageMetadata,
+  type LocalAssetUploadVariant,
+  type LocalAssetPayload,
+  type PreparedLocalAsset,
+  type PrepareLocalAssetInput,
+  type PrepareLocalAssetDependencies,
+  prepareLocalAsset,
+  putPreparedLocalAsset,
+  buildUploadVariant,
+  imageDataUrlToBlob,
+  parseImageDataUrlMimeType,
+  sha256Hex,
+} from "@/lib/cloud-sync/asset-metadata";
+
 export { isNetworkOnline, subscribeNetworkChanges } from "@/lib/cloud-sync/connectivity";
