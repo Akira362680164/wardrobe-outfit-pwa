@@ -12,6 +12,8 @@ import { registerSessionRoutes } from "./auth/session-routes.js";
 import { SessionService } from "./auth/session.js";
 import { checkDatabaseReady } from "./db/client.js";
 import { getApiVersion } from "./version.js";
+import { registerSyncRoutes } from "./sync/routes.js";
+import { SyncService } from "./sync/service.js";
 
 export type ReadinessCheck = () => Promise<{ database: "ready" }>;
 
@@ -19,6 +21,7 @@ export interface BuildAppOptions {
   readinessCheck?: ReadinessCheck;
   registrationService?: RegistrationService;
   sessionService?: SessionService;
+  syncService?: SyncService;
 }
 
 export function buildApp(options: BuildAppOptions = {}): FastifyInstance {
@@ -82,6 +85,7 @@ export function buildApp(options: BuildAppOptions = {}): FastifyInstance {
 
   registerAuthRoutes(app, options.registrationService, sharedSessionService);
   registerSessionRoutes(app, sharedSessionService);
+  registerSyncRoutes(app, options.syncService ?? new SyncService(), sharedSessionService ?? new SessionService());
 
   return app;
 }
