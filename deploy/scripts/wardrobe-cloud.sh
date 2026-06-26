@@ -97,7 +97,11 @@ backup_db() {
 }
 
 build_image() {
-  local image="${1:-${WARDROBE_API_IMAGE:-wardrobe-api:local}}"
+  local image="${1:-${WARDROBE_API_IMAGE:-}}"
+  if [[ -z "${image}" && -f "${ENV_FILE}" ]]; then
+    image="$(awk -F= '$1 == "WARDROBE_API_IMAGE" { print $2; exit }' "${ENV_FILE}")"
+  fi
+  image="${image:-wardrobe-api:local}"
   if [[ ! -f "${SOURCE_DIR}/services/wardrobe-api/Dockerfile" ]]; then
     echo "missing ${SOURCE_DIR}/services/wardrobe-api/Dockerfile" >&2
     exit 1

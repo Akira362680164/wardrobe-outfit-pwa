@@ -1,3 +1,15 @@
+## 2026-06-26 / v1.1.37 / Codex — cloud 1A build-image reads env image tag
+
+- **目的**：修正远程构建时 `sudo` 不继承 `WARDROBE_API_IMAGE` 导致 `build-image` 默认打成 `wardrobe-api:local` 的问题。
+- **改动文件**：
+  - `deploy/scripts/wardrobe-cloud.sh`：`build-image` 在未传入镜像名且环境变量为空时，从 `/opt/wardrobe-cloud/.env` 读取 `WARDROBE_API_IMAGE`；仍保留 `wardrobe-api:local` 作为最后兜底。
+  - `deploy/docs/production-deploy.md`：部署命令改为直接运行 `build-image`，默认镜像名由 `.env` 决定。
+- **范围说明**：只调整部署脚本默认参数读取，不改变 compose、Caddy、API 或密钥。
+- **验证结果**：
+  - `bash -n deploy/scripts/wardrobe-cloud.sh`：✅ 通过。
+- **风险门禁**：**low**。部署脚本参数读取修正；未触发独立审查 subagent：用户未通知。
+- **远程观察**：修正前服务器已成功构建 `wardrobe-api:local`，后续会补 tag 到 `.env` 当前镜像名并继续部署。
+
 ## 2026-06-26 / v1.1.37 / Codex — cloud 1A deploy local API image
 
 - **目的**：修正 A6 部署脚本对本地构建 API 镜像的兼容性。上一条新增 `build-image` 后，`deploy` 仍会对所有服务执行 `docker compose pull`，这会让 `wardrobe-api:<local-tag>` 这类服务器本地镜像误走远端拉取并失败。

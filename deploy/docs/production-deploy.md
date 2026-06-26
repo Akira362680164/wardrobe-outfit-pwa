@@ -54,7 +54,7 @@ deploy/scripts/wardrobe-cloud.sh apply-caddy
 `WARDROBE_API_IMAGE` must point to a built API image. The stage 1A deployment script can build the local server image from `/opt/wardrobe-cloud/source`:
 
 ```bash
-deploy/scripts/wardrobe-cloud.sh build-image "$WARDROBE_API_IMAGE"
+deploy/scripts/wardrobe-cloud.sh build-image
 deploy/scripts/wardrobe-cloud.sh compose config
 deploy/scripts/wardrobe-cloud.sh deploy
 deploy/scripts/wardrobe-cloud.sh health
