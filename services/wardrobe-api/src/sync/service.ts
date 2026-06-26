@@ -233,7 +233,10 @@ export class SyncService {
             }
           }
 
-          // 5. 写 sync_changes（每用户递增 changeSeq）
+          // 5. 写 sync_changes（advisory lock 保护并发序号分配）
+          await tx.execute(
+            sql`SELECT pg_advisory_xact_lock(hashtext(${userId}))`,
+          );
           const [seqRow] = await tx
             .select({ nextSeq: sql<number>`coalesce(max(${syncChanges.changeSeq}), 0) + 1` })
             .from(syncChanges)
