@@ -1,3 +1,24 @@
+## 2026-06-26 / v1.1.37 / Codex — cloud 1B B1 workspace registry and endpoint switch points
+
+- **目的**：在用户确认继续使用当前 `codex/cloud-phase1-auth` 分支、备案前临时使用 `http://111.231.98.86` 后，启动阶段 1B-B1：补齐每账号本机工作区 registry / Gate 骨架，并把临时 IP 到正式域名的切换点收敛到配置层，避免后续在业务代码里硬编码。
+- **改动文件**：
+  - `src/lib/workspace-registry.ts`：新增每账号工作区 registry，包含 `stableUserIdHash`、`dbName`、`schemaVersion`、`lastOpenedAt`、`activeWorkspaceGeneration`、主动退出标记、`offlineAccessUntil`、迟到响应 userId/dbName/generation 三重检查。
+  - `src/components/auth/workspace-gate.tsx` / `src/components/app-root.tsx`：新增 `WorkspaceGate`，仅在 `NEXT_PUBLIC_ACCOUNT_WORKSPACE_ENABLED=true` 时登记当前账号工作区；默认关闭时保持 1A 行为不变。
+  - `src/components/auth/auth-provider.tsx`：默认继续使用 1A `localOwner` 阻断；工作区开关开启时为后续多账号工作区切换让路；退出 / 退出全部时标记当前账号主动退出并清空离线授权。
+  - `scripts/test-workspace-registry.ts` / `scripts/test-auth-client-shell.ts` / `package.json`：新增 B1 工作区 registry 守护测试，并接入 `test:logic:all`。
+  - `docs/cloud/account-and-sync.md`：记录 1B-B1 已新增 registry，但仍未迁移业务读写、未开启云同步、生产开关默认关闭。
+  - `deploy/docs/production-deploy.md`：新增 API endpoint switch points，明确 `NEXT_PUBLIC_WARDROBE_API_BASE_URL`、`ALLOWED_ORIGINS`、`HEALTH_BASE_URL`、Caddy site block 四个切换点。
+- **范围说明**：本轮不实现新 Dexie schema、repository、bootstrap、push/pull、Outbox、图片缓存隔离或离线状态机；不把 `NEXT_PUBLIC_ACCOUNT_WORKSPACE_ENABLED` / `NEXT_PUBLIC_CLOUD_SYNC_ENABLED` 生产默认值打开；不交付 APK。
+- **验证结果**：
+  - `npm run test:logic:workspace-registry`：✅ 18 passed, 0 failed。
+  - `npm run test:logic:auth-client-shell`：✅ 29 passed, 0 failed。
+  - `npm run typecheck`：✅ 顺序重跑通过。此前与 `npm run build` 并行时曾遇到 `.next/types` 重建竞态导致的临时缺失，已用顺序重跑排除。
+  - `NEXT_PUBLIC_CLOUD_AUTH_ENABLED=true NEXT_PUBLIC_ACCOUNT_WORKSPACE_ENABLED=true NEXT_PUBLIC_CLOUD_SYNC_ENABLED=false NEXT_PUBLIC_WARDROBE_API_BASE_URL=http://111.231.98.86 npm run build`：✅ 通过；保留仓库既有 lint warnings。
+  - `git diff --check`：✅ 通过。
+  - `node scripts/review-gate.mjs --staged`：✅ `risk_gate=high`，`subagent_trigger=user_request_only`。
+- **风险门禁**：**high**。涉及账号入口、退出语义和本机工作区 registry；未触发独立审查 subagent：用户未通知，本轮由主 Codex 实现核心代码。
+- **未验证风险 / 下一步**：未进行 Android 真机验收；未验证域名 HTTPS，备案完成后需按文档切换四个 endpoint 配置点；B1 只登记工作区，不保证业务页面已经按账号隔离，下一步进入 B2 新本地 schema 与 repository。
+
 ## 2026-06-26 / v1.1.37 / Codex — cloud 1A IP auth and browser gate validation
 
 - **目的**：在用户确认“真机先不验收、备案前使用 `111.231.98.86` 继续”后，补做阶段 1A A6 中可在当前环境完成的浏览器开关构建、IP API 账号链路和退出验证。

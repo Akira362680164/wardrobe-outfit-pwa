@@ -17,6 +17,7 @@ import {
   type PendingRegistrationSnapshot,
 } from "@/lib/auth-session-store";
 import * as authApi from "@/lib/cloud-auth-api";
+import { isAccountWorkspaceEnabled, markWorkspaceLoggedOut } from "@/lib/workspace-registry";
 
 export type AuthPhase = "initializing" | "anonymous" | "pending_verification" | "authenticated" | "blocked";
 
@@ -57,16 +58,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [error, setError] = useState<string | null>(null);
 
   const setTokenSession = useCallback(async (current: AuthSessionSnapshot, tokens: AuthTokenPayload) => {
-    const ownerResult = await bindLocalOwnerIfNeeded(current, tokens.user);
-    if (ownerResult.blocked) {
-      const cleared = await clearAuthTokens(ownerResult.snapshot);
-      setSession(cleared);
-      setBlocked({ owner: ownerResult.owner, attemptedUser: tokens.user });
-      setPhase("blocked");
-      return null;
+    if (!isAccountWorkspaceEnabled()) {
+      const ownerResult = await bindLocalOwnerIfNeeded(current, tokens.user);
+      if (ownerResult.blocked) {
+        const cleared = await clearAuthTokens(ownerResult.snapshot);
+        setSession(cleared);
+        setBlocked({ owner: ownerResult.owner, attemptedUser: tokens.user });
+        setPhase("blocked");
+        return null;
+      }
+      current = ownerResult.snapshot;
     }
 
-    const saved = await saveAuthTokens(ownerResult.snapshot, tokens);
+    const saved = await saveAuthTokens(current, tokens);
     setSession(saved);
     setBlocked(null);
     setPhase("authenticated");
@@ -205,10 +209,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setIsBusy(true);
     setError(null);
     try {
-      if (session?.accessToken) {
-        await authApi.logout(session.accessToken).catch(() => undefined);
+      const current = session ?? await loadAuthSessionSnapshot();
+      if (isAccountWorkspaceEnabled() && current.user) markWorkspaceLoggedOut(current.user.id);
+      if (current.accessToken) {
+        await authApi.logout(current.accessToken).catch(() => undefined);
       }
-      const cleared = await clearAuthTokens(session ?? await loadAuthSessionSnapshot());
+      const cleared = await clearAuthTokens(current);
       setSession(cleared);
       setBlocked(null);
       setPhase("anonymous");
@@ -221,8 +227,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setIsBusy(true);
     setError(null);
     try {
-      if (session?.accessToken) await authApi.logoutAll(session.accessToken);
-      const cleared = await clearAuthTokens(session ?? await loadAuthSessionSnapshot());
+      const current = session ?? await loadAuthSessionSnapshot();
+      if (isAccountWorkspaceEnabled() && current.user) markWorkspaceLoggedOut(current.user.id);
+      if (current.accessToken) await authApi.logoutAll(current.accessToken);
+      const cleared = await clearAuthTokens(current);
       setSession(cleared);
       setBlocked(null);
       setPhase("anonymous");

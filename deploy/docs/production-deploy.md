@@ -63,6 +63,19 @@ HEALTH_BASE_URL=http://111.231.98.86 deploy/scripts/wardrobe-cloud.sh health
 
 The temporary IP endpoint is only for stage 1A testing. Do not treat it as the final production URL.
 
+## API Endpoint Switch Points
+
+The app must not hard-code the temporary IP in source code. Keep the endpoint modular through these knobs:
+
+| Layer | Current temporary value | Domain-era value |
+| --- | --- | --- |
+| Frontend / Android build API base | `NEXT_PUBLIC_WARDROBE_API_BASE_URL=http://111.231.98.86` | `NEXT_PUBLIC_WARDROBE_API_BASE_URL=https://api.zhengfangapps.cloud` |
+| API CORS allowlist | `ALLOWED_ORIGINS=http://111.231.98.86,http://localhost:3000,http://127.0.0.1:3000,capacitor://localhost` | Replace the IP origin with the filed web origin, keep dev and `capacitor://localhost` as needed |
+| Health checks | `HEALTH_BASE_URL=http://111.231.98.86` | `HEALTH_BASE_URL=https://api.zhengfangapps.cloud` |
+| Caddy public entry | temporary `http://111.231.98.86` site block | HTTPS site block for `api.zhengfangapps.cloud` after ICP/DNS/TLS is usable |
+
+When switching away from the IP, change these configuration values and rebuild the frontend/APK with the new `NEXT_PUBLIC_WARDROBE_API_BASE_URL`. Do not add account-specific endpoint branching in React components or business modules.
+
 ## External TLS Troubleshooting
 
 If server-local `http://127.0.0.1:3000/api/health` works but public `https://api.zhengfangapps.cloud/api/health` fails during TLS handshake, check Caddy ACME logs before retrying:

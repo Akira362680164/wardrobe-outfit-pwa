@@ -1,11 +1,11 @@
-# 账号与同步说明（阶段 1A · 内部测试）
+# 账号与同步说明（阶段 1A / 1B-B1 · 内部测试）
 
-> 适用版本：阶段 1A（账号认证 + 服务器底座 + AuthGate，默认认证开关关闭）。
+> 适用版本：阶段 1A（账号认证 + 服务器底座 + AuthGate）到阶段 1B-B1（每账号本机工作区 registry，默认相关开关关闭）。
 > 不构成对后续阶段功能的承诺。后续阶段会单独更新本文档。
 
 ## 1. 阶段 1A 实际提供的能力
 
-| 能力 | 是否在 1A | 备注 |
+| 能力 | 是否在 1A / 1B-B1 | 备注 |
 | --- | --- | --- |
 | 手机号 + 密码注册 | ✅ | 密码 Argon2id 哈希保存，注册申请 30 分钟过期 |
 | 手机号 + 密码登录 | ✅ | 返回 Access Token + Refresh Token |
@@ -15,6 +15,7 @@
 | 改密吊销全部 Refresh Token | ✅ | 改密后必须重新登录 |
 | 退出当前设备 | ✅ | 只吊销本设备的 Refresh Token |
 | `NEXT_PUBLIC_CLOUD_AUTH_ENABLED` 开关 | ✅ | 默认 `false` |
+| 每账号本机工作区 registry | ✅ B1 | 由 `NEXT_PUBLIC_ACCOUNT_WORKSPACE_ENABLED` 控制，默认 `false` |
 
 ## 2. 阶段 1A 明确**不**提供的能力
 
@@ -23,7 +24,7 @@
 - 衣橱云同步（结构化数据上传、pull / push / cursor / 冲突处理）— 阶段 1B
 - 图片资产云同步（assets / 缩略图 / 原图）— 阶段 1C
 - 旧 Dexie 数据导入到云端工作区 — 阶段 1B
-- 多账号本地工作区与切换 — 阶段 1B
+- 多账号本地业务读写切换 — 阶段 1B 后续提交
 - 短信验证码 — 未排期
 - 微信扫码验证 — 未排期（`wechat_identities` 表 1A 不创建）
 - 邮箱验证、第三方 OAuth 登录 — 未排期
@@ -38,12 +39,29 @@
 
 ```text
 NEXT_PUBLIC_CLOUD_AUTH_ENABLED=false （默认）
+NEXT_PUBLIC_ACCOUNT_WORKSPACE_ENABLED=false （默认）
+NEXT_PUBLIC_CLOUD_SYNC_ENABLED=false （默认）
 ```
 
 - `false` → App 直接进入现有本地衣橱界面，不初始化认证，不展示账号卡片，与 1A 之前的体验一致。
 - `true`  → App 启用 AuthProvider / AuthGate，强制走注册/登录才能进衣橱主界面。
 
-阶段 1A 的内部测试 APK 由构建配置决定开关取值。1A 不会把生产默认值打开，直到用户另行确认。
+阶段 1A / 1B 的内部测试 APK 由构建配置决定开关取值。生产默认值保持关闭，直到结构化同步整段验收通过并由用户另行确认。
+
+## 3.1 阶段 1B-B1 工作区 registry
+
+B1 只新增每账号本机工作区登记表和 Gate，不迁移现有衣橱业务读写，也不启用云端同步。registry 保存在本机 `localStorage`，内容不包含 token、密码或 MiniMax Key，只包含：
+
+- `userId`
+- `stableUserIdHash`
+- `dbName`
+- `schemaVersion`
+- `lastOpenedAt`
+- `activeWorkspaceGeneration`
+- 主动退出标记
+- `offlineAccessUntil`
+
+开启 `NEXT_PUBLIC_ACCOUNT_WORKSPACE_ENABLED=true` 后，登录成功会登记当前账号的本机工作区；退出账号会保留工作区记录，但写入主动退出标记并清空该账号离线授权。后续同步、bootstrap、repository 和图片缓存隔离仍按 1B 后续提交接入。
 
 ## 4. 账号 = 身份认证，不是云端衣橱
 

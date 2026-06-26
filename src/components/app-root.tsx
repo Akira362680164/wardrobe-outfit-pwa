@@ -2,9 +2,12 @@
 
 import { AuthGate } from "@/components/auth/auth-gate";
 import { AuthProvider, useAuth } from "@/components/auth/auth-provider";
+import { WorkspaceGate } from "@/components/auth/workspace-gate";
 import { WardrobeApp } from "@/components/wardrobe-app";
+import { isAccountWorkspaceEnabled } from "@/lib/workspace-registry";
 
 const cloudAuthEnabled = process.env.NEXT_PUBLIC_CLOUD_AUTH_ENABLED === "true";
+const accountWorkspaceEnabled = isAccountWorkspaceEnabled();
 
 export function AppRoot() {
   if (!cloudAuthEnabled) return <WardrobeApp />;
@@ -20,8 +23,8 @@ export function AppRoot() {
 
 function AuthenticatedWardrobeApp() {
   const auth = useAuth();
-  if (!auth.user) return null;
-  return (
+  if (!auth.user || !auth.session) return null;
+  const app = (
     <WardrobeApp
       cloudAuth={{
         user: auth.user,
@@ -34,4 +37,6 @@ function AuthenticatedWardrobeApp() {
       }}
     />
   );
+  if (!accountWorkspaceEnabled) return app;
+  return <WorkspaceGate session={auth.session}>{app}</WorkspaceGate>;
 }
