@@ -68,11 +68,15 @@ export function currentWorkspaceGuard(workspace: AccountWorkspaceRecord): Worksp
   };
 }
 
-export function isGuardCurrent(
-  workspace: AccountWorkspaceRecord,
-  response: WorkspaceGuardSnapshot,
-): boolean {
-  return isWorkspaceResponseCurrent(loadWorkspaceRegistry().workspaces[workspace.userId], response);
+export function isGuardCurrent(guard: WorkspaceGuardSnapshot): boolean {
+  const registry = loadWorkspaceRegistry();
+  if (!registry.activeUserId || !registry.activeDbName || registry.activeWorkspaceGeneration == null) return false;
+  if (registry.activeUserId !== guard.userId) return false;
+  if (registry.activeDbName !== guard.dbName) return false;
+  if (registry.activeWorkspaceGeneration !== guard.workspaceGeneration) return false;
+  const record = registry.workspaces[guard.userId];
+  if (!record) return false;
+  return isWorkspaceResponseCurrent(record, guard);
 }
 
 // ============================================================
@@ -213,7 +217,7 @@ export async function resolveSyncConflict(input: {
     { conflictId: conflict.localMutationId, resolution: input.resolution },
     { accessToken: input.accessToken, deviceId: input.deviceId },
   );
-  if (!isGuardCurrent(input.workspace, guard)) return { resolved: false, reason: "workspace_switched" };
+  if (!isGuardCurrent(guard)) return { resolved: false, reason: "workspace_switched" };
 
   const now = new Date().toISOString();
   if (input.resolution === "use_cloud") {
@@ -725,7 +729,7 @@ export async function applyRemoteChanges(
   let applied = 0;
   let skipped = 0;
   for (const change of changes) {
-    if (!isGuardCurrent(options.workspace, currentWorkspaceGuard(options.workspace))) {
+    if (!isGuardCurrent(currentWorkspaceGuard(options.workspace))) {
       // workspace 已被切换：跳过
       skipped++;
       continue;
@@ -770,43 +774,25 @@ export async function applyBootstrap(
 ): Promise<{ applied: number }> {
   let applied = 0;
   const { entities } = response;
-  for (const list of [
-    entities.garments,
-    entities.outfits,
-    entities.outfitItems,
-    entities.wishlistItems,
-    entities.wearEvents,
-    entities.tripPlans,
-    entities.outfitPlans,
-    entities.assets,
-  ]) {
-    for (const e of list as SyncEntity[]) {
-      if (!isGuardCurrent(options.workspace, currentWorkspaceGuard(options.workspace))) break;
-      const tableName = ENTITY_TABLE[entityTypeForBundle(e, list as SyncEntity[])];
-      const table = db[tableName] as { put: (record: unknown) => Promise<unknown> };
+  const bundles: Array<[WorkspaceEntityType, SyncEntity[]]> = [
+    ["garment", entities.garments],
+    ["outfit", entities.outfits],
+    ["outfitItem", entities.outfitItems],
+    ["wishlistItem", entities.wishlistItems],
+    ["wearEvent", entities.wearEvents],
+    ["tripPlan", entities.tripPlans],
+    ["outfitPlan", entities.outfitPlans],
+    ["asset", entities.assets],
+  ];
+  for (const [entityType, list] of bundles) {
+    for (const e of list) {
+      if (!isGuardCurrent(currentWorkspaceGuard(options.workspace))) break;
+      const table = db[ENTITY_TABLE[entityType]] as { put: (record: unknown) => Promise<unknown> };
       await table.put({ ...e, userId: options.workspace.userId });
       applied++;
     }
   }
   return { applied };
-}
-
-function entityTypeForBundle(entity: SyncEntity, siblingList: SyncEntity[]): WorkspaceEntityType {
-  // ponytail: small heuristic — we know list identity by object reference; default to garment for unknown.
-  const known: WorkspaceEntityType[] = [
-    "garment",
-    "outfit",
-    "outfitItem",
-    "wishlistItem",
-    "wearEvent",
-    "tripPlan",
-    "outfitPlan",
-    "asset",
-  ];
-  for (const t of known) {
-    if (ENTITY_TABLE[t] && siblingList.includes(entity)) return t;
-  }
-  return "garment";
 }
 
 // ============================================================
@@ -874,7 +860,7 @@ export async function runSyncOnce(input: SyncRunInput): Promise<SyncRunResult> {
         requestOptions,
       );
       // 三重检查：server response 是否还能写入当前 workspace
-      if (!isGuardCurrent(input.workspace, guard)) {
+      if (!isGuardCurrent(guard)) {
         return { bootstrapped: false, pushed, pulled: 0, conflicts, skipped: true, reason: "workspace_switched" };
       }
       for (let i = 0; i < pushResponse.results.length; i++) {
@@ -922,7 +908,7 @@ export async function runSyncOnce(input: SyncRunInput): Promise<SyncRunResult> {
       { cursor: state?.pullCursor ?? null, limit: 200 },
       requestOptions,
     );
-    if (!isGuardCurrent(input.workspace, guard)) {
+    if (!isGuardCurrent(guard)) {
       return { bootstrapped: false, pushed, pulled, conflicts, skipped: true, reason: "workspace_switched" };
     }
     const result = await applyRemoteChanges(db, { workspace: input.workspace }, pullResponse.changes);
@@ -954,7 +940,7 @@ export async function runBootstrap(input: SyncRunInput): Promise<SyncRunResult> 
       { deviceId: input.deviceId, workspaceSchemaVersion: input.workspace.schemaVersion },
       { accessToken: input.accessToken, deviceId: input.deviceId },
     );
-    if (!isGuardCurrent(input.workspace, guard)) {
+    if (!isGuardCurrent(guard)) {
       return { bootstrapped: false, pushed: 0, pulled: 0, conflicts: 0, skipped: true, reason: "workspace_switched" };
     }
     const result = await applyBootstrap(db, { workspace: input.workspace }, response);
