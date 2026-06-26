@@ -2,6 +2,7 @@
 
 import type { WishlistItem } from "@/lib/types";
 import { createWorkspaceUuidV7, getAccountWorkspaceDb, type WorkspaceWishlistItemRecord } from "@/lib/account-workspace-db";
+import { imageAssetInputsForWishlist, prepareEntityImageAssets, putPreparedEntityImageAssets, withCloudAssetRefs, type CloudAssetReferenceMap } from "@/lib/cloud-sync/asset-bridge";
 import { loadCloudBridgeContext } from "@/lib/cloud-sync/bridge-context";
 import { deleteWishlistItem, writeWishlistItem } from "@/lib/cloud-sync/sync-engine";
 
@@ -21,7 +22,19 @@ export async function bridgeWishlistUpsert(item: WishlistItem): Promise<BridgeWi
   try {
     const db = getAccountWorkspaceDb(ctx.workspace);
     const existing = await findWorkspaceWishlistByLegacyId(db, item.id);
-    const payload = toCloudWishlistPayload(item);
+    const wishlistRecord = {
+      id: existing?.id ?? createWorkspaceUuidV7(),
+      legacyWishlistId: item.id,
+      status: item.status,
+    };
+    const assets = await prepareEntityImageAssets(db, {
+      workspace: ctx.workspace,
+      originDeviceId: ctx.deviceId,
+      ownerEntityType: "wishlistItem",
+      ownerEntityId: wishlistRecord.id,
+      images: imageAssetInputsForWishlist(item),
+    });
+    const payload = toCloudWishlistPayload(item, assets.assetRefs);
     await writeWishlistItem(
       db,
       {
@@ -31,13 +44,12 @@ export async function bridgeWishlistUpsert(item: WishlistItem): Promise<BridgeWi
         payload: { payload },
       },
       {
-        id: existing?.id ?? createWorkspaceUuidV7(),
-        legacyWishlistId: item.id,
-        status: item.status,
+        ...wishlistRecord,
         payload,
       },
       existing ? "update" : "create",
     );
+    await putPreparedEntityImageAssets(db, assets);
     return { bridged: true };
   } catch (err) {
     if (typeof console !== "undefined") {
@@ -74,16 +86,16 @@ export async function bridgeWishlistDelete(legacyWishlistId: string): Promise<Br
   }
 }
 
-export function toCloudWishlistPayload(item: WishlistItem): Record<string, unknown> {
+export function toCloudWishlistPayload(item: WishlistItem, assetRefs?: CloudAssetReferenceMap): Record<string, unknown> {
   const safe = { ...item } as Record<string, unknown>;
   delete safe.imageDataUrl;
   delete safe.sourceImageDataUrl;
   delete safe.thumbnailDataUrl;
   delete safe.cropBox;
-  return {
+  return withCloudAssetRefs({
     ...safe,
     legacyWishlistId: item.id,
-  } as Record<string, unknown>;
+  } as Record<string, unknown>, assetRefs);
 }
 
 async function findWorkspaceWishlistByLegacyId(

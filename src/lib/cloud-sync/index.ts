@@ -73,4 +73,17 @@ export {
   sha256Hex,
 } from "@/lib/cloud-sync/asset-metadata";
 
+export {
+  type EntityImageAssetInput,
+  type CloudAssetReference,
+  type CloudAssetReferenceMap,
+  type PreparedEntityImageAssets,
+  prepareEntityImageAssets,
+  putPreparedEntityImageAssets,
+  withCloudAssetRefs,
+  imageAssetInputsForGarment,
+  imageAssetInputsForWishlist,
+  imageAssetInputsForOutfit,
+} from "@/lib/cloud-sync/asset-bridge";
+
 export { isNetworkOnline, subscribeNetworkChanges } from "@/lib/cloud-sync/connectivity";

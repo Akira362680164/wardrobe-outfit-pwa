@@ -9,6 +9,7 @@
 
 import type { WardrobeItem } from "@/lib/types";
 import { createWorkspaceUuidV7, getAccountWorkspaceDb } from "@/lib/account-workspace-db";
+import { imageAssetInputsForGarment, prepareEntityImageAssets, putPreparedEntityImageAssets, withCloudAssetRefs, type CloudAssetReferenceMap } from "@/lib/cloud-sync/asset-bridge";
 import { loadCloudBridgeContext } from "@/lib/cloud-sync/bridge-context";
 import { deleteGarment, writeGarment } from "@/lib/cloud-sync/sync-engine";
 import type { WorkspaceGarmentRecord } from "@/lib/account-workspace-db";
@@ -30,8 +31,21 @@ export async function bridgeGarmentCreate(item: WardrobeItem): Promise<BridgeGar
 
   try {
     const db = getAccountWorkspaceDb(ctx.workspace);
-    const payload = toCloudGarmentPayload(item);
     const existing = await findWorkspaceGarmentByLegacyId(db, item.id);
+    const garmentRecord = {
+      id: existing?.id ?? createWorkspaceUuidV7(),
+      legacyItemId: typeof item.id === "number" ? item.id : undefined,
+      locationId: item.locationId,
+      name: item.name,
+    } as Omit<WorkspaceGarmentRecord, "userId" | "originDeviceId" | "revision" | "createdAt" | "updatedAt">;
+    const assets = await prepareEntityImageAssets(db, {
+      workspace: ctx.workspace,
+      originDeviceId: ctx.deviceId,
+      ownerEntityType: "garment",
+      ownerEntityId: garmentRecord.id,
+      images: imageAssetInputsForGarment(item),
+    });
+    const payload = toCloudGarmentPayload(item, assets.assetRefs);
     await writeGarment(
       db,
       {
@@ -40,15 +54,10 @@ export async function bridgeGarmentCreate(item: WardrobeItem): Promise<BridgeGar
         baseRevision: existing?.revision ?? 0,
         payload: { payload },
       },
-      {
-        id: existing?.id ?? createWorkspaceUuidV7(),
-        legacyItemId: typeof item.id === "number" ? item.id : undefined,
-        locationId: item.locationId,
-        name: item.name,
-        payload,
-      } as Omit<WorkspaceGarmentRecord, "userId" | "originDeviceId" | "revision" | "createdAt" | "updatedAt">,
+      { ...garmentRecord, payload },
       existing ? "update" : "create",
     );
+    await putPreparedEntityImageAssets(db, assets);
     return { bridged: true };
   } catch (err) {
     if (typeof console !== "undefined") {
@@ -91,12 +100,13 @@ export async function bridgeGarmentDelete(legacyItemId: number): Promise<BridgeG
   }
 }
 
-export function toCloudGarmentPayload(item: WardrobeItem): Record<string, unknown> {
+export function toCloudGarmentPayload(item: WardrobeItem, assetRefs?: CloudAssetReferenceMap): Record<string, unknown> {
   const safe = { ...item } as Record<string, unknown>;
   delete safe.imageDataUrl;
   delete safe.sourceImageDataUrl;
+  delete safe.thumbnailDataUrl;
   delete safe.referenceOutfitImages;
-  return safe;
+  return withCloudAssetRefs(safe, assetRefs);
 }
 
 async function findWorkspaceGarmentByLegacyId(

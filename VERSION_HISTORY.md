@@ -1,3 +1,31 @@
+## 2026-06-26 / v1.1.37 / Claude Code — cloud 1C C2b image asset bridge records
+
+- **目的**：按 V4 1C-C2b 接入业务图片保存后的本地 asset 记录生成：garment / wishlist / outfit 云桥接在写结构化实体时同步准备图片资产引用和账号工作区 `assets` 记录；结构化云 payload 只保留 `cloudAssetRefs`，不携带 DataURL / base64。
+- **改动文件**：
+  - `src/lib/cloud-sync/asset-bridge.ts`（新增）：新增 `prepareEntityImageAssets`、`putPreparedEntityImageAssets`、`withCloudAssetRefs`，以及 garment / wishlist / outfit 图片字段枚举；按 owner entity 和 fieldName 复用已有 assetId，生成 `cloudAssetRefs`。
+  - `src/lib/cloud-sync/garment-bridge.ts`：衣物 upsert 时为 `imageDataUrl` / `thumbnailDataUrl` 生成 asset 记录，并从云 payload 删除 `imageDataUrl`、`sourceImageDataUrl`、`thumbnailDataUrl`、参考图二进制。
+  - `src/lib/cloud-sync/wishlist-bridge.ts`：种草 upsert 时为主图/缩略图生成 asset 记录，云 payload 保留买前评估等结构化字段和 `cloudAssetRefs`。
+  - `src/lib/cloud-sync/outfit-bridge.ts`：套装 upsert 时为封面、预览、自动封面、实图等生成 asset 记录，云 payload 保留 `legacyItemIds` 和 `cloudAssetRefs`。
+  - `src/lib/cloud-sync/index.ts`：导出 C2b asset bridge 工具和类型。
+  - `scripts/test-cloud-assets-bridge.ts`（新增）/ `package.json`：新增 C2b 守护测试，并接入 `test:logic:all`。
+- **范围说明**：本轮不做 COS 上传队列，不请求 upload-url / complete-upload，不做下载、本地文件缓存目录、新设备恢复或 APK；旧 Dexie 主业务读取和 UI 图片显示仍按现有 DataURL 路径工作，asset 记录仅服务后续 C2c 上传。
+- **验证结果**：
+  - `npm run test:logic:cloud-assets-bridge`：✅ 10 passed, 0 failed。
+  - `npm run test:logic:cloud-sync-outfit`：✅ 12 passed, 0 failed。
+  - `npm run test:logic:cloud-sync-wishlist`：✅ 10 passed, 0 failed。
+  - `npm run test:logic:cloud-assets-local`：✅ 12 passed, 0 failed。
+  - `npm run test:logic:cloud-assets-api`：✅ 9 passed, 0 failed。
+  - `npm run test:logic:legacy-dexie-import`：✅ 17 passed, 0 failed。
+  - `npm run test:logic:app-route`：✅ 46 passed, 0 failed。
+  - `npm run test:logic:data-repo`：✅ 63 passed, 0 failed。
+  - `npm run cloud:contracts:typecheck`：✅ 通过。
+  - `npm run typecheck`：✅ 通过。
+  - `npm run build`：✅ 通过；仍有项目既有 unused/img/hooks warnings。
+  - `git diff --check`：✅ 通过。
+  - `node scripts/review-gate.mjs`：✅ `risk_gate=high`，`files=8`（含遗留未跟踪 `.vscode/settings.json`），未触发 subagent：用户未通知。
+- **风险门禁**：**high**。涉及业务云桥接、账号工作区 assets 表、结构化 outbox payload 隐私边界和后续上传链路；本轮加强 assets bridge、既有 sync bridge、legacy import、类型和构建验证。未触发独立审查 subagent：用户未通知，本轮由 Claude Code 实现。
+- **未验证风险 / 下一步**：未在真实 UI 保存路径上做浏览器人工验证；未调用真实 COS；未实现 pending asset 上传队列和 complete-upload；未做图片下载 / 缓存 / 新设备恢复。下一步进入 C2c：对 pending asset 分别请求 original / thumbnail 上传授权，直传 COS，并完成 complete-upload。
+
 ## 2026-06-26 / v1.1.37 / Claude Code — cloud 1C C2a local asset metadata utilities
 
 - **目的**：按已更新的 V4 1C 执行文档进入 C2a，先建立本地资产记录与图片元数据工具：从图片 DataURL 解析 MIME、计算 SHA-256、读取尺寸、准备 original / thumbnail 上传变体，并生成不含图片二进制的账号工作区 `assets` 记录。C2a 只提供本地工具和守护测试，不接业务图片保存路径。

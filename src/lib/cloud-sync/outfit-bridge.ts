@@ -2,6 +2,7 @@
 
 import type { SavedOutfit } from "@/lib/types";
 import { getAccountWorkspaceDb, createWorkspaceUuidV7, type WorkspaceGarmentRecord, type WorkspaceOutfitRecord } from "@/lib/account-workspace-db";
+import { imageAssetInputsForOutfit, prepareEntityImageAssets, putPreparedEntityImageAssets, withCloudAssetRefs, type CloudAssetReferenceMap } from "@/lib/cloud-sync/asset-bridge";
 import { loadCloudBridgeContext } from "@/lib/cloud-sync/bridge-context";
 import { deleteOutfitBundle, writeOutfitBundle } from "@/lib/cloud-sync/sync-engine";
 
@@ -42,7 +43,14 @@ export async function bridgeOutfitUpsert(outfit: SavedOutfit): Promise<BridgeOut
       }];
     });
     const removedOutfitItems = activeExistingItems.filter((item) => !nextGarmentIds.has(item.garmentId));
-    const payload = toCloudOutfitPayload(outfit);
+    const assets = await prepareEntityImageAssets(db, {
+      workspace: ctx.workspace,
+      originDeviceId: ctx.deviceId,
+      ownerEntityType: "outfit",
+      ownerEntityId: workspaceOutfitId,
+      images: imageAssetInputsForOutfit(outfit),
+    });
+    const payload = toCloudOutfitPayload(outfit, assets.assetRefs);
 
     await writeOutfitBundle(
       db,
@@ -64,6 +72,7 @@ export async function bridgeOutfitUpsert(outfit: SavedOutfit): Promise<BridgeOut
         removedOutfitItems,
       },
     );
+    await putPreparedEntityImageAssets(db, assets);
     return { bridged: true };
   } catch (err) {
     if (typeof console !== "undefined") {
@@ -103,7 +112,7 @@ export async function bridgeOutfitDelete(legacyOutfitId: string): Promise<Bridge
   }
 }
 
-export function toCloudOutfitPayload(outfit: SavedOutfit): Record<string, unknown> {
+export function toCloudOutfitPayload(outfit: SavedOutfit, assetRefs?: CloudAssetReferenceMap): Record<string, unknown> {
   const { itemIds, ...safe } = outfit as SavedOutfit & Record<string, unknown>;
   delete safe.coverImageDataUrl;
   delete safe.previewImageDataUrl;
@@ -111,11 +120,11 @@ export function toCloudOutfitPayload(outfit: SavedOutfit): Record<string, unknow
   delete safe.thumbnailDataUrl;
   delete safe.autoCoverImageDataUrl;
   delete safe.outfitRealImages;
-  return {
+  return withCloudAssetRefs({
     ...safe,
     legacyOutfitId: outfit.id,
     legacyItemIds: itemIds,
-  } as Record<string, unknown>;
+  } as Record<string, unknown>, assetRefs);
 }
 
 async function findWorkspaceOutfitByLegacyId(
