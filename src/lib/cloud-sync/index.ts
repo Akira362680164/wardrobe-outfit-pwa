@@ -102,4 +102,11 @@ export {
   AccountImageCache,
 } from "@/lib/cloud-sync/image-cache";
 
+export {
+  type AssetRecoveryProgress,
+  type AssetRecoveryDeps,
+  recoverAssets,
+  scheduleAssetRecovery,
+} from "@/lib/cloud-sync/asset-recovery";
+
 export { isNetworkOnline, subscribeNetworkChanges } from "@/lib/cloud-sync/connectivity";

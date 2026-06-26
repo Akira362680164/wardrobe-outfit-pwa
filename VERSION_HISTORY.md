@@ -1,3 +1,22 @@
+## 2026-06-26 / v1.1.37 / Claude Code — cloud 1C C3c new device asset recovery
+
+- **目的**：按 V4 1C-C3c 实现新设备资产恢复与缩略图优先下载：`recoverAssets()` 先拉取资产清单（分页），再按最近更新优先顺序批量下载缩略图，每批次前重新执行三重检查（userId/dbName/workspaceGeneration）；`scheduleAssetRecovery()` 提供 fire-and-forget 包装。manifest 和 thumbnail 下载均可注入方便测试。
+- **改动文件**：
+  - `src/lib/cloud-sync/asset-recovery.ts`（新增）：`recoverAssets()`、`scheduleAssetRecovery()`、`AssetRecoveryProgress`、`AssetRecoveryDeps`。
+  - `src/lib/cloud-sync/index.ts`：导出 recovery 相关类型和函数。
+  - `scripts/test-cloud-assets-recovery.ts`（新增）/ `package.json`：新增 C3c 守护测试，接入 `test:logic:all`。
+- **范围说明**：本轮不做 UI 接入（不切主 UI 图片渲染、不实现详情页按需下载原图、不实现后台空闲补齐原图），不做 Capacitor 电量/空闲检测集成，不打 APK。
+- **验证结果**：
+  - `npm run typecheck`：✅ 通过。
+  - `npm run test:logic:cloud-assets-recovery`：✅ 22 passed, 0 failed（空清单、完整下载、最近优先顺序、无缩略图跳过、manifest 错误、progress 阶段、三重检查 gen 变更中断、无 session 返回 error、下载失败计数、fire-and-forget、workspace 关闭）。
+  - `npm run test:logic:cloud-image-cache`：✅ 12 passed, 0 failed。
+  - `npm run test:logic:cloud-assets-upload`：✅ 20 passed, 0 failed。
+  - `npm run test:logic:cloud-assets-api`：✅ 11 passed, 0 failed。
+  - `npm run test:logic:cloud-assets-local`：✅ 12 passed, 0 failed。
+  - `npm run test:logic:cloud-assets-bridge`：✅ 10 passed, 0 failed。
+- **风险门禁**：**high**。涉及跨账号恢复安全（三重检查）、资产清单分页、缩略图下载优先级和进度报告；本轮加强完整测试（含 gen 变更中断、错误路径、边界情况），所有既有 cloud assets 测试回归。未触发独立审查 subagent：用户未通知。
+- **未验证风险 / 下一步**：未在真实 COS 环境验证 manifest 分页和缩略图下载端到端；未实现详情页按需原图下载和后台空闲补齐（需 UI 接入和 Capacitor 电量/网络检测插件）；未实现 Capacitor Filesystem 持久化缓存。下一步进入 C4：完整回归、内部测试 APK 收口。
+
 ## 2026-06-26 / v1.1.37 / Claude Code — cloud 1C C3b account-isolated image cache
 
 - **目的**：按 V4 1C-C3b 实现账号隔离图片缓存：`AccountImageCache` 按 `userIdHash` 隔离缓存 key 空间，下载后校验 SHA-256，写文件使用临时 key + 原子替换（tmp → final + meta），存储后端可注入（默认内存实现，可切换 Capacitor Filesystem）。
