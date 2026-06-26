@@ -1,3 +1,14 @@
+## 2026-06-26 / v1.1.37 / Claude Code — legacy code cleanup report
+
+- **目的**：按用户要求把当前分支基线上的旧入口、旧函数、旧页面与构建 unused warning 调查结果整理成 Markdown 报告，便于后续修复 agent 对照 `codex/cloud-phase1-auth` / `4fc186f` 继续清理。
+- **改动文件**：
+  - `review-artifacts/legacy-code-cleanup-report-v1.1.37.md`：新增遗留旧代码调查报告，覆盖 `captureMode === "outfit"`、`BatchOutfitGroupsView`、旧推荐/种草页面、半迁移 hook、build warning 汇总和后续清理批次。
+  - `VERSION_HISTORY.md`：登记本次只读调查报告产物。
+- **范围说明**：本轮不修改业务源码，不删除旧代码，不处理 `.vscode/` 本机未跟踪目录，不创建 Git commit。
+- **验证结果**：沿用本轮报告生成前的只读验证：`npm run typecheck` ✅ 通过；`npm run build` ✅ 通过但仍有既有 unused / hooks / img warnings，详情见报告。
+- **风险门禁**：**low**。仅新增调查报告和版本历史记录，未触发 subagent：用户未通知。
+- **未验证风险 / 下一步**：报告未执行自动修复；后续修复建议先从 `src/components/wardrobe-app.tsx` 的 `captureMode === "outfit"` / `BatchOutfitGroupsView` 收口开始。
+
 ## 2026-06-26 / v1.1.37 / Codex — cloud 1B B6 云端可用态与离线工作区入口
 
 - **目的**：按 V4 执行方案进入阶段 1B-B6，补齐云端可用态、账号会话刷新失败容错、离线授权与工作区入口分支，避免仅凭 Wi-Fi / `navigator.onLine` 误判在线，也避免首次本机使用时生成假空衣橱。
