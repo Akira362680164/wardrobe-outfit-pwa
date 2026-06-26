@@ -15,7 +15,9 @@ import type { AssetService } from "../src/assets/service.js";
 import {
   buildAssetObjectKey,
   createCosPutObjectPresignedUrl,
+  formatManifestCursor,
   loadCosUploadConfig,
+  parseManifestCursor,
 } from "../src/assets/service.js";
 import { AuthApiError } from "../src/auth/registrations.js";
 
@@ -163,6 +165,35 @@ describe("asset upload routes", () => {
     } finally {
       await app.close();
     }
+  });
+
+  it("encodes and decodes manifest cursors with full roundtrip", () => {
+    const now = new Date("2026-06-27T12:00:00.000Z");
+    const assetId = "018f6f02-7b7a-7a20-8d1d-000000000301";
+    const encoded = formatManifestCursor({ updatedAt: now, id: assetId });
+    expect(encoded).toBeTypeOf("string");
+    expect(encoded.length).toBeGreaterThan(0);
+
+    const decoded = parseManifestCursor(encoded);
+    expect(decoded).not.toBeNull();
+    expect(decoded!.updatedAt).toBe(now.toISOString());
+    expect(decoded!.id).toBe(assetId);
+  });
+
+  it("rejects invalid manifest cursor payloads without crashing", () => {
+    expect(parseManifestCursor("not-valid-base64~")).toBeNull();
+    expect(parseManifestCursor("")).toBeNull();
+    expect(parseManifestCursor(Buffer.from(JSON.stringify({ updatedAt: 123 })).toString("base64url"))).toBeNull();
+    expect(parseManifestCursor(Buffer.from(JSON.stringify({ id: "x" })).toString("base64url"))).toBeNull();
+  });
+
+  it("produces distinct cursors for distinct timestamps and ids", () => {
+    const a = formatManifestCursor({ updatedAt: new Date("2026-06-27T12:00:00.000Z"), id: "00000000-0000-0000-0000-000000000001" });
+    const b = formatManifestCursor({ updatedAt: new Date("2026-06-27T12:00:00.001Z"), id: "00000000-0000-0000-0000-000000000001" });
+    const c = formatManifestCursor({ updatedAt: new Date("2026-06-27T12:00:00.000Z"), id: "00000000-0000-0000-0000-000000000002" });
+    expect(a).not.toBe(b);
+    expect(a).not.toBe(c);
+    expect(b).not.toBe(c);
   });
 
   it("rejects unauthenticated asset upload requests", async () => {

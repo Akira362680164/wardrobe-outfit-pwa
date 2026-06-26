@@ -1,6 +1,4 @@
 import { randomUUID } from "node:crypto";
-import { readFileSync } from "node:fs";
-import path from "node:path";
 
 import { describe, expect, it } from "vitest";
 
@@ -281,13 +279,41 @@ describe("registration API", () => {
 });
 
 describe("development CLI verification", () => {
-  it("uses development_cli and does not create a wechat identity path", () => {
-    const cli = readFileSync(
-      path.join(process.cwd(), "src/cli/verify-pending-registration.ts"),
-      "utf8",
-    );
+  it("marks a pending registration as verified with development_cli source", async () => {
+    const { service, store } = makeFixture();
+    const now = new Date("2026-06-26T00:00:00.000Z");
+    const registration = await store.createPendingRegistration({
+      phoneE164: "+8613812345678",
+      maskedPhone: "138****5678",
+      passwordHash: "hash",
+      clientSecretHash: "secret-hash",
+      expiresAt: new Date(now.getTime() + REGISTRATION_TTL_MS),
+      now,
+    });
 
-    expect(cli).toContain("verifyPendingRegistrationWithDevelopmentCli");
-    expect(cli).not.toMatch(/wechat/i);
+    const verified = await service.verifyPendingRegistrationWithDevelopmentCli(registration.id);
+    expect(verified).not.toBeNull();
+    expect(verified!.status).toBe<RegistrationStatus>("verified");
+    expect(verified!.verificationSource).toBe("development_cli");
+
+    const stored = await store.findPendingRegistration(registration.id);
+    expect(stored?.status).toBe<RegistrationStatus>("verified");
+    expect(stored?.verificationSource).toBe("development_cli");
+  });
+
+  it("rejects verification for already expired registrations", async () => {
+    const { service, store } = makeFixture();
+    const past = new Date("2026-06-26T00:00:00.000Z");
+    const registration = await store.createPendingRegistration({
+      phoneE164: "+8613812345678",
+      maskedPhone: "138****5678",
+      passwordHash: "hash",
+      clientSecretHash: "secret-hash",
+      expiresAt: new Date(past.getTime() - 1),
+      now: past,
+    });
+
+    await expect(service.verifyPendingRegistrationWithDevelopmentCli(registration.id))
+      .rejects.toMatchObject({ code: "registration_not_found" });
   });
 });

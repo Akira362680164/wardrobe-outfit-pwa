@@ -413,12 +413,12 @@ interface ManifestCursor {
   id: string;
 }
 
-function formatManifestCursor(row: { updatedAt: Date; id: string }): string {
+export function formatManifestCursor(row: { updatedAt: Date; id: string }): string {
   const payload: ManifestCursor = { updatedAt: row.updatedAt.toISOString(), id: row.id };
   return Buffer.from(JSON.stringify(payload)).toString("base64url");
 }
 
-function parseManifestCursor(encoded: string): ManifestCursor | null {
+export function parseManifestCursor(encoded: string): ManifestCursor | null {
   try {
     const obj = JSON.parse(Buffer.from(encoded, "base64url").toString("utf8"));
     if (typeof obj.updatedAt === "string" && typeof obj.id === "string") {

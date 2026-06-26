@@ -1,12 +1,12 @@
 import Link from "next/link";
 
-const LAST_UPDATED = "2026-06-26";
+const LAST_UPDATED = "2026-06-27";
 const APP_NAME = "衣橱穿搭助手";
-const PHASE = "阶段 1A（内部测试）";
+const PHASE = "阶段 1A-1C（内部测试）";
 
 export const metadata = {
   title: `${APP_NAME} · 测试阶段隐私政策`,
-  description: `${APP_NAME} ${PHASE}隐私政策。本阶段服务器只收集账号与认证所需最小字段,衣橱数据、图片、AI Key 默认仅保存在用户本机。`,
+  description: `${APP_NAME} ${PHASE}隐私政策。本阶段服务器收集账号认证数据、衣橱结构化数据与穿搭图片，图片通过 COS 存储。`,
 };
 
 export default function PrivacyPage() {
@@ -29,98 +29,112 @@ export default function PrivacyPage() {
             {APP_NAME} · 测试阶段隐私政策
           </h1>
           <p className="mt-1 text-xs text-ink/55">
-            适用范围:{PHASE}　·　最近更新:{LAST_UPDATED}
+            适用范围：{PHASE}　·　最近更新：{LAST_UPDATED}
           </p>
         </header>
 
         <Section title="1. 概要">
           <p>
-            本应用以<strong>本机优先</strong>为原则:衣橱数据、衣物图片、MiniMax AI Key 默认<strong>只保存在用户本机</strong>,不进入我们的服务器。阶段 1A 的服务器仅承担账号与认证职责,本隐私政策仅描述阶段 1A 实际涉及的数据范围。
+            本应用已进入云同步测试阶段。除账号认证数据外，服务器还会接收衣橱结构化数据（单品、套装、心愿单、穿着记录、行程、穿搭计划）以及穿搭图片。<strong>云同步功能默认关闭</strong>，由用户在本机设置页显式开启。
           </p>
           <p>
-            本政策<strong>不适用于</strong>后续阶段将上线的衣橱云同步、图片云同步等扩展能力——那些能力上线时会单独更新政策。
+            本政策描述阶段 1A-1C 实际涉及的数据范围。后续阶段新增能力时将更新本政策。
           </p>
         </Section>
 
         <Section title="2. 我们收集哪些数据">
-          <p>阶段 1A 服务器只收集以下与账号认证直接相关的最小字段:</p>
+          <p><strong>账号认证数据</strong>（始终收集，用于创建和登录账号）：</p>
           <ul>
-            <li>手机号（用于唯一标识账号,内部以规范化形式保存）;</li>
-            <li>密码 Argon2id 哈希值（明文密码<strong>永不</strong>保存到服务器）;</li>
-            <li>客户端在注册/登录时生成的 <code>clientSecret</code> 哈希（用于完成注册申请）;</li>
-            <li>设备 ID（用于多设备会话与 Refresh Token 吊销,账号管理页仅展示当前设备标识）;</li>
-            <li>Refresh Token、Refresh Token 过期时间、最近一次刷新时间;</li>
-            <li>请求级元数据:IP、User-Agent（用于限流、防滥用和审计）;</li>
-            <li>账号注册、验证、退出、改密事件的时间戳。</li>
+            <li>手机号（规范化形式保存，界面仅展示脱敏手机号）；</li>
+            <li>密码 Argon2id 哈希（明文密码<strong>永不</strong>保存）；</li>
+            <li>设备 ID（用于多设备会话管理与 Refresh Token 吊销）；</li>
+            <li>Refresh Token 哈希及其过期时间；</li>
+            <li>请求元数据：IP、User-Agent（用于限流、防滥用和审计）；</li>
+            <li>账号安全事件（注册、验证、登录、退出、改密）的时间戳与脱敏信息。</li>
+          </ul>
+          <p className="mt-2"><strong>衣橱结构化数据</strong>（仅在用户开启云同步后收集）：</p>
+          <ul>
+            <li>单品信息（名称、分类、颜色、季节、材质等属性，不含原始图片二进制）；</li>
+            <li>套装组合（套装名称与包含的单品 ID 列表）；</li>
+            <li>心愿单条目；</li>
+            <li>穿着记录（单品/套装穿着日期）；</li>
+            <li>行程计划（行程日期、目的地、活动类型）；</li>
+            <li>穿搭计划（行程对应的每日穿搭安排）。</li>
+          </ul>
+          <p className="mt-2"><strong>图片数据</strong>（仅在用户开启云同步后上传）：</p>
+          <ul>
+            <li>衣物图片、套装封面图、心愿单图片；</li>
+            <li>图片上传至腾讯云 COS，服务器仅保存元数据（SHA-256、文件类型、尺寸），不保存图片二进制。</li>
           </ul>
         </Section>
 
         <Section title="3. 我们不收集哪些数据">
-          <p>以下数据在阶段 1A <strong>不会</strong>进入我们的服务器:</p>
+          <p>以下数据<strong>不会</strong>进入我们的服务器：</p>
           <ul>
-            <li>你的衣物条目、套装、心愿单、穿着记录、行程、打包清单、买前评估结果;</li>
-            <li>你录入或拍摄的衣物图片(图片数据保存在本机 Dexie / 文件系统);</li>
-            <li>你的 MiniMax / MiniMax API Key(只保存在本机 localStorage 或 Android WebView 存储);</li>
-            <li>你的精确位置(GPS)、通讯录、相册等设备权限读取的内容;</li>
-            <li>AI 调用(MiniMax 图像识别 / 穿搭建议 / 试穿预览)的请求正文与响应结果——这些调用由 App 客户端直接发起,使用本机保存的 AI Key,我们的服务器不参与转发、不存储明文。</li>
+            <li>MiniMax API Key（只保存在本机 localStorage / Android WebView 存储）；</li>
+            <li>精确位置（GPS）、通讯录、相册等设备权限读取的内容；</li>
+            <li>AI 调用的请求正文与响应结果——这些调用由客户端直接发起，服务器不参与转发、不存储明文。</li>
           </ul>
         </Section>
 
         <Section title="4. 数据存放在哪里">
           <ul>
-            <li>账号与认证数据:保存在阶段 1A 的云端 PostgreSQL,部署在自有服务器（域名 api.zhengfangapps.cloud,公网 IP 111.231.98.86,Ubuntu 24.04）。</li>
-            <li>Access Token:由 App 临时保存在内存或会话存储,过期即失效。</li>
-            <li>Refresh Token:Android 版由 App 保存在 Keystore 支持的本机安全存储中;浏览器开发环境保存在 <code>sessionStorage</code>。服务器只保存哈希,不保存明文副本(仅在签发/刷新时回传用于校验)。</li>
-            <li>衣橱数据与图片:阶段 1A 仍保存在本机 IndexedDB / Dexie / 应用文件目录;多账号物理隔离属于阶段 1B。</li>
-            <li>MiniMax AI Key:仅保存在本机 localStorage,服务器不接收、不存储、不缓存。</li>
+            <li><strong>账号与结构化数据</strong>：保存在云端 PostgreSQL（域名 api.zhengfangapps.cloud），与用户账号关联。</li>
+            <li><strong>穿搭图片</strong>：上传至腾讯云 COS（对象存储），存储路径按账号隔离，下载通过预签名 URL。服务器不转发图片流。</li>
+            <li><strong>本机数据</strong>：衣橱数据在本机 IndexedDB/Dexie 保留完整副本，图片缓存按账号分目录存储（Android：应用文件目录，浏览器：IndexedDB/内存缓存）。</li>
+            <li><strong>Access Token</strong>：临时保存在内存或会话存储，过期即失效。</li>
+            <li><strong>Refresh Token</strong>：Android 使用 Keystore 安全存储；浏览器使用 sessionStorage。服务器仅保存哈希。</li>
+            <li><strong>MiniMax AI Key</strong>：仅保存在本机 localStorage。</li>
           </ul>
         </Section>
 
         <Section title="5. 加密与传输">
           <ul>
-            <li>所有 API 走 HTTPS,由 Caddy 终止 TLS。</li>
-            <li>密码使用 Argon2id 哈希后再写入数据库,不可逆。</li>
-            <li>Token 使用短期 Access + 可撤销 Refresh 机制;Refresh Token 旋转,重放会被识别并吊销全部会话。</li>
-            <li>认证 Token 在 Android 版使用 Keystore 支持的本机安全存储;MiniMax AI Key 与衣橱数据仍使用本机应用存储,root 或物理拿到手机的攻击者可能读取本机数据。</li>
+            <li>所有 API 走 HTTPS，由 Caddy 终止 TLS。</li>
+            <li>密码使用 Argon2id 哈希后写入数据库，不可逆。</li>
+            <li>Token 使用短期 Access + 可撤销 Refresh 机制；Refresh Token 使用一次即旋转，重放会识别并吊销全部会话。</li>
+            <li>图片上传至 COS 使用 HTTPS，下载通过预签名 URL（含有效期）。</li>
+            <li>Android Keystore 保护本地 Token 存储。</li>
           </ul>
         </Section>
 
         <Section title="6. 第三方服务">
-          <p>
-            阶段 1A 的服务器<strong>不</strong>对接任何第三方 AI 服务。AI 调用仅由 App 客户端发起,目标地址、请求内容与 Key 都由本机决定,服务器不参与。
-          </p>
+          <ul>
+            <li><strong>腾讯云 COS</strong>：穿搭图片存储，部署在境内地域。服务器生成预签名上传/下载 URL，图片二进制不经过业务服务器。</li>
+            <li>本阶段<strong>不对接</strong>第三方 AI 服务。AI 调用由客户端直接发起。</li>
+          </ul>
         </Section>
 
         <Section title="7. 留存与删除">
           <ul>
-            <li>阶段 1A 未提供 App 内自助删除账号功能,账号数据在测试期内保留,除非由开发者执行测试清理。</li>
-            <li>退出账号会清除本机认证凭据并吊销对应 Token,但不会删除云端账号记录。</li>
-            <li><strong>退出或测试清理云端账号不会清除本机数据</strong>:本机衣橱、图片缓存、AI Key、未来阶段才会出现的 Outbox 仍保留,可由用户自行在系统设置或 App 内清理。</li>
-            <li>测试期间,我们可能因测试需要整体清空云端数据,不会逐一通知。</li>
+            <li>账号与结构化数据保留至用户请求删除或测试结束。</li>
+            <li>图片在 COS 保留至用户请求删除或对应实体被删除；删除操作通过 API 触发，服务端同步清理 COS 对象。</li>
+            <li>退出账号会清除本机认证凭据并吊销 Token。退出或吊销<strong>不会</strong>自动清除云端数据，需另行请求账号删除。</li>
+            <li>本机衣橱数据、图片缓存、AI Key 在退出后保留，可由用户自行清理。</li>
+            <li>测试期间，我们可能因测试需要整体清空云端数据。</li>
           </ul>
         </Section>
 
         <Section title="8. 您的权利">
-          <p>在阶段 1A,你可以:</p>
+          <p>在当前阶段，你可以：</p>
           <ul>
-            <li>查看当前账号与当前设备标识,并修改账号密码;</li>
-            <li>退出当前设备,或一键<strong>退出全部设备</strong>;</li>
-            <li>关闭认证开关 <code>NEXT_PUBLIC_CLOUD_AUTH_ENABLED</code> 后,完全以本机模式使用 App,不再产生账号数据。</li>
+            <li>查看当前账号与设备标识，修改密码；</li>
+            <li>退出当前设备或一键退出全部设备；</li>
+            <li>随时关闭云同步开关（<code>NEXT_PUBLIC_CLOUD_SYNC_ENABLED</code>），关闭后不再产生新的云端数据；</li>
+            <li>关闭认证开关后完全以本机模式使用 App。</li>
           </ul>
-          <p>
-            后续阶段会提供账号数据导出、衣橱云同步的关闭开关等更多能力,届时本政策会同步更新。
-          </p>
+          <p>后续阶段将提供账号数据导出、自助删除等能力。</p>
         </Section>
 
         <Section title="9. 未成年人">
           <p>
-            本阶段面向具备完全民事行为能力的测试用户。如不具备相应能力,请在监护人同意下使用。
+            本阶段面向具备完全民事行为能力的测试用户。如不具备相应能力，请在监护人同意下使用。
           </p>
         </Section>
 
         <Section title="10. 测试阶段特殊说明">
           <p>
-            阶段 1A 是<strong>内部测试</strong>。我们可能在不另行通知的情况下修改接口、清空数据或调整策略。测试期间:<strong>不承诺 SLA</strong>、<strong>不承诺客服渠道</strong>、<strong>不承诺跨境数据传输</strong>。如不同意,你可以不启用认证功能、继续以本机模式使用 App。
+            阶段 1A-1C 是<strong>内部测试</strong>。我们可能在不另行通知的情况下修改接口、清空数据或调整策略。测试期间：<strong>不承诺 SLA</strong>、<strong>不承诺客服渠道</strong>、<strong>不承诺跨境数据传输</strong>。如不同意，你可以关闭云同步和认证功能、继续以本机模式使用 App。
           </p>
         </Section>
 
@@ -132,7 +146,7 @@ export default function PrivacyPage() {
 
         <footer className="surface rounded-lg px-4 py-3 text-xs text-ink/55">
           <p>
-            本政策<strong>不是</strong>面向公众的最终隐私政策,仅适用于阶段 1A 内部测试。后续阶段会发布面向正式用户的版本。
+            本政策仅适用于阶段 1A-1C 内部测试，正式发布时将更新为面向公众的版本。
           </p>
         </footer>
       </div>
