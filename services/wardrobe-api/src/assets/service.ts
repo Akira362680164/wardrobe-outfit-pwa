@@ -1,6 +1,6 @@
 import { createHash, createHmac } from "node:crypto";
 
-import { and, eq } from "drizzle-orm";
+import { and, eq, sql } from "drizzle-orm";
 import type { NodePgDatabase } from "drizzle-orm/node-postgres";
 import type {
   AssetDownloadAuthorizeRequest,
@@ -165,12 +165,23 @@ export class AssetService {
 
   async getManifest(input: AssetManifestRequest & { userId: string }): Promise<AssetManifestResponse> {
     const db = this.database();
-    const rows = await db
+    const cursor = input.cursor ? parseManifestCursor(input.cursor) : null;
+
+    let query = db
       .select()
       .from(assets)
-      .where(eq(assets.userId, input.userId))
-      .limit(input.limit + 1)
-      .offset(0); // ponytail: cursor-based pagination if manifest grows large
+      .where(
+        cursor
+          ? and(
+              eq(assets.userId, input.userId),
+              sql`(${assets.updatedAt}, ${assets.id}) > (${cursor.updatedAt}::timestamptz, ${cursor.id}::uuid)`,
+            )
+          : eq(assets.userId, input.userId),
+      )
+      .orderBy(sql`${assets.updatedAt} ASC, ${assets.id} ASC`)
+      .limit(input.limit + 1);
+
+    const rows = await query;
 
     const hasMore = rows.length > input.limit;
     const items = (hasMore ? rows.slice(0, input.limit) : rows).map((row) => {
@@ -204,9 +215,10 @@ export class AssetService {
       };
     });
 
+    const lastItem = rows[input.limit - 1];
     return AssetManifestResponseSchema.parse({
       items,
-      ...(hasMore ? { nextCursor: rows[input.limit - 1]?.id } : {}),
+      ...(hasMore && lastItem ? { nextCursor: formatManifestCursor(lastItem) } : {}),
     });
   }
 
@@ -394,4 +406,26 @@ function sha1Hex(value: string): string {
 
 function hmacSha1Hex(key: string, value: string): string {
   return createHmac("sha1", key).update(value).digest("hex");
+}
+
+interface ManifestCursor {
+  updatedAt: string;
+  id: string;
+}
+
+function formatManifestCursor(row: { updatedAt: Date; id: string }): string {
+  const payload: ManifestCursor = { updatedAt: row.updatedAt.toISOString(), id: row.id };
+  return Buffer.from(JSON.stringify(payload)).toString("base64url");
+}
+
+function parseManifestCursor(encoded: string): ManifestCursor | null {
+  try {
+    const obj = JSON.parse(Buffer.from(encoded, "base64url").toString("utf8"));
+    if (typeof obj.updatedAt === "string" && typeof obj.id === "string") {
+      return obj as ManifestCursor;
+    }
+    return null;
+  } catch {
+    return null;
+  }
 }
