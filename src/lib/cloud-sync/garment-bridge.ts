@@ -12,7 +12,7 @@ import { createWorkspaceUuidV7, getAccountWorkspaceDb } from "@/lib/account-work
 import { imageAssetInputsForGarment, prepareEntityImageAssets, putPreparedEntityImageAssets, withCloudAssetRefs, type CloudAssetReferenceMap } from "@/lib/cloud-sync/asset-bridge";
 import { loadCloudBridgeContext } from "@/lib/cloud-sync/bridge-context";
 import { schedulePendingUploads } from "@/lib/cloud-sync/asset-upload-coordinator";
-import { deleteGarment, writeGarment } from "@/lib/cloud-sync/sync-engine";
+import { currentWorkspaceGuard, deleteGarment, isGuardCurrent, writeGarment } from "@/lib/cloud-sync/sync-engine";
 import type { WorkspaceGarmentRecord } from "@/lib/account-workspace-db";
 
 export interface BridgeGarmentResult {
@@ -46,6 +46,7 @@ export async function bridgeGarmentCreate(item: WardrobeItem): Promise<BridgeGar
       ownerEntityId: garmentRecord.id,
       images: imageAssetInputsForGarment(item),
     });
+    if (!isGuardCurrent(currentWorkspaceGuard(ctx.workspace))) return { bridged: false, reason: "no_workspace" };
     const payload = toCloudGarmentPayload(item, assets.assetRefs);
     await writeGarment(
       db,
@@ -82,6 +83,7 @@ export async function bridgeGarmentDelete(legacyItemId: number): Promise<BridgeG
     const db = getAccountWorkspaceDb(ctx.workspace);
     const existing = await findWorkspaceGarmentByLegacyId(db, legacyItemId);
     if (!existing) return { bridged: false, reason: "workspace_garment_not_found" };
+    if (!isGuardCurrent(currentWorkspaceGuard(ctx.workspace))) return { bridged: false, reason: "no_workspace" };
     await deleteGarment(
       db,
       {

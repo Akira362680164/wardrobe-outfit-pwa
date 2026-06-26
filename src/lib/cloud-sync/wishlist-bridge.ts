@@ -5,7 +5,7 @@ import { createWorkspaceUuidV7, getAccountWorkspaceDb, type WorkspaceWishlistIte
 import { imageAssetInputsForWishlist, prepareEntityImageAssets, putPreparedEntityImageAssets, withCloudAssetRefs, type CloudAssetReferenceMap } from "@/lib/cloud-sync/asset-bridge";
 import { loadCloudBridgeContext } from "@/lib/cloud-sync/bridge-context";
 import { schedulePendingUploads } from "@/lib/cloud-sync/asset-upload-coordinator";
-import { deleteWishlistItem, writeWishlistItem } from "@/lib/cloud-sync/sync-engine";
+import { currentWorkspaceGuard, deleteWishlistItem, isGuardCurrent, writeWishlistItem } from "@/lib/cloud-sync/sync-engine";
 
 export interface BridgeWishlistResult {
   bridged: boolean;
@@ -36,6 +36,7 @@ export async function bridgeWishlistUpsert(item: WishlistItem): Promise<BridgeWi
       images: imageAssetInputsForWishlist(item),
     });
     const payload = toCloudWishlistPayload(item, assets.assetRefs);
+    if (!isGuardCurrent(currentWorkspaceGuard(ctx.workspace))) return { bridged: false, reason: "no_workspace" };
     await writeWishlistItem(
       db,
       {
@@ -69,6 +70,7 @@ export async function bridgeWishlistDelete(legacyWishlistId: string): Promise<Br
     const db = getAccountWorkspaceDb(ctx.workspace);
     const existing = await findWorkspaceWishlistByLegacyId(db, legacyWishlistId);
     if (!existing) return { bridged: false, reason: "workspace_wishlist_not_found" };
+    if (!isGuardCurrent(currentWorkspaceGuard(ctx.workspace))) return { bridged: false, reason: "no_workspace" };
     await deleteWishlistItem(
       db,
       {

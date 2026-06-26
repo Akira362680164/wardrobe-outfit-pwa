@@ -5,7 +5,7 @@ import { getAccountWorkspaceDb, createWorkspaceUuidV7, type WorkspaceGarmentReco
 import { imageAssetInputsForOutfit, prepareEntityImageAssets, putPreparedEntityImageAssets, withCloudAssetRefs, type CloudAssetReferenceMap } from "@/lib/cloud-sync/asset-bridge";
 import { loadCloudBridgeContext } from "@/lib/cloud-sync/bridge-context";
 import { schedulePendingUploads } from "@/lib/cloud-sync/asset-upload-coordinator";
-import { deleteOutfitBundle, writeOutfitBundle } from "@/lib/cloud-sync/sync-engine";
+import { currentWorkspaceGuard, deleteOutfitBundle, isGuardCurrent, writeOutfitBundle } from "@/lib/cloud-sync/sync-engine";
 
 export interface BridgeOutfitResult {
   bridged: boolean;
@@ -52,6 +52,7 @@ export async function bridgeOutfitUpsert(outfit: SavedOutfit): Promise<BridgeOut
       images: imageAssetInputsForOutfit(outfit),
     });
     const payload = toCloudOutfitPayload(outfit, assets.assetRefs);
+    if (!isGuardCurrent(currentWorkspaceGuard(ctx.workspace))) return { bridged: false, reason: "no_workspace" };
 
     await writeOutfitBundle(
       db,
@@ -94,6 +95,7 @@ export async function bridgeOutfitDelete(legacyOutfitId: string): Promise<Bridge
     if (!existingOutfit) return { bridged: false, reason: "workspace_outfit_not_found" };
     const activeItems = (await db.outfitItems.where("outfitId").equals(existingOutfit.id).toArray())
       .filter((item) => !item.deletedAt);
+    if (!isGuardCurrent(currentWorkspaceGuard(ctx.workspace))) return { bridged: false, reason: "no_workspace" };
     await deleteOutfitBundle(
       db,
       {

@@ -6,7 +6,7 @@ import { bridgeGarmentUpdate } from "@/lib/cloud-sync/garment-bridge";
 import { bridgeOutfitUpsert } from "@/lib/cloud-sync/outfit-bridge";
 import { bridgeOutfitPlanDelete, bridgeOutfitPlanUpsert } from "@/lib/cloud-sync/plan-bridge";
 import { loadCloudBridgeContext } from "@/lib/cloud-sync/bridge-context";
-import { deleteWearEvent, writeWearEvent } from "@/lib/cloud-sync/sync-engine";
+import { currentWorkspaceGuard, deleteWearEvent, isGuardCurrent, writeWearEvent } from "@/lib/cloud-sync/sync-engine";
 import type { OutfitWearSyncResult } from "@/lib/outfit-wear-sync";
 import type { SavedOutfit, WardrobeItem } from "@/lib/types";
 
@@ -89,6 +89,7 @@ async function bridgeWearEvents(input: {
     const prefix = `${input.source}:${input.legacyId}:`;
     const existing = (await input.db.wearEvents.toArray()).filter((event) => event.legacyWearEventKey?.startsWith(prefix) && !event.deletedAt);
     const existingByKey = new Map(existing.map((event) => [event.legacyWearEventKey, event]));
+    if (!isGuardCurrent(currentWorkspaceGuard(input.ctx.workspace))) return { bridged: false, reason: "no_workspace" };
 
     for (const date of activeDates) {
       const legacyWearEventKey = `${prefix}${date}`;

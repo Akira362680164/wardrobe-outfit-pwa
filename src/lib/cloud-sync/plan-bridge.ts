@@ -3,7 +3,7 @@
 import { createWorkspaceUuidV7, getAccountWorkspaceDb, type WorkspaceOutfitPlanRecord, type WorkspaceOutfitRecord, type WorkspaceTripPlanRecord } from "@/lib/account-workspace-db";
 import { getWardrobeDb } from "@/lib/db";
 import { loadCloudBridgeContext } from "@/lib/cloud-sync/bridge-context";
-import { deleteOutfitPlan, deleteTripPlan, writeOutfitPlan, writeTripPlan } from "@/lib/cloud-sync/sync-engine";
+import { currentWorkspaceGuard, deleteOutfitPlan, deleteTripPlan, isGuardCurrent, writeOutfitPlan, writeTripPlan } from "@/lib/cloud-sync/sync-engine";
 import type { OutfitCalendarPlan, OutfitPlanEntry, PlanPackingChecklistItem } from "@/lib/types";
 
 export interface BridgePlanResult {
@@ -26,6 +26,7 @@ export async function bridgeTripPlanUpsert(
     const db = getAccountWorkspaceDb(ctx.workspace);
     const existing = await findWorkspaceTripPlanByLegacyId(db, plan.id);
     const payload = toCloudTripPlanPayload(plan, checklistItems);
+    if (!isGuardCurrent(currentWorkspaceGuard(ctx.workspace))) return { bridged: false, reason: "no_workspace" };
     await writeTripPlan(
       db,
       {
@@ -67,6 +68,7 @@ export async function bridgeTripPlanDelete(legacyCalendarPlanId: string): Promis
     const db = getAccountWorkspaceDb(ctx.workspace);
     const existing = await findWorkspaceTripPlanByLegacyId(db, legacyCalendarPlanId);
     if (!existing) return { bridged: false, reason: "workspace_trip_plan_not_found" };
+    if (!isGuardCurrent(currentWorkspaceGuard(ctx.workspace))) return { bridged: false, reason: "no_workspace" };
     await deleteTripPlan(
       db,
       {
@@ -95,6 +97,7 @@ export async function bridgeOutfitPlanUpsert(entry: OutfitPlanEntry): Promise<Br
     const legacyOutfitId = entry.outfitId ?? entry.actualOutfitId;
     const outfit = legacyOutfitId ? await findWorkspaceOutfitByLegacyId(db, legacyOutfitId) : undefined;
     const payload = toCloudOutfitPlanPayload(entry);
+    if (!isGuardCurrent(currentWorkspaceGuard(ctx.workspace))) return { bridged: false, reason: "no_workspace" };
     await writeOutfitPlan(
       db,
       {
@@ -128,6 +131,7 @@ export async function bridgeOutfitPlanDelete(legacyPlanEntryId: string): Promise
     const db = getAccountWorkspaceDb(ctx.workspace);
     const existing = await findWorkspaceOutfitPlanByLegacyId(db, legacyPlanEntryId);
     if (!existing) return { bridged: false, reason: "workspace_outfit_plan_not_found" };
+    if (!isGuardCurrent(currentWorkspaceGuard(ctx.workspace))) return { bridged: false, reason: "no_workspace" };
     await deleteOutfitPlan(
       db,
       {
