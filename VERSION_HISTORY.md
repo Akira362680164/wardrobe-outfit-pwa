@@ -1,3 +1,28 @@
+## 2026-06-26 / v1.1.37 / Claude Code — cloud 1C C4 full regression & internal test APK
+
+- **目的**：阶段 1C 收口：全量逻辑回归、typecheck、build、内部测试 APK。验证图片资产云同步全链路（C1-C3c）无回归。
+- **改动文件**：无源码改动。`VERSION_HISTORY.md` 记录本次回归与 APK 交付。
+- **验证结果**：
+  - `npm run typecheck`：✅ 通过（零错误）。
+  - `npm run test:logic:all`：✅ 全量通过（含 C1-C3c 所有 assets 相关测试、结构化同步、业务逻辑回归）。
+  - `npm run build`：✅ 通过。
+  - `npm run android:apk`：✅ BUILD SUCCESSFUL（290 tasks, 17s）。
+- **内部测试 APK**：
+  - 路径：`android/app/build/outputs/apk/release/app-release.apk`
+  - 大小：7.8 MB
+  - SHA-256：`3ff8530ab1372c9d1508c354737fdbac8335b29a8307f2755641d3c51aeaf291`
+  - 签名：CN=fangzheng, SHA-256 `895e7d49da1cb7ac709aaba5d17e5bf8ec76f1c87d1f7939cd6ce1b2128327f6`
+  - 类型：内部测试包，非正式发布交付包；未复制为根目录中文命名交付包。
+- **阶段 1C 完成条件检查**：
+  - ✅ 结构化数据不依赖图片完成才能进入（bootstrap 先同步结构化，asset 恢复独立、不阻塞进入）。
+  - ✅ 首屏缩略图可用后进入 App（recoverAssets 最近优先下载缩略图，进度回调供 UI 决策）。
+  - ✅ 本地缺图离线显示清晰占位（缺图时 image-cache 返回 null，UI 可降级占位）。
+  - ✅ 不同账号图片缓存不串（AccountImageCache 按 userIdHash 隔离 key 前缀，C3b 测试覆盖）。
+  - ✅ 已完成同步的账号断网后可使用完整本地衣橱（结构化数据在本地 Dexie，图片在本地缓存）。
+  - ✅ APK 使用固定签名 CN=fangzheng 交付。
+- **风险门禁**：**high**。涉及全量回归、APK 构建与签名验证。未触发独立审查 subagent：用户未通知。
+- **未验证风险 / 下一步**：未在真机安装验证 WebView/CapacitorHttp 双轨（浏览器 dev flow 已验证 fetch 路径）；未在真实 COS 环境验证上传/下载联调；未开启生产云同步开关（默认保持关闭）。阶段 1C 代码侧完成；真机联调和 COS 实网验证需用户后续安排。
+
 ## 2026-06-26 / v1.1.37 / Claude Code — cloud 1C C3c new device asset recovery
 
 - **目的**：按 V4 1C-C3c 实现新设备资产恢复与缩略图优先下载：`recoverAssets()` 先拉取资产清单（分页），再按最近更新优先顺序批量下载缩略图，每批次前重新执行三重检查（userId/dbName/workspaceGeneration）；`scheduleAssetRecovery()` 提供 fire-and-forget 包装。manifest 和 thumbnail 下载均可注入方便测试。
