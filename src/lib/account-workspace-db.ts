@@ -105,6 +105,7 @@ export interface WorkspaceSyncOutboxRecord {
   baseRevision?: number;
   status: "pending" | "pushing" | "conflict" | "failed" | "applied";
   attemptCount: number;
+  lastErrorCode?: string;
   createdAt: string;
   updatedAt: string;
 }

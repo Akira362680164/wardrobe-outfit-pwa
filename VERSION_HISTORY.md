@@ -1,6 +1,38 @@
-## 2026-06-26 / v1.1.37 / Codex — cloud 1B B3 business schema and sync contracts
+## 2026-06-26 / v1.1.37 / Codex — cloud 1B B4 sync engine and outbox round trip
 
-- **目的**：按 V4 执行方案推进阶段 1B-B3，新增云端业务 PostgreSQL schema 与前后端共享同步契约，为后续 B4 Outbox / push / pull 引擎提供固定边界。
+- **目的**：按 V4 执行方案推进阶段 1B-B4，完成同步引擎 + 4 个 sync 路由 + 防跨账号落库三重检查 + 客户端 Outbox/apply 闭环。先用 garment 一个实体端到端贯通，但 service 层支持全部 8 个 entityType 的 dispatch。
+- **改动文件**：
+  - `services/wardrobe-api/src/sync/service.ts`：新增 `SyncService`，实现 bootstrap / push / pull / resolve-conflict；每条 mutation 独立事务，写业务表 + 写 sync_changes + 写 sync_mutations 原子完成；push 路径上对每条 mutation 做 userId 归属校验 + baseRevision 检查 + 幂等 mutationId 派发。
+  - `services/wardrobe-api/src/sync/entity-tables.ts`：8 个 entityType → drizzle table 映射（garment/outfit/outfitItem/wishlistItem/wearEvent/tripPlan/outfitPlan/asset），所有 entityType 在 push/bootstrap/pull 路径都被 service 派发。
+  - `services/wardrobe-api/src/sync/cursor.ts`：cursor 用 base64url(JSON({seq,serverTime})) 编码，可读可解，未来可换 varint。
+  - `services/wardrobe-api/src/sync/routes.ts`：4 个 POST 路由（bootstrap / push / pull / resolve-conflict），复用 `SessionService.authenticate()` 验证 JWT；service 抛 SyncApiError 统一 catch 转 4xx JSON。
+  - `services/wardrobe-api/src/app.ts`：注册 `registerSyncRoutes(app, options.syncService ?? new SyncService(), sessionService)`；`BuildAppOptions` 新增 `syncService?`。
+  - `src/lib/cloud-sync/cloud-sync-api.ts`：客户端 API wrapper，镜像 `cloud-auth-api.ts` 的 fetch / CapacitorHttp 双轨模式 + base URL + error class；4 个请求方法覆盖 server 全部 sync 端点。
+  - `src/lib/cloud-sync/connectivity.ts`：最小 connectivity 判定（`navigator.onLine` + online/offline 事件订阅）；完整状态机属于 B6。
+  - `src/lib/cloud-sync/sync-engine.ts`：客户端同步引擎总入口，6 段代码合 1 文件：
+    - workspace-guard 三重检查（userId / dbName / activeWorkspaceGeneration），用 B1 的 `isWorkspaceResponseCurrent` 复用。
+    - Outbox CRUD：enqueue / list pending / mark applied / mark conflict / mark failed。
+    - sync-state：pull cursor 持久化（get / set）。
+    - workspace-writes：写本地工作区 + 同一事务 enqueue outbox。
+    - apply-remote：把 server pull results 写入本地（带三重检查）。
+    - backoff：15/30/60/120/300s 退避。
+    - sync-engine：顶层 `runSyncOnce` (push + pull) 和 `runBootstrap`，所有异步回调前过三重检查。
+  - `src/lib/cloud-sync/index.ts`：公共导出。
+  - `src/lib/account-workspace-db.ts`：`WorkspaceSyncOutboxRecord` 补 `lastErrorCode?` 字段（与 B1 schema 兼容 + 满足 B4 重试追踪）。
+- **范围说明**：本轮不切换业务页面（`wardrobe-app.tsx` / `data-repo.ts` 不动），仅暴露 `runSyncOnce` / `runBootstrap` / `writeGarment` / `deleteGarment` 等 helper 供 B5 调用；生产开关 `NEXT_PUBLIC_CLOUD_SYNC_ENABLED` 仍保持 false，wardrobe-app.tsx 默认仍走旧 `db.ts`。
+- **验证结果**：
+  - `npm --workspace @wardrobe/wardrobe-api run typecheck`：✅ 通过。
+  - `npm run typecheck`（根 + 子 workspaces）：✅ 通过。
+  - `npm run cloud:contracts:typecheck`：✅ 通过（contracts schema 已被 B3 固化，本轮未改 contracts）。
+  - `git diff --check`：✅ 通过。
+- **风险门禁**：**high**。涉及同步引擎核心（Outbox / push 幂等 / pull cursor / 三重检查 / revision 冲突）。**未触发独立审查 subagent**：用户未通知 subagent 启动，按 AGENTS.md §96 守则本次由主 Codex 实现，未独立审查；建议在 B4 / B6 / B8 三个核心节点任一前补一次 subagent 审查。
+- **未验证风险 / 下一步**：
+  - 未在腾讯云生产库跑 migration（仍停在 A6 的 `wardrobe-api:a831463`，未升级到含 sync 业务表的镜像）。
+  - 未做 `/api/sync/{bootstrap,push,pull,resolve-conflict}` 的真实 HTTP smoke；端到端 B4 验证待后续 subagent 审查 + 服务器镜像升级后补做。
+  - 客户端未写 logic 守护测试（outbox / apply / 三重检查），B9 1B 全量回归时一起补。
+  - 业务页面仍走旧 Dexie db.ts，未切换到新工作区，sync helper 暂未被消费；B5a garment 业务读写迁移时接入。
+
+
 - **改动文件**：
   - `services/wardrobe-api/src/db/schema.ts`：新增 `wardrobes`、`garments`、`outfits`、`outfitItems`、`wishlistItems`、`wearEvents`、`tripPlans`、`outfitPlans`、`assets`、`syncChanges`、`syncMutations` Drizzle schema；包含软删除、revision、originDeviceId、payload、用户归属和同步索引。
   - `services/wardrobe-api/migrations/0001_business_sync_schema.sql` / `migrations/meta/_journal.json`：新增业务同步 SQL migration；`sync_changes` 通过 `user_id + change_seq` 固定每用户游标序列约束，`sync_mutations` 通过 `user_id + mutation_id` 固定幂等约束。
