@@ -1,3 +1,19 @@
+## 2026-06-27 / v2.0.0-test / Claude Code — 开启云功能开关重新打包
+
+- **目的**：创建 `.env` 文件，打开 `NEXT_PUBLIC_CLOUD_AUTH_ENABLED`、`NEXT_PUBLIC_ACCOUNT_WORKSPACE_ENABLED`、`NEXT_PUBLIC_CLOUD_SYNC_ENABLED` 三个开关，设置 API 地址为 `http://111.231.98.86`，重新打包 APK。
+- **改动文件**：
+  - `.env`（新增，gitignored）：云功能开关 + API 地址。
+  - 根目录 `衣橱穿搭助手-v2.0.0-test.apk`：覆盖旧包。
+- **背景**：上一版 APK 构建时没有 `.env` 文件，所有 `NEXT_PUBLIC_*` 开关在 Next.js 构建时内联为 falsy，导致登录/工作区/云同步全部未激活。
+- **APK 信息**：
+  - 大小：7.8 MB
+  - SHA-256：`bdd19a5ab228521f2aae06f7beef83b454a2511e98f40a6e2dbc6f7116f91c53`
+  - 签名：CN=fangzheng（固定签名）
+- **验证结果**：
+  - `npm run android:apk`：✅ BUILD SUCCESSFUL。
+- **风险门禁**：**low**。仅新增 `.env` 配置文件，无代码改动。未触发 subagent。
+- **未验证风险**：API 使用 HTTP 明文（域名 `api.zhengfangapps.cloud` HTTPS 不通，ICP 备案中），Android 需允许 cleartext traffic；未在真机验证登录注册完整流程。
+
 ## 2026-06-27 / v2.0.0-test / Claude Code — 升级测试版本号并重新打包 APK
 
 - **目的**：从 v1.1.37 升级到 v2.0.0-test，重新打包 APK 交付测试。
