@@ -1,6 +1,8 @@
 import type { FastifyInstance, FastifyReply } from "fastify";
 import { z } from "zod";
 import {
+  AssetDownloadAuthorizeRequestSchema,
+  AssetManifestRequestSchema,
   AssetUploadAuthorizeRequestSchema,
   AssetUploadCompleteRequestSchema,
 } from "@wardrobe/cloud-contracts";
@@ -29,6 +31,26 @@ export function registerAssetRoutes(
       const claims = await sessionService.authenticate(request.headers.authorization);
       const body = AssetUploadCompleteRequestSchema.parse(request.body);
       return await assetService.completeUpload({ ...body, userId: claims.userId });
+    } catch (error) {
+      return sendAssetError(reply, error);
+    }
+  });
+
+  app.post("/api/assets/download-url", async (request, reply) => {
+    try {
+      const claims = await sessionService.authenticate(request.headers.authorization);
+      const body = AssetDownloadAuthorizeRequestSchema.parse(request.body);
+      return await assetService.authorizeDownload({ ...body, userId: claims.userId });
+    } catch (error) {
+      return sendAssetError(reply, error);
+    }
+  });
+
+  app.post("/api/assets/manifest", async (request, reply) => {
+    try {
+      const claims = await sessionService.authenticate(request.headers.authorization);
+      const body = AssetManifestRequestSchema.parse(request.body ?? {});
+      return await assetService.getManifest({ ...body, userId: claims.userId });
     } catch (error) {
       return sendAssetError(reply, error);
     }

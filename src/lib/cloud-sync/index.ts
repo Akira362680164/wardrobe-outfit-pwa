@@ -54,6 +54,8 @@ export {
 export {
   requestAssetUploadUrl,
   requestAssetUploadComplete,
+  requestAssetDownloadUrl,
+  requestAssetManifest,
 } from "@/lib/cloud-sync/cloud-assets-api";
 
 export {

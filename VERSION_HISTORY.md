@@ -1,3 +1,30 @@
+## 2026-06-26 / v1.1.37 / Claude Code — cloud 1C C3a download auth & asset manifest API
+
+- **目的**：按 V4 1C-C3a 新增图片下载授权与资产清单 API：cloud-contracts 新增下载授权和 manifest 契约，服务端新增 `/api/assets/download-url`（COS GET 预签名 URL）和 `/api/assets/manifest`（用户资产清单），客户端新增对应调用封装。API 只返回 URL 和元数据，不转发图片二进制。
+- **改动文件**：
+  - `packages/cloud-contracts/src/assets/contracts.ts`：新增 `AssetDownloadAuthorizeRequest/Response`、`AssetManifestRequest/Response`、`AssetManifestItem` 的 Zod schema 和类型。
+  - `services/wardrobe-api/src/assets/routes.ts`：新增 `POST /api/assets/download-url` 和 `POST /api/assets/manifest` 路由，均需 Bearer token 认证。
+  - `services/wardrobe-api/src/assets/service.ts`：新增 `authorizeDownload()`（校验 userId 归属、检查 variant 已上传、生成 COS GET 预签名 URL）、`getManifest()`（返回用户全部已上传资产清单含 original/thumbnail 元数据）、`createCosGetObjectPresignedUrl()`（与 PUT 签名同算法，HTTP 方法改为 GET）。
+  - `src/lib/cloud-sync/cloud-assets-api.ts`：新增 `requestAssetDownloadUrl()`、`requestAssetManifest()`。
+  - `src/lib/cloud-sync/index.ts`：导出新增函数。
+  - `scripts/test-cloud-assets-api.ts`：更新为 C1+C3a 联合检查，新增下载授权/清单 contract 与封装断言。
+- **范围说明**：本轮不做实际图片下载、不做本地缓存目录、不做 UI 接入、不改变认证/同步协议、不打 APK。
+- **验证结果**：
+  - `npm run cloud:contracts:typecheck`：✅ 通过。
+  - `npm run api:typecheck`：✅ 通过。
+  - `npm run api:test`：✅ 38 passed（含既有 assets.test.ts 6 tests）。
+  - `npm run typecheck`（主项目）：✅ 通过。
+  - `npm run test:logic:cloud-assets-api`：✅ 11 passed, 0 failed。
+  - `npm run test:logic:cloud-assets-local`：✅ 12 passed, 0 failed。
+  - `npm run test:logic:cloud-assets-bridge`：✅ 10 passed, 0 failed。
+  - `npm run test:logic:cloud-assets-upload`：✅ 20 passed, 0 failed。
+  - `npm run test:logic:cloud-sync-outfit`：✅ 12 passed, 0 failed。
+  - `npm run test:logic:cloud-sync-wishlist`：✅ 10 passed, 0 failed。
+  - `npm run test:logic:cloud-sync-plans`：✅ 9 passed, 0 failed。
+  - `git diff --check`：✅ 通过。
+- **风险门禁**：**high**。涉及 COS GET 预签名、资产归属校验、manifest 遍历、新 API 端点和客户端 token 传递；本轮加强全量 typecheck（3 个工作区）、服务端测试、C1-C3a 联合 contract 检查、所有既有 cloud assets/sync 测试回归。未触发独立审查 subagent：用户未通知。
+- **未验证风险 / 下一步**：未在真实 COS 环境验证 GET 预签名 URL 可访问；manifest 未做 cursor 分页（当前简单 limit+offset）；未在客户端实际调用两新 API。下一步进入 C3b：账号隔离图片缓存，实现下载后 SHA-256 校验、临时文件+原子替换、离线占位。
+
 ## 2026-06-26 / v1.1.37 / Claude Code — cloud 1C C2c pending asset upload coordinator
 
 - **目的**：按 V4 1C-C2c 实现 pending asset 上传协调器：扫描 workspace `assets` 表 `local_pending` 变体，请求 COS 预签名上传授权、客户端直传 COS、成功后通知 API complete-upload；上传纯 best-effort，不阻塞结构化实体保存；晚到回调做 userId/dbName/workspaceGeneration 三重检查。

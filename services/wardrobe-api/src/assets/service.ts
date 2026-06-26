@@ -3,6 +3,10 @@ import { createHash, createHmac } from "node:crypto";
 import { and, eq } from "drizzle-orm";
 import type { NodePgDatabase } from "drizzle-orm/node-postgres";
 import type {
+  AssetDownloadAuthorizeRequest,
+  AssetDownloadAuthorizeResponse,
+  AssetManifestRequest,
+  AssetManifestResponse,
   AssetUploadAuthorizeRequest,
   AssetUploadAuthorizeResponse,
   AssetUploadCompleteRequest,
@@ -10,6 +14,9 @@ import type {
   AssetVariant,
 } from "@wardrobe/cloud-contracts";
 import {
+  AssetDownloadAuthorizeResponseSchema,
+  AssetManifestItemSchema,
+  AssetManifestResponseSchema,
   AssetUploadAuthorizeResponseSchema,
   AssetUploadCompleteResponseSchema,
 } from "@wardrobe/cloud-contracts";
@@ -118,6 +125,91 @@ export class AssetService {
     });
   }
 
+  async authorizeDownload(input: AssetDownloadAuthorizeRequest & { userId: string }): Promise<AssetDownloadAuthorizeResponse> {
+    if (!this.cosConfig) {
+      throw new AssetApiError(503, "cos_not_configured", "Image download is not configured");
+    }
+
+    const existing = await this.getAsset(input.assetId);
+    if (!existing || existing.userId !== input.userId) {
+      throw new AssetApiError(404, "asset_not_found", "Asset was not found");
+    }
+
+    const variantMeta = getUploadPayload(existing.payload, input.variant);
+    if (!variantMeta || variantMeta.status !== "uploaded" || !variantMeta.objectKey) {
+      throw new AssetApiError(404, "asset_variant_not_uploaded", "Asset variant is not uploaded yet");
+    }
+
+    const now = new Date();
+    const expiresAt = new Date(now.getTime() + this.cosConfig.expiresSeconds * 1000).toISOString();
+    const downloadUrl = createCosGetObjectPresignedUrl({
+      config: this.cosConfig,
+      objectKey: variantMeta.objectKey as string,
+      now,
+    });
+
+    return AssetDownloadAuthorizeResponseSchema.parse({
+      assetId: input.assetId,
+      variant: input.variant,
+      method: "GET",
+      downloadUrl,
+      objectKey: variantMeta.objectKey,
+      expiresAt,
+      sha256: variantMeta.sha256,
+      mimeType: variantMeta.mimeType,
+      sizeBytes: variantMeta.sizeBytes,
+      width: variantMeta.width,
+      height: variantMeta.height,
+    });
+  }
+
+  async getManifest(input: AssetManifestRequest & { userId: string }): Promise<AssetManifestResponse> {
+    const db = this.database();
+    const rows = await db
+      .select()
+      .from(assets)
+      .where(eq(assets.userId, input.userId))
+      .limit(input.limit + 1)
+      .offset(0); // ponytail: cursor-based pagination if manifest grows large
+
+    const hasMore = rows.length > input.limit;
+    const items = (hasMore ? rows.slice(0, input.limit) : rows).map((row) => {
+      const originalPayload = getUploadPayload(row.payload, "original");
+      const thumbnailPayload = getUploadPayload(row.payload, "thumbnail");
+      return {
+        assetId: row.id,
+        ownerEntityType: row.ownerEntityType,
+        ownerEntityId: row.ownerEntityId,
+        uploadStatus: row.uploadStatus as "uploading" | "uploaded" | "failed",
+        ...(originalPayload ? {
+          original: {
+            sha256: originalPayload.sha256 as string,
+            mimeType: originalPayload.mimeType as string,
+            sizeBytes: originalPayload.sizeBytes as number,
+            width: originalPayload.width as number | undefined,
+            height: originalPayload.height as number | undefined,
+          },
+        } : {}),
+        ...(thumbnailPayload ? {
+          thumbnail: {
+            sha256: thumbnailPayload.sha256 as string,
+            mimeType: thumbnailPayload.mimeType as string,
+            sizeBytes: thumbnailPayload.sizeBytes as number,
+            width: thumbnailPayload.width as number | undefined,
+            height: thumbnailPayload.height as number | undefined,
+          },
+        } : {}),
+        createdAt: row.createdAt.toISOString(),
+        updatedAt: row.updatedAt.toISOString(),
+      };
+    });
+
+    return AssetManifestResponseSchema.parse({
+      items,
+      ...(hasMore ? { nextCursor: rows[input.limit - 1]?.id } : {}),
+    });
+  }
+
   private async getAsset(assetId: string): Promise<AssetRow | null> {
     const [row] = await this.database().select().from(assets).where(eq(assets.id, assetId)).limit(1);
     return row ?? null;
@@ -217,6 +309,34 @@ export function createCosPutObjectPresignedUrl(input: {
   const host = `${input.config.bucket}.cos.${input.config.region}.myqcloud.com`;
   const uri = `/${input.objectKey.split("/").map(encodeURIComponent).join("/")}`;
   const httpString = `put\n${uri}\n\nhost=${host}\n`;
+  const stringToSign = `sha1\n${keyTime}\n${sha1Hex(httpString)}\n`;
+  const signKey = hmacSha1Hex(input.config.secretKey, keyTime);
+  const signature = hmacSha1Hex(signKey, stringToSign);
+  const authorization = [
+    "q-sign-algorithm=sha1",
+    `q-ak=${input.config.secretId}`,
+    `q-sign-time=${keyTime}`,
+    `q-key-time=${keyTime}`,
+    "q-header-list=host",
+    "q-url-param-list=",
+    `q-signature=${signature}`,
+  ].join("&");
+  const url = new URL(`${input.config.protocol}://${host}${uri}`);
+  url.searchParams.set("sign", authorization);
+  return url.toString();
+}
+
+export function createCosGetObjectPresignedUrl(input: {
+  config: CosUploadConfig;
+  objectKey: string;
+  now: Date;
+}): string {
+  const start = Math.floor(input.now.getTime() / 1000);
+  const end = start + input.config.expiresSeconds;
+  const keyTime = `${start};${end}`;
+  const host = `${input.config.bucket}.cos.${input.config.region}.myqcloud.com`;
+  const uri = `/${input.objectKey.split("/").map(encodeURIComponent).join("/")}`;
+  const httpString = `get\n${uri}\n\nhost=${host}\n`;
   const stringToSign = `sha1\n${keyTime}\n${sha1Hex(httpString)}\n`;
   const signKey = hmacSha1Hex(input.config.secretKey, keyTime);
   const signature = hmacSha1Hex(signKey, stringToSign);

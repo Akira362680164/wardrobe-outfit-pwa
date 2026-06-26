@@ -2,6 +2,10 @@
 
 import { Capacitor, CapacitorHttp } from "@capacitor/core";
 import type {
+  AssetDownloadAuthorizeRequest,
+  AssetDownloadAuthorizeResponse,
+  AssetManifestRequest,
+  AssetManifestResponse,
   AssetUploadAuthorizeRequest,
   AssetUploadAuthorizeResponse,
   AssetUploadCompleteRequest,
@@ -23,6 +27,20 @@ export function requestAssetUploadComplete(
   options: CloudSyncRequestOptions,
 ): Promise<AssetUploadCompleteResponse> {
   return requestJson<AssetUploadCompleteResponse>("/api/assets/complete-upload", request, options);
+}
+
+export function requestAssetDownloadUrl(
+  request: AssetDownloadAuthorizeRequest,
+  options: CloudSyncRequestOptions,
+): Promise<AssetDownloadAuthorizeResponse> {
+  return requestJson<AssetDownloadAuthorizeResponse>("/api/assets/download-url", request, options);
+}
+
+export function requestAssetManifest(
+  request: AssetManifestRequest,
+  options: CloudSyncRequestOptions,
+): Promise<AssetManifestResponse> {
+  return requestJson<AssetManifestResponse>("/api/assets/manifest", request, options);
 }
 
 async function requestJson<TResponse>(
