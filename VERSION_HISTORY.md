@@ -1,3 +1,15 @@
+## 2026-06-26 / v1.1.37 / Codex — cloud 1A deploy local API image
+
+- **目的**：修正 A6 部署脚本对本地构建 API 镜像的兼容性。上一条新增 `build-image` 后，`deploy` 仍会对所有服务执行 `docker compose pull`，这会让 `wardrobe-api:<local-tag>` 这类服务器本地镜像误走远端拉取并失败。
+- **改动文件**：
+  - `deploy/scripts/wardrobe-cloud.sh`：新增 `deploy_stack()`，`deploy` 改为只拉取 `postgres` 基础镜像，再 `up -d` 启动本地已构建的 `wardrobe-api` 镜像并等待 `/api/ready`。
+  - `deploy/docs/production-deploy.md`：说明 `deploy` 只拉 `postgres`，API 镜像需要先由 `build-image` 在服务器本地生成，或显式指向可访问的远端镜像。
+- **范围说明**：只调整部署脚本行为，不改变 compose 文件、Caddy 配置、API 代码或密钥。
+- **验证结果**：
+  - `bash -n deploy/scripts/wardrobe-cloud.sh`：✅ 通过。
+- **风险门禁**：**medium**。调整生产部署脚本命令路径；未触发独立审查 subagent：用户未通知。
+- **未验证风险 / 下一步**：实际 `docker build` / `compose up` 会在远程服务器初始化后验证。
+
 ## 2026-06-26 / v1.1.37 / Codex — cloud 1A API image build path
 
 - **目的**：补齐 A6 远程部署前置缺口：生产 compose 需要 `WARDROBE_API_IMAGE`，但仓库此前没有 API Dockerfile 或固定镜像构建入口，导致服务器无法按脚本部署 API。

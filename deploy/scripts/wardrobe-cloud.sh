@@ -105,6 +105,12 @@ build_image() {
   docker build -f "${SOURCE_DIR}/services/wardrobe-api/Dockerfile" -t "${image}" "${SOURCE_DIR}"
 }
 
+deploy_stack() {
+  compose_cmd pull postgres
+  compose_cmd up -d
+  wait_ready
+}
+
 restore_db_drill() {
   local dump_file="${1:?usage: restore-db-drill <dump.sql>}"
   local restore_db="${RESTORE_DB:-wardrobe_restore_test}"
@@ -127,7 +133,7 @@ Commands:
   apply-caddy       Backup current Caddyfile, validate project Caddyfile, reload Caddy.
   build-image [X]   Build wardrobe-api image from /opt/wardrobe-cloud/source.
   compose ...       Run fixed production docker compose command.
-  deploy            Pull images and start postgres + wardrobe-api.
+  deploy            Pull postgres, then start postgres + local wardrobe-api image.
   rollback-image X  Restart wardrobe-api with image X.
   backup-db         Write pg_dump to /opt/wardrobe-cloud/backups/postgres.
   restore-db-drill  Restore a dump into wardrobe_restore_test.
@@ -151,9 +157,7 @@ case "${1:-}" in
     compose_cmd "$@"
     ;;
   deploy)
-    compose_cmd pull
-    compose_cmd up -d
-    wait_ready
+    deploy_stack
     ;;
   rollback-image)
     shift

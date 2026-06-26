@@ -60,6 +60,8 @@ deploy/scripts/wardrobe-cloud.sh deploy
 deploy/scripts/wardrobe-cloud.sh health
 ```
 
+`deploy` pulls the `postgres` base image only. The API image is expected to exist locally from `build-image`, or to point to a reachable registry image if you override `WARDROBE_API_IMAGE`.
+
 ## Backup And Restore Drill
 
 Create a database dump:
