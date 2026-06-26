@@ -10,6 +10,8 @@ import { registerAuthRoutes } from "./auth/routes.js";
 import { type RegistrationService } from "./auth/registrations.js";
 import { registerSessionRoutes } from "./auth/session-routes.js";
 import { SessionService } from "./auth/session.js";
+import { registerAssetRoutes } from "./assets/routes.js";
+import { AssetService } from "./assets/service.js";
 import { checkDatabaseReady } from "./db/client.js";
 import { getApiVersion } from "./version.js";
 import { registerSyncRoutes } from "./sync/routes.js";
@@ -22,6 +24,7 @@ export interface BuildAppOptions {
   registrationService?: RegistrationService;
   sessionService?: SessionService;
   syncService?: SyncService;
+  assetService?: AssetService;
 }
 
 export function buildApp(options: BuildAppOptions = {}): FastifyInstance {
@@ -35,7 +38,7 @@ export function buildApp(options: BuildAppOptions = {}): FastifyInstance {
     if (origin && getAllowedOrigins().has(origin)) {
       reply.header("Access-Control-Allow-Origin", origin);
       reply.header("Access-Control-Allow-Credentials", "true");
-      reply.header("Access-Control-Allow-Headers", "Authorization, Content-Type");
+      reply.header("Access-Control-Allow-Headers", "Authorization, Content-Type, X-Wardrobe-Device-Id");
       reply.header("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
       reply.header("Vary", "Origin");
     }
@@ -86,6 +89,7 @@ export function buildApp(options: BuildAppOptions = {}): FastifyInstance {
   registerAuthRoutes(app, options.registrationService, sharedSessionService);
   registerSessionRoutes(app, sharedSessionService);
   registerSyncRoutes(app, options.syncService ?? new SyncService(), sharedSessionService ?? new SessionService());
+  registerAssetRoutes(app, options.assetService ?? new AssetService(), sharedSessionService ?? new SessionService());
 
   return app;
 }

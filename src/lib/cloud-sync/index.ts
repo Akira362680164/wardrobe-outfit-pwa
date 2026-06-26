@@ -51,4 +51,9 @@ export {
   requestResolveConflict,
 } from "@/lib/cloud-sync/cloud-sync-api";
 
+export {
+  requestAssetUploadUrl,
+  requestAssetUploadComplete,
+} from "@/lib/cloud-sync/cloud-assets-api";
+
 export { isNetworkOnline, subscribeNetworkChanges } from "@/lib/cloud-sync/connectivity";

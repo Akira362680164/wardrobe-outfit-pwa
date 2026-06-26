@@ -313,11 +313,18 @@ export const assets = pgTable(
     sha256: text("sha256"),
     mimeType: text("mime_type"),
     storageKey: text("storage_key"),
+    sizeBytes: integer("size_bytes"),
+    width: integer("width"),
+    height: integer("height"),
+    originalObjectKey: text("original_object_key"),
+    thumbnailObjectKey: text("thumbnail_object_key"),
+    uploadStatus: text("upload_status").notNull().default("pending"),
     ...syncEntityColumns,
   },
   (table) => ({
     userOwnerIdx: index("assets_user_owner_idx").on(table.userId, table.ownerEntityType, table.ownerEntityId),
     shaIdx: index("assets_sha256_idx").on(table.sha256),
+    uploadStatusIdx: index("assets_upload_status_idx").on(table.userId, table.uploadStatus),
   }),
 );
 

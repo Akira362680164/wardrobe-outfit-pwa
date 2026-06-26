@@ -1,3 +1,27 @@
+## 2026-06-26 / v1.1.37 / Codex — cloud 1C C1 assets API and COS upload authorization
+
+- **目的**：按 V4 执行方案进入阶段 1C-C1，补齐图片资产上传授权的最小闭环：客户端向 API 请求授权，API 校验账号和资产归属后返回腾讯云 COS 私有 Bucket 预签名 PUT URL，客户端上传完成后可通知 API 更新资产状态。C1 只建立资产 API 边界，不接入业务图片保存路径。
+- **改动文件**：
+  - `packages/cloud-contracts/src/assets/contracts.ts` / `packages/cloud-contracts/src/index.ts`：新增 `AssetUploadAuthorize*`、`AssetUploadComplete*` 契约和 `original/thumbnail` 变体；限制 `ownerEntityType` 不能是 `asset` 自身。
+  - `services/wardrobe-api/migrations/0002_asset_upload_metadata.sql` / `services/wardrobe-api/migrations/meta/_journal.json` / `services/wardrobe-api/src/db/schema.ts`：为 `assets` 表补 `originalObjectKey`、`thumbnailObjectKey`、`uploadStatus`、`sizeBytes`、`width`、`height` 和上传状态索引。
+  - `services/wardrobe-api/src/assets/service.ts` / `services/wardrobe-api/src/assets/routes.ts` / `services/wardrobe-api/src/app.ts`：新增 `/api/assets/upload-url` 与 `/api/assets/complete-upload`；使用标准库 HMAC-SHA1 生成 COS PUT 预签名 URL；Object Key 包含 `users/<userId>/assets/<assetId>/...` 前缀；默认 `AssetService` 改为懒加载数据库，避免 health/auth/session 测试在未调用资产路由时要求 `DATABASE_URL`；CORS 允许 `X-Wardrobe-Device-Id`。
+  - `src/lib/cloud-sync/cloud-assets-api.ts` / `src/lib/cloud-sync/index.ts`：新增客户端最小 assets API 调用封装，沿用 accessToken、deviceId 和 `NEXT_PUBLIC_WARDROBE_API_BASE_URL`。
+  - `services/wardrobe-api/tests/assets.test.ts` / `scripts/test-cloud-assets-api.ts` / `package.json`：新增 C1 守护测试并接入 `test:logic:all`。
+- **范围说明**：本轮不接入 `wardrobe-app.tsx` / 种草 / 套装图片保存路径，不上传真实图片，不下载缩略图，不建立本地图片缓存目录，不做新设备恢复，不打 APK；COS 环境变量缺失时资产上传授权返回 `503 cos_not_configured`。
+- **验证结果**：
+  - `npm run test:logic:cloud-assets-api`：✅ 9 passed, 0 failed。
+  - `npm --workspace @wardrobe/wardrobe-api run test -- assets.test.ts`：✅ 6 tests passed。
+  - `npm --workspace @wardrobe/wardrobe-api run test`：✅ 6 files / 38 tests passed。
+  - `npm run cloud:contracts:typecheck`：✅ 通过。
+  - `npm --workspace @wardrobe/wardrobe-api run typecheck`：✅ 通过。
+  - `npm run typecheck`：✅ 通过。
+  - `npm run test:logic:all`：✅ 通过。
+  - `npm run build`：✅ 通过；仍有项目既有 unused/img/hooks warnings。
+  - `git diff --check`：✅ 通过。
+  - `node scripts/review-gate.mjs --staged`：✅ `risk_gate=high`，`files=14`，`changed_lines=768`，未触发 subagent：用户未通知。
+- **风险门禁**：**high**。涉及云端资产 API、服务端数据库 schema、预签名 URL、认证校验、CORS 和客户端 API 封装；本轮加强 contracts / API / 主项目逻辑 / 类型 / 构建验证。未触发独立审查 subagent：用户未通知，本轮由主 Codex 实现。
+- **未验证风险 / 下一步**：未使用真实腾讯云 COS 密钥和 Bucket 做 PUT live smoke；未验证服务端迁移在腾讯云数据库实际执行；未把业务图片保存接入资产授权；未做缩略图优先下载、账号隔离图片缓存、新设备恢复或 APK。下一步按执行方案进入 C2：业务图片保存后生成 asset 记录，原图和缩略图分别请求授权并直传 COS，完成后通知 API。
+
 ## 2026-06-26 / v1.1.37 / Codex — cloud 1B B9 regression and feature-flag closeout
 
 - **目的**：按 V4 执行方案完成阶段 1B-B9 收口：确认账号工作区和结构化同步可在测试构建中打开，生产默认开关继续关闭，跑完整逻辑回归，并输出阶段 1B 收口报告。
