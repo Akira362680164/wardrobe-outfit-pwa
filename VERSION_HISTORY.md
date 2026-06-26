@@ -1,3 +1,16 @@
+## 2026-06-26 / v1.1.37 / Codex — cloud 1A API image build path
+
+- **目的**：补齐 A6 远程部署前置缺口：生产 compose 需要 `WARDROBE_API_IMAGE`，但仓库此前没有 API Dockerfile 或固定镜像构建入口，导致服务器无法按脚本部署 API。
+- **改动文件**：
+  - `services/wardrobe-api/Dockerfile`：新增阶段 1A API 镜像构建文件，从仓库根安装 workspace 依赖，构建 `@wardrobe/wardrobe-api`，保留 `services/wardrobe-api/migrations`，最终以 `npm run start` 启动 `dist/server.js`。
+  - `deploy/scripts/wardrobe-cloud.sh`：新增 `SOURCE_DIR=/opt/wardrobe-cloud/source` 和 `build-image [image]` 命令，用固定 Dockerfile 从服务器源码目录构建 `${WARDROBE_API_IMAGE}`。
+  - `deploy/docs/production-deploy.md`：补充 `/opt/wardrobe-cloud/source` 布局和 `build-image` 部署步骤。
+- **范围说明**：不改变认证业务逻辑、不修改 compose 网络/卷/密钥挂载、不写生产密钥；仅补部署构建入口。
+- **验证结果**：
+  - `bash -n deploy/scripts/wardrobe-cloud.sh`：✅ 通过。
+- **风险门禁**：**medium**。新增 Dockerfile 与远程部署脚本命令；未触发独立审查 subagent：用户未通知。
+- **未验证风险 / 下一步**：本机无可用 Docker Compose v2；实际 Docker build 将在服务器安装 Docker 后验证。服务器当前尚未安装 Docker，也尚未创建 `/opt/wardrobe-cloud`。
+
 ## 2026-06-26 / v1.1.37 / Codex — cloud 1A unblock full logic validation
 
 - **目的**：修复 Worker C 在 A6 验证阶段发现的过期测试断言，解除 `npm run test:logic:all` 阻断，便于继续内部测试 APK 收口。

@@ -9,6 +9,7 @@ CADDYFILE="/etc/caddy/Caddyfile"
 PROJECT_CADDYFILE="${REMOTE_ROOT}/caddy/Caddyfile"
 BACKUP_DIR="${REMOTE_ROOT}/backups"
 HEALTH_HOST="${HEALTH_HOST:-api.zhengfangapps.cloud}"
+SOURCE_DIR="${SOURCE_DIR:-${REMOTE_ROOT}/source}"
 
 compose_cmd() {
   docker compose --project-name "${PROJECT_NAME}" --env-file "${ENV_FILE}" -f "${COMPOSE_FILE}" "$@"
@@ -95,6 +96,15 @@ backup_db() {
   echo "${BACKUP_DIR}/postgres/wardrobe-${stamp}.sql"
 }
 
+build_image() {
+  local image="${1:-${WARDROBE_API_IMAGE:-wardrobe-api:local}}"
+  if [[ ! -f "${SOURCE_DIR}/services/wardrobe-api/Dockerfile" ]]; then
+    echo "missing ${SOURCE_DIR}/services/wardrobe-api/Dockerfile" >&2
+    exit 1
+  fi
+  docker build -f "${SOURCE_DIR}/services/wardrobe-api/Dockerfile" -t "${image}" "${SOURCE_DIR}"
+}
+
 restore_db_drill() {
   local dump_file="${1:?usage: restore-db-drill <dump.sql>}"
   local restore_db="${RESTORE_DB:-wardrobe_restore_test}"
@@ -115,6 +125,7 @@ Usage: deploy/scripts/wardrobe-cloud.sh <command>
 Commands:
   audit-caddy       Print existing Caddy status and validate current Caddyfile.
   apply-caddy       Backup current Caddyfile, validate project Caddyfile, reload Caddy.
+  build-image [X]   Build wardrobe-api image from /opt/wardrobe-cloud/source.
   compose ...       Run fixed production docker compose command.
   deploy            Pull images and start postgres + wardrobe-api.
   rollback-image X  Restart wardrobe-api with image X.
@@ -130,6 +141,10 @@ case "${1:-}" in
     ;;
   apply-caddy)
     apply_caddy
+    ;;
+  build-image)
+    shift
+    build_image "$@"
     ;;
   compose)
     shift

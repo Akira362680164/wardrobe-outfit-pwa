@@ -10,6 +10,8 @@ Use the fixed production directory:
 /opt/wardrobe-cloud/
   compose.production.yaml
   .env
+  source/
+    services/wardrobe-api/Dockerfile
   caddy/Caddyfile
   secrets/
     jwt-private.pem
@@ -49,9 +51,10 @@ deploy/scripts/wardrobe-cloud.sh apply-caddy
 
 ## Deploy
 
-`WARDROBE_API_IMAGE` must point to a prebuilt API image. Stage 1A Worker A does not create the image build pipeline.
+`WARDROBE_API_IMAGE` must point to a built API image. The stage 1A deployment script can build the local server image from `/opt/wardrobe-cloud/source`:
 
 ```bash
+deploy/scripts/wardrobe-cloud.sh build-image "$WARDROBE_API_IMAGE"
 deploy/scripts/wardrobe-cloud.sh compose config
 deploy/scripts/wardrobe-cloud.sh deploy
 deploy/scripts/wardrobe-cloud.sh health
