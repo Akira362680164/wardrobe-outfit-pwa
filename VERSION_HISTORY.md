@@ -1,3 +1,21 @@
+## 2026-06-26 / v1.1.37 / Codex — cloud 1A deploy temporary IP endpoint
+
+- **目的**：将上一条 `a831463` 的临时 IP 入口和 CORS 改动部署到腾讯云服务器，使用 `111.231.98.86` 继续阶段 1A 联调，绕开 `zhengfangapps.cloud` 备案前不可访问的问题。
+- **远程执行**：
+  - 已将本仓库 `HEAD=a831463` 同步到 `/opt/wardrobe-cloud/source`。
+  - 已更新 `/opt/wardrobe-cloud/compose.production.yaml`、`/opt/wardrobe-cloud/caddy/Caddyfile`、`/opt/wardrobe-cloud/wardrobe-cloud.sh`。
+  - 已在服务器 `.env` 中更新非密钥字段：`WARDROBE_API_IMAGE=wardrobe-api:a831463`、`GIT_COMMIT=a831463`、`ALLOWED_ORIGINS=http://111.231.98.86,http://localhost:3000,http://127.0.0.1:3000,capacitor://localhost`；未打印数据库连接串、JWT、密码或密钥。
+  - 已构建镜像 `wardrobe-api:a831463`，重启 compose，并 reload Caddy。
+- **验证结果**：
+  - 服务器 `compose ps`：✅ `postgres` healthy，`wardrobe-api:a831463` healthy。
+  - `HEALTH_BASE_URL=http://111.231.98.86 /opt/wardrobe-cloud/wardrobe-cloud.sh health`：✅ `/api/health`、`/api/ready`、`/api/version` 均通过，`gitCommit=a831463`。
+  - 本机外网直连 `http://111.231.98.86/api/health`、`/api/ready`、`/api/version`：✅ 均通过。
+  - CORS preflight：✅ `Origin: http://111.231.98.86` 返回 `Access-Control-Allow-Origin: http://111.231.98.86`；`Origin: http://example.com` 不返回 allow-origin。
+  - CORS actual GET：✅ `GET /api/health` 带 `Origin: http://111.231.98.86` 返回 `200 OK` 和匹配的 CORS headers。
+- **范围说明**：临时 IP 入口只用于 1A 联调；不作为最终生产 URL，不替代域名备案和 HTTPS 验收。Android 真机验收按用户指示暂不执行。
+- **风险门禁**：**medium**。服务器部署、Caddy 入口和 API CORS 已变更；未触发独立审查 subagent：用户未通知。
+- **未验证风险 / 下一步**：未进行 Android 真机安装验收；未进行域名 HTTPS 验收，待腾讯云备案或可用域名完成后再恢复域名路径。
+
 ## 2026-06-26 / v1.1.37 / Codex — cloud 1A temporary IP endpoint and CORS
 
 - **目的**：按用户确认的临时策略，在 `zhengfangapps.cloud` 完成腾讯云备案前，使用公网 IP `111.231.98.86` 继续阶段 1A 联调；同时补齐浏览器 dev flow 所需的真实 CORS 白名单能力。
