@@ -1,3 +1,13 @@
+## 2026-06-26 / v1.1.37 / Claude Code — wardrobe app dead helper cleanup
+
+- **目的**：按遗留清理计划第四批，grep 全项目逐一确认无调用后，删除 `wardrobe-app.tsx` 中 24 个死函数/常量/未使用 prop。
+- **改动文件**：
+  - `src/components/wardrobe-app.tsx`：删除 `switchView`、`saveGarmentIntakeDraft`、`centerElementHorizontally`、`DetailChip`、`ReadOnlyMeter`、`DetailInfoCell`、`blurActiveElement`、`loadChoiceCounts`/`saveChoiceCounts`/`bumpChoiceCount`/`sortedChoiceOptions`、`tagResultToDraft`/`createEmptyDraft`/`fallbackTagResult`/`cleanName`、`toggle`、`withTimeout`、`MESSAGE_AUTO_DISMISS_MS`；移除 `WardrobeEditPage` 中未使用的 5 个颜色回调 prop 及调用处和类型定义；移除 `WaterfallCardImage` 中未使用的 `hasMultiple` prop；移除随之暴露的 3 个死颜色 setter；移除 2 个未使用类型 import；修复 `outfitSubPageKey` getter 为 `_` 占位。
+- **范围说明**：剩余 8 个 warning 均为 cloud-phase1 预留 store setter 或故意的 exhaustive-deps 省略，不处理；`.vscode/` 不纳入提交。
+- **验证结果**：`npm run build` ✅ 通过；`wardrobe-app.tsx` warning 从 32 降至 8；6888 行 → 6633 行（-255）。
+- **风险门禁**：**medium**。每个删除项均经 `grep -rn` 全项目验证零调用，函数体逐行确认无副作用；未触发 subagent：用户未通知。
+- **未验证风险 / 下一步**：未做浏览器/真机视觉回归；`wardrobe-app.tsx` 清理已基本到位，下一批可转向 `outfit-list-view.tsx`（~35 warnings）或其他文件。
+
 ## 2026-06-26 / v1.1.37 / Claude Code — wardrobe app unused import cleanup
 
 - **目的**：按遗留清理计划第三批处理 `wardrobe-app.tsx` 的高噪音 unused warning，先清理低风险的未使用 import、旧图片入口别名和已废弃进度状态。

@@ -150,14 +150,12 @@ import {
   STATUS_LABELS,
   STYLE_LABELS,
   type ColorInfo,
-  type ColorMode,
   type ClosetLocation,
   type FitGender,
   type GarmentCategory,
   type GarmentFitGender,
   type GarmentStatus,
   type GarmentStyle,
-  type GarmentTagResult,
   type SavedOutfit,
   type Season,
   type SimilarWardrobeMatch,
@@ -239,7 +237,6 @@ const categoryOptions = Object.keys(CATEGORY_LABELS) as GarmentCategory[];
 const seasonOptions = Object.keys(SEASON_LABELS) as Season[];
 const styleOptions = Object.keys(STYLE_LABELS) as GarmentStyle[];
 const statusOptions = Object.keys(STATUS_LABELS) as GarmentStatus[];
-const MESSAGE_AUTO_DISMISS_MS = 5000;
 
 export interface CaptureCropJob {
   dataUrl: string;
@@ -361,7 +358,7 @@ export function WardrobeApp({ cloudAuth }: { cloudAuth?: WardrobeCloudAuth } = {
   const [outfitSubPageActive, setOutfitSubPageActive] = useState(false);
   // v1.1 review fix: 扩展为子页 key，让 wardrobe-app 能识别当前 outfit 子页（library / detail / planning_calendar / plan_add / packing_list …），
   // 用于全局新建面板在 planning 子页高亮「添加穿搭计划」。
-  const [outfitSubPageKey, setOutfitSubPageKey] = useState<string | null>(null);
+  const [, setOutfitSubPageKey] = useState<string | null>(null);
   const [shoppingSubPageActive, setShoppingSubPageActive] = useState(false);
   const [createOutfitTrigger, setCreateOutfitTrigger] = useState(0);
   const [createWishlistTrigger, setCreateWishlistTrigger] = useState(0);
@@ -463,39 +460,6 @@ export function WardrobeApp({ cloudAuth }: { cloudAuth?: WardrobeCloudAuth } = {
   // v1.1.20-dev (方案 C): switchView 改为基于 navigation.openRoute 派生 view。
   // 旧版 setActiveView 会让 activeView 偏离 mainTab (Bug 1 根因), 现改为 setRoute。
   // view 派生自 route.name, motion + AnimatePresence 自动根据 key={route.name} 重 mount。
-  function switchView(next: ViewKey): void {
-    let targetRoute: AppRoute;
-    switch (next) {
-      case "wardrobe": targetRoute = { name: "wardrobe_home" }; break;
-      case "recommend": targetRoute = { name: "outfit_home" }; break;
-      case "shopping": targetRoute = { name: "wishlist_home" }; break;
-      case "settings": targetRoute = { name: "settings_home" }; break;
-      case "capture":
-        // capture 不是合法外部切换目标 (录入流由 handleCreateAction 入口通过 setRoute({name: "intake_*"}) 打开)。
-        // 兜底: 切到 wardrobe_home 而不是 no-op。
-        targetRoute = { name: "wardrobe_home" };
-        break;
-    }
-    // 同 route 早退 — 避免 React 18 useState 同值 bail out 后的潜在副作用。
-    if (targetRoute.name === route.name) return;
-    recordDiagnosticEvent("view_switch", { from: route.name, to: next, route });
-    if (typeof window === "undefined") {
-      navigation.openRoute(targetRoute);
-      return;
-    }
-    // 1. 保存当前 route 的滚动位置 (setRoute 之前同步执行, 防 useScrollLock 副作用)。
-    if (document.body.style.position !== "fixed") {
-      viewScrollPositionsRef.current[route.name] = window.scrollY || window.pageYOffset || 0;
-    }
-    // 2. 中断上一次的 restore rAF 链。
-    if (restoreFrameIdRef.current !== null) {
-      window.cancelAnimationFrame(restoreFrameIdRef.current);
-      restoreFrameIdRef.current = null;
-    }
-    // 3. 触发 setRoute → 重渲染 → AnimatePresence exit → 新页 mount → motion.div
-    //    onAnimationComplete → useLayoutEffect 已设 pendingRestoreViewRef → rAF2 scrollTo。
-    navigation.openRoute(targetRoute);
-  }
 
   // v0.9.31-dev: 卸载时清理残留的 restore rAF id, 防止 WardrobeApp 卸载后
   // rAF 回调仍访问 ref。
@@ -713,23 +677,6 @@ export function WardrobeApp({ cloudAuth }: { cloudAuth?: WardrobeCloudAuth } = {
     setItems((prev) => prev.map((item) => (item.id === itemId ? { ...item, ...patch } : item)));
   }
 
-  async function saveGarmentIntakeDraft(intakeDraft: GarmentIntakeDraft) {
-    const now = new Date().toISOString();
-    const item = garmentDraftToWardrobeItem(intakeDraft, { now });
-    if (!item.imageDataUrl) {
-      showMessage("请先选择衣物图片", "info");
-      return;
-    }
-    const itemId = await getWardrobeDb().items.add(item);
-    // B5a: best-effort 镜像到账号工作区 + Outbox，失败仅 console.warn 不阻塞 UI
-    void bridgeGarmentCreate({ ...item, id: itemId });
-    await refreshState();
-    setShowGarmentIntakeFlow(false);
-    setPendingViewingItemReturnTarget("wardrobe_home");
-    setPendingViewingItemId(null);
-    recordDiagnosticEvent("create_single_item_saved", { returnRoute: navigation.createReturnRoute });
-    showMessage("已保存到衣橱");
-  }
 
   function isImagePickerCancelError(error: unknown): boolean {
     const message = error instanceof Error ? error.message : typeof error === "string" ? error : "";
@@ -1976,11 +1923,6 @@ function saveSearchHistory(history: string[]) {
   localStorage.setItem(SEARCH_HISTORY_KEY, JSON.stringify(history.slice(0, MAX_HISTORY)));
 }
 
-function centerElementHorizontally(container: HTMLDivElement | null, target: HTMLElement | null) {
-  if (!container || !target) return;
-  const left = target.offsetLeft - Math.max(0, (container.clientWidth - target.clientWidth) / 2);
-  container.scrollTo({ left: Math.max(0, left), behavior: "smooth" });
-}
 
 // v1.1.20-dev: WardrobeView props 类型独立成 interface (TS parser 对 destructure + inline
 // object type annotation 在 body `{` 处有歧义,无法稳定解析)。原 v1.1.18 之前的代码也用
@@ -2594,34 +2536,6 @@ function WardrobeView(props: WardrobeViewProps) {
     closeEditWithoutPrompt();
   }, [closeEditWithoutPrompt, hasEditChanges, viewingItemCropJob]);
 
-  function setEditMainColor(color: string) {
-    setEditDraft((current) => {
-      if (!current) return current;
-      const currentColors = normalizeColorFields(current);
-      const mode: ColorMode = current.colors.mode;
-      if (mode === "multicolor") {
-        return { ...current, colors: buildColorInfo("multicolor", uniqueTrimmed([color, ...currentColors.primaryColors]).slice(0, 5)) };
-      }
-      return { ...current, colors: buildColorInfo(mode, [color], currentColors.accentColors.filter((item) => item !== color)) };
-    });
-  }
-
-  function setEditAccentColors(colors: string[]) {
-    setEditDraft((current) => {
-      if (!current) return current;
-      const currentColors = normalizeColorFields(current);
-      const main = currentColors.mainColor || currentColors.primaryColors[0] || "";
-      return { ...current, colors: buildColorInfo("main_with_accent", main ? [main] : [], colors.filter((color) => color !== main).slice(0, 5)) };
-    });
-  }
-
-  function setEditPrimaryColors(colors: string[]) {
-    setEditDraft((current) => {
-      if (!current) return current;
-      return { ...current, colors: buildColorInfo("multicolor", colors.slice(0, 5)) };
-    });
-  }
-
   async function recognizeEditDraftAgain() {
     if (!editDraft) return;
     if (!hasDeviceMiniMaxKey(miniMaxSettings)) {
@@ -3200,11 +3114,6 @@ function WardrobeView(props: WardrobeViewProps) {
               }
             } : undefined}
             onPatch={(patch) => setEditDraft((current) => current ? { ...current, ...patch } : current)}
-            onSetMainColor={setEditMainColor}
-            onSetAccentColors={setEditAccentColors}
-            onSetPrimaryColors={setEditPrimaryColors}
-            primaryColorRef={editPrimaryColorRef}
-            secondaryColorRef={editSecondaryColorRef}
             onLimit={(message) => onMessage(message, "info")}
           />
         ) : null}
@@ -3896,7 +3805,6 @@ return (
     item={item}
     cardEntries={cardEntries}
     currentIdx={currentIdx}
-    hasMultiple={hasMultiple}
     allItems={allItems}
     outfits={outfits}
     onSwipe={(next) => {
@@ -3958,60 +3866,8 @@ function DiagnosisIssueGroup({ title, issues }: { title: string; issues: Wardrob
 }
 
 
-function DetailChip({
-  children,
-  tone = "mist",
-  onClick,
-}: {
-  children: React.ReactNode;
-  tone?: "mist" | "denim";
-  onClick?: () => void;
-}) {
-  const content = (
-    <span className="block max-w-[7.25rem] truncate">{children}</span>
-  );
-  if (onClick) {
-    return (
-      <button
-        type="button"
-        onClick={onClick}
-        className="inline-flex min-h-8 max-w-full items-center rounded-lg bg-mist px-3 text-xs font-semibold text-ink/70 active:bg-ink/10"
-      >
-        {content}
-      </button>
-    );
-  }
-  return (
-    <span className={`inline-flex min-h-8 max-w-full items-center rounded-lg px-3 text-xs font-semibold ${tone === "denim" ? "bg-denim text-white" : "bg-mist text-ink/70"}`}>
-      {content}
-    </span>
-  );
-}
 
-function ReadOnlyMeter({ label, value }: { label: string; value: number }) {
-  const clamped = clampNumber(value, 1, 5);
-  const percent = ((clamped - 1) / 4) * 100;
-  return (
-    <div className="grid gap-1.5">
-      <div className="flex items-center justify-between gap-3 text-xs">
-        <span className="font-medium text-ink/65">{label}</span>
-        <span className="shrink-0 text-ink/50">{clamped}/5</span>
-      </div>
-      <div className="h-1.5 overflow-hidden rounded-full bg-mist" aria-hidden="true">
-        <div className="h-full rounded-full bg-denim" style={{ width: `${percent}%` }} />
-      </div>
-    </div>
-  );
-}
 
-function DetailInfoCell({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="min-w-0 rounded-lg bg-mist/70 px-2.5 py-2">
-      <p className="truncate text-[11px] text-ink/45">{label}</p>
-      <p className="mt-0.5 truncate text-sm font-semibold text-ink/78">{value}</p>
-    </div>
-  );
-}
 
 function WardrobeEditPage({
   draft,
@@ -4024,11 +3880,6 @@ function WardrobeEditPage({
   onRecognize,
   onCrop,
   onPatch,
-  onSetMainColor,
-  onSetAccentColors,
-  onSetPrimaryColors,
-  primaryColorRef,
-  secondaryColorRef,
   onLimit,
 }: {
   draft: WardrobeDraft;
@@ -4041,11 +3892,6 @@ function WardrobeEditPage({
   onRecognize: () => void;
   onCrop?: () => void;
   onPatch: (patch: Partial<WardrobeDraft>) => void;
-  onSetMainColor: (color: string) => void;
-  onSetAccentColors: (colors: string[]) => void;
-  onSetPrimaryColors?: (colors: string[]) => void;
-  primaryColorRef: React.RefObject<HTMLDivElement | null>;
-  secondaryColorRef: React.RefObject<HTMLDivElement | null>;
   onLimit: (message: string) => void;
 }) {
   const canSave = Boolean(draft.name.trim()) && hasChanges && !isSaving && !isRecognizing;
@@ -6358,9 +6204,6 @@ function WardrobeListPage({
   );
 }
 
-function blurActiveElement() {
-  try { (document.activeElement as HTMLElement | null)?.blur?.(); } catch {}
-}
 
 
 function clampNumber(value: number, min: number, max: number) {
@@ -6483,7 +6326,6 @@ function WaterfallCardImage({
  item,
  cardEntries,
  currentIdx,
- hasMultiple,
  onSwipe,
  onClick,
  allItems,
@@ -6492,7 +6334,6 @@ function WaterfallCardImage({
  item: WardrobeItem;
  cardEntries: GarmentImageEntry[];
  currentIdx: number;
- hasMultiple: boolean;
  onSwipe: (next: number) => void;
  onClick?: () => void;
  allItems: WardrobeItem[];
@@ -6624,98 +6465,13 @@ function snapshotsEqual(a: EditSnapshot | null, b: EditSnapshot | null) {
   return JSON.stringify(a) === JSON.stringify(b);
 }
 
-function loadChoiceCounts(key: string): Record<string, number> {
-  try {
-    return JSON.parse(localStorage.getItem(key) || "{}") as Record<string, number>;
-  } catch {
-    return {};
-  }
-}
 
-function saveChoiceCounts(key: string, counts: Record<string, number>) {
-  localStorage.setItem(key, JSON.stringify(counts));
-}
 
-function bumpChoiceCount(counts: Record<string, number>, value: string) {
-  const normalized = value.trim();
-  if (!normalized) return counts;
-  return {
-    ...counts,
-    [normalized]: (counts[normalized] ?? 0) + 1,
-  };
-}
 
-function sortedChoiceOptions(counts: Record<string, number>) {
-  const values = Array.from(new Set([...styleOptions, ...Object.keys(counts)]));
-  return values
-    .map((value) => ({
-      value,
-      label: STYLE_LABELS[value as GarmentStyle] ?? value,
-      count: counts[value] ?? 0,
-    }))
-    .sort((a, b) => b.count - a.count || a.label.localeCompare(b.label, "zh-Hans-CN"));
-}
 
-function tagResultToDraft(result: GarmentTagResult, imageDataUrl: string, sourceImageDataUrl: string, locationId: string, source: WardrobeDraft["captureSource"], clientSeed: string): WardrobeDraft {
-  return {
-    clientId: `${Date.now()}-${clientSeed}-${Math.random().toString(36).slice(2, 8)}`,
-    selected: true,
-    captureSource: source,
-    name: result.candidateNames[0] ?? cleanName(clientSeed),
-    imageDataUrl, sourceImageDataUrl,
-    category: result.category,
-    subcategory: result.subcategory,
-    colors: result.colors,
-    seasons: result.seasons,
-    styles: result.styles,
-    formality: result.formality,
-    warmth: result.warmth,
-    locationId,
-    status: "active",
-    notes: result.notes ?? "",
-    needsReview: result.needsReview,
-    aiConfidence: result.confidence,
-    fitGender: result.fitGender ?? "unknown",
-    fitNotes: result.fitNotes?.trim() || undefined,
-  };
-}
 
-function createEmptyDraft(locationId = "home"): WardrobeDraft {
-  return {
-    name: "",
-    imageDataUrl: "",
-    category: "tops",
-    colors: emptyColorInfo(),
-    seasons: ["all"],
-    styles: ["casual"],
-    formality: 2,
-    warmth: 2,
-    locationId,
-    status: "active",
-    notes: "",
-    needsReview: true,
-  };
-}
 
-function fallbackTagResult(fileName = "新衣服"): GarmentTagResult {
-  return {
-    candidateNames: [cleanName(fileName)],
-    category: "tops",
-    colors: buildColorInfo("single", ["白"]),
-    seasons: ["all"],
-    styles: ["casual"],
-    formality: 2,
-    warmth: 2,
-    confidence: 0.42,
-    needsReview: true,
-    notes: "未配置 MiniMax Key，已生成可编辑的默认标签",
-    fitGender: "unknown",
-  };
-}
 
-function cleanName(fileName: string) {
-  return fileName.replace(/\.[^.]+$/, "").replace(/[-_]+/g, " ").trim() || "新衣服";
-}
 
 function createDemoItem(
   name: string,
@@ -6845,9 +6601,6 @@ function relativeDateKey(daysAgo: number) {
   return `${year}-${month}-${day}`;
 }
 
-function toggle<T>(values: T[], value: T) {
-  return values.includes(value) ? values.filter((item) => item !== value) : [...values, value];
-}
 
 
 function getErrorMessage(error: unknown) {
@@ -6878,11 +6631,3 @@ async function runLoggedDbTransaction(
   }
 }
 
-function withTimeout<T>(promise: Promise<T>, timeoutMs: number) {
-  return Promise.race([
-    promise,
-    new Promise<T>((_, reject) => {
-      setTimeout(() => reject(new Error("本地衣橱数据库打开超时")), timeoutMs);
-    }),
-  ]);
-}
