@@ -578,6 +578,45 @@ export class SessionService {
     });
   }
 
+  async completeNewRegistration(input: {
+    userId: string;
+    maskedPhone: string;
+    deviceId: string;
+    deviceLabel?: string | null;
+  }) {
+    const now = this.now();
+    const refreshToken = generateOpaqueToken();
+    const refreshTokenExpiresAt = new Date(now.getTime() + REFRESH_TOKEN_TTL_MS);
+    const session = await this.store.createSessionWithRefreshToken({
+      userId: input.userId,
+      deviceId: input.deviceId,
+      deviceLabel: input.deviceLabel,
+      refreshTokenHash: hashToken(refreshToken),
+      tokenFamilyId: randomUUID(),
+      refreshExpiresAt: refreshTokenExpiresAt,
+      now,
+    });
+    const access = await this.tokenIssuer.sign(
+      { userId: input.userId, sessionId: session.sessionId, deviceId: input.deviceId },
+      now,
+    );
+
+    await this.store.recordSecurityEvent({
+      userId: input.userId,
+      eventType: "registration.succeeded",
+      metadata: { maskedPhone: input.maskedPhone },
+    });
+
+    return this.buildTokenResponse({
+      accessToken: access.accessToken,
+      accessTokenExpiresAt: access.expiresAt,
+      refreshToken,
+      refreshTokenExpiresAt,
+      userId: input.userId,
+      maskedPhone: input.maskedPhone,
+    });
+  }
+
   async issueTokensForExistingSession(input: {
     userId: string;
     sessionId: string;

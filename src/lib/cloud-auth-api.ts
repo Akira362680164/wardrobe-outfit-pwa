@@ -20,45 +20,22 @@ export class CloudAuthApiError extends Error {
   }
 }
 
-export interface RegistrationResponse {
-  registrationId: string;
-  clientSecret: string;
-  maskedPhone: string;
-  expiresAt: string;
-}
-
-export interface RegistrationStatusResponse {
-  status: "pending" | "verified" | "expired" | "cancelled" | "completed";
-  expiresAt: string;
-  serverTime: string;
-}
-
 export interface AccountMeResponse {
   user: AuthUserSnapshot;
   deviceId: string;
 }
 
-// P1-N05: 按 refreshToken 指纹 + deviceId 隔离，防止不同账号复用同一 Promise
 const refreshPromiseMap = new Map<string, Promise<AuthTokenPayload>>();
 
-export async function requestRegistration(input: { phone: string; password: string }): Promise<RegistrationResponse> {
-  return requestJson("/api/auth/registrations", {
+export async function register(input: {
+  phone: string;
+  password: string;
+  deviceId: string;
+  deviceLabel: string;
+}): Promise<AuthTokenPayload> {
+  return requestJson("/api/auth/register", {
     method: "POST",
     body: input,
-  });
-}
-
-export async function requestRegistrationStatus(input: {
-  registrationId: string;
-  clientSecret: string;
-  deviceId: string;
-}): Promise<RegistrationStatusResponse> {
-  return requestJson(`/api/auth/registrations/${encodeURIComponent(input.registrationId)}/status`, {
-    method: "POST",
-    body: {
-      clientSecret: input.clientSecret,
-      deviceId: input.deviceId,
-    },
   });
 }
 
@@ -70,20 +47,6 @@ export async function cancelRegistration(input: {
     method: "POST",
     body: {
       clientSecret: input.clientSecret,
-    },
-  });
-}
-
-export async function completeRegistration(input: {
-  registrationId: string;
-  clientSecret: string;
-  deviceId: string;
-}): Promise<AuthTokenPayload> {
-  return requestJson(`/api/auth/registrations/${encodeURIComponent(input.registrationId)}/complete`, {
-    method: "POST",
-    body: {
-      clientSecret: input.clientSecret,
-      deviceId: input.deviceId,
     },
   });
 }
@@ -105,7 +68,6 @@ export function refreshWithMutex(input: {
   refreshRequestId: string;
   deviceId: string;
 }): Promise<AuthTokenPayload> {
-  // P1-N05: 按 refreshToken 前 16 位 + deviceId 隔离
   const key = `${input.refreshToken.slice(0, 16)}:${input.deviceId}`;
   const existing = refreshPromiseMap.get(key);
   if (existing) return existing;
@@ -161,7 +123,6 @@ async function requestJson<T>(
     method: "GET" | "POST";
     body?: unknown;
     accessToken?: string;
-    // P1-N04: 自动刷新凭证（仅非 auth 请求使用）
     refreshToken?: string;
     deviceId?: string;
   },
@@ -172,40 +133,44 @@ async function requestJson<T>(
     if (options.body !== undefined) headers["Content-Type"] = "application/json";
     if (token) headers.Authorization = `Bearer ${token}`;
 
-    if (Capacitor.isNativePlatform() && /^https?:\/\//.test(url)) {
-      const response = await CapacitorHttp.request({
-        method: options.method,
-        url,
-        headers,
-        data: options.body,
-        connectTimeout: 30_000,
-        readTimeout: 30_000,
-      });
-      if (response.status >= 400) throw toAuthError(response.status, response.data);
-      return response.data as T;
-    }
-
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 30_000);
     try {
-      const response = await fetch(url, {
-        method: options.method,
-        headers,
-        body: options.body === undefined ? undefined : JSON.stringify(options.body),
-        signal: controller.signal,
-      });
-      const data = await parseFetchJson(response);
-      if (!response.ok) throw toAuthError(response.status, data);
-      return data as T;
-    } finally {
-      clearTimeout(timeoutId);
+      if (Capacitor.isNativePlatform() && /^https?:\/\//.test(url)) {
+        const response = await CapacitorHttp.request({
+          method: options.method,
+          url,
+          headers,
+          data: options.body,
+          connectTimeout: 30_000,
+          readTimeout: 30_000,
+        });
+        if (response.status >= 400) throw toAuthError(response.status, response.data);
+        return response.data as T;
+      }
+
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 30_000);
+      try {
+        const response = await fetch(url, {
+          method: options.method,
+          headers,
+          body: options.body === undefined ? undefined : JSON.stringify(options.body),
+          signal: controller.signal,
+        });
+        const data = await parseFetchJson(response);
+        if (!response.ok) throw toAuthError(response.status, data);
+        return data as T;
+      } finally {
+        clearTimeout(timeoutId);
+      }
+    } catch (error) {
+      if (error instanceof CloudAuthApiError) throw error;
+      throw new CloudAuthApiError(0, "network_unavailable", "网络连接失败，请检查网络后重试");
     }
   };
 
   try {
     return await perform(options.accessToken);
   } catch (error) {
-    // P1-N04: 401 时若有 refresh 凭证，自动刷新后重放一次
     if (
       error instanceof CloudAuthApiError &&
       error.status === 401 &&
@@ -246,5 +211,8 @@ function toAuthError(status: number, data: unknown): CloudAuthApiError {
     const body = data as AuthApiErrorBody;
     return new CloudAuthApiError(status, body.code, body.message, body.retryAfterSeconds);
   }
-  return new CloudAuthApiError(status, "request_failed", "账号服务暂时不可用");
+  if (status === 502 || status === 503 || status === 504) {
+    return new CloudAuthApiError(status, "service_unavailable", "账号服务暂时不可用，请稍后重试");
+  }
+  return new CloudAuthApiError(status, "request_failed", "操作失败，请稍后重试");
 }

@@ -51,7 +51,7 @@ export function AccountManagementView({
           <div className="min-w-0">
             <h2 className="text-sm font-semibold">本机衣橱保留在本地</h2>
             <p className="mt-1 text-xs leading-relaxed text-ink/55">
-              退出账号不会删除本地数据库、图片缓存、未同步队列或 MiniMax Key。阶段 1A 不显示云端同步状态。
+              退出账号不会删除本机已缓存的数据。重新登录后将继续使用当前账号工作区。
             </p>
           </div>
         </div>

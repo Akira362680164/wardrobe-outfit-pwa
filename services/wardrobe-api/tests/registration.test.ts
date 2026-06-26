@@ -5,14 +5,25 @@ import { describe, expect, it } from "vitest";
 import { buildApp } from "../src/app.js";
 import { FixedWindowRateLimiter } from "../src/auth/rate-limit.js";
 import {
-  REGISTRATION_TTL_MS,
   RegistrationService,
   type CompletedRegistration,
+  type DirectRegistrationResult,
   type PendingRegistrationRecord,
   type RegistrationStatus,
   type RegistrationStore,
   type SecurityEventInput,
 } from "../src/auth/registrations.js";
+import {
+  SessionService,
+  type AccessTokenClaims,
+  type AccessTokenIssuer,
+  type RefreshTokenRecord,
+  type SessionAccountRecord,
+  type SessionStore,
+  type SessionUserRecord,
+} from "../src/auth/session.js";
+import { AuthApiError, maskPhoneE164, normalizePhoneE164 } from "../src/auth/registrations.js";
+import { hashPassword } from "../src/security/password.js";
 import { hashToken } from "../src/security/token-hash.js";
 
 class MemoryRegistrationStore implements RegistrationStore {
@@ -21,6 +32,7 @@ class MemoryRegistrationStore implements RegistrationStore {
   readonly passwordHashes = new Map<string, string>();
   readonly sessions = new Map<string, { userId: string; deviceId: string }>();
   readonly events: SecurityEventInput[] = [];
+  private userIdSeq = 0;
 
   async hasUserForPhone(phoneE164: string) {
     return this.phoneIdentities.has(phoneE164);
@@ -37,27 +49,15 @@ class MemoryRegistrationStore implements RegistrationStore {
   }
 
   async createPendingRegistration(input: {
-    phoneE164: string;
-    maskedPhone: string;
-    passwordHash: string;
-    clientSecretHash: string;
-    expiresAt: Date;
-    now: Date;
+    phoneE164: string; maskedPhone: string; passwordHash: string;
+    clientSecretHash: string; expiresAt: Date; now: Date;
   }) {
     const registration: PendingRegistrationRecord = {
-      id: randomUUID(),
-      phoneE164: input.phoneE164,
-      maskedPhone: input.maskedPhone,
-      passwordHash: input.passwordHash,
-      clientSecretHash: input.clientSecretHash,
-      status: "pending",
-      verificationSource: null,
-      verifiedAt: null,
-      expiresAt: input.expiresAt,
-      completedAt: null,
-      cancelledAt: null,
-      createdAt: input.now,
-      updatedAt: input.now,
+      id: randomUUID(), phoneE164: input.phoneE164, maskedPhone: input.maskedPhone,
+      passwordHash: input.passwordHash, clientSecretHash: input.clientSecretHash,
+      status: "pending", verificationSource: null, verifiedAt: null,
+      expiresAt: input.expiresAt, completedAt: null, cancelledAt: null,
+      createdAt: input.now, updatedAt: input.now,
     };
     this.registrations.set(registration.id, registration);
     return registration;
@@ -68,49 +68,110 @@ class MemoryRegistrationStore implements RegistrationStore {
   }
 
   async markRegistrationExpired(registrationId: string, now: Date) {
-    const registration = this.registrations.get(registrationId);
-    if (registration && (registration.status === "pending" || registration.status === "verified")) {
-      registration.status = "expired";
-      registration.updatedAt = now;
+    const r = this.registrations.get(registrationId);
+    if (r && (r.status === "pending" || r.status === "verified")) {
+      r.status = "expired"; r.updatedAt = now;
     }
   }
 
   async verifyPendingRegistrationWithDevelopmentCli(registrationId: string, now: Date) {
-    const registration = this.registrations.get(registrationId);
-    if (!registration || registration.status !== "pending" || registration.expiresAt <= now) {
-      return null;
-    }
-    registration.status = "verified";
-    registration.verificationSource = "development_cli";
-    registration.verifiedAt = now;
-    registration.updatedAt = now;
-    return registration;
+    const r = this.registrations.get(registrationId);
+    if (!r || r.status !== "pending" || r.expiresAt <= now) return null;
+    r.status = "verified"; r.verificationSource = "development_cli";
+    r.verifiedAt = now; r.updatedAt = now;
+    return r;
   }
 
-  async completeRegistration(input: {
-    registrationId: string;
-    deviceId: string;
-    now: Date;
-  }): Promise<CompletedRegistration | null> {
-    const registration = this.registrations.get(input.registrationId);
-    if (!registration || registration.status !== "verified" || registration.expiresAt <= input.now) {
-      return null;
-    }
-
-    const userId = randomUUID();
-    const sessionId = randomUUID();
-    registration.status = "completed";
-    registration.completedAt = input.now;
-    registration.updatedAt = input.now;
-    this.phoneIdentities.set(registration.phoneE164, { userId, maskedPhone: registration.maskedPhone });
-    this.passwordHashes.set(userId, registration.passwordHash!);
+  async completeRegistration(input: { registrationId: string; deviceId: string; now: Date }): Promise<CompletedRegistration | null> {
+    const r = this.registrations.get(input.registrationId);
+    if (!r || r.status !== "verified" || r.expiresAt <= input.now) return null;
+    const userId = randomUUID(); const sessionId = randomUUID();
+    r.status = "completed"; r.completedAt = input.now; r.updatedAt = input.now;
+    this.phoneIdentities.set(r.phoneE164, { userId, maskedPhone: r.maskedPhone });
+    this.passwordHashes.set(userId, r.passwordHash!);
     this.sessions.set(sessionId, { userId, deviceId: input.deviceId });
-    return { userId, sessionId, deviceId: input.deviceId, maskedPhone: registration.maskedPhone };
+    return { userId, sessionId, deviceId: input.deviceId, maskedPhone: r.maskedPhone };
   }
 
-  async recordSecurityEvent(input: SecurityEventInput) {
-    this.events.push(input);
+  async recordSecurityEvent(input: SecurityEventInput) { this.events.push(input); }
+
+  async createDirectRegistration(input: {
+    phoneE164: string; maskedPhone: string; passwordHash: string; now: Date;
+  }): Promise<DirectRegistrationResult> {
+    if (this.phoneIdentities.has(input.phoneE164)) {
+      throw new AuthApiError(409, "phone_already_registered", "Phone is already registered");
+    }
+    const userId = `user-${++this.userIdSeq}`;
+    this.phoneIdentities.set(input.phoneE164, { userId, maskedPhone: input.maskedPhone });
+    this.passwordHashes.set(userId, input.passwordHash);
+    return { userId, maskedPhone: input.maskedPhone };
   }
+}
+
+class MemoryAccessTokenIssuer implements AccessTokenIssuer {
+  private index = 0;
+  private readonly claimsByToken = new Map<string, AccessTokenClaims>();
+
+  async sign(claims: AccessTokenClaims, _now: Date) {
+    const accessToken = `access-${++this.index}`;
+    this.claimsByToken.set(accessToken, claims);
+    return { accessToken, expiresAt: new Date(Date.now() + 15 * 60 * 1000) };
+  }
+
+  async verify(accessToken: string) {
+    const claims = this.claimsByToken.get(accessToken);
+    if (!claims) throw new AuthApiError(401, "AUTH_TOKEN_INVALID", "Invalid access token");
+    return claims;
+  }
+}
+
+class MemorySessionStore implements SessionStore {
+  readonly usersByPhone = new Map<string, SessionUserRecord>();
+  readonly sessions = new Map<string, SessionAccountRecord>();
+  readonly refreshTokens = new Map<string, RefreshTokenRecord>();
+  readonly events: SecurityEventInput[] = [];
+
+  async addUser(userId: string, phoneE164: string, maskedPhone: string, password: string) {
+    const user: SessionUserRecord = {
+      userId, maskedPhone, passwordHash: await hashPassword(password), disabledAt: null,
+    };
+    this.usersByPhone.set(phoneE164, user);
+    return user;
+  }
+
+  async findUserByPhone(phoneE164: string) { return this.usersByPhone.get(phoneE164) ?? null; }
+
+  async createSessionWithRefreshToken(input: {
+    userId: string; deviceId: string; deviceLabel?: string | null;
+    refreshTokenHash: string; tokenFamilyId: string; refreshExpiresAt: Date; now: Date;
+  }) {
+    const user = this.usersByPhone.get(input.userId);
+    const sessionId = randomUUID();
+    this.sessions.set(sessionId, {
+      userId: input.userId, maskedPhone: user?.maskedPhone ?? "****",
+      disabledAt: null, sessionRevokedAt: null, deviceId: input.deviceId,
+    });
+    this.refreshTokens.set(input.refreshTokenHash, {
+      id: randomUUID(), sessionId, userId: input.userId, deviceId: input.deviceId,
+      tokenHash: input.refreshTokenHash, tokenFamilyId: input.tokenFamilyId,
+      status: "active", absoluteExpiresAt: input.refreshExpiresAt, revokedAt: null,
+      refreshRequestId: null, idempotencyCiphertext: null, idempotencyNonce: null,
+      idempotencyAuthTag: null, idempotencyExpiresAt: null, sessionRevokedAt: null,
+      userDisabledAt: null, maskedPhone: user?.maskedPhone ?? "****",
+    });
+    return { sessionId };
+  }
+
+  async createRefreshTokenForSession() {}
+  async findRefreshTokenByHash(_tokenHash: string): Promise<RefreshTokenRecord | null> { return null; }
+  async rotateActiveRefreshToken(): Promise<boolean> { return false; }
+  async revokeRefreshFamily() {}
+  async revokeSession() {}
+  async revokeAllSessions() {}
+  async getAccountSession(): Promise<SessionAccountRecord | null> { return null; }
+  async getPasswordCredential(): Promise<{ passwordHash: string } | null> { return null; }
+  async changePasswordAndRevokeOtherSessions() {}
+  async recordSecurityEvent(input: SecurityEventInput) { this.events.push(input); }
 }
 
 function makeFixture(options: { maxAttempts?: number; now?: Date } = {}) {
@@ -124,196 +185,160 @@ function makeFixture(options: { maxAttempts?: number; now?: Date } = {}) {
       windowMs: 15 * 60 * 1000,
     }),
   });
+  return { service, store, now };
+}
+
+function makeAppFixture() {
+  const regStore = new MemoryRegistrationStore();
+  const sessStore = new MemorySessionStore();
+  const registrationService = new RegistrationService({ store: regStore });
+  const sessionService = new SessionService({
+    store: sessStore,
+    tokenIssuer: new MemoryAccessTokenIssuer(),
+  });
   const app = buildApp({
     readinessCheck: async () => ({ database: "ready" }),
-    registrationService: service,
+    registrationService,
+    sessionService,
   });
-  return { app, service, store, now };
+  return { app, regStore, sessStore, registrationService, sessionService };
 }
 
-async function createRegistration(app: ReturnType<typeof buildApp>, phone = "+8613812345678") {
-  const response = await app.inject({
-    method: "POST",
-    url: "/api/auth/registrations",
-    payload: { phone, password: "test-password-123" },
-  });
-  expect(response.statusCode).toBe(200);
-  return response.json() as {
-    registrationId: string;
-    clientSecret: string;
-    maskedPhone: string;
-    expiresAt: string;
-  };
-}
-
-describe("registration API", () => {
-  it("creates a pending registration with a one-time client secret", async () => {
-    const { app, store, now } = makeFixture();
-    const created = await createRegistration(app);
-    const row = store.registrations.get(created.registrationId);
-
-    expect(created.maskedPhone).toBe("138****5678");
-    expect(created.clientSecret).not.toHaveLength(0);
-    expect(created.expiresAt).toBe(new Date(now.getTime() + REGISTRATION_TTL_MS).toISOString());
-    expect(row?.status).toBe<RegistrationStatus>("pending");
-    expect(row?.passwordHash).toContain("$argon2id$");
-    expect(row?.passwordHash).not.toContain("test-password-123");
-    expect(row?.clientSecretHash).toBe(hashToken(created.clientSecret));
-    expect(store.events.map((event) => event.eventType)).toContain("registration.requested");
-
-    await app.close();
-  });
-
-  it("cancels an older pending registration for the same phone", async () => {
-    const { app, store } = makeFixture();
-    const first = await createRegistration(app);
-    const second = await createRegistration(app);
-
-    expect(store.registrations.get(first.registrationId)?.status).toBe("cancelled");
-    expect(store.registrations.get(second.registrationId)?.status).toBe("pending");
-
-    await app.close();
-  });
-
-  it("rejects status checks with the wrong client secret or query secret", async () => {
-    const { app } = makeFixture();
-    const created = await createRegistration(app);
-    const wrongSecret = await app.inject({
-      method: "POST",
-      url: `/api/auth/registrations/${created.registrationId}/status`,
-      payload: { clientSecret: "wrong-client-secret", deviceId: "device-a" },
-    });
-    const querySecret = await app.inject({
-      method: "POST",
-      url: `/api/auth/registrations/${created.registrationId}/status?clientSecret=${created.clientSecret}`,
-      payload: { clientSecret: created.clientSecret, deviceId: "device-a" },
-    });
-
-    expect(wrongSecret.statusCode).toBe(401);
-    expect(querySecret.statusCode).toBe(400);
-
-    await app.close();
-  });
-
-  it("does not complete before CLI verification", async () => {
-    const { app } = makeFixture();
-    const created = await createRegistration(app);
+describe("direct registration API", () => {
+  it("registers a new user and returns access + refresh tokens", async () => {
+    const { app, regStore } = makeAppFixture();
     const response = await app.inject({
       method: "POST",
-      url: `/api/auth/registrations/${created.registrationId}/complete`,
-      payload: { clientSecret: created.clientSecret, deviceId: "device-a" },
+      url: "/api/auth/register",
+      payload: { phone: "13812345678", password: "test-password-123", deviceId: "device-a", deviceLabel: "Android 手机" },
     });
 
-    expect(response.statusCode).toBe(409);
-    expect(response.json()).toMatchObject({ code: "registration_not_verified" });
+    expect(response.statusCode).toBe(200);
+    const body = response.json();
+    expect(body.accessToken).toBeTruthy();
+    expect(body.refreshToken).toBeTruthy();
+    expect(body.user.maskedPhone).toBe("138****5678");
+    expect(body.user.id).toBeTruthy();
+    // verify no pending registration artifacts in response
+    expect(body.registrationId).toBeUndefined();
+    expect(body.clientSecret).toBeUndefined();
+    expect(body.status).toBeUndefined();
+    // verify phone_identity created
+    expect(regStore.phoneIdentities.has("+8613812345678")).toBe(true);
 
     await app.close();
   });
 
-  it("allows CLI verified registration to complete exactly once", async () => {
-    const { app, service, store } = makeFixture();
-    const created = await createRegistration(app);
-    await service.verifyPendingRegistrationWithDevelopmentCli(created.registrationId);
-
-    const complete = await app.inject({
-      method: "POST",
-      url: `/api/auth/registrations/${created.registrationId}/complete`,
-      payload: { clientSecret: created.clientSecret, deviceId: "device-a" },
-    });
-    const duplicate = await app.inject({
-      method: "POST",
-      url: `/api/auth/registrations/${created.registrationId}/complete`,
-      payload: { clientSecret: created.clientSecret, deviceId: "device-a" },
-    });
-
-    expect(complete.statusCode).toBe(200);
-    expect(complete.json()).toMatchObject({
-      status: "completed",
-      maskedPhone: "138****5678",
-    });
-    expect(store.sessions.get(complete.json().sessionId)?.deviceId).toBe("device-a");
-    expect(store.phoneIdentities.has("+8613812345678")).toBe(true);
-    expect(store.events.map((event) => event.eventType)).toContain("registration.verified");
-    expect(store.events.map((event) => event.eventType)).toContain("registration.completed");
-    expect(duplicate.statusCode).toBe(409);
-
-    await app.close();
-  });
-
-  it("rate limits repeated registration requests", async () => {
-    const { app } = makeFixture({ maxAttempts: 1 });
-    await createRegistration(app);
-    const limited = await app.inject({
-      method: "POST",
-      url: "/api/auth/registrations",
-      payload: { phone: "+8613812345678", password: "test-password-123" },
-    });
-
-    expect(limited.statusCode).toBe(429);
-    expect(limited.json().retryAfterSeconds).toBeGreaterThan(0);
-
-    await app.close();
-  });
-
-  it("rejects duplicate registration after the phone becomes a formal account", async () => {
-    const { app, service } = makeFixture();
-    const created = await createRegistration(app);
-    await service.verifyPendingRegistrationWithDevelopmentCli(created.registrationId);
+  it("records registration.succeeded security event", async () => {
+    const { app, regStore } = makeAppFixture();
     await app.inject({
       method: "POST",
-      url: `/api/auth/registrations/${created.registrationId}/complete`,
-      payload: { clientSecret: created.clientSecret, deviceId: "device-a" },
+      url: "/api/auth/register",
+      payload: { phone: "13812345678", password: "test-password-123", deviceId: "device-a" },
     });
+    expect(regStore.events.map((e) => e.eventType)).toContain("registration.succeeded");
+    await app.close();
+  });
 
-    const duplicatePhone = await app.inject({
+  it("returns 409 for duplicate phone", async () => {
+    const { app } = makeAppFixture();
+    await app.inject({
       method: "POST",
-      url: "/api/auth/registrations",
-      payload: { phone: "+8613812345678", password: "test-password-456" },
+      url: "/api/auth/register",
+      payload: { phone: "13812345678", password: "test-password-123", deviceId: "device-a" },
     });
+    const dup = await app.inject({
+      method: "POST",
+      url: "/api/auth/register",
+      payload: { phone: "13812345678", password: "test-password-456", deviceId: "device-b" },
+    });
+    expect(dup.statusCode).toBe(409);
+    expect(dup.json()).toMatchObject({ code: "phone_already_registered" });
+    await app.close();
+  });
 
-    expect(duplicatePhone.statusCode).toBe(409);
-    expect(duplicatePhone.json()).toMatchObject({ code: "phone_already_registered" });
+  it("returns 400 for invalid phone", async () => {
+    const { app } = makeAppFixture();
+    const r = await app.inject({
+      method: "POST", url: "/api/auth/register",
+      payload: { phone: "abc", password: "test-password-123", deviceId: "device-a" },
+    });
+    expect(r.statusCode).toBe(400);
+    await app.close();
+  });
 
+  it("returns 400 for password shorter than 8", async () => {
+    const { app } = makeAppFixture();
+    const r = await app.inject({
+      method: "POST", url: "/api/auth/register",
+      payload: { phone: "13812345678", password: "1234567", deviceId: "device-a" },
+    });
+    expect(r.statusCode).toBe(400);
+    await app.close();
+  });
+
+  it("returns 400 for missing deviceId", async () => {
+    const { app } = makeAppFixture();
+    const r = await app.inject({
+      method: "POST", url: "/api/auth/register",
+      payload: { phone: "13812345678", password: "test-password-123" },
+    });
+    expect(r.statusCode).toBe(400);
+    await app.close();
+  });
+
+  it("returns 429 after exceeding rate limit", async () => {
+    const { service, store } = makeFixture({ maxAttempts: 1 });
+    await service.directRegister({
+      phone: "13812345678", password: "test-password-123",
+      rateLimitKey: "test-ip", ip: "1.2.3.4",
+    });
+    await expect(
+      service.directRegister({
+        phone: "13812345678", password: "test-password-456",
+        rateLimitKey: "test-ip", ip: "1.2.3.4",
+      }),
+    ).rejects.toMatchObject({ code: "rate_limited", statusCode: 429 });
+  });
+
+  it("creates password hash not in plain text", async () => {
+    const { app, regStore } = makeAppFixture();
+    await app.inject({
+      method: "POST", url: "/api/auth/register",
+      payload: { phone: "13812345678", password: "my-secret-pass", deviceId: "device-a" },
+    });
+    const hash = regStore.passwordHashes.get("user-1");
+    expect(hash).toContain("$argon2id$");
+    expect(hash).not.toContain("my-secret-pass");
     await app.close();
   });
 });
 
-describe("development CLI verification", () => {
-  it("marks a pending registration as verified with development_cli source", async () => {
+describe("direct registration service", () => {
+  it("creates user, phone_identity and password_credential in one transaction", async () => {
     const { service, store } = makeFixture();
-    const now = new Date("2026-06-26T00:00:00.000Z");
-    const registration = await store.createPendingRegistration({
-      phoneE164: "+8613812345678",
-      maskedPhone: "138****5678",
-      passwordHash: "hash",
-      clientSecretHash: "secret-hash",
-      expiresAt: new Date(now.getTime() + REGISTRATION_TTL_MS),
-      now,
+    const result = await service.directRegister({
+      phone: "13812345678", password: "test-password-123",
+      rateLimitKey: "test-ip", ip: "1.2.3.4",
     });
-
-    const verified = await service.verifyPendingRegistrationWithDevelopmentCli(registration.id);
-    expect(verified).not.toBeNull();
-    expect(verified!.status).toBe<RegistrationStatus>("verified");
-    expect(verified!.verificationSource).toBe("development_cli");
-
-    const stored = await store.findPendingRegistration(registration.id);
-    expect(stored?.status).toBe<RegistrationStatus>("verified");
-    expect(stored?.verificationSource).toBe("development_cli");
+    expect(result.userId).toBeTruthy();
+    expect(result.maskedPhone).toBe("138****5678");
+    expect(store.phoneIdentities.has("+8613812345678")).toBe(true);
+    expect(store.passwordHashes.get(result.userId)).toContain("$argon2id$");
+    expect(store.events.map((e) => e.eventType)).toContain("registration.succeeded");
   });
 
-  it("rejects verification for already expired registrations", async () => {
-    const { service, store } = makeFixture();
-    const past = new Date("2026-06-26T00:00:00.000Z");
-    const registration = await store.createPendingRegistration({
-      phoneE164: "+8613812345678",
-      maskedPhone: "138****5678",
-      passwordHash: "hash",
-      clientSecretHash: "secret-hash",
-      expiresAt: new Date(past.getTime() - 1),
-      now: past,
+  it("throws phone_already_registered for duplicate phone", async () => {
+    const { service } = makeFixture();
+    await service.directRegister({
+      phone: "13812345678", password: "test-password-123",
+      rateLimitKey: "test-ip",
     });
-
-    await expect(service.verifyPendingRegistrationWithDevelopmentCli(registration.id))
-      .rejects.toMatchObject({ code: "registration_not_found" });
+    await expect(
+      service.directRegister({
+        phone: "13812345678", password: "test-password-456",
+        rateLimitKey: "test-ip",
+      }),
+    ).rejects.toMatchObject({ code: "phone_already_registered", statusCode: 409 });
   });
 });

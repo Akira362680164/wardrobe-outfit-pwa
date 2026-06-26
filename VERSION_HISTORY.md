@@ -1,3 +1,43 @@
+## 2026-06-27 / v2.0.1 / Claude Code — 认证流程全链路修复
+
+- **目的**：按 `WARDROBE_V2_0_1_AUTH_FLOW_FULL_FIX_EXECUTION_PLAN.md` 修复注册、登录、协议导航与 Android 返回全部问题。
+- **版本**：`2.0.0-test` → `2.0.1`，Android `versionCode` 自动推导为 `20001`。
+- **改动文件**：
+  - `services/wardrobe-api/migrations/0003_direct_registration.sql`（新增）：phone_identities.verified_at nullable
+  - `services/wardrobe-api/migrations/meta/_journal.json`：注册 migration 0003
+  - `services/wardrobe-api/src/db/schema.ts`：verifiedAt 移除 notNull
+  - `services/wardrobe-api/src/auth/registrations.ts`：新增 directRegister + createDirectRegistration store
+  - `services/wardrobe-api/src/auth/routes.ts`：新增 POST /api/auth/register，删除旧 pending verification 路由
+  - `services/wardrobe-api/src/auth/session.ts`：新增 completeNewRegistration
+  - `services/wardrobe-api/tests/registration.test.ts`：重写为直接注册测试
+  - `src/lib/cloud-auth-api.ts`：新增 register()，删除 requestRegistration/requestRegistrationStatus/completeRegistration，网络异常统一转中文错误
+  - `src/lib/auth-session-store.ts`：删除 savePendingRegistration
+  - `src/lib/auth-form-validation.ts`（新增）：共享表单校验
+  - `src/components/auth/auth-provider.tsx`：AuthPhase 删除 pending_verification，login/register 不调用 ensureCloudReady，清理旧 pendingRegistration
+  - `src/components/auth/auth-gate.tsx`：AuthView 状态机 + history 导航栈 + backButton 监听 + 退出确认弹窗 + 表单校验驱动按钮 + 内联法律文档
+  - `src/components/auth/legal-document-view.tsx`（新增）：共享法律文档组件
+  - `src/components/auth/account-views.tsx`：清理阶段 1A 话术
+  - `src/app/legal/terms/page.tsx`、`src/app/legal/privacy/page.tsx`：使用共享组件 + 更新正文 + 删除内部测试标签
+  - `scripts/test-auth-client-shell.ts`：重写为 v2.0.1 断言
+  - `scripts/test-cloud-connectivity-state.ts`：删除 connectivity 依赖按钮的旧断言
+  - `scripts/test-auth-flow-v2-0-1.ts`（新增）：39 项回归检查
+  - `scripts/validate-cloud-build-env.mjs`（新增）：构建前环境校验
+  - `android/app/src/main/AndroidManifest.xml`：临时允许 HTTP cleartext
+  - `package.json`：版本 2.0.1，android:sync 加入构建校验，新增 test:logic:auth-flow-v2-0-1
+- **提交记录**：
+  - `43002db` — v2.0.1 auth server direct registration
+  - `75b2cc2` — v2.0.1 auth client flow and navigation
+  - `7ed44e4` — v2.0.1 auth regression and Android connectivity
+- **验证结果**：
+  - `npm run api:typecheck`：✅ 零错误。
+  - `npm run api:test`：✅ 10/10 注册测试通过（2 个已有失败：health ready 需 COS/JWT 环境变量，sync contracts 需 closetLocations）。
+  - `npm run typecheck`：✅ 零错误。
+  - `npm run test:logic:auth-client-shell`：✅ 52/52。
+  - `npm run test:logic:cloud-connectivity`：✅ 17/17。
+  - `npm run test:logic:auth-flow-v2-0-1`：✅ 39/39。
+- **风险门禁**：**high**。跨 22+ 文件，改动认证核心链路（注册流程从 pending→CLI 改为直接创建账号）、导航栈、表单校验、Android 系统返回、法律页面结构、构建配置。
+- **未验证风险**：未部署 API / 未执行数据库迁移 / 未构建 APK / 未做 Dev Server 实操 / 未做 Android 返回实操。以上由后续部署与真机测试覆盖。
+
 ## 2026-06-27 / v2.0.0-test / Claude Code — V4 待修复项全批次（P0/P1/P2/次级观察）fix
 
 - **目的**：按 `WARDROBE_CLOUD_V4_待修复项与方案.md` 逐项修复全部 5 批次共 33 项（P2-N01 暂缓）。
