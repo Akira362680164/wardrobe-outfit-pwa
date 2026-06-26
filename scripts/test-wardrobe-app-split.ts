@@ -74,6 +74,9 @@ check("batch-review-view.tsx remains isolated from WardrobeApp", existsSync(join
 check("wardrobe-app.tsx no longer imports BatchReviewView", !/import\s*{\s*BatchReviewView\s*}\s*from\s*["']@\/components\/batch-review-view["']/.test(wardrobeApp));
 check("wardrobe-app.tsx does not define function BatchReviewView", !/^function BatchReviewView/.test(wardrobeApp));
 check("wardrobe-app.tsx does not define BatchOutfitGroupsView", !/function BatchOutfitGroupsView/.test(wardrobeApp));
+check("wardrobe-app.tsx does not define RecommendationView", !/function RecommendationView/.test(wardrobeApp));
+check("wardrobe-app.tsx does not define ShoppingAdvisorView", !/function ShoppingAdvisorView/.test(wardrobeApp));
+check("wardrobe-app.tsx does not define CompactBackupButton", !/function CompactBackupButton/.test(wardrobeApp));
 
 // Line count
 const lines = wardrobeApp.split("\n").length;

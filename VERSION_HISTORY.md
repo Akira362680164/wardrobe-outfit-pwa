@@ -1,3 +1,14 @@
+## 2026-06-26 / v1.1.37 / Claude Code — legacy main app pages cleanup
+
+- **目的**：按遗留代码报告第二批清理主 App 中未渲染的旧推荐页、旧种草页和旧紧凑备份按钮，继续降低 `wardrobe-app.tsx` 的 unused warning 噪音。
+- **改动文件**：
+  - `src/components/wardrobe-app.tsx`：删除旧 `RecommendationView`、`ShoppingAdvisorView`、`CompactBackupButton`，以及只服务旧推荐页的推荐状态、手工套装保存、试穿预览弹层、天气估算辅助函数和相关 MiniMax / 类型 import。
+  - `scripts/test-wardrobe-app-split.ts`：新增断言，确认主 App 不再定义上述旧页面组件。
+- **范围说明**：本轮不删除独立文件，不处理 `outfit-list-view.tsx` / `wishlist-view-2.0.tsx` 等其他文件的普通 unused warning；`.vscode/` 本机目录不纳入提交。
+- **验证结果**：`npm run typecheck` ✅ 通过；`npm run test:logic:wardrobe-app-split` ✅ 47 passed, 0 failed；`npm run test:logic:followup-navigation` ✅ 82 passed, 0 failed。
+- **风险门禁**：**medium**。删除主 App 内大块未渲染旧组件和死状态，保留当前 `OutfitListView`、`WishlistView20` 与设置/备份主链路；未触发 subagent：用户未通知。
+- **未验证风险 / 下一步**：未做浏览器/真机视觉回归；下一批再处理其他文件的高噪音 unused warning。
+
 ## 2026-06-26 / v1.1.37 / Claude Code — legacy outfit capture cleanup
 
 - **目的**：按遗留代码报告第一批清理旧“图片识别整套穿搭”入口，避免 `captureMode === "outfit"` / `BatchOutfitGroupsView` 与当前 `OutfitIntakeFlow` 套装创建主链路并存。
