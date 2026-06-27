@@ -24,6 +24,7 @@ const expectedTables = [
   "tripPlans",
   "outfitPlans",
   "assets",
+  "locations",
   "syncOutbox",
   "syncState",
   "syncConflicts",

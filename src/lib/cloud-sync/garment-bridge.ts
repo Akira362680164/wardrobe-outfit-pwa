@@ -76,17 +76,7 @@ export async function bridgeGarmentCreate(item: WardrobeItem): Promise<BridgeGar
         baseRevision,
       });
       for (const asset of assets.preparedAssets) {
-        const existingAsset = await db.assets.get(asset.assetId);
-        const isNew = !existingAsset || existingAsset.deletedAt;
         await putPreparedLocalAsset(db, asset);
-        await enqueueOutboxMutation(db, {
-          workspace: ctx.workspace,
-          entityType: "asset",
-          entityId: asset.assetId,
-          operation: isNew ? "create" : "update",
-          payload: asset.record.payload,
-          baseRevision: existingAsset?.revision ?? 0,
-        });
       }
     });
     schedulePendingUploads(db);

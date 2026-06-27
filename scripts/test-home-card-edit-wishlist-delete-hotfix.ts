@@ -67,7 +67,7 @@ assert(
   "bulk delete failure keeps deleteConfirm open and records error",
 );
 assert(!wardrobeApp.includes("runTransaction = db.transaction"), "cascade delete keeps Dexie transaction bound");
-assert(wardrobeApp.includes("导出诊断日志"), "settings exposes diagnostic log export");
+assert(wardrobeApp.includes("上传诊断数据"), "settings exposes user-triggered diagnostic upload");
 
 if (failed > 0) {
   console.error(`\n${failed} hotfix assertions failed.`);

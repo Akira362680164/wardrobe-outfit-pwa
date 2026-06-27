@@ -182,10 +182,10 @@ import { join as joinPath } from "node:path";
 
 const garmentFlowSrc = readFileSync(joinPath(__dirname, "..", "src/components/garment-intake-flow.tsx"), "utf8");
 
-// Test 1: GARMENT_INTAKE_STEPS 只包含当前三步录入文案
+// Test 1: AI 识别与图片编辑是过渡态，步骤条只展示两个用户任务
 const garmentStepsMatch = /GARMENT_INTAKE_STEPS:\s*IntakeFlowStep\[\]\s*=\s*\[([\s\S]*?)\]/.exec(garmentFlowSrc);
 const garmentStepLabels = garmentStepsMatch ? [...garmentStepsMatch[1].matchAll(/label:\s*"([^"]+)"/g)].map((m) => m[1]) : [];
-assert.deepEqual(garmentStepLabels, ["选择照片", "编辑图片", "确认信息"], "GARMENT_INTAKE_STEPS 必须包含「选择照片」「编辑图片」「确认信息」");
+assert.deepEqual(garmentStepLabels, ["选择照片", "确认信息"], "GARMENT_INTAKE_STEPS 必须保持两步任务文案");
 
 // Test 2-4: garment-intake-flow.tsx 不含旧步骤文案
 assert.ok(!/选择来源/.test(garmentFlowSrc), "garment-intake-flow.tsx 不应再出现「选择来源」");

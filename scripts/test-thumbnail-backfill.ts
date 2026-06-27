@@ -146,10 +146,10 @@ const hasRecheckButton = /重新检查/.test(wardrobeApp);
 check("SettingsView 含「重新检查」按钮 (重新统计 Dexie 缺失和失败项)", hasRecheckButton);
 
 check(
-  "设置页底部包含诊断日志导出入口",
-  /aria-label="诊断日志"/.test(wardrobeApp) &&
-    /导出诊断日志/.test(wardrobeApp) &&
-    /exportWardrobeDiagnosticLog/.test(wardrobeApp),
+  "设置页底部包含用户主动触发的远程诊断入口",
+  /aria-label="远程诊断"/.test(wardrobeApp) &&
+    /上传诊断数据/.test(wardrobeApp) &&
+    /handleStartDiagnosticUpload/.test(wardrobeApp),
 );
 
 console.log("\n=== §5.5 断言 7-10: 种草首页与套装首页布局对齐 ===");

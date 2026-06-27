@@ -11,7 +11,6 @@ import {
   type PreparedLocalAsset,
   type PrepareLocalAssetDependencies,
 } from "@/lib/cloud-sync/asset-metadata";
-import { enqueueOutboxMutation } from "@/lib/cloud-sync/sync-engine";
 
 export interface EntityImageAssetInput {
   fieldName: string;
@@ -76,21 +75,11 @@ export async function prepareEntityImageAssets(
 
 export async function putPreparedEntityImageAssets(
   db: AccountWorkspaceDatabase,
-  workspace: AccountWorkspaceRecord,
+  _workspace: AccountWorkspaceRecord,
   prepared: PreparedEntityImageAssets,
 ): Promise<void> {
   for (const asset of prepared.preparedAssets) {
-    const existing = await db.assets.get(asset.assetId);
-    const isNew = !existing || existing.deletedAt;
     await putPreparedLocalAsset(db, asset);
-    await enqueueOutboxMutation(db, {
-      workspace,
-      entityType: "asset",
-      entityId: asset.assetId,
-      operation: isNew ? "create" : "update",
-      payload: asset.record.payload,
-      baseRevision: existing?.revision ?? 0,
-    });
   }
 }
 

@@ -103,7 +103,7 @@ check("GarmentIntakeFlow 展示「正在编辑」", /正在编辑/.test(garmentI
 
 // GarmentIntakeFlow no longer requires per-image confirmation
 check("GarmentIntakeFlow 不再展示「保存并下一张」", !/保存并下一张/.test(garmentIntakeFlow));
-check("GarmentIntakeFlow 步骤2主按钮固定展示「开始识别」", /stepIndex === "process_image"\s*\?\s*"开始识别"/.test(garmentIntakeFlow));
+check("GarmentIntakeFlow 不保留独立 process_image 步骤", !/stepIndex === "process_image"/.test(garmentIntakeFlow));
 check("GarmentIntakeFlow 不再要求先裁切所有图片", !/请先裁切所有图片/.test(garmentIntakeFlow));
 check("GarmentIntakeFlow 步骤2缩略图不再展示裁切对钩", !/item\.status === "cropped"[\s\S]{0,120}[✓○]/.test(garmentIntakeFlow));
 check("GarmentIntakeFlow 步骤2缩略图不再展示末尾 +N", !/\+{imageItems\.length - 5}/.test(garmentIntakeFlow));

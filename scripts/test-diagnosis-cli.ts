@@ -57,10 +57,10 @@ assert(listContent.includes("limit"), "list 支持 limit 参数");
 const latestContent = readScript("diagnosis-latest.ts");
 assert(latestContent.includes("/api/admin/diagnostics/cases/latest"), "latest 调用正确端点");
 
-// 7. pull 调用 POST /api/admin/diagnostics/cases/:caseId/download-url 并下载
+// 7. pull 通过自有 API 流式下载内容
 const pullContent = readScript("diagnosis-pull.ts");
-assert(pullContent.includes("/download-url"), "pull 调用 download-url 端点");
-assert(pullContent.includes("downloadUrl"), "pull 解析 downloadUrl");
+assert(pullContent.includes("/content"), "pull 调用 content 端点");
+assert(pullContent.includes("arrayBuffer"), "pull 直接读取二进制响应");
 assert(pullContent.includes("sha256"), "pull 进行 SHA-256 校验");
 assert(pullContent.includes(".diagnostics"), "pull 保存到 .diagnostics/");
 assert(pullContent.includes("mkdirSync"), "pull 自动创建目录");

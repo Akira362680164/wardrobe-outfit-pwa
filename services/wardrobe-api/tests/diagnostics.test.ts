@@ -87,7 +87,7 @@ describe("diagnostics", () => {
     const app = buildApp();
     const res = await app.inject({
       method: "POST",
-      url: "/api/diagnostics/cases/authorize",
+      url: "/api/diagnostics/cases",
       headers: {
         "x-wardrobe-device-id": "device-1",
       },

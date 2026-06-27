@@ -90,7 +90,7 @@ check("legal-document-view 组件存在", /LegalDocumentView/.test(read("src/com
 check("AndroidManifest 允许 cleartext traffic", /usesCleartextTraffic="true"/.test(read("android/app/src/main/AndroidManifest.xml")));
 check("构建环境校验脚本存在", read("scripts/validate-cloud-build-env.mjs").includes("validate-cloud-build-env") || read("scripts/validate-cloud-build-env.mjs").includes("Cloud Build Env"));
 check("android:sync 包含校验", /validate-cloud-build-env/.test(packageJson));
-check("版本号为 2.0.1", /"version": "2.0.1"/.test(packageJson));
+check("版本号保持 2.0.2-test", /"version": "2.0.2-test"/.test(packageJson));
 
 // Existing checks that still apply
 check("WardrobeApp 接收 cloudAuth 可选参数", /export function WardrobeApp\(\{ cloudAuth \}: \{ cloudAuth\?: WardrobeCloudAuth \} = \{\}\)/.test(wardrobeApp));

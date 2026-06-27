@@ -32,7 +32,7 @@ export function parseRefreshIdempotencyKey(raw: Buffer | string) {
   return key;
 }
 
-export async function loadRefreshIdempotencyKey(path = REFRESH_IDEMPOTENCY_KEY_PATH) {
+export async function loadRefreshIdempotencyKey(path = process.env.REFRESH_IDEMPOTENCY_KEY_PATH ?? REFRESH_IDEMPOTENCY_KEY_PATH) {
   return parseRefreshIdempotencyKey(await readFile(path));
 }
 

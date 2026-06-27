@@ -15,8 +15,8 @@ export async function importJwtKeyPairFromPem(privateKeyPem: string, publicKeyPe
 }
 
 export async function loadJwtKeyPair(
-  privateKeyPath = JWT_PRIVATE_KEY_PATH,
-  publicKeyPath = JWT_PUBLIC_KEY_PATH,
+  privateKeyPath = process.env.JWT_PRIVATE_KEY_PATH ?? JWT_PRIVATE_KEY_PATH,
+  publicKeyPath = process.env.JWT_PUBLIC_KEY_PATH ?? JWT_PUBLIC_KEY_PATH,
 ) {
   const [privateKeyPem, publicKeyPem] = await Promise.all([
     readFile(privateKeyPath, "utf8"),

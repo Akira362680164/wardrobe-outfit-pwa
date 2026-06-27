@@ -97,7 +97,7 @@ backup_db() {
   chmod 700 "${BACKUP_DIR}/postgres"
   compose_cmd exec -T postgres sh -lc 'pg_dump -U "$POSTGRES_USER" "$POSTGRES_DB"' > "${BACKUP_DIR}/postgres/wardrobe-${stamp}.sql"
   chmod 600 "${BACKUP_DIR}/postgres/wardrobe-${stamp}.sql"
-  # 7.2: 此备份仅包含 PostgreSQL 数据。COS 对象与数据库时间点不一致，恢复时需注意。
+  # 7.2: 此备份仅包含 PostgreSQL 数据；资产文件需按同一时间点单独备份。
   echo "${BACKUP_DIR}/postgres/wardrobe-${stamp}.sql"
 }
 

@@ -7,10 +7,6 @@ export function generateCaseId(): string {
     String(now.getMonth() + 1).padStart(2, "0"),
     String(now.getDate()).padStart(2, "0"),
   ].join("");
-  const suffix = randomBytes(4)
-    .toString("base64url")
-    .toUpperCase()
-    .replace(/[^A-Z0-9]/g, "")
-    .slice(0, 6);
+  const suffix = randomBytes(3).toString("hex").toUpperCase();
   return `WD-${yyyymmdd}-${suffix}`;
 }

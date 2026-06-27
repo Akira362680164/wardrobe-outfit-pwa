@@ -1,3 +1,17 @@
+## 2026-06-28 / v2.0.2-test / Codex — API 代理本地存储端到端验收
+
+- **目的**：以真实 PostgreSQL、API、Web Dev Server 和实际图片验证自有 API 代理存储全链路，并完成全量回归。
+- **版本**：保持 `2.0.2-test`，`npm install` 同步修正 lockfile 中滞后的根包版本元数据。
+- **改动文件**：`services/wardrobe-api/tests/{assets,health,diagnostics}.test.ts`、`scripts/test-cloud-assets-{api,upload,real-flow}.ts`、`test-diagnosis-cli.ts`、`src/lib/cloud-sync/{asset-bridge,garment-bridge}.ts`、`src/shared/redact.ts`、`src/security/{jwt-keys,refresh-idempotency}.ts`、`src/diagnostics/case-id.ts`、`package.json`、`package-lock.json`，以及为当前已上线两步录入/locations/远程诊断行为校准的历史测试断言。
+- **关键修正**：资产本地 `dataUrl` 仅用于待上传文件，不再进入结构化 sync outbox 或 PostgreSQL；修正诊断 caseId 后缀偶发少于 6 位；本地 Dev Server 可通过环境路径读取 JWT/幂等密钥；服务日志只记录 method/URL/status，不序列化 Authorization、请求体或循环引用；`0006` 可幂等补建曾跳过 `0004` 的诊断表，避免历史手工迁移时间戳导致生产启动失败；修正 `android:apk` 在 Gradle 完成后仍停留于 `android/` 目录、导致找不到根目录构建校验脚本的问题；登录页、服务条款和部署备份注释不再描述已删除的外部对象存储链路。
+- **真实流程**：本地 PostgreSQL 16 + API `127.0.0.1:3001` + Web Dev Server `127.0.0.1:3100`；测试账号注册后自动登录；单品、种草、套装各上传原图+缩略图，PNG 333,116 bytes，SHA-256 `e03fe3165d30967b4dfbc2ef5e8a5f09e93c1b147354edd7ffa35b666fabc21d`；清缓存等价的第二设备鉴权下载正文/响应头校验通过；单品删除后 DB 软删除且两份文件消失；API 重启后保留资产仍返回相同 SHA。
+- **数据一致性**：存储根目录只有 4 个未删除的相对键文件；PostgreSQL 仅含相对键/元数据，`data:image` 和绝对路径检查命中数为 0。
+- **验证**：需求文档指定的 `npm install`、contracts/API/root typecheck、API 55/55、全部聚焦 cloud-assets/cloud-sync/workspace/connectivity 测试、`npm run build`、`npm run test:logic:all`、`npm run test:publish` 均通过；指定旧存储关键字对 runtime/tests/deploy 残留检查均 0 命中。
+- **风险门禁**：**high**（真实账号、PostgreSQL、资产文件、跨设备恢复、删除与重启持久性）。
+- **未触发 subagent**：用户未通知。
+- **生产与诊断验收**：生产 PostgreSQL 迁移、持久卷、真实账号资产上传/跨设备下载/删除、容器重启后下载均通过；远程诊断四张表已迁移，真实诊断工单 `WD-20260627-43BBF9` 上传成功，数据库相对键、落盘文件 SHA-256 与客户端声明一致，容器重启后文件保持一致。
+- **未验证风险**：诊断管理员下载需要独立 reader token，本次未读取服务器凭据；已通过真实用户上传、数据库记录、文件内容哈希、重启持久性以及服务端单元测试覆盖读取路径。
+
 ## 2026-06-27 / v2.0.2-test / Codex — 本地存储数据迁移、删除生命周期与持久卷
 
 - **目的**：把数据库、同步删除、周期清理和生产容器持久化统一到服务器本地文件存储语义。

@@ -23,7 +23,7 @@ console.log("\n=== §3.4.1 单品录入 AI 主链 ===");
 // 1. 单品裁切确认后存在 recognizing 状态
 check(
   "GarmentIntakeFlow 状态机含 recognizing",
-  /"recognizing"/.test(garmentFlow) && /setGarmentIntakeImageError[\s\S]+?setGarmentIntakeImageDraft/.test(garmentFlow),
+  /"recognizing"/.test(garmentFlow) && /setGarmentIntakeImageDraft/.test(garmentFlow) && /setGarmentIntakeImageRecognitionFailure/.test(garmentFlow),
 );
 // 2. 单品 AI 请求源使用 croppedImageDataUrl（v1.1.31 commit2 顺序：cropped > display > original）
 check(

@@ -27,16 +27,17 @@ function check(name: string, cond: boolean, detail?: string) {
   }
 }
 
-console.log("\n=== Cloud Assets API C1+C3a ===");
-check("contracts 包含上传授权与完成通知", /AssetUploadAuthorizeRequestSchema/.test(contracts) && /AssetUploadCompleteRequestSchema/.test(contracts));
-check("contracts 包含下载授权", /AssetDownloadAuthorizeRequestSchema/.test(contracts) && /AssetDownloadAuthorizeResponseSchema/.test(contracts));
+console.log("\n=== Cloud Assets API Proxy ===");
+check("contracts 包含二进制上传参数、header 和响应", /AssetUploadParamsSchema/.test(contracts) && /AssetUploadHeadersSchema/.test(contracts) && /AssetUploadResponseSchema/.test(contracts));
+check("contracts 包含直接下载和删除", /AssetDownloadParamsSchema/.test(contracts) && /AssetDeleteParamsSchema/.test(contracts));
 check("contracts 包含资产清单", /AssetManifestRequestSchema/.test(contracts) && /AssetManifestResponseSchema/.test(contracts));
 check("contracts 限制 ownerEntityType 不能是 asset 自身", /SyncEntityTypeSchema\.exclude\(\["asset"\]\)/.test(contracts));
-check("客户端封装调用 C1+C3a API", /\/api\/assets\/upload-url/.test(api) && /\/api\/assets\/complete-upload/.test(api) && /\/api\/assets\/download-url/.test(api) && /\/api\/assets\/manifest/.test(api));
+check("客户端只调用自有 API 的 content/manifest 路由", /\/api\/assets\/\$\{encodeURIComponent\(request\.assetId\)\}\/\$\{encodeURIComponent\(request\.variant\)\}\/content/.test(api) && /\/api\/assets\/manifest/.test(api));
+check("客户端不接受任意 host 或外部地址", !/uploadUrl|downloadUrl|putToUrl/.test(api));
 check("客户端封装沿用 Bearer token 和 device id header", /Authorization: `Bearer \$\{options\.accessToken\}`/.test(api) && /X-Wardrobe-Device-Id/.test(api));
-check("cloud-sync index 导出资产 API", /requestAssetUploadUrl/.test(index) && /requestAssetUploadComplete/.test(index) && /requestAssetDownloadUrl/.test(index) && /requestAssetManifest/.test(index));
-check("服务端 CORS 允许 device id header", /X-Wardrobe-Device-Id/.test(app));
-check("C1+C3a 尚未接入业务图片保存路径", !/requestAssetUploadUrl|requestAssetDownloadUrl|requestAssetManifest/.test(`${wardrobeApp}\n${wishlistView}\n${outfitView}`));
+check("cloud-sync index 导出新资产 API", /uploadAssetContent/.test(index) && /downloadAssetContent/.test(index) && /deleteCloudAsset/.test(index) && /requestAssetManifest/.test(index));
+check("服务端 CORS 允许二进制上传和完整资产 header", /GET, POST, PUT, DELETE, OPTIONS/.test(app) && /X-Asset-Owner-Entity-Type/.test(app) && /X-Asset-SHA256/.test(app));
+check("业务图片路径不再引用旧授权函数", !/requestAssetUploadUrl|requestAssetDownloadUrl/.test(`${wardrobeApp}\n${wishlistView}\n${outfitView}`));
 check("package.json 暴露 cloud-assets-api 测试", /"test:logic:cloud-assets-api": "tsx scripts\/test-cloud-assets-api\.ts"/.test(packageJson));
 check("test:logic:all 包含 cloud-assets-api", /test:logic:cloud-assets-api/.test(packageJson));
 

@@ -2,11 +2,14 @@ import { describe, expect, it } from "vitest";
 
 import { buildApp } from "../src/app.js";
 import { assertSafeTestDatabaseUrl } from "../src/db/client.js";
+import type { StorageProvider } from "../src/storage/provider.js";
 
 describe("cloud API skeleton", () => {
   it("serves health without touching the database", async () => {
     const app = buildApp({
       readinessCheck: async () => ({ database: "ready" }),
+      storageProvider: readyStorage(),
+      jwtReadinessCheck: async () => true,
     });
 
     const response = await app.inject({ method: "GET", url: "/api/health" });
@@ -22,6 +25,8 @@ describe("cloud API skeleton", () => {
   it("serves ready when dependencies are available", async () => {
     const app = buildApp({
       readinessCheck: async () => ({ database: "ready" }),
+      storageProvider: readyStorage(),
+      jwtReadinessCheck: async () => true,
     });
 
     const response = await app.inject({ method: "GET", url: "/api/ready" });
@@ -29,7 +34,7 @@ describe("cloud API skeleton", () => {
     expect(response.statusCode).toBe(200);
     expect(response.json()).toMatchObject({
       status: "ok",
-      dependencies: { database: "ready" },
+      dependencies: { database: "ready", storage: "ready", jwt: "ready" },
     });
 
     await app.close();
@@ -99,6 +104,18 @@ describe("cloud API skeleton", () => {
     }
   });
 });
+
+function readyStorage(): StorageProvider {
+  return {
+    name: "test",
+    save: async (input) => ({ storageKey: input.storageKey, sha256: input.expectedSha256, sizeBytes: input.bytes.length }),
+    openReadStream: async () => { throw new Error("unused"); },
+    stat: async () => ({ exists: false }),
+    delete: async () => {},
+    cleanupTemporaryFiles: async () => 0,
+    checkReady: async () => {},
+  };
+}
 
 describe("database safety guard", () => {
   it("rejects production database URLs during tests", () => {
