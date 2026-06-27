@@ -1,3 +1,19 @@
+## 2026-06-27 / v2.0.2 / Claude Code — 远程诊断系统 Commit 1: 构建身份与共享契约
+
+- **目的**：实施 `WARDROBE_REMOTE_DIAGNOSTIC_V1_REQUIREMENTS.md` Commit 1，为远程诊断上传建立构建身份注入和共享契约基线。
+- **版本**：保持 `2.0.1`（Commit 1 不修改 App 版本）。
+- **改动文件**：
+  - `scripts/build-web-with-info.mjs`（新增）：编译时注入完整 Git SHA、版本码、构建时间和渠道，40 位 Commit 不合法时构建失败。
+  - `package.json`：`build` / `build:web` 改为使用 `build-web-with-info.mjs`。
+  - `packages/cloud-contracts/src/diagnostics/contracts.ts`（新增）：诊断上传授权、完成、工单元数据、下载地址、请求轨迹等完整 Zod Schema。
+  - `packages/cloud-contracts/src/index.ts`：导出诊断契约。
+  - `scripts/test-build-identity.ts`（新增）：19 项构建身份与契约断言测试。
+- **验证结果**：
+  - `npm run cloud:contracts:typecheck`：✅ 零错误。
+  - `npx tsx scripts/test-build-identity.ts`：✅ 19/19。
+- **风险门禁**：low（新脚本 + 新契约，未改动现有业务代码）。
+- **未触发 subagent**：用户未通知。
+
 ## 2026-06-27 / v2.0.1 / Claude Code — 独立审查后全批次修复（P0×4 + P1×6 + P2×1）
 
 - **目的**：按 `WARDROBE_V2.0.1_INDEPENDENT_REVIEW_AND_FIX_REPORT.md` 逐项修复全部 11 个问题。

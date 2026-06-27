@@ -8,8 +8,8 @@
   ],
   "scripts": {
     "dev": "next dev",
-    "build": "next build",
-    "build:web": "next build",
+    "build": "node scripts/build-web-with-info.mjs",
+    "build:web": "node scripts/build-web-with-info.mjs",
     "android:add": "cap add android",
     "android:sync": "node scripts/validate-cloud-build-env.mjs && npm run build:web && cap sync android",
     "android:open": "cap open android",
