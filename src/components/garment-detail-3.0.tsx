@@ -13,7 +13,7 @@
 
 import { useState, useMemo, useRef, useEffect } from "react";
 import { motion } from "motion/react";
-import { ChevronLeft, Plus, Check, Settings, MoreHorizontal, Trash2, Camera, Image, Sparkles, Shirt, Loader2 } from "lucide-react";
+import { ChevronLeft, Plus, Check, Settings, Trash2, Image, Shirt, Loader2 } from "lucide-react";
 import type { WardrobeItem, SavedOutfit, ClosetLocation, GarmentStyleAdvice, ReferenceOutfitImage } from "@/lib/types";
 import { CATEGORY_LABELS, SEASON_LABELS, STYLE_LABELS } from "@/lib/types";
 import { formatGarmentFitGender, formatSubcategoryLabel } from "@/lib/display-labels";
@@ -21,7 +21,7 @@ import type { WearSummary } from "@/lib/wear-records";
 import { getWearSummary, getLocalDateKey } from "@/lib/wear-records";
 import type { RecommendedPairingItem } from "@/lib/garment-detail-pairing";
 import type { GarmentImageEntry } from "@/lib/garment-image-source";
-import { SwipeImageCarousel, type SwipeImageSlide } from "@/components/swipe-image-carousel";
+import type { SwipeImageSlide } from "@/components/swipe-image-carousel";
 import { clampCarouselIndex } from "@/lib/carousel-logic";
 import { OutfitCover } from "@/components/outfit-cover";
 import { MotionPopoverMenu } from "@/components/motion-common";
@@ -29,7 +29,6 @@ import {
   DetailAiCard,
   DetailFilmstrip,
   DetailHeroGallery,
-  DetailQuickActions,
   DetailTabs,
   DetailTitleMetaBlock,
   DetailTopBar,
@@ -37,20 +36,6 @@ import {
 } from "@/components/detail-shell";
 import { ItemDetailSections } from "@/components/item/detail-sections";
 import { WardrobeExtras } from "@/components/item/wardrobe-extras";
-
-/* ------------------------------------------------------------------ */
-/*  小图标                                                             */
-/* ------------------------------------------------------------------ */
-
-function SparklesIcon({ size = 14 }: { size?: number }) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
-      <path d="M12 3l1.5 5.5L19 10l-5.5 1.5L12 17l-1.5-5.5L5 10l5.5-1.5z" />
-      <path d="M18 16l.75 2.75L21.5 19.5l-2.75.75L18 23l-.75-2.75L14.5 19.5l2.75-.75z" />
-      <path d="M6 16l.5 2L8.5 18.5 6 19l-.5 2L5 19 2.5 18.5 5 18z" />
-    </svg>
-  );
-}
 
 /* ------------------------------------------------------------------ */
 /*  Props                                                             */

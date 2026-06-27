@@ -5,17 +5,16 @@ import React, { useState, useMemo, useCallback, useEffect, useRef, type ReactNod
 import { AnimatePresence, motion } from "motion/react";
 import { MotionSheet } from "@/components/motion-common";
 import {
-  ShoppingBag, Camera, Sparkles, ChevronLeft,
+  ShoppingBag, ChevronLeft,
   MoreVertical, X, ImageIcon, Trash2, RotateCcw,
-  ArrowLeft, Edit3, ChevronRight, Package,
-  AlertCircle, CheckCircle2, HelpCircle, ThumbsUp,
-  ThumbsDown, MinusCircle, ChevronDown, Check, Shirt,
+  Edit3, Package,
+  MinusCircle, ChevronDown, Check, Shirt,
   Crop, RefreshCw, Loader2,
 } from "lucide-react";
 
 import type {
   WishlistItem, WardrobeItem, SavedOutfit, ClosetLocation,
-  WishlistAssessment, WishlistVerdict,
+  WishlistAssessment,
   GarmentFitGender, TemperatureRange, GarmentCategory, WishlistStatus,
 } from "@/lib/types";
 import {
@@ -34,15 +33,10 @@ import {
   getWishlistDisplayState, getWishlistDisplayLabel, getWishlistStatusCapsuleColor,
   getWishlistCardSubtitle, isMainWishlistItem, filterMainWishlistItems,
   countPurchasedWishlistItems, countRejectedWishlistItems, countArchivedWishlistItems,
-  getMainWishlistFilterCounts,
   type WishlistDisplayState, type WishlistMainFilter,
 } from "@/lib/wishlist-display-state";
 
-import {
-  assessWishlistItemByRules,
-  getRecommendedPairingsForWishlistItem,
-  findSimilarWardrobeItemsForWishlistItem,
-} from "@/lib/wishlist-assessment";
+import { assessWishlistItemByRules } from "@/lib/wishlist-assessment";
 
 import { buildFallbackWishlistAssessment } from "@/lib/wishlist-ai-prompt";
 import { convertWishlistToWardrobe, undoWishlistPurchaseFromRepo, deleteWishlistRecords } from "@/lib/data-repo";
@@ -59,7 +53,6 @@ import { garmentDraftToWishlistItem } from "@/lib/intake-save-adapters";
 import type { GarmentIntakeDraft } from "@/lib/intake-draft";
 import { generateThumbnailSafe } from "@/lib/thumbnail-runtime";
 import { useStableBackHandler } from "@/lib/use-stable-back-handler";
-import { AppSubPageTopBar } from "@/components/app-sub-page-top-bar";
 import { TemperatureRangeSlider } from "@/components/temperature-range-slider";
 import { FitGenderChips } from "@/components/fit-gender-chips";
 import { CategorySubcategoryPicker } from "@/components/category-subcategory-picker";
@@ -85,7 +78,6 @@ import { SeasonStyleChips } from "@/components/item/season-style-chips";
 import { FormalityWarmthStepper } from "@/components/item/formality-warmth-stepper";
 import { ItemDetailSections } from "@/components/item/detail-sections";
 import { EditSectionCard } from "@/components/item-shell/edit-section-card";
-import { DetailSectionCard } from "@/components/item-shell/detail-section-card";
 import { ItemColorFields } from "@/components/item/color-fields";
 
 /* ------------------------------------------------------------------ */

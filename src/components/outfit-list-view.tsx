@@ -2,7 +2,6 @@
 
 import {
   Camera,
-  Check,
   ChevronLeft,
   ImageIcon,
   Layers,
@@ -11,19 +10,17 @@ import {
   Settings,
   Plus,
   RefreshCw,
-  Search,
   Shirt,
   Sparkles,
   Trash2,
   X,
 } from "lucide-react";
-import { motion } from "motion/react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { getWardrobeDb } from "@/lib/db";
 import type { ClosetLocation, OutfitAiSuggestion, OutfitCalendarPlan, OutfitCalendarPlanType, OutfitPlanEntry, OutfitRealImage, PlanPackingChecklistItem, SavedOutfit, Season, WardrobeItem } from "@/lib/types";
 import { CATEGORY_LABELS, SEASON_LABELS } from "@/lib/types";
 import { buildOutfitCoverRefreshPatch, getOutfitCover, countValidItems } from "@/lib/outfit-cover";
-import { getWearSummary, toggleTodayWornDate, hasWornDate } from "@/lib/wear-records";
+import { getWearSummary, hasWornDate } from "@/lib/wear-records";
 import { useLocalDateKey } from "@/lib/use-local-date-key";
 import { addOutfitToDate, recordActualOutfitWear, cancelActualOutfitWearForDate, formatOutfitWearSyncError } from "@/lib/outfit-wear-sync";
 import { deleteOutfitWithCascade } from "@/lib/outfit-cascade-delete";
@@ -34,14 +31,11 @@ import { OutfitCover } from "@/components/outfit-cover";
 import { OutfitWeeklyPlanStrip } from "@/components/outfit-weekly-plan-strip";
 import { OutfitPlanningCalendarView } from "@/components/outfit-planning-calendar-view";
 import { OutfitPlanAddView } from "@/components/outfit-plan-add-view";
-import { OutfitPlanDayCard } from "@/components/outfit-plan-day-card";
 import { OutfitPlanDetailView } from "@/components/outfit-plan-detail-view";
 import { PlanPackingChecklistView } from "@/components/plan-packing-checklist-view";
 import { OutfitPlanSelectSheet } from "@/components/outfit-plan-select-sheet";
-import { upsertOutfitPlanEntryForDate, getPlanEntryForDate, getCalendarPlansForDate, sortWornEntriesForDay, resolvePrimaryDisplayEntryForDate, getEntriesForDate } from "@/lib/outfit-planning";
 import { buildPackingItemsFromPlan } from "@/lib/plan-packing";
-import { getLocalMonthGrid, getWeekDates, shiftDateByWeeks as shiftDateByWeeksFn } from "@/lib/outfit-calendar";
-import { createOutfitCalendarPlan } from "@/lib/outfit-planning";
+import { getWeekDates, shiftDateByWeeks as shiftDateByWeeksFn } from "@/lib/outfit-calendar";
 import { MotionSheet } from "@/components/motion-common";
 import { MotionPopoverMenu } from "@/components/motion-common";
 import { CatalogWaterfallCard } from "@/components/catalog-waterfall-card";
@@ -51,7 +45,6 @@ import {
   DetailFilmstrip,
   DetailHeroGallery,
   DetailInfoRow,
-  DetailQuickActions,
   DetailSurfaceCard,
   DetailTabs,
   DetailTitleMetaBlock,

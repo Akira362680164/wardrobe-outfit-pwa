@@ -40,7 +40,6 @@ import {
   User,
   WandSparkles,
   X,
-  Copy,
 } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
@@ -374,9 +373,9 @@ export function WardrobeApp({ cloudAuth }: { cloudAuth?: WardrobeCloudAuth } = {
   const [pendingCreateAction, setPendingCreateAction] = useState<PendingCreateAction | null>(null);
   // v1.1.20-dev (方案 C): createOriginViewRef 不再需要 — 加号弹窗按 activeViewForCreateActions 高亮。
   // 保留 ref stub 以避免下游依赖断裂, 后续 commit 清理。
-  const createOriginViewRef = useRef<ViewKey>("wardrobe");
+  const _createOriginViewRef = useRef<ViewKey>("wardrobe");
   const wardrobeData = useWardrobeDataController();
-  const { items, setItems, locations, setLocations, outfits, setOutfits, wishlistItems, setWishlistItems, outfitPlanEntries, setOutfitPlanEntries, outfitCalendarPlans, setOutfitCalendarPlans, planPackingChecklistItems, setPlanPackingChecklistItems, loading, refreshState } = wardrobeData;
+  const { items, setItems, locations, outfits, setOutfits, wishlistItems, setWishlistItems, outfitPlanEntries, outfitCalendarPlans, planPackingChecklistItems, refreshState } = wardrobeData;
   // Subagent D: 待打开的衣物详情 ID（种草转换后触发）
   const [pendingViewingItemId, setPendingViewingItemId] = useState<number | null>(null);
   const [pendingViewingItemReturnTarget, setPendingViewingItemReturnTarget] = useState<"wardrobe_home" | "wishlist_owned">("wardrobe_home");
@@ -483,6 +482,7 @@ export function WardrobeApp({ cloudAuth }: { cloudAuth?: WardrobeCloudAuth } = {
     setMiniMaxSettings(loadMiniMaxSettings());
     refreshState().catch(() => { showMessage("数据库打开失败，已进入临时演示模式", "error"); }).finally(() => setIsReady(true));
     readTryOnProfile().then(setTryOnProfile).catch(() => {});
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
 
@@ -2369,6 +2369,7 @@ function WardrobeView(props: WardrobeViewProps) {
       wardrobeSelection.clear();
     }).then((x) => { if (!removed) h = x; });
     return () => { removed = true; h?.remove(); };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [wardrobeSelection.selectionMode, wardrobeBulkDelete.deleteOpen, wardrobeBulkDelete.deleting, wardrobeBulkDelete.cancelDelete, wardrobeSelection.clear, onMessage]);
 
   // 页面切换清理选择状态
@@ -4587,7 +4588,7 @@ function SettingsView({
         backfillState,
         miniMaxSettings,
       });
-      (log as any).userReport.description = description;
+      log.userReport.description = description;
 
       const data = JSON.stringify(log);
       const sizeBytes = new TextEncoder().encode(data).length;
@@ -4616,7 +4617,7 @@ function SettingsView({
           "X-Wardrobe-Device-Id": deviceId,
         },
         body: JSON.stringify({
-          clientRequestId: (log as any).clientRequestId,
+          clientRequestId: log.clientRequestId,
           schemaVersion: 1,
           appVersion: buildIdentity.appVersion,
           versionCode: buildIdentity.versionCode,
@@ -4626,7 +4627,7 @@ function SettingsView({
           problemDescription: description,
           sha256,
           sizeBytes,
-          eventCount: (log as any).recentEvents?.length ?? 0,
+          eventCount: log.recentEvents?.length ?? 0,
           itemCount: items.length,
           outfitCount: outfits.length,
           wishlistCount: wishlistItems.length,
@@ -4664,7 +4665,7 @@ function SettingsView({
           "X-Wardrobe-Device-Id": deviceId,
         },
         body: JSON.stringify({
-          clientRequestId: (log as any).clientRequestId,
+          clientRequestId: log.clientRequestId,
           sha256,
           sizeBytes,
         }),

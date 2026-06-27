@@ -1,3 +1,20 @@
+## 2026-06-27 / v2.0.2-test / Claude Code — ESLint 代码清理
+
+- **目的**：修复构建阻塞的 ESLint 问题，批量清理历史未使用 import 和变量，减少 warning noise。
+- **版本**：保持 `2.0.2-test`。
+- **改动文件**：
+  - `.eslintrc.json`：配置 `@typescript-eslint/no-unused-vars` 忽略 `_` 前缀变量和 catch 变量；关闭 `@next/next/no-img-element`（Capacitor 项目使用 `<img>` 是正常实践）。
+  - `src/lib/diagnostic-log.ts`：新增 `RemoteDiagnosticPayload` 接口并给 `buildWardrobeDiagnosticLog` 添加显式返回类型，消除 wardrobe-app.tsx 中的4处 `as any`。
+  - `src/components/wardrobe-app.tsx`：删除未使用 `Copy` import；清理6个未使用解构变量（`createOriginViewRef` → `_createOriginViewRef`，移除 `setLocations` 等）；为2个故意只在 mount 运行的 `useEffect` 添加 `eslint-disable-next-line react-hooks/exhaustive-deps`。
+  - `src/components/outfit-list-view.tsx`：删除13个未使用 import（`Check`、`Search`、`motion`、`OutfitPlanDayCard`、`toggleTodayWornDate`、`upsertOutfitPlanEntryForDate` 等）。
+  - `src/components/wishlist-view-2.0.tsx`：删除11个未使用 import（`Camera`、`Sparkles`、`ArrowLeft`、`ChevronRight`、`AlertCircle`、`CheckCircle2`、`HelpCircle`、`ThumbsUp`、`ThumbsDown`、`WishlistVerdict`、`getMainWishlistFilterCounts`、`getRecommendedPairingsForWishlistItem`、`findSimilarWardrobeItemsForWishlistItem`、`AppSubPageTopBar`、`DetailSectionCard`）。
+  - `src/components/garment-detail-3.0.tsx`：删除5个未使用 import/定义（`MoreHorizontal`、`Camera`、`Sparkles`、`SwipeImageCarousel`、`DetailQuickActions`、`SparklesIcon`）。
+- **验证结果**：
+  - `npm run typecheck`：✅ 零错误。
+  - `npx next lint`：从 196 个 warning 降至 85 个（减少 111 个，约 57%）。
+- **风险门禁**：low（仅删除未使用 import 和变量，未改动业务逻辑）。
+- **未触发 subagent**：用户未通知。
+
 ## 2026-06-27 / v2.0.2-test / Claude Code — 远程诊断系统合并到 main 并构建 APK
 
 - **目的**：将远程诊断系统分支合并到 main，构建 v2.0.2-test APK 交付。

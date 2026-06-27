@@ -76,6 +76,30 @@ export interface BuildDiagnosticLogInput {
   };
 }
 
+export interface RemoteDiagnosticPayload {
+  schemaVersion: number;
+  generatedAt: string;
+  clientRequestId: string;
+  build: ClientBuildIdentity;
+  userReport: { description: string | null };
+  app: { name: string; capacitorPlatform: string; nativePlatform: boolean };
+  environment: Record<string, unknown>;
+  navigation: { activeView: string; route: AppRoute; routeLabel: string };
+  network: Record<string, unknown>;
+  server: Record<string, unknown>;
+  auth: Record<string, unknown>;
+  workspace: Record<string, unknown>;
+  sync: Record<string, unknown>;
+  assets: Record<string, unknown>;
+  counts: { items: number; locations: number; outfits: number; wishlistItems: number };
+  thumbnailBackfill: unknown;
+  locations: Array<{ id: string; name: string; sortOrder: number; updatedAt: string }>;
+  items: unknown[];
+  outfits: unknown[];
+  wishlistItems: unknown[];
+  recentEvents: DiagnosticEvent[];
+}
+
 export type DiagnosticUploadState =
   | { phase: "idle" }
   | { phase: "describing"; message: "请描述遇到的问题…"; problemDescription: string }
@@ -185,7 +209,7 @@ export function getClientBuildIdentity(): ClientBuildIdentity {
   };
 }
 
-export function buildWardrobeDiagnosticLog(input: BuildDiagnosticLogInput) {
+export function buildWardrobeDiagnosticLog(input: BuildDiagnosticLogInput): RemoteDiagnosticPayload {
   const build = getClientBuildIdentity();
 
   const items = input.items.slice(0, MAX_LOG_ITEMS).map(summarizeItem);
