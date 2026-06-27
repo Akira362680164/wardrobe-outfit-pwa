@@ -169,6 +169,41 @@
 5. 真机检查：按任务风险至少验证启动、本次改动的主路径、Android 返回键、窄屏和横屏风险点；崩溃或网络问题应保留相关 logcat 摘要。
 6. 结果记录：在 `VERSION_HISTORY.md` 写明手机型号、Android 版本、APK 版本、安装结果、已测路径、日志/视觉结果和未覆盖风险。
 
+已验证的具体安装方法：
+
+```bash
+# 1. 确认序列号和授权状态
+adb devices -l
+SERIAL="从上一条命令复制的目标设备序列号"
+APK="项目内待安装 APK 的绝对路径"
+BUILD_TOOLS="$(find "$ANDROID_HOME/build-tools" -mindepth 1 -maxdepth 1 -type d | sort -V | tail -1)"
+
+# 2. 不只信文件名，先核对包名、versionCode、versionName 和固定签名
+"$BUILD_TOOLS/aapt" dump badging "$APK" | sed -n '1,3p'
+"$BUILD_TOOLS/apksigner" verify --print-certs "$APK"
+
+# 3. 多设备环境始终带 -s；-r 表示覆盖安装并保留 App 数据
+adb -s "$SERIAL" install -r "$APK"
+
+# 4. 启动并确认实际安装版本、前台 Activity 和进程
+adb -s "$SERIAL" shell monkey -p com.wardrobe.outfit -c android.intent.category.LAUNCHER 1
+adb -s "$SERIAL" shell dumpsys package com.wardrobe.outfit | rg 'versionCode=|versionName='
+adb -s "$SERIAL" shell dumpsys window | rg 'mCurrentFocus|mFocusedApp'
+adb -s "$SERIAL" shell pidof com.wardrobe.outfit
+
+# 5. 只筛启动崩溃，避免在交付记录中复制整份用户日志
+adb -s "$SERIAL" logcat -d -t 500 | rg 'FATAL EXCEPTION|Process: com\.wardrobe\.outfit'
+```
+
+本机已验证的坑与处理（MEIZU 21 Pro / Android 16）：
+
+- `adb devices -l` 显示 `device` 只代表 USB 调试已授权，不代表“通过 USB 安装应用”已授权。
+- 首次安装可能长时间停在 `Performing Streamed Install`，实际是手机锁屏或安装确认弹窗正在等待用户。此时应提醒用户保持解锁并点击“允许/继续安装”，不要反复改 ADB 配置。
+- 本次首次安装返回 `INSTALL_FAILED_USER_RESTRICTED`。读取系统设置发现 USB 安装总开关已开，但 `usb_install_item_com.wardrobe.outfit=衣橱穿搭助手:0`，说明是该包的单独授权被拒绝。保持手机解锁、重新运行同一条 `adb install -r` 并在手机上选择允许后即安装成功，该值变为 `:1`。
+- 可用 `adb shell settings get secure usb_install_item_com.wardrobe.outfit` 只读核对单包授权；不要用 `settings put` 绕过手机安全确认。
+- 相机、通知等 Android 运行时权限与 USB 安装权限是两件事。安装成功后仍应在用户实际打开相应功能时由系统弹窗申请，agent 不得为省步骤批量授权。
+- 如果 `dumpsys package com.wardrobe.outfit` 安装前没有版本输出，只表示手机当前未安装该包，不是 ADB 连接故障。
+
 subagent 独立审查只在用户明确通知或要求时触发。默认情况下，agent 不要因为风险等级、改动规模或自身判断自动启动 subagent；如需独立审查，必须先看到用户明确说“启动 subagent 审查”“独立审核”“让审查专家看一下”等同等意思的指令。
 
 风险门禁仍用于决定本地验证强度和历史记录口径，但不再自动触发 subagent。完成修改后，可运行 `node scripts/review-gate.mjs --staged` 检查本次待提交改动，或运行 `node scripts/review-gate.mjs` 检查整个工作区改动。

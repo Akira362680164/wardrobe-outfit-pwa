@@ -1,3 +1,15 @@
+## 2026-06-27 / v2.0.2-test / Codex — 补充 Android 真机安装实操与排坑记录
+
+- **目的**：将本次 MEIZU 21 Pro 真机安装的实际命令、验证方法和 USB 单包安装授权问题固化到项目长期规则。
+- **版本**：保持 `2.0.2-test`，本次仅修改协作文档，不重新构建 APK。
+- **改动文件**：`AGENTS.md`、`VERSION_HISTORY.md`。
+- **改动内容**：补充 APK 元数据/签名检查、指定序列号覆盖安装、启动与崩溃排查命令；记录 `INSTALL_FAILED_USER_RESTRICTED`、`Performing Streamed Install` 等待手机确认、魅族单包 USB 安装权限和 Android 运行时权限的处理边界。
+- **实机验证**：MEIZU 21 Pro / Android 16；`com.wardrobe.outfit` `versionCode=20002` / `versionName=2.0.2-test`；固定签名 `CN=fangzheng`；重新确认 USB 安装权限后 `adb install -r` 成功，App 已启动且无启动崩溃。
+- **文档验证**：`git diff --check` 通过。
+- **风险门禁**：**low**（纯文档治理，不改业务代码或 Android 工程）。
+- **未触发 subagent**：用户未通知。
+- **未验证风险**：未测相机和通知权限的业务流程；本次未重新构建 APK。
+
 ## 2026-06-27 / v2.0.2-test / Claude Code — ESLint 代码清理 round 2（全项目未使用符号清零）
 
 - **目的**：继续清理所有 `@typescript-eslint/no-unused-vars` warning，从 85 个降至 10 个（仅剩 react-hooks/exhaustive-deps）。
