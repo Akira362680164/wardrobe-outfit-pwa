@@ -4,7 +4,7 @@ import { Sparkles } from "lucide-react";
 import { useState } from "react";
 import type { OutfitCalendarPlan, OutfitPlanEntry, SavedOutfit, WardrobeItem } from "@/lib/types";
 import { OutfitCover } from "@/components/outfit-cover";
-import { PLAN_TONE_CLASS_MAP, resolvePrimaryDisplayEntryForDate, sortWornEntriesForDay, sortPlanEntriesForDay } from "@/lib/outfit-planning";
+import { PLAN_TONE_CLASS_MAP, resolvePrimaryDisplayEntryForDate } from "@/lib/outfit-planning";
 
 interface OutfitPlanDayCardProps {
   dateKey: string;
@@ -49,7 +49,6 @@ export function OutfitPlanDayCard({
   onViewOutfit,
   onMarkWornToday,
   onCancelWear,
-  onSetPrimary,
   onMarkSkipped,
   onDeleteEntry,
   onOpenCalendarPlan,
@@ -72,8 +71,6 @@ export function OutfitPlanDayCard({
   const isWorn = primaryEntry?.status === "worn";
   const isChanged = primaryEntry?.status === "changed";
   const isPlanned = primaryEntry?.status === "planned";
-  const dayAllEntries = entries ?? [];
-  const extraCount = Math.max(0, dayAllEntries.length - 1);
 
   // v1.1.0 fix: 空状态 — 今天/未来 vs 过去文案不同
   if (isEmpty) {

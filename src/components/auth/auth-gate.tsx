@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { App } from "@capacitor/app";
 import { Capacitor } from "@capacitor/core";
-import { Loader2, Lock, Shield, User, ArrowLeft } from "lucide-react";
+import { Loader2, Lock, Shield, User } from "lucide-react";
 import { useAuth } from "@/components/auth/auth-provider";
 import { LegalDocumentView, type LegalSection } from "@/components/auth/legal-document-view";
 import { isLoginFormValid, isRegisterFormValid, validatePassword, type LoginFormState, type RegisterFormState } from "@/lib/auth-form-validation";

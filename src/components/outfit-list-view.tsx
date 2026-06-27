@@ -15,7 +15,7 @@ import {
   Trash2,
   X,
 } from "lucide-react";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { getWardrobeDb } from "@/lib/db";
 import type { ClosetLocation, OutfitAiSuggestion, OutfitCalendarPlan, OutfitCalendarPlanType, OutfitPlanEntry, OutfitRealImage, PlanPackingChecklistItem, SavedOutfit, Season, WardrobeItem } from "@/lib/types";
 import { CATEGORY_LABELS, SEASON_LABELS } from "@/lib/types";
@@ -77,7 +77,6 @@ export function OutfitListView({
   onRefresh,
   onMessage,
   onExpandImage,
-  onSwitchToCapture,
   onSubPageChange,
   onSubPageKeyChange,
   onCloseOutfitDetail,
@@ -98,7 +97,6 @@ export function OutfitListView({
   onRefresh: () => Promise<void>;
   onMessage: (msg: string, type?: "success" | "error" | "info") => void;
   onExpandImage: (image: { src: string; alt: string }) => void;
-  onSwitchToCapture: () => void;
   onSubPageChange: (active: boolean) => void;
   // v1.1 review fix: 上报当前 outfit 子页 key（library / detail / planning_calendar / plan_add / packing_list …），
   // 让 wardrobe-app 在 planning 子页高亮全局新建面板的「添加穿搭计划」入口。
@@ -127,7 +125,7 @@ export function OutfitListView({
 
   // filters
   const [chipFilter, setChipFilter] = useState<string>("all");
-  const [sceneChip, setSceneChip] = useState<string>("");
+  const [sceneChip] = useState<string>("");
 
  // create / edit state (create_flow 内部维护 selectedItemIds, edit 页复用 OutfitInfoForm 表单 state)
  const [createName, setCreateName] = useState("");
@@ -239,7 +237,6 @@ export function OutfitListView({
   // filtered outfits
   const filteredOutfits = useMemo(() => {
     let result = displayOutfits;
-    const now = todayKey;
 
     if (chipFilter === "worn_recently") {
       result = result.filter((o) => (o.wornDates ?? []).length > 0);
@@ -257,35 +254,6 @@ export function OutfitListView({
     }
     return result;
   }, [displayOutfits, chipFilter, sceneChip, todayKey]);
-
-  // garment detail reverse association helpers
-  const getOutfitsForItem = useCallback((itemId: number) => {
-    return displayOutfits.filter((o) => o.itemIds.includes(itemId));
-  }, [displayOutfits]);
-
-  const getFrequentPairItems = useCallback((itemId: number): { item: WardrobeItem; count: number }[] => {
-    const outfitsWithItem = displayOutfits.filter((o) => o.itemIds.includes(itemId));
-    const counts = new Map<number, number>();
-    for (const o of outfitsWithItem) {
-      for (const id of o.itemIds) {
-        if (id === itemId) continue;
-        counts.set(id, (counts.get(id) ?? 0) + 1);
-      }
-    }
-    return Array.from(counts.entries())
-      .sort((a, b) => b[1] - a[1])
-      .slice(0, 8)
-      .map(([id, count]) => ({ item: items.find((i) => i.id === id)!, count }))
-      .filter((e) => e.item);
-  }, [displayOutfits, items]);
-
-  // save outfit helper
-  async function saveOutfit(id: string, data: Partial<SavedOutfit>) {
-    const now = new Date().toISOString();
-    const db = getWardrobeDb();
-    await db.outfits.put({ ...data, id, updatedAt: now } as SavedOutfit);
-    await onRefresh();
-  }
 
   // Mark worn today (v1.1.0 fix: use unified sync service)
   async function handleMarkWornToday(outfit: SavedOutfit) {
@@ -1270,7 +1238,6 @@ export function OutfitListView({
 	          onAddManual={handleSaveManualPackingItem}
 	          onMarkAllPacked={handleMarkAllPacked}
 	          onResetAll={handleResetAllPacking}
-	          onRefresh={onPlanDataChange}
 	          onMessage={onMessage}
 	        />
 	      )}
@@ -1308,7 +1275,6 @@ export function OutfitListView({
 	        todayKey={todayKey}
 	        dateKey={selectOutfitDate ?? undefined}
 	        onSelect={handleSelectOutfitForPlan}
-	        onMessage={onMessage}
 	      />
     </div>
   );
@@ -1365,10 +1331,6 @@ function OutfitDetailView({
   ];
   const [activeSlide, setActiveSlide] = useState(0);
  const activeSlideData = allSlides[activeSlide];
- // v1.0: 主图区分 cover (用 OutfitCover 渲染 auto_collage/单图) vs real (单图)
- const isCoverSlide = activeSlideData?.kind === "cover";
- const isRealSlide = activeSlideData?.kind === "real";
-
  const sceneLabels = (outfit.sceneTags ?? []).join(" · ");
  // v1.0: 风格标签展示层中文化 (labelOutfitStyleTags 处理可能存在的英文枚举)
  const styleLabels = [...labelOutfitStyleTags(outfit.styleTags ?? []), ...(outfit.pairingTags ?? [])].join(" · ");
@@ -1377,7 +1339,7 @@ function OutfitDetailView({
   const aiSuggestion = outfit.aiSuggestion;
   const gallerySlides = allSlides
     .filter((slide) => slide.kind !== "add")
-    .map((slide, index) => ({
+    .map((slide) => ({
       id: slide.kind === "cover" ? "cover" : slide.image.id,
       label: slide.kind === "cover" ? getDetailSlideLabel("outfit_cover") : getDetailSlideLabel("outfit_real"),
       alt: outfit.name,
@@ -1614,44 +1576,6 @@ function InfoRow({ label, value }: { label: string; value: string }) {
       <span className="text-xs text-ink/40">{label}</span>
       <span className="min-w-0 break-words text-ink/68">{value}</span>
     </div>
-  );
-}
-
-function OutfitAiSuggestionCard({
-  suggestion,
-  isLoading,
-  error,
-  onGenerate,
-}: {
-  suggestion?: OutfitAiSuggestion;
-  isLoading: boolean;
-  error: string;
-  onGenerate: () => void;
-}) {
-  return (
-    <section className="rounded-lg border border-denim/10 bg-denim/5 p-3">
-      <div className="flex items-start justify-between gap-3">
-        <div className="min-w-0">
-          <p className="text-xs font-semibold text-denim">AI 套装建议</p>
-          <p className="mt-1 text-sm leading-relaxed text-ink/68">
-            {suggestion?.summary ?? "点击生成后，再查看适合场景、风险点、替换建议和缺失单品。"}
-          </p>
-          {suggestion?.source ? (
-            <p className="mt-1 text-[11px] text-ink/40">{suggestion.source === "local" ? "基于本地规则" : "基于 AI 建议"} · {suggestion.generatedAt.slice(0, 10)}</p>
-          ) : null}
-          {error ? <p className="mt-1 text-[11px] text-clay">{error}</p> : null}
-        </div>
-        <button
-          type="button"
-          onClick={onGenerate}
-          disabled={isLoading}
-          className="inline-flex h-9 shrink-0 items-center gap-1 rounded-lg bg-white px-3 text-xs font-semibold text-denim disabled:opacity-50"
-        >
-          {isLoading ? <RefreshCw size={13} className="animate-spin" /> : <Sparkles size={13} />}
-          {suggestion ? "刷新建议" : "生成建议"}
-        </button>
-      </div>
-    </section>
   );
 }
 

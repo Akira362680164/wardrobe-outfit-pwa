@@ -25,7 +25,7 @@ import {
 } from "@/lib/wishlist-conversion";
 import { loadCloudBridgeContext } from "@/lib/cloud-sync/bridge-context";
 import { getAccountWorkspaceDb } from "@/lib/account-workspace-db";
-import { readWorkspaceUiSnapshot, type WorkspaceUiSnapshot } from "@/lib/cloud-sync/workspace-ui-mapper";
+import { readWorkspaceUiSnapshot } from "@/lib/cloud-sync/workspace-ui-mapper";
 
 export interface WardrobeDataSnapshot {
   items: WardrobeItem[];

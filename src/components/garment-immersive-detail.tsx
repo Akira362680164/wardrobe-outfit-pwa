@@ -17,88 +17,11 @@
  * - 颜色映射仅用于色块渲染, 不替代中文颜色名 (文字 + 色块都显示)
  */
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo } from "react";
 import { ChevronLeft, Crop } from "lucide-react";
 import { SwipeImageCarousel, type SwipeAddSlide, type SwipeImageSlide, type SwipeSlide } from "@/components/swipe-image-carousel";
 import { clampCarouselIndex } from "@/lib/carousel-logic";
 import type { GarmentImageEntry } from "@/lib/garment-image-source";
-
-/* ------------------------------------------------------------------ */
-/*  useImageAspect – 探测 src 的自然宽高比                                */
-/*  v0.9.21-dev: 用于图片容器自适应, 避免横图/方图在 3:4 容器中大片空白  */
-/* ------------------------------------------------------------------ */
-
-/**
- * 探测图片自然宽高比 (naturalWidth / naturalHeight)。
- * - SSR / 无 src / 加载失败 / naturalWidth=0 时返回 null
- * - 重新调用 / src 变化时会清空再探测
- * - cleanup 用 cancelled flag 防止 src 快速变化时 in-flight probe 的 onload 覆盖
- *   后到 probe 的结果 (stale onload race, v0.9.21-dev subagent I-1)
- */
-function useImageAspect(src: string | undefined): number | null {
-  const [aspect, setAspect] = useState<number | null>(null);
-  useEffect(() => {
-    setAspect(null);
-    if (typeof window === "undefined" || !src) return;
-    let cancelled = false;
-    const probe = new Image();
-    probe.onload = () => {
-      if (cancelled) return;
-      if (probe.naturalWidth > 0 && probe.naturalHeight > 0) {
-        setAspect(probe.naturalWidth / probe.naturalHeight);
-      }
-    };
-    probe.onerror = () => {
-      if (!cancelled) setAspect(null);
-    };
-    probe.src = src;
-    return () => {
-      cancelled = true;
-    };
-  }, [src]);
-  return aspect;
-}
-
-/* ------------------------------------------------------------------ */
-/*  图片容器尺寸策略                                                       */
-/*  - ratio < 0.7  : 9:16/9:19.5 全身/全身镜 → 3:4 容器, 横向 letterbox  */
-/*  - ratio < 0.85 : 4:5 (Instagram 竖版)        → 4:5 容器             */
-/*  - 0.85..1.2   : 接近 1:1                      → 1:1 容器             */
-/*  - ratio > 1.2  : 横图 (鞋/包/局部)             → 接近原始比例         */
-/*                   限制: 比例 cap 到 2.0, maxHeight 防撑高,           */
-/*                   minHeight 保可见 (避免极窄条形)                     */
-/*  - ratio = null : 加载中/失败 → imageLayout 兜底                     */
-/* ------------------------------------------------------------------ */
-
-function getImageContainerSpec(
-  aspect: number | null,
-  imageLayout: "square" | "portrait",
-): React.CSSProperties {
-  if (aspect === null) {
-    if (imageLayout === "portrait") {
-      return { aspectRatio: "3 / 4", maxWidth: "340px", maxHeight: "min(56vh, 500px)" };
-    }
-    // v0.9.21-dev subagent I-2: 加载中兜底分支也加 maxWidth, 避免 iPad/折叠屏 100% 宽方图
-    // 加载完成后跳成 400px 宽的塌陷动画; maxHeight 统一为 56vh 与其他 4 档一致
-    return { aspectRatio: "1 / 1", maxWidth: "min(100%, 400px)", maxHeight: "min(56vh, 500px)" };
-  }
-  if (aspect < 0.7) {
-    return { aspectRatio: "3 / 4", maxWidth: "340px", maxHeight: "min(56vh, 500px)" };
-  }
-  if (aspect < 0.85) {
-    return { aspectRatio: "4 / 5", maxWidth: "min(100%, 360px)", maxHeight: "min(56vh, 500px)" };
-  }
-  if (aspect <= 1.2) {
-    return { aspectRatio: "1 / 1", maxWidth: "min(100%, 400px)", maxHeight: "min(56vh, 500px)" };
-  }
-  // 横图: cap 到 2:1, 限制高度避免撑高
-  const capped = Math.min(aspect, 2.0);
-  return {
-    aspectRatio: capped.toString(),
-    maxHeight: "min(48vh, 420px)",
-    minHeight: "180px",
-  };
-}
 
 /* ------------------------------------------------------------------ */
 /*  颜色色块映射                                                        */

@@ -191,10 +191,6 @@ function nonEmptyArray<T>(values: T[], fallback: T[]): T[] {
   return values.length ? values : fallback;
 }
 
-function uniqueStrings(values: string[]): string[] {
-  return Array.from(new Set(values.map((value) => value.trim()).filter(Boolean)));
-}
-
 function uniqueNumbers(values: number[]): number[] {
   return Array.from(new Set(values.filter((value) => Number.isFinite(value))));
 }

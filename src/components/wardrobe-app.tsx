@@ -1467,12 +1467,6 @@ export function WardrobeApp({ cloudAuth }: { cloudAuth?: WardrobeCloudAuth } = {
               onRefresh={refreshState}
               onMessage={showMessage}
               onExpandImage={lightbox.openExpandedImage}
-              onSwitchToCapture={() => {
-                // v1.1.20-dev (方案 C): 切到 intake_single_item route。
-                rememberCreateReturnRoute();
-                navigation.openRoute({ name: "intake_single_item", returnTo: route.name });
-                setShowGarmentIntakeFlow(true);
-              }}
               onSubPageChange={setOutfitSubPageActive}
               onSubPageKeyChange={setOutfitSubPageKey}
               activeOutfitRoute={route.name === "outfit_detail" ? route : undefined}
@@ -2126,14 +2120,7 @@ function WardrobeView(props: WardrobeViewProps) {
  const [viewingRefImage, setViewingRefImage] = useState<ReferenceOutfitImage | null>(null);
  const [editingRefCaption, setEditingRefCaption] = useState<ReferenceOutfitImage | null>(null);
  const [refCaptionDraft, setRefCaptionDraft] = useState("");
- // v0.9.32-dev: 详情页衣物图片组派生(主图+手动参考+SavedOutfit 派生,统一去重)。
- // 瀑布流卡片和详情页都基于这个派生结果渲染。
- // 索引 0 永远是衣物主图,索引 1..N 是 extraImages(手动参考+套装图)。
- const viewingImageEntries = useMemo(
- () => (viewingItem ? deriveGarmentImageList(viewingItem, outfits) : []),
- [viewingItem, outfits],
- );
-  // v0.9.45-dev 详情页 2.0: AI 建议生成状态机
+ // v0.9.45-dev 详情页 2.0: AI 建议生成状态机
   // "idle" | "loading" | "success" | "error" | "no_key"
   const [aiAdviceState, setAiAdviceState] = useState<"idle" | "loading" | "success" | "error" | "no_key">("idle");
   const aiAdviceRunIdRef = useRef(0);
@@ -2885,7 +2872,6 @@ function WardrobeView(props: WardrobeViewProps) {
               aiAdviceState={aiAdviceState}
               hasMiniMaxKey={hasDeviceMiniMaxKey(miniMaxSettings)}
               pairingItems={pairingItems}
-              imageEntries={viewingImageEntries}
               currentImageIndex={viewingImageIndex}
               onCurrentImageIndexChange={setViewingImageIndex}
               initialTab={activeGarmentRoute?.initialTab}
@@ -2896,8 +2882,6 @@ function WardrobeView(props: WardrobeViewProps) {
               onMoveItem={handleMoveItem}
               onAddReferenceImage={() => referenceOutfitGalleryInputRef.current?.click()}
               onViewReferenceImage={(ref) => setViewingRefImage(ref)}
-              onEditReferenceCaption={(ref) => { setEditingRefCaption(ref); setRefCaptionDraft(ref.caption || ""); }}
-              onDeleteReferenceImage={(ref) => setViewingRefDeleteConfirm({ id: ref.id })}
               onGenerateAdvice={handleGenerateAdvice}
               onGoSettings={() => onMessage("请前往设置页配置 MiniMax Key", "info")}
               onViewOutfit={(outfitId) => {
@@ -2918,23 +2902,6 @@ function WardrobeView(props: WardrobeViewProps) {
                 });
               }}
               onExpandImage={onExpandImage}
-              onCropAt={(idx) => {
-                const entry = viewingImageEntries[idx];
-                if (!entry) return;
-                if (entry.source === "main") {
-                  const src = viewingItem.sourceImageDataUrl || viewingItem.imageDataUrl;
-                  if (src) setViewingItemCropJob({ dataUrl: src, startBox: viewingItem.cropBox, target: "detail" });
-                } else {
-                  setViewingItemCropJob({
-                    dataUrl: entry.sourceImageDataUrl || entry.imageDataUrl,
-                    startBox: entry.cropBox,
-                    target: "detail",
-                    refId: entry.refId,
-                    source: entry.source,
-                    outfitId: entry.outfitId,
-                  });
-                }
-              }}
             />
             {/* v0.9.45-dev: 参考穿搭图添加 hidden input */}
             <input

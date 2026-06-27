@@ -43,7 +43,6 @@ import { GarmentRecognitionError } from "@/lib/device-minimax";
 import { generateThumbnailSafe } from "@/lib/thumbnail-runtime";
 import { recordDiagnosticEvent } from "@/lib/diagnostic-log";
 import {
-  CATEGORY_LABELS,
   FIT_NOTES_MAX_LEN,
   SEASON_LABELS,
   STATUS_LABELS,
@@ -56,7 +55,6 @@ import {
   type Season,
   type TemperatureRange,
 } from "@/lib/types";
-import { FIT_GENDER_LABELS } from "@/lib/display-labels";
 import {
   GARMENT_INTAKE_MAX_IMAGES,
   createGarmentIntakeImageItem,
@@ -64,7 +62,6 @@ import {
   removeGarmentIntakeImage,
   setGarmentIntakeImageCrop,
   setGarmentIntakeImageDraft,
-  setGarmentIntakeImageError,
   getRecognizedGarmentIntakeImages,
   getReviewableGarmentIntakeImages,
   getSavableGarmentIntakeImages,
@@ -133,14 +130,14 @@ export function GarmentIntakeFlow({
   title = "添加单品",
   flowKind = "garment",
   initialImages,
-  initialDrafts,
+  initialDrafts: _initialDrafts,
   defaultLocationId = "home",
   locations,
   isSaving = false,
   onPickImages,
   onProcessImage,
-  onEnhanceDraft,
-  onDraftChange,
+  onEnhanceDraft: _onEnhanceDraft,
+  onDraftChange: _onDraftChange,
   onSaveBatch,
   onExit,
 }: GarmentIntakeFlowProps) {

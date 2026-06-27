@@ -91,10 +91,6 @@ function sanitizeFitNotes(v: unknown): string | undefined {
   return trimmed.length > FIT_NOTES_MAX_LEN ? trimmed.slice(0, FIT_NOTES_MAX_LEN) : trimmed;
 }
 
-function isString(v: unknown): v is string {
-  return typeof v === "string";
-}
-
 function isCategory(v: unknown): v is GarmentCategory {
   return typeof v === "string" && (CATEGORY_VALUES as string[]).includes(v);
 }
@@ -109,10 +105,6 @@ function isStyle(v: unknown): v is GarmentStyle {
 
 function isStatus(v: unknown): v is GarmentStatus {
   return typeof v === "string" && (STATUS_VALUES as string[]).includes(v);
-}
-
-function stringArray(v: unknown): string[] {
-  return Array.isArray(v) ? v.filter(isString) : [];
 }
 
 function isCropBox(v: unknown): v is WardrobeItem["cropBox"] {

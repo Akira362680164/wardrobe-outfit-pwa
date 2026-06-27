@@ -18,7 +18,6 @@ interface PlanPackingChecklistViewProps {
   onAddManual: (item: { label: string; category?: string; quantity?: number }) => Promise<void>;
   onMarkAllPacked: () => Promise<void>;
   onResetAll: () => Promise<void>;
-  onRefresh: () => Promise<void>;
   onMessage: (msg: string, type?: "success" | "error" | "info") => void;
 }
 
@@ -33,7 +32,6 @@ export function PlanPackingChecklistView({
   onAddManual,
   onMarkAllPacked,
   onResetAll,
-  onRefresh,
   onMessage,
 }: PlanPackingChecklistViewProps) {
   const [showAddManual, setShowAddManual] = useState(false);

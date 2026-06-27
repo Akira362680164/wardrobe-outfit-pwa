@@ -65,8 +65,6 @@ export function OutfitPlanningCalendarView({
   const [my, mm] = monthDate.split("-").map(Number) as [number, number];
   const monthCells = useMemo(() => getLocalMonthGrid(my!, mm!), [my, mm]);
   const weekRows = useMemo(() => groupMonthCellsByWeek(monthCells), [monthCells]);
-  const selectedRowIndex = useMemo(() => getDateRowIndex(monthCells, selectedDate), [monthCells, selectedDate]);
-
   // v1.1.6 small rework: 月历卡片折叠状态
   const [expandedDate, setExpandedDate] = useState<string | null>(selectedDate);
   useEffect(() => { setExpandedDate(selectedDate); }, [selectedDate]);
@@ -74,16 +72,6 @@ export function OutfitPlanningCalendarView({
     () => expandedDate ? getDateRowIndex(monthCells, expandedDate) : -1,
     [monthCells, expandedDate],
   );
-
-  const selectedEntry = useMemo(() => resolvePrimaryDisplayEntryForDate(entries, selectedDate), [entries, selectedDate]);
-  const selectedEntries = useMemo(() => getEntriesForDate(entries, selectedDate), [entries, selectedDate]);
-  const datePlans = useMemo(() => getCalendarPlansForDate(calendarPlans, selectedDate), [calendarPlans, selectedDate]);
-  const selectedOutfit = useMemo(() => {
-    const e = selectedEntry;
-    if (!e) return null;
-    const oid = e.outfitId ?? e.actualOutfitId;
-    return oid ? outfits.find((o) => o.id === oid) ?? null : null;
-  }, [selectedEntry, outfits]);
 
   // expanded date derived data for day card rendering
   const detailEntry = useMemo(() => expandedDate ? resolvePrimaryDisplayEntryForDate(entries, expandedDate) : null, [entries, expandedDate]);

@@ -1,7 +1,7 @@
 // src/components/use-wardrobe-message-controller.ts
 // v1.1.9 4C: 从 wardrobe-app.tsx 迁移消息状态与控制。
 
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback } from "react";
 
 const MESSAGE_AUTO_DISMISS_MS = 5000;
 

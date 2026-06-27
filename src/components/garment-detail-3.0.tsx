@@ -12,15 +12,13 @@
  */
 
 import { useState, useMemo, useRef, useEffect } from "react";
-import { motion } from "motion/react";
-import { ChevronLeft, Plus, Check, Settings, Trash2, Image, Shirt, Loader2 } from "lucide-react";
+import { ChevronLeft, Plus, Check, Settings, Trash2, Image, Shirt } from "lucide-react";
 import type { WardrobeItem, SavedOutfit, ClosetLocation, GarmentStyleAdvice, ReferenceOutfitImage } from "@/lib/types";
 import { CATEGORY_LABELS, SEASON_LABELS, STYLE_LABELS } from "@/lib/types";
 import { formatGarmentFitGender, formatSubcategoryLabel } from "@/lib/display-labels";
 import type { WearSummary } from "@/lib/wear-records";
 import { getWearSummary, getLocalDateKey } from "@/lib/wear-records";
 import type { RecommendedPairingItem } from "@/lib/garment-detail-pairing";
-import type { GarmentImageEntry } from "@/lib/garment-image-source";
 import type { SwipeImageSlide } from "@/components/swipe-image-carousel";
 import { clampCarouselIndex } from "@/lib/carousel-logic";
 import { OutfitCover } from "@/components/outfit-cover";
@@ -51,7 +49,6 @@ export interface GarmentDetail30Props {
   aiAdviceState: "idle" | "loading" | "success" | "error" | "no_key";
   hasMiniMaxKey: boolean;
   pairingItems: RecommendedPairingItem[];
-  imageEntries: GarmentImageEntry[];
   currentImageIndex: number;
   onCurrentImageIndexChange: (idx: number) => void;
   onBack: () => void;
@@ -61,13 +58,10 @@ export interface GarmentDetail30Props {
   onMoveItem: (locationId: string) => void;
   onAddReferenceImage: () => void;
   onViewReferenceImage: (ref: ReferenceOutfitImage) => void;
-  onEditReferenceCaption: (ref: ReferenceOutfitImage) => void;
-  onDeleteReferenceImage: (ref: ReferenceOutfitImage) => void;
   onGenerateAdvice: () => void;
   onGoSettings: () => void;
   onViewOutfit: (outfitId: string) => void;
   onExpandImage: (image: { src: string; alt: string }) => void;
-  onCropAt: (idx: number) => void;
   initialTab?: "info" | "inspiration" | "pairing";
 }
 
@@ -78,11 +72,11 @@ export interface GarmentDetail30Props {
 export function GarmentDetail30({
   item, allItems, outfits, locations,
   wearSummary, aiStyleAdvice, aiAdviceState, hasMiniMaxKey, pairingItems,
-  imageEntries, currentImageIndex, onCurrentImageIndexChange,
+  currentImageIndex, onCurrentImageIndexChange,
   onBack, onWearToggle, onEdit, onDelete, onMoveItem,
-  onAddReferenceImage, onViewReferenceImage, onEditReferenceCaption, onDeleteReferenceImage,
+  onAddReferenceImage, onViewReferenceImage,
   onGenerateAdvice, onGoSettings, onViewOutfit,
-  onExpandImage, onCropAt,
+  onExpandImage,
   initialTab,
 }: GarmentDetail30Props) {
   const [activeTab, setActiveTab] = useState<"info" | "inspiration" | "pairing">(initialTab ?? "info");
@@ -145,7 +139,6 @@ export function GarmentDetail30({
     if (currentImageIndex !== safeIndex) onCurrentImageIndexChange(safeIndex);
   }, [currentImageIndex, safeIndex, onCurrentImageIndexChange]);
 
-  const totalImages = slides.length; // 主图 + 灵感图, 不含 +灵感 button
   const activeSlideId = slides[safeIndex]?.id ?? "main";
   const detailSlides = slides.map((slide) => ({
     id: slide.id,
@@ -301,8 +294,6 @@ export function GarmentDetail30({
             refs={refs}
             onAdd={onAddReferenceImage}
             onView={onViewReferenceImage}
-            onEditCaption={onEditReferenceCaption}
-            onDelete={onDeleteReferenceImage}
           />
         </div>
       )}
@@ -310,7 +301,6 @@ export function GarmentDetail30({
       {activeTab === "pairing" && (
         <div className="mt-3 pb-8">
           <PairingTab
-            item={item}
             allItems={allItems}
             historyOutfits={historyOutfits}
             pairingItems={pairingItems}
@@ -345,30 +335,6 @@ export function GarmentDetail30({
 /* ------------------------------------------------------------------ */
 /*  InfoTab                                                           */
 /* ------------------------------------------------------------------ */
-
-function AiAdviceLoadingState() {
-  return (
-    <div className="flex items-start gap-3 py-2">
-      <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-denim/10 text-denim">
-        <Loader2 size={18} className="animate-spin" />
-      </span>
-      <div className="min-w-0 flex-1">
-        <p className="text-xs font-semibold text-ink/60">正在分析衣物属性</p>
-        <p className="mt-1 text-[11px] text-ink/40">正在生成搭配提示</p>
-        <div className="mt-2 flex items-center gap-1">
-          {[0, 1, 2].map((i) => (
-            <motion.span
-              key={i}
-              className="h-1.5 w-1.5 rounded-full bg-denim/45"
-              animate={{ opacity: [0.25, 1, 0.25] }}
-              transition={{ duration: 1.1, repeat: Infinity, delay: i * 0.16 }}
-            />
-          ))}
-        </div>
-      </div>
-    </div>
-  );
-}
 
 function InfoTab({
   item, aiStyleAdvice, aiAdviceState, hasMiniMaxKey,
@@ -476,13 +442,11 @@ function InfoTab({
 /* ------------------------------------------------------------------ */
 
 function InspirationTab({
-  refs, onAdd, onView, onEditCaption, onDelete,
+  refs, onAdd, onView,
 }: {
   refs: ReferenceOutfitImage[];
   onAdd: () => void;
   onView: (ref: ReferenceOutfitImage) => void;
-  onEditCaption: (ref: ReferenceOutfitImage) => void;
-  onDelete: (ref: ReferenceOutfitImage) => void;
 }) {
   // v0.9.49-dev auto-fix: 删除 InspirationTab 内 3 个完全未使用的 dead state (menuRef/setMenuRef/menuOpen/setMenuOpen/menuAnchorRef)。
   // 真正的灵感图编辑入口通过 onView/onEditCaption/onDelete props 由 wardrobe-app.tsx 触发。
@@ -542,9 +506,8 @@ function InspirationTab({
 /* ------------------------------------------------------------------ */
 
 function PairingTab({
-  item, allItems, historyOutfits, pairingItems, onViewOutfit,
+  allItems, historyOutfits, pairingItems, onViewOutfit,
 }: {
-  item: WardrobeItem;
   allItems: WardrobeItem[];
   historyOutfits: SavedOutfit[];
   pairingItems: RecommendedPairingItem[];

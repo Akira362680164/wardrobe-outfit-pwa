@@ -120,7 +120,7 @@ export function toggleTodayWornDate(wornDates: unknown, todayKey?: string): stri
  * 校验 dateKey 是否合法（YYYY-MM-DD + 真实日历）。
  * 未来日期如果调用方是 recordActualOutfitWear 应抛错；计划创建不走本函数。
  */
-export function assertValidWearDateKey(dateKey: string, todayKey = getLocalDateKey()): void {
+export function assertValidWearDateKey(dateKey: string, _todayKey = getLocalDateKey()): void {
   if (!isValidDateKey(dateKey)) {
     throw new Error(`无效日期格式: ${dateKey}`);
   }

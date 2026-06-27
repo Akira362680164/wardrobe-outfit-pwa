@@ -2,9 +2,8 @@
 // 所有穿着同步写入必须使用 Dexie transaction，保证 entry/outfit/item 同时成功或失败。
 
 import { getWardrobeDb } from "@/lib/db";
-import { addWornDate, removeWornDate, hasWornDate, getLocalDateKey } from "@/lib/wear-records";
-import { createOutfitPlanEntry } from "@/lib/outfit-planning";
-import type { OutfitPlanEntry, OutfitPlanEntryRole, OutfitWearOrigin, SavedOutfit, WardrobeItem } from "@/lib/types";
+import { addWornDate, removeWornDate } from "@/lib/wear-records";
+import type { OutfitPlanEntry, OutfitPlanEntryRole } from "@/lib/types";
 
 // ============================================================
 // 错误类型
@@ -145,7 +144,7 @@ export async function addOutfitToDate(input: AddOutfitToDateInput): Promise<Outf
 // ============================================================
 
 export async function addPlannedOutfitForDate(input: AddOutfitToDateInput): Promise<OutfitPlanEntry> {
-  const { dateKey, outfitId, calendarPlanId, makePrimary, role, sortOrder, todayKey } = input;
+  const { dateKey, outfitId, calendarPlanId, makePrimary, role, sortOrder, todayKey: _todayKey } = input;
   const db = getWardrobeDb();
   const now = new Date().toISOString();
 
@@ -225,14 +224,11 @@ export async function recordActualOutfitWear(input: AddOutfitToDateInput): Promi
 
     // 4. 找出该 outfit 是否有 planned/changed entry
     const plannedEntry = sameDayEntries.find((e) => e.outfitId === outfitId && (e.status === "planned" || e.status === "changed"));
-    const changedEntries = sameDayEntries.filter((e) => e.status === "changed");
-
     // 5. 更新 outfit.wornDates
     const newWornDates = addWornDate(outfit.wornDates, dateKey, todayKey);
     await db.outfits.update(outfitId, { wornDates: newWornDates, updatedAt: now });
 
     // 6. 更新单品 wornDates
-    const itemIdSet = new Set(outfit.itemIds);
     const allSameDayEntries = await db.outfitPlanEntries.where("date").equals(dateKey).toArray();
     const existingWornId = (existingWorn as OutfitPlanEntry | undefined)?.id ?? "";
     const otherWornEntries = allSameDayEntries.filter(
@@ -262,8 +258,6 @@ export async function recordActualOutfitWear(input: AddOutfitToDateInput): Promi
     }
 
     // 7. 写入 worn entry
-    let wearOrigin: OutfitWearOrigin = "manual_actual";
-    let plannedBeforeWorn = false;
     let wornEntryId = "";
 
     if (plannedEntry) {
@@ -278,8 +272,6 @@ export async function recordActualOutfitWear(input: AddOutfitToDateInput): Promi
         isPrimaryActual: plannedEntry.isPrimary ?? false,
         updatedAt: now,
       });
-      wearOrigin = "planned_confirmed";
-      plannedBeforeWorn = true;
       wornEntryId = plannedEntry.id;
     } else {
       // 没有计划 entry，是手动补录的实际穿着
@@ -357,7 +349,6 @@ export async function cancelActualOutfitWearForDate(input: {
     await db.outfits.update(outfitId, { wornDates: newOutfitWornDates, updatedAt: now });
 
     // 4. 移除单品 wornDates（但要检查是否被其他 worn outfit 继续使用）
-    const itemIdSet = new Set(outfit.itemIds);
     const otherWornEntries = sameDayEntries.filter(
       (e) => e.status === "worn" && e.id !== wornEntry.id && (e.outfitId || e.actualOutfitId)
     );

@@ -2,8 +2,8 @@
 
 import type { ReactNode } from "react";
 import type { RefObject } from "react";
-import { ChevronLeft, Loader2, MoreHorizontal, Plus, RefreshCw, Sparkles } from "lucide-react";
-import { AppSubPageTopBar, type AppSubPageTopBarProps } from "@/components/app-sub-page-top-bar";
+import { Loader2, Plus, RefreshCw, Sparkles } from "lucide-react";
+import { AppSubPageTopBar } from "@/components/app-sub-page-top-bar";
 import { SwipeImageCarousel, type SwipeImageSlide } from "@/components/swipe-image-carousel";
 import { DetailSectionCard } from "@/components/item-shell/detail-section-card";
 

@@ -1,4 +1,42 @@
-## 2026-06-27 / v2.0.2-test / Claude Code — ESLint 代码清理
+## 2026-06-27 / v2.0.2-test / Claude Code — ESLint 代码清理 round 2（全项目未使用符号清零）
+
+- **目的**：继续清理所有 `@typescript-eslint/no-unused-vars` warning，从 85 个降至 10 个（仅剩 react-hooks/exhaustive-deps）。
+- **版本**：保持 `2.0.2-test`。
+- **改动文件**（26 个文件）：
+  - `src/components/garment-detail-3.0.tsx`：移除 `imageEntries`/`onCropAt` 未使用 props、`totalImages` 未使用局部变量、`AiAdviceLoadingState` 未使用组件、`onEditReferenceCaption`/`onDeleteReferenceImage` 未使用 `InspirationTab` props、`item` 未使用 `PairingTab` prop；删除未使用 `motion`/`Loader2`/`GarmentImageEntry` import。
+  - `src/components/garment-immersive-detail.tsx`：删除未使用 `useImageAspect`/`getImageContainerSpec` 函数定义和 `useState` import。
+  - `src/components/garment-intake-flow.tsx`：删除未使用 `CATEGORY_LABELS`/`FIT_GENDER_LABELS`/`setGarmentIntakeImageError` import；`_` 前缀标记未使用 props。
+  - `src/components/image-crop-editor.tsx`：删除未使用 `handleRotateLeft` 函数。
+  - `src/components/outfit-intake-flow.tsx`：删除未使用 `Shirt`/`Sparkles`/`DraftFieldLine` import（前次 commit 已处理）。
+  - `src/components/outfit-list-view.tsx`：删除未使用 `onSwitchToCapture` prop、`setSceneChip` setter、`now` 局部变量、`getOutfitsForItem`/`getFrequentPairItems`/`saveOutfit` 局部函数、`isCoverSlide`/`isRealSlide` 局部变量、`index` map 参数、`OutfitAiSuggestionCard` 未使用组件、`useCallback` import；同步清理 `PlanPackingChecklistView` 和 `OutfitPlanSelectSheet` 的未使用 prop 透传。
+  - `src/components/outfit-plan-day-card.tsx`：删除未使用 `sortPlanEntriesForDay`/`sortWornEntriesForDay` import、`onSetPrimary` prop、`extraCount` 局部变量。
+  - `src/components/outfit-plan-detail-view.tsx`：删除未使用 `ChevronLeft` import（前次 commit 已处理）。
+  - `src/components/outfit-plan-select-sheet.tsx`：删除未使用 `onMessage` prop。
+  - `src/components/outfit-planning-calendar-view.tsx`：删除未使用 `selectedRowIndex`/`selectedEntries`/`datePlans`/`selectedOutfit` 局部变量。
+  - `src/components/plan-packing-checklist-view.tsx`：删除未使用 `onRefresh` prop。
+  - `src/components/use-wardrobe-image-intake-controller.ts`：删除未使用 `existing` 局部变量。
+  - `src/components/use-wardrobe-message-controller.ts`：删除未使用 `useRef` import（前次 commit 已处理）。
+  - `src/lib/cloud-sync/image-cache.ts`：删除未使用 `stableUserIdHash` import（前次）、`_` 前缀 `assetId` 参数。
+  - `src/lib/cloud-sync/sync-engine.ts`：删除未使用 `SyncEntity` type import（前次）。
+  - `src/lib/cloud-sync/workspace-ui-mapper.ts`：删除未使用 `WorkspaceWearEventRecord` import、`_` 前缀 `wearEvents` 解构变量。
+  - `src/lib/data-repo.ts`：删除未使用 `WorkspaceUiSnapshot` type import。
+  - `src/lib/device-minimax.ts`：删除未使用 `emptyColorInfo`/`COLOR_OPTIONS` import（前次）。
+  - `src/lib/intake-save-adapters.ts`：删除未使用 `uniqueStrings` 函数。
+  - `src/lib/long-term-backup.ts`：删除未使用 `LongTermBackupManifest` type import（前次）。
+  - `src/lib/migrate.ts`：删除未使用 `isString`/`stringArray` 函数。
+  - `src/lib/outfit-cascade-delete.ts`：删除未使用 `PlanPackingChecklistItem`/`SavedOutfit` type import 和 `getLocalDateKey` 函数。
+  - `src/lib/outfit-planning.ts`：删除未使用 `enumerateDateRange` import（前次）。
+  - `src/lib/outfit-wear-sync.ts`：删除未使用 `getLocalDateKey`/`hasWornDate`/`createOutfitPlanEntry`/`SavedOutfit`/`WardrobeItem` import、`OutfitWearOrigin` type import；删除未使用 `todayKey`/`changedEntries`/`itemIdSet`×2/`wearOrigin`/`plannedBeforeWorn` 局部变量。
+  - `src/lib/repository/wardrobe-repository.ts`：删除未使用 `ClosetLocation` type import、`buildSyncedOutfitPatch`/`undoWishlistPurchase` import。
+  - `src/lib/wear-records.ts`：`_` 前缀未使用 `todayKey` 参数。
+  - `src/components/wardrobe-app.tsx`：删除未使用 `viewingImageEntries` 局部变量；同步移除对 `GarmentDetail30`/`OutfitListView`/`PlanPackingChecklistView`/`OutfitPlanSelectSheet` 的已删除 prop 透传。
+- **验证结果**：
+  - `npm run typecheck`：✅ 零错误。
+  - `npx next lint`：从 85 个 warning 降至 10 个（全部为非 unused-vars 的 react-hooks/exhaustive-deps 和 jsx-a11y/alt-text）。
+- **风险门禁**：low（仅删除未使用 import、变量、函数和组件，未改动业务逻辑）。
+- **未触发 subagent**：用户未通知。
+
+## 2026-06-27 / v2.0.2-test / Claude Code — ESLint 代码清理 round 1
 
 - **目的**：修复构建阻塞的 ESLint 问题，批量清理历史未使用 import 和变量，减少 warning noise。
 - **版本**：保持 `2.0.2-test`。

@@ -4,7 +4,6 @@
 
 import { getWardrobeDb } from "@/lib/db";
 import type {
-  ClosetLocation,
   GarmentStatus,
   OutfitCalendarPlan,
   OutfitPlanEntry,
@@ -15,7 +14,7 @@ import type {
 } from "@/lib/types";
 import { deleteWardrobeItemsWithCascade, type WardrobeCascadeDeleteResult, type WardrobeCascadeDeleteSource } from "@/lib/wardrobe-cascade-delete";
 import { deleteOutfitWithCascade, type OutfitCascadeDeleteResult } from "@/lib/outfit-cascade-delete";
-import { convertWishlistItemToWardrobe, undoWishlistPurchase, getUndoPurchaseRisk, type UndoPurchaseRisk } from "@/lib/wishlist-conversion";
+import { convertWishlistItemToWardrobe, getUndoPurchaseRisk, type UndoPurchaseRisk } from "@/lib/wishlist-conversion";
 import {
   addOutfitToDate,
   cancelActualOutfitWearForDate,
@@ -26,7 +25,6 @@ import { bridgeGarmentCreate, bridgeGarmentDelete, bridgeGarmentUpdate } from "@
 import { bridgeWishlistUpsert, bridgeWishlistDelete } from "@/lib/cloud-sync/wishlist-bridge";
 import { bridgeOutfitUpsert, bridgeOutfitDelete } from "@/lib/cloud-sync/outfit-bridge";
 import { bridgeOutfitPlanUpsert, bridgeOutfitPlanDelete, bridgeTripPlanUpsert, bridgeTripPlanDelete, bridgeTripPlanWithChecklist } from "@/lib/cloud-sync/plan-bridge";
-import { buildSyncedOutfitPatch } from "@/lib/wardrobe-reference-sync";
 import { invalidateWorkspaceSnapshotCache } from "@/lib/data-repo";
 
 export interface RepoResult<T = void> {

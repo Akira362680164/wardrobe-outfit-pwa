@@ -9,7 +9,6 @@ import {
   assertLongTermBackupManifest,
   sortLongTermBackupFiles,
   type LongTermBackupFileEntry,
-  type LongTermBackupManifest,
   type LongTermBackupEntryBuildResult,
 } from "@/lib/long-term-backup-package";
 import { createLatestBackup } from "@/lib/backup-data";

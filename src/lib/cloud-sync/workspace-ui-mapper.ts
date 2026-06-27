@@ -2,7 +2,7 @@
 // 账号工作区 DB 记录 → UI 模型转换（P0-N01）。
 // 读取仍可在无工作区时降级到旧 Dexie，本文件仅处理工作区→UI 方向。
 
-import type { AccountWorkspaceDatabase, WorkspaceGarmentRecord, WorkspaceLocationRecord, WorkspaceOutfitPlanRecord, WorkspaceOutfitRecord, WorkspaceTripPlanRecord, WorkspaceWearEventRecord, WorkspaceWishlistItemRecord } from "@/lib/account-workspace-db";
+import type { AccountWorkspaceDatabase, WorkspaceGarmentRecord, WorkspaceLocationRecord, WorkspaceOutfitPlanRecord, WorkspaceOutfitRecord, WorkspaceTripPlanRecord, WorkspaceWishlistItemRecord } from "@/lib/account-workspace-db";
 import type { ClosetLocation, OutfitCalendarPlan, OutfitPlanEntry, PlanPackingChecklistItem, SavedOutfit, WardrobeItem, WishlistItem } from "@/lib/types";
 
 export interface WorkspaceUiSnapshot {
@@ -16,7 +16,7 @@ export interface WorkspaceUiSnapshot {
 }
 
 export async function readWorkspaceUiSnapshot(db: AccountWorkspaceDatabase): Promise<WorkspaceUiSnapshot> {
-  const [garments, locations, outfits, wishlistItems, wearEvents, tripPlans, outfitPlans] = await Promise.all([
+  const [garments, locations, outfits, wishlistItems, _wearEvents, tripPlans, outfitPlans] = await Promise.all([
     db.garments.filter(g => !g.deletedAt).toArray(),
     db.locations.filter(l => !l.deletedAt).toArray(),
     db.outfits.filter(o => !o.deletedAt).toArray(),

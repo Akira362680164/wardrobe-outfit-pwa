@@ -261,44 +261,6 @@ export const ImageCropEditor = forwardRef<ImageCropEditorHandle, ImageCropEditor
     setIsInteracting(false);
   }, [source, initialCropBox]);
 
-  // === 逆时针旋转 90° ===
-  const handleRotateLeft = useCallback(() => {
-    if (rotating || !sourceUrl || naturalSize.w === 0) return;
-    setRotating(true);
-    const img = new Image();
-    img.crossOrigin = "anonymous";
-    img.onload = () => {
-      const canvas = document.createElement("canvas");
-      canvas.width = img.naturalHeight;
-      canvas.height = img.naturalWidth;
-      const ctx = canvas.getContext("2d");
-      if (!ctx) {
-        onErrorRef.current?.("无法创建 canvas 上下文");
-        setRotating(false);
-        return;
-      }
-      ctx.translate(canvas.width / 2, canvas.height / 2);
-      ctx.rotate((-90 * Math.PI) / 180);
-      ctx.drawImage(img, -img.naturalWidth / 2, -img.naturalHeight / 2);
-      const newDataUrl = canvas.toDataURL("image/jpeg", 0.95);
-      setSourceUrl(newDataUrl);
-      rotatedRef.current = (rotatedRef.current - 90 + 360) % 360;
-      setActiveCropBox(undefined);
-      initialized.current = false;
-      setNaturalSize({ w: 0, h: 0 });
-      setCropFrame({ x: 0, y: 0, width: 0, height: 0 });
-      pointers.current.clear();
-      dragMode.current = null;
-      setIsInteracting(false);
-      setRotating(false);
-    };
-    img.onerror = () => {
-      onErrorRef.current?.("旋转失败: 图片加载错误");
-      setRotating(false);
-    };
-    img.src = sourceUrl;
-  }, [rotating, sourceUrl, naturalSize.w]);
-
   // === 顺时针旋转 90° ===
   const handleRotateRight = useCallback(() => {
     if (rotating || !sourceUrl || naturalSize.w === 0) return;

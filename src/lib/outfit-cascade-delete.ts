@@ -1,5 +1,5 @@
 // v1.1.7 batch1-3: 套装级联删除 — 删除套装时清理未来计划与打包清单引用
-import type { OutfitPlanEntry, PlanPackingChecklistItem, SavedOutfit } from "@/lib/types";
+import type { OutfitPlanEntry } from "@/lib/types";
 
 export interface OutfitCascadeDeleteResult {
   deletedOutfitIds: string[];
@@ -11,14 +11,6 @@ export interface OutfitCascadeDeleteResult {
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type CascadeDb = any;
-
-function getLocalDateKey(): string {
-  const d = new Date();
-  const yyyy = d.getFullYear();
-  const mm = String(d.getMonth() + 1).padStart(2, "0");
-  const dd = String(d.getDate()).padStart(2, "0");
-  return `${yyyy}-${mm}-${dd}`;
-}
 
 export async function deleteOutfitWithCascade(input: {
   db: CascadeDb;

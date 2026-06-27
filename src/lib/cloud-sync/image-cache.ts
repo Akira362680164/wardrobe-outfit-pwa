@@ -13,7 +13,6 @@ import { requestAssetDownloadUrl } from "@/lib/cloud-sync/cloud-assets-api";
 import { sha256Hex } from "@/lib/cloud-sync/asset-metadata";
 import { loadCloudBridgeContext } from "@/lib/cloud-sync/bridge-context";
 import { loadAuthSessionSnapshot } from "@/lib/auth-session-store";
-import { stableUserIdHash } from "@/lib/workspace-registry";
 import type { CloudSyncRequestOptions } from "@/lib/cloud-sync/cloud-sync-api";
 
 export interface ImageCacheStorage {
@@ -158,6 +157,6 @@ function parseMeta(raw: ArrayBuffer): { mimeType?: string } | null {
   }
 }
 
-function guessMime(assetId: string): string {
+function guessMime(_assetId: string): string {
   return "image/jpeg"; // ponytail: COS objectKey contains extension but assetId doesn't; default to jpeg, caller can override via meta
 }

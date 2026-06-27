@@ -46,7 +46,6 @@ import type {
   PushMutation,
   PushResponse,
   SyncChange,
-  SyncEntity,
   SyncEntityType as SyncEntityTypeContract,
 } from "@wardrobe/cloud-contracts";
 

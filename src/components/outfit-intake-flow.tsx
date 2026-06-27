@@ -1,11 +1,10 @@
 "use client";
 
-import { CheckCircle2, Layers, PackageCheck, Search, Shirt, Sparkles, Tag } from "lucide-react";
+import { CheckCircle2, Layers, PackageCheck, Search, Tag } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { IntakeFlowShell, type IntakeFlowStep } from "@/components/intake-flow-shell";
 import {
  ConfirmSummaryCard,
- DraftFieldLine,
  DraftQualitySummary,
  EmptyStateBox,
  IntakeStepSection,

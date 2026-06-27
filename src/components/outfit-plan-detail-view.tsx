@@ -1,6 +1,6 @@
 "use client";
 
-import { ChevronLeft, Package } from "lucide-react";
+import { Package } from "lucide-react";
 import { useState } from "react";
 import type { OutfitCalendarPlan, OutfitPlanEntry, SavedOutfit, WardrobeItem } from "@/lib/types";
 import { enumerateDateRange } from "@/lib/outfit-calendar";

@@ -16,7 +16,6 @@ interface OutfitPlanSelectSheetProps {
   // v1.1 review fix: 标题按 dateKey 自动变化，今天/未来 vs 过去 文案不同
   dateKey?: string;
   onSelect: (outfit: SavedOutfit) => void;
-  onMessage: (msg: string, type?: "success" | "error" | "info") => void;
 }
 
 function formatDateKeyLabel(dateKey: string): string {
@@ -24,7 +23,7 @@ function formatDateKeyLabel(dateKey: string): string {
   return `${parseInt(m!, 10)}月${parseInt(d!, 10)}日`;
 }
 
-export function OutfitPlanSelectSheet({ open, onClose, outfits, items, todayKey, dateKey, onSelect, onMessage }: OutfitPlanSelectSheetProps) {
+export function OutfitPlanSelectSheet({ open, onClose, outfits, items, todayKey, dateKey, onSelect }: OutfitPlanSelectSheetProps) {
   const [search, setSearch] = useState("");
 
   const filtered = useMemo(() => {

@@ -169,7 +169,6 @@ export function useWardrobeImageIntakeController(
         }
         // 设置队列状态
         setCaptureImageQueue((prev) => {
-          const existing = prev.length;
           const combined = [...prev, ...queue];
           if (combined.length > MAX_QUEUE_SIZE) {
             showMessage(`一次最多选择 ${MAX_QUEUE_SIZE} 张, 已取前 ${MAX_QUEUE_SIZE} 张`, "info");

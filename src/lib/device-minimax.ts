@@ -25,9 +25,8 @@ import {
   type WardrobeItem,
   type WeatherInsight,
 } from "@/lib/types";
-import { normalizeAiColorInfo, getPrimaryColors, getAccentColors, emptyColorInfo } from "@/lib/color-fields";
+import { normalizeAiColorInfo, getPrimaryColors, getAccentColors } from "@/lib/color-fields";
 import {
-  COLOR_OPTIONS,
   buildColorRecognitionPrompt,
   normalizeSystemColorList,
 } from "@/lib/color-catalog";
