@@ -1,3 +1,14 @@
+## 2026-06-27 / v2.0.1 / Codex — 增加 Android 真机安装与 ADB 调试流程
+
+- **目的**：固化“已连接且已授权的 Android 手机可直接安装当前 APK 并做真机调试”的长期规则。
+- **版本**：保持 `2.0.1`，本次仅修改协作文档，不构建 APK。
+- **改动文件**：`AGENTS.md`、`VERSION_HISTORY.md`。
+- **改动内容**：新增 ADB 设备状态检查、本地验证门禁、保留数据的覆盖安装、App 启动与 logcat 调试、真机回归范围及结果记录要求；明确禁止自动卸载、清数据或读取用户隐私数据。
+- **验证结果**：`adb devices -l` 已识别 `MEIZU 21 Pro` 且状态为 `device`；`git diff --check` 通过。
+- **风险门禁**：**low**（纯文档治理，不改业务代码或 Android 工程）。
+- **未触发 subagent**：用户未通知。
+- **未验证风险**：本次未构建、安装或操作 App；流程将在后续实际 Android 任务中执行。
+
 ## 2026-06-27 / v2.0.2 / Claude Code — 远程诊断系统 Commit 2: 服务端存储与读取
 
 - **目的**：实施 `WARDROBE_REMOTE_DIAGNOSTIC_V1_REQUIREMENTS.md` Commit 2，实现服务端诊断工单存储、COS 公共能力提取、Reader Token 鉴权和过期清理。

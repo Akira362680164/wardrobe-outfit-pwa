@@ -142,6 +142,17 @@
 - 动画、触摸、弹窗、横屏、图片预览相关改动：必须做实际视觉或交互检查，至少覆盖手机窄屏和横屏风险点。
 - MiniMax 现场调用如果没有用户 Key 或网络条件，必须说明未做 live 验证，并用本地解析、兜底逻辑或单元脚本验证可验证部分。
 
+### Android 真机测试流程（ADB）
+
+当本机连接了已开启开发者模式和 USB 调试的 Android 手机，且本次任务涉及 Android、移动端交互或 APK 验证时，agent 可以直接安装当前应用并进行真机调试，无需再询问是否允许安装。
+
+1. 连接检查：先运行 `adb devices -l`。只有目标设备状态为 `device` 时才继续；`unauthorized` / `offline` 或同时连接多台设备时停止安装，先说明需要用户处理的连接或目标设备问题。
+2. 本地门禁：先按改动范围完成 typecheck、逻辑测试和 build；需进入 APK 的改动仍须遵守本文的版本号、固定签名和 `npm run android:apk` 规则。
+3. 保留数据安装：使用 `adb install -r android/app/build/outputs/apk/release/app-release.apk` 覆盖安装。不得自动卸载 App、清除 App 数据或使用会导致降级/数据丢失的安装参数。如果出现签名冲突或版本降级冲突，停止并告知用户，不得通过卸载绕过。
+4. 启动与调试：安装成功后可使用 `adb shell monkey -p com.wardrobe.outfit -c android.intent.category.LAUNCHER 1` 启动 App，通过 `adb logcat`、真机截图、屏幕录制和必要的 ADB 输入操作复现问题。调试时不得主动读取或导出手机中的 MiniMax Key、用户照片、衣橱数据和备份文件。
+5. 真机检查：按任务风险至少验证启动、本次改动的主路径、Android 返回键、窄屏和横屏风险点；崩溃或网络问题应保留相关 logcat 摘要。
+6. 结果记录：在 `VERSION_HISTORY.md` 写明手机型号、Android 版本、APK 版本、安装结果、已测路径、日志/视觉结果和未覆盖风险。
+
 subagent 独立审查只在用户明确通知或要求时触发。默认情况下，agent 不要因为风险等级、改动规模或自身判断自动启动 subagent；如需独立审查，必须先看到用户明确说“启动 subagent 审查”“独立审核”“让审查专家看一下”等同等意思的指令。
 
 风险门禁仍用于决定本地验证强度和历史记录口径，但不再自动触发 subagent。完成修改后，可运行 `node scripts/review-gate.mjs --staged` 检查本次待提交改动，或运行 `node scripts/review-gate.mjs` 检查整个工作区改动。
