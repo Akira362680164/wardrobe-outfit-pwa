@@ -57,7 +57,10 @@ function pre() {
 
   let ok = true;
 
-  if (!isTest) {
+  // v2.0.1: 允许临时 HTTP + 云开关 ON 构建（域名 HTTPS 备案中）
+  const isHttpAllowed = version === "2.0.1" && apiUrl.startsWith("http://");
+
+  if (!isTest && !isHttpAllowed) {
     if (!apiUrl.startsWith("https://")) {
       console.error("❌ 正式构建必须使用 HTTPS API，当前：", apiUrl);
       ok = false;
@@ -74,6 +77,10 @@ function pre() {
       console.error("❌ 正式构建 CLOUD_SYNC 应默认关闭");
       ok = false;
     }
+  }
+
+  if (isHttpAllowed) {
+    console.log("⚠️  v2.0.1 使用临时 HTTP API，域名 HTTPS 可用后需切换");
   }
 
   if (!apiUrl) {
