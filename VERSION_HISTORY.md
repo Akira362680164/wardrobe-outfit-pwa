@@ -1,3 +1,25 @@
+## 2026-06-27 / v2.0.2 / Claude Code — 远程诊断系统 Commit 4: 本地 Agent 工具与端到端交付
+
+- **目的**：实施 `WARDROBE_REMOTE_DIAGNOSTIC_V1_REQUIREMENTS.md` Commit 4，创建本地 Agent CLI 工具、更新隐私文档和验证端到端链路。
+- **版本**：保持 `2.0.1`。
+- **改动文件**：
+  - `scripts/diagnosis-list.ts`（新增）：列出远程诊断工单，调用 GET `/api/admin/diagnostics/cases`。
+  - `scripts/diagnosis-latest.ts`（新增）：查看最新诊断工单，调用 GET `/api/admin/diagnostics/cases/latest`。
+  - `scripts/diagnosis-pull.ts`（新增）：下载诊断工单原始 JSON，调用 POST `/api/admin/diagnostics/cases/:caseId/download-url`，校验 SHA-256，保存到 `.diagnostics/`。
+  - `scripts/diagnosis-inspect.ts`（新增）：检查已下载的诊断数据摘要（构建信息、数据量、最近事件、物品摘要等）。
+  - `scripts/test-diagnosis-cli.ts`（新增）：CLI 工具结构测试（37 项断言）。
+  - `package.json`：新增 `diagnosis:list`、`diagnosis:latest`、`diagnosis:pull`、`diagnosis:inspect` npm scripts。
+  - `.gitignore`：排除 `.diagnostics/` 目录。
+  - `AGENTS.md`：新增「远程诊断与隐私边界」章节，明确诊断上传的用户主动触发原则、数据脱敏规则、图片摘要化、过期清理和 Agent 调试工作流。
+- **验证结果**：
+  - `npm run typecheck`：✅ 零错误。
+  - `npx tsx scripts/test-diagnosis-cli.ts`：✅ 37/37。
+  - `npx tsx scripts/test-diagnostic-log.ts`：✅ 41/41。
+  - `npx tsx scripts/test-build-identity.ts`：✅ 19/19。
+  - `npm run api:test`（诊断测试）：✅ 10/10。（另有 2 个预先存在的非诊断测试失败。）
+- **风险门禁**：low（新增 CLI 工具、文档和配置，未改动现有业务代码或 Android 工程）。
+- **未触发 subagent**：用户未通知。
+
 ## 2026-06-27 / v2.0.2 / Claude Code — 远程诊断系统 Commit 3: 客户端原地替换
 
 - **目的**：实施 `WARDROBE_REMOTE_DIAGNOSTIC_V1_REQUIREMENTS.md` Commit 3，将本地诊断导出替换为云端诊断上传。

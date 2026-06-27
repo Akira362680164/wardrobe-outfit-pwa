@@ -63,6 +63,22 @@
 - 未来改进方向：迁移到 Android Keystore（通过 Capacitor Secure Storage 插件或自写 Native 插件）。**v0.9.15 暂缓**——优先修其他 critical。
 - 用户须知：不要在 root / 共享手机 / 借出手机上使用本 App；备份文件未加密（`Documents/WardrobeBackups/wardrobe-backup-*.json`），含完整衣橱数据和 tryOnProfile 全身照，请妥善保管。
 
+## 远程诊断与隐私边界
+
+本 App 支持用户主动上传诊断数据到云端，用于排查疑难问题。诊断数据包含应用状态、导航路径、网络环境、事件日志和数据量统计，**不包含**用户衣物照片原图、MiniMax Key、密码或备份文件内容。
+
+- **用户主动触发**：诊断上传必须由用户在设置页点击"上传诊断数据"并确认问题描述后才能发起；不允许静默上传、后台自动上报或崩溃强制上传。
+- **数据脱敏**：上传前所有字符串字段经过 `sanitizeValue` 处理，自动遮盖 API Key、Bearer Token、JWT、手机号、邮箱、URL 查询参数中的敏感 token，以及文件系统路径中的用户主目录。
+- **图片摘要化**：诊断日志中的图片字段只记录 MIME 类型、长度、格式标记和指纹哈希，不传输图片内容。
+- **本地优先**：诊断数据首先在本机构建为 JSON，用户确认后才上传；构建和上传过程都是本地可中断的。
+- **过期清理**：云端诊断工单 30 天后自动过期删除，pending 状态超过 24 小时未上传的工单也会被清理。
+- **Agent 调试工作流**：开发者/Agent 可通过 CLI 工具下载和分析已上传的诊断数据：
+  - `npm run diagnosis:list` — 列出远程诊断工单。
+  - `npm run diagnosis:latest` — 查看最新工单摘要。
+  - `npm run diagnosis:pull <caseId>` — 下载原始诊断 JSON 到 `.diagnostics/`。
+  - `npm run diagnosis:inspect <caseId>` — 检查已下载的诊断数据摘要。
+  - 以上命令需要 `DIAGNOSTIC_READER_TOKEN` 环境变量，下载结果保存在 `.diagnostics/`（已加入 `.gitignore`，不进入版本控制）。
+
 ## Git 版本管理
 
 本项目从 `v0.9.9` 起使用 Git 管理源码版本。Git 是代码回滚和差异审查工具，`VERSION_HISTORY.md` 仍是人类可读的版本与交付说明，两者都要维护。

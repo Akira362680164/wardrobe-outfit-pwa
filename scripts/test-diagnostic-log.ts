@@ -55,12 +55,12 @@ assert(typeof identity.repository === "string", "repository 为字符串");
 // 4. buildWardrobeDiagnosticLog 结构
 const log = buildWardrobeDiagnosticLog({
   activeView: "settings",
-  route: "/settings",
+  route: { name: "settings_home" },
   items: [],
   locations: [],
   outfits: [],
   wishlistItems: [],
-  backfillState: { status: "idle" as const, processed: 0, total: 0, lastItemId: null },
+  backfillState: { status: "idle" as const, processed: 0, total: 0, failed: 0, currentJob: null, startedAt: null, failedItems: [] },
   miniMaxSettings: { apiHost: "https://api.example.com", model: "test-model" },
 });
 
@@ -70,7 +70,7 @@ assert(typeof log.clientRequestId === "string", "clientRequestId 存在");
 assert(log.build.appVersion === identity.appVersion, "build.appVersion 一致");
 assert(log.app.capacitorPlatform === "web" || log.app.capacitorPlatform === "ios" || log.app.capacitorPlatform === "android", "capacitorPlatform 合法");
 assert(log.navigation.activeView === "settings", "navigation.activeView 正确");
-assert(log.navigation.route === "/settings", "navigation.route 正确");
+assert(log.navigation.route.name === "settings_home", "navigation.route 正确");
 assert(typeof log.counts === "object", "counts 存在");
 assert(Array.isArray(log.recentEvents), "recentEvents 为数组");
 assert(log.userReport.description === null, "userReport.description 默认为 null");

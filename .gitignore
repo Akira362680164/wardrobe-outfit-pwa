@@ -42,3 +42,6 @@ deploy/backups/
 
 # review artifacts (visual QA, intake AI fixtures) — local only
 review-artifacts/
+
+# diagnostic downloads — local agent CLI only
+.diagnostics/
