@@ -57,8 +57,8 @@ function pre() {
 
   let ok = true;
 
-  // v2.0.1: 允许临时 HTTP + 云开关 ON 构建（域名 HTTPS 备案中）
-  const isHttpAllowed = version === "2.0.1" && apiUrl.startsWith("http://");
+  // v2.0.1/v2.0.2: 允许临时 HTTP + 云开关 ON 构建（域名 HTTPS 备案中）
+  const isHttpAllowed = (version === "2.0.1" || version.startsWith("2.0.2")) && apiUrl.startsWith("http://");
 
   if (!isTest && !isHttpAllowed) {
     if (!apiUrl.startsWith("https://")) {
