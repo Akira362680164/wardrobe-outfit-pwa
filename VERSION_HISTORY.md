@@ -1,3 +1,18 @@
+## 2026-06-27 / v2.0.2-test / Codex — 生产 API locations 热修复部署与 Android 真机回归
+
+- **目的**：完成新账号注册后自动登录卡在云端衣橱初始化页面的生产修复。
+- **版本**：保持 `2.0.2-test`；本次只部署 API/数据库迁移，不重新构建或安装 APK。
+- **部署策略**：生产环境尚未配置 COS，未直接部署依赖 COS 就绪检查的完整主线 API；以当前线上 `wardrobe-api:114d3b8` 构建源为基线，只合入 `closetLocation` 契约、实体表映射、bootstrap 查询/返回和 `0005_closet_locations` 迁移。
+- **生产备份**：`/opt/wardrobe-cloud/backups/postgres/wardrobe-20260627-201034.sql`，54,716 bytes，SHA-256 `e035355e1dd5706001804a6a72e1b3c32497ad02c1d87ce3e182a81efe5bc2e6`，权限已收紧为 `600`；切换前 `.env` 备份为 `/opt/wardrobe-cloud/backups/env/.env.20260627-201245.bak`。
+- **镜像与回滚**：旧镜像 `wardrobe-api:114d3b8` 保留；新镜像 `wardrobe-api:b71e644-hotfix`（image `sha256:c4a67a1955089c91bbbf617f09263a260597a502980ce38b5fbd6b34294e33fb`）；服务器 release 源码位于 `/opt/wardrobe-cloud/releases/114d3b8-closet-hotfix`。
+- **迁移验证**：生产 PostgreSQL `locations` 表存在，`sync_entity_type` 已包含 `closetLocation`；API 容器状态 healthy，`/api/health` 和 `/api/ready` 均返回 200，`/api/version` 标识 `b71e644-hotfix`。
+- **契约验证**：使用测试账号登录 200，`/api/sync/bootstrap` 返回 200 且明确包含 `closetLocations: []`，验证会话已注销。
+- **Android 真机验证**：MEIZU 21 Pro / Android 16；仅 force-stop 并重启已安装的 `2.0.2-test`，保留账号和 App 数据；原会话已离开“云端衣橱初始化失败”页面并进入 0 件衣物的衣橱首页，进程正常且无启动崩溃。
+- **本地验证**：`npm run cloud:contracts:typecheck` 通过；`npm run api:typecheck` 通过；`sync-contracts.test.ts` 6/6 通过；全量 API 测试 53/54 通过，唯一失败为既有 health 测试未注入 COS/JWT 环境导致 `/ready` 预期不一致，与本次 locations 迁移无关。
+- **风险门禁**：**high**（生产数据库迁移、API 镜像切换、真机账号初始化回归）。
+- **未触发 subagent**：用户未通知。
+- **未验证风险**：未测非空账号的全量云同步、COS 图片上传/下载和远程诊断路由；这些功能仍等待生产 COS 配置后再部署完整主线 API。
+
 ## 2026-06-27 / v2.0.2-test / Codex — 修复新账号云端衣橱初始化迁移缺口
 
 - **目的**：修复 Android 真机注册后自动登录卡在“正在准备本机衣橱”的根因，为当前 bootstrap 契约补齐服务端 `closetLocations` 实体的数据库迁移。
