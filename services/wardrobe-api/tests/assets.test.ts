@@ -14,11 +14,13 @@ import type { SessionService } from "../src/auth/session.js";
 import type { AssetService } from "../src/assets/service.js";
 import {
   buildAssetObjectKey,
-  createCosPutObjectPresignedUrl,
   formatManifestCursor,
-  loadCosUploadConfig,
   parseManifestCursor,
 } from "../src/assets/service.js";
+import {
+  createCosPutObjectPresignedUrl,
+  loadCosConfig,
+} from "../src/storage/cos.js";
 import { AuthApiError } from "../src/auth/registrations.js";
 
 const root = path.resolve(__dirname, "../../..");
@@ -110,8 +112,8 @@ describe("asset COS signing", () => {
   });
 
   it("requires complete COS env before enabling uploads", () => {
-    expect(loadCosUploadConfig({})).toBeNull();
-    expect(loadCosUploadConfig({
+    expect(loadCosConfig({})).toBeNull();
+    expect(loadCosConfig({
       COS_BUCKET: "bucket",
       COS_REGION: "ap-guangzhou",
       COS_SECRET_ID: "sid",

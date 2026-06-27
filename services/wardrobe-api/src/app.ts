@@ -12,6 +12,9 @@ import { registerSessionRoutes } from "./auth/session-routes.js";
 import { SessionService } from "./auth/session.js";
 import { registerAssetRoutes } from "./assets/routes.js";
 import { AssetService } from "./assets/service.js";
+import { registerDiagnosticRoutes, registerDiagnosticAdminRoutes } from "./diagnostics/routes.js";
+import { DiagnosticService } from "./diagnostics/service.js";
+import { registerRequestTraceMiddleware } from "./diagnostics/request-trace-middleware.js";
 import { readFile } from "node:fs/promises";
 import { checkDatabaseReady } from "./db/client.js";
 import { getApiVersion } from "./version.js";
@@ -27,6 +30,7 @@ export interface BuildAppOptions {
   sessionService?: SessionService;
   syncService?: SyncService;
   assetService?: AssetService;
+  diagnosticService?: DiagnosticService;
 }
 
 export function buildApp(options: BuildAppOptions = {}): FastifyInstance {
@@ -38,12 +42,15 @@ export function buildApp(options: BuildAppOptions = {}): FastifyInstance {
       : false,
   });
 
+  registerRequestTraceMiddleware(app);
+
   app.addHook("onRequest", async (request, reply) => {
     const origin = request.headers.origin;
     if (origin && getAllowedOrigins().has(origin)) {
       reply.header("Access-Control-Allow-Origin", origin);
       reply.header("Access-Control-Allow-Credentials", "true");
-      reply.header("Access-Control-Allow-Headers", "Authorization, Content-Type, X-Wardrobe-Device-Id");
+      reply.header("Access-Control-Allow-Headers", "Authorization, Content-Type, X-Wardrobe-Device-Id, X-Wardrobe-Request-Id, X-Diagnostic-Actor");
+      reply.header("Access-Control-Expose-Headers", "X-Wardrobe-Request-Id");
       reply.header("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
       reply.header("Vary", "Origin");
     }
@@ -112,6 +119,8 @@ export function buildApp(options: BuildAppOptions = {}): FastifyInstance {
   registerSessionRoutes(app, sharedSessionService);
   registerSyncRoutes(app, options.syncService ?? new SyncService(), sharedSessionService ?? new SessionService());
   registerAssetRoutes(app, options.assetService ?? new AssetService(), sharedSessionService ?? new SessionService());
+  registerDiagnosticRoutes(app, sharedSessionService ?? new SessionService(), options.diagnosticService);
+  registerDiagnosticAdminRoutes(app, options.diagnosticService);
 
   return app;
 }

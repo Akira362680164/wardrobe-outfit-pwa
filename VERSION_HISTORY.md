@@ -1,3 +1,30 @@
+## 2026-06-27 / v2.0.2 / Claude Code — 远程诊断系统 Commit 2: 服务端存储与读取
+
+- **目的**：实施 `WARDROBE_REMOTE_DIAGNOSTIC_V1_REQUIREMENTS.md` Commit 2，实现服务端诊断工单存储、COS 公共能力提取、Reader Token 鉴权和过期清理。
+- **版本**：保持 `2.0.1`。
+- **改动文件**：
+  - `services/wardrobe-api/src/storage/cos.ts`（新增）：提取 COS 公共能力（loadCosConfig、createCosPut/Get/Head/Delete PresignedUrl、verifyCosObject）。
+  - `services/wardrobe-api/src/assets/service.ts`：改为使用 `storage/cos.ts`，删除内嵌 COS 签名实现。
+  - `services/wardrobe-api/src/db/schema.ts`：新增 `diagnosticCaseStatus` 枚举和 `diagnostic_cases`、`diagnostic_access_audits`、`api_request_traces`、`diagnostic_case_request_traces` 四张表。
+  - `services/wardrobe-api/migrations/0004_remote_diagnostics.sql`（新增）：数据库迁移。
+  - `services/wardrobe-api/migrations/meta/_journal.json`：登记新迁移。
+  - `services/wardrobe-api/src/diagnostics/case-id.ts`（新增）：工单号生成器（`WD-YYYYMMDD-XXXXXX`）。
+  - `services/wardrobe-api/src/diagnostics/reader-auth.ts`（新增）：Reader Token 哈希与恒定时间校验。
+  - `services/wardrobe-api/src/diagnostics/cleanup.ts`（新增）：过期诊断数据清理（pending 24h + uploaded 30d）。
+  - `services/wardrobe-api/src/diagnostics/service.ts`（新增）：诊断服务核心（authorizeUpload、completeUpload、listCases、getLatestCase、getCaseMetadata、createDownloadUrl、getCaseRequestTraces、recordAccessAudit）。
+  - `services/wardrobe-api/src/diagnostics/routes.ts`（新增）：用户上传路由 `/api/diagnostics/cases/*` 和 Agent 只读路由 `/api/admin/diagnostics/cases/*`。
+  - `services/wardrobe-api/src/diagnostics/request-trace-middleware.ts`（新增）：服务端请求轨迹中间件。
+  - `services/wardrobe-api/src/app.ts`：注册诊断路由、请求轨迹中间件、CORS 暴露 `X-Wardrobe-Request-Id`。
+  - `services/wardrobe-api/src/server.ts`：启动诊断过期清理定时任务。
+  - `services/wardrobe-api/tests/diagnostics.test.ts`（新增）：10 项诊断服务端测试。
+  - `services/wardrobe-api/tests/assets.test.ts`：修复导入（改为从 `storage/cos.js` 导入）。
+- **验证结果**：
+  - `npm run cloud:contracts:typecheck`：✅ 零错误。
+  - `npm run api:typecheck`：✅ 零错误。
+  - `npx vitest run tests/diagnostics.test.ts`：✅ 10/10。
+- **风险门禁**：high（新增数据库表、COS 提取重构、服务端路由、鉴权）。
+- **未触发 subagent**：用户未通知。
+
 ## 2026-06-27 / v2.0.2 / Claude Code — 远程诊断系统 Commit 1: 构建身份与共享契约
 
 - **目的**：实施 `WARDROBE_REMOTE_DIAGNOSTIC_V1_REQUIREMENTS.md` Commit 1，为远程诊断上传建立构建身份注入和共享契约基线。

@@ -29,6 +29,13 @@
       "when": 1782432000003,
       "tag": "0003_direct_registration",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1782432000004,
+      "tag": "0004_remote_diagnostics",
+      "breakpoints": true
     }
   ]
 }

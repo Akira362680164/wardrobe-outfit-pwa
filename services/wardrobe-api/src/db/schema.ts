@@ -55,6 +55,12 @@ export const syncMutationStatus = pgEnum("sync_mutation_status", [
   "rejected",
 ]);
 
+export const diagnosticCaseStatus = pgEnum("diagnostic_case_status", [
+  "pending_upload",
+  "uploaded",
+  "expired",
+]);
+
 export const users = pgTable("users", {
   id: uuid("id").primaryKey().defaultRandom(),
   displayName: text("display_name"),
@@ -378,5 +384,94 @@ export const syncMutations = pgTable(
   (table) => ({
     userMutationUnique: uniqueIndex("sync_mutations_user_mutation_unique").on(table.userId, table.mutationId),
     userEntityIdx: index("sync_mutations_user_entity_idx").on(table.userId, table.entityType, table.entityId),
+  }),
+);
+
+export const diagnosticCases = pgTable(
+  "diagnostic_cases",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    caseId: text("case_id").notNull(),
+    clientRequestId: uuid("client_request_id").notNull(),
+    userId: uuid("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+    deviceId: text("device_id").notNull(),
+    appVersion: text("app_version").notNull(),
+    versionCode: integer("version_code").notNull(),
+    clientGitCommit: text("client_git_commit").notNull(),
+    buildTime: timestamp("build_time", { withTimezone: true }).notNull(),
+    buildChannel: text("build_channel").notNull(),
+    schemaVersion: integer("schema_version").notNull(),
+    problemDescription: text("problem_description"),
+    objectKey: text("object_key").notNull(),
+    sha256: text("sha256").notNull(),
+    sizeBytes: integer("size_bytes").notNull(),
+    eventCount: integer("event_count").notNull().default(0),
+    itemCount: integer("item_count").notNull().default(0),
+    outfitCount: integer("outfit_count").notNull().default(0),
+    wishlistCount: integer("wishlist_count").notNull().default(0),
+    status: diagnosticCaseStatus("status").notNull().default("pending_upload"),
+    uploadAuthorizedAt: timestamp("upload_authorized_at", { withTimezone: true }).notNull(),
+    uploadedAt: timestamp("uploaded_at", { withTimezone: true }),
+    expiresAt: timestamp("expires_at", { withTimezone: true }),
+    ...timestamps,
+  },
+  (table) => ({
+    caseIdUnique: uniqueIndex("diagnostic_cases_case_id_unique").on(table.caseId),
+    userClientRequestUnique: uniqueIndex("diagnostic_cases_user_client_request_unique").on(table.userId, table.clientRequestId),
+    userCreatedIdx: index("diagnostic_cases_user_created_idx").on(table.userId, table.createdAt),
+    deviceCreatedIdx: index("diagnostic_cases_device_created_idx").on(table.deviceId, table.createdAt),
+    gitCommitIdx: index("diagnostic_cases_git_commit_idx").on(table.clientGitCommit),
+    statusExpiresIdx: index("diagnostic_cases_status_expires_idx").on(table.status, table.expiresAt),
+  }),
+);
+
+export const diagnosticAccessAudits = pgTable(
+  "diagnostic_access_audits",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    caseId: text("case_id").notNull(),
+    actorType: text("actor_type").notNull(),
+    actorId: text("actor_id").notNull(),
+    action: text("action").notNull(),
+    ipHash: text("ip_hash"),
+    userAgentHash: text("user_agent_hash"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+);
+
+export const apiRequestTraces = pgTable(
+  "api_request_traces",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    requestId: uuid("request_id").notNull(),
+    occurredAt: timestamp("occurred_at", { withTimezone: true }).notNull(),
+    method: text("method").notNull(),
+    routeTemplate: text("route_template").notNull(),
+    statusCode: integer("status_code").notNull(),
+    durationMs: integer("duration_ms").notNull(),
+    userIdHash: text("user_id_hash"),
+    deviceIdHash: text("device_id_hash"),
+    errorCode: text("error_code"),
+    serverVersion: text("server_version").notNull(),
+    serverGitCommit: text("server_git_commit").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => ({
+    requestIdUnique: uniqueIndex("api_request_traces_request_id_unique").on(table.requestId),
+    createdAtIdx: index("api_request_traces_created_at_idx").on(table.createdAt),
+    userIdCreatedIdx: index("api_request_traces_user_id_created_idx").on(table.userIdHash, table.createdAt),
+    deviceIdCreatedIdx: index("api_request_traces_device_id_created_idx").on(table.deviceIdHash, table.createdAt),
+  }),
+);
+
+export const diagnosticCaseRequestTraces = pgTable(
+  "diagnostic_case_request_traces",
+  {
+    diagnosticCaseId: uuid("diagnostic_case_id").notNull().references(() => diagnosticCases.id, { onDelete: "cascade" }),
+    apiRequestTraceId: uuid("api_request_trace_id").notNull().references(() => apiRequestTraces.id, { onDelete: "cascade" }),
+    linkedAt: timestamp("linked_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => ({
+    pk: uniqueIndex("diagnostic_case_request_traces_pk").on(table.diagnosticCaseId, table.apiRequestTraceId),
   }),
 );

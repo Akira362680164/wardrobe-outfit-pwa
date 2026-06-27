@@ -1,5 +1,3 @@
-import { createHash, createHmac } from "node:crypto";
-
 import { and, eq, sql } from "drizzle-orm";
 import type { NodePgDatabase } from "drizzle-orm/node-postgres";
 import type {
@@ -24,6 +22,14 @@ import {
 import { getDb } from "../db/client.js";
 import { assets } from "../db/schema.js";
 import type * as schema from "../db/schema.js";
+import {
+  createCosPutObjectPresignedUrl,
+  createCosGetObjectPresignedUrl,
+  verifyCosObject,
+  createCosDeleteObjectPresignedUrl,
+  loadCosConfig,
+  type CosConfig,
+} from "../storage/cos.js";
 
 export class AssetApiError extends Error {
   constructor(
@@ -35,21 +41,12 @@ export class AssetApiError extends Error {
   }
 }
 
-export interface CosUploadConfig {
-  bucket: string;
-  region: string;
-  secretId: string;
-  secretKey: string;
-  expiresSeconds: number;
-  protocol: "https" | "http";
-}
-
 type AssetRow = typeof assets.$inferSelect;
 
 export class AssetService {
   constructor(
     private readonly db?: NodePgDatabase<typeof schema>,
-    private readonly cosConfig: CosUploadConfig | null = loadCosUploadConfig(),
+    private readonly cosConfig: CosConfig | null = loadCosConfig(),
   ) {}
 
   async authorizeUpload(input: AssetUploadAuthorizeRequest & { userId: string; deviceId: string }): Promise<AssetUploadAuthorizeResponse> {
@@ -99,7 +96,6 @@ export class AssetService {
       throw new AssetApiError(409, "asset_upload_mismatch", "Asset upload metadata does not match authorization");
     }
 
-    // P1-N08: 向 COS 发 HEAD 验证对象已上传且尺寸/类型匹配
     if (this.cosConfig) {
       await verifyCosObject({
         config: this.cosConfig,
@@ -117,7 +113,6 @@ export class AssetService {
       completedAt: now.toISOString(),
       status: "uploaded",
     });
-    // P1-N10: 只有所有已授权变体都已 uploaded 才设全局 uploaded
     const otherVariant = input.variant === "original" ? "thumbnail" : "original";
     const otherPayload = getUploadPayload(existing.payload, otherVariant);
     const globalStatus = otherPayload && otherPayload.status === "uploaded" ? "uploaded" : "uploading";
@@ -181,7 +176,6 @@ export class AssetService {
     const db = this.database();
     const cursor = input.cursor ? parseManifestCursor(input.cursor) : null;
 
-    // P1-N10: 排除已删除资产
     const baseWhere = and(eq(assets.userId, input.userId), sql`${assets.deletedAt} IS NULL`);
     let query = db
       .select()
@@ -203,7 +197,6 @@ export class AssetService {
     const items = (hasMore ? rows.slice(0, input.limit) : rows).map((row) => {
       const originalPayload = getUploadPayload(row.payload, "original");
       const thumbnailPayload = getUploadPayload(row.payload, "thumbnail");
-      // P1-N10: 只返回真正 uploaded 的变体
       const originalReady = originalPayload && originalPayload.status === "uploaded";
       const thumbnailReady = thumbnailPayload && thumbnailPayload.status === "uploaded";
       const derivedStatus: "uploading" | "uploaded" | "failed" =
@@ -313,141 +306,10 @@ export class AssetService {
   }
 }
 
-export function loadCosUploadConfig(env: Record<string, string | undefined> = process.env): CosUploadConfig | null {
-  const bucket = env.COS_BUCKET?.trim();
-  const region = env.COS_REGION?.trim();
-  const secretId = env.COS_SECRET_ID?.trim();
-  const secretKey = env.COS_SECRET_KEY?.trim();
-  if (!bucket || !region || !secretId || !secretKey) return null;
-  return {
-    bucket,
-    region,
-    secretId,
-    secretKey,
-    expiresSeconds: Math.min(Math.max(Number(env.COS_UPLOAD_EXPIRES_SECONDS ?? 600) || 600, 60), 3600),
-    protocol: env.COS_PROTOCOL === "http" ? "http" : "https",
-  };
-}
-
 export function buildAssetObjectKey(userId: string, assetId: string, variant: AssetVariant, sha256: string, mimeType: string): string {
   return `users/${userId}/assets/${assetId}/${variant}-${sha256.slice(0, 16)}.${extensionForMimeType(mimeType)}`;
 }
 
-export function createCosPutObjectPresignedUrl(input: {
-  config: CosUploadConfig;
-  objectKey: string;
-  now: Date;
-}): string {
-  const start = Math.floor(input.now.getTime() / 1000);
-  const end = start + input.config.expiresSeconds;
-  const keyTime = `${start};${end}`;
-  const host = `${input.config.bucket}.cos.${input.config.region}.myqcloud.com`;
-  const uri = `/${input.objectKey.split("/").map(encodeURIComponent).join("/")}`;
-  const httpString = `put\n${uri}\n\nhost=${host}\n`;
-  const stringToSign = `sha1\n${keyTime}\n${sha1Hex(httpString)}\n`;
-  const signKey = hmacSha1Hex(input.config.secretKey, keyTime);
-  const signature = hmacSha1Hex(signKey, stringToSign);
-  const authorization = [
-    "q-sign-algorithm=sha1",
-    `q-ak=${input.config.secretId}`,
-    `q-sign-time=${keyTime}`,
-    `q-key-time=${keyTime}`,
-    "q-header-list=host",
-    "q-url-param-list=",
-    `q-signature=${signature}`,
-  ].join("&");
-  const url = new URL(`${input.config.protocol}://${host}${uri}`);
-  url.searchParams.set("sign", authorization);
-  return url.toString();
-}
-
-// P1-N08: 向 COS 发 HEAD 请求验证对象存在且元数据匹配
-async function verifyCosObject(input: {
-  config: CosUploadConfig;
-  objectKey: string;
-  expectedSizeBytes: number;
-  expectedMimeType: string;
-}): Promise<void> {
-  const now = new Date();
-  const host = `${input.config.bucket}.cos.${input.config.region}.myqcloud.com`;
-  const uri = `/${input.objectKey.split("/").map(encodeURIComponent).join("/")}`;
-  const headUrl = createCosHeadObjectPresignedUrl({
-    config: input.config,
-    objectKey: input.objectKey,
-    now,
-  });
-
-  const response = await fetch(headUrl, { method: "HEAD" });
-  if (!response.ok) {
-    throw new AssetApiError(422, "asset_upload_incomplete", `COS object not found or not accessible (status ${response.status})`);
-  }
-  const contentLength = response.headers.get("content-length");
-  const contentType = response.headers.get("content-type");
-  if (contentLength && Number(contentLength) !== input.expectedSizeBytes) {
-    throw new AssetApiError(422, "asset_size_mismatch", `COS object size ${contentLength} does not match expected ${input.expectedSizeBytes}`);
-  }
-  if (contentType && contentType.toLowerCase() !== input.expectedMimeType.toLowerCase()) {
-    throw new AssetApiError(422, "asset_type_mismatch", `COS object type ${contentType} does not match expected ${input.expectedMimeType}`);
-  }
-}
-
-function createCosHeadObjectPresignedUrl(input: {
-  config: CosUploadConfig;
-  objectKey: string;
-  now: Date;
-}): string {
-  const start = Math.floor(input.now.getTime() / 1000);
-  const end = start + 300; // HEAD 只需 5 分钟有效期
-  const keyTime = `${start};${end}`;
-  const host = `${input.config.bucket}.cos.${input.config.region}.myqcloud.com`;
-  const uri = `/${input.objectKey.split("/").map(encodeURIComponent).join("/")}`;
-  const httpString = `head\n${uri}\n\nhost=${host}\n`;
-  const stringToSign = `sha1\n${keyTime}\n${sha1Hex(httpString)}\n`;
-  const signKey = hmacSha1Hex(input.config.secretKey, keyTime);
-  const signature = hmacSha1Hex(signKey, stringToSign);
-  const authorization = [
-    "q-sign-algorithm=sha1",
-    `q-ak=${input.config.secretId}`,
-    `q-sign-time=${keyTime}`,
-    `q-key-time=${keyTime}`,
-    "q-header-list=host",
-    "q-url-param-list=",
-    `q-signature=${signature}`,
-  ].join("&");
-  const url = new URL(`${input.config.protocol}://${host}${uri}`);
-  url.searchParams.set("sign", authorization);
-  return url.toString();
-}
-
-export function createCosGetObjectPresignedUrl(input: {
-  config: CosUploadConfig;
-  objectKey: string;
-  now: Date;
-}): string {
-  const start = Math.floor(input.now.getTime() / 1000);
-  const end = start + input.config.expiresSeconds;
-  const keyTime = `${start};${end}`;
-  const host = `${input.config.bucket}.cos.${input.config.region}.myqcloud.com`;
-  const uri = `/${input.objectKey.split("/").map(encodeURIComponent).join("/")}`;
-  const httpString = `get\n${uri}\n\nhost=${host}\n`;
-  const stringToSign = `sha1\n${keyTime}\n${sha1Hex(httpString)}\n`;
-  const signKey = hmacSha1Hex(input.config.secretKey, keyTime);
-  const signature = hmacSha1Hex(signKey, stringToSign);
-  const authorization = [
-    "q-sign-algorithm=sha1",
-    `q-ak=${input.config.secretId}`,
-    `q-sign-time=${keyTime}`,
-    `q-key-time=${keyTime}`,
-    "q-header-list=host",
-    "q-url-param-list=",
-    `q-signature=${signature}`,
-  ].join("&");
-  const url = new URL(`${input.config.protocol}://${host}${uri}`);
-  url.searchParams.set("sign", authorization);
-  return url.toString();
-}
-
-// P1-N09: 新 asset 也需验证 owner 实体存在且属于当前用户
 async function assertAssetCanBind(
   existing: AssetRow | null,
   input: AssetUploadAuthorizeRequest & { userId: string },
@@ -509,42 +371,7 @@ function extensionForMimeType(mimeType: string): string {
   return "img";
 }
 
-// 7.1: COS DELETE Object 预签名 URL，供清理流程使用
-export function createCosDeleteObjectPresignedUrl(input: {
-  config: CosUploadConfig;
-  objectKey: string;
-  now: Date;
-}): string {
-  const start = Math.floor(input.now.getTime() / 1000);
-  const end = start + 300;
-  const keyTime = `${start};${end}`;
-  const host = `${input.config.bucket}.cos.${input.config.region}.myqcloud.com`;
-  const uri = `/${input.objectKey.split("/").map(encodeURIComponent).join("/")}`;
-  const httpString = `delete\n${uri}\n\nhost=${host}\n`;
-  const stringToSign = `sha1\n${keyTime}\n${sha1Hex(httpString)}\n`;
-  const signKey = hmacSha1Hex(input.config.secretKey, keyTime);
-  const signature = hmacSha1Hex(signKey, stringToSign);
-  const authorization = [
-    "q-sign-algorithm=sha1",
-    `q-ak=${input.config.secretId}`,
-    `q-sign-time=${keyTime}`,
-    `q-key-time=${keyTime}`,
-    "q-header-list=host",
-    "q-url-param-list=",
-    `q-signature=${signature}`,
-  ].join("&");
-  const url = new URL(`${input.config.protocol}://${host}${uri}`);
-  url.searchParams.set("sign", authorization);
-  return url.toString();
-}
-
-function sha1Hex(value: string): string {
-  return createHash("sha1").update(value).digest("hex");
-}
-
-function hmacSha1Hex(key: string, value: string): string {
-  return createHmac("sha1", key).update(value).digest("hex");
-}
+export { createCosDeleteObjectPresignedUrl };
 
 interface ManifestCursor {
   updatedAt: string;
