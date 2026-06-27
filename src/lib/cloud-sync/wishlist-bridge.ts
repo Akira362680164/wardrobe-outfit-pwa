@@ -92,9 +92,8 @@ export async function bridgeWishlistDelete(legacyWishlistId: string): Promise<Br
 
 export function toCloudWishlistPayload(item: WishlistItem, assetRefs?: CloudAssetReferenceMap): Record<string, unknown> {
   const safe = { ...item } as Record<string, unknown>;
-  delete safe.imageDataUrl;
+  // ponytail: keep imageDataUrl/thumbnailDataUrl — workspace-ui-mapper reads them for list cards.
   delete safe.sourceImageDataUrl;
-  delete safe.thumbnailDataUrl;
   delete safe.cropBox;
   return withCloudAssetRefs({
     ...safe,

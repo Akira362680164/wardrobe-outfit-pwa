@@ -1,3 +1,14 @@
+## 2026-06-28 / v2.0.2-test / Claude Code — 修复衣橱/种草列表卡片图片无法展示（BUG-001）
+
+- **目的**：修复保存衣物后列表卡片显示"暂无图片"占位符的问题，影响衣橱 tab 和种草 tab。
+- **根因**：`toCloudGarmentPayload` / `toCloudWishlistPayload` 在写入 workspace DB 时删除了 `imageDataUrl` 和 `thumbnailDataUrl`，但 `getWardrobeSnapshot` 登录后从 workspace DB 读取，`workspace-ui-mapper` 拿到空 `imageDataUrl` → 卡片渲染空状态占位符。
+- **修复**：`garment-bridge.ts` 和 `wishlist-bridge.ts` 的 payload 构建函数保留 `imageDataUrl` 和 `thumbnailDataUrl`，只删除 `sourceImageDataUrl` 等辅助字段。
+- **改动文件**：`src/lib/cloud-sync/garment-bridge.ts`、`src/lib/cloud-sync/wishlist-bridge.ts`、`VERSION_HISTORY.md`、`REVIEW-ARTIFACTS/device-test-v2.0.2-test/REPORT.md`（影响范围标注）、`AGENTS.md`、`CLAUDE.md`
+- **验证**：`npm run typecheck` 通过；`npm run android:apk` 构建成功 → `衣橱穿搭助手-v2.0.2-test.apk`（7.8MB，versionCode 20002）；adb 覆盖安装成功，App 正常启动无崩溃。
+- **风险门禁**：**medium**（workspace payload 变更，新录入生效；已存在的 workspace DB 旧记录仍需重新录入才能显示图片）
+- **未触发 subagent**：用户未通知。
+- **未验证风险**：真机新录入的图片展示待用户手动触发验证；旧 workspace DB 记录的回填未做。
+
 ## 2026-06-28 / v2.0.2-test / Codex — API 代理本地存储端到端验收
 
 - **目的**：以真实 PostgreSQL、API、Web Dev Server 和实际图片验证自有 API 代理存储全链路，并完成全量回归。
