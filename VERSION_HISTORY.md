@@ -1,3 +1,14 @@
+## 2026-06-27 / v2.0.2-test / Codex — 服务端本地文件 StorageProvider 与资产 API
+
+- **目的**：用服务端可替换存储抽象和本地持久文件实现，完整取代旧外部存储签名代码与运行时路由。
+- **版本**：保持 `2.0.2-test`。
+- **改动文件**：`services/wardrobe-api/src/storage/{provider,config,factory,local-file-storage,readiness}.ts`、`src/assets/{routes,service}.ts`、`src/app.ts`、诊断服务/路由、`packages/cloud-contracts/src/common/health.ts`；删除 `services/wardrobe-api/src/storage/cos.ts`。
+- **改动内容**：实现 `StorageProvider` 与 `LocalFileStorageProvider`；相对键二次边界校验、符号链接防护、同目录 `.part` 写入+原子 rename；校验实际字节数、SHA-256 和 JPEG/PNG/WebP/HEIC/HEIF 魔数；新增鉴权 PUT/GET/DELETE 资产 API、文件流响应、完整 CORS 和 storage readiness；诊断文件复用同一 provider。
+- **验证**：服务端生产 TypeScript build 通过；`npm run api:typecheck` 通过；存储/provider/API/readiness 聚焦测试 16/16 通过；完整 API 套件在修正 readiness 注入后继续于最终验证记录验收。
+- **风险门禁**：**high**（认证文件上传/下载、服务端文件系统、远程诊断与 readiness）。
+- **未触发 subagent**：用户未通知。
+- **未验证风险**：本条提交时数据库迁移、容器持久卷和真实 HTTP 全链路由后续提交验收。
+
 ## 2026-06-27 / v2.0.2-test / Codex — 资产客户端切换为自有 API 二进制传输
 
 - **目的**：删除客户端三段式外部存储授权链路，上传和下载只通过自有 API 并携带登录与设备身份。

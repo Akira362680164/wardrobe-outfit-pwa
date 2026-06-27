@@ -30,7 +30,7 @@ export function registerRequestTraceMiddleware(app: FastifyInstance): void {
     if (!requestId) return;
 
     const durationMs = Date.now() - startMs;
-    const secretKey = process.env.COS_SECRET_KEY ?? "";
+    const secretKey = process.env.DIAGNOSTIC_HASH_SECRET ?? process.env.DIAGNOSTIC_READER_TOKEN_HASH ?? "diagnostic-local-hash";
     const userId = (request as any)._traceUserId as string | undefined;
     const deviceId = request.headers["x-wardrobe-device-id"] as string | undefined;
 

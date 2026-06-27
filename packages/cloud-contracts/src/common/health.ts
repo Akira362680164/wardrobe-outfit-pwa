@@ -11,6 +11,8 @@ export const ReadyResponseSchema = z.object({
   status: ApiStatusSchema,
   dependencies: z.object({
     database: z.enum(["ready", "unavailable"]),
+    storage: z.enum(["ready", "unavailable"]),
+    jwt: z.enum(["ready", "unavailable"]),
   }).passthrough(),
   serverTime: z.string().datetime(),
 });

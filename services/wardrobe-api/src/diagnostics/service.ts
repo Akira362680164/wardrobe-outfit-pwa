@@ -2,21 +2,19 @@ import { createHmac } from "node:crypto";
 import { and, desc, eq, gte, lte, sql } from "drizzle-orm";
 import type { NodePgDatabase } from "drizzle-orm/node-postgres";
 import type {
-  DiagnosticUploadAuthorizeRequest,
-  DiagnosticUploadAuthorizeResponse,
-  DiagnosticUploadCompleteRequest,
-  DiagnosticUploadCompleteResponse,
+  DiagnosticCaseCreateRequest,
+  DiagnosticCaseCreateResponse,
+  DiagnosticContentHeaders,
+  DiagnosticContentUploadResponse,
   DiagnosticCaseMetadata,
   DiagnosticCaseListResponse,
-  DiagnosticDownloadUrlResponse,
   DiagnosticCaseRequestTracesResponse,
 } from "@wardrobe/cloud-contracts";
 import {
-  DiagnosticUploadAuthorizeResponseSchema,
-  DiagnosticUploadCompleteResponseSchema,
+  DiagnosticCaseCreateResponseSchema,
+  DiagnosticContentUploadResponseSchema,
   DiagnosticCaseMetadataSchema,
   DiagnosticCaseListResponseSchema,
-  DiagnosticDownloadUrlResponseSchema,
   DiagnosticCaseRequestTracesResponseSchema,
 } from "@wardrobe/cloud-contracts";
 
@@ -28,13 +26,7 @@ import {
   diagnosticCaseRequestTraces,
 } from "../db/schema.js";
 import type * as schema from "../db/schema.js";
-import {
-  createCosPutObjectPresignedUrl,
-  createCosGetObjectPresignedUrl,
-  verifyCosObject,
-  loadCosConfig,
-  type CosConfig,
-} from "../storage/cos.js";
+import { StorageProviderError, type StorageProvider } from "../storage/provider.js";
 import { generateCaseId } from "./case-id.js";
 
 export class DiagnosticApiError extends Error {
@@ -49,18 +41,13 @@ export class DiagnosticApiError extends Error {
 
 export class DiagnosticService {
   constructor(
+    private readonly storage: StorageProvider,
     private readonly db?: NodePgDatabase<typeof schema>,
-    private readonly cosConfig: CosConfig | null = loadCosConfig(),
   ) {}
 
-  async authorizeUpload(
-    input: DiagnosticUploadAuthorizeRequest & { userId: string; deviceId: string },
-  ): Promise<DiagnosticUploadAuthorizeResponse> {
-    if (!this.cosConfig) {
-      throw new DiagnosticApiError(503, "cos_not_configured", "Diagnostic storage is not configured");
-    }
-
-    // 幂等检查
+  async createCase(
+    input: DiagnosticCaseCreateRequest & { userId: string; deviceId: string },
+  ): Promise<DiagnosticCaseCreateResponse> {
     const database = this.database();
     const existing = await database
       .select()
@@ -74,28 +61,15 @@ export class DiagnosticService {
       .limit(1);
 
     if (existing[0]) {
-      // 已存在，返回原工单及新上传地址
-      const now = new Date();
-      const objectKey = existing[0].objectKey;
-      const expiresAt = new Date(now.getTime() + this.cosConfig.expiresSeconds * 1000).toISOString();
-      const uploadUrl = createCosPutObjectPresignedUrl({ config: this.cosConfig, objectKey, now });
-
-      return DiagnosticUploadAuthorizeResponseSchema.parse({
+      return DiagnosticCaseCreateResponseSchema.parse({
         caseId: existing[0].caseId,
         status: existing[0].status,
-        method: "PUT",
-        uploadUrl,
-        headers: { "Content-Type": "application/json" },
-        expiresAt,
       });
     }
 
     const caseId = generateCaseId();
     const now = new Date();
-    const deviceHash = hashDeviceId(input.deviceId, this.cosConfig.secretKey);
-    const objectKey = `diagnostics/users/${input.userId}/devices/${deviceHash}/${now.getFullYear()}/${String(now.getMonth() + 1).padStart(2, "0")}/${String(now.getDate()).padStart(2, "0")}/${caseId}/diagnostic.json`;
-    const expiresAt = new Date(now.getTime() + this.cosConfig.expiresSeconds * 1000).toISOString();
-    const uploadUrl = createCosPutObjectPresignedUrl({ config: this.cosConfig, objectKey, now });
+    const storageKey = `users/${input.userId}/diagnostics/${caseId}/diagnostic-${input.sha256.slice(0, 16)}.json`;
 
     await database.insert(diagnosticCases).values({
       caseId,
@@ -109,7 +83,7 @@ export class DiagnosticService {
       buildChannel: input.buildChannel,
       schemaVersion: input.schemaVersion,
       problemDescription: input.problemDescription,
-      objectKey,
+      storageKey,
       sha256: input.sha256,
       sizeBytes: input.sizeBytes,
       eventCount: input.eventCount,
@@ -117,7 +91,7 @@ export class DiagnosticService {
       outfitCount: input.outfitCount,
       wishlistCount: input.wishlistCount,
       status: "pending_upload",
-      uploadAuthorizedAt: now,
+      uploadCreatedAt: now,
       createdAt: now,
       updatedAt: now,
     });
@@ -127,20 +101,16 @@ export class DiagnosticService {
       await this.linkRequestTraces(caseId, input.userId, input.deviceId, input.recentRequestIds);
     }
 
-    return DiagnosticUploadAuthorizeResponseSchema.parse({
+    return DiagnosticCaseCreateResponseSchema.parse({
       caseId,
       status: "pending_upload",
-      method: "PUT",
-      uploadUrl,
-      headers: { "Content-Type": "application/json" },
-      expiresAt,
     });
   }
 
-  async completeUpload(
+  async uploadContent(
     caseId: string,
-    input: DiagnosticUploadCompleteRequest & { userId: string; deviceId: string },
-  ): Promise<DiagnosticUploadCompleteResponse> {
+    input: DiagnosticContentHeaders & { bytes: Buffer; userId: string; deviceId: string },
+  ): Promise<DiagnosticContentUploadResponse> {
     const database = this.database();
     const [row] = await database
       .select()
@@ -157,37 +127,41 @@ export class DiagnosticService {
     if (row.deviceId !== input.deviceId) {
       throw new DiagnosticApiError(403, "case_device_mismatch", "Case was authorized for a different device");
     }
-    if (row.clientRequestId !== input.clientRequestId) {
+    if (row.clientRequestId !== input["x-diagnostic-client-request-id"]) {
       throw new DiagnosticApiError(409, "client_request_id_mismatch", "clientRequestId does not match");
     }
     if (row.status !== "pending_upload") {
       throw new DiagnosticApiError(409, "case_already_uploaded", "Case is not in pending_upload state");
     }
 
-    // COS HEAD 校验
-    if (this.cosConfig) {
-      await verifyCosObject({
-        config: this.cosConfig,
-        objectKey: row.objectKey,
-        expectedSizeBytes: input.sizeBytes,
-        expectedMimeType: "application/json",
+    if (row.sha256 !== input["x-diagnostic-sha256"] || row.sizeBytes !== input["x-diagnostic-size-bytes"]) {
+      throw new DiagnosticApiError(409, "diagnostic_metadata_mismatch", "Diagnostic metadata does not match the created case");
+    }
+    try {
+      await this.storage.save({
+        storageKey: row.storageKey,
+        bytes: input.bytes,
+        expectedSha256: input["x-diagnostic-sha256"],
+        expectedSizeBytes: input["x-diagnostic-size-bytes"],
+        mimeType: "application/json",
       });
+    } catch (error) {
+      if (error instanceof StorageProviderError) throw new DiagnosticApiError(422, error.code, error.message);
+      throw new DiagnosticApiError(503, "diagnostic_storage_unavailable", "Diagnostic storage is unavailable");
     }
 
     const now = new Date();
     const expiresAt = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000); // 30 天
 
-    await database
-      .update(diagnosticCases)
-      .set({
-        status: "uploaded",
-        uploadedAt: now,
-        expiresAt,
-        updatedAt: now,
-      })
-      .where(eq(diagnosticCases.id, row.id));
+    try {
+      await database.update(diagnosticCases).set({ status: "uploaded", uploadedAt: now, expiresAt, updatedAt: now })
+        .where(eq(diagnosticCases.id, row.id));
+    } catch {
+      await this.storage.delete(row.storageKey).catch(() => {});
+      throw new DiagnosticApiError(500, "diagnostic_upload_failed", "Diagnostic metadata could not be saved");
+    }
 
-    return DiagnosticUploadCompleteResponseSchema.parse({
+    return DiagnosticContentUploadResponseSchema.parse({
       caseId,
       status: "uploaded",
       uploadedAt: now.toISOString(),
@@ -252,11 +226,7 @@ export class DiagnosticService {
     return DiagnosticCaseMetadataSchema.parse(this.toCaseMetadata(row));
   }
 
-  async createDownloadUrl(caseId: string): Promise<DiagnosticDownloadUrlResponse> {
-    if (!this.cosConfig) {
-      throw new DiagnosticApiError(503, "cos_not_configured", "Diagnostic storage is not configured");
-    }
-
+  async openContent(caseId: string) {
     const [row] = await this.database()
       .select()
       .from(diagnosticCases)
@@ -270,22 +240,12 @@ export class DiagnosticService {
       throw new DiagnosticApiError(409, "case_not_uploaded", "Case has not been uploaded yet");
     }
 
-    const now = new Date();
-    const expiresAt = new Date(now.getTime() + 5 * 60 * 1000); // 5 分钟
-    const downloadUrl = createCosGetObjectPresignedUrl({
-      config: this.cosConfig,
-      objectKey: row.objectKey,
-      now,
-      expiresSeconds: 300,
-    });
-
-    return DiagnosticDownloadUrlResponseSchema.parse({
-      caseId,
-      downloadUrl,
-      sha256: row.sha256,
-      sizeBytes: row.sizeBytes,
-      expiresAt: expiresAt.toISOString(),
-    });
+    try {
+      const file = await this.storage.openReadStream(row.storageKey);
+      return { ...file, sha256: row.sha256, sizeBytes: row.sizeBytes };
+    } catch {
+      throw new DiagnosticApiError(404, "diagnostic_file_missing", "Diagnostic content is unavailable");
+    }
   }
 
   async getCaseRequestTraces(caseId: string): Promise<DiagnosticCaseRequestTracesResponse> {
@@ -349,8 +309,9 @@ export class DiagnosticService {
 
     if (!caseRow) return;
 
-    const deviceHash = hashDeviceId(deviceId, this.cosConfig?.secretKey ?? "");
-    const userHash = hashUserId(userId, this.cosConfig?.secretKey ?? "");
+    const hashSecret = process.env.DIAGNOSTIC_HASH_SECRET ?? process.env.DIAGNOSTIC_READER_TOKEN_HASH ?? "diagnostic-local-hash";
+    const deviceHash = hashDeviceId(deviceId, hashSecret);
+    const userHash = hashUserId(userId, hashSecret);
 
     for (const requestId of requestIds.slice(0, 200)) {
       const traces = await database
