@@ -813,7 +813,7 @@ function MultiImageSelectStep({
   // Custom preview: shown inside IntakeStepSection when images are selected
   const previewNode = hasImages ? (
     <>
-      <p className="text-xs text-ink/55 mb-2">已选择 {imageItems.length} 张{flowNoun}照片</p>
+      <p className="text-xs text-ink/55 mb-2">已选择 {imageItems.length} 张{flowNoun}照片，可点击缩略图裁切/旋转图片</p>
       <div className="overflow-hidden rounded-lg bg-mist mb-3">
         {activeImageId ? (
           <img

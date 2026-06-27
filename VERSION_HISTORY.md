@@ -1,3 +1,18 @@
+## 2026-06-28 / v2.0.2-test / Claude Code — 图片存储模型改为原图+裁切框
+
+- **目的**：修复三个裁切相关严重问题：1) 裁切图代替原图保存，2) 重裁在已裁切图上二次裁切，3) 重裁的裁切框不持久化。
+- **根因**：`resolveGarmentImageDataUrl` 返回裁切图作为 `imageDataUrl`；`toCloudGarmentPayload/toCloudWishlistPayload` 删除了 `sourceImageDataUrl` 和 `cropBox`，导致重裁源丢失。
+- **修复**：
+  - 数据层：`imageDataUrl` 改为存原图（`sourceImageDataUrl`），`cropBox` 驱动展示裁切；bridge 不再删除 `sourceImageDataUrl` 和 `cropBox`
+  - 展示层：`GarmentImage` 新增 `cropBox` prop，CSS overflow-hidden + 百分比定位裁切，无需 canvas；`SwipeImageCarousel` 透传 `cropBox`
+  - 编辑重裁：只更新 `cropBox`，不再替换 `imageDataUrl`
+  - 录入提示：步骤 1 "已选择 n 张照片" 后增加 "，可点击缩略图裁切/旋转图片"
+- **改动文件**：`intake-save-adapters.ts`、`garment-bridge.ts`、`wishlist-bridge.ts`、`garment-image.tsx`、`garment-image-source.ts`、`swipe-image-carousel.tsx`、`wardrobe-app.tsx`、`wishlist-view-2.0.tsx`、`batch-review-view.tsx`、`wear-statistics-view.tsx`、`item/image-header.tsx`、`garment-intake-flow.tsx`（共 12 个文件）
+- **验证**：`npm run typecheck` 零错误
+- **风险门禁**：**high**（图片数据模型变更，跨越录入→保存→展示→重裁全链路）
+- **未触发 subagent**：用户未通知。
+- **未验证风险**：Android 真机端到端测试未完成；旧 workspace DB 记录无 `sourceImageDataUrl` 的回填未做
+
 ## 2026-06-28 / v2.0.2-test / Claude Code — 修复衣橱/种草列表卡片图片无法展示（BUG-001）
 
 - **目的**：修复保存衣物后列表卡片显示"暂无图片"占位符的问题，影响衣橱 tab 和种草 tab。

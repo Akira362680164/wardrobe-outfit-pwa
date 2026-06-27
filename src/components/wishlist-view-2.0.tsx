@@ -920,6 +920,7 @@ export function WishlistView20({
                         alt={formName || "商品图"}
                         fallbackSize={34}
                         imageClassName="bg-transparent"
+                        cropBox={formCropBox}
                       />
                       <button
                         type="button"
@@ -1120,17 +1121,13 @@ export function WishlistView20({
             setWishlistCropJob(null);
             return;
           }
-          // v1.1.28 commit: 裁切确认后同步更新缩略图,
-          // 保留 formSourceImageDataUrl (原图), 更新 formImageDataUrl / formCropBox。
+          // ponytail: only update cropBox — imageDataUrl stays as original.
+          // re-crop on the original image just changes the crop viewport coordinates.
           try {
             const thumb = await generateThumbnailSafe(newImageDataUrl);
-            setFormImageDataUrl(newImageDataUrl);
-            setFormSourceImageDataUrl((current) => current || wishlistCropJob.dataUrl);
             setFormCropBox(cropBox);
             setFormThumbnailDataUrl(thumb.thumbnailDataUrl);
           } catch {
-            setFormImageDataUrl(newImageDataUrl);
-            setFormSourceImageDataUrl((current) => current || wishlistCropJob.dataUrl);
             setFormCropBox(cropBox);
             setFormThumbnailDataUrl(undefined);
           }

@@ -3091,14 +3091,12 @@ function WardrobeView(props: WardrobeViewProps) {
                 return;
               }
               if (viewingItemCropJob.target === "edit") {
-                // v0.9.43-dev 批次 2: 编辑页主图裁切后同步更新缩略图。
-                // v1.1.16-dev commit1 §3.4.5 + §3.4.6: 根据 sourceKind 区分写入语义。
+                // ponytail: only update cropBox — imageDataUrl stays as original.
+                // re-crop on the original image just changes the crop viewport coordinates.
                 const thumb = await generateThumbnailSafe(newImageDataUrl);
                 recordDiagnosticEvent("edit_recrop_confirmed", { sourceKind: viewingItemCropJob.sourceKind ?? "current", hasCropBox: Boolean(cropBox) });
                 setEditDraft((current) => current ? ({
                   ...current,
-                  imageDataUrl: newImageDataUrl,
-                  sourceImageDataUrl: current.sourceImageDataUrl || viewingItemCropJob.dataUrl,
                   cropBox,
                   ...(thumb.thumbnailDataUrl ? { thumbnailDataUrl: thumb.thumbnailDataUrl } : {}),
                   ...(thumb.thumbnailVersion !== undefined ? { thumbnailVersion: thumb.thumbnailVersion } : {}),
@@ -3269,7 +3267,7 @@ function WardrobeView(props: WardrobeViewProps) {
           {searchResults.map((item) => (
             <article key={item.id ?? item.name} className="overflow-hidden rounded-lg border border-ink/10 bg-white shadow-sm">
               <div className="aspect-[4/5] bg-mist">
-                <GarmentImage src={item.imageDataUrl || undefined} alt={item.name} fallbackSize={32} />
+                <GarmentImage src={item.imageDataUrl || undefined} alt={item.name} fallbackSize={32} cropBox={item.cropBox} />
               </div>
               <div className="grid gap-2 p-3">
                 <div className="min-w-0">
@@ -3933,7 +3931,7 @@ function WardrobeEditPage({
       <EditSectionCard className="p-3">
         <div className="flex items-center gap-3">
           <div className="aspect-[3/4] w-28 shrink-0 overflow-hidden rounded-xl bg-mist" aria-label="衣物图片预览">
-            <GarmentImage src={draft.imageDataUrl || draft.sourceImageDataUrl || undefined} alt={draft.name || "衣物图片"} fallbackSize={34} imageClassName="bg-transparent" />
+            <GarmentImage src={draft.imageDataUrl || draft.sourceImageDataUrl || undefined} alt={draft.name || "衣物图片"} fallbackSize={34} imageClassName="bg-transparent" cropBox={draft.cropBox} />
           </div>
           <div className="grid min-w-0 flex-1 gap-2">
             <button
@@ -6584,6 +6582,7 @@ function WaterfallCardImage({
           badge,
           badgeClassName: isMain ? "bg-denim" : "bg-clay",
           realIndex: i,
+          cropBox: entry.cropBox,
         });
       }
     }

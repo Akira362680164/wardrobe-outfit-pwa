@@ -4,6 +4,7 @@ import { Plus } from "lucide-react";
 import { motion } from "motion/react";
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { clampCarouselIndex, getSwipeNextIndex } from "@/lib/carousel-logic";
+import { GarmentImage } from "@/components/garment-image";
 
 export interface SwipeImageSlide {
   kind: "image";
@@ -28,6 +29,8 @@ export interface SwipeImageSlide {
   badge?: string;
   badgeClassName?: string;
   realIndex?: number;
+  /** 裁切框（归一化 0-1），用于 CSS 裁剪展示 */
+  cropBox?: { x: number; y: number; width: number; height: number };
 }
 
 export interface SwipeAddSlide {
@@ -111,29 +114,13 @@ interface SwipeImagePageProps {
 }
 
 function SwipeImagePage({ slide, isDragging, imageFitClass, onClickImage, variant }: SwipeImagePageProps) {
-  // 批次 3: fallback 状态机。renderedSrc=null → 走默认 src 选择;
-  // onError 切到 fallbackImageDataUrl 后再 error 不再切, 避免循环
-  const [renderedSrc, setRenderedSrc] = useState<string | null>(null);
-  // slide.id 切换时, 状态机重置 (注: Track 不重挂 slide, 但 slides prop
-  // 重排可能导致同一 DOM 位置 slide.id 变化)
-  useEffect(() => {
-    setRenderedSrc(null);
-  }, [slide.id]);
-
-  const handleError = useCallback(() => {
-    const fallback = slide.fallbackImageDataUrl;
-    if (!fallback) return;
-    setRenderedSrc((prev) => (prev === fallback ? prev : fallback));
-  }, [slide.fallbackImageDataUrl]);
-
   // v0.9.44-dev 回归修复 1: card 场景下 thumbnailSrc (cardImageDataUrl) 可能来自裁切前原图,
   // 而 displaySrc (displayImageDataUrl) 是裁切后图, 构图不一致。
   // → card: 忽略 thumbnailSrc, 始终用 displaySrc (反正卡片图本来就不大, 拖动流畅度够)
   // → detail/review: 保持双图源 (thumbnailSrc 和 displaySrc 构图一致, 只是分辨率不同)
-  const src = renderedSrc
-    || (variant !== "card" && isDragging && slide.thumbnailSrc
-      ? slide.thumbnailSrc
-      : (slide.displaySrc ?? slide.imageDataUrl));
+  const src = variant !== "card" && isDragging && slide.thumbnailSrc
+    ? slide.thumbnailSrc
+    : (slide.displaySrc ?? slide.imageDataUrl);
 
   return (
     <div
@@ -141,14 +128,12 @@ function SwipeImagePage({ slide, isDragging, imageFitClass, onClickImage, varian
       onClick={(e) => { onClickImage(slide); e.stopPropagation(); }}
     >
       {slide.imageDataUrl ? (
-        /* eslint-disable-next-line @next/next/no-img-element */
-        <img
+        <GarmentImage
           src={src}
           alt={slide.alt || ""}
-          loading="eager"
-          decoding="async"
-          draggable={false}
-          onError={slide.fallbackImageDataUrl ? handleError : undefined}
+          cropBox={slide.cropBox}
+          fallbackSrc={slide.fallbackImageDataUrl}
+          imageClassName="bg-transparent"
           className={`block h-full w-full ${imageFitClass}`}
         />
       ) : (

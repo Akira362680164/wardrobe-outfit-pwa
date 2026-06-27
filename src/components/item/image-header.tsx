@@ -15,12 +15,14 @@ export interface ItemImageHeaderProps {
   imageUrl?: string;
   alt: string;
   mode: "view" | "edit";
+  /** 裁切框，用于 CSS 裁切展示原图 */
+  cropBox?: { x: number; y: number; width: number; height: number };
   /** 编辑模式下：重新裁切 / 重新识别按钮（可省略）。 */
   actions?: ReactNode;
   className?: string;
 }
 
-export function ItemImageHeader({ imageUrl, alt, mode, actions, className }: ItemImageHeaderProps) {
+export function ItemImageHeader({ imageUrl, alt, mode, actions, className, cropBox }: ItemImageHeaderProps) {
   return (
     <section
       className={["surface rounded-lg p-3", className ?? ""].filter(Boolean).join(" ")}
@@ -33,7 +35,7 @@ export function ItemImageHeader({ imageUrl, alt, mode, actions, className }: Ite
             mode === "view" ? "w-28 sm:w-36" : "w-28",
           ].join(" ")}
         >
-          <GarmentImage src={imageUrl} alt={alt} fallbackSize={34} imageClassName="bg-transparent" />
+          <GarmentImage src={imageUrl} alt={alt} fallbackSize={34} imageClassName="bg-transparent" cropBox={cropBox} />
         </div>
         {mode === "edit" ? (
           <div className="grid min-w-0 flex-1 gap-2">{actions}</div>

@@ -51,7 +51,7 @@ export interface GarmentImageEntry {
   outfitId?: string;
   /** 用于裁切的"原图"地址。manual ref 用 ref.sourceImageDataUrl;其他 fallback 到 imageDataUrl 本身 */
   sourceImageDataUrl?: string;
-  /** 用于初始化裁切框（手动添加的参考图可能带；套装图不带） */
+  /** 裁切框（归一化坐标 0-1），主图用 item.cropBox；手动参考图可能自带 */
   cropBox?: GarmentCropBox;
   /** 排序/筛选用的 createdAt 字段。source === "main" 时用 item.createdAt;其他用各自的 createdAt/updatedAt */
   createdAt: string;
@@ -105,6 +105,7 @@ export function deriveGarmentImageList(
       displayImageDataUrl: mainUrl,
       source: "main",
       renderKind: "image",
+      cropBox: item.cropBox as GarmentImageEntry["cropBox"],
       createdAt: safeTimestamp(item.createdAt, now),
     },
   ];

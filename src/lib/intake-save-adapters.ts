@@ -168,7 +168,9 @@ function fieldValue<T>(field: IntakeField<T> | undefined, fallback: T): T {
 function resolveGarmentImageDataUrl(draft: GarmentIntakeDraft): string {
   const shouldUseTransparent = fieldValue(draft.useTransparentImage, false);
   if (shouldUseTransparent && draft.transparentImageDataUrl) return draft.transparentImageDataUrl;
-  return draft.croppedImageDataUrl || draft.imageDataUrl || "";
+  // ponytail: imageDataUrl stores ORIGINAL image, cropBox drives display cropping.
+  // sourceImageDataUrl is the original full photo before any crop.
+  return draft.sourceImageDataUrl || draft.croppedImageDataUrl || draft.imageDataUrl || "";
 }
 
 function optionalText(field: IntakeField<string> | undefined): string | undefined {

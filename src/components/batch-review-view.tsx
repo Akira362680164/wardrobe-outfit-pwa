@@ -116,7 +116,7 @@ function SimilarMatchesPanel({
               className="aspect-square w-full overflow-hidden rounded-md bg-mist"
             >
               {match.item.imageDataUrl ? (
-                <GarmentImage src={match.item.imageDataUrl} alt={match.item.name} />
+                <GarmentImage src={match.item.imageDataUrl} alt={match.item.name} cropBox={match.item.cropBox} />
               ) : null}
             </button>
             <p className="mt-1 truncate text-xs font-semibold">{match.item.name}</p>
@@ -443,7 +443,7 @@ export function BatchReviewView({
             }`}>
               <button type="button" onClick={() => openDetail(displayIndex)} className="w-full text-left">
                 <div className="aspect-[4/5] bg-mist">
-                  <GarmentImage src={d.imageDataUrl || undefined} alt={d.name} fallbackSize={24} />
+                  <GarmentImage src={d.imageDataUrl || undefined} alt={d.name} fallbackSize={24} cropBox={d.cropBox} />
                 </div>
                 <div className="p-2">
                   <p className="truncate text-xs font-semibold">{d.name || "未命名"}</p>
