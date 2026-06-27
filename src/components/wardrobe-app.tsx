@@ -40,6 +40,7 @@ import {
   User,
   WandSparkles,
   X,
+  Copy,
 } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
@@ -90,7 +91,13 @@ import { CatalogWaterfallGrid } from "@/components/item-shell/catalog-waterfall-
 import { CategoryColorLine } from "@/components/item-shell/category-color-line";
 import { useCatalogMultiSelect, useCatalogBulkDelete, CatalogMultiSelectBar, CatalogBulkDeleteSheet } from "@/components/catalog-selection";
 import { formatGarmentCategoryColorLine, formatGarmentWearLine } from "@/lib/catalog-card-format";
-import { exportWardrobeDiagnosticLog, recordDiagnosticEvent } from "@/lib/diagnostic-log";
+import {
+  recordDiagnosticEvent,
+  buildWardrobeDiagnosticLog,
+  getClientBuildIdentity,
+  type DiagnosticUploadState,
+  type LastDiagnosticUpload,
+} from "@/lib/diagnostic-log";
 import {
   SelectableChipGroup,
   RangeField,
@@ -4499,7 +4506,12 @@ function SettingsView({
   const [wardrobeFormNote, setWardrobeFormNote] = useState("");
   const [wardrobeListExpanded, setWardrobeListExpanded] = useState(false);
   const [showClearAllConfirm, setShowClearAllConfirm] = useState(false);
-  const [isDiagnosticExporting, setIsDiagnosticExporting] = useState(false);
+  const [diagnosticUploadState, setDiagnosticUploadState] = useState<DiagnosticUploadState>({ phase: "idle" });
+  const [showDiagnosticDescDialog, setShowDiagnosticDescDialog] = useState(false);
+  const [diagnosticDescription, setDiagnosticDescription] = useState("");
+  const [lastDiagnosticUpload, setLastDiagnosticUpload] = useState<LastDiagnosticUpload | null>(null);
+  const [showDiagnosticSuccess, setShowDiagnosticSuccess] = useState(false);
+  const [showDiagnosticFailed, setShowDiagnosticFailed] = useState(false);
   // v0.9.43-dev 批次 4: 图片缓存优化
   // - thumbnailStats: 仅看字段, 不解码图片, 不写库 (批次 4 §2)
   // - backfillState: subscribe backfill 单例
@@ -4542,12 +4554,30 @@ function SettingsView({
     [items, refreshTick],
   );
   const totalMissing = thumbnailStats.mainMissing + thumbnailStats.referenceMissing;
-  async function handleExportDiagnosticLog() {
-    if (isDiagnosticExporting) return;
-    setIsDiagnosticExporting(true);
-    recordDiagnosticEvent("diagnostic_export_started", { activeView, route });
+  function handleStartDiagnosticUpload() {
+    if (diagnosticUploadState.phase !== "idle") return;
+    setDiagnosticUploadState({ phase: "describing", message: "请描述遇到的问题…", problemDescription: diagnosticDescription });
+    setShowDiagnosticDescDialog(true);
+  }
+
+  function handleCancelDiagnosticUpload() {
+    setShowDiagnosticDescDialog(false);
+    setDiagnosticUploadState({ phase: "idle" });
+  }
+
+  async function handleConfirmDiagnosticUpload() {
+    const description = diagnosticDescription.trim() || null;
+    setShowDiagnosticDescDialog(false);
+    setDiagnosticUploadState({ phase: "building", message: "正在整理诊断数据…", problemDescription: description });
+    recordDiagnosticEvent("diagnostic_upload_started", { activeView, route });
+
     try {
-      const result = await exportWardrobeDiagnosticLog({
+      const buildIdentity = getClientBuildIdentity();
+      if (!buildIdentity.gitCommit || buildIdentity.gitCommit.length !== 40) {
+        throw new Error("构建身份不完整");
+      }
+
+      const log = buildWardrobeDiagnosticLog({
         activeView,
         route,
         items,
@@ -4557,15 +4587,133 @@ function SettingsView({
         backfillState,
         miniMaxSettings,
       });
-      recordDiagnosticEvent("diagnostic_export_succeeded", { mode: result.mode, path: result.path });
-      onMessage?.(result.mode === "native"
-        ? `诊断日志已保存到 ${result.directoryLabel}/${result.fileName}`
-        : "诊断日志已下载");
+      (log as any).userReport.description = description;
+
+      const data = JSON.stringify(log);
+      const sizeBytes = new TextEncoder().encode(data).length;
+      if (sizeBytes > 10 * 1024 * 1024) {
+        throw new Error("数据超过 10 MiB 限制");
+      }
+
+      const { hashSha256 } = await import("@/lib/crypto");
+      const sha256 = await hashSha256(data);
+
+      setDiagnosticUploadState({ phase: "authorizing", message: "正在创建诊断工单…", problemDescription: description });
+
+      const apiBase = process.env.NEXT_PUBLIC_WARDROBE_API_BASE_URL ?? "";
+      const accessToken = typeof window !== "undefined" ? localStorage.getItem("wardrobe-access-token") : null;
+      const deviceId = typeof window !== "undefined" ? localStorage.getItem("wardrobe-device-id") ?? "" : "";
+
+      if (!accessToken) {
+        throw new Error("未登录");
+      }
+
+      const authorizeRes = await fetch(`${apiBase}/api/diagnostics/cases/authorize`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${accessToken}`,
+          "X-Wardrobe-Device-Id": deviceId,
+        },
+        body: JSON.stringify({
+          clientRequestId: (log as any).clientRequestId,
+          schemaVersion: 1,
+          appVersion: buildIdentity.appVersion,
+          versionCode: buildIdentity.versionCode,
+          clientGitCommit: buildIdentity.gitCommit,
+          buildTime: buildIdentity.buildTime,
+          buildChannel: buildIdentity.buildChannel,
+          problemDescription: description,
+          sha256,
+          sizeBytes,
+          eventCount: (log as any).recentEvents?.length ?? 0,
+          itemCount: items.length,
+          outfitCount: outfits.length,
+          wishlistCount: wishlistItems.length,
+          recentRequestIds: [],
+        }),
+      });
+
+      if (!authorizeRes.ok) {
+        const err = await authorizeRes.json().catch(() => ({ code: "unknown" }));
+        throw new Error(err.code === "cos_not_configured" ? "创建工单失败" : `创建工单失败: ${err.code}`);
+      }
+
+      const authorizeData = await authorizeRes.json();
+      const caseId = authorizeData.caseId;
+
+      setDiagnosticUploadState({ phase: "uploading", message: "正在上传诊断数据…", caseId, problemDescription: description });
+
+      const uploadRes = await fetch(authorizeData.uploadUrl, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: data,
+      });
+
+      if (!uploadRes.ok) {
+        throw new Error("COS_UPLOAD_FAILED");
+      }
+
+      setDiagnosticUploadState({ phase: "confirming", message: "正在确认上传结果…", caseId, problemDescription: description });
+
+      const completeRes = await fetch(`${apiBase}/api/diagnostics/cases/${caseId}/complete`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${accessToken}`,
+          "X-Wardrobe-Device-Id": deviceId,
+        },
+        body: JSON.stringify({
+          clientRequestId: (log as any).clientRequestId,
+          sha256,
+          sizeBytes,
+        }),
+      });
+
+      if (!completeRes.ok) {
+        throw new Error("COMPLETE_FAILED");
+      }
+
+      const completeData = await completeRes.json();
+      recordDiagnosticEvent("diagnostic_upload_succeeded", { caseId });
+
+      const uploadInfo: LastDiagnosticUpload = {
+        caseId,
+        uploadedAt: completeData.uploadedAt,
+        appVersion: buildIdentity.appVersion,
+        gitCommitShort: buildIdentity.gitCommitShort,
+      };
+      setLastDiagnosticUpload(uploadInfo);
+      setDiagnosticUploadState({
+        phase: "success",
+        message: "上传成功",
+        caseId,
+        uploadedAt: completeData.uploadedAt,
+        expiresAt: completeData.expiresAt,
+        appVersion: buildIdentity.appVersion,
+        gitCommitShort: buildIdentity.gitCommitShort,
+      });
+      setDiagnosticDescription("");
+      setShowDiagnosticSuccess(true);
     } catch (error) {
-      recordDiagnosticEvent("diagnostic_export_failed", { error: error instanceof Error ? error.message : String(error) });
-      onMessage?.(`导出诊断日志失败: ${error instanceof Error ? error.message : "未知错误"}`);
-    } finally {
-      setIsDiagnosticExporting(false);
+      const errMsg = error instanceof Error ? error.message : "未知错误";
+      const errCode = errMsg.includes("未登录") ? "NOT_LOGGED_IN"
+        : errMsg.includes("网络") || errMsg.includes("fetch") ? "NO_NETWORK"
+        : errMsg.includes("10 MiB") ? "SIZE_EXCEEDED"
+        : errMsg.includes("COS_UPLOAD_FAILED") ? "COS_UPLOAD_FAILED"
+        : errMsg.includes("COMPLETE_FAILED") ? "COMPLETE_FAILED"
+        : errMsg.includes("创建工单") ? "AUTHORIZE_FAILED"
+        : "UNKNOWN";
+
+      recordDiagnosticEvent("diagnostic_upload_failed", { error: errMsg, code: errCode });
+      setDiagnosticUploadState({
+        phase: "failed",
+        stage: errCode === "AUTHORIZE_FAILED" ? "authorize" : errCode === "COS_UPLOAD_FAILED" ? "upload" : errCode === "COMPLETE_FAILED" ? "confirm" : "build",
+        errorCode: errCode,
+        message: errMsg,
+        problemDescription: description,
+      });
+      setShowDiagnosticFailed(true);
     }
   }
   // v0.9.24-dev: onClearAllData loading 态从 WardrobeApp 注入 (subagent I-2/I-3)。
@@ -5149,24 +5297,143 @@ function SettingsView({
         </button>
       </article>
 
-      <article className="surface rounded-lg px-4 py-3.5" aria-label="诊断日志">
+      <article className="surface rounded-lg px-4 py-3.5" aria-label="远程诊断">
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
-            <h2 className="text-base font-semibold">诊断日志</h2>
-            <p className="mt-0.5 text-xs text-ink/55">导出最近操作、图片优化、色卡、裁切和删除诊断信息</p>
-            <p className="mt-0.5 text-[11px] text-ink/45">不包含原始图片和 MiniMax Key</p>
+            <h2 className="text-base font-semibold">远程诊断</h2>
+            <p className="mt-0.5 text-xs text-ink/55">上传当前应用状态和业务数据，用于在开发电脑上定位问题。</p>
+            <p className="mt-0.5 text-[11px] text-ink/45">不会上传密码、登录凭证、API Key 和图片原文件。</p>
           </div>
         </div>
         <button
           type="button"
-          onClick={handleExportDiagnosticLog}
-          disabled={isDiagnosticExporting}
+          onClick={handleStartDiagnosticUpload}
+          disabled={diagnosticUploadState.phase !== "idle"}
           className="mt-3 inline-flex h-10 w-full items-center justify-center gap-2 rounded-lg border border-ink/10 bg-white px-3 text-sm font-semibold text-ink/75 active:bg-mist disabled:opacity-55"
         >
-          {isDiagnosticExporting ? <Loader2 size={15} className="animate-spin" aria-hidden="true" /> : <ScrollText size={15} aria-hidden="true" />}
-          {isDiagnosticExporting ? "正在导出..." : "导出诊断日志"}
+          {diagnosticUploadState.phase !== "idle" ? <Loader2 size={15} className="animate-spin" aria-hidden="true" /> : <Upload size={15} aria-hidden="true" />}
+          {diagnosticUploadState.phase !== "idle" ? diagnosticUploadState.message ?? "处理中..." : "上传诊断数据"}
         </button>
+        {lastDiagnosticUpload && (
+          <p className="mt-2 text-[11px] text-ink/50">
+            最近上传<br />
+            {new Date(lastDiagnosticUpload.uploadedAt).toLocaleDateString("zh-CN")} {new Date(lastDiagnosticUpload.uploadedAt).toLocaleTimeString("zh-CN", { hour: "2-digit", minute: "2-digit" })} · {lastDiagnosticUpload.caseId}
+          </p>
+        )}
       </article>
+
+      {/* 问题描述弹窗 */}
+      {showDiagnosticDescDialog && (
+        <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/40 p-4" onClick={(e) => { if (e.target === e.currentTarget) { /* 点击外部不关闭 */ } }}>
+          <div className="w-full max-w-sm rounded-xl bg-white p-4 shadow-lg">
+            <h3 className="text-base font-semibold">补充问题描述</h3>
+            <textarea
+              value={diagnosticDescription}
+              onChange={(e) => {
+                if (e.target.value.length <= 1000) {
+                  setDiagnosticDescription(e.target.value);
+                }
+              }}
+              placeholder="请描述刚才进行了什么操作，以及出现了什么问题。&#10;此项非必填，留空也可以继续上传。"
+              className="mt-3 h-28 w-full resize-none rounded-lg border border-ink/10 bg-white px-3 py-2 text-sm outline-none focus:border-denim"
+              rows={4}
+            />
+            <p className="mt-1 text-right text-[11px] text-ink/40">{diagnosticDescription.length}/1000</p>
+            <div className="mt-3 flex gap-2">
+              <button
+                type="button"
+                onClick={handleCancelDiagnosticUpload}
+                className="h-10 flex-1 rounded-lg border border-ink/10 text-sm font-medium"
+              >
+                取消
+              </button>
+              <button
+                type="button"
+                onClick={handleConfirmDiagnosticUpload}
+                className="h-10 flex-1 rounded-lg bg-denim text-sm font-semibold text-white"
+              >
+                确认上传
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 上传成功弹窗 */}
+      {showDiagnosticSuccess && diagnosticUploadState.phase === "success" && (
+        <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/40 p-4">
+          <div className="w-full max-w-sm rounded-xl bg-white p-4 shadow-lg">
+            <h3 className="text-base font-semibold">诊断数据上传成功</h3>
+            <div className="mt-3 space-y-1 text-sm">
+              <p><span className="text-ink/55">工单号</span></p>
+              <p className="font-mono text-base font-semibold">{diagnosticUploadState.caseId}</p>
+              <p className="pt-1"><span className="text-ink/55">应用版本</span> {diagnosticUploadState.appVersion} · {diagnosticUploadState.gitCommitShort}</p>
+              <p><span className="text-ink/55">上传时间</span> {new Date(diagnosticUploadState.uploadedAt).toLocaleString("zh-CN")}</p>
+            </div>
+            <p className="mt-2 text-xs text-ink/50">数据将在 30 天后自动删除。请在开发电脑中读取该工单。</p>
+            <div className="mt-3 flex gap-2">
+              <button
+                type="button"
+                onClick={() => {
+                  if (diagnosticUploadState.phase === "success") {
+                    void navigator.clipboard.writeText(diagnosticUploadState.caseId);
+                    onMessage?.("工单号已复制");
+                  }
+                }}
+                className="h-10 flex-1 rounded-lg border border-ink/10 text-sm font-medium"
+              >
+                复制工单号
+              </button>
+              <button
+                type="button"
+                onClick={() => { setShowDiagnosticSuccess(false); setDiagnosticUploadState({ phase: "idle" }); }}
+                className="h-10 flex-1 rounded-lg bg-denim text-sm font-semibold text-white"
+              >
+                关闭
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 上传失败弹窗 */}
+      {showDiagnosticFailed && diagnosticUploadState.phase === "failed" && (
+        <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/40 p-4">
+          <div className="w-full max-w-sm rounded-xl bg-white p-4 shadow-lg">
+            <h3 className="text-base font-semibold">诊断数据上传失败</h3>
+            <p className="mt-2 text-sm text-ink/70">
+              {diagnosticUploadState.errorCode === "NOT_LOGGED_IN" ? "登录后才能上传诊断数据。"
+                : diagnosticUploadState.errorCode === "NO_NETWORK" ? "当前网络不可用，请联网后重试。"
+                : diagnosticUploadState.errorCode === "SIZE_EXCEEDED" ? "诊断数据超过上传限制，请检查异常业务数据。"
+                : diagnosticUploadState.errorCode === "AUTHORIZE_FAILED" ? "无法创建诊断工单，请稍后重试。"
+                : diagnosticUploadState.errorCode === "COS_UPLOAD_FAILED" ? "诊断数据上传中断，请重新上传。"
+                : diagnosticUploadState.errorCode === "COMPLETE_FAILED" ? "服务器未能确认上传结果，请重新上传。"
+                : "诊断数据上传失败，请稍后重试。"}
+            </p>
+            <p className="mt-1 text-xs text-ink/50">本次数据未成功保存到服务器。</p>
+            <div className="mt-3 flex gap-2">
+              <button
+                type="button"
+                onClick={() => { setShowDiagnosticFailed(false); setDiagnosticUploadState({ phase: "idle" }); }}
+                className="h-10 flex-1 rounded-lg border border-ink/10 text-sm font-medium"
+              >
+                关闭
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setShowDiagnosticFailed(false);
+                  setDiagnosticUploadState({ phase: "describing", message: "请描述遇到的问题…", problemDescription: diagnosticUploadState.problemDescription ?? "" });
+                  setShowDiagnosticDescDialog(true);
+                }}
+                className="h-10 flex-1 rounded-lg bg-denim text-sm font-semibold text-white"
+              >
+                重新上传
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* 衣橱增删改弹窗 (首页和子页共用) */}
       <MotionSheet open={showAddWardrobe} onClose={() => setShowAddWardrobe(false)} panelClassName="!max-w-sm">

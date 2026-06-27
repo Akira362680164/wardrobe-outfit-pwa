@@ -1,5 +1,4 @@
 import { Capacitor } from "@capacitor/core";
-import { Directory, Encoding, Filesystem } from "@capacitor/filesystem";
 import packageJson from "../../package.json";
 import type { AppRoute } from "@/lib/app-route";
 import { routeToDebugLabel } from "@/lib/app-route";
@@ -8,25 +7,57 @@ import type { ClosetLocation, SavedOutfit, WardrobeItem, WishlistItem } from "@/
 import { getGarmentCardColors, getColorSwatchStyle } from "@/lib/catalog-card-format";
 import { getAllColors } from "@/lib/color-fields";
 
-const DIAGNOSTIC_LOG_FOLDER = "WardrobeLogs";
-const DIAGNOSTIC_LOG_FOLDER_LABEL = "Documents/WardrobeLogs";
-const MAX_EVENTS = 300;
+const MAX_EVENTS = 1000;
 const MAX_LOG_ITEMS = 200;
 const MAX_LOG_OUTFITS = 120;
 const MAX_LOG_WISHLIST = 120;
 
 export interface DiagnosticEvent {
-  ts: string;
-  type: string;
-  detail?: unknown;
+  eventId: string;
+  occurredAt: string;
+  monotonicMs?: number;
+  category:
+    | "ui"
+    | "navigation"
+    | "lifecycle"
+    | "local_data"
+    | "connectivity"
+    | "network"
+    | "auth"
+    | "workspace"
+    | "sync"
+    | "asset"
+    | "ai"
+    | "diagnostic"
+    | "error";
+  name: string;
+  phase?: "started" | "succeeded" | "failed" | "cancelled" | "changed" | "scheduled";
+  severity: "debug" | "info" | "warning" | "error";
+  route?: string;
+  view?: string;
+  requestId?: string;
+  operationId?: string;
+  endpoint?: string;
+  method?: "GET" | "POST" | "PUT" | "DELETE" | "PATCH" | "HEAD";
+  transport?: "fetch" | "capacitor_http" | "cos_direct";
+  httpStatus?: number;
+  errorCode?: string;
+  durationMs?: number;
+  attempt?: number;
+  retryAfterMs?: number;
+  connectivityBefore?: string;
+  connectivityAfter?: string;
+  metadata?: Record<string, unknown>;
 }
 
-export interface DiagnosticExportResult {
-  fileName: string;
-  path: string;
-  directoryLabel: string;
-  mode: "native" | "download";
-  uri?: string;
+export interface ClientBuildIdentity {
+  appVersion: string;
+  versionCode: number;
+  gitCommit: string;
+  gitCommitShort: string;
+  buildTime: string;
+  buildChannel: "internal" | "release";
+  repository: string;
 }
 
 export interface BuildDiagnosticLogInput {
@@ -45,24 +76,118 @@ export interface BuildDiagnosticLogInput {
   };
 }
 
+export type DiagnosticUploadState =
+  | { phase: "idle" }
+  | { phase: "describing"; message: "请描述遇到的问题…"; problemDescription: string }
+  | { phase: "building"; message: "正在整理诊断数据…"; problemDescription: string | null }
+  | { phase: "authorizing"; message: "正在创建诊断工单…"; problemDescription: string | null }
+  | { phase: "uploading"; message: "正在上传诊断数据…"; caseId: string; problemDescription: string | null }
+  | { phase: "confirming"; message: "正在确认上传结果…"; caseId: string; problemDescription: string | null }
+  | {
+      phase: "success";
+      message: "上传成功";
+      caseId: string;
+      uploadedAt: string;
+      expiresAt: string;
+      appVersion: string;
+      gitCommitShort: string;
+    }
+  | {
+      phase: "failed";
+      stage: "build" | "authorize" | "upload" | "confirm";
+      caseId?: string;
+      errorCode: string;
+      message: string;
+      problemDescription: string | null;
+    };
+
+export interface LastDiagnosticUpload {
+  caseId: string;
+  uploadedAt: string;
+  appVersion: string;
+  gitCommitShort: string;
+}
+
+let eventIdCounter = 0;
 const diagnosticEvents: DiagnosticEvent[] = [];
 
-export function recordDiagnosticEvent(type: string, detail?: unknown): void {
-  diagnosticEvents.push({
-    ts: new Date().toISOString(),
-    type,
-    detail: sanitizeValue(detail),
-  });
+function generateEventId(): string {
+  return `${Date.now().toString(36)}-${++eventIdCounter}`;
+}
+
+export function recordDiagnosticEvent(
+  typeOrCategory: string,
+  nameOrDetail?: string | Record<string, unknown>,
+  detail?: Omit<Partial<DiagnosticEvent>, "category" | "name">,
+): void {
+  // 兼容旧调用方式: recordDiagnosticEvent("diagnostic_export_started", { activeView, route })
+  if (typeof nameOrDetail === "object" || nameOrDetail === undefined) {
+    const event: DiagnosticEvent = {
+      eventId: generateEventId(),
+      occurredAt: new Date().toISOString(),
+      category: "diagnostic",
+      name: typeOrCategory,
+      severity: "info",
+      metadata: nameOrDetail,
+    };
+    diagnosticEvents.push(event);
+    trimEvents();
+    return;
+  }
+
+  // 新调用方式: recordDiagnosticEvent("ui", "button_clicked", { ... })
+  const event: DiagnosticEvent = {
+    eventId: generateEventId(),
+    occurredAt: new Date().toISOString(),
+    category: typeOrCategory as DiagnosticEvent["category"],
+    name: nameOrDetail,
+    severity: "info",
+    ...detail,
+  };
+  diagnosticEvents.push(event);
+  trimEvents();
+}
+
+function trimEvents(): void {
+  if (diagnosticEvents.length <= MAX_EVENTS) return;
+  // 优先删除最早的 debug/info，保留 warning/error
+  const toDelete = diagnosticEvents.length - MAX_EVENTS;
+  let deleted = 0;
+  for (let i = 0; i < diagnosticEvents.length && deleted < toDelete; i++) {
+    if (diagnosticEvents[i].severity === "debug" || diagnosticEvents[i].severity === "info") {
+      diagnosticEvents.splice(i, 1);
+      i--;
+      deleted++;
+    }
+  }
+  // 如果还不够，删除最早的任何事件
   if (diagnosticEvents.length > MAX_EVENTS) {
     diagnosticEvents.splice(0, diagnosticEvents.length - MAX_EVENTS);
   }
 }
 
 export function getDiagnosticEvents(): DiagnosticEvent[] {
-  return diagnosticEvents.map((event) => ({ ...event, detail: sanitizeValue(event.detail) }));
+  return diagnosticEvents.map((event) => ({
+    ...event,
+    metadata: event.metadata ? (sanitizeValue(event.metadata) as Record<string, unknown>) : undefined,
+  }));
+}
+
+export function getClientBuildIdentity(): ClientBuildIdentity {
+  return {
+    appVersion: process.env.NEXT_PUBLIC_APP_VERSION ?? packageJson.version,
+    versionCode: Number(process.env.NEXT_PUBLIC_VERSION_CODE ?? 0),
+    gitCommit: process.env.NEXT_PUBLIC_GIT_COMMIT ?? "",
+    gitCommitShort: process.env.NEXT_PUBLIC_GIT_COMMIT_SHORT ?? "",
+    buildTime: process.env.NEXT_PUBLIC_BUILD_TIME ?? "",
+    buildChannel: (process.env.NEXT_PUBLIC_BUILD_CHANNEL as "internal" | "release") ?? "internal",
+    repository: process.env.NEXT_PUBLIC_REPOSITORY ?? "Akira362680164/wardrobe-outfit-pwa",
+  };
 }
 
 export function buildWardrobeDiagnosticLog(input: BuildDiagnosticLogInput) {
+  const build = getClientBuildIdentity();
+
   const items = input.items.slice(0, MAX_LOG_ITEMS).map(summarizeItem);
   const outfits = input.outfits.slice(0, MAX_LOG_OUTFITS).map((outfit) => ({
     id: outfit.id,
@@ -88,10 +213,14 @@ export function buildWardrobeDiagnosticLog(input: BuildDiagnosticLogInput) {
 
   return {
     schemaVersion: 1,
-    exportedAt: new Date().toISOString(),
+    generatedAt: new Date().toISOString(),
+    clientRequestId: generateClientRequestId(),
+    build,
+    userReport: {
+      description: null as string | null,
+    },
     app: {
       name: packageJson.name,
-      version: packageJson.version,
       capacitorPlatform: Capacitor.getPlatform(),
       nativePlatform: Capacitor.isNativePlatform(),
     },
@@ -101,12 +230,12 @@ export function buildWardrobeDiagnosticLog(input: BuildDiagnosticLogInput) {
       route: input.route,
       routeLabel: routeToDebugLabel(input.route),
     },
-    miniMax: {
-      hasKey: Boolean(input.miniMaxSettings.apiKey?.trim()),
-      apiHost: input.miniMaxSettings.apiHost,
-      model: input.miniMaxSettings.model,
-      fallbackModel: input.miniMaxSettings.fallbackModel,
-    },
+    network: getNetworkSnapshot(),
+    server: getServerSnapshot(),
+    auth: getAuthSnapshot(),
+    workspace: getWorkspaceSnapshot(),
+    sync: getSyncSnapshot(),
+    assets: getAssetSnapshot(),
     counts: {
       items: input.items.length,
       locations: input.locations.length,
@@ -121,51 +250,9 @@ export function buildWardrobeDiagnosticLog(input: BuildDiagnosticLogInput) {
       updatedAt: location.updatedAt,
     })),
     items,
-    itemsTruncated: input.items.length > items.length,
     outfits,
-    outfitsTruncated: input.outfits.length > outfits.length,
     wishlistItems,
-    wishlistTruncated: input.wishlistItems.length > wishlistItems.length,
     recentEvents: getDiagnosticEvents(),
-  };
-}
-
-export async function exportWardrobeDiagnosticLog(input: BuildDiagnosticLogInput): Promise<DiagnosticExportResult> {
-  const log = buildWardrobeDiagnosticLog(input);
-  const fileName = getDiagnosticFileName(log.exportedAt);
-  const data = JSON.stringify(log, null, 2);
-
-  if (!Capacitor.isNativePlatform()) {
-    downloadJson(data, fileName);
-    return {
-      fileName,
-      path: fileName,
-      directoryLabel: "浏览器下载目录",
-      mode: "download",
-    };
-  }
-
-  await Filesystem.mkdir({
-    path: DIAGNOSTIC_LOG_FOLDER,
-    directory: Directory.Documents,
-    recursive: true,
-  }).catch(() => {});
-
-  const path = `${DIAGNOSTIC_LOG_FOLDER}/${fileName}`;
-  const result = await Filesystem.writeFile({
-    path,
-    data,
-    directory: Directory.Documents,
-    encoding: Encoding.UTF8,
-    recursive: true,
-  });
-
-  return {
-    fileName,
-    path,
-    uri: result.uri,
-    directoryLabel: DIAGNOSTIC_LOG_FOLDER_LABEL,
-    mode: "native",
   };
 }
 
@@ -233,27 +320,99 @@ function getEnvironmentSnapshot() {
   };
 }
 
-function getDiagnosticFileName(exportedAt: string): string {
-  const stamp = exportedAt.replaceAll(":", "-").replaceAll(".", "-").replace("T", "-").replace("Z", "");
-  return `wardrobe-log-${stamp}.json`;
+function getNetworkSnapshot() {
+  return {
+    browserOnline: typeof navigator !== "undefined" ? navigator.onLine : null,
+    systemNetworkConnected: null as boolean | null,
+    connectivityState: "unknown" as string,
+    transport: "fetch" as "fetch" | "capacitor_http" | "mixed",
+    apiHostLabel: "default",
+    recentRequestCount: 0,
+    recentFailureCount: 0,
+    recentTimeoutCount: 0,
+    recentRetryCount: 0,
+  };
 }
 
-function downloadJson(data: string, fileName: string): void {
-  if (typeof document === "undefined") return;
-  const blob = new Blob([data], { type: "application/json;charset=utf-8" });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = fileName;
-  a.click();
-  URL.revokeObjectURL(url);
+function getServerSnapshot() {
+  return {
+    apiVersion: undefined as string | undefined,
+    apiGitCommit: undefined as string | undefined,
+    apiEnvironment: undefined as string | undefined,
+    lastKnownHealth: "unknown" as "ok" | "failed" | "unknown",
+    lastKnownReady: "unknown" as "ok" | "failed" | "unknown",
+    lastServerTime: undefined as string | undefined,
+  };
 }
 
-function sanitizeValue(value: unknown, key = "", depth = 0): unknown {
-  if (/api[-_ ]?key|token|secret|password/i.test(key)) return "[redacted]";
+function getAuthSnapshot() {
+  return {
+    phase: "unknown",
+    authenticated: false,
+    hasCachedSession: false,
+    hasAccessToken: false,
+    hasRefreshToken: false,
+  };
+}
+
+function getWorkspaceSnapshot() {
+  return {
+    status: "unknown",
+    activeWorkspacePresent: false,
+    bootstrapCompleted: false,
+  };
+}
+
+function getSyncSnapshot() {
+  return {
+    enabled: false,
+    status: "unknown",
+    pendingMutationCount: 0,
+    pushingMutationCount: 0,
+    failedMutationCount: 0,
+    conflictCount: 0,
+  };
+}
+
+function getAssetSnapshot() {
+  return {
+    pendingUploadCount: 0,
+    failedUploadCount: 0,
+  };
+}
+
+function generateClientRequestId(): string {
+  return crypto.randomUUID();
+}
+
+export function sanitizeValue(value: unknown, key = "", depth = 0): unknown {
+  const sensitiveKeyPattern = /api[-_ ]?key|token|secret|password|authorization|cookie|jwt|refresh/i;
+  if (sensitiveKeyPattern.test(key)) return "[redacted]";
   if (value == null || typeof value === "number" || typeof value === "boolean") return value;
   if (typeof value === "string") {
     if (value.startsWith("data:image/")) return summarizeImageDataUrl(value);
+    if (/^Bearer\s+/i.test(value)) return "[redacted:bearer]";
+    if (/^eyJ[\w-]*\.eyJ[\w-]*\.[\w-]*$/i.test(value)) return "[redacted:jwt]";
+    if (/^\+?\d{10,15}$/.test(value)) return value.slice(0, 3) + "****" + value.slice(-4);
+    if (/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) {
+      const [local, domain] = value.split("@");
+      return local.slice(0, 2) + "***@" + domain;
+    }
+    const urlPattern = /^(https?:\/\/[^?]+)\??(.*)$/i;
+    const urlMatch = urlPattern.exec(value);
+    if (urlMatch && urlMatch[2]) {
+      const params = new URLSearchParams(urlMatch[2]);
+      for (const [pKey] of params) {
+        if (/token|key|secret|code/i.test(pKey)) {
+          params.set(pKey, "[redacted]");
+        }
+      }
+      return urlMatch[1] + "?" + params.toString();
+    }
+    // 遮盖文件系统路径中的用户主目录
+    if (value.startsWith("/Users/") || value.startsWith("/home/")) {
+      return value.replace(/^(\/Users\/[^/]+|\/home\/[^/]+)/, "[home]");
+    }
     return value.length > 500 ? `${value.slice(0, 500)}...` : value;
   }
   if (depth > 5) return "[max-depth]";

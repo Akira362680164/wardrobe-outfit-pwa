@@ -1,6 +1,23 @@
+## 2026-06-27 / v2.0.2 / Claude Code — 远程诊断系统 Commit 3: 客户端原地替换
+
+- **目的**：实施 `WARDROBE_REMOTE_DIAGNOSTIC_V1_REQUIREMENTS.md` Commit 3，将本地诊断导出替换为云端诊断上传。
+- **版本**：保持 `2.0.1`。
+- **改动文件**：
+  - `src/lib/diagnostic-log.ts`（重写）：删除本地导出能力（exportWardrobeDiagnosticLog、downloadJson、Capacitor Filesystem 等），新增远程诊断事件模型（DiagnosticEvent）、构建身份读取（getClientBuildIdentity）、诊断日志生成（buildWardrobeDiagnosticLog）、敏感数据脱敏（sanitizeValue）、客户端请求 ID 生成（generateClientRequestId）。
+  - `src/lib/crypto.ts`（新增）：客户端 SHA-256 哈希工具。
+  - `src/components/wardrobe-app.tsx`：设置页诊断卡片改为远程诊断 UI（上传诊断数据按钮 + 最近上传记录），新增问题描述弹窗、上传成功/失败弹窗，实现完整上传状态机（idle → describing → building → authorizing → uploading → confirming → success/failed）。
+  - `scripts/test-diagnostic-log.ts`（新增）：客户端诊断日志模块 41 项断言测试。
+  - `scripts/test-build-identity.ts`：修复 `grepFiles` 类型错误（`pattern.test` → `content.includes`）。
+- **验证结果**：
+  - `npm run typecheck`：✅ 零错误。
+  - `npx tsx scripts/test-build-identity.ts`：✅ 19/19。
+  - `npx tsx scripts/test-diagnostic-log.ts`：✅ 41/41。
+- **风险门禁**：medium（重写诊断日志模块、替换设置页诊断 UI、新增网络上传流程）。
+- **未触发 subagent**：用户未通知。
+
 ## 2026-06-27 / v2.0.1 / Codex — 增加 Android 真机安装与 ADB 调试流程
 
-- **目的**：固化“已连接且已授权的 Android 手机可直接安装当前 APK 并做真机调试”的长期规则。
+- **目的**：固化”已连接且已授权的 Android 手机可直接安装当前 APK 并做真机调试”的长期规则。
 - **版本**：保持 `2.0.1`，本次仅修改协作文档，不构建 APK。
 - **改动文件**：`AGENTS.md`、`VERSION_HISTORY.md`。
 - **改动内容**：新增 ADB 设备状态检查、本地验证门禁、保留数据的覆盖安装、App 启动与 logcat 调试、真机回归范围及结果记录要求；明确禁止自动卸载、清数据或读取用户隐私数据。

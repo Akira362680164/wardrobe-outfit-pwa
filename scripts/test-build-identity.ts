@@ -32,7 +32,7 @@ function grepFiles(pattern: string, files: string[]): boolean {
     const path = join(root, file);
     if (!existsSync(path)) continue;
     const content = readFileSync(path, "utf8");
-    if (pattern.test(content)) return true;
+    if (content.includes(pattern)) return true;
   }
   return false;
 }
