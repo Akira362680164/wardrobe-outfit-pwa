@@ -15,6 +15,16 @@
 - **风险门禁**：low（仅删除未使用 import 和变量，未改动业务逻辑）。
 - **未触发 subagent**：用户未通知。
 
+## 2026-06-27 / v2.0.2-test / Claude Code — 重新构建 v2.0.2-test APK（ESLint 清理后）
+
+- **目的**：用 ESLint 清理后的代码重新构建 APK。
+- **版本**：`2.0.2-test`。
+- **改动文件**：无（代码已在前次 commit 清理完毕）。
+- **构建产物**：`衣橱穿搭助手-v2.0.2-test.apk`（7.8 MB，Commit `e3a5123`）。
+- **验证结果**：`npm run android:apk:skip-check`：✅ BUILD SUCCESSFUL（10s）。
+- **风险门禁**：low。
+- **未触发 subagent**：用户未通知。
+
 ## 2026-06-27 / v2.0.2-test / Claude Code — 远程诊断系统合并到 main 并构建 APK
 
 - **目的**：将远程诊断系统分支合并到 main，构建 v2.0.2-test APK 交付。
