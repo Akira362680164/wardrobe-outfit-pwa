@@ -1,3 +1,14 @@
+## 2026-06-27 / v2.0.2-test / Codex — 修复新账号云端衣橱初始化迁移缺口
+
+- **目的**：修复 Android 真机注册后自动登录卡在“正在准备本机衣橱”的根因，为当前 bootstrap 契约补齐服务端 `closetLocations` 实体的数据库迁移。
+- **版本**：保持 `2.0.2-test`，本次不改 Android 客户端版本。
+- **根因**：线上 API 仍运行 `c8675b8`，返回的 bootstrap `entities` 没有 `closetLocations`；当前客户端要求该字段。同时主线 Drizzle schema 虽已声明 `locations` 表和 `closetLocation` 枚举，但迁移目录漏掉了对应 SQL，不能直接安全升级服务端。
+- **改动文件**：`services/wardrobe-api/migrations/0005_closet_locations.sql`、`services/wardrobe-api/migrations/meta/_journal.json`、`services/wardrobe-api/tests/sync-contracts.test.ts`、`VERSION_HISTORY.md`。
+- **改动内容**：新增幂等迁移，扩展 `sync_entity_type`、创建 `locations` 表和索引；补齐 bootstrap 空实体测试夹具与迁移断言。
+- **风险门禁**：**high**（生产数据库枚举/表迁移与服务端部署）。
+- **未触发 subagent**：用户未通知。
+- **未验证风险**：此记录提交时尚未部署生产服务器；部署、迁移、API bootstrap 和 Android 真机复测结果将在后续记录中补充。
+
 ## 2026-06-27 / v2.0.2-test / Codex — 补充 Android 真机安装实操与排坑记录
 
 - **目的**：将本次 MEIZU 21 Pro 真机安装的实际命令、验证方法和 USB 单包安装授权问题固化到项目长期规则。

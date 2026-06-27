@@ -14,6 +14,7 @@ import { describe, expect, it } from "vitest";
 
 const root = path.resolve(__dirname, "../../..");
 const migration = readFileSync(path.join(root, "services/wardrobe-api/migrations/0001_business_sync_schema.sql"), "utf8");
+const closetLocationMigration = readFileSync(path.join(root, "services/wardrobe-api/migrations/0005_closet_locations.sql"), "utf8");
 const journal = readFileSync(path.join(root, "services/wardrobe-api/migrations/meta/_journal.json"), "utf8");
 const drizzleSchema = readFileSync(path.join(root, "services/wardrobe-api/src/db/schema.ts"), "utf8");
 
@@ -41,6 +42,7 @@ function emptyEntities() {
     tripPlans: [],
     outfitPlans: [],
     assets: [],
+    closetLocations: [],
   };
 }
 
@@ -62,6 +64,12 @@ describe("business sync schema", () => {
     for (const name of ["wardrobes", "garments", "outfits", "outfitItems", "wishlistItems", "wearEvents", "tripPlans", "outfitPlans", "assets", "syncChanges", "syncMutations"]) {
       expect(drizzleSchema).toContain(`export const ${name}`);
     }
+  });
+
+  it("migrates closet locations required by the current bootstrap contract", () => {
+    expect(closetLocationMigration).toContain("ADD VALUE IF NOT EXISTS 'closetLocation'");
+    expect(closetLocationMigration).toContain("CREATE TABLE IF NOT EXISTS locations");
+    expect(journal).toContain("0005_closet_locations");
   });
 });
 
