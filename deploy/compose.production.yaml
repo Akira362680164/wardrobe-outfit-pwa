@@ -34,16 +34,16 @@ services:
       DATABASE_URL: ${DATABASE_URL}
       GIT_COMMIT: ${GIT_COMMIT:-unknown}
       ALLOWED_ORIGINS: ${ALLOWED_ORIGINS:-}
-      COS_BUCKET: ${COS_BUCKET}
-      COS_REGION: ${COS_REGION}
-      COS_SECRET_ID: ${COS_SECRET_ID}
-      COS_SECRET_KEY: ${COS_SECRET_KEY}
+      WARDROBE_STORAGE_ROOT: /var/lib/wardrobe-api/storage
+      ASSET_MAX_BYTES: ${ASSET_MAX_BYTES:-15728640}
+      DIAGNOSTIC_HASH_SECRET: ${DIAGNOSTIC_HASH_SECRET}
     ports:
       - "127.0.0.1:3000:3000"
     volumes:
       - /opt/wardrobe-cloud/secrets/jwt-private.pem:/run/secrets/jwt-private.pem:ro
       - /opt/wardrobe-cloud/secrets/jwt-public.pem:/run/secrets/jwt-public.pem:ro
       - /opt/wardrobe-cloud/secrets/refresh-idempotency.key:/run/secrets/refresh-idempotency.key:ro
+      - /srv/wardrobe/storage:/var/lib/wardrobe-api/storage
     healthcheck:
       test: ["CMD-SHELL", "node -e \"fetch('http://127.0.0.1:3000/api/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))\""]
       interval: 5s

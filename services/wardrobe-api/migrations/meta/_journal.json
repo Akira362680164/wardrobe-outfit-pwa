@@ -43,6 +43,13 @@
       "when": 1782432000005,
       "tag": "0005_closet_locations",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1782432000006,
+      "tag": "0006_local_file_storage",
+      "breakpoints": true
     }
   ]
 }

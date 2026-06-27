@@ -1,3 +1,14 @@
+## 2026-06-27 / v2.0.2-test / Codex — 本地存储数据迁移、删除生命周期与持久卷
+
+- **目的**：把数据库、同步删除、周期清理和生产容器持久化统一到服务器本地文件存储语义。
+- **版本**：保持 `2.0.2-test`。
+- **改动文件**：`services/wardrobe-api/migrations/0006_local_file_storage.sql`、`migrations/meta/_journal.json`、`src/db/schema.ts`、`packages/cloud-contracts/src/sync/contracts.ts`、`src/sync/service.ts`、`src/assets/cleanup.ts`、`src/diagnostics/cleanup.ts`、`src/server.ts`、`deploy/compose.production.yaml`、`.env.production.example`、`docs/production-deploy.md`。
+- **改动内容**：重命原图/缩略图相对存储键并删除重复单键字段；历史外部文件引用不伪装成已迁移，标记 `LOCAL_FILE_MISSING_REUPLOAD_REQUIRED`；资产 mutation 和业务 owner 删除均进入同一文件清理入口；启动/定时检查缺失文件、24 小时 `.part` 与过保留期删除记录；生产容器挂载 `/srv/wardrobe/storage`。
+- **验证**：新迁移已进入 Drizzle journal；`npm run api:typecheck` 通过；服务端存储与健康检查聚焦测试 16/16 通过；生产 Compose 配置只保留本地存储根目录和 15 MiB 限制。
+- **风险门禁**：**high**（PostgreSQL 迁移、同步删除、文件生命周期和生产卷挂载）。
+- **未触发 subagent**：用户未通知。
+- **未验证风险**：本条提交时生产主机目录、真实迁移与容器重启持久性尚待最终部署验收。
+
 ## 2026-06-27 / v2.0.2-test / Codex — 服务端本地文件 StorageProvider 与资产 API
 
 - **目的**：用服务端可替换存储抽象和本地持久文件实现，完整取代旧外部存储签名代码与运行时路由。

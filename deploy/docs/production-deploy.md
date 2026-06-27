@@ -1,6 +1,6 @@
 # Wardrobe Cloud 1A Production Deploy Notes
 
-This document covers only the stage 1A deployment shell around the API. It does not enable wardrobe sync, COS assets, or account workspace switching.
+This document covers the production API, PostgreSQL, and server-local asset storage layout.
 
 ## Server Layout
 
@@ -18,6 +18,7 @@ Use the fixed production directory:
     jwt-public.pem
     refresh-idempotency.key
   backups/
+/srv/wardrobe/storage/
 ```
 
 Do not print `.env` or secret file contents in logs.
@@ -35,6 +36,8 @@ docker compose \
 ```
 
 `postgres` is internal only. `wardrobe-api` binds to `127.0.0.1:3000:3000` for Caddy.
+
+Asset files are stored under the host directory `/srv/wardrobe/storage`, mounted at `/var/lib/wardrobe-api/storage` in the API container. Create the host directory before deployment, keep it writable only by the service administrator, and include it in file-level backups alongside PostgreSQL backups. `ASSET_MAX_BYTES` defaults to `15728640` bytes (15 MiB).
 
 `ALLOWED_ORIGINS` is a comma-separated CORS allowlist. For the temporary IP drill, include:
 

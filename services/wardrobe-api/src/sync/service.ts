@@ -101,7 +101,8 @@ export class SyncService {
   constructor(private readonly deps: SyncServiceDeps = {
     fetchBundle: defaultFetchBundle,
     fetchAssetManifest: defaultFetchAssetManifest,
-  }) {}
+  }, private readonly deleteAsset?: (input: { assetId: string; userId: string }) => Promise<unknown>,
+  private readonly deleteAssetsForOwner?: (input: { ownerEntityType: string; ownerEntityId: string; userId: string }) => Promise<unknown>) {}
 
   async bootstrap(input: BootstrapRequest & { userId: string }): Promise<BootstrapResponse> {
     const parsed = BootstrapRequestSchema.parse(input);
@@ -328,6 +329,11 @@ export class SyncService {
             serverRevision,
           };
         });
+        if (result.status === "accepted" && mutation.operation === "delete" && mutation.entityType === "asset" && this.deleteAsset) {
+          await this.deleteAsset({ assetId: mutation.entityId, userId });
+        } else if (result.status === "accepted" && mutation.operation === "delete" && this.deleteAssetsForOwner) {
+          await this.deleteAssetsForOwner({ ownerEntityType: mutation.entityType, ownerEntityId: mutation.entityId, userId });
+        }
         results.push(result);
       } catch (error) {
         if (error instanceof SyncApiError && error.statusCode === 403) {
@@ -513,7 +519,7 @@ async function defaultFetchAssetManifest(userId: string, db: NodePgDatabase<type
       ownerEntityType: row.ownerEntityType as SyncEntityTypeContract,
       ownerEntityId: row.ownerEntityId,
       sha256: row.sha256 ?? undefined,
-      thumbnailReady: Boolean(row.storageKey),
+      thumbnailReady: Boolean(row.thumbnailStorageKey),
     }),
   );
 }
@@ -608,12 +614,11 @@ function toAssetSyncEntity(row: typeof assets.$inferSelect): z.infer<typeof Sync
     ownerEntityId: row.ownerEntityId,
     sha256: row.sha256 ?? undefined,
     mimeType: row.mimeType ?? undefined,
-    storageKey: row.storageKey ?? undefined,
     sizeBytes: row.sizeBytes ?? undefined,
     width: row.width ?? undefined,
     height: row.height ?? undefined,
-    originalObjectKey: row.originalObjectKey ?? undefined,
-    thumbnailObjectKey: row.thumbnailObjectKey ?? undefined,
+    originalStorageKey: row.originalStorageKey ?? undefined,
+    thumbnailStorageKey: row.thumbnailStorageKey ?? undefined,
     uploadStatus: row.uploadStatus,
     payload: (row.payload as Record<string, unknown>) ?? {},
   });

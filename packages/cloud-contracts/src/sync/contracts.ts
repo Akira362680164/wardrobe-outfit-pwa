@@ -60,12 +60,11 @@ export const SyncAssetSchema = SyncEntitySchema.extend({
   ownerEntityId: z.string().uuid(),
   sha256: z.string().nullish(),
   mimeType: z.string().nullish(),
-  storageKey: z.string().nullish(),
   sizeBytes: z.number().int().nullish(),
   width: z.number().int().nullish(),
   height: z.number().int().nullish(),
-  originalObjectKey: z.string().nullish(),
-  thumbnailObjectKey: z.string().nullish(),
+  originalStorageKey: z.string().nullish(),
+  thumbnailStorageKey: z.string().nullish(),
   uploadStatus: z.string(),
 });
 
