@@ -2,7 +2,7 @@ import { z } from "zod";
 
 export const DiagnosticCaseStatusSchema = z.enum(["pending_upload", "uploaded", "expired"]);
 
-export const DiagnosticUploadAuthorizeRequestSchema = z.object({
+export const DiagnosticCaseCreateRequestSchema = z.object({
   clientRequestId: z.string().uuid(),
   schemaVersion: z.literal(1),
   appVersion: z.string().min(1).max(32),
@@ -20,22 +20,22 @@ export const DiagnosticUploadAuthorizeRequestSchema = z.object({
   recentRequestIds: z.array(z.string().uuid()).max(200),
 });
 
-export const DiagnosticUploadAuthorizeResponseSchema = z.object({
+export const DiagnosticCaseCreateResponseSchema = z.object({
   caseId: z.string().regex(/^WD-\d{8}-[A-Z0-9]{6}$/),
   status: DiagnosticCaseStatusSchema,
-  method: z.literal("PUT"),
-  uploadUrl: z.string().url(),
-  headers: z.record(z.string()).default({}),
-  expiresAt: z.string().datetime(),
 });
 
-export const DiagnosticUploadCompleteRequestSchema = z.object({
-  clientRequestId: z.string().uuid(),
-  sha256: z.string().regex(/^[a-f0-9]{64}$/),
-  sizeBytes: z.number().int().positive().max(10 * 1024 * 1024),
+export const DiagnosticContentHeadersSchema = z.object({
+  "content-type": z.literal("application/octet-stream"),
+  "x-diagnostic-client-request-id": z.string().uuid(),
+  "x-diagnostic-sha256": z.string().regex(/^[a-f0-9]{64}$/),
+  "x-diagnostic-size-bytes": z.preprocess(
+    (value) => typeof value === "string" ? Number(value) : value,
+    z.number().int().positive().max(10 * 1024 * 1024),
+  ),
 });
 
-export const DiagnosticUploadCompleteResponseSchema = z.object({
+export const DiagnosticContentUploadResponseSchema = z.object({
   caseId: z.string().regex(/^WD-\d{8}-[A-Z0-9]{6}$/),
   status: z.literal("uploaded"),
   uploadedAt: z.string().datetime(),
@@ -66,12 +66,10 @@ export const DiagnosticCaseListResponseSchema = z.object({
   cases: z.array(DiagnosticCaseMetadataSchema),
 });
 
-export const DiagnosticDownloadUrlResponseSchema = z.object({
+export const DiagnosticContentMetadataSchema = z.object({
   caseId: z.string().regex(/^WD-\d{8}-[A-Z0-9]{6}$/),
-  downloadUrl: z.string().url(),
   sha256: z.string().regex(/^[a-f0-9]{64}$/),
   sizeBytes: z.number().int().positive(),
-  expiresAt: z.string().datetime(),
 });
 
 export const ApiRequestTraceSchema = z.object({
@@ -94,12 +92,12 @@ export const DiagnosticCaseRequestTracesResponseSchema = z.object({
 });
 
 export type DiagnosticCaseStatus = z.infer<typeof DiagnosticCaseStatusSchema>;
-export type DiagnosticUploadAuthorizeRequest = z.infer<typeof DiagnosticUploadAuthorizeRequestSchema>;
-export type DiagnosticUploadAuthorizeResponse = z.infer<typeof DiagnosticUploadAuthorizeResponseSchema>;
-export type DiagnosticUploadCompleteRequest = z.infer<typeof DiagnosticUploadCompleteRequestSchema>;
-export type DiagnosticUploadCompleteResponse = z.infer<typeof DiagnosticUploadCompleteResponseSchema>;
+export type DiagnosticCaseCreateRequest = z.infer<typeof DiagnosticCaseCreateRequestSchema>;
+export type DiagnosticCaseCreateResponse = z.infer<typeof DiagnosticCaseCreateResponseSchema>;
+export type DiagnosticContentHeaders = z.infer<typeof DiagnosticContentHeadersSchema>;
+export type DiagnosticContentUploadResponse = z.infer<typeof DiagnosticContentUploadResponseSchema>;
 export type DiagnosticCaseMetadata = z.infer<typeof DiagnosticCaseMetadataSchema>;
 export type DiagnosticCaseListResponse = z.infer<typeof DiagnosticCaseListResponseSchema>;
-export type DiagnosticDownloadUrlResponse = z.infer<typeof DiagnosticDownloadUrlResponseSchema>;
+export type DiagnosticContentMetadata = z.infer<typeof DiagnosticContentMetadataSchema>;
 export type ApiRequestTrace = z.infer<typeof ApiRequestTraceSchema>;
 export type DiagnosticCaseRequestTracesResponse = z.infer<typeof DiagnosticCaseRequestTracesResponseSchema>;

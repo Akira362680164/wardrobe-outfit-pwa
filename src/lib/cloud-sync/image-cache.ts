@@ -6,10 +6,9 @@
 
 "use client";
 
-import { Capacitor, CapacitorHttp } from "@capacitor/core";
 import type { AssetVariant } from "@wardrobe/cloud-contracts";
 
-import { requestAssetDownloadUrl } from "@/lib/cloud-sync/cloud-assets-api";
+import { downloadAssetContent } from "@/lib/cloud-sync/cloud-assets-api";
 import { sha256Hex } from "@/lib/cloud-sync/asset-metadata";
 import { loadCloudBridgeContext } from "@/lib/cloud-sync/bridge-context";
 import { loadAuthSessionSnapshot } from "@/lib/auth-session-store";
@@ -29,6 +28,7 @@ export interface CachedImage {
 
 export interface ImageCacheDeps {
   storage?: ImageCacheStorage;
+  downloadContent?: typeof downloadAssetContent;
 }
 
 export class AccountImageCache {
@@ -47,9 +47,10 @@ export class AccountImageCache {
         storage.get(key),
         storage.get(metaKey),
       ]);
-      if (!data) return null;
+      if (!data || !metaRaw) return null;
       const meta = metaRaw ? parseMeta(metaRaw) : null;
-      const mimeType = meta?.mimeType ?? guessMime(assetId);
+      if (!meta?.mimeType?.startsWith("image/")) return null;
+      const mimeType = meta.mimeType;
       const sha256 = await sha256Hex(new Blob([data]));
       return { blob: new Blob([data], { type: mimeType }), sha256, mimeType };
     } catch {
@@ -95,11 +96,11 @@ export class AccountImageCache {
     const options: CloudSyncRequestOptions = { accessToken: session.accessToken, deviceId: ctx.deviceId };
 
     try {
-      const auth = await requestAssetDownloadUrl({ assetId, variant }, options);
-      const blob = await downloadBlob(auth.downloadUrl);
-      const ok = await this.put(assetId, variant, blob, auth.sha256, deps);
+      const download = deps.downloadContent ?? downloadAssetContent;
+      const content = await download({ assetId, variant }, options);
+      const ok = await this.put(assetId, variant, content.blob, content.sha256, deps);
       if (!ok) return null;
-      return { blob, sha256: auth.sha256, mimeType: auth.mimeType };
+      return { blob: content.blob, sha256: content.sha256, mimeType: content.mimeType };
     } catch {
       return null;
     }
@@ -112,17 +113,6 @@ export class AccountImageCache {
   private metaKey(assetId: string, variant: string): string {
     return `${this.prefix}${assetId}-${variant}.meta`;
   }
-}
-
-async function downloadBlob(url: string): Promise<Blob> {
-  if (Capacitor.isNativePlatform() && /^https?:\/\//.test(url)) {
-    const resp = await CapacitorHttp.request({ method: "GET", url });
-    if (resp.status >= 400) throw new Error(`download failed: ${resp.status}`);
-    return new Blob([resp.data as ArrayBuffer]);
-  }
-  const resp = await fetch(url);
-  if (!resp.ok) throw new Error(`download failed: ${resp.status}`);
-  return resp.blob();
 }
 
 // ponytail: module-level Map — survives page switches within same session.
@@ -155,8 +145,4 @@ function parseMeta(raw: ArrayBuffer): { mimeType?: string } | null {
   } catch {
     return null;
   }
-}
-
-function guessMime(_assetId: string): string {
-  return "image/jpeg"; // ponytail: COS objectKey contains extension but assetId doesn't; default to jpeg, caller can override via meta
 }

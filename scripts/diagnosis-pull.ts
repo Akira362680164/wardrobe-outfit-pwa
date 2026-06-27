@@ -22,40 +22,27 @@ async function main() {
     process.exit(1);
   }
 
-  // 1. 获取下载地址
-  const urlRes = await fetch(`${API_BASE}/api/admin/diagnostics/cases/${caseId}/download-url`, {
-    method: "POST",
+  // 1. 通过自有 API 下载工单内容
+  const downloadRes = await fetch(`${API_BASE}/api/admin/diagnostics/cases/${caseId}/content`, {
+    method: "GET",
     headers: {
       authorization: `Bearer ${READER_TOKEN}`,
       "x-diagnostic-actor": ACTOR,
-      "content-type": "application/json",
     },
-    body: JSON.stringify({}),
   });
 
-  if (!urlRes.ok) {
-    const body = await urlRes.text();
-    console.error(`获取下载地址失败 (${urlRes.status}): ${body}`);
-    process.exit(1);
-  }
-
-  const { downloadUrl, sha256, sizeBytes } = (await urlRes.json()) as {
-    downloadUrl: string;
-    sha256: string;
-    sizeBytes: number;
-  };
-
-  // 2. 下载文件
-  console.log(`正在下载 ${caseId} (${formatBytes(sizeBytes)})…`);
-  const downloadRes = await fetch(downloadUrl);
   if (!downloadRes.ok) {
-    console.error(`下载失败 (${downloadRes.status})`);
+    const body = await downloadRes.text();
+    console.error(`下载失败 (${downloadRes.status}): ${body}`);
     process.exit(1);
   }
 
+  const sha256 = downloadRes.headers.get("x-diagnostic-sha256") ?? "";
+  const sizeBytes = Number(downloadRes.headers.get("content-length") ?? "0");
+  console.log(`正在下载 ${caseId} (${formatBytes(sizeBytes)})…`);
   const buffer = Buffer.from(await downloadRes.arrayBuffer());
 
-  // 3. 校验 SHA-256
+  // 2. 校验 SHA-256
   const { createHash } = await import("node:crypto");
   const actualSha256 = createHash("sha256").update(buffer).digest("hex");
   if (actualSha256 !== sha256) {
@@ -63,7 +50,7 @@ async function main() {
     process.exit(1);
   }
 
-  // 4. 保存到 .diagnostics/
+  // 3. 保存到 .diagnostics/
   if (!existsSync(OUT_DIR)) {
     mkdirSync(OUT_DIR, { recursive: true });
   }

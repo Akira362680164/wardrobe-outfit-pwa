@@ -2,12 +2,11 @@
 // v1.1.37 cloud 1C C2c: pending asset upload coordinator
 //
 // 扫描 workspace assets 表中 local_pending 的变体，
-// 通过 COS 预签名 URL 直传，成功后通知 API complete-upload。
+// 通过自有 API 上传二进制内容，服务端一次完成文件与元数据落盘。
 // 纯 best-effort：不阻塞实体保存；晚到回调做三重检查。
 
 "use client";
 
-import { Capacitor, CapacitorHttp } from "@capacitor/core";
 import type { AssetVariant } from "@wardrobe/cloud-contracts";
 
 import type { AccountWorkspaceDatabase, WorkspaceAssetRecord, WorkspaceEntityType } from "@/lib/account-workspace-db";
@@ -15,15 +14,14 @@ import type { CloudBridgeContext } from "@/lib/cloud-sync/bridge-context";
 import { loadCloudBridgeContext } from "@/lib/cloud-sync/bridge-context";
 import { loadAuthSessionSnapshot } from "@/lib/auth-session-store";
 import { loadWorkspaceRegistry } from "@/lib/workspace-registry";
-import { requestAssetUploadUrl, requestAssetUploadComplete } from "@/lib/cloud-sync/cloud-assets-api";
+import { uploadAssetContent } from "@/lib/cloud-sync/cloud-assets-api";
 import { imageDataUrlToBlob } from "@/lib/cloud-sync/asset-metadata";
 import type { LocalAssetPayload, LocalAssetImageMetadata } from "@/lib/cloud-sync/asset-metadata";
 import type { CloudSyncRequestOptions } from "@/lib/cloud-sync/cloud-sync-api";
+import { CloudSyncApiError } from "@/lib/cloud-sync/cloud-sync-api";
 
 export interface UploadCoordinatorDeps {
-  authorizeUpload?: typeof requestAssetUploadUrl;
-  completeUpload?: typeof requestAssetUploadComplete;
-  putToUrl?: (url: string, blob: Blob, headers: Record<string, string>) => Promise<{ ok: boolean; status: number }>;
+  uploadContent?: typeof uploadAssetContent;
   dataUrlToBlob?: (dataUrl: string) => Promise<Blob>;
 }
 
@@ -33,6 +31,8 @@ export interface UploadOneResult {
   status: "uploaded" | "failed";
   error?: string;
 }
+
+type LocalAssetUploadEntry = NonNullable<LocalAssetPayload["uploads"][AssetVariant]>;
 
 export async function uploadPendingAssets(
   db: AccountWorkspaceDatabase,
@@ -53,7 +53,7 @@ export async function uploadPendingAssets(
     const payload = record.payload as LocalAssetPayload | undefined;
     if (!payload?.uploads) continue;
     for (const [variantKey, upload] of Object.entries(payload.uploads)) {
-      if (!upload || upload.status !== "local_pending" || !upload.dataUrl) continue;
+      if (!upload || !upload.dataUrl || !isUploadDue(upload)) continue;
       const result = await uploadOneVariant(
         db, ctx, record, variantKey as AssetVariant,
         { ...upload, dataUrl: upload.dataUrl }, options, deps,
@@ -77,49 +77,31 @@ async function uploadOneVariant(
   options: CloudSyncRequestOptions,
   deps: UploadCoordinatorDeps,
 ): Promise<UploadOneResult> {
-  const authorize = deps.authorizeUpload ?? requestAssetUploadUrl;
-  const complete = deps.completeUpload ?? requestAssetUploadComplete;
-  const putTo = deps.putToUrl ?? defaultPutToUrl;
+  const uploadContent = deps.uploadContent ?? uploadAssetContent;
   const toBlob = deps.dataUrlToBlob ?? imageDataUrlToBlob;
 
   try {
     await updateVariantStatus(db, ctx, record, variant, "uploading");
 
-    const auth = await authorize({
-      assetId: record.id,
-      ownerEntityType: record.ownerEntityType as Exclude<WorkspaceEntityType, "asset" | "closetLocation">,
-      ownerEntityId: record.ownerEntityId,
-      variant,
-      sha256: upload.sha256,
-      mimeType: upload.mimeType,
-      sizeBytes: upload.sizeBytes,
-      width: upload.width,
-      height: upload.height,
-    }, options);
-
     const blob = await toBlob(upload.dataUrl);
-    const putResult = await putTo(auth.uploadUrl, blob, auth.headers ?? {});
-    if (!putResult.ok) {
-      await updateVariantStatus(db, ctx, record, variant, "failed", `COS_PUT_${putResult.status}`);
-      return { assetId: record.id, variant, status: "failed", error: `PUT ${putResult.status}` };
-    }
-
-    await complete({
-      assetId: record.id,
-      variant,
-      objectKey: auth.objectKey,
-      sha256: upload.sha256,
-      mimeType: upload.mimeType,
-      sizeBytes: upload.sizeBytes,
-      width: upload.width,
-      height: upload.height,
+    await uploadContent({
+      params: { assetId: record.id, variant },
+      metadata: {
+        "x-asset-owner-entity-type": record.ownerEntityType as Exclude<WorkspaceEntityType, "asset" | "closetLocation">,
+        "x-asset-owner-entity-id": record.ownerEntityId,
+        "x-asset-sha256": upload.sha256,
+        "x-asset-size-bytes": upload.sizeBytes,
+        "x-asset-width": upload.width,
+        "x-asset-height": upload.height,
+      },
+      blob,
     }, options);
 
     await updateVariantStatus(db, ctx, record, variant, "uploaded");
     return { assetId: record.id, variant, status: "uploaded" };
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
-    await updateVariantStatusSafe(db, ctx, record, variant, "failed", "UPLOAD_NETWORK_ERROR");
+    await updateVariantStatusSafe(db, ctx, record, variant, "failed", classifyUploadError(err));
     return { assetId: record.id, variant, status: "failed", error: message };
   }
 }
@@ -140,6 +122,12 @@ async function updateVariantStatus(
   const entry = uploads[variant];
   if (entry) {
     const next: typeof entry = { ...entry, status };
+    if (status !== "failed") {
+      delete next.lastErrorCode;
+      delete next.lastErrorAt;
+      delete next.retryable;
+      delete next.nextAttemptAt;
+    }
     if (status === "failed" && errorCode != null) {
       next.attemptCount = (entry.attemptCount ?? 0) + 1;
       next.lastErrorCode = errorCode;
@@ -183,21 +171,15 @@ function guardAllowsWrite(ctx: CloudBridgeContext): boolean {
 }
 
 const RETRYABLE_UPLOAD_ERRORS = new Set([
-  "UPLOAD_NETWORK_ERROR",
-  "COS_PUT_500",
-  "COS_PUT_502",
-  "COS_PUT_503",
-  "COS_PUT_504",
-  "COS_PUT_408",
-  "COS_PUT_429",
+  "ASSET_UPLOAD_NETWORK_ERROR",
+  "ASSET_UPLOAD_TIMEOUT",
+  "ASSET_UPLOAD_RATE_LIMITED",
+  "ASSET_UPLOAD_SERVER_ERROR",
 ]);
 
 function isAssetUploadErrorRetryable(errorCode: string): boolean {
   if (RETRYABLE_UPLOAD_ERRORS.has(errorCode)) return true;
-  // 4xx COS errors (except 408/429) are non-retryable (auth, bad request)
-  if (errorCode.startsWith("COS_PUT_4")) return false;
-  // other errors are retryable by default (network, timeout, DNS)
-  return true;
+  return RETRYABLE_UPLOAD_ERRORS.has(errorCode);
 }
 
 function computeAssetUploadBackoffMs(attemptCount: number): number {
@@ -213,31 +195,23 @@ async function findPendingAssets(db: AccountWorkspaceDatabase): Promise<Workspac
     const payload = r.payload as LocalAssetPayload | undefined;
     if (!payload?.uploads) return false;
     return Object.values(payload.uploads).some((v) => {
-      if (v?.status === "local_pending") return true;
-      if (v?.status === "failed" && v?.retryable === true && (v?.nextAttemptAt ?? "") <= now) return true;
-      return false;
+      return v ? isUploadDue(v, now) : false;
     });
   });
 }
 
-async function defaultPutToUrl(
-  url: string,
-  blob: Blob,
-  headers: Record<string, string>,
-): Promise<{ ok: boolean; status: number }> {
-  if (Capacitor.isNativePlatform() && /^https?:\/\//.test(url)) {
-    const resp = await CapacitorHttp.request({
-      method: "PUT",
-      url,
-      headers: { ...headers, "Content-Type": blob.type },
-      data: blob,
-    });
-    return { ok: resp.status < 400, status: resp.status };
-  }
-  const resp = await fetch(url, {
-    method: "PUT",
-    headers: { ...headers, "Content-Type": blob.type },
-    body: blob,
-  });
-  return { ok: resp.ok, status: resp.status };
+function isUploadDue(upload: LocalAssetUploadEntry, now = new Date().toISOString()): boolean {
+  if (upload.status === "local_pending") return true;
+  return upload.status === "failed"
+    && upload.retryable === true
+    && (upload.nextAttemptAt ?? "") <= now;
+}
+
+function classifyUploadError(error: unknown): string {
+  if (!(error instanceof CloudSyncApiError)) return "ASSET_UPLOAD_NETWORK_ERROR";
+  if (error.status === 401 || error.status === 403) return "ASSET_UPLOAD_AUTH_ERROR";
+  if (error.status === 408) return "ASSET_UPLOAD_TIMEOUT";
+  if (error.status === 429) return "ASSET_UPLOAD_RATE_LIMITED";
+  if ([500, 502, 503, 504].includes(error.status)) return "ASSET_UPLOAD_SERVER_ERROR";
+  return "ASSET_UPLOAD_VALIDATION_ERROR";
 }

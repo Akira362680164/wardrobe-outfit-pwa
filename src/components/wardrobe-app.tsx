@@ -4576,7 +4576,7 @@ function SettingsView({
         throw new Error("未登录");
       }
 
-      const authorizeRes = await fetch(`${apiBase}/api/diagnostics/cases/authorize`, {
+      const createCaseRes = await fetch(`${apiBase}/api/diagnostics/cases`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -4602,52 +4602,39 @@ function SettingsView({
         }),
       });
 
-      if (!authorizeRes.ok) {
-        const err = await authorizeRes.json().catch(() => ({ code: "unknown" }));
-        throw new Error(err.code === "cos_not_configured" ? "创建工单失败" : `创建工单失败: ${err.code}`);
+      if (!createCaseRes.ok) {
+        const err = await createCaseRes.json().catch(() => ({ code: "unknown" }));
+        throw new Error(`创建工单失败: ${err.code}`);
       }
 
-      const authorizeData = await authorizeRes.json();
-      const caseId = authorizeData.caseId;
+      const createCaseData = await createCaseRes.json();
+      const caseId = createCaseData.caseId;
 
       setDiagnosticUploadState({ phase: "uploading", message: "正在上传诊断数据…", caseId, problemDescription: description });
 
-      const uploadRes = await fetch(authorizeData.uploadUrl, {
+      const uploadRes = await fetch(`${apiBase}/api/diagnostics/cases/${caseId}/content`, {
         method: "PUT",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/octet-stream",
+          Authorization: `Bearer ${accessToken}`,
+          "X-Wardrobe-Device-Id": deviceId,
+          "X-Diagnostic-Client-Request-Id": log.clientRequestId,
+          "X-Diagnostic-Sha256": sha256,
+          "X-Diagnostic-Size-Bytes": String(sizeBytes),
+        },
         body: data,
       });
 
       if (!uploadRes.ok) {
-        throw new Error("COS_UPLOAD_FAILED");
+        throw new Error("DIAGNOSTIC_UPLOAD_FAILED");
       }
 
-      setDiagnosticUploadState({ phase: "confirming", message: "正在确认上传结果…", caseId, problemDescription: description });
-
-      const completeRes = await fetch(`${apiBase}/api/diagnostics/cases/${caseId}/complete`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${accessToken}`,
-          "X-Wardrobe-Device-Id": deviceId,
-        },
-        body: JSON.stringify({
-          clientRequestId: log.clientRequestId,
-          sha256,
-          sizeBytes,
-        }),
-      });
-
-      if (!completeRes.ok) {
-        throw new Error("COMPLETE_FAILED");
-      }
-
-      const completeData = await completeRes.json();
+      const uploadData = await uploadRes.json();
       recordDiagnosticEvent("diagnostic_upload_succeeded", { caseId });
 
       const uploadInfo: LastDiagnosticUpload = {
         caseId,
-        uploadedAt: completeData.uploadedAt,
+        uploadedAt: uploadData.uploadedAt,
         appVersion: buildIdentity.appVersion,
         gitCommitShort: buildIdentity.gitCommitShort,
       };
@@ -4656,8 +4643,8 @@ function SettingsView({
         phase: "success",
         message: "上传成功",
         caseId,
-        uploadedAt: completeData.uploadedAt,
-        expiresAt: completeData.expiresAt,
+        uploadedAt: uploadData.uploadedAt,
+        expiresAt: uploadData.expiresAt,
         appVersion: buildIdentity.appVersion,
         gitCommitShort: buildIdentity.gitCommitShort,
       });
@@ -4668,15 +4655,14 @@ function SettingsView({
       const errCode = errMsg.includes("未登录") ? "NOT_LOGGED_IN"
         : errMsg.includes("网络") || errMsg.includes("fetch") ? "NO_NETWORK"
         : errMsg.includes("10 MiB") ? "SIZE_EXCEEDED"
-        : errMsg.includes("COS_UPLOAD_FAILED") ? "COS_UPLOAD_FAILED"
-        : errMsg.includes("COMPLETE_FAILED") ? "COMPLETE_FAILED"
+        : errMsg.includes("DIAGNOSTIC_UPLOAD_FAILED") ? "DIAGNOSTIC_UPLOAD_FAILED"
         : errMsg.includes("创建工单") ? "AUTHORIZE_FAILED"
         : "UNKNOWN";
 
       recordDiagnosticEvent("diagnostic_upload_failed", { error: errMsg, code: errCode });
       setDiagnosticUploadState({
         phase: "failed",
-        stage: errCode === "AUTHORIZE_FAILED" ? "authorize" : errCode === "COS_UPLOAD_FAILED" ? "upload" : errCode === "COMPLETE_FAILED" ? "confirm" : "build",
+        stage: errCode === "AUTHORIZE_FAILED" ? "authorize" : errCode === "DIAGNOSTIC_UPLOAD_FAILED" ? "upload" : "build",
         errorCode: errCode,
         message: errMsg,
         problemDescription: description,
@@ -5374,7 +5360,7 @@ function SettingsView({
                 : diagnosticUploadState.errorCode === "NO_NETWORK" ? "当前网络不可用，请联网后重试。"
                 : diagnosticUploadState.errorCode === "SIZE_EXCEEDED" ? "诊断数据超过上传限制，请检查异常业务数据。"
                 : diagnosticUploadState.errorCode === "AUTHORIZE_FAILED" ? "无法创建诊断工单，请稍后重试。"
-                : diagnosticUploadState.errorCode === "COS_UPLOAD_FAILED" ? "诊断数据上传中断，请重新上传。"
+                : diagnosticUploadState.errorCode === "DIAGNOSTIC_UPLOAD_FAILED" ? "诊断数据上传中断，请重新上传。"
                 : diagnosticUploadState.errorCode === "COMPLETE_FAILED" ? "服务器未能确认上传结果，请重新上传。"
                 : "诊断数据上传失败，请稍后重试。"}
             </p>
@@ -6842,4 +6828,3 @@ async function runLoggedDbTransaction(
     throw error;
   }
 }
-

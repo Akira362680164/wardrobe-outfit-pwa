@@ -1,3 +1,14 @@
+## 2026-06-27 / v2.0.2-test / Codex — 资产客户端切换为自有 API 二进制传输
+
+- **目的**：删除客户端三段式外部存储授权链路，上传和下载只通过自有 API 并携带登录与设备身份。
+- **版本**：保持 `2.0.2-test`，未修改版本号。
+- **改动文件**：`packages/cloud-contracts/src/assets/contracts.ts`、`packages/cloud-contracts/src/diagnostics/contracts.ts`、`src/lib/cloud-sync/cloud-assets-api.ts`、`asset-upload-coordinator.ts`、`image-cache.ts`、`index.ts`、`src/components/wardrobe-app.tsx`、`scripts/diagnosis-pull.ts`。
+- **改动内容**：新增二进制 content 上传/下载与删除合同，统一 15 MiB 限制；Web/Capacitor 直连自有 API；修复 `failed + retryable + 到期` 真正重试；缓存以响应 MIME 为准，不再默认 JPEG；诊断文件同步切换为自有 API 内容传输。
+- **验证**：`npm run cloud:contracts:typecheck`、`npm run typecheck`、`npm run api:typecheck` 通过；新客户端资产 API 结构测试 12/12、上传状态/重试测试 8/8、图片缓存 12/12、恢复 22/22 通过。
+- **风险门禁**：**high**（资产网络传输、Android 客户端与本地图片状态机变更）。
+- **未触发 subagent**：用户未通知。
+- **未验证风险**：本条提交时真实 PostgreSQL/API/Web/Android 全链路尚待后续提交完成并统一验收。
+
 ## 2026-06-27 / v2.0.2-test / Codex — 生产 API locations 热修复部署与 Android 真机回归
 
 - **目的**：完成新账号注册后自动登录卡在云端衣橱初始化页面的生产修复。

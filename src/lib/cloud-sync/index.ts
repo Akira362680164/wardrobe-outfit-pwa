@@ -52,9 +52,9 @@ export {
 } from "@/lib/cloud-sync/cloud-sync-api";
 
 export {
-  requestAssetUploadUrl,
-  requestAssetUploadComplete,
-  requestAssetDownloadUrl,
+  uploadAssetContent,
+  downloadAssetContent,
+  deleteCloudAsset,
   requestAssetManifest,
 } from "@/lib/cloud-sync/cloud-assets-api";
 
