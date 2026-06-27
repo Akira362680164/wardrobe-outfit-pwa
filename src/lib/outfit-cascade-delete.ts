@@ -25,7 +25,6 @@ export async function deleteOutfitWithCascade(input: {
   outfitId: string;
 }): Promise<OutfitCascadeDeleteResult> {
   const { db, outfitId } = input;
-  const todayKey = getLocalDateKey();
   const now = new Date().toISOString();
   const result: OutfitCascadeDeleteResult = {
     deletedOutfitIds: [outfitId],
@@ -46,28 +45,28 @@ export async function deleteOutfitWithCascade(input: {
       await db.outfits.delete(outfitId);
 
       // 3. Process all plan entries referencing this outfit
+      // P1-02 fix: only keep worn history snapshots, delete all non-worn entries
       const allEntries = await db.outfitPlanEntries
         .where("outfitId")
         .equals(outfitId)
         .toArray();
 
       for (const entry of allEntries) {
-        if (entry.date > todayKey) {
-          // Future planned/skipped entry: delete
-          await db.outfitPlanEntries.delete(entry.id);
-          result.deletedPlanEntryIds.push(entry.id);
-        } else {
-          // Past date: keep the record but remove outfitId reference
+        if (entry.status === "worn") {
+          // Preserve historical worn snapshot: clear live reference, keep name
           result.keptWornCount++;
           const patch: Partial<OutfitPlanEntry> = {
             outfitId: undefined,
             updatedAt: now,
           };
-          // Keep name snapshot for display
           if (outfitName) {
             patch.title = entry.title || outfitName;
           }
           await db.outfitPlanEntries.update(entry.id, patch);
+        } else {
+          // Delete planned/skipped/changed entries regardless of date
+          await db.outfitPlanEntries.delete(entry.id);
+          result.deletedPlanEntryIds.push(entry.id);
         }
       }
 
@@ -79,15 +78,15 @@ export async function deleteOutfitWithCascade(input: {
 
       for (const entry of actualRefEntries) {
         if (!result.deletedPlanEntryIds.includes(entry.id)) {
-          if (entry.date > todayKey) {
-            await db.outfitPlanEntries.delete(entry.id);
-            result.deletedPlanEntryIds.push(entry.id);
-          } else {
+          if (entry.status === "worn") {
             result.keptWornCount++;
             await db.outfitPlanEntries.update(entry.id, {
               actualOutfitId: undefined,
               updatedAt: now,
             });
+          } else {
+            await db.outfitPlanEntries.delete(entry.id);
+            result.deletedPlanEntryIds.push(entry.id);
           }
         }
       }

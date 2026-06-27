@@ -507,6 +507,10 @@ export function OutfitListView({
 
   async function handleSaveEdit() {
     if (!editingOutfit) return;
+    if (createSelectedIds.length < 2) {
+      onMessage("套装至少需要 2 件衣物", "info");
+      return;
+    }
     const now = new Date().toISOString();
     const db = getWardrobeDb();
     const selectedItems = items.filter((item) => item.id != null && createSelectedIds.includes(item.id));
@@ -630,6 +634,14 @@ export function OutfitListView({
 
   async function handleDeletePlanEntry(entry: OutfitPlanEntry) {
     try {
+      // P0-04 fix: worn entries must go through cancel wear, not plain delete
+      if (entry.status === "worn") {
+        const outfitId = entry.outfitId ?? entry.actualOutfitId;
+        if (outfitId) {
+          await handleCancelOutfitWearForDate(outfitId, entry.date);
+          return;
+        }
+      }
       const db = getWardrobeDb();
       await db.outfitPlanEntries.delete(entry.id);
       void bridgeOutfitPlanDelete(entry.id);

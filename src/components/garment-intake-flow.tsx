@@ -16,7 +16,7 @@ import {
   Trash2,
   X,
 } from "lucide-react";
-import { useEffect, useMemo, useRef, useState, type ChangeEvent, type ReactNode } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type ChangeEvent, type ReactNode } from "react";
 import { IntakeFlowShell, type IntakeFlowStep } from "@/components/intake-flow-shell";
 import { ImageCropEditor, type ImageCropEditorHandle } from "@/components/image-crop-editor";
 import { CategorySubcategoryPicker } from "@/components/category-subcategory-picker";
@@ -38,7 +38,7 @@ import {
   buildLocalGarmentDraft,
   type LocalImageProcessingResult,
 } from "@/lib/intake-local-draft";
-import { fileToCompressedDataUrl } from "@/lib/image";
+import { fileToCompressedDataUrl, rotateImageDataUrl } from "@/lib/image";
 import { GarmentRecognitionError } from "@/lib/device-minimax";
 import { generateThumbnailSafe } from "@/lib/thumbnail-runtime";
 import { recordDiagnosticEvent } from "@/lib/diagnostic-log";
@@ -107,10 +107,9 @@ export interface GarmentIntakeFlowProps {
   onExit?: () => void;
 }
 
-// 3步：选择照片 / 编辑图片 / 确认信息
+// P2-01 fix: 两步录入 — AI 识别是过渡状态，不是独立步骤
 export const GARMENT_INTAKE_STEPS: IntakeFlowStep[] = [
   { id: "select_photo", label: "选择照片" },
-  { id: "process_image", label: "编辑图片" },
   { id: "confirm_params", label: "确认信息" },
 ];
 
@@ -145,7 +144,7 @@ export function GarmentIntakeFlow({
   onSaveBatch,
   onExit,
 }: GarmentIntakeFlowProps) {
-  const [stepIndex, setStepIndex] = useState<"select_photo" | "process_image" | "confirm_params">("select_photo");
+  const [stepIndex, setStepIndex] = useState<"select_photo" | "confirm_params">("select_photo");
   const [imageItems, setImageItems] = useState<GarmentIntakeImageItem[]>(() => {
     if (initialImages && initialImages.length > 0) {
       return initialImages.map((img) => createGarmentIntakeImageItem(img));
@@ -187,19 +186,7 @@ export function GarmentIntakeFlow({
   const locked = isPicking || isCropping || isRecognizing || isSavingBatch || isSaving || retryingReviewId !== null;
   const flowNoun = flowKind === "wishlist" ? "种草" : "单品";
 
-  // Initialize activeImageId when entering step 2
-  useEffect(() => {
-    if (stepIndex === "process_image" && imageItems.length > 0 && !activeImageId) {
-      const firstUncropped = imageItems.find((item) => item.status === "selected");
-      if (firstUncropped) {
-        setActiveImageId(firstUncropped.id);
-      } else {
-        setActiveImageId(imageItems[0].id);
-      }
-    }
-  }, [stepIndex, imageItems, activeImageId]);
-
-  // Initialize activeReviewId when entering step 3
+  // Initialize activeReviewId when entering confirm step
   useEffect(() => {
     if (stepIndex === "confirm_params" && recognizedItems.length > 0 && !activeReviewId) {
       setActiveReviewId(recognizedItems[0].id);
@@ -301,34 +288,68 @@ export function GarmentIntakeFlow({
     }
   }
 
-  function handleRotate(direction: "left" | "right") {
-    if (!activeImage) return;
-    setImageItems((prev) =>
-      prev.map((item) => {
-        if (item.id !== activeImageId) return item;
-        const newDeg = direction === "left"
-          ? ((item.rotationDeg - 90 + 360) % 360) as 0 | 90 | 180 | 270
-          : ((item.rotationDeg + 90) % 360) as 0 | 90 | 180 | 270;
-        return { ...item, rotationDeg: newDeg };
-      }),
-    );
-  }
+  const handleRotate = useCallback(async (direction: "left" | "right") => {
+    if (!activeImageId || !activeImage) return;
+    setIsCropping(false);
+    const newDeg = direction === "left"
+      ? ((activeImage.rotationDeg - 90 + 360) % 360) as 0 | 90 | 180 | 270
+      : ((activeImage.rotationDeg + 90) % 360) as 0 | 90 | 180 | 270;
+    try {
+      const sourceUrl = activeImage.croppedImageDataUrl ?? activeImage.originalDataUrl;
+      const rotateDeg = newDeg === 0 ? 90 : newDeg; // ponytail: use 90 for the actual rotation
+      const rotated = await rotateImageDataUrl(sourceUrl, rotateDeg as 90 | 180 | 270);
+      const thumbnailDataUrl = await generateThumbnailSafe(rotated);
+      setImageItems((prev) =>
+        prev.map((item) => {
+          if (item.id !== activeImageId) return item;
+          return {
+            ...item,
+            rotationDeg: newDeg,
+            displayDataUrl: rotated,
+            croppedImageDataUrl: rotated,
+            thumbnailDataUrl: thumbnailDataUrl.thumbnailDataUrl,
+            cropBox: undefined,
+          };
+        }),
+      );
+    } catch {
+      setError("旋转图片失败，请重试");
+    }
+  }, [activeImageId, activeImage, setImageItems, setIsCropping, setError]);
 
-  function handleResetCrop() {
-    if (!activeImageId) return;
-    setImageItems((prev) =>
-      prev.map((item) => {
-        if (item.id !== activeImageId) return item;
-        return {
-          ...item,
-          displayDataUrl: item.originalDataUrl,
-          croppedImageDataUrl: undefined,
-          cropBox: undefined,
-          rotationDeg: 0 as const,
-          status: "selected" as const,
-        };
-      }),
-    );
+  async function handleResetCrop() {
+    if (!activeImageId || !activeImage) return;
+    try {
+      const { thumbnailDataUrl } = await generateThumbnailSafe(activeImage.originalDataUrl);
+      setImageItems((prev) =>
+        prev.map((item) => {
+          if (item.id !== activeImageId) return item;
+          return {
+            ...item,
+            displayDataUrl: item.originalDataUrl,
+            croppedImageDataUrl: undefined,
+            cropBox: undefined,
+            rotationDeg: 0 as const,
+            thumbnailDataUrl,
+            status: "selected" as const,
+          };
+        }),
+      );
+    } catch {
+      setImageItems((prev) =>
+        prev.map((item) => {
+          if (item.id !== activeImageId) return item;
+          return {
+            ...item,
+            displayDataUrl: item.originalDataUrl,
+            croppedImageDataUrl: undefined,
+            cropBox: undefined,
+            rotationDeg: 0 as const,
+            status: "selected" as const,
+          };
+        }),
+      );
+    }
   }
 
   async function handleDeleteCurrentImage() {
@@ -555,11 +576,12 @@ export function GarmentIntakeFlow({
   function handleBack() {
     if (locked) return;
     setError("");
-    if (stepIndex === "process_image") {
+    if (isCropping) {
+      setIsCropping(false);
+      return;
+    }
+    if (stepIndex === "confirm_params") {
       setStepIndex("select_photo");
-      setActiveImageId(null);
-    } else if (stepIndex === "confirm_params") {
-      setStepIndex("process_image");
       setActiveReviewId(null);
     }
   }
@@ -572,10 +594,7 @@ export function GarmentIntakeFlow({
         setError("请先拍照或选择相册图片");
         return;
       }
-      setStepIndex("process_image");
-      return;
-    }
-    if (stepIndex === "process_image") {
+      // P2-01: 直接进入 AI 识别加载状态，跳过独立编辑步骤
       await processAllImagesForRecognition();
       return;
     }
@@ -645,15 +664,12 @@ export function GarmentIntakeFlow({
     }
   }
 
-  const stepIndexNumber =
-    stepIndex === "select_photo" ? 0 : stepIndex === "process_image" ? 1 : 2;
+  const stepIndexNumber = stepIndex === "select_photo" ? 0 : 1;
 
   const nextLabel =
     stepIndex === "select_photo"
-      ? "下一步"
-      : stepIndex === "process_image"
-        ? "开始识别"
-        : `保存 ${savableItems.length} 件${flowNoun}`;
+      ? "下一步（AI 识别）"
+      : `保存 ${savableItems.length} 件${flowNoun}`;
 
   const nextDisabled =
     locked ||
@@ -687,45 +703,33 @@ export function GarmentIntakeFlow({
       onExit={onExit}
     >
       {stepIndex === "select_photo" ? (
-        <MultiImageSelectStep
-          imageItems={imageItems}
-          onAddFromCamera={handleAddFromCamera}
-          onAddFromAlbum={handleAddFromAlbum}
-          onRemoveImage={handleRemoveImage}
-          onClearAll={handleClearAll}
-          onSelectImage={setActiveImageId}
-          activeImageId={activeImageId}
-          isPicking={isPicking}
-          flowKind={flowKind}
-        />
-      ) : null}
-      {stepIndex === "process_image" && activeImage ? (
-        <MultiImageCropStep
-          imageItem={activeImage}
-          imageItems={imageItems}
-          activeIndex={getActiveIndex()}
-          onCropConfirm={handleCropConfirm}
-          onRotate={handleRotate}
-          onReset={handleResetCrop}
-          onDelete={handleDeleteCurrentImage}
-          onPrev={handlePrevImage}
-          onNext={handleNextImage}
-          onSelectImage={setActiveImageId}
-        />
-      ) : null}
-      {stepIndex === "process_image" && !activeImage && imageItems.length > 0 ? (
-        <MultiImageCropStep
-          imageItem={imageItems[0]}
-          imageItems={imageItems}
-          activeIndex={0}
-          onCropConfirm={handleCropConfirm}
-          onRotate={handleRotate}
-          onReset={handleResetCrop}
-          onDelete={handleDeleteCurrentImage}
-          onPrev={handlePrevImage}
-          onNext={handleNextImage}
-          onSelectImage={setActiveImageId}
-        />
+        isCropping && activeImage ? (
+          <MultiImageCropStep
+            imageItem={activeImage}
+            imageItems={imageItems}
+            activeIndex={getActiveIndex()}
+            onCropConfirm={handleCropConfirm}
+            onRotate={handleRotate}
+            onReset={handleResetCrop}
+            onDelete={handleDeleteCurrentImage}
+            onPrev={handlePrevImage}
+            onNext={handleNextImage}
+            onSelectImage={setActiveImageId}
+          />
+        ) : (
+          <MultiImageSelectStep
+            imageItems={imageItems}
+            onAddFromCamera={handleAddFromCamera}
+            onAddFromAlbum={handleAddFromAlbum}
+            onRemoveImage={handleRemoveImage}
+            onClearAll={handleClearAll}
+            onSelectImage={setActiveImageId}
+            activeImageId={activeImageId}
+            isPicking={isPicking}
+            flowKind={flowKind}
+            onCropActive={() => { if (activeImage) setIsCropping(true); }}
+          />
+        )
       ) : null}
       {stepIndex === "confirm_params" && recognizedItems.length > 0 ? (
         <MultiImageReviewStep
@@ -791,6 +795,7 @@ function MultiImageSelectStep({
   activeImageId,
   isPicking,
   flowKind,
+  onCropActive,
 }: {
   imageItems: GarmentIntakeImageItem[];
   onAddFromCamera: () => void;
@@ -801,6 +806,7 @@ function MultiImageSelectStep({
   activeImageId: string | null;
   isPicking: boolean;
   flowKind: "garment" | "wishlist";
+  onCropActive?: () => void;
 }) {
   const hasImages = imageItems.length > 0;
   const displayItems = imageItems.slice(0, 5);
@@ -865,6 +871,24 @@ function MultiImageSelectStep({
           </div>
         )}
       </div>
+      {activeImageId && onCropActive ? (
+        <div className="flex gap-2 mb-2">
+          <button
+            type="button"
+            onClick={onCropActive}
+            className="flex-1 h-9 rounded-lg border border-ink/10 bg-white text-xs font-semibold"
+          >
+            裁切/旋转
+          </button>
+          <button
+            type="button"
+            onClick={() => onRemoveImage(activeImageId)}
+            className="w-20 h-9 rounded-lg border border-clay/30 text-clay text-xs font-semibold"
+          >
+            删除
+          </button>
+        </div>
+      ) : null}
       <div className="flex gap-2">
         <button
           type="button"
@@ -890,7 +914,6 @@ function MultiImageSelectStep({
       >
         清空
       </button>
-      <p className="text-[10px] text-ink/40 text-center mt-2">下一步可直接识别，裁切是可选操作</p>
     </>
   ) : undefined;
 
@@ -937,8 +960,8 @@ function MultiImageCropStep({
   const [showCropper, setShowCropper] = useState(false);
   const [cropReady, setCropReady] = useState(false);
 
-  function handleConfirmCrop(croppedDataUrl: string) {
-    onCropConfirm(croppedDataUrl || imageItem.displayDataUrl);
+  function handleConfirmCrop(croppedDataUrl: string, cropBox: import("@/lib/image").NormalizedCropBox) {
+    onCropConfirm(croppedDataUrl || imageItem.displayDataUrl, cropBox);
     setShowCropper(false);
     setCropReady(false);
   }

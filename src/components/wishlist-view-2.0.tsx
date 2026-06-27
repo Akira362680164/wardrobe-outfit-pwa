@@ -229,8 +229,11 @@ export function WishlistView20({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [subPage]);
 
+  // P1-03 fix: use ref to ensure initialSubPage is consumed exactly once
+  const initialSubPageConsumedRef = useRef(false);
   useEffect(() => {
-    if (!initialSubPage) return;
+    if (!initialSubPage || initialSubPageConsumedRef.current) return;
+    initialSubPageConsumedRef.current = true;
     setSubPage(initialSubPage);
     onInitialSubPageConsumed?.();
   }, [initialSubPage, onInitialSubPageConsumed]);

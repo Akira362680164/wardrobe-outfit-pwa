@@ -116,6 +116,7 @@ import { bridgeOutfitDelete, bridgeOutfitUpsert } from "@/lib/cloud-sync/outfit-
 import { bridgeOutfitPlanDelete } from "@/lib/cloud-sync/plan-bridge";
 import { bridgeWearEventsForGarment } from "@/lib/cloud-sync/wear-bridge";
 import { bridgeWishlistUpsert } from "@/lib/cloud-sync/wishlist-bridge";
+import { wardrobeRepository } from "@/lib/repository/wardrobe-repository";
 import {
  defaultMiniMaxSettings,
  diagnoseWardrobeOnDevice,
@@ -2598,41 +2599,17 @@ function WardrobeView(props: WardrobeViewProps) {
     setIsEditSaving(true);
     try {
       const now = new Date().toISOString();
-      const patch: Partial<WardrobeItem> = {
-        name: editDraft.name.trim(),
-        imageDataUrl: editDraft.imageDataUrl,
-        sourceImageDataUrl: editDraft.sourceImageDataUrl,
-        cropBox: editDraft.cropBox,
-        category: editDraft.category,
-        subcategory: editDraft.subcategory,
-        colors: editDraft.colors,
-        seasons: editDraft.seasons.length > 0 ? editDraft.seasons : ["all"],
-        styles: editDraft.styles.length > 0 ? editDraft.styles : ["casual"],
-        formality: editDraft.formality,
-        warmth: editDraft.warmth,
-        temperatureRange: editDraft.temperatureRange,
-        material: editDraft.material,
-        fitGender: editDraft.fitGender,
-        fitNotes: editDraft.fitNotes?.trim() || undefined,
-        price: editDraft.price,
-        productUrl: editDraft.productUrl,
-        purchaseDate: editDraft.purchaseDate,
-        locationId: editDraft.locationId,
-        status: editDraft.status,
-        notes: editDraft.notes?.trim() || undefined,
-        aiConfidence: editDraft.aiConfidence,
-        needsReview: editDraft.needsReview,
-        updatedAt: now,
-      };
-      await getWardrobeDb().items.update(viewingItem.id, patch);
-      const updatedItem: WardrobeItem = { ...viewingItem, ...editDraft, ...patch, id: viewingItem.id };
+      const result = await wardrobeRepository.saveEditedGarment(viewingItem, editDraft);
+      if (!result.ok) {
+        onMessage(result.error ?? "保存失败", "error");
+        return;
+      }
+      const updatedItem = result.data!;
       await syncEditedItemReferences(updatedItem, now);
-      void bridgeGarmentUpdate(updatedItem);
       setViewingItem(updatedItem);
       setEditInitialSnapshot(editSnapshotFromDraft(normalizeDraftForEdit(updatedItem)));
       setEditingItem(false);
       setEditDraft(null);
-      await onStatusChange(viewingItem, editDraft.status);
       onMessage("衣物信息已保存", "success");
     } catch (error) {
       onMessage(getErrorMessage(error), "error");

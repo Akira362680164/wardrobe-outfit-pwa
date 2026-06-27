@@ -310,6 +310,33 @@ export async function dataUrlToFile(dataUrl: string, filename = "garment.jpg") {
   return new File([blob], filename, { type: blob.type || "image/jpeg" });
 }
 
+// P1-04 fix: actually rotate image data, not just metadata
+export async function rotateImageDataUrl(
+  dataUrl: string,
+  degrees: 90 | 180 | 270,
+): Promise<string> {
+  if (!dataUrl) return dataUrl;
+  const img = await new Promise<HTMLImageElement>((resolve, reject) => {
+    const el = new Image();
+    el.onload = () => resolve(el);
+    el.onerror = reject;
+    el.src = dataUrl;
+  });
+  const canvas = document.createElement("canvas");
+  if (degrees === 180) {
+    canvas.width = img.width;
+    canvas.height = img.height;
+  } else {
+    canvas.width = img.height;
+    canvas.height = img.width;
+  }
+  const ctx = canvas.getContext("2d")!;
+  ctx.translate(canvas.width / 2, canvas.height / 2);
+  ctx.rotate((degrees * Math.PI) / 180);
+  ctx.drawImage(img, -img.width / 2, -img.height / 2);
+  return canvas.toDataURL("image/jpeg", 0.92);
+}
+
 async function dataUrlToBlob(dataUrl: string) {
   const response = await fetch(dataUrl);
   return response.blob();

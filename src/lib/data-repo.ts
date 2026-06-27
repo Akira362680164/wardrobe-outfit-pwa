@@ -97,7 +97,7 @@ async function getWorkspaceSnapshotCached(): Promise<WardrobeDataSnapshot | null
   return _cachedWorkspaceSnapshot;
 }
 
-function invalidateWorkspaceSnapshotCache(): void {
+export function invalidateWorkspaceSnapshotCache(): void {
   _cachedWorkspaceSnapshot = null;
   _cachedWorkspaceSnapshotTs = 0;
 }

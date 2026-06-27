@@ -1,3 +1,27 @@
+## 2026-06-27 / v2.0.1 / Claude Code — 独立审查后全批次修复（P0×4 + P1×6 + P2×1）
+
+- **目的**：按 `WARDROBE_V2.0.1_INDEPENDENT_REVIEW_AND_FIX_REPORT.md` 逐项修复全部 11 个问题。
+- **版本**：保持 `2.0.1`（本批次修复属于同一版本的缺陷修正）。
+- **改动文件**：
+  - `src/lib/repository/wardrobe-repository.ts`（新增）：统一写入口，消除双写架构（P0-01），提供 20+ 个 Repo Command 并统一等待 bridge 结果
+  - `src/lib/data-repo.ts`：导出 `invalidateWorkspaceSnapshotCache` 供 repository 使用
+  - `src/lib/image.ts`：新增 `rotateImageDataUrl()`，实际旋转图像像素（P1-04）
+  - `src/lib/outfit-cascade-delete.ts`：套装卸删除改为按 `status === "worn"` 判断保留快照（P1-02）
+  - `src/components/wardrobe-app.tsx`：`saveEditedItem` 使用 repository 单次保存，删除旧的 `onStatusChange` 二次覆盖（P0-02）
+  - `src/components/outfit-list-view.tsx`：`handleDeletePlanEntry` 区分 worn/非worn，worn 走 cancelWear（P0-04）；`handleSaveEdit` 加 >=2 件校验（P1-01）
+  - `src/components/wishlist-view-2.0.tsx`：`initialSubPage` effect 用 ref 防止重复消费（P1-03）
+  - `src/components/garment-intake-flow.tsx`：两步录入（P2-01）、旋转实际变换图片（P1-04）、cropBox 传递（P1-05）、重置缩略图再生（P1-05）
+- **验证结果**：
+  - `npm run typecheck`：✅ 零错误。
+  - `npm run test:logic:data-repo`：✅ 63/63。
+  - `npm run test:logic:outfit-planning`：✅ 40/40。
+  - `npm run test:logic:wear`：✅ 通过。
+  - `npm run test:logic:outfit-plan-wear-state`：✅ 36/36。
+  - `npm run test:logic:delete-cascade-regression`：✅ 22/22。
+  - `npm run build`：✅ 构建成功。
+- **风险门禁**：**high**。跨 9 个文件（含 1 个新文件），涉及数据写入统一层（repository）、套装删除规则（worn 快照）、单品编辑覆盖竞态、录入步骤重构、图像旋转等核心链路。
+- **未验证风险**：未部署 API / 未构建 APK / 未做 Dev Server 实操 / 未做 Android 真机回归。P1-06（灵感图/实穿图 workspace 同步）在 repository 层有基础支持但 UI 端全部接入仍需后续变更。
+
 ## 2026-06-27 / v2.0.1 / Claude Code — 认证流程全链路修复
 
 - **目的**：按 `WARDROBE_V2_0_1_AUTH_FLOW_FULL_FIX_EXECUTION_PLAN.md` 修复注册、登录、协议导航与 Android 返回全部问题。
