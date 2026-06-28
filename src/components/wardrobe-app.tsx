@@ -123,7 +123,7 @@ import { bridgeOutfitDelete, bridgeOutfitUpsert } from "@/lib/cloud-sync/outfit-
 import { bridgeOutfitPlanDelete } from "@/lib/cloud-sync/plan-bridge";
 import { bridgeWearEventsForGarment } from "@/lib/cloud-sync/wear-bridge";
 import { bridgeWishlistUpsert } from "@/lib/cloud-sync/wishlist-bridge";
-import { loadAuthSessionSnapshot } from "@/lib/auth-session-store";
+import { isAccessTokenFresh, loadAuthSessionSnapshot } from "@/lib/auth-session-store";
 import { wardrobeRepository } from "@/lib/repository/wardrobe-repository";
 import {
  defaultMiniMaxSettings,
@@ -4571,6 +4571,9 @@ function SettingsView({
       if (!accessToken) {
         throw new Error("未登录");
       }
+      if (!isAccessTokenFresh(session)) {
+        throw new Error("登录已过期，请重新登录");
+      }
 
       const createCaseRes = await fetch(`${apiBase}/api/diagnostics/cases`, {
         method: "POST",
@@ -4649,6 +4652,7 @@ function SettingsView({
     } catch (error) {
       const errMsg = error instanceof Error ? error.message : "未知错误";
       const errCode = errMsg.includes("未登录") ? "NOT_LOGGED_IN"
+	        : errMsg.includes("登录已过期") ? "TOKEN_EXPIRED"
         : errMsg.includes("网络") || errMsg.includes("fetch") ? "NO_NETWORK"
         : errMsg.includes("10 MiB") ? "SIZE_EXCEEDED"
         : errMsg.includes("DIAGNOSTIC_UPLOAD_FAILED") ? "DIAGNOSTIC_UPLOAD_FAILED"
@@ -5305,6 +5309,7 @@ function SettingsView({
             <h3 className="text-base font-semibold">诊断数据上传失败</h3>
             <p className="mt-2 text-sm text-ink/70">
               {diagnosticUploadState.errorCode === "NOT_LOGGED_IN" ? "登录后才能上传诊断数据。"
+                : diagnosticUploadState.errorCode === "TOKEN_EXPIRED" ? "登录已过期，请重新登录后再试。"
                 : diagnosticUploadState.errorCode === "NO_NETWORK" ? "当前网络不可用，请联网后重试。"
                 : diagnosticUploadState.errorCode === "SIZE_EXCEEDED" ? "诊断数据超过上传限制，请检查异常业务数据。"
                 : diagnosticUploadState.errorCode === "AUTHORIZE_FAILED" ? "无法创建诊断工单，请稍后重试。"
