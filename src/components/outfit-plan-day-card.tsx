@@ -13,8 +13,10 @@ interface OutfitPlanDayCardProps {
   plans: OutfitCalendarPlan[];
   outfit?: SavedOutfit | null;
   items: WardrobeItem[];
+  allOutfits?: SavedOutfit[];
   onSelectOutfit: () => void;
-  onViewOutfit: () => void;
+  onChangeOutfit?: () => void;
+  onViewOutfit: (outfitId?: string) => void;
   onMarkWornToday: () => void;
   onCancelWear?: (outfitId: string) => void;
   onSetPrimary?: (entry: OutfitPlanEntry) => void;
@@ -45,7 +47,9 @@ export function OutfitPlanDayCard({
   plans,
   outfit,
   items,
+  allOutfits,
   onSelectOutfit,
+  onChangeOutfit,
   onViewOutfit,
   onMarkWornToday,
   onCancelWear,
@@ -150,11 +154,11 @@ export function OutfitPlanDayCard({
           )}
         </div>
         <div className="flex items-start gap-3">
-          <button type="button" onClick={onViewOutfit} className="h-[72px] w-[72px] shrink-0 overflow-hidden rounded-[14px] bg-milk-darker/40 active:scale-95" aria-label="查看套装">
+          <button type="button" onClick={() => onViewOutfit(outfitId)} className="h-[72px] w-[72px] shrink-0 overflow-hidden rounded-[14px] bg-milk-darker/40 active:scale-95" aria-label="查看套装">
             <OutfitCover outfit={outfit} items={items} size="card" />
           </button>
           <div className="flex-1 min-w-0">
-            <p className="text-[17px] font-bold text-ink truncate">{primaryDisplayEntry?.title || outfit.name}</p>
+            <button type="button" onClick={() => onViewOutfit(outfitId)} className="text-[17px] font-bold text-ink truncate text-left hover:underline">{primaryDisplayEntry?.title || outfit.name}</button>
             {primaryDisplayEntry?.scene && <p className="text-[11px] text-ink/50 mt-0.5">{primaryDisplayEntry.scene}{primaryDisplayEntry.weatherNote ? ` · ${primaryDisplayEntry.weatherNote}` : ""}</p>}
             {isChanged && changedEntry && (
               <p className="text-[10px] text-amber-600 mt-0.5">原计划：{changedEntry.title || "已变更"}</p>
@@ -174,6 +178,9 @@ export function OutfitPlanDayCard({
                   )}
                 </>
               ) : null}
+              {isFuture && onChangeOutfit ? (
+                <button type="button" className="rounded-full border border-denim/20 bg-denim/5 px-3 py-1 text-[11px] font-medium text-denim" onClick={onChangeOutfit}>更改计划</button>
+              ) : null}
               <button type="button" className="rounded-full border border-ink/10 bg-white px-3 py-1 text-[11px] font-medium text-ink/50" onClick={onSelectOutfit}>添加备选穿搭</button>
               {onDeleteEntry ? (
                 <button type="button" className="rounded-full border border-red-200 bg-white px-3 py-1 text-[11px] font-medium text-red-600" onClick={() => setShowDeleteConfirm(true)}>删除</button>
@@ -181,6 +188,35 @@ export function OutfitPlanDayCard({
             </div>
           </div>
         </div>
+        {/* 备选穿搭 */}
+        {(() => {
+          const backupEntries = entries?.filter((e) => e.status === "planned" && !e.isPrimary && e.outfitId !== outfit.id) ?? [];
+          if (backupEntries.length === 0) return null;
+          return (
+            <div className="mt-3 pt-3 border-t border-ink/8">
+              <p className="text-[11px] font-medium text-ink/40 mb-2">备选穿搭</p>
+              <div className="space-y-1.5">
+                {backupEntries.map((be) => {
+                  const bo = allOutfits?.find((o) => o.id === be.outfitId);
+                  if (!bo) return null;
+                  return (
+                    <button
+                      key={be.id}
+                      type="button"
+                      className="flex w-full items-center gap-2 rounded-lg p-1.5 hover:bg-ink/3 text-left"
+                      onClick={() => onViewOutfit(bo.id)}
+                    >
+                      <div className="h-9 w-9 shrink-0 overflow-hidden rounded-md bg-milk-darker/40">
+                        <OutfitCover outfit={bo} items={items} size="card" />
+                      </div>
+                      <span className="text-xs font-medium text-ink/70 truncate">{be.title || bo.name}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          );
+        })()}
         {showDeleteConfirm && primaryEntry ? (
           <div className="fixed inset-0 z-[90] flex items-center justify-center bg-ink/35 px-4" onClick={() => setShowDeleteConfirm(false)}>
             <div className="w-full max-w-sm rounded-3xl bg-white p-5 shadow-xl" onClick={(e) => e.stopPropagation()}>

@@ -5,7 +5,7 @@ import { useMemo, useState } from "react";
 import type { SavedOutfit, WardrobeItem } from "@/lib/types";
 import { OutfitCover } from "@/components/outfit-cover";
 import { MotionSheet } from "@/components/motion-common";
-import { getWearSummary } from "@/lib/wear-records";
+
 
 interface OutfitPlanSelectSheetProps {
   open: boolean;
@@ -82,9 +82,7 @@ export function OutfitPlanSelectSheet({ open, onClose, outfits, items, todayKey,
             </div>
           ) : (
             <div className="space-y-2">
-              {filtered.map((outfit) => {
-                const wearSummary = getWearSummary(outfit.wornDates, todayKey);
-                return (
+              {filtered.map((outfit) => { return (
                   <button
                     key={outfit.id}
                     type="button"
@@ -96,11 +94,10 @@ export function OutfitPlanSelectSheet({ open, onClose, outfits, items, todayKey,
                     </div>
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-semibold text-ink truncate">{outfit.name}</p>
-                      <p className="text-[11px] text-ink/40 mt-0.5">{wearSummary.label}</p>
+                      {(outfit.sceneTags ?? []).length > 0 && <p className="text-[11px] text-ink/40 mt-0.5">{outfit.sceneTags!.join(" / ")}</p>}
                     </div>
                   </button>
-                );
-              })}
+                ); })}
             </div>
           )}
         </div>

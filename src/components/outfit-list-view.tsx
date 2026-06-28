@@ -228,6 +228,7 @@ export function OutfitListView({
 	  const [planAddType, setPlanAddType] = useState<OutfitCalendarPlanType>("travel");
 	  const [activeCalendarPlanId, setActiveCalendarPlanId] = useState<string | null>(null);
 	  const [selectOutfitDate, setSelectOutfitDate] = useState<string | null>(null);
+	  const [selectOutfitMode, setSelectOutfitMode] = useState<"change" | "backup">("backup");
 	  const [showPlanSelectSheet, setShowPlanSelectSheet] = useState(false);
   const wornThisMonth = useMemo(() => {
     const monthPrefix = todayKey.slice(0, 7);
@@ -533,9 +534,9 @@ export function OutfitListView({
 	  // v1.1.0 fix: 使用 addOutfitToDate auto 模式，今天/未来创建计划，过去补录已穿
 	  // v1.1.4-dev: 成功后调用 syncPackingChecklistForDate(dateKey), 让所有覆盖该日期的 plan 打包清单自动同步。
 	  // v1.1.9 4D: 默认改为 "auto"，由 resolveAddOutfitIntent 根据日期状态决定 worn/planned
-	  async function handleAddOutfitToDate(dateKey: string, outfitId: string, mode: "auto" | "planned" | "worn" = "auto") {
+	  async function handleAddOutfitToDate(dateKey: string, outfitId: string, mode: "auto" | "planned" | "worn" = "auto", opts?: { makePrimary?: boolean; role?: import("@/lib/types").OutfitPlanEntryRole }) {
 	    try {
-	      const result = await addOutfitToDate({ dateKey, outfitId, mode, todayKey });
+	      const result = await addOutfitToDate({ dateKey, outfitId, mode, todayKey, ...opts });
         await bridgeWearSyncResult(result);
 	      try {
 	        await syncPackingChecklistForDate(dateKey);
@@ -741,12 +742,20 @@ export function OutfitListView({
 
 	  function openPlanOutfitSelect(dateKey: string) {
 	    setSelectOutfitDate(dateKey);
+	    setSelectOutfitMode("backup");
+	    setShowPlanSelectSheet(true);
+	  }
+
+	  function openChangeOutfitSelect(dateKey: string) {
+	    setSelectOutfitDate(dateKey);
+	    setSelectOutfitMode("change");
 	    setShowPlanSelectSheet(true);
 	  }
 
 	  async function handleSelectOutfitForPlan(outfit: SavedOutfit) {
 	    if (selectOutfitDate) {
-	      await handleAddOutfitToDate(selectOutfitDate, outfit.id);
+	      const opts = selectOutfitMode === "change" ? { makePrimary: true } : { role: "backup" as const };
+	      await handleAddOutfitToDate(selectOutfitDate, outfit.id, "auto", opts);
 	    }
 	    setShowPlanSelectSheet(false);
 	    setSelectOutfitDate(null);
@@ -897,6 +906,7 @@ export function OutfitListView({
 	            onSelectedDateChange={setSelectedWeekDate}
 	            onShiftWeek={handleShiftWeek}
 	            onSelectOutfitForDate={openPlanOutfitSelect}
+	            onChangeOutfitForDate={openChangeOutfitSelect}
 	            onViewOutfit={(outfitId) => openOutfitDetail(outfitId, "library")}
 	            onMarkWornToday={handleMarkPlanEntryWorn}
 	            onCancelWear={handleCancelOutfitWearForDate}

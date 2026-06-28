@@ -21,6 +21,7 @@ interface OutfitWeeklyPlanStripProps {
   onSelectedDateChange: (dateKey: string) => void;
   onShiftWeek: (delta: -1 | 1) => void;
   onSelectOutfitForDate: (dateKey: string) => void;
+  onChangeOutfitForDate?: (dateKey: string) => void;
   onViewOutfit: (outfitId: string) => void;
   onMarkWornToday: (entry: OutfitPlanEntry) => void;
   onCancelWear?: (dateKey: string, outfitId: string) => void;
@@ -44,6 +45,7 @@ export function OutfitWeeklyPlanStrip({
   onSelectedDateChange,
   onShiftWeek,
   onSelectOutfitForDate,
+  onChangeOutfitForDate,
   onViewOutfit,
   onMarkWornToday,
   onCancelWear,
@@ -202,8 +204,10 @@ export function OutfitWeeklyPlanStrip({
           plans={datePlans}
           outfit={selectedOutfit}
           items={items}
+          allOutfits={outfits}
           onSelectOutfit={() => onSelectOutfitForDate(selectedDate)}
-          onViewOutfit={() => selectedOutfit && onViewOutfit(selectedOutfit.id)}
+          onChangeOutfit={onChangeOutfitForDate ? () => onChangeOutfitForDate(selectedDate) : undefined}
+          onViewOutfit={(oid) => { const id = oid ?? selectedOutfit?.id; if (id) onViewOutfit(id); }}
           onMarkWornToday={() => selectedEntry && onMarkWornToday(selectedEntry)}
           onCancelWear={onCancelWear ? (outfitId: string) => onCancelWear(selectedDate, outfitId) : undefined}
           onSetPrimary={onSetPrimary}

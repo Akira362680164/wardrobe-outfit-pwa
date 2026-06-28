@@ -160,7 +160,7 @@ export function OutfitPlanDetailView({
                         <OutfitCover outfit={outfit} items={items} size="card" />
                       </button>
                       <div className="flex-1 min-w-0">
-                        <p className="truncate text-sm font-medium text-ink">{primaryEntry?.title || outfit.name}</p>
+                        <button type="button" onClick={() => onViewOutfit(outfit.id)} className="truncate text-sm font-medium text-ink text-left hover:underline">{primaryEntry?.title || outfit.name}</button>
                         {cover?.imageDataUrl && primaryEntry?.scene ? (
                           <p className="text-[11px] text-ink/45 mt-0.5">{primaryEntry.scene}</p>
                         ) : null}
