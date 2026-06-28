@@ -1,3 +1,18 @@
+## 2026-06-29 / v2.0.7-test / Codex — 修复种草老数据无法删除（fallback 删除路径）
+
+- **目的**：修复种草列表中历史老数据"待确认种草单品"无法删除的问题：v1.x 老数据同步到工作区时 `WorkspaceWishlistItemRecord.legacyWishlistId` 为空，`bridgeWishlistDelete` 按 legacyWishlistId 找不到记录就静默返回 `workspace_wishlist_not_found`，导致 UI 显示已删除但实际未生效。
+- **版本**：`2.0.6-test` → `2.0.7-test`，Android `versionCode` 由 `20006` → `20007`。
+- **改动文件**：`src/lib/cloud-sync/wishlist-bridge.ts`（新增 `findWorkspaceWishlistById` 兜底查找 + `softDeleteWorkspaceWishlist` 软删小封装；`bridgeWishlistDelete` 在 legacy 查找失败时按 `w.id` 兜底再删）、`src/lib/workspace-write-commands.ts`（`workspaceDeleteWishlistItems` 对 `workspace_wishlist_not_found` 加 `console.warn` 留痕）、`scripts/test-wishlist-legacy-id-fallback.ts`（新增 13 个 assertion 覆盖 fallback 路径与主路径）、`package.json`、`VERSION_HISTORY.md`。
+- **关键修复**：
+  - `bridgeWishlistDelete` 旧逻辑：仅按 `legacyWishlistId` 查 → 老数据返回 `workspace_wishlist_not_found` → 静默成功。
+  - 新逻辑：legacy 查不到时 `console.warn` 留痕 + 按 `w.id` 兜底查找 + 复用现有 `deleteWishlistItem` 软删，确保 v1.x 老数据迁移进工作区后能正常被用户删除。
+  - 主路径不动：legacyWishlistId 匹配的情况下仍走原 `deleteWishlistItem` 调用，软删 + outbox + revision 自增行为完全不变。
+- **本地验证**：`npx tsc --noEmit` 通过零错误；`tsx scripts/test-wishlist-legacy-id-fallback.ts` 13 passed / 0 failed；其他相关 logic 套件（`test:logic:wishlist`、`test:logic:wishlist-flow`、`test:logic:wishlist-management-followup` 等）仅命中 v2.0.6 既有 stale 断言（`test-wishlist-management-followup` 的 `WishlistView20 批量保存种草草稿` 用 `bulkPut(newItems)` 匹配而 v2.0.6 改用 `bridgeWishlistUpsert`；`test-cloud-sync-wishlist-bridge` 的"不包含 DataURL 字段 / 不包含 cropBox"两条断言在 v1.1.28 改回 keep 后已 stale；`test-wishlist-conversion-flow` 的 `deleteWardrobeItemsWithCascade` 函数名在 v2.0.6 已删除），均为 v2.0.6 引入的存量失败，与本次改动无关；`npm run android:apk:skip-check` 成功生成固定签名候选 APK（9.5MB，CN=fangzheng）。
+- **真机验证**：保留数据安装 (`adb install -r`) 到 MEIZU 21 Pro / Android 16 (versionCode 20007)；走"待确认种草单品"详情页 → 右上角 ··· → 删除记录 → 红色确认按钮；logcat 抓到 `[wishlist-bridge] bridgeWishlistDelete: 工作区中找不到 legacyWishlistId 匹配项, 已按 w.id 兜底查找` 警告，UI toast 显示"已删除记录"，种草列表从 1 件变为 0 件（空状态"还没有种草单品"）；`adb shell am force-stop` 强杀重启后仍为 0 件，工作区记录已成功软删。
+- **风险门禁**：**medium**（删除软删路径扩兜底；不影响新增数据的写入路径；fallback 软删后产生 outbox `delete` 事件，会被云同步按既有协议上传，与手动删除语义一致）。
+- **未触发 subagent**：用户未通知。
+- **未验证风险**：其他用户数据下若 `WorkspaceWishlistItemRecord.w.id` 与某条**已存在的、不应删除的**记录的 `w.id` 字符串恰好冲突，fallback 可能会误删——但 `w.id` 是 UUID v7 + 单工作区内唯一，跨记录冲突概率可忽略；如需进一步加固可后续把 `w.id` 也做 workspace 维度唯一约束（独立议题，不在本次范围）。
+
 ## 2026-06-29 / v2.0.6-test / Claude Code — 彻底删除 Dexie 旧数据库，全部迁移至 Workspace
 
 - **目的**：删除旧 Dexie 数据库（`db.ts`）及所有关联代码，将全部读写迁移至 Account Workspace DB + Cloud Sync 桥接函数；同时删除已废弃的备份功能。

@@ -38,6 +38,9 @@ export async function workspaceUpsertOutfit(outfit: SavedOutfit): Promise<void> 
 export async function workspaceDeleteWishlistItems(ids: readonly string[]): Promise<void> {
   for (const id of ids) {
     const result = await bridgeWishlistDelete(id);
+    if (result.reason === "workspace_wishlist_not_found" && typeof console !== "undefined") {
+      console.warn("[workspace-write-commands] workspaceDeleteWishlistItems: 工作区中找不到对应种草, 已放过 (id=", id, ")，通常是 v1.x 老数据同步时漏写 legacyWishlistId 导致");
+    }
     if (!result.bridged && result.reason !== "workspace_wishlist_not_found") throw new Error(result.reason ?? "write_failed");
   }
   invalidateWorkspaceSnapshotCache();

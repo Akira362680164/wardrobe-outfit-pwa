@@ -4,6 +4,7 @@ import type { WishlistItem } from "@/lib/types";
 import { createWorkspaceUuidV7, getAccountWorkspaceDb, type WorkspaceWishlistItemRecord } from "@/lib/account-workspace-db";
 import { imageAssetInputsForWishlist, prepareEntityImageAssets, putPreparedEntityImageAssets, withCloudAssetRefs, type CloudAssetReferenceMap } from "@/lib/cloud-sync/asset-bridge";
 import { loadCloudBridgeContext } from "@/lib/cloud-sync/bridge-context";
+import type { CloudBridgeContext } from "@/lib/cloud-sync/bridge-context";
 import { schedulePendingUploads } from "@/lib/cloud-sync/asset-upload-coordinator";
 import { currentWorkspaceGuard, deleteWishlistItem, isGuardCurrent, writeWishlistItem } from "@/lib/cloud-sync/sync-engine";
 
@@ -69,7 +70,14 @@ export async function bridgeWishlistDelete(legacyWishlistId: string): Promise<Br
   try {
     const db = getAccountWorkspaceDb(ctx.workspace);
     const existing = await findWorkspaceWishlistByLegacyId(db, legacyWishlistId);
-    if (!existing) return { bridged: false, reason: "workspace_wishlist_not_found" };
+    if (!existing) {
+      if (typeof console !== "undefined") {
+        console.warn("[wishlist-bridge] bridgeWishlistDelete: 工作区中找不到 legacyWishlistId 匹配项, 已按 w.id 兜底查找", { legacyWishlistId });
+      }
+      const fallback = await findWorkspaceWishlistById(db, legacyWishlistId);
+      if (!fallback) return { bridged: false, reason: "workspace_wishlist_not_found" };
+      return await softDeleteWorkspaceWishlist(db, ctx, fallback);
+    }
     if (!isGuardCurrent(currentWorkspaceGuard(ctx.workspace))) return { bridged: false, reason: "no_workspace" };
     await deleteWishlistItem(
       db,
@@ -105,4 +113,39 @@ async function findWorkspaceWishlistByLegacyId(
 ): Promise<WorkspaceWishlistItemRecord | undefined> {
   const items = await db.wishlistItems.toArray();
   return items.find((item) => item.legacyWishlistId === legacyWishlistId && !item.deletedAt);
+}
+
+/**
+ * 按 w.id 兜底查找未软删的工作区种草。
+ * v2.0.6 之前的老数据同步到工作区时, WorkspaceWishlistItemRecord.legacyWishlistId 可能为空,
+ * 导致按 legacyWishlistId 找记录时永远 not_found, 删除静默失败。此 fallback 用于这一种情况。
+ */
+export async function findWorkspaceWishlistById(
+  db: ReturnType<typeof getAccountWorkspaceDb>,
+  id: string,
+): Promise<WorkspaceWishlistItemRecord | undefined> {
+  const items = await db.wishlistItems.toArray();
+  return items.find((item) => item.id === id && !item.deletedAt);
+}
+
+/**
+ * 软删工作区种草的小封装, 复用 deleteWishlistItem + 守卫检查, bridgeWishlistDelete 主路径与 fallback 路径共用。
+ */
+export async function softDeleteWorkspaceWishlist(
+  db: ReturnType<typeof getAccountWorkspaceDb>,
+  ctx: CloudBridgeContext,
+  record: WorkspaceWishlistItemRecord,
+): Promise<BridgeWishlistResult> {
+  if (!isGuardCurrent(currentWorkspaceGuard(ctx.workspace))) return { bridged: false, reason: "no_workspace" };
+  await deleteWishlistItem(
+    db,
+    {
+      workspace: ctx.workspace,
+      originDeviceId: ctx.deviceId,
+      baseRevision: record.revision,
+      payload: {},
+    },
+    record,
+  );
+  return { bridged: true };
 }
