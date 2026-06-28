@@ -1,3 +1,16 @@
+## 2026-06-29 / v2.0.7-test / Codex — 老账号新设备真机同步验证（FAIL）
+
+- **目的**：按 `docs/agent-task-sync-validation.md` 在 MEIZU 21 Pro 上执行一轮“创建 → 冷启动 → 云端 push → 二次清数据 → 重登恢复”端到端验证。
+- **版本与来源**：`2.0.7-test` / Android `versionCode 20007`；commit `79acfd4`；APK `apk-local/app-release-79acfd4.apk`，SHA-256 `83b2989b2f10160f63e1f8941b85b57e099fae450155eac9b48d4e07b9008c1e`，固定签名 `CN=fangzheng`。
+- **设备与账号**：MEIZU 21 Pro / Android 16 / `481QFGFH23AY7`；测试账号 `133****8876`；两次 `pm clear` 均经用户明确授权。
+- **验证结果**：`npm run typecheck` PASS；`npm run android:apk` PASS；安装、两次登录、bootstrap、冷启动和最终恢复阶段均无 `FATAL EXCEPTION`。六类核心对象中，套装和种草完整恢复；衣橱位置与衣物只恢复实体空壳，名称/属性丢失且衣物图片丢失；穿搭计划显示保存成功但没有数据库/outbox 记录；参考照本地保存成功但 profile outbox 持续 pending，清数据后未恢复。总体结论 **FAIL**。
+- **关键发现**：WebView logcat 输出完整 access/refresh token（敏感原始日志已移到废纸篓并清空 logcat）；同步 pull 返回 `Invalid cursor: invalid cursor fields` 500；新衣物未进入套装选择器；资产请求出现 `owner_entity_not_found`；首次清数据后曾观察到 MiniMax 设置仍显示已配置，第二次清数据后则为未配置。
+- **报告**：`review-artifacts/device-test-2.0.7-test-20260629-023233/sync-report.md`、`sync-report.json`（本机忽略目录，不进入 Git）。
+- **改动文件**：`VERSION_HISTORY.md`；测试报告和截图仅写入忽略目录，未修改业务源码。
+- **风险门禁**：**high**（真实账号云同步、清数据恢复、图片与认证隐私边界）。
+- **未触发 subagent**：用户未通知。
+- **未验证风险**：未执行可选离线错误路径；未删除云端测试数据；未修复本轮发现的问题。
+
 ## 2026-06-29 / v2.0.7-test / Codex — 重写真机同步验证任务模板
 
 - **目的**：将旧的 495 行真机同步任务包收口为最小可靠流程，修正版本解析、APK 实际路径、pipeline 退出码、清数据授权、异步 push 门禁、隐私脱敏和机器可读报告问题。
