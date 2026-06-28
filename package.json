@@ -1,6 +1,6 @@
 {
   "name": "wardrobe-outfit-pwa",
-  "version": "2.0.3-test",
+  "version": "2.0.4-test",
   "private": true,
   "workspaces": [
     "packages/cloud-contracts",

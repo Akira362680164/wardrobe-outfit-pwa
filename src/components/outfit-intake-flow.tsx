@@ -192,7 +192,6 @@ export function OutfitIntakeFlow({
  try {
  const nextDraft = buildLocalOutfitDraftFromItems({
  items: selectedItems,
- source: "manual",
  });
  commitDraft(nextDraft);
  return nextDraft;
@@ -549,13 +548,6 @@ function OutfitReviewStep({
  <TextField label="场景标签" value={draft.sceneTags.value.join("、")} field={draft.sceneTags} onChange={(value) => onPatchDraft({ sceneTags: userField(parseTagInput(value)) })} />
  <TextField label="风格标签" value={draft.styleTags.value.join("、")} field={draft.styleTags} onChange={(value) => onPatchDraft({ styleTags: userField(parseTagInput(value)) })} />
  <TextField label="搭配标签" value={draft.pairingTags.value.join("、")} field={draft.pairingTags} onChange={(value) => onPatchDraft({ pairingTags: userField(parseTagInput(value)) })} />
- <SelectField
- label="来源"
- value={draft.source.value}
- field={draft.source}
- options={outfitSourceOptions}
- onChange={(value) => onPatchDraft({ source: userField(value as SavedOutfit["source"]) })}
- />
  <TextareaField label="备注" value={draft.notes.value} field={draft.notes} onChange={(value) => onPatchDraft({ notes: userField(value) })} />
  </div>
  </IntakeStepSection>

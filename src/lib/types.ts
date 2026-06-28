@@ -252,7 +252,7 @@ export interface SavedOutfit {
   destination?: string;
   activity?: string;
   style?: string;
-  source: "manual" | "ai" | "capture";
+  source?: "manual" | "ai" | "capture";
   favorite: boolean;
   createdAt: string;
   updatedAt: string;

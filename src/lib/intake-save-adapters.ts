@@ -143,7 +143,6 @@ export function outfitDraftToSavedOutfit(
  sourceImageDataUrl,
  coverImageDataUrl: sourceImageDataUrl,
  thumbnailDataUrl: draft.thumbnailDataUrl,
- source: fieldValue(draft.source, "manual"),
  // v1.0: 创建流程默认不收藏,详情页可单独切换
  favorite: fieldValue(draft.favorite, false),
  seasons: fieldValue(draft.seasons, []),

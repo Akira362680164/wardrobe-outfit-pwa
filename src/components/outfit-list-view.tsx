@@ -345,7 +345,7 @@ export function OutfitListView({
  return;
  }
  await getWardrobeDb().outfits.put(newOutfit);
- void bridgeOutfitUpsert(newOutfit);
+ await bridgeOutfitUpsert(newOutfit);
  await onRefresh();
  setSubPage("library");
  onMessage("套装已创建");
@@ -560,7 +560,7 @@ export function OutfitListView({
 	      } catch {
 	        onMessage("打包清单同步失败，请重试", "error");
 	      }
-        void bridgeTripPlanWithChecklist(plan.id);
+        await bridgeTripPlanWithChecklist(plan.id);
 	      await onPlanDataChange();
         setActiveCalendarPlanId(plan.id);
 	      setSubPage(wasEditing ? "plan_detail" : "planning_calendar");
@@ -1376,7 +1376,9 @@ function OutfitDetailView({
 
   async function saveAiSuggestion(nextSuggestion: OutfitAiSuggestion) {
     const now = new Date().toISOString();
+    const updated = { ...outfit, aiSuggestion: nextSuggestion, updatedAt: now };
     await getWardrobeDb().outfits.update(outfit.id, { aiSuggestion: nextSuggestion, updatedAt: now });
+    void bridgeOutfitUpsert(updated);
     await onRefresh();
   }
 
@@ -1504,7 +1506,7 @@ function OutfitDetailView({
             <div className="grid gap-3">
               <DetailInfoRow label="单品数量" value={`${items.length} 件`} />
               <DetailInfoRow label="收藏状态" value={outfit.favorite ? "已收藏" : "未收藏"} />
-              <DetailInfoRow label="创建来源" value={outfit.source === "ai" ? "AI 生成" : outfit.source === "capture" ? "穿搭录入" : "手动创建"} />
+
             </div>
           </DetailSurfaceCard>
           <DetailSurfaceCard title="适穿信息">

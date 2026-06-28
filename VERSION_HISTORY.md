@@ -1,3 +1,17 @@
+## 2026-06-29 / v2.0.4-test / Claude Code — 套装功能 5 项修复
+
+- **目的**：修复套装创建的 5 个问题：(1) 刚创建的套装不显示需重启；(2) 无用的"创建来源"字段；(3) AI 建议生成失败；(4) 本地建议静默失败；(5) 计划修改后重复创建而非更新。
+- **版本**：`2.0.3-test` → `2.0.4-test`，Android `versionCode` 由 `20003` → `20004`。
+- **改动文件**：`src/components/outfit-list-view.tsx`、`src/components/outfit-intake-flow.tsx`、`src/lib/intake-save-adapters.ts`、`src/lib/types.ts`、`android/app/build.gradle`、`package.json`、`VERSION_HISTORY.md`。
+- **关键修复**：
+  - 套装创建 bridge 改为 `await`，确保工作区写入完成后才刷新状态；
+  - `saveAiSuggestion` 增加 `bridgeOutfitUpsert`，AI/本地建议写入 Dexie 后同步桥接至工作区 DB，修复云同步下建议不持久化问题；
+  - `handleSaveCalendarPlan` 桥接改为 `await`，避免 `onPlanDataChange` 在桥接完成前读取工作区导致重复创建；
+  - 移除 `SavedOutfit.source` 必填字段及录入/展示 UI 中的"创建来源"。
+- **本地验证**：`npm run typecheck` 通过。
+- **风险门禁**：**medium**（套装创建/编辑/计划同步链路，不影响衣橱数据安全；未新增 Dexie schema 变更）。
+- **未触发 subagent**：用户未通知。
+- **未验证风险**：真机覆盖安装后套装创建、AI 建议、计划修改的端到端验证待执行。
 ## 2026-06-28 / v2.0.3-test / Codex — 修复旧云端衣物删除与真实默认衣橱同步
 
 - **目的**：修复两件早期云端孤儿衣物只能在界面隐藏、无法形成云端删除墓碑的问题；补齐全新账号工作区的真实默认衣橱，并保证衣橱 ID 与衣物 `locationId` 在重装恢复后保持一致。
