@@ -185,9 +185,6 @@ export function OutfitPlanDayCard({
                 <button type="button" className="rounded-full border border-denim/20 bg-denim/5 px-3 py-1 text-[11px] font-medium text-denim" onClick={onChangeOutfit}>更改计划</button>
               ) : null}
               <button type="button" className="rounded-full border border-ink/10 bg-white px-3 py-1 text-[11px] font-medium text-ink/50" onClick={onSelectOutfit}>添加备选穿搭</button>
-              {!isFuture && onDeleteEntry ? (
-                <button type="button" className="rounded-full border border-red-200 bg-white px-3 py-1 text-[11px] font-medium text-red-600" onClick={() => setShowDeleteConfirm(true)}>删除</button>
-              ) : null}
             </div>
           </div>
         </div>
@@ -229,7 +226,7 @@ export function OutfitPlanDayCard({
                 className="w-full rounded-xl border border-ink/10 bg-white p-3 text-left hover:bg-ink/2 mb-2"
                 onClick={() => { setShowChangeDeleteSheet(false); onChangeOutfit?.(); }}
               >
-                <p className="text-sm font-semibold text-denim">更改穿搭</p>
+                <p className="text-sm font-semibold text-denim">更改计划</p>
                 <p className="text-[11px] text-ink/45 mt-0.5">从套装列表中选择新的套装替换当前计划</p>
               </button>
               <button
@@ -237,7 +234,7 @@ export function OutfitPlanDayCard({
                 className="w-full rounded-xl border border-red-200 bg-white p-3 text-left hover:bg-red-50"
                 onClick={() => { setShowChangeDeleteSheet(false); setShowDeleteConfirm(true); }}
               >
-                <p className="text-sm font-semibold text-red-600">删除穿搭</p>
+                <p className="text-sm font-semibold text-red-600">删除计划</p>
                 <p className="text-[11px] text-ink/45 mt-0.5">删除当天的这条穿搭安排</p>
               </button>
               <button
