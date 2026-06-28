@@ -1,3 +1,14 @@
+## 2026-06-29 / v2.0.7-test / Codex — 设计真机同步验证模板精简方案
+
+- **目的**：确认真机同步验证任务包的最小可靠修订方案，解决模板未进入 Git、APK 路径假设错误、清数据缺少确认、异步 push 未完成即卸载和报告不可机读等问题。
+- **版本**：保持 `2.0.7-test`；本次只新增设计说明，不修改业务代码或构建 APK。
+- **改动文件**：`docs/superpowers/specs/2026-06-29-sync-validation-template-revision-design.md`、`VERSION_HISTORY.md`。
+- **设计结论**：正式模板迁入 `docs/agent-task-sync-validation.md`；原 `review-artifacts/_templates/agent-task-sync-validation.md` 只保留跳转说明；核心流程压缩为“准备与构建 → 用户确认清数据 → 最小数据创建与 push 门禁 → 一次重装集中恢复 → Markdown + JSON 报告”。
+- **验证**：设计说明已检查，无 `TBD` / `TODO` 占位；方案、风险边界和验证方式一致；`git diff --check` 通过。
+- **风险门禁**：**low**（纯文档设计，不修改业务、数据库或 Android 工程）。
+- **未触发 subagent**：用户未通知。
+- **未验证风险**：正式任务模板尚未修改，需用户复核设计后继续。
+
 ## 2026-06-29 / v2.0.7-test / Codex — 修复种草老数据无法删除（fallback 删除路径）
 
 - **目的**：修复种草列表中历史老数据"待确认种草单品"无法删除的问题：v1.x 老数据同步到工作区时 `WorkspaceWishlistItemRecord.legacyWishlistId` 为空，`bridgeWishlistDelete` 按 legacyWishlistId 找不到记录就静默返回 `workspace_wishlist_not_found`，导致 UI 显示已删除但实际未生效。
