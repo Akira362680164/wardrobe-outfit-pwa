@@ -1,3 +1,17 @@
+## 2026-06-28 / v2.0.2-test / Claude Code — 修复清单三轮完成 + APK 打包
+
+- **目的**：按 fix-checklist.md 执行三轮修复，解决 F1-F16 共 16 个问题（workspace DB 写一致性、衣橱管理、套装显示、页面刷新竞态、诊断上传、注册体验、裁切旋转、+n 展开、种草 UI、相机权限、计划页底部遮挡、改密错误本地化、计划标题去重），并构建覆盖安装 APK。
+- **版本**：保持 `2.0.2-test`，commit `54d4781`。
+- **改动文件**：
+  - Round 1: `src/lib/cloud-sync/location-bridge.ts`（新增）、`src/lib/cloud-sync/sync-engine.ts`（+writeLocation/deleteLocation）、`src/lib/cloud-sync/workspace-ui-mapper.ts`（legacyItemIds 兼容）、`src/components/wardrobe-app.tsx`（location bridge + await bridgeXxx）
+  - Round 2: `src/components/wardrobe-app.tsx`（loadAuthSessionSnapshot）、`src/components/auth/auth-gate.tsx`（注册字段错误提示）
+  - Round 3: `src/components/garment-intake-flow.tsx`（旋转不退出裁切、+n 可点击）、`src/components/wishlist-view-2.0.tsx`（移除买前评估卡）、`src/components/wardrobe-app.tsx`（相机权限检查）、`src/components/outfit-planning-calendar-view.tsx`（底部安全间距）、`src/components/outfit-plan-detail-view.tsx`（底部安全间距+去重标题）、`src/components/auth/account-views.tsx`（改密错误本地化）
+  - Build fix: `src/components/auth/auth-gate.tsx`（补 isValidAuthPhone import）
+- **验证结果**：`npm run typecheck` 通过；`npm run android:apk` 构建成功（APK 7.8MB）；`adb install -r` 覆盖安装成功（MEIZU 21 Pro / Android 16）；`dumpsys package` 确认 versionCode=20002, versionName=2.0.2-test；`logcat` 无启动崩溃。
+- **风险门禁**：**medium**（涉及 workspace DB 双写同步、衣橱 CRUD、套装显示、UI 交互多处修改；已 typecheck + build + 真机覆盖安装验证）。
+- **未触发 subagent**：用户未通知。
+- **未验证风险**：衣橱管理 CRUD、套装列表、计划页横屏、相机权限等具体功能路径未在真机上逐项操作验证；旧数据迁移（workspace DB 从空状态开始）未测；备份恢复依赖 Round 1+2 修复后的 workspace 状态，未独立重测。
+
 ## 2026-06-28 / v2.0.2-test / Codex — 完善 Android 全链路测试计划
 
 - **目的**：将 v2.0.2-test 真机测试清单升级为可追溯、可执行的发布测试计划，补齐此前遗漏的构建身份、账号会话、云同步恢复、跨账号隔离、远程诊断、备份失败保护、Android 权限和性能门禁。
