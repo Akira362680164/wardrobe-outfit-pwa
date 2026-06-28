@@ -6,7 +6,7 @@ import { Capacitor } from "@capacitor/core";
 import { Loader2, Lock, Shield, User } from "lucide-react";
 import { useAuth } from "@/components/auth/auth-provider";
 import { LegalDocumentView, type LegalSection } from "@/components/auth/legal-document-view";
-import { isLoginFormValid, isRegisterFormValid, validatePassword, type LoginFormState, type RegisterFormState } from "@/lib/auth-form-validation";
+import { isLoginFormValid, isRegisterFormValid, isValidAuthPhone, validatePassword, type LoginFormState, type RegisterFormState } from "@/lib/auth-form-validation";
 
 type AuthView = "login" | "register" | "terms" | "privacy";
 
