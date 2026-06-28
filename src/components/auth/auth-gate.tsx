@@ -141,6 +141,7 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
   const [showExitDialog, setShowExitDialog] = useState(false);
   const removedRef = useRef(false);
   const backListenerHandle = useRef<{ remove: () => void } | null>(null);
+  const previousAuthViewRef = useRef<AuthView>("login");
 
   const clearLocalError = useCallback(() => {
     setLocalError(null);
@@ -148,12 +149,15 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
   }, [auth]);
 
   const updateAuthView = useCallback((next: AuthView, push = true) => {
+    if (next === "terms" || next === "privacy") {
+      previousAuthViewRef.current = view;
+    }
     setView(next);
     if (push) {
       window.history.pushState({ [HISTORY_KEY]: next }, "");
     }
     clearLocalError();
-  }, [clearLocalError]);
+  }, [clearLocalError, view]);
 
   const handlePopState = useCallback((event: PopStateEvent) => {
     const state = event.state;
@@ -187,7 +191,7 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
             return;
           }
           if (view === "terms" || view === "privacy") {
-            window.history.back();
+            updateAuthView(previousAuthViewRef.current, false);
           } else if (view === "register") {
             window.history.back();
           } else {
@@ -260,7 +264,7 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
           title="用户协议"
           lastUpdated={TERMS_LAST_UPDATED}
           sections={TERMS_SECTIONS}
-          onBack={() => window.history.back()}
+          onBack={() => updateAuthView(previousAuthViewRef.current, false)}
         />
       )}
       {view === "privacy" && (
@@ -268,7 +272,7 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
           title="隐私政策"
           lastUpdated={PRIVACY_LAST_UPDATED}
           sections={PRIVACY_SECTIONS}
-          onBack={() => window.history.back()}
+          onBack={() => updateAuthView(previousAuthViewRef.current, false)}
         />
       )}
       {showExitDialog && <ExitDialog onClose={() => setShowExitDialog(false)} />}
