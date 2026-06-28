@@ -364,6 +364,8 @@ function RegisterForm({
 }) {
   const valid = isRegisterFormValid(form);
   const pwError = form.password ? validatePassword(form.password) : null;
+  const phoneError = form.phone && !isValidAuthPhone(form.phone) ? "手机号格式不正确" : null;
+  const confirmError = form.confirmPassword && form.password !== form.confirmPassword ? "两次输入的密码不一致" : null;
 
   return (
     <form
@@ -376,12 +378,18 @@ function RegisterForm({
     >
       <AuthHeader title="注册衣橱账号" />
       {error && <AuthErrorMessage text={error} />}
-      <TextField label="手机号" value={form.phone} onChange={(phone) => onChange({ ...form, phone })} autoComplete="tel" inputMode="tel" />
+      <div>
+        <TextField label="手机号" value={form.phone} onChange={(phone) => onChange({ ...form, phone })} autoComplete="tel" inputMode="tel" />
+        {phoneError && <p className="mt-1 text-xs text-clay">{phoneError}</p>}
+      </div>
       <div>
         <TextField label="密码" value={form.password} onChange={(password) => onChange({ ...form, password })} type="password" autoComplete="new-password" />
         {pwError && <p className="mt-1 text-xs text-clay">{pwError}</p>}
       </div>
-      <TextField label="确认密码" value={form.confirmPassword} onChange={(confirmPassword) => onChange({ ...form, confirmPassword })} type="password" autoComplete="new-password" />
+      <div>
+        <TextField label="确认密码" value={form.confirmPassword} onChange={(confirmPassword) => onChange({ ...form, confirmPassword })} type="password" autoComplete="new-password" />
+        {confirmError && <p className="mt-1 text-xs text-clay">{confirmError}</p>}
+      </div>
       <div className="flex items-start gap-2 text-xs leading-relaxed text-ink/60">
         <input
           id="auth-terms-accepted"

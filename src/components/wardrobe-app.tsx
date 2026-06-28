@@ -123,6 +123,7 @@ import { bridgeOutfitDelete, bridgeOutfitUpsert } from "@/lib/cloud-sync/outfit-
 import { bridgeOutfitPlanDelete } from "@/lib/cloud-sync/plan-bridge";
 import { bridgeWearEventsForGarment } from "@/lib/cloud-sync/wear-bridge";
 import { bridgeWishlistUpsert } from "@/lib/cloud-sync/wishlist-bridge";
+import { loadAuthSessionSnapshot } from "@/lib/auth-session-store";
 import { wardrobeRepository } from "@/lib/repository/wardrobe-repository";
 import {
  defaultMiniMaxSettings,
@@ -4570,8 +4571,9 @@ function SettingsView({
       setDiagnosticUploadState({ phase: "authorizing", message: "正在创建诊断工单…", problemDescription: description });
 
       const apiBase = process.env.NEXT_PUBLIC_WARDROBE_API_BASE_URL ?? "";
-      const accessToken = typeof window !== "undefined" ? localStorage.getItem("wardrobe-access-token") : null;
-      const deviceId = typeof window !== "undefined" ? localStorage.getItem("wardrobe-device-id") ?? "" : "";
+      const session = await loadAuthSessionSnapshot();
+      const accessToken = session.accessToken ?? null;
+      const deviceId = session.deviceId ?? "";
 
       if (!accessToken) {
         throw new Error("未登录");
