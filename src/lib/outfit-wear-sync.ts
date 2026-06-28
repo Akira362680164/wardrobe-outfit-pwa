@@ -148,7 +148,7 @@ export async function addPlannedOutfitForDate(input: AddOutfitToDateInput): Prom
   const db = getWardrobeDb();
   const now = new Date().toISOString();
 
-  return db.transaction("rw", db.outfitPlanEntries, db.outfits, async () => {
+  return db.transaction("rw", db.outfitPlanEntries, async () => {
     // 如果 makePrimary，先清除同日其他 planned entry 的 isPrimary
     if (makePrimary) {
       const existing = await db.outfitPlanEntries.where("date").equals(dateKey).toArray();
