@@ -1,3 +1,14 @@
+## 2026-06-28 / v2.0.2-test / Codex — 下午至晚间修复复测计划
+
+- **目的**：审阅 2026-06-28 12:00–21:18 的13个提交、首轮测试报告、复测报告和脏数据清理报告，形成覆盖下午及晚间全部问题的统一真机复测计划。
+- **版本**：保持 `2.0.2-test`，本次仅修改测试文档，不构建 APK。
+- **改动文件**：`review-artifacts/device-test-v2.0.2-test/retest-plan-2026-06-28-evening-fixes.md`、`VERSION_HISTORY.md`。
+- **覆盖范围**：原18个 `BUG-B*`、晚间5个 `BUG-RT-*`、历史云端衣物缺 `legacyItemId`、`id=undefined`、幽灵 `home`、删除/批量选择失效、location bridge 查找不一致及覆盖加载后位置缺失。
+- **验证结果**：对照 Git 提交 `5bc5f18` 至 `f708aa9`、`fix-checklist.md`、`RETEST_REPORT.md`、`RETEST_CLEANUP_REPORT.md` 完成原问题与晚间新增缺陷的覆盖映射；文档非空检查和 `git diff --check` 通过。
+- **风险门禁**：**low**（纯测试计划；不改业务代码、不安装 APK、不操作真机数据）。
+- **未触发 subagent**：用户未通知。
+- **未验证风险**：当前 `android/app/build.gradle` 有非本次未提交的 `release.debuggable true`，本次保持不动；复测 APK 尚未构建，计划中的真机结果待执行。
+
 ## 2026-06-28 / v2.0.2-test / Claude Code — 脏数据+云端同步修复
 
 - **目的**：修复衣物 `legacyItemId` 不进云端 payload 导致重装后 id 丢失；修复 location id 查找断裂导致更新/删除无法桥接；孤儿衣物自动承接默认衣橱；UI 防护与文案修正。
