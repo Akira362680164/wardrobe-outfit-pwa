@@ -2607,6 +2607,7 @@ function WardrobeView(props: WardrobeViewProps) {
       }
       const updatedItem = result.data!;
       await syncEditedItemReferences(updatedItem, now);
+      setItems((prev) => prev.map((item) => (item.id === updatedItem.id ? updatedItem : item)));
       setViewingItem(updatedItem);
       setEditInitialSnapshot(editSnapshotFromDraft(normalizeDraftForEdit(updatedItem)));
       setEditingItem(false);
