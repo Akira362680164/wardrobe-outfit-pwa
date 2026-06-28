@@ -486,6 +486,23 @@ export function deleteWearEvent(
   return deleteWorkspaceSyncEntity(db, ctx, "wearEvents", "wearEvent", wearEvent);
 }
 
+export function writeLocation(
+  db: AccountWorkspaceDatabase,
+  ctx: WriteContext,
+  location: Omit<import("@/lib/account-workspace-db").WorkspaceLocationRecord, "userId" | "originDeviceId" | "revision" | "createdAt" | "updatedAt"> & { id?: string },
+  operation: "create" | "update",
+): Promise<import("@/lib/account-workspace-db").WorkspaceLocationRecord> {
+  return writeWorkspaceSyncEntity(db, ctx, "locations", "closetLocation", location, operation);
+}
+
+export function deleteLocation(
+  db: AccountWorkspaceDatabase,
+  ctx: WriteContext,
+  location: import("@/lib/account-workspace-db").WorkspaceLocationRecord,
+): Promise<void> {
+  return deleteWorkspaceSyncEntity(db, ctx, "locations", "closetLocation", location);
+}
+
 export function writeTripPlan(
   db: AccountWorkspaceDatabase,
   ctx: WriteContext,

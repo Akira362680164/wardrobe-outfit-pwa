@@ -118,6 +118,7 @@ import {
 } from "@/components/selected-images-review";
 import { getWardrobeDb, readTryOnProfile, saveTryOnProfile } from "@/lib/db";
 import { bridgeGarmentCreate, bridgeGarmentDelete, bridgeGarmentUpdate } from "@/lib/cloud-sync/garment-bridge";
+import { bridgeLocationDelete, bridgeLocationUpsert } from "@/lib/cloud-sync/location-bridge";
 import { bridgeOutfitDelete, bridgeOutfitUpsert } from "@/lib/cloud-sync/outfit-bridge";
 import { bridgeOutfitPlanDelete } from "@/lib/cloud-sync/plan-bridge";
 import { bridgeWearEventsForGarment } from "@/lib/cloud-sync/wear-bridge";
@@ -832,7 +833,7 @@ export function WardrobeApp({ cloudAuth }: { cloudAuth?: WardrobeCloudAuth } = {
               const newId = await db.items.add(item);
               saved++;
               // B5a: best-effort 镜像到账号工作区 + Outbox，失败仅 console.warn 不阻塞 UI
-              void bridgeGarmentCreate({ ...item, id: newId });
+              await bridgeGarmentCreate({ ...item, id: newId });
             }
           }
         }),
@@ -852,7 +853,7 @@ export function WardrobeApp({ cloudAuth }: { cloudAuth?: WardrobeCloudAuth } = {
     if (!item.id) return;
     const updatedAt = new Date().toISOString();
     await getWardrobeDb().items.update(item.id, { status, updatedAt });
-    void bridgeGarmentUpdate({ ...item, status, updatedAt });
+    await bridgeGarmentUpdate({ ...item, status, updatedAt });
     await refreshState();
   }
 
@@ -1394,18 +1395,18 @@ export function WardrobeApp({ cloudAuth }: { cloudAuth?: WardrobeCloudAuth } = {
               onDeleteItems={async (ids) => {
                 const db = getWardrobeDb();
                 const result = await deleteItemsWithCascade({ itemIds: ids, source: "manual_delete" });
-                for (const itemId of result.deletedItemIds) void bridgeGarmentDelete(itemId);
+                for (const itemId of result.deletedItemIds) await bridgeGarmentDelete(itemId);
                 const updatedOutfits = await db.outfits.bulkGet(result.updatedOutfitIds);
                 for (const outfit of updatedOutfits) {
-                  if (outfit) void bridgeOutfitUpsert(outfit);
+                  if (outfit) await bridgeOutfitUpsert(outfit);
                 }
-                for (const outfitId of result.deletedOutfitIds) void bridgeOutfitDelete(outfitId);
-                for (const entryId of result.deletedPlanEntryIds) void bridgeOutfitPlanDelete(entryId);
+                for (const outfitId of result.deletedOutfitIds) await bridgeOutfitDelete(outfitId);
+                for (const entryId of result.deletedPlanEntryIds) await bridgeOutfitPlanDelete(entryId);
                 const touchedWishlistIds = [...result.markedDeletedWishlistIds, ...result.clearedWishlistConvertedIds];
                 if (touchedWishlistIds.length > 0) {
                   const touchedWishlistItems = await db.wishlistItems.bulkGet(touchedWishlistIds);
                   for (const item of touchedWishlistItems) {
-                    if (item) void bridgeWishlistUpsert(item);
+                    if (item) await bridgeWishlistUpsert(item);
                   }
                 }
                 await refreshState();
@@ -1522,8 +1523,8 @@ export function WardrobeApp({ cloudAuth }: { cloudAuth?: WardrobeCloudAuth } = {
 	              miniMaxSettings={miniMaxSettings} onSaveMiniMaxSettings={saveSettings}
 	              onExport={exportBackup} onOpenBackupFolder={openDefaultBackupFolder} onSaveAs={saveAsBackup} onPickFile={pickBackupFile}
 	              isBackupBusy={Boolean(backupOperation != null)}
-	              onAddWardrobe={async (name, note) => { const now = new Date().toISOString(); await getWardrobeDb().locations.put({ id: `custom-${globalThis.crypto?.randomUUID?.() ?? Date.now()}`, name, note, sortOrder: locations.length + 1, createdAt: now, updatedAt: now }); await refreshState(); }}
-              onUpdateWardrobe={async (id, name, note) => { const db = getWardrobeDb(); await db.locations.update(id, { name, note, updatedAt: new Date().toISOString() }); await refreshState(); }}
+	              onAddWardrobe={async (name, note) => { const now = new Date().toISOString(); const id = `custom-${globalThis.crypto?.randomUUID?.() ?? Date.now()}`; await getWardrobeDb().locations.put({ id, name, note, sortOrder: locations.length + 1, createdAt: now, updatedAt: now }); await bridgeLocationUpsert({ id, name, note, sortOrder: locations.length + 1, createdAt: now, updatedAt: now }); await refreshState(); }}
+              onUpdateWardrobe={async (id, name, note) => { const db = getWardrobeDb(); const now = new Date().toISOString(); await db.locations.update(id, { name, note, updatedAt: now }); const existing = locations.find((l) => l.id === id); if (existing) { await bridgeLocationUpsert({ ...existing, name, note, updatedAt: now }); } await refreshState(); }}
               onDeleteWardrobe={async (id, action) => {
                 const db = getWardrobeDb();
                 if (action.mode === "migrate") {
@@ -1538,21 +1539,23 @@ export function WardrobeApp({ cloudAuth }: { cloudAuth?: WardrobeCloudAuth } = {
                     }),
                   );
                   for (const item of movingItems) {
-                    if (typeof item.id === "number") void bridgeGarmentUpdate({ ...item, locationId: action.targetLocationId, updatedAt: now });
+                    if (typeof item.id === "number") await bridgeGarmentUpdate({ ...item, locationId: action.targetLocationId, updatedAt: now });
                   }
+                  await bridgeLocationDelete(id);
                 } else {
                   const itemIds = (await db.items.where("locationId").equals(id).toArray())
                     .map((item) => item.id)
                     .filter((itemId): itemId is number => typeof itemId === "number");
                   const result = await deleteItemsWithCascade({ itemIds, source: "manual_delete" });
-                  for (const itemId of result.deletedItemIds) void bridgeGarmentDelete(itemId);
+                  for (const itemId of result.deletedItemIds) await bridgeGarmentDelete(itemId);
                   const updatedOutfits = await db.outfits.bulkGet(result.updatedOutfitIds);
                   for (const outfit of updatedOutfits) {
-                    if (outfit) void bridgeOutfitUpsert(outfit);
+                    if (outfit) await bridgeOutfitUpsert(outfit);
                   }
-                  for (const outfitId of result.deletedOutfitIds) void bridgeOutfitDelete(outfitId);
-                  for (const entryId of result.deletedPlanEntryIds) void bridgeOutfitPlanDelete(entryId);
+                  for (const outfitId of result.deletedOutfitIds) await bridgeOutfitDelete(outfitId);
+                  for (const entryId of result.deletedPlanEntryIds) await bridgeOutfitPlanDelete(entryId);
                   await db.locations.delete(id);
+                  await bridgeLocationDelete(id);
                 }
                 await refreshState();
               }}
@@ -1999,7 +2002,7 @@ function WardrobeView(props: WardrobeViewProps) {
    for (const wishlistItem of relatedWishlistItems) {
      const patch = buildSyncedPurchasedWishlistPatch(updatedItem, now);
      await db.wishlistItems.update(wishlistItem.id, patch);
-     void bridgeWishlistUpsert({ ...wishlistItem, ...patch });
+     await bridgeWishlistUpsert({ ...wishlistItem, ...patch });
      setWishlistItems((prev) => prev.map((entry) => (entry.id === wishlistItem.id ? { ...entry, ...patch } : entry)));
    }
  }, [allItems, outfits, wishlistItems, setOutfits, setWishlistItems]);
@@ -2141,8 +2144,8 @@ function WardrobeView(props: WardrobeViewProps) {
     const nextDates = toggleTodayWornDate(viewingItem.wornDates, todayKey);
     const now = new Date().toISOString();
     await getWardrobeDb().items.update(viewingItem.id, { wornDates: nextDates, updatedAt: now });
-    void bridgeGarmentUpdate({ ...viewingItem, wornDates: nextDates, updatedAt: now });
-    void bridgeWearEventsForGarment({ ...viewingItem, wornDates: nextDates, updatedAt: now });
+    await bridgeGarmentUpdate({ ...viewingItem, wornDates: nextDates, updatedAt: now });
+    await bridgeWearEventsForGarment({ ...viewingItem, wornDates: nextDates, updatedAt: now });
     patchItemInLocalState(viewingItem.id, { wornDates: nextDates, updatedAt: now });
     const summary = getWearSummary(nextDates, todayKey);
     onMessage(summary.hasToday ? "已记录今天穿着" : "已取消今天穿着记录", "success");
@@ -2162,7 +2165,7 @@ function WardrobeView(props: WardrobeViewProps) {
       if (runId !== aiAdviceRunIdRef.current) return;
       const now = new Date().toISOString();
       await getWardrobeDb().items.update(viewingItem.id, { aiStyleAdvice: advice, updatedAt: now });
-      void bridgeGarmentUpdate({ ...viewingItem, aiStyleAdvice: advice, updatedAt: now });
+      await bridgeGarmentUpdate({ ...viewingItem, aiStyleAdvice: advice, updatedAt: now });
       patchItemInLocalState(viewingItem.id, { aiStyleAdvice: advice, updatedAt: now });
       setAiAdviceState("success");
       onMessage("AI 建议已生成", "success");
@@ -2180,7 +2183,7 @@ function WardrobeView(props: WardrobeViewProps) {
     const patch: Partial<WardrobeItem> = { locationId, updatedAt: now };
     await getWardrobeDb().items.update(viewingItem.id, patch);
     await syncEditedItemReferences({ ...viewingItem, ...patch }, now);
-    void bridgeGarmentUpdate({ ...viewingItem, ...patch });
+    await bridgeGarmentUpdate({ ...viewingItem, ...patch });
     patchItemInLocalState(viewingItem.id, patch);
     const locName = locations.find((l) => l.id === locationId)?.name ?? locationId;
     onMessage(`已移动到 ${locName}`, "success");
@@ -3172,7 +3175,7 @@ function WardrobeView(props: WardrobeViewProps) {
  });
  const updatedItem = { ...viewingItem, ...patch, id: viewingItem.id };
  await syncEditedItemReferences(updatedItem, now);
- void bridgeGarmentUpdate(updatedItem);
+ await bridgeGarmentUpdate(updatedItem);
  patchItemInLocalState(viewingItem.id, patch);
  setViewingItemCropJob(null);
  onMessage("裁切完成", "success");

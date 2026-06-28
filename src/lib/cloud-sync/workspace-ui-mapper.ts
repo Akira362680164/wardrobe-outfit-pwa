@@ -93,7 +93,7 @@ function toSavedOutfit(o: WorkspaceOutfitRecord): SavedOutfit {
   return {
     id: o.legacyOutfitId ?? o.id,
     name: (o.name ?? p.name ?? "") as string,
-    itemIds: (p.itemIds ?? []) as number[],
+    itemIds: ((p.legacyItemIds ?? p.itemIds ?? []) as number[]),
     coverImageDataUrl: p.coverImageDataUrl as string | undefined,
     previewImageDataUrl: p.previewImageDataUrl as string | undefined,
     destination: p.destination as string | undefined,
