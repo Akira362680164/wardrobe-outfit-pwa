@@ -27,6 +27,7 @@ import {
   type WorkspaceSyncStateRecord,
   type WorkspaceSyncConflictRecord,
   type WorkspaceSyncEntity,
+  type WorkspaceProfileRecord,
   runWorkspaceWrite,
   createWorkspaceUuidV7,
   ACCOUNT_WORKSPACE_TABLE_NAMES,
@@ -554,6 +555,23 @@ export type WorkspaceOutfitItemWriteRecord = Omit<
   baseRevision?: number;
 };
 
+export function writeProfile(
+  db: AccountWorkspaceDatabase,
+  ctx: WriteContext,
+  profile: WorkspaceSyncWriteRecord<WorkspaceProfileRecord>,
+  operation: "create" | "update",
+): Promise<WorkspaceProfileRecord> {
+  return writeWorkspaceSyncEntity(db, ctx, "profiles", "profile", profile, operation);
+}
+
+export function deleteProfile(
+  db: AccountWorkspaceDatabase,
+  ctx: WriteContext,
+  profile: WorkspaceProfileRecord,
+): Promise<void> {
+  return deleteWorkspaceSyncEntity(db, ctx, "profiles", "profile", profile);
+}
+
 export async function writeOutfitBundle(
   db: AccountWorkspaceDatabase,
   ctx: WriteContext,
@@ -762,6 +780,7 @@ const ENTITY_TABLE: Record<WorkspaceEntityType, keyof AccountWorkspaceDatabase> 
   outfitPlan: "outfitPlans",
   asset: "assets",
   closetLocation: "locations",
+  profile: "profiles",
 };
 
 export async function applyRemoteChanges(

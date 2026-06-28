@@ -1,8 +1,6 @@
 // src/lib/repository/wardrobe-repository.ts
-// v2.0.1 fix: 统一写入口 — 旧 Dexie 写入 + 等待 bridge 结果 + 刷新顺序
-// ponytail: 单文件仓库，不再 void bridge，统一返回 RepoResult
+// ponytail: repository now writes workspace DB directly; old Dexie remains fallback outside this layer.
 
-import { getWardrobeDb } from "@/lib/db";
 import type {
   GarmentStatus,
   OutfitCalendarPlan,
@@ -12,20 +10,27 @@ import type {
   WardrobeItem,
   WishlistItem,
 } from "@/lib/types";
-import { deleteWardrobeItemsWithCascade, type WardrobeCascadeDeleteResult, type WardrobeCascadeDeleteSource } from "@/lib/wardrobe-cascade-delete";
-import { deleteOutfitWithCascade, type OutfitCascadeDeleteResult } from "@/lib/outfit-cascade-delete";
-import { convertWishlistItemToWardrobe, getUndoPurchaseRisk, type UndoPurchaseRisk } from "@/lib/wishlist-conversion";
+import { type WardrobeCascadeDeleteResult, type WardrobeCascadeDeleteSource } from "@/lib/wardrobe-cascade-delete";
+import { type OutfitCascadeDeleteResult } from "@/lib/outfit-cascade-delete";
+import { getUndoPurchaseRisk, type UndoPurchaseRisk } from "@/lib/wishlist-conversion";
 import {
   addOutfitToDate,
   cancelActualOutfitWearForDate,
   type AddOutfitToDateInput,
   type OutfitWearSyncResult,
 } from "@/lib/outfit-wear-sync";
-import { bridgeGarmentCreate, bridgeGarmentDelete, bridgeGarmentUpdate } from "@/lib/cloud-sync/garment-bridge";
-import { bridgeWishlistUpsert, bridgeWishlistDelete } from "@/lib/cloud-sync/wishlist-bridge";
-import { bridgeOutfitUpsert, bridgeOutfitDelete } from "@/lib/cloud-sync/outfit-bridge";
-import { bridgeOutfitPlanUpsert, bridgeOutfitPlanDelete, bridgeTripPlanUpsert, bridgeTripPlanDelete, bridgeTripPlanWithChecklist } from "@/lib/cloud-sync/plan-bridge";
+import { bridgeOutfitPlanUpsert, bridgeOutfitPlanDelete, bridgeTripPlanUpsert, bridgeTripPlanDelete } from "@/lib/cloud-sync/plan-bridge";
 import { invalidateWorkspaceSnapshotCache } from "@/lib/data-repo";
+import {
+  createLegacyItemId,
+  workspaceConvertWishlistToWardrobe,
+  workspaceDeleteGarmentsWithCascade,
+  workspaceDeleteOutfitWithCascade,
+  workspaceDeleteWishlistItems,
+  workspaceUpsertGarment,
+  workspaceUpsertOutfit,
+  workspaceUpsertWishlistItem,
+} from "@/lib/workspace-write-commands";
 
 export interface RepoResult<T = void> {
   ok: boolean;
@@ -49,15 +54,9 @@ export async function repoCreateGarment(
   item: Omit<WardrobeItem, "id">,
 ): Promise<RepoResult<number>> {
   try {
-    const db = getWardrobeDb();
-    const newId = await db.items.add(item as Omit<WardrobeItem, "id">);
-    const created: WardrobeItem = { ...item, id: newId } as WardrobeItem;
-    const result = await bridgeGarmentCreate(created);
-    invalidateWorkspaceSnapshotCache();
-    if (!result.bridged && result.reason && result.reason !== "no_workspace") {
-      console.warn("[repo] bridgeGarmentCreate failed:", result.reason);
-    }
-    return ok(newId);
+    const id = createLegacyItemId();
+    await workspaceUpsertGarment({ ...item, id } as WardrobeItem);
+    return ok(id);
   } catch (err) {
     return fail("保存单品失败，请重试");
   }
@@ -68,16 +67,10 @@ export async function repoUpdateGarment(
   patch: Partial<WardrobeItem>,
 ): Promise<RepoResult<void>> {
   try {
-    const db = getWardrobeDb();
-    await db.items.update(id, patch);
-    const updated = await db.items.get(id);
-    if (updated) {
-      const result = await bridgeGarmentUpdate(updated);
-      if (!result.bridged && result.reason && result.reason !== "no_workspace") {
-        console.warn("[repo] bridgeGarmentUpdate failed:", result.reason);
-      }
-    }
-    invalidateWorkspaceSnapshotCache();
+    const snapshot = await import("@/lib/data-repo").then((m) => m.getWardrobeSnapshot());
+    const current = snapshot.items.find((item) => item.id === id);
+    if (!current) return fail("单品不存在，请刷新后重试");
+    await workspaceUpsertGarment({ ...current, ...patch, id });
     return ok();
   } catch (err) {
     return fail("更新单品失败，请重试");
@@ -89,23 +82,7 @@ export async function repoDeleteGarments(
   source: WardrobeCascadeDeleteSource = "manual_delete",
 ): Promise<RepoResult<WardrobeCascadeDeleteResult>> {
   try {
-    const db = getWardrobeDb();
-    const result = await deleteWardrobeItemsWithCascade({ db, itemIds: ids, source });
-    for (const itemId of result.deletedItemIds) {
-      const bridged = await bridgeGarmentDelete(itemId);
-      if (!bridged.bridged && bridged.reason !== "no_workspace") throw new Error(bridged.reason);
-    }
-    for (const outfitId of result.updatedOutfitIds) {
-      const outfit = await db.outfits.get(outfitId);
-      if (outfit) void bridgeOutfitUpsert(outfit);
-    }
-    for (const outfitId of result.deletedOutfitIds) void bridgeOutfitDelete(outfitId);
-    for (const entryId of result.deletedPlanEntryIds) void bridgeOutfitPlanDelete(entryId);
-    for (const wishlistId of result.clearedWishlistConvertedIds) {
-      const wishItem = await db.wishlistItems.get(wishlistId);
-      if (wishItem) void bridgeWishlistUpsert(wishItem);
-    }
-    invalidateWorkspaceSnapshotCache();
+    const result = await workspaceDeleteGarmentsWithCascade(ids, source);
     return ok(result);
   } catch (err) {
     return fail("删除单品失败，请重试");
@@ -129,15 +106,9 @@ export async function repoCreateWishlistItem(
   item: Omit<WishlistItem, "id">,
 ): Promise<RepoResult<string>> {
   try {
-    const db = getWardrobeDb();
-    const newId = await db.wishlistItems.add(item as unknown as WishlistItem);
-    const created: WishlistItem = { ...item, id: newId } as WishlistItem;
-    const result = await bridgeWishlistUpsert(created);
-    invalidateWorkspaceSnapshotCache();
-    if (!result.bridged && result.reason && result.reason !== "no_workspace") {
-      console.warn("[repo] bridgeWishlistUpsert failed:", result.reason);
-    }
-    return ok(newId);
+    const id = `wishlist-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+    await workspaceUpsertWishlistItem({ ...item, id } as WishlistItem);
+    return ok(id);
   } catch (err) {
     return fail("保存种草商品失败，请重试");
   }
@@ -148,16 +119,10 @@ export async function repoUpdateWishlistItem(
   patch: Partial<WishlistItem>,
 ): Promise<RepoResult<void>> {
   try {
-    const db = getWardrobeDb();
-    await db.wishlistItems.update(id, patch);
-    const updated = await db.wishlistItems.get(id);
-    if (updated) {
-      const result = await bridgeWishlistUpsert(updated);
-      if (!result.bridged && result.reason && result.reason !== "no_workspace") {
-        console.warn("[repo] bridgeWishlistUpsert failed:", result.reason);
-      }
-    }
-    invalidateWorkspaceSnapshotCache();
+    const snapshot = await import("@/lib/data-repo").then((m) => m.getWardrobeSnapshot());
+    const current = snapshot.wishlistItems.find((item) => item.id === id);
+    if (!current) return fail("种草商品不存在，请刷新后重试");
+    await workspaceUpsertWishlistItem({ ...current, ...patch, id });
     return ok();
   } catch (err) {
     return fail("更新种草商品失败，请重试");
@@ -168,14 +133,7 @@ export async function repoDeleteWishlistItems(
   ids: string[],
 ): Promise<RepoResult<void>> {
   try {
-    const db = getWardrobeDb();
-    await db.transaction("rw", db.wishlistItems, async () => {
-      const records = await db.wishlistItems.bulkGet([...ids]);
-      const validIds = records.filter((r): r is WishlistItem => r != null).map((r) => r.id);
-      if (validIds.length > 0) await db.wishlistItems.bulkDelete(validIds);
-    });
-    for (const id of ids) void bridgeWishlistDelete(id);
-    invalidateWorkspaceSnapshotCache();
+    await workspaceDeleteWishlistItems(ids);
     return ok();
   } catch (err) {
     return fail("删除种草商品失败，请重试");
@@ -187,13 +145,7 @@ export async function repoConvertWishlistItem(
   locationId: string,
 ): Promise<RepoResult<number>> {
   try {
-    const db = getWardrobeDb();
-    const newItemId = await convertWishlistItemToWardrobe({ wishlistItem, locationId, db });
-    const created = await db.items.get(newItemId);
-    if (created) void bridgeGarmentCreate(created);
-    const updatedWish = await db.wishlistItems.get(wishlistItem.id);
-    if (updatedWish) void bridgeWishlistUpsert(updatedWish);
-    invalidateWorkspaceSnapshotCache();
+    const newItemId = await workspaceConvertWishlistToWardrobe({ wishlistItem, locationId });
     return ok(newItemId);
   } catch (err) {
     return fail("转入衣橱失败，请重试");
@@ -213,52 +165,23 @@ export async function repoUndoWishlistPurchase(
   wishlistItem: WishlistItem,
 ): Promise<RepoResult<RepoUndoPurchaseResult>> {
   try {
-    const db = getWardrobeDb();
-    // 先收集级联信息
     const convertedItemId = wishlistItem.convertedItemId;
-    let cascadeResult: WardrobeCascadeDeleteResult | null = null;
-    let preservedWearSnapshots = 0;
-
-    if (typeof convertedItemId === "number") {
-      const item = await db.items.get(convertedItemId);
-      if (!item) return fail("关联衣橱单品不存在");
-      cascadeResult = await deleteWardrobeItemsWithCascade({
-        db,
-        itemIds: [convertedItemId],
-        source: "wishlist_undo_purchase",
-      });
-      preservedWearSnapshots = item.wornDates?.length ?? 0;
-    }
-
-    const now = new Date().toISOString();
-    await db.transaction("rw", db.wishlistItems, async () => {
-      await db.wishlistItems.update(wishlistItem.id, {
+    const preservedWearSnapshots = typeof convertedItemId === "number"
+      ? (await import("@/lib/data-repo").then((m) => m.getWardrobeSnapshot())).items.find((item) => item.id === convertedItemId)?.wornDates?.length ?? 0
+      : 0;
+    const cascadeResult = typeof convertedItemId === "number"
+      ? await workspaceDeleteGarmentsWithCascade([convertedItemId], "wishlist_undo_purchase")
+      : null;
+    if (typeof convertedItemId !== "number") {
+      await workspaceUpsertWishlistItem({
+        ...wishlistItem,
         status: "interested",
         convertedItemId: undefined,
         convertedAt: undefined,
         convertedItemDeletedAt: undefined,
-        updatedAt: now,
+        updatedAt: new Date().toISOString(),
       });
-    });
-
-    // 同步级联变更到工作区
-    if (cascadeResult) {
-      for (const itemId of cascadeResult.deletedItemIds) {
-        const bridged = await bridgeGarmentDelete(itemId);
-        if (!bridged.bridged && bridged.reason !== "no_workspace") throw new Error(bridged.reason);
-      }
-      for (const outfitId of cascadeResult.updatedOutfitIds) {
-        const outfit = await db.outfits.get(outfitId);
-        if (outfit) void bridgeOutfitUpsert(outfit);
-      }
-      for (const outfitId of cascadeResult.deletedOutfitIds) void bridgeOutfitDelete(outfitId);
-      for (const entryId of cascadeResult.deletedPlanEntryIds) void bridgeOutfitPlanDelete(entryId);
     }
-
-    const updatedWish = await db.wishlistItems.get(wishlistItem.id);
-    if (updatedWish) void bridgeWishlistUpsert(updatedWish);
-
-    invalidateWorkspaceSnapshotCache();
     return ok({
       deletedGarmentIds: cascadeResult?.deletedItemIds ?? [],
       updatedOutfitIds: cascadeResult?.updatedOutfitIds ?? [],
@@ -282,12 +205,9 @@ export async function repoCreateOutfit(
   outfit: Omit<SavedOutfit, "id">,
 ): Promise<RepoResult<string>> {
   try {
-    const db = getWardrobeDb();
-    const newId = await db.outfits.add(outfit as unknown as SavedOutfit);
-    const created: SavedOutfit = { ...outfit, id: newId } as SavedOutfit;
-    void bridgeOutfitUpsert(created);
-    invalidateWorkspaceSnapshotCache();
-    return ok(newId);
+    const id = `outfit-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+    await workspaceUpsertOutfit({ ...outfit, id } as SavedOutfit);
+    return ok(id);
   } catch (err) {
     return fail("保存套装失败，请重试");
   }
@@ -298,11 +218,10 @@ export async function repoUpdateOutfit(
   patch: Partial<SavedOutfit>,
 ): Promise<RepoResult<void>> {
   try {
-    const db = getWardrobeDb();
-    await db.outfits.update(id, patch);
-    const updated = await db.outfits.get(id);
-    if (updated) void bridgeOutfitUpsert(updated);
-    invalidateWorkspaceSnapshotCache();
+    const snapshot = await import("@/lib/data-repo").then((m) => m.getWardrobeSnapshot());
+    const current = snapshot.outfits.find((outfit) => outfit.id === id);
+    if (!current) return fail("套装不存在，请刷新后重试");
+    await workspaceUpsertOutfit({ ...current, ...patch, id });
     return ok();
   } catch (err) {
     return fail("更新套装失败，请重试");
@@ -313,11 +232,7 @@ export async function repoDeleteOutfit(
   outfitId: string,
 ): Promise<RepoResult<OutfitCascadeDeleteResult>> {
   try {
-    const db = getWardrobeDb();
-    const result = await deleteOutfitWithCascade({ db, outfitId });
-    void bridgeOutfitDelete(outfitId);
-    for (const entryId of result.deletedPlanEntryIds) void bridgeOutfitPlanDelete(entryId);
-    invalidateWorkspaceSnapshotCache();
+    const result = await workspaceDeleteOutfitWithCascade(outfitId);
     return ok(result);
   } catch (err) {
     return fail("删除套装失败，请重试");
@@ -332,9 +247,7 @@ export async function repoUpsertOutfitPlanEntry(
   entry: OutfitPlanEntry,
 ): Promise<RepoResult<void>> {
   try {
-    const db = getWardrobeDb();
-    await db.outfitPlanEntries.put(entry);
-    void bridgeOutfitPlanUpsert(entry);
+    await bridgeOutfitPlanUpsert(entry);
     invalidateWorkspaceSnapshotCache();
     return ok();
   } catch (err) {
@@ -346,9 +259,7 @@ export async function repoDeleteOutfitPlanEntry(
   entryId: string,
 ): Promise<RepoResult<void>> {
   try {
-    const db = getWardrobeDb();
-    await db.outfitPlanEntries.delete(entryId);
-    void bridgeOutfitPlanDelete(entryId);
+    await bridgeOutfitPlanDelete(entryId);
     invalidateWorkspaceSnapshotCache();
     return ok();
   } catch (err) {
@@ -361,9 +272,7 @@ export async function repoUpsertTripPlan(
   checklistItems: PlanPackingChecklistItem[] = [],
 ): Promise<RepoResult<void>> {
   try {
-    const db = getWardrobeDb();
-    await db.outfitCalendarPlans.put(plan);
-    void bridgeTripPlanUpsert(plan, checklistItems);
+    await bridgeTripPlanUpsert(plan, checklistItems);
     invalidateWorkspaceSnapshotCache();
     return ok();
   } catch (err) {
@@ -375,24 +284,11 @@ export async function repoDeleteTripPlan(
   planId: string,
 ): Promise<RepoResult<void>> {
   try {
-    const db = getWardrobeDb();
-    await db.outfitCalendarPlans.delete(planId);
-    void bridgeTripPlanDelete(planId);
+    await bridgeTripPlanDelete(planId);
     invalidateWorkspaceSnapshotCache();
     return ok();
   } catch (err) {
     return fail("删除旅行计划失败，请重试");
-  }
-}
-
-export async function repoSyncTripPlanChecklist(
-  planId: string,
-): Promise<RepoResult<void>> {
-  try {
-    void bridgeTripPlanWithChecklist(planId);
-    return ok();
-  } catch (err) {
-    return fail("同步打包清单失败，请重试");
   }
 }
 
@@ -405,23 +301,6 @@ export async function repoRecordWear(
 ): Promise<RepoResult<OutfitWearSyncResult>> {
   try {
     const result = await addOutfitToDate(input);
-    // bridge the wear sync result — bridge individual plan entries and outfits
-    const db = getWardrobeDb();
-    for (const outfitId of result.updatedOutfitIds) {
-      const outfit = await db.outfits.get(outfitId);
-      if (outfit) void bridgeOutfitUpsert(outfit);
-    }
-    for (const entryId of result.touchedEntryIds ?? []) {
-      const entry = await db.outfitPlanEntries.get(entryId);
-      if (entry) void bridgeOutfitPlanUpsert(entry);
-    }
-    for (const entryId of result.deletedEntryIds ?? []) {
-      void bridgeOutfitPlanDelete(entryId);
-    }
-    for (const itemId of result.updatedItemIds) {
-      const item = await db.items.get(itemId);
-      if (item) void bridgeGarmentUpdate(item);
-    }
     invalidateWorkspaceSnapshotCache();
     return ok(result);
   } catch (err) {
@@ -436,22 +315,6 @@ export async function repoCancelWear(
 ): Promise<RepoResult<OutfitWearSyncResult>> {
   try {
     const result = await cancelActualOutfitWearForDate({ dateKey, outfitId, todayKey });
-    const db = getWardrobeDb();
-    for (const oId of result.updatedOutfitIds) {
-      const outfit = await db.outfits.get(oId);
-      if (outfit) void bridgeOutfitUpsert(outfit);
-    }
-    for (const entryId of result.touchedEntryIds ?? []) {
-      const entry = await db.outfitPlanEntries.get(entryId);
-      if (entry) void bridgeOutfitPlanUpsert(entry);
-    }
-    for (const entryId of result.deletedEntryIds ?? []) {
-      void bridgeOutfitPlanDelete(entryId);
-    }
-    for (const itemId of result.updatedItemIds) {
-      const item = await db.items.get(itemId);
-      if (item) void bridgeGarmentUpdate(item);
-    }
     invalidateWorkspaceSnapshotCache();
     return ok(result);
   } catch (err) {
@@ -487,7 +350,6 @@ export async function repoSaveEditedGarment(
 ): Promise<RepoResult<WardrobeItem>> {
   if (typeof viewingItem.id !== "number") return fail("单品 ID 无效");
   try {
-    const db = getWardrobeDb();
     const now = new Date().toISOString();
     const patch: Partial<WardrobeItem> = {
       name: editDraft.name?.trim(),
@@ -516,15 +378,8 @@ export async function repoSaveEditedGarment(
       needsReview: editDraft.needsReview,
       updatedAt: now,
     };
-    await db.items.update(viewingItem.id, patch);
-    const updatedItem = await db.items.get(viewingItem.id);
-    if (!updatedItem) return fail("保存后未找到单品");
-    // 单次 bridge，不再二次覆盖
-    const bridgeResult = await bridgeGarmentUpdate(updatedItem);
-    if (!bridgeResult.bridged && bridgeResult.reason && bridgeResult.reason !== "no_workspace") {
-      console.warn("[repo] repoSaveEditedGarment bridge failed:", bridgeResult.reason);
-    }
-    invalidateWorkspaceSnapshotCache();
+    const updatedItem = { ...viewingItem, ...patch, id: viewingItem.id };
+    await workspaceUpsertGarment(updatedItem);
     return ok(updatedItem);
   } catch (err) {
     return fail("保存衣物信息失败，请重试");
@@ -558,7 +413,6 @@ export const wardrobeRepository = {
   deleteOutfitPlanEntry: repoDeleteOutfitPlanEntry,
   upsertTripPlan: repoUpsertTripPlan,
   deleteTripPlan: repoDeleteTripPlan,
-  syncTripPlanChecklist: repoSyncTripPlanChecklist,
   // wear
   recordWear: repoRecordWear,
   cancelWear: repoCancelWear,

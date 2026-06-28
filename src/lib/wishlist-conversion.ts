@@ -2,11 +2,15 @@
 // v0.9.49-dev 种草 2.0: WishlistItem → WardrobeItem 转换与撤销购买。
 
 import type { SavedOutfit, WardrobeItem, WishlistItem } from "@/lib/types";
-import { getWardrobeDb } from "@/lib/db";
-import { deleteWardrobeItemsWithCascade } from "@/lib/wardrobe-cascade-delete";
 import { emptyColorInfo } from "@/lib/color-fields";
 
-type WardrobeDb = ReturnType<typeof getWardrobeDb>;
+function getLocalDateKey(): string {
+  const d = new Date();
+  const yyyy = d.getFullYear();
+  const mm = String(d.getMonth() + 1).padStart(2, "0");
+  const dd = String(d.getDate()).padStart(2, "0");
+  return `${yyyy}-${mm}-${dd}`;
+}
 
 /* ------------------------------------------------------------------ */
 /*  WishlistItem → WardrobeItemLike 虚拟衣物适配                        */
@@ -128,14 +132,6 @@ export function wishlistToVirtualWardrobeItem(
 /*  WishlistItem → WardrobeItem 正式转换                                 */
 /* ------------------------------------------------------------------ */
 
-function getLocalDateKey(): string {
-  const d = new Date();
-  const yyyy = d.getFullYear();
-  const mm = String(d.getMonth() + 1).padStart(2, "0");
-  const dd = String(d.getDate()).padStart(2, "0");
-  return `${yyyy}-${mm}-${dd}`;
-}
-
 export function wishlistToWardrobeItem(input: {
   wishlistItem: WishlistItem;
   locationId: string;
@@ -183,43 +179,7 @@ export function wishlistToWardrobeItem(input: {
 }
 
 /* ------------------------------------------------------------------ */
-/*  转入衣橱                                                            */
-/* ------------------------------------------------------------------ */
-
-export async function convertWishlistItemToWardrobe(input: {
-  wishlistItem: WishlistItem;
-  locationId: string;
-  db: WardrobeDb;
-}): Promise<number> {
-  const now = new Date().toISOString();
-
-  const wardrobeItem = wishlistToWardrobeItem({
-    wishlistItem: input.wishlistItem,
-    locationId: input.locationId,
-    now,
-  });
-
-  // v0.9.49-dev auto-fix: 之前两步独立 await, 移动端断网/后台切走/dexie 抛错会留半态
-  // (衣橱有新衣物但种草仍为 interested)。改用事务保证原子性, 与 undoWishlistPurchase 对称。
-  let newItemId: number | undefined;
-  await input.db.transaction("rw", input.db.items, input.db.wishlistItems, async () => {
-    newItemId = await input.db.items.add(wardrobeItem as Omit<WardrobeItem, "id">);
-    await input.db.wishlistItems.update(input.wishlistItem.id, {
-      status: "archived",
-      convertedItemId: newItemId,
-      convertedAt: now,
-      updatedAt: now,
-    });
-  });
-
-  if (newItemId == null) {
-    throw new Error("convertWishlistItemToWardrobe: 事务未返回 newItemId");
-  }
-  return newItemId;
-}
-
-/* ------------------------------------------------------------------ */
-/*  撤销购买                                                            */
+/*  撤销购买风险评估                                                     */
 /* ------------------------------------------------------------------ */
 
 export interface UndoPurchaseRisk {
@@ -241,8 +201,6 @@ export function getUndoPurchaseRisk(input: {
 
   const wornDateCount = item?.wornDates?.length ?? 0;
 
-  // v0.9.49-dev auto-fix: ISO8601 字符串字典序与时间顺序一致, 但显式 getTime() 比较更稳。
-  // 同时加 1s 阈值防 millisecond 内多次写入被误判为 "已编辑"。
   const itemUpdatedMs = item?.updatedAt ? new Date(item.updatedAt).getTime() : 0;
   const convertedMs = input.wishlistItem.convertedAt
     ? new Date(input.wishlistItem.convertedAt).getTime()
@@ -253,44 +211,3 @@ export function getUndoPurchaseRisk(input: {
   return { inOutfitCount, wornDateCount, itemWasEdited };
 }
 
-export async function undoWishlistPurchase(input: {
-  wishlistItem: WishlistItem;
-  db: WardrobeDb;
-}): Promise<void> {
-  const now = new Date().toISOString();
-  const convertedItemId = input.wishlistItem.convertedItemId;
-
-  if (input.wishlistItem.convertedItemDeletedAt) {
-    throw new Error("undoWishlistPurchase: 关联衣橱单品已删除");
-  }
-
-  if (typeof convertedItemId === "number") {
-    const existing = await input.db.items.get(convertedItemId);
-    if (!existing) {
-      throw new Error("undoWishlistPurchase: 关联衣橱单品不存在");
-    }
-    if (existing) {
-      // 删除失败必须向上抛错，让 UI 显示「撤销购买失败」并保留 convertedItemId/convertedAt。
-      await deleteWardrobeItemsWithCascade({
-        db: input.db,
-        itemIds: [convertedItemId],
-        source: "wishlist_undo_purchase",
-      });
-      // 删除后再次校验：如果 cascade 报告成功但实际单品仍存在，必须抛错。
-      const stillThere = await input.db.items.get(convertedItemId);
-      if (stillThere) {
-        throw new Error("undoWishlistPurchase: 删除后衣橱单品仍存在");
-      }
-    }
-  }
-
-  await input.db.transaction("rw", input.db.wishlistItems, async () => {
-    await input.db.wishlistItems.update(input.wishlistItem.id, {
-      status: "interested",
-      convertedItemId: undefined,
-      convertedAt: undefined,
-      convertedItemDeletedAt: undefined,
-      updatedAt: now,
-    });
-  });
-}

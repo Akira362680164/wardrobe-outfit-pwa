@@ -28,7 +28,8 @@ import {
   type WardrobeItem,
 } from "@/lib/types";
 import { generateThumbnailSafe } from "@/lib/thumbnail-runtime";
-import { getWardrobeDb } from "@/lib/db";
+import { getWardrobeSnapshot } from "@/lib/data-repo";
+import { bridgeGarmentUpdate } from "@/lib/cloud-sync/garment-bridge";
 import { recordDiagnosticEvent } from "@/lib/diagnostic-log";
 
 export type ThumbnailJob =
@@ -510,24 +511,24 @@ class ThumbnailBackfill {
       }
       const url = thumb.thumbnailDataUrl;
       const now = new Date().toISOString();
-      const db = getWardrobeDb();
-      const patch: Partial<WardrobeItem> = {
-        thumbnailDataUrl: url,
-        thumbnailVersion: thumb.thumbnailVersion ?? CURRENT_THUMBNAIL_VERSION,
-        thumbnailUpdatedAt: thumb.thumbnailUpdatedAt ?? now,
-        thumbnailStatus: "ready" as ThumbnailStatus,
-      };
+      const snapshot = await getWardrobeSnapshot();
+      const fullItem = snapshot.items.find((i) => i.id === job.itemId);
+      if (!fullItem) return { ok: false, errorMessage: "衣物已被删除, 无法写回" };
       if (job.kind === "item") {
         // v0.9.43-dev 批次 4 §4: 写回不改变业务 updatedAt (Dexie update 只覆盖传入字段)
-        await db.items.update(job.itemId, patch);
+        await bridgeGarmentUpdate({
+          ...fullItem,
+          thumbnailDataUrl: url,
+          thumbnailVersion: thumb.thumbnailVersion ?? CURRENT_THUMBNAIL_VERSION,
+          thumbnailUpdatedAt: thumb.thumbnailUpdatedAt ?? now,
+          thumbnailStatus: "ready" as ThumbnailStatus,
+        });
         return { ok: true, errorMessage: "" };
       }
-      // reference: 重新读最新 item, 替换对应 ref, 写回数组
+      // reference: 替换对应 ref, 写回数组
       // 避免覆盖用户同时编辑的其他字段
-      const item = await db.items.get(job.itemId);
-      if (!item) return { ok: false, errorMessage: "衣物已被删除, 无法写回" };
-      const refs: ReferenceOutfitImage[] = Array.isArray(item.referenceOutfitImages)
-        ? [...item.referenceOutfitImages]
+      const refs: ReferenceOutfitImage[] = Array.isArray(fullItem.referenceOutfitImages)
+        ? [...fullItem.referenceOutfitImages]
         : [];
       let updated = false;
       for (let i = 0; i < refs.length; i++) {
@@ -544,7 +545,7 @@ class ThumbnailBackfill {
         }
       }
       if (!updated) return { ok: false, errorMessage: "参考图已被删除, 无法写回" };
-      await db.items.update(job.itemId, { referenceOutfitImages: refs });
+      await bridgeGarmentUpdate({ ...fullItem, referenceOutfitImages: refs, updatedAt: now });
       return { ok: true, errorMessage: "" };
     } catch (err) {
       if (typeof console !== "undefined") {
@@ -574,17 +575,18 @@ class ThumbnailBackfill {
 
   private async markJobFailed(job: ThumbnailJob): Promise<void> {
     try {
-      const db = getWardrobeDb();
+      const snapshot = await getWardrobeSnapshot();
+      const fullItem = snapshot.items.find((i) => i.id === job.itemId);
+      if (!fullItem) return;
       if (job.kind === "item") {
-        await db.items.update(job.itemId, { thumbnailStatus: "failed" as ThumbnailStatus });
+        await bridgeGarmentUpdate({ ...fullItem, thumbnailStatus: "failed" as ThumbnailStatus });
         return;
       }
-      const item = await db.items.get(job.itemId);
-      if (item && Array.isArray(item.referenceOutfitImages)) {
-        const refs = item.referenceOutfitImages.map((r) => r.id === job.refId
+      if (Array.isArray(fullItem.referenceOutfitImages)) {
+        const refs = fullItem.referenceOutfitImages.map((r) => r.id === job.refId
           ? { ...r, thumbnailStatus: "failed" as ThumbnailStatus }
           : r);
-        await db.items.update(job.itemId, { referenceOutfitImages: refs });
+        await bridgeGarmentUpdate({ ...fullItem, referenceOutfitImages: refs });
       }
     } catch {
       // 写回失败不影响队列继续处理下一项。

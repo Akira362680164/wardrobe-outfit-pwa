@@ -16,16 +16,16 @@ import {
   X,
 } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { getWardrobeDb } from "@/lib/db";
+
 import type { ClosetLocation, OutfitAiSuggestion, OutfitCalendarPlan, OutfitCalendarPlanType, OutfitPlanEntry, OutfitRealImage, PlanPackingChecklistItem, SavedOutfit, Season, WardrobeItem } from "@/lib/types";
 import { CATEGORY_LABELS, SEASON_LABELS } from "@/lib/types";
 import { buildOutfitCoverRefreshPatch, getOutfitCover, countValidItems } from "@/lib/outfit-cover";
 import { getWearSummary, hasWornDate } from "@/lib/wear-records";
 import { useLocalDateKey } from "@/lib/use-local-date-key";
 import { addOutfitToDate, recordActualOutfitWear, cancelActualOutfitWearForDate, formatOutfitWearSyncError } from "@/lib/outfit-wear-sync";
-import { deleteOutfitWithCascade } from "@/lib/outfit-cascade-delete";
+import { wardrobeRepository } from "@/lib/repository/wardrobe-repository";
 import { bridgeOutfitDelete, bridgeOutfitUpsert } from "@/lib/cloud-sync/outfit-bridge";
-import { bridgeOutfitPlanDelete, bridgeOutfitPlanUpsert, bridgeTripPlanDelete, bridgeTripPlanUpsert, bridgeTripPlanWithChecklist } from "@/lib/cloud-sync/plan-bridge";
+import { bridgeOutfitPlanDelete, bridgeOutfitPlanUpsert, bridgeTripPlanDelete, bridgeTripPlanUpsert } from "@/lib/cloud-sync/plan-bridge";
 import { bridgeWearSyncResult } from "@/lib/cloud-sync/wear-bridge";
 import { OutfitCover } from "@/components/outfit-cover";
 import { OutfitWeeklyPlanStrip } from "@/components/outfit-weekly-plan-strip";
@@ -301,8 +301,7 @@ export function OutfitListView({
       updatedAt: now,
     };
     const updated = [...(viewingOutfit.outfitRealImages ?? []), newImage];
-    const db = getWardrobeDb();
-    await db.outfits.update(viewingOutfit.id, { outfitRealImages: updated, updatedAt: now });
+    await bridgeOutfitUpsert({ ...viewingOutfit, outfitRealImages: updated, updatedAt: now });
     await onRefresh();
     setSubPage("detail");
     onMessage("穿搭实图已保存");
@@ -311,8 +310,7 @@ export function OutfitListView({
   async function handleDeleteRealImage(imageId: string) {
     if (!viewingOutfit) return;
     const updated = (viewingOutfit.outfitRealImages ?? []).filter((img) => img.id !== imageId);
-    const db = getWardrobeDb();
-    await db.outfits.update(viewingOutfit.id, { outfitRealImages: updated, updatedAt: new Date().toISOString() });
+    await bridgeOutfitUpsert({ ...viewingOutfit, outfitRealImages: updated, updatedAt: new Date().toISOString() });
     await onRefresh();
     setRealImageViewing(null);
     setSubPage("detail");
@@ -345,7 +343,6 @@ export function OutfitListView({
  onMessage("套装至少需要2 件衣物", "info");
  return;
  }
- await getWardrobeDb().outfits.put(newOutfit);
  await bridgeOutfitUpsert(newOutfit);
  await onRefresh();
  setSubPage("library");
@@ -443,7 +440,6 @@ export function OutfitListView({
  async function handleToggleFavorite(outfit: SavedOutfit) {
  const next = !outfit.favorite;
  const now = new Date().toISOString();
- await getWardrobeDb().outfits.update(outfit.id, { favorite: next, updatedAt: now });
  void bridgeOutfitUpsert({ ...outfit, favorite: next, updatedAt: now });
  await onRefresh();
  onMessage(next ? "已收藏套装" : "已取消收藏");
@@ -474,7 +470,6 @@ export function OutfitListView({
       return;
     }
     const now = new Date().toISOString();
-    const db = getWardrobeDb();
     const selectedItems = items.filter((item) => item.id != null && createSelectedIds.includes(item.id));
     const patch: Partial<SavedOutfit> = {
       name: createName.trim() || "未命名套装",
@@ -492,7 +487,6 @@ export function OutfitListView({
       notes: createNotes.trim() || undefined,
       updatedAt: now,
     };
-    await db.outfits.update(editingOutfit.id, patch);
     void bridgeOutfitUpsert({ ...editingOutfit, ...patch });
     await onRefresh();
     setSubPage("detail");
@@ -504,10 +498,9 @@ export function OutfitListView({
   async function handleDeleteOutfit() {
     if (!viewingOutfit) return;
     try {
-      const db = getWardrobeDb();
-      const result = await deleteOutfitWithCascade({ db, outfitId: viewingOutfit.id });
-      void bridgeOutfitDelete(viewingOutfit.id);
-      for (const entryId of result.deletedPlanEntryIds) void bridgeOutfitPlanDelete(entryId);
+      const repoResult = await wardrobeRepository.deleteOutfit(viewingOutfit.id);
+      if (!repoResult.ok) throw new Error(repoResult.error ?? "delete failed");
+      const result = repoResult.data!;
       await onPlanDataChange();
       await onRefresh();
       setViewingOutfitId(null);
@@ -553,15 +546,11 @@ export function OutfitListView({
 	  // v1.1.4-dev: 计划保存/编辑后调用 syncPackingChecklistForPlan, 保证打包清单与新范围一致。
 	  async function handleSaveCalendarPlan(plan: OutfitCalendarPlan) {
 	    try {
-	      const db = getWardrobeDb();
-        const wasEditing = subPage === "plan_edit";
-	      await db.outfitCalendarPlans.put(plan);
-	      try {
+        const wasEditing = subPage === "plan_edit";	      try {
 	        await syncPackingChecklistForPlan(plan.id);
 	      } catch {
 	        onMessage("打包清单同步失败，请重试", "error");
 	      }
-        await bridgeTripPlanWithChecklist(plan.id);
 	      await onPlanDataChange();
         setActiveCalendarPlanId(plan.id);
 	      setSubPage(wasEditing ? "plan_detail" : "planning_calendar");
@@ -573,17 +562,6 @@ export function OutfitListView({
 
 		  async function handleDeleteCalendarPlan(planId: string) {
 		    try {
-		      const db = getWardrobeDb();
-		      // 旅行计划只作为日历标记存在；删除计划不得删除每日穿搭记录。
-		      await db.transaction(
-		        "rw",
-		        db.outfitCalendarPlans,
-		        db.planPackingChecklistItems,
-		        async () => {
-		          await db.outfitCalendarPlans.delete(planId);
-		          await db.planPackingChecklistItems.where("calendarPlanId").equals(planId).delete();
-		        },
-		      );
 		      void bridgeTripPlanDelete(planId);
 		      await onPlanDataChange();
           setActiveCalendarPlanId(null);
@@ -604,8 +582,6 @@ export function OutfitListView({
           return;
         }
       }
-      const db = getWardrobeDb();
-      await db.outfitPlanEntries.delete(entry.id);
       void bridgeOutfitPlanDelete(entry.id);
       await syncPackingChecklistForDate(entry.date);
       await onPlanDataChange();
@@ -617,9 +593,16 @@ export function OutfitListView({
 
 	  async function handleTogglePackingItemChecked(itemId: string, checked: boolean) {
 	    try {
-	      const db = getWardrobeDb();
-	      await db.planPackingChecklistItems.update(itemId, { checked, updatedAt: new Date().toISOString() });
-        if (activeCalendarPlanId) void bridgeTripPlanWithChecklist(activeCalendarPlanId);
+        if (activeCalendarPlanId) {
+        const plan = outfitCalendarPlans.find((p) => p.id === activeCalendarPlanId);
+        if (plan) {
+          const now = new Date().toISOString();
+          const updatedItems = planPackingChecklistItems.map((ci) =>
+            ci.id === itemId ? { ...ci, checked, updatedAt: now } : ci
+          );
+          void bridgeTripPlanUpsert(plan, updatedItems);
+        }
+      }
 	      await onPlanDataChange();
 	    } catch {
 	      onMessage("操作失败，请重试", "error");
@@ -629,21 +612,22 @@ export function OutfitListView({
 	  async function handleSaveManualPackingItem(input: { label: string; category?: string; quantity?: number }) {
 	    if (!activeCalendarPlanId) return;
 	    try {
-	      const db = getWardrobeDb();
-	      const now = new Date().toISOString();
-	      const newItem: PlanPackingChecklistItem = {
-	        id: `packing-${activeCalendarPlanId}-manual-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
-	        calendarPlanId: activeCalendarPlanId,
-	        source: "manual",
-	        label: input.label,
-	        category: input.category || "手动新增",
-	        quantity: input.quantity ?? 1,
-	        checked: false,
-	        createdAt: now,
-	        updatedAt: now,
-	      };
-	      await db.planPackingChecklistItems.put(newItem);
-        void bridgeTripPlanWithChecklist(activeCalendarPlanId);
+	      const plan = outfitCalendarPlans.find((p) => p.id === activeCalendarPlanId);
+	      if (plan) {
+	        const now = new Date().toISOString();
+	        const newItem: PlanPackingChecklistItem = {
+	          id: `packing-${activeCalendarPlanId}-manual-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+	          calendarPlanId: activeCalendarPlanId,
+	          source: "manual",
+	          label: input.label,
+	          category: input.category || "手动新增",
+	          quantity: input.quantity ?? 1,
+	          checked: false,
+	          createdAt: now,
+	          updatedAt: now,
+	        };
+	        void bridgeTripPlanUpsert(plan, [...planPackingChecklistItems, newItem]);
+	      }
 	      await onPlanDataChange();
 	    } catch {
 	      onMessage("操作失败，请重试", "error");
@@ -653,11 +637,14 @@ export function OutfitListView({
 	  async function handleMarkAllPacked() {
 	    if (!activeCalendarPlanId) return;
 	    try {
-	      const db = getWardrobeDb();
-	      await db.transaction("rw", db.planPackingChecklistItems, async () => {
-	        await db.planPackingChecklistItems.where({ calendarPlanId: activeCalendarPlanId }).modify({ checked: true, updatedAt: new Date().toISOString() });
-	      });
-        void bridgeTripPlanWithChecklist(activeCalendarPlanId);
+	      const plan = outfitCalendarPlans.find((p) => p.id === activeCalendarPlanId);
+	      if (plan) {
+	        const now = new Date().toISOString();
+	        const updatedItems = planPackingChecklistItems.map((ci) =>
+	          ci.calendarPlanId === activeCalendarPlanId ? { ...ci, checked: true, updatedAt: now } : ci
+	        );
+	        void bridgeTripPlanUpsert(plan, updatedItems);
+	      }
 	      await onPlanDataChange();
 	    } catch {
 	      onMessage("操作失败，请重试", "error");
@@ -667,11 +654,14 @@ export function OutfitListView({
 	  async function handleResetAllPacking() {
 	    if (!activeCalendarPlanId) return;
 	    try {
-	      const db = getWardrobeDb();
-	      await db.transaction("rw", db.planPackingChecklistItems, async () => {
-	        await db.planPackingChecklistItems.where({ calendarPlanId: activeCalendarPlanId }).modify({ checked: false, updatedAt: new Date().toISOString() });
-	      });
-        void bridgeTripPlanWithChecklist(activeCalendarPlanId);
+	      const plan = outfitCalendarPlans.find((p) => p.id === activeCalendarPlanId);
+	      if (plan) {
+	        const now = new Date().toISOString();
+	        const updatedItems = planPackingChecklistItems.map((ci) =>
+	          ci.calendarPlanId === activeCalendarPlanId ? { ...ci, checked: false, updatedAt: now } : ci
+	        );
+	        void bridgeTripPlanUpsert(plan, updatedItems);
+	      }
 	      await onPlanDataChange();
 	    } catch {
 	      onMessage("操作失败，请重试", "error");
@@ -694,9 +684,7 @@ export function OutfitListView({
 
 	  async function handleSkipPlanEntry(entry: OutfitPlanEntry) {
 	    try {
-	      const db = getWardrobeDb();
         const now = new Date().toISOString();
-	      await db.outfitPlanEntries.update(entry.id, { status: "skipped", updatedAt: now });
         void bridgeOutfitPlanUpsert({ ...entry, status: "skipped", updatedAt: now });
 	      await onPlanDataChange();
 	      onMessage("已标记为未穿");
@@ -707,20 +695,15 @@ export function OutfitListView({
 
 	  async function handleSetPrimaryEntry(entry: OutfitPlanEntry) {
 	    try {
-	      const db = getWardrobeDb();
-	      await db.transaction("rw", db.outfitPlanEntries, async () => {
-	        const sameDay = await db.outfitPlanEntries.where({ date: entry.date }).toArray();
-	        for (const e of sameDay) {
-	          if (e.status !== "planned") continue;
-	          if (e.id === entry.id) {
-	            await db.outfitPlanEntries.update(e.id, { isPrimary: true, updatedAt: new Date().toISOString() });
-	          } else if (e.isPrimary) {
-	            await db.outfitPlanEntries.update(e.id, { isPrimary: false, updatedAt: new Date().toISOString() });
-	          }
+	      const now = new Date().toISOString();
+	      const sameDay = outfitPlanEntries.filter((e) => e.date === entry.date && e.status === "planned");
+	      for (const e of sameDay) {
+	        if (e.id === entry.id) {
+	          void bridgeOutfitPlanUpsert({ ...e, isPrimary: true, updatedAt: now });
+	        } else if (e.isPrimary) {
+	          void bridgeOutfitPlanUpsert({ ...e, isPrimary: false, updatedAt: now });
 	        }
-	      });
-        const updatedSameDay = await db.outfitPlanEntries.where({ date: entry.date }).toArray();
-        for (const e of updatedSameDay.filter((e) => e.status === "planned")) void bridgeOutfitPlanUpsert(e);
+	      }
 	      await onPlanDataChange();
 	      onMessage("已设为当天主展示");
 	    } catch {
@@ -821,21 +804,16 @@ export function OutfitListView({
   async function syncPackingChecklistForPlan(planId: string): Promise<void> {
     const plan = outfitCalendarPlans.find((p) => p.id === planId);
     if (!plan) return;
-    const db = getWardrobeDb();
-    const allEntries = await db.outfitPlanEntries.toArray();
-    const allOutfits = await db.outfits.toArray();
-    const allItems = await db.items.toArray();
-    const allChecklist = await db.planPackingChecklistItems.where({ calendarPlanId: planId }).toArray();
+    const allEntries = outfitPlanEntries;
+    const allOutfits = outfits;
+    const allItems = items;
+    const allChecklist = planPackingChecklistItems.filter((ci) => ci.calendarPlanId === planId);
     const newItems = buildPackingItemsFromPlan({
       calendarPlan: plan,
       entries: allEntries,
       outfits: allOutfits,
       items: allItems,
       existingChecklistItems: allChecklist,
-    });
-    await db.transaction("rw", db.planPackingChecklistItems, async () => {
-      await db.planPackingChecklistItems.where({ calendarPlanId: planId }).delete();
-      await db.planPackingChecklistItems.bulkPut(newItems);
     });
     void bridgeTripPlanUpsert(plan, newItems);
   }
@@ -1029,8 +1007,7 @@ export function OutfitListView({
             const updated = (viewingOutfit.outfitRealImages ?? []).map((img) =>
               img.id === realImageViewing.id ? { ...img, caption, updatedAt: new Date().toISOString() } : img
             );
-            const db = getWardrobeDb();
-            await db.outfits.update(viewingOutfit.id, { outfitRealImages: updated, updatedAt: new Date().toISOString() });
+            await bridgeOutfitUpsert({ ...viewingOutfit, outfitRealImages: updated, updatedAt: new Date().toISOString() });
             await onRefresh();
             setRealImageViewing((prev) => prev ? { ...prev, caption, updatedAt: new Date().toISOString() } : null);
             onMessage("说明已更新");
@@ -1388,7 +1365,6 @@ function OutfitDetailView({
   async function saveAiSuggestion(nextSuggestion: OutfitAiSuggestion) {
     const now = new Date().toISOString();
     const updated = { ...outfit, aiSuggestion: nextSuggestion, updatedAt: now };
-    await getWardrobeDb().outfits.update(outfit.id, { aiSuggestion: nextSuggestion, updatedAt: now });
     void bridgeOutfitUpsert(updated);
     await onRefresh();
   }

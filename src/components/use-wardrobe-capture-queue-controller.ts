@@ -6,7 +6,8 @@ import type { CaptureCropJob, ImageIntakePurpose, CaptureMode } from "@/componen
 import type { CaptureImageQueueItem, SelectedImagesReviewMode } from "@/components/selected-images-review";
 import type { NormalizedCropBox } from "@/lib/image";
 import { generateThumbnailSafe } from "@/lib/thumbnail-runtime";
-import { getWardrobeDb } from "@/lib/db";
+import { getWardrobeSnapshot } from "@/lib/data-repo";
+import { bridgeGarmentUpdate } from "@/lib/cloud-sync/garment-bridge";
 
 export interface UseWardrobeCaptureQueueControllerOptions {
   /** 来自 useWardrobeMessageController 的 showMessage */
@@ -146,18 +147,13 @@ export function useWardrobeCaptureQueueController(
           };
         }),
       );
-      const db = getWardrobeDb();
-      await db.transaction("rw", db.items, async () => {
-        const item = await db.items.get(targetId);
-        if (!item) throw new Error("目标衣物不存在");
-        const existing = Array.isArray(item.referenceOutfitImages) ? item.referenceOutfitImages : [];
-        const updated = [...existing, ...refs];
-        await db.items.update(targetId, {
-          referenceOutfitImages: updated,
-          updatedAt: now,
-        });
-        patchItemInItemsState(targetId, { referenceOutfitImages: updated, updatedAt: now });
-      });
+      const snapshot = await getWardrobeSnapshot();
+      const item = snapshot.items.find((i) => i.id === targetId);
+      if (!item) throw new Error("目标衣物不存在");
+      const existing = Array.isArray(item.referenceOutfitImages) ? item.referenceOutfitImages : [];
+      const updated = [...existing, ...refs];
+      await bridgeGarmentUpdate({ ...item, referenceOutfitImages: updated, updatedAt: now });
+      patchItemInItemsState(targetId, { referenceOutfitImages: updated, updatedAt: now });
       await refreshState();
       setCaptureImageQueue([]);
       setReferenceOutfitTargetItemId(null);

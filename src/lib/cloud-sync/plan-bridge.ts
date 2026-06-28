@@ -1,7 +1,6 @@
 "use client";
 
 import { createWorkspaceUuidV7, getAccountWorkspaceDb, type WorkspaceOutfitPlanRecord, type WorkspaceOutfitRecord, type WorkspaceTripPlanRecord } from "@/lib/account-workspace-db";
-import { getWardrobeDb } from "@/lib/db";
 import { loadCloudBridgeContext } from "@/lib/cloud-sync/bridge-context";
 import { currentWorkspaceGuard, deleteOutfitPlan, deleteTripPlan, isGuardCurrent, writeOutfitPlan, writeTripPlan } from "@/lib/cloud-sync/sync-engine";
 import type { OutfitCalendarPlan, OutfitPlanEntry, PlanPackingChecklistItem } from "@/lib/types";
@@ -50,14 +49,6 @@ export async function bridgeTripPlanUpsert(
     if (typeof console !== "undefined") console.warn("[plan-bridge] bridgeTripPlanUpsert failed:", err);
     return { bridged: false, reason: "write_failed" };
   }
-}
-
-export async function bridgeTripPlanWithChecklist(planId: string): Promise<BridgePlanResult> {
-  const oldDb = getWardrobeDb();
-  const plan = await oldDb.outfitCalendarPlans.get(planId);
-  if (!plan) return { bridged: false, reason: "workspace_trip_plan_not_found" };
-  const checklistItems = await oldDb.planPackingChecklistItems.where({ calendarPlanId: planId }).toArray();
-  return bridgeTripPlanUpsert(plan, checklistItems);
 }
 
 export async function bridgeTripPlanDelete(legacyCalendarPlanId: string): Promise<BridgePlanResult> {

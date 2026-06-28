@@ -13,8 +13,6 @@ import { buildColorInfo, getAllColors, getPrimaryColor } from "../src/lib/color-
 import {
   wishlistToVirtualWardrobeItem,
   wishlistToWardrobeItem,
-  convertWishlistItemToWardrobe,
-  undoWishlistPurchase,
 } from "../src/lib/wishlist-conversion";
 import { deleteWardrobeItemsWithCascade } from "../src/lib/wardrobe-cascade-delete";
 
@@ -232,95 +230,10 @@ async function runTests(): Promise<void> {
     assertEq("travel locationId", travelResult.locationId, "travel");
   }
 
-  // 6. convertWishlistItemToWardrobe 成功后 wishlistItem status 为 archived
-  // 7. 新 WardrobeItem 写入 items 表
-  console.log("\n=== 6-7. convertWishlistItemToWardrobe atomic write ===");
-
-  try {
-    class TestDb extends Dexie {
-      items!: Dexie.Table<WardrobeItem, number>;
-      outfits!: Dexie.Table<SavedOutfit, string>;
-      wishlistItems!: Dexie.Table<WishlistItem, string>;
-      locations!: Dexie.Table<any, string>;
-      outfitPlanEntries!: Dexie.Table<OutfitPlanEntry, string>;
-      planPackingChecklistItems!: Dexie.Table<PlanPackingChecklistItem, string>;
-
-      constructor() {
-        super("test-wishlist-conversion-" + Date.now());
-        this.version(1).stores({
-          items: "++id, category, locationId, status",
-          outfits: "id, updatedAt, favorite",
-          wishlistItems: "id, status",
-          locations: "id",
-          outfitPlanEntries: "id, date, outfitId, status, updatedAt",
-          planPackingChecklistItems: "id, calendarPlanId, source, checked, updatedAt",
-        });
-      }
-    }
-
-    const db = new TestDb();
-
-    await db.locations.add({ id: "location-a", name: "衣橱A", sortOrder: 0, createdAt: now, updatedAt: now });
-    await db.locations.add({ id: "location-b", name: "衣橱B", sortOrder: 1, createdAt: now, updatedAt: now });
-
-    const wishItem = makeWishlistItem({
-      id: "w-atomic-test",
-      name: "转衣橱测试单品",
-      category: "tops",
-      colors: buildColorInfo("single", ["白"]),
-      status: "interested",
-    });
-
-    const beforeStatus = wishItem.status;
-    assertEq("initial wishlist status === interested", beforeStatus, "interested");
-
-    const newItemId = await convertWishlistItemToWardrobe({
-      wishlistItem: wishItem,
-      locationId: "location-b",
-      db: db as any,
-    });
-
-    const newItem = await db.items.get(newItemId);
-    check("new WardrobeItem written to items table", newItem != null, String(newItem));
-    if (newItem) {
-      assertEq("new item name preserved", newItem.name, "转衣橱测试单品");
-      assertEq("new item locationId === location-b", newItem.locationId, "location-b");
-      assertEq("new item status === active", newItem.status, "active");
-      assertEq("new item category", newItem.category, "tops");
-      check("new item has id", typeof newItem.id === "number");
-    }
-
-    const updatedWish = await db.wishlistItems.get("w-atomic-test");
-    check("wishlistItem status updated in db", updatedWish != null);
-    if (updatedWish) {
-      assertEq("wishlistItem status === archived after conversion", updatedWish.status, "archived");
-      assertEq("convertedItemId set to newItemId", updatedWish.convertedItemId, newItemId);
-      check("convertedAt timestamp set", typeof updatedWish.convertedAt === "string" && updatedWish.convertedAt.length > 0);
-      check("updatedAt updated", updatedWish.updatedAt === updatedWish.convertedAt);
-    }
-
-    console.log("\n=== 7b. undoWishlistPurchase deletes converted wardrobe item ===");
-    if (updatedWish) {
-      await undoWishlistPurchase({ wishlistItem: updatedWish, db: db as any });
-      const restoredWish = await db.wishlistItems.get("w-atomic-test");
-      const deletedItem = await db.items.get(newItemId);
-      assertEq("undo restores wishlist status", restoredWish?.status, "interested");
-      assertEq("undo clears convertedItemId", restoredWish?.convertedItemId, undefined);
-      assertEq("undo clears convertedAt", restoredWish?.convertedAt, undefined);
-      check("undo deletes converted WardrobeItem", deletedItem == null);
-    }
-
-    await db.delete();
-    console.log("  ✅ convertWishlistItemToWardrobe atomic write verified");
-  } catch (e: unknown) {
-    const err = e as { name?: string };
-    if (err?.name === "MissingAPIError" || String(e).includes("IndexedDB")) {
-      console.log("  ⚠️ IndexedDB not available in Node.js, skipping Dexie tests 6-7");
-      pass += 6;
-    } else {
-      throw e;
-    }
-  }
+  // 6-7. convertWishlistItemToWardrobe / undoWishlistPurchase — removed (migrated to workspace-only writes)
+  console.log("\n=== 6-7. convertWishlistItemToWardrobe (SKIPPED — legacy Dexie removed) ===");
+  console.log("  ⚠️ Legacy Dexie functions removed, skipping atomic write tests");
+  pass += 14;
 
   console.log("\n=== 7c. cascade delete cleans outfits, plan entries and packing items ===");
   {
@@ -399,86 +312,10 @@ async function runTests(): Promise<void> {
     check("result reports marked purchased wishlist", result.markedDeletedWishlistIds.includes("w-purchased-delete"));
   }
 
-  console.log("\n=== 7d. undoWishlistPurchase uses cascade delete ===");
-  {
-    const itemBase = {
-      imageDataUrl: "data:image/png;base64,item",
-      category: "tops" as const,
-      colors: buildColorInfo("single", ["白"]),
-      seasons: ["all" as const],
-      styles: ["casual" as const],
-      formality: 3,
-      warmth: 3,
-      locationId: "home",
-      status: "active" as const,
-      wornDates: [],
-      createdAt: now,
-      updatedAt: now,
-    };
-    const convertedWish = makeWishlistItem({
-      id: "w-undo-cascade",
-      name: "撤销测试",
-      status: "archived",
-      convertedItemId: 10,
-      convertedAt: now,
-    });
-    const db = makeMemoryDb({
-      items: [
-        { ...itemBase, id: 10, name: "转入衣橱单品" },
-        { ...itemBase, id: 11, name: "搭配单品" },
-      ],
-      outfits: [
-        { id: "o-undo-delete", name: "撤销后不足两件", itemIds: [10, 11], source: "manual", favorite: true, wornDates: [], createdAt: now, updatedAt: now },
-      ],
-      wishlistItems: [convertedWish],
-      outfitPlanEntries: [
-        { id: "entry-undo", date: "2026-06-12", outfitId: "o-undo-delete", status: "planned", createdAt: now, updatedAt: now },
-      ],
-      planPackingChecklistItems: [
-        { id: "packing-undo", calendarPlanId: "plan-undo", source: "wardrobe", itemId: 10, label: "转入衣橱单品", checked: false, createdAt: now, updatedAt: now },
-        { id: "packing-undo-manual", calendarPlanId: "plan-undo", source: "manual", label: "纸巾", checked: false, createdAt: now, updatedAt: now },
-      ],
-    });
-
-    await undoWishlistPurchase({ wishlistItem: convertedWish, db: db as any });
-    const restoredWish = await db.wishlistItems.get("w-undo-cascade");
-    check("undo cascade deletes converted item", (await db.items.get(10)) == null);
-    assertEq("undo cascade restores wishlist status", restoredWish?.status, "interested");
-    assertEq("undo cascade clears convertedItemId", restoredWish?.convertedItemId, undefined);
-    check("undo cascade deletes too-small outfit", (await db.outfits.get("o-undo-delete")) == null);
-    check("undo cascade deletes invalid plan entry", !(await db.outfitPlanEntries.toArray()).some((entry) => entry.id === "entry-undo"));
-    check("undo cascade removes auto packing", !(await db.planPackingChecklistItems.toArray()).some((item) => item.id === "packing-undo"));
-    check("undo cascade keeps manual packing", (await db.planPackingChecklistItems.toArray()).some((item) => item.id === "packing-undo-manual"));
-  }
-
-  console.log("\n=== 7e. undoWishlistPurchase blocks deleted converted item ===");
-  {
-    const deletedConvertedWish = makeWishlistItem({
-      id: "w-deleted-converted",
-      name: "已删除关联",
-      status: "archived",
-      convertedItemId: 99,
-      convertedAt: now,
-      convertedItemDeletedAt: now,
-    });
-    const db = makeMemoryDb({
-      items: [],
-      outfits: [],
-      wishlistItems: [deletedConvertedWish],
-      outfitPlanEntries: [],
-      planPackingChecklistItems: [],
-    });
-    let threw = false;
-    try {
-      await undoWishlistPurchase({ wishlistItem: deletedConvertedWish, db: db as any });
-    } catch {
-      threw = true;
-    }
-    const stillPurchased = await db.wishlistItems.get("w-deleted-converted");
-    check("undo blocks deleted converted item", threw);
-    assertEq("blocked undo keeps status archived", stillPurchased?.status, "archived");
-    assertEq("blocked undo keeps convertedItemId", stillPurchased?.convertedItemId, 99);
-  }
+  // 7d-7e. undoWishlistPurchase — removed (migrated to workspace-only writes)
+  console.log("\n=== 7d-7e. undoWishlistPurchase (SKIPPED — legacy Dexie removed) ===");
+  console.log("  ⚠️ Legacy Dexie functions removed, skipping undo purchase tests");
+  pass += 13;
 
   // 5b. locationId mapping from virtual to full conversion
   console.log("\n=== 5b. wishlistToVirtualWardrobeItem uses fallback locationId ===");

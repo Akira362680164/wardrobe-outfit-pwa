@@ -1,7 +1,7 @@
 "use client";
 
 import { createWorkspaceUuidV7, getAccountWorkspaceDb, type WorkspaceGarmentRecord, type WorkspaceOutfitRecord } from "@/lib/account-workspace-db";
-import { getWardrobeDb } from "@/lib/db";
+import { getWardrobeSnapshot } from "@/lib/data-repo";
 import { bridgeGarmentUpdate } from "@/lib/cloud-sync/garment-bridge";
 import { bridgeOutfitUpsert } from "@/lib/cloud-sync/outfit-bridge";
 import { bridgeOutfitPlanDelete, bridgeOutfitPlanUpsert } from "@/lib/cloud-sync/plan-bridge";
@@ -44,26 +44,24 @@ export async function bridgeWearEventsForOutfit(outfit: SavedOutfit): Promise<Br
 }
 
 export async function bridgeWearSyncResult(result: OutfitWearSyncResult): Promise<void> {
-  const oldDb = getWardrobeDb();
-  const touchedEntryIds = Array.from(new Set([...(result.touchedEntryIds ?? []), ...result.changedEntryIds]));
-  const [outfits, items, entries] = await Promise.all([
-    oldDb.outfits.bulkGet(result.updatedOutfitIds),
-    oldDb.items.bulkGet(result.updatedItemIds),
-    touchedEntryIds.length > 0 ? oldDb.outfitPlanEntries.bulkGet(touchedEntryIds) : Promise.resolve([]),
-  ]);
+  const snapshot = await getWardrobeSnapshot();
+  const touchedEntryIds = new Set([...(result.touchedEntryIds ?? []), ...result.changedEntryIds]);
+
+  const outfits = snapshot.outfits.filter((o) => result.updatedOutfitIds.includes(o.id));
+  const itemIdSet = new Set(result.updatedItemIds);
+  const items = snapshot.items.filter((i) => typeof i.id === "number" && itemIdSet.has(i.id));
+  const entries = snapshot.outfitPlanEntries.filter((e) => touchedEntryIds.has(e.id));
 
   for (const outfit of outfits) {
-    if (!outfit) continue;
     await bridgeOutfitUpsert(outfit);
     await bridgeWearEventsForOutfit(outfit);
   }
   for (const item of items) {
-    if (!item) continue;
     await bridgeGarmentUpdate(item);
     await bridgeWearEventsForGarment(item);
   }
   for (const entry of entries) {
-    if (entry) await bridgeOutfitPlanUpsert(entry);
+    await bridgeOutfitPlanUpsert(entry);
   }
   for (const id of result.deletedEntryIds ?? []) {
     await bridgeOutfitPlanDelete(id);

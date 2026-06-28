@@ -1,3 +1,16 @@
+## 2026-06-29 / v2.0.6-test / Claude Code — 彻底删除 Dexie 旧数据库，全部迁移至 Workspace
+
+- **目的**：删除旧 Dexie 数据库（`db.ts`）及所有关联代码，将全部读写迁移至 Account Workspace DB + Cloud Sync 桥接函数；同时删除已废弃的备份功能。
+- **版本**：`2.0.5-test` → `2.0.6-test`，Android `versionCode` 由 `20005` → `20006`。
+- **改动文件**：
+  - **删除**：`src/lib/db.ts`、`src/lib/cloud-sync/legacy-import.ts`、`src/lib/long-term-backup.ts`、`src/lib/long-term-backup-package.ts`、`src/lib/backup-data.ts`、`src/lib/backup-restore.ts`、`src/lib/migrate.ts`。
+  - **新增**：`src/lib/cloud-sync/profile-repository.ts`（TryOnProfile 读写）、`src/lib/workspace-write-commands.ts`（工作区写命令集）。
+  - **修改**：`src/lib/data-repo.ts`（移除 Dexie 回退，全部走 workspace）、`src/lib/wishlist-conversion.ts`（移除 Dexie 依赖函数）、`src/lib/wardrobe-cascade-delete.ts`（精简为纯类型）、`src/lib/cloud-sync/{wear-bridge,plan-bridge,sync-engine}.ts`（改用 snapshot 读）、`src/lib/repository/wardrobe-repository.ts`、`src/lib/outfit-wear-sync.ts`、`src/lib/thumbnail-backfill.ts`、`src/lib/account-workspace-db.ts`、`src/components/wardrobe-app.tsx`（27 处 `getWardrobeDb()` 全部替换为 workspace bridge）、`src/components/auth/account-views.tsx`（移除旧导入 UI）、`src/components/outfit-list-view.tsx`、`src/components/wishlist-view-2.0.tsx`、`src/components/use-wardrobe-capture-queue-controller.ts`、`src/lib/cloud-sync/asset-upload-coordinator.ts`、`scripts/test-wishlist-conversion-flow.ts`、`tsconfig.json`。
+- **本地验证**：`npm run typecheck` 通过（零错误）。
+- **风险门禁**：**high**（数据库层彻底切换，删除旧 Dexie 全部代码，无数据迁移——旧数据直接丢弃；影响所有衣橱读写路径）。
+- **未触发 subagent**：用户未通知。
+- **未验证风险**：真机覆盖安装后全流程端到端测试（衣橱 CRUD、种草转换、套装创建、云同步、穿搭计划）。
+
 ## 2026-06-29 / v2.0.5-test / Claude Code — 套装录入 4 步简化为 2 步
 
 - **目的**：套装录入流程从 4 步（选择衣物→分析套装→校对信息→保存完成）简化为 2 步（选择衣物→确认套装），AI/本地分析改为过渡态自动运行，与单品录入 2 步模式一致。

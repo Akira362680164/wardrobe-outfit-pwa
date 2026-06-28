@@ -1,7 +1,7 @@
 import Dexie, { type Table } from "dexie";
 import type { AccountWorkspaceRecord } from "@/lib/workspace-registry";
 
-export const ACCOUNT_WORKSPACE_DB_SCHEMA_VERSION = 1;
+export const ACCOUNT_WORKSPACE_DB_SCHEMA_VERSION = 2;
 
 export const ACCOUNT_WORKSPACE_DB_STORES = {
   garments: "id, userId, revision, updatedAt, deletedAt, originDeviceId",
@@ -13,6 +13,7 @@ export const ACCOUNT_WORKSPACE_DB_STORES = {
   outfitPlans: "id, userId, tripPlanId, outfitId, date, revision, updatedAt, deletedAt",
   assets: "id, userId, ownerEntityType, ownerEntityId, sha256, revision, updatedAt, deletedAt",
   locations: "id, userId, revision, updatedAt, deletedAt, originDeviceId",
+  profiles: "id, userId, revision, updatedAt, deletedAt, originDeviceId",
   syncOutbox: "mutationId, userId, entityType, entityId, status, createdAt, attemptCount",
   syncState: "id, userId, updatedAt",
   syncConflicts: "id, userId, entityType, entityId, createdAt, resolvedAt",
@@ -31,7 +32,8 @@ export type WorkspaceEntityType =
   | "tripPlan"
   | "outfitPlan"
   | "asset"
-  | "closetLocation";
+  | "closetLocation"
+  | "profile";
 
 export interface WorkspaceSyncEntity {
   id: string;
@@ -110,6 +112,11 @@ export interface WorkspaceLocationRecord extends WorkspaceSyncEntity {
   payload?: unknown;
 }
 
+export interface WorkspaceProfileRecord extends WorkspaceSyncEntity {
+  profileType: "tryOn";
+  payload?: unknown;
+}
+
 export interface WorkspaceSyncOutboxRecord {
   mutationId: string;
   userId: string;
@@ -168,8 +175,9 @@ export class AccountWorkspaceDatabase extends Dexie {
   wearEvents!: Table<WorkspaceWearEventRecord, string>;
   tripPlans!: Table<WorkspaceTripPlanRecord, string>;
   outfitPlans!: Table<WorkspaceOutfitPlanRecord, string>;
-  assets!: Table<WorkspaceAssetRecord, string>;
   locations!: Table<WorkspaceLocationRecord, string>;
+  assets!: Table<WorkspaceAssetRecord, string>;
+  profiles!: Table<WorkspaceProfileRecord, string>;
   syncOutbox!: Table<WorkspaceSyncOutboxRecord, string>;
   syncState!: Table<WorkspaceSyncStateRecord, string>;
   syncConflicts!: Table<WorkspaceSyncConflictRecord, string>;

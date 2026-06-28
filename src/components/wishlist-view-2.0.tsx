@@ -25,7 +25,6 @@ import { formatGarmentFitGender, formatSubcategoryLabel } from "@/lib/display-la
 import type { DeviceMiniMaxSettings } from "@/lib/device-minimax";
 import { hasDeviceMiniMaxKey } from "@/lib/device-minimax";
 import { buildWishlistEditRecognitionPatch } from "@/lib/item-recognition-patch";
-import { getWardrobeDb } from "@/lib/db";
 import { bridgeGarmentCreate } from "@/lib/cloud-sync/garment-bridge";
 import { bridgeWishlistDelete, bridgeWishlistUpsert } from "@/lib/cloud-sync/wishlist-bridge";
 
@@ -39,7 +38,7 @@ import {
 import { assessWishlistItemByRules } from "@/lib/wishlist-assessment";
 
 import { buildFallbackWishlistAssessment } from "@/lib/wishlist-ai-prompt";
-import { convertWishlistToWardrobe, undoWishlistPurchaseFromRepo, deleteWishlistRecords } from "@/lib/data-repo";
+import { getWardrobeSnapshot, invalidateWorkspaceSnapshotCache, convertWishlistToWardrobe, undoWishlistPurchaseFromRepo, deleteWishlistRecords } from "@/lib/data-repo";
 import { isWishlistPurchased } from "@/lib/wishlist-conversion";
 import { isConvertedWishlistLinkDeleted } from "@/lib/wardrobe-reference-sync";
 
@@ -440,15 +439,15 @@ export function WishlistView20({
   const patchItem = useCallback(async (id: string, patch: Partial<WishlistItem>) => {
     const now = new Date().toISOString();
     const updated = { ...patch, updatedAt: now };
-    await getWardrobeDb().wishlistItems.update(id, updated);
     const currentItem = wishlistItems.find((w) => w.id === id);
     if (currentItem) void bridgeWishlistUpsert({ ...currentItem, ...updated });
     setWishlistItems((prev) => prev.map((w) => w.id === id ? { ...w, ...updated } : w));
   }, [setWishlistItems, wishlistItems]);
 
   const refreshItem = useCallback(async (id: string) => {
-    const db = getWardrobeDb();
-    const fresh = await db.wishlistItems.get(id);
+    invalidateWorkspaceSnapshotCache();
+    const snapshot = await getWardrobeSnapshot();
+    const fresh = snapshot.wishlistItems.find((w) => w.id === id);
     if (fresh) {
       setWishlistItems((prev) => prev.map((w) => w.id === id ? fresh : w));
       setSelectedItem((current) => current?.id === id ? fresh : current);
@@ -573,11 +572,9 @@ export function WishlistView20({
       updatedAt: now,
     };
 
-    const db = getWardrobeDb();
 
     if (editId) {
       const existingItem = wishlistItems.find((w) => w.id === editId);
-      await db.wishlistItems.update(editId, base);
       if (existingItem) void bridgeWishlistUpsert({ ...existingItem, ...base });
       setWishlistItems((prev) => prev.map((w) => w.id === editId ? { ...w, ...base } : w));
       onMessage("已更新种草单品");
@@ -588,7 +585,6 @@ export function WishlistView20({
         imageDataUrl: formImageDataUrl || "",
         createdAt: now,
       };
-      await db.wishlistItems.put(newItem);
       void bridgeWishlistUpsert(newItem);
       setWishlistItems((prev) => [newItem, ...prev]);
       onMessage("已添加种草单品");
@@ -600,8 +596,6 @@ export function WishlistView20({
   const handleSaveIntakeDrafts = useCallback(async (drafts: GarmentIntakeDraft[]) => {
     const now = new Date().toISOString();
     const newItems = drafts.map((draft) => garmentDraftToWishlistItem(draft, { now }));
-    const db = getWardrobeDb();
-    await db.wishlistItems.bulkPut(newItems);
     for (const item of newItems) void bridgeWishlistUpsert(item);
     setWishlistItems((prev) => [...newItems, ...prev]);
     onMessage(newItems.length > 1 ? `已添加 ${newItems.length} 件种草单品` : "已添加种草单品");
@@ -741,13 +735,6 @@ export function WishlistView20({
       const newItemId = await convertWishlistToWardrobe({
         wishlistItem: selectedItem, locationId: selectedLocationId,
       });
-      const db = getWardrobeDb();
-      const [createdItem, updatedWishlistItem] = await Promise.all([
-        db.items.get(newItemId),
-        db.wishlistItems.get(selectedItem.id),
-      ]);
-      if (createdItem) void bridgeGarmentCreate(createdItem);
-      if (updatedWishlistItem) void bridgeWishlistUpsert(updatedWishlistItem);
       await refreshItem(selectedItem.id);
       setSubPage("home");
       setSelectedItem(null);
@@ -771,8 +758,6 @@ export function WishlistView20({
     }
     try {
       await undoWishlistPurchaseFromRepo({ wishlistItem: selectedItem });
-      const updatedWishlistItem = await getWardrobeDb().wishlistItems.get(selectedItem.id);
-      if (updatedWishlistItem) void bridgeWishlistUpsert(updatedWishlistItem);
       await refreshItem(selectedItem.id);
       await onDataChanged?.();
       setShowUndoPurchaseConfirm(false);
@@ -828,10 +813,6 @@ export function WishlistView20({
       if (runId !== assessmentRunIdRef.current) return;
 
       const updatedAt = new Date().toISOString();
-      await getWardrobeDb().wishlistItems.update(wishlistItem.id, {
-        aiAssessment: assessment,
-        updatedAt,
-      });
       void bridgeWishlistUpsert({ ...wishlistItem, aiAssessment: assessment, updatedAt });
       await refreshItem(wishlistItem.id);
       aiProgress.complete(true);

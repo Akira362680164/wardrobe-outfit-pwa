@@ -101,22 +101,12 @@ import {
   SelectableChipGroup,
   RangeField,
 } from "@/components/wardrobe-form-controls";
-import { validateLatestBackupReferences, applyLatestWardrobeBackup, type BackupRestorePreview } from "@/lib/backup-restore";
-import {
- type LongTermBackupFileEntry,
-} from "@/lib/long-term-backup-package";
-import {
- exportLongTermBackupToDefault,
- exportLongTermBackupSaveAs,
- listDefaultLongTermBackups,
- restoreDefaultLongTermBackup,
- restorePickedLongTermBackup,
-} from "@/lib/long-term-backup";
 import {
  CaptureImageQueueItem,
  type SelectedImagesReviewMode,
 } from "@/components/selected-images-review";
-import { getWardrobeDb, readTryOnProfile, saveTryOnProfile } from "@/lib/db";
+import { createLegacyItemId, clearAllWorkspaceData } from "@/lib/workspace-write-commands";
+import { readWorkspaceTryOnProfile, saveWorkspaceTryOnProfile } from "@/lib/cloud-sync/profile-repository";
 import { bridgeGarmentCreate, bridgeGarmentDelete, bridgeGarmentUpdate } from "@/lib/cloud-sync/garment-bridge";
 import { bridgeLocationDelete, bridgeLocationUpsert } from "@/lib/cloud-sync/location-bridge";
 import { bridgeOutfitDelete, bridgeOutfitUpsert } from "@/lib/cloud-sync/outfit-bridge";
@@ -170,7 +160,6 @@ import {
   type SimilarWardrobeMatch,
   type TryOnProfile,
   type WardrobeDiagnosis,
-  type WardrobeBackup,
   type WardrobeItem,
   type WishlistItem,
   type GarmentCropBox,
@@ -258,60 +247,6 @@ export interface CaptureCropJob {
   /** 二次裁切完成后, 回调更新 draft (不修改 sourceImageDataUrl) */
   onConfirm?: (newImageDataUrl: string, newBox: NormalizedCropBox) => void;
 }
-
-type BackupOperationState =
-  | {
-      phase: "exporting";
-      operation: "export_default" | "export_save_as";
-      title: string;
-      status: string;
-      progress: number;
-    }
-  | {
-      phase: "scanning";
-      operation: "restore_default";
-      title: string;
-      status: string;
-      progress: number;
-    }
-  | {
-      phase: "backup_list";
-      operation: "restore_default";
-      files: LongTermBackupFileEntry[];
-    }
-  | {
-      phase: "reading";
-      operation: "restore_default" | "restore_picker";
-      title: string;
-      status: string;
-      progress: number;
-    }
-  | {
-      phase: "awaiting_confirmation";
-      operation: "restore_default" | "restore_picker";
-      preview: BackupRestorePreview;
-    }
-  | {
-      phase: "restoring";
-      operation: "restore_default" | "restore_picker";
-      title: string;
-      status: string;
-      progress: number;
-    }
-  | {
-      phase: "success";
-      operation: "export_default" | "export_save_as" | "restore_default" | "restore_picker";
-      title: string;
-      status: string;
-      resultLabel?: string;
-    }
-  | {
-      phase: "failed";
-      operation: "export_default" | "export_save_as" | "restore_default" | "restore_picker";
-      title: string;
-      error: string;
-      retryable: boolean;
-    };
 
 async function getRuntimeAppVersion(): Promise<string> {
   try {
@@ -427,12 +362,6 @@ export function WardrobeApp({ cloudAuth }: { cloudAuth?: WardrobeCloudAuth } = {
    const lightbox = useWardrobeLightboxController();
   const { expandedImage } = lightbox;
  	 const [showExitDialog, setShowExitDialog] = useState(false);
- 	 const [backupOperation, setBackupOperation] = useState<BackupOperationState | null>(null);
-  const pendingRestoreRef = useRef<{
-    backup: WardrobeBackup;
-    preview: BackupRestorePreview;
-    operation: "restore_default" | "restore_picker";
-  } | null>(null);
  	 const [showCreateSheet, setShowCreateSheet] = useState(false);
   // v0.9.24-dev: onClearAllData 进行中锁, lift 到 WardrobeApp 级, 父级 backButton handler
   // (line 297 下方) 也要感知, 否则在清空中按 Android 返回键会同时弹"退出 App?"对话框
@@ -479,15 +408,12 @@ export function WardrobeApp({ cloudAuth }: { cloudAuth?: WardrobeCloudAuth } = {
     }
   }, []);
 
-
   useEffect(() => {
     setMiniMaxSettings(loadMiniMaxSettings());
     refreshState().catch(() => { showMessage("数据库打开失败，已进入临时演示模式", "error"); }).finally(() => setIsReady(true));
-    readTryOnProfile().then(setTryOnProfile).catch(() => {});
+    readWorkspaceTryOnProfile().then(setTryOnProfile).catch(() => {});
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-
-
 
   // v0.9.43-dev 批次 4: 首页懒 enqueue (前 6-10 个 item)。
   // - 不直接 start backfill, 仅入队; backfill 由设置页"优化图片缓存"按钮触发
@@ -526,21 +452,6 @@ export function WardrobeApp({ cloudAuth }: { cloudAuth?: WardrobeCloudAuth } = {
     if (expandedImage) {
       lightbox.closeExpandedImage();
       logTopLevelBack("lightbox");
-      return true;
-    }
-    if (backupOperation) {
-      const backupInProgress =
-        backupOperation.phase === "exporting" ||
-        backupOperation.phase === "scanning" ||
-        backupOperation.phase === "reading" ||
-        backupOperation.phase === "restoring";
-      if (backupInProgress) {
-        showMessage("备份正在进行，请等待完成", "info");
-        logTopLevelBack("backup_in_progress");
-        return true;
-      }
-      setBackupOperation(null);
-      logTopLevelBack("backup");
       return true;
     }
     if (showCreateSheet) {
@@ -588,7 +499,6 @@ export function WardrobeApp({ cloudAuth }: { cloudAuth?: WardrobeCloudAuth } = {
     logTopLevelBack("exit");
     return true;
   }, [
-    backupOperation,
     captureCropJob,
     expandedImage,
     lightbox,
@@ -681,12 +591,9 @@ export function WardrobeApp({ cloudAuth }: { cloudAuth?: WardrobeCloudAuth } = {
     };
   }, []);
 
-
-
   function patchItemInItemsState(itemId: number, patch: Partial<WardrobeItem>) {
     setItems((prev) => prev.map((item) => (item.id === itemId ? { ...item, ...patch } : item)));
   }
-
 
   function isImagePickerCancelError(error: unknown): boolean {
     const message = error instanceof Error ? error.message : typeof error === "string" ? error : "";
@@ -827,25 +734,15 @@ export function WardrobeApp({ cloudAuth }: { cloudAuth?: WardrobeCloudAuth } = {
       return;
     }
     const now = new Date().toISOString();
-    const db = getWardrobeDb();
     let saved = 0;
-    const bridgedItems: WardrobeItem[] = [];
     try {
-      await runLoggedDbTransaction("save_batch_garment", () =>
-        db.transaction("rw", db.items, async () => {
-          for (const draft of drafts) {
-            const item = garmentDraftToWardrobeItem(draft, { now });
-            if (item.imageDataUrl) {
-              const newId = await db.items.add(item);
-              saved++;
-              bridgedItems.push({ ...item, id: newId });
-            }
-          }
-        }),
-      );
-      // ponytail: bridge 含大量非 Dexie 异步操作，必须在事务外执行，否则事务会提前提交
-      for (const item of bridgedItems) {
-        await bridgeGarmentCreate(item);
+      for (const draft of drafts) {
+        const item = garmentDraftToWardrobeItem(draft, { now });
+        if (item.imageDataUrl) {
+          const newId = createLegacyItemId();
+          await bridgeGarmentCreate({ ...item, id: newId });
+          saved++;
+        }
       }
       await refreshState();
       setShowGarmentIntakeFlow(false);
@@ -861,298 +758,8 @@ export function WardrobeApp({ cloudAuth }: { cloudAuth?: WardrobeCloudAuth } = {
   async function updateItemStatus(item: WardrobeItem, status: GarmentStatus) {
     if (!item.id) return;
     const updatedAt = new Date().toISOString();
-    await getWardrobeDb().items.update(item.id, { status, updatedAt });
     await bridgeGarmentUpdate({ ...item, status, updatedAt });
     await refreshState();
-  }
-
-	  async function updateBackupOperation(patch: Record<string, unknown>) {
-    setBackupOperation((current) => (current ? { ...current, ...patch } as BackupOperationState : current));
-    await waitForNextFrame();
-  }
-
-  async function exportBackup() {
-    if (backupOperation != null) return;
-    setBackupOperation({
-      phase: "exporting" as const, operation: "export_default" as const,
-      title: "正在导出长期备份",
-      status: "正在整理本机衣橱数据",
-      progress: 8,
-    });
-    await waitForNextFrame();
-
-    try {
-      const appVersion = await getRuntimeAppVersion();
-      await updateBackupOperation({ progress: 28, status: "正在生成备份文件" });
-      const result = await exportLongTermBackupToDefault({
-        items,
-        locations,
-        outfits,
-        wishlistItems,
-        outfitPlanEntries,
-        outfitCalendarPlans,
-        planPackingChecklistItems,
-        tryOnProfile,
-        appVersion,
-      });
-      if (result.webFallback) {
-        setBackupOperation({
-          phase: "success" as const,
-          operation: "export_default" as const,
-          title: "导出完成",
-          status: "已下载浏览器调试备份文件。浏览器不能验证 Android 默认长期备份目录。",
-          resultLabel: `文件：${result.timestampFileName}\n图片：${result.imageCount} 张`,
-        });
-      } else {
-        const itemCount = items.length;
-        const outfitCount = outfits.length;
-        const wishlistCount = wishlistItems.length;
-        const imageCount = result.imageCount;
-        setBackupOperation({
-          phase: "success" as const,
-          operation: "export_default" as const,
-          title: "导出完成",
-          status: "已保存到默认长期备份目录",
-          resultLabel:
-            `保存位置：Download/衣橱穿搭助手备份\n` +
-            `备份文件：${result.timestampFileName}\n` +
-            `衣物：${itemCount} 件\n` +
-            `套装：${outfitCount} 套\n` +
-            `种草：${wishlistCount} 件\n` +
-            `图片：${imageCount} 张`,
-        });
-      }
-    } catch (error) {
-      const errMsg = getErrorMessage(error);
-      if (errMsg.includes("无法写入") || errMsg.includes("Permission")) {
-        setBackupOperation({
-          phase: "failed" as const,
-          operation: "export_default" as const,
-          title: "导出失败",
-          error: "无法写入默认长期备份目录",
-          retryable: true,
-        });
-      } else {
-        setBackupOperation({
-          phase: "failed" as const,
-          operation: "export_default" as const,
-          title: "导出失败",
-          error: errMsg,
-          retryable: true,
-        });
-      }
-    }
-  }
-
-  async function openDefaultBackupFolder() {
-    if (backupOperation != null) return;
-    setBackupOperation({
-      phase: "scanning" as const, operation: "restore_default" as const,
-      title: "正在查找长期备份",
-      status: "正在读取 Download/衣橱穿搭助手备份",
-      progress: 12,
-    });
-    await waitForNextFrame();
-
-    try {
-      const files = await listDefaultLongTermBackups();
-      if (files.length === 0) {
-        setBackupOperation({
-          phase: "success" as const,
-          operation: "restore_default" as const,
-          title: "未找到长期备份",
-          status: "默认长期备份目录中还没有 .wardrobebackup 文件。请先导出长期备份。",
-        });
-      } else if (files.length === 1) {
-        setBackupOperation({
-          phase: "backup_list" as const,
-          operation: "restore_default" as const,
-          files: files,
-        });
-      } else {
-        setBackupOperation({
-          phase: "backup_list" as const,
-          operation: "restore_default" as const,
-          files: files,
-        });
-      }
-    } catch (error) {
-      const errMsg = getErrorMessage(error);
-      if (errMsg.includes("浏览器无法读取") || !Capacitor.isNativePlatform()) {
-        setBackupOperation({
-          phase: "failed" as const,
-          operation: "restore_default" as const,
-          title: "无法读取默认目录",
-          error: errMsg,
-          retryable: true,
-        });
-      } else {
-        setBackupOperation({
-          phase: "failed" as const,
-          operation: "restore_default" as const,
-          title: "读取失败",
-          error: errMsg,
-          retryable: true,
-        });
-      }
-    }
-  }
-
-  async function saveAsBackup() {
-    if (backupOperation != null) return;
-    setBackupOperation({
-      phase: "exporting" as const, operation: "export_save_as" as const,
-      title: "正在导出长期备份",
-      status: "正在保存到指定位置",
-      progress: 8,
-    });
-    await waitForNextFrame();
-
-    try {
-      const appVersion = await getRuntimeAppVersion();
-      await updateBackupOperation({ progress: 28, status: "正在生成备份文件" });
-      const result = await exportLongTermBackupSaveAs({
-        items,
-        locations,
-        outfits,
-        wishlistItems,
-        outfitPlanEntries,
-        outfitCalendarPlans,
-        planPackingChecklistItems,
-        tryOnProfile,
-        appVersion,
-      });
-      if (result.webFallback) {
-        setBackupOperation({
-          phase: "success" as const,
-          operation: "export_save_as" as const,
-          title: "导出完成",
-          status: "已下载浏览器调试备份文件。浏览器不能验证 Android 默认长期备份目录。",
-          resultLabel: `文件：${result.filePath || "浏览器调试下载"}`,
-        });
-      } else {
-        setBackupOperation({
-          phase: "success" as const,
-          operation: "export_save_as" as const,
-          title: "导出完成",
-          status: "长期备份已保存",
-          resultLabel: `保存位置：${result.filePath || "用户选择的位置"}\n文件：${result.filePath || "用户选择的位置"}`,
-        });
-      }
-    } catch (error) {
-      setBackupOperation({
-        phase: "failed" as const,
-        operation: "export_save_as" as const,
-        title: "导出失败",
-        error: getErrorMessage(error),
-        retryable: true,
-      });
-    }
-  }
-
-  async function pickBackupFile() {
-    if (backupOperation != null) return;
-    setBackupOperation({
-      phase: "reading" as const,
-      operation: "restore_picker" as const,
-      title: "正在读取长期备份",
-      status: "正在等待选择备份文件",
-      progress: 12,
-    });
-    await waitForNextFrame();
-    try {
-      const { backup, fileName } = await restorePickedLongTermBackup();
-      await restoreLongTermBackupData(backup, fileName, "restore_picker");
-    } catch (error) {
-      const errMsg = getErrorMessage(error);
-      setBackupOperation({
-        phase: "failed" as const,
-        operation: "restore_picker" as const,
-        title: errMsg.includes(".wardrobebackup") ? "文件类型不正确" : "读取失败",
-        error: errMsg.includes(".wardrobebackup") ? "请选择 .wardrobebackup 长期备份文件。" : errMsg,
-        retryable: true,
-      });
-    }
-  }
-
-  async function pickLtbFileFromList(file: LongTermBackupFileEntry) {
-    if (backupOperation?.phase !== "backup_list") return;
-    setBackupOperation({
-      phase: "reading" as const, operation: "restore_default" as const,
-      title: "正在读取长期备份",
-      status: `正在解析 ${file.name}`,
-      progress: 45,
-    });
-    await waitForNextFrame();
-    try {
-      const { backup, fileName } = await restoreDefaultLongTermBackup(file.name);
-      await restoreLongTermBackupData(backup, fileName);
-    } catch (error) {
-      const errMsg = getErrorMessage(error);
-      setBackupOperation({
-        phase: "failed" as const, operation: "restore_default" as const,
-        title: "读取失败",
-        error: errMsg,
-        retryable: true,
-      });
-    }
-  }
-
-  async function restoreLongTermBackupData(backup: WardrobeBackup, fileName: string, operation: "restore_default" | "restore_picker" = "restore_default") {
-    try {
-      const validatedPreview = validateLatestBackupReferences(backup);
-      const preview: BackupRestorePreview = {
-        ...validatedPreview,
-        fileName: fileName || "衣橱穿搭助手-未知时间.wardrobebackup",
-        appVersion: validatedPreview.appVersion || "",
-      };
-      pendingRestoreRef.current = { backup, preview, operation };
-      setBackupOperation({
-        phase: "awaiting_confirmation" as const, operation,
-        preview,
-      });
-      await waitForNextFrame();
-    } catch (error) {
-      setBackupOperation({
-        phase: "failed" as const,
-        operation,
-        title: "引用校验失败",
-        error: getErrorMessage(error),
-        retryable: true,
-      });
-    }
-  }
-
-  async function confirmRestore() {
-    const ref = pendingRestoreRef.current;
-    if (!ref) return;
-    const { backup, preview, operation } = ref;
-    setBackupOperation({
-      phase: "restoring" as const, operation,
-      title: `正在恢复 ${preview.fileName}`,
-      status: "正在写入数据库...",
-      progress: 75,
-    });
-    await waitForNextFrame();
-    try {
-      await applyLatestWardrobeBackup(backup);
-      setBackupOperation({
-        phase: "success" as const, operation,
-        title: "恢复完成",
-        status: `已恢复 ${preview.itemCount} 件衣物、${preview.outfitCount} 套套装`,
-        resultLabel: `文件：${preview.fileName}\n衣物：${preview.itemCount} 件\n套装：${preview.outfitCount} 套\n种草：${preview.wishlistCount} 件\n计划：${preview.planCount} 条\n旅行计划：${preview.travelPlanCount} 条\n打包清单：${preview.packingCount} 项\n图片：${preview.imageCount} 张`,
-      });
-      pendingRestoreRef.current = null;
-      await refreshState();
-    } catch (error) {
-      const errMsg = getErrorMessage(error);
-      setBackupOperation({
-        phase: "failed" as const, operation,
-        title: "数据库写入失败",
-        error: errMsg,
-        retryable: true,
-      });
-    }
   }
 
   async function saveSettings(nextSettings: DeviceMiniMaxSettings) { const normalizedSettings = { ...nextSettings, model: "MiniMax-M3" }; saveMiniMaxSettings(normalizedSettings); setMiniMaxSettings(normalizedSettings); if (!hasDeviceMiniMaxKey(normalizedSettings)) { showMessage("MiniMax 设置已保存在本机"); return; } showMessage("正在验证 MiniMax Key..."); const result = await withKeepAwake(() => validateMiniMaxKey(normalizedSettings)); if (result.valid) setShowKeyBanner(false); showMessage(result.message); }
@@ -1181,17 +788,15 @@ export function WardrobeApp({ cloudAuth }: { cloudAuth?: WardrobeCloudAuth } = {
         },
       ],
     }));
-    const db = getWardrobeDb();
-    await runLoggedDbTransaction("seed_demo_items", () =>
-      db.transaction("rw", db.items, db.outfits, async () => {
-        const itemIds = (await db.items.bulkAdd(demoItems, { allKeys: true })).filter(
-          (id): id is number => typeof id === "number",
-        );
-        if (itemIds.length > 0) {
-          await db.outfits.put(createDemoOutfit(itemIds, now));
-        }
-      }),
-    );
+    const itemIds: number[] = [];
+    for (const item of demoItems) {
+      const newId = createLegacyItemId();
+      await bridgeGarmentCreate({ ...item, id: newId });
+      itemIds.push(newId);
+    }
+    if (itemIds.length > 0) {
+      await bridgeOutfitUpsert(createDemoOutfit(itemIds, now));
+    }
     await refreshState();
     showMessage("已加入示例衣物和 1 套示例套装（含灵感图）");
   }
@@ -1241,8 +846,7 @@ export function WardrobeApp({ cloudAuth }: { cloudAuth?: WardrobeCloudAuth } = {
     route.name !== "settings_home" &&
     !isIntakeRouteName(route.name) &&
     !outfitSubPageActive &&
-    !backupOperation &&
-    !showExitDialog &&
+        !showExitDialog &&
     !showCreateSheet;
 
   // v1.1.20-dev (方案 C): create_outfit 现在在 handleCreateAction 同步调用 setRoute({name: "intake_outfit"}),
@@ -1404,25 +1008,7 @@ export function WardrobeApp({ cloudAuth }: { cloudAuth?: WardrobeCloudAuth } = {
               onDeleteItems={async (ids) => {
                 const validIds = ids.filter((id) => typeof id === "number" && Number.isFinite(id));
                 if (validIds.length === 0) { showMessage("请选择要删除的衣物", "info"); return; }
-                const db = getWardrobeDb();
-                const result = await deleteItemsWithCascade({ itemIds: validIds, source: "manual_delete" });
-                for (const itemId of result.deletedItemIds) {
-                  const bridged = await bridgeGarmentDelete(itemId);
-                  if (!bridged.bridged && bridged.reason !== "no_workspace") throw new Error("云端删除失败，请重试");
-                }
-                const updatedOutfits = await db.outfits.bulkGet(result.updatedOutfitIds);
-                for (const outfit of updatedOutfits) {
-                  if (outfit) await bridgeOutfitUpsert(outfit);
-                }
-                for (const outfitId of result.deletedOutfitIds) await bridgeOutfitDelete(outfitId);
-                for (const entryId of result.deletedPlanEntryIds) await bridgeOutfitPlanDelete(entryId);
-                const touchedWishlistIds = [...result.markedDeletedWishlistIds, ...result.clearedWishlistConvertedIds];
-                if (touchedWishlistIds.length > 0) {
-                  const touchedWishlistItems = await db.wishlistItems.bulkGet(touchedWishlistIds);
-                  for (const item of touchedWishlistItems) {
-                    if (item) await bridgeWishlistUpsert(item);
-                  }
-                }
+                await deleteItemsWithCascade({ itemIds: validIds, source: "manual_delete" });
                 await refreshState();
               }}
               outfits={outfits} wishlistItems={wishlistItems} setOutfits={setOutfits} setWishlistItems={setWishlistItems} miniMaxSettings={miniMaxSettings}
@@ -1535,72 +1121,31 @@ export function WardrobeApp({ cloudAuth }: { cloudAuth?: WardrobeCloudAuth } = {
               cloudAuth={cloudAuth}
               onOpenAccount={() => navigation.openRoute({ name: "account_management" })}
 	              miniMaxSettings={miniMaxSettings} onSaveMiniMaxSettings={saveSettings}
-	              onAddWardrobe={async (name, note) => { const now = new Date().toISOString(); const id = `custom-${globalThis.crypto?.randomUUID?.() ?? Date.now()}`; await getWardrobeDb().locations.put({ id, name, note, sortOrder: locations.length + 1, createdAt: now, updatedAt: now }); await bridgeLocationUpsert({ id, name, note, sortOrder: locations.length + 1, createdAt: now, updatedAt: now }); await refreshState(); }}
-              onUpdateWardrobe={async (id, name, note) => { const db = getWardrobeDb(); const now = new Date().toISOString(); await db.locations.update(id, { name, note, updatedAt: now }); const existing = locations.find((l) => l.id === id); if (existing) { await bridgeLocationUpsert({ ...existing, name, note, updatedAt: now }); } await refreshState(); }}
+	              onAddWardrobe={async (name, note) => { const now = new Date().toISOString(); const id = `custom-${globalThis.crypto?.randomUUID?.() ?? Date.now()}`; await bridgeLocationUpsert({ id, name, note, sortOrder: locations.length + 1, createdAt: now, updatedAt: now }); await refreshState(); }}
+              onUpdateWardrobe={async (id, name, note) => { const now = new Date().toISOString();const existing = locations.find((l) => l.id === id); if (existing) { await bridgeLocationUpsert({ ...existing, name, note, updatedAt: now }); } await refreshState(); }}
               onDeleteWardrobe={async (id, action) => {
-                const db = getWardrobeDb();
                 if (action.mode === "migrate") {
                   const now = new Date().toISOString();
-                  const movingItems = await db.items.where("locationId").equals(id).toArray();
-                  await runLoggedDbTransaction("delete_wardrobe_migrate", () =>
-                    db.transaction("rw", db.items, db.locations, async () => {
-                      for (const item of movingItems) {
-                        if (typeof item.id === "number") await db.items.update(item.id, { locationId: action.targetLocationId, updatedAt: now });
-                      }
-                      await db.locations.delete(id);
-                    }),
-                  );
+                  const movingItems = items.filter((item) => item.locationId === id);
                   for (const item of movingItems) {
                     if (typeof item.id === "number") await bridgeGarmentUpdate({ ...item, locationId: action.targetLocationId, updatedAt: now });
                   }
                   await bridgeLocationDelete(id);
                 } else {
-                  const itemIds = (await db.items.where("locationId").equals(id).toArray())
+                  const itemIds = items
+                    .filter((item) => item.locationId === id)
                     .map((item) => item.id)
                     .filter((itemId): itemId is number => typeof itemId === "number");
-                  const result = await deleteItemsWithCascade({ itemIds, source: "manual_delete" });
-                  for (const itemId of result.deletedItemIds) {
-                    const bridged = await bridgeGarmentDelete(itemId);
-                    if (!bridged.bridged && bridged.reason !== "no_workspace") throw new Error("云端删除失败，请重试");
-                  }
-                  const updatedOutfits = await db.outfits.bulkGet(result.updatedOutfitIds);
-                  for (const outfit of updatedOutfits) {
-                    if (outfit) await bridgeOutfitUpsert(outfit);
-                  }
-                  for (const outfitId of result.deletedOutfitIds) await bridgeOutfitDelete(outfitId);
-                  for (const entryId of result.deletedPlanEntryIds) await bridgeOutfitPlanDelete(entryId);
-                  await db.locations.delete(id);
+                  await deleteItemsWithCascade({ itemIds, source: "manual_delete" });
                   await bridgeLocationDelete(id);
                 }
                 await refreshState();
               }}
-              tryOnProfile={tryOnProfile} onSaveTryOnProfile={async (profile) => { await saveTryOnProfile(profile); setTryOnProfile(profile); showMessage("穿衣画像已保存"); }}
+              tryOnProfile={tryOnProfile} onSaveTryOnProfile={async (profile) => { await saveWorkspaceTryOnProfile(profile); setTryOnProfile(profile); showMessage("穿衣画像已保存"); }}
               onClearAllData={async () => {
-                const db = getWardrobeDb();
-                // v0.9.24-dev (subagent I-1 修复): Dexie 4 transaction 在构造时对 undefined
-                // table 抛 TypeError (verified in node_modules/dexie/dist/dexie.js:6169-6174),
-                // 必须在构造前 filter Boolean 过滤表清单。否则 db.tryOnProfile 或 db.outfits
-                // 是 undefined 时, 整个 transaction 在 .transaction() 调用点就崩, 表内的 if-guard
-                // 永远走不到 —— 是死代码。
-                // 同款防御从 v0.9.9 就存在 (importBackup line 873 附近), Dexie schema 不可降级,
-                // 生产环境实际不可达, 属于理论 bug; 本次顺手把注释 + 防御修对。
-                // 不用 Table<any, any>[] 数组避免触发 @typescript-eslint/no-explicit-any,
-                // 改用 Dexie transaction 接受可变参数的签名展开, 配合条件 if 判断省略 undefined 表。
-                await runLoggedDbTransaction("clear_all_data", () =>
-                  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                  (db.transaction as any)("rw", ...[db.items, db.locations, db.outfits, db.wishlistItems, db.tryOnProfile, db.outfitPlanEntries, db.outfitCalendarPlans, db.planPackingChecklistItems].filter(Boolean), async () => {
-                    await db.items.clear();
-                    await db.locations.clear();
-                    if (db.outfits) await db.outfits.clear();
-                    if (db.wishlistItems) await db.wishlistItems.clear();
-                    if (db.outfitPlanEntries) await db.outfitPlanEntries.clear();
-                    if (db.outfitCalendarPlans) await db.outfitCalendarPlans.clear();
-                    if (db.planPackingChecklistItems) await db.planPackingChecklistItems.clear();
-                    if (db.tryOnProfile) await db.tryOnProfile.clear();
-                  }),
-                );
+                await clearAllWorkspaceData();
                 await refreshState();
-                const fresh = await readTryOnProfile();
+                const fresh = await readWorkspaceTryOnProfile();
                 setTryOnProfile(fresh);
                 showMessage("已清空全部数据");
               }}
@@ -1651,13 +1196,6 @@ export function WardrobeApp({ cloudAuth }: { cloudAuth?: WardrobeCloudAuth } = {
 	          }}
 	        />
 	      )}
-
-	      <BackupProgressSheet
-	        state={backupOperation}
-	        onClose={() => setBackupOperation(null)}
-	        onPickLtbFile={pickLtbFileFromList}
-	        onConfirmRestore={confirmRestore}
-	      />
 
         {/* v1.0: 全局浮动 — Plus居中 + active反馈 + 按钮 */}
         {shouldShowGlobalCreate ? (
@@ -1898,20 +1436,12 @@ export function WardrobeApp({ cloudAuth }: { cloudAuth?: WardrobeCloudAuth } = {
                     ...(thumb.thumbnailStatus ? { thumbnailStatus: thumb.thumbnailStatus } : {}),
                   };
                 })));
-                const db = getWardrobeDb();
-                await runLoggedDbTransaction("save_reference_outfit_images", () =>
-                  db.transaction("rw", db.items, async () => {
-                    const item = await db.items.get(targetId);
-                    if (!item) throw new Error("目标衣物不存在");
-                    const existing = Array.isArray(item.referenceOutfitImages) ? item.referenceOutfitImages : [];
-                    const updated = [...existing, ...refs];
-                    await db.items.update(targetId, {
-                      referenceOutfitImages: updated,
-                      updatedAt: now,
-                    });
-                    patchItemInItemsState(targetId, { referenceOutfitImages: updated, updatedAt: now });
-                  }),
-                );
+                const targetItem = items.find((item) => item.id === targetId);
+                if (!targetItem) throw new Error("目标衣物不存在");
+                const existing = Array.isArray(targetItem.referenceOutfitImages) ? targetItem.referenceOutfitImages : [];
+                const updated = [...existing, ...refs];
+                await bridgeGarmentUpdate({ ...targetItem, referenceOutfitImages: updated, updatedAt: now });
+                patchItemInItemsState(targetId, { referenceOutfitImages: updated, updatedAt: now });
                 await refreshState();
                 setCaptureImageQueue([]);
                 setReferenceOutfitTargetItemId(null);
@@ -1942,7 +1472,6 @@ function loadSearchHistory(): string[] {
 function saveSearchHistory(history: string[]) {
   localStorage.setItem(SEARCH_HISTORY_KEY, JSON.stringify(history.slice(0, MAX_HISTORY)));
 }
-
 
 // v1.1.20-dev: WardrobeView props 类型独立成 interface (TS parser 对 destructure + inline
 // object type annotation 在 body `{` 处有歧义,无法稳定解析)。原 v1.1.18 之前的代码也用
@@ -2006,17 +1535,15 @@ function WardrobeView(props: WardrobeViewProps) {
    const nextItems = allItems.map((item) => (item.id === itemId ? updatedItem : item));
    const relatedOutfits = outfits.filter((outfit) => outfit.itemIds.includes(itemId));
    const relatedWishlistItems = wishlistItems.filter((item) => item.convertedItemId === itemId);
-   const db = getWardrobeDb();
 
    for (const outfit of relatedOutfits) {
      const patch = buildSyncedOutfitPatch(outfit, nextItems, now);
-     await db.outfits.update(outfit.id, patch);
+     await bridgeOutfitUpsert({ ...outfit, ...patch });
      setOutfits((prev) => prev.map((entry) => (entry.id === outfit.id ? { ...entry, ...patch } : entry)));
    }
 
    for (const wishlistItem of relatedWishlistItems) {
      const patch = buildSyncedPurchasedWishlistPatch(updatedItem, now);
-     await db.wishlistItems.update(wishlistItem.id, patch);
      await bridgeWishlistUpsert({ ...wishlistItem, ...patch });
      setWishlistItems((prev) => prev.map((entry) => (entry.id === wishlistItem.id ? { ...entry, ...patch } : entry)));
    }
@@ -2158,7 +1685,6 @@ function WardrobeView(props: WardrobeViewProps) {
     if (!viewingItem || typeof viewingItem.id !== "number") return;
     const nextDates = toggleTodayWornDate(viewingItem.wornDates, todayKey);
     const now = new Date().toISOString();
-    await getWardrobeDb().items.update(viewingItem.id, { wornDates: nextDates, updatedAt: now });
     await bridgeGarmentUpdate({ ...viewingItem, wornDates: nextDates, updatedAt: now });
     await bridgeWearEventsForGarment({ ...viewingItem, wornDates: nextDates, updatedAt: now });
     patchItemInLocalState(viewingItem.id, { wornDates: nextDates, updatedAt: now });
@@ -2179,7 +1705,6 @@ function WardrobeView(props: WardrobeViewProps) {
       const advice = await generateGarmentStyleAdviceOnDevice(viewingItem, miniMaxSettings);
       if (runId !== aiAdviceRunIdRef.current) return;
       const now = new Date().toISOString();
-      await getWardrobeDb().items.update(viewingItem.id, { aiStyleAdvice: advice, updatedAt: now });
       await bridgeGarmentUpdate({ ...viewingItem, aiStyleAdvice: advice, updatedAt: now });
       patchItemInLocalState(viewingItem.id, { aiStyleAdvice: advice, updatedAt: now });
       setAiAdviceState("success");
@@ -2196,7 +1721,6 @@ function WardrobeView(props: WardrobeViewProps) {
     if (!viewingItem || typeof viewingItem.id !== "number") return;
     const now = new Date().toISOString();
     const patch: Partial<WardrobeItem> = { locationId, updatedAt: now };
-    await getWardrobeDb().items.update(viewingItem.id, patch);
     await syncEditedItemReferences({ ...viewingItem, ...patch }, now);
     await bridgeGarmentUpdate({ ...viewingItem, ...patch });
     patchItemInLocalState(viewingItem.id, patch);
@@ -2875,7 +2399,6 @@ function WardrobeView(props: WardrobeViewProps) {
     }
   }
 
-
   if (viewingItem) {
     return (
       <AnimatedPage className="grid gap-4">
@@ -2970,10 +2493,7 @@ function WardrobeView(props: WardrobeViewProps) {
                 }
                 const existing = Array.isArray(viewingItem.referenceOutfitImages) ? viewingItem.referenceOutfitImages : [];
                 const updated = [...existing, ...refs];
-                await getWardrobeDb().items.update(targetId, {
-                  referenceOutfitImages: updated,
-                  updatedAt: now,
-                });
+                await bridgeGarmentUpdate({ ...viewingItem, referenceOutfitImages: updated, updatedAt: now });
                 patchItemInLocalState(targetId, { referenceOutfitImages: updated, updatedAt: now });
                 setViewingImageIndex(existing.length + 1);
                 if (referenceOutfitGalleryInputRef.current) referenceOutfitGalleryInputRef.current.value = "";
@@ -2996,10 +2516,7 @@ function WardrobeView(props: WardrobeViewProps) {
                     }
                     const now2 = new Date().toISOString();
                     const remaining = (viewingItem.referenceOutfitImages ?? []).filter((r) => r.id !== target.id);
-                    await getWardrobeDb().items.update(viewingItem.id, {
-                      referenceOutfitImages: remaining,
-                      updatedAt: now2,
-                    });
+                    await bridgeGarmentUpdate({ ...viewingItem, referenceOutfitImages: remaining, updatedAt: now2 });
                     patchItemInLocalState(viewingItem.id, { referenceOutfitImages: remaining, updatedAt: now2 });
                     setViewingRefDeleteConfirm(null);
                     setViewingImageIndex((current) => Math.max(0, Math.min(current, remaining.length)));
@@ -3043,10 +2560,7 @@ function WardrobeView(props: WardrobeViewProps) {
                         const updatedRefs = (viewingItem.referenceOutfitImages ?? []).map((r) =>
                           r.id === editingRefCaption.id ? { ...r, caption, updatedAt: now } : r
                         );
-                        await getWardrobeDb().items.update(viewingItem.id, {
-                          referenceOutfitImages: updatedRefs,
-                          updatedAt: now,
-                        });
+                        await bridgeGarmentUpdate({ ...viewingItem, referenceOutfitImages: updatedRefs, updatedAt: now });
                         patchItemInLocalState(viewingItem.id, { referenceOutfitImages: updatedRefs, updatedAt: now });
                         setEditingRefCaption(null);
                         onMessage(caption ? "已更新说明" : "已清除说明", "success");
@@ -3145,10 +2659,7 @@ function WardrobeView(props: WardrobeViewProps) {
    ...(thumb.thumbnailStatus ? { thumbnailStatus: thumb.thumbnailStatus } : (r.thumbnailDataUrl ? {} : {})),
    }
    : r);
-   await getWardrobeDb().items.update(viewingItem.id, {
-   referenceOutfitImages: updatedRefs,
-   updatedAt: now,
-   });
+   await bridgeGarmentUpdate({ ...viewingItem, referenceOutfitImages: updatedRefs, updatedAt: now });
    patchItemInLocalState(viewingItem.id, { referenceOutfitImages: updatedRefs, updatedAt: now });
    setViewingItemCropJob(null);
    onMessage("灵感图裁切完成", "success");
@@ -3165,7 +2676,8 @@ function WardrobeView(props: WardrobeViewProps) {
     const targetOutfitId = viewingItemCropJob.outfitId;
     const patch = { previewImageDataUrl: newImageDataUrl, updatedAt: new Date().toISOString() };
     try {
-      await getWardrobeDb().outfits.update(targetOutfitId, patch);
+      const targetOutfit = outfits.find((o) => o.id === targetOutfitId);
+      if (targetOutfit) await bridgeOutfitUpsert({ ...targetOutfit, ...patch });
       setOutfits((prev) => prev.map((o) => o.id === targetOutfitId ? { ...o, ...patch } : o));
       setViewingItemCropJob(null);
       onMessage("套装预览图已更新", "success");
@@ -3186,9 +2698,6 @@ function WardrobeView(props: WardrobeViewProps) {
  cropBox,
  updatedAt: now,
  };
- await getWardrobeDb().items.update(viewingItem.id, {
- ...patch,
- });
  const updatedItem = { ...viewingItem, ...patch, id: viewingItem.id };
  await syncEditedItemReferences(updatedItem, now);
  await bridgeGarmentUpdate(updatedItem);
@@ -3835,10 +3344,6 @@ function DiagnosisIssueGroup({ title, issues }: { title: string; issues: Wardrob
   );
 }
 
-
-
-
-
 function WardrobeEditPage({
   draft,
   locations,
@@ -4157,147 +3662,6 @@ function WardrobeEditPage({
     </div>
   );
 }
-
-
-function BackupProgressSheet({
-  state,
-  onClose,
-  onPickLtbFile,
-  onConfirmRestore,
-}: {
-  state: BackupOperationState | null;
-  onClose: () => void;
-  onPickLtbFile?: (file: LongTermBackupFileEntry) => void;
-  onConfirmRestore?: () => void;
-}) {
-  if (!state) return null;
-
-  const isBusy = state.phase === "exporting" || state.phase === "scanning" || state.phase === "reading" || state.phase === "restoring";
-  const isDone = state.phase === "success" || state.phase === "failed";
-  const canClose = isDone || state.phase === "backup_list" || state.phase === "awaiting_confirmation";
-
-  const title =
-    state.phase === "awaiting_confirmation" ? "确认恢复长期备份" :
-    state.phase === "backup_list" ? "选择长期备份" :
-    state.phase === "success" ? state.title :
-    state.phase === "failed" ? state.title :
-    state.title;
-
-  const errorMsg = state.phase === "failed" ? state.error : undefined;
-  const showProgress = isBusy || isDone;
-  const statusText =
-    state.phase === "failed" ? state.error :
-    state.phase === "awaiting_confirmation" ? "恢复会覆盖当前衣橱数据，确认继续？" :
-    state.phase === "backup_list" ? "点击一个备份文件继续" :
-    state.status;
-
-  const progress = isBusy ? state.progress : (isDone ? 100 : 0);
-  const completed = isDone;
-  const resultLabel = state.phase === "success" ? state.resultLabel : undefined;
-  const preview = state.phase === "awaiting_confirmation" ? state.preview : undefined;
-  const files = state.phase === "backup_list" ? state.files : [];
-
-  return (
-    <MotionSheet open={!!state} onClose={() => { if (canClose) onClose(); }} panelClassName="sm:max-w-md">
-      <div className="grid gap-4">
-        <div className="flex items-start gap-3">
-          <div className={`mt-0.5 grid h-10 w-10 shrink-0 place-items-center rounded-lg ${errorMsg ? "bg-red-50 text-red-500" : completed ? "bg-denim/10 text-denim" : "bg-clay/10 text-clay"}`}>
-            {errorMsg ? <Trash2 size={18} aria-hidden="true" /> : completed ? <Check size={18} aria-hidden="true" /> : state.phase === "backup_list" ? <FileJson size={18} aria-hidden="true" /> : <Loader2 size={18} className="animate-spin" aria-hidden="true" />}
-          </div>
-          <div className="min-w-0">
-            <h3 className="text-base font-semibold">{title}</h3>
-            {statusText ? (
-              <p className={`mt-1 text-sm leading-relaxed ${errorMsg ? "text-red-500" : "text-ink/60"}`}>{statusText}</p>
-            ) : null}
-          </div>
-        </div>
-
-        {showProgress ? (
-          <div className="grid gap-2">
-            <div className="h-2.5 overflow-hidden rounded-full bg-mist">
-              <div
-                className={`h-full rounded-full transition-all duration-300 ${errorMsg ? "bg-red-400" : "bg-denim"}`}
-                style={{ width: `${Math.max(0, Math.min(100, progress))}%` }}
-              />
-            </div>
-            <div className="flex items-center justify-between text-[11px] text-ink/45">
-              <span>{completed ? (errorMsg ? "失败" : "完成") : "处理中"}</span>
-              <span>{Math.round(Math.max(0, Math.min(100, progress)))}%</span>
-            </div>
-          </div>
-        ) : null}
-
-        {resultLabel ? (
-          <div className="rounded-lg border border-ink/10 bg-white p-3">
-            <p className="text-xs font-semibold text-ink/50">结果</p>
-            <p className="mt-1 break-all whitespace-pre-line text-sm font-medium text-ink/75">{resultLabel}</p>
-          </div>
-        ) : null}
-
-        {state.phase === "backup_list" && files.length > 0 ? (
-          <div className="grid gap-2">
-            {files.map((file) => (
-              <button
-                key={file.name}
-                type="button"
-                onClick={() => onPickLtbFile?.(file)}
-                className="flex min-h-14 w-full items-center gap-3 rounded-lg border border-ink/10 bg-white px-3 py-2 text-left hover:border-denim/30"
-              >
-                <FileJson size={18} className="shrink-0 text-denim" aria-hidden="true" />
-                <span className="min-w-0 flex-1">
-                  <span className="block whitespace-normal break-all text-sm font-semibold">{file.name}{file.isLatest ? "（最新）" : ""}</span>
-                  <span className="mt-0.5 block text-xs text-ink/45">{(file.size / 1024).toFixed(1)} KB · {new Date(file.mtime).toLocaleString("zh-CN")}</span>
-                </span>
-                <ChevronRight size={16} className="shrink-0 text-ink/35" aria-hidden="true" />
-              </button>
-            ))}
-          </div>
-        ) : null}
-
-        {preview ? (
-          <div className="rounded-lg border border-ink/10 bg-white p-3 text-sm text-ink/70">
-            <p className="text-xs font-semibold text-ink/50">即将恢复</p>
-            <p className="mt-1 break-all text-sm font-semibold text-ink/80">{preview.fileName}</p>
-            <p className="mt-1 text-xs text-ink/55">导出时间：{preview.exportedAt ? new Date(preview.exportedAt).toLocaleString("zh-CN") : "未知"}</p>
-            <div className="mt-2 grid grid-cols-2 gap-1 text-xs text-ink/60">
-              <span>衣物：{preview.itemCount} 件</span>
-              <span>套装：{preview.outfitCount} 套</span>
-              <span>种草：{preview.wishlistCount} 件</span>
-              <span>计划：{preview.planCount} 条</span>
-              <span>旅行计划：{preview.travelPlanCount} 条</span>
-              <span>打包清单：{preview.packingCount} 项</span>
-              <span>图片：{preview.imageCount} 张</span>
-            </div>
-          </div>
-        ) : null}
-
-        {canClose ? (
-          <div className="grid gap-2">
-            {state.phase === "awaiting_confirmation" ? (
-              <div className="grid grid-cols-2 gap-2">
-                <button type="button" onClick={onClose} className="h-10 rounded-lg border border-ink/10 bg-white text-sm font-semibold">
-                  取消
-                </button>
-                <button type="button" onClick={onConfirmRestore} className="h-10 rounded-lg bg-denim text-sm font-semibold text-white">
-                  确认恢复
-                </button>
-              </div>
-            ) : state.phase === "backup_list" ? (
-              <button type="button" onClick={onClose} className="h-10 rounded-lg bg-denim text-sm font-semibold text-white">
-                关闭
-              </button>
-            ) : (
-              <button type="button" onClick={onClose} className="h-10 rounded-lg bg-denim text-sm font-semibold text-white">
-                {state.phase === "success" ? "完成" : "关闭"}
-              </button>
-            )}
-          </div>
-        ) : null}
-      </div>
-    </MotionSheet>
-  );
-}
-
 type SettingSubPage = null | "profile" | "photos" | "minimax" | "wardrobes";
 
 const FIT_GENDER_LABELS: Record<FitGender, string> = {
@@ -5473,7 +4837,7 @@ function SettingsView({
       <MotionSheet open={showClearAllConfirm} onClose={() => { if (!isClearingAll) setShowClearAllConfirm(false); }} panelClassName="!max-w-sm">
         <p className="mb-2 text-sm font-semibold text-red-500">清空全部数据？</p>
         <p className="mb-4 text-xs text-ink/60 leading-relaxed">
-          将清空所有衣物、衣橱位置、收藏套装和试穿参考照片。建议先在「导出备份」保存一份 JSON，再执行清空。
+          将清空所有衣物、衣橱位置、收藏套装和试穿参考照片。
         </p>
         <div className="grid grid-cols-2 gap-2">
           <button
@@ -6368,8 +5732,6 @@ function WardrobeListPage({
   );
 }
 
-
-
 function clampNumber(value: number, min: number, max: number) {
   return Math.max(min, Math.min(max, value));
 }
@@ -6630,14 +5992,6 @@ function snapshotsEqual(a: EditSnapshot | null, b: EditSnapshot | null) {
   return JSON.stringify(a) === JSON.stringify(b);
 }
 
-
-
-
-
-
-
-
-
 function createDemoItem(
   name: string,
   category: GarmentCategory,
@@ -6766,32 +6120,6 @@ function relativeDateKey(daysAgo: number) {
   return `${year}-${month}-${day}`;
 }
 
-
-
 function getErrorMessage(error: unknown) {
   return error instanceof Error ? error.message : "操作失败";
-}
-
-// v1.1.20-dev commit2 (P2 诊断): runLoggedDbTransaction
-// 包裹任意 Dexie 事务, 集中记录 started / succeeded / failed 三个事件。
-// 复现 Dexie 数据丢失 / 写入冲突 / 单件保存失败类 bug 必备。
-// 不改 db.transaction 调用形式, 只在外面加 try/catch + recordDiagnosticEvent。
-async function runLoggedDbTransaction(
-  purpose: string,
-  run: () => Promise<unknown>,
-): Promise<unknown> {
-  recordDiagnosticEvent("db_transaction_started", { purpose });
-  const startedAt = Date.now();
-  try {
-    const result = await run();
-    recordDiagnosticEvent("db_transaction_succeeded", { purpose, durationMs: Date.now() - startedAt });
-    return result;
-  } catch (error) {
-    recordDiagnosticEvent("db_transaction_failed", {
-      purpose,
-      durationMs: Date.now() - startedAt,
-      error: error instanceof Error ? error.message : String(error),
-    });
-    throw error;
-  }
 }

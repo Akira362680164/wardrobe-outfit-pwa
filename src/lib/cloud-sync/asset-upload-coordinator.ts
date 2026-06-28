@@ -87,7 +87,7 @@ async function uploadOneVariant(
     await uploadContent({
       params: { assetId: record.id, variant },
       metadata: {
-        "x-asset-owner-entity-type": record.ownerEntityType as Exclude<WorkspaceEntityType, "asset" | "closetLocation">,
+        "x-asset-owner-entity-type": record.ownerEntityType as Exclude<WorkspaceEntityType, "asset" | "closetLocation" | "profile">,
         "x-asset-owner-entity-id": record.ownerEntityId,
         "x-asset-sha256": upload.sha256,
         "x-asset-size-bytes": upload.sizeBytes,
