@@ -53,19 +53,19 @@ export async function bridgeWearSyncResult(result: OutfitWearSyncResult): Promis
 
   for (const outfit of outfits) {
     if (!outfit) continue;
-    void bridgeOutfitUpsert(outfit);
-    void bridgeWearEventsForOutfit(outfit);
+    await bridgeOutfitUpsert(outfit);
+    await bridgeWearEventsForOutfit(outfit);
   }
   for (const item of items) {
     if (!item) continue;
-    void bridgeGarmentUpdate(item);
-    void bridgeWearEventsForGarment(item);
+    await bridgeGarmentUpdate(item);
+    await bridgeWearEventsForGarment(item);
   }
   for (const entry of entries) {
-    if (entry) void bridgeOutfitPlanUpsert(entry);
+    if (entry) await bridgeOutfitPlanUpsert(entry);
   }
   for (const id of result.deletedEntryIds ?? []) {
-    void bridgeOutfitPlanDelete(id);
+    await bridgeOutfitPlanDelete(id);
   }
 }
 

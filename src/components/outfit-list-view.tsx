@@ -262,7 +262,7 @@ export function OutfitListView({
       const result = hasToday
         ? await cancelActualOutfitWearForDate({ dateKey: todayKey, outfitId: outfit.id, todayKey })
         : await recordActualOutfitWear({ dateKey: todayKey, outfitId: outfit.id, todayKey, mode: "worn" });
-      void bridgeWearSyncResult(result);
+      await bridgeWearSyncResult(result);
       await onRefresh();
       await onPlanDataChange();
       onMessage(hasToday ? "已取消今天穿着记录" : "已记录今天穿着");
@@ -536,7 +536,7 @@ export function OutfitListView({
 	  async function handleAddOutfitToDate(dateKey: string, outfitId: string, mode: "auto" | "planned" | "worn" = "auto") {
 	    try {
 	      const result = await addOutfitToDate({ dateKey, outfitId, mode, todayKey });
-        void bridgeWearSyncResult(result);
+        await bridgeWearSyncResult(result);
 	      try {
 	        await syncPackingChecklistForDate(dateKey);
 	      } catch {
@@ -683,7 +683,7 @@ export function OutfitListView({
 	    if (!outfitId) return;
 	    try {
 	      const result = await recordActualOutfitWear({ dateKey: entry.date, outfitId, todayKey, mode: "worn" });
-        void bridgeWearSyncResult(result);
+        await bridgeWearSyncResult(result);
 	      await onPlanDataChange();
 	      onMessage(entry.date === todayKey ? "已记录今天穿了" : "已补记穿搭");
 	    } catch (error) {
@@ -731,7 +731,7 @@ export function OutfitListView({
 	  async function handleCancelOutfitWearForDate(dateKey: string, outfitId: string) {
 	    try {
 	      const result = await cancelActualOutfitWearForDate({ dateKey, outfitId, todayKey });
-        void bridgeWearSyncResult(result);
+        await bridgeWearSyncResult(result);
 	      await onPlanDataChange();
 	      onMessage(dateKey === todayKey ? "已取消今天穿着记录" : "已取消该日穿着记录");
 	    } catch (error) {
@@ -744,9 +744,9 @@ export function OutfitListView({
 	    setShowPlanSelectSheet(true);
 	  }
 
-	  function handleSelectOutfitForPlan(outfit: SavedOutfit) {
+	  async function handleSelectOutfitForPlan(outfit: SavedOutfit) {
 	    if (selectOutfitDate) {
-	      handleAddOutfitToDate(selectOutfitDate, outfit.id);
+	      await handleAddOutfitToDate(selectOutfitDate, outfit.id);
 	    }
 	    setShowPlanSelectSheet(false);
 	    setSelectOutfitDate(null);
