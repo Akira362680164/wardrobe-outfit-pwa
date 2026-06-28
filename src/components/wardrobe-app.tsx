@@ -1398,8 +1398,10 @@ export function WardrobeApp({ cloudAuth }: { cloudAuth?: WardrobeCloudAuth } = {
               onStartGarmentIntake={startGarmentIntakeFlow} onSeed={seedDemoItems}
               onStatusChange={updateItemStatus}
               onDeleteItems={async (ids) => {
+                const validIds = ids.filter((id) => typeof id === "number" && Number.isFinite(id));
+                if (validIds.length === 0) { showMessage("请选择要删除的衣物", "info"); return; }
                 const db = getWardrobeDb();
-                const result = await deleteItemsWithCascade({ itemIds: ids, source: "manual_delete" });
+                const result = await deleteItemsWithCascade({ itemIds: validIds, source: "manual_delete" });
                 for (const itemId of result.deletedItemIds) await bridgeGarmentDelete(itemId);
                 const updatedOutfits = await db.outfits.bulkGet(result.updatedOutfitIds);
                 for (const outfit of updatedOutfits) {
@@ -2885,7 +2887,7 @@ function WardrobeView(props: WardrobeViewProps) {
               onBack={closeViewingItemByReturnTarget}
               onWearToggle={handleWearToggle}
               onEdit={openEditForViewingItem}
-              onDelete={viewingItem.id != null ? () => handleDetailDelete(viewingItem.id as number) : async () => {}}
+              onDelete={viewingItem.id != null ? () => handleDetailDelete(viewingItem.id as number) : () => onMessage("该衣物数据异常，请尝试在衣橱首页长按删除", "error")}
               onMoveItem={handleMoveItem}
               onAddReferenceImage={() => referenceOutfitGalleryInputRef.current?.click()}
               onViewReferenceImage={(ref) => setViewingRefImage(ref)}
@@ -3740,7 +3742,7 @@ const cardEntries = deriveGarmentImageList(item, outfits);
 const hasMultiple = cardEntries.length >1;
 const itemKey = String(item.id ?? item.name ?? "");
 const currentIdx = waterfallImageIndex[itemKey] ??0;
-const isItemSelected = wardrobeSelection.isSelected(item.id!);
+const isItemSelected = item.id != null ? wardrobeSelection.isSelected(item.id) : false;
 const categoryColorLine = formatGarmentCategoryColorLine(item);
 return (
 <CatalogWaterfallCardShell
@@ -3750,11 +3752,12 @@ return (
   ariaLabel={item.name?.trim() || "未命名单品"}
   onOpen={() => openWardrobeItemDetail(item, { name: "wardrobe_home" })}
   onToggleSelection={() => {
+    if (item.id == null) return;
     if (!wardrobeSelection.selectionMode) {
-      wardrobeSelection.enter(item.id!);
+      wardrobeSelection.enter(item.id);
       return;
     }
-    wardrobeSelection.toggle(item.id!);
+    wardrobeSelection.toggle(item.id);
   }}
   media={
     <div className="absolute inset-0">
@@ -4809,7 +4812,7 @@ function SettingsView({
               <div className="min-w-0">
                 <h2 className="text-base font-semibold">账号服务</h2>
                 <p className="mt-0.5 truncate text-xs text-ink/55">{cloudAuth.user.maskedPhone} · {cloudAuth.deviceLabel}</p>
-                <p className="mt-1 text-[11px] leading-relaxed text-ink/45">本地衣橱、图片缓存和 MiniMax Key 仍保留在本机。</p>
+                <p className="mt-1 text-[11px] leading-relaxed text-ink/45">本地数据跟随应用生命周期，卸载重装后从云端账号同步。</p>
               </div>
             </div>
             <button

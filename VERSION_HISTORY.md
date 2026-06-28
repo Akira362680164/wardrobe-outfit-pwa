@@ -1,3 +1,17 @@
+## 2026-06-28 / v2.0.2-test / Claude Code — 脏数据+云端同步修复
+
+- **目的**：修复衣物 `legacyItemId` 不进云端 payload 导致重装后 id 丢失；修复 location id 查找断裂导致更新/删除无法桥接；孤儿衣物自动承接默认衣橱；UI 防护与文案修正。
+- **版本**：保持 `2.0.2-test`。
+- **改动文件**：
+  - `src/lib/cloud-sync/hash-workspace-id.ts`（新增，FNV-1a 32-bit 哈希兜底）
+  - `src/lib/cloud-sync/garment-bridge.ts`（outbox payload 加入 legacyItemId）
+  - `src/lib/cloud-sync/workspace-ui-mapper.ts`（id 多级 fallback：legacyItemId → payload.legacyItemId → payload.id → hash；孤儿衣物自动插入默认衣橱）
+  - `src/lib/cloud-sync/location-bridge.ts`（payload 加 dexieId；findWorkspaceLocationById 双字段查找）
+  - `src/components/wardrobe-app.tsx`（删除按钮 no-op → toast；多选 item.id 守卫；删除空 ids 前置检查；设置页文案修正）
+- **验证结果**：`npm run typecheck` 通过；`npm run test:logic:all` 15/17 通过（2 个失败为 pre-existing legacy-dexie-import 测试）；`npm run build` 成功。
+- **风险门禁**：**medium**（legacyItemId 修复仅影响新录入衣物，旧脏数据需云端清理；location id 修复向前兼容，首次创建后自动关联；未做 Android 真机复测）。
+- **未验证风险**：旧脏数据（2 件）需用户在云端手动删除；location bridge 已有记录的 dexieId 回填依赖下次 update；真机重装后衣橱同步流程未验证。
+
 ## 2026-06-28 / v2.0.2-test / Claude Code — 真机复测缺陷热修复（5 个修复提交）
 
 - **目的**：按 RETEST_REPORT 中 BUG-RT-001~005 修复 5 个阻断级缺陷，其中 BUG-RT-001 按用户决策改为下线失效的本地备份 UI 入口。

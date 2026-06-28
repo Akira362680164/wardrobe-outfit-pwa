@@ -72,7 +72,7 @@ export async function bridgeGarmentCreate(item: WardrobeItem): Promise<BridgeGar
         entityType: "garment",
         entityId: garmentId,
         operation,
-        payload: { payload },
+        payload: { ...payload, legacyItemId: garmentBase.legacyItemId },
         baseRevision,
       });
       for (const asset of assets.preparedAssets) {

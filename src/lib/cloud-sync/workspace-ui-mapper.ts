@@ -4,6 +4,7 @@
 
 import type { AccountWorkspaceDatabase, WorkspaceGarmentRecord, WorkspaceLocationRecord, WorkspaceOutfitPlanRecord, WorkspaceOutfitRecord, WorkspaceTripPlanRecord, WorkspaceWishlistItemRecord } from "@/lib/account-workspace-db";
 import type { ClosetLocation, OutfitCalendarPlan, OutfitPlanEntry, PlanPackingChecklistItem, SavedOutfit, WardrobeItem, WishlistItem } from "@/lib/types";
+import { hashWorkspaceIdToNumber } from "@/lib/cloud-sync/hash-workspace-id";
 
 export interface WorkspaceUiSnapshot {
   items: WardrobeItem[];
@@ -26,9 +27,25 @@ export async function readWorkspaceUiSnapshot(db: AccountWorkspaceDatabase): Pro
     db.outfitPlans.filter(p => !p.deletedAt).toArray(),
   ]);
 
+  const uiItems = garments.map(toWardrobeItem);
+  const uiLocations = locations.map(toClosetLocation);
+  const locationIdSet = new Set(uiLocations.map((l) => l.id));
+
+  // ponytail: 孤儿衣物（locationId 不在任何已有衣橱中）自动承接默认衣橱
+  const orphanLocationIds = new Set<string>();
+  for (const item of uiItems) {
+    if (item.locationId && !locationIdSet.has(item.locationId)) {
+      orphanLocationIds.add(item.locationId);
+    }
+  }
+  const now = new Date().toISOString();
+  for (const orphanId of orphanLocationIds) {
+    uiLocations.push({ id: orphanId, name: orphanId === "home" ? "默认衣橱" : orphanId, sortOrder: uiLocations.length + 1, createdAt: now, updatedAt: now });
+  }
+
   return {
-    items: garments.map(toWardrobeItem),
-    locations: locations.map(toClosetLocation),
+    items: uiItems,
+    locations: uiLocations,
     outfits: outfits.map(toSavedOutfit),
     wishlistItems: wishlistItems.map(toWishlistItem),
     outfitPlanEntries: outfitPlans.map(toOutfitPlanEntry),
@@ -40,7 +57,7 @@ export async function readWorkspaceUiSnapshot(db: AccountWorkspaceDatabase): Pro
 function toWardrobeItem(g: WorkspaceGarmentRecord): WardrobeItem {
   const p = (g.payload ?? {}) as Record<string, unknown>;
   return {
-    id: g.legacyItemId,
+    id: g.legacyItemId ?? (p.legacyItemId as number | undefined) ?? (typeof p.id === "number" ? p.id : undefined) ?? hashWorkspaceIdToNumber(g.id),
     locationId: (g.locationId ?? p.locationId ?? "home") as string,
     name: (g.name ?? p.name ?? "") as string,
     status: (p.status ?? "active") as WardrobeItem["status"],

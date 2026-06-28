@@ -28,6 +28,7 @@ export async function bridgeLocationUpsert(location: ClosetLocation): Promise<Br
       name: location.name,
       note: location.note,
       sortOrder: location.sortOrder,
+      dexieId: location.id,
     };
     if (!isGuardCurrent(currentWorkspaceGuard(ctx.workspace))) return { bridged: false, reason: "no_workspace" };
 
@@ -90,5 +91,7 @@ async function findWorkspaceLocationById(
   locationId: string,
 ): Promise<WorkspaceLocationRecord | undefined> {
   const locations = await db.locations.toArray();
-  return locations.find((l) => l.id === locationId && !l.deletedAt);
+  return locations.find((l) =>
+    !l.deletedAt && (l.id === locationId || (l.payload as Record<string, unknown>)?.dexieId === locationId),
+  );
 }
