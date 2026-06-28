@@ -1280,7 +1280,7 @@ export function OutfitListView({
 	      <OutfitPlanSelectSheet
 	        open={showPlanSelectSheet}
 	        onClose={() => { setShowPlanSelectSheet(false); setSelectOutfitDate(null); }}
-	        outfits={outfits}
+	        outfits={displayOutfits}
 	        items={items}
 	        todayKey={todayKey}
 	        dateKey={selectOutfitDate ?? undefined}
