@@ -1,22 +1,18 @@
 "use client";
 
-import { CheckCircle2, Layers, PackageCheck, Search, Tag } from "lucide-react";
+import { Layers, PackageCheck, Search, Tag } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { IntakeFlowShell, type IntakeFlowStep } from "@/components/intake-flow-shell";
 import {
- ConfirmSummaryCard,
  DraftQualitySummary,
  EmptyStateBox,
  IntakeStepSection,
  ProcessingIssueList,
- ProcessingResultList,
  SEASON_OPTIONS,
- SelectField,
  TagToggleGroup,
  TextField,
  TextareaField,
  formatIntakeError,
- labelSeasons,
  parseTagInput,
  toggleArrayValue,
  userField,
@@ -63,16 +59,10 @@ export interface OutfitIntakeFlowProps {
  onExit?: () => void;
 }
 
-// v1.0: 4步流程, 上传套装图 / 未知单品 / 重复校对草稿 + 确认保存都整合到4步里
+// ponytail: 2步流程, 选择衣物→确认套装, AI/本地分析为过渡态
 export const OUTFIT_INTAKE_STEPS: IntakeFlowStep[] = [
  { id: "select", label: "选择衣物" },
- { id: "analyze", label: "分析套装" },
- { id: "review", label: "校对信息" },
- { id: "save", label: "保存完成" },
-];
-
-const outfitSourceOptions: Array<{ value: SavedOutfit["source"]; label: string }> = [
- { value: "manual", label: "手动创建" },
+ { id: "confirm", label: "确认套装" },
 ];
 
 export function OutfitIntakeFlow({
@@ -88,7 +78,7 @@ export function OutfitIntakeFlow({
  onSave,
  onExit,
 }: OutfitIntakeFlowProps) {
- const [stepIndex, setStepIndex] = useState(() => (initialDraft ?2 : initialItemIds.length >0 ?0 :0));
+ const [stepIndex, setStepIndex] = useState(() => (initialDraft ?1 : initialItemIds.length >0 ?0 :0));
  const [selectedItemIds, setSelectedItemIds] = useState<number[]>(() => uniqueNumberArray(initialDraft?.itemIds.value ?? initialItemIds));
  const [draft, setDraft] = useState<OutfitIntakeDraft | null>(initialDraft ?? null);
  // v1.0: 选择衣物页的衣橱筛选 /分类筛选 /搜索
@@ -167,7 +157,7 @@ export function OutfitIntakeFlow({
  if (!initialDraft) return;
  setDraft(initialDraft);
  setSelectedItemIds(uniqueNumberArray(initialDraft.itemIds.value));
- setStepIndex(2);
+ setStepIndex(1);
  }, [initialDraft]);
 
  function commitDraft(nextDraft: OutfitIntakeDraft) {
@@ -249,30 +239,20 @@ export function OutfitIntakeFlow({
  setError("套装至少需要2 件衣物,请继续选择。");
  return;
  }
+ // 过渡态: 自动分析 → 直接进入确认页
+ setIsBusy(true);
+ setEnhanceHint("正在分析套装…");
+ try {
+ const baseDraft = await ensureLocalDraft();
+ if (!baseDraft) { setIsBusy(false); return; }
+ await ensureEnhancedDraft(baseDraft);
  setStepIndex(1);
- await ensureLocalDraft();
+ } finally {
+ setIsBusy(false);
+ }
  return;
  }
- if (stepIndex ===1) {
- if (!draft) {
- const nextDraft = await ensureLocalDraft();
- if (!nextDraft) return;
- }
- const enhanced = await ensureEnhancedDraft(draft);
- if (!enhanced) return;
- setStepIndex(2);
- return;
- }
- if (stepIndex ===2) {
- const summary = draft ? calculateDraftReviewSummary(draft) : null;
- if (!summary?.canSave) {
- setError("请先补齐必填项,再进入保存确认。");
- return;
- }
- setStepIndex(3);
- return;
- }
- if (stepIndex ===3 && draft) {
+ if (stepIndex ===1 && draft) {
  setIsBusy(true);
  try {
  await onSave(draft);
@@ -291,8 +271,8 @@ export function OutfitIntakeFlow({
  setSaved(false);
  }
 
- const nextLabel = stepIndex ===1 ? "生成草稿" : stepIndex ===3 ? "保存套装" : "继续";
- const nextDisabled = locked || (stepIndex ===0 && selectedItemIds.length <2) || ((stepIndex ===1 || stepIndex ===2) && !draft);
+ const nextLabel = stepIndex ===0 ? "下一步（自动分析）" : "保存套装";
+ const nextDisabled = locked || (stepIndex ===0 && selectedItemIds.length <2) || (stepIndex ===1 && !draft);
 
  return (
  <IntakeFlowShell
@@ -329,21 +309,12 @@ export function OutfitIntakeFlow({
  onRemoveItem={toggleItem}
  />
  ) : null}
- {stepIndex ===1 ? <OutfitAnalyzeStep composition={composition} draft={draft} enhanceHint={enhanceHint} /> : null}
- {stepIndex ===2 && draft && reviewSummary ? (
+ {stepIndex ===1 && draft && reviewSummary ? (
  <OutfitReviewStep
  draft={draft}
  summary={reviewSummary}
  composition={composition}
  onPatchDraft={patchDraft}
- />
- ) : null}
- {stepIndex ===3 && draft && reviewSummary ? (
- <OutfitSaveStep
- draft={draft}
- summary={reviewSummary}
- composition={composition}
- onBackToReview={() => setStepIndex(2)}
  />
  ) : null}
  </IntakeFlowShell>
@@ -494,33 +465,6 @@ function OutfitSelectStep({
  );
 }
 
-function OutfitAnalyzeStep({
- composition,
- draft,
- enhanceHint,
-}: {
- composition: OutfitCompositionSummary;
- draft: OutfitIntakeDraft | null;
- enhanceHint: string;
-}) {
- return (
- <div className="grid gap-4">
- <CompositionCard composition={composition} />
- <IntakeStepSection title="组成分析结果" icon={<CheckCircle2 size={16} aria-hidden="true" />}>
- <ProcessingResultList
- rows={[
- { ok: composition.selectedCount >=2, text: `已选择 ${composition.selectedCount} 件衣物${composition.selectedCount >=2 ? " (满足套装)" : " (至少2 件)"}` },
- { ok: composition.basicComplete, text: composition.basicComplete ? "基础组成完整" : `基础组成待补:${composition.missingEssentials.join("、") || "继续确认"}` },
- { ok: Boolean(draft), text: draft ? "已生成套装基础草稿" : "正在准备草稿" },
-]}
- />
- {enhanceHint ? <p className="mt-3 text-xs leading-relaxed text-ink/55">{enhanceHint}</p> : null}
- </IntakeStepSection>
- {draft ? <ProcessingIssueList issues={draft.processingIssues} /> : null}
- </div>
- );
-}
-
 function OutfitReviewStep({
  draft,
  summary,
@@ -552,36 +496,6 @@ function OutfitReviewStep({
  </div>
  </IntakeStepSection>
  <ProcessingIssueList issues={draft.processingIssues} />
- </div>
- );
-}
-
-function OutfitSaveStep({
- draft,
- summary,
- composition,
- onBackToReview,
-}: {
- draft: OutfitIntakeDraft;
- summary: DraftReviewSummary;
- composition: OutfitCompositionSummary;
- onBackToReview: () => void;
-}) {
- return (
- <div className="grid gap-4">
- <CompositionCard composition={composition} />
- <ConfirmSummaryCard
- title={draft.name.value}
- rows={[
- ["组成", `${draft.itemIds.value.length} 件已有衣物`],
- ["季节", labelSeasons(draft.seasons.value)],
- ["场景", draft.sceneTags.value.join(" / ") || "未填写"],
- ["风格", draft.styleTags.value.join(" / ") || "未填写"],
- ["收藏", draft.favorite.value ? "是" : "否 (可在详情页收藏)"],
-]}
- footer={summary.canSave ? "草稿已满足保存条件,点击保存即可写入。" : "仍有必填项,请返回校对。"}
- onEdit={onBackToReview}
- />
  </div>
  );
 }

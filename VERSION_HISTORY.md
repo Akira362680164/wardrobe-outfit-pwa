@@ -1,3 +1,18 @@
+## 2026-06-29 / v2.0.5-test / Claude Code — 套装录入 4 步简化为 2 步
+
+- **目的**：套装录入流程从 4 步（选择衣物→分析套装→校对信息→保存完成）简化为 2 步（选择衣物→确认套装），AI/本地分析改为过渡态自动运行，与单品录入 2 步模式一致。
+- **版本**：`2.0.4-test` → `2.0.5-test`，Android `versionCode` 由 `20004` → `20005`。
+- **改动文件**：`src/components/outfit-intake-flow.tsx`、`package.json`、`VERSION_HISTORY.md`。
+- **关键改动**：
+  - `OUTFIT_INTAKE_STEPS` 从 4 步改为 2 步（`select` → `confirm`）；
+  - `handleNext` 合并：step 0 选衣后自动跑 `ensureLocalDraft` + `ensureEnhancedDraft`（loading 过渡态），直接进入确认页；
+  - step 1 确认页合并原校对+保存，底部按钮直接保存；
+  - 删除 `OutfitAnalyzeStep` 和 `OutfitSaveStep` 组件。
+- **本地验证**：`npm run typecheck` 通过；`npm run build` 通过；`npm run android:apk` 成功生成固定签名候选 APK（9.5MB）；已 `adb install -r` 覆盖安装到 MEIZU 21 Pro。
+- **风险门禁**：**medium**（套装创建流程 UX 变更，不影响数据模型和安全；AI 过渡态 loading 期间用户无取消按钮——与单品录入行为一致）。
+- **未触发 subagent**：用户未通知。
+- **未验证风险**：真机端到端创建套装后确认数据展示正确性。
+
 ## 2026-06-29 / v2.0.4-test / Claude Code — 套装功能 5 项修复
 
 - **目的**：修复套装创建的 5 个问题：(1) 刚创建的套装不显示需重启；(2) 无用的"创建来源"字段；(3) AI 建议生成失败；(4) 本地建议静默失败；(5) 计划修改后重复创建而非更新。
