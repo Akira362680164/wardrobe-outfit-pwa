@@ -116,8 +116,10 @@ export async function bridgeGarmentDelete(legacyItemId: number): Promise<BridgeG
 
 export function toCloudGarmentPayload(item: WardrobeItem, assetRefs?: CloudAssetReferenceMap): Record<string, unknown> {
   const safe = { ...item } as Record<string, unknown>;
-  // ponytail: keep imageDataUrl/thumbnailDataUrl/sourceImageDataUrl — workspace-ui-mapper reads them for display.
-  // Assets table stores local files for cloud upload, payload stores inline for immediate UI display.
+  // 去除 base64 图片：同步 payload 只存 cloudAssetRefs 引用，图片通过 asset 机制上传
+  delete safe.imageDataUrl;
+  delete safe.thumbnailDataUrl;
+  delete safe.sourceImageDataUrl;
   return withCloudAssetRefs(safe, assetRefs);
 }
 

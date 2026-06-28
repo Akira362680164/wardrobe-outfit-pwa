@@ -17,6 +17,7 @@ import {
   outfitPlans,
   assets,
   locations,
+  profiles,
   syncChanges,
   syncMutations,
 } from "../db/schema.js";
@@ -121,7 +122,7 @@ export class SyncService {
     ]);
 
     return BootstrapResponseSchema.parse({
-      serverCursor: encodeCursor(cursorRow[0]?.maxSeq ?? 0, new Date().toISOString()),
+      serverCursor: encodeCursor(Number(cursorRow[0]?.maxSeq ?? 0), new Date().toISOString()),
       entities,
       assetManifest,
       hasMore: false,
@@ -264,20 +265,20 @@ export class SyncService {
               .set({ deletedAt: now, updatedAt: now, revision: serverRevision })
               .where(eq((table as any).id, mutation.entityId));
           } else if (existingEntity) {
-            // update：safePayload 在前，服务端字段在后覆盖
+            // update：业务数据存入 payload JSONB 列，服务端字段在后覆盖
             await tx
               .update(table as any)
               .set({
-                ...safePayload,
+                payload: safePayload,
                 userId,
                 updatedAt: now,
                 revision: serverRevision,
               })
               .where(eq((table as any).id, mutation.entityId));
           } else {
-            // create：safePayload 在前，服务端字段在后覆盖
+            // create：业务数据存入 payload JSONB 列，服务端字段在后覆盖
             await tx.insert(table as any).values({
-              ...safePayload,
+              payload: safePayload,
               id: mutation.entityId,
               userId,
               originDeviceId: deviceId,
@@ -365,7 +366,7 @@ export class SyncService {
 
     return PushResponseSchema.parse({
       results,
-      serverCursor: encodeCursor(cursorRow?.maxSeq ?? 0, new Date().toISOString()),
+      serverCursor: encodeCursor(Number(cursorRow?.maxSeq ?? 0), new Date().toISOString()),
     });
   }
 
@@ -482,6 +483,7 @@ async function defaultFetchBundle(userId: string, db: NodePgDatabase<typeof sche
     outfitPlanRows,
     assetRows,
     locationRows,
+    profileRows,
   ] = await Promise.all([
     db.select().from(garments).where(eq(garments.userId, userId)),
     db.select().from(outfits).where(eq(outfits.userId, userId)),
@@ -492,6 +494,7 @@ async function defaultFetchBundle(userId: string, db: NodePgDatabase<typeof sche
     db.select().from(outfitPlans).where(eq(outfitPlans.userId, userId)),
     db.select().from(assets).where(eq(assets.userId, userId)),
     db.select().from(locations).where(eq(locations.userId, userId)),
+    db.select().from(profiles).where(eq(profiles.userId, userId)),
   ]);
 
   return SyncEntityBundleSchema.parse({
@@ -504,6 +507,7 @@ async function defaultFetchBundle(userId: string, db: NodePgDatabase<typeof sche
     outfitPlans: outfitPlanRows.map(toOutfitPlanSyncEntity),
     assets: assetRows.map(toAssetSyncEntity),
     closetLocations: locationRows.map(toSyncEntity),
+    profiles: profileRows.map(toSyncEntity),
   });
 }
 

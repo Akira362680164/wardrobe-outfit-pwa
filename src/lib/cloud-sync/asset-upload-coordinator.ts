@@ -191,9 +191,17 @@ function computeAssetUploadBackoffMs(attemptCount: number): number {
 async function findPendingAssets(db: AccountWorkspaceDatabase): Promise<WorkspaceAssetRecord[]> {
   const all = await db.assets.filter((r) => !r.deletedAt).toArray();
   const now = new Date().toISOString();
+  // 查询所有 pending 状态的 outbox，用于判断资产的 owner 实体是否已推送
+  const pendingOutbox = await db.syncOutbox
+    .filter((row) => row.status === "pending")
+    .toArray();
+  const pendingEntityIds = new Set(pendingOutbox.map((m) => m.entityId));
+
   return all.filter((r) => {
     const payload = r.payload as LocalAssetPayload | undefined;
     if (!payload?.uploads) return false;
+    // ponytail: 如果 owner 实体仍有 pending outbox，暂缓上传，等实体先推送到服务端
+    if (pendingEntityIds.has(r.ownerEntityId)) return false;
     return Object.values(payload.uploads).some((v) => {
       return v ? isUploadDue(v, now) : false;
     });

@@ -10,6 +10,7 @@ export const SyncEntityTypeSchema = z.enum([
   "outfitPlan",
   "asset",
   "closetLocation",
+  "profile",
 ]);
 
 export const SyncOperationSchema = z.enum(["create", "update", "delete"]);
@@ -78,6 +79,7 @@ export const SyncEntityBundleSchema = z.object({
   outfitPlans: z.array(SyncOutfitPlanSchema),
   assets: z.array(SyncAssetSchema),
   closetLocations: z.array(SyncEntitySchema),
+  profiles: z.array(SyncEntitySchema),
 });
 
 export const AssetManifestEntrySchema = z.object({

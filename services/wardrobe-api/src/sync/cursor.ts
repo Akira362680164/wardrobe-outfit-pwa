@@ -14,6 +14,9 @@ export function encodeCursor(seq: number, serverTime: string): string {
 }
 
 export function decodeCursor(cursor: string): Cursor {
+  if (!cursor || cursor.length === 0) {
+    throw new Error("empty cursor");
+  }
   try {
     const json = Buffer.from(cursor, "base64url").toString("utf8");
     const parsed = JSON.parse(json) as Partial<Cursor>;

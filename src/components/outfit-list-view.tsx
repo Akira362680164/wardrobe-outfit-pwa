@@ -546,7 +546,13 @@ export function OutfitListView({
 	  // v1.1.4-dev: 计划保存/编辑后调用 syncPackingChecklistForPlan, 保证打包清单与新范围一致。
 	  async function handleSaveCalendarPlan(plan: OutfitCalendarPlan) {
 	    try {
-        const wasEditing = subPage === "plan_edit";	      try {
+        const wasEditing = subPage === "plan_edit";
+        const result = await bridgeTripPlanUpsert(plan);
+        if (!result.bridged) {
+          onMessage("计划保存失败，请重试", "error");
+          return;
+        }
+	      try {
 	        await syncPackingChecklistForPlan(plan.id);
 	      } catch {
 	        onMessage("打包清单同步失败，请重试", "error");

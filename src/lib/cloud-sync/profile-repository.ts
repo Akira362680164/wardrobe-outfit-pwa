@@ -44,7 +44,7 @@ export async function saveWorkspaceTryOnProfile(profile: TryOnProfile): Promise<
       workspace: ctx.workspace,
       originDeviceId: ctx.deviceId,
       baseRevision: existing?.revision ?? 0,
-      payload: { payload },
+      payload: payload as unknown as Record<string, unknown>,
     },
     {
       id: TRY_ON_PROFILE_ID,

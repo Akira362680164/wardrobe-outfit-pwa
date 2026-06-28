@@ -1,6 +1,6 @@
 {
   "name": "wardrobe-outfit-pwa",
-  "version": "2.0.7-test",
+  "version": "2.0.8-test",
   "private": true,
   "workspaces": [
     "packages/cloud-contracts",
@@ -11,7 +11,7 @@
     "build": "node scripts/build-web-with-info.mjs",
     "build:web": "node scripts/build-web-with-info.mjs",
     "android:add": "cap add android",
-    "android:sync": "node scripts/validate-cloud-build-env.mjs && npm run build:web && cap sync android",
+    "android:sync": "node scripts/validate-cloud-build-env.mjs && npm run build:web && cap sync android && node scripts/patch-capacitor-logs.mjs",
     "android:open": "cap open android",
     "android:apk": "node scripts/validate-build.mjs pre && npm run android:sync && (cd android && ./gradlew assembleRelease) && node scripts/validate-build.mjs post",
     "android:apk:skip-check": "npm run android:sync && cd android && ./gradlew assembleRelease",

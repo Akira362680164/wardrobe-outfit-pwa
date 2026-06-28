@@ -32,7 +32,7 @@ export async function bridgeTripPlanUpsert(
         workspace: ctx.workspace,
         originDeviceId: ctx.deviceId,
         baseRevision: existing?.revision ?? 0,
-        payload: { startDate: plan.startDate, endDate: plan.endDate, payload },
+        payload: payload,
       },
       {
         id: existing?.id ?? createWorkspaceUuidV7(),
@@ -95,7 +95,7 @@ export async function bridgeOutfitPlanUpsert(entry: OutfitPlanEntry): Promise<Br
         workspace: ctx.workspace,
         originDeviceId: ctx.deviceId,
         baseRevision: existing?.revision ?? 0,
-        payload: { tripPlanId: tripPlan?.id, outfitId: outfit?.id, planDate: entry.date, payload },
+        payload: payload,
       },
       {
         id: existing?.id ?? createWorkspaceUuidV7(),

@@ -846,6 +846,7 @@ export async function applyBootstrap(
     ["outfitPlan", entities.outfitPlans as Record<string, unknown>[]],
     ["asset", entities.assets as Record<string, unknown>[]],
     ["closetLocation", entities.closetLocations as Record<string, unknown>[]],
+    ["profile", entities.profiles as Record<string, unknown>[]],
   ];
   for (const [entityType, list] of bundles) {
     for (const e of list) {
@@ -981,7 +982,10 @@ export async function runSyncOnce(input: SyncRunInput): Promise<SyncRunResult> {
           return { bootstrapped: false, pushed, pulled: 0, conflicts, skipped: true, reason: "rate_limited" };
         }
       }
-      // 网络/5xx：标记 pending 保持，return 等待下次重试
+      // 网络/5xx：标记 pending mutations 为 failed，递增 attemptCount 启动退避
+      for (const m of pending) {
+        await markOutboxFailed(db, m.mutationId, "push_failed");
+      }
       return { bootstrapped: false, pushed, pulled: 0, conflicts, skipped: true, reason: "push_failed" };
     }
   }

@@ -13,6 +13,7 @@ import {
   outfitPlans,
   assets,
   locations,
+  profiles,
 } from "../db/schema.js";
 import type { AnyPgTable } from "drizzle-orm/pg-core";
 import type { SyncEntityType } from "@wardrobe/cloud-contracts";
@@ -31,6 +32,7 @@ const ENTITY_TABLE_MAP: EntityTableMap = {
   outfitPlan: outfitPlans,
   asset: assets,
   closetLocation: locations,
+  profile: profiles,
 };
 
 export function getTableForEntityType(entityType: SyncEntityType): AnyPgTable {

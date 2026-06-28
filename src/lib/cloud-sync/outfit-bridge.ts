@@ -61,7 +61,7 @@ export async function bridgeOutfitUpsert(outfit: SavedOutfit): Promise<BridgeOut
         workspace: ctx.workspace,
         originDeviceId: ctx.deviceId,
         baseRevision: existingOutfit?.revision ?? 0,
-        payload: { payload },
+        payload: payload,
       },
       {
         operation: existingOutfit ? "update" : "create",

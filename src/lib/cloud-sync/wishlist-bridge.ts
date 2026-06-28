@@ -44,7 +44,7 @@ export async function bridgeWishlistUpsert(item: WishlistItem): Promise<BridgeWi
         workspace: ctx.workspace,
         originDeviceId: ctx.deviceId,
         baseRevision: existing?.revision ?? 0,
-        payload: { payload },
+        payload: payload,
       },
       {
         ...wishlistRecord,

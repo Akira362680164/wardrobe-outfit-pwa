@@ -41,6 +41,7 @@ export const syncEntityType = pgEnum("sync_entity_type", [
   "outfitPlan",
   "asset",
   "closetLocation",
+  "profile",
 ]);
 
 export const syncMutationOperation = pgEnum("sync_mutation_operation", [
@@ -319,6 +320,18 @@ export const outfitPlans = pgTable(
   (table) => ({
     userDateIdx: index("outfit_plans_user_date_idx").on(table.userId, table.planDate),
     tripPlanIdx: index("outfit_plans_trip_plan_id_idx").on(table.tripPlanId),
+  }),
+);
+
+export const profiles = pgTable(
+  "profiles",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    profileType: text("profile_type").notNull().default("tryOn"),
+    ...syncEntityColumns,
+  },
+  (table) => ({
+    userProfileTypeIdx: index("profiles_user_profile_type_idx").on(table.userId, table.profileType),
   }),
 );
 
