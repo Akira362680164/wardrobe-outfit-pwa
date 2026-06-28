@@ -1,3 +1,23 @@
+## 2026-06-28 / v2.0.2-test / Claude Code — 真机复测缺陷热修复（5 个修复提交）
+
+- **目的**：按 RETEST_REPORT 中 BUG-RT-001~005 修复 5 个阻断级缺陷，其中 BUG-RT-001 按用户决策改为下线失效的本地备份 UI 入口。
+- **版本**：保持 `2.0.2-test`，commits `9421026` → `a6fd6d9`。
+- **5 个修复提交**：
+  1. `9421026` 隐藏"数据备份与恢复"入口，保留清空数据按钮。数据迁移以账号云同步为准。
+  2. `b2ed202` 修复计划安排套装竞态：await bridgeWearSyncResult 等 workspace 写完再 refresh，handleSelectOutfitForPlan async。
+  3. `5726112` 修复衣物编辑保存后首页统计不刷新：setItems 直接更新本地 items 数组。
+  4. `ebb9092` 修复诊断上传拿过期 token：upload 前 isAccessTokenFresh 检查，过期提示重新登录。
+  5. `a6fd6d9` 修复法律页返回：记 previousAuthViewRef 直接回到注册页，避免同 URL history.back() 跳过 entry。
+- **改动文件**：
+  - `src/components/wardrobe-app.tsx`（入口隐藏、编辑刷新、诊断 token fresh）
+  - `src/components/outfit-list-view.tsx`（plan select async await）
+  - `src/lib/cloud-sync/wear-bridge.ts`（bridge 内 void → await）
+  - `src/components/auth/auth-gate.tsx`（previousAuthViewRef + 直接导航）
+- **验证结果**：`npm run typecheck` 通过；`npm run build` 成功。
+- **风险门禁**：**high**（5 个修复涉及 UI 交互分支、异步刷新顺序、auth 导航行为和诊断上传路径；未做 Android 真机复测）。
+- **未触发 subagent**：用户未通知。
+- **未验证风险**：5 个 BUG-RT 尚未在真机上逐项复测；备份入口隐藏后底层代码保留但不可达；bridge 改为 await 后 UI 响应延迟可能感知变化；先前已知 test-legacy-dexie-import 2 个失败与本轮无关。
+
 ## 2026-06-28 / v2.0.2-test / Claude Code — 修复清单三轮完成 + APK 打包
 
 - **目的**：按 fix-checklist.md 执行三轮修复，解决 F1-F16 共 16 个问题（workspace DB 写一致性、衣橱管理、套装显示、页面刷新竞态、诊断上传、注册体验、裁切旋转、+n 展开、种草 UI、相机权限、计划页底部遮挡、改密错误本地化、计划标题去重），并构建覆盖安装 APK。
