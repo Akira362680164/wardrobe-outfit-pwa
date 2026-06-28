@@ -1526,8 +1526,6 @@ export function WardrobeApp({ cloudAuth }: { cloudAuth?: WardrobeCloudAuth } = {
               cloudAuth={cloudAuth}
               onOpenAccount={() => navigation.openRoute({ name: "account_management" })}
 	              miniMaxSettings={miniMaxSettings} onSaveMiniMaxSettings={saveSettings}
-	              onExport={exportBackup} onOpenBackupFolder={openDefaultBackupFolder} onSaveAs={saveAsBackup} onPickFile={pickBackupFile}
-	              isBackupBusy={Boolean(backupOperation != null)}
 	              onAddWardrobe={async (name, note) => { const now = new Date().toISOString(); const id = `custom-${globalThis.crypto?.randomUUID?.() ?? Date.now()}`; await getWardrobeDb().locations.put({ id, name, note, sortOrder: locations.length + 1, createdAt: now, updatedAt: now }); await bridgeLocationUpsert({ id, name, note, sortOrder: locations.length + 1, createdAt: now, updatedAt: now }); await refreshState(); }}
               onUpdateWardrobe={async (id, name, note) => { const db = getWardrobeDb(); const now = new Date().toISOString(); await db.locations.update(id, { name, note, updatedAt: now }); const existing = locations.find((l) => l.id === id); if (existing) { await bridgeLocationUpsert({ ...existing, name, note, updatedAt: now }); } await refreshState(); }}
               onDeleteWardrobe={async (id, action) => {
@@ -4419,11 +4417,6 @@ function SettingsView({
   onOpenAccount,
 	  miniMaxSettings,
 	  onSaveMiniMaxSettings,
-	  onExport,
-	  onOpenBackupFolder,
-	  onSaveAs,
-	  onPickFile,
-	  isBackupBusy,
 	  onAddWardrobe,
   onUpdateWardrobe,
   onDeleteWardrobe,
@@ -4447,11 +4440,6 @@ function SettingsView({
   onOpenAccount?: () => void;
 	  miniMaxSettings: DeviceMiniMaxSettings;
 	  onSaveMiniMaxSettings: (settings: DeviceMiniMaxSettings) => void;
-	  onExport: () => void;
-	  onOpenBackupFolder: () => void;
-	  onSaveAs: () => void;
-	  onPickFile: () => void;
-	  isBackupBusy: boolean;
 	  onAddWardrobe: (name: string, note: string) => Promise<void>;
   onUpdateWardrobe: (id: string, name: string, note: string) => Promise<void>;
   onDeleteWardrobe: (id: string, action: { mode: "migrate"; targetLocationId: string } | { mode: "delete_items" }) => Promise<void>;
@@ -5191,67 +5179,19 @@ function SettingsView({
         </div>
       </article>
 
-      {/* 5. 数据备份与恢复 */}
+      {/* 5. 清空数据 */}
       <article className="surface rounded-lg px-4 py-3.5">
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
-            <h2 className="text-base font-semibold">数据备份与恢复</h2>
-            <p className="mt-0.5 text-xs text-ink/55">用于卸载、重装、换机前保留全部衣橱数据和图片。</p>
+            <h2 className="text-base font-semibold">清空数据</h2>
+            <p className="mt-0.5 text-xs text-ink/55">数据通过账号云同步保存，卸载/重装/换机请登录同一账号即可恢复。</p>
           </div>
         </div>
-        <div className="mt-3 grid gap-2">
-          <button
-            type="button"
-            onClick={onExport}
-            className="flex items-center gap-3 rounded-xl border border-ink/10 bg-white px-4 py-3.5 text-left active:bg-mist"
-            disabled={isBackupBusy}
-          >
-            <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-denim/10 text-denim">
-              <Download size={18} aria-hidden="true" />
-            </span>
-            <span className="min-w-0">
-              <span className="block text-sm font-semibold text-ink">导出到默认长期备份目录</span>
-              <span className="mt-0.5 block text-[11px] text-ink/50">保存到 Download/衣橱穿搭助手备份，卸载应用后仍保留</span>
-            </span>
-          </button>
-          <button
-            type="button"
-            onClick={onOpenBackupFolder}
-            className="flex items-center gap-3 rounded-xl border border-ink/10 bg-white px-4 py-3.5 text-left active:bg-mist"
-            disabled={isBackupBusy}
-          >
-            <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-denim/10 text-denim">
-              <Upload size={18} aria-hidden="true" />
-            </span>
-            <span className="min-w-0">
-              <span className="block text-sm font-semibold text-ink">从默认长期备份恢复</span>
-              <span className="mt-0.5 block text-[11px] text-ink/50">读取 Download/衣橱穿搭助手备份 下的时间戳备份，按修改时间倒序</span>
-            </span>
-          </button>
-        </div>
-        <div className="mt-2 grid grid-cols-2 gap-2">
-          <button
-            type="button"
-            onClick={onSaveAs}
-            className="inline-flex h-9 items-center justify-center gap-1.5 rounded-lg border border-ink/10 bg-white px-3 text-xs font-semibold text-ink active:bg-mist"
-            disabled={isBackupBusy}
-          >
-            另存为...
-          </button>
-          <button
-            type="button"
-            onClick={onPickFile}
-            className="inline-flex h-9 items-center justify-center gap-1.5 rounded-lg border border-ink/10 bg-white px-3 text-xs font-semibold text-ink active:bg-mist"
-            disabled={isBackupBusy}
-          >
-            从其他位置选择备份...
-          </button>
-        </div>
-                <button
+        <button
           type="button"
           onClick={() => setShowClearAllConfirm(true)}
           className="mt-3 inline-flex h-9 w-full items-center justify-center gap-1.5 rounded-lg border border-red-200 bg-red-50 px-3 text-xs font-semibold text-red-500 active:bg-red-100"
-          disabled={isBackupBusy || isClearingAll}
+          disabled={isClearingAll}
         >
           <Trash2 size={14} aria-hidden="true" />
           清空数据
