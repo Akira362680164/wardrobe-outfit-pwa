@@ -27,6 +27,7 @@ interface OutfitWeeklyPlanStripProps {
   onCancelWear?: (dateKey: string, outfitId: string) => void;
   onSetPrimary?: (entry: OutfitPlanEntry) => void;
   onMarkSkipped?: (entry: OutfitPlanEntry) => void;
+  onDeleteEntry?: (entry: OutfitPlanEntry) => void;
   onOpenCalendarPlan: (planId: string) => void;
   onMessage: (msg: string, type?: "success" | "error" | "info") => void;
   onAiRecommend?: (dateKey: string) => void;
@@ -51,6 +52,7 @@ export function OutfitWeeklyPlanStrip({
   onCancelWear,
   onSetPrimary,
   onMarkSkipped,
+  onDeleteEntry,
   onOpenCalendarPlan,
   onMessage,
   onAiRecommend,
@@ -212,6 +214,7 @@ export function OutfitWeeklyPlanStrip({
           onCancelWear={onCancelWear ? (outfitId: string) => onCancelWear(selectedDate, outfitId) : undefined}
           onSetPrimary={onSetPrimary}
           onMarkSkipped={onMarkSkipped}
+          onDeleteEntry={onDeleteEntry}
           onOpenCalendarPlan={onOpenCalendarPlan}
           onMessage={onMessage}
           onAiRecommend={onAiRecommend ? () => onAiRecommend(selectedDate) : undefined}

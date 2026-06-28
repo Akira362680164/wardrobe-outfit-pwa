@@ -912,6 +912,7 @@ export function OutfitListView({
 	            onCancelWear={handleCancelOutfitWearForDate}
 	            onSetPrimary={handleSetPrimaryEntry}
 	            onMarkSkipped={handleSkipPlanEntry}
+	            onDeleteEntry={handleDeletePlanEntry}
 	            onOpenCalendarPlan={openPlanDetail}
 	            onMessage={onMessage}
 	          />
