@@ -6,6 +6,7 @@ import { imageAssetInputsForOutfit, prepareEntityImageAssets, putPreparedEntityI
 import { loadCloudBridgeContext } from "@/lib/cloud-sync/bridge-context";
 import { schedulePendingUploads } from "@/lib/cloud-sync/asset-upload-coordinator";
 import { currentWorkspaceGuard, deleteOutfitBundle, isGuardCurrent, writeOutfitBundle } from "@/lib/cloud-sync/sync-engine";
+import { resolveWorkspaceGarmentItemId } from "@/lib/cloud-sync/hash-workspace-id";
 
 export interface BridgeOutfitResult {
   bridged: boolean;
@@ -142,8 +143,8 @@ async function findWorkspaceOutfitByLegacyId(
 function buildLegacyGarmentMap(garments: WorkspaceGarmentRecord[]): Map<number, WorkspaceGarmentRecord> {
   const map = new Map<number, WorkspaceGarmentRecord>();
   for (const garment of garments) {
-    if (typeof garment.legacyItemId === "number" && !garment.deletedAt) {
-      map.set(garment.legacyItemId, garment);
+    if (!garment.deletedAt) {
+      map.set(resolveWorkspaceGarmentItemId(garment), garment);
     }
   }
   return map;

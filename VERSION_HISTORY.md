@@ -1,3 +1,15 @@
+## 2026-06-28 / v2.0.3-test / Codex — 修复旧云端衣物删除与真实默认衣橱同步
+
+- **目的**：修复两件早期云端孤儿衣物只能在界面隐藏、无法形成云端删除墓碑的问题；补齐全新账号工作区的真实默认衣橱，并保证衣橱 ID 与衣物 `locationId` 在重装恢复后保持一致。
+- **版本**：`2.0.2-test` → `2.0.3-test`，Android `versionCode` 由 `20002` → `20003`。
+- **改动文件**：`src/lib/cloud-sync/{hash-workspace-id,workspace-ui-mapper,garment-bridge,location-bridge,outfit-bridge,wear-bridge}.ts`、`src/components/auth/workspace-gate.tsx`、`src/components/wardrobe-app.tsx`、`src/lib/repository/wardrobe-repository.ts`、`scripts/test-old-garment-default-location-sync.ts`、`scripts/test-auth-client-shell.ts`、`package.json`、`package-lock.json`。
+- **关键修复**：统一 `legacyItemId → payload.legacyItemId → payload.id → workspace UUID 哈希` 的衣物有效 ID；删除旧衣物时按同一 ID 反查 workspace 实体并同步写入墓碑和 delete outbox；删除桥失败不再静默成功；bootstrap/本地工作区打开后若无有效衣橱，幂等创建 payload `dexieId=home` 的真实默认衣橱；workspace 衣橱恢复到 UI 时优先使用 `dexieId`，避免 UUID 与衣物位置引用断裂。
+- **本地验证**：`npm run typecheck` 通过；新增旧衣物删除/默认衣橱回归通过；account workspace 10/10、cloud outfit 12/12、data repo 63/63、delete cascade 22/22 通过；`npm run build` 通过；`npm run android:apk` 成功生成固定签名候选 APK（9.5MB）。
+- **全量回归说明**：`npm run test:logic:all` 已运行并通过版本契约及此前所有步骤，仍在既有 `test:logic:legacy-dexie-import` 的 2 条历史断言处停止（garment payload 图片与 wishlist 导入断言），与本次修改无关；该既有失败已在上一版历史中记录。
+- **风险门禁**：**high**（旧数据兼容、云端删除墓碑、默认实体创建、全新安装恢复、Android APK）。
+- **未触发 subagent**：用户未通知。
+- **待完成验证**：按用户授权卸载重装真机，验证两件旧衣物删除后不复活、默认衣橱录入/删除/同步，以及 `testA` / `testB` 与新衣物跨重装恢复；MiniMax Key 仅从 Keychain 安全录入，不回显。
+
 ## 2026-06-28 / v2.0.2-test / Codex — 旧衣物删除与默认衣橱同步修复设计
 
 - **目的**：针对两件早期云端脏衣物无法删除，以及全新安装只恢复脏衣物、未恢复正确衣橱/新衣物的问题，完成根因设计和破坏性真机验证方案。

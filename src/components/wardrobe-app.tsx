@@ -1402,7 +1402,10 @@ export function WardrobeApp({ cloudAuth }: { cloudAuth?: WardrobeCloudAuth } = {
                 if (validIds.length === 0) { showMessage("请选择要删除的衣物", "info"); return; }
                 const db = getWardrobeDb();
                 const result = await deleteItemsWithCascade({ itemIds: validIds, source: "manual_delete" });
-                for (const itemId of result.deletedItemIds) await bridgeGarmentDelete(itemId);
+                for (const itemId of result.deletedItemIds) {
+                  const bridged = await bridgeGarmentDelete(itemId);
+                  if (!bridged.bridged && bridged.reason !== "no_workspace") throw new Error("云端删除失败，请重试");
+                }
                 const updatedOutfits = await db.outfits.bulkGet(result.updatedOutfitIds);
                 for (const outfit of updatedOutfits) {
                   if (outfit) await bridgeOutfitUpsert(outfit);
@@ -1552,7 +1555,10 @@ export function WardrobeApp({ cloudAuth }: { cloudAuth?: WardrobeCloudAuth } = {
                     .map((item) => item.id)
                     .filter((itemId): itemId is number => typeof itemId === "number");
                   const result = await deleteItemsWithCascade({ itemIds, source: "manual_delete" });
-                  for (const itemId of result.deletedItemIds) await bridgeGarmentDelete(itemId);
+                  for (const itemId of result.deletedItemIds) {
+                    const bridged = await bridgeGarmentDelete(itemId);
+                    if (!bridged.bridged && bridged.reason !== "no_workspace") throw new Error("云端删除失败，请重试");
+                  }
                   const updatedOutfits = await db.outfits.bulkGet(result.updatedOutfitIds);
                   for (const outfit of updatedOutfits) {
                     if (outfit) await bridgeOutfitUpsert(outfit);

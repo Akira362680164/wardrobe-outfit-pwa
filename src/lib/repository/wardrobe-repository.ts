@@ -91,7 +91,10 @@ export async function repoDeleteGarments(
   try {
     const db = getWardrobeDb();
     const result = await deleteWardrobeItemsWithCascade({ db, itemIds: ids, source });
-    for (const itemId of result.deletedItemIds) void bridgeGarmentDelete(itemId);
+    for (const itemId of result.deletedItemIds) {
+      const bridged = await bridgeGarmentDelete(itemId);
+      if (!bridged.bridged && bridged.reason !== "no_workspace") throw new Error(bridged.reason);
+    }
     for (const outfitId of result.updatedOutfitIds) {
       const outfit = await db.outfits.get(outfitId);
       if (outfit) void bridgeOutfitUpsert(outfit);
@@ -240,7 +243,10 @@ export async function repoUndoWishlistPurchase(
 
     // 同步级联变更到工作区
     if (cascadeResult) {
-      for (const itemId of cascadeResult.deletedItemIds) void bridgeGarmentDelete(itemId);
+      for (const itemId of cascadeResult.deletedItemIds) {
+        const bridged = await bridgeGarmentDelete(itemId);
+        if (!bridged.bridged && bridged.reason !== "no_workspace") throw new Error(bridged.reason);
+      }
       for (const outfitId of cascadeResult.updatedOutfitIds) {
         const outfit = await db.outfits.get(outfitId);
         if (outfit) void bridgeOutfitUpsert(outfit);

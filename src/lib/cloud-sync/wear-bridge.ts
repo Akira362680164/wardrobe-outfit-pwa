@@ -9,6 +9,7 @@ import { loadCloudBridgeContext } from "@/lib/cloud-sync/bridge-context";
 import { currentWorkspaceGuard, deleteWearEvent, isGuardCurrent, writeWearEvent } from "@/lib/cloud-sync/sync-engine";
 import type { OutfitWearSyncResult } from "@/lib/outfit-wear-sync";
 import type { SavedOutfit, WardrobeItem } from "@/lib/types";
+import { resolveWorkspaceGarmentItemId } from "@/lib/cloud-sync/hash-workspace-id";
 
 export interface BridgeWearResult {
   bridged: boolean;
@@ -150,7 +151,7 @@ async function findWorkspaceGarmentByLegacyId(
   legacyItemId: number,
 ): Promise<WorkspaceGarmentRecord | undefined> {
   const garments = await db.garments.toArray();
-  return garments.find((garment) => garment.legacyItemId === legacyItemId && !garment.deletedAt);
+  return garments.find((garment) => resolveWorkspaceGarmentItemId(garment) === legacyItemId && !garment.deletedAt);
 }
 
 async function findWorkspaceOutfitByLegacyId(

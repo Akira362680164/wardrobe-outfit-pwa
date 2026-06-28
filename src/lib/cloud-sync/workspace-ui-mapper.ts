@@ -4,7 +4,7 @@
 
 import type { AccountWorkspaceDatabase, WorkspaceGarmentRecord, WorkspaceLocationRecord, WorkspaceOutfitPlanRecord, WorkspaceOutfitRecord, WorkspaceTripPlanRecord, WorkspaceWishlistItemRecord } from "@/lib/account-workspace-db";
 import type { ClosetLocation, OutfitCalendarPlan, OutfitPlanEntry, PlanPackingChecklistItem, SavedOutfit, WardrobeItem, WishlistItem } from "@/lib/types";
-import { hashWorkspaceIdToNumber } from "@/lib/cloud-sync/hash-workspace-id";
+import { resolveWorkspaceGarmentItemId } from "@/lib/cloud-sync/hash-workspace-id";
 
 export interface WorkspaceUiSnapshot {
   items: WardrobeItem[];
@@ -57,7 +57,7 @@ export async function readWorkspaceUiSnapshot(db: AccountWorkspaceDatabase): Pro
 function toWardrobeItem(g: WorkspaceGarmentRecord): WardrobeItem {
   const p = (g.payload ?? {}) as Record<string, unknown>;
   return {
-    id: g.legacyItemId ?? (p.legacyItemId as number | undefined) ?? (typeof p.id === "number" ? p.id : undefined) ?? hashWorkspaceIdToNumber(g.id),
+    id: resolveWorkspaceGarmentItemId(g),
     locationId: (g.locationId ?? p.locationId ?? "home") as string,
     name: (g.name ?? p.name ?? "") as string,
     status: (p.status ?? "active") as WardrobeItem["status"],
@@ -96,7 +96,7 @@ function toWardrobeItem(g: WorkspaceGarmentRecord): WardrobeItem {
 function toClosetLocation(l: WorkspaceLocationRecord): ClosetLocation {
   const p = (l.payload ?? {}) as Record<string, unknown>;
   return {
-    id: l.id,
+    id: typeof p.dexieId === "string" && p.dexieId ? p.dexieId : l.id,
     name: (l.name ?? p.name ?? "") as string,
     note: (l.note ?? p.note) as string | undefined,
     sortOrder: (l.sortOrder ?? p.sortOrder ?? 0) as number,

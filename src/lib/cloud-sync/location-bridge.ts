@@ -1,9 +1,10 @@
 "use client";
 
-import type { ClosetLocation } from "@/lib/types";
+import { DEFAULT_LOCATIONS, type ClosetLocation } from "@/lib/types";
 import { createWorkspaceUuidV7, getAccountWorkspaceDb, type WorkspaceLocationRecord } from "@/lib/account-workspace-db";
 import { loadCloudBridgeContext } from "@/lib/cloud-sync/bridge-context";
 import { currentWorkspaceGuard, deleteLocation, isGuardCurrent, writeLocation } from "@/lib/cloud-sync/sync-engine";
+import type { AccountWorkspaceRecord } from "@/lib/workspace-registry";
 
 export interface BridgeLocationResult {
   bridged: boolean;
@@ -81,6 +82,48 @@ export async function bridgeLocationDelete(locationId: string): Promise<BridgeLo
   } catch (err) {
     if (typeof console !== "undefined") {
       console.warn("[location-bridge] bridgeLocationDelete failed:", err);
+    }
+    return { bridged: false, reason: "write_failed" };
+  }
+}
+
+export async function ensureDefaultWorkspaceLocation(
+  workspace: AccountWorkspaceRecord,
+  deviceId: string,
+): Promise<BridgeLocationResult> {
+  try {
+    const db = getAccountWorkspaceDb(workspace);
+    const hasActiveLocation = await db.locations.filter((location) => !location.deletedAt).count();
+    if (hasActiveLocation > 0) return { bridged: true };
+
+    const location = DEFAULT_LOCATIONS[0];
+    const payload: Record<string, unknown> = {
+      name: location.name,
+      note: location.note,
+      sortOrder: location.sortOrder,
+      dexieId: location.id,
+    };
+    await writeLocation(
+      db,
+      {
+        workspace,
+        originDeviceId: deviceId,
+        baseRevision: 0,
+        payload,
+      },
+      {
+        id: createWorkspaceUuidV7(),
+        name: location.name,
+        note: location.note,
+        sortOrder: location.sortOrder,
+        payload,
+      },
+      "create",
+    );
+    return { bridged: true };
+  } catch (err) {
+    if (typeof console !== "undefined") {
+      console.warn("[location-bridge] ensureDefaultWorkspaceLocation failed:", err);
     }
     return { bridged: false, reason: "write_failed" };
   }

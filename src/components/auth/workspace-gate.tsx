@@ -6,6 +6,7 @@ import { computeBackoffMs, runBootstrap, runSyncOnce } from "@/lib/cloud-sync/sy
 import { probeCloudConnectivity, subscribeNetworkChanges, type ConnectivityState } from "@/lib/cloud-sync/connectivity";
 import { scheduleAssetRecovery } from "@/lib/cloud-sync/asset-recovery";
 import { AccountImageCache } from "@/lib/cloud-sync/image-cache";
+import { ensureDefaultWorkspaceLocation } from "@/lib/cloud-sync/location-bridge";
 import {
   isCloudSyncEnabled,
   isWorkspaceOfflineAuthorized,
@@ -96,6 +97,8 @@ export function WorkspaceGate({
         const hasLocalWorkspace = Boolean(existing && !existing.explicitlyLoggedOutAt);
         if (existing && isWorkspaceOfflineAuthorized(existing)) {
           const workspace = openWorkspaceForSession(session);
+          const defaultLocation = await ensureDefaultWorkspaceLocation(workspace, session.deviceId);
+          if (!defaultLocation.bridged) throw new Error("默认衣橱初始化失败，请稍后重试");
           workspaceRef.current = workspace;
           if (!cancelled) { setState({ status: "ready", workspace }); onReady?.(workspace); }
           void probeAndSync(workspace);
@@ -124,6 +127,8 @@ export function WorkspaceGate({
           const imageCache = new AccountImageCache(workspace.userIdHash);
           scheduleAssetRecovery(imageCache);
         }
+        const defaultLocation = await ensureDefaultWorkspaceLocation(workspace, session.deviceId);
+        if (!defaultLocation.bridged) throw new Error("默认衣橱初始化失败，请稍后重试");
         workspaceRef.current = workspace;
         if (!cancelled) { setState({ status: "ready", workspace }); onReady?.(workspace); }
         scheduleSync(workspace, cloud);

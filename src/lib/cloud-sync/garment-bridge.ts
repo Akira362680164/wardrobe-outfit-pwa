@@ -15,6 +15,8 @@ import { loadCloudBridgeContext } from "@/lib/cloud-sync/bridge-context";
 import { schedulePendingUploads } from "@/lib/cloud-sync/asset-upload-coordinator";
 import { currentWorkspaceGuard, deleteGarment, enqueueOutboxMutation, isGuardCurrent } from "@/lib/cloud-sync/sync-engine";
 import type { WorkspaceGarmentRecord } from "@/lib/account-workspace-db";
+import { resolveWorkspaceGarmentItemId } from "@/lib/cloud-sync/hash-workspace-id";
+import type { AccountWorkspaceRecord } from "@/lib/workspace-registry";
 
 export interface BridgeGarmentResult {
   bridged: boolean;
@@ -33,7 +35,7 @@ export async function bridgeGarmentCreate(item: WardrobeItem): Promise<BridgeGar
 
   try {
     const db = getAccountWorkspaceDb(ctx.workspace);
-    const existing = await findWorkspaceGarmentByLegacyId(db, item.id);
+    const existing = await findWorkspaceGarmentByItemId(db, item.id);
     const garmentId = existing?.id ?? createWorkspaceUuidV7();
     const garmentBase = {
       id: garmentId,
@@ -100,20 +102,9 @@ export async function bridgeGarmentDelete(legacyItemId: number): Promise<BridgeG
 
   try {
     const db = getAccountWorkspaceDb(ctx.workspace);
-    const existing = await findWorkspaceGarmentByLegacyId(db, legacyItemId);
-    if (!existing) return { bridged: false, reason: "workspace_garment_not_found" };
     if (!isGuardCurrent(currentWorkspaceGuard(ctx.workspace))) return { bridged: false, reason: "no_workspace" };
-    await deleteGarment(
-      db,
-      {
-        workspace: ctx.workspace,
-        originDeviceId: ctx.deviceId,
-        baseRevision: existing.revision,
-        payload: {},
-      },
-      existing.id,
-      existing.revision,
-    );
+    const deleted = await deleteWorkspaceGarmentByItemId(db, ctx.workspace, ctx.deviceId, legacyItemId);
+    if (!deleted) return { bridged: false, reason: "workspace_garment_not_found" };
     return { bridged: true };
   } catch (err) {
     if (typeof console !== "undefined") {
@@ -131,11 +122,33 @@ export function toCloudGarmentPayload(item: WardrobeItem, assetRefs?: CloudAsset
   return withCloudAssetRefs(safe, assetRefs);
 }
 
-async function findWorkspaceGarmentByLegacyId(
+export async function findWorkspaceGarmentByItemId(
   db: ReturnType<typeof getAccountWorkspaceDb>,
   legacyItemId: WardrobeItem["id"],
 ): Promise<WorkspaceGarmentRecord | undefined> {
   if (typeof legacyItemId !== "number") return undefined;
   const garments = await db.garments.toArray();
-  return garments.find((garment) => garment.legacyItemId === legacyItemId && !garment.deletedAt);
+  return garments.find((garment) => resolveWorkspaceGarmentItemId(garment) === legacyItemId && !garment.deletedAt);
+}
+
+export async function deleteWorkspaceGarmentByItemId(
+  db: ReturnType<typeof getAccountWorkspaceDb>,
+  workspace: AccountWorkspaceRecord,
+  deviceId: string,
+  itemId: number,
+): Promise<boolean> {
+  const existing = await findWorkspaceGarmentByItemId(db, itemId);
+  if (!existing) return false;
+  await deleteGarment(
+    db,
+    {
+      workspace,
+      originDeviceId: deviceId,
+      baseRevision: existing.revision,
+      payload: {},
+    },
+    existing.id,
+    existing.revision,
+  );
+  return true;
 }
