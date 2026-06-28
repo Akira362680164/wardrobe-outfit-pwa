@@ -168,7 +168,7 @@ export function OutfitPlanningCalendarView({
       </div>
 
       {/* Calendar grid */}
-      <div className="px-2 flex-1 overflow-y-auto" onClick={() => setExpandedDate(null)}>
+      <div className="px-2 flex-1 overflow-y-auto pb-[calc(env(safe-area-inset-bottom)+4rem)]" onClick={() => setExpandedDate(null)}>
         {/* Weekday headers */}
         <div className="grid grid-cols-7 gap-0.5 mb-1">
           {WEEKDAY_HEADERS.map((h) => (

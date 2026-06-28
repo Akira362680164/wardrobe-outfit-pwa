@@ -287,7 +287,6 @@ export function GarmentIntakeFlow({
 
   const handleRotate = useCallback(async (direction: "left" | "right") => {
     if (!activeImageId || !activeImage) return;
-    setIsCropping(false);
     const newDeg = direction === "left"
       ? ((activeImage.rotationDeg - 90 + 360) % 360) as 0 | 90 | 180 | 270
       : ((activeImage.rotationDeg + 90) % 360) as 0 | 90 | 180 | 270;
@@ -312,7 +311,7 @@ export function GarmentIntakeFlow({
     } catch {
       setError("旋转图片失败，请重试");
     }
-  }, [activeImageId, activeImage, setImageItems, setIsCropping, setError]);
+  }, [activeImageId, activeImage, setImageItems, setError]);
 
   async function handleResetCrop() {
     if (!activeImageId || !activeImage) return;
@@ -805,9 +804,10 @@ function MultiImageSelectStep({
   flowKind: "garment" | "wishlist";
   onCropActive?: () => void;
 }) {
+  const [expanded, setExpanded] = useState(false);
   const hasImages = imageItems.length > 0;
-  const displayItems = imageItems.slice(0, 5);
-  const extraCount = imageItems.length - 5;
+  const displayItems = expanded ? imageItems : imageItems.slice(0, 4);
+  const extraCount = expanded ? 0 : imageItems.length - 4;
   const flowNoun = flowKind === "wishlist" ? "种草" : "单品";
 
   // Custom preview: shown inside IntakeStepSection when images are selected
@@ -863,9 +863,13 @@ function MultiImageSelectStep({
           </div>
         ))}
         {extraCount > 0 && (
-          <div className="w-14 h-14 rounded-lg bg-ink/10 grid place-items-center text-xs font-semibold text-ink/55">
+          <button
+            type="button"
+            onClick={() => setExpanded(true)}
+            className="w-14 h-14 rounded-lg bg-ink/10 grid place-items-center text-xs font-semibold text-ink/55"
+          >
             +{extraCount}
-          </div>
+          </button>
         )}
       </div>
       {activeImageId && onCropActive ? (

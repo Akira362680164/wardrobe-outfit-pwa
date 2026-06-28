@@ -361,7 +361,8 @@ export function ChangePasswordView({
           await auth.onChangePassword(currentPassword, newPassword);
           onDone();
         } catch (error) {
-          setMessage(error instanceof Error ? error.message : "修改失败，请稍后再试");
+          const msg = error instanceof Error ? error.message : "修改失败，请稍后再试";
+          setMessage(msg === "Invalid phone or password" ? "当前密码不正确，请重试" : msg);
         }
       }}
     >

@@ -75,7 +75,7 @@ export function OutfitPlanDetailView({
     <div className="flex flex-col h-full">
       {/* Header */}
       <AppSubPageTopBar
-        title={`${typeLabel}计划`}
+        title={calendarPlan.type === "custom" ? "计划" : `${typeLabel}计划`}
         onBack={onBack}
       />
 
@@ -221,13 +221,13 @@ export function OutfitPlanDetailView({
           </button>
         </section>
 
-        <div className="h-8" />
+        <div className="h-[calc(env(safe-area-inset-bottom)+4rem)]" />
       </div>
 
       <MotionSheet open={showDeleteConfirm} onClose={() => setShowDeleteConfirm(false)}>
         <div className="text-center">
-          <h3 className="text-base font-semibold text-ink">删除{typeLabel}计划？</h3>
-          <p className="mt-1 text-sm text-ink/55">只会删除{typeLabel}计划和它的打包清单，每日穿搭安排会保留。</p>
+          <h3 className="text-base font-semibold text-ink">删除{calendarPlan.type === "custom" ? "" : typeLabel}计划？</h3>
+          <p className="mt-1 text-sm text-ink/55">只会删除{calendarPlan.type === "custom" ? "" : typeLabel}计划和它的打包清单，每日穿搭安排会保留。</p>
           <div className="mt-4 grid grid-cols-2 gap-3">
             <button type="button" className="h-11 rounded-full border border-ink/10 text-sm font-medium text-ink/70" onClick={() => setShowDeleteConfirm(false)}>取消</button>
             <button type="button" className="h-11 rounded-full bg-red-600 text-sm font-semibold text-white disabled:opacity-50" disabled={deleting} onClick={confirmDelete}>

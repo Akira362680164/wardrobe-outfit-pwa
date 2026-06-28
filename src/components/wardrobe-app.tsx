@@ -712,6 +712,10 @@ export function WardrobeApp({ cloudAuth }: { cloudAuth?: WardrobeCloudAuth } = {
     if (source === "camera") {
       try {
         const { Camera: CapacitorCamera, CameraResultType, CameraSource } = await import("@capacitor/camera");
+        const perms = await CapacitorCamera.checkPermissions();
+        if (perms.camera === "denied") {
+          throw new Error("相机权限已被系统禁用，请前往系统设置开启");
+        }
         const photo = await CapacitorCamera.getPhoto({
           source: CameraSource.Camera,
           resultType: CameraResultType.Uri,

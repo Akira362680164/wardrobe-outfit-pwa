@@ -1465,38 +1465,6 @@ export function WishlistView20({
           <div className="mt-3 pb-8">
             {detailTab === "assessment" && (
               <div className="space-y-4">
-                {/* 1. AI买前评估卡片 */}
-                <DetailAiCard
-                  title="AI买前评估"
-                  summary={assessment ? (
-                    <div className="grid gap-2">
-                      <p className="text-sm font-semibold">
-                        {assessment.verdict === "worth_buying" ? "建议买" : assessment.verdict === "not_recommended" ? "不建议" : "再考虑"}
-                        {assessment.score != null ? ` · ${assessment.score} / 100` : ""}
-                      </p>
-                      <p>{assessment.summary}</p>
-                      <p className="text-xs text-ink/40">可搭 {rule.matchCount} 件 · 相似 {rule.similarCount} 件</p>
-                      {assessment.matchReasons.length > 0 && (
-                        <p className="text-[11px] text-moss mt-0.5">{assessment.matchReasons.join(" · ")}</p>
-                      )}
-                      {assessment.conflictReasons.length > 0 && (
-                        <p className="text-[11px] text-amber-600 mt-0.5">{assessment.conflictReasons.join(" · ")}</p>
-                      )}
-                    </div>
-                  ) : (
-                    <div className="grid gap-2">
-                      <p>{rule.summary}</p>
-                      <p className="text-xs text-ink/40">可搭 {rule.matchCount} 件 · 相似 {rule.similarCount} 件</p>
-                    </div>
-                  )}
-                  sourceLabel={!hasDeviceMiniMaxKey(settings) && !assessment ? "本地规则来源" : assessment ? "基于 AI 评估" : undefined}
-                  generatedAt={assessment?.generatedAt}
-                  loading={aiProgress.visible && assessingId === item.id}
-                  emptyText="还没有生成买前评估"
-                  actionLabel={assessment ? "刷新评估" : "生成评估"}
-                  onAction={() => handleGenerateAssessment(item)}
-                />
-
                 <ItemDetailSections
                   name={item.name}
                   categoryLabel={item.category ? CATEGORY_LABELS[item.category] : undefined}
