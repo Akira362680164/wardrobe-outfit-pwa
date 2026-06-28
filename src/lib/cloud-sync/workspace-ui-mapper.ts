@@ -43,12 +43,17 @@ export async function readWorkspaceUiSnapshot(db: AccountWorkspaceDatabase): Pro
     uiLocations.push({ id: orphanId, name: orphanId === "home" ? "默认衣橱" : orphanId, sortOrder: uiLocations.length + 1, createdAt: now, updatedAt: now });
   }
 
+  const workspaceOutfitIdToLegacyId = new Map<string, string>();
+  for (const o of outfits) {
+    if (o.legacyOutfitId) workspaceOutfitIdToLegacyId.set(o.id, o.legacyOutfitId);
+  }
+
   return {
     items: uiItems,
     locations: uiLocations,
     outfits: outfits.map(toSavedOutfit),
     wishlistItems: wishlistItems.map(toWishlistItem),
-    outfitPlanEntries: outfitPlans.map(toOutfitPlanEntry),
+    outfitPlanEntries: outfitPlans.map((op) => toOutfitPlanEntry(op, workspaceOutfitIdToLegacyId)),
     outfitCalendarPlans: tripPlans.map(toOutfitCalendarPlan),
     planPackingChecklistItems: [], // ponytail: packingChecklistItems 暂不从工作区读，数据量少且强依赖旧结构
   };
@@ -191,12 +196,14 @@ function toOutfitCalendarPlan(t: WorkspaceTripPlanRecord): OutfitCalendarPlan {
   };
 }
 
-function toOutfitPlanEntry(op: WorkspaceOutfitPlanRecord): OutfitPlanEntry {
+function toOutfitPlanEntry(op: WorkspaceOutfitPlanRecord, workspaceOutfitIdToLegacyId: Map<string, string>): OutfitPlanEntry {
   const p = (op.payload ?? {}) as Record<string, unknown>;
+  const rawOutfitId = (op.outfitId ?? p.outfitId) as string | undefined;
+  const rawActualOutfitId = p.actualOutfitId as string | undefined;
   return {
     id: op.legacyPlanEntryId ?? op.id,
     date: (op.date ?? p.date ?? "") as string,
-    outfitId: (op.outfitId ?? p.outfitId) as string | undefined,
+    outfitId: rawOutfitId ? (workspaceOutfitIdToLegacyId.get(rawOutfitId) ?? rawOutfitId) : undefined,
     itemIds: p.itemIds as number[] | undefined,
     calendarPlanId: (op.tripPlanId ?? p.calendarPlanId) as string | undefined,
     title: p.title as string | undefined,
@@ -204,7 +211,7 @@ function toOutfitPlanEntry(op: WorkspaceOutfitPlanRecord): OutfitPlanEntry {
     weatherNote: p.weatherNote as string | undefined,
     status: (p.status ?? "planned") as OutfitPlanEntry["status"],
     wornDateLinked: p.wornDateLinked as string | undefined,
-    actualOutfitId: p.actualOutfitId as string | undefined,
+    actualOutfitId: rawActualOutfitId ? (workspaceOutfitIdToLegacyId.get(rawActualOutfitId) ?? rawActualOutfitId) : undefined,
     notes: p.notes as string | undefined,
     isPrimary: p.isPrimary as boolean | undefined,
     sortOrder: p.sortOrder as number | undefined,
