@@ -829,6 +829,7 @@ export function WardrobeApp({ cloudAuth }: { cloudAuth?: WardrobeCloudAuth } = {
     const now = new Date().toISOString();
     const db = getWardrobeDb();
     let saved = 0;
+    const bridgedItems: WardrobeItem[] = [];
     try {
       await runLoggedDbTransaction("save_batch_garment", () =>
         db.transaction("rw", db.items, async () => {
@@ -837,12 +838,15 @@ export function WardrobeApp({ cloudAuth }: { cloudAuth?: WardrobeCloudAuth } = {
             if (item.imageDataUrl) {
               const newId = await db.items.add(item);
               saved++;
-              // B5a: best-effort 镜像到账号工作区 + Outbox，失败仅 console.warn 不阻塞 UI
-              await bridgeGarmentCreate({ ...item, id: newId });
+              bridgedItems.push({ ...item, id: newId });
             }
           }
         }),
       );
+      // ponytail: bridge 含大量非 Dexie 异步操作，必须在事务外执行，否则事务会提前提交
+      for (const item of bridgedItems) {
+        await bridgeGarmentCreate(item);
+      }
       await refreshState();
       setShowGarmentIntakeFlow(false);
       setPendingViewingItemReturnTarget("wardrobe_home");
