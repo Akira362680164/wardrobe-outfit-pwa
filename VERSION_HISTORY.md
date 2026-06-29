@@ -1,3 +1,13 @@
+## 2026-06-30 / v2.0.17-test / Codex — 验证 Android 卸载重装后图片恢复
+
+- **目的**：按图片缺陷执行文档完成根因修复提交的精确 APK 回归，并固化可审查的最终报告。
+- **版本**：保持 `2.0.17-test` / Android `versionCode 20017`。
+- **改动文件**：`WARDROBE_IMAGE_FIX_FINAL_REPORT.md`、`VERSION_HISTORY.md`。
+- **验证**：从根因修复提交 `58406f1` 构建固定签名 APK，在 Pixel 6 AVD / Android 15 执行完整 `adb uninstall` →重装→登录→Bootstrap/Manifest/缓存/Mapper/首页恢复，两张图全部显示；此前同流程已额外重复两次。原始/缩略图持久缓存字节数和 SHA-256 与远端一致，logcat 无 App `FATAL EXCEPTION`。
+- **风险门禁**：**high**（Android 卸载重装、云端图片恢复和 APK 交付）。
+- **未触发 subagent**：用户未通知。
+- **未验证风险**：本轮使用 Android 模拟器而非物理真机；云 API 仍为临时 HTTP 地址。
+
 ## 2026-06-30 / v2.0.17-test / Codex — 修复 Android 卡片零宽与云端图片二进制上传
 
 - **目的**：修复已由 Android WebView 和服务端真实数据确认的两个失败阶段：首页图片已解码但布局宽度为 0，以及 Capacitor Android 二进制上传正文被 UTF-8 转换后触发 `asset_size_mismatch`。

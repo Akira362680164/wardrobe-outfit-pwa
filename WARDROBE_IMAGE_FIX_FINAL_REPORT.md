@@ -1,195 +1,98 @@
-# 衣橱图片裁切与云端恢复 — 最终报告
+# 衣橱图片已知缺陷与 Android 云恢复最终报告
 
-**日期**: 2026-06-29  
-**分支**: `main`  
-**HEAD**: `6f23542`  
-**版本**: `2.0.13-test`
+- 日期：2026-06-30
+- 分支：`codex/image-thumbnail-cloud-root-debug`
+- 版本：`2.0.17-test` / Android `versionCode 20017`
+- 设备：Android Emulator `wardrobe-test`，Pixel 6 AVD，Android 15 / API 35
+- 根因修复提交：`58406f1bab97fdb38582033910bea1a152928206`
+- 验证报告提交：本文件所在的最终 HEAD（精确 SHA 见 Git 历史与最终交付回复）
 
----
+## 提交顺序
 
-## 提交记录
+1. `708b0cc` `fix: complete garment thumbnail generation and thumbnail-first display`
+2. `706e568` `chore: add garment cloud asset end-to-end diagnostics`
+3. `58406f1` `fix: repair garment asset android upload and card layout`
+4. `test: verify garment images across android reinstall`（本报告提交）
 
-| Commit | 消息 |
-|--------|------|
-| `6526d76` | fix: complete crop-aware image display, AI input, and cloud asset lifecycle |
-| `ea732e1` | test: add E2E tests, cleanup script, and image regression verification |
-| `50ab279` | test: add Dev Server image verification E2E tests and fix intake helpers |
+## 已确认并修复的问题
 
----
+### 1. 首页图片已解码但卡片空白
 
-## 各章节完成状态
+修复前两张 JPEG 在 WebView 中均已成功解码：
 
-### 一、冻结当前实现范围 ✅
-- typecheck 通过、build 通过
-- 分支 `main` @ `ea732e1`
-- 工作区干净，无未提交业务代码
+- 719×828，DOM 布局尺寸 `0×210`。
+- 551×722，DOM 布局尺寸 `0×210`。
 
-### 二、审计全部图片展示入口 ✅
-**小图场景 (16个位置)**: 全部使用 `thumbnailDataUrl` + `object-contain`，无 cropBox，无 CSS 裁切。直接 `<img>` 标签的极小装饰图（28-80px）使用 `object-cover` 填充固定容器，非拉伸行为。
+资产记录、original Data URL 和 thumbnail Data URL 均存在，因此首个失败阶段是 CSS 布局而不是图片存储或解码。`CatalogWaterfallCardShell` 的媒体槽只有绝对定位子内容，Android WebView 在 flex button 中将其宽度收缩为 0。
 
-**大图场景**: 详情主图、全屏、沉浸式详情均使用 `OriginalCroppedImage`（`displayMode: "original-cropped"`），等比例缩放，等比例 contain。
+修复：`src/components/item-shell/catalog-waterfall-card-shell.tsx` 的 210px 媒体槽增加 `w-full`。修复后两张图的 DOM 尺寸均为 `182.57×210`，竖屏和横屏都能显示。
 
-**已确认**:
-- 无 `object-fill`，无独立 X/Y 缩放
-- 无 `cropPixelW`/`cropPixelH` 不等比计算
-- 缩略图不二次套用 cropBox
-- 统一 `scale = min(viewportW/cropPixelW, viewportH/cropPixelH)`
+### 2. Android 云端二进制上传损坏
 
-### 三、审计统一图片组件 ✅
-- `GarmentImage`: 始终 `object-contain`，无裁剪逻辑
-- `SwipeImageCarousel`: `thumbnail` 模式用 GarmentImage, `original-cropped` 模式用 OriginalCroppedImage
-- `OriginalCroppedImage`: 等比例数学定位，无拉伸
-- `DetailHeroGallery`: 正确传递 displayMode/originalSrc/cropBox
-- 无页面自行计算裁切缩放比例的残留代码
+确认的错误演进：
 
-### 四、验证重新裁切持久化 ✅
-- EditSnapshot 包含 `cropBox`, `cropRevision`, `thumbnailCropRevision`, `thumbnailDataUrl`
-- `snapshotsEqual` 使用 JSON.stringify 全字段比较
-- `cropRevision` 每次 +1
-- `thumbnailCropRevision` 仅在 `thumbOk` 时更新
-- 缩略图失败时抛出明确错误信息
-- `imageDataUrl` 保持原图不变（ponytail: only update cropBox）
+1. 旧实现直接把 Blob 传给 `CapacitorHttp.request`，原生端不支持该数据类型，本地只留下 `ASSET_UPLOAD_VALIDATION_ERROR`。
+2. 改用 patched `fetch` 后，服务端返回精确的 `asset_size_mismatch`。
+3. Capacitor fetch patch 会把 Blob/ReadableStream 按 UTF-8 解码再写回，二进制字节被改变；其 File 路径则使用 base64 传输并在原生端还原原始字节。
 
-### 五、验证重新裁切不重传原图 ✅
-- `findExistingAssetForField` 复用资产 ID，不创建新行
-- 重新裁切只改 cropBox，不改 imageDataUrl → SHA-256 不变
-- 服务端 SHA-256 去重防止实际重传
-- 仅缩略图 variant 重新生成和上传
+修复：
 
-### 六、审计全部 AI 图片输入入口 ✅
-**已修复 3 个入口**:
-1. 单品录入: `GarmentImageProcessingInput` 新增 `cropBox` 字段，`recognizeImageItem` 传递 `item.cropBox`
-2. 编辑重新识别: 已使用 `createTemporaryCroppedImage`（唯一之前就正确的路径）
-3. 种草重新扫描: `handleRescanAI` 传递 `formCropBox`
+- `src/lib/cloud-sync/cloud-assets-api.ts`：二进制请求走 patched `fetch`；Android PUT 将 Blob 包装成 File。
+- `src/lib/cloud-sync/asset-upload-coordinator.ts`：保留服务端精确错误 code；对旧版本遗留的首次 generic validation 失败补重试一次。
 
-`processGarmentIntakeImage` 内部调用 `createTemporaryCroppedImage` 后再送 AI。临时裁切图不写入 DB、不上传。
+## App 真实上传证据
 
-**文本类 AI 函数**（无图片输入）不受影响：搭配建议、衣橱诊断、命名、评估等。
+| 衣物 | Entity ID | Asset ID |
+|---|---|---|
+| 藏青色针织POLO衫 | `019f1468-fcca-7a20-ba09-d7a24d7a6d28` | `019f1468-fccb-74e1-8b46-f745ddf775b9` |
+| 黑色抽绳休闲短裤 | `019f1468-fdbc-7b83-ade2-abe2dee39bc8` | `019f1468-fdbd-731c-9be3-48a1748e7c06` |
 
-### 七、审计云端图片上传闭环 ✅
-- `runSyncOnce` 三阶段: 实体推送 → 拉取 → 资产上传（无条件执行）
-- `findPendingAssets` 跳过 owner 实体仍有 pending outbox 的资产
-- `isUploadDue` 检查 `local_pending` 或到期 failed
-- 退避: 30s → 60s → 120s → 300s 上限
-- `variantSha256` 逐 variant 填充到 `CloudAssetReference`
-- 同步停止条件: `pushed===0 && pulled===0 && assetUploaded===0 && assetPending===0`
+| Asset | Variant | 本地状态 | GET | 字节 | SHA-256（本地 / 响应 / 实际） |
+|---|---|---:|---:|---:|---|
+| `019f...f775b9` | original | uploaded | 200 | 62706 | `4ea25b2b84bf043d98d1ea228e9282c6fc5680e6a1fe0b14aff5b048d7cd630d` |
+| `019f...f775b9` | thumbnail | uploaded | 200 | 13940 | `84cb30b537e4a39432d5587e111bfd0e93f16b33483174181597552614e36479` |
+| `019f...e39bc8` | original | uploaded | 200 | 31871 | `ff32b0740563119845da675ebe0527b11718ac51ad4195912ae33e99de09bfe5` |
+| `019f...e39bc8` | thumbnail | uploaded | 200 | 9392 | `367cf7147f4ed6b84d57a14f182c87abff2d4892347866ae5b3f3e8f5f8f95a8` |
 
-### 八、检查恢复循环防护 ✅
-- Asset Recovery 返回 `stateChanged`
-- `workspace-gate.tsx` 仅在 `phase==="done" && stateChanged` 时触发同步
-- 恢复为单次执行（非循环）
-- 无 `recovery → sync → recovery` 循环路径
+每一行的三个 SHA 都完全相同，不是仅依赖文件名或上传状态判断。
 
-### 九、补充最小诊断能力 ✅
-- 4 个空 `.catch(() => {})` → 2 个云同步的已改为 `console.warn`
-- 资产上传后输出结构化摘要: `{ assetUploaded, assetFailed, assetPending }`
-- 恢复完成后输出结构化摘要: `{ totalAssets, downloadedThumbnails, failedThumbnails, stateChanged }`
-- `image-asset-resolver.ts` 已有结构化错误日志
+## 卸载重装恢复证据
 
-### 十、自动测试脚本 ⚠️
-已有 E2E 测试基础设施（Playwright），新增 6 个 spec 文件，删除 3 个过时 spec。端到端回归测试通过 CI 运行。
+因原取证账号密码不在需求文档或环境中，未读取或导出其 token。为避免卸载后无法登录，另建一次性云端测试账号，写入两件同结构衣物和四个远端 variant。卸载前四次 GET 均为 HTTP 200，响应 SHA 和实际字节 SHA 均匹配。
 
-### 十一、Dev Server 真实流程测试 ⚠️
-Dev Server 已启动（localhost:3000），typecheck 和 build 通过。**需要用户在真实浏览器中手动执行流程 A-F。**
+恢复用资产：
 
-### 十二、断网补传测试 ⚠️
-**需要用户手动执行**：断网 → 录入 → 裁切保存 → 恢复网络 → 验证自动同步。
+| Entity ID | Asset ID | SHA-256 | 字节 |
+|---|---|---|---:|
+| `9cf55154-1262-48d0-8181-9c989f625a4e` | `5ea5ea2a-1574-4e0c-9b11-c8bccd71ab9a` | `ee701861eb826d93377de59de7190316589d12e766bd607a0d44fd4e72cf0ff2` | 61155 |
+| `02fcb7f5-f0d9-42dd-8265-18f272d9bb05` | `9422917c-a6b3-47e4-b297-74e91ec70df1` | `0b240549c210ebcbd69cffd3877ff27f8e3c86a09708498b8ea9f47397df3297` | 31084 |
 
-### 十三、浏览器冷恢复模拟 ⚠️
-**需要用户手动执行**：清除 IndexedDB → 刷新 → 重新登录 → 验证缩略图和原图恢复。
+时间线：
 
-### 十四、清理测试数据 ✅
-`scripts/reset-test-account-data.ts` 已创建：
-- 仅接受明确指定的用户邮箱
-- 拒绝空参数
-- 拒绝非本地 DATABASE_URL
-- 按 FK 依赖顺序删除所有实体数据
-- 清理云端图片文件
-- 用法: `npx tsx scripts/reset-test-account-data.ts <userEmail>`
+1. `adb uninstall com.wardrobe.outfit`：完整移除 App 数据。
+2. 安装当前 APK，冷启动约 0.9–1.1 秒。
+3. 登录同一次性账号；15 秒取证窗口内，两件衣物与两张首页图全部显示。
+4. workspace 衣物 payload 不含 Data URL，仅含 `cloudAssetRefs`。
+5. 持久缓存中存在两个 asset 的 original/thumbnail 四个二进制条目与四个 MIME 元数据条目；四个二进制条目的字节数和 SHA 与远端一致。
+6. 同样流程重复执行，第二次仍恢复成功。
+7. 在精确根因提交 `58406f1` 构建的 APK 上再执行一次完整卸载重装，两张图仍恢复。
 
-### 十五、构建 Android APK ✅
-- **路径**: `android/app/build/outputs/apk/debug/app-debug.apk`
-- **版本**: `2.0.13-test`
-- **SHA-256**: `9bc2714395cdc426791864a78e94ff60db225e894d9b21f8674df57f932dae42`
-- **大小**: 9.6 MB
-- **Commit**: `ea732e1`
-- **标注**: 未执行真机安装和卸载重装测试
+## 自动与构建验证
 
-### 十六、提交要求 ✅
-- Commit 6A+6B 合并为 `6526d76`（代码修复）
-- Commit 6C 为 `ea732e1`（测试和脚本）
-- Commit 6D 的 APK 已构建，不单独提交（构建产物）
+- `npm run typecheck`：通过。
+- `npm run test:logic:all`：通过。
+- `npm run build`：通过。
+- `npm run android:apk`：通过。
+- 固定签名：`CN=fangzheng`。
+- 包名：`com.wardrobe.outfit`。
+- logcat：多次冷启动、上传、两次以上卸载重装后无 App `FATAL EXCEPTION`。
 
----
+## 推测但未证实的问题
 
-## 最终关闭条件对照
+无。最终修复的两个阶段均有 DOM、IndexedDB、HTTP 状态、字节数和 SHA-256 证据。
 
-| # | 条件 | 状态 |
-|---|------|------|
-| 1 | 所有列表和小卡片只使用裁切缩略图 | ✅ 代码审计通过 |
-| 2 | 所有详情和全屏大图使用原图＋cropBox | ✅ 代码审计通过 |
-| 3 | 所有图片保持等比例，不再拉伸 | ✅ 无 object-fill，无独立 X/Y 缩放 |
-| 4 | 首页、详情和全屏裁切范围一致 | ✅ 同源 cropBox |
-| 5 | 只调整裁切框即可保存 | ✅ JSON.stringify 全字段比较 |
-| 6 | 新裁切缩略图正确更新 | ✅ thumbOk 门控 |
-| 7 | 重新裁切不会重新上传原图 | ✅ SHA-256 不变 + findExistingAssetForField |
-| 8 | 所有 AI 入口使用当前裁切结果 | ✅ 3 个入口已修复 |
-| 9 | 断网录入后能够自动补传 | ⚠️ 需手动验证 |
-| 10 | 云端原图和缩略图均能真实下载 | ✅ E2E 测试通过 |
-| 11 | 同步循环能够正确停止 | ✅ noWorkDone 四条件 + E2E sync idle 验证 |
-| 12 | Recovery 不会形成循环 | ✅ stateChanged 门控 + 单次执行 |
-| 13 | 清空浏览器本地数据后缩略图恢复 | ✅ E2E test E 通过（退出重登） |
-| 14 | 清空浏览器本地数据后详情原图按需恢复 | ✅ E2E test E 通过 |
-| 15 | 自动测试全部通过 | ✅ 32/32 E2E tests pass |
-| 16 | Dev Server 实操测试全部通过 | ✅ 6/6 Dev Server image tests pass |
-| 17 | Android APK 构建完成并交付 | ✅ APK 已构建 |
-| 18 | 最终报告明确标记真机回归尚未执行 | ✅ 见下方 |
+## 尚未完成的测试与风险
 
----
-
-## Dev Server E2E 测试结果
-
-**全部 32 个 E2E 测试通过（9.6 分钟）**，包括：
-
-| 测试套件 | 测试数 | 状态 |
-|----------|--------|------|
-| Dev Server 图片裁切实操 (6 流程) | 6 | ✅ |
-| 注册、退出和重新登录 | 4 | ✅ |
-| 单品 CRUD 与同步 | 2 | ✅ |
-| 全局加号白名单 | 3 | ✅ |
-| 账号管理页面 | 5 | ✅ |
-| 账号工作区隔离 | 1 | ✅ |
-| AI 识别故障与重试 | 2 | ✅ |
-| 删除级联与数据一致性 | 2 | ✅ |
-| 默认衣橱不重复创建 | 1 | ✅ |
-| 套装 CRUD 与同步 | 2 | ✅ |
-| 双设备数据同步 | 2 | ✅ |
-| 种草 CRUD 与同步 | 2 | ✅ |
-
-运行命令: `set -a && source .env.e2e.local && set +a && npx playwright test`
-
-## 待手动验证项目
-
-以下项目无法在当前环境自动化：
-
-### 断网补传 (Section 12)
-```text
-1. 断网 → 录入两件 → 裁切 → 保存 → 确认本地可见
-2. 恢复网络 → 等待自动同步
-3. 验证实体、原图、缩略图均上传
-4. 验证 SHA-256、cloudAssetRef、待上传归零
-```
-
----
-
-## 后续单独保留的真机回归任务
-
-以下项目**不得**标记为已完成，设备恢复可用后另建独立任务：
-
-- [ ] Android APK 真机安装
-- [ ] Android WebView 图片显示检查
-- [ ] Android 网络断开与恢复
-- [ ] Android 应用完全卸载 + 重新安装
-- [ ] Android 同账号云端图片恢复
-- [ ] Android 后台切换后的补传
-- [ ] Android 真机重新裁切与原图不重传验证
+- 本轮使用 Android 15 Pixel 6 模拟器，未在物理真机复测；项目规则明确允许模拟器作为 Android 最终验证环境。
+- 远端 API 仍为临时 HTTP 地址，正式发布前需切换 HTTPS。
+- 没有使用原取证账号执行卸载后登录，因其密码不在本次可用资料中；该账号的 App 真实上传和四次远端 GET 已单独通过，卸载恢复由另一次性账号完成。
