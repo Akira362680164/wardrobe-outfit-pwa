@@ -45,7 +45,7 @@ export default defineConfig({
   webServer: [
     {
       name: "wardrobe-api",
-      command: "npm --workspace @wardrobe/wardrobe-api run dev",
+      command: "npm --workspace @wardrobe/wardrobe-api run dev:e2e",
       url: `${API_URL}/api/ready`,
       timeout: 120_000,
       reuseExistingServer: !process.env.CI,

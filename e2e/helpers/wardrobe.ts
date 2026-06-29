@@ -22,13 +22,14 @@ export async function assertDefaultClosetCount(
 ): Promise<void> {
   // navigate to wardrobe management
   // ponytail: the "默认衣橱" entries are in wardrobe management view
-  const rows = page.getByText(/默认衣橱/i);
+  const rows = page.getByRole("button", { name: /^默认衣橱/ });
   const count = await rows.count();
   expect(count).toBe(expectedCount);
 }
 
 export async function openWardrobeManagement(page: Page): Promise<void> {
-  await page.getByRole("button", { name: /衣橱管理|管理衣橱/i }).click();
+  // ponytail: wardrobe management is within settings page
+  await page.getByRole("button", { name: "设置", exact: true }).click();
 }
 
 export async function refreshPage(page: Page): Promise<void> {

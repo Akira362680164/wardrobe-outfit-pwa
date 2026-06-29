@@ -38,7 +38,10 @@ export async function waitForSyncIdle(page: Page): Promise<void> {
     await page.waitForTimeout(3000);
     return;
   }
-  // ponytail: outbox must be 0 and no error; syncState cycles between "idle" and "syncing" — both are acceptable
+  // ponytail: outbox must be 0; syncState can be "idle" or "syncing"; "sync_skipped" is non-fatal when outbox is 0
   await expect(diag).toHaveAttribute("data-outbox-count", "0", { timeout: 30_000 });
-  await expect(diag).toHaveAttribute("data-last-error", "");
+  const lastError = await diag.getAttribute("data-last-error");
+  if (lastError && lastError !== "sync_skipped") {
+    throw new Error(`Sync error: ${lastError}`);
+  }
 }

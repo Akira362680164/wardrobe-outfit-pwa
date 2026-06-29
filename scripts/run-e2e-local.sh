@@ -40,5 +40,16 @@ fi
 
 mkdir -p "$E2E_STORAGE_ROOT"
 
+# Load MiniMax API key from Keychain for AI recognition tests
+MINIMAX_API_KEY="$(
+  security find-generic-password \
+    -s "MINIMAX_API_KEY" \
+    -w 2>/dev/null
+)" || true
+if [[ -n "$MINIMAX_API_KEY" ]]; then
+  export MINIMAX_API_KEY
+  trap 'unset MINIMAX_API_KEY' EXIT
+fi
+
 cd "$ROOT_DIR"
 npx playwright test "$@"
