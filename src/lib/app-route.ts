@@ -39,6 +39,19 @@ export type AppRoute =
   | { name: "intake_outfit"; returnTo: AppRouteName }
   | { name: "intake_wishlist"; returnTo: AppRouteName };
 
+// v2.0.12-test: 全局加号白名单——只有三个主首页 (wardrobe / outfit / wishlist) 允许显示全局加号；
+// 详情页、编辑页、设置/账号/修改密码、所有 wishlist_* 子页、所有 intake_* 路由、outfit_calendar 全部隐藏。
+// 加白名单优先于不断累加黑名单。
+const GLOBAL_CREATE_ALLOWED_ROUTE_NAMES: ReadonlySet<AppRouteName> = new Set([
+  "wardrobe_home",
+  "outfit_home",
+  "wishlist_home",
+]);
+
+export function isGlobalCreateAllowedRoute(name: AppRouteName): boolean {
+  return GLOBAL_CREATE_ALLOWED_ROUTE_NAMES.has(name);
+}
+
 export function getMainTabFromRoute(route: AppRoute): MainTabKey {
   switch (route.name) {
     case "wardrobe_home":

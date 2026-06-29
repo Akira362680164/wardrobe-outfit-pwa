@@ -39,7 +39,7 @@ export function AccountManagementView({
           <div className="min-w-0 flex-1">
             <h2 className="text-base font-semibold">{auth.user.maskedPhone}</h2>
             <p className="mt-1 text-xs text-ink/55">账号服务已连接</p>
-            <p className="mt-1 truncate text-[11px] text-ink/45">{auth.deviceLabel} · {auth.deviceId}</p>
+            {/* v2.0.12-test: 不再暴露 deviceId / deviceLabel，仅保留账号标识 */}
           </div>
         </div>
       </article>

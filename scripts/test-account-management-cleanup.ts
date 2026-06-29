@@ -35,13 +35,17 @@ check("账号管理页有「退出登录」按钮", /退出登录/.test(accountV
 check("退出登录有二次确认", /确认退出/.test(accountViews) && /确认退出登录？/.test(accountViews));
 check("退出登录提供「取消」二次确认", /setConfirmingLogout\(false\)/.test(accountViews));
 
-console.log("\n=== 全局加号白名单 ===");
-check("wardrobe-app 含 GLOBAL_CREATE_DENIED_ROUTES 白名单", /GLOBAL_CREATE_DENIED_ROUTES/.test(wardrobeApp));
-check("白名单包含 settings_home", /"settings_home"/.test(wardrobeApp.split("GLOBAL_CREATE_DENIED_ROUTES")[1] ?? ""));
-check("白名单包含 account_management", /"account_management"/.test(wardrobeApp.split("GLOBAL_CREATE_DENIED_ROUTES")[1] ?? ""));
-check("白名单包含 change_password", /"change_password"/.test(wardrobeApp.split("GLOBAL_CREATE_DENIED_ROUTES")[1] ?? ""));
-check("shouldShowGlobalCreate 不再裸写 settings_home", !/route\.name !== "settings_home"/.test(wardrobeApp));
-
+console.log("\n=== 全局加号白名单（v2.0.12-test: 白名单函数）===");
+const appRoute = readFileSync("src/lib/app-route.ts", "utf8");
+check("app-route 导出 isGlobalCreateAllowedRoute", /export function isGlobalCreateAllowedRoute/.test(appRoute));
+check("app-route 白名单只含 wardrobe_home", /GLOBAL_CREATE_ALLOWED_ROUTE_NAMES[\s\S]{0,300}"wardrobe_home"/.test(appRoute));
+check("app-route 白名单只含 outfit_home", /GLOBAL_CREATE_ALLOWED_ROUTE_NAMES[\s\S]{0,300}"outfit_home"/.test(appRoute));
+check("app-route 白名单只含 wishlist_home", /GLOBAL_CREATE_ALLOWED_ROUTE_NAMES[\s\S]{0,300}"wishlist_home"/.test(appRoute));
+check("app-route 白名单不包含 settings_home", !/GLOBAL_CREATE_ALLOWED_ROUTE_NAMES[\s\S]{0,400}"settings_home"/.test(appRoute));
+check("wardrobe-app shouldShowGlobalCreate 调用 isGlobalCreateAllowedRoute", /shouldShowGlobalCreate[\s\S]{0,250}isGlobalCreateAllowedRoute/.test(wardrobeApp));
+check("wardrobe-app 不再含 GLOBAL_CREATE_DENIED_ROUTES 黑名单", !/GLOBAL_CREATE_DENIED_ROUTES/.test(wardrobeApp));
+check("账号管理页不再显示 deviceId", !/auth\.deviceId/.test(accountViews));
+check("账号管理页不再显示 deviceLabel", !/auth\.deviceLabel/.test(accountViews));
 console.log(`\naccount management cleanup tests: ${pass} passed, ${fail} failed`);
 if (fail > 0) {
   console.error("failures:\n" + failures.join("\n"));

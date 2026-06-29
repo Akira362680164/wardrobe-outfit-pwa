@@ -5,7 +5,7 @@ import { KeepAwake } from "@capacitor-community/keep-awake";
 import { Capacitor } from "@capacitor/core";
 import { useAppNavigationController } from "@/components/use-app-navigation-controller";
 import type { AppRoute } from "@/lib/app-route";
-import { getBackRoute, isDetailRoute, isIntakeRouteName } from "@/lib/app-route";
+import { getBackRoute, isDetailRoute, isIntakeRouteName, isGlobalCreateAllowedRoute } from "@/lib/app-route";
 import {
   Archive,
   BarChart3,
@@ -831,18 +831,11 @@ export function WardrobeApp({ cloudAuth }: { cloudAuth?: WardrobeCloudAuth } = {
     !!captureCropJob ||
     captureImageQueue.length > 0;
 
-  // v0.9.46-dev: global create button visibility
-  // v1.1.20-dev (方案 C): 改为基于 route 派生 — activeView 独立 state 已删除。
-  // v2.0.11-test P1-6: 设置/账号相关子页不再显示全局加号（白名单：wardrobe / outfit / wishlist / intake 主路径）。
-  const GLOBAL_CREATE_DENIED_ROUTES = new Set([
-    "settings_home",
-    "account_management",
-    "change_password",
-  ]);
+  // v2.0.12-test: 全局加号基于 app-route 的白名单函数 isGlobalCreateAllowedRoute；
+  // 只允许 wardrobe_home / outfit_home / wishlist_home 三个主首页。
   const shouldShowGlobalCreate =
     !hideMobileNav &&
-    !GLOBAL_CREATE_DENIED_ROUTES.has(route.name) &&
-    !isIntakeRouteName(route.name) &&
+    isGlobalCreateAllowedRoute(route.name) &&
     !outfitSubPageActive &&
     !showExitDialog &&
     !showCreateSheet;
