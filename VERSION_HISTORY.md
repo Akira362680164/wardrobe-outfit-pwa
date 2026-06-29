@@ -1,3 +1,13 @@
+## 2026-06-29 / v2.0.16-test / Codex — 递增 Android 测试版本用于模拟器图片恢复取证
+
+- **目的**：阶段一缩略图修复已进入后续 Android APK 验证与 root 模拟器取证，按项目规则递增测试版本，确保 APK 内构建身份可与当前 HEAD 对齐。
+- **版本**：`2.0.15-test` → `2.0.16-test`，Android `versionCode` 将由 `20015` → `20016`。
+- **改动文件**：`package.json`、`package-lock.json`、`VERSION_HISTORY.md`。
+- **验证计划**：后续执行 `npm run android:apk`、核对 `aapt`/`apksigner`、安装到 `wardrobe-test` 模拟器，并用 `test-clothes/` 中 7 张测试图进行裁切/未裁切录入与卸载重装恢复取证。
+- **风险门禁**：**high**（Android 版本与 APK 验证链路）。
+- **未触发 subagent**：用户未通知。
+- **未验证风险**：本条仅版本递增，APK 构建、安装、云端数据取证和恢复结论将在后续记录。
+
 ## 2026-06-29 / v2.0.15-test / Codex — 完成缩略图生成与缩略图优先展示阶段一修复
 
 - **目的**：按缺陷修复计划先修复已确认的本地缩略图错误，不新增云端链路诊断代码；云端恢复根因后续改用 root Android 模拟器与云端数据直接取证。
