@@ -2,125 +2,9 @@
 // 账号工作区 DB 记录 → UI 模型转换（P0-N01）。
 // 读取仍可在无工作区时降级到旧 Dexie，本文件仅处理工作区→UI 方向。
 
-import type { AccountWorkspaceDatabase, WorkspaceAssetRecord, WorkspaceGarmentRecord, WorkspaceLocationRecord, WorkspaceOutfitPlanRecord, WorkspaceOutfitRecord, WorkspaceTripPlanRecord, WorkspaceWishlistItemRecord } from "@/lib/account-workspace-db";
+import type { AccountWorkspaceDatabase, WorkspaceGarmentRecord, WorkspaceLocationRecord, WorkspaceOutfitPlanRecord, WorkspaceOutfitRecord, WorkspaceTripPlanRecord, WorkspaceWishlistItemRecord } from "@/lib/account-workspace-db";
 import type { ClosetLocation, OutfitCalendarPlan, OutfitPlanEntry, PlanPackingChecklistItem, SavedOutfit, WardrobeItem, WishlistItem } from "@/lib/types";
 import { resolveWorkspaceGarmentItemId } from "@/lib/cloud-sync/hash-workspace-id";
-
-interface AssetImageBundle {
-  original?: string;
-  thumbnail?: string;
-  _updatedAt?: string;
-}
-
-type AssetIndex = Map<string, AssetImageBundle>;
-
-function readAssetBundle(asset: WorkspaceAssetRecord): AssetImageBundle {
-  const payload = (asset.payload ?? {}) as Record<string, unknown>;
-  const uploads = (payload.uploads ?? {}) as Record<string, unknown>;
-  const originalUpload = (uploads.original ?? {}) as { dataUrl?: string };
-  const thumbnailUpload = (uploads.thumbnail ?? {}) as { dataUrl?: string };
-  return {
-    ...(typeof originalUpload.dataUrl === "string" ? { original: originalUpload.dataUrl } : {}),
-    ...(typeof thumbnailUpload.dataUrl === "string" ? { thumbnail: thumbnailUpload.dataUrl } : {}),
-    _updatedAt: asset.updatedAt,
-  };
-}
-
-function readAssetFieldName(asset: WorkspaceAssetRecord): string | undefined {
-  const payload = (asset.payload ?? {}) as Record<string, unknown>;
-  const source = (payload.source ?? {}) as { fieldName?: unknown };
-  return typeof source.fieldName === "string" ? source.fieldName : undefined;
-}
-
-export function buildAssetIndex(assets: WorkspaceAssetRecord[]): AssetIndex {
-  const index: AssetIndex = new Map();
-  for (const asset of assets) {
-    if (asset.deletedAt) continue;
-    if (asset.ownerEntityType !== "garment" && asset.ownerEntityType !== "wishlistItem" && asset.ownerEntityType !== "outfit") continue;
-    const fieldName = readAssetFieldName(asset);
-    if (!fieldName) continue;
-    const bundle = readAssetBundle(asset);
-    if (!bundle.original && !bundle.thumbnail) continue;
-    const key = asset.ownerEntityType + "::" + asset.ownerEntityId + "::" + fieldName;
-    const existing = index.get(key);
-    if (!existing) {
-      index.set(key, bundle);
-      continue;
-    }
-    if (asset.updatedAt && existing._updatedAt && asset.updatedAt > existing._updatedAt) {
-      index.set(key, bundle);
-    }
-  }
-  return index;
-}
-
-export function pickAssetImage(index: AssetIndex, ownerEntityType: "garment" | "wishlistItem" | "outfit", ownerEntityId: string, fieldName: string): AssetImageBundle | undefined {
-  return index.get(ownerEntityType + "::" + ownerEntityId + "::" + fieldName);
-}
-
-function hydrateGarmentImages(index: AssetIndex, g: WorkspaceGarmentRecord): { imageDataUrl: string; thumbnailDataUrl?: string } {
-  // v2.0.12-test: 只读当前资产架构 (imageAssetInputsForGarment 生成的 imageDataUrl 键)，
-  // 不再从 entity.payload 兜底任何 base64 字段。资产缺失时返回空字符串。
-  const main = pickAssetImage(index, "garment", g.id, "imageDataUrl");
-  return {
-    imageDataUrl: main?.original ?? "",
-    thumbnailDataUrl: main?.thumbnail,
-  };
-}
-
-function hydrateWishlistImages(index: AssetIndex, w: WorkspaceWishlistItemRecord): { imageDataUrl: string; thumbnailDataUrl?: string } {
-  // v2.0.12-test: 只读当前资产架构 (imageAssetInputsForWishlist 生成的 imageDataUrl 键)。
-  const main = pickAssetImage(index, "wishlistItem", w.id, "imageDataUrl");
-  return {
-    imageDataUrl: main?.original ?? "",
-    thumbnailDataUrl: main?.thumbnail,
-  };
-}
-
-function hydrateOutfitImages(index: AssetIndex, o: WorkspaceOutfitRecord): {
-  coverImageDataUrl?: string;
-  previewImageDataUrl?: string;
-  sourceImageDataUrl?: string;
-  thumbnailDataUrl?: string;
-  autoCoverImageDataUrl?: string;
-  outfitRealImages: SavedOutfit["outfitRealImages"];
-} {
-  // v2.0.12-test: 只读当前资产架构 (imageAssetInputsForOutfit 生成的键)；
-  // outfitRealImages 仅保留 id + 来自资产的数据，丢失原 payload 字段。
-  const cover = pickAssetImage(index, "outfit", o.id, "coverImageDataUrl");
-  const preview = pickAssetImage(index, "outfit", o.id, "previewImageDataUrl");
-  const autoCover = pickAssetImage(index, "outfit", o.id, "autoCoverImageDataUrl");
-  const source = pickAssetImage(index, "outfit", o.id, "sourceImageDataUrl");
-  // outfitRealImages 的 id 列表从相邻 outfitItems 派生。
-  const realIds = collectOutfitRealImageIds(o);
-  const now = o.updatedAt ?? new Date().toISOString();
-  return {
-    coverImageDataUrl: cover?.original,
-    previewImageDataUrl: preview?.original,
-    sourceImageDataUrl: source?.original,
-    thumbnailDataUrl: cover?.thumbnail ?? preview?.thumbnail ?? autoCover?.thumbnail,
-    autoCoverImageDataUrl: autoCover?.original,
-    outfitRealImages: realIds.map((id) => {
-      const realAsset = pickAssetImage(index, "outfit", o.id, `outfitRealImages.${id}.imageDataUrl`);
-      return {
-        id,
-        imageDataUrl: realAsset?.original ?? "",
-        thumbnailDataUrl: realAsset?.thumbnail,
-        createdAt: realAsset?._updatedAt ?? now,
-        updatedAt: realAsset?._updatedAt ?? now,
-      };
-    }),
-  };
-}
-
-function collectOutfitRealImageIds(o: WorkspaceOutfitRecord): string[] {
-  // outfitRealImages 的 id 列表已经从 entity payload 移出（资产架构下每个实拍图只对应一个 asset），
-  // 这里从 db.outfitItems 派生；当前调用点不查 db，因此本函数返回 []，UI 模型仅含主图相关资产。
-  // 注意：outfitRealImages 在当前资产架构下暂时不再随 UI snapshot 返回（已迁移到 outbox + asset 单独维护）。
-  void o;
-  return [];
-}
-
 
 export interface WorkspaceUiSnapshot {
   items: WardrobeItem[];
@@ -133,7 +17,7 @@ export interface WorkspaceUiSnapshot {
 }
 
 export async function readWorkspaceUiSnapshot(db: AccountWorkspaceDatabase): Promise<WorkspaceUiSnapshot> {
-  const [garments, locations, outfits, wishlistItems, _wearEvents, tripPlans, outfitPlans, assets] = await Promise.all([
+  const [garments, locations, outfits, wishlistItems, _wearEvents, tripPlans, outfitPlans] = await Promise.all([
     db.garments.filter(g => !g.deletedAt).toArray(),
     db.locations.filter(l => !l.deletedAt).toArray(),
     db.outfits.filter(o => !o.deletedAt).toArray(),
@@ -141,18 +25,23 @@ export async function readWorkspaceUiSnapshot(db: AccountWorkspaceDatabase): Pro
     db.wearEvents.filter(w => !w.deletedAt).toArray(),
     db.tripPlans.filter(t => !t.deletedAt).toArray(),
     db.outfitPlans.filter(p => !p.deletedAt).toArray(),
-    db.assets.toArray(),
   ]);
-  const assetIndex = buildAssetIndex(assets);
 
-  const uiItems = garments.map((g) => toWardrobeItem(g, assetIndex));
+  const uiItems = garments.map(toWardrobeItem);
   const uiLocations = locations.map(toClosetLocation);
   const locationIdSet = new Set(uiLocations.map((l) => l.id));
 
-  // v2.0.12-test: UI mapper 严格只读。
-  // 禁止：补建衣橱、合并同名衣橱、孤儿衣物迁移。
-  // 单品保存时如果 locationId 在衣橱列表中找不到，必须中止保存并记录诊断错误（由 garment-bridge 负责）。
-  void locationIdSet;
+  // ponytail: 孤儿衣物（locationId 不在任何已有衣橱中）自动承接默认衣橱
+  const orphanLocationIds = new Set<string>();
+  for (const item of uiItems) {
+    if (item.locationId && !locationIdSet.has(item.locationId)) {
+      orphanLocationIds.add(item.locationId);
+    }
+  }
+  const now = new Date().toISOString();
+  for (const orphanId of orphanLocationIds) {
+    uiLocations.push({ id: orphanId, name: orphanId === "home" ? "默认衣橱" : orphanId, sortOrder: uiLocations.length + 1, createdAt: now, updatedAt: now });
+  }
 
   const workspaceOutfitIdToLegacyId = new Map<string, string>();
   for (const o of outfits) {
@@ -162,17 +51,16 @@ export async function readWorkspaceUiSnapshot(db: AccountWorkspaceDatabase): Pro
   return {
     items: uiItems,
     locations: uiLocations,
-    outfits: outfits.map((o) => toSavedOutfit(o, assetIndex)),
-    wishlistItems: wishlistItems.map((w) => toWishlistItem(w, assetIndex)),
+    outfits: outfits.map(toSavedOutfit),
+    wishlistItems: wishlistItems.map(toWishlistItem),
     outfitPlanEntries: outfitPlans.map((op) => toOutfitPlanEntry(op, workspaceOutfitIdToLegacyId)),
     outfitCalendarPlans: tripPlans.map(toOutfitCalendarPlan),
-    planPackingChecklistItems: [],
+    planPackingChecklistItems: [], // ponytail: packingChecklistItems 暂不从工作区读，数据量少且强依赖旧结构
   };
 }
 
-function toWardrobeItem(g: WorkspaceGarmentRecord, assetIndex: AssetIndex): WardrobeItem {
+function toWardrobeItem(g: WorkspaceGarmentRecord): WardrobeItem {
   const p = (g.payload ?? {}) as Record<string, unknown>;
-  const hydrated = hydrateGarmentImages(assetIndex, g);
   return {
     id: resolveWorkspaceGarmentItemId(g),
     locationId: (g.locationId ?? p.locationId ?? "home") as string,
@@ -191,11 +79,9 @@ function toWardrobeItem(g: WorkspaceGarmentRecord, assetIndex: AssetIndex): Ward
     notes: p.notes as string | undefined,
     price: p.price as number | undefined,
     productUrl: p.productUrl as string | undefined,
-    imageDataUrl: hydrated.imageDataUrl,
-    // sourceImageDataUrl 字段在当前资产架构下不存 asset 键（garment 的 imageAssetInputsForGarment
-    // 只生成 imageDataUrl）；UI 端已自行回退到 imageDataUrl（见 garment-detail-3.0.tsx）。
-    sourceImageDataUrl: undefined,
-    thumbnailDataUrl: hydrated.thumbnailDataUrl,
+    imageDataUrl: (p.imageDataUrl as string) ?? "",
+    sourceImageDataUrl: p.sourceImageDataUrl as string | undefined,
+    thumbnailDataUrl: p.thumbnailDataUrl as string | undefined,
     cropBox: p.cropBox as WardrobeItem["cropBox"],
     subcategory: p.subcategory as string | undefined,
     wornDates: (p.wornDates ?? []) as string[],
@@ -224,15 +110,14 @@ function toClosetLocation(l: WorkspaceLocationRecord): ClosetLocation {
   };
 }
 
-function toSavedOutfit(o: WorkspaceOutfitRecord, assetIndex: AssetIndex): SavedOutfit {
+function toSavedOutfit(o: WorkspaceOutfitRecord): SavedOutfit {
   const p = (o.payload ?? {}) as Record<string, unknown>;
-  const hydrated = hydrateOutfitImages(assetIndex, o);
   return {
     id: o.legacyOutfitId ?? o.id,
     name: (o.name ?? p.name ?? "") as string,
     itemIds: ((p.legacyItemIds ?? p.itemIds ?? []) as number[]),
-    coverImageDataUrl: hydrated.coverImageDataUrl,
-    previewImageDataUrl: hydrated.previewImageDataUrl,
+    coverImageDataUrl: p.coverImageDataUrl as string | undefined,
+    previewImageDataUrl: p.previewImageDataUrl as string | undefined,
     destination: p.destination as string | undefined,
     activity: p.activity as string | undefined,
     style: p.style as string | undefined,
@@ -240,8 +125,8 @@ function toSavedOutfit(o: WorkspaceOutfitRecord, assetIndex: AssetIndex): SavedO
     favorite: (p.favorite ?? false) as boolean,
     createdAt: (p.createdAt ?? o.createdAt) as string,
     updatedAt: (p.updatedAt ?? o.updatedAt) as string,
-    sourceImageDataUrl: hydrated.sourceImageDataUrl,
-    thumbnailDataUrl: hydrated.thumbnailDataUrl,
+    sourceImageDataUrl: p.sourceImageDataUrl as string | undefined,
+    thumbnailDataUrl: p.thumbnailDataUrl as string | undefined,
     thumbnailVersion: p.thumbnailVersion as number | undefined,
     thumbnailUpdatedAt: p.thumbnailUpdatedAt as string | undefined,
     thumbnailStatus: p.thumbnailStatus as "ready" | "failed" | undefined,
@@ -252,21 +137,20 @@ function toSavedOutfit(o: WorkspaceOutfitRecord, assetIndex: AssetIndex): SavedO
     temperatureRange: p.temperatureRange as SavedOutfit["temperatureRange"],
     notes: p.notes as string | undefined,
     wornDates: p.wornDates as string[] | undefined,
-    outfitRealImages: hydrated.outfitRealImages,
-    autoCoverImageDataUrl: hydrated.autoCoverImageDataUrl,
+    outfitRealImages: p.outfitRealImages as SavedOutfit["outfitRealImages"],
+    autoCoverImageDataUrl: p.autoCoverImageDataUrl as string | undefined,
     aiSuggestion: p.aiSuggestion as SavedOutfit["aiSuggestion"],
   };
 }
 
-function toWishlistItem(w: WorkspaceWishlistItemRecord, assetIndex: AssetIndex): WishlistItem {
+function toWishlistItem(w: WorkspaceWishlistItemRecord): WishlistItem {
   const p = (w.payload ?? {}) as Record<string, unknown>;
-  const hydrated = hydrateWishlistImages(assetIndex, w);
   return {
     id: w.legacyWishlistId ?? w.id,
     name: (p.name ?? "") as string,
-    imageDataUrl: hydrated.imageDataUrl,
-    sourceImageDataUrl: undefined,
-    thumbnailDataUrl: hydrated.thumbnailDataUrl,
+    imageDataUrl: (p.imageDataUrl ?? "") as string,
+    sourceImageDataUrl: p.sourceImageDataUrl as string | undefined,
+    thumbnailDataUrl: p.thumbnailDataUrl as string | undefined,
     cropBox: p.cropBox as WishlistItem["cropBox"],
     category: (p.category ?? "tops") as WishlistItem["category"],
     subcategory: p.subcategory as string | undefined,
@@ -339,4 +223,3 @@ function toOutfitPlanEntry(op: WorkspaceOutfitPlanRecord, workspaceOutfitIdToLeg
     updatedAt: (p.updatedAt ?? op.updatedAt) as string,
   };
 }
-

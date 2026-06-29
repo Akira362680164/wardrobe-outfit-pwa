@@ -37,7 +37,6 @@ assert.equal(classifyAiConfidence(NaN), null, "NaN 不渲染胶囊");
 assert.equal(classifyAiConfidence(Number.POSITIVE_INFINITY), null, "Infinity 不渲染胶囊");
 
 // 2. calculateDraftConfidenceScore — 全高
-// v2.0.12-test: 严格无降级。无 aiConfidence 时 score 必须为 null。
 const allHighDraft: GarmentIntakeDraft = buildLocalGarmentDraft({
   imageDataUrl: "data:image/png;base64,aaa",
   colors: { mode: "single", primary: "白" } as never,
@@ -46,18 +45,25 @@ const allHighDraft: GarmentIntakeDraft = buildLocalGarmentDraft({
   locationId: "home",
   now: "2026-06-24T08:00:00.000Z",
 });
-const scoreNoAi = calculateDraftConfidenceScore(allHighDraft);
-assert.equal(scoreNoAi, null, `无 aiConfidence 时 score 应为 null，实际 ${scoreNoAi}`);
+const scoreAll = calculateDraftConfidenceScore(allHighDraft);
+assert.ok(typeof scoreAll === "number" && scoreAll >= 60, `全高 / 默认草稿应得中等以上分数，实际 ${scoreAll}`);
 
-// 3. calculateDraftConfidenceScore — 有 aiConfidence 时返回 Math.round(aiConfidence*100)。
-const scoreAi = calculateDraftConfidenceScore({ ...allHighDraft, aiConfidence: 0.86 });
-assert.equal(scoreAi, 86, `aiConfidence=0.86 → score=86，实际 ${scoreAi}`);
+// 3. calculateDraftConfidenceScore — 构造一个全 low + needsReview 的最小草稿
+// 使用 4 个字段的合成结构，绕开 buildLocalGarmentDraft 的 high 字段。
+const lowDraftLike = {
+  name: createIntakeField("白衬衫", "ai", "low", { needsReview: true }),
+  category: createIntakeField("tops", "ai", "low", { needsReview: true }),
+  colors: createIntakeField({ mode: "single", primary: "白" } as never, "ai", "low", { needsReview: true }),
+  seasons: createIntakeField([] as never, "ai", "low", { needsReview: true }),
+};
+const scoreLow = calculateDraftConfidenceScore(lowDraftLike as unknown as GarmentIntakeDraft);
+assert.ok(typeof scoreLow === "number" && scoreLow < 50, `全 low + needsReview 应得低分，实际 ${scoreLow}`);
 
 // 4. calculateDraftConfidenceScore — null 输入
 assert.equal(calculateDraftConfidenceScore(null), null, "null draft 应当返回 null");
 assert.equal(calculateDraftConfidenceScore(undefined), null, "undefined draft 应当返回 null");
 
-// 5. WishlistIntakeDraft 也能计算 (v2.0.12-test 严格无降级：必须传 aiConfidence)
+// 5. WishlistIntakeDraft 也能计算
 const wishlistLow: WishlistIntakeDraft = {
   ...(allHighDraft as unknown as WishlistIntakeDraft),
   kind: "wishlist",
@@ -65,10 +71,8 @@ const wishlistLow: WishlistIntakeDraft = {
   imageKind: createIntakeField("product_photo", "user", "high", { needsReview: false }),
   status: createIntakeField("interested", "user", "high", { needsReview: false }),
 };
-const scoreWishNoAi = calculateDraftConfidenceScore(wishlistLow);
-assert.equal(scoreWishNoAi, null, "WishlistIntakeDraft 无 aiConfidence 时也必须返回 null");
-const scoreWishAi = calculateDraftConfidenceScore({ ...wishlistLow, aiConfidence: 0.74 });
-assert.equal(scoreWishAi, 74, "WishlistIntakeDraft aiConfidence=0.74 → 74");
+const scoreWish = calculateDraftConfidenceScore(wishlistLow);
+assert.ok(typeof scoreWish === "number", "WishlistIntakeDraft 也能计算整件级置信度");
 
 // 6. Step 3 渲染 wiring
 assert.ok(

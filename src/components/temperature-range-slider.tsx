@@ -4,7 +4,7 @@
  * v1.1.22 Step 2 (P0-5) + Step 6 (P0-2) — TemperatureRangeSlider
  *
  * 双端点可拖动温度滑块（编辑态）。底层视觉与 TemperatureRangeBar 一致
- * （-20-40℃ 蓝→红渐变轨道 + 两个圆点 + 高亮填充 + 上方文字），但 handle 可拖动。
+ * （0-40℃ 蓝→红渐变轨道 + 两个圆点 + 高亮填充 + 上方文字），但 handle 可拖动。
  *
  * 设计要点（AGENTS.md 移动端硬规则 + §8.3 业务需求）：
  * - 滑块 handle 的可点击/可拖动区是 44×44（pointer hit area），视觉圆点 20×20
@@ -18,8 +18,9 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import type { TemperatureRange } from "@/lib/types";
-import { TEMPERATURE_MIN_C as TEMP_MIN, TEMPERATURE_MAX_C as TEMP_MAX } from "@/lib/temperature-range";
 
+const TEMP_MIN = 0;
+const TEMP_MAX = 40;
 const DEFAULT_STEP = 1;
 const HANDLE_VISUAL = 20; // 视觉圆点
 const HANDLE_HIT = 44; // 触摸/鼠标命中区（≥44px per AGENTS.md）

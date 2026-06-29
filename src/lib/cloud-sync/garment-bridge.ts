@@ -26,9 +26,7 @@ export interface BridgeGarmentResult {
     | "no_session"
     | "registry_mismatch"
     | "workspace_garment_not_found"
-    | "write_failed"
-    | "default_location_missing"
-    | "location_not_found";
+    | "write_failed";
 }
 
 export async function bridgeGarmentCreate(item: WardrobeItem): Promise<BridgeGarmentResult> {
@@ -37,17 +35,6 @@ export async function bridgeGarmentCreate(item: WardrobeItem): Promise<BridgeGar
 
   try {
     const db = getAccountWorkspaceDb(ctx.workspace);
-    // v2.0.12-test: 单品保存前必须先确认目标 locationId 真实存在；
-    // 找不到衣橱（包括默认衣橱 "home"）时中止保存 + 记录诊断错误，
-    // 禁止业务保存流程自动补建衣橱。
-    const locationOk = await assertLocationExists(db, item.locationId);
-    if (!locationOk) {
-      const reason = item.locationId === "home" ? "default_location_missing" : "location_not_found";
-      if (typeof console !== "undefined") {
-        console.error("[garment-bridge] abort save: location not found", { locationId: item.locationId, reason });
-      }
-      return { bridged: false, reason };
-    }
     const existing = await findWorkspaceGarmentByItemId(db, item.id);
     const garmentId = existing?.id ?? createWorkspaceUuidV7();
     const garmentBase = {
@@ -136,22 +123,7 @@ export function toCloudGarmentPayload(item: WardrobeItem, assetRefs?: CloudAsset
   return withCloudAssetRefs(safe, assetRefs);
 }
 
-export async function assertLocationExists(
-  db: ReturnType<typeof getAccountWorkspaceDb>,
-  locationId: string,
-): Promise<boolean> {
-  const location = await db.locations
-    .filter((l) => !l.deletedAt)
-    .filter((l) => {
-      if (l.id === locationId) return true;
-      const dexieId = (l.payload as Record<string, unknown> | undefined)?.dexieId;
-      return dexieId === locationId;
-    })
-    .first();
-  return Boolean(location);
-}
-
-async function findWorkspaceGarmentByItemId(
+export async function findWorkspaceGarmentByItemId(
   db: ReturnType<typeof getAccountWorkspaceDb>,
   legacyItemId: WardrobeItem["id"],
 ): Promise<WorkspaceGarmentRecord | undefined> {

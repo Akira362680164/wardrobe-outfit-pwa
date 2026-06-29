@@ -5,7 +5,7 @@ import { KeepAwake } from "@capacitor-community/keep-awake";
 import { Capacitor } from "@capacitor/core";
 import { useAppNavigationController } from "@/components/use-app-navigation-controller";
 import type { AppRoute } from "@/lib/app-route";
-import { getBackRoute, isDetailRoute, isIntakeRouteName, isGlobalCreateAllowedRoute } from "@/lib/app-route";
+import { getBackRoute, isDetailRoute, isIntakeRouteName } from "@/lib/app-route";
 import {
   Archive,
   BarChart3,
@@ -831,13 +831,14 @@ export function WardrobeApp({ cloudAuth }: { cloudAuth?: WardrobeCloudAuth } = {
     !!captureCropJob ||
     captureImageQueue.length > 0;
 
-  // v2.0.12-test: 全局加号基于 app-route 的白名单函数 isGlobalCreateAllowedRoute；
-  // 只允许 wardrobe_home / outfit_home / wishlist_home 三个主首页。
+  // v0.9.46-dev: global create button visibility
+  // v1.1.20-dev (方案 C): 改为基于 route 派生 — activeView 独立 state 已删除。
   const shouldShowGlobalCreate =
     !hideMobileNav &&
-    isGlobalCreateAllowedRoute(route.name) &&
+    route.name !== "settings_home" &&
+    !isIntakeRouteName(route.name) &&
     !outfitSubPageActive &&
-    !showExitDialog &&
+        !showExitDialog &&
     !showCreateSheet;
 
   // v1.1.20-dev (方案 C): create_outfit 现在在 handleCreateAction 同步调用 setRoute({name: "intake_outfit"}),
@@ -4669,8 +4670,8 @@ function SettingsView({
         <h3 className="mb-3 text-base font-semibold">添加衣橱</h3>
         <div className="grid gap-3">
           <label className="grid gap-1 text-sm font-medium">
-            <span className="flex items-center gap-1">衣橱名称<span className="text-red-500" aria-hidden="true">*</span></span>
-            <input value={wardrobeFormName} onChange={(e) => setWardrobeFormName(e.target.value)} className="h-10 w-full rounded-lg border border-ink/10 bg-white px-3 text-sm outline-none focus:border-denim" placeholder="例如 办公室抽屉" required aria-required="true" />
+            衣橱名称 <span className="text-red-500">*</span>
+            <input value={wardrobeFormName} onChange={(e) => setWardrobeFormName(e.target.value)} className="h-10 w-full rounded-lg border border-ink/10 bg-white px-3 text-sm outline-none focus:border-denim" placeholder="例如 办公室抽屉" />
           </label>
           <label className="grid gap-1 text-sm font-medium">
             衣橱简介
@@ -4691,8 +4692,8 @@ function SettingsView({
         <h3 className="mb-3 text-base font-semibold">编辑衣橱</h3>
         <div className="grid gap-3">
           <label className="grid gap-1 text-sm font-medium">
-            <span className="flex items-center gap-1">衣橱名称<span className="text-red-500" aria-hidden="true">*</span></span>
-            <input value={wardrobeFormName} onChange={(e) => setWardrobeFormName(e.target.value)} className="h-10 w-full rounded-lg border border-ink/10 bg-white px-3 text-sm outline-none focus:border-denim" required aria-required="true" />
+            衣橱名称 <span className="text-red-500">*</span>
+            <input value={wardrobeFormName} onChange={(e) => setWardrobeFormName(e.target.value)} className="h-10 w-full rounded-lg border border-ink/10 bg-white px-3 text-sm outline-none focus:border-denim" />
           </label>
           <label className="grid gap-1 text-sm font-medium">
             衣橱简介

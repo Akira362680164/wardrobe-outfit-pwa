@@ -1,7 +1,7 @@
 "use client";
 
 import { DEFAULT_LOCATIONS, type ClosetLocation } from "@/lib/types";
-import { createWorkspaceUuidV7, getAccountWorkspaceDb, runWorkspaceWrite, type WorkspaceLocationRecord } from "@/lib/account-workspace-db";
+import { createWorkspaceUuidV7, getAccountWorkspaceDb, type WorkspaceLocationRecord } from "@/lib/account-workspace-db";
 import { loadCloudBridgeContext } from "@/lib/cloud-sync/bridge-context";
 import { currentWorkspaceGuard, deleteLocation, isGuardCurrent, writeLocation } from "@/lib/cloud-sync/sync-engine";
 import type { AccountWorkspaceRecord } from "@/lib/workspace-registry";
@@ -19,12 +19,6 @@ export interface BridgeLocationResult {
 }
 
 export async function bridgeLocationUpsert(location: ClosetLocation): Promise<BridgeLocationResult> {
-  // v2.0.12-test: 默认衣橱 (dexieId="home") 永远不可重命名/改 note/sortOrder；
-  // 业务层直接拿 DEFAULT_LOCATIONS[0] 的只读值覆盖写入。
-  if (location.id === DEFAULT_LOCATIONS[0].id) {
-    // 不允许业务层任意修改默认衣橱任何字段（包括 name）
-    // 调用方必须只能传 id，其他字段会被忽略。
-  }
   const ctx = await loadCloudBridgeContext();
   if (!ctx) return { bridged: false, reason: "no_workspace" };
 
@@ -104,52 +98,36 @@ export async function initializeDefaultWorkspaceLocation(
   workspace: AccountWorkspaceRecord,
   deviceId: string,
 ): Promise<BridgeLocationResult> {
-  // v2.0.12-test: 默认衣橱只允许在当前 workspace 首次初始化时创建一次。
-  // 关键: count + write 必须放在同一 Dexie 事务里 (runWorkspaceWrite)，
-  // 否则两次并发调用都会看到 count=0 各自走 create → 产生两份 home。
   try {
     const db = getAccountWorkspaceDb(workspace);
-    return await runWorkspaceWrite(
-      db,
-      ["locations", "syncOutbox"],
-      async (): Promise<BridgeLocationResult> => {
-        // 在事务内先查再写：发现已存在则直接返回成功，不写 outbox。
-        const existing = await db.locations
-          .filter((location) => !location.deletedAt)
-          .filter((location) => {
-            const dexieId = (location.payload as Record<string, unknown> | undefined)?.dexieId;
-            return location.id === "home" || dexieId === "home";
-          })
-          .first();
-        if (existing) return { bridged: true };
+    const hasActiveLocation = await db.locations.filter((location) => !location.deletedAt).count();
+    if (hasActiveLocation > 0) return { bridged: true };
 
-        const location = DEFAULT_LOCATIONS[0];
-        const payload: Record<string, unknown> = {
-          name: location.name,
-          note: location.note,
-          sortOrder: location.sortOrder,
-          dexieId: location.id,
-        };
-        await writeLocation(
-          db,
-          {
-            workspace,
-            originDeviceId: deviceId,
-            baseRevision: 0,
-            payload,
-          },
-          {
-            id: createWorkspaceUuidV7(),
-            name: location.name,
-            note: location.note,
-            sortOrder: location.sortOrder,
-            payload,
-          },
-          "create",
-        );
-        return { bridged: true };
+    const location = DEFAULT_LOCATIONS[0];
+    const payload: Record<string, unknown> = {
+      name: location.name,
+      note: location.note,
+      sortOrder: location.sortOrder,
+      dexieId: location.id,
+    };
+    await writeLocation(
+      db,
+      {
+        workspace,
+        originDeviceId: deviceId,
+        baseRevision: 0,
+        payload,
       },
+      {
+        id: createWorkspaceUuidV7(),
+        name: location.name,
+        note: location.note,
+        sortOrder: location.sortOrder,
+        payload,
+      },
+      "create",
     );
+    return { bridged: true };
   } catch (err) {
     if (typeof console !== "undefined") {
       console.warn("[location-bridge] initializeDefaultWorkspaceLocation failed:", err);

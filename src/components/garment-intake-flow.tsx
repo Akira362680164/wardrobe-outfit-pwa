@@ -480,7 +480,6 @@ export function GarmentIntakeFlow({
     const localDraft = buildLocalGarmentDraft({
       ...processed,
       ...mapAiTagToGarmentDraftInput(aiTag, item.fileName),
-      aiConfidence: typeof aiTag.confidence === "number" ? aiTag.confidence : undefined,
       imageDataUrl: imageToProcess,
       sourceImageDataUrl: item.originalDataUrl,
       cropBox: item.cropBox,
@@ -1887,6 +1886,8 @@ const STEP3_VISIBLE_REVIEW_FIELD_KEYS = new Set([
   "formality",
   "warmth",
   "temperatureRange",
+  "locationId",
+  "status",
   "material",
   "price",
   "productUrl",

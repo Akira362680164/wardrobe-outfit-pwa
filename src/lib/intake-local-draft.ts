@@ -38,8 +38,6 @@ export interface LocalImageProcessingResult {
 
 export interface BuildLocalGarmentDraftInput extends LocalImageProcessingResult {
   id?: string;
-  /** AI 识别整件级置信度 (0-1)，来自 aiTag.confidence。 */
-  aiConfidence?: number;
   imageDataUrl: string;
   sourceImageDataUrl?: string;
   cropBox?: { x: number; y: number; width: number; height: number };
@@ -100,7 +98,6 @@ export function buildLocalGarmentDraft(input: BuildLocalGarmentDraftInput): Garm
   return {
     id: input.id ?? createIntakeDraftId("garment", now),
     kind: "garment",
-    ...(typeof input.aiConfidence === "number" ? { aiConfidence: clampAiConfidence(input.aiConfidence) } : {}),
     imageDataUrl: input.transparentImageDataUrl || input.imageDataUrl,
     sourceImageDataUrl: input.sourceImageDataUrl,
     croppedImageDataUrl: input.imageDataUrl,
@@ -242,13 +239,6 @@ function buildImageIssues(input: LocalImageProcessingResult): IntakeProcessingIs
     issues.push(createIntakeIssue("image_quality_low", warning, { severity: "review" }));
   }
   return issues;
-}
-
-function clampAiConfidence(value: number): number {
-  if (!Number.isFinite(value)) return 0;
-  if (value < 0) return 0;
-  if (value > 1) return 1;
-  return value;
 }
 
 function textField(value: string | undefined, fallback: string, _now: string, reason?: string) {
