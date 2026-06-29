@@ -1,3 +1,31 @@
+## 2026-06-29 / v2.0.12-test / Codex — 重新执行修复，回归文档验收基线
+
+- **目的**：按 `/Users/fangzheng/Downloads/REPAIR_EXECUTION_CONCLUSION_AND_NEXT_ACTIONS.md` 的最终验收结论，复盘 v2.0.11-test 修复中三处偏差（payload fallback / 同名合并 + 孤儿迁移 / AI 置信度降级），提交 4 个修复 commit + 1 个测试修正，交付 v2.0.12-test APK。
+- **版本**：`2.0.11-test` → `2.0.12-test`，Android `versionCode` 由 `20011` → `20012`。
+- **改动文件**（按 commit 拆分）：
+  - `fix: only read cloud assets in workspace ui snapshot, drop legacy payload fallback`：`src/lib/cloud-sync/workspace-ui-mapper.ts`、`scripts/test-workspace-ui-image-hydration.ts`。
+  - `fix: idempotent default closet + abort save when location missing`：`src/lib/cloud-sync/location-bridge.ts`、`src/lib/cloud-sync/garment-bridge.ts`、`src/lib/cloud-sync/workspace-ui-mapper.ts`、`scripts/test-workspace-ui-image-hydration.ts`、`scripts/test-default-closet-idempotent.ts`。
+  - `fix: strict AI confidence + global -20-40C range + min<=max validation`：`src/components/item/ai-confidence-pill.tsx`、`src/components/temperature-range-bar.tsx`、`src/components/temperature-range-slider.tsx`、`src/lib/device-minimax.ts`、`src/lib/temperature-range.ts`、`scripts/test-draft-confidence-priority.ts`、`scripts/test-temperature-and-confidence-strict.ts`。
+  - `fix: global create whitelist function + remove deviceId exposure`：`src/lib/app-route.ts`、`src/components/wardrobe-app.tsx`、`src/components/auth/account-views.tsx`、`scripts/test-account-management-cleanup.ts`。
+  - `test: align pill row tests with strict no-fallback confidence`：`scripts/test-intake-confirm-pill-row.ts`。
+  - `package.json`（2.0.11-test → 2.0.12-test）。
+- **本轮修复要点（按文档 3.1-3.8 验收）**：
+  1. **3.1 图片资产回填纯净化**：`hydrate*` 删除 fallback 参数与所有 `entity.payload` 兜底，只读 `db.assets`；缺失时 `imageDataUrl=""`，`thumbnailDataUrl`/`sourceImageDataUrl=undefined`；outfitRealImages 按 id 解析资产，不再从 payload.outfitRealImages 读整图。单个 asset 解析失败（malformed uploads）不阻断其他实体。
+  2. **3.2 默认衣橱单点根因**：`initializeDefaultWorkspaceLocation` 的 count + write 改为 `runWorkspaceWrite([locations, syncOutbox])` 同一事务，事务内按 `dexieId="home"` 查 + 写，并发调用保证只产生 1 条 home + 1 条 outbox。`bridgeGarmentCreate` 增加 `assertLocationExists` 守卫，locationId 找不到时返回 `location_not_found` / `default_location_missing`。`workspace-ui-mapper` 删除 `dedupeLocations` 与孤儿衣物 locationId 重定向——UI 严格只读，不补建、不合并、不迁移。
+  3. **3.3 / 3.4 AI 置信度严格只读**：`calculateDraftConfidenceScore` 缺失/非有限数时返回 `null`，`AiConfidencePill` 收到 null 不渲染；删除字段平均兜底（保留为内部 `_legacyFieldAverageScore` 仅供"派生函数已删除"测试断言）。`STEP3_VISIBLE_REVIEW_FIELD_KEYS` 移除 `locationId` / `status`，待确认 N 字段数只统计 Step 3 实际显示字段。
+  4. **3.5 温度全局统一**：新增 `src/lib/temperature-range.ts` 统一 `TEMPERATURE_MIN_C=-20` / `TEMPERATURE_MAX_C=40`；两个组件删除硬编码 0/40 改 import；`validateTemperatureRange` 校验 `minC <= maxC`，`normalizeTemperatureRange` 保留负数不截断为 0；`device-minimax normalizeTemperatureRange` 增加 `minC > maxC` 校验并丢弃非法 range。
+  5. **3.6 账号管理页清理**：删除 `auth.deviceId` / `auth.deviceLabel` 渲染（"完整设备 ID"），仍保留账号信息 + 修改密码 + 退出登录（二次确认）。
+  6. **3.7 全局加号白名单**：`src/lib/app-route.ts` 新增 `GLOBAL_CREATE_ALLOWED_ROUTE_NAMES` 与 `isGlobalCreateAllowedRoute(name)`；`shouldShowGlobalCreate` 改为基于白名单，只允许 `wardrobe_home` / `outfit_home` / `wishlist_home`。
+  7. **3.8 衣橱名称星号**：已在 v2.0.11-test commit 中完成（`flex items-center gap-1` 包裹 + input `required` + `aria-required`），本轮保留。
+- **本地验证**：
+  - `npm run typecheck` 通过。
+  - `npm run build` 通过。
+  - 新增/修正 5 个 test 套件全部通过：`test-workspace-ui-image-hydration` (13/13)、`test-default-closet-idempotent` (16/16)、`test-temperature-and-confidence-strict` (25/25)、`test-account-management-cleanup` (17/17)、`test-draft-confidence-priority` (10/10)、`test-intake-confirm-pill-row`，合计 81/81。
+  - 关键回归 PASS：`test-garment-image-source` 58/58、`test-wardrobe-app-split` 47/47、`test-intake-upgrade-patch5` 28/28、`test-color-catalog` 94/94、`test-recommendations`、`test-old-garment-default-location-sync` 等。
+- **风险门禁**：**high**（P0 数据丢失 / P1 真实数据可见性 / APK 交付 / 跨多模块改动）。
+- **未触发 subagent**：用户未通知。
+- **未验证风险**：`adb devices -l` 无设备，未做真机安装与交互验收；浏览器实操流程（流程 A-F）因本机无测试账号未运行；`test:logic:outfit-asset-center` 等 8 个 stale 断言（v2.0.6-test 移除旧 Dexie 后的遗留问题）未修复。
+
 ## 2026-06-29 / v2.0.11-test / Codex — 修复 P0/P1/P2：图片回填、默认衣橱去重、AI 置信度、温度、星号、账号页
 
 - **目的**：执行 `/Users/fangzheng/Downloads/LOCAL_REPO_URGENT_FIX_EXECUTION_PROMPT.md` 中的 4 个 commit 修复，覆盖 P0/P1/P2 七个问题，全部在 `main` 上基于 `8cf2efd` 完成；交付 Android APK。
