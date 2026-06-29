@@ -89,8 +89,8 @@ export function GarmentOutfitAssociations({ itemId, outfits, items, onViewOutfit
             {frequentItems.map(({ item, count }) => (
               <div key={item.id} className="flex items-center gap-3 rounded-xl bg-milk-darker/30 px-3 py-2">
                 <div className="h-10 w-10 shrink-0 overflow-hidden rounded-lg bg-milk-darker/40">
-                  {item.imageDataUrl ? (
-                    <img src={item.thumbnailDataUrl || item.imageDataUrl} alt={item.name} className="h-full w-full object-cover" />
+                  {item.thumbnailDataUrl ? (
+                    <img src={item.thumbnailDataUrl} alt={item.name} className="h-full w-full object-contain" />
                   ) : (
                     <div className="grid h-full place-items-center text-ink/25">
                       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}><path d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" /></svg>

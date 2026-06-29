@@ -61,7 +61,7 @@ export interface GarmentDetail30Props {
   onGenerateAdvice: () => void;
   onGoSettings: () => void;
   onViewOutfit: (outfitId: string) => void;
-  onExpandImage: (image: { src: string; alt: string }) => void;
+  onExpandImage: (image: { src: string; alt: string; thumbnailSrc?: string; cropBox?: WardrobeItem["cropBox"]; displayMode?: "original-cropped" }) => void;
   initialTab?: "info" | "inspiration" | "pairing";
 }
 
@@ -109,14 +109,14 @@ export function GarmentDetail30({
   const refs = useMemo(() => (Array.isArray(item.referenceOutfitImages) ? item.referenceOutfitImages : []), [item.referenceOutfitImages]);
 
   const slides: SwipeImageSlide[] = useMemo(() => {
-    const mainOriginal = item.imageDataUrl || item.sourceImageDataUrl || "";
+    const mainOriginal = item.imageDataUrl;
     const main: SwipeImageSlide = {
       kind: "image",
       id: "main",
-      imageDataUrl: item.thumbnailDataUrl || mainOriginal,
-      thumbnailSrc: item.thumbnailDataUrl || mainOriginal,
+      imageDataUrl: item.thumbnailDataUrl || "",
+      thumbnailSrc: item.thumbnailDataUrl,
       displaySrc: mainOriginal,
-      sourceSrc: item.sourceImageDataUrl || mainOriginal,
+      sourceSrc: mainOriginal,
       alt: item.name,
       badge: "主图",
       badgeClassName: "bg-denim",
@@ -136,7 +136,7 @@ export function GarmentDetail30({
       badgeClassName: "bg-clay",
     }));
     return [main, ...extras];
-  }, [item.imageDataUrl, item.sourceImageDataUrl, item.thumbnailDataUrl, item.name, refs]);
+  }, [item.imageDataUrl, item.thumbnailDataUrl, item.cropBox, item.cropRevision, item.thumbnailCropRevision, item.name, refs]);
 
   const safeIndex = clampCarouselIndex(currentImageIndex, slides.length);
   useEffect(() => {
@@ -568,9 +568,8 @@ function PairingTab({
             {pairingItems.map((r) => (
               <div key={r.item.id} className="flex items-center gap-3 rounded-xl bg-milk-darker/30 px-3 py-2.5">
                 <div className="h-14 w-14 shrink-0 overflow-hidden rounded-lg bg-milk-darker/40">
-                  {r.item.imageDataUrl ? (
-                    /* eslint-disable-next-line @next/next/no-img-element */
-                    <img src={r.item.thumbnailDataUrl || r.item.imageDataUrl} alt={r.item.name} className="h-full w-full object-cover" />
+                  {r.item.thumbnailDataUrl ? (
+                    <img src={r.item.thumbnailDataUrl} alt={r.item.name} className="h-full w-full object-contain" />
                   ) : (
                     <div className="grid h-full place-items-center text-ink/25">
                       <Shirt size={16} />

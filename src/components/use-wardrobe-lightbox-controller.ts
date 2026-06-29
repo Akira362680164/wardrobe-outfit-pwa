@@ -6,6 +6,9 @@ import { useState, useCallback } from "react";
 export interface WardrobeExpandedImage {
   src: string;
   alt: string;
+  thumbnailSrc?: string;
+  cropBox?: { x: number; y: number; width: number; height: number };
+  displayMode?: "original-cropped";
 }
 
 export function useWardrobeLightboxController() {

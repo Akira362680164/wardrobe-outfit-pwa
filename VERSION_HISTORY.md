@@ -3228,3 +3228,13 @@
 - **风险门禁**：**high**（单品录入、图片像素语义、裁切与保存路径）。
 - **未触发 subagent**：用户未通知。
 - **未验证风险**：页面展示、重新裁切、云端资产恢复和 Android 实机链路将在后续三个提交验证。
+## 2026-06-29 / v2.0.14-test / Codex — 统一小图、详情与重新裁切语义
+
+- **目的**：消除小图回退原图、详情二次裁切和重新裁切读取历史裁切图的问题。
+- **版本**：保持 `2.0.14-test`；本条为本轮修复 Commit 2。
+- **改动文件**：`src/components/batch-review-view.tsx`、`detail-shell.tsx`、`garment-detail-3.0.tsx`、`garment-immersive-detail.tsx`、`garment-outfit-associations.tsx`、`motion-common.tsx`、`outfit-intake-flow.tsx`、`outfit-list-view.tsx`、`use-wardrobe-lightbox-controller.ts`、`wardrobe-app.tsx`、`wear-statistics-view.tsx`、`wishlist-view-2.0.tsx`、`src/lib/garment-image-source.ts`、`src/lib/repository/wardrobe-repository.ts`、`VERSION_HISTORY.md`。
+- **核心修复**：单品小图只显示 `thumbnailDataUrl` 且使用 `object-contain`；详情和全屏预览传递完整原图、缩略图和裁切框，只应用一次 `cropBox`；编辑页和批量复核的重新裁切只读取 `imageDataUrl`，保留原图并根据新裁切框重建缩略图与版本号。
+- **本地验证**：`npm run typecheck` 通过。
+- **风险门禁**：**high**（详情/全屏图片渲染、重新裁切、多个移动端缩略图入口）。
+- **未触发 subagent**：用户未通知。
+- **未验证风险**：尚未完成 Android 竖屏/横屏实操和云端冷恢复；后续提交继续验证。

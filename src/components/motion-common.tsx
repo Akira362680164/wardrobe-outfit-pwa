@@ -9,6 +9,7 @@ import React, { useCallback, useEffect, useLayoutEffect, useRef } from "react";
 import { createPortal } from "react-dom";
 import { duration, ease, pop, scaleModal, slideRight, slideRightExit, slideUp, spring, toastDrop } from "@/lib/motion-tokens";
 import { useScrollLock } from "@/lib/use-scroll-lock";
+import { OriginalCroppedImage } from "@/components/original-cropped-image";
 
 /* ------------------------------------------------------------------ */
 /*  AnimatedPage – sub-page enter / exit with slide-right              */
@@ -251,6 +252,9 @@ interface MotionImageLightboxProps {
   onClose: () => void;
   src: string;
   alt: string;
+  thumbnailSrc?: string;
+  cropBox?: { x: number; y: number; width: number; height: number };
+  displayMode?: "original-cropped";
 }
 
 export function MotionImageLightbox({
@@ -258,6 +262,9 @@ export function MotionImageLightbox({
   onClose,
   src,
   alt,
+  thumbnailSrc,
+  cropBox,
+  displayMode,
 }: MotionImageLightboxProps) {
   useScrollLock(open);
 
@@ -283,13 +290,11 @@ export function MotionImageLightbox({
             transition={{ duration: duration.normal, ease: ease.app }}
           >
             {/* eslint-disable-next-line @next/next/no-img-element -- lightbox renders local data-URL images, not static assets */}
-            <img
-              loading="lazy"
-              decoding="async"
-              src={src}
-              alt={alt}
-              className="max-h-[88vh] w-full object-contain"
-            />
+            {displayMode === "original-cropped" ? (
+              <OriginalCroppedImage originalSrc={src} thumbnailSrc={thumbnailSrc} cropBox={cropBox} alt={alt} className="h-[88vh] w-[min(92vw,64rem)]" />
+            ) : (
+              <img loading="lazy" decoding="async" src={src} alt={alt} className="max-h-[88vh] w-full object-contain" />
+            )}
 
             {/* 关闭按钮: 放在图片右上角 (与图片一起缩放, 不会因屏幕尺寸错位) */}
             <button

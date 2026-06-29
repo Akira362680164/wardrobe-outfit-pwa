@@ -32,7 +32,7 @@ export type GarmentImageSource =
 export interface GarmentImageEntry {
   /** 实际显示的图片 dataUrl 或 URL (兼容旧调用方) */
   imageDataUrl: string;
-  /** 卡片 / 瀑布流 / 横滑优选用图 (缩略图优先, 缺失时 fallback 到 imageDataUrl) */
+  /** 卡片 / 瀑布流 / 横滑只使用缩略图。 */
   cardImageDataUrl: string;
   /** 详情页 / 大图展示用图 (始终是 imageDataUrl) */
   displayImageDataUrl: string;
@@ -96,7 +96,7 @@ export function deriveGarmentImageList(
     {
       imageDataUrl: mainUrl,
       // v0.9.43-dev 批次 3: 主图 cardImageDataUrl 优先用缩略图
-      cardImageDataUrl: pickCardImage(item.thumbnailDataUrl, mainUrl),
+      cardImageDataUrl: item.thumbnailDataUrl ?? "",
       displayImageDataUrl: mainUrl,
       source: "main",
       renderKind: "image",

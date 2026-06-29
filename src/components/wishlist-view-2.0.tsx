@@ -1475,7 +1475,7 @@ export function WishlistView20({
                         <div key={p.item.id} className="flex gap-3 items-center surface rounded-lg p-2">
                           {(p.item.imageDataUrl || p.item.thumbnailDataUrl) ? (
                             <div className="h-12 w-12 shrink-0 rounded-lg overflow-hidden bg-mist">
-                              <img src={p.item.thumbnailDataUrl || p.item.imageDataUrl} alt={p.item.name} className="h-full w-full object-cover" />
+                              {p.item.thumbnailDataUrl ? <img src={p.item.thumbnailDataUrl} alt={p.item.name} className="h-full w-full object-contain" /> : null}
                             </div>
                           ) : (
                             <div className="grid h-12 w-12 shrink-0 place-items-center rounded-lg bg-mist text-ink/30">
@@ -1506,7 +1506,7 @@ export function WishlistView20({
                         <div key={m.item.id} className="flex gap-3 items-center surface rounded-lg p-2">
                           {(m.item.imageDataUrl || m.item.thumbnailDataUrl) ? (
                             <div className="h-12 w-12 shrink-0 rounded-lg overflow-hidden bg-mist">
-                              <img src={m.item.thumbnailDataUrl || m.item.imageDataUrl} alt={m.item.name} className="h-full w-full object-cover" />
+                              {m.item.thumbnailDataUrl ? <img src={m.item.thumbnailDataUrl} alt={m.item.name} className="h-full w-full object-contain" /> : null}
                             </div>
                           ) : (
                             <div className="grid h-12 w-12 shrink-0 place-items-center rounded-lg bg-mist text-ink/30">

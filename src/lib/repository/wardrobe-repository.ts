@@ -354,7 +354,6 @@ export async function repoSaveEditedGarment(
     const patch: Partial<WardrobeItem> = {
       name: editDraft.name?.trim(),
       imageDataUrl: editDraft.imageDataUrl,
-      sourceImageDataUrl: editDraft.sourceImageDataUrl,
       cropBox: editDraft.cropBox,
       cropRevision: editDraft.cropRevision,
       thumbnailDataUrl: editDraft.thumbnailDataUrl,

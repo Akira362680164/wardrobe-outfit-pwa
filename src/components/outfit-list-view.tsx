@@ -1603,8 +1603,8 @@ function OutfitCompositionTab({
           <article key={item.id} className="rounded-lg border border-ink/8 bg-white p-2.5">
             <div className="flex items-center gap-2">
               <div className="h-12 w-12 shrink-0 overflow-hidden rounded-lg bg-milk-darker/40">
-                {item.imageDataUrl ? (
-                  <img src={item.thumbnailDataUrl || item.imageDataUrl} alt={item.name} className="h-full w-full object-cover" />
+                {item.thumbnailDataUrl ? (
+                  <img src={item.thumbnailDataUrl} alt={item.name} className="h-full w-full object-contain" />
                 ) : (
                   <div className="grid h-full place-items-center text-ink/25"><Shirt size={16} /></div>
                 )}

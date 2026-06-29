@@ -15,6 +15,7 @@ import { GarmentImage } from "@/components/garment-image";
 import { ImageCropEditor } from "@/components/image-crop-editor";
 import { duration, staggerReveal } from "@/lib/motion-tokens";
 import type { NormalizedCropBox } from "@/lib/image";
+import { createGarmentThumbnailFromOriginal } from "@/lib/thumbnail-runtime";
 import type {
   GarmentCategory,
   GarmentFitGender,
@@ -59,6 +60,7 @@ export interface WardrobeDraft {
   clientId?: string;
   name: string;
   imageDataUrl?: string;
+  thumbnailDataUrl?: string;
   sourceImageDataUrl?: string;
   cropBox?: NormalizedCropBox;
   category: GarmentCategory;
@@ -116,7 +118,7 @@ function SimilarMatchesPanel({
               className="aspect-square w-full overflow-hidden rounded-md bg-mist"
             >
               {match.item.imageDataUrl ? (
-                <GarmentImage src={match.item.thumbnailDataUrl || match.item.imageDataUrl} alt={match.item.name} />
+                <GarmentImage src={match.item.thumbnailDataUrl} alt={match.item.name} imageClassName="object-contain" />
               ) : null}
             </button>
             <p className="mt-1 truncate text-xs font-semibold">{match.item.name}</p>
@@ -163,7 +165,7 @@ export function BatchReviewView({
   const [captureCropJob, setCaptureCropJob] = useState<{
     dataUrl: string;
     startBox?: WardrobeDraft["cropBox"];
-    onConfirm: (newImageDataUrl: string, newBox: NormalizedCropBox) => void;
+    onConfirm: (newImageDataUrl: string, newBox: NormalizedCropBox) => void | Promise<void>;
   } | null>(null);
   useEffect(() => {
     if (!isDetail && captureCropJob) setCaptureCropJob(null);
@@ -237,7 +239,8 @@ export function BatchReviewView({
           item={{
             name: current.name || "候选衣物",
             imageDataUrl: current.imageDataUrl,
-            sourceImageDataUrl: current.sourceImageDataUrl,
+            thumbnailDataUrl: current.thumbnailDataUrl,
+            cropBox: current.cropBox,
             categoryLabel: CATEGORY_LABELS[current.category],
             seasonLabels: current.seasons.map((s) => SEASON_LABELS[s]),
             statusLabel: STATUS_LABELS[current.status],
@@ -256,13 +259,15 @@ export function BatchReviewView({
             }
             setIsDetail(false);
           }}
-          onOpenImage={() => onExpandImage({ src: current.sourceImageDataUrl || current.imageDataUrl || "", alt: current.name || "候选衣物" })}
-          onCrop={current.sourceImageDataUrl ? () => {
+          onOpenImage={() => onExpandImage({ src: current.imageDataUrl || "", alt: current.name || "候选衣物" })}
+          onCrop={current.imageDataUrl ? () => {
+            const originalDataUrl = current.imageDataUrl!;
             setCaptureCropJob({
-              dataUrl: current.sourceImageDataUrl!,
+              dataUrl: originalDataUrl,
               startBox: current.cropBox,
-              onConfirm: (newImageDataUrl, newBox) => {
-                onUpdateDraft(currentOriginalIndex, { imageDataUrl: newImageDataUrl, cropBox: newBox });
+              onConfirm: async (_newImageDataUrl, newBox) => {
+                const thumb = await createGarmentThumbnailFromOriginal({ originalDataUrl, cropBox: newBox });
+                onUpdateDraft(currentOriginalIndex, { cropBox: newBox, ...(thumb.thumbnailDataUrl ? { thumbnailDataUrl: thumb.thumbnailDataUrl } : {}) });
                 setCaptureCropJob(null);
               },
             });
@@ -392,7 +397,7 @@ export function BatchReviewView({
             aspectRatio="free"
             onCancel={() => setCaptureCropJob(null)}
             onConfirm={(newImageDataUrl, newBox) => {
-              captureCropJob.onConfirm(newImageDataUrl, newBox);
+              void captureCropJob.onConfirm(newImageDataUrl, newBox);
             }}
             onError={(msg) => onMessage?.(msg)}
           />

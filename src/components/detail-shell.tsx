@@ -106,7 +106,7 @@ export function DetailHeroGallery({
   slides: DetailShellSlide[];
   currentIndex: number;
   onIndexChange: (index: number) => void;
-  onExpandImage?: (image: { src: string; alt: string }) => void;
+  onExpandImage?: (image: { src: string; alt: string; thumbnailSrc?: string; cropBox?: DetailShellSlide["cropBox"]; displayMode?: "original-cropped" }) => void;
   bottomRightAction?: ReactNode;
   emptyIcon?: ReactNode;
   emptyText?: string;
@@ -150,7 +150,13 @@ export function DetailHeroGallery({
               onIndexChange={onIndexChange}
               onImageClick={(slide) => {
                 const src = slide.displaySrc || slide.imageDataUrl;
-                if (src) onExpandImage?.({ src, alt: slide.alt || "" });
+                if (src) onExpandImage?.({
+                  src,
+                  alt: slide.alt || "",
+                  thumbnailSrc: slide.thumbnailSrc,
+                  cropBox: slide.cropBox,
+                  ...(slide.displayMode === "original-cropped" ? { displayMode: "original-cropped" as const } : {}),
+                });
               }}
               className="absolute inset-0"
               imageClassName="object-contain"
@@ -213,9 +219,9 @@ export function DetailFilmstrip({
               active ? "border-denim shadow-sm" : "border-transparent opacity-60 hover:opacity-100"
             }`}
           >
-            {item.renderContent ? item.renderContent : item.imageDataUrl ? (
+            {item.renderContent ? item.renderContent : item.thumbnailDataUrl ? (
               // eslint-disable-next-line @next/next/no-img-element
-              <img src={item.thumbnailDataUrl || item.imageDataUrl} alt="" className="h-full w-full object-cover" />
+              <img src={item.thumbnailDataUrl} alt="" className="h-full w-full object-contain" />
             ) : (
               <div className="h-full w-full bg-mist" />
             )}

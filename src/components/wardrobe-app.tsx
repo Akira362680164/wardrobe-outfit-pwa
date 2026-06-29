@@ -70,7 +70,7 @@ import {
   MotionToast,
 } from "@/components/motion-common";
 import { ease, spring } from "@/lib/motion-tokens";
-import { generateThumbnailSafe } from "@/lib/thumbnail-runtime";
+import { createGarmentThumbnailFromOriginal, generateThumbnailSafe } from "@/lib/thumbnail-runtime";
 import { backfill } from "@/lib/thumbnail-backfill";
 import { countMissingThumbnails } from "@/lib/thumbnail";
 import { GarmentImage } from "@/components/garment-image";
@@ -211,7 +211,6 @@ interface EditSnapshot {
   locationId: string;
   notes: string;
   imageDataUrl: string;
-  sourceImageDataUrl: string;
   cropBox: string;
   cropRevision: number;
   thumbnailCropRevision: number;
@@ -1263,7 +1262,15 @@ export function WardrobeApp({ cloudAuth }: { cloudAuth?: WardrobeCloudAuth } = {
           }} />))}
         </div>
       </nav> : null}
-      <MotionImageLightbox open={!!expandedImage} src={expandedImage?.src ?? ""} alt={expandedImage?.alt ?? ""} onClose={lightbox.closeExpandedImage} />
+      <MotionImageLightbox
+        open={!!expandedImage}
+        src={expandedImage?.src ?? ""}
+        alt={expandedImage?.alt ?? ""}
+        thumbnailSrc={expandedImage?.thumbnailSrc}
+        cropBox={expandedImage?.cropBox}
+        displayMode={expandedImage?.displayMode}
+        onClose={lightbox.closeExpandedImage}
+      />
 
       <WardrobeHiddenImageInputs
         fileInputRef={imageIntake.fileInputRef}
@@ -2074,7 +2081,7 @@ function WardrobeView(props: WardrobeViewProps) {
       onMessage("请先在设置里配置 MiniMax Key", "info");
       return;
     }
-    const source = editDraft.imageDataUrl || editDraft.sourceImageDataUrl;
+    const source = editDraft.imageDataUrl;
     if (!source) {
       onMessage("当前衣物没有可识别的图片", "info");
       return;
@@ -2579,18 +2586,17 @@ function WardrobeView(props: WardrobeViewProps) {
             onBack={requestExitEdit}
             onSave={saveEditedItem}
             onRecognize={recognizeEditDraftAgain}
-            onCrop={(editDraft.sourceImageDataUrl || editDraft.imageDataUrl) ? () => {
-              const sourceKind: "original" | "current" = editDraft.sourceImageDataUrl ? "original" : "current";
-              const src = editDraft.sourceImageDataUrl || editDraft.imageDataUrl;
+            onCrop={editDraft.imageDataUrl ? () => {
+              const src = editDraft.imageDataUrl;
               if (src) {
                 recordDiagnosticEvent("edit_recrop_started", {
                   itemId: viewingItem?.id,
-                  sourceKind,
-                  hasOriginal: Boolean(editDraft.sourceImageDataUrl),
+                  sourceKind: "original",
+                  hasOriginal: true,
                   hasCurrent: Boolean(editDraft.imageDataUrl),
                   hasCropBox: Boolean(editDraft.cropBox),
                 });
-                setViewingItemCropJob({ dataUrl: src, startBox: editDraft.cropBox, target: "edit", sourceKind });
+                setViewingItemCropJob({ dataUrl: src, startBox: editDraft.cropBox, target: "edit", sourceKind: "original" });
               }
             } : undefined}
             onPatch={(patch) => setEditDraft((current) => current ? { ...current, ...patch } : current)}
@@ -2621,7 +2627,10 @@ function WardrobeView(props: WardrobeViewProps) {
               if (viewingItemCropJob.target === "edit") {
                 // ponytail: only update cropBox — imageDataUrl stays as original.
                 // re-crop on the original image just changes the crop viewport coordinates.
-                const thumb = await generateThumbnailSafe(newImageDataUrl);
+                const originalDataUrl = editDraft?.imageDataUrl;
+                const thumb = originalDataUrl
+                  ? await createGarmentThumbnailFromOriginal({ originalDataUrl, cropBox })
+                  : {};
                 recordDiagnosticEvent("edit_recrop_confirmed", { sourceKind: viewingItemCropJob.sourceKind ?? "current", hasCropBox: Boolean(cropBox) });
                 const nextCropRevision = (editDraft?.cropRevision ?? viewingItem?.cropRevision ?? 0) + 1;
                 const thumbOk = Boolean(thumb.thumbnailDataUrl);
@@ -2695,10 +2704,13 @@ function WardrobeView(props: WardrobeViewProps) {
  return;
  }
  const now = new Date().toISOString();
+ const nextCropRevision = (viewingItem.cropRevision ?? 0) + 1;
+ const thumb = await createGarmentThumbnailFromOriginal({ originalDataUrl: viewingItem.imageDataUrl, cropBox });
  const patch: Partial<WardrobeItem> = {
- imageDataUrl: newImageDataUrl,
- sourceImageDataUrl: viewingItem.sourceImageDataUrl || viewingItemCropJob.dataUrl,
  cropBox,
+ cropRevision: nextCropRevision,
+ thumbnailCropRevision: thumb.thumbnailDataUrl ? nextCropRevision : viewingItem.thumbnailCropRevision,
+ ...(thumb.thumbnailDataUrl ? { thumbnailDataUrl: thumb.thumbnailDataUrl } : {}),
  updatedAt: now,
  };
  const updatedItem = { ...viewingItem, ...patch, id: viewingItem.id };
@@ -2798,7 +2810,7 @@ function WardrobeView(props: WardrobeViewProps) {
           {searchResults.map((item) => (
             <article key={item.id ?? item.name} className="overflow-hidden rounded-lg border border-ink/10 bg-white shadow-sm">
               <div className="aspect-[4/5] bg-mist">
-                <GarmentImage src={item.thumbnailDataUrl || item.imageDataUrl || undefined} alt={item.name} fallbackSize={32} />
+                <GarmentImage src={item.thumbnailDataUrl || undefined} alt={item.name} fallbackSize={32} imageClassName="object-contain" />
               </div>
               <div className="grid gap-2 p-3">
                 <div className="min-w-0">
@@ -3459,7 +3471,7 @@ function WardrobeEditPage({
       <EditSectionCard className="p-3">
         <div className="flex items-center gap-3">
           <div className="aspect-[3/4] w-28 shrink-0 overflow-hidden rounded-xl bg-mist" aria-label="衣物图片预览">
-            <GarmentImage src={draft.thumbnailDataUrl || draft.imageDataUrl || undefined} alt={draft.name || "衣物图片"} fallbackSize={34} imageClassName="bg-transparent" />
+            <GarmentImage src={draft.thumbnailDataUrl || undefined} alt={draft.name || "衣物图片"} fallbackSize={34} imageClassName="bg-transparent object-contain" />
           </div>
           <div className="grid min-w-0 flex-1 gap-2">
             <button
@@ -5841,7 +5853,6 @@ function WaterfallCardImage({
           thumbnailSrc: entry.cardImageDataUrl,
           displaySrc: entry.displayImageDataUrl,
           sourceSrc: entry.sourceImageDataUrl,
-          fallbackImageDataUrl: entry.displayImageDataUrl,
           alt: isMain ? item.name : `穿搭灵感 ${i}`,
           badge,
           badgeClassName: isMain ? "bg-denim" : "bg-clay",
@@ -5907,7 +5918,6 @@ function editSnapshotFromDraft(draft: WardrobeDraft): EditSnapshot {
     locationId: draft.locationId,
     notes: (draft.notes ?? "").trim(),
     imageDataUrl: draft.imageDataUrl || "",
-    sourceImageDataUrl: draft.sourceImageDataUrl || "",
     cropBox: cropBoxSnapshot(draft.cropBox),
     cropRevision: draft.cropRevision ?? 0,
     thumbnailCropRevision: draft.thumbnailCropRevision ?? 0,

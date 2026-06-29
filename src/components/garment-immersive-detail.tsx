@@ -76,7 +76,10 @@ export function GarmentColorSwatches({
 export interface GarmentDetailModel {
   name: string;
   imageDataUrl?: string;
-  sourceImageDataUrl?: string;
+  thumbnailDataUrl?: string;
+  cropBox?: { x: number; y: number; width: number; height: number };
+  cropRevision?: number;
+  thumbnailCropRevision?: number;
   categoryLabel: string;
   seasonLabels: string[];
   statusLabel?: string;
@@ -246,16 +249,16 @@ extraImages,
   // v0.9.43-dev 批次 6: 填 thumbnailSrc / displaySrc 双图源 (批次 6 §2 规则)
   // - 主图: thumbnailSrc = entry.cardImageDataUrl, displaySrc = entry.displayImageDataUrl ?? imageDataUrl
   // - 参考图: thumbnailSrc = entry.cardImageDataUrl, displaySrc = entry.displayImageDataUrl
-  // - sourceSrc: 主图 = item.sourceImageDataUrl, 参考图 = entry.sourceImageDataUrl
+  // - 主图只使用完整 imageDataUrl；参考图保留自身历史源图语义。
   const slides: SwipeSlide[] = useMemo(() => {
-    const mainOriginal = item.imageDataUrl || item.sourceImageDataUrl || "";
+    const mainOriginal = item.imageDataUrl;
     const main: SwipeImageSlide = {
       kind: "image",
       id: "main",
-      imageDataUrl: (item as { thumbnailDataUrl?: string }).thumbnailDataUrl || mainOriginal,
-      thumbnailSrc: (item as { thumbnailDataUrl?: string }).thumbnailDataUrl || mainOriginal,
+      imageDataUrl: item.thumbnailDataUrl || "",
+      thumbnailSrc: item.thumbnailDataUrl,
       displaySrc: mainOriginal,
-      sourceSrc: item.sourceImageDataUrl || mainOriginal,
+      sourceSrc: mainOriginal,
       alt: item.name,
       badge: "主图",
       badgeClassName: "bg-denim",
@@ -291,7 +294,7 @@ extraImages,
       base.push(add);
     }
     return base;
-  }, [item.imageDataUrl, item.sourceImageDataUrl, item.name, extraImages, hasAddCard]);
+  }, [item.imageDataUrl, item.thumbnailDataUrl, item.cropBox, item.cropRevision, item.thumbnailCropRevision, item.name, extraImages, hasAddCard]);
 
   const safeIndex = clampCarouselIndex(currentImageIndex, slides.length);
   const safeSlide = slides[safeIndex];

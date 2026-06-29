@@ -431,7 +431,7 @@ function OutfitSelectStep({
  className={`min-w-0 overflow-hidden rounded-lg border text-left ${selected ? "border-denim bg-denim/6" : "border-ink/8 bg-[#fbfbf8]"}`}
  >
  <div className="aspect-[3/4] bg-mist">
- <img src={item.thumbnailDataUrl || item.imageDataUrl} alt={item.name} className="h-full w-full object-cover" loading="lazy" decoding="async" />
+ {item.thumbnailDataUrl ? <img src={item.thumbnailDataUrl} alt={item.name} className="h-full w-full object-contain" loading="lazy" decoding="async" /> : <div className="grid h-full place-items-center text-[10px] text-ink/35">暂无图片</div>}
  </div>
  <div className="p-1.5">
  <p className="truncate text-[11px] font-semibold">{item.name}</p>
