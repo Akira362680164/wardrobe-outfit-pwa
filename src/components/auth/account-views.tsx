@@ -29,7 +29,7 @@ export function AccountManagementView({
   onChangePassword: () => void;
 }) {
   return (
-    <div className="grid gap-3.5">
+    <div className="grid min-w-0 grid-cols-[minmax(0,1fr)] gap-3.5">
       <SubPageHeader title="账号管理" onBack={onBack} />
       <article className="surface rounded-lg px-4 py-3.5">
         <div className="flex items-start gap-3">
@@ -240,7 +240,7 @@ export function ChangePasswordView({
 
   return (
     <form
-      className="grid gap-3.5"
+      className="grid min-w-0 grid-cols-[minmax(0,1fr)] gap-3.5"
       onSubmit={async (event) => {
         event.preventDefault();
         setMessage(null);

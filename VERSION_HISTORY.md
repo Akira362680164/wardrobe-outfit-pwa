@@ -1,3 +1,17 @@
+## 2026-06-29 / v2.0.9-test / Codex — 修复设置页/衣橱首页溢出、阴影和滚动锁
+
+- **目的**：修复设置页和衣橱首页被超长衣橱名称整体撑出屏幕、设置模块之间出现大面积灰色阴影，以及多层底部弹窗关闭后页面仍被锁定无法滚动的问题。
+- **版本**：`2.0.8-test` → `2.0.9-test`，Android `versionCode` 由 `20008` → `20009`。
+- **改动文件**：`src/components/wardrobe-app.tsx`、`src/components/auth/account-views.tsx`、`src/lib/use-scroll-lock.ts`、`scripts/test-settings-wardrobe-ui-overflow.ts`、`package.json`、`package-lock.json`、`VERSION_HISTORY.md`。
+- **布局修复**：衣橱首页、设置首页和账号子页的单列 Grid 改用 `minmax(0,1fr)`；衣橱切换行、按钮和名称链路补齐 `min-w-0`，长名称单行省略，瀑布流继续按手机宽度排版；移除此前宽泛的页面级 `overflow-hidden` 硬裁切。
+- **阴影修复**：仅对设置首页直接 `.surface` 卡片覆盖 `shadow-none`，不改全局 `.surface` 和其他页面。
+- **滚动修复**：`useScrollLock` 只在全局锁计数由 0 进入 1 时保存并施加 DOM 样式，嵌套弹窗不再用“已锁定样式”覆盖原始样式，最后一层关闭后可正常恢复页面滚动。
+- **云数据边界**：本轮不修改云同步或衣橱名称数据；云端记录字段丢失问题留待后续单独讨论。
+- **验证**：`npm run test:logic:ui-overflow` 通过；`npm run typecheck` 通过；`npm run test:logic` 通过；`npm run build` 通过；构建 CSS 已确认生成 `grid-template-columns:minmax(0,1fr)` 和设置卡片 `shadow-none` 选择器；`npm run android:apk` 固定签名构建通过。
+- **风险门禁**：**high**（手机窄屏布局、嵌套弹窗和全局滚动锁）。
+- **未触发 subagent**：用户未通知。
+- **未验证风险**：当前 `adb devices -l` 无在线设备，未在 MEIZU 21 Pro 上对长衣橱名称、竖屏/横屏和“删除衣橱 → 二次确认 → 关闭”后的滚动进行真机视觉/触摸复测。
+
 ## 2026-06-29 / v2.0.8-test / Codex — 设置页与衣橱首页 UI 溢出修复设计
 
 - **目的**：在实施前锁定本轮纯 UI 修复边界，处理长衣橱名称撑宽设置页/衣橱首页、设置模块阴影和多层弹窗后页面无法滚动；云同步字段丢失留待后续单独讨论。

@@ -947,7 +947,7 @@ export function WardrobeApp({ cloudAuth }: { cloudAuth?: WardrobeCloudAuth } = {
           </div>
         </aside>
 
-        <section className="min-w-0 overflow-hidden">
+        <section className="min-w-0">
 
           {!hasKey && showKeyBanner && !hideMobileNav ? (
             <div className="mb-4 flex items-center gap-3 rounded-lg border border-clay/20 bg-clay/6 px-4 py-3 text-sm">
@@ -2845,9 +2845,9 @@ function WardrobeView(props: WardrobeViewProps) {
   }
 
   return (
-    <div className="grid gap-4">
+    <div className="grid min-w-0 grid-cols-[minmax(0,1fr)] gap-4">
       {/* ---- 首页顶部操作行：衣橱切换(flex:1) + 搜索/统计/AI诊断(方形) ---- */}
-      <div className="flex items-stretch gap-2.5">
+      <div className="flex min-w-0 items-stretch gap-2.5">
         {/* 衣橱切换按钮：占据剩余空间 */}
         <div className="relative flex-1 min-w-0">
           <button
@@ -2858,13 +2858,13 @@ function WardrobeView(props: WardrobeViewProps) {
             aria-expanded={scopePopoverOpen}
             aria-label="切换衣橱浏览范围"
             title="切换衣橱浏览范围"
-            className="surface w-full h-14 rounded-lg px-3 text-left transition-colors"
+            className="surface h-14 w-full min-w-0 overflow-hidden rounded-lg px-3 text-left transition-colors"
           >
-            <div className="flex h-full items-center gap-2">
+            <div className="flex h-full min-w-0 items-center gap-2">
               <Shirt className="shrink-0 text-ink/55" size={18} aria-hidden="true" />
               <div className="min-w-0 flex-1">
-                <div className="flex items-center gap-1">
-                  <span className="truncate text-sm font-semibold text-ink">{scopeLabel}</span>
+                <div className="flex min-w-0 items-center gap-1">
+                  <span className="min-w-0 flex-1 truncate text-sm font-semibold text-ink">{scopeLabel}</span>
                   <ChevronDown
                     size={14}
                     className={`shrink-0 text-ink/45 transition-transform ${scopePopoverOpen ? "rotate-180" : ""}`}
@@ -4172,7 +4172,7 @@ function SettingsView({
   const hasMiniMaxKey = miniMaxSettings.apiKey.trim().length > 0;
 
   return (
-    <div className="grid gap-3.5">
+    <div className="grid min-w-0 grid-cols-[minmax(0,1fr)] gap-3.5 [&>.surface]:shadow-none">
       {/* Header - 与 AppSubPageTopBar / 衣橱首页按钮行 / 套装/种草首页 header 一致 h-14 (56px) */}
       <h1 className="flex h-14 items-center px-4 pt-2 text-xl font-bold tracking-tight">设置</h1>
 

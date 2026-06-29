@@ -56,8 +56,7 @@ let savedScrollY = 0;
 
 function applyLock(): void {
   if (typeof window === "undefined") return;
-  // 重复 lock 防护由 caller (useScrollLock) 的 lockCount 逻辑负责,
-  // applyLock 自身不做 lockCount 判断, 避免 caller ++ 之后再 check 误判。
+  // 只由第一个锁调用；后续嵌套锁只增加 lockCount，避免覆盖原始页面样式。
   const html = document.documentElement;
   const body = document.body;
 
@@ -140,10 +139,12 @@ export function useScrollLock(active: boolean): void {
     if (!active) return;
     if (typeof window === "undefined") return;
     lockCount += 1;
-    try {
-      applyLock();
-    } catch (err) {
-      window.console.error("[useScrollLock] applyLock failed:", err);
+    if (lockCount === 1) {
+      try {
+        applyLock();
+      } catch (err) {
+        window.console.error("[useScrollLock] applyLock failed:", err);
+      }
     }
     return () => {
       lockCount = Math.max(0, lockCount - 1);
