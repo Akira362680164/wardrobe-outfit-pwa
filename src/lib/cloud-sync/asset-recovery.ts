@@ -17,6 +17,7 @@ import { currentWorkspaceGuard } from "@/lib/cloud-sync/sync-engine";
 import type { CloudSyncRequestOptions } from "@/lib/cloud-sync/cloud-sync-api";
 import { AccountImageCache, type CachedImage } from "@/lib/cloud-sync/image-cache";
 import type { AssetVariant } from "@wardrobe/cloud-contracts";
+import { recordDiagnosticEvent } from "@/lib/diagnostic-log";
 
 export interface AssetRecoveryProgress {
   phase: "manifest" | "thumbnails" | "done" | "error";
@@ -28,7 +29,7 @@ export interface AssetRecoveryProgress {
 
 export interface AssetRecoveryDeps {
   fetchManifest?: (options: CloudSyncRequestOptions) => Promise<AssetManifestItem[]>;
-  downloadThumbnail?: (assetId: string, variant: AssetVariant) => Promise<CachedImage | null>;
+  downloadThumbnail?: (assetId: string, variant: AssetVariant, expectedSha256?: string) => Promise<CachedImage | null>;
 }
 
 async function fetchAllManifest(options: CloudSyncRequestOptions): Promise<AssetManifestItem[]> {
@@ -49,9 +50,10 @@ export async function recoverAssets(
   deps: AssetRecoveryDeps = {},
 ): Promise<AssetRecoveryProgress> {
   const fetchManifest = deps.fetchManifest ?? fetchAllManifest;
-  const downloadThumbnail = deps.downloadThumbnail ?? ((assetId: string) => cache.downloadAndCache(assetId, "thumbnail"));
+  const downloadThumbnail = deps.downloadThumbnail ?? ((assetId: string, _variant: AssetVariant, expectedSha256?: string) => cache.downloadAndCache(assetId, "thumbnail", { expectedSha256 }));
 
   const report = (p: AssetRecoveryProgress) => onProgress?.(p);
+  recordDiagnosticEvent("asset", "asset_recovery", { phase: "started", severity: "info" });
 
   // --- capture workspace guard ---
   const ctx = await loadCloudBridgeContext();
@@ -74,13 +76,20 @@ export async function recoverAssets(
   let items: AssetManifestItem[];
   try {
     items = await fetchManifest(options);
-  } catch {
+  } catch (error) {
+    recordDiagnosticEvent("asset", "asset_recovery_manifest", {
+      phase: "failed", severity: "error", errorCode: "ASSET_MANIFEST_FAILED",
+      metadata: { error: error instanceof Error ? error.message : "unknown" },
+    });
     const result: AssetRecoveryProgress = { phase: "error", totalAssets: 0, downloadedThumbnails: 0, failedThumbnails: 0, stateChanged: false };
     report(result);
     return result;
   }
 
   report({ phase: "manifest", totalAssets: items.length, downloadedThumbnails: 0, failedThumbnails: 0, stateChanged: false });
+  recordDiagnosticEvent("asset", "asset_recovery_manifest", {
+    phase: "succeeded", severity: "info", metadata: { manifestCount: items.length },
+  });
 
   // sort most-recent first for first-screen priority
   const sorted = [...items].sort(
@@ -105,7 +114,7 @@ export async function recoverAssets(
     const results = await Promise.allSettled(
       batch.map((item) =>
         item.thumbnail
-          ? downloadThumbnail(item.assetId, "thumbnail")
+          ? downloadThumbnail(item.assetId, "thumbnail", item.thumbnail.sha256)
           : Promise.resolve(null),
       ),
     );
@@ -114,6 +123,17 @@ export async function recoverAssets(
       if (r.status === "fulfilled" && r.value) downloaded++;
       else failed++;
     }
+
+    recordDiagnosticEvent("asset", "asset_recovery_batch", {
+      phase: failed > 0 ? "changed" : "succeeded",
+      severity: failed > 0 ? "warning" : "info",
+      metadata: {
+        batchAssetIds: batch.map((item) => item.assetId),
+        downloadedThumbnailCount: downloaded,
+        failedThumbnailCount: failed,
+        stateChanged: downloaded > 0,
+      },
+    });
 
     report({ phase: "thumbnails", totalAssets: sorted.length, downloadedThumbnails: downloaded, failedThumbnails: failed, stateChanged: downloaded > 0 });
   }
@@ -131,6 +151,12 @@ export async function recoverAssets(
   if (downloaded > 0 || failed > 0) {
     console.warn("[asset-recovery] recovery summary", { totalAssets: sorted.length, downloadedThumbnails: downloaded, failedThumbnails: failed, stateChanged });
   }
+
+  recordDiagnosticEvent("asset", "asset_recovery", {
+    phase: failed > 0 ? "changed" : "succeeded",
+    severity: failed > 0 ? "warning" : "info",
+    metadata: { manifestCount: sorted.length, downloadedThumbnailCount: downloaded, failedThumbnailCount: failed, stateChanged },
+  });
 
   return { phase: "done", totalAssets: sorted.length, downloadedThumbnails: downloaded, failedThumbnails: failed, stateChanged };
 }

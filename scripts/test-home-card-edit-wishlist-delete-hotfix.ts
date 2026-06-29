@@ -46,8 +46,9 @@ assert(
 assert(!wardrobeApp.includes("onCropFromSource"), "WardrobeEditPage props no longer include onCropFromSource");
 assert(!wardrobeApp.includes("从原图重新裁切"), "user-visible recrop-from-original copy is absent");
 assert(
-  wardrobeApp.includes("const sourceKind: \"original\" | \"current\" = editDraft.sourceImageDataUrl ? \"original\" : \"current\""),
-  "WardrobeEditPage recrop uses original source when available",
+  wardrobeApp.includes("const src = editDraft.imageDataUrl") &&
+    wardrobeApp.includes('setViewingItemCropJob({ dataUrl: src, startBox: editDraft.cropBox, target: "edit", sourceKind: "original" })'),
+  "WardrobeEditPage recrop uses imageDataUrl as the single original source",
 );
 assert(wishlistView.includes("onExit={closeWishlistIntake}"), "Wishlist intake onExit is wired to closeWishlistIntake");
 assert(wishlistView.includes('flowKind="wishlist"'), "Wishlist intake reuses GarmentIntakeFlow wishlist mode");

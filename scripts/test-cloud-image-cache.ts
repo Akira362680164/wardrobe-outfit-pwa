@@ -130,6 +130,20 @@ async function main() {
     check("put 成功后 tmp key 已清理", !hasTmp);
   }
 
+  // ---- Test 7: persistent write failure is observable ----
+  {
+    const cache = new AccountImageCache("hash123");
+    const blob = makeBlob(new Uint8Array([99]));
+    const sha256 = await sha256Hex(blob);
+    const failingStorage: ImageCacheStorage = {
+      get: async () => null,
+      set: async () => { throw new Error("disk full"); },
+      delete: async () => undefined,
+    };
+    const ok = await cache.put("asset-write-fail", "thumbnail", blob, sha256, { storage: failingStorage });
+    check("缓存写入失败不得误报成功", ok === false);
+  }
+
   console.log(`\n${pass} passed, ${fail} failed`);
   assert.equal(fail, 0);
 }

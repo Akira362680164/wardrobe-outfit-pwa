@@ -23,6 +23,8 @@ const workspaceRegistry = read("src/lib/workspace-registry.ts");
 const mainActivity = read("android/app/src/main/java/com/wardrobe/outfit/MainActivity.java");
 const securePlugin = read("android/app/src/main/java/com/wardrobe/outfit/WardrobeSecureStoragePlugin.java");
 const packageJson = read("package.json");
+const packageVersion = (JSON.parse(packageJson) as { version: string }).version;
+const packageVersionParts = /^(\d+)\.(\d+)\.(\d+)-test$/.exec(packageVersion)?.slice(1).map(Number);
 
 let pass = 0;
 let fail = 0;
@@ -90,7 +92,7 @@ check("legal-document-view 组件存在", /LegalDocumentView/.test(read("src/com
 check("AndroidManifest 允许 cleartext traffic", /usesCleartextTraffic="true"/.test(read("android/app/src/main/AndroidManifest.xml")));
 check("构建环境校验脚本存在", read("scripts/validate-cloud-build-env.mjs").includes("validate-cloud-build-env") || read("scripts/validate-cloud-build-env.mjs").includes("Cloud Build Env"));
 check("android:sync 包含校验", /validate-cloud-build-env/.test(packageJson));
-check("版本号升级为 2.0.15-test", /"version": "2.0.15-test"/.test(packageJson));
+check("测试版版本不低于 2.0.15-test", Boolean(packageVersionParts) && packageVersionParts![0] * 10_000 + packageVersionParts![1] * 100 + packageVersionParts![2] >= 20_015);
 
 // Existing checks that still apply
 check("WardrobeApp 接收 cloudAuth 可选参数", /export function WardrobeApp\(\{ cloudAuth \}: \{ cloudAuth\?: WardrobeCloudAuth \} = \{\}\)/.test(wardrobeApp));

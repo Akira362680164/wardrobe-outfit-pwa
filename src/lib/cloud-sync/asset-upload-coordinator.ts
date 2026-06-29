@@ -19,6 +19,7 @@ import { imageDataUrlToBlob } from "@/lib/cloud-sync/asset-metadata";
 import type { LocalAssetPayload, LocalAssetImageMetadata } from "@/lib/cloud-sync/asset-metadata";
 import type { CloudSyncRequestOptions } from "@/lib/cloud-sync/cloud-sync-api";
 import { CloudSyncApiError } from "@/lib/cloud-sync/cloud-sync-api";
+import { recordDiagnosticEvent } from "@/lib/diagnostic-log";
 
 export interface UploadCoordinatorDeps {
   uploadContent?: typeof uploadAssetContent;
@@ -141,11 +142,19 @@ async function uploadOneVariant(
     }
 
     await updateVariantStatus(db, ctx, record, variant, "uploaded");
+    recordDiagnosticEvent("asset", "asset_upload_state", {
+      phase: "succeeded", severity: "info",
+      metadata: { entityId: record.ownerEntityId, assetId: record.id, variant, status: "uploaded", sha256: upload.sha256, sizeBytes: upload.sizeBytes, mimeType: upload.mimeType },
+    });
     return { assetId: record.id, variant, status: "uploaded" };
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     const errorCode = message === "ASSET_UPLOAD_RESPONSE_MISMATCH" ? message : classifyUploadError(err);
     await updateVariantStatusSafe(db, ctx, record, variant, "failed", errorCode);
+    recordDiagnosticEvent("asset", "asset_upload_state", {
+      phase: "failed", severity: "error", errorCode,
+      metadata: { entityId: record.ownerEntityId, assetId: record.id, variant, status: "failed", sha256: upload.sha256, sizeBytes: upload.sizeBytes, mimeType: upload.mimeType },
+    });
     return { assetId: record.id, variant, status: "failed", error: message, errorCode };
   }
 }

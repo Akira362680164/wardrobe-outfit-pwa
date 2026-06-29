@@ -111,16 +111,31 @@ async function main() {
     console.log();
   }
 
+  if (data.assets) {
+    const assets = data.assets as Record<string, unknown>;
+    const records = Array.isArray(assets.records) ? assets.records as Array<Record<string, unknown>> : [];
+    console.log(`【图片资产】 (${records.length} 条)`);
+    console.log(`  诊断可用: ${assets.available} · 待上传: ${assets.pendingUploadCount ?? 0} · 失败: ${assets.failedUploadCount ?? 0}`);
+    for (const record of records.slice(0, 10)) {
+      const original = record.original as Record<string, unknown> | undefined;
+      const thumbnail = record.thumbnail as Record<string, unknown> | undefined;
+      console.log(`  · ${record.assetId} / ${record.sourceFieldName ?? "unknown"}: original=${original?.status} thumbnail=${thumbnail?.status}`);
+    }
+    if (records.length > 10) console.log(`  … 还有 ${records.length - 10} 条`);
+    console.log();
+  }
+
   // 最近事件
   if (data.recentEvents && Array.isArray(data.recentEvents)) {
     const events = data.recentEvents as Array<Record<string, unknown>>;
     console.log(`【最近事件】 (${events.length} 条)`);
-    for (const ev of events.slice(-10)) {
+    for (const ev of events.slice(-20)) {
       const time = new Date(String(ev.occurredAt)).toLocaleTimeString("zh-CN");
-      console.log(`  [${time}] ${ev.category} / ${ev.name} (${ev.severity})`);
+      const suffix = ev.errorCode ? ` error=${ev.errorCode}` : ev.httpStatus ? ` HTTP ${ev.httpStatus}` : "";
+      console.log(`  [${time}] ${ev.category} / ${ev.name} (${ev.severity})${suffix}`);
     }
-    if (events.length > 10) {
-      console.log(`  … 还有 ${events.length - 10} 条`);
+    if (events.length > 20) {
+      console.log(`  … 还有 ${events.length - 20} 条`);
     }
     console.log();
   }

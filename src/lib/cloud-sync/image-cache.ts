@@ -15,6 +15,7 @@ import { loadAuthSessionSnapshot } from "@/lib/auth-session-store";
 import type { CloudSyncRequestOptions } from "@/lib/cloud-sync/cloud-sync-api";
 import { CloudSyncApiError } from "@/lib/cloud-sync/cloud-sync-api";
 import { persistentImageCacheStorage } from "@/lib/cloud-sync/persistent-image-cache-storage";
+import { recordDiagnosticEvent } from "@/lib/diagnostic-log";
 
 export interface ImageCacheStorage {
   get(key: string): Promise<ArrayBuffer | null>;
@@ -55,19 +56,28 @@ export class AccountImageCache {
         storage.get(key),
         storage.get(metaKey),
       ]);
-      if (!data || !metaRaw) return null;
+      if (!data || !metaRaw) {
+        recordCacheEvent("asset_cache_read", assetId, variant, "changed", "ASSET_CACHE_MISS");
+        return null;
+      }
       const meta = metaRaw ? parseMeta(metaRaw) : null;
-      if (!meta?.mimeType?.startsWith("image/")) return null;
+      if (!meta?.mimeType?.startsWith("image/")) {
+        recordCacheEvent("asset_cache_read", assetId, variant, "failed", "ASSET_CACHE_INVALID_METADATA");
+        return null;
+      }
       const mimeType = meta.mimeType;
       const sha256 = await sha256Hex(new Blob([data]));
       if (options.expectedSha256 && sha256 !== options.expectedSha256) {
         await storage.delete(key);
         await storage.delete(metaKey);
+        recordCacheEvent("asset_cache_read", assetId, variant, "failed", "ASSET_CACHE_SHA256_MISMATCH", { expectedSha256: options.expectedSha256, actualSha256: sha256 });
         return null;
       }
+      recordCacheEvent("asset_cache_read", assetId, variant, "succeeded", undefined, { actualSha256: sha256, sizeBytes: data.byteLength });
       return { blob: new Blob([data], { type: mimeType }), sha256, mimeType };
     } catch (error) {
       logImageCacheFailure(assetId, variant, "cache_read_failed", error);
+      recordCacheEvent("asset_cache_read", assetId, variant, "failed", "ASSET_CACHE_READ_FAILED");
       return null;
     }
   }
@@ -83,6 +93,7 @@ export class AccountImageCache {
       const actualSha256 = await sha256Hex(blob);
       if (actualSha256 !== expectedSha256) {
         logImageCacheFailure(assetId, variant, "sha256_mismatch");
+        recordCacheEvent("asset_cache_write", assetId, variant, "failed", "ASSET_CACHE_WRITE_SHA256_MISMATCH", { expectedSha256, actualSha256 });
         return false;
       }
 
@@ -91,12 +102,14 @@ export class AccountImageCache {
       await storage.set(key, data);
       await storage.set(metaKey, encodeMeta({ mimeType: blob.type }));
       await storage.delete(tmpKey);
+      recordCacheEvent("asset_cache_write", assetId, variant, "succeeded", undefined, { expectedSha256, actualSha256, sizeBytes: data.byteLength });
       return true;
     } catch (error) {
       try { await storage.delete(tmpKey); } catch (cleanupError) {
         logImageCacheFailure(assetId, variant, "cache_cleanup_failed", cleanupError);
       }
       logImageCacheFailure(assetId, variant, "cache_write_failed", error);
+      recordCacheEvent("asset_cache_write", assetId, variant, "failed", "ASSET_CACHE_WRITE_FAILED");
       return false;
     }
   }
@@ -104,9 +117,10 @@ export class AccountImageCache {
   async downloadAndCache(
     assetId: string,
     variant: AssetVariant,
+    options: ImageCacheGetOptions = {},
     deps: ImageCacheDeps = {},
   ): Promise<CachedImage | null> {
-    const cached = await this.get(assetId, variant, {}, deps);
+    const cached = await this.get(assetId, variant, options, deps);
     if (cached) return cached;
 
     const ctx = await loadCloudBridgeContext();
@@ -119,16 +133,25 @@ export class AccountImageCache {
       logImageCacheFailure(assetId, variant, "authentication_required");
       return null;
     }
-    const options: CloudSyncRequestOptions = { accessToken: session.accessToken, deviceId: ctx.deviceId };
+    const requestOptions: CloudSyncRequestOptions = { accessToken: session.accessToken, deviceId: ctx.deviceId };
 
     try {
       const download = deps.downloadContent ?? downloadAssetContent;
-      const content = await download({ assetId, variant }, options);
-      const ok = await this.put(assetId, variant, content.blob, content.sha256, deps);
+      const content = await download({ assetId, variant }, requestOptions);
+      if (options.expectedSha256 && (content.sha256 !== options.expectedSha256 || content.actualSha256 !== options.expectedSha256)) {
+        recordCacheEvent("asset_download_expected_sha256", assetId, variant, "failed", "ASSET_DOWNLOAD_SHA256_MISMATCH", {
+          expectedSha256: options.expectedSha256,
+          responseSha256: content.sha256,
+          actualSha256: content.actualSha256,
+        });
+        return null;
+      }
+      const ok = await this.put(assetId, variant, content.blob, options.expectedSha256 ?? content.sha256, deps);
       if (!ok) return null;
       return { blob: content.blob, sha256: content.sha256, mimeType: content.mimeType };
     } catch (error) {
       logImageCacheFailure(assetId, variant, "download_failed", error);
+      recordCacheEvent("asset_download", assetId, variant, "failed", classifyDownloadError(error));
       return null;
     }
   }
@@ -140,6 +163,31 @@ export class AccountImageCache {
   private metaKey(assetId: string, variant: string): string {
     return `${this.prefix}${assetId}-${variant}.meta`;
   }
+}
+
+function classifyDownloadError(error: unknown): string {
+  if (!(error instanceof CloudSyncApiError)) return "ASSET_DOWNLOAD_NETWORK_ERROR";
+  if (error.status === 401 || error.status === 403) return "ASSET_DOWNLOAD_AUTH_ERROR";
+  if (error.status === 404) return "ASSET_DOWNLOAD_NOT_FOUND";
+  if (error.code === "invalid_asset_response") return "ASSET_DOWNLOAD_INVALID_RESPONSE";
+  if (error.code === "asset_sha256_mismatch") return "ASSET_DOWNLOAD_SHA256_MISMATCH";
+  return error.status >= 500 ? "ASSET_DOWNLOAD_SERVER_ERROR" : "ASSET_DOWNLOAD_FAILED";
+}
+
+function recordCacheEvent(
+  name: string,
+  assetId: string,
+  variant: AssetVariant,
+  phase: "succeeded" | "failed" | "changed",
+  errorCode?: string,
+  metadata: Record<string, unknown> = {},
+): void {
+  recordDiagnosticEvent("asset", name, {
+    phase,
+    severity: phase === "failed" ? "error" : "info",
+    errorCode,
+    metadata: { assetId, variant, ...metadata },
+  });
 }
 
 function logImageCacheFailure(assetId: string, variant: AssetVariant, code: string, error?: unknown): void {

@@ -99,6 +99,7 @@ export async function bridgeWishlistDelete(legacyWishlistId: string): Promise<Br
 export function toCloudWishlistPayload(item: WishlistItem, assetRefs?: CloudAssetReferenceMap): Record<string, unknown> {
   const safe = { ...item } as Record<string, unknown>;
   delete safe.imageDataUrl;
+  delete safe.sourceImageDataUrl;
   delete safe.thumbnailDataUrl;
   return withCloudAssetRefs({
     ...safe,

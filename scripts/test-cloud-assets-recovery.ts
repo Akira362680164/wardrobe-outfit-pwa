@@ -120,20 +120,23 @@ async function main() {
       makeItem("a0000000-0000-4000-8000-000000000003", "2026-06-26T13:00:00.000Z"),
     ];
     const downloaded: string[] = [];
+    const expectedHashes: string[] = [];
     const result = await recoverAssets(cache, undefined, {
       fetchManifest: async () => items,
-      downloadThumbnail: async (assetId) => {
+      downloadThumbnail: async (assetId, _variant, expectedSha256) => {
         // simulate cache put + return
         const data = new Uint8Array([1, 2, 3]);
         const blob = new Blob([data.buffer as ArrayBuffer], { type: "image/jpeg" });
         const sha256 = "a7ffc6f8bf1ed76651c14756a061d662f580ff4de43b49fa82d80a4b80f8434a";
         await cache.put(assetId, "thumbnail", blob, sha256);
         downloaded.push(assetId);
+        expectedHashes.push(expectedSha256 ?? "");
         return { blob, sha256, mimeType: "image/jpeg" };
       },
     });
     check("3 资产下载全部缩略图", result.downloadedThumbnails === 3 && result.failedThumbnails === 0);
     check("下载顺序最近优先", downloaded[0] === items[0].assetId);
+    check("恢复下载传入 manifest thumbnail SHA-256", expectedHashes.every((hash) => hash === items[0].thumbnail?.sha256));
     check("phase=done", result.phase === "done");
   }
 

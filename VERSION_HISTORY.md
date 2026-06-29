@@ -1,3 +1,15 @@
+## 2026-06-30 / v2.0.16-test / Codex — 增加图片资产端到端诊断
+
+- **目的**：在不预设 Android 卸载重装后图片恢复根因的前提下，补齐上传、远端响应、下载、SHA-256、持久缓存、Mapper 和页面刷新证据，并复用现有“上传诊断数据”工单入口。
+- **版本**：保持 `2.0.16-test` / Android `versionCode 20016`；该版本已由上一提交专门递增，本提交不再重复升版。
+- **主要改动**：诊断快照同时覆盖本地 asset 与重装后仅存在于 `cloudAssetRefs` 的资产，不导出 DataURL；二进制请求记录 requestId、transport、HTTP、字节数与响应/实际 SHA；恢复下载强制使用 manifest / `variantSha256` 校验；持久缓存不再吞掉写入异常；记录 manifest、恢复批次、快照失效和 workspace 刷新结果；`diagnosis:inspect` 增加资产摘要。
+- **附带修复**：补齐套装与种草云同步 payload 对 `sourceImageDataUrl` 的剔除，避免完整 DataURL 进入实体 JSON；将写死 `2.0.15-test` 的版本断言改为最低版本门禁，并将编辑重裁测试对齐“`imageDataUrl` 是唯一完整原图”模型。
+- **改动文件**：`src/lib/cloud-sync/{asset-diagnostics,cloud-assets-api,asset-upload-coordinator,image-cache,persistent-image-cache-storage,image-asset-resolver,asset-recovery,outfit-bridge,wishlist-bridge}.ts`、`src/lib/diagnostic-log.ts`、`src/components/auth/workspace-gate.tsx`、`src/components/use-wardrobe-data-controller.ts`、`src/components/wardrobe-app.tsx`、`scripts/diagnosis-inspect.ts`、相关测试脚本、`package.json`、`VERSION_HISTORY.md`。
+- **验证**：`npm run typecheck` 通过；`npm run test:logic:all` 全部通过（含新增资产快照脱敏、Fetch 真实二进制响应/SHA/requestId/transport、缓存写失败、manifest SHA 传递回归）；`npm run build` 通过；`git diff --check` 通过；`node scripts/review-gate.mjs` 判定 high。
+- **风险门禁**：**high**（Android 二进制资产传输、持久缓存、恢复刷新和主界面诊断链路）。
+- **未触发 subagent**：用户未通知。
+- **未验证风险**：尚未用当前提交的 APK 在 Android 模拟器/真机执行裁切+未裁切录入、四个 variant 远端校验和卸载重装恢复；云端图片恢复根因仍未完成定位。
+
 ## 2026-06-29 / v2.0.16-test / Codex — 递增 Android 测试版本用于模拟器图片恢复取证
 
 - **目的**：阶段一缩略图修复已进入后续 Android APK 验证与 root 模拟器取证，按项目规则递增测试版本，确保 APK 内构建身份可与当前 HEAD 对齐。

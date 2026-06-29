@@ -114,6 +114,7 @@ import { bridgeOutfitPlanDelete } from "@/lib/cloud-sync/plan-bridge";
 import { bridgeWearEventsForGarment } from "@/lib/cloud-sync/wear-bridge";
 import { bridgeWishlistUpsert } from "@/lib/cloud-sync/wishlist-bridge";
 import { isAccessTokenFresh, loadAuthSessionSnapshot } from "@/lib/auth-session-store";
+import { buildGarmentAssetDiagnosticSnapshot } from "@/lib/cloud-sync/asset-diagnostics";
 import { wardrobeRepository } from "@/lib/repository/wardrobe-repository";
 import {
  defaultMiniMaxSettings,
@@ -3952,6 +3953,7 @@ function SettingsView({
         throw new Error("构建身份不完整");
       }
 
+      const assetDiagnostics = await buildGarmentAssetDiagnosticSnapshot();
       const log = buildWardrobeDiagnosticLog({
         activeView,
         route,
@@ -3961,6 +3963,7 @@ function SettingsView({
         wishlistItems,
         backfillState,
         miniMaxSettings,
+        assetDiagnostics,
       });
       log.userReport.description = description;
 
@@ -4009,7 +4012,7 @@ function SettingsView({
           itemCount: items.length,
           outfitCount: outfits.length,
           wishlistCount: wishlistItems.length,
-          recentRequestIds: [],
+          recentRequestIds: [...new Set(log.recentEvents.flatMap((event) => event.requestId ? [event.requestId] : []))].slice(-200),
         }),
       });
 

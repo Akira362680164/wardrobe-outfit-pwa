@@ -119,6 +119,7 @@ export function toCloudOutfitPayload(outfit: SavedOutfit, assetRefs?: CloudAsset
   const { itemIds, ...safe } = outfit as SavedOutfit & Record<string, unknown>;
   delete safe.coverImageDataUrl;
   delete safe.previewImageDataUrl;
+  delete safe.sourceImageDataUrl;
   delete safe.thumbnailDataUrl;
   delete safe.autoCoverImageDataUrl;
   (safe as Record<string, unknown>).outfitRealImages = outfit.outfitRealImages?.map(({ imageDataUrl: _image, thumbnailDataUrl: _thumbnail, ...metadata }) => metadata);

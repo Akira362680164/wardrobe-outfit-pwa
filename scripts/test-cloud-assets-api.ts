@@ -35,6 +35,7 @@ check("contracts 限制 ownerEntityType 不能是 asset 自身", /SyncEntityType
 check("客户端只调用自有 API 的 content/manifest 路由", /\/api\/assets\/\$\{encodeURIComponent\(request\.assetId\)\}\/\$\{encodeURIComponent\(request\.variant\)\}\/content/.test(api) && /\/api\/assets\/manifest/.test(api));
 check("客户端不接受任意 host 或外部地址", !/uploadUrl|downloadUrl|putToUrl/.test(api));
 check("客户端封装沿用 Bearer token 和 device id header", /Authorization: `Bearer \$\{options\.accessToken\}`/.test(api) && /X-Wardrobe-Device-Id/.test(api));
+check("二进制上传与下载记录 requestId、transport、HTTP 和 SHA 诊断", /asset_upload_request/.test(api) && /asset_download_request/.test(api) && /asset_download_validated/.test(api) && /requestId/.test(api) && /transport/.test(api) && /actualSha256/.test(api));
 check("cloud-sync index 导出新资产 API", /uploadAssetContent/.test(index) && /downloadAssetContent/.test(index) && /deleteCloudAsset/.test(index) && /requestAssetManifest/.test(index));
 check("服务端 CORS 允许二进制上传和完整资产 header", /GET, POST, PUT, DELETE, OPTIONS/.test(app) && /X-Asset-Owner-Entity-Type/.test(app) && /X-Asset-SHA256/.test(app));
 check("业务图片路径不再引用旧授权函数", !/requestAssetUploadUrl|requestAssetDownloadUrl/.test(`${wardrobeApp}\n${wishlistView}\n${outfitView}`));

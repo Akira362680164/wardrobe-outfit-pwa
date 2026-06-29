@@ -5,6 +5,7 @@ import type { AssetVariant } from "@wardrobe/cloud-contracts";
 import type { WorkspaceAssetRecord, WorkspaceEntityType } from "@/lib/account-workspace-db";
 import type { CloudAssetReferenceMap } from "@/lib/cloud-sync/asset-bridge";
 import type { AccountImageCache, CachedImage } from "@/lib/cloud-sync/image-cache";
+import { recordDiagnosticEvent } from "@/lib/diagnostic-log";
 
 export interface ResolveEntityImageFieldInput {
   assets: WorkspaceAssetRecord[];
@@ -27,16 +28,47 @@ export async function resolveEntityImageField(input: ResolveEntityImageFieldInpu
   if (local) return local;
 
   const ref = resolveAssetRef(input.assetRefs, input.fieldName);
-  if (!ref || !input.imageCache) return undefined;
+  if (!ref || !input.imageCache) {
+    recordResolutionFailure(input, !ref ? "ASSET_REF_MISSING" : "ASSET_CACHE_UNAVAILABLE");
+    return undefined;
+  }
 
-  if (!ref.variants.includes(input.variant)) return undefined;
+  if (!ref.variants.includes(input.variant)) {
+    recordResolutionFailure(input, "ASSET_VARIANT_MISSING", ref.assetId);
+    return undefined;
+  }
   const preferred = input.variant;
   const expectedSha256 = ref.variantSha256?.[preferred];
   const cached = await resolveCachedAssetVariant(input.imageCache, ref.assetId, preferred, expectedSha256);
   if (cached) return blobToImageDataUrl(cached.blob);
 
-  const downloaded = await input.imageCache.downloadAndCache(ref.assetId, preferred);
+  const downloaded = await input.imageCache.downloadAndCache(ref.assetId, preferred, { expectedSha256 });
+  if (!downloaded) recordResolutionFailure(input, "ASSET_MAPPER_EMPTY_RESULT", ref.assetId);
   return downloaded ? blobToImageDataUrl(downloaded.blob) : undefined;
+}
+
+function recordResolutionFailure(input: ResolveEntityImageFieldInput, errorCode: string, assetId?: string): void {
+  if (errorCode === "ASSET_REF_MISSING" && (input.ownerEntityType !== "garment" || input.fieldName !== "imageDataUrl")) return;
+  recordDiagnosticEvent("asset", "asset_image_resolution", {
+    phase: "failed",
+    severity: "error",
+    errorCode,
+    metadata: {
+      entityType: input.ownerEntityType,
+      entityId: input.ownerEntityId,
+      fieldName: input.fieldName,
+      variant: input.variant,
+      assetId,
+    },
+  });
+  console.warn("[image-asset-resolver] image unavailable", {
+    entityType: input.ownerEntityType,
+    entityId: input.ownerEntityId,
+    field: input.fieldName,
+    variant: input.variant,
+    assetId,
+    errorCode,
+  });
 }
 
 export async function resolveEntityImageFields(

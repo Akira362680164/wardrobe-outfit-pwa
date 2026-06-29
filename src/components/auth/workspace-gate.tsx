@@ -8,6 +8,7 @@ import { scheduleAssetRecovery } from "@/lib/cloud-sync/asset-recovery";
 import { AccountImageCache } from "@/lib/cloud-sync/image-cache";
 import { initializeDefaultWorkspaceLocation } from "@/lib/cloud-sync/location-bridge";
 import { invalidateWorkspaceSnapshotCache, WARDROBE_ASSET_RECOVERY_EVENT } from "@/lib/data-repo";
+import { recordDiagnosticEvent } from "@/lib/diagnostic-log";
 import {
   isCloudSyncEnabled,
   isWorkspaceOfflineAuthorized,
@@ -138,6 +139,15 @@ export function WorkspaceGate({
           scheduleAssetRecovery(imageCache, undefined, (result) => {
             if (cancelled || !result.stateChanged) return;
             invalidateWorkspaceSnapshotCache();
+            recordDiagnosticEvent("asset", "asset_recovery_refresh_dispatched", {
+              phase: "succeeded",
+              severity: "info",
+              metadata: {
+                snapshotCacheInvalidated: true,
+                recoveryEventDispatched: true,
+                downloadedThumbnailCount: result.downloadedThumbnails,
+              },
+            });
             window.dispatchEvent(new Event(WARDROBE_ASSET_RECOVERY_EVENT));
             syncTimer = window.setTimeout(() => scheduleSync(workspace), 500);
           });

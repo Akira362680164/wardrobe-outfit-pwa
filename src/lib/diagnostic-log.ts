@@ -74,6 +74,7 @@ export interface BuildDiagnosticLogInput {
     fallbackModel?: string;
     apiKey?: string;
   };
+  assetDiagnostics?: unknown;
 }
 
 export interface RemoteDiagnosticPayload {
@@ -259,7 +260,7 @@ export function buildWardrobeDiagnosticLog(input: BuildDiagnosticLogInput): Remo
     auth: getAuthSnapshot(),
     workspace: getWorkspaceSnapshot(),
     sync: getSyncSnapshot(),
-    assets: getAssetSnapshot(),
+    assets: getAssetSnapshot(input.assetDiagnostics),
     counts: {
       items: input.items.length,
       locations: input.locations.length,
@@ -397,8 +398,10 @@ function getSyncSnapshot() {
   };
 }
 
-function getAssetSnapshot() {
+function getAssetSnapshot(assetDiagnostics?: unknown) {
+  if (assetDiagnostics) return sanitizeValue(assetDiagnostics) as Record<string, unknown>;
   return {
+    available: false,
     pendingUploadCount: 0,
     failedUploadCount: 0,
   };

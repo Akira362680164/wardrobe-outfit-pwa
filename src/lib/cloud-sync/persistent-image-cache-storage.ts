@@ -32,27 +32,19 @@ export function persistentImageCacheStorage(userIdHash: string): ImageCacheStora
 
   return {
     async get(key) {
-      try {
-        const row = await db.blobs.get(key);
-        return row?.data ?? null;
-      } catch {
-        return null;
-      }
+      const row = await db.blobs.get(key);
+      return row?.data ?? null;
     },
     async set(key, data) {
-      try {
-        const count = await db.blobs.count();
-        if (count >= MAX_ENTRIES) {
-          const oldest = await db.blobs.orderBy("key").first();
-          if (oldest) await db.blobs.delete(oldest.key);
-        }
-        await db.blobs.put({ key, data });
-      } catch { /* best-effort */ }
+      const count = await db.blobs.count();
+      if (count >= MAX_ENTRIES) {
+        const oldest = await db.blobs.orderBy("key").first();
+        if (oldest) await db.blobs.delete(oldest.key);
+      }
+      await db.blobs.put({ key, data });
     },
     async delete(key) {
-      try {
-        await db.blobs.delete(key);
-      } catch { /* best-effort */ }
+      await db.blobs.delete(key);
     },
   };
 }

@@ -3,6 +3,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { getWardrobeSnapshot, invalidateWorkspaceSnapshotCache, WARDROBE_ASSET_RECOVERY_EVENT, type WardrobeDataSnapshot } from "@/lib/data-repo";
+import { recordDiagnosticEvent } from "@/lib/diagnostic-log";
 import type {
   WardrobeItem, ClosetLocation, SavedOutfit, WishlistItem,
   OutfitPlanEntry, OutfitCalendarPlan, PlanPackingChecklistItem,
@@ -19,6 +20,7 @@ export function useWardrobeDataController() {
   const [loading, setLoading] = useState(true);
 
   const refreshState = useCallback(async () => {
+    recordDiagnosticEvent("asset", "workspace_asset_refresh", { phase: "started", severity: "info" });
     const state: WardrobeDataSnapshot = await getWardrobeSnapshot();
     setItems(state.items);
     setLocations(state.locations);
@@ -27,6 +29,16 @@ export function useWardrobeDataController() {
     setOutfitPlanEntries(state.outfitPlanEntries);
     setOutfitCalendarPlans(state.outfitCalendarPlans);
     setPlanPackingChecklistItems(state.planPackingChecklistItems);
+    recordDiagnosticEvent("asset", "workspace_asset_refresh", {
+      phase: "succeeded",
+      severity: "info",
+      metadata: {
+        workspaceRefreshCompleted: true,
+        itemCount: state.items.length,
+        itemsWithThumbnail: state.items.filter((item) => Boolean(item.thumbnailDataUrl)).length,
+        itemsWithOriginal: state.items.filter((item) => Boolean(item.imageDataUrl)).length,
+      },
+    });
   }, []);
 
   useEffect(() => {
