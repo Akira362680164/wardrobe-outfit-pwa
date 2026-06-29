@@ -29,7 +29,8 @@ export async function resolveEntityImageField(input: ResolveEntityImageFieldInpu
   const ref = resolveAssetRef(input.assetRefs, input.fieldName);
   if (!ref || !input.imageCache) return undefined;
 
-  const preferred = ref.variants.includes(input.variant) ? input.variant : "original";
+  if (!ref.variants.includes(input.variant)) return undefined;
+  const preferred = input.variant;
   const expectedSha256 = ref.variantSha256?.[preferred];
   const cached = await resolveCachedAssetVariant(input.imageCache, ref.assetId, preferred, expectedSha256);
   if (cached) return blobToImageDataUrl(cached.blob);
@@ -66,8 +67,7 @@ export function resolveLocalAssetVariant(asset: WorkspaceAssetRecord | undefined
   const uploads = assetPayload(asset)?.uploads;
   const preferred = uploads?.[variant]?.dataUrl;
   if (isImageDataUrl(preferred)) return preferred;
-  const original = uploads?.original?.dataUrl;
-  return isImageDataUrl(original) ? original : undefined;
+  return undefined;
 }
 
 export async function resolveCachedAssetVariant(

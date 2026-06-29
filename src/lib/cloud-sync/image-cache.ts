@@ -13,6 +13,7 @@ import { sha256Hex } from "@/lib/cloud-sync/asset-metadata";
 import { loadCloudBridgeContext } from "@/lib/cloud-sync/bridge-context";
 import { loadAuthSessionSnapshot } from "@/lib/auth-session-store";
 import type { CloudSyncRequestOptions } from "@/lib/cloud-sync/cloud-sync-api";
+import { CloudSyncApiError } from "@/lib/cloud-sync/cloud-sync-api";
 import { persistentImageCacheStorage } from "@/lib/cloud-sync/persistent-image-cache-storage";
 
 export interface ImageCacheStorage {
@@ -65,7 +66,8 @@ export class AccountImageCache {
         return null;
       }
       return { blob: new Blob([data], { type: mimeType }), sha256, mimeType };
-    } catch {
+    } catch (error) {
+      logImageCacheFailure(assetId, variant, "cache_read_failed", error);
       return null;
     }
   }
@@ -79,7 +81,10 @@ export class AccountImageCache {
     try {
       const data = await blob.arrayBuffer();
       const actualSha256 = await sha256Hex(blob);
-      if (actualSha256 !== expectedSha256) return false;
+      if (actualSha256 !== expectedSha256) {
+        logImageCacheFailure(assetId, variant, "sha256_mismatch");
+        return false;
+      }
 
       // atomic: write tmp first, then set final + meta
       await storage.set(tmpKey, data);
@@ -87,8 +92,11 @@ export class AccountImageCache {
       await storage.set(metaKey, encodeMeta({ mimeType: blob.type }));
       await storage.delete(tmpKey);
       return true;
-    } catch {
-      try { await storage.delete(tmpKey); } catch { /* best-effort */ }
+    } catch (error) {
+      try { await storage.delete(tmpKey); } catch (cleanupError) {
+        logImageCacheFailure(assetId, variant, "cache_cleanup_failed", cleanupError);
+      }
+      logImageCacheFailure(assetId, variant, "cache_write_failed", error);
       return false;
     }
   }
@@ -102,9 +110,15 @@ export class AccountImageCache {
     if (cached) return cached;
 
     const ctx = await loadCloudBridgeContext();
-    if (!ctx) return null;
+    if (!ctx) {
+      logImageCacheFailure(assetId, variant, "workspace_unavailable");
+      return null;
+    }
     const session = await loadAuthSessionSnapshot();
-    if (!session.accessToken) return null;
+    if (!session.accessToken) {
+      logImageCacheFailure(assetId, variant, "authentication_required");
+      return null;
+    }
     const options: CloudSyncRequestOptions = { accessToken: session.accessToken, deviceId: ctx.deviceId };
 
     try {
@@ -113,7 +127,8 @@ export class AccountImageCache {
       const ok = await this.put(assetId, variant, content.blob, content.sha256, deps);
       if (!ok) return null;
       return { blob: content.blob, sha256: content.sha256, mimeType: content.mimeType };
-    } catch {
+    } catch (error) {
+      logImageCacheFailure(assetId, variant, "download_failed", error);
       return null;
     }
   }
@@ -125,6 +140,18 @@ export class AccountImageCache {
   private metaKey(assetId: string, variant: string): string {
     return `${this.prefix}${assetId}-${variant}.meta`;
   }
+}
+
+function logImageCacheFailure(assetId: string, variant: AssetVariant, code: string, error?: unknown): void {
+  console.warn("[image-cache] asset unavailable", {
+    assetId,
+    variant,
+    code: error instanceof CloudSyncApiError ? error.code : code,
+    httpStatus: error instanceof CloudSyncApiError ? error.status : undefined,
+    authenticationFailure: error instanceof CloudSyncApiError && (error.status === 401 || error.status === 403),
+    missingRemoteAsset: error instanceof CloudSyncApiError && error.status === 404,
+    sha256Mismatch: code === "sha256_mismatch",
+  });
 }
 
 // ponytail: module-level Map — survives page switches within same session.

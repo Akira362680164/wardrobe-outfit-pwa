@@ -10,6 +10,7 @@ import {
   type AssetOwnerEntityType,
   type PreparedLocalAsset,
   type PrepareLocalAssetDependencies,
+  type LocalAssetPayload,
 } from "@/lib/cloud-sync/asset-metadata";
 
 export interface EntityImageAssetInput {
@@ -68,10 +69,23 @@ export async function prepareEntityImageAssets(
       sourceFieldName: image.fieldName,
       now: input.now,
     }, deps);
+    if (existing) preserveUploadedVariants(existing, prepared);
     preparedAssets.push(prepared);
     assetRefs[image.fieldName] = toCloudAssetReference(image.fieldName, prepared);
   }
   return { assetRefs, preparedAssets };
+}
+
+function preserveUploadedVariants(existing: { payload?: unknown }, prepared: PreparedLocalAsset): void {
+  const previous = existing.payload as LocalAssetPayload | undefined;
+  const next = prepared.record.payload as LocalAssetPayload;
+  for (const variant of ["original", "thumbnail"] as const) {
+    const oldUpload = previous?.uploads?.[variant];
+    const newUpload = next.uploads[variant];
+    if (oldUpload?.status === "uploaded" && newUpload && oldUpload.sha256 === newUpload.sha256) {
+      next.uploads[variant] = { ...newUpload, status: "uploaded" };
+    }
+  }
 }
 
 export async function putPreparedEntityImageAssets(
@@ -94,13 +108,11 @@ export function withCloudAssetRefs<T extends Record<string, unknown>>(
 
 export function imageAssetInputsForGarment(input: {
   imageDataUrl?: string;
-  sourceImageDataUrl?: string;
   thumbnailDataUrl?: string;
   referenceOutfitImages?: Array<{ id: string; imageDataUrl?: string; sourceImageDataUrl?: string; thumbnailDataUrl?: string }>;
 }): EntityImageAssetInput[] {
   const images: EntityImageAssetInput[] = [
     { fieldName: "imageDataUrl", dataUrl: input.imageDataUrl, thumbnailDataUrl: input.thumbnailDataUrl },
-    { fieldName: "sourceImageDataUrl", dataUrl: input.sourceImageDataUrl },
   ];
   for (const reference of input.referenceOutfitImages ?? []) {
     images.push(

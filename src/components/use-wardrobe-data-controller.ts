@@ -2,7 +2,7 @@
 // v1.1.9 4C: 从 wardrobe-app.tsx 迁移数据读取状态与 refreshState。
 
 import { useState, useEffect, useCallback } from "react";
-import { getWardrobeSnapshot, type WardrobeDataSnapshot } from "@/lib/data-repo";
+import { getWardrobeSnapshot, invalidateWorkspaceSnapshotCache, WARDROBE_ASSET_RECOVERY_EVENT, type WardrobeDataSnapshot } from "@/lib/data-repo";
 import type {
   WardrobeItem, ClosetLocation, SavedOutfit, WishlistItem,
   OutfitPlanEntry, OutfitCalendarPlan, PlanPackingChecklistItem,
@@ -36,6 +36,15 @@ export function useWardrobeDataController() {
         setLocations([]);
       })
       .finally(() => setLoading(false));
+  }, [refreshState]);
+
+  useEffect(() => {
+    const refreshRecoveredAssets = () => {
+      invalidateWorkspaceSnapshotCache();
+      void refreshState();
+    };
+    window.addEventListener(WARDROBE_ASSET_RECOVERY_EVENT, refreshRecoveredAssets);
+    return () => window.removeEventListener(WARDROBE_ASSET_RECOVERY_EVENT, refreshRecoveredAssets);
   }, [refreshState]);
 
   return {

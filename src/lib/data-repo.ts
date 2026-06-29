@@ -35,6 +35,8 @@ export interface WardrobeDataSnapshot {
   planPackingChecklistItems: PlanPackingChecklistItem[];
 }
 
+export const WARDROBE_ASSET_RECOVERY_EVENT = "wardrobe:asset-recovery-complete";
+
 
 
 export async function getWardrobeSnapshot(): Promise<WardrobeDataSnapshot> {

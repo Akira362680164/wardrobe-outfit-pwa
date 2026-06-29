@@ -155,7 +155,7 @@ export interface BaseItem {
   updatedAt: string;
 }
 
-export interface WardrobeItem extends BaseItem {
+export interface WardrobeItem extends Omit<BaseItem, "sourceImageDataUrl"> {
   id?: number;
   locationId: string;
   status: GarmentStatus;

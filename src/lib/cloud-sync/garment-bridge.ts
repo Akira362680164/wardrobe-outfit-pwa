@@ -117,6 +117,7 @@ export function toCloudGarmentPayload(item: WardrobeItem, assetRefs?: CloudAsset
   // 去除 base64 图片：同步 payload 只存 cloudAssetRefs 引用，图片通过 asset 机制上传
   delete safe.imageDataUrl;
   delete safe.thumbnailDataUrl;
+  delete safe.sourceImageDataUrl;
   safe.referenceOutfitImages = item.referenceOutfitImages?.map(({ imageDataUrl: _image, thumbnailDataUrl: _thumbnail, ...metadata }) => metadata);
   return withCloudAssetRefs(safe, assetRefs);
 }

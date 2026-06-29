@@ -30,6 +30,7 @@ export interface UploadOneResult {
   variant: AssetVariant;
   status: "uploaded" | "failed";
   error?: string;
+  errorCode?: string;
 }
 
 type LocalAssetUploadEntry = NonNullable<LocalAssetPayload["uploads"][AssetVariant]>;
@@ -116,7 +117,7 @@ async function uploadOneVariant(
     await updateVariantStatus(db, ctx, record, variant, "uploading");
 
     const blob = await toBlob(upload.dataUrl);
-    await uploadContent({
+    const response = await uploadContent({
       params: { assetId: record.id, variant },
       metadata: {
         "x-asset-owner-entity-type": record.ownerEntityType as Exclude<WorkspaceEntityType, "asset" | "closetLocation" | "profile">,
@@ -129,12 +130,23 @@ async function uploadOneVariant(
       blob,
     }, options);
 
+    if (
+      response.assetId !== record.id
+      || response.variant !== variant
+      || response.sha256 !== upload.sha256
+      || response.sizeBytes !== upload.sizeBytes
+      || response.mimeType !== upload.mimeType
+    ) {
+      throw new Error("ASSET_UPLOAD_RESPONSE_MISMATCH");
+    }
+
     await updateVariantStatus(db, ctx, record, variant, "uploaded");
     return { assetId: record.id, variant, status: "uploaded" };
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
-    await updateVariantStatusSafe(db, ctx, record, variant, "failed", classifyUploadError(err));
-    return { assetId: record.id, variant, status: "failed", error: message };
+    const errorCode = message === "ASSET_UPLOAD_RESPONSE_MISMATCH" ? message : classifyUploadError(err);
+    await updateVariantStatusSafe(db, ctx, record, variant, "failed", errorCode);
+    return { assetId: record.id, variant, status: "failed", error: message, errorCode };
   }
 }
 
@@ -189,8 +201,13 @@ async function updateVariantStatusSafe(
 ): Promise<void> {
   try {
     await updateVariantStatus(db, ctx, record, variant, status, errorCode);
-  } catch {
-    // best-effort: status update failure must not throw
+  } catch (error) {
+    console.warn("[asset-upload] failed to persist upload failure", {
+      assetId: record.id,
+      variant,
+      errorCode,
+      error: error instanceof Error ? error.message : "unknown",
+    });
   }
 }
 

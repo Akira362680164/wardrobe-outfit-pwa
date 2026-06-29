@@ -13,6 +13,7 @@ import type {
 
 import type { CloudSyncRequestOptions } from "@/lib/cloud-sync/cloud-sync-api";
 import { CloudSyncApiError, type CloudSyncApiErrorBody } from "@/lib/cloud-sync/cloud-sync-api";
+import { sha256Hex } from "@/lib/cloud-sync/asset-metadata";
 
 export interface UploadAssetContentRequest {
   params: AssetUploadParams;
@@ -72,6 +73,19 @@ export async function downloadAssetContent(
     sha256: sha256!,
     mimeType,
   };
+}
+
+export async function verifyRemoteAssetVariants(
+  input: { assetId: string; expectedSha256: Record<"original" | "thumbnail", string> },
+  options: CloudSyncRequestOptions,
+): Promise<void> {
+  for (const variant of ["original", "thumbnail"] as const) {
+    const content = await downloadAssetContent({ assetId: input.assetId, variant }, options);
+    const actualSha256 = await sha256Hex(content.blob);
+    if (content.sha256 !== input.expectedSha256[variant] || actualSha256 !== input.expectedSha256[variant]) {
+      throw new CloudSyncApiError(502, "asset_sha256_mismatch", `${variant} 图片摘要校验失败`);
+    }
+  }
 }
 
 export function deleteCloudAsset(

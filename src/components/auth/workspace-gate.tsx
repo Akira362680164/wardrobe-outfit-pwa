@@ -7,6 +7,7 @@ import { probeCloudConnectivity, subscribeNetworkChanges, type ConnectivityState
 import { scheduleAssetRecovery } from "@/lib/cloud-sync/asset-recovery";
 import { AccountImageCache } from "@/lib/cloud-sync/image-cache";
 import { initializeDefaultWorkspaceLocation } from "@/lib/cloud-sync/location-bridge";
+import { invalidateWorkspaceSnapshotCache, WARDROBE_ASSET_RECOVERY_EVENT } from "@/lib/data-repo";
 import {
   isCloudSyncEnabled,
   isWorkspaceOfflineAuthorized,
@@ -61,7 +62,7 @@ export function WorkspaceGate({
             deviceId: session.deviceId,
           });
           if (cancelled) return;
-          if (result.skipped && result.reason !== "sync_disabled") {
+          if ((result.skipped && result.reason !== "sync_disabled") || result.assetFailed > 0 || result.assetPending > 0) {
             attemptCount++;
             setSyncDiag({ syncState: "error", outboxCount: 0, lastError: result.reason ?? "sync_skipped" });
             scheduleSync(workspace);
@@ -129,16 +130,18 @@ export function WorkspaceGate({
           }
           const defaultLocation = await initializeDefaultWorkspaceLocation(workspace, session.deviceId);
           if (!defaultLocation.bridged) throw new Error("默认衣橱初始化失败，请稍后重试");
-          // fire-and-forget: 新设备恢复首屏缩略图，不阻塞进入App
-          const imageCache = new AccountImageCache(workspace.userIdHash);
-          scheduleAssetRecovery(imageCache, (progress) => {
-            if (progress.phase === "done" && progress.stateChanged) {
-              syncTimer = window.setTimeout(() => scheduleSync(workspace), 500);
-            }
-          });
         }
         workspaceRef.current = workspace;
         if (!cancelled) { setState({ status: "ready", workspace }); onReady?.(workspace); }
+        if (!hasLocalWorkspace) {
+          const imageCache = new AccountImageCache(workspace.userIdHash);
+          scheduleAssetRecovery(imageCache, undefined, (result) => {
+            if (cancelled || !result.stateChanged) return;
+            invalidateWorkspaceSnapshotCache();
+            window.dispatchEvent(new Event(WARDROBE_ASSET_RECOVERY_EVENT));
+            syncTimer = window.setTimeout(() => scheduleSync(workspace), 500);
+          });
+        }
         scheduleSync(workspace, cloud);
       } catch (error) {
         const message = error instanceof Error ? error.message : "本机衣橱工作区准备失败";

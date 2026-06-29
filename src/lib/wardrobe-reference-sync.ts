@@ -27,7 +27,7 @@ export function buildSyncedPurchasedWishlistPatch(item: WardrobeItem, now: strin
   return {
     name: item.name,
     imageDataUrl: item.imageDataUrl,
-    sourceImageDataUrl: item.sourceImageDataUrl,
+    sourceImageDataUrl: item.imageDataUrl,
     thumbnailDataUrl: item.thumbnailDataUrl,
     category: item.category,
     subcategory: item.subcategory,

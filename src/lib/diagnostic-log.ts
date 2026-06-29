@@ -311,7 +311,6 @@ function summarizeItem(item: WardrobeItem) {
     cardColors,
     cardSwatches: cardColors.map((color) => ({ color, ...getColorSwatchStyle(color) })),
     image: summarizeImageDataUrl(item.imageDataUrl),
-    sourceImage: summarizeImageDataUrl(item.sourceImageDataUrl),
     thumbnail: summarizeImageDataUrl(item.thumbnailDataUrl),
     thumbnailStatus: item.thumbnailStatus,
     thumbnailVersion: item.thumbnailVersion,

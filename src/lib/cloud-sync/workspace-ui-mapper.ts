@@ -77,7 +77,6 @@ async function toWardrobeItem(
   const images = await resolveEntityImageFields({
     imageDataUrl: { ...imageInputs, fieldName: "imageDataUrl", variant: "original" },
     thumbnailDataUrl: { ...imageInputs, fieldName: "imageDataUrl", variant: "thumbnail" },
-    sourceImageDataUrl: { ...imageInputs, fieldName: "sourceImageDataUrl", variant: "original" },
   });
   const referenceOutfitImages = await Promise.all(((p.referenceOutfitImages ?? []) as WardrobeItem["referenceOutfitImages"] ?? []).map(async (reference) => {
     const resolved = await resolveEntityImageFields({
@@ -106,7 +105,6 @@ async function toWardrobeItem(
     price: p.price as number | undefined,
     productUrl: p.productUrl as string | undefined,
     imageDataUrl: images.imageDataUrl ?? "",
-    sourceImageDataUrl: images.sourceImageDataUrl,
     thumbnailDataUrl: images.thumbnailDataUrl,
     cropBox: p.cropBox as WardrobeItem["cropBox"],
     cropRevision: p.cropRevision as number | undefined,

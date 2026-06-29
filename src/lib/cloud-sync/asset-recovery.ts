@@ -138,10 +138,10 @@ export async function recoverAssets(
 export function scheduleAssetRecovery(
   cache: AccountImageCache,
   onProgress?: (progress: AssetRecoveryProgress) => void,
-  onComplete?: () => void,
+  onComplete?: (result: AssetRecoveryProgress) => void,
 ): void {
   recoverAssets(cache, onProgress)
-    .then(() => onComplete?.())
+    .then((result) => onComplete?.(result))
     .catch((err) => {
       console.warn("[asset-recovery] scheduleAssetRecovery failed", err instanceof Error ? err.message : err);
     });

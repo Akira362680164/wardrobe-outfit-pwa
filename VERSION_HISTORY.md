@@ -3238,3 +3238,13 @@
 - **风险门禁**：**high**（详情/全屏图片渲染、重新裁切、多个移动端缩略图入口）。
 - **未触发 subagent**：用户未通知。
 - **未验证风险**：尚未完成 Android 竖屏/横屏实操和云端冷恢复；后续提交继续验证。
+## 2026-06-29 / v2.0.14-test / Codex — 单品 original/thumbnail 云端资产可恢复闭环
+
+- **目的**：删除单品第二主图资产，确保 original 与 thumbnail 的上传、失败状态、下载诊断和新设备恢复形成可观测闭环。
+- **版本**：保持 `2.0.14-test`；本条为本轮修复 Commit 3。
+- **改动文件**：`src/components/auth/workspace-gate.tsx`、`src/components/use-wardrobe-data-controller.ts`、`src/lib/cloud-sync/{asset-bridge,asset-recovery,asset-upload-coordinator,cloud-assets-api,garment-bridge,image-asset-resolver,image-cache,sync-engine,workspace-ui-mapper}.ts`、`src/lib/{data-repo,diagnostic-log,types,wardrobe-reference-sync,wishlist-conversion}.ts`、`VERSION_HISTORY.md`。
+- **核心修复**：单品主图只创建 `imageDataUrl` 资产并携带 original/thumbnail variant；已上传且 SHA 未变的 original 保持 uploaded，不因重新裁切重传；上传响应逐项核对 ID、variant、SHA-256、字节数和 MIME；同步结果增加失败数、待上传 variant 数和错误码；下载失败记录 HTTP/认证/缺失/SHA 分类；恢复完成后失效快照并触发 UI 重读。
+- **本地验证**：`npm run typecheck` 通过。
+- **风险门禁**：**high**（云端图片二进制、同步完成条件、账号隔离缓存和冷恢复）。
+- **未触发 subagent**：用户未通知。
+- **未验证风险**：真实测试 API 的双 variant GET/SHA 校验、清本地数据重登和 Android 实机恢复将在 Commit 4 执行。
