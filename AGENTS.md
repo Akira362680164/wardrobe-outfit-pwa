@@ -209,6 +209,8 @@ adb shell getprop ro.build.version.sdk        # SDK 级别
    - 重装：`adb install <apk_path>`
    - 验证：重新登录后确认数据恢复、图片下载、同步闭环正常。
 8. 结果记录：在 `VERSION_HISTORY.md` 写明设备类型（模拟器/真机）、型号/AVD、Android 版本、APK 版本、安装方式、已测路径、日志摘要和未覆盖风险。如果本次任务涉及 Android 但未执行模拟器/真机验证，必须作为"未验证风险"明确标注。
+9. 关闭模拟器：测试完成后必须关闭模拟器释放资源。真机不执行此步骤。
+   - `adb -s emulator-5554 emu kill`
 
 已验证的具体安装方法：
 
