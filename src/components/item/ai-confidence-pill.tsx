@@ -84,6 +84,11 @@ function isIntakeFieldLike(value: unknown): value is IntakeField<unknown> {
 
 export function calculateDraftConfidenceScore(draft: AnyIntakeDraft | null | undefined): number | null {
   if (!draft || typeof draft !== "object") return null;
+  // 优先使用 AI 整件级置信度 (0-1)，缺失时降级到字段平均。
+  const topLevel = (draft as { aiConfidence?: unknown }).aiConfidence;
+  if (typeof topLevel === "number" && Number.isFinite(topLevel)) {
+    return Math.round(topLevel * 100);
+  }
   const fields: IntakeField<unknown>[] = [];
   for (const value of Object.values(draft)) {
     if (isIntakeFieldLike(value)) fields.push(value);

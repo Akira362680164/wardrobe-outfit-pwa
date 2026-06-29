@@ -53,6 +53,8 @@ export interface IntakeProcessingIssue {
 export interface GarmentIntakeDraft {
   id: string;
   kind: "garment";
+  /** AI 识别整件级置信度 (0-1)。优先于字段平均，作为顶部 AI 胶囊的取值；缺失时降级到字段平均。 */
+  aiConfidence?: number;
   imageDataUrl?: string;
   sourceImageDataUrl?: string;
   croppedImageDataUrl?: string;
@@ -87,6 +89,8 @@ export interface WishlistIntakeDraft {
   id: string;
   kind: "wishlist";
   recognitionOnly: true;
+  /** AI 识别整件级置信度 (0-1)。 */
+  aiConfidence?: number;
   imageDataUrl?: string;
   sourceImageDataUrl?: string;
   croppedImageDataUrl?: string;
