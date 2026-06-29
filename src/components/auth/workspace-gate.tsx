@@ -32,6 +32,7 @@ export function WorkspaceGate({
 }) {
   const [state, setState] = useState<WorkspaceGateState>({ status: "preparing" });
   const workspaceRef = useRef<AccountWorkspaceRecord | null>(null);
+  const [syncDiag, setSyncDiag] = useState({ syncState: "idle", outboxCount: 0, lastError: "" });
 
   useEffect(() => {
     let cancelled = false;
@@ -52,6 +53,7 @@ export function WorkspaceGate({
           return;
         }
         syncInFlight = true;
+        setSyncDiag((prev) => ({ ...prev, syncState: "syncing" }));
         try {
           const result = await runSyncOnce({
             workspace,
@@ -61,12 +63,16 @@ export function WorkspaceGate({
           if (cancelled) return;
           if (result.skipped && result.reason !== "sync_disabled") {
             attemptCount++;
+            setSyncDiag({ syncState: "error", outboxCount: 0, lastError: result.reason ?? "sync_skipped" });
             scheduleSync(workspace);
           } else {
             attemptCount = 0;
+            setSyncDiag({ syncState: "idle", outboxCount: 0, lastError: "" });
             // P1-N02: 成功后若队列未空则立即安排下一轮
             if (!result.skipped) scheduleSync(workspace, nextCloud);
           }
+        } catch (err) {
+          setSyncDiag({ syncState: "error", outboxCount: 0, lastError: err instanceof Error ? err.message : "sync_failed" });
         } finally {
           syncInFlight = false;
         }
@@ -145,7 +151,21 @@ export function WorkspaceGate({
     };
   }, [session]);
 
-  if (state.status === "ready") return <>{children}</>;
+  if (state.status === "ready") return (
+    <>
+      {children}
+      {process.env.NEXT_PUBLIC_E2E_TESTING === "true" && (
+        <div
+          hidden
+          data-testid="e2e-sync-state"
+          data-bootstrap-state="ready"
+          data-sync-state={syncDiag.syncState}
+          data-outbox-count={String(syncDiag.outboxCount)}
+          data-last-error={syncDiag.lastError}
+        />
+      )}
+    </>
+  );
 
   return (
     <main className="min-h-screen bg-mist px-5 py-8 text-ink">

@@ -45,3 +45,10 @@ review-artifacts/
 
 # diagnostic downloads — local agent CLI only
 .diagnostics/
+
+# E2E test artifacts — local only
+.e2e-runtime/
+playwright-report/
+test-results/
+playwright/.auth/
+.env.e2e.local

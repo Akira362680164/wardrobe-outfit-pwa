@@ -60,7 +60,7 @@ export function buildApp(options: BuildAppOptions = {}): FastifyInstance {
     if (origin && getAllowedOrigins().has(origin)) {
       reply.header("Access-Control-Allow-Origin", origin);
       reply.header("Access-Control-Allow-Credentials", "true");
-      reply.header("Access-Control-Allow-Headers", "Authorization, Content-Type, X-Wardrobe-Device-Id, X-Wardrobe-Request-Id, X-Diagnostic-Actor, X-Asset-Owner-Entity-Type, X-Asset-Owner-Entity-Id, X-Asset-SHA256, X-Asset-Size-Bytes, X-Asset-Width, X-Asset-Height, X-Diagnostic-Client-Request-Id, X-Diagnostic-SHA256, X-Diagnostic-Size-Bytes");
+      reply.header("Access-Control-Allow-Headers", "Authorization, Content-Type, Cache-Control, X-Wardrobe-Device-Id, X-Wardrobe-Request-Id, X-Diagnostic-Actor, X-Asset-Owner-Entity-Type, X-Asset-Owner-Entity-Id, X-Asset-SHA256, X-Asset-Size-Bytes, X-Asset-Width, X-Asset-Height, X-Diagnostic-Client-Request-Id, X-Diagnostic-SHA256, X-Diagnostic-Size-Bytes");
       reply.header("Access-Control-Expose-Headers", "X-Wardrobe-Request-Id, X-Asset-SHA256, X-Asset-Variant, X-Diagnostic-SHA256, Content-Length, ETag");
       reply.header("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS");
       reply.header("Vary", "Origin");

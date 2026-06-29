@@ -1192,6 +1192,7 @@ export function WardrobeApp({ cloudAuth }: { cloudAuth?: WardrobeCloudAuth } = {
             onClick={() => setShowCreateSheet(true)}
             className="fixed right-4 z-40 grid h-12 w-12 place-items-center rounded-full bg-denim p-0 leading-none text-white shadow-lg transition-transform active:scale-95 lg:hidden" style={{ bottom: "calc(env(safe-area-inset-bottom) + 5rem)" }}
             aria-label="新建"
+            data-testid="global-create"
           >
             <Plus size={24} strokeWidth={2.2} className="block" aria-hidden="true" />
           </button>
