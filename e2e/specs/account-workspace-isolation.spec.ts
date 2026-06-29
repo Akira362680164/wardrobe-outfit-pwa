@@ -42,7 +42,6 @@ test.describe("账号工作区隔离", () => {
 
       // Account B should have its own workspace — default closet = 1
       await navigateToTab(pageB, "settings");
-      await pageB.getByRole("button", { name: "设置", exact: true }).click();
       await expect(pageB.getByRole("button", { name: /^默认衣橱/ })).toHaveCount(1);
 
       // Account A re-logins — should still have its own workspace
@@ -52,12 +51,13 @@ test.describe("账号工作区隔离", () => {
       await expect(pageA.getByTestId("global-create")).toBeVisible();
 
       await navigateToTab(pageA, "settings");
-      await pageA.getByRole("button", { name: /衣橱管理|管理衣橱/i }).click();
       await expect(pageA.getByRole("button", { name: /^默认衣橱/ })).toHaveCount(1);
 
       // The two accounts have different phone numbers — verify workspace isolation
       expect(accountA.phone).not.toBe(accountB.phone);
       // Both can see main UI independently
+      await navigateToTab(pageA, "wardrobe");
+      await navigateToTab(pageB, "wardrobe");
       await expect(pageA.getByTestId("global-create")).toBeVisible();
       await expect(pageB.getByTestId("global-create")).toBeVisible();
     } finally {

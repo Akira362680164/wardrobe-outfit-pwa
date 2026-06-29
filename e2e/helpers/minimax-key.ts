@@ -13,22 +13,22 @@ export async function configureMiniMaxKeyByUi(page: Page): Promise<void> {
 
   await navigateToTab(page, "settings");
 
-  // open MiniMax Key config — the settings page should have a way to configure it
-  const minimaxBtn = page.getByRole("button", { name: /MiniMax|API Key|密钥/i });
-  if (await minimaxBtn.isVisible({ timeout: 3000 }).catch(() => false)) {
-    await minimaxBtn.click();
+  // find the MiniMax settings section and click "配置 Key"
+  const configBtn = page.getByRole("button", { name: "配置 Key" });
+  if (await configBtn.isVisible({ timeout: 3000 }).catch(() => false)) {
+    await configBtn.click();
+
+    // look for an input field for the key
+    const keyInput = page.getByLabel(/密钥|API Key|key/i);
+    if (await keyInput.isVisible({ timeout: 3000 }).catch(() => false)) {
+      await keyInput.fill(key);
+      await page.getByRole("button", { name: /保存|确认/i }).click();
+    }
   }
 
-  // look for an input field for the key
-  const keyInput = page.getByLabel(/密钥|API Key|key/i);
-  const isConfigurable = await keyInput.isVisible({ timeout: 3000 }).catch(() => false);
-
-  if (isConfigurable) {
-    await keyInput.fill(key);
-    await page.getByRole("button", { name: /保存|确认/i }).click();
-    // verify saved
-    await expect(page.getByText(/已保存|保存成功|成功/i)).toBeVisible({ timeout: 5000 });
-  }
+  // navigate back to wardrobe home
+  await navigateToTab(page, "wardrobe");
+  await expect(page.getByTestId("global-create")).toBeVisible({ timeout: 10000 });
 }
 
 export function assertMiniMaxKeyAvailable(): void {

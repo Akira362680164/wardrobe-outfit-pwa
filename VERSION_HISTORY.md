@@ -1,3 +1,13 @@
+## 2026-06-29 / v2.0.13-test / Codex — E2E 测试套件重建
+
+- **目的**：重建 Playwright E2E 测试套件，覆盖注册登录、账号隔离、双设备同步、单品/种草/套装 CRUD、级联删除和 AI 识别兜底等核心链路。
+- **版本**：保持 `2.0.13-test`。
+- **改动文件**：删除 `e2e/specs/temperature.spec.ts`、`e2e/specs/garment-image.spec.ts`；重写 `e2e/specs/auth.spec.ts`、`account-page.spec.ts`、`default-closet.spec.ts`、`global-create.spec.ts`；新建 `e2e/specs/garment-crud-sync.spec.ts`、`wishlist-crud-sync.spec.ts`、`outfit-crud-sync.spec.ts`、`cascade-delete-sync.spec.ts`、`account-workspace-isolation.spec.ts`、`two-device-data-sync.spec.ts`、`ai-recognition-failure-retry.spec.ts`；新增 `e2e/helpers/minimax-key.ts`、`e2e/assets/` 测试图片；修改 `playwright.config.ts`（API 服务使用 `dev:e2e` 不用 `tsx watch`）、`services/wardrobe-api/package.json`（新增 `dev:e2e` 脚本）、`scripts/run-e2e-local.sh`（从钥匙串加载 MiniMax Key）、`e2e/fixtures/sync.ts`（容忍 `sync_skipped` 状态）、`e2e/helpers/garment.ts`、`e2e/helpers/wardrobe.ts`。
+- **核心修复**：API 服务器改用 `dev:e2e` 避免 `tsx watch` 在 CI 中不退出；迁移前同时删除 `drizzle` schema 避免旧迁移记录导致建表跳过；`getByLabel('密码')` 改用 `exact: true` 避免匹配确认密码字段；`getByText(/默认衣橱/)` 改用 `getByRole("button", { name: /^默认衣橱/ })` 避免按钮内二次匹配；双设备测试使用独立 BrowserContext 而非两个 Page；完整图片上传+AI 识别流程因依赖 Capacitor API 标记为 `test.skip()`。
+- **本地验证**：`npm run typecheck` 通过；完整 E2E 套件 **23 passed, 3 skipped, 0 failed**（4.1 分钟）。
+- **风险门禁**：**medium**（E2E 基础设施和测试辅助函数）。
+- **未验证风险**：图片上传+AI 识别完整流程需在真机或 Capacitor 环境运行；未在 CI 中验证。
+
 ## 2026-06-29 / v2.0.13-test / Codex — 完成紧急修复 UI 收口与版本升级
 
 - **目的**：完成账号管理页精简、全局创建入口白名单和衣橱名称必填布局，并将四组紧急修复升级为新的 Android 版本。

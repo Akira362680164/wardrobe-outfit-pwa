@@ -47,7 +47,7 @@ test.describe("注册、退出和重新登录", () => {
 
     // verify session invalidated — login fields should be empty/ready
     await expect(page.getByLabel("手机号")).toBeVisible();
-    await expect(page.getByLabel("密码")).toBeVisible();
+    await expect(page.getByLabel("密码", { exact: true })).toBeVisible();
   });
 
   test("取消退出登录 → 留在账号管理页", async ({ page }) => {
