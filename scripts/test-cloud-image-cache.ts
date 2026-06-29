@@ -57,7 +57,7 @@ async function main() {
     const ok = await cache.put("asset-1", "original", blob, expectedSha256, { storage });
     check("put 成功返回 true", ok);
 
-    const cached = await cache.get("asset-1", "original", { storage });
+    const cached = await cache.get("asset-1", "original", {}, { storage });
     check("get 返回非 null", cached !== null);
     check("get SHA-256 匹配", cached?.sha256 === expectedSha256);
     check("get MIME 正确", cached?.mimeType === "image/png");
@@ -74,7 +74,7 @@ async function main() {
     const ok = await cache.put("asset-2", "thumbnail", blob, wrongSha256, { storage });
     check("SHA-256 不匹配时 put 返回 false", !ok);
 
-    const cached = await cache.get("asset-2", "thumbnail", { storage });
+    const cached = await cache.get("asset-2", "thumbnail", {}, { storage });
     check("SHA-256 不匹配时不写入缓存", cached === null);
   }
 
@@ -82,7 +82,7 @@ async function main() {
   {
     const cache = new AccountImageCache("hash123");
     const { storage } = makeStorage();
-    const cached = await cache.get("nonexistent", "original", { storage });
+    const cached = await cache.get("nonexistent", "original", {}, { storage });
     check("missing key 返回 null", cached === null);
   }
 
@@ -96,10 +96,10 @@ async function main() {
     const sha256 = await sha256Hex(blob);
     await cacheA.put("asset-iso", "original", blob, sha256, { storage });
 
-    const fromA = await cacheA.get("asset-iso", "original", { storage });
+    const fromA = await cacheA.get("asset-iso", "original", {}, { storage });
     check("账号 A 写入可读", fromA !== null);
 
-    const fromB = await cacheB.get("asset-iso", "original", { storage });
+    const fromB = await cacheB.get("asset-iso", "original", {}, { storage });
     check("账号 B 读不到 A 的缓存", fromB === null);
   }
 

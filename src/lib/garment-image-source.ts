@@ -129,6 +129,7 @@ export function deriveGarmentImageList(
       source: "reference_outfit",
       renderKind: "image",
       refId: ref.id,
+      sourceImageDataUrl: ref.sourceImageDataUrl,
       cropBox: ref.cropBox,
       createdAt: safeTimestamp(ref.createdAt, now),
     });

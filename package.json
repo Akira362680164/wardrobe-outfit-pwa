@@ -1,12 +1,13 @@
 {
   "name": "wardrobe-outfit-pwa",
-  "version": "2.0.14-test",
+  "version": "2.0.15-test",
   "private": true,
   "workspaces": [
     "packages/cloud-contracts",
     "services/wardrobe-api"
   ],
   "scripts": {
+    "test": "npm run test:logic",
     "dev": "next dev",
     "build": "node scripts/build-web-with-info.mjs",
     "build:web": "node scripts/build-web-with-info.mjs",

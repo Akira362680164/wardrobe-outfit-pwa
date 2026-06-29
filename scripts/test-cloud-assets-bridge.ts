@@ -58,7 +58,6 @@ async function main() {
     id: 101,
     name: "云同步白衬衫",
     imageDataUrl: "data:image/png;base64,Z2FybWVudA==",
-    sourceImageDataUrl: "data:image/png;base64,Z2FybWVudC1zb3VyY2U=",
     thumbnailDataUrl: "data:image/jpeg;base64,Z2FybWVudC10aHVtYg==",
     category: "tops",
     colors: buildColorInfo("single", ["白"]),
@@ -89,8 +88,23 @@ async function main() {
   );
   await putPreparedEntityImageAssets(db, workspace, garmentAssets);
   const garmentAssetRows = await db.assets.where("ownerEntityId").equals(garmentId).toArray();
-  check("garment 主图和源图均写入 asset 记录", garmentAssetRows.length === 2 && garmentAssetRows.every((row) => row.ownerEntityType === "garment"));
+  check("garment 只写入一个主图 asset 记录", garmentAssetRows.length === 1 && garmentAssetRows[0]?.ownerEntityType === "garment");
+  check("garment 主图 asset 同时包含 original 和 thumbnail", garmentAssets.assetRefs.imageDataUrl?.variants.join(",") === "original,thumbnail");
   check("garment asset payload 保存 dataUrl 用于上传暂存", JSON.stringify(garmentAssetRows[0].payload).includes("data:image"));
+  const uploadedPayload = garmentAssetRows[0].payload as import("../src/lib/cloud-sync/asset-metadata").LocalAssetPayload;
+  if (uploadedPayload.uploads.original) uploadedPayload.uploads.original.status = "uploaded";
+  if (uploadedPayload.uploads.thumbnail) uploadedPayload.uploads.thumbnail.status = "uploaded";
+  await db.assets.update(garmentAssetRows[0].id, { payload: uploadedPayload });
+  const recroppedAssets = await prepareEntityImageAssets(db, {
+    workspace,
+    originDeviceId: workspace.deviceId,
+    ownerEntityType: "garment",
+    ownerEntityId: garmentId,
+    images: imageAssetInputsForGarment({ ...garment, thumbnailDataUrl: "data:image/jpeg;base64,bmV3LXRodW1i" }),
+  }, { readImageSize: async () => ({ width: 800, height: 1000 }) });
+  const recroppedPayload = recroppedAssets.preparedAssets[0].record.payload as import("../src/lib/cloud-sync/asset-metadata").LocalAssetPayload;
+  check("重新裁切时相同 original 不重新排队", recroppedPayload.uploads.original?.status === "uploaded");
+  check("重新裁切时新 thumbnail 单独排队", recroppedPayload.uploads.thumbnail?.status === "local_pending");
 
   const wishlist: WishlistItem = {
     id: "wish-asset-1",

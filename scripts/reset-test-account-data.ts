@@ -1,8 +1,8 @@
 /**
  * 测试账号数据清理脚本 (Section 14)
  *
- * 用法: npx tsx scripts/reset-test-account-data.ts <userEmail>
- * 安全措施: 拒绝空参数、拒绝生产环境 DATABASE_URL
+ * 用法: npx tsx scripts/reset-test-account-data.ts --account <phone> --api <local-api-url>
+ * 安全措施: 拒绝空参数、拒绝非本机 API 和非本机 DATABASE_URL
  */
 
 import { eq } from "drizzle-orm";
@@ -11,9 +11,15 @@ import * as schema from "../services/wardrobe-api/src/db/schema.js";
 import { createStorageProviderFromEnv } from "../services/wardrobe-api/src/storage/factory.js";
 
 async function main() {
-  const userEmail = process.argv[2]?.trim();
-  if (!userEmail) {
-    console.error("错误: 必须提供测试账号邮箱。用法: npx tsx scripts/reset-test-account-data.ts <userEmail>");
+  const account = readArg("--account");
+  const apiBase = readArg("--api");
+  if (!account || !apiBase) {
+    console.error("错误: 必须显式提供 --account 和 --api。");
+    process.exit(1);
+  }
+  const apiHost = new URL(apiBase).hostname;
+  if (!["127.0.0.1", "localhost", "::1"].includes(apiHost)) {
+    console.error(`安全拒绝: --api 指向非本机地址 (${apiHost})。`);
     process.exit(1);
   }
 
@@ -34,14 +40,19 @@ async function main() {
     .select({ userId: schema.phoneIdentities.userId })
     .from(schema.phoneIdentities)
     .innerJoin(schema.users, eq(schema.users.id, schema.phoneIdentities.userId))
-    .where(eq(schema.phoneIdentities.phoneE164, userEmail));
+    .where(eq(schema.phoneIdentities.phoneE164, account));
   const userId = phoneIdentity?.userId;
   if (!userId) {
-    console.error(`未找到用户: ${userEmail}`);
+    console.error(`未找到测试账号: ${account}`);
     process.exit(1);
   }
 
   console.log(`找到用户 ${userId}，开始清理数据...`);
+
+  const assetRows = await db
+    .select({ originalStorageKey: schema.assets.originalStorageKey, thumbnailStorageKey: schema.assets.thumbnailStorageKey })
+    .from(schema.assets)
+    .where(eq(schema.assets.userId, userId));
 
   // 按 FK 依赖顺序删除
   const tables: Array<{ name: string; table: Parameters<typeof db.delete>[0] }> = [
@@ -74,13 +85,9 @@ async function main() {
 
   // 清理云端图片文件（使用 storage provider）
   try {
-    const assetRows = await db
-      .select({ originalStorageKey: schema.assets.originalStorageKey, thumbnailStorageKey: schema.assets.thumbnailStorageKey })
-      .from(schema.assets)
-      .where(eq(schema.assets.userId, userId));
     for (const row of assetRows) {
-      if (row.originalStorageKey && storage) await storage.delete(row.originalStorageKey).catch(() => {});
-      if (row.thumbnailStorageKey && storage) await storage.delete(row.thumbnailStorageKey).catch(() => {});
+      if (row.originalStorageKey && storage) await storage.delete(row.originalStorageKey);
+      if (row.thumbnailStorageKey && storage) await storage.delete(row.thumbnailStorageKey);
     }
     console.log(`  云端图片文件: 已清理 ${assetRows.length} 条`);
   } catch (err) {
@@ -96,6 +103,11 @@ async function main() {
   console.log(`\n用户 ${userId} 的测试数据清理完成。`);
   console.log("客户端清理: 请在浏览器 DevTools → Application → Clear site data 清除 IndexedDB 和缓存。");
   await closeDatabase();
+}
+
+function readArg(name: string): string {
+  const index = process.argv.indexOf(name);
+  return index >= 0 ? process.argv[index + 1]?.trim() ?? "" : "";
 }
 
 main().catch((err) => {

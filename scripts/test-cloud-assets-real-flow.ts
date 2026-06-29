@@ -70,6 +70,7 @@ for (const asset of assets) {
   if (!item?.original || !item.thumbnail) throw new Error(`manifest omitted uploaded variants for ${asset.assetId}`);
 }
 
+await verifyDownload(primary.accessToken, primaryDeviceId, assets[0].assetId, "original");
 await verifyDownload(primary.accessToken, primaryDeviceId, assets[0].assetId, "thumbnail");
 const secondary = await login(secondDeviceId);
 await verifyDownload(secondary.accessToken, secondDeviceId, assets[1].assetId, "original");

@@ -3248,3 +3248,15 @@
 - **风险门禁**：**high**（云端图片二进制、同步完成条件、账号隔离缓存和冷恢复）。
 - **未触发 subagent**：用户未通知。
 - **未验证风险**：真实测试 API 的双 variant GET/SHA 校验、清本地数据重登和 Android 实机恢复将在 Commit 4 执行。
+## 2026-06-29 / v2.0.15-test / Codex — 验证完整原图、裁切缩略图与云恢复契约
+
+- **目的**：为本轮单品图片语义、重新裁切和云端双 variant 恢复增加可执行回归，并构建 Android 交付版本。
+- **版本**：`2.0.14-test` → `2.0.15-test`，Android `versionCode` 由 `20014` → `20015`；本条为本轮修复 Commit 4。
+- **改动文件**：`scripts/reset-test-account-data.ts`、`scripts/test-{intake-draft,cloud-assets-bridge,cloud-assets-upload,cloud-assets-real-flow,cloud-image-cache,intake-entry-and-crop-regression,ai-intake-live-contract,auth-client-shell}.ts`、`src/lib/garment-image-source.ts`、`package.json`、`package-lock.json`、`VERSION_HISTORY.md`。
+- **自动验证**：`npm run typecheck`、`npm test`、`npm run build` 通过；字段语义测试确认保存完整原图、裁切图不入正式模型、`cropBox` 保留且 `sourceImageDataUrl` 不进入单品；资产桥接 13/13、上传 10/10、缓存 12/12、恢复 22/22 通过；录入/重新裁切相关逻辑回归 43/43 和 29/29 通过；Dev Server 图片流程 6/6 通过。
+- **真实 API 验证**：本机 `127.0.0.1:3100` 测试 API 完成单品 original/thumbnail 真实 PUT 和 GET，两个 variant 下载字节及 SHA-256 均为 `ee701861eb826d93377de59de7190316589d12e766bd607a0d44fd4e72cf0ff2`；相同 SHA original 不重传、新 thumbnail 单独排队由逻辑测试覆盖。
+- **Android 验证**：Pixel 6 AVD `wardrobe-test` / Android 15 (API 35) 安装固定签名 `CN=fangzheng` 的 `2.0.15-test` 候选 APK 成功；冷启动、清数据后冷启动、Android 返回键、竖屏和横屏登录页检查通过；logcat 未发现本 App `FATAL EXCEPTION`。
+- **全量回归说明**：`npm run test:logic:all` 运行至既有 `test-cloud-sync-outfit-bridge.ts` 后停止，该测试要求套装 payload 删除 `sourceImageDataUrl`，现有 `toCloudOutfitPayload` 未满足；属于本轮明确不修改的套装链路。其前所有套件通过，本轮单品图片相关套件已单独全量通过。
+- **风险门禁**：**high**（图片像素语义、重新裁切、云端资产、版本升级和 Android APK）。
+- **未触发 subagent**：用户未通知。
+- **未验证风险**：Android 模拟器未登录真实账号，未在 WebView 内完成选图、裁切、云端清本地数据后重登恢复；Dev Server 流程和真实 API 二进制校验分别覆盖了交互与云资产闭环，但不能替代该项真机联合验收。MiniMax live 识别未单独复测。

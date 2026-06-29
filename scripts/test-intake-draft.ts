@@ -38,6 +38,8 @@ assert.equal(mergeIntakeFields([localLow, aiLow], { fieldKey: "colors" })?.needs
 
 const garmentDraft = buildLocalGarmentDraft({
   imageDataUrl: "data:image/png;base64,aaa",
+  croppedImageDataUrl: "data:image/png;base64,cropped",
+  cropBox: { x: 0.1, y: 0.2, width: 0.7, height: 0.6 },
   thumbnailDataUrl: "data:image/png;base64,thumb",
   colors: buildColorInfo("single", ["白"]),
   transparentBackgroundStatus: "failed",
@@ -52,9 +54,17 @@ assert.equal(summary.canSave, true, "透明底失败不阻塞保存");
 assert.equal(isIntakeDraftReadyToSave(garmentDraft), true, "可保存判断应复用草稿 review summary");
 
 const wardrobeItem = garmentDraftToWardrobeItem(garmentDraft, { now });
-assert.equal(wardrobeItem.imageDataUrl, garmentDraft.croppedImageDataUrl, "透明底失败时保存裁切图");
+assert.equal(wardrobeItem.imageDataUrl, garmentDraft.imageDataUrl, "正式单品必须保存完整原图");
+assert.notEqual(wardrobeItem.imageDataUrl, garmentDraft.croppedImageDataUrl, "裁切临时图不能冒充完整原图");
+assert.deepEqual(wardrobeItem.cropBox, garmentDraft.cropBox, "裁切框必须相对于完整原图保存");
+assert.equal((wardrobeItem as unknown as Record<string, unknown>).sourceImageDataUrl, undefined, "正式单品不再保存第二份主图");
 assert.equal(wardrobeItem.thumbnailDataUrl, "data:image/png;base64,thumb", "草稿缩略图应进入正式衣物");
 assert.equal(wardrobeItem.needsReview, true, "含 review/info 字段的草稿入库后应保留待确认");
+assert.throws(
+  () => garmentDraftToWardrobeItem({ ...garmentDraft, imageDataUrl: garmentDraft.croppedImageDataUrl }),
+  /GARMENT_ORIGINAL_IMAGE_INVALID/,
+  "非全图裁切时必须拒绝用裁切图冒充原图",
+);
 
 const colorEditedGarment = garmentDraftToWardrobeItem({
   ...garmentDraft,
@@ -158,8 +168,6 @@ const outfitPhotoDraft = buildLocalOutfitDraftFromItems({
 });
 const savedPhotoOutfit = outfitDraftToSavedOutfit(outfitPhotoDraft, { id: "outfit-photo-test", now });
 assert.equal(savedPhotoOutfit.source, "capture", "从套装图录入的套装来源应为 capture");
-assert.equal(savedPhotoOutfit.sourceImageDataUrl, "data:image/png;base64,outfit-photo", "套装图原图应保留为来源图");
-assert.equal(savedPhotoOutfit.coverImageDataUrl, "data:image/png;base64,outfit-photo", "套装图应可作为套装封面");
 assert.equal(savedPhotoOutfit.thumbnailDataUrl, "data:image/png;base64,outfit-thumb", "套装图缩略图应随草稿保存");
 
 const parsed = parseIntakeRecognitionJson(JSON.stringify({

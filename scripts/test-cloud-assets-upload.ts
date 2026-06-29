@@ -86,6 +86,18 @@ async function main() {
   check("请求包含 asset/variant/blob 和 owner header", uploadedRequests[0]?.params.assetId === successId && uploadedRequests[0]?.blob instanceof Blob && uploadedRequests[0]?.metadata["x-asset-owner-entity-type"] === "garment");
   check("成功后本地状态 uploaded", ((await db.assets.get(successId))?.payload as LocalAssetPayload).uploads.original?.status === "uploaded");
 
+  const mismatchId = await addPending(db, "2026-06-27T15:00:01.500Z");
+  const mismatch = await uploadPendingAssets(db, {
+    dataUrlToBlob: async () => new Blob([new Uint8Array(16)], { type: "image/png" }),
+    uploadContent: async (request) => ({
+      status: "ok", assetId: request.params.assetId, variant: request.params.variant, uploadStatus: "uploaded",
+      sha256: "b".repeat(64), mimeType: request.blob.type, sizeBytes: request.blob.size,
+      updatedAt: new Date().toISOString(),
+    }),
+  });
+  check("服务端上传摘要不一致时标记失败", mismatch[0]?.status === "failed" && mismatch[0]?.errorCode === "ASSET_UPLOAD_RESPONSE_MISMATCH");
+  check("摘要不一致保留本地失败状态", ((await db.assets.get(mismatchId))?.payload as LocalAssetPayload).uploads.original?.lastErrorCode === "ASSET_UPLOAD_RESPONSE_MISMATCH");
+
   const authFailId = await addPending(db, "2026-06-27T15:00:02.000Z");
   await uploadPendingAssets(db, {
     dataUrlToBlob: async () => new Blob([]),

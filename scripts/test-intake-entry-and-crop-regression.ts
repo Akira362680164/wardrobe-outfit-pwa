@@ -76,7 +76,7 @@ check("GarmentIntakeFlow wishlist 分支用「价格」label 而非「商品价�
 check("GarmentIntakeFlow wishlist 分支用「链接」label 而非「商品链接」", /flowKind === "wishlist"\s*\?\s*"链接"/.test(garmentIntakeFlow));
 
 // v1.1.16-dev commit1 §3.4.4 + §3.4.5 + §3.4.6: 编辑页 AI 与裁切源修复
-check("recognizeEditDraftAgain 优先使用 editDraft.imageDataUrl", /async function recognizeEditDraftAgain[\s\S]+?const source = editDraft\.imageDataUrl \|\| editDraft\.sourceImageDataUrl/.test(wardrobeApp));
+check("recognizeEditDraftAgain 只使用完整 editDraft.imageDataUrl", /async function recognizeEditDraftAgain[\s\S]+?const source = editDraft\.imageDataUrl;/.test(wardrobeApp));
 // recognizeEditDraftAgain 不再修改 cropBox / imageDataUrl（自带保护，无需显式检查 hasUserCropBox）
 check("recognizeEditDraftAgain 不修改 cropBox / imageDataUrl",
   (() => {
@@ -88,7 +88,7 @@ check("recognizeEditDraftAgain 不修改 cropBox / imageDataUrl",
   })(),
 );
 check("WardrobeEditPage 不再接收 onCropFromSource prop", !/onCropFromSource/.test(wardrobeApp));
-check("wardrobe-app 传 onCrop (sourceImageDataUrl 优先, sourceKind=original)", /onCrop=\{\(editDraft\.sourceImageDataUrl \|\| editDraft\.imageDataUrl\) \? \(\) => \{[\s\S]+?sourceKind:[\s\S]+?"original"[\s\S]+?setViewingItemCropJob/.test(wardrobeApp));
+check("wardrobe-app 重新裁切只使用完整 imageDataUrl", /onCrop=\{editDraft\.imageDataUrl \? \(\) => \{[\s\S]+?sourceKind:[\s\S]+?"original"[\s\S]+?setViewingItemCropJob/.test(wardrobeApp));
 check("wardrobe-app 不再传 onCropFromSource", !/onCropFromSource=/.test(wardrobeApp));
 check("WardrobeEditPage 不再渲染「从原图重新裁切」按钮", !/从原图重新裁切/.test(wardrobeApp));
 check("viewingItemCropJob 类型含 sourceKind 字段", /viewingItemCropJob[\s\S]+?sourceKind\?:\s*"current"\s*\|\s*"original"/.test(wardrobeApp));
