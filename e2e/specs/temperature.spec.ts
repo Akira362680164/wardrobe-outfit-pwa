@@ -4,7 +4,7 @@ import { waitForBootstrapReady, waitForSyncIdle } from "../fixtures/sync";
 import { registerByUi } from "../helpers/auth";
 
 test.describe("温度全链路", () => {
-  test("温度组件在录入流程中渲染", async ({ page, consoleErrors }) => {
+  test("温度组件在录入流程中渲染", async ({ page, consoleErrors, requestErrors }) => {
     const account = createE2ETestAccount();
     await registerByUi(page, account);
     await waitForBootstrapReady(page);

@@ -5,7 +5,7 @@ import { registerByUi } from "../helpers/auth";
 import { navigateToTab } from "../helpers/navigation";
 
 test.describe("账号管理页面", () => {
-  test("账号管理页显示账号信息", async ({ page }) => {
+  test("账号管理页显示账号信息", async ({ page, requestErrors }) => {
     const account = createE2ETestAccount();
     await registerByUi(page, account);
     await waitForBootstrapReady(page);
@@ -15,7 +15,7 @@ test.describe("账号管理页面", () => {
     await page.getByRole("button", { name: /^管理$/ }).click();
 
     // should show account info
-    await expect(page.getByText(/账号服务已连接/i)).toBeVisible();
+    await expect(page.getByText(/状态：已登录/i)).toBeVisible();
     await expect(page.getByRole("heading", { name: "账号管理" })).toBeVisible();
   });
 

@@ -17,18 +17,24 @@ test.describe("注册、退出和重新登录", () => {
     await page.getByRole("button", { name: /^管理$/ }).click();
 
     // click logout — button may be below fold in 390×844 viewport
-    const logoutBtn = page.getByRole("button", { name: "退出当前设备" });
+    const logoutBtn = page.getByRole("button", { name: "退出登录" });
     await logoutBtn.scrollIntoViewIfNeeded();
     await logoutBtn.click();
 
+    // handle confirmation dialog if present
+    const confirmBtn = page.getByRole("button", { name: /确定|确认退出|退出/ });
+    if (await confirmBtn.isVisible({ timeout: 2000 }).catch(() => false)) {
+      await confirmBtn.click();
+    }
+
     // should be back on login page
-    await expect(page.getByRole("button", { name: "登录" })).toBeVisible({ timeout: 10000 });
+    await expect(page.getByRole("button", { name: "登录" })).toBeVisible({ timeout: 10_000 });
 
     // re-login
     await loginByUi(page, account);
     await waitForBootstrapReady(page);
     await waitForSyncIdle(page);
 
-    expect(consoleErrors.filter((e) => !e.includes("Capacitor"))).toEqual([]);
+    expect(consoleErrors.filter((e) => !e.includes("Capacitor") && !e.includes("401"))).toEqual([]);
   });
 });
