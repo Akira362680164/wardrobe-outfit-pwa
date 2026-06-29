@@ -1,3 +1,14 @@
+## 2026-06-29 / v2.0.10-test / Codex — 部署默认衣橱同步修复并交付 APK
+
+- **目的**：将已验证的默认衣橱/同步修复部署到当前测试服务器，并交付使用固定个人签名的 Android APK。
+- **版本**：保持 `2.0.10-test` / Android `versionCode=20010`；APK 内置业务代码提交 `cbb238fc2426ed23802b062315d37cbdfe6c1b41`。
+- **服务器部署**：已将同一提交同步到 `/opt/wardrobe-cloud/source`，构建并启动镜像 `wardrobe-api:cbb238f`；服务器内部与公网 `http://111.231.98.86` 的 health / ready / version 均通过，`gitCommit` 为 `cbb238fc2426ed23802b062315d37cbdfe6c1b41`。
+- **APK 产物**：项目根目录 `衣橱穿搭助手-v2.0.10-test.apk`（9.5MB）；包名 `com.wardrobe.outfit`；固定签名 `CN=fangzheng, OU=Dev, O=Wardrobe, L=Beijing, ST=Beijing, C=CN`；SHA-256 `ab722caab8963a12d68a22574263d583717f022e7c8570ad0f80ae6c53751ddc`。
+- **验证**：`npm run android:apk` 构建成功；`aapt` 核对版本/包名通过；`apksigner verify --print-certs` 通过，单签名者且 v2 签名有效。
+- **风险门禁**：**high**（生产测试服务部署、Android APK 交付）。
+- **未触发 subagent**：用户未通知。
+- **未验证风险**：`adb devices -l` 无在线设备，未安装或做真机交互验收；线上数据尚未清空，已完成清空目标盘点，等待用户对具体数据库和文件路径做最后确认。
+
 ## 2026-06-29 / v2.0.10-test / Codex — 固定默认衣橱并补齐衣橱同步规则
 
 - **目的**：确保每个新账号首次打开时都有一个固定的“默认衣橱”，不允许用户修改或删除；补齐衣橱名称、简介和顺序的云同步规则；从设置页下线“清空数据”入口。
