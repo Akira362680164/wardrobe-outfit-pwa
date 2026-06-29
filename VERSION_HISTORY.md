@@ -1,4 +1,13 @@
-## 2026-06-29 / v2.0.13-test / Codex — E2E 测试套件重建
+## 2026-06-29 / v2.0.14-test / Codex — 图片裁切与云端恢复全链路修复
+
+- **目的**：修复单品/种草/套装图片在列表缩略图、详情主图、全屏查看和 AI 识别入口的裁切一致性问题，确保云端上传、下载和恢复链路正确闭环。
+- **版本**：`2.0.13-test` → `2.0.14-test`，Android `versionCode` 由 `20013` → `20014`。
+- **改动文件**：`src/components/garment-intake-flow.tsx`（GarmentImageProcessingInput 新增 cropBox）、`src/components/wardrobe-app.tsx`（processGarmentIntakeImage 裁切后送 AI）、`src/components/wishlist-view-2.0.tsx`（handleRescanAI 传递 formCropBox）、`src/lib/cloud-sync/sync-engine.ts`（资产上传结构化摘要日志）、`src/lib/cloud-sync/asset-recovery.ts`（恢复摘要日志 + 修复空 catch）、`src/lib/cloud-sync/asset-upload-coordinator.ts`（修复空 catch）、`e2e/helpers/garment.ts`（intake 流程辅助函数适配实际 UI）、`e2e/helpers/minimax-key.ts`（通过设置 UI 配置 MiniMax Key）、`e2e/specs/dev-server-image-verification.spec.ts`（新增 6 个图片裁切实操验证测试）、`scripts/reset-test-account-data.ts`（新增测试数据清理脚本）、`WARDROBE_IMAGE_FIX_FINAL_REPORT.md`（新增最终关闭报告）、`package.json`、`VERSION_HISTORY.md`。
+- **核心修复**：全代码库审计确认 16 个小图位置使用 thumbnailDataUrl + object-contain、大图使用 OriginalCroppedImage 等比例缩放（单 scale = min(viewportW/cropPixelW, viewportH/cropPixelH)）、无 object-fill 无独立 X/Y 拉伸；AI 识别 3 个入口全部传递 cropBox 并通过 createTemporaryCroppedImage 裁切后送 AI（临时图不写入 DB、不上传）；重新裁切只改 cropBox 不改 imageDataUrl → SHA-256 不变 → 服务端去重防止重传原图；cropRevision 每次 +1，thumbnailCropRevision 仅在 thumbOk 时更新；EditSnapshot 使用 JSON.stringify 全字段比较检测脏数据；同步停止条件四条件（pushed/pulled/assetUploaded/assetPending 全零）；Asset Recovery 通过 stateChanged 门控防止 recovery→sync 循环；4 个空 catch 改为 console.warn 并输出结构化诊断信息。
+- **本地验证**：`npm run typecheck` 通过；`npm run build` 通过；完整 E2E 套件 **32/32 passed**（9.6 分钟），覆盖 6 个图片裁切实操流程、注册登录、单品/种草/套装 CRUD、账号隔离、级联删除、双设备同步和 AI 识别兜底。
+- **风险门禁**：**high**（图片展示、AI 识别输入、云端上传/下载/恢复、裁切持久化和同步闭环）。
+- **未触发 subagent**：用户未通知。
+- **未验证风险**：断网补传流程（Section 12）需手动在网络断开后录入裁切保存再恢复网络验证自动同步；Android 真机安装、WebView 图片显示、网络断开恢复、卸载重装和后台补传均保留为独立真机回归任务。
 
 - **目的**：重建 Playwright E2E 测试套件，覆盖注册登录、账号隔离、双设备同步、单品/种草/套装 CRUD、级联删除和 AI 识别兜底等核心链路。
 - **版本**：保持 `2.0.13-test`。
