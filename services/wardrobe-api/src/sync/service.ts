@@ -4,7 +4,7 @@
 // 服务端写业务表 + sync_changes 都走 Drizzle 事务保证原子性；
 // push 路径上对每条 mutation 做 userId 归属校验 + baseRevision 检查 + 幂等 mutationId 派发。
 
-import { and, asc, eq, inArray, sql } from "drizzle-orm";
+import { and, asc, eq, inArray, isNull, sql } from "drizzle-orm";
 import { z } from "zod";
 
 import {
@@ -182,6 +182,42 @@ export class SyncService {
 
           // 2. 取得 entityType 对应的 drizzle table
           const table = getTableForEntityType(mutation.entityType);
+
+          const isDefaultLocationCreate = mutation.entityType === "closetLocation"
+            && mutation.operation === "create"
+            && (mutation.payload as Record<string, unknown> | undefined)?.dexieId === "home";
+          if (isDefaultLocationCreate) {
+            await tx.execute(sql`SELECT pg_advisory_xact_lock(hashtext(${`default-location:${userId}`}))`);
+            const [canonical] = await tx
+              .select({ id: locations.id, revision: locations.revision })
+              .from(locations)
+              .where(and(
+                eq(locations.userId, userId),
+                isNull(locations.deletedAt),
+                sql`${locations.payload}->>'dexieId' = 'home'`,
+              ))
+              .limit(1);
+            if (canonical && canonical.id !== mutation.entityId) {
+              await tx.insert(syncMutations).values({
+                userId,
+                mutationId: mutation.mutationId,
+                entityType: mutation.entityType,
+                entityId: mutation.entityId,
+                operation: mutation.operation,
+                baseRevision: mutation.baseRevision ?? null,
+                status: "accepted",
+                resultRevision: canonical.revision,
+                payload: mutation.payload ?? {},
+              });
+              return {
+                mutationId: mutation.mutationId,
+                entityType: mutation.entityType,
+                entityId: mutation.entityId,
+                status: "accepted" as const,
+                serverRevision: canonical.revision,
+              };
+            }
+          }
 
           // 3. 查实体当前状态 + 跨账号校验
           const existingEntities = await tx

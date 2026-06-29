@@ -15,6 +15,7 @@ import { describe, expect, it } from "vitest";
 const root = path.resolve(__dirname, "../../..");
 const migration = readFileSync(path.join(root, "services/wardrobe-api/migrations/0001_business_sync_schema.sql"), "utf8");
 const closetLocationMigration = readFileSync(path.join(root, "services/wardrobe-api/migrations/0005_closet_locations.sql"), "utf8");
+const defaultLocationUniqueMigration = readFileSync(path.join(root, "services/wardrobe-api/migrations/0008_default_location_unique.sql"), "utf8");
 const journal = readFileSync(path.join(root, "services/wardrobe-api/migrations/meta/_journal.json"), "utf8");
 const drizzleSchema = readFileSync(path.join(root, "services/wardrobe-api/src/db/schema.ts"), "utf8");
 const syncService = readFileSync(path.join(root, "services/wardrobe-api/src/sync/service.ts"), "utf8");
@@ -72,6 +73,9 @@ describe("business sync schema", () => {
     expect(closetLocationMigration).toContain("ADD VALUE IF NOT EXISTS 'closetLocation'");
     expect(closetLocationMigration).toContain("CREATE TABLE IF NOT EXISTS locations");
     expect(journal).toContain("0005_closet_locations");
+    expect(defaultLocationUniqueMigration).toContain("locations_one_active_home_per_user");
+    expect(defaultLocationUniqueMigration).toContain("payload->>'dexieId' = 'home'");
+    expect(journal).toContain("0008_default_location_unique");
   });
 });
 
@@ -136,5 +140,6 @@ describe("sync contracts", () => {
       mutations: [{ ...mutation, payload: { dexieId: "home", name: "我的衣橱", note: "默认衣橱", sortOrder: 1 } }],
     }).success).toBe(false);
     expect(syncService).toContain("DEFAULT_LOCATION_PROTECTED");
+    expect(syncService).toContain("default-location:${userId}");
   });
 });

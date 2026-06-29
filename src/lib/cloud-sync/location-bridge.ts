@@ -1,10 +1,12 @@
 "use client";
 
 import { DEFAULT_LOCATIONS, type ClosetLocation } from "@/lib/types";
-import { createWorkspaceUuidV7, getAccountWorkspaceDb, type WorkspaceLocationRecord } from "@/lib/account-workspace-db";
+import { createWorkspaceUuidV7, getAccountWorkspaceDb, runWorkspaceWrite, type WorkspaceLocationRecord } from "@/lib/account-workspace-db";
 import { loadCloudBridgeContext } from "@/lib/cloud-sync/bridge-context";
-import { currentWorkspaceGuard, deleteLocation, isGuardCurrent, writeLocation } from "@/lib/cloud-sync/sync-engine";
+import { currentWorkspaceGuard, deleteLocation, enqueueOutboxMutation, isGuardCurrent, writeLocation } from "@/lib/cloud-sync/sync-engine";
 import type { AccountWorkspaceRecord } from "@/lib/workspace-registry";
+
+const defaultLocationLocks = new Map<string, Promise<void>>();
 
 export interface BridgeLocationResult {
   bridged: boolean;
@@ -98,11 +100,15 @@ export async function initializeDefaultWorkspaceLocation(
   workspace: AccountWorkspaceRecord,
   deviceId: string,
 ): Promise<BridgeLocationResult> {
+  return withDefaultLocationLock(workspace.dbName, async () => normalizeDefaultWorkspaceLocation(workspace, deviceId));
+}
+
+export async function normalizeDefaultWorkspaceLocation(
+  workspace: AccountWorkspaceRecord,
+  deviceId: string,
+): Promise<BridgeLocationResult> {
   try {
     const db = getAccountWorkspaceDb(workspace);
-    const hasActiveLocation = await db.locations.filter((location) => !location.deletedAt).count();
-    if (hasActiveLocation > 0) return { bridged: true };
-
     const location = DEFAULT_LOCATIONS[0];
     const payload: Record<string, unknown> = {
       name: location.name,
@@ -110,22 +116,82 @@ export async function initializeDefaultWorkspaceLocation(
       sortOrder: location.sortOrder,
       dexieId: location.id,
     };
-    await writeLocation(
+    await runWorkspaceWrite(
       db,
-      {
-        workspace,
-        originDeviceId: deviceId,
-        baseRevision: 0,
-        payload,
+      ["locations", "garments", "syncOutbox"],
+      async () => {
+        const homes = (await db.locations.toArray())
+          .filter((record) => !record.deletedAt && locationDexieId(record) === "home")
+          .sort((a, b) => b.revision - a.revision || b.updatedAt.localeCompare(a.updatedAt));
+        const canonical = homes[0];
+        const now = new Date().toISOString();
+
+        if (!canonical) {
+          const id = createWorkspaceUuidV7();
+          await db.locations.put({
+            id,
+            userId: workspace.userId,
+            originDeviceId: deviceId,
+            revision: 1,
+            createdAt: now,
+            updatedAt: now,
+            name: location.name,
+            note: location.note,
+            sortOrder: location.sortOrder,
+            payload,
+          });
+          await enqueueOutboxMutation(db, { workspace, entityType: "closetLocation", entityId: id, operation: "create", payload, baseRevision: 0 });
+          return;
+        }
+
+        const needsNormalization = canonical.name !== location.name
+          || canonical.note !== location.note
+          || canonical.sortOrder !== location.sortOrder;
+        if (needsNormalization) {
+          await db.locations.update(canonical.id, {
+            name: location.name,
+            note: location.note,
+            sortOrder: location.sortOrder,
+            payload,
+            revision: canonical.revision + 1,
+            updatedAt: now,
+          });
+          await enqueueOutboxMutation(db, {
+            workspace,
+            entityType: "closetLocation",
+            entityId: canonical.id,
+            operation: "update",
+            payload,
+            baseRevision: canonical.revision,
+          });
+        }
+
+        for (const duplicate of homes.slice(1)) {
+          const garments = await db.garments.filter((garment) => !garment.deletedAt && garment.locationId === duplicate.id).toArray();
+          for (const garment of garments) {
+            const garmentPayload = (garment.payload ?? {}) as Record<string, unknown>;
+            const nextPayload = { ...garmentPayload, locationId: "home" };
+            await db.garments.update(garment.id, { locationId: "home", payload: nextPayload, revision: garment.revision + 1, updatedAt: now });
+            await enqueueOutboxMutation(db, {
+              workspace,
+              entityType: "garment",
+              entityId: garment.id,
+              operation: "update",
+              payload: nextPayload,
+              baseRevision: garment.revision,
+            });
+          }
+          await db.locations.update(duplicate.id, { deletedAt: now, revision: duplicate.revision + 1, updatedAt: now });
+          await enqueueOutboxMutation(db, {
+            workspace,
+            entityType: "closetLocation",
+            entityId: duplicate.id,
+            operation: "delete",
+            payload: {},
+            baseRevision: duplicate.revision,
+          });
+        }
       },
-      {
-        id: createWorkspaceUuidV7(),
-        name: location.name,
-        note: location.note,
-        sortOrder: location.sortOrder,
-        payload,
-      },
-      "create",
     );
     return { bridged: true };
   } catch (err) {
@@ -134,6 +200,28 @@ export async function initializeDefaultWorkspaceLocation(
     }
     return { bridged: false, reason: "write_failed" };
   }
+}
+
+async function withDefaultLocationLock<T>(dbName: string, task: () => Promise<T>): Promise<T> {
+  const previous = defaultLocationLocks.get(dbName) ?? Promise.resolve();
+  let release!: () => void;
+  const current = new Promise<void>((resolve) => { release = resolve; });
+  const queued = previous.then(() => current);
+  defaultLocationLocks.set(dbName, queued);
+  await previous;
+  try {
+    return await task();
+  } finally {
+    release();
+    if (defaultLocationLocks.get(dbName) === queued) defaultLocationLocks.delete(dbName);
+  }
+}
+
+function locationDexieId(location: WorkspaceLocationRecord): string | undefined {
+  const payload = location.payload;
+  if (!payload || typeof payload !== "object" || Array.isArray(payload)) return undefined;
+  const dexieId = (payload as Record<string, unknown>).dexieId;
+  return typeof dexieId === "string" ? dexieId : undefined;
 }
 
 async function findWorkspaceLocationById(

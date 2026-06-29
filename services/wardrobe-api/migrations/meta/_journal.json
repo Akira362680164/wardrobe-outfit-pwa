@@ -50,6 +50,20 @@
       "when": 1782432000006,
       "tag": "0006_local_file_storage",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1782633600000,
+      "tag": "0007_add_profiles_table",
+      "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1782720000000,
+      "tag": "0008_default_location_unique",
+      "breakpoints": true
     }
   ]
 }

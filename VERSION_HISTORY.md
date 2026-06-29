@@ -1,3 +1,14 @@
+## 2026-06-29 / v2.0.10-test / Codex — 默认衣橱本地与服务端唯一性
+
+- **目的**：保证同一账号只有一条活动 `dexieId="home"` 默认衣橱，并按用户要求取消名称和旧标识兼容识别。
+- **版本**：保持 `2.0.10-test`；本条为 v2.0.13 紧急修复 Commit 2。
+- **改动文件**：`src/lib/cloud-sync/location-bridge.ts`、`scripts/test-old-garment-default-location-sync.ts`、`services/wardrobe-api/src/sync/service.ts`、`services/wardrobe-api/migrations/0008_default_location_unique.sql`、迁移 journal、`services/wardrobe-api/tests/sync-contracts.test.ts`、`VERSION_HISTORY.md`。
+- **核心修复**：本地以 workspace 锁和单一 Dexie 事务串行初始化；只识别 `dexieId=home`；重复 home 记录归一、关联衣物迁移并写正常 outbox；服务端增加活动 home 部分唯一索引和账号级 advisory lock，并发创建复用 canonical 记录。
+- **本地验证**：`npm run typecheck` 通过；默认衣橱回归覆盖三路并发初始化、重复 home 墓碑、衣物迁移和 outbox；`npm run api:test` 7 files / 56 tests 全部通过。
+- **风险门禁**：**high**（本地工作区事务、衣物位置迁移、服务端数据库迁移和同步 push）。
+- **未触发 subagent**：用户未通知。
+- **未验证风险**：服务端迁移以前置空库为假设，服务器清空与部署不属于本任务；尚未连接真实 PostgreSQL 执行并发写入压力测试。
+
 ## 2026-06-29 / v2.0.10-test / Codex — 图片资产统一装配
 
 - **目的**：修复工作区实体已剥离 DataURL 后，单品、种草和套装在首页及详情页显示无图的问题。

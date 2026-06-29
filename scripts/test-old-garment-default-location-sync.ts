@@ -8,7 +8,7 @@ import {
 } from "../src/lib/account-workspace-db";
 import { deleteWorkspaceGarmentByItemId } from "../src/lib/cloud-sync/garment-bridge";
 import { hashWorkspaceIdToNumber, resolveWorkspaceGarmentItemId } from "../src/lib/cloud-sync/hash-workspace-id";
-import { bridgeLocationDelete, initializeDefaultWorkspaceLocation } from "../src/lib/cloud-sync/location-bridge";
+import { bridgeLocationDelete, initializeDefaultWorkspaceLocation, normalizeDefaultWorkspaceLocation } from "../src/lib/cloud-sync/location-bridge";
 import { readWorkspaceUiSnapshot } from "../src/lib/cloud-sync/workspace-ui-mapper";
 import type { AccountWorkspaceRecord } from "../src/lib/workspace-registry";
 
@@ -48,7 +48,12 @@ async function main() {
   assert.equal(resolveWorkspaceGarmentItemId({ ...oldGarment, payload: { legacyItemId: 42 } }), 42);
   assert.equal(resolveWorkspaceGarmentItemId({ ...oldGarment, legacyItemId: 41, payload: { legacyItemId: 42 } }), 41);
 
-  assert.equal((await initializeDefaultWorkspaceLocation(workspace, deviceId)).bridged, true);
+  const concurrent = await Promise.all([
+    initializeDefaultWorkspaceLocation(workspace, deviceId),
+    initializeDefaultWorkspaceLocation(workspace, deviceId),
+    initializeDefaultWorkspaceLocation(workspace, deviceId),
+  ]);
+  assert.equal(concurrent.every((result) => result.bridged), true);
   const defaultLocations = await db.locations.filter((location) => !location.deletedAt).toArray();
   assert.equal(defaultLocations.length, 1, "空 workspace 应只创建一个真实默认衣橱");
   assert.equal((defaultLocations[0].payload as Record<string, unknown>).dexieId, "home");
@@ -59,6 +64,25 @@ async function main() {
   assert.equal((await initializeDefaultWorkspaceLocation(workspace, deviceId)).bridged, true);
   assert.equal(await db.locations.filter((location) => !location.deletedAt).count(), 1, "默认衣橱初始化必须幂等");
   assert.equal(await db.syncOutbox.count(), firstOutboxCount, "幂等调用不得重复创建同步任务");
+
+  const duplicateId = createWorkspaceUuidV7(new Date("2026-06-28T11:00:00.000Z"));
+  const duplicateGarmentId = createWorkspaceUuidV7(new Date("2026-06-28T11:01:00.000Z"));
+  await db.locations.put({
+    id: duplicateId, userId, revision: 0, createdAt: now, updatedAt: now, originDeviceId: deviceId,
+    name: "默认衣橱", note: "默认衣橱", sortOrder: 1,
+    payload: { dexieId: "home", name: "默认衣橱", note: "默认衣橱", sortOrder: 1 },
+  });
+  await db.garments.put({
+    id: duplicateGarmentId, userId, revision: 1, createdAt: now, updatedAt: now, originDeviceId: deviceId,
+    locationId: duplicateId, name: "重复衣橱下衣物", payload: { name: "重复衣橱下衣物", locationId: duplicateId },
+  });
+  assert.equal((await normalizeDefaultWorkspaceLocation(workspace, deviceId)).bridged, true);
+  const activeHomes = (await db.locations.toArray()).filter((record) => !record.deletedAt && (record.payload as Record<string, unknown>)?.dexieId === "home");
+  assert.equal(activeHomes.length, 1, "重复 home 语义记录必须归一为一条");
+  assert.equal(typeof (await db.locations.get(duplicateId))?.deletedAt, "string", "重复 home 记录必须写墓碑");
+  assert.equal((await db.garments.get(duplicateGarmentId))?.locationId, "home", "重复衣橱下衣物必须迁移到 home");
+  assert.equal((await db.syncOutbox.toArray()).some((entry) => entry.entityId === duplicateId && entry.operation === "delete"), true);
+  await db.garments.delete(duplicateGarmentId);
 
   const snapshot = await readWorkspaceUiSnapshot(db);
   assert.equal(snapshot.locations[0]?.id, "home", "workspace 衣橱应映射回衣物使用的 dexieId");
