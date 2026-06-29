@@ -23,7 +23,7 @@ export function garmentDraftToWardrobeItem(
   options: { now?: string } = {},
 ): Omit<WardrobeItem, "id"> {
   const now = options.now ?? new Date().toISOString();
-  const imageDataUrl = resolveGarmentImageDataUrl(draft);
+  const imageDataUrl = requireGarmentOriginalImage(draft);
 
   return {
     name: requiredText(fieldValue(draft.name, ""), "未命名衣物"),
@@ -172,6 +172,14 @@ function resolveGarmentImageDataUrl(draft: GarmentIntakeDraft): string {
   const shouldUseTransparent = fieldValue(draft.useTransparentImage, false);
   if (shouldUseTransparent && draft.transparentImageDataUrl) return draft.transparentImageDataUrl;
   return draft.imageDataUrl || draft.croppedImageDataUrl || "";
+}
+
+function requireGarmentOriginalImage(draft: GarmentIntakeDraft): string {
+  if (!draft.imageDataUrl) throw new Error("GARMENT_ORIGINAL_IMAGE_MISSING");
+  if (draft.cropBox && draft.croppedImageDataUrl === draft.imageDataUrl) {
+    throw new Error("GARMENT_ORIGINAL_IMAGE_INVALID");
+  }
+  return draft.imageDataUrl;
 }
 
 function optionalText(field: IntakeField<string> | undefined): string | undefined {

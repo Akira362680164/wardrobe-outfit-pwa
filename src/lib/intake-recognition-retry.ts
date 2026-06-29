@@ -95,6 +95,7 @@ export function mergeRetryRecognitionDraft(
 export interface FailedRecognitionDraftInput {
   id?: string;
   imageDataUrl?: string;
+  croppedImageDataUrl?: string;
   sourceImageDataUrl?: string;
   cropBox?: GarmentIntakeDraft["cropBox"];
   thumbnailDataUrl?: string;
@@ -114,7 +115,7 @@ export function buildFailedRecognitionDraft(
     kind: "garment",
     imageDataUrl: base.imageDataUrl,
     sourceImageDataUrl: base.sourceImageDataUrl,
-    croppedImageDataUrl: base.imageDataUrl,
+    croppedImageDataUrl: base.croppedImageDataUrl,
     cropBox: base.cropBox,
     thumbnailDataUrl: base.thumbnailDataUrl,
     transparentImageDataUrl: base.transparentImageDataUrl,

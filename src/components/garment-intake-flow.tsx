@@ -40,7 +40,7 @@ import {
 } from "@/lib/intake-local-draft";
 import { fileToCompressedDataUrl, rotateImageDataUrl } from "@/lib/image";
 import { GarmentRecognitionError } from "@/lib/device-minimax";
-import { generateThumbnailSafe } from "@/lib/thumbnail-runtime";
+import { createGarmentThumbnailFromOriginal, generateThumbnailSafe } from "@/lib/thumbnail-runtime";
 import { recordDiagnosticEvent } from "@/lib/diagnostic-log";
 import {
   FIT_NOTES_MAX_LEN,
@@ -273,7 +273,10 @@ export function GarmentIntakeFlow({
     if (!activeImageId || !activeImage) return;
     setIsCropping(false);
     try {
-      const thumbnailDataUrl = await generateThumbnailSafe(croppedDataUrl);
+      const thumbnailDataUrl = await createGarmentThumbnailFromOriginal({
+        originalDataUrl: activeImage.originalDataUrl,
+        cropBox,
+      });
       setImageItems((prev) =>
         setGarmentIntakeImageCrop(prev, activeImageId, {
           croppedImageDataUrl: croppedDataUrl,
@@ -288,22 +291,18 @@ export function GarmentIntakeFlow({
 
   const handleRotate = useCallback(async (direction: "left" | "right") => {
     if (!activeImageId || !activeImage) return;
-    const newDeg = direction === "left"
-      ? ((activeImage.rotationDeg - 90 + 360) % 360) as 0 | 90 | 180 | 270
-      : ((activeImage.rotationDeg + 90) % 360) as 0 | 90 | 180 | 270;
     try {
-      const sourceUrl = activeImage.croppedImageDataUrl ?? activeImage.originalDataUrl;
-      const rotateDeg = newDeg === 0 ? 90 : newDeg; // ponytail: use 90 for the actual rotation
-      const rotated = await rotateImageDataUrl(sourceUrl, rotateDeg as 90 | 180 | 270);
+      const rotated = await rotateImageDataUrl(activeImage.originalDataUrl, direction === "left" ? 270 : 90);
       const thumbnailDataUrl = await generateThumbnailSafe(rotated);
       setImageItems((prev) =>
         prev.map((item) => {
           if (item.id !== activeImageId) return item;
           return {
             ...item,
-            rotationDeg: newDeg,
+            originalDataUrl: rotated,
+            rotationDeg: 0,
             displayDataUrl: rotated,
-            croppedImageDataUrl: rotated,
+            croppedImageDataUrl: undefined,
             thumbnailDataUrl: thumbnailDataUrl.thumbnailDataUrl,
             cropBox: undefined,
           };
@@ -418,8 +417,8 @@ export function GarmentIntakeFlow({
           const imageToProcess = item.croppedImageDataUrl ?? item.displayDataUrl ?? item.originalDataUrl;
           const failedDraft = buildFailedRecognitionDraft({
             id: item.draft?.id,
-            imageDataUrl: imageToProcess,
-            sourceImageDataUrl: item.originalDataUrl,
+            imageDataUrl: item.originalDataUrl,
+            croppedImageDataUrl: imageToProcess,
             cropBox: item.cropBox,
             thumbnailDataUrl: item.thumbnailDataUrl,
             transparentImageDataUrl: item.draft?.transparentImageDataUrl,
@@ -455,16 +454,15 @@ export function GarmentIntakeFlow({
       const result = fallbackImageProcessingResult(imageToProcess, "garment");
       return buildLocalGarmentDraft({
         ...result,
-        imageDataUrl: imageToProcess,
-        sourceImageDataUrl: item.originalDataUrl,
+        imageDataUrl: item.originalDataUrl,
+        croppedImageDataUrl: imageToProcess,
         cropBox: item.cropBox,
         thumbnailDataUrl: item.thumbnailDataUrl,
         locationId: defaultLocationId,
       });
     }
     const processed = await onProcessImage({
-      imageDataUrl: imageToProcess,
-      sourceImageDataUrl: item.originalDataUrl,
+      imageDataUrl: item.originalDataUrl,
       fileName: item.fileName,
       cropBox: item.cropBox,
     });
@@ -485,8 +483,8 @@ export function GarmentIntakeFlow({
       aiConfidenceScore: typeof aiTag.confidence === "number" && Number.isFinite(aiTag.confidence)
         ? Math.round(Math.min(1, Math.max(0, aiTag.confidence)) * 100)
         : undefined,
-      imageDataUrl: imageToProcess,
-      sourceImageDataUrl: item.originalDataUrl,
+      imageDataUrl: item.originalDataUrl,
+      croppedImageDataUrl: imageToProcess,
       cropBox: item.cropBox,
       thumbnailDataUrl: item.thumbnailDataUrl,
       locationId: defaultLocationId,

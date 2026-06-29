@@ -41,6 +41,8 @@ export interface BuildLocalGarmentDraftInput extends LocalImageProcessingResult 
   id?: string;
   aiConfidenceScore?: number;
   imageDataUrl: string;
+  /** Temporary cropped pixels for AI/preview only. */
+  croppedImageDataUrl?: string;
   sourceImageDataUrl?: string;
   cropBox?: { x: number; y: number; width: number; height: number };
   nameGuess?: string;
@@ -102,9 +104,8 @@ export function buildLocalGarmentDraft(input: BuildLocalGarmentDraftInput): Garm
     id: input.id ?? createIntakeDraftId("garment", now),
     kind: "garment",
     ...(aiConfidenceScore != null ? { aiConfidenceScore } : {}),
-    imageDataUrl: input.transparentImageDataUrl || input.imageDataUrl,
-    sourceImageDataUrl: input.sourceImageDataUrl,
-    croppedImageDataUrl: input.imageDataUrl,
+    imageDataUrl: input.imageDataUrl,
+    croppedImageDataUrl: input.croppedImageDataUrl,
     cropBox: input.cropBox,
     thumbnailDataUrl: input.thumbnailDataUrl,
     transparentImageDataUrl: input.transparentImageDataUrl,

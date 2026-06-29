@@ -3218,3 +3218,13 @@
 - 本项目自 v0.9.9 起使用 Git 管理源码版本；`git log -p -- VERSION_HISTORY.md` 可查阅本文件历史快照与被压缩段落的完整原文。
 - v1.1.28 起主文件只保留最近 30 条版本记录以控制文件体积；更早历史通过 git 历史查阅（`git checkout <commit> -- VERSION_HISTORY.md && cat VERSION_HISTORY.md`）。
 - 后续所有修改必须继续按本文件模板实时登记，最新记录放在最上方。
+## 2026-06-29 / v2.0.14-test / Codex — 保存完整单品原图与派生裁切数据
+
+- **目的**：修正首次录入把裁切像素写入 `imageDataUrl` 的根因，固定完整原图、裁切框和缩略图的字段语义。
+- **版本**：保持 `2.0.14-test`；本条为本轮修复 Commit 1。
+- **改动文件**：`src/components/garment-intake-flow.tsx`、`src/lib/intake-local-draft.ts`、`src/lib/intake-recognition-retry.ts`、`src/lib/intake-save-adapters.ts`、`src/lib/thumbnail-runtime.ts`、`VERSION_HISTORY.md`。
+- **核心修复**：录入草稿的 `imageDataUrl` 固定为方向校正后的完整原图，`croppedImageDataUrl` 仅保留在临时草稿；正式保存缺少原图或用裁切图冒充原图时直接拒绝；缩略图统一由完整原图与当前 `cropBox` 生成；旋转改为修改完整原图并重置裁切。
+- **本地验证**：`npm run typecheck` 通过。
+- **风险门禁**：**high**（单品录入、图片像素语义、裁切与保存路径）。
+- **未触发 subagent**：用户未通知。
+- **未验证风险**：页面展示、重新裁切、云端资产恢复和 Android 实机链路将在后续三个提交验证。

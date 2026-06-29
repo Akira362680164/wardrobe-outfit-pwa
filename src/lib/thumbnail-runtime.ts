@@ -25,6 +25,7 @@
 // ============================================================
 
 import { CURRENT_THUMBNAIL_VERSION, type ThumbnailStatus } from "@/lib/types";
+import { cropFromOriginal, type NormalizedCropBox } from "@/lib/image";
 import { createThumbnailDataUrl, supportsWebpDataUrl } from "@/lib/image-variants";
 
 export type ThumbnailErrorTag = "decode" | "draw" | "encode" | "write" | "other";
@@ -142,4 +143,15 @@ export async function generateThumbnailSafe(
     errorMessage: toUserReadableError(lastErr, lastTag),
     errorTag: lastTag,
   };
+}
+
+/** Garment thumbnails are always derived from the complete original and its crop box. */
+export async function createGarmentThumbnailFromOriginal(input: {
+  originalDataUrl: string;
+  cropBox?: NormalizedCropBox;
+}): Promise<ThumbnailGenResult> {
+  const croppedDataUrl = input.cropBox
+    ? await cropFromOriginal(input.originalDataUrl, input.cropBox)
+    : input.originalDataUrl;
+  return generateThumbnailSafe(croppedDataUrl);
 }
