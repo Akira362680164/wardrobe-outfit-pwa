@@ -12,6 +12,7 @@
 "use client";
 
 import { isAccountWorkspaceEnabled, isCloudSyncEnabled, isWorkspaceResponseCurrent, loadWorkspaceRegistry, type AccountWorkspaceRecord } from "@/lib/workspace-registry";
+import { uploadPendingAssets } from "@/lib/cloud-sync/asset-upload-coordinator";
 import {
   type AccountWorkspaceDatabase,
   type AccountWorkspaceTableName,
@@ -910,15 +911,18 @@ export interface SyncRunResult {
   conflicts: number;
   skipped: boolean;
   reason?: string;
+  assetUploaded: number;
+  assetFailed: number;
+  assetPending: number;
 }
 
 export async function runSyncOnce(input: SyncRunInput): Promise<SyncRunResult> {
   if (!isAccountWorkspaceEnabled() || !isCloudSyncEnabled()) {
-    return { bootstrapped: false, pushed: 0, pulled: 0, conflicts: 0, skipped: true, reason: "sync_disabled" };
+    return { bootstrapped: false, pushed: 0, pulled: 0, conflicts: 0, skipped: true, reason: "sync_disabled", assetUploaded: 0, assetFailed: 0, assetPending: 0 };
   }
   const connectivity = await probeCloudConnectivity();
   if (connectivity !== "cloud_ready") {
-    return { bootstrapped: false, pushed: 0, pulled: 0, conflicts: 0, skipped: true, reason: connectivity };
+    return { bootstrapped: false, pushed: 0, pulled: 0, conflicts: 0, skipped: true, reason: connectivity, assetUploaded: 0, assetFailed: 0, assetPending: 0 };
   }
 
   const db = getAccountWorkspaceDb(input.workspace);
@@ -947,7 +951,7 @@ export async function runSyncOnce(input: SyncRunInput): Promise<SyncRunResult> {
       );
       // 三重检查：server response 是否还能写入当前 workspace
       if (!isGuardCurrent(guard)) {
-        return { bootstrapped: false, pushed, pulled: 0, conflicts, skipped: true, reason: "workspace_switched" };
+        return { bootstrapped: false, pushed, pulled: 0, conflicts, skipped: true, reason: "workspace_switched", assetUploaded: 0, assetFailed: 0, assetPending: 0 };
       }
       // P2-N02: 按 mutationId 建立映射，不依赖数组位置
       const resultByMutationId = new Map(pushResponse.results.map(r => [r.mutationId, r]));
@@ -984,14 +988,14 @@ export async function runSyncOnce(input: SyncRunInput): Promise<SyncRunResult> {
           throw error;
         }
         if (error.status === 429) {
-          return { bootstrapped: false, pushed, pulled: 0, conflicts, skipped: true, reason: "rate_limited" };
+          return { bootstrapped: false, pushed, pulled: 0, conflicts, skipped: true, reason: "rate_limited", assetUploaded: 0, assetFailed: 0, assetPending: 0 };
         }
       }
       // 网络/5xx：标记 pending mutations 为 failed，递增 attemptCount 启动退避
       for (const m of pending) {
         await markOutboxFailed(db, m.mutationId, "push_failed");
       }
-      return { bootstrapped: false, pushed, pulled: 0, conflicts, skipped: true, reason: "push_failed" };
+      return { bootstrapped: false, pushed, pulled: 0, conflicts, skipped: true, reason: "push_failed", assetUploaded: 0, assetFailed: 0, assetPending: 0 };
     }
   }
 
@@ -1004,7 +1008,7 @@ export async function runSyncOnce(input: SyncRunInput): Promise<SyncRunResult> {
       requestOptions,
     );
     if (!isGuardCurrent(guard)) {
-      return { bootstrapped: false, pushed, pulled, conflicts, skipped: true, reason: "workspace_switched" };
+      return { bootstrapped: false, pushed, pulled, conflicts, skipped: true, reason: "workspace_switched", assetUploaded: 0, assetFailed: 0, assetPending: 0 };
     }
     const result = await applyRemoteChanges(db, { workspace: input.workspace }, pullResponse.changes);
     pulled = result.applied;
@@ -1014,19 +1018,45 @@ export async function runSyncOnce(input: SyncRunInput): Promise<SyncRunResult> {
     if (error instanceof CloudSyncApiError && (error.status === 401 || error.status === 403)) {
       throw error;
     }
-    return { bootstrapped: false, pushed, pulled, conflicts, skipped: true, reason: "pull_failed" };
+    return { bootstrapped: false, pushed, pulled, conflicts, skipped: true, reason: "pull_failed", assetUploaded: 0, assetFailed: 0, assetPending: 0 };
   }
 
-  return { bootstrapped: false, pushed, pulled, conflicts, skipped: false };
+  // 3. 实体推送完成后无条件扫描并上传图片资产
+  let assetUploaded = 0;
+  let assetFailed = 0;
+  let assetPending = 0;
+  try {
+    const assetResults = await uploadPendingAssets(db);
+    for (const r of assetResults) {
+      if (r.status === "uploaded") assetUploaded++;
+      else assetFailed++;
+    }
+    const stillPending = await db.assets.filter((r) => {
+      if (r.deletedAt) return false;
+      const payload = r.payload as { uploads?: Record<string, { status?: string }> } | undefined;
+      if (!payload?.uploads) return false;
+      return Object.values(payload.uploads).some((v) => v && (v.status === "local_pending" || v.status === "failed"));
+    }).count();
+    assetPending = stillPending;
+  } catch {
+    // best-effort: 资产上传失败不阻断同步
+  }
+
+  if (assetUploaded > 0 || assetFailed > 0 || assetPending > 0) {
+    console.warn("[sync-engine] asset upload summary", { assetUploaded, assetFailed, assetPending });
+  }
+
+  const noWorkDone = pushed === 0 && pulled === 0 && assetUploaded === 0 && assetPending === 0;
+  return { bootstrapped: false, pushed, pulled, conflicts, skipped: noWorkDone, assetUploaded, assetFailed, assetPending };
 }
 
 export async function runBootstrap(input: SyncRunInput): Promise<SyncRunResult> {
   if (!isAccountWorkspaceEnabled() || !isCloudSyncEnabled()) {
-    return { bootstrapped: false, pushed: 0, pulled: 0, conflicts: 0, skipped: true, reason: "sync_disabled" };
+    return { bootstrapped: false, pushed: 0, pulled: 0, conflicts: 0, skipped: true, reason: "sync_disabled", assetUploaded: 0, assetFailed: 0, assetPending: 0 };
   }
   const connectivity = await probeCloudConnectivity();
   if (connectivity !== "cloud_ready") {
-    return { bootstrapped: false, pushed: 0, pulled: 0, conflicts: 0, skipped: true, reason: connectivity };
+    return { bootstrapped: false, pushed: 0, pulled: 0, conflicts: 0, skipped: true, reason: connectivity, assetUploaded: 0, assetFailed: 0, assetPending: 0 };
   }
   const db = getAccountWorkspaceDb(input.workspace);
   const guard = currentWorkspaceGuard(input.workspace);
@@ -1036,16 +1066,16 @@ export async function runBootstrap(input: SyncRunInput): Promise<SyncRunResult> 
       { accessToken: input.accessToken, deviceId: input.deviceId },
     );
     if (!isGuardCurrent(guard)) {
-      return { bootstrapped: false, pushed: 0, pulled: 0, conflicts: 0, skipped: true, reason: "workspace_switched" };
+      return { bootstrapped: false, pushed: 0, pulled: 0, conflicts: 0, skipped: true, reason: "workspace_switched", assetUploaded: 0, assetFailed: 0, assetPending: 0 };
     }
     const result = await applyBootstrap(db, { workspace: input.workspace }, response);
     await setPullCursor(db, input.workspace.userId, response.serverCursor);
-    return { bootstrapped: true, pushed: 0, pulled: result.applied, conflicts: 0, skipped: false };
+    return { bootstrapped: true, pushed: 0, pulled: result.applied, conflicts: 0, skipped: false, assetUploaded: 0, assetFailed: 0, assetPending: 0 };
   } catch (error) {
     if (error instanceof CloudSyncApiError && (error.status === 401 || error.status === 403)) {
       throw error;
     }
-    return { bootstrapped: false, pushed: 0, pulled: 0, conflicts: 0, skipped: true, reason: "bootstrap_failed" };
+    return { bootstrapped: false, pushed: 0, pulled: 0, conflicts: 0, skipped: true, reason: "bootstrap_failed", assetUploaded: 0, assetFailed: 0, assetPending: 0 };
   }
 }
 

@@ -5,23 +5,15 @@ import { motion } from "motion/react";
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { clampCarouselIndex, getSwipeNextIndex } from "@/lib/carousel-logic";
 import { GarmentImage } from "@/components/garment-image";
+import { OriginalCroppedImage } from "@/components/original-cropped-image";
+
+export type ImageDisplayMode = "thumbnail" | "original-cropped" | "plain";
 
 export interface SwipeImageSlide {
   kind: "image";
   id: string;
   imageDataUrl: string;
-  /**
-   * v0.9.43-dev 批次 3: 缩略图加载失败时的 fallback url (通常是 display 图)。
-   * - 提供时: src = imageDataUrl (card), fallback = fallbackImageDataUrl
-   * - 不提供或加载失败后: 走"已失败"占位, 不再切换, 避免无限 setState 循环
-   */
   fallbackImageDataUrl?: string;
-  // v0.9.43-dev 批次 6: 双图源 slide。
-  // - thumbnailSrc: 拖动阶段优选, 通常是 item.thumbnailDataUrl / entry.cardImageDataUrl
-  // - displaySrc: 静态展示, 通常是 item.imageDataUrl / entry.displayImageDataUrl
-  // - sourceSrc: 裁切源, 通常是 ref.sourceImageDataUrl ?? ref.imageDataUrl
-  // 渲染规则: isDragging && thumbnailSrc → thumbnailSrc; 否则 → displaySrc ?? imageDataUrl
-  // (dataURL 之间切不刷新, 避免闪烁; 拖完吸附后切回 displaySrc)
   thumbnailSrc?: string;
   displaySrc?: string;
   sourceSrc?: string;
@@ -29,8 +21,10 @@ export interface SwipeImageSlide {
   badge?: string;
   badgeClassName?: string;
   realIndex?: number;
-  /** 裁切框（归一化 0-1），用于 CSS 裁剪展示 */
+  /** @deprecated use displayMode instead */
   cropBox?: { x: number; y: number; width: number; height: number };
+  displayMode?: ImageDisplayMode;
+  originalSrc?: string;
 }
 
 export interface SwipeAddSlide {
@@ -114,10 +108,33 @@ interface SwipeImagePageProps {
 }
 
 function SwipeImagePage({ slide, isDragging, imageFitClass, onClickImage, variant }: SwipeImagePageProps) {
-  // v0.9.44-dev 回归修复 1: card 场景下 thumbnailSrc (cardImageDataUrl) 可能来自裁切前原图,
-  // 而 displaySrc (displayImageDataUrl) 是裁切后图, 构图不一致。
-  // → card: 忽略 thumbnailSrc, 始终用 displaySrc (反正卡片图本来就不大, 拖动流畅度够)
-  // → detail/review: 保持双图源 (thumbnailSrc 和 displaySrc 构图一致, 只是分辨率不同)
+  const mode = slide.displayMode ?? "thumbnail";
+
+  if (mode === "original-cropped" && slide.originalSrc) {
+    return (
+      <div
+        className="relative h-full w-full"
+        onClick={(e) => { onClickImage(slide); e.stopPropagation(); }}
+      >
+        <OriginalCroppedImage
+          originalSrc={slide.originalSrc}
+          thumbnailSrc={slide.thumbnailSrc}
+          cropBox={slide.cropBox}
+          alt={slide.alt || ""}
+          className="h-full w-full"
+        />
+        {slide.badge ? (
+          <span
+            className={`absolute left-2 top-2 z-10 inline-flex h-5 max-w-[120px] items-center rounded-full px-1.5 text-[9px] font-semibold text-white truncate ${slide.badgeClassName || "bg-denim"}`}
+            aria-label={slide.badge}
+          >
+            {slide.badge}
+          </span>
+        ) : null}
+      </div>
+    );
+  }
+
   const src = variant !== "card" && isDragging && slide.thumbnailSrc
     ? slide.thumbnailSrc
     : (slide.displaySrc ?? slide.imageDataUrl);
@@ -131,7 +148,6 @@ function SwipeImagePage({ slide, isDragging, imageFitClass, onClickImage, varian
         <GarmentImage
           src={src}
           alt={slide.alt || ""}
-          cropBox={slide.cropBox}
           fallbackSrc={slide.fallbackImageDataUrl}
           imageClassName="bg-transparent"
           className={`block h-full w-full ${imageFitClass}`}

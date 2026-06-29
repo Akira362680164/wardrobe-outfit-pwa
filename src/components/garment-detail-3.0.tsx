@@ -109,16 +109,20 @@ export function GarmentDetail30({
   const refs = useMemo(() => (Array.isArray(item.referenceOutfitImages) ? item.referenceOutfitImages : []), [item.referenceOutfitImages]);
 
   const slides: SwipeImageSlide[] = useMemo(() => {
+    const mainOriginal = item.imageDataUrl || item.sourceImageDataUrl || "";
     const main: SwipeImageSlide = {
       kind: "image",
       id: "main",
-      imageDataUrl: item.imageDataUrl || item.sourceImageDataUrl || "",
-      thumbnailSrc: item.thumbnailDataUrl || item.imageDataUrl || "",
-      displaySrc: item.imageDataUrl || "",
-      sourceSrc: item.sourceImageDataUrl || item.imageDataUrl || "",
+      imageDataUrl: item.thumbnailDataUrl || mainOriginal,
+      thumbnailSrc: item.thumbnailDataUrl || mainOriginal,
+      displaySrc: mainOriginal,
+      sourceSrc: item.sourceImageDataUrl || mainOriginal,
       alt: item.name,
       badge: "主图",
       badgeClassName: "bg-denim",
+      displayMode: "original-cropped",
+      originalSrc: mainOriginal,
+      cropBox: item.cropBox,
     };
     const extras: SwipeImageSlide[] = refs.map((r, i) => ({
       kind: "image" as const,
@@ -146,6 +150,9 @@ export function GarmentDetail30({
     alt: slide.alt || item.name,
     imageDataUrl: slide.displaySrc || slide.imageDataUrl,
     thumbnailDataUrl: slide.thumbnailSrc,
+    displayMode: slide.displayMode,
+    originalSrc: slide.originalSrc,
+    cropBox: slide.cropBox,
   }));
   const filmstripItems = detailSlides.map((slide) => ({
     id: slide.id,

@@ -64,8 +64,40 @@ export async function uploadPendingAssets(
   return results;
 }
 
+export interface UploadPendingAssetsForWorkspaceInput {
+  db: AccountWorkspaceDatabase;
+  accessToken: string;
+  deviceId: string;
+}
+
+export async function uploadPendingAssetsForWorkspace(input: UploadPendingAssetsForWorkspaceInput): Promise<UploadOneResult[]> {
+  const pending = await findPendingAssets(input.db);
+  if (pending.length === 0) return [];
+
+  const options: CloudSyncRequestOptions = { accessToken: input.accessToken, deviceId: input.deviceId };
+  const results: UploadOneResult[] = [];
+  const ctx = await loadCloudBridgeContext();
+  if (!ctx) return [];
+
+  for (const record of pending) {
+    const payload = record.payload as LocalAssetPayload | undefined;
+    if (!payload?.uploads) continue;
+    for (const [variantKey, upload] of Object.entries(payload.uploads)) {
+      if (!upload || !upload.dataUrl || !isUploadDue(upload)) continue;
+      const result = await uploadOneVariant(
+        input.db, ctx, record, variantKey as AssetVariant,
+        { ...upload, dataUrl: upload.dataUrl }, options, {},
+      );
+      results.push(result);
+    }
+  }
+  return results;
+}
+
 export function schedulePendingUploads(db: AccountWorkspaceDatabase): void {
-  void uploadPendingAssets(db).catch(() => {});
+  void uploadPendingAssets(db).catch((err) => {
+    console.warn("[asset-upload] schedulePendingUploads failed", err instanceof Error ? err.message : err);
+  });
 }
 
 async function uploadOneVariant(

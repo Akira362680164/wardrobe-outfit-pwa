@@ -6,6 +6,7 @@
   "main": "dist/server.js",
   "scripts": {
     "dev": "tsx watch src/server.ts",
+    "dev:e2e": "tsx src/server.ts",
     "prebuild": "npm --workspace @wardrobe/cloud-contracts run build",
     "build": "tsc -p tsconfig.build.json",
     "pretypecheck": "npm --workspace @wardrobe/cloud-contracts run build",

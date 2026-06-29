@@ -5,7 +5,6 @@ import { createWorkspaceUuidV7, getAccountWorkspaceDb, type WorkspaceWishlistIte
 import { imageAssetInputsForWishlist, prepareEntityImageAssets, putPreparedEntityImageAssets, withCloudAssetRefs, type CloudAssetReferenceMap } from "@/lib/cloud-sync/asset-bridge";
 import { loadCloudBridgeContext } from "@/lib/cloud-sync/bridge-context";
 import type { CloudBridgeContext } from "@/lib/cloud-sync/bridge-context";
-import { schedulePendingUploads } from "@/lib/cloud-sync/asset-upload-coordinator";
 import { currentWorkspaceGuard, deleteWishlistItem, isGuardCurrent, writeWishlistItem } from "@/lib/cloud-sync/sync-engine";
 
 export interface BridgeWishlistResult {
@@ -53,7 +52,6 @@ export async function bridgeWishlistUpsert(item: WishlistItem): Promise<BridgeWi
       existing ? "update" : "create",
     );
     await putPreparedEntityImageAssets(db, ctx.workspace, assets);
-    schedulePendingUploads(db);
     return { bridged: true };
   } catch (err) {
     if (typeof console !== "undefined") {
@@ -102,7 +100,6 @@ export function toCloudWishlistPayload(item: WishlistItem, assetRefs?: CloudAsse
   const safe = { ...item } as Record<string, unknown>;
   delete safe.imageDataUrl;
   delete safe.thumbnailDataUrl;
-  delete safe.sourceImageDataUrl;
   return withCloudAssetRefs({
     ...safe,
     legacyWishlistId: item.id,

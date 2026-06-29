@@ -85,6 +85,7 @@ export interface GarmentImageProcessingInput {
   sourceImageDataUrl?: string;
   /** v1.1.31 commit2: 真实 fileName，从 picked image 传入。仅用于诊断/请求上下文。 */
   fileName?: string;
+  cropBox?: import("@/lib/image").NormalizedCropBox;
 }
 
 export interface GarmentIntakeFlowProps {
@@ -465,6 +466,7 @@ export function GarmentIntakeFlow({
       imageDataUrl: imageToProcess,
       sourceImageDataUrl: item.originalDataUrl,
       fileName: item.fileName,
+      cropBox: item.cropBox,
     });
     const aiTag = (processed as { aiTag?: import("@/lib/types").GarmentTagResult }).aiTag;
     if (!aiTag) {
@@ -1550,12 +1552,7 @@ export function DraftQualityRow({
     <span className="flex items-center gap-1.5" data-quality-row="step3" data-review-count={needsReviewFields}>
       <AiConfidencePill score={aiConfidenceScore} />
       {needsReviewFields > 0 ? (
-        <ReviewPill show testId="review-pill-count" />
-      ) : null}
-      {needsReviewFields > 0 ? (
-        <span className="text-[11px] font-semibold text-clay" aria-label={`待确认 ${needsReviewFields} 项`}>
-          {needsReviewFields}
-        </span>
+        <ReviewPill show testId="review-pill-count" aria-label={`待确认，${needsReviewFields} 个字段`} />
       ) : null}
     </span>
   );

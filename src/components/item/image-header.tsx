@@ -35,7 +35,7 @@ export function ItemImageHeader({ imageUrl, alt, mode, actions, className, cropB
             mode === "view" ? "w-28 sm:w-36" : "w-28",
           ].join(" ")}
         >
-          <GarmentImage src={imageUrl} alt={alt} fallbackSize={34} imageClassName="bg-transparent" cropBox={cropBox} />
+          <GarmentImage src={imageUrl} alt={alt} fallbackSize={34} imageClassName="bg-transparent" />
         </div>
         {mode === "edit" ? (
           <div className="grid min-w-0 flex-1 gap-2">{actions}</div>

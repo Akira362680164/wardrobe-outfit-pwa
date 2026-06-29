@@ -23,6 +23,7 @@ export interface AssetRecoveryProgress {
   totalAssets: number;
   downloadedThumbnails: number;
   failedThumbnails: number;
+  stateChanged: boolean;
 }
 
 export interface AssetRecoveryDeps {
@@ -55,7 +56,7 @@ export async function recoverAssets(
   // --- capture workspace guard ---
   const ctx = await loadCloudBridgeContext();
   if (!ctx) {
-    const result: AssetRecoveryProgress = { phase: "error", totalAssets: 0, downloadedThumbnails: 0, failedThumbnails: 0 };
+    const result: AssetRecoveryProgress = { phase: "error", totalAssets: 0, downloadedThumbnails: 0, failedThumbnails: 0, stateChanged: false };
     report(result);
     return result;
   }
@@ -63,7 +64,7 @@ export async function recoverAssets(
 
   const session = await loadAuthSessionSnapshot();
   if (!session.accessToken) {
-    const result: AssetRecoveryProgress = { phase: "error", totalAssets: 0, downloadedThumbnails: 0, failedThumbnails: 0 };
+    const result: AssetRecoveryProgress = { phase: "error", totalAssets: 0, downloadedThumbnails: 0, failedThumbnails: 0, stateChanged: false };
     report(result);
     return result;
   }
@@ -74,12 +75,12 @@ export async function recoverAssets(
   try {
     items = await fetchManifest(options);
   } catch {
-    const result: AssetRecoveryProgress = { phase: "error", totalAssets: 0, downloadedThumbnails: 0, failedThumbnails: 0 };
+    const result: AssetRecoveryProgress = { phase: "error", totalAssets: 0, downloadedThumbnails: 0, failedThumbnails: 0, stateChanged: false };
     report(result);
     return result;
   }
 
-  report({ phase: "manifest", totalAssets: items.length, downloadedThumbnails: 0, failedThumbnails: 0 });
+  report({ phase: "manifest", totalAssets: items.length, downloadedThumbnails: 0, failedThumbnails: 0, stateChanged: false });
 
   // sort most-recent first for first-screen priority
   const sorted = [...items].sort(
@@ -114,20 +115,34 @@ export async function recoverAssets(
       else failed++;
     }
 
-    report({ phase: "thumbnails", totalAssets: sorted.length, downloadedThumbnails: downloaded, failedThumbnails: failed });
+    report({ phase: "thumbnails", totalAssets: sorted.length, downloadedThumbnails: downloaded, failedThumbnails: failed, stateChanged: downloaded > 0 });
   }
 
   const done = downloaded + failed >= sorted.length;
+  const stateChanged = downloaded > 0;
   report({
     phase: done ? "done" : "thumbnails",
     totalAssets: sorted.length,
     downloadedThumbnails: downloaded,
     failedThumbnails: failed,
+    stateChanged,
   });
 
-  return { phase: "done", totalAssets: sorted.length, downloadedThumbnails: downloaded, failedThumbnails: failed };
+  if (downloaded > 0 || failed > 0) {
+    console.warn("[asset-recovery] recovery summary", { totalAssets: sorted.length, downloadedThumbnails: downloaded, failedThumbnails: failed, stateChanged });
+  }
+
+  return { phase: "done", totalAssets: sorted.length, downloadedThumbnails: downloaded, failedThumbnails: failed, stateChanged };
 }
 
-export function scheduleAssetRecovery(cache: AccountImageCache, onProgress?: (progress: AssetRecoveryProgress) => void): void {
-  recoverAssets(cache, onProgress).catch(() => { /* fire-and-forget */ });
+export function scheduleAssetRecovery(
+  cache: AccountImageCache,
+  onProgress?: (progress: AssetRecoveryProgress) => void,
+  onComplete?: () => void,
+): void {
+  recoverAssets(cache, onProgress)
+    .then(() => onComplete?.())
+    .catch((err) => {
+      console.warn("[asset-recovery] scheduleAssetRecovery failed", err instanceof Error ? err.message : err);
+    });
 }

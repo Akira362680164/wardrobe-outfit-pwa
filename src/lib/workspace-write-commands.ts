@@ -23,6 +23,37 @@ export async function workspaceUpsertGarment(item: WardrobeItem): Promise<void> 
   invalidateWorkspaceSnapshotCache();
 }
 
+export interface WorkspaceUpdateGarmentCropInput {
+  itemId: number;
+  cropBox: { x: number; y: number; width: number; height: number };
+  cropRevision: number;
+  thumbnailDataUrl: string;
+  thumbnailCropRevision: number;
+  updatedAt: string;
+}
+
+// ponytail: dedicated crop-only update — reuses bridgeGarmentUpdate but
+// with only crop fields changed; imageDataUrl is untouched so bridge
+// won't re-generate the original variant asset.
+export async function workspaceUpdateGarmentCrop(input: WorkspaceUpdateGarmentCropInput): Promise<void> {
+  const snapshot = await getWardrobeSnapshot();
+  const item = snapshot.items.find((i) => i.id === input.itemId);
+  if (!item) throw new Error(`衣物 id=${input.itemId} 不存在`);
+
+  const updated: WardrobeItem = {
+    ...item,
+    cropBox: input.cropBox,
+    cropRevision: input.cropRevision,
+    thumbnailDataUrl: input.thumbnailDataUrl,
+    thumbnailCropRevision: input.thumbnailCropRevision,
+    updatedAt: input.updatedAt,
+  };
+
+  const result = await bridgeGarmentUpdate(updated);
+  if (!result.bridged) throw new Error(result.reason ?? "write_failed");
+  invalidateWorkspaceSnapshotCache();
+}
+
 export async function workspaceUpsertWishlistItem(item: WishlistItem): Promise<void> {
   const result = await bridgeWishlistUpsert(item);
   if (!result.bridged) throw new Error(result.reason ?? "write_failed");

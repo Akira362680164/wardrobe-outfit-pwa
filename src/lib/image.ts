@@ -216,6 +216,18 @@ export async function cropFromOriginal(
   return canvas.toDataURL("image/jpeg", 0.92);
 }
 
+// ponytail: temporary cropped image for AI — uses current original + cropBox,
+// releases Blob URL after use. Never persists to DB or upload queue.
+export async function createTemporaryCroppedImage(input: {
+  originalImage: string;
+  cropBox?: NormalizedCropBox;
+}): Promise<string> {
+  if (input.cropBox && input.cropBox.width > 0 && input.cropBox.height > 0) {
+    return cropFromOriginal(input.originalImage, input.cropBox);
+  }
+  return input.originalImage;
+}
+
 // ============================================================
 // 5. AI 返回的 cropBox 外扩 (避免 AI 框紧贴衣物边缘, 默认 10%)
 // ============================================================

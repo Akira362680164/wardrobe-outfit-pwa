@@ -20,14 +20,16 @@ export interface ReviewPillProps {
   show?: boolean;
   className?: string;
   testId?: string;
+  "aria-label"?: string;
 }
 
-export function ReviewPill({ show, className, testId }: ReviewPillProps): ReactNode {
+export function ReviewPill({ show, className, testId, "aria-label": ariaLabel }: ReviewPillProps): ReactNode {
   if (!show) return null;
   return (
     <span
       data-review-pill="true"
       data-testid={testId ?? "review-pill"}
+      aria-label={ariaLabel}
       className={[
         "inline-flex shrink-0 items-center rounded-full bg-clay/10 px-2 py-0.5 text-[10px] font-semibold text-clay",
         className ?? "",

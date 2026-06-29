@@ -32,11 +32,6 @@ export type GarmentImageSource =
 export interface GarmentImageEntry {
   /** 实际显示的图片 dataUrl 或 URL (兼容旧调用方) */
   imageDataUrl: string;
-  // v0.9.43-dev (批次 3): 多图源展示。
-  // - cardImageDataUrl: 瀑布流卡片 / 横滑用, 优先用缩略图, 缺失 fallback 到 imageDataUrl
-  // - displayImageDataUrl: 详情页 / 大图区用, 始终用 imageDataUrl
-  // - sourceImageDataUrl: 已存在, 用于裁切的"原图"
-  // 旧调用方继续使用 imageDataUrl 不破坏, 新调用方按需用 cardImageDataUrl/displayImageDataUrl
   /** 卡片 / 瀑布流 / 横滑优选用图 (缩略图优先, 缺失时 fallback 到 imageDataUrl) */
   cardImageDataUrl: string;
   /** 详情页 / 大图展示用图 (始终是 imageDataUrl) */
@@ -49,7 +44,7 @@ export interface GarmentImageEntry {
   refId?: string;
   /** source === "saved_outfit" 时: outfit id */
   outfitId?: string;
-  /** 用于裁切的"原图"地址。manual ref 用 ref.sourceImageDataUrl;其他 fallback 到 imageDataUrl 本身 */
+  /** @deprecated 裁切源，兼容旧调用方 */
   sourceImageDataUrl?: string;
   /** 裁切框（归一化坐标 0-1），主图用 item.cropBox；手动参考图可能自带 */
   cropBox?: GarmentCropBox;
@@ -126,12 +121,6 @@ export function deriveGarmentImageList(
   for (const ref of manualRefs) {
     if (seen.has(ref.imageDataUrl)) continue;
     seen.add(ref.imageDataUrl);
-    const sourceImageDataUrl: string | undefined = isValidImageUrl(ref.sourceImageDataUrl)
-      ? ref.sourceImageDataUrl
-      : ref.imageDataUrl;
-    const cropBox: GarmentCropBox | undefined = ref.cropBox
-      ? ref.cropBox
-      : undefined;
     result.push({
       imageDataUrl: ref.imageDataUrl,
       // v0.9.43-dev 批次 3: 参考图 cardImageDataUrl 优先用 ref.thumbnailDataUrl
@@ -140,8 +129,7 @@ export function deriveGarmentImageList(
       source: "reference_outfit",
       renderKind: "image",
       refId: ref.id,
-      sourceImageDataUrl,
-      cropBox,
+      cropBox: ref.cropBox,
       createdAt: safeTimestamp(ref.createdAt, now),
     });
   }

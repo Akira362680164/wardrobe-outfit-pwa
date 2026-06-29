@@ -651,6 +651,7 @@ export function WishlistView20({
         imageDataUrl: rescanImage,
         sourceImageDataUrl: rescanSource,
         fileName: formName ? `${formName}.jpg` : "wishlist-rescan.jpg",
+        cropBox: formCropBox,
       });
       const tag = result?.aiTag;
       if (!tag) {
@@ -893,7 +894,6 @@ export function WishlistView20({
                         alt={formName || "商品图"}
                         fallbackSize={34}
                         imageClassName="bg-transparent"
-                        cropBox={formCropBox}
                       />
                       <button
                         type="button"

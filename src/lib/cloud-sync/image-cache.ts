@@ -13,6 +13,7 @@ import { sha256Hex } from "@/lib/cloud-sync/asset-metadata";
 import { loadCloudBridgeContext } from "@/lib/cloud-sync/bridge-context";
 import { loadAuthSessionSnapshot } from "@/lib/auth-session-store";
 import type { CloudSyncRequestOptions } from "@/lib/cloud-sync/cloud-sync-api";
+import { persistentImageCacheStorage } from "@/lib/cloud-sync/persistent-image-cache-storage";
 
 export interface ImageCacheStorage {
   get(key: string): Promise<ArrayBuffer | null>;
@@ -26,6 +27,10 @@ export interface CachedImage {
   mimeType: string;
 }
 
+export interface ImageCacheGetOptions {
+  expectedSha256?: string;
+}
+
 export interface ImageCacheDeps {
   storage?: ImageCacheStorage;
   downloadContent?: typeof downloadAssetContent;
@@ -33,13 +38,15 @@ export interface ImageCacheDeps {
 
 export class AccountImageCache {
   private prefix: string;
+  private userIdHash: string;
 
   constructor(userIdHash: string) {
+    this.userIdHash = userIdHash;
     this.prefix = `img-${userIdHash}-`;
   }
 
-  async get(assetId: string, variant: AssetVariant, deps: ImageCacheDeps = {}): Promise<CachedImage | null> {
-    const storage = deps.storage ?? memoryStorage();
+  async get(assetId: string, variant: AssetVariant, options: ImageCacheGetOptions = {}, deps: ImageCacheDeps = {}): Promise<CachedImage | null> {
+    const storage = deps.storage ?? persistentImageCacheStorage(this.userIdHash);
     const key = this.cacheKey(assetId, variant);
     const metaKey = this.metaKey(assetId, variant);
     try {
@@ -52,6 +59,11 @@ export class AccountImageCache {
       if (!meta?.mimeType?.startsWith("image/")) return null;
       const mimeType = meta.mimeType;
       const sha256 = await sha256Hex(new Blob([data]));
+      if (options.expectedSha256 && sha256 !== options.expectedSha256) {
+        await storage.delete(key);
+        await storage.delete(metaKey);
+        return null;
+      }
       return { blob: new Blob([data], { type: mimeType }), sha256, mimeType };
     } catch {
       return null;
@@ -59,7 +71,7 @@ export class AccountImageCache {
   }
 
   async put(assetId: string, variant: AssetVariant, blob: Blob, expectedSha256: string, deps: ImageCacheDeps = {}): Promise<boolean> {
-    const storage = deps.storage ?? memoryStorage();
+    const storage = deps.storage ?? persistentImageCacheStorage(this.userIdHash);
     const key = this.cacheKey(assetId, variant);
     const metaKey = this.metaKey(assetId, variant);
     const tmpKey = `${key}.tmp`;
@@ -86,7 +98,7 @@ export class AccountImageCache {
     variant: AssetVariant,
     deps: ImageCacheDeps = {},
   ): Promise<CachedImage | null> {
-    const cached = await this.get(assetId, variant, deps);
+    const cached = await this.get(assetId, variant, {}, deps);
     if (cached) return cached;
 
     const ctx = await loadCloudBridgeContext();

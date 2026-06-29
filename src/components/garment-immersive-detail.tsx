@@ -248,16 +248,20 @@ extraImages,
   // - 参考图: thumbnailSrc = entry.cardImageDataUrl, displaySrc = entry.displayImageDataUrl
   // - sourceSrc: 主图 = item.sourceImageDataUrl, 参考图 = entry.sourceImageDataUrl
   const slides: SwipeSlide[] = useMemo(() => {
+    const mainOriginal = item.imageDataUrl || item.sourceImageDataUrl || "";
     const main: SwipeImageSlide = {
       kind: "image",
       id: "main",
-      imageDataUrl: item.imageDataUrl || item.sourceImageDataUrl || "",
-      thumbnailSrc: (item as { thumbnailDataUrl?: string }).thumbnailDataUrl || item.imageDataUrl || item.sourceImageDataUrl || "",
-      displaySrc: item.imageDataUrl || item.sourceImageDataUrl || "",
-      sourceSrc: item.sourceImageDataUrl || item.imageDataUrl || "",
+      imageDataUrl: (item as { thumbnailDataUrl?: string }).thumbnailDataUrl || mainOriginal,
+      thumbnailSrc: (item as { thumbnailDataUrl?: string }).thumbnailDataUrl || mainOriginal,
+      displaySrc: mainOriginal,
+      sourceSrc: item.sourceImageDataUrl || mainOriginal,
       alt: item.name,
       badge: "主图",
       badgeClassName: "bg-denim",
+      displayMode: "original-cropped",
+      originalSrc: mainOriginal,
+      cropBox: (item as { cropBox?: { x: number; y: number; width: number; height: number } }).cropBox,
     };
     const extras: SwipeImageSlide[] = (extraImages ?? [])
       .filter((entry) => entry.renderKind !== "outfit")

@@ -56,10 +56,14 @@ export interface GarmentIntakeDraft {
   /** MiniMax 返回的整件级置信度，单位 0～100。 */
   aiConfidenceScore?: number;
   imageDataUrl?: string;
+  /** @deprecated 历史字段 */
   sourceImageDataUrl?: string;
+  /** 临时裁切图，仅用于 AI 识别和缩略图生成，不入库 */
   croppedImageDataUrl?: string;
   cropBox?: { x: number; y: number; width: number; height: number };
   thumbnailDataUrl?: string;
+  cropRevision?: number;
+  thumbnailCropRevision?: number;
   transparentImageDataUrl?: string;
   useTransparentImage: IntakeField<boolean>;
   name: IntakeField<string>;
@@ -92,10 +96,14 @@ export interface WishlistIntakeDraft {
   /** MiniMax 返回的整件级置信度，单位 0～100。 */
   aiConfidenceScore?: number;
   imageDataUrl?: string;
+  /** @deprecated 历史字段 */
   sourceImageDataUrl?: string;
+  /** 临时裁切图，仅用于 AI 识别和缩略图生成，不入库 */
   croppedImageDataUrl?: string;
   cropBox?: { x: number; y: number; width: number; height: number };
   thumbnailDataUrl?: string;
+  cropRevision?: number;
+  thumbnailCropRevision?: number;
   imageKind: IntakeField<"product_photo" | "product_screenshot" | "manual">;
   name: IntakeField<string>;
   category: IntakeField<GarmentCategory>;
@@ -122,6 +130,7 @@ export interface OutfitIntakeDraft {
   id: string;
   kind: "outfit";
   imageDataUrl?: string;
+  /** @deprecated 历史字段 */
   sourceImageDataUrl?: string;
   thumbnailDataUrl?: string;
   itemIds: IntakeField<number[]>;
@@ -146,7 +155,6 @@ export type AnyIntakeDraft = GarmentIntakeDraft | WishlistIntakeDraft | OutfitIn
 export interface BatchIntakeItem<TDraft extends AnyIntakeDraft = AnyIntakeDraft> {
   id: string;
   index: number;
-  sourceImageDataUrl?: string;
   croppedImageDataUrl?: string;
   thumbnailDataUrl?: string;
   draft: TDraft;

@@ -131,7 +131,11 @@ export function WorkspaceGate({
           if (!defaultLocation.bridged) throw new Error("默认衣橱初始化失败，请稍后重试");
           // fire-and-forget: 新设备恢复首屏缩略图，不阻塞进入App
           const imageCache = new AccountImageCache(workspace.userIdHash);
-          scheduleAssetRecovery(imageCache);
+          scheduleAssetRecovery(imageCache, (progress) => {
+            if (progress.phase === "done" && progress.stateChanged) {
+              syncTimer = window.setTimeout(() => scheduleSync(workspace), 500);
+            }
+          });
         }
         workspaceRef.current = workspace;
         if (!cancelled) { setState({ status: "ready", workspace }); onReady?.(workspace); }

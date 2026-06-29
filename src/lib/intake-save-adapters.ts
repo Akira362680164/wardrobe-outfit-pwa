@@ -28,7 +28,6 @@ export function garmentDraftToWardrobeItem(
   return {
     name: requiredText(fieldValue(draft.name, ""), "未命名衣物"),
     imageDataUrl,
-    sourceImageDataUrl: draft.sourceImageDataUrl || draft.croppedImageDataUrl || imageDataUrl,
     cropBox: draft.cropBox,
     category: fieldValue(draft.category, "tops"),
     colors: fieldValue(draft.colors, emptyColorInfo()),
@@ -48,6 +47,8 @@ export function garmentDraftToWardrobeItem(
     subcategory: optionalText(draft.subcategory),
     material: optionalText(draft.material),
     thumbnailDataUrl: draft.thumbnailDataUrl,
+    cropRevision: draft.cropRevision || 1,
+    thumbnailCropRevision: draft.thumbnailCropRevision || 1,
     ...(draft.thumbnailDataUrl
       ? { thumbnailVersion: CURRENT_THUMBNAIL_VERSION, thumbnailUpdatedAt: now, thumbnailStatus: "ready" as const }
       : {}),
@@ -68,8 +69,9 @@ export function wishlistDraftToWishlistItem(
     id: options.id ?? `wishlist-intake-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
     name: requiredText(fieldValue(draft.name, ""), "未命名种草单品"),
     imageDataUrl: draft.imageDataUrl || draft.croppedImageDataUrl || "",
-    sourceImageDataUrl: draft.sourceImageDataUrl || draft.croppedImageDataUrl || draft.imageDataUrl,
     thumbnailDataUrl: draft.thumbnailDataUrl,
+    cropRevision: draft.cropRevision || 1,
+    thumbnailCropRevision: draft.thumbnailCropRevision || 1,
     category: fieldValue(draft.category, "tops"),
     subcategory: optionalText(draft.subcategory),
     colors: fieldValue(draft.colors, emptyColorInfo()),
@@ -101,9 +103,10 @@ export function garmentDraftToWishlistItem(
     id: options.id ?? `wishlist-intake-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
     name: requiredText(fieldValue(draft.name, ""), "未命名种草单品"),
     imageDataUrl,
-    sourceImageDataUrl: draft.sourceImageDataUrl || draft.croppedImageDataUrl || imageDataUrl,
     cropBox: draft.cropBox,
     thumbnailDataUrl: draft.thumbnailDataUrl,
+    cropRevision: draft.cropRevision || 1,
+    thumbnailCropRevision: draft.thumbnailCropRevision || 1,
     category: fieldValue(draft.category, "tops"),
     subcategory: optionalText(draft.subcategory),
     colors: fieldValue(draft.colors, emptyColorInfo()),
@@ -132,7 +135,6 @@ export function outfitDraftToSavedOutfit(
  const itemIds = uniqueNumbers(options.itemIds ?? fieldValue(draft.itemIds, []));
  const unknownNotes = options.unknownItemNotes ?? fieldValue(draft.unknownItemNotes, []);
  const baseNotes = fieldValue(draft.notes, "");
- const sourceImageDataUrl = draft.sourceImageDataUrl;
  const notes = [baseNotes, ...unknownNotes.map(formatUnknownOutfitNote)]
  .map((text) => text.trim())
  .filter(Boolean)
@@ -143,8 +145,7 @@ export function outfitDraftToSavedOutfit(
  name: requiredText(fieldValue(draft.name, ""), "未命名套装"),
  itemIds,
  source: fieldValue(draft.source, "manual"),
- sourceImageDataUrl,
- coverImageDataUrl: sourceImageDataUrl,
+ coverImageDataUrl: draft.imageDataUrl,
  thumbnailDataUrl: draft.thumbnailDataUrl,
  // v1.0: 创建流程默认不收藏,详情页可单独切换
  favorite: fieldValue(draft.favorite, false),
@@ -170,9 +171,7 @@ function fieldValue<T>(field: IntakeField<T> | undefined, fallback: T): T {
 function resolveGarmentImageDataUrl(draft: GarmentIntakeDraft): string {
   const shouldUseTransparent = fieldValue(draft.useTransparentImage, false);
   if (shouldUseTransparent && draft.transparentImageDataUrl) return draft.transparentImageDataUrl;
-  // ponytail: imageDataUrl stores ORIGINAL image, cropBox drives display cropping.
-  // sourceImageDataUrl is the original full photo before any crop.
-  return draft.sourceImageDataUrl || draft.croppedImageDataUrl || draft.imageDataUrl || "";
+  return draft.imageDataUrl || draft.croppedImageDataUrl || "";
 }
 
 function optionalText(field: IntakeField<string> | undefined): string | undefined {

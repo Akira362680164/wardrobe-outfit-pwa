@@ -89,22 +89,19 @@ export interface ClosetLocation {
 export interface ReferenceOutfitImage {
  id: string;
  imageDataUrl: string;
+ /** @deprecated 历史字段 */
  sourceImageDataUrl?: string;
  cropBox?: GarmentCropBox;
  /** v0.9.47-dev 详情页 3.0: 灵感图说明 */
  caption?: string;
  createdAt: string;
  updatedAt: string;
- // v0.9.43-dev (批次 1 缩略图基础设施): 参考图缩略图元信息。
- // - thumbnailDataUrl: 轻量 dataURL, 详情页 / 横滑 / 缩略图区使用
- // - thumbnailVersion: 与 CURRENT_THUMBNAIL_VERSION 比对, 不一致则需重建
- // - thumbnailUpdatedAt: ISO 时间戳, 调试用
- // - thumbnailStatus: "ready" 生成成功 / "missing" 缺图 / "failed" 生成失败
- // 缺失或非法时由 migrateItemRecord 保留或清理, 不抛错
  thumbnailDataUrl?: string;
  thumbnailVersion?: number;
  thumbnailUpdatedAt?: string;
  thumbnailStatus?: ThumbnailStatus;
+ cropRevision?: number;
+ thumbnailCropRevision?: number;
 }
 
 /** v0.9.45-dev 详情页 2.0: AI 穿搭风格建议，由 MiniMax 按衣物结构化属性生成。 */
@@ -122,7 +119,9 @@ export interface GarmentStyleAdvice {
  */
 export interface BaseItem {
   name: string;
+  /** 唯一完整原图 dataURL */
   imageDataUrl: string;
+  /** @deprecated 历史字段，新数据不再写入，读取时兜底到 imageDataUrl */
   sourceImageDataUrl?: string;
   thumbnailDataUrl?: string;
   cropBox?: GarmentCropBox;
@@ -148,6 +147,10 @@ export interface BaseItem {
   /** 含义按状态决定：种草=售价，衣橱=历史成本 */
   price?: number;
   productUrl?: string;
+  /** 当前裁切版本号 */
+  cropRevision?: number;
+  /** 当前缩略图对应的裁切版本号 */
+  thumbnailCropRevision?: number;
   createdAt: string;
   updatedAt: string;
 }
@@ -179,7 +182,8 @@ export interface DetectedGarmentCandidate {
   tag: GarmentTagResult;
   cropBox?: GarmentCropBox;
   imageDataUrl: string;
-  sourceImageDataUrl: string;
+  /** @deprecated 历史字段 */
+  sourceImageDataUrl?: string;
 }
 
 export interface SimilarWardrobeMatch {
@@ -256,7 +260,7 @@ export interface SavedOutfit {
   favorite: boolean;
   createdAt: string;
   updatedAt: string;
-  /** v0.9.46-dev 基础设施批次 1: 穿搭照片原始整图 */
+  /** @deprecated 历史字段 */
   sourceImageDataUrl?: string;
   /** v0.9.46-dev 基础设施批次 1: 套装卡片缩略图 */
   thumbnailDataUrl?: string;
@@ -444,6 +448,7 @@ export interface TryOnProfileSummary {
 export interface OutfitRealImage {
   id: string;
   imageDataUrl: string;
+  /** @deprecated 历史字段 */
   sourceImageDataUrl?: string;
   thumbnailDataUrl?: string;
   caption?: string;

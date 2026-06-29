@@ -12,7 +12,6 @@ import { createWorkspaceUuidV7, getAccountWorkspaceDb, runWorkspaceWrite } from 
 import { imageAssetInputsForGarment, prepareEntityImageAssets, withCloudAssetRefs, type CloudAssetReferenceMap } from "@/lib/cloud-sync/asset-bridge";
 import { putPreparedLocalAsset } from "@/lib/cloud-sync/asset-metadata";
 import { loadCloudBridgeContext } from "@/lib/cloud-sync/bridge-context";
-import { schedulePendingUploads } from "@/lib/cloud-sync/asset-upload-coordinator";
 import { currentWorkspaceGuard, deleteGarment, enqueueOutboxMutation, isGuardCurrent } from "@/lib/cloud-sync/sync-engine";
 import type { WorkspaceGarmentRecord } from "@/lib/account-workspace-db";
 import { resolveWorkspaceGarmentItemId } from "@/lib/cloud-sync/hash-workspace-id";
@@ -81,7 +80,6 @@ export async function bridgeGarmentCreate(item: WardrobeItem): Promise<BridgeGar
         await putPreparedLocalAsset(db, asset);
       }
     });
-    schedulePendingUploads(db);
     return { bridged: true };
   } catch (err) {
     if (typeof console !== "undefined") {
@@ -119,8 +117,7 @@ export function toCloudGarmentPayload(item: WardrobeItem, assetRefs?: CloudAsset
   // 去除 base64 图片：同步 payload 只存 cloudAssetRefs 引用，图片通过 asset 机制上传
   delete safe.imageDataUrl;
   delete safe.thumbnailDataUrl;
-  delete safe.sourceImageDataUrl;
-  safe.referenceOutfitImages = item.referenceOutfitImages?.map(({ imageDataUrl: _image, sourceImageDataUrl: _source, thumbnailDataUrl: _thumbnail, ...metadata }) => metadata);
+  safe.referenceOutfitImages = item.referenceOutfitImages?.map(({ imageDataUrl: _image, thumbnailDataUrl: _thumbnail, ...metadata }) => metadata);
   return withCloudAssetRefs(safe, assetRefs);
 }
 

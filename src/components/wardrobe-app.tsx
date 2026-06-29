@@ -127,7 +127,7 @@ import {
  type DeviceMiniMaxSettings,
 } from "@/lib/device-minimax";
 import { ImageCropEditor } from "@/components/image-crop-editor";
-import { dataUrlToFile, fileToAiRequestDataUrl, fileToCompressedDataUrl, fileToOriginalDataUrl, isHeicFile, type NormalizedCropBox } from "@/lib/image";
+import { createTemporaryCroppedImage, dataUrlToFile, fileToAiRequestDataUrl, fileToCompressedDataUrl, fileToOriginalDataUrl, isHeicFile, type NormalizedCropBox } from "@/lib/image";
 import { useSoftAiProgress } from "@/lib/use-soft-ai-progress";
 import {
   completeProgressNotification,
@@ -213,6 +213,9 @@ interface EditSnapshot {
   imageDataUrl: string;
   sourceImageDataUrl: string;
   cropBox: string;
+  cropRevision: number;
+  thumbnailCropRevision: number;
+  thumbnailDataUrl: string;
   fitGender: string;
   fitNotes: string;
   price: string;
@@ -692,7 +695,7 @@ export function WardrobeApp({ cloudAuth }: { cloudAuth?: WardrobeCloudAuth } = {
   // 这里返回 LocalImageProcessingResult, 实际 AI 识别由 flow 内部 onProcessImage 完成后
   // 通过 buildLocalGarmentDraft 整合 tagResult。Recognize 走单件属性识别
   // (recognizeSingleItemFromDataUrl), 失败时 throw, flow catch 分支用 fallback。
-  async function processGarmentIntakeImage(input: { imageDataUrl: string; sourceImageDataUrl?: string; fileName?: string }): Promise<{
+  async function processGarmentIntakeImage(input: { imageDataUrl: string; sourceImageDataUrl?: string; fileName?: string; cropBox?: NormalizedCropBox }): Promise<{
     transparentBackgroundStatus?: "ready" | "skipped" | "failed";
     qualityWarnings?: string[];
     thumbnailDataUrl?: string;
@@ -704,11 +707,13 @@ export function WardrobeApp({ cloudAuth }: { cloudAuth?: WardrobeCloudAuth } = {
     // v1.1.31 commit2: 真实 fileName（来源于 picked image），禁止固定 "garment.jpg"。
     // fileName 仅用于诊断/请求上下文，绝不直接成为用户可见名称。
     const fileName = input.fileName ?? "garment.jpg";
+    // 若有 cropBox 则裁切后再送 AI，避免 AI 看到未裁切的完整原图
+    const aiInputImage = await createTemporaryCroppedImage({ originalImage: imageDataUrl, cropBox: input.cropBox });
     // v1.1.31 patch5: 取消无 Key 短路。无 Key 必须走到 recognizeSingleItemFromDataUrl
     // 让其抛 GarmentRecognitionError("not_configured")，flow 内部走 failed draft + blocking
     // issue 路径，绝不返回默认"成功"草稿伪装为可编辑。
-    const file = await dataUrlToFile(imageDataUrl, fileName).catch(() => null);
-    const aiRequestDataUrl = file ? await fileToAiRequestDataUrl(file).catch(() => imageDataUrl) : imageDataUrl;
+    const file = await dataUrlToFile(aiInputImage, fileName).catch(() => null);
+    const aiRequestDataUrl = file ? await fileToAiRequestDataUrl(file).catch(() => aiInputImage) : aiInputImage;
     const recognition = await withKeepAwake(() =>
       recognizeSingleItemFromDataUrl(aiRequestDataUrl, sourceImageDataUrl ?? imageDataUrl, fileName, miniMaxSettings),
     );
@@ -2077,8 +2082,9 @@ function WardrobeView(props: WardrobeViewProps) {
     if (isEditRecognizing) return;
     setIsEditRecognizing(true);
     try {
-      const file = await dataUrlToFile(source, `${editDraft.name || "garment"}.jpg`).catch(() => null);
-      const aiRequestDataUrl = file ? await fileToAiRequestDataUrl(file).catch(() => source) : source;
+      const croppedSource = await createTemporaryCroppedImage({ originalImage: source, cropBox: editDraft.cropBox });
+      const file = await dataUrlToFile(croppedSource, `${editDraft.name || "garment"}.jpg`).catch(() => null);
+      const aiRequestDataUrl = file ? await fileToAiRequestDataUrl(file).catch(() => croppedSource) : croppedSource;
       const recognition = await withKeepAwake(() =>
         recognizeSingleItemFromDataUrl(aiRequestDataUrl, source, editDraft.name || "garment.jpg", miniMaxSettings),
       );
@@ -2617,16 +2623,24 @@ function WardrobeView(props: WardrobeViewProps) {
                 // re-crop on the original image just changes the crop viewport coordinates.
                 const thumb = await generateThumbnailSafe(newImageDataUrl);
                 recordDiagnosticEvent("edit_recrop_confirmed", { sourceKind: viewingItemCropJob.sourceKind ?? "current", hasCropBox: Boolean(cropBox) });
+                const nextCropRevision = (editDraft?.cropRevision ?? viewingItem?.cropRevision ?? 0) + 1;
+                const thumbOk = Boolean(thumb.thumbnailDataUrl);
                 setEditDraft((current) => current ? ({
                   ...current,
                   cropBox,
+                  cropRevision: nextCropRevision,
+                  thumbnailCropRevision: thumbOk ? nextCropRevision : current.thumbnailCropRevision,
                   ...(thumb.thumbnailDataUrl ? { thumbnailDataUrl: thumb.thumbnailDataUrl } : {}),
                   ...(thumb.thumbnailVersion !== undefined ? { thumbnailVersion: thumb.thumbnailVersion } : {}),
                   ...(thumb.thumbnailUpdatedAt ? { thumbnailUpdatedAt: thumb.thumbnailUpdatedAt } : {}),
                   ...(thumb.thumbnailStatus ? { thumbnailStatus: thumb.thumbnailStatus } : {}),
                 }) : current);
                 setViewingItemCropJob(null);
-                onMessage("裁切已更新，请保存衣物", "success");
+                if (thumbOk) {
+                  onMessage("裁切已更新，请保存衣物", "success");
+                } else {
+                  onMessage("缩略图生成失败，可重试裁切", "error");
+                }
                 return;
               }
    // v0.9.32-dev: 参考穿搭图裁切 (target="detail" + refId)
@@ -2784,7 +2798,7 @@ function WardrobeView(props: WardrobeViewProps) {
           {searchResults.map((item) => (
             <article key={item.id ?? item.name} className="overflow-hidden rounded-lg border border-ink/10 bg-white shadow-sm">
               <div className="aspect-[4/5] bg-mist">
-                <GarmentImage src={item.imageDataUrl || undefined} alt={item.name} fallbackSize={32} cropBox={item.cropBox} />
+                <GarmentImage src={item.thumbnailDataUrl || item.imageDataUrl || undefined} alt={item.name} fallbackSize={32} />
               </div>
               <div className="grid gap-2 p-3">
                 <div className="min-w-0">
@@ -3445,7 +3459,7 @@ function WardrobeEditPage({
       <EditSectionCard className="p-3">
         <div className="flex items-center gap-3">
           <div className="aspect-[3/4] w-28 shrink-0 overflow-hidden rounded-xl bg-mist" aria-label="衣物图片预览">
-            <GarmentImage src={draft.imageDataUrl || draft.sourceImageDataUrl || undefined} alt={draft.name || "衣物图片"} fallbackSize={34} imageClassName="bg-transparent" cropBox={draft.cropBox} />
+            <GarmentImage src={draft.thumbnailDataUrl || draft.imageDataUrl || undefined} alt={draft.name || "衣物图片"} fallbackSize={34} imageClassName="bg-transparent" />
           </div>
           <div className="grid min-w-0 flex-1 gap-2">
             <button
@@ -5895,6 +5909,9 @@ function editSnapshotFromDraft(draft: WardrobeDraft): EditSnapshot {
     imageDataUrl: draft.imageDataUrl || "",
     sourceImageDataUrl: draft.sourceImageDataUrl || "",
     cropBox: cropBoxSnapshot(draft.cropBox),
+    cropRevision: draft.cropRevision ?? 0,
+    thumbnailCropRevision: draft.thumbnailCropRevision ?? 0,
+    thumbnailDataUrl: draft.thumbnailDataUrl || "",
     fitGender: draft.fitGender ?? "unknown",
     fitNotes: (draft.fitNotes ?? "").trim(),
     price: draft.price != null ? String(draft.price) : "",

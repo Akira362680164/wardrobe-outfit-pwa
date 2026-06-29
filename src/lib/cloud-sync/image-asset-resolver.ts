@@ -30,7 +30,8 @@ export async function resolveEntityImageField(input: ResolveEntityImageFieldInpu
   if (!ref || !input.imageCache) return undefined;
 
   const preferred = ref.variants.includes(input.variant) ? input.variant : "original";
-  const cached = await resolveCachedAssetVariant(input.imageCache, ref.assetId, preferred);
+  const expectedSha256 = ref.variantSha256?.[preferred];
+  const cached = await resolveCachedAssetVariant(input.imageCache, ref.assetId, preferred, expectedSha256);
   if (cached) return blobToImageDataUrl(cached.blob);
 
   const downloaded = await input.imageCache.downloadAndCache(ref.assetId, preferred);
@@ -73,8 +74,9 @@ export async function resolveCachedAssetVariant(
   cache: Pick<AccountImageCache, "get">,
   assetId: string,
   variant: AssetVariant,
+  expectedSha256?: string,
 ): Promise<CachedImage | null> {
-  return cache.get(assetId, variant);
+  return cache.get(assetId, variant, { expectedSha256 });
 }
 
 export async function blobToImageDataUrl(blob: Blob): Promise<string> {

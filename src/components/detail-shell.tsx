@@ -16,6 +16,9 @@ export interface DetailShellSlide {
   imageDataUrl?: string;
   thumbnailDataUrl?: string;
   renderContent?: ReactNode;
+  displayMode?: "thumbnail" | "original-cropped" | "plain";
+  originalSrc?: string;
+  cropBox?: { x: number; y: number; width: number; height: number };
 }
 
 export interface DetailFilmstripItem {
@@ -117,6 +120,9 @@ export function DetailHeroGallery({
     thumbnailSrc: slide.thumbnailDataUrl || slide.imageDataUrl || "",
     displaySrc: slide.imageDataUrl || "",
     alt: slide.alt,
+    displayMode: slide.displayMode,
+    originalSrc: slide.originalSrc,
+    cropBox: slide.cropBox,
   }));
   const pageLabel = getDetailPageLabel(safeIndex, slides.length);
 

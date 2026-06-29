@@ -239,7 +239,6 @@ function ItemThumb({ item }: { item: WardrobeItem }) {
         src={item.thumbnailDataUrl || item.imageDataUrl || undefined}
         alt={item.name}
         fallbackSize={22}
-        cropBox={item.cropBox}
       />
     </div>
   );

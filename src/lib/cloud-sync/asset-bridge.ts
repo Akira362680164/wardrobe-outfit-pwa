@@ -28,6 +28,7 @@ export interface CloudAssetReference {
   mimeType: string;
   width?: number;
   height?: number;
+  variantSha256?: Partial<Record<AssetVariant, string>>;
 }
 
 export type CloudAssetReferenceMap = Record<string, CloudAssetReference>;
@@ -147,6 +148,10 @@ export function imageAssetInputsForOutfit(input: {
 
 function toCloudAssetReference(sourceFieldName: string, prepared: PreparedLocalAsset): CloudAssetReference {
   const original = prepared.uploadVariants.find((variant) => variant.variant === "original") ?? prepared.uploadVariants[0];
+  const variantSha256: Partial<Record<string, string>> = {};
+  for (const v of prepared.uploadVariants) {
+    variantSha256[v.variant] = v.metadata.sha256;
+  }
   return {
     assetId: prepared.assetId,
     sourceFieldName,
@@ -155,6 +160,7 @@ function toCloudAssetReference(sourceFieldName: string, prepared: PreparedLocalA
     mimeType: original.metadata.mimeType,
     width: original.metadata.width,
     height: original.metadata.height,
+    variantSha256,
   };
 }
 

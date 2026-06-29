@@ -4,7 +4,6 @@ import type { SavedOutfit } from "@/lib/types";
 import { getAccountWorkspaceDb, createWorkspaceUuidV7, type WorkspaceGarmentRecord, type WorkspaceOutfitRecord } from "@/lib/account-workspace-db";
 import { imageAssetInputsForOutfit, prepareEntityImageAssets, putPreparedEntityImageAssets, withCloudAssetRefs, type CloudAssetReferenceMap } from "@/lib/cloud-sync/asset-bridge";
 import { loadCloudBridgeContext } from "@/lib/cloud-sync/bridge-context";
-import { schedulePendingUploads } from "@/lib/cloud-sync/asset-upload-coordinator";
 import { currentWorkspaceGuard, deleteOutfitBundle, isGuardCurrent, writeOutfitBundle } from "@/lib/cloud-sync/sync-engine";
 import { resolveWorkspaceGarmentItemId } from "@/lib/cloud-sync/hash-workspace-id";
 
@@ -76,7 +75,6 @@ export async function bridgeOutfitUpsert(outfit: SavedOutfit): Promise<BridgeOut
       },
     );
     await putPreparedEntityImageAssets(db, ctx.workspace, assets);
-    schedulePendingUploads(db);
     return { bridged: true };
   } catch (err) {
     if (typeof console !== "undefined") {
@@ -121,7 +119,6 @@ export function toCloudOutfitPayload(outfit: SavedOutfit, assetRefs?: CloudAsset
   const { itemIds, ...safe } = outfit as SavedOutfit & Record<string, unknown>;
   delete safe.coverImageDataUrl;
   delete safe.previewImageDataUrl;
-  delete safe.sourceImageDataUrl;
   delete safe.thumbnailDataUrl;
   delete safe.autoCoverImageDataUrl;
   (safe as Record<string, unknown>).outfitRealImages = outfit.outfitRealImages?.map(({ imageDataUrl: _image, thumbnailDataUrl: _thumbnail, ...metadata }) => metadata);
