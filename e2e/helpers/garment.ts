@@ -29,18 +29,29 @@ export async function selectImageFromAlbum(page: Page, imagePath: string): Promi
 }
 
 export async function confirmCrop(page: Page): Promise<void> {
-  // Wait for crop editor to appear
-  await expect(page.getByRole("button", { name: /裁切/ })).toBeVisible({ timeout: 15000 });
-  // Click "裁切" to open the crop editor
-  await page.getByRole("button", { name: /^裁切$/ }).click();
-  // Click "确认图片" to confirm crop
-  await expect(page.getByRole("button", { name: "确认图片" })).toBeVisible({ timeout: 10000 });
-  await page.getByRole("button", { name: "确认图片" }).click();
+  // 点击缩略图触发裁切编辑器
+  const thumbBtn = page.getByRole("button", { name: /选择第 1 张图片/i });
+  if (await thumbBtn.isVisible({ timeout: 5000 }).catch(() => false)) {
+    await thumbBtn.click();
+  }
+  // 点击 "确认图片" 确认裁切
+  const confirmBtn = page.getByRole("button", { name: "确认图片" });
+  if (await confirmBtn.isVisible({ timeout: 10000 }).catch(() => false)) {
+    await confirmBtn.click();
+  }
+  // 裁切后可能回到主流程
+  await page.waitForTimeout(1000);
+}
+
+export async function submitForAiRecognition(page: Page): Promise<void> {
+  // 点击 "下一步（AI 识别）" 触发识别
+  await page.getByRole("button", { name: /下一步.*AI.*识别/i }).click();
+  // 等待 AI 识别或 fallback 完成（最长 30s）
+  await page.waitForTimeout(10000);
 }
 
 export async function fillGarmentName(page: Page, name: string): Promise<void> {
   // After AI recognition (or fallback), the confirmation form appears
-  // Look for the name input - may be labeled "单品名称" or similar
   await page.waitForTimeout(3000);
   const nameInput = page.getByLabel(/名称/i);
   if (await nameInput.isVisible({ timeout: 5000 }).catch(() => false)) {
@@ -50,8 +61,16 @@ export async function fillGarmentName(page: Page, name: string): Promise<void> {
 }
 
 export async function saveGarmentBatch(page: Page): Promise<void> {
-  await page.getByRole("button", { name: /保存/ }).click();
+  const saveBtn = page.getByRole("button", { name: /保存 \d+ 件/ });
+  await expect(saveBtn).toBeEnabled({ timeout: 60000 });
+  await saveBtn.click();
   await waitForSyncIdle(page);
+}
+
+export async function completeIntakeDraft(page: Page, imagePath: string): Promise<void> {
+  await selectImageFromAlbum(page, imagePath);
+  await confirmCrop(page);
+  await submitForAiRecognition(page);
 }
 
 export async function deleteGarmentViaDetail(page: Page): Promise<void> {

@@ -13,20 +13,32 @@ export async function configureMiniMaxKeyByUi(page: Page): Promise<void> {
 
   await navigateToTab(page, "settings");
 
-  // find the MiniMax settings section and click "配置 Key"
+  // Wait for settings page to settle
+  await expect(page.getByRole("heading", { name: "设置", exact: true })).toBeVisible({ timeout: 10000 });
+
+  // Find the MiniMax settings section and click "配置 Key"
   const configBtn = page.getByRole("button", { name: "配置 Key" });
-  if (await configBtn.isVisible({ timeout: 3000 }).catch(() => false)) {
+  if (await configBtn.isVisible({ timeout: 5000 }).catch(() => false)) {
     await configBtn.click();
 
-    // look for an input field for the key
-    const keyInput = page.getByLabel(/密钥|API Key|key/i);
-    if (await keyInput.isVisible({ timeout: 3000 }).catch(() => false)) {
-      await keyInput.fill(key);
-      await page.getByRole("button", { name: /保存|确认/i }).click();
-    }
+    // Wait for the MiniMax detail page to appear
+    await expect(page.getByRole("heading", { name: "配置 MiniMax 密钥" })).toBeVisible({ timeout: 10000 });
+
+    // Fill in the API Key
+    const keyInput = page.getByLabel("API Key");
+    await expect(keyInput).toBeVisible({ timeout: 5000 });
+    await keyInput.fill(key);
+
+    // Wait for save button to become enabled (dirty state)
+    const saveBtn = page.getByRole("button", { name: "保存" });
+    await expect(saveBtn).toBeEnabled({ timeout: 5000 });
+    await saveBtn.click();
+
+    // Should navigate back to settings main page
+    await expect(page.getByRole("heading", { name: "设置", exact: true })).toBeVisible({ timeout: 10000 });
   }
 
-  // navigate back to wardrobe home
+  // Navigate back to wardrobe home
   await navigateToTab(page, "wardrobe");
   await expect(page.getByTestId("global-create")).toBeVisible({ timeout: 10000 });
 }
