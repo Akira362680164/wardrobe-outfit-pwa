@@ -149,20 +149,10 @@ export async function readWorkspaceUiSnapshot(db: AccountWorkspaceDatabase): Pro
   const uiLocations = locations.map(toClosetLocation);
   const locationIdSet = new Set(uiLocations.map((l) => l.id));
 
-  // ponytail: 孤儿衣物（locationId 不在任何已有衣橱中）自动承接"home"默认衣橱；
-  // 不再为孤儿 locationId 创建新衣橱（避免重复"默认衣橱"）。
-  const homeLocation = uiLocations.find((l) => l.id === "home");
-  const now = new Date().toISOString();
-  if (!homeLocation) {
-    uiLocations.push({ id: "home", name: "默认衣橱", note: "默认衣橱", sortOrder: 1, createdAt: now, updatedAt: now });
-  }
-  const defaultLocationId = homeLocation?.id ?? "home";
-  for (const item of uiItems) {
-    if (item.locationId && !locationIdSet.has(item.locationId)) {
-      // 把孤儿衣物的 locationId 重定向到默认衣橱，避免在 UI 上产生第二个衣橱
-      item.locationId = defaultLocationId;
-    }
-  }
+  // v2.0.12-test: UI mapper 严格只读。
+  // 禁止：补建衣橱、合并同名衣橱、孤儿衣物迁移。
+  // 单品保存时如果 locationId 在衣橱列表中找不到，必须中止保存并记录诊断错误（由 garment-bridge 负责）。
+  void locationIdSet;
 
   const workspaceOutfitIdToLegacyId = new Map<string, string>();
   for (const o of outfits) {
@@ -171,7 +161,7 @@ export async function readWorkspaceUiSnapshot(db: AccountWorkspaceDatabase): Pro
 
   return {
     items: uiItems,
-    locations: dedupeLocations(uiLocations),
+    locations: uiLocations,
     outfits: outfits.map((o) => toSavedOutfit(o, assetIndex)),
     wishlistItems: wishlistItems.map((w) => toWishlistItem(w, assetIndex)),
     outfitPlanEntries: outfitPlans.map((op) => toOutfitPlanEntry(op, workspaceOutfitIdToLegacyId)),
@@ -348,27 +338,5 @@ function toOutfitPlanEntry(op: WorkspaceOutfitPlanRecord, workspaceOutfitIdToLeg
     createdAt: (p.createdAt ?? op.createdAt) as string,
     updatedAt: (p.updatedAt ?? op.updatedAt) as string,
   };
-}
-
-function dedupeLocations(locations: ClosetLocation[]): ClosetLocation[] {
-  const groups = new Map<string, ClosetLocation[]>();
-  for (const l of locations) {
-    const arr = groups.get(l.id) ?? [];
-    arr.push(l);
-    groups.set(l.id, arr);
-  }
-  const result: ClosetLocation[] = [];
-  for (const group of groups.values()) {
-    if (group.length === 1) {
-      result.push(group[0]);
-      continue;
-    }
-    const keep = group.reduce((acc, cur) => {
-      if (cur.sortOrder !== acc.sortOrder) return cur.sortOrder < acc.sortOrder ? cur : acc;
-      return cur.updatedAt > acc.updatedAt ? cur : acc;
-    });
-    result.push(keep);
-  }
-  return result.sort((a, b) => a.sortOrder - b.sortOrder || a.createdAt.localeCompare(b.createdAt));
 }
 

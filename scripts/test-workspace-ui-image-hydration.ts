@@ -177,40 +177,7 @@ async function main() {
     check("garmentB 正常资产仍可读出", b?.imageDataUrl === ORIGINAL_DATA_URL);
   }
 
-  // case 3: 重复 home 衣橱去重
-  {
-    const db = buildDb();
-    const userId = "user-3";
-    await seedLocation(db, userId, "home", "默认衣橱");
-    await seedLocation(db, userId, "home", "默认衣橱");
-    const snap = await readWorkspaceUiSnapshot(db);
-    const homes = snap.locations.filter((l) => l.id === "home");
-    check("重复 home 衣橱合并为 1 条", homes.length === 1, `actual=${homes.length}`);
-  }
-
-  // case 4: 孤儿衣物 locationId 重定向到 home
-  {
-    const db = buildDb();
-    const userId = "user-4";
-    await seedLocation(db, userId, "home", "默认衣橱");
-    await db.garments.put({
-      id: "orphan-1",
-      userId,
-      revision: 1,
-      createdAt: "2026-06-29T00:00:00.000Z",
-      updatedAt: "2026-06-29T00:00:00.000Z",
-      originDeviceId: "device-1",
-      locationId: "ghost-location",
-      name: "孤儿衣物",
-      payload: { name: "孤儿衣物" },
-    });
-    const snap = await readWorkspaceUiSnapshot(db);
-    const item = snap.items[0];
-    check("孤儿衣物 locationId 被重定向到 home", item?.locationId === "home", `actual=${item?.locationId}`);
-    check("孤儿衣物不产生新衣橱", snap.locations.filter((l) => l.id === "ghost-location").length === 0);
-  }
-
-  // case 5: outfit cover image hydration
+  // case 3: outfit cover image hydration
   {
     const db = buildDb();
     const userId = "user-5";
