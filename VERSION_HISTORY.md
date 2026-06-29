@@ -1,4 +1,17 @@
-## 2026-06-29 / v2.0.14-test / Claude Code — 强化 Android 测试流程：强制模拟器/真机验证
+## 2026-06-29 / v2.0.14-test / Claude Code — 安装 Android 模拟器并补全 AGENTS.md 启动流程
+
+- **目的**：安装 Android Emulator（API 35 / arm64-v8a / Google APIs）和 AVD（wardrobe-test, Pixel 6），验证冷启动成功，并将完整模拟器启动流程写入 AGENTS.md。
+- **版本**：保持 `2.0.14-test`。
+- **改动文件**：`AGENTS.md`（新增模拟器启动流程，含创建 AVD、headless 启动、等待引导、关闭命令）、`VERSION_HISTORY.md`。
+- **验证结果**：
+  - Emulator 安装：`$ANDROID_HOME/emulator/emulator` 36.6.11.0
+  - 系统镜像：`system-images/android-35/google_apis/arm64-v8a/`
+  - AVD：`wardrobe-test`（Pixel 6, 1080×2400, 420dpi, RAM 2560MB）
+  - 冷启动成功：~21s，adb 设备 `emulator-5554 device`，Android 15 / SDK 35
+  - 模拟器当前仍在运行中
+- **风险门禁**：**low**（仅环境安装和文档更新，无业务代码变更）。
+- **未触发 subagent**：用户未通知。
+- **未验证风险**：尚未在此模拟器上安装 APK 执行完整测试流程；后续任务触发 Android 验证时将首次实战检验。
 
 - **目的**：按用户要求更新 AGENTS.md，将 Android 测试从"可选真机"升级为"模拟器或真机必须验证"，增加清除数据、卸载重装、日志采集流程，明确禁止只用浏览器模拟代替 Android 验证。
 - **版本**：保持 `2.0.14-test`。

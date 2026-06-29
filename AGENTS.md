@@ -162,7 +162,37 @@
 
 当本次任务涉及 Android、移动端交互、APK 验证、图片显示、网络恢复或裁切/同步等高风险链路时，agent **必须**在模拟器或真机上安装真实 APK 并完成验证，**不得只使用浏览器模拟操作**。浏览器 Dev Server 仅用于快速迭代开发阶段；最终验证必须走 Android 环境。
 
-若本机无可用物理设备，必须启动 Android Emulator（通过 Android Studio AVD Manager 或 `emulator -avd <avd_name>`）完成以下流程。模拟器验证同样有效，结果记入 `VERSION_HISTORY.md`。
+若本机无可用物理设备，必须启动 Android Emulator 完成以下流程。模拟器验证同样有效，结果记入 `VERSION_HISTORY.md`。
+
+**模拟器启动流程**（本机已验证）：
+
+```bash
+# 0. 前置条件：ANDROID_HOME 已设置，模拟器和系统镜像已安装
+# 本机 AVD：wardrobe-test（Pixel 6 / API 35 / arm64-v8a / Google APIs）
+# 确认 AVD 存在
+"$ANDROID_HOME/emulator/emulator" -list-avds
+
+# 1. 启动模拟器（headless，适合 agent 自动化）
+"$ANDROID_HOME/emulator/emulator" -avd wardrobe-test \
+  -no-window -no-audio -no-boot-anim &
+
+# 2. 等待 adb 设备就绪（约 10-15s）
+until adb devices 2>/dev/null | grep -q 'device$'; do sleep 2; done
+
+# 3. 等待系统引导完成（冷启动约 20-25s）
+until [ "$(adb shell getprop sys.boot_completed 2>/dev/null | tr -d '\r\n')" = "1" ]; do sleep 2; done
+
+# 4. 确认设备信息
+adb devices -l
+adb shell getprop ro.build.version.release   # Android 版本
+adb shell getprop ro.build.version.sdk        # SDK 级别
+```
+
+- 本机 `ANDROID_HOME` 为 `/Users/fangzheng/Library/Android/sdk`。
+- 若无 AVD，可通过 `avdmanager create avd -n wardrobe-test -k "system-images;android-35;google_apis;arm64-v8a" -d pixel_6` 创建。
+- 若缺少模拟器或系统镜像：`sdkmanager "emulator" "system-images;android-35;google_apis;arm64-v8a"`。
+- 冷启动约 21s（本机 M-series + Lavapipe 软件渲染）；后续启动可用 `-snapshot default_boot` 加速。
+- 测试完成后用 `adb -s emulator-5554 emu kill` 关闭模拟器。
 
 1. 连接检查：先运行 `adb devices -l`。只有目标设备状态为 `device` 时才继续；`unauthorized` / `offline` 或同时连接多台设备时，优先选模拟器或明确指定 `-s <serial>`。
 2. 本地门禁：先按改动范围完成 typecheck、逻辑测试和 build；需进入 APK 的改动仍须遵守本文的版本号、固定签名和 `npm run android:apk` 规则。
