@@ -105,7 +105,7 @@ import {
  CaptureImageQueueItem,
  type SelectedImagesReviewMode,
 } from "@/components/selected-images-review";
-import { createLegacyItemId, clearAllWorkspaceData } from "@/lib/workspace-write-commands";
+import { createLegacyItemId } from "@/lib/workspace-write-commands";
 import { readWorkspaceTryOnProfile, saveWorkspaceTryOnProfile } from "@/lib/cloud-sync/profile-repository";
 import { bridgeGarmentCreate, bridgeGarmentDelete, bridgeGarmentUpdate } from "@/lib/cloud-sync/garment-bridge";
 import { bridgeLocationDelete, bridgeLocationUpsert } from "@/lib/cloud-sync/location-bridge";
@@ -361,14 +361,8 @@ export function WardrobeApp({ cloudAuth }: { cloudAuth?: WardrobeCloudAuth } = {
   // 共同导致 create_outfit / add_wishlist_item 退出时 activeView 卡住。view 现在完全从 route 派生。
    const lightbox = useWardrobeLightboxController();
   const { expandedImage } = lightbox;
- 	 const [showExitDialog, setShowExitDialog] = useState(false);
- 	 const [showCreateSheet, setShowCreateSheet] = useState(false);
-  // v0.9.24-dev: onClearAllData 进行中锁, lift 到 WardrobeApp 级, 父级 backButton handler
-  // (line 297 下方) 也要感知, 否则在清空中按 Android 返回键会同时弹"退出 App?"对话框
-  // (subagent I-3)。ref 锁用于 click handler / backButton handler 的同步守卫 (避免 React
-  // state 闭包过期值双触发 race, subagent I-2)。
-  const [isClearingAll, setIsClearingAll] = useState(false);
-  const isClearingAllRef = useRef(false);
+	 const [showExitDialog, setShowExitDialog] = useState(false);
+	 const [showCreateSheet, setShowCreateSheet] = useState(false);
 
   // v0.9.31-dev: 共享 window 全局滚动容器 + scroll 恢复逻辑保留。
   // v1.1.20-dev (方案 C): key 从 ViewKey 改为 AppRouteName — 每个 route (含 wardrobe/outfit/wishlist
@@ -438,7 +432,6 @@ export function WardrobeApp({ cloudAuth }: { cloudAuth?: WardrobeCloudAuth } = {
   }, [route.name]);
 
   const handleTopLevelBack = useCallback(() => {
-    // v0.9.24-dev: onClearAllData 进行中屏蔽返回键。
     // v1.1.20-dev commit2 (P0 诊断): top_level_back_triggered
     // Android 返回键 / Escape 每按一次都打点 — handler 字段标明在哪一层被吃掉。
     // 复现 Bug 1 "返回键到底有没有生效" / 后续 back priority 类 bug 必备。
@@ -448,7 +441,6 @@ export function WardrobeApp({ cloudAuth }: { cloudAuth?: WardrobeCloudAuth } = {
         route: route.name,
       });
     };
-    if (isClearingAllRef.current) { logTopLevelBack("clearing_all"); return true; }
     if (expandedImage) {
       lightbox.closeExpandedImage();
       logTopLevelBack("lightbox");
@@ -1122,8 +1114,15 @@ export function WardrobeApp({ cloudAuth }: { cloudAuth?: WardrobeCloudAuth } = {
               onOpenAccount={() => navigation.openRoute({ name: "account_management" })}
 	              miniMaxSettings={miniMaxSettings} onSaveMiniMaxSettings={saveSettings}
 	              onAddWardrobe={async (name, note) => { const now = new Date().toISOString(); const id = `custom-${globalThis.crypto?.randomUUID?.() ?? Date.now()}`; await bridgeLocationUpsert({ id, name, note, sortOrder: locations.length + 1, createdAt: now, updatedAt: now }); await refreshState(); }}
-              onUpdateWardrobe={async (id, name, note) => { const now = new Date().toISOString();const existing = locations.find((l) => l.id === id); if (existing) { await bridgeLocationUpsert({ ...existing, name, note, updatedAt: now }); } await refreshState(); }}
+              onUpdateWardrobe={async (id, name, note) => {
+                if (id === "home") { showMessage("默认衣橱不能修改", "error"); return; }
+                const now = new Date().toISOString();
+                const existing = locations.find((l) => l.id === id);
+                if (existing) await bridgeLocationUpsert({ ...existing, name, note, updatedAt: now });
+                await refreshState();
+              }}
               onDeleteWardrobe={async (id, action) => {
+                if (id === "home") { showMessage("默认衣橱不能删除", "error"); return; }
                 if (action.mode === "migrate") {
                   const now = new Date().toISOString();
                   const movingItems = items.filter((item) => item.locationId === id);
@@ -1142,16 +1141,6 @@ export function WardrobeApp({ cloudAuth }: { cloudAuth?: WardrobeCloudAuth } = {
                 await refreshState();
               }}
               tryOnProfile={tryOnProfile} onSaveTryOnProfile={async (profile) => { await saveWorkspaceTryOnProfile(profile); setTryOnProfile(profile); showMessage("穿衣画像已保存"); }}
-              onClearAllData={async () => {
-                await clearAllWorkspaceData();
-                await refreshState();
-                const fresh = await readWorkspaceTryOnProfile();
-                setTryOnProfile(fresh);
-                showMessage("已清空全部数据");
-              }}
-              isClearingAll={isClearingAll}
-              isClearingAllRef={isClearingAllRef}
-              setIsClearingAll={setIsClearingAll}
               onMessage={showMessage} onExpandImage={lightbox.openExpandedImage}
               onRefreshState={refreshState}
             />
@@ -3800,10 +3789,6 @@ function SettingsView({
   onDeleteWardrobe,
   tryOnProfile,
   onSaveTryOnProfile,
-  onClearAllData,
-  isClearingAll,
-  isClearingAllRef,
-  setIsClearingAll,
   onMessage,
   onExpandImage,
   onRefreshState,
@@ -3823,13 +3808,6 @@ function SettingsView({
   onDeleteWardrobe: (id: string, action: { mode: "migrate"; targetLocationId: string } | { mode: "delete_items" }) => Promise<void>;
   tryOnProfile: TryOnProfile;
   onSaveTryOnProfile: (profile: TryOnProfile) => Promise<void>;
-  onClearAllData: () => Promise<void>;
-  // v0.9.24-dev (subagent I-2/I-3 修复): onClearAllData 状态 lift 到 WardrobeApp 级,
-  // isClearingAll 驱动 UI disabled + spinner, isClearingAllRef 供 click handler
-  // 和 SettingsView 自身 backButton handler 同步守卫 (避免 React state 闭包过期值双触发 race)。
-  isClearingAll: boolean;
-  isClearingAllRef: React.MutableRefObject<boolean>;
-  setIsClearingAll: (v: boolean) => void;
   onMessage?: (msg: string) => void;
   onExpandImage?: (img: { src: string; alt: string }) => void;
   /** v0.9.44-dev 问题 2: 让 backfill 写回后能触发父级 refreshState 重读 Dexie, 更新 items prop */
@@ -3845,7 +3823,6 @@ function SettingsView({
   const [wardrobeFormName, setWardrobeFormName] = useState("");
   const [wardrobeFormNote, setWardrobeFormNote] = useState("");
   const [wardrobeListExpanded, setWardrobeListExpanded] = useState(false);
-  const [showClearAllConfirm, setShowClearAllConfirm] = useState(false);
   const [diagnosticUploadState, setDiagnosticUploadState] = useState<DiagnosticUploadState>({ phase: "idle" });
   const [showDiagnosticDescDialog, setShowDiagnosticDescDialog] = useState(false);
   const [diagnosticDescription, setDiagnosticDescription] = useState("");
@@ -4047,11 +4024,6 @@ function SettingsView({
       setShowDiagnosticFailed(true);
     }
   }
-  // v0.9.24-dev: onClearAllData loading 态从 WardrobeApp 注入 (subagent I-2/I-3)。
-  // isClearingAllRef 提供同步锁 (click handler + 父级 backButton handler 都用 ref 读最新值),
-  // isClearingAll 状态驱动 UI disabled + spinner 渲染。lift 到父级是为了让父级 line 297
-  // backButton handler 也能在清空中屏蔽 Android 返回键, 否则会同时弹"退出 App?"对话框。
-
   useEffect(() => {
     if (editWardrobeTarget) {
       setWardrobeFormName(editWardrobeTarget.name);
@@ -4080,13 +4052,6 @@ function SettingsView({
     let handle: { remove: () => void } | null = null;
     App.addListener("backButton", () => {
       if (removed) return;
-      // v0.9.24-dev (subagent I-3 修复): 用 ref 而非 state 做守卫, 同步拿最新值;
-      // 父级 line 297 backButton handler 也读这个 ref, 两层 handler 不会同时跑
-      // (虽然 Capacitor App.addListener 多 listener 都派发, 但父级 line 297 已经
-      // 先于 SettingsView 的 handler 跑并 setShowExitDialog, 这里若再返回会与父级冲突)。
-      // isClearingAllRef 是 props 传入的同步锁, 不放在 deps 里 (ref 引用稳定, 不会触发 effect 重跑)。
-      if (isClearingAllRef.current) return;
-      if (showClearAllConfirm) { setShowClearAllConfirm(false); return; }
       if (showDeleteWardrobeHardConfirm) { setShowDeleteWardrobeHardConfirm(false); return; }
       if (deleteWardrobeTarget) { setDeleteWardrobeTarget(null); return; }
       if (editWardrobeTarget) { setEditWardrobeTarget(null); return; }
@@ -4095,7 +4060,7 @@ function SettingsView({
       // 否则交回父级 (退到上一层或弹退出对话框)
     }).then((h) => { if (!removed) handle = h; });
     return () => { removed = true; handle?.remove(); };
-  }, [subPage, showAddWardrobe, editWardrobeTarget, deleteWardrobeTarget, showDeleteWardrobeHardConfirm, showClearAllConfirm, wardrobeListExpanded, isClearingAllRef]);
+  }, [subPage, showAddWardrobe, editWardrobeTarget, deleteWardrobeTarget, showDeleteWardrobeHardConfirm, wardrobeListExpanded]);
 
   // ---------- 子页面: 穿衣画像详情 ----------
   if (subPage === "profile") {
@@ -4160,7 +4125,7 @@ function SettingsView({
     ? items.filter((item) => item.locationId === deleteWardrobeTarget.id).length
     : 0;
   function openDeleteWardrobeSheet(location: ClosetLocation | null) {
-    if (!location) return;
+    if (!location || location.id === "home") return;
     const candidates = sortedLocations.filter((item) => item.id !== location.id);
     setShowDeleteWardrobeHardConfirm(false);
     setDeleteWardrobeTargetLocationId(candidates[0]?.id ?? "");
@@ -4226,7 +4191,7 @@ function SettingsView({
                 location={location}
                 count={locationCounts.get(location.id) ?? 0}
                 isDefault={location.id === "home"}
-                onClick={() => setEditWardrobeTarget(location)}
+                onClick={location.id === "home" ? undefined : () => setEditWardrobeTarget(location)}
               />
             ))
           )}
@@ -4561,25 +4526,6 @@ function SettingsView({
         </div>
       </article>
 
-      {/* 5. 清空数据 */}
-      <article className="surface rounded-lg px-4 py-3.5">
-        <div className="flex items-start justify-between gap-3">
-          <div className="min-w-0">
-            <h2 className="text-base font-semibold">清空数据</h2>
-            <p className="mt-0.5 text-xs text-ink/55">数据通过账号云同步保存，卸载/重装/换机请登录同一账号即可恢复。</p>
-          </div>
-        </div>
-        <button
-          type="button"
-          onClick={() => setShowClearAllConfirm(true)}
-          className="mt-3 inline-flex h-9 w-full items-center justify-center gap-1.5 rounded-lg border border-red-200 bg-red-50 px-3 text-xs font-semibold text-red-500 active:bg-red-100"
-          disabled={isClearingAll}
-        >
-          <Trash2 size={14} aria-hidden="true" />
-          清空数据
-        </button>
-      </article>
-
       <article className="surface rounded-lg px-4 py-3.5" aria-label="远程诊断">
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
@@ -4834,46 +4780,6 @@ function SettingsView({
         </div>
       </MotionSheet>
 
-      <MotionSheet open={showClearAllConfirm} onClose={() => { if (!isClearingAll) setShowClearAllConfirm(false); }} panelClassName="!max-w-sm">
-        <p className="mb-2 text-sm font-semibold text-red-500">清空全部数据？</p>
-        <p className="mb-4 text-xs text-ink/60 leading-relaxed">
-          将清空所有衣物、衣橱位置、收藏套装和试穿参考照片。
-        </p>
-        <div className="grid grid-cols-2 gap-2">
-          <button
-            type="button"
-            onClick={() => setShowClearAllConfirm(false)}
-            disabled={isClearingAll}
-            className="h-10 rounded-lg border border-ink/10 text-sm disabled:opacity-55"
-          >取消</button>
-          <button
-            type="button"
-            disabled={isClearingAll}
-            onClick={async () => {
-              // v0.9.24-dev (subagent I-2 修复): 用 ref 同步锁, 避免 React state 闭包过期
-              // 引起同帧双触发 race。两个 click 在同一 microtask 内打到 button 时, 第一个
-              // click setIsClearingAll(true) 后 state 还未提交, 第二个 click 仍读到旧闭包
-              // isClearingAll=false → 通过 → 跑两个并发 onClearAllData。ref 是同步写入的。
-              if (isClearingAllRef.current) return;
-              isClearingAllRef.current = true;
-              setIsClearingAll(true);
-              try {
-                await onClearAllData();
-              } catch (e) {
-                onMessage?.(`清空失败: ${e instanceof Error ? e.message : "未知错误"}`);
-              } finally {
-                isClearingAllRef.current = false;
-                setIsClearingAll(false);
-                setShowClearAllConfirm(false);
-              }
-            }}
-            className="h-10 rounded-lg bg-red-600 text-sm font-semibold text-white inline-flex items-center justify-center gap-2 disabled:opacity-65"
-          >
-            {isClearingAll ? <Loader2 size={14} className="animate-spin" aria-hidden="true" /> : null}
-            {isClearingAll ? "清空中..." : "确认清空"}
-          </button>
-        </div>
-      </MotionSheet>
     </div>
   );
 }
@@ -4888,14 +4794,15 @@ function WardrobeRow({
   location: ClosetLocation;
   count: number;
   isDefault: boolean;
-  onClick: () => void;
+  onClick?: () => void;
 }) {
   const Icon = isDefault ? Shirt : location.id === "office" || /办公室|office|工位|公司/.test(location.name) ? Briefcase : Shirt;
   return (
     <button
       type="button"
       onClick={onClick}
-      className="flex h-[60px] w-full items-center gap-3 rounded-lg border border-ink/10 bg-white px-3 text-left active:scale-[0.99] transition-transform"
+      disabled={!onClick}
+      className="flex h-[60px] w-full items-center gap-3 rounded-lg border border-ink/10 bg-white px-3 text-left enabled:active:scale-[0.99] transition-transform"
     >
       <div className="grid h-9 w-9 shrink-0 place-items-center rounded-md bg-mist text-ink/65">
         <Icon size={17} aria-hidden="true" />
@@ -4904,7 +4811,7 @@ function WardrobeRow({
         <div className="flex items-center gap-1.5">
           <p className="truncate text-sm font-semibold">{location.name}</p>
           {isDefault ? (
-            <span className="rounded-full bg-denim/10 px-1.5 py-0.5 text-[9px] font-semibold text-denim">当前</span>
+            <span className="rounded-full bg-denim/10 px-1.5 py-0.5 text-[9px] font-semibold text-denim">默认</span>
           ) : null}
         </div>
         <p className="truncate text-[11px] text-ink/50">{location.note || "暂无简介"}</p>
@@ -4913,7 +4820,7 @@ function WardrobeRow({
         <span className="text-sm font-semibold tabular-nums">{count}</span>
         <span className="ml-0.5 text-[10px] text-ink/45">件</span>
       </div>
-      <ChevronRight size={14} className="shrink-0 text-ink/30" aria-hidden="true" />
+      {onClick ? <ChevronRight size={14} className="shrink-0 text-ink/30" aria-hidden="true" /> : null}
     </button>
   );
 }
@@ -5722,7 +5629,7 @@ function WardrobeListPage({
                 location={location}
                 count={locationCounts.get(location.id) ?? 0}
                 isDefault={location.id === "home"}
-                onClick={() => onEdit(location)}
+                onClick={location.id === "home" ? undefined : () => onEdit(location)}
               />
             </div>
           ))

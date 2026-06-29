@@ -17,6 +17,7 @@ const migration = readFileSync(path.join(root, "services/wardrobe-api/migrations
 const closetLocationMigration = readFileSync(path.join(root, "services/wardrobe-api/migrations/0005_closet_locations.sql"), "utf8");
 const journal = readFileSync(path.join(root, "services/wardrobe-api/migrations/meta/_journal.json"), "utf8");
 const drizzleSchema = readFileSync(path.join(root, "services/wardrobe-api/src/db/schema.ts"), "utf8");
+const syncService = readFileSync(path.join(root, "services/wardrobe-api/src/sync/service.ts"), "utf8");
 
 const businessTables = [
   "wardrobes",
@@ -43,6 +44,7 @@ function emptyEntities() {
     outfitPlans: [],
     assets: [],
     closetLocations: [],
+    profiles: [],
   };
 }
 
@@ -112,5 +114,27 @@ describe("sync contracts", () => {
       hasMore: false,
     }).changes[0].payload).toEqual({});
     expect(ResolveConflictRequestSchema.parse({ conflictId, resolution: "keep_local" }).resolution).toBe("keep_local");
+  });
+
+  it("requires complete closet fields and keeps the default closet immutable", () => {
+    const mutation = {
+      mutationId: "018f6f02-7b7a-7a20-8d1d-000000000011",
+      entityType: "closetLocation" as const,
+      entityId: "018f6f02-7b7a-7a20-8d1d-000000000012",
+      operation: "create" as const,
+      createdAt: "2026-06-29T12:00:00.000Z",
+      attemptCount: 0,
+    };
+
+    expect(PushRequestSchema.safeParse({ deviceId: "device-a", mutations: [{ ...mutation, payload: { name: "次卧衣橱" } }] }).success).toBe(false);
+    expect(PushRequestSchema.safeParse({
+      deviceId: "device-a",
+      mutations: [{ ...mutation, payload: { dexieId: "home", name: "默认衣橱", note: "默认衣橱", sortOrder: 1 } }],
+    }).success).toBe(true);
+    expect(PushRequestSchema.safeParse({
+      deviceId: "device-a",
+      mutations: [{ ...mutation, payload: { dexieId: "home", name: "我的衣橱", note: "默认衣橱", sortOrder: 1 } }],
+    }).success).toBe(false);
+    expect(syncService).toContain("DEFAULT_LOCATION_PROTECTED");
   });
 });

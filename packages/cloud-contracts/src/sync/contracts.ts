@@ -26,6 +26,21 @@ export const SyncEntitySchema = z.object({
   payload: z.record(z.unknown()).default({}),
 });
 
+export const ClosetLocationPayloadSchema = z.object({
+  dexieId: z.string().min(1),
+  name: z.string().min(1),
+  note: z.string(),
+  sortOrder: z.number().int().positive(),
+}).superRefine((payload, ctx) => {
+  if (payload.dexieId === "home" && (payload.name !== "默认衣橱" || payload.note !== "默认衣橱" || payload.sortOrder !== 1)) {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Default closet fields are immutable" });
+  }
+});
+
+export const SyncClosetLocationSchema = SyncEntitySchema.extend({
+  payload: ClosetLocationPayloadSchema,
+});
+
 // 实体专用字段：Bootstrap 序列化时不丢失 payload 之外的列
 export const SyncGarmentSchema = SyncEntitySchema.extend({
   wardrobeId: z.string().uuid().nullish(),
@@ -78,7 +93,7 @@ export const SyncEntityBundleSchema = z.object({
   tripPlans: z.array(SyncTripPlanSchema),
   outfitPlans: z.array(SyncOutfitPlanSchema),
   assets: z.array(SyncAssetSchema),
-  closetLocations: z.array(SyncEntitySchema),
+  closetLocations: z.array(SyncClosetLocationSchema),
   profiles: z.array(SyncEntitySchema),
 });
 
@@ -113,6 +128,11 @@ export const PushMutationSchema = z.object({
   payload: z.record(z.unknown()).default({}),
   createdAt: z.string().datetime(),
   attemptCount: z.number().int().nonnegative(),
+}).superRefine((mutation, ctx) => {
+  if (mutation.entityType !== "closetLocation" || mutation.operation === "delete") return;
+  if (!ClosetLocationPayloadSchema.safeParse(mutation.payload).success) {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["payload"], message: "Invalid closet location payload" });
+  }
 });
 
 export const PushRequestSchema = z.object({
@@ -147,6 +167,11 @@ export const SyncChangeSchema = z.object({
   revision: z.number().int().nonnegative(),
   payload: z.record(z.unknown()).default({}),
   createdAt: z.string().datetime(),
+}).superRefine((change, ctx) => {
+  if (change.entityType !== "closetLocation" || change.operation === "delete") return;
+  if (!ClosetLocationPayloadSchema.safeParse(change.payload).success) {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["payload"], message: "Invalid closet location payload" });
+  }
 });
 
 export const PullResponseSchema = z.object({
@@ -168,6 +193,7 @@ export const ResolveConflictResponseSchema = z.object({
 export type SyncEntityType = z.infer<typeof SyncEntityTypeSchema>;
 export type SyncOperation = z.infer<typeof SyncOperationSchema>;
 export type SyncEntity = z.infer<typeof SyncEntitySchema>;
+export type ClosetLocationPayload = z.infer<typeof ClosetLocationPayloadSchema>;
 export type SyncEntityBundle = z.infer<typeof SyncEntityBundleSchema>;
 export type AssetManifestEntry = z.infer<typeof AssetManifestEntrySchema>;
 export type BootstrapRequest = z.infer<typeof BootstrapRequestSchema>;

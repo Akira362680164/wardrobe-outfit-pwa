@@ -8,7 +8,7 @@ import {
 } from "../src/lib/account-workspace-db";
 import { deleteWorkspaceGarmentByItemId } from "../src/lib/cloud-sync/garment-bridge";
 import { hashWorkspaceIdToNumber, resolveWorkspaceGarmentItemId } from "../src/lib/cloud-sync/hash-workspace-id";
-import { ensureDefaultWorkspaceLocation } from "../src/lib/cloud-sync/location-bridge";
+import { bridgeLocationDelete, initializeDefaultWorkspaceLocation } from "../src/lib/cloud-sync/location-bridge";
 import { readWorkspaceUiSnapshot } from "../src/lib/cloud-sync/workspace-ui-mapper";
 import type { AccountWorkspaceRecord } from "../src/lib/workspace-registry";
 
@@ -48,12 +48,15 @@ async function main() {
   assert.equal(resolveWorkspaceGarmentItemId({ ...oldGarment, payload: { legacyItemId: 42 } }), 42);
   assert.equal(resolveWorkspaceGarmentItemId({ ...oldGarment, legacyItemId: 41, payload: { legacyItemId: 42 } }), 41);
 
-  assert.equal((await ensureDefaultWorkspaceLocation(workspace, deviceId)).bridged, true);
+  assert.equal((await initializeDefaultWorkspaceLocation(workspace, deviceId)).bridged, true);
   const defaultLocations = await db.locations.filter((location) => !location.deletedAt).toArray();
   assert.equal(defaultLocations.length, 1, "空 workspace 应只创建一个真实默认衣橱");
   assert.equal((defaultLocations[0].payload as Record<string, unknown>).dexieId, "home");
+  assert.equal((defaultLocations[0].payload as Record<string, unknown>).name, "默认衣橱");
+  assert.equal((defaultLocations[0].payload as Record<string, unknown>).note, "默认衣橱");
+  assert.deepEqual(await bridgeLocationDelete("home"), { bridged: false, reason: "default_location_protected" });
   const firstOutboxCount = await db.syncOutbox.count();
-  assert.equal((await ensureDefaultWorkspaceLocation(workspace, deviceId)).bridged, true);
+  assert.equal((await initializeDefaultWorkspaceLocation(workspace, deviceId)).bridged, true);
   assert.equal(await db.locations.filter((location) => !location.deletedAt).count(), 1, "默认衣橱初始化必须幂等");
   assert.equal(await db.syncOutbox.count(), firstOutboxCount, "幂等调用不得重复创建同步任务");
 

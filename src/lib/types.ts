@@ -708,7 +708,7 @@ export const DEFAULT_LOCATIONS: ClosetLocation[] = [
   {
     id: "home",
     name: "默认衣橱",
-    note: "默认衣橱，可改名或新增自定义位置",
+    note: "默认衣橱",
     sortOrder: 1,
     createdAt: "2026-05-20T00:00:00.000Z",
     updatedAt: "2026-05-20T00:00:00.000Z",

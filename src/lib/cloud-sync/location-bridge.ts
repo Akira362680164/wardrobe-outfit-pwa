@@ -13,6 +13,7 @@ export interface BridgeLocationResult {
     | "no_workspace"
     | "no_session"
     | "registry_mismatch"
+    | "default_location_protected"
     | "workspace_location_not_found"
     | "write_failed";
 }
@@ -22,14 +23,17 @@ export async function bridgeLocationUpsert(location: ClosetLocation): Promise<Br
   if (!ctx) return { bridged: false, reason: "no_workspace" };
 
   try {
+    const normalizedLocation = location.id === DEFAULT_LOCATIONS[0].id
+      ? { ...location, ...DEFAULT_LOCATIONS[0], createdAt: location.createdAt, updatedAt: location.updatedAt }
+      : location;
     const db = getAccountWorkspaceDb(ctx.workspace);
-    const existing = await findWorkspaceLocationById(db, location.id);
+    const existing = await findWorkspaceLocationById(db, normalizedLocation.id);
     const recordId = existing?.id ?? createWorkspaceUuidV7();
     const payload: Record<string, unknown> = {
-      name: location.name,
-      note: location.note,
-      sortOrder: location.sortOrder,
-      dexieId: location.id,
+      name: normalizedLocation.name,
+      note: normalizedLocation.note ?? "",
+      sortOrder: normalizedLocation.sortOrder,
+      dexieId: normalizedLocation.id,
     };
     if (!isGuardCurrent(currentWorkspaceGuard(ctx.workspace))) return { bridged: false, reason: "no_workspace" };
 
@@ -43,9 +47,9 @@ export async function bridgeLocationUpsert(location: ClosetLocation): Promise<Br
       },
       {
         id: recordId,
-        name: location.name,
-        note: location.note,
-        sortOrder: location.sortOrder,
+        name: normalizedLocation.name,
+        note: normalizedLocation.note ?? "",
+        sortOrder: normalizedLocation.sortOrder,
         payload,
       },
       existing ? "update" : "create",
@@ -60,6 +64,9 @@ export async function bridgeLocationUpsert(location: ClosetLocation): Promise<Br
 }
 
 export async function bridgeLocationDelete(locationId: string): Promise<BridgeLocationResult> {
+  if (locationId === DEFAULT_LOCATIONS[0].id) {
+    return { bridged: false, reason: "default_location_protected" };
+  }
   const ctx = await loadCloudBridgeContext();
   if (!ctx) return { bridged: false, reason: "no_workspace" };
 
@@ -87,7 +94,7 @@ export async function bridgeLocationDelete(locationId: string): Promise<BridgeLo
   }
 }
 
-export async function ensureDefaultWorkspaceLocation(
+export async function initializeDefaultWorkspaceLocation(
   workspace: AccountWorkspaceRecord,
   deviceId: string,
 ): Promise<BridgeLocationResult> {
@@ -123,7 +130,7 @@ export async function ensureDefaultWorkspaceLocation(
     return { bridged: true };
   } catch (err) {
     if (typeof console !== "undefined") {
-      console.warn("[location-bridge] ensureDefaultWorkspaceLocation failed:", err);
+      console.warn("[location-bridge] initializeDefaultWorkspaceLocation failed:", err);
     }
     return { bridged: false, reason: "write_failed" };
   }

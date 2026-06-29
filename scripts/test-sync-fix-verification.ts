@@ -89,7 +89,7 @@ async function main() {
       entityType: "closetLocation" as const,
       entityId: locationId,
       operation: "create" as const,
-      payload: { name: "次卧衣柜", description: "次卧右侧推拉门" },
+      payload: { dexieId: "custom-test-location", name: "次卧衣柜", note: "次卧右侧推拉门", sortOrder: 2 },
       createdAt: new Date().toISOString(),
       attemptCount: 0,
     },
@@ -171,7 +171,7 @@ async function main() {
 
     // P0-8: Location payload preserved
     record("Location payload", "P0-8",
-      location?.payload?.name === "次卧衣柜" && location?.payload?.description === "次卧右侧推拉门",
+      location?.payload?.name === "次卧衣柜" && location?.payload?.note === "次卧右侧推拉门" && location?.payload?.sortOrder === 2,
       location ? `name=${location.payload.name}` : "not found");
 
     // Outfit

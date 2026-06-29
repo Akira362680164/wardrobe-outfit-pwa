@@ -6,7 +6,7 @@ import { computeBackoffMs, runBootstrap, runSyncOnce } from "@/lib/cloud-sync/sy
 import { probeCloudConnectivity, subscribeNetworkChanges, type ConnectivityState } from "@/lib/cloud-sync/connectivity";
 import { scheduleAssetRecovery } from "@/lib/cloud-sync/asset-recovery";
 import { AccountImageCache } from "@/lib/cloud-sync/image-cache";
-import { ensureDefaultWorkspaceLocation } from "@/lib/cloud-sync/location-bridge";
+import { initializeDefaultWorkspaceLocation } from "@/lib/cloud-sync/location-bridge";
 import {
   isCloudSyncEnabled,
   isWorkspaceOfflineAuthorized,
@@ -97,8 +97,6 @@ export function WorkspaceGate({
         const hasLocalWorkspace = Boolean(existing && !existing.explicitlyLoggedOutAt);
         if (existing && isWorkspaceOfflineAuthorized(existing)) {
           const workspace = openWorkspaceForSession(session);
-          const defaultLocation = await ensureDefaultWorkspaceLocation(workspace, session.deviceId);
-          if (!defaultLocation.bridged) throw new Error("默认衣橱初始化失败，请稍后重试");
           workspaceRef.current = workspace;
           if (!cancelled) { setState({ status: "ready", workspace }); onReady?.(workspace); }
           void probeAndSync(workspace);
@@ -123,12 +121,12 @@ export function WorkspaceGate({
           if (!result.bootstrapped && result.reason !== "sync_disabled") {
             throw new Error("云端衣橱初始化失败，请稍后重试");
           }
+          const defaultLocation = await initializeDefaultWorkspaceLocation(workspace, session.deviceId);
+          if (!defaultLocation.bridged) throw new Error("默认衣橱初始化失败，请稍后重试");
           // fire-and-forget: 新设备恢复首屏缩略图，不阻塞进入App
           const imageCache = new AccountImageCache(workspace.userIdHash);
           scheduleAssetRecovery(imageCache);
         }
-        const defaultLocation = await ensureDefaultWorkspaceLocation(workspace, session.deviceId);
-        if (!defaultLocation.bridged) throw new Error("默认衣橱初始化失败，请稍后重试");
         workspaceRef.current = workspace;
         if (!cancelled) { setState({ status: "ready", workspace }); onReady?.(workspace); }
         scheduleSync(workspace, cloud);

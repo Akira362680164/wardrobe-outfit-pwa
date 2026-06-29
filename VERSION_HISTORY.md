@@ -1,3 +1,15 @@
+## 2026-06-29 / v2.0.10-test / Codex — 固定默认衣橱并补齐衣橱同步规则
+
+- **目的**：确保每个新账号首次打开时都有一个固定的“默认衣橱”，不允许用户修改或删除；补齐衣橱名称、简介和顺序的云同步规则；从设置页下线“清空数据”入口。
+- **版本**：`2.0.9-test` → `2.0.10-test`，Android `versionCode` 由 `20009` → `20010`。
+- **改动文件**：`src/lib/types.ts`、`src/lib/cloud-sync/location-bridge.ts`、`src/components/auth/workspace-gate.tsx`、`src/components/wardrobe-app.tsx`、`packages/cloud-contracts/src/sync/contracts.ts`、`services/wardrobe-api/src/sync/service.ts`、`services/wardrobe-api/tests/sync-contracts.test.ts`、`scripts/test-old-garment-default-location-sync.ts`、`scripts/test-sync-fix-verification.ts`、`package.json`、`package-lock.json`、`VERSION_HISTORY.md`。
+- **产品规则**：默认衣橱只在账号首次准备本机工作区时初始化，不在每次进入时做自动恢复；页面不提供默认衣橱的编辑/删除入口，本地写入和云端接收也会拒绝改名或删除；自定义衣橱仍可正常管理，无网时本地照常使用并在恢复网络后后台同步。
+- **本地验证**：`npm run typecheck` 通过；`npm run api:test` 56/56 通过；默认衣橱回归通过；设置页/衣橱页溢出回归通过；工作区登记 19/19 通过；云同步冲突 11/11 通过；`npm run build` 通过。
+- **全量回归说明**：`npm run test:logic:all` 在既有 `test-outfit-asset-center.ts` 仍引用已删除的 `src/lib/migrate` 处停止；`test-account-workspace-db.ts` 仍期待已删除的表。两项均是 `v2.0.6-test` 移除旧 Dexie 后留下的测试脚本问题，与本次改动无关。
+- **风险门禁**：**high**（账号首次初始化、云同步契约、服务端删除保护、设置页及 Android APK 版本）。
+- **未触发 subagent**：用户未通知。
+- **未验证风险**：当前无 Android 设备连接，且本地浏览器无已登录测试账号，未做设置页真机点击、滚动和跨重装同步验收；生产服务部署、线上数据清空和 APK 打包将在后续交付步骤记录。
+
 ## 2026-06-29 / v2.0.9-test / Codex — 默认衣橱方案追加下线“清空数据”
 
 - **目的**：按用户要求将设置页“清空数据”入口从本轮实施范围中直接下线，不再让普通用户承担不明确的全量删除风险。

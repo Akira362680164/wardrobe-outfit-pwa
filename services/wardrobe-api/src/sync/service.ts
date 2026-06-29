@@ -185,7 +185,7 @@ export class SyncService {
 
           // 3. 查实体当前状态 + 跨账号校验
           const existingEntities = await tx
-            .select({ id: (table as any).id, revision: (table as any).revision, userId: (table as any).userId })
+            .select({ id: (table as any).id, revision: (table as any).revision, userId: (table as any).userId, payload: (table as any).payload })
             .from(table as any)
             .where(eq((table as any).id, mutation.entityId))
             .limit(1);
@@ -197,6 +197,31 @@ export class SyncService {
 
           // P0-N03: 严格操作状态机
           const operation = mutation.operation;
+          if (
+            mutation.entityType === "closetLocation"
+            && operation === "delete"
+            && (existingEntity?.payload as Record<string, unknown> | undefined)?.dexieId === "home"
+          ) {
+            await tx.insert(syncMutations).values({
+              userId,
+              mutationId: mutation.mutationId,
+              entityType: mutation.entityType,
+              entityId: mutation.entityId,
+              operation: mutation.operation,
+              baseRevision: mutation.baseRevision ?? null,
+              status: "rejected",
+              errorCode: "DEFAULT_LOCATION_PROTECTED",
+              payload: mutation.payload ?? {},
+            });
+            return {
+              mutationId: mutation.mutationId,
+              entityType: mutation.entityType,
+              entityId: mutation.entityId,
+              status: "rejected" as const,
+              errorCode: "DEFAULT_LOCATION_PROTECTED",
+              serverRevision: existingEntity.revision,
+            };
+          }
           if (operation === "create" && existingEntity) {
             // create 命中已存在实体 → 拒绝
             const [nextSeqRow] = await tx
