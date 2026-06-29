@@ -27,13 +27,14 @@ import {
   type ThumbnailStatus,
   type WardrobeItem,
 } from "@/lib/types";
-import { generateThumbnailSafe } from "@/lib/thumbnail-runtime";
+import { generateThumbnailSafe, prepareGarmentThumbnail } from "@/lib/thumbnail-runtime";
+import type { NormalizedCropBox } from "@/lib/image";
 import { getWardrobeSnapshot } from "@/lib/data-repo";
 import { bridgeGarmentUpdate } from "@/lib/cloud-sync/garment-bridge";
 import { recordDiagnosticEvent } from "@/lib/diagnostic-log";
 
 export type ThumbnailJob =
-  | { kind: "item"; itemId: number; sourceDataUrl: string; enqueuedAt: number }
+  | { kind: "item"; itemId: number; originalDataUrl: string; cropBox?: NormalizedCropBox; cropRevision: number; enqueuedAt: number }
   | { kind: "reference"; itemId: number; refId: string; sourceDataUrl: string; enqueuedAt: number };
 
 export type BackfillStatus = "idle" | "running" | "paused" | "cancelling" | "done";
@@ -170,7 +171,9 @@ class ThumbnailBackfill {
         this.enqueue({
           kind: "item",
           itemId: item.id,
-          sourceDataUrl: item.imageDataUrl,
+          originalDataUrl: item.imageDataUrl,
+          cropBox: item.cropBox,
+          cropRevision: item.cropRevision ?? 0,
           enqueuedAt: Date.now(),
         });
       }
@@ -343,7 +346,9 @@ class ThumbnailBackfill {
       return {
         kind: "item",
         itemId: id,
-        sourceDataUrl: item.imageDataUrl,
+        originalDataUrl: item.imageDataUrl,
+        cropBox: item.cropBox,
+        cropRevision: item.cropRevision ?? 0,
         enqueuedAt: Date.now(),
       };
     }
@@ -492,10 +497,13 @@ class ThumbnailBackfill {
 
   private async processJob(job: ThumbnailJob): Promise<{ ok: boolean; errorMessage: string }> {
     try {
-      if (typeof job.sourceDataUrl !== "string" || !job.sourceDataUrl) {
-        return { ok: false, errorMessage: "源图 dataURL 为空" };
-      }
-      const thumb = await generateThumbnailSafe(job.sourceDataUrl);
+      const thumb = job.kind === "item"
+        ? await prepareGarmentThumbnail({
+          originalDataUrl: job.originalDataUrl,
+          cropBox: job.cropBox,
+          cropRevision: job.cropRevision,
+        })
+        : await generateThumbnailSafe(job.sourceDataUrl);
       if (thumb.thumbnailStatus !== "ready" || !thumb.thumbnailDataUrl) {
         await this.markJobFailed(job);
         recordDiagnosticEvent("thumbnail_backfill_failed", {
@@ -515,6 +523,26 @@ class ThumbnailBackfill {
       const fullItem = snapshot.items.find((i) => i.id === job.itemId);
       if (!fullItem) return { ok: false, errorMessage: "衣物已被删除, 无法写回" };
       if (job.kind === "item") {
+        const latestCropRevision = fullItem.cropRevision ?? 0;
+        if (latestCropRevision !== job.cropRevision) {
+          if (fullItem.imageDataUrl) {
+            this.enqueue({
+              kind: "item",
+              itemId: fullItem.id!,
+              originalDataUrl: fullItem.imageDataUrl,
+              cropBox: fullItem.cropBox,
+              cropRevision: latestCropRevision,
+              enqueuedAt: Date.now(),
+            });
+          }
+          recordDiagnosticEvent("thumbnail_backfill_stale_job_discarded", {
+            key: jobKey(job),
+            itemId: job.itemId,
+            jobCropRevision: job.cropRevision,
+            latestCropRevision,
+          });
+          return { ok: true, errorMessage: "" };
+        }
         // v0.9.43-dev 批次 4 §4: 写回不改变业务 updatedAt (Dexie update 只覆盖传入字段)
         await bridgeGarmentUpdate({
           ...fullItem,
@@ -522,6 +550,7 @@ class ThumbnailBackfill {
           thumbnailVersion: thumb.thumbnailVersion ?? CURRENT_THUMBNAIL_VERSION,
           thumbnailUpdatedAt: thumb.thumbnailUpdatedAt ?? now,
           thumbnailStatus: "ready" as ThumbnailStatus,
+          thumbnailCropRevision: latestCropRevision,
         });
         return { ok: true, errorMessage: "" };
       }

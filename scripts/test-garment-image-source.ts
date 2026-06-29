@@ -99,9 +99,34 @@ console.log("\n=== 边界：item 为 null/undefined ===");
 console.log("\n=== 边界：主图 imageDataUrl 缺失/无效 ===");
 {
   const empty = makeItem({ imageDataUrl: "" });
-  checkEq("主图空字符串 → []", deriveGarmentImageList(empty, []).length, 0);
+  checkEq("主图空字符串且无 thumbnail → []", deriveGarmentImageList(empty, []).length, 0);
   const garbage = makeItem({ imageDataUrl: "not-a-url" });
   checkEq("主图非 url → []", deriveGarmentImageList(garbage, []).length, 0);
+}
+
+console.log("\n=== 缩略图优先：有 thumbnail 无 original 仍创建主图条目 ===");
+{
+  const item = makeItem({
+    imageDataUrl: "",
+    thumbnailDataUrl: "data:image/webp;base64,THUMB",
+  });
+  const list = deriveGarmentImageList(item, []);
+  checkEq("长度 1", list.length, 1);
+  checkEq("主图 imageDataUrl 保持为空", list[0]?.imageDataUrl, "");
+  checkEq("card 使用 thumbnail", list[0]?.cardImageDataUrl, "data:image/webp;base64,THUMB");
+  checkEq("display 仍等待 original", list[0]?.displayImageDataUrl, "");
+}
+
+console.log("\n=== 缩略图优先：有 original 无 thumbnail 不把 original 当 card 图 ===");
+{
+  const item = makeItem({
+    imageDataUrl: "data:image/png;base64,MAIN",
+    thumbnailDataUrl: undefined,
+  });
+  const list = deriveGarmentImageList(item, []);
+  checkEq("长度 1", list.length, 1);
+  checkEq("主图 original 保留给详情", list[0]?.imageDataUrl, "data:image/png;base64,MAIN");
+  checkEq("card 不 fallback original", list[0]?.cardImageDataUrl, "");
 }
 
 console.log("\n=== 手动 reference 排序：按 createdAt 升序 ===");

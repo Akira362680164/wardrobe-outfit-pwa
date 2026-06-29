@@ -1,3 +1,14 @@
+## 2026-06-29 / v2.0.15-test / Codex — 完成缩略图生成与缩略图优先展示阶段一修复
+
+- **目的**：按缺陷修复计划先修复已确认的本地缩略图错误，不新增云端链路诊断代码；云端恢复根因后续改用 root Android 模拟器与云端数据直接取证。
+- **版本**：保持 `2.0.15-test`，本阶段不构建 APK、不递增 Android `versionCode`。
+- **改动文件**：`src/lib/thumbnail-runtime.ts`（新增 `prepareGarmentThumbnail` 统一从完整原图 + cropBox 生成缩略图）、`src/components/wardrobe-app.tsx`（批量保存前强制补齐 ready 缩略图，失败阻止保存并保留草稿）、`src/lib/intake-save-adapters.ts`（未裁切数据 `cropRevision/thumbnailCropRevision=0`）、`src/lib/thumbnail-backfill.ts`（主图回填 job 携带 original/cropBox/cropRevision，写回前丢弃旧裁切版本 job 并重新入队最新版本）、`src/lib/garment-image-source.ts`（首页/卡片图片条目改为缩略图优先，有 thumbnail 无 original 也创建条目，有 original 无 thumbnail 不把原图当卡片图）、相关测试脚本。
+- **本地验证**：`npm run typecheck` 通过；`npm run test:logic:images` 65/65 通过；`npm run test:logic:intake-draft` 通过；`npm run test:logic:thumbnail-backfill` 25/25 通过；`npm run test:logic:cloud-assets-bridge` 13/13 通过；`npm run test:logic:cloud-assets-upload` 10/10 通过；`npm run test:logic:cloud-image-cache` 12/12 通过；`npm run test:logic:cloud-assets-recovery` 22/22 通过；`npm run build` 通过；`git diff --check` 通过；`node scripts/review-gate.mjs` 判定 high。
+- **已知测试缺口**：`npx tsx scripts/test-thumbnail.ts` 仍因既有脚本引用已删除的 `src/lib/migrate` 失败，本次未修改该失效脚本。
+- **风险门禁**：**high**（图片展示、录入保存、后台缩略图回填和移动端主界面链路）。
+- **未触发 subagent**：用户未通知。
+- **未验证风险**：尚未在 Android 模拟器完成真实录入、同步、卸载重装和云端图片恢复取证；本阶段未新增临时诊断代码。
+
 ## 2026-06-29 / v2.0.14-test / Claude Code — 安装 Android 模拟器并补全 AGENTS.md 启动流程
 
 - **目的**：安装 Android Emulator（API 35 / arm64-v8a / Google APIs）和 AVD（wardrobe-test, Pixel 6），验证冷启动成功，并将完整模拟器启动流程写入 AGENTS.md。

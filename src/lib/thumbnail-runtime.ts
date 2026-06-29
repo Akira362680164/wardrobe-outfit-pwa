@@ -150,8 +150,27 @@ export async function createGarmentThumbnailFromOriginal(input: {
   originalDataUrl: string;
   cropBox?: NormalizedCropBox;
 }): Promise<ThumbnailGenResult> {
+  return prepareGarmentThumbnail({
+    originalDataUrl: input.originalDataUrl,
+    cropBox: input.cropBox,
+  });
+}
+
+/** Generate the persisted garment thumbnail from the original image plus current crop metadata. */
+export async function prepareGarmentThumbnail(input: {
+  originalDataUrl: string;
+  cropBox?: NormalizedCropBox;
+  cropRevision?: number;
+}): Promise<ThumbnailGenResult & { thumbnailCropRevision?: number }> {
   const croppedDataUrl = input.cropBox
     ? await cropFromOriginal(input.originalDataUrl, input.cropBox)
     : input.originalDataUrl;
-  return generateThumbnailSafe(croppedDataUrl);
+  const result = await generateThumbnailSafe(croppedDataUrl);
+  if (result.thumbnailStatus === "ready" && result.thumbnailDataUrl) {
+    return {
+      ...result,
+      thumbnailCropRevision: input.cropRevision ?? 0,
+    };
+  }
+  return result;
 }

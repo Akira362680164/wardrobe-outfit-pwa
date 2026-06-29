@@ -113,8 +113,26 @@ const resetClearsFailed = /reset\s*\(\s*\)\s*:\s*void\s*\{[\s\S]{0,500}?failedIt
 check("reset() 内部调用 failedItemsByKey.clear()", resetClearsFailed);
 
 check(
-  "thumbnail-backfill 使用 generateThumbnailSafe 而不是直接 createThumbnailDataUrl",
-  /generateThumbnailSafe/.test(thumbBackfill) && !/createThumbnailDataUrl/.test(thumbBackfill),
+  "thumbnail-backfill 使用运行时缩略图 helper 而不是直接 createThumbnailDataUrl",
+  /(generateThumbnailSafe|prepareGarmentThumbnail)/.test(thumbBackfill) && !/createThumbnailDataUrl/.test(thumbBackfill),
+);
+
+check(
+  "主图回填 job 携带 originalDataUrl + cropBox + cropRevision",
+  /originalDataUrl:\s*string/.test(thumbBackfill)
+    && /cropBox\?:\s*NormalizedCropBox/.test(thumbBackfill)
+    && /cropRevision:\s*number/.test(thumbBackfill),
+);
+
+check(
+  "主图回填调用 prepareGarmentThumbnail 并传入 cropBox/cropRevision",
+  /prepareGarmentThumbnail\(\{[\s\S]{0,300}?cropBox:\s*job\.cropBox[\s\S]{0,120}?cropRevision:\s*job\.cropRevision/.test(thumbBackfill),
+);
+
+check(
+  "主图回填写回前检查最新 cropRevision 并丢弃旧 job",
+  /latestCropRevision\s*!==\s*job\.cropRevision/.test(thumbBackfill)
+    && /thumbnail_backfill_stale_job_discarded/.test(thumbBackfill),
 );
 
 console.log("\n=== §5.5 断言 5-6: SettingsView 失败摘要 + 重试失败项按钮 ===");

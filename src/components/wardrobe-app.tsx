@@ -70,7 +70,7 @@ import {
   MotionToast,
 } from "@/components/motion-common";
 import { ease, spring } from "@/lib/motion-tokens";
-import { createGarmentThumbnailFromOriginal, generateThumbnailSafe } from "@/lib/thumbnail-runtime";
+import { createGarmentThumbnailFromOriginal, generateThumbnailSafe, prepareGarmentThumbnail } from "@/lib/thumbnail-runtime";
 import { backfill } from "@/lib/thumbnail-backfill";
 import { countMissingThumbnails } from "@/lib/thumbnail";
 import { GarmentImage } from "@/components/garment-image";
@@ -733,7 +733,8 @@ export function WardrobeApp({ cloudAuth }: { cloudAuth?: WardrobeCloudAuth } = {
     let saved = 0;
     try {
       for (const draft of drafts) {
-        const item = garmentDraftToWardrobeItem(draft, { now });
+        const readyDraft = await ensureGarmentDraftThumbnail(draft);
+        const item = garmentDraftToWardrobeItem(readyDraft, { now });
         if (item.imageDataUrl) {
           const newId = createLegacyItemId();
           await bridgeGarmentCreate({ ...item, id: newId });
@@ -747,9 +748,40 @@ export function WardrobeApp({ cloudAuth }: { cloudAuth?: WardrobeCloudAuth } = {
       recordDiagnosticEvent("create_single_item_batch_saved", { count: saved, returnRoute: navigation.createReturnRoute });
       showMessage(`已保存 ${saved} 件单品`);
     } catch (err) {
-      showMessage("保存单品失败，请重试", "error");
+      showMessage(err instanceof Error && err.message === "GARMENT_THUMBNAIL_GENERATION_FAILED"
+        ? "缩略图生成失败，请重试"
+        : "保存单品失败，请重试", "error");
       throw err;
     }
+  }
+
+  async function ensureGarmentDraftThumbnail(draft: GarmentIntakeDraft): Promise<GarmentIntakeDraft> {
+    if (!draft.imageDataUrl) throw new Error("GARMENT_ORIGINAL_IMAGE_MISSING");
+    const cropRevision = draft.cropRevision ?? (draft.cropBox ? 1 : 0);
+    if (
+      draft.thumbnailDataUrl
+      && (draft.thumbnailCropRevision ?? cropRevision) === cropRevision
+    ) {
+      return {
+        ...draft,
+        cropRevision,
+        thumbnailCropRevision: draft.thumbnailCropRevision ?? cropRevision,
+      };
+    }
+    const thumbnail = await prepareGarmentThumbnail({
+      originalDataUrl: draft.imageDataUrl,
+      cropBox: draft.cropBox,
+      cropRevision,
+    });
+    if (thumbnail.thumbnailStatus !== "ready" || !thumbnail.thumbnailDataUrl) {
+      throw new Error("GARMENT_THUMBNAIL_GENERATION_FAILED");
+    }
+    return {
+      ...draft,
+      cropRevision,
+      thumbnailDataUrl: thumbnail.thumbnailDataUrl,
+      thumbnailCropRevision: thumbnail.thumbnailCropRevision ?? cropRevision,
+    };
   }
   async function updateItemStatus(item: WardrobeItem, status: GarmentStatus) {
     if (!item.id) return;

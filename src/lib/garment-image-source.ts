@@ -90,13 +90,14 @@ export function deriveGarmentImageList(
   if (!item) return [];
   const now = new Date().toISOString();
   const mainUrl = item.imageDataUrl;
-  if (!isValidImageUrl(mainUrl)) return [];
+  const mainThumbnailUrl = item.thumbnailDataUrl ?? "";
+  if (!isValidImageUrl(mainUrl) && !isValidImageUrl(mainThumbnailUrl)) return [];
 
   const result: GarmentImageEntry[] = [
     {
       imageDataUrl: mainUrl,
-      // v0.9.43-dev 批次 3: 主图 cardImageDataUrl 优先用缩略图
-      cardImageDataUrl: item.thumbnailDataUrl ?? "",
+      // Card/list surfaces are thumbnail-first and never fall back to the full original.
+      cardImageDataUrl: isValidImageUrl(mainThumbnailUrl) ? mainThumbnailUrl : "",
       displayImageDataUrl: mainUrl,
       source: "main",
       renderKind: "image",
@@ -104,7 +105,7 @@ export function deriveGarmentImageList(
       createdAt: safeTimestamp(item.createdAt, now),
     },
   ];
-  const seen = new Set<string>([mainUrl]);
+  const seen = new Set<string>([mainUrl, mainThumbnailUrl].filter(Boolean));
 
   // 1) 手动添加的参考穿搭图
   const manualRefs: ReferenceOutfitImage[] = Array.isArray(item.referenceOutfitImages)
@@ -123,8 +124,8 @@ export function deriveGarmentImageList(
     seen.add(ref.imageDataUrl);
     result.push({
       imageDataUrl: ref.imageDataUrl,
-      // v0.9.43-dev 批次 3: 参考图 cardImageDataUrl 优先用 ref.thumbnailDataUrl
-      cardImageDataUrl: pickCardImage(ref.thumbnailDataUrl, ref.imageDataUrl),
+      // Card/list surfaces are thumbnail-first and never fall back to the full original.
+      cardImageDataUrl: isValidImageUrl(ref.thumbnailDataUrl) ? ref.thumbnailDataUrl : "",
       displayImageDataUrl: ref.imageDataUrl,
       source: "reference_outfit",
       renderKind: "image",
@@ -170,19 +171,6 @@ export function deriveGarmentImageList(
   }
 
   return result;
-}
-
-/**
- * v0.9.43-dev 批次 3: card 缩略图选图 helper。
- * - thumbnailDataUrl 存在且非空 → 用之
- * - 否则 fallback 到 imageDataUrl
- * - 都缺失 → 返回空串 (调用方需自行决定 fallback 到占位图)
- */
-function pickCardImage(thumbnailDataUrl: string | undefined, imageDataUrl: string): string {
-  if (typeof thumbnailDataUrl === "string" && thumbnailDataUrl.length > 0) {
-    return thumbnailDataUrl;
-  }
-  return imageDataUrl;
 }
 
 /**
