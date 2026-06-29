@@ -16,9 +16,8 @@
  */
 
 import type { TemperatureRange } from "@/lib/types";
+import { TEMPERATURE_MIN_C as TEMP_MIN, TEMPERATURE_MAX_C as TEMP_MAX } from "@/lib/temperature-range";
 
-const TEMP_MIN = -20;
-const TEMP_MAX = 40;
 
 /** 0-40℃ 冷蓝→热红渐变。 */
 const TEMP_GRADIENT =

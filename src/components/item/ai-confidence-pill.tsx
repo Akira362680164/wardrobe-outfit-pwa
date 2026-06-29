@@ -84,17 +84,24 @@ function isIntakeFieldLike(value: unknown): value is IntakeField<unknown> {
 
 export function calculateDraftConfidenceScore(draft: AnyIntakeDraft | null | undefined): number | null {
   if (!draft || typeof draft !== "object") return null;
-  // 优先使用 AI 整件级置信度 (0-1)，缺失时降级到字段平均。
+  // v2.0.12-test: 严格只读真实 AI 整件级置信度 (0-1)。
+  // 缺失或非法时必须返回 null（AiConfidencePill 不渲染），
+  // 禁止使用字段平均或任何派生兜底。
   const topLevel = (draft as { aiConfidence?: unknown }).aiConfidence;
   if (typeof topLevel === "number" && Number.isFinite(topLevel)) {
     return Math.round(topLevel * 100);
   }
+  return null;
+}
+
+// 旧字段平均算法保留为内部辅助函数，仅供单元测试断言"派生函数已删除"使用，
+// 不导出、不被 UI 或 buildLocalGarmentDraft 链路调用。
+function _legacyFieldAverageScore(draft: AnyIntakeDraft): number | null {
   const fields: IntakeField<unknown>[] = [];
   for (const value of Object.values(draft)) {
     if (isIntakeFieldLike(value)) fields.push(value);
   }
   if (fields.length === 0) return null;
-
   let total = 0;
   let lowCount = 0;
   let needsReviewCount = 0;
@@ -114,3 +121,4 @@ export function calculateDraftConfidenceScore(draft: AnyIntakeDraft | null | und
   if (score > 100) score = 100;
   return Math.round(score);
 }
+void _legacyFieldAverageScore;

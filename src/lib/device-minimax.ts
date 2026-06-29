@@ -1840,11 +1840,15 @@ function sanitizeOptionalText(value: unknown): string | undefined {
 function normalizeTemperatureRange(value: unknown): { minC?: number; maxC?: number } | undefined {
   if (!value || typeof value !== "object") return undefined;
   const record = value as Record<string, unknown>;
+  // v2.0.12-test: 保留 AI 返回的负数（不截断为 0），仅校验非有限数；minC <= maxC 校验由 validateTemperatureRange 负责。
   const min = Number(readFirstDefined(record, ["minC", "min", "minTemperature", "最低温"]));
   const max = Number(readFirstDefined(record, ["maxC", "max", "maxTemperature", "最高温"]));
   const result: { minC?: number; maxC?: number } = {};
   if (Number.isFinite(min)) result.minC = min;
   if (Number.isFinite(max)) result.maxC = max;
+  if (typeof result.minC === "number" && typeof result.maxC === "number" && result.minC > result.maxC) {
+    return undefined;
+  }
   return result.minC === undefined && result.maxC === undefined ? undefined : result;
 }
 

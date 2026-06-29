@@ -18,9 +18,8 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import type { TemperatureRange } from "@/lib/types";
+import { TEMPERATURE_MIN_C as TEMP_MIN, TEMPERATURE_MAX_C as TEMP_MAX } from "@/lib/temperature-range";
 
-const TEMP_MIN = -20;
-const TEMP_MAX = 40;
 const DEFAULT_STEP = 1;
 const HANDLE_VISUAL = 20; // 视觉圆点
 const HANDLE_HIT = 44; // 触摸/鼠标命中区（≥44px per AGENTS.md）

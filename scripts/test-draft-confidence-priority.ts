@@ -56,7 +56,7 @@ const draftNoAi: GarmentIntakeDraft = buildLocalGarmentDraft({
   now: "2026-06-29T08:00:00.000Z",
 });
 const scoreNoAi = calculateDraftConfidenceScore(draftNoAi);
-check("无 aiConfidence 时降级字段平均 (有效数字)", typeof scoreNoAi === "number" && scoreNoAi > 0 && scoreNoAi <= 100, `actual=${scoreNoAi}`);
+check("无 aiConfidence 时返回 null (严格无降级)", scoreNoAi === null, `actual=${scoreNoAi}`);
 
 const draftAiInvalid: GarmentIntakeDraft = {
   ...buildLocalGarmentDraft({
@@ -70,7 +70,7 @@ const draftAiInvalid: GarmentIntakeDraft = {
   aiConfidence: NaN as unknown as number,
 };
 const scoreAiInvalid = calculateDraftConfidenceScore(draftAiInvalid);
-check("aiConfidence=NaN 时降级字段平均", typeof scoreAiInvalid === "number" && scoreAiInvalid > 0, `actual=${scoreAiInvalid}`);
+check("aiConfidence=NaN 时返回 null (严格无降级)", scoreAiInvalid === null, `actual=${scoreAiInvalid}`);
 
 console.log("\n=== buildLocalGarmentDraft 接受 aiConfidence ===");
 const passedThrough = buildLocalGarmentDraft({
