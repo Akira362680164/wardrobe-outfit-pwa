@@ -239,24 +239,21 @@ async function requestBinary(
   const url = buildUrl(path);
   const requestId = crypto.randomUUID();
   const startedAt = performance.now();
-  const transport = Capacitor.isNativePlatform() && /^https?:\/\//.test(url) ? "capacitor_http" : "fetch";
+  // CapacitorHttp.request only accepts strings/JSON on native platforms. The
+  // enabled CapacitorHttp fetch patch is the supported path for Blob bodies.
+  const transport = "fetch" as const;
   const eventName = method === "PUT" ? "asset_upload_request" : "asset_download_request";
   recordDiagnosticEvent("asset", eventName, {
     phase: "started", severity: "info", requestId, endpoint: path, method, transport,
     metadata: { assetId: assetRequestPart(path, 3), variant: assetRequestPart(path, 4) },
   });
   try {
-    if (transport === "capacitor_http") {
-      const response = await CapacitorHttp.request({ method, url, headers, data: body, responseType });
-      if (response.status >= 400) throw toAssetsError(response.status, response.data);
-      recordDiagnosticEvent("asset", eventName, {
-        phase: "succeeded", severity: "info", requestId, endpoint: path, method, transport,
-        httpStatus: response.status, durationMs: Math.round(performance.now() - startedAt),
-      });
-      return { data: response.data, headers: response.headers ?? {}, status: response.status, requestId, transport };
-    }
-
-    const response = await fetch(url, { method, headers, body });
+    // Capacitor's fetch patch preserves File bytes via its base64/file path;
+    // a Blob becomes a ReadableStream and is UTF-8 decoded, corrupting images.
+    const fetchBody = method === "PUT" && body && Capacitor.isNativePlatform()
+      ? new File([body], `${assetRequestPart(path, 3) ?? "asset"}-${assetRequestPart(path, 4) ?? "content"}`, { type: body.type })
+      : body;
+    const response = await fetch(url, { method, headers, body: fetchBody });
     if (!response.ok) throw toAssetsError(response.status, await parseFetchJson(response));
     const data = responseType === "json" ? await response.json() : await response.arrayBuffer();
     recordDiagnosticEvent("asset", eventName, {

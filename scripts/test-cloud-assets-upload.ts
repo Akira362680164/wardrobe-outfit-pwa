@@ -125,6 +125,25 @@ async function main() {
   });
   check("到期的 failed retryable 资产会重试", retryCalled);
 
+  const legacyValidationId = await addPending(db, "2026-06-27T15:00:04.500Z", "failed", false);
+  const legacyRecord = await db.assets.get(legacyValidationId);
+  const legacyPayload = legacyRecord?.payload as LocalAssetPayload;
+  legacyPayload.uploads.original = {
+    ...legacyPayload.uploads.original!,
+    attemptCount: 1,
+    lastErrorCode: "ASSET_UPLOAD_VALIDATION_ERROR",
+  };
+  await db.assets.update(legacyValidationId, { payload: legacyPayload });
+  let legacyRetryCalled = false;
+  await uploadPendingAssets(db, {
+    dataUrlToBlob: async () => new Blob([new Uint8Array(16)], { type: "image/png" }),
+    uploadContent: async (request) => {
+      legacyRetryCalled = request.params.assetId === legacyValidationId;
+      return { status: "ok", assetId: request.params.assetId, variant: request.params.variant, uploadStatus: "uploaded", sha256: "a".repeat(64), mimeType: "image/png", sizeBytes: 16, updatedAt: new Date().toISOString() };
+    },
+  });
+  check("旧 Android Blob 传输留下的首次 validation 失败在升级后重试一次", legacyRetryCalled);
+
   const guardedId = await addPending(db, "2026-06-27T15:00:05.000Z");
   let attempted = false;
   setupSession(1);

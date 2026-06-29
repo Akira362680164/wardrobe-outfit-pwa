@@ -1,3 +1,15 @@
+## 2026-06-30 / v2.0.17-test / Codex — 修复 Android 卡片零宽与云端图片二进制上传
+
+- **目的**：修复已由 Android WebView 和服务端真实数据确认的两个失败阶段：首页图片已解码但布局宽度为 0，以及 Capacitor Android 二进制上传正文被 UTF-8 转换后触发 `asset_size_mismatch`。
+- **版本**：`2.0.16-test` → `2.0.17-test`，Android `versionCode` 由 `20016` → `20017`。
+- **修复**：衣物瀑布流卡片媒体槽增加 `w-full`，防止绝对定位子内容在 WebView flex button 中使宽度收缩为 0；资产二进制请求改用已开启的 patched `fetch`，并在原生 PUT 中将 Blob 包装为 File，使 Capacitor 走 base64/file 原字节路径；服务端校验错误保留精确 code；旧 `ASSET_UPLOAD_VALIDATION_ERROR` 首次失败在升级后补重试一次。
+- **改动文件**：`src/components/item-shell/catalog-waterfall-card-shell.tsx`、`src/lib/cloud-sync/{cloud-assets-api,asset-upload-coordinator}.ts`、三个相关测试脚本、`package.json`、`package-lock.json`。
+- **本地验证**：`npm run typecheck`、`npm run test:logic:all`、资产 API/上传/共享卡片针对性测试、`git diff --check` 均通过；`npm run android:apk` 构建 `2.0.17-test` 成功。
+- **Android 取证**：Pixel 6 AVD / Android 15 中，修复前两张有效 JPEG 的 DOM 宽度均为 `0px`；修复后均为 `182.57px`。App 真实上传的两个 asset / 四个 variant 全部转为 `uploaded`，四次服务端 GET 均为 HTTP 200，响应 SHA、实际字节 SHA 与本地期望 SHA 一致。一次性测试账号已完成两次整包卸载、重装、登录，两张首页图均恢复，original/thumbnail 四个缓存的字节数和 SHA 均匹配；竖屏与横屏均已视觉检查，logcat 无 App `FATAL EXCEPTION`。
+- **风险门禁**：**high**（Android APK、二进制云传输、持久缓存、卸载重装恢复、移动端布局）。
+- **未触发 subagent**：用户未通知。
+- **未验证风险**：本轮使用 Android 模拟器而非物理真机；云 API 仍是临时 HTTP 地址，生产发布前仍需切换 HTTPS。
+
 ## 2026-06-30 / v2.0.16-test / Codex — 增加图片资产端到端诊断
 
 - **目的**：在不预设 Android 卸载重装后图片恢复根因的前提下，补齐上传、远端响应、下载、SHA-256、持久缓存、Mapper 和页面刷新证据，并复用现有“上传诊断数据”工单入口。

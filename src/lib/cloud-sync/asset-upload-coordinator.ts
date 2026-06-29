@@ -268,6 +268,14 @@ async function findPendingAssets(db: AccountWorkspaceDatabase): Promise<Workspac
 
 function isUploadDue(upload: LocalAssetUploadEntry, now = new Date().toISOString()): boolean {
   if (upload.status === "local_pending") return true;
+  // v2.0.16 Android sent Blob through CapacitorHttp.request, which persisted a
+  // generic validation failure. Retry that legacy first failure once after the
+  // binary transport fix; a second failure remains stopped.
+  if (
+    upload.status === "failed"
+    && upload.lastErrorCode === "ASSET_UPLOAD_VALIDATION_ERROR"
+    && (upload.attemptCount ?? 0) <= 1
+  ) return true;
   return upload.status === "failed"
     && upload.retryable === true
     && (upload.nextAttemptAt ?? "") <= now;
@@ -279,5 +287,5 @@ function classifyUploadError(error: unknown): string {
   if (error.status === 408) return "ASSET_UPLOAD_TIMEOUT";
   if (error.status === 429) return "ASSET_UPLOAD_RATE_LIMITED";
   if ([500, 502, 503, 504].includes(error.status)) return "ASSET_UPLOAD_SERVER_ERROR";
-  return "ASSET_UPLOAD_VALIDATION_ERROR";
+  return error.code || "ASSET_UPLOAD_VALIDATION_ERROR";
 }
