@@ -1,3 +1,32 @@
+## 2026-06-29 / v2.0.11-test / Codex — 修复 P0/P1/P2：图片回填、默认衣橱去重、AI 置信度、温度、星号、账号页
+
+- **目的**：执行 `/Users/fangzheng/Downloads/LOCAL_REPO_URGENT_FIX_EXECUTION_PROMPT.md` 中的 4 个 commit 修复，覆盖 P0/P1/P2 七个问题，全部在 `main` 上基于 `8cf2efd` 完成；交付 Android APK。
+- **版本**：`2.0.10-test` → `2.0.11-test`，Android `versionCode` 由 `20010` → `20011`。
+- **改动文件**（按 commit 拆分）：
+  - `fix: hydrate images from cloud assets in workspace ui snapshot`：`src/lib/cloud-sync/workspace-ui-mapper.ts`、`scripts/test-workspace-ui-image-hydration.ts`。
+  - `fix: dedupe default closet + use AI-level confidence + dynamic needs review count`：`src/lib/cloud-sync/workspace-ui-mapper.ts`、`src/components/garment-intake-flow.tsx`、`src/components/item/ai-confidence-pill.tsx`、`src/lib/intake-draft.ts`、`src/lib/intake-local-draft.ts`、`scripts/test-draft-confidence-priority.ts`、`scripts/test-step3-needs-review-count.ts`。
+  - `fix: extend temperature range to -20-40°C and inline closet name asterisk`：`src/components/temperature-range-bar.tsx`、`src/components/temperature-range-slider.tsx`、`src/components/wardrobe-app.tsx`、`scripts/test-temperature-range-and-star.ts`。
+  - `fix: simplify account management UI and subpage actions`：`src/components/auth/account-views.tsx`、`src/components/wardrobe-app.tsx`、`scripts/test-account-management-cleanup.ts`。
+  - `package.json`（版本号 2.0.10-test → 2.0.11-test）。
+- **根因与修复要点**：
+  1. **P0-1 图片丢失**：`toCloudGarmentPayload` 已将 base64 移走，entity.payload 不再含 `imageDataUrl`；UI 快照 `readWorkspaceUiSnapshot` 仍从 payload 直读导致首页/详情页"暂无图片"。修复：从 `db.assets` 构建 `AssetIndex`，按 `ownerEntityId + fieldName` 把 original/thumbnail 写回 UI 模型（garment/wishlist/outfit + outfitRealImages）；缺失时降级到 payload fallback。
+  2. **P0-2 重复默认衣橱**：旧 `workspace-ui-mapper` 孤儿衣物补默认衣橱逻辑会 push 新 uiLocations，与已存在的 home 重复。修复：孤儿衣物 locationId 重定向到 home，新增 `dedupeLocations` 按 id 合并多条衣橱。
+  3. **P1-3 真实 AI 置信度**：`DraftQualityRow` 走 `calculateDraftConfidenceScore` 的字段加权平均，忽略 `aiTag.confidence`。修复：草稿顶层新增 `aiConfidence?: number`，`buildLocalGarmentDraft` 接收并 clamp 到 [0, 1]，`garment-intake-flow` 调用时传入 `aiTag.confidence`，`calculateDraftConfidenceScore` 优先返回 `Math.round(aiConfidence * 100)`。
+  4. **P1-4 待确认 1 固定**：`STEP3_VISIBLE_REVIEW_FIELD_KEYS` 包含 `locationId` / `status` 等 Step 3 UI 不展示字段，加上默认空 subcategory 始终 needsReview，数字固定。修复：可见集合移除 `locationId` / `status`，让 `visibleNeedsReviewFields` 只统计 Step 3 实际显示胶囊的字段。
+  5. **P1-5/6 账号管理页清理**：删除"本机衣橱保留"、"MiniMax Key"说明卡、`SyncConflictsPanel` 整个函数、"退出当前设备"和"退出全部设备"按钮；新增"退出登录"二次确认（取消 / 确认退出）。
+  6. **P1-6 全局加号白名单**：`shouldShowGlobalCreate` 新增 `GLOBAL_CREATE_DENIED_ROUTES` (`settings_home` / `account_management` / `change_password`)，设置/账号/修改密码子页不再误显加号。
+  7. **P2-7 温度范围**：`TemperatureRangeSlider` / `TemperatureRangeBar` 的 `TEMP_MIN` 从 0 改为 -20，`TEMP_MAX` 保持 40。
+  8. **P2-8 星号错位**：添加衣橱 / 编辑衣橱 字段标题用 `<span className="flex items-center gap-1">` 包裹文字和星号；input 增加 `required` + `aria-required="true"`。
+- **本地验证**：
+  - `npm run typecheck` 通过。
+  - `npm run build` 通过。
+  - 新增 4 个 test 套件全部通过：`test-workspace-ui-image-hydration` (11/11)、`test-draft-confidence-priority` (10/10)、`test-step3-needs-review-count` (6/6)、`test-account-management-cleanup` (13/13)、`test-temperature-range-and-star` (9/9)，合计 49/49。
+  - 与本任务相关的回归测试均通过：`test-garment-image-source` (58/58)、`test-intake-confirm-pill-row`、`test-wardrobe-app-split` (47/47)、`test-intake-upgrade-patch5` (28/28)、`test-recommendations` (46/46)、`test-color-catalog` (94/94)、`test-old-garment-default-location-sync` 等。
+  - `test:logic:outfit-asset-center` 等若干历史 stale 断言仍失败（已在 VERSION_HISTORY v2.0.10-test 标注为 `v2.0.6-test` 移除旧 Dexie 后的遗留问题，与本次无关）。
+- **风险门禁**：**high**（P0 数据丢失 / P1 真实数据可见性 / APK 交付 / 跨多模块改动）。
+- **未触发 subagent**：用户未通知。
+- **未验证风险**：当前无 Android 真机连接，未做真机交互验收；浏览器实操流程（流程 A-F）因本机无测试账号未运行，将在真机阶段补做。
+
 ## 2026-06-29 / v2.0.10-test / Codex — 部署默认衣橱同步修复并交付 APK
 
 - **目的**：将已验证的默认衣橱/同步修复部署到当前测试服务器，并交付使用固定个人签名的 Android APK。
