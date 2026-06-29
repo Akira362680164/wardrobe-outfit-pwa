@@ -38,7 +38,6 @@ function AuthenticatedWardrobeApp() {
         workspace,
         isBusy: auth.isBusy,
         onLogout: auth.logout,
-        onLogoutAll: auth.logoutAll,
         onChangePassword: auth.changePassword,
       }}
     />

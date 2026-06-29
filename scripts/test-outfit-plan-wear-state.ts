@@ -203,10 +203,10 @@ check(
   /handleAddOutfitToDate\([^)]+mode:\s*"auto"\s*\|\s*"planned"\s*\|\s*"worn"\s*=\s*"auto"/.test(outfitListView),
 );
 
-// handleSelectOutfitForPlan 调用 handleAddOutfitToDate 不传 mode，依赖 auto 默认状态机
+// handleSelectOutfitForPlan 显式传 auto，同时保留主套/备选选项
 check(
-  "handleSelectOutfitForPlan 调用 handleAddOutfitToDate(selectOutfitDate, outfit.id) 不传 mode",
-  /function handleSelectOutfitForPlan[\s\S]*?handleAddOutfitToDate\(selectOutfitDate,\s*outfit\.id\)/.test(outfitListView),
+  "handleSelectOutfitForPlan 调用 handleAddOutfitToDate 时使用 auto 模式",
+  /function handleSelectOutfitForPlan[\s\S]*?handleAddOutfitToDate\(selectOutfitDate,\s*outfit\.id,\s*"auto",\s*opts\)/.test(outfitListView),
 );
 
 // addOutfitToDate 通过 resolveAddOutfitIntent 处理 past/current/future

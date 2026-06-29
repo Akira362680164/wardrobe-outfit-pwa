@@ -1,6 +1,5 @@
 import { getOutfitCover, getCollageImageUrls, countValidItems } from "../src/lib/outfit-cover";
-import { migrateSavedOutfitRecord, migrateOutfitRealImageRecord, migrateOutfitRealImageRecords } from "../src/lib/migrate";
-import type { SavedOutfit, WardrobeItem, OutfitRealImage } from "../src/lib/types";
+import type { SavedOutfit, WardrobeItem } from "../src/lib/types";
 import { toggleTodayWornDate, getLocalDateKey } from "../src/lib/wear-records";
 import { buildSyncedOutfitPatch, buildSyncedPurchasedWishlistPatch } from "../src/lib/wardrobe-reference-sync";
 import { buildColorInfo } from "../src/lib/color-fields";
@@ -92,51 +91,6 @@ console.log("\n=== wardrobe reference sync ===");
   check("synced purchased wishlist copies name", wishlistPatch.name === "编辑后单品");
   check("synced purchased wishlist copies price", wishlistPatch.price === 199);
   check("synced purchased wishlist clears deleted marker", wishlistPatch.convertedItemDeletedAt === undefined);
-}
-
-// ─── migrateOutfitRealImageRecord ───
-console.log("\n=== migrateOutfitRealImageRecord ===");
-{
-  const r1 = migrateOutfitRealImageRecord({ id: "r1", imageDataUrl: "data:image/png;base64,x", caption: "上海出差", takenAt: "2026-06-10" });
-  check("valid record", r1 !== null && r1.id === "r1" && r1.imageDataUrl === "data:image/png;base64,x" && r1.caption === "上海出差");
-
-  const r2 = migrateOutfitRealImageRecord({ imageDataUrl: "" });
-  check("no imageDataUrl → null", r2 === null);
-
-  const r3 = migrateOutfitRealImageRecord(null);
-  check("null → null", r3 === null);
-
-  const r4 = migrateOutfitRealImageRecord({ imageDataUrl: "data:image/png;base64,y" });
-  check("generated id", r4 !== null && r4.id.startsWith("outfit-real-image-"));
-
-  const r5 = migrateOutfitRealImageRecord({ imageDataUrl: "data:image/png;base64,z", caption: 123, takenAt: 456, sourceImageDataUrl: 789 });
-  check("non-string fields cleaned", r5 !== null && r5.caption === undefined && r5.takenAt === undefined && r5.sourceImageDataUrl === undefined);
-}
-
-// ─── migrateOutfitRealImageRecords ───
-console.log("\n=== migrateOutfitRealImageRecords ===");
-{
-  check("batch migration", migrateOutfitRealImageRecords([{ imageDataUrl: "data:image/png;base64,a" }, { imageDataUrl: "" }, null]).length === 1);
-  check("non-array → []", migrateOutfitRealImageRecords("bad").length === 0);
-}
-
-// ─── migrateSavedOutfitRecord: outfitRealImages ───
-console.log("\n=== migrateSavedOutfitRecord: outfitRealImages ===");
-{
-  const r1 = migrateSavedOutfitRecord({});
-  check("missing → []", (r1.outfitRealImages ?? []).length === 0);
-
-  const r2 = migrateSavedOutfitRecord({ outfitRealImages: "not-array" });
-  check("non-array → []", (r2.outfitRealImages ?? []).length === 0);
-
-  const r3 = migrateSavedOutfitRecord({ outfitRealImages: [{ imageDataUrl: "data:image/png;base64,a" }, { imageDataUrl: "" }] });
-  check("bad items filtered", (r3.outfitRealImages ?? []).length === 1);
-
-  const r4 = migrateSavedOutfitRecord({ autoCoverImageDataUrl: "data:image/png;base64,cover" });
-  check("autoCoverImageDataUrl string", r4.autoCoverImageDataUrl === "data:image/png;base64,cover");
-
-  const r5 = migrateSavedOutfitRecord({ autoCoverImageDataUrl: 123 });
-  check("autoCoverImageDataUrl non-string → undefined", r5.autoCoverImageDataUrl === undefined);
 }
 
 // ─── Worn record: outfit cascade ───

@@ -77,7 +77,7 @@ check("过去有计划无套装时提供补记已穿", /isPast \? "补记已穿"
 check("已有条目追加入口文案为添加备选穿搭", /添加备选穿搭/.test(outfitPlanDayCard));
 
 check("handleAddOutfitToDate 默认 auto 模式", /mode:\s*"auto"\s*\|\s*"planned"\s*\|\s*"worn"\s*=\s*"auto"/.test(outfitListView));
-check("handleSelectOutfitForPlan 使用被点击日期 selectOutfitDate", /handleAddOutfitToDate\(selectOutfitDate,\s*outfit\.id\)/.test(outfitListView));
+check("handleSelectOutfitForPlan 使用被点击日期 selectOutfitDate", /handleAddOutfitToDate\(selectOutfitDate,\s*outfit\.id,\s*"auto",\s*opts\)/.test(outfitListView));
 check("今天添加计划 toast 为已加入今日计划", /dateKey === todayKey \? "已加入今日计划"/.test(outfitListView));
 check("过去补记 toast 为已补记穿搭", /dateKey < todayKey \? "已补记穿搭"/.test(outfitListView));
 check("今天穿了 toast 为已记录今天穿了", /entry\.date === todayKey \? "已记录今天穿了"/.test(outfitListView));

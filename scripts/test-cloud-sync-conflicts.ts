@@ -125,7 +125,7 @@ async function main() {
   const engineSource = read("src/lib/cloud-sync/sync-engine.ts");
   const accountViewSource = read("src/components/auth/account-views.tsx");
   check("冲突时保留原 outbox payload", !/payload,\\n\\s*updatedAt/.test(engineSource));
-  check("账号页暴露冲突列表与两个解决动作", /同步冲突/.test(accountViewSource) && /保留本机/.test(accountViewSource) && /采用云端/.test(accountViewSource));
+  check("账号页不暴露同步冲突处理界面", !/同步冲突/.test(accountViewSource) && !/保留本机/.test(accountViewSource) && !/采用云端/.test(accountViewSource));
 
   const open = await listOpenSyncConflicts(workspace);
   check("列出未解决本地冲突", open.length === 1 && open[0].id === conflict.id);

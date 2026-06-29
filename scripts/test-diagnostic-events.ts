@@ -17,10 +17,9 @@
 //     10. edit_session_started / closed
 //     11. wardrobe_subpage_changed (search / wearStatistics / multiSelect / detail / edit / crop)
 //     12. pending_viewing_item_consumed (种草转换 → 衣物详情)
-//   P2 (3):
-//     13. db_transaction_started / succeeded / failed (runLoggedDbTransaction 包裹 7 处)
-//     14. minimax_api_called / succeeded / failed (nativePost 集中打点)
-//     15. app_visibility_changed + window_resize_observed
+//   P2 (2):
+//     13. minimax_api_called / succeeded / failed (nativePost 集中打点)
+//     14. app_visibility_changed + window_resize_observed
 //
 // 运行: npx tsx scripts/test-diagnostic-events.ts
 // ============================================================
@@ -234,41 +233,11 @@ check(
     /recordDiagnosticEvent\(\s*["']pending_viewing_item_consumed["']\s*,\s*\{[\s\S]*?returnTarget:/.test(wardrobeApp),
 );
 
-console.log("\n=== P2.1 db_transaction_started/succeeded/failed (runLoggedDbTransaction 包裹 7 处) ===");
+console.log("\n=== P2.1 主界面不再直接持有旧 Dexie 事务 ===");
 
 check(
-  "wardrobe-app 顶部定义 runLoggedDbTransaction 帮助函数",
-  /async function runLoggedDbTransaction\(/.test(wardrobeApp),
-);
-check(
-  "runLoggedDbTransaction 记录 db_transaction_started",
-  /recordDiagnosticEvent\(\s*["']db_transaction_started["']/.test(wardrobeApp),
-);
-check(
-  "runLoggedDbTransaction 记录 db_transaction_succeeded",
-  /recordDiagnosticEvent\(\s*["']db_transaction_succeeded["']/.test(wardrobeApp),
-);
-check(
-  "runLoggedDbTransaction 记录 db_transaction_failed",
-  /recordDiagnosticEvent\(\s*["']db_transaction_failed["']/.test(wardrobeApp),
-);
-check(
-  "runLoggedDbTransaction 失败时带 error 字段",
-  /recordDiagnosticEvent\(\s*["']db_transaction_failed["']\s*,\s*\{[\s\S]*?error:/.test(wardrobeApp),
-);
-const dbTransactionWrapCount = countMatches(wardrobeApp, /runLoggedDbTransaction\(\s*["'][a-z0-9_]+["']/g);
-check(
-  `wardrobe-app 包裹了 ${dbTransactionWrapCount} 处 db.transaction (>= 5)`,
-  dbTransactionWrapCount >= 5,
-  `实际 ${dbTransactionWrapCount} 处`,
-);
-check(
-  "wardrobe-app 中所有 db.transaction 调用都通过 runLoggedDbTransaction 包裹 (旧调用点 0 处)",
+  "wardrobe-app 中不存在旧 db.transaction 调用",
   countMatches(wardrobeApp, /await\s+db\.transaction\(/g) === 0,
-);
-check(
-  "db_transaction_succeeded / failed 事件带 durationMs 字段",
-  /durationMs:/.test(wardrobeApp),
 );
 
 console.log("\n=== P2.2 minimax_api_called/succeeded/failed (nativePost 集中打点) ===");

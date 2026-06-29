@@ -90,12 +90,12 @@ check("legal-document-view 组件存在", /LegalDocumentView/.test(read("src/com
 check("AndroidManifest 允许 cleartext traffic", /usesCleartextTraffic="true"/.test(read("android/app/src/main/AndroidManifest.xml")));
 check("构建环境校验脚本存在", read("scripts/validate-cloud-build-env.mjs").includes("validate-cloud-build-env") || read("scripts/validate-cloud-build-env.mjs").includes("Cloud Build Env"));
 check("android:sync 包含校验", /validate-cloud-build-env/.test(packageJson));
-check("版本号保持 2.0.3-test", /"version": "2.0.3-test"/.test(packageJson));
+check("版本号保持 2.0.13-test", /"version": "2.0.13-test"/.test(packageJson));
 
 // Existing checks that still apply
 check("WardrobeApp 接收 cloudAuth 可选参数", /export function WardrobeApp\(\{ cloudAuth \}: \{ cloudAuth\?: WardrobeCloudAuth \} = \{\}\)/.test(wardrobeApp));
 check("设置页账号卡只在 cloudAuth 存在时渲染", /\{cloudAuth \? \([\s\S]*账号服务[\s\S]*\) : null\}/.test(wardrobeApp));
-check("账号页说明 MiniMax Key 属于本机", /MiniMax Key 属于本机/.test(accountViews));
+check("账号页不再展示 MiniMax Key 说明", !/MiniMax Key 属于本机/.test(accountViews));
 check("package.json 暴露 auth-client-shell 测试", /"test:logic:auth-client-shell": "tsx scripts\/test-auth-client-shell\.ts"/.test(packageJson));
 check("test:logic:all 包含 auth-client-shell", /test:logic:auth-client-shell/.test(packageJson));
 check("package.json 暴露 workspace-registry 测试", /"test:logic:workspace-registry": "tsx scripts\/test-workspace-registry\.ts"/.test(packageJson));

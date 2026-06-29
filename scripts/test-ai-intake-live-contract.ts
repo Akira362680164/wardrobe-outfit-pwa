@@ -162,10 +162,11 @@ check(
   "编辑页 onConfirm 使用统一裁切提示",
   /onMessage\("裁切已更新，请保存衣物", "success"\)/.test(wardrobeApp),
 );
-// 23. 当前主图裁切路径不使用 sourceImageDataUrl 作 imageDataUrl 来源
+// 23. 编辑裁切只更新 cropBox/缩略图，不改主图或源图
+const editCropBlock = /if \(viewingItemCropJob\.target === "edit"\) \{([\s\S]*?)\n\s*\/\/ v0\.9\.32-dev/.exec(wardrobeApp)?.[1] ?? "";
 check(
   "当前主图裁切 (sourceKind=current) 保留 sourceImageDataUrl 不变",
-  /sourceKind\?:\s*"current"[\s\S]+?sourceImageDataUrl: current\.sourceImageDataUrl \|\| viewingItemCropJob\.dataUrl/.test(wardrobeApp),
+  /cropBox/.test(editCropBlock) && !/sourceImageDataUrl\s*:/.test(editCropBlock) && !/imageDataUrl\s*:/.test(editCropBlock),
 );
 
 console.log("\n=== 安全契约（不写入真实 Key） ===");

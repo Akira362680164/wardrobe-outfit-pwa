@@ -5,7 +5,7 @@ import { KeepAwake } from "@capacitor-community/keep-awake";
 import { Capacitor } from "@capacitor/core";
 import { useAppNavigationController } from "@/components/use-app-navigation-controller";
 import type { AppRoute } from "@/lib/app-route";
-import { getBackRoute, isDetailRoute, isIntakeRouteName } from "@/lib/app-route";
+import { getBackRoute, isDetailRoute, isGlobalCreateAllowedRoute, isIntakeRouteName } from "@/lib/app-route";
 import {
   Archive,
   BarChart3,
@@ -835,10 +835,9 @@ export function WardrobeApp({ cloudAuth }: { cloudAuth?: WardrobeCloudAuth } = {
   // v1.1.20-dev (方案 C): 改为基于 route 派生 — activeView 独立 state 已删除。
   const shouldShowGlobalCreate =
     !hideMobileNav &&
-    route.name !== "settings_home" &&
-    !isIntakeRouteName(route.name) &&
+    isGlobalCreateAllowedRoute(route.name) &&
     !outfitSubPageActive &&
-        !showExitDialog &&
+    !showExitDialog &&
     !showCreateSheet;
 
   // v1.1.20-dev (方案 C): create_outfit 现在在 handleCreateAction 同步调用 setRoute({name: "intake_outfit"}),
@@ -4669,10 +4668,7 @@ function SettingsView({
       <MotionSheet open={showAddWardrobe} onClose={() => setShowAddWardrobe(false)} panelClassName="!max-w-sm">
         <h3 className="mb-3 text-base font-semibold">添加衣橱</h3>
         <div className="grid gap-3">
-          <label className="grid gap-1 text-sm font-medium">
-            衣橱名称 <span className="text-red-500">*</span>
-            <input value={wardrobeFormName} onChange={(e) => setWardrobeFormName(e.target.value)} className="h-10 w-full rounded-lg border border-ink/10 bg-white px-3 text-sm outline-none focus:border-denim" placeholder="例如 办公室抽屉" />
-          </label>
+          <ClosetNameField value={wardrobeFormName} onChange={setWardrobeFormName} placeholder="例如 办公室抽屉" />
           <label className="grid gap-1 text-sm font-medium">
             衣橱简介
             <input value={wardrobeFormNote} onChange={(e) => setWardrobeFormNote(e.target.value)} className="h-10 w-full rounded-lg border border-ink/10 bg-white px-3 text-sm outline-none focus:border-denim" placeholder="选填" />
@@ -4691,10 +4687,7 @@ function SettingsView({
       <MotionSheet open={!!editWardrobeTarget} onClose={() => setEditWardrobeTarget(null)} panelClassName="!max-w-sm">
         <h3 className="mb-3 text-base font-semibold">编辑衣橱</h3>
         <div className="grid gap-3">
-          <label className="grid gap-1 text-sm font-medium">
-            衣橱名称 <span className="text-red-500">*</span>
-            <input value={wardrobeFormName} onChange={(e) => setWardrobeFormName(e.target.value)} className="h-10 w-full rounded-lg border border-ink/10 bg-white px-3 text-sm outline-none focus:border-denim" />
-          </label>
+          <ClosetNameField value={wardrobeFormName} onChange={setWardrobeFormName} />
           <label className="grid gap-1 text-sm font-medium">
             衣橱简介
             <input value={wardrobeFormNote} onChange={(e) => setWardrobeFormNote(e.target.value)} className="h-10 w-full rounded-lg border border-ink/10 bg-white px-3 text-sm outline-none focus:border-denim" />
@@ -4781,6 +4774,25 @@ function SettingsView({
       </MotionSheet>
 
     </div>
+  );
+}
+
+function ClosetNameField({ value, onChange, placeholder }: { value: string; onChange: (value: string) => void; placeholder?: string }) {
+  return (
+    <label className="grid gap-1 text-sm font-medium">
+      <span className="inline-flex items-center gap-0.5">
+        <span>衣橱名称</span>
+        <span className="text-red-500" aria-hidden="true">*</span>
+      </span>
+      <input
+        value={value}
+        onChange={(event) => onChange(event.target.value)}
+        className="h-10 w-full rounded-lg border border-ink/10 bg-white px-3 text-sm outline-none focus:border-denim"
+        placeholder={placeholder}
+        required
+        aria-required="true"
+      />
+    </label>
   );
 }
 

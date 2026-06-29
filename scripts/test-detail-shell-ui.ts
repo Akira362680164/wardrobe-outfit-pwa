@@ -87,7 +87,7 @@ const detailDeleteBlock = outfitListView.slice(detailDeleteStart, detailDeleteEn
 const outfitCardStart = outfitListView.indexOf('<div className="grid grid-cols-2 gap-3">');
 const outfitCardEnd = outfitListView.indexOf("{/* padding for global + */}", outfitCardStart);
 const outfitCardBlock = outfitListView.slice(outfitCardStart, outfitCardEnd);
-assert.match(parentDeleteBlock, /await deleteOutfitWithCascade/);
+assert.match(parentDeleteBlock, /await wardrobeRepository\.deleteOutfit/);
 assert.match(parentDeleteBlock, /await onPlanDataChange\(\)/);
 assert.match(parentDeleteBlock, /await onRefresh\(\)/);
 assert.match(parentDeleteBlock, /setViewingOutfitId\(null\)/);

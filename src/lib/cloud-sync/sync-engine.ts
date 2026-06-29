@@ -813,9 +813,14 @@ export async function applyRemoteChanges(
   return { applied, skipped };
 }
 
-function buildEntityRecord(change: SyncChange, workspace: AccountWorkspaceRecord): WorkspaceSyncEntity {
+export function buildEntityRecord(change: SyncChange, workspace: AccountWorkspaceRecord): WorkspaceSyncEntity {
   const base = (change.payload as Record<string, unknown>) ?? {};
+  const nestedPayload = base.payload;
+  const payload = nestedPayload && typeof nestedPayload === "object" && !Array.isArray(nestedPayload)
+    ? nestedPayload as Record<string, unknown>
+    : base;
   return {
+    ...payload,
     id: change.entityId,
     userId: workspace.userId,
     revision: change.revision,
@@ -824,8 +829,8 @@ function buildEntityRecord(change: SyncChange, workspace: AccountWorkspaceRecord
     deletedAt: change.payload && typeof (change.payload as Record<string, unknown>).deletedAt === "string"
       ? ((change.payload as Record<string, unknown>).deletedAt as string)
       : undefined,
-    originDeviceId: typeof base.originDeviceId === "string" ? (base.originDeviceId as string) : "remote",
-    ...base,
+    originDeviceId: typeof payload.originDeviceId === "string" ? (payload.originDeviceId as string) : "remote",
+    payload,
   } as WorkspaceSyncEntity;
 }
 

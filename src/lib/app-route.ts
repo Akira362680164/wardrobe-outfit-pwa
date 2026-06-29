@@ -39,6 +39,16 @@ export type AppRoute =
   | { name: "intake_outfit"; returnTo: AppRouteName }
   | { name: "intake_wishlist"; returnTo: AppRouteName };
 
+const GLOBAL_CREATE_ALLOWED_ROUTE_NAMES: ReadonlySet<AppRouteName> = new Set([
+  "wardrobe_home",
+  "outfit_home",
+  "wishlist_home",
+]);
+
+export function isGlobalCreateAllowedRoute(name: AppRouteName): boolean {
+  return GLOBAL_CREATE_ALLOWED_ROUTE_NAMES.has(name);
+}
+
 export function getMainTabFromRoute(route: AppRoute): MainTabKey {
   switch (route.name) {
     case "wardrobe_home":

@@ -311,7 +311,7 @@ check(
 check("WishlistView20 用 GarmentIntakeFlow 承载种草录入", /<GarmentIntakeFlow[\s\S]+?title="添加种草"[\s\S]+?flowKind="wishlist"/.test(wishlist));
 check("WishlistView20 给种草录入传 onPickIntakeImages", /onPickImages=\{onPickIntakeImages\}/.test(wishlist));
 check("WishlistView20 给种草录入传 onProcessIntakeImage", /onProcessImage=\{onProcessIntakeImage\}/.test(wishlist));
-check("WishlistView20 批量保存种草草稿", /handleSaveIntakeDrafts[\s\S]+?bulkPut\(newItems\)/.test(wishlist));
+check("WishlistView20 批量保存种草草稿", /handleSaveIntakeDrafts[\s\S]+?bridgeWishlistUpsert\(item\)/.test(wishlist));
 check("WishlistView20 使用 garmentDraftToWishlistItem", /garmentDraftToWishlistItem/.test(wishlist));
 
 // v1.1.16 commit3 §5.4.4: 种草首页页边距与套装首页对齐

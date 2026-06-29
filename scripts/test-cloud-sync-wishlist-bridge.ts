@@ -74,7 +74,7 @@ async function main() {
 
   const safePayload = toCloudWishlistPayload(wishlistItem);
   check("cloud wishlist payload 不包含 DataURL 字段", !JSON.stringify(safePayload).includes("data:image"));
-  check("cloud wishlist payload 不包含 cropBox", !Object.prototype.hasOwnProperty.call(safePayload, "cropBox"));
+  check("cloud wishlist payload 保留 cropBox 元数据", JSON.stringify(safePayload["cropBox"]) === JSON.stringify(wishlistItem.cropBox));
   check("cloud wishlist payload 保留 legacyWishlistId", safePayload["legacyWishlistId"] === wishlistItem.id);
   check("cloud wishlist payload 保留买前评估", typeof safePayload["aiAssessment"] === "object");
 

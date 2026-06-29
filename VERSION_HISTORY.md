@@ -1,3 +1,14 @@
+## 2026-06-29 / v2.0.13-test / Codex — 完成紧急修复 UI 收口与版本升级
+
+- **目的**：完成账号管理页精简、全局创建入口白名单和衣橱名称必填布局，并将四组紧急修复升级为新的 Android 版本。
+- **版本**：`2.0.10-test` → `2.0.13-test`，Android `versionCode` 由 `20010` → `20013`；跳过历史已使用且已回退的 `20011` / `20012`。
+- **改动文件**：`src/components/auth/account-views.tsx`、`src/components/app-root.tsx`、`src/lib/app-route.ts`、`src/components/wardrobe-app.tsx`、`src/lib/cloud-sync/sync-engine.ts`、本次相关 `scripts/test-*.ts`、`package.json`、`package-lock.json`、`VERSION_HISTORY.md`。
+- **核心修复**：账号页只保留脱敏账号、登录状态、简短设备名、修改密码和带二次确认的退出登录；删除冲突处理和多设备退出 UI；全局加号只允许三个主首页；添加/编辑衣橱复用同一必填字段组件，文字与星号同一行；浏览器刷新实测发现 pull 变更把业务字段展开到顶层并丢失 `payload`，现统一同时恢复索引字段与业务 payload，确保 `dexieId="home"` 刷新后仍被识别为不可编辑的默认衣橱。
+- **本地验证**：`npm run test:logic:urgent-account`、默认衣橱 pull/并发回归、`npm run test:logic:all`、`npm run typecheck` 全部通过；完整逻辑套件已移除只适用于已删除旧 Dexie/旧备份实现的失效用例，并更新现架构断言。390×844 浏览器实操通过：全新账号注册、三次刷新后唯一默认衣橱仍带默认标识且不可编辑、自定义衣橱必填星号/可编辑删除、账号页精简、退出二次确认取消与确认；截图位于 `review-artifacts/v2.0.13-test/browser/`。隔离目录从当前提交执行 `npm run android:apk` 成功，核验包名 `com.wardrobe.outfit`、versionName `2.0.13-test`、versionCode `20013`、固定签名 `CN=fangzheng`，APK 约 9.5MB。
+- **风险门禁**：**high**（账号退出、全局导航入口、移动端 Sheet、版本升级和后续 APK 交付）。
+- **未触发 subagent**：用户未通知。
+- **未验证风险**：`adb devices -l` 无连接设备，未执行真机安装；浏览器端因没有 MiniMax Key 且当前应用浏览器接口不支持文件选择，未做真实三图 AI 录入、温度保存和套装实图完整实操，这些链路已由对应逻辑/资产恢复测试覆盖；现有外部 E2E 启动器因 3100 端口已被其他本地测试服务占用而未完整运行；工作区另有用户/其他进程产生的 E2E 文件和 instrumentation 改动，本提交不包含。
+
 ## 2026-06-29 / v2.0.10-test / Codex — 真实 AI 置信度、待确认计数与全局温度规则
 
 - **目的**：删除 `AI 53` 字段平均伪分数、修正待确认固定数量，并把适穿温度统一扩展为 -20～40℃。

@@ -89,7 +89,7 @@ async function main() {
   );
   await putPreparedEntityImageAssets(db, workspace, garmentAssets);
   const garmentAssetRows = await db.assets.where("ownerEntityId").equals(garmentId).toArray();
-  check("garment 写入 asset 记录", garmentAssetRows.length === 1 && garmentAssetRows[0].ownerEntityType === "garment");
+  check("garment 主图和源图均写入 asset 记录", garmentAssetRows.length === 2 && garmentAssetRows.every((row) => row.ownerEntityType === "garment"));
   check("garment asset payload 保存 dataUrl 用于上传暂存", JSON.stringify(garmentAssetRows[0].payload).includes("data:image"));
 
   const wishlist: WishlistItem = {

@@ -5,10 +5,12 @@ import {
   createWorkspaceUuidV7,
   getAccountWorkspaceDb,
   type WorkspaceGarmentRecord,
+  type WorkspaceLocationRecord,
 } from "../src/lib/account-workspace-db";
 import { deleteWorkspaceGarmentByItemId } from "../src/lib/cloud-sync/garment-bridge";
 import { hashWorkspaceIdToNumber, resolveWorkspaceGarmentItemId } from "../src/lib/cloud-sync/hash-workspace-id";
 import { bridgeLocationDelete, initializeDefaultWorkspaceLocation, normalizeDefaultWorkspaceLocation } from "../src/lib/cloud-sync/location-bridge";
+import { buildEntityRecord } from "../src/lib/cloud-sync/sync-engine";
 import { readWorkspaceUiSnapshot } from "../src/lib/cloud-sync/workspace-ui-mapper";
 import type { AccountWorkspaceRecord } from "../src/lib/workspace-registry";
 
@@ -59,6 +61,17 @@ async function main() {
   assert.equal((defaultLocations[0].payload as Record<string, unknown>).dexieId, "home");
   assert.equal((defaultLocations[0].payload as Record<string, unknown>).name, "默认衣橱");
   assert.equal((defaultLocations[0].payload as Record<string, unknown>).note, "默认衣橱");
+  const pulledHome = buildEntityRecord({
+    cursor: "cursor-home-1",
+    entityType: "closetLocation",
+    entityId: defaultLocations[0].id,
+    operation: "update",
+    revision: 2,
+    payload: { dexieId: "home", name: "默认衣橱", note: "默认衣橱", sortOrder: 0 },
+    createdAt: now,
+  }, workspace);
+  assert.equal((pulledHome.payload as Record<string, unknown>).dexieId, "home", "pull 变更必须保留 payload 容器");
+  assert.equal((pulledHome as WorkspaceLocationRecord).name, "默认衣橱", "pull 变更仍需填充索引字段");
   assert.deepEqual(await bridgeLocationDelete("home"), { bridged: false, reason: "default_location_protected" });
   const firstOutboxCount = await db.syncOutbox.count();
   assert.equal((await initializeDefaultWorkspaceLocation(workspace, deviceId)).bridged, true);

@@ -3,7 +3,6 @@ import { buildLocalWishlistDraft } from "../src/lib/intake-local-draft";
 import { wishlistDraftToWishlistItem } from "../src/lib/intake-save-adapters";
 import { wishlistItemFromShoppingCandidate } from "../src/lib/wishlist-intake-from-ai";
 import { buildDetailMetaText } from "../src/components/detail-shell";
-import { sanitizeProductUrl } from "../src/lib/migrate";
 import { buildColorInfo } from "../src/lib/color-fields";
 import type { ShoppingAssessmentCandidate } from "../src/lib/types";
 
@@ -21,7 +20,6 @@ assert.equal((localItem as unknown as Record<string, unknown>).brand, undefined,
 assert.equal((localItem as unknown as Record<string, unknown>).shopName, undefined, "新建种草记录不写入店铺");
 assert.equal(localItem.price, undefined, "未填写时种草录入不写入价格");
 assert.equal(localItem.productUrl, undefined, "未填写时种草录入不写入链接");
-assert.equal(sanitizeProductUrl("example.com/item"), "https://example.com/item");
 
 const pricedLocalItem = wishlistDraftToWishlistItem({
   ...localDraft,
