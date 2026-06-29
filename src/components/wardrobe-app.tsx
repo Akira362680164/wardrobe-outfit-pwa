@@ -833,12 +833,18 @@ export function WardrobeApp({ cloudAuth }: { cloudAuth?: WardrobeCloudAuth } = {
 
   // v0.9.46-dev: global create button visibility
   // v1.1.20-dev (方案 C): 改为基于 route 派生 — activeView 独立 state 已删除。
+  // v2.0.11-test P1-6: 设置/账号相关子页不再显示全局加号（白名单：wardrobe / outfit / wishlist / intake 主路径）。
+  const GLOBAL_CREATE_DENIED_ROUTES = new Set([
+    "settings_home",
+    "account_management",
+    "change_password",
+  ]);
   const shouldShowGlobalCreate =
     !hideMobileNav &&
-    route.name !== "settings_home" &&
+    !GLOBAL_CREATE_DENIED_ROUTES.has(route.name) &&
     !isIntakeRouteName(route.name) &&
     !outfitSubPageActive &&
-        !showExitDialog &&
+    !showExitDialog &&
     !showCreateSheet;
 
   // v1.1.20-dev (方案 C): create_outfit 现在在 handleCreateAction 同步调用 setRoute({name: "intake_outfit"}),
@@ -4670,8 +4676,8 @@ function SettingsView({
         <h3 className="mb-3 text-base font-semibold">添加衣橱</h3>
         <div className="grid gap-3">
           <label className="grid gap-1 text-sm font-medium">
-            衣橱名称 <span className="text-red-500">*</span>
-            <input value={wardrobeFormName} onChange={(e) => setWardrobeFormName(e.target.value)} className="h-10 w-full rounded-lg border border-ink/10 bg-white px-3 text-sm outline-none focus:border-denim" placeholder="例如 办公室抽屉" />
+            <span className="flex items-center gap-1">衣橱名称<span className="text-red-500" aria-hidden="true">*</span></span>
+            <input value={wardrobeFormName} onChange={(e) => setWardrobeFormName(e.target.value)} className="h-10 w-full rounded-lg border border-ink/10 bg-white px-3 text-sm outline-none focus:border-denim" placeholder="例如 办公室抽屉" required aria-required="true" />
           </label>
           <label className="grid gap-1 text-sm font-medium">
             衣橱简介
@@ -4692,8 +4698,8 @@ function SettingsView({
         <h3 className="mb-3 text-base font-semibold">编辑衣橱</h3>
         <div className="grid gap-3">
           <label className="grid gap-1 text-sm font-medium">
-            衣橱名称 <span className="text-red-500">*</span>
-            <input value={wardrobeFormName} onChange={(e) => setWardrobeFormName(e.target.value)} className="h-10 w-full rounded-lg border border-ink/10 bg-white px-3 text-sm outline-none focus:border-denim" />
+            <span className="flex items-center gap-1">衣橱名称<span className="text-red-500" aria-hidden="true">*</span></span>
+            <input value={wardrobeFormName} onChange={(e) => setWardrobeFormName(e.target.value)} className="h-10 w-full rounded-lg border border-ink/10 bg-white px-3 text-sm outline-none focus:border-denim" required aria-required="true" />
           </label>
           <label className="grid gap-1 text-sm font-medium">
             衣橱简介
