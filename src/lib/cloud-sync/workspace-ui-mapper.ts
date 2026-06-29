@@ -2,9 +2,109 @@
 // 账号工作区 DB 记录 → UI 模型转换（P0-N01）。
 // 读取仍可在无工作区时降级到旧 Dexie，本文件仅处理工作区→UI 方向。
 
-import type { AccountWorkspaceDatabase, WorkspaceGarmentRecord, WorkspaceLocationRecord, WorkspaceOutfitPlanRecord, WorkspaceOutfitRecord, WorkspaceTripPlanRecord, WorkspaceWishlistItemRecord } from "@/lib/account-workspace-db";
+import type { AccountWorkspaceDatabase, WorkspaceAssetRecord, WorkspaceGarmentRecord, WorkspaceLocationRecord, WorkspaceOutfitPlanRecord, WorkspaceOutfitRecord, WorkspaceTripPlanRecord, WorkspaceWishlistItemRecord } from "@/lib/account-workspace-db";
 import type { ClosetLocation, OutfitCalendarPlan, OutfitPlanEntry, PlanPackingChecklistItem, SavedOutfit, WardrobeItem, WishlistItem } from "@/lib/types";
 import { resolveWorkspaceGarmentItemId } from "@/lib/cloud-sync/hash-workspace-id";
+
+interface AssetImageBundle {
+  original?: string;
+  thumbnail?: string;
+  _updatedAt?: string;
+}
+
+type AssetIndex = Map<string, AssetImageBundle>;
+
+function readAssetBundle(asset: WorkspaceAssetRecord): AssetImageBundle {
+  const payload = (asset.payload ?? {}) as Record<string, unknown>;
+  const uploads = (payload.uploads ?? {}) as Record<string, unknown>;
+  const originalUpload = (uploads.original ?? {}) as { dataUrl?: string };
+  const thumbnailUpload = (uploads.thumbnail ?? {}) as { dataUrl?: string };
+  return {
+    ...(typeof originalUpload.dataUrl === "string" ? { original: originalUpload.dataUrl } : {}),
+    ...(typeof thumbnailUpload.dataUrl === "string" ? { thumbnail: thumbnailUpload.dataUrl } : {}),
+    _updatedAt: asset.updatedAt,
+  };
+}
+
+function readAssetFieldName(asset: WorkspaceAssetRecord): string | undefined {
+  const payload = (asset.payload ?? {}) as Record<string, unknown>;
+  const source = (payload.source ?? {}) as { fieldName?: unknown };
+  return typeof source.fieldName === "string" ? source.fieldName : undefined;
+}
+
+export function buildAssetIndex(assets: WorkspaceAssetRecord[]): AssetIndex {
+  const index: AssetIndex = new Map();
+  for (const asset of assets) {
+    if (asset.deletedAt) continue;
+    if (asset.ownerEntityType !== "garment" && asset.ownerEntityType !== "wishlistItem" && asset.ownerEntityType !== "outfit") continue;
+    const fieldName = readAssetFieldName(asset);
+    if (!fieldName) continue;
+    const bundle = readAssetBundle(asset);
+    if (!bundle.original && !bundle.thumbnail) continue;
+    const key = asset.ownerEntityType + "::" + asset.ownerEntityId + "::" + fieldName;
+    const existing = index.get(key);
+    if (!existing) {
+      index.set(key, bundle);
+      continue;
+    }
+    if (asset.updatedAt && existing._updatedAt && asset.updatedAt > existing._updatedAt) {
+      index.set(key, bundle);
+    }
+  }
+  return index;
+}
+
+export function pickAssetImage(index: AssetIndex, ownerEntityType: "garment" | "wishlistItem" | "outfit", ownerEntityId: string, fieldName: string): AssetImageBundle | undefined {
+  return index.get(ownerEntityType + "::" + ownerEntityId + "::" + fieldName);
+}
+
+function hydrateGarmentImages(index: AssetIndex, g: WorkspaceGarmentRecord, fallback: { imageDataUrl?: string; thumbnailDataUrl?: string; sourceImageDataUrl?: string }) {
+  const main = pickAssetImage(index, "garment", g.id, "imageDataUrl");
+  return {
+    imageDataUrl: main?.original ?? fallback.imageDataUrl ?? "",
+    thumbnailDataUrl: main?.thumbnail ?? fallback.thumbnailDataUrl,
+    sourceImageDataUrl: fallback.sourceImageDataUrl,
+  };
+}
+
+function hydrateWishlistImages(index: AssetIndex, w: WorkspaceWishlistItemRecord, fallback: { imageDataUrl?: string; thumbnailDataUrl?: string; sourceImageDataUrl?: string }) {
+  const main = pickAssetImage(index, "wishlistItem", w.id, "imageDataUrl");
+  return {
+    imageDataUrl: main?.original ?? fallback.imageDataUrl ?? "",
+    thumbnailDataUrl: main?.thumbnail ?? fallback.thumbnailDataUrl,
+    sourceImageDataUrl: fallback.sourceImageDataUrl,
+  };
+}
+
+function hydrateOutfitImages(index: AssetIndex, o: WorkspaceOutfitRecord, fallback: {
+  coverImageDataUrl?: string;
+  previewImageDataUrl?: string;
+  sourceImageDataUrl?: string;
+  thumbnailDataUrl?: string;
+  autoCoverImageDataUrl?: string;
+  outfitRealImages?: SavedOutfit["outfitRealImages"];
+}) {
+  const cover = pickAssetImage(index, "outfit", o.id, "coverImageDataUrl");
+  const preview = pickAssetImage(index, "outfit", o.id, "previewImageDataUrl");
+  const autoCover = pickAssetImage(index, "outfit", o.id, "autoCoverImageDataUrl");
+  const source = pickAssetImage(index, "outfit", o.id, "sourceImageDataUrl");
+  return {
+    coverImageDataUrl: cover?.original ?? fallback.coverImageDataUrl,
+    previewImageDataUrl: preview?.original ?? fallback.previewImageDataUrl,
+    sourceImageDataUrl: source?.original ?? fallback.sourceImageDataUrl,
+    thumbnailDataUrl: cover?.thumbnail ?? preview?.thumbnail ?? autoCover?.thumbnail ?? fallback.thumbnailDataUrl,
+    autoCoverImageDataUrl: autoCover?.original ?? fallback.autoCoverImageDataUrl,
+    outfitRealImages: (fallback.outfitRealImages ?? []).map((real) => {
+      const realAsset = pickAssetImage(index, "outfit", o.id, "outfitRealImages." + real.id + ".imageDataUrl");
+      return {
+        ...real,
+        imageDataUrl: realAsset?.original ?? real.imageDataUrl,
+        thumbnailDataUrl: realAsset?.thumbnail ?? real.thumbnailDataUrl,
+      };
+    }),
+  };
+}
+
 
 export interface WorkspaceUiSnapshot {
   items: WardrobeItem[];
@@ -17,7 +117,7 @@ export interface WorkspaceUiSnapshot {
 }
 
 export async function readWorkspaceUiSnapshot(db: AccountWorkspaceDatabase): Promise<WorkspaceUiSnapshot> {
-  const [garments, locations, outfits, wishlistItems, _wearEvents, tripPlans, outfitPlans] = await Promise.all([
+  const [garments, locations, outfits, wishlistItems, _wearEvents, tripPlans, outfitPlans, assets] = await Promise.all([
     db.garments.filter(g => !g.deletedAt).toArray(),
     db.locations.filter(l => !l.deletedAt).toArray(),
     db.outfits.filter(o => !o.deletedAt).toArray(),
@@ -25,22 +125,27 @@ export async function readWorkspaceUiSnapshot(db: AccountWorkspaceDatabase): Pro
     db.wearEvents.filter(w => !w.deletedAt).toArray(),
     db.tripPlans.filter(t => !t.deletedAt).toArray(),
     db.outfitPlans.filter(p => !p.deletedAt).toArray(),
+    db.assets.toArray(),
   ]);
+  const assetIndex = buildAssetIndex(assets);
 
-  const uiItems = garments.map(toWardrobeItem);
+  const uiItems = garments.map((g) => toWardrobeItem(g, assetIndex));
   const uiLocations = locations.map(toClosetLocation);
   const locationIdSet = new Set(uiLocations.map((l) => l.id));
 
-  // ponytail: 孤儿衣物（locationId 不在任何已有衣橱中）自动承接默认衣橱
-  const orphanLocationIds = new Set<string>();
+  // ponytail: 孤儿衣物（locationId 不在任何已有衣橱中）自动承接"home"默认衣橱；
+  // 不再为孤儿 locationId 创建新衣橱（避免重复"默认衣橱"）。
+  const homeLocation = uiLocations.find((l) => l.id === "home");
+  const now = new Date().toISOString();
+  if (!homeLocation) {
+    uiLocations.push({ id: "home", name: "默认衣橱", note: "默认衣橱", sortOrder: 1, createdAt: now, updatedAt: now });
+  }
+  const defaultLocationId = homeLocation?.id ?? "home";
   for (const item of uiItems) {
     if (item.locationId && !locationIdSet.has(item.locationId)) {
-      orphanLocationIds.add(item.locationId);
+      // 把孤儿衣物的 locationId 重定向到默认衣橱，避免在 UI 上产生第二个衣橱
+      item.locationId = defaultLocationId;
     }
-  }
-  const now = new Date().toISOString();
-  for (const orphanId of orphanLocationIds) {
-    uiLocations.push({ id: orphanId, name: orphanId === "home" ? "默认衣橱" : orphanId, sortOrder: uiLocations.length + 1, createdAt: now, updatedAt: now });
   }
 
   const workspaceOutfitIdToLegacyId = new Map<string, string>();
@@ -50,17 +155,22 @@ export async function readWorkspaceUiSnapshot(db: AccountWorkspaceDatabase): Pro
 
   return {
     items: uiItems,
-    locations: uiLocations,
-    outfits: outfits.map(toSavedOutfit),
-    wishlistItems: wishlistItems.map(toWishlistItem),
+    locations: dedupeLocations(uiLocations),
+    outfits: outfits.map((o) => toSavedOutfit(o, assetIndex)),
+    wishlistItems: wishlistItems.map((w) => toWishlistItem(w, assetIndex)),
     outfitPlanEntries: outfitPlans.map((op) => toOutfitPlanEntry(op, workspaceOutfitIdToLegacyId)),
     outfitCalendarPlans: tripPlans.map(toOutfitCalendarPlan),
-    planPackingChecklistItems: [], // ponytail: packingChecklistItems 暂不从工作区读，数据量少且强依赖旧结构
+    planPackingChecklistItems: [],
   };
 }
 
-function toWardrobeItem(g: WorkspaceGarmentRecord): WardrobeItem {
+function toWardrobeItem(g: WorkspaceGarmentRecord, assetIndex: AssetIndex): WardrobeItem {
   const p = (g.payload ?? {}) as Record<string, unknown>;
+  const hydrated = hydrateGarmentImages(assetIndex, g, {
+    imageDataUrl: p.imageDataUrl as string | undefined,
+    thumbnailDataUrl: p.thumbnailDataUrl as string | undefined,
+    sourceImageDataUrl: p.sourceImageDataUrl as string | undefined,
+  });
   return {
     id: resolveWorkspaceGarmentItemId(g),
     locationId: (g.locationId ?? p.locationId ?? "home") as string,
@@ -79,9 +189,9 @@ function toWardrobeItem(g: WorkspaceGarmentRecord): WardrobeItem {
     notes: p.notes as string | undefined,
     price: p.price as number | undefined,
     productUrl: p.productUrl as string | undefined,
-    imageDataUrl: (p.imageDataUrl as string) ?? "",
-    sourceImageDataUrl: p.sourceImageDataUrl as string | undefined,
-    thumbnailDataUrl: p.thumbnailDataUrl as string | undefined,
+    imageDataUrl: hydrated.imageDataUrl,
+    sourceImageDataUrl: hydrated.sourceImageDataUrl,
+    thumbnailDataUrl: hydrated.thumbnailDataUrl,
     cropBox: p.cropBox as WardrobeItem["cropBox"],
     subcategory: p.subcategory as string | undefined,
     wornDates: (p.wornDates ?? []) as string[],
@@ -110,14 +220,22 @@ function toClosetLocation(l: WorkspaceLocationRecord): ClosetLocation {
   };
 }
 
-function toSavedOutfit(o: WorkspaceOutfitRecord): SavedOutfit {
+function toSavedOutfit(o: WorkspaceOutfitRecord, assetIndex: AssetIndex): SavedOutfit {
   const p = (o.payload ?? {}) as Record<string, unknown>;
+  const hydrated = hydrateOutfitImages(assetIndex, o, {
+    coverImageDataUrl: p.coverImageDataUrl as string | undefined,
+    previewImageDataUrl: p.previewImageDataUrl as string | undefined,
+    sourceImageDataUrl: p.sourceImageDataUrl as string | undefined,
+    thumbnailDataUrl: p.thumbnailDataUrl as string | undefined,
+    autoCoverImageDataUrl: p.autoCoverImageDataUrl as string | undefined,
+    outfitRealImages: p.outfitRealImages as SavedOutfit["outfitRealImages"],
+  });
   return {
     id: o.legacyOutfitId ?? o.id,
     name: (o.name ?? p.name ?? "") as string,
     itemIds: ((p.legacyItemIds ?? p.itemIds ?? []) as number[]),
-    coverImageDataUrl: p.coverImageDataUrl as string | undefined,
-    previewImageDataUrl: p.previewImageDataUrl as string | undefined,
+    coverImageDataUrl: hydrated.coverImageDataUrl,
+    previewImageDataUrl: hydrated.previewImageDataUrl,
     destination: p.destination as string | undefined,
     activity: p.activity as string | undefined,
     style: p.style as string | undefined,
@@ -125,8 +243,8 @@ function toSavedOutfit(o: WorkspaceOutfitRecord): SavedOutfit {
     favorite: (p.favorite ?? false) as boolean,
     createdAt: (p.createdAt ?? o.createdAt) as string,
     updatedAt: (p.updatedAt ?? o.updatedAt) as string,
-    sourceImageDataUrl: p.sourceImageDataUrl as string | undefined,
-    thumbnailDataUrl: p.thumbnailDataUrl as string | undefined,
+    sourceImageDataUrl: hydrated.sourceImageDataUrl,
+    thumbnailDataUrl: hydrated.thumbnailDataUrl,
     thumbnailVersion: p.thumbnailVersion as number | undefined,
     thumbnailUpdatedAt: p.thumbnailUpdatedAt as string | undefined,
     thumbnailStatus: p.thumbnailStatus as "ready" | "failed" | undefined,
@@ -137,20 +255,25 @@ function toSavedOutfit(o: WorkspaceOutfitRecord): SavedOutfit {
     temperatureRange: p.temperatureRange as SavedOutfit["temperatureRange"],
     notes: p.notes as string | undefined,
     wornDates: p.wornDates as string[] | undefined,
-    outfitRealImages: p.outfitRealImages as SavedOutfit["outfitRealImages"],
-    autoCoverImageDataUrl: p.autoCoverImageDataUrl as string | undefined,
+    outfitRealImages: hydrated.outfitRealImages,
+    autoCoverImageDataUrl: hydrated.autoCoverImageDataUrl,
     aiSuggestion: p.aiSuggestion as SavedOutfit["aiSuggestion"],
   };
 }
 
-function toWishlistItem(w: WorkspaceWishlistItemRecord): WishlistItem {
+function toWishlistItem(w: WorkspaceWishlistItemRecord, assetIndex: AssetIndex): WishlistItem {
   const p = (w.payload ?? {}) as Record<string, unknown>;
+  const hydrated = hydrateWishlistImages(assetIndex, w, {
+    imageDataUrl: p.imageDataUrl as string | undefined,
+    thumbnailDataUrl: p.thumbnailDataUrl as string | undefined,
+    sourceImageDataUrl: p.sourceImageDataUrl as string | undefined,
+  });
   return {
     id: w.legacyWishlistId ?? w.id,
     name: (p.name ?? "") as string,
-    imageDataUrl: (p.imageDataUrl ?? "") as string,
-    sourceImageDataUrl: p.sourceImageDataUrl as string | undefined,
-    thumbnailDataUrl: p.thumbnailDataUrl as string | undefined,
+    imageDataUrl: hydrated.imageDataUrl,
+    sourceImageDataUrl: hydrated.sourceImageDataUrl,
+    thumbnailDataUrl: hydrated.thumbnailDataUrl,
     cropBox: p.cropBox as WishlistItem["cropBox"],
     category: (p.category ?? "tops") as WishlistItem["category"],
     subcategory: p.subcategory as string | undefined,
@@ -223,3 +346,26 @@ function toOutfitPlanEntry(op: WorkspaceOutfitPlanRecord, workspaceOutfitIdToLeg
     updatedAt: (p.updatedAt ?? op.updatedAt) as string,
   };
 }
+
+function dedupeLocations(locations: ClosetLocation[]): ClosetLocation[] {
+  const groups = new Map<string, ClosetLocation[]>();
+  for (const l of locations) {
+    const arr = groups.get(l.id) ?? [];
+    arr.push(l);
+    groups.set(l.id, arr);
+  }
+  const result: ClosetLocation[] = [];
+  for (const group of groups.values()) {
+    if (group.length === 1) {
+      result.push(group[0]);
+      continue;
+    }
+    const keep = group.reduce((acc, cur) => {
+      if (cur.sortOrder !== acc.sortOrder) return cur.sortOrder < acc.sortOrder ? cur : acc;
+      return cur.updatedAt > acc.updatedAt ? cur : acc;
+    });
+    result.push(keep);
+  }
+  return result.sort((a, b) => a.sortOrder - b.sortOrder || a.createdAt.localeCompare(b.createdAt));
+}
+
