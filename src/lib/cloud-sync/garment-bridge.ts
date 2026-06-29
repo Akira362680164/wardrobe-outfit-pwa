@@ -120,6 +120,7 @@ export function toCloudGarmentPayload(item: WardrobeItem, assetRefs?: CloudAsset
   delete safe.imageDataUrl;
   delete safe.thumbnailDataUrl;
   delete safe.sourceImageDataUrl;
+  safe.referenceOutfitImages = item.referenceOutfitImages?.map(({ imageDataUrl: _image, sourceImageDataUrl: _source, thumbnailDataUrl: _thumbnail, ...metadata }) => metadata);
   return withCloudAssetRefs(safe, assetRefs);
 }
 

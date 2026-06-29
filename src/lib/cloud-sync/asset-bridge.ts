@@ -93,16 +93,32 @@ export function withCloudAssetRefs<T extends Record<string, unknown>>(
 
 export function imageAssetInputsForGarment(input: {
   imageDataUrl?: string;
+  sourceImageDataUrl?: string;
   thumbnailDataUrl?: string;
+  referenceOutfitImages?: Array<{ id: string; imageDataUrl?: string; sourceImageDataUrl?: string; thumbnailDataUrl?: string }>;
 }): EntityImageAssetInput[] {
-  return [{ fieldName: "imageDataUrl", dataUrl: input.imageDataUrl, thumbnailDataUrl: input.thumbnailDataUrl }];
+  const images: EntityImageAssetInput[] = [
+    { fieldName: "imageDataUrl", dataUrl: input.imageDataUrl, thumbnailDataUrl: input.thumbnailDataUrl },
+    { fieldName: "sourceImageDataUrl", dataUrl: input.sourceImageDataUrl },
+  ];
+  for (const reference of input.referenceOutfitImages ?? []) {
+    images.push(
+      { fieldName: `referenceOutfitImages.${reference.id}.imageDataUrl`, dataUrl: reference.imageDataUrl, thumbnailDataUrl: reference.thumbnailDataUrl },
+      { fieldName: `referenceOutfitImages.${reference.id}.sourceImageDataUrl`, dataUrl: reference.sourceImageDataUrl },
+    );
+  }
+  return images;
 }
 
 export function imageAssetInputsForWishlist(input: {
   imageDataUrl?: string;
+  sourceImageDataUrl?: string;
   thumbnailDataUrl?: string;
 }): EntityImageAssetInput[] {
-  return [{ fieldName: "imageDataUrl", dataUrl: input.imageDataUrl, thumbnailDataUrl: input.thumbnailDataUrl }];
+  return [
+    { fieldName: "imageDataUrl", dataUrl: input.imageDataUrl, thumbnailDataUrl: input.thumbnailDataUrl },
+    { fieldName: "sourceImageDataUrl", dataUrl: input.sourceImageDataUrl },
+  ];
 }
 
 export function imageAssetInputsForOutfit(input: {

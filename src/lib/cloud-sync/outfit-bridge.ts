@@ -124,7 +124,7 @@ export function toCloudOutfitPayload(outfit: SavedOutfit, assetRefs?: CloudAsset
   delete safe.sourceImageDataUrl;
   delete safe.thumbnailDataUrl;
   delete safe.autoCoverImageDataUrl;
-  delete safe.outfitRealImages;
+  (safe as Record<string, unknown>).outfitRealImages = outfit.outfitRealImages?.map(({ imageDataUrl: _image, thumbnailDataUrl: _thumbnail, ...metadata }) => metadata);
   return withCloudAssetRefs({
     ...safe,
     legacyOutfitId: outfit.id,

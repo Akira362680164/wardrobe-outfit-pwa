@@ -2,9 +2,12 @@
 // 账号工作区 DB 记录 → UI 模型转换（P0-N01）。
 // 读取仍可在无工作区时降级到旧 Dexie，本文件仅处理工作区→UI 方向。
 
-import type { AccountWorkspaceDatabase, WorkspaceGarmentRecord, WorkspaceLocationRecord, WorkspaceOutfitPlanRecord, WorkspaceOutfitRecord, WorkspaceTripPlanRecord, WorkspaceWishlistItemRecord } from "@/lib/account-workspace-db";
+import type { AccountWorkspaceDatabase, WorkspaceAssetRecord, WorkspaceGarmentRecord, WorkspaceLocationRecord, WorkspaceOutfitPlanRecord, WorkspaceOutfitRecord, WorkspaceTripPlanRecord, WorkspaceWishlistItemRecord } from "@/lib/account-workspace-db";
 import type { ClosetLocation, OutfitCalendarPlan, OutfitPlanEntry, PlanPackingChecklistItem, SavedOutfit, WardrobeItem, WishlistItem } from "@/lib/types";
 import { resolveWorkspaceGarmentItemId } from "@/lib/cloud-sync/hash-workspace-id";
+import type { CloudAssetReferenceMap } from "@/lib/cloud-sync/asset-bridge";
+import type { AccountImageCache } from "@/lib/cloud-sync/image-cache";
+import { resolveEntityImageFields } from "@/lib/cloud-sync/image-asset-resolver";
 
 export interface WorkspaceUiSnapshot {
   items: WardrobeItem[];
@@ -16,8 +19,11 @@ export interface WorkspaceUiSnapshot {
   planPackingChecklistItems: PlanPackingChecklistItem[];
 }
 
-export async function readWorkspaceUiSnapshot(db: AccountWorkspaceDatabase): Promise<WorkspaceUiSnapshot> {
-  const [garments, locations, outfits, wishlistItems, _wearEvents, tripPlans, outfitPlans] = await Promise.all([
+export async function readWorkspaceUiSnapshot(
+  db: AccountWorkspaceDatabase,
+  options: { imageCache?: Pick<AccountImageCache, "get" | "downloadAndCache"> } = {},
+): Promise<WorkspaceUiSnapshot> {
+  const [garments, locations, outfits, wishlistItems, _wearEvents, tripPlans, outfitPlans, assets] = await Promise.all([
     db.garments.filter(g => !g.deletedAt).toArray(),
     db.locations.filter(l => !l.deletedAt).toArray(),
     db.outfits.filter(o => !o.deletedAt).toArray(),
@@ -25,9 +31,10 @@ export async function readWorkspaceUiSnapshot(db: AccountWorkspaceDatabase): Pro
     db.wearEvents.filter(w => !w.deletedAt).toArray(),
     db.tripPlans.filter(t => !t.deletedAt).toArray(),
     db.outfitPlans.filter(p => !p.deletedAt).toArray(),
+    db.assets.filter(a => !a.deletedAt).toArray(),
   ]);
 
-  const uiItems = garments.map(toWardrobeItem);
+  const uiItems = await Promise.all(garments.map((garment) => toWardrobeItem(garment, assets, options.imageCache)));
   const uiLocations = locations.map(toClosetLocation);
   const locationIdSet = new Set(uiLocations.map((l) => l.id));
 
@@ -51,16 +58,34 @@ export async function readWorkspaceUiSnapshot(db: AccountWorkspaceDatabase): Pro
   return {
     items: uiItems,
     locations: uiLocations,
-    outfits: outfits.map(toSavedOutfit),
-    wishlistItems: wishlistItems.map(toWishlistItem),
+    outfits: await Promise.all(outfits.map((outfit) => toSavedOutfit(outfit, assets, options.imageCache))),
+    wishlistItems: await Promise.all(wishlistItems.map((wishlist) => toWishlistItem(wishlist, assets, options.imageCache))),
     outfitPlanEntries: outfitPlans.map((op) => toOutfitPlanEntry(op, workspaceOutfitIdToLegacyId)),
     outfitCalendarPlans: tripPlans.map(toOutfitCalendarPlan),
     planPackingChecklistItems: [], // ponytail: packingChecklistItems 暂不从工作区读，数据量少且强依赖旧结构
   };
 }
 
-function toWardrobeItem(g: WorkspaceGarmentRecord): WardrobeItem {
+async function toWardrobeItem(
+  g: WorkspaceGarmentRecord,
+  assets: WorkspaceAssetRecord[],
+  imageCache?: Pick<AccountImageCache, "get" | "downloadAndCache">,
+): Promise<WardrobeItem> {
   const p = (g.payload ?? {}) as Record<string, unknown>;
+  const imageInputs = imageResolutionInputs("garment", g.id, assets, assetRefsOf(p), imageCache);
+  const images = await resolveEntityImageFields({
+    imageDataUrl: { ...imageInputs, fieldName: "imageDataUrl", variant: "original" },
+    thumbnailDataUrl: { ...imageInputs, fieldName: "imageDataUrl", variant: "thumbnail" },
+    sourceImageDataUrl: { ...imageInputs, fieldName: "sourceImageDataUrl", variant: "original" },
+  });
+  const referenceOutfitImages = await Promise.all(((p.referenceOutfitImages ?? []) as WardrobeItem["referenceOutfitImages"] ?? []).map(async (reference) => {
+    const resolved = await resolveEntityImageFields({
+      imageDataUrl: { ...imageInputs, fieldName: `referenceOutfitImages.${reference.id}.imageDataUrl`, variant: "original" },
+      thumbnailDataUrl: { ...imageInputs, fieldName: `referenceOutfitImages.${reference.id}.imageDataUrl`, variant: "thumbnail" },
+      sourceImageDataUrl: { ...imageInputs, fieldName: `referenceOutfitImages.${reference.id}.sourceImageDataUrl`, variant: "original" },
+    });
+    return { ...reference, imageDataUrl: resolved.imageDataUrl ?? "", sourceImageDataUrl: resolved.sourceImageDataUrl, thumbnailDataUrl: resolved.thumbnailDataUrl };
+  }));
   return {
     id: resolveWorkspaceGarmentItemId(g),
     locationId: (g.locationId ?? p.locationId ?? "home") as string,
@@ -79,14 +104,14 @@ function toWardrobeItem(g: WorkspaceGarmentRecord): WardrobeItem {
     notes: p.notes as string | undefined,
     price: p.price as number | undefined,
     productUrl: p.productUrl as string | undefined,
-    imageDataUrl: (p.imageDataUrl as string) ?? "",
-    sourceImageDataUrl: p.sourceImageDataUrl as string | undefined,
-    thumbnailDataUrl: p.thumbnailDataUrl as string | undefined,
+    imageDataUrl: images.imageDataUrl ?? "",
+    sourceImageDataUrl: images.sourceImageDataUrl,
+    thumbnailDataUrl: images.thumbnailDataUrl,
     cropBox: p.cropBox as WardrobeItem["cropBox"],
     subcategory: p.subcategory as string | undefined,
     wornDates: (p.wornDates ?? []) as string[],
     purchaseDate: p.purchaseDate as string | undefined,
-    referenceOutfitImages: p.referenceOutfitImages as WardrobeItem["referenceOutfitImages"],
+    referenceOutfitImages,
     aiStyleAdvice: p.aiStyleAdvice as WardrobeItem["aiStyleAdvice"],
     aiConfidence: p.aiConfidence as number | undefined,
     needsReview: p.needsReview as boolean | undefined,
@@ -110,14 +135,33 @@ function toClosetLocation(l: WorkspaceLocationRecord): ClosetLocation {
   };
 }
 
-function toSavedOutfit(o: WorkspaceOutfitRecord): SavedOutfit {
+async function toSavedOutfit(
+  o: WorkspaceOutfitRecord,
+  assets: WorkspaceAssetRecord[],
+  imageCache?: Pick<AccountImageCache, "get" | "downloadAndCache">,
+): Promise<SavedOutfit> {
   const p = (o.payload ?? {}) as Record<string, unknown>;
+  const imageInputs = imageResolutionInputs("outfit", o.id, assets, assetRefsOf(p), imageCache);
+  const images = await resolveEntityImageFields({
+    coverImageDataUrl: { ...imageInputs, fieldName: "coverImageDataUrl", variant: "original" },
+    previewImageDataUrl: { ...imageInputs, fieldName: "previewImageDataUrl", variant: "original" },
+    sourceImageDataUrl: { ...imageInputs, fieldName: "sourceImageDataUrl", variant: "original" },
+    thumbnailDataUrl: { ...imageInputs, fieldName: "coverImageDataUrl", variant: "thumbnail" },
+    autoCoverImageDataUrl: { ...imageInputs, fieldName: "autoCoverImageDataUrl", variant: "original" },
+  });
+  const outfitRealImages = await Promise.all(((p.outfitRealImages ?? []) as NonNullable<SavedOutfit["outfitRealImages"]>).map(async (realImage) => {
+    const resolved = await resolveEntityImageFields({
+      imageDataUrl: { ...imageInputs, fieldName: `outfitRealImages.${realImage.id}.imageDataUrl`, variant: "original" },
+      thumbnailDataUrl: { ...imageInputs, fieldName: `outfitRealImages.${realImage.id}.imageDataUrl`, variant: "thumbnail" },
+    });
+    return { ...realImage, imageDataUrl: resolved.imageDataUrl ?? "", thumbnailDataUrl: resolved.thumbnailDataUrl };
+  }));
   return {
     id: o.legacyOutfitId ?? o.id,
     name: (o.name ?? p.name ?? "") as string,
     itemIds: ((p.legacyItemIds ?? p.itemIds ?? []) as number[]),
-    coverImageDataUrl: p.coverImageDataUrl as string | undefined,
-    previewImageDataUrl: p.previewImageDataUrl as string | undefined,
+    coverImageDataUrl: images.coverImageDataUrl,
+    previewImageDataUrl: images.previewImageDataUrl,
     destination: p.destination as string | undefined,
     activity: p.activity as string | undefined,
     style: p.style as string | undefined,
@@ -125,8 +169,8 @@ function toSavedOutfit(o: WorkspaceOutfitRecord): SavedOutfit {
     favorite: (p.favorite ?? false) as boolean,
     createdAt: (p.createdAt ?? o.createdAt) as string,
     updatedAt: (p.updatedAt ?? o.updatedAt) as string,
-    sourceImageDataUrl: p.sourceImageDataUrl as string | undefined,
-    thumbnailDataUrl: p.thumbnailDataUrl as string | undefined,
+    sourceImageDataUrl: images.sourceImageDataUrl,
+    thumbnailDataUrl: images.thumbnailDataUrl,
     thumbnailVersion: p.thumbnailVersion as number | undefined,
     thumbnailUpdatedAt: p.thumbnailUpdatedAt as string | undefined,
     thumbnailStatus: p.thumbnailStatus as "ready" | "failed" | undefined,
@@ -137,20 +181,30 @@ function toSavedOutfit(o: WorkspaceOutfitRecord): SavedOutfit {
     temperatureRange: p.temperatureRange as SavedOutfit["temperatureRange"],
     notes: p.notes as string | undefined,
     wornDates: p.wornDates as string[] | undefined,
-    outfitRealImages: p.outfitRealImages as SavedOutfit["outfitRealImages"],
-    autoCoverImageDataUrl: p.autoCoverImageDataUrl as string | undefined,
+    outfitRealImages,
+    autoCoverImageDataUrl: images.autoCoverImageDataUrl,
     aiSuggestion: p.aiSuggestion as SavedOutfit["aiSuggestion"],
   };
 }
 
-function toWishlistItem(w: WorkspaceWishlistItemRecord): WishlistItem {
+async function toWishlistItem(
+  w: WorkspaceWishlistItemRecord,
+  assets: WorkspaceAssetRecord[],
+  imageCache?: Pick<AccountImageCache, "get" | "downloadAndCache">,
+): Promise<WishlistItem> {
   const p = (w.payload ?? {}) as Record<string, unknown>;
+  const imageInputs = imageResolutionInputs("wishlistItem", w.id, assets, assetRefsOf(p), imageCache);
+  const images = await resolveEntityImageFields({
+    imageDataUrl: { ...imageInputs, fieldName: "imageDataUrl", variant: "original" },
+    thumbnailDataUrl: { ...imageInputs, fieldName: "imageDataUrl", variant: "thumbnail" },
+    sourceImageDataUrl: { ...imageInputs, fieldName: "sourceImageDataUrl", variant: "original" },
+  });
   return {
     id: w.legacyWishlistId ?? w.id,
     name: (p.name ?? "") as string,
-    imageDataUrl: (p.imageDataUrl ?? "") as string,
-    sourceImageDataUrl: p.sourceImageDataUrl as string | undefined,
-    thumbnailDataUrl: p.thumbnailDataUrl as string | undefined,
+    imageDataUrl: images.imageDataUrl ?? "",
+    sourceImageDataUrl: images.sourceImageDataUrl,
+    thumbnailDataUrl: images.thumbnailDataUrl,
     cropBox: p.cropBox as WishlistItem["cropBox"],
     category: (p.category ?? "tops") as WishlistItem["category"],
     subcategory: p.subcategory as string | undefined,
@@ -174,6 +228,21 @@ function toWishlistItem(w: WorkspaceWishlistItemRecord): WishlistItem {
     createdAt: (p.createdAt ?? w.createdAt) as string,
     updatedAt: (p.updatedAt ?? w.updatedAt) as string,
   };
+}
+
+function assetRefsOf(payload: Record<string, unknown>): CloudAssetReferenceMap | undefined {
+  const refs = payload.cloudAssetRefs;
+  return refs && typeof refs === "object" && !Array.isArray(refs) ? refs as CloudAssetReferenceMap : undefined;
+}
+
+function imageResolutionInputs(
+  ownerEntityType: "garment" | "wishlistItem" | "outfit",
+  ownerEntityId: string,
+  assets: WorkspaceAssetRecord[],
+  assetRefs: CloudAssetReferenceMap | undefined,
+  imageCache: Pick<AccountImageCache, "get" | "downloadAndCache"> | undefined,
+) {
+  return { assets, ownerEntityType, ownerEntityId, assetRefs, imageCache };
 }
 
 function toOutfitCalendarPlan(t: WorkspaceTripPlanRecord): OutfitCalendarPlan {

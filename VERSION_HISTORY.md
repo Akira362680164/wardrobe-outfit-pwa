@@ -1,3 +1,14 @@
+## 2026-06-29 / v2.0.10-test / Codex — 图片资产统一装配
+
+- **目的**：修复工作区实体已剥离 DataURL 后，单品、种草和套装在首页及详情页显示无图的问题。
+- **版本**：保持 `2.0.10-test`；本条为 v2.0.13 紧急修复 Commit 1。
+- **改动文件**：`src/lib/cloud-sync/image-asset-resolver.ts`、`workspace-ui-mapper.ts`、`asset-bridge.ts`、`garment-bridge.ts`、`wishlist-bridge.ts`、`outfit-bridge.ts`、`src/lib/data-repo.ts`、`scripts/test-workspace-ui-image-hydration.ts`、`package.json`、`VERSION_HISTORY.md`。
+- **核心修复**：UI 快照统一从本地 assets、账号隔离缓存和现有下载接口装配图片；禁止业务 payload 图片兜底；补齐单品原图/参考图、种草原图、套装封面/预览/实拍图字段；同步 payload 只保留图片元数据和 cloudAssetRefs。
+- **本地验证**：`npm run typecheck` 通过；新增 `test:logic:workspace-images` 通过，覆盖单品/种草/套装、本地资产、缓存下载与失败隔离；`npm run test:logic:images` 58/58 通过。
+- **风险门禁**：**high**（图片资产、云端下载、工作区 UI 主读取链路）。
+- **未触发 subagent**：用户未通知。
+- **未验证风险**：尚未执行浏览器刷新/重登实操和 Android 真机图片恢复验证；将在最终回归阶段统一执行。
+
 ## 2026-06-29 / v2.0.10-test / Codex — 收紧默认衣橱唯一性设计
 
 - **目的**：按用户决定删除默认衣橱的历史兼容识别；服务器全量数据清空由用户另行执行，与本任务无关。

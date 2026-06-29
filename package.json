@@ -28,6 +28,7 @@
     "test:logic": "tsx scripts/test-recommendations.ts",
     "test:logic:cropper": "tsx scripts/test-cropper-math.ts",
     "test:logic:images": "tsx scripts/test-garment-image-source.ts",
+    "test:logic:workspace-images": "tsx scripts/test-workspace-ui-image-hydration.ts",
     "test:logic:outfit-cover-consistency": "tsx scripts/test-outfit-cover-consistency.ts",
     "test:logic:catalog": "tsx scripts/test-category-catalog.ts",
     "test:logic:outfit": "tsx scripts/test-outfit-asset-center.ts",

@@ -21,6 +21,7 @@ import {
 import { loadCloudBridgeContext } from "@/lib/cloud-sync/bridge-context";
 import { getAccountWorkspaceDb } from "@/lib/account-workspace-db";
 import { readWorkspaceUiSnapshot } from "@/lib/cloud-sync/workspace-ui-mapper";
+import { AccountImageCache } from "@/lib/cloud-sync/image-cache";
 import type { WardrobeCascadeDeleteResult, WardrobeCascadeDeleteSource } from "@/lib/wardrobe-cascade-delete";
 import { workspaceConvertWishlistToWardrobe, workspaceDeleteGarmentsWithCascade, workspaceDeleteWishlistItems } from "@/lib/workspace-write-commands";
 
@@ -40,7 +41,7 @@ export async function getWardrobeSnapshot(): Promise<WardrobeDataSnapshot> {
   const ctx = await loadCloudBridgeContext();
   if (ctx) {
     const db = getAccountWorkspaceDb(ctx.workspace);
-    const snapshot = await readWorkspaceUiSnapshot(db);
+    const snapshot = await readWorkspaceUiSnapshot(db, { imageCache: new AccountImageCache(ctx.workspace.userIdHash) });
     return {
       items: snapshot.items,
       locations: snapshot.locations,
@@ -70,7 +71,7 @@ async function getWorkspaceSnapshotCached(): Promise<WardrobeDataSnapshot | null
     return null;
   }
   const db = getAccountWorkspaceDb(ctx.workspace);
-  const snapshot = await readWorkspaceUiSnapshot(db);
+  const snapshot = await readWorkspaceUiSnapshot(db, { imageCache: new AccountImageCache(ctx.workspace.userIdHash) });
   _cachedWorkspaceSnapshot = {
     items: snapshot.items,
     locations: snapshot.locations,
@@ -238,4 +239,3 @@ export function getWishlistUndoPurchaseRisk(input: {
 }): UndoPurchaseRisk {
   return getUndoPurchaseRisk(input);
 }
-
