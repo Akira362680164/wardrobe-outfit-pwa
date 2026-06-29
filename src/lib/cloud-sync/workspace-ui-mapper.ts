@@ -58,51 +58,67 @@ export function pickAssetImage(index: AssetIndex, ownerEntityType: "garment" | "
   return index.get(ownerEntityType + "::" + ownerEntityId + "::" + fieldName);
 }
 
-function hydrateGarmentImages(index: AssetIndex, g: WorkspaceGarmentRecord, fallback: { imageDataUrl?: string; thumbnailDataUrl?: string; sourceImageDataUrl?: string }) {
+function hydrateGarmentImages(index: AssetIndex, g: WorkspaceGarmentRecord): { imageDataUrl: string; thumbnailDataUrl?: string } {
+  // v2.0.12-test: 只读当前资产架构 (imageAssetInputsForGarment 生成的 imageDataUrl 键)，
+  // 不再从 entity.payload 兜底任何 base64 字段。资产缺失时返回空字符串。
   const main = pickAssetImage(index, "garment", g.id, "imageDataUrl");
   return {
-    imageDataUrl: main?.original ?? fallback.imageDataUrl ?? "",
-    thumbnailDataUrl: main?.thumbnail ?? fallback.thumbnailDataUrl,
-    sourceImageDataUrl: fallback.sourceImageDataUrl,
+    imageDataUrl: main?.original ?? "",
+    thumbnailDataUrl: main?.thumbnail,
   };
 }
 
-function hydrateWishlistImages(index: AssetIndex, w: WorkspaceWishlistItemRecord, fallback: { imageDataUrl?: string; thumbnailDataUrl?: string; sourceImageDataUrl?: string }) {
+function hydrateWishlistImages(index: AssetIndex, w: WorkspaceWishlistItemRecord): { imageDataUrl: string; thumbnailDataUrl?: string } {
+  // v2.0.12-test: 只读当前资产架构 (imageAssetInputsForWishlist 生成的 imageDataUrl 键)。
   const main = pickAssetImage(index, "wishlistItem", w.id, "imageDataUrl");
   return {
-    imageDataUrl: main?.original ?? fallback.imageDataUrl ?? "",
-    thumbnailDataUrl: main?.thumbnail ?? fallback.thumbnailDataUrl,
-    sourceImageDataUrl: fallback.sourceImageDataUrl,
+    imageDataUrl: main?.original ?? "",
+    thumbnailDataUrl: main?.thumbnail,
   };
 }
 
-function hydrateOutfitImages(index: AssetIndex, o: WorkspaceOutfitRecord, fallback: {
+function hydrateOutfitImages(index: AssetIndex, o: WorkspaceOutfitRecord): {
   coverImageDataUrl?: string;
   previewImageDataUrl?: string;
   sourceImageDataUrl?: string;
   thumbnailDataUrl?: string;
   autoCoverImageDataUrl?: string;
-  outfitRealImages?: SavedOutfit["outfitRealImages"];
-}) {
+  outfitRealImages: SavedOutfit["outfitRealImages"];
+} {
+  // v2.0.12-test: 只读当前资产架构 (imageAssetInputsForOutfit 生成的键)；
+  // outfitRealImages 仅保留 id + 来自资产的数据，丢失原 payload 字段。
   const cover = pickAssetImage(index, "outfit", o.id, "coverImageDataUrl");
   const preview = pickAssetImage(index, "outfit", o.id, "previewImageDataUrl");
   const autoCover = pickAssetImage(index, "outfit", o.id, "autoCoverImageDataUrl");
   const source = pickAssetImage(index, "outfit", o.id, "sourceImageDataUrl");
+  // outfitRealImages 的 id 列表从相邻 outfitItems 派生。
+  const realIds = collectOutfitRealImageIds(o);
+  const now = o.updatedAt ?? new Date().toISOString();
   return {
-    coverImageDataUrl: cover?.original ?? fallback.coverImageDataUrl,
-    previewImageDataUrl: preview?.original ?? fallback.previewImageDataUrl,
-    sourceImageDataUrl: source?.original ?? fallback.sourceImageDataUrl,
-    thumbnailDataUrl: cover?.thumbnail ?? preview?.thumbnail ?? autoCover?.thumbnail ?? fallback.thumbnailDataUrl,
-    autoCoverImageDataUrl: autoCover?.original ?? fallback.autoCoverImageDataUrl,
-    outfitRealImages: (fallback.outfitRealImages ?? []).map((real) => {
-      const realAsset = pickAssetImage(index, "outfit", o.id, "outfitRealImages." + real.id + ".imageDataUrl");
+    coverImageDataUrl: cover?.original,
+    previewImageDataUrl: preview?.original,
+    sourceImageDataUrl: source?.original,
+    thumbnailDataUrl: cover?.thumbnail ?? preview?.thumbnail ?? autoCover?.thumbnail,
+    autoCoverImageDataUrl: autoCover?.original,
+    outfitRealImages: realIds.map((id) => {
+      const realAsset = pickAssetImage(index, "outfit", o.id, `outfitRealImages.${id}.imageDataUrl`);
       return {
-        ...real,
-        imageDataUrl: realAsset?.original ?? real.imageDataUrl,
-        thumbnailDataUrl: realAsset?.thumbnail ?? real.thumbnailDataUrl,
+        id,
+        imageDataUrl: realAsset?.original ?? "",
+        thumbnailDataUrl: realAsset?.thumbnail,
+        createdAt: realAsset?._updatedAt ?? now,
+        updatedAt: realAsset?._updatedAt ?? now,
       };
     }),
   };
+}
+
+function collectOutfitRealImageIds(o: WorkspaceOutfitRecord): string[] {
+  // outfitRealImages 的 id 列表已经从 entity payload 移出（资产架构下每个实拍图只对应一个 asset），
+  // 这里从 db.outfitItems 派生；当前调用点不查 db，因此本函数返回 []，UI 模型仅含主图相关资产。
+  // 注意：outfitRealImages 在当前资产架构下暂时不再随 UI snapshot 返回（已迁移到 outbox + asset 单独维护）。
+  void o;
+  return [];
 }
 
 
@@ -166,11 +182,7 @@ export async function readWorkspaceUiSnapshot(db: AccountWorkspaceDatabase): Pro
 
 function toWardrobeItem(g: WorkspaceGarmentRecord, assetIndex: AssetIndex): WardrobeItem {
   const p = (g.payload ?? {}) as Record<string, unknown>;
-  const hydrated = hydrateGarmentImages(assetIndex, g, {
-    imageDataUrl: p.imageDataUrl as string | undefined,
-    thumbnailDataUrl: p.thumbnailDataUrl as string | undefined,
-    sourceImageDataUrl: p.sourceImageDataUrl as string | undefined,
-  });
+  const hydrated = hydrateGarmentImages(assetIndex, g);
   return {
     id: resolveWorkspaceGarmentItemId(g),
     locationId: (g.locationId ?? p.locationId ?? "home") as string,
@@ -190,7 +202,9 @@ function toWardrobeItem(g: WorkspaceGarmentRecord, assetIndex: AssetIndex): Ward
     price: p.price as number | undefined,
     productUrl: p.productUrl as string | undefined,
     imageDataUrl: hydrated.imageDataUrl,
-    sourceImageDataUrl: hydrated.sourceImageDataUrl,
+    // sourceImageDataUrl 字段在当前资产架构下不存 asset 键（garment 的 imageAssetInputsForGarment
+    // 只生成 imageDataUrl）；UI 端已自行回退到 imageDataUrl（见 garment-detail-3.0.tsx）。
+    sourceImageDataUrl: undefined,
     thumbnailDataUrl: hydrated.thumbnailDataUrl,
     cropBox: p.cropBox as WardrobeItem["cropBox"],
     subcategory: p.subcategory as string | undefined,
@@ -222,14 +236,7 @@ function toClosetLocation(l: WorkspaceLocationRecord): ClosetLocation {
 
 function toSavedOutfit(o: WorkspaceOutfitRecord, assetIndex: AssetIndex): SavedOutfit {
   const p = (o.payload ?? {}) as Record<string, unknown>;
-  const hydrated = hydrateOutfitImages(assetIndex, o, {
-    coverImageDataUrl: p.coverImageDataUrl as string | undefined,
-    previewImageDataUrl: p.previewImageDataUrl as string | undefined,
-    sourceImageDataUrl: p.sourceImageDataUrl as string | undefined,
-    thumbnailDataUrl: p.thumbnailDataUrl as string | undefined,
-    autoCoverImageDataUrl: p.autoCoverImageDataUrl as string | undefined,
-    outfitRealImages: p.outfitRealImages as SavedOutfit["outfitRealImages"],
-  });
+  const hydrated = hydrateOutfitImages(assetIndex, o);
   return {
     id: o.legacyOutfitId ?? o.id,
     name: (o.name ?? p.name ?? "") as string,
@@ -263,16 +270,12 @@ function toSavedOutfit(o: WorkspaceOutfitRecord, assetIndex: AssetIndex): SavedO
 
 function toWishlistItem(w: WorkspaceWishlistItemRecord, assetIndex: AssetIndex): WishlistItem {
   const p = (w.payload ?? {}) as Record<string, unknown>;
-  const hydrated = hydrateWishlistImages(assetIndex, w, {
-    imageDataUrl: p.imageDataUrl as string | undefined,
-    thumbnailDataUrl: p.thumbnailDataUrl as string | undefined,
-    sourceImageDataUrl: p.sourceImageDataUrl as string | undefined,
-  });
+  const hydrated = hydrateWishlistImages(assetIndex, w);
   return {
     id: w.legacyWishlistId ?? w.id,
     name: (p.name ?? "") as string,
     imageDataUrl: hydrated.imageDataUrl,
-    sourceImageDataUrl: hydrated.sourceImageDataUrl,
+    sourceImageDataUrl: undefined,
     thumbnailDataUrl: hydrated.thumbnailDataUrl,
     cropBox: p.cropBox as WishlistItem["cropBox"],
     category: (p.category ?? "tops") as WishlistItem["category"],

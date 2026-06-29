@@ -98,7 +98,7 @@ async function main() {
     check("garment thumbnailDataUrl 从 assets 回填", item?.thumbnailDataUrl === THUMB_DATA_URL);
   }
 
-  // case 2: garment fallback 到 payload
+  // case 2: garment 无 assets 时不再回退 payload (v2.0.12-test 严格只读资产架构)
   {
     const db = buildDb();
     const userId = "user-2";
@@ -112,14 +112,69 @@ async function main() {
       updatedAt: "2026-06-29T00:00:00.000Z",
       originDeviceId: "device-1",
       locationId: "home",
-      name: "fallback",
-      payload: { name: "fallback", imageDataUrl: SOURCE_DATA_URL, thumbnailDataUrl: THUMB_DATA_URL, sourceImageDataUrl: SOURCE_DATA_URL },
+      name: "no-asset",
+      payload: { name: "no-asset", imageDataUrl: SOURCE_DATA_URL, thumbnailDataUrl: THUMB_DATA_URL, sourceImageDataUrl: SOURCE_DATA_URL },
     });
     const snap = await readWorkspaceUiSnapshot(db);
     const item = snap.items[0];
-    check("garment 无 assets 时回退 payload imageDataUrl", item?.imageDataUrl === SOURCE_DATA_URL);
-    check("garment 无 assets 时回退 payload thumbnailDataUrl", item?.thumbnailDataUrl === THUMB_DATA_URL);
-    check("garment 无 assets 时回退 payload sourceImageDataUrl", item?.sourceImageDataUrl === SOURCE_DATA_URL);
+    check("garment 无 assets 时 imageDataUrl 为空字符串 (禁止 payload fallback)", item?.imageDataUrl === "");
+    check("garment 无 assets 时 thumbnailDataUrl 为 undefined (禁止 payload fallback)", item?.thumbnailDataUrl === undefined);
+    check("garment 无 assets 时 sourceImageDataUrl 为 undefined (禁止 payload fallback)", item?.sourceImageDataUrl === undefined);
+  }
+
+  // case 2b: 录入后立即回填 (录入后第一次刷新即可读取图片)
+  {
+    const db = buildDb();
+    const userId = "user-2b";
+    await seedLocation(db, userId, "home", "默认衣橱");
+    const garmentId = "g-2b";
+    await db.garments.put({
+      id: garmentId, userId, revision: 1,
+      createdAt: "2026-06-29T00:00:00.000Z", updatedAt: "2026-06-29T00:00:00.000Z",
+      originDeviceId: "device-1", locationId: "home", name: "fresh",
+      payload: { name: "fresh" },
+    });
+    await seedAsset(db, userId, garmentId, "garment", "imageDataUrl", ORIGINAL_DATA_URL);
+    const snap = await readWorkspaceUiSnapshot(db);
+    const item = snap.items[0];
+    check("录入后第一次刷新即可读取 garment 主图", item?.imageDataUrl === ORIGINAL_DATA_URL);
+    check("录入后第一次刷新即可读取 garment 缩略图", item?.thumbnailDataUrl === THUMB_DATA_URL);
+  }
+
+  // case 2c: 单个 asset 解析失败不阻断其他实体读取
+  {
+    const db = buildDb();
+    const userId = "user-2c";
+    await seedLocation(db, userId, "home", "默认衣橱");
+    const garmentA = "g-2c-a";
+    const garmentB = "g-2c-b";
+    await db.garments.put({
+      id: garmentA, userId, revision: 1,
+      createdAt: "2026-06-29T00:00:00.000Z", updatedAt: "2026-06-29T00:00:00.000Z",
+      originDeviceId: "device-1", locationId: "home", name: "A", payload: { name: "A" },
+    });
+    await db.garments.put({
+      id: garmentB, userId, revision: 1,
+      createdAt: "2026-06-29T00:00:00.000Z", updatedAt: "2026-06-29T00:00:00.000Z",
+      originDeviceId: "device-1", locationId: "home", name: "B", payload: { name: "B" },
+    });
+    // garmentA 写入一个 malformed asset (uploads 缺失)
+    await db.assets.put({
+      id: "a-malformed", userId, revision: 1,
+      createdAt: "2026-06-29T00:00:00.000Z", updatedAt: "2026-06-29T00:00:00.000Z",
+      originDeviceId: "device-1",
+      ownerEntityType: "garment", ownerEntityId: garmentA,
+      payload: { uploads: undefined, source: { kind: "legacy_entity_image", fieldName: "imageDataUrl" }, thumbnailStatus: "failed" },
+    });
+    // garmentB 写入正常 asset
+    await seedAsset(db, userId, garmentB, "garment", "imageDataUrl", ORIGINAL_DATA_URL);
+    const snap = await readWorkspaceUiSnapshot(db);
+    const items = snap.items;
+    const a = items.find((it) => it.name === "A");
+    const b = items.find((it) => it.name === "B");
+    check("malformed asset 不阻断其他实体", items.length === 2);
+    check("garmentA 在 malformed asset 下 imageDataUrl 为空", a?.imageDataUrl === "");
+    check("garmentB 正常资产仍可读出", b?.imageDataUrl === ORIGINAL_DATA_URL);
   }
 
   // case 3: 重复 home 衣橱去重
