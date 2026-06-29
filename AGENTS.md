@@ -158,16 +158,27 @@
 - 动画、触摸、弹窗、横屏、图片预览相关改动：必须做实际视觉或交互检查，至少覆盖手机窄屏和横屏风险点。
 - MiniMax 现场调用如果没有用户 Key 或网络条件，必须说明未做 live 验证，并用本地解析、兜底逻辑或单元脚本验证可验证部分。
 
-### Android 真机测试流程（ADB）
+### Android 测试流程（模拟器 / 真机 + ADB）
 
-当本机连接了已开启开发者模式和 USB 调试的 Android 手机，且本次任务涉及 Android、移动端交互或 APK 验证时，agent 可以直接安装当前应用并进行真机调试，无需再询问是否允许安装。
+当本次任务涉及 Android、移动端交互、APK 验证、图片显示、网络恢复或裁切/同步等高风险链路时，agent **必须**在模拟器或真机上安装真实 APK 并完成验证，**不得只使用浏览器模拟操作**。浏览器 Dev Server 仅用于快速迭代开发阶段；最终验证必须走 Android 环境。
 
-1. 连接检查：先运行 `adb devices -l`。只有目标设备状态为 `device` 时才继续；`unauthorized` / `offline` 或同时连接多台设备时停止安装，先说明需要用户处理的连接或目标设备问题。
+若本机无可用物理设备，必须启动 Android Emulator（通过 Android Studio AVD Manager 或 `emulator -avd <avd_name>`）完成以下流程。模拟器验证同样有效，结果记入 `VERSION_HISTORY.md`。
+
+1. 连接检查：先运行 `adb devices -l`。只有目标设备状态为 `device` 时才继续；`unauthorized` / `offline` 或同时连接多台设备时，优先选模拟器或明确指定 `-s <serial>`。
 2. 本地门禁：先按改动范围完成 typecheck、逻辑测试和 build；需进入 APK 的改动仍须遵守本文的版本号、固定签名和 `npm run android:apk` 规则。
-3. 保留数据安装：使用 `adb install -r android/app/build/outputs/apk/release/app-release.apk` 覆盖安装。不得自动卸载 App、清除 App 数据或使用会导致降级/数据丢失的安装参数。如果出现签名冲突或版本降级冲突，停止并告知用户，不得通过卸载绕过。
-4. 启动与调试：安装成功后可使用 `adb shell monkey -p com.wardrobe.outfit -c android.intent.category.LAUNCHER 1` 启动 App，通过 `adb logcat`、真机截图、屏幕录制和必要的 ADB 输入操作复现问题。调试时不得主动读取或导出手机中的 MiniMax Key、用户照片、衣橱数据和备份文件。
-5. 真机检查：按任务风险至少验证启动、本次改动的主路径、Android 返回键、窄屏和横屏风险点；崩溃或网络问题应保留相关 logcat 摘要。
-6. 结果记录：在 `VERSION_HISTORY.md` 写明手机型号、Android 版本、APK 版本、安装结果、已测路径、日志/视觉结果和未覆盖风险。
+3. 安装 APK：使用 `adb install -r <apk_path>` 安装。如果设备上已有旧版本且签名一致，`-r` 保留数据覆盖安装；如果需要验证"全新安装"流程（如首次启动、数据恢复、云端拉取），必须按步骤 7 先清除数据或卸载。
+4. 启动与调试：安装成功后使用 `adb shell monkey -p com.wardrobe.outfit -c android.intent.category.LAUNCHER 1` 启动 App。通过 `adb logcat`、截图（`adb exec-out screencap -p > <file>`）和必要的 ADB 输入操作复现问题。调试时不得主动读取或导出手机中的 MiniMax Key、用户照片、衣橱数据和备份文件。
+5. 功能验证：按任务风险至少验证启动、本次改动的主路径、Android 返回键、窄屏和横屏风险点；崩溃或网络问题应保留相关 logcat 摘要。
+6. 日志采集：每次测试必须采集 logcat 并筛出崩溃和严重错误：
+   - 启动前清空日志缓冲：`adb logcat -c`
+   - 操作完成后导出：`adb logcat -d -t 1000 | rg 'FATAL|AndroidRuntime|com.wardrobe.outfit' > <log_file>`
+   - 不使用 `rg -v` 大面积排除后再交人工判断；筛出的日志附在验证记录中。
+7. 清除数据 / 卸载重装测试（涉及数据恢复、首次启动、云端同步或登录流程时必须执行）：
+   - 清除 App 数据（保留安装）：`adb shell pm clear com.wardrobe.outfit`
+   - 完全卸载：`adb uninstall com.wardrobe.outfit`
+   - 重装：`adb install <apk_path>`
+   - 验证：重新登录后确认数据恢复、图片下载、同步闭环正常。
+8. 结果记录：在 `VERSION_HISTORY.md` 写明设备类型（模拟器/真机）、型号/AVD、Android 版本、APK 版本、安装方式、已测路径、日志摘要和未覆盖风险。如果本次任务涉及 Android 但未执行模拟器/真机验证，必须作为"未验证风险"明确标注。
 
 已验证的具体安装方法：
 
