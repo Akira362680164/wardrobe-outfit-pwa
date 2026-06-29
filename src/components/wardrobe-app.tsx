@@ -947,7 +947,7 @@ export function WardrobeApp({ cloudAuth }: { cloudAuth?: WardrobeCloudAuth } = {
           </div>
         </aside>
 
-        <section className="min-w-0">
+        <section className="min-w-0 overflow-hidden">
 
           {!hasKey && showKeyBanner && !hideMobileNav ? (
             <div className="mb-4 flex items-center gap-3 rounded-lg border border-clay/20 bg-clay/6 px-4 py-3 text-sm">
@@ -4725,11 +4725,11 @@ function SettingsView({
         <div className="grid gap-3">
           <label className="grid gap-1 text-sm font-medium">
             衣橱名称 <span className="text-red-500">*</span>
-            <input value={wardrobeFormName} onChange={(e) => setWardrobeFormName(e.target.value)} className="h-10 rounded-lg border border-ink/10 bg-white px-3 text-sm outline-none focus:border-denim" placeholder="例如 办公室抽屉" />
+            <input value={wardrobeFormName} onChange={(e) => setWardrobeFormName(e.target.value)} className="h-10 w-full rounded-lg border border-ink/10 bg-white px-3 text-sm outline-none focus:border-denim" placeholder="例如 办公室抽屉" />
           </label>
           <label className="grid gap-1 text-sm font-medium">
             衣橱简介
-            <input value={wardrobeFormNote} onChange={(e) => setWardrobeFormNote(e.target.value)} className="h-10 rounded-lg border border-ink/10 bg-white px-3 text-sm outline-none focus:border-denim" placeholder="选填" />
+            <input value={wardrobeFormNote} onChange={(e) => setWardrobeFormNote(e.target.value)} className="h-10 w-full rounded-lg border border-ink/10 bg-white px-3 text-sm outline-none focus:border-denim" placeholder="选填" />
           </label>
           <div className="grid grid-cols-2 gap-2">
             <button type="button" onClick={() => setShowAddWardrobe(false)} className="h-10 rounded-lg border border-ink/10 text-sm">取消</button>
@@ -4747,11 +4747,11 @@ function SettingsView({
         <div className="grid gap-3">
           <label className="grid gap-1 text-sm font-medium">
             衣橱名称 <span className="text-red-500">*</span>
-            <input value={wardrobeFormName} onChange={(e) => setWardrobeFormName(e.target.value)} className="h-10 rounded-lg border border-ink/10 bg-white px-3 text-sm outline-none focus:border-denim" />
+            <input value={wardrobeFormName} onChange={(e) => setWardrobeFormName(e.target.value)} className="h-10 w-full rounded-lg border border-ink/10 bg-white px-3 text-sm outline-none focus:border-denim" />
           </label>
           <label className="grid gap-1 text-sm font-medium">
             衣橱简介
-            <input value={wardrobeFormNote} onChange={(e) => setWardrobeFormNote(e.target.value)} className="h-10 rounded-lg border border-ink/10 bg-white px-3 text-sm outline-none focus:border-denim" />
+            <input value={wardrobeFormNote} onChange={(e) => setWardrobeFormNote(e.target.value)} className="h-10 w-full rounded-lg border border-ink/10 bg-white px-3 text-sm outline-none focus:border-denim" />
           </label>
           <div className="grid grid-cols-2 gap-2">
             <button type="button" onClick={() => setEditWardrobeTarget(null)} className="h-10 rounded-lg border border-ink/10 text-sm">取消</button>
@@ -5096,7 +5096,7 @@ function ProfileDetailPage({
             inputMode="numeric"
             value={draft.heightCm ?? ""}
             onChange={(e) => setDraft((p) => ({ ...p, heightCm: e.target.value ? Number(e.target.value) : undefined }))}
-            className="h-11 rounded-lg border border-ink/10 bg-white px-3 text-base outline-none focus:border-denim"
+            className="h-11 w-full rounded-lg border border-ink/10 bg-white px-3 text-base outline-none focus:border-denim"
             placeholder="例如 165"
             autoFocus
           />
@@ -5136,7 +5136,7 @@ function ProfileDetailPage({
             <input
               value={draft.bodyTypeCustom ?? ""}
               onChange={(e) => setDraft((p) => ({ ...p, bodyTypeCustom: e.target.value }))}
-              className="h-10 rounded-lg border border-ink/10 bg-white px-3 text-sm outline-none focus:border-denim"
+              className="h-10 w-full rounded-lg border border-ink/10 bg-white px-3 text-sm outline-none focus:border-denim"
               placeholder="例如 微胖梨形"
             />
           </label>
@@ -5197,7 +5197,7 @@ function ProfileDetailPage({
           <input
             value={draft.hairDescription ?? ""}
             onChange={(e) => setDraft((p) => ({ ...p, hairDescription: e.target.value }))}
-            className="h-11 rounded-lg border border-ink/10 bg-white px-3 text-base outline-none focus:border-denim"
+            className="h-11 w-full rounded-lg border border-ink/10 bg-white px-3 text-base outline-none focus:border-denim"
             placeholder="例如 黑色长发、棕色短发"
             autoFocus
           />
@@ -5219,7 +5219,7 @@ function ProfileDetailPage({
           <input
             value={draft.skinToneDescription ?? ""}
             onChange={(e) => setDraft((p) => ({ ...p, skinToneDescription: e.target.value }))}
-            className="h-11 rounded-lg border border-ink/10 bg-white px-3 text-base outline-none focus:border-denim"
+            className="h-11 w-full rounded-lg border border-ink/10 bg-white px-3 text-base outline-none focus:border-denim"
             placeholder="例如 偏白肤色、淡妆"
             autoFocus
           />
@@ -5242,7 +5242,7 @@ function ProfileDetailPage({
             value={draft.styleNote ?? ""}
             onChange={(e) => setDraft((p) => ({ ...p, styleNote: e.target.value }))}
             rows={3}
-            className="resize-none rounded-lg border border-ink/10 bg-white px-3 py-2 text-sm outline-none focus:border-denim"
+            className="w-full resize-none rounded-lg border border-ink/10 bg-white px-3 py-2 text-sm outline-none focus:border-denim"
             placeholder="比如 偏好 oversize / 通勤 / 户外"
             autoFocus
           />
@@ -5642,7 +5642,7 @@ function MiniMaxDetailPage({
           <input
             value={draft.apiHost}
             onChange={(e) => setDraft((p) => ({ ...p, apiHost: e.target.value }))}
-            className="h-11 rounded-lg border border-ink/10 bg-white px-3 text-base outline-none focus:border-denim"
+            className="h-11 w-full rounded-lg border border-ink/10 bg-white px-3 text-base outline-none focus:border-denim"
           />
         </label>
 

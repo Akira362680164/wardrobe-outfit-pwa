@@ -284,7 +284,7 @@ function SubPageHeader({ title, onBack }: { title: string; onBack: () => void })
       <button type="button" onClick={onBack} className="grid h-10 w-10 place-items-center rounded-lg text-ink/65 active:bg-mist" aria-label="返回">
         <ChevronLeft size={20} aria-hidden="true" />
       </button>
-      <h1 className="text-xl font-bold tracking-tight">{title}</h1>
+      <h1 className="min-w-0 truncate text-xl font-bold tracking-tight">{title}</h1>
     </header>
   );
 }
@@ -308,7 +308,7 @@ function PasswordField({
         onChange={(event) => onChange(event.target.value)}
         type="password"
         autoComplete={autoComplete}
-        className="h-11 rounded-lg border border-ink/10 bg-white px-3 text-base outline-none focus:border-denim"
+        className="h-11 w-full rounded-lg border border-ink/10 bg-white px-3 text-base outline-none focus:border-denim"
       />
     </label>
   );
