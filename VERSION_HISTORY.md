@@ -7,7 +7,7 @@
 - **阴影修复**：仅对设置首页直接 `.surface` 卡片覆盖 `shadow-none`，不改全局 `.surface` 和其他页面。
 - **滚动修复**：`useScrollLock` 只在全局锁计数由 0 进入 1 时保存并施加 DOM 样式，嵌套弹窗不再用“已锁定样式”覆盖原始样式，最后一层关闭后可正常恢复页面滚动。
 - **云数据边界**：本轮不修改云同步或衣橱名称数据；云端记录字段丢失问题留待后续单独讨论。
-- **验证**：`npm run test:logic:ui-overflow` 通过；`npm run typecheck` 通过；`npm run test:logic` 通过；`npm run build` 通过；构建 CSS 已确认生成 `grid-template-columns:minmax(0,1fr)` 和设置卡片 `shadow-none` 选择器；`npm run android:apk` 固定签名构建通过。
+- **验证**：`npm run test:logic:ui-overflow` 通过；`npm run typecheck` 通过；`npm run test:logic` 通过；`npm run build` 通过；构建 CSS 已确认生成 `grid-template-columns:minmax(0,1fr)` 和设置卡片 `shadow-none` 选择器；`npm run android:apk` 固定签名构建通过。交付文件为根目录 `衣橱穿搭助手-v2.0.9-test.apk`（9.5MB，包名 `com.wardrobe.outfit`，`versionCode=20009`，签名 `CN=fangzheng`，SHA-256 `13c70dbfe0f096027589f4a24d18aecf5f02df30735c04594e0b3b71b4bfee2b`）；根目录原有同名但内部实为 `2.0.8-test` 的旧 APK 已按真实版本移入 `apk-archive/`保留。
 - **风险门禁**：**high**（手机窄屏布局、嵌套弹窗和全局滚动锁）。
 - **未触发 subagent**：用户未通知。
 - **未验证风险**：当前 `adb devices -l` 无在线设备，未在 MEIZU 21 Pro 上对长衣橱名称、竖屏/横屏和“删除衣橱 → 二次确认 → 关闭”后的滚动进行真机视觉/触摸复测。
