@@ -1,3 +1,14 @@
+## 2026-06-29 / v2.0.10-test / Codex — 真实 AI 置信度、待确认计数与全局温度规则
+
+- **目的**：删除 `AI 53` 字段平均伪分数、修正待确认固定数量，并把适穿温度统一扩展为 -20～40℃。
+- **版本**：保持 `2.0.10-test`；本条为 v2.0.13 紧急修复 Commit 3。
+- **改动文件**：`src/lib/temperature-range.ts`、`intake-draft.ts`、`intake-local-draft.ts`、`intake-save-adapters.ts`、`device-minimax.ts`、`outfit-ai-metadata.ts`、`workspace-ui-mapper.ts`、`src/components/{temperature-range-slider,temperature-range-bar,garment-intake-flow,wishlist-view-2.0,outfit-list-view}.tsx`、相关测试、`package.json`、`VERSION_HISTORY.md`。
+- **核心修复**：草稿独立保存 MiniMax 整件级 0～100 分数，无值时隐藏 AI 胶囊，保存衣物时明确换算为 0～1；待确认只统计确认页可见的真实问题字段并暴露 `data-review-count`；全局 domain 模块统一最小值 -20、最大值 40、步长 1、clamp 和 min/max 归一规则，组件、AI、保存、套装聚合和工作区恢复统一引用。
+- **本地验证**：本轮代码完成后 `npm run typecheck` 曾通过；随后工作区外部新增未跟踪 `e2e/` 文件，当前 typecheck 仅报告 `e2e/helpers/navigation.ts` 既有类型错误，本任务文件无类型错误；`test:logic:temperature-confidence`、`test-intake-confirm-pill-row`、`test:logic:intake`、`test:logic:outfit-metadata`、`test:logic:outfit-ai` 全部通过。
+- **风险门禁**：**high**（AI 识别元数据、录入保存、温度触摸控件和多处数据归一）。
+- **未触发 subagent**：用户未通知。
+- **未验证风险**：尚未用真实 MiniMax Key 对不同衣物置信度做 live 调用；温度滑块的窄屏/横屏和触摸拖动将在浏览器/真机阶段验证。
+
 ## 2026-06-29 / v2.0.10-test / Codex — 默认衣橱本地与服务端唯一性
 
 - **目的**：保证同一账号只有一条活动 `dexieId="home"` 默认衣橱，并按用户要求取消名称和旧标识兼容识别。

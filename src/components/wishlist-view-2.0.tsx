@@ -53,6 +53,7 @@ import type { GarmentIntakeDraft } from "@/lib/intake-draft";
 import { generateThumbnailSafe } from "@/lib/thumbnail-runtime";
 import { useStableBackHandler } from "@/lib/use-stable-back-handler";
 import { TemperatureRangeSlider } from "@/components/temperature-range-slider";
+import { normalizeTemperatureRange } from "@/lib/temperature-range";
 import { FitGenderChips } from "@/components/fit-gender-chips";
 import { CategorySubcategoryPicker } from "@/components/category-subcategory-picker";
 import { CatalogWaterfallCardShell } from "@/components/item-shell/catalog-waterfall-card-shell";
@@ -538,16 +539,7 @@ export function WishlistView20({
     if (!formName.trim()) { onMessage("请输入商品名称", "info"); return; }
     const now = new Date().toISOString();
     // 适穿温度：把 min/max 数字（独立 Slider 返回 {minC, maxC}）规整为 Item schema 期待的 TemperatureRange
-    const cleanedTempRange: TemperatureRange | undefined = (() => {
-      if (!formTemperatureRange) return undefined;
-      const hasMin = typeof formTemperatureRange.minC === "number" && Number.isFinite(formTemperatureRange.minC);
-      const hasMax = typeof formTemperatureRange.maxC === "number" && Number.isFinite(formTemperatureRange.maxC);
-      if (!hasMin && !hasMax) return undefined;
-      return {
-        ...(hasMin ? { minC: formTemperatureRange.minC as number } : {}),
-        ...(hasMax ? { maxC: formTemperatureRange.maxC as number } : {}),
-      };
-    })();
+    const cleanedTempRange: TemperatureRange | undefined = normalizeTemperatureRange(formTemperatureRange);
     const base = {
       name: formName.trim(),
       imageDataUrl: formImageDataUrl,

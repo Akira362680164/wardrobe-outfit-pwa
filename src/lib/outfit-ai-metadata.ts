@@ -10,6 +10,7 @@ import type { GarmentStyle, SavedOutfit, Season, WardrobeItem } from "@/lib/type
 import { CATEGORY_LABELS, SEASON_LABELS, STYLE_LABELS } from "@/lib/types";
 import { createIntakeField, type OutfitIntakeDraft } from "@/lib/intake-draft";
 import { getAllColors } from "@/lib/color-fields";
+import { normalizeTemperatureRange } from "@/lib/temperature-range";
 
 export interface OutfitMetadataDraft {
  name?: string;
@@ -117,7 +118,7 @@ export function sanitizeOutfitMetadata(
  const sceneTags = sanitizeChineseTagArray(obj.sceneTags, MAX_SCENE_TAGS, MAX_TAG_LEN);
  const styleTags = sanitizeChineseTagArray(obj.styleTags, MAX_STYLE_TAGS, MAX_TAG_LEN, { englishGarmentStyleValues: STYLE_VALUES });
  const pairingTags = sanitizeChineseTagArray(obj.pairingTags, MAX_PAIRING_TAGS, MAX_TAG_LEN);
- const temperatureRange = sanitizeTemperatureRange(obj.temperatureRange);
+ const temperatureRange = normalizeTemperatureRange(obj.temperatureRange);
  const notes = sanitizeString(obj.notes, "", MAX_NOTES_LEN);
 
  return {
@@ -213,18 +214,6 @@ function sanitizeChineseTagArray(
  if (result.length >= maxItems) break;
  }
  return result;
-}
-
-function sanitizeTemperatureRange(value: unknown): { minC?: number; maxC?: number } | undefined {
- if (!value || typeof value !== "object") return undefined;
- const obj = value as Record<string, unknown>;
- const minC = typeof obj.minC === "number" && Number.isFinite(obj.minC) ? obj.minC : undefined;
- const maxC = typeof obj.maxC === "number" && Number.isFinite(obj.maxC) ? obj.maxC : undefined;
- if (minC == null && maxC == null) return undefined;
- return {
- ...(minC != null ? { minC } : {}),
- ...(maxC != null ? { maxC } : {}),
- };
 }
 
 function extractFirstJsonObject(text: string): string | null {
@@ -340,10 +329,10 @@ function aggregateTemperature(items: WardrobeItem[]): { minC?: number; maxC?: nu
  if (typeof range.maxC === "number" && Number.isFinite(range.maxC)) maxs.push(range.maxC);
  }
  if (mins.length ===0 && maxs.length ===0) return undefined;
- return {
+ return normalizeTemperatureRange({
  ...(mins.length ? { minC: Math.max(...mins) } : {}),
  ...(maxs.length ? { maxC: Math.min(...maxs) } : {}),
- };
+ });
 }
 
 function buildLocalNotes(items: WardrobeItem[]): string {

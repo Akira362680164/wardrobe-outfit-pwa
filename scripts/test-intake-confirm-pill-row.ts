@@ -36,17 +36,18 @@ assert.equal(classifyAiConfidence(null), null, "null 不渲染胶囊");
 assert.equal(classifyAiConfidence(NaN), null, "NaN 不渲染胶囊");
 assert.equal(classifyAiConfidence(Number.POSITIVE_INFINITY), null, "Infinity 不渲染胶囊");
 
-// 2. calculateDraftConfidenceScore — 全高
+// 2. calculateDraftConfidenceScore — 只读取真实整件级分数
 const allHighDraft: GarmentIntakeDraft = buildLocalGarmentDraft({
   imageDataUrl: "data:image/png;base64,aaa",
   colors: { mode: "single", primary: "白" } as never,
   nameGuess: "白衬衫",
   categoryGuess: "tops",
   locationId: "home",
+  aiConfidenceScore: 86,
   now: "2026-06-24T08:00:00.000Z",
 });
 const scoreAll = calculateDraftConfidenceScore(allHighDraft);
-assert.ok(typeof scoreAll === "number" && scoreAll >= 60, `全高 / 默认草稿应得中等以上分数，实际 ${scoreAll}`);
+assert.equal(scoreAll, 86, "真实 AI 置信度 86 应原样显示");
 
 // 3. calculateDraftConfidenceScore — 构造一个全 low + needsReview 的最小草稿
 // 使用 4 个字段的合成结构，绕开 buildLocalGarmentDraft 的 high 字段。
@@ -57,7 +58,7 @@ const lowDraftLike = {
   seasons: createIntakeField([] as never, "ai", "low", { needsReview: true }),
 };
 const scoreLow = calculateDraftConfidenceScore(lowDraftLike as unknown as GarmentIntakeDraft);
-assert.ok(typeof scoreLow === "number" && scoreLow < 50, `全 low + needsReview 应得低分，实际 ${scoreLow}`);
+assert.equal(scoreLow, null, "字段平均不得伪装成 AI 置信度");
 
 // 4. calculateDraftConfidenceScore — null 输入
 assert.equal(calculateDraftConfidenceScore(null), null, "null draft 应当返回 null");
@@ -70,9 +71,10 @@ const wishlistLow: WishlistIntakeDraft = {
   recognitionOnly: true,
   imageKind: createIntakeField("product_photo", "user", "high", { needsReview: false }),
   status: createIntakeField("interested", "user", "high", { needsReview: false }),
+  aiConfidenceScore: 42,
 };
 const scoreWish = calculateDraftConfidenceScore(wishlistLow);
-assert.ok(typeof scoreWish === "number", "WishlistIntakeDraft 也能计算整件级置信度");
+assert.equal(scoreWish, 42, "WishlistIntakeDraft 读取真实整件级置信度");
 
 // 6. Step 3 渲染 wiring
 assert.ok(
@@ -87,6 +89,7 @@ assert.ok(
   garment.includes("countStep3VisibleNeedsReviewFields(draft)"),
   "Step 3 顶部待确认 N 必须使用可见字段计数，而不是全量 draft summary",
 );
+assert.ok(garment.includes("data-review-count={needsReviewFields}"), "顶部数量必须暴露 data-review-count");
 assert.ok(
   garment.includes("STEP3_OPTIONAL_REVIEW_FIELD_KEYS"),
   "Step 3 可选字段必须从待确认计数中排除空值",

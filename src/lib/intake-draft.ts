@@ -53,6 +53,8 @@ export interface IntakeProcessingIssue {
 export interface GarmentIntakeDraft {
   id: string;
   kind: "garment";
+  /** MiniMax 返回的整件级置信度，单位 0～100。 */
+  aiConfidenceScore?: number;
   imageDataUrl?: string;
   sourceImageDataUrl?: string;
   croppedImageDataUrl?: string;
@@ -87,6 +89,8 @@ export interface WishlistIntakeDraft {
   id: string;
   kind: "wishlist";
   recognitionOnly: true;
+  /** MiniMax 返回的整件级置信度，单位 0～100。 */
+  aiConfidenceScore?: number;
   imageDataUrl?: string;
   sourceImageDataUrl?: string;
   croppedImageDataUrl?: string;

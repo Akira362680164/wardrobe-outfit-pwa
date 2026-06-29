@@ -60,6 +60,7 @@ import { outfitDraftToSavedOutfit } from "@/lib/intake-save-adapters";
 import type { OutfitIntakeDraft } from "@/lib/intake-draft";
 import { useStableBackHandler } from "@/lib/use-stable-back-handler";
 import type { AppRoute } from "@/lib/app-route";
+import { normalizeTemperatureRange } from "@/lib/temperature-range";
 
 const SCENE_OPTIONS = ["通勤", "休闲", "旅行", "约会", "户外", "正式", "居家"];
 const STYLE_OPTIONS = ["简约", "休闲", "甜美", "优雅", "轻熟", "运动", "街头"];
@@ -480,10 +481,10 @@ export function OutfitListView({
       sceneTags: createScenes.length > 0 ? createScenes : undefined,
       styleTags: createStyles.length > 0 ? createStyles : undefined,
       pairingTags: createPairingTags.length > 0 ? createPairingTags : undefined,
-      temperatureRange: (createMinC || createMaxC) ? {
+      temperatureRange: normalizeTemperatureRange((createMinC || createMaxC) ? {
         ...(createMinC ? { minC: parseFloat(createMinC) } : {}),
         ...(createMaxC ? { maxC: parseFloat(createMaxC) } : {}),
-      } : undefined,
+      } : undefined),
       notes: createNotes.trim() || undefined,
       updatedAt: now,
     };

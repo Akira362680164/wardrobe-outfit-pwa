@@ -32,6 +32,7 @@ import {
 } from "@/lib/color-catalog";
 import { recordDiagnosticEvent } from "@/lib/diagnostic-log";
 import { GARMENT_CATEGORY_CATALOG, getSubcategoryLabel } from "@/lib/garment-category-catalog";
+import { normalizeTemperatureRange as normalizeDomainTemperatureRange } from "@/lib/temperature-range";
 
 const DEFAULT_API_HOST = "https://api.minimaxi.com";
 const DEFAULT_MODEL = "MiniMax-M3";
@@ -1845,7 +1846,7 @@ function normalizeTemperatureRange(value: unknown): { minC?: number; maxC?: numb
   const result: { minC?: number; maxC?: number } = {};
   if (Number.isFinite(min)) result.minC = min;
   if (Number.isFinite(max)) result.maxC = max;
-  return result.minC === undefined && result.maxC === undefined ? undefined : result;
+  return normalizeDomainTemperatureRange(result);
 }
 
 function normalizeFitGender(value: unknown): "menswear" | "womenswear" | "unisex" | "unknown" {

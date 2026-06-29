@@ -8,6 +8,7 @@ import { resolveWorkspaceGarmentItemId } from "@/lib/cloud-sync/hash-workspace-i
 import type { CloudAssetReferenceMap } from "@/lib/cloud-sync/asset-bridge";
 import type { AccountImageCache } from "@/lib/cloud-sync/image-cache";
 import { resolveEntityImageFields } from "@/lib/cloud-sync/image-asset-resolver";
+import { normalizeTemperatureRange } from "@/lib/temperature-range";
 
 export interface WorkspaceUiSnapshot {
   items: WardrobeItem[];
@@ -97,7 +98,7 @@ async function toWardrobeItem(
     styles: (p.styles ?? []) as WardrobeItem["styles"],
     formality: p.formality as number | undefined,
     warmth: p.warmth as number | undefined,
-    temperatureRange: p.temperatureRange as WardrobeItem["temperatureRange"],
+    temperatureRange: normalizeTemperatureRange(p.temperatureRange),
     material: p.material as string | undefined,
     fitGender: p.fitGender as WardrobeItem["fitGender"],
     fitNotes: p.fitNotes as string | undefined,
@@ -178,7 +179,7 @@ async function toSavedOutfit(
     sceneTags: p.sceneTags as string[] | undefined,
     styleTags: p.styleTags as string[] | undefined,
     pairingTags: p.pairingTags as string[] | undefined,
-    temperatureRange: p.temperatureRange as SavedOutfit["temperatureRange"],
+    temperatureRange: normalizeTemperatureRange(p.temperatureRange),
     notes: p.notes as string | undefined,
     wornDates: p.wornDates as string[] | undefined,
     outfitRealImages,
@@ -213,7 +214,7 @@ async function toWishlistItem(
     styles: (p.styles ?? []) as WishlistItem["styles"],
     formality: p.formality as number | undefined,
     warmth: p.warmth as number | undefined,
-    temperatureRange: p.temperatureRange as WishlistItem["temperatureRange"],
+    temperatureRange: normalizeTemperatureRange(p.temperatureRange),
     material: p.material as string | undefined,
     fitGender: p.fitGender as WishlistItem["fitGender"],
     fitNotes: p.fitNotes as string | undefined,

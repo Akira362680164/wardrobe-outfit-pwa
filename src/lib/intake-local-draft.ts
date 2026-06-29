@@ -10,6 +10,7 @@ import type {
 } from "@/lib/types";
 import { STYLE_LABELS } from "@/lib/types";
 import { emptyColorInfo, migrateLegacyColorFields, normalizeAiColorInfo } from "@/lib/color-fields";
+import { normalizeTemperatureRange } from "@/lib/temperature-range";
 import {
   collectItemIdsFromWardrobeItems,
   createIntakeDraftId,
@@ -38,6 +39,7 @@ export interface LocalImageProcessingResult {
 
 export interface BuildLocalGarmentDraftInput extends LocalImageProcessingResult {
   id?: string;
+  aiConfidenceScore?: number;
   imageDataUrl: string;
   sourceImageDataUrl?: string;
   cropBox?: { x: number; y: number; width: number; height: number };
@@ -90,6 +92,7 @@ const defaultStyles: GarmentStyle[] = ["casual"];
 
 export function buildLocalGarmentDraft(input: BuildLocalGarmentDraftInput): GarmentIntakeDraft {
   const now = input.now ?? new Date().toISOString();
+  const aiConfidenceScore = normalizeAiConfidenceScore(input.aiConfidenceScore);
   const normalizedColors = normalizeDraftColors(input);
   const mainColor = getDraftMainColor(normalizedColors.colors);
   const mainColorConfidence = mainColor ? input.mainColorConfidence ?? "high" : "low";
@@ -98,6 +101,7 @@ export function buildLocalGarmentDraft(input: BuildLocalGarmentDraftInput): Garm
   return {
     id: input.id ?? createIntakeDraftId("garment", now),
     kind: "garment",
+    ...(aiConfidenceScore != null ? { aiConfidenceScore } : {}),
     imageDataUrl: input.transparentImageDataUrl || input.imageDataUrl,
     sourceImageDataUrl: input.sourceImageDataUrl,
     croppedImageDataUrl: input.imageDataUrl,
@@ -116,7 +120,7 @@ export function buildLocalGarmentDraft(input: BuildLocalGarmentDraftInput): Garm
     styles: createIntakeField(input.styles?.length ? input.styles : defaultStyles, input.styles?.length ? "local" : "default", "low", { needsReview: !input.styles?.length }),
     formality: createIntakeField(input.formality ?? 3, input.formality ? "local" : "default", "low", { needsReview: !input.formality }),
     warmth: createIntakeField(input.warmth ?? 3, input.warmth ? "local" : "default", "low", { needsReview: !input.warmth }),
-    temperatureRange: createIntakeField(input.temperatureRange ?? null, input.temperatureRange ? "local" : "default", "low", { needsReview: !input.temperatureRange }),
+    temperatureRange: createIntakeField(normalizeTemperatureRange(input.temperatureRange) ?? null, input.temperatureRange ? "local" : "default", "low", { needsReview: !input.temperatureRange }),
     locationId: createIntakeField(input.locationId ?? "home", input.locationId ? "local" : "default", "low", { needsReview: !input.locationId }),
     status: createIntakeField("active", "default", "high", { needsReview: false }),
     material: textField(input.material, "", now),
@@ -249,6 +253,11 @@ function textField(value: string | undefined, fallback: string, _now: string, re
   });
 }
 
+function normalizeAiConfidenceScore(value: unknown): number | undefined {
+  if (typeof value !== "number" || !Number.isFinite(value)) return undefined;
+  return Math.round(Math.min(100, Math.max(0, value)));
+}
+
 function buildOutfitName(itemNames: string[]): string {
   if (itemNames.length === 0) return "待确认套装";
   if (itemNames.length === 1) return `${itemNames[0]}套装`;
@@ -265,10 +274,10 @@ function aggregateTemperatureRange(items: WardrobeItem[]): TemperatureRange | nu
   const mins = ranges.map((range) => range.minC).filter((value): value is number => typeof value === "number");
   const maxs = ranges.map((range) => range.maxC).filter((value): value is number => typeof value === "number");
   if (!mins.length && !maxs.length) return null;
-  return {
+  return normalizeTemperatureRange({
     ...(mins.length ? { minC: Math.max(...mins) } : {}),
     ...(maxs.length ? { maxC: Math.min(...maxs) } : {}),
-  };
+  }) ?? null;
 }
 
 function aggregateStrings(values: string[]): string[] {

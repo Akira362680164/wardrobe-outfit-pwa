@@ -480,6 +480,9 @@ export function GarmentIntakeFlow({
     const localDraft = buildLocalGarmentDraft({
       ...processed,
       ...mapAiTagToGarmentDraftInput(aiTag, item.fileName),
+      aiConfidenceScore: typeof aiTag.confidence === "number" && Number.isFinite(aiTag.confidence)
+        ? Math.round(Math.min(1, Math.max(0, aiTag.confidence)) * 100)
+        : undefined,
       imageDataUrl: imageToProcess,
       sourceImageDataUrl: item.originalDataUrl,
       cropBox: item.cropBox,
@@ -1544,7 +1547,7 @@ export function DraftQualityRow({
   aiConfidenceScore: number | null;
 }) {
   return (
-    <span className="flex items-center gap-1.5" data-quality-row="step3">
+    <span className="flex items-center gap-1.5" data-quality-row="step3" data-review-count={needsReviewFields}>
       <AiConfidencePill score={aiConfidenceScore} />
       {needsReviewFields > 0 ? (
         <ReviewPill show testId="review-pill-count" />
@@ -1886,8 +1889,6 @@ const STEP3_VISIBLE_REVIEW_FIELD_KEYS = new Set([
   "formality",
   "warmth",
   "temperatureRange",
-  "locationId",
-  "status",
   "material",
   "price",
   "productUrl",
@@ -1906,7 +1907,7 @@ const STEP3_OPTIONAL_REVIEW_FIELD_KEYS = new Set([
   "notes",
 ]);
 
-function countStep3VisibleNeedsReviewFields(draft: GarmentIntakeDraft): number {
+export function countStep3VisibleNeedsReviewFields(draft: GarmentIntakeDraft): number {
   return Object.entries(draft).filter(([key, value]) => {
     if (!STEP3_VISIBLE_REVIEW_FIELD_KEYS.has(key)) return false;
     if (!isIntakeFieldForReview(value)) return false;
@@ -2025,7 +2026,6 @@ function mapAiTagToGarmentDraftInput(tag: import("@/lib/types").GarmentTagResult
     categoryGuess: tag.category,
     subcategory: tag.subcategory,
     colors: tag.colors,
-    mainColorConfidence: (tag.confidence >= 0.7 ? "high" : "medium") as "high" | "medium" | "low",
     temperatureRange: tag.temperatureRange,
     seasons: tag.seasons,
     styles: tag.styles,
@@ -2040,7 +2040,6 @@ function mapAiTagToGarmentDraftInput(tag: import("@/lib/types").GarmentTagResult
     categoryGuess: import("@/lib/types").GarmentCategory;
     subcategory: string;
     colors: import("@/lib/types").ColorInfo;
-    mainColorConfidence: "high" | "medium" | "low";
     temperatureRange: import("@/lib/types").TemperatureRange;
     seasons: import("@/lib/types").Season[];
     styles: import("@/lib/types").GarmentStyle[];

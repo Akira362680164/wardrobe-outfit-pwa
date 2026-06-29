@@ -3,12 +3,12 @@
 /**
  * v1.1.22 Step 2 (P0-5) — TemperatureRangeBar
  *
- * 只读展示适穿温度区间。0-40℃ 蓝→红渐变轨道 + 两个圆点标记 +
+ * 只读展示适穿温度区间。-20-40℃ 蓝→红渐变轨道 + 两个圆点标记 +
  * 高亮实色填充 + 上方文字标签。空值（minC 和 maxC 都为 null/undefined）
  * 渲染「未识别」占位。
  *
  * 设计要点：
- * - 蓝→红渐变模拟冷→热，对应 0℃→40℃
+ * - 蓝→红渐变模拟冷→热，对应 -20℃→40℃
  * - 单边界（只设 minC 或只设 maxC）：只显示圆点，不画填充（避免误导）
  * - 双边界都设：填充区间用同色渐变实色（alpha 1.0），背景渐变降低透明度
  * - 圆点 size="md" 20px / size="sm" 16px，可被父级 flex 撑开
@@ -16,11 +16,9 @@
  */
 
 import type { TemperatureRange } from "@/lib/types";
+import { TEMPERATURE_RANGE_MAX_C as TEMP_MAX, TEMPERATURE_RANGE_MIN_C as TEMP_MIN } from "@/lib/temperature-range";
 
-const TEMP_MIN = 0;
-const TEMP_MAX = 40;
-
-/** 0-40℃ 冷蓝→热红渐变。 */
+/** -20-40℃ 冷蓝→热红渐变。 */
 const TEMP_GRADIENT =
   "linear-gradient(to right, hsl(210, 80%, 55%) 0%, hsl(190, 70%, 55%) 18%, hsl(45, 75%, 55%) 50%, hsl(20, 80%, 55%) 80%, hsl(0, 75%, 55%) 100%)";
 

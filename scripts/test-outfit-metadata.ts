@@ -141,13 +141,13 @@ check("seasons聚合去重 + 全空→all", () => {
  const meta2 = buildLocalOutfitMetadataFromItems({ outfitItems: [item(1, "衬衫", "tops", "白", { seasons: [] })] });
  assert.deepEqual(meta2.seasons, ["all"]);
 });
-check("温度聚合: maxC = 所有单品 maxC min, minC = 所有单品 maxC max", () => {
+check("温度聚合结果统一归一为 minC <= maxC", () => {
  const meta = buildLocalOutfitMetadataFromItems({ outfitItems: [
  item(1, "夏装", "tops", "白", { temperatureRange: { minC:20, maxC:30 } }),
  item(2, "冬装", "pants", "黑", { temperatureRange: { minC:5, maxC:15 } }),
 ] });
- assert.equal(meta.temperatureRange?.minC,20);
- assert.equal(meta.temperatureRange?.maxC,15);
+ assert.equal(meta.temperatureRange?.minC,15);
+ assert.equal(meta.temperatureRange?.maxC,20);
 });
 check("notes 一句中文搭配说明 (长度 ≤90)", () => {
  const meta = buildLocalOutfitMetadataFromItems({ outfitItems: [item(1, "衬衫", "tops", "白", { styles: ["commute"] })] });

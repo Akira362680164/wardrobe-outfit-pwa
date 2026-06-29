@@ -9,6 +9,7 @@ import {
   type WishlistItem,
 } from "@/lib/types";
 import { emptyColorInfo } from "@/lib/color-fields";
+import { normalizeTemperatureRange } from "@/lib/temperature-range";
 import {
   calculateDraftReviewSummary,
   type GarmentIntakeDraft,
@@ -35,7 +36,7 @@ export function garmentDraftToWardrobeItem(
     styles: nonEmptyArray(fieldValue<GarmentStyle[]>(draft.styles, []), ["casual"]),
     formality: clampNumber(fieldValue(draft.formality, 3), 1, 5),
     warmth: clampNumber(fieldValue(draft.warmth, 3), 1, 5),
-    temperatureRange: fieldValue(draft.temperatureRange, null) ?? undefined,
+    temperatureRange: normalizeTemperatureRange(fieldValue(draft.temperatureRange, null)),
     locationId: requiredText(fieldValue(draft.locationId, ""), "home"),
     status: fieldValue<GarmentStatus>(draft.status, "active"),
     notes: optionalText(draft.notes),
@@ -52,6 +53,7 @@ export function garmentDraftToWardrobeItem(
       : {}),
     wornDates: [],
     needsReview: calculateDraftReviewSummary(draft).needsReviewFields > 0 || draft.processingIssues.length > 0,
+    aiConfidence: typeof draft.aiConfidenceScore === "number" ? draft.aiConfidenceScore / 100 : undefined,
     createdAt: now,
     updatedAt: now,
   };
@@ -75,7 +77,7 @@ export function wishlistDraftToWishlistItem(
     styles: fieldValue(draft.styles, []),
     formality: clampNumber(fieldValue(draft.formality, 3), 1, 5),
     warmth: clampNumber(fieldValue(draft.warmth, 3), 1, 5),
-    temperatureRange: fieldValue(draft.temperatureRange, null) ?? undefined,
+    temperatureRange: normalizeTemperatureRange(fieldValue(draft.temperatureRange, null)),
     material: optionalText(draft.material),
     price: optionalPrice(draft.price),
     productUrl: optionalText(draft.productUrl),
@@ -109,7 +111,7 @@ export function garmentDraftToWishlistItem(
     styles: fieldValue(draft.styles, []),
     formality: clampNumber(fieldValue(draft.formality, 3), 1, 5),
     warmth: clampNumber(fieldValue(draft.warmth, 3), 1, 5),
-    temperatureRange: fieldValue(draft.temperatureRange, null) ?? undefined,
+    temperatureRange: normalizeTemperatureRange(fieldValue(draft.temperatureRange, null)),
     material: optionalText(draft.material),
     price: optionalPrice(draft.price),
     productUrl: optionalText(draft.productUrl),
@@ -140,6 +142,7 @@ export function outfitDraftToSavedOutfit(
  id: options.id ?? `outfit-intake-${Date.now()}-${Math.random().toString(36).slice(2,8)}`,
  name: requiredText(fieldValue(draft.name, ""), "未命名套装"),
  itemIds,
+ source: fieldValue(draft.source, "manual"),
  sourceImageDataUrl,
  coverImageDataUrl: sourceImageDataUrl,
  thumbnailDataUrl: draft.thumbnailDataUrl,
@@ -149,7 +152,7 @@ export function outfitDraftToSavedOutfit(
  sceneTags: fieldValue(draft.sceneTags, []),
  styleTags: fieldValue(draft.styleTags, []),
  pairingTags: fieldValue(draft.pairingTags, []),
- temperatureRange: fieldValue(draft.temperatureRange, null) ?? undefined,
+ temperatureRange: normalizeTemperatureRange(fieldValue(draft.temperatureRange, null)),
  notes: notes || undefined,
  createdAt: now,
  updatedAt: now,
