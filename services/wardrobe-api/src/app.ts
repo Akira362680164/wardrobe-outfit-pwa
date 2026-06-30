@@ -25,6 +25,9 @@ import { loadStorageConfig } from "./storage/config.js";
 import { createStorageProviderFromEnv } from "./storage/factory.js";
 import { UnavailableStorageProvider, type StorageProvider } from "./storage/provider.js";
 import { isStorageReady } from "./storage/readiness.js";
+import { registerWorkspaceRoutes } from "./workspace/routes.js";
+import { WorkspaceQueryService } from "./workspace/query-service.js";
+import { WorkspaceCommandService } from "./workspace/command-service.js";
 
 export type ReadinessCheck = () => Promise<{ database: "ready" }>;
 
@@ -34,6 +37,8 @@ export interface BuildAppOptions {
   sessionService?: SessionService;
   syncService?: SyncService;
   assetService?: AssetService;
+  workspaceQueryService?: WorkspaceQueryService;
+  workspaceCommandService?: WorkspaceCommandService;
   diagnosticService?: DiagnosticService;
   storageProvider?: StorageProvider | null;
   jwtReadinessCheck?: () => Promise<boolean>;
@@ -131,6 +136,13 @@ export function buildApp(options: BuildAppOptions = {}): FastifyInstance {
     (input) => assetService.deleteAssetsForOwner(input),
   ), sharedSessionService ?? new SessionService());
   registerAssetRoutes(app, assetService, sharedSessionService ?? new SessionService(), storageConfig.maxAssetBytes);
+  registerWorkspaceRoutes(
+    app,
+    options.workspaceQueryService ?? new WorkspaceQueryService(),
+    options.workspaceCommandService ?? new WorkspaceCommandService(),
+    assetService,
+    sharedSessionService ?? new SessionService(),
+  );
   const diagnosticService = options.diagnosticService ?? new DiagnosticService(storage);
   registerDiagnosticRoutes(app, sharedSessionService ?? new SessionService(), diagnosticService);
   registerDiagnosticAdminRoutes(app, diagnosticService);

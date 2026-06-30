@@ -1,3 +1,14 @@
+## 2026-06-30 / v2.0.18-test / Codex + Server Subagent — 实现纯线上 Workspace 服务端
+
+- **目的**：实现服务器唯一数据源所需的 Workspace 查询、事务命令、revision、幂等响应和临时图片资产链路。
+- **版本**：保持 `2.0.18-test`；最终 APK 阶段升级至 `2.1.0-test`。
+- **改动文件**：`services/wardrobe-api/migrations/0009_online_workspace.sql`、migration journal、`src/db/schema.ts`、`src/workspace/{routes,query-service,command-service,errors}.ts`、`src/assets/{service,cleanup}.ts`、`src/sync/service.ts`、`src/app.ts`、`tests/workspace.test.ts`。
+- **核心实现**：全部业务资源查询/详情/overview/wear summary；稳定分页和计划日期范围；通用 CRUD、批量单品、revision 冲突、完整幂等响应重放和并发处理中响应；临时资产 session、校验上传、状态、放弃、过期清理和事务绑定；种草转换/撤销、收藏、打包清单及已穿事务动作。
+- **本地验证**：`npm run api:typecheck` 通过；`npm run api:test` 8 files / 63 tests 通过；`git diff --check` 通过。
+- **风险门禁**：**high**（PostgreSQL migration、文件资产、跨实体事务、幂等和线上 API）。
+- **Subagent**：服务端 Subagent 实现，主 Agent 复跑全部服务端验证通过。
+- **未验证风险**：尚未在真实 PostgreSQL 和真实文件存储执行 `0009` 与端到端事务；部署和真实环境验证在最终阶段完成。
+
 ## 2026-06-30 / v2.0.18-test / Codex — 冻结纯线上 Workspace 与临时资产契约
 
 - **目的**：为服务端、客户端读取和客户端写入并行实施冻结统一的线上 Workspace、错误、revision、幂等、批量命令和临时资产接口，并把项目长期规则改为服务器唯一数据源。

@@ -1,4 +1,6 @@
-import { and, eq, sql } from "drizzle-orm";
+import { randomUUID } from "node:crypto";
+
+import { and, eq, isNull, sql } from "drizzle-orm";
 import type { NodePgDatabase } from "drizzle-orm/node-postgres";
 import type {
   AssetDeleteResponse,
@@ -8,11 +10,18 @@ import type {
   AssetUploadParams,
   AssetUploadResponse,
   AssetVariant,
+  TemporaryAssetSessionRequest,
+  TemporaryAssetSession,
+  TemporaryAssetSessionStatus,
+  TemporaryAssetUploadResponse,
 } from "@wardrobe/cloud-contracts";
 import {
   AssetDeleteResponseSchema,
   AssetManifestResponseSchema,
   AssetUploadResponseSchema,
+  TemporaryAssetSessionSchema,
+  TemporaryAssetSessionStatusSchema,
+  TemporaryAssetUploadResponseSchema,
 } from "@wardrobe/cloud-contracts";
 
 import { getDb } from "../db/client.js";
@@ -46,6 +55,72 @@ export class AssetService {
     private readonly storage: StorageProvider,
     private readonly db?: NodePgDatabase<typeof schema>,
   ) {}
+
+  async createTemporarySession(input: TemporaryAssetSessionRequest & { userId: string; deviceId: string; requestId?: string }): Promise<TemporaryAssetSession> {
+    const existing = await this.database().select().from(assets).where(and(
+      eq(assets.userId, input.userId), eq(assets.clientMutationId, input.clientMutationId),
+      isNull(assets.ownerEntityId), isNull(assets.deletedAt),
+    ));
+    if (existing.length) return this.temporarySessionResponse(existing, input.requestId);
+    const sessionId = randomUUID();
+    const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000);
+    const values = input.slots.map((slot) => ({
+      id: randomUUID(), userId: input.userId, originDeviceId: input.deviceId,
+      temporarySessionId: sessionId, clientMutationId: input.clientMutationId,
+      temporaryEntityType: input.entityType, fieldName: slot.fieldName, temporaryVariant: slot.variant,
+      expiresAt, uploadStatus: "pending", payload: { expected: slot, uploads: {} },
+    }));
+    await this.database().insert(assets).values(values);
+    return TemporaryAssetSessionSchema.parse({
+      sessionId, clientMutationId: input.clientMutationId, expiresAt: expiresAt.toISOString(),
+      assets: values.map((row, index) => ({ ...input.slots[index], assetId: row.id, uploadStatus: "pending" })),
+      ...(input.requestId ? { requestId: input.requestId } : {}),
+    });
+  }
+
+  async getTemporarySession(input: { sessionId: string; userId: string; requestId?: string }): Promise<TemporaryAssetSessionStatus> {
+    const rows = await this.database().select().from(assets).where(and(eq(assets.userId, input.userId), eq(assets.temporarySessionId, input.sessionId), isNull(assets.deletedAt)));
+    if (!rows.length) throw new AssetApiError(404, "asset_session_not_found", "临时图片会话不存在");
+    const session = this.temporarySessionResponse(rows, input.requestId);
+    return TemporaryAssetSessionStatusSchema.parse({ ...session, ready: session.assets.every((asset) => asset.uploadStatus === "uploaded") });
+  }
+
+  async uploadTemporary(input: { sessionId: string; assetId: string; bytes: Buffer; mimeType: string; userId: string; requestId?: string }): Promise<TemporaryAssetUploadResponse> {
+    const [row] = await this.database().select().from(assets).where(and(
+      eq(assets.id, input.assetId), eq(assets.userId, input.userId), eq(assets.temporarySessionId, input.sessionId),
+      isNull(assets.ownerEntityId), isNull(assets.deletedAt),
+    )).limit(1);
+    if (!row) throw new AssetApiError(404, "asset_not_found", "临时图片不存在");
+    if (!row.expiresAt || row.expiresAt <= new Date()) throw new AssetApiError(410, "asset_session_expired", "临时图片会话已过期");
+    const expected = asRecord(asRecord(row.payload).expected);
+    if (input.mimeType !== expected.mimeType) throw new AssetApiError(422, "asset_invalid_mime_type", "图片类型与会话声明不一致");
+    const variant = row.temporaryVariant as "original" | "thumbnail";
+    const storageKey = buildAssetStorageKey(input.userId, input.assetId, variant, String(expected.sha256), input.mimeType);
+    try {
+      await this.storage.save({ storageKey, bytes: input.bytes, expectedSha256: String(expected.sha256), expectedSizeBytes: Number(expected.sizeBytes), mimeType: input.mimeType });
+    } catch (error) { throw mapStorageError(error); }
+    const now = new Date();
+    const metadata = { storageKey, sha256: expected.sha256, mimeType: expected.mimeType, sizeBytes: expected.sizeBytes, width: expected.width, height: expected.height, completedAt: now.toISOString(), status: "uploaded" };
+    await this.database().update(assets).set({
+      uploadStatus: "uploaded", sha256: String(expected.sha256), mimeType: input.mimeType, sizeBytes: Number(expected.sizeBytes),
+      width: typeof expected.width === "number" ? expected.width : null, height: typeof expected.height === "number" ? expected.height : null,
+      originalStorageKey: variant === "original" ? storageKey : null, thumbnailStorageKey: variant === "thumbnail" ? storageKey : null,
+      payload: mergeUploadPayload(row.payload, variant, metadata), updatedAt: now,
+    }).where(eq(assets.id, row.id));
+    return TemporaryAssetUploadResponseSchema.parse({
+      status: "uploaded", asset: { ...expected, assetId: row.id, uploadStatus: "uploaded" },
+      ...(input.requestId ? { requestId: input.requestId } : {}),
+    });
+  }
+
+  async abandonTemporarySession(input: { sessionId: string; userId: string; requestId?: string }) {
+    const rows = await this.database().select().from(assets).where(and(eq(assets.userId, input.userId), eq(assets.temporarySessionId, input.sessionId), isNull(assets.ownerEntityId), isNull(assets.deletedAt)));
+    if (!rows.length) throw new AssetApiError(404, "asset_session_not_found", "临时图片会话不存在");
+    const now = new Date();
+    await this.database().update(assets).set({ deletedAt: now, uploadStatus: "deleted", updatedAt: now }).where(and(eq(assets.userId, input.userId), eq(assets.temporarySessionId, input.sessionId), isNull(assets.ownerEntityId)));
+    await Promise.all(rows.flatMap((row) => [row.originalStorageKey, row.thumbnailStorageKey]).filter((key): key is string => Boolean(key)).map((key) => this.storage.delete(key).catch(() => {})));
+    return { status: "abandoned" as const, sessionId: input.sessionId, ...(input.requestId ? { requestId: input.requestId } : {}) };
+  }
 
   async upload(input: AssetUploadParams & UploadMetadata & { bytes: Buffer; userId: string; deviceId: string }): Promise<AssetUploadResponse> {
     const existing = await this.getAsset(input.assetId);
@@ -189,7 +264,7 @@ export class AssetService {
   async deleteAssetsForOwner(input: { ownerEntityType: string; ownerEntityId: string; userId: string }): Promise<void> {
     const rows = await this.database().select({ id: assets.id }).from(assets).where(and(
       eq(assets.userId, input.userId),
-      eq(assets.ownerEntityType, input.ownerEntityType as AssetRow["ownerEntityType"]),
+      eq(assets.ownerEntityType, input.ownerEntityType as NonNullable<AssetRow["ownerEntityType"]>),
       eq(assets.ownerEntityId, input.ownerEntityId),
       sql`${assets.deletedAt} IS NULL`,
     ));
@@ -198,7 +273,7 @@ export class AssetService {
 
   async getManifest(input: AssetManifestRequest & { userId: string }): Promise<AssetManifestResponse> {
     const cursor = input.cursor ? parseManifestCursor(input.cursor) : null;
-    const baseWhere = and(eq(assets.userId, input.userId), sql`${assets.deletedAt} IS NULL`);
+    const baseWhere = and(eq(assets.userId, input.userId), sql`${assets.deletedAt} IS NULL`, sql`${assets.ownerEntityId} IS NOT NULL`, sql`${assets.ownerEntityType} IS NOT NULL`);
     const rows = await this.database().select().from(assets).where(
       cursor ? and(baseWhere, sql`(${assets.updatedAt}, ${assets.id}) > (${cursor.updatedAt}::timestamptz, ${cursor.id}::uuid)`) : baseWhere,
     ).orderBy(sql`${assets.updatedAt} ASC, ${assets.id} ASC`).limit(input.limit + 1);
@@ -267,6 +342,15 @@ export class AssetService {
   private database(): NodePgDatabase<typeof schema> {
     return this.db ?? getDb();
   }
+
+  private temporarySessionResponse(rows: AssetRow[], requestId?: string): TemporaryAssetSession {
+    const first = rows[0];
+    return TemporaryAssetSessionSchema.parse({
+      sessionId: first.temporarySessionId, clientMutationId: first.clientMutationId, expiresAt: first.expiresAt?.toISOString(),
+      assets: rows.map((row) => ({ ...asRecord(asRecord(row.payload).expected), assetId: row.id, uploadStatus: row.uploadStatus })),
+      ...(requestId ? { requestId } : {}),
+    });
+  }
 }
 
 export function buildAssetStorageKey(userId: string, assetId: string, variant: AssetVariant, sha256: string, mimeType: string): string {
@@ -328,6 +412,10 @@ function mapStorageError(error: unknown): AssetApiError {
 
 function isMissingStorageError(error: unknown): boolean {
   return error instanceof StorageProviderError && error.code === "asset_file_missing";
+}
+
+function asRecord(value: unknown): Record<string, any> {
+  return value && typeof value === "object" && !Array.isArray(value) ? value as Record<string, any> : {};
 }
 
 interface ManifestCursor { updatedAt: string; id: string }

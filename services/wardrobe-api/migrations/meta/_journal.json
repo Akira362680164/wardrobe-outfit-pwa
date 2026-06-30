@@ -64,6 +64,13 @@
       "when": 1782720000000,
       "tag": "0008_default_location_unique",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1782806400000,
+      "tag": "0009_online_workspace",
+      "breakpoints": true
     }
   ]
 }

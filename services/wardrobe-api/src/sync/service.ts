@@ -553,7 +553,7 @@ async function defaultFetchBundle(userId: string, db: NodePgDatabase<typeof sche
     db.select().from(wearEvents).where(eq(wearEvents.userId, userId)),
     db.select().from(tripPlans).where(eq(tripPlans.userId, userId)),
     db.select().from(outfitPlans).where(eq(outfitPlans.userId, userId)),
-    db.select().from(assets).where(eq(assets.userId, userId)),
+    db.select().from(assets).where(and(eq(assets.userId, userId), sql`${assets.ownerEntityId} IS NOT NULL`, sql`${assets.ownerEntityType} IS NOT NULL`)),
     db.select().from(locations).where(eq(locations.userId, userId)),
     db.select().from(profiles).where(eq(profiles.userId, userId)),
   ]);
@@ -576,7 +576,7 @@ async function defaultFetchAssetManifest(userId: string, db: NodePgDatabase<type
   const rows = await db
     .select()
     .from(assets)
-    .where(eq(assets.userId, userId));
+    .where(and(eq(assets.userId, userId), sql`${assets.ownerEntityId} IS NOT NULL`, sql`${assets.ownerEntityType} IS NOT NULL`));
 
   return rows.map((row) =>
     AssetManifestEntrySchema.parse({
