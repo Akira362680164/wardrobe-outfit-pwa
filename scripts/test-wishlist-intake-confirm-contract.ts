@@ -24,5 +24,5 @@ assert.ok(/productUrl:\s*optionalText\(draft\.productUrl\)/.test(readFileSync(jo
 assert.ok(wardrobeApp.includes("onProcessIntakeImage={processGarmentIntakeImage}"));
 assert.ok(!/price:\s*overrideIfPresent/.test(wardrobeApp));
 assert.ok(!/disabled=\{isProcessing\}/.test(shell));
-assert.ok(shell.includes("正在处理本次录入，退出后本次结果不会保存。"));
+assert.ok(shell.includes("退出后会丢失本次录入进度"));
 console.log("wishlist intake confirm contract passed");

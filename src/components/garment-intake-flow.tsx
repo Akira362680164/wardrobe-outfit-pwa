@@ -17,7 +17,11 @@ import {
   X,
 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState, type ChangeEvent, type ReactNode } from "react";
-import { IntakeFlowShell, type IntakeFlowStep } from "@/components/intake-flow-shell";
+import {
+  IntakeFlowShell,
+  type IntakeFlowStep,
+  type IntakeSubmitState,
+} from "@/components/intake-flow-shell";
 import { ImageCropEditor, type ImageCropEditorHandle } from "@/components/image-crop-editor";
 import { CategorySubcategoryPicker } from "@/components/category-subcategory-picker";
 import { FitGenderChips } from "@/components/fit-gender-chips";
@@ -101,8 +105,28 @@ export interface GarmentIntakeFlowProps {
   onProcessImage?: (input: GarmentImageProcessingInput) => IntakeAsyncResult<LocalImageProcessingResult>;
   onEnhanceDraft?: (draft: GarmentIntakeDraft) => IntakeAsyncResult<GarmentIntakeDraft>;
   onDraftChange?: (drafts: GarmentIntakeDraft[]) => void;
-  onSaveBatch: (drafts: GarmentIntakeDraft[]) => IntakeAsyncResult<void>;
+  onSaveBatch: (drafts: GarmentIntakeDraft[], context?: IntakeSaveBatchContext) => IntakeAsyncResult<void | IntakeBatchSaveResult>;
   onExit?: () => void;
+}
+
+export interface IntakeSubmissionItem {
+  draftId: string;
+  fingerprint: string;
+  clientMutationId: string;
+}
+
+export interface IntakeSaveBatchContext {
+  submissions: IntakeSubmissionItem[];
+  onProgress: (completed: number, total: number) => void;
+}
+
+export interface IntakeBatchSaveResult {
+  items: Array<{
+    draftId: string;
+    clientMutationId: string;
+    status: "succeeded" | "failed";
+    error?: string;
+  }>;
 }
 
 // P2-01 fix: 两步录入 — AI 识别是过渡状态，不是独立步骤
@@ -127,6 +151,26 @@ export const SEASON_OPTIONS: Season[] = ["spring", "summer", "autumn", "winter",
 export const STYLE_OPTIONS: GarmentStyle[] = ["casual", "sweet", "elegant", "commute", "outdoor", "dinner", "vacation"];
 export const STATUS_OPTIONS: GarmentStatus[] = ["active", "laundry", "repair", "archived"];
 
+export function resolveIntakeSubmissionItems(
+  drafts: GarmentIntakeDraft[],
+  previous: IntakeSubmissionItem[],
+  createId: () => string = createClientMutationId,
+): IntakeSubmissionItem[] {
+  return drafts.map((draft) => {
+    const fingerprint = JSON.stringify(draft);
+    const reusable = previous.find((item) => item.draftId === draft.id && item.fingerprint === fingerprint);
+    return reusable ?? { draftId: draft.id, fingerprint, clientMutationId: createId() };
+  });
+}
+
+function createClientMutationId(): string {
+  if (globalThis.crypto?.randomUUID) return globalThis.crypto.randomUUID();
+  return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, (char) => {
+    const random = Math.floor(Math.random() * 16);
+    return (char === "x" ? random : (random & 0x3) | 0x8).toString(16);
+  });
+}
+
 export function GarmentIntakeFlow({
   title = "添加单品",
   flowKind = "garment",
@@ -138,7 +182,7 @@ export function GarmentIntakeFlow({
   onPickImages,
   onProcessImage,
   onEnhanceDraft: _onEnhanceDraft,
-  onDraftChange: _onDraftChange,
+  onDraftChange,
   onSaveBatch,
   onExit,
 }: GarmentIntakeFlowProps) {
@@ -156,7 +200,10 @@ export function GarmentIntakeFlow({
   const [isRecognizing, setIsRecognizing] = useState(false);
   const [recognitionProgress, setRecognitionProgress] = useState<{ current: number; total: number } | null>(null);
   const [isSavingBatch, setIsSavingBatch] = useState(false);
+  const [submitState, setSubmitState] = useState<IntakeSubmitState>({ status: "idle" });
   const [error, setError] = useState("");
+  const submissionItemsRef = useRef<IntakeSubmissionItem[]>([]);
+  const saveAttemptRef = useRef(0);
   // v1.1.31 commit2: 当前单件重新识别状态。
   const [retryingReviewId, setRetryingReviewId] = useState<string | null>(null);
   // v1.1.31 commit2: 部分保存确认
@@ -183,6 +230,10 @@ export function GarmentIntakeFlow({
 
   const locked = isPicking || isCropping || isRecognizing || isSavingBatch || isSaving || retryingReviewId !== null;
   const flowNoun = flowKind === "wishlist" ? "种草" : "单品";
+
+  useEffect(() => {
+    onDraftChange?.(getReviewableGarmentIntakeImages(imageItems).flatMap((item) => item.draft ? [item.draft] : []));
+  }, [imageItems, onDraftChange]);
 
   // Initialize activeReviewId when entering confirm step
   useEffect(() => {
@@ -609,15 +660,55 @@ export function GarmentIntakeFlow({
         setPendingSaveDrafts(drafts);
         return;
       }
-      setIsSavingBatch(true);
-      try {
-        await onSaveBatch(drafts);
-      } catch (err) {
-        setError(formatIntakeError(err, `保存${flowNoun}失败，请重试`));
-      } finally {
-        setIsSavingBatch(false);
-      }
+      await submitDrafts(drafts);
     }
+  }
+
+  async function submitDrafts(drafts: GarmentIntakeDraft[]) {
+    const submissions = resolveIntakeSubmissionItems(drafts, submissionItemsRef.current);
+    submissionItemsRef.current = submissions;
+    const attempt = ++saveAttemptRef.current;
+    setError("");
+    setIsSavingBatch(true);
+    setSubmitState({ status: "submitting", message: `正在上传并保存 0 / ${drafts.length} 件${flowNoun}`, completed: 0, total: drafts.length });
+    try {
+      const result = await onSaveBatch(drafts, {
+        submissions,
+        onProgress: (completed, total) => {
+          if (saveAttemptRef.current !== attempt) return;
+          setSubmitState({
+            status: "submitting",
+            message: `正在上传并保存 ${completed} / ${total} 件${flowNoun}`,
+            completed,
+            total,
+          });
+        },
+      });
+      if (saveAttemptRef.current !== attempt) return;
+      const failed = result?.items.filter((item) => item.status === "failed") ?? [];
+      if (failed.length > 0) {
+        const message = `${drafts.length - failed.length} 件已保存，${failed.length} 件失败；草稿已保留`;
+        setError(message);
+        setSubmitState({ status: "failed", message, retryLabel: "重试失败项" });
+        return;
+      }
+      setSubmitState({ status: "succeeded", message: `${drafts.length} 件${flowNoun}已保存` });
+    } catch (err) {
+      if (saveAttemptRef.current !== attempt) return;
+      const message = formatIntakeError(err, `保存${flowNoun}失败，请重试`);
+      setError(message);
+      setSubmitState({ status: "failed", message, retryLabel: "重试保存" });
+    } finally {
+      if (saveAttemptRef.current === attempt) setIsSavingBatch(false);
+    }
+  }
+
+  function stopWaiting() {
+    saveAttemptRef.current += 1;
+    setIsSavingBatch(false);
+    const message = "已停止等待。已发送的请求可能仍在服务器处理，重试会复用本次提交 ID。";
+    setError(message);
+    setSubmitState({ status: "failed", message, retryLabel: "查询或重试" });
   }
 
   function patchReviewDraft(patch: Partial<GarmentIntakeDraft>) {
@@ -683,7 +774,9 @@ export function GarmentIntakeFlow({
       ? "正在处理图片..."
       : isRecognizing && recognitionProgress
         ? `正在识别第 ${recognitionProgress.current} 件 / 共 ${recognitionProgress.total} 件`
-        : undefined;
+        : isSavingBatch
+          ? `正在上传并保存 ${savableItems.length} 件${flowNoun}`
+          : undefined;
 
   return (
     <IntakeFlowShell
@@ -692,6 +785,7 @@ export function GarmentIntakeFlow({
       currentStepIndex={stepIndexNumber}
       isProcessing={isPicking || isCropping || isRecognizing || isSavingBatch}
       processingText={processingText}
+      submitState={submitState}
       error={error}
       hasUnsavedDraft={hasUnsavedDraft}
       nextLabel={nextLabel}
@@ -700,6 +794,7 @@ export function GarmentIntakeFlow({
       onBack={handleBack}
       onNext={handleNext}
       onExit={onExit}
+      onStopWaiting={submitState.status === "submitting" ? stopWaiting : undefined}
     >
       {stepIndex === "select_photo" ? (
         isCropping && activeImage ? (
@@ -762,14 +857,7 @@ export function GarmentIntakeFlow({
                 onClick={async () => {
                   const drafts = pendingSaveDrafts;
                   setPendingSaveDrafts(null);
-                  setIsSavingBatch(true);
-                  try {
-                    await onSaveBatch(drafts);
-                  } catch (err) {
-                    setError(formatIntakeError(err, `保存${flowNoun}失败，请重试`));
-                  } finally {
-                    setIsSavingBatch(false);
-                  }
+                  await submitDrafts(drafts);
                 }}
                 className="h-11 rounded-lg bg-denim text-sm font-semibold text-white"
               >

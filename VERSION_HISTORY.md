@@ -1,3 +1,100 @@
+
+## 2026-06-30 / v2.1.0-test / Codex — Android 模拟器验证 + bridge 清理完成
+
+- **目的**：在 Android 模拟器上完成 APK 安装和功能验证，同时彻底移除所有 bridge 包装层。
+- **版本**：保持 `2.1.0-test`。
+- **改动文件**：`src/lib/repository/wardrobe-repository.ts`（移除 bridge 包装、新增 rethrowIfFailed + upsert*/delete* 辅助）、`src/components/wardrobe-app.tsx`、`src/components/outfit-list-view.tsx`、`src/lib/outfit-wear-sync.ts`、`src/components/use-wardrobe-capture-queue-controller.ts`（55 处 bridge 调用全部改为直接 repo 调用）、`VERSION_HISTORY.md`。
+- **Android 模拟器验证**：
+  - 设备：Pixel 6 / API 35 / arm64-v8a / Google APIs（AVD wardrobe-test）
+  - 安装：`adb install -r` → `Success`
+  - 启动：`am start` → PID 12784, `mCurrentFocus=MainActivity`
+  - 致命崩溃：0（无 FATAL/AndroidRuntime 异常）
+  - 横竖屏：正常切换无崩溃
+  - 系统返回键：正常
+  - 卸载重装：`uninstall` + `install` 成功，重新启动无崩溃
+  - 此前阻塞原因：ADB 等待循环中 grep 条件误写 `device"`（多余双引号），非模拟器启动问题。本轮修正后 ~1 秒检测到 boot_completed=1。
+- **bridge 清理**：55 处 bridge*() 调用全部替换为 rethrowIfFailed(repo*()) 或 upsert*/delete*；bridge-compat.ts 和所有 bridge 函数名从代码中消失。
+- **本地验证**：`npm run typecheck` 通过；`npm run test:logic:all` 65/0 通过；`npm run build` 通过。
+- **风险门禁**：**high**（Android 模拟器运行时不包含真实网络请求——模拟器无服务端；image-state 和 connectivity 在无网络环境下的行为未验证；outfit-wear-sync 和 capture-queue 使用 data-repo stub 返回空数据）。
+- **Subagent**：本轮为主 Agent 独立完成。
+- **未验证风险**：弱网/断网/超时恢复（需真实服务端）；真实 API 端到端（需部署服务端）；Playwright e2e（需运行 `npm run test:e2e`）；相机选图/AI 识别/裁切/MiniMax（需在模拟器上交互式操作或在真机上测试）。
+
+
+## 2026-06-30 / v2.1.0-test / Codex — 物理删除旧本地运行时
+
+- **目的**：物理删除所有旧 Dexie、Outbox、Bridge、Sync、图片缓存、备份依赖和旧测试代码，完成纯线上架构的最后一步。
+- **版本**：保持 `2.1.0-test`。
+- **改动文件（删除 ~50 个）**：`src/lib/cloud-sync/`（23 文件）、`src/lib/thumbnail-backfill.ts`、`src/lib/thumbnail.ts`、`src/lib/workspace-write-commands.ts`、`src/lib/workspace-registry.ts`、`src/lib/account-workspace-db.ts`、`src/lib/account-workspace-repo.ts`、`services/wardrobe-api/src/sync/`（4 文件）、`services/wardrobe-api/tests/sync-contracts.test.ts`、`scripts/test-*-cloud-sync-*.ts`（15 文件）。
+- **改动文件（新增）**：`src/lib/online/bridge-compat.ts`（bridge→wardrobeRepository 兼容适配层）、`src/lib/online/online-connectivity.ts`（从 cloud-sync/connectivity 迁移）。
+- **改动文件（修改）**：`src/lib/data-repo.ts`（stub 化为空返回）、`services/wardrobe-api/src/app.ts`（移除 sync 路由注册）、`services/wardrobe-api/src/assets/service.ts`（内联 entity-tables 逻辑）、`src/components/wardrobe-app.tsx`、`src/components/outfit-list-view.tsx`、`src/components/use-wardrobe-capture-queue-controller.ts`、`src/components/auth/auth-provider.tsx`、`src/lib/outfit-wear-sync.ts`（import 指向 compat 层）。
+- **核心实现**：创建 bridge-compat.ts 将 20+ 个旧 bridge 函数映射到 wardrobeRepository，使所有 call site 的 import 路径统一指向 compat 层；删除所有不再被引用的旧模块；修复 API 层残留的 sync 引用和 entity-tables 动态 import。
+- **本地验证**：`npm run typecheck` 通过；`npm run api:typecheck` 通过；`npm run test:logic:all` 65 pass / 0 fail。
+- **风险门禁**：**high**（物理删除 ~50 个文件、bridge-compat 适配层是过渡产物、stub getWardrobeSnapshot 返回空数据可能影响穿着同步行为）。
+- **Subagent**：本轮为主 Agent 独立完成；兼容适配层避免逐处修改 30+ 处旧 call site。
+- **未验证风险**：bridge-compat 是过渡层，后续应移除并在各组件内直接调用 wardrobeRepository；outfit-wear-sync.ts 和 use-wardrobe-capture-queue-controller.ts 仍依赖 data-repo stub，应在后续迁移。
+
+## 2026-06-30 / v2.1.0-test / Codex + Parallel Subagents — 纯线上 Workspace 客户端接线
+
+- **目的**：将客户端切换为服务器唯一数据源架构：新增线上读取、写入、图片下载、加载/错误 UI 和旧业务数据清理器；更新主 App、录入流、种草、身份验证和数据控制器。
+- **版本**：从 `2.0.18-test` 升级至 `2.1.0-test`。
+- **改动文件（修改）**：`package.json`、`README.md`、`src/components/app-root.tsx`、`src/components/auth/account-views.tsx`、`src/components/auth/auth-provider.tsx`、`src/components/auth/workspace-gate.tsx`、`src/components/garment-intake-flow.tsx`、`src/components/intake-flow-shell.tsx`、`src/components/use-wardrobe-data-controller.ts`、`src/components/wardrobe-app.tsx`、`src/components/wishlist-view-2.0.tsx`、`src/lib/diagnostic-log.ts`、`src/lib/repository/wardrobe-repository.ts`、`VERSION_HISTORY.md`。
+- **改动文件（新增）**：`src/lib/online/{online-repository,online-write-repository,online-request,online-state,online-error,online-image-client,purge-local-business-data}.ts`、`src/components/online/{index,online-button-spinner,online-catalog-skeleton,online-detail-skeleton,online-image-state,online-inline-notice,online-page-error,online-page-loader,online-success-toast,online-write-guard}.tsx`。
+- **核心实现**：
+  - 客户端 Workspace 查询 Repository（overview、列表、详情、分页、worn summary）与线上图片客户端（`no-store`、内存 Blob/Object URL、登出释放）。
+  - 线上写入 Repository（单品 CRUD/批量、种草、套装、位置、计划、穿着记录、试穿档案、打包清单；`clientMutationId` 幂等；`expectedRevision` 并发控制）。
+  - 共享加载状态 UI（全页加载器、骨架占据符、页面报错、行内提示、按钮 spinner、成功 Toast、写入守卫）。
+  - 数据控制器 `onlineState: loading / ready / refreshing / error / refresh_error`；WorkspaceGate 启动时运行旧业务数据清理并建立 Repository。
+  - `wardrobe-app.tsx` 移除所有旧 backfill 引用、`setItems`/`setOutfits`、bridge 调用、本地数据库依赖，改为线上状态驱动。
+  - 录入流、种草写入、套装/计划/穿着和试穿档案全部切换到 `wardrobeRepository` 线上方法。
+- **本地验证**：`npm run typecheck` 通过；`npm run test:logic:all` 65 pass / 0 fail；`npm run build` 成功（4 routes、390 kB first load JS）。
+- **风险门禁**：**high**（全量客户端架构切换、图片内存管理、Workspace Gate 启动清理、跨实体事务依赖服务端）。
+- **Subagent**：本文由并行 Subagent A（服务端 Workspace 事务）、B（客户端读取/UI）、C（客户端写入）和 D（集成/清理）产出，主 Agent 集成、清理残留旧引用、修复编译错误并统一提交。
+- **未验证风险**：未在浏览器/Android 模拟器中验证线上 API 真实调用（需要启动服务端）；旧本地业务运行时（Dexie、Outbox、Bridge、持久缓存）尚未物理删除；旧数据迁移清理器仅有单元测试需真机验证；服务端 `api:typecheck` 和 `api:test` 已在前期提交验证，本次未复跑。
+
+## 2026-06-30 / v2.0.18-test / Codex + Server Subagent — 实现纯线上 Workspace 服务端
+
+- **目的**：实现服务器唯一数据源所需的 Workspace 查询、事务命令、revision、幂等响应和临时图片资产链路。
+- **版本**：保持 `2.0.18-test`；最终 APK 阶段升级至 `2.1.0-test`。
+- **改动文件**：`services/wardrobe-api/migrations/0009_online_workspace.sql`、migration journal、`src/db/schema.ts`、`src/workspace/{routes,query-service,command-service,errors}.ts`、`src/assets/{service,cleanup}.ts`、`src/sync/service.ts`、`src/app.ts`、`tests/workspace.test.ts`。
+- **核心实现**：全部业务资源查询/详情/overview/wear summary；稳定分页和计划日期范围；通用 CRUD、批量单品、revision 冲突、完整幂等响应重放和并发处理中响应；临时资产 session、校验上传、状态、放弃、过期清理和事务绑定；种草转换/撤销、收藏、打包清单及已穿事务动作。
+- **本地验证**：`npm run api:typecheck` 通过；`npm run api:test` 8 files / 63 tests 通过；`git diff --check` 通过。
+- **风险门禁**：**high**（PostgreSQL migration、文件资产、跨实体事务、幂等和线上 API）。
+- **Subagent**：服务端 Subagent 实现，主 Agent 复跑全部服务端验证通过。
+- **未验证风险**：尚未在真实 PostgreSQL 和真实文件存储执行 `0009` 与端到端事务；部署和真实环境验证在最终阶段完成。
+
+## 2026-06-30 / v2.0.18-test / Codex — 冻结纯线上 Workspace 与临时资产契约
+
+- **目的**：为服务端、客户端读取和客户端写入并行实施冻结统一的线上 Workspace、错误、revision、幂等、批量命令和临时资产接口，并把项目长期规则改为服务器唯一数据源。
+- **版本**：保持 `2.0.18-test`；最终 APK 阶段升级至 `2.1.0-test`。
+- **改动文件**：`packages/cloud-contracts/src/workspace/{contracts,assets}.ts`、`packages/cloud-contracts/src/index.ts`、`AGENTS.md`、`VERSION_HISTORY.md`。
+- **核心规则**：业务实体与图片不落本地；诊断只保留进程内存并由用户主动上传；写入必须带 `clientMutationId`，更新/删除必须带 `expectedRevision`；临时资产先上传再由服务端事务绑定。
+- **本地验证**：`npm run cloud:contracts:typecheck` 通过；待提交前执行 `git diff --check` 和 staged 文件核对。
+- **风险门禁**：**high**（跨端契约、隐私边界和后续数据库/Android 主链路的冻结接口）。
+- **Subagent**：用户已允许并行；本提交由主 Agent 先冻结契约，提交后启动三个实现 Subagent。
+- **未验证风险**：服务端路由、数据库迁移、客户端接线、浏览器和 Android 均在后续任务实施。
+
+## 2026-06-30 / v2.0.18-test / Codex — 制定纯线上工作区 v2.1.0-test 实施计划
+
+- **目的**：把已确认设计拆成契约、服务端、客户端读取、客户端写入、旧链路物理删除和最终 Android 验收六个可独立验证的任务。
+- **版本**：保持 `2.0.18-test`；最终交付阶段升级至 `2.1.0-test`。
+- **改动文件**：`docs/superpowers/plans/2026-06-30-online-only-2-1-0.md`、`VERSION_HISTORY.md`。
+- **计划结论**：先冻结共享契约，再并行推进服务端、客户端读取和客户端写入；集成后按回收站规则删除本地优先链路，最后完成全量浏览器、Android 和固定签名 APK 验收。
+- **本地验证**：待提交前执行占位符扫描、`git diff --check` 和 staged 文件核对。
+- **风险门禁**：**low**（本提交仅实施计划，后续实施为 high）。
+- **未触发 subagent**：计划尚未提交；契约冻结后按用户授权并行启动。
+- **未验证风险**：业务代码与运行链路尚未修改。
+
+## 2026-06-30 / v2.0.18-test / Codex — 设计纯线上工作区 v2.1.0-test
+
+- **目的**：根据用户确认的纯线上规则，固化服务器唯一数据源、临时资产事务、客户端内存草稿、诊断不落本地、旧本地链路物理删除和 `2.1.0-test` 验收边界。
+- **版本**：保持 `2.0.18-test`；业务实施和 APK 交付完成时升级至 `2.1.0-test`。
+- **改动文件**：`docs/superpowers/specs/2026-06-30-online-only-2-1-0-design.md`、`VERSION_HISTORY.md`。
+- **设计结论**：正式业务数据和图片只存服务器；客户端只保留当前页面内存；临时资产先上传后在业务事务中绑定；诊断事件只保留内存并由用户主动上传；完成切换后物理删除 Dexie、Outbox、Sync、Bridge、持久图片缓存和旧测试，并以一次性清理器删除升级遗留业务存储。
+- **本地验证**：待提交前执行设计占位符扫描、`git diff --check` 和工作区状态核对。
+- **风险门禁**：**low**（本提交仅设计文档，后续实施为 high）。
+- **未触发 subagent**：契约尚未冻结；用户已允许后续并行 Subagent。
+- **未验证风险**：业务代码、数据库迁移、服务端、浏览器、Android 和 APK 均未开始实施。
+
 ## 2026-06-30 / v2.0.18-test / Codex — 统一新录入裁切参数并修复首页取图
 
 - **目的**：修复首页瀑布流对已裁切衣物仍显示完整原图的问题，并统一今后新录入衣物的裁切参数。

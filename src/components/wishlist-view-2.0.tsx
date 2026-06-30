@@ -25,8 +25,6 @@ import { formatGarmentFitGender, formatSubcategoryLabel } from "@/lib/display-la
 import type { DeviceMiniMaxSettings } from "@/lib/device-minimax";
 import { hasDeviceMiniMaxKey } from "@/lib/device-minimax";
 import { buildWishlistEditRecognitionPatch } from "@/lib/item-recognition-patch";
-import { bridgeGarmentCreate } from "@/lib/cloud-sync/garment-bridge";
-import { bridgeWishlistDelete, bridgeWishlistUpsert } from "@/lib/cloud-sync/wishlist-bridge";
 
 import {
   getWishlistDisplayState, getWishlistDisplayLabel, getWishlistStatusCapsuleColor,
@@ -38,14 +36,17 @@ import {
 import { assessWishlistItemByRules } from "@/lib/wishlist-assessment";
 
 import { buildFallbackWishlistAssessment } from "@/lib/wishlist-ai-prompt";
-import { getWardrobeSnapshot, invalidateWorkspaceSnapshotCache, convertWishlistToWardrobe, undoWishlistPurchaseFromRepo, deleteWishlistRecords } from "@/lib/data-repo";
 import { isWishlistPurchased } from "@/lib/wishlist-conversion";
 import { isConvertedWishlistLinkDeleted } from "@/lib/wardrobe-reference-sync";
 
 import { useSoftAiProgress } from "@/lib/use-soft-ai-progress";
 import { fileToCompressedDataUrl } from "@/lib/image";
 import type { NormalizedCropBox } from "@/lib/image";
-import { GarmentIntakeFlow } from "@/components/garment-intake-flow";
+import {
+  GarmentIntakeFlow,
+  type IntakeBatchSaveResult,
+  type IntakeSaveBatchContext,
+} from "@/components/garment-intake-flow";
 import { ImageCropEditor } from "@/components/image-crop-editor";
 import { GarmentImage } from "@/components/garment-image";
 import { garmentDraftToWishlistItem } from "@/lib/intake-save-adapters";
@@ -79,6 +80,7 @@ import { FormalityWarmthStepper } from "@/components/item/formality-warmth-stepp
 import { ItemDetailSections } from "@/components/item/detail-sections";
 import { EditSectionCard } from "@/components/item-shell/edit-section-card";
 import { ItemColorFields } from "@/components/item/color-fields";
+import { wardrobeRepository } from "@/lib/repository/wardrobe-repository";
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                             */
@@ -114,6 +116,14 @@ interface WishlistView20Props {
   onNavigateToItem?: (itemId: number) => Promise<void>;
   onWishlistConvertedToWardrobe?: (newItemId: number) => Promise<void>;
   onDataChanged?: () => void | Promise<void>;
+}
+
+function createClientMutationId(): string {
+  if (globalThis.crypto?.randomUUID) return globalThis.crypto.randomUUID();
+  return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, (char) => {
+    const random = Math.floor(Math.random() * 16);
+    return (char === "x" ? random : (random & 0x3) | 0x8).toString(16);
+  });
 }
 
 /* ------------------------------------------------------------------ */
@@ -189,7 +199,7 @@ function NoticeDialog({
 /* ------------------------------------------------------------------ */
 
 export function WishlistView20({
-  wishlistItems, setWishlistItems, items, locations, outfits, settings,
+  wishlistItems, items, locations, outfits, settings,
   createTrigger, initialSubPage, onInitialSubPageConsumed, onCreateTriggerConsumed, onCreateClosed, onMessage, onExpandImage, onSubPageChange, onNavigateToItem,
   onWishlistConvertedToWardrobe,
   onPickIntakeImages,
@@ -198,6 +208,7 @@ export function WishlistView20({
 }: WishlistView20Props) {
   const [subPage, setSubPage] = useState<SubPage>("home");
   const [selectedItem, setSelectedItem] = useState<WishlistItem | null>(null);
+  const formMutationRef = useRef<{ fingerprint: string; clientMutationId: string } | null>(null);
   // v1.1.6 followup Commit 2: 用变量赋值替代早期 return, 让全局 dialogs 能在所有子页生效
   let subPageNode: React.ReactNode = null;
   const [mainFilter, setMainFilter] = useState<WishlistMainFilter>("all");
@@ -211,6 +222,12 @@ export function WishlistView20({
     onSubPageChange?.(subPage !== "home");
     return () => onSubPageChange?.(false);
   }, [onSubPageChange, subPage]);
+
+  useEffect(() => {
+    if (!selectedItem) return;
+    const fresh = wishlistItems.find((item) => item.id === selectedItem.id);
+    if (fresh && fresh !== selectedItem) setSelectedItem(fresh);
+  }, [selectedItem, wishlistItems]);
 
   // 页面切换清理选择状态
   useEffect(() => {
@@ -437,23 +454,20 @@ export function WishlistView20({
     setShowUndoPurchaseConfirm(true);
   }, [isConvertedLinkDeleted, showDeletedConvertedItemNotice]);
 
-  const patchItem = useCallback(async (id: string, patch: Partial<WishlistItem>) => {
-    const now = new Date().toISOString();
-    const updated = { ...patch, updatedAt: now };
-    const currentItem = wishlistItems.find((w) => w.id === id);
-    if (currentItem) void bridgeWishlistUpsert({ ...currentItem, ...updated });
-    setWishlistItems((prev) => prev.map((w) => w.id === id ? { ...w, ...updated } : w));
-  }, [setWishlistItems, wishlistItems]);
-
-  const refreshItem = useCallback(async (id: string) => {
-    invalidateWorkspaceSnapshotCache();
-    const snapshot = await getWardrobeSnapshot();
-    const fresh = snapshot.wishlistItems.find((w) => w.id === id);
-    if (fresh) {
-      setWishlistItems((prev) => prev.map((w) => w.id === id ? fresh : w));
-      setSelectedItem((current) => current?.id === id ? fresh : current);
+  const patchItem = useCallback(async (id: string, patch: Partial<WishlistItem>): Promise<boolean> => {
+    const currentItem = wishlistItems.find((item) => item.id === id);
+    if (!currentItem) {
+      onMessage("该种草已不存在，请刷新后重试", "error");
+      return false;
     }
-  }, [setWishlistItems]);
+    const result = await wardrobeRepository.updateWishlistItem(currentItem, { ...patch, updatedAt: new Date().toISOString() });
+    if (!result.ok) {
+      onMessage(result.error ?? "更新失败，请重试", "error");
+      return false;
+    }
+    await onDataChanged?.();
+    return true;
+  }, [onDataChanged, onMessage, wishlistItems]);
 
   /* ---- add/edit form ---- */
 
@@ -467,6 +481,7 @@ export function WishlistView20({
     setFormFormality(""); setFormWarmth(""); setFormMaterial(""); setFormNote("");
     setFormStatus("interested");
     setWishlistCropJob(null);
+    formMutationRef.current = null;
     formDirtyRef.current = false;
     formInitialSnapshotRef.current = "";
   }, []);
@@ -565,35 +580,64 @@ export function WishlistView20({
     };
 
 
+    const fingerprint = JSON.stringify({ editId, base });
+    const clientMutationId = formMutationRef.current?.fingerprint === fingerprint
+      ? formMutationRef.current.clientMutationId
+      : createClientMutationId();
+    formMutationRef.current = { fingerprint, clientMutationId };
+
     if (editId) {
       const existingItem = wishlistItems.find((w) => w.id === editId);
-      if (existingItem) void bridgeWishlistUpsert({ ...existingItem, ...base });
-      setWishlistItems((prev) => prev.map((w) => w.id === editId ? { ...w, ...base } : w));
+      if (!existingItem) { onMessage("该种草已不存在，请刷新后重试", "error"); return; }
+      const result = await wardrobeRepository.updateWishlistItem(existingItem, base, { clientMutationId });
+      if (!result.ok) { onMessage(result.error ?? "更新种草失败，请重试", "error"); return; }
       onMessage("已更新种草单品");
     } else {
-      const newItem: WishlistItem = {
+      const newItem: Omit<WishlistItem, "id"> = {
         ...base,
-        id: `wishlist-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
         imageDataUrl: formImageDataUrl || "",
         createdAt: now,
       };
-      void bridgeWishlistUpsert(newItem);
-      setWishlistItems((prev) => [newItem, ...prev]);
+      const result = await wardrobeRepository.createWishlistItem(newItem, { clientMutationId });
+      if (!result.ok) { onMessage(result.error ?? "保存种草失败，请重试", "error"); return; }
       onMessage("已添加种草单品");
     }
+    await onDataChanged?.();
+    formMutationRef.current = null;
     setSubPage("home");
     resetForm();
-  }, [editId, formName, formImageDataUrl, formSourceImageDataUrl, formCropBox, formThumbnailDataUrl, formCategory, formSubcategory, formColorMode, formPrimaryColors, formMainColor, formAccentColors, formSeasons, formStyles, formTemperatureRange, formFitGender, formFitNotes, formPrice, formProductUrl, formFormality, formWarmth, formMaterial, formNote, formStatus, onMessage, resetForm, setWishlistItems, wishlistItems]);
+  }, [editId, formName, formImageDataUrl, formSourceImageDataUrl, formCropBox, formThumbnailDataUrl, formCategory, formSubcategory, formColorMode, formPrimaryColors, formMainColor, formAccentColors, formSeasons, formStyles, formTemperatureRange, formFitGender, formFitNotes, formPrice, formProductUrl, formFormality, formWarmth, formMaterial, formNote, formStatus, onDataChanged, onMessage, resetForm, wishlistItems]);
 
-  const handleSaveIntakeDrafts = useCallback(async (drafts: GarmentIntakeDraft[]) => {
+  const handleSaveIntakeDrafts = useCallback(async (
+    drafts: GarmentIntakeDraft[],
+    context?: IntakeSaveBatchContext,
+  ): Promise<IntakeBatchSaveResult> => {
     const now = new Date().toISOString();
     const newItems = drafts.map((draft) => garmentDraftToWishlistItem(draft, { now }));
-    for (const item of newItems) void bridgeWishlistUpsert(item);
-    setWishlistItems((prev) => [...newItems, ...prev]);
-    onMessage(newItems.length > 1 ? `已添加 ${newItems.length} 件种草单品` : "已添加种草单品");
-    setSubPage("home");
-    onCreateClosed?.();
-  }, [onMessage, setWishlistItems, onCreateClosed]);
+    const results: IntakeBatchSaveResult["items"] = [];
+    for (const [index, item] of newItems.entries()) {
+      const { id: _legacyId, ...createItem } = item;
+      const clientMutationId = context?.submissions[index]?.clientMutationId ?? createClientMutationId();
+      const result = await wardrobeRepository.createWishlistItem(createItem, { clientMutationId });
+      results.push({
+        draftId: drafts[index].id,
+        clientMutationId,
+        status: result.ok ? "succeeded" : "failed",
+        error: result.error,
+      });
+      context?.onProgress(index + 1, newItems.length);
+    }
+    await onDataChanged?.();
+    const failed = results.filter((item) => item.status === "failed").length;
+    if (failed === 0) {
+      onMessage(newItems.length > 1 ? `已添加 ${newItems.length} 件种草单品` : "已添加种草单品");
+      setSubPage("home");
+      onCreateClosed?.();
+    } else {
+      onMessage(`${failed} 件保存失败，草稿已保留`, "error");
+    }
+    return { items: results };
+  }, [onCreateClosed, onDataChanged, onMessage]);
 
   const handleAddImage = useCallback(async (file: File | undefined) => {
     if (!file) return;
@@ -693,23 +737,23 @@ export function WishlistView20({
 
   const handleReject = useCallback(async () => {
     if (!selectedItem) return;
-    await patchItem(selectedItem.id, { status: "rejected" });
+    if (!await patchItem(selectedItem.id, { status: "rejected" })) return;
     setShowRejectConfirm(false);
     onMessage("已移入不感兴趣");
   }, [selectedItem, patchItem, onMessage]);
 
   const handleRestore = useCallback(async (item: WishlistItem) => {
-    await patchItem(item.id, { status: "interested" });
+    if (!await patchItem(item.id, { status: "interested" })) return;
     onMessage("已恢复到种草");
   }, [patchItem, onMessage]);
 
   const handleArchive = useCallback(async (item: WishlistItem) => {
-    await patchItem(item.id, { status: "archived" });
+    if (!await patchItem(item.id, { status: "archived" })) return;
     onMessage("已归档");
   }, [patchItem, onMessage]);
 
   const handleRestoreArchived = useCallback(async (item: WishlistItem) => {
-    await patchItem(item.id, { status: "interested" });
+    if (!await patchItem(item.id, { status: "interested" })) return;
     onMessage("已恢复到种草");
   }, [patchItem, onMessage]);
 
@@ -725,20 +769,19 @@ export function WishlistView20({
     if (!selectedItem) return;
     setConvertingId(selectedItem.id);
     try {
-      const newItemId = await convertWishlistToWardrobe({
-        wishlistItem: selectedItem, locationId: selectedLocationId,
-      });
-      await refreshItem(selectedItem.id);
+      const result = await wardrobeRepository.convertWishlistItem(selectedItem, selectedLocationId);
+      if (!result.ok || !result.data) throw new Error(result.error ?? "加入衣橱失败");
+      await onDataChanged?.();
       setSubPage("home");
       setSelectedItem(null);
       setConvertingId(null);
       onMessage("已加入衣橱", "success");
-      onWishlistConvertedToWardrobe?.(newItemId);
+      onWishlistConvertedToWardrobe?.(result.data);
     } catch (e) {
       setConvertingId(null);
       onMessage("加入衣橱失败，请重试", "error");
     }
-  }, [selectedItem, selectedLocationId, refreshItem, onMessage, onWishlistConvertedToWardrobe]);
+  }, [selectedItem, selectedLocationId, onDataChanged, onMessage, onWishlistConvertedToWardrobe]);
 
   /* ---- undo purchase ---- */
 
@@ -750,8 +793,8 @@ export function WishlistView20({
       return;
     }
     try {
-      await undoWishlistPurchaseFromRepo({ wishlistItem: selectedItem });
-      await refreshItem(selectedItem.id);
+      const result = await wardrobeRepository.undoWishlistPurchase(selectedItem);
+      if (!result.ok) throw new Error(result.error ?? "撤销购买失败");
       await onDataChanged?.();
       setShowUndoPurchaseConfirm(false);
       setSubPage("home");
@@ -760,7 +803,7 @@ export function WishlistView20({
     } catch (e) {
       onMessage("撤销购买失败", "error");
     }
-  }, [selectedItem, isConvertedLinkDeleted, showDeletedConvertedItemNotice, refreshItem, onMessage, onDataChanged]);
+  }, [selectedItem, isConvertedLinkDeleted, showDeletedConvertedItemNotice, onMessage, onDataChanged]);
 
   // v1.1.6 followup Commit 2: 全局「放弃修改」回调, 与 showDiscardConfirm 状态联动
   const discardForm = useCallback(() => {
@@ -806,8 +849,9 @@ export function WishlistView20({
       if (runId !== assessmentRunIdRef.current) return;
 
       const updatedAt = new Date().toISOString();
-      void bridgeWishlistUpsert({ ...wishlistItem, aiAssessment: assessment, updatedAt });
-      await refreshItem(wishlistItem.id);
+      const result = await wardrobeRepository.updateWishlistItem(wishlistItem, { aiAssessment: assessment, updatedAt });
+      if (!result.ok) throw new Error(result.error ?? "保存评估失败");
+      await onDataChanged?.();
       aiProgress.complete(true);
       onMessage(usedLocalFallback ? "已生成本地规则评估" : "AI 评估已更新", usedLocalFallback ? "info" : "success");
       // 只有最后一次 run 才能清空 assessingId, 否则会过早清空让新 run 的 loading 状态丢失
@@ -817,17 +861,16 @@ export function WishlistView20({
       aiProgress.fail("评估失败，请稍后重试");
       if (runId === assessmentRunIdRef.current) setAssessingId(null);
     }
-  }, [items, outfits, fallbackLocationId, settings, refreshItem, aiProgress, onMessage]);
+  }, [items, outfits, fallbackLocationId, settings, aiProgress, onDataChanged, onMessage]);
 
   const handleDeleteRecord = useCallback(async (item: WishlistItem) => {
-    await deleteWishlistRecords([item.id]);
-    void bridgeWishlistDelete(item.id);
-    setWishlistItems((prev) => prev.filter((w) => w.id !== item.id));
+    const result = await wardrobeRepository.deleteWishlistItems([item]);
+    if (!result.ok) { onMessage(result.error ?? "删除失败，请重试", "error"); return; }
     await onDataChanged?.();
     onMessage("已删除记录");
     setSubPage("home");
     setSelectedItem(null);
-  }, [setWishlistItems, onMessage, onDataChanged]);
+  }, [onMessage, onDataChanged]);
 
   /* ---- view detail ---- */
 
@@ -1590,18 +1633,17 @@ export function WishlistView20({
     if (selectedItems.length === 0) return;
     const ok = await wishlistBulkDelete.executeDelete(
       selectedItems.map((w) => w.id),
-      async (ids) => {
-        await deleteWishlistRecords(ids);
-        for (const id of ids) void bridgeWishlistDelete(id);
+      async () => {
+        const result = await wardrobeRepository.deleteWishlistItems(selectedItems);
+        if (!result.ok) throw new Error(result.error ?? "删除失败，请重试");
       },
     );
     if (ok) {
-      setWishlistItems((prev) => prev.filter((w) => !selectedIds.includes(w.id)));
       wishlistSelection.clear();
-      onDataChanged?.();
+      await onDataChanged?.();
       onMessage(`已删除 ${selectedItems.length} 件种草单品`, "success");
     }
-  }, [wishlistSelection, wishlistBulkDelete, mainItems, setWishlistItems, onDataChanged, onMessage]);
+  }, [wishlistSelection, wishlistBulkDelete, mainItems, onDataChanged, onMessage]);
 
   // v1.1.16 commit3 §5.4.4: 拉平种草首页与套装首页的页边距 + header + chips 布局,
   // 标题 / 数量 / 右上角菜单按钮 / 筛选条左边界 / 空状态居中与 outfit-list-view.tsx 一致。

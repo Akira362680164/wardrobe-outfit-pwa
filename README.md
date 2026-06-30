@@ -2,7 +2,7 @@
 
 AI agent 修改本项目代码前，必须先读取并遵守根目录 `AGENTS.md`。Claude Code 看 `CLAUDE.md`，MiniMax Code 看 `MINIMAX.md`，二者都只作为入口提示。
 
-手机优先的衣橱管理、穿搭推荐和买前评估 App。衣服和图片默认保存在浏览器本地；MiniMax Key 由用户在 App 内填写并保存在手机本机。
+手机优先的衣橱管理、穿搭推荐和买前评估 App。登录后的衣橱数据和图片只保存到项目服务器，客户端不持久化业务缓存；MiniMax Key 由用户在 App 内填写并保存在手机本机。
 
 ## 功能
 
@@ -15,8 +15,8 @@ AI agent 修改本项目代码前，必须先读取并遵守根目录 `AGENTS.md
 - AI 衣橱诊断：识别重复、缺口、闲置和可复用套装
 - 买前评估：上传淘宝图、商品截图或试穿自拍，判断是否重复、是否值得买、适合什么场景
 - AI 试穿预览：由 M3 规划画面、image-01 生成图片，并用 M3 做结果质检
-- 本地导出和导入 JSON 备份
-- Android WebView 本机运行，不依赖家里电脑或公网 IP
+- 登录后从服务器读取完整衣橱，写入等待服务器事务确认
+- Android WebView 本机运行，通过配置的线上 API 读写，不依赖家里电脑或局域网服务
 
 ## 本地运行
 
@@ -25,11 +25,11 @@ npm install
 npm run dev
 ```
 
-打开 `http://localhost:3000`。
+同时启动 `services/wardrobe-api`，并通过 `NEXT_PUBLIC_WARDROBE_API_BASE_URL` 指向 API；打开 `http://localhost:3000`。
 
 ## Android 本机运行
 
-Android 版本使用 Capacitor 打包静态前端到 APK，衣橱数据保存在手机 WebView 的本地数据库里。MiniMax Key 在 App 的「设置」页填写并保存在手机本机，不写进 APK。
+Android 版本使用 Capacitor 打包静态前端到 APK。业务数据和图片只从线上 API 读写；选图、裁切、缩略图和 AI 识别结果在提交前仅存在当前页面内存。MiniMax Key 在 App 的「设置」页填写并保存在手机本机，不写进 APK。
 
 ```bash
 npm run android:sync

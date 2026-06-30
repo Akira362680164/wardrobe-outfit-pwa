@@ -7,8 +7,7 @@ import type { CaptureImageQueueItem, SelectedImagesReviewMode } from "@/componen
 import type { NormalizedCropBox } from "@/lib/image";
 import { generateThumbnailSafe } from "@/lib/thumbnail-runtime";
 import { getWardrobeSnapshot } from "@/lib/data-repo";
-import { bridgeGarmentUpdate } from "@/lib/cloud-sync/garment-bridge";
-
+import { rethrowIfFailed, repoUpdateGarment } from "@/lib/repository/wardrobe-repository";
 export interface UseWardrobeCaptureQueueControllerOptions {
   /** 来自 useWardrobeMessageController 的 showMessage */
   showMessage: (msg: string, type?: "success" | "error" | "info") => void;
@@ -152,7 +151,7 @@ export function useWardrobeCaptureQueueController(
       if (!item) throw new Error("目标衣物不存在");
       const existing = Array.isArray(item.referenceOutfitImages) ? item.referenceOutfitImages : [];
       const updated = [...existing, ...refs];
-      await bridgeGarmentUpdate({ ...item, referenceOutfitImages: updated, updatedAt: now });
+      rethrowIfFailed(await repoUpdateGarment({ ...item, referenceOutfitImages: updated, updatedAt: now }, {}), "更新单品失败");
       patchItemInItemsState(targetId, { referenceOutfitImages: updated, updatedAt: now });
       await refreshState();
       setCaptureImageQueue([]);

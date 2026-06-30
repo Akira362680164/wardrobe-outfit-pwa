@@ -18,7 +18,7 @@ for (const text of [
 }
 assert.equal(account.includes("{auth.deviceId}"), false, "账号页不得渲染完整 deviceId");
 assert.match(account, /退出登录？/);
-assert.match(account, /退出后本机衣橱数据不会删除/);
+assert.match(account, /退出后将清空当前登录会话；重新登录后会从服务器读取衣橱数据/);
 
 for (const route of ["wardrobe_home", "outfit_home", "wishlist_home"] as AppRouteName[]) {
   assert.equal(isGlobalCreateAllowedRoute(route), true, `${route} 应显示全局加号`);

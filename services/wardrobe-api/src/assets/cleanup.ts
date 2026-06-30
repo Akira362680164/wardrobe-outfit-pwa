@@ -50,6 +50,18 @@ export async function cleanupAssetStorage(
   if (!storage) return;
   await storage.cleanupTemporaryFiles(new Date(Date.now() - 24 * 60 * 60 * 1000));
 
+  const expiredTemporary = await database.select().from(assets).where(and(
+    sql`${assets.ownerEntityId} IS NULL`, sql`${assets.deletedAt} IS NULL`, lte(assets.expiresAt, new Date()),
+  ));
+  for (const row of expiredTemporary) {
+    for (const key of [row.originalStorageKey, row.thumbnailStorageKey]) if (key) await storage.delete(key).catch(() => {});
+  }
+  if (expiredTemporary.length) {
+    await database.update(assets).set({ deletedAt: new Date(), uploadStatus: "deleted", updatedAt: new Date() }).where(and(
+      sql`${assets.ownerEntityId} IS NULL`, sql`${assets.deletedAt} IS NULL`, lte(assets.expiresAt, new Date()),
+    ));
+  }
+
   const retentionCutoff = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
   const deletedRows = await database.select().from(assets).where(and(
     sql`${assets.deletedAt} IS NOT NULL`,

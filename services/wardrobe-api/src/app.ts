@@ -18,13 +18,14 @@ import { registerRequestTraceMiddleware } from "./diagnostics/request-trace-midd
 import { readFile } from "node:fs/promises";
 import { checkDatabaseReady } from "./db/client.js";
 import { getApiVersion } from "./version.js";
-import { registerSyncRoutes } from "./sync/routes.js";
-import { SyncService } from "./sync/service.js";
 import { redactedLogSerializer } from "./shared/redact.js";
 import { loadStorageConfig } from "./storage/config.js";
 import { createStorageProviderFromEnv } from "./storage/factory.js";
 import { UnavailableStorageProvider, type StorageProvider } from "./storage/provider.js";
 import { isStorageReady } from "./storage/readiness.js";
+import { registerWorkspaceRoutes } from "./workspace/routes.js";
+import { WorkspaceQueryService } from "./workspace/query-service.js";
+import { WorkspaceCommandService } from "./workspace/command-service.js";
 
 export type ReadinessCheck = () => Promise<{ database: "ready" }>;
 
@@ -32,8 +33,9 @@ export interface BuildAppOptions {
   readinessCheck?: ReadinessCheck;
   registrationService?: RegistrationService;
   sessionService?: SessionService;
-  syncService?: SyncService;
   assetService?: AssetService;
+  workspaceQueryService?: WorkspaceQueryService;
+  workspaceCommandService?: WorkspaceCommandService;
   diagnosticService?: DiagnosticService;
   storageProvider?: StorageProvider | null;
   jwtReadinessCheck?: () => Promise<boolean>;
@@ -125,12 +127,14 @@ export function buildApp(options: BuildAppOptions = {}): FastifyInstance {
 
   registerAuthRoutes(app, options.registrationService, sharedSessionService);
   registerSessionRoutes(app, sharedSessionService);
-  registerSyncRoutes(app, options.syncService ?? new SyncService(
-    undefined,
-    (input) => assetService.deleteAsset(input),
-    (input) => assetService.deleteAssetsForOwner(input),
-  ), sharedSessionService ?? new SessionService());
   registerAssetRoutes(app, assetService, sharedSessionService ?? new SessionService(), storageConfig.maxAssetBytes);
+  registerWorkspaceRoutes(
+    app,
+    options.workspaceQueryService ?? new WorkspaceQueryService(),
+    options.workspaceCommandService ?? new WorkspaceCommandService(),
+    assetService,
+    sharedSessionService ?? new SessionService(),
+  );
   const diagnosticService = options.diagnosticService ?? new DiagnosticService(storage);
   registerDiagnosticRoutes(app, sharedSessionService ?? new SessionService(), diagnosticService);
   registerDiagnosticAdminRoutes(app, diagnosticService);

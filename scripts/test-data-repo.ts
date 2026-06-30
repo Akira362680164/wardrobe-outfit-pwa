@@ -20,7 +20,7 @@ function check(name: string, cond: boolean, detail?: string) {
 }
 
 console.log("\n=== 4B-lite reads ===");
-check("src/lib/data-repo.ts exists", dataRepo.includes("WardrobeDataSnapshot"));
+check("src/lib/data-repo.ts is a stub", dataRepo.includes("WardrobeDataSnapshot"));
 check("exports WardrobeDataSnapshot", /export interface WardrobeDataSnapshot/.test(dataRepo));
 check("exports getWardrobeSnapshot", /export async function getWardrobeSnapshot/.test(dataRepo));
 check("exports getAllItems", /export async function getAllItems/.test(dataRepo));

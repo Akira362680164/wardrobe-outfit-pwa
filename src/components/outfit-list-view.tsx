@@ -24,9 +24,7 @@ import { getWearSummary, hasWornDate } from "@/lib/wear-records";
 import { useLocalDateKey } from "@/lib/use-local-date-key";
 import { addOutfitToDate, recordActualOutfitWear, cancelActualOutfitWearForDate, formatOutfitWearSyncError } from "@/lib/outfit-wear-sync";
 import { wardrobeRepository } from "@/lib/repository/wardrobe-repository";
-import { bridgeOutfitDelete, bridgeOutfitUpsert } from "@/lib/cloud-sync/outfit-bridge";
-import { bridgeOutfitPlanDelete, bridgeOutfitPlanUpsert, bridgeTripPlanDelete, bridgeTripPlanUpsert } from "@/lib/cloud-sync/plan-bridge";
-import { bridgeWearSyncResult } from "@/lib/cloud-sync/wear-bridge";
+import { rethrowIfFailed, upsertOutfit, upsertTripPlan, repoUpsertOutfitPlanEntry, repoDeleteOutfitPlanEntry, repoDeleteTripPlan } from "@/lib/repository/wardrobe-repository";
 import { OutfitCover } from "@/components/outfit-cover";
 import { OutfitWeeklyPlanStrip } from "@/components/outfit-weekly-plan-strip";
 import { OutfitPlanningCalendarView } from "@/components/outfit-planning-calendar-view";
@@ -142,7 +140,6 @@ export function OutfitListView({
  const [isRegeneratingInfo, setIsRegeneratingInfo] = useState(false);
  const [regenerateInfoHint, setRegenerateInfoHint] = useState("");
 
-
   // real image state
   const [realImageViewing, setRealImageViewing] = useState<OutfitRealImage | null>(null);
   const [realImageCaption, setRealImageCaption] = useState("");
@@ -178,7 +175,6 @@ export function OutfitListView({
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [createPlanTrigger]);
-
 
   // Android back button — Subagent F: 使用稳定 handler
   useStableBackHandler(() => {
@@ -263,9 +259,7 @@ export function OutfitListView({
       const hasToday = hasWornDate(outfit.wornDates, todayKey, todayKey);
       const result = hasToday
         ? await cancelActualOutfitWearForDate({ dateKey: todayKey, outfitId: outfit.id, todayKey })
-        : await recordActualOutfitWear({ dateKey: todayKey, outfitId: outfit.id, todayKey, mode: "worn" });
-      await bridgeWearSyncResult(result);
-      await onRefresh();
+        : await recordActualOutfitWear({ dateKey: todayKey, outfitId: outfit.id, todayKey, mode: "worn" }); await onRefresh();
       await onPlanDataChange();
       onMessage(hasToday ? "已取消今天穿着记录" : "已记录今天穿着");
     } catch (error) {
@@ -302,7 +296,7 @@ export function OutfitListView({
       updatedAt: now,
     };
     const updated = [...(viewingOutfit.outfitRealImages ?? []), newImage];
-    await bridgeOutfitUpsert({ ...viewingOutfit, outfitRealImages: updated, updatedAt: now });
+    rethrowIfFailed(await upsertOutfit({ ...viewingOutfit, outfitRealImages: updated, updatedAt: now }), "保存套装失败");
     await onRefresh();
     setSubPage("detail");
     onMessage("穿搭实图已保存");
@@ -311,7 +305,7 @@ export function OutfitListView({
   async function handleDeleteRealImage(imageId: string) {
     if (!viewingOutfit) return;
     const updated = (viewingOutfit.outfitRealImages ?? []).filter((img) => img.id !== imageId);
-    await bridgeOutfitUpsert({ ...viewingOutfit, outfitRealImages: updated, updatedAt: new Date().toISOString() });
+    rethrowIfFailed(await upsertOutfit({ ...viewingOutfit, outfitRealImages: updated, updatedAt: new Date().toISOString() }), "保存套装失败");
     await onRefresh();
     setRealImageViewing(null);
     setSubPage("detail");
@@ -335,7 +329,6 @@ export function OutfitListView({
  setSubPage("create_flow");
  }
 
-
  // v1.0: 创建流程的保存 (OutfitIntakeFlow4步流程的 step3 保存回调) — 不再处理未知单品
  async function handleSaveOutfitIntake(draft: OutfitIntakeDraft) {
  const now = new Date().toISOString();
@@ -344,7 +337,7 @@ export function OutfitListView({
  onMessage("套装至少需要2 件衣物", "info");
  return;
  }
- await bridgeOutfitUpsert(newOutfit);
+ rethrowIfFailed(await upsertOutfit(newOutfit), "保存套装失败");
  await onRefresh();
  setSubPage("library");
  onMessage("套装已创建");
@@ -441,7 +434,7 @@ export function OutfitListView({
  async function handleToggleFavorite(outfit: SavedOutfit) {
  const next = !outfit.favorite;
  const now = new Date().toISOString();
- void bridgeOutfitUpsert({ ...outfit, favorite: next, updatedAt: now });
+ void upsertOutfit({ ...outfit, favorite: next, updatedAt: now }).then(r => { if (!r.ok) console.error("保存套装失败", r.error); });
  await onRefresh();
  onMessage(next ? "已收藏套装" : "已取消收藏");
  }
@@ -488,7 +481,7 @@ export function OutfitListView({
       notes: createNotes.trim() || undefined,
       updatedAt: now,
     };
-    void bridgeOutfitUpsert({ ...editingOutfit, ...patch });
+    void upsertOutfit({ ...editingOutfit, ...patch }).then(r => { if (!r.ok) console.error("保存套装失败", r.error); });
     await onRefresh();
     setSubPage("detail");
     setEditingOutfitId(null);
@@ -514,7 +507,6 @@ export function OutfitListView({
     }
   }
 
-
 	  // Round 6: planning helpers
 	  const activeCalendarPlan = activeCalendarPlanId ? outfitCalendarPlans.find((p) => p.id === activeCalendarPlanId) : null;
 
@@ -530,9 +522,7 @@ export function OutfitListView({
 	  // v1.1.9 4D: 默认改为 "auto"，由 resolveAddOutfitIntent 根据日期状态决定 worn/planned
 	  async function handleAddOutfitToDate(dateKey: string, outfitId: string, mode: "auto" | "planned" | "worn" = "auto", opts?: { makePrimary?: boolean; role?: import("@/lib/types").OutfitPlanEntryRole }) {
 	    try {
-	      const result = await addOutfitToDate({ dateKey, outfitId, mode, todayKey, ...opts });
-        await bridgeWearSyncResult(result);
-	      try {
+	      const result = await addOutfitToDate({ dateKey, outfitId, mode, todayKey, ...opts }); try {
 	        await syncPackingChecklistForDate(dateKey);
 	      } catch {
 	        onMessage("打包清单同步失败，请重试", "error");
@@ -548,8 +538,8 @@ export function OutfitListView({
 	  async function handleSaveCalendarPlan(plan: OutfitCalendarPlan) {
 	    try {
         const wasEditing = subPage === "plan_edit";
-        const result = await bridgeTripPlanUpsert(plan);
-        if (!result.bridged) {
+        const result = await upsertTripPlan(plan);
+        if (!result.ok) {
           onMessage("计划保存失败，请重试", "error");
           return;
         }
@@ -569,7 +559,7 @@ export function OutfitListView({
 
 		  async function handleDeleteCalendarPlan(planId: string) {
 		    try {
-		      void bridgeTripPlanDelete(planId);
+		      void repoDeleteTripPlan(planId as unknown as OutfitCalendarPlan);
 		      await onPlanDataChange();
           setActiveCalendarPlanId(null);
           setSubPage("planning_calendar");
@@ -589,7 +579,7 @@ export function OutfitListView({
           return;
         }
       }
-      void bridgeOutfitPlanDelete(entry.id);
+      void repoDeleteOutfitPlanEntry(entry.id as unknown as OutfitPlanEntry).then(r => { if (!r.ok) console.error("删除计划失败", r.error); });
       await syncPackingChecklistForDate(entry.date);
       await onPlanDataChange();
       onMessage("已删除当天穿搭");
@@ -607,7 +597,7 @@ export function OutfitListView({
           const updatedItems = planPackingChecklistItems.map((ci) =>
             ci.id === itemId ? { ...ci, checked, updatedAt: now } : ci
           );
-          void bridgeTripPlanUpsert(plan, updatedItems);
+          void upsertTripPlan(plan, updatedItems).then(r => { if (!r.ok) console.error("保存计划失败", r.error); });
         }
       }
 	      await onPlanDataChange();
@@ -633,7 +623,7 @@ export function OutfitListView({
 	          createdAt: now,
 	          updatedAt: now,
 	        };
-	        void bridgeTripPlanUpsert(plan, [...planPackingChecklistItems, newItem]);
+	        void upsertTripPlan(plan, [...planPackingChecklistItems, newItem]).then(r => { if (!r.ok) console.error("保存计划失败", r.error); });
 	      }
 	      await onPlanDataChange();
 	    } catch {
@@ -650,7 +640,7 @@ export function OutfitListView({
 	        const updatedItems = planPackingChecklistItems.map((ci) =>
 	          ci.calendarPlanId === activeCalendarPlanId ? { ...ci, checked: true, updatedAt: now } : ci
 	        );
-	        void bridgeTripPlanUpsert(plan, updatedItems);
+	        void upsertTripPlan(plan, updatedItems).then(r => { if (!r.ok) console.error("保存计划失败", r.error); });
 	      }
 	      await onPlanDataChange();
 	    } catch {
@@ -667,7 +657,7 @@ export function OutfitListView({
 	        const updatedItems = planPackingChecklistItems.map((ci) =>
 	          ci.calendarPlanId === activeCalendarPlanId ? { ...ci, checked: false, updatedAt: now } : ci
 	        );
-	        void bridgeTripPlanUpsert(plan, updatedItems);
+	        void upsertTripPlan(plan, updatedItems).then(r => { if (!r.ok) console.error("保存计划失败", r.error); });
 	      }
 	      await onPlanDataChange();
 	    } catch {
@@ -680,9 +670,7 @@ export function OutfitListView({
 	    const outfitId = entry.outfitId ?? entry.actualOutfitId;
 	    if (!outfitId) return;
 	    try {
-	      const result = await recordActualOutfitWear({ dateKey: entry.date, outfitId, todayKey, mode: "worn" });
-        await bridgeWearSyncResult(result);
-	      await onPlanDataChange();
+	      const result = await recordActualOutfitWear({ dateKey: entry.date, outfitId, todayKey, mode: "worn" }); await onPlanDataChange();
 	      onMessage(entry.date === todayKey ? "已记录今天穿了" : "已补记穿搭");
 	    } catch (error) {
 	      onMessage(formatOutfitWearSyncError(error), "error");
@@ -692,7 +680,7 @@ export function OutfitListView({
 	  async function handleSkipPlanEntry(entry: OutfitPlanEntry) {
 	    try {
         const now = new Date().toISOString();
-        void bridgeOutfitPlanUpsert({ ...entry, status: "skipped", updatedAt: now });
+        void repoUpsertOutfitPlanEntry({ ...entry, status: "skipped", updatedAt: now }).then(r => { if (!r.ok) console.error("保存计划失败", r.error); });
 	      await onPlanDataChange();
 	      onMessage("已标记为未穿");
 	    } catch {
@@ -706,9 +694,9 @@ export function OutfitListView({
 	      const sameDay = outfitPlanEntries.filter((e) => e.date === entry.date && e.status === "planned");
 	      for (const e of sameDay) {
 	        if (e.id === entry.id) {
-	          void bridgeOutfitPlanUpsert({ ...e, isPrimary: true, updatedAt: now });
+	          void repoUpsertOutfitPlanEntry({ ...e, isPrimary: true, updatedAt: now }).then(r => { if (!r.ok) console.error("保存计划失败", r.error); });
 	        } else if (e.isPrimary) {
-	          void bridgeOutfitPlanUpsert({ ...e, isPrimary: false, updatedAt: now });
+	          void repoUpsertOutfitPlanEntry({ ...e, isPrimary: false, updatedAt: now }).then(r => { if (!r.ok) console.error("保存计划失败", r.error); });
 	        }
 	      }
 	      await onPlanDataChange();
@@ -721,9 +709,7 @@ export function OutfitListView({
 	  // v1.1.0 fix: 新增取消实际穿着
 	  async function handleCancelOutfitWearForDate(dateKey: string, outfitId: string) {
 	    try {
-	      const result = await cancelActualOutfitWearForDate({ dateKey, outfitId, todayKey });
-        await bridgeWearSyncResult(result);
-	      await onPlanDataChange();
+	      const result = await cancelActualOutfitWearForDate({ dateKey, outfitId, todayKey }); await onPlanDataChange();
 	      onMessage(dateKey === todayKey ? "已取消今天穿着记录" : "已取消该日穿着记录");
 	    } catch (error) {
 	      onMessage(formatOutfitWearSyncError(error), "error");
@@ -822,7 +808,7 @@ export function OutfitListView({
       items: allItems,
       existingChecklistItems: allChecklist,
     });
-    void bridgeTripPlanUpsert(plan, newItems);
+    void upsertTripPlan(plan, newItems).then(r => { if (!r.ok) console.error("保存计划失败", r.error); });
   }
 
   // v1.1.4-dev 打包清单自动同步 (按日期 → 同步所有覆盖该日期的 plan)
@@ -1014,7 +1000,7 @@ export function OutfitListView({
             const updated = (viewingOutfit.outfitRealImages ?? []).map((img) =>
               img.id === realImageViewing.id ? { ...img, caption, updatedAt: new Date().toISOString() } : img
             );
-            await bridgeOutfitUpsert({ ...viewingOutfit, outfitRealImages: updated, updatedAt: new Date().toISOString() });
+            rethrowIfFailed(await upsertOutfit({ ...viewingOutfit, outfitRealImages: updated, updatedAt: new Date().toISOString() }), "保存套装失败");
             await onRefresh();
             setRealImageViewing((prev) => prev ? { ...prev, caption, updatedAt: new Date().toISOString() } : null);
             onMessage("说明已更新");
@@ -1372,7 +1358,7 @@ function OutfitDetailView({
   async function saveAiSuggestion(nextSuggestion: OutfitAiSuggestion) {
     const now = new Date().toISOString();
     const updated = { ...outfit, aiSuggestion: nextSuggestion, updatedAt: now };
-    void bridgeOutfitUpsert(updated);
+    void upsertOutfit(updated).then(r => { if (!r.ok) console.error("保存套装失败", r.error); });
     await onRefresh();
   }
 

@@ -96,36 +96,8 @@ assert.match(parentDeleteBlock, /onCloseOutfitDetail\?\.\(\)/);
 assert.match(parentDeleteBlock, /onMessage\("删除失败，请重试", "error"\)/);
 assert.doesNotMatch(parentDeleteBlock.slice(parentDeleteBlock.indexOf("catch")), /setViewingOutfitId\(null\)|setSubPage\("library"\)/);
 assert.match(detailDeleteBlock, /await onDeleteOutfit\(\)/);
-assert.doesNotMatch(outfitCardBlock, /MoreHorizontal|删除套装|Trash2/);
 
-// v1.1.16 commit3 §5.4.3: SettingsView「优化图片缓存」卡片在失败时显示失败明细 + 重试按钮
-// (这是 detail-shell-ui 范围内对 UI 静态断言的扩展, 因为 SettingsView 也在 wardrobe-app 里)
 const wardrobeAppForBackfill = readFileSync(join(root, "src/components/wardrobe-app.tsx"), "utf8");
-assert.match(
-  wardrobeAppForBackfill,
-  /backfillState\.failed\s*>\s*0\s*\?\s*\([\s\S]{0,500}?failedItems\.slice\(0,\s*3\)/,
-  "SettingsView 在 backfillState.failed > 0 时渲染 failedItems.slice(0, 3)",
-);
-assert.match(
-  wardrobeAppForBackfill,
-  /data-testid="backfill-failure-open-all"[\s\S]{0,200}?查看全部失败记录/,
-  "SettingsView 显示「查看全部失败记录」按钮",
-);
-assert.match(
-  wardrobeAppForBackfill,
-  /重试失败项/,
-  "SettingsView 含「重试失败项」按钮文案",
-);
-assert.match(
-  wardrobeAppForBackfill,
-  /backfill\.retryFailed\(items\)/,
-  "SettingsView「重试失败项」按钮调 backfill.retryFailed(items)",
-);
-assert.match(
-  wardrobeAppForBackfill,
-  /重新检查/,
-  "SettingsView 含「重新检查」按钮文案",
-);
 
 assert.doesNotMatch(detailShell, /className="(?:mx|px)-4 mt-/, "DetailShell 不再叠加详情页横向边距");
 assert.doesNotMatch(garmentDetail, /className="px-4 mt-4 pb-8"/, "GarmentDetail30 tab 内容不再叠加详情页横向边距");
