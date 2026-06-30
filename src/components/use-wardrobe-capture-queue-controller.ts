@@ -7,7 +7,7 @@ import type { CaptureImageQueueItem, SelectedImagesReviewMode } from "@/componen
 import type { NormalizedCropBox } from "@/lib/image";
 import { generateThumbnailSafe } from "@/lib/thumbnail-runtime";
 import { getWardrobeSnapshot } from "@/lib/data-repo";
-import { bridgeGarmentUpdate } from "@/lib/online/bridge-compat";
+import { bridgeGarmentUpdate } from "@/lib/repository/wardrobe-repository";
 
 export interface UseWardrobeCaptureQueueControllerOptions {
   /** 来自 useWardrobeMessageController 的 showMessage */
