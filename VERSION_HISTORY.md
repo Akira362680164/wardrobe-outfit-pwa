@@ -1,4 +1,15 @@
 
+## 2026-07-01 / v2.1.1-test / Codex — 线上唯一数据源的协议与隐私文案校正
+
+- **目的**：Android 全新安装验证时发现注册页内嵌协议仍声称使用 Dexie 完整副本和持久图片缓存，与 v2.1.1-test 线上唯一数据源实现冲突。
+- **主要改动**：同步更新 App 内嵌和独立路由的用户协议/隐私政策；明确正式业务数据与图片仅以服务器为准，本机只保留当前页面内存草稿；校正图片上下行和 Android 认证凭据存储描述。
+- **改动文件**：`src/components/auth/auth-gate.tsx`、`src/app/legal/terms/page.tsx`、`src/app/legal/privacy/page.tsx`、`VERSION_HISTORY.md`。
+- **验证通过**：`npm run typecheck`；`npm run test:logic:online-workspace`；`npm run build`；源码扫描确认协议不再包含 Dexie 副本、离线图片缓存或预签名 URL 的旧描述。
+- **风险门禁**：**low**（合规文案与实现对齐，不改变业务逻辑）。
+- **未触发 subagent**：用户未通知。
+- **未验证风险**：本条文案需在下一次固定签名 APK 中再做 Android 注册页可视复核。
+
+
 ## 2026-06-30 / v2.1.1-test / Codex — 线上业务断层、事务幂等与真实服务端验收收口
 
 - **目的**：清除 `data-repo.ts` 空快照后继续收口真实线上流程；修复单品更新/删除元数据丢失、录入重试 ID 未透传、穿着事务非原子、灵感图未绑定服务端资产等断层。
@@ -3488,4 +3499,3 @@
 - **风险门禁**：**high**（Android 原生网络与线上图片主链路）。
 - **未触发 subagent**：用户未通知。
 - **待完成验证**：提交后重建固定签名 APK，在 Android 35 模拟器重新登录同一线上账号并确认原图显示、重装后服务器恢复及无致命 logcat。
-

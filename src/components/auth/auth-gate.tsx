@@ -10,8 +10,8 @@ import { isLoginFormValid, isRegisterFormValid, isValidAuthPhone, validatePasswo
 
 type AuthView = "login" | "register" | "terms" | "privacy";
 
-const TERMS_LAST_UPDATED = "2026-06-27";
-const PRIVACY_LAST_UPDATED = "2026-06-27";
+const TERMS_LAST_UPDATED = "2026-07-01";
+const PRIVACY_LAST_UPDATED = "2026-07-01";
 
 const TERMS_SECTIONS: LegalSection[] = [
   {
@@ -36,8 +36,8 @@ const TERMS_SECTIONS: LegalSection[] = [
     title: "3. 云端数据与本机数据",
     children: (
       <>
-        <p>账号登录后会使用云端工作区同步结构化衣橱数据（衣物、套装、心愿单、穿着记录、行程、穿搭计划）。开启图片同步后会通过自有 API 上传衣物图片及缩略图至服务器持久化存储。</p>
-        <p>本机仍会保存离线工作所需的数据库和图片缓存。退出账号不会自动删除云端账号数据。</p>
+        <p>账号登录后直接从云端工作区读写衣物、套装、心愿单、穿着记录、行程和穿搭计划；用户提交时会通过自有 API 上传原图及缩略图至服务器持久化存储。</p>
+        <p>本机不持久化保存正式衣橱业务数据或图片缓存，仅在当前页面会话内保留未提交草稿。退出账号不会自动删除云端账号数据。</p>
       </>
     ),
   },
@@ -75,7 +75,7 @@ const PRIVACY_SECTIONS: LegalSection[] = [
       <>
         <p><strong>账号数据：</strong>手机号登录标识（规范化保存）、密码 Argon2id 哈希、设备会话信息。新注册手机号当前不经过短信归属核验。</p>
         <p><strong>云端工作区数据：</strong>衣物、套装、心愿单、穿着记录、行程计划和相关同步数据。</p>
-        <p><strong>图片数据：</strong>开启图片同步时会上传原图、缩略图、图片元数据和对象存储地址。</p>
+        <p><strong>图片数据：</strong>用户主动提交时会上传原图、缩略图和必要的图片元数据。</p>
         <p><strong>AI Key：</strong>MiniMax Key 保存在本机 localStorage，不进入 wardrobe API。</p>
         <p><strong>安全事件：</strong>只保存脱敏或哈希后的必要信息，不保存明文密码或 Token。</p>
       </>
@@ -94,8 +94,8 @@ const PRIVACY_SECTIONS: LegalSection[] = [
     title: "3. 本机数据与云端数据",
     children: (
       <>
-        <p>衣橱数据在本机 IndexedDB/Dexie 保留完整副本，图片缓存按账号分目录存储。</p>
-        <p>Access Token 临时保存在内存或会话存储。Refresh Token 在 Android 使用 Keystore 安全存储，浏览器使用 sessionStorage。</p>
+        <p>正式衣橱数据和图片仅以服务器返回为准；本机仅在当前页面会话内保留选图、缩略图和未提交草稿，不写入 IndexedDB、文件系统或持久图片缓存。</p>
+        <p>认证凭据在 Android 使用 Keystore 支持的安全存储，浏览器开发环境使用 sessionStorage。</p>
         <p>MiniMax AI Key 仅保存在本机 localStorage。</p>
       </>
     ),
@@ -105,7 +105,7 @@ const PRIVACY_SECTIONS: LegalSection[] = [
     children: (
       <>
         <p>密码使用 Argon2id 哈希后写入数据库，不可逆。Token 使用短期 Access + 可撤销 Refresh 机制。</p>
-        <p>图片上传走 HTTPS，下载通过预签名 URL。本机安全存储保存认证凭证。</p>
+        <p>图片通过需要账号和设备认证的 wardrobe API 上传和下载；本机安全存储保存认证凭据。</p>
       </>
     ),
   },
@@ -114,7 +114,7 @@ const PRIVACY_SECTIONS: LegalSection[] = [
     children: (
       <>
         <p>账号与结构化数据保留至用户请求删除。退出账号会清除本机认证凭据并吊销 Token，但不会自动清除云端数据。</p>
-        <p>本机衣橱数据、图片缓存、AI Key 在退出后保留，可由用户自行清理。</p>
+        <p>未提交的页面内存草稿在 App 关闭后会丢失。MiniMax AI Key 仍保存在本机，可由用户在设置中清理。</p>
       </>
     ),
   },

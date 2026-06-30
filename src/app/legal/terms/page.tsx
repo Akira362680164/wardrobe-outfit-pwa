@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { LegalDocumentView, type LegalSection } from "@/components/auth/legal-document-view";
 
-const LAST_UPDATED = "2026-06-27";
+const LAST_UPDATED = "2026-07-01";
 const APP_NAME = "衣橱穿搭助手";
 
 export const metadata: Metadata = {
@@ -32,8 +32,8 @@ const SECTIONS: LegalSection[] = [
     title: "3. 云端数据与本机数据",
     children: (
       <>
-        <p>账号登录后会使用云端工作区同步结构化衣橱数据（衣物、套装、心愿单、穿着记录、行程、穿搭计划）。开启图片同步后会通过自有 API 上传衣物图片及缩略图至服务器持久化存储。</p>
-        <p>本机仍会保存离线工作所需的数据库和图片缓存。退出账号不会自动删除云端账号数据。</p>
+        <p>账号登录后直接从云端工作区读写衣物、套装、心愿单、穿着记录、行程和穿搭计划；用户提交时会通过自有 API 上传原图及缩略图至服务器持久化存储。</p>
+        <p>本机不持久化保存正式衣橱业务数据或图片缓存，仅在当前页面会话内保留未提交草稿。退出账号不会自动删除云端账号数据。</p>
       </>
     ),
   },
