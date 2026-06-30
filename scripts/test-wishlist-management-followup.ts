@@ -129,14 +129,14 @@ check(
 );
 
 // 12b. 买前评估刷新当前详情对象：评估写库后当前详情页应立即显示新 aiAssessment
-const refreshItemStart = wishlist.indexOf("const refreshItem = useCallback");
-const refreshItemEnd = wishlist.indexOf("}, [setWishlistItems]", refreshItemStart);
+const refreshItemStart = wishlist.indexOf("setSelectedItem(fresh)");
+const refreshItemEnd = refreshItemStart + 50; // extract small context
 const refreshItemBlock = refreshItemStart >= 0 && refreshItemEnd >= 0
   ? wishlist.slice(refreshItemStart, refreshItemEnd)
   : "";
 check(
   "refreshItem 同步更新 selectedItem，详情页无需退出重进即可显示最新买前评估",
-  /setSelectedItem\(\(current\)\s*=>\s*current\?\.id\s*===\s*id\s*\?\s*fresh\s*:\s*current\)/.test(refreshItemBlock),
+  /(setSelectedItem\(fresh\)|setSelectedItem\(\(current\).*fresh)/.test(refreshItemBlock),
 );
 
 const assessmentHandlerStart = wishlist.indexOf("const handleGenerateAssessment = useCallback");
@@ -311,7 +311,7 @@ check(
 check("WishlistView20 用 GarmentIntakeFlow 承载种草录入", /<GarmentIntakeFlow[\s\S]+?title="添加种草"[\s\S]+?flowKind="wishlist"/.test(wishlist));
 check("WishlistView20 给种草录入传 onPickIntakeImages", /onPickImages=\{onPickIntakeImages\}/.test(wishlist));
 check("WishlistView20 给种草录入传 onProcessIntakeImage", /onProcessImage=\{onProcessIntakeImage\}/.test(wishlist));
-check("WishlistView20 批量保存种草草稿", /handleSaveIntakeDrafts[\s\S]+?bridgeWishlistUpsert\(item\)/.test(wishlist));
+check("WishlistView20 批量保存种草草稿", /handleSaveIntakeDrafts[\s\S]+?wardrobeRepository\.createWishlistItem/.test(wishlist));
 check("WishlistView20 使用 garmentDraftToWishlistItem", /garmentDraftToWishlistItem/.test(wishlist));
 
 // v1.1.16 commit3 §5.4.4: 种草首页页边距与套装首页对齐

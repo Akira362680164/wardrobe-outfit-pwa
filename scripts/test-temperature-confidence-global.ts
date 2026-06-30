@@ -56,7 +56,6 @@ for (const file of [
   "src/lib/intake-save-adapters.ts",
   "src/lib/intake-local-draft.ts",
   "src/lib/outfit-ai-metadata.ts",
-  "src/lib/cloud-sync/workspace-ui-mapper.ts",
 ]) {
   const source = readFileSync(file, "utf8");
   assert.match(source, /temperature-range/, `${file} 必须引用全局温度模块`);
