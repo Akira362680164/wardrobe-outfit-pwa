@@ -1,5 +1,5 @@
 import { strict as assert } from "node:assert";
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 
 /**
@@ -177,18 +177,16 @@ assert.ok(
   "CatalogWaterfallCardShell 必须调用 stopPropagation",
 );
 
-// 16. deleteWishlistRecords 在 data-repo.ts 中定义并导出
-const dataRepo = readFileSync(
-  join(root, "src/lib/data-repo.ts"),
-  "utf8",
-);
-assert.ok(
-  true, "data-repo.ts is a stub (online-only migration)",
+// 16. 线上模式不再保留 data-repo Stub
+assert.equal(
+  existsSync(join(root, "src/lib/data-repo.ts")),
+  false,
+  "data-repo.ts Stub 必须删除",
 );
 
 // 17. 种草单条删除也调用 deleteWishlistRecords
 assert.ok(
-  wishlist.includes("wardrobeRepository") || true, "wishlist-view-2.0 uses online repository",
+  wishlist.includes("wardrobeRepository"), "wishlist-view-2.0 必须使用线上 Repository",
 );
 
 console.log("catalog multi-select integration tests passed");

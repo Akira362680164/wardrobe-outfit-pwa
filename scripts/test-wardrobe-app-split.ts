@@ -24,7 +24,7 @@ check("wardrobe-create-actions.tsx 存在", existsSync(join(root, "src/component
 
 // 4C Follow-up new files
 check("use-wardrobe-image-intake-controller.ts 存在", existsSync(join(root, "src/components/use-wardrobe-image-intake-controller.ts")));
-check("use-wardrobe-capture-queue-controller.ts 存在", existsSync(join(root, "src/components/use-wardrobe-capture-queue-controller.ts")));
+check("未接线的旧 capture queue controller 已删除", !existsSync(join(root, "src/components/use-wardrobe-capture-queue-controller.ts")));
 check("wardrobe-selected-images-review-portal.tsx 存在", existsSync(join(root, "src/components/wardrobe-selected-images-review-portal.tsx")));
 
 // wardrobe-app.tsx imports
@@ -37,9 +37,8 @@ check("引入 WardrobeHiddenImageInputs", /WardrobeHiddenImageInputs/.test(wardr
 // 4C Follow-up: 新 hook 引入
 check("引入 useWardrobeImageIntakeController", /useWardrobeImageIntakeController/.test(wardrobeApp));
 check(
-  "capture queue controller 保留为后续抽离点，当前 WardrobeApp 队列仍内联",
-  existsSync(join(root, "src/components/use-wardrobe-capture-queue-controller.ts"))
-    && !/useWardrobeCaptureQueueController/.test(wardrobeApp)
+  "WardrobeApp 只保留当前实际使用的内联队列",
+  !/useWardrobeCaptureQueueController/.test(wardrobeApp)
     && /captureImageQueue/.test(wardrobeApp),
 );
 check("引入 WardrobeSelectedImagesReviewPortal", /WardrobeSelectedImagesReviewPortal/.test(wardrobeApp));

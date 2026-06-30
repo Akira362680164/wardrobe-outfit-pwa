@@ -347,6 +347,23 @@ async function upsertPlan(resource: "trip-plans" | "outfit-plans", value: Outfit
 export const repoUpsertOutfitPlanEntry = (entry: OutfitPlanEntry, context: RepoMutationContext = {}) => upsertPlan("outfit-plans", entry, context);
 export const repoUpsertTripPlan = (plan: OutfitCalendarPlan, _items: PlanPackingChecklistItem[] = [], context: RepoMutationContext = {}) => upsertPlan("trip-plans", plan, context);
 
+export async function repoUpdateOutfitPlanEntry(
+  entry: OutfitPlanEntry,
+  patch: Partial<OutfitPlanEntry>,
+  context: RepoMutationContext = {},
+): Promise<RepoResult<OutfitPlanEntry>> {
+  const mutation = mutationContext(entry, context);
+  if (!mutation) return fail("穿搭计划版本信息缺失，请刷新后重试");
+  try {
+    const entity = await onlineWriteRepository.update("outfit-plans", mutation.entityId, {
+      ...mutation,
+      payload: { ...entry, ...patch },
+      temporaryAssetIds: [],
+    });
+    return ok(reader.mapOutfitPlan(entity));
+  } catch (error) { return fail(message(error, "保存计划失败，请重试")); }
+}
+
 async function deletePlan(resource: "trip-plans" | "outfit-plans", value: OutfitCalendarPlan | OutfitPlanEntry, context: RepoMutationContext): Promise<RepoResult<void>> {
   const mutation = mutationContext(value, context);
   if (!mutation) return fail("计划版本信息缺失，请刷新后重试");
@@ -406,7 +423,8 @@ export const wardrobeRepository = {
   setOutfitFavorite: repoSetOutfitFavorite,
   createLocation: repoCreateLocation, updateLocation: repoUpdateLocation, deleteLocation: repoDeleteLocation,
   saveProfile: repoSaveProfile,
-  upsertOutfitPlanEntry: repoUpsertOutfitPlanEntry, deleteOutfitPlanEntry: repoDeleteOutfitPlanEntry,
+  upsertOutfitPlanEntry: repoUpsertOutfitPlanEntry, updateOutfitPlanEntry: repoUpdateOutfitPlanEntry,
+  deleteOutfitPlanEntry: repoDeleteOutfitPlanEntry,
   upsertTripPlan: repoUpsertTripPlan, deleteTripPlan: repoDeleteTripPlan,
   updatePackingChecklist: repoUpdatePackingChecklist, markPlanWorn: repoMarkPlanWorn, cancelPlanWorn: repoCancelPlanWorn,
   recordWear: repoRecordWear, cancelWear: repoCancelWear,

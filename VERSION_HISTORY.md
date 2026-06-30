@@ -1,4 +1,17 @@
 
+## 2026-06-30 / v2.1.0-test / Codex — 空快照断层收口与验收状态更正
+
+- **目的**：纠正“线上化完成”的错误结论，先移除会让穿搭计划、今日穿着和灵感图流程读取固定空数组的运行时断层，并恢复真实测试门禁。
+- **版本**：保持 `2.1.0-test`；完整线上 E2E 尚未通过，不构建 `2.1.1-test` APK。
+- **改动文件**：删除 `src/lib/data-repo.ts` 与未接线的 `src/components/use-wardrobe-capture-queue-controller.ts`；修改 `src/lib/outfit-wear-sync.ts`、`src/lib/repository/wardrobe-repository.ts`、`src/components/outfit-list-view.tsx`；更新相关逻辑测试、`package.json` 与 `EXECUTION_REPORT_v2.1.0-test.md`。
+- **行为修复**：穿搭计划与“今天穿了”直接使用服务器读回的页面快照；更新/删除操作保留线上实体 revision 元数据；套装删除不再只传 ID；移除旧 Dexie 套装级联运行时。
+- **验证通过**：`npm run typecheck`；`npm run test:logic:all`；`npm run api:typecheck`；`npm run api:test`（56 项）；`npm run build`。
+- **真实 PostgreSQL E2E**：连接本机 `wardrobe_e2e` PostgreSQL 和文件资产目录运行 `npm run test:e2e`；执行到第 15/32 项时为 10 通过、4 失败、1 中断。失败集中在默认衣橱 UI 定位/流程和一条退出确认文案，后续 17 项未运行；本轮据此停止 APK 与 GitHub 发布。
+- **风险门禁**：**high**（线上数据流、删除、穿着记录和真实服务端验收）。
+- **未触发 subagent**：用户未通知。
+- **未验证风险**：尚未完成断网、超时、500、重复提交、图片上传失败以及 Android 模拟器完整线上流程；公开 GitHub 仍停在安全导出的 `facf626`。
+
+
 ## 2026-06-30 / v2.1.0-test / Codex — GitHub 公开仓库推送 + 执行报告
 
 - **目的**：将 v2.1.0-test 纯线上工作区代码上传至 GitHub 公开仓库，并生成完整执行报告。

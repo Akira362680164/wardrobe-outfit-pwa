@@ -215,6 +215,7 @@ export function OutfitListView({
 
   // stats
   const todayKey = useLocalDateKey();
+  const wearSnapshot = { items, outfits, outfitPlanEntries };
 
 	  // Round 6: planning state
 	  const [planningMonthDate, setPlanningMonthDate] = useState(todayKey.slice(0, 7));
@@ -258,8 +259,8 @@ export function OutfitListView({
     try {
       const hasToday = hasWornDate(outfit.wornDates, todayKey, todayKey);
       const result = hasToday
-        ? await cancelActualOutfitWearForDate({ dateKey: todayKey, outfitId: outfit.id, todayKey })
-        : await recordActualOutfitWear({ dateKey: todayKey, outfitId: outfit.id, todayKey, mode: "worn" }); await onRefresh();
+        ? await cancelActualOutfitWearForDate({ dateKey: todayKey, outfitId: outfit.id, todayKey, snapshot: wearSnapshot })
+        : await recordActualOutfitWear({ dateKey: todayKey, outfitId: outfit.id, todayKey, mode: "worn", snapshot: wearSnapshot }); await onRefresh();
       await onPlanDataChange();
       onMessage(hasToday ? "已取消今天穿着记录" : "已记录今天穿着");
     } catch (error) {
@@ -492,7 +493,7 @@ export function OutfitListView({
   async function handleDeleteOutfit() {
     if (!viewingOutfit) return;
     try {
-      const repoResult = await wardrobeRepository.deleteOutfit(viewingOutfit.id);
+      const repoResult = await wardrobeRepository.deleteOutfit(viewingOutfit);
       if (!repoResult.ok) throw new Error(repoResult.error ?? "delete failed");
       const result = repoResult.data!;
       await onPlanDataChange();
@@ -522,7 +523,7 @@ export function OutfitListView({
 	  // v1.1.9 4D: 默认改为 "auto"，由 resolveAddOutfitIntent 根据日期状态决定 worn/planned
 	  async function handleAddOutfitToDate(dateKey: string, outfitId: string, mode: "auto" | "planned" | "worn" = "auto", opts?: { makePrimary?: boolean; role?: import("@/lib/types").OutfitPlanEntryRole }) {
 	    try {
-	      const result = await addOutfitToDate({ dateKey, outfitId, mode, todayKey, ...opts }); try {
+	      const result = await addOutfitToDate({ dateKey, outfitId, mode, todayKey, snapshot: wearSnapshot, ...opts }); try {
 	        await syncPackingChecklistForDate(dateKey);
 	      } catch {
 	        onMessage("打包清单同步失败，请重试", "error");
@@ -670,7 +671,7 @@ export function OutfitListView({
 	    const outfitId = entry.outfitId ?? entry.actualOutfitId;
 	    if (!outfitId) return;
 	    try {
-	      const result = await recordActualOutfitWear({ dateKey: entry.date, outfitId, todayKey, mode: "worn" }); await onPlanDataChange();
+	      const result = await recordActualOutfitWear({ dateKey: entry.date, outfitId, todayKey, mode: "worn", snapshot: wearSnapshot }); await onPlanDataChange();
 	      onMessage(entry.date === todayKey ? "已记录今天穿了" : "已补记穿搭");
 	    } catch (error) {
 	      onMessage(formatOutfitWearSyncError(error), "error");
@@ -709,7 +710,7 @@ export function OutfitListView({
 	  // v1.1.0 fix: 新增取消实际穿着
 	  async function handleCancelOutfitWearForDate(dateKey: string, outfitId: string) {
 	    try {
-	      const result = await cancelActualOutfitWearForDate({ dateKey, outfitId, todayKey }); await onPlanDataChange();
+	      const result = await cancelActualOutfitWearForDate({ dateKey, outfitId, todayKey, snapshot: wearSnapshot }); await onPlanDataChange();
 	      onMessage(dateKey === todayKey ? "已取消今天穿着记录" : "已取消该日穿着记录");
 	    } catch (error) {
 	      onMessage(formatOutfitWearSyncError(error), "error");

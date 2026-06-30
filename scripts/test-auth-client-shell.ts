@@ -52,7 +52,7 @@ check("Android 原生插件使用 AndroidKeyStore", /AndroidKeyStore/.test(secur
 check("MainActivity 注册 WardrobeSecureStoragePlugin", /registerPlugin\(WardrobeSecureStoragePlugin\.class\)/.test(mainActivity));
 check("API 客户端有 refresh mutex", /refreshPromiseMap/.test(authApi) && /const key = /.test(authApi));
 check("AuthProvider 在线认证模式已启用", /useState/.test(authProvider));
-check("AuthProvider 退出登录流程", /onLogout/.test(authProvider) || /logout/.test(authProvider) || true);
+check("AuthProvider 退出登录流程", /onLogout/.test(authProvider) || /logout/.test(authProvider));
 check("WorkspaceGate 在线仓库模式", /OnlineWorkspaceRepository/.test(workspaceGate) || /repository/.test(workspaceGate));
 
 // v2.0.1: direct registration assertions
