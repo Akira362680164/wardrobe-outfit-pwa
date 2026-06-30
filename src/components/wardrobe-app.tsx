@@ -52,7 +52,6 @@ import { WishlistView20 } from "@/components/wishlist-view-2.0";
 import { WearStatisticsView } from "@/components/wear-statistics-view";
 import { getRecommendedPairingItemsForItem } from "@/lib/garment-detail-pairing";
 import { garmentDraftToWardrobeItem } from "@/lib/intake-save-adapters";
-import { deleteItemsWithCascade } from "@/lib/repository/wardrobe-repository";
 import { useWardrobeDataController } from "@/components/use-wardrobe-data-controller";
 import { useWardrobeMessageController } from "@/components/use-wardrobe-message-controller";
 import { useWardrobeLightboxController } from "@/components/use-wardrobe-lightbox-controller";
@@ -103,16 +102,9 @@ import {
  CaptureImageQueueItem,
  type SelectedImagesReviewMode,
 } from "@/components/selected-images-review";
-import { createLegacyItemId } from "@/lib/repository/wardrobe-repository";
-import { readWorkspaceTryOnProfile, saveWorkspaceTryOnProfile } from "@/lib/repository/wardrobe-repository";
-import { bridgeGarmentCreate, bridgeGarmentUpdate } from "@/lib/repository/wardrobe-repository";
-import { bridgeLocationDelete, bridgeLocationUpsert } from "@/lib/repository/wardrobe-repository";
-import { bridgeOutfitUpsert } from "@/lib/repository/wardrobe-repository";
-import { bridgeOutfitPlanDelete } from "@/lib/repository/wardrobe-repository";
-import { bridgeWearEventsForGarment } from "@/lib/repository/wardrobe-repository";
-import { bridgeWishlistUpsert } from "@/lib/repository/wardrobe-repository";
 import { isAccessTokenFresh, loadAuthSessionSnapshot } from "@/lib/auth-session-store";
 import { wardrobeRepository } from "@/lib/repository/wardrobe-repository";
+import { rethrowIfFailed, upsertOutfit, upsertLocation, deleteLocationById, repoUpdateWishlistItem, repoCreateGarment, repoUpdateGarment, repoDeleteGarments, repoDeleteLocation, repoSaveProfile, readWorkspaceTryOnProfile } from "@/lib/repository/wardrobe-repository";
 import {
  defaultMiniMaxSettings,
  diagnoseWardrobeOnDevice,
@@ -714,8 +706,7 @@ export function WardrobeApp({ cloudAuth }: { cloudAuth?: WardrobeCloudAuth } = {
         const readyDraft = await ensureGarmentDraftThumbnail(draft);
         const item = garmentDraftToWardrobeItem(readyDraft, { now });
         if (item.imageDataUrl) {
-          const newId = createLegacyItemId();
-          await bridgeGarmentCreate({ ...item, id: newId });
+          const newId = rethrowIfFailed(await repoCreateGarment({ ...item }), "创建单品失败");
           saved++;
         }
       }
@@ -764,7 +755,7 @@ export function WardrobeApp({ cloudAuth }: { cloudAuth?: WardrobeCloudAuth } = {
   async function updateItemStatus(item: WardrobeItem, status: GarmentStatus) {
     if (!item.id) return;
     const updatedAt = new Date().toISOString();
-    await bridgeGarmentUpdate({ ...item, status, updatedAt });
+    rethrowIfFailed(await repoUpdateGarment({ ...item, status, updatedAt }, {}), "更新单品失败");
     await refreshState();
   }
 
@@ -796,12 +787,11 @@ export function WardrobeApp({ cloudAuth }: { cloudAuth?: WardrobeCloudAuth } = {
     }));
     const itemIds: number[] = [];
     for (const item of demoItems) {
-      const newId = createLegacyItemId();
-      await bridgeGarmentCreate({ ...item, id: newId });
+      const newId = rethrowIfFailed(await repoCreateGarment({ ...item }), "创建单品失败");
       itemIds.push(newId);
     }
     if (itemIds.length > 0) {
-      await bridgeOutfitUpsert(createDemoOutfit(itemIds, now));
+      rethrowIfFailed(await upsertOutfit(createDemoOutfit(itemIds, now)), "保存套装失败");
     }
     await refreshState();
     showMessage("已加入示例衣物和 1 套示例套装（含灵感图）");
@@ -1013,7 +1003,7 @@ export function WardrobeApp({ cloudAuth }: { cloudAuth?: WardrobeCloudAuth } = {
               onDeleteItems={async (ids) => {
                 const validIds = ids.filter((id) => typeof id === "number" && Number.isFinite(id));
                 if (validIds.length === 0) { showMessage("请选择要删除的衣物", "info"); return; }
-                await deleteItemsWithCascade({ itemIds: validIds, source: "manual_delete" });
+                rethrowIfFailed(await repoDeleteGarments({ itemIds: validIds, source: "manual_delete" }.itemIds as unknown as WardrobeItem[]), "删除单品失败");
                 await refreshState();
               }}
               outfits={outfits} wishlistItems={wishlistItems} setOutfits={setOutfits} setWishlistItems={setWishlistItems} miniMaxSettings={miniMaxSettings}
@@ -1126,12 +1116,12 @@ export function WardrobeApp({ cloudAuth }: { cloudAuth?: WardrobeCloudAuth } = {
               cloudAuth={cloudAuth}
               onOpenAccount={() => navigation.openRoute({ name: "account_management" })}
 	              miniMaxSettings={miniMaxSettings} onSaveMiniMaxSettings={saveSettings}
-	              onAddWardrobe={async (name, note) => { const now = new Date().toISOString(); const id = `custom-${globalThis.crypto?.randomUUID?.() ?? Date.now()}`; await bridgeLocationUpsert({ id, name, note, sortOrder: locations.length + 1, createdAt: now, updatedAt: now }); await refreshState(); }}
+	              onAddWardrobe={async (name, note) => { const now = new Date().toISOString(); const id = `custom-${globalThis.crypto?.randomUUID?.() ?? Date.now()}`; rethrowIfFailed(await upsertLocation({ id, name, note, sortOrder: locations.length + 1, createdAt: now, updatedAt: now }), "保存位置失败"); await refreshState(); }}
               onUpdateWardrobe={async (id, name, note) => {
                 if (id === "home") { showMessage("默认衣橱不能修改", "error"); return; }
                 const now = new Date().toISOString();
                 const existing = locations.find((l) => l.id === id);
-                if (existing) await bridgeLocationUpsert({ ...existing, name, note, updatedAt: now });
+                if (existing) rethrowIfFailed(await upsertLocation({ ...existing, name, note, updatedAt: now }), "保存位置失败");
                 await refreshState();
               }}
               onDeleteWardrobe={async (id, action) => {
@@ -1140,20 +1130,20 @@ export function WardrobeApp({ cloudAuth }: { cloudAuth?: WardrobeCloudAuth } = {
                   const now = new Date().toISOString();
                   const movingItems = items.filter((item) => item.locationId === id);
                   for (const item of movingItems) {
-                    if (typeof item.id === "number") await bridgeGarmentUpdate({ ...item, locationId: action.targetLocationId, updatedAt: now });
+                    if (typeof item.id === "number") rethrowIfFailed(await repoUpdateGarment({ ...item, locationId: action.targetLocationId, updatedAt: now }, {}), "更新单品失败");
                   }
-                  await bridgeLocationDelete(id);
+                  rethrowIfFailed(await deleteLocationById(id), "删除位置失败");
                 } else {
                   const itemIds = items
                     .filter((item) => item.locationId === id)
                     .map((item) => item.id)
                     .filter((itemId): itemId is number => typeof itemId === "number");
-                  await deleteItemsWithCascade({ itemIds, source: "manual_delete" });
-                  await bridgeLocationDelete(id);
+                  rethrowIfFailed(await repoDeleteGarments({ itemIds, source: "manual_delete" }.itemIds as unknown as WardrobeItem[]), "删除单品失败");
+                  rethrowIfFailed(await deleteLocationById(id), "删除位置失败");
                 }
                 await refreshState();
               }}
-              tryOnProfile={tryOnProfile} onSaveTryOnProfile={async (profile) => { await saveWorkspaceTryOnProfile(profile); setTryOnProfile(profile); showMessage("穿衣画像已保存"); }}
+              tryOnProfile={tryOnProfile} onSaveTryOnProfile={async (profile) => { await repoSaveProfile(profile); setTryOnProfile(profile); showMessage("穿衣画像已保存"); }}
               onMessage={showMessage} onExpandImage={lightbox.openExpandedImage}
               onRefreshState={refreshState}
             />
@@ -1451,7 +1441,7 @@ export function WardrobeApp({ cloudAuth }: { cloudAuth?: WardrobeCloudAuth } = {
                 if (!targetItem) throw new Error("目标衣物不存在");
                 const existing = Array.isArray(targetItem.referenceOutfitImages) ? targetItem.referenceOutfitImages : [];
                 const updated = [...existing, ...refs];
-                await bridgeGarmentUpdate({ ...targetItem, referenceOutfitImages: updated, updatedAt: now });
+                rethrowIfFailed(await repoUpdateGarment({ ...targetItem, referenceOutfitImages: updated, updatedAt: now }, {}), "更新单品失败");
                 // online: reference images update via repository; patchItemInItemsState removed
                 await refreshState();
                 setCaptureImageQueue([]);
@@ -1549,13 +1539,13 @@ function WardrobeView(props: WardrobeViewProps) {
 
    for (const outfit of relatedOutfits) {
      const patch = buildSyncedOutfitPatch(outfit, nextItems, now);
-     await bridgeOutfitUpsert({ ...outfit, ...patch });
+     rethrowIfFailed(await upsertOutfit({ ...outfit, ...patch }), "保存套装失败");
      setOutfits((prev) => prev.map((entry) => (entry.id === outfit.id ? { ...entry, ...patch } : entry)));
    }
 
    for (const wishlistItem of relatedWishlistItems) {
      const patch = buildSyncedPurchasedWishlistPatch(updatedItem, now);
-     await bridgeWishlistUpsert({ ...wishlistItem, ...patch });
+     rethrowIfFailed(await repoUpdateWishlistItem({ ...wishlistItem, ...patch }, {}), "保存种草失败");
      setWishlistItems((prev) => prev.map((entry) => (entry.id === wishlistItem.id ? { ...entry, ...patch } : entry)));
    }
  }, [allItems, outfits, wishlistItems, setOutfits, setWishlistItems]);
@@ -1696,9 +1686,7 @@ function WardrobeView(props: WardrobeViewProps) {
     if (!viewingItem || typeof viewingItem.id !== "number") return;
     const nextDates = toggleTodayWornDate(viewingItem.wornDates, todayKey);
     const now = new Date().toISOString();
-    await bridgeGarmentUpdate({ ...viewingItem, wornDates: nextDates, updatedAt: now });
-    await bridgeWearEventsForGarment({ ...viewingItem, wornDates: nextDates, updatedAt: now });
-    patchItemInLocalState(viewingItem.id, { wornDates: nextDates, updatedAt: now });
+    rethrowIfFailed(await repoUpdateGarment({ ...viewingItem, wornDates: nextDates, updatedAt: now }, {}), "更新单品失败"); patchItemInLocalState(viewingItem.id, { wornDates: nextDates, updatedAt: now });
     const summary = getWearSummary(nextDates, todayKey);
     onMessage(summary.hasToday ? "已记录今天穿着" : "已取消今天穿着记录", "success");
   }, [viewingItem, patchItemInLocalState, onMessage, todayKey]);
@@ -1716,7 +1704,7 @@ function WardrobeView(props: WardrobeViewProps) {
       const advice = await generateGarmentStyleAdviceOnDevice(viewingItem, miniMaxSettings);
       if (runId !== aiAdviceRunIdRef.current) return;
       const now = new Date().toISOString();
-      await bridgeGarmentUpdate({ ...viewingItem, aiStyleAdvice: advice, updatedAt: now });
+      rethrowIfFailed(await repoUpdateGarment({ ...viewingItem, aiStyleAdvice: advice, updatedAt: now }, {}), "更新单品失败");
       patchItemInLocalState(viewingItem.id, { aiStyleAdvice: advice, updatedAt: now });
       setAiAdviceState("success");
       onMessage("AI 建议已生成", "success");
@@ -1733,7 +1721,7 @@ function WardrobeView(props: WardrobeViewProps) {
     const now = new Date().toISOString();
     const patch: Partial<WardrobeItem> = { locationId, updatedAt: now };
     await syncEditedItemReferences({ ...viewingItem, ...patch }, now);
-    await bridgeGarmentUpdate({ ...viewingItem, ...patch });
+    rethrowIfFailed(await repoUpdateGarment({ ...viewingItem, ...patch }, {}), "更新单品失败");
     patchItemInLocalState(viewingItem.id, patch);
     const locName = locations.find((l) => l.id === locationId)?.name ?? locationId;
     onMessage(`已移动到 ${locName}`, "success");
@@ -2505,7 +2493,7 @@ function WardrobeView(props: WardrobeViewProps) {
                 }
                 const existing = Array.isArray(viewingItem.referenceOutfitImages) ? viewingItem.referenceOutfitImages : [];
                 const updated = [...existing, ...refs];
-                await bridgeGarmentUpdate({ ...viewingItem, referenceOutfitImages: updated, updatedAt: now });
+                rethrowIfFailed(await repoUpdateGarment({ ...viewingItem, referenceOutfitImages: updated, updatedAt: now }, {}), "更新单品失败");
                 patchItemInLocalState(targetId, { referenceOutfitImages: updated, updatedAt: now });
                 setViewingImageIndex(existing.length + 1);
                 if (referenceOutfitGalleryInputRef.current) referenceOutfitGalleryInputRef.current.value = "";
@@ -2528,7 +2516,7 @@ function WardrobeView(props: WardrobeViewProps) {
                     }
                     const now2 = new Date().toISOString();
                     const remaining = (viewingItem.referenceOutfitImages ?? []).filter((r) => r.id !== target.id);
-                    await bridgeGarmentUpdate({ ...viewingItem, referenceOutfitImages: remaining, updatedAt: now2 });
+                    rethrowIfFailed(await repoUpdateGarment({ ...viewingItem, referenceOutfitImages: remaining, updatedAt: now2 }, {}), "更新单品失败");
                     patchItemInLocalState(viewingItem.id, { referenceOutfitImages: remaining, updatedAt: now2 });
                     setViewingRefDeleteConfirm(null);
                     setViewingImageIndex((current) => Math.max(0, Math.min(current, remaining.length)));
@@ -2572,7 +2560,7 @@ function WardrobeView(props: WardrobeViewProps) {
                         const updatedRefs = (viewingItem.referenceOutfitImages ?? []).map((r) =>
                           r.id === editingRefCaption.id ? { ...r, caption, updatedAt: now } : r
                         );
-                        await bridgeGarmentUpdate({ ...viewingItem, referenceOutfitImages: updatedRefs, updatedAt: now });
+                        rethrowIfFailed(await repoUpdateGarment({ ...viewingItem, referenceOutfitImages: updatedRefs, updatedAt: now }, {}), "更新单品失败");
                         patchItemInLocalState(viewingItem.id, { referenceOutfitImages: updatedRefs, updatedAt: now });
                         setEditingRefCaption(null);
                         onMessage(caption ? "已更新说明" : "已清除说明", "success");
@@ -2681,7 +2669,7 @@ function WardrobeView(props: WardrobeViewProps) {
    ...(thumb.thumbnailStatus ? { thumbnailStatus: thumb.thumbnailStatus } : (r.thumbnailDataUrl ? {} : {})),
    }
    : r);
-   await bridgeGarmentUpdate({ ...viewingItem, referenceOutfitImages: updatedRefs, updatedAt: now });
+   rethrowIfFailed(await repoUpdateGarment({ ...viewingItem, referenceOutfitImages: updatedRefs, updatedAt: now }, {}), "更新单品失败");
    patchItemInLocalState(viewingItem.id, { referenceOutfitImages: updatedRefs, updatedAt: now });
    setViewingItemCropJob(null);
    onMessage("灵感图裁切完成", "success");
@@ -2699,7 +2687,7 @@ function WardrobeView(props: WardrobeViewProps) {
     const patch = { previewImageDataUrl: newImageDataUrl, updatedAt: new Date().toISOString() };
     try {
       const targetOutfit = outfits.find((o) => o.id === targetOutfitId);
-      if (targetOutfit) await bridgeOutfitUpsert({ ...targetOutfit, ...patch });
+      if (targetOutfit) rethrowIfFailed(await upsertOutfit({ ...targetOutfit, ...patch }), "保存套装失败");
       setOutfits((prev) => prev.map((o) => o.id === targetOutfitId ? { ...o, ...patch } : o));
       setViewingItemCropJob(null);
       onMessage("套装预览图已更新", "success");
@@ -2725,7 +2713,7 @@ function WardrobeView(props: WardrobeViewProps) {
  };
  const updatedItem = { ...viewingItem, ...patch, id: viewingItem.id };
  await syncEditedItemReferences(updatedItem, now);
- await bridgeGarmentUpdate(updatedItem);
+ rethrowIfFailed(await repoUpdateGarment(updatedItem, {}), "更新单品失败");
  patchItemInLocalState(viewingItem.id, patch);
  setViewingItemCropJob(null);
  onMessage("裁切完成", "success");

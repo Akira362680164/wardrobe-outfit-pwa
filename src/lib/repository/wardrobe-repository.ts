@@ -412,87 +412,36 @@ export const wardrobeRepository = {
   recordWear: repoRecordWear, cancelWear: repoCancelWear,
   updateGarmentImages: repoUpdateGarmentImages, updateOutfitRealImages: repoUpdateOutfitRealImages,
 };
-export async function bridgeGarmentCreate(item: WardrobeItem) {
-  const { ok, error } = await repoCreateGarment(item);
-  if (!ok) throw new Error(error ?? "创建单品失败");
+
+// ---- 轻量错误抛出辅助 ----
+// 调用方在 try/catch 中直接使用，替代旧的 bridge* 薄包装。
+// 每处调用直接看到 repoXxx 方法名，失败语义由 rethrowIfFailed 统一处理。
+
+export function rethrowIfFailed<T>(result: RepoResult<T>, fallbackMessage: string): NonNullable<T> {
+  if (!result.ok) throw new Error(result.error ?? fallbackMessage);
+  return result.data as NonNullable<T>;
 }
 
-export async function bridgeGarmentUpdate(item: WardrobeItem) {
-  const { ok, error } = await repoUpdateGarment(item, {});
-  if (!ok) throw new Error(error ?? "更新单品失败");
+// ---- 仓库级操作辅助 ----
+// 不为 bridge 兼容，只为封装 create-or-update 判断逻辑。
+// 调用方直接看到 repoDeleteGarments 等底层方法。
+
+export async function upsertOutfit(outfit: SavedOutfit): Promise<RepoResult<SavedOutfit>> {
+  return outfit.id ? repoUpdateOutfit(outfit, {}) : (repoCreateOutfit(outfit) as unknown as Promise<RepoResult<SavedOutfit>>);
 }
 
-export async function bridgeGarmentDelete(itemIds: number[]) {
-  const { ok, error } = await repoDeleteGarments(itemIds as unknown as WardrobeItem[]);
-  if (!ok) throw new Error(error ?? "删除单品失败");
+export async function upsertLocation(loc: ClosetLocation): Promise<RepoResult<ClosetLocation>> {
+  return loc.id ? repoUpdateLocation(loc, {}) : repoCreateLocation(loc);
 }
 
-export async function bridgeOutfitUpsert(outfit: SavedOutfit) {
-  const { ok, error } = outfit.id
-    ? await repoUpdateOutfit(outfit, {})
-    : await repoCreateOutfit(outfit);
-  if (!ok) throw new Error(error ?? "保存套装失败");
+export async function deleteLocationById(id: string): Promise<RepoResult<void>> {
+  return repoDeleteLocation({ id } as ClosetLocation);
 }
 
-export async function bridgeOutfitDelete(outfit: SavedOutfit | string) {
-  const { ok, error } = await repoDeleteOutfit(outfit);
-  if (!ok) throw new Error(error ?? "删除套装失败");
-}
-
-export async function bridgeLocationUpsert(loc: ClosetLocation) {
-  const res = loc.id
-    ? await repoUpdateLocation(loc, {})
-    : await repoCreateLocation(loc);
-  if (!res.ok) throw new Error(res.error ?? "保存位置失败");
-}
-
-export async function bridgeLocationDelete(id: string) {
-  const { ok, error } = await repoDeleteLocation({ id } as ClosetLocation);
-  if (!ok) throw new Error(error ?? "删除位置失败");
-}
-
-export async function bridgeWishlistUpsert(item: WishlistItem) {
-  const { ok, error } = item.id
-    ? await repoUpdateWishlistItem(item, {})
-    : await repoCreateWishlistItem(item);
-  if (!ok) throw new Error(error ?? "保存种草失败");
-}
-
-export async function bridgeOutfitPlanDelete(entry: OutfitPlanEntry | string) {
-  const { ok, error } = await repoDeleteOutfitPlanEntry(entry as OutfitPlanEntry);
-  if (!ok) throw new Error(error ?? "删除穿搭计划失败");
-}
-
-export async function bridgeWearEventsForGarment(_item: WardrobeItem) {}
-
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export async function bridgeWearSyncResult(_result: any) {}
-
-export function createLegacyItemId(): number { return Date.now(); }
-
-export async function deleteItemsWithCascade(opts: { itemIds: number[]; source: string }) {
-  const { ok, error } = await repoDeleteGarments(opts.itemIds as unknown as WardrobeItem[]);
-  if (!ok) throw new Error(error ?? "删除单品失败");
+export async function upsertTripPlan(plan: OutfitCalendarPlan, items: PlanPackingChecklistItem[] = []): Promise<RepoResult<void>> {
+  return repoUpsertTripPlan(plan, items);
 }
 
 export async function readWorkspaceTryOnProfile(): Promise<TryOnProfile> {
   return { id: "default", enabled: false, fitGender: "unspecified", updatedAt: new Date().toISOString() };
-}
-
-export const saveWorkspaceTryOnProfile = repoSaveProfile;
-
-export async function bridgeOutfitPlanUpsert(entry: OutfitPlanEntry) {
-  const { ok, error } = await repoUpsertOutfitPlanEntry(entry);
-  if (!ok) throw new Error(error ?? "保存穿搭计划失败");
-}
-
-export async function bridgeTripPlanUpsert(plan: OutfitCalendarPlan, items: PlanPackingChecklistItem[] = []) {
-  const { ok, error } = await repoUpsertTripPlan(plan, items);
-  if (!ok) return { bridged: false };
-  return { bridged: true };
-}
-
-export async function bridgeTripPlanDelete(plan: OutfitCalendarPlan | string) {
-  const { ok, error } = await repoDeleteTripPlan(plan as OutfitCalendarPlan);
-  if (!ok) throw new Error(error ?? "删除旅行计划失败");
 }

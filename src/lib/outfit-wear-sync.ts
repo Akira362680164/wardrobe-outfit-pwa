@@ -4,9 +4,9 @@
 import { getWardrobeSnapshot } from "@/lib/data-repo";
 import { addWornDate, removeWornDate } from "@/lib/wear-records";
 import type { OutfitPlanEntry, OutfitPlanEntryRole } from "@/lib/types";
-import { bridgeOutfitPlanDelete, bridgeOutfitPlanUpsert } from "@/lib/repository/wardrobe-repository";
-import { bridgeOutfitUpsert } from "@/lib/repository/wardrobe-repository";
-import { bridgeGarmentUpdate } from "@/lib/repository/wardrobe-repository";
+import { rethrowIfFailed, repoUpsertOutfitPlanEntry, repoDeleteOutfitPlanEntry } from "@/lib/repository/wardrobe-repository";
+import { upsertOutfit } from "@/lib/repository/wardrobe-repository";
+import { repoUpdateGarment } from "@/lib/repository/wardrobe-repository";
 
 // ============================================================
 // 错误类型
@@ -155,7 +155,7 @@ export async function addPlannedOutfitForDate(input: AddOutfitToDateInput): Prom
   if (makePrimary) {
     for (const e of existingEntries) {
       if (e.status === "planned" && e.isPrimary) {
-        await bridgeOutfitPlanUpsert({ ...e, isPrimary: false, updatedAt: now });
+        rethrowIfFailed(await repoUpsertOutfitPlanEntry({ ...e, isPrimary: false, updatedAt: now }), "保存穿搭计划失败");
       }
     }
   }
@@ -176,7 +176,7 @@ export async function addPlannedOutfitForDate(input: AddOutfitToDateInput): Prom
     updatedAt: now,
   };
 
-  await bridgeOutfitPlanUpsert(entry);
+  rethrowIfFailed(await repoUpsertOutfitPlanEntry(entry), "保存穿搭计划失败");
   return entry;
 }
 
@@ -215,7 +215,7 @@ export async function recordActualOutfitWear(input: AddOutfitToDateInput): Promi
   const plannedEntry = sameDayEntries.find((e) => e.outfitId === outfitId && (e.status === "planned" || e.status === "changed"));
 
   const newWornDates = addWornDate(outfit.wornDates, dateKey, todayKey);
-  await bridgeOutfitUpsert({ ...outfit, wornDates: newWornDates, updatedAt: now });
+  rethrowIfFailed(await upsertOutfit({ ...outfit, wornDates: newWornDates, updatedAt: now }), "保存套装失败");
 
   const otherWornEntries = sameDayEntries.filter(
     (e) => e.status === "worn" && (e.outfitId || e.actualOutfitId),
@@ -238,14 +238,14 @@ export async function recordActualOutfitWear(input: AddOutfitToDateInput): Promi
 
     if (!stillWornByOther) {
       const newItemWornDates = addWornDate(item.wornDates, dateKey, todayKey);
-      await bridgeGarmentUpdate({ ...item, wornDates: newItemWornDates, updatedAt: now });
+      rethrowIfFailed(await repoUpdateGarment({ ...item, wornDates: newItemWornDates, updatedAt: now }, {}), "更新单品失败");
     }
   }
 
   let wornEntryId = "";
 
   if (plannedEntry) {
-    await bridgeOutfitPlanUpsert({
+    rethrowIfFailed(await repoUpsertOutfitPlanEntry({
       ...plannedEntry,
       status: "worn",
       wornDateLinked: dateKey,
@@ -254,7 +254,7 @@ export async function recordActualOutfitWear(input: AddOutfitToDateInput): Promi
       plannedBeforeWorn: true,
       isPrimaryActual: plannedEntry.isPrimary ?? false,
       updatedAt: now,
-    });
+    }), "保存穿搭计划失败");
     wornEntryId = plannedEntry.id;
   } else {
     const newEntry: OutfitPlanEntry = {
@@ -269,19 +269,19 @@ export async function recordActualOutfitWear(input: AddOutfitToDateInput): Promi
       createdAt: now,
       updatedAt: now,
     };
-    await bridgeOutfitPlanUpsert(newEntry);
+    rethrowIfFailed(await repoUpsertOutfitPlanEntry(newEntry), "保存穿搭计划失败");
     wornEntryId = newEntry.id;
   }
 
   const changedEntryIds: string[] = [];
   for (const entry of sameDayEntries) {
     if (entry.status === "planned" && entry.isPrimary && entry.outfitId !== outfitId) {
-      await bridgeOutfitPlanUpsert({
+      rethrowIfFailed(await repoUpsertOutfitPlanEntry({
         ...entry,
         status: "changed",
         actualOutfitId: outfitId,
         updatedAt: now,
-      });
+      }), "保存穿搭计划失败");
       changedEntryIds.push(entry.id);
     }
   }
@@ -323,7 +323,7 @@ export async function cancelActualOutfitWearForDate(input: {
   }
 
   const newOutfitWornDates = removeWornDate(outfit.wornDates, dateKey, todayKey);
-  await bridgeOutfitUpsert({ ...outfit, wornDates: newOutfitWornDates, updatedAt: now });
+  rethrowIfFailed(await upsertOutfit({ ...outfit, wornDates: newOutfitWornDates, updatedAt: now }), "保存套装失败");
 
   const otherWornEntries = sameDayEntries.filter(
     (e) => e.status === "worn" && e.id !== wornEntry.id && (e.outfitId || e.actualOutfitId),
@@ -346,7 +346,7 @@ export async function cancelActualOutfitWearForDate(input: {
 
     if (!stillWornByOther) {
       const newItemWornDates = removeWornDate(item.wornDates, dateKey, todayKey);
-      await bridgeGarmentUpdate({ ...item, wornDates: newItemWornDates, updatedAt: now });
+      rethrowIfFailed(await repoUpdateGarment({ ...item, wornDates: newItemWornDates, updatedAt: now }, {}), "更新单品失败");
     }
   }
 
@@ -356,7 +356,7 @@ export async function cancelActualOutfitWearForDate(input: {
   if (wornEntry.wearOrigin === "planned_confirmed" || wornEntry.plannedBeforeWorn) {
     const otherPlanned = sameDayEntries.filter((e) => e.id !== wornEntry.id && e.status === "planned");
     const hasOtherPrimary = otherPlanned.some((e) => e.isPrimary);
-    await bridgeOutfitPlanUpsert({
+    rethrowIfFailed(await repoUpsertOutfitPlanEntry({
       ...wornEntry,
       status: "planned",
       isPrimary: !hasOtherPrimary,
@@ -365,10 +365,10 @@ export async function cancelActualOutfitWearForDate(input: {
       wearOrigin: undefined,
       plannedBeforeWorn: undefined,
       updatedAt: now,
-    });
+    }), "保存穿搭计划失败");
     touchedEntryIds.push(wornEntry.id);
   } else {
-    await bridgeOutfitPlanDelete(wornEntry.id);
+    rethrowIfFailed(await repoDeleteOutfitPlanEntry(wornEntry.id as unknown as OutfitPlanEntry), "删除穿搭计划失败");
     deletedEntryIds.push(wornEntry.id);
   }
 
@@ -377,7 +377,7 @@ export async function cancelActualOutfitWearForDate(input: {
 
   if (otherWornEntries.length === 0) {
     for (const ce of changedEntries) {
-      await bridgeOutfitPlanUpsert({ ...ce, status: "planned", actualOutfitId: undefined, updatedAt: now });
+      rethrowIfFailed(await repoUpsertOutfitPlanEntry({ ...ce, status: "planned", actualOutfitId: undefined, updatedAt: now }), "保存穿搭计划失败");
       changedEntryIds.push(ce.id);
       touchedEntryIds.push(ce.id);
     }
@@ -385,7 +385,7 @@ export async function cancelActualOutfitWearForDate(input: {
     const primaryActual = otherWornEntries.find((e) => e.isPrimaryActual) ?? otherWornEntries[0];
     const primaryOutfitId = primaryActual?.outfitId ?? primaryActual?.actualOutfitId;
     for (const ce of changedEntries) {
-      await bridgeOutfitPlanUpsert({ ...ce, actualOutfitId: primaryOutfitId, updatedAt: now });
+      rethrowIfFailed(await repoUpsertOutfitPlanEntry({ ...ce, actualOutfitId: primaryOutfitId, updatedAt: now }), "保存穿搭计划失败");
       changedEntryIds.push(ce.id);
       touchedEntryIds.push(ce.id);
     }
