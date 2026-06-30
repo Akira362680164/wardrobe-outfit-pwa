@@ -30,6 +30,7 @@ export function registerAuthRoutes(
       const result = await registrationService.directRegister({
         phone: body.phone,
         password: body.password,
+        deviceId: body.deviceId,
         rateLimitKey: request.ip,
         ip: request.ip,
         userAgent: request.headers["user-agent"],

@@ -21,10 +21,10 @@ import {
   selectImageFromAlbum,
   confirmCrop,
   submitForAiRecognition,
-  fillGarmentName,
+  recoverFailedRecognitionDraft,
   saveGarmentBatch,
 } from "../helpers/garment";
-import { configureMiniMaxKeyByUi } from "../helpers/minimax-key";
+import { getWorkspaceOverview } from "../helpers/workspace";
 
 test.describe("Dev Server 图片裁切实操", () => {
   test.setTimeout(300_000);
@@ -34,8 +34,6 @@ test.describe("Dev Server 图片裁切实操", () => {
     await registerByUi(page, account);
     await waitForBootstrapReady(page);
     await waitForSyncIdle(page);
-    await configureMiniMaxKeyByUi(page);
-
     await navigateToTab(page, "wardrobe");
 
     // 录入横向图片
@@ -44,12 +42,11 @@ test.describe("Dev Server 图片裁切实操", () => {
     await confirmCrop(page);
     await submitForAiRecognition(page);
 
-    // 填写名称并保存
-    await fillGarmentName(page, "红色T恤测试");
+    await recoverFailedRecognitionDraft(page, { name: "红色T恤测试", category: "上衣", color: "红" });
     await saveGarmentBatch(page);
 
-    // 回到首页
-    await navigateToTab(page, "wardrobe");
+    const card = page.getByRole("button", { name: "红色T恤测试", exact: true });
+    await expect(card.locator("img")).toBeVisible();
 
     // 验证首页无控制台错误
     const realErrors = consoleErrors.filter((e) => !e.includes("Capacitor"));
@@ -61,8 +58,6 @@ test.describe("Dev Server 图片裁切实操", () => {
     await registerByUi(page, account);
     await waitForBootstrapReady(page);
     await waitForSyncIdle(page);
-    await configureMiniMaxKeyByUi(page);
-
     await navigateToTab(page, "wardrobe");
 
     // 录入纵向窄长图片
@@ -71,10 +66,8 @@ test.describe("Dev Server 图片裁切实操", () => {
     await confirmCrop(page);
     await submitForAiRecognition(page);
 
-    await fillGarmentName(page, "蓝色牛仔裤测试");
+    await recoverFailedRecognitionDraft(page, { name: "蓝色牛仔裤测试", category: "裤子", color: "牛仔蓝" });
     await saveGarmentBatch(page);
-
-    await navigateToTab(page, "wardrobe");
 
     // 验证首页可见且无拉伸
     const imgs = page.locator("img").filter({ has: page.locator("[src]") });
@@ -100,8 +93,6 @@ test.describe("Dev Server 图片裁切实操", () => {
     await registerByUi(page, account);
     await waitForBootstrapReady(page);
     await waitForSyncIdle(page);
-    await configureMiniMaxKeyByUi(page);
-
     await navigateToTab(page, "wardrobe");
 
     // 录入一张图
@@ -110,24 +101,11 @@ test.describe("Dev Server 图片裁切实操", () => {
     await confirmCrop(page);
     await submitForAiRecognition(page);
 
-    await fillGarmentName(page, "黑鞋测试");
+    await recoverFailedRecognitionDraft(page, { name: "黑鞋测试", category: "鞋", color: "黑" });
     await saveGarmentBatch(page);
 
-    // 回到首页，点击刚录入的单品进入详情
-    await navigateToTab(page, "wardrobe");
-    await page.waitForTimeout(1000);
-
-    // 尝试点击第一张卡片
-    const firstCard = page.locator("img[src]").first();
-    if (await firstCard.isVisible({ timeout: 5000 }).catch(() => false)) {
-      await firstCard.click();
-      await page.waitForTimeout(2000);
-
-      // 验证详情页有图片
-      const detailImgs = page.locator("img");
-      const detailImgCount = await detailImgs.count();
-      expect(detailImgCount).toBeGreaterThan(0);
-    }
+    await page.getByRole("button", { name: "黑鞋测试", exact: true }).click();
+    await expect(page.getByRole("region", { name: "详情图片" }).locator("img").first()).toBeVisible();
 
     const realErrors = consoleErrors.filter((e) => !e.includes("Capacitor"));
     expect(realErrors).toEqual([]);
@@ -208,5 +186,39 @@ test.describe("Dev Server 图片裁切实操", () => {
 
     const realErrors = consoleErrors.filter((e) => !e.includes("Capacitor"));
     expect(realErrors).toEqual([]);
+  });
+
+  test("G: 已有衣物添加灵感图 → 服务端资产读回 → 刷新后显示", async ({ page }) => {
+    await registerByUi(page, createE2ETestAccount());
+    await waitForBootstrapReady(page);
+    await navigateToTab(page, "wardrobe");
+    await startGarmentIntake(page);
+    await selectImageFromAlbum(page, "e2e/assets/red-shirt.jpg");
+    await confirmCrop(page);
+    await submitForAiRecognition(page);
+    await recoverFailedRecognitionDraft(page, { name: "灵感图目标衣物", category: "上衣", color: "红" });
+    await saveGarmentBatch(page);
+
+    await page.getByRole("button", { name: "灵感图目标衣物", exact: true }).click();
+    await page.locator("button").filter({ hasText: /^灵感$/ }).last().click();
+    const chooserPromise = page.waitForEvent("filechooser");
+    await page.getByRole("button", { name: "添加灵感图" }).click();
+    await (await chooserPromise).setFiles("e2e/assets/blue-jeans.jpg");
+    await expect(page.getByText("1 张参考穿搭")).toBeVisible({ timeout: 20_000 });
+
+    let overview = await getWorkspaceOverview(page);
+    const garment = overview.garments.find((entry) => entry.payload.name === "灵感图目标衣物")!;
+    const references = garment.payload.referenceOutfitImages as Array<{ id: string; assetField: string }>;
+    expect(references).toHaveLength(1);
+    expect(references[0]?.assetField).toBe(`referenceOutfitImage:${references[0]?.id}`);
+    expect(garment.assetRefs?.[references[0]!.assetField]).toBeTruthy();
+
+    await page.reload();
+    await waitForBootstrapReady(page);
+    await page.getByRole("button", { name: "灵感图目标衣物", exact: true }).click();
+    await page.locator("button").filter({ hasText: /^灵感$/ }).last().click();
+    await expect(page.getByRole("img", { name: "灵感图", exact: true })).toBeVisible();
+    overview = await getWorkspaceOverview(page);
+    expect(overview.garments.find((entry) => entry.id === garment.id)?.assetRefs?.[references[0]!.assetField]).toBeTruthy();
   });
 });

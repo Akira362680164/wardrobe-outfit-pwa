@@ -41,6 +41,11 @@ export function registerWorkspaceRoutes(
     const claims = await authenticate(request.headers.authorization, request.headers["x-wardrobe-device-id"], sessionService);
     return queryService.wearSummary(claims.userId, requestId(request));
   }));
+  app.get("/api/workspace/mutations/:id", async (request, reply) => handle(reply, async () => {
+    const claims = await authenticate(request.headers.authorization, request.headers["x-wardrobe-device-id"], sessionService);
+    const { id } = z.object({ id: z.string().uuid() }).parse(request.params);
+    return { response: await commandService.mutationResult(claims.userId, id) };
+  }));
 
   app.post("/api/workspace/assets/sessions", async (request, reply) => handle(reply, async () => {
     const claims = await authenticate(request.headers.authorization, request.headers["x-wardrobe-device-id"], sessionService);
@@ -156,7 +161,7 @@ async function wornAction(request: any, reply: any, sessionService: SessionServi
       const command = WorkspacePlanMarkWornCommandSchema.parse(request.body);
       return commandService.markWorn({ resource, entityId: id, command, userId: claims.userId, deviceId: claims.deviceId, requestId: requestId(request) });
     }
-    const command = WorkspaceDeleteCommandSchema.parse(request.body);
+    const command = WorkspaceStateCommandSchema.parse(request.body);
     return commandService.cancelWorn({ resource, entityId: id, command, userId: claims.userId, deviceId: claims.deviceId, requestId: requestId(request) });
   });
 }

@@ -123,8 +123,8 @@ check("GarmentIntakeFlow 单张失败不中断整批", /buildFailedRecognitionDr
 // WardrobeApp has onPickImages
 check("WardrobeApp 接入 onPickImages", /onPickImages=\{pickGarmentIntakeImages/.test(wardrobeApp));
 
-// WardrobeApp has onSaveBatch (uses inline async wrapper that calls saveBatchGarmentIntakeDrafts)
-check("WardrobeApp 接入 onSaveBatch", /onSaveBatch=\{async\s*\(\w+\)\s*=>\s*\{[\s\S]{0,100}saveBatchGarmentIntakeDrafts/.test(wardrobeApp));
+// WardrobeApp forwards the stable submission context so retries reuse clientMutationId.
+check("WardrobeApp 接入 onSaveBatch 并透传幂等上下文", /onSaveBatch=\{\(drafts, context\) => saveBatchGarmentIntakeDrafts\(drafts, context\)\}/.test(wardrobeApp));
 
 // Old CaptureView single-item mode does not exist
 check("旧 CaptureView 单衣物模式不存在", !/function CaptureView/.test(wardrobeApp) || wardrobeApp.split("function CaptureView").length === 1);

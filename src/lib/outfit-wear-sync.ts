@@ -1,14 +1,12 @@
 // v1.1.0 fix: 穿着同步统一服务 — 计划/实际穿着/套装 wornDates/单品 wornDates 同步
 // 快照来自 OnlineWorkspaceRepository；写入统一走线上 Repository。
 
-import { addWornDate, removeWornDate } from "@/lib/wear-records";
 import type { OutfitPlanEntry, OutfitPlanEntryRole } from "@/lib/types";
 import type { OnlineWorkspaceSnapshot } from "@/lib/online/online-repository";
 import {
   rethrowIfFailed,
-  repoDeleteOutfitPlanEntry,
-  repoUpdateGarment,
-  repoUpdateOutfit,
+  repoCancelWear,
+  repoRecordWear,
   repoUpdateOutfitPlanEntry,
   repoUpsertOutfitPlanEntry,
 } from "@/lib/repository/wardrobe-repository";
@@ -196,7 +194,6 @@ export async function recordActualOutfitWear(input: AddOutfitToDateInput): Promi
     throw new OutfitWearSyncError("FUTURE_WEAR_NOT_ALLOWED", "未来日期只能添加计划，不能记为已穿。");
   }
 
-  const now = new Date().toISOString();
   const outfit = snapshot.outfits.find((o) => o.id === outfitId);
   if (!outfit) {
     throw new OutfitWearSyncError("OUTFIT_NOT_FOUND", "这套穿搭已被删除，请刷新后重试。");
@@ -215,77 +212,12 @@ export async function recordActualOutfitWear(input: AddOutfitToDateInput): Promi
     };
   }
 
+  rethrowIfFailed(await repoRecordWear(outfit, dateKey), "标记已穿失败");
   const plannedEntry = sameDayEntries.find((e) => e.outfitId === outfitId && (e.status === "planned" || e.status === "changed"));
-
-  const newWornDates = addWornDate(outfit.wornDates, dateKey, todayKey);
-  rethrowIfFailed(await repoUpdateOutfit(outfit, { wornDates: newWornDates, updatedAt: now }), "保存套装失败");
-
-  const otherWornEntries = sameDayEntries.filter(
-    (e) => e.status === "worn" && (e.outfitId || e.actualOutfitId),
-  );
-
-  for (const itemId of outfit.itemIds) {
-    const item = snapshot.items.find((i) => i.id === itemId);
-    if (!item) continue;
-
-    let stillWornByOther = false;
-    for (const otherEntry of otherWornEntries) {
-      const otherOutfitId = otherEntry.outfitId ?? otherEntry.actualOutfitId;
-      if (!otherOutfitId) continue;
-      const otherOutfit = snapshot.outfits.find((o) => o.id === otherOutfitId);
-      if (otherOutfit?.itemIds.includes(itemId)) {
-        stillWornByOther = true;
-        break;
-      }
-    }
-
-    if (!stillWornByOther) {
-      const newItemWornDates = addWornDate(item.wornDates, dateKey, todayKey);
-      rethrowIfFailed(await repoUpdateGarment(item, { wornDates: newItemWornDates, updatedAt: now }), "更新单品失败");
-    }
-  }
-
-  let wornEntryId = "";
-
-  if (plannedEntry) {
-    rethrowIfFailed(await repoUpdateOutfitPlanEntry(plannedEntry, {
-      status: "worn",
-      wornDateLinked: dateKey,
-      actualOutfitId: outfitId,
-      wearOrigin: "planned_confirmed",
-      plannedBeforeWorn: true,
-      isPrimaryActual: plannedEntry.isPrimary ?? false,
-      updatedAt: now,
-    }), "保存穿搭计划失败");
-    wornEntryId = plannedEntry.id;
-  } else {
-    const newEntry: OutfitPlanEntry = {
-      id: `plan-entry-${dateKey}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
-      date: dateKey,
-      outfitId,
-      status: "worn",
-      wornDateLinked: dateKey,
-      wearOrigin: "manual_actual",
-      plannedBeforeWorn: false,
-      isPrimaryActual: sameDayEntries.filter((e) => e.status === "worn").length === 0,
-      createdAt: now,
-      updatedAt: now,
-    };
-    rethrowIfFailed(await repoUpsertOutfitPlanEntry(newEntry), "保存穿搭计划失败");
-    wornEntryId = newEntry.id;
-  }
-
-  const changedEntryIds: string[] = [];
-  for (const entry of sameDayEntries) {
-    if (entry.status === "planned" && entry.isPrimary && entry.outfitId !== outfitId) {
-      rethrowIfFailed(await repoUpdateOutfitPlanEntry(entry, {
-        status: "changed",
-        actualOutfitId: outfitId,
-        updatedAt: now,
-      }), "保存穿搭计划失败");
-      changedEntryIds.push(entry.id);
-    }
-  }
+  const changedEntryIds = sameDayEntries
+    .filter((entry) => entry.status === "planned" && entry.isPrimary && entry.outfitId !== outfitId)
+    .map((entry) => entry.id);
+  const wornEntryId = plannedEntry?.id ?? "";
 
   return {
     changedEntryIds,
@@ -307,8 +239,6 @@ export async function cancelActualOutfitWearForDate(input: {
   snapshot: Pick<OnlineWorkspaceSnapshot, "items" | "outfits" | "outfitPlanEntries">;
 }): Promise<OutfitWearSyncResult> {
   const { dateKey, outfitId, todayKey, snapshot } = input;
-  const now = new Date().toISOString();
-
   const sameDayEntries = snapshot.outfitPlanEntries.filter((e) => e.date === dateKey);
   const wornEntry = sameDayEntries.find(
     (e) => (e.outfitId === outfitId || e.actualOutfitId === outfitId) && e.status === "worn",
@@ -323,73 +253,11 @@ export async function cancelActualOutfitWearForDate(input: {
     throw new OutfitWearSyncError("OUTFIT_NOT_FOUND", "这套穿搭已被删除，请刷新后重试。");
   }
 
-  const newOutfitWornDates = removeWornDate(outfit.wornDates, dateKey, todayKey);
-  rethrowIfFailed(await repoUpdateOutfit(outfit, { wornDates: newOutfitWornDates, updatedAt: now }), "保存套装失败");
-
-  const otherWornEntries = sameDayEntries.filter(
-    (e) => e.status === "worn" && e.id !== wornEntry.id && (e.outfitId || e.actualOutfitId),
-  );
-
-  for (const itemId of outfit.itemIds) {
-    const item = snapshot.items.find((i) => i.id === itemId);
-    if (!item) continue;
-
-    let stillWornByOther = false;
-    for (const otherEntry of otherWornEntries) {
-      const otherOutfitId = otherEntry.outfitId ?? otherEntry.actualOutfitId;
-      if (!otherOutfitId) continue;
-      const otherOutfit = snapshot.outfits.find((o) => o.id === otherOutfitId);
-      if (otherOutfit?.itemIds.includes(itemId)) {
-        stillWornByOther = true;
-        break;
-      }
-    }
-
-    if (!stillWornByOther) {
-      const newItemWornDates = removeWornDate(item.wornDates, dateKey, todayKey);
-      rethrowIfFailed(await repoUpdateGarment(item, { wornDates: newItemWornDates, updatedAt: now }), "更新单品失败");
-    }
-  }
-
-  const deletedEntryIds: string[] = [];
-  const touchedEntryIds: string[] = [];
-
-  if (wornEntry.wearOrigin === "planned_confirmed" || wornEntry.plannedBeforeWorn) {
-    const otherPlanned = sameDayEntries.filter((e) => e.id !== wornEntry.id && e.status === "planned");
-    const hasOtherPrimary = otherPlanned.some((e) => e.isPrimary);
-    rethrowIfFailed(await repoUpdateOutfitPlanEntry(wornEntry, {
-      status: "planned",
-      isPrimary: !hasOtherPrimary,
-      wornDateLinked: undefined,
-      actualOutfitId: undefined,
-      wearOrigin: undefined,
-      plannedBeforeWorn: undefined,
-      updatedAt: now,
-    }), "保存穿搭计划失败");
-    touchedEntryIds.push(wornEntry.id);
-  } else {
-    rethrowIfFailed(await repoDeleteOutfitPlanEntry(wornEntry), "删除穿搭计划失败");
-    deletedEntryIds.push(wornEntry.id);
-  }
-
-  const changedEntries = sameDayEntries.filter((e) => e.status === "changed" && e.actualOutfitId === outfitId);
-  const changedEntryIds: string[] = [];
-
-  if (otherWornEntries.length === 0) {
-    for (const ce of changedEntries) {
-      rethrowIfFailed(await repoUpdateOutfitPlanEntry(ce, { status: "planned", actualOutfitId: undefined, updatedAt: now }), "保存穿搭计划失败");
-      changedEntryIds.push(ce.id);
-      touchedEntryIds.push(ce.id);
-    }
-  } else {
-    const primaryActual = otherWornEntries.find((e) => e.isPrimaryActual) ?? otherWornEntries[0];
-    const primaryOutfitId = primaryActual?.outfitId ?? primaryActual?.actualOutfitId;
-    for (const ce of changedEntries) {
-      rethrowIfFailed(await repoUpdateOutfitPlanEntry(ce, { actualOutfitId: primaryOutfitId, updatedAt: now }), "保存穿搭计划失败");
-      changedEntryIds.push(ce.id);
-      touchedEntryIds.push(ce.id);
-    }
-  }
+  rethrowIfFailed(await repoCancelWear(outfit, dateKey), "取消已穿失败");
+  const changedEntryIds = sameDayEntries.filter((entry) => entry.status === "changed" && entry.actualOutfitId === outfitId).map((entry) => entry.id);
+  const restorePlan = wornEntry.wearOrigin === "planned_confirmed" || wornEntry.plannedBeforeWorn;
+  const touchedEntryIds = restorePlan ? [wornEntry.id, ...changedEntryIds] : changedEntryIds;
+  const deletedEntryIds = restorePlan ? [] : [wornEntry.id];
 
   return {
     changedEntryIds,

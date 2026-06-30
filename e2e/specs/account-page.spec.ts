@@ -78,7 +78,7 @@ test.describe("账号管理页面", () => {
     await expect(page.getByText("退出登录？")).toBeVisible();
     await expect(page.getByRole("button", { name: "取消" })).toBeVisible();
     // confirm 退出登录 button still exists in the dialog
-    await expect(page.getByText(/重新登录此账号后可继续使用/)).toBeVisible();
+    await expect(page.getByText(/重新登录后会从服务器读取衣橱数据/)).toBeVisible();
   });
 
   test("修改密码页返回按钮回到账号管理页", async ({ page }) => {

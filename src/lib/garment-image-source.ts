@@ -67,6 +67,7 @@ function isValidImageUrl(v: unknown): v is string {
   if (!trimmed) return false;
   if (trimmed.startsWith("data:image/")) return true;
   if (trimmed.startsWith("data:")) return true; // 兜底: 允许任何 data URL
+  if (trimmed.startsWith("blob:")) return true; // 线上图片客户端返回的会话级 Object URL
   if (/^https?:\/\//.test(trimmed)) return true;
   return false;
 }

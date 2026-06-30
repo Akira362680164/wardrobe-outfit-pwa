@@ -3,6 +3,7 @@ import { createE2ETestAccount } from "../fixtures/accounts";
 import { waitForBootstrapReady, waitForSyncIdle } from "../fixtures/sync";
 import { registerByUi, loginByUi } from "../helpers/auth";
 import { navigateToTab } from "../helpers/navigation";
+import { expectSingleDefaultLocation } from "../helpers/workspace";
 
 test.describe("账号工作区隔离", () => {
   test("账号A的数据不会泄露到账号B", async ({ browser }) => {
@@ -41,8 +42,7 @@ test.describe("账号工作区隔离", () => {
       await expect(pageB.getByTestId("global-create")).toBeVisible();
 
       // Account B should have its own workspace — default closet = 1
-      await navigateToTab(pageB, "settings");
-      await expect(pageB.getByRole("button", { name: /^默认衣橱/ })).toHaveCount(1);
+      await expectSingleDefaultLocation(pageB);
 
       // Account A re-logins — should still have its own workspace
       await loginByUi(pageA, accountA);
@@ -50,8 +50,7 @@ test.describe("账号工作区隔离", () => {
       await waitForSyncIdle(pageA);
       await expect(pageA.getByTestId("global-create")).toBeVisible();
 
-      await navigateToTab(pageA, "settings");
-      await expect(pageA.getByRole("button", { name: /^默认衣橱/ })).toHaveCount(1);
+      await expectSingleDefaultLocation(pageA);
 
       // The two accounts have different phone numbers — verify workspace isolation
       expect(accountA.phone).not.toBe(accountB.phone);

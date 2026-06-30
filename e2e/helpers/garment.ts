@@ -44,10 +44,20 @@ export async function confirmCrop(page: Page): Promise<void> {
 }
 
 export async function submitForAiRecognition(page: Page): Promise<void> {
-  // 点击 "下一步（AI 识别）" 触发识别
   await page.getByRole("button", { name: /下一步.*AI.*识别/i }).click();
-  // 等待 AI 识别或 fallback 完成（最长 30s）
-  await page.waitForTimeout(10000);
+  await expect(page.getByText(/核对 AI 识别结果/)).toBeVisible({ timeout: 130000 });
+}
+
+export async function recoverFailedRecognitionDraft(
+  page: Page,
+  input: { name: string; category?: string; color?: string },
+): Promise<void> {
+  await expect(page.getByText(/AI 识别失败，已生成待确认草稿/)).toBeVisible();
+  const nameInput = page.locator('[data-item-form-section="intake-basic"] input').first();
+  await nameInput.fill(input.name);
+  await page.getByRole("radio", { name: input.category ?? "上衣", exact: true }).click();
+  await page.locator(`[data-color-swatch="${input.color ?? "黑"}"]`).click();
+  await expect(page.getByRole("button", { name: /保存 1 件/ })).toBeEnabled();
 }
 
 export async function fillGarmentName(page: Page, name: string): Promise<void> {

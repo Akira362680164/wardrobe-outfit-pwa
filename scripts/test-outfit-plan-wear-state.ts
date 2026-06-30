@@ -6,6 +6,7 @@ import { join } from "node:path";
 
 const root = join(__dirname, "..");
 const outfitWearSync = readFileSync(join(root, "src/lib/outfit-wear-sync.ts"), "utf8");
+const workspaceCommandService = readFileSync(join(root, "services/wardrobe-api/src/workspace/command-service.ts"), "utf8");
 const outfitPlanning = readFileSync(join(root, "src/lib/outfit-planning.ts"), "utf8");
 const batchReviewView = readFileSync(join(root, "src/components/batch-review-view.tsx"), "utf8");
 const wardrobeApp = readFileSync(join(root, "src/components/wardrobe-app.tsx"), "utf8");
@@ -187,8 +188,8 @@ console.log("\n=== isPrimaryActual 修复 ===");
 
 // planned entry 确认转为 worn 时设置 isPrimaryActual
 check(
-  "planned entry 确认转为 worn 时设置 isPrimaryActual",
-  /isPrimaryActual: plannedEntry\.isPrimary/.test(outfitWearSync),
+  "planned entry 在服务端事务中转为 worn 时设置 isPrimaryActual",
+  /isPrimaryActual: Boolean\(payload\.isPrimary\)/.test(workspaceCommandService),
 );
 
 // ============================================================

@@ -97,6 +97,7 @@ class MemoryRegistrationStore implements RegistrationStore {
 
   async createDirectRegistration(input: {
     phoneE164: string; maskedPhone: string; passwordHash: string; now: Date;
+    deviceId: string;
   }): Promise<DirectRegistrationResult> {
     if (this.phoneIdentities.has(input.phoneE164)) {
       throw new AuthApiError(409, "phone_already_registered", "Phone is already registered");
@@ -291,12 +292,12 @@ describe("direct registration API", () => {
     const { service, store } = makeFixture({ maxAttempts: 1 });
     await service.directRegister({
       phone: "13812345678", password: "test-password-123",
-      rateLimitKey: "test-ip", ip: "1.2.3.4",
+      deviceId: "device-a", rateLimitKey: "test-ip", ip: "1.2.3.4",
     });
     await expect(
       service.directRegister({
         phone: "13812345678", password: "test-password-456",
-        rateLimitKey: "test-ip", ip: "1.2.3.4",
+        deviceId: "device-a", rateLimitKey: "test-ip", ip: "1.2.3.4",
       }),
     ).rejects.toMatchObject({ code: "rate_limited", statusCode: 429 });
   });
@@ -319,7 +320,7 @@ describe("direct registration service", () => {
     const { service, store } = makeFixture();
     const result = await service.directRegister({
       phone: "13812345678", password: "test-password-123",
-      rateLimitKey: "test-ip", ip: "1.2.3.4",
+      deviceId: "device-a", rateLimitKey: "test-ip", ip: "1.2.3.4",
     });
     expect(result.userId).toBeTruthy();
     expect(result.maskedPhone).toBe("138****5678");
@@ -332,12 +333,12 @@ describe("direct registration service", () => {
     const { service } = makeFixture();
     await service.directRegister({
       phone: "13812345678", password: "test-password-123",
-      rateLimitKey: "test-ip",
+      deviceId: "device-a", rateLimitKey: "test-ip",
     });
     await expect(
       service.directRegister({
         phone: "13812345678", password: "test-password-456",
-        rateLimitKey: "test-ip",
+        deviceId: "device-a", rateLimitKey: "test-ip",
       }),
     ).rejects.toMatchObject({ code: "phone_already_registered", statusCode: 409 });
   });

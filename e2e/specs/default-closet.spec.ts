@@ -3,6 +3,7 @@ import { createE2ETestAccount } from "../fixtures/accounts";
 import { waitForBootstrapReady, waitForSyncIdle } from "../fixtures/sync";
 import { registerByUi, loginByUi } from "../helpers/auth";
 import { navigateToTab } from "../helpers/navigation";
+import { expectSingleDefaultLocation } from "../helpers/workspace";
 
 test.describe("默认衣橱不重复创建", () => {
   test("全新账号只有一条默认衣橱 — 创建单品、刷新、重新登录后仍唯一", async ({ page, consoleErrors }) => {
@@ -15,8 +16,7 @@ test.describe("默认衣橱不重复创建", () => {
     await expect(page.getByTestId("global-create")).toBeVisible();
 
     // verify exactly one "默认衣橱" on settings page
-    await navigateToTab(page, "settings");
-    await expect(page.getByRole("button", { name: /^默认衣橱/ })).toHaveCount(1);
+    await expectSingleDefaultLocation(page);
 
     // go back to wardrobe home
     await navigateToTab(page, "wardrobe");
@@ -29,15 +29,13 @@ test.describe("默认衣橱不重复创建", () => {
     await page.waitForTimeout(500);
 
     // navigate back to settings and verify still 1 default closet
-    await navigateToTab(page, "settings");
-    await expect(page.getByRole("button", { name: /^默认衣橱/ })).toHaveCount(1);
+    await expectSingleDefaultLocation(page);
 
     // refresh and verify still 1
     await page.reload();
     await waitForBootstrapReady(page);
     await waitForSyncIdle(page);
-    await navigateToTab(page, "settings");
-    await expect(page.getByRole("button", { name: /^默认衣橱/ })).toHaveCount(1);
+    await expectSingleDefaultLocation(page);
 
     // logout
     await navigateToTab(page, "settings");
@@ -55,8 +53,7 @@ test.describe("默认衣橱不重复创建", () => {
     await waitForSyncIdle(page);
 
     // verify still exactly 1 default closet
-    await navigateToTab(page, "settings");
-    await expect(page.getByRole("button", { name: /^默认衣橱/ })).toHaveCount(1);
+    await expectSingleDefaultLocation(page);
 
     const realErrors = consoleErrors.filter((e) => !e.includes("Capacitor"));
     expect(realErrors).toEqual([]);

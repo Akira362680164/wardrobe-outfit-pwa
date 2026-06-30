@@ -69,6 +69,11 @@ export function createOnlineWriteRepository(request: OnlineWriteRequester = onli
     return response.data;
   }
 
+  async function getMutationResult(clientMutationId: string): Promise<WorkspaceCommandResponse | null> {
+    const result = await request<{ response: WorkspaceCommandResponse | null }>(`${workspaceBase}/mutations/${encodeURIComponent(clientMutationId)}`);
+    return result.response;
+  }
+
   async function committedEntity(response: WorkspaceCommandResponse): Promise<WorkspaceEntity> {
     if (response.status === "in_progress") throw new Error("服务器仍在处理本次提交，请稍后重试");
     if (!response.entity) throw new Error("服务器未返回已保存数据");
@@ -210,6 +215,7 @@ export function createOnlineWriteRepository(request: OnlineWriteRequester = onli
 
   return {
     read,
+    getMutationResult,
     create,
     createBatch,
     update,
@@ -223,6 +229,8 @@ export function createOnlineWriteRepository(request: OnlineWriteRequester = onli
     convertWishlist: (id: string, command: WorkspaceWishlistConvertCommand) => action("wishlist", id, "convert", command),
     undoWishlistPurchase: (id: string, command: WorkspaceStateCommand) => action("wishlist", id, "undo-purchase", command),
     setOutfitFavorite: (id: string, command: WorkspaceStateCommand) => action("outfits", id, "favorite", command),
+    markOutfitWorn: (id: string, command: WorkspacePlanMarkWornCommand) => action("outfits", id, "mark-worn", command),
+    cancelOutfitWorn: (id: string, command: WorkspaceStateCommand) => action("outfits", id, "cancel-worn", command),
     markPlanWorn: (id: string, command: WorkspacePlanMarkWornCommand) => action("outfit-plans", id, "mark-worn", command),
     cancelPlanWorn: (id: string, command: WorkspaceStateCommand) => action("outfit-plans", id, "cancel-worn", command),
     updatePackingChecklist: async (id: string, command: WorkspacePackingChecklistCommand) => {

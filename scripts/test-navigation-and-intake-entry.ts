@@ -61,8 +61,8 @@ check(
   !/switchView\("wardrobe"\)/.test(saveBatchBlock),
 );
 check(
-  "GarmentIntakeFlow 保存后调用 closeCreateFlow 恢复来源页",
-  /await saveBatchGarmentIntakeDrafts\(drafts\);[\s\S]{0,80}closeCreateFlow\(\)/.test(wardrobeApp),
+  "saveBatchGarmentIntakeDrafts 全部保存成功后调用 closeCreateFlow 恢复来源页",
+  /if \(items\.some\(\(item\) => item\.status === "failed"\)\) return \{ items \};[\s\S]{0,300}closeCreateFlow\(\)/.test(saveBatchBlock),
 );
 check(
   "父层在 garment_detail route 下仍渲染 WardrobeView",

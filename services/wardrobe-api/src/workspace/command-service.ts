@@ -8,6 +8,7 @@ import type {
   WorkspaceCreateCommand,
   WorkspaceDeleteCommand,
   WorkspaceEntity,
+  WorkspaceStateCommand,
   WorkspaceUpdateCommand,
 } from "@wardrobe/cloud-contracts";
 
@@ -23,6 +24,13 @@ type Mutation = WorkspaceCreateCommand | WorkspaceUpdateCommand | WorkspaceDelet
 
 export class WorkspaceCommandService {
   constructor(private readonly injectedDb?: Db) {}
+
+  async mutationResult(userId: string, clientMutationId: string): Promise<WorkspaceCommandResponse | null> {
+    const [row] = await this.database().select({ response: syncMutations.response }).from(syncMutations).where(and(
+      eq(syncMutations.userId, userId), eq(syncMutations.mutationId, clientMutationId),
+    )).limit(1);
+    return row?.response ? row.response as WorkspaceCommandResponse : null;
+  }
 
   async create(input: { resource: WorkspaceResource; command: WorkspaceCreateCommand; userId: string; deviceId: string; requestId?: string }): Promise<WorkspaceCommandResponse> {
     return this.runMutation({ ...input, operation: "create", entityId: randomUUID() }, async (tx, entityId) => {
@@ -98,7 +106,7 @@ export class WorkspaceCommandService {
     return this.update({ ...input, command: { ...input.command, payload: { ...asRecord(row.payload), ...input.patch }, temporaryAssetIds: [] } });
   }
 
-  async convertWishlist(input: { entityId: string; command: WorkspaceUpdateCommand; userId: string; deviceId: string; requestId?: string }): Promise<WorkspaceCommandResponse> {
+  async convertWishlist(input: { entityId: string; command: WorkspaceUpdateCommand & { locationId: string }; userId: string; deviceId: string; requestId?: string }): Promise<WorkspaceCommandResponse> {
     return this.runMutation({ ...input, resource: "wishlist", operation: "update" }, async (tx) => {
       const wishlistTable = WORKSPACE_RESOURCES.wishlist.table as AnyPgTable & Record<string, any>;
       const garmentTable = WORKSPACE_RESOURCES.garments.table as AnyPgTable & Record<string, any>;
@@ -106,9 +114,14 @@ export class WorkspaceCommandService {
       assertRevision(row.revision, input.command.expectedRevision, row);
       const now = new Date();
       const garmentId = randomUUID();
-      const payload = { ...asRecord(row.payload), ...sanitizePayload(input.command.payload), sourceWishlistId: input.entityId };
+      const legacyItemId = stableNumericId(garmentId);
+      const payload = {
+        ...asRecord(row.payload), ...sanitizePayload(input.command.payload), sourceWishlistId: input.entityId,
+        legacyItemId, locationId: input.command.locationId, status: "active", wornDates: [],
+        createdAt: now.toISOString(), updatedAt: now.toISOString(),
+      };
       await tx.insert(garmentTable).values({ id: garmentId, userId: input.userId, revision: 1, originDeviceId: input.deviceId, payload, ...specialColumns("garments", payload), createdAt: now, updatedAt: now });
-      const wishlistPayload = { ...asRecord(row.payload), purchased: true, convertedGarmentId: garmentId };
+      const wishlistPayload = { ...asRecord(row.payload), purchased: true, convertedGarmentId: garmentId, convertedItemId: legacyItemId, convertedAt: now.toISOString() };
       await tx.update(wishlistTable).set({ revision: row.revision + 1, payload: wishlistPayload, updatedAt: now }).where(eq(wishlistTable.id, input.entityId));
       await tx.update(assets).set({ ownerEntityType: "garment", ownerEntityId: garmentId, updatedAt: now }).where(and(
         eq(assets.userId, input.userId), eq(assets.ownerEntityType, "wishlistItem"), eq(assets.ownerEntityId, input.entityId), isNull(assets.deletedAt),
@@ -139,7 +152,7 @@ export class WorkspaceCommandService {
           await appendChange(tx, input.userId, "garment", garmentId, "delete", garment.revision + 1, {});
         }
       }
-      const nextPayload = { ...payload, purchased: false, convertedGarmentId: null };
+      const nextPayload = { ...payload, purchased: false, convertedGarmentId: null, convertedItemId: null, convertedAt: null };
       const revision = row.revision + 1;
       await tx.update(wishlistTable).set({ revision, payload: nextPayload, updatedAt: now }).where(eq(wishlistTable.id, input.entityId));
       await appendChange(tx, input.userId, "wishlistItem", input.entityId, "update", revision, nextPayload);
@@ -149,6 +162,7 @@ export class WorkspaceCommandService {
 
   async markWorn(input: { resource: "garments" | "outfits" | "outfit-plans"; entityId: string; command: WorkspaceDeleteCommand & { wornAt: string; outfitId?: string }; userId: string; deviceId: string; requestId?: string }): Promise<WorkspaceCommandResponse> {
     return this.runMutation({ ...input, operation: "update" }, async (tx) => {
+      if (input.resource === "outfits") return markOutfitWearTransaction(tx, input);
       const descriptor = WORKSPACE_RESOURCES[input.resource];
       const table = descriptor.table as AnyPgTable & Record<string, any>;
       const wearTable = WORKSPACE_RESOURCES["wear-events"].table as AnyPgTable & Record<string, any>;
@@ -158,9 +172,7 @@ export class WorkspaceCommandService {
       const now = new Date();
       const wearPayload = input.resource === "garments"
         ? { garmentId: input.entityId, wornAt: input.command.wornAt }
-        : input.resource === "outfits"
-          ? { outfitId: input.entityId, wornAt: input.command.wornAt }
-          : { outfitPlanId: input.entityId, outfitId: input.command.outfitId ?? asRecord(row.payload).outfitId, wornAt: input.command.wornAt };
+        : { outfitPlanId: input.entityId, outfitId: input.command.outfitId ?? asRecord(row.payload).outfitId, wornAt: input.command.wornAt };
       await tx.insert(wearTable).values({ id: wearEventId, userId: input.userId, revision: 1, originDeviceId: input.deviceId, payload: wearPayload, ...specialColumns("wear-events", wearPayload), createdAt: now, updatedAt: now });
       const nextPayload = { ...asRecord(row.payload), worn: true, wornAt: input.command.wornAt, wearEventId };
       const revision = row.revision + 1;
@@ -171,8 +183,9 @@ export class WorkspaceCommandService {
     });
   }
 
-  async cancelWorn(input: { resource: "garments" | "outfits" | "outfit-plans"; entityId: string; command: WorkspaceDeleteCommand; userId: string; deviceId: string; requestId?: string }): Promise<WorkspaceCommandResponse> {
+  async cancelWorn(input: { resource: "garments" | "outfits" | "outfit-plans"; entityId: string; command: WorkspaceStateCommand; userId: string; deviceId: string; requestId?: string }): Promise<WorkspaceCommandResponse> {
     return this.runMutation({ ...input, operation: "update" }, async (tx) => {
+      if (input.resource === "outfits") return cancelOutfitWearTransaction(tx, input);
       const descriptor = WORKSPACE_RESOURCES[input.resource];
       const table = descriptor.table as AnyPgTable & Record<string, any>;
       const wearTable = WORKSPACE_RESOURCES["wear-events"].table as AnyPgTable & Record<string, any>;
@@ -220,6 +233,171 @@ export class WorkspaceCommandService {
   }
 
   private database(): Db { return this.injectedDb ?? getDb(); }
+}
+
+async function markOutfitWearTransaction(
+  tx: Tx,
+  input: { entityId: string; command: WorkspaceDeleteCommand & { wornAt: string }; userId: string; deviceId: string },
+): Promise<Omit<WorkspaceCommandResponse, "status" | "requestId">> {
+  const outfitTable = WORKSPACE_RESOURCES.outfits.table as AnyPgTable & Record<string, any>;
+  const garmentTable = WORKSPACE_RESOURCES.garments.table as AnyPgTable & Record<string, any>;
+  const planTable = WORKSPACE_RESOURCES["outfit-plans"].table as AnyPgTable & Record<string, any>;
+  const wearTable = WORKSPACE_RESOURCES["wear-events"].table as AnyPgTable & Record<string, any>;
+  const outfit = await ownedActiveRow(tx, outfitTable, input.entityId, input.userId);
+  assertRevision(outfit.revision, input.command.expectedRevision, outfit);
+  const now = new Date();
+  const dateKey = input.command.wornAt.slice(0, 10);
+  const outfitPayload = asRecord(outfit.payload);
+  const legacyOutfitId = String(outfitPayload.legacyOutfitId ?? input.entityId);
+  const itemIds = numberList(outfitPayload.legacyItemIds ?? outfitPayload.itemIds);
+
+  const nextOutfitPayload = { ...outfitPayload, wornDates: addDate(outfitPayload.wornDates, dateKey), updatedAt: now.toISOString() };
+  const outfitRevision = outfit.revision + 1;
+  await tx.update(outfitTable).set({ revision: outfitRevision, originDeviceId: input.deviceId, payload: nextOutfitPayload, updatedAt: now }).where(eq(outfitTable.id, input.entityId));
+  await appendChange(tx, input.userId, "outfit", input.entityId, "update", outfitRevision, nextOutfitPayload);
+
+  const garments = await tx.select().from(garmentTable).where(and(eq(garmentTable.userId, input.userId), isNull(garmentTable.deletedAt))) as any[];
+  const wornGarments = garments.filter((row) => itemIds.includes(Number(asRecord(row.payload).legacyItemId)));
+  for (const garment of wornGarments) {
+    const payload = asRecord(garment.payload);
+    const nextPayload = { ...payload, wornDates: addDate(payload.wornDates, dateKey), updatedAt: now.toISOString() };
+    await tx.update(garmentTable).set({ revision: garment.revision + 1, originDeviceId: input.deviceId, payload: nextPayload, updatedAt: now }).where(eq(garmentTable.id, garment.id));
+    await appendChange(tx, input.userId, "garment", garment.id, "update", garment.revision + 1, nextPayload);
+  }
+
+  const plans = await tx.select().from(planTable).where(and(eq(planTable.userId, input.userId), isNull(planTable.deletedAt))) as any[];
+  const sameDay = plans.filter((row) => String(asRecord(row.payload).date ?? "") === dateKey);
+  const alreadyWorn = sameDay.find((row) => {
+    const payload = asRecord(row.payload);
+    return payload.status === "worn" && (payload.outfitId === legacyOutfitId || payload.actualOutfitId === legacyOutfitId);
+  });
+  if (!alreadyWorn) {
+    const planned = sameDay.find((row) => {
+      const payload = asRecord(row.payload);
+      return payload.outfitId === legacyOutfitId && (payload.status === "planned" || payload.status === "changed");
+    });
+    if (planned) {
+      const payload = asRecord(planned.payload);
+      const nextPayload = {
+        ...payload, status: "worn", wornDateLinked: dateKey, actualOutfitId: legacyOutfitId,
+        wearOrigin: "planned_confirmed", plannedBeforeWorn: true, isPrimaryActual: Boolean(payload.isPrimary), updatedAt: now.toISOString(),
+      };
+      await tx.update(planTable).set({ revision: planned.revision + 1, originDeviceId: input.deviceId, payload: nextPayload, updatedAt: now }).where(eq(planTable.id, planned.id));
+      await appendChange(tx, input.userId, "outfitPlan", planned.id, "update", planned.revision + 1, nextPayload);
+    } else {
+      const planId = randomUUID();
+      const payload = {
+        legacyPlanEntryId: `plan-entry-${dateKey}-${planId.slice(0, 8)}`, date: dateKey, outfitId: legacyOutfitId,
+        status: "worn", wornDateLinked: dateKey, wearOrigin: "manual_actual", plannedBeforeWorn: false,
+        isPrimaryActual: !sameDay.some((row) => asRecord(row.payload).status === "worn"), createdAt: now.toISOString(), updatedAt: now.toISOString(),
+      };
+      await tx.insert(planTable).values({ id: planId, userId: input.userId, revision: 1, originDeviceId: input.deviceId, payload, planDate: dateKey, createdAt: now, updatedAt: now });
+      await appendChange(tx, input.userId, "outfitPlan", planId, "create", 1, payload);
+    }
+    for (const plan of sameDay) {
+      const payload = asRecord(plan.payload);
+      if (payload.status !== "planned" || !payload.isPrimary || payload.outfitId === legacyOutfitId) continue;
+      const nextPayload = { ...payload, status: "changed", actualOutfitId: legacyOutfitId, updatedAt: now.toISOString() };
+      await tx.update(planTable).set({ revision: plan.revision + 1, originDeviceId: input.deviceId, payload: nextPayload, updatedAt: now }).where(eq(planTable.id, plan.id));
+      await appendChange(tx, input.userId, "outfitPlan", plan.id, "update", plan.revision + 1, nextPayload);
+    }
+  }
+
+  const events = await tx.select().from(wearTable).where(and(eq(wearTable.userId, input.userId), isNull(wearTable.deletedAt))) as any[];
+  if (!events.some((row) => asRecord(row.payload).sourceOutfitId === input.entityId && String(asRecord(row.payload).wornAt).slice(0, 10) === dateKey)) {
+    await createWearEvent(tx, { userId: input.userId, deviceId: input.deviceId, now, payload: { outfitId: input.entityId, sourceOutfitId: input.entityId, wornAt: input.command.wornAt } });
+    for (const garment of wornGarments) {
+      await createWearEvent(tx, { userId: input.userId, deviceId: input.deviceId, now, payload: { garmentId: garment.id, sourceOutfitId: input.entityId, wornAt: input.command.wornAt } });
+    }
+  }
+  return { entity: toEntity({ id: input.entityId, revision: outfitRevision, payload: nextOutfitPayload, createdAt: outfit.createdAt, updatedAt: now }), revision: outfitRevision };
+}
+
+async function cancelOutfitWearTransaction(
+  tx: Tx,
+  input: { entityId: string; command: WorkspaceStateCommand; userId: string; deviceId: string },
+): Promise<Omit<WorkspaceCommandResponse, "status" | "requestId">> {
+  const outfitTable = WORKSPACE_RESOURCES.outfits.table as AnyPgTable & Record<string, any>;
+  const garmentTable = WORKSPACE_RESOURCES.garments.table as AnyPgTable & Record<string, any>;
+  const planTable = WORKSPACE_RESOURCES["outfit-plans"].table as AnyPgTable & Record<string, any>;
+  const wearTable = WORKSPACE_RESOURCES["wear-events"].table as AnyPgTable & Record<string, any>;
+  const outfit = await ownedActiveRow(tx, outfitTable, input.entityId, input.userId);
+  assertRevision(outfit.revision, input.command.expectedRevision, outfit);
+  const dateKey = input.command.date;
+  if (!dateKey) throw new WorkspaceApiError(400, "invalid_request", "缺少穿着日期");
+  const now = new Date();
+  const outfitPayload = asRecord(outfit.payload);
+  const legacyOutfitId = String(outfitPayload.legacyOutfitId ?? input.entityId);
+  const itemIds = numberList(outfitPayload.legacyItemIds ?? outfitPayload.itemIds);
+
+  const plans = await tx.select().from(planTable).where(and(eq(planTable.userId, input.userId), isNull(planTable.deletedAt))) as any[];
+  const sameDay = plans.filter((row) => String(asRecord(row.payload).date ?? "") === dateKey);
+  const cancelledPlans = sameDay.filter((row) => {
+    const payload = asRecord(row.payload);
+    return payload.status === "worn" && (payload.outfitId === legacyOutfitId || payload.actualOutfitId === legacyOutfitId);
+  });
+  for (const plan of cancelledPlans) {
+    const payload = asRecord(plan.payload);
+    if (payload.wearOrigin === "planned_confirmed" || payload.plannedBeforeWorn) {
+      const hasOtherPrimary = sameDay.some((row) => row.id !== plan.id && asRecord(row.payload).status === "planned" && asRecord(row.payload).isPrimary);
+      const nextPayload = {
+        ...payload, status: "planned", isPrimary: !hasOtherPrimary, wornDateLinked: undefined,
+        actualOutfitId: undefined, wearOrigin: undefined, plannedBeforeWorn: undefined, isPrimaryActual: undefined, updatedAt: now.toISOString(),
+      };
+      await tx.update(planTable).set({ revision: plan.revision + 1, originDeviceId: input.deviceId, payload: nextPayload, updatedAt: now }).where(eq(planTable.id, plan.id));
+      await appendChange(tx, input.userId, "outfitPlan", plan.id, "update", plan.revision + 1, nextPayload);
+    } else {
+      await tx.update(planTable).set({ revision: plan.revision + 1, originDeviceId: input.deviceId, deletedAt: now, updatedAt: now }).where(eq(planTable.id, plan.id));
+      await appendChange(tx, input.userId, "outfitPlan", plan.id, "delete", plan.revision + 1, {});
+    }
+  }
+
+  const otherWorn = sameDay.filter((row) => !cancelledPlans.some((cancelled) => cancelled.id === row.id) && asRecord(row.payload).status === "worn");
+  const otherLegacyOutfitIds = otherWorn.map((row) => String(asRecord(row.payload).actualOutfitId ?? asRecord(row.payload).outfitId ?? ""));
+  const allOutfits = await tx.select().from(outfitTable).where(and(eq(outfitTable.userId, input.userId), isNull(outfitTable.deletedAt))) as any[];
+  const otherWornItemIds = new Set(allOutfits
+    .filter((row) => otherLegacyOutfitIds.includes(String(asRecord(row.payload).legacyOutfitId ?? row.id)))
+    .flatMap((row) => numberList(asRecord(row.payload).legacyItemIds ?? asRecord(row.payload).itemIds)));
+
+  const nextOutfitPayload = { ...outfitPayload, wornDates: removeDate(outfitPayload.wornDates, dateKey), updatedAt: now.toISOString() };
+  const outfitRevision = outfit.revision + 1;
+  await tx.update(outfitTable).set({ revision: outfitRevision, originDeviceId: input.deviceId, payload: nextOutfitPayload, updatedAt: now }).where(eq(outfitTable.id, input.entityId));
+  await appendChange(tx, input.userId, "outfit", input.entityId, "update", outfitRevision, nextOutfitPayload);
+
+  const garments = await tx.select().from(garmentTable).where(and(eq(garmentTable.userId, input.userId), isNull(garmentTable.deletedAt))) as any[];
+  for (const garment of garments) {
+    const payload = asRecord(garment.payload);
+    const legacyItemId = Number(payload.legacyItemId);
+    if (!itemIds.includes(legacyItemId) || otherWornItemIds.has(legacyItemId)) continue;
+    const nextPayload = { ...payload, wornDates: removeDate(payload.wornDates, dateKey), updatedAt: now.toISOString() };
+    await tx.update(garmentTable).set({ revision: garment.revision + 1, originDeviceId: input.deviceId, payload: nextPayload, updatedAt: now }).where(eq(garmentTable.id, garment.id));
+    await appendChange(tx, input.userId, "garment", garment.id, "update", garment.revision + 1, nextPayload);
+  }
+
+  const remainingPrimary = otherWorn.find((row) => asRecord(row.payload).isPrimaryActual) ?? otherWorn[0];
+  const remainingOutfitId = remainingPrimary ? String(asRecord(remainingPrimary.payload).actualOutfitId ?? asRecord(remainingPrimary.payload).outfitId ?? "") : undefined;
+  for (const plan of sameDay.filter((row) => asRecord(row.payload).status === "changed" && asRecord(row.payload).actualOutfitId === legacyOutfitId)) {
+    const payload = asRecord(plan.payload);
+    const nextPayload = remainingOutfitId
+      ? { ...payload, actualOutfitId: remainingOutfitId, updatedAt: now.toISOString() }
+      : { ...payload, status: "planned", actualOutfitId: undefined, updatedAt: now.toISOString() };
+    await tx.update(planTable).set({ revision: plan.revision + 1, originDeviceId: input.deviceId, payload: nextPayload, updatedAt: now }).where(eq(planTable.id, plan.id));
+    await appendChange(tx, input.userId, "outfitPlan", plan.id, "update", plan.revision + 1, nextPayload);
+  }
+
+  const events = await tx.select().from(wearTable).where(and(eq(wearTable.userId, input.userId), isNull(wearTable.deletedAt))) as any[];
+  for (const event of events.filter((row) => asRecord(row.payload).sourceOutfitId === input.entityId && String(asRecord(row.payload).wornAt).slice(0, 10) === dateKey)) {
+    await tx.update(wearTable).set({ revision: event.revision + 1, deletedAt: now, updatedAt: now }).where(eq(wearTable.id, event.id));
+    await appendChange(tx, input.userId, "wearEvent", event.id, "delete", event.revision + 1, {});
+  }
+  return { entity: toEntity({ id: input.entityId, revision: outfitRevision, payload: nextOutfitPayload, createdAt: outfit.createdAt, updatedAt: now }), revision: outfitRevision };
+}
+
+async function createWearEvent(tx: Tx, input: { userId: string; deviceId: string; now: Date; payload: Record<string, unknown> }): Promise<void> {
+  const table = WORKSPACE_RESOURCES["wear-events"].table as AnyPgTable & Record<string, any>;
+  const id = randomUUID();
+  await tx.insert(table).values({ id, userId: input.userId, revision: 1, originDeviceId: input.deviceId, payload: input.payload, ...specialColumns("wear-events", input.payload), createdAt: input.now, updatedAt: input.now });
+  await appendChange(tx, input.userId, "wearEvent", id, "create", 1, input.payload);
 }
 
 async function ownedActiveRow(tx: Tx, table: AnyPgTable & Record<string, any>, id: string, userId: string): Promise<any> {
@@ -295,7 +473,7 @@ function sanitizePayload(payload: Record<string, unknown>): Record<string, unkno
 
 function specialColumns(resource: WorkspaceResource, payload: Record<string, unknown>) {
   if (resource === "trip-plans") return { startDate: stringOrNull(payload.startDate), endDate: stringOrNull(payload.endDate) };
-  if (resource === "outfit-plans") return { planDate: stringOrNull(payload.planDate), tripPlanId: uuidOrNull(payload.tripPlanId), outfitId: uuidOrNull(payload.outfitId) };
+  if (resource === "outfit-plans") return { planDate: stringOrNull(payload.planDate ?? payload.date), tripPlanId: uuidOrNull(payload.tripPlanId), outfitId: uuidOrNull(payload.outfitId) };
   if (resource === "wear-events") return { wornAt: new Date(String(payload.wornAt ?? new Date().toISOString())), garmentId: uuidOrNull(payload.garmentId), outfitId: uuidOrNull(payload.outfitId) };
   if (resource === "profiles") return { profileType: typeof payload.profileType === "string" ? payload.profileType : "tryOn" };
   return {};
@@ -304,3 +482,12 @@ function specialColumns(resource: WorkspaceResource, payload: Record<string, unk
 function stringOrNull(value: unknown): string | null { return typeof value === "string" ? value : null; }
 function uuidOrNull(value: unknown): string | null { return typeof value === "string" && /^[0-9a-f-]{36}$/i.test(value) ? value : null; }
 function asRecord(value: unknown): Record<string, any> { return value && typeof value === "object" && !Array.isArray(value) ? value as Record<string, any> : {}; }
+function numberList(value: unknown): number[] { return Array.isArray(value) ? value.map(Number).filter(Number.isFinite) : []; }
+function dateList(value: unknown): string[] { return Array.isArray(value) ? value.filter((entry): entry is string => typeof entry === "string") : []; }
+function addDate(value: unknown, date: string): string[] { return [...new Set([...dateList(value), date])].sort(); }
+function removeDate(value: unknown, date: string): string[] { return dateList(value).filter((entry) => entry !== date); }
+function stableNumericId(value: string): number {
+  let hash = 2166136261;
+  for (const char of value) hash = Math.imul(hash ^ char.charCodeAt(0), 16777619);
+  return Math.abs(hash) || 1;
+}

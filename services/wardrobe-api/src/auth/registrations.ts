@@ -9,6 +9,7 @@ import {
   passwordCredentials,
   pendingRegistrations,
   phoneIdentities,
+  locations,
   users,
 } from "../db/schema.js";
 import { hashPassword } from "../security/password.js";
@@ -84,6 +85,7 @@ export interface RegistrationStore {
     phoneE164: string;
     maskedPhone: string;
     passwordHash: string;
+    deviceId: string;
     now: Date;
   }): Promise<DirectRegistrationResult>;
 }
@@ -229,6 +231,13 @@ export class PostgresRegistrationStore implements RegistrationStore {
         createdAt: input.now,
         updatedAt: input.now,
       });
+      await tx.insert(locations).values({
+        userId: createdUser.id,
+        originDeviceId: input.deviceId,
+        payload: { dexieId: "home", name: "默认衣橱", note: "默认衣橱", sortOrder: 1 },
+        createdAt: input.now,
+        updatedAt: input.now,
+      });
       const [session] = await tx
         .insert(deviceSessions)
         .values({
@@ -264,6 +273,7 @@ export class PostgresRegistrationStore implements RegistrationStore {
     phoneE164: string;
     maskedPhone: string;
     passwordHash: string;
+    deviceId: string;
     now: Date;
   }) {
     return getDb().transaction(async (tx) => {
@@ -280,6 +290,13 @@ export class PostgresRegistrationStore implements RegistrationStore {
         userId: createdUser.id,
         passwordHash: input.passwordHash,
         changedAt: input.now,
+        createdAt: input.now,
+        updatedAt: input.now,
+      });
+      await tx.insert(locations).values({
+        userId: createdUser.id,
+        originDeviceId: input.deviceId,
+        payload: { dexieId: "home", name: "默认衣橱", note: "默认衣橱", sortOrder: 1 },
         createdAt: input.now,
         updatedAt: input.now,
       });
@@ -426,6 +443,7 @@ export class RegistrationService {
   async directRegister(input: {
     phone: string;
     password: string;
+    deviceId: string;
     rateLimitKey: string;
     ip?: string;
     userAgent?: string;
@@ -454,6 +472,7 @@ export class RegistrationService {
         phoneE164,
         maskedPhone,
         passwordHash: await hashPassword(input.password),
+        deviceId: input.deviceId,
         now,
       });
 

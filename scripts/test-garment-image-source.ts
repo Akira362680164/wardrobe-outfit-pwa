@@ -117,6 +117,17 @@ console.log("\n=== 缩略图优先：有 thumbnail 无 original 仍创建主图�
   checkEq("display 仍等待 original", list[0]?.displayImageDataUrl, "");
 }
 
+console.log("\n=== 线上图片：blob Object URL 可用 ===");
+{
+  const item = makeItem({
+    imageDataUrl: "blob:http://127.0.0.1/original",
+    thumbnailDataUrl: "blob:http://127.0.0.1/thumbnail",
+  });
+  const list = deriveGarmentImageList(item, []);
+  checkEq("blob 主图不被过滤", list[0]?.displayImageDataUrl, item.imageDataUrl);
+  checkEq("blob 缩略图不被过滤", list[0]?.cardImageDataUrl, item.thumbnailDataUrl);
+}
+
 console.log("\n=== 缩略图优先：有 original 无 thumbnail 不把 original 当 card 图 ===");
 {
   const item = makeItem({

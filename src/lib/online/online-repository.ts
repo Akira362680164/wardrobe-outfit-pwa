@@ -121,6 +121,16 @@ export class OnlineWorkspaceRepository {
       imageDataUrl: { refField: "imageDataUrl", variant: "original" },
       thumbnailDataUrl: { refField: "imageDataUrl", variant: "thumbnail" },
     });
+    const referenceOutfitImages = await Promise.all((Array.isArray(p.referenceOutfitImages) ? p.referenceOutfitImages : []).map(async (value) => {
+      const reference = value && typeof value === "object" ? value as Record<string, unknown> : {};
+      const field = typeof reference.assetField === "string" ? reference.assetField : `referenceOutfitImage:${String(reference.id ?? "")}`;
+      const ref = entity.assetRefs?.[field];
+      return {
+        ...reference,
+        imageDataUrl: ref ? await this.images.load(ref.assetId, "original", ref.variantSha256?.original ?? ref.sha256) : undefined,
+        thumbnailDataUrl: ref?.variants.includes("thumbnail") ? await this.images.load(ref.assetId, "thumbnail", ref.variantSha256?.thumbnail) : undefined,
+      };
+    }));
     return bindOnlineEntityMetadata({
       id: numericId(p.legacyItemId, entity.id),
       locationId: stringValue(p.locationId, "home"),
@@ -140,7 +150,7 @@ export class OnlineWorkspaceRepository {
       fitNotes: optionalString(p.fitNotes), notes: optionalString(p.notes), price: optionalNumber(p.price),
       productUrl: optionalString(p.productUrl), cropRevision: optionalNumber(p.cropRevision),
       thumbnailCropRevision: optionalNumber(p.thumbnailCropRevision), wornDates: stringArray(p.wornDates),
-      purchaseDate: optionalString(p.purchaseDate), referenceOutfitImages: p.referenceOutfitImages as WardrobeItem["referenceOutfitImages"],
+      purchaseDate: optionalString(p.purchaseDate), referenceOutfitImages: referenceOutfitImages as WardrobeItem["referenceOutfitImages"],
       aiStyleAdvice: p.aiStyleAdvice as WardrobeItem["aiStyleAdvice"], aiConfidence: optionalNumber(p.aiConfidence),
       needsReview: optionalBoolean(p.needsReview), thumbnailVersion: optionalNumber(p.thumbnailVersion),
       thumbnailUpdatedAt: optionalString(p.thumbnailUpdatedAt), thumbnailStatus: p.thumbnailStatus as WardrobeItem["thumbnailStatus"],

@@ -91,18 +91,26 @@ describe("workspace routes", () => {
     await app.close();
   });
 
-  it("forwards create, batch, state and delete commands without accepting userId from the client", async () => {
+  it("forwards create, batch, mutation lookup, wear state and delete commands without accepting userId from the client", async () => {
     const calls: any[] = [];
     const committed = { status: "committed" as const, entity: entity(), revision: 1 };
-    const command = Object.fromEntries(["create", "batchCreate", "patchPayload", "delete"].map((name) => [name, async (input: any) => { calls.push({ name, input }); return committed; }])) as unknown as WorkspaceCommandService;
+    const forwarded = Object.fromEntries(["create", "batchCreate", "patchPayload", "markWorn", "cancelWorn", "delete"].map((name) => [name, async (input: any) => { calls.push({ name, input }); return committed; }]));
+    const command = {
+      ...forwarded,
+      mutationResult: async (userId: string, id: string) => { calls.push({ name: "mutationResult", input: { userId, id } }); return committed; },
+    } as unknown as WorkspaceCommandService;
     const app = appWith({ command });
     const headers = { ...authHeaders(), "content-type": "application/json" };
     const create = await app.inject({ method: "POST", url: "/api/workspace/garments", headers, payload: { clientMutationId: mutationId, payload: { name: "coat", userId: "attacker" }, temporaryAssetIds: [] } });
     expect(WorkspaceCommandResponseSchema.parse(create.json()).status).toBe("committed");
     await app.inject({ method: "POST", url: "/api/workspace/garments/batch", headers, payload: { items: [{ clientMutationId: mutationId, payload: {}, temporaryAssetIds: [] }] } });
+    const mutation = await app.inject({ method: "GET", url: `/api/workspace/mutations/${mutationId}`, headers });
+    expect(mutation.json()).toMatchObject({ response: { status: "committed" } });
     await app.inject({ method: "POST", url: `/api/workspace/outfits/${entityId}/favorite`, headers, payload: { clientMutationId: mutationId, expectedRevision: 1, value: true, payload: {} } });
+    await app.inject({ method: "POST", url: `/api/workspace/outfits/${entityId}/mark-worn`, headers, payload: { clientMutationId: mutationId, expectedRevision: 1, wornAt: now } });
+    await app.inject({ method: "POST", url: `/api/workspace/outfits/${entityId}/cancel-worn`, headers, payload: { clientMutationId: mutationId, expectedRevision: 1, date: "2026-06-30", payload: {} } });
     await app.inject({ method: "DELETE", url: `/api/workspace/garments/${entityId}`, headers, payload: { clientMutationId: mutationId, expectedRevision: 1 } });
-    expect(calls.map((call) => call.name)).toEqual(["create", "batchCreate", "patchPayload", "delete"]);
+    expect(calls.map((call) => call.name)).toEqual(["create", "batchCreate", "mutationResult", "patchPayload", "markWorn", "cancelWorn", "delete"]);
     expect(calls.every((call) => call.input.userId === "user-1")).toBe(true);
     await app.close();
   });
