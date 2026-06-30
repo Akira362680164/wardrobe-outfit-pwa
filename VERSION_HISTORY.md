@@ -1,4 +1,21 @@
 
+## 2026-06-30 / v2.1.0-test / Codex — GitHub 公开仓库推送 + 执行报告
+
+- **目的**：将 v2.1.0-test 纯线上工作区代码上传至 GitHub 公开仓库，并生成完整执行报告。
+- **版本**：`2.1.0-test`。
+- **改动文件**：`EXECUTION_REPORT_v2.1.0-test.md`（新增）、`VERSION_HISTORY.md`。
+- **GitHub 发布**：
+  - 仓库：`Akira362680164/wardrobe-outfit-pwa`
+  - 分支：`main`（commit `facf626`）
+  - 方式：全新 `git init`，不保留私有仓库历史（历史曾含 APK/agent 配置/签名文件）
+  - 排除：签名 keystore、AGENTS.md/CLAUDE.md/MINIMAX.md、env 配置、APK、同步日志
+  - 包含：源码、Android 工程、测试、文档、部署配置（516 文件）
+- **本地验证**：`npm run typecheck` 通过；`npm run test:logic:all` 全通过；`npm run build` 通过。
+- **风险门禁**：**low**（仅生成报告和推送，不修改业务代码）。
+- **未触发 subagent**：用户未通知。
+- **未验证风险**：公开仓库不含固定签名文件，无法直接从公开仓库构建 APK（预期行为）。
+
+
 ## 2026-06-30 / v2.1.0-test / Codex — Android 模拟器验证 + bridge 清理完成
 
 - **目的**：在 Android 模拟器上完成 APK 安装和功能验证，同时彻底移除所有 bridge 包装层。
