@@ -13,7 +13,7 @@ import {
   type AuthUserSnapshot,
 } from "@/lib/auth-session-store";
 import * as authApi from "@/lib/cloud-auth-api";
-import { probeCloudConnectivity, subscribeNetworkChanges, type ConnectivityState } from "@/lib/cloud-sync/connectivity";
+import { probeCloudConnectivity, subscribeNetworkChanges, type ConnectivityState } from "@/lib/online/online-connectivity";
 
 export type AuthPhase = "initializing" | "anonymous" | "authenticated" | "blocked";
 

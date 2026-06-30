@@ -1,3 +1,17 @@
+
+## 2026-06-30 / v2.1.0-test / Codex — 物理删除旧本地运行时
+
+- **目的**：物理删除所有旧 Dexie、Outbox、Bridge、Sync、图片缓存、备份依赖和旧测试代码，完成纯线上架构的最后一步。
+- **版本**：保持 `2.1.0-test`。
+- **改动文件（删除 ~50 个）**：`src/lib/cloud-sync/`（23 文件）、`src/lib/thumbnail-backfill.ts`、`src/lib/thumbnail.ts`、`src/lib/workspace-write-commands.ts`、`src/lib/workspace-registry.ts`、`src/lib/account-workspace-db.ts`、`src/lib/account-workspace-repo.ts`、`services/wardrobe-api/src/sync/`（4 文件）、`services/wardrobe-api/tests/sync-contracts.test.ts`、`scripts/test-*-cloud-sync-*.ts`（15 文件）。
+- **改动文件（新增）**：`src/lib/online/bridge-compat.ts`（bridge→wardrobeRepository 兼容适配层）、`src/lib/online/online-connectivity.ts`（从 cloud-sync/connectivity 迁移）。
+- **改动文件（修改）**：`src/lib/data-repo.ts`（stub 化为空返回）、`services/wardrobe-api/src/app.ts`（移除 sync 路由注册）、`services/wardrobe-api/src/assets/service.ts`（内联 entity-tables 逻辑）、`src/components/wardrobe-app.tsx`、`src/components/outfit-list-view.tsx`、`src/components/use-wardrobe-capture-queue-controller.ts`、`src/components/auth/auth-provider.tsx`、`src/lib/outfit-wear-sync.ts`（import 指向 compat 层）。
+- **核心实现**：创建 bridge-compat.ts 将 20+ 个旧 bridge 函数映射到 wardrobeRepository，使所有 call site 的 import 路径统一指向 compat 层；删除所有不再被引用的旧模块；修复 API 层残留的 sync 引用和 entity-tables 动态 import。
+- **本地验证**：`npm run typecheck` 通过；`npm run api:typecheck` 通过；`npm run test:logic:all` 65 pass / 0 fail。
+- **风险门禁**：**high**（物理删除 ~50 个文件、bridge-compat 适配层是过渡产物、stub getWardrobeSnapshot 返回空数据可能影响穿着同步行为）。
+- **Subagent**：本轮为主 Agent 独立完成；兼容适配层避免逐处修改 30+ 处旧 call site。
+- **未验证风险**：bridge-compat 是过渡层，后续应移除并在各组件内直接调用 wardrobeRepository；outfit-wear-sync.ts 和 use-wardrobe-capture-queue-controller.ts 仍依赖 data-repo stub，应在后续迁移。
+
 ## 2026-06-30 / v2.1.0-test / Codex + Parallel Subagents — 纯线上 Workspace 客户端接线
 
 - **目的**：将客户端切换为服务器唯一数据源架构：新增线上读取、写入、图片下载、加载/错误 UI 和旧业务数据清理器；更新主 App、录入流、种草、身份验证和数据控制器。

@@ -25,7 +25,7 @@ import {
 } from "@wardrobe/cloud-contracts";
 
 import { getDb } from "../db/client.js";
-import { assets } from "../db/schema.js";
+import { assets, garments, outfits, wishlistItems, locations, tripPlans, outfitPlans, wearEvents, profiles } from "../db/schema.js";
 import type * as schema from "../db/schema.js";
 import { StorageProviderError, type StorageProvider } from "../storage/provider.js";
 
@@ -369,8 +369,14 @@ async function assertAssetCanBind(
     }
     return;
   }
-  const { getTableForEntityType } = await import("../sync/entity-tables.js");
-  const table = getTableForEntityType(input.ownerEntityType as Parameters<typeof getTableForEntityType>[0]);
+  // Inline entity table lookup (replaces removed sync/entity-tables)
+  const entityTables: Record<string, any> = {
+    garment: garments, outfit: outfits, wishlistItem: wishlistItems,
+    closetLocation: locations, tripPlan: tripPlans, outfitPlan: outfitPlans,
+    wearEvent: wearEvents, profile: profiles,
+  };
+  const table = entityTables[input.ownerEntityType] ?? null;
+  if (!table) throw new AssetApiError(400, 'invalid_entity_type', '不支持的实体类型: ' + input.ownerEntityType);
   const rows = await db.select({ id: (table as any).id, deletedAt: (table as any).deletedAt }).from(table as any)
     .where(and(eq((table as any).id, input.ownerEntityId), eq((table as any).userId, input.userId))).limit(1);
   if (!rows[0]) throw new AssetApiError(404, "owner_entity_not_found", "图片所属数据不存在");

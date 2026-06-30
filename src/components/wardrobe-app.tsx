@@ -52,7 +52,7 @@ import { WishlistView20 } from "@/components/wishlist-view-2.0";
 import { WearStatisticsView } from "@/components/wear-statistics-view";
 import { getRecommendedPairingItemsForItem } from "@/lib/garment-detail-pairing";
 import { garmentDraftToWardrobeItem } from "@/lib/intake-save-adapters";
-import { deleteItemsWithCascade } from "@/lib/data-repo";
+import { deleteItemsWithCascade } from "@/lib/online/bridge-compat";
 import { useWardrobeDataController } from "@/components/use-wardrobe-data-controller";
 import { useWardrobeMessageController } from "@/components/use-wardrobe-message-controller";
 import { useWardrobeLightboxController } from "@/components/use-wardrobe-lightbox-controller";
@@ -103,14 +103,14 @@ import {
  CaptureImageQueueItem,
  type SelectedImagesReviewMode,
 } from "@/components/selected-images-review";
-import { createLegacyItemId } from "@/lib/workspace-write-commands";
-import { readWorkspaceTryOnProfile, saveWorkspaceTryOnProfile } from "@/lib/cloud-sync/profile-repository";
-import { bridgeGarmentCreate, bridgeGarmentDelete, bridgeGarmentUpdate } from "@/lib/cloud-sync/garment-bridge";
-import { bridgeLocationDelete, bridgeLocationUpsert } from "@/lib/cloud-sync/location-bridge";
-import { bridgeOutfitDelete, bridgeOutfitUpsert } from "@/lib/cloud-sync/outfit-bridge";
-import { bridgeOutfitPlanDelete } from "@/lib/cloud-sync/plan-bridge";
-import { bridgeWearEventsForGarment } from "@/lib/cloud-sync/wear-bridge";
-import { bridgeWishlistUpsert } from "@/lib/cloud-sync/wishlist-bridge";
+import { createLegacyItemId } from "@/lib/online/bridge-compat";
+import { readWorkspaceTryOnProfile, saveWorkspaceTryOnProfile } from "@/lib/online/bridge-compat";
+import { bridgeGarmentCreate, bridgeGarmentUpdate } from "@/lib/online/bridge-compat";
+import { bridgeLocationDelete, bridgeLocationUpsert } from "@/lib/online/bridge-compat";
+import { bridgeOutfitUpsert } from "@/lib/online/bridge-compat";
+import { bridgeOutfitPlanDelete } from "@/lib/online/bridge-compat";
+import { bridgeWearEventsForGarment } from "@/lib/online/bridge-compat";
+import { bridgeWishlistUpsert } from "@/lib/online/bridge-compat";
 import { isAccessTokenFresh, loadAuthSessionSnapshot } from "@/lib/auth-session-store";
 import { wardrobeRepository } from "@/lib/repository/wardrobe-repository";
 import {

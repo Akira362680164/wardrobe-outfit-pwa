@@ -4,9 +4,9 @@
 import { getWardrobeSnapshot } from "@/lib/data-repo";
 import { addWornDate, removeWornDate } from "@/lib/wear-records";
 import type { OutfitPlanEntry, OutfitPlanEntryRole } from "@/lib/types";
-import { bridgeOutfitPlanDelete, bridgeOutfitPlanUpsert } from "@/lib/cloud-sync/plan-bridge";
-import { bridgeOutfitUpsert } from "@/lib/cloud-sync/outfit-bridge";
-import { bridgeGarmentUpdate } from "@/lib/cloud-sync/garment-bridge";
+import { bridgeOutfitPlanDelete, bridgeOutfitPlanUpsert } from "@/lib/online/bridge-compat";
+import { bridgeOutfitUpsert } from "@/lib/online/bridge-compat";
+import { bridgeGarmentUpdate } from "@/lib/online/bridge-compat";
 
 // ============================================================
 // 错误类型

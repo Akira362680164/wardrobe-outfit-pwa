@@ -18,8 +18,6 @@ import { registerRequestTraceMiddleware } from "./diagnostics/request-trace-midd
 import { readFile } from "node:fs/promises";
 import { checkDatabaseReady } from "./db/client.js";
 import { getApiVersion } from "./version.js";
-import { registerSyncRoutes } from "./sync/routes.js";
-import { SyncService } from "./sync/service.js";
 import { redactedLogSerializer } from "./shared/redact.js";
 import { loadStorageConfig } from "./storage/config.js";
 import { createStorageProviderFromEnv } from "./storage/factory.js";
@@ -35,7 +33,6 @@ export interface BuildAppOptions {
   readinessCheck?: ReadinessCheck;
   registrationService?: RegistrationService;
   sessionService?: SessionService;
-  syncService?: SyncService;
   assetService?: AssetService;
   workspaceQueryService?: WorkspaceQueryService;
   workspaceCommandService?: WorkspaceCommandService;
@@ -130,11 +127,6 @@ export function buildApp(options: BuildAppOptions = {}): FastifyInstance {
 
   registerAuthRoutes(app, options.registrationService, sharedSessionService);
   registerSessionRoutes(app, sharedSessionService);
-  registerSyncRoutes(app, options.syncService ?? new SyncService(
-    undefined,
-    (input) => assetService.deleteAsset(input),
-    (input) => assetService.deleteAssetsForOwner(input),
-  ), sharedSessionService ?? new SessionService());
   registerAssetRoutes(app, assetService, sharedSessionService ?? new SessionService(), storageConfig.maxAssetBytes);
   registerWorkspaceRoutes(
     app,
