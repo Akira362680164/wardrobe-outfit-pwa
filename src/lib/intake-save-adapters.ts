@@ -24,11 +24,13 @@ export function garmentDraftToWardrobeItem(
 ): Omit<WardrobeItem, "id"> {
   const now = options.now ?? new Date().toISOString();
   const imageDataUrl = requireGarmentOriginalImage(draft);
+  const cropBox = draft.cropBox ?? { x: 0, y: 0, width: 1, height: 1 };
+  const cropRevision = draft.cropRevision ?? (draft.cropBox ? 1 : 0);
 
   return {
     name: requiredText(fieldValue(draft.name, ""), "未命名衣物"),
     imageDataUrl,
-    cropBox: draft.cropBox,
+    cropBox,
     category: fieldValue(draft.category, "tops"),
     colors: fieldValue(draft.colors, emptyColorInfo()),
     seasons: nonEmptyArray(fieldValue<Season[]>(draft.seasons, []), ["all"]),
@@ -47,8 +49,8 @@ export function garmentDraftToWardrobeItem(
     subcategory: optionalText(draft.subcategory),
     material: optionalText(draft.material),
     thumbnailDataUrl: draft.thumbnailDataUrl,
-    cropRevision: draft.cropRevision ?? (draft.cropBox ? 1 : 0),
-    thumbnailCropRevision: draft.thumbnailCropRevision ?? (draft.cropRevision ?? (draft.cropBox ? 1 : 0)),
+    cropRevision,
+    thumbnailCropRevision: draft.thumbnailCropRevision ?? cropRevision,
     ...(draft.thumbnailDataUrl
       ? { thumbnailVersion: CURRENT_THUMBNAIL_VERSION, thumbnailUpdatedAt: now, thumbnailStatus: "ready" as const }
       : {}),

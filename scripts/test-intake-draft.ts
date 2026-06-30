@@ -84,6 +84,11 @@ const uncroppedWardrobeItem = garmentDraftToWardrobeItem({
 }, { now });
 assert.equal(uncroppedWardrobeItem.cropRevision, 0, "未裁切单品 cropRevision=0");
 assert.equal(uncroppedWardrobeItem.thumbnailCropRevision, 0, "未裁切单品 thumbnailCropRevision=0");
+assert.deepEqual(
+  uncroppedWardrobeItem.cropBox,
+  { x: 0, y: 0, width: 1, height: 1 },
+  "未裁切新单品应保存全图 cropBox",
+);
 
 const wishlistDraft = buildLocalWishlistDraft({
   imageDataUrl: "data:image/png;base64,bbb",

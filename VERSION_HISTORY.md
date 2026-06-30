@@ -1,3 +1,17 @@
+## 2026-06-30 / v2.0.18-test / Codex — 统一新录入裁切参数并修复首页取图
+
+- **目的**：修复首页瀑布流对已裁切衣物仍显示完整原图的问题，并统一今后新录入衣物的裁切参数。
+- **版本**：`2.0.17-test` → `2.0.18-test`，Android `versionCode 20017` → `20018`。
+- **根因**：`SwipeImageCarousel` 的 `card` 模式错误优先选择完整原图 `displaySrc`，覆盖了首页已传入的 `thumbnailDataUrl`。
+- **修复**：卡片模式固定选择缩略图，详情/审核模式保持现有原图行为；新衣物保存时，未手工裁切者写入 `{ x: 0, y: 0, width: 1, height: 1 }` 且保持 `cropRevision = 0`，已裁切者保留用户裁切框。
+- **范围边界**：不迁移、不回填、不重写现有衣物数据；不改 Workspace / Dexie schema，不新增依赖。
+- **改动文件**：`src/lib/{intake-save-adapters,carousel-logic}.ts`、`src/components/swipe-image-carousel.tsx`、`scripts/test-{intake-draft,carousel-logic}.ts`、`package.json`、`package-lock.json`、`docs/superpowers/plans/2026-06-30-garment-cropbox-card-image.md`。
+- **本地验证**：新增回归已先证明修复前失败；修复后 `test-intake-draft` 通过，`test-carousel-logic` 14/14 通过，`test:logic:images` 65/65 通过，`test:logic:detail-shell` 通过；`npm run typecheck`、`npm run test:logic:all`、`npm run build`、`git diff --check` 全部通过；`node scripts/review-gate.mjs` 判定 high。
+- **APK 交付**：将在本条证明提交后，从该精确 commit 构建并核验固定签名 APK；生成产物不进入 Git。
+- **风险门禁**：**high**（首页图片、新录入数据语义、Android 版本与 APK 交付）。
+- **未触发 subagent**：用户未通知。
+- **未验证风险**：按用户当前指令，Codex 不在 Android 模拟器或真机安装验证；已裁切/未裁切的手机实操验收由用户完成。
+
 ## 2026-06-30 / v2.0.17-test / Codex — 设计新录入裁切参数与首页取图统一方案
 
 - **目的**：根据用户确认的设计，将今后新录入但未手工裁切的衣物统一赋予全图 `cropBox`，并修正首页卡片误选完整原图的设计边界。

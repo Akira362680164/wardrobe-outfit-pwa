@@ -3,7 +3,7 @@
 import { Plus } from "lucide-react";
 import { motion } from "motion/react";
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
-import { clampCarouselIndex, getSwipeNextIndex } from "@/lib/carousel-logic";
+import { clampCarouselIndex, getSwipeNextIndex, resolveCarouselImageSource } from "@/lib/carousel-logic";
 import { GarmentImage } from "@/components/garment-image";
 import { OriginalCroppedImage } from "@/components/original-cropped-image";
 
@@ -135,9 +135,13 @@ function SwipeImagePage({ slide, isDragging, imageFitClass, onClickImage, varian
     );
   }
 
-  const src = variant !== "card" && isDragging && slide.thumbnailSrc
-    ? slide.thumbnailSrc
-    : (slide.displaySrc ?? slide.imageDataUrl);
+  const src = resolveCarouselImageSource({
+    variant,
+    isDragging,
+    imageDataUrl: slide.imageDataUrl,
+    thumbnailSrc: slide.thumbnailSrc,
+    displaySrc: slide.displaySrc,
+  });
 
   return (
     <div

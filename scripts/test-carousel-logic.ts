@@ -1,4 +1,8 @@
-import { clampCarouselIndex, getSwipeNextIndex } from "../src/lib/carousel-logic";
+import {
+  clampCarouselIndex,
+  getSwipeNextIndex,
+  resolveCarouselImageSource,
+} from "../src/lib/carousel-logic";
 
 let pass = 0;
 let fail = 0;
@@ -28,6 +32,33 @@ checkEq("first image cannot swipe before first", getSwipeNextIndex(0, "previous"
 checkEq("second image swipes to third", getSwipeNextIndex(1, "next", 3), 2);
 checkEq("second image swipes back to first", getSwipeNextIndex(1, "previous", 3), 0);
 checkEq("add slide counted once", clampCarouselIndex(3, 4), 3);
+
+console.log("\n=== carousel image source ===");
+const imageSources = {
+  imageDataUrl: "data:image/webp;base64,THUMB",
+  thumbnailSrc: "data:image/webp;base64,THUMB",
+  displaySrc: "data:image/jpeg;base64,ORIGINAL",
+};
+checkEq(
+  "card always uses thumbnail source",
+  resolveCarouselImageSource({ ...imageSources, variant: "card", isDragging: false }),
+  imageSources.thumbnailSrc,
+);
+checkEq(
+  "detail at rest uses original display source",
+  resolveCarouselImageSource({ ...imageSources, variant: "detail", isDragging: false }),
+  imageSources.displaySrc,
+);
+checkEq(
+  "detail while dragging uses thumbnail source",
+  resolveCarouselImageSource({ ...imageSources, variant: "detail", isDragging: true }),
+  imageSources.thumbnailSrc,
+);
+checkEq(
+  "review at rest uses original display source",
+  resolveCarouselImageSource({ ...imageSources, variant: "review", isDragging: false }),
+  imageSources.displaySrc,
+);
 
 if (fail > 0) {
   console.error(`\ncarousel logic tests failed: ${fail}/${pass + fail}`);
