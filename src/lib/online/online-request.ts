@@ -46,7 +46,7 @@ export async function onlineRequestRaw<T>(path: string, options: OnlineRequestOp
   };
   const isBlobBody = options.body instanceof Blob;
   if (options.body !== undefined && !isBlobBody && !headers["Content-Type"]) headers["Content-Type"] = "application/json";
-  const transport = Capacitor.isNativePlatform() && responseType === "json" && !isBlobBody && /^https?:\/\//.test(url)
+  const transport = Capacitor.isNativePlatform() && !isBlobBody && /^https?:\/\//.test(url)
     ? "capacitor_http"
     : "fetch";
   const startedAt = Date.now();
@@ -62,12 +62,16 @@ export async function onlineRequestRaw<T>(path: string, options: OnlineRequestOp
         url,
         headers,
         data: options.body,
+        responseType: responseType === "blob" ? "blob" : "json",
         connectTimeout: timeoutMs,
         readTimeout: timeoutMs,
       });
       const responseHeaders = normalizeHeaders(response.headers);
       if (response.status >= 400) throw toOnlineRequestError(response.status, response.data, header(responseHeaders, "x-wardrobe-request-id") ?? requestId);
-      result = { data: response.data as T, status: response.status, headers: responseHeaders, requestId: header(responseHeaders, "x-wardrobe-request-id") ?? requestId };
+      const data = responseType === "blob"
+        ? nativeBase64ToBlob(String(response.data), header(responseHeaders, "content-type") ?? "application/octet-stream")
+        : response.data;
+      result = { data: data as T, status: response.status, headers: responseHeaders, requestId: header(responseHeaders, "x-wardrobe-request-id") ?? requestId };
     } else {
       result = await requestWithFetch<T>(url, path, requestId, headers, { ...options, method, responseType, timeoutMs });
     }
@@ -84,6 +88,13 @@ export async function onlineRequestRaw<T>(path: string, options: OnlineRequestOp
     });
     throw normalized;
   }
+}
+
+export function nativeBase64ToBlob(base64: string, mimeType: string): Blob {
+  const binary = globalThis.atob(base64);
+  const bytes = new Uint8Array(binary.length);
+  for (let index = 0; index < binary.length; index += 1) bytes[index] = binary.charCodeAt(index);
+  return new Blob([bytes], { type: mimeType });
 }
 
 async function requestWithFetch<T>(

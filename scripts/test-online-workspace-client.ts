@@ -4,9 +4,14 @@ import type { WorkspaceEntity } from "@wardrobe/cloud-contracts";
 
 import { OnlineImageClient } from "../src/lib/online/online-image-client";
 import { getOnlineEntityMetadata, OnlineWorkspaceRepository } from "../src/lib/online/online-repository";
+import { nativeBase64ToBlob } from "../src/lib/online/online-request";
 import { beginOnlineLoad, failOnlineLoad, finishOnlineLoad, initialOnlineState } from "../src/lib/online/online-state";
 
 async function main() {
+  const nativeBlob = nativeBase64ToBlob(Buffer.from("native-image").toString("base64"), "image/jpeg");
+  assert.equal(nativeBlob.type, "image/jpeg");
+  assert.equal(await nativeBlob.text(), "native-image");
+
   const loading = initialOnlineState<{ value: number }>();
   assert.deepEqual(loading, { status: "loading", data: null });
   const ready = finishOnlineLoad({ value: 1 });

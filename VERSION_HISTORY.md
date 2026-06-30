@@ -3479,3 +3479,13 @@
 - **风险门禁**：**high**（图片像素语义、重新裁切、云端资产、版本升级和 Android APK）。
 - **未触发 subagent**：用户未通知。
 - **未验证风险**：Android 模拟器未登录真实账号，未在 WebView 内完成选图、裁切、云端清本地数据后重登恢复；Dev Server 流程和真实 API 二进制校验分别覆盖了交互与云资产闭环，但不能替代该项真机联合验收。MiniMax live 识别未单独复测。
+## 2026-06-30 / v2.1.1-test / Codex — 修复 Android 原生图片下载解码
+
+- **目的**：真实 Android 模拟器登录线上账号后，服务端单品数据可见但图片卡片显示“图片读取失败”；定位为启用 Capacitor HTTP 拦截器时，WebView `fetch().blob()` 没有得到可用图片 Blob。
+- **改动文件**：`src/lib/online/online-request.ts`、`scripts/test-online-workspace-client.ts`、`VERSION_HISTORY.md`。
+- **修复**：Android/iOS 原生端的图片读取改为显式调用 `CapacitorHttp` 的 `blob` 响应模式，并将原生返回的 Base64 正文解码为带正确 MIME 的内存 Blob；图片上传仍保留原 Blob/fetch 路径。
+- **验证通过**：`npm run typecheck`；`npm run test:logic:online-workspace`（新增 Base64 → Blob 内容/MIME 断言）；`npm run build`。
+- **风险门禁**：**high**（Android 原生网络与线上图片主链路）。
+- **未触发 subagent**：用户未通知。
+- **待完成验证**：提交后重建固定签名 APK，在 Android 35 模拟器重新登录同一线上账号并确认原图显示、重装后服务器恢复及无致命 logcat。
+
