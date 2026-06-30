@@ -1,4 +1,18 @@
 
+## 2026-07-01 / v2.1.1-test / Codex — 真实服务器、Android 全新安装与执行报告收口
+
+- **目的**：完成 v2.1.0-test “线上化架构主体已落地”之后的发布前收口，将可启动构建升级为经真实 PostgreSQL、持久图片存储和 Android 联网验证的 v2.1.1-test。
+- **服务端**：`http://111.231.98.86/api/ready` 的 database/storage/jwt 就绪；部署镜像 `wardrobe-api:d68f2d2`；远端烟测通过注册、唯一默认衣橱、原图/缩略图、单品 CRUD、套装/计划/穿着事务、幂等重试、种草转换/撤销和删除。
+- **Android 验证**：AVD `wardrobe-test`（Android 15 / API 35 / arm64-v8a）全新安装后登录真实服务器；衣物原图/缩略图无破图；单品编辑后杀进程重启可从服务器读回；已穿/撤销穿着事务通过；衣橱/套装/种草和详情返回通过；横竖屏无水平溢出。
+- **故障恢复**：在模拟器防火墙拒绝测试 API 后，冷启动显示网络失败与重新加载；恢复网络后数据和图片恢复；筛选 `FATAL` / `AndroidRuntime` / 目标进程为 0 条致命崩溃。断网保留草稿、HTTP 500、图片上传失败和网关 504 幂等恢复由真实 PostgreSQL E2E 覆盖。
+- **全量门禁**：`npm run typecheck`、`npm run test:logic:all`、`npm run api:typecheck`、`npm run api:test`（7 文件 / 56 项）、`npm run build`通过；`npm run test:e2e` **37/37** 通过。
+- **APK**：根目录 `衣橱穿搭助手-v2.1.1-test.apk`（9.5 MB）；versionCode `20101`；内嵌 commit `50da97c`；固定签名 `CN=fangzheng`；APK SHA-256 `91e102cb26127bff112c4b016dd5f7778ea088c261254e6094ebe8c4aecaf798`。
+- **报告**：重写 `EXECUTION_REPORT_v2.1.0-test.md`，区分 v2.1.0-test 原结论与 v2.1.1-test 收口证据，不再声称未部署或把空快照 Stub 列为低风险。
+- **风险门禁**：**high**（真实服务端、Android、图片、事务与 APK 交付）。
+- **未触发 subagent**：用户未通知。
+- **未验证风险**：测试 API 当前仍为明文 HTTP，正式发布前必须切换 HTTPS；本轮未配置用户 MiniMax Key，未做真实 AI 调用；最终验收为模拟器，相机与厂商权限弹窗仍需正式发布前真机复核。
+
+
 ## 2026-07-01 / v2.1.1-test / Codex — 线上唯一数据源的协议与隐私文案校正
 
 - **目的**：Android 全新安装验证时发现注册页内嵌协议仍声称使用 Dexie 完整副本和持久图片缓存，与 v2.1.1-test 线上唯一数据源实现冲突。
