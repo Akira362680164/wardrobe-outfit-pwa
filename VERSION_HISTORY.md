@@ -1,4 +1,25 @@
 
+## 2026-06-30 / v2.1.0-test / Codex — Android 模拟器验证 + bridge 清理完成
+
+- **目的**：在 Android 模拟器上完成 APK 安装和功能验证，同时彻底移除所有 bridge 包装层。
+- **版本**：保持 `2.1.0-test`。
+- **改动文件**：`src/lib/repository/wardrobe-repository.ts`（移除 bridge 包装、新增 rethrowIfFailed + upsert*/delete* 辅助）、`src/components/wardrobe-app.tsx`、`src/components/outfit-list-view.tsx`、`src/lib/outfit-wear-sync.ts`、`src/components/use-wardrobe-capture-queue-controller.ts`（55 处 bridge 调用全部改为直接 repo 调用）、`VERSION_HISTORY.md`。
+- **Android 模拟器验证**：
+  - 设备：Pixel 6 / API 35 / arm64-v8a / Google APIs（AVD wardrobe-test）
+  - 安装：`adb install -r` → `Success`
+  - 启动：`am start` → PID 12784, `mCurrentFocus=MainActivity`
+  - 致命崩溃：0（无 FATAL/AndroidRuntime 异常）
+  - 横竖屏：正常切换无崩溃
+  - 系统返回键：正常
+  - 卸载重装：`uninstall` + `install` 成功，重新启动无崩溃
+  - 此前阻塞原因：ADB 等待循环中 grep 条件误写 `device"`（多余双引号），非模拟器启动问题。本轮修正后 ~1 秒检测到 boot_completed=1。
+- **bridge 清理**：55 处 bridge*() 调用全部替换为 rethrowIfFailed(repo*()) 或 upsert*/delete*；bridge-compat.ts 和所有 bridge 函数名从代码中消失。
+- **本地验证**：`npm run typecheck` 通过；`npm run test:logic:all` 65/0 通过；`npm run build` 通过。
+- **风险门禁**：**high**（Android 模拟器运行时不包含真实网络请求——模拟器无服务端；image-state 和 connectivity 在无网络环境下的行为未验证；outfit-wear-sync 和 capture-queue 使用 data-repo stub 返回空数据）。
+- **Subagent**：本轮为主 Agent 独立完成。
+- **未验证风险**：弱网/断网/超时恢复（需真实服务端）；真实 API 端到端（需部署服务端）；Playwright e2e（需运行 `npm run test:e2e`）；相机选图/AI 识别/裁切/MiniMax（需在模拟器上交互式操作或在真机上测试）。
+
+
 ## 2026-06-30 / v2.1.0-test / Codex — 物理删除旧本地运行时
 
 - **目的**：物理删除所有旧 Dexie、Outbox、Bridge、Sync、图片缓存、备份依赖和旧测试代码，完成纯线上架构的最后一步。
