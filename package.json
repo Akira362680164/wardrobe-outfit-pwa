@@ -7,6 +7,7 @@
     "services/wardrobe-api"
   ],
   "scripts": {
+    "postinstall": "npm run build --workspace @wardrobe/cloud-contracts",
     "test": "npm run test:logic",
     "dev": "next dev",
     "build": "node scripts/build-web-with-info.mjs",

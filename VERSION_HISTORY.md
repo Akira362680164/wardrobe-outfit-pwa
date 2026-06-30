@@ -1,4 +1,15 @@
 
+## 2026-07-01 / v2.1.1-test / Codex — 公开仓库全新安装可复现性修复
+
+- **目的**：在无历史构建产物的公开导出目录执行 `npm ci && npm run typecheck` 时，发现 workspace 包 `@wardrobe/cloud-contracts` 的 `dist` 没有自动生成，本地主工作区曾因残留 `dist` 而掩盖该问题。
+- **修复**：在根 `package.json` 增加 `postinstall`，每次 `npm install` / `npm ci` 后使用 npm workspace 原生能力构建云契约；`package-lock.json` 同步记录 install script。
+- **改动文件**：`package.json`、`package-lock.json`、`VERSION_HISTORY.md`。
+- **验证**：将在全新公开导出目录重跑 `npm ci`、`npm run typecheck`、`npm run test:logic:all`和 `npm run build`；仅在无历史产物的全新安装通过后才推送 GitHub。
+- **风险门禁**：**low**（构建可复现性，不改变运行时业务逻辑）。
+- **未触发 subagent**：用户未通知。
+- **未验证风险**：无；公开导出的全新安装是本条的验收门禁。
+
+
 ## 2026-07-01 / v2.1.1-test / Codex — 真实服务器、Android 全新安装与执行报告收口
 
 - **目的**：完成 v2.1.0-test “线上化架构主体已落地”之后的发布前收口，将可启动构建升级为经真实 PostgreSQL、持久图片存储和 Android 联网验证的 v2.1.1-test。
