@@ -1,36 +1,30 @@
-// src/lib/repository/wardrobe-repository.ts
-// ponytail: repository now writes workspace DB directly; old Dexie remains fallback outside this layer.
+"use client";
 
 import type {
   GarmentStatus,
+  ClosetLocation,
   OutfitCalendarPlan,
   OutfitPlanEntry,
   PlanPackingChecklistItem,
   SavedOutfit,
+  TryOnProfile,
   WardrobeItem,
   WishlistItem,
 } from "@/lib/types";
-import { type WardrobeCascadeDeleteResult, type WardrobeCascadeDeleteSource } from "@/lib/wardrobe-cascade-delete";
-import { type OutfitCascadeDeleteResult } from "@/lib/outfit-cascade-delete";
+import type { WardrobeCascadeDeleteResult, WardrobeCascadeDeleteSource } from "@/lib/wardrobe-cascade-delete";
+import type { OutfitCascadeDeleteResult } from "@/lib/outfit-cascade-delete";
 import { getUndoPurchaseRisk, type UndoPurchaseRisk } from "@/lib/wishlist-conversion";
+import type { AddOutfitToDateInput, OutfitWearSyncResult } from "@/lib/outfit-wear-sync";
 import {
-  addOutfitToDate,
-  cancelActualOutfitWearForDate,
-  type AddOutfitToDateInput,
-  type OutfitWearSyncResult,
-} from "@/lib/outfit-wear-sync";
-import { bridgeOutfitPlanUpsert, bridgeOutfitPlanDelete, bridgeTripPlanUpsert, bridgeTripPlanDelete } from "@/lib/cloud-sync/plan-bridge";
-import { invalidateWorkspaceSnapshotCache } from "@/lib/data-repo";
+  bindOnlineEntityMetadata,
+  getOnlineEntityMetadata,
+  OnlineWorkspaceRepository,
+} from "@/lib/online/online-repository";
 import {
-  createLegacyItemId,
-  workspaceConvertWishlistToWardrobe,
-  workspaceDeleteGarmentsWithCascade,
-  workspaceDeleteOutfitWithCascade,
-  workspaceDeleteWishlistItems,
-  workspaceUpsertGarment,
-  workspaceUpsertOutfit,
-  workspaceUpsertWishlistItem,
-} from "@/lib/workspace-write-commands";
+  onlineWriteRepository,
+  type OnlineAssetInput,
+  type OnlineMutationOptions,
+} from "@/lib/online/online-write-repository";
 
 export interface RepoResult<T = void> {
   ok: boolean;
@@ -38,386 +32,383 @@ export interface RepoResult<T = void> {
   data?: T;
 }
 
-function ok<T>(data?: T): RepoResult<T> {
-  return { ok: true, data };
+export interface RepoMutationContext extends Partial<OnlineMutationOptions> {
+  entityId?: string;
 }
 
-function fail<T>(error: string): RepoResult<T> {
-  return { ok: false, error };
+export interface RepoBatchCreateGarmentInput {
+  item: Omit<WardrobeItem, "id"> & { id?: number };
+  clientMutationId: string;
 }
 
-/* ------------------------------------------------------------------ */
-/*  Garment commands                                                   */
-/* ------------------------------------------------------------------ */
+export interface RepoBatchCreateGarmentResult {
+  clientMutationId: string;
+  status: "succeeded" | "failed";
+  item?: WardrobeItem;
+  error?: string;
+}
+
+const reader = new OnlineWorkspaceRepository();
+
+function ok<T>(data?: T): RepoResult<T> { return { ok: true, data }; }
+function fail<T>(error: string): RepoResult<T> { return { ok: false, error }; }
+function mutationId(value?: string): string {
+  if (value) return value;
+  if (globalThis.crypto?.randomUUID) return globalThis.crypto.randomUUID();
+  return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, (char) => {
+    const random = Math.floor(Math.random() * 16);
+    return (char === "x" ? random : (random & 0x3) | 0x8).toString(16);
+  });
+}
+
+function mutationContext(value: object | undefined, context: RepoMutationContext = {}): Required<OnlineMutationOptions> & { entityId: string } | null {
+  const metadata = value ? getOnlineEntityMetadata(value) : undefined;
+  const entityId = context.entityId ?? metadata?.entityId;
+  const expectedRevision = context.expectedRevision ?? metadata?.revision;
+  if (!entityId || !expectedRevision) return null;
+  return { entityId, expectedRevision, clientMutationId: mutationId(context.clientMutationId) };
+}
+
+function assetInputs(value: object, mapping: Array<[string, "original" | "thumbnail"]>): OnlineAssetInput[] {
+  const record = value as Record<string, unknown>;
+  return mapping.flatMap(([fieldName, variant]) => {
+    const image = record[fieldName];
+    return typeof image === "string" && image.startsWith("data:image/") ? [{ fieldName, variant, image }] : [];
+  });
+}
+
+function withoutImages<T extends object>(value: T): Record<string, unknown> {
+  return Object.fromEntries(Object.entries(value).filter(([key]) => !/imageDataUrl$/i.test(key) && key !== "sourceImageDataUrl"));
+}
+
+async function uploadAssets(
+  entityType: "garment" | "outfit" | "wishlistItem" | "profile",
+  clientMutationId: string,
+  inputs: OnlineAssetInput[],
+): Promise<string[]> {
+  if (inputs.length === 0) return [];
+  return (await onlineWriteRepository.uploadAssetInputs({ clientMutationId, entityType, assets: inputs })).temporaryAssetIds;
+}
 
 export async function repoCreateGarment(
   item: Omit<WardrobeItem, "id">,
+  context: RepoMutationContext = {},
 ): Promise<RepoResult<number>> {
+  const clientMutationId = mutationId(context.clientMutationId);
+  const legacyItemId = Date.now();
   try {
-    const id = createLegacyItemId();
-    await workspaceUpsertGarment({ ...item, id } as WardrobeItem);
-    return ok(id);
-  } catch (err) {
-    return fail("保存单品失败，请重试");
-  }
+    const temporaryAssetIds = await uploadAssets("garment", clientMutationId, assetInputs(item, [
+      ["imageDataUrl", "original"], ["thumbnailDataUrl", "thumbnail"],
+    ]));
+    const entity = await onlineWriteRepository.create("garments", {
+      clientMutationId,
+      payload: { ...withoutImages(item), legacyItemId },
+      temporaryAssetIds,
+    });
+    await reader.mapGarment(entity);
+    return ok(legacyItemId);
+  } catch (error) { return fail(message(error, "保存单品失败，请重试")); }
+}
+
+export async function repoCreateGarmentsBatch(inputs: RepoBatchCreateGarmentInput[]): Promise<RepoBatchCreateGarmentResult[]> {
+  const prepared = await Promise.all(inputs.map(async ({ item, clientMutationId }, index) => {
+    const legacyItemId = item.id ?? Date.now() + index;
+    try {
+      const temporaryAssetIds = await uploadAssets("garment", clientMutationId, assetInputs(item, [
+        ["imageDataUrl", "original"], ["thumbnailDataUrl", "thumbnail"],
+      ]));
+      return { item, legacyItemId, command: { clientMutationId, payload: { ...withoutImages(item), legacyItemId }, temporaryAssetIds } };
+    } catch (error) {
+      return { item, legacyItemId, clientMutationId, error: message(error, "图片上传失败") };
+    }
+  }));
+  const ready = prepared.filter((entry): entry is Extract<typeof entry, { command: unknown }> => "command" in entry);
+  const commandResults = ready.length ? await onlineWriteRepository.createBatch("garments", { items: ready.map((entry) => entry.command) }) : [];
+  const byMutation = new Map(commandResults.map((result) => [result.clientMutationId, result]));
+  return Promise.all(prepared.map(async (entry) => {
+    const command = entry.command;
+    if (!command) return { clientMutationId: entry.clientMutationId, status: "failed", error: entry.error } as const;
+    const result = byMutation.get(command.clientMutationId);
+    if (!result?.entity) return { clientMutationId: command.clientMutationId, status: "failed", error: result?.error ?? "服务器未返回该单品" } as const;
+    return { clientMutationId: command.clientMutationId, status: "succeeded", item: await reader.mapGarment(result.entity) } as const;
+  }));
 }
 
 export async function repoUpdateGarment(
-  id: number,
+  item: WardrobeItem,
   patch: Partial<WardrobeItem>,
-): Promise<RepoResult<void>> {
+  context: RepoMutationContext = {},
+): Promise<RepoResult<WardrobeItem>> {
+  const mutation = mutationContext(item, context);
+  if (!mutation) return fail("单品版本信息缺失，请刷新后重试");
   try {
-    const snapshot = await import("@/lib/data-repo").then((m) => m.getWardrobeSnapshot());
-    const current = snapshot.items.find((item) => item.id === id);
-    if (!current) return fail("单品不存在，请刷新后重试");
-    await workspaceUpsertGarment({ ...current, ...patch, id });
-    return ok();
-  } catch (err) {
-    return fail("更新单品失败，请重试");
-  }
+    const next = { ...item, ...patch };
+    const temporaryAssetIds = await uploadAssets("garment", mutation.clientMutationId, assetInputs(patch, [
+      ["imageDataUrl", "original"], ["thumbnailDataUrl", "thumbnail"],
+    ]));
+    const entity = await onlineWriteRepository.update("garments", mutation.entityId, {
+      clientMutationId: mutation.clientMutationId,
+      expectedRevision: mutation.expectedRevision,
+      payload: withoutImages(next),
+      temporaryAssetIds,
+    });
+    return ok(await reader.mapGarment(entity));
+  } catch (error) { return fail(message(error, "更新单品失败，请重试")); }
 }
 
 export async function repoDeleteGarments(
-  ids: number[],
+  items: WardrobeItem[],
   source: WardrobeCascadeDeleteSource = "manual_delete",
+  contexts: RepoMutationContext[] = [],
 ): Promise<RepoResult<WardrobeCascadeDeleteResult>> {
   try {
-    const result = await workspaceDeleteGarmentsWithCascade(ids, source);
-    return ok(result);
-  } catch (err) {
-    return fail("删除单品失败，请重试");
-  }
+    for (const [index, item] of items.entries()) {
+      const mutation = mutationContext(item, contexts[index]);
+      if (!mutation) return fail("单品版本信息缺失，请刷新后重试");
+      await onlineWriteRepository.remove("garments", mutation.entityId, mutation);
+    }
+    return ok({
+      deletedItemIds: items.flatMap((item) => typeof item.id === "number" ? [item.id] : []),
+      updatedOutfitIds: [], deletedOutfitIds: [], deletedPlanEntryIds: [], deletedPackingItemIds: [],
+      markedDeletedWishlistIds: source === "wishlist_undo_purchase" ? [] : [], clearedWishlistConvertedIds: [],
+    });
+  } catch (error) { return fail(message(error, "删除单品失败，请重试")); }
 }
 
-export async function repoUpdateItemStatus(
-  item: WardrobeItem,
-  status: GarmentStatus,
-): Promise<RepoResult<void>> {
-  if (typeof item.id !== "number") return fail("单品 ID 无效");
-  const updatedAt = new Date().toISOString();
-  return repoUpdateGarment(item.id, { status, updatedAt });
+export async function repoUpdateItemStatus(item: WardrobeItem, status: GarmentStatus, context: RepoMutationContext = {}) {
+  return repoUpdateGarment(item, { status, updatedAt: new Date().toISOString() }, context);
 }
 
-/* ------------------------------------------------------------------ */
-/*  Wishlist commands                                                  */
-/* ------------------------------------------------------------------ */
-
-export async function repoCreateWishlistItem(
-  item: Omit<WishlistItem, "id">,
-): Promise<RepoResult<string>> {
+export async function repoCreateWishlistItem(item: Omit<WishlistItem, "id">, context: RepoMutationContext = {}): Promise<RepoResult<string>> {
+  const clientMutationId = mutationId(context.clientMutationId);
+  const legacyWishlistId = `wishlist-${clientMutationId}`;
   try {
-    const id = `wishlist-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
-    await workspaceUpsertWishlistItem({ ...item, id } as WishlistItem);
-    return ok(id);
-  } catch (err) {
-    return fail("保存种草商品失败，请重试");
-  }
+    const temporaryAssetIds = await uploadAssets("wishlistItem", clientMutationId, assetInputs(item, [
+      ["imageDataUrl", "original"], ["thumbnailDataUrl", "thumbnail"],
+    ]));
+    const entity = await onlineWriteRepository.create("wishlist", { clientMutationId, payload: { ...withoutImages(item), legacyWishlistId }, temporaryAssetIds });
+    await reader.mapWishlistItem(entity);
+    return ok(legacyWishlistId);
+  } catch (error) { return fail(message(error, "保存种草商品失败，请重试")); }
 }
 
-export async function repoUpdateWishlistItem(
-  id: string,
-  patch: Partial<WishlistItem>,
-): Promise<RepoResult<void>> {
+export async function repoUpdateWishlistItem(item: WishlistItem, patch: Partial<WishlistItem>, context: RepoMutationContext = {}): Promise<RepoResult<WishlistItem>> {
+  const mutation = mutationContext(item, context);
+  if (!mutation) return fail("种草版本信息缺失，请刷新后重试");
   try {
-    const snapshot = await import("@/lib/data-repo").then((m) => m.getWardrobeSnapshot());
-    const current = snapshot.wishlistItems.find((item) => item.id === id);
-    if (!current) return fail("种草商品不存在，请刷新后重试");
-    await workspaceUpsertWishlistItem({ ...current, ...patch, id });
+    const temporaryAssetIds = await uploadAssets("wishlistItem", mutation.clientMutationId, assetInputs(patch, [
+      ["imageDataUrl", "original"], ["thumbnailDataUrl", "thumbnail"],
+    ]));
+    const entity = await onlineWriteRepository.update("wishlist", mutation.entityId, {
+      clientMutationId: mutation.clientMutationId, expectedRevision: mutation.expectedRevision,
+      payload: withoutImages({ ...item, ...patch }), temporaryAssetIds,
+    });
+    return ok(await reader.mapWishlistItem(entity));
+  } catch (error) { return fail(message(error, "更新种草商品失败，请重试")); }
+}
+
+export async function repoDeleteWishlistItems(items: WishlistItem[], contexts: RepoMutationContext[] = {} as RepoMutationContext[]): Promise<RepoResult<void>> {
+  try {
+    for (const [index, item] of items.entries()) {
+      const mutation = mutationContext(item, contexts[index]);
+      if (!mutation) return fail("种草版本信息缺失，请刷新后重试");
+      await onlineWriteRepository.remove("wishlist", mutation.entityId, mutation);
+    }
     return ok();
-  } catch (err) {
-    return fail("更新种草商品失败，请重试");
-  }
+  } catch (error) { return fail(message(error, "删除种草商品失败，请重试")); }
 }
 
-export async function repoDeleteWishlistItems(
-  ids: string[],
-): Promise<RepoResult<void>> {
+export async function repoConvertWishlistItem(item: WishlistItem, locationId: string, context: RepoMutationContext = {}): Promise<RepoResult<number>> {
+  const mutation = mutationContext(item, context);
+  if (!mutation) return fail("种草版本信息缺失，请刷新后重试");
   try {
-    await workspaceDeleteWishlistItems(ids);
-    return ok();
-  } catch (err) {
-    return fail("删除种草商品失败，请重试");
-  }
-}
-
-export async function repoConvertWishlistItem(
-  wishlistItem: WishlistItem,
-  locationId: string,
-): Promise<RepoResult<number>> {
-  try {
-    const newItemId = await workspaceConvertWishlistToWardrobe({ wishlistItem, locationId });
-    return ok(newItemId);
-  } catch (err) {
-    return fail("转入衣橱失败，请重试");
-  }
+    const entity = await onlineWriteRepository.convertWishlist(mutation.entityId, { ...mutation, locationId });
+    const mapped = await reader.mapWishlistItem(entity);
+    return ok(mapped.convertedItemId ?? 0);
+  } catch (error) { return fail(message(error, "转入衣橱失败，请重试")); }
 }
 
 export interface RepoUndoPurchaseResult {
-  deletedGarmentIds: number[];
-  updatedOutfitIds: string[];
-  deletedOutfitIds: string[];
-  updatedPlanEntryIds: string[];
-  deletedPlanEntryIds: string[];
-  preservedWearSnapshots: number;
+  deletedGarmentIds: number[]; updatedOutfitIds: string[]; deletedOutfitIds: string[];
+  updatedPlanEntryIds: string[]; deletedPlanEntryIds: string[]; preservedWearSnapshots: number;
 }
 
-export async function repoUndoWishlistPurchase(
-  wishlistItem: WishlistItem,
-): Promise<RepoResult<RepoUndoPurchaseResult>> {
+export async function repoUndoWishlistPurchase(item: WishlistItem, context: RepoMutationContext = {}): Promise<RepoResult<RepoUndoPurchaseResult>> {
+  const mutation = mutationContext(item, context);
+  if (!mutation) return fail("种草版本信息缺失，请刷新后重试");
   try {
-    const convertedItemId = wishlistItem.convertedItemId;
-    const preservedWearSnapshots = typeof convertedItemId === "number"
-      ? (await import("@/lib/data-repo").then((m) => m.getWardrobeSnapshot())).items.find((item) => item.id === convertedItemId)?.wornDates?.length ?? 0
-      : 0;
-    const cascadeResult = typeof convertedItemId === "number"
-      ? await workspaceDeleteGarmentsWithCascade([convertedItemId], "wishlist_undo_purchase")
-      : null;
-    if (typeof convertedItemId !== "number") {
-      await workspaceUpsertWishlistItem({
-        ...wishlistItem,
-        status: "interested",
-        convertedItemId: undefined,
-        convertedAt: undefined,
-        convertedItemDeletedAt: undefined,
-        updatedAt: new Date().toISOString(),
-      });
-    }
-    return ok({
-      deletedGarmentIds: cascadeResult?.deletedItemIds ?? [],
-      updatedOutfitIds: cascadeResult?.updatedOutfitIds ?? [],
-      deletedOutfitIds: cascadeResult?.deletedOutfitIds ?? [],
-      updatedPlanEntryIds: [],
-      deletedPlanEntryIds: cascadeResult?.deletedPlanEntryIds ?? [],
-      preservedWearSnapshots,
+    await onlineWriteRepository.undoWishlistPurchase(mutation.entityId, { ...mutation, payload: {} });
+    return ok({ deletedGarmentIds: item.convertedItemId ? [item.convertedItemId] : [], updatedOutfitIds: [], deletedOutfitIds: [], updatedPlanEntryIds: [], deletedPlanEntryIds: [], preservedWearSnapshots: 0 });
+  } catch (error) { return fail(message(error, "撤销购买失败，请重试")); }
+}
+
+export async function repoCreateOutfit(outfit: Omit<SavedOutfit, "id">, context: RepoMutationContext = {}): Promise<RepoResult<string>> {
+  const clientMutationId = mutationId(context.clientMutationId);
+  const legacyOutfitId = `outfit-${clientMutationId}`;
+  try {
+    const temporaryAssetIds = await uploadAssets("outfit", clientMutationId, assetInputs(outfit, [
+      ["coverImageDataUrl", "original"], ["thumbnailDataUrl", "thumbnail"],
+    ]));
+    const entity = await onlineWriteRepository.create("outfits", { clientMutationId, payload: { ...withoutImages(outfit), legacyOutfitId }, temporaryAssetIds });
+    await reader.mapOutfit(entity);
+    return ok(legacyOutfitId);
+  } catch (error) { return fail(message(error, "保存套装失败，请重试")); }
+}
+
+export async function repoUpdateOutfit(outfit: SavedOutfit, patch: Partial<SavedOutfit>, context: RepoMutationContext = {}): Promise<RepoResult<SavedOutfit>> {
+  const mutation = mutationContext(outfit, context);
+  if (!mutation) return fail("套装版本信息缺失，请刷新后重试");
+  try {
+    const temporaryAssetIds = await uploadAssets("outfit", mutation.clientMutationId, assetInputs(patch, [
+      ["coverImageDataUrl", "original"], ["thumbnailDataUrl", "thumbnail"],
+    ]));
+    const entity = await onlineWriteRepository.update("outfits", mutation.entityId, {
+      clientMutationId: mutation.clientMutationId, expectedRevision: mutation.expectedRevision,
+      payload: withoutImages({ ...outfit, ...patch }), temporaryAssetIds,
     });
-  } catch (err) {
-    return fail("撤销购买失败，请重试");
-  }
+    return ok(await reader.mapOutfit(entity));
+  } catch (error) { return fail(message(error, "更新套装失败，请重试")); }
 }
 
-export { getUndoPurchaseRisk, type UndoPurchaseRisk };
-
-/* ------------------------------------------------------------------ */
-/*  Outfit commands                                                    */
-/* ------------------------------------------------------------------ */
-
-export async function repoCreateOutfit(
-  outfit: Omit<SavedOutfit, "id">,
-): Promise<RepoResult<string>> {
+export async function repoDeleteOutfit(outfit: SavedOutfit | string, context: RepoMutationContext = {}): Promise<RepoResult<OutfitCascadeDeleteResult>> {
+  if (typeof outfit === "string") return fail("套装版本信息缺失，请刷新后重试");
+  const mutation = mutationContext(outfit, context);
+  if (!mutation) return fail("套装版本信息缺失，请刷新后重试");
   try {
-    const id = `outfit-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
-    await workspaceUpsertOutfit({ ...outfit, id } as SavedOutfit);
-    return ok(id);
-  } catch (err) {
-    return fail("保存套装失败，请重试");
-  }
+    await onlineWriteRepository.remove("outfits", mutation.entityId, mutation);
+    return ok({ deletedOutfitIds: [outfit.id], deletedPlanEntryIds: [], deletedPackingItemIds: [], keptWornCount: 0 });
+  } catch (error) { return fail(message(error, "删除套装失败，请重试")); }
 }
 
-export async function repoUpdateOutfit(
-  id: string,
-  patch: Partial<SavedOutfit>,
-): Promise<RepoResult<void>> {
+export async function repoSetOutfitFavorite(outfit: SavedOutfit, value: boolean, context: RepoMutationContext = {}): Promise<RepoResult<SavedOutfit>> {
+  const mutation = mutationContext(outfit, context);
+  if (!mutation) return fail("套装版本信息缺失，请刷新后重试");
   try {
-    const snapshot = await import("@/lib/data-repo").then((m) => m.getWardrobeSnapshot());
-    const current = snapshot.outfits.find((outfit) => outfit.id === id);
-    if (!current) return fail("套装不存在，请刷新后重试");
-    await workspaceUpsertOutfit({ ...current, ...patch, id });
+    const entity = await onlineWriteRepository.setOutfitFavorite(mutation.entityId, { ...mutation, value, payload: {} });
+    return ok(await reader.mapOutfit(entity));
+  } catch (error) { return fail(message(error, "更新收藏失败，请重试")); }
+}
+
+export async function repoCreateLocation(location: Omit<ClosetLocation, "id">, context: RepoMutationContext = {}): Promise<RepoResult<ClosetLocation>> {
+  try {
+    const entity = await onlineWriteRepository.create("locations", {
+      clientMutationId: mutationId(context.clientMutationId), payload: location, temporaryAssetIds: [],
+    });
+    return ok(reader.mapLocation(entity));
+  } catch (error) { return fail(message(error, "新增衣橱位置失败，请重试")); }
+}
+
+export async function repoUpdateLocation(location: ClosetLocation, patch: Partial<ClosetLocation>, context: RepoMutationContext = {}): Promise<RepoResult<ClosetLocation>> {
+  const mutation = mutationContext(location, context);
+  if (!mutation) return fail("衣橱位置版本信息缺失，请刷新后重试");
+  try {
+    const entity = await onlineWriteRepository.update("locations", mutation.entityId, {
+      ...mutation, payload: { ...location, ...patch }, temporaryAssetIds: [],
+    });
+    return ok(reader.mapLocation(entity));
+  } catch (error) { return fail(message(error, "更新衣橱位置失败，请重试")); }
+}
+
+export async function repoDeleteLocation(location: ClosetLocation, context: RepoMutationContext = {}): Promise<RepoResult<void>> {
+  const mutation = mutationContext(location, context);
+  if (!mutation) return fail("衣橱位置版本信息缺失，请刷新后重试");
+  try { await onlineWriteRepository.remove("locations", mutation.entityId, mutation); return ok(); }
+  catch (error) { return fail(message(error, "删除衣橱位置失败，请重试")); }
+}
+
+export async function repoSaveProfile(profile: TryOnProfile, context: RepoMutationContext = {}): Promise<RepoResult<TryOnProfile>> {
+  const metadata = getOnlineEntityMetadata(profile);
+  const clientMutationId = mutationId(context.clientMutationId);
+  try {
+    const temporaryAssetIds = await uploadAssets("profile", clientMutationId, assetInputs(profile, [
+      ["fullBodyImageDataUrl", "original"], ["faceImageDataUrl", "original"],
+    ]));
+    const entity = metadata
+      ? await onlineWriteRepository.update("profiles", metadata.entityId, {
+          clientMutationId, expectedRevision: context.expectedRevision ?? metadata.revision,
+          payload: withoutImages(profile), temporaryAssetIds,
+        })
+      : await onlineWriteRepository.create("profiles", {
+          clientMutationId, payload: withoutImages(profile), temporaryAssetIds,
+        });
+    return ok(await reader.mapProfile(entity));
+  } catch (error) { return fail(message(error, "保存试穿档案失败，请重试")); }
+}
+
+async function upsertPlan(resource: "trip-plans" | "outfit-plans", value: OutfitCalendarPlan | OutfitPlanEntry, context: RepoMutationContext): Promise<RepoResult<void>> {
+  const mutation = mutationContext(value, context);
+  try {
+    if (mutation) await onlineWriteRepository.update(resource, mutation.entityId, { ...mutation, payload: { ...value }, temporaryAssetIds: [] });
+    else await onlineWriteRepository.create(resource, { clientMutationId: mutationId(context.clientMutationId), payload: { ...value }, temporaryAssetIds: [] });
     return ok();
-  } catch (err) {
-    return fail("更新套装失败，请重试");
-  }
+  } catch (error) { return fail(message(error, "保存计划失败，请重试")); }
 }
 
-export async function repoDeleteOutfit(
-  outfitId: string,
-): Promise<RepoResult<OutfitCascadeDeleteResult>> {
+export const repoUpsertOutfitPlanEntry = (entry: OutfitPlanEntry, context: RepoMutationContext = {}) => upsertPlan("outfit-plans", entry, context);
+export const repoUpsertTripPlan = (plan: OutfitCalendarPlan, _items: PlanPackingChecklistItem[] = [], context: RepoMutationContext = {}) => upsertPlan("trip-plans", plan, context);
+
+async function deletePlan(resource: "trip-plans" | "outfit-plans", value: OutfitCalendarPlan | OutfitPlanEntry, context: RepoMutationContext): Promise<RepoResult<void>> {
+  const mutation = mutationContext(value, context);
+  if (!mutation) return fail("计划版本信息缺失，请刷新后重试");
+  try { await onlineWriteRepository.remove(resource, mutation.entityId, mutation); return ok(); }
+  catch (error) { return fail(message(error, "删除计划失败，请重试")); }
+}
+
+export const repoDeleteOutfitPlanEntry = (entry: OutfitPlanEntry, context: RepoMutationContext = {}) => deletePlan("outfit-plans", entry, context);
+export const repoDeleteTripPlan = (plan: OutfitCalendarPlan, context: RepoMutationContext = {}) => deletePlan("trip-plans", plan, context);
+
+export async function repoUpdatePackingChecklist(plan: OutfitCalendarPlan, items: PlanPackingChecklistItem[], context: RepoMutationContext = {}): Promise<RepoResult<void>> {
+  const mutation = mutationContext(plan, context);
+  if (!mutation) return fail("旅行计划版本信息缺失，请刷新后重试");
+  try { await onlineWriteRepository.updatePackingChecklist(mutation.entityId, { ...mutation, items: items.map((item) => ({ ...item })) }); return ok(); }
+  catch (error) { return fail(message(error, "更新打包清单失败，请重试")); }
+}
+
+export async function repoMarkPlanWorn(entry: OutfitPlanEntry, wornAt: string, outfitId?: string, context: RepoMutationContext = {}): Promise<RepoResult<OutfitPlanEntry>> {
+  const mutation = mutationContext(entry, context);
+  if (!mutation) return fail("穿搭计划版本信息缺失，请刷新后重试");
   try {
-    const result = await workspaceDeleteOutfitWithCascade(outfitId);
-    return ok(result);
-  } catch (err) {
-    return fail("删除套装失败，请重试");
-  }
+    const entity = await onlineWriteRepository.markPlanWorn(mutation.entityId, { ...mutation, wornAt, outfitId });
+    return ok(reader.mapOutfitPlan(entity));
+  } catch (error) { return fail(message(error, "标记已穿失败，请重试")); }
 }
 
-/* ------------------------------------------------------------------ */
-/*  Plan commands                                                      */
-/* ------------------------------------------------------------------ */
-
-export async function repoUpsertOutfitPlanEntry(
-  entry: OutfitPlanEntry,
-): Promise<RepoResult<void>> {
+export async function repoCancelPlanWorn(entry: OutfitPlanEntry, context: RepoMutationContext = {}): Promise<RepoResult<OutfitPlanEntry>> {
+  const mutation = mutationContext(entry, context);
+  if (!mutation) return fail("穿搭计划版本信息缺失，请刷新后重试");
   try {
-    await bridgeOutfitPlanUpsert(entry);
-    invalidateWorkspaceSnapshotCache();
-    return ok();
-  } catch (err) {
-    return fail("保存计划失败，请重试");
-  }
+    const entity = await onlineWriteRepository.cancelPlanWorn(mutation.entityId, { ...mutation, payload: {} });
+    return ok(reader.mapOutfitPlan(entity));
+  } catch (error) { return fail(message(error, "取消已穿失败，请重试")); }
 }
 
-export async function repoDeleteOutfitPlanEntry(
-  entryId: string,
-): Promise<RepoResult<void>> {
-  try {
-    await bridgeOutfitPlanDelete(entryId);
-    invalidateWorkspaceSnapshotCache();
-    return ok();
-  } catch (err) {
-    return fail("删除计划失败，请重试");
-  }
+export async function repoRecordWear(_input: AddOutfitToDateInput): Promise<RepoResult<OutfitWearSyncResult>> { return fail("请刷新穿搭计划后再标记已穿"); }
+export async function repoCancelWear(_dateKey: string, _outfitId: string, _todayKey: string): Promise<RepoResult<OutfitWearSyncResult>> { return fail("请刷新穿搭计划后再取消已穿"); }
+
+export const repoUpdateGarmentImages = repoUpdateGarment;
+export const repoUpdateOutfitRealImages = repoUpdateOutfit;
+
+export async function repoSaveEditedGarment(viewingItem: WardrobeItem, editDraft: Partial<WardrobeItem> & { status: GarmentStatus }, context: RepoMutationContext = {}): Promise<RepoResult<WardrobeItem>> {
+  return repoUpdateGarment(viewingItem, { ...editDraft, updatedAt: new Date().toISOString() }, context);
 }
 
-export async function repoUpsertTripPlan(
-  plan: OutfitCalendarPlan,
-  checklistItems: PlanPackingChecklistItem[] = [],
-): Promise<RepoResult<void>> {
-  try {
-    await bridgeTripPlanUpsert(plan, checklistItems);
-    invalidateWorkspaceSnapshotCache();
-    return ok();
-  } catch (err) {
-    return fail("保存旅行计划失败，请重试");
-  }
-}
+function message(error: unknown, fallback: string): string { return error instanceof Error && error.message ? error.message : fallback; }
 
-export async function repoDeleteTripPlan(
-  planId: string,
-): Promise<RepoResult<void>> {
-  try {
-    await bridgeTripPlanDelete(planId);
-    invalidateWorkspaceSnapshotCache();
-    return ok();
-  } catch (err) {
-    return fail("删除旅行计划失败，请重试");
-  }
-}
-
-/* ------------------------------------------------------------------ */
-/*  Wear commands                                                      */
-/* ------------------------------------------------------------------ */
-
-export async function repoRecordWear(
-  input: AddOutfitToDateInput,
-): Promise<RepoResult<OutfitWearSyncResult>> {
-  try {
-    const result = await addOutfitToDate(input);
-    invalidateWorkspaceSnapshotCache();
-    return ok(result);
-  } catch (err) {
-    return fail(err instanceof Error ? err.message : "记录穿着失败，请重试");
-  }
-}
-
-export async function repoCancelWear(
-  dateKey: string,
-  outfitId: string,
-  todayKey: string,
-): Promise<RepoResult<OutfitWearSyncResult>> {
-  try {
-    const result = await cancelActualOutfitWearForDate({ dateKey, outfitId, todayKey });
-    invalidateWorkspaceSnapshotCache();
-    return ok(result);
-  } catch (err) {
-    return fail(err instanceof Error ? err.message : "取消穿着失败，请重试");
-  }
-}
-
-/* ------------------------------------------------------------------ */
-/*  Media commands (inspiration / real images)                         */
-/* ------------------------------------------------------------------ */
-
-export async function repoUpdateGarmentImages(
-  itemId: number,
-  patch: Partial<WardrobeItem>,
-): Promise<RepoResult<void>> {
-  return repoUpdateGarment(itemId, patch);
-}
-
-export async function repoUpdateOutfitRealImages(
-  outfitId: string,
-  patch: Partial<SavedOutfit>,
-): Promise<RepoResult<void>> {
-  return repoUpdateOutfit(outfitId, patch);
-}
-
-/* ------------------------------------------------------------------ */
-/*  P0-02 fix: single-update item save (no stale second write)         */
-/* ------------------------------------------------------------------ */
-
-export async function repoSaveEditedGarment(
-  viewingItem: WardrobeItem,
-  editDraft: Partial<WardrobeItem> & { status: GarmentStatus },
-): Promise<RepoResult<WardrobeItem>> {
-  if (typeof viewingItem.id !== "number") return fail("单品 ID 无效");
-  try {
-    const now = new Date().toISOString();
-    const patch: Partial<WardrobeItem> = {
-      name: editDraft.name?.trim(),
-      imageDataUrl: editDraft.imageDataUrl,
-      cropBox: editDraft.cropBox,
-      cropRevision: editDraft.cropRevision,
-      thumbnailDataUrl: editDraft.thumbnailDataUrl,
-      thumbnailCropRevision: editDraft.thumbnailCropRevision,
-      category: editDraft.category,
-      subcategory: editDraft.subcategory,
-      colors: editDraft.colors,
-      seasons: editDraft.seasons?.length ? editDraft.seasons : ["all"],
-      styles: editDraft.styles?.length ? editDraft.styles : ["casual"],
-      formality: editDraft.formality,
-      warmth: editDraft.warmth,
-      temperatureRange: editDraft.temperatureRange,
-      material: editDraft.material,
-      fitGender: editDraft.fitGender,
-      fitNotes: editDraft.fitNotes?.trim() || undefined,
-      price: editDraft.price,
-      productUrl: editDraft.productUrl,
-      purchaseDate: editDraft.purchaseDate,
-      locationId: editDraft.locationId,
-      status: editDraft.status,
-      notes: editDraft.notes?.trim() || undefined,
-      aiConfidence: editDraft.aiConfidence,
-      needsReview: editDraft.needsReview,
-      updatedAt: now,
-    };
-    const updatedItem = { ...viewingItem, ...patch, id: viewingItem.id };
-    await workspaceUpsertGarment(updatedItem);
-    return ok(updatedItem);
-  } catch (err) {
-    return fail("保存衣物信息失败，请重试");
-  }
-}
-
-/* ------------------------------------------------------------------ */
-/*  Aggregated export                                                  */
-/* ------------------------------------------------------------------ */
+export { getUndoPurchaseRisk, type UndoPurchaseRisk, bindOnlineEntityMetadata };
 
 export const wardrobeRepository = {
-  // garment
-  createGarment: repoCreateGarment,
-  updateGarment: repoUpdateGarment,
-  deleteGarments: repoDeleteGarments,
-  updateItemStatus: repoUpdateItemStatus,
-  saveEditedGarment: repoSaveEditedGarment,
-  // wishlist
-  createWishlistItem: repoCreateWishlistItem,
-  updateWishlistItem: repoUpdateWishlistItem,
-  deleteWishlistItems: repoDeleteWishlistItems,
-  convertWishlistItem: repoConvertWishlistItem,
-  undoWishlistPurchase: repoUndoWishlistPurchase,
-  getUndoPurchaseRisk,
-  // outfit
-  createOutfit: repoCreateOutfit,
-  updateOutfit: repoUpdateOutfit,
-  deleteOutfit: repoDeleteOutfit,
-  // plan
-  upsertOutfitPlanEntry: repoUpsertOutfitPlanEntry,
-  deleteOutfitPlanEntry: repoDeleteOutfitPlanEntry,
-  upsertTripPlan: repoUpsertTripPlan,
-  deleteTripPlan: repoDeleteTripPlan,
-  // wear
-  recordWear: repoRecordWear,
-  cancelWear: repoCancelWear,
-  // media
-  updateGarmentImages: repoUpdateGarmentImages,
-  updateOutfitRealImages: repoUpdateOutfitRealImages,
+  createGarment: repoCreateGarment, createGarmentsBatch: repoCreateGarmentsBatch, updateGarment: repoUpdateGarment,
+  deleteGarments: repoDeleteGarments, updateItemStatus: repoUpdateItemStatus, saveEditedGarment: repoSaveEditedGarment,
+  createWishlistItem: repoCreateWishlistItem, updateWishlistItem: repoUpdateWishlistItem,
+  deleteWishlistItems: repoDeleteWishlistItems, convertWishlistItem: repoConvertWishlistItem,
+  undoWishlistPurchase: repoUndoWishlistPurchase, getUndoPurchaseRisk,
+  createOutfit: repoCreateOutfit, updateOutfit: repoUpdateOutfit, deleteOutfit: repoDeleteOutfit,
+  setOutfitFavorite: repoSetOutfitFavorite,
+  createLocation: repoCreateLocation, updateLocation: repoUpdateLocation, deleteLocation: repoDeleteLocation,
+  saveProfile: repoSaveProfile,
+  upsertOutfitPlanEntry: repoUpsertOutfitPlanEntry, deleteOutfitPlanEntry: repoDeleteOutfitPlanEntry,
+  upsertTripPlan: repoUpsertTripPlan, deleteTripPlan: repoDeleteTripPlan,
+  updatePackingChecklist: repoUpdatePackingChecklist, markPlanWorn: repoMarkPlanWorn, cancelPlanWorn: repoCancelPlanWorn,
+  recordWear: repoRecordWear, cancelWear: repoCancelWear,
+  updateGarmentImages: repoUpdateGarmentImages, updateOutfitRealImages: repoUpdateOutfitRealImages,
 };

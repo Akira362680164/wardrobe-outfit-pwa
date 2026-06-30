@@ -71,8 +71,6 @@ import {
 } from "@/components/motion-common";
 import { ease, spring } from "@/lib/motion-tokens";
 import { createGarmentThumbnailFromOriginal, generateThumbnailSafe, prepareGarmentThumbnail } from "@/lib/thumbnail-runtime";
-import { backfill } from "@/lib/thumbnail-backfill";
-import { countMissingThumbnails } from "@/lib/thumbnail";
 import { GarmentImage } from "@/components/garment-image";
 
 // v1.1.23 six-page design: 共享的 item/ 编辑/详情展示小组件。
@@ -114,7 +112,6 @@ import { bridgeOutfitPlanDelete } from "@/lib/cloud-sync/plan-bridge";
 import { bridgeWearEventsForGarment } from "@/lib/cloud-sync/wear-bridge";
 import { bridgeWishlistUpsert } from "@/lib/cloud-sync/wishlist-bridge";
 import { isAccessTokenFresh, loadAuthSessionSnapshot } from "@/lib/auth-session-store";
-import { buildGarmentAssetDiagnosticSnapshot } from "@/lib/cloud-sync/asset-diagnostics";
 import { wardrobeRepository } from "@/lib/repository/wardrobe-repository";
 import {
  defaultMiniMaxSettings,
@@ -322,8 +319,6 @@ export function WardrobeApp({ cloudAuth }: { cloudAuth?: WardrobeCloudAuth } = {
   const [wishlistInitialSubPage, setWishlistInitialSubPage] = useState<"purchased" | null>(null);
   const [tryOnProfile, setTryOnProfile] = useState<TryOnProfile>(() => ({ id: "default", enabled: false, fitGender: "unspecified", updatedAt: new Date().toISOString() }));
   const [isReady, setIsReady] = useState(false);
-  // v0.9.43-dev 批次 4: 首页懒 enqueue 标记。同一 render 周期不重复 enqueue
-  const lastEnqueuedSigRef = useRef<string>("");
   const messageCtrl = useWardrobeMessageController();
   const { message, messageType, showMessage, clearMessage } = messageCtrl;
 
@@ -411,20 +406,6 @@ export function WardrobeApp({ cloudAuth }: { cloudAuth?: WardrobeCloudAuth } = {
     readWorkspaceTryOnProfile().then(setTryOnProfile).catch(() => {});
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-
-  // v0.9.43-dev 批次 4: 首页懒 enqueue (前 6-10 个 item)。
-  // - 不直接 start backfill, 仅入队; backfill 由设置页"优化图片缓存"按钮触发
-  // - 用 lastEnqueuedSigRef 记录已 enqueue 的 items 签名, 避免每次 render 重复入队
-  // - items 变化时 (新增衣物 / 刷新) 重新计算签名 + enqueue
-  // - 超过 10 个不分批, 后续依赖设置页手动触发全量回填
-  useEffect(() => {
-    if (!Array.isArray(items) || items.length === 0) return;
-    const slice = items.slice(0, 10);
-    const sig = slice.map((it) => `${it.id ?? "x"}:${it.thumbnailStatus ?? "x"}`).join(",");
-    if (sig === lastEnqueuedSigRef.current) return;
-    lastEnqueuedSigRef.current = sig;
-    backfill.enqueueVisibleItems(slice);
-  }, [items]);
 
   // v1.1.20-dev (方案 C): 删除 v0.9.31-dev "activeViewRef 同步" useEffect — activeViewRef 不再存在。
   // v0.9.31-dev: pendingRestoreViewRef 单一入口 (subagent I-2 修法 B)。
@@ -585,10 +566,6 @@ export function WardrobeApp({ cloudAuth }: { cloudAuth?: WardrobeCloudAuth } = {
       window.removeEventListener("orientationchange", handleResize);
     };
   }, []);
-
-  function patchItemInItemsState(itemId: number, patch: Partial<WardrobeItem>) {
-    setItems((prev) => prev.map((item) => (item.id === itemId ? { ...item, ...patch } : item)));
-  }
 
   function isImagePickerCancelError(error: unknown): boolean {
     const message = error instanceof Error ? error.message : typeof error === "string" ? error : "";
@@ -1475,7 +1452,7 @@ export function WardrobeApp({ cloudAuth }: { cloudAuth?: WardrobeCloudAuth } = {
                 const existing = Array.isArray(targetItem.referenceOutfitImages) ? targetItem.referenceOutfitImages : [];
                 const updated = [...existing, ...refs];
                 await bridgeGarmentUpdate({ ...targetItem, referenceOutfitImages: updated, updatedAt: now });
-                patchItemInItemsState(targetId, { referenceOutfitImages: updated, updatedAt: now });
+                // online: reference images update via repository; patchItemInItemsState removed
                 await refreshState();
                 setCaptureImageQueue([]);
                 setReferenceOutfitTargetItemId(null);
@@ -3869,7 +3846,6 @@ function SettingsView({
   onSaveTryOnProfile: (profile: TryOnProfile) => Promise<void>;
   onMessage?: (msg: string) => void;
   onExpandImage?: (img: { src: string; alt: string }) => void;
-  /** v0.9.44-dev 问题 2: 让 backfill 写回后能触发父级 refreshState 重读 Dexie, 更新 items prop */
   onRefreshState?: () => Promise<void> | void;
 }) {
   // v0.9.22: SettingsView 内部子页面路由 (null = 首页, "profile" / "photos" / "minimax" / "wardrobes" = 子页)
@@ -3888,48 +3864,6 @@ function SettingsView({
   const [lastDiagnosticUpload, setLastDiagnosticUpload] = useState<LastDiagnosticUpload | null>(null);
   const [showDiagnosticSuccess, setShowDiagnosticSuccess] = useState(false);
   const [showDiagnosticFailed, setShowDiagnosticFailed] = useState(false);
-  // v0.9.43-dev 批次 4: 图片缓存优化
-  // - thumbnailStats: 仅看字段, 不解码图片, 不写库 (批次 4 §2)
-  // - backfillState: subscribe backfill 单例
-  // - refreshTick: items 变化时 invalidate useMemo
-  const [backfillState, setBackfillState] = useState(() => backfill.getState());
-  const [refreshTick, setRefreshTick] = useState(0);
-  const [showBackfillFailureSheet, setShowBackfillFailureSheet] = useState(false);
-  // v0.9.44-dev 问题 2: subscribe backfill state, 每次 processed/failed/status 变化
-  // 都触发父级 refreshState 重读 Dexie → items prop 更新 → thumbnailStats 重算。
-  // 用 ref 跟踪上一次 processed 值, 避免对 currentJob 变化等无关字段重复 refresh。
-  const lastRefreshedProcessedRef = useRef(0);
-  const lastRefreshedStatusRef = useRef<string>(backfillState.status);
-  useEffect(() => {
-    const unsub = backfill.subscribe((s) => {
-      setBackfillState(s);
-      // 1) 每完成 1 张 → refresh (processed 加 1 即触发); 2) 状态从 running → done/idle → refresh 一次兜底
-      const processedChanged = s.processed !== lastRefreshedProcessedRef.current;
-      const statusSettled = (s.status === "done" || s.status === "idle")
-        && lastRefreshedStatusRef.current !== s.status;
-      if (processedChanged || statusSettled) {
-        lastRefreshedProcessedRef.current = s.processed;
-        lastRefreshedStatusRef.current = s.status;
-        // 微任务级 refresh (避免和当前 subscribe notify 同一个 tick 竞争)
-        Promise.resolve().then(() => {
-          // 父级 refreshState 可能不存在 (向后兼容), 也可能是 async
-          const result = onRefreshState?.();
-          if (result && typeof (result as Promise<void>).catch === "function") {
-            (result as Promise<void>).catch(() => { /* 忽略 refresh 失败 */ });
-          }
-          // 同时 invalidate 本组件 useMemo (兜底 - 父级 items 已变就重算)
-          setRefreshTick((n) => n + 1);
-        });
-      }
-    });
-    return unsub;
-  }, [onRefreshState]);
-  const thumbnailStats = useMemo(
-    () => countMissingThumbnails(items),
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- refreshTick 强制 invalidate
-    [items, refreshTick],
-  );
-  const totalMissing = thumbnailStats.mainMissing + thumbnailStats.referenceMissing;
   function handleStartDiagnosticUpload() {
     if (diagnosticUploadState.phase !== "idle") return;
     setDiagnosticUploadState({ phase: "describing", message: "请描述遇到的问题…", problemDescription: diagnosticDescription });
@@ -3953,7 +3887,6 @@ function SettingsView({
         throw new Error("构建身份不完整");
       }
 
-      const assetDiagnostics = await buildGarmentAssetDiagnosticSnapshot();
       const log = buildWardrobeDiagnosticLog({
         activeView,
         route,
@@ -3961,10 +3894,8 @@ function SettingsView({
         locations,
         outfits,
         wishlistItems,
-        backfillState,
         miniMaxSettings,
-        assetDiagnostics,
-      });
+        });
       log.userReport.description = description;
 
       const data = JSON.stringify(log);
@@ -4227,241 +4158,6 @@ function SettingsView({
       ) : null}
 
       {/* 1. 衣橱设置 (紧凑列表行, 超过 3 个折叠) */}
-      <article className="surface rounded-lg px-4 py-3.5">
-        <div className="flex items-center justify-between gap-3">
-          <div className="min-w-0">
-            <h2 className="text-base font-semibold">衣橱设置</h2>
-            <p className="mt-0.5 text-xs text-ink/55">管理衣物存放位置</p>
-          </div>
-          <button
-            type="button"
-            onClick={() => setShowAddWardrobe(true)}
-            className="inline-flex h-9 shrink-0 items-center gap-1.5 rounded-lg bg-denim px-3 text-sm font-semibold text-white"
-          >
-            <Plus size={15} aria-hidden="true" />
-            添加衣橱
-          </button>
-        </div>
-        <div className="mt-3 grid gap-1.5">
-          {visibleLocations.length === 0 ? (
-            <p className="py-4 text-center text-xs text-ink/45">还没有衣橱位置，点击右上添加</p>
-          ) : (
-            visibleLocations.map((location) => (
-              <WardrobeRow
-                key={location.id}
-                location={location}
-                count={locationCounts.get(location.id) ?? 0}
-                isDefault={location.id === "home"}
-                onClick={location.id === "home" ? undefined : () => setEditWardrobeTarget(location)}
-              />
-            ))
-          )}
-        </div>
-        {hasMoreLocations ? (
-          <button
-            type="button"
-            onClick={() => setWardrobeListExpanded((v) => !v)}
-            className="mt-2 inline-flex h-9 w-full items-center justify-center gap-1 text-xs text-ink/55 active:text-denim"
-          >
-            {wardrobeListExpanded ? "收起" : `查看全部衣橱（${sortedLocations.length}）`}
-            <ChevronRight
-              size={12}
-              aria-hidden="true"
-              className={`transition-transform ${wardrobeListExpanded ? "-rotate-90" : "rotate-90"}`}
-            />
-          </button>
-        ) : null}
-      </article>
-
-      {/* 1.5 v0.9.43-dev 批次 4: 图片缓存优化 */}
-      <article className="surface rounded-lg px-4 py-3.5" aria-label="图片缓存优化">
-        <div className="flex items-start justify-between gap-3">
-          <div className="min-w-0">
-            <h2 className="text-base font-semibold">优化图片缓存</h2>
-            <p className="mt-0.5 text-xs text-ink/55">
-              {totalMissing > 0
-                ? `当前待优化：${totalMissing} 张`
-                : "所有图片已生成缓存"}
-            </p>
-            <p className="mt-0.5 text-[11px] text-ink/45">
-              为已录入衣物生成缩略图，提升首页和横滑流畅度
-            </p>
-          </div>
-        </div>
-        {backfillState.status === "running" || backfillState.status === "paused" ? (
-          <div className="mt-3 flex items-center justify-between gap-2">
-            <p className="text-xs text-ink/65">
-              正在优化 {backfillState.processed} / {backfillState.total}
-              {backfillState.failed > 0 ? ` · 失败 ${backfillState.failed}` : ""}
-            </p>
-            <div className="flex items-center gap-1.5">
-              {backfillState.status === "running" ? (
-                <button
-                  type="button"
-                  onClick={() => backfill.pause()}
-                  className="inline-flex h-8 items-center rounded-lg border border-ink/10 px-2.5 text-xs text-ink/65 active:bg-mist"
-                >
-                  暂停
-                </button>
-              ) : (
-                <button
-                  type="button"
-                  onClick={() => backfill.resume()}
-                  className="inline-flex h-8 items-center rounded-lg border border-ink/10 px-2.5 text-xs text-ink/65 active:bg-mist"
-                >
-                  继续
-                </button>
-              )}
-              <button
-                type="button"
-                onClick={() => backfill.cancel()}
-                className="inline-flex h-8 items-center rounded-lg border border-ink/10 px-2.5 text-xs text-ink/65 active:bg-mist"
-              >
-                取消
-              </button>
-            </div>
-          </div>
-        ) : (
-          <div className="mt-3 grid gap-2">
-            <div className="flex items-center justify-between gap-2">
-              <p className="text-[11px] text-ink/45">
-                {backfillState.status === "done"
-                  ? `已完成${backfillState.failed > 0 ? `, 失败 ${backfillState.failed}` : ""}`
-                  : "首页瀑布流会优先用缩略图，老衣物也能享受"}
-              </p>
-              <div className="flex items-center gap-1.5">
-                {backfillState.failed > 0 ? (
-                  <button
-                    type="button"
-                    data-testid="backfill-retry-failed"
-                    onClick={() => backfill.retryFailed(items)}
-                    className="inline-flex h-9 items-center rounded-lg border border-denim/20 bg-white px-3 text-xs font-semibold text-denim active:bg-mist"
-                  >
-                    重试失败项
-                  </button>
-                ) : null}
-                <button
-                  type="button"
-                  data-testid="backfill-start-or-recheck"
-                  disabled={backfillState.status === "cancelling"}
-                  onClick={() => {
-                    if (backfillState.status === "done") backfill.reset();
-                    backfill.startBackfillAll(items);
-                    // 启动后实时进度由 subscribe → onRefreshState 驱动 (问题 2)
-                  }}
-                  className="inline-flex h-9 items-center gap-1.5 rounded-lg bg-denim px-3 text-sm font-semibold text-white disabled:opacity-60"
-                >
-                  {backfillState.status === "cancelling"
-                    ? "正在取消..."
-                    : backfillState.status === "done" && backfillState.failed === 0
-                      ? "重新检查"
-                      : totalMissing > 0
-                        ? "开始优化"
-                        : "重新检查"}
-                </button>
-              </div>
-            </div>
-            {backfillState.failed > 0 ? (
-              <div className="rounded-lg border border-red-100 bg-red-50/60 px-3 py-2.5 text-xs leading-relaxed" data-testid="backfill-failure-summary">
-                <p className="font-semibold text-red-700">
-                  失败 {backfillState.failed} 条
-                </p>
-                <ul className="mt-1.5 space-y-1 text-ink/80">
-                  {backfillState.failedItems.slice(0, 3).map((f) => (
-                    <li key={f.key} className="flex items-start gap-1.5">
-                      <span className="text-ink/40">·</span>
-                      <span className="min-w-0 flex-1">
-                        <span className="font-medium text-ink/85">{f.name}</span>
-                        <span className="mx-1 text-ink/30">·</span>
-                        <span className="text-ink/60">
-                          {f.kind === "main" ? "主图" : "灵感图"}
-                        </span>
-                        <span className="mx-1 text-ink/30">·</span>
-                        <span className="text-ink/70">{f.errorMessage}</span>
-                      </span>
-                    </li>
-                  ))}
-                </ul>
-                {backfillState.failedItems.length > 3 ? (
-                  <button
-                    type="button"
-                    data-testid="backfill-failure-open-all"
-                    onClick={() => setShowBackfillFailureSheet(true)}
-                    className="mt-2 text-left text-xs font-semibold text-denim"
-                  >
-                    查看全部失败记录（共 {backfillState.failedItems.length} 条）
-                  </button>
-                ) : null}
-              </div>
-            ) : null}
-          </div>
-        )}
-      </article>
-
-      <MotionSheet
-        open={showBackfillFailureSheet}
-        onClose={() => setShowBackfillFailureSheet(false)}
-      >
-        <div className="grid max-h-[72dvh] gap-3 overflow-y-auto pb-4" data-testid="backfill-failure-sheet">
-          <div className="flex items-center justify-between gap-3">
-            <h2 className="text-base font-semibold">缩略图失败记录</h2>
-            <button
-              type="button"
-              onClick={() => setShowBackfillFailureSheet(false)}
-              className="grid h-9 w-9 place-items-center rounded-lg text-ink/55 active:bg-mist"
-              aria-label="关闭失败记录"
-            >
-              <X size={16} aria-hidden="true" />
-            </button>
-          </div>
-          <p className="text-xs leading-relaxed text-ink/55">
-            共 {backfillState.failedItems.length} 条失败。源图无法解码时，请重新选择图片。
-          </p>
-          {backfillState.failedItems.map((failed) => {
-            const item = items.find((candidate) => candidate.id === failed.id);
-            const decodeHint = /decode|decoded|解码/i.test(failed.errorMessage);
-            return (
-              <div key={failed.key} className="rounded-lg border border-ink/10 bg-white px-3 py-3 text-xs">
-                <p className="font-semibold text-ink">{failed.name}</p>
-                <p className="mt-1 text-ink/55">{failed.kind === "main" ? "主图" : "灵感图"} · {failed.errorMessage}</p>
-                {decodeHint ? (
-                  <p className="mt-1 rounded-md bg-clay/8 px-2 py-1.5 text-clay">源图无法解码，请进入衣物详情重新选择图片。</p>
-                ) : null}
-                <div className="mt-2 grid grid-cols-2 gap-2">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      if (item?.imageDataUrl) onExpandImage?.({ src: item.imageDataUrl, alt: item.name });
-                      onMessage?.("请进入衣物详情重新选择图片");
-                    }}
-                    className="h-9 rounded-lg border border-ink/10 bg-white font-semibold text-ink/70"
-                  >
-                    查看衣物
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => backfill.retryFailedKey(items, failed.key)}
-                    className="h-9 rounded-lg border border-denim/20 bg-denim/8 font-semibold text-denim"
-                  >
-                    重试此项
-                  </button>
-                </div>
-              </div>
-            );
-          })}
-          {backfillState.failedItems.length === 0 ? (
-            <p className="rounded-lg bg-mist px-3 py-4 text-center text-xs text-ink/45">暂无失败记录</p>
-          ) : null}
-          <button
-            type="button"
-            onClick={() => backfill.retryFailed(items)}
-            className="sticky bottom-0 h-11 rounded-lg bg-denim text-sm font-semibold text-white"
-          >
-            重试全部失败项
-          </button>
-        </div>
-      </MotionSheet>
-
       {/* 2. 我的穿衣画像摘要卡 */}
       <article className="surface rounded-lg px-4 py-3.5">
         <div className="flex items-start justify-between gap-3">

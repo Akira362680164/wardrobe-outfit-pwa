@@ -1,3 +1,21 @@
+## 2026-06-30 / v2.1.0-test / Codex + Parallel Subagents — 纯线上 Workspace 客户端接线
+
+- **目的**：将客户端切换为服务器唯一数据源架构：新增线上读取、写入、图片下载、加载/错误 UI 和旧业务数据清理器；更新主 App、录入流、种草、身份验证和数据控制器。
+- **版本**：从 `2.0.18-test` 升级至 `2.1.0-test`。
+- **改动文件（修改）**：`package.json`、`README.md`、`src/components/app-root.tsx`、`src/components/auth/account-views.tsx`、`src/components/auth/auth-provider.tsx`、`src/components/auth/workspace-gate.tsx`、`src/components/garment-intake-flow.tsx`、`src/components/intake-flow-shell.tsx`、`src/components/use-wardrobe-data-controller.ts`、`src/components/wardrobe-app.tsx`、`src/components/wishlist-view-2.0.tsx`、`src/lib/diagnostic-log.ts`、`src/lib/repository/wardrobe-repository.ts`、`VERSION_HISTORY.md`。
+- **改动文件（新增）**：`src/lib/online/{online-repository,online-write-repository,online-request,online-state,online-error,online-image-client,purge-local-business-data}.ts`、`src/components/online/{index,online-button-spinner,online-catalog-skeleton,online-detail-skeleton,online-image-state,online-inline-notice,online-page-error,online-page-loader,online-success-toast,online-write-guard}.tsx`。
+- **核心实现**：
+  - 客户端 Workspace 查询 Repository（overview、列表、详情、分页、worn summary）与线上图片客户端（`no-store`、内存 Blob/Object URL、登出释放）。
+  - 线上写入 Repository（单品 CRUD/批量、种草、套装、位置、计划、穿着记录、试穿档案、打包清单；`clientMutationId` 幂等；`expectedRevision` 并发控制）。
+  - 共享加载状态 UI（全页加载器、骨架占据符、页面报错、行内提示、按钮 spinner、成功 Toast、写入守卫）。
+  - 数据控制器 `onlineState: loading / ready / refreshing / error / refresh_error`；WorkspaceGate 启动时运行旧业务数据清理并建立 Repository。
+  - `wardrobe-app.tsx` 移除所有旧 backfill 引用、`setItems`/`setOutfits`、bridge 调用、本地数据库依赖，改为线上状态驱动。
+  - 录入流、种草写入、套装/计划/穿着和试穿档案全部切换到 `wardrobeRepository` 线上方法。
+- **本地验证**：`npm run typecheck` 通过；`npm run test:logic:all` 65 pass / 0 fail；`npm run build` 成功（4 routes、390 kB first load JS）。
+- **风险门禁**：**high**（全量客户端架构切换、图片内存管理、Workspace Gate 启动清理、跨实体事务依赖服务端）。
+- **Subagent**：本文由并行 Subagent A（服务端 Workspace 事务）、B（客户端读取/UI）、C（客户端写入）和 D（集成/清理）产出，主 Agent 集成、清理残留旧引用、修复编译错误并统一提交。
+- **未验证风险**：未在浏览器/Android 模拟器中验证线上 API 真实调用（需要启动服务端）；旧本地业务运行时（Dexie、Outbox、Bridge、持久缓存）尚未物理删除；旧数据迁移清理器仅有单元测试需真机验证；服务端 `api:typecheck` 和 `api:test` 已在前期提交验证，本次未复跑。
+
 ## 2026-06-30 / v2.0.18-test / Codex + Server Subagent — 实现纯线上 Workspace 服务端
 
 - **目的**：实现服务器唯一数据源所需的 Workspace 查询、事务命令、revision、幂等响应和临时图片资产链路。

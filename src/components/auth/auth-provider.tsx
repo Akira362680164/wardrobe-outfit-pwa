@@ -2,7 +2,6 @@
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 import {
-  bindLocalOwnerIfNeeded,
   clearAuthTokens,
   createRefreshRequestId,
   isAccessTokenFresh,
@@ -12,17 +11,14 @@ import {
   type AuthSessionSnapshot,
   type AuthTokenPayload,
   type AuthUserSnapshot,
-  type LocalOwnerSnapshot,
 } from "@/lib/auth-session-store";
-import { closeAccountWorkspaceDb } from "@/lib/account-workspace-db";
 import * as authApi from "@/lib/cloud-auth-api";
 import { probeCloudConnectivity, subscribeNetworkChanges, type ConnectivityState } from "@/lib/cloud-sync/connectivity";
-import { isAccountWorkspaceEnabled, isWorkspaceOfflineAuthorized, loadWorkspaceRegistry, markWorkspaceLoggedOut, WORKSPACE_SCHEMA_VERSION } from "@/lib/workspace-registry";
 
 export type AuthPhase = "initializing" | "anonymous" | "authenticated" | "blocked";
 
 export interface AuthBlockedState {
-  owner: LocalOwnerSnapshot;
+  owner: { maskedPhone: string };
   attemptedUser: AuthUserSnapshot;
 }
 
@@ -64,18 +60,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const setTokenSession = useCallback(async (current: AuthSessionSnapshot, tokens: AuthTokenPayload) => {
-    if (!isAccountWorkspaceEnabled()) {
-      const ownerResult = await bindLocalOwnerIfNeeded(current, tokens.user);
-      if (ownerResult.blocked) {
-        const cleared = await clearAuthTokens(ownerResult.snapshot);
-        setSession(cleared);
-        setBlocked({ owner: ownerResult.owner, attemptedUser: tokens.user });
-        setPhase("blocked");
-        return null;
-      }
-      current = ownerResult.snapshot;
-    }
-
     const saved = await saveAuthTokens(current, tokens);
     setSession(saved);
     setBlocked(null);
@@ -87,7 +71,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const current = session ?? await loadAuthSessionSnapshot();
     if (!current.refreshToken) return null;
     const cloud = await updateConnectivity();
-    if (cloud !== "cloud_ready") return canUseCachedSession(current) ? current : null;
+    if (cloud !== "cloud_ready") return current.user ? current : null;
     try {
       const tokens = await authApi.refreshWithMutex({
         refreshToken: current.refreshToken,
@@ -103,7 +87,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setPhase("anonymous");
         return null;
       }
-      return canUseCachedSession(current) ? current : null;
+      return current.user ? current : null;
     }
   }, [session, setTokenSession, updateConnectivity]);
 
@@ -155,12 +139,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
               if (isAuthInvalidError(err)) {
                 const cleared = await clearAuthTokens(loaded);
                 if (!cancelled) setSession(cleared);
-              } else if (canUseCachedSession(loaded)) {
+              } else if (loaded.user) {
                 if (!cancelled) setPhase("authenticated");
                 return;
               }
             }
-          } else if (canUseCachedSession(loaded)) {
+          } else if (loaded.user) {
             setPhase("authenticated");
             return;
           }
@@ -226,7 +210,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setError(null);
     try {
       const current = session ?? await loadAuthSessionSnapshot();
-      markCurrentWorkspaceLoggedOut(current);
       if (current.accessToken) {
         if (!isAccessTokenFresh(current)) {
           try {
@@ -259,7 +242,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setError(null);
     try {
       const current = session ?? await loadAuthSessionSnapshot();
-      markCurrentWorkspaceLoggedOut(current);
       if (current.accessToken) await authApi.logoutAll(current.accessToken).catch(() => undefined);
       const cleared = await clearAuthTokens(current);
       setSession(cleared);
@@ -363,23 +345,6 @@ function toUserMessage(error: unknown): string {
   return "账号服务暂时不可用";
 }
 
-function canUseCachedSession(snapshot: AuthSessionSnapshot): boolean {
-  if (!snapshot.user || !snapshot.refreshToken || !isAccountWorkspaceEnabled()) return false;
-  const workspace = loadWorkspaceRegistry().workspaces[snapshot.user.id];
-  return Boolean(
-    workspace
-    && workspace.schemaVersion === WORKSPACE_SCHEMA_VERSION
-    && isWorkspaceOfflineAuthorized(workspace),
-  );
-}
-
 function isAuthInvalidError(error: unknown): boolean {
   return error instanceof authApi.CloudAuthApiError && (error.status === 401 || error.status === 403);
-}
-
-function markCurrentWorkspaceLoggedOut(snapshot: AuthSessionSnapshot): void {
-  if (!isAccountWorkspaceEnabled() || !snapshot.user) return;
-  const registry = markWorkspaceLoggedOut(snapshot.user.id);
-  const workspace = registry.workspaces[snapshot.user.id];
-  if (workspace) closeAccountWorkspaceDb(workspace.dbName);
 }

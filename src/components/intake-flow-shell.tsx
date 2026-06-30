@@ -10,12 +10,19 @@ export interface IntakeFlowStep {
   label: string;
 }
 
+export type IntakeSubmitState =
+  | { status: "idle" }
+  | { status: "submitting"; message: string; completed?: number; total?: number }
+  | { status: "failed"; message: string; retryLabel: string }
+  | { status: "succeeded"; message: string };
+
 export interface IntakeFlowShellProps {
   title: string;
   steps: IntakeFlowStep[];
   currentStepIndex: number;
   isProcessing?: boolean;
   processingText?: string;
+  submitState?: IntakeSubmitState;
   error?: string;
   hasUnsavedDraft?: boolean;
   nextLabel?: string;
@@ -26,6 +33,7 @@ export interface IntakeFlowShellProps {
   onBack?: () => void;
   onNext?: () => void;
   onExit?: () => void;
+  onStopWaiting?: () => void;
 }
 
 export function IntakeFlowShell({
@@ -34,6 +42,7 @@ export function IntakeFlowShell({
   currentStepIndex,
   isProcessing = false,
   processingText,
+  submitState = { status: "idle" },
   error,
   hasUnsavedDraft = false,
   nextLabel = "继续",
@@ -44,11 +53,14 @@ export function IntakeFlowShell({
   onBack,
   onNext,
   onExit,
+  onStopWaiting,
 }: IntakeFlowShellProps) {
   const [confirmExit, setConfirmExit] = useState(false);
   const [mounted, setMounted] = useState(false);
   const safeIndex = Math.min(Math.max(currentStepIndex, 0), Math.max(steps.length - 1, 0));
   const currentStep = steps[safeIndex];
+  const isSubmitting = submitState.status === "submitting";
+  const busy = isProcessing || isSubmitting;
   const progress = steps.length === 0 ? 0 : ((safeIndex + 1) / steps.length) * 100;
 
   useEffect(() => {
@@ -66,7 +78,7 @@ export function IntakeFlowShell({
   }, []);
 
   function requestExit() {
-    if (hasUnsavedDraft || isProcessing) {
+    if (hasUnsavedDraft || busy) {
       setConfirmExit(true);
       return;
     }
@@ -79,7 +91,7 @@ export function IntakeFlowShell({
     let handle: { remove: () => void } | null = null;
     App.addListener("backButton", () => {
       if (!active || removed) return;
-      if (isProcessing) {
+      if (busy) {
         setConfirmExit(true);
         return;
       }
@@ -100,7 +112,7 @@ export function IntakeFlowShell({
       removed = true;
       handle?.remove();
     };
-  }, [backDisabled, hasUnsavedDraft, isProcessing, onBack, onExit, safeIndex]);
+  }, [backDisabled, busy, hasUnsavedDraft, onBack, onExit, safeIndex]);
 
   if (!mounted || typeof document === "undefined") return null;
 
@@ -152,10 +164,15 @@ export function IntakeFlowShell({
         </div>
       ) : null}
 
-      {isProcessing ? (
+      {busy ? (
         <div className="mx-auto mt-3 flex w-full max-w-md items-center gap-2 rounded-lg bg-denim/5 px-3 py-2 text-xs text-ink/65">
           <Loader2 size={14} className="animate-spin text-denim" aria-hidden="true" />
-          <span>{processingText || "正在处理，请稍候……"}</span>
+          <span className="min-w-0 flex-1">
+            {submitState.status === "submitting" ? submitState.message : processingText || "正在处理，请稍候……"}
+          </span>
+          {isSubmitting && onStopWaiting ? (
+            <button type="button" onClick={onStopWaiting} className="shrink-0 font-semibold text-denim">停止等待</button>
+          ) : null}
         </div>
       ) : null}
 
@@ -168,7 +185,7 @@ export function IntakeFlowShell({
           <button
             type="button"
             onClick={onBack}
-            disabled={backDisabled || isProcessing || !onBack}
+            disabled={backDisabled || busy || !onBack}
             className="h-12 rounded-lg border border-ink/10 bg-white text-sm font-semibold text-ink/70 disabled:opacity-35"
           >
             {backLabel}
@@ -176,7 +193,7 @@ export function IntakeFlowShell({
           <button
             type="button"
             onClick={onNext}
-            disabled={nextDisabled || isProcessing || !onNext}
+            disabled={nextDisabled || busy || !onNext}
             className="h-12 rounded-lg bg-denim text-sm font-semibold text-white disabled:opacity-35"
           >
             {nextLabel}
@@ -187,9 +204,9 @@ export function IntakeFlowShell({
       {confirmExit ? (
         <div className="fixed inset-0 z-[120] grid place-items-center bg-black/35 px-4" onClick={() => setConfirmExit(false)}>
           <div className="w-full max-w-sm rounded-2xl bg-white p-5 shadow-xl" onClick={(event) => event.stopPropagation()}>
-            <h2 className="text-base font-semibold">{isProcessing ? "退出录入？" : "退出本次录入？"}</h2>
+            <h2 className="text-base font-semibold">{busy ? "退出录入？" : "退出本次录入？"}</h2>
             <p className="mt-2 text-sm leading-relaxed text-ink/58">
-              {isProcessing ? "正在处理本次录入，退出后本次结果不会保存。" : "当前草稿尚未保存，退出后会丢失本次录入进度。"}
+              {busy ? "正在处理本次录入，退出只会停止等待，已发送的请求可能仍会在服务器完成。" : "当前草稿尚未保存，退出后会丢失本次录入进度。"}
             </p>
             <div className="mt-5 grid grid-cols-2 gap-2">
               <button type="button" onClick={() => setConfirmExit(false)} className="h-11 rounded-lg border border-ink/10 bg-white text-sm font-semibold">

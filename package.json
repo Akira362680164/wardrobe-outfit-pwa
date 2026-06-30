@@ -1,6 +1,6 @@
 {
   "name": "wardrobe-outfit-pwa",
-  "version": "2.0.18-test",
+  "version": "2.1.0-test",
   "private": true,
   "workspaces": [
     "packages/cloud-contracts",
@@ -37,6 +37,7 @@
     "test:logic:outfit": "tsx scripts/test-outfit-asset-center.ts",
     "test:logic:wishlist": "tsx scripts/test-wishlist-buy-before.ts",
     "test:logic:intake": "tsx scripts/test-intake-draft.ts && tsx scripts/test-batch-ai-progress.ts",
+    "test:logic:online-writes": "tsx scripts/test-online-write-repository.ts && tsx scripts/test-intake-submit-state.ts",
     "test:logic:outfit-ai": "tsx scripts/test-outfit-ai-suggestion.ts",
     "test:logic:outfit-metadata": "tsx scripts/test-outfit-metadata.ts",
     "test:logic:wear": "tsx scripts/test-wear-statistics.ts",
@@ -51,8 +52,11 @@
     "test:logic:data-repo": "tsx scripts/test-data-repo.ts",
     "test:logic:app-route": "tsx scripts/test-app-route-navigation.ts",
     "test:logic:auth-client-shell": "tsx scripts/test-auth-client-shell.ts",
+    "test:logic:online-auth-shell": "tsx scripts/test-online-auth-shell.ts",
     "test:logic:workspace-registry": "tsx scripts/test-workspace-registry.ts",
     "test:logic:cloud-connectivity": "tsx scripts/test-cloud-connectivity-state.ts",
+    "test:logic:online-workspace": "tsx scripts/test-online-workspace-client.ts",
+    "test:logic:online-only-purge": "tsx scripts/test-online-only-purge.ts",
     "test:logic:auth-flow-v2-0-1": "tsx scripts/test-auth-flow-v2-0-1.ts",
     "test:logic:cloud-sync-conflicts": "tsx scripts/test-cloud-sync-conflicts.ts",
     "test:logic:legacy-dexie-import": "tsx scripts/test-legacy-dexie-import.ts",

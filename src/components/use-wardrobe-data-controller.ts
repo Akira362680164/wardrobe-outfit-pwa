@@ -1,63 +1,81 @@
-// src/components/use-wardrobe-data-controller.ts
-// v1.1.9 4C: 从 wardrobe-app.tsx 迁移数据读取状态与 refreshState。
+"use client";
 
-import { useState, useEffect, useCallback } from "react";
-import { getWardrobeSnapshot, invalidateWorkspaceSnapshotCache, WARDROBE_ASSET_RECOVERY_EVENT, type WardrobeDataSnapshot } from "@/lib/data-repo";
+import { useCallback, useEffect, useRef, useState } from "react";
+
+import { useOnlineWorkspaceGate } from "@/components/auth/workspace-gate";
 import { recordDiagnosticEvent } from "@/lib/diagnostic-log";
+import { onlineErrorMessage } from "@/lib/online/online-error";
+import { OnlineWorkspaceRepository, type OnlineWorkspaceSnapshot } from "@/lib/online/online-repository";
+import {
+  beginOnlineLoad,
+  failOnlineLoad,
+  finishOnlineLoad,
+  initialOnlineState,
+  type OnlineListState,
+} from "@/lib/online/online-state";
 import type {
-  WardrobeItem, ClosetLocation, SavedOutfit, WishlistItem,
-  OutfitPlanEntry, OutfitCalendarPlan, PlanPackingChecklistItem,
+  ClosetLocation,
+  OutfitCalendarPlan,
+  OutfitPlanEntry,
+  PlanPackingChecklistItem,
+  SavedOutfit,
+  WardrobeItem,
+  WishlistItem,
 } from "@/lib/types";
 
 export function useWardrobeDataController() {
-  const [items, setItems] = useState<WardrobeItem[]>([]);
-  const [locations, setLocations] = useState<ClosetLocation[]>([]);
-  const [outfits, setOutfits] = useState<SavedOutfit[]>([]);
-  const [wishlistItems, setWishlistItems] = useState<WishlistItem[]>([]);
-  const [outfitPlanEntries, setOutfitPlanEntries] = useState<OutfitPlanEntry[]>([]);
-  const [outfitCalendarPlans, setOutfitCalendarPlans] = useState<OutfitCalendarPlan[]>([]);
-  const [planPackingChecklistItems, setPlanPackingChecklistItems] = useState<PlanPackingChecklistItem[]>([]);
-  const [loading, setLoading] = useState(true);
+  const gate = useOnlineWorkspaceGate();
+  const ownedRepository = useRef<OnlineWorkspaceRepository | null>(null);
+  const repository = gate?.repository ?? (ownedRepository.current ??= new OnlineWorkspaceRepository());
+  const [onlineState, setOnlineState] = useState<OnlineListState<OnlineWorkspaceSnapshot>>(
+    gate ? finishOnlineLoad(gate.initialSnapshot) : initialOnlineState,
+  );
+  const snapshot = onlineState.data;
+  const [items, setItems] = useState<WardrobeItem[]>(snapshot?.items ?? []);
+  const [locations, setLocations] = useState<ClosetLocation[]>(snapshot?.locations ?? []);
+  const [outfits, setOutfits] = useState<SavedOutfit[]>(snapshot?.outfits ?? []);
+  const [wishlistItems, setWishlistItems] = useState<WishlistItem[]>(snapshot?.wishlistItems ?? []);
+  const [outfitPlanEntries, setOutfitPlanEntries] = useState<OutfitPlanEntry[]>(snapshot?.outfitPlanEntries ?? []);
+  const [outfitCalendarPlans, setOutfitCalendarPlans] = useState<OutfitCalendarPlan[]>(snapshot?.outfitCalendarPlans ?? []);
+  const [planPackingChecklistItems, setPlanPackingChecklistItems] = useState<PlanPackingChecklistItem[]>(snapshot?.planPackingChecklistItems ?? []);
 
-  const refreshState = useCallback(async () => {
-    recordDiagnosticEvent("asset", "workspace_asset_refresh", { phase: "started", severity: "info" });
-    const state: WardrobeDataSnapshot = await getWardrobeSnapshot();
-    setItems(state.items);
-    setLocations(state.locations);
-    setOutfits(state.outfits);
-    setWishlistItems(state.wishlistItems);
-    setOutfitPlanEntries(state.outfitPlanEntries);
-    setOutfitCalendarPlans(state.outfitCalendarPlans);
-    setPlanPackingChecklistItems(state.planPackingChecklistItems);
-    recordDiagnosticEvent("asset", "workspace_asset_refresh", {
-      phase: "succeeded",
-      severity: "info",
-      metadata: {
-        workspaceRefreshCompleted: true,
-        itemCount: state.items.length,
-        itemsWithThumbnail: state.items.filter((item) => Boolean(item.thumbnailDataUrl)).length,
-        itemsWithOriginal: state.items.filter((item) => Boolean(item.imageDataUrl)).length,
-      },
-    });
+  const applySnapshot = useCallback((next: OnlineWorkspaceSnapshot) => {
+    setItems(next.items);
+    setLocations(next.locations);
+    setOutfits(next.outfits);
+    setWishlistItems(next.wishlistItems);
+    setOutfitPlanEntries(next.outfitPlanEntries);
+    setOutfitCalendarPlans(next.outfitCalendarPlans);
+    setPlanPackingChecklistItems(next.planPackingChecklistItems);
   }, []);
 
-  useEffect(() => {
-    refreshState()
-      .catch(() => {
-        setItems([]);
-        setLocations([]);
-      })
-      .finally(() => setLoading(false));
-  }, [refreshState]);
+  const refreshState = useCallback(async () => {
+    setOnlineState((current) => beginOnlineLoad(current));
+    recordDiagnosticEvent("network", "online_workspace_refresh", { phase: "started", severity: "info" });
+    try {
+      const next = await repository.getOverview();
+      applySnapshot(next);
+      setOnlineState(finishOnlineLoad(next));
+      recordDiagnosticEvent("network", "online_workspace_refresh", {
+        phase: "succeeded", severity: "info", requestId: next.requestId,
+        metadata: { itemCount: next.items.length, outfitCount: next.outfits.length, wishlistCount: next.wishlistItems.length },
+      });
+    } catch (error) {
+      const message = onlineErrorMessage(error);
+      setOnlineState((current) => failOnlineLoad(current, message));
+      recordDiagnosticEvent("network", "online_workspace_refresh", { phase: "failed", severity: "error", errorCode: "WORKSPACE_REFRESH_FAILED" });
+      throw error;
+    }
+  }, [applySnapshot, repository]);
 
   useEffect(() => {
-    const refreshRecoveredAssets = () => {
-      invalidateWorkspaceSnapshotCache();
-      void refreshState();
+    if (gate) return;
+    void refreshState().catch(() => undefined);
+    return () => {
+      ownedRepository.current?.dispose();
+      ownedRepository.current = null;
     };
-    window.addEventListener(WARDROBE_ASSET_RECOVERY_EVENT, refreshRecoveredAssets);
-    return () => window.removeEventListener(WARDROBE_ASSET_RECOVERY_EVENT, refreshRecoveredAssets);
-  }, [refreshState]);
+  }, [gate, refreshState]);
 
   return {
     items, setItems,
@@ -67,7 +85,9 @@ export function useWardrobeDataController() {
     outfitPlanEntries, setOutfitPlanEntries,
     outfitCalendarPlans, setOutfitCalendarPlans,
     planPackingChecklistItems, setPlanPackingChecklistItems,
-    loading,
+    loading: onlineState.status === "loading",
+    onlineState,
+    onlineRepository: repository,
     refreshState,
   };
 }

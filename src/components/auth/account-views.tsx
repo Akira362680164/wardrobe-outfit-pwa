@@ -3,14 +3,12 @@
 import { useState } from "react";
 import { ChevronLeft, ChevronRight, Loader2, Lock, LogOut, User } from "lucide-react";
 import type { AuthUserSnapshot } from "@/lib/auth-session-store";
-import type { AccountWorkspaceRecord } from "@/lib/workspace-registry";
 
 export interface WardrobeCloudAuth {
   user: AuthUserSnapshot;
   deviceId: string;
   deviceLabel: string;
   accessToken?: string;
-  workspace?: AccountWorkspaceRecord;
   isBusy: boolean;
   onLogout: () => Promise<void>;
   onChangePassword: (currentPassword: string, newPassword: string) => Promise<void>;
@@ -54,7 +52,7 @@ export function AccountManagementView({
         {confirmingLogout ? (
           <div className="grid gap-2 rounded-lg border border-clay/30 bg-clay/5 p-3">
             <p className="text-sm font-semibold text-clay">退出登录？</p>
-            <p className="text-xs text-ink/60">退出后本机衣橱数据不会删除，重新登录此账号后可继续使用。</p>
+            <p className="text-xs text-ink/60">退出后将清空当前登录会话；重新登录后会从服务器读取衣橱数据。</p>
             <div className="grid grid-cols-2 gap-2">
               <button type="button" onClick={() => setConfirmingLogout(false)} disabled={auth.isBusy} className="h-10 rounded-lg border border-ink/10 text-sm disabled:opacity-60">取消</button>
               <button

@@ -2,7 +2,6 @@ import { Capacitor } from "@capacitor/core";
 import packageJson from "../../package.json";
 import type { AppRoute } from "@/lib/app-route";
 import { routeToDebugLabel } from "@/lib/app-route";
-import type { BackfillState } from "@/lib/thumbnail-backfill";
 import type { ClosetLocation, SavedOutfit, WardrobeItem, WishlistItem } from "@/lib/types";
 import { getGarmentCardColors, getColorSwatchStyle } from "@/lib/catalog-card-format";
 import { getAllColors } from "@/lib/color-fields";
@@ -67,7 +66,7 @@ export interface BuildDiagnosticLogInput {
   locations: ClosetLocation[];
   outfits: SavedOutfit[];
   wishlistItems: WishlistItem[];
-  backfillState: BackfillState;
+  backfillState?: unknown;
   miniMaxSettings: {
     apiHost?: string;
     model?: string;
@@ -267,7 +266,7 @@ export function buildWardrobeDiagnosticLog(input: BuildDiagnosticLogInput): Remo
       outfits: input.outfits.length,
       wishlistItems: input.wishlistItems.length,
     },
-    thumbnailBackfill: sanitizeValue(input.backfillState),
+    thumbnailBackfill: sanitizeValue(input.backfillState ?? { enabled: false }),
     locations: input.locations.map((location) => ({
       id: location.id,
       name: location.name,
