@@ -1,4 +1,15 @@
 
+## 2026-07-01 / v2.1.1-test / Codex — GitHub 公开 main 安全快照发布
+
+- **目的**：将 v2.1.1-test 的线上数据断层修复、真实服务端验收、Android 图片修复和执行报告发布到公开 GitHub，并核对远端分支头。
+- **发布结果**：公开仓库 `Akira362680164/wardrobe-outfit-pwa` 的 `main` 从 `facf626153d1762f132d981a23ba1d868bdc1e09` 更新为全新安全快照 `94122f98ea94e3b0eac0b9429099eb7805377876`；`EXECUTION_REPORT_v2.1.0-test.md` 已包含在该提交中。
+- **历史边界**：私有工作提交 `470f001`、`23c71c8` 及其后续修复的最终内容已进入公开快照，但按公开仓库规则不复制私有 Git 历史，因此公开远端不会出现这些私有 commit ID；工作分支也未推送。
+- **安全排除**：未发布 `.env*`、APK、固定签名、agent 规则/入口文件和测试衣物图片；公开仓库不具备固定签名 APK 构建凭据，符合预期。
+- **全新安装验证**：在独立公开目录执行 `npm ci`（`postinstall` 成功构建云契约）、`npm run typecheck`、`npm run test:logic:all`、`npm run build`，均通过；构建内嵌公开 commit `94122f9`。
+- **风险门禁**：**low**（安全导出、公开推送与可复现性验证，不改变私有工作区运行时代码）。
+- **未触发 subagent**：用户未通知。
+- **未验证风险**：`npm ci` 报告 9 项依赖审计风险（8 moderate / 1 high），本轮未使用可能引入破坏性升级的自动修复；需单独评估依赖升级范围。
+
 ## 2026-07-01 / v2.1.1-test / Codex — 公开仓库全新安装可复现性修复
 
 - **目的**：在无历史构建产物的公开导出目录执行 `npm ci && npm run typecheck` 时，发现 workspace 包 `@wardrobe/cloud-contracts` 的 `dist` 没有自动生成，本地主工作区曾因残留 `dist` 而掩盖该问题。
