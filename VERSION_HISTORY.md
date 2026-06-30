@@ -1,3 +1,14 @@
+## 2026-06-30 / v2.0.18-test / Codex — 冻结纯线上 Workspace 与临时资产契约
+
+- **目的**：为服务端、客户端读取和客户端写入并行实施冻结统一的线上 Workspace、错误、revision、幂等、批量命令和临时资产接口，并把项目长期规则改为服务器唯一数据源。
+- **版本**：保持 `2.0.18-test`；最终 APK 阶段升级至 `2.1.0-test`。
+- **改动文件**：`packages/cloud-contracts/src/workspace/{contracts,assets}.ts`、`packages/cloud-contracts/src/index.ts`、`AGENTS.md`、`VERSION_HISTORY.md`。
+- **核心规则**：业务实体与图片不落本地；诊断只保留进程内存并由用户主动上传；写入必须带 `clientMutationId`，更新/删除必须带 `expectedRevision`；临时资产先上传再由服务端事务绑定。
+- **本地验证**：`npm run cloud:contracts:typecheck` 通过；待提交前执行 `git diff --check` 和 staged 文件核对。
+- **风险门禁**：**high**（跨端契约、隐私边界和后续数据库/Android 主链路的冻结接口）。
+- **Subagent**：用户已允许并行；本提交由主 Agent 先冻结契约，提交后启动三个实现 Subagent。
+- **未验证风险**：服务端路由、数据库迁移、客户端接线、浏览器和 Android 均在后续任务实施。
+
 ## 2026-06-30 / v2.0.18-test / Codex — 制定纯线上工作区 v2.1.0-test 实施计划
 
 - **目的**：把已确认设计拆成契约、服务端、客户端读取、客户端写入、旧链路物理删除和最终 Android 验收六个可独立验证的任务。
