@@ -6,7 +6,7 @@ COPY package.json package-lock.json ./
 COPY packages/cloud-contracts/package.json packages/cloud-contracts/package.json
 COPY services/wardrobe-api/package.json services/wardrobe-api/package.json
 
-RUN npm ci
+RUN npm ci --ignore-scripts
 
 COPY packages/cloud-contracts packages/cloud-contracts
 COPY services/wardrobe-api services/wardrobe-api

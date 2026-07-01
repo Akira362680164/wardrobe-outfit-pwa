@@ -9,6 +9,11 @@
 - **未触发 subagent**：用户明确要求全部由母 Agent 串行开发。
 - **未验证风险**：尚未连接并清理真实测试 PostgreSQL/Storage，尚未部署新 API，也尚未执行浏览器 E2E、Android 全新安装业务回归和 APK 构建。
 
+### 部署前构建链修复
+
+- 首次在服务器从全新源码构建 API 镜像时，根 `postinstall` 在 Dockerfile 复制云契约源码前执行，导致 `packages/cloud-contracts/tsconfig.json` 不存在。Docker 依赖安装改为 `npm ci --ignore-scripts`，源码复制完成后仍由 API `prebuild` 显式构建云契约，避免依赖残留掩盖全新构建问题。
+- 风险门禁仍为 **high**；未触发 subagent：用户明确要求全部由母 Agent 串行开发。
+
 ## 2026-07-01 / v2.1.2-test / Codex — 客户端显式 revision 与资产命令接线
 
 - **目的**：让客户端写入层适配新的事务资产命令，并把服务器实体身份、revision 和资产引用直接放入读回对象，消除对象展开后丢失写入上下文的问题。
