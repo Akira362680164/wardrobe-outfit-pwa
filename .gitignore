@@ -52,3 +52,7 @@ playwright-report/
 test-results/
 playwright/.auth/
 .env.e2e.local
+AGENTS.md
+CLAUDE.md
+MINIMAX.md
+MINIMAX_BRANCH_HANDOFF.md
