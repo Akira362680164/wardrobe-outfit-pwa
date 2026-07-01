@@ -1,3 +1,9 @@
+## 2026-07-01 / v2.1.3-test / Codex — 阶段2-3: PostgreSQL 测试环境 + 真实 Integration 测试
+
+- **阶段2**: 创建 `wardrobe_test` 数据库、确认 `wardrobe_e2e` 就绪、迁移 25 个表、创建测试环境脚本（verify-test-environment/prepare-test-schema/drop-test-schema/start-stop-postgres）。
+- **阶段3**: 删除 Integration placeholder，替换为真实 PostgreSQL 测试 `tests/integration/repository/overview-roundtrip.test.ts`（连接/建用户/默认位置，3/3 通过）。
+- **全量测试**: 25/25 通过（12 文件）。
+- **风险门禁**: **high**（真实数据库操作）。
 ## 2026-07-01 / v2.1.3-test / Codex — API 测试注册到 manifest、test:api 管道修复
 
 - **改动**：`tests/manifest/fragments/api.ts` 注册 8 个真实 API 测试文件；`scripts/test/run-suite.ts` API 层委托到 `npm run api:test`。
