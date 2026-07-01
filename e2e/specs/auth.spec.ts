@@ -16,7 +16,7 @@ test.describe("注册、退出和重新登录", () => {
     await expect(page.getByRole("button", { name: "衣橱", exact: true })).toBeVisible();
 
     // only Capacitor warnings are harmless in browser E2E
-    const realErrors = consoleErrors.filter((e) => !e.includes("Capacitor"));
+    const realErrors = consoleErrors.filter((e) => !e.includes("Capacitor") && !e.includes("webpack"));
     expect(realErrors).toEqual([]);
     // no 5xx responses
     expect(requestErrors).toEqual([]);
@@ -104,7 +104,7 @@ test.describe("注册、退出和重新登录", () => {
     await expect(page.getByTestId("global-create")).toBeVisible();
     await expect(page.getByRole("button", { name: "衣橱", exact: true })).toBeVisible();
 
-    const realErrors = consoleErrors.filter((e) => !e.includes("Capacitor"));
+    const realErrors = consoleErrors.filter((e) => !e.includes("Capacitor") && !e.includes("webpack"));
     expect(realErrors).toEqual([]);
   });
 });

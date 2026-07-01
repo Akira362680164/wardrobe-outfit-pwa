@@ -1,3 +1,9 @@
+## 2026-07-01 / v2.1.3-test / Codex — 阶段5: E2E Playwright 实际执行（17/17 通过）
+
+- **修复**：E2E storage 环境变量名（STORAGE_ROOT → WARDROBE_STORAGE_ROOT）；webpack HMR 错误过滤。
+- **执行**：auth(4)、default-closet(1)、global-create(3)、account-page(5)、isolation(1)、failure-retry(3) — **17/17 全部通过**。
+- **风险门禁**: **high**（真实浏览器 E2E）。
+
 ## 2026-07-01 / v2.1.3-test / Codex — 阶段4: Component 测试矩阵补齐
 
 - **新增**: online-asset-image(3)、swipe-image-carousel(3)、confirm-action-sheet(3)、app-sub-page-top-bar(2)、async-action-button(3) — 共 15 项 Component 测试。
