@@ -19,6 +19,7 @@ import { decodeWorkspaceCursor, encodeWorkspaceCursor, type WorkspaceQueryServic
 
 const root = path.resolve(__dirname, "../../..");
 const migration = readFileSync(path.join(root, "services/wardrobe-api/migrations/0009_online_workspace.sql"), "utf8");
+const assetLifecycleMigration = readFileSync(path.join(root, "services/wardrobe-api/migrations/0011_asset_lifecycle_constraint.sql"), "utf8");
 const schema = readFileSync(path.join(root, "services/wardrobe-api/src/db/schema.ts"), "utf8");
 const entityId = "018f6f02-7b7a-7a20-8d1d-000000000301";
 const mutationId = "018f6f02-7b7a-7a20-8d1d-000000000302";
@@ -34,6 +35,10 @@ describe("online workspace migration", () => {
     expect(migration).toContain("assets_owner_or_temporary_check");
     expect(migration).toContain("assets_temporary_slot_unique");
     expect(schema).toContain('response: jsonb("response_json")');
+    expect(assetLifecycleMigration).toContain('DROP CONSTRAINT IF EXISTS "assets_owner_or_temporary_check"');
+    expect(assetLifecycleMigration).toContain('ADD CONSTRAINT "assets_lifecycle_check"');
+    expect(assetLifecycleMigration).toContain("temporary_session_id IS NULL");
+    expect(assetLifecycleMigration).toContain("temporary_session_id IS NOT NULL");
   });
 });
 

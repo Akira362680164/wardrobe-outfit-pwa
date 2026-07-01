@@ -1,3 +1,14 @@
+# v2.1.3-test - 2026-07-01 — 修复正式资产绑定约束
+
+- **执行 Agent**：Codex（母 agent 串行开发；未触发 subagent：用户明确禁止）。
+- **目的**：修复真实线上图片上传成功后，业务事务将临时图片合并为正式 canonical asset 时触发 PostgreSQL 约束并返回 500 的阻断问题。
+- **根因**：`0010_asset_bindings` 引入 binding 作为正式所有权来源，却未移除 `0009` 强制资产必须有旧 owner 或临时会话的约束；canonical asset 按设计清空两类旧字段后无法落库。
+- **改动文件**：`services/wardrobe-api/migrations/0011_asset_lifecycle_constraint.sql`、`services/wardrobe-api/migrations/meta/_journal.json`、`services/wardrobe-api/tests/workspace.test.ts`、`VERSION_HISTORY.md`。
+- **修复**：新增正式迁移，移除旧 owner/temporary 二选一约束，改为只校验临时资产元数据必须“全空或全有”；正式所有权继续由 `asset_bindings` 唯一表达。
+- **验证结果**：`npm run api:typecheck`、`npm run api:test` 通过（8 个文件、58 项）；待部署迁移并重跑真实 original+thumbnail 上传、绑定和读回。
+- **风险门禁**：high（PostgreSQL 约束与线上图片事务）；使用正式前向迁移和真实服务器闭环验证；未触发 subagent：用户明确禁止。
+- **未验证风险**：本条记录提交前新迁移尚未部署。
+
 # v2.1.3-test - 2026-07-01 — 连续写入辅助修复与版本升级
 
 - **执行 Agent**：Codex（母 agent 串行开发；未触发 subagent：用户明确禁止）。

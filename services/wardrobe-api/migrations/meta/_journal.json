@@ -78,6 +78,13 @@
       "when": 1782892800000,
       "tag": "0010_asset_bindings",
       "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1782892800001,
+      "tag": "0011_asset_lifecycle_constraint",
+      "breakpoints": true
     }
   ]
 }
