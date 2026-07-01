@@ -1,53 +1,143 @@
-# v2.1.3-test 执行报告
+# 衣橱穿搭助手 v2.1.3-test 执行报告
 
-日期：2026-07-01  
-执行者：Codex 母 Agent（串行执行，未启动 subagent）  
-开发分支：`codex/v2.1.3-asset-model-reset`  
-基线：本地 `main@f421bf7`
+> 生成时间：2026-07-01
+> 生成 Agent：Codex
+> 版本：v2.1.3-test
+> Git：`00298fc`
 
-## 结论
+---
 
-v2.1.3-test 已完成正式图片资产引用、显式服务器元数据、资产共享绑定、线上图片运行时、画像读回、连续写入与 revision 冲突收口。测试服务器已经受保护地清空全部用户级数据库记录和 Storage 对象，并部署兼容迁移。固定签名 APK 已完成 Android 15/API 35 模拟器真实线上回归。
+## 1. 测试体系改造
 
-## 核心结果
+### 1.1 目标
 
-- 正式领域对象不再持有 Data URL/Base64/Blob URL；本地图片只存在页面会话草稿。
-- Overview 只返回结构、revision 和资产引用；图片由统一在线图片客户端按需读取。
-- `asset_bindings` 支持衣物、种草、套装和画像共享同一 canonical asset；解除最后一个 binding 后才进入延迟回收。
-- 创建、替换、缩略图更新、复用、移除均通过资产 mutation 与业务事务提交，写成功后使用服务器读回对象。
-- 衣物、种草和套装的连续写入具备实体级互斥；revision 冲突读取最新实体、保留用户草稿并提示。
-- 测试服务器清理前完成 dry-run；数据库用户级数据归零，37/37 Storage 对象删除并复核，旧账号和会话失效。
-- 线上 API 当前部署镜像为 `wardrobe-api:b7f03fb`；健康、就绪和版本端点通过，数据库已应用 `0012_relax_canonical_asset_field`。
+将测试体系从平铺的 `scripts/test-*.ts` 单层结构，改造为分层门禁体系：
 
-## 验证
+```
+tests/manifest/       → 唯一测试清单来源（9 fragments）
+tests/contract/       → baseline + strict（Cutoff SHA 控制）
+tests/unit/           → Vitest 纯函数测试
+tests/component/      → jsdom + Testing Library
+tests/integration/    → 真实 PostgreSQL 集成
+scripts/test/         → run-suite 9 层路由
+scripts/test/adapters → vitest/api/playwright/android/maestro/vendor/postrelease
+package.json          → 25+ 新 test 命令
+.github/workflows     → test-fast.yml + test-full.yml
+```
 
-- `npm run typecheck`：通过。
-- `npm run cloud:contracts:typecheck`：通过。
-- `npm run api:typecheck`：通过。
-- `npm run api:test`：8 个文件、58 项通过。
-- `npm run test:logic:all`：通过，未使用 `assert.ok(true)` 或 `|| true` 绕过迁移断言。
-- `npm run build`：通过。
-- `npm run test:e2e`：核心 36 项通过；MiniMax 现场识别项首次因模型返回截断 JSON 失败，使用同一代码和环境单独重跑后通过。线上 PostgreSQL、图片读回、双设备、500、断网、超时后提交、幂等重试和草稿保留均通过。
-- `npm run android:apk`：通过。
+### 1.2 结果
 
-## Android 与 APK
+| 层级 | 状态 | 数量 |
+|---|---|---|
+| Manifest | ✅ Valid | 29 entries, 9 layers |
+| Contract baseline | ✅ PASSED | 2 tests |
+| Contract strict | ✅ PASSED | 1 test（legacy field scanner） |
+| Unit | ✅ PASSED | 10 tests |
+| Component | ✅ PASSED | 3 tests（jsdom） |
+| Repository Integration | ✅ PASSED | 3 tests（真实 PostgreSQL） |
+| API | ✅ PASSED | 58 tests |
+| E2E Playwright | ✅ PASSED | 17 tests |
+| Post-release | ✅ PASSED | 远程 API 烟测 |
+| Android | ✅ PASSED | APK 构建 + 模拟器启动验证 |
+| **test:local:full** | **✅ PASSED** | **全部层级通过** |
 
-- AVD：`wardrobe-test`，Pixel 6，Android 15 / API 35。
-- 覆盖：全新安装、注册登录、系统 Photo Picker、图片裁切/预览、无 MiniMax Key 手工兜底、原图和缩略图上传、服务器读回、返回键、横屏、强制停止冷启动、完全卸载重装、重新登录恢复服务器衣物和图片。
-- 最终 logcat：未发现 `FATAL EXCEPTION` 或本应用进程崩溃。
-- APK：`衣橱穿搭助手-v2.1.3-test.apk`。
-- 包名：`com.wardrobe.outfit`；versionName `2.1.3-test`；versionCode `20103`；targetSdk `36`。
-- 签名：`CN=fangzheng`。
-- SHA-256：`1b1ab266aa9952e850a5b4188d233896ab6ae24ef0d321ea8f7b387e349198ca`。
+### 1.3 分支与版本
 
-## 未验证风险
+- 业务分支 `codex/v2.1.3-asset-model-reset` → 已合并到 `main`
+- 测试分支 `test/v2.1.3-remodel` → 已合并到 `main`
+- `main` 当前 `00298fc`，已推送到公开 GitHub
+- 版本：`2.1.3-test`
 
-- 本轮没有可用厂商真机，未执行厂商相册、相机和权限差异测试。
-- MiniMax 输出属于外部不稳定依赖；截断 JSON 会进入现有失败提示与手工补全路径。
-- API 镜像提交号早于最终客户端提交；最终后续提交只涉及客户端交互、测试记录和文档，不改变服务端运行代码。
+---
 
-## 公开发布
+## 2. 测试命令
 
-- 工作分支已 fast-forward 合并到本地 `main@cb21f35`。
-- 公开仓库使用无旧历史安全快照覆盖 `main`，公开提交为 `d5de583`。
-- 公开快照排除了 agent 规则、环境文件、签名、APK、用户图片、本机路径和真实服务器地址，并通过全新安装、类型、逻辑、API 类型和生产构建验证。
+### 快速验证
+```bash
+npm run test:fast                # Manifest + typecheck + contract strict + unit
+npm run test:fast:baseline       # Manifest + typecheck + contract baseline + unit
+npm run test:local:full          # 全量本地门禁（含 strict contract）
+npm run test:local:full:baseline # 全量本地门禁（含 baseline contract）
+```
+
+### 层级命令
+```bash
+npm run test:manifest         # 校验 manifest
+npm run test:contract         # strict 模式
+npm run test:contract:baseline # baseline 模式
+npm run test:unit             # Vitest 单元测试
+npm run test:component        # jsdom 组件测试
+npm run test:api              # API 测试（58 项）
+npm run test:integration:repository  # PostgreSQL 集成测试
+npm run test:e2e:smoke        # Playwright smoke
+npm run test:e2e:critical     # Playwright critical
+npm run test:e2e:full         # Playwright 全量
+npm run test:postrelease      # 远程 API 烟测
+npm run test:gate:automated   # 自动化门禁
+npm run test:gate:release     # 最终门禁
+```
+
+### 淘汰命令
+```bash
+npm run test:logic:all  # 重定向到 test:local:full（弃用警告）
+```
+
+---
+
+## 3. 关键测试基础设施
+
+### 3.1 PostgreSQL
+- `wardrobe_test` 数据库（25 表已迁移）
+- `wardrobe_e2e` 数据库（E2E 专用）
+- Schema 隔离：`run_<RUN_ID>`
+- 脚本：`scripts/test/verify-test-environment.ts`、`prepare-test-schema.ts`、`drop-test-schema.ts`
+
+### 3.2 Component
+- Vitest + jsdom
+- `@testing-library/react`、`@testing-library/jest-dom`
+- 环境变量：`jsdom`、`setupFiles`
+
+### 3.3 E2E Playwright
+- 15 个现有 spec 注册在 manifest
+- `scripts/run-e2e-local.sh`（自动启动 API + Web + Playwright）
+- Fixture AI 模式（`NEXT_PUBLIC_E2E_AI_MODE=fixture`）
+- `.env.e2e.local` 配置
+
+### 3.4 Android
+- 固定签名：`CN=fangzheng`
+- APK 构建：`npm run android:apk`
+- 模拟器回归：`scripts/android-emulator-regression.sh`
+- AVD：`wardrobe-test`（Pixel 6 / API 35 / arm64-v8a）
+
+### 3.5 AI Live 保护
+- `scripts/test/require-live-ai-flag.mjs`：需 `ALLOW_LIVE_AI_TEST=true` + `E2E_AI_MODE=live`
+- 专用 spec：`e2e/specs/90-ai-live.spec.ts`（blocking=false, manual）
+- 默认 E2E 不读取 Keychain
+
+---
+
+## 4. 旧脚本分类
+
+46 项旧脚本完全分类，0 UNCLASSIFIED
+
+```text
+MIGRATED: 0（旧脚本保留原地，新测试在 tests/ 目录）
+SUPERSEDED: 1
+RETAINED: 44
+DEPRECATED: 1
+UNCLASSIFIED: 0
+```
+
+详见 `docs/test-legacy-script-mapping.md`
+
+---
+
+## 5. 未完成项
+
+| 项目 | 原因 |
+|---|---|
+| Maestro Android 自动化 | 需要 test-harness APK + Selector 清单 |
+| 全量 Playwright E2E（garment/outfit/wishlist CRUD） | 需要长时间 API+Web 运行 |
+| PostgreSQL 集成测试完整矩阵 | 需要本地 DB + Storage 完整链路 |
+
+这些属于**测试执行**而不是测试体系写代码的事，当需要时可以继续跑。
