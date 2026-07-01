@@ -126,7 +126,15 @@
     "test:smoke:remote": "tsx scripts/test/run-suite.ts postrelease",
     "test:report:postrelease": "tsx scripts/test/merge-test-results.ts --scope postrelease",
     "test:gate:postrelease": "tsx scripts/test/validate-release-gate.ts --scope postrelease",
-    "test:postrelease": "npm run test:smoke:remote && npm run test:report:postrelease && npm run test:gate:postrelease"
+    "test:postrelease": "npm run test:smoke:remote && npm run test:report:postrelease && npm run test:gate:postrelease",
+    "test:e2e:full": "tsx scripts/test/run-suite.ts e2e",
+    "test:env:reset": "tsx scripts/server/reset-test-environment.ts",
+    "test:candidate": "npm run test:local:full && npm run test:e2e:critical && npm run android:build:candidate && npm run android:verify:candidate",
+    "test:release:automated": "npm run test:local:full && npm run test:e2e:full && npm run android:verify:candidate",
+    "test:release": "npm run test:release:automated && npm run test:report:release && npm run test:gate:release",
+    "android:build:test-harness": "npm run android:apk && node scripts/test/write-apk-build-manifest.mjs --type test-harness",
+    "android:build:candidate": "npm run android:apk && node scripts/test/write-apk-build-manifest.mjs --type candidate",
+    "android:verify:candidate": "tsx scripts/test/run-suite.ts android --tag candidate"
   },
   "dependencies": {
     "@capacitor-community/keep-awake": "^8.0.1",

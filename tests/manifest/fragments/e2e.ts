@@ -1,13 +1,19 @@
 import { TestEntry } from '../test-types';
 
 export const e2eTests: TestEntry[] = [
-  {
-    testId: 'e2e:placeholder',
-    layer: 'e2e',
-    filePath: 'tests/e2e/placeholder.test.ts',
-    description: 'E2E test placeholder',
-    tags: ['smoke'],
-    blocking: false,
-    executionPolicy: 'manual',
-  },
+  { testId: 'e2e:auth', layer: 'e2e', filePath: 'e2e/specs/auth.spec.ts', description: 'Auth flow', tags: ['smoke'], blocking: true, inputDescription: 'Fresh page load', expectedOutput: 'User can register and login', expectedEvidence: 'Page contains logged-in UI' },
+  { testId: 'e2e:default-closet', layer: 'e2e', filePath: 'e2e/specs/default-closet.spec.ts', description: 'Default closet creation on register', tags: ['smoke'], blocking: true, inputDescription: 'New registration', expectedOutput: 'One default closet appears', expectedEvidence: 'Closet list shows 1 item' },
+  { testId: 'e2e:global-create', layer: 'e2e', filePath: 'e2e/specs/global-create.spec.ts', description: 'Global create flow', tags: ['smoke'], blocking: true, inputDescription: 'Logged-in user', expectedOutput: 'Create button opens correct form', expectedEvidence: 'Form appears with correct title' },
+  { testId: 'e2e:garment-crud', layer: 'e2e', filePath: 'e2e/specs/garment-crud-sync.spec.ts', description: 'Garment CRUD sync', tags: ['critical'], blocking: true, inputDescription: 'Garment list page', expectedOutput: 'Create, edit, delete garment syncs to server', expectedEvidence: 'Server data matches UI after refresh' },
+  { testId: 'e2e:outfit-crud', layer: 'e2e', filePath: 'e2e/specs/outfit-crud-sync.spec.ts', description: 'Outfit CRUD sync', tags: ['critical'], blocking: true, inputDescription: 'Outfit list page', expectedOutput: 'Create, edit, delete outfit syncs to server', expectedEvidence: 'Server data matches UI after refresh' },
+  { testId: 'e2e:wishlist-crud', layer: 'e2e', filePath: 'e2e/specs/wishlist-crud-sync.spec.ts', description: 'Wishlist CRUD sync', tags: ['critical'], blocking: true, inputDescription: 'Wishlist page', expectedOutput: 'Create, edit, delete wishlist items syncs', expectedEvidence: 'Server data matches UI after refresh' },
+  { testId: 'e2e:online-workspace', layer: 'e2e', filePath: 'e2e/specs/online-workspace-business-flow.spec.ts', description: 'Online workspace business flow', tags: ['critical'], blocking: true, inputDescription: 'Logged-in session', expectedOutput: 'Workspace data loads from server', expectedEvidence: 'Garments, outfits, wishlist populated' },
+  { testId: 'e2e:account-workspace', layer: 'e2e', filePath: 'e2e/specs/account-workspace-isolation.spec.ts', description: 'Account workspace isolation', tags: ['critical'], blocking: true, inputDescription: 'Two accounts', expectedOutput: 'Data isolated between accounts', expectedEvidence: 'Account A data not visible in B' },
+  { testId: 'e2e:account-page', layer: 'e2e', filePath: 'e2e/specs/account-page.spec.ts', description: 'Account page', tags: ['full'], blocking: false },
+  { testId: 'e2e:two-device', layer: 'e2e', filePath: 'e2e/specs/two-device-data-sync.spec.ts', description: 'Two device data sync', tags: ['full'], blocking: false },
+  { testId: 'e2e:cascade-delete', layer: 'e2e', filePath: 'e2e/specs/cascade-delete-sync.spec.ts', description: 'Cascade delete sync', tags: ['full'], blocking: false },
+  { testId: 'e2e:online-failure-retry', layer: 'e2e', filePath: 'e2e/specs/online-failure-retry.spec.ts', description: 'Online failure retry', tags: ['full'], blocking: false },
+  { testId: 'e2e:ai-recognition-failure', layer: 'e2e', filePath: 'e2e/specs/ai-recognition-failure-retry.spec.ts', description: 'AI recognition failure retry', tags: ['full'], blocking: false },
+  { testId: 'e2e:dev-server-image', layer: 'e2e', filePath: 'e2e/specs/dev-server-image-verification.spec.ts', description: 'Dev server image verification', tags: ['full'], blocking: false },
+  { testId: 'e2e:ai-live', layer: 'e2e', filePath: 'e2e/specs/90-ai-live.spec.ts', description: 'AI live recognition (manual)', tags: ['ai-live'], blocking: false, executionPolicy: 'manual' },
 ];
