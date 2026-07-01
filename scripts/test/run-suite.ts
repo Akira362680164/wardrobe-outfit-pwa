@@ -129,7 +129,29 @@ async function main() {
     return;
   }
 
-  // Contract/Unit/Component/Integration/API layers: use vitest
+  
+  // API layer: delegate to workspace npm run api:test
+  if (layer === 'api') {
+    try {
+      execSync('npm run api:test', { stdio: 'inherit', timeout: 120000, cwd: process.cwd() });
+      const output: RunResultJson = {
+        testId: 'api:all', layer: 'api', status: 'PASSED',
+        startedAt: new Date().toISOString(), finishedAt: new Date().toISOString(),
+        durationMs: 0, commit: COMMIT, branch: BRANCH, environment: {},
+        passed: 1, failed: 0, skipped: 0, notRun: 0, flaky: 0,
+        evidence: ['API tests passed'],
+      };
+      writeTestResult(output, path.join(process.cwd(), 'test-results', 'suite-api-' + Date.now()));
+      console.log('API result: PASSED');
+      return;
+    } catch (e: unknown) {
+      console.error('API tests failed:', (e as Error).message);
+      process.exit(1);
+    }
+  }
+
+  // Contract/Unit/Component/Integration layers: use vitest
+// Contract/Unit/Component/Integration/API layers: use vitest
   const entries = discoverTests({ layer, tag, baseline });
   if (entries.length === 0) {
     console.log(`No tests found for layer=${layer} tag=${tag} baseline=${baseline}. Skipping.`);

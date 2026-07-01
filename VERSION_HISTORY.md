@@ -1,3 +1,9 @@
+## 2026-07-01 / v2.1.3-test / Codex — API 测试注册到 manifest、test:api 管道修复
+
+- **改动**：`tests/manifest/fragments/api.ts` 注册 8 个真实 API 测试文件；`scripts/test/run-suite.ts` API 层委托到 `npm run api:test`。
+- **验证**：`npm run test:fast:baseline` → exit 0；`npm run test:local:full:baseline` → component/integration/API(58/58)/build 全部通过；`npx vitest run` → 22/22；manifest → Valid: true。
+- **风险门禁**：**low**（测试治理）。
+
 ## 2026-07-01 / v2.1.3-test / Codex — dependency-map 填充、result schema、test:affected/gate 验证
 
 - **改动**：`tests/manifest/dependency-map.ts` 动态从 manifest 构建 file→test 映射；`tests/reports/schemas/result.schema.json` 结果校验 schema。
