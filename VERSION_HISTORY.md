@@ -1,3 +1,8 @@
+## 2026-07-01 / v2.1.3-test / Codex — run-suite.ts 支持全部 9 层（含 e2e/android/postrelease 代理）
+
+- **改动**：`scripts/test/run-suite.ts` 重写为完整 9 层路由：manifest（结构校验）、e2e（委托 Playwright run-e2e-local.sh）、android（委托 android-emulator-regression.sh）、postrelease（委托 run-remote-smoke.ts）、contract/unit/component/integration/api（Vitest 运行）。
+- **验证**：`npx vitest run` → 22/22 通过；`npm run test:manifest` → Valid: true。
+- **风险门禁**：**medium**（测试运行器路由变化）。
 ## 2026-07-01 / v2.1.3-test / Codex — APK 构建成功（v2.1.3-test, versionCode=20103）
 
 - **目的**：完成 v2.1.3-test 的 APK 构建和签名验证。
