@@ -1,0 +1,13 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Test Result Schema",
+  "type": "object",
+  "required": ["testId", "layer", "status", "startedAt", "finishedAt"],
+  "properties": {
+    "testId": { "type": "string" },
+    "layer": { "type": "string", "enum": ["contract", "unit", "component", "integration", "api", "e2e", "android", "vendor-device", "postrelease"] },
+    "status": { "type": "string", "enum": ["PASSED", "FAILED", "ERROR", "SKIPPED", "NOT_RUN"] },
+    "passed": { "type": "integer", "minimum": 0 },
+    "failed": { "type": "integer", "minimum": 0 }
+  }
+}

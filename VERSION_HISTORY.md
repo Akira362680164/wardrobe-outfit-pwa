@@ -1,3 +1,9 @@
+## 2026-07-01 / v2.1.3-test / Codex — dependency-map 填充、result schema、test:affected/gate 验证
+
+- **改动**：`tests/manifest/dependency-map.ts` 动态从 manifest 构建 file→test 映射；`tests/reports/schemas/result.schema.json` 结果校验 schema。
+- **验证**：`npm run test:gate:automated` → Pass: true；`npx tsx scripts/test/run-affected-tests.ts` → 正确检出 4 个受影响测试；`npx vitest run` → 22/22 通过。
+- **风险门禁**：**low**（纯测试治理，不动业务代码）。
+<<<<<<< HEAD
 ## 2026-07-01 / v2.1.3-test / Codex — run-suite.ts 支持全部 9 层（含 e2e/android/postrelease 代理）
 
 - **改动**：`scripts/test/run-suite.ts` 重写为完整 9 层路由：manifest（结构校验）、e2e（委托 Playwright run-e2e-local.sh）、android（委托 android-emulator-regression.sh）、postrelease（委托 run-remote-smoke.ts）、contract/unit/component/integration/api（Vitest 运行）。
@@ -13,6 +19,8 @@
 - **Android 修复**：`android/app/build.gradle` 中 `compileSdk / minSdkVersion / targetSdkVersion` 从变量引用改为字面值（AGP 8.13 兼容性）。
 - **未完成**：模拟器已被其他 session 占用，未执行 Android 功能验证。
 - **风险门禁**：**high**（Android 原生构建与签名）。
+=======
+>>>>>>> parent of a78e880 (v2.1.3-test APK build success + fixed signing)
 ## 2026-07-01 / v2.1.3-test / Codex — jsdom + testing-library 组件测试框架、远程 API 烟测验证
 
 - **目的**：补齐组件测试框架（jsdom + @testing-library/react）并验证 postrelease 远程 API 烟测。

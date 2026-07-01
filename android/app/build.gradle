@@ -39,7 +39,7 @@ if (!fixedSigningStoreFile.exists()) {
 
 android {
     namespace = "com.wardrobe.outfit"
-    compileSdk = 36
+    compileSdk = rootProject.ext.compileSdkVersion
     signingConfigs {
         wardrobeFixed {
             storeFile fixedSigningStoreFile
@@ -50,8 +50,8 @@ android {
     }
     defaultConfig {
         applicationId "com.wardrobe.outfit"
-        minSdkVersion 24
-        targetSdkVersion 36
+        minSdkVersion rootProject.ext.minSdkVersion
+        targetSdkVersion rootProject.ext.targetSdkVersion
         versionCode appVersionCode
         versionName appVersionName
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
