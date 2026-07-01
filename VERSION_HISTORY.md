@@ -1,4 +1,14 @@
 
+## 2026-07-01 / v2.1.1-test / Codex — 组件复用收口设计与实施计划
+
+- **目的**：复核 ChatGPT 组件复用审查报告，并将合理项拆成可独立验证的 UI 收口、重复请求修复和高风险图片按需加载阶段。
+- **改动文件**：`docs/superpowers/specs/2026-07-01-component-reuse-refactor-design.md`、`docs/superpowers/plans/2026-07-01-component-reuse-refactor.md`、`VERSION_HISTORY.md`。
+- **关键边界**：R1-R6、R8-R12 纳入组件收口；R7 图片加载从普通 UI 重构中拆出，单独验证 Repository/UI 数据边界；不新增缓存、依赖或业务规则。
+- **验证**：文档自检无 TBD/TODO、范围冲突或未定义阶段；开始代码前已核对分支、工作区、源码真实引用和重复请求路径。
+- **风险门禁**：**low**（本提交仅设计与执行计划）。
+- **未触发 subagent**：用户未通知。
+- **未验证风险**：代码实现、E2E、Android 和 APK 由后续任务逐阶段完成。
+
 ## 2026-07-01 / v2.1.1-test / Codex — GitHub 公开 main 安全快照发布
 
 - **目的**：将 v2.1.1-test 的线上数据断层修复、真实服务端验收、Android 图片修复和执行报告发布到公开 GitHub，并核对远端分支头。
