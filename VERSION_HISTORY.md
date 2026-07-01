@@ -1,3 +1,13 @@
+## 2026-07-01 / v2.1.3-test / Codex — APK 构建成功（v2.1.3-test, versionCode=20103）
+
+- **目的**：完成 v2.1.3-test 的 APK 构建和签名验证。
+- **APK 构建**：`npm run android:apk` → **BUILD SUCCESSFUL**。版本 `2.1.3-test`，versionCode `20103`，commit `fb11647`，APK 大小 9.5MB。
+- **签名验证**：`apksigner verify --print-certs` → `CN=fangzheng`，SHA-256 `895e7d49da1cb7ac709aaba5d17e5bf8ec76f1c87d1f7939cd6ce1b2128327f6`。
+- **Build Manifest**：`test-results/apk-candidate/build-manifest.json`。
+- **APK 路径**：`/Users/fangzheng/Documents/wardrobe-v2.1.3-tests/衣橱穿搭助手-v2.1.3-test.apk`。
+- **Android 修复**：`android/app/build.gradle` 中 `compileSdk / minSdkVersion / targetSdkVersion` 从变量引用改为字面值（AGP 8.13 兼容性）。
+- **未完成**：模拟器已被其他 session 占用，未执行 Android 功能验证。
+- **风险门禁**：**high**（Android 原生构建与签名）。
 ## 2026-07-01 / v2.1.3-test / Codex — jsdom + testing-library 组件测试框架、远程 API 烟测验证
 
 - **目的**：补齐组件测试框架（jsdom + @testing-library/react）并验证 postrelease 远程 API 烟测。
