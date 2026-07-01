@@ -1,4 +1,14 @@
 
+## 2026-07-01 / v2.1.2-test / Codex — GitHub 公开仓库测试脚本脱敏版已推送
+
+- **目的**：把已脱敏的测试/验证脚本随 `main` 安全快照同步到公开 GitHub，并补齐公开目录的独立构建验证与远端提交记录。
+- **推送信息**：公开暂存目录为 `/Users/fangzheng/Documents/wardrobe-github-public-main-v2.1.2-test`；公开仓库 `Akira362680164/wardrobe-outfit-pwa` 的 `main` 由 `68d9079e9b4536af52c8306e978f9970770da8e4` 更新为 `96bf969b59cda68c7e986ffd72abe7d138788ec9`；采用 `git push --force-with-lease origin main`，公开快照基于私有主仓库提交 `9753a26e4d7351b042c8ebae287563d050f77a48` 导出。
+- **公开排除**：确认未上传 `AGENTS.md`、`CLAUDE.md`、`MINIMAX.md`、`.env.production`、`deploy/.env.production.example`、APK、签名相关内容、`test-clothes`、历史 agent 交接文档和本机截图脚本目录。
+- **验证**：在公开暂存目录执行 `npm install --prefer-offline --no-audit --no-fund`、`npm run typecheck`、`npm run test:logic:all`、`npm run build`，均通过；公开构建内嵌 commit `96bf969b59cda68c7e986ffd72abe7d138788ec9`。
+- **风险门禁**：**low**（公开快照导出与远端同步，不改业务运行时代码）。
+- **未触发 subagent**：用户未通知。
+- **未验证风险**：本轮仅验证公开代码可安装、类型检查、逻辑测试和构建；未在公开仓库目录执行 Android 打包，公开仓库本身也不包含签名凭据。
+
 ## 2026-07-01 / v2.1.2-test / Codex — 公开仓库测试脚本脱敏与废弃备份脚本删除
 
 - **目的**：在公开 GitHub 导出前清理测试/验证脚本里的本机路径、固定服务器地址和固定签名假设，并删除已无实际用途的 `test-real-user-zip-contract.ts`。
