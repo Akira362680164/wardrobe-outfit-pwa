@@ -1,3 +1,11 @@
+## 2026-07-01 / v2.1.3-test / Codex — Wave 2-4 测试层级骨架（Component/Integration/API/E2E/Android）
+
+- **目的**：补齐所有 9 个测试层级的目录结构和最小可运行测试。
+- **改动文件**：`tests/component/`（+placeholder）、`tests/integration/`、`tests/api/`、`tests/e2e/`、`tests/android/`、`tests/manifest/fragments/api.ts`、`tests/manifest/fragments/e2e.ts`、`tests/manifest/fragments/android.ts`（含实际 TestEntry 注册）、`tests/manifest/fragments/integration.ts`（含 entry）、`tests/manifest/fragments/component.ts`（含 entry）。
+- **验证**：`npx vitest run` → **7/7 通过**（6 个测试文件，含 contract 2 项、component/integration/api/e2e/android 各 1 项）。
+- **风险门禁**：**medium**（新测试目录结构，不改业务运行时代码）。
+- **未触发 subagent**：用户明确要求串行开发。
+- **未验证风险**：所有测试均为占位 stub，无真实断言逻辑；contract strict 模式、旧脚本迁移、真实 PostgreSQL 集成、E2E Playwright、Android Maestro 和 APK 构建尚未实现。
 ## 2026-07-01 / v2.1.3-test / Codex — Wave 1 测试体系骨架（串行实现，不启动 subagent）
 
 - **目的**：建立 v2.1.3 新测试体系的分层门禁骨架，包含 Manifest/Runner/Gate/Contract/Unit/Fixtures。
