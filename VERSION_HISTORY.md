@@ -1,3 +1,12 @@
+# v2.1.3-test - 2026-07-01 — 兼容迁移部署完成
+
+- **执行 Agent**：Codex（母 agent 串行开发；未触发 subagent：用户明确禁止）。
+- **部署结果**：提交 `b7f03fb` 已构建为 `wardrobe-api:b7f03fb` 并部署；容器 healthy，服务器脚本及公网 `/api/health`、`/api/ready`、`/api/version` 均通过，版本端点返回 `gitCommit=b7f03fb`。
+- **迁移验证**：生产 PostgreSQL 的 `assets_lifecycle_check` 已更新；canonical 资产允许保留 `field_name`，临时资产仍要求 session、mutation、entity type、field、variant、expiry 全部存在。
+- **改动文件**：`VERSION_HISTORY.md`（记录部署与迁移证据）。
+- **风险门禁**：high（线上 PostgreSQL 约束与 API 部署）；通过容器健康、依赖就绪、公开版本端点和实际约束定义核验；未触发 subagent：用户明确禁止。
+- **未验证风险**：Android WebView 与 APK 尚未回归；厂商真机本轮尚不可用。
+
 # v2.1.3-test - 2026-07-01 — 资产迁移兼容与灵感图线上闭环修复
 
 - **执行 Agent**：Codex（母 agent 串行开发；未触发 subagent：用户明确禁止）。
