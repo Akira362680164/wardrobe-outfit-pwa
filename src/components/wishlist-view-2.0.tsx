@@ -5,6 +5,7 @@ import React, { useState, useMemo, useCallback, useEffect, useRef, type ReactNod
 import { AnimatePresence, motion } from "motion/react";
 import { MotionPopoverMenu, MotionSheet } from "@/components/motion-common";
 import { ConfirmActionSheet, NoticeSheet } from "@/components/dialogs";
+import { OnlineAssetImage } from "@/components/online/online-asset-image";
 import {
   ShoppingBag, ChevronLeft,
   MoreVertical, X, ImageIcon, Trash2, RotateCcw,
@@ -1392,6 +1393,7 @@ export function WishlistView20({
       label: getDetailSlideLabel("wishlist_product"),
       alt: item.name,
       imageDataUrl: item.imageDataUrl,
+      renderContent: <OnlineAssetImage entity={item} field="imageDataUrl" variant="original" alt={item.name} className="h-full w-full" onOpen={(url) => onExpandImage({ src: url, alt: item.name })} fallback={<div className="grid h-full place-items-center text-ink/25"><ImageIcon size={36} /></div>} />,
     }];
 
 

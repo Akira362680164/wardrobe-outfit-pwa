@@ -40,6 +40,7 @@ import { CatalogWaterfallCardShell } from "@/components/item-shell/catalog-water
 import { CatalogWaterfallGrid } from "@/components/item-shell/catalog-waterfall-grid";
 import { ItemDetailPageShell } from "@/components/item-shell/item-detail-page-shell";
 import { ConfirmActionSheet } from "@/components/dialogs";
+import { OnlineAssetImage } from "@/components/online/online-asset-image";
 import { TemperatureRangeBar } from "@/components/temperature-range-bar";
 import {
   DetailAiCard,
@@ -1336,7 +1337,7 @@ function OutfitDetailView({
         cover.mode === "empty" ? (
           <div className="grid h-full w-full place-items-center text-ink/25"><Shirt size={48} /></div>
         ) : (
-          <OutfitCover outfit={outfit} items={allItems} size="detail" className="h-full w-full" />
+          <OnlineAssetImage entity={outfit} field="coverImageDataUrl" variant="original" alt={outfit.name} className="h-full w-full" onOpen={(url) => onExpandImage({ src: url, alt: outfit.name })} fallback={<OutfitCover outfit={outfit} items={allItems} size="detail" className="h-full w-full" />} />
         )
       ) : undefined,
     }));

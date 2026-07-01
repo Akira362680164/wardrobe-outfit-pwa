@@ -2,6 +2,7 @@ export * from "./online-button-spinner";
 export * from "./online-catalog-skeleton";
 export * from "./online-detail-skeleton";
 export * from "./online-image-state";
+export * from "./online-asset-image";
 export * from "./online-inline-notice";
 export * from "./online-page-error";
 export * from "./online-page-loader";

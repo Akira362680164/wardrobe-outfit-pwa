@@ -134,15 +134,9 @@ export function DetailHeroGallery({
       >
         {activeSlide ? (
           activeSlide.renderContent ? (
-            <button
-              type="button"
-              onClick={() => {
-                if (activeSlide.imageDataUrl) onExpandImage?.({ src: activeSlide.imageDataUrl, alt: activeSlide.alt });
-              }}
-              className="h-full w-full"
-            >
+            <div className="h-full w-full">
               {activeSlide.renderContent}
-            </button>
+            </div>
           ) : (
             <SwipeImageCarousel
               slides={imageSlides}

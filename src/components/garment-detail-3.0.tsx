@@ -36,6 +36,7 @@ import {
 } from "@/components/detail-shell";
 import { ItemDetailSections } from "@/components/item/detail-sections";
 import { WardrobeExtras } from "@/components/item/wardrobe-extras";
+import { OnlineAssetImage } from "@/components/online/online-asset-image";
 
 /* ------------------------------------------------------------------ */
 /*  Props                                                             */
@@ -155,6 +156,12 @@ export function GarmentDetail30({
     displayMode: slide.displayMode,
     originalSrc: slide.originalSrc,
     cropBox: slide.cropBox,
+    renderContent: slide.id === "main"
+      ? <OnlineAssetImage entity={item} field="imageDataUrl" variant="original" alt={item.name} className="h-full w-full" onOpen={(url) => onExpandImage({ src: url, alt: item.name })} fallback={<div className="grid h-full place-items-center text-ink/25"><Shirt size={48} /></div>} />
+      : (() => {
+          const reference = refs.find((entry) => entry.id === slide.id);
+          return reference ? <OnlineAssetImage entity={reference} field="imageDataUrl" variant="original" alt={slide.alt || item.name} className="h-full w-full" onOpen={(url) => onExpandImage({ src: url, alt: slide.alt || item.name })} /> : undefined;
+        })(),
   }));
   const filmstripItems = detailSlides.map((slide) => ({
     id: slide.id,
