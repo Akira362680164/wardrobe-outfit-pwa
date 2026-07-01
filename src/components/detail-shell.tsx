@@ -129,6 +129,8 @@ export function DetailHeroGallery({
   return (
     <div className="mt-3">
       <div
+        role="region"
+        aria-label="详情图片"
         className="relative mx-auto overflow-hidden rounded-3xl bg-mist"
         style={{ height: "clamp(300px, 52dvh, 500px)" }}
       >
