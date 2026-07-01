@@ -74,6 +74,120 @@
 - **风险门禁**：high（真实线上图片、事务、revision 和核心业务动作）；真实 API 全链路通过；未触发 subagent：用户明确禁止。
 - **未验证风险**：Android WebView UI、超时/断网保留草稿和厂商真机仍待验证。
 
+## 2026-07-01 / v2.1.3-test / Codex — phase 6-7: cutoff SHA + contract strict
+
+- CUTOFF SHA: 6a173aaff8c6cdb15c4b0bffac32ab2b3724cf5e
+- Contract strict: 3/3 passing
+- test:local:full: all layers passing
+
+## 2026-07-01 / v2.1.3-test / Codex — 阶段8-9: Android 自动化验证（APK + 模拟器）
+
+- **Test Harness APK**: v2.1.3-test, versionCode=20103, CN=fangzheng signing, SHA=eb95553. Build manifest written.
+- **Android 验证**: APK install → 启动 → PID 2280, MainActivity 前台, 0 个 FATAL 崩溃。
+- **风险门禁**: **high**（Android 原生构建与模拟器验证）。
+
+## 2026-07-01 / v2.1.3-test / Codex — 阶段5: E2E Playwright 实际执行（17/17 通过）
+
+- **修复**：E2E storage 环境变量名（STORAGE_ROOT → WARDROBE_STORAGE_ROOT）；webpack HMR 错误过滤。
+- **执行**：auth(4)、default-closet(1)、global-create(3)、account-page(5)、isolation(1)、failure-retry(3) — **17/17 全部通过**。
+- **风险门禁**: **high**（真实浏览器 E2E）。
+
+## 2026-07-01 / v2.1.3-test / Codex — 阶段4: Component 测试矩阵补齐
+
+- **新增**: online-asset-image(3)、swipe-image-carousel(3)、confirm-action-sheet(3)、app-sub-page-top-bar(2)、async-action-button(3) — 共 15 项 Component 测试。
+- **全量测试**: 36/36 通过（16 文件）。
+- **风险门禁**: **low**（jsdom 组件测试）。
+## 2026-07-01 / v2.1.3-test / Codex — 阶段2-3: PostgreSQL 测试环境 + 真实 Integration 测试
+
+- **阶段2**: 创建 `wardrobe_test` 数据库、确认 `wardrobe_e2e` 就绪、迁移 25 个表、创建测试环境脚本（verify-test-environment/prepare-test-schema/drop-test-schema/start-stop-postgres）。
+- **阶段3**: 删除 Integration placeholder，替换为真实 PostgreSQL 测试 `tests/integration/repository/overview-roundtrip.test.ts`（连接/建用户/默认位置，3/3 通过）。
+- **全量测试**: 25/25 通过（12 文件）。
+- **风险门禁**: **high**（真实数据库操作）。
+## 2026-07-01 / v2.1.3-test / Codex — API 测试注册到 manifest、test:api 管道修复
+
+- **改动**：`tests/manifest/fragments/api.ts` 注册 8 个真实 API 测试文件；`scripts/test/run-suite.ts` API 层委托到 `npm run api:test`。
+- **验证**：`npm run test:fast:baseline` → exit 0；`npm run test:local:full:baseline` → component/integration/API(58/58)/build 全部通过；`npx vitest run` → 22/22；manifest → Valid: true。
+- **风险门禁**：**low**（测试治理）。
+
+## 2026-07-01 / v2.1.3-test / Codex — dependency-map 填充、result schema、test:affected/gate 验证
+
+- **改动**：`tests/manifest/dependency-map.ts` 动态从 manifest 构建 file→test 映射；`tests/reports/schemas/result.schema.json` 结果校验 schema。
+- **验证**：`npm run test:gate:automated` → Pass: true；`npx tsx scripts/test/run-affected-tests.ts` → 正确检出 4 个受影响测试；`npx vitest run` → 22/22 通过。
+- **风险门禁**：**low**（纯测试治理，不动业务代码）。
+## 2026-07-01 / v2.1.3-test / Codex — run-suite.ts 支持全部 9 层（含 e2e/android/postrelease 代理）
+
+- **改动**：`scripts/test/run-suite.ts` 重写为完整 9 层路由：manifest（结构校验）、e2e（委托 Playwright run-e2e-local.sh）、android（委托 android-emulator-regression.sh）、postrelease（委托 run-remote-smoke.ts）、contract/unit/component/integration/api（Vitest 运行）。
+- **验证**：`npx vitest run` → 22/22 通过；`npm run test:manifest` → Valid: true。
+- **风险门禁**：**medium**（测试运行器路由变化）。
+## 2026-07-01 / v2.1.3-test / Codex — APK 构建成功（v2.1.3-test, versionCode=20103）
+
+- **目的**：完成 v2.1.3-test 的 APK 构建和签名验证。
+- **APK 构建**：`npm run android:apk` → **BUILD SUCCESSFUL**。版本 `2.1.3-test`，versionCode `20103`，commit `fb11647`，APK 大小 9.5MB。
+- **签名验证**：`apksigner verify --print-certs` → `CN=fangzheng`，SHA-256 `895e7d49da1cb7ac709aaba5d17e5bf8ec76f1c87d1f7939cd6ce1b2128327f6`。
+- **Build Manifest**：`test-results/apk-candidate/build-manifest.json`。
+- **APK 路径**：`/Users/fangzheng/Documents/wardrobe-v2.1.3-tests/衣橱穿搭助手-v2.1.3-test.apk`。
+- **Android 修复**：`android/app/build.gradle` 中 `compileSdk / minSdkVersion / targetSdkVersion` 从变量引用改为字面值（AGP 8.13 兼容性）。
+- **未完成**：模拟器已被其他 session 占用，未执行 Android 功能验证。
+- **风险门禁**：**high**（Android 原生构建与签名）。
+>>>>>>> parent of a78e880 (v2.1.3-test APK build success + fixed signing)
+## 2026-07-01 / v2.1.3-test / Codex — jsdom + testing-library 组件测试框架、远程 API 烟测验证
+
+- **目的**：补齐组件测试框架（jsdom + @testing-library/react）并验证 postrelease 远程 API 烟测。
+- **组件测试**：安装 `jsdom`、`@testing-library/react`、`@testing-library/jest-dom`、`@testing-library/user-event`；创建 `tests/component/setup.ts` 和 `tests/component/async-action-button.test.tsx`（3 项测试：React DOM 渲染、按钮渲染、screen 查询）。`vitest.config.ts` 新增 `environment: 'jsdom'` 和 `setupFiles`。
+- **远程 API 烟测**：`TEST_API_URL=http://111.231.98.86 npx tsx scripts/test/run-remote-smoke.ts` → **PASSED**（/api/ready: OK, Version: 0.1.0）。
+- **全量测试**：`npx vitest run` → **22/22 通过**（11 个测试文件）。
+- **风险门禁**：**medium**（安装新 npm 依赖、Vitest 配置 jsdom 环境）。
+- **未触发 subagent**：用户明确要求串行开发。
+- **未验证风险**：jest-dom matchers 与 vitest expect 不兼容（`toBeInDocument`、`toBeDisabled` 等需要额外配置），当前使用原生 DOM API 断言；真实 PostgreSQL 集成和 Playwright E2E 仍需要后续实现。
+## 2026-07-01 / v2.1.3-test / Codex — AI-live spec、CI 配置文件、APK manifest 脚本、final-state 文档
+
+- **目的**：补齐无需外部基础设施的剩余任务项。
+- **AI-live**：`e2e/specs/90-ai-live.spec.ts` — `@ai-live` 标记，manual policy，blocking=false。
+- **CI 配置**：`.github/workflows/test-fast.yml`（Manifest+Contract+Unit+typecheck）、`test-full.yml`（local:full+gate）。
+- **APK manifest**：`scripts/test/write-apk-build-manifest.mjs` — 从 aapt 读取 versionName/versionCode/SHA256 写入 build-manifest.json。
+- **Integration Requests**：`tests/reports/integration-requests/D.md`（jsdom+testing-library 需求）、`F.md`（E2E runner 配置需求）。
+- **文档**：`docs/test-system-final-state.md` — 完整最终状态说明和命令表。
+- **验证**：`npx vitest run` → **19/19 通过**；`npm run test:fast:baseline` → 全通过；`npm run test:manifest` → Valid: true。
+- **风险门禁**：**low**（文档和配置文件治理，不改业务运行时代码）。
+## 2026-07-01 / v2.1.3-test / Codex — AI Live 保护、Post-release 流程、Vendor Device 配置
+
+- **目的**：补齐 AI Live 测试保护、post-release 烟测命令和 vendor-device 注册。
+- **AI Live 保护**：`scripts/test/require-live-ai-flag.mjs` 校验 `ALLOW_LIVE_AI_TEST=true` 和 `E2E_AI_MODE=live`。
+- **Post-release**：`scripts/test/run-remote-smoke.ts`（检查 `/api/ready` 和 `/api/version`）、`tests/manifest/fragments/postrelease.ts`、npm scripts `test:smoke:remote/test:report:postrelease/test:gate:postrelease/test:postrelease`。
+- **Vendor Device**：`tests/manifest/fragments/vendor-device.ts` 注册 checklist 测试。
+- **验证**：`npx vitest run` → **19/19 通过**；`npm run test:fast:baseline` → 全通过；`npm run test:manifest` → Valid: true。
+- **风险门禁**：**medium**（测试基础设施，不改业务运行时代码）。
+## 2026-07-01 / v2.1.3-test / Codex — package.json 脚本、Contract strict、Unit 迁移、集成骨架
+
+- **目的**：补齐新测试体系的可用命令、Contract strict 模式、真实纯函数 Unit 测试和集成测试入口。
+- **package.json**：新增 20 个 npm scripts（test:manifest、test:contract、test:contract:baseline、test:unit、test:component、test:api、test:integration:repository、test:e2e:smoke/critical、test:affected、test:fast、test:fast:baseline、test:local:full、test:local:full:baseline、test:report:release、test:gate:automated、test:gate:release、test:matrix:generate、test:matrix:check、test:logic:all 重定向到 deprecated-logic-all.mjs）。
+- **Contract strict**：`tests/contract/strict/legacy-image-fields.test.ts` — 扫描 src/ 中旧 dataUrl 字段，baseline 模式仅报告不失败。`CONTRACT_MODE=baseline` 环境变量控制。
+- **Unit 迁移**：`tests/unit/parse-json-object.test.ts`（5 项）、`tests/unit/thumbnail.test.ts`（5 项）— 从旧脚本迁移的真实纯函数 Vitest 测试。
+- **其他**：`tests/reports/README.md`、`tests/integration/repository/overview.test.ts`。
+- **验证**：`npm run test:fast:baseline` → 全通过；`npx vitest run` → **19/19 通过**（10 个测试文件）。
+- **风险门禁**：**medium**（测试体系脚本和配置变化，不改业务运行时代码）。
+- **未触发 subagent**：用户明确要求串行开发。
+- **未验证风险**：旧脚本（46 项）仅分类未迁移；E2E/Android 仍为占位；PostgreSQL 集成需真实数据库；APK 构建未验证；业务 worktree 中的 package.json 未同步新测试命令。
+## 2026-07-01 / v2.1.3-test / Codex — Wave 2-4 测试层级骨架（Component/Integration/API/E2E/Android）
+
+- **目的**：补齐所有 9 个测试层级的目录结构和最小可运行测试。
+- **改动文件**：`tests/component/`（+placeholder）、`tests/integration/`、`tests/api/`、`tests/e2e/`、`tests/android/`、`tests/manifest/fragments/api.ts`、`tests/manifest/fragments/e2e.ts`、`tests/manifest/fragments/android.ts`（含实际 TestEntry 注册）、`tests/manifest/fragments/integration.ts`（含 entry）、`tests/manifest/fragments/component.ts`（含 entry）。
+- **验证**：`npx vitest run` → **7/7 通过**（6 个测试文件，含 contract 2 项、component/integration/api/e2e/android 各 1 项）。
+- **风险门禁**：**medium**（新测试目录结构，不改业务运行时代码）。
+- **未触发 subagent**：用户明确要求串行开发。
+- **未验证风险**：所有测试均为占位 stub，无真实断言逻辑；contract strict 模式、旧脚本迁移、真实 PostgreSQL 集成、E2E Playwright、Android Maestro 和 APK 构建尚未实现。
+## 2026-07-01 / v2.1.3-test / Codex — Wave 1 测试体系骨架（串行实现，不启动 subagent）
+
+- **目的**：建立 v2.1.3 新测试体系的分层门禁骨架，包含 Manifest/Runner/Gate/Contract/Unit/Fixtures。
+- **工作模式**：测试 worktree（`test/v2.1.3-remodel`）与业务 worktree（`codex/v2.1.3-asset-model-reset`）隔离执行，不相互干扰。
+- **Wave 0 成果**：worktree 隔离（`../wardrobe-v2.1.3-tests` + `../wardrobe-v2.1.3-integration`）、基线记录、T0A 全量通过（typecheck/api-test/test:logic:all = 0）。
+- **Wave 1 A（Manifest/Runner/Adapter/Gate）**：23 个文件，包括 `tests/manifest/test-types.ts`（9 层 TestLayer 类型）、`test-manifest.ts`（9 fragment 聚合）、`scripts/test/run-suite.ts`（统一运行器）、`validate-test-manifest.ts`（结构校验）、`discover-tests.ts`、`write-test-result.ts`、`merge-test-results.ts`、`validate-release-gate.ts`（automated/final/postrelease 门禁）、`run-affected-tests.ts`、`deprecated-logic-all.mjs`（弃用重定向）、`generate-test-case-matrix.ts`（文档生成）、`adapters/*.ts`（结果适配器）。
+- **Wave 1 B+C**：`tests/contract/contract.test.ts`（vitest 运行通过 2/2）、`tests/fixtures/generate-images.ts`、`docs/test-legacy-script-mapping.md`（46 项旧脚本分类，0 UNCLASSIFIED）。
+- **Vitest 配置**：安装 `vitest@^4.1.9`，创建 `vitest.workspace.ts` 和 `vitest.config.ts`。
+- **验证**：`npx vitest run tests/contract/contract.test.ts` → 2/2 通过；`npx tsx scripts/test/run-suite.ts manifest` → PASSED；`npx tsx scripts/test/validate-test-manifest.ts` → Valid: true。
+- **风险门禁**：**medium**（新测试体系骨架，不改业务运行时代码）。
+- **未触发 subagent**：用户明确要求串行开发。
+- **未验证风险**：仅实现 Wave 1 骨架；Contract strict/Unit/Component/Integration/API/E2E/Android 和 APK 构建尚未实现；旧脚本仅分类未迁移；`npm run test:fast` 等复合命令尚需母 Agent 在 `package.json` 中配置。
 # v2.1.3-test - 2026-07-01 — 修复正式资产绑定约束
 
 - **执行 Agent**：Codex（母 agent 串行开发；未触发 subagent：用户明确禁止）。
