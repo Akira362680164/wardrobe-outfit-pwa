@@ -1,3 +1,14 @@
+# v2.1.3-test - 2026-07-01 — 固定签名 APK 与 Android 线上回归
+
+- **执行 Agent**：Codex（母 agent 串行开发；未触发 subagent：用户明确禁止）。
+- **交付产物**：`衣橱穿搭助手-v2.1.3-test.apk`，SHA-256 `1b1ab266aa9952e850a5b4188d233896ab6ae24ef0d321ea8f7b387e349198ca`；包名 `com.wardrobe.outfit`，versionName `2.1.3-test`，versionCode `20103`，targetSdk `36`，签名主体 `CN=fangzheng`。
+- **Android 回归**：在 `wardrobe-test`（Pixel 6 / Android 15 / API 35）模拟器全新安装 APK；注册并登录新账号，从系统 Photo Picker 选择真实图片，在未配置 MiniMax Key 时走手工补全兜底，上传原图与缩略图并创建单品；服务器读回后列表正确显示图片和 1 件衣物。覆盖 Android 返回键、横屏布局、强制停止后的冷启动、完全卸载重装、重新登录并从服务器恢复同一衣物与图片。
+- **失败场景证据**：完整浏览器 E2E 已覆盖断网、500、网关超时但服务器成功、重复提交、图片上传失败及草稿保留；Android 本轮验证 WebView/Photo Picker/线上读写和重装恢复，不重复模拟全部代理故障。
+- **日志结果**：最终 `logcat` 未发现 `FATAL EXCEPTION` 或 `Process: com.wardrobe.outfit` 崩溃；模拟器测试完成后已关闭。
+- **改动文件**：`VERSION_HISTORY.md`；APK 为本机交付产物，不进入 Git。
+- **风险门禁**：high（固定签名 APK、Android WebView、真实线上图片和卸载恢复）；通过真实 APK、API、Photo Picker、横竖屏、冷启动和重装恢复验证；未触发 subagent：用户明确禁止。
+- **未验证风险**：本轮没有可用厂商真机；MiniMax 现场调用因未提供用户 Key 未执行。
+
 # v2.1.3-test - 2026-07-01 — 连续写入与 revision 冲突收口
 
 - **执行 Agent**：Codex（母 agent 串行开发；未触发 subagent：用户明确禁止）。
