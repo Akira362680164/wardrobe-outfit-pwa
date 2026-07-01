@@ -85,7 +85,7 @@ describe("workspace routes", () => {
     const missing = await app.inject({ method: "GET", url: `/api/workspace/garments/${entityId}`, headers: authHeaders() });
     expect(missing.statusCode).toBe(404);
     expect(missing.json()).toMatchObject({ code: "not_found", retryable: false });
-    const conflict = await app.inject({ method: "PUT", url: `/api/workspace/garments/${entityId}`, headers: { ...authHeaders(), "content-type": "application/json" }, payload: { clientMutationId: mutationId, expectedRevision: 1, payload: {}, temporaryAssetIds: [] } });
+    const conflict = await app.inject({ method: "PUT", url: `/api/workspace/garments/${entityId}`, headers: { ...authHeaders(), "content-type": "application/json" }, payload: { clientMutationId: mutationId, expectedRevision: 1, payload: {}, assetMutations: [] } });
     expect(conflict.statusCode).toBe(409);
     expect(conflict.json()).toMatchObject({ code: "conflict", serverData: { id: entityId } });
     await app.close();
@@ -101,9 +101,9 @@ describe("workspace routes", () => {
     } as unknown as WorkspaceCommandService;
     const app = appWith({ command });
     const headers = { ...authHeaders(), "content-type": "application/json" };
-    const create = await app.inject({ method: "POST", url: "/api/workspace/garments", headers, payload: { clientMutationId: mutationId, payload: { name: "coat", userId: "attacker" }, temporaryAssetIds: [] } });
+    const create = await app.inject({ method: "POST", url: "/api/workspace/garments", headers, payload: { clientMutationId: mutationId, payload: { name: "coat", userId: "attacker" }, assetMutations: [] } });
     expect(WorkspaceCommandResponseSchema.parse(create.json()).status).toBe("committed");
-    await app.inject({ method: "POST", url: "/api/workspace/garments/batch", headers, payload: { items: [{ clientMutationId: mutationId, payload: {}, temporaryAssetIds: [] }] } });
+    await app.inject({ method: "POST", url: "/api/workspace/garments/batch", headers, payload: { items: [{ clientMutationId: mutationId, payload: {}, assetMutations: [] }] } });
     const mutation = await app.inject({ method: "GET", url: `/api/workspace/mutations/${mutationId}`, headers });
     expect(mutation.json()).toMatchObject({ response: { status: "committed" } });
     await app.inject({ method: "POST", url: `/api/workspace/outfits/${entityId}/favorite`, headers, payload: { clientMutationId: mutationId, expectedRevision: 1, value: true, payload: {} } });

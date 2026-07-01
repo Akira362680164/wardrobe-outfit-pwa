@@ -1,4 +1,13 @@
 
+## 2026-07-01 / v2.1.2-test / Codex — v2.1.3 资产绑定服务端基座
+
+- **目的**：将正式图片所有权从 `assets.owner_*` 迁移为独立 `asset_bindings`，建立创建/替换、更新缩略图、复用和移除四类显式资产命令，为后续客户端去 Data URL 与多图复用提供服务端事务基座。
+- **主要改动**：新增 `0010_asset_bindings.sql`、`asset_bindings` 表和 `assets.orphaned_at`；Workspace 查询和写事务统一读写绑定表；临时原图/缩略图在业务事务内合并为正式资产；种草转衣橱改为复用绑定；解绑资产延迟标记孤儿并由清理任务删除；停用旧的直接实体图片上传、删除和 manifest HTTP 入口；正式图片下载必须存在当前账号绑定。
+- **验证**：`npm run cloud:contracts:typecheck`、`npm run api:typecheck`、`npm run api:test` 通过（7 个测试文件、56 项测试）。
+- **风险门禁**：**high**（数据库 Schema、资产事务、图片上传和清理边界变更）。
+- **未触发 subagent**：用户明确要求全部由母 Agent 串行开发。
+- **未验证风险**：迁移尚未部署到测试服务器；客户端仍未切换到新 `assetMutations`，因此当前阶段提交不是可交付构建。
+
 ## 2026-07-01 / v2.1.2-test / Codex — 制定 v2.1.3 资产模型串行执行计划
 
 - **目的**：复核 ChatGPT 的 v2.1.3 应用开发任务书和上游业务/测试规格，并按当前私有仓库真实实现改写为母 Agent 可串行执行的本地方案。

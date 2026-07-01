@@ -55,6 +55,13 @@ export const WorkspaceMutationBaseSchema = z.object({
   expectedRevision: z.number().int().positive().optional(),
 });
 
+export const WorkspaceAssetMutationSchema = z.discriminatedUnion("kind", [
+  z.object({ kind: z.literal("create_or_replace"), fieldName: z.string().min(1), temporaryAssetIds: z.array(z.string().uuid()).min(1) }),
+  z.object({ kind: z.literal("update_thumbnail"), fieldName: z.string().min(1), assetId: z.string().uuid(), temporaryAssetId: z.string().uuid() }),
+  z.object({ kind: z.literal("reuse"), fieldName: z.string().min(1), assetId: z.string().uuid() }),
+  z.object({ kind: z.literal("remove"), fieldName: z.string().min(1) }),
+]);
+
 export const WorkspaceCommandResponseSchema = z.object({
   status: z.enum(["committed", "in_progress"]),
   entity: WorkspaceEntitySchema.optional(),
@@ -108,7 +115,7 @@ export const WorkspaceWearSummaryResponseSchema = z.object({
 
 export const WorkspaceCreateCommandSchema = WorkspaceMutationBaseSchema.extend({
   payload: z.record(z.unknown()),
-  temporaryAssetIds: z.array(z.string().uuid()).default([]),
+  assetMutations: z.array(WorkspaceAssetMutationSchema).default([]),
 });
 
 export const WorkspaceBatchCreateCommandSchema = z.object({
@@ -118,7 +125,7 @@ export const WorkspaceBatchCreateCommandSchema = z.object({
 export const WorkspaceUpdateCommandSchema = WorkspaceMutationBaseSchema.extend({
   expectedRevision: z.number().int().positive(),
   payload: z.record(z.unknown()),
-  temporaryAssetIds: z.array(z.string().uuid()).default([]),
+  assetMutations: z.array(WorkspaceAssetMutationSchema).default([]),
 });
 
 export const WorkspaceDeleteCommandSchema = WorkspaceMutationBaseSchema.extend({
@@ -154,6 +161,7 @@ export type WorkspaceErrorResponse = z.infer<typeof WorkspaceErrorResponseSchema
 export type WorkspaceAssetReference = z.infer<typeof WorkspaceAssetReferenceSchema>;
 export type WorkspaceEntity = z.infer<typeof WorkspaceEntitySchema>;
 export type WorkspaceMutationBase = z.infer<typeof WorkspaceMutationBaseSchema>;
+export type WorkspaceAssetMutation = z.infer<typeof WorkspaceAssetMutationSchema>;
 export type WorkspaceCommandResponse = z.infer<typeof WorkspaceCommandResponseSchema>;
 export type WorkspacePaginationQuery = z.infer<typeof WorkspacePaginationQuerySchema>;
 export type WorkspaceDateRangeQuery = z.infer<typeof WorkspaceDateRangeQuerySchema>;

@@ -1,11 +1,7 @@
 import type { FastifyInstance, FastifyReply } from "fastify";
 import { z } from "zod";
 import {
-  AssetDeleteParamsSchema,
   AssetDownloadParamsSchema,
-  AssetManifestRequestSchema,
-  AssetUploadHeadersSchema,
-  AssetUploadParamsSchema,
 } from "@wardrobe/cloud-contracts";
 
 import { AuthApiError } from "../auth/registrations.js";
@@ -20,30 +16,6 @@ export function registerAssetRoutes(
   maxAssetBytes = DEFAULT_ASSET_MAX_BYTES,
 ) {
   app.addContentTypeParser(/^image\//, { parseAs: "buffer", bodyLimit: maxAssetBytes }, (_request, body, done) => done(null, body));
-
-  app.put("/api/assets/:assetId/:variant/content", { bodyLimit: maxAssetBytes }, async (request, reply) => {
-    try {
-      const claims = await authenticateDevice(request.headers.authorization, request.headers["x-wardrobe-device-id"], sessionService);
-      const params = AssetUploadParamsSchema.parse(request.params);
-      const headers = AssetUploadHeadersSchema.parse(request.headers);
-      if (!Buffer.isBuffer(request.body)) throw new AssetApiError(400, "asset_upload_failed", "图片正文必须是二进制内容");
-      return await assetService.upload({
-        ...params,
-        ownerEntityType: headers["x-asset-owner-entity-type"],
-        ownerEntityId: headers["x-asset-owner-entity-id"],
-        sha256: headers["x-asset-sha256"],
-        mimeType: headers["content-type"],
-        sizeBytes: headers["x-asset-size-bytes"],
-        width: headers["x-asset-width"],
-        height: headers["x-asset-height"],
-        bytes: request.body,
-        userId: claims.userId,
-        deviceId: claims.deviceId,
-      });
-    } catch (error) {
-      return sendAssetError(reply, error);
-    }
-  });
 
   app.get("/api/assets/:assetId/:variant/content", async (request, reply) => {
     try {
@@ -63,25 +35,6 @@ export function registerAssetRoutes(
     }
   });
 
-  app.delete("/api/assets/:assetId", async (request, reply) => {
-    try {
-      const claims = await authenticateDevice(request.headers.authorization, request.headers["x-wardrobe-device-id"], sessionService);
-      const params = AssetDeleteParamsSchema.parse(request.params);
-      return await assetService.deleteAsset({ ...params, userId: claims.userId });
-    } catch (error) {
-      return sendAssetError(reply, error);
-    }
-  });
-
-  app.post("/api/assets/manifest", async (request, reply) => {
-    try {
-      const claims = await authenticateDevice(request.headers.authorization, request.headers["x-wardrobe-device-id"], sessionService);
-      const body = AssetManifestRequestSchema.parse(request.body ?? {});
-      return await assetService.getManifest({ ...body, userId: claims.userId });
-    } catch (error) {
-      return sendAssetError(reply, error);
-    }
-  });
 }
 
 async function authenticateDevice(

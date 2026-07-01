@@ -11,6 +11,7 @@ import type {
 
 import { getDb } from "../db/client.js";
 import {
+  assetBindings,
   assets,
   garments,
   locations,
@@ -110,29 +111,32 @@ export class WorkspaceQueryService {
 
   private async toEntities(rows: EntityRow[], userId: string, entityType: string): Promise<WorkspaceEntity[]> {
     if (!rows.length) return [];
-    const assetRows = await this.database().select().from(assets).where(and(
-      eq(assets.userId, userId),
-      eq(assets.ownerEntityType, entityType as NonNullable<typeof assets.$inferSelect.ownerEntityType>),
-      inArray(assets.ownerEntityId, rows.map((row) => row.id)),
+    const assetRows = await this.database().select({ binding: assetBindings, asset: assets })
+      .from(assetBindings)
+      .innerJoin(assets, eq(assetBindings.assetId, assets.id))
+      .where(and(
+      eq(assetBindings.userId, userId),
+      eq(assetBindings.ownerEntityType, entityType as typeof assetBindings.$inferSelect.ownerEntityType),
+      inArray(assetBindings.ownerEntityId, rows.map((row) => row.id)),
       isNull(assets.deletedAt),
     ));
     const refs = new Map<string, Record<string, any>>();
-    for (const asset of assetRows) {
-      if (!asset.ownerEntityId || !asset.fieldName) continue;
+    for (const row of assetRows) {
+      const { asset, binding } = row;
       const uploads = asRecord(asRecord(asset.payload).uploads);
       const original = asRecord(uploads.original);
       const thumbnail = asRecord(uploads.thumbnail);
       const variants = (["original", "thumbnail"] as const).filter((variant) => asRecord(uploads[variant]).status === "uploaded");
       if (!variants.length) continue;
       const primary = original.status === "uploaded" ? original : thumbnail;
-      const ownerRefs = refs.get(asset.ownerEntityId) ?? {};
-      ownerRefs[asset.fieldName] = {
+      const ownerRefs = refs.get(binding.ownerEntityId) ?? {};
+      ownerRefs[binding.fieldName] = {
         assetId: asset.id, variants,
         sha256: String(primary.sha256 ?? asset.sha256), mimeType: String(primary.mimeType ?? asset.mimeType),
         ...(asset.width ? { width: asset.width } : {}), ...(asset.height ? { height: asset.height } : {}),
         variantSha256: Object.fromEntries(variants.map((variant) => [variant, String(asRecord(uploads[variant]).sha256)])),
       };
-      refs.set(asset.ownerEntityId, ownerRefs);
+      refs.set(binding.ownerEntityId, ownerRefs);
     }
     return rows.map((row) => ({
       id: row.id, revision: row.revision, createdAt: row.createdAt.toISOString(), updatedAt: row.updatedAt.toISOString(),

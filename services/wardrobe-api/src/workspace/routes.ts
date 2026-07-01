@@ -83,7 +83,7 @@ export function registerWorkspaceRoutes(
     const claims = await authenticate(request.headers.authorization, request.headers["x-wardrobe-device-id"], sessionService);
     const { id } = z.object({ id: z.string().uuid() }).parse(request.params);
     const body = WorkspaceWishlistConvertCommandSchema.parse(request.body);
-    return commandService.convertWishlist({ entityId: id, command: { ...body, payload: { locationId: body.locationId }, temporaryAssetIds: [] }, userId: claims.userId, deviceId: claims.deviceId, requestId: requestId(request) });
+    return commandService.convertWishlist({ entityId: id, command: { ...body, payload: { locationId: body.locationId }, assetMutations: [] }, userId: claims.userId, deviceId: claims.deviceId, requestId: requestId(request) });
   }));
 
   app.post("/api/workspace/wishlist/:id/undo-purchase", async (request, reply) => handle(reply, async () => {

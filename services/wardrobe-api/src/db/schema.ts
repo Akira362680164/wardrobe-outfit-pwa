@@ -347,6 +347,7 @@ export const assets = pgTable(
     fieldName: text("field_name"),
     temporaryVariant: text("temporary_variant"),
     expiresAt: timestamp("expires_at", { withTimezone: true }),
+    orphanedAt: timestamp("orphaned_at", { withTimezone: true }),
     boundAt: timestamp("bound_at", { withTimezone: true }),
     sha256: text("sha256"),
     mimeType: text("mime_type"),
@@ -364,6 +365,29 @@ export const assets = pgTable(
     uploadStatusIdx: index("assets_upload_status_idx").on(table.userId, table.uploadStatus),
     temporarySessionIdx: index("assets_temporary_session_idx").on(table.userId, table.temporarySessionId),
     temporaryExpiryIdx: index("assets_temporary_expiry_idx").on(table.expiresAt),
+  }),
+);
+
+export const assetBindings = pgTable(
+  "asset_bindings",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: uuid("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+    assetId: uuid("asset_id").notNull().references(() => assets.id, { onDelete: "cascade" }),
+    ownerEntityType: syncEntityType("owner_entity_type").notNull(),
+    ownerEntityId: uuid("owner_entity_id").notNull(),
+    fieldName: text("field_name").notNull(),
+    ...timestamps,
+  },
+  (table) => ({
+    ownerFieldUnique: uniqueIndex("asset_bindings_owner_field_unique").on(
+      table.userId,
+      table.ownerEntityType,
+      table.ownerEntityId,
+      table.fieldName,
+    ),
+    ownerIdx: index("asset_bindings_owner_idx").on(table.userId, table.ownerEntityType, table.ownerEntityId),
+    assetIdx: index("asset_bindings_asset_idx").on(table.userId, table.assetId),
   }),
 );
 

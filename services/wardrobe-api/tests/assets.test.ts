@@ -104,7 +104,7 @@ describe("local file storage provider", () => {
 });
 
 describe("asset routes", () => {
-  it("forwards authenticated binary upload headers and body to AssetService", async () => {
+  it("rejects the removed direct-to-entity upload endpoint", async () => {
     const calls: any[] = [];
     const app = buildApp({
       readinessCheck: async () => ({ database: "ready" }),
@@ -126,8 +126,8 @@ describe("asset routes", () => {
       },
       payload: pngBytes,
     });
-    expect(response.statusCode).toBe(200);
-    expect(calls[0]).toMatchObject({ userId: "user-1", deviceId: "device-1", assetId, bytes: pngBytes });
+    expect(response.statusCode).toBe(404);
+    expect(calls).toEqual([]);
     await app.close();
   });
 

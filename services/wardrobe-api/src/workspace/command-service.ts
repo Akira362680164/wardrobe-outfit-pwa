@@ -4,6 +4,7 @@ import { and, eq, inArray, isNull, sql } from "drizzle-orm";
 import type { NodePgDatabase } from "drizzle-orm/node-postgres";
 import type { AnyPgTable } from "drizzle-orm/pg-core";
 import type {
+  WorkspaceAssetMutation,
   WorkspaceCommandResponse,
   WorkspaceCreateCommand,
   WorkspaceDeleteCommand,
@@ -13,7 +14,7 @@ import type {
 } from "@wardrobe/cloud-contracts";
 
 import { getDb } from "../db/client.js";
-import { assets, syncChanges, syncMutations } from "../db/schema.js";
+import { assetBindings, assets, syncChanges, syncMutations } from "../db/schema.js";
 import type * as schema from "../db/schema.js";
 import { WorkspaceApiError } from "./errors.js";
 import { WORKSPACE_RESOURCES, type WorkspaceResource } from "./query-service.js";
@@ -42,10 +43,11 @@ export class WorkspaceCommandService {
         id: entityId, userId: input.userId, revision: 1, originDeviceId: input.deviceId,
         payload, ...specialColumns(input.resource, payload), createdAt: now, updatedAt: now,
       });
-      const assetRefs = await bindTemporaryAssets(tx, {
-        assetIds: input.command.temporaryAssetIds, userId: input.userId, entityId,
+      await applyAssetMutations(tx, {
+        mutations: input.command.assetMutations, userId: input.userId, entityId,
         entityType: descriptor.entityType, clientMutationId: input.command.clientMutationId, now,
       });
+      const assetRefs = await readAssetRefs(tx, input.userId, descriptor.entityType, entityId);
       await appendChange(tx, input.userId, descriptor.entityType, entityId, "create", 1, payload);
       return { entity: toEntity({ id: entityId, revision: 1, payload, createdAt: now, updatedAt: now }, assetRefs), revision: 1 };
     });
@@ -72,10 +74,11 @@ export class WorkspaceCommandService {
       const payload = sanitizePayload(input.command.payload);
       await tx.update(table).set({ revision, originDeviceId: input.deviceId, payload, ...specialColumns(input.resource, payload), updatedAt: now })
         .where(and(eq(table.id, input.entityId), eq(table.userId, input.userId), eq(table.revision, row.revision), isNull(table.deletedAt)));
-      const assetRefs = await bindTemporaryAssets(tx, {
-        assetIds: input.command.temporaryAssetIds, userId: input.userId, entityId: input.entityId,
+      await applyAssetMutations(tx, {
+        mutations: input.command.assetMutations, userId: input.userId, entityId: input.entityId,
         entityType: descriptor.entityType, clientMutationId: input.command.clientMutationId, now,
       });
+      const assetRefs = await readAssetRefs(tx, input.userId, descriptor.entityType, input.entityId);
       await appendChange(tx, input.userId, descriptor.entityType, input.entityId, "update", revision, payload);
       return { entity: toEntity({ id: input.entityId, revision, payload, createdAt: row.createdAt, updatedAt: now }, assetRefs), revision };
     });
@@ -91,8 +94,7 @@ export class WorkspaceCommandService {
       const revision = row.revision + 1;
       await tx.update(table).set({ revision, originDeviceId: input.deviceId, deletedAt: now, updatedAt: now })
         .where(and(eq(table.id, input.entityId), eq(table.userId, input.userId), eq(table.revision, row.revision), isNull(table.deletedAt)));
-      await tx.update(assets).set({ deletedAt: now, uploadStatus: "deleted", updatedAt: now })
-        .where(and(eq(assets.userId, input.userId), eq(assets.ownerEntityType, descriptor.entityType), eq(assets.ownerEntityId, input.entityId), isNull(assets.deletedAt)));
+      await removeOwnerBindings(tx, input.userId, descriptor.entityType, input.entityId, now);
       await appendChange(tx, input.userId, descriptor.entityType, input.entityId, "delete", revision, {});
       return { revision };
     });
@@ -103,7 +105,7 @@ export class WorkspaceCommandService {
     const table = descriptor.table as AnyPgTable & Record<string, any>;
     const [row] = await this.database().select().from(table).where(and(eq(table.id, input.entityId), eq(table.userId, input.userId), isNull(table.deletedAt))).limit(1) as any[];
     if (!row) throw new WorkspaceApiError(404, "not_found", "数据不存在");
-    return this.update({ ...input, command: { ...input.command, payload: { ...asRecord(row.payload), ...input.patch }, temporaryAssetIds: [] } });
+    return this.update({ ...input, command: { ...input.command, payload: { ...asRecord(row.payload), ...input.patch }, assetMutations: [] } });
   }
 
   async convertWishlist(input: { entityId: string; command: WorkspaceUpdateCommand & { locationId: string }; userId: string; deviceId: string; requestId?: string }): Promise<WorkspaceCommandResponse> {
@@ -123,10 +125,14 @@ export class WorkspaceCommandService {
       await tx.insert(garmentTable).values({ id: garmentId, userId: input.userId, revision: 1, originDeviceId: input.deviceId, payload, ...specialColumns("garments", payload), createdAt: now, updatedAt: now });
       const wishlistPayload = { ...asRecord(row.payload), purchased: true, convertedGarmentId: garmentId, convertedItemId: legacyItemId, convertedAt: now.toISOString() };
       await tx.update(wishlistTable).set({ revision: row.revision + 1, payload: wishlistPayload, updatedAt: now }).where(eq(wishlistTable.id, input.entityId));
-      await tx.update(assets).set({ ownerEntityType: "garment", ownerEntityId: garmentId, updatedAt: now }).where(and(
-        eq(assets.userId, input.userId), eq(assets.ownerEntityType, "wishlistItem"), eq(assets.ownerEntityId, input.entityId), isNull(assets.deletedAt),
+      const wishlistBindings = await tx.select().from(assetBindings).where(and(
+        eq(assetBindings.userId, input.userId), eq(assetBindings.ownerEntityType, "wishlistItem"), eq(assetBindings.ownerEntityId, input.entityId),
       ));
-      const assetRefs = await bindTemporaryAssets(tx, { assetIds: input.command.temporaryAssetIds, userId: input.userId, entityId: garmentId, entityType: "garment", clientMutationId: input.command.clientMutationId, now });
+      for (const binding of wishlistBindings) {
+        await upsertBinding(tx, { userId: input.userId, assetId: binding.assetId, entityType: "garment", entityId: garmentId, fieldName: binding.fieldName, now });
+      }
+      await applyAssetMutations(tx, { mutations: input.command.assetMutations, userId: input.userId, entityId: garmentId, entityType: "garment", clientMutationId: input.command.clientMutationId, now });
+      const assetRefs = await readAssetRefs(tx, input.userId, "garment", garmentId);
       await appendChange(tx, input.userId, "garment", garmentId, "create", 1, payload);
       await appendChange(tx, input.userId, "wishlistItem", input.entityId, "update", row.revision + 1, wishlistPayload);
       return { entity: toEntity({ id: garmentId, revision: 1, payload, createdAt: now, updatedAt: now }, assetRefs), revision: 1 };
@@ -146,9 +152,7 @@ export class WorkspaceCommandService {
         const [garment] = await tx.select().from(garmentTable).where(and(eq(garmentTable.id, garmentId), eq(garmentTable.userId, input.userId), isNull(garmentTable.deletedAt))).limit(1) as any[];
         if (garment) {
           await tx.update(garmentTable).set({ revision: garment.revision + 1, deletedAt: now, updatedAt: now }).where(eq(garmentTable.id, garmentId));
-          await tx.update(assets).set({ ownerEntityType: "wishlistItem", ownerEntityId: input.entityId, updatedAt: now }).where(and(
-            eq(assets.userId, input.userId), eq(assets.ownerEntityType, "garment"), eq(assets.ownerEntityId, garmentId), isNull(assets.deletedAt),
-          ));
+          await removeOwnerBindings(tx, input.userId, "garment", garmentId, now);
           await appendChange(tx, input.userId, "garment", garmentId, "delete", garment.revision + 1, {});
         }
       }
@@ -416,50 +420,200 @@ async function appendChange(tx: Tx, userId: string, entityType: any, entityId: s
   await tx.insert(syncChanges).values({ userId, changeSeq: Number(row?.value ?? 1), entityType, entityId, operation, revision, payload });
 }
 
-async function bindTemporaryAssets(tx: Tx, input: { assetIds: string[]; userId: string; entityId: string; entityType: string; clientMutationId: string; now: Date }): Promise<Record<string, any> | undefined> {
-  if (!input.assetIds.length) return undefined;
-  const rows = await tx.select().from(assets).where(and(eq(assets.userId, input.userId), inArray(assets.id, input.assetIds), isNull(assets.deletedAt)));
-  if (rows.length !== new Set(input.assetIds).size) throw new WorkspaceApiError(422, "image_upload", "临时图片不存在或不属于当前账号");
-  const sessionIds = [...new Set(rows.map((row) => row.temporarySessionId).filter((value): value is string => Boolean(value)))];
-  const sessionRows = sessionIds.length ? await tx.select().from(assets).where(and(
-    eq(assets.userId, input.userId), inArray(assets.temporarySessionId, sessionIds), isNull(assets.ownerEntityId), isNull(assets.deletedAt),
-  )) : [];
-  if (sessionRows.length !== rows.length || sessionRows.some((row) => !input.assetIds.includes(row.id) || row.uploadStatus !== "uploaded")) {
-    throw new WorkspaceApiError(422, "image_upload", "临时图片会话必须全部上传完成后才能保存");
+async function applyAssetMutations(tx: Tx, input: {
+  mutations: WorkspaceAssetMutation[];
+  userId: string;
+  entityId: string;
+  entityType: string;
+  clientMutationId: string;
+  now: Date;
+}): Promise<void> {
+  for (const mutation of input.mutations) {
+    if (mutation.kind === "remove") {
+      await removeFieldBinding(tx, input.userId, input.entityType, input.entityId, mutation.fieldName, input.now);
+      continue;
+    }
+    if (mutation.kind === "reuse") {
+      await requireOwnedAsset(tx, mutation.assetId, input.userId);
+      await replaceBinding(tx, { ...input, fieldName: mutation.fieldName, assetId: mutation.assetId });
+      continue;
+    }
+    if (mutation.kind === "update_thumbnail") {
+      const binding = await requireBinding(tx, input.userId, input.entityType, input.entityId, mutation.fieldName, mutation.assetId);
+      const [temporary] = await temporaryRows(tx, [mutation.temporaryAssetId], input);
+      if (temporary.temporaryVariant !== "thumbnail") throw new WorkspaceApiError(422, "image_upload", "更新裁切只能提交 thumbnail");
+      const canonical = await requireOwnedAsset(tx, binding.assetId, input.userId);
+      const thumbnailUpload = asRecord(asRecord(temporary.payload).uploads).thumbnail;
+      const oldKey = canonical.thumbnailStorageKey;
+      const payload = {
+        ...asRecord(canonical.payload),
+        uploads: { ...asRecord(asRecord(canonical.payload).uploads), thumbnail: thumbnailUpload },
+        ...(oldKey && oldKey !== temporary.thumbnailStorageKey
+          ? { staleStorageKeys: [...new Set([...stringList(asRecord(canonical.payload).staleStorageKeys), oldKey])] }
+          : {}),
+      };
+      await tx.update(assets).set({
+        thumbnailStorageKey: temporary.thumbnailStorageKey,
+        payload,
+        updatedAt: input.now,
+      }).where(eq(assets.id, canonical.id));
+      await consumeTemporaryRows(tx, [temporary.id], input.now);
+      continue;
+    }
+
+    const rows = await temporaryRows(tx, mutation.temporaryAssetIds, input);
+    if (rows.some((row) => row.fieldName !== mutation.fieldName)) throw new WorkspaceApiError(422, "image_upload", "临时图片字段与资产命令不一致");
+    const original = rows.find((row) => row.temporaryVariant === "original");
+    const thumbnail = rows.find((row) => row.temporaryVariant === "thumbnail");
+    if (!original || !thumbnail) throw new WorkspaceApiError(422, "image_upload", "正式图片必须同时包含 original 和 thumbnail");
+    const canonical = original;
+    const uploads = {
+      original: asRecord(asRecord(original.payload).uploads).original,
+      thumbnail: asRecord(asRecord(thumbnail.payload).uploads).thumbnail,
+    };
+    await tx.update(assets).set({
+      ownerEntityType: null,
+      ownerEntityId: null,
+      fieldName: null,
+      temporarySessionId: null,
+      clientMutationId: null,
+      temporaryEntityType: null,
+      temporaryVariant: null,
+      expiresAt: null,
+      boundAt: input.now,
+      orphanedAt: null,
+      originalStorageKey: original.originalStorageKey,
+      thumbnailStorageKey: thumbnail.thumbnailStorageKey,
+      sha256: original.sha256,
+      mimeType: original.mimeType,
+      sizeBytes: original.sizeBytes,
+      width: original.width,
+      height: original.height,
+      payload: { uploads },
+      updatedAt: input.now,
+    }).where(eq(assets.id, canonical.id));
+    await consumeTemporaryRows(tx, rows.filter((row) => row.id !== canonical.id).map((row) => row.id), input.now);
+    await replaceBinding(tx, { ...input, fieldName: mutation.fieldName, assetId: canonical.id });
   }
-  const slotKeys = rows.map((row) => `${row.fieldName}:${row.temporaryVariant}`);
-  if (new Set(slotKeys).size !== slotKeys.length) throw new WorkspaceApiError(422, "image_upload", "临时图片槽位重复");
+}
+
+async function temporaryRows(tx: Tx, ids: string[], input: { userId: string; entityType: string; clientMutationId: string; now: Date }) {
+  const uniqueIds = [...new Set(ids)];
+  const rows = await tx.select().from(assets).where(and(eq(assets.userId, input.userId), inArray(assets.id, uniqueIds), isNull(assets.deletedAt)));
+  if (rows.length !== uniqueIds.length) throw new WorkspaceApiError(422, "image_upload", "临时图片不存在或不属于当前账号");
   for (const row of rows) {
     if (row.ownerEntityId || row.clientMutationId !== input.clientMutationId || row.temporaryEntityType !== input.entityType || !row.expiresAt || row.expiresAt <= input.now || row.uploadStatus !== "uploaded") {
       throw new WorkspaceApiError(422, "image_upload", "临时图片未上传完成、已过期或与本次保存不匹配");
     }
   }
-  const refs: Record<string, any> = {};
-  const grouped = new Map<string, typeof rows>();
-  for (const row of rows) {
-    const fieldName = row.fieldName ?? "image";
-    grouped.set(fieldName, [...(grouped.get(fieldName) ?? []), row]);
-  }
-  for (const [fieldName, fieldRows] of grouped) {
-    const original = fieldRows?.find((row) => row.temporaryVariant === "original");
-    const thumbnail = fieldRows?.find((row) => row.temporaryVariant === "thumbnail");
-    const canonical = original ?? thumbnail!;
-    const uploads = { ...asRecord(canonical.payload).uploads, ...(original ? { original: asRecord(asRecord(original.payload).uploads).original } : {}), ...(thumbnail ? { thumbnail: asRecord(asRecord(thumbnail.payload).uploads).thumbnail } : {}) };
-    await tx.update(assets).set({
-      ownerEntityType: input.entityType as any, ownerEntityId: input.entityId, fieldName,
-      temporarySessionId: null, clientMutationId: null, temporaryEntityType: null, temporaryVariant: null,
-      expiresAt: null, boundAt: input.now, originalStorageKey: original?.originalStorageKey ?? null,
-      thumbnailStorageKey: thumbnail?.thumbnailStorageKey ?? null, sha256: original?.sha256 ?? thumbnail?.sha256,
-      mimeType: original?.mimeType ?? thumbnail?.mimeType, sizeBytes: original?.sizeBytes ?? thumbnail?.sizeBytes,
-      width: original?.width ?? thumbnail?.width, height: original?.height ?? thumbnail?.height,
-      payload: { ...asRecord(canonical.payload), uploads }, updatedAt: input.now,
-    }).where(eq(assets.id, canonical.id));
-    const duplicates = fieldRows?.filter((row) => row.id !== canonical.id).map((row) => row.id) ?? [];
-    if (duplicates.length) await tx.update(assets).set({ deletedAt: input.now, originalStorageKey: null, thumbnailStorageKey: null, updatedAt: input.now }).where(inArray(assets.id, duplicates));
-    const variants = [original && "original", thumbnail && "thumbnail"].filter(Boolean) as string[];
-    refs[fieldName] = { assetId: canonical.id, variants, sha256: original?.sha256 ?? thumbnail?.sha256, mimeType: original?.mimeType ?? thumbnail?.mimeType };
-  }
-  return refs;
+  const slots = rows.map((row) => `${row.fieldName}:${row.temporaryVariant}`);
+  if (new Set(slots).size !== slots.length) throw new WorkspaceApiError(422, "image_upload", "临时图片槽位重复");
+  return rows;
+}
+
+async function consumeTemporaryRows(tx: Tx, ids: string[], now: Date): Promise<void> {
+  if (!ids.length) return;
+  await tx.update(assets).set({ deletedAt: now, originalStorageKey: null, thumbnailStorageKey: null, uploadStatus: "deleted", updatedAt: now }).where(inArray(assets.id, ids));
+}
+
+async function replaceBinding(tx: Tx, input: { userId: string; entityType: string; entityId: string; fieldName: string; assetId: string; now: Date }): Promise<void> {
+  const [old] = await tx.select().from(assetBindings).where(and(
+    eq(assetBindings.userId, input.userId),
+    eq(assetBindings.ownerEntityType, input.entityType as typeof assetBindings.$inferSelect.ownerEntityType),
+    eq(assetBindings.ownerEntityId, input.entityId),
+    eq(assetBindings.fieldName, input.fieldName),
+  )).limit(1);
+  await upsertBinding(tx, input);
+  if (old && old.assetId !== input.assetId) await markOrphanedIfUnbound(tx, old.assetId, input.userId, input.now);
+}
+
+async function upsertBinding(tx: Tx, input: { userId: string; entityType: string; entityId: string; fieldName: string; assetId: string; now: Date }): Promise<void> {
+  await tx.insert(assetBindings).values({
+    userId: input.userId,
+    assetId: input.assetId,
+    ownerEntityType: input.entityType as typeof assetBindings.$inferInsert.ownerEntityType,
+    ownerEntityId: input.entityId,
+    fieldName: input.fieldName,
+    createdAt: input.now,
+    updatedAt: input.now,
+  }).onConflictDoUpdate({
+    target: [assetBindings.userId, assetBindings.ownerEntityType, assetBindings.ownerEntityId, assetBindings.fieldName],
+    set: { assetId: input.assetId, updatedAt: input.now },
+  });
+  await tx.update(assets).set({ orphanedAt: null, updatedAt: input.now }).where(and(eq(assets.id, input.assetId), eq(assets.userId, input.userId)));
+}
+
+async function removeFieldBinding(tx: Tx, userId: string, entityType: string, entityId: string, fieldName: string, now: Date): Promise<void> {
+  const [old] = await tx.select().from(assetBindings).where(and(
+    eq(assetBindings.userId, userId),
+    eq(assetBindings.ownerEntityType, entityType as typeof assetBindings.$inferSelect.ownerEntityType),
+    eq(assetBindings.ownerEntityId, entityId),
+    eq(assetBindings.fieldName, fieldName),
+  )).limit(1);
+  if (!old) return;
+  await tx.delete(assetBindings).where(eq(assetBindings.id, old.id));
+  await markOrphanedIfUnbound(tx, old.assetId, userId, now);
+}
+
+async function removeOwnerBindings(tx: Tx, userId: string, entityType: string, entityId: string, now: Date): Promise<void> {
+  const rows = await tx.select().from(assetBindings).where(and(
+    eq(assetBindings.userId, userId),
+    eq(assetBindings.ownerEntityType, entityType as typeof assetBindings.$inferSelect.ownerEntityType),
+    eq(assetBindings.ownerEntityId, entityId),
+  ));
+  if (!rows.length) return;
+  await tx.delete(assetBindings).where(inArray(assetBindings.id, rows.map((row) => row.id)));
+  for (const assetId of new Set(rows.map((row) => row.assetId))) await markOrphanedIfUnbound(tx, assetId, userId, now);
+}
+
+async function markOrphanedIfUnbound(tx: Tx, assetId: string, userId: string, now: Date): Promise<void> {
+  const [remaining] = await tx.select({ id: assetBindings.id }).from(assetBindings).where(and(eq(assetBindings.userId, userId), eq(assetBindings.assetId, assetId))).limit(1);
+  if (!remaining) await tx.update(assets).set({ orphanedAt: now, updatedAt: now }).where(and(eq(assets.id, assetId), eq(assets.userId, userId)));
+}
+
+async function requireBinding(tx: Tx, userId: string, entityType: string, entityId: string, fieldName: string, assetId: string) {
+  const [binding] = await tx.select().from(assetBindings).where(and(
+    eq(assetBindings.userId, userId),
+    eq(assetBindings.ownerEntityType, entityType as typeof assetBindings.$inferSelect.ownerEntityType),
+    eq(assetBindings.ownerEntityId, entityId),
+    eq(assetBindings.fieldName, fieldName),
+    eq(assetBindings.assetId, assetId),
+  )).limit(1);
+  if (!binding) throw new WorkspaceApiError(422, "image_upload", "图片资产未绑定到当前字段");
+  return binding;
+}
+
+async function requireOwnedAsset(tx: Tx, assetId: string, userId: string) {
+  const [asset] = await tx.select().from(assets).where(and(eq(assets.id, assetId), eq(assets.userId, userId), isNull(assets.deletedAt))).limit(1);
+  if (!asset) throw new WorkspaceApiError(404, "not_found", "图片资产不存在");
+  return asset;
+}
+
+async function readAssetRefs(tx: Tx, userId: string, entityType: string, entityId: string): Promise<Record<string, any> | undefined> {
+  const rows = await tx.select({ binding: assetBindings, asset: assets }).from(assetBindings).innerJoin(assets, eq(assetBindings.assetId, assets.id)).where(and(
+    eq(assetBindings.userId, userId),
+    eq(assetBindings.ownerEntityType, entityType as typeof assetBindings.$inferSelect.ownerEntityType),
+    eq(assetBindings.ownerEntityId, entityId),
+    isNull(assets.deletedAt),
+  ));
+  if (!rows.length) return undefined;
+  return Object.fromEntries(rows.flatMap(({ binding, asset }) => {
+    const uploads = asRecord(asRecord(asset.payload).uploads);
+    const variants = (["original", "thumbnail"] as const).filter((variant) => asRecord(uploads[variant]).status === "uploaded");
+    if (!variants.length) return [];
+    const original = asRecord(uploads.original);
+    const thumbnail = asRecord(uploads.thumbnail);
+    const primary = original.status === "uploaded" ? original : thumbnail;
+    return [[binding.fieldName, {
+      assetId: asset.id,
+      variants,
+      sha256: String(primary.sha256 ?? asset.sha256),
+      mimeType: String(primary.mimeType ?? asset.mimeType),
+      ...(asset.width ? { width: asset.width } : {}),
+      ...(asset.height ? { height: asset.height } : {}),
+      variantSha256: Object.fromEntries(variants.map((variant) => [variant, String(asRecord(uploads[variant]).sha256)])),
+    }]];
+  }));
 }
 
 function toEntity(row: { id: string; revision: number; payload: Record<string, unknown>; createdAt: Date; updatedAt: Date }, assetRefs?: Record<string, any>): WorkspaceEntity {
@@ -482,6 +636,7 @@ function specialColumns(resource: WorkspaceResource, payload: Record<string, unk
 function stringOrNull(value: unknown): string | null { return typeof value === "string" ? value : null; }
 function uuidOrNull(value: unknown): string | null { return typeof value === "string" && /^[0-9a-f-]{36}$/i.test(value) ? value : null; }
 function asRecord(value: unknown): Record<string, any> { return value && typeof value === "object" && !Array.isArray(value) ? value as Record<string, any> : {}; }
+function stringList(value: unknown): string[] { return Array.isArray(value) ? value.filter((entry): entry is string => typeof entry === "string") : []; }
 function numberList(value: unknown): number[] { return Array.isArray(value) ? value.map(Number).filter(Number.isFinite) : []; }
 function dateList(value: unknown): string[] { return Array.isArray(value) ? value.filter((entry): entry is string => typeof entry === "string") : []; }
 function addDate(value: unknown, date: string): string[] { return [...new Set([...dateList(value), date])].sort(); }

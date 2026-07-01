@@ -25,7 +25,7 @@ import {
 } from "@wardrobe/cloud-contracts";
 
 import { getDb } from "../db/client.js";
-import { assets, garments, outfits, wishlistItems, locations, tripPlans, outfitPlans, wearEvents, profiles } from "../db/schema.js";
+import { assetBindings, assets, garments, outfits, wishlistItems, locations, tripPlans, outfitPlans, wearEvents, profiles } from "../db/schema.js";
 import type * as schema from "../db/schema.js";
 import { StorageProviderError, type StorageProvider } from "../storage/provider.js";
 
@@ -221,6 +221,10 @@ export class AssetService {
   async download(input: { assetId: string; variant: AssetVariant; userId: string }) {
     const existing = await this.getOwnedAsset(input.assetId, input.userId);
     if (existing.deletedAt) throw new AssetApiError(404, "asset_not_found", "图片资产不存在");
+    const [binding] = await this.database().select({ id: assetBindings.id }).from(assetBindings).where(and(
+      eq(assetBindings.assetId, input.assetId), eq(assetBindings.userId, input.userId),
+    )).limit(1);
+    if (!binding) throw new AssetApiError(404, "asset_not_found", "图片资产不存在");
     const metadata = getUploadPayload(existing.payload, input.variant);
     const storageKey = getVariantStorageKey(existing, input.variant);
     if (!metadata || metadata.status !== "uploaded" || !storageKey) {

@@ -1,8 +1,8 @@
-import { and, eq, lte, sql } from "drizzle-orm";
+import { and, eq, isNull, lte, sql } from "drizzle-orm";
 import type { NodePgDatabase } from "drizzle-orm/node-postgres";
 
 import { getDb } from "../db/client.js";
-import { assets } from "../db/schema.js";
+import { assetBindings, assets } from "../db/schema.js";
 import type * as schema from "../db/schema.js";
 import { createStorageProviderFromEnv } from "../storage/factory.js";
 import type { StorageProvider } from "../storage/provider.js";
@@ -50,16 +50,50 @@ export async function cleanupAssetStorage(
   if (!storage) return;
   await storage.cleanupTemporaryFiles(new Date(Date.now() - 24 * 60 * 60 * 1000));
 
+  const rowsWithStaleKeys = await database.select().from(assets).where(sql`${assets.deletedAt} IS NULL`);
+  for (const row of rowsWithStaleKeys) {
+    const staleStorageKeys = stringList(asRecord(row.payload).staleStorageKeys);
+    if (!staleStorageKeys.length) continue;
+    const failed: string[] = [];
+    for (const key of staleStorageKeys) {
+      try { await storage.delete(key); } catch { failed.push(key); }
+    }
+    await database.update(assets).set({
+      payload: { ...asRecord(row.payload), staleStorageKeys: failed },
+      updatedAt: new Date(),
+    }).where(eq(assets.id, row.id));
+  }
+
   const expiredTemporary = await database.select().from(assets).where(and(
-    sql`${assets.ownerEntityId} IS NULL`, sql`${assets.deletedAt} IS NULL`, lte(assets.expiresAt, new Date()),
+    sql`${assets.temporarySessionId} IS NOT NULL`, sql`${assets.deletedAt} IS NULL`, lte(assets.expiresAt, new Date()),
   ));
   for (const row of expiredTemporary) {
     for (const key of [row.originalStorageKey, row.thumbnailStorageKey]) if (key) await storage.delete(key).catch(() => {});
   }
   if (expiredTemporary.length) {
     await database.update(assets).set({ deletedAt: new Date(), uploadStatus: "deleted", updatedAt: new Date() }).where(and(
-      sql`${assets.ownerEntityId} IS NULL`, sql`${assets.deletedAt} IS NULL`, lte(assets.expiresAt, new Date()),
+      sql`${assets.temporarySessionId} IS NOT NULL`, sql`${assets.deletedAt} IS NULL`, lte(assets.expiresAt, new Date()),
     ));
+  }
+
+  const orphanCutoff = new Date(Date.now() - 24 * 60 * 60 * 1000);
+  const orphanedRows = await database.select().from(assets).where(and(
+    isNull(assets.deletedAt),
+    lte(assets.orphanedAt, orphanCutoff),
+  ));
+  for (const row of orphanedRows) {
+    const [binding] = await database.select({ id: assetBindings.id }).from(assetBindings)
+      .where(and(eq(assetBindings.userId, row.userId), eq(assetBindings.assetId, row.id))).limit(1);
+    if (binding) {
+      await database.update(assets).set({ orphanedAt: null, updatedAt: new Date() }).where(eq(assets.id, row.id));
+      continue;
+    }
+    try {
+      for (const key of [row.originalStorageKey, row.thumbnailStorageKey]) if (key) await storage.delete(key);
+      await database.delete(assets).where(eq(assets.id, row.id));
+    } catch {
+      // Keep the row and orphanedAt so the next cleanup retries safely.
+    }
   }
 
   const retentionCutoff = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
@@ -79,4 +113,8 @@ export async function cleanupAssetStorage(
 
 function asRecord(value: unknown): Record<string, any> {
   return value && typeof value === "object" && !Array.isArray(value) ? value as Record<string, any> : {};
+}
+
+function stringList(value: unknown): string[] {
+  return Array.isArray(value) ? value.filter((entry): entry is string => typeof entry === "string") : [];
 }
