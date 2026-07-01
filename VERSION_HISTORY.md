@@ -1,3 +1,13 @@
+# v2.1.3-test - 2026-07-01 — 正式资产约束线上闭环通过
+
+- **执行 Agent**：Codex（母 agent 串行开发；未触发 subagent：用户明确禁止）。
+- **部署与迁移**：生产镜像 `wardrobe-api:174a67f` 部署成功，`0011_asset_lifecycle_constraint` 已应用，公开版本端点返回 `gitCommit=174a67f`。
+- **真实线上闭环**：新账号完成 original+thumbnail 临时会话、双 variant 上传、衣物事务绑定、服务器读回、original 字节 SHA-256 复核、连续更新至 revision 2、陈旧 revision 409 冲突及最新 revision 返回、创建套装、收藏、创建计划、标记/撤销已穿、种草复用同一 asset、转衣橱和撤销购买；Overview 最终读回衣物/套装/种草/计划各 1 条。
+- **结果**：正式资产绑定不再触发旧约束；图片下载字节与上传 SHA 一致；种草和衣物的 `assetId` 相同，证明 binding 共享而非复制/转移。
+- **改动文件**：`VERSION_HISTORY.md`（本条记录部署后的验收证据）。
+- **风险门禁**：high（真实线上图片、事务、revision 和核心业务动作）；真实 API 全链路通过；未触发 subagent：用户明确禁止。
+- **未验证风险**：Android WebView UI、超时/断网保留草稿和厂商真机仍待验证。
+
 # v2.1.3-test - 2026-07-01 — 修复正式资产绑定约束
 
 - **执行 Agent**：Codex（母 agent 串行开发；未触发 subagent：用户明确禁止）。
