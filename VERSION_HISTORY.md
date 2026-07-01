@@ -1,3 +1,12 @@
+## 2026-07-01 / v2.1.3-test / Codex — jsdom + testing-library 组件测试框架、远程 API 烟测验证
+
+- **目的**：补齐组件测试框架（jsdom + @testing-library/react）并验证 postrelease 远程 API 烟测。
+- **组件测试**：安装 `jsdom`、`@testing-library/react`、`@testing-library/jest-dom`、`@testing-library/user-event`；创建 `tests/component/setup.ts` 和 `tests/component/async-action-button.test.tsx`（3 项测试：React DOM 渲染、按钮渲染、screen 查询）。`vitest.config.ts` 新增 `environment: 'jsdom'` 和 `setupFiles`。
+- **远程 API 烟测**：`TEST_API_URL=http://111.231.98.86 npx tsx scripts/test/run-remote-smoke.ts` → **PASSED**（/api/ready: OK, Version: 0.1.0）。
+- **全量测试**：`npx vitest run` → **22/22 通过**（11 个测试文件）。
+- **风险门禁**：**medium**（安装新 npm 依赖、Vitest 配置 jsdom 环境）。
+- **未触发 subagent**：用户明确要求串行开发。
+- **未验证风险**：jest-dom matchers 与 vitest expect 不兼容（`toBeInDocument`、`toBeDisabled` 等需要额外配置），当前使用原生 DOM API 断言；真实 PostgreSQL 集成和 Playwright E2E 仍需要后续实现。
 ## 2026-07-01 / v2.1.3-test / Codex — AI-live spec、CI 配置文件、APK manifest 脚本、final-state 文档
 
 - **目的**：补齐无需外部基础设施的剩余任务项。
