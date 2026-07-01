@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import type { WorkspaceEntity } from "@wardrobe/cloud-contracts";
 
 import { OnlineImageClient } from "../src/lib/online/online-image-client";
-import { getOnlineAssetMetadata, getOnlineEntityMetadata, OnlineWorkspaceRepository } from "../src/lib/online/online-repository";
+import { OnlineWorkspaceRepository } from "../src/lib/online/online-repository";
 import { nativeBase64ToBlob } from "../src/lib/online/online-request";
 import { beginOnlineLoad, failOnlineLoad, finishOnlineLoad, initialOnlineState } from "../src/lib/online/online-state";
 
@@ -76,8 +76,9 @@ async function main() {
   try {
     const garment = await repository.mapGarment(entity);
     assert.equal(garment.id, 7);
-    assert.deepEqual(getOnlineEntityMetadata(garment), { entityId: entity.id, revision: 4, kind: "garment" });
-    assert.equal(getOnlineAssetMetadata(garment, "imageDataUrl")?.assetId, entity.assetRefs.imageDataUrl.assetId);
+    assert.equal(garment.serverId, entity.id);
+    assert.equal(garment.serverRevision, 4);
+    assert.equal(garment.assetRefs?.imageDataUrl?.assetId, entity.assetRefs.imageDataUrl.assetId);
     assert.deepEqual(requestedVariants, ["thumbnail"], "overview mapping must not download garment originals");
   } finally {
     repository.dispose();

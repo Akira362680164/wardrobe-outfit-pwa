@@ -17,6 +17,7 @@ import type {
   WorkspaceStateCommand,
   WorkspaceUpdateCommand,
   WorkspaceWishlistConvertCommand,
+  WorkspaceAssetMutation,
 } from "@wardrobe/cloud-contracts";
 import { onlineRequest } from "@/lib/online/online-request";
 
@@ -193,7 +194,7 @@ export function createOnlineWriteRepository(request: OnlineWriteRequester = onli
     clientMutationId: string;
     entityType: TemporaryAssetSessionRequest["entityType"];
     assets: OnlineAssetInput[];
-  }): Promise<{ session: TemporaryAssetSessionStatus; temporaryAssetIds: string[] }> {
+  }): Promise<{ session: TemporaryAssetSessionStatus; assetMutations: WorkspaceAssetMutation[] }> {
     if (input.assets.length === 0) throw new Error("至少需要一张图片");
     const prepared = await Promise.all(input.assets.map(prepareAssetInput));
     const session = await createTemporaryAssetSession({
@@ -210,7 +211,12 @@ export function createOnlineWriteRepository(request: OnlineWriteRequester = onli
 
     const status = await getTemporaryAssetSession(session.sessionId);
     if (!status.ready) throw new Error("图片上传尚未完成");
-    return { session: status, temporaryAssetIds: status.assets.map((asset) => asset.assetId) };
+    const byField = new Map<string, string[]>();
+    for (const asset of status.assets) byField.set(asset.fieldName, [...(byField.get(asset.fieldName) ?? []), asset.assetId]);
+    return {
+      session: status,
+      assetMutations: [...byField].map(([fieldName, temporaryAssetIds]) => ({ kind: "create_or_replace", fieldName, temporaryAssetIds })),
+    };
   }
 
   return {

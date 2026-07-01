@@ -77,7 +77,23 @@ export type ThumbnailStatus = "ready" | "missing" | "failed";
  * 用于判断已有缩略图是否过期 (例如未来调整缩略图尺寸/质量时升级到 2)。 */
 export const CURRENT_THUMBNAIL_VERSION = 1;
 
-export interface ClosetLocation {
+export interface ServerAssetReference {
+  assetId: string;
+  variants: Array<"original" | "thumbnail">;
+  sha256?: string;
+  mimeType?: string;
+  width?: number;
+  height?: number;
+  variantSha256?: Partial<Record<"original" | "thumbnail", string>>;
+}
+
+export interface ServerEntityMetadata {
+  serverId?: string;
+  serverRevision?: number;
+  assetRefs?: Record<string, ServerAssetReference>;
+}
+
+export interface ClosetLocation extends ServerEntityMetadata {
   id: string;
   name: string;
   note?: string;
@@ -102,6 +118,7 @@ export interface ReferenceOutfitImage {
  thumbnailStatus?: ThumbnailStatus;
  cropRevision?: number;
  thumbnailCropRevision?: number;
+ assetRef?: ServerAssetReference;
 }
 
 /** v0.9.45-dev 详情页 2.0: AI 穿搭风格建议，由 MiniMax 按衣物结构化属性生成。 */
@@ -155,7 +172,7 @@ export interface BaseItem {
   updatedAt: string;
 }
 
-export interface WardrobeItem extends Omit<BaseItem, "sourceImageDataUrl"> {
+export interface WardrobeItem extends Omit<BaseItem, "sourceImageDataUrl">, ServerEntityMetadata {
   id?: number;
   locationId: string;
   status: GarmentStatus;
@@ -247,7 +264,7 @@ export interface OutfitAiSuggestion {
   source?: "ai" | "local";
 }
 
-export interface SavedOutfit {
+export interface SavedOutfit extends ServerEntityMetadata {
   id: string;
   name: string;
   itemIds: number[];
@@ -340,7 +357,7 @@ export interface SimilarOwnedWishlistMatch {
 }
 
 /** v2 (2026-06-23): 种草 / 心愿单单品。继承 BaseItem，价格 = price，备注 = notes。 */
-export interface WishlistItem extends BaseItem {
+export interface WishlistItem extends BaseItem, ServerEntityMetadata {
   id: string;
   status: WishlistStatus;
   convertedItemId?: number;
@@ -401,7 +418,7 @@ export interface GarmentTagResult {
   fitNotes?: string;
 }
 
-export interface TryOnProfile {
+export interface TryOnProfile extends ServerEntityMetadata {
   id: "default";
   enabled: boolean;
   fullBodyImageDataUrl?: string;
@@ -482,7 +499,7 @@ export type OutfitPlanEntryRole = "primary" | "backup" | "morning" | "afternoon"
 /** v1.1.0 fix: 实际穿着来源，用于取消已穿时恢复正确状态 */
 export type OutfitWearOrigin = "planned_confirmed" | "manual_actual";
 
-export interface OutfitPlanEntry {
+export interface OutfitPlanEntry extends ServerEntityMetadata {
   id: string;
   date: string;
   outfitId?: string;
@@ -518,7 +535,7 @@ export interface OutfitPlanEntry {
 export type OutfitCalendarPlanType = "travel" | "business" | "custom";
 export type OutfitCalendarPlanTone = "denim" | "moss" | "clay" | "amber" | "rose" | "purple" | "slate";
 
-export interface OutfitCalendarPlan {
+export interface OutfitCalendarPlan extends ServerEntityMetadata {
   id: string;
   type: OutfitCalendarPlanType;
   title: string;

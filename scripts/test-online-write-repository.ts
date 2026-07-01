@@ -63,7 +63,7 @@ const repository = createOnlineWriteRepository(request);
 const created = await repository.create("garments", {
   clientMutationId: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
   payload: { legacyItemId: 1 },
-  temporaryAssetIds: [],
+  assetMutations: [],
 });
 assert.equal(created.revision, 2, "create must return the mandatory server re-read, not the command echo");
 assert.deepEqual(calls.slice(0, 2).map((call) => [call.method ?? "GET", call.path]), [
@@ -76,7 +76,7 @@ await assert.rejects(
     clientMutationId: "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
     expectedRevision: 0,
     payload: {},
-    temporaryAssetIds: [],
+    assetMutations: [],
   }),
   /expectedRevision/,
   "updates must reject missing/invalid revision before sending",
@@ -84,8 +84,8 @@ await assert.rejects(
 
 const batch = await repository.createBatch("garments", {
   items: [
-    { clientMutationId: "cccccccc-cccc-4ccc-8ccc-cccccccccccc", payload: {}, temporaryAssetIds: [] },
-    { clientMutationId: "dddddddd-dddd-4ddd-8ddd-dddddddddddd", payload: {}, temporaryAssetIds: [] },
+    { clientMutationId: "cccccccc-cccc-4ccc-8ccc-cccccccccccc", payload: {}, assetMutations: [] },
+    { clientMutationId: "dddddddd-dddd-4ddd-8ddd-dddddddddddd", payload: {}, assetMutations: [] },
   ],
 });
 assert.deepEqual(batch.map((item) => item.status), ["succeeded", "failed"], "batch returns one status per item");
@@ -100,7 +100,11 @@ const uploaded = await repository.uploadAssetInputs({
     { fieldName: "imageDataUrl", variant: "thumbnail", image: new Blob(["tn!"], { type: "image/png" }) },
   ],
 });
-assert.deepEqual(uploaded.temporaryAssetIds, [originalAssetId, thumbnailAssetId]);
+assert.deepEqual(uploaded.assetMutations, [{
+  kind: "create_or_replace",
+  fieldName: "imageDataUrl",
+  temporaryAssetIds: [originalAssetId, thumbnailAssetId],
+}]);
 const sessionCall = calls.find((call) => call.path.endsWith("/assets/sessions") && call.method === "POST");
 assert.equal((sessionCall?.body as { slots: Array<{ sha256: string }> }).slots[0].sha256.length, 64, "asset slots include SHA-256");
 assert.equal(calls.filter((call) => call.path.includes(`/assets/sessions/${sessionId}/assets/`) && call.method === "PUT").length, 2, "original and thumbnail are uploaded separately");

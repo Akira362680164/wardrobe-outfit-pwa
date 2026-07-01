@@ -40,41 +40,10 @@ export interface OnlineWorkspaceSnapshot {
   requestId?: string;
 }
 
-export interface OnlineEntityMetadata {
-  entityId: string;
-  revision: number;
-  kind: WorkspaceEntityKind;
-}
-
-export interface OnlineAssetMetadata {
-  assetId: string;
-  variants: WorkspaceAssetReference["variants"];
-  sha256?: string;
-  variantSha256?: WorkspaceAssetReference["variantSha256"];
-}
-
 type Resource = "garments" | "outfits" | "wishlist" | "locations" | "trip-plans" | "outfit-plans" | "wear-events" | "profiles";
 
-const metadata = new WeakMap<object, OnlineEntityMetadata>();
-const assetMetadata = new WeakMap<object, Record<string, OnlineAssetMetadata>>();
-
-export function getOnlineEntityMetadata(value: object): OnlineEntityMetadata | undefined {
-  return metadata.get(value);
-}
-
-export function bindOnlineEntityMetadata<T extends object>(value: T, entity: WorkspaceEntity, kind: WorkspaceEntityKind): T {
-  metadata.set(value, { entityId: entity.id, revision: entity.revision, kind });
-  assetMetadata.set(value, entity.assetRefs ?? {});
-  return value;
-}
-
-export function getOnlineAssetMetadata(value: object, field: string): OnlineAssetMetadata | undefined {
-  return assetMetadata.get(value)?.[field];
-}
-
-export function bindOnlineAssetMetadata<T extends object>(value: T, refs: Record<string, WorkspaceAssetReference>): T {
-  assetMetadata.set(value, refs);
-  return value;
+function withServerMetadata<T extends object>(value: T, entity: WorkspaceEntity, kind: WorkspaceEntityKind): T {
+  return Object.assign(value, { serverId: entity.id, serverRevision: entity.revision, assetRefs: entity.assetRefs ?? {}, serverKind: kind });
 }
 
 export class OnlineWorkspaceRepository {
@@ -142,13 +111,13 @@ export class OnlineWorkspaceRepository {
       const reference = value && typeof value === "object" ? value as Record<string, unknown> : {};
       const field = typeof reference.assetField === "string" ? reference.assetField : `referenceOutfitImage:${String(reference.id ?? "")}`;
       const ref = entity.assetRefs?.[field];
-      return bindOnlineAssetMetadata({
+      return Object.assign({
         ...reference,
         imageDataUrl: ref?.variants.includes("thumbnail") ? await this.images.load(ref.assetId, "thumbnail", ref.variantSha256?.thumbnail) : undefined,
         thumbnailDataUrl: ref?.variants.includes("thumbnail") ? await this.images.load(ref.assetId, "thumbnail", ref.variantSha256?.thumbnail) : undefined,
-      }, ref ? { imageDataUrl: ref } : {});
+      }, { assetRef: ref });
     }));
-    return bindOnlineEntityMetadata({
+    return withServerMetadata({
       id: numericId(p.legacyItemId, entity.id),
       locationId: stringValue(p.locationId, "home"),
       name: stringValue(p.name),
@@ -180,7 +149,7 @@ export class OnlineWorkspaceRepository {
     const images = await this.resolveImages(entity, {
       thumbnailDataUrl: { refField: "coverImageDataUrl", variant: "thumbnail" },
     });
-    return bindOnlineEntityMetadata({
+    return withServerMetadata({
       id: stringValue(p.legacyOutfitId, entity.id), name: stringValue(p.name), itemIds: numberArray(p.legacyItemIds ?? p.itemIds),
       favorite: optionalBoolean(p.favorite) ?? false, coverImageDataUrl: images.thumbnailDataUrl,
       previewImageDataUrl: images.thumbnailDataUrl, thumbnailDataUrl: images.thumbnailDataUrl,
@@ -198,7 +167,7 @@ export class OnlineWorkspaceRepository {
     const images = await this.resolveImages(entity, {
       thumbnailDataUrl: { refField: "imageDataUrl", variant: "thumbnail" },
     });
-    return bindOnlineEntityMetadata({
+    return withServerMetadata({
       id: stringValue(p.legacyWishlistId, entity.id), name: stringValue(p.name), imageDataUrl: images.thumbnailDataUrl ?? "",
       thumbnailDataUrl: images.thumbnailDataUrl, category: (p.category ?? "tops") as WishlistItem["category"],
       subcategory: optionalString(p.subcategory), colors: (p.colors ?? { mode: "single", primary: "#000000" }) as WishlistItem["colors"],
@@ -219,7 +188,7 @@ export class OnlineWorkspaceRepository {
       fullBodyImageDataUrl: { refField: "fullBodyImageDataUrl", variant: "original" },
       faceImageDataUrl: { refField: "faceImageDataUrl", variant: "original" },
     });
-    return bindOnlineEntityMetadata({ ...p, ...images, id: "default", enabled: optionalBoolean(p.enabled) ?? false, updatedAt: stringValue(p.updatedAt, entity.updatedAt) } as TryOnProfile, entity, "profile");
+    return withServerMetadata({ ...p, ...images, id: "default", enabled: optionalBoolean(p.enabled) ?? false, updatedAt: stringValue(p.updatedAt, entity.updatedAt) } as TryOnProfile, entity, "profile");
   }
 
   mapLocation(entity: WorkspaceEntity): ClosetLocation { return toClosetLocation(entity); }
@@ -243,17 +212,17 @@ export class OnlineWorkspaceRepository {
 
 function toClosetLocation(entity: WorkspaceEntity): ClosetLocation {
   const p = entity.payload;
-  return bindOnlineEntityMetadata({ id: stringValue(p.dexieId, entity.id), name: stringValue(p.name), note: optionalString(p.note), sortOrder: optionalNumber(p.sortOrder) ?? 0, createdAt: entity.createdAt, updatedAt: entity.updatedAt }, entity, "closetLocation");
+  return withServerMetadata({ id: stringValue(p.dexieId, entity.id), name: stringValue(p.name), note: optionalString(p.note), sortOrder: optionalNumber(p.sortOrder) ?? 0, createdAt: entity.createdAt, updatedAt: entity.updatedAt }, entity, "closetLocation");
 }
 
 function toCalendarPlan(entity: WorkspaceEntity): OutfitCalendarPlan {
   const p = entity.payload;
-  return bindOnlineEntityMetadata({ ...p, id: stringValue(p.legacyCalendarPlanId, entity.id), title: stringValue(p.title), startDate: stringValue(p.startDate), endDate: stringValue(p.endDate), type: (p.type ?? "custom") as OutfitCalendarPlan["type"], tone: (p.tone ?? "slate") as OutfitCalendarPlan["tone"], createdAt: entity.createdAt, updatedAt: entity.updatedAt } as OutfitCalendarPlan, entity, "tripPlan");
+  return withServerMetadata({ ...p, id: stringValue(p.legacyCalendarPlanId, entity.id), title: stringValue(p.title), startDate: stringValue(p.startDate), endDate: stringValue(p.endDate), type: (p.type ?? "custom") as OutfitCalendarPlan["type"], tone: (p.tone ?? "slate") as OutfitCalendarPlan["tone"], createdAt: entity.createdAt, updatedAt: entity.updatedAt } as OutfitCalendarPlan, entity, "tripPlan");
 }
 
 function toOutfitPlanEntry(entity: WorkspaceEntity): OutfitPlanEntry {
   const p = entity.payload;
-  return bindOnlineEntityMetadata({ ...p, id: stringValue(p.legacyPlanEntryId, entity.id), date: stringValue(p.date), status: (p.status ?? "planned") as OutfitPlanEntry["status"], createdAt: entity.createdAt, updatedAt: entity.updatedAt } as OutfitPlanEntry, entity, "outfitPlan");
+  return withServerMetadata({ ...p, id: stringValue(p.legacyPlanEntryId, entity.id), date: stringValue(p.date), status: (p.status ?? "planned") as OutfitPlanEntry["status"], createdAt: entity.createdAt, updatedAt: entity.updatedAt } as OutfitPlanEntry, entity, "outfitPlan");
 }
 
 function packingItems(plans: WorkspaceEntity[]): PlanPackingChecklistItem[] {

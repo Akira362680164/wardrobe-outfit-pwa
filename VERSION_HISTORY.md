@@ -1,4 +1,13 @@
 
+## 2026-07-01 / v2.1.2-test / Codex — 客户端显式 revision 与资产命令接线
+
+- **目的**：让客户端写入层适配新的事务资产命令，并把服务器实体身份、revision 和资产引用直接放入读回对象，消除对象展开后丢失写入上下文的问题。
+- **主要改动**：临时图片上传按字段生成 `assetMutations`；全部 Workspace 创建/更新命令改用新契约；Repository 创建方法在服务器提交并读回后返回完整实体；Mapper 显式写入 `serverId`、`serverRevision`、`assetRefs`；删除实体和资产元数据 WeakMap 及其 bind/get 运行时接口。
+- **验证**：`npm run typecheck`、`npm run test:logic:online-writes`、`npm run test:logic:online-workspace` 通过。
+- **风险门禁**：**high**（线上 Repository、图片提交契约和 revision 数据边界变化）。
+- **未触发 subagent**：用户明确要求全部由母 Agent 串行开发。
+- **未验证风险**：正式领域类型中的旧 Data URL 字段和 Overview 图片下载仍待下一阶段一次性移除；本阶段不是可交付构建。
+
 ## 2026-07-01 / v2.1.2-test / Codex — v2.1.3 资产绑定服务端基座
 
 - **目的**：将正式图片所有权从 `assets.owner_*` 迁移为独立 `asset_bindings`，建立创建/替换、更新缩略图、复用和移除四类显式资产命令，为后续客户端去 Data URL 与多图复用提供服务端事务基座。

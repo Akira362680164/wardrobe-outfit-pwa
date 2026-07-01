@@ -3,12 +3,12 @@
 import { useCallback, useEffect, useState, type ReactNode } from "react";
 import { useOnlineWorkspaceGate } from "@/components/auth/workspace-gate";
 import { OnlineImageLoadError, OnlineImagePlaceholder } from "@/components/online/online-image-state";
-import { getOnlineAssetMetadata } from "@/lib/online/online-repository";
 import type { OnlineImageVariant } from "@/lib/online/online-image-client";
+import type { ServerAssetReference } from "@/lib/types";
 
 export function useOnlineAssetUrl(entity: object, field: string, variant: OnlineImageVariant, fallbackUrl?: string) {
   const gate = useOnlineWorkspaceGate();
-  const asset = getOnlineAssetMetadata(entity, field);
+  const asset = (entity as { assetRefs?: Record<string, ServerAssetReference> }).assetRefs?.[field];
   const [state, setState] = useState<{ status: "idle" | "loading" | "loaded" | "error"; url?: string }>({ status: asset ? "loading" : "idle", url: fallbackUrl });
 
   useEffect(() => {

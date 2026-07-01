@@ -800,8 +800,8 @@ export function WardrobeApp({ cloudAuth }: { cloudAuth?: WardrobeCloudAuth } = {
     }));
     const itemIds: number[] = [];
     for (const item of demoItems) {
-      const newId = rethrowIfFailed(await repoCreateGarment({ ...item }), "创建单品失败");
-      itemIds.push(newId);
+      const created = rethrowIfFailed(await repoCreateGarment({ ...item }), "创建单品失败");
+      if (created.id != null) itemIds.push(created.id);
     }
     if (itemIds.length > 0) {
       rethrowIfFailed(await upsertOutfit(createDemoOutfit(itemIds, now)), "保存套装失败");
