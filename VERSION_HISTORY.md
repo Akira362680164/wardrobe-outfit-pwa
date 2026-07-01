@@ -1,4 +1,15 @@
 
+## 2026-07-01 / v2.1.2-test / Codex — 制定 v2.1.3 资产模型串行执行计划
+
+- **目的**：复核 ChatGPT 的 v2.1.3 应用开发任务书和上游业务/测试规格，并按当前私有仓库真实实现改写为母 Agent 可串行执行的本地方案。
+- **基线与分支**：从本地 `main` 最新提交 `f421bf7d8277fb37dd108015250ddf2a2c1eec5d` 创建 `codex/v2.1.3-asset-model-reset`；不使用公开仓库旧提交作为开发基线。
+- **计划修订**：禁止 subagent；区分服务器读回实体与本地草稿；不预设无必要 Hook；共享图片请求不被单消费者取消；测试清库先收集 storage key，再事务清库并逐项删除/复核 Storage。
+- **改动文件**：`docs/superpowers/plans/2026-07-01-v2.1.3-asset-model-reset.md`、`VERSION_HISTORY.md`。
+- **验证**：已对照当前类型、Repository、Workspace API、资产 Schema、图片运行时、画像 Controller、业务规格和独立测试规格完成静态核查；文档检查将在提交前执行。
+- **风险门禁**：**low**（本提交仅执行计划；后续业务、Schema、服务器清理和 APK 实施为 high）。
+- **未触发 subagent**：用户明确要求全部由母 Agent 串行开发。
+- **未验证风险**：业务代码、数据库迁移、服务器清理、部署、E2E、Android 和 APK 均尚未开始。
+
 ## 2026-07-01 / v2.1.2-test / Codex — GitHub 公开仓库测试脚本脱敏版已推送
 
 - **目的**：把已脱敏的测试/验证脚本随 `main` 安全快照同步到公开 GitHub，并补齐公开目录的独立构建验证与远端提交记录。
