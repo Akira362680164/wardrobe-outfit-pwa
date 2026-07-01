@@ -17,7 +17,7 @@ import {
 import type {
   WishlistItem, WardrobeItem, SavedOutfit, ClosetLocation,
   WishlistAssessment,
-  GarmentFitGender, TemperatureRange, GarmentCategory, WishlistStatus,
+  GarmentFitGender, TemperatureRange, GarmentCategory, WishlistStatus, WishlistItemDraft,
 } from "@/lib/types";
 import {
   CATEGORY_LABELS, SEASON_LABELS, STYLE_LABELS,
@@ -482,10 +482,10 @@ export function WishlistView20({
   const openEditForm = useCallback((item: WishlistItem) => {
     setEditId(item.id);
     setFormName(item.name ?? "");
-    setFormImageDataUrl(item.imageDataUrl ?? "");
-    setFormSourceImageDataUrl(item.sourceImageDataUrl ?? "");
-    setFormCropBox(item.cropBox);
-    setFormThumbnailDataUrl(item.thumbnailDataUrl);
+    setFormImageDataUrl("");
+    setFormSourceImageDataUrl("");
+    setFormCropBox(item.mainImage?.cropBox);
+    setFormThumbnailDataUrl(undefined);
     setFormCategory(item.category ?? "");
     setFormSubcategory(item.subcategory);
     setFormColorMode(item.colors.mode);
@@ -507,10 +507,10 @@ export function WishlistView20({
     // Subagent F: 捕获表单初始快照，用于精确 dirty 检测
     formInitialSnapshotRef.current = JSON.stringify({
       name: item.name ?? "",
-      imageDataUrl: item.imageDataUrl ?? "",
-      sourceImageDataUrl: item.sourceImageDataUrl ?? "",
-      cropBox: item.cropBox,
-      thumbnailDataUrl: item.thumbnailDataUrl,
+      imageDataUrl: "",
+      sourceImageDataUrl: "",
+      cropBox: item.mainImage?.cropBox,
+      thumbnailDataUrl: undefined,
       category: item.category ?? "",
       subcategory: item.subcategory ?? "",
       colorMode: item.colors.mode,
@@ -544,10 +544,10 @@ export function WishlistView20({
     const cleanedTempRange: TemperatureRange | undefined = normalizeTemperatureRange(formTemperatureRange);
     const base = {
       name: formName.trim(),
-      imageDataUrl: formImageDataUrl,
-      sourceImageDataUrl: formSourceImageDataUrl || undefined,
-      cropBox: formCropBox,
-      thumbnailDataUrl: formThumbnailDataUrl,
+      localOriginalDataUrl: formSourceImageDataUrl || formImageDataUrl || undefined,
+      localCroppedPreviewDataUrl: formImageDataUrl || undefined,
+      localCropBox: formCropBox,
+      localThumbnailDataUrl: formThumbnailDataUrl,
       category: (formCategory || "tops") as WishlistItem["category"],
       subcategory: formSubcategory || undefined,
       colors: buildColorInfo((formColorMode || "single") as WishlistItem["colors"]["mode"], formPrimaryColors.length > 0 ? formPrimaryColors : (formMainColor ? [formMainColor] : []), formAccentColors),
@@ -580,9 +580,8 @@ export function WishlistView20({
       if (!result.ok) { onMessage(result.error ?? "更新种草失败，请重试", "error"); return; }
       onMessage("已更新种草单品");
     } else {
-      const newItem: Omit<WishlistItem, "id"> = {
+      const newItem: Omit<WishlistItemDraft, "id"> = {
         ...base,
-        imageDataUrl: formImageDataUrl || "",
         createdAt: now,
       };
       const result = await wardrobeRepository.createWishlistItem(newItem, { clientMutationId });
@@ -1166,9 +1165,9 @@ export function WishlistView20({
           {/* Main card */}
           <div className="surface rounded-xl p-4">
             <div className="flex gap-3">
-              {item.imageDataUrl ? (
+              {item.mainImage ? (
                 <div className="w-[72px] h-[72px] shrink-0 rounded-lg overflow-hidden bg-mist">
-                  <img src={item.imageDataUrl} alt={item.name} className="h-full w-full object-cover" />
+                  <OnlineAssetImage asset={item.mainImage.asset} variant="thumbnail" alt={item.name} className="h-full w-full" imageClassName="object-cover" />
                 </div>
               ) : (
                 <div className="w-[72px] h-[72px] shrink-0 rounded-lg bg-mist flex items-center justify-center">
@@ -1286,9 +1285,9 @@ export function WishlistView20({
                 return (
                   <div key={w.id} className="rounded-3xl border border-ink/5 bg-white p-3 shadow-soft">
                     <div className="flex gap-3">
-                    {w.imageDataUrl ? (
+                    {w.mainImage ? (
                       <div className="h-[72px] w-[72px] shrink-0 overflow-hidden rounded-2xl bg-mist">
-                        <img src={w.imageDataUrl} alt={w.name} className="h-full w-full object-cover" />
+                        <OnlineAssetImage asset={w.mainImage.asset} variant="thumbnail" alt={w.name} className="h-full w-full" imageClassName="object-cover" />
                       </div>
                     ) : (
                       <div className="grid h-[72px] w-[72px] shrink-0 place-items-center rounded-2xl bg-mist text-ink/30">
@@ -1392,8 +1391,10 @@ export function WishlistView20({
       id: "wishlist-product",
       label: getDetailSlideLabel("wishlist_product"),
       alt: item.name,
-      imageDataUrl: item.imageDataUrl,
-      renderContent: <OnlineAssetImage entity={item} field="imageDataUrl" variant="original" alt={item.name} className="h-full w-full" onOpen={(url) => onExpandImage({ src: url, alt: item.name })} fallback={<div className="grid h-full place-items-center text-ink/25"><ImageIcon size={36} /></div>} />,
+      imageDataUrl: "",
+      asset: item.mainImage?.asset,
+      fallbackContent: <div className="grid h-full place-items-center text-ink/25"><ImageIcon size={36} /></div>,
+      onAssetOpen: (url: string) => onExpandImage({ src: url, alt: item.name }),
     }];
 
 
@@ -1401,7 +1402,7 @@ export function WishlistView20({
       <ItemDetailPageShell
         contentClassName="mx-auto w-full max-w-4xl pb-[calc(env(safe-area-inset-bottom)+24px)]"
         topBar={<DetailTopBar title="" onBack={goBack} onMore={() => setMenuOpen((v) => !v)} moreButtonRef={menuAnchorRef} />}
-        hero={<DetailHeroGallery slides={productSlides} currentIndex={0} onIndexChange={() => undefined} onExpandImage={item.imageDataUrl ? onExpandImage : undefined} emptyIcon={<ImageIcon size={36} />} emptyText="暂无商品图" />}
+        hero={<DetailHeroGallery slides={productSlides} currentIndex={0} onIndexChange={() => undefined} emptyIcon={<ImageIcon size={36} />} emptyText="暂无商品图" />}
         quickActions={<DetailQuickActions actions={quickActions} layout="grid" />}
         titleBlock={<DetailTitleMetaBlock title={item.name} metaParts={[statusLabel, categoryLabel, subcategoryLabel, seasonLabel, styleLabel]} />}
         tabs={<DetailTabs tabs={[{ key: "assessment", label: "信息" }, { key: "pairing", label: "搭配" }, { key: "record", label: "记录" }]} activeTab={detailTab} onChange={setDetailTab} />}
@@ -1444,9 +1445,9 @@ export function WishlistView20({
                     <div className="space-y-2">
                       {rule.recommendedPairings.slice(0, 8).map((p) => (
                         <div key={p.item.id} className="flex gap-3 items-center surface rounded-lg p-2">
-                          {(p.item.imageDataUrl || p.item.thumbnailDataUrl) ? (
+                          {p.item.mainImage ? (
                             <div className="h-12 w-12 shrink-0 rounded-lg overflow-hidden bg-mist">
-                              {p.item.thumbnailDataUrl ? <img src={p.item.thumbnailDataUrl} alt={p.item.name} className="h-full w-full object-contain" /> : null}
+                              <OnlineAssetImage asset={p.item.mainImage.asset} variant="thumbnail" alt={p.item.name} className="h-full w-full" />
                             </div>
                           ) : (
                             <div className="grid h-12 w-12 shrink-0 place-items-center rounded-lg bg-mist text-ink/30">
@@ -1475,9 +1476,9 @@ export function WishlistView20({
                     <div className="space-y-2">
                       {rule.similarOwnedItems.map((m) => (
                         <div key={m.item.id} className="flex gap-3 items-center surface rounded-lg p-2">
-                          {(m.item.imageDataUrl || m.item.thumbnailDataUrl) ? (
+                          {m.item.mainImage ? (
                             <div className="h-12 w-12 shrink-0 rounded-lg overflow-hidden bg-mist">
-                              {m.item.thumbnailDataUrl ? <img src={m.item.thumbnailDataUrl} alt={m.item.name} className="h-full w-full object-contain" /> : null}
+                              <OnlineAssetImage asset={m.item.mainImage.asset} variant="thumbnail" alt={m.item.name} className="h-full w-full" />
                             </div>
                           ) : (
                             <div className="grid h-12 w-12 shrink-0 place-items-center rounded-lg bg-mist text-ink/30">
@@ -1678,8 +1679,8 @@ export function WishlistView20({
                     meta={<CategoryColorLine categoryLabel={colorLine.categoryLabel} colors={colorLine.colors} />}
                     summary={getWishlistCardSubtitle(w, rule)}
                     media={
-                      w.imageDataUrl ? (
-                        <img src={w.imageDataUrl} alt={w.name} className="h-full w-full object-contain" draggable={false} />
+                      w.mainImage ? (
+                        <OnlineAssetImage asset={w.mainImage.asset} variant="thumbnail" alt={w.name} className="h-full w-full" />
                       ) : (
                         <div className="grid h-full w-full place-items-center text-ink/20">
                           <ImageIcon size={36} />

@@ -4,7 +4,7 @@
 //   / notes 透传为 WishlistItem 字段；price 仍由用户在步骤 3 手动填（不写入）;
 //   删除 brand / shopName / currency / sceneTags / styleTags。
 
-import type { ShoppingAssessmentCandidate, WishlistItem } from "@/lib/types";
+import type { ShoppingAssessmentCandidate, WishlistItemDraft } from "@/lib/types";
 import { emptyColorInfo, normalizeAiColorInfo } from "@/lib/color-fields";
 
 /**
@@ -24,7 +24,7 @@ export function wishlistItemFromShoppingCandidate(input: {
   displayImageDataUrl: string;
   thumbnailDataUrl?: string;
   now: string;
-}): Omit<WishlistItem, 'id'> {
+}): Omit<WishlistItemDraft, 'id'> {
   const { candidate, sourceImageDataUrl, displayImageDataUrl, thumbnailDataUrl, now } = input;
 
   const normalizedColors = normalizeAiColorInfo(candidate.colors);
@@ -34,9 +34,9 @@ export function wishlistItemFromShoppingCandidate(input: {
 
   return {
     name: candidate.name || "待确认种草单品",
-    imageDataUrl: displayImageDataUrl,
-    sourceImageDataUrl,
-    thumbnailDataUrl,
+    localOriginalDataUrl: sourceImageDataUrl,
+    localCroppedPreviewDataUrl: displayImageDataUrl,
+    localThumbnailDataUrl: thumbnailDataUrl,
     category: candidate.category,
     subcategory: candidate.subcategory,
     colors: normalizedColors.colors,
@@ -64,13 +64,13 @@ export function fallbackWishlistItem(input: {
   displayImageDataUrl: string;
   thumbnailDataUrl?: string;
   now: string;
-}): Omit<WishlistItem, 'id'> {
+}): Omit<WishlistItemDraft, 'id'> {
   const { sourceImageDataUrl, displayImageDataUrl, thumbnailDataUrl, now } = input;
   return {
     name: "待确认种草单品",
-    imageDataUrl: displayImageDataUrl,
-    sourceImageDataUrl,
-    thumbnailDataUrl,
+    localOriginalDataUrl: sourceImageDataUrl,
+    localCroppedPreviewDataUrl: displayImageDataUrl,
+    localThumbnailDataUrl: thumbnailDataUrl,
     category: "tops",
     colors: emptyColorInfo(),
     seasons: ["all"],

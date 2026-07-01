@@ -3,10 +3,10 @@ import {
   type GarmentStatus,
   type GarmentStyle,
   type GarmentFitGender,
-  type SavedOutfit,
+  type SavedOutfitDraft,
   type Season,
-  type WardrobeItem,
-  type WishlistItem,
+  type WardrobeItemDraft,
+  type WishlistItemDraft,
 } from "@/lib/types";
 import { emptyColorInfo } from "@/lib/color-fields";
 import { normalizeTemperatureRange } from "@/lib/temperature-range";
@@ -21,7 +21,7 @@ import {
 export function garmentDraftToWardrobeItem(
   draft: GarmentIntakeDraft,
   options: { now?: string } = {},
-): Omit<WardrobeItem, "id"> {
+): Omit<WardrobeItemDraft, "id"> {
   const now = options.now ?? new Date().toISOString();
   const imageDataUrl = requireGarmentOriginalImage(draft);
   const cropBox = draft.cropBox ?? { x: 0, y: 0, width: 1, height: 1 };
@@ -29,8 +29,9 @@ export function garmentDraftToWardrobeItem(
 
   return {
     name: requiredText(fieldValue(draft.name, ""), "未命名衣物"),
-    imageDataUrl,
-    cropBox,
+    localOriginalDataUrl: imageDataUrl,
+    localCroppedPreviewDataUrl: draft.croppedImageDataUrl,
+    localCropBox: cropBox,
     category: fieldValue(draft.category, "tops"),
     colors: fieldValue(draft.colors, emptyColorInfo()),
     seasons: nonEmptyArray(fieldValue<Season[]>(draft.seasons, []), ["all"]),
@@ -48,12 +49,7 @@ export function garmentDraftToWardrobeItem(
     purchaseDate: optionalText(draft.purchaseDate),
     subcategory: optionalText(draft.subcategory),
     material: optionalText(draft.material),
-    thumbnailDataUrl: draft.thumbnailDataUrl,
-    cropRevision,
-    thumbnailCropRevision: draft.thumbnailCropRevision ?? cropRevision,
-    ...(draft.thumbnailDataUrl
-      ? { thumbnailVersion: CURRENT_THUMBNAIL_VERSION, thumbnailUpdatedAt: now, thumbnailStatus: "ready" as const }
-      : {}),
+    localThumbnailDataUrl: draft.thumbnailDataUrl,
     wornDates: [],
     needsReview: calculateDraftReviewSummary(draft).needsReviewFields > 0 || draft.processingIssues.length > 0,
     aiConfidence: typeof draft.aiConfidenceScore === "number" ? draft.aiConfidenceScore / 100 : undefined,
@@ -65,15 +61,15 @@ export function garmentDraftToWardrobeItem(
 export function wishlistDraftToWishlistItem(
   draft: WishlistIntakeDraft,
   options: { id?: string; now?: string } = {},
-): WishlistItem {
+): WishlistItemDraft {
   const now = options.now ?? new Date().toISOString();
   return {
     id: options.id ?? `wishlist-intake-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
     name: requiredText(fieldValue(draft.name, ""), "未命名种草单品"),
-    imageDataUrl: draft.imageDataUrl || draft.croppedImageDataUrl || "",
-    thumbnailDataUrl: draft.thumbnailDataUrl,
-    cropRevision: draft.cropRevision ?? (draft.cropBox ? 1 : 0),
-    thumbnailCropRevision: draft.thumbnailCropRevision ?? (draft.cropRevision ?? (draft.cropBox ? 1 : 0)),
+    localOriginalDataUrl: draft.imageDataUrl || draft.croppedImageDataUrl || "",
+    localCroppedPreviewDataUrl: draft.croppedImageDataUrl,
+    localThumbnailDataUrl: draft.thumbnailDataUrl,
+    localCropBox: draft.cropBox,
     category: fieldValue(draft.category, "tops"),
     subcategory: optionalText(draft.subcategory),
     colors: fieldValue(draft.colors, emptyColorInfo()),
@@ -97,18 +93,17 @@ export function wishlistDraftToWishlistItem(
 export function garmentDraftToWishlistItem(
   draft: GarmentIntakeDraft,
   options: { id?: string; now?: string } = {},
-): WishlistItem {
+): WishlistItemDraft {
   const now = options.now ?? new Date().toISOString();
   const imageDataUrl = resolveGarmentImageDataUrl(draft);
 
   return {
     id: options.id ?? `wishlist-intake-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
     name: requiredText(fieldValue(draft.name, ""), "未命名种草单品"),
-    imageDataUrl,
-    cropBox: draft.cropBox,
-    thumbnailDataUrl: draft.thumbnailDataUrl,
-    cropRevision: draft.cropRevision ?? (draft.cropBox ? 1 : 0),
-    thumbnailCropRevision: draft.thumbnailCropRevision ?? (draft.cropRevision ?? (draft.cropBox ? 1 : 0)),
+    localOriginalDataUrl: imageDataUrl,
+    localCroppedPreviewDataUrl: draft.croppedImageDataUrl,
+    localCropBox: draft.cropBox,
+    localThumbnailDataUrl: draft.thumbnailDataUrl,
     category: fieldValue(draft.category, "tops"),
     subcategory: optionalText(draft.subcategory),
     colors: fieldValue(draft.colors, emptyColorInfo()),
@@ -132,7 +127,7 @@ export function garmentDraftToWishlistItem(
 export function outfitDraftToSavedOutfit(
  draft: OutfitIntakeDraft,
  options: { id?: string; now?: string; itemIds?: number[]; unknownItemNotes?: string[] } = {},
-): SavedOutfit {
+): SavedOutfitDraft {
  const now = options.now ?? new Date().toISOString();
  const itemIds = uniqueNumbers(options.itemIds ?? fieldValue(draft.itemIds, []));
  const unknownNotes = options.unknownItemNotes ?? fieldValue(draft.unknownItemNotes, []);
@@ -147,8 +142,8 @@ export function outfitDraftToSavedOutfit(
  name: requiredText(fieldValue(draft.name, ""), "未命名套装"),
  itemIds,
  source: fieldValue(draft.source, "manual"),
- coverImageDataUrl: draft.imageDataUrl,
- thumbnailDataUrl: draft.thumbnailDataUrl,
+ localOriginalDataUrl: draft.imageDataUrl,
+ localThumbnailDataUrl: draft.thumbnailDataUrl,
  // v1.0: 创建流程默认不收藏,详情页可单独切换
  favorite: fieldValue(draft.favorite, false),
  seasons: fieldValue(draft.seasons, []),

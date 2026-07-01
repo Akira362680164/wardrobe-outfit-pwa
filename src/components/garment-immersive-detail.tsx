@@ -22,6 +22,7 @@ import { ChevronLeft, Crop } from "lucide-react";
 import { SwipeImageCarousel, type SwipeAddSlide, type SwipeImageSlide, type SwipeSlide } from "@/components/swipe-image-carousel";
 import { clampCarouselIndex } from "@/lib/carousel-logic";
 import type { GarmentImageEntry } from "@/lib/garment-image-source";
+import type { CroppedImageReference } from "@/lib/types";
 
 /* ------------------------------------------------------------------ */
 /*  颜色色块映射                                                        */
@@ -80,6 +81,7 @@ export interface GarmentDetailModel {
   cropBox?: { x: number; y: number; width: number; height: number };
   cropRevision?: number;
   thumbnailCropRevision?: number;
+  mainImage?: CroppedImageReference;
   categoryLabel: string;
   seasonLabels: string[];
   statusLabel?: string;
@@ -251,20 +253,15 @@ extraImages,
   // - 参考图: thumbnailSrc = entry.cardImageDataUrl, displaySrc = entry.displayImageDataUrl
   // - 主图只使用完整 imageDataUrl；参考图保留自身历史源图语义。
   const slides: SwipeSlide[] = useMemo(() => {
-    const mainOriginal = item.imageDataUrl;
     const main: SwipeImageSlide = {
       kind: "image",
       id: "main",
-      imageDataUrl: item.thumbnailDataUrl || "",
-      thumbnailSrc: item.thumbnailDataUrl,
-      displaySrc: mainOriginal,
-      sourceSrc: mainOriginal,
+      imageDataUrl: "",
+      asset: item.mainImage?.asset,
       alt: item.name,
       badge: "主图",
       badgeClassName: "bg-denim",
-      displayMode: "original-cropped",
-      originalSrc: mainOriginal,
-      cropBox: (item as { cropBox?: { x: number; y: number; width: number; height: number } }).cropBox,
+      displayMode: "thumbnail",
     };
     const extras: SwipeImageSlide[] = (extraImages ?? [])
       .filter((entry) => entry.renderKind !== "outfit")
@@ -273,10 +270,8 @@ extraImages,
       return {
         kind: "image",
         id: entry.refId || `entry-${i}`,
-        imageDataUrl: entry.imageDataUrl,
-        thumbnailSrc: entry.cardImageDataUrl,
-        displaySrc: entry.displayImageDataUrl,
-        sourceSrc: entry.sourceImageDataUrl || entry.imageDataUrl,
+        imageDataUrl: "",
+        asset: entry.image?.asset,
         alt: `参考穿搭 ${i + 1}`,
         badge: isSavedOutfit ? "套装" : "参考",
         badgeClassName: isSavedOutfit ? "bg-moss" : "bg-clay",
@@ -294,7 +289,7 @@ extraImages,
       base.push(add);
     }
     return base;
-  }, [item.imageDataUrl, item.thumbnailDataUrl, item.cropBox, item.cropRevision, item.thumbnailCropRevision, item.name, extraImages, hasAddCard]);
+  }, [item.mainImage, item.name, extraImages, hasAddCard]);
 
   const safeIndex = clampCarouselIndex(currentImageIndex, slides.length);
   const safeSlide = slides[safeIndex];

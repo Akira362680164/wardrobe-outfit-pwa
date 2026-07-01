@@ -21,9 +21,15 @@ import {
   wishlistDraftToWishlistItem,
 } from "../src/lib/intake-save-adapters";
 import { buildColorInfo, getAccentColors, getPrimaryColors } from "../src/lib/color-fields";
-import type { WardrobeItem } from "../src/lib/types";
+import type { ImageAssetReference, WardrobeItem } from "../src/lib/types";
 
 const now = "2026-06-11T08:00:00.000Z";
+const imageAsset = (assetId: string): ImageAssetReference => ({
+  assetId,
+  variants: ["original", "thumbnail"],
+  sha256: `sha-${assetId}`,
+  mimeType: "image/jpeg",
+});
 
 const user = createIntakeField("用户白", "user", "high", { needsReview: false });
 const aiHigh = createIntakeField("AI白", "ai", "high", { needsReview: false });
@@ -54,13 +60,11 @@ assert.equal(summary.canSave, true, "透明底失败不阻塞保存");
 assert.equal(isIntakeDraftReadyToSave(garmentDraft), true, "可保存判断应复用草稿 review summary");
 
 const wardrobeItem = garmentDraftToWardrobeItem(garmentDraft, { now });
-assert.equal(wardrobeItem.imageDataUrl, garmentDraft.imageDataUrl, "正式单品必须保存完整原图");
-assert.notEqual(wardrobeItem.imageDataUrl, garmentDraft.croppedImageDataUrl, "裁切临时图不能冒充完整原图");
-assert.deepEqual(wardrobeItem.cropBox, garmentDraft.cropBox, "裁切框必须相对于完整原图保存");
+assert.equal(wardrobeItem.localOriginalDataUrl, garmentDraft.imageDataUrl, "提交草稿必须携带完整原图");
+assert.notEqual(wardrobeItem.localOriginalDataUrl, garmentDraft.croppedImageDataUrl, "裁切临时图不能冒充完整原图");
+assert.deepEqual(wardrobeItem.localCropBox, garmentDraft.cropBox, "裁切框必须相对于完整原图提交");
 assert.equal((wardrobeItem as unknown as Record<string, unknown>).sourceImageDataUrl, undefined, "正式单品不再保存第二份主图");
-assert.equal(wardrobeItem.thumbnailDataUrl, "data:image/png;base64,thumb", "草稿缩略图应进入正式衣物");
-assert.equal(wardrobeItem.cropRevision, 1, "已裁切单品默认 cropRevision=1");
-assert.equal(wardrobeItem.thumbnailCropRevision, 1, "已裁切单品 thumbnailCropRevision 对齐 cropRevision");
+assert.equal(wardrobeItem.localThumbnailDataUrl, "data:image/png;base64,thumb", "提交草稿应携带缩略图");
 assert.equal(wardrobeItem.needsReview, true, "含 review/info 字段的草稿入库后应保留待确认");
 assert.throws(
   () => garmentDraftToWardrobeItem({ ...garmentDraft, imageDataUrl: garmentDraft.croppedImageDataUrl }),
@@ -82,10 +86,8 @@ const uncroppedWardrobeItem = garmentDraftToWardrobeItem({
   cropRevision: undefined,
   thumbnailCropRevision: undefined,
 }, { now });
-assert.equal(uncroppedWardrobeItem.cropRevision, 0, "未裁切单品 cropRevision=0");
-assert.equal(uncroppedWardrobeItem.thumbnailCropRevision, 0, "未裁切单品 thumbnailCropRevision=0");
 assert.deepEqual(
-  uncroppedWardrobeItem.cropBox,
+  uncroppedWardrobeItem.localCropBox,
   { x: 0, y: 0, width: 1, height: 1 },
   "未裁切新单品应保存全图 cropBox",
 );
@@ -127,7 +129,7 @@ const items: WardrobeItem[] = [
   {
     id: 1,
     name: "白衬衫",
-    imageDataUrl: "data:image/png;base64,1",
+    mainImage: { asset: imageAsset("item-1") },
     category: "tops",
     colors: buildColorInfo("single", ["白"]),
     seasons: ["spring", "autumn"],
@@ -143,7 +145,7 @@ const items: WardrobeItem[] = [
   {
     id: 2,
     name: "黑西裤",
-    imageDataUrl: "data:image/png;base64,2",
+    mainImage: { asset: imageAsset("item-2") },
     category: "pants",
     colors: buildColorInfo("single", ["黑"]),
     seasons: ["spring", "autumn"],
@@ -185,7 +187,7 @@ const outfitPhotoDraft = buildLocalOutfitDraftFromItems({
 });
 const savedPhotoOutfit = outfitDraftToSavedOutfit(outfitPhotoDraft, { id: "outfit-photo-test", now });
 assert.equal(savedPhotoOutfit.source, "capture", "从套装图录入的套装来源应为 capture");
-assert.equal(savedPhotoOutfit.thumbnailDataUrl, "data:image/png;base64,outfit-thumb", "套装图缩略图应随草稿保存");
+assert.equal(savedPhotoOutfit.localThumbnailDataUrl, "data:image/png;base64,outfit-thumb", "套装图缩略图应随提交草稿保存");
 
 const parsed = parseIntakeRecognitionJson(JSON.stringify({
   mode: "intake_recognition",

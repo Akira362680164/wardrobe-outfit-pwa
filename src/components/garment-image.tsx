@@ -2,6 +2,8 @@
 
 import { Shirt } from "lucide-react";
 import { useCallback, useState } from "react";
+import { OnlineAssetImage } from "@/components/online/online-asset-image";
+import type { ImageAssetReference } from "@/lib/types";
 
 interface GarmentImageProps {
   src?: string;
@@ -11,6 +13,7 @@ interface GarmentImageProps {
   fallbackSize?: number;
   onClick?: () => void;
   fallbackSrc?: string;
+  asset?: ImageAssetReference;
 }
 
 export function GarmentImage({
@@ -21,6 +24,7 @@ export function GarmentImage({
   fallbackSize = 32,
   onClick,
   fallbackSrc,
+  asset,
 }: GarmentImageProps) {
   const imgBackground = imageClassName ?? "bg-white";
   const shared = `h-full w-full object-contain ${imgBackground} ${className}`;
@@ -31,6 +35,10 @@ export function GarmentImage({
     setRenderedSrc(fallbackSrc);
   }, [fallbackSrc, renderedSrc]);
   const activeSrc = renderedSrc ?? src;
+
+  if (asset) {
+    return <OnlineAssetImage asset={asset} variant="thumbnail" alt={alt} className={className} imageClassName={imageClassName} fallback={<div className={`grid h-full place-items-center text-ink/40 ${className}`}><Shirt size={fallbackSize} /></div>} />;
+  }
 
   if (!src) {
     return (

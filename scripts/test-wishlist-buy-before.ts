@@ -30,7 +30,7 @@ import {
 
 import { buildColorInfo, emptyColorInfo, getAllColors, getPrimaryColor, getPrimaryColors } from "../src/lib/color-fields";
 import type {
-  WishlistItem, WardrobeItem, SavedOutfit,
+  WishlistItem, WardrobeItem, SavedOutfit, ImageAssetReference,
   WishlistRuleAssessment, WishlistAssessment,
 } from "../src/lib/types";
 
@@ -59,12 +59,13 @@ function assertEq<T>(name: string, actual: T, expected: T): void {
 
 const now = new Date().toISOString();
 const today = now.slice(0, 10);
+const imageAsset = (id: string): ImageAssetReference => ({ id, assetId: id, variants: ["original", "thumbnail"], sha256: `sha-${id}`, mimeType: "image/jpeg" } as ImageAssetReference);
 
 function makeWishlistItem(overrides: Partial<WishlistItem> & { id: string }): WishlistItem {
   return {
     id: overrides.id,
     name: overrides.name ?? `wish-${overrides.id}`,
-    imageDataUrl: overrides.imageDataUrl ?? "",
+    mainImage: overrides.mainImage ?? { asset: imageAsset(`wishlist-${overrides.id}`) },
     category: overrides.category ?? "tops",
     colors: overrides.colors ?? buildColorInfo("single", ["白"]),
     seasons: overrides.seasons ?? ["spring", "summer"],
@@ -80,8 +81,6 @@ function makeWishlistItem(overrides: Partial<WishlistItem> & { id: string }): Wi
     material: overrides.material,
     fitGender: overrides.fitGender,
     fitNotes: overrides.fitNotes,
-    sourceImageDataUrl: overrides.sourceImageDataUrl,
-    thumbnailDataUrl: overrides.thumbnailDataUrl,
     subcategory: overrides.subcategory,
     productUrl: overrides.productUrl,
     aiAssessment: overrides.aiAssessment,
@@ -94,7 +93,7 @@ function makeWardrobeItem(overrides: Partial<WardrobeItem> & { id: number }): Wa
   return {
     id: overrides.id,
     name: overrides.name ?? `item-${overrides.id}`,
-    imageDataUrl: overrides.imageDataUrl ?? `data:image/png;base64,test${overrides.id}`,
+    mainImage: overrides.mainImage ?? { asset: imageAsset(`garment-${overrides.id}`) },
     category: overrides.category ?? "tops",
     colors: overrides.colors ?? buildColorInfo("single", ["白"]),
     seasons: overrides.seasons ?? ["spring", "summer", "autumn", "winter"],
@@ -113,8 +112,6 @@ function makeWardrobeItem(overrides: Partial<WardrobeItem> & { id: number }): Wa
     notes: overrides.notes,
     price: overrides.price,
     purchaseDate: overrides.purchaseDate,
-    sourceImageDataUrl: overrides.sourceImageDataUrl,
-    thumbnailDataUrl: overrides.thumbnailDataUrl,
     subcategory: overrides.subcategory,
   };
 }

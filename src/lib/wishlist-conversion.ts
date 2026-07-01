@@ -1,7 +1,7 @@
 // src/lib/wishlist-conversion.ts
 // v0.9.49-dev 种草 2.0: WishlistItem → WardrobeItem 转换与撤销购买。
 
-import type { SavedOutfit, WardrobeItem, WishlistItem } from "@/lib/types";
+import type { SavedOutfit, WardrobeItem, WardrobeItemDraft, WishlistItem } from "@/lib/types";
 import { emptyColorInfo } from "@/lib/color-fields";
 
 function getLocalDateKey(): string {
@@ -22,9 +22,7 @@ function getLocalDateKey(): string {
 export type WardrobeItemLike = Pick<
   WardrobeItem,
   | "name"
-  | "imageDataUrl"
-  | "thumbnailDataUrl"
-  | "cropBox"
+  | "mainImage"
   | "category"
   | "subcategory"
   | "colors"
@@ -94,9 +92,7 @@ export function wishlistToVirtualWardrobeItem(
 
     name: wishlist.name?.trim() || "未命名种草单品",
 
-    imageDataUrl: wishlist.imageDataUrl || "",
-    thumbnailDataUrl: wishlist.thumbnailDataUrl,
-    cropBox: wishlist.cropBox,
+    mainImage: wishlist.mainImage,
 
     category: wishlist.category ?? "tops",
     subcategory: wishlist.subcategory,
@@ -134,15 +130,13 @@ export function wishlistToWardrobeItem(input: {
   wishlistItem: WishlistItem;
   locationId: string;
   now: string;
-}): Omit<WardrobeItem, "id"> {
+}): Omit<WardrobeItemDraft, "id"> {
   const { wishlistItem, locationId, now } = input;
 
   return {
     name: wishlistItem.name.trim(),
 
-    imageDataUrl: wishlistItem.imageDataUrl || "",
-    thumbnailDataUrl: wishlistItem.thumbnailDataUrl,
-    cropBox: wishlistItem.cropBox,
+    mainImage: wishlistItem.mainImage,
 
     category: wishlistItem.category ?? "tops",
     subcategory: wishlistItem.subcategory,

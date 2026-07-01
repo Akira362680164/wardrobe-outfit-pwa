@@ -10,6 +10,7 @@ import { getOutfitCover } from "@/lib/outfit-cover";
 import { AppSubPageTopBar } from "@/components/app-sub-page-top-bar";
 import { OutfitPlanDayCard } from "@/components/outfit-plan-day-card";
 import { ease } from "@/lib/motion-tokens";
+import { OnlineAssetImage } from "@/components/online/online-asset-image";
 
 interface OutfitPlanningCalendarViewProps {
   monthDate: string;
@@ -235,15 +236,13 @@ export function OutfitPlanningCalendarView({
                           </span>
                             <div className="h-6 flex items-center justify-center mt-0.5 relative">
                               {(() => {
-                                const thumb = cover?.imageDataUrl
-                                  || (outfit ? items.find((i) => i.id != null && outfit.itemIds.includes(i.id!))?.thumbnailDataUrl
-                                             || items.find((i) => i.id != null && outfit.itemIds.includes(i.id!))?.imageDataUrl
-                                             : null);
+                                const thumb = cover?.asset
+                                  || (outfit ? items.find((i) => i.id != null && outfit.itemIds.includes(i.id!))?.mainImage?.asset : undefined);
                                 if (thumb) {
                                   if (extraCount > 0) {
                                     return (
                                       <div className="relative rounded pointer-events-none" aria-hidden="true">
-                                        <img src={thumb} alt="" className="h-5 w-5 rounded object-cover" />
+                                        <OnlineAssetImage asset={thumb} variant="thumbnail" alt="" className="h-5 w-5 rounded overflow-hidden" imageClassName="object-cover" />
                                         <span className="absolute -top-1 -right-1 bg-denim text-white text-[9px] rounded-full w-3.5 h-3.5 flex items-center justify-center font-semibold">
                                           +{extraCount}
                                         </span>
@@ -252,7 +251,7 @@ export function OutfitPlanningCalendarView({
                                   }
                                   return (
                                     <div className="rounded pointer-events-none" aria-hidden="true">
-                                      <img src={thumb} alt="" className="h-5 w-5 rounded object-cover" />
+                                      <OnlineAssetImage asset={thumb} variant="thumbnail" alt="" className="h-5 w-5 rounded overflow-hidden" imageClassName="object-cover" />
                                     </div>
                                   );
                                 }

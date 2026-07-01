@@ -106,7 +106,7 @@ import {
 } from "@/components/selected-images-review";
 import { isAccessTokenFresh, loadAuthSessionSnapshot } from "@/lib/auth-session-store";
 import { wardrobeRepository } from "@/lib/repository/wardrobe-repository";
-import { rethrowIfFailed, upsertOutfit, upsertLocation, deleteLocationById, repoUpdateWishlistItem, repoCreateGarment, repoCreateGarmentsBatch, repoUpdateGarment, repoDeleteGarments, repoDeleteLocation, repoSaveProfile, readWorkspaceTryOnProfile } from "@/lib/repository/wardrobe-repository";
+import { rethrowIfFailed, upsertOutfit, upsertLocation, deleteLocationById, repoUpdateWishlistItem, repoCreateGarment, repoCreateGarmentsBatch, repoUpdateGarment, repoUpdateOutfit, repoDeleteGarments, repoDeleteLocation, repoSaveProfile } from "@/lib/repository/wardrobe-repository";
 import {
  defaultMiniMaxSettings,
  diagnoseWardrobeOnDevice,
@@ -132,6 +132,7 @@ import {
   type NativeProgressTaskId,
 } from "@/lib/native-progress-notification";
 import { deriveGarmentImageList, type GarmentImageEntry } from "@/lib/garment-image-source";
+import { OnlineAssetImage, useOnlineAssetUrl } from "@/components/online/online-asset-image";
 import { buildSyncedOutfitPatch, buildSyncedPurchasedWishlistPatch } from "@/lib/wardrobe-reference-sync";
 import { getWearSummary, toggleTodayWornDate } from "@/lib/wear-records";
 import { useLocalDateKey } from "@/lib/use-local-date-key";
@@ -151,11 +152,15 @@ import {
   type Season,
   type SimilarWardrobeMatch,
   type TryOnProfile,
+  type TryOnProfileDraft,
+  type TryOnProfileState,
   type WardrobeDiagnosis,
   type WardrobeItem,
+  type WardrobeItemDraft,
   type WishlistItem,
   type GarmentCropBox,
   type ReferenceOutfitImage,
+  type LocalReferenceOutfitImageDraft,
 } from "@/lib/types";
 import { buildColorInfo, emptyColorInfo, getAccentColors, getAllColors, getPrimaryColor, getPrimaryColors, uniqueTrimmed } from "@/lib/color-fields";
 import type { GarmentIntakeDraft } from "@/lib/intake-draft";
@@ -180,14 +185,13 @@ export type ImageIntakePurpose = "garment" | "wishlist" | "reference" | null;
  */
 type WardrobeScope = "all" | string;
 
-type WardrobeDraft = Omit<WardrobeItem, "id" | "createdAt" | "updatedAt" | "wornDates"> & {
+type WardrobeDraft = Omit<WardrobeItemDraft, "id" | "createdAt" | "updatedAt" | "wornDates"> & {
   clientId?: string;
   selected?: boolean;
   batchGroupId?: number;
   similarMatches?: SimilarWardrobeMatch[];
   useExistingItemId?: number;
   captureSource?: "single" | "batch" | "outfit";
-  cropBox?: GarmentCropBox;
 };
 
 interface EditSnapshot {
@@ -306,12 +310,12 @@ export function WardrobeApp({ cloudAuth }: { cloudAuth?: WardrobeCloudAuth } = {
   // 保留 ref stub 以避免下游依赖断裂, 后续 commit 清理。
   const _createOriginViewRef = useRef<ViewKey>("wardrobe");
   const wardrobeData = useWardrobeDataController();
-  const { items, setItems, locations, outfits, setOutfits, wishlistItems, setWishlistItems, outfitPlanEntries, outfitCalendarPlans, planPackingChecklistItems, refreshState } = wardrobeData;
+  const { items, setItems, locations, outfits, setOutfits, wishlistItems, setWishlistItems, outfitPlanEntries, outfitCalendarPlans, planPackingChecklistItems, tryOnProfile: savedTryOnProfile, setTryOnProfile: setSavedTryOnProfile, refreshState } = wardrobeData;
   // Subagent D: 待打开的衣物详情 ID（种草转换后触发）
   const [pendingViewingItemId, setPendingViewingItemId] = useState<number | null>(null);
   const [pendingViewingItemReturnTarget, setPendingViewingItemReturnTarget] = useState<"wardrobe_home" | "wishlist_owned">("wardrobe_home");
   const [wishlistInitialSubPage, setWishlistInitialSubPage] = useState<"purchased" | null>(null);
-  const [tryOnProfile, setTryOnProfile] = useState<TryOnProfile>(() => ({ id: "default", enabled: false, fitGender: "unspecified", updatedAt: new Date().toISOString() }));
+  const tryOnProfile: TryOnProfileState = savedTryOnProfile ?? { id: "default", enabled: false, fitGender: "unspecified", updatedAt: new Date().toISOString() };
   const [isReady, setIsReady] = useState(false);
   const messageCtrl = useWardrobeMessageController();
   const { message, messageType, showMessage, clearMessage } = messageCtrl;
@@ -399,7 +403,6 @@ export function WardrobeApp({ cloudAuth }: { cloudAuth?: WardrobeCloudAuth } = {
     // WorkspaceGate / useWardrobeDataController owns the initial Overview request.
     // Triggering refreshState here caused every app launch to fetch the same snapshot twice.
     setIsReady(true);
-    readWorkspaceTryOnProfile().then(setTryOnProfile).catch(() => {});
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -710,7 +713,7 @@ export function WardrobeApp({ cloudAuth }: { cloudAuth?: WardrobeCloudAuth } = {
         const readyDraft = await ensureGarmentDraftThumbnail(draft);
         const item = garmentDraftToWardrobeItem(readyDraft, { now });
         const submission = context?.submissions.find((entry) => entry.draftId === draft.id);
-        if (item.imageDataUrl) prepared.push({ item, clientMutationId: submission?.clientMutationId ?? crypto.randomUUID(), draftId: draft.id });
+        if (item.localOriginalDataUrl) prepared.push({ item, clientMutationId: submission?.clientMutationId ?? crypto.randomUUID(), draftId: draft.id });
       }
       const results = await repoCreateGarmentsBatch(prepared.map(({ item, clientMutationId }) => ({ item, clientMutationId })));
       const items: IntakeBatchSaveResult["items"] = results.map((result, index) => ({
@@ -779,20 +782,20 @@ export function WardrobeApp({ cloudAuth }: { cloudAuth?: WardrobeCloudAuth } = {
     // v0.9.33-dev: 给每件示例衣物预填 1 张 demo 参考穿搭图, 让瀑布流 + 详情页立刻多图,
     // 用户能验证 v0.9.32-dev 横滑手感。预填的数据是"搭配卡" SVG(主色 + "参考图 N"水印),
     // 用户可以长按详情页里的 ref 卡片删除 / 重新裁切, 或者点"添加"加自己的真实参考图。
-    const baseItems: WardrobeItem[] = [
+    const baseItems: WardrobeItemDraft[] = [
       createDemoItem("白色短衬衫", "tops", ["白"], [], ["spring", "summer"], ["commute", "dinner", "elegant"], 4, 2, "home", "#f8fafc", "#355c7d", now),
       createDemoItem("牛仔半裙", "skirts", ["牛仔蓝"], [], ["spring", "summer", "autumn"], ["casual", "dinner"], 2, 2, "home", "#dbeafe", "#1d4ed8", now),
       createDemoItem("卡其风衣", "tops", ["米"], [], ["spring", "autumn"], ["commute", "elegant"], 4, 4, "home", "#f5e8d3", "#b97155", now),
       createDemoItem("黑色乐福鞋", "shoes", ["黑"], [], ["all"], ["commute", "dinner"], 4, 2, "home", "#1f2937", "#f8fafc", now),
       createDemoItem("草绿色托特包", "bags", ["绿"], [], ["spring", "summer", "autumn"], ["casual", "vacation"], 2, 1, "home", "#d9f99d", "#5f7058", now),
     ];
-    const demoItems: WardrobeItem[] = baseItems.map((item, idx) => ({
+    const demoItems: WardrobeItemDraft[] = baseItems.map((item, idx) => ({
       ...item,
       referenceOutfitImages: [
         {
           id: `ref-demo-${idx}-${now}`,
-          imageDataUrl: demoReferenceSvg(item.name, getPrimaryColor(item.colors) || "#475569", idx + 1),
-          sourceImageDataUrl: demoReferenceSvg(item.name, getPrimaryColor(item.colors) || "#475569", idx + 1),
+          localOriginalDataUrl: demoReferenceSvg(item.name, getPrimaryColor(item.colors) || "#475569", idx + 1),
+          localThumbnailDataUrl: demoReferenceSvg(item.name, getPrimaryColor(item.colors) || "#475569", idx + 1),
           createdAt: now,
           updatedAt: now,
         },
@@ -804,7 +807,7 @@ export function WardrobeApp({ cloudAuth }: { cloudAuth?: WardrobeCloudAuth } = {
       if (created.id != null) itemIds.push(created.id);
     }
     if (itemIds.length > 0) {
-      rethrowIfFailed(await upsertOutfit(createDemoOutfit(itemIds, now)), "保存套装失败");
+      rethrowIfFailed(await wardrobeRepository.createOutfit(createDemoOutfit(itemIds, now)), "保存套装失败");
     }
     await refreshState();
     showMessage("已加入示例衣物和 1 套示例套装（含灵感图）");
@@ -1157,7 +1160,7 @@ export function WardrobeApp({ cloudAuth }: { cloudAuth?: WardrobeCloudAuth } = {
                 }
                 await refreshState();
               }}
-              tryOnProfile={tryOnProfile} onSaveTryOnProfile={async (profile) => { await repoSaveProfile(profile); setTryOnProfile(profile); showMessage("穿衣画像已保存"); }}
+              tryOnProfile={tryOnProfile} onSaveTryOnProfile={async (profile) => { const saved = rethrowIfFailed(await repoSaveProfile(profile), "保存穿衣画像失败"); setSavedTryOnProfile(saved); showMessage("穿衣画像已保存"); }}
               onMessage={showMessage} onExpandImage={lightbox.openExpandedImage}
               onRefreshState={refreshState}
             />
@@ -1440,15 +1443,12 @@ export function WardrobeApp({ cloudAuth }: { cloudAuth?: WardrobeCloudAuth } = {
                   const thumb = await generateThumbnailSafe(item.imageDataUrl);
                   return {
                     id: `${item.clientId}-${Math.random().toString(36).slice(2, 8)}`,
-                    imageDataUrl: item.imageDataUrl,
-                    sourceImageDataUrl: item.originalDataUrl,
-                    cropBox: item.cropBox,
+                    localOriginalDataUrl: item.originalDataUrl,
+                    localCroppedPreviewDataUrl: item.imageDataUrl,
+                    localCropBox: item.cropBox,
                     createdAt: now,
                     updatedAt: now,
-                    ...(thumb.thumbnailDataUrl ? { thumbnailDataUrl: thumb.thumbnailDataUrl } : {}),
-                    ...(thumb.thumbnailVersion !== undefined ? { thumbnailVersion: thumb.thumbnailVersion } : {}),
-                    ...(thumb.thumbnailUpdatedAt ? { thumbnailUpdatedAt: thumb.thumbnailUpdatedAt } : {}),
-                    ...(thumb.thumbnailStatus ? { thumbnailStatus: thumb.thumbnailStatus } : {}),
+                    ...(thumb.thumbnailDataUrl ? { localThumbnailDataUrl: thumb.thumbnailDataUrl } : {}),
                   };
                 })));
                 const targetItem = items.find((item) => item.id === targetId);
@@ -1539,9 +1539,9 @@ function WardrobeView(props: WardrobeViewProps) {
  // v0.9.32-dev:瀑布流卡片当前显示图索引(只用于有参考穿搭图的卡片)。itemId → index。
  // 不写入 Dexie,只是 UI state。
  const [waterfallImageIndex, setWaterfallImageIndex] = useState<Record<string, number>>({});
- const patchItemInLocalState = useCallback((itemId: number, patch: Partial<WardrobeItem>) => {
- setItems((prev) => prev.map((item) => (item.id === itemId ? { ...item, ...patch } : item)));
- setViewingItem((current) => (current?.id === itemId ? { ...current, ...patch } : current));
+ const replaceItemInLocalState = useCallback((savedItem: WardrobeItem) => {
+ setItems((prev) => prev.map((item) => (item.id === savedItem.id ? savedItem : item)));
+ setViewingItem((current) => (current?.id === savedItem.id ? savedItem : current));
  }, [setItems]);
 
  const syncEditedItemReferences = useCallback(async (updatedItem: WardrobeItem, now: string) => {
@@ -1553,14 +1553,14 @@ function WardrobeView(props: WardrobeViewProps) {
 
    for (const outfit of relatedOutfits) {
      const patch = buildSyncedOutfitPatch(outfit, nextItems, now);
-     rethrowIfFailed(await upsertOutfit({ ...outfit, ...patch }), "保存套装失败");
-     setOutfits((prev) => prev.map((entry) => (entry.id === outfit.id ? { ...entry, ...patch } : entry)));
+     const savedOutfit = rethrowIfFailed(await upsertOutfit({ ...outfit, ...patch }), "保存套装失败");
+     setOutfits((prev) => prev.map((entry) => (entry.id === outfit.id ? savedOutfit : entry)));
    }
 
    for (const wishlistItem of relatedWishlistItems) {
      const patch = buildSyncedPurchasedWishlistPatch(updatedItem, now);
-     rethrowIfFailed(await repoUpdateWishlistItem({ ...wishlistItem, ...patch }, {}), "保存种草失败");
-     setWishlistItems((prev) => prev.map((entry) => (entry.id === wishlistItem.id ? { ...entry, ...patch } : entry)));
+     const savedWishlistItem = rethrowIfFailed(await repoUpdateWishlistItem(wishlistItem, patch), "保存种草失败");
+     setWishlistItems((prev) => prev.map((entry) => (entry.id === wishlistItem.id ? savedWishlistItem : entry)));
    }
  }, [allItems, outfits, wishlistItems, setOutfits, setWishlistItems]);
   // 顶部衣橱切换浮层是否展开
@@ -1576,6 +1576,7 @@ function WardrobeView(props: WardrobeViewProps) {
   const wardrobeSelection = useCatalogMultiSelect<number>();
   const wardrobeBulkDelete = useCatalogBulkDelete<number>();
   const [viewingItem, setViewingItem] = useState<WardrobeItem | null>(null);
+  const viewingItemOriginal = useOnlineAssetUrl(viewingItem?.mainImage?.asset, "original");
   // v1.1.20-dev (Bug 2 修复): garmentDetailReturnTarget 扩展为完整 AppRoute,
   // 支持从 outfit_detail / outfit_calendar / wishlist_* 等任意来源打开衣物详情后
   // 关闭时准确回到原页面。旧版只有 wardrobe_home / wishlist_owned 两个枚举,其他场景全部
@@ -1653,7 +1654,7 @@ function WardrobeView(props: WardrobeViewProps) {
   const [isEditRecognizing, setIsEditRecognizing] = useState(false);
   const [viewingItemCropJob, setViewingItemCropJob] = useState<{
     dataUrl: string;
-    startBox?: WardrobeItem["cropBox"];
+    startBox?: GarmentCropBox;
     target: "detail" | "edit";
     refId?: string;
     /** v0.9.33-dev: entry 来源标记, 用于 onConfirm 决定写到 items.imageDataUrl 还是 outfits.previewImageDataUrl。
@@ -1678,6 +1679,7 @@ function WardrobeView(props: WardrobeViewProps) {
  const [viewingRefDeleteConfirm, setViewingRefDeleteConfirm] = useState<{ id: string } | null>(null);
  // v0.9.47-dev 详情页 3.0: 灵感图查看与编辑说明
  const [viewingRefImage, setViewingRefImage] = useState<ReferenceOutfitImage | null>(null);
+ const viewingReferenceOriginal = useOnlineAssetUrl(viewingRefImage?.image.asset, "original");
  const [editingRefCaption, setEditingRefCaption] = useState<ReferenceOutfitImage | null>(null);
  const [refCaptionDraft, setRefCaptionDraft] = useState("");
  // v0.9.45-dev 详情页 2.0: AI 建议生成状态机
@@ -1700,10 +1702,11 @@ function WardrobeView(props: WardrobeViewProps) {
     if (!viewingItem || typeof viewingItem.id !== "number") return;
     const nextDates = toggleTodayWornDate(viewingItem.wornDates, todayKey);
     const now = new Date().toISOString();
-    rethrowIfFailed(await repoUpdateGarment(viewingItem, { wornDates: nextDates, updatedAt: now }), "更新单品失败"); patchItemInLocalState(viewingItem.id, { wornDates: nextDates, updatedAt: now });
+    const savedItem = rethrowIfFailed(await repoUpdateGarment(viewingItem, { wornDates: nextDates, updatedAt: now }), "更新单品失败");
+    replaceItemInLocalState(savedItem);
     const summary = getWearSummary(nextDates, todayKey);
     onMessage(summary.hasToday ? "已记录今天穿着" : "已取消今天穿着记录", "success");
-  }, [viewingItem, patchItemInLocalState, onMessage, todayKey]);
+  }, [viewingItem, replaceItemInLocalState, onMessage, todayKey]);
 
   // v0.9.45-dev 详情页 2.0: 生成/刷新 AI 建议
   const handleGenerateAdvice = useCallback(async () => {
@@ -1718,8 +1721,8 @@ function WardrobeView(props: WardrobeViewProps) {
       const advice = await generateGarmentStyleAdviceOnDevice(viewingItem, miniMaxSettings);
       if (runId !== aiAdviceRunIdRef.current) return;
       const now = new Date().toISOString();
-      rethrowIfFailed(await repoUpdateGarment(viewingItem, { aiStyleAdvice: advice, updatedAt: now }), "更新单品失败");
-      patchItemInLocalState(viewingItem.id, { aiStyleAdvice: advice, updatedAt: now });
+      const savedItem = rethrowIfFailed(await repoUpdateGarment(viewingItem, { aiStyleAdvice: advice, updatedAt: now }), "更新单品失败");
+      replaceItemInLocalState(savedItem);
       setAiAdviceState("success");
       onMessage("AI 建议已生成", "success");
     } catch (error) {
@@ -1727,7 +1730,7 @@ function WardrobeView(props: WardrobeViewProps) {
       setAiAdviceState("error");
       onMessage(getErrorMessage(error), "error");
     }
-  }, [viewingItem, miniMaxSettings, patchItemInLocalState, onMessage]);
+  }, [viewingItem, miniMaxSettings, replaceItemInLocalState, onMessage]);
 
   // v0.9.47-dev 详情页 3.0: 移动衣物
   const handleMoveItem = useCallback(async (locationId: string) => {
@@ -1735,11 +1738,11 @@ function WardrobeView(props: WardrobeViewProps) {
     const now = new Date().toISOString();
     const patch: Partial<WardrobeItem> = { locationId, updatedAt: now };
     await syncEditedItemReferences({ ...viewingItem, ...patch }, now);
-    rethrowIfFailed(await repoUpdateGarment(viewingItem, patch), "更新单品失败");
-    patchItemInLocalState(viewingItem.id, patch);
+    const savedItem = rethrowIfFailed(await repoUpdateGarment(viewingItem, patch), "更新单品失败");
+    replaceItemInLocalState(savedItem);
     const locName = locations.find((l) => l.id === locationId)?.name ?? locationId;
     onMessage(`已移动到 ${locName}`, "success");
-  }, [viewingItem, locations, syncEditedItemReferences, patchItemInLocalState, onMessage]);
+  }, [viewingItem, locations, syncEditedItemReferences, replaceItemInLocalState, onMessage]);
   const [diagnosis, setDiagnosis] = useState<WardrobeDiagnosis | null>(null);
   // AI 衣橱诊断卡片状态机 (v0.9.19: 统一为 6 态, 卡片内自管 loading/error, 不再走顶部独立进度条):
   //   "hidden"           - 卡片隐藏；顶部入口负责唤起
@@ -2059,7 +2062,7 @@ function WardrobeView(props: WardrobeViewProps) {
 
   function openEditForViewingItem() {
     if (!viewingItem) return;
-    const nextDraft = normalizeDraftForEdit(viewingItem);
+    const nextDraft = normalizeDraftForEdit(viewingItem, viewingItemOriginal.url);
     setEditDraft(nextDraft);
     setEditInitialSnapshot(editSnapshotFromDraft(nextDraft));
     setShowEditExitDialog(false);
@@ -2093,7 +2096,7 @@ function WardrobeView(props: WardrobeViewProps) {
       onMessage("请先在设置里配置 MiniMax Key", "info");
       return;
     }
-    const source = editDraft.imageDataUrl;
+    const source = editDraft.localOriginalDataUrl;
     if (!source) {
       onMessage("当前衣物没有可识别的图片", "info");
       return;
@@ -2101,7 +2104,7 @@ function WardrobeView(props: WardrobeViewProps) {
     if (isEditRecognizing) return;
     setIsEditRecognizing(true);
     try {
-      const croppedSource = await createTemporaryCroppedImage({ originalImage: source, cropBox: editDraft.cropBox });
+      const croppedSource = await createTemporaryCroppedImage({ originalImage: source, cropBox: editDraft.localCropBox });
       const file = await dataUrlToFile(croppedSource, `${editDraft.name || "garment"}.jpg`).catch(() => null);
       const aiRequestDataUrl = file ? await fileToAiRequestDataUrl(file).catch(() => croppedSource) : croppedSource;
       const recognition = await withKeepAwake(() =>
@@ -2474,7 +2477,7 @@ function WardrobeView(props: WardrobeViewProps) {
                 }
                 const targetId = viewingItem.id;
                 const now = new Date().toISOString();
-                const refs: ReferenceOutfitImage[] = [];
+                const refs: LocalReferenceOutfitImageDraft[] = [];
                 const fileArr = Array.from(files);
                 const heicTotal = fileArr.filter(isHeicFile).length;
                 let heicSeen = 0;
@@ -2490,8 +2493,8 @@ function WardrobeView(props: WardrobeViewProps) {
                     const originalDataUrl = await fileToOriginalDataUrl(file);
                     refs.push({
                       id: `ref-${Date.now()}-${i}-${Math.random().toString(36).slice(2, 8)}`,
-                      imageDataUrl: originalDataUrl,
-                      sourceImageDataUrl: originalDataUrl,
+                      localOriginalDataUrl: originalDataUrl,
+                      localCroppedPreviewDataUrl: originalDataUrl,
                       createdAt: now,
                       updatedAt: now,
                     });
@@ -2507,8 +2510,8 @@ function WardrobeView(props: WardrobeViewProps) {
                 }
                 const existing = Array.isArray(viewingItem.referenceOutfitImages) ? viewingItem.referenceOutfitImages : [];
                 const updated = [...existing, ...refs];
-                rethrowIfFailed(await repoUpdateGarment(viewingItem, { referenceOutfitImages: updated, updatedAt: now }), "更新单品失败");
-                patchItemInLocalState(targetId, { referenceOutfitImages: updated, updatedAt: now });
+                const savedItem = rethrowIfFailed(await repoUpdateGarment(viewingItem, { referenceOutfitImages: updated, updatedAt: now }), "更新单品失败");
+                replaceItemInLocalState(savedItem);
                 setViewingImageIndex(existing.length + 1);
                 if (referenceOutfitGalleryInputRef.current) referenceOutfitGalleryInputRef.current.value = "";
                 onMessage(failedHeic > 0 ? `已添加 ${refs.length} 张灵感图，部分 HEIC 图片转换失败` : `已添加 ${refs.length} 张灵感图`, failedHeic > 0 ? "info" : "success");
@@ -2530,8 +2533,8 @@ function WardrobeView(props: WardrobeViewProps) {
                     }
                     const now2 = new Date().toISOString();
                     const remaining = (viewingItem.referenceOutfitImages ?? []).filter((r) => r.id !== target.id);
-                    rethrowIfFailed(await repoUpdateGarment(viewingItem, { referenceOutfitImages: remaining, updatedAt: now2 }), "更新单品失败");
-                    patchItemInLocalState(viewingItem.id, { referenceOutfitImages: remaining, updatedAt: now2 });
+                    const savedItem = rethrowIfFailed(await repoUpdateGarment(viewingItem, { referenceOutfitImages: remaining, updatedAt: now2 }), "更新单品失败");
+                    replaceItemInLocalState(savedItem);
                     setViewingRefDeleteConfirm(null);
                     setViewingImageIndex((current) => Math.max(0, Math.min(current, remaining.length)));
                     onMessage("已删除灵感图", "success");
@@ -2544,7 +2547,7 @@ function WardrobeView(props: WardrobeViewProps) {
             {viewingRefImage && (
               <MotionImageLightbox
                 open={!!viewingRefImage}
-                src={viewingRefImage.imageDataUrl}
+                src={viewingReferenceOriginal.url ?? ""}
                 alt={viewingRefImage.caption || "灵感图"}
                 onClose={() => setViewingRefImage(null)}
               />
@@ -2574,8 +2577,8 @@ function WardrobeView(props: WardrobeViewProps) {
                         const updatedRefs = (viewingItem.referenceOutfitImages ?? []).map((r) =>
                           r.id === editingRefCaption.id ? { ...r, caption, updatedAt: now } : r
                         );
-                        rethrowIfFailed(await repoUpdateGarment(viewingItem, { referenceOutfitImages: updatedRefs, updatedAt: now }), "更新单品失败");
-                        patchItemInLocalState(viewingItem.id, { referenceOutfitImages: updatedRefs, updatedAt: now });
+                        const savedItem = rethrowIfFailed(await repoUpdateGarment(viewingItem, { referenceOutfitImages: updatedRefs, updatedAt: now }), "更新单品失败");
+                        replaceItemInLocalState(savedItem);
                         setEditingRefCaption(null);
                         onMessage(caption ? "已更新说明" : "已清除说明", "success");
                       }}
@@ -2598,17 +2601,17 @@ function WardrobeView(props: WardrobeViewProps) {
             onBack={requestExitEdit}
             onSave={saveEditedItem}
             onRecognize={recognizeEditDraftAgain}
-            onCrop={editDraft.imageDataUrl ? () => {
-              const src = editDraft.imageDataUrl;
+            onCrop={editDraft.localOriginalDataUrl ? () => {
+              const src = editDraft.localOriginalDataUrl;
               if (src) {
                 recordDiagnosticEvent("edit_recrop_started", {
                   itemId: viewingItem?.id,
                   sourceKind: "original",
                   hasOriginal: true,
-                  hasCurrent: Boolean(editDraft.imageDataUrl),
-                  hasCropBox: Boolean(editDraft.cropBox),
+                  hasCurrent: Boolean(editDraft.localOriginalDataUrl),
+                  hasCropBox: Boolean(editDraft.localCropBox),
                 });
-                setViewingItemCropJob({ dataUrl: src, startBox: editDraft.cropBox, target: "edit", sourceKind: "original" });
+                setViewingItemCropJob({ dataUrl: src, startBox: editDraft.localCropBox, target: "edit", sourceKind: "original" });
               }
             } : undefined}
             onPatch={(patch) => setEditDraft((current) => current ? { ...current, ...patch } : current)}
@@ -2639,22 +2642,16 @@ function WardrobeView(props: WardrobeViewProps) {
               if (viewingItemCropJob.target === "edit") {
                 // ponytail: only update cropBox — imageDataUrl stays as original.
                 // re-crop on the original image just changes the crop viewport coordinates.
-                const originalDataUrl = editDraft?.imageDataUrl;
+                const originalDataUrl = editDraft?.localOriginalDataUrl;
                 const thumb = originalDataUrl
                   ? await createGarmentThumbnailFromOriginal({ originalDataUrl, cropBox })
                   : {};
                 recordDiagnosticEvent("edit_recrop_confirmed", { sourceKind: viewingItemCropJob.sourceKind ?? "current", hasCropBox: Boolean(cropBox) });
-                const nextCropRevision = (editDraft?.cropRevision ?? viewingItem?.cropRevision ?? 0) + 1;
                 const thumbOk = Boolean(thumb.thumbnailDataUrl);
                 setEditDraft((current) => current ? ({
                   ...current,
-                  cropBox,
-                  cropRevision: nextCropRevision,
-                  thumbnailCropRevision: thumbOk ? nextCropRevision : current.thumbnailCropRevision,
-                  ...(thumb.thumbnailDataUrl ? { thumbnailDataUrl: thumb.thumbnailDataUrl } : {}),
-                  ...(thumb.thumbnailVersion !== undefined ? { thumbnailVersion: thumb.thumbnailVersion } : {}),
-                  ...(thumb.thumbnailUpdatedAt ? { thumbnailUpdatedAt: thumb.thumbnailUpdatedAt } : {}),
-                  ...(thumb.thumbnailStatus ? { thumbnailStatus: thumb.thumbnailStatus } : {}),
+                  localCropBox: cropBox,
+                  ...(thumb.thumbnailDataUrl ? { localThumbnailDataUrl: thumb.thumbnailDataUrl } : {}),
                 }) : current);
                 setViewingItemCropJob(null);
                 if (thumbOk) {
@@ -2674,17 +2671,15 @@ function WardrobeView(props: WardrobeViewProps) {
    const updatedRefs = (viewingItem.referenceOutfitImages ?? []).map((r) => r.id === refId
    ? {
    ...r,
-   imageDataUrl: newImageDataUrl,
-   cropBox,
+   localOriginalDataUrl: newImageDataUrl,
+   localCroppedPreviewDataUrl: newImageDataUrl,
+   localCropBox: cropBox,
    updatedAt: now,
-   ...(thumb.thumbnailDataUrl ? { thumbnailDataUrl: thumb.thumbnailDataUrl } : {}),
-   ...(thumb.thumbnailVersion !== undefined ? { thumbnailVersion: thumb.thumbnailVersion } : {}),
-   ...(thumb.thumbnailUpdatedAt ? { thumbnailUpdatedAt: thumb.thumbnailUpdatedAt } : {}),
-   ...(thumb.thumbnailStatus ? { thumbnailStatus: thumb.thumbnailStatus } : (r.thumbnailDataUrl ? {} : {})),
+   ...(thumb.thumbnailDataUrl ? { localThumbnailDataUrl: thumb.thumbnailDataUrl } : {}),
    }
    : r);
-   rethrowIfFailed(await repoUpdateGarment(viewingItem, { referenceOutfitImages: updatedRefs, updatedAt: now }), "更新单品失败");
-   patchItemInLocalState(viewingItem.id, { referenceOutfitImages: updatedRefs, updatedAt: now });
+   const savedItem = rethrowIfFailed(await repoUpdateGarment(viewingItem, { referenceOutfitImages: updatedRefs, updatedAt: now }), "更新单品失败");
+   replaceItemInLocalState(savedItem);
    setViewingItemCropJob(null);
    onMessage("灵感图裁切完成", "success");
    return;
@@ -2698,11 +2693,12 @@ function WardrobeView(props: WardrobeViewProps) {
     && viewingItemCropJob.source === "saved_outfit"
   ) {
     const targetOutfitId = viewingItemCropJob.outfitId;
-    const patch = { previewImageDataUrl: newImageDataUrl, updatedAt: new Date().toISOString() };
+    const patch = { localOriginalDataUrl: newImageDataUrl, localThumbnailDataUrl: newImageDataUrl, updatedAt: new Date().toISOString() };
     try {
       const targetOutfit = outfits.find((o) => o.id === targetOutfitId);
-      if (targetOutfit) rethrowIfFailed(await upsertOutfit({ ...targetOutfit, ...patch }), "保存套装失败");
-      setOutfits((prev) => prev.map((o) => o.id === targetOutfitId ? { ...o, ...patch } : o));
+      if (!targetOutfit) throw new Error("套装不存在");
+      const savedOutfit = rethrowIfFailed(await repoUpdateOutfit(targetOutfit, patch), "保存套装失败");
+      setOutfits((prev) => prev.map((o) => o.id === targetOutfitId ? savedOutfit : o));
       setViewingItemCropJob(null);
       onMessage("套装预览图已更新", "success");
     } catch (error) {
@@ -2716,19 +2712,20 @@ function WardrobeView(props: WardrobeViewProps) {
  return;
  }
  const now = new Date().toISOString();
- const nextCropRevision = (viewingItem.cropRevision ?? 0) + 1;
- const thumb = await createGarmentThumbnailFromOriginal({ originalDataUrl: viewingItem.imageDataUrl, cropBox });
- const patch: Partial<WardrobeItem> = {
- cropBox,
- cropRevision: nextCropRevision,
- thumbnailCropRevision: thumb.thumbnailDataUrl ? nextCropRevision : viewingItem.thumbnailCropRevision,
- ...(thumb.thumbnailDataUrl ? { thumbnailDataUrl: thumb.thumbnailDataUrl } : {}),
+ if (!viewingItemOriginal.url) {
+   setViewingItemCropJob(null);
+   onMessage("原图尚未加载，请稍后重试", "info");
+   return;
+ }
+ const thumb = await createGarmentThumbnailFromOriginal({ originalDataUrl: viewingItemOriginal.url, cropBox });
+ const patch: Partial<WardrobeItemDraft> = {
+ localCropBox: cropBox,
+ ...(thumb.thumbnailDataUrl ? { localThumbnailDataUrl: thumb.thumbnailDataUrl } : {}),
  updatedAt: now,
  };
- const updatedItem = { ...viewingItem, ...patch, id: viewingItem.id };
+ const updatedItem = rethrowIfFailed(await repoUpdateGarment(viewingItem, patch), "更新单品失败");
  await syncEditedItemReferences(updatedItem, now);
- rethrowIfFailed(await repoUpdateGarment(viewingItem, patch), "更新单品失败");
- patchItemInLocalState(viewingItem.id, patch);
+ replaceItemInLocalState(updatedItem);
  setViewingItemCropJob(null);
  onMessage("裁切完成", "success");
             }}
@@ -2822,7 +2819,7 @@ function WardrobeView(props: WardrobeViewProps) {
           {searchResults.map((item) => (
             <article key={item.id ?? item.name} className="overflow-hidden rounded-lg border border-ink/10 bg-white shadow-sm">
               <div className="aspect-[4/5] bg-mist">
-                <GarmentImage src={item.thumbnailDataUrl || undefined} alt={item.name} fallbackSize={32} imageClassName="object-contain" />
+                <GarmentImage asset={item.mainImage?.asset} alt={item.name} fallbackSize={32} imageClassName="object-contain" />
               </div>
               <div className="grid gap-2 p-3">
                 <div className="min-w-0">
@@ -3484,7 +3481,7 @@ function WardrobeEditPage({
       <EditSectionCard className="p-3">
         <div className="flex items-center gap-3">
           <div className="aspect-[3/4] w-28 shrink-0 overflow-hidden rounded-xl bg-mist" aria-label="衣物图片预览">
-            <GarmentImage src={draft.thumbnailDataUrl || undefined} alt={draft.name || "衣物图片"} fallbackSize={34} imageClassName="bg-transparent object-contain" />
+            <GarmentImage src={draft.localThumbnailDataUrl || draft.localCroppedPreviewDataUrl} asset={draft.mainImage?.asset} alt={draft.name || "衣物图片"} fallbackSize={34} imageClassName="bg-transparent object-contain" />
           </div>
           <div className="grid min-w-0 flex-1 gap-2">
             <button
@@ -3721,7 +3718,7 @@ const LEG_RATIO_LABELS: Record<NonNullable<TryOnProfile["legRatio"]>, string> = 
   long: "偏长",
 };
 
-function tryOnProfileCompleteness(profile: TryOnProfile): number {
+function tryOnProfileCompleteness(profile: TryOnProfileState): number {
   // 用于在摘要卡判定"画像是否很少"。返回 0-1 占比。
   const fields: Array<unknown> = [
     profile.fitGender && profile.fitGender !== "unspecified" ? profile.fitGender : null,
@@ -3737,7 +3734,7 @@ function tryOnProfileCompleteness(profile: TryOnProfile): number {
   return filled / fields.length;
 }
 
-function profileSummaryChips(profile: TryOnProfile): { label: string; value: string }[] {
+function profileSummaryChips(profile: TryOnProfileState): { label: string; value: string }[] {
   const chips: { label: string; value: string }[] = [];
   if (profile.fitGender && profile.fitGender !== "unspecified") {
     chips.push({ label: "版型倾向", value: FIT_GENDER_LABELS[profile.fitGender] });
@@ -3754,8 +3751,8 @@ function profileSummaryChips(profile: TryOnProfile): { label: string; value: str
   return chips;
 }
 
-function tryOnPhotosCount(profile: TryOnProfile): number {
-  return [profile.fullBodyImageDataUrl, profile.faceImageDataUrl].filter(Boolean).length;
+function tryOnPhotosCount(profile: TryOnProfileState): number {
+  return [profile.fullBodyImage, profile.faceImage].filter(Boolean).length;
 }
 
 /**
@@ -3845,8 +3842,8 @@ function SettingsView({
 	  onAddWardrobe: (name: string, note: string) => Promise<void>;
   onUpdateWardrobe: (id: string, name: string, note: string) => Promise<void>;
   onDeleteWardrobe: (id: string, action: { mode: "migrate"; targetLocationId: string } | { mode: "delete_items" }) => Promise<void>;
-  tryOnProfile: TryOnProfile;
-  onSaveTryOnProfile: (profile: TryOnProfile) => Promise<void>;
+  tryOnProfile: TryOnProfileState;
+  onSaveTryOnProfile: (profile: TryOnProfileState) => Promise<void>;
   onMessage?: (msg: string) => void;
   onExpandImage?: (img: { src: string; alt: string }) => void;
   onRefreshState?: () => Promise<void> | void;
@@ -4207,7 +4204,7 @@ function SettingsView({
           <SettingsSwitch
             checked={tryOnProfile.enabled}
             onChange={async (next) => {
-              const updated: TryOnProfile = { ...tryOnProfile, enabled: next, updatedAt: new Date().toISOString() };
+              const updated: TryOnProfileState = { ...tryOnProfile, enabled: next, updatedAt: new Date().toISOString() };
               await onSaveTryOnProfile(updated);
               onMessage?.(next ? "已启用参考照生成试穿图" : "已关闭参考照，试穿时将不发送照片");
             }}
@@ -4225,14 +4222,14 @@ function SettingsView({
               <div className="flex items-center gap-2 min-w-0">
                 <span className="shrink-0 text-xs font-semibold text-ink/80">已配置 {photosCount} 张照片</span>
                 <div className="flex items-center gap-1.5">
-                  {tryOnProfile.fullBodyImageDataUrl ? (
+                  {tryOnProfile.fullBodyImage ? (
                     <div className="h-10 w-10 shrink-0 overflow-hidden rounded-md border border-ink/10 bg-mist">
-                      <GarmentImage src={tryOnProfile.fullBodyImageDataUrl} alt="全身照" />
+                      <OnlineAssetImage asset={tryOnProfile.fullBodyImage} variant="thumbnail" alt="全身照" className="h-full w-full" />
                     </div>
                   ) : null}
-                  {tryOnProfile.faceImageDataUrl ? (
+                  {tryOnProfile.faceImage ? (
                     <div className="h-10 w-10 shrink-0 overflow-hidden rounded-md border border-ink/10 bg-mist">
-                      <GarmentImage src={tryOnProfile.faceImageDataUrl} alt="脸部照" />
+                      <OnlineAssetImage asset={tryOnProfile.faceImage} variant="thumbnail" alt="脸部照" className="h-full w-full" />
                     </div>
                   ) : null}
                 </div>
@@ -4605,12 +4602,12 @@ function ProfileDetailPage({
   onBack,
   onMessage,
 }: {
-  tryOnProfile: TryOnProfile;
-  onSave: (profile: TryOnProfile) => Promise<void> | void;
+  tryOnProfile: TryOnProfileState;
+  onSave: (profile: TryOnProfileDraft & Partial<Pick<TryOnProfile, "serverEntityId" | "serverRevision">>) => Promise<void> | void;
   onBack: () => void;
   onMessage?: (msg: string) => void;
 }) {
-  const [draft, setDraft] = useState<TryOnProfile>(() => ({ ...tryOnProfile, fitGender: tryOnProfile.fitGender ?? "unspecified" }));
+  const [draft, setDraft] = useState<TryOnProfileState>(() => ({ ...tryOnProfile, fitGender: tryOnProfile.fitGender ?? "unspecified" }));
   const [editingField, setEditingField] = useState<null | "height" | "bodyType" | "shoulder" | "legRatio" | "hair" | "skin" | "note">(null);
 
   useEffect(() => {
@@ -4996,13 +4993,15 @@ function PhotosDetailPage({
   onMessage,
   onExpandImage,
 }: {
-  tryOnProfile: TryOnProfile;
-  onSave: (profile: TryOnProfile) => Promise<void> | void;
+  tryOnProfile: TryOnProfileState;
+  onSave: (profile: TryOnProfileState) => Promise<void> | void;
   onBack: () => void;
   onMessage?: (msg: string) => void;
   onExpandImage?: (img: { src: string; alt: string }) => void;
 }) {
-  const [draft, setDraft] = useState<TryOnProfile>(tryOnProfile);
+  const [draft, setDraft] = useState<TryOnProfileDraft & Partial<Pick<TryOnProfile, "serverEntityId" | "serverRevision">>>(tryOnProfile);
+  const fullBodyOnline = useOnlineAssetUrl(tryOnProfile.fullBodyImage, "original");
+  const faceOnline = useOnlineAssetUrl(tryOnProfile.faceImage, "original");
   const fullBodyInputRef = useRef<HTMLInputElement>(null);
   const faceInputRef = useRef<HTMLInputElement>(null);
   const [cropJob, setCropJob] = useState<{ dataUrl: string; target: "fullBody" | "face" } | null>(null);
@@ -5046,7 +5045,7 @@ function PhotosDetailPage({
   }
 
   async function handleToggle(value: boolean) {
-    const next: TryOnProfile = { ...draft, enabled: value, updatedAt: new Date().toISOString() };
+    const next = { ...draft, enabled: value, updatedAt: new Date().toISOString() };
     setDraft(next);
     await onSave(next);
     onMessage?.(value ? "已启用参考照" : "已关闭参考照");
@@ -5098,18 +5097,18 @@ function PhotosDetailPage({
             <PhotoSlot
               label="全身照"
               required
-              src={draft.fullBodyImageDataUrl}
-              inUse={Boolean(draft.fullBodyImageDataUrl)}
+              src={draft.localFullBodyImageDataUrl ?? fullBodyOnline.url}
+              inUse={Boolean(draft.localFullBodyImageDataUrl ?? draft.fullBodyImage)}
               onUpload={() => fullBodyInputRef.current?.click()}
-              onExpand={() => draft.fullBodyImageDataUrl && onExpandImage?.({ src: draft.fullBodyImageDataUrl, alt: "全身照" })}
+              onExpand={() => { const src = draft.localFullBodyImageDataUrl ?? fullBodyOnline.url; if (src) onExpandImage?.({ src, alt: "全身照" }); }}
               onDelete={() => setDeletePhotoTarget("fullBody")}
             />
             <PhotoSlot
               label="脸部照"
-              src={draft.faceImageDataUrl}
-              inUse={Boolean(draft.faceImageDataUrl)}
+              src={draft.localFaceImageDataUrl ?? faceOnline.url}
+              inUse={Boolean(draft.localFaceImageDataUrl ?? draft.faceImage)}
               onUpload={() => faceInputRef.current?.click()}
-              onExpand={() => draft.faceImageDataUrl && onExpandImage?.({ src: draft.faceImageDataUrl, alt: "脸部照" })}
+              onExpand={() => { const src = draft.localFaceImageDataUrl ?? faceOnline.url; if (src) onExpandImage?.({ src, alt: "脸部照" }); }}
               onDelete={() => setDeletePhotoTarget("face")}
             />
           </div>
@@ -5144,8 +5143,8 @@ function PhotosDetailPage({
         tone="danger"
         onConfirm={() => {
           setDraft((previous) => deletePhotoTarget === "fullBody"
-            ? { ...previous, fullBodyImageDataUrl: undefined }
-            : { ...previous, faceImageDataUrl: undefined });
+            ? { ...previous, fullBodyImage: undefined, localFullBodyImageDataUrl: undefined }
+            : { ...previous, faceImage: undefined, localFaceImageDataUrl: undefined });
           setDeletePhotoTarget(null);
         }}
         onClose={() => setDeletePhotoTarget(null)}
@@ -5159,9 +5158,9 @@ function PhotosDetailPage({
           onError={(error) => onMessage?.(error)}
           onConfirm={(croppedDataUrl) => {
             if (cropJob.target === "face") {
-              setDraft((p) => ({ ...p, faceImageDataUrl: croppedDataUrl }));
+              setDraft((p) => ({ ...p, localFaceImageDataUrl: croppedDataUrl }));
             } else {
-              setDraft((p) => ({ ...p, fullBodyImageDataUrl: croppedDataUrl }));
+              setDraft((p) => ({ ...p, localFullBodyImageDataUrl: croppedDataUrl }));
             }
             setCropJob(null);
           }}
@@ -5521,13 +5520,15 @@ function normalizeColorFields(input?: { colors?: ColorInfo } | ColorInfo | null)
   };
 }
 
-function normalizeDraftForEdit(item: WardrobeItem): WardrobeDraft {
+function normalizeDraftForEdit(item: WardrobeItem, originalUrl?: string): WardrobeDraft {
   return {
     ...item,
     colors: item.colors ?? emptyColorInfo(),
     seasons: item.seasons.length > 0 ? item.seasons : ["all"],
     styles: item.styles.length > 0 ? item.styles : ["casual"],
     notes: item.notes ?? "",
+    localOriginalDataUrl: originalUrl,
+    localCropBox: item.mainImage?.cropBox,
   };
 }
 
@@ -5599,15 +5600,13 @@ function WaterfallCardImage({
         result.push({
           kind: "image" as const,
           id: `${entry.source}-${entry.refId ?? entry.outfitId ?? i}`,
-          imageDataUrl: entry.cardImageDataUrl,
-          thumbnailSrc: entry.cardImageDataUrl,
-          displaySrc: entry.displayImageDataUrl,
-          sourceSrc: entry.sourceImageDataUrl,
+          imageDataUrl: "",
+          asset: entry.image?.asset,
           alt: isMain ? item.name : `穿搭灵感 ${i}`,
           badge,
           badgeClassName: isMain ? "bg-denim" : "bg-clay",
           realIndex: i,
-          cropBox: entry.cropBox,
+          cropBox: entry.image?.cropBox,
         });
       }
     }
@@ -5667,11 +5666,11 @@ function editSnapshotFromDraft(draft: WardrobeDraft): EditSnapshot {
     status: draft.status,
     locationId: draft.locationId,
     notes: (draft.notes ?? "").trim(),
-    imageDataUrl: draft.imageDataUrl || "",
-    cropBox: cropBoxSnapshot(draft.cropBox),
-    cropRevision: draft.cropRevision ?? 0,
-    thumbnailCropRevision: draft.thumbnailCropRevision ?? 0,
-    thumbnailDataUrl: draft.thumbnailDataUrl || "",
+    imageDataUrl: draft.localOriginalDataUrl || "",
+    cropBox: cropBoxSnapshot(draft.localCropBox),
+    cropRevision: 0,
+    thumbnailCropRevision: 0,
+    thumbnailDataUrl: draft.localThumbnailDataUrl || "",
     fitGender: draft.fitGender ?? "unknown",
     fitNotes: (draft.fitNotes ?? "").trim(),
     price: draft.price != null ? String(draft.price) : "",
@@ -5702,10 +5701,11 @@ function createDemoItem(
   background: string,
   foreground: string,
   now: string,
-): WardrobeItem {
+): WardrobeItemDraft {
   return {
     name,
-    imageDataUrl: garmentSvg(name, background, foreground),
+    localOriginalDataUrl: garmentSvg(name, background, foreground),
+    localThumbnailDataUrl: garmentSvg(name, background, foreground),
     category,
     colors: colorInfoFromChipGroups(primaryColors, secondaryColors),
     seasons,
@@ -5720,7 +5720,7 @@ function createDemoItem(
   };
 }
 
-function createDemoOutfit(itemIds: number[], now: string): SavedOutfit {
+function createDemoOutfit(itemIds: number[], now: string): import("@/lib/types").SavedOutfitDraft {
   const outfitItemIds = itemIds.slice(0, 4);
   const wornDates = [relativeDateKey(10), relativeDateKey(3)];
 
@@ -5728,7 +5728,8 @@ function createDemoOutfit(itemIds: number[], now: string): SavedOutfit {
     id: `demo-outfit-${Date.now()}`,
     name: "示例通勤套装",
     itemIds: outfitItemIds,
-    previewImageDataUrl: demoOutfitCoverSvg(),
+    localOriginalDataUrl: demoOutfitCoverSvg(),
+    localThumbnailDataUrl: demoOutfitCoverSvg(),
     destination: "办公室",
     activity: "通勤",
     style: "轻熟通勤",

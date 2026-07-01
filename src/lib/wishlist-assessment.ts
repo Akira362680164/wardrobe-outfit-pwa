@@ -205,7 +205,7 @@ export function getRecommendedPairingsForWishlistItem(input: {
   const activeWardrobeItems = wardrobeItems.filter((item) => {
     if (!item.id) return false;
     if (item.status === "archived") return false;
-    if (!item.imageDataUrl && !item.thumbnailDataUrl) return false;
+    if (!item.mainImage) return false;
     return true;
   });
 
@@ -339,7 +339,7 @@ function calculateWishlistInformationCompleteness(item: WishlistItem): "low" | "
   if (typeof item.formality === "number") score += 1;
   if (typeof item.warmth === "number") score += 1;
   if (item.price) score += 1;
-  if (item.imageDataUrl) score += 1;
+  if (item.mainImage) score += 1;
 
   if (score >= 12) return "high";
   if (score >= 7) return "medium";

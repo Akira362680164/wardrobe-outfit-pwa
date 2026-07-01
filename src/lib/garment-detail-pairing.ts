@@ -348,7 +348,7 @@ function isValidCandidate(
   // v0.9.49-dev auto-fix: 防御性读取可能未声明的 assetStatus 字段 (v0.9.50 计划中)。
   // 用 in 操作符替代 (candidate as any) 绕过类型检查,避免 lint 错误。
   if ("assetStatus" in candidate && (candidate as { assetStatus?: string }).assetStatus === "discarded") return false;
-  if (!candidate.imageDataUrl && !candidate.thumbnailDataUrl) return false;
+  if (!candidate.mainImage) return false;
   return true;
 }
 

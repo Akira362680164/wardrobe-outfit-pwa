@@ -37,7 +37,7 @@
     "test:logic:outfit": "tsx scripts/test-outfit-asset-center.ts",
     "test:logic:wishlist": "tsx scripts/test-wishlist-buy-before.ts",
     "test:logic:intake": "tsx scripts/test-intake-draft.ts && tsx scripts/test-batch-ai-progress.ts",
-    "test:logic:online-writes": "tsx scripts/test-online-write-repository.ts && tsx scripts/test-intake-submit-state.ts",
+    "test:logic:online-writes": "tsx scripts/test-online-write-repository.ts && tsx scripts/test-repository-asset-mutations.ts && tsx scripts/test-intake-submit-state.ts",
     "test:logic:outfit-ai": "tsx scripts/test-outfit-ai-suggestion.ts",
     "test:logic:outfit-metadata": "tsx scripts/test-outfit-metadata.ts",
     "test:logic:wear": "tsx scripts/test-wear-statistics.ts",

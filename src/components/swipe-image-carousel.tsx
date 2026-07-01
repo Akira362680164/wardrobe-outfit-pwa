@@ -5,14 +5,20 @@ import { motion } from "motion/react";
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { clampCarouselIndex, getSwipeNextIndex, resolveCarouselImageSource } from "@/lib/carousel-logic";
 import { GarmentImage } from "@/components/garment-image";
+import { OnlineAssetImage, OnlineCroppedAssetImage } from "@/components/online/online-asset-image";
 import { OriginalCroppedImage } from "@/components/original-cropped-image";
+import type { ImageAssetReference } from "@/lib/types";
 
 export type ImageDisplayMode = "thumbnail" | "original-cropped" | "plain";
 
 export interface SwipeImageSlide {
   kind: "image";
   id: string;
-  imageDataUrl: string;
+  imageDataUrl?: string;
+  asset?: ImageAssetReference;
+  assetVariant?: "original" | "thumbnail";
+  fallbackContent?: React.ReactNode;
+  onAssetOpen?: (url: string) => void;
   fallbackImageDataUrl?: string;
   thumbnailSrc?: string;
   displaySrc?: string;
@@ -110,6 +116,13 @@ interface SwipeImagePageProps {
 function SwipeImagePage({ slide, isDragging, imageFitClass, onClickImage, variant }: SwipeImagePageProps) {
   const mode = slide.displayMode ?? "thumbnail";
 
+  if (slide.asset) {
+    const image = mode === "original-cropped"
+      ? <OnlineCroppedAssetImage asset={slide.asset} cropBox={slide.cropBox} alt={slide.alt || ""} className="h-full w-full" fallback={slide.fallbackContent} onOpen={slide.onAssetOpen} />
+      : <OnlineAssetImage asset={slide.asset} variant={slide.assetVariant ?? (variant === "card" ? "thumbnail" : "original")} alt={slide.alt || ""} className="h-full w-full" imageClassName={imageFitClass} fallback={slide.fallbackContent} onOpen={slide.onAssetOpen} />;
+    return <div className="relative h-full w-full" onClick={(event) => { onClickImage(slide); event.stopPropagation(); }}>{image}</div>;
+  }
+
   if (mode === "original-cropped" && slide.originalSrc) {
     return (
       <div
@@ -138,7 +151,7 @@ function SwipeImagePage({ slide, isDragging, imageFitClass, onClickImage, varian
   const src = resolveCarouselImageSource({
     variant,
     isDragging,
-    imageDataUrl: slide.imageDataUrl,
+    imageDataUrl: slide.imageDataUrl ?? "",
     thumbnailSrc: slide.thumbnailSrc,
     displaySrc: slide.displaySrc,
   });
@@ -151,12 +164,13 @@ function SwipeImagePage({ slide, isDragging, imageFitClass, onClickImage, varian
       {slide.imageDataUrl ? (
         <GarmentImage
           src={src}
+          asset={slide.asset}
           alt={slide.alt || ""}
           fallbackSrc={slide.fallbackImageDataUrl}
           imageClassName="bg-transparent"
           className={`block h-full w-full ${imageFitClass}`}
         />
-      ) : (
+      ) : slide.fallbackContent ?? (
         <div className="grid h-full w-full place-items-center bg-mist px-4 text-center text-xs text-ink/45">
           图片读取失败，请删除后重新选择
         </div>

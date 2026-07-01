@@ -6,6 +6,8 @@ import { Loader2, Plus, RefreshCw, Sparkles } from "lucide-react";
 import { AppSubPageTopBar } from "@/components/app-sub-page-top-bar";
 import { SwipeImageCarousel, type SwipeImageSlide } from "@/components/swipe-image-carousel";
 import { DetailSectionCard } from "@/components/item-shell/detail-section-card";
+import { OnlineAssetImage } from "@/components/online/online-asset-image";
+import type { ImageAssetReference } from "@/lib/types";
 
 export type DetailSlideKind = "garment_main" | "garment_reference" | "outfit_cover" | "outfit_real" | "wishlist_product";
 
@@ -15,7 +17,9 @@ export interface DetailShellSlide {
   alt: string;
   imageDataUrl?: string;
   thumbnailDataUrl?: string;
-  renderContent?: ReactNode;
+  asset?: ImageAssetReference;
+  fallbackContent?: ReactNode;
+  onAssetOpen?: (url: string) => void;
   displayMode?: "thumbnail" | "original-cropped" | "plain";
   originalSrc?: string;
   cropBox?: { x: number; y: number; width: number; height: number };
@@ -26,7 +30,8 @@ export interface DetailFilmstripItem {
   label: string;
   imageDataUrl?: string;
   thumbnailDataUrl?: string;
-  renderContent?: ReactNode;
+  asset?: ImageAssetReference;
+  fallbackContent?: ReactNode;
 }
 
 export interface DetailQuickAction {
@@ -123,6 +128,9 @@ export function DetailHeroGallery({
     displayMode: slide.displayMode,
     originalSrc: slide.originalSrc,
     cropBox: slide.cropBox,
+    asset: slide.asset,
+    fallbackContent: slide.fallbackContent,
+    onAssetOpen: slide.onAssetOpen,
   }));
   const pageLabel = getDetailPageLabel(safeIndex, slides.length);
 
@@ -135,12 +143,7 @@ export function DetailHeroGallery({
         style={{ height: "clamp(300px, 52dvh, 500px)" }}
       >
         {activeSlide ? (
-          activeSlide.renderContent ? (
-            <div className="h-full w-full">
-              {activeSlide.renderContent}
-            </div>
-          ) : (
-            <SwipeImageCarousel
+          <SwipeImageCarousel
               slides={imageSlides}
               index={safeIndex}
               onIndexChange={onIndexChange}
@@ -160,7 +163,6 @@ export function DetailHeroGallery({
               showDots={false}
               ariaLabel="详情图片"
             />
-          )
         ) : (
           <div className="grid h-full w-full place-items-center px-6 text-center text-ink/35">
             <div className="grid gap-2 place-items-center">
@@ -215,11 +217,11 @@ export function DetailFilmstrip({
               active ? "border-denim shadow-sm" : "border-transparent opacity-60 hover:opacity-100"
             }`}
           >
-            {item.renderContent ? item.renderContent : item.thumbnailDataUrl ? (
+            {item.asset ? <OnlineAssetImage asset={item.asset} variant="thumbnail" alt="" className="h-full w-full" imageClassName="object-cover" fallback={item.fallbackContent} /> : item.thumbnailDataUrl ? (
               // eslint-disable-next-line @next/next/no-img-element
               <img src={item.thumbnailDataUrl} alt="" className="h-full w-full object-contain" />
             ) : (
-              <div className="h-full w-full bg-mist" />
+              item.fallbackContent ?? <div className="h-full w-full bg-mist" />
             )}
             <span className="absolute inset-x-0 bottom-0 truncate bg-black/50 px-0.5 py-0.5 text-center text-[9px] font-semibold text-white">
               {item.label}

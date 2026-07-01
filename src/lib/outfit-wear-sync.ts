@@ -1,7 +1,7 @@
 // v1.1.0 fix: 穿着同步统一服务 — 计划/实际穿着/套装 wornDates/单品 wornDates 同步
 // 快照来自 OnlineWorkspaceRepository；写入统一走线上 Repository。
 
-import type { OutfitPlanEntry, OutfitPlanEntryRole } from "@/lib/types";
+import type { OutfitPlanEntry, OutfitPlanEntryDraft, OutfitPlanEntryRole } from "@/lib/types";
 import type { OnlineWorkspaceSnapshot } from "@/lib/online/online-repository";
 import {
   rethrowIfFailed,
@@ -166,7 +166,7 @@ export async function addPlannedOutfitForDate(input: AddOutfitToDateInput): Prom
   const duplicate = existingEntries.find((e) => e.outfitId === outfitId && e.status === "planned");
   if (duplicate) return duplicate;
 
-  const entry: OutfitPlanEntry = {
+  const entry: OutfitPlanEntryDraft = {
     id: `plan-entry-${dateKey}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
     date: dateKey,
     outfitId,
@@ -179,8 +179,7 @@ export async function addPlannedOutfitForDate(input: AddOutfitToDateInput): Prom
     updatedAt: now,
   };
 
-  rethrowIfFailed(await repoUpsertOutfitPlanEntry(entry), "保存穿搭计划失败");
-  return entry;
+  return rethrowIfFailed(await repoUpsertOutfitPlanEntry(entry), "保存穿搭计划失败");
 }
 
 // ============================================================

@@ -17,7 +17,7 @@ import {
 } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 
-import type { ClosetLocation, OutfitAiSuggestion, OutfitCalendarPlan, OutfitCalendarPlanType, OutfitPlanEntry, OutfitRealImage, PlanPackingChecklistItem, SavedOutfit, Season, WardrobeItem } from "@/lib/types";
+import type { ClosetLocation, LocalOutfitRealImageDraft, OutfitAiSuggestion, OutfitCalendarPlan, OutfitCalendarPlanDraft, OutfitCalendarPlanType, OutfitPlanEntry, OutfitRealImage, PlanPackingChecklistItem, SavedOutfit, Season, WardrobeItem } from "@/lib/types";
 import { CATEGORY_LABELS, SEASON_LABELS } from "@/lib/types";
 import { buildOutfitCoverRefreshPatch, getOutfitCover, countValidItems } from "@/lib/outfit-cover";
 import { getWearSummary, hasWornDate } from "@/lib/wear-records";
@@ -292,16 +292,17 @@ export function OutfitListView({
   async function handleSaveRealImage() {
     if (!viewingOutfit || !realImageFileUrl) return;
     const now = new Date().toISOString();
-    const newImage: OutfitRealImage = {
+    const newImage: LocalOutfitRealImageDraft = {
       id: `outfit-real-image-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
-      imageDataUrl: realImageFileUrl,
+      localOriginalDataUrl: realImageFileUrl,
+      localThumbnailDataUrl: realImageFileUrl,
       caption: realImageCaption.trim() || undefined,
       takenAt: realImageTakenAt || undefined,
       createdAt: now,
       updatedAt: now,
     };
-    const updated = [...(viewingOutfit.outfitRealImages ?? []), newImage];
-    rethrowIfFailed(await upsertOutfit({ ...viewingOutfit, outfitRealImages: updated, updatedAt: now }), "保存套装失败");
+    const updated: LocalOutfitRealImageDraft[] = [...(viewingOutfit.outfitRealImages ?? []), newImage];
+    rethrowIfFailed(await wardrobeRepository.updateOutfit(viewingOutfit, { outfitRealImages: updated, updatedAt: now }), "保存套装失败");
     await onRefresh();
     setSubPage("detail");
     onMessage("穿搭实图已保存");
@@ -342,7 +343,7 @@ export function OutfitListView({
  onMessage("套装至少需要2 件衣物", "info");
  return;
  }
- rethrowIfFailed(await upsertOutfit(newOutfit), "保存套装失败");
+ rethrowIfFailed(await wardrobeRepository.createOutfit(newOutfit), "保存套装失败");
  await onRefresh();
  setSubPage("library");
  onMessage("套装已创建");
@@ -540,21 +541,21 @@ export function OutfitListView({
 	  }
 
 	  // v1.1.4-dev: 计划保存/编辑后调用 syncPackingChecklistForPlan, 保证打包清单与新范围一致。
-	  async function handleSaveCalendarPlan(plan: OutfitCalendarPlan) {
+	  async function handleSaveCalendarPlan(plan: OutfitCalendarPlan | OutfitCalendarPlanDraft) {
 	    try {
         const wasEditing = subPage === "plan_edit";
         const result = await upsertTripPlan(plan);
-        if (!result.ok) {
+        if (!result.ok || !result.data) {
           onMessage("计划保存失败，请重试", "error");
           return;
         }
 	      try {
-	        await syncPackingChecklistForPlan(plan.id);
+	        await syncPackingChecklistForPlan(result.data.id);
 	      } catch {
 	        onMessage("打包清单同步失败，请重试", "error");
 	      }
 	      await onPlanDataChange();
-        setActiveCalendarPlanId(plan.id);
+        setActiveCalendarPlanId(result.data.id);
 	      setSubPage(wasEditing ? "plan_detail" : "planning_calendar");
 	      onMessage("计划已保存");
 	    } catch {
@@ -1331,24 +1332,21 @@ function OutfitDetailView({
       id: slide.kind === "cover" ? "cover" : slide.image.id,
       label: slide.kind === "cover" ? getDetailSlideLabel("outfit_cover") : getDetailSlideLabel("outfit_real"),
       alt: outfit.name,
-      imageDataUrl: slide.kind === "real" ? slide.image.imageDataUrl : cover.mode === "empty" ? "" : cover.imageDataUrl,
-      thumbnailDataUrl: slide.kind === "real" ? slide.image.thumbnailDataUrl : cover.imageDataUrl,
-      renderContent: slide.kind === "cover" ? (
-        cover.mode === "empty" ? (
-          <div className="grid h-full w-full place-items-center text-ink/25"><Shirt size={48} /></div>
-        ) : (
-          <OnlineAssetImage entity={outfit} field="coverImageDataUrl" variant="original" alt={outfit.name} className="h-full w-full" onOpen={(url) => onExpandImage({ src: url, alt: outfit.name })} fallback={<OutfitCover outfit={outfit} items={allItems} size="detail" className="h-full w-full" />} />
-        )
-      ) : undefined,
+      imageDataUrl: "",
+      thumbnailDataUrl: "",
+      asset: slide.kind === "cover" ? outfit.coverImage?.asset : slide.image.image.asset,
+      fallbackContent: slide.kind === "cover" ? (cover.mode === "empty" ? <div className="grid h-full w-full place-items-center text-ink/25"><Shirt size={48} /></div> : <OutfitCover outfit={outfit} items={allItems} size="detail" className="h-full w-full" />) : undefined,
+      onAssetOpen: (url: string) => onExpandImage({ src: url, alt: slide.kind === "cover" ? outfit.name : slide.image.caption ?? "穿搭实图" }),
     }));
   const filmstripItems = allSlides
     .filter((slide) => slide.kind !== "add")
     .map((slide) => ({
       id: slide.kind === "cover" ? "cover" : slide.image.id,
       label: slide.kind === "cover" ? getDetailSlideLabel("outfit_cover") : getDetailSlideLabel("outfit_real"),
-      imageDataUrl: slide.kind === "real" ? slide.image.imageDataUrl : cover.imageDataUrl,
-      thumbnailDataUrl: slide.kind === "real" ? slide.image.thumbnailDataUrl : cover.imageDataUrl,
-      renderContent: slide.kind === "cover" ? <OutfitCover outfit={outfit} items={allItems} size="card" /> : undefined,
+      imageDataUrl: "",
+      thumbnailDataUrl: "",
+      asset: slide.kind === "cover" ? outfit.coverImage?.asset : slide.image.image.asset,
+      fallbackContent: slide.kind === "cover" ? <OutfitCover outfit={outfit} items={allItems} size="card" /> : undefined,
     }));
   const activeFilmstripId = activeSlideData?.kind === "real" ? activeSlideData.image.id : "cover";
 
@@ -1487,7 +1485,7 @@ function OutfitDetailView({
               <div className="flex gap-2 overflow-x-auto">
                 {realImages.map((image) => (
                   <button key={image.id} type="button" onClick={() => onViewRealImage(image)} className="h-20 w-16 shrink-0 overflow-hidden rounded-lg bg-milk-darker">
-                    <img src={image.thumbnailDataUrl || image.imageDataUrl} alt={image.caption ?? "穿搭实图"} className="h-full w-full object-cover" />
+                    <OnlineAssetImage asset={image.image.asset} variant="thumbnail" alt={image.caption ?? "穿搭实图"} className="h-full w-full" imageClassName="object-cover" />
                   </button>
                 ))}
               </div>
@@ -1538,8 +1536,8 @@ function OutfitCompositionTab({
           <article key={item.id} className="rounded-lg border border-ink/8 bg-white p-2.5">
             <div className="flex items-center gap-2">
               <div className="h-12 w-12 shrink-0 overflow-hidden rounded-lg bg-milk-darker/40">
-                {item.thumbnailDataUrl ? (
-                  <img src={item.thumbnailDataUrl} alt={item.name} className="h-full w-full object-contain" />
+                {item.mainImage ? (
+                  <OnlineAssetImage asset={item.mainImage.asset} variant="thumbnail" alt={item.name} className="h-full w-full" />
                 ) : (
                   <div className="grid h-full place-items-center text-ink/25"><Shirt size={16} /></div>
                 )}
@@ -1740,9 +1738,7 @@ function RealImageView({
       )}
 
       {/* Large image */}
-      <button type="button" onClick={() => onExpandImage({ src: image.imageDataUrl, alt: image.caption ?? "穿搭实图" })} className="w-full">
-        <img src={image.imageDataUrl} alt={image.caption ?? "穿搭实图"} className="max-h-[60vh] w-full object-contain rounded-xl" />
-      </button>
+      <OnlineAssetImage asset={image.image.asset} variant="original" alt={image.caption ?? "穿搭实图"} className="max-h-[60vh] w-full rounded-xl" onOpen={(url) => onExpandImage({ src: url, alt: image.caption ?? "穿搭实图" })} />
 
       {image.caption && <p className="text-sm text-ink/70">{image.caption}</p>}
       {image.takenAt && <p className="text-xs text-ink/40">{image.takenAt}</p>}
@@ -1944,28 +1940,28 @@ function OutfitInfoForm({
 // ─── Collage Preview ───────────────────────────────────────────
 
 function CollagePreview({ items }: { items: WardrobeItem[] }) {
-  const urls = items.slice(0, 4).map((i) => i.imageDataUrl).filter(Boolean);
+  const assets = items.slice(0, 4).flatMap((item) => item.mainImage ? [item.mainImage.asset] : []);
 
-  if (urls.length === 0) return <div className="grid h-full place-items-center text-ink/25"><Shirt size={40} /></div>;
-  if (urls.length === 1) return <img src={urls[0]} alt="" className="h-full w-full object-contain p-2" />;
+  if (assets.length === 0) return <div className="grid h-full place-items-center text-ink/25"><Shirt size={40} /></div>;
+  if (assets.length === 1) return <OnlineAssetImage asset={assets[0]} variant="thumbnail" alt="" className="h-full w-full p-2" />;
 
-  if (urls.length === 2) {
+  if (assets.length === 2) {
     return (
       <div className="grid h-full w-full grid-cols-2">
-        {urls.map((url, i) => (
-          <img key={i} src={url} alt="" className="h-full w-full object-cover" />
+        {assets.map((asset, i) => (
+          <OnlineAssetImage key={asset.assetId} asset={asset} variant="thumbnail" alt="" className="h-full w-full" imageClassName="object-cover" />
         ))}
       </div>
     );
   }
 
-  if (urls.length === 3) {
+  if (assets.length === 3) {
     return (
       <div className="grid h-full w-full grid-rows-2">
-        <img src={urls[0]} alt="" className="h-full w-full object-cover border-b border-white/50" />
+        <OnlineAssetImage asset={assets[0]} variant="thumbnail" alt="" className="h-full w-full border-b border-white/50" imageClassName="object-cover" />
         <div className="grid grid-cols-2">
-          {[urls[1], urls[2]].map((url, i) => (
-            <img key={i} src={url} alt="" className={`h-full w-full object-cover ${i === 0 ? "border-r border-white/50" : ""}`} />
+          {assets.slice(1).map((asset, i) => (
+            <OnlineAssetImage key={asset.assetId} asset={asset} variant="thumbnail" alt="" className={`h-full w-full ${i === 0 ? "border-r border-white/50" : ""}`} imageClassName="object-cover" />
           ))}
         </div>
       </div>
@@ -1974,8 +1970,8 @@ function CollagePreview({ items }: { items: WardrobeItem[] }) {
 
   return (
     <div className="grid h-full w-full grid-cols-2 grid-rows-2">
-      {urls.map((url, i) => (
-        <img key={i} src={url} alt="" className={`h-full w-full object-cover ${i === 0 ? "border-b border-r border-white/50" : i === 1 ? "border-b border-white/50" : i === 2 ? "border-r border-white/50" : ""}`} />
+      {assets.map((asset, i) => (
+        <OnlineAssetImage key={asset.assetId} asset={asset} variant="thumbnail" alt="" className={`h-full w-full ${i === 0 ? "border-b border-r border-white/50" : i === 1 ? "border-b border-white/50" : i === 2 ? "border-r border-white/50" : ""}`} imageClassName="object-cover" />
       ))}
     </div>
   );

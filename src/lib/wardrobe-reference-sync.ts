@@ -26,9 +26,7 @@ export function buildSyncedOutfitPatch(outfit: SavedOutfit, allItems: WardrobeIt
 export function buildSyncedPurchasedWishlistPatch(item: WardrobeItem, now: string): Partial<WishlistItem> {
   return {
     name: item.name,
-    imageDataUrl: item.imageDataUrl,
-    sourceImageDataUrl: item.imageDataUrl,
-    thumbnailDataUrl: item.thumbnailDataUrl,
+    mainImage: item.mainImage,
     category: item.category,
     subcategory: item.subcategory,
     colors: item.colors,

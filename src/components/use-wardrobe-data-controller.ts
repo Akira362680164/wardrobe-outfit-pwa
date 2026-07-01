@@ -19,6 +19,7 @@ import type {
   OutfitPlanEntry,
   PlanPackingChecklistItem,
   SavedOutfit,
+  TryOnProfile,
   WardrobeItem,
   WishlistItem,
 } from "@/lib/types";
@@ -38,6 +39,7 @@ export function useWardrobeDataController() {
   const [outfitPlanEntries, setOutfitPlanEntries] = useState<OutfitPlanEntry[]>(snapshot?.outfitPlanEntries ?? []);
   const [outfitCalendarPlans, setOutfitCalendarPlans] = useState<OutfitCalendarPlan[]>(snapshot?.outfitCalendarPlans ?? []);
   const [planPackingChecklistItems, setPlanPackingChecklistItems] = useState<PlanPackingChecklistItem[]>(snapshot?.planPackingChecklistItems ?? []);
+  const [tryOnProfile, setTryOnProfile] = useState<TryOnProfile | undefined>(snapshot?.tryOnProfile);
 
   const applySnapshot = useCallback((next: OnlineWorkspaceSnapshot) => {
     setItems(next.items);
@@ -47,6 +49,7 @@ export function useWardrobeDataController() {
     setOutfitPlanEntries(next.outfitPlanEntries);
     setOutfitCalendarPlans(next.outfitCalendarPlans);
     setPlanPackingChecklistItems(next.planPackingChecklistItems);
+    setTryOnProfile(next.tryOnProfile);
   }, []);
 
   const refreshState = useCallback(async () => {
@@ -85,6 +88,7 @@ export function useWardrobeDataController() {
     outfitPlanEntries, setOutfitPlanEntries,
     outfitCalendarPlans, setOutfitCalendarPlans,
     planPackingChecklistItems, setPlanPackingChecklistItems,
+    tryOnProfile, setTryOnProfile,
     loading: onlineState.status === "loading",
     onlineState,
     onlineRepository: repository,

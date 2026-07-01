@@ -102,10 +102,10 @@ check(
 );
 
 console.log("\n=== §3.4.4 编辑页重新识别 ===");
-// 13. recognizeEditDraftAgain 优先使用 imageDataUrl
+// 13. recognizeEditDraftAgain 只使用当前编辑会话加载的完整原图
 check(
-  "recognizeEditDraftAgain 优先使用 editDraft.imageDataUrl",
-  /async function recognizeEditDraftAgain[\s\S]+?const source = editDraft\.imageDataUrl;/.test(wardrobeApp),
+  "recognizeEditDraftAgain 优先使用 editDraft.localOriginalDataUrl",
+  /async function recognizeEditDraftAgain[\s\S]+?const source = editDraft\.localOriginalDataUrl;/.test(wardrobeApp),
 );
 // 14. recognizeEditDraftAgain 不修改 cropBox / imageDataUrl / sourceImageDataUrl
 check(
@@ -130,10 +130,10 @@ check(
   "WardrobeEditPage 不再接收 onCropFromSource prop",
   !/onCropFromSource/.test(wardrobeApp),
 );
-// 17. wardrobe-app 给 WardrobeEditPage 传 onCrop（只用完整 imageDataUrl）
+// 17. wardrobe-app 给 WardrobeEditPage 传 onCrop（只用当前会话完整原图）
 check(
-  "wardrobe-app onCrop 只用完整 imageDataUrl",
-  /onCrop=\{editDraft\.imageDataUrl \? \(\) => \{[\s\S]+?sourceKind:[\s\S]+?"original"[\s\S]+?setViewingItemCropJob/.test(wardrobeApp),
+  "wardrobe-app onCrop 只用当前会话完整原图",
+  /onCrop=\{editDraft\.localOriginalDataUrl \? \(\) => \{[\s\S]+?sourceKind:[\s\S]+?"original"[\s\S]+?setViewingItemCropJob/.test(wardrobeApp),
 );
 // 18. wardrobe-app 不再给 WardrobeEditPage 传 onCropFromSource
 check(

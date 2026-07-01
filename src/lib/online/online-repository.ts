@@ -5,7 +5,6 @@ import {
   WorkspaceListResponseSchema,
   WorkspaceOverviewResponseSchema,
   WorkspaceWearSummaryResponseSchema,
-  type WorkspaceAssetReference,
   type WorkspaceEntity,
   type WorkspaceEntityKind,
   type WorkspaceListResponse,
@@ -13,11 +12,14 @@ import {
 } from "@wardrobe/cloud-contracts";
 
 import type { AuthSessionSnapshot } from "@/lib/auth-session-store";
-import { OnlineImageClient, type OnlineImageVariant } from "@/lib/online/online-image-client";
+import { OnlineImageClient } from "@/lib/online/online-image-client";
 import { onlineRequest } from "@/lib/online/online-request";
 import { normalizeTemperatureRange } from "@/lib/temperature-range";
 import type {
   ClosetLocation,
+  CroppedImageReference,
+  GarmentCropBox,
+  ImageAssetReference,
   OutfitCalendarPlan,
   OutfitPlanEntry,
   PlanPackingChecklistItem,
@@ -42,8 +44,8 @@ export interface OnlineWorkspaceSnapshot {
 
 type Resource = "garments" | "outfits" | "wishlist" | "locations" | "trip-plans" | "outfit-plans" | "wear-events" | "profiles";
 
-function withServerMetadata<T extends object>(value: T, entity: WorkspaceEntity, kind: WorkspaceEntityKind): T {
-  return Object.assign(value, { serverId: entity.id, serverRevision: entity.revision, assetRefs: entity.assetRefs ?? {}, serverKind: kind });
+function withServerMetadata<T extends object>(value: T, entity: WorkspaceEntity, kind: WorkspaceEntityKind): T & { serverEntityId: string; serverRevision: number } {
+  return Object.assign(value, { serverEntityId: entity.id, serverRevision: entity.revision, serverKind: kind });
 }
 
 export class OnlineWorkspaceRepository {
@@ -104,19 +106,12 @@ export class OnlineWorkspaceRepository {
 
   async mapGarment(entity: WorkspaceEntity): Promise<WardrobeItem> {
     const p = entity.payload;
-    const images = await this.resolveImages(entity, {
-      thumbnailDataUrl: { refField: "imageDataUrl", variant: "thumbnail" },
-    });
-    const referenceOutfitImages = await Promise.all((Array.isArray(p.referenceOutfitImages) ? p.referenceOutfitImages : []).map(async (value) => {
+    const referenceOutfitImages = (Array.isArray(p.referenceOutfitImages) ? p.referenceOutfitImages : []).flatMap((value) => {
       const reference = value && typeof value === "object" ? value as Record<string, unknown> : {};
       const field = typeof reference.assetField === "string" ? reference.assetField : `referenceOutfitImage:${String(reference.id ?? "")}`;
-      const ref = entity.assetRefs?.[field];
-      return Object.assign({
-        ...reference,
-        imageDataUrl: ref?.variants.includes("thumbnail") ? await this.images.load(ref.assetId, "thumbnail", ref.variantSha256?.thumbnail) : undefined,
-        thumbnailDataUrl: ref?.variants.includes("thumbnail") ? await this.images.load(ref.assetId, "thumbnail", ref.variantSha256?.thumbnail) : undefined,
-      }, { assetRef: ref });
-    }));
+      const image = imageReference(entity, field, reference.cropBox);
+      return image ? [{ id: stringValue(reference.id), image, caption: optionalString(reference.caption), createdAt: stringValue(reference.createdAt, entity.createdAt), updatedAt: stringValue(reference.updatedAt, entity.updatedAt) }] : [];
+    });
     return withServerMetadata({
       id: numericId(p.legacyItemId, entity.id),
       locationId: stringValue(p.locationId, "home"),
@@ -127,87 +122,64 @@ export class OnlineWorkspaceRepository {
       colors: (p.colors ?? { mode: "single", primary: "#000000" }) as WardrobeItem["colors"],
       seasons: (p.seasons ?? []) as WardrobeItem["seasons"],
       styles: (p.styles ?? []) as WardrobeItem["styles"],
-      imageDataUrl: images.thumbnailDataUrl ?? "",
-      thumbnailDataUrl: images.thumbnailDataUrl,
-      cropBox: p.cropBox as WardrobeItem["cropBox"],
+      mainImage: imageReference(entity, "imageDataUrl", p.cropBox),
       formality: optionalNumber(p.formality), warmth: optionalNumber(p.warmth),
       temperatureRange: normalizeTemperatureRange(p.temperatureRange),
       material: optionalString(p.material), fitGender: p.fitGender as WardrobeItem["fitGender"],
       fitNotes: optionalString(p.fitNotes), notes: optionalString(p.notes), price: optionalNumber(p.price),
-      productUrl: optionalString(p.productUrl), cropRevision: optionalNumber(p.cropRevision),
-      thumbnailCropRevision: optionalNumber(p.thumbnailCropRevision), wornDates: stringArray(p.wornDates),
+      productUrl: optionalString(p.productUrl), wornDates: stringArray(p.wornDates),
       purchaseDate: optionalString(p.purchaseDate), referenceOutfitImages: referenceOutfitImages as WardrobeItem["referenceOutfitImages"],
       aiStyleAdvice: p.aiStyleAdvice as WardrobeItem["aiStyleAdvice"], aiConfidence: optionalNumber(p.aiConfidence),
-      needsReview: optionalBoolean(p.needsReview), thumbnailVersion: optionalNumber(p.thumbnailVersion),
-      thumbnailUpdatedAt: optionalString(p.thumbnailUpdatedAt), thumbnailStatus: p.thumbnailStatus as WardrobeItem["thumbnailStatus"],
+      needsReview: optionalBoolean(p.needsReview),
       createdAt: stringValue(p.createdAt, entity.createdAt), updatedAt: stringValue(p.updatedAt, entity.updatedAt),
-    } satisfies WardrobeItem, entity, "garment");
+    } satisfies Omit<WardrobeItem, "serverEntityId" | "serverRevision">, entity, "garment");
   }
 
   async mapOutfit(entity: WorkspaceEntity): Promise<SavedOutfit> {
     const p = entity.payload;
-    const images = await this.resolveImages(entity, {
-      thumbnailDataUrl: { refField: "coverImageDataUrl", variant: "thumbnail" },
+    const outfitRealImages = (Array.isArray(p.outfitRealImages) ? p.outfitRealImages : []).flatMap((value) => {
+      const real = value && typeof value === "object" ? value as Record<string, unknown> : {};
+      const field = typeof real.assetField === "string" ? real.assetField : `outfitRealImage:${String(real.id ?? "")}`;
+      const image = imageReference(entity, field, real.cropBox);
+      return image ? [{ id: stringValue(real.id), image, caption: optionalString(real.caption), createdAt: stringValue(real.createdAt, entity.createdAt), updatedAt: stringValue(real.updatedAt, entity.updatedAt) }] : [];
     });
     return withServerMetadata({
       id: stringValue(p.legacyOutfitId, entity.id), name: stringValue(p.name), itemIds: numberArray(p.legacyItemIds ?? p.itemIds),
-      favorite: optionalBoolean(p.favorite) ?? false, coverImageDataUrl: images.thumbnailDataUrl,
-      previewImageDataUrl: images.thumbnailDataUrl, thumbnailDataUrl: images.thumbnailDataUrl,
-      autoCoverImageDataUrl: undefined, destination: optionalString(p.destination), activity: optionalString(p.activity),
+      favorite: optionalBoolean(p.favorite) ?? false, coverImage: imageReference(entity, "coverImageDataUrl", p.coverCropBox),
+      destination: optionalString(p.destination), activity: optionalString(p.activity),
       style: optionalString(p.style), source: (p.source ?? "manual") as SavedOutfit["source"], seasons: p.seasons as SavedOutfit["seasons"],
       sceneTags: p.sceneTags as string[] | undefined, styleTags: p.styleTags as string[] | undefined,
       pairingTags: p.pairingTags as string[] | undefined, temperatureRange: normalizeTemperatureRange(p.temperatureRange),
-      notes: optionalString(p.notes), wornDates: p.wornDates as string[] | undefined, outfitRealImages: p.outfitRealImages as SavedOutfit["outfitRealImages"],
+      notes: optionalString(p.notes), wornDates: p.wornDates as string[] | undefined, outfitRealImages,
       aiSuggestion: p.aiSuggestion as SavedOutfit["aiSuggestion"], createdAt: stringValue(p.createdAt, entity.createdAt), updatedAt: stringValue(p.updatedAt, entity.updatedAt),
-    } satisfies SavedOutfit, entity, "outfit");
+    } satisfies Omit<SavedOutfit, "serverEntityId" | "serverRevision">, entity, "outfit");
   }
 
   async mapWishlistItem(entity: WorkspaceEntity): Promise<WishlistItem> {
     const p = entity.payload;
-    const images = await this.resolveImages(entity, {
-      thumbnailDataUrl: { refField: "imageDataUrl", variant: "thumbnail" },
-    });
     return withServerMetadata({
-      id: stringValue(p.legacyWishlistId, entity.id), name: stringValue(p.name), imageDataUrl: images.thumbnailDataUrl ?? "",
-      thumbnailDataUrl: images.thumbnailDataUrl, category: (p.category ?? "tops") as WishlistItem["category"],
+      id: stringValue(p.legacyWishlistId, entity.id), name: stringValue(p.name), mainImage: imageReference(entity, "imageDataUrl", p.cropBox),
+      category: (p.category ?? "tops") as WishlistItem["category"],
       subcategory: optionalString(p.subcategory), colors: (p.colors ?? { mode: "single", primary: "#000000" }) as WishlistItem["colors"],
       seasons: (p.seasons ?? []) as WishlistItem["seasons"], styles: (p.styles ?? []) as WishlistItem["styles"],
       formality: optionalNumber(p.formality), warmth: optionalNumber(p.warmth), temperatureRange: normalizeTemperatureRange(p.temperatureRange),
       material: optionalString(p.material), fitGender: p.fitGender as WishlistItem["fitGender"], fitNotes: optionalString(p.fitNotes),
-      notes: optionalString(p.notes), price: optionalNumber(p.price), productUrl: optionalString(p.productUrl), cropBox: p.cropBox as WishlistItem["cropBox"],
-      cropRevision: optionalNumber(p.cropRevision), thumbnailCropRevision: optionalNumber(p.thumbnailCropRevision),
+      notes: optionalString(p.notes), price: optionalNumber(p.price), productUrl: optionalString(p.productUrl),
       status: (p.status ?? "interested") as WishlistItem["status"], convertedItemId: optionalNumber(p.convertedItemId),
       convertedAt: optionalString(p.convertedAt), convertedItemDeletedAt: optionalString(p.convertedItemDeletedAt),
       aiAssessment: p.aiAssessment as WishlistItem["aiAssessment"], createdAt: stringValue(p.createdAt, entity.createdAt), updatedAt: stringValue(p.updatedAt, entity.updatedAt),
-    } satisfies WishlistItem, entity, "wishlistItem");
+    } satisfies Omit<WishlistItem, "serverEntityId" | "serverRevision">, entity, "wishlistItem");
   }
 
   async mapProfile(entity: WorkspaceEntity): Promise<TryOnProfile> {
     const p = entity.payload;
-    const images = await this.resolveImages(entity, {
-      fullBodyImageDataUrl: { refField: "fullBodyImageDataUrl", variant: "original" },
-      faceImageDataUrl: { refField: "faceImageDataUrl", variant: "original" },
-    });
-    return withServerMetadata({ ...p, ...images, id: "default", enabled: optionalBoolean(p.enabled) ?? false, updatedAt: stringValue(p.updatedAt, entity.updatedAt) } as TryOnProfile, entity, "profile");
+    return withServerMetadata({ ...p, fullBodyImage: assetReference(entity, "fullBodyImageDataUrl"), faceImage: assetReference(entity, "faceImageDataUrl"), id: "default", enabled: optionalBoolean(p.enabled) ?? false, updatedAt: stringValue(p.updatedAt, entity.updatedAt) } as TryOnProfile, entity, "profile");
   }
 
   mapLocation(entity: WorkspaceEntity): ClosetLocation { return toClosetLocation(entity); }
   mapTripPlan(entity: WorkspaceEntity): OutfitCalendarPlan { return toCalendarPlan(entity); }
   mapOutfitPlan(entity: WorkspaceEntity): OutfitPlanEntry { return toOutfitPlanEntry(entity); }
 
-  private async resolveImages(
-    entity: WorkspaceEntity,
-    fields: Record<string, { refField: string; variant: OnlineImageVariant }>,
-  ): Promise<Record<string, string | undefined>> {
-    const output: Record<string, string | undefined> = {};
-    await Promise.all(Object.entries(fields).map(async ([outputField, { refField, variant }]) => {
-      const ref = entity.assetRefs?.[refField];
-      if (!ref || !ref.variants.includes(variant)) return;
-      try { output[outputField] = await this.images.load(ref.assetId, variant, expectedHash(ref, variant)); }
-      catch { output[outputField] = undefined; }
-    }));
-    return output;
-  }
 }
 
 function toClosetLocation(entity: WorkspaceEntity): ClosetLocation {
@@ -229,8 +201,14 @@ function packingItems(plans: WorkspaceEntity[]): PlanPackingChecklistItem[] {
   return plans.flatMap((entity) => Array.isArray(entity.payload.packingChecklistItems) ? entity.payload.packingChecklistItems as PlanPackingChecklistItem[] : []);
 }
 
-function expectedHash(ref: WorkspaceAssetReference, variant: OnlineImageVariant): string | undefined {
-  return ref.variantSha256?.[variant] ?? (variant === "original" ? ref.sha256 : undefined);
+function assetReference(entity: WorkspaceEntity, field: string): ImageAssetReference | undefined {
+  const ref = entity.assetRefs?.[field];
+  return ref ? { ...ref } : undefined;
+}
+
+function imageReference(entity: WorkspaceEntity, field: string, cropBox: unknown): CroppedImageReference | undefined {
+  const asset = assetReference(entity, field);
+  return asset ? { asset, ...(cropBox ? { cropBox: cropBox as GarmentCropBox } : {}) } : undefined;
 }
 
 function numericId(value: unknown, fallback: string): number {

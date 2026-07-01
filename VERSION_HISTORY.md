@@ -1,4 +1,14 @@
 
+## 2026-07-01 / v2.1.2-test / Codex — 正式资产类型、在线图片运行时与测试清理工具
+
+- **目的**：完成 v2.1.3 资产模型的客户端一次性切换，并提供只能在测试环境执行的全量用户数据清理工具；本提交仍是进入部署与 Android 验收前的高风险中间检查点。
+- **主要改动**：正式衣物、套装、种草和试穿画像只保存服务器资产引用及显式 `serverEntityId/serverRevision`；本地录入和编辑图片统一进入 `local*` 草稿；Repository 支持主图、灵感图、套装实图和画像照片的创建/替换、缩略图更新、复用和移除，写成功返回服务器读回实体；Data Controller 纳入画像；详情图片进入统一轮播轨道；在线图片按 asset/variant/sha 共享请求和 Object URL，并在最后一个消费者释放后撤销。
+- **测试清理**：新增服务端 `reset:test-data` CLI，强制校验 `WARDROBE_ENV=test`、`ALLOW_TEST_DATA_RESET=true`、`RESET_CONFIRMATION=RESET_WARDROBE_TEST_DATA`；默认 dry-run，`--execute` 才事务清空用户级表，之后逐项删除并复核资产/诊断 Storage；报告只保存失败 key 哈希，Storage 未清零时退出失败。
+- **验证**：`npm run typecheck`、`npm run test:logic:all` 通过；`npm run api:typecheck` 通过；`npm run api:test` 通过（8 个文件、58 项）；首次 `npm run build` 暴露 CLI 环境对象类型边界并已修复，修复后构建将在本提交前重跑。
+- **风险门禁**：**high**（正式领域类型、Repository、图片生命周期、业务状态与服务器清理工具同时变化）。
+- **未触发 subagent**：用户明确要求全部由母 Agent 串行开发。
+- **未验证风险**：尚未连接并清理真实测试 PostgreSQL/Storage，尚未部署新 API，也尚未执行浏览器 E2E、Android 全新安装业务回归和 APK 构建。
+
 ## 2026-07-01 / v2.1.2-test / Codex — 客户端显式 revision 与资产命令接线
 
 - **目的**：让客户端写入层适配新的事务资产命令，并把服务器实体身份、revision 和资产引用直接放入读回对象，消除对象展开后丢失写入上下文的问题。

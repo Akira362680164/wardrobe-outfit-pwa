@@ -1,6 +1,6 @@
 // v1.1.0-dev 穿搭计划: 计划数据计算纯函数
 
-import type { OutfitPlanEntry, OutfitCalendarPlan, OutfitCalendarPlanTone, OutfitCalendarPlanType, OutfitPlanEntryStatus } from "@/lib/types";
+import type { OutfitPlanEntry, OutfitPlanEntryDraft, OutfitCalendarPlan, OutfitCalendarPlanDraft, OutfitCalendarPlanTone, OutfitCalendarPlanType, OutfitPlanEntryStatus } from "@/lib/types";
 import { sortWornEntriesForDay, sortPlanEntriesForDay, resolvePrimaryDisplayEntryForDate, getEntriesForDate, getActualWornEntriesForDate, getPlannedEntriesForDate, getChangedEntriesForDate, getPrimaryPlannedEntryForDate, getOutfitPlanDateRelation, getDefaultEntryModeForDate, canConfirmOutfitWornForDate, shouldSyncWardrobeWearStats } from "@/lib/outfit-wear-sync";
 
 export { sortWornEntriesForDay, sortPlanEntriesForDay, resolvePrimaryDisplayEntryForDate, getEntriesForDate, getActualWornEntriesForDate, getPlannedEntriesForDate, getChangedEntriesForDate, getPrimaryPlannedEntryForDate, getOutfitPlanDateRelation, getDefaultEntryModeForDate, canConfirmOutfitWornForDate, shouldSyncWardrobeWearStats };
@@ -50,7 +50,7 @@ export function createOutfitPlanEntry(input: {
   weatherNote?: string;
   notes?: string;
   now?: string;
-}): OutfitPlanEntry {
+}): OutfitPlanEntryDraft {
   const now = input.now ?? new Date().toISOString();
   return {
     id: `plan-entry-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
@@ -80,7 +80,7 @@ export function createOutfitCalendarPlan(input: {
   notes?: string;
   packingEnabled?: boolean;
   now?: string;
-}): OutfitCalendarPlan {
+}): OutfitCalendarPlanDraft {
   const now = input.now ?? new Date().toISOString();
   const defaultTitles: Record<OutfitCalendarPlanType, string> = { travel: "未命名旅行", business: "未命名出差", custom: "未命名计划" };
   const defaultTones: Record<OutfitCalendarPlanType, OutfitCalendarPlanTone> = { travel: "clay", business: "moss", custom: "denim" };
@@ -130,15 +130,15 @@ export function normalizeOutfitPlanEntriesForDisplay(entries: OutfitPlanEntry[])
 }
 
 export function upsertOutfitPlanEntryForDate(
-  entries: OutfitPlanEntry[],
+  entries: OutfitPlanEntryDraft[],
   input: { date: string; outfitId?: string; calendarPlanId?: string; title?: string; scene?: string; weatherNote?: string; notes?: string; now?: string },
-): { entries: OutfitPlanEntry[]; updated: OutfitPlanEntry } {
+): { entries: OutfitPlanEntryDraft[]; updated: OutfitPlanEntryDraft } {
   const now = input.now ?? new Date().toISOString();
-  const existing = getPrimaryOutfitPlanEntryForDate(entries, input.date);
+  const existing = entries.find((entry) => entry.date === input.date);
   const cleaned = entries.filter((e) => e !== existing);
 
   if (existing) {
-    const updated: OutfitPlanEntry = {
+    const updated = {
       ...existing,
       outfitId: input.outfitId ?? existing.outfitId,
       calendarPlanId: input.calendarPlanId !== undefined ? input.calendarPlanId : existing.calendarPlanId,
@@ -146,7 +146,7 @@ export function upsertOutfitPlanEntryForDate(
       scene: input.scene ?? existing.scene,
       weatherNote: input.weatherNote ?? existing.weatherNote,
       notes: input.notes ?? existing.notes,
-      status: "planned",
+      status: "planned" as const,
       updatedAt: now,
     };
     cleaned.push(updated);

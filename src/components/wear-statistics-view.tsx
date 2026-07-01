@@ -236,7 +236,7 @@ function ItemThumb({ item }: { item: WardrobeItem }) {
   return (
     <div className="h-14 w-12 shrink-0 overflow-hidden rounded-lg bg-mist">
       <GarmentImage
-        src={item.thumbnailDataUrl || undefined}
+        asset={item.mainImage?.asset}
         alt={item.name}
         fallbackSize={22}
       />

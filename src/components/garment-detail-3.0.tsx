@@ -64,7 +64,7 @@ export interface GarmentDetail30Props {
   onGenerateAdvice: () => void;
   onGoSettings: () => void;
   onViewOutfit: (outfitId: string) => void;
-  onExpandImage: (image: { src: string; alt: string; thumbnailSrc?: string; cropBox?: WardrobeItem["cropBox"]; displayMode?: "original-cropped" }) => void;
+  onExpandImage: (image: { src: string; alt: string; thumbnailSrc?: string; cropBox?: import("@/lib/types").GarmentCropBox; displayMode?: "original-cropped" }) => void;
   initialTab?: "info" | "inspiration" | "pairing";
 }
 
@@ -112,34 +112,28 @@ export function GarmentDetail30({
   const refs = useMemo(() => (Array.isArray(item.referenceOutfitImages) ? item.referenceOutfitImages : []), [item.referenceOutfitImages]);
 
   const slides: SwipeImageSlide[] = useMemo(() => {
-    const mainOriginal = item.imageDataUrl;
     const main: SwipeImageSlide = {
       kind: "image",
       id: "main",
-      imageDataUrl: item.thumbnailDataUrl || "",
-      thumbnailSrc: item.thumbnailDataUrl,
-      displaySrc: mainOriginal,
-      sourceSrc: mainOriginal,
+      imageDataUrl: "",
       alt: item.name,
       badge: "主图",
       badgeClassName: "bg-denim",
       displayMode: "original-cropped",
-      originalSrc: mainOriginal,
-      cropBox: item.cropBox,
+      cropBox: item.mainImage?.cropBox,
+      asset: item.mainImage?.asset,
     };
     const extras: SwipeImageSlide[] = refs.map((r, i) => ({
       kind: "image" as const,
       id: r.id,
-      imageDataUrl: r.imageDataUrl,
-      thumbnailSrc: r.thumbnailDataUrl || r.imageDataUrl,
-      displaySrc: r.imageDataUrl,
-      sourceSrc: r.sourceImageDataUrl || r.imageDataUrl,
+      imageDataUrl: "",
       alt: r.caption || `灵感图 ${i + 1}`,
       badge: "灵感",
       badgeClassName: "bg-clay",
+      asset: r.image.asset,
     }));
     return [main, ...extras];
-  }, [item.imageDataUrl, item.thumbnailDataUrl, item.cropBox, item.cropRevision, item.thumbnailCropRevision, item.name, refs]);
+  }, [item.mainImage?.cropBox, item.name, refs]);
 
   const safeIndex = clampCarouselIndex(currentImageIndex, slides.length);
   useEffect(() => {
@@ -156,18 +150,17 @@ export function GarmentDetail30({
     displayMode: slide.displayMode,
     originalSrc: slide.originalSrc,
     cropBox: slide.cropBox,
-    renderContent: slide.id === "main"
-      ? <OnlineAssetImage entity={item} field="imageDataUrl" variant="original" alt={item.name} className="h-full w-full" onOpen={(url) => onExpandImage({ src: url, alt: item.name })} fallback={<div className="grid h-full place-items-center text-ink/25"><Shirt size={48} /></div>} />
-      : (() => {
-          const reference = refs.find((entry) => entry.id === slide.id);
-          return reference ? <OnlineAssetImage entity={reference} field="imageDataUrl" variant="original" alt={slide.alt || item.name} className="h-full w-full" onOpen={(url) => onExpandImage({ src: url, alt: slide.alt || item.name })} /> : undefined;
-        })(),
+    asset: slide.asset,
+    fallbackContent: slide.id === "main" ? <div className="grid h-full place-items-center text-ink/25"><Shirt size={48} /></div> : undefined,
+    onAssetOpen: (url: string) => onExpandImage({ src: url, alt: slide.alt || item.name, cropBox: slide.cropBox, ...(slide.displayMode === "original-cropped" ? { displayMode: "original-cropped" as const } : {}) }),
   }));
   const filmstripItems = detailSlides.map((slide) => ({
     id: slide.id,
     label: slide.label,
     imageDataUrl: slide.imageDataUrl,
     thumbnailDataUrl: slide.thumbnailDataUrl,
+    asset: slide.asset,
+    fallbackContent: slide.fallbackContent,
   }));
 
   // ── 信息 Tab 派生 ──
@@ -452,12 +445,7 @@ function InspirationTab({
               onClick={() => onView(ref)}
               className="block w-full aspect-[3/4] overflow-hidden rounded-xl bg-mist"
             >
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src={ref.thumbnailDataUrl || ref.imageDataUrl}
-                alt={ref.caption || "灵感图"}
-                className="h-full w-full object-cover"
-              />
+              <OnlineAssetImage asset={ref.image.asset} variant="thumbnail" alt={ref.caption || "灵感图"} className="h-full w-full" imageClassName="object-cover" />
             </button>
             {ref.caption && (
               <p className="text-[10px] text-ink/50 mt-1 truncate px-0.5">{ref.caption}</p>
@@ -529,13 +517,7 @@ function PairingTab({
             {pairingItems.map((r) => (
               <div key={r.item.id} className="flex items-center gap-3 rounded-xl bg-milk-darker/30 px-3 py-2.5">
                 <div className="h-14 w-14 shrink-0 overflow-hidden rounded-lg bg-milk-darker/40">
-                  {r.item.thumbnailDataUrl ? (
-                    <img src={r.item.thumbnailDataUrl} alt={r.item.name} className="h-full w-full object-contain" />
-                  ) : (
-                    <div className="grid h-full place-items-center text-ink/25">
-                      <Shirt size={16} />
-                    </div>
-                  )}
+                  <OnlineAssetImage asset={r.item.mainImage?.asset} variant="thumbnail" alt={r.item.name} className="h-full w-full" fallback={<div className="grid h-full place-items-center text-ink/25"><Shirt size={16} /></div>} />
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-medium truncate flex items-center gap-1.5">

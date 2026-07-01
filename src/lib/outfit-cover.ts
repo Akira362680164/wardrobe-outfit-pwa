@@ -1,4 +1,4 @@
-import type { SavedOutfit, WardrobeItem } from "@/lib/types";
+import type { ImageAssetReference, SavedOutfit, WardrobeItem } from "@/lib/types";
 
 export type OutfitCoverMode =
   | "preview"
@@ -10,7 +10,7 @@ export type OutfitCoverMode =
 
 export interface OutfitCoverResult {
   mode: OutfitCoverMode;
-  imageDataUrl?: string;
+  asset?: ImageAssetReference;
   itemIds: number[];
 }
 
@@ -23,31 +23,25 @@ export function getOutfitCover(outfit: SavedOutfit, items: WardrobeItem[]): Outf
   const itemIds = outfit.itemIds ?? [];
   const validItems = getValidOutfitItems(outfit, items);
 
+  if (outfit.coverImage) return { mode: "preview", asset: outfit.coverImage.asset, itemIds };
+
   if (validItems.length > 0) {
-    return { mode: "auto_collage", itemIds, imageDataUrl: "" };
+    return { mode: "auto_collage", itemIds };
   }
 
   if (itemIds.length > 0) {
     return { mode: "empty", itemIds };
   }
 
-  if (outfit.previewImageDataUrl) {
-    return { mode: "preview", imageDataUrl: outfit.previewImageDataUrl, itemIds };
-  }
-
   const realImages = outfit.outfitRealImages ?? [];
-  if (realImages.length > 0 && realImages[0]!.imageDataUrl) {
-    return { mode: "real_photo", imageDataUrl: realImages[0]!.imageDataUrl, itemIds };
-  }
-
-  if (outfit.sourceImageDataUrl) {
-    return { mode: "source_photo", imageDataUrl: outfit.sourceImageDataUrl, itemIds };
+  if (realImages.length > 0) {
+    return { mode: "real_photo", asset: realImages[0]!.image.asset, itemIds };
   }
   return { mode: "empty", itemIds };
 }
 
 export function getValidOutfitItems(outfit: { itemIds?: number[] }, items: WardrobeItem[]): WardrobeItem[] {
-  return getExistingOutfitItems(outfit, items).filter((item) => !!item.imageDataUrl);
+  return getExistingOutfitItems(outfit, items).filter((item) => !!item.mainImage);
 }
 
 export function getExistingOutfitItems(outfit: { itemIds?: number[] }, items: WardrobeItem[]): WardrobeItem[] {
@@ -69,22 +63,13 @@ export function buildOutfitCoverRefreshPatch(itemIds: number[], items: WardrobeI
 }
 
 export function clearOutfitCoverCachePatch(): Partial<SavedOutfit> {
-  return {
-    coverImageDataUrl: undefined,
-    previewImageDataUrl: undefined,
-    autoCoverImageDataUrl: undefined,
-    thumbnailDataUrl: undefined,
-    thumbnailVersion: undefined,
-    thumbnailUpdatedAt: undefined,
-    thumbnailStatus: undefined,
-  };
+  return {};
 }
 
-/** Get up to 4 item image URLs from the outfit's items for collage rendering */
-export function getCollageImageUrls(outfit: SavedOutfit, items: WardrobeItem[]): string[] {
+export function getCollageImageAssets(outfit: SavedOutfit, items: WardrobeItem[]): ImageAssetReference[] {
   return getValidOutfitItems(outfit, items)
     .slice(0, 4)
-    .map((item) => item.imageDataUrl);
+    .flatMap((item) => item.mainImage ? [item.mainImage.asset] : []);
 }
 
 /** Count how many items in the outfit still exist in the wardrobe */

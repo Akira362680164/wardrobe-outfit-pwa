@@ -189,7 +189,7 @@ function isReplacementCandidate(original: WardrobeItem, candidate: WardrobeItem,
   if (candidate.id === original.id) return false;
   if (outfitIds.has(candidate.id)) return false;
   if (candidate.status === "archived") return false;
-  if (!candidate.imageDataUrl && !candidate.thumbnailDataUrl) return false;
+  if (!candidate.mainImage) return false;
   return true;
 }
 

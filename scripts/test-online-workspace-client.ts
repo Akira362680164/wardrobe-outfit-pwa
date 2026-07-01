@@ -36,14 +36,19 @@ async function main() {
     revokeObjectUrl: (url) => revoked.push(url),
   });
   try {
-    const first = await images.load("11111111-1111-4111-8111-111111111111", "original", "a".repeat(64));
-    const cached = await images.load("11111111-1111-4111-8111-111111111111", "original", "a".repeat(64));
+    const assetId = "11111111-1111-4111-8111-111111111111";
+    const sha = "a".repeat(64);
+    const first = await images.acquire(assetId, "original", sha);
+    const cached = await images.acquire(assetId, "original", sha);
     assert.equal(first, cached);
     assert.equal(fetchCount, 1, "a session image should only download once");
-    const retried = await images.retry("11111111-1111-4111-8111-111111111111", "original", "a".repeat(64));
+    images.release(assetId, "original", sha);
+    assert.deepEqual(revoked, [], "one consumer cannot revoke a shared object URL");
+    images.release(assetId, "original", sha);
+    assert.deepEqual(revoked, [first], "the last consumer releases the shared object URL");
+    const retried = await images.acquire(assetId, "original", sha);
     assert.notEqual(retried, first);
-    assert.equal(fetchCount, 2, "single-image retry should only re-download that image");
-    assert.deepEqual(revoked, [first]);
+    assert.equal(fetchCount, 2, "a later subscription downloads the released image again");
     images.clear();
     assert.deepEqual(revoked, [first, retried], "logout/unmount cleanup should revoke all object URLs");
   } finally {
@@ -76,10 +81,10 @@ async function main() {
   try {
     const garment = await repository.mapGarment(entity);
     assert.equal(garment.id, 7);
-    assert.equal(garment.serverId, entity.id);
+    assert.equal(garment.serverEntityId, entity.id);
     assert.equal(garment.serverRevision, 4);
-    assert.equal(garment.assetRefs?.imageDataUrl?.assetId, entity.assetRefs.imageDataUrl.assetId);
-    assert.deepEqual(requestedVariants, ["thumbnail"], "overview mapping must not download garment originals");
+    assert.equal(garment.mainImage?.asset.assetId, entity.assetRefs.imageDataUrl.assetId);
+    assert.deepEqual(requestedVariants, [], "overview mapping must not download any garment image bytes");
   } finally {
     repository.dispose();
     globalThis.fetch = originalFetch;

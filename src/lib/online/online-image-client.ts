@@ -15,6 +15,7 @@ interface OnlineImageClientOptions {
 export class OnlineImageClient {
   private readonly urls = new Map<string, string>();
   private readonly pending = new Map<string, Promise<string>>();
+  private readonly references = new Map<string, number>();
   private readonly createObjectUrl: (blob: Blob) => string;
   private readonly revokeObjectUrl: (url: string) => void;
 
@@ -23,8 +24,14 @@ export class OnlineImageClient {
     this.revokeObjectUrl = options.revokeObjectUrl ?? ((url) => URL.revokeObjectURL(url));
   }
 
+  async acquire(assetId: string, variant: OnlineImageVariant, expectedSha256?: string): Promise<string> {
+    const key = imageKey(assetId, variant, expectedSha256);
+    this.references.set(key, (this.references.get(key) ?? 0) + 1);
+    return this.load(assetId, variant, expectedSha256);
+  }
+
   async load(assetId: string, variant: OnlineImageVariant, expectedSha256?: string): Promise<string> {
-    const key = imageKey(assetId, variant);
+    const key = imageKey(assetId, variant, expectedSha256);
     const cached = this.urls.get(key);
     if (cached) return cached;
     const inFlight = this.pending.get(key);
@@ -35,22 +42,32 @@ export class OnlineImageClient {
   }
 
   async retry(assetId: string, variant: OnlineImageVariant, expectedSha256?: string): Promise<string> {
-    this.release(assetId, variant);
+    const key = imageKey(assetId, variant, expectedSha256);
+    const url = this.urls.get(key);
+    if (url && (this.references.get(key) ?? 0) <= 1) this.revokeObjectUrl(url);
+    this.urls.delete(key);
+    this.pending.delete(key);
     return this.load(assetId, variant, expectedSha256);
   }
 
-  release(assetId: string, variant: OnlineImageVariant): void {
-    const key = imageKey(assetId, variant);
+  release(assetId: string, variant: OnlineImageVariant, expectedSha256?: string): void {
+    const key = imageKey(assetId, variant, expectedSha256);
+    const remaining = Math.max(0, (this.references.get(key) ?? 0) - 1);
+    if (remaining > 0) {
+      this.references.set(key, remaining);
+      return;
+    }
+    this.references.delete(key);
     const url = this.urls.get(key);
     if (url) this.revokeObjectUrl(url);
     this.urls.delete(key);
-    this.pending.delete(key);
   }
 
   clear(): void {
     for (const url of this.urls.values()) this.revokeObjectUrl(url);
     this.urls.clear();
     this.pending.clear();
+    this.references.clear();
   }
 
   private async download(assetId: string, variant: OnlineImageVariant, expectedSha256?: string): Promise<string> {
@@ -66,13 +83,18 @@ export class OnlineImageClient {
       throw new OnlineRequestError(502, "image_upload", "图片校验失败，请重试", true, response.requestId);
     }
     const url = this.createObjectUrl(response.data);
-    this.urls.set(imageKey(assetId, variant), url);
+    const key = imageKey(assetId, variant, expectedSha256);
+    if ((this.references.get(key) ?? 0) === 0) {
+      this.revokeObjectUrl(url);
+      return url;
+    }
+    this.urls.set(key, url);
     return url;
   }
 }
 
-function imageKey(assetId: string, variant: OnlineImageVariant): string {
-  return `${assetId}:${variant}`;
+function imageKey(assetId: string, variant: OnlineImageVariant, expectedSha256?: string): string {
+  return `${assetId}:${variant}:${expectedSha256 ?? ""}`;
 }
 
 function header(headers: Record<string, string>, name: string): string | undefined {

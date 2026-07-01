@@ -3,6 +3,7 @@
 import { Layers, PackageCheck, Search, Tag } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { IntakeFlowShell, type IntakeFlowStep } from "@/components/intake-flow-shell";
+import { GarmentImage } from "@/components/garment-image";
 import {
  DraftQualitySummary,
  EmptyStateBox,
@@ -431,7 +432,7 @@ function OutfitSelectStep({
  className={`min-w-0 overflow-hidden rounded-lg border text-left ${selected ? "border-denim bg-denim/6" : "border-ink/8 bg-[#fbfbf8]"}`}
  >
  <div className="aspect-[3/4] bg-mist">
- {item.thumbnailDataUrl ? <img src={item.thumbnailDataUrl} alt={item.name} className="h-full w-full object-contain" loading="lazy" decoding="async" /> : <div className="grid h-full place-items-center text-[10px] text-ink/35">暂无图片</div>}
+ <GarmentImage asset={item.mainImage?.asset} alt={item.name} className="h-full w-full" />
  </div>
  <div className="p-1.5">
  <p className="truncate text-[11px] font-semibold">{item.name}</p>

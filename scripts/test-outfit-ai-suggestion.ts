@@ -10,16 +10,21 @@ import {
   parseOutfitAiSuggestionJson,
 } from "../src/lib/outfit-ai-prompt";
 import { buildColorInfo } from "../src/lib/color-fields";
-import type { SavedOutfit, WardrobeItem } from "../src/lib/types";
+import type { ImageAssetReference, SavedOutfit, WardrobeItem } from "../src/lib/types";
 
 const now = "2026-06-11T08:00:00.000Z";
+const imageAsset = (assetId: string): ImageAssetReference => ({
+  assetId,
+  variants: ["original", "thumbnail"],
+  sha256: `sha-${assetId}`,
+  mimeType: "image/jpeg",
+});
 
 function item(id: number, name: string, category: WardrobeItem["category"], color: string): WardrobeItem {
   return {
     id,
     name,
-    imageDataUrl: `data:image/png;base64,${id}`,
-    thumbnailDataUrl: `data:image/png;base64,t${id}`,
+    mainImage: { asset: imageAsset(`item-${id}`) },
     category,
     colors: buildColorInfo("single", [color]),
     seasons: ["spring", "autumn"],

@@ -2,7 +2,7 @@
 
 import { ChevronLeft } from "lucide-react";
 import { useCallback, useMemo, useState } from "react";
-import type { OutfitCalendarPlan, OutfitCalendarPlanTone, OutfitCalendarPlanType } from "@/lib/types";
+import type { OutfitCalendarPlan, OutfitCalendarPlanDraft, OutfitCalendarPlanTone, OutfitCalendarPlanType } from "@/lib/types";
 import { createOutfitCalendarPlan, PLAN_TONE_BG_MAP, PLAN_TONE_LABEL_MAP } from "@/lib/outfit-planning";
 import { getLocalDateKey } from "@/lib/wear-records";
 import { daysBetween } from "@/lib/outfit-calendar";
@@ -14,7 +14,7 @@ interface OutfitPlanAddViewProps {
   type: OutfitCalendarPlanType;
   initialPlan?: OutfitCalendarPlan | null;
   onBack: () => void;
-  onSave: (plan: OutfitCalendarPlan) => Promise<void>;
+  onSave: (plan: OutfitCalendarPlan | OutfitCalendarPlanDraft) => Promise<void>;
   onMessage: (msg: string, type?: "success" | "error" | "info") => void;
 }
 

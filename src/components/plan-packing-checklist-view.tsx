@@ -6,6 +6,7 @@ import type { OutfitCalendarPlan, OutfitPlanEntry, PlanPackingChecklistItem, Sav
 import { buildPackingItemsFromPlan, groupPackingItemsByCategory, formatPackingDateUsage } from "@/lib/plan-packing";
 import { AppSubPageTopBar } from "@/components/app-sub-page-top-bar";
 import { MotionSheet } from "@/components/motion-common";
+import { GarmentImage } from "@/components/garment-image";
 
 interface PlanPackingChecklistViewProps {
   calendarPlan: OutfitCalendarPlan;
@@ -132,8 +133,8 @@ export function PlanPackingChecklistView({
                   {/* Thumbnail if wardrobe item */}
                   {ci.source === "wardrobe" && ci.itemId != null && (() => {
                     const item = items.find((i) => i.id === ci.itemId);
-                    if (item?.imageDataUrl) {
-                      return <img src={item.imageDataUrl} alt="" className="h-7 w-7 rounded object-cover shrink-0" />;
+                    if (item?.mainImage) {
+                      return <GarmentImage asset={item.mainImage.asset} alt={item.name} className="h-7 w-7 rounded shrink-0" imageClassName="object-cover" />;
                     }
                     return <div className="h-7 w-7 rounded bg-mist shrink-0 grid place-items-center text-ink/20 text-[10px]">-</div>;
                   })()}

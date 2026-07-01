@@ -114,12 +114,10 @@ function SimilarMatchesPanel({
           <div key={match.item.id} className={`w-28 shrink-0 rounded-lg border bg-white p-2 ${selectedExistingId === match.item.id ? "border-denim" : "border-ink/10"}`}>
             <button
               type="button"
-              onClick={() => onExpandImage({ src: match.item.imageDataUrl ?? "", alt: match.item.name })}
+              onClick={() => undefined}
               className="aspect-square w-full overflow-hidden rounded-md bg-mist"
             >
-              {match.item.imageDataUrl ? (
-                <GarmentImage src={match.item.thumbnailDataUrl} alt={match.item.name} imageClassName="object-contain" />
-              ) : null}
+              <GarmentImage asset={match.item.mainImage?.asset} alt={match.item.name} imageClassName="object-contain" />
             </button>
             <p className="mt-1 truncate text-xs font-semibold">{match.item.name}</p>
             <p className="text-[11px] text-clay">{match.similarity}% 相似</p>

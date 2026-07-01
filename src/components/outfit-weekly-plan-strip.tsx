@@ -9,6 +9,7 @@ import { getCalendarPlansForDate, PLAN_TONE_BG_MAP, resolvePrimaryDisplayEntryFo
 import { getOutfitCover } from "@/lib/outfit-cover";
 import { OutfitPlanDayCard } from "@/components/outfit-plan-day-card";
 import { ease } from "@/lib/motion-tokens";
+import { OnlineAssetImage } from "@/components/online/online-asset-image";
 
 interface OutfitWeeklyPlanStripProps {
   anchorDate: string;
@@ -164,15 +165,13 @@ export function OutfitWeeklyPlanStrip({
                     </span>
                     <div className="h-7 flex items-center justify-center mt-0.5">
                       {(() => {
-                        const thumb = cover?.imageDataUrl
-                          || (outfit ? items.find((i) => i.id != null && outfit.itemIds.includes(i.id!))?.thumbnailDataUrl
-                                     || items.find((i) => i.id != null && outfit.itemIds.includes(i.id!))?.imageDataUrl
-                                     : null);
+                        const thumb = cover?.asset
+                          || (outfit ? items.find((i) => i.id != null && outfit.itemIds.includes(i.id!))?.mainImage?.asset : undefined);
                         if (thumb) {
                           if (extraCount > 0) {
-                            return <div className="relative"><img src={thumb} alt="" className="h-6 w-6 rounded object-cover" /><span className="absolute -top-1 -right-1 bg-denim text-white text-[9px] rounded-full w-3.5 h-3.5 flex items-center justify-center">+{extraCount}</span></div>;
+                            return <div className="relative"><OnlineAssetImage asset={thumb} variant="thumbnail" alt="" className="h-6 w-6 rounded overflow-hidden" imageClassName="object-cover" /><span className="absolute -top-1 -right-1 bg-denim text-white text-[9px] rounded-full w-3.5 h-3.5 flex items-center justify-center">+{extraCount}</span></div>;
                           }
-                          return <img src={thumb} alt="" className="h-6 w-6 rounded object-cover" />;
+                          return <OnlineAssetImage asset={thumb} variant="thumbnail" alt="" className="h-6 w-6 rounded overflow-hidden" imageClassName="object-cover" />;
                         }
                         if (entry) {
                           const label = entry.status === "worn" ? "已穿" : entry.status === "changed" ? "变更" : "计划";

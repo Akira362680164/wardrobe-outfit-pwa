@@ -3,13 +3,20 @@
 import type {
   GarmentStatus,
   ClosetLocation,
+  ClosetLocationDraft,
   OutfitCalendarPlan,
+  OutfitCalendarPlanDraft,
   OutfitPlanEntry,
+  OutfitPlanEntryDraft,
   PlanPackingChecklistItem,
   SavedOutfit,
   TryOnProfile,
   WardrobeItem,
+  WardrobeItemDraft,
   WishlistItem,
+  WishlistItemDraft,
+  SavedOutfitDraft,
+  TryOnProfileDraft,
 } from "@/lib/types";
 import type { WorkspaceAssetMutation } from "@wardrobe/cloud-contracts";
 import type { WardrobeCascadeDeleteResult, WardrobeCascadeDeleteSource } from "@/lib/wardrobe-cascade-delete";
@@ -35,7 +42,7 @@ export interface RepoMutationContext extends Partial<OnlineMutationOptions> {
 }
 
 export interface RepoBatchCreateGarmentInput {
-  item: Omit<WardrobeItem, "id"> & { id?: number };
+  item: Omit<WardrobeItemDraft, "id"> & { id?: number };
   clientMutationId: string;
 }
 
@@ -60,8 +67,8 @@ function mutationId(value?: string): string {
 }
 
 function mutationContext(value: object | undefined, context: RepoMutationContext = {}): Required<OnlineMutationOptions> & { entityId: string } | null {
-  const metadata = value as { serverId?: string; serverRevision?: number } | undefined;
-  const entityId = context.entityId ?? metadata?.serverId;
+  const metadata = value as { serverEntityId?: string; serverRevision?: number } | undefined;
+  const entityId = context.entityId ?? metadata?.serverEntityId;
   const expectedRevision = context.expectedRevision ?? metadata?.serverRevision;
   if (!entityId || !expectedRevision) return null;
   return { entityId, expectedRevision, clientMutationId: mutationId(context.clientMutationId) };
@@ -78,19 +85,35 @@ function assetInputs(
   });
 }
 
-function withoutImages<T extends object>(value: T): Record<string, unknown> {
-  return Object.fromEntries(Object.entries(value).filter(([key]) => !/imageDataUrl$/i.test(key) && key !== "sourceImageDataUrl").map(([key, entry]) => [
+export function withoutImages<T extends object>(value: T, cropField?: "cropBox" | "coverCropBox"): Record<string, unknown> {
+  const imageFields = new Set(["mainImage", "coverImage", "fullBodyImage", "faceImage"]);
+  const payload = Object.fromEntries(Object.entries(value).filter(([key]) => !key.startsWith("local") && key !== "serverEntityId" && key !== "serverRevision" && !imageFields.has(key)).map(([key, entry]) => [
     key,
     key === "referenceOutfitImages" && Array.isArray(entry)
       ? entry.map((reference) => {
           const record = reference as Record<string, unknown>;
-          return { ...record, imageDataUrl: undefined, sourceImageDataUrl: undefined, thumbnailDataUrl: undefined, assetField: referenceAssetField(String(record.id ?? "")) };
+          const image = record.image as Record<string, unknown> | undefined;
+          return Object.fromEntries([...Object.entries(record).filter(([key]) => !key.startsWith("local") && key !== "image"), ["assetField", referenceAssetField(String(record.id ?? ""))], ...((record.localCropBox ?? image?.cropBox) ? [["cropBox", record.localCropBox ?? image?.cropBox]] : [])]);
         })
-      : entry,
+      : key === "outfitRealImages" && Array.isArray(entry)
+        ? entry.map((image) => {
+            const record = image as Record<string, unknown>;
+            const formal = record.image as Record<string, unknown> | undefined;
+            return Object.fromEntries([...Object.entries(record).filter(([key]) => !key.startsWith("local") && key !== "image"), ["assetField", outfitRealAssetField(String(record.id ?? ""))], ...((record.localCropBox ?? formal?.cropBox) ? [["cropBox", record.localCropBox ?? formal?.cropBox]] : [])]);
+          })
+        : entry,
   ]));
+  if (cropField) {
+    const record = value as Record<string, unknown>;
+    const formal = record[cropField === "coverCropBox" ? "coverImage" : "mainImage"] as Record<string, unknown> | undefined;
+    const cropBox = record.localCropBox ?? formal?.cropBox;
+    if (cropBox) payload[cropField] = cropBox;
+  }
+  return payload;
 }
 
 function referenceAssetField(id: string): string { return `referenceOutfitImage:${id}`; }
+function outfitRealAssetField(id: string): string { return `outfitRealImage:${id}`; }
 function referenceAssetInputs(value: object): OnlineAssetInput[] {
   const references = (value as { referenceOutfitImages?: unknown }).referenceOutfitImages;
   if (!Array.isArray(references)) return [];
@@ -98,8 +121,21 @@ function referenceAssetInputs(value: object): OnlineAssetInput[] {
     const record = reference as Record<string, unknown>;
     const fieldName = referenceAssetField(String(record.id ?? ""));
     return [
-      ...(typeof record.imageDataUrl === "string" && record.imageDataUrl.startsWith("data:image/") ? [{ fieldName, variant: "original" as const, image: record.imageDataUrl }] : []),
-      ...(typeof record.thumbnailDataUrl === "string" && record.thumbnailDataUrl.startsWith("data:image/") ? [{ fieldName, variant: "thumbnail" as const, image: record.thumbnailDataUrl }] : []),
+      ...(typeof record.localOriginalDataUrl === "string" && record.localOriginalDataUrl.startsWith("data:image/") ? [{ fieldName, variant: "original" as const, image: record.localOriginalDataUrl }] : []),
+      ...(typeof record.localThumbnailDataUrl === "string" && record.localThumbnailDataUrl.startsWith("data:image/") ? [{ fieldName, variant: "thumbnail" as const, image: record.localThumbnailDataUrl }] : []),
+    ];
+  });
+}
+
+function outfitRealAssetInputs(value: object): OnlineAssetInput[] {
+  const images = (value as { outfitRealImages?: unknown }).outfitRealImages;
+  if (!Array.isArray(images)) return [];
+  return images.flatMap((image) => {
+    const record = image as Record<string, unknown>;
+    const fieldName = outfitRealAssetField(String(record.id ?? ""));
+    return [
+      ...(typeof record.localOriginalDataUrl === "string" && record.localOriginalDataUrl.startsWith("data:image/") ? [{ fieldName, variant: "original" as const, image: record.localOriginalDataUrl }] : []),
+      ...(typeof record.localThumbnailDataUrl === "string" && record.localThumbnailDataUrl.startsWith("data:image/") ? [{ fieldName, variant: "thumbnail" as const, image: record.localThumbnailDataUrl }] : []),
     ];
   });
 }
@@ -113,6 +149,93 @@ async function uploadAssets(
   return (await onlineWriteRepository.uploadAssetInputs({ clientMutationId, entityType, assets: inputs })).assetMutations;
 }
 
+export type MainAssetMapping = {
+  formalField: string;
+  assetField: string;
+  originalField: string;
+  thumbnailField?: string;
+};
+
+function imageAssetId(value: object | undefined, field: string): string | undefined {
+  const image = value && (value as Record<string, unknown>)[field];
+  if (!image || typeof image !== "object") return undefined;
+  const record = image as Record<string, unknown>;
+  const asset = record.asset && typeof record.asset === "object" ? record.asset as Record<string, unknown> : record;
+  return typeof asset.assetId === "string" ? asset.assetId : undefined;
+}
+
+async function mainAssetMutations(input: {
+  entityType: "garment" | "outfit" | "wishlistItem" | "profile";
+  clientMutationId: string;
+  current?: object;
+  patch: object;
+  mappings: MainAssetMapping[];
+  extraInputs?: OnlineAssetInput[];
+  listMappings?: Array<{ collectionField: string; fieldName: (id: string) => string }>;
+}): Promise<WorkspaceAssetMutation[]> {
+  const inputs = [...assetInputs(input.patch, input.mappings.flatMap((mapping) => [
+    [mapping.originalField, mapping.assetField, "original" as const],
+    ...(mapping.thumbnailField ? [[mapping.thumbnailField, mapping.assetField, "thumbnail" as const] as [string, string, "thumbnail"]] : []),
+  ])), ...(input.extraInputs ?? [])];
+  for (const mapping of input.mappings) {
+    const hasOriginal = inputs.some((asset) => asset.fieldName === mapping.assetField && asset.variant === "original");
+    const hasThumbnail = inputs.some((asset) => asset.fieldName === mapping.assetField && asset.variant === "thumbnail");
+    if (hasThumbnail && !hasOriginal && !imageAssetId(input.current, mapping.formalField)) {
+      throw new Error("首次保存图片必须同时包含原图");
+    }
+  }
+  const uploaded = await uploadAssets(input.entityType, input.clientMutationId, inputs);
+  return resolveAssetMutations({ ...input, inputs, uploaded });
+}
+
+export function resolveAssetMutations(input: {
+  current?: object;
+  patch: object;
+  mappings: MainAssetMapping[];
+  listMappings?: Array<{ collectionField: string; fieldName: (id: string) => string }>;
+  inputs: OnlineAssetInput[];
+  uploaded: WorkspaceAssetMutation[];
+}): WorkspaceAssetMutation[] {
+  const patch = input.patch as Record<string, unknown>;
+  const mutations: WorkspaceAssetMutation[] = [];
+  for (const mapping of input.mappings) {
+    const raw = input.uploaded.find((mutation) => mutation.fieldName === mapping.assetField);
+    const hasOriginal = input.inputs.some((asset) => asset.fieldName === mapping.assetField && asset.variant === "original");
+    const hasThumbnail = input.inputs.some((asset) => asset.fieldName === mapping.assetField && asset.variant === "thumbnail");
+    const currentAssetId = imageAssetId(input.current, mapping.formalField);
+    if (raw && hasOriginal) mutations.push(raw);
+    else if (raw && hasThumbnail && currentAssetId && raw.kind === "create_or_replace" && raw.temporaryAssetIds.length === 1) {
+      mutations.push({ kind: "update_thumbnail", fieldName: mapping.assetField, assetId: currentAssetId, temporaryAssetId: raw.temporaryAssetIds[0] });
+    } else if (raw) mutations.push(raw);
+    if (!raw && Object.hasOwn(patch, mapping.formalField)) {
+      const nextAssetId = imageAssetId(input.patch, mapping.formalField);
+      if (!nextAssetId && currentAssetId) mutations.push({ kind: "remove", fieldName: mapping.assetField });
+      else if (nextAssetId && nextAssetId !== currentAssetId) mutations.push({ kind: "reuse", fieldName: mapping.assetField, assetId: nextAssetId });
+    }
+  }
+  for (const mapping of input.listMappings ?? []) {
+    if (!Object.hasOwn(patch, mapping.collectionField)) continue;
+    const currentEntries = Array.isArray((input.current as Record<string, unknown> | undefined)?.[mapping.collectionField])
+      ? (input.current as Record<string, unknown>)[mapping.collectionField] as Array<Record<string, unknown>>
+      : [];
+    const nextEntries = Array.isArray(patch[mapping.collectionField]) ? patch[mapping.collectionField] as Array<Record<string, unknown>> : [];
+    const currentById = new Map(currentEntries.map((entry) => [String(entry.id ?? ""), imageAssetId(entry, "image")]));
+    const nextIds = new Set(nextEntries.map((entry) => String(entry.id ?? "")));
+    for (const entry of nextEntries) {
+      const id = String(entry.id ?? "");
+      const fieldName = mapping.fieldName(id);
+      const raw = input.uploaded.find((mutation) => mutation.fieldName === fieldName);
+      if (raw) mutations.push(raw);
+      else {
+        const nextAssetId = imageAssetId(entry, "image");
+        if (nextAssetId && nextAssetId !== currentById.get(id)) mutations.push({ kind: "reuse", fieldName, assetId: nextAssetId });
+      }
+    }
+    for (const id of currentById.keys()) if (!nextIds.has(id)) mutations.push({ kind: "remove", fieldName: mapping.fieldName(id) });
+  }
+  return mutations;
+}
+
 async function committedMutationEntity(clientMutationId: string, resource: Parameters<typeof onlineWriteRepository.read>[0]) {
   const response = await onlineWriteRepository.getMutationResult(clientMutationId);
   return response?.status === "committed" && response.entity
@@ -121,7 +244,7 @@ async function committedMutationEntity(clientMutationId: string, resource: Param
 }
 
 export async function repoCreateGarment(
-  item: Omit<WardrobeItem, "id">,
+  item: Omit<WardrobeItemDraft, "id">,
   context: RepoMutationContext = {},
 ): Promise<RepoResult<WardrobeItem>> {
   const clientMutationId = mutationId(context.clientMutationId);
@@ -129,12 +252,13 @@ export async function repoCreateGarment(
   try {
     const committed = await committedMutationEntity(clientMutationId, "garments");
     if (committed) return ok(await reader.mapGarment(committed));
-    const assetMutations = await uploadAssets("garment", clientMutationId, [...assetInputs(item, [
-      ["imageDataUrl", "imageDataUrl", "original"], ["thumbnailDataUrl", "imageDataUrl", "thumbnail"],
-    ]), ...referenceAssetInputs(item)]);
+    const assetMutations = await mainAssetMutations({ entityType: "garment", clientMutationId, patch: item,
+      mappings: [{ formalField: "mainImage", assetField: "imageDataUrl", originalField: "localOriginalDataUrl", thumbnailField: "localThumbnailDataUrl" }],
+      extraInputs: referenceAssetInputs(item), listMappings: [{ collectionField: "referenceOutfitImages", fieldName: referenceAssetField }],
+    });
     const entity = await onlineWriteRepository.create("garments", {
       clientMutationId,
-      payload: { ...withoutImages(item), legacyItemId },
+      payload: { ...withoutImages(item, "cropBox"), legacyItemId },
       assetMutations,
     });
     return ok(await reader.mapGarment(entity));
@@ -147,10 +271,11 @@ export async function repoCreateGarmentsBatch(inputs: RepoBatchCreateGarmentInpu
     try {
       const committedEntity = await committedMutationEntity(clientMutationId, "garments");
       if (committedEntity) return { kind: "committed" as const, item, legacyItemId: Number(committedEntity.payload.legacyItemId), clientMutationId, committedEntity };
-      const assetMutations = await uploadAssets("garment", clientMutationId, assetInputs(item, [
-        ["imageDataUrl", "imageDataUrl", "original"], ["thumbnailDataUrl", "imageDataUrl", "thumbnail"],
-      ]));
-      return { kind: "ready" as const, item, legacyItemId, command: { clientMutationId, payload: { ...withoutImages(item), legacyItemId }, assetMutations } };
+      const assetMutations = await mainAssetMutations({ entityType: "garment", clientMutationId, patch: item,
+        mappings: [{ formalField: "mainImage", assetField: "imageDataUrl", originalField: "localOriginalDataUrl", thumbnailField: "localThumbnailDataUrl" }],
+        extraInputs: referenceAssetInputs(item), listMappings: [{ collectionField: "referenceOutfitImages", fieldName: referenceAssetField }],
+      });
+      return { kind: "ready" as const, item, legacyItemId, command: { clientMutationId, payload: { ...withoutImages(item, "cropBox"), legacyItemId }, assetMutations } };
     } catch (error) {
       return { kind: "failed" as const, item, legacyItemId, clientMutationId, error: message(error, "图片上传失败") };
     }
@@ -170,7 +295,7 @@ export async function repoCreateGarmentsBatch(inputs: RepoBatchCreateGarmentInpu
 
 export async function repoUpdateGarment(
   item: WardrobeItem,
-  patch: Partial<WardrobeItem>,
+  patch: Partial<WardrobeItemDraft>,
   context: RepoMutationContext = {},
 ): Promise<RepoResult<WardrobeItem>> {
   const mutation = mutationContext(item, context);
@@ -179,13 +304,14 @@ export async function repoUpdateGarment(
     const next = { ...item, ...patch };
     const committed = await committedMutationEntity(mutation.clientMutationId, "garments");
     if (committed) return ok(await reader.mapGarment(committed));
-    const assetMutations = await uploadAssets("garment", mutation.clientMutationId, [...assetInputs(patch, [
-      ["imageDataUrl", "imageDataUrl", "original"], ["thumbnailDataUrl", "imageDataUrl", "thumbnail"],
-    ]), ...referenceAssetInputs(next)]);
+    const assetMutations = await mainAssetMutations({ entityType: "garment", clientMutationId: mutation.clientMutationId, current: item, patch,
+      mappings: [{ formalField: "mainImage", assetField: "imageDataUrl", originalField: "localOriginalDataUrl", thumbnailField: "localThumbnailDataUrl" }],
+      extraInputs: referenceAssetInputs(patch), listMappings: [{ collectionField: "referenceOutfitImages", fieldName: referenceAssetField }],
+    });
     const entity = await onlineWriteRepository.update("garments", mutation.entityId, {
       clientMutationId: mutation.clientMutationId,
       expectedRevision: mutation.expectedRevision,
-      payload: withoutImages(next),
+      payload: withoutImages(next, "cropBox"),
       assetMutations,
     });
     return ok(await reader.mapGarment(entity));
@@ -215,32 +341,28 @@ export async function repoUpdateItemStatus(item: WardrobeItem, status: GarmentSt
   return repoUpdateGarment(item, { status, updatedAt: new Date().toISOString() }, context);
 }
 
-export async function repoCreateWishlistItem(item: Omit<WishlistItem, "id">, context: RepoMutationContext = {}): Promise<RepoResult<WishlistItem>> {
+export async function repoCreateWishlistItem(item: Omit<WishlistItemDraft, "id">, context: RepoMutationContext = {}): Promise<RepoResult<WishlistItem>> {
   const clientMutationId = mutationId(context.clientMutationId);
   const legacyWishlistId = `wishlist-${clientMutationId}`;
   try {
     const committed = await committedMutationEntity(clientMutationId, "wishlist");
     if (committed) return ok(await reader.mapWishlistItem(committed));
-    const assetMutations = await uploadAssets("wishlistItem", clientMutationId, assetInputs(item, [
-      ["imageDataUrl", "imageDataUrl", "original"], ["thumbnailDataUrl", "imageDataUrl", "thumbnail"],
-    ]));
-    const entity = await onlineWriteRepository.create("wishlist", { clientMutationId, payload: { ...withoutImages(item), legacyWishlistId }, assetMutations });
+    const assetMutations = await mainAssetMutations({ entityType: "wishlistItem", clientMutationId, patch: item, mappings: [{ formalField: "mainImage", assetField: "imageDataUrl", originalField: "localOriginalDataUrl", thumbnailField: "localThumbnailDataUrl" }] });
+    const entity = await onlineWriteRepository.create("wishlist", { clientMutationId, payload: { ...withoutImages(item, "cropBox"), legacyWishlistId }, assetMutations });
     return ok(await reader.mapWishlistItem(entity));
   } catch (error) { return fail(message(error, "保存种草商品失败，请重试")); }
 }
 
-export async function repoUpdateWishlistItem(item: WishlistItem, patch: Partial<WishlistItem>, context: RepoMutationContext = {}): Promise<RepoResult<WishlistItem>> {
+export async function repoUpdateWishlistItem(item: WishlistItem, patch: Partial<WishlistItemDraft>, context: RepoMutationContext = {}): Promise<RepoResult<WishlistItem>> {
   const mutation = mutationContext(item, context);
   if (!mutation) return fail("种草版本信息缺失，请刷新后重试");
   try {
     const committed = await committedMutationEntity(mutation.clientMutationId, "wishlist");
     if (committed) return ok(await reader.mapWishlistItem(committed));
-    const assetMutations = await uploadAssets("wishlistItem", mutation.clientMutationId, assetInputs(patch, [
-      ["imageDataUrl", "imageDataUrl", "original"], ["thumbnailDataUrl", "imageDataUrl", "thumbnail"],
-    ]));
+    const assetMutations = await mainAssetMutations({ entityType: "wishlistItem", clientMutationId: mutation.clientMutationId, current: item, patch, mappings: [{ formalField: "mainImage", assetField: "imageDataUrl", originalField: "localOriginalDataUrl", thumbnailField: "localThumbnailDataUrl" }] });
     const entity = await onlineWriteRepository.update("wishlist", mutation.entityId, {
       clientMutationId: mutation.clientMutationId, expectedRevision: mutation.expectedRevision,
-      payload: withoutImages({ ...item, ...patch }), assetMutations,
+      payload: withoutImages({ ...item, ...patch }, "cropBox"), assetMutations,
     });
     return ok(await reader.mapWishlistItem(entity));
   } catch (error) { return fail(message(error, "更新种草商品失败，请重试")); }
@@ -281,32 +403,34 @@ export async function repoUndoWishlistPurchase(item: WishlistItem, context: Repo
   } catch (error) { return fail(message(error, "撤销购买失败，请重试")); }
 }
 
-export async function repoCreateOutfit(outfit: Omit<SavedOutfit, "id">, context: RepoMutationContext = {}): Promise<RepoResult<SavedOutfit>> {
+export async function repoCreateOutfit(outfit: Omit<SavedOutfitDraft, "id">, context: RepoMutationContext = {}): Promise<RepoResult<SavedOutfit>> {
   const clientMutationId = mutationId(context.clientMutationId);
   const legacyOutfitId = `outfit-${clientMutationId}`;
   try {
     const committed = await committedMutationEntity(clientMutationId, "outfits");
     if (committed) return ok(await reader.mapOutfit(committed));
-    const assetMutations = await uploadAssets("outfit", clientMutationId, assetInputs(outfit, [
-      ["coverImageDataUrl", "coverImageDataUrl", "original"], ["thumbnailDataUrl", "coverImageDataUrl", "thumbnail"],
-    ]));
-    const entity = await onlineWriteRepository.create("outfits", { clientMutationId, payload: { ...withoutImages(outfit), legacyOutfitId }, assetMutations });
+    const assetMutations = await mainAssetMutations({ entityType: "outfit", clientMutationId, patch: outfit,
+      mappings: [{ formalField: "coverImage", assetField: "coverImageDataUrl", originalField: "localOriginalDataUrl", thumbnailField: "localThumbnailDataUrl" }],
+      extraInputs: outfitRealAssetInputs(outfit), listMappings: [{ collectionField: "outfitRealImages", fieldName: outfitRealAssetField }],
+    });
+    const entity = await onlineWriteRepository.create("outfits", { clientMutationId, payload: { ...withoutImages(outfit, "coverCropBox"), legacyOutfitId }, assetMutations });
     return ok(await reader.mapOutfit(entity));
   } catch (error) { return fail(message(error, "保存套装失败，请重试")); }
 }
 
-export async function repoUpdateOutfit(outfit: SavedOutfit, patch: Partial<SavedOutfit>, context: RepoMutationContext = {}): Promise<RepoResult<SavedOutfit>> {
+export async function repoUpdateOutfit(outfit: SavedOutfit, patch: Partial<SavedOutfitDraft>, context: RepoMutationContext = {}): Promise<RepoResult<SavedOutfit>> {
   const mutation = mutationContext(outfit, context);
   if (!mutation) return fail("套装版本信息缺失，请刷新后重试");
   try {
     const committed = await committedMutationEntity(mutation.clientMutationId, "outfits");
     if (committed) return ok(await reader.mapOutfit(committed));
-    const assetMutations = await uploadAssets("outfit", mutation.clientMutationId, assetInputs(patch, [
-      ["coverImageDataUrl", "coverImageDataUrl", "original"], ["thumbnailDataUrl", "coverImageDataUrl", "thumbnail"],
-    ]));
+    const assetMutations = await mainAssetMutations({ entityType: "outfit", clientMutationId: mutation.clientMutationId, current: outfit, patch,
+      mappings: [{ formalField: "coverImage", assetField: "coverImageDataUrl", originalField: "localOriginalDataUrl", thumbnailField: "localThumbnailDataUrl" }],
+      extraInputs: outfitRealAssetInputs(patch), listMappings: [{ collectionField: "outfitRealImages", fieldName: outfitRealAssetField }],
+    });
     const entity = await onlineWriteRepository.update("outfits", mutation.entityId, {
       clientMutationId: mutation.clientMutationId, expectedRevision: mutation.expectedRevision,
-      payload: withoutImages({ ...outfit, ...patch }), assetMutations,
+      payload: withoutImages({ ...outfit, ...patch }, "coverCropBox"), assetMutations,
     });
     return ok(await reader.mapOutfit(entity));
   } catch (error) { return fail(message(error, "更新套装失败，请重试")); }
@@ -331,7 +455,7 @@ export async function repoSetOutfitFavorite(outfit: SavedOutfit, value: boolean,
   } catch (error) { return fail(message(error, "更新收藏失败，请重试")); }
 }
 
-export async function repoCreateLocation(location: Omit<ClosetLocation, "id">, context: RepoMutationContext = {}): Promise<RepoResult<ClosetLocation>> {
+export async function repoCreateLocation(location: Omit<ClosetLocationDraft, "id">, context: RepoMutationContext = {}): Promise<RepoResult<ClosetLocation>> {
   try {
     const entity = await onlineWriteRepository.create("locations", {
       clientMutationId: mutationId(context.clientMutationId), payload: location, assetMutations: [],
@@ -358,15 +482,19 @@ export async function repoDeleteLocation(location: ClosetLocation, context: Repo
   catch (error) { return fail(message(error, "删除衣橱位置失败，请重试")); }
 }
 
-export async function repoSaveProfile(profile: TryOnProfile, context: RepoMutationContext = {}): Promise<RepoResult<TryOnProfile>> {
-  const metadata = profile.serverId && profile.serverRevision
-    ? { entityId: profile.serverId, revision: profile.serverRevision }
+export async function repoSaveProfile(profile: TryOnProfileDraft & Partial<Pick<TryOnProfile, "serverEntityId" | "serverRevision">>, context: RepoMutationContext = {}): Promise<RepoResult<TryOnProfile>> {
+  const metadata = profile.serverEntityId && profile.serverRevision
+    ? { entityId: profile.serverEntityId, revision: profile.serverRevision }
     : undefined;
   const clientMutationId = mutationId(context.clientMutationId);
   try {
-    const assetMutations = await uploadAssets("profile", clientMutationId, assetInputs(profile, [
-      ["fullBodyImageDataUrl", "fullBodyImageDataUrl", "original"], ["faceImageDataUrl", "faceImageDataUrl", "original"],
-    ]));
+    const committed = await committedMutationEntity(clientMutationId, "profiles");
+    if (committed) return ok(await reader.mapProfile(committed));
+    const current = metadata ? await reader.mapProfile(await onlineWriteRepository.read("profiles", metadata.entityId)) : undefined;
+    const assetMutations = await mainAssetMutations({ entityType: "profile", clientMutationId, current, patch: profile, mappings: [
+      { formalField: "fullBodyImage", assetField: "fullBodyImageDataUrl", originalField: "localFullBodyImageDataUrl" },
+      { formalField: "faceImage", assetField: "faceImageDataUrl", originalField: "localFaceImageDataUrl" },
+    ] });
     const entity = metadata
       ? await onlineWriteRepository.update("profiles", metadata.entityId, {
           clientMutationId, expectedRevision: context.expectedRevision ?? metadata.revision,
@@ -379,17 +507,20 @@ export async function repoSaveProfile(profile: TryOnProfile, context: RepoMutati
   } catch (error) { return fail(message(error, "保存试穿档案失败，请重试")); }
 }
 
-async function upsertPlan(resource: "trip-plans" | "outfit-plans", value: OutfitCalendarPlan | OutfitPlanEntry, context: RepoMutationContext): Promise<RepoResult<void>> {
+async function upsertPlan(resource: "trip-plans", value: OutfitCalendarPlan | OutfitCalendarPlanDraft, context: RepoMutationContext): Promise<RepoResult<OutfitCalendarPlan>>;
+async function upsertPlan(resource: "outfit-plans", value: OutfitPlanEntry | OutfitPlanEntryDraft, context: RepoMutationContext): Promise<RepoResult<OutfitPlanEntry>>;
+async function upsertPlan(resource: "trip-plans" | "outfit-plans", value: OutfitCalendarPlan | OutfitCalendarPlanDraft | OutfitPlanEntry | OutfitPlanEntryDraft, context: RepoMutationContext): Promise<RepoResult<OutfitCalendarPlan | OutfitPlanEntry>> {
   const mutation = mutationContext(value, context);
   try {
-    if (mutation) await onlineWriteRepository.update(resource, mutation.entityId, { ...mutation, payload: { ...value }, assetMutations: [] });
-    else await onlineWriteRepository.create(resource, { clientMutationId: mutationId(context.clientMutationId), payload: { ...value }, assetMutations: [] });
-    return ok();
+    const entity = mutation
+      ? await onlineWriteRepository.update(resource, mutation.entityId, { ...mutation, payload: withoutImages(value), assetMutations: [] })
+      : await onlineWriteRepository.create(resource, { clientMutationId: mutationId(context.clientMutationId), payload: withoutImages(value), assetMutations: [] });
+    return ok(resource === "trip-plans" ? reader.mapTripPlan(entity) : reader.mapOutfitPlan(entity));
   } catch (error) { return fail(message(error, "保存计划失败，请重试")); }
 }
 
-export const repoUpsertOutfitPlanEntry = (entry: OutfitPlanEntry, context: RepoMutationContext = {}) => upsertPlan("outfit-plans", entry, context);
-export const repoUpsertTripPlan = (plan: OutfitCalendarPlan, _items: PlanPackingChecklistItem[] = [], context: RepoMutationContext = {}) => upsertPlan("trip-plans", plan, context);
+export const repoUpsertOutfitPlanEntry = (entry: OutfitPlanEntry | OutfitPlanEntryDraft, context: RepoMutationContext = {}) => upsertPlan("outfit-plans", entry, context);
+export const repoUpsertTripPlan = (plan: OutfitCalendarPlan | OutfitCalendarPlanDraft, _items: PlanPackingChecklistItem[] = [], context: RepoMutationContext = {}) => upsertPlan("trip-plans", plan, context);
 
 export async function repoUpdateOutfitPlanEntry(
   entry: OutfitPlanEntry,
@@ -464,7 +595,7 @@ export async function repoCancelWear(outfit: SavedOutfit, dateKey: string, conte
 export const repoUpdateGarmentImages = repoUpdateGarment;
 export const repoUpdateOutfitRealImages = repoUpdateOutfit;
 
-export async function repoSaveEditedGarment(viewingItem: WardrobeItem, editDraft: Partial<WardrobeItem> & { status: GarmentStatus }, context: RepoMutationContext = {}): Promise<RepoResult<WardrobeItem>> {
+export async function repoSaveEditedGarment(viewingItem: WardrobeItem, editDraft: Partial<WardrobeItemDraft> & { status: GarmentStatus }, context: RepoMutationContext = {}): Promise<RepoResult<WardrobeItem>> {
   return repoUpdateGarment(viewingItem, { ...editDraft, updatedAt: new Date().toISOString() }, context);
 }
 
@@ -507,18 +638,14 @@ export async function upsertOutfit(outfit: SavedOutfit): Promise<RepoResult<Save
   return outfit.id ? repoUpdateOutfit(outfit, {}) : repoCreateOutfit(outfit);
 }
 
-export async function upsertLocation(loc: ClosetLocation): Promise<RepoResult<ClosetLocation>> {
-  return loc.id ? repoUpdateLocation(loc, {}) : repoCreateLocation(loc);
+export async function upsertLocation(loc: ClosetLocation | ClosetLocationDraft): Promise<RepoResult<ClosetLocation>> {
+  return "serverEntityId" in loc ? repoUpdateLocation(loc, {}) : repoCreateLocation(loc);
 }
 
 export async function deleteLocationById(id: string): Promise<RepoResult<void>> {
   return repoDeleteLocation({ id } as ClosetLocation);
 }
 
-export async function upsertTripPlan(plan: OutfitCalendarPlan, items: PlanPackingChecklistItem[] = []): Promise<RepoResult<void>> {
+export async function upsertTripPlan(plan: OutfitCalendarPlan | OutfitCalendarPlanDraft, items: PlanPackingChecklistItem[] = []): Promise<RepoResult<OutfitCalendarPlan>> {
   return repoUpsertTripPlan(plan, items);
-}
-
-export async function readWorkspaceTryOnProfile(): Promise<TryOnProfile> {
-  return { id: "default", enabled: false, fitGender: "unspecified", updatedAt: new Date().toISOString() };
 }

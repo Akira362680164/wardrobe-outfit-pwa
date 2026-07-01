@@ -22,7 +22,7 @@
 // - 兼容老数据: item.referenceOutfitImages 缺失时按 [] 处理
 // ============================================================
 
-import type { GarmentCropBox, ReferenceOutfitImage, SavedOutfit, WardrobeItem } from "@/lib/types";
+import type { CroppedImageReference, SavedOutfit, WardrobeItem } from "@/lib/types";
 
 export type GarmentImageSource =
   | "main"
@@ -30,12 +30,7 @@ export type GarmentImageSource =
   | "saved_outfit";
 
 export interface GarmentImageEntry {
-  /** 实际显示的图片 dataUrl 或 URL (兼容旧调用方) */
-  imageDataUrl: string;
-  /** 卡片 / 瀑布流 / 横滑只使用缩略图。 */
-  cardImageDataUrl: string;
-  /** 详情页 / 大图展示用图 (始终是 imageDataUrl) */
-  displayImageDataUrl: string;
+  image?: CroppedImageReference;
   /** 来源标记,父级可按需展示"主图 / 参考"角标 */
   source: GarmentImageSource;
   /** 渲染方式: image = 直接渲染图片; outfit = 通过 OutfitCover 动态渲染 */
@@ -44,33 +39,15 @@ export interface GarmentImageEntry {
   refId?: string;
   /** source === "saved_outfit" 时: outfit id */
   outfitId?: string;
-  /** @deprecated 裁切源，兼容旧调用方 */
-  sourceImageDataUrl?: string;
-  /** 裁切框（归一化坐标 0-1），主图用 item.cropBox；手动参考图可能自带 */
-  cropBox?: GarmentCropBox;
   /** 排序/筛选用的 createdAt 字段。source === "main" 时用 item.createdAt;其他用各自的 createdAt/updatedAt */
   createdAt: string;
 }
 
 const EMPTY_ENTRY: GarmentImageEntry = {
-  imageDataUrl: "",
-  cardImageDataUrl: "",
-  displayImageDataUrl: "",
   source: "main",
   renderKind: "image",
   createdAt: "",
 };
-
-function isValidImageUrl(v: unknown): v is string {
-  if (typeof v !== "string") return false;
-  const trimmed = v.trim();
-  if (!trimmed) return false;
-  if (trimmed.startsWith("data:image/")) return true;
-  if (trimmed.startsWith("data:")) return true; // 兜底: 允许任何 data URL
-  if (trimmed.startsWith("blob:")) return true; // 线上图片客户端返回的会话级 Object URL
-  if (/^https?:\/\//.test(trimmed)) return true;
-  return false;
-}
 
 function safeTimestamp(value: string | undefined, fallback: string): string {
   if (typeof value === "string" && value) return value;
@@ -90,27 +67,21 @@ export function deriveGarmentImageList(
 ): GarmentImageEntry[] {
   if (!item) return [];
   const now = new Date().toISOString();
-  const mainUrl = item.imageDataUrl;
-  const mainThumbnailUrl = item.thumbnailDataUrl ?? "";
-  if (!isValidImageUrl(mainUrl) && !isValidImageUrl(mainThumbnailUrl)) return [];
+  if (!item.mainImage) return [];
 
   const result: GarmentImageEntry[] = [
     {
-      imageDataUrl: mainUrl,
-      // Card/list surfaces are thumbnail-first and never fall back to the full original.
-      cardImageDataUrl: isValidImageUrl(mainThumbnailUrl) ? mainThumbnailUrl : "",
-      displayImageDataUrl: mainUrl,
+      image: item.mainImage,
       source: "main",
       renderKind: "image",
-      cropBox: item.cropBox as GarmentImageEntry["cropBox"],
       createdAt: safeTimestamp(item.createdAt, now),
     },
   ];
-  const seen = new Set<string>([mainUrl, mainThumbnailUrl].filter(Boolean));
+  const seen = new Set<string>([item.mainImage.asset.assetId]);
 
   // 1) 手动添加的参考穿搭图
-  const manualRefs: ReferenceOutfitImage[] = Array.isArray(item.referenceOutfitImages)
-    ? item.referenceOutfitImages.filter((r) => isValidImageUrl(r.imageDataUrl))
+  const manualRefs = Array.isArray(item.referenceOutfitImages)
+    ? [...item.referenceOutfitImages]
     : [];
   // 按 createdAt 升序（早添加的先展示）
   manualRefs.sort((a, b) => {
@@ -121,18 +92,13 @@ export function deriveGarmentImageList(
     return 0;
   });
   for (const ref of manualRefs) {
-    if (seen.has(ref.imageDataUrl)) continue;
-    seen.add(ref.imageDataUrl);
+    if (seen.has(ref.image.asset.assetId)) continue;
+    seen.add(ref.image.asset.assetId);
     result.push({
-      imageDataUrl: ref.imageDataUrl,
-      // Card/list surfaces are thumbnail-first and never fall back to the full original.
-      cardImageDataUrl: isValidImageUrl(ref.thumbnailDataUrl) ? ref.thumbnailDataUrl : "",
-      displayImageDataUrl: ref.imageDataUrl,
+      image: ref.image,
       source: "reference_outfit",
       renderKind: "image",
       refId: ref.id,
-      sourceImageDataUrl: ref.sourceImageDataUrl,
-      cropBox: ref.cropBox,
       createdAt: safeTimestamp(ref.createdAt, now),
     });
   }
@@ -160,9 +126,6 @@ export function deriveGarmentImageList(
       if (seenOutfitIds.has(outfit.id)) continue;
       seenOutfitIds.add(outfit.id);
       result.push({
-        imageDataUrl: "",
-        cardImageDataUrl: "",
-        displayImageDataUrl: "",
         source: "saved_outfit",
         renderKind: "outfit",
         outfitId: outfit.id,

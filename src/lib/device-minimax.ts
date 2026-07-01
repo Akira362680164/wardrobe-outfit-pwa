@@ -835,8 +835,9 @@ export async function generateOutfitPreviewOnDevice(
   settings: DeviceMiniMaxSettings,
   tryOnProfile?: TryOnProfile,
   onProgress?: AiProgressCallback,
+  localReferenceDataUrls: string[] = [],
 ): Promise<string> {
-  const usePersonRef = Boolean(tryOnProfile?.enabled && tryOnProfile.fullBodyImageDataUrl);
+  const usePersonRef = Boolean(tryOnProfile?.enabled && localReferenceDataUrls.length > 0);
 
   const itemSummary = items
     .map((item) => `${item.name}（${item.category}，主色${getPrimaryColors(item.colors).join("、") || "未知"}，配色${getAccentColors(item.colors).join("、") || "无"}，${item.styles.join("、")}）`)
@@ -904,7 +905,7 @@ export async function generateOutfitPreviewOnDevice(
   const plannedPrompt = await planOutfitPreviewPromptOnDevice(prompt, items, context, settings, tryOnProfile).catch(() => prompt);
   prompt = plannedPrompt;
   onProgress?.("规划试穿画面", 25);
-  const refImages = await buildPreviewReferenceImages(items, tryOnProfile);
+  const refImages = await buildPreviewReferenceImages(localReferenceDataUrls, usePersonRef);
 
   // Try with reference images, with progressive fallback
   const refLevels = [
@@ -1132,39 +1133,26 @@ function summarizeTryOnProfile(profile?: TryOnProfile): TryOnProfileSummary {
   return summary;
 }
 
-const GARMENT_PRIORITY: GarmentCategory[] = [
-  "one_piece", "tops", "pants", "skirts", "shoes", "bags", "hats", "jewelry", "accessories",
-];
-
 async function buildPreviewReferenceImages(
-  items: WardrobeItem[],
-  tryOnProfile?: TryOnProfile,
+  localReferenceDataUrls: string[],
+  usePersonRef: boolean,
 ): Promise<Array<{ type: string; image_file: string }>> {
   // 客户端压缩闸门：单次 preview 最多 8 张衣物图 + 全身/脸部照, 24MB+ 容易触发 readTimeout。
   // 每张图都过 compressImageDataUrlForUpload (单图 > 800KB 时缩到长边 1280px / JPEG 0.85)。
-  if (tryOnProfile?.enabled && tryOnProfile.fullBodyImageDataUrl) {
-    const fullBody = await compressImageDataUrlForUpload(tryOnProfile.fullBodyImageDataUrl);
+  if (usePersonRef && localReferenceDataUrls[0]) {
+    const fullBody = await compressImageDataUrlForUpload(localReferenceDataUrls[0]);
     const refs: Array<{ type: string; image_file: string }> = [{ type: "character", image_file: fullBody }];
-    if (tryOnProfile.faceImageDataUrl) {
-      const face = await compressImageDataUrlForUpload(tryOnProfile.faceImageDataUrl);
+    if (localReferenceDataUrls[1]) {
+      const face = await compressImageDataUrlForUpload(localReferenceDataUrls[1]);
       refs.push({ type: "character", image_file: face });
     }
     return refs;
   }
 
-  const garmentItems = items
-    .filter((item) => Boolean(item.imageDataUrl))
-    .sort((a, b) => {
-      const ai = GARMENT_PRIORITY.indexOf(a.category);
-      const bi = GARMENT_PRIORITY.indexOf(b.category);
-      return (ai === -1 ? 99 : ai) - (bi === -1 ? 99 : bi);
-    });
-
-  const top = garmentItems.slice(0, 8);
   return Promise.all(
-    top.map(async (item) => ({
+    localReferenceDataUrls.slice(0, 8).map(async (image) => ({
       type: "character" as const,
-      image_file: await compressImageDataUrlForUpload(item.imageDataUrl),
+      image_file: await compressImageDataUrlForUpload(image),
     })),
   );
 }

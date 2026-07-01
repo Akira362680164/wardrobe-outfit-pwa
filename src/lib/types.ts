@@ -77,20 +77,33 @@ export type ThumbnailStatus = "ready" | "missing" | "failed";
  * 用于判断已有缩略图是否过期 (例如未来调整缩略图尺寸/质量时升级到 2)。 */
 export const CURRENT_THUMBNAIL_VERSION = 1;
 
-export interface ServerAssetReference {
+export type ImageAssetVariant = "original" | "thumbnail";
+
+export interface ImageAssetReference {
   assetId: string;
-  variants: Array<"original" | "thumbnail">;
-  sha256?: string;
-  mimeType?: string;
+  variants: ImageAssetVariant[];
+  sha256: string;
+  mimeType: string;
   width?: number;
   height?: number;
-  variantSha256?: Partial<Record<"original" | "thumbnail", string>>;
+  variantSha256?: Partial<Record<ImageAssetVariant, string>>;
 }
 
 export interface ServerEntityMetadata {
-  serverId?: string;
-  serverRevision?: number;
-  assetRefs?: Record<string, ServerAssetReference>;
+  serverEntityId: string;
+  serverRevision: number;
+}
+
+export interface CroppedImageReference { asset: ImageAssetReference; cropBox?: GarmentCropBox }
+export interface LocalImageDraftFields {
+  localOriginalDataUrl?: string;
+  localThumbnailDataUrl?: string;
+  localCroppedPreviewDataUrl?: string;
+  localCropBox?: GarmentCropBox;
+}
+
+export interface LocalReferenceOutfitImageDraft extends Omit<ReferenceOutfitImage, "image">, LocalImageDraftFields {
+  image?: CroppedImageReference;
 }
 
 export interface ClosetLocation extends ServerEntityMetadata {
@@ -101,24 +114,15 @@ export interface ClosetLocation extends ServerEntityMetadata {
   createdAt: string;
   updatedAt: string;
 }
+export type ClosetLocationDraft = Omit<ClosetLocation, keyof ServerEntityMetadata>;
 
 export interface ReferenceOutfitImage {
  id: string;
- imageDataUrl: string;
- /** @deprecated 历史字段 */
- sourceImageDataUrl?: string;
- cropBox?: GarmentCropBox;
+ image: CroppedImageReference;
  /** v0.9.47-dev 详情页 3.0: 灵感图说明 */
  caption?: string;
  createdAt: string;
  updatedAt: string;
- thumbnailDataUrl?: string;
- thumbnailVersion?: number;
- thumbnailUpdatedAt?: string;
- thumbnailStatus?: ThumbnailStatus;
- cropRevision?: number;
- thumbnailCropRevision?: number;
- assetRef?: ServerAssetReference;
 }
 
 /** v0.9.45-dev 详情页 2.0: AI 穿搭风格建议，由 MiniMax 按衣物结构化属性生成。 */
@@ -136,12 +140,6 @@ export interface GarmentStyleAdvice {
  */
 export interface BaseItem {
   name: string;
-  /** 唯一完整原图 dataURL */
-  imageDataUrl: string;
-  /** @deprecated 历史字段，新数据不再写入，读取时兜底到 imageDataUrl */
-  sourceImageDataUrl?: string;
-  thumbnailDataUrl?: string;
-  cropBox?: GarmentCropBox;
   category: GarmentCategory;
   /** v2: catalog subcategory id（如 "shirt"），不是中文 label */
   subcategory?: string;
@@ -164,16 +162,13 @@ export interface BaseItem {
   /** 含义按状态决定：种草=售价，衣橱=历史成本 */
   price?: number;
   productUrl?: string;
-  /** 当前裁切版本号 */
-  cropRevision?: number;
-  /** 当前缩略图对应的裁切版本号 */
-  thumbnailCropRevision?: number;
   createdAt: string;
   updatedAt: string;
 }
 
-export interface WardrobeItem extends Omit<BaseItem, "sourceImageDataUrl">, ServerEntityMetadata {
+export interface WardrobeItem extends BaseItem, ServerEntityMetadata {
   id?: number;
+  mainImage?: CroppedImageReference;
   locationId: string;
   status: GarmentStatus;
   wornDates: string[];
@@ -182,10 +177,14 @@ export interface WardrobeItem extends Omit<BaseItem, "sourceImageDataUrl">, Serv
   aiStyleAdvice?: GarmentStyleAdvice;
   aiConfidence?: number;
   needsReview?: boolean;
-  thumbnailVersion?: number;
-  thumbnailUpdatedAt?: string;
-  thumbnailStatus?: ThumbnailStatus;
 }
+
+export type WardrobeItemDraft = Omit<WardrobeItem, "mainImage" | "referenceOutfitImages" | keyof ServerEntityMetadata>
+  & LocalImageDraftFields
+  & {
+    mainImage?: CroppedImageReference;
+    referenceOutfitImages?: LocalReferenceOutfitImageDraft[];
+  };
 
 export interface GarmentCropBox {
   x: number;
@@ -268,8 +267,7 @@ export interface SavedOutfit extends ServerEntityMetadata {
   id: string;
   name: string;
   itemIds: number[];
-  coverImageDataUrl?: string;
-  previewImageDataUrl?: string;
+  coverImage?: CroppedImageReference;
   destination?: string;
   activity?: string;
   style?: string;
@@ -277,13 +275,6 @@ export interface SavedOutfit extends ServerEntityMetadata {
   favorite: boolean;
   createdAt: string;
   updatedAt: string;
-  /** @deprecated 历史字段 */
-  sourceImageDataUrl?: string;
-  /** v0.9.46-dev 基础设施批次 1: 套装卡片缩略图 */
-  thumbnailDataUrl?: string;
-  thumbnailVersion?: number;
-  thumbnailUpdatedAt?: string;
-  thumbnailStatus?: "ready" | "failed";
   /** v0.9.46-dev 基础设施批次 1: 适合季节 */
   seasons?: Season[];
   /** v0.9.46-dev 基础设施批次 1: 适合场景 */
@@ -300,11 +291,13 @@ export interface SavedOutfit extends ServerEntityMetadata {
   wornDates?: string[];
   /** v0.9.47-dev 套装资产中心: 穿搭实图列表 */
   outfitRealImages?: OutfitRealImage[];
-  /** v0.9.47-dev 套装资产中心: 自动生成的四宫格封面 data URL */
-  autoCoverImageDataUrl?: string;
   /** v0.9.50-dev 套装 AI 化: 手动触发生成的套装建议缓存。 */
   aiSuggestion?: OutfitAiSuggestion;
 }
+
+export type SavedOutfitDraft = Omit<SavedOutfit, "coverImage" | "outfitRealImages" | keyof ServerEntityMetadata>
+  & LocalImageDraftFields
+  & { coverImage?: CroppedImageReference; outfitRealImages?: LocalOutfitRealImageDraft[] };
 
 /** v0.9.46-dev 基础设施批次 1: 种草 AI 评估结果 */
 export interface WishlistAssessment {
@@ -359,12 +352,17 @@ export interface SimilarOwnedWishlistMatch {
 /** v2 (2026-06-23): 种草 / 心愿单单品。继承 BaseItem，价格 = price，备注 = notes。 */
 export interface WishlistItem extends BaseItem, ServerEntityMetadata {
   id: string;
+  mainImage?: CroppedImageReference;
   status: WishlistStatus;
   convertedItemId?: number;
   convertedAt?: string;
   convertedItemDeletedAt?: string;
   aiAssessment?: WishlistAssessment;
 }
+
+export type WishlistItemDraft = Omit<WishlistItem, "mainImage" | keyof ServerEntityMetadata>
+  & LocalImageDraftFields
+  & { mainImage?: CroppedImageReference };
 
 export interface WeatherInsight {
   weather: OutfitRequest["weather"];
@@ -421,8 +419,8 @@ export interface GarmentTagResult {
 export interface TryOnProfile extends ServerEntityMetadata {
   id: "default";
   enabled: boolean;
-  fullBodyImageDataUrl?: string;
-  faceImageDataUrl?: string;
+  fullBodyImage?: ImageAssetReference;
+  faceImage?: ImageAssetReference;
   heightCm?: number;
   bodyType?: "slim" | "balanced" | "curvy" | "plus" | "custom";
   bodyTypeCustom?: string;
@@ -438,6 +436,14 @@ export interface TryOnProfile extends ServerEntityMetadata {
   fitGender?: FitGender;
   updatedAt: string;
 }
+
+export type TryOnProfileDraft = Omit<TryOnProfile, "fullBodyImage" | "faceImage" | keyof ServerEntityMetadata> & {
+  fullBodyImage?: ImageAssetReference;
+  faceImage?: ImageAssetReference;
+  localFullBodyImageDataUrl?: string;
+  localFaceImageDataUrl?: string;
+};
+export type TryOnProfileState = TryOnProfileDraft & Partial<ServerEntityMetadata>;
 
 /**
  * 注入到 LLM prompt 的穿衣画像摘要 (v0.9.23-dev)。
@@ -464,14 +470,15 @@ export interface TryOnProfileSummary {
 /** v0.9.47-dev 套装资产中心: 穿搭实图 */
 export interface OutfitRealImage {
   id: string;
-  imageDataUrl: string;
-  /** @deprecated 历史字段 */
-  sourceImageDataUrl?: string;
-  thumbnailDataUrl?: string;
+  image: CroppedImageReference;
   caption?: string;
   takenAt?: string;
   createdAt: string;
   updatedAt: string;
+}
+
+export interface LocalOutfitRealImageDraft extends Omit<OutfitRealImage, "image">, LocalImageDraftFields {
+  image?: CroppedImageReference;
 }
 
 export interface WardrobeBackup {
@@ -527,6 +534,7 @@ export interface OutfitPlanEntry extends ServerEntityMetadata {
   createdAt: string;
   updatedAt: string;
 }
+export type OutfitPlanEntryDraft = Omit<OutfitPlanEntry, keyof ServerEntityMetadata>;
 
 // ============================================================
 // v1.1.0-dev 穿搭计划: 范围计划 (旅行/出差/自定义)
@@ -551,6 +559,7 @@ export interface OutfitCalendarPlan extends ServerEntityMetadata {
   createdAt: string;
   updatedAt: string;
 }
+export type OutfitCalendarPlanDraft = Omit<OutfitCalendarPlan, keyof ServerEntityMetadata>;
 
 // ============================================================
 // v1.1.0-dev 穿搭计划: 打包清单
@@ -726,7 +735,7 @@ export const STATUS_LABELS: Record<GarmentStatus, string> = {
 // v1.1.27: 标准颜色目录已迁移至 @/lib/color-catalog。types.ts 不再维护 COLOR_OPTIONS。
 // 业务类型 ColorInfo / ColorMode 仍在本文件内。
 
-export const DEFAULT_LOCATIONS: ClosetLocation[] = [
+export const DEFAULT_LOCATIONS: ClosetLocationDraft[] = [
   {
     id: "home",
     name: "默认衣橱",
