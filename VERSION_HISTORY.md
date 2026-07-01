@@ -1,3 +1,9 @@
+## 2026-07-01 / v2.1.3-test / Codex — 阶段8-9: Android 自动化验证（APK + 模拟器）
+
+- **Test Harness APK**: v2.1.3-test, versionCode=20103, CN=fangzheng signing, SHA=eb95553. Build manifest written.
+- **Android 验证**: APK install → 启动 → PID 2280, MainActivity 前台, 0 个 FATAL 崩溃。
+- **风险门禁**: **high**（Android 原生构建与模拟器验证）。
+
 ## 2026-07-01 / v2.1.3-test / Codex — 阶段5: E2E Playwright 实际执行（17/17 通过）
 
 - **修复**：E2E storage 环境变量名（STORAGE_ROOT → WARDROBE_STORAGE_ROOT）；webpack HMR 错误过滤。
