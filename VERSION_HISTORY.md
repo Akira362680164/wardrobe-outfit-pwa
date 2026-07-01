@@ -3663,3 +3663,13 @@
 - **风险门禁**：**high**（Android 原生网络与线上图片主链路）。
 - **未触发 subagent**：用户未通知。
 - **待完成验证**：提交后重建固定签名 APK，在 Android 35 模拟器重新登录同一线上账号并确认原图显示、重装后服务器恢复及无致命 logcat。
+# v2.1.3-test - 2026-07-01
+
+- **执行 Agent**：Codex（母 agent 串行开发；未触发 subagent：用户明确禁止）。
+- **目的**：完成 v2.1.3 API 数据库迁移、测试服务器全量用户数据清理和新版本部署。
+- **服务器清理**：目标主机身份核对为 `VM-0-11-ubuntu`；三重保护环境为 `WARDROBE_ENV=test`、`ALLOW_TEST_DATA_RESET=true`、固定确认口令。dry-run 统计 16 个用户、50 件衣物、11 套穿搭、5 条种草、8 条计划、20 条穿着记录、24 条资产记录和 37 个待删 Storage 对象。停止 API 写入后正式执行，全部用户级表归零，37/37 个 Storage 对象删除并复核成功，失败 key 哈希为空。
+- **部署结果**：部署 `wardrobe-api:d010293`，迁移 `0010_asset_bindings` 已应用；内网及公开 `/api/health`、`/api/ready`、`/api/version` 均通过，版本端点返回 `gitCommit=d010293`。新账号注册、重新登录、唯一默认衣橱和其余业务列表为空均通过。
+- **改动文件**：`VERSION_HISTORY.md`（本条仅记录实际部署与清理证据）。
+- **验证结果**：生产镜像构建通过；API typecheck 与 58 项测试通过；测试数据清理报告 `databaseCleared=true`、`storageCleared=true`。
+- **风险门禁**：high（真实 PostgreSQL、Storage、迁移和线上 API）；通过停写、dry-run、事务清理、逐对象复核、服务就绪检查与新账号冒烟验证；未触发 subagent：用户明确禁止。
+- **未验证风险**：尚未完成图片资产、业务写入、超时重试和 Android 全链路线上回归；生产依赖审计仍报告 3 个 moderate、1 个 high，未在本轮自动升级依赖。
