@@ -1,3 +1,14 @@
+## 2026-07-01 / v2.1.3-test / Codex — package.json 脚本、Contract strict、Unit 迁移、集成骨架
+
+- **目的**：补齐新测试体系的可用命令、Contract strict 模式、真实纯函数 Unit 测试和集成测试入口。
+- **package.json**：新增 20 个 npm scripts（test:manifest、test:contract、test:contract:baseline、test:unit、test:component、test:api、test:integration:repository、test:e2e:smoke/critical、test:affected、test:fast、test:fast:baseline、test:local:full、test:local:full:baseline、test:report:release、test:gate:automated、test:gate:release、test:matrix:generate、test:matrix:check、test:logic:all 重定向到 deprecated-logic-all.mjs）。
+- **Contract strict**：`tests/contract/strict/legacy-image-fields.test.ts` — 扫描 src/ 中旧 dataUrl 字段，baseline 模式仅报告不失败。`CONTRACT_MODE=baseline` 环境变量控制。
+- **Unit 迁移**：`tests/unit/parse-json-object.test.ts`（5 项）、`tests/unit/thumbnail.test.ts`（5 项）— 从旧脚本迁移的真实纯函数 Vitest 测试。
+- **其他**：`tests/reports/README.md`、`tests/integration/repository/overview.test.ts`。
+- **验证**：`npm run test:fast:baseline` → 全通过；`npx vitest run` → **19/19 通过**（10 个测试文件）。
+- **风险门禁**：**medium**（测试体系脚本和配置变化，不改业务运行时代码）。
+- **未触发 subagent**：用户明确要求串行开发。
+- **未验证风险**：旧脚本（46 项）仅分类未迁移；E2E/Android 仍为占位；PostgreSQL 集成需真实数据库；APK 构建未验证；业务 worktree 中的 package.json 未同步新测试命令。
 ## 2026-07-01 / v2.1.3-test / Codex — Wave 2-4 测试层级骨架（Component/Integration/API/E2E/Android）
 
 - **目的**：补齐所有 9 个测试层级的目录结构和最小可运行测试。

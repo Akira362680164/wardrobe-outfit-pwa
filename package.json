@@ -102,7 +102,26 @@
     "android:verify:launch": "bash ./scripts/android-emulator-regression.sh launch",
     "android:verify:interaction": "bash ./scripts/android-emulator-regression.sh interaction",
     "android:verify:fresh": "bash ./scripts/android-emulator-regression.sh fresh",
-    "android:verify:full": "bash ./scripts/android-emulator-regression.sh full"
+    "android:verify:full": "bash ./scripts/android-emulator-regression.sh full",
+    "test:manifest": "tsx scripts/test/validate-test-manifest.ts",
+    "test:contract:baseline": "tsx scripts/test/run-suite.ts contract --baseline",
+    "test:contract": "tsx scripts/test/run-suite.ts contract",
+    "test:unit": "tsx scripts/test/run-suite.ts unit",
+    "test:component": "tsx scripts/test/run-suite.ts component",
+    "test:api": "tsx scripts/test/run-suite.ts api",
+    "test:integration:repository": "tsx scripts/test/run-suite.ts integration --tag repository",
+    "test:e2e:smoke": "tsx scripts/test/run-suite.ts e2e --tag smoke",
+    "test:e2e:critical": "tsx scripts/test/run-suite.ts e2e --tag critical",
+    "test:affected": "tsx scripts/test/run-affected-tests.ts",
+    "test:fast:baseline": "npm run test:manifest && npm run typecheck && npm run test:contract:baseline && npm run test:unit",
+    "test:fast": "npm run test:manifest && npm run typecheck && npm run test:contract && npm run test:unit",
+    "test:local:full:baseline": "npm run test:fast:baseline && npm run test:component && npm run test:integration:repository && npm run test:api && npm run build",
+    "test:local:full": "npm run test:fast && npm run test:component && npm run test:integration:repository && npm run test:api && npm run build",
+    "test:report:release": "tsx scripts/test/merge-test-results.ts",
+    "test:gate:automated": "tsx scripts/test/validate-release-gate.ts --scope automated",
+    "test:gate:release": "tsx scripts/test/validate-release-gate.ts --scope final",
+    "test:matrix:generate": "tsx scripts/test/generate-test-case-matrix.ts",
+    "test:matrix:check": "tsx scripts/test/generate-test-case-matrix.ts --check"
   },
   "dependencies": {
     "@capacitor-community/keep-awake": "^8.0.1",
@@ -133,6 +152,7 @@
     "postcss": "^8.5.1",
     "tailwindcss": "^3.4.17",
     "tsx": "^4.19.2",
-    "typescript": "^5.7.3"
+    "typescript": "^5.7.3",
+    "vitest": "^4.1.9"
   }
 }

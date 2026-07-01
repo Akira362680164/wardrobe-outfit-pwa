@@ -9,4 +9,14 @@ export const integrationTests: TestEntry[] = [
     tags: ['smoke'],
     blocking: false,
   },
+  {
+    testId: 'integration:overview-large-workspace',
+    layer: 'integration',
+    filePath: 'tests/integration/repository/overview.test.ts',
+    description: 'Repository overview integration test',
+    tags: ['repository'],
+    blocking: false,
+    executionPolicy: 'manual',
+    executionNodes: [{ name: 'local-postgres' }],
+  },
 ];
