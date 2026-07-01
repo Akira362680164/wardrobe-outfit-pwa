@@ -13,7 +13,7 @@
     "typecheck": "tsc --noEmit -p tsconfig.json",
     "pretest": "npm --workspace @wardrobe/cloud-contracts run build",
     "test": "vitest run",
-    "reset:test-data": "tsx src/cli/reset-test-data.ts",
+    "reset:test-data": "node dist/cli/reset-test-data.js",
     "start": "node dist/server.js"
   },
   "dependencies": {

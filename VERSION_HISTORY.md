@@ -1,3 +1,12 @@
+# v2.1.3-test - 2026-07-01
+
+- **执行 Agent**：Codex（母 agent 串行开发；未触发 subagent：用户明确禁止）。
+- **目的**：修复生产镜像中的测试数据清理入口，确保部署环境不依赖已被裁剪的开发依赖 `tsx`。
+- **改动文件**：`services/wardrobe-api/package.json`、`VERSION_HISTORY.md`。
+- **改动说明**：`reset:test-data` 改为运行构建产物 `dist/cli/reset-test-data.js`；生产镜像构建阶段已编译该文件，可在 `npm prune --omit=dev` 后执行。
+- **验证结果**：`npm run api:typecheck`、`npm run api:test` 通过（8 个文件、58 项）；待重新执行生产镜像 dry-run 和正式清理。
+- **风险门禁**：medium（部署运维命令变化）；通过本地 API 构建/测试及服务器 dry-run 验证；未触发 subagent：用户明确禁止。
+- **未验证风险**：本条记录提交时尚未重新构建并部署服务器镜像。
 
 ## 2026-07-01 / v2.1.2-test / Codex — 正式资产类型、在线图片运行时与测试清理工具
 
