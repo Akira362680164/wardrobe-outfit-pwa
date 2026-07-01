@@ -1,3 +1,15 @@
+## 2026-07-01 / v2.1.3-test / Codex — Wave 1 测试体系骨架（串行实现，不启动 subagent）
+
+- **目的**：建立 v2.1.3 新测试体系的分层门禁骨架，包含 Manifest/Runner/Gate/Contract/Unit/Fixtures。
+- **工作模式**：测试 worktree（`test/v2.1.3-remodel`）与业务 worktree（`codex/v2.1.3-asset-model-reset`）隔离执行，不相互干扰。
+- **Wave 0 成果**：worktree 隔离（`../wardrobe-v2.1.3-tests` + `../wardrobe-v2.1.3-integration`）、基线记录、T0A 全量通过（typecheck/api-test/test:logic:all = 0）。
+- **Wave 1 A（Manifest/Runner/Adapter/Gate）**：23 个文件，包括 `tests/manifest/test-types.ts`（9 层 TestLayer 类型）、`test-manifest.ts`（9 fragment 聚合）、`scripts/test/run-suite.ts`（统一运行器）、`validate-test-manifest.ts`（结构校验）、`discover-tests.ts`、`write-test-result.ts`、`merge-test-results.ts`、`validate-release-gate.ts`（automated/final/postrelease 门禁）、`run-affected-tests.ts`、`deprecated-logic-all.mjs`（弃用重定向）、`generate-test-case-matrix.ts`（文档生成）、`adapters/*.ts`（结果适配器）。
+- **Wave 1 B+C**：`tests/contract/contract.test.ts`（vitest 运行通过 2/2）、`tests/fixtures/generate-images.ts`、`docs/test-legacy-script-mapping.md`（46 项旧脚本分类，0 UNCLASSIFIED）。
+- **Vitest 配置**：安装 `vitest@^4.1.9`，创建 `vitest.workspace.ts` 和 `vitest.config.ts`。
+- **验证**：`npx vitest run tests/contract/contract.test.ts` → 2/2 通过；`npx tsx scripts/test/run-suite.ts manifest` → PASSED；`npx tsx scripts/test/validate-test-manifest.ts` → Valid: true。
+- **风险门禁**：**medium**（新测试体系骨架，不改业务运行时代码）。
+- **未触发 subagent**：用户明确要求串行开发。
+- **未验证风险**：仅实现 Wave 1 骨架；Contract strict/Unit/Component/Integration/API/E2E/Android 和 APK 构建尚未实现；旧脚本仅分类未迁移；`npm run test:fast` 等复合命令尚需母 Agent 在 `package.json` 中配置。
 # v2.1.3-test - 2026-07-01 — 修复正式资产绑定约束
 
 - **执行 Agent**：Codex（母 agent 串行开发；未触发 subagent：用户明确禁止）。
