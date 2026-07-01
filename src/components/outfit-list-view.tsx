@@ -39,6 +39,7 @@ import { MotionPopoverMenu } from "@/components/motion-common";
 import { CatalogWaterfallCardShell } from "@/components/item-shell/catalog-waterfall-card-shell";
 import { CatalogWaterfallGrid } from "@/components/item-shell/catalog-waterfall-grid";
 import { ItemDetailPageShell } from "@/components/item-shell/item-detail-page-shell";
+import { ConfirmActionSheet } from "@/components/dialogs";
 import { TemperatureRangeBar } from "@/components/temperature-range-bar";
 import {
   DetailAiCard,
@@ -1412,7 +1413,7 @@ function OutfitDetailView({
             <button type="button" onClick={() => { setMenuOpen(false); setDeleteConfirm(true); }} className="flex w-full items-center gap-2 rounded-lg px-3 py-2.5 text-sm text-red-600 hover:bg-red-50"><Trash2 size={14} />删除套装</button>
           </div>
         </MotionPopoverMenu>
-        {deleteConfirm ? <div className="fixed inset-0 z-70 flex items-center justify-center bg-black/30" onClick={() => setDeleteConfirm(false)}><div className="mx-4 w-full max-w-sm rounded-2xl bg-white p-6" onClick={(e) => e.stopPropagation()}><p className="text-sm font-medium">删除「{outfit.name}」？</p><p className="mt-1 text-xs text-ink/50">删除后不会影响套装内的衣物，套装实图也会一并删除。</p><div className="mt-4 flex gap-3"><button type="button" onClick={() => setDeleteConfirm(false)} className="flex-1 rounded-full border border-ink/10 py-2 text-sm">取消</button><button type="button" onClick={handleDeleteOutfit} className="flex-1 rounded-full bg-red-500 py-2 text-sm font-medium text-white">删除</button></div></div></div> : null}
+        <ConfirmActionSheet open={deleteConfirm} title={`删除「${outfit.name}」？`} description="删除后不会影响套装内的衣物，套装实图也会一并删除。" confirmLabel="删除" tone="danger" onConfirm={handleDeleteOutfit} onClose={() => setDeleteConfirm(false)} />
       </>}
     >
 
@@ -1716,18 +1717,7 @@ function RealImageView({
       )}
 
       {/* Delete confirm */}
-      {deleteConfirm && (
-        <div className="fixed inset-0 z-70 flex items-center justify-center bg-black/30" onClick={() => setDeleteConfirm(false)}>
-          <div className="mx-4 w-full max-w-sm rounded-2xl bg-white p-6" onClick={(e) => e.stopPropagation()}>
-            <p className="text-sm font-medium">删除这张穿搭实图？</p>
-            <p className="mt-1 text-xs text-ink/50">删除后不会影响套装内的衣物，也不会删除套装。</p>
-            <div className="mt-4 flex gap-3">
-              <button type="button" onClick={() => setDeleteConfirm(false)} className="flex-1 rounded-full border border-ink/10 py-2 text-sm">取消</button>
-              <button type="button" onClick={onDelete} className="flex-1 rounded-full bg-red-500 py-2 text-sm font-medium text-white">删除</button>
-            </div>
-          </div>
-        </div>
-      )}
+      <ConfirmActionSheet open={deleteConfirm} title="删除这张穿搭实图？" description="删除后不会影响套装内的衣物，也不会删除套装。" confirmLabel="删除" tone="danger" onConfirm={onDelete} onClose={() => setDeleteConfirm(false)} />
 
       {/* Caption edit */}
       {editingCaption && (

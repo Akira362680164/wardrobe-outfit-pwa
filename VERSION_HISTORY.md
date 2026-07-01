@@ -1,4 +1,15 @@
 
+## 2026-07-01 / v2.1.1-test / Codex — 统一确认面板、菜单、异步按钮与首屏请求
+
+- **目的**：清除业务页面私有固定定位确认层、浏览器原生确认框和重复的首屏 Overview 请求。
+- **主要改动**：新增 `AsyncActionButton`、`ConfirmActionSheet`、`NoticeSheet`；种草菜单统一使用 `MotionPopoverMenu`；单品移动、单品删除、套装删除、套装实图删除和试穿参考照删除统一使用共享面板；编辑页保存按钮复用异步按钮。
+- **请求修复**：首屏数据仅由 `WorkspaceGate/useWardrobeDataController` 加载，`WardrobeApp` 不再挂载后重复调用 `refreshState()`。
+- **测试加固**：新增 `test:logic:component-reuse`，真实断言共享组件消费点、原生 `confirm` 清理和唯一 Overview 启动责任，不使用无条件通过断言。
+- **验证通过**：`npm run typecheck`；`npm run test:logic:component-reuse`；提交前将继续执行详情、返回键相关测试和构建。
+- **风险门禁**：**high**（弹层返回行为、删除确认和首屏线上请求时序）。
+- **未触发 subagent**：用户未通知。
+- **未验证风险**：Android 返回键、横竖屏和触摸实操将在最终 APK 验证统一覆盖。
+
 ## 2026-07-01 / v2.1.1-test / Codex — 共享页面壳、瀑布流与区块卡片真实接入
 
 - **目的**：修复共享组件只存在但业务页面未使用的问题，删除套装旧瀑布流卡片的第二份 JSX。

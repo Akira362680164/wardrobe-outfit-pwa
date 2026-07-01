@@ -3,7 +3,8 @@
 
 import React, { useState, useMemo, useCallback, useEffect, useRef, type ReactNode } from "react";
 import { AnimatePresence, motion } from "motion/react";
-import { MotionSheet } from "@/components/motion-common";
+import { MotionPopoverMenu, MotionSheet } from "@/components/motion-common";
+import { ConfirmActionSheet, NoticeSheet } from "@/components/dialogs";
 import {
   ShoppingBag, ChevronLeft,
   MoreVertical, X, ImageIcon, Trash2, RotateCcw,
@@ -157,20 +158,9 @@ function ConfirmDialog({
   onConfirm: () => void | Promise<void>;
   onCancel: () => void;
 }) {
-  if (!open) return null;
-  return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/40" onClick={onCancel}>
-      <div className="mx-4 w-full max-w-sm rounded-2xl bg-white p-5 shadow-xl" onClick={(e) => e.stopPropagation()}>
-        <h3 className="text-base font-semibold mb-2">{title}</h3>
-        <p className="text-sm text-ink/60 mb-4 whitespace-pre-wrap">{message}</p>
-        <div className="grid grid-cols-2 gap-2">
-          <button type="button" onClick={onCancel} className="h-10 rounded-xl border border-ink/10 text-sm">取消</button>
-          <button type="button" onClick={onConfirm} className={`h-10 rounded-xl text-sm font-semibold text-white ${confirmClass ?? "bg-denim"}`}>            {confirmLabel}
-          </button>
-        </div>
-      </div>
-    </div>
-  );
+  const [submitting, setSubmitting] = useState(false);
+  const handleConfirm = async () => { if (submitting) return; setSubmitting(true); try { await onConfirm(); } finally { setSubmitting(false); } };
+  return <ConfirmActionSheet open={open} title={title} description={message} confirmLabel={confirmLabel} tone={confirmClass?.includes("red") ? "danger" : "primary"} submitting={submitting} onConfirm={handleConfirm} onClose={onCancel} />;
 }
 
 function NoticeDialog({
@@ -182,18 +172,7 @@ function NoticeDialog({
   confirmLabel?: string;
   onClose: () => void;
 }) {
-  if (!open) return null;
-  return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/40" onClick={onClose}>
-      <div className="mx-4 w-full max-w-sm rounded-2xl bg-white p-5 shadow-xl" onClick={(e) => e.stopPropagation()}>
-        <h3 className="text-base font-semibold mb-2">{title}</h3>
-        <p className="text-sm text-ink/60 mb-4 whitespace-pre-wrap">{message}</p>
-        <button type="button" onClick={onClose} className="h-10 w-full rounded-xl bg-denim text-sm font-semibold text-white">
-          {confirmLabel}
-        </button>
-      </div>
-    </div>
-  );
+  return <NoticeSheet open={open} title={title} description={message} actionLabel={confirmLabel} onClose={onClose} />;
 }
 
 /* ------------------------------------------------------------------ */
@@ -216,6 +195,7 @@ export function WishlistView20({
   let subPageNode: React.ReactNode = null;
   const [mainFilter, setMainFilter] = useState<WishlistMainFilter>("all");
   const [menuOpen, setMenuOpen] = useState(false);
+  const menuAnchorRef = useRef<HTMLButtonElement>(null);
 
   type WishlistId = WishlistItem["id"];
   const wishlistSelection = useCatalogMultiSelect<WishlistId>();
@@ -1207,6 +1187,7 @@ export function WishlistView20({
           <div className="px-1">
             <div className="text-[13px] text-ink/55 mb-2">加入到</div>
             <button
+              ref={menuAnchorRef}
               type="button"
               onClick={() => setShowLocationSheet(true)}
               className="w-full h-12 rounded-2xl border border-ink/10 bg-white px-4 flex items-center justify-between"
@@ -1417,12 +1398,12 @@ export function WishlistView20({
     subPageNode = (
       <ItemDetailPageShell
         contentClassName="mx-auto w-full max-w-4xl pb-[calc(env(safe-area-inset-bottom)+24px)]"
-        topBar={<DetailTopBar title="" onBack={goBack} onMore={() => setMenuOpen((v) => !v)} />}
+        topBar={<DetailTopBar title="" onBack={goBack} onMore={() => setMenuOpen((v) => !v)} moreButtonRef={menuAnchorRef} />}
         hero={<DetailHeroGallery slides={productSlides} currentIndex={0} onIndexChange={() => undefined} onExpandImage={item.imageDataUrl ? onExpandImage : undefined} emptyIcon={<ImageIcon size={36} />} emptyText="暂无商品图" />}
         quickActions={<DetailQuickActions actions={quickActions} layout="grid" />}
         titleBlock={<DetailTitleMetaBlock title={item.name} metaParts={[statusLabel, categoryLabel, subcategoryLabel, seasonLabel, styleLabel]} />}
         tabs={<DetailTabs tabs={[{ key: "assessment", label: "信息" }, { key: "pairing", label: "搭配" }, { key: "record", label: "记录" }]} activeTab={detailTab} onChange={setDetailTab} />}
-        overlays={<AnimatePresence>{menuOpen ? <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[90]" onClick={() => setMenuOpen(false)}><motion.div initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -4 }} className="absolute right-4 top-[72px] w-44 rounded-xl bg-white shadow-xl border border-ink/10 py-1" onClick={(e) => e.stopPropagation()}><button type="button" onClick={() => { setMenuOpen(false); openEditForm(item); }} className="flex items-center gap-2 w-full px-4 py-2.5 text-sm hover:bg-mist/50"><Edit3 size={15} /> 编辑种草单品</button>{item.convertedItemId ? <button type="button" onClick={() => { setMenuOpen(false); requestUndoPurchase(item); }} className="flex items-center gap-2 w-full px-4 py-2.5 text-sm hover:bg-mist/50 text-red-500"><RotateCcw size={15} /> 撤销购买</button> : null}<button type="button" onClick={() => { setMenuOpen(false); handleArchive(item); }} className="flex items-center gap-2 w-full px-4 py-2.5 text-sm hover:bg-mist/50"><Package size={15} /> 归档</button><button type="button" onClick={() => { setMenuOpen(false); setSelectedItem(item); setShowDeleteRecordConfirm(true); }} className="flex items-center gap-2 w-full px-4 py-2.5 text-sm hover:bg-mist/50 text-red-500"><Trash2 size={15} /> 删除记录</button></motion.div></motion.div> : null}</AnimatePresence>}
+        overlays={<MotionPopoverMenu visible={menuOpen} onClose={() => setMenuOpen(false)} anchorRef={menuAnchorRef}><div className="min-w-[176px] p-1"><button type="button" onClick={() => { setMenuOpen(false); openEditForm(item); }} className="flex items-center gap-2 w-full rounded-lg px-3 py-2.5 text-sm hover:bg-mist/50"><Edit3 size={15} /> 编辑种草单品</button>{item.convertedItemId ? <button type="button" onClick={() => { setMenuOpen(false); requestUndoPurchase(item); }} className="flex items-center gap-2 w-full rounded-lg px-3 py-2.5 text-sm hover:bg-mist/50 text-red-500"><RotateCcw size={15} /> 撤销购买</button> : null}<button type="button" onClick={() => { setMenuOpen(false); handleArchive(item); }} className="flex items-center gap-2 w-full rounded-lg px-3 py-2.5 text-sm hover:bg-mist/50"><Package size={15} /> 归档</button><button type="button" onClick={() => { setMenuOpen(false); setSelectedItem(item); setShowDeleteRecordConfirm(true); }} className="flex items-center gap-2 w-full rounded-lg px-3 py-2.5 text-sm hover:bg-mist/50 text-red-500"><Trash2 size={15} /> 删除记录</button></div></MotionPopoverMenu>}
       >
             {detailTab === "assessment" && (
               <div className="space-y-4">
@@ -1614,13 +1595,8 @@ export function WishlistView20({
             >
               <MoreVertical size={18} />
             </button>
-            <AnimatePresence>
-              {menuOpen && (
-                <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-                  className="fixed inset-0 z-[90]" onClick={() => setMenuOpen(false)}>
-                  <motion.div initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -4 }}
-                    className="absolute right-4 top-12 w-44 rounded-xl bg-white shadow-xl border border-ink/10 py-1"
-                    onClick={(e) => e.stopPropagation()}>
+            <MotionPopoverMenu visible={menuOpen} onClose={() => setMenuOpen(false)} anchorRef={menuAnchorRef}>
+                  <div className="min-w-[176px] p-1">
                     <button type="button" disabled={purchasedCount === 0} onClick={() => { setMenuOpen(false); setSubPage("purchased"); }}
                       className="flex items-center justify-between w-full px-4 py-2.5 text-sm hover:bg-mist/50 disabled:opacity-30">
                       已买单品 <span className="text-ink/30 text-xs">{purchasedCount}</span>
@@ -1633,10 +1609,8 @@ export function WishlistView20({
                       className="flex items-center justify-between w-full px-4 py-2.5 text-sm hover:bg-mist/50 disabled:opacity-30">
                       已归档 <span className="text-ink/30 text-xs">{archivedCount}</span>
                     </button>
-                  </motion.div>
-                </motion.div>
-              )}
-            </AnimatePresence>
+                  </div>
+            </MotionPopoverMenu>
           </div>
         </div>
 

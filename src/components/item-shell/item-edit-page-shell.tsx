@@ -3,7 +3,7 @@
 import type { ReactNode } from "react";
 import { SaveAll } from "lucide-react";
 import { AppSubPageTopBar } from "@/components/app-sub-page-top-bar";
-import { OnlineButtonSpinner } from "@/components/online/online-button-spinner";
+import { AsyncActionButton } from "@/components/async-action-button";
 import {
   ITEM_PAGE_ROOT_CLASS,
   ITEM_PAGE_SCROLL_CLASS,
@@ -51,15 +51,15 @@ export function ItemEditPageShell({
         title={title}
         onBack={onBack}
         rightAction={
-          <button
-            type="button"
+          <AsyncActionButton
             onClick={onSave}
             disabled={saveDisabled || saving}
-            className="inline-flex h-9 items-center gap-1.5 rounded-lg bg-denim px-4 text-sm font-semibold text-white disabled:bg-ink/18 disabled:text-ink/42 active:scale-[0.98] transition-transform"
-          >
-            {saving ? <OnlineButtonSpinner /> : <SaveAll size={15} aria-hidden="true" />}
-            {saving ? "保存中" : "保存"}
-          </button>
+            loading={saving}
+            label="保存"
+            loadingLabel="保存中"
+            icon={<SaveAll size={15} aria-hidden="true" />}
+            className="h-9 rounded-lg active:scale-[0.98] transition-transform"
+          />
         }
       />
 

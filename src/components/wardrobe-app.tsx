@@ -71,6 +71,7 @@ import {
 import { ease, spring } from "@/lib/motion-tokens";
 import { createGarmentThumbnailFromOriginal, generateThumbnailSafe, prepareGarmentThumbnail } from "@/lib/thumbnail-runtime";
 import { GarmentImage } from "@/components/garment-image";
+import { ConfirmActionSheet } from "@/components/dialogs";
 
 // v1.1.23 six-page design: 共享的 item/ 编辑/详情展示小组件。
 import { ItemField } from "@/components/item/field";
@@ -394,7 +395,9 @@ export function WardrobeApp({ cloudAuth }: { cloudAuth?: WardrobeCloudAuth } = {
 
   useEffect(() => {
     setMiniMaxSettings(loadMiniMaxSettings());
-    refreshState().catch(() => { showMessage("数据库打开失败，已进入临时演示模式", "error"); }).finally(() => setIsReady(true));
+    // WorkspaceGate / useWardrobeDataController owns the initial Overview request.
+    // Triggering refreshState here caused every app launch to fetch the same snapshot twice.
+    setIsReady(true);
     readWorkspaceTryOnProfile().then(setTryOnProfile).catch(() => {});
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -4995,6 +4998,7 @@ function PhotosDetailPage({
   const fullBodyInputRef = useRef<HTMLInputElement>(null);
   const faceInputRef = useRef<HTMLInputElement>(null);
   const [cropJob, setCropJob] = useState<{ dataUrl: string; target: "fullBody" | "face" } | null>(null);
+  const [deletePhotoTarget, setDeletePhotoTarget] = useState<"fullBody" | "face" | null>(null);
 
   useEffect(() => { setDraft(tryOnProfile); }, [tryOnProfile]);
 
@@ -5090,7 +5094,7 @@ function PhotosDetailPage({
               inUse={Boolean(draft.fullBodyImageDataUrl)}
               onUpload={() => fullBodyInputRef.current?.click()}
               onExpand={() => draft.fullBodyImageDataUrl && onExpandImage?.({ src: draft.fullBodyImageDataUrl, alt: "全身照" })}
-              onDelete={() => { if (confirm("确认删除全身参考照？")) setDraft((p) => ({ ...p, fullBodyImageDataUrl: undefined })); }}
+              onDelete={() => setDeletePhotoTarget("fullBody")}
             />
             <PhotoSlot
               label="脸部照"
@@ -5098,7 +5102,7 @@ function PhotosDetailPage({
               inUse={Boolean(draft.faceImageDataUrl)}
               onUpload={() => faceInputRef.current?.click()}
               onExpand={() => draft.faceImageDataUrl && onExpandImage?.({ src: draft.faceImageDataUrl, alt: "脸部照" })}
-              onDelete={() => { if (confirm("确认删除脸部参考照？")) setDraft((p) => ({ ...p, faceImageDataUrl: undefined })); }}
+              onDelete={() => setDeletePhotoTarget("face")}
             />
           </div>
           <input ref={fullBodyInputRef} type="file" accept="image/jpeg,image/png,image/webp,image/heic,image/heif,.heic,.heif" className="hidden" onChange={(e) => openCrop(e.target.files?.[0], "fullBody", fullBodyInputRef)} />
@@ -5123,6 +5127,21 @@ function PhotosDetailPage({
           <p className="mt-2 text-[11px] text-ink/45">开启后可在上方添加全身照和脸部照。</p>
         </article>
       )}
+
+      <ConfirmActionSheet
+        open={deletePhotoTarget !== null}
+        title={`确认删除${deletePhotoTarget === "fullBody" ? "全身" : "脸部"}参考照？`}
+        description="删除后需重新选择照片才能用于 AI 试穿。"
+        confirmLabel="删除"
+        tone="danger"
+        onConfirm={() => {
+          setDraft((previous) => deletePhotoTarget === "fullBody"
+            ? { ...previous, fullBodyImageDataUrl: undefined }
+            : { ...previous, faceImageDataUrl: undefined });
+          setDeletePhotoTarget(null);
+        }}
+        onClose={() => setDeletePhotoTarget(null)}
+      />
 
       {cropJob && (
         <ImageCropEditor
