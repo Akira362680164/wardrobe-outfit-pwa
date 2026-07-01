@@ -1,3 +1,9 @@
+## 2026-07-01 / v2.1.3-test / Codex — phase 6-7: cutoff SHA + contract strict
+
+- CUTOFF SHA: 6a173aaff8c6cdb15c4b0bffac32ab2b3724cf5e
+- Contract strict: 3/3 passing
+- test:local:full: all layers passing
+
 ## 2026-07-01 / v2.1.3-test / Codex — 阶段8-9: Android 自动化验证（APK + 模拟器）
 
 - **Test Harness APK**: v2.1.3-test, versionCode=20103, CN=fangzheng signing, SHA=eb95553. Build manifest written.
