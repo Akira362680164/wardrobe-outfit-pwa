@@ -1,3 +1,8 @@
+## 2026-07-01 / v2.1.3-test / Codex — 阶段4: Component 测试矩阵补齐
+
+- **新增**: online-asset-image(3)、swipe-image-carousel(3)、confirm-action-sheet(3)、app-sub-page-top-bar(2)、async-action-button(3) — 共 15 项 Component 测试。
+- **全量测试**: 36/36 通过（16 文件）。
+- **风险门禁**: **low**（jsdom 组件测试）。
 ## 2026-07-01 / v2.1.3-test / Codex — 阶段2-3: PostgreSQL 测试环境 + 真实 Integration 测试
 
 - **阶段2**: 创建 `wardrobe_test` 数据库、确认 `wardrobe_e2e` 就绪、迁移 25 个表、创建测试环境脚本（verify-test-environment/prepare-test-schema/drop-test-schema/start-stop-postgres）。
