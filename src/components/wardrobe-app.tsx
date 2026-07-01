@@ -2493,10 +2493,15 @@ function WardrobeView(props: WardrobeViewProps) {
                   }
                   try {
                     const originalDataUrl = await fileToOriginalDataUrl(file);
+                    const thumbnail = await generateThumbnailSafe(originalDataUrl);
+                    if (!thumbnail.thumbnailDataUrl) {
+                      throw new Error(thumbnail.errorMessage ?? "缩略图生成失败");
+                    }
                     refs.push({
                       id: `ref-${Date.now()}-${i}-${Math.random().toString(36).slice(2, 8)}`,
                       localOriginalDataUrl: originalDataUrl,
                       localCroppedPreviewDataUrl: originalDataUrl,
+                      localThumbnailDataUrl: thumbnail.thumbnailDataUrl,
                       createdAt: now,
                       updatedAt: now,
                     });
@@ -2512,7 +2517,13 @@ function WardrobeView(props: WardrobeViewProps) {
                 }
                 const existing = Array.isArray(viewingItem.referenceOutfitImages) ? viewingItem.referenceOutfitImages : [];
                 const updated = [...existing, ...refs];
-                const savedItem = rethrowIfFailed(await repoUpdateGarment(viewingItem, { referenceOutfitImages: updated, updatedAt: now }), "更新单品失败");
+                let savedItem: WardrobeItem;
+                try {
+                  savedItem = rethrowIfFailed(await repoUpdateGarment(viewingItem, { referenceOutfitImages: updated, updatedAt: now }), "更新单品失败");
+                } catch (error) {
+                  onMessage(error instanceof Error ? error.message : "添加灵感图失败，请重试", "error");
+                  return;
+                }
                 replaceItemInLocalState(savedItem);
                 setViewingImageIndex(existing.length + 1);
                 if (referenceOutfitGalleryInputRef.current) referenceOutfitGalleryInputRef.current.value = "";

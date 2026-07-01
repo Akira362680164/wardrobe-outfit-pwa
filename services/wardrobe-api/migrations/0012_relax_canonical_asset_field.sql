@@ -1,4 +1,4 @@
-ALTER TABLE "assets" DROP CONSTRAINT IF EXISTS "assets_owner_or_temporary_check";
+ALTER TABLE "assets" DROP CONSTRAINT IF EXISTS "assets_lifecycle_check";
 
 ALTER TABLE "assets" ADD CONSTRAINT "assets_lifecycle_check"
   CHECK (

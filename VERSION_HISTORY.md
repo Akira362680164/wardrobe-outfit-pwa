@@ -1,3 +1,14 @@
+# v2.1.3-test - 2026-07-01 — 资产迁移兼容与灵感图线上闭环修复
+
+- **执行 Agent**：Codex（母 agent 串行开发；未触发 subagent：用户明确禁止）。
+- **目的**：兼容旧正式资产字段，并修复详情页给已有衣物添加灵感图时的正式图片提交和保存后 UI 读回。
+- **根因**：旧正式资产没有临时会话元数据但保留 `field_name`，不应被 canonical 约束拒绝；详情页直传灵感图只准备 original，缺少服务端要求的 thumbnail；更新接口整份替换 payload 时又未保留业务 ID，导致服务器提交成功后客户端无法按原 ID 替换当前详情对象。
+- **改动文件**：`0011_asset_lifecycle_constraint.sql`、新增 `0012_relax_canonical_asset_field.sql`、迁移 journal、workspace migration test、`src/components/wardrobe-app.tsx`、`src/lib/repository/wardrobe-repository.ts`、`VERSION_HISTORY.md`。
+- **修复**：生命周期约束仍强制临时资产六项元数据完整，但 canonical/legacy asset 可保留 `field_name`；新增前向 `0012` 供已部署 `0011` 的服务器同步约束；详情页灵感图同时生成 original/thumbnail，提交失败留在当前页提示；衣物、套装和种草更新显式保留原业务 ID。
+- **验证结果**：本机 E2E 数据库只读统计确认 82 条旧正式资产；`npm run typecheck` 通过；`npm run api:test` 通过（8 个文件、58 项）；灵感图聚焦 E2E 通过；完整 `npm run test:e2e` 通过（37/37），覆盖真实 PostgreSQL、图片读回、刷新恢复、500/断网/网关超时、草稿保留和幂等重试。
+- **风险门禁**：high（升级数据库兼容、资产约束、正式图片和 Repository 更新）；通过迁移测试、API 全测和完整 E2E；未触发 subagent：用户明确禁止。
+- **未验证风险**：`0012` 尚未部署到测试服务器；Android APK 与 WebView 回归尚未执行。
+
 # v2.1.3-test - 2026-07-01 — 正式资产约束线上闭环通过
 
 - **执行 Agent**：Codex（母 agent 串行开发；未触发 subagent：用户明确禁止）。

@@ -85,6 +85,13 @@
       "when": 1782892800001,
       "tag": "0011_asset_lifecycle_constraint",
       "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1782892800002,
+      "tag": "0012_relax_canonical_asset_field",
+      "breakpoints": true
     }
   ]
 }

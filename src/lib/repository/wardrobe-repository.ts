@@ -311,7 +311,7 @@ export async function repoUpdateGarment(
     const entity = await onlineWriteRepository.update("garments", mutation.entityId, {
       clientMutationId: mutation.clientMutationId,
       expectedRevision: mutation.expectedRevision,
-      payload: withoutImages(next, "cropBox"),
+      payload: { ...withoutImages(next, "cropBox"), legacyItemId: item.id },
       assetMutations,
     });
     return ok(await reader.mapGarment(entity));
@@ -362,7 +362,7 @@ export async function repoUpdateWishlistItem(item: WishlistItem, patch: Partial<
     const assetMutations = await mainAssetMutations({ entityType: "wishlistItem", clientMutationId: mutation.clientMutationId, current: item, patch, mappings: [{ formalField: "mainImage", assetField: "imageDataUrl", originalField: "localOriginalDataUrl", thumbnailField: "localThumbnailDataUrl" }] });
     const entity = await onlineWriteRepository.update("wishlist", mutation.entityId, {
       clientMutationId: mutation.clientMutationId, expectedRevision: mutation.expectedRevision,
-      payload: withoutImages({ ...item, ...patch }, "cropBox"), assetMutations,
+      payload: { ...withoutImages({ ...item, ...patch }, "cropBox"), legacyWishlistId: item.id }, assetMutations,
     });
     return ok(await reader.mapWishlistItem(entity));
   } catch (error) { return fail(message(error, "更新种草商品失败，请重试")); }
@@ -430,7 +430,7 @@ export async function repoUpdateOutfit(outfit: SavedOutfit, patch: Partial<Saved
     });
     const entity = await onlineWriteRepository.update("outfits", mutation.entityId, {
       clientMutationId: mutation.clientMutationId, expectedRevision: mutation.expectedRevision,
-      payload: withoutImages({ ...outfit, ...patch }, "coverCropBox"), assetMutations,
+      payload: { ...withoutImages({ ...outfit, ...patch }, "coverCropBox"), legacyOutfitId: outfit.id }, assetMutations,
     });
     return ok(await reader.mapOutfit(entity));
   } catch (error) { return fail(message(error, "更新套装失败，请重试")); }
