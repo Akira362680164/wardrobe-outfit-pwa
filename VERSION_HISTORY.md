@@ -1,3 +1,11 @@
+## 2026-07-01 / v2.1.3-test / Codex — AI Live 保护、Post-release 流程、Vendor Device 配置
+
+- **目的**：补齐 AI Live 测试保护、post-release 烟测命令和 vendor-device 注册。
+- **AI Live 保护**：`scripts/test/require-live-ai-flag.mjs` 校验 `ALLOW_LIVE_AI_TEST=true` 和 `E2E_AI_MODE=live`。
+- **Post-release**：`scripts/test/run-remote-smoke.ts`（检查 `/api/ready` 和 `/api/version`）、`tests/manifest/fragments/postrelease.ts`、npm scripts `test:smoke:remote/test:report:postrelease/test:gate:postrelease/test:postrelease`。
+- **Vendor Device**：`tests/manifest/fragments/vendor-device.ts` 注册 checklist 测试。
+- **验证**：`npx vitest run` → **19/19 通过**；`npm run test:fast:baseline` → 全通过；`npm run test:manifest` → Valid: true。
+- **风险门禁**：**medium**（测试基础设施，不改业务运行时代码）。
 ## 2026-07-01 / v2.1.3-test / Codex — package.json 脚本、Contract strict、Unit 迁移、集成骨架
 
 - **目的**：补齐新测试体系的可用命令、Contract strict 模式、真实纯函数 Unit 测试和集成测试入口。

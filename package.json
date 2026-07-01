@@ -121,7 +121,12 @@
     "test:gate:automated": "tsx scripts/test/validate-release-gate.ts --scope automated",
     "test:gate:release": "tsx scripts/test/validate-release-gate.ts --scope final",
     "test:matrix:generate": "tsx scripts/test/generate-test-case-matrix.ts",
-    "test:matrix:check": "tsx scripts/test/generate-test-case-matrix.ts --check"
+    "test:matrix:check": "tsx scripts/test/generate-test-case-matrix.ts --check",
+    "test:e2e:ai-live": "node scripts/test/require-live-ai-flag.mjs && E2E_AI_MODE=live tsx scripts/test/run-suite.ts e2e --tag ai-live",
+    "test:smoke:remote": "tsx scripts/test/run-suite.ts postrelease",
+    "test:report:postrelease": "tsx scripts/test/merge-test-results.ts --scope postrelease",
+    "test:gate:postrelease": "tsx scripts/test/validate-release-gate.ts --scope postrelease",
+    "test:postrelease": "npm run test:smoke:remote && npm run test:report:postrelease && npm run test:gate:postrelease"
   },
   "dependencies": {
     "@capacitor-community/keep-awake": "^8.0.1",
