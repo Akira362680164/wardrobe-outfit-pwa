@@ -1,4 +1,13 @@
 
+## 2026-07-01 / v2.1.2-test / Codex — Android 模拟器分层回归脚本落地
+
+- **目的**：把 Playwright 业务 E2E 之外的 Android APK / WebView 风险补成可复用的模拟器回归门禁。
+- **主要改动**：新增 `scripts/android-emulator-regression.sh`，支持 `metadata / launch / interaction / fresh / full` 五档；可自动启动 `wardrobe-test` AVD、使用 `am start -W` 启动 App、检查前台窗口/进程/致命日志并输出截图与摘要；新增 npm scripts `android:verify:*`；新增文档 `docs/android-emulator-regression.md` 说明边界、产物和结果目录。
+- **验证**：`bash -n scripts/android-emulator-regression.sh` 通过；`npm run android:verify:metadata` 通过，校验根目录 `衣橱穿搭助手-v2.1.2-test.apk` 包名 `com.wardrobe.outfit`、versionName `2.1.2-test`、versionCode `20102`、固定签名 `CN=fangzheng`；`npm run android:verify:launch` 通过，脚本自动启动 AVD `wardrobe-test`、安装 APK、启动 `com.wardrobe.outfit/.MainActivity`、确认目标进程与前台窗口、筛查目标致命日志为空，并自动关闭模拟器；`npm run android:verify:full` 通过，覆盖返回键、竖屏/横屏截图、清数据后首次启动和二次致命日志筛查。
+- **风险门禁**：**medium**（新增 Android 验证链路与脚本入口，不改业务运行逻辑）。
+- **未触发 subagent**：用户未通知。
+- **未验证风险**：本轮脚本仅做 APK/Android smoke，不自动登录、不覆盖相机/相册系统选择器、MiniMax live 或真机厂商权限弹窗；业务全链路仍由 `npm run test:e2e` 覆盖。
+
 ## 2026-07-01 / v2.1.2-test / Codex — 线上刷新状态与业务图片按需加载
 
 - **版本**：从 `2.1.1-test` 升级到 `2.1.2-test`，同步更新 lockfile；用于本轮组件复用收口后的 Android 构建。

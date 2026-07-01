@@ -98,7 +98,12 @@
     "test:logic:catalog-multi-select-integration": "tsx scripts/test-catalog-multi-select-integration.ts",
     "test:logic:wishlist-bulk-delete": "tsx scripts/test-wishlist-bulk-delete.ts",
     "test:logic:ui-overflow": "tsx scripts/test-settings-wardrobe-ui-overflow.ts",
-    "test:logic:component-reuse": "tsx scripts/test-component-reuse-contract.ts"
+    "test:logic:component-reuse": "tsx scripts/test-component-reuse-contract.ts",
+    "android:verify:metadata": "bash ./scripts/android-emulator-regression.sh metadata",
+    "android:verify:launch": "bash ./scripts/android-emulator-regression.sh launch",
+    "android:verify:interaction": "bash ./scripts/android-emulator-regression.sh interaction",
+    "android:verify:fresh": "bash ./scripts/android-emulator-regression.sh fresh",
+    "android:verify:full": "bash ./scripts/android-emulator-regression.sh full"
   },
   "dependencies": {
     "@capacitor-community/keep-awake": "^8.0.1",
