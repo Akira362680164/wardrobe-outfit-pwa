@@ -20,7 +20,7 @@ function includesAll(source: string, parts: string[]): boolean {
 }
 
 const wardrobeApp = read("src/components/wardrobe-app.tsx");
-const catalogCard = read("src/components/catalog-waterfall-card.tsx");
+const catalogCard = read("src/components/item-shell/catalog-waterfall-card-shell.tsx");
 const catalogFormat = read("src/lib/catalog-card-format.ts");
 const wishlistView = read("src/components/wishlist-view-2.0.tsx");
 const garmentDetail = read("src/components/garment-detail-3.0.tsx");
@@ -31,11 +31,8 @@ const waterfallSource = wardrobeApp.slice(waterfallStart, waterfallEnd > -1 ? wa
 
 assert(waterfallSource.includes('imageClassName="object-contain"'), "WaterfallCardImage uses object-contain");
 assert(!waterfallSource.includes('imageClassName="object-cover"'), "WaterfallCardImage no longer uses object-cover");
-assert(catalogCard.includes("<span className=\"truncate\">{color}</span>"), "GarmentColorInline renders color text");
-assert(catalogCard.includes("h-3 w-3 shrink-0 rounded-full"), "GarmentColorInline renders swatch elements");
-assert(catalogCard.includes("border border-ink/18"), "GarmentColorInline gives white-like swatches a visible border");
-assert(catalogCard.includes("overflow-hidden rounded-2xl"), "CatalogWaterfallCard clips content to the card radius");
-assert(!catalogCard.includes("rounded-t-2xl bg-mist"), "CatalogWaterfallCard image well relies on card clipping instead of its own top radius");
+assert(catalogCard.includes("overflow-hidden rounded-2xl"), "CatalogWaterfallCardShell clips content to the card radius");
+assert(!catalogCard.includes("rounded-t-2xl bg-mist"), "CatalogWaterfallCardShell image well relies on card clipping instead of its own top radius");
 assert(wardrobeApp.includes("overflow-hidden rounded-2xl"), "Wardrobe home cards clip content to the card radius");
 assert(!wardrobeApp.includes("h-[210px] overflow-hidden rounded-t-2xl bg-mist"), "Wardrobe home image well relies on card clipping instead of its own top radius");
 assert(

@@ -36,7 +36,9 @@ import { buildPackingItemsFromPlan } from "@/lib/plan-packing";
 import { getWeekDates, shiftDateByWeeks as shiftDateByWeeksFn } from "@/lib/outfit-calendar";
 import { MotionSheet } from "@/components/motion-common";
 import { MotionPopoverMenu } from "@/components/motion-common";
-import { CatalogWaterfallCard } from "@/components/catalog-waterfall-card";
+import { CatalogWaterfallCardShell } from "@/components/item-shell/catalog-waterfall-card-shell";
+import { CatalogWaterfallGrid } from "@/components/item-shell/catalog-waterfall-grid";
+import { ItemDetailPageShell } from "@/components/item-shell/item-detail-page-shell";
 import { TemperatureRangeBar } from "@/components/temperature-range-bar";
 import {
   DetailAiCard,
@@ -931,7 +933,7 @@ export function OutfitListView({
               <p className="text-sm text-ink/40">没有匹配的套装</p>
             </div>
           ) : (
- <div className="grid grid-cols-2 gap-3">
+ <CatalogWaterfallGrid>
  {filteredOutfits.map((outfit) => {
  const validCount = countValidItems(outfit, items);
  const wearSummary = getWearSummary(outfit.wornDates, todayKey);
@@ -948,21 +950,23 @@ export function OutfitListView({
  ].filter(Boolean).join(" · ");
 
  return (
- <CatalogWaterfallCard
+ <CatalogWaterfallCardShell
  key={outfit.id}
- onClick={() => openOutfitDetail(outfit.id, "library")}
+ ariaLabel={outfit.name?.trim() || "未命名套装"}
+ onOpen={() => openOutfitDetail(outfit.id, "library")}
  title={outfit.name?.trim() || "未命名套装"}
- subtitle={subtitle}
- record={wearSummary.label}
- >
- <OutfitCover outfit={outfit} items={items} size="card" className="h-full w-full" />
- {outfit.favorite ? (
- <span aria-label="已收藏" className="absolute right-2 top-2 rounded-full bg-white/90 px-1.5 py-0.5 text-[11px] text-denim shadow-sm">★</span>
- ) : null}
-      </CatalogWaterfallCard>
+ meta={subtitle}
+ summary={wearSummary.label}
+ media={<>
+   <OutfitCover outfit={outfit} items={items} size="card" className="h-full w-full" />
+   {outfit.favorite ? (
+     <span aria-label="已收藏" className="absolute right-2 top-2 rounded-full bg-white/90 px-1.5 py-0.5 text-[11px] text-denim shadow-sm">★</span>
+   ) : null}
+ </>}
+ />
                 );
               })}
-            </div>
+            </CatalogWaterfallGrid>
           )}
 
           {/* padding for global + */}
@@ -1393,82 +1397,24 @@ function OutfitDetailView({
   }
 
   return (
-    <div className="pb-8">
-      <DetailTopBar title="" onBack={onBack} onMore={() => setMenuOpen(!menuOpen)} moreButtonRef={menuAnchorRef} />
-
-      {/* Popover menu — v1.1.6 Commit 2: use MotionPopoverMenu for consistent shell */}
-      <MotionPopoverMenu
-        visible={menuOpen}
-        onClose={() => setMenuOpen(false)}
-        anchorRef={menuAnchorRef as React.RefObject<HTMLElement | null>}
-      >
-        <div className="min-w-[160px] p-1">
-          <button type="button" onClick={() => { setMenuOpen(false); onEdit(); }} className="flex w-full items-center gap-2 rounded-lg px-3 py-2.5 text-sm text-ink/80 hover:bg-mist">
-            <Settings size={14} />编辑套装
-          </button>
-          <button type="button" onClick={() => { setMenuOpen(false); onToggleFavorite(); }} className="flex w-full items-center gap-2 rounded-lg px-3 py-2.5 text-sm text-ink/80 hover:bg-mist">
-            <Sparkles size={14} />{outfit.favorite ? "取消收藏" : "收藏套装"}
-          </button>
-          <button type="button" onClick={() => { setMenuOpen(false); setDeleteConfirm(true); }} className="flex w-full items-center gap-2 rounded-lg px-3 py-2.5 text-sm text-red-600 hover:bg-red-50">
-            <Trash2 size={14} />删除套装
-          </button>
-        </div>
-      </MotionPopoverMenu>
-
-      {/* Delete confirm */}
-      {deleteConfirm && (
-        <div className="fixed inset-0 z-70 flex items-center justify-center bg-black/30" onClick={() => setDeleteConfirm(false)}>
-          <div className="mx-4 w-full max-w-sm rounded-2xl bg-white p-6" onClick={(e) => e.stopPropagation()}>
-            <p className="text-sm font-medium">删除「{outfit.name}」？</p>
-            <p className="mt-1 text-xs text-ink/50">删除后不会影响套装内的衣物，套装实图也会一并删除。</p>
-            <div className="mt-4 flex gap-3">
-              <button type="button" onClick={() => setDeleteConfirm(false)} className="flex-1 rounded-full border border-ink/10 py-2 text-sm">取消</button>
-              <button type="button" onClick={handleDeleteOutfit} className="flex-1 rounded-full bg-red-500 py-2 text-sm font-medium text-white">删除</button>
-            </div>
+    <ItemDetailPageShell
+      contentClassName="mx-auto w-full max-w-4xl pb-[calc(env(safe-area-inset-bottom)+24px)]"
+      topBar={<DetailTopBar title="" onBack={onBack} onMore={() => setMenuOpen(!menuOpen)} moreButtonRef={menuAnchorRef} />}
+      hero={<DetailHeroGallery slides={gallerySlides} currentIndex={Math.min(activeSlide, Math.max(gallerySlides.length - 1, 0))} onIndexChange={setActiveSlide} onExpandImage={onExpandImage} bottomRightAction={<button type="button" onClick={(event) => { event.stopPropagation(); onMarkWorn(); }} className="inline-flex h-9 items-center gap-1 rounded-full bg-white/90 border border-white/60 px-3 text-xs font-semibold shadow-sm text-ink/80">{wearSummary.hasToday ? "✓ 今天已穿" : "标记今天穿了"}</button>} emptyIcon={<Shirt size={48} />} emptyText="暂无套装封面" />}
+      filmstrip={<DetailFilmstrip items={filmstripItems} activeId={activeFilmstripId} onSelect={(id) => { const index = allSlides.findIndex((slide) => slide.kind === "cover" ? id === "cover" : slide.kind === "real" && slide.image.id === id); if (index >= 0) setActiveSlide(index); }} addLabel="套装示意" onAdd={onAddRealImage} />}
+      titleBlock={<DetailTitleMetaBlock eyebrow={wearSummary.label} title={outfit.name} metaParts={[`${items.length}件`, seasonLabels, sceneLabels, styleLabels]} />}
+      tabs={<DetailTabs tabs={[{ key: "info", label: "信息" }, { key: "items", label: "组成" }, { key: "ai", label: "AI建议" }, { key: "records", label: "记录" }]} activeTab={detailTab} onChange={setDetailTab} />}
+      overlays={<>
+        <MotionPopoverMenu visible={menuOpen} onClose={() => setMenuOpen(false)} anchorRef={menuAnchorRef as React.RefObject<HTMLElement | null>}>
+          <div className="min-w-[160px] p-1">
+            <button type="button" onClick={() => { setMenuOpen(false); onEdit(); }} className="flex w-full items-center gap-2 rounded-lg px-3 py-2.5 text-sm text-ink/80 hover:bg-mist"><Settings size={14} />编辑套装</button>
+            <button type="button" onClick={() => { setMenuOpen(false); onToggleFavorite(); }} className="flex w-full items-center gap-2 rounded-lg px-3 py-2.5 text-sm text-ink/80 hover:bg-mist"><Sparkles size={14} />{outfit.favorite ? "取消收藏" : "收藏套装"}</button>
+            <button type="button" onClick={() => { setMenuOpen(false); setDeleteConfirm(true); }} className="flex w-full items-center gap-2 rounded-lg px-3 py-2.5 text-sm text-red-600 hover:bg-red-50"><Trash2 size={14} />删除套装</button>
           </div>
-        </div>
-      )}
-
-      <DetailHeroGallery
-        slides={gallerySlides}
-        currentIndex={Math.min(activeSlide, Math.max(gallerySlides.length - 1, 0))}
-        onIndexChange={setActiveSlide}
-        onExpandImage={onExpandImage}
-        bottomRightAction={
-          <button
-            type="button"
-            onClick={(event) => { event.stopPropagation(); onMarkWorn(); }}
-            className="inline-flex h-9 items-center gap-1 rounded-full bg-white/90 border border-white/60 px-3 text-xs font-semibold shadow-sm text-ink/80"
-          >
-            {wearSummary.hasToday ? "✓ 今天已穿" : "标记今天穿了"}
-          </button>
-        }
-        emptyIcon={<Shirt size={48} />}
-        emptyText="暂无套装封面"
-      />
-      <DetailFilmstrip
-        items={filmstripItems}
-        activeId={activeFilmstripId}
-        onSelect={(id) => {
-          const index = allSlides.findIndex((slide) => slide.kind === "cover" ? id === "cover" : slide.kind === "real" && slide.image.id === id);
-          if (index >= 0) setActiveSlide(index);
-        }}
-        addLabel="套装示意"
-        onAdd={onAddRealImage}
-      />
-
-      <DetailTitleMetaBlock eyebrow={wearSummary.label} title={outfit.name} metaParts={[`${items.length}件`, seasonLabels, sceneLabels, styleLabels]} />
-
-      <DetailTabs
-        tabs={[
-          { key: "info", label: "信息" },
-          { key: "items", label: "组成" },
-          { key: "ai", label: "AI建议" },
-          { key: "records", label: "记录" },
-        ]}
-        activeTab={detailTab}
-        onChange={setDetailTab}
-      />
+        </MotionPopoverMenu>
+        {deleteConfirm ? <div className="fixed inset-0 z-70 flex items-center justify-center bg-black/30" onClick={() => setDeleteConfirm(false)}><div className="mx-4 w-full max-w-sm rounded-2xl bg-white p-6" onClick={(e) => e.stopPropagation()}><p className="text-sm font-medium">删除「{outfit.name}」？</p><p className="mt-1 text-xs text-ink/50">删除后不会影响套装内的衣物，套装实图也会一并删除。</p><div className="mt-4 flex gap-3"><button type="button" onClick={() => setDeleteConfirm(false)} className="flex-1 rounded-full border border-ink/10 py-2 text-sm">取消</button><button type="button" onClick={handleDeleteOutfit} className="flex-1 rounded-full bg-red-500 py-2 text-sm font-medium text-white">删除</button></div></div></div> : null}
+      </>}
+    >
 
       {detailTab === "info" ? (
         <div className="px-4 mt-3 pb-8 space-y-4">
@@ -1549,7 +1495,7 @@ function OutfitDetailView({
           </div>
         </div>
       ) : null}
-    </div>
+    </ItemDetailPageShell>
   );
 }
 

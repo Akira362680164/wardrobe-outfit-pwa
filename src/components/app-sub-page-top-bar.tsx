@@ -27,7 +27,7 @@ export function AppSubPageTopBar({
   moreButtonRef,
 }: AppSubPageTopBarProps) {
   return (
-    <div className="grid grid-cols-[48px_1fr_48px] items-stretch min-h-14 border-b border-ink/5 px-4">
+    <div className={`grid ${rightAction ? "grid-cols-[48px_1fr_auto]" : "grid-cols-[48px_1fr_48px]"} items-stretch min-h-14 border-b border-ink/5 px-4`}>
       {/* Left: back button area (48px wide, includes px-4 indent) — 视觉圆顶对齐到行顶，与首页"全部衣橱"按钮顶部一致 */}
       <div className="flex items-start justify-start">
         <button

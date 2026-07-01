@@ -1,4 +1,14 @@
 
+## 2026-07-01 / v2.1.1-test / Codex — 共享页面壳、瀑布流与区块卡片真实接入
+
+- **目的**：修复共享组件只存在但业务页面未使用的问题，删除套装旧瀑布流卡片的第二份 JSX。
+- **主要改动**：单品、套装、种草详情接入 `ItemDetailPageShell`；种草编辑接入 `ItemEditPageShell`，其顶部栏复用 `AppSubPageTopBar` 并增加保存中防重复提交；套装列表接入 `CatalogWaterfallGrid/CardShell`；新增唯一 `ItemSectionCard`，Detail/Edit 卡片保留为薄包装；旧 `catalog-waterfall-card.tsx` 已移入废纸篓。
+- **测试加固**：`test-shared-item-shells` 改为验证三个真实详情入口、种草编辑入口、套装卡片和区块卡片委派关系，不再只验证共享文件存在。
+- **验证通过**：`npm run typecheck`；`npm run test:logic:shared-item-shells`；`npm run test:logic:detail-shell`；`npm run test:logic:home-card-edit-wishlist-delete-hotfix`；`npm run build`。
+- **风险门禁**：**high**（三个移动端详情页根滚动壳、编辑页和套装卡片布局）。
+- **未触发 subagent**：用户未通知。
+- **未验证风险**：本提交尚未执行 Android 横竖屏、返回键和滚动实操；将在最终 APK 验证统一覆盖。
+
 ## 2026-07-01 / v2.1.1-test / Codex — 组件复用收口设计与实施计划
 
 - **目的**：复核 ChatGPT 组件复用审查报告，并将合理项拆成可独立验证的 UI 收口、重复请求修复和高风险图片按需加载阶段。

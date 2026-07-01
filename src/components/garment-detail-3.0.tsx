@@ -23,6 +23,7 @@ import type { SwipeImageSlide } from "@/components/swipe-image-carousel";
 import { clampCarouselIndex } from "@/lib/carousel-logic";
 import { OutfitCover } from "@/components/outfit-cover";
 import { MotionPopoverMenu } from "@/components/motion-common";
+import { ItemDetailPageShell } from "@/components/item-shell/item-detail-page-shell";
 import {
   DetailAiCard,
   DetailFilmstrip,
@@ -203,8 +204,52 @@ export function GarmentDetail30({
   const hasMultipleLocations = locations.length > 1;
 
   return (
-    <div className="w-full pb-8">
-      <DetailTopBar title="" onBack={onBack} onMore={() => setMenuOpen((v) => !v)} moreButtonRef={menuAnchorRef} />
+    <ItemDetailPageShell
+      contentClassName="mx-auto w-full max-w-4xl pb-[calc(env(safe-area-inset-bottom)+24px)]"
+      topBar={<DetailTopBar title="" onBack={onBack} onMore={() => setMenuOpen((v) => !v)} moreButtonRef={menuAnchorRef} />}
+      hero={
+        <DetailHeroGallery
+          slides={detailSlides}
+          currentIndex={safeIndex}
+          onIndexChange={onCurrentImageIndexChange}
+          onExpandImage={onExpandImage}
+          bottomRightAction={
+            <button
+              type="button"
+              onClick={(event) => { event.stopPropagation(); onWearToggle(); }}
+              className="inline-flex h-9 items-center gap-1 rounded-full bg-white/90 border border-white/60 px-3 text-xs font-semibold shadow-sm text-ink/80"
+            >
+              {wearSummary.hasToday ? "✓ 今天已穿" : "标记今天穿了"}
+            </button>
+          }
+        />
+      }
+      filmstrip={
+        <DetailFilmstrip
+          items={filmstripItems}
+          activeId={activeSlideId}
+          onSelect={(id) => {
+            const index = slides.findIndex((slide) => slide.id === id);
+            if (index >= 0) onCurrentImageIndexChange(index);
+          }}
+          addLabel="灵感"
+          onAdd={onAddReferenceImage}
+        />
+      }
+      titleBlock={<DetailTitleMetaBlock eyebrow={wearSummary.label} title={item.name} metaParts={metaParts} />}
+      tabs={
+        <DetailTabs
+          tabs={[
+            { key: "info", label: "信息" },
+            { key: "inspiration", label: "灵感" },
+            { key: "pairing", label: "搭配" },
+          ]}
+          activeTab={activeTab}
+          onChange={setActiveTab}
+        />
+      }
+      overlays={
+        <>
         <MotionPopoverMenu
           visible={menuOpen}
           onClose={() => setMenuOpen(false)}
@@ -235,107 +280,15 @@ export function GarmentDetail30({
             </button>
           </div>
         </MotionPopoverMenu>
-
-      <DetailHeroGallery
-        slides={detailSlides}
-        currentIndex={safeIndex}
-        onIndexChange={onCurrentImageIndexChange}
-        onExpandImage={onExpandImage}
-        bottomRightAction={
-          <button
-            type="button"
-            onClick={(event) => { event.stopPropagation(); onWearToggle(); }}
-            className="inline-flex h-9 items-center gap-1 rounded-full bg-white/90 border border-white/60 px-3 text-xs font-semibold shadow-sm text-ink/80"
-          >
-            {wearSummary.hasToday ? "✓ 今天已穿" : "标记今天穿了"}
-          </button>
-        }
-      />
-      <DetailFilmstrip
-        items={filmstripItems}
-        activeId={activeSlideId}
-        onSelect={(id) => {
-          const index = slides.findIndex((slide) => slide.id === id);
-          if (index >= 0) onCurrentImageIndexChange(index);
-        }}
-        addLabel="灵感"
-        onAdd={onAddReferenceImage}
-      />
-
-      <DetailTitleMetaBlock eyebrow={wearSummary.label} title={item.name} metaParts={metaParts} />
-      <DetailTabs
-        tabs={[
-          { key: "info", label: "信息" },
-          { key: "inspiration", label: "灵感" },
-          { key: "pairing", label: "搭配" },
-        ]}
-        activeTab={activeTab}
-        onChange={setActiveTab}
-      />
-
-      {/* ── Tab 内容 ── */}
-      {activeTab === "info" && (
-        <div className="mt-3 pb-8">
-          <InfoTab
-            item={item}
-            aiStyleAdvice={aiStyleAdvice}
-            aiAdviceState={aiAdviceState}
-            hasMiniMaxKey={hasMiniMaxKey}
-            onGenerateAdvice={onGenerateAdvice}
-            onGoSettings={onGoSettings}
-            locationLabel={locationLabel}
-            seasonLabels={seasonLabels}
-            styleLabels={styleLabels}
-            subcategory={subcategory}
-            material={material}
-            purchaseDate={purchaseDate}
-            temperatureRange={temperatureRange}
-            notes={notes}
-          />
-        </div>
-      )}
-
-      {activeTab === "inspiration" && (
-        <div className="mt-3 pb-8">
-          <InspirationTab
-            refs={refs}
-            onAdd={onAddReferenceImage}
-            onView={onViewReferenceImage}
-          />
-        </div>
-      )}
-
-      {activeTab === "pairing" && (
-        <div className="mt-3 pb-8">
-          <PairingTab
-            allItems={allItems}
-            historyOutfits={historyOutfits}
-            pairingItems={pairingItems}
-            onViewOutfit={onViewOutfit}
-          />
-        </div>
-      )}
-
-      {/* ── 移动衣物弹层 ── */}
-      {moveSheetOpen && (
-        <MoveLocationSheet
-          locations={locations}
-          currentLocationId={item.locationId}
-          onMove={(locId) => { setMoveSheetOpen(false); onMoveItem(locId); }}
-          onClose={() => setMoveSheetOpen(false)}
-        />
-      )}
-
-      {/* ── 删除确认 ── */}
-      {deleteConfirmOpen && (
-        <DeleteConfirmDialog
-          onDelete={confirmDelete}
-          onCancel={() => { if (!deleteSubmitting) setDeleteConfirmOpen(false); }}
-          submitting={deleteSubmitting}
-          errorMessage={deleteError}
-        />
-      )}
-    </div>
+          {moveSheetOpen ? <MoveLocationSheet locations={locations} currentLocationId={item.locationId} onMove={(locId) => { setMoveSheetOpen(false); onMoveItem(locId); }} onClose={() => setMoveSheetOpen(false)} /> : null}
+          {deleteConfirmOpen ? <DeleteConfirmDialog onDelete={confirmDelete} onCancel={() => { if (!deleteSubmitting) setDeleteConfirmOpen(false); }} submitting={deleteSubmitting} errorMessage={deleteError} /> : null}
+        </>
+      }
+    >
+      {activeTab === "info" ? <InfoTab item={item} aiStyleAdvice={aiStyleAdvice} aiAdviceState={aiAdviceState} hasMiniMaxKey={hasMiniMaxKey} onGenerateAdvice={onGenerateAdvice} onGoSettings={onGoSettings} locationLabel={locationLabel} seasonLabels={seasonLabels} styleLabels={styleLabels} subcategory={subcategory} material={material} purchaseDate={purchaseDate} temperatureRange={temperatureRange} notes={notes} /> : null}
+      {activeTab === "inspiration" ? <InspirationTab refs={refs} onAdd={onAddReferenceImage} onView={onViewReferenceImage} /> : null}
+      {activeTab === "pairing" ? <PairingTab allItems={allItems} historyOutfits={historyOutfits} pairingItems={pairingItems} onViewOutfit={onViewOutfit} /> : null}
+    </ItemDetailPageShell>
   );
 }
 

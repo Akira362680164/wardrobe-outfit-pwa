@@ -28,6 +28,13 @@ const editCard = readFileSync(
   join(root, "src/components/item-shell/edit-section-card.tsx"),
   "utf8",
 );
+const itemSectionCard = readFileSync(
+  join(root, "src/components/item-shell/item-section-card.tsx"),
+  "utf8",
+);
+const garmentDetail = readFileSync(join(root, "src/components/garment-detail-3.0.tsx"), "utf8");
+const outfitList = readFileSync(join(root, "src/components/outfit-list-view.tsx"), "utf8");
+const wishlistView = readFileSync(join(root, "src/components/wishlist-view-2.0.tsx"), "utf8");
 
 // Existence
 assert.ok(
@@ -77,15 +84,26 @@ assert.ok(
   "ITEM_SURFACE_CLASS does not have shadow-soft",
 );
 
-// Both cards import ITEM_SURFACE_CLASS
+// Both public cards are thin wrappers around one shared structure.
 assert.ok(
-  detailCard.includes("ITEM_SURFACE_CLASS"),
-  "DetailSectionCard imports ITEM_SURFACE_CLASS",
+  detailCard.includes("<ItemSectionCard"),
+  "DetailSectionCard delegates to ItemSectionCard",
 );
 assert.ok(
-  editCard.includes("ITEM_SURFACE_CLASS"),
-  "EditSectionCard imports ITEM_SURFACE_CLASS",
+  editCard.includes("<ItemSectionCard"),
+  "EditSectionCard delegates to ItemSectionCard",
 );
+assert.ok(itemSectionCard.includes("ITEM_SURFACE_CLASS"), "ItemSectionCard owns the shared surface structure");
+
+// Real business consumers, not file-existence-only assertions.
+assert.ok(garmentDetail.includes("<ItemDetailPageShell"), "garment detail uses ItemDetailPageShell");
+assert.ok(outfitList.includes("<ItemDetailPageShell"), "outfit detail uses ItemDetailPageShell");
+assert.ok(wishlistView.includes("<ItemDetailPageShell"), "wishlist detail uses ItemDetailPageShell");
+assert.ok(wishlistView.includes("<ItemEditPageShell"), "wishlist edit uses ItemEditPageShell");
+assert.ok(editShell.includes("<AppSubPageTopBar"), "ItemEditPageShell uses AppSubPageTopBar");
+assert.ok(outfitList.includes("<CatalogWaterfallGrid>"), "outfit library uses CatalogWaterfallGrid");
+assert.ok(outfitList.includes("<CatalogWaterfallCardShell"), "outfit library uses CatalogWaterfallCardShell");
+assert.ok(!outfitList.includes("<CatalogWaterfallCard\n"), "outfit library no longer uses the legacy card");
 
 // Single scroll container per shell — verifies token file has overflow-y-auto
 // and each shell uses ITEM_PAGE_SCROLL_CLASS (not a duplicate literal)
