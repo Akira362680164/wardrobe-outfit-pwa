@@ -1,3 +1,10 @@
+## 2026-07-01 / v2.1.3-test / Codex — close execution plan
+
+- **执行 Agent**：Codex（母 agent 串行开发；未触发 subagent：用户明确禁止）。
+- **改动文件**：`docs/superpowers/plans/2026-07-01-v2.1.3-asset-model-reset.md`、`VERSION_HISTORY.md`。
+- **结果**：计划全部检查项已完成并勾选；末尾状态从“未开始”更新为完成，并保留厂商真机和 Android MiniMax 现场调用未执行的风险说明。
+- **风险门禁**：low（文档收口）；未触发 subagent：用户明确禁止。
+
 ## 2026-07-01 / v2.1.3-test / Codex — push to public GitHub (force-with-lease)
 
 - **执行 Agent**：Codex（母 agent 串行开发；未触发 subagent：用户明确禁止）。
