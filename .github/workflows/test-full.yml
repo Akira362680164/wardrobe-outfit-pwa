@@ -1,0 +1,19 @@
+name: Test Full
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  full:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+      - run: npm ci
+      - run: npm run test:local:full:baseline
+      - run: npm run test:gate:automated

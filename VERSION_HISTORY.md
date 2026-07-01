@@ -1,3 +1,13 @@
+## 2026-07-01 / v2.1.3-test / Codex — AI-live spec、CI 配置文件、APK manifest 脚本、final-state 文档
+
+- **目的**：补齐无需外部基础设施的剩余任务项。
+- **AI-live**：`e2e/specs/90-ai-live.spec.ts` — `@ai-live` 标记，manual policy，blocking=false。
+- **CI 配置**：`.github/workflows/test-fast.yml`（Manifest+Contract+Unit+typecheck）、`test-full.yml`（local:full+gate）。
+- **APK manifest**：`scripts/test/write-apk-build-manifest.mjs` — 从 aapt 读取 versionName/versionCode/SHA256 写入 build-manifest.json。
+- **Integration Requests**：`tests/reports/integration-requests/D.md`（jsdom+testing-library 需求）、`F.md`（E2E runner 配置需求）。
+- **文档**：`docs/test-system-final-state.md` — 完整最终状态说明和命令表。
+- **验证**：`npx vitest run` → **19/19 通过**；`npm run test:fast:baseline` → 全通过；`npm run test:manifest` → Valid: true。
+- **风险门禁**：**low**（文档和配置文件治理，不改业务运行时代码）。
 ## 2026-07-01 / v2.1.3-test / Codex — AI Live 保护、Post-release 流程、Vendor Device 配置
 
 - **目的**：补齐 AI Live 测试保护、post-release 烟测命令和 vendor-device 注册。
