@@ -6,7 +6,7 @@ ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 MODE="${1:-full}"
 APK_PATH="${APK_PATH:-}"
 SERIAL="${ANDROID_SERIAL:-}"
-AVD_NAME="${ANDROID_AVD_NAME:-wardrobe-test}"
+AVD_NAME="${ANDROID_AVD_NAME:-codex-android-test}"
 PACKAGE_NAME="com.wardrobe.outfit"
 RESULTS_DIR="${RESULTS_DIR:-$ROOT_DIR/test-results/android-emulator}"
 STAMP="$(date +%Y%m%d-%H%M%S)"
@@ -127,11 +127,14 @@ PKG_NAME="$(sed -n "s/^package: name='\([^']*\)'.*/\1/p" "$BADGING" | head -1)"
 VERSION_NAME="$(sed -n "s/^package: name='[^']*' versionCode='[^']*' versionName='\([^']*\)'.*/\1/p" "$BADGING" | head -1)"
 VERSION_CODE="$(sed -n "s/^package: name='[^']*' versionCode='\([^']*\)'.*/\1/p" "$BADGING" | head -1)"
 PACKAGE_JSON_VERSION="$(node -e "console.log(require('./package.json').version)" 2>/dev/null || true)"
+EXPECTED_SIGNER_CN="${APK_EXPECTED_SIGNER_CN:-}"
 
 [[ "$PKG_NAME" == "$PACKAGE_NAME" ]] || fail "包名不匹配：$PKG_NAME"
 [[ -n "$VERSION_NAME" && -n "$VERSION_CODE" ]] || fail "无法读取 APK 版本信息"
 [[ "$VERSION_NAME" == "$PACKAGE_JSON_VERSION" ]] || fail "APK versionName=$VERSION_NAME 与 package.json=$PACKAGE_JSON_VERSION 不一致"
-rg -q "CN=fangzheng" "$SIGNATURE" || fail "APK 签名未包含 CN=fangzheng"
+if [[ -n "$EXPECTED_SIGNER_CN" ]]; then
+  rg -q "CN=$EXPECTED_SIGNER_CN" "$SIGNATURE" || fail "APK 签名未包含 CN=$EXPECTED_SIGNER_CN"
+fi
 shasum -a 256 "$APK_PATH" | tee "$RUN_DIR/apk-sha256.log" >/dev/null
 
 cat > "$RUN_DIR/summary.md" <<SUMMARY
@@ -141,6 +144,7 @@ cat > "$RUN_DIR/summary.md" <<SUMMARY
 - APK: $APK_PATH
 - Package: $PKG_NAME
 - Version: $VERSION_NAME ($VERSION_CODE)
+- Expected signer CN: ${EXPECTED_SIGNER_CN:-not enforced}
 - Results: $RUN_DIR
 SUMMARY
 

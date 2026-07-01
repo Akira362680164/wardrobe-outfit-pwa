@@ -1,11 +1,11 @@
 #!/usr/bin/env tsx
 /**
  * v2.0.8-test sync fix verification script.
- * Tests all P0/P1 findings from sync-report.md against the live server.
+ * Tests all P0/P1 findings from sync-report.md against a target server.
  * Uses direct API calls with a registered test account.
  */
 
-const BASE_URL = process.env.WARDROBE_API_URL ?? "http://111.231.98.86";
+const BASE_URL = process.env.WARDROBE_API_URL ?? "http://127.0.0.1:3000";
 const DEVICE_ID = `test-fix-verify-${Date.now()}`;
 
 interface TestResult {

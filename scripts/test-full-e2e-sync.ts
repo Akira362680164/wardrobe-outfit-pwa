@@ -7,7 +7,7 @@
  * 4. 重新登录 + bootstrap（新手机拉取云端数据）
  * 5. 验证所有实体类型完整恢复
  */
-const BASE_URL = process.env.WARDROBE_API_URL ?? "http://111.231.98.86";
+const BASE_URL = process.env.WARDROBE_API_URL ?? "http://127.0.0.1:3000";
 const DEVICE_OLD = `old-phone-${Date.now()}`;
 const DEVICE_NEW = `new-phone-${Date.now()}`;
 

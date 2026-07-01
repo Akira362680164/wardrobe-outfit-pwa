@@ -4,8 +4,8 @@
 
 ## 目标
 
-- 校验 APK 的包名、版本、签名和 SHA-256。
-- 验证 APK 能在 `wardrobe-test` 模拟器上安装、启动、退到后台再返回。
+- 校验 APK 的包名、版本、可选签名约束和 SHA-256。
+- 验证 APK 能在指定模拟器上安装、启动、退到后台再返回。
 - 验证横竖屏切换、返回键、首次启动和清数据重装流程。
 - 把崩溃日志和关键截图沉淀到 `test-results/android-emulator/<timestamp>/`。
 
@@ -26,12 +26,12 @@
 检查项：
 - `com.wardrobe.outfit`
 - `versionName` / `versionCode`
-- 固定签名 `CN=fangzheng`
+- 若设置 `APK_EXPECTED_SIGNER_CN`，校验对应签名主体
 - SHA-256
 
 ### launch
 
-自动启动 `wardrobe-test` 或复用现有设备，安装 APK，使用 `am start -W` 打开 App，并检查前台窗口、进程和崩溃日志。
+自动启动 `ANDROID_AVD_NAME` 指定的模拟器或复用现有设备，安装 APK，使用 `am start -W` 打开 App，并检查前台窗口、进程和崩溃日志。
 
 ### interaction
 
@@ -71,7 +71,7 @@ test-results/android-emulator/<timestamp>/
 
 ## 边界
 
-脚本会优先复用 `ANDROID_SERIAL` 指定设备；未指定时优先选择已连接的 `emulator-*`，没有设备时自动启动 `ANDROID_AVD_NAME`（默认 `wardrobe-test`）。
+脚本会优先复用 `ANDROID_SERIAL` 指定设备；未指定时优先选择已连接的 `emulator-*`，没有设备时自动启动 `ANDROID_AVD_NAME`（默认 `codex-android-test`）。
 
 这套脚本不替代：
 - `npm run test:e2e` 的浏览器业务全链路

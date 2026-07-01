@@ -1,4 +1,17 @@
 
+## 2026-07-01 / v2.1.2-test / Codex — 公开仓库测试脚本脱敏与废弃备份脚本删除
+
+- **目的**：在公开 GitHub 导出前清理测试/验证脚本里的本机路径、固定服务器地址和固定签名假设，并删除已无实际用途的 `test-real-user-zip-contract.ts`。
+- **主要改动**：
+  - `scripts/test-sync-fix-verification.ts`、`scripts/test-full-e2e-sync.ts`：默认 API 地址改为本机 `http://127.0.0.1:3000`，不再暴露固定线上地址。
+  - `scripts/android-emulator-regression.sh`、`docs/android-emulator-regression.md`：把固定 AVD 名称和固定签名主体改为可配置输入；仅在设置 `APK_EXPECTED_SIGNER_CN` 时校验签名。
+  - `scripts/verify-v1.1.27-khaki-live.mjs`：图片路径改为 `MINIMAX_TEST_IMAGE_PATH` 显式提供，未提供时安全跳过。
+  - `package.json`、`scripts/test-real-user-zip-contract.ts`：删除废弃的真实用户备份 ZIP 合约脚本及其 npm 入口。
+- **验证**：`npm run typecheck` 通过；`npm run test:logic:all` 通过；`bash -n scripts/android-emulator-regression.sh` 通过；`node scripts/verify-v1.1.27-khaki-live.mjs` 在未配置 `.env.local` / `MINIMAX_TEST_IMAGE_PATH` 时按预期跳过 live 验证。
+- **风险门禁**：**low**（脚本与文档治理，不改业务运行时代码）。
+- **未触发 subagent**：用户未通知。
+- **未验证风险**：本轮未对公开导出目录单独执行 `npm install` / `build`；将在随后的 GitHub 公开推送流程中补齐。
+
 ## 2026-07-01 / v2.1.2-test / Codex — Android 模拟器分层回归脚本落地
 
 - **目的**：把 Playwright 业务 E2E 之外的 Android APK / WebView 风险补成可复用的模拟器回归门禁。

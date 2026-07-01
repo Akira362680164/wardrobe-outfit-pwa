@@ -42,8 +42,12 @@ if (API_KEY.length < 50) {
 }
 
 // 读图 → base64
-const IMAGE_PATH = "/Users/fangzheng/Downloads/qq_pic_merged_1782310764632.jpg";
+const IMAGE_PATH = process.env.MINIMAX_TEST_IMAGE_PATH?.trim() ?? "";
 let imageBase64;
+if (!IMAGE_PATH) {
+  console.log("⚠ 未设置 MINIMAX_TEST_IMAGE_PATH，跳过真实图片识别验证");
+  process.exit(0);
+}
 try {
   const buf = readFileSync(IMAGE_PATH);
   imageBase64 = `data:image/jpeg;base64,${buf.toString("base64")}`;
