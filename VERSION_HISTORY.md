@@ -1,3 +1,13 @@
+## 2026-07-01 / v2.1.3-test / Codex — push to public GitHub (force-with-lease)
+
+- **执行 Agent**：Codex（母 agent 串行开发；未触发 subagent：用户明确禁止）。
+- **主仓库合并**：`codex/v2.1.3-asset-model-reset` 已 fast-forward 合并到本地 `main@cb21f35`。
+- **公开推送**：推送前远端 `main@96bf969`；从本地 `main` 重新导出无历史公开快照，排除 agent 规则、环境文件、签名、APK、用户图片、本机路径和真实服务器地址；公开根提交 `d5de583`，通过 `force-with-lease` 推送后远端 `main` 与该提交一致。
+- **公开快照验证**：全新 `npm install`、`npm run typecheck`、`npm run test:logic:all`、`npm run api:typecheck`、`npm run build` 通过。
+- **改动文件**：`docs/superpowers/plans/2026-07-01-v2.1.3-asset-model-reset.md`、`VERSION_HISTORY.md`；公开 staging 文件仅存在独立目录，不回写主仓库。
+- **风险门禁**：high（公开发布和历史重建）；通过敏感文件扫描、私有标记替换、全新依赖安装和构建验证；未触发 subagent：用户明确禁止。
+- **未验证风险**：未从 GitHub 再执行一次独立 clone；固定签名文件和 APK 未公开，属于预期。
+
 # v2.1.3-test - 2026-07-01 — 最终门禁与执行报告
 
 - **执行 Agent**：Codex（母 agent 串行开发；未触发 subagent：用户明确禁止）。
