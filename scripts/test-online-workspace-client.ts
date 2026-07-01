@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import type { WorkspaceEntity } from "@wardrobe/cloud-contracts";
 
 import { OnlineImageClient } from "../src/lib/online/online-image-client";
-import { getOnlineEntityMetadata, OnlineWorkspaceRepository } from "../src/lib/online/online-repository";
+import { getOnlineAssetMetadata, getOnlineEntityMetadata, OnlineWorkspaceRepository } from "../src/lib/online/online-repository";
 import { nativeBase64ToBlob } from "../src/lib/online/online-request";
 import { beginOnlineLoad, failOnlineLoad, finishOnlineLoad, initialOnlineState } from "../src/lib/online/online-state";
 
@@ -56,12 +56,33 @@ async function main() {
     createdAt: "2026-06-30T00:00:00.000Z",
     updatedAt: "2026-06-30T00:00:00.000Z",
     payload: { legacyItemId: 7, name: "测试衬衫", locationId: "home", colors: { mode: "single", primary: "蓝色" } },
+    assetRefs: {
+      imageDataUrl: {
+        assetId: "33333333-3333-4333-8333-333333333333",
+        sha256: "b".repeat(64),
+        mimeType: "image/jpeg",
+        byteSize: 5,
+        variants: ["original", "thumbnail"],
+        variantSha256: { original: "b".repeat(64), thumbnail: "c".repeat(64) },
+      },
+    },
+  };
+  const requestedVariants: string[] = [];
+  globalThis.fetch = async (input) => {
+    requestedVariants.push(String(input).includes("/thumbnail/") ? "thumbnail" : "original");
+    return new Response(new Blob(["image"], { type: "image/jpeg" }), { status: 200, headers: { "content-type": "image/jpeg" } });
   };
   const repository = new OnlineWorkspaceRepository({ accessToken: "token", deviceId: "device" });
-  const garment = await repository.mapGarment(entity);
-  assert.equal(garment.id, 7);
-  assert.deepEqual(getOnlineEntityMetadata(garment), { entityId: entity.id, revision: 4, kind: "garment" });
-  repository.dispose();
+  try {
+    const garment = await repository.mapGarment(entity);
+    assert.equal(garment.id, 7);
+    assert.deepEqual(getOnlineEntityMetadata(garment), { entityId: entity.id, revision: 4, kind: "garment" });
+    assert.equal(getOnlineAssetMetadata(garment, "imageDataUrl")?.assetId, entity.assetRefs.imageDataUrl.assetId);
+    assert.deepEqual(requestedVariants, ["thumbnail"], "overview mapping must not download garment originals");
+  } finally {
+    repository.dispose();
+    globalThis.fetch = originalFetch;
+  }
 
   console.log("online workspace client checks passed");
 }

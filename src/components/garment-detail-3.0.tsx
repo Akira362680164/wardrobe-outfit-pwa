@@ -22,7 +22,9 @@ import type { RecommendedPairingItem } from "@/lib/garment-detail-pairing";
 import type { SwipeImageSlide } from "@/components/swipe-image-carousel";
 import { clampCarouselIndex } from "@/lib/carousel-logic";
 import { OutfitCover } from "@/components/outfit-cover";
-import { MotionPopoverMenu } from "@/components/motion-common";
+import { MotionPopoverMenu, MotionSheet } from "@/components/motion-common";
+import { ConfirmActionSheet } from "@/components/dialogs";
+import { ItemDetailPageShell } from "@/components/item-shell/item-detail-page-shell";
 import {
   DetailAiCard,
   DetailFilmstrip,
@@ -34,6 +36,7 @@ import {
 } from "@/components/detail-shell";
 import { ItemDetailSections } from "@/components/item/detail-sections";
 import { WardrobeExtras } from "@/components/item/wardrobe-extras";
+import { OnlineAssetImage } from "@/components/online/online-asset-image";
 
 /* ------------------------------------------------------------------ */
 /*  Props                                                             */
@@ -153,6 +156,12 @@ export function GarmentDetail30({
     displayMode: slide.displayMode,
     originalSrc: slide.originalSrc,
     cropBox: slide.cropBox,
+    renderContent: slide.id === "main"
+      ? <OnlineAssetImage entity={item} field="imageDataUrl" variant="original" alt={item.name} className="h-full w-full" onOpen={(url) => onExpandImage({ src: url, alt: item.name })} fallback={<div className="grid h-full place-items-center text-ink/25"><Shirt size={48} /></div>} />
+      : (() => {
+          const reference = refs.find((entry) => entry.id === slide.id);
+          return reference ? <OnlineAssetImage entity={reference} field="imageDataUrl" variant="original" alt={slide.alt || item.name} className="h-full w-full" onOpen={(url) => onExpandImage({ src: url, alt: slide.alt || item.name })} /> : undefined;
+        })(),
   }));
   const filmstripItems = detailSlides.map((slide) => ({
     id: slide.id,
@@ -203,8 +212,52 @@ export function GarmentDetail30({
   const hasMultipleLocations = locations.length > 1;
 
   return (
-    <div className="w-full pb-8">
-      <DetailTopBar title="" onBack={onBack} onMore={() => setMenuOpen((v) => !v)} moreButtonRef={menuAnchorRef} />
+    <ItemDetailPageShell
+      contentClassName="mx-auto w-full max-w-4xl pb-[calc(env(safe-area-inset-bottom)+24px)]"
+      topBar={<DetailTopBar title="" onBack={onBack} onMore={() => setMenuOpen((v) => !v)} moreButtonRef={menuAnchorRef} />}
+      hero={
+        <DetailHeroGallery
+          slides={detailSlides}
+          currentIndex={safeIndex}
+          onIndexChange={onCurrentImageIndexChange}
+          onExpandImage={onExpandImage}
+          bottomRightAction={
+            <button
+              type="button"
+              onClick={(event) => { event.stopPropagation(); onWearToggle(); }}
+              className="inline-flex h-9 items-center gap-1 rounded-full bg-white/90 border border-white/60 px-3 text-xs font-semibold shadow-sm text-ink/80"
+            >
+              {wearSummary.hasToday ? "✓ 今天已穿" : "标记今天穿了"}
+            </button>
+          }
+        />
+      }
+      filmstrip={
+        <DetailFilmstrip
+          items={filmstripItems}
+          activeId={activeSlideId}
+          onSelect={(id) => {
+            const index = slides.findIndex((slide) => slide.id === id);
+            if (index >= 0) onCurrentImageIndexChange(index);
+          }}
+          addLabel="灵感"
+          onAdd={onAddReferenceImage}
+        />
+      }
+      titleBlock={<DetailTitleMetaBlock eyebrow={wearSummary.label} title={item.name} metaParts={metaParts} />}
+      tabs={
+        <DetailTabs
+          tabs={[
+            { key: "info", label: "信息" },
+            { key: "inspiration", label: "灵感" },
+            { key: "pairing", label: "搭配" },
+          ]}
+          activeTab={activeTab}
+          onChange={setActiveTab}
+        />
+      }
+      overlays={
+        <>
         <MotionPopoverMenu
           visible={menuOpen}
           onClose={() => setMenuOpen(false)}
@@ -235,107 +288,15 @@ export function GarmentDetail30({
             </button>
           </div>
         </MotionPopoverMenu>
-
-      <DetailHeroGallery
-        slides={detailSlides}
-        currentIndex={safeIndex}
-        onIndexChange={onCurrentImageIndexChange}
-        onExpandImage={onExpandImage}
-        bottomRightAction={
-          <button
-            type="button"
-            onClick={(event) => { event.stopPropagation(); onWearToggle(); }}
-            className="inline-flex h-9 items-center gap-1 rounded-full bg-white/90 border border-white/60 px-3 text-xs font-semibold shadow-sm text-ink/80"
-          >
-            {wearSummary.hasToday ? "✓ 今天已穿" : "标记今天穿了"}
-          </button>
-        }
-      />
-      <DetailFilmstrip
-        items={filmstripItems}
-        activeId={activeSlideId}
-        onSelect={(id) => {
-          const index = slides.findIndex((slide) => slide.id === id);
-          if (index >= 0) onCurrentImageIndexChange(index);
-        }}
-        addLabel="灵感"
-        onAdd={onAddReferenceImage}
-      />
-
-      <DetailTitleMetaBlock eyebrow={wearSummary.label} title={item.name} metaParts={metaParts} />
-      <DetailTabs
-        tabs={[
-          { key: "info", label: "信息" },
-          { key: "inspiration", label: "灵感" },
-          { key: "pairing", label: "搭配" },
-        ]}
-        activeTab={activeTab}
-        onChange={setActiveTab}
-      />
-
-      {/* ── Tab 内容 ── */}
-      {activeTab === "info" && (
-        <div className="mt-3 pb-8">
-          <InfoTab
-            item={item}
-            aiStyleAdvice={aiStyleAdvice}
-            aiAdviceState={aiAdviceState}
-            hasMiniMaxKey={hasMiniMaxKey}
-            onGenerateAdvice={onGenerateAdvice}
-            onGoSettings={onGoSettings}
-            locationLabel={locationLabel}
-            seasonLabels={seasonLabels}
-            styleLabels={styleLabels}
-            subcategory={subcategory}
-            material={material}
-            purchaseDate={purchaseDate}
-            temperatureRange={temperatureRange}
-            notes={notes}
-          />
-        </div>
-      )}
-
-      {activeTab === "inspiration" && (
-        <div className="mt-3 pb-8">
-          <InspirationTab
-            refs={refs}
-            onAdd={onAddReferenceImage}
-            onView={onViewReferenceImage}
-          />
-        </div>
-      )}
-
-      {activeTab === "pairing" && (
-        <div className="mt-3 pb-8">
-          <PairingTab
-            allItems={allItems}
-            historyOutfits={historyOutfits}
-            pairingItems={pairingItems}
-            onViewOutfit={onViewOutfit}
-          />
-        </div>
-      )}
-
-      {/* ── 移动衣物弹层 ── */}
-      {moveSheetOpen && (
-        <MoveLocationSheet
-          locations={locations}
-          currentLocationId={item.locationId}
-          onMove={(locId) => { setMoveSheetOpen(false); onMoveItem(locId); }}
-          onClose={() => setMoveSheetOpen(false)}
-        />
-      )}
-
-      {/* ── 删除确认 ── */}
-      {deleteConfirmOpen && (
-        <DeleteConfirmDialog
-          onDelete={confirmDelete}
-          onCancel={() => { if (!deleteSubmitting) setDeleteConfirmOpen(false); }}
-          submitting={deleteSubmitting}
-          errorMessage={deleteError}
-        />
-      )}
-    </div>
+          {moveSheetOpen ? <MoveLocationSheet locations={locations} currentLocationId={item.locationId} onMove={(locId) => { setMoveSheetOpen(false); onMoveItem(locId); }} onClose={() => setMoveSheetOpen(false)} /> : null}
+          {deleteConfirmOpen ? <DeleteConfirmDialog onDelete={confirmDelete} onCancel={() => { if (!deleteSubmitting) setDeleteConfirmOpen(false); }} submitting={deleteSubmitting} errorMessage={deleteError} /> : null}
+        </>
+      }
+    >
+      {activeTab === "info" ? <InfoTab item={item} aiStyleAdvice={aiStyleAdvice} aiAdviceState={aiAdviceState} hasMiniMaxKey={hasMiniMaxKey} onGenerateAdvice={onGenerateAdvice} onGoSettings={onGoSettings} locationLabel={locationLabel} seasonLabels={seasonLabels} styleLabels={styleLabels} subcategory={subcategory} material={material} purchaseDate={purchaseDate} temperatureRange={temperatureRange} notes={notes} /> : null}
+      {activeTab === "inspiration" ? <InspirationTab refs={refs} onAdd={onAddReferenceImage} onView={onViewReferenceImage} /> : null}
+      {activeTab === "pairing" ? <PairingTab allItems={allItems} historyOutfits={historyOutfits} pairingItems={pairingItems} onViewOutfit={onViewOutfit} /> : null}
+    </ItemDetailPageShell>
   );
 }
 
@@ -611,8 +572,7 @@ function MoveLocationSheet({
   return (
     // v0.9.49-dev auto-fix: z-50 与项目 memory 建议的 popover:45 + sheet:50 一致, 但与 lightbox:80 距离太近;
     // 提到 z-55, 介于 popover (45) 与 lightbox (80) 之间, 避免 lightbox 全屏时弹层仍可见。
-    <div className="fixed inset-0 z-[55] flex items-end justify-center bg-black/30" onClick={onClose}>
-      <div className="w-full max-w-md rounded-t-2xl bg-white p-5 shadow-lg" onClick={(e) => e.stopPropagation()}>
+    <MotionSheet open onClose={onClose} panelClassName="!max-w-md">
         <h3 className="text-base font-semibold mb-3">移动衣物</h3>
         <p className="text-xs text-ink/40 mb-3">选择要移动到的衣橱</p>
         <div className="space-y-1">
@@ -638,8 +598,7 @@ function MoveLocationSheet({
             className="flex-1 rounded-xl bg-denim py-2.5 text-sm font-semibold text-white hover:bg-denim/90 transition-colors"
           >移动</button>
         </div>
-      </div>
-    </div>
+    </MotionSheet>
   );
 }
 
@@ -661,26 +620,16 @@ function DeleteConfirmDialog({
   return (
     // v0.9.49-dev auto-fix: z-50 与 MoveLocationSheet 一致, 同时打开会 stacking 错乱;
     // 提到 z-60, 高于 moveSheet (55), 表达 "删除" 是更高优先级确认。
-    <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/30 px-4" onClick={submitting ? undefined : onCancel}>
-      <div className="w-full max-w-sm rounded-2xl bg-white p-5 shadow-lg" onClick={(e) => e.stopPropagation()}>
-        <h3 className="text-base font-semibold">删除这件衣物？</h3>
-        <p className="text-xs text-ink/45 mt-2">
-          删除后无法在衣橱中查看这件衣物。如果它出现在套装中，也会从相关套装中移除。
-        </p>
-        {errorMessage ? (
-          <p className="mt-3 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-600">
-            删除失败：{errorMessage}
-          </p>
-        ) : null}
-        <div className="flex gap-2 mt-4">
-          <button type="button" onClick={onCancel} disabled={submitting}
-            className="flex-1 rounded-xl border border-ink/10 py-2.5 text-sm font-semibold text-ink/60 hover:bg-mist transition-colors disabled:opacity-45"
-          >取消</button>
-          <button type="button" onClick={onDelete} disabled={submitting}
-            className="flex-1 rounded-xl bg-red-600 py-2.5 text-sm font-semibold text-white hover:bg-red-700 transition-colors disabled:opacity-60"
-          >{submitting ? "删除中..." : "删除"}</button>
-        </div>
-      </div>
-    </div>
+    <ConfirmActionSheet
+      open
+      title="删除这件衣物？"
+      description="删除后无法在衣橱中查看这件衣物。如果它出现在套装中，也会从相关套装中移除。"
+      confirmLabel="删除"
+      tone="danger"
+      submitting={submitting}
+      error={errorMessage ? `删除失败：${errorMessage}` : null}
+      onConfirm={onDelete}
+      onClose={onCancel}
+    />
   );
 }

@@ -1,4 +1,47 @@
 
+## 2026-07-01 / v2.1.2-test / Codex — 线上刷新状态与业务图片按需加载
+
+- **版本**：从 `2.1.1-test` 升级到 `2.1.2-test`，同步更新 lockfile；用于本轮组件复用收口后的 Android 构建。
+- **主要改动**：已有会话数据刷新时保留页面并显示 `OnlineInlineNotice`；刷新失败保留数据、显示服务端错误并提供用户主动重试；删除未接线且与全局 `MotionToast` 重复的 `OnlineSuccessToast`。
+- **图片加载**：Repository 对衣物、套装和种草 Overview 只下载缩略图，并以 WeakMap 保存不进入写入 payload 的资产引用；单品主图/灵感图、套装封面和种草商品图进入详情后由 `OnlineAssetImage` 请求原图，单图失败显示局部错误并调用既有 `OnlineImageClient.retry` 重试；不增加持久缓存。
+- **验证**：`npm run typecheck`、`npm run test:logic:all`、`npm run build` 通过；首次 E2E 为 36/37，发现自定义原图渲染路径遗漏“详情图片”区域语义，补齐后全量 `npm run test:e2e` **37/37** 通过。
+- **Android 验收**：AVD `wardrobe-test`（Android 15 / API 35）保留登录数据覆盖安装；真实服务器首页数据与缩略图、详情原图、三点菜单、删除确认面板、Android 返回键取消、横屏布局通过；目标进程致命日志 0 条，未确认删除、服务器数据未变更。
+- **APK**：根目录 `衣橱穿搭助手-v2.1.2-test.apk`（9.5 MB）；versionCode `20102`；内嵌代码提交 `fb11e59`；固定签名 `CN=fangzheng`；SHA-256 `26435cc7ca80c78adcd2d655ad8e6f9e0232c4d3df96283891fa794221e767c6`。
+- **风险门禁**：**high**（线上刷新状态、版本与 Android 交付）。
+- **未触发 subagent**：用户未通知。
+- **未验证风险**：试穿档案照片仍沿用原有 Overview 读取，未纳入本轮商品/衣橱图片延迟加载；本轮未重新执行创建/编辑/删除等全套服务端业务验收，因本次仅改造客户端组件与图片读取。
+
+## 2026-07-01 / v2.1.1-test / Codex — 统一确认面板、菜单、异步按钮与首屏请求
+
+- **目的**：清除业务页面私有固定定位确认层、浏览器原生确认框和重复的首屏 Overview 请求。
+- **主要改动**：新增 `AsyncActionButton`、`ConfirmActionSheet`、`NoticeSheet`；种草菜单统一使用 `MotionPopoverMenu`；单品移动、单品删除、套装删除、套装实图删除和试穿参考照删除统一使用共享面板；编辑页保存按钮复用异步按钮。
+- **请求修复**：首屏数据仅由 `WorkspaceGate/useWardrobeDataController` 加载，`WardrobeApp` 不再挂载后重复调用 `refreshState()`。
+- **测试加固**：新增 `test:logic:component-reuse`，真实断言共享组件消费点、原生 `confirm` 清理和唯一 Overview 启动责任，不使用无条件通过断言。
+- **验证通过**：`npm run typecheck`；`npm run test:logic:component-reuse`；提交前将继续执行详情、返回键相关测试和构建。
+- **风险门禁**：**high**（弹层返回行为、删除确认和首屏线上请求时序）。
+- **未触发 subagent**：用户未通知。
+- **未验证风险**：Android 返回键、横竖屏和触摸实操将在最终 APK 验证统一覆盖。
+
+## 2026-07-01 / v2.1.1-test / Codex — 共享页面壳、瀑布流与区块卡片真实接入
+
+- **目的**：修复共享组件只存在但业务页面未使用的问题，删除套装旧瀑布流卡片的第二份 JSX。
+- **主要改动**：单品、套装、种草详情接入 `ItemDetailPageShell`；种草编辑接入 `ItemEditPageShell`，其顶部栏复用 `AppSubPageTopBar` 并增加保存中防重复提交；套装列表接入 `CatalogWaterfallGrid/CardShell`；新增唯一 `ItemSectionCard`，Detail/Edit 卡片保留为薄包装；旧 `catalog-waterfall-card.tsx` 已移入废纸篓。
+- **测试加固**：`test-shared-item-shells` 改为验证三个真实详情入口、种草编辑入口、套装卡片和区块卡片委派关系，不再只验证共享文件存在。
+- **验证通过**：`npm run typecheck`；`npm run test:logic:shared-item-shells`；`npm run test:logic:detail-shell`；`npm run test:logic:home-card-edit-wishlist-delete-hotfix`；`npm run build`。
+- **风险门禁**：**high**（三个移动端详情页根滚动壳、编辑页和套装卡片布局）。
+- **未触发 subagent**：用户未通知。
+- **未验证风险**：本提交尚未执行 Android 横竖屏、返回键和滚动实操；将在最终 APK 验证统一覆盖。
+
+## 2026-07-01 / v2.1.1-test / Codex — 组件复用收口设计与实施计划
+
+- **目的**：复核 ChatGPT 组件复用审查报告，并将合理项拆成可独立验证的 UI 收口、重复请求修复和高风险图片按需加载阶段。
+- **改动文件**：`docs/superpowers/specs/2026-07-01-component-reuse-refactor-design.md`、`docs/superpowers/plans/2026-07-01-component-reuse-refactor.md`、`VERSION_HISTORY.md`。
+- **关键边界**：R1-R6、R8-R12 纳入组件收口；R7 图片加载从普通 UI 重构中拆出，单独验证 Repository/UI 数据边界；不新增缓存、依赖或业务规则。
+- **验证**：文档自检无 TBD/TODO、范围冲突或未定义阶段；开始代码前已核对分支、工作区、源码真实引用和重复请求路径。
+- **风险门禁**：**low**（本提交仅设计与执行计划）。
+- **未触发 subagent**：用户未通知。
+- **未验证风险**：代码实现、E2E、Android 和 APK 由后续任务逐阶段完成。
+
 ## 2026-07-01 / v2.1.1-test / Codex — GitHub 公开 main 安全快照发布
 
 - **目的**：将 v2.1.1-test 的线上数据断层修复、真实服务端验收、Android 图片修复和执行报告发布到公开 GitHub，并核对远端分支头。

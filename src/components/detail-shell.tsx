@@ -129,20 +129,16 @@ export function DetailHeroGallery({
   return (
     <div className="mt-3">
       <div
+        role="region"
+        aria-label="详情图片"
         className="relative mx-auto overflow-hidden rounded-3xl bg-mist"
         style={{ height: "clamp(300px, 52dvh, 500px)" }}
       >
         {activeSlide ? (
           activeSlide.renderContent ? (
-            <button
-              type="button"
-              onClick={() => {
-                if (activeSlide.imageDataUrl) onExpandImage?.({ src: activeSlide.imageDataUrl, alt: activeSlide.alt });
-              }}
-              className="h-full w-full"
-            >
+            <div className="h-full w-full">
               {activeSlide.renderContent}
-            </button>
+            </div>
           ) : (
             <SwipeImageCarousel
               slides={imageSlides}
