@@ -191,6 +191,7 @@ export function WishlistView20({
   const [subPage, setSubPage] = useState<SubPage>("home");
   const [selectedItem, setSelectedItem] = useState<WishlistItem | null>(null);
   const [isFormSaving, setIsFormSaving] = useState(false);
+  const [showRevisionConflict, setShowRevisionConflict] = useState(false);
   const formMutationRef = useRef<{ fingerprint: string; clientMutationId: string } | null>(null);
   // v1.1.6 followup Commit 2: 用变量赋值替代早期 return, 让全局 dialogs 能在所有子页生效
   let subPageNode: React.ReactNode = null;
@@ -577,7 +578,15 @@ export function WishlistView20({
       const existingItem = wishlistItems.find((w) => w.id === editId);
       if (!existingItem) { onMessage("该种草已不存在，请刷新后重试", "error"); return; }
       const result = await wardrobeRepository.updateWishlistItem(existingItem, base, { clientMutationId });
-      if (!result.ok) { onMessage(result.error ?? "更新种草失败，请重试", "error"); return; }
+      if (!result.ok) {
+        if (result.code === "conflict") {
+          await onDataChanged?.();
+          setShowRevisionConflict(true);
+          return;
+        }
+        onMessage(result.error ?? "更新种草失败，请重试", "error");
+        return;
+      }
       onMessage("已更新种草单品");
     } else {
       const newItem: Omit<WishlistItemDraft, "id"> = {
@@ -1732,6 +1741,13 @@ export function WishlistView20({
         onCloseDeleteRecord={() => setShowDeleteRecordConfirm(false)}
         onCloseConvertedItemDeletedNotice={() => setShowConvertedItemDeletedNotice(false)}
         onCloseDiscard={() => setShowDiscardConfirm(false)}
+      />
+      <NoticeSheet
+        open={showRevisionConflict}
+        title="内容已在其他设备更新"
+        description="已读取服务器上的最新版本，并保留你当前的编辑内容。请确认后再次保存。"
+        actionLabel="继续编辑"
+        onClose={() => setShowRevisionConflict(false)}
       />
     </>
   );

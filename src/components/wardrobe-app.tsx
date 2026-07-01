@@ -71,7 +71,7 @@ import {
 import { ease, spring } from "@/lib/motion-tokens";
 import { createGarmentThumbnailFromOriginal, generateThumbnailSafe, prepareGarmentThumbnail } from "@/lib/thumbnail-runtime";
 import { GarmentImage } from "@/components/garment-image";
-import { ConfirmActionSheet } from "@/components/dialogs";
+import { ConfirmActionSheet, NoticeSheet } from "@/components/dialogs";
 import { OnlineInlineNotice } from "@/components/online/online-inline-notice";
 
 // v1.1.23 six-page design: 共享的 item/ 编辑/详情展示小组件。
@@ -1653,6 +1653,7 @@ function WardrobeView(props: WardrobeViewProps) {
   const [editDraft, setEditDraft] = useState<WardrobeDraft | null>(null);
   const [editInitialSnapshot, setEditInitialSnapshot] = useState<EditSnapshot | null>(null);
   const [isEditSaving, setIsEditSaving] = useState(false);
+  const [showEditConflict, setShowEditConflict] = useState(false);
   const [isEditRecognizing, setIsEditRecognizing] = useState(false);
   const [viewingItemCropJob, setViewingItemCropJob] = useState<{
     dataUrl: string;
@@ -2157,6 +2158,14 @@ function WardrobeView(props: WardrobeViewProps) {
       const now = new Date().toISOString();
       const result = await wardrobeRepository.saveEditedGarment(viewingItem, editDraft);
       if (!result.ok) {
+        if (result.code === "conflict") {
+          if (result.latestData) {
+            setItems((prev) => prev.map((item) => (item.id === viewingItem.id ? result.latestData! : item)));
+            setViewingItem(result.latestData ?? viewingItem);
+          }
+          setShowEditConflict(true);
+          return;
+        }
         onMessage(result.error ?? "保存失败", "error");
         return;
       }
@@ -2631,6 +2640,14 @@ function WardrobeView(props: WardrobeViewProps) {
             onLimit={(message) => onMessage(message, "info")}
           />
         ) : null}
+
+        <NoticeSheet
+          open={showEditConflict}
+          title="内容已在其他设备更新"
+          description="已读取服务器上的最新版本，并保留你当前的编辑内容。请确认后再次保存。"
+          actionLabel="继续编辑"
+          onClose={() => setShowEditConflict(false)}
+        />
 
         <MotionSheet open={showEditExitDialog} onClose={() => setShowEditExitDialog(false)} panelClassName="!max-w-xs text-center">
           <p className="text-base font-semibold mb-1">是否退出编辑？</p>

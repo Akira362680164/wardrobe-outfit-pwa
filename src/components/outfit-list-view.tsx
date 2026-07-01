@@ -39,7 +39,7 @@ import { MotionPopoverMenu } from "@/components/motion-common";
 import { CatalogWaterfallCardShell } from "@/components/item-shell/catalog-waterfall-card-shell";
 import { CatalogWaterfallGrid } from "@/components/item-shell/catalog-waterfall-grid";
 import { ItemDetailPageShell } from "@/components/item-shell/item-detail-page-shell";
-import { ConfirmActionSheet } from "@/components/dialogs";
+import { ConfirmActionSheet, NoticeSheet } from "@/components/dialogs";
 import { OnlineAssetImage } from "@/components/online/online-asset-image";
 import { TemperatureRangeBar } from "@/components/temperature-range-bar";
 import {
@@ -142,7 +142,9 @@ export function OutfitListView({
  const [createCustomTag, setCreateCustomTag] = useState("");
  const [createSelectedIds, setCreateSelectedIds] = useState<number[]>([]);
  const [isRegeneratingInfo, setIsRegeneratingInfo] = useState(false);
- const [regenerateInfoHint, setRegenerateInfoHint] = useState("");
+  const [regenerateInfoHint, setRegenerateInfoHint] = useState("");
+  const [writingOutfitId, setWritingOutfitId] = useState<string | null>(null);
+  const [showRevisionConflict, setShowRevisionConflict] = useState(false);
 
   // real image state
   const [realImageViewing, setRealImageViewing] = useState<OutfitRealImage | null>(null);
@@ -438,11 +440,26 @@ export function OutfitListView({
 
  // v1.0:详情页切换收藏 (创建流程默认不收藏)
  async function handleToggleFavorite(outfit: SavedOutfit) {
+ if (writingOutfitId === outfit.id) return;
  const next = !outfit.favorite;
  const now = new Date().toISOString();
- void upsertOutfit({ ...outfit, favorite: next, updatedAt: now }).then(r => { if (!r.ok) console.error("保存套装失败", r.error); });
- await onRefresh();
- onMessage(next ? "已收藏套装" : "已取消收藏");
+ setWritingOutfitId(outfit.id);
+ try {
+   const result = await wardrobeRepository.updateOutfit(outfit, { favorite: next, updatedAt: now });
+   if (!result.ok) {
+     if (result.code === "conflict") {
+       await onRefresh();
+       setShowRevisionConflict(true);
+       return;
+     }
+     onMessage(result.error ?? "保存套装失败，请重试", "error");
+     return;
+   }
+   await onRefresh();
+   onMessage(next ? "已收藏套装" : "已取消收藏");
+ } finally {
+   setWritingOutfitId(null);
+ }
  }
 
  // Edit outfit
@@ -465,6 +482,7 @@ export function OutfitListView({
 
   async function handleSaveEdit() {
     if (!editingOutfit) return;
+    if (writingOutfitId === editingOutfit.id) return;
     if (createSelectedIds.length < 2) {
       onMessage("套装至少需要 2 件衣物", "info");
       return;
@@ -487,16 +505,32 @@ export function OutfitListView({
       notes: createNotes.trim() || undefined,
       updatedAt: now,
     };
-    void upsertOutfit({ ...editingOutfit, ...patch }).then(r => { if (!r.ok) console.error("保存套装失败", r.error); });
-    await onRefresh();
-    setSubPage("detail");
-    setEditingOutfitId(null);
-    onMessage("套装已更新");
+    setWritingOutfitId(editingOutfit.id);
+    try {
+      const result = await wardrobeRepository.updateOutfit(editingOutfit, patch);
+      if (!result.ok) {
+        if (result.code === "conflict") {
+          await onRefresh();
+          setShowRevisionConflict(true);
+          return;
+        }
+        onMessage(result.error ?? "保存套装失败，请重试", "error");
+        return;
+      }
+      await onRefresh();
+      setSubPage("detail");
+      setEditingOutfitId(null);
+      onMessage("套装已更新");
+    } finally {
+      setWritingOutfitId(null);
+    }
   }
 
   // Delete outfit
   async function handleDeleteOutfit() {
     if (!viewingOutfit) return;
+    if (writingOutfitId === viewingOutfit.id) return;
+    setWritingOutfitId(viewingOutfit.id);
     try {
       const repoResult = await wardrobeRepository.deleteOutfit(viewingOutfit);
       if (!repoResult.ok) throw new Error(repoResult.error ?? "delete failed");
@@ -510,6 +544,8 @@ export function OutfitListView({
     } catch {
       onMessage("删除失败，请重试", "error");
       throw new Error("delete outfit failed");
+    } finally {
+      setWritingOutfitId(null);
     }
   }
 
@@ -1265,6 +1301,13 @@ export function OutfitListView({
 	        dateKey={selectOutfitDate ?? undefined}
 	        onSelect={handleSelectOutfitForPlan}
 	      />
+      <NoticeSheet
+        open={showRevisionConflict}
+        title="内容已在其他设备更新"
+        description="已读取服务器上的最新版本，并保留你当前的编辑内容。请确认后再次保存。"
+        actionLabel="继续编辑"
+        onClose={() => setShowRevisionConflict(false)}
+      />
     </div>
   );
 }

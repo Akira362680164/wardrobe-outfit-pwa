@@ -1,3 +1,13 @@
+# v2.1.3-test - 2026-07-01 — 连续写入与 revision 冲突收口
+
+- **执行 Agent**：Codex（母 agent 串行开发；未触发 subagent：用户明确禁止）。
+- **目的**：落实同一对象写入互斥和多设备 revision 冲突交互，避免套装操作尚未提交就显示成功或本地草稿静默覆盖服务器新版。
+- **改动文件**：`src/lib/repository/wardrobe-repository.ts`、`src/components/wardrobe-app.tsx`、`src/components/wishlist-view-2.0.tsx`、`src/components/outfit-list-view.tsx`、`VERSION_HISTORY.md`。
+- **改动说明**：Repository 在衣物、种草和套装更新冲突时读取并返回服务器最新对象；衣物编辑以最新对象更新正式底层状态但保留编辑草稿；种草和套装刷新最新数据并用统一 `NoticeSheet` 提示后再提交；套装收藏、编辑、删除按实体 ID 共用写入锁，删除 fire-and-forget 成功提示。
+- **验证结果**：`npm run typecheck`、`npm run test:logic:online-writes`、`npm run test:logic:wishlist-management-followup`（54 项）、`npm run test:logic:component-reuse`、`npm run build` 通过；构建版本 `2.1.3-test`、versionCode `20103`。
+- **风险门禁**：high（线上 revision、连续写入和三类业务编辑状态）；通过类型、Repository、组件复用、种草管理和生产构建验证；未触发 subagent：用户明确禁止。
+- **未验证风险**：Android WebView 中的冲突弹层和实体锁触控尚待 APK 回归。
+
 # v2.1.3-test - 2026-07-01 — 兼容迁移部署完成
 
 - **执行 Agent**：Codex（母 agent 串行开发；未触发 subagent：用户明确禁止）。

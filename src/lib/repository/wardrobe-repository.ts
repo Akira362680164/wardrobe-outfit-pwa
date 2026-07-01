@@ -30,11 +30,14 @@ import {
   type OnlineAssetInput,
   type OnlineMutationOptions,
 } from "@/lib/online/online-write-repository";
+import { OnlineRequestError } from "@/lib/online/online-error";
 
 export interface RepoResult<T = void> {
   ok: boolean;
   error?: string;
   data?: T;
+  code?: OnlineRequestError["code"];
+  latestData?: T;
 }
 
 export interface RepoMutationContext extends Partial<OnlineMutationOptions> {
@@ -57,6 +60,14 @@ const reader = new OnlineWorkspaceRepository();
 
 function ok<T>(data?: T): RepoResult<T> { return { ok: true, data }; }
 function fail<T>(error: string): RepoResult<T> { return { ok: false, error }; }
+async function conflict<T>(error: unknown, loadLatest: () => Promise<T>, fallback: string): Promise<RepoResult<T>> {
+  if (!(error instanceof OnlineRequestError) || error.code !== "conflict") return fail(message(error, fallback));
+  try {
+    return { ok: false, error: error.message, code: error.code, latestData: await loadLatest() };
+  } catch {
+    return { ok: false, error: error.message, code: error.code };
+  }
+}
 function mutationId(value?: string): string {
   if (value) return value;
   if (globalThis.crypto?.randomUUID) return globalThis.crypto.randomUUID();
@@ -315,7 +326,9 @@ export async function repoUpdateGarment(
       assetMutations,
     });
     return ok(await reader.mapGarment(entity));
-  } catch (error) { return fail(message(error, "更新单品失败，请重试")); }
+  } catch (error) {
+    return conflict(error, async () => reader.mapGarment(await onlineWriteRepository.read("garments", mutation.entityId)), "更新单品失败，请重试");
+  }
 }
 
 export async function repoDeleteGarments(
@@ -365,7 +378,9 @@ export async function repoUpdateWishlistItem(item: WishlistItem, patch: Partial<
       payload: { ...withoutImages({ ...item, ...patch }, "cropBox"), legacyWishlistId: item.id }, assetMutations,
     });
     return ok(await reader.mapWishlistItem(entity));
-  } catch (error) { return fail(message(error, "更新种草商品失败，请重试")); }
+  } catch (error) {
+    return conflict(error, async () => reader.mapWishlistItem(await onlineWriteRepository.read("wishlist", mutation.entityId)), "更新种草商品失败，请重试");
+  }
 }
 
 export async function repoDeleteWishlistItems(items: WishlistItem[], contexts: RepoMutationContext[] = {} as RepoMutationContext[]): Promise<RepoResult<void>> {
@@ -433,7 +448,9 @@ export async function repoUpdateOutfit(outfit: SavedOutfit, patch: Partial<Saved
       payload: { ...withoutImages({ ...outfit, ...patch }, "coverCropBox"), legacyOutfitId: outfit.id }, assetMutations,
     });
     return ok(await reader.mapOutfit(entity));
-  } catch (error) { return fail(message(error, "更新套装失败，请重试")); }
+  } catch (error) {
+    return conflict(error, async () => reader.mapOutfit(await onlineWriteRepository.read("outfits", mutation.entityId)), "更新套装失败，请重试");
+  }
 }
 
 export async function repoDeleteOutfit(outfit: SavedOutfit | string, context: RepoMutationContext = {}): Promise<RepoResult<OutfitCascadeDeleteResult>> {
