@@ -1,3 +1,13 @@
+# v2.1.3-test - 2026-07-01 — 连续写入辅助修复与版本升级
+
+- **执行 Agent**：Codex（母 agent 串行开发；未触发 subagent：用户明确禁止）。
+- **目的**：修复线上创建套装和删除衣橱位置时误走更新接口、丢失服务器 revision 的真实业务断层，并将候选版本升级到 `2.1.3-test`。
+- **改动文件**：`src/lib/repository/wardrobe-repository.ts`、`src/components/wardrobe-app.tsx`、`package.json`、`package-lock.json`、`VERSION_HISTORY.md`。
+- **修复**：套装 upsert 改用 `serverEntityId` 区分已保存实体和本地草稿，创建时移除本地草稿 ID；删除衣橱位置改为传入完整服务器实体，不再用只有业务 ID 的伪对象调用删除接口；删除前确认目标仍存在。
+- **验证结果**：`npm run typecheck`、`npm run test:logic:online-writes` 通过；完整 `npm run test:logic:all` 通过。
+- **风险门禁**：high（线上 Repository 路由、revision 和版本号）；通过类型、Repository 资产/读回/幂等测试及全量逻辑回归；未触发 subagent：用户明确禁止。
+- **未验证风险**：尚未完成真实线上套装创建与衣橱位置删除、Android 回归和 APK 构建。
+
 # v2.1.3-test - 2026-07-01 — 测试服务器清理与部署
 
 - **执行 Agent**：Codex（母 agent 串行开发；未触发 subagent：用户明确禁止）。

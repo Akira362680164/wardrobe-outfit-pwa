@@ -106,7 +106,7 @@ import {
 } from "@/components/selected-images-review";
 import { isAccessTokenFresh, loadAuthSessionSnapshot } from "@/lib/auth-session-store";
 import { wardrobeRepository } from "@/lib/repository/wardrobe-repository";
-import { rethrowIfFailed, upsertOutfit, upsertLocation, deleteLocationById, repoUpdateWishlistItem, repoCreateGarment, repoCreateGarmentsBatch, repoUpdateGarment, repoUpdateOutfit, repoDeleteGarments, repoDeleteLocation, repoSaveProfile } from "@/lib/repository/wardrobe-repository";
+import { rethrowIfFailed, upsertOutfit, upsertLocation, deleteLocation, repoUpdateWishlistItem, repoCreateGarment, repoCreateGarmentsBatch, repoUpdateGarment, repoUpdateOutfit, repoDeleteGarments, repoDeleteLocation, repoSaveProfile } from "@/lib/repository/wardrobe-repository";
 import {
  defaultMiniMaxSettings,
  diagnoseWardrobeOnDevice,
@@ -1146,17 +1146,19 @@ export function WardrobeApp({ cloudAuth }: { cloudAuth?: WardrobeCloudAuth } = {
               }}
               onDeleteWardrobe={async (id, action) => {
                 if (id === "home") { showMessage("默认衣橱不能删除", "error"); return; }
+                const location = locations.find((entry) => entry.id === id);
+                if (!location) { showMessage("衣橱位置不存在，请刷新后重试", "error"); return; }
                 if (action.mode === "migrate") {
                   const now = new Date().toISOString();
                   const movingItems = items.filter((item) => item.locationId === id);
                   for (const item of movingItems) {
                     if (typeof item.id === "number") rethrowIfFailed(await repoUpdateGarment(item, { locationId: action.targetLocationId, updatedAt: now }), "更新单品失败");
                   }
-                  rethrowIfFailed(await deleteLocationById(id), "删除位置失败");
+                  rethrowIfFailed(await deleteLocation(location), "删除位置失败");
                 } else {
                   const locationItems = items.filter((item) => item.locationId === id && typeof item.id === "number");
                   rethrowIfFailed(await repoDeleteGarments(locationItems, "manual_delete"), "删除单品失败");
-                  rethrowIfFailed(await deleteLocationById(id), "删除位置失败");
+                  rethrowIfFailed(await deleteLocation(location), "删除位置失败");
                 }
                 await refreshState();
               }}

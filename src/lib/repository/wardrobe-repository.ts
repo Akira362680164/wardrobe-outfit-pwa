@@ -634,16 +634,18 @@ export function rethrowIfFailed<T>(result: RepoResult<T>, fallbackMessage: strin
 // 不为 bridge 兼容，只为封装 create-or-update 判断逻辑。
 // 调用方直接看到 repoDeleteGarments 等底层方法。
 
-export async function upsertOutfit(outfit: SavedOutfit): Promise<RepoResult<SavedOutfit>> {
-  return outfit.id ? repoUpdateOutfit(outfit, {}) : repoCreateOutfit(outfit);
+export async function upsertOutfit(outfit: SavedOutfit | SavedOutfitDraft): Promise<RepoResult<SavedOutfit>> {
+  if ("serverEntityId" in outfit) return repoUpdateOutfit(outfit, {});
+  const { id: _draftId, ...draft } = outfit;
+  return repoCreateOutfit(draft);
 }
 
 export async function upsertLocation(loc: ClosetLocation | ClosetLocationDraft): Promise<RepoResult<ClosetLocation>> {
   return "serverEntityId" in loc ? repoUpdateLocation(loc, {}) : repoCreateLocation(loc);
 }
 
-export async function deleteLocationById(id: string): Promise<RepoResult<void>> {
-  return repoDeleteLocation({ id } as ClosetLocation);
+export async function deleteLocation(location: ClosetLocation): Promise<RepoResult<void>> {
+  return repoDeleteLocation(location);
 }
 
 export async function upsertTripPlan(plan: OutfitCalendarPlan | OutfitCalendarPlanDraft, items: PlanPackingChecklistItem[] = []): Promise<RepoResult<OutfitCalendarPlan>> {
