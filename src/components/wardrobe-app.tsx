@@ -72,6 +72,7 @@ import { ease, spring } from "@/lib/motion-tokens";
 import { createGarmentThumbnailFromOriginal, generateThumbnailSafe, prepareGarmentThumbnail } from "@/lib/thumbnail-runtime";
 import { GarmentImage } from "@/components/garment-image";
 import { ConfirmActionSheet } from "@/components/dialogs";
+import { OnlineInlineNotice } from "@/components/online/online-inline-notice";
 
 // v1.1.23 six-page design: 共享的 item/ 编辑/详情展示小组件。
 import { ItemField } from "@/components/item/field";
@@ -955,6 +956,13 @@ export function WardrobeApp({ cloudAuth }: { cloudAuth?: WardrobeCloudAuth } = {
         </aside>
 
         <section className="min-w-0">
+
+          {wardrobeData.onlineState.status === "refreshing" ? (
+            <div className="mb-3"><OnlineInlineNotice message="正在从服务器刷新数据…" /></div>
+          ) : null}
+          {wardrobeData.onlineState.status === "refresh_error" ? (
+            <div className="mb-3"><OnlineInlineNotice message={wardrobeData.onlineState.message} tone="error" onRetry={() => void refreshState().catch(() => undefined)} /></div>
+          ) : null}
 
           {!hasKey && showKeyBanner && !hideMobileNav ? (
             <div className="mb-4 flex items-center gap-3 rounded-lg border border-clay/20 bg-clay/6 px-4 py-3 text-sm">
