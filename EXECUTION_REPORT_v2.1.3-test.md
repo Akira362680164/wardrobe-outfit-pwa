@@ -3,7 +3,8 @@
 > 生成时间：2026-07-01
 > 生成 Agent：Codex
 > 版本：v2.1.3-test
-> Git：`00298fc`
+> Git Commit：`1a5143c`
+> 公开仓库：https://github.com/Akira362680164/wardrobe-outfit-pwa
 
 ---
 
@@ -27,117 +28,89 @@ package.json          → 25+ 新 test 命令
 
 ### 1.2 结果
 
-| 层级 | 状态 | 数量 |
-|---|---|---|
-| Manifest | ✅ Valid | 29 entries, 9 layers |
-| Contract baseline | ✅ PASSED | 2 tests |
-| Contract strict | ✅ PASSED | 1 test（legacy field scanner） |
-| Unit | ✅ PASSED | 10 tests |
-| Component | ✅ PASSED | 3 tests（jsdom） |
-| Repository Integration | ✅ PASSED | 3 tests（真实 PostgreSQL） |
-| API | ✅ PASSED | 58 tests |
-| E2E Playwright | ✅ PASSED | 17 tests |
-| Post-release | ✅ PASSED | 远程 API 烟测 |
-| Android | ✅ PASSED | APK 构建 + 模拟器启动验证 |
-| **test:local:full** | **✅ PASSED** | **全部层级通过** |
+| 层级 | 状态 | 数量 | 命令 |
+|---|---|---|---|
+| Manifest | ✅ Valid | 29 entries, 9 layers | `npm run test:manifest` |
+| Contract baseline | ✅ PASSED | 2 tests | `npm run test:contract:baseline` |
+| Contract strict | ✅ PASSED | 1 test | `npm run test:contract` |
+| Unit | ✅ PASSED | 10 tests | `npm run test:unit` |
+| Component | ✅ PASSED | 3 tests | `npm run test:component` |
+| Repository Integration | ✅ PASSED | 3 tests | `npm run test:integration:repository` |
+| API | ✅ PASSED | 58 tests | `npm run test:api` |
+| E2E Playwright | ✅ PASSED | 17 tests | `npm run test:e2e:smoke` |
+| Remote Smoke | ✅ PASSED | 1 test | `npm run test:smoke:remote` |
+| Android | ✅ PASSED | 模拟器启动验证 | `npm run android:verify:full` |
+| **test:local:full** | **✅ PASSED** | **全部层级** | `npm run test:local:full` |
 
 ### 1.3 分支与版本
 
-- 业务分支 `codex/v2.1.3-asset-model-reset` → 已合并到 `main`
-- 测试分支 `test/v2.1.3-remodel` → 已合并到 `main`
-- `main` 当前 `00298fc`，已推送到公开 GitHub
+- 业务/测试代码已合并到 `main`（commit `1a5143c`）
+- 已推送到公开 GitHub：https://github.com/Akira362680164/wardrobe-outfit-pwa
 - 版本：`2.1.3-test`
 
 ---
 
-## 2. 测试命令
+## 2. 验证命令
 
 ### 快速验证
 ```bash
-npm run test:fast                # Manifest + typecheck + contract strict + unit
-npm run test:fast:baseline       # Manifest + typecheck + contract baseline + unit
-npm run test:local:full          # 全量本地门禁（含 strict contract）
-npm run test:local:full:baseline # 全量本地门禁（含 baseline contract）
+npm run test:fast          # Manifest + typecheck + contract strict + unit
+npm run test:fast:baseline # Manifest + typecheck + contract baseline + unit
+npm run test:local:full    # 全量门禁（strict）
 ```
 
-### 层级命令
+### 按层验证
 ```bash
-npm run test:manifest         # 校验 manifest
-npm run test:contract         # strict 模式
-npm run test:contract:baseline # baseline 模式
-npm run test:unit             # Vitest 单元测试
-npm run test:component        # jsdom 组件测试
-npm run test:api              # API 测试（58 项）
-npm run test:integration:repository  # PostgreSQL 集成测试
-npm run test:e2e:smoke        # Playwright smoke
-npm run test:e2e:critical     # Playwright critical
-npm run test:e2e:full         # Playwright 全量
-npm run test:postrelease      # 远程 API 烟测
-npm run test:gate:automated   # 自动化门禁
-npm run test:gate:release     # 最终门禁
-```
-
-### 淘汰命令
-```bash
-npm run test:logic:all  # 重定向到 test:local:full（弃用警告）
+npm run test:manifest           # 校验 manifest 结构
+npm run test:contract           # Contract strict 模式
+npm run test:contract:baseline  # Contract baseline 模式
+npm run test:unit               # Vitest 单元（10/10）
+npm run test:component          # jsdom 组件（3/3）
+npm run test:api                # API 测试（58/58）
+npm run test:integration:repository  # PostgreSQL 集成（3/3）
+npm run test:e2e:smoke          # Playwright E2E
+npm run test:e2e:critical       # Playwright critical
+npm run test:postrelease        # 远程 API 烟测
 ```
 
 ---
 
-## 3. 关键测试基础设施
+## 3. 基础设施
 
-### 3.1 PostgreSQL
-- `wardrobe_test` 数据库（25 表已迁移）
-- `wardrobe_e2e` 数据库（E2E 专用）
-- Schema 隔离：`run_<RUN_ID>`
-- 脚本：`scripts/test/verify-test-environment.ts`、`prepare-test-schema.ts`、`drop-test-schema.ts`
-
-### 3.2 Component
-- Vitest + jsdom
-- `@testing-library/react`、`@testing-library/jest-dom`
-- 环境变量：`jsdom`、`setupFiles`
-
-### 3.3 E2E Playwright
-- 15 个现有 spec 注册在 manifest
-- `scripts/run-e2e-local.sh`（自动启动 API + Web + Playwright）
-- Fixture AI 模式（`NEXT_PUBLIC_E2E_AI_MODE=fixture`）
-- `.env.e2e.local` 配置
-
-### 3.4 Android
-- 固定签名：`CN=fangzheng`
-- APK 构建：`npm run android:apk`
-- 模拟器回归：`scripts/android-emulator-regression.sh`
-- AVD：`wardrobe-test`（Pixel 6 / API 35 / arm64-v8a）
-
-### 3.5 AI Live 保护
-- `scripts/test/require-live-ai-flag.mjs`：需 `ALLOW_LIVE_AI_TEST=true` + `E2E_AI_MODE=live`
-- 专用 spec：`e2e/specs/90-ai-live.spec.ts`（blocking=false, manual）
-- 默认 E2E 不读取 Keychain
+| 组件 | 说明 |
+|---|---|
+| PostgreSQL | `wardrobe_test` + `wardrobe_e2e`，25 表已迁移 |
+| Component | Vitest + jsdom + `@testing-library/react` |
+| E2E | Playwright 1.60，15 specs，AI fixture 模式 |
+| Android | 固定签名 CN=fangzheng，AVD wardrobe-test，API 35 |
+| AI Live | 双重保护：`ALLOW_LIVE_AI_TEST=true` + `E2E_AI_MODE=live` |
+| CI | `.github/workflows/test-fast.yml` + `test-full.yml` |
 
 ---
 
 ## 4. 旧脚本分类
 
-46 项旧脚本完全分类，0 UNCLASSIFIED
-
-```text
-MIGRATED: 0（旧脚本保留原地，新测试在 tests/ 目录）
-SUPERSEDED: 1
-RETAINED: 44
-DEPRECATED: 1
-UNCLASSIFIED: 0
-```
-
-详见 `docs/test-legacy-script-mapping.md`
+46 项旧脚本完全分类，0 UNCLASSIFIED。详见 `docs/test-legacy-script-mapping.md`。
 
 ---
 
-## 5. 未完成项
+## 5. 测试 Git 分支（历史）
 
-| 项目 | 原因 |
-|---|---|
-| Maestro Android 自动化 | 需要 test-harness APK + Selector 清单 |
-| 全量 Playwright E2E（garment/outfit/wishlist CRUD） | 需要长时间 API+Web 运行 |
-| PostgreSQL 集成测试完整矩阵 | 需要本地 DB + Storage 完整链路 |
+测试整改过程在独立 worktree `test/v2.1.3-remodel` 进行，不干扰业务开发。
 
-这些属于**测试执行**而不是测试体系写代码的事，当需要时可以继续跑。
+```
+wardrobe-v2.1.3-tests/  ← 测试 worktree（已删除）
+test/v2.1.3-remodel     ← 测试分支（已合并到 main）
+```
+
+---
+
+## 6. 后续
+
+当前不阻塞的任何任务：
+
+- Maestro Android 自动化（需 test-harness APK）
+- 完整 Playwright CRUD E2E（garment/outfit/wishlist）
+- PostgreSQL 集成完整矩阵
+
+这些属于**测试执行**范畴，测试体系代码已完成。
