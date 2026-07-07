@@ -187,6 +187,19 @@ function cssVar(colorTokens, token, fallback) {
   return colorTokens.find((entry) => entry.token === token)?.value ?? fallback;
 }
 
+function icon(name) {
+  const paths = {
+    search: '<circle cx="11" cy="11" r="7"></circle><path d="m20 20-3.5-3.5"></path>',
+    sparkles: '<path d="M12 3l1.5 4.5L18 9l-4.5 1.5L12 15l-1.5-4.5L6 9l4.5-1.5L12 3z"></path><path d="M5 15l.8 2.2L8 18l-2.2.8L5 21l-.8-2.2L2 18l2.2-.8L5 15z"></path>',
+    shirt: '<path d="M8 4 4 6l2 4 2-1v11h8V9l2 1 2-4-4-2-2 3h-4L8 4z"></path>',
+    layers: '<path d="m12 3 8 4-8 4-8-4 8-4z"></path><path d="m4 12 8 4 8-4"></path><path d="m4 17 8 4 8-4"></path>',
+    bag: '<path d="M6 8h12l-1 13H7L6 8z"></path><path d="M9 8a3 3 0 0 1 6 0"></path>',
+    settings: '<circle cx="12" cy="12" r="3"></circle><path d="M19 12a7 7 0 0 0-.1-1l2-1.5-2-3.4-2.4 1a7 7 0 0 0-1.7-1L14.5 3h-5l-.4 3.1a7 7 0 0 0-1.7 1l-2.4-1-2 3.4L5.1 11a7 7 0 0 0 0 2l-2 1.5 2 3.4 2.4-1a7 7 0 0 0 1.7 1l.4 3.1h5l.4-3.1a7 7 0 0 0 1.7-1l2.4 1 2-3.4-2.1-1.5a7 7 0 0 0 .1-1z"></path>',
+    chevronDown: '<path d="m6 9 6 6 6-6"></path>',
+  };
+  return `<svg class="demo-icon" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${paths[name] ?? ""}</svg>`;
+}
+
 function renderPartVisual(title) {
   if (/2\.1\s+颜色/.test(title)) {
     return `
@@ -227,18 +240,33 @@ function renderPartVisual(title) {
       </div>`;
   }
 
+  if (title.includes("Icon")) {
+    return `
+      <div class="part-visual" data-visual="icon-library">
+        <div class="icon-spec-board">
+          <span>${icon("search")}<b>Search</b></span>
+          <span>${icon("sparkles")}<b>Sparkles</b></span>
+          <span>${icon("shirt")}<b>Shirt</b></span>
+          <span>${icon("layers")}<b>Layers</b></span>
+          <span>${icon("bag")}<b>ShoppingBag</b></span>
+          <span>${icon("settings")}<b>Settings</b></span>
+        </div>
+        <div class="visual-caption"><b>只用 lucide-react</b><span>不得用文字、emoji、符号或手绘临时图标替代。</span></div>
+      </div>`;
+  }
+
   if (title.includes("详情媒体")) {
     return `
       <div class="part-visual" data-visual="detail-media">
         <div class="detail-hero-demo"><div class="visual-frame-media"></div><div class="filmstrip"><span></span><span></span><span></span></div></div>
-        <div class="detail-meta-demo"><b>白色短袖衬衫</b><span>上衣 / 衬衫 · 默认衣橱 · 可穿</span><small>名称与属性在底层，不塞进一级卡片。</small></div>
+        <div class="detail-meta-demo"><b>白色短袖衬衫</b><span>上衣 / 衬衫 · 默认衣橱 · 可穿</span><div class="color-dots"><i style="background:#fffffc"></i><i style="background:#355c7d"></i></div><small>名称、属性、色卡在底层，不塞进一级卡片。</small></div>
       </div>`;
   }
 
   if (title.includes("瀑布流与多选")) {
     return `
       <div class="part-visual" data-visual="waterfall-multi-select">
-        <div class="waterfall-demo"><div class="item-card selected"><div class="media-demo"></div><b>白色短袖衬衫</b><small>上衣 · 默认衣橱</small></div><div class="item-card"><div class="media-demo dark"></div><b>藏蓝直筒裤</b><small>裤装 · 通勤</small></div></div>
+        <div class="waterfall-demo"><div class="item-card selected"><div class="media-demo"></div><b>白色短袖衬衫</b><small>上衣 · 默认衣橱</small><div class="color-dots"><i style="background:#fffffc"></i><i style="background:#355c7d"></i></div></div><div class="item-card"><div class="media-demo dark"></div><b>藏蓝直筒裤</b><small>裤装 · 通勤</small><div class="color-dots"><i style="background:#355c7d"></i><i style="background:#1d2228"></i></div></div></div>
         <div class="bulk-bar">已选 1 件 <button>删除</button></div>
       </div>`;
   }
@@ -265,9 +293,15 @@ function renderPartVisual(title) {
   if (title.includes("温度")) {
     return `
       <div class="part-visual" data-visual="temperature-range">
-        <div class="field-card">
-          <b>温度范围</b>
-          <div class="temperature-slider"><span></span><i class="min"></i><i class="max"></i></div>
+        <div class="field-card temperature-view-window">
+          <b>详情展示</b>
+          <div class="temperature-slider view-range"><span></span><i class="min"></i><i class="max"></i></div>
+          <div class="temp-labels"><span>17℃</span><b>18℃ - 28℃</b><span>29℃</span></div>
+          <small>展示态只给选中区间约 ±10% 上下文，不露出全域端点。</small>
+        </div>
+        <div class="field-card temperature-edit-window">
+          <b>录入 / 编辑</b>
+          <div class="temperature-slider edit-range"><span></span><i class="min"></i><i class="max"></i></div>
           <div class="temp-labels"><span>-20℃</span><b>18℃ - 28℃</b><span>40℃</span></div>
         </div>
       </div>`;
@@ -345,7 +379,12 @@ function renderSectionVisual(section) {
       <div class="visual-phone-mini shell-demo">
         <div class="visual-top-glass"><b>顶部毛玻璃层</b><span>筛选 / 标题</span></div>
         <div class="visual-scroll-cards"><span></span><span></span><span></span></div>
-        <div class="visual-floating-nav"><b>衣橱</b><span>套装</span><span>种草</span><span>设置</span></div>
+        <div class="visual-floating-nav">
+          <div class="nav-tab active">${icon("shirt")}<span>衣橱</span></div>
+          <div class="nav-tab">${icon("layers")}<span>套装</span></div>
+          <div class="nav-tab">${icon("bag")}<span>种草</span></div>
+          <div class="nav-tab">${icon("settings")}<span>设置</span></div>
+        </div>
       </div>`;
   }
 
@@ -456,6 +495,18 @@ function renderSectionVisual(section) {
       </div>`;
   }
 
+  if (title.includes("产品视觉方案实操")) {
+    return `
+      <div class="practice-board">
+        <div class="practice-phone home"><b>衣橱首页</b><div class="practice-top"></div><div class="practice-grid"><span></span><span></span><span></span><span></span></div></div>
+        <div class="practice-phone detail"><b>衣物详情</b><div class="practice-media"></div><div class="practice-meta"></div><div class="color-dots"><i style="background:#fffffc"></i><i style="background:#355c7d"></i></div></div>
+        <div class="practice-phone intake"><b>单品录入</b><div class="practice-upload"></div><div class="thumb-strip"><span></span><span></span><span></span></div></div>
+        <div class="practice-phone outfit"><b>套装首页</b><div class="practice-week"></div><div class="practice-outfit"></div></div>
+        <div class="practice-phone wishlist"><b>种草首页</b><div class="practice-product"></div><div class="practice-meta"></div></div>
+        <div class="practice-phone settings"><b>设置页</b><div class="practice-list"><span></span><span></span><span></span></div></div>
+      </div>`;
+  }
+
   if (title.includes("验收与测试")) {
     return `
       <div class="test-board">
@@ -532,6 +583,12 @@ function renderHtml({ frontMatter, sections, colorTokens, sourceHash }) {
       color: var(--denim);
       font-size: .92em;
       font-weight: 800;
+    }
+    .demo-icon {
+      width: 22px;
+      height: 22px;
+      display: block;
+      flex: 0 0 auto;
     }
     .layout {
       display: grid;
@@ -733,16 +790,18 @@ function renderHtml({ frontMatter, sections, colorTokens, sourceHash }) {
       backdrop-filter: blur(30px) saturate(1.5);
       -webkit-backdrop-filter: blur(30px) saturate(1.5);
     }
-    .visual-floating-nav > * {
+    .visual-floating-nav .nav-tab {
       display: grid;
       place-items: center;
+      gap: 3px;
       min-height: 42px;
       border-radius: 17px;
       color: var(--muted);
       font-size: 11px;
       font-weight: 900;
     }
-    .visual-floating-nav b { background: var(--denim); color: white; }
+    .visual-floating-nav .demo-icon { width: 18px; height: 18px; }
+    .visual-floating-nav .active { background: var(--denim); color: white; }
     .route-chain, .pipeline, .step-flow {
       display: flex;
       flex-wrap: wrap;
@@ -775,18 +834,24 @@ function renderHtml({ frontMatter, sections, colorTokens, sourceHash }) {
       font-weight: 900;
       box-shadow: var(--soft);
     }
-    .component-grid, .status-board {
+    .component-grid, .status-board, .icon-spec-board {
       display: grid;
       grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
       gap: 8px;
     }
-    .component-grid span, .status-board span {
+    .component-grid span, .status-board span, .icon-spec-board span {
       border: 1px solid var(--line);
       border-radius: 16px;
       background: rgba(255,255,252,.8);
       padding: 12px;
       font-size: 11px;
       font-weight: 900;
+    }
+    .icon-spec-board span {
+      display: grid;
+      place-items: center;
+      gap: 8px;
+      min-height: 88px;
     }
     .status-board b {
       display: inline-block;
@@ -807,7 +872,7 @@ function renderHtml({ frontMatter, sections, colorTokens, sourceHash }) {
       position: relative;
       height: 14px;
       border-radius: 999px;
-      background: rgba(53,92,125,.12);
+      background: linear-gradient(90deg, #3b82f6 0%, #f59e0b 52%, #dc2626 100%);
       overflow: hidden;
     }
     .temp-bar i {
@@ -815,7 +880,7 @@ function renderHtml({ frontMatter, sections, colorTokens, sourceHash }) {
       width: 58%;
       height: 100%;
       margin-left: 24%;
-      background: var(--denim);
+      background: rgba(29,34,40,.28);
     }
     .step-card { display: grid; gap: 4px; min-width: 150px; }
     .step-card b {
@@ -986,7 +1051,9 @@ function renderHtml({ frontMatter, sections, colorTokens, sourceHash }) {
       left: 38%;
       right: 20%;
       height: 100%;
-      background: var(--denim);
+      background: rgba(255,255,252,.36);
+      border: 2px solid rgba(29,34,40,.32);
+      border-radius: inherit;
     }
     .temperature-slider i {
       position: absolute;
@@ -1001,8 +1068,24 @@ function renderHtml({ frontMatter, sections, colorTokens, sourceHash }) {
     }
     .temperature-slider .min { left: 38%; }
     .temperature-slider .max { left: 80%; }
+    .temperature-slider.view-range span { left: 12%; right: 12%; }
+    .temperature-slider.view-range .min { left: 12%; }
+    .temperature-slider.view-range .max { left: 88%; }
     .temp-labels { display: flex; justify-content: space-between; gap: 8px; color: var(--muted); font-size: 11px; font-weight: 900; }
     .temp-labels b { color: var(--ink); }
+    .color-dots {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      margin-top: 8px;
+    }
+    .color-dots i {
+      width: 14px;
+      height: 14px;
+      border: 1px solid rgba(29,34,40,.16);
+      border-radius: 999px;
+      display: block;
+    }
     .focus-demo { display: flex; flex-wrap: wrap; gap: 10px; }
     .focus-demo button { min-width: 96px; min-height: 44px; }
     .focus-demo .focused { outline: 3px solid rgba(53,92,125,.35); outline-offset: 3px; background: var(--danger); }
@@ -1074,8 +1157,19 @@ function renderHtml({ frontMatter, sections, colorTokens, sourceHash }) {
       background: rgba(255,255,252,.82);
       box-shadow: var(--soft);
     }
-    .search-box { border-radius: 16px; padding: 14px 16px; font-weight: 900; }
-    .icon-box { display: grid; place-items: center; height: 52px; border-radius: 16px; font-weight: 900; }
+    .search-box {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      border-radius: 16px;
+      padding: 14px 16px;
+      font-weight: 900;
+    }
+    .search-box .demo-icon { width: 16px; height: 16px; color: var(--muted); }
+    .wardrobe-count { color: var(--muted); font-weight: 700; }
+    .icon-box { display: grid; place-items: center; height: 52px; border-radius: 16px; color: var(--ink); }
+    .icon-box .demo-icon { width: 23px; height: 23px; }
+    .icon-box.ai { background: var(--clay); color: white; }
     .phone-content { display: grid; gap: 14px; padding: 18px 20px 106px; }
     .split-card {
       display: flex;
@@ -1104,8 +1198,42 @@ function renderHtml({ frontMatter, sections, colorTokens, sourceHash }) {
       padding: 8px;
       box-shadow: var(--soft);
     }
-    .phone-nav div { display: grid; place-items: center; min-height: 58px; border-radius: 18px; color: var(--muted); font-size: 12px; font-weight: 900; }
+    .phone-nav .nav-tab { display: grid; place-items: center; gap: 3px; min-height: 58px; border-radius: 18px; color: var(--muted); font-size: 12px; font-weight: 900; }
+    .phone-nav .demo-icon { width: 20px; height: 20px; }
     .phone-nav .active { background: var(--denim); color: white; }
+    .practice-board {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 14px;
+      grid-column: 1 / -1;
+    }
+    .practice-phone {
+      min-height: 300px;
+      border: 1px solid var(--line);
+      border-radius: 28px;
+      background: var(--surface);
+      padding: 14px;
+      display: grid;
+      gap: 12px;
+      align-content: start;
+      box-shadow: var(--soft);
+    }
+    .practice-phone b { font-size: 13px; }
+    .practice-top, .practice-media, .practice-upload, .practice-week, .practice-product, .practice-outfit, .practice-meta, .practice-list span {
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      background: rgba(53,92,125,.08);
+    }
+    .practice-top { height: 64px; background: rgba(251,251,248,.75); backdrop-filter: blur(24px); }
+    .practice-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+    .practice-grid span, .practice-product { aspect-ratio: 3 / 4; border-radius: 18px; background: linear-gradient(90deg, #eeeae2 0 50%, #cfd6dc 50%); }
+    .practice-media { aspect-ratio: 3 / 4; background: linear-gradient(90deg, #eeeae2 0 50%, #cfd6dc 50%); }
+    .practice-upload { min-height: 150px; border-style: dashed; background: rgba(53,92,125,.05); }
+    .practice-week { height: 56px; background: linear-gradient(90deg, rgba(53,92,125,.18), rgba(255,255,252,.9)); }
+    .practice-outfit { min-height: 130px; background: linear-gradient(90deg, #fffffc 0 33%, #355c7d 33% 66%, #1d2228 66%); }
+    .practice-meta { height: 52px; }
+    .practice-list { display: grid; gap: 10px; }
+    .practice-list span { height: 48px; }
     .toast-demo {
       position: absolute;
       left: 20px;
@@ -1172,21 +1300,26 @@ function renderHtml({ frontMatter, sections, colorTokens, sourceHash }) {
           <div class="phone-status"><span>9:41</span><span>5G&nbsp;&nbsp;82%</span></div>
           <div class="phone-top">
             <div class="top-actions">
-              <div class="search-box">全部衣橱 <span style="color:var(--muted)">48 件</span></div>
-              <div class="icon-box">⌕</div>
-              <div class="icon-box" style="background:var(--clay);color:white">✦</div>
+              <div class="search-box"><span>全部衣橱</span><span class="wardrobe-count">48 件</span>${icon("chevronDown")}</div>
+              <div class="icon-box">${icon("search")}</div>
+              <div class="icon-box ai">${icon("sparkles")}</div>
             </div>
             <div class="chips"><span class="chip active">全部 48</span><span class="chip">上衣 14</span><span class="chip">裤装 9</span></div>
           </div>
           <div class="phone-content">
             <div class="split-card"><div><b>AI 衣橱诊断</b><p>2 个缺口 · 3 件闲置 · 4 套可复用</p></div><span class="button-demo">查看</span></div>
             <div class="card-grid">
-              <div class="item-card"><div class="media-demo"></div><b>白色短袖衬衫</b><small>上衣 · 默认衣橱</small></div>
-              <div class="item-card"><div class="media-demo" style="background:linear-gradient(90deg,#355c7d 0 50%,#1f3448 50%)"></div><b>藏蓝直筒裤</b><small>裤装 · 通勤</small></div>
+              <div class="item-card"><div class="media-demo"></div><b>白色短袖衬衫</b><small>上衣 · 默认衣橱</small><div class="color-dots"><i style="background:#fffffc"></i><i style="background:#355c7d"></i></div></div>
+              <div class="item-card"><div class="media-demo" style="background:linear-gradient(90deg,#355c7d 0 50%,#1f3448 50%)"></div><b>藏蓝直筒裤</b><small>裤装 · 通勤</small><div class="color-dots"><i style="background:#355c7d"></i><i style="background:#1d2228"></i></div></div>
             </div>
           </div>
           <div class="toast-demo">已保存 3 件单品，草稿已清空。</div>
-          <div class="phone-nav"><div class="active">衣橱</div><div>套装</div><div>种草</div><div>设置</div></div>
+          <div class="phone-nav">
+            <div class="nav-tab active">${icon("shirt")}<span>衣橱</span></div>
+            <div class="nav-tab">${icon("layers")}<span>套装</span></div>
+            <div class="nav-tab">${icon("bag")}<span>种草</span></div>
+            <div class="nav-tab">${icon("settings")}<span>设置</span></div>
+          </div>
         </div>
       </section>
       ${sectionHtml}

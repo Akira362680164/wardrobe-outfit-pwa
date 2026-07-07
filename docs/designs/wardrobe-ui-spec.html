@@ -2,7 +2,7 @@
 <!--
   DO NOT EDIT BY HAND.
   Generated from docs/designs/wardrobe-ui-spec.md by scripts/generate-ui-spec-preview.mjs.
-  Source SHA256: cd6ab6c22f9775d92c761bcf3423bfc04fe7a7465c52ecab6c3f238042a57fb8
+  Source SHA256: 4ae2dfcf0416280d1a889bebce299495d5be7ef849d9e9bb2e1d65762e34fe2c
 -->
 <html lang="zh-CN">
 <head>
@@ -44,6 +44,12 @@
       color: var(--denim);
       font-size: .92em;
       font-weight: 800;
+    }
+    .demo-icon {
+      width: 22px;
+      height: 22px;
+      display: block;
+      flex: 0 0 auto;
     }
     .layout {
       display: grid;
@@ -245,16 +251,18 @@
       backdrop-filter: blur(30px) saturate(1.5);
       -webkit-backdrop-filter: blur(30px) saturate(1.5);
     }
-    .visual-floating-nav > * {
+    .visual-floating-nav .nav-tab {
       display: grid;
       place-items: center;
+      gap: 3px;
       min-height: 42px;
       border-radius: 17px;
       color: var(--muted);
       font-size: 11px;
       font-weight: 900;
     }
-    .visual-floating-nav b { background: var(--denim); color: white; }
+    .visual-floating-nav .demo-icon { width: 18px; height: 18px; }
+    .visual-floating-nav .active { background: var(--denim); color: white; }
     .route-chain, .pipeline, .step-flow {
       display: flex;
       flex-wrap: wrap;
@@ -287,18 +295,24 @@
       font-weight: 900;
       box-shadow: var(--soft);
     }
-    .component-grid, .status-board {
+    .component-grid, .status-board, .icon-spec-board {
       display: grid;
       grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
       gap: 8px;
     }
-    .component-grid span, .status-board span {
+    .component-grid span, .status-board span, .icon-spec-board span {
       border: 1px solid var(--line);
       border-radius: 16px;
       background: rgba(255,255,252,.8);
       padding: 12px;
       font-size: 11px;
       font-weight: 900;
+    }
+    .icon-spec-board span {
+      display: grid;
+      place-items: center;
+      gap: 8px;
+      min-height: 88px;
     }
     .status-board b {
       display: inline-block;
@@ -319,7 +333,7 @@
       position: relative;
       height: 14px;
       border-radius: 999px;
-      background: rgba(53,92,125,.12);
+      background: linear-gradient(90deg, #3b82f6 0%, #f59e0b 52%, #dc2626 100%);
       overflow: hidden;
     }
     .temp-bar i {
@@ -327,7 +341,7 @@
       width: 58%;
       height: 100%;
       margin-left: 24%;
-      background: var(--denim);
+      background: rgba(29,34,40,.28);
     }
     .step-card { display: grid; gap: 4px; min-width: 150px; }
     .step-card b {
@@ -498,7 +512,9 @@
       left: 38%;
       right: 20%;
       height: 100%;
-      background: var(--denim);
+      background: rgba(255,255,252,.36);
+      border: 2px solid rgba(29,34,40,.32);
+      border-radius: inherit;
     }
     .temperature-slider i {
       position: absolute;
@@ -513,8 +529,24 @@
     }
     .temperature-slider .min { left: 38%; }
     .temperature-slider .max { left: 80%; }
+    .temperature-slider.view-range span { left: 12%; right: 12%; }
+    .temperature-slider.view-range .min { left: 12%; }
+    .temperature-slider.view-range .max { left: 88%; }
     .temp-labels { display: flex; justify-content: space-between; gap: 8px; color: var(--muted); font-size: 11px; font-weight: 900; }
     .temp-labels b { color: var(--ink); }
+    .color-dots {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      margin-top: 8px;
+    }
+    .color-dots i {
+      width: 14px;
+      height: 14px;
+      border: 1px solid rgba(29,34,40,.16);
+      border-radius: 999px;
+      display: block;
+    }
     .focus-demo { display: flex; flex-wrap: wrap; gap: 10px; }
     .focus-demo button { min-width: 96px; min-height: 44px; }
     .focus-demo .focused { outline: 3px solid rgba(53,92,125,.35); outline-offset: 3px; background: var(--danger); }
@@ -586,8 +618,19 @@
       background: rgba(255,255,252,.82);
       box-shadow: var(--soft);
     }
-    .search-box { border-radius: 16px; padding: 14px 16px; font-weight: 900; }
-    .icon-box { display: grid; place-items: center; height: 52px; border-radius: 16px; font-weight: 900; }
+    .search-box {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      border-radius: 16px;
+      padding: 14px 16px;
+      font-weight: 900;
+    }
+    .search-box .demo-icon { width: 16px; height: 16px; color: var(--muted); }
+    .wardrobe-count { color: var(--muted); font-weight: 700; }
+    .icon-box { display: grid; place-items: center; height: 52px; border-radius: 16px; color: var(--ink); }
+    .icon-box .demo-icon { width: 23px; height: 23px; }
+    .icon-box.ai { background: var(--clay); color: white; }
     .phone-content { display: grid; gap: 14px; padding: 18px 20px 106px; }
     .split-card {
       display: flex;
@@ -616,8 +659,42 @@
       padding: 8px;
       box-shadow: var(--soft);
     }
-    .phone-nav div { display: grid; place-items: center; min-height: 58px; border-radius: 18px; color: var(--muted); font-size: 12px; font-weight: 900; }
+    .phone-nav .nav-tab { display: grid; place-items: center; gap: 3px; min-height: 58px; border-radius: 18px; color: var(--muted); font-size: 12px; font-weight: 900; }
+    .phone-nav .demo-icon { width: 20px; height: 20px; }
     .phone-nav .active { background: var(--denim); color: white; }
+    .practice-board {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 14px;
+      grid-column: 1 / -1;
+    }
+    .practice-phone {
+      min-height: 300px;
+      border: 1px solid var(--line);
+      border-radius: 28px;
+      background: var(--surface);
+      padding: 14px;
+      display: grid;
+      gap: 12px;
+      align-content: start;
+      box-shadow: var(--soft);
+    }
+    .practice-phone b { font-size: 13px; }
+    .practice-top, .practice-media, .practice-upload, .practice-week, .practice-product, .practice-outfit, .practice-meta, .practice-list span {
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      background: rgba(53,92,125,.08);
+    }
+    .practice-top { height: 64px; background: rgba(251,251,248,.75); backdrop-filter: blur(24px); }
+    .practice-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+    .practice-grid span, .practice-product { aspect-ratio: 3 / 4; border-radius: 18px; background: linear-gradient(90deg, #eeeae2 0 50%, #cfd6dc 50%); }
+    .practice-media { aspect-ratio: 3 / 4; background: linear-gradient(90deg, #eeeae2 0 50%, #cfd6dc 50%); }
+    .practice-upload { min-height: 150px; border-style: dashed; background: rgba(53,92,125,.05); }
+    .practice-week { height: 56px; background: linear-gradient(90deg, rgba(53,92,125,.18), rgba(255,255,252,.9)); }
+    .practice-outfit { min-height: 130px; background: linear-gradient(90deg, #fffffc 0 33%, #355c7d 33% 66%, #1d2228 66%); }
+    .practice-meta { height: 52px; }
+    .practice-list { display: grid; gap: 10px; }
+    .practice-list span { height: 48px; }
     .toast-demo {
       position: absolute;
       left: 20px;
@@ -681,7 +758,8 @@
 <a href="#13-文字规范">13. 文字规范</a>
 <a href="#14-known-deviations-ui-debt">14. Known Deviations / UI Debt</a>
 <a href="#15-文档治理">15. 文档治理</a>
-<a href="#16-验收与测试映射">16. 验收与测试映射</a></nav>
+<a href="#16-产品视觉方案实操">16. 产品视觉方案实操</a>
+<a href="#17-验收与测试映射">17. 验收与测试映射</a></nav>
     </aside>
     <main>
       <section class="hero">
@@ -689,7 +767,7 @@
           <div class="meta-row">
             <span class="pill active">v0.2-final</span>
             <span class="pill">Markdown 唯一事实源</span>
-            <span class="pill">Source SHA256 cd6ab6c22f97</span>
+            <span class="pill">Source SHA256 4ae2dfcf0416</span>
           </div>
           <h1>衣橱穿搭助手 UI 规范</h1>
           <p>本页由规范 Markdown 自动生成，用于快速走查页面框架、组件契约、通知样式和验收映射。</p>
@@ -707,21 +785,26 @@
           <div class="phone-status"><span>9:41</span><span>5G&nbsp;&nbsp;82%</span></div>
           <div class="phone-top">
             <div class="top-actions">
-              <div class="search-box">全部衣橱 <span style="color:var(--muted)">48 件</span></div>
-              <div class="icon-box">⌕</div>
-              <div class="icon-box" style="background:var(--clay);color:white">✦</div>
+              <div class="search-box"><span>全部衣橱</span><span class="wardrobe-count">48 件</span><svg class="demo-icon" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"></path></svg></div>
+              <div class="icon-box"><svg class="demo-icon" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"></circle><path d="m20 20-3.5-3.5"></path></svg></div>
+              <div class="icon-box ai"><svg class="demo-icon" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l1.5 4.5L18 9l-4.5 1.5L12 15l-1.5-4.5L6 9l4.5-1.5L12 3z"></path><path d="M5 15l.8 2.2L8 18l-2.2.8L5 21l-.8-2.2L2 18l2.2-.8L5 15z"></path></svg></div>
             </div>
             <div class="chips"><span class="chip active">全部 48</span><span class="chip">上衣 14</span><span class="chip">裤装 9</span></div>
           </div>
           <div class="phone-content">
             <div class="split-card"><div><b>AI 衣橱诊断</b><p>2 个缺口 · 3 件闲置 · 4 套可复用</p></div><span class="button-demo">查看</span></div>
             <div class="card-grid">
-              <div class="item-card"><div class="media-demo"></div><b>白色短袖衬衫</b><small>上衣 · 默认衣橱</small></div>
-              <div class="item-card"><div class="media-demo" style="background:linear-gradient(90deg,#355c7d 0 50%,#1f3448 50%)"></div><b>藏蓝直筒裤</b><small>裤装 · 通勤</small></div>
+              <div class="item-card"><div class="media-demo"></div><b>白色短袖衬衫</b><small>上衣 · 默认衣橱</small><div class="color-dots"><i style="background:#fffffc"></i><i style="background:#355c7d"></i></div></div>
+              <div class="item-card"><div class="media-demo" style="background:linear-gradient(90deg,#355c7d 0 50%,#1f3448 50%)"></div><b>藏蓝直筒裤</b><small>裤装 · 通勤</small><div class="color-dots"><i style="background:#355c7d"></i><i style="background:#1d2228"></i></div></div>
             </div>
           </div>
           <div class="toast-demo">已保存 3 件单品，草稿已清空。</div>
-          <div class="phone-nav"><div class="active">衣橱</div><div>套装</div><div>种草</div><div>设置</div></div>
+          <div class="phone-nav">
+            <div class="nav-tab active"><svg class="demo-icon" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 4 4 6l2 4 2-1v11h8V9l2 1 2-4-4-2-2 3h-4L8 4z"></path></svg><span>衣橱</span></div>
+            <div class="nav-tab"><svg class="demo-icon" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m12 3 8 4-8 4-8-4 8-4z"></path><path d="m4 12 8 4 8-4"></path><path d="m4 17 8 4 8-4"></path></svg><span>套装</span></div>
+            <div class="nav-tab"><svg class="demo-icon" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 8h12l-1 13H7L6 8z"></path><path d="M9 8a3 3 0 0 1 6 0"></path></svg><span>种草</span></div>
+            <div class="nav-tab"><svg class="demo-icon" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M19 12a7 7 0 0 0-.1-1l2-1.5-2-3.4-2.4 1a7 7 0 0 0-1.7-1L14.5 3h-5l-.4 3.1a7 7 0 0 0-1.7 1l-2.4-1-2 3.4L5.1 11a7 7 0 0 0 0 2l-2 1.5 2 3.4 2.4-1a7 7 0 0 0 1.7 1l.4 3.1h5l.4-3.1a7 7 0 0 0 1.7-1l2.4 1 2-3.4-2.1-1.5a7 7 0 0 0 .1-1z"></path></svg><span>设置</span></div>
+          </div>
         </div>
       </section>
       <section class="section" id="1-产品与平台边界"><h2>1. 产品与平台边界</h2><div class="module-visual" aria-label="1. 产品与平台边界 视觉示意">
@@ -769,7 +852,22 @@
       </div>
 <p><code>src/lib/motion-tokens.ts</code> 是动效事实源。</p>
 <div class="table-wrap"><table><thead><tr><th>Token</th><th>数值 / 用途</th></tr></thead><tbody><tr><td><code>duration.fast</code></td><td><code>0.12s</code>，按钮、轻反馈</td></tr><tr><td><code>duration.normal</code></td><td><code>0.22s</code>，普通显隐</td></tr><tr><td><code>duration.panel</code></td><td><code>0.32s</code>，Sheet、页面推进</td></tr><tr><td><code>duration.slow</code></td><td><code>0.45s</code>，大面积过渡</td></tr><tr><td><code>ease.app/out</code></td><td><code>[0.2, 0.8, 0.2, 1]</code></td></tr><tr><td><code>spring.snappy</code></td><td>按钮、Toast、checkmark</td></tr><tr><td><code>spring.soft</code></td><td>面板、卡片进入</td></tr><tr><td><code>spring.gentle</code></td><td>大面积转场</td></tr><tr><td>变体</td><td><code>fade</code>、<code>slideUp</code>、<code>toastDrop</code>、<code>slideRight</code>、<code>slideRightExit</code>、<code>scaleModal</code>、<code>tabFade</code>、<code>staggerReveal</code>、<code>pop</code></td></tr></tbody></table></div>
-<p>所有动画必须遵守 reduced-motion；减少大位移，保留必要的显隐和状态反馈。</p></div></section>
+<p>所有动画必须遵守 reduced-motion；减少大位移，保留必要的显隐和状态反馈。</p>
+<h3>2.5 Icon</h3>
+      <div class="part-visual" data-visual="icon-library">
+        <div class="icon-spec-board">
+          <span><svg class="demo-icon" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"></circle><path d="m20 20-3.5-3.5"></path></svg><b>Search</b></span>
+          <span><svg class="demo-icon" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l1.5 4.5L18 9l-4.5 1.5L12 15l-1.5-4.5L6 9l4.5-1.5L12 3z"></path><path d="M5 15l.8 2.2L8 18l-2.2.8L5 21l-.8-2.2L2 18l2.2-.8L5 15z"></path></svg><b>Sparkles</b></span>
+          <span><svg class="demo-icon" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 4 4 6l2 4 2-1v11h8V9l2 1 2-4-4-2-2 3h-4L8 4z"></path></svg><b>Shirt</b></span>
+          <span><svg class="demo-icon" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m12 3 8 4-8 4-8-4 8-4z"></path><path d="m4 12 8 4 8-4"></path><path d="m4 17 8 4 8-4"></path></svg><b>Layers</b></span>
+          <span><svg class="demo-icon" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 8h12l-1 13H7L6 8z"></path><path d="M9 8a3 3 0 0 1 6 0"></path></svg><b>ShoppingBag</b></span>
+          <span><svg class="demo-icon" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M19 12a7 7 0 0 0-.1-1l2-1.5-2-3.4-2.4 1a7 7 0 0 0-1.7-1L14.5 3h-5l-.4 3.1a7 7 0 0 0-1.7 1l-2.4-1-2 3.4L5.1 11a7 7 0 0 0 0 2l-2 1.5 2 3.4 2.4-1a7 7 0 0 0 1.7 1l.4 3.1h5l.4-3.1a7 7 0 0 0 1.7-1l2.4 1 2-3.4-2.1-1.5a7 7 0 0 0 .1-1z"></path></svg><b>Settings</b></span>
+        </div>
+        <div class="visual-caption"><b>只用 lucide-react</b><span>不得用文字、emoji、符号或手绘临时图标替代。</span></div>
+      </div>
+<p>图标事实源是 <code>lucide-react</code>，开发时只能从该库选择图标；不得用文字、emoji、特殊符号、CSS 伪元素或临时手绘 SVG 替代图标。若库内没有合适图标，先调整语义或登记设计债务，不允许直接造一个只在单页使用的新图标。</p>
+<div class="table-wrap"><table><thead><tr><th>场景</th><th>lucide 图标</th><th>尺寸</th></tr></thead><tbody><tr><td>搜索</td><td><code>Search</code></td><td><code>20px</code></td></tr><tr><td>统计</td><td><code>BarChart3</code></td><td><code>20px</code></td></tr><tr><td>AI / 诊断</td><td><code>Sparkles</code> 或当前代码已用的 <code>WandSparkles</code></td><td><code>18px-20px</code></td></tr><tr><td>衣橱 Tab</td><td><code>Shirt</code></td><td><code>20px</code></td></tr><tr><td>套装 Tab</td><td><code>Sparkles</code> / <code>Layers</code>，按当前产品语义二选一并保持全局一致</td><td><code>20px</code></td></tr><tr><td>种草 Tab</td><td><code>ShoppingBag</code></td><td><code>20px</code></td></tr><tr><td>设置 Tab</td><td><code>Settings</code></td><td><code>20px</code></td></tr><tr><td>返回</td><td><code>ChevronLeft</code></td><td><code>20px-24px</code></td></tr><tr><td>删除</td><td><code>Trash2</code></td><td><code>18px-20px</code></td></tr><tr><td>裁切</td><td><code>Crop</code></td><td><code>18px-20px</code></td></tr></tbody></table></div>
+<p>Icon-only 按钮必须有 <code>aria-label</code>；图标与文字组合时图标使用 <code>aria-hidden=&quot;true&quot;</code>。</p></div></section>
 <section class="section" id="3-viewport-与-safe-area"><h2>3. Viewport 与 Safe Area</h2><div class="module-visual" aria-label="3. Viewport 与 Safe Area 视觉示意">
       <div class="safe-phone">
         <div class="safe-zone top">safe-area top</div>
@@ -783,7 +881,12 @@
       <div class="visual-phone-mini shell-demo">
         <div class="visual-top-glass"><b>顶部毛玻璃层</b><span>筛选 / 标题</span></div>
         <div class="visual-scroll-cards"><span></span><span></span><span></span></div>
-        <div class="visual-floating-nav"><b>衣橱</b><span>套装</span><span>种草</span><span>设置</span></div>
+        <div class="visual-floating-nav">
+          <div class="nav-tab active"><svg class="demo-icon" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 4 4 6l2 4 2-1v11h8V9l2 1 2-4-4-2-2 3h-4L8 4z"></path></svg><span>衣橱</span></div>
+          <div class="nav-tab"><svg class="demo-icon" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m12 3 8 4-8 4-8-4 8-4z"></path><path d="m4 12 8 4 8-4"></path><path d="m4 17 8 4 8-4"></path></svg><span>套装</span></div>
+          <div class="nav-tab"><svg class="demo-icon" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 8h12l-1 13H7L6 8z"></path><path d="M9 8a3 3 0 0 1 6 0"></path></svg><span>种草</span></div>
+          <div class="nav-tab"><svg class="demo-icon" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M19 12a7 7 0 0 0-.1-1l2-1.5-2-3.4-2.4 1a7 7 0 0 0-1.7-1L14.5 3h-5l-.4 3.1a7 7 0 0 0-1.7 1l-2.4-1-2 3.4L5.1 11a7 7 0 0 0 0 2l-2 1.5 2 3.4 2.4-1a7 7 0 0 0 1.7 1l.4 3.1h5l.4-3.1a7 7 0 0 0 1.7-1l2.4 1 2-3.4-2.1-1.5a7 7 0 0 0 .1-1z"></path></svg><span>设置</span></div>
+        </div>
       </div></div><div class="module-copy"><p>每个页面由以下层组成：</p>
 <ol><li>基础页面容器。</li><li>独立顶部层：状态栏安全区、标题、返回/关闭、必要筛选或统计。</li><li>可滚动内容区。</li><li>可选 FAB。</li><li>可选底部导航或底部操作栏。</li><li>可选覆盖层：Toast、Popover、Sheet、Dialog、Lightbox、Cropper。</li></ol>
 <p>顶部层不加硬边框和额外渐变过渡区。滚动内容可经过顶部层下方，但应被 glass 背景遮住。</p>
@@ -818,13 +921,13 @@
 <h3>7.1 详情媒体</h3>
       <div class="part-visual" data-visual="detail-media">
         <div class="detail-hero-demo"><div class="visual-frame-media"></div><div class="filmstrip"><span></span><span></span><span></span></div></div>
-        <div class="detail-meta-demo"><b>白色短袖衬衫</b><span>上衣 / 衬衫 · 默认衣橱 · 可穿</span><small>名称与属性在底层，不塞进一级卡片。</small></div>
+        <div class="detail-meta-demo"><b>白色短袖衬衫</b><span>上衣 / 衬衫 · 默认衣橱 · 可穿</span><div class="color-dots"><i style="background:#fffffc"></i><i style="background:#355c7d"></i></div><small>名称、属性、色卡在底层，不塞进一级卡片。</small></div>
       </div>
 <div class="table-wrap"><table><thead><tr><th>Slide kind</th><th>标签</th><th>用途</th><th>胶片栏</th></tr></thead><tbody><tr><td><code>garment_main</code></td><td>主图</td><td>衣物主图</td><td>是</td></tr><tr><td><code>garment_reference</code></td><td>灵感</td><td>衣物灵感图</td><td>是</td></tr><tr><td><code>outfit_cover</code></td><td>主图</td><td>套装封面</td><td>是</td></tr><tr><td><code>outfit_real</code></td><td>套装示意</td><td>套装实拍/示意</td><td>是</td></tr><tr><td><code>wishlist_product</code></td><td>商品图</td><td>种草商品图</td><td>当前否</td></tr></tbody></table></div>
 <p>空图必须保持 hero 框架稳定并显示 fallback。</p>
 <h3>7.2 瀑布流与多选</h3>
       <div class="part-visual" data-visual="waterfall-multi-select">
-        <div class="waterfall-demo"><div class="item-card selected"><div class="media-demo"></div><b>白色短袖衬衫</b><small>上衣 · 默认衣橱</small></div><div class="item-card"><div class="media-demo dark"></div><b>藏蓝直筒裤</b><small>裤装 · 通勤</small></div></div>
+        <div class="waterfall-demo"><div class="item-card selected"><div class="media-demo"></div><b>白色短袖衬衫</b><small>上衣 · 默认衣橱</small><div class="color-dots"><i style="background:#fffffc"></i><i style="background:#355c7d"></i></div></div><div class="item-card"><div class="media-demo dark"></div><b>藏蓝直筒裤</b><small>裤装 · 通勤</small><div class="color-dots"><i style="background:#355c7d"></i><i style="background:#1d2228"></i></div></div></div>
         <div class="bulk-bar">已选 1 件 <button>删除</button></div>
       </div>
 <ul><li>列表卡片统一使用 <code>CatalogWaterfallGrid</code> + <code>CatalogWaterfallCardShell</code>。</li><li>标题、meta、summary 必须截断，不能撑高卡片。</li><li>选中态必须同时有 Denim 边框/环、勾选图标和 <code>aria-pressed</code>。</li><li>多选模式由 <code>selectedIds.size &gt; 0</code> 派生。</li><li>普通模式点击打开详情；多选模式点击切换选中；长按/右键进入或切换多选。</li><li>批量操作栏只在有选中项时出现，底部固定并考虑 safe area；删除必须先弹确认 Sheet，删除中禁止关闭。</li></ul></div></section>
@@ -849,14 +952,20 @@
 <p><code>ItemColorFields</code> view 模式显示主色、必要时显示辅助色、颜色模式；edit 模式显示模式切换、已选颜色、12 常用色、展开 14 扩展色。</p>
 <h3>8.3 温度</h3>
       <div class="part-visual" data-visual="temperature-range">
-        <div class="field-card">
-          <b>温度范围</b>
-          <div class="temperature-slider"><span></span><i class="min"></i><i class="max"></i></div>
+        <div class="field-card temperature-view-window">
+          <b>详情展示</b>
+          <div class="temperature-slider view-range"><span></span><i class="min"></i><i class="max"></i></div>
+          <div class="temp-labels"><span>17℃</span><b>18℃ - 28℃</b><span>29℃</span></div>
+          <small>展示态只给选中区间约 ±10% 上下文，不露出全域端点。</small>
+        </div>
+        <div class="field-card temperature-edit-window">
+          <b>录入 / 编辑</b>
+          <div class="temperature-slider edit-range"><span></span><i class="min"></i><i class="max"></i></div>
           <div class="temp-labels"><span>-20℃</span><b>18℃ - 28℃</b><span>40℃</span></div>
         </div>
       </div>
 <p><code>TemperatureRange</code> 为 <code>{ minC?: number; maxC?: number }</code>。</p>
-<ul><li>范围事实源为 <code>-20℃ ~ 40℃</code>，步进 <code>1℃</code>。</li><li>详情展示按温度条，不用纯文本框。</li><li>编辑滑条命中区不小于 44px，视觉手柄 20px。</li><li>点击轨道不改变数值；只有按住 handle 才拖动。</li><li>键盘支持 Arrow / Home / End。</li><li>两个 handle 使用 <code>role=&quot;slider&quot;</code> 和 <code>aria-valuemin/max/now</code>。</li></ul>
+<ul><li>编辑 / 录入滑条范围事实源为 <code>-20℃ ~ 40℃</code>，步进 <code>1℃</code>。</li><li>详情展示按温度条，不用纯文本框；展示态只显示选中区间及其约 <code>±10%</code> 上下文，不展示 <code>-20℃</code> 和 <code>40℃</code> 全域端点。</li><li>温度条轨道使用蓝到红渐变，低温端为蓝，高温端为红。</li><li>编辑滑条命中区不小于 44px，视觉手柄 20px。</li><li>点击轨道不改变数值；只有按住 handle 才拖动。</li><li>键盘支持 Arrow / Home / End。</li><li>两个 handle 使用 <code>role=&quot;slider&quot;</code> 和 <code>aria-valuemin/max/now</code>。</li></ul>
 <h3>8.4 季节、风格、状态</h3>
       <div class="part-visual" data-visual="season-style-status">
         <div class="field-card"><b>季节 / 风格 / 状态</b><div class="chips"><span class="chip active">春秋</span><span class="chip">通勤</span><span class="chip">可穿</span><span class="chip">待确认</span></div></div>
@@ -915,7 +1024,17 @@
       </div></div><div class="module-copy"><div class="table-wrap"><table><thead><tr><th>文件</th><th>状态</th><th>说明</th></tr></thead><tbody><tr><td><code>docs/designs/wardrobe-ui-spec.md</code></td><td>final source</td><td>唯一事实源</td></tr><tr><td><code>docs/designs/wardrobe-ui-spec.html</code></td><td>generated preview</td><td>可视预览，必须同步 MD</td></tr><tr><td><code>docs/designs/six-page-unified-item-pages-v2.md</code></td><td>legacy reference</td><td>历史设计参考，不覆盖本规范</td></tr></tbody></table></div>
 <p>PR 规则：</p>
 <ul><li>新增 route：同步 <code>Route 与页面状态矩阵</code> 和 <code>npm run test:logic:app-route</code>。</li><li>新增核心 token：同步本规范、Tailwind/CSS/Motion。</li><li>新增或改核心组件：同步组件 Contract 和对应测试映射。</li><li>新增 overlay：登记 z-index、关闭方式、是否锁滚、是否拦截返回。</li></ul></div></section>
-<section class="section" id="16-验收与测试映射"><h2>16. 验收与测试映射</h2><div class="module-visual" aria-label="16. 验收与测试映射 视觉示意">
+<section class="section" id="16-产品视觉方案实操"><h2>16. 产品视觉方案实操</h2><div class="module-visual" aria-label="16. 产品视觉方案实操 视觉示意">
+      <div class="practice-board">
+        <div class="practice-phone home"><b>衣橱首页</b><div class="practice-top"></div><div class="practice-grid"><span></span><span></span><span></span><span></span></div></div>
+        <div class="practice-phone detail"><b>衣物详情</b><div class="practice-media"></div><div class="practice-meta"></div><div class="color-dots"><i style="background:#fffffc"></i><i style="background:#355c7d"></i></div></div>
+        <div class="practice-phone intake"><b>单品录入</b><div class="practice-upload"></div><div class="thumb-strip"><span></span><span></span><span></span></div></div>
+        <div class="practice-phone outfit"><b>套装首页</b><div class="practice-week"></div><div class="practice-outfit"></div></div>
+        <div class="practice-phone wishlist"><b>种草首页</b><div class="practice-product"></div><div class="practice-meta"></div></div>
+        <div class="practice-phone settings"><b>设置页</b><div class="practice-list"><span></span><span></span><span></span></div></div>
+      </div></div><div class="module-copy"><p>本节用上面的规范拼出主要页面小稿，作为开发前快速对齐用。它不是新路由，也不替代 <code>Route 与页面状态矩阵</code>。</p>
+<ul><li>衣橱首页：顶部 glass、筛选、瀑布流、底部导航、FAB。</li><li>衣物详情：3:4 主图、胶片栏、名称属性直接落在底层、色卡、温度条。</li><li>单品录入：两步流程、选图、缩略图、裁切/旋转入口、底部操作栏。</li><li>套装首页：周历横滑、套装缩略图、计划入口。</li><li>种草首页：商品图、状态、加入衣橱/已买/不感兴趣入口。</li><li>设置页：账号、MiniMax、试穿画像、位置、诊断等列表入口。</li></ul></div></section>
+<section class="section" id="17-验收与测试映射"><h2>17. 验收与测试映射</h2><div class="module-visual" aria-label="17. 验收与测试映射 视觉示意">
       <div class="test-board">
         <span>ui-spec-preview</span><span>ui-token-contract</span><span>ui-overlay-contract</span>
         <span>app-route</span><span>detail-shell</span><span>color-catalog</span>

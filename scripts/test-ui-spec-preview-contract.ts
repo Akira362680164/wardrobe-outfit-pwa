@@ -14,6 +14,8 @@ assert.ok(html.includes("DO NOT EDIT BY HAND"));
 assert.ok(html.includes("Source SHA256"));
 assert.ok(!html.includes("/Users/"));
 assert.ok(!html.includes("#f0f2ee"));
+assert.ok(!html.includes("⌕"));
+assert.ok(!html.includes("✦"));
 
 const markdownPartCount = (md.match(/^###\s+/gm) ?? []).length;
 const htmlPartVisualCount = (html.match(/class="part-visual"/g) ?? []).length;
@@ -29,12 +31,18 @@ for (const visual of [
   'data-visual="detail-media"',
   'data-visual="color-fields"',
   'data-visual="temperature-range"',
+  'data-visual="icon-library"',
   'data-visual="concentric-radius"',
   'data-visual="glass-layer"',
+  "temperature-view-window",
+  "practice-board",
   "toast-stage",
 ]) {
   assert.ok(html.includes(visual), `missing required visual example: ${visual}`);
 }
+
+const practiceScreenCount = (html.match(/class="practice-phone/g) ?? []).length;
+assert.ok(practiceScreenCount >= 6, "product visual practice must cover main page examples");
 
 for (const title of [
   "Design Tokens",
@@ -50,6 +58,7 @@ for (const title of [
   "无障碍",
   "Known Deviations / UI Debt",
   "文档治理",
+  "产品视觉方案实操",
   "验收与测试映射",
 ]) {
   assert.ok(html.includes(title), `missing UI spec section: ${title}`);

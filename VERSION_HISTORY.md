@@ -1,3 +1,14 @@
+## 2026-07-08 / v2.1.7-test / Codex — UI 规范图标与产品实操补齐
+
+- **执行 Agent**：Codex（未触发 subagent：用户未通知）。
+- **目的**：按浏览器批注修正 UI 规范 HTML 中图标、温度、首页示意和产品页面实操不足的问题。
+- **版本变更**：无；当前应用版本仍为 `2.1.7-test`。
+- **改动文件**：`docs/designs/wardrobe-ui-spec.md`、`docs/designs/wardrobe-ui-spec.html`、`scripts/generate-ui-spec-preview.mjs`、`scripts/test-ui-spec-preview-contract.ts`、`scripts/test-ui-spec-preview-render.ts`、`VERSION_HISTORY.md`。
+- **改动说明**：新增 Icon 规范，明确开发只能从 `lucide-react` 选图标，禁止文字、emoji、特殊符号或临时手绘图标替代；首页示意改用 SVG 图标表达 lucide 语义，补齐下拉箭头、次要件数字重、底部导航图标和衣物卡色点；温度示意拆为详情展示态与录入/编辑态，展示态只显示选中区间约 `±10%` 上下文，轨道改为蓝到红渐变；新增“产品视觉方案实操”区块，覆盖衣橱首页、衣物详情、单品录入、套装首页、种草首页和设置页小稿。
+- **验证结果**：`npm run docs:ui-spec:build`、`npm run docs:ui-spec:check`、`npm run test:logic:ui-spec-preview`、`npm run typecheck` 均通过。
+- **风险门禁**：high（`review-gate --staged` 因 6 个文件、413 行 staged diff 判定为 high；实际改动仍限定为静态规范源、生成 HTML、生成器和测试，不改运行时代码、不改业务流程、不改 Android、不打 APK）；未触发 subagent：用户未通知。
+- **未验证风险**：未在 GitHub Pages 或远程网页环境预览；未做人工逐屏截图审查。
+
 ## 2026-07-07 / v2.1.7-test / Codex — UI 规范 HTML 小节级图示补齐
 
 - **执行 Agent**：Codex（未触发 subagent：用户未通知）。
