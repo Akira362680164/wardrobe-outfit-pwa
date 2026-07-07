@@ -4,6 +4,7 @@ import { resolve } from "node:path";
 
 const SPEC_PATH = "docs/designs/wardrobe-ui-spec.md";
 const HTML_PATH = "docs/designs/wardrobe-ui-spec.html";
+const REAL_SCREENSHOT_DIR = "v03-alpha-real-screenshots";
 
 function readSpec() {
   return readFileSync(resolve(SPEC_PATH), "utf8");
@@ -200,6 +201,14 @@ function icon(name) {
   return `<svg class="demo-icon" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${paths[name] ?? ""}</svg>`;
 }
 
+function productionShot(filename, title, note = "") {
+  return `<figure class="production-shot"><img src="${REAL_SCREENSHOT_DIR}/${filename}" alt="${escapeHtml(title)}"><figcaption><b>${escapeHtml(title)}</b>${note ? `<span>${escapeHtml(note)}</span>` : ""}</figcaption></figure>`;
+}
+
+function productionShotGrid(shots) {
+  return `<div class="production-shot-grid">${shots.map((shot) => productionShot(...shot)).join("")}</div>`;
+}
+
 function renderPartVisual(title) {
   if (/2\.1\s+颜色/.test(title)) {
     return `
@@ -258,16 +267,20 @@ function renderPartVisual(title) {
   if (title.includes("详情媒体")) {
     return `
       <div class="part-visual" data-visual="detail-media">
-        <div class="detail-hero-demo"><div class="visual-frame-media"></div><div class="filmstrip"><span></span><span></span><span></span></div></div>
-        <div class="detail-meta-demo"><b>白色短袖衬衫</b><span>上衣 / 衬衫 · 默认衣橱 · 可穿</span><div class="color-dots"><i style="background:#fffffc"></i><i style="background:#355c7d"></i></div><small>名称、属性、色卡在底层，不塞进一级卡片。</small></div>
+        ${productionShotGrid([
+          ["garment_detail_390_top.png", "单品详情首屏", "主图、胶片、名称与属性沿用生产结构"],
+          ["garment_detail_390_info.png", "单品详情信息区", "颜色、分类、季节等字段按生产区块排列"],
+          ["garment_detail_390_bottom.png", "单品详情底部", "只优化卡片圆角、色彩与毛玻璃质感"],
+        ])}
       </div>`;
   }
 
   if (title.includes("瀑布流与多选")) {
     return `
       <div class="part-visual" data-visual="waterfall-multi-select">
-        <div class="waterfall-demo"><div class="item-card selected"><div class="media-demo"></div><b>白色短袖衬衫</b><small>上衣 · 默认衣橱</small><div class="color-dots"><i style="background:#fffffc"></i><i style="background:#355c7d"></i></div></div><div class="item-card"><div class="media-demo dark"></div><b>藏蓝直筒裤</b><small>裤装 · 通勤</small><div class="color-dots"><i style="background:#355c7d"></i><i style="background:#1d2228"></i></div></div></div>
-        <div class="bulk-bar">已选 1 件 <button>删除</button></div>
+        ${productionShotGrid([
+          ["wardrobe_home_390_top.png", "衣橱瀑布流", "真实生产截图：两列卡片、筛选、Toast、底部导航"],
+        ])}
       </div>`;
   }
 
@@ -281,12 +294,10 @@ function renderPartVisual(title) {
   if (/8\.2\s+颜色/.test(title)) {
     return `
       <div class="part-visual" data-visual="color-fields">
-        <div class="field-card color-field-demo">
-          <b>颜色</b>
-          <div class="segmented-mini"><span class="active">单主色</span><span>主辅色</span><span>拼色</span></div>
-          <div class="swatch-row"><span style="background:#fffffc"></span><span style="background:#355c7d"></span><span style="background:#9aa0a6"></span><span style="background:#e1d9ca"></span><span style="background:#8c4a62"></span></div>
-          <small>常用色与扩展色按系统色卡分组展示。</small>
-        </div>
+        ${productionShotGrid([
+          ["garment_detail_390_info.png", "详情色卡展示", "结构以生产字段区为准，规范只收紧色卡颜色和标签"],
+          ["intake_single_confirm_390_top.png", "录入确认色卡入口", "重新识别和字段校对位置沿用生产"],
+        ])}
       </div>`;
   }
 
@@ -376,16 +387,10 @@ function renderSectionVisual(section) {
 
   if (title.includes("App Shell")) {
     return `
-      <div class="visual-phone-mini shell-demo">
-        <div class="visual-top-glass"><b>顶部毛玻璃层</b><span>筛选 / 标题</span></div>
-        <div class="visual-scroll-cards"><span></span><span></span><span></span></div>
-        <div class="visual-floating-nav">
-          <div class="nav-tab active">${icon("shirt")}<span>衣橱</span></div>
-          <div class="nav-tab">${icon("layers")}<span>套装</span></div>
-          <div class="nav-tab">${icon("bag")}<span>种草</span></div>
-          <div class="nav-tab">${icon("settings")}<span>设置</span></div>
-        </div>
-      </div>`;
+      ${productionShotGrid([
+        ["wardrobe_home_390_top.png", "衣橱 Shell", "顶部控件、Toast、圆形 FAB 和底部 Tab 以生产截图为准"],
+        ["settings_home_390_top.png", "设置 Shell", "设置页同一底部 Tab，不重新设计页面结构"],
+      ])}`;
   }
 
   if (title.includes("Route")) {
@@ -407,7 +412,10 @@ function renderSectionVisual(section) {
         <span style="--level:3">FAB z40</span>
         <span style="--level:2">Bottom nav z30</span>
         <span style="--level:1">Page</span>
-      </div>`;
+      </div>
+      ${productionShotGrid([
+        ["confirm_delete_sheet_390_top.png", "删除确认 Sheet", "覆盖层结构以生产截图为准，只优化毛玻璃、圆角和阴影"],
+      ])}`;
   }
 
   if (title.includes("核心组件")) {
@@ -433,12 +441,12 @@ function renderSectionVisual(section) {
 
   if (title.includes("录入流程")) {
     return `
-      <div class="step-flow">
-        <div class="step-card active"><b>1</b><span>选择照片</span><small>缩略图 / 裁切旋转</small></div>
-        <i></i>
-        <div class="step-card"><b>2</b><span>确认信息</span><small>复核 AI 草稿</small></div>
-      </div>
-      <div class="thumb-strip"><span></span><span></span><span></span><button>裁切/旋转</button></div>`;
+      ${productionShotGrid([
+        ["intake_single_step1_empty_390_top.png", "Step 1 空状态", "添加单品 / 选择照片"],
+        ["intake_single_step1_imported_390_top.png", "Step 1 已导入", "缩略图、继续拍照、图库入口、清空"],
+        ["intake_single_confirm_390_top.png", "Step 2 确认首屏", "已识别单品、重新识别、校对草稿"],
+        ["intake_single_confirm_390_bottom.png", "Step 2 保存区", "保存按钮与底部操作栏沿用生产"],
+      ])}`;
   }
 
   if (title.includes("AI 与系统状态")) {
@@ -455,10 +463,11 @@ function renderSectionVisual(section) {
   if (title.includes("通知 Toast")) {
     return `
       <div class="toast-stage">
-        <div class="mini-card"></div>
-        <div class="mini-card"></div>
-        <div class="mini-toast"><b></b><span>已保存 3 件单品</span><button>×</button></div>
-        <div class="mini-bottom-bar">底部操作栏同宽</div>
+        ${productionShotGrid([
+          ["wardrobe_home_390_top.png", "衣橱保存 Toast", "同底部操作区宽，覆盖 FAB"],
+          ["outfit_home_390_top.png", "套装创建 Toast", "结构不变，只优化毛玻璃与圆角"],
+          ["wishlist_home_390_top.png", "种草添加 Toast", "悬浮于页面与底部导航之上"],
+        ])}
       </div>`;
   }
 
@@ -497,14 +506,29 @@ function renderSectionVisual(section) {
 
   if (title.includes("产品视觉方案实操")) {
     return `
-      <div class="practice-board">
-        <div class="practice-phone home"><b>衣橱首页</b><div class="practice-top"></div><div class="practice-grid"><span></span><span></span><span></span><span></span></div></div>
-        <div class="practice-phone detail"><b>衣物详情</b><div class="practice-media"></div><div class="practice-meta"></div><div class="color-dots"><i style="background:#fffffc"></i><i style="background:#355c7d"></i></div></div>
-        <div class="practice-phone intake"><b>单品录入</b><div class="practice-upload"></div><div class="thumb-strip"><span></span><span></span><span></span></div></div>
-        <div class="practice-phone outfit"><b>套装首页</b><div class="practice-week"></div><div class="practice-outfit"></div></div>
-        <div class="practice-phone wishlist"><b>种草首页</b><div class="practice-product"></div><div class="practice-meta"></div></div>
-        <div class="practice-phone settings"><b>设置页</b><div class="practice-list"><span></span><span></span><span></span></div></div>
-      </div>`;
+      ${productionShotGrid([
+        ["auth_login_390_top.png", "登录页", "认证入口结构不重排"],
+        ["auth_register_390_top.png", "注册页", "注册表单结构不重排"],
+        ["wardrobe_home_390_top.png", "衣橱首页", "结构取自真实业务流"],
+        ["garment_detail_390_top.png", "衣物详情首屏", "不把名称属性塞入额外卡片"],
+        ["garment_detail_390_info.png", "衣物详情信息区", "色卡、基础信息、字段区沿用生产"],
+        ["garment_detail_390_bottom.png", "衣物详情底部", "底部操作与信息区结构不改"],
+        ["confirm_delete_sheet_390_top.png", "删除确认", "Sheet 层级和按钮结构不改"],
+        ["intake_single_step1_empty_390_top.png", "单品录入空态", "两步流程"],
+        ["intake_single_step1_imported_390_top.png", "单品录入已选图", "缩略图与底部操作不重排"],
+        ["intake_single_confirm_390_top.png", "单品确认", "重新识别位置沿用生产"],
+        ["intake_single_confirm_390_bottom.png", "单品确认底部", "保存区和底部操作结构不改"],
+        ["outfit_home_390_top.png", "套装首页", "周历与套装卡结构不改"],
+        ["outfit_detail_390_top.png", "套装详情首屏", "详情框架复用"],
+        ["outfit_detail_390_info.png", "套装详情信息区", "套装字段结构不重排"],
+        ["outfit_detail_390_bottom.png", "套装详情底部", "底部信息结构不重排"],
+        ["outfit_calendar_390_top.png", "套装月历", "日历结构不重画"],
+        ["wishlist_home_390_top.png", "种草首页", "筛选与商品卡结构不改"],
+        ["wishlist_detail_390_top.png", "种草详情首屏", "商品详情框架复用"],
+        ["wishlist_detail_390_info.png", "种草详情信息区", "商品字段结构不重排"],
+        ["wishlist_detail_390_bottom.png", "种草详情底部", "底部操作结构不重排"],
+        ["settings_home_390_top.png", "设置首页", "设置列表结构不改"],
+      ])}`;
   }
 
   if (title.includes("验收与测试")) {
@@ -630,9 +654,9 @@ function renderHtml({ frontMatter, sections, colorTokens, sourceHash }) {
     }
     .hero {
       display: grid;
-      grid-template-columns: 1.05fr .95fr;
+      grid-template-columns: 1fr;
       gap: 24px;
-      align-items: stretch;
+      align-items: start;
       border-radius: 32px;
       padding: 28px;
       box-shadow: var(--deep);
@@ -657,6 +681,35 @@ function renderHtml({ frontMatter, sections, colorTokens, sourceHash }) {
     .module-visual { grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); align-items: stretch; }
     .part-visual { grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); align-items: center; }
     .module-visual > *, .part-visual > * { min-width: 0; }
+    .production-shot-grid {
+      grid-column: 1 / -1;
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+      gap: 14px;
+      align-items: start;
+    }
+    .production-shot {
+      min-width: 0;
+      margin: 0;
+      border: 1px solid var(--line);
+      border-radius: 26px;
+      background: rgba(255,255,252,.86);
+      box-shadow: var(--soft);
+      overflow: hidden;
+    }
+    .production-shot img {
+      display: block;
+      width: 100%;
+      height: auto;
+      background: var(--mist);
+    }
+    .production-shot figcaption {
+      display: grid;
+      gap: 4px;
+      padding: 10px 12px 12px;
+    }
+    .production-shot figcaption b { font-size: 12px; line-height: 1.25; }
+    .production-shot figcaption span { color: var(--muted); font-size: 10px; line-height: 1.35; font-weight: 800; }
     .visual-card, .field-card, .domain-card {
       border: 1px solid var(--line);
       border-radius: 20px;
@@ -873,8 +926,9 @@ function renderHtml({ frontMatter, sections, colorTokens, sourceHash }) {
       height: 14px;
       border-radius: 999px;
       background: linear-gradient(90deg, #3b82f6 0%, #f59e0b 52%, #dc2626 100%);
-      overflow: hidden;
     }
+    .temp-bar { overflow: hidden; }
+    .temperature-slider { overflow: visible; margin: 8px 13px; }
     .temp-bar i {
       display: block;
       width: 58%;
@@ -1026,9 +1080,6 @@ function renderHtml({ frontMatter, sections, colorTokens, sourceHash }) {
     }
     .detail-meta-demo { display: grid; gap: 7px; align-content: center; }
     .detail-meta-demo b { font-size: 20px; }
-    .waterfall-demo { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
-    .item-card.selected { outline: 3px solid var(--denim); outline-offset: -3px; }
-    .media-demo.dark { background: linear-gradient(90deg, #355c7d 0 50%, #1f3448 50%); }
     .segmented-mini {
       display: grid;
       grid-template-columns: repeat(3, 1fr);
@@ -1121,131 +1172,12 @@ function renderHtml({ frontMatter, sections, colorTokens, sourceHash }) {
     .token-card b { font-size: 12px; }
     .token-card small { color: var(--muted); font-weight: 700; }
     .phone-preview {
-      width: min(390px, 100%);
-      min-height: 560px;
+      width: min(520px, 100%);
       justify-self: center;
-      border-radius: 34px;
-      border: 1px solid var(--line);
-      background: var(--surface);
+    }
+    .phone-preview .production-shot {
+      border-radius: 32px;
       box-shadow: var(--deep);
-      overflow: hidden;
-      position: relative;
-    }
-    .phone-status, .phone-top, .phone-nav, .toast-demo {
-      backdrop-filter: blur(30px) saturate(1.5);
-      -webkit-backdrop-filter: blur(30px) saturate(1.5);
-    }
-    .phone-status {
-      display: flex;
-      justify-content: space-between;
-      padding: 20px 24px 10px;
-      font-size: 13px;
-      font-weight: 900;
-    }
-    .phone-top {
-      position: sticky;
-      top: 0;
-      z-index: 2;
-      display: grid;
-      gap: 12px;
-      background: rgba(251,251,248,.75);
-      padding: 14px 20px 18px;
-    }
-    .top-actions { display: grid; grid-template-columns: 1fr 52px 52px; gap: 10px; align-items: center; }
-    .search-box, .icon-box, .item-card, .split-card {
-      border: 1px solid var(--line);
-      background: rgba(255,255,252,.82);
-      box-shadow: var(--soft);
-    }
-    .search-box {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      border-radius: 16px;
-      padding: 14px 16px;
-      font-weight: 900;
-    }
-    .search-box .demo-icon { width: 16px; height: 16px; color: var(--muted); }
-    .wardrobe-count { color: var(--muted); font-weight: 700; }
-    .icon-box { display: grid; place-items: center; height: 52px; border-radius: 16px; color: var(--ink); }
-    .icon-box .demo-icon { width: 23px; height: 23px; }
-    .icon-box.ai { background: var(--clay); color: white; }
-    .phone-content { display: grid; gap: 14px; padding: 18px 20px 106px; }
-    .split-card {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      border-radius: 28px;
-      padding: 18px;
-    }
-    .button-demo { border-radius: 18px; background: var(--moss); color: white; padding: 13px 18px; font-weight: 900; }
-    .card-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
-    .item-card { border-radius: 28px; padding: 12px; }
-    .media-demo { aspect-ratio: 3 / 4; border-radius: 20px; background: linear-gradient(90deg, #eeeae2 0 50%, #cfd6dc 50%); }
-    .item-card b { display: block; margin-top: 10px; }
-    .item-card small { color: var(--muted); font-weight: 800; }
-    .phone-nav {
-      position: absolute;
-      left: 20px;
-      right: 20px;
-      bottom: 18px;
-      display: grid;
-      grid-template-columns: repeat(4, 1fr);
-      gap: 8px;
-      border: 1px solid rgba(53,92,125,.2);
-      border-radius: 26px;
-      background: rgba(255,255,252,.75);
-      padding: 8px;
-      box-shadow: var(--soft);
-    }
-    .phone-nav .nav-tab { display: grid; place-items: center; gap: 3px; min-height: 58px; border-radius: 18px; color: var(--muted); font-size: 12px; font-weight: 900; }
-    .phone-nav .demo-icon { width: 20px; height: 20px; }
-    .phone-nav .active { background: var(--denim); color: white; }
-    .practice-board {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-      gap: 14px;
-      grid-column: 1 / -1;
-    }
-    .practice-phone {
-      min-height: 300px;
-      border: 1px solid var(--line);
-      border-radius: 28px;
-      background: var(--surface);
-      padding: 14px;
-      display: grid;
-      gap: 12px;
-      align-content: start;
-      box-shadow: var(--soft);
-    }
-    .practice-phone b { font-size: 13px; }
-    .practice-top, .practice-media, .practice-upload, .practice-week, .practice-product, .practice-outfit, .practice-meta, .practice-list span {
-      border: 1px solid var(--line);
-      border-radius: 18px;
-      background: rgba(53,92,125,.08);
-    }
-    .practice-top { height: 64px; background: rgba(251,251,248,.75); backdrop-filter: blur(24px); }
-    .practice-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
-    .practice-grid span, .practice-product { aspect-ratio: 3 / 4; border-radius: 18px; background: linear-gradient(90deg, #eeeae2 0 50%, #cfd6dc 50%); }
-    .practice-media { aspect-ratio: 3 / 4; background: linear-gradient(90deg, #eeeae2 0 50%, #cfd6dc 50%); }
-    .practice-upload { min-height: 150px; border-style: dashed; background: rgba(53,92,125,.05); }
-    .practice-week { height: 56px; background: linear-gradient(90deg, rgba(53,92,125,.18), rgba(255,255,252,.9)); }
-    .practice-outfit { min-height: 130px; background: linear-gradient(90deg, #fffffc 0 33%, #355c7d 33% 66%, #1d2228 66%); }
-    .practice-meta { height: 52px; }
-    .practice-list { display: grid; gap: 10px; }
-    .practice-list span { height: 48px; }
-    .toast-demo {
-      position: absolute;
-      left: 20px;
-      right: 20px;
-      bottom: 96px;
-      border: 1px solid var(--line);
-      border-radius: 20px;
-      background: rgba(255,255,252,.95);
-      padding: 12px 14px;
-      box-shadow: var(--soft);
-      font-size: 12px;
-      font-weight: 850;
     }
     .table-wrap { max-width: 100%; overflow-x: auto; margin: 12px 0 18px; }
     table { width: 100%; border-collapse: separate; border-spacing: 0; min-width: 620px; }
@@ -1297,29 +1229,7 @@ function renderHtml({ frontMatter, sections, colorTokens, sourceHash }) {
           <div class="token-grid">${tokenCards}</div>
         </div>
         <div class="phone-preview" aria-label="mobile phone preview">
-          <div class="phone-status"><span>9:41</span><span>5G&nbsp;&nbsp;82%</span></div>
-          <div class="phone-top">
-            <div class="top-actions">
-              <div class="search-box"><span>全部衣橱</span><span class="wardrobe-count">48 件</span>${icon("chevronDown")}</div>
-              <div class="icon-box">${icon("search")}</div>
-              <div class="icon-box ai">${icon("sparkles")}</div>
-            </div>
-            <div class="chips"><span class="chip active">全部 48</span><span class="chip">上衣 14</span><span class="chip">裤装 9</span></div>
-          </div>
-          <div class="phone-content">
-            <div class="split-card"><div><b>AI 衣橱诊断</b><p>2 个缺口 · 3 件闲置 · 4 套可复用</p></div><span class="button-demo">查看</span></div>
-            <div class="card-grid">
-              <div class="item-card"><div class="media-demo"></div><b>白色短袖衬衫</b><small>上衣 · 默认衣橱</small><div class="color-dots"><i style="background:#fffffc"></i><i style="background:#355c7d"></i></div></div>
-              <div class="item-card"><div class="media-demo" style="background:linear-gradient(90deg,#355c7d 0 50%,#1f3448 50%)"></div><b>藏蓝直筒裤</b><small>裤装 · 通勤</small><div class="color-dots"><i style="background:#355c7d"></i><i style="background:#1d2228"></i></div></div>
-            </div>
-          </div>
-          <div class="toast-demo">已保存 3 件单品，草稿已清空。</div>
-          <div class="phone-nav">
-            <div class="nav-tab active">${icon("shirt")}<span>衣橱</span></div>
-            <div class="nav-tab">${icon("layers")}<span>套装</span></div>
-            <div class="nav-tab">${icon("bag")}<span>种草</span></div>
-            <div class="nav-tab">${icon("settings")}<span>设置</span></div>
-          </div>
+          ${productionShot("wardrobe_home_390_top.png", "衣橱首页真实生产截图", "只允许优化颜色、圆角、字体、图标和毛玻璃等视觉细节；结构以截图为准。")}
         </div>
       </section>
       ${sectionHtml}

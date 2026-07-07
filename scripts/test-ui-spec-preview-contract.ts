@@ -1,5 +1,5 @@
 import { strict as assert } from "node:assert";
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 
 const root = join(__dirname, "..");
@@ -35,14 +35,40 @@ for (const visual of [
   'data-visual="concentric-radius"',
   'data-visual="glass-layer"',
   "temperature-view-window",
-  "practice-board",
+  "production-shot-grid",
   "toast-stage",
 ]) {
   assert.ok(html.includes(visual), `missing required visual example: ${visual}`);
 }
 
-const practiceScreenCount = (html.match(/class="practice-phone/g) ?? []).length;
-assert.ok(practiceScreenCount >= 6, "product visual practice must cover main page examples");
+const productionScreenshots = [
+  "auth_login_390_top.png",
+  "auth_register_390_top.png",
+  "confirm_delete_sheet_390_top.png",
+  "wardrobe_home_390_top.png",
+  "garment_detail_390_top.png",
+  "garment_detail_390_info.png",
+  "garment_detail_390_bottom.png",
+  "intake_single_step1_empty_390_top.png",
+  "intake_single_step1_imported_390_top.png",
+  "intake_single_confirm_390_top.png",
+  "intake_single_confirm_390_bottom.png",
+  "outfit_home_390_top.png",
+  "outfit_detail_390_top.png",
+  "outfit_detail_390_info.png",
+  "outfit_detail_390_bottom.png",
+  "outfit_calendar_390_top.png",
+  "wishlist_home_390_top.png",
+  "wishlist_detail_390_top.png",
+  "wishlist_detail_390_info.png",
+  "wishlist_detail_390_bottom.png",
+  "settings_home_390_top.png",
+];
+
+for (const filename of productionScreenshots) {
+  assert.ok(html.includes(`v03-alpha-real-screenshots/${filename}`), `missing production screenshot in HTML: ${filename}`);
+  assert.ok(existsSync(join(root, "docs/designs/v03-alpha-real-screenshots", filename)), `missing production screenshot asset: ${filename}`);
+}
 
 for (const title of [
   "Design Tokens",

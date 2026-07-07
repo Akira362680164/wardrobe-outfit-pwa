@@ -2,7 +2,7 @@
 <!--
   DO NOT EDIT BY HAND.
   Generated from docs/designs/wardrobe-ui-spec.md by scripts/generate-ui-spec-preview.mjs.
-  Source SHA256: 4ae2dfcf0416280d1a889bebce299495d5be7ef849d9e9bb2e1d65762e34fe2c
+  Source SHA256: f41b5ed24d9dc4111fc2512701c2378393df49cfc5e8e7de5084e4241467698d
 -->
 <html lang="zh-CN">
 <head>
@@ -91,9 +91,9 @@
     }
     .hero {
       display: grid;
-      grid-template-columns: 1.05fr .95fr;
+      grid-template-columns: 1fr;
       gap: 24px;
-      align-items: stretch;
+      align-items: start;
       border-radius: 32px;
       padding: 28px;
       box-shadow: var(--deep);
@@ -118,6 +118,35 @@
     .module-visual { grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); align-items: stretch; }
     .part-visual { grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); align-items: center; }
     .module-visual > *, .part-visual > * { min-width: 0; }
+    .production-shot-grid {
+      grid-column: 1 / -1;
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+      gap: 14px;
+      align-items: start;
+    }
+    .production-shot {
+      min-width: 0;
+      margin: 0;
+      border: 1px solid var(--line);
+      border-radius: 26px;
+      background: rgba(255,255,252,.86);
+      box-shadow: var(--soft);
+      overflow: hidden;
+    }
+    .production-shot img {
+      display: block;
+      width: 100%;
+      height: auto;
+      background: var(--mist);
+    }
+    .production-shot figcaption {
+      display: grid;
+      gap: 4px;
+      padding: 10px 12px 12px;
+    }
+    .production-shot figcaption b { font-size: 12px; line-height: 1.25; }
+    .production-shot figcaption span { color: var(--muted); font-size: 10px; line-height: 1.35; font-weight: 800; }
     .visual-card, .field-card, .domain-card {
       border: 1px solid var(--line);
       border-radius: 20px;
@@ -334,8 +363,9 @@
       height: 14px;
       border-radius: 999px;
       background: linear-gradient(90deg, #3b82f6 0%, #f59e0b 52%, #dc2626 100%);
-      overflow: hidden;
     }
+    .temp-bar { overflow: hidden; }
+    .temperature-slider { overflow: visible; margin: 8px 13px; }
     .temp-bar i {
       display: block;
       width: 58%;
@@ -487,9 +517,6 @@
     }
     .detail-meta-demo { display: grid; gap: 7px; align-content: center; }
     .detail-meta-demo b { font-size: 20px; }
-    .waterfall-demo { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
-    .item-card.selected { outline: 3px solid var(--denim); outline-offset: -3px; }
-    .media-demo.dark { background: linear-gradient(90deg, #355c7d 0 50%, #1f3448 50%); }
     .segmented-mini {
       display: grid;
       grid-template-columns: repeat(3, 1fr);
@@ -582,131 +609,12 @@
     .token-card b { font-size: 12px; }
     .token-card small { color: var(--muted); font-weight: 700; }
     .phone-preview {
-      width: min(390px, 100%);
-      min-height: 560px;
+      width: min(520px, 100%);
       justify-self: center;
-      border-radius: 34px;
-      border: 1px solid var(--line);
-      background: var(--surface);
+    }
+    .phone-preview .production-shot {
+      border-radius: 32px;
       box-shadow: var(--deep);
-      overflow: hidden;
-      position: relative;
-    }
-    .phone-status, .phone-top, .phone-nav, .toast-demo {
-      backdrop-filter: blur(30px) saturate(1.5);
-      -webkit-backdrop-filter: blur(30px) saturate(1.5);
-    }
-    .phone-status {
-      display: flex;
-      justify-content: space-between;
-      padding: 20px 24px 10px;
-      font-size: 13px;
-      font-weight: 900;
-    }
-    .phone-top {
-      position: sticky;
-      top: 0;
-      z-index: 2;
-      display: grid;
-      gap: 12px;
-      background: rgba(251,251,248,.75);
-      padding: 14px 20px 18px;
-    }
-    .top-actions { display: grid; grid-template-columns: 1fr 52px 52px; gap: 10px; align-items: center; }
-    .search-box, .icon-box, .item-card, .split-card {
-      border: 1px solid var(--line);
-      background: rgba(255,255,252,.82);
-      box-shadow: var(--soft);
-    }
-    .search-box {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      border-radius: 16px;
-      padding: 14px 16px;
-      font-weight: 900;
-    }
-    .search-box .demo-icon { width: 16px; height: 16px; color: var(--muted); }
-    .wardrobe-count { color: var(--muted); font-weight: 700; }
-    .icon-box { display: grid; place-items: center; height: 52px; border-radius: 16px; color: var(--ink); }
-    .icon-box .demo-icon { width: 23px; height: 23px; }
-    .icon-box.ai { background: var(--clay); color: white; }
-    .phone-content { display: grid; gap: 14px; padding: 18px 20px 106px; }
-    .split-card {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      border-radius: 28px;
-      padding: 18px;
-    }
-    .button-demo { border-radius: 18px; background: var(--moss); color: white; padding: 13px 18px; font-weight: 900; }
-    .card-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
-    .item-card { border-radius: 28px; padding: 12px; }
-    .media-demo { aspect-ratio: 3 / 4; border-radius: 20px; background: linear-gradient(90deg, #eeeae2 0 50%, #cfd6dc 50%); }
-    .item-card b { display: block; margin-top: 10px; }
-    .item-card small { color: var(--muted); font-weight: 800; }
-    .phone-nav {
-      position: absolute;
-      left: 20px;
-      right: 20px;
-      bottom: 18px;
-      display: grid;
-      grid-template-columns: repeat(4, 1fr);
-      gap: 8px;
-      border: 1px solid rgba(53,92,125,.2);
-      border-radius: 26px;
-      background: rgba(255,255,252,.75);
-      padding: 8px;
-      box-shadow: var(--soft);
-    }
-    .phone-nav .nav-tab { display: grid; place-items: center; gap: 3px; min-height: 58px; border-radius: 18px; color: var(--muted); font-size: 12px; font-weight: 900; }
-    .phone-nav .demo-icon { width: 20px; height: 20px; }
-    .phone-nav .active { background: var(--denim); color: white; }
-    .practice-board {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-      gap: 14px;
-      grid-column: 1 / -1;
-    }
-    .practice-phone {
-      min-height: 300px;
-      border: 1px solid var(--line);
-      border-radius: 28px;
-      background: var(--surface);
-      padding: 14px;
-      display: grid;
-      gap: 12px;
-      align-content: start;
-      box-shadow: var(--soft);
-    }
-    .practice-phone b { font-size: 13px; }
-    .practice-top, .practice-media, .practice-upload, .practice-week, .practice-product, .practice-outfit, .practice-meta, .practice-list span {
-      border: 1px solid var(--line);
-      border-radius: 18px;
-      background: rgba(53,92,125,.08);
-    }
-    .practice-top { height: 64px; background: rgba(251,251,248,.75); backdrop-filter: blur(24px); }
-    .practice-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
-    .practice-grid span, .practice-product { aspect-ratio: 3 / 4; border-radius: 18px; background: linear-gradient(90deg, #eeeae2 0 50%, #cfd6dc 50%); }
-    .practice-media { aspect-ratio: 3 / 4; background: linear-gradient(90deg, #eeeae2 0 50%, #cfd6dc 50%); }
-    .practice-upload { min-height: 150px; border-style: dashed; background: rgba(53,92,125,.05); }
-    .practice-week { height: 56px; background: linear-gradient(90deg, rgba(53,92,125,.18), rgba(255,255,252,.9)); }
-    .practice-outfit { min-height: 130px; background: linear-gradient(90deg, #fffffc 0 33%, #355c7d 33% 66%, #1d2228 66%); }
-    .practice-meta { height: 52px; }
-    .practice-list { display: grid; gap: 10px; }
-    .practice-list span { height: 48px; }
-    .toast-demo {
-      position: absolute;
-      left: 20px;
-      right: 20px;
-      bottom: 96px;
-      border: 1px solid var(--line);
-      border-radius: 20px;
-      background: rgba(255,255,252,.95);
-      padding: 12px 14px;
-      box-shadow: var(--soft);
-      font-size: 12px;
-      font-weight: 850;
     }
     .table-wrap { max-width: 100%; overflow-x: auto; margin: 12px 0 18px; }
     table { width: 100%; border-collapse: separate; border-spacing: 0; min-width: 620px; }
@@ -767,7 +675,7 @@
           <div class="meta-row">
             <span class="pill active">v0.2-final</span>
             <span class="pill">Markdown 唯一事实源</span>
-            <span class="pill">Source SHA256 4ae2dfcf0416</span>
+            <span class="pill">Source SHA256 f41b5ed24d9d</span>
           </div>
           <h1>衣橱穿搭助手 UI 规范</h1>
           <p>本页由规范 Markdown 自动生成，用于快速走查页面框架、组件契约、通知样式和验收映射。</p>
@@ -782,29 +690,7 @@
 <div class="token-card"><span style="background:#dc2626"></span><b>color.danger</b><code>#dc2626</code><small>删除、清空、不可恢复操作</small></div></div>
         </div>
         <div class="phone-preview" aria-label="mobile phone preview">
-          <div class="phone-status"><span>9:41</span><span>5G&nbsp;&nbsp;82%</span></div>
-          <div class="phone-top">
-            <div class="top-actions">
-              <div class="search-box"><span>全部衣橱</span><span class="wardrobe-count">48 件</span><svg class="demo-icon" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"></path></svg></div>
-              <div class="icon-box"><svg class="demo-icon" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"></circle><path d="m20 20-3.5-3.5"></path></svg></div>
-              <div class="icon-box ai"><svg class="demo-icon" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l1.5 4.5L18 9l-4.5 1.5L12 15l-1.5-4.5L6 9l4.5-1.5L12 3z"></path><path d="M5 15l.8 2.2L8 18l-2.2.8L5 21l-.8-2.2L2 18l2.2-.8L5 15z"></path></svg></div>
-            </div>
-            <div class="chips"><span class="chip active">全部 48</span><span class="chip">上衣 14</span><span class="chip">裤装 9</span></div>
-          </div>
-          <div class="phone-content">
-            <div class="split-card"><div><b>AI 衣橱诊断</b><p>2 个缺口 · 3 件闲置 · 4 套可复用</p></div><span class="button-demo">查看</span></div>
-            <div class="card-grid">
-              <div class="item-card"><div class="media-demo"></div><b>白色短袖衬衫</b><small>上衣 · 默认衣橱</small><div class="color-dots"><i style="background:#fffffc"></i><i style="background:#355c7d"></i></div></div>
-              <div class="item-card"><div class="media-demo" style="background:linear-gradient(90deg,#355c7d 0 50%,#1f3448 50%)"></div><b>藏蓝直筒裤</b><small>裤装 · 通勤</small><div class="color-dots"><i style="background:#355c7d"></i><i style="background:#1d2228"></i></div></div>
-            </div>
-          </div>
-          <div class="toast-demo">已保存 3 件单品，草稿已清空。</div>
-          <div class="phone-nav">
-            <div class="nav-tab active"><svg class="demo-icon" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 4 4 6l2 4 2-1v11h8V9l2 1 2-4-4-2-2 3h-4L8 4z"></path></svg><span>衣橱</span></div>
-            <div class="nav-tab"><svg class="demo-icon" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m12 3 8 4-8 4-8-4 8-4z"></path><path d="m4 12 8 4 8-4"></path><path d="m4 17 8 4 8-4"></path></svg><span>套装</span></div>
-            <div class="nav-tab"><svg class="demo-icon" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 8h12l-1 13H7L6 8z"></path><path d="M9 8a3 3 0 0 1 6 0"></path></svg><span>种草</span></div>
-            <div class="nav-tab"><svg class="demo-icon" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M19 12a7 7 0 0 0-.1-1l2-1.5-2-3.4-2.4 1a7 7 0 0 0-1.7-1L14.5 3h-5l-.4 3.1a7 7 0 0 0-1.7 1l-2.4-1-2 3.4L5.1 11a7 7 0 0 0 0 2l-2 1.5 2 3.4 2.4-1a7 7 0 0 0 1.7 1l.4 3.1h5l.4-3.1a7 7 0 0 0 1.7-1l2.4 1 2-3.4-2.1-1.5a7 7 0 0 0 .1-1z"></path></svg><span>设置</span></div>
-          </div>
+          <figure class="production-shot"><img src="v03-alpha-real-screenshots/wardrobe_home_390_top.png" alt="衣橱首页真实生产截图"><figcaption><b>衣橱首页真实生产截图</b><span>只允许优化颜色、圆角、字体、图标和毛玻璃等视觉细节；结构以截图为准。</span></figcaption></figure>
         </div>
       </section>
       <section class="section" id="1-产品与平台边界"><h2>1. 产品与平台边界</h2><div class="module-visual" aria-label="1. 产品与平台边界 视觉示意">
@@ -874,20 +760,11 @@
         <div class="safe-content">390 x 844<br><span>360px 不横滚</span></div>
         <div class="safe-zone bottom">safe-area bottom</div>
       </div>
-      <div class="viewport-chips"><span>360</span><span>375</span><span>390</span><span>412</span><span>430</span></div></div><div class="module-copy"><div class="table-wrap"><table><thead><tr><th>尺寸</th><th>用途</th></tr></thead><tbody><tr><td><code>390 x 844</code></td><td>主视觉基准</td></tr><tr><td><code>360 x 780</code></td><td>小屏 Android 验收</td></tr><tr><td><code>375 x 812</code></td><td>小屏 iPhone / 刘海屏验收</td></tr><tr><td><code>412 x 915</code></td><td>大屏 Android 验收</td></tr><tr><td><code>430 x 932</code></td><td>大屏 iPhone 验收</td></tr></tbody></table></div>
+      <div class="viewport-chips"><span>360</span><span>375</span><span>390</span><span>412</span><span>430</span></div></div><div class="module-copy"><div class="table-wrap"><table><thead><tr><th>尺寸</th><th>用途</th></tr></thead><tbody><tr><td><code>390 x 844</code></td><td>当前真实业务流截图源，作为结构事实源</td></tr><tr><td><code>360 x 780</code></td><td>小屏 Android 验收</td></tr><tr><td><code>375 x 812</code></td><td>小屏 iPhone / 刘海屏验收</td></tr><tr><td><code>412 x 915</code></td><td>大屏 Android 验收</td></tr><tr><td><code>430 x 932</code></td><td>大屏 iPhone 验收</td></tr></tbody></table></div>
 <p>规则：</p>
-<ul><li>主内容宽度按手机竖屏设计，建议最大内容宽度不超过 <code>430px</code>，桌面预览只用于规范走查。</li><li>顶部固定区使用 <code>env(safe-area-inset-top)</code>。</li><li>底部导航、FAB、Toast、底部操作栏使用 <code>env(safe-area-inset-bottom)</code>。</li><li>录入流、裁切器、Lightbox 使用 <code>100dvh</code> 或等价动态视口。</li><li>360px 宽度不得出现横向滚动；按钮文案必须截断、换行或缩短。</li><li>软键盘弹出时，当前输入框和主操作按钮不得同时不可操作。</li></ul></div></section>
+<ul><li>页面结构以 <code>docs/designs/v03-alpha-real-screenshots/</code> 的真实业务流截图为准；规范预览不得手绘重排页面结构。</li><li>只允许在结构不变的前提下优化颜色、圆角、字体、字重、字间距、Icon、阴影和毛玻璃效果。</li><li>如果需要 2K/高分辨率导出，只能基于真实结构等比输出，不得改变布局层级。</li><li>顶部固定区使用 <code>env(safe-area-inset-top)</code>。</li><li>底部导航、FAB、Toast、底部操作栏使用 <code>env(safe-area-inset-bottom)</code>。</li><li>录入流、裁切器、Lightbox 使用 <code>100dvh</code> 或等价动态视口。</li><li>360px 宽度不得出现横向滚动；按钮文案必须截断、换行或缩短。</li><li>软键盘弹出时，当前输入框和主操作按钮不得同时不可操作。</li></ul></div></section>
 <section class="section" id="4-app-shell"><h2>4. App Shell</h2><div class="module-visual" aria-label="4. App Shell 视觉示意">
-      <div class="visual-phone-mini shell-demo">
-        <div class="visual-top-glass"><b>顶部毛玻璃层</b><span>筛选 / 标题</span></div>
-        <div class="visual-scroll-cards"><span></span><span></span><span></span></div>
-        <div class="visual-floating-nav">
-          <div class="nav-tab active"><svg class="demo-icon" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 4 4 6l2 4 2-1v11h8V9l2 1 2-4-4-2-2 3h-4L8 4z"></path></svg><span>衣橱</span></div>
-          <div class="nav-tab"><svg class="demo-icon" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m12 3 8 4-8 4-8-4 8-4z"></path><path d="m4 12 8 4 8-4"></path><path d="m4 17 8 4 8-4"></path></svg><span>套装</span></div>
-          <div class="nav-tab"><svg class="demo-icon" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 8h12l-1 13H7L6 8z"></path><path d="M9 8a3 3 0 0 1 6 0"></path></svg><span>种草</span></div>
-          <div class="nav-tab"><svg class="demo-icon" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M19 12a7 7 0 0 0-.1-1l2-1.5-2-3.4-2.4 1a7 7 0 0 0-1.7-1L14.5 3h-5l-.4 3.1a7 7 0 0 0-1.7 1l-2.4-1-2 3.4L5.1 11a7 7 0 0 0 0 2l-2 1.5 2 3.4 2.4-1a7 7 0 0 0 1.7 1l.4 3.1h5l.4-3.1a7 7 0 0 0 1.7-1l2.4 1 2-3.4-2.1-1.5a7 7 0 0 0 .1-1z"></path></svg><span>设置</span></div>
-        </div>
-      </div></div><div class="module-copy"><p>每个页面由以下层组成：</p>
+      <div class="production-shot-grid"><figure class="production-shot"><img src="v03-alpha-real-screenshots/wardrobe_home_390_top.png" alt="衣橱 Shell"><figcaption><b>衣橱 Shell</b><span>顶部控件、Toast、圆形 FAB 和底部 Tab 以生产截图为准</span></figcaption></figure><figure class="production-shot"><img src="v03-alpha-real-screenshots/settings_home_390_top.png" alt="设置 Shell"><figcaption><b>设置 Shell</b><span>设置页同一底部 Tab，不重新设计页面结构</span></figcaption></figure></div></div><div class="module-copy"><p>每个页面由以下层组成：</p>
 <ol><li>基础页面容器。</li><li>独立顶部层：状态栏安全区、标题、返回/关闭、必要筛选或统计。</li><li>可滚动内容区。</li><li>可选 FAB。</li><li>可选底部导航或底部操作栏。</li><li>可选覆盖层：Toast、Popover、Sheet、Dialog、Lightbox、Cropper。</li></ol>
 <p>顶部层不加硬边框和额外渐变过渡区。滚动内容可经过顶部层下方，但应被 glass 背景遮住。</p>
 <p>底部导航固定 4 项：</p>
@@ -910,7 +787,8 @@
         <span style="--level:3">FAB z40</span>
         <span style="--level:2">Bottom nav z30</span>
         <span style="--level:1">Page</span>
-      </div></div><div class="module-copy"><p>当前层级事实：</p>
+      </div>
+      <div class="production-shot-grid"><figure class="production-shot"><img src="v03-alpha-real-screenshots/confirm_delete_sheet_390_top.png" alt="删除确认 Sheet"><figcaption><b>删除确认 Sheet</b><span>覆盖层结构以生产截图为准，只优化毛玻璃、圆角和阴影</span></figcaption></figure></div></div><div class="module-copy"><p>当前层级事实：</p>
 <div class="table-wrap"><table><thead><tr><th>层</th><th>z-index</th><th>规则</th></tr></thead><tbody><tr><td>底部导航</td><td><code>30</code></td><td>固定底部，safe area</td></tr><tr><td>FAB</td><td><code>40</code></td><td>高于导航，低于 Sheet</td></tr><tr><td>Sheet / 图片来源</td><td><code>50</code></td><td>遮罩 + 底部面板</td></tr><tr><td>Popover</td><td><code>70</code></td><td>菜单、更多操作</td></tr><tr><td>Toast</td><td><code>75</code></td><td>高于 Sheet/Popover，低于 Lightbox</td></tr><tr><td>Lightbox</td><td><code>80</code></td><td>全屏图片预览</td></tr><tr><td>Intake shell</td><td><code>90</code></td><td>全屏录入流</td></tr><tr><td>关键全屏/更多分类</td><td><code>100</code></td><td>全屏裁切、分类弹层等</td></tr><tr><td>部分保存确认</td><td><code>110</code></td><td>录入流确认</td></tr><tr><td>录入退出确认</td><td><code>120</code></td><td>最高确认层</td></tr></tbody></table></div>
 <p>返回键 / Escape 优先级：</p>
 <ol><li>关闭 Lightbox。</li><li>关闭创建 Sheet、图片来源 Sheet。</li><li>关闭裁切器。</li><li>录入流内部处理返回。</li><li>二级页面按 <code>getBackRoute(route)</code> 返回。</li><li>主 Tab 弹退出确认。</li></ol>
@@ -920,17 +798,15 @@
 <div class="table-wrap"><table><thead><tr><th>组件</th><th>事实源</th><th>契约</th></tr></thead><tbody><tr><td><code>AppSubPageTopBar</code></td><td><code>src/components/app-sub-page-top-bar.tsx</code></td><td>二级页顶部；<code>title/subtitle/onBack/rightAction/onMore</code>；无右侧操作时不渲染无意义白框</td></tr><tr><td><code>DetailShell</code> / <code>DetailHeroGallery</code></td><td><code>src/components/detail-shell.tsx</code></td><td>详情媒体、胶片栏、标题元信息、快捷操作；名称与 meta 不放进一级卡片</td></tr><tr><td><code>CatalogWaterfallCardShell</code></td><td><code>src/components/item-shell/catalog-waterfall-card-shell.tsx</code></td><td>固定 <code>h-[304px]</code>，媒体 <code>210px</code>，文本 <code>94px</code>；普通点击打开，多选点击切换</td></tr><tr><td><code>CatalogWaterfallGrid</code></td><td><code>src/components/item-shell/catalog-waterfall-grid.tsx</code></td><td>移动端 2 列，<code>md</code> 3 列，<code>xl</code> 4 列</td></tr><tr><td><code>ItemColorFields</code></td><td><code>src/components/item/color-fields.tsx</code></td><td>颜色展示和编辑唯一入口</td></tr><tr><td><code>TemperatureRangeSlider</code></td><td><code>src/components/temperature-range-slider.tsx</code></td><td>温度范围编辑唯一入口</td></tr><tr><td><code>MotionToast</code></td><td><code>src/components/motion-common.tsx</code></td><td>动画和播报语义；视觉由调用方提供</td></tr><tr><td><code>MotionSheet</code></td><td><code>src/components/motion-common.tsx</code></td><td>移动端底部抽屉、锁滚、最高 92vh</td></tr><tr><td><code>MotionImageLightbox</code></td><td><code>src/components/motion-common.tsx</code></td><td>全屏图片预览、锁滚、关闭按钮 44px</td></tr><tr><td><code>IntakeFlowShell</code></td><td><code>src/components/intake-flow-shell.tsx</code></td><td>录入全屏容器、步骤文案、底部操作、安全区</td></tr></tbody></table></div>
 <h3>7.1 详情媒体</h3>
       <div class="part-visual" data-visual="detail-media">
-        <div class="detail-hero-demo"><div class="visual-frame-media"></div><div class="filmstrip"><span></span><span></span><span></span></div></div>
-        <div class="detail-meta-demo"><b>白色短袖衬衫</b><span>上衣 / 衬衫 · 默认衣橱 · 可穿</span><div class="color-dots"><i style="background:#fffffc"></i><i style="background:#355c7d"></i></div><small>名称、属性、色卡在底层，不塞进一级卡片。</small></div>
+        <div class="production-shot-grid"><figure class="production-shot"><img src="v03-alpha-real-screenshots/garment_detail_390_top.png" alt="单品详情首屏"><figcaption><b>单品详情首屏</b><span>主图、胶片、名称与属性沿用生产结构</span></figcaption></figure><figure class="production-shot"><img src="v03-alpha-real-screenshots/garment_detail_390_info.png" alt="单品详情信息区"><figcaption><b>单品详情信息区</b><span>颜色、分类、季节等字段按生产区块排列</span></figcaption></figure><figure class="production-shot"><img src="v03-alpha-real-screenshots/garment_detail_390_bottom.png" alt="单品详情底部"><figcaption><b>单品详情底部</b><span>只优化卡片圆角、色彩与毛玻璃质感</span></figcaption></figure></div>
       </div>
 <div class="table-wrap"><table><thead><tr><th>Slide kind</th><th>标签</th><th>用途</th><th>胶片栏</th></tr></thead><tbody><tr><td><code>garment_main</code></td><td>主图</td><td>衣物主图</td><td>是</td></tr><tr><td><code>garment_reference</code></td><td>灵感</td><td>衣物灵感图</td><td>是</td></tr><tr><td><code>outfit_cover</code></td><td>主图</td><td>套装封面</td><td>是</td></tr><tr><td><code>outfit_real</code></td><td>套装示意</td><td>套装实拍/示意</td><td>是</td></tr><tr><td><code>wishlist_product</code></td><td>商品图</td><td>种草商品图</td><td>当前否</td></tr></tbody></table></div>
 <p>空图必须保持 hero 框架稳定并显示 fallback。</p>
 <h3>7.2 瀑布流与多选</h3>
       <div class="part-visual" data-visual="waterfall-multi-select">
-        <div class="waterfall-demo"><div class="item-card selected"><div class="media-demo"></div><b>白色短袖衬衫</b><small>上衣 · 默认衣橱</small><div class="color-dots"><i style="background:#fffffc"></i><i style="background:#355c7d"></i></div></div><div class="item-card"><div class="media-demo dark"></div><b>藏蓝直筒裤</b><small>裤装 · 通勤</small><div class="color-dots"><i style="background:#355c7d"></i><i style="background:#1d2228"></i></div></div></div>
-        <div class="bulk-bar">已选 1 件 <button>删除</button></div>
+        <div class="production-shot-grid"><figure class="production-shot"><img src="v03-alpha-real-screenshots/wardrobe_home_390_top.png" alt="衣橱瀑布流"><figcaption><b>衣橱瀑布流</b><span>真实生产截图：两列卡片、筛选、Toast、底部导航</span></figcaption></figure></div>
       </div>
-<ul><li>列表卡片统一使用 <code>CatalogWaterfallGrid</code> + <code>CatalogWaterfallCardShell</code>。</li><li>标题、meta、summary 必须截断，不能撑高卡片。</li><li>选中态必须同时有 Denim 边框/环、勾选图标和 <code>aria-pressed</code>。</li><li>多选模式由 <code>selectedIds.size &gt; 0</code> 派生。</li><li>普通模式点击打开详情；多选模式点击切换选中；长按/右键进入或切换多选。</li><li>批量操作栏只在有选中项时出现，底部固定并考虑 safe area；删除必须先弹确认 Sheet，删除中禁止关闭。</li></ul></div></section>
+<ul><li>列表卡片统一使用 <code>CatalogWaterfallGrid</code> + <code>CatalogWaterfallCardShell</code>。</li><li>标题、meta、summary 必须单行截断，不能折行或撑高卡片；超出内容使用省略号。</li><li>选中态必须同时有 Denim 边框/环、勾选图标和 <code>aria-pressed</code>。</li><li>多选模式由 <code>selectedIds.size &gt; 0</code> 派生。</li><li>普通模式点击打开详情；多选模式点击切换选中；长按/右键进入或切换多选。</li><li>批量操作栏只在有选中项时出现，底部固定并考虑 safe area；删除必须先弹确认 Sheet，删除中禁止关闭。</li></ul></div></section>
 <section class="section" id="8-领域-ui-映射"><h2>8. 领域 UI 映射</h2><div class="module-copy"><h3>8.1 分类与细分</h3>
       <div class="part-visual" data-visual="category-subcategory">
         <div class="field-card"><b>分类</b><div class="chips"><span class="chip active">上衣</span><span class="chip">裤子</span><span class="chip">半身裙</span></div><div class="chips"><span class="chip active">衬衫</span><span class="chip">T 恤</span><span class="chip">针织</span></div></div>
@@ -940,12 +816,7 @@
 <p>二级细分事实源是 <code>src/lib/garment-category-catalog.ts</code>。分类和细分在 UI 上属于同一张一级卡片，不拆成两个孤立矩形。</p>
 <h3>8.2 颜色</h3>
       <div class="part-visual" data-visual="color-fields">
-        <div class="field-card color-field-demo">
-          <b>颜色</b>
-          <div class="segmented-mini"><span class="active">单主色</span><span>主辅色</span><span>拼色</span></div>
-          <div class="swatch-row"><span style="background:#fffffc"></span><span style="background:#355c7d"></span><span style="background:#9aa0a6"></span><span style="background:#e1d9ca"></span><span style="background:#8c4a62"></span></div>
-          <small>常用色与扩展色按系统色卡分组展示。</small>
-        </div>
+        <div class="production-shot-grid"><figure class="production-shot"><img src="v03-alpha-real-screenshots/garment_detail_390_info.png" alt="详情色卡展示"><figcaption><b>详情色卡展示</b><span>结构以生产字段区为准，规范只收紧色卡颜色和标签</span></figcaption></figure><figure class="production-shot"><img src="v03-alpha-real-screenshots/intake_single_confirm_390_top.png" alt="录入确认色卡入口"><figcaption><b>录入确认色卡入口</b><span>重新识别和字段校对位置沿用生产</span></figcaption></figure></div>
       </div>
 <p>颜色事实源是 <code>src/lib/color-catalog.ts</code>。</p>
 <ul><li>标准色共 26 个。</li><li>常用色 12 个：黑、白、灰、米白、米、卡其、棕、蓝、牛仔蓝、绿、红、粉。</li><li>扩展色 14 个，分为中性与大地色、红橙黄色系、蓝绿色系、特殊色。</li><li>颜色模式只能是 <code>single</code>、<code>main_with_accent</code>、<code>multicolor</code>。</li><li>未知颜色归一返回 <code>null</code>，不得用 <code>includes</code> 模糊匹配。</li><li>详情展示必须按色卡显示，不用“白色 · 藏蓝”纯文本替代。</li></ul>
@@ -972,16 +843,12 @@
       </div>
 <p>季节、风格、状态必须从 <code>src/lib/types.ts</code> 和显示标签工具派生。新增枚举时同步：类型、显示 label、AI prompt、测试、规范。</p></div></section>
 <section class="section" id="9-录入流程状态机"><h2>9. 录入流程状态机</h2><div class="module-visual" aria-label="9. 录入流程状态机 视觉示意">
-      <div class="step-flow">
-        <div class="step-card active"><b>1</b><span>选择照片</span><small>缩略图 / 裁切旋转</small></div>
-        <i></i>
-        <div class="step-card"><b>2</b><span>确认信息</span><small>复核 AI 草稿</small></div>
-      </div>
-      <div class="thumb-strip"><span></span><span></span><span></span><button>裁切/旋转</button></div></div><div class="module-copy"><p>用户可见只允许两步：</p>
+      <div class="production-shot-grid"><figure class="production-shot"><img src="v03-alpha-real-screenshots/intake_single_step1_empty_390_top.png" alt="Step 1 空状态"><figcaption><b>Step 1 空状态</b><span>添加单品 / 选择照片</span></figcaption></figure><figure class="production-shot"><img src="v03-alpha-real-screenshots/intake_single_step1_imported_390_top.png" alt="Step 1 已导入"><figcaption><b>Step 1 已导入</b><span>缩略图、继续拍照、图库入口、清空</span></figcaption></figure><figure class="production-shot"><img src="v03-alpha-real-screenshots/intake_single_confirm_390_top.png" alt="Step 2 确认首屏"><figcaption><b>Step 2 确认首屏</b><span>已识别单品、重新识别、校对草稿</span></figcaption></figure><figure class="production-shot"><img src="v03-alpha-real-screenshots/intake_single_confirm_390_bottom.png" alt="Step 2 保存区"><figcaption><b>Step 2 保存区</b><span>保存按钮与底部操作栏沿用生产</span></figcaption></figure></div></div><div class="module-copy"><p>用户可见只允许两步：</p>
 <div class="table-wrap"><table><thead><tr><th>Step</th><th>ID</th><th>标题</th><th>用户目标</th><th>主按钮</th></tr></thead><tbody><tr><td>1</td><td><code>select_photo</code></td><td>选择照片</td><td>拍照/图库选择，可裁切旋转</td><td>下一步（AI 识别）</td></tr><tr><td>2</td><td><code>confirm_params</code></td><td>确认信息</td><td>复核 AI 结果、修改字段、保存</td><td>保存 N 件单品/种草</td></tr></tbody></table></div>
 <p>内部子状态不是新步骤：</p>
 <div class="table-wrap"><table><thead><tr><th>子状态</th><th>属于</th><th>UI 要求</th></tr></thead><tbody><tr><td><code>idle_empty</code></td><td>Step 1</td><td>空状态、拍照、图库入口</td></tr><tr><td><code>image_queue</code></td><td>Step 1</td><td>缩略图队列，当前图 Denim 边框</td></tr><tr><td><code>crop</code></td><td>Step 1 子状态</td><td>裁切/旋转，返回先退出裁切</td></tr><tr><td><code>recognizing</code></td><td>Step 1 -&gt; Step 2</td><td>过渡态，不显示第三步</td></tr><tr><td><code>recognized</code></td><td>Step 2</td><td>字段预填，显示来源和置信度</td></tr><tr><td><code>recognition_failed</code></td><td>Step 2</td><td>失败草稿，可手动补全/重新识别</td></tr><tr><td><code>retrying</code></td><td>Step 2</td><td>仅当前件局部 loading</td></tr><tr><td><code>retry_failed</code></td><td>Step 2</td><td>保留旧草稿并提示失败</td></tr><tr><td><code>partial_save_confirm</code></td><td>Overlay</td><td>说明未完成项不会入库</td></tr><tr><td><code>saving</code></td><td>Step 2</td><td>禁止重复提交</td></tr><tr><td><code>save_failed</code></td><td>Step 2</td><td>草稿保留，可重试</td></tr></tbody></table></div>
-<p>页面标题不得出现 <code>3 / 3</code>。保存按钮数量必须等于真实可保存数量。</p></div></section>
+<p>页面标题不得出现 <code>3 / 3</code>。保存按钮数量必须等于真实可保存数量。</p>
+<p>规范预览必须使用真实业务流截图展示录入实际状态；截图包未捕获的子页面不得手绘补位。</p></div></section>
 <section class="section" id="10-ai-与系统状态"><h2>10. AI 与系统状态</h2><div class="module-copy"><h3>10.1 AI 状态</h3>
       <div class="part-visual" data-visual="ai-state">
         <div class="status-board"><span><b></b>识别中</span><span><b></b>低置信待确认</span><span><b></b>失败可重试</span><span><b></b>保存失败草稿保留</span></div>
@@ -994,10 +861,7 @@
 <div class="table-wrap"><table><thead><tr><th>状态</th><th>当前事实 / 目标</th></tr></thead><tbody><tr><td><code>auth_initializing</code></td><td><code>AuthGate</code> 初始化</td></tr><tr><td><code>unauthenticated</code></td><td>登录/注册入口</td></tr><tr><td><code>auth_blocked</code></td><td>账号阻断/退出确认</td></tr><tr><td><code>workspace_loading</code></td><td><code>WorkspaceGate</code> 加载</td></tr><tr><td><code>workspace_error</code></td><td><code>OnlinePageError</code> + 重试</td></tr><tr><td><code>sync_refreshing</code></td><td>页面内轻提示</td></tr><tr><td><code>sync_refresh_error</code></td><td><code>OnlineInlineNotice</code> + 重试</td></tr><tr><td><code>offline/no_network</code></td><td>现有能力分散，规范目标是统一 banner/Toast</td></tr><tr><td><code>camera_permission_denied</code></td><td>文案提示前往系统设置开启</td></tr><tr><td><code>ai_key_missing</code></td><td>引导到设置页</td></tr><tr><td><code>diagnostic_uploading/success/failed</code></td><td>设置页诊断上传状态，失败码要可读</td></tr></tbody></table></div></div></section>
 <section class="section" id="11-通知-toast"><h2>11. 通知 Toast</h2><div class="module-visual" aria-label="11. 通知 Toast 视觉示意">
       <div class="toast-stage">
-        <div class="mini-card"></div>
-        <div class="mini-card"></div>
-        <div class="mini-toast"><b></b><span>已保存 3 件单品</span><button>×</button></div>
-        <div class="mini-bottom-bar">底部操作栏同宽</div>
+        <div class="production-shot-grid"><figure class="production-shot"><img src="v03-alpha-real-screenshots/wardrobe_home_390_top.png" alt="衣橱保存 Toast"><figcaption><b>衣橱保存 Toast</b><span>同底部操作区宽，覆盖 FAB</span></figcaption></figure><figure class="production-shot"><img src="v03-alpha-real-screenshots/outfit_home_390_top.png" alt="套装创建 Toast"><figcaption><b>套装创建 Toast</b><span>结构不变，只优化毛玻璃与圆角</span></figcaption></figure><figure class="production-shot"><img src="v03-alpha-real-screenshots/wishlist_home_390_top.png" alt="种草添加 Toast"><figcaption><b>种草添加 Toast</b><span>悬浮于页面与底部导航之上</span></figcaption></figure></div>
       </div></div><div class="module-copy"><ul><li>Toast 悬浮在所有页面内容之上，不参与文档流。</li><li>宽度与底部操作栏同一内容宽度，底部定位在导航上方：<code>env(safe-area-inset-bottom) + 5.25rem</code>。</li><li>当前层级 <code>z-[75]</code>；Lightbox 或裁切器打开时隐藏。</li><li>Error 使用 <code>role=&quot;alert&quot;</code> + <code>aria-live=&quot;assertive&quot;</code>；success/info 使用 <code>role=&quot;status&quot;</code> + <code>aria-live=&quot;polite&quot;</code>。</li><li>关闭按钮命中区 44px。</li><li>样式：圆角矩形、毛玻璃背景、左侧语义标记；不要做顶部窄条或普通页面卡片。</li></ul></div></section>
 <section class="section" id="12-无障碍"><h2>12. 无障碍</h2><div class="module-visual" aria-label="12. 无障碍 视觉示意">
       <div class="a11y-board">
@@ -1025,15 +889,8 @@
 <p>PR 规则：</p>
 <ul><li>新增 route：同步 <code>Route 与页面状态矩阵</code> 和 <code>npm run test:logic:app-route</code>。</li><li>新增核心 token：同步本规范、Tailwind/CSS/Motion。</li><li>新增或改核心组件：同步组件 Contract 和对应测试映射。</li><li>新增 overlay：登记 z-index、关闭方式、是否锁滚、是否拦截返回。</li></ul></div></section>
 <section class="section" id="16-产品视觉方案实操"><h2>16. 产品视觉方案实操</h2><div class="module-visual" aria-label="16. 产品视觉方案实操 视觉示意">
-      <div class="practice-board">
-        <div class="practice-phone home"><b>衣橱首页</b><div class="practice-top"></div><div class="practice-grid"><span></span><span></span><span></span><span></span></div></div>
-        <div class="practice-phone detail"><b>衣物详情</b><div class="practice-media"></div><div class="practice-meta"></div><div class="color-dots"><i style="background:#fffffc"></i><i style="background:#355c7d"></i></div></div>
-        <div class="practice-phone intake"><b>单品录入</b><div class="practice-upload"></div><div class="thumb-strip"><span></span><span></span><span></span></div></div>
-        <div class="practice-phone outfit"><b>套装首页</b><div class="practice-week"></div><div class="practice-outfit"></div></div>
-        <div class="practice-phone wishlist"><b>种草首页</b><div class="practice-product"></div><div class="practice-meta"></div></div>
-        <div class="practice-phone settings"><b>设置页</b><div class="practice-list"><span></span><span></span><span></span></div></div>
-      </div></div><div class="module-copy"><p>本节用上面的规范拼出主要页面小稿，作为开发前快速对齐用。它不是新路由，也不替代 <code>Route 与页面状态矩阵</code>。</p>
-<ul><li>衣橱首页：顶部 glass、筛选、瀑布流、底部导航、FAB。</li><li>衣物详情：3:4 主图、胶片栏、名称属性直接落在底层、色卡、温度条。</li><li>单品录入：两步流程、选图、缩略图、裁切/旋转入口、底部操作栏。</li><li>套装首页：周历横滑、套装缩略图、计划入口。</li><li>种草首页：商品图、状态、加入衣橱/已买/不感兴趣入口。</li><li>设置页：账号、MiniMax、试穿画像、位置、诊断等列表入口。</li></ul></div></section>
+      <div class="production-shot-grid"><figure class="production-shot"><img src="v03-alpha-real-screenshots/auth_login_390_top.png" alt="登录页"><figcaption><b>登录页</b><span>认证入口结构不重排</span></figcaption></figure><figure class="production-shot"><img src="v03-alpha-real-screenshots/auth_register_390_top.png" alt="注册页"><figcaption><b>注册页</b><span>注册表单结构不重排</span></figcaption></figure><figure class="production-shot"><img src="v03-alpha-real-screenshots/wardrobe_home_390_top.png" alt="衣橱首页"><figcaption><b>衣橱首页</b><span>结构取自真实业务流</span></figcaption></figure><figure class="production-shot"><img src="v03-alpha-real-screenshots/garment_detail_390_top.png" alt="衣物详情首屏"><figcaption><b>衣物详情首屏</b><span>不把名称属性塞入额外卡片</span></figcaption></figure><figure class="production-shot"><img src="v03-alpha-real-screenshots/garment_detail_390_info.png" alt="衣物详情信息区"><figcaption><b>衣物详情信息区</b><span>色卡、基础信息、字段区沿用生产</span></figcaption></figure><figure class="production-shot"><img src="v03-alpha-real-screenshots/garment_detail_390_bottom.png" alt="衣物详情底部"><figcaption><b>衣物详情底部</b><span>底部操作与信息区结构不改</span></figcaption></figure><figure class="production-shot"><img src="v03-alpha-real-screenshots/confirm_delete_sheet_390_top.png" alt="删除确认"><figcaption><b>删除确认</b><span>Sheet 层级和按钮结构不改</span></figcaption></figure><figure class="production-shot"><img src="v03-alpha-real-screenshots/intake_single_step1_empty_390_top.png" alt="单品录入空态"><figcaption><b>单品录入空态</b><span>两步流程</span></figcaption></figure><figure class="production-shot"><img src="v03-alpha-real-screenshots/intake_single_step1_imported_390_top.png" alt="单品录入已选图"><figcaption><b>单品录入已选图</b><span>缩略图与底部操作不重排</span></figcaption></figure><figure class="production-shot"><img src="v03-alpha-real-screenshots/intake_single_confirm_390_top.png" alt="单品确认"><figcaption><b>单品确认</b><span>重新识别位置沿用生产</span></figcaption></figure><figure class="production-shot"><img src="v03-alpha-real-screenshots/intake_single_confirm_390_bottom.png" alt="单品确认底部"><figcaption><b>单品确认底部</b><span>保存区和底部操作结构不改</span></figcaption></figure><figure class="production-shot"><img src="v03-alpha-real-screenshots/outfit_home_390_top.png" alt="套装首页"><figcaption><b>套装首页</b><span>周历与套装卡结构不改</span></figcaption></figure><figure class="production-shot"><img src="v03-alpha-real-screenshots/outfit_detail_390_top.png" alt="套装详情首屏"><figcaption><b>套装详情首屏</b><span>详情框架复用</span></figcaption></figure><figure class="production-shot"><img src="v03-alpha-real-screenshots/outfit_detail_390_info.png" alt="套装详情信息区"><figcaption><b>套装详情信息区</b><span>套装字段结构不重排</span></figcaption></figure><figure class="production-shot"><img src="v03-alpha-real-screenshots/outfit_detail_390_bottom.png" alt="套装详情底部"><figcaption><b>套装详情底部</b><span>底部信息结构不重排</span></figcaption></figure><figure class="production-shot"><img src="v03-alpha-real-screenshots/outfit_calendar_390_top.png" alt="套装月历"><figcaption><b>套装月历</b><span>日历结构不重画</span></figcaption></figure><figure class="production-shot"><img src="v03-alpha-real-screenshots/wishlist_home_390_top.png" alt="种草首页"><figcaption><b>种草首页</b><span>筛选与商品卡结构不改</span></figcaption></figure><figure class="production-shot"><img src="v03-alpha-real-screenshots/wishlist_detail_390_top.png" alt="种草详情首屏"><figcaption><b>种草详情首屏</b><span>商品详情框架复用</span></figcaption></figure><figure class="production-shot"><img src="v03-alpha-real-screenshots/wishlist_detail_390_info.png" alt="种草详情信息区"><figcaption><b>种草详情信息区</b><span>商品字段结构不重排</span></figcaption></figure><figure class="production-shot"><img src="v03-alpha-real-screenshots/wishlist_detail_390_bottom.png" alt="种草详情底部"><figcaption><b>种草详情底部</b><span>底部操作结构不重排</span></figcaption></figure><figure class="production-shot"><img src="v03-alpha-real-screenshots/settings_home_390_top.png" alt="设置首页"><figcaption><b>设置首页</b><span>设置列表结构不改</span></figcaption></figure></div></div><div class="module-copy"><p>本节用上面的规范拼出主要页面小稿，作为开发前快速对齐用。它不是新路由，也不替代 <code>Route 与页面状态矩阵</code>。</p>
+<ul><li>衣橱首页：顶部 glass、筛选、瀑布流、底部导航、FAB。</li><li>衣物详情：3:4 主图、胶片栏、名称属性直接落在底层、色卡、温度条。</li><li>单品录入：两步流程、选图、缩略图、裁切/旋转入口、底部操作栏。</li><li>套装首页：周历横滑、套装缩略图、计划入口。</li><li>种草首页：商品图、状态、加入衣橱/已买/不感兴趣入口。</li><li>设置页：账号、MiniMax、试穿画像、位置、诊断等列表入口。</li><li>本节必须用真实业务流截图作为结构底图，覆盖衣橱、套装、种草、设置及其已捕获的详情/子页面；不得用自画卡片替代生产结构。</li></ul></div></section>
 <section class="section" id="17-验收与测试映射"><h2>17. 验收与测试映射</h2><div class="module-visual" aria-label="17. 验收与测试映射 视觉示意">
       <div class="test-board">
         <span>ui-spec-preview</span><span>ui-token-contract</span><span>ui-overlay-contract</span>

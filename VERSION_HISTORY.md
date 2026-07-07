@@ -1,3 +1,14 @@
+## 2026-07-08 / v2.1.8-test / Codex — UI 规范改用真实业务流截图
+
+- **执行 Agent**：Codex（未触发 subagent：用户未通知）。
+- **目的**：按用户反馈停止使用自画页面结构，改为逐张引用 `v03-alpha-真实业务流截图` 作为 UI 规范的结构事实源；后续只在生产现有页面结构上优化颜色、圆角、字间距、字体、Icon、阴影和毛玻璃等视觉细节。
+- **版本变更**：无；当前应用版本仍为 `2.1.8-test`。
+- **改动文件**：`docs/designs/wardrobe-ui-spec.md`、`docs/designs/wardrobe-ui-spec.html`、`docs/designs/v03-alpha-real-screenshots/**`、`scripts/generate-ui-spec-preview.mjs`、`scripts/test-ui-spec-preview-contract.ts`、`scripts/test-ui-spec-preview-render.ts`、`VERSION_HISTORY.md`。
+- **改动说明**：将 21 张真实业务流截图和截图清单复制到规范资产目录；首页 hero、App Shell、详情媒体、瀑布流、颜色、录入流程、Toast 和产品视觉方案实操全部改为引用真实生产截图，不再用手绘卡片、假手机结构或临时页面拼装替代；Markdown 规范新增“页面结构以真实截图为准、不得手绘重排”的硬规则；契约测试改为校验关键生产截图引用和资产存在。
+- **验证结果**：`npm run docs:ui-spec:build`、`npm run docs:ui-spec:check`、`npm run test:logic:ui-spec-preview`、`npm run typecheck` 均通过；额外核对生成 HTML 已引用资产包内全部 21 张真实业务流截图，并用 Playwright 生成规范页截图检查，确认首页预览和产品实操区已展示真实生产截图。
+- **风险门禁**：high（规范 HTML、生成器、测试和截图资产变更较多；实际改动仍限定为静态规范与文档资产，不改运行时代码、不改业务流程、不改 Android、不打 APK）；未触发 subagent：用户未通知。
+- **未验证风险**：截图源分辨率为当前真实采集的 `390 x 844`；若后续需要 2K/高分辨率展示，应从生产页面按同一结构重新采集或等比导出，而不是手绘放大或改变页面结构。
+
 ## 2026-07-08 / v2.1.8-test / Codex — 统一种草与衣物录入缩略图保存
 
 - **执行 Agent**：Codex（未触发 subagent：用户未通知）。

@@ -22,10 +22,10 @@ async function checkViewport(width: number, height: number) {
     assert.ok(await page.locator('[data-visual="color-fields"]').count(), "color fields visual exists");
     assert.ok(await page.locator('[data-visual="temperature-range"]').count(), "temperature range visual exists");
     assert.ok(await page.locator('[data-visual="icon-library"] .demo-icon').count(), "icon library visual exists");
-    assert.ok(await page.locator(".phone-preview .phone-nav .demo-icon").count(), "hero nav icons exist");
+    assert.ok(await page.locator(".phone-preview .production-shot img").count(), "hero uses production screenshot");
     assert.ok(await page.locator(".temperature-view-window").count(), "temperature view window exists");
-    assert.ok(await page.locator(".practice-board .practice-phone").count(), "product practice screens exist");
-    assert.ok(await page.locator(".toast-stage .mini-toast").count(), "toast visual exists");
+    assert.ok(await page.locator(".production-shot-grid .production-shot img").count() >= 12, "product practice uses production screenshots");
+    assert.ok(await page.locator(".toast-stage .production-shot img").count() >= 3, "toast visual uses production screenshots");
   } finally {
     await browser.close();
   }
