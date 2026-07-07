@@ -27,6 +27,8 @@
     "diagnosis:latest": "tsx scripts/diagnosis-latest.ts",
     "diagnosis:pull": "tsx scripts/diagnosis-pull.ts",
     "diagnosis:inspect": "tsx scripts/diagnosis-inspect.ts",
+    "docs:ui-spec:build": "node scripts/generate-ui-spec-preview.mjs",
+    "docs:ui-spec:check": "node scripts/generate-ui-spec-preview.mjs --check",
     "test:logic": "tsx scripts/test-recommendations.ts",
     "test:logic:cropper": "tsx scripts/test-cropper-math.ts",
     "test:logic:images": "tsx scripts/test-garment-image-source.ts",
