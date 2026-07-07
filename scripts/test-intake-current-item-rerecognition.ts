@@ -27,6 +27,10 @@ check("GarmentIntakeFlow locked 包含 retrying", /locked\s*=[\s\S]*?retryingRev
 check("GarmentIntakeFlow 重试失败保留草稿 (不调用 buildSingleItemFallback)", !/buildSingleItemFallback/.test(garmentIntake));
 check("wardrobe processGarmentIntakeImage 使用真实 fileName", /fileName\s*=\s*input\.fileName/.test(wardrobe));
 check("GarmentIntakeFlow handleRetryCurrentItem 函数定义", /async function handleRetryCurrentItem/.test(garmentIntake));
+const retryFnStart = garmentIntake.indexOf("async function handleRetryCurrentItem");
+const retryFnEnd = garmentIntake.indexOf("function handleBack", retryFnStart);
+const retryFnBody = retryFnStart >= 0 && retryFnEnd > retryFnStart ? garmentIntake.slice(retryFnStart, retryFnEnd) : "";
+check("GarmentIntakeFlow 重新识别启动不移出确认页", !/status:\s*"recognizing"/.test(retryFnBody));
 check("GarmentIntakeFlow 重新识别只处理当前 reviewId", /onRetryCurrent\(activeReviewId\)/.test(garmentIntake));
 check("GarmentIntakeFlow 重新识别复用 recognizeImageItem", /recognizeImageItem\(item\)/.test(garmentIntake));
 check("GarmentIntakeFlow 重新识别保留 user 字段", /mergeRetryRecognitionDraft/.test(garmentIntake));

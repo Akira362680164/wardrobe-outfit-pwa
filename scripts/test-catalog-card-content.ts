@@ -17,6 +17,7 @@ import {
   formatGarmentWearLine,
   formatLocalMonthDay,
   getGarmentCardColors,
+  getColorSwatchStyle,
 } from "../src/lib/catalog-card-format";
 
 const root = join(__dirname, "..");
@@ -33,6 +34,11 @@ assert.equal(line.categoryLabel, "裤子");
 // Color extraction
 const colors = getGarmentCardColors(wItem);
 assert.ok(colors.includes("棕"));
+assert.deepEqual(getColorSwatchStyle("天蓝"), { backgroundColor: "#83B6D9", needsBorder: false });
+assert.deepEqual(getColorSwatchStyle("橙"), { backgroundColor: "#D9823B", needsBorder: false });
+assert.deepEqual(getColorSwatchStyle("米白色"), { backgroundColor: "#F3EEE3", needsBorder: true });
+assert.deepEqual(getColorSwatchStyle("咖色"), { backgroundColor: "#5F4032", needsBorder: false });
+assert.deepEqual(getColorSwatchStyle("未知色"), { backgroundColor: "rgba(31, 31, 31, 0.2)", needsBorder: false });
 
 // Wear line: no records
 const neverWorn: WardrobeItem = {

@@ -43,7 +43,7 @@ export const COLOR_CATALOG: readonly ColorCatalogEntry[] = [
   { value: "深灰", swatch: "#4B5563", family: "neutral_earth", aliases: ["深灰色", "炭灰", "碳灰", "铁灰"], description: "明显低明度灰，不等于黑色。" },
   { value: "杏", swatch: "#E6C5A5", border: "rgba(29,34,40,0.14)", family: "neutral_earth", aliases: ["杏色", "杏仁色", "裸杏"], description: "浅暖色，带轻微粉橙倾向。" },
   { value: "驼", swatch: "#B8845F", family: "neutral_earth", aliases: ["驼色", "骆驼色", "焦糖色"], description: "中等明度暖橙棕，比卡其明显更暖。" },
-  { value: "咖啡", swatch: "#5F4032", family: "neutral_earth", aliases: ["咖啡色", "深咖", "摩卡", "巧克力色"], description: "比棕更深、更浓。" },
+  { value: "咖啡", swatch: "#5F4032", family: "neutral_earth", aliases: ["咖啡色", "咖色", "深咖", "摩卡", "巧克力色"], description: "比棕更深、更浓。" },
 
   // warm · 红橙黄色系
   { value: "酒红", swatch: "#7B2E3A", family: "warm", aliases: ["酒红色", "勃艮第红", "暗红"], description: "低明度、偏紫或偏棕的红色。" },

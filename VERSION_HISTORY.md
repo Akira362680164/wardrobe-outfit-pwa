@@ -1,3 +1,14 @@
+## 2026-07-07 / v2.1.5-test / Codex — 修复颜色色卡与确认页重新识别
+
+- **执行 Agent**：Codex（未触发 subagent：用户未通知）。
+- **目的**：修复生产反馈的两个问题：衣橱瀑布流卡片颜色文字正确但色卡回退成灰色；添加单品/种草确认信息页点击 AI 重新识别时跳成只剩“识别中”的确认页状态。
+- **版本变更**：`package.json` / `package-lock.json` 从 `2.1.4-test` 升级到 `2.1.5-test`；Android `versionCode` 由构建脚本推导为 `20105`。
+- **改动文件**：`src/lib/catalog-card-format.ts`、`src/lib/color-catalog.ts`、`src/components/garment-intake-flow.tsx`、`scripts/test-catalog-card-content.ts`、`scripts/test-intake-current-item-rerecognition.ts`、`package.json`、`package-lock.json`。
+- **改动说明**：瀑布流卡片色块删除本地旧色值表，统一走 `COLOR_CATALOG`/`COLOR_SWATCHES` 与别名归一；补充 `咖色` 到系统色别名；当前单件重新识别开始时不再把该 review item 状态切成 `recognizing`，只显示局部 loading，避免从确认表单退化为“识别中”空态。
+- **验证结果**：`npm run typecheck`、`npm run test:logic:color-catalog`（94 项）、`npm run test:logic:catalog-card-content`、`npm run test:logic:intake-current-item-rerecognition`（23 项）、`npm run test:logic:intake-upgrade-patch5`（28 项）、`npm run build` 通过；用户暂停前已执行 `npm run android:apk`，生成 `衣橱穿搭助手-v2.1.5-test.apk`，大小 9.5MB，SHA-256 `b8295a15048647da0ec67b2b41cff0090dcd4b2708fa83fa7aec48d0035e11a0`。
+- **风险门禁**：high（移动端录入流程、颜色展示、版本号和 APK 构建）；未触发 subagent：用户未通知。
+- **未验证风险**：按用户最新要求，暂不继续安装 APK、真机/模拟器回归或针对用户提出 bug 的端到端回归；MiniMax live 重新识别未执行；新提出的录入页选图布局仅做样式稿，未开发。
+
 ## 2026-07-07 / v2.1.4-test / Codex — 记录微信小程序开发者工具 CLI
 
 - **执行 Agent**：Codex（未触发 subagent：用户未通知）。

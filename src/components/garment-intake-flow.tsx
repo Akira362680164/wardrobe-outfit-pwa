@@ -572,7 +572,7 @@ export function GarmentIntakeFlow({
     try {
       setImageItems((prev) =>
         prev.map((it) =>
-          it.id === reviewId ? { ...it, status: "recognizing" as const, error: undefined } : it,
+          it.id === reviewId ? { ...it, error: undefined, updatedAt: new Date().toISOString() } : it,
         ),
       );
       const newDraft = await recognizeImageItem(item);
@@ -1238,7 +1238,7 @@ function MultiImageReviewStep({
     ?? activeItem?.displayDataUrl
     ?? "";
   // v1.1.16-dev commit1 §3.4.1 第 8 点: 失败草稿顶部显示「AI 识别失败,已生成待确认草稿」banner
-  const aiFailed = activeItem?.status === "failed";
+  const aiFailed = activeItem?.status === "failed" && retryingReviewId !== activeItem.id;
 
   return (
     <div className="grid min-w-0 max-w-full gap-4 overflow-hidden">
