@@ -123,6 +123,8 @@ export function setGarmentIntakeImageCrop(
       rotationDeg: patch.rotationDeg ?? item.rotationDeg,
       displayDataUrl: patch.croppedImageDataUrl,
       status: "cropped" as const,
+      draft: undefined,
+      error: undefined,
       updatedAt: now,
     };
   });

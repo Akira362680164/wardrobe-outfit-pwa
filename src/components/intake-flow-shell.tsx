@@ -29,6 +29,7 @@ export interface IntakeFlowShellProps {
   backLabel?: string;
   nextDisabled?: boolean;
   backDisabled?: boolean;
+  rootBackOverridesExit?: boolean;
   children: React.ReactNode;
   onBack?: () => void;
   onNext?: () => void;
@@ -49,6 +50,7 @@ export function IntakeFlowShell({
   backLabel = "上一步",
   nextDisabled = false,
   backDisabled = false,
+  rootBackOverridesExit = false,
   children,
   onBack,
   onNext,
@@ -95,7 +97,7 @@ export function IntakeFlowShell({
         setConfirmExit(true);
         return;
       }
-      if (safeIndex > 0 && onBack && !backDisabled) {
+      if ((safeIndex > 0 || rootBackOverridesExit) && onBack && !backDisabled) {
         onBack();
         return;
       }
@@ -112,7 +114,7 @@ export function IntakeFlowShell({
       removed = true;
       handle?.remove();
     };
-  }, [backDisabled, busy, hasUnsavedDraft, onBack, onExit, safeIndex]);
+  }, [backDisabled, busy, hasUnsavedDraft, onBack, onExit, rootBackOverridesExit, safeIndex]);
 
   if (!mounted || typeof document === "undefined") return null;
 

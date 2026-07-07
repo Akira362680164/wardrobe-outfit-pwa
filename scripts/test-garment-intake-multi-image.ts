@@ -95,11 +95,15 @@ check("GarmentIntakeFlow 不再只依赖 imageDataUrl 单状态", !/const \[rawI
 // GarmentIntakeFlow shows "已选择 X 张"
 check("GarmentIntakeFlow 展示「已选择 X 张」", /已选择\s*\{imageItems\.length\}/.test(garmentIntakeFlow) || /已选择\s*\d+\s*张/.test(garmentIntakeFlow));
 
-// GarmentIntakeFlow shows "继续从图库选择"
-check("GarmentIntakeFlow 展示「继续从图库选择」", /继续从图库选择/.test(garmentIntakeFlow));
+// GarmentIntakeFlow keeps compact add actions after images are selected.
+check("GarmentIntakeFlow 展示小按钮「继续从图库选择」", /继续从图库选择/.test(garmentIntakeFlow));
+check("IntakeStepOneImagePicker 有预览时隐藏大号拍照/图库卡片", /\{!previewNode \? \([\s\S]*min-h-\[144px\][\s\S]*\) : null\}/.test(garmentIntakeFlow));
 
-// GarmentIntakeFlow shows "正在编辑"
-check("GarmentIntakeFlow 展示「正在编辑」", /正在编辑/.test(garmentIntakeFlow));
+// GarmentIntakeFlow selected thumbnail actions
+check("GarmentIntakeFlow 缩略图浮层展示「裁切/旋转」", /裁切\/旋转/.test(garmentIntakeFlow));
+check("GarmentIntakeFlow 裁切/旋转使用剪刀 icon", /Scissors/.test(garmentIntakeFlow));
+check("GarmentIntakeFlow 删除动作使用 Trash2 icon", /Trash2[\s\S]{0,120}删除/.test(garmentIntakeFlow));
+check("GarmentIntakeFlow 缩略图不再保留右上角 X 删除", !/<X size=/.test(garmentIntakeFlow));
 
 // GarmentIntakeFlow no longer requires per-image confirmation
 check("GarmentIntakeFlow 不再展示「保存并下一张」", !/保存并下一张/.test(garmentIntakeFlow));

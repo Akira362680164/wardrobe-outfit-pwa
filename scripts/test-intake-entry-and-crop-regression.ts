@@ -60,7 +60,14 @@ check("自由裁切默认框是图片显示区域 80%x80%", /aspectRatio === "fr
 check("GarmentIntakeFlow 裁切 ready 使用 state，而不是直接读 ref 触发 disabled", /const \[cropReady, setCropReady\] = useState\(false\)/.test(garmentIntakeFlow));
 check("GarmentIntakeFlow 将 onReadyChange 传给 ImageCropEditor", /onReadyChange=\{setCropReady\}/.test(garmentIntakeFlow));
 check("GarmentIntakeFlow 确认图片按钮 disabled 依赖 cropReady", /disabled=\{!cropReady\}/.test(garmentIntakeFlow));
-check("GarmentIntakeFlow 裁切空结果回退当前图片", /onCropConfirm\(croppedDataUrl \|\| imageItem\.displayDataUrl, cropBox\)/.test(garmentIntakeFlow));
+check("GarmentIntakeFlow 裁切空结果回退当前原图", /onCropConfirm\(croppedDataUrl \|\| imageItem\.originalDataUrl, cropBox\)/.test(garmentIntakeFlow));
+check("GarmentIntakeFlow 裁切页不再使用 showCropper 二级页面", !/showCropper|setShowCropper/.test(garmentIntakeFlow));
+check("GarmentIntakeFlow 裁切页直接渲染 embedded ImageCropEditor", /<ImageCropEditor[\s\S]{0,260}variant="embedded"/.test(garmentIntakeFlow));
+check("GarmentIntakeFlow 裁切源使用 originalDataUrl", /source=\{imageItem\.originalDataUrl\}/.test(garmentIntakeFlow));
+check("GarmentIntakeFlow 裁切页传入 initialCropBox", /initialCropBox=\{imageItem\.cropBox\}/.test(garmentIntakeFlow));
+check("GarmentIntakeFlow 裁切页支持自由和 3:4 比例", /label:\s*"自由"[\s\S]{0,80}label:\s*"3:4"[\s\S]{0,80}value:\s*0\.75/.test(garmentIntakeFlow));
+check("GarmentIntakeFlow 裁切页左右 90° 分别调用父级旋转", /onRotate\("left"\)/.test(garmentIntakeFlow) && /onRotate\("right"\)/.test(garmentIntakeFlow));
+check("GarmentIntakeFlow 裁切页支持重置", /function handleResetAll\(\)[\s\S]{0,180}onReset\(\)/.test(garmentIntakeFlow));
 check("GarmentIntakeFlow 步骤2不再强制保存并下一张", !/handleSaveCurrentAndContinue|保存并下一张/.test(garmentIntakeFlow));
 check("GarmentIntakeFlow 允许未裁切直接开始识别", !/请先裁切所有图片/.test(garmentIntakeFlow) && /imageToProcess =[\s\S]{0,120}item\.croppedImageDataUrl \?\? item\.displayDataUrl \?\? item\.originalDataUrl/.test(garmentIntakeFlow));
 check("GarmentIntakeFlow 相册/拍照取消直接返回空结果", /catch \(error\) \{[\s\S]{0,80}isImagePickerCancelError\(error\)[\s\S]{0,40}return \[\]/.test(wardrobeApp));

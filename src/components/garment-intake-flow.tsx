@@ -9,12 +9,13 @@ import {
   ImageIcon,
   Loader2,
   RefreshCw,
+  RotateCcw,
   RotateCw,
   Save,
+  Scissors,
   Shirt,
   Tag,
   Trash2,
-  X,
 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState, type ChangeEvent, type ReactNode } from "react";
 import {
@@ -228,7 +229,7 @@ export function GarmentIntakeFlow({
     return idx >= 0 ? idx : 0;
   }, [recognizedItems, activeReviewId]);
 
-  const locked = isPicking || isCropping || isRecognizing || isSavingBatch || isSaving || retryingReviewId !== null;
+  const locked = isPicking || isRecognizing || isSavingBatch || isSaving || retryingReviewId !== null;
   const flowNoun = flowKind === "wishlist" ? "种草" : "单品";
 
   useEffect(() => {
@@ -253,11 +254,6 @@ export function GarmentIntakeFlow({
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [stepIndex, flowKind]);
-
-  function getActiveIndex() {
-    if (!activeImageId) return -1;
-    return imageItems.findIndex((item) => item.id === activeImageId);
-  }
 
   async function handleAddFromCamera() {
     if (isPicking) return;
@@ -356,6 +352,9 @@ export function GarmentIntakeFlow({
             croppedImageDataUrl: undefined,
             thumbnailDataUrl: thumbnailDataUrl.thumbnailDataUrl,
             cropBox: undefined,
+            draft: undefined,
+            error: undefined,
+            status: "selected" as const,
           };
         }),
       );
@@ -379,6 +378,8 @@ export function GarmentIntakeFlow({
             rotationDeg: 0 as const,
             thumbnailDataUrl,
             status: "selected" as const,
+            draft: undefined,
+            error: undefined,
           };
         }),
       );
@@ -393,38 +394,11 @@ export function GarmentIntakeFlow({
             cropBox: undefined,
             rotationDeg: 0 as const,
             status: "selected" as const,
+            draft: undefined,
+            error: undefined,
           };
         }),
       );
-    }
-  }
-
-  async function handleDeleteCurrentImage() {
-    if (!activeImageId) return;
-    const idx = getActiveIndex();
-    handleRemoveImage(activeImageId);
-    // After removal, select adjacent image
-    const remaining = imageItems.filter((item) => item.id !== activeImageId);
-    if (remaining.length === 0) {
-      setActiveImageId(null);
-      setStepIndex("select_photo");
-    } else {
-      const nextIdx = Math.min(idx, remaining.length - 1);
-      setActiveImageId(remaining[nextIdx]?.id ?? null);
-    }
-  }
-
-  function handlePrevImage() {
-    const idx = getActiveIndex();
-    if (idx > 0) {
-      setActiveImageId(imageItems[idx - 1].id);
-    }
-  }
-
-  function handleNextImage() {
-    const idx = getActiveIndex();
-    if (idx < imageItems.length - 1) {
-      setActiveImageId(imageItems[idx + 1].id);
     }
   }
 
@@ -637,7 +611,7 @@ export function GarmentIntakeFlow({
   }
 
   async function handleNext() {
-    if (locked) return;
+    if (locked || isCropping) return;
     setError("");
     if (stepIndex === "select_photo") {
       if (imageItems.length === 0) {
@@ -763,6 +737,7 @@ export function GarmentIntakeFlow({
 
   const nextDisabled =
     locked ||
+    isCropping ||
     (stepIndex === "select_photo" && imageItems.length === 0) ||
     (stepIndex === "confirm_params" && savableItems.length === 0);
 
@@ -770,9 +745,7 @@ export function GarmentIntakeFlow({
 
   const processingText = isPicking
     ? "正在打开相册或读取图片..."
-    : isCropping
-      ? "正在处理图片..."
-      : isRecognizing && recognitionProgress
+    : isRecognizing && recognitionProgress
         ? `正在识别第 ${recognitionProgress.current} 件 / 共 ${recognitionProgress.total} 件`
         : isSavingBatch
           ? `正在上传并保存 ${savableItems.length} 件${flowNoun}`
@@ -783,14 +756,15 @@ export function GarmentIntakeFlow({
       title={title}
       steps={GARMENT_INTAKE_STEPS}
       currentStepIndex={stepIndexNumber}
-      isProcessing={isPicking || isCropping || isRecognizing || isSavingBatch}
+      isProcessing={isPicking || isRecognizing || isSavingBatch}
       processingText={processingText}
       submitState={submitState}
       error={error}
       hasUnsavedDraft={hasUnsavedDraft}
       nextLabel={nextLabel}
       nextDisabled={nextDisabled}
-      backDisabled={stepIndex === "select_photo"}
+      backDisabled={stepIndex === "select_photo" && !isCropping}
+      rootBackOverridesExit={isCropping}
       onBack={handleBack}
       onNext={handleNext}
       onExit={onExit}
@@ -800,15 +774,10 @@ export function GarmentIntakeFlow({
         isCropping && activeImage ? (
           <MultiImageCropStep
             imageItem={activeImage}
-            imageItems={imageItems}
-            activeIndex={getActiveIndex()}
             onCropConfirm={handleCropConfirm}
             onRotate={handleRotate}
             onReset={handleResetCrop}
-            onDelete={handleDeleteCurrentImage}
-            onPrev={handlePrevImage}
-            onNext={handleNextImage}
-            onSelectImage={setActiveImageId}
+            onCancel={() => setIsCropping(false)}
           />
         ) : (
           <MultiImageSelectStep
@@ -904,53 +873,67 @@ function MultiImageSelectStep({
   // Custom preview: shown inside IntakeStepSection when images are selected
   const previewNode = hasImages ? (
     <>
-      <p className="text-xs text-ink/55 mb-2">已选择 {imageItems.length} 张{flowNoun}照片，可点击缩略图裁切/旋转图片</p>
+      <p className="text-xs text-ink/55 mb-2">已选择 {imageItems.length} 张{flowNoun}照片，可点击缩略图编辑图片</p>
       <div className="overflow-hidden rounded-lg bg-mist mb-3">
         {activeImageId ? (
           <img
             src={imageItems.find((i) => i.id === activeImageId)?.displayDataUrl ?? ""}
             alt="当前选中图片"
-            className="h-[min(58dvh,420px)] w-full object-contain"
+            className="h-[min(34dvh,280px)] w-full object-contain"
           />
         ) : (
           <img
             src={imageItems[0].displayDataUrl}
             alt="已选图片"
-            className="h-[min(58dvh,420px)] w-full object-contain"
+            className="h-[min(34dvh,280px)] w-full object-contain"
           />
         )}
       </div>
       {/* Thumbnail row */}
-      <div className="flex gap-2 flex-wrap mb-3">
+      <div className="flex gap-2 flex-wrap mb-3 overflow-visible pt-12">
         {displayItems.map((item, idx) => (
           <div
             key={item.id}
-            className={`relative w-14 h-14 rounded-lg overflow-hidden border-2 ${
-              item.id === activeImageId ? "border-denim" : "border-transparent"
-            }`}
+            className="relative h-14 w-14 shrink-0 overflow-visible"
           >
             <button
               type="button"
               onClick={() => onSelectImage(item.id)}
-              className="block h-full w-full"
+              className={`relative block h-full w-full overflow-hidden rounded-lg border-2 ${
+                item.id === activeImageId ? "border-denim" : "border-transparent"
+              }`}
               aria-label={`选择第 ${idx + 1} 张图片`}
             >
               <img src={item.displayDataUrl} alt={`缩略图 ${idx + 1}`} className="h-full w-full object-cover" />
+              {item.status === "recognized" && (
+                <span className="absolute bottom-0 left-0 right-0 bg-moss/80 text-white text-[9px] text-center py-0.5">已识别</span>
+              )}
+              {item.status === "failed" && (
+                <span className="absolute bottom-0 left-0 right-0 bg-clay/80 text-white text-[9px] text-center py-0.5">失败</span>
+              )}
+              {item.status === "recognizing" && (
+                <span className="absolute inset-0 grid place-items-center bg-denim/55 text-[8px] font-semibold text-white">识别中</span>
+              )}
             </button>
-            <button
-              type="button"
-              onClick={() => onRemoveImage(item.id)}
-              className="absolute -top-1 -right-1 z-10 w-5 h-5 rounded-full bg-clay text-white grid place-items-center"
-              aria-label={`删除第 ${idx + 1} 张图片`}
-            >
-              <X size={10} />
-            </button>
-            {item.status === "recognized" && (
-              <span className="absolute bottom-0 left-0 right-0 bg-moss/80 text-white text-[9px] text-center py-0.5">已识别</span>
-            )}
-            {item.status === "failed" && (
-              <span className="absolute bottom-0 left-0 right-0 bg-clay/80 text-white text-[9px] text-center py-0.5">失败</span>
-            )}
+            {item.id === activeImageId && onCropActive ? (
+              <div className="absolute bottom-[calc(100%+8px)] left-1/2 z-20 flex -translate-x-1/2 items-center gap-1 rounded-lg border border-ink/10 bg-white p-1 shadow-lg">
+                <button
+                  type="button"
+                  onClick={onCropActive}
+                  className="flex h-8 items-center gap-1 rounded-md px-2 text-[11px] font-semibold text-ink active:bg-mist"
+                >
+                  <Scissors size={13} aria-hidden="true" /> 裁切/旋转
+                </button>
+                <button
+                  type="button"
+                  onClick={() => onRemoveImage(item.id)}
+                  className="flex h-8 items-center gap-1 rounded-md px-2 text-[11px] font-semibold text-clay active:bg-clay/8"
+                >
+                  <Trash2 size={13} aria-hidden="true" /> 删除
+                </button>
+                <span className="absolute left-1/2 top-full h-2 w-2 -translate-x-1/2 -translate-y-1/2 rotate-45 border-b border-r border-ink/10 bg-white" aria-hidden="true" />
+              </div>
+            ) : null}
           </div>
         ))}
         {extraCount > 0 && (
@@ -963,24 +946,6 @@ function MultiImageSelectStep({
           </button>
         )}
       </div>
-      {activeImageId && onCropActive ? (
-        <div className="flex gap-2 mb-2">
-          <button
-            type="button"
-            onClick={onCropActive}
-            className="flex-1 h-9 rounded-lg border border-ink/10 bg-white text-xs font-semibold"
-          >
-            裁切/旋转
-          </button>
-          <button
-            type="button"
-            onClick={() => onRemoveImage(activeImageId)}
-            className="w-20 h-9 rounded-lg border border-clay/30 text-clay text-xs font-semibold"
-          >
-            删除
-          </button>
-        </div>
-      ) : null}
       <div className="flex gap-2">
         <button
           type="button"
@@ -1027,174 +992,108 @@ function MultiImageSelectStep({
 // Step 2: Multi-image crop
 function MultiImageCropStep({
   imageItem,
-  imageItems,
-  activeIndex,
   onCropConfirm,
   onRotate,
   onReset,
-  onDelete,
-  onPrev,
-  onNext,
-  onSelectImage,
+  onCancel,
 }: {
   imageItem: GarmentIntakeImageItem;
-  imageItems: GarmentIntakeImageItem[];
-  activeIndex: number;
   onCropConfirm: (croppedDataUrl: string, cropBox?: import("@/lib/image").NormalizedCropBox) => void;
   onRotate: (direction: "left" | "right") => void;
   onReset: () => void;
-  onDelete: () => void;
-  onPrev: () => void;
-  onNext: () => void;
-  onSelectImage: (id: string) => void;
+  onCancel: () => void;
 }) {
   const cropEditorRef = useRef<ImageCropEditorHandle>(null);
-  const [showCropper, setShowCropper] = useState(false);
+  const [aspectRatio, setAspectRatio] = useState<"free" | number>("free");
   const [cropReady, setCropReady] = useState(false);
 
   function handleConfirmCrop(croppedDataUrl: string, cropBox: import("@/lib/image").NormalizedCropBox) {
-    onCropConfirm(croppedDataUrl || imageItem.displayDataUrl, cropBox);
-    setShowCropper(false);
+    onCropConfirm(croppedDataUrl || imageItem.originalDataUrl, cropBox);
     setCropReady(false);
   }
 
-  if (showCropper) {
-    return (
-      <div className="flex flex-col" style={{ height: "calc(100dvh - 280px)", minHeight: 360 }}>
-        <IntakeStepSection
-          title="拖动图片调整取景范围"
-          icon={<Shirt size={16} aria-hidden="true" />}
-        >
-          <div className="text-xs text-ink/50 mb-2">裁切和旋转后将用于 AI 识别与正式入库</div>
-        </IntakeStepSection>
-        <div className="flex-1 min-h-0">
+  function handleResetAll() {
+    setAspectRatio("free");
+    setCropReady(false);
+    onReset();
+    cropEditorRef.current?.reset();
+  }
+
+  return (
+    <div className="flex min-h-[calc(100dvh-13rem)] flex-col gap-3">
+      <IntakeStepSection title="裁切/旋转" icon={<Scissors size={16} aria-hidden="true" />}>
+        <div className="h-[min(46dvh,360px)] min-h-[260px] overflow-hidden rounded-lg bg-ink">
           <ImageCropEditor
             ref={cropEditorRef}
-            source={imageItem.displayDataUrl}
+            source={imageItem.originalDataUrl}
+            initialCropBox={imageItem.cropBox}
+            aspectRatio={aspectRatio}
             variant="embedded"
-            onCancel={() => {
-              setCropReady(false);
-              setShowCropper(false);
-            }}
+            onCancel={onCancel}
             onConfirm={handleConfirmCrop}
             onReadyChange={setCropReady}
           />
         </div>
-        <div className="flex gap-2 px-4 py-3">
-          <button
-            type="button"
-            onClick={() => setShowCropper(false)}
-            className="flex-1 h-12 rounded-lg border border-ink/10 bg-white text-sm font-semibold"
-          >
-            取消
-          </button>
-          <button
-            type="button"
-            onClick={() => cropEditorRef.current?.rotate()}
-            className="flex-1 h-12 rounded-lg border border-ink/10 bg-white text-sm font-semibold flex items-center justify-center gap-2"
-          >
-            <RotateCw size={16} /> 旋转
-          </button>
-          <button
-            type="button"
-            onClick={() => cropEditorRef.current?.runConfirm()}
-            disabled={!cropReady}
-            className="flex-1 h-12 rounded-lg bg-denim text-sm font-semibold text-white disabled:opacity-35"
-          >
-            确认图片
-          </button>
-        </div>
-      </div>
-    );
-  }
-
-  return (
-    <div className="grid gap-4">
-      <IntakeStepSection
-        title={`正在编辑 ${activeIndex + 1} / ${imageItems.length}`}
-        icon={<Shirt size={16} aria-hidden="true" />}
-      >
-        <div className="overflow-hidden rounded-lg bg-mist">
-          <img
-            src={imageItem.displayDataUrl}
-            alt="待处理图片"
-            className="h-[min(58dvh,420px)] w-full object-contain"
-          />
-        </div>
       </IntakeStepSection>
 
-      <div className="flex gap-2 px-4">
-        <button
-          type="button"
-          onClick={() => {
-            setCropReady(false);
-            setShowCropper(true);
-          }}
-          className="flex-1 h-12 rounded-lg border border-ink/10 bg-white text-sm font-semibold disabled:opacity-35"
-        >
-          裁切
-        </button>
-        <button
-          type="button"
-          onClick={() => onRotate("right")}
-          className="flex-1 h-12 rounded-lg border border-ink/10 bg-white text-sm font-semibold flex items-center justify-center gap-1"
-        >
-          <RotateCw size={16} /> 旋转
-        </button>
-        <button
-          type="button"
-          onClick={onReset}
-          className="flex-1 h-12 rounded-lg border border-ink/10 bg-white text-sm font-semibold"
-        >
-          重置
-        </button>
-      </div>
-
-      <button
-        type="button"
-        onClick={onDelete}
-        className="flex items-center justify-center gap-1 mx-4 h-10 rounded-lg border border-clay/30 text-clay text-sm font-semibold"
-      >
-        <Trash2 size={14} /> 删除此图
-      </button>
-
-      {/* Thumbnail strip */}
-      <div className="flex min-w-0 gap-2 px-4 overflow-x-auto pb-1">
-        {imageItems.map((item, idx) => (
+      <div className="rounded-lg border border-ink/10 bg-white p-3">
+        <div className="grid grid-cols-2 gap-2">
+          {[
+            { label: "自由", value: "free" as const },
+            { label: "3:4", value: 0.75 },
+          ].map((option) => (
+            <button
+              key={option.label}
+              type="button"
+              onClick={() => setAspectRatio(option.value)}
+              className={`h-9 rounded-lg text-xs font-semibold ${
+                aspectRatio === option.value ? "bg-denim text-white" : "border border-ink/10 bg-[#fbfbf8] text-ink/60"
+              }`}
+            >
+              {option.label}
+            </button>
+          ))}
+        </div>
+        <div className="mt-2 grid grid-cols-3 gap-2">
           <button
-            key={item.id}
             type="button"
-            onClick={() => onSelectImage(item.id)}
-            className={`relative w-12 h-12 shrink-0 rounded-lg overflow-hidden border-2 ${
-              item.id === imageItem.id ? "border-denim" : "border-transparent"
-            }`}
+            onClick={() => onRotate("left")}
+            className="flex h-10 items-center justify-center gap-1 rounded-lg border border-ink/10 bg-white text-xs font-semibold"
           >
-            <img src={item.displayDataUrl} alt={`图片${idx + 1}`} className="w-full h-full object-cover" />
-            {/* v1.1.16-dev commit1 §3.4.1 第 5 点: 显示「AI 正在识别第 N 张」 */}
-            {item.status === "recognizing" && (
-              <span className="absolute inset-0 bg-denim/55 grid place-items-center text-[8px] font-semibold text-white">识别中</span>
-            )}
+            <RotateCcw size={14} aria-hidden="true" /> 左转90°
           </button>
-        ))}
+          <button
+            type="button"
+            onClick={() => onRotate("right")}
+            className="flex h-10 items-center justify-center gap-1 rounded-lg border border-ink/10 bg-white text-xs font-semibold"
+          >
+            <RotateCw size={14} aria-hidden="true" /> 右转90°
+          </button>
+          <button
+            type="button"
+            onClick={handleResetAll}
+            className="flex h-10 items-center justify-center gap-1 rounded-lg border border-ink/10 bg-white text-xs font-semibold"
+          >
+            <RefreshCw size={14} aria-hidden="true" /> 重置
+          </button>
+        </div>
       </div>
 
-      {/* Navigation */}
-      <div className="flex gap-2 px-4">
+      <div className="grid grid-cols-[1fr_1.6fr] gap-2">
         <button
           type="button"
-          onClick={onPrev}
-          disabled={activeIndex === 0}
-          className="flex-1 h-12 rounded-lg border border-ink/10 bg-white text-sm font-semibold disabled:opacity-35 flex items-center justify-center gap-1"
+          onClick={onCancel}
+          className="h-11 rounded-lg border border-ink/10 bg-white text-sm font-semibold text-ink/70"
         >
-          <ChevronLeft size={16} /> 上一张
+          取消
         </button>
         <button
           type="button"
-          onClick={onNext}
-          disabled={activeIndex >= imageItems.length - 1}
-          className="flex-1 h-12 rounded-lg border border-ink/10 bg-white text-sm font-semibold disabled:opacity-35 flex items-center justify-center gap-1"
+          onClick={() => cropEditorRef.current?.runConfirm()}
+          disabled={!cropReady}
+          className="h-11 rounded-lg bg-denim text-sm font-semibold text-white disabled:opacity-35"
         >
-          下一张 <ChevronRight size={16} />
+          应用
         </button>
       </div>
     </div>
@@ -1817,26 +1716,28 @@ export function IntakeStepOneImagePicker({
       <IntakeStepSection title={title} icon={icon}>
         {previewNode ? previewNode : <EmptyStateBox text={placeholder} />}
       </IntakeStepSection>
-      <div className="grid grid-cols-2 gap-4">
-        <button
-          type="button"
-          onClick={onCameraClick}
-          disabled={disabled}
-          className="min-h-[144px] rounded-xl border border-ink/10 bg-white text-sm font-semibold flex flex-col items-center justify-center gap-2"
-        >
-          <Camera size={24} className="text-denim" />
-          拍照
-        </button>
-        <button
-          type="button"
-          onClick={onGalleryClick}
-          disabled={disabled}
-          className="min-h-[144px] rounded-xl border border-ink/10 bg-white text-sm font-semibold flex flex-col items-center justify-center gap-2"
-        >
-          <ImageIcon size={24} className="text-denim" />
-          从图库选择
-        </button>
-      </div>
+      {!previewNode ? (
+        <div className="grid grid-cols-2 gap-4">
+          <button
+            type="button"
+            onClick={onCameraClick}
+            disabled={disabled}
+            className="min-h-[144px] rounded-xl border border-ink/10 bg-white text-sm font-semibold flex flex-col items-center justify-center gap-2"
+          >
+            <Camera size={24} className="text-denim" />
+            拍照
+          </button>
+          <button
+            type="button"
+            onClick={onGalleryClick}
+            disabled={disabled}
+            className="min-h-[144px] rounded-xl border border-ink/10 bg-white text-sm font-semibold flex flex-col items-center justify-center gap-2"
+          >
+            <ImageIcon size={24} className="text-denim" />
+            从图库选择
+          </button>
+        </div>
+      ) : null}
       <p className="text-[10px] text-ink/40 text-center">
         {pickedCount !== undefined && pickedCount > 0
           ? `已选择 ${pickedCount} 张 · `

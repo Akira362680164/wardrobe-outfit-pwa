@@ -1,3 +1,14 @@
+## 2026-07-07 / v2.1.6-test / Codex — 录入页选图与裁切旋转交互修复
+
+- **执行 Agent**：Codex（按用户要求使用 2 个并行 subagent 做只读分析：一个检查录入/裁切 UI 状态流，一个检查测试覆盖；subagent 均未编辑文件）。
+- **目的**：修复添加单品/种草步骤 1 选中衣物后的重复拍照/图库入口和页面过长问题；按用户确认方案，将点击衣物后的操作改为上方浮层两个按钮：剪刀图标“裁切/旋转”和“删除”；将裁切与旋转合并到一个页面。
+- **版本变更**：`package.json` / `package-lock.json` 从 `2.1.5-test` 升级到 `2.1.6-test`；Android `versionCode` 由构建脚本推导为 `20106`。
+- **改动文件**：`src/components/garment-intake-flow.tsx`、`src/components/intake-flow-shell.tsx`、`src/lib/garment-intake-multi-image.ts`、`scripts/test-garment-intake-multi-image.ts`、`scripts/test-intake-entry-and-crop-regression.ts`、`scripts/test-intake-fullscreen-layout.ts`、`package.json`、`package-lock.json`、`VERSION_HISTORY.md`。
+- **改动说明**：有已选图片预览时不再渲染大号“拍照/从图库选择”卡片，仅保留小号继续拍照/图库/清空；缩略图选中后在上方弹出“裁切/旋转”和“删除”两个动作，裁切/旋转使用剪刀 icon；裁切页直接进入 `ImageCropEditor`，支持自由/3:4 比例、左转90°、右转90°和重置；裁切页打开时页头/Android 返回键先关闭裁切而不是退出录入；重新裁切、旋转或重置后清除旧 AI 草稿和错误，确保下一步按新图重新识别。
+- **验证结果**：`npm run typecheck` 通过；`npm run test:logic:garment-intake-multi-image`（64 项）、`npm run test:logic:intake-entry-crop-regression`（50 项）、`npm run test:logic:intake-fullscreen-layout`（26 项）、`npm run test:logic:cropper`（46 项）、`npm run test:logic:intake-current-item-rerecognition`（23 项）、`npm run test:logic:color-catalog`（94 项）、`npm run test:logic:catalog-card-content`、`npm run build` 通过。曾启动本地开发服务并用 430x932 移动视口打开页面，确认当前本地入口停在登录页，未绕过账号进入录入流程。
+- **风险门禁**：high（移动端录入、图片裁切、触摸工具栏和版本号）；已按用户要求触发并行 subagent 只读分析。
+- **未验证风险**：按用户要求本轮不打包 APK、不安装真机/模拟器、不做 Android 端回归；登录后真实选图、裁切拖拽和图库/相机系统选择器未在真机上实际操作；MiniMax live 识别未执行。
+
 ## 2026-07-07 / v2.1.5-test / Codex — 修复颜色色卡与确认页重新识别
 
 - **执行 Agent**：Codex（未触发 subagent：用户未通知）。
