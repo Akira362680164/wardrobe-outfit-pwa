@@ -1,3 +1,14 @@
+## 2026-07-07 / v2.1.4-test / Codex — 固定签名 APK 重新打包
+
+- **执行 Agent**：Codex（未触发 subagent：用户未通知）。
+- **目的**：按用户要求重新打包 Android APK，并按 APK 交付规则递增测试版本。
+- **版本变更**：`package.json` / `package-lock.json` 从 `2.1.3-test` 升级到 `2.1.4-test`；Android `versionCode` 由构建脚本推导为 `20104`。
+- **交付产物**：`衣橱穿搭助手-v2.1.4-test.apk`，大小 9.5MB，SHA-256 `14eadc3679abb2e9be0ed7cb853cd265c60a905d93af227fad381afd3018b8e1`；包名 `com.wardrobe.outfit`，versionName `2.1.4-test`，versionCode `20104`，签名主体 `CN=fangzheng`。
+- **验证结果**：`npm run typecheck` 通过；`npm run android:apk` 构建成功；`aapt dump badging` 与 `apksigner verify --print-certs` 核验通过。原 `wardrobe-test` AVD 因挂起 snapshot 无法启动，改用前台可见的临时 AVD `wardrobe-visible-test` 安装同一 APK，`scripts/android-emulator-regression.sh full` 通过，覆盖安装、启动、Android 返回键、横竖屏截图、清除数据后冷启动和 logcat 崩溃筛查。
+- **Android 证据目录**：`test-results/android-v2.1.4-test-visible/20260707-172203/`。
+- **风险门禁**：high（APK 交付、固定签名、Android WebView 启动验证）；未触发 subagent：用户未通知。
+- **未验证风险**：未执行厂商真机验证；未执行 MiniMax live 调用；原 `wardrobe-test` AVD 仍存在 snapshot 挂起问题，已用前台临时 AVD 完成交付验证。
+
 ## 2026-07-01 / v2.1.3-test / Codex — close execution plan
 
 - **执行 Agent**：Codex（母 agent 串行开发；未触发 subagent：用户明确禁止）。
