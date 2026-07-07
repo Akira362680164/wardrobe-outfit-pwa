@@ -75,8 +75,8 @@ assert.deepEqual(getGarmentCardColors(item({ colors: buildColorInfo("multicolor"
 assert.deepEqual(getGarmentCardColors(item({ colors: buildColorInfo("multicolor", ["蓝色", " ", "蓝色", "棕色", "黑色"]) })), ["蓝色", "棕色", "黑色"]);
 assert.equal(formatGarmentWearLine(item({ wornDates: [] })), "未穿过");
 assert.equal(formatGarmentWearLine(item({ wornDates: ["2026-06-13"] })), "最近 6/13 · 穿过 1 次");
-assert.deepEqual(getColorSwatchStyle("白色"), { backgroundColor: "#ffffff", needsBorder: true });
-assert.deepEqual(getColorSwatchStyle("棕色"), { backgroundColor: "#8b5e34", needsBorder: false });
+assert.deepEqual(getColorSwatchStyle("白色"), { backgroundColor: "#F8FAFC", needsBorder: true });
+assert.deepEqual(getColorSwatchStyle("棕色"), { backgroundColor: "#87583E", needsBorder: false });
 
 const parentDeleteStart = outfitListView.indexOf("async function handleDeleteOutfit() {");
 const parentDeleteEnd = outfitListView.indexOf("const activeCalendarPlan", parentDeleteStart);

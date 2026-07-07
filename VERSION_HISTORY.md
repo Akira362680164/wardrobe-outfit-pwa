@@ -1,3 +1,14 @@
+## 2026-07-07 / v2.1.7-test / Codex — UI 规范 v0.2 生产契约升级
+
+- **执行 Agent**：Codex（按用户明确要求触发 3 个并行只读 subagent：P0 事实源/令牌/路由/覆盖层、P1 组件契约/领域 UI/AI 状态、P2 多选/系统状态/验收治理；subagent 均未编辑文件，结论已由主 agent 审核后合并）。
+- **目的**：根据 `wardrobe-ui-spec-improvement-review.md` 的 P0/P1/P2 建议，将 UI 规范从本地原型说明升级为生产 UI 契约。
+- **版本变更**：无；当前应用版本仍为 `2.1.7-test`。
+- **改动文件**：`docs/designs/wardrobe-ui-spec.md`、`docs/designs/wardrobe-ui-spec.html`、`scripts/test-detail-shell-ui.ts`、`VERSION_HISTORY.md`。
+- **改动说明**：将 Markdown 规范升级为 v0.2 active source，明确 MD 为唯一事实源、HTML 为预览；补齐 Design Tokens、真实移动 viewport/safe-area、`AppRouteName` 路由矩阵、Overlay 层级和返回优先级、核心组件 Contract、颜色/温度/分类领域映射、录入两步状态机、AI/系统状态、Toast 和验收测试映射；同步 HTML 预览页为 v0.2，并保留页面框架、色卡、温度条、缩略图和 Toast 图示；顺手修正 `test-detail-shell-ui` 中白色/棕色色卡期望值，使验收脚本与当前 `COLOR_CATALOG` 保持一致。
+- **验证结果**：Playwright 打开 `docs/designs/wardrobe-ui-spec.html` 做 1280px 与 390px 渲染检查，核心章节存在且无横向溢出；`npm run test:logic:app-route`、`npm run test:logic:component-reuse`、`npm run test:logic:catalog-multi-select-integration`、`npm run test:logic:detail-shell`、`npm run test:logic:color-catalog`、`npm run test:logic:temperature-confidence`、`npm run test:logic:intake-fullscreen-layout` 通过。
+- **风险门禁**：high（`review-gate --staged` 因规范重写行数较多判定为 high；实际改动仍限定为文档规范和测试断言对齐，不改运行时代码、不改构建、不打 APK）；已按用户要求触发并行 subagent 只读核对。
+- **未验证风险**：未在 GitHub Pages 或远程网页环境预览；本轮未执行完整 `npm run test:logic:all`、`npm run build` 或 Android 真机/模拟器验证，因为未改运行时代码。
+
 ## 2026-07-07 / v2.1.7-test / Codex — 合入 UI 规范文档
 
 - **执行 Agent**：Codex（未触发 subagent：用户未通知）。

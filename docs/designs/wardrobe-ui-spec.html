@@ -3,41 +3,38 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>衣橱穿搭助手 UI 规范</title>
+  <title>衣橱穿搭助手 UI 规范 v0.2</title>
   <style>
     :root {
       --ink: #1d2228;
       --paper: #fbfbf8;
-      --mist: #f0f2ee;
+      --mist: #f4f5f3;
       --surface: #fffffc;
       --denim: #355c7d;
       --moss: #5f7058;
       --clay: #b97155;
       --berry: #8c4a62;
-      --muted: rgba(29, 34, 40, 0.56);
-      --line: rgba(29, 34, 40, 0.1);
-      --soft: 0 18px 48px rgba(29, 34, 40, 0.08);
-      --deep: 0 28px 70px rgba(29, 34, 40, 0.15);
-      --media-ratio: 3 / 4;
+      --danger: #dc2626;
+      --muted: rgba(29, 34, 40, .56);
+      --line: rgba(29, 34, 40, .1);
+      --soft: 0 18px 50px rgba(29, 34, 40, .08);
+      --deep: 0 28px 70px rgba(29, 34, 40, .14);
       --card-radius: 28px;
-      --card-pad: 10px;
-      --inner-radius: calc(var(--card-radius) - var(--card-pad));
       --control-radius: 14px;
       --dock-radius: 26px;
-      --dock-pad: 8px;
-      --dock-inner: calc(var(--dock-radius) - var(--dock-pad));
-      --doc-width: 1120px;
+      --phone-width: 390px;
       color-scheme: light;
-      font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
     }
 
     * { box-sizing: border-box; }
     html { scroll-behavior: smooth; }
     body {
       margin: 0;
+      min-width: 320px;
       background:
-        linear-gradient(90deg, rgba(53, 92, 125, 0.05), transparent 34%),
-        #eef1ec;
+        radial-gradient(circle at 0 0, rgba(185,113,85,.12), transparent 26rem),
+        linear-gradient(180deg, #fbfbf8 0%, #f4f5f3 48%, #edf1ee 100%);
       color: var(--ink);
       letter-spacing: 0;
     }
@@ -45,20 +42,20 @@
     a { color: inherit; text-decoration: none; }
     code {
       border-radius: 8px;
-      background: rgba(53, 92, 125, 0.08);
+      background: rgba(53, 92, 125, .08);
       padding: 2px 6px;
       color: var(--denim);
-      font-size: 0.92em;
+      font-size: .92em;
       font-weight: 800;
     }
 
     .layout {
       display: grid;
-      grid-template-columns: 232px minmax(0, 1fr);
+      grid-template-columns: 228px minmax(0, 1fr);
       gap: 28px;
-      width: min(var(--doc-width), calc(100vw - 48px));
+      width: min(1160px, calc(100vw - 48px));
       margin: 0 auto;
-      padding: 32px 0 64px;
+      padding: 32px 0 72px;
     }
 
     .side {
@@ -67,20 +64,14 @@
       align-self: start;
       border: 1px solid var(--line);
       border-radius: 24px;
-      background: rgba(255, 255, 252, 0.72);
+      background: rgba(255,255,252,.75);
       box-shadow: var(--soft);
       padding: 16px;
       backdrop-filter: blur(28px) saturate(1.35);
       -webkit-backdrop-filter: blur(28px) saturate(1.35);
     }
 
-    .side b {
-      display: block;
-      margin-bottom: 10px;
-      font-size: 14px;
-      line-height: 1.25;
-    }
-
+    .side b { display: block; margin-bottom: 10px; font-size: 14px; }
     .side a {
       display: block;
       border-radius: 12px;
@@ -89,1084 +80,619 @@
       font-size: 12px;
       font-weight: 800;
     }
+    .side a:hover { background: rgba(53,92,125,.08); color: var(--denim); }
 
-    .side a:hover {
-      background: rgba(53, 92, 125, 0.08);
-      color: var(--denim);
-    }
+    main { display: grid; gap: 28px; min-width: 0; }
 
-    main {
-      display: grid;
-      gap: 28px;
+    .hero,
+    .section {
       min-width: 0;
-    }
-
-    .hero {
-      width: 100%;
-      min-width: 0;
-      display: grid;
-      grid-template-columns: 1.1fr 0.9fr;
-      gap: 24px;
-      align-items: stretch;
-      min-height: 360px;
       border: 1px solid var(--line);
-      border-radius: 32px;
-      background: rgba(255, 255, 252, 0.78);
-      box-shadow: var(--deep);
-      padding: 28px;
+      background: rgba(255,255,252,.84);
+      box-shadow: var(--soft);
       overflow: hidden;
     }
 
-    .hero h1 {
-      margin: 0;
-      max-width: 560px;
-      font-size: 42px;
-      line-height: 1.08;
-      font-weight: 900;
+    .hero {
+      display: grid;
+      grid-template-columns: 1.05fr .95fr;
+      gap: 24px;
+      align-items: stretch;
+      border-radius: 32px;
+      padding: 28px;
+      box-shadow: var(--deep);
     }
 
-    .hero p {
-      max-width: 610px;
-      margin: 16px 0 0;
-      color: var(--muted);
-      font-size: 15px;
-      line-height: 1.75;
-      font-weight: 700;
+    h1, h2, h3, p { margin-top: 0; }
+    h1 { margin-bottom: 16px; font-size: 42px; line-height: 1.08; font-weight: 900; }
+    h2 { margin-bottom: 10px; font-size: 24px; line-height: 1.2; font-weight: 900; }
+    h3 { margin-bottom: 8px; font-size: 15px; line-height: 1.25; font-weight: 900; }
+    p, li { color: var(--muted); font-size: 13px; line-height: 1.65; font-weight: 650; }
+
+    .section {
+      border-radius: 28px;
+      padding: 24px;
     }
 
-    .meta-row {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 10px;
-      margin-top: 22px;
-    }
-
-    .pill {
+    .meta-row, .chips { display: flex; flex-wrap: wrap; gap: 10px; }
+    .pill, .chip {
       display: inline-flex;
       align-items: center;
       min-height: 34px;
       border: 1px solid var(--line);
       border-radius: var(--control-radius);
-      background: rgba(255, 255, 252, 0.78);
+      background: rgba(255,255,252,.78);
       padding: 0 12px;
-      color: var(--ink);
       font-size: 12px;
       font-weight: 850;
-      box-shadow: var(--soft);
-      backdrop-filter: blur(18px) saturate(1.25);
-      -webkit-backdrop-filter: blur(18px) saturate(1.25);
+      box-shadow: 0 8px 22px rgba(29,34,40,.05);
     }
+    .chip.active { border-color: var(--denim); background: var(--denim); color: white; }
 
-    .section {
-      width: 100%;
+    .grid { display: grid; gap: 14px; margin-top: 18px; }
+    .two { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .three { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    .four { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+
+    .card {
       min-width: 0;
       border: 1px solid var(--line);
-      border-radius: 28px;
-      background: rgba(255, 255, 252, 0.84);
-      box-shadow: var(--soft);
-      padding: 24px;
-    }
-
-    .section h2 {
-      margin: 0;
-      font-size: 24px;
-      line-height: 1.2;
-      font-weight: 900;
-    }
-
-    .section > p,
-    .section .lead {
-      margin: 10px 0 0;
-      color: var(--muted);
-      font-size: 14px;
-      line-height: 1.7;
-      font-weight: 700;
-    }
-
-    .grid {
-      display: grid;
-      gap: 14px;
-      margin-top: 18px;
-    }
-
-    .grid.two { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-    .grid.three { grid-template-columns: repeat(3, minmax(0, 1fr)); }
-    .grid.four { grid-template-columns: repeat(4, minmax(0, 1fr)); }
-
-    .spec-card {
-      border: 1px solid var(--line);
       border-radius: var(--card-radius);
-      background: rgba(255, 255, 252, 0.92);
-      padding: 16px;
+      background: rgba(255,255,252,.92);
       box-shadow: var(--soft);
+      padding: 16px;
     }
-
-    .spec-card h3 {
-      margin: 0;
-      font-size: 15px;
-      line-height: 1.25;
-      font-weight: 900;
-    }
-
-    .spec-card p,
-    .spec-card li {
-      color: var(--muted);
-      font-size: 12px;
-      line-height: 1.6;
-      font-weight: 720;
-    }
-
-    .spec-card p { margin: 8px 0 0; }
-    .spec-card ul { margin: 10px 0 0; padding-left: 18px; }
+    .card p { margin-bottom: 0; }
 
     .token {
       display: grid;
       grid-template-columns: 42px 1fr;
       gap: 10px;
       align-items: center;
-      min-height: 58px;
       border: 1px solid var(--line);
       border-radius: 16px;
       background: white;
       padding: 8px;
     }
-
     .swatch {
       width: 42px;
       height: 42px;
-      border: 1px solid rgba(29, 34, 40, 0.12);
+      border: 1px solid rgba(29,34,40,.14);
       border-radius: 12px;
       background: var(--c);
     }
+    .token b { display: block; font-size: 12px; }
+    .token span { color: var(--muted); font-size: 11px; font-weight: 750; }
 
-    .token b,
-    .token span {
-      display: block;
-      font-size: 12px;
-      line-height: 1.25;
-    }
-
-    .token span { color: var(--muted); font-weight: 750; }
-
-    .type-spec {
-      display: grid;
-      grid-template-columns: 120px 1fr 140px;
-      gap: 10px;
-      align-items: baseline;
-      border-top: 1px solid var(--line);
-      padding: 12px 0;
-    }
-
-    .type-spec:first-child { border-top: 0; padding-top: 0; }
-    .type-spec b { font-size: 13px; }
-    .type-spec p { margin: 0; color: var(--ink); font-weight: 850; }
-    .type-spec span { color: var(--muted); font-size: 12px; font-weight: 750; }
-
-    .phone-demo {
-      position: relative;
-      width: 260px;
-      height: 562px;
-      margin: 0 auto;
+    table {
+      width: 100%;
+      margin-top: 16px;
+      border-collapse: collapse;
       overflow: hidden;
-      border: 1px solid rgba(29, 34, 40, 0.12);
-      border-radius: 32px;
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      font-size: 12px;
+    }
+    th, td {
+      border-bottom: 1px solid rgba(29,34,40,.08);
+      padding: 10px 12px;
+      text-align: left;
+      vertical-align: top;
+      line-height: 1.55;
+    }
+    th { background: rgba(53,92,125,.08); font-weight: 900; }
+    td { color: rgba(29,34,40,.72); font-weight: 680; }
+    tr:last-child td { border-bottom: 0; }
+
+    .phone {
+      position: relative;
+      width: min(var(--phone-width), 100%);
+      min-height: 660px;
+      margin: 0 auto;
+      border: 1px solid var(--line);
+      border-radius: 34px;
       background: var(--paper);
       box-shadow: var(--deep);
+      overflow: hidden;
     }
-
-    .phone-status {
-      position: absolute;
-      inset: 0 0 auto;
-      height: 36px;
-      z-index: 8;
+    .status {
+      height: 40px;
       display: flex;
       justify-content: space-between;
-      padding: 11px 18px 0;
-      font-size: 11px;
+      align-items: center;
+      padding: 0 22px;
+      font-size: 13px;
       font-weight: 900;
+      background: rgba(251,251,248,.86);
     }
-
-    .phone-top {
-      position: absolute;
-      inset: 36px 0 auto;
-      z-index: 7;
-      min-height: 112px;
-      padding: 10px 14px 14px;
-      background: rgba(251, 251, 248, 0.75);
+    .top-glass {
+      position: sticky;
+      top: 0;
+      z-index: 20;
+      padding: 14px 16px 16px;
+      background: rgba(251,251,248,.75);
       backdrop-filter: blur(30px) saturate(1.5);
       -webkit-backdrop-filter: blur(30px) saturate(1.5);
     }
-
-    .top-tools {
-      display: grid;
-      grid-template-columns: 1fr 36px 36px;
-      gap: 8px;
-    }
-
-    .scope {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      min-height: 38px;
+    .top-row { display: grid; grid-template-columns: 1fr 44px 44px 52px; gap: 10px; align-items: center; }
+    .select-box, .icon-btn, .ai-btn, .search-box {
+      min-height: 44px;
       border: 1px solid var(--line);
-      border-radius: var(--control-radius);
-      background: rgba(255, 255, 252, 0.92);
-      padding: 0 10px;
-      font-size: 12px;
-      font-weight: 900;
-      box-shadow: var(--soft);
-    }
-
-    .icon-box {
+      border-radius: 14px;
+      background: rgba(255,255,252,.82);
       display: grid;
       place-items: center;
-      width: 36px;
-      height: 36px;
-      border: 1px solid var(--line);
-      border-radius: var(--control-radius);
-      background: rgba(255, 255, 252, 0.92);
       font-weight: 900;
-      box-shadow: var(--soft);
+      box-shadow: 0 10px 24px rgba(29,34,40,.06);
     }
-
-    .chips {
-      display: flex;
-      gap: 6px;
-      margin-top: 10px;
+    .select-box { justify-items: start; padding: 0 14px; }
+    .ai-btn { background: var(--clay); color: white; border-color: transparent; }
+    .metrics { display: flex; gap: 18px; margin-top: 12px; font-size: 12px; font-weight: 900; }
+    .scroll {
+      height: 560px;
       overflow: hidden;
+      padding: 16px 16px 120px;
+      background: linear-gradient(180deg, rgba(255,255,252,.82), rgba(251,251,248,.1));
     }
-
-    .chip {
-      flex: 0 0 auto;
+    .catalog {
       display: grid;
-      place-items: center;
-      min-height: 28px;
-      border: 1px solid var(--line);
-      border-radius: 12px;
-      background: white;
-      padding: 0 10px;
-      color: var(--muted);
-      font-size: 10px;
-      font-weight: 900;
-    }
-
-    .chip.active {
-      border-color: transparent;
-      background: var(--denim);
-      color: white;
-    }
-
-    .phone-scroll {
-      position: absolute;
-      inset: 36px 0 0;
-      padding: 164px 14px 104px;
-      overflow: hidden;
-    }
-
-    .phone-stack {
-      display: grid;
-      grid-template-columns: repeat(2, 1fr);
-      gap: 10px;
-    }
-
-    .item-card {
-      border: 1px solid var(--line);
-      border-radius: var(--card-radius);
-      background: rgba(255, 255, 252, 0.92);
-      padding: var(--card-pad);
-      box-shadow: var(--soft);
-    }
-
-    .garment-thumb {
-      position: relative;
-      aspect-ratio: var(--media-ratio);
-      overflow: hidden;
-      border-radius: var(--inner-radius);
-      background: linear-gradient(90deg, var(--a) 0 50%, var(--b) 50% 100%);
-    }
-
-    .garment-thumb::after {
-      content: "";
-      position: absolute;
-      top: 14px;
-      left: 50%;
-      width: 38px;
-      height: 22px;
-      border-radius: 0 0 20px 20px;
-      background: var(--paper);
-      transform: translateX(-50%);
-    }
-
-    .item-card b {
-      display: block;
-      margin: 10px 6px 0;
-      font-size: 12px;
-      line-height: 1.2;
-    }
-
-    .item-card span {
-      display: block;
-      margin: 5px 6px 0;
-      color: var(--muted);
-      font-size: 10px;
-      font-weight: 780;
-    }
-
-    .dock {
-      position: absolute;
-      inset: auto 14px 14px;
-      z-index: 9;
-      display: grid;
-      grid-template-columns: repeat(4, 1fr);
-      gap: 6px;
-      height: 74px;
-      border: 1px solid var(--line);
-      border-radius: var(--dock-radius);
-      background: rgba(255, 255, 252, 0.75);
-      padding: var(--dock-pad);
-      box-shadow: var(--soft);
-      backdrop-filter: blur(30px) saturate(1.45);
-      -webkit-backdrop-filter: blur(30px) saturate(1.45);
-    }
-
-    .dock-item {
-      display: grid;
-      justify-items: center;
-      align-content: center;
-      gap: 4px;
-      border-radius: var(--dock-inner);
-      color: var(--muted);
-      font-size: 10px;
-      font-weight: 900;
-    }
-
-    .dock-item.active {
-      background: var(--denim);
-      color: white;
-    }
-
-    .toast {
-      position: absolute;
-      right: 14px;
-      bottom: 96px;
-      left: 14px;
-      z-index: 12;
-      display: grid;
-      grid-template-columns: 30px 1fr 36px;
-      gap: 9px;
-      align-items: center;
-      min-height: 58px;
-      overflow: hidden;
-      border: 1px solid var(--line);
-      border-left: 3px solid var(--moss);
-      border-radius: var(--dock-inner);
-      background: rgba(255, 255, 252, 0.75);
-      box-shadow: 0 16px 38px rgba(29, 34, 40, 0.14);
-      padding: 8px 6px 8px 10px;
-      backdrop-filter: blur(30px) saturate(1.45);
-      -webkit-backdrop-filter: blur(30px) saturate(1.45);
-    }
-
-    .toast-icon,
-    .toast-close {
-      display: grid;
-      place-items: center;
-      border-radius: 12px;
-    }
-
-    .toast-icon {
-      width: 30px;
-      height: 30px;
-      background: rgba(95, 112, 88, 0.12);
-      color: var(--moss);
-      font-weight: 900;
-    }
-
-    .toast-close {
-      width: 36px;
-      height: 36px;
-      color: rgba(29, 34, 40, 0.45);
-      font-weight: 900;
-    }
-
-    .toast b,
-    .toast span {
-      display: block;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      white-space: nowrap;
-    }
-
-    .toast b {
-      font-size: 11px;
-      line-height: 1.2;
-      font-weight: 900;
-    }
-
-    .toast span {
-      margin-top: 3px;
-      color: var(--muted);
-      font-size: 9px;
-      font-weight: 800;
-    }
-
-    .fab {
-      position: absolute;
-      right: 14px;
-      bottom: 100px;
-      z-index: 7;
-      display: grid;
-      place-items: center;
-      width: 48px;
-      height: 48px;
-      border-radius: 50%;
-      background: var(--denim);
-      color: white;
-      font-size: 24px;
-      box-shadow: 0 12px 28px rgba(53, 92, 125, 0.28);
-    }
-
-    .diagram {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 16px;
-      align-items: center;
-    }
-
-    .callouts {
-      display: grid;
-      gap: 10px;
-    }
-
-    .callout {
-      border: 1px solid var(--line);
-      border-radius: 16px;
-      background: white;
-      padding: 12px;
-    }
-
-    .callout b {
-      display: block;
-      font-size: 13px;
-    }
-
-    .callout span {
-      display: block;
-      margin-top: 4px;
-      color: var(--muted);
-      font-size: 12px;
-      font-weight: 750;
-      line-height: 1.45;
-    }
-
-    .card-demo {
-      display: grid;
-      gap: 12px;
-    }
-
-    .inner-demo {
-      border-radius: var(--inner-radius);
-      background: rgba(240, 242, 238, 0.82);
-      padding: 12px;
-    }
-
-    .button-row {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 10px;
-      align-items: center;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 14px;
       margin-top: 14px;
     }
-
-    .btn {
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      gap: 7px;
-      min-height: 44px;
-      border: 1px solid transparent;
-      border-radius: var(--control-radius);
-      padding: 0 16px;
-      font-size: 13px;
-      font-weight: 900;
-    }
-
-    .btn.primary { background: var(--denim); color: white; }
-    .btn.moss { background: var(--moss); color: white; }
-    .btn.clay { background: var(--clay); color: white; }
-    .btn.ghost {
-      border-color: var(--line);
+    .item-card {
+      height: 304px;
+      overflow: hidden;
+      border: 1px solid rgba(29,34,40,.08);
+      border-radius: 18px;
       background: white;
-      color: var(--ink);
     }
-
-    .icon-button {
+    .media {
+      position: relative;
+      height: 210px;
+      border-radius: 18px 18px 12px 12px;
+      background: linear-gradient(90deg, var(--c1), var(--c1) 50%, var(--c2) 50%);
+      overflow: hidden;
+    }
+    .media::after {
+      content: "";
+      position: absolute;
+      top: 26px;
+      left: 50%;
+      width: 46px;
+      height: 24px;
+      margin-left: -23px;
+      border-radius: 0 0 24px 24px;
+      background: white;
+    }
+    .item-body { height: 94px; padding: 12px; }
+    .item-body b, .item-body span { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .item-body b { font-size: 14px; }
+    .item-body span { margin-top: 6px; color: var(--muted); font-size: 11px; font-weight: 800; }
+    .dots { display: flex; gap: 6px; margin-top: 10px; }
+    .dot { width: 10px; height: 10px; border-radius: 50%; border: 1px solid rgba(29,34,40,.16); background: var(--c); }
+    .fab {
+      position: absolute;
+      right: 24px;
+      bottom: 104px;
+      z-index: 40;
+      width: 54px;
+      height: 54px;
       display: grid;
       place-items: center;
-      width: 44px;
-      height: 44px;
-      border: 1px solid var(--line);
-      border-radius: var(--control-radius);
-      background: white;
-      box-shadow: var(--soft);
-      font-size: 20px;
-      font-weight: 900;
+      border-radius: 50%;
+      background: var(--denim);
+      color: white;
+      font-size: 34px;
+      line-height: 1;
+      box-shadow: 0 18px 44px rgba(53,92,125,.28);
     }
-
-    .footer-demo {
+    .bottom-nav {
+      position: absolute;
+      left: 16px;
+      right: 16px;
+      bottom: 18px;
+      z-index: 30;
       display: grid;
-      grid-template-columns: 112px 1fr;
-      gap: 12px;
-      min-height: 74px;
-      border: 1px solid var(--line);
+      grid-template-columns: repeat(4, 1fr);
+      gap: 8px;
+      padding: 8px;
+      border: 1px solid rgba(53,92,125,.18);
       border-radius: var(--dock-radius);
-      background: rgba(251, 251, 248, 0.75);
-      padding: 10px;
+      background: rgba(255,255,252,.75);
       backdrop-filter: blur(30px) saturate(1.45);
       -webkit-backdrop-filter: blur(30px) saturate(1.45);
+      box-shadow: var(--soft);
     }
-
-    .footer-demo .btn {
+    .nav-item {
+      height: 64px;
+      display: grid;
+      place-items: center;
+      border-radius: 18px;
+      color: rgba(29,34,40,.48);
+      font-size: 11px;
+      font-weight: 900;
+    }
+    .nav-item.active { background: var(--denim); color: white; }
+    .toast {
+      position: absolute;
+      left: 16px;
+      right: 16px;
+      bottom: 100px;
+      z-index: 75;
       min-height: 52px;
-      border-radius: calc(var(--dock-radius) - 10px);
-    }
-
-    .toast-row {
       display: grid;
-      gap: 12px;
-      margin-top: 16px;
-    }
-
-    .toast-sample {
-      display: grid;
-      grid-template-columns: 30px 1fr 40px;
+      grid-template-columns: 30px 1fr 44px;
       gap: 10px;
       align-items: center;
-      min-height: 58px;
       border: 1px solid var(--line);
-      border-left: 3px solid var(--c);
-      border-radius: var(--dock-inner);
-      background: rgba(255, 255, 252, 0.75);
-      box-shadow: 0 16px 38px rgba(29, 34, 40, 0.12);
-      padding: 8px 6px 8px 10px;
-      backdrop-filter: blur(30px) saturate(1.45);
-      -webkit-backdrop-filter: blur(30px) saturate(1.45);
+      border-left: 3px solid var(--moss);
+      border-radius: 18px;
+      background: rgba(255,255,252,.95);
+      box-shadow: var(--soft);
+      padding: 8px 8px 8px 12px;
+      backdrop-filter: blur(18px) saturate(1.25);
+      -webkit-backdrop-filter: blur(18px) saturate(1.25);
     }
-
-    .toast-sample .mark {
+    .toast .mark, .toast .close {
       display: grid;
       place-items: center;
-      width: 30px;
-      height: 30px;
       border-radius: 12px;
-      background: color-mix(in srgb, var(--c) 14%, white);
-      color: var(--c);
       font-weight: 900;
     }
+    .toast .mark { width: 28px; height: 28px; background: rgba(95,112,88,.14); color: var(--moss); }
+    .toast .close { width: 44px; height: 44px; color: rgba(29,34,40,.45); }
+    .toast b, .toast span { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .toast b { font-size: 12px; }
+    .toast span { margin-top: 2px; color: var(--muted); font-size: 10px; font-weight: 760; }
 
-    .toast-sample b,
-    .toast-sample span { display: block; }
-    .toast-sample b { font-size: 12px; }
-    .toast-sample span { margin-top: 3px; color: var(--muted); font-size: 10px; font-weight: 780; }
-
-    .field-grid {
+    .component-demo {
       display: grid;
-      gap: 9px;
+      gap: 10px;
+      border-radius: 22px;
+      background: var(--mist);
+      padding: 14px;
     }
-
-    .field {
-      display: grid;
-      grid-template-columns: 72px 1fr;
-      min-height: 45px;
-      align-items: center;
-      border: 1px solid var(--line);
-      border-radius: var(--control-radius);
-      background: white;
-      padding: 0 12px;
-    }
-
-    .field span {
-      color: var(--muted);
-      font-size: 11px;
-      font-weight: 850;
-    }
-
-    .field b {
-      min-width: 0;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      white-space: nowrap;
-      font-size: 13px;
-    }
-
-    .color-card {
-      display: grid;
-      gap: 12px;
-    }
-
-    .color-mode,
-    .swatch-line {
-      display: flex;
-      gap: 8px;
-      align-items: center;
-      flex-wrap: wrap;
-    }
-
-    .mode {
-      flex: 1;
-      display: grid;
-      place-items: center;
-      min-height: 38px;
-      border: 1px solid var(--line);
-      border-radius: 12px;
-      background: white;
-      color: var(--muted);
-      font-size: 11px;
-      font-weight: 900;
-    }
-
-    .mode.active {
-      border-color: rgba(53, 92, 125, 0.45);
-      background: rgba(53, 92, 125, 0.1);
-      color: var(--denim);
-    }
-
-    .swatch-pill {
+    .swatch-row, .thumb-row { display: flex; flex-wrap: wrap; gap: 8px; }
+    .color-chip {
       display: inline-flex;
       align-items: center;
-      gap: 7px;
-      min-height: 36px;
+      gap: 6px;
+      min-height: 34px;
       border: 1px solid var(--line);
       border-radius: 12px;
       background: white;
       padding: 0 10px;
-      color: rgba(29, 34, 40, 0.72);
-      font-size: 11px;
-      font-weight: 850;
+      font-size: 12px;
+      font-weight: 800;
     }
-
-    .dot {
+    .color-chip i {
       width: 16px;
       height: 16px;
-      border: 1px solid rgba(29, 34, 40, 0.14);
-      border-radius: 50%;
+      border: 1px solid rgba(29,34,40,.16);
+      border-radius: 6px;
       background: var(--c);
     }
-
     .temp {
-      display: grid;
-      gap: 9px;
-      border-radius: var(--control-radius);
-      background: white;
-      padding: 12px;
-    }
-
-    .temp-head {
-      display: flex;
-      justify-content: space-between;
-      color: var(--muted);
-      font-size: 11px;
-      font-weight: 850;
-    }
-
-    .temp-head b {
-      color: var(--ink);
-      font-size: 12px;
-    }
-
-    .temp-track {
       position: relative;
+      height: 44px;
+      padding-top: 16px;
+    }
+    .track {
       height: 12px;
       border-radius: 999px;
-      background: linear-gradient(90deg, #2f80d0, #3db6c5 20%, #d4b23c 50%, #e16a2f 80%, #d33d3d);
-      opacity: 0.38;
+      background: linear-gradient(90deg, hsl(210,80%,55%), hsl(190,70%,55%), hsl(45,75%,55%), hsl(20,80%,55%), hsl(0,75%,55%));
+      opacity: .42;
     }
-
-    .temp-fill {
+    .handle {
       position: absolute;
-      left: 63%;
-      width: 17%;
-      height: 12px;
-      border-radius: inherit;
-      background: linear-gradient(90deg, #d4b23c, #e16a2f);
-      opacity: 1;
-    }
-
-    .temp-handle {
-      position: absolute;
-      top: 50%;
+      top: 12px;
       width: 20px;
       height: 20px;
-      border: 2px solid white;
+      border: 3px solid white;
       border-radius: 50%;
-      background: white;
-      box-shadow: 0 1px 4px rgba(29, 34, 40, 0.18);
-      transform: translate(-50%, -50%);
+      background: var(--denim);
+      box-shadow: 0 6px 16px rgba(29,34,40,.22);
     }
-
-    .temp-handle.min { left: 63%; }
-    .temp-handle.max { left: 80%; }
-
-    .page-map {
-      display: grid;
-      grid-template-columns: repeat(4, 1fr);
-      gap: 10px;
+    .thumb {
+      width: 56px;
+      height: 72px;
+      border-radius: 12px;
+      border: 2px solid transparent;
+      background: linear-gradient(90deg, var(--c1), var(--c1) 50%, var(--c2) 50%);
     }
+    .thumb.active { border-color: var(--denim); }
 
-    .map-item {
-      border: 1px solid var(--line);
-      border-radius: 16px;
-      background: white;
-      padding: 12px;
-      min-height: 68px;
-    }
-
-    .map-item b {
-      display: block;
+    .note {
+      border-left: 3px solid var(--clay);
+      border-radius: 14px;
+      background: rgba(185,113,85,.08);
+      padding: 12px 14px;
+      color: rgba(29,34,40,.74);
       font-size: 12px;
-    }
-
-    .map-item span {
-      display: block;
-      margin-top: 4px;
-      color: var(--muted);
-      font-size: 11px;
-      font-weight: 780;
-    }
-
-    .checklist {
-      columns: 2;
-      column-gap: 24px;
-      margin: 18px 0 0;
-      padding-left: 20px;
-    }
-
-    .checklist li {
-      break-inside: avoid;
-      margin: 0 0 8px;
-      color: var(--muted);
-      font-size: 12px;
-      line-height: 1.5;
       font-weight: 750;
+      line-height: 1.6;
     }
 
     @media (max-width: 900px) {
-      .layout {
-        display: block;
-        width: calc(100vw - 28px);
-        padding: 18px 0 42px;
-      }
-
-      .side {
-        position: static;
-        margin-bottom: 18px;
-      }
-
-      .hero,
-      .grid.two,
-      .grid.three,
-      .grid.four,
-      .diagram {
-        grid-template-columns: 1fr;
-      }
-
-      .hero,
-      .section {
-        padding: 18px;
-      }
-
-      .hero h1 {
-        font-size: 32px;
-      }
-
-      .checklist { columns: 1; }
-      .page-map { grid-template-columns: repeat(2, 1fr); }
+      .layout { display: block; width: min(100vw - 28px, 720px); }
+      .side { position: static; margin-bottom: 20px; }
+      .hero { grid-template-columns: 1fr; }
+      .two, .three, .four { grid-template-columns: 1fr; }
+      h1 { font-size: 32px; }
+      .section { padding: 18px; }
+      table { display: block; overflow-x: auto; white-space: nowrap; }
     }
   </style>
 </head>
 <body>
   <div class="layout">
-    <aside class="side">
-      <b>UI 规范目录</b>
-      <a href="#overview">总览</a>
-      <a href="#tokens">基础令牌</a>
-      <a href="#copy">文字规范</a>
-      <a href="#framework">页面框架</a>
-      <a href="#glass">毛玻璃层</a>
-      <a href="#cards">卡片样式</a>
-      <a href="#buttons">按钮样式</a>
-      <a href="#toast">通知 Toast</a>
-      <a href="#content">内容组件</a>
-      <a href="#pages">页面状态</a>
-      <a href="#qa">验收清单</a>
-    </aside>
+    <nav class="side" aria-label="目录">
+      <b>UI 规范 v0.2</b>
+      <a href="#overview">规范定位</a>
+      <a href="#tokens">Design Tokens</a>
+      <a href="#shell">页面框架</a>
+      <a href="#routes">Route 矩阵</a>
+      <a href="#overlays">覆盖层</a>
+      <a href="#components">组件契约</a>
+      <a href="#domain">领域组件</a>
+      <a href="#intake">录入流程</a>
+      <a href="#toast">Toast 通知</a>
+      <a href="#states">系统状态</a>
+      <a href="#tests">验收映射</a>
+    </nav>
 
     <main>
       <section id="overview" class="hero">
         <div>
           <h1>衣橱穿搭助手 UI 规范</h1>
-          <p>本规范对应当前本地 3:4 竖屏 UI 原型，用于统一页面框架、毛玻璃层、卡片、按钮、Toast、文案与内容组件。后续页面补齐和代码实现应优先按本页规则执行。</p>
+          <p>v0.2 是生产 UI 契约，不再只是静态原型说明。Markdown 是唯一事实源，HTML 是同步预览。适用范围为手机竖屏 PWA 与 Capacitor Android WebView。</p>
           <div class="meta-row">
-            <span class="pill">版本 v0.1</span>
-            <span class="pill">仅竖向 3:4</span>
-            <span class="pill">手机画板 390 x 844</span>
-            <span class="pill">不含横屏版</span>
+            <span class="pill">状态：active</span>
+            <span class="pill">App：2.1.7-test</span>
+            <span class="pill">图片比例：竖向 3:4</span>
+            <span class="pill">Commit：fac558d</span>
           </div>
         </div>
-        <div class="phone-demo">
-          <div class="phone-status"><span>9:41</span><span>5G&nbsp;&nbsp;82%</span></div>
-          <div class="phone-top">
-            <div class="top-tools">
-              <div class="scope">全部衣橱 <span>48 件</span></div>
-              <div class="icon-box">⌕</div>
-              <div class="icon-box">▥</div>
+        <div class="phone" aria-label="首页框架示例">
+          <div class="status"><span>9:41</span><span>5G 82%</span></div>
+          <div class="top-glass">
+            <div class="top-row">
+              <div class="select-box">全部衣橱&nbsp;&nbsp;<span style="color:var(--muted)">48 件</span></div>
+              <div class="icon-btn">⌕</div>
+              <div class="icon-btn">▥</div>
+              <div class="ai-btn">✦</div>
             </div>
-            <div class="chips">
+            <div class="metrics"><span>42 可穿</span><span>3 地点</span><span>5 待确认</span></div>
+            <div class="chips" style="margin-top:12px">
               <span class="chip active">全部 48</span>
               <span class="chip">上衣 14</span>
               <span class="chip">裤装 9</span>
+              <span class="chip">更多</span>
             </div>
           </div>
-          <div class="phone-scroll">
-            <div class="phone-stack">
-              <div class="item-card"><div class="garment-thumb" style="--a:#edebe4;--b:#d2d8dd"></div><b>白色短袖衬衫</b><span>上衣 · 默认衣橱</span></div>
-              <div class="item-card"><div class="garment-thumb" style="--a:#355c7d;--b:#213142"></div><b>藏蓝直筒裤</b><span>裤装 · 通勤</span></div>
-              <div class="item-card"><div class="garment-thumb" style="--a:#6f8067;--b:#a9b49e"></div><b>苔绿色外套</b><span>外套 · 旅行</span></div>
-              <div class="item-card"><div class="garment-thumb" style="--a:#8c4a62;--b:#c59aa8"></div><b>酒红半裙</b><span>裙装 · 约会</span></div>
+          <div class="scroll">
+            <div class="catalog">
+              <div class="item-card">
+                <div class="media" style="--c1:#ede9df;--c2:#cfd6dc"></div>
+                <div class="item-body"><b>白色短袖衬衫</b><span>上衣 · 默认衣橱</span><div class="dots"><i class="dot" style="--c:#fff"></i><i class="dot" style="--c:#355c7d"></i></div></div>
+              </div>
+              <div class="item-card">
+                <div class="media" style="--c1:#355c7d;--c2:#1f3448"></div>
+                <div class="item-body"><b>藏蓝直筒裤</b><span>裤装 · 通勤</span><div class="dots"><i class="dot" style="--c:#355c7d"></i><i class="dot" style="--c:#1d2228"></i></div></div>
+              </div>
+              <div class="item-card">
+                <div class="media" style="--c1:#6d8068;--c2:#aab6a2"></div>
+                <div class="item-body"><b>苔绿色外套</b><span>外套 · 旅行</span><div class="dots"><i class="dot" style="--c:#5f7058"></i></div></div>
+              </div>
+              <div class="item-card">
+                <div class="media" style="--c1:#93455d;--c2:#c191a4"></div>
+                <div class="item-body"><b>酒红半裙</b><span>裙装 · 约会</span><div class="dots"><i class="dot" style="--c:#8c4a62"></i><i class="dot" style="--c:#b97155"></i></div></div>
+              </div>
             </div>
           </div>
           <div class="fab">+</div>
-          <div class="toast"><div class="toast-icon">✓</div><div><b>已保存到衣橱</b><span>服务器读回完成，衣物已更新。</span></div><div class="toast-close">×</div></div>
-          <div class="dock">
-            <div class="dock-item active">衣<br>衣橱</div>
-            <div class="dock-item">叠<br>套装</div>
-            <div class="dock-item">袋<br>种草</div>
-            <div class="dock-item">⚙<br>设置</div>
+          <div class="toast"><span class="mark">✓</span><div><b>已保存到衣橱</b><span>服务器读回完成，衣物已更新。</span></div><span class="close">×</span></div>
+          <div class="bottom-nav">
+            <div class="nav-item active">衣橱</div>
+            <div class="nav-item">套装</div>
+            <div class="nav-item">种草</div>
+            <div class="nav-item">设置</div>
           </div>
         </div>
       </section>
 
       <section id="tokens" class="section">
-        <h2>基础令牌</h2>
-        <p class="lead">颜色、尺寸和圆角来自当前原型，不新增另一套设计系统。</p>
+        <h2>Design Tokens</h2>
+        <p>核心 token 以生产代码为准。`Mist` 采用当前 Tailwind 值 `#f4f5f3`，旧原型 `#f0f2ee` 不再作为生产 token。</p>
         <div class="grid four">
-          <div class="token"><i class="swatch" style="--c:#1d2228"></i><div><b>Ink</b><span>#1d2228 · 主文字</span></div></div>
-          <div class="token"><i class="swatch" style="--c:#fbfbf8"></i><div><b>Paper</b><span>#fbfbf8 · 底色</span></div></div>
-          <div class="token"><i class="swatch" style="--c:#f0f2ee"></i><div><b>Mist</b><span>#f0f2ee · 次级背景</span></div></div>
-          <div class="token"><i class="swatch" style="--c:#fffffc"></i><div><b>Surface</b><span>#fffffc · 卡片</span></div></div>
-          <div class="token"><i class="swatch" style="--c:#355c7d"></i><div><b>Denim</b><span>#355c7d · 主操作</span></div></div>
-          <div class="token"><i class="swatch" style="--c:#5f7058"></i><div><b>Moss</b><span>#5f7058 · 次确认</span></div></div>
-          <div class="token"><i class="swatch" style="--c:#b97155"></i><div><b>Clay</b><span>#b97155 · AI 入口</span></div></div>
-          <div class="token"><i class="swatch" style="--c:#8c4a62"></i><div><b>Berry</b><span>#8c4a62 · 种草/酒红</span></div></div>
+          <div class="token"><i class="swatch" style="--c:var(--ink)"></i><div><b>Ink</b><span>#1d2228</span></div></div>
+          <div class="token"><i class="swatch" style="--c:var(--paper)"></i><div><b>Paper</b><span>#fbfbf8</span></div></div>
+          <div class="token"><i class="swatch" style="--c:var(--mist)"></i><div><b>Mist</b><span>#f4f5f3</span></div></div>
+          <div class="token"><i class="swatch" style="--c:var(--surface)"></i><div><b>Surface</b><span>#fffffc</span></div></div>
+          <div class="token"><i class="swatch" style="--c:var(--denim)"></i><div><b>Denim</b><span>#355c7d</span></div></div>
+          <div class="token"><i class="swatch" style="--c:var(--moss)"></i><div><b>Moss</b><span>#5f7058</span></div></div>
+          <div class="token"><i class="swatch" style="--c:var(--clay)"></i><div><b>Clay</b><span>#b97155</span></div></div>
+          <div class="token"><i class="swatch" style="--c:var(--berry)"></i><div><b>Berry</b><span>#8c4a62</span></div></div>
         </div>
-
-        <div class="grid four">
-          <div class="spec-card"><h3>手机画板</h3><p><code>390 x 844</code>，手机外框圆角 <code>32px</code>。</p></div>
-          <div class="spec-card"><h3>图片比例</h3><p>单品图、详情主图、裁切默认框统一 <code>3:4</code>。</p></div>
-          <div class="spec-card"><h3>卡片圆角</h3><p>一级卡片 <code>28px</code>，卡片内图 <code>18px</code>。</p></div>
-          <div class="spec-card"><h3>菜单圆角</h3><p>底部菜单 <code>26px</code>，内层按钮 <code>18px</code>。</p></div>
-        </div>
+        <table>
+          <tr><th>类别</th><th>契约</th><th>当前事实</th></tr>
+          <tr><td>Glass</td><td>顶部/底部目标透明度 75%，blur 30px</td><td>代码仍有 `#fbfbf8/94`、`.surface blur(18px)` 等差异，后续按 token 收敛</td></tr>
+          <tr><td>Radius</td><td>一级卡片 28px，内图按同心关系递减</td><td>共享 item shell 当前多为 `rounded-2xl`，列为收敛项</td></tr>
+          <tr><td>Motion</td><td>使用 `duration.fast/normal/panel/slow` 和 `spring.snappy/soft/gentle`</td><td>事实源为 `src/lib/motion-tokens.ts`</td></tr>
+        </table>
       </section>
 
-      <section id="copy" class="section">
-        <h2>文字规范</h2>
-        <p class="lead">文案要短、准、可执行。统计数据保持小号，不做夸张仪表盘。</p>
-        <div class="spec-card">
-          <div class="type-spec"><b>页面标题</b><p>添加单品</p><span>17px / 850 / 居中</span></div>
-          <div class="type-spec"><b>标题副文案</b><p>步骤 1 / 2 · 选择照片</p><span>11px / 750 / 单行</span></div>
-          <div class="type-spec"><b>卡片标题</b><p>颜色</p><span>15px / 850</span></div>
-          <div class="type-spec"><b>详情名称</b><p>白色短袖衬衫</p><span>20px / 850 / 不进卡片</span></div>
-          <div class="type-spec"><b>按钮文案</b><p>下一步（AI 识别）</p><span>13px / 850 / 动作明确</span></div>
-        </div>
-        <div class="grid three">
-          <div class="spec-card"><h3>必须准确</h3><p>步骤数要跟真实流程一致。当前单品录入是 <code>1 / 2</code> 和 <code>2 / 2</code>。</p></div>
-          <div class="spec-card"><h3>避免解释 UI</h3><p>页面内不写“这是毛玻璃”“点击这里进入下一页”等设计说明。</p></div>
-          <div class="spec-card"><h3>按钮写结果</h3><p>用“保存 3 件单品”“加入衣橱”，不用“确认”“好的”等泛词。</p></div>
-        </div>
-      </section>
-
-      <section id="framework" class="section">
+      <section id="shell" class="section">
         <h2>页面框架样式</h2>
-        <p class="lead">每个页面都是固定手机画板，顶部和底部浮层独立于内容滚动。</p>
-        <div class="diagram">
-          <div class="phone-demo">
-            <div class="phone-status"><span>9:41</span><span>5G&nbsp;&nbsp;82%</span></div>
-            <div class="phone-top"><div class="top-tools"><div class="scope">页面标题</div><div class="icon-box">×</div></div><div class="chips"><span class="chip active">固定筛选</span><span class="chip">状态</span></div></div>
-            <div class="phone-scroll"><div class="phone-stack"><div class="item-card"><div class="garment-thumb" style="--a:#edebe4;--b:#d2d8dd"></div><b>内容卡片</b><span>滚动内容</span></div><div class="item-card"><div class="garment-thumb" style="--a:#355c7d;--b:#213142"></div><b>内容卡片</b><span>可被顶部遮罩</span></div></div></div>
-            <div class="dock"><div class="dock-item active">衣<br>衣橱</div><div class="dock-item">叠<br>套装</div><div class="dock-item">袋<br>种草</div><div class="dock-item">⚙<br>设置</div></div>
-          </div>
-          <div class="callouts">
-            <div class="callout"><b>1. 状态栏</b><span>固定在手机顶部，高于背景内容。</span></div>
-            <div class="callout"><b>2. 顶部毛玻璃</b><span>承载标题、返回、关闭、筛选和固定统计。</span></div>
-            <div class="callout"><b>3. 滚动内容区</b><span>从顶部层下方开始，滚动经过顶部时被毛玻璃遮住。</span></div>
-            <div class="callout"><b>4. 底部浮层</b><span>导航或操作栏均为悬浮圆角矩形，不贴屏幕边缘。</span></div>
-          </div>
-        </div>
-      </section>
-
-      <section id="glass" class="section">
-        <h2>毛玻璃层</h2>
         <div class="grid three">
-          <div class="spec-card"><h3>顶部层</h3><p><code>rgba(251,251,248,0.75)</code><br><code>blur(30px) saturate(1.5)</code></p></div>
-          <div class="spec-card"><h3>底部层</h3><p><code>rgba(255,255,252,0.75)</code><br><code>blur(30px) saturate(1.45)</code></p></div>
-          <div class="spec-card"><h3>禁止项</h3><p>顶部下方不加硬边框，不加额外渐变过渡区。</p></div>
+          <div class="card"><h3>顶部独立层</h3><p>标题、返回、操作、筛选和统计属于顶部固定层。滚动内容经过其下方时由毛玻璃遮罩，不再加硬边框或额外渐变。</p></div>
+          <div class="card"><h3>底部悬浮层</h3><p>底部导航和底部操作栏使用圆角矩形。激活按钮与外框保持同心圆角关系，背景透明度目标 75%。</p></div>
+          <div class="card"><h3>Safe Area</h3><p>顶部、底部、FAB、Toast 和全屏流必须考虑 `env(safe-area-inset-*)`；录入和裁切使用 `100dvh`。</p></div>
         </div>
       </section>
 
-      <section id="cards" class="section">
-        <h2>卡片样式</h2>
-        <p class="lead">卡片关系以“同心圆角”为准，内层圆角不是机械复制外层半径。</p>
-        <div class="grid three">
-          <div class="spec-card card-demo">
-            <h3>一级卡片</h3>
-            <p>圆角 28px，背景白色高透明，轻边框和轻阴影。</p>
-            <div class="inner-demo">二级区域圆角更小，保持内外同心。</div>
-          </div>
-          <div class="item-card">
-            <div class="garment-thumb" style="--a:#edebe4;--b:#d2d8dd"></div>
-            <b>衣物卡片</b>
-            <span>图片固定 3:4 · 内圆角 18px</span>
-          </div>
-          <div class="spec-card">
-            <h3>详情标题不进卡片</h3>
-            <p style="color:#b97155;margin-top:14px">今天未穿</p>
-            <p style="color:var(--ink);font-size:20px;font-weight:900;margin-top:2px">白色短袖衬衫</p>
-            <p>上衣 / 衬衫 · 默认衣橱 · 可穿</p>
-          </div>
-        </div>
+      <section id="routes" class="section">
+        <h2>Route 矩阵</h2>
+        <p>代码路由只有 15 个 `AppRouteName`。约 36 个画板状态是视觉覆盖清单，不是 route 枚举。</p>
+        <table>
+          <tr><th>Route</th><th>Tab</th><th>类型</th><th>全局创建</th><th>默认返回</th></tr>
+          <tr><td><code>wardrobe_home</code></td><td>衣橱</td><td>主页面</td><td>是</td><td>停留 / 退出确认</td></tr>
+          <tr><td><code>garment_detail</code></td><td>衣橱/种草来源</td><td>详情</td><td>否</td><td><code>returnRoute</code> 或来源页</td></tr>
+          <tr><td><code>outfit_home</code></td><td>套装</td><td>主页面</td><td>是</td><td>停留 / 退出确认</td></tr>
+          <tr><td><code>outfit_detail</code></td><td>套装</td><td>详情</td><td>否</td><td>套装首页或月历</td></tr>
+          <tr><td><code>outfit_calendar</code></td><td>套装</td><td>子页面</td><td>否</td><td>套装首页</td></tr>
+          <tr><td><code>wishlist_home</code></td><td>种草</td><td>主页面</td><td>是</td><td>停留 / 退出确认</td></tr>
+          <tr><td><code>wishlist_purchased/rejected/archived</code></td><td>种草</td><td>子页面</td><td>否</td><td>种草首页</td></tr>
+          <tr><td><code>settings_home</code></td><td>设置</td><td>主页面</td><td>否</td><td>停留 / 退出确认</td></tr>
+          <tr><td><code>account_management</code></td><td>设置</td><td>子页面</td><td>否</td><td>设置首页</td></tr>
+          <tr><td><code>change_password</code></td><td>设置</td><td>子页面</td><td>否</td><td>账号管理</td></tr>
+          <tr><td><code>intake_single_item/outfit/wishlist</code></td><td>对应业务</td><td>录入流</td><td>否</td><td><code>returnTo</code></td></tr>
+        </table>
       </section>
 
-      <section id="buttons" class="section">
-        <h2>按钮样式</h2>
-        <p class="lead">按钮、筛选和底部操作栏要统一圆角语言；底部菜单和按钮按同心关系处理。</p>
-        <div class="spec-card">
-          <h3>普通按钮</h3>
-          <div class="button-row">
-            <span class="btn primary">主操作</span>
-            <span class="btn moss">查看</span>
-            <span class="btn clay">AI</span>
-            <span class="btn ghost">取消</span>
-            <span class="icon-button">⌕</span>
-            <span class="icon-button">⚙</span>
-          </div>
-        </div>
+      <section id="overlays" class="section">
+        <h2>覆盖层与返回优先级</h2>
         <div class="grid two">
-          <div class="spec-card">
-            <h3>筛选标签</h3>
-            <div class="chips" style="margin-top:14px"><span class="chip active">全部 48</span><span class="chip">上衣 14</span><span class="chip">裤装 9</span><span class="chip">更多</span></div>
-            <p>圆角矩形，选中态 Denim，不出现黑色阴影区。</p>
+          <div class="card">
+            <h3>层级</h3>
+            <table>
+              <tr><th>层</th><th>z-index</th></tr>
+              <tr><td>Bottom Nav</td><td>30</td></tr>
+              <tr><td>FAB</td><td>40</td></tr>
+              <tr><td>Sheet</td><td>50</td></tr>
+              <tr><td>Popover</td><td>70</td></tr>
+              <tr><td>Toast</td><td>75</td></tr>
+              <tr><td>Lightbox</td><td>80</td></tr>
+              <tr><td>Intake</td><td>90</td></tr>
+              <tr><td>Critical Dialog</td><td>100-120</td></tr>
+            </table>
           </div>
-          <div class="spec-card">
-            <h3>底部操作栏</h3>
-            <div class="footer-demo" style="margin-top:14px"><span class="btn ghost">上一步</span><span class="btn primary">下一步（AI 识别）</span></div>
-            <p>外框圆角 26px，内按钮圆角 16px 左右，保持同心弧度。</p>
+          <div class="card">
+            <h3>返回优先级</h3>
+            <ol>
+              <li>关闭 Lightbox。</li>
+              <li>关闭创建 Sheet、图片来源 Sheet。</li>
+              <li>关闭裁切器。</li>
+              <li>录入流内部处理返回。</li>
+              <li>二级 route 按 `getBackRoute` 返回。</li>
+              <li>主 Tab 弹退出确认。</li>
+            </ol>
           </div>
         </div>
+      </section>
+
+      <section id="components" class="section">
+        <h2>核心组件契约</h2>
+        <table>
+          <tr><th>组件</th><th>用途</th><th>关键规则</th></tr>
+          <tr><td><code>AppSubPageTopBar</code></td><td>二级页顶部</td><td>无右侧操作时不渲染空白按钮；title/subtitle 单行截断</td></tr>
+          <tr><td><code>DetailHeroGallery</code></td><td>详情媒体</td><td>名称和属性不放进卡片；媒体标签来自 slide kind</td></tr>
+          <tr><td><code>CatalogWaterfallCardShell</code></td><td>瀑布流卡片</td><td>固定 304px；媒体 210px；内容 94px；多选有 `aria-pressed`</td></tr>
+          <tr><td><code>ItemColorFields</code></td><td>颜色展示/编辑</td><td>26 色目录、12 常用色、14 扩展色；未知色不进入标准色</td></tr>
+          <tr><td><code>TemperatureRangeSlider</code></td><td>温度范围</td><td>44px 命中区；点击轨道不改值；键盘可操作</td></tr>
+          <tr><td><code>MotionToast/Sheet/Lightbox</code></td><td>覆盖层</td><td>复用 Motion tokens；Toast 做播报语义；Sheet/Lightbox 锁滚</td></tr>
+          <tr><td><code>IntakeFlowShell</code></td><td>录入全屏流</td><td>只显示用户可见两步，内部状态不新增步骤编号</td></tr>
+        </table>
+      </section>
+
+      <section id="domain" class="section">
+        <h2>领域组件图示</h2>
+        <div class="grid three">
+          <div class="card">
+            <h3>颜色色卡</h3>
+            <p>详情和编辑都按色卡显示，不用纯文本替代。</p>
+            <div class="component-demo">
+              <div class="swatch-row">
+                <span class="color-chip"><i style="--c:#f8fafc"></i>主色 白</span>
+                <span class="color-chip"><i style="--c:#243b5a"></i>辅助 藏青</span>
+                <span class="color-chip"><i style="--c:#7b2e3a"></i>扩展 酒红</span>
+              </div>
+            </div>
+          </div>
+          <div class="card">
+            <h3>温度条</h3>
+            <p>范围 `-20℃ ~ 40℃`，滑块只能拖动 handle。</p>
+            <div class="component-demo">
+              <div class="temp"><div class="track"></div><i class="handle" style="left:42%"></i><i class="handle" style="left:70%"></i></div>
+              <p style="margin:0">18℃ ~ 28℃</p>
+            </div>
+          </div>
+          <div class="card">
+            <h3>缩略图</h3>
+            <p>录入、胶片栏和队列图都用圆角矩形。</p>
+            <div class="component-demo">
+              <div class="thumb-row">
+                <i class="thumb active" style="--c1:#ede9df;--c2:#cfd6dc"></i>
+                <i class="thumb" style="--c1:#355c7d;--c2:#1f3448"></i>
+                <i class="thumb" style="--c1:#93455d;--c2:#c191a4"></i>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section id="intake" class="section">
+        <h2>录入流程</h2>
+        <p>用户可见只有两步；AI 识别、裁切、失败草稿、部分保存是内部子状态。</p>
+        <table>
+          <tr><th>Step</th><th>ID</th><th>标题</th><th>主按钮</th></tr>
+          <tr><td>1</td><td><code>select_photo</code></td><td>选择照片</td><td>下一步（AI 识别）</td></tr>
+          <tr><td>2</td><td><code>confirm_params</code></td><td>确认信息</td><td>保存 N 件单品/种草</td></tr>
+        </table>
+        <div class="note">不得出现 `步骤 3 / 3`。识别失败必须进入确认页的失败草稿状态，允许手动补全和局部重新识别。部分保存必须说明未完成项不会入库。</div>
       </section>
 
       <section id="toast" class="section">
-        <h2>通知 Toast</h2>
-        <p class="lead">Toast 是悬浮通知，不参与文档流。首页样例宽度与底部菜单一致，层级高于滚动内容、加号和底部菜单。</p>
+        <h2>Toast 通知样式</h2>
         <div class="grid two">
-          <div class="spec-card">
-            <h3>结构</h3>
+          <div class="card">
+            <h3>契约</h3>
             <ul>
-              <li>左侧状态图标。</li>
-              <li>中间主文案和辅助文案。</li>
-              <li>右侧关闭图标。</li>
-              <li>左侧 3px 状态色条。</li>
+              <li>宽度与底部操作栏同一内容宽度。</li>
+              <li>悬浮于页面全部内容之上，`z-[75]`。</li>
+              <li>关闭按钮命中区 44px。</li>
+              <li>Error 使用 `alert/assertive`，其他使用 `status/polite`。</li>
             </ul>
           </div>
-          <div class="spec-card">
-            <h3>视觉参数</h3>
-            <ul>
-              <li>背景：<code>rgba(255,255,252,0.75)</code></li>
-              <li>模糊：<code>blur(30px)</code></li>
-              <li>圆角：<code>18px</code></li>
-              <li>左右边距：与底部菜单一致</li>
-            </ul>
-          </div>
-        </div>
-        <div class="toast-row">
-          <div class="toast-sample" style="--c:var(--moss)"><span class="mark">✓</span><div><b>已保存到衣橱</b><span>服务器读回完成，衣物已更新。</span></div><span class="mark" style="background:transparent;color:rgba(29,34,40,.45)">×</span></div>
-          <div class="toast-sample" style="--c:var(--denim)"><span class="mark">i</span><div><b>正在识别图片</b><span>可以留在当前页面等待结果。</span></div><span class="mark" style="background:transparent;color:rgba(29,34,40,.45)">×</span></div>
-          <div class="toast-sample" style="--c:#d85c5c"><span class="mark">!</span><div><b>保存失败</b><span>网络异常，草稿已保留在当前页面。</span></div><span class="mark" style="background:transparent;color:rgba(29,34,40,.45)">×</span></div>
-        </div>
-      </section>
-
-      <section id="content" class="section">
-        <h2>内容组件</h2>
-        <div class="grid two">
-          <div class="spec-card">
-            <h3>颜色色卡</h3>
-            <p>颜色不写成纯文字，按生产逻辑用色点 + 名称展示。</p>
-            <div class="color-card" style="margin-top:14px">
-              <div class="color-mode"><span class="mode active">单主色</span><span class="mode">拼色</span><span class="mode">主辅色</span></div>
-              <div class="swatch-line"><span class="swatch-pill"><i class="dot" style="--c:#f8f8f2"></i>白色</span><span class="swatch-pill"><i class="dot" style="--c:#355c7d"></i>藏蓝</span><span class="swatch-pill"><i class="dot" style="--c:#8c4a62"></i>酒红</span></div>
-            </div>
-          </div>
-          <div class="spec-card">
-            <h3>温度条</h3>
-            <p>温度不使用纯文本字段，必须使用范围条表达。</p>
-            <div class="temp" style="margin-top:14px"><div class="temp-head"><span>适穿温度</span><b>18℃ ~ 28℃</b></div><div class="temp-track"><i class="temp-fill"></i><i class="temp-handle min"></i><i class="temp-handle max"></i></div></div>
-          </div>
-        </div>
-        <div class="grid two">
-          <div class="spec-card">
-            <h3>字段表单</h3>
-            <div class="field-grid" style="margin-top:14px">
-              <div class="field"><span>名称</span><b>白色短袖衬衫</b></div>
-              <div class="field"><span>分类</span><b>上衣 / 衬衫</b></div>
-              <div class="field"><span>衣橱</span><b>默认衣橱</b></div>
-            </div>
-          </div>
-          <div class="spec-card">
-            <h3>图片缩略图</h3>
-            <p>队列缩略图使用圆角矩形，不使用圆形。选中态用 Denim 边框。</p>
-            <div class="button-row">
-              <span class="swatch" style="--c:#edebe4;border:3px solid var(--denim);width:54px;height:70px;border-radius:12px"></span>
-              <span class="swatch" style="--c:#355c7d;width:54px;height:70px;border-radius:12px"></span>
-              <span class="swatch" style="--c:#8c4a62;width:54px;height:70px;border-radius:12px"></span>
+          <div class="card">
+            <h3>样式示例</h3>
+            <div class="component-demo">
+              <div style="display:grid;grid-template-columns:30px 1fr 44px;align-items:center;gap:10px;border-left:3px solid var(--moss);border-radius:18px;background:rgba(255,255,252,.95);padding:8px 8px 8px 12px;box-shadow:var(--soft)">
+                <span class="toast mark">✓</span>
+                <div><b style="display:block;font-size:12px">已保存到衣橱</b><span style="display:block;color:var(--muted);font-size:10px;font-weight:760">服务器读回完成，衣物已更新。</span></div>
+                <span style="display:grid;width:44px;height:44px;place-items:center;color:rgba(29,34,40,.45)">×</span>
+              </div>
             </div>
           </div>
         </div>
       </section>
 
-      <section id="pages" class="section">
-        <h2>页面状态</h2>
-        <p class="lead">当前按“可独立返回的实际子页面”统计为 36 个页面级状态，不含弹窗和底部抽屉。</p>
-        <div class="page-map">
-          <div class="map-item"><b>01 衣橱首页</b><span>主入口</span></div>
-          <div class="map-item"><b>02 搜索衣物</b><span>衣橱下级</span></div>
-          <div class="map-item"><b>03 穿着统计</b><span>衣橱下级</span></div>
-          <div class="map-item"><b>04-08 单品链路</b><span>详情 / 编辑 / 裁切 / 录入</span></div>
-          <div class="map-item"><b>09-20 套装与计划</b><span>套装 / 月历 / 打包清单</span></div>
-          <div class="map-item"><b>21-29 种草</b><span>详情 / 录入 / 归档</span></div>
-          <div class="map-item"><b>30-36 设置</b><span>账号 / AI / 位置 / 密码</span></div>
-          <div class="map-item"><b>通用</b><span>顶部、底部、Toast、裁切</span></div>
-        </div>
+      <section id="states" class="section">
+        <h2>系统状态</h2>
+        <table>
+          <tr><th>状态</th><th>UI 规则</th></tr>
+          <tr><td><code>auth_initializing</code> / <code>unauthenticated</code></td><td>登录前由 `AuthGate` 管理；提供登录、注册、协议/隐私入口。</td></tr>
+          <tr><td><code>workspace_loading</code> / <code>workspace_error</code></td><td>工作区加载失败用 `OnlinePageError`，必须提供重试。</td></tr>
+          <tr><td><code>sync_refreshing</code> / <code>sync_refresh_error</code></td><td>页面内轻提示或 `OnlineInlineNotice`，保留当前数据。</td></tr>
+          <tr><td><code>camera_permission_denied</code></td><td>明确提示前往系统设置开启，不静默失败。</td></tr>
+          <tr><td><code>ai_key_missing</code></td><td>引导前往设置页配置 MiniMax Key。</td></tr>
+          <tr><td><code>diagnostic_uploading/success/failed</code></td><td>诊断上传有描述、创建工单、上传、成功/失败；错误码可读。</td></tr>
+        </table>
       </section>
 
-      <section id="qa" class="section">
-        <h2>验收清单</h2>
-        <ul class="checklist">
-          <li>只保留竖向 3:4 版本。</li>
-          <li>所有页面顶部都有独立毛玻璃层。</li>
-          <li>顶部下方没有硬边框和多余渐变区。</li>
-          <li>底部导航是悬浮圆角矩形。</li>
-          <li>底部导航激活项不是圆形。</li>
-          <li>一级卡片圆角统一为 28px。</li>
-          <li>卡片内图片与外卡片保持同心圆角。</li>
-          <li>筛选标签没有黑色阴影区。</li>
-          <li>空操作位不显示白色空框。</li>
-          <li>设置图标必须是齿轮。</li>
-          <li>所有主图、缩略图、裁切默认框按 3:4。</li>
-          <li>单品录入流程是 2 步。</li>
-          <li>颜色使用色卡展示。</li>
-          <li>温度使用温度条展示。</li>
-          <li>详情页名称和属性不放进卡片。</li>
-          <li>Toast 宽度与底部菜单一致，悬浮于所有内容之上。</li>
-        </ul>
+      <section id="tests" class="section">
+        <h2>验收映射</h2>
+        <table>
+          <tr><th>范围</th><th>验证</th></tr>
+          <tr><td>路由/返回</td><td><code>npm run test:logic:app-route</code></td></tr>
+          <tr><td>详情框架</td><td><code>npm run test:logic:detail-shell</code></td></tr>
+          <tr><td>组件复用</td><td><code>npm run test:logic:component-reuse</code></td></tr>
+          <tr><td>色卡</td><td><code>npm run test:logic:color-catalog</code></td></tr>
+          <tr><td>录入</td><td><code>npm run test:logic:garment-intake-multi-image</code>、<code>npm run test:logic:intake-fullscreen-layout</code></td></tr>
+          <tr><td>多选</td><td><code>npm run test:logic:catalog-multi-select</code>、<code>npm run test:logic:catalog-multi-select-integration</code></td></tr>
+          <tr><td>规范 HTML</td><td>Playwright 桌面和 390px 渲染检查，无横向溢出。</td></tr>
+        </table>
       </section>
     </main>
   </div>
