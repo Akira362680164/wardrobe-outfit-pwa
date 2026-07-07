@@ -1,3 +1,15 @@
+## 2026-07-08 / v2.1.8-test / Codex — 统一种草与衣物录入缩略图保存
+
+- **执行 Agent**：Codex（未触发 subagent：用户未通知）。
+- **目的**：全量修复种草正式图片缺 `thumbnail` 的问题，并清理种草流程相对衣物录入流程的非必要差异。
+- **版本变更**：`package.json` / `package-lock.json` 从 `2.1.7-test` 升级到 `2.1.8-test`；Android `versionCode` 由构建脚本推导为 `20108`。
+- **改动文件**：`src/lib/intake-thumbnail.ts`、`src/components/wardrobe-app.tsx`、`src/components/wishlist-view-2.0.tsx`、`scripts/test-wishlist-intake-confirm-contract.ts`、`package.json`、`package-lock.json`、`VERSION_HISTORY.md`。
+- **改动说明**：新增共享缩略图准备函数，衣物录入和种草录入保存前都按同一规则从原图、裁切框和裁切 revision 生成 `original + thumbnail`；种草编辑页保存前也补齐本地图片缩略图，防止替换/裁切图片后缺少正式缩略图；删除旧 `add_edit` 表单里不可达的新增分支，新增种草继续统一进入 `GarmentIntakeFlow`，旧表单只保留为编辑已有种草使用；合同测试改为检查两条录入链路共同使用共享 helper，防止以后再出现种草单独补丁。
+- **交付产物**：`衣橱穿搭助手-v2.1.8-test.apk`，大小 9.5MB，SHA-256 `4e23207e6c0852ad3b4ab4b81e1fd9856361afc9d9949f92127f116a8064f2c9`；包名 `com.wardrobe.outfit`，versionName `2.1.8-test`，versionCode `20108`，签名主体 `CN=fangzheng`。
+- **验证结果**：`npm run typecheck`、`npm run test:logic:wishlist-intake-confirm-contract`、`npm run test:logic:garment-intake-confirm-contract`、`npm run test:logic:garment-intake-multi-image`、`npm run test:logic:wishlist-management-followup`、`npm run test:logic:online-writes`、`npm run test:logic:intake-draft`、`npm run test:logic:intake-entry-crop-regression`、`npm run test:logic`、`npm run build`、`npm run android:apk` 均通过；`aapt dump badging` 与 `apksigner verify --print-certs` 核验通过；默认 AVD `wardrobe-test` 因 snapshot pending 超时未启动，改用备用 AVD `wardrobe-visible-test`（Android 15 / sdk_gphone64_arm64）完成 APK 覆盖安装、启动、版本核对和 logcat 崩溃筛查，结果目录 `test-results/android-emulator/20260708-014157/`，未发现 `FATAL EXCEPTION` 或 `Process: com.wardrobe.outfit` 崩溃。
+- **风险门禁**：high（图片上传资产绑定、线上写入路径、核心录入流程、版本号和 APK 交付）；未触发 subagent：用户未通知。
+- **未验证风险**：未登录真实账号做端到端新增种草/新增衣物线上写入回归；未执行 MiniMax live 识别；未在厂商真机上安装验证；旧默认 AVD `wardrobe-test` 的 snapshot pending 问题仍未处理，本轮已用备用 AVD 完成交付验证。
+
 ## 2026-07-08 / v2.1.7-test / Codex — v0.3-alpha 真实业务流视觉评审台
 
 - **执行 Agent**：Codex（按用户明确要求触发 4 个只读 subagent：Poincare 核对真实流程选择器；Leibniz 核对状态/数据清单；Arendt 核对静态 HTML 交互；Hypatia 核对截图流程与隐私边界。subagent 均未编辑文件，反馈已由主 agent 修正）。

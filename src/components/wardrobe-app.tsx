@@ -69,7 +69,8 @@ import {
   MotionToast,
 } from "@/components/motion-common";
 import { ease, spring } from "@/lib/motion-tokens";
-import { createGarmentThumbnailFromOriginal, generateThumbnailSafe, prepareGarmentThumbnail } from "@/lib/thumbnail-runtime";
+import { createGarmentThumbnailFromOriginal, generateThumbnailSafe } from "@/lib/thumbnail-runtime";
+import { ensureGarmentIntakeDraftThumbnail, isIntakeThumbnailGenerationError } from "@/lib/intake-thumbnail";
 import { GarmentImage } from "@/components/garment-image";
 import { ConfirmActionSheet, NoticeSheet } from "@/components/dialogs";
 import { OnlineInlineNotice } from "@/components/online/online-inline-notice";
@@ -710,7 +711,7 @@ export function WardrobeApp({ cloudAuth }: { cloudAuth?: WardrobeCloudAuth } = {
     try {
       const prepared: Array<{ item: ReturnType<typeof garmentDraftToWardrobeItem>; clientMutationId: string; draftId: string }> = [];
       for (const draft of drafts) {
-        const readyDraft = await ensureGarmentDraftThumbnail(draft);
+        const readyDraft = await ensureGarmentIntakeDraftThumbnail(draft);
         const item = garmentDraftToWardrobeItem(readyDraft, { now });
         const submission = context?.submissions.find((entry) => entry.draftId === draft.id);
         if (item.localOriginalDataUrl) prepared.push({ item, clientMutationId: submission?.clientMutationId ?? crypto.randomUUID(), draftId: draft.id });
@@ -733,40 +734,11 @@ export function WardrobeApp({ cloudAuth }: { cloudAuth?: WardrobeCloudAuth } = {
       showMessage(`已保存 ${items.length} 件单品`);
       return { items };
     } catch (err) {
-      showMessage(err instanceof Error && err.message === "GARMENT_THUMBNAIL_GENERATION_FAILED"
+      showMessage(isIntakeThumbnailGenerationError(err)
         ? "缩略图生成失败，请重试"
         : "保存单品失败，请重试", "error");
       throw err;
     }
-  }
-
-  async function ensureGarmentDraftThumbnail(draft: GarmentIntakeDraft): Promise<GarmentIntakeDraft> {
-    if (!draft.imageDataUrl) throw new Error("GARMENT_ORIGINAL_IMAGE_MISSING");
-    const cropRevision = draft.cropRevision ?? (draft.cropBox ? 1 : 0);
-    if (
-      draft.thumbnailDataUrl
-      && (draft.thumbnailCropRevision ?? cropRevision) === cropRevision
-    ) {
-      return {
-        ...draft,
-        cropRevision,
-        thumbnailCropRevision: draft.thumbnailCropRevision ?? cropRevision,
-      };
-    }
-    const thumbnail = await prepareGarmentThumbnail({
-      originalDataUrl: draft.imageDataUrl,
-      cropBox: draft.cropBox,
-      cropRevision,
-    });
-    if (thumbnail.thumbnailStatus !== "ready" || !thumbnail.thumbnailDataUrl) {
-      throw new Error("GARMENT_THUMBNAIL_GENERATION_FAILED");
-    }
-    return {
-      ...draft,
-      cropRevision,
-      thumbnailDataUrl: thumbnail.thumbnailDataUrl,
-      thumbnailCropRevision: thumbnail.thumbnailCropRevision ?? cropRevision,
-    };
   }
   async function updateItemStatus(item: WardrobeItem, status: GarmentStatus) {
     if (!item.id) return;

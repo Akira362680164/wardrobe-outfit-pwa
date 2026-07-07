@@ -17,7 +17,7 @@ import {
 import type {
   WishlistItem, WardrobeItem, SavedOutfit, ClosetLocation,
   WishlistAssessment,
-  GarmentFitGender, TemperatureRange, GarmentCategory, WishlistStatus, WishlistItemDraft,
+  GarmentFitGender, TemperatureRange, GarmentCategory, WishlistStatus,
 } from "@/lib/types";
 import {
   CATEGORY_LABELS, SEASON_LABELS, STYLE_LABELS,
@@ -54,6 +54,11 @@ import { GarmentImage } from "@/components/garment-image";
 import { garmentDraftToWishlistItem } from "@/lib/intake-save-adapters";
 import type { GarmentIntakeDraft } from "@/lib/intake-draft";
 import { generateThumbnailSafe } from "@/lib/thumbnail-runtime";
+import {
+  ensureGarmentIntakeDraftThumbnail,
+  ensureLocalImageThumbnail,
+  isIntakeThumbnailGenerationError,
+} from "@/lib/intake-thumbnail";
 import { useStableBackHandler } from "@/lib/use-stable-back-handler";
 import { TemperatureRangeSlider } from "@/components/temperature-range-slider";
 import { normalizeTemperatureRange } from "@/lib/temperature-range";
@@ -540,44 +545,47 @@ export function WishlistView20({
     if (!formName.trim()) { onMessage("请输入商品名称", "info"); return; }
     setIsFormSaving(true);
     try {
-    const now = new Date().toISOString();
-    // 适穿温度：把 min/max 数字（独立 Slider 返回 {minC, maxC}）规整为 Item schema 期待的 TemperatureRange
-    const cleanedTempRange: TemperatureRange | undefined = normalizeTemperatureRange(formTemperatureRange);
-    const base = {
-      name: formName.trim(),
-      localOriginalDataUrl: formSourceImageDataUrl || formImageDataUrl || undefined,
-      localCroppedPreviewDataUrl: formImageDataUrl || undefined,
-      localCropBox: formCropBox,
-      localThumbnailDataUrl: formThumbnailDataUrl,
-      category: (formCategory || "tops") as WishlistItem["category"],
-      subcategory: formSubcategory || undefined,
-      colors: buildColorInfo((formColorMode || "single") as WishlistItem["colors"]["mode"], formPrimaryColors.length > 0 ? formPrimaryColors : (formMainColor ? [formMainColor] : []), formAccentColors),
-      seasons: formSeasons.length > 0 ? (formSeasons as WishlistItem["seasons"]) : [],
-      styles: formStyles.length > 0 ? (formStyles as WishlistItem["styles"]) : [],
-      temperatureRange: cleanedTempRange,
-      fitGender: formFitGender,
-      fitNotes: formFitNotes.trim() || undefined,
-      price: formPrice.trim() ? parseFloat(formPrice) : undefined,
-      productUrl: formProductUrl.trim() || undefined,
-      formality: formFormality ? parseInt(formFormality, 10) : undefined,
-      warmth: formWarmth ? parseInt(formWarmth, 10) : undefined,
-      material: formMaterial.trim() || undefined,
-      notes: formNote.trim() || undefined,
-      status: formStatus,
-      updatedAt: now,
-    };
+      const now = new Date().toISOString();
+      // 适穿温度：把 min/max 数字（独立 Slider 返回 {minC, maxC}）规整为 Item schema 期待的 TemperatureRange
+      const cleanedTempRange: TemperatureRange | undefined = normalizeTemperatureRange(formTemperatureRange);
+      const base = {
+        name: formName.trim(),
+        localOriginalDataUrl: formSourceImageDataUrl || formImageDataUrl || undefined,
+        localCroppedPreviewDataUrl: formImageDataUrl || undefined,
+        localCropBox: formCropBox,
+        localThumbnailDataUrl: formThumbnailDataUrl,
+        category: (formCategory || "tops") as WishlistItem["category"],
+        subcategory: formSubcategory || undefined,
+        colors: buildColorInfo((formColorMode || "single") as WishlistItem["colors"]["mode"], formPrimaryColors.length > 0 ? formPrimaryColors : (formMainColor ? [formMainColor] : []), formAccentColors),
+        seasons: formSeasons.length > 0 ? (formSeasons as WishlistItem["seasons"]) : [],
+        styles: formStyles.length > 0 ? (formStyles as WishlistItem["styles"]) : [],
+        temperatureRange: cleanedTempRange,
+        fitGender: formFitGender,
+        fitNotes: formFitNotes.trim() || undefined,
+        price: formPrice.trim() ? parseFloat(formPrice) : undefined,
+        productUrl: formProductUrl.trim() || undefined,
+        formality: formFormality ? parseInt(formFormality, 10) : undefined,
+        warmth: formWarmth ? parseInt(formWarmth, 10) : undefined,
+        material: formMaterial.trim() || undefined,
+        notes: formNote.trim() || undefined,
+        status: formStatus,
+        updatedAt: now,
+      };
 
+      const fingerprint = JSON.stringify({ editId, base });
+      const clientMutationId = formMutationRef.current?.fingerprint === fingerprint
+        ? formMutationRef.current.clientMutationId
+        : createClientMutationId();
+      formMutationRef.current = { fingerprint, clientMutationId };
 
-    const fingerprint = JSON.stringify({ editId, base });
-    const clientMutationId = formMutationRef.current?.fingerprint === fingerprint
-      ? formMutationRef.current.clientMutationId
-      : createClientMutationId();
-    formMutationRef.current = { fingerprint, clientMutationId };
-
-    if (editId) {
+      if (!editId) {
+        onMessage("请重新打开种草编辑页", "error");
+        return;
+      }
       const existingItem = wishlistItems.find((w) => w.id === editId);
       if (!existingItem) { onMessage("该种草已不存在，请刷新后重试", "error"); return; }
-      const result = await wardrobeRepository.updateWishlistItem(existingItem, base, { clientMutationId });
+      const preparedBase = await ensureLocalImageThumbnail(base);
+      const result = await wardrobeRepository.updateWishlistItem(existingItem, preparedBase, { clientMutationId });
       if (!result.ok) {
         if (result.code === "conflict") {
           await onDataChanged?.();
@@ -588,19 +596,14 @@ export function WishlistView20({
         return;
       }
       onMessage("已更新种草单品");
-    } else {
-      const newItem: Omit<WishlistItemDraft, "id"> = {
-        ...base,
-        createdAt: now,
-      };
-      const result = await wardrobeRepository.createWishlistItem(newItem, { clientMutationId });
-      if (!result.ok) { onMessage(result.error ?? "保存种草失败，请重试", "error"); return; }
-      onMessage("已添加种草单品");
-    }
-    await onDataChanged?.();
-    formMutationRef.current = null;
-    setSubPage("home");
-    resetForm();
+      await onDataChanged?.();
+      formMutationRef.current = null;
+      setSubPage("home");
+      resetForm();
+    } catch (error) {
+      onMessage(isIntakeThumbnailGenerationError(error)
+        ? "缩略图生成失败，请重试"
+        : "更新种草失败，请重试", "error");
     } finally {
       setIsFormSaving(false);
     }
@@ -611,33 +614,35 @@ export function WishlistView20({
     context?: IntakeSaveBatchContext,
   ): Promise<IntakeBatchSaveResult> => {
     const now = new Date().toISOString();
-    const newItems = await Promise.all(drafts.map(async (draft) => {
-      const item = garmentDraftToWishlistItem(draft, { now });
-      if (item.localThumbnailDataUrl) return item;
-      const thumbnailSource = item.localCroppedPreviewDataUrl || item.localOriginalDataUrl;
-      if (!thumbnailSource) return item;
-      const thumb = await generateThumbnailSafe(thumbnailSource);
-      return thumb.thumbnailDataUrl
-        ? { ...item, localThumbnailDataUrl: thumb.thumbnailDataUrl }
-        : item;
-    }));
     const results: IntakeBatchSaveResult["items"] = [];
-    for (const [index, item] of newItems.entries()) {
-      const { id: _legacyId, ...createItem } = item;
+    for (const [index, draft] of drafts.entries()) {
       const clientMutationId = context?.submissions[index]?.clientMutationId ?? createClientMutationId();
-      const result = await wardrobeRepository.createWishlistItem(createItem, { clientMutationId });
-      results.push({
-        draftId: drafts[index].id,
-        clientMutationId,
-        status: result.ok ? "succeeded" : "failed",
-        error: result.error,
-      });
-      context?.onProgress(index + 1, newItems.length);
+      try {
+        const readyDraft = await ensureGarmentIntakeDraftThumbnail(draft);
+        const { id: _legacyId, ...createItem } = garmentDraftToWishlistItem(readyDraft, { now });
+        const result = await wardrobeRepository.createWishlistItem(createItem, { clientMutationId });
+        results.push({
+          draftId: draft.id,
+          clientMutationId,
+          status: result.ok ? "succeeded" : "failed",
+          error: result.error,
+        });
+      } catch (error) {
+        results.push({
+          draftId: draft.id,
+          clientMutationId,
+          status: "failed",
+          error: isIntakeThumbnailGenerationError(error)
+            ? "缩略图生成失败，请重试"
+            : error instanceof Error ? error.message : "保存种草失败，请重试",
+        });
+      }
+      context?.onProgress(index + 1, drafts.length);
     }
     await onDataChanged?.();
     const failed = results.filter((item) => item.status === "failed").length;
     if (failed === 0) {
-      onMessage(newItems.length > 1 ? `已添加 ${newItems.length} 件种草单品` : "已添加种草单品");
+      onMessage(drafts.length > 1 ? `已添加 ${drafts.length} 件种草单品` : "已添加种草单品");
       setSubPage("home");
       onCreateClosed?.();
     } else {

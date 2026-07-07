@@ -8,6 +8,7 @@ const wishlistView = readFileSync(join(root, "src/components/wishlist-view-2.0.t
 const garmentFlow = readFileSync(join(root, "src/components/garment-intake-flow.tsx"), "utf8");
 const mapper = readFileSync(join(root, "src/lib/wishlist-intake-from-ai.ts"), "utf8");
 const shell = readFileSync(join(root, "src/components/intake-flow-shell.tsx"), "utf8");
+const intakeThumbnail = readFileSync(join(root, "src/lib/intake-thumbnail.ts"), "utf8");
 
 assert.ok(wishlistView.includes('title="添加种草"'));
 assert.ok(wishlistView.includes('flowKind="wishlist"'));
@@ -21,8 +22,13 @@ assert.ok(!/productUrl:\s*candidate/.test(mapper));
 assert.ok(/price:\s*optionalPrice\(draft\.price\)/.test(readFileSync(join(root, "src/lib/intake-save-adapters.ts"), "utf8")));
 assert.ok(!/currency:\s*requiredText/.test(readFileSync(join(root, "src/lib/intake-save-adapters.ts"), "utf8")));
 assert.ok(/productUrl:\s*optionalText\(draft\.productUrl\)/.test(readFileSync(join(root, "src/lib/intake-save-adapters.ts"), "utf8")));
-assert.ok(wishlistView.includes("generateThumbnailSafe(thumbnailSource)"), "wishlist intake save backfills missing thumbnail before online write");
-assert.ok(wishlistView.includes("localThumbnailDataUrl: thumb.thumbnailDataUrl"), "wishlist intake create sends thumbnail asset with original image");
+assert.ok(intakeThumbnail.includes("ensureGarmentIntakeDraftThumbnail"), "shared intake thumbnail helper exists");
+assert.ok(intakeThumbnail.includes("ensureLocalImageThumbnail"), "shared local image thumbnail helper exists");
+assert.ok(wardrobeApp.includes("ensureGarmentIntakeDraftThumbnail(draft)"), "garment intake save uses shared thumbnail helper");
+assert.ok(wishlistView.includes("ensureGarmentIntakeDraftThumbnail(draft)"), "wishlist intake save uses shared thumbnail helper");
+assert.ok(wishlistView.includes("ensureLocalImageThumbnail(base)"), "wishlist add/edit form backfills thumbnails before online write");
+assert.ok(!wishlistView.includes("generateThumbnailSafe(thumbnailSource)"), "wishlist intake no longer has a separate thumbnail backfill patch");
+assert.ok(!wishlistView.includes("WishlistItemDraft"), "wishlist add_edit form no longer keeps an unreachable create branch");
 assert.ok(wardrobeApp.includes("onProcessIntakeImage={processGarmentIntakeImage}"));
 assert.ok(!/price:\s*overrideIfPresent/.test(wardrobeApp));
 assert.ok(!/disabled=\{isProcessing\}/.test(shell));
