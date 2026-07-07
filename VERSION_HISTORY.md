@@ -1,3 +1,14 @@
+## 2026-07-07 / v2.1.7-test / Codex — UI 规范 HTML 小节级图示补齐
+
+- **执行 Agent**：Codex（未触发 subagent：用户未通知）。
+- **目的**：修正 UI 规范 HTML 预览页偏文字说明的问题，让每个具体规范部分都配套对应视觉示意，便于直接理解详情页、Toast、颜色卡片、温度条、圆角和毛玻璃等规则。
+- **版本变更**：无；当前应用版本仍为 `2.1.7-test`。
+- **改动文件**：`scripts/generate-ui-spec-preview.mjs`、`scripts/test-ui-spec-preview-contract.ts`、`scripts/test-ui-spec-preview-render.ts`、`docs/designs/wardrobe-ui-spec.html`、`VERSION_HISTORY.md`。
+- **改动说明**：生成器不再只输出章节文字和章节级总图；对 Markdown 中每个 `###` 小节自动注入具体视觉模块，覆盖颜色 token、同心圆角、glass 层、motion、详情媒体、瀑布流多选、分类细分、系统色卡、温度条、季节风格状态、AI 状态和系统状态；无小节的章节保留对应章节示意；新增合同测试保证 `###` 数量与小节图示数量一致，并检查详情媒体、颜色、温度和 Toast 等关键示意不缺失。
+- **验证结果**：`npm run docs:ui-spec:build`、`npm run docs:ui-spec:check`、`npm run test:logic:ui-spec-preview`、`npm run typecheck` 均通过；额外核对生成 HTML 中 12 个 `part-visual` 与 12 个 `###` 小节一致，且不存在 generic 占位图。
+- **风险门禁**：high（`review-gate --staged` 因 5 个文件、1349 行 staged diff 判定为 high；实际改动仍限定为静态规范生成器、生成 HTML 和测试，不改运行时代码、不改业务流程、不改 Android、不打 APK）；未触发 subagent：用户未通知。
+- **未验证风险**：未在 GitHub Pages 或远程网页环境预览；未对规范页做人工逐屏截图审查。
+
 ## 2026-07-07 / v2.1.7-test / Codex — UI 规范 v0.2-final 收口
 
 - **执行 Agent**：Codex（按执行方案在 Commit 4 后启动 3 个只读 subagent：规范治理审核、生成脚本与 HTML 审核、代码契约审核；subagent 均未编辑文件。审核发现的 `WardrobeImageSourceSheet`/`AppSubPageTopBar` 文档事实冲突、`Step 3` 注释残留和测试覆盖缺口已由主 agent 修正）。

@@ -123,7 +123,8 @@ function renderMarkdownLite(markdown) {
       const level = heading[1].length;
       const text = heading[2].trim();
       const id = level <= 2 ? ` id="${slugify(text)}"` : "";
-      html.push(`<h${level}${id}>${renderInline(text)}</h${level}>`);
+      const visual = level === 3 ? renderPartVisual(text) : "";
+      html.push(`<h${level}${id}>${renderInline(text)}</h${level}>${visual}`);
       i += 1;
       continue;
     }
@@ -186,6 +187,286 @@ function cssVar(colorTokens, token, fallback) {
   return colorTokens.find((entry) => entry.token === token)?.value ?? fallback;
 }
 
+function renderPartVisual(title) {
+  if (/2\.1\s+颜色/.test(title)) {
+    return `
+      <div class="part-visual" data-visual="color-token-palette">
+        <div class="token-strip">
+          <span style="background:var(--ink)">ink</span><span style="background:var(--paper);color:var(--ink)">paper</span>
+          <span style="background:var(--denim)">primary</span><span style="background:var(--moss)">success</span>
+          <span style="background:var(--clay)">ai</span><span style="background:var(--berry)">shopping</span>
+        </div>
+        <div class="visual-caption"><b>颜色 token</b><span>每个语义色都显示色块、名称和用途，不只列十六进制。</span></div>
+      </div>`;
+  }
+
+  if (title.includes("圆角与同心关系")) {
+    return `
+      <div class="part-visual" data-visual="concentric-radius">
+        <div class="radius-demo outer"><div class="radius-demo inner"></div></div>
+        <div class="radius-stack"><span>一级卡片 28px</span><span>内层图片 = 外框半径 - 内边距</span><span>选中按钮与外框弧度一致</span></div>
+      </div>`;
+  }
+
+  if (title.includes("Glass")) {
+    return `
+      <div class="part-visual" data-visual="glass-layer">
+        <div class="glass-scene">
+          <span></span><span></span><span></span>
+          <div class="glass-panel">75% glass / blur 30</div>
+        </div>
+        <div class="shadow-samples"><span>soft</span><span>card</span><span>deep</span></div>
+      </div>`;
+  }
+
+  if (title.includes("Motion")) {
+    return `
+      <div class="part-visual" data-visual="motion-token">
+        <div class="motion-bars"><span style="--w:28%">fast</span><span style="--w:52%">normal</span><span style="--w:76%">panel</span><span style="--w:100%">slow</span></div>
+        <div class="motion-chip-row"><span>fade</span><span>slideUp</span><span>toastDrop</span><span>pop</span></div>
+      </div>`;
+  }
+
+  if (title.includes("详情媒体")) {
+    return `
+      <div class="part-visual" data-visual="detail-media">
+        <div class="detail-hero-demo"><div class="visual-frame-media"></div><div class="filmstrip"><span></span><span></span><span></span></div></div>
+        <div class="detail-meta-demo"><b>白色短袖衬衫</b><span>上衣 / 衬衫 · 默认衣橱 · 可穿</span><small>名称与属性在底层，不塞进一级卡片。</small></div>
+      </div>`;
+  }
+
+  if (title.includes("瀑布流与多选")) {
+    return `
+      <div class="part-visual" data-visual="waterfall-multi-select">
+        <div class="waterfall-demo"><div class="item-card selected"><div class="media-demo"></div><b>白色短袖衬衫</b><small>上衣 · 默认衣橱</small></div><div class="item-card"><div class="media-demo dark"></div><b>藏蓝直筒裤</b><small>裤装 · 通勤</small></div></div>
+        <div class="bulk-bar">已选 1 件 <button>删除</button></div>
+      </div>`;
+  }
+
+  if (title.includes("分类与细分")) {
+    return `
+      <div class="part-visual" data-visual="category-subcategory">
+        <div class="field-card"><b>分类</b><div class="chips"><span class="chip active">上衣</span><span class="chip">裤子</span><span class="chip">半身裙</span></div><div class="chips"><span class="chip active">衬衫</span><span class="chip">T 恤</span><span class="chip">针织</span></div></div>
+      </div>`;
+  }
+
+  if (/8\.2\s+颜色/.test(title)) {
+    return `
+      <div class="part-visual" data-visual="color-fields">
+        <div class="field-card color-field-demo">
+          <b>颜色</b>
+          <div class="segmented-mini"><span class="active">单主色</span><span>主辅色</span><span>拼色</span></div>
+          <div class="swatch-row"><span style="background:#fffffc"></span><span style="background:#355c7d"></span><span style="background:#9aa0a6"></span><span style="background:#e1d9ca"></span><span style="background:#8c4a62"></span></div>
+          <small>常用色与扩展色按系统色卡分组展示。</small>
+        </div>
+      </div>`;
+  }
+
+  if (title.includes("温度")) {
+    return `
+      <div class="part-visual" data-visual="temperature-range">
+        <div class="field-card">
+          <b>温度范围</b>
+          <div class="temperature-slider"><span></span><i class="min"></i><i class="max"></i></div>
+          <div class="temp-labels"><span>-20℃</span><b>18℃ - 28℃</b><span>40℃</span></div>
+        </div>
+      </div>`;
+  }
+
+  if (title.includes("季节、风格、状态")) {
+    return `
+      <div class="part-visual" data-visual="season-style-status">
+        <div class="field-card"><b>季节 / 风格 / 状态</b><div class="chips"><span class="chip active">春秋</span><span class="chip">通勤</span><span class="chip">可穿</span><span class="chip">待确认</span></div></div>
+      </div>`;
+  }
+
+  if (title.includes("AI 状态")) {
+    return `
+      <div class="part-visual" data-visual="ai-state">
+        <div class="status-board"><span><b></b>识别中</span><span><b></b>低置信待确认</span><span><b></b>失败可重试</span><span><b></b>保存失败草稿保留</span></div>
+      </div>`;
+  }
+
+  if (title.includes("系统状态")) {
+    return `
+      <div class="part-visual" data-visual="system-state">
+        <div class="notice-stack"><span>Workspace loading</span><span>Inline retry</span><span>权限被拒绝</span><span>AI Key 缺失</span></div>
+      </div>`;
+  }
+
+  return `<div class="part-visual" data-visual="generic-part"><div class="visual-card"><b>${escapeHtml(title)}</b><span>此小节必须配合对应视觉示意。</span></div></div>`;
+}
+
+function renderSectionVisual(section) {
+  const title = section.title;
+
+  if (title.includes("产品与平台边界")) {
+    return `
+      <div class="visual-phone-mini">
+        <div class="visual-status"><span>9:41</span><span>Portrait</span></div>
+        <div class="visual-frame-media"></div>
+        <div class="visual-note-row"><span>3:4 单品图</span><span>服务器事实源</span></div>
+      </div>
+      <div class="visual-card">
+        <b>平台边界</b>
+        <div class="visual-checks"><span>竖屏</span><span>lucide 图标</span><span>无本地业务缓存</span></div>
+      </div>`;
+  }
+
+  if (title.includes("Design Tokens")) {
+    return `
+      <div class="visual-token-board">
+        <span style="background:var(--ink)"></span>
+        <span style="background:var(--paper)"></span>
+        <span style="background:var(--denim)"></span>
+        <span style="background:var(--moss)"></span>
+        <span style="background:var(--clay)"></span>
+        <span style="background:var(--berry)"></span>
+      </div>
+      <div class="visual-radius-board">
+        <div>一级卡片<br><b>28px</b></div>
+        <div>内层图片<br><b>同心圆角</b></div>
+        <div>菜单按钮<br><b>外框 - 间距</b></div>
+      </div>`;
+  }
+
+  if (title.includes("Viewport")) {
+    return `
+      <div class="safe-phone">
+        <div class="safe-zone top">safe-area top</div>
+        <div class="safe-content">390 x 844<br><span>360px 不横滚</span></div>
+        <div class="safe-zone bottom">safe-area bottom</div>
+      </div>
+      <div class="viewport-chips"><span>360</span><span>375</span><span>390</span><span>412</span><span>430</span></div>`;
+  }
+
+  if (title.includes("App Shell")) {
+    return `
+      <div class="visual-phone-mini shell-demo">
+        <div class="visual-top-glass"><b>顶部毛玻璃层</b><span>筛选 / 标题</span></div>
+        <div class="visual-scroll-cards"><span></span><span></span><span></span></div>
+        <div class="visual-floating-nav"><b>衣橱</b><span>套装</span><span>种草</span><span>设置</span></div>
+      </div>`;
+  }
+
+  if (title.includes("Route")) {
+    return `
+      <div class="route-chain">
+        <span>首页</span><i></i><span>搜索</span><i></i><span>详情</span><i></i><span>编辑</span>
+      </div>
+      <div class="route-grid">
+        <span>Tab 主页面</span><span>详情页</span><span>子页面</span><span>录入流</span>
+      </div>`;
+  }
+
+  if (title.includes("Overlay")) {
+    return `
+      <div class="layer-stack">
+        <span style="--level:6">Toast z75</span>
+        <span style="--level:5">Popover z70</span>
+        <span style="--level:4">Sheet z50</span>
+        <span style="--level:3">FAB z40</span>
+        <span style="--level:2">Bottom nav z30</span>
+        <span style="--level:1">Page</span>
+      </div>`;
+  }
+
+  if (title.includes("核心组件")) {
+    return `
+      <div class="component-grid">
+        <span>AppSubPageTopBar</span><span>DetailShell</span><span>CatalogWaterfallGrid</span>
+        <span>ItemColorFields</span><span>TemperatureRangeSlider</span><span>MotionSheet</span>
+      </div>`;
+  }
+
+  if (title.includes("领域 UI")) {
+    return `
+      <div class="domain-card">
+        <b>分类 / 细分</b>
+        <div class="chips"><span class="chip active">上衣</span><span class="chip">衬衫</span><span class="chip">T 恤</span></div>
+      </div>
+      <div class="domain-card">
+        <b>色卡与温度</b>
+        <div class="swatch-row"><span style="background:#fffffc"></span><span style="background:#355c7d"></span><span style="background:#8c4a62"></span></div>
+        <div class="temp-bar"><i></i></div>
+      </div>`;
+  }
+
+  if (title.includes("录入流程")) {
+    return `
+      <div class="step-flow">
+        <div class="step-card active"><b>1</b><span>选择照片</span><small>缩略图 / 裁切旋转</small></div>
+        <i></i>
+        <div class="step-card"><b>2</b><span>确认信息</span><small>复核 AI 草稿</small></div>
+      </div>
+      <div class="thumb-strip"><span></span><span></span><span></span><button>裁切/旋转</button></div>`;
+  }
+
+  if (title.includes("AI 与系统状态")) {
+    return `
+      <div class="status-board">
+        <span><b></b>识别中</span>
+        <span><b></b>待确认</span>
+        <span><b></b>失败可重试</span>
+        <span><b></b>保存中</span>
+      </div>
+      <div class="inline-notice">失败草稿保留，可手动补全或重新识别。</div>`;
+  }
+
+  if (title.includes("通知 Toast")) {
+    return `
+      <div class="toast-stage">
+        <div class="mini-card"></div>
+        <div class="mini-card"></div>
+        <div class="mini-toast"><b></b><span>已保存 3 件单品</span><button>×</button></div>
+        <div class="mini-bottom-bar">底部操作栏同宽</div>
+      </div>`;
+  }
+
+  if (title.includes("无障碍")) {
+    return `
+      <div class="a11y-board">
+        <span>44px 命中区</span><span>aria-label</span><span>focus ring</span><span>不只靠颜色</span>
+      </div>
+      <div class="focus-demo"><button>保存</button><button class="focused">删除 2 件</button></div>`;
+  }
+
+  if (title.includes("文字规范")) {
+    return `
+      <div class="copy-board">
+        <div><small>推荐</small><b>保存 3 件单品</b></div>
+        <div><small>危险操作</small><b>删除 2 件</b></div>
+        <div><small>错误提示</small><b>草稿已保留，可重试</b></div>
+      </div>`;
+  }
+
+  if (title.includes("Known Deviations")) {
+    return `
+      <div class="debt-board">
+        <span>UI-DEBT-001<br><b>open</b></span>
+        <span>UI-DEBT-002<br><b>closed</b></span>
+        <span>UI-DEBT-005<br><b>closed</b></span>
+      </div>`;
+  }
+
+  if (title.includes("文档治理")) {
+    return `
+      <div class="pipeline">
+        <span>Markdown</span><i></i><span>生成脚本</span><i></i><span>HTML 预览</span><i></i><span>测试</span>
+      </div>`;
+  }
+
+  if (title.includes("验收与测试")) {
+    return `
+      <div class="test-board">
+        <span>ui-spec-preview</span><span>ui-token-contract</span><span>ui-overlay-contract</span>
+        <span>app-route</span><span>detail-shell</span><span>color-catalog</span>
+      </div>`;
+  }
+
+  return `<div class="visual-card"><b>${escapeHtml(title)}</b><p>本章节对应视觉模块。</p></div>`;
+}
+
 function renderHtml({ frontMatter, sections, colorTokens, sourceHash }) {
   const version = frontMatter.version || "v0.2-final";
   const ink = cssVar(colorTokens, "color.ink", "#1d2228");
@@ -199,7 +480,11 @@ function renderHtml({ frontMatter, sections, colorTokens, sourceHash }) {
   const danger = cssVar(colorTokens, "color.danger", "#dc2626");
   const nav = sections.map((section) => `<a href="#${section.id}">${escapeHtml(section.title)}</a>`).join("\n");
   const tokenCards = colorTokens.map((entry) => `<div class="token-card"><span style="background:${entry.value}"></span><b>${escapeHtml(entry.token)}</b><code>${entry.value}</code><small>${escapeHtml(entry.usage)}</small></div>`).join("\n");
-  const sectionHtml = sections.map((section) => `<section class="section" id="${section.id}"><h2>${renderInline(section.title)}</h2>${renderMarkdownLite(section.body)}</section>`).join("\n");
+  const sectionHtml = sections.map((section) => {
+    const hasParts = /^###\s+/m.test(section.body);
+    const visual = hasParts ? "" : `<div class="module-visual" aria-label="${escapeHtml(section.title)} 视觉示意">${renderSectionVisual(section)}</div>`;
+    return `<section class="section" id="${section.id}"><h2>${renderInline(section.title)}</h2>${visual}<div class="module-copy">${renderMarkdownLite(section.body)}</div></section>`;
+  }).join("\n");
 
   return `<!doctype html>
 <!--
@@ -301,6 +586,426 @@ function renderHtml({ frontMatter, sections, colorTokens, sourceHash }) {
     h3 { margin-bottom: 8px; font-size: 15px; line-height: 1.25; font-weight: 900; }
     p, li { color: var(--muted); font-size: 13px; line-height: 1.65; font-weight: 650; }
     .section { border-radius: 28px; padding: 24px; }
+    .module-visual, .part-visual {
+      min-width: 0;
+      margin: 14px 0 18px;
+      border: 1px solid rgba(53,92,125,.14);
+      border-radius: 24px;
+      background: linear-gradient(135deg, rgba(53,92,125,.1), rgba(255,255,252,.9));
+      padding: 16px;
+      display: grid;
+      gap: 14px;
+      overflow: hidden;
+    }
+    .module-visual { grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); align-items: stretch; }
+    .part-visual { grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); align-items: center; }
+    .module-visual > *, .part-visual > * { min-width: 0; }
+    .visual-card, .field-card, .domain-card {
+      border: 1px solid var(--line);
+      border-radius: 20px;
+      background: rgba(255,255,252,.78);
+      padding: 14px;
+      box-shadow: var(--soft);
+    }
+    .visual-card { display: grid; gap: 10px; }
+    .visual-card b, .field-card b, .domain-card b { font-size: 13px; }
+    .visual-card span, .visual-caption span, .radius-stack span, .detail-meta-demo span, .detail-meta-demo small, .field-card small {
+      color: var(--muted);
+      font-size: 11px;
+      line-height: 1.45;
+      font-weight: 800;
+    }
+    .visual-phone-mini, .safe-phone {
+      border: 1px solid var(--line);
+      border-radius: 28px;
+      background: var(--surface);
+      box-shadow: var(--soft);
+      overflow: hidden;
+      min-height: 260px;
+    }
+    .visual-status {
+      display: flex;
+      justify-content: space-between;
+      padding: 12px 14px;
+      font-size: 11px;
+      font-weight: 900;
+    }
+    .visual-frame-media {
+      width: min(148px, 72%);
+      aspect-ratio: 3 / 4;
+      margin: 10px auto;
+      border-radius: 22px;
+      background: linear-gradient(90deg, #eeeae2 0 50%, #cfd6dc 50%);
+    }
+    .visual-note-row, .viewport-chips, .visual-checks, .motion-chip-row, .swatch-row, .thumb-strip, .a11y-board, .copy-board, .debt-board, .test-board, .route-grid, .shadow-samples {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      align-items: center;
+    }
+    .visual-note-row { justify-content: center; padding: 0 12px 14px; }
+    .visual-note-row span, .visual-checks span, .viewport-chips span, .motion-chip-row span, .shadow-samples span, .route-grid span, .a11y-board span, .debt-board span, .test-board span {
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      background: rgba(255,255,252,.82);
+      padding: 8px 10px;
+      color: var(--muted);
+      font-size: 11px;
+      font-weight: 900;
+    }
+    .visual-token-board, .token-strip {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(88px, 1fr));
+      gap: 8px;
+    }
+    .visual-token-board span, .token-strip span {
+      min-height: 54px;
+      border: 1px solid rgba(29,34,40,.12);
+      border-radius: 16px;
+      display: grid;
+      place-items: center;
+      color: white;
+      font-size: 11px;
+      font-weight: 900;
+    }
+    .visual-radius-board, .radius-stack, .notice-stack {
+      display: grid;
+      gap: 8px;
+    }
+    .visual-radius-board div, .radius-stack span, .notice-stack span {
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      background: rgba(255,255,252,.8);
+      padding: 12px;
+      font-size: 11px;
+      font-weight: 900;
+    }
+    .safe-phone {
+      display: grid;
+      grid-template-rows: 44px 1fr 54px;
+      min-height: 300px;
+    }
+    .safe-zone {
+      display: grid;
+      place-items: center;
+      background: rgba(53,92,125,.1);
+      color: var(--denim);
+      font-size: 11px;
+      font-weight: 900;
+    }
+    .safe-content {
+      display: grid;
+      place-items: center;
+      text-align: center;
+      font-size: 24px;
+      font-weight: 950;
+    }
+    .safe-content span { color: var(--muted); font-size: 12px; }
+    .shell-demo { position: relative; padding-bottom: 78px; }
+    .visual-top-glass {
+      display: grid;
+      gap: 4px;
+      padding: 18px;
+      background: rgba(251,251,248,.75);
+      backdrop-filter: blur(30px) saturate(1.5);
+      -webkit-backdrop-filter: blur(30px) saturate(1.5);
+    }
+    .visual-top-glass span { color: var(--muted); font-size: 11px; font-weight: 800; }
+    .visual-scroll-cards { display: grid; gap: 10px; padding: 16px; }
+    .visual-scroll-cards span, .mini-card {
+      height: 58px;
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      background: rgba(255,255,252,.82);
+    }
+    .visual-floating-nav {
+      position: absolute;
+      left: 14px;
+      right: 14px;
+      bottom: 14px;
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 6px;
+      border: 1px solid rgba(53,92,125,.18);
+      border-radius: 24px;
+      background: rgba(255,255,252,.75);
+      padding: 7px;
+      backdrop-filter: blur(30px) saturate(1.5);
+      -webkit-backdrop-filter: blur(30px) saturate(1.5);
+    }
+    .visual-floating-nav > * {
+      display: grid;
+      place-items: center;
+      min-height: 42px;
+      border-radius: 17px;
+      color: var(--muted);
+      font-size: 11px;
+      font-weight: 900;
+    }
+    .visual-floating-nav b { background: var(--denim); color: white; }
+    .route-chain, .pipeline, .step-flow {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      align-items: center;
+    }
+    .route-chain span, .pipeline span, .step-card {
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      background: rgba(255,255,252,.82);
+      padding: 12px 14px;
+      font-size: 12px;
+      font-weight: 900;
+    }
+    .route-chain i, .pipeline i, .step-flow > i {
+      width: 24px;
+      height: 2px;
+      border-radius: 999px;
+      background: rgba(53,92,125,.35);
+    }
+    .layer-stack { display: grid; gap: 8px; align-items: end; }
+    .layer-stack span {
+      width: calc(54% + var(--level) * 6%);
+      border: 1px solid rgba(53,92,125,.18);
+      border-radius: 14px;
+      background: rgba(255,255,252,.75);
+      padding: 9px 12px;
+      color: var(--denim);
+      font-size: 11px;
+      font-weight: 900;
+      box-shadow: var(--soft);
+    }
+    .component-grid, .status-board {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+      gap: 8px;
+    }
+    .component-grid span, .status-board span {
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      background: rgba(255,255,252,.8);
+      padding: 12px;
+      font-size: 11px;
+      font-weight: 900;
+    }
+    .status-board b {
+      display: inline-block;
+      width: 8px;
+      height: 8px;
+      border-radius: 999px;
+      background: var(--clay);
+      margin-right: 8px;
+    }
+    .domain-card, .field-card { display: grid; gap: 12px; }
+    .swatch-row span, .thumb-strip span {
+      width: 42px;
+      height: 42px;
+      border: 1px solid rgba(29,34,40,.12);
+      border-radius: 14px;
+    }
+    .temp-bar, .temperature-slider {
+      position: relative;
+      height: 14px;
+      border-radius: 999px;
+      background: rgba(53,92,125,.12);
+      overflow: hidden;
+    }
+    .temp-bar i {
+      display: block;
+      width: 58%;
+      height: 100%;
+      margin-left: 24%;
+      background: var(--denim);
+    }
+    .step-card { display: grid; gap: 4px; min-width: 150px; }
+    .step-card b {
+      width: 28px;
+      height: 28px;
+      border-radius: 10px;
+      display: grid;
+      place-items: center;
+      background: rgba(53,92,125,.12);
+      color: var(--denim);
+    }
+    .step-card small { color: var(--muted); font-size: 11px; font-weight: 800; }
+    .step-card.active { background: var(--denim); color: white; }
+    .step-card.active b { background: rgba(255,255,255,.2); color: white; }
+    .thumb-strip button, .bulk-bar button, .focus-demo button, .mini-toast button {
+      border: 0;
+      border-radius: 14px;
+      background: var(--denim);
+      color: white;
+      padding: 10px 12px;
+      font-weight: 900;
+    }
+    .inline-notice, .bulk-bar, .mini-bottom-bar {
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      background: rgba(255,255,252,.82);
+      padding: 12px 14px;
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 900;
+    }
+    .toast-stage {
+      position: relative;
+      min-height: 230px;
+      display: grid;
+      gap: 10px;
+      padding-bottom: 70px;
+    }
+    .mini-toast {
+      position: absolute;
+      left: 0;
+      right: 0;
+      bottom: 58px;
+      display: grid;
+      grid-template-columns: 10px 1fr 38px;
+      gap: 10px;
+      align-items: center;
+      min-height: 52px;
+      border: 1px solid rgba(53,92,125,.18);
+      border-radius: 20px;
+      background: rgba(255,255,252,.95);
+      box-shadow: var(--deep);
+      padding: 10px 12px;
+      backdrop-filter: blur(30px) saturate(1.5);
+      -webkit-backdrop-filter: blur(30px) saturate(1.5);
+    }
+    .mini-toast b { width: 8px; height: 28px; border-radius: 999px; background: var(--moss); }
+    .mini-toast span { font-size: 12px; font-weight: 900; }
+    .mini-toast button { width: 38px; height: 38px; padding: 0; background: rgba(29,34,40,.08); color: var(--ink); }
+    .mini-bottom-bar { position: absolute; left: 0; right: 0; bottom: 0; text-align: center; }
+    .copy-board { align-items: stretch; }
+    .copy-board div {
+      display: grid;
+      gap: 5px;
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      background: rgba(255,255,252,.82);
+      padding: 12px;
+    }
+    .copy-board small { color: var(--muted); font-size: 11px; font-weight: 800; }
+    .copy-board b { font-size: 13px; }
+    .token-strip { grid-column: 1 / -1; }
+    .visual-caption { display: grid; gap: 5px; }
+    .radius-demo.outer {
+      width: min(220px, 100%);
+      aspect-ratio: 1.5 / 1;
+      border-radius: 34px;
+      background: rgba(53,92,125,.16);
+      padding: 16px;
+    }
+    .radius-demo.inner {
+      width: 66%;
+      height: 100%;
+      border-radius: 22px;
+      background: var(--denim);
+    }
+    .glass-scene {
+      position: relative;
+      min-height: 160px;
+      border-radius: 20px;
+      overflow: hidden;
+      background: linear-gradient(120deg, #eeeae2, #cfd6dc);
+    }
+    .glass-scene > span {
+      position: absolute;
+      width: 90px;
+      height: 90px;
+      border-radius: 999px;
+      background: rgba(53,92,125,.25);
+    }
+    .glass-scene > span:nth-child(1) { left: 18px; top: 18px; }
+    .glass-scene > span:nth-child(2) { right: 28px; top: 48px; background: rgba(185,113,85,.28); }
+    .glass-scene > span:nth-child(3) { left: 40%; bottom: 16px; background: rgba(95,112,88,.28); }
+    .glass-panel {
+      position: absolute;
+      left: 14px;
+      right: 14px;
+      bottom: 14px;
+      border-radius: 18px;
+      background: rgba(255,255,252,.75);
+      padding: 14px;
+      font-size: 12px;
+      font-weight: 900;
+      backdrop-filter: blur(30px) saturate(1.5);
+      -webkit-backdrop-filter: blur(30px) saturate(1.5);
+    }
+    .motion-bars { display: grid; gap: 8px; }
+    .motion-bars span {
+      display: block;
+      width: var(--w);
+      min-width: 80px;
+      border-radius: 999px;
+      background: var(--denim);
+      color: white;
+      padding: 8px 12px;
+      font-size: 11px;
+      font-weight: 900;
+    }
+    .detail-hero-demo {
+      border: 1px solid var(--line);
+      border-radius: 24px;
+      background: rgba(255,255,252,.8);
+      padding: 14px;
+    }
+    .detail-hero-demo .visual-frame-media { width: min(190px, 74%); }
+    .filmstrip { display: flex; justify-content: center; gap: 8px; margin-top: 10px; }
+    .filmstrip span {
+      width: 34px;
+      height: 44px;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      background: linear-gradient(90deg, #eeeae2 0 50%, #cfd6dc 50%);
+    }
+    .detail-meta-demo { display: grid; gap: 7px; align-content: center; }
+    .detail-meta-demo b { font-size: 20px; }
+    .waterfall-demo { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .item-card.selected { outline: 3px solid var(--denim); outline-offset: -3px; }
+    .media-demo.dark { background: linear-gradient(90deg, #355c7d 0 50%, #1f3448 50%); }
+    .segmented-mini {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 6px;
+      border-radius: 18px;
+      background: rgba(29,34,40,.05);
+      padding: 6px;
+    }
+    .segmented-mini span {
+      border-radius: 13px;
+      padding: 9px 8px;
+      text-align: center;
+      color: var(--muted);
+      font-size: 11px;
+      font-weight: 900;
+    }
+    .segmented-mini .active { background: var(--denim); color: white; }
+    .temperature-slider span {
+      position: absolute;
+      left: 38%;
+      right: 20%;
+      height: 100%;
+      background: var(--denim);
+    }
+    .temperature-slider i {
+      position: absolute;
+      top: 50%;
+      width: 24px;
+      height: 24px;
+      border: 3px solid var(--denim);
+      border-radius: 999px;
+      background: var(--surface);
+      transform: translate(-50%, -50%);
+      box-shadow: var(--soft);
+    }
+    .temperature-slider .min { left: 38%; }
+    .temperature-slider .max { left: 80%; }
+    .temp-labels { display: flex; justify-content: space-between; gap: 8px; color: var(--muted); font-size: 11px; font-weight: 900; }
+    .temp-labels b { color: var(--ink); }
+    .focus-demo { display: flex; flex-wrap: wrap; gap: 10px; }
+    .focus-demo button { min-width: 96px; min-height: 44px; }
+    .focus-demo .focused { outline: 3px solid rgba(53,92,125,.35); outline-offset: 3px; background: var(--danger); }
     .meta-row, .chips { display: flex; flex-wrap: wrap; gap: 10px; }
     .pill, .chip {
       display: inline-flex;

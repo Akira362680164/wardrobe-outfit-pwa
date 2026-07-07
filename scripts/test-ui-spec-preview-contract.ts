@@ -15,6 +15,27 @@ assert.ok(html.includes("Source SHA256"));
 assert.ok(!html.includes("/Users/"));
 assert.ok(!html.includes("#f0f2ee"));
 
+const markdownPartCount = (md.match(/^###\s+/gm) ?? []).length;
+const htmlPartVisualCount = (html.match(/class="part-visual"/g) ?? []).length;
+assert.equal(htmlPartVisualCount, markdownPartCount, "each ### spec part must have one visual module");
+assert.ok(!html.includes('data-visual="generic-part"'), "spec parts must use concrete visual modules");
+
+const markdownSections = md.split(/^##\s+/m).slice(1);
+const sectionsWithoutParts = markdownSections.filter((section) => !/^###\s+/m.test(section)).length;
+const sectionVisualCount = (html.match(/class="module-visual"/g) ?? []).length;
+assert.equal(sectionVisualCount, sectionsWithoutParts, "sections without ### parts must have section visuals");
+
+for (const visual of [
+  'data-visual="detail-media"',
+  'data-visual="color-fields"',
+  'data-visual="temperature-range"',
+  'data-visual="concentric-radius"',
+  'data-visual="glass-layer"',
+  "toast-stage",
+]) {
+  assert.ok(html.includes(visual), `missing required visual example: ${visual}`);
+}
+
 for (const title of [
   "Design Tokens",
   "Viewport 与 Safe Area",

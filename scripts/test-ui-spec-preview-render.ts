@@ -17,6 +17,11 @@ async function checkViewport(width: number, height: number) {
     assert.ok(await page.locator(".token-grid").count(), "token swatches exist");
     assert.ok(await page.locator(".phone-preview").count(), "phone preview exists");
     assert.ok(await page.locator(".side nav").count(), "section navigation exists");
+    assert.ok(await page.locator(".part-visual").count(), "part-level visuals exist");
+    assert.ok(await page.locator('[data-visual="detail-media"]').count(), "detail media visual exists");
+    assert.ok(await page.locator('[data-visual="color-fields"]').count(), "color fields visual exists");
+    assert.ok(await page.locator('[data-visual="temperature-range"]').count(), "temperature range visual exists");
+    assert.ok(await page.locator(".toast-stage .mini-toast").count(), "toast visual exists");
   } finally {
     await browser.close();
   }
