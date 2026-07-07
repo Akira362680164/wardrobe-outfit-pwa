@@ -611,7 +611,16 @@ export function WishlistView20({
     context?: IntakeSaveBatchContext,
   ): Promise<IntakeBatchSaveResult> => {
     const now = new Date().toISOString();
-    const newItems = drafts.map((draft) => garmentDraftToWishlistItem(draft, { now }));
+    const newItems = await Promise.all(drafts.map(async (draft) => {
+      const item = garmentDraftToWishlistItem(draft, { now });
+      if (item.localThumbnailDataUrl) return item;
+      const thumbnailSource = item.localCroppedPreviewDataUrl || item.localOriginalDataUrl;
+      if (!thumbnailSource) return item;
+      const thumb = await generateThumbnailSafe(thumbnailSource);
+      return thumb.thumbnailDataUrl
+        ? { ...item, localThumbnailDataUrl: thumb.thumbnailDataUrl }
+        : item;
+    }));
     const results: IntakeBatchSaveResult["items"] = [];
     for (const [index, item] of newItems.entries()) {
       const { id: _legacyId, ...createItem } = item;

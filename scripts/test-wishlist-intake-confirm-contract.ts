@@ -21,6 +21,8 @@ assert.ok(!/productUrl:\s*candidate/.test(mapper));
 assert.ok(/price:\s*optionalPrice\(draft\.price\)/.test(readFileSync(join(root, "src/lib/intake-save-adapters.ts"), "utf8")));
 assert.ok(!/currency:\s*requiredText/.test(readFileSync(join(root, "src/lib/intake-save-adapters.ts"), "utf8")));
 assert.ok(/productUrl:\s*optionalText\(draft\.productUrl\)/.test(readFileSync(join(root, "src/lib/intake-save-adapters.ts"), "utf8")));
+assert.ok(wishlistView.includes("generateThumbnailSafe(thumbnailSource)"), "wishlist intake save backfills missing thumbnail before online write");
+assert.ok(wishlistView.includes("localThumbnailDataUrl: thumb.thumbnailDataUrl"), "wishlist intake create sends thumbnail asset with original image");
 assert.ok(wardrobeApp.includes("onProcessIntakeImage={processGarmentIntakeImage}"));
 assert.ok(!/price:\s*overrideIfPresent/.test(wardrobeApp));
 assert.ok(!/disabled=\{isProcessing\}/.test(shell));

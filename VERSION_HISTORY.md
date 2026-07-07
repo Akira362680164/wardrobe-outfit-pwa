@@ -1,3 +1,14 @@
+## 2026-07-08 / v2.1.7-test / Codex — v0.3-alpha 真实业务流视觉评审台
+
+- **执行 Agent**：Codex（按用户明确要求触发 4 个只读 subagent：Poincare 核对真实流程选择器；Leibniz 核对状态/数据清单；Arendt 核对静态 HTML 交互；Hypatia 核对截图流程与隐私边界。subagent 均未编辑文件，反馈已由主 agent 修正）。
+- **目的**：把 v0.3-alpha 视觉评审从静态/夹具页面改为真实用户登录、正式业务流程、真实 MiniMax AI 调用和操作中即时截图，供人工逐屏评审。
+- **版本变更**：无；当前应用版本仍为 `2.1.7-test`。
+- **改动文件**：`package.json`、`e2e/helpers/minimax-key.ts`、`e2e/specs/v03-alpha-live-capture.spec.ts`、`scripts/capture-v03-alpha-screenshots.ts`、`scripts/generate-v03-alpha-visual-review.mjs`、`scripts/test-v03-alpha-visual-review.ts`、`scripts/test-wishlist-intake-confirm-contract.ts`、`src/components/wishlist-view-2.0.tsx`、`docs/designs/v0.3-alpha/**`、`test-clothes/Du_240122123203-1242822577.png`、`test-clothes/Du_240521225816-1242822577.png`、`VERSION_HISTORY.md`。
+- **改动说明**：新增 `v03-alpha:capture/build` 与 `test:logic:v03-alpha-visual-review` 脚本；真实流程截图使用 Keychain 中的 MiniMax Key，注册/登录测试账号后按正式单品录入流程导入 9 张衣物图并 live 识别；截图清单固定为 14 个状态、21 个 390x844 片段，包含导入图片后的 `intake_single_step1_imported` 和 AI 识别后的 `intake_single_confirm`，不再使用旧的 `image_source_sheet` 静态节点；生成本地 `visual-review.html`，支持目标稿/真实截图/AI 差异/人工记录/导出；补齐严格校验，缺少截图或清单不完整时默认失败；真实流程中发现种草确认保存缺少 thumbnail 会触发服务端 422，已在种草保存前补齐缩略图生成并增加合同测试。
+- **验证结果**：`npm run v03-alpha:capture` 通过，生成 21 张正式业务流截图；`npm run v03-alpha:build` 通过；`npm run test:logic:v03-alpha-visual-review`、`npm run test:logic:wishlist-intake-confirm-contract`、`npm run test:logic:component-reuse`、`npm run test:logic:detail-shell`、`npm run test:logic:app-route`、`npm run test:logic:ui-overflow`、`npm run typecheck`、`npm run build` 均通过。
+- **风险门禁**：high（真实 AI 服务、图片上传、正式服务器 E2E、截图基线生成、种草保存运行时代码修复、多文件文档与脚本新增）；用户明确要求 subagent，已按串行截图执行 + 并行分析审查使用 subagent。
+- **未验证风险**：本轮未打包 APK，未做 Android 真机/模拟器安装验证；视觉评审截图只覆盖 390x844 竖屏；MiniMax live 输出具有模型波动性；`visual-review.html` 仅作为本地文件验证，未部署到远程网页环境；失败重跑产生的 trace/video 已移入废纸篓，未纳入 Git。
+
 ## 2026-07-08 / v2.1.7-test / Codex — UI 规范图标与产品实操补齐
 
 - **执行 Agent**：Codex（未触发 subagent：用户未通知）。

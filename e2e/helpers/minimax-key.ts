@@ -17,26 +17,25 @@ export async function configureMiniMaxKeyByUi(page: Page): Promise<void> {
   await expect(page.getByRole("heading", { name: "设置", exact: true })).toBeVisible({ timeout: 10000 });
 
   // Find the MiniMax settings section and click "配置 Key"
-  const configBtn = page.getByRole("button", { name: "配置 Key" });
-  if (await configBtn.isVisible({ timeout: 5000 }).catch(() => false)) {
-    await configBtn.click();
+  const configBtn = page.getByRole("button", { name: /配置 Key|修改配置|重新配置/ });
+  await expect(configBtn).toBeVisible({ timeout: 10000 });
+  await configBtn.click();
 
-    // Wait for the MiniMax detail page to appear
-    await expect(page.getByRole("heading", { name: "配置 MiniMax 密钥" })).toBeVisible({ timeout: 10000 });
+  // Wait for the MiniMax detail page to appear
+  await expect(page.getByRole("heading", { name: "配置 MiniMax 密钥" })).toBeVisible({ timeout: 10000 });
 
-    // Fill in the API Key
-    const keyInput = page.getByLabel("API Key");
-    await expect(keyInput).toBeVisible({ timeout: 5000 });
-    await keyInput.fill(key);
+  // Fill in the API Key
+  const keyInput = page.getByLabel("API Key");
+  await expect(keyInput).toBeVisible({ timeout: 5000 });
+  await keyInput.fill(key);
 
-    // Wait for save button to become enabled (dirty state)
-    const saveBtn = page.getByRole("button", { name: "保存" });
-    await expect(saveBtn).toBeEnabled({ timeout: 5000 });
-    await saveBtn.click();
+  // Wait for save button to become enabled (dirty state)
+  const saveBtn = page.getByRole("button", { name: "保存" });
+  await expect(saveBtn).toBeEnabled({ timeout: 5000 });
+  await saveBtn.click();
 
-    // Should navigate back to settings main page
-    await expect(page.getByRole("heading", { name: "设置", exact: true })).toBeVisible({ timeout: 10000 });
-  }
+  // Should navigate back to settings main page
+  await expect(page.getByRole("heading", { name: "设置", exact: true })).toBeVisible({ timeout: 10000 });
 
   // Navigate back to wardrobe home
   await navigateToTab(page, "wardrobe");
