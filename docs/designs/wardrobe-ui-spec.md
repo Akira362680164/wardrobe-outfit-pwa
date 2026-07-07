@@ -1,12 +1,12 @@
 ---
 title: 衣橱穿搭助手 UI 规范
-version: v0.2
-status: active
+version: v0.2-final
+status: final
 appVersion: 2.1.7-test
-appliesToCommit: fac558d89aa2490a81dd90cbd3a47fe5ee7f104d
+validatedAgainstAppCommit: 46e1aabf6a94da22406915a3fcbd35936dec6801
 sourceOfTruth: docs/designs/wardrobe-ui-spec.md
 generatedPreview: docs/designs/wardrobe-ui-spec.html
-reviewInput: /Users/fangzheng/Library/Containers/com.tencent.qq/Data/Downloads/wardrobe-ui-spec-improvement-review.md
+previewGenerator: scripts/generate-ui-spec-preview.mjs
 appliesTo:
   - PWA mobile web
   - Capacitor Android WebView
@@ -17,7 +17,7 @@ lastReviewedAt: 2026-07-07
 
 # 衣橱穿搭助手 UI 规范
 
-本文件是当前 UI 规范的唯一事实源。`docs/designs/wardrobe-ui-spec.html` 只作为可视化预览和走查页，不作为独立规则来源。
+本文件是当前 UI 规范的唯一事实源。`docs/designs/wardrobe-ui-spec.html` 必须由 `scripts/generate-ui-spec-preview.mjs` 从本文件生成，禁止手工编辑 HTML 预览页。修改本文件后必须执行 `npm run docs:ui-spec:build`，提交前必须执行 `npm run docs:ui-spec:check`。
 
 本规范从原型说明升级为生产 UI 契约，约束页面框架、令牌、组件复用、路由状态、覆盖层、无障碍、系统状态和验收脚本。后续如果修改 Tailwind 色值、全局 CSS、Motion token、路由枚举或核心 UI 组件，必须同步更新本文件。
 
@@ -140,23 +140,31 @@ lastReviewedAt: 2026-07-07
 
 代码事实源是 `src/lib/app-route.ts` 的 `AppRouteName`。画板可覆盖更多“页面级状态”，但不能替代路由事实。
 
-| Route | 所属 Tab | 类型 | 底部导航 | 全局创建 | 默认返回 |
-| --- | --- | --- | --- | --- | --- |
-| `wardrobe_home` | 衣橱 | 主页面 | 是 | 是 | 停留 / 退出确认 |
-| `garment_detail` | 衣橱或种草来源 | 详情 | 视实现 | 否 | `returnRoute` 或来源页 |
-| `outfit_home` | 套装 | 主页面 | 是 | 是 | 停留 / 退出确认 |
-| `outfit_detail` | 套装 | 详情 | 视实现 | 否 | `outfit_home` 或 `outfit_calendar` |
-| `outfit_calendar` | 套装 | 子页面 | 视实现 | 否 | `outfit_home` |
-| `wishlist_home` | 种草 | 主页面 | 是 | 是 | 停留 / 退出确认 |
-| `wishlist_purchased` | 种草 | 子页面 | 视实现 | 否 | `wishlist_home` |
-| `wishlist_rejected` | 种草 | 子页面 | 视实现 | 否 | `wishlist_home` |
-| `wishlist_archived` | 种草 | 子页面 | 视实现 | 否 | `wishlist_home` |
-| `settings_home` | 设置 | 主页面 | 是 | 否 | 停留 / 退出确认 |
-| `account_management` | 设置 | 子页面 | 视实现 | 否 | `settings_home` |
-| `change_password` | 设置 | 子页面 | 视实现 | 否 | `account_management` |
-| `intake_single_item` | 衣橱 | 录入流 | 否 | 否 | `returnTo` |
-| `intake_outfit` | 套装 | 录入流 | 否 | 否 | `returnTo` |
-| `intake_wishlist` | 种草 | 录入流 | 否 | 否 | `returnTo` |
+| Route | 所属 Tab | 类型 | 底部导航 | 顶部栏 | 全局创建 | 默认返回 |
+| --- | --- | --- | --- | --- | --- | --- |
+| `wardrobe_home` | 衣橱 | 主页面 | 是 | 主页面自有顶部区 | 是 | 停留 / 退出确认 |
+| `garment_detail` | 衣橱或种草来源 | 详情 | 否 | `AppSubPageTopBar` | 否 | `returnRoute` 或来源页 |
+| `outfit_home` | 套装 | 主页面 | 是 | 主页面自有顶部区 | 是 | 停留 / 退出确认 |
+| `outfit_detail` | 套装 | 详情 | 否 | `AppSubPageTopBar` | 否 | `outfit_home` 或 `outfit_calendar` |
+| `outfit_calendar` | 套装 | 子页面 | 否 | `AppSubPageTopBar` | 否 | `outfit_home` |
+| `wishlist_home` | 种草 | 主页面 | 是 | 主页面自有顶部区 | 是 | 停留 / 退出确认 |
+| `wishlist_purchased` | 种草 | 子页面 | 否 | `AppSubPageTopBar` | 否 | `wishlist_home` |
+| `wishlist_rejected` | 种草 | 子页面 | 否 | `AppSubPageTopBar` | 否 | `wishlist_home` |
+| `wishlist_archived` | 种草 | 子页面 | 否 | `AppSubPageTopBar` | 否 | `wishlist_home` |
+| `settings_home` | 设置 | 主页面 | 是 | 主页面自有顶部区 | 否 | 停留 / 退出确认 |
+| `account_management` | 设置 | 子页面 | 否 | `AppSubPageTopBar` | 否 | `settings_home` |
+| `change_password` | 设置 | 子页面 | 否 | `AppSubPageTopBar` | 否 | `account_management` |
+| `intake_single_item` | 衣橱 | 录入流 | 否 | `IntakeFlowShell` | 否 | `returnTo` |
+| `intake_outfit` | 套装 | 录入流 | 否 | `IntakeFlowShell` | 否 | `returnTo` |
+| `intake_wishlist` | 种草 | 录入流 | 否 | `IntakeFlowShell` | 否 | `returnTo` |
+
+| Route 类型 | 顶部栏 |
+| --- | --- |
+| 主页面 | 主页面自有顶部区 |
+| 详情页 | `AppSubPageTopBar` |
+| 子页面 | `AppSubPageTopBar` |
+| 录入流 | `IntakeFlowShell` |
+| 覆盖层 | Overlay 自带标题栏 |
 
 视觉画板可以按“页面级状态”覆盖约 36 个状态：衣橱首页、搜索、统计、衣物详情、编辑衣物、裁切/旋转、单品录入两步、套装首页/详情/编辑/实图、套装录入两步、月历、计划增改查、打包清单、种草首页/详情/编辑/录入/加入衣橱/已买/不感兴趣/归档、设置、试穿画像、参考照片、MiniMax、位置、账号、改密。它们是视觉覆盖清单，不是 route 枚举。
 
@@ -365,22 +373,34 @@ lastReviewedAt: 2026-07-07
 - 页面内不解释 UI 形式，不写“这是毛玻璃”“点击这里进入下一页”。
 - 错误文案要说明草稿是否保留、能否重试、下一步做什么。
 
-## 14. 文档治理
+## 14. Known Deviations / UI Debt
+
+本节只登记 v0.2-final 已知差异。所有差异必须有编号、文件、当前事实、目标契约、处理版本和验收方式。新增差异不得无编号进入代码。
+
+| ID | 文件 | 当前事实 | 目标契约 | 处理版本 | 验收 |
+| --- | --- | --- | --- | --- | --- |
+| UI-DEBT-001 | `src/app/globals.css` | `.surface` 仍使用局部 glass 参数 | 统一到 token 命名 | v0.3 | `test:logic:ui-token-contract` |
+| UI-DEBT-002 | `src/components/motion-common.tsx` | `MotionSheet` 已在 v0.2-final 补齐 dialog 语义与焦点管理 | `role/dialog`、`aria-modal`、锁滚、焦点进入和恢复 | closed in v0.2-final | `test:logic:ui-overlay-contract` |
+| UI-DEBT-003 | `src/components/wardrobe-image-source-sheet.tsx` | 图片来源弹层已在 v0.2-final 委托 `MotionSheet` | 统一 Sheet 行为 | closed in v0.2-final | `test:logic:ui-overlay-contract` |
+| UI-DEBT-004 | `src/components/app-sub-page-top-bar.tsx` | 顶部栏按钮已在 v0.2-final 对齐外层 48px 热区、内层 40px 视觉圆 | 外层 48px 热区，内层 40px 视觉圆 | closed in v0.2-final | `test:logic:ui-a11y-contract` |
+| UI-DEBT-005 | `src/components/intake-flow-shell.tsx` | 旧 6 步常量已删除或标记为 legacy debug-only | 正式录入只保留两步事实源 | closed in v0.2-final | `test:logic:intake-fullscreen-layout` |
+
+## 15. 文档治理
 
 | 文件 | 状态 | 说明 |
 | --- | --- | --- |
-| `docs/designs/wardrobe-ui-spec.md` | active | 唯一事实源 |
+| `docs/designs/wardrobe-ui-spec.md` | final source | 唯一事实源 |
 | `docs/designs/wardrobe-ui-spec.html` | generated preview | 可视预览，必须同步 MD |
 | `docs/designs/six-page-unified-item-pages-v2.md` | legacy reference | 历史设计参考，不覆盖本规范 |
 
 PR 规则：
 
-- 新增 route：同步 `Route Matrix` 和 `npm run test:logic:app-route`。
+- 新增 route：同步 `Route 与页面状态矩阵` 和 `npm run test:logic:app-route`。
 - 新增核心 token：同步本规范、Tailwind/CSS/Motion。
 - 新增或改核心组件：同步组件 Contract 和对应测试映射。
 - 新增 overlay：登记 z-index、关闭方式、是否锁滚、是否拦截返回。
 
-## 15. 验收与测试映射
+## 16. 验收与测试映射
 
 | 变更范围 | 必跑脚本 / 检查 |
 | --- | --- |
