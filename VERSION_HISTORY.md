@@ -1,3 +1,13 @@
+## 2026-07-07 / v2.1.6-test / Codex — 合并 main 并交付固定签名 APK
+
+- **执行 Agent**：Codex（未触发 subagent：本次为合并与打包交付，代码修复阶段已按用户要求使用 2 个并行 subagent 做只读分析）。
+- **目的**：按用户要求将修复分支合并到 `main`，并打包可安装 APK。
+- **合并结果**：`main` 已 fast-forward 到 `b84b8e9`（`v2.1.6-test refine intake crop controls`），包含 `v2.1.5-test` 颜色色卡/重新识别修复和 `v2.1.6-test` 录入页裁切旋转交互修复。
+- **交付产物**：`衣橱穿搭助手-v2.1.6-test.apk`，大小 9.5MB，SHA-256 `9ee311d68a51a51307bbcfc4d598b5a278f169f544dad679e28971976ca8b563`；包名 `com.wardrobe.outfit`，versionName `2.1.6-test`，versionCode `20106`，签名主体 `CN=fangzheng, OU=Dev, O=Wardrobe, L=Beijing, ST=Beijing, C=CN`。
+- **验证结果**：`npm run android:apk` 通过，包含构建前校验、`npm run build:web`、Capacitor sync 和 Gradle `assembleRelease`；`aapt dump badging` 与 `apksigner verify --print-certs` 核验通过；备用模拟器 `wardrobe-visible-test`（Android 15 / API 35）安装成功，显式启动 `com.wardrobe.outfit/.MainActivity` 后前台 Activity、进程和安装版本均正确，logcat 未发现 `FATAL EXCEPTION` 或 `Process: com.wardrobe.outfit` 崩溃；截图与日志保存在 `test-results/android-v2.1.6-test/`。
+- **风险门禁**：high（main 合并、固定签名 APK、Android 安装启动验证）；本轮未新增业务代码。
+- **未验证风险**：未登录账号做真实录入、相机/图库、裁切拖拽或 MiniMax live 识别；默认 AVD `wardrobe-test` 仍因 snapshot pending 超时失败，已改用备用 AVD 完成 APK 启动验证。
+
 ## 2026-07-07 / v2.1.6-test / Codex — 录入页选图与裁切旋转交互修复
 
 - **执行 Agent**：Codex（按用户要求使用 2 个并行 subagent 做只读分析：一个检查录入/裁切 UI 状态流，一个检查测试覆盖；subagent 均未编辑文件）。
