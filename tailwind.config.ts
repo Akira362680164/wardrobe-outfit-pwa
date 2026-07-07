@@ -3,11 +3,14 @@ import type { Config } from "tailwindcss";
 type ColorFn = (args: { opacityValue: string }) => string;
 
 const ink: ColorFn = ({ opacityValue }) => `rgb(29 34 40 / ${opacityValue})`;
+const paper: ColorFn = ({ opacityValue }) => `rgb(251 251 248 / ${opacityValue})`;
 const mist: ColorFn = ({ opacityValue }) => `rgb(244 245 243 / ${opacityValue})`;
+const surface: ColorFn = ({ opacityValue }) => `rgb(255 255 252 / ${opacityValue})`;
 const moss: ColorFn = ({ opacityValue }) => `rgb(95 112 88 / ${opacityValue})`;
 const clay: ColorFn = ({ opacityValue }) => `rgb(185 113 85 / ${opacityValue})`;
 const denim: ColorFn = ({ opacityValue }) => `rgb(53 92 125 / ${opacityValue})`;
 const berry: ColorFn = ({ opacityValue }) => `rgb(140 74 98 / ${opacityValue})`;
+const danger: ColorFn = ({ opacityValue }) => `rgb(220 38 38 / ${opacityValue})`;
 
 const config: Config = {
   content: ["./src/**/*.{ts,tsx}", "./app/**/*.{ts,tsx}"],
@@ -21,11 +24,14 @@ const config: Config = {
         // 修复 MotionImageLightbox 等位置 `bg-ink/72` backdrop 透明的 bug
         // 用 `as unknown as ...` 绕过 Tailwind 类型未暴露的 color-function 形态 (运行时 OK)
         ink: ink as unknown as string,
+        paper: paper as unknown as string,
         mist: mist as unknown as string,
+        surface: surface as unknown as string,
         moss: moss as unknown as string,
         clay: clay as unknown as string,
         denim: denim as unknown as string,
         berry: berry as unknown as string,
+        danger: danger as unknown as string,
       },
       // Tailwind 3 解析 `bg-ink/72` 这种 alpha 数字时会查 theme.opacity[72];
       // 默认 scale 只含 5/10/20/25/30/40/50/60/70/75/80/90/95/100, 不含的会 silently 丢弃.

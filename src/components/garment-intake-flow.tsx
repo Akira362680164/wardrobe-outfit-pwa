@@ -215,7 +215,7 @@ export function GarmentIntakeFlow({
     [imageItems, activeImageId],
   );
 
-  // v1.1.31 commit2: 步骤 3 候选名单 = recognized + failed。
+  // v1.1.31 commit2: 确认信息阶段候选名单 = recognized + failed。
   const recognizedItems = useMemo(() => getReviewableGarmentIntakeImages(imageItems), [imageItems]);
   const successCount = useMemo(
     () => getRecognizedGarmentIntakeImages(imageItems).length,
@@ -454,7 +454,7 @@ export function GarmentIntakeFlow({
           );
         }
       }
-      // v1.1.31 commit2: 即使全部失败，只要存在失败草稿也进入步骤 3。
+      // v1.1.31 commit2: 即使全部失败，只要存在失败草稿也进入确认信息阶段。
       const totalReviewable = reviewableBefore + newlyResolved + (total - newlyResolved);
       if (totalReviewable > 0) {
         // 找到第一个 reviewable item 作为 activeReviewId
@@ -470,7 +470,7 @@ export function GarmentIntakeFlow({
     }
   }
 
-  // v1.1.31 commit2: 共享的"识别一张"函数，首次批量识别 + 步骤 3 重新识别都走这里。
+  // v1.1.31 commit2: 共享的"识别一张"函数，首次批量识别 + 确认信息阶段重新识别都走这里。
   async function recognizeImageItem(item: GarmentIntakeImageItem): Promise<GarmentIntakeDraft> {
     const imageToProcess =
       item.croppedImageDataUrl ?? item.displayDataUrl ?? item.originalDataUrl;
@@ -531,7 +531,7 @@ export function GarmentIntakeFlow({
     return localDraft;
   }
 
-  // v1.1.31 commit2: 步骤 3 重新识别当前件。
+  // v1.1.31 commit2: 确认信息阶段重新识别当前件。
   async function handleRetryCurrentItem(reviewId: string) {
     if (retryingReviewId) return; // 防重复点击
     const item = imageItems.find((it) => it.id === reviewId);
@@ -1100,7 +1100,7 @@ function MultiImageCropStep({
   );
 }
 
-// Step 3: Multi-image review
+// 确认信息阶段：Multi-image review
 function MultiImageReviewStep({
   recognizedItems,
   successCount,
@@ -1524,7 +1524,7 @@ export function DraftQualitySummary({ summary }: { summary: DraftReviewSummary }
  * v1.1.23 six-page design §3.1 + §3.2: 校对草稿 section 标题行右侧 QualityRow。
  * - 左：整件级 AI 置信度胶囊 (AiConfidencePill)；无 score 时不渲染。
  * - 右：字段级"待确认 N" review-pill；N === 0 时不渲染。
- * - 仅用于 P1 衣橱录入 Step 3 / P2 种草录入 Step 3。详情/编辑页严禁使用。
+ * - 仅用于 P1 衣橱录入确认信息阶段 / P2 种草录入确认信息阶段。详情/编辑页严禁使用。
  */
 export function DraftQualityRow({
   needsReviewFields,

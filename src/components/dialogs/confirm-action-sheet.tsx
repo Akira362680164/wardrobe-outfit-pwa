@@ -17,7 +17,15 @@ export interface ConfirmActionSheetProps {
 }
 
 export function ConfirmActionSheet({ open, title, description, confirmLabel, cancelLabel = "取消", tone = "primary", submitting = false, error, onConfirm, onClose, children }: ConfirmActionSheetProps) {
-  return <MotionSheet open={open} onClose={submitting ? () => undefined : onClose} preferBottom={false} className="z-[100]" panelClassName="sm:max-w-sm">
+  return <MotionSheet
+    open={open}
+    onClose={submitting ? () => undefined : onClose}
+    preferBottom={false}
+    className="z-[100]"
+    panelClassName="sm:max-w-sm"
+    role={tone === "danger" ? "alertdialog" : "dialog"}
+    ariaLabel={title}
+  >
     <h3 className="text-base font-semibold">{title}</h3>
     {description ? <div className="mt-2 text-sm text-ink/55 whitespace-pre-wrap">{description}</div> : null}
     {children}

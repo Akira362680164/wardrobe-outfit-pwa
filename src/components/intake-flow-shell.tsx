@@ -225,12 +225,3 @@ export function IntakeFlowShell({
     document.body,
   );
 }
-
-export const INTAKE_FLOW_STEPS: IntakeFlowStep[] = [
-  { id: "source", label: "选择来源" },
-  { id: "organize", label: "整理" },
-  { id: "process", label: "处理" },
-  { id: "draft", label: "草稿" },
-  { id: "review", label: "校对" },
-  { id: "save", label: "保存" },
-];

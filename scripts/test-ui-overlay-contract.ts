@@ -8,6 +8,8 @@ const read = (path: string) => readFileSync(join(root, path), "utf8");
 const motion = read("src/components/motion-common.tsx");
 const imageSourceSheet = read("src/components/wardrobe-image-source-sheet.tsx");
 const confirmSheet = read("src/components/dialogs/confirm-action-sheet.tsx");
+const topBar = read("src/components/app-sub-page-top-bar.tsx");
+const garmentFlow = read("src/components/garment-intake-flow.tsx");
 
 const motionSheetStart = motion.indexOf("export function MotionSheet");
 const motionSheetEnd = motion.indexOf("/* ------------------------------------------------------------------ */", motionSheetStart + 1);
@@ -31,5 +33,15 @@ assert.ok(!imageSourceSheet.includes("<motion."), "WardrobeImageSourceSheet has 
 assert.ok(confirmSheet.includes("<MotionSheet"), "ConfirmActionSheet delegates to MotionSheet");
 assert.ok(confirmSheet.includes('role={tone === "danger" ? "alertdialog" : "dialog"}'), "danger confirmation uses alertdialog");
 assert.ok(confirmSheet.includes("ariaLabel={title}"), "confirmation sheet labels the dialog");
+assert.ok(confirmSheet.includes("onClose={submitting ? () => undefined : onClose}"), "submitting confirmation cannot close");
+assert.match(confirmSheet, /label=\{cancelLabel\}[\s\S]{0,80}disabled=\{submitting\}/, "submitting disables cancel action");
+
+assert.match(topBar, /aria-label="返回"[\s\S]{0,140}className="grid h-12 w-12 place-items-center -ml-1"/, "back button has 48px hit area");
+assert.match(topBar, /<span className="grid h-10 w-10 place-items-center rounded-full bg-white/, "back button keeps 40px visual circle");
+assert.match(topBar, /aria-label="更多操作"[\s\S]{0,160}className="grid h-12 w-12 place-items-center -mr-1"/, "more button has 48px hit area");
+assert.match(topBar, /<span className="grid h-10 w-10 place-items-center rounded-full text-ink\/40/, "more button keeps 40px visual circle");
+
+assert.ok(!garmentFlow.includes("Step 3"), "garment intake code must not mention Step 3");
+assert.ok(!garmentFlow.includes("步骤 3"), "garment intake code must not mention 步骤 3");
 
 console.log("ui overlay contract: passed");

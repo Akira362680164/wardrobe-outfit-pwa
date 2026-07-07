@@ -73,6 +73,10 @@ interface MotionSheetProps {
   panelClassName?: string;
   /** If true, sheet slides from bottom even on desktop. Default true. */
   preferBottom?: boolean;
+  role?: "dialog" | "alertdialog";
+  ariaLabel?: string;
+  closeOnBackdrop?: boolean;
+  closeOnEscape?: boolean;
 }
 
 export function MotionSheet({
@@ -82,13 +86,72 @@ export function MotionSheet({
   className,
   panelClassName,
   preferBottom = true,
+  role = "dialog",
+  ariaLabel,
+  closeOnBackdrop = true,
+  closeOnEscape = true,
 }: MotionSheetProps) {
   // v0.9.16: 弹窗打开期间锁定 body 滚动 + 拦截 focus/touchmove 穿透,
   // 修复 Android WebView 软键盘弹起 / 触摸拖动时底层"衣橱设置"页面跟着滚动的问题。
   useScrollLock(open);
 
-  const handleBackdrop = useCallback(() => onClose(), [onClose]);
+  const panelRef = useRef<HTMLDivElement | null>(null);
+  const previousFocusRef = useRef<HTMLElement | null>(null);
+  const handleBackdrop = useCallback(() => {
+    if (closeOnBackdrop) onClose();
+  }, [closeOnBackdrop, onClose]);
   const stopProp = useCallback((e: React.MouseEvent) => e.stopPropagation(), []);
+
+  useEffect(() => {
+    if (!open) return;
+    previousFocusRef.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    const frame = window.requestAnimationFrame(() => {
+      const panel = panelRef.current;
+      if (!panel) return;
+      const focusable = panel.querySelector<HTMLElement>(
+        'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])',
+      );
+      (focusable ?? panel).focus();
+    });
+    return () => {
+      window.cancelAnimationFrame(frame);
+      previousFocusRef.current?.focus();
+      previousFocusRef.current = null;
+    };
+  }, [open]);
+
+  useEffect(() => {
+    if (!open) return;
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape" && closeOnEscape) {
+        event.preventDefault();
+        onClose();
+        return;
+      }
+      if (event.key !== "Tab") return;
+      const panel = panelRef.current;
+      if (!panel) return;
+      const focusable = Array.from(
+        panel.querySelectorAll<HTMLElement>('button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'),
+      ).filter((node) => !node.hasAttribute("disabled") && node.tabIndex !== -1);
+      if (focusable.length === 0) {
+        event.preventDefault();
+        panel.focus();
+        return;
+      }
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+      if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault();
+        first.focus();
+      }
+    };
+    document.addEventListener("keydown", onKeyDown);
+    return () => document.removeEventListener("keydown", onKeyDown);
+  }, [closeOnEscape, onClose, open]);
 
   return (
     <AnimatePresence>
@@ -109,7 +172,12 @@ export function MotionSheet({
           {/* Sheet panel — overscroll-behavior:contain 阻止弹窗内部滚到边界时
               链式触发底层 body 滚动; useScrollLock 同步锁定底层滚动容器 */}
           <motion.div
-            className={`absolute bottom-0 inset-x-0 mx-auto w-full max-h-[92vh] overflow-y-auto overscroll-contain rounded-t-2xl bg-[#fbfbf8] p-4 shadow-2xl ${preferBottom ? "" : "sm:top-1/2 sm:bottom-auto sm:inset-x-4 sm:max-w-lg sm:mx-auto sm:rounded-lg sm:-translate-y-1/2"} ${panelClassName ?? ""}`}
+            ref={panelRef}
+            role={role}
+            aria-modal="true"
+            aria-label={ariaLabel}
+            tabIndex={-1}
+            className={`absolute bottom-0 inset-x-0 mx-auto w-full max-h-[92vh] overflow-y-auto overscroll-contain rounded-t-2xl bg-paper p-4 shadow-2xl outline-none ${preferBottom ? "" : "sm:top-1/2 sm:bottom-auto sm:inset-x-4 sm:max-w-lg sm:mx-auto sm:rounded-lg sm:-translate-y-1/2"} ${panelClassName ?? ""}`}
             variants={preferBottom ? slideUp : scaleModal}
             initial="initial"
             animate="in"
