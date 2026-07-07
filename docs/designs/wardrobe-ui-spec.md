@@ -197,7 +197,7 @@ lastReviewedAt: 2026-07-07
 覆盖层契约：
 
 - Toast 不拦截返回，不挤压文档流，关闭按钮命中区 44px。
-- Sheet 和 Lightbox 打开时必须锁定底层滚动。当前 `MotionSheet` 和 `MotionImageLightbox` 已使用 `useScrollLock`；`WardrobeImageSourceSheet` 是当前例外，后续应统一。
+- Sheet 和 Lightbox 打开时必须锁定底层滚动。当前 `MotionSheet`、`MotionImageLightbox` 和 `WardrobeImageSourceSheet` 均已使用共享锁滚与 Sheet 契约。
 - 遮罩点击是否关闭必须逐组件声明。
 - 危险操作必须有取消和结果明确的确认按钮，例如“删除 3 件”，不要只写“确定”。
 
@@ -303,7 +303,7 @@ lastReviewedAt: 2026-07-07
 | `idle_empty` | Step 1 | 空状态、拍照、图库入口 |
 | `image_queue` | Step 1 | 缩略图队列，当前图 Denim 边框 |
 | `crop` | Step 1 子状态 | 裁切/旋转，返回先退出裁切 |
-| `recognizing` | Step 1 -> Step 2 | 过渡态，不显示 Step 3 |
+| `recognizing` | Step 1 -> Step 2 | 过渡态，不显示第三步 |
 | `recognized` | Step 2 | 字段预填，显示来源和置信度 |
 | `recognition_failed` | Step 2 | 失败草稿，可手动补全/重新识别 |
 | `retrying` | Step 2 | 仅当前件局部 loading |
@@ -363,7 +363,7 @@ lastReviewedAt: 2026-07-07
 - 错误、低置信、待确认必须有文字提示。
 - Sheet / Lightbox / 裁切器打开时锁定底层滚动；目标是补齐 `role="dialog"`、`aria-modal` 和焦点管理。
 
-当前例外：`AppSubPageTopBar` 注释写 48px 点击热区，但实际按钮为 `h-10 w-10`；后续代码统一时应补足命中区。
+当前事实：`AppSubPageTopBar` 外层按钮命中区为 `48x48`，内层视觉圆为 `40x40`；后续改动不得回退成只有 `40x40` 命中区。
 
 ## 13. 文字规范
 

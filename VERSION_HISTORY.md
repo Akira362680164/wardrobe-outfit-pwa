@@ -1,3 +1,14 @@
+## 2026-07-07 / v2.1.7-test / Codex — UI 规范 v0.2-final 收口
+
+- **执行 Agent**：Codex（按执行方案在 Commit 4 后启动 3 个只读 subagent：规范治理审核、生成脚本与 HTML 审核、代码契约审核；subagent 均未编辑文件。审核发现的 `WardrobeImageSourceSheet`/`AppSubPageTopBar` 文档事实冲突、`Step 3` 注释残留和测试覆盖缺口已由主 agent 修正）。
+- **目的**：将 `wardrobe-ui-spec.md` 从 `v0.2 active` 收口为 `v0.2-final`，采用 Markdown 唯一事实源和脚本生成 HTML 预览页，为后续 v0.3 视觉升级建立稳定基线。
+- **版本变更**：无；当前应用版本仍为 `2.1.7-test`。
+- **改动文件**：`docs/designs/wardrobe-ui-spec.md`、`docs/designs/wardrobe-ui-spec.html`、`docs/designs/wardrobe-ui-spec-v0.3-backlog.md`、`scripts/generate-ui-spec-preview.mjs`、`scripts/test-ui-spec-preview-contract.ts`、`scripts/test-ui-spec-preview-render.ts`、`scripts/test-ui-token-contract.ts`、`scripts/test-ui-overlay-contract.ts`、`src/components/app-sub-page-top-bar.tsx`、`src/components/motion-common.tsx`、`src/components/wardrobe-image-source-sheet.tsx`、`src/components/dialogs/confirm-action-sheet.tsx`、`src/components/intake-flow-shell.tsx`、`src/components/garment-intake-flow.tsx`、`tailwind.config.ts`、`package.json`、`VERSION_HISTORY.md`。
+- **改动说明**：将 UI 规范 front matter 收口为 `v0.2-final`，删除本机路径和失效自引用 commit 字段，写入 `validatedAgainstAppCommit=46e1aabf6a94da22406915a3fcbd35936dec6801`；Route 矩阵去掉“视实现”，补齐顶部栏列；新增 Known Deviations / UI Debt 和 v0.3 backlog；新增 Markdown 生成 HTML 脚本与 `docs:ui-spec:build/check`；新增预览页同步、渲染、token、overlay 合同测试；修复 TopBar 48px 热区、`MotionSheet` dialog 语义与焦点管理、`WardrobeImageSourceSheet` 复用 `MotionSheet`、`ConfirmActionSheet` alertdialog 语义、录入旧 6 步常量和确认阶段注释。
+- **验证结果**：`npm run docs:ui-spec:build`、`npm run docs:ui-spec:check`、`npm run test:logic:ui-spec-preview`、`npm run test:logic:ui-token-contract`、`npm run test:logic:ui-overlay-contract`、`npm run test:logic:app-route`、`npm run test:logic:component-reuse`、`npm run test:logic:detail-shell`、`npm run test:logic:color-catalog`、`npm run test:logic:temperature-confidence`、`npm run test:logic:intake-fullscreen-layout`、`npm run test:logic:ui-overflow`、`npm run typecheck`、`npm run build` 均通过。
+- **风险门禁**：medium。原因：涉及文档生成脚本、UI 契约测试、轻量组件语义修复；不改业务流程、不改 Android 原生配置、不打 APK。已按方案触发 3 个只读 subagent 审核并修正反馈。
+- **未验证风险**：未做真机截图回归；未实施 v0.3 视觉升级；未建立完整截图基线；未打包 APK。
+
 ## 2026-07-07 / v2.1.7-test / Codex — UI 规范 v0.2 生产契约升级
 
 - **执行 Agent**：Codex（按用户明确要求触发 3 个并行只读 subagent：P0 事实源/令牌/路由/覆盖层、P1 组件契约/领域 UI/AI 状态、P2 多选/系统状态/验收治理；subagent 均未编辑文件，结论已由主 agent 审核后合并）。
