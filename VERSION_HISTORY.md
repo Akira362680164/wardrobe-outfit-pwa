@@ -1,3 +1,14 @@
+## 2026-07-07 / v2.1.7-test / Codex — 合入 UI 规范文档
+
+- **执行 Agent**：Codex（未触发 subagent：用户未通知）。
+- **目的**：按用户要求将当前本地 UI 规范合入 `main`，并准备上传到 GitHub。
+- **版本变更**：无；当前应用版本仍为 `2.1.7-test`。
+- **改动文件**：`docs/designs/wardrobe-ui-spec.html`、`docs/designs/wardrobe-ui-spec.md`、`VERSION_HISTORY.md`。
+- **改动说明**：新增 HTML 版 UI 规范，包含文字规范、基础令牌、页面框架图示、毛玻璃层、卡片样式、按钮样式、Toast 通知样式、内容组件图示、页面状态和验收清单；同时保留 Markdown 版规范，便于后续 agent 读取。
+- **验证结果**：使用 Playwright 打开 `docs/designs/wardrobe-ui-spec.html` 做桌面和 390px 窄屏渲染检查，确认核心章节、令牌、页面框架图示和 Toast 示例存在且无横向溢出。
+- **风险门禁**：low（纯文档和静态 HTML 规范，不改运行时代码、不改构建、不打 APK）；未触发 subagent：用户未通知。
+- **未验证风险**：未在 GitHub Pages 或远程网页环境预览；本规范为本地静态 HTML，可直接通过文件打开查看。
+
 ## 2026-07-07 / v2.1.7-test / Codex — 固定 Android 竖屏
 
 - **执行 Agent**：Codex（未触发 subagent：用户未通知）。
