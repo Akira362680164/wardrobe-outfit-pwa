@@ -1,3 +1,14 @@
+## 2026-07-07 / v2.1.7-test / Codex — 固定 Android 竖屏
+
+- **执行 Agent**：Codex（未触发 subagent：用户未通知）。
+- **目的**：按用户要求将当前应用固定为竖屏使用，取消横屏版本。
+- **版本变更**：`package.json` / `package-lock.json` 从 `2.1.6-test` 升级到 `2.1.7-test`；Android `versionCode` 后续由构建脚本推导为 `20107`。
+- **改动文件**：`android/app/src/main/AndroidManifest.xml`、`scripts/android-emulator-regression.sh`、`scripts/test-intake-fullscreen-layout.ts`、`package.json`、`package-lock.json`、`VERSION_HISTORY.md`。
+- **改动说明**：`MainActivity` 增加 `android:screenOrientation="portrait"`，从系统层固定竖屏；Android 回归脚本不再主动切换并保存横屏截图；新增静态断言防止竖屏锁和验证边界回退。
+- **验证结果**：`npm run typecheck`、`npm run test:logic:intake-fullscreen-layout`（28 项）、`cd android && ./gradlew :app:processReleaseMainManifest` 通过。
+- **风险门禁**：high（Android 原生 Manifest、版本号和移动端方向行为）；本轮未打包 APK、未启动模拟器，符合“仅真机测试需要模拟器”的新边界。
+- **未验证风险**：未生成新 APK，未在真机上安装验证系统旋转锁；下次打包 APK 后可在真机测试时验证旋转仍保持竖屏。
+
 ## 2026-07-07 / v2.1.6-test / Codex — 合并 main 并交付固定签名 APK
 
 - **执行 Agent**：Codex（未触发 subagent：本次为合并与打包交付，代码修复阶段已按用户要求使用 2 个并行 subagent 做只读分析）。

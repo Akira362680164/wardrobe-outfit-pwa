@@ -8,6 +8,8 @@ const intakeShell = readFileSync(join(root, "src/components/intake-flow-shell.ts
 const garmentIntake = readFileSync(join(root, "src/components/garment-intake-flow.tsx"), "utf8");
 const wishlist = readFileSync(join(root, "src/components/wishlist-view-2.0.tsx"), "utf8");
 const wardrobe = readFileSync(join(root, "src/components/wardrobe-app.tsx"), "utf8");
+const androidManifest = readFileSync(join(root, "android/app/src/main/AndroidManifest.xml"), "utf8");
+const androidRegression = readFileSync(join(root, "scripts/android-emulator-regression.sh"), "utf8");
 
 let pass = 0;
 let fail = 0;
@@ -42,6 +44,8 @@ check("GarmentIntakeFlow 已选图预览高度收敛到一屏", /h-\[min\(34dvh,
 check("GarmentIntakeFlow 裁切页不再使用嵌套 calc 固定高度", !/height:\s*"calc\(100dvh - 280px\)"/.test(garmentIntake));
 check("GarmentIntakeFlow 裁切工具栏使用短标签", /自由/.test(garmentIntake) && /3:4/.test(garmentIntake) && /左转90°/.test(garmentIntake) && /右转90°/.test(garmentIntake) && /重置/.test(garmentIntake));
 check("GarmentIntakeFlow 裁切页返回键先关闭裁切", /rootBackOverridesExit=\{isCropping\}/.test(garmentIntake) && /backDisabled=\{stepIndex === "select_photo" && !isCropping\}/.test(garmentIntake));
+check("Android MainActivity 固定竖屏", /android:screenOrientation="portrait"/.test(androidManifest));
+check("Android 回归脚本不再主动生成横屏截图", !/landscape\.png|user_rotation 1/.test(androidRegression));
 
 console.log(`\nintake fullscreen layout tests: ${pass} passed, ${fail} failed`);
 if (fail > 0) process.exit(1);

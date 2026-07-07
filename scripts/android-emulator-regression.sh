@@ -192,9 +192,6 @@ if [[ "$MODE" == "interaction" || "$MODE" == "full" ]]; then
   adb -s "$SERIAL" shell settings put system user_rotation 0 > "$RUN_DIR/portrait-lock.log" || true
   sleep 1
   adb -s "$SERIAL" exec-out screencap -p > "$RUN_DIR/portrait.png" || true
-  adb -s "$SERIAL" shell settings put system user_rotation 1 > "$RUN_DIR/landscape-lock.log" || true
-  sleep 2
-  adb -s "$SERIAL" exec-out screencap -p > "$RUN_DIR/landscape.png" || true
   adb -s "$SERIAL" shell settings put system accelerometer_rotation 1 > "$RUN_DIR/rotation-restore.log" || true
   adb -s "$SERIAL" logcat -d -t 1000 > "$RUN_DIR/logcat-after-interaction.log"
   assert_no_crash "$RUN_DIR/logcat-after-interaction.log" "$RUN_DIR/logcat-crash-after-interaction.log"
@@ -227,7 +224,7 @@ cat >> "$RUN_DIR/summary.md" <<SUMMARY
 - launch.log
 - window-focus.log
 - logcat-crash.log
-- portrait.png / landscape.png when interaction/full
+- portrait.png when interaction/full
 SUMMARY
 
 log "✅ Android 模拟器回归完成"
