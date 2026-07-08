@@ -5,9 +5,9 @@
 .ui-button--block { display: flex; width: 100%; }
 .ui-button--sm { height: 72rpx; padding: 0 24rpx; font-size: var(--font-caption); }
 .ui-button--lg { height: 96rpx; padding: 0 40rpx; font-size: 30rpx; }
-.ui-button--primary { color: #fff; background: var(--color-primary); box-shadow: 0 18rpx 44rpx rgba(53, 92, 125, 0.22); }
+.ui-button--primary { color: var(--color-surface); background: var(--color-primary); box-shadow: 0 18rpx 44rpx rgba(53, 92, 125, 0.22); }
 .ui-button--secondary { color: var(--color-primary); background: rgba(53, 92, 125, 0.10); }
 .ui-button--ghost { color: var(--color-ink); background: rgba(255, 255, 252, 0.68); border: 1rpx solid var(--color-line); }
-.ui-button--danger { color: #fff; background: var(--color-danger); }
+.ui-button--danger { color: var(--color-surface); background: var(--color-danger); }
 .ui-button[disabled] { color: rgba(29, 34, 40, 0.38); background: rgba(29, 34, 40, 0.10); box-shadow: none; }
 .ui-button__text { display: block; min-width: 0; }

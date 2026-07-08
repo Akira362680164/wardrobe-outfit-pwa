@@ -10,12 +10,12 @@ Page({
   },
 
   onLoad() {
-    wx.setNavigationBarTitle({ title: "首页" });
-    void this.loadSummary();
+    wx.setNavigationBarTitle({ title: "衣橱" });
+    this.openWardrobe();
   },
 
   onShow() {
-    void this.loadSummary();
+    this.openWardrobe();
   },
 
   async loadSummary() {
@@ -52,6 +52,6 @@ Page({
   },
 
   openIntake() {
-    wx.switchTab({ url: "/pages/intake/camera/index" });
+    wx.navigateTo({ url: "/pages/intake/camera/index" });
   },
 });

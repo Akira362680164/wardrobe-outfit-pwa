@@ -1,10 +1,10 @@
-.settings-page { padding: 48rpx 28rpx 160rpx; }
+.settings-page { padding: calc(env(safe-area-inset-top) + 152rpx) 32rpx calc(env(safe-area-inset-bottom) + 80rpx); }
 
 .info-card {
   margin-top: 32rpx;
   padding: 30rpx;
   border: 1rpx solid var(--color-line);
-  border-radius: var(--radius-card-inner);
+  border-radius: var(--radius-card);
   background: rgba(255, 255, 252, 0.78);
   box-shadow: var(--shadow-card);
 }
@@ -32,7 +32,7 @@
   height: 88rpx;
   margin-top: 28rpx;
   border: 0;
-  border-radius: var(--radius-pill);
+  border-radius: var(--radius-control);
   background: rgba(29, 34, 40, 0.08);
   color: var(--color-muted);
   font-size: var(--font-body);

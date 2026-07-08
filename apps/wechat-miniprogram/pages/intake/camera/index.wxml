@@ -1,10 +1,29 @@
-<view class="page-shell">
-  <view class="page-title">添加衣物</view>
-  <view class="page-copy">选择一张衣物图，确认字段后上传到服务器。小程序不保存本地业务缓存。</view>
+<view class="page-shell intake-page">
+  <view class="intake-header">
+    <view class="page-title">添加单品</view>
+    <view class="step-copy">步骤 1 / 2 · 选择照片</view>
+    <view class="progress-track"><view class="progress-fill progress-half"></view></view>
+  </view>
 
-  <view class="action-card">
-    <button class="primary-action" loading="{{selecting}}" disabled="{{selecting}}" bindtap="chooseFromCamera">拍照添加</button>
-    <button class="secondary-action" disabled="{{selecting}}" bindtap="chooseFromAlbum">从相册选择</button>
-    <view wx:if="{{error}}" class="error-text">{{error}}</view>
+  <view class="photo-card surface-panel">
+    <view class="section-title">选择单品照片</view>
+    <view class="empty-preview">请拍照或从图库选择单品图片</view>
+  </view>
+
+  <view class="source-grid">
+    <button class="source-button" loading="{{selecting}}" disabled="{{selecting}}" bindtap="chooseFromCamera">
+      <view>拍照</view>
+    </button>
+    <button class="source-button" disabled="{{selecting}}" bindtap="chooseFromAlbum">
+      <view>从图库选择</view>
+    </button>
+  </view>
+
+  <view class="limit-copy">当前先选择 1 张单品图片</view>
+  <view wx:if="{{error}}" class="error-text">{{error}}</view>
+
+  <view class="bottom-bar bottom-glass-bar">
+    <button class="secondary-button bottom-button" disabled>上一步</button>
+    <button class="primary-button bottom-button" disabled="{{selecting}}" loading="{{selecting}}" bindtap="chooseFromAlbum">下一步（AI 识别）</button>
   </view>
 </view>

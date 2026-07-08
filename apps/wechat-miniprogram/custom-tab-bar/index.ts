@@ -1,16 +1,35 @@
 declare const Component: any;
+declare function getCurrentPages(): Array<{ route?: string }>;
 
 const tabs = [
-  { key: "home", label: "首页", url: "/pages/home/index", icon: "home" },
   { key: "wardrobe", label: "衣橱", url: "/pages/wardrobe/index/index", icon: "wardrobe" },
-  { key: "add", label: "添加", url: "/pages/intake/camera/index", icon: "camera-plus", center: true },
-  { key: "outfits", label: "穿搭", url: "/pages/outfits/index/index", icon: "sparkles" },
-  { key: "me", label: "我的", url: "/pages/settings/index/index", icon: "user" },
+  { key: "outfits", label: "套装", url: "/pages/outfits/index/index", icon: "sparkles" },
+  { key: "wishlist", label: "种草", url: "/pages/wishlist/index/index", icon: "shopping-bag" },
+  { key: "settings", label: "设置", url: "/pages/settings/index/index", icon: "settings" },
 ];
 
 Component({
   data: { selected: 0, tabs },
+  lifetimes: {
+    attached(this: any) {
+      this.syncSelected();
+      setTimeout(() => this.syncSelected(), 0);
+      setTimeout(() => this.syncSelected(), 300);
+    },
+  },
+  pageLifetimes: {
+    show(this: any) {
+      this.syncSelected();
+      setTimeout(() => this.syncSelected(), 0);
+    },
+  },
   methods: {
+    syncSelected(this: any) {
+      const pages = getCurrentPages();
+      const current = pages[pages.length - 1]?.route;
+      const selected = tabs.findIndex((tab) => tab.url === `/${current}`);
+      if (selected >= 0 && selected !== this.data.selected) this.setData({ selected });
+    },
     switchTab(this: any, event: any) {
       const { index, url } = event.currentTarget.dataset;
       if (!url) return;

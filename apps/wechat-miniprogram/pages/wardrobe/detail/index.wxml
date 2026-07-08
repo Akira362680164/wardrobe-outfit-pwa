@@ -1,7 +1,34 @@
-<view class="page-shell">
-  <view class="page-title">{{title}}</view>
-  <view class="page-copy">{{description}}</view>
-  <view class="placeholder-card">
-    <view class="placeholder-label">页面骨架已就绪，业务实现由后续批次接入线上 API。</view>
-  </view>
+<view class="page-shell detail-page">
+  <detail-shell top-title="{{title}}" title="{{item.name}}" meta="{{item.meta}}" eyebrow="{{item.recordText}}" hero-label="主图" hero-fallback="3:4 单品图片">
+    <view class="thumb-strip" slot="afterHero">
+      <view class="thumb is-active"><view class="thumb-fallback"></view><view class="thumb-label">主图</view></view>
+      <view class="thumb add-thumb"><view class="plus">＋</view><view class="thumb-label muted">灵感</view></view>
+    </view>
+
+    <view class="notice-card"><view class="check-dot">✓</view><view>{{item.savedText}}</view></view>
+    <view class="info-card">
+      <view class="card-title">基础信息</view>
+      <view class="info-row"><text>衣橱</text><text>{{item.closetText}}</text></view>
+      <view class="info-row"><text>购买日期</text><text>{{item.purchaseDate}}</text></view>
+      <view class="info-row"><text>状态</text><text>{{item.statusText}}</text></view>
+    </view>
+    <view class="info-card">
+      <view class="card-title">颜色</view>
+      <view class="info-row"><text>主色</text><view class="chip"><view class="dot dot-white"></view><text>{{item.primaryColor}}</text></view></view>
+      <view class="info-row"><text>辅助色</text><view class="chip"><view class="dot dot-black"></view><text>{{item.secondaryColor}}</text></view></view>
+      <view class="info-row"><text>颜色模式</text><text>主色 + 点缀色</text></view>
+    </view>
+    <view class="info-card">
+      <view class="card-title">穿着属性</view>
+      <view class="info-row"><text>适穿温度</text><text>{{item.temperatureText}}</text></view>
+      <view class="info-row"><text>正式度</text><text>{{item.formalityText}}</text></view>
+      <view class="info-row"><text>保暖度</text><text>{{item.warmthText}}</text></view>
+      <view class="info-row"><text>材质</text><text>{{item.materialText}}</text></view>
+      <view class="info-row"><text>版型倾向</text><text>{{item.fitText}}</text></view>
+    </view>
+    <view class="info-card">
+      <view class="card-title">备注</view>
+      <view class="section-copy">{{item.notes}}</view>
+    </view>
+  </detail-shell>
 </view>

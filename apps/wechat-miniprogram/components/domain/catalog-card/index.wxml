@@ -1,0 +1,14 @@
+<view class="catalog-card catalog-card--{{tone}}" data-id="{{id}}" bindtap="onTap">
+  <view class="catalog-card__media">
+    <image wx:if="{{imageUrl}}" class="catalog-card__image" mode="aspectFit" src="{{imageUrl}}" />
+    <view wx:else class="catalog-card__fallback">{{fallback}}</view>
+  </view>
+  <view class="catalog-card__body">
+    <view class="catalog-card__title">{{title}}</view>
+    <view class="catalog-card__meta">{{meta}}</view>
+    <view wx:if="{{submeta || badge}}" class="catalog-card__footer">
+      <view wx:if="{{submeta}}" class="catalog-card__submeta">{{submeta}}</view>
+      <view wx:if="{{badge}}" class="catalog-card__badge">{{badge}}</view>
+    </view>
+  </view>
+</view>

@@ -1,7 +1,12 @@
-<view class="page-shell">
-  <view class="page-title">{{title}}</view>
-  <view class="page-copy">{{description}}</view>
-  <view class="placeholder-card">
-    <view class="placeholder-label">页面骨架已就绪，业务实现由后续批次接入线上 API。</view>
+<view class="legal-page page-shell">
+  <view class="legal-hero glass-panel">
+    <view class="legal-title">{{title}}</view>
+    <view class="legal-date">更新日期：{{updatedAt}}</view>
+    <view class="legal-intro text-wrap-safe">{{intro}}</view>
+  </view>
+
+  <view wx:for="{{sections}}" wx:key="title" class="legal-section surface-panel">
+    <view class="legal-section-title">{{item.title}}</view>
+    <view wx:for="{{item.body}}" wx:for-item="line" wx:key="*this" class="legal-line text-wrap-safe">{{line}}</view>
   </view>
 </view>

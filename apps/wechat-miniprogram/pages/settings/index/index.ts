@@ -1,16 +1,20 @@
 Page({
   data: {
-    sections: [
-      { title: "账号", copy: "登录状态、手机号和退出登录", url: "/pages/settings/account/index" },
-      { title: "AI Key", copy: "后端 AI 接入前的使用边界", url: "/pages/settings/ai-key/index" },
-      { title: "隐私", copy: "数据保存、图片和协议入口", url: "/pages/settings/privacy/index" },
-      { title: "诊断", copy: "仅用户主动触发，当前暂不可用", url: "/pages/settings/diagnostics/index" },
-      { title: "关于", copy: "版本、AppID 和服务说明", url: "/pages/settings/about/index" },
-    ],
+    profileCopy: "后续接入 App 端穿衣画像；小程序当前仅同步服务器衣橱和穿搭数据。",
+    aiPhotoCopy: "照片仅在生成试穿图时使用；当前小程序暂不保存参考照片。",
   },
 
   onLoad() {
     wx.setNavigationBarTitle({ title: "设置" });
+    setCustomTabBarSelected(this, 3);
+  },
+
+  onShow() {
+    setCustomTabBarSelected(this, 3);
+  },
+
+  onReady() {
+    setCustomTabBarSelected(this, 3);
   },
 
   openSection(event: { currentTarget: { dataset: { url?: string } } }) {
@@ -18,3 +22,9 @@ Page({
     if (url) wx.navigateTo({ url });
   },
 });
+
+function setCustomTabBarSelected(page: unknown, selected: number) {
+  const getTabBar = (page as { getTabBar?: () => ({ setData?: (data: { selected: number }) => void } | null) }).getTabBar;
+  const tabBar = getTabBar?.();
+  if (tabBar && typeof tabBar.setData === "function") tabBar.setData({ selected });
+}

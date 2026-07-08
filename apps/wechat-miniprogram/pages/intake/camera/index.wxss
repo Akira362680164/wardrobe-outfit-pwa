@@ -1,6 +1,17 @@
-.page-shell { padding: 48rpx 28rpx 160rpx; }
-.action-card { box-sizing: border-box; margin-top: 32rpx; padding: 32rpx; border: 1rpx solid var(--color-line); border-radius: var(--radius-card-inner); background: rgba(255,255,252,0.78); box-shadow: var(--shadow-card); }
-.primary-action, .secondary-action { box-sizing: border-box; width: 100%; height: 92rpx; border: 0; border-radius: var(--radius-pill); font-size: var(--font-body); font-weight: 700; line-height: 92rpx; }
-.primary-action { color: #fff; background: var(--color-ink); }
-.secondary-action { margin-top: 18rpx; color: var(--color-ink); background: rgba(29,34,40,0.08); }
-.error-text { margin-top: 22rpx; color: var(--color-danger); font-size: var(--font-caption); line-height: 1.45; }
+.intake-page { padding: calc(env(safe-area-inset-top) + 152rpx) 32rpx 220rpx; }
+.intake-header { margin-bottom: 28rpx; text-align: center; }
+.step-copy { margin-top: 6rpx; color: var(--color-muted); font-size: var(--font-caption); line-height: 1.4; }
+.progress-track { width: 100%; height: 10rpx; margin-top: 22rpx; overflow: hidden; border-radius: 999rpx; background: var(--color-mist); }
+.progress-fill { height: 100%; border-radius: inherit; background: var(--color-primary); }
+.progress-half { width: 50%; }
+.photo-card { box-sizing: border-box; padding: 28rpx; border-radius: var(--radius-card-inner); }
+.section-title { color: var(--color-ink); font-size: var(--font-section); font-weight: 800; line-height: 1.25; }
+.empty-preview { box-sizing: border-box; display: flex; align-items: center; justify-content: center; min-height: 96rpx; margin-top: 24rpx; border: 1rpx dashed rgba(29, 34, 40, 0.18); border-radius: var(--radius-thumb); color: var(--color-muted); background: rgba(255, 255, 252, 0.58); font-size: var(--font-caption); line-height: 1.4; }
+.source-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 24rpx; margin-top: 28rpx; }
+.source-button { box-sizing: border-box; display: flex; align-items: center; justify-content: center; min-height: 288rpx; margin: 0; border: 1rpx solid var(--color-line); border-radius: var(--radius-card-inner); color: var(--color-ink); background: rgba(255, 255, 252, 0.82); box-shadow: var(--shadow-card); font-size: var(--font-body); font-weight: 800; line-height: 1.35; }
+.source-button::after { border: 0; }
+.limit-copy { margin-top: 30rpx; color: var(--color-muted); font-size: var(--font-label); line-height: 1.45; text-align: center; }
+.error-text { margin-top: 22rpx; color: var(--color-danger); font-size: var(--font-caption); line-height: 1.45; text-align: center; }
+.bottom-bar { position: fixed; right: 20rpx; bottom: calc(env(safe-area-inset-bottom) + 18rpx); left: 20rpx; z-index: 30; box-sizing: border-box; display: grid; grid-template-columns: 0.8fr 1.2fr; gap: 18rpx; padding: 18rpx; }
+.bottom-button { display: block; width: 100%; margin: 0; text-align: center; white-space: nowrap; }
+.bottom-button::after { border: 0; }

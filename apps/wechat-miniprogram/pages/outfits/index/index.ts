@@ -7,15 +7,33 @@ Page({
     error: "",
     emptyTitle: "",
     emptyAction: "",
+    filters: ["全部", "最近穿过", "未穿过", "通勤", "旅行", "春秋"],
+    activeFilter: "全部",
+    weekDays: [
+      { week: "一", day: "6" },
+      { week: "二", day: "7" },
+      { week: "三", day: "8", active: true },
+      { week: "四", day: "9" },
+      { week: "五", day: "10" },
+      { week: "六", day: "11" },
+      { week: "日", day: "12" },
+    ],
+    outfitCountLabel: "0 套",
   },
 
   onLoad() {
-    wx.setNavigationBarTitle({ title: "穿搭" });
+    wx.setNavigationBarTitle({ title: "套装" });
+    setCustomTabBarSelected(this, 1);
     void this.loadOutfits();
   },
 
   onShow() {
+    setCustomTabBarSelected(this, 1);
     void this.loadOutfits();
+  },
+
+  onReady() {
+    setCustomTabBarSelected(this, 1);
   },
 
   async loadOutfits() {
@@ -33,10 +51,15 @@ Page({
 
     this.setData({ loading: true, error: "" });
     try {
-      this.setData({ outfits: await fetchOutfits(), loading: false });
+      const outfits = await fetchOutfits();
+      this.setData({ outfits, loading: false, outfitCountLabel: `${outfits.length} 套` });
     } catch (error) {
-      this.setData({ loading: false, outfits: [], error: error instanceof Error ? error.message : "读取套装失败" });
+      this.setData({ loading: false, outfits: [], outfitCountLabel: "0 套", error: error instanceof Error ? error.message : "读取套装失败" });
     }
+  },
+
+  openCalendar() {
+    wx.navigateTo({ url: "/pages/outfits/calendar/index" });
   },
 
   handleEmptyAction() {
@@ -61,3 +84,9 @@ Page({
     if (id) wx.navigateTo({ url: `/pages/outfits/detail/index?id=${encodeURIComponent(id)}` });
   },
 });
+
+function setCustomTabBarSelected(page: unknown, selected: number) {
+  const getTabBar = (page as { getTabBar?: () => ({ setData?: (data: { selected: number }) => void } | null) }).getTabBar;
+  const tabBar = getTabBar?.();
+  if (tabBar && typeof tabBar.setData === "function") tabBar.setData({ selected });
+}

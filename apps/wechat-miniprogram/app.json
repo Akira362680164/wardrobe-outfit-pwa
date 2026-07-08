@@ -1,6 +1,7 @@
 {
   "pages": [
     "pages/login/index",
+    "pages/login/password/index",
     "pages/home/index",
     "pages/wardrobe/index/index",
     "pages/wardrobe/detail/index",
@@ -30,17 +31,16 @@
   ],
   "window": {
     "navigationStyle": "custom",
-    "backgroundColor": "#f7f2eb",
+    "backgroundColor": "#fbfbf8",
     "backgroundTextStyle": "dark"
   },
   "tabBar": {
     "custom": true,
     "list": [
-      { "pagePath": "pages/home/index", "text": "首页" },
       { "pagePath": "pages/wardrobe/index/index", "text": "衣橱" },
-      { "pagePath": "pages/intake/camera/index", "text": "添加" },
-      { "pagePath": "pages/outfits/index/index", "text": "穿搭" },
-      { "pagePath": "pages/settings/index/index", "text": "我的" }
+      { "pagePath": "pages/outfits/index/index", "text": "套装" },
+      { "pagePath": "pages/wishlist/index/index", "text": "种草" },
+      { "pagePath": "pages/settings/index/index", "text": "设置" }
     ]
   },
   "style": "v2",

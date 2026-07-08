@@ -1,4 +1,4 @@
-.page-shell { padding: 48rpx 28rpx 160rpx; }
+.page-shell { padding: calc(env(safe-area-inset-top) + 152rpx) 28rpx 160rpx; }
 
 .hero { margin-bottom: 32rpx; }
 

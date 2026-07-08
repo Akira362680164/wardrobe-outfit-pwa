@@ -1,1 +1,1 @@
-{}
+{ "usingComponents": { "detail-shell": "../../../components/domain/detail-shell/index" } }

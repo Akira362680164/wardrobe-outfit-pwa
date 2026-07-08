@@ -104,6 +104,15 @@ export interface CreateWishlistInput {
   assetMutations?: AssetMutation[];
 }
 
+type CatalogItemPayloadInput = {
+  name: string;
+  category?: string;
+  colors?: Record<string, unknown>;
+  seasons?: string[];
+  styles?: string[];
+  notes?: string;
+};
+
 const CATEGORY_LABELS: Record<string, string> = {
   tops: "上装",
   pants: "裤装",
@@ -179,17 +188,16 @@ export async function createGarment(input: CreateGarmentInput): Promise<Workspac
     data: {
       clientMutationId: input.clientMutationId,
       payload: {
+        ...buildCatalogItemPayload({
+          name: input.name,
+          category: input.category,
+          colors: { mode: "single", primary: input.color },
+          seasons: input.season ? [input.season] : [],
+          notes: input.note,
+        }),
         legacyItemId: createLegacyNumericId(),
         locationId: "home",
-        name: input.name,
-        category: input.category,
-        colors: { mode: "single", primary: input.color },
-        seasons: input.season ? [input.season] : [],
-        styles: [],
         status: "active",
-        notes: input.note,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
       },
       assetMutations: input.assetMutations,
     },
@@ -229,23 +237,36 @@ export async function createWishlistItem(input: CreateWishlistInput): Promise<Wo
     data: {
       clientMutationId: input.clientMutationId ?? createClientMutationId(),
       payload: {
-        name: input.name,
-        category: input.category || "tops",
+        ...buildCatalogItemPayload({
+          name: input.name,
+          category: input.category || "tops",
+          colors: { mode: "single", primary: "未标注" },
+          seasons: [],
+          notes: input.notes,
+        }),
         price: input.price,
         productUrl: input.productUrl,
-        notes: input.notes,
-        colors: { mode: "single", primary: "未标注" },
-        seasons: [],
-        styles: [],
         status: "interested",
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
       },
       assetMutations: input.assetMutations ?? [],
     },
   });
   if (!response.entity) throw new Error("服务器未返回已保存种草");
   return response.entity;
+}
+
+function buildCatalogItemPayload(input: CatalogItemPayloadInput): Record<string, unknown> {
+  const now = new Date().toISOString();
+  return {
+    name: input.name,
+    category: input.category || "tops",
+    colors: input.colors ?? { mode: "single", primary: "未标注" },
+    seasons: input.seasons ?? [],
+    styles: input.styles ?? [],
+    notes: input.notes,
+    createdAt: now,
+    updatedAt: now,
+  };
 }
 
 async function workspaceRequest<T>(path: string): Promise<T> {

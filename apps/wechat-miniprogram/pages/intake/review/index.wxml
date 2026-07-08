@@ -1,15 +1,36 @@
-<view class="page-shell">
-  <view class="page-title">确认衣物信息</view>
-  <view class="page-copy">当前版本先做人工确认和服务器入库，AI 识别后续接后端代理。</view>
+<view class="page-shell intake-page">
+  <view class="intake-header">
+    <view class="page-title">添加单品</view>
+    <view class="step-copy">步骤 2 / 2 · 确认信息</view>
+    <view class="progress-track"><view class="progress-fill"></view></view>
+  </view>
 
   <view wx:if="{{!draft}}" class="panel">
     <view class="status-title">没有待确认图片</view>
-    <button class="primary-action" bindtap="goBack">返回选择</button>
+    <button class="primary-button panel-action" bindtap="goBack">返回选择</button>
   </view>
 
   <view wx:else>
-    <image class="preview-image" mode="aspectFill" src="{{draft.imagePath}}" />
-    <view class="form-card">
+    <view class="preview-card surface-panel">
+      <view class="preview-card__top">
+        <view class="section-title">确认 1 件单品</view>
+        <view class="ai-badge">当前先人工确认</view>
+      </view>
+      <view class="preview-media">
+        <image class="preview-image" mode="aspectFill" src="{{draft.imagePath}}" />
+      </view>
+      <view class="thumb-row">
+        <image class="thumb-image thumb-active" mode="aspectFill" src="{{draft.imagePath}}" />
+      </view>
+    </view>
+
+    <view class="form-card surface-panel">
+      <view class="form-card__top">
+        <view class="section-title">校对衣物草稿</view>
+        <view class="review-badge">待确认</view>
+      </view>
+      <view class="form-copy">AI 识别代理未接入；请先人工确认字段后再保存。</view>
+
       <view class="field-label">名称</view>
       <input class="field-input" value="{{draft.name}}" placeholder="例如 白色衬衫" bindinput="updateName" />
 
@@ -30,7 +51,11 @@
       <textarea class="field-textarea" value="{{draft.note}}" placeholder="可选" bindinput="updateNote" />
 
       <view wx:if="{{error}}" class="error-text">{{error}}</view>
-      <button class="primary-action" loading="{{saving}}" disabled="{{saving}}" bindtap="save">保存到衣橱</button>
+    </view>
+
+    <view class="bottom-bar bottom-glass-bar">
+      <button class="secondary-button bottom-button" disabled="{{saving}}" bindtap="goBack">上一步</button>
+      <button class="primary-button bottom-button" loading="{{saving}}" disabled="{{saving}}" bindtap="save">保存到衣橱</button>
     </view>
   </view>
 </view>

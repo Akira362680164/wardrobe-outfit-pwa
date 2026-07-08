@@ -22,7 +22,7 @@
     <textarea class="textarea-input" value="{{notes}}" placeholder="尺码、材质、为什么想买" maxlength="300" bindinput="handleNotesInput" />
   </view>
 
-  <view class="bottom-bar">
+  <view class="save-bar bottom-glass-bar">
     <button class="save-button" disabled="{{saving || !name}}" bindtap="saveWishlist">
       {{saving ? '保存中...' : '保存种草'}}
     </button>

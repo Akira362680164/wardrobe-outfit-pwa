@@ -12,13 +12,13 @@
   <view wx:elif="{{error}}" class="status-card">
     <view class="status-title">读取失败</view>
     <view class="status-copy">{{error}}</view>
-    <button class="mini-button" bindtap="loadGarments">重试</button>
+    <button class="mini-button primary-button" bindtap="loadGarments">重试</button>
   </view>
 
   <view wx:elif="{{garments.length === 0}}" class="status-card">
     <view class="status-title">{{emptyTitle || '还没有可选衣物'}}</view>
     <view class="status-copy">先添加衣物，再回来组合套装。</view>
-    <button class="mini-button" bindtap="handleEmptyAction">{{emptyAction || '去衣橱'}}</button>
+    <button class="mini-button primary-button" bindtap="handleEmptyAction">{{emptyAction || '去衣橱'}}</button>
   </view>
 
   <view wx:else class="garment-list">
@@ -38,7 +38,7 @@
   </view>
 
   <view class="bottom-bar">
-    <button class="save-button" disabled="{{saving || selectedCount < 2 || !name}}" bindtap="saveOutfit">
+    <button class="save-button primary-button" disabled="{{saving || selectedCount < 2 || !name}}" bindtap="saveOutfit">
       {{saving ? '保存中...' : '保存套装'}}
     </button>
   </view>

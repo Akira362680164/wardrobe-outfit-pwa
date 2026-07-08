@@ -1,8 +1,8 @@
 <view class="mini-tab-shell">
-  <view class="mini-tab glass-panel">
+  <view class="mini-tab bottom-glass-bar">
     <block wx:for="{{tabs}}" wx:key="key">
-      <button class="mini-tab__item {{item.center ? 'mini-tab__item--center' : ''}} {{selected === index ? 'mini-tab__item--active' : ''}}" data-index="{{index}}" data-url="{{item.url}}" hover-class="mini-tab__item--hover" aria-label="{{item.label}}" bindtap="switchTab">
-        <view class="mini-tab__icon-wrap"><ui-icon name="{{item.icon}}" size="{{item.center ? 46 : 38}}" color="currentColor" /></view>
+      <button class="mini-tab__item {{selected === index ? 'mini-tab__item--active' : ''}}" data-index="{{index}}" data-url="{{item.url}}" hover-class="mini-tab__item--hover" aria-label="{{item.label}}" bindtap="switchTab">
+        <view class="mini-tab__icon-wrap"><ui-icon name="{{item.icon}}" size="38" color="currentColor" /></view>
         <text class="mini-tab__label text-one-line">{{item.label}}</text>
       </button>
     </block>

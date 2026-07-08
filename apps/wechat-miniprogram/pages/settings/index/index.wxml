@@ -1,20 +1,66 @@
 <view class="settings-page page-shell">
-  <view class="page-title">我的</view>
-  <view class="page-copy">账号、安全、隐私和服务状态。</view>
+  <view class="ai-banner">
+    <view class="banner-mark">✣</view>
+    <view class="banner-copy">尚未接入后端 AI 代理，识别、推荐和试穿功能暂不可用。</view>
+  </view>
 
-  <view class="settings-list">
-    <view
-      wx:for="{{sections}}"
-      wx:key="title"
-      class="settings-row"
-      data-url="{{item.url}}"
-      bindtap="openSection"
-    >
-      <view class="row-text">
-        <view class="row-title">{{item.title}}</view>
-        <view class="row-copy">{{item.copy}}</view>
-      </view>
-      <view class="row-arrow">›</view>
+  <view class="page-title">设置</view>
+
+  <view class="settings-card settings-row-card" data-url="/pages/settings/account/index" bindtap="openSection">
+    <view class="settings-icon">♙</view>
+    <view class="settings-main">
+      <view class="card-title">账号服务</view>
+      <view class="card-copy">微信认证登录、手机号和退出登录。</view>
+      <view class="card-foot">后续从云端账号同步。</view>
     </view>
+    <view class="card-action">管理 ›</view>
+  </view>
+
+  <view class="settings-card">
+    <view class="card-title">我的穿衣画像</view>
+    <view class="card-copy">用于推荐、买前评估和 AI 试穿。</view>
+    <view class="muted-panel">{{profileCopy}}</view>
+  </view>
+
+  <view class="settings-card settings-row-card">
+    <view class="settings-main">
+      <view class="card-title">AI 试穿参考照片</view>
+      <view class="card-copy">照片仅在生成试穿图时使用。</view>
+      <view class="card-foot">{{aiPhotoCopy}}</view>
+    </view>
+    <view class="toggle-off"></view>
+  </view>
+
+  <view class="settings-card settings-row-card" data-url="/pages/settings/ai-key/index" bindtap="openSection">
+    <view class="settings-main">
+      <view class="card-title">AI 设置</view>
+      <view class="card-copy">小程序不保存 MiniMax Key；后续统一走后端 AI 代理。</view>
+      <view class="status-line">未接入</view>
+    </view>
+    <view class="card-action">查看 ›</view>
+  </view>
+
+  <view class="settings-card settings-row-card" data-url="/pages/settings/diagnostics/index" bindtap="openSection">
+    <view class="settings-main">
+      <view class="card-title">远程诊断</view>
+      <view class="card-copy">仅用户主动触发，用于排查同步、登录和图片问题。</view>
+    </view>
+    <view class="card-action">查看 ›</view>
+  </view>
+
+  <view class="settings-card settings-row-card compact" data-url="/pages/settings/privacy/index" bindtap="openSection">
+    <view class="settings-main">
+      <view class="card-title">隐私与服务协议</view>
+      <view class="card-copy">数据保存、图片和协议入口。</view>
+    </view>
+    <view class="card-action">›</view>
+  </view>
+
+  <view class="settings-card settings-row-card compact" data-url="/pages/settings/about/index" bindtap="openSection">
+    <view class="settings-main">
+      <view class="card-title">关于</view>
+      <view class="card-copy">版本、AppID 和服务说明。</view>
+    </view>
+    <view class="card-action">›</view>
   </view>
 </view>

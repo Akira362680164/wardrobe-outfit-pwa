@@ -2,9 +2,8 @@
   <view class="page-header">
     <view>
       <view class="page-title">种草</view>
-      <view class="page-copy">记录想买但还没入衣橱的单品。</view>
+      <view class="page-copy">{{summaryText}}</view>
     </view>
-    <button class="icon-action" bindtap="openEdit">＋</button>
   </view>
 
   <view wx:if="{{loading}}" class="status-card">正在读取种草...</view>
@@ -21,15 +20,39 @@
     <button class="mini-button" bindtap="handleEmptyAction">{{emptyAction || '新增种草'}}</button>
   </view>
 
-  <view wx:else class="wishlist-list">
-    <view wx:for="{{items}}" wx:key="id" class="wishlist-card" data-id="{{item.id}}" bindtap="openDetail">
-      <image wx:if="{{item.imageUrl}}" class="wishlist-image" mode="aspectFill" src="{{item.imageUrl}}" />
-      <view wx:else class="wishlist-image fallback">{{item.categoryLabel}}</view>
-      <view class="wishlist-main">
-        <view class="wishlist-name">{{item.name}}</view>
-        <view class="wishlist-meta">{{item.categoryLabel}} · {{item.priceText}}</view>
-      </view>
-      <view class="status-pill">{{item.statusText}}</view>
+  <view wx:else>
+    <scroll-view class="status-chips" scroll-x enable-flex>
+      <button
+        wx:for="{{statusChips}}"
+        wx:key="key"
+        class="status-chip {{activeStatus === item.key ? 'status-chip--active' : ''}}"
+        data-status="{{item.key}}"
+        bindtap="setStatusFilter"
+      >
+        {{item.label}} {{item.count}}
+      </button>
+    </scroll-view>
+
+    <view wx:if="{{filteredItems.length === 0}}" class="status-card">
+      <view class="status-title">当前筛选没有种草</view>
+      <view class="status-copy">切换状态，或用右下角新增一件。</view>
+    </view>
+
+    <view wx:else class="wishlist-grid">
+      <catalog-card
+        wx:for="{{filteredItems}}"
+        wx:key="id"
+        id="{{item.id}}"
+        image-url="{{item.imageUrl}}"
+        fallback="{{item.categoryLabel}}"
+        title="{{item.name}}"
+        meta="{{item.categoryLabel}} · {{item.priceText}}"
+        badge="{{item.statusText}}"
+        tone="shopping"
+        bind:select="openDetail"
+      />
     </view>
   </view>
+
+  <button class="content-fab" bindtap="openEdit">＋</button>
 </view>

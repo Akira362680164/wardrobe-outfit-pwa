@@ -1,7 +1,33 @@
 <view class="page-shell">
-  <view class="page-title">{{title}}</view>
-  <view class="page-copy">{{description}}</view>
-  <view class="placeholder-card">
-    <view class="placeholder-label">页面骨架已就绪，业务实现由后续批次接入线上 API。</view>
+  <view class="sub-top">
+    <button class="back-button" aria-label="返回" bindtap="goBack">‹</button>
+    <view class="sub-title">套装计划</view>
+  </view>
+
+  <view class="month-row">
+    <view class="month-arrow">‹</view>
+    <view class="month-title">{{monthTitle}}</view>
+    <view class="month-arrow">›</view>
+  </view>
+
+  <view class="weekday-row">
+    <view wx:for="{{weekdays}}" wx:key="*this" class="weekday">{{item}}</view>
+  </view>
+
+  <view class="calendar-grid">
+    <view wx:for="{{days}}" wx:key="key" class="calendar-day {{item.muted ? 'calendar-day--muted' : ''}} {{item.active ? 'calendar-day--active' : ''}}">
+      {{item.label}}
+    </view>
+  </view>
+
+  <view class="today-state">
+    <view class="state-title">今天还没有安排套装</view>
+    <view class="state-copy">可以先把想穿的套装放进计划。</view>
+    <button class="primary-button state-button" bindtap="openCompose">安排套装</button>
+  </view>
+
+  <view class="month-empty">
+    <view class="month-empty__title">这个月还没有套装计划</view>
+    <view class="month-empty__copy">点击安排套装，先建立一套可加入计划的组合。</view>
   </view>
 </view>

@@ -1,6 +1,27 @@
 <view class="page-shell">
-  <view class="page-title">衣橱</view>
-  <view class="page-copy">从服务器读取的真实单品列表。</view>
+  <view class="wardrobe-top">
+    <view class="filter-card">
+      <view class="filter-main">
+        <view class="filter-title">全部衣橱</view>
+        <view class="filter-count">{{totalCount}}件</view>
+      </view>
+    </view>
+  </view>
+
+  <view class="stats-line">{{statsText}}</view>
+
+  <view class="wardrobe-actions">
+    <view class="top-action" bindtap="showSearchTip">搜索</view>
+    <view class="top-action" bindtap="showStatsTip">统计</view>
+    <view class="top-action top-action-primary" bindtap="openIntake">添加</view>
+  </view>
+
+  <scroll-view class="category-scroll" scroll-x enable-flex>
+    <view class="category-row">
+      <button class="category-chip {{activeCategory === 'all' ? 'is-active' : ''}}" data-category="all" bindtap="handleCategoryTap">全部 {{totalCount}}</button>
+      <button wx:for="{{categoryChips}}" wx:key="key" class="category-chip {{item.key === activeCategory ? 'is-active' : ''}}" data-category="{{item.key}}" bindtap="handleCategoryTap">{{item.label}} {{item.count}}</button>
+    </view>
+  </scroll-view>
 
   <view wx:if="{{loading}}" class="status-card">正在读取衣橱...</view>
 
@@ -17,14 +38,23 @@
   </view>
 
   <view wx:else class="garment-grid">
-    <view wx:for="{{garments}}" wx:key="id" class="garment-card">
-      <image wx:if="{{item.imageUrl}}" class="garment-image" mode="aspectFill" src="{{item.imageUrl}}" />
-      <view wx:else class="image-fallback">{{item.categoryLabel}}</view>
-      <view class="garment-body">
-        <view class="garment-name">{{item.name}}</view>
-        <view class="garment-meta">{{item.categoryLabel}} · {{item.colorText}}</view>
-        <view class="garment-chip">{{item.seasonText}}</view>
-      </view>
-    </view>
+    <catalog-card
+      wx:for="{{visibleGarments}}"
+      wx:key="id"
+      id="{{item.id}}"
+      image-url="{{item.imageUrl}}"
+      fallback="{{item.categoryLabel}}"
+      title="{{item.name}}"
+      meta="{{item.categoryLabel}} · {{item.colorText}}"
+      submeta="{{item.seasonText}}"
+      tone="primary"
+      bind:select="openDetail"
+    />
+  </view>
+
+  <view wx:if="{{garments.length > 0 && visibleGarments.length === 0}}" class="status-card">
+    <view class="status-title">这个分类还没有衣物</view>
+    <view class="status-copy">切回全部衣橱，或添加一件当前分类的单品。</view>
+    <button class="mini-button" bindtap="openIntake">添加衣物</button>
   </view>
 </view>

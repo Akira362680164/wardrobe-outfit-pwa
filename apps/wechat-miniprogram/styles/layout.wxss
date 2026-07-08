@@ -1,5 +1,5 @@
-.page-shell { min-height: 100vh; padding: calc(env(safe-area-inset-top) + 24rpx) 32rpx calc(env(safe-area-inset-bottom) + 168rpx); box-sizing: border-box; }
-.safe-top { padding-top: calc(env(safe-area-inset-top) + 24rpx); }
+.page-shell { min-height: 100vh; padding: calc(env(safe-area-inset-top) + 152rpx) 32rpx calc(env(safe-area-inset-bottom) + 168rpx); box-sizing: border-box; overflow-x: hidden; background: var(--app-ambient); }
+.safe-top { padding-top: calc(env(safe-area-inset-top) + 152rpx); }
 .safe-bottom { padding-bottom: calc(env(safe-area-inset-bottom) + 24rpx); }
 .stack-sm { display: flex; flex-direction: column; gap: var(--space-4); }
 .stack-md { display: flex; flex-direction: column; gap: var(--space-6); }
@@ -7,3 +7,9 @@
 .tap-target { min-width: 80rpx; min-height: 80rpx; }
 .media-3x4 { position: relative; width: 100%; overflow: hidden; border-radius: var(--radius-card-inner); background: var(--color-mist); }
 .media-3x4::before { display: block; padding-top: 133.333%; content: ""; }
+.primary-button,
+.secondary-button { box-sizing: border-box; min-width: 0; min-height: 88rpx; padding: 0 32rpx; border: 0; border-radius: var(--radius-control); font-size: var(--font-body); font-weight: 700; line-height: 88rpx; letter-spacing: 0; }
+.primary-button { color: var(--color-surface); background: var(--color-primary); box-shadow: 0 18rpx 44rpx rgba(53, 92, 125, 0.22); }
+.secondary-button { color: var(--color-primary); background: rgba(53, 92, 125, 0.10); }
+.page-shell .content-fab { position: fixed; right: 32rpx; bottom: calc(env(safe-area-inset-bottom) + 152rpx); z-index: 40; display: flex; align-items: center; justify-content: center; width: 112rpx; height: 112rpx; padding: 0; border: 0; border-radius: var(--radius-fab); color: var(--color-surface); background: var(--color-primary); box-shadow: 0 18rpx 44rpx rgba(53, 92, 125, 0.24); }
+.page-shell .content-fab::after { border: 0; }

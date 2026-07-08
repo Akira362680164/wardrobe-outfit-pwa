@@ -3,7 +3,7 @@
 .ui-icon-button::after { border: 0; }
 .ui-icon-button--sm { width: 72rpx; height: 72rpx; }
 .ui-icon-button--lg { width: 96rpx; height: 96rpx; }
-.ui-icon-button--primary { color: #fff; background: var(--color-primary); }
+.ui-icon-button--primary { color: var(--color-surface); background: var(--color-primary); }
 .ui-icon-button--ghost { color: var(--color-ink); background: rgba(29, 34, 40, 0.05); }
 .ui-icon-button--danger { color: var(--color-danger); background: rgba(220, 38, 38, 0.10); }
 .ui-icon-button--hover { opacity: 0.86; transform: scale(0.96); }

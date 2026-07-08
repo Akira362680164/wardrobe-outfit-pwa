@@ -1,0 +1,22 @@
+<view class="detail-shell">
+  <view class="detail-shell__topbar">
+    <navigator class="detail-shell__back" open-type="navigateBack" aria-label="返回">‹</navigator>
+    <view class="detail-shell__top-title">{{topTitle || title}}</view>
+  </view>
+
+  <view class="detail-shell__hero">
+    <view wx:if="{{heroLabel}}" class="detail-shell__badge">{{heroLabel}}</view>
+    <image wx:if="{{imageUrl}}" class="detail-shell__image" mode="aspectFit" src="{{imageUrl}}" />
+    <view wx:else class="detail-shell__fallback">{{heroFallback}}</view>
+  </view>
+
+  <slot name="afterHero" />
+
+  <view class="detail-shell__heading">
+    <view wx:if="{{eyebrow}}" class="detail-shell__eyebrow">{{eyebrow}}</view>
+    <view class="detail-shell__title">{{title}}</view>
+    <view wx:if="{{meta}}" class="detail-shell__meta">{{meta}}</view>
+  </view>
+
+  <slot />
+</view>

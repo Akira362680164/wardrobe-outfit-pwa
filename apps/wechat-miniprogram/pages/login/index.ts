@@ -1,5 +1,5 @@
 import { HttpError } from "../../services/http";
-import { loginWithPassword, loginWithWechatPhone } from "../../services/auth";
+import { loginWithWechatPhone } from "../../services/auth";
 
 const LOGIN_ERROR_MESSAGES: Record<string, string> = {
   account_binding_conflict: "账号需要安全验证，请联系客服或稍后重试。",
@@ -18,8 +18,6 @@ Page({
   data: {
     submitting: false,
     errorMessage: "",
-    phone: "",
-    password: "",
   },
 
   onLoad() {
@@ -38,7 +36,7 @@ Page({
     this.setData({ submitting: true, errorMessage: "" });
     try {
       await loginWithWechatPhone(phoneCode);
-      wx.switchTab({ url: "/pages/home/index" });
+      wx.switchTab({ url: "/pages/wardrobe/index/index" });
     } catch (error) {
       this.setData({ errorMessage: loginErrorMessage(error) });
     } finally {
@@ -46,32 +44,8 @@ Page({
     }
   },
 
-  handlePhoneInput(event: WechatMiniprogram.InputEvent) {
-    this.setData({ phone: event.detail.value });
-  },
-
-  handlePasswordInput(event: WechatMiniprogram.InputEvent) {
-    this.setData({ password: event.detail.value });
-  },
-
-  async loginByPassword(this: any) {
-    if (this.data.submitting) return;
-    const phone = this.data.phone.trim();
-    const password = this.data.password;
-    if (!phone || !password) {
-      this.setData({ errorMessage: "请填写手机号和密码。" });
-      return;
-    }
-
-    this.setData({ submitting: true, errorMessage: "" });
-    try {
-      await loginWithPassword(phone, password);
-      wx.switchTab({ url: "/pages/home/index" });
-    } catch (error) {
-      this.setData({ errorMessage: loginErrorMessage(error) });
-    } finally {
-      this.setData({ submitting: false });
-    }
+  openPasswordLogin() {
+    wx.navigateTo({ url: "/pages/login/password/index" });
   },
 
   openAgreement() {
@@ -89,6 +63,6 @@ function loginErrorMessage(error: unknown): string {
 }
 
 function phoneAuthErrorMessage(errMsg?: string): string {
-  if (!errMsg || /deny|cancel/i.test(errMsg)) return "微信认证登录未完成，请改用手机号密码登录。";
+  if (!errMsg || /deny|cancel/i.test(errMsg)) return "微信认证登录未完成，请改用账号密码登录。";
   return `微信认证登录失败：${errMsg}`;
 }

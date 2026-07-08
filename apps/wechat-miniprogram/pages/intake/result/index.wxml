@@ -1,9 +1,13 @@
-<view class="page-shell">
-  <view class="result-card">
-    <view class="result-mark">✓</view>
+<view class="page-shell result-page">
+  <view class="result-card surface-panel">
+    <view class="result-mark">已保存</view>
     <view class="page-title">已保存到衣橱</view>
     <view class="page-copy">服务器提交成功，返回衣橱页后会重新读取最新数据。</view>
-    <button class="primary-action" bindtap="openWardrobe">查看衣橱</button>
-    <button class="secondary-action" bindtap="addMore">继续添加</button>
+    <view wx:if="{{garmentId}}" class="result-meta">单品编号 {{garmentId}}</view>
+  </view>
+
+  <view class="bottom-bar bottom-glass-bar">
+    <button class="secondary-button bottom-button" bindtap="addMore">继续添加</button>
+    <button class="primary-button bottom-button" bindtap="openWardrobe">查看衣橱</button>
   </view>
 </view>

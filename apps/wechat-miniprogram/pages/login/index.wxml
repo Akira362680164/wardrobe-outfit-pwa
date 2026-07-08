@@ -1,29 +1,26 @@
 <view class="login-page page-shell">
-  <view class="login-hero glass-panel-strong">
+  <view class="login-hero glass-panel">
     <view class="login-kicker">智能衣橱</view>
     <view class="login-title text-wrap-safe">同步你的衣橱与穿搭数据</view>
     <view class="login-copy text-wrap-safe">使用微信认证登录，自动同步你的衣橱与穿搭数据。</view>
 
-    <button
-      class="phone-login-button"
-      open-type="getPhoneNumber"
-      disabled="{{submitting}}"
-      hover-class="phone-login-button--hover"
-      bindgetphonenumber="onGetPhoneNumber"
-    >
-      微信认证登录
-    </button>
+    <view class="login-actions">
+      <button
+        class="primary-button login-action"
+        open-type="getPhoneNumber"
+        disabled="{{submitting}}"
+        hover-class="login-action--hover"
+        bindgetphonenumber="onGetPhoneNumber"
+      >
+        微信认证登录
+      </button>
 
-    <view wx:if="{{errorMessage}}" class="login-error text-wrap-safe">{{errorMessage}}</view>
-
-    <view class="fallback-login">
-      <view class="fallback-title">手机号密码登录</view>
-      <input class="login-input" value="{{phone}}" type="number" placeholder="输入 App 账号手机号" bindinput="handlePhoneInput" />
-      <input class="login-input" value="{{password}}" password placeholder="输入密码" bindinput="handlePasswordInput" />
-      <button class="password-login-button" disabled="{{submitting || !phone || !password}}" bindtap="loginByPassword">
-        {{submitting ? '登录中...' : '登录'}}
+      <button class="secondary-button login-action login-secondary" hover-class="login-action--hover" bindtap="openPasswordLogin">
+        账号密码登录
       </button>
     </view>
+
+    <view wx:if="{{errorMessage}}" class="login-error text-wrap-safe">{{errorMessage}}</view>
 
     <view class="agreement-tip text-wrap-safe">
       点击该按钮后代表您已阅读并认可

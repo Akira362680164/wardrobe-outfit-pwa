@@ -1,10 +1,32 @@
 <view class="page-shell">
-  <view class="page-header">
-    <view>
-      <view class="page-title">穿搭</view>
-      <view class="page-copy">从服务器读取的套装列表。</view>
+  <view class="outfit-hero">
+    <view class="hero-copy">
+      <view class="page-title">套装</view>
+      <view class="page-copy">{{outfitCountLabel}}</view>
     </view>
-    <button class="icon-action" bindtap="openCompose">＋</button>
+  </view>
+
+  <view class="outfit-actions">
+    <button class="hero-control" bindtap="openCalendar">月历</button>
+  </view>
+
+  <view class="week-card surface-panel">
+    <view class="week-card__head">
+      <view class="week-card__title">本周套装</view>
+      <view class="week-card__range">2026年7月6日 - 7月12日</view>
+    </view>
+    <view class="week-strip">
+      <view wx:for="{{weekDays}}" wx:key="day" class="week-day {{item.active ? 'week-day--active' : ''}}">
+        <view class="week-day__label">{{item.week}}</view>
+        <view class="week-day__date">{{item.day}}</view>
+        <view class="week-day__plus">＋</view>
+      </view>
+    </view>
+    <view class="week-empty">
+      <view class="week-empty__title">今天还没有安排套装</view>
+      <view class="week-empty__copy">可以先把想穿的套装放进计划。</view>
+      <button class="primary-button week-empty__button" bindtap="openCompose">安排套装</button>
+    </view>
   </view>
 
   <view wx:if="{{loading}}" class="status-card">正在读取套装...</view>
@@ -12,22 +34,34 @@
   <view wx:elif="{{error}}" class="status-card">
     <view class="status-title">读取失败</view>
     <view class="status-copy">{{error}}</view>
-    <button class="mini-button" bindtap="loadOutfits">重试</button>
+    <button class="mini-button primary-button" bindtap="loadOutfits">重试</button>
   </view>
 
   <view wx:elif="{{outfits.length === 0}}" class="status-card">
     <view class="status-title">{{emptyTitle || '还没有套装'}}</view>
     <view class="status-copy">选择几件已有衣物，保存成常穿组合。</view>
-    <button class="mini-button" bindtap="handleEmptyAction">{{emptyAction || '创建套装'}}</button>
+    <button class="mini-button primary-button" bindtap="handleEmptyAction">{{emptyAction || '创建套装'}}</button>
   </view>
 
   <view wx:else class="outfit-list">
+    <scroll-view class="filter-row" scroll-x enable-flex>
+      <view wx:for="{{filters}}" wx:key="*this" class="filter-chip {{item === activeFilter ? 'filter-chip--active' : ''}}">{{item}}</view>
+    </scroll-view>
     <view wx:for="{{outfits}}" wx:key="id" class="outfit-card" data-id="{{item.id}}" bindtap="openDetail">
+      <view class="outfit-collage">
+        <view class="collage-pane collage-pane--main">{{item.itemCount}}件</view>
+        <view class="collage-stack">
+          <view class="collage-pane collage-pane--sub"></view>
+          <view class="collage-pane collage-pane--sub"></view>
+        </view>
+      </view>
       <view class="outfit-main">
         <view class="outfit-name">{{item.name}}</view>
         <view class="outfit-meta">{{item.sceneText}} · {{item.seasonText}}</view>
+        <view class="outfit-wear">暂无穿着记录</view>
       </view>
-      <view class="count-pill">{{item.itemCount}} 件</view>
     </view>
   </view>
+
+  <button class="content-fab" aria-label="创建套装" bindtap="openCompose">＋</button>
 </view>

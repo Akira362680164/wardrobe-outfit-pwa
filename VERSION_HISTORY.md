@@ -1,3 +1,15 @@
+## 2026-07-08 / v2.1.8-test / Codex — 小程序 UI 规范与 App 截图对照修复
+
+- **执行 Agent**：Codex（按用户明确要求使用并行 subagent：基础 UI/token、登录协议、衣橱、套装、种草、录入、详情、设置和占位页核查；主 agent 负责合并、App 截图对照、修复、截图、验证和提交）。
+- **目的**：按 `docs/superpowers/plans/2026-07-08-wechat-mini-ui-spec-remediation.md` 和 `docs/designs/wardrobe-ui-spec.html` 继续修复微信小程序全页面 UI，要求对照桌面 `v03-alpha-真实业务流截图` 中 App 版相同页面，保证用户体验和 UI 体验一致；同时按用户要求抽取种草/单品公共父层代码，但保留差异字段。
+- **版本变更**：无；当前应用版本仍为 `2.1.8-test`，小程序包版本仍为 `0.1.0`。
+- **改动文件**：`apps/wechat-miniprogram/styles/**`、`components/ui/**`、`components/domain/**`、`custom-tab-bar/**`、`assets/icons/shopping-bag.svg`、`pages/login/**`、`pages/wardrobe/**`、`pages/outfits/**`、`pages/wishlist/**`、`pages/intake/**`、`pages/settings/**`、`pages/webview/**`、`services/workspace.ts`、`app.json`、`docs/wechat-mini/ui-spec-remediation-report.md`、`docs/superpowers/plans/2026-07-08-wechat-mini-ui-spec-remediation.md`、`VERSION_HISTORY.md`。
+- **改动说明**：全局 token、按钮、卡片、毛玻璃、底部 Tab 和顶部安全区按 UI 规范收敛；登录页改为 `微信认证登录` 主按钮与 `账号密码登录` 次按钮，账号密码页独立；主 Tab 固定为衣橱/套装/种草/设置四项，选中态通过真实 `wx.switchTab` 路径验证；衣橱、套装、种草的新增/搜索/月历等操作从右上胶囊区域移到内容区；设置页按 App 版卡片信息架构重做；录入、套装、种草、详情页视觉按 App 真实截图对照修复；新增 `catalog-card` 和 `detail-shell` 作为小程序公共父层，衣橱单品、种草单品和套装详情保留各自字段；`services/workspace.ts` 仅抽共享 catalog payload，衣橱保留 `locationId/status/legacyItemId`，种草保留 `price/productUrl/status`。
+- **后端边界**：本轮未修改 `services/wardrobe-api/**`、`packages/cloud-contracts/**` 或 migration；`git diff -- services/wardrobe-api packages/cloud-contracts | wc -l` 为 `0`。
+- **验证结果**：`npm --prefix apps/wechat-miniprogram run typecheck` 通过；微信开发者工具 CLI `compile_wxml` / `compile_wxss` 覆盖公共组件、登录、衣橱、套装、种草、设置、录入和详情页通过；真实 `wx.switchTab` 路径重截 4 个主 Tab 页，底部选中态正常；`automation_viewport_action screenshot` 生成 11 张截图到 `test-results/wechat-miniprogram-ui-spec/`；`get_app_console_content` grep `error|fail|warn` 无命中；已逐页对照 `/Users/fangzheng/Desktop/v03-alpha-真实业务流截图/` 中 App 版同类截图并写入 `docs/wechat-mini/ui-spec-remediation-report.md`。
+- **风险门禁**：high（多页面 UI、公共组件抽取、登录/录入/列表/详情/设置全链路、小程序 TabBar 和多 subagent 并行合并）；已按用户要求触发并行 subagent。
+- **未验证风险**：备案和微信合法域名未完全闭环前，无法在真机完成微信认证登录、真实 API 写入和图片上传完整闭环；衣橱/种草列表真实数据卡片态需登录后读取服务器数据再复核；AI 识别、推荐和试穿代理尚未接入后端，本轮只保留设置页状态说明；详情页真实图片与实体详情仍依赖后端返回完整数据后再走查。
+
 ## 2026-07-08 / v2.1.8-test / Codex — 小程序 API 切换到正式 HTTPS 域名
 
 - **执行 Agent**：Codex（未触发 subagent：用户未通知）。
@@ -8,6 +20,18 @@
 - **验证结果**：切换前已确认 `https://api.zhengfangapps.cloud/api/health`、`/api/ready`、`/api/version` 均返回 `200 OK`；`npm --prefix apps/wechat-miniprogram run typecheck` 通过。
 - **风险门禁**：medium（小程序登录和业务请求目标从未配置切换到正式远程 API；不改页面结构、不改后端、不上传体验版）；未触发 subagent：用户未通知。
 - **未验证风险**：未在微信真机/预览版完成 live 登录；微信后台仍需将 `https://api.zhengfangapps.cloud` 配入合法 request/upload/download 域名后，真机请求才能通过平台校验。
+
+## 2026-07-08 / v2.1.8-test / Codex — 小程序登录与内容区新增入口修正
+
+- **执行 Agent**：Codex（按用户明确要求使用 2 个只读 subagent 核查右上角胶囊重叠风险；主 agent 负责修复与验证）。
+- **目的**：按用户真机/模拟器截图反馈，将登录首页调整为一个重要按钮 `微信认证登录` 和一个次要按钮 `账号密码登录`；账号密码输入移入独立页面；同时把套装页和种草页的新增 `＋` 入口从页面右上角移到内容区右下角，给微信官方胶囊按钮预留空间。
+- **版本变更**：无；当前应用版本仍为 `2.1.8-test`，小程序包版本仍为 `0.1.0`。
+- **改动文件**：`apps/wechat-miniprogram/app.json`、`apps/wechat-miniprogram/pages/login/index.ts`、`apps/wechat-miniprogram/pages/login/index.wxml`、`apps/wechat-miniprogram/pages/login/index.wxss`、`apps/wechat-miniprogram/pages/login/password/**`、`apps/wechat-miniprogram/pages/outfits/index/index.wxml`、`apps/wechat-miniprogram/pages/outfits/index/index.wxss`、`apps/wechat-miniprogram/pages/wishlist/index/index.wxml`、`apps/wechat-miniprogram/pages/wishlist/index/index.wxss`、`VERSION_HISTORY.md`。
+- **改动说明**：登录首页删除内嵌账号密码表单，只保留 `微信认证登录` 主按钮和 `账号密码登录` 次按钮；新增 `pages/login/password/index` 独立账号密码页，复用现有 `/api/auth/login` 小程序客户端封装；登录按钮改为与卡片内容区等长，固定宽度、固定行高和 `white-space: nowrap`，保证 `微信认证登录` 六个字完整展示；套装页和种草页删除 header 右侧 `icon-action`，新增底部导航上方的内容区右下角 `content-fab` 新增入口，原点击方法不变。
+- **后端边界**：本轮未修改 `services/wardrobe-api/**`、`packages/cloud-contracts/**` 或 migration；`git diff -- services/wardrobe-api packages/cloud-contracts | wc -l` 为 `0`。
+- **验证结果**：`npm --prefix apps/wechat-miniprogram run typecheck` 通过；`compile_wxml` 覆盖登录首页、账号密码页、套装页、种草页通过；`compile_wxss` 覆盖登录首页、账号密码页、套装页、种草页通过；`simulator_open_page` 覆盖登录首页、账号密码页、套装页、种草页通过；`automation_runtime_info` 确认账号密码页 route 为 `/pages/login/password/index`；`automation_viewport_action screenshot` 成功生成 `test-results/wechat-miniprogram-login/login-home.png`、`password-page.png`、`outfits-fab.png`、`wishlist-fab.png`，人工核对无按钮文字溢出，套装/种草页右上角无自定义操作按钮；console grep `Error|TypeError|ReferenceError|Cannot|未找到` 无命中；`rg icon-action` 确认套装/种草首页不再残留 header 右侧新增按钮；`git diff --check` 通过。
+- **风险门禁**：medium（登录首页视觉、登录路由、账号密码登录页和两个列表页新增入口位置变更；不改后端、不改共享契约、不上传体验版）；已按用户要求触发 2 个只读 subagent，均定位套装页和种草页右上 `＋` 为胶囊重叠高风险点。
+- **未验证风险**：元素级自动化点击 `.account-login-button` 时 DevTools automator 响应超时，因此点击跳转未用元素自动化闭环证明；已用直接打开新路由、页面截图和运行态 route 验证新页面可运行。`getPhoneNumber:fail no permission` 仍取决于微信平台手机号能力、当前账号/环境权限和真机预览能力，前端只能保留官方 `open-type="getPhoneNumber"` 触发入口，无法绕过微信权限弹出手机号选择器。
 
 ## 2026-07-08 / v2.1.8-test / Codex — 小程序登录官方名称纠正
 

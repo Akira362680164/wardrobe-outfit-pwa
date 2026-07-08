@@ -1,17 +1,36 @@
-<view class="page-shell">
+<view class="page-shell detail-page">
   <view wx:if="{{loading}}" class="status-card">正在读取种草...</view>
   <view wx:elif="{{error}}" class="status-card">
     <view class="status-title">读取失败</view>
     <view class="status-copy">{{error}}</view>
   </view>
-  <view wx:elif="{{item}}" class="detail-card">
-    <image wx:if="{{item.imageUrl}}" class="hero-image" mode="aspectFill" src="{{item.imageUrl}}" />
-    <view wx:else class="hero-image fallback">{{item.categoryLabel}}</view>
-    <view class="page-title">{{item.name}}</view>
-    <view class="page-copy">{{item.categoryLabel}} · {{item.priceText}} · {{item.statusText}}</view>
-    <view class="section-title">商品链接</view>
-    <view class="section-copy">{{item.productUrl || '未填写'}}</view>
-    <view class="section-title">备注</view>
-    <view class="section-copy">{{item.notes}}</view>
+  <view wx:elif="{{item}}">
+    <detail-shell top-title="种草详情" title="{{item.name}}" meta="{{item.statusText}} · {{item.categoryLabel}} · {{item.priceText}}" image-url="{{item.imageUrl}}" hero-label="商品图" hero-fallback="{{item.categoryLabel}}">
+      <view class="action-row" slot="afterHero">
+        <button class="action-button bought">✓ 已买</button>
+        <button class="action-button reject">× 不想买</button>
+        <button class="action-button edit">编辑</button>
+      </view>
+
+      <view class="notice-card"><view class="check-dot">✓</view><view>已添加种草单品</view></view>
+
+      <view class="info-card">
+        <view class="card-title">基础信息</view>
+        <view class="info-row"><text>名称</text><text>{{item.name}}</text></view>
+        <view class="info-row"><text>分类</text><text>{{item.categoryLabel}}</text></view>
+        <view class="info-row"><text>价格</text><text>{{item.priceText}}</text></view>
+        <view class="info-row"><text>状态</text><text>{{item.statusText}}</text></view>
+      </view>
+
+      <view class="info-card">
+        <view class="card-title">购买信息</view>
+        <view class="info-row"><text>商品链接</text><text class="break-text">{{item.productUrl || '未填写'}}</text></view>
+      </view>
+
+      <view class="info-card">
+        <view class="card-title">备注</view>
+        <view class="section-copy">{{item.notes}}</view>
+      </view>
+    </detail-shell>
   </view>
 </view>

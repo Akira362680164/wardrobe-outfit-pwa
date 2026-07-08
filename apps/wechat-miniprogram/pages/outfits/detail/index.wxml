@@ -1,17 +1,37 @@
-<view class="page-shell">
+<view class="page-shell detail-page">
   <view wx:if="{{loading}}" class="status-card">正在读取套装...</view>
   <view wx:elif="{{error}}" class="status-card">
     <view class="status-title">读取失败</view>
     <view class="status-copy">{{error}}</view>
   </view>
-  <view wx:elif="{{outfit}}" class="detail-card">
-    <view class="page-title">{{outfit.name}}</view>
-    <view class="page-copy">{{outfit.sceneText}} · {{outfit.seasonText}}</view>
-    <view class="metric-row">
-      <view class="metric"><view class="metric-value">{{outfit.itemCount}}</view><view class="metric-label">组成衣物</view></view>
-      <view class="metric"><view class="metric-value">{{outfit.favorite ? '是' : '否'}}</view><view class="metric-label">收藏</view></view>
-    </view>
-    <view class="section-title">备注</view>
-    <view class="section-copy">{{outfit.notes}}</view>
+  <view wx:elif="{{outfit}}">
+    <detail-shell top-title="套装详情" title="{{outfit.name}}" meta="{{outfit.itemCount}}件 · {{outfit.seasonText}} · {{outfit.sceneText}}" eyebrow="暂无穿着记录" hero-label="主图" hero-fallback="套装示意">
+      <view class="thumb-strip" slot="afterHero">
+        <view class="thumb is-active"><view class="thumb-fallback"></view><view class="thumb-label">主图</view></view>
+        <view class="thumb add-thumb"><view class="plus">＋</view><view class="thumb-label muted">套装示意</view></view>
+      </view>
+
+      <view class="notice-card"><view class="check-dot">✓</view><view>套装已创建</view></view>
+
+      <view class="info-card">
+        <view class="card-title">套装概况</view>
+        <view class="info-row"><text>单品数量</text><text>{{outfit.itemCount}} 件</text></view>
+        <view class="info-row"><text>收藏状态</text><text>{{outfit.favorite ? '已收藏' : '未收藏'}}</text></view>
+        <view class="info-row"><text>季节</text><text>{{outfit.seasonText}}</text></view>
+        <view class="info-row"><text>适合场景</text><text>{{outfit.sceneText}}</text></view>
+      </view>
+
+      <view class="info-card">
+        <view class="card-title">适穿信息</view>
+        <view class="temperature-row"><text>适穿温度</text><view class="temperature-bar"><view class="temperature-band"></view></view></view>
+        <view class="info-row"><text>风格标签</text><text>{{outfit.sceneText}}</text></view>
+        <view class="info-row"><text>穿着次数</text><text>0 次</text></view>
+      </view>
+
+      <view class="info-card">
+        <view class="card-title">备注</view>
+        <view class="section-copy">{{outfit.notes}}</view>
+      </view>
+    </detail-shell>
   </view>
 </view>

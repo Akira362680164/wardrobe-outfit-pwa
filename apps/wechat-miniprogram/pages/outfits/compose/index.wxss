@@ -1,4 +1,4 @@
-.page-shell { padding: 48rpx 28rpx 220rpx; }
+.page-shell { padding: calc(env(safe-area-inset-top) + 152rpx) 28rpx 220rpx; }
 
 .form-card,
 .status-card,
@@ -12,7 +12,7 @@
 .form-card {
   margin-top: 28rpx;
   padding: 28rpx;
-  border-radius: 32rpx;
+  border-radius: var(--radius-card-inner);
 }
 
 .field-label {
@@ -58,17 +58,17 @@
   box-sizing: border-box;
   height: 88rpx;
   border: 0;
-  border-radius: var(--radius-pill);
+  border-radius: var(--radius-control);
   font-size: var(--font-body);
   font-weight: 700;
   line-height: 88rpx;
 }
 
 .mini-button {
-  width: 220rpx;
+  width: 240rpx;
   margin-top: 28rpx;
-  background: var(--color-ink);
-  color: #fff;
+  background: var(--color-primary);
+  color: var(--color-surface);
 }
 
 .mini-button::after,
@@ -98,7 +98,7 @@
   align-items: center;
   gap: 20rpx;
   padding: 18rpx;
-  border-radius: 28rpx;
+  border-radius: var(--radius-control);
 }
 
 .select-card--active {
@@ -148,9 +148,9 @@
   justify-content: center;
   width: 48rpx;
   height: 48rpx;
-  border-radius: var(--radius-pill);
-  background: var(--color-ink);
-  color: #fff;
+  border-radius: var(--radius-control);
+  background: var(--color-primary);
+  color: var(--color-surface);
   font-size: 28rpx;
   font-weight: 800;
 }
@@ -167,8 +167,8 @@
 
 .save-button {
   width: 100%;
-  background: var(--color-ink);
-  color: #fff;
+  background: var(--color-primary);
+  color: var(--color-surface);
 }
 
 .save-button[disabled] {
