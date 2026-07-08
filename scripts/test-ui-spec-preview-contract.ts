@@ -37,9 +37,15 @@ for (const visual of [
   "temperature-view-window",
   "production-shot-grid",
   "toast-stage",
+  "toast-style-board",
 ]) {
   assert.ok(html.includes(visual), `missing required visual example: ${visual}`);
 }
+
+assert.ok(md.includes("不使用满高竖条"), "toast spec must reject full-height status bars");
+assert.ok(html.includes("尚未配置 MiniMax Key"), "toast visual must include MiniMax key missing state");
+assert.ok(html.includes("前往设置"), "toast visual must include direct settings action");
+assert.ok(!html.includes("mini-toast"), "legacy mini toast visual must not remain");
 
 const productionScreenshots = [
   "auth_login_390_top.png",

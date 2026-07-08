@@ -62,7 +62,7 @@ lastReviewedAt: 2026-07-07
 | 二级卡片 | `18px-20px` | 一级卡片内部的选择块、空状态、预览块 |
 | 普通控件 | `12px-14px` | 筛选、输入、普通按钮 |
 | 底部菜单外框 | `26px` | 悬浮毛玻璃圆角矩形 |
-| 底部菜单选中项 | `外框半径 - 内边距` | 不使用圆形激活按钮 |
+| 底部菜单选中项 | `外框半径 - 内边距` | 不使用圆形激活按钮；选中项色块弧线必须与外框同心 |
 | 缩略图 | `8px-12px` | 详情胶片栏、录入缩略图、队列图 |
 
 判断标准：外框和内层按钮的弧线要像同一组同心圆。不要把外框做圆角矩形、内层做正圆，除非是明确的 FAB。
@@ -74,7 +74,7 @@ lastReviewedAt: 2026-07-07
 | `glass.top.bg` | `rgba(251,251,248,0.75)` | 多处仍为 `#fbfbf8/95` 或实色 |
 | `glass.top.blur` | `blur(30px) saturate(1.5)` | `backdrop-blur-xl` / `.surface blur(18px)` |
 | `glass.bottom.bg` | `rgba(255,255,252,0.75)` | 底部导航当前 `#fbfbf8/94` |
-| `glass.toast.bg` | `rgba(255,255,252,0.95)` | 当前 Toast `bg-white/95 backdrop-blur-md` |
+| `glass.toast.bg` | `rgba(255,255,252,0.88)` | Toast 应比页面卡片更浮，但不能变成实心白卡 |
 | `shadow.soft` | `0 18px 50px rgba(29,34,40,0.10)` | Tailwind `shadow.soft` |
 | `shadow.card` | `0 18px 50px rgba(29,34,40,0.08)` | `.surface` |
 
@@ -151,6 +151,8 @@ Icon-only 按钮必须有 `aria-label`；图标与文字组合时图标使用 `a
 6. 可选覆盖层：Toast、Popover、Sheet、Dialog、Lightbox、Cropper。
 
 顶部层不加硬边框和额外渐变过渡区。滚动内容可经过顶部层下方，但应被 glass 背景遮住。
+
+二级和三级页面的 `AppSubPageTopBar` 必须是透明底 + 毛玻璃层：只保留必要按钮本身的颜色或 tint，不允许在顶部出现一整条实心白色矩形。录入流顶部同样遵守该规则，标题、步骤说明和进度条叠在 glass 层上。
 
 底部导航固定 4 项：
 
@@ -342,6 +344,8 @@ Icon-only 按钮必须有 `aria-label`；图标与文字组合时图标使用 `a
 
 规范预览必须使用真实业务流截图展示录入实际状态；截图包未捕获的子页面不得手绘补位。
 
+Step 1 的拍照、从图库选择、继续拍照和继续从图库选择入口全部使用最新圆角矩形控件：外框与内部图标槽保持同心圆角，按钮之间不使用旧版直角白卡或大面积实心白底。
+
 ## 10. AI 与系统状态
 
 ### 10.1 AI 状态
@@ -380,7 +384,13 @@ Icon-only 按钮必须有 `aria-label`；图标与文字组合时图标使用 `a
 - 当前层级 `z-[75]`；Lightbox 或裁切器打开时隐藏。
 - Error 使用 `role="alert"` + `aria-live="assertive"`；success/info 使用 `role="status"` + `aria-live="polite"`。
 - 关闭按钮命中区 44px。
-- 样式：圆角矩形、毛玻璃背景、左侧语义标记；不要做顶部窄条或普通页面卡片。
+- 样式：圆角矩形、毛玻璃背景、左侧语义图标槽、右侧关闭/动作按钮。
+- 不使用满高竖条、粗色条或顶部窄条表达状态；状态由 `lucide-react` 图标、轻 tint 图标槽和细边框表达。
+- Success 图标槽用 `moss` tint，Info / Key 缺失用 `denim` tint，Error 用 `danger` tint。
+- 有动作时按钮放右侧，例如 MiniMax Key 缺失使用 `前往设置` 主按钮；按钮与 Toast 外框保持同心圆角。
+- Toast 允许覆盖 FAB 和底部内容，不得把页面内容往上挤。
+
+相关未改代码约束：二级/三级页面 TopBar 不得出现实心白条；录入页顶部同样使用透明底毛玻璃；拍照/从图库选择入口必须使用最新圆角矩形控件。
 
 ## 12. 无障碍
 

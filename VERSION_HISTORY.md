@@ -1,13 +1,13 @@
-## 2026-07-08 / v2.1.8-test / Codex — 切换 App API 到正式 HTTPS 域名
+## 2026-07-08 / v2.1.8-test / Codex — UI 规范 Toast 样式重设
 
 - **执行 Agent**：Codex（未触发 subagent：用户未通知）。
-- **目的**：在 `api.zhengfangapps.cloud` HTTPS 可达后，将 App 本机构建 API 地址从备案前临时公网 IP 切换到正式 HTTPS URL。
+- **目的**：按用户反馈重新设计 UI 规范里的 Toast 通知样式，并补充底部导航同心圆角、二/三级页面 TopBar 白条和录入页入口按钮的规范约束；本轮只改规范文档和 HTML 预览，不改运行时代码。
 - **版本变更**：无；当前应用版本仍为 `2.1.8-test`。
-- **改动文件**：`.env`（本机忽略文件）、`.env.production`（本机忽略文件）、`deploy/.env.production.example`（本机未跟踪模板）、`deploy/docs/production-deploy.md`、`scripts/validate-cloud-build-env.mjs`、`services/wardrobe-api/tests/health.test.ts`、`VERSION_HISTORY.md`。
-- **改动说明**：`NEXT_PUBLIC_WARDROBE_API_BASE_URL` 改为 `https://api.zhengfangapps.cloud`；构建环境校验改为必须使用 HTTPS API；生产部署说明和 CORS 示例改为正式域名时代的配置；CORS 单测从旧 IP origin 更新为 `https://zhengfangapps.cloud`。
-- **验证结果**：切换前已确认 `https://api.zhengfangapps.cloud/api/health`、`/api/ready`、`/api/version` 均返回 `200 OK`，证书为 Let's Encrypt `CN=api.zhengfangapps.cloud`；`node scripts/validate-cloud-build-env.mjs`、`npm --workspace @wardrobe/wardrobe-api run test -- tests/health.test.ts`（6 项）、`npm run typecheck` 均通过。
-- **风险门禁**：medium（App/API 构建入口从 HTTP IP 切换到 HTTPS 域名，影响后续 Android/Web 构建；不改业务流程、不改数据结构、不打 APK）；未触发 subagent：用户未通知。
-- **未验证风险**：本轮不重新打包 APK、不安装真机/模拟器；服务器当前运行环境的 `ALLOWED_ORIGINS` 未重启 API 更新为 Web 根域名，小程序请求不受浏览器 CORS 影响，Android App 仍使用已允许的 `capacitor://localhost`。
+- **改动文件**：`docs/designs/wardrobe-ui-spec.md`、`docs/designs/wardrobe-ui-spec.html`、`scripts/generate-ui-spec-preview.mjs`、`scripts/test-ui-spec-preview-contract.ts`、`VERSION_HISTORY.md`。
+- **改动说明**：Toast 从左侧满高色条改为状态图标槽 + 细边框 + 半透明毛玻璃圆角矩形，补齐 success、MiniMax Key 缺失和 error 三种视觉样例；MiniMax Key 缺失 Toast 保留“前往设置”动作；底部导航预览改为外框和选中项同心圆角；规范文字新增二级/三级 TopBar 必须透明底毛玻璃、录入页顶部不得出现白条、拍照/图库入口必须使用最新圆角矩形控件。
+- **验证结果**：`npm run docs:ui-spec:build`、`npm run docs:ui-spec:check`、`npm run test:logic:ui-spec-preview`、`npm run typecheck` 均通过。
+- **风险门禁**：low（仅文档、规范 HTML、生成脚本和规范合同测试；不改运行时代码、不改业务流程、不改 Android、不打 APK）；未触发 subagent：用户未通知。
+- **未验证风险**：未在 Android 真机/模拟器验证实际运行时页面；本轮只更新规范与预览，用户指出的运行时代码问题仍需后续单独实现。
 
 ## 2026-07-08 / v2.1.8-test / Codex — 运行时 UI 细节修正与规范截图刷新
 
@@ -19,6 +19,17 @@
 - **验证结果**：`npm run typecheck`、`npm run test:logic:ui-token-contract`、`npm run test:logic:ui-spec-preview`、`npm run test:logic:ui-overlay-contract`、`npm run test:logic:home-card-edit-wishlist-delete-hotfix`、`npm run test:logic:shared-item-shells`、`npm run test:logic:catalog-card-content`、`npm run test:logic:ui-overflow`、`npm run test:logic:detail-shell`、`npm run test:logic:garment-intake-multi-image`、`npm run test:logic:intake-fullscreen-layout`、`npm run test:logic:app-route`、`npm run build`、`npm run v03-alpha:capture`、`npm run docs:ui-spec:build`、`npm run docs:ui-spec:check`、`npm run v03-alpha:build`、`npm run test:logic:v03-alpha-visual-review` 均通过；`file docs/designs/v03-alpha-real-screenshots/*.png` 确认 21 张规范截图均为 `390 x 844`。
 - **风险门禁**：high（跨运行时 UI 基础样式、核心页面组件、录入流程、截图资产和规范生成产物；未改业务数据结构、线上 API、Android 原生配置、版本号或 APK）；未触发 subagent：用户未通知。
 - **未验证风险**：未在 Android 真机/模拟器安装 APK 做视觉回归；本次真实截图仍为当前采集链路的 `390 x 844` 输出，未做 2K 高分辨率导出；MiniMax Key 缺失 Toast 的真实启动行为未在 Android WebView 中单独验证。
+
+## 2026-07-08 / v2.1.8-test / Codex — 切换 App API 到正式 HTTPS 域名
+
+- **执行 Agent**：Codex（未触发 subagent：用户未通知）。
+- **目的**：在 `api.zhengfangapps.cloud` HTTPS 可达后，将 App 本机构建 API 地址从备案前临时公网 IP 切换到正式 HTTPS URL。
+- **版本变更**：无；当前应用版本仍为 `2.1.8-test`。
+- **改动文件**：`.env`（本机忽略文件）、`.env.production`（本机忽略文件）、`deploy/.env.production.example`（本机未跟踪模板）、`deploy/docs/production-deploy.md`、`scripts/validate-cloud-build-env.mjs`、`services/wardrobe-api/tests/health.test.ts`、`VERSION_HISTORY.md`。
+- **改动说明**：`NEXT_PUBLIC_WARDROBE_API_BASE_URL` 改为 `https://api.zhengfangapps.cloud`；构建环境校验改为必须使用 HTTPS API；生产部署说明和 CORS 示例改为正式域名时代的配置；CORS 单测从旧 IP origin 更新为 `https://zhengfangapps.cloud`。
+- **验证结果**：切换前已确认 `https://api.zhengfangapps.cloud/api/health`、`/api/ready`、`/api/version` 均返回 `200 OK`，证书为 Let's Encrypt `CN=api.zhengfangapps.cloud`；`node scripts/validate-cloud-build-env.mjs`、`npm --workspace @wardrobe/wardrobe-api run test -- tests/health.test.ts`（6 项）、`npm run typecheck` 均通过。
+- **风险门禁**：medium（App/API 构建入口从 HTTP IP 切换到 HTTPS 域名，影响后续 Android/Web 构建；不改业务流程、不改数据结构、不打 APK）；未触发 subagent：用户未通知。
+- **未验证风险**：本轮不重新打包 APK、不安装真机/模拟器；服务器当前运行环境的 `ALLOWED_ORIGINS` 未重启 API 更新为 Web 根域名，小程序请求不受浏览器 CORS 影响，Android App 仍使用已允许的 `capacitor://localhost`。
 
 ## 2026-07-08 / v2.1.8-test / Codex — UI 规范真实截图重采集
 
