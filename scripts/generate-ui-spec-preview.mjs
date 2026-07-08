@@ -70,6 +70,8 @@ function extractColorTokens(markdown) {
   return tokens;
 }
 
+const APP_AMBIENT_BACKGROUND = "radial-gradient(circle at 18% 8%, rgba(185,113,85,0.16) 0, rgba(185,113,85,0) 34%), radial-gradient(circle at 82% 92%, rgba(95,112,88,0.14) 0, rgba(95,112,88,0) 36%), linear-gradient(180deg, #fbfbf8 0%, #f4f5f3 100%)";
+
 function escapeHtml(value) {
   return value
     .replace(/&/g, "&amp;")
@@ -209,6 +211,41 @@ function productionShotGrid(shots) {
   return `<div class="production-shot-grid">${shots.map((shot) => productionShot(...shot)).join("")}</div>`;
 }
 
+const visualReferences = [
+  ["auth_login_390_top.png", "认证 / 登录页", "登录衣橱账号", ["背景收敛到 paper/mist，减少营销感。", "主卡 28px 圆角，输入框 12-14px，focus 用 denim。", "登录按钮启用态用 primary，Shield 图标统一 lucide 20px。"]],
+  ["auth_register_390_top.png", "认证 / 注册页", "注册衣橱账号", ["沿用登录页背景、主卡和表单控件 token。", "协议勾选命中区补到 44px，链接用 denim 600。", "注册按钮图标用 UserPlus，输入框 R 角和边框一致。"]],
+  ["settings_home_390_top.png", "设置 / 首页", "账号服务、MiniMax、画像与位置入口", ["MiniMax 提示条用 ai 浅 tint，关闭 X 用 muted。", "设置列表一级卡 28px，二级提示块 18-20px。", "底部导航 glass 75%，选中项与外框同心圆角。"]],
+  ["wardrobe_home_390_top.png", "衣橱 / 首页", "顶部筛选、瀑布流、Toast、底部导航", ["顶部按钮使用 glass 背景，图标统一 lucide 20px。", "瀑布流卡片与内图保持同心圆角，边框用 line。", "Toast 固定在导航上方，覆盖 FAB，关闭区 44px。"]],
+  ["garment_detail_390_top.png", "衣物 / 详情首屏", "主图、胶片、标题与操作", ["TopBar 改轻 glass，弱化硬分割线。", "主图 3:4 和外框 28px，浮层胶囊降对比。", "胶片选中态用 Denim 边框，缩略图 8-12px 圆角。"]],
+  ["garment_detail_390_info.png", "衣物 / 详情信息入口", "AI 建议露出、标题与 Toast", ["AI 卡用 surface，Toast 用更强 glass 区分层级。", "标题、记录提示、meta 间距按 12/16/20 节奏。", "生成按钮 lucide 18-20px，按钮 R 角统一。"]],
+  ["garment_detail_390_bottom.png", "衣物 / 详情底部", "颜色、穿着属性、备注", ["信息卡统一一级内容卡圆角和 shadow.card。", "色点与 chip 边线更淡，label muted、value ink。", "温度条低饱和蓝红渐变，handle 20px。"]],
+  ["confirm_delete_sheet_390_top.png", "覆盖层 / 删除确认", "衣物详情删除 Sheet", ["遮罩用 ink 半透明 + blur，不压暗过重。", "Sheet 顶部 26-28px，surface 干净无硬边。", "取消和删除按钮同高同 R，删除用 danger。"]],
+  ["intake_single_step1_empty_390_top.png", "录入 / Step 1 空态", "选择单品照片", ["顶部栏收敛到 top glass，不加硬边框。", "一级选择卡 28px，内部虚线框 12-14px。", "拍照/图库图标用 Camera/Image，禁用下一步更明确。"]],
+  ["intake_single_step1_imported_390_top.png", "录入 / Step 1 已导入", "图片队列与裁切入口", ["主预览保持 3:4，图片与卡片圆角同心。", "选中缩略图用 Denim 边框 + 轻 ring。", "继续拍照/图库按钮减阴影，清空只用 danger 文本/边框。"]],
+  ["intake_single_confirm_390_top.png", "录入 / Step 2 确认", "已识别 9 件单品", ["进度条 primary + mist 轨道，不用渐变。", "重新识别为次级 AI 操作，RefreshCw 18px。", "AI/待确认徽标用浅底深字，保存栏用 bottom glass。"]],
+  ["intake_single_confirm_390_bottom.png", "录入 / Step 2 保存区", "确认页底部截图", ["当前截图与首屏一致，不能凭空新增字段结构。", "可见提示卡按 24-28px 一级卡处理。", "下方字段若出现，只优化字重、色卡、badge，不改顺序。"]],
+  ["outfit_home_390_top.png", "套装 / 首页", "周历、套装卡、Toast", ["周历一级容器 28px，选中日期用 Denim 淡底细边。", "顶部按钮和底部导航 glass 75%，激活项圆角矩形。", "套装卡图片 3:4 主体居中，Toast 上移到导航上方。"]],
+  ["outfit_detail_390_top.png", "套装 / 详情首屏", "套装主图与元信息", ["返回/更多栏用轻 glass，分割线更淡。", "Hero 图保持结构，只调 object-position 保完整主体。", "主图和标记按钮用半透明 surface，字重 600。"]],
+  ["outfit_detail_390_info.png", "套装 / 详情信息入口", "主图区与 AI 卡露出", ["胶片选中边框 Denim，虚线占位更淡。", "标记今天穿了按钮减阴影。", "AI 卡使用二级卡 18-20px，与主图区分层。"]],
+  ["outfit_detail_390_bottom.png", "套装 / 详情底部", "AI 建议、概况、适穿信息", ["Tab 激活态弱化阴影，减少卡片套卡片感。", "信息块靠 28px，内部少阴影靠文字层级。", "温度条低饱和，label muted、value ink。"]],
+  ["outfit_calendar_390_top.png", "套装 / 月历页", "穿搭计划月历", ["月份标题、Chevron、星期行拉开字号层级。", "选中日期用 Denim 淡底 + 12-14px 圆角。", "+计划按钮与套装首页主按钮统一。"]],
+  ["wishlist_home_390_top.png", "种草 / 首页", "商品卡、筛选、Toast", ["购物袋图标使用 shopping token，不偏橙。", "商品卡沿用瀑布流规格，图片 3:4 主体居中。", "active chip 用 Denim 浅底，数字不比标签更抢。"]],
+  ["wishlist_detail_390_top.png", "种草 / 详情首屏", "商品图、主操作、标题", ["商品图优先完整轮廓，避免人物/衣物关键区域截断。", "商品图标签用半透明 surface，降低深灰块。", "不想买按钮 danger 细边轻字重，Toast 避开关键字段。"]],
+  ["wishlist_detail_390_info.png", "种草 / 详情信息入口", "商品图与 CTA", ["TopBar 与套装详情完全一致。", "商品图外框统一，去除内部明显灰底边缘。", "CTA 高度、R 角、图标尺寸统一，仅颜色区分优先级。"]],
+  ["wishlist_detail_390_bottom.png", "种草 / 详情底部", "基础信息、颜色、穿着属性", ["颜色色卡边线更淡，不像可编辑输入框。", "label 统一 muted，长文本行高 1.5。", "备注只调行高、字重和内边距，不新增说明块。"]],
+];
+
+function referenceShot([filename, section, page, items]) {
+  return `<article class="reference-shot" data-page-state="${escapeHtml(filename.replace(/\.png$/, ""))}">
+    ${productionShot(filename, section, page)}
+    <div class="reference-notes"><span>视觉优化参考</span><ul>${items.map((item) => `<li>${escapeHtml(item)}</li>`).join("")}</ul></div>
+  </article>`;
+}
+
+function referenceShotGrid() {
+  return `<div class="reference-grid">${visualReferences.map(referenceShot).join("")}</div>`;
+}
+
 function renderPartVisual(title) {
   if (/2\.1\s+颜色/.test(title)) {
     return `
@@ -218,6 +255,7 @@ function renderPartVisual(title) {
           <span style="background:var(--denim)">primary</span><span style="background:var(--moss)">success</span>
           <span style="background:var(--clay)">ai</span><span style="background:var(--berry)">shopping</span>
         </div>
+        <div class="ambient-demo"><b>background.appAmbient</b><span>所有页面统一使用登录页这套低饱和渐变底层。</span></div>
         <div class="visual-caption"><b>颜色 token</b><span>每个语义色都显示色块、名称和用途，不只列十六进制。</span></div>
       </div>`;
   }
@@ -368,6 +406,7 @@ function renderSectionVisual(section) {
         <span style="background:var(--clay)"></span>
         <span style="background:var(--berry)"></span>
       </div>
+      <div class="ambient-board"><b>全局背景</b><span>background.appAmbient</span><small>所有页面底层使用登录页同款柔和渐变</small></div>
       <div class="visual-radius-board">
         <div>一级卡片<br><b>28px</b></div>
         <div>内层图片<br><b>同心圆角</b></div>
@@ -506,29 +545,7 @@ function renderSectionVisual(section) {
 
   if (title.includes("产品视觉方案实操")) {
     return `
-      ${productionShotGrid([
-        ["auth_login_390_top.png", "登录页", "认证入口结构不重排"],
-        ["auth_register_390_top.png", "注册页", "注册表单结构不重排"],
-        ["wardrobe_home_390_top.png", "衣橱首页", "结构取自真实业务流"],
-        ["garment_detail_390_top.png", "衣物详情首屏", "不把名称属性塞入额外卡片"],
-        ["garment_detail_390_info.png", "衣物详情信息区", "色卡、基础信息、字段区沿用生产"],
-        ["garment_detail_390_bottom.png", "衣物详情底部", "底部操作与信息区结构不改"],
-        ["confirm_delete_sheet_390_top.png", "删除确认", "Sheet 层级和按钮结构不改"],
-        ["intake_single_step1_empty_390_top.png", "单品录入空态", "两步流程"],
-        ["intake_single_step1_imported_390_top.png", "单品录入已选图", "缩略图与底部操作不重排"],
-        ["intake_single_confirm_390_top.png", "单品确认", "重新识别位置沿用生产"],
-        ["intake_single_confirm_390_bottom.png", "单品确认底部", "保存区和底部操作结构不改"],
-        ["outfit_home_390_top.png", "套装首页", "周历与套装卡结构不改"],
-        ["outfit_detail_390_top.png", "套装详情首屏", "详情框架复用"],
-        ["outfit_detail_390_info.png", "套装详情信息区", "套装字段结构不重排"],
-        ["outfit_detail_390_bottom.png", "套装详情底部", "底部信息结构不重排"],
-        ["outfit_calendar_390_top.png", "套装月历", "日历结构不重画"],
-        ["wishlist_home_390_top.png", "种草首页", "筛选与商品卡结构不改"],
-        ["wishlist_detail_390_top.png", "种草详情首屏", "商品详情框架复用"],
-        ["wishlist_detail_390_info.png", "种草详情信息区", "商品字段结构不重排"],
-        ["wishlist_detail_390_bottom.png", "种草详情底部", "底部操作结构不重排"],
-        ["settings_home_390_top.png", "设置首页", "设置列表结构不改"],
-      ])}`;
+      ${referenceShotGrid()}`;
   }
 
   if (title.includes("验收与测试")) {
@@ -583,6 +600,7 @@ function renderHtml({ frontMatter, sections, colorTokens, sourceHash }) {
       --clay: ${clay};
       --berry: ${berry};
       --danger: ${danger};
+      --app-ambient: ${APP_AMBIENT_BACKGROUND};
       --muted: rgba(29, 34, 40, .56);
       --line: rgba(29, 34, 40, .1);
       --soft: 0 18px 50px rgba(29, 34, 40, .08);
@@ -595,7 +613,7 @@ function renderHtml({ frontMatter, sections, colorTokens, sourceHash }) {
     body {
       margin: 0;
       min-width: 320px;
-      background: linear-gradient(180deg, var(--paper) 0%, var(--mist) 100%);
+      background: var(--app-ambient);
       color: var(--ink);
       letter-spacing: 0;
     }
@@ -710,6 +728,53 @@ function renderHtml({ frontMatter, sections, colorTokens, sourceHash }) {
     }
     .production-shot figcaption b { font-size: 12px; line-height: 1.25; }
     .production-shot figcaption span { color: var(--muted); font-size: 10px; line-height: 1.35; font-weight: 800; }
+    .reference-grid {
+      grid-column: 1 / -1;
+      display: grid;
+      gap: 16px;
+    }
+    .reference-shot {
+      display: grid;
+      grid-template-columns: minmax(220px, 340px) minmax(0, 1fr);
+      gap: 14px;
+      align-items: stretch;
+      border: 1px solid var(--line);
+      border-radius: 28px;
+      background: rgba(255,255,252,.78);
+      box-shadow: var(--soft);
+      padding: 12px;
+    }
+    .reference-shot .production-shot {
+      border-radius: 22px;
+      box-shadow: none;
+    }
+    .reference-notes {
+      display: grid;
+      align-content: start;
+      gap: 10px;
+      border-radius: 22px;
+      background: linear-gradient(180deg, rgba(53,92,125,.08), rgba(255,255,252,.8));
+      padding: 14px;
+    }
+    .reference-notes span {
+      width: fit-content;
+      border-radius: 999px;
+      background: rgba(53,92,125,.12);
+      color: var(--denim);
+      padding: 6px 10px;
+      font-size: 11px;
+      font-weight: 900;
+    }
+    .reference-notes ul {
+      margin: 0;
+      padding-left: 18px;
+    }
+    .reference-notes li {
+      color: rgba(29,34,40,.72);
+      font-size: 12px;
+      line-height: 1.55;
+      font-weight: 750;
+    }
     .visual-card, .field-card, .domain-card {
       border: 1px solid var(--line);
       border-radius: 20px;
@@ -728,7 +793,7 @@ function renderHtml({ frontMatter, sections, colorTokens, sourceHash }) {
     .visual-phone-mini, .safe-phone {
       border: 1px solid var(--line);
       border-radius: 28px;
-      background: var(--surface);
+      background: var(--app-ambient);
       box-shadow: var(--soft);
       overflow: hidden;
       min-height: 260px;
@@ -781,6 +846,24 @@ function renderHtml({ frontMatter, sections, colorTokens, sourceHash }) {
     .visual-radius-board, .radius-stack, .notice-stack {
       display: grid;
       gap: 8px;
+    }
+    .ambient-board, .ambient-demo {
+      min-height: 118px;
+      border: 1px solid var(--line);
+      border-radius: 24px;
+      background: var(--app-ambient);
+      box-shadow: inset 0 0 0 1px rgba(255,255,252,.42), var(--soft);
+      padding: 16px;
+      display: grid;
+      align-content: end;
+      gap: 6px;
+    }
+    .ambient-board b, .ambient-demo b { font-size: 13px; }
+    .ambient-board span, .ambient-board small, .ambient-demo span {
+      color: var(--muted);
+      font-size: 11px;
+      line-height: 1.4;
+      font-weight: 850;
     }
     .visual-radius-board div, .radius-stack span, .notice-stack span {
       border: 1px solid var(--line);
@@ -1207,6 +1290,7 @@ function renderHtml({ frontMatter, sections, colorTokens, sourceHash }) {
       .hero { grid-template-columns: 1fr; padding: 18px; }
       h1 { font-size: 30px; }
       .section { padding: 18px; }
+      .reference-shot { grid-template-columns: 1fr; }
     }
   </style>
 </head>

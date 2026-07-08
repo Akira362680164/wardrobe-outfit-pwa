@@ -65,9 +65,13 @@ const productionScreenshots = [
   "settings_home_390_top.png",
 ];
 
+assert.equal((html.match(/class="reference-shot"/g) ?? []).length, productionScreenshots.length, "product practice must include one reference card per production screenshot");
+assert.equal((html.match(/class="reference-notes"/g) ?? []).length, productionScreenshots.length, "each production reference card must include optimization notes");
+
 for (const filename of productionScreenshots) {
   assert.ok(html.includes(`v03-alpha-real-screenshots/${filename}`), `missing production screenshot in HTML: ${filename}`);
   assert.ok(existsSync(join(root, "docs/designs/v03-alpha-real-screenshots", filename)), `missing production screenshot asset: ${filename}`);
+  assert.ok(html.includes(`data-page-state="${filename.replace(/\.png$/, "")}"`), `missing production page state marker: ${filename}`);
 }
 
 for (const title of [
@@ -89,5 +93,10 @@ for (const title of [
 ]) {
   assert.ok(html.includes(title), `missing UI spec section: ${title}`);
 }
+
+assert.ok(md.includes("background.appAmbient"), "missing global ambient background token in markdown");
+assert.ok(html.includes("background.appAmbient"), "missing global ambient background token in HTML");
+assert.ok(html.includes("--app-ambient"), "missing app ambient CSS variable in generated preview");
+assert.ok(html.includes("所有页面统一使用登录页这套低饱和渐变底层"), "missing ambient background visual guidance");
 
 console.log("ui spec preview contract: passed");
