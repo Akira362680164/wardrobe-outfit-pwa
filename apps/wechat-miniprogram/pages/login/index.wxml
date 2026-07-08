@@ -12,10 +12,19 @@
       hover-class="phone-login-button--hover"
       bindgetphonenumber="onGetPhoneNumber"
     >
-      {{submitting ? '正在获取微信认证手机号' : '通过微信认证手机号登录'}}
+      {{submitting ? '微信登录中...' : '微信手机号登录'}}
     </button>
 
     <view wx:if="{{errorMessage}}" class="login-error text-wrap-safe">{{errorMessage}}</view>
+
+    <view class="fallback-login">
+      <view class="fallback-title">手机号密码登录</view>
+      <input class="login-input" value="{{phone}}" type="number" placeholder="输入 App 账号手机号" bindinput="handlePhoneInput" />
+      <input class="login-input" value="{{password}}" password placeholder="输入密码" bindinput="handlePasswordInput" />
+      <button class="password-login-button" disabled="{{submitting || !phone || !password}}" bindtap="loginByPassword">
+        {{submitting ? '登录中...' : '登录'}}
+      </button>
+    </view>
 
     <view class="agreement-tip text-wrap-safe">
       点击该按钮后代表您已阅读并认可

@@ -1,3 +1,15 @@
+## 2026-07-08 / v2.1.8-test / Codex — 小程序登录增加账号密码兜底
+
+- **执行 Agent**：Codex（未触发 subagent：本次为小程序登录单点修复）。
+- **目的**：修复真机预览中微信认证手机号未返回 `code` 时无法继续登录的问题；在备案和微信手机号能力未完全稳定前，允许用 App 现有手机号密码账号登录小程序继续测试。
+- **版本变更**：无；当前应用版本仍为 `2.1.8-test`，小程序包版本仍为 `0.1.0`。
+- **改动文件**：`apps/wechat-miniprogram/pages/login/index.ts`、`apps/wechat-miniprogram/pages/login/index.wxml`、`apps/wechat-miniprogram/pages/login/index.wxss`、`apps/wechat-miniprogram/services/auth.ts`、`apps/wechat-miniprogram/scripts/wechatide-open.mjs`、`VERSION_HISTORY.md`。
+- **改动说明**：保留微信认证手机号登录；当 `getPhoneNumber` 没有返回 `code` 时显示微信失败原因并提示改用手机号密码登录；新增手机号密码登录表单，复用现有 `/api/auth/login`，不新增后端接口；同步修复微信开发者工具 skill `0.2.0` 中项目打开工具名从 `project_open_window` 改为 `open_project_window` 后 wrapper 失效的问题；登录主按钮缩短为“微信手机号登录”，并补充左右 margin 归零、固定行高和不换行，避免 iPhone 15 Pro Max 等机型文案溢出。
+- **后端边界**：本轮未修改 `services/wardrobe-api/**`、`packages/cloud-contracts/**` 或 migration；`git diff -- services/wardrobe-api packages/cloud-contracts | wc -l` 为 `0`。
+- **验证结果**：`npm --prefix apps/wechat-miniprogram run typecheck` 通过；`compile_wxml pages/login/index.wxml` 通过；`compile_wxss pages/login/index.wxss` 通过；`node --check scripts/wechatide-open.mjs` 通过；`npm run wechatide:preview` 通过并展示预览二维码窗口。
+- **风险门禁**：medium（登录页可见流程和会话写入入口变更；不改后端、不改共享契约、不上传体验版）；未触发 subagent：用户未通知。
+- **未验证风险**：未在真机输入真实手机号密码完成 live 登录；若线上 API baseURL 或合法域名未配置，密码登录仍会失败，但错误会走现有网络/API 提示；微信认证手机号能力失败原因取决于微信平台返回的 `errMsg`。
+
 ## 2026-07-08 / v2.1.8-test / Codex — 小程序录入、套装、种草和设置页业务补齐
 
 - **执行 Agent**：Codex（按用户明确要求使用 2 个并行 subagent：设置页业务、套装/种草业务；主 agent 负责上传录入、图片资产服务、集成修正、验证、文档和提交）。

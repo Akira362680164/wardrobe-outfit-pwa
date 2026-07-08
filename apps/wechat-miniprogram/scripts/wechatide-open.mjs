@@ -51,7 +51,7 @@ try {
   }
   if (!config.ok) console.log(`precheck warning: ${config.reason}`);
 
-  process.exit(runTool("project_open_window", ["--project", runtime.project], runtime));
+  process.exit(runTool("open_project_window", ["--project", runtime.project], runtime));
 } catch (error) {
   exitWith(error);
 }

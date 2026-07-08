@@ -20,6 +20,17 @@ export interface WechatPhoneLoginResponse {
   };
 }
 
+export interface PasswordLoginResponse {
+  accessToken: string;
+  accessTokenExpiresAt: string;
+  refreshToken?: string;
+  refreshTokenExpiresAt?: string;
+  user: {
+    id: string;
+    maskedPhone: string;
+  };
+}
+
 let runtimeDeviceId = "";
 
 export async function loginWithWechatPhone(phoneCode: string): Promise<SessionState> {
@@ -53,6 +64,34 @@ export async function loginWithWechatPhone(phoneCode: string): Promise<SessionSt
       phoneMasked: result.user.phoneMasked,
       displayName: result.user.displayName,
       avatarUrl: result.user.avatarUrl,
+    },
+  });
+}
+
+export async function loginWithPassword(phone: string, password: string): Promise<SessionState> {
+  const deviceId = getRuntimeDeviceId();
+  const result = await request<PasswordLoginResponse>({
+    method: "POST",
+    path: "/api/auth/login",
+    auth: false,
+    toast: false,
+    data: {
+      phone,
+      password,
+      deviceId,
+      deviceLabel: getDeviceLabel(),
+    },
+  });
+
+  return setSession({
+    token: result.accessToken,
+    refreshToken: result.refreshToken,
+    deviceId,
+    expiresAt: Date.parse(result.accessTokenExpiresAt),
+    refreshTokenExpiresAt: result.refreshTokenExpiresAt ? Date.parse(result.refreshTokenExpiresAt) : undefined,
+    user: {
+      id: result.user.id,
+      phoneMasked: result.user.maskedPhone,
     },
   });
 }

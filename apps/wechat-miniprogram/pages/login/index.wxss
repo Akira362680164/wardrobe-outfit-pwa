@@ -35,12 +35,12 @@
 }
 
 .phone-login-button {
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  display: block;
   width: 100%;
   height: 96rpx;
   margin-top: 56rpx;
+  margin-right: 0;
+  margin-left: 0;
   padding: 0 32rpx;
   border: 0;
   border-radius: var(--radius-pill);
@@ -51,7 +51,9 @@
   font-size: 30rpx;
   font-weight: 700;
   letter-spacing: 0;
-  line-height: 1;
+  line-height: 96rpx;
+  text-align: center;
+  white-space: nowrap;
 }
 
 .phone-login-button::after {
@@ -77,6 +79,53 @@
   background: rgba(220, 38, 38, 0.08);
   font-size: var(--font-caption);
   line-height: 1.45;
+}
+
+.fallback-login {
+  margin-top: 28rpx;
+  padding-top: 24rpx;
+  border-top: 1rpx solid var(--color-line);
+}
+
+.fallback-title {
+  margin-bottom: 16rpx;
+  color: var(--color-ink);
+  font-size: var(--font-caption);
+  font-weight: 700;
+}
+
+.login-input {
+  box-sizing: border-box;
+  width: 100%;
+  height: 84rpx;
+  margin-top: 14rpx;
+  padding: 0 22rpx;
+  border-radius: var(--radius-control);
+  background: rgba(29, 34, 40, 0.05);
+  color: var(--color-ink);
+  font-size: var(--font-body);
+}
+
+.password-login-button {
+  width: 100%;
+  height: 84rpx;
+  margin: 18rpx 0 0;
+  border: 0;
+  border-radius: var(--radius-pill);
+  background: var(--color-success);
+  color: #fff;
+  font-size: var(--font-body);
+  font-weight: 700;
+  line-height: 84rpx;
+}
+
+.password-login-button::after {
+  border: 0;
+}
+
+.password-login-button[disabled] {
+  background: rgba(29, 34, 40, 0.12);
+  color: rgba(29, 34, 40, 0.38);
 }
 
 .agreement-tip {
