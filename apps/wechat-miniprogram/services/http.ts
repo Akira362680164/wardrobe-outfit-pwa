@@ -1,4 +1,4 @@
-import { clearSession, getAccessToken } from "../stores/session";
+import { clearSession, getAccessToken, getSession } from "../stores/session";
 
 export type HttpMethod = "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
 
@@ -97,6 +97,8 @@ function buildHeaders(auth: boolean, requestId: string): Record<string, string> 
 
   const token = getAccessToken();
   if (auth && token) header.Authorization = `Bearer ${token}`;
+  const session = getSession();
+  if (auth && session?.deviceId) header["X-Wardrobe-Device-Id"] = session.deviceId;
   return header;
 }
 

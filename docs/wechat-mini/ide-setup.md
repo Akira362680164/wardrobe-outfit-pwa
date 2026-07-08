@@ -5,6 +5,7 @@
 - CLI：`wechatide`
 - 默认 clientName：`wardrobe-mini`
 - 小程序项目路径：`apps/wechat-miniprogram`
+- 小程序 AppID：`wx14a1a85b7b3844d0`
 - 本机 skill 目录：`/Applications/wechatwebdevtools.app/Contents/Resources/app.asar.unpacked/miniprogram-dev-skill`
 - 当前已知 skill 版本：`v0.1.18`
 
@@ -37,10 +38,13 @@ node apps/wechat-miniprogram/scripts/wechatide-status.mjs
 
 ```bash
 node apps/wechat-miniprogram/scripts/wechatide-status.mjs --help
+node apps/wechat-miniprogram/scripts/wechatide-help.mjs --help
 node apps/wechat-miniprogram/scripts/wechatide-open.mjs --help
 node apps/wechat-miniprogram/scripts/wechatide-compile.mjs --help
 node apps/wechat-miniprogram/scripts/wechatide-page.mjs --help
 node apps/wechat-miniprogram/scripts/wechatide-debug.mjs --help
+node apps/wechat-miniprogram/scripts/wechatide-preview.mjs --help
+node apps/wechat-miniprogram/scripts/wechatide-upload.mjs --help
 ```
 
 只读检查：
@@ -80,13 +84,20 @@ node apps/wechat-miniprogram/scripts/wechatide-debug.mjs --console "grep -i erro
 node apps/wechat-miniprogram/scripts/wechatide-debug.mjs --network "grep -n ."
 ```
 
+预览二维码：
+
+```bash
+cd apps/wechat-miniprogram
+npm run wechatide:preview
+```
+
 ## 当前禁止动作
 
-以下动作不在本批脚本中提供入口，执行前必须先获得用户对具体动作的明确授权：
+以下动作执行前必须先获得用户对具体动作的明确授权：
 
-- `miniprogram_upload`、体验版上传、提审、发布。
+- `miniprogram_upload`、体验版上传、提审、发布。`wechatide-upload.mjs` 默认拒绝执行，只有带 `--confirm-upload` 才会调用上传。
 - `cloud_db_write_*`、`cloud_stor_write`、`cloud_fn_deploy`。
 - 删除 DevTools 项目列表项、关闭/退出 DevTools、更新项目配置。
 - 任何生产迁移、云资源写入、真实发布链路。
 
-本批 wrapper 只覆盖本地状态、导入/打开、编译/刷新、页面打开和日志读取。
+当前 wrapper 覆盖本地状态、帮助、导入/打开、编译/刷新、页面打开、日志读取、预览二维码和显式确认后的体验版上传。

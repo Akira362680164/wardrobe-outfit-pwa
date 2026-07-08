@@ -1,13 +1,16 @@
 export interface SessionUser {
   id: string;
   phoneMasked?: string;
-  nickname?: string;
+  displayName?: string;
+  avatarUrl?: string;
 }
 
 export interface SessionState {
   token: string;
   refreshToken?: string;
+  deviceId?: string;
   expiresAt?: number;
+  refreshTokenExpiresAt?: number;
   user?: SessionUser;
 }
 

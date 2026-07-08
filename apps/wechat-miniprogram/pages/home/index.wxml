@@ -1,7 +1,41 @@
 <view class="page-shell">
-  <view class="page-title">{{title}}</view>
-  <view class="page-copy">{{description}}</view>
-  <view class="placeholder-card">
-    <view class="placeholder-label">页面骨架已就绪，业务实现由后续批次接入线上 API。</view>
+  <view class="hero">
+    <view class="eyebrow">WARDROBE</view>
+    <view class="page-title">今天从衣橱开始</view>
+    <view class="page-copy">数据直接来自服务器，当前页面不保存本地业务缓存。</view>
+  </view>
+
+  <view wx:if="{{loading}}" class="status-card">正在读取衣橱数据...</view>
+
+  <view wx:elif="{{error}}" class="status-card">
+    <view class="status-title">读取失败</view>
+    <view class="status-copy">{{error}}</view>
+    <button class="mini-button" bindtap="loadSummary">重试</button>
+  </view>
+
+  <view wx:elif="{{summary}}" class="summary-grid">
+    <view class="metric-card">
+      <view class="metric-value">{{summary.garmentCount}}</view>
+      <view class="metric-label">衣物</view>
+    </view>
+    <view class="metric-card">
+      <view class="metric-value">{{summary.outfitCount}}</view>
+      <view class="metric-label">套装</view>
+    </view>
+    <view class="metric-card">
+      <view class="metric-value">{{summary.wishlistCount}}</view>
+      <view class="metric-label">种草</view>
+    </view>
+  </view>
+
+  <view wx:if="{{!loading && !error && !summary}}" class="status-card">
+    <view class="status-title">{{emptyTitle}}</view>
+    <view class="status-copy">完成后这里会显示衣物、套装和种草摘要。</view>
+    <button class="mini-button" bindtap="handlePrimaryAction">{{emptyAction}}</button>
+  </view>
+
+  <view wx:if="{{summary}}" class="action-row">
+    <button class="primary-action" bindtap="openIntake">添加衣物</button>
+    <button class="secondary-action" bindtap="openWardrobe">查看衣橱</button>
   </view>
 </view>

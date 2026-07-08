@@ -1,7 +1,28 @@
-<view class="page-shell">
-  <view class="page-title">{{title}}</view>
-  <view class="page-copy">{{description}}</view>
-  <view class="placeholder-card">
-    <view class="placeholder-label">页面骨架已就绪，业务实现由后续批次接入线上 API。</view>
+<view class="login-page page-shell">
+  <view class="login-hero glass-panel-strong">
+    <view class="login-kicker">智能衣橱</view>
+    <view class="login-title text-wrap-safe">同步你的衣橱与穿搭数据</view>
+    <view class="login-copy text-wrap-safe">用微信认证手机号安全登录，自动同步你的衣橱与穿搭数据。</view>
+
+    <button
+      class="phone-login-button"
+      open-type="getPhoneNumber"
+      loading="{{submitting}}"
+      disabled="{{submitting}}"
+      hover-class="phone-login-button--hover"
+      bindgetphonenumber="onGetPhoneNumber"
+    >
+      {{submitting ? '正在获取微信认证手机号' : '通过微信认证手机号登录'}}
+    </button>
+
+    <view wx:if="{{errorMessage}}" class="login-error text-wrap-safe">{{errorMessage}}</view>
+
+    <view class="agreement-tip text-wrap-safe">
+      点击该按钮后代表您已阅读并认可
+      <text class="agreement-link" bindtap="openAgreement">《用户服务协议》</text>
+      和
+      <text class="agreement-link" bindtap="openPrivacy">《隐私政策》</text>，
+      并授权我们通过微信认证手机号完成登录/注册。
+    </view>
   </view>
 </view>

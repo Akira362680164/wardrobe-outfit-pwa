@@ -6,7 +6,8 @@
 - [ ] 完成主体信息、名称、头像、简介和服务类目配置。
 - [ ] 完成微信认证，确认具备微信认证手机号登录能力。
 - [ ] 配置管理员、开发者成员和体验成员。
-- [ ] 记录 AppID；AppSecret 只进入本机或服务端 Secret，不写入仓库。
+- [x] 记录 AppID：`wx14a1a85b7b3844d0`。
+- [ ] 配置 AppSecret；AppSecret 只进入本机或服务端 Secret，不写入仓库。
 
 ## 登录与协议
 
@@ -38,16 +39,22 @@
 
 ```bash
 node apps/wechat-miniprogram/scripts/wechatide-status.mjs --help
+node apps/wechat-miniprogram/scripts/wechatide-help.mjs --help
 node apps/wechat-miniprogram/scripts/wechatide-open.mjs --help
 node apps/wechat-miniprogram/scripts/wechatide-compile.mjs --help
 node apps/wechat-miniprogram/scripts/wechatide-page.mjs --help
 node apps/wechat-miniprogram/scripts/wechatide-debug.mjs --help
+node apps/wechat-miniprogram/scripts/wechatide-preview.mjs --help
+node apps/wechat-miniprogram/scripts/wechatide-upload.mjs --help
 
 node apps/wechat-miniprogram/scripts/wechatide-status.mjs --dry-run
+node apps/wechat-miniprogram/scripts/wechatide-help.mjs --dry-run
 node apps/wechat-miniprogram/scripts/wechatide-open.mjs --dry-run
 node apps/wechat-miniprogram/scripts/wechatide-compile.mjs --refresh --dry-run
 node apps/wechat-miniprogram/scripts/wechatide-page.mjs --page pages/home/index --dry-run
 node apps/wechat-miniprogram/scripts/wechatide-debug.mjs --runtime currentPage --dry-run
+node apps/wechat-miniprogram/scripts/wechatide-preview.mjs --dry-run
+node apps/wechat-miniprogram/scripts/wechatide-upload.mjs --version 0.1.0 --desc "dry run only" --confirm-upload --dry-run
 ```
 
 脚手架和 AppID 就绪后，再执行真实 DevTools 验证：
@@ -59,6 +66,7 @@ node apps/wechat-miniprogram/scripts/wechatide-open.mjs
 node apps/wechat-miniprogram/scripts/wechatide-page.mjs --page pages/home/index
 node apps/wechat-miniprogram/scripts/wechatide-debug.mjs --console "grep -i error"
 node apps/wechat-miniprogram/scripts/wechatide-debug.mjs --network "grep -n ."
+node apps/wechat-miniprogram/scripts/wechatide-preview.mjs
 ```
 
 ## 禁止动作

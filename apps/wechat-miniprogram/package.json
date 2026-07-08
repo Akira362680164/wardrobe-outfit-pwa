@@ -3,6 +3,10 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
+    "wechatide:help": "node scripts/wechatide-help.mjs",
+    "wechatide:open": "node scripts/wechatide-open.mjs",
+    "wechatide:preview": "node scripts/wechatide-preview.mjs",
+    "wechatide:upload": "node scripts/wechatide-upload.mjs",
     "typecheck": "tsc --noEmit"
   },
   "devDependencies": {}

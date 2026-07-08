@@ -1,3 +1,15 @@
+## 2026-07-08 / v2.1.8-test / Codex — 小程序登录与只读业务闭环继续开发
+
+- **执行 Agent**：Codex（按用户明确要求使用 3 个并行 subagent：登录前端、业务只读页面、CLI/AppID；主 agent 负责后端只读边界、集成修正、验证和版本记录）。
+- **目的**：继续对照 `CODEX_WECHAT_MINIPROGRAM_ZERO_START_TASK_V5_IDE_CLI_ONLY.md` 执行小程序完整版开发，但遵守用户最新边界：本轮不修改服务器后端代码，避免影响 Android/App 端。
+- **版本变更**：无；当前应用版本仍为 `2.1.8-test`，小程序包版本仍为 `0.1.0`。
+- **改动文件**：`apps/wechat-miniprogram/project.config.json`、`apps/wechat-miniprogram/package.json`、`apps/wechat-miniprogram/scripts/wechatide-help.mjs`、`apps/wechat-miniprogram/scripts/wechatide-preview.mjs`、`apps/wechat-miniprogram/scripts/wechatide-upload.mjs`、`apps/wechat-miniprogram/pages/login/**`、`apps/wechat-miniprogram/pages/home/**`、`apps/wechat-miniprogram/pages/wardrobe/index/**`、`apps/wechat-miniprogram/services/auth.ts`、`apps/wechat-miniprogram/services/workspace.ts`、`apps/wechat-miniprogram/services/http.ts`、`apps/wechat-miniprogram/stores/session.ts`、`apps/wechat-miniprogram/styles/motion.wxss`、`apps/wechat-miniprogram/typings/index.d.ts`、`docs/wechat-mini/ide-setup.md`、`docs/wechat-mini/platform-setup-checklist.md`、`docs/wechat-mini/execution-board.md`、`VERSION_HISTORY.md`。
+- **改动说明**：将小程序 AppID 写入 `wx14a1a85b7b3844d0`；补齐 `wechatide:help/preview/upload` 脚本，上传体验版默认拒绝、必须带显式确认；登录页从占位改为单一微信认证手机号按钮，串联 `getPhoneNumber`、`wx.login` 和现有 `/api/auth/wechat/phone-login`；session 保留 access token、refresh token、deviceId 和用户摘要，并在后续请求头带 `Authorization` 与 `X-Wardrobe-Device-Id`；首页接现有 `/api/workspace/overview` 显示衣物/套装/种草摘要；衣橱页接现有 `/api/workspace/garments` 显示最小单品列表；移除 `motion.wxss` 中微信预览编译不接受的 descendant 通配符；更新平台配置文档和执行看板。
+- **后端边界**：本轮未修改 `services/wardrobe-api/**`、`packages/cloud-contracts/**` 或 migration；`git diff -- services/wardrobe-api packages/cloud-contracts | wc -l` 为 `0`。
+- **验证结果**：`npx tsc --noEmit -p apps/wechat-miniprogram/tsconfig.json` 通过；`npm --prefix apps/wechat-miniprogram run typecheck` 通过；`npm run typecheck` 通过；`node --check` 覆盖 `apps/wechat-miniprogram/scripts/wechatide-*.mjs` 通过；`project.config.json`、小程序 `package.json`、`app.json` JSON 解析通过；真实 `wechatide` 状态检查通过，skill `0.1.18`；`simulator_refresh` 通过；`compile_wxml` 覆盖登录、首页、衣橱页通过；`simulator_open_page` 覆盖登录、首页、衣橱页通过；console grep `Error|Cannot|未找到|TypeError|ReferenceError` 无命中；network grep `api/auth|api/workspace|failed|error|403|401|500` 无命中；`wechatide:preview --dry-run` 正确生成二维码命令；首次真实 `wechatide:preview` 暴露 `motion.wxss` 通配符编译错误，修复后真实 `npm run wechatide:preview` 通过并展示二维码窗口；`wechatide:upload --version 0.1.0 --dry-run` 按预期拒绝，带 `--confirm-upload --dry-run` 仅打印上传命令，未上传。
+- **风险门禁**：high（小程序登录链路、会话头、真实 AppID、CLI 预览/上传入口、业务只读页面和多 subagent 并行集成）；已按用户要求触发并行 subagent。
+- **未验证风险**：未做真实微信手机号 live 登录，依赖微信平台手机号能力、AppSecret、合法 request/upload/download 域名和小程序 API baseURL 配置；首页/衣橱页因未登录未发起真实 API 请求；衣橱页暂未接后端资产下载 URL，只显示 payload 中已有图片 URL 或分类占位；上传录入、套装、种草、AI、设置页业务未完成；AI 后端代理和 Android AI 共享改造因本轮用户要求不改后端，保留待办；未执行真机预览或体验版上传。
+
 ## 2026-07-08 / v2.1.8-test / Codex — 刷新测试衣橱真实上传全流程截图
 
 - **执行 Agent**：Codex（未触发 subagent：本次为既有 E2E 截图流程复跑）。

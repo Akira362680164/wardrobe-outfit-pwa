@@ -1,5 +1,11 @@
 declare function App<T extends object>(options: T & { onLaunch?: () => void }): void;
-declare function Page<T extends object>(options: T): void;
+type MiniPageData<T> = T extends { data: infer D } ? D : Record<string, unknown>;
+type MiniPageInstance<T> = T & {
+  data: MiniPageData<T>;
+  setData(data: Partial<MiniPageData<T>>): void;
+};
+
+declare function Page<T extends object>(options: T & ThisType<MiniPageInstance<T>>): void;
 declare function getApp<T extends object = Record<string, unknown>>(): T;
 
 declare namespace WechatMiniprogram {
@@ -9,8 +15,11 @@ declare namespace WechatMiniprogram {
 
   interface SystemInfo {
     safeArea?: SafeArea;
+    model?: string;
+    platform?: string;
     screenHeight?: number;
     statusBarHeight?: number;
+    system?: string;
   }
 
   interface RequestSuccessCallbackResult<T = unknown> {
@@ -23,6 +32,18 @@ declare namespace WechatMiniprogram {
     statusCode: number;
     data: string;
     header?: Record<string, string>;
+  }
+
+  interface LoginSuccessCallbackResult {
+    code?: string;
+    errMsg?: string;
+  }
+
+  interface GetPhoneNumberEvent {
+    detail: {
+      code?: string;
+      errMsg?: string;
+    };
   }
 }
 
@@ -45,6 +66,10 @@ declare const wx: {
     header?: Record<string, string>;
     timeout?: number;
     success(result: WechatMiniprogram.UploadFileSuccessCallbackResult): void;
+    fail(error: unknown): void;
+  }): void;
+  login(options: {
+    success(result: WechatMiniprogram.LoginSuccessCallbackResult): void;
     fail(error: unknown): void;
   }): void;
   showToast(options: { title: string; icon?: "success" | "error" | "loading" | "none"; duration?: number }): void;
