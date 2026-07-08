@@ -1,3 +1,14 @@
+## 2026-07-08 / v2.1.8-test / Codex — 展示增强类 MiniMax 调用迁移到后端
+
+- **执行 Agent**：Codex（未触发 subagent：用户未通知）。
+- **目的**：继续收口 MiniMax 调用边界，把当前仍在使用的展示/增强类能力改为后端代调 MiniMax；对没有运行时调用点的旧穿搭推荐、天气判断、买前评估、试穿预览前端直连实现，按用户确认删除，不再迁移死功能。
+- **版本变更**：无；当前应用版本仍为 `2.1.8-test`。
+- **改动文件**：`packages/cloud-contracts/src/workspace/contracts.ts`、`services/wardrobe-api/src/ai/minimax-intake-service.ts`、`services/wardrobe-api/src/ai/routes.ts`、`services/wardrobe-api/tests/ai-intake.test.ts`、`src/lib/online/online-ai-enhancement-client.ts`、`src/components/wardrobe-app.tsx`、`src/components/outfit-list-view.tsx`、`src/components/wishlist-view-2.0.tsx`、`src/lib/device-minimax.ts`、`src/lib/outfit-ai-metadata.ts`、`src/app/legal/privacy/page.tsx`、`src/app/legal/terms/page.tsx`、`src/components/auth/auth-gate.tsx`、`README.md`、`VERSION_HISTORY.md`。
+- **改动说明**：新增 `/api/workspace/ai/enhance/:kind`，支持 `wardrobe-diagnosis`、`garment-style-advice`、`wishlist-assessment`、`outfit-ai-suggestion` 四个仍在使用的增强能力；前端改走 `online-ai-enhancement-client`；删除 `device-minimax.ts` 中无运行时调用点的旧穿搭推荐、天气判断、买前评估、试穿预览，以及已替换的展示增强直连导出；隐私与 README 文案从“录入识别”更新为“AI 功能”。
+- **验证结果**：`npm --workspace @wardrobe/cloud-contracts run build`、`npm --workspace @wardrobe/wardrobe-api run typecheck`、`npm --workspace @wardrobe/wardrobe-api run test -- tests/ai-intake.test.ts`、`npm run typecheck`、`npm run build`、`npm run test:logic:ai-intake-live-contract`、`npm run test:logic:intake-field-contract`、`npm run test:logic:diagnostic-events`、`npm run test:logic:outfit-intake-confirm-contract`、`git diff --check` 均通过。
+- **风险门禁**：high（改动 MiniMax 调用边界、后端 AI 路由、当前展示增强调用点，并删除 `device-minimax.ts` 中约 950 行旧直连实现；不改数据库 schema、不自动入库、不改 Android 原生配置、不打 APK）；未触发 subagent：用户未通知。
+- **未验证风险**：未使用真实 MiniMax Key 做 live 诊断/建议/种草评估；未在 Android 真机/模拟器安装 APK 验证。
+
 ## 2026-07-08 / v2.1.8-test / Codex — 录入类 MiniMax 调用迁移到后端
 
 - **执行 Agent**：Codex（未触发 subagent：用户未通知）。

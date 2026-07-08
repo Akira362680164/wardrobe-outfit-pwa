@@ -86,6 +86,33 @@ describe("AI intake routes", () => {
 
     await app.close();
   });
+
+  it("forwards display enhancement requests to the server-side MiniMax service", async () => {
+    const calls: unknown[] = [];
+    const app = buildApp({
+      readinessCheck: async () => ({ database: "ready" }),
+      storageProvider: null,
+      sessionService: fakeSessionService(),
+      miniMaxIntakeService: fakeAiService(calls),
+    });
+
+    const response = await app.inject({
+      method: "POST",
+      url: "/api/workspace/ai/enhance/wardrobe-diagnosis",
+      headers: authHeaders(),
+      payload: {
+        miniMax: { apiKey: "test-key", apiHost: "https://api.minimaxi.com", model: "MiniMax-M3", timeoutMs: 60000 },
+        input: { items: [] },
+      },
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.json()).toMatchObject({ summary: "诊断完成" });
+    expect(calls).toHaveLength(1);
+    expect(calls[0]).toMatchObject({ kind: "wardrobe-diagnosis", input: { input: { items: [] } } });
+
+    await app.close();
+  });
 });
 
 function fakeSessionService(): SessionService {
@@ -118,6 +145,10 @@ function fakeAiService(calls: unknown[] = []): MiniMaxIntakeServiceLike {
     generateOutfitMetadata: async (input) => {
       calls.push(input);
       return { name: input.name ?? "套装", seasons: ["spring"], styleTags: ["通勤"] };
+    },
+    enhance: async (kind, input) => {
+      calls.push({ kind, input });
+      return { summary: "诊断完成" };
     },
   };
 }

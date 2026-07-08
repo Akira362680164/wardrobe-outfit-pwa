@@ -56,7 +56,8 @@ import {
 import { OutfitIntakeFlow } from "@/components/outfit-intake-flow";
 import { fileToCompressedDataUrl, IMAGE_FILE_ACCEPT } from "@/lib/image";
 import { buildLocalOutfitAiSuggestion, getCachedReplacementSuggestionForItem, getReplacementCandidatesForOutfitItem } from "@/lib/outfit-ai-suggestion";
-import { generateOutfitAiSuggestionOnDevice, hasDeviceMiniMaxKey, loadMiniMaxSettings } from "@/lib/device-minimax";
+import { hasDeviceMiniMaxKey, loadMiniMaxSettings } from "@/lib/device-minimax";
+import { generateOutfitAiSuggestionOnServer } from "@/lib/online/online-ai-enhancement-client";
 import { generateOutfitMetadataOnServer } from "@/lib/online/online-ai-intake-client";
 import { buildLocalOutfitMetadataFromItems } from "@/lib/outfit-ai-metadata";
 import { outfitDraftToSavedOutfit } from "@/lib/intake-save-adapters";
@@ -353,7 +354,7 @@ export function OutfitListView({
  onCreateClosed?.();
  }
 
- // v1.0: 创建流程的 AI增强回调 — 与 generateOutfitAiSuggestionOnDevice独立
+ // v1.0: 创建流程的 AI增强回调 — 与套装详情 AI 建议独立
  async function handleEnhanceOutfitDraft(draft: OutfitIntakeDraft): Promise<OutfitIntakeDraft> {
  const itemIds = draft.itemIds.value.filter((id): id is number => typeof id === "number");
  const itemIdSet = new Set(items.map((i) => i.id).filter((id): id is number => typeof id === "number"));
@@ -1424,7 +1425,7 @@ function OutfitDetailView({
         onMessage("未配置 MiniMax Key，已生成本地规则建议", "info");
         return;
       }
-      const generated = await generateOutfitAiSuggestionOnDevice(outfit, { outfitItems: items, allItems }, settings);
+      const generated = await generateOutfitAiSuggestionOnServer(outfit, { outfitItems: items, allItems }, settings);
       await saveAiSuggestion(generated);
       setDetailTab("ai");
       onMessage("套装 AI 建议已生成");

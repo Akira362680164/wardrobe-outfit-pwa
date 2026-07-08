@@ -17,7 +17,7 @@ const SECTIONS: LegalSection[] = [
         <p><strong>账号数据：</strong>手机号登录标识（规范化保存）、密码 Argon2id 哈希、设备会话信息。新注册手机号当前不经过短信归属核验。</p>
         <p><strong>云端工作区数据：</strong>衣物、套装、心愿单、穿着记录、行程计划和相关同步数据。</p>
         <p><strong>图片数据：</strong>用户主动提交时会上传原图、缩略图和必要的图片元数据。</p>
-        <p><strong>AI Key：</strong>MiniMax Key 保存在本机 localStorage；仅在用户主动发起 AI 录入识别时，经 HTTPS 临时发送给 wardrobe API 代为调用 MiniMax，服务器不保存、不写日志。</p>
+        <p><strong>AI Key：</strong>MiniMax Key 保存在本机 localStorage；仅在用户主动发起 AI 功能时，经 HTTPS 临时发送给 wardrobe API 代为调用 MiniMax，服务器不保存、不写日志。</p>
         <p><strong>安全事件：</strong>只保存脱敏或哈希后的必要信息，不保存明文密码或 Token。</p>
       </>
     ),

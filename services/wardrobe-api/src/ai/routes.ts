@@ -1,4 +1,6 @@
 import {
+  AiEnhancementKindSchema,
+  AiEnhancementRequestSchema,
   AiGarmentRecognitionRequestSchema,
   AiOutfitMetadataRequestSchema,
 } from "@wardrobe/cloud-contracts";
@@ -25,6 +27,13 @@ export function registerAiIntakeRoutes(
     await authenticate(request.headers.authorization, request.headers["x-wardrobe-device-id"], sessionService);
     const body = AiOutfitMetadataRequestSchema.parse(request.body);
     return aiService.generateOutfitMetadata(body);
+  }));
+
+  app.post("/api/workspace/ai/enhance/:kind", { bodyLimit: AI_BODY_LIMIT_BYTES }, async (request, reply) => handle(reply, async () => {
+    await authenticate(request.headers.authorization, request.headers["x-wardrobe-device-id"], sessionService);
+    const params = AiEnhancementKindSchema.parse((request.params as { kind?: unknown }).kind);
+    const body = AiEnhancementRequestSchema.parse(request.body);
+    return aiService.enhance(params, body);
   }));
 }
 

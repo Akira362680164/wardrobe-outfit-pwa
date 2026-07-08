@@ -112,8 +112,6 @@ import { wardrobeRepository } from "@/lib/repository/wardrobe-repository";
 import { rethrowIfFailed, upsertOutfit, upsertLocation, deleteLocation, repoUpdateWishlistItem, repoCreateGarment, repoCreateGarmentsBatch, repoUpdateGarment, repoUpdateOutfit, repoDeleteGarments, repoDeleteLocation, repoSaveProfile } from "@/lib/repository/wardrobe-repository";
 import {
  defaultMiniMaxSettings,
- diagnoseWardrobeOnDevice,
- generateGarmentStyleAdviceOnDevice,
  hasDeviceMiniMaxKey,
  loadMiniMaxSettings,
  saveMiniMaxSettings,
@@ -121,6 +119,7 @@ import {
  type DeviceMiniMaxSettings,
 } from "@/lib/device-minimax";
 import { recognizeGarmentOnServer } from "@/lib/online/online-ai-intake-client";
+import { diagnoseWardrobeOnServer, generateGarmentStyleAdviceOnServer } from "@/lib/online/online-ai-enhancement-client";
 import { ImageCropEditor } from "@/components/image-crop-editor";
 import { createTemporaryCroppedImage, dataUrlToFile, fileToAiRequestDataUrl, fileToCompressedDataUrl, fileToOriginalDataUrl, isHeicFile, type NormalizedCropBox } from "@/lib/image";
 import { useSoftAiProgress } from "@/lib/use-soft-ai-progress";
@@ -1716,7 +1715,7 @@ function WardrobeView(props: WardrobeViewProps) {
     const runId = ++aiAdviceRunIdRef.current;
     setAiAdviceState("loading");
     try {
-      const advice = await generateGarmentStyleAdviceOnDevice(viewingItem, miniMaxSettings);
+      const advice = await generateGarmentStyleAdviceOnServer(viewingItem, miniMaxSettings);
       if (runId !== aiAdviceRunIdRef.current) return;
       const now = new Date().toISOString();
       const savedItem = rethrowIfFailed(await repoUpdateGarment(viewingItem, { aiStyleAdvice: advice, updatedAt: now }), "更新单品失败");
@@ -2373,7 +2372,7 @@ function WardrobeView(props: WardrobeViewProps) {
     isDiagnosisRunningRef.current = true; // 入口同步加锁（setDiagnosisState 触发的是异步 render 提交，加锁必须同步）
     try {
       const next = await withKeepAwake(() =>
-        diagnoseWardrobeOnDevice(allItems, outfits, locations, miniMaxSettings),
+        diagnoseWardrobeOnServer(allItems, outfits, locations, miniMaxSettings),
       );
       if (myRunId !== diagnosisRunIdRef.current) return; // run 已被关闭 / 覆盖, 丢弃结果
       setDiagnosis(next);
@@ -5390,7 +5389,7 @@ function MiniMaxDetailPage({
 
       <div className="flex items-start gap-2 px-1 text-[11px] leading-relaxed text-ink/50">
         <Lock size={13} className="mt-0.5 shrink-0 text-ink/45" aria-hidden="true" />
-        <span>密钥保存在本机；AI 录入识别时会临时经服务器代调 MiniMax，服务器不保存密钥。点击保存会验证有效性，失败会保留输入。</span>
+        <span>密钥保存在本机；AI 功能会临时经服务器代调 MiniMax，服务器不保存密钥。点击保存会验证有效性，失败会保留输入。</span>
       </div>
     </div>
   );

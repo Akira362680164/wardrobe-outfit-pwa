@@ -229,6 +229,18 @@ export const AiOutfitMetadataResponseSchema = z.object({
   notes: z.string().optional(),
 });
 
+export const AiEnhancementKindSchema = z.enum([
+  "wardrobe-diagnosis",
+  "garment-style-advice",
+  "wishlist-assessment",
+  "outfit-ai-suggestion",
+]);
+
+export const AiEnhancementRequestSchema = z.object({
+  miniMax: MiniMaxRuntimeSettingsSchema,
+  input: z.record(z.unknown()),
+});
+
 export type WorkspaceEntityKind = z.infer<typeof WorkspaceEntityKindSchema>;
 export type WorkspaceErrorCode = z.infer<typeof WorkspaceErrorCodeSchema>;
 export type WorkspaceErrorResponse = z.infer<typeof WorkspaceErrorResponseSchema>;
@@ -260,3 +272,5 @@ export type AiGarmentRecognitionResponse = z.infer<typeof AiGarmentRecognitionRe
 export type AiOutfitMetadataItem = z.infer<typeof AiOutfitMetadataItemSchema>;
 export type AiOutfitMetadataRequest = z.infer<typeof AiOutfitMetadataRequestSchema>;
 export type AiOutfitMetadataResponse = z.infer<typeof AiOutfitMetadataResponseSchema>;
+export type AiEnhancementKind = z.infer<typeof AiEnhancementKindSchema>;
+export type AiEnhancementRequest = z.infer<typeof AiEnhancementRequestSchema>;

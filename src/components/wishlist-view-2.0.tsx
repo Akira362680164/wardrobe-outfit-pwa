@@ -26,6 +26,7 @@ import {
 import { formatGarmentFitGender, formatSubcategoryLabel } from "@/lib/display-labels";
 import type { DeviceMiniMaxSettings } from "@/lib/device-minimax";
 import { hasDeviceMiniMaxKey } from "@/lib/device-minimax";
+import { assessWishlistItemOnServer } from "@/lib/online/online-ai-enhancement-client";
 import { buildWishlistEditRecognitionPatch } from "@/lib/item-recognition-patch";
 
 import {
@@ -841,8 +842,7 @@ export function WishlistView20({
       let usedLocalFallback = false;
       if (hasDeviceMiniMaxKey(settings)) {
         try {
-          const { assessWishlistItemOnDevice } = await import("@/lib/device-minimax");
-          assessment = await assessWishlistItemOnDevice(
+          assessment = await assessWishlistItemOnServer(
             wishlistItem,
             { ruleAssessment, wardrobeItems: items, outfits },
             settings,
