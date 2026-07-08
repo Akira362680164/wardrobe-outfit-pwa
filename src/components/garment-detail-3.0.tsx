@@ -218,7 +218,7 @@ export function GarmentDetail30({
             <button
               type="button"
               onClick={(event) => { event.stopPropagation(); onWearToggle(); }}
-              className="inline-flex h-9 items-center gap-1 rounded-full bg-white/90 border border-white/60 px-3 text-xs font-semibold shadow-sm text-ink/80"
+              className="inline-flex h-9 items-center gap-1 ui-control-radius bg-white/75 border border-white/60 px-3 text-xs font-semibold text-ink/80 backdrop-blur-xl"
             >
               {wearSummary.hasToday ? "✓ 今天已穿" : "标记今天穿了"}
             </button>

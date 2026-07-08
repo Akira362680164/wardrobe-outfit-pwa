@@ -29,8 +29,8 @@ const waterfallStart = wardrobeApp.indexOf("function WaterfallCardImage");
 const waterfallEnd = wardrobeApp.indexOf("function StableGarmentImage", waterfallStart);
 const waterfallSource = wardrobeApp.slice(waterfallStart, waterfallEnd > -1 ? waterfallEnd : undefined);
 
-assert(waterfallSource.includes('imageClassName="object-contain"'), "WaterfallCardImage uses object-contain");
-assert(!waterfallSource.includes('imageClassName="object-cover"'), "WaterfallCardImage no longer uses object-cover");
+assert(waterfallSource.includes('imageClassName="object-cover"'), "WaterfallCardImage fills the rounded-rectangle image well");
+assert(!waterfallSource.includes('imageClassName="object-contain"'), "WaterfallCardImage no longer letterboxes inside the image well");
 assert(catalogCard.includes("ui-card") && catalogCard.includes("overflow-hidden"), "CatalogWaterfallCardShell clips content to the shared card radius");
 assert(catalogCard.includes("ui-inner-card"), "CatalogWaterfallCardShell image well uses the shared inner radius");
 assert(!catalogCard.includes("rounded-t-2xl bg-mist"), "CatalogWaterfallCardShell image well no longer uses the old top-only radius");

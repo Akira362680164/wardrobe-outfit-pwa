@@ -50,13 +50,13 @@ export function WearStatisticsView({
 
   return (
     <div className="grid gap-4 pb-[calc(env(safe-area-inset-bottom)+1rem)]">
-      <header className="sticky top-[env(safe-area-inset-top)] z-20 -mx-4 border-b border-ink/8 bg-[#fbfbf8]/95 px-4 py-2 backdrop-blur-xl">
+      <header className="app-glass-top sticky top-[env(safe-area-inset-top)] z-20 -mx-4 px-4 py-2">
         <div className="flex h-11 items-center gap-2">
           <button
             type="button"
             onClick={onBack}
             aria-label="返回衣橱"
-            className="grid h-10 w-10 shrink-0 place-items-center rounded-lg text-ink/70 active:bg-mist"
+            className="grid h-10 w-10 shrink-0 place-items-center ui-control-radius bg-transparent text-ink/70 active:scale-95"
           >
             <ChevronLeft size={21} aria-hidden="true" />
           </button>

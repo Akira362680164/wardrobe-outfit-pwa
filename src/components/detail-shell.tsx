@@ -139,7 +139,7 @@ export function DetailHeroGallery({
       <div
         role="region"
         aria-label="详情图片"
-        className="relative mx-auto overflow-hidden rounded-3xl bg-mist"
+        className="ui-inner-card relative mx-auto overflow-hidden bg-mist"
         style={{ height: "clamp(300px, 52dvh, 500px)" }}
       >
         {activeSlide ? (
@@ -213,7 +213,7 @@ export function DetailFilmstrip({
             key={item.id}
             type="button"
             onClick={() => onSelect(item.id)}
-            className={`relative h-14 w-14 shrink-0 overflow-hidden rounded-lg border-2 transition ${
+            className={`relative h-14 w-14 shrink-0 overflow-hidden ui-control-radius border-2 transition ${
               active ? "border-denim shadow-sm" : "border-transparent opacity-60 hover:opacity-100"
             }`}
           >
@@ -233,7 +233,7 @@ export function DetailFilmstrip({
         <button
           type="button"
           onClick={onAdd}
-          className="grid h-14 w-14 shrink-0 place-items-center rounded-lg border border-dashed border-ink/20 bg-mist/45 text-ink/45"
+          className="grid h-14 w-14 shrink-0 place-items-center ui-control-radius border border-dashed border-ink/20 bg-mist/45 text-ink/45"
         >
           <span className="grid place-items-center gap-0.5">
             <Plus size={16} aria-hidden="true" />
@@ -257,7 +257,7 @@ export function DetailQuickActions({ actions, layout = "flex" }: { actions: Deta
           type="button"
           onClick={action.onClick}
           disabled={action.disabled}
-          className={`inline-flex h-11 min-w-0 flex-1 items-center justify-center gap-1.5 rounded-full px-3 text-sm font-semibold transition disabled:opacity-45 ${quickActionClass(action.tone)}`}
+          className={`inline-flex h-11 min-w-0 flex-1 items-center justify-center gap-1.5 ui-control-radius px-3 text-sm font-semibold transition disabled:opacity-45 ${quickActionClass(action.tone)}`}
         >
           {action.icon ? <span className="grid h-4 w-4 shrink-0 place-items-center [&_svg]:h-4 [&_svg]:w-4">{action.icon}</span> : null}
           <span className="truncate">{action.label}</span>
@@ -390,7 +390,7 @@ export function DetailAiCard({
             type="button"
             onClick={onAction}
             disabled={loading}
-            className="inline-flex h-9 shrink-0 items-center gap-1 rounded-lg bg-mist px-3 text-xs font-semibold text-denim disabled:opacity-50"
+            className="inline-flex h-9 shrink-0 items-center gap-1 ui-control-radius bg-mist px-3 text-xs font-semibold text-denim disabled:opacity-50"
           >
             <RefreshCw size={13} className={loading ? "animate-spin" : ""} aria-hidden="true" />
             {actionLabel}

@@ -133,7 +133,7 @@ export function ChangePasswordView({
 function SubPageHeader({ title, onBack }: { title: string; onBack: () => void }) {
   return (
     <header className="flex h-14 items-center gap-2 px-1 pt-2">
-      <button type="button" onClick={onBack} className="grid h-10 w-10 place-items-center rounded-lg text-ink/65 active:bg-mist" aria-label="返回">
+      <button type="button" onClick={onBack} className="grid h-10 w-10 place-items-center ui-control-radius bg-transparent text-ink/65 active:scale-95" aria-label="返回">
         <ChevronLeft size={20} aria-hidden="true" />
       </button>
       <h1 className="min-w-0 truncate text-xl font-bold tracking-tight">{title}</h1>

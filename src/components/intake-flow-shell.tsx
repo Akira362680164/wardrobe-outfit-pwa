@@ -126,7 +126,7 @@ export function IntakeFlowShell({
             type="button"
             onClick={onBack}
             disabled={backDisabled || !onBack}
-            className="grid h-10 w-10 shrink-0 place-items-center ui-control-radius text-ink/70 active:bg-mist disabled:opacity-35"
+            className="grid h-10 w-10 shrink-0 place-items-center ui-control-radius bg-transparent text-ink/70 active:scale-95 disabled:opacity-35"
             aria-label="返回上一步"
           >
             <ChevronLeft size={21} aria-hidden="true" />
@@ -140,7 +140,7 @@ export function IntakeFlowShell({
           <button
             type="button"
             onClick={requestExit}
-            className="grid h-10 w-10 shrink-0 place-items-center ui-control-radius text-ink/60 active:bg-mist"
+            className="grid h-10 w-10 shrink-0 place-items-center ui-control-radius bg-transparent text-ink/60 active:scale-95"
             aria-label="退出录入"
           >
             <X size={18} aria-hidden="true" />

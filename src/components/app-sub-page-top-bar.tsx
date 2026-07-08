@@ -36,7 +36,7 @@ export function AppSubPageTopBar({
           aria-label="返回"
           className="grid h-12 w-12 place-items-center -ml-1"
         >
-          <span className="grid h-10 w-10 place-items-center ui-control-radius bg-white/72 text-ink/70 shadow-soft active:scale-95 hover:bg-ink/5 transition">
+          <span className="grid h-10 w-10 place-items-center ui-control-radius bg-transparent text-ink/70 active:scale-95 transition">
             <ChevronLeft size={18} />
           </span>
         </button>
@@ -66,7 +66,7 @@ export function AppSubPageTopBar({
             aria-label="更多操作"
             className="grid h-12 w-12 place-items-center -mr-1"
           >
-            <span className="grid h-10 w-10 place-items-center ui-control-radius text-ink/40 hover:bg-mist transition">
+            <span className="grid h-10 w-10 place-items-center ui-control-radius bg-transparent text-ink/40 active:scale-95 transition">
               <MoreHorizontal size={18} />
             </span>
           </button>

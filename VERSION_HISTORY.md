@@ -1,3 +1,14 @@
+## 2026-07-08 / v2.1.8-test / Codex — 运行时 UI 细节修正与规范截图刷新
+
+- **执行 Agent**：Codex（未触发 subagent：用户未通知）。
+- **目的**：根据用户对当前 UI 规范截图的逐项批注，修正运行时页面中的圆角矩形、毛玻璃 TopBar、Toast、MiniMax Key 提醒、设置页卡片、瀑布图、详情媒体和录入缩略图等视觉细节，并重新采集规范 HTML 使用的真实业务流截图。
+- **版本变更**：无；当前应用版本仍为 `2.1.8-test`。
+- **改动文件**：`src/app/globals.css`、`src/components/wardrobe-app.tsx`、`src/components/app-sub-page-top-bar.tsx`、`src/components/intake-flow-shell.tsx`、`src/components/wear-statistics-view.tsx`、`src/components/auth/account-views.tsx`、`src/components/detail-shell.tsx`、`src/components/garment-detail-3.0.tsx`、`src/components/outfit-list-view.tsx`、`src/components/outfit-planning-calendar-view.tsx`、`src/components/garment-intake-flow.tsx`、`src/components/wishlist-view-2.0.tsx`、`scripts/test-ui-overlay-contract.ts`、`scripts/test-home-card-edit-wishlist-delete-hotfix.ts`、`docs/designs/v0.3-alpha/**`、`docs/designs/v03-alpha-real-screenshots/**`、`VERSION_HISTORY.md`。
+- **改动说明**：顶部毛玻璃层去掉白色条块和底部硬边，二级/三级页图标按钮去掉独立白底但保留彩色主操作按钮；Toast 增加左侧状态色条，并将 MiniMax Key 缺失提醒改为启动后检测缺 Key 时弹出的 Toast，含“前往设置”并直达 MiniMax Key 输入页；设置页一级卡片、头像/画像提示/配置 Key 按钮接入统一圆角矩形；衣橱/种草瀑布图改为填满圆角矩形画框；详情页主图、胶片、AI 生成按钮和“今天已穿”按钮统一圆角；录入流程拍照/图库入口、已选缩略图、裁切/确认页图片和按钮统一圆角矩形，选图超过 5 张不再显示 `+N`，改为横向滚动展示全部；同步测试断言到新的透明 TopBar 与填充式瀑布图契约；重跑真实业务流截图并同步到 UI 规范 HTML 引用目录。
+- **验证结果**：`npm run typecheck`、`npm run test:logic:ui-token-contract`、`npm run test:logic:ui-spec-preview`、`npm run test:logic:ui-overlay-contract`、`npm run test:logic:home-card-edit-wishlist-delete-hotfix`、`npm run test:logic:shared-item-shells`、`npm run test:logic:catalog-card-content`、`npm run test:logic:ui-overflow`、`npm run test:logic:detail-shell`、`npm run test:logic:garment-intake-multi-image`、`npm run test:logic:intake-fullscreen-layout`、`npm run test:logic:app-route`、`npm run build`、`npm run v03-alpha:capture`、`npm run docs:ui-spec:build`、`npm run docs:ui-spec:check`、`npm run v03-alpha:build`、`npm run test:logic:v03-alpha-visual-review` 均通过；`file docs/designs/v03-alpha-real-screenshots/*.png` 确认 21 张规范截图均为 `390 x 844`。
+- **风险门禁**：high（跨运行时 UI 基础样式、核心页面组件、录入流程、截图资产和规范生成产物；未改业务数据结构、线上 API、Android 原生配置、版本号或 APK）；未触发 subagent：用户未通知。
+- **未验证风险**：未在 Android 真机/模拟器安装 APK 做视觉回归；本次真实截图仍为当前采集链路的 `390 x 844` 输出，未做 2K 高分辨率导出；MiniMax Key 缺失 Toast 的真实启动行为未在 Android WebView 中单独验证。
+
 ## 2026-07-08 / v2.1.8-test / Codex — UI 规范真实截图重采集
 
 - **执行 Agent**：Codex（未触发 subagent：用户未通知）。

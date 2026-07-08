@@ -168,6 +168,8 @@ import {
 import { buildColorInfo, emptyColorInfo, getAccentColors, getAllColors, getPrimaryColor, getPrimaryColors, uniqueTrimmed } from "@/lib/color-fields";
 import type { GarmentIntakeDraft } from "@/lib/intake-draft";
 
+const MINIMAX_KEY_MISSING_MESSAGE = "尚未配置 MiniMax Key，AI 识别和推荐功能暂不可用。";
+
 // ViewKey now imported from wardrobe-create-actions
 type PendingCreateAction = "add_single_item" | "create_outfit" | "add_wishlist_item";
 
@@ -353,7 +355,8 @@ export function WardrobeApp({ cloudAuth }: { cloudAuth?: WardrobeCloudAuth } = {
   const [isRecognizing] = useState(false);
   const tagProgress = useSoftAiProgress("garment_detection", { label: "AI 识别衣物" });
 	  const [miniMaxSettings, setMiniMaxSettings] = useState<DeviceMiniMaxSettings>(() => defaultMiniMaxSettings());
-  const [showKeyBanner, setShowKeyBanner] = useState(true);
+  const [settingsMiniMaxOpenRequest, setSettingsMiniMaxOpenRequest] = useState(0);
+  const minimaxMissingToastShownRef = useRef(false);
   const [showGarmentIntakeFlow, setShowGarmentIntakeFlow] = useState(false);
   // v1.1.20-dev (方案 C): 删除 v1.1.7 4A 的 route.mainTab → activeView useEffect 同步逻辑。
   // 旧逻辑是 Bug 1 根因之一 — useEffect 异步同步 + showGarmentIntakeFlow guard + React 18 同值 bail out
@@ -408,6 +411,20 @@ export function WardrobeApp({ cloudAuth }: { cloudAuth?: WardrobeCloudAuth } = {
     setIsReady(true);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  const openMiniMaxKeySettings = useCallback(() => {
+    clearMessage();
+    setSettingsMiniMaxOpenRequest((value) => value + 1);
+    navigation.openRoute({ name: "settings_home" });
+  }, [clearMessage, navigation]);
+
+  useEffect(() => {
+    if (!isReady) return;
+    if (hasDeviceMiniMaxKey(miniMaxSettings)) return;
+    if (minimaxMissingToastShownRef.current) return;
+    minimaxMissingToastShownRef.current = true;
+    showMessage(MINIMAX_KEY_MISSING_MESSAGE, "info");
+  }, [isReady, miniMaxSettings, showMessage]);
 
   // v1.1.20-dev (方案 C): 删除 v0.9.31-dev "activeViewRef 同步" useEffect — activeViewRef 不再存在。
   // v0.9.31-dev: pendingRestoreViewRef 单一入口 (subagent I-2 修法 B)。
@@ -749,7 +766,7 @@ export function WardrobeApp({ cloudAuth }: { cloudAuth?: WardrobeCloudAuth } = {
     await refreshState();
   }
 
-  async function saveSettings(nextSettings: DeviceMiniMaxSettings) { const normalizedSettings = { ...nextSettings, model: "MiniMax-M3" }; saveMiniMaxSettings(normalizedSettings); setMiniMaxSettings(normalizedSettings); if (!hasDeviceMiniMaxKey(normalizedSettings)) { showMessage("MiniMax 设置已保存在本机"); return; } showMessage("正在验证 MiniMax Key..."); const result = await withKeepAwake(() => validateMiniMaxKey(normalizedSettings)); if (result.valid) setShowKeyBanner(false); showMessage(result.message); }
+  async function saveSettings(nextSettings: DeviceMiniMaxSettings) { const normalizedSettings = { ...nextSettings, model: "MiniMax-M3" }; saveMiniMaxSettings(normalizedSettings); setMiniMaxSettings(normalizedSettings); if (!hasDeviceMiniMaxKey(normalizedSettings)) { showMessage("MiniMax 设置已保存在本机"); return; } showMessage("正在验证 MiniMax Key..."); const result = await withKeepAwake(() => validateMiniMaxKey(normalizedSettings)); showMessage(result.message); }
 
 	  async function seedDemoItems() {
     const now = new Date().toISOString();
@@ -787,7 +804,6 @@ export function WardrobeApp({ cloudAuth }: { cloudAuth?: WardrobeCloudAuth } = {
     showMessage("已加入示例衣物和 1 套示例套装（含灵感图）");
   }
 
-  const hasKey = hasDeviceMiniMaxKey(miniMaxSettings);
   const stats = useMemo(() => {
     const activeCount = items.filter((item) => item.status === "active").length;
     const needReviewCount = items.filter((item) => item.needsReview).length;
@@ -939,17 +955,6 @@ export function WardrobeApp({ cloudAuth }: { cloudAuth?: WardrobeCloudAuth } = {
           ) : null}
           {wardrobeData.onlineState.status === "refresh_error" ? (
             <div className="mb-3"><OnlineInlineNotice message={wardrobeData.onlineState.message} tone="error" onRetry={() => void refreshState().catch(() => undefined)} /></div>
-          ) : null}
-
-          {!hasKey && showKeyBanner && !hideMobileNav ? (
-            <div className="mb-4 flex items-center gap-3 rounded-lg border border-clay/20 bg-clay/6 px-4 py-3 text-sm">
-              <WandSparkles size={18} className="shrink-0 text-clay" />
-              <span className="min-w-0 flex-1 text-ink/80">
-                尚未配置 MiniMax Key，AI 识别和推荐功能暂不可用。
-                <button type="button" onClick={() => { navigation.openRoute({ name: "settings_home" }); setShowKeyBanner(false); }} className="ml-2 font-semibold text-clay underline">前往设置</button>
-              </span>
-              <button type="button" className="shrink-0 text-ink/40" onClick={() => setShowKeyBanner(false)}>×</button>
-            </div>
           ) : null}
 
 <AnimatePresence mode="wait" initial={false}>
@@ -1109,6 +1114,8 @@ export function WardrobeApp({ cloudAuth }: { cloudAuth?: WardrobeCloudAuth } = {
 	              items={items} locations={locations} outfits={outfits} wishlistItems={wishlistItems} activeView={activeViewForCreateActions} route={route}
               cloudAuth={cloudAuth}
               onOpenAccount={() => navigation.openRoute({ name: "account_management" })}
+              openMiniMaxRequest={settingsMiniMaxOpenRequest}
+              onMiniMaxRequestConsumed={() => setSettingsMiniMaxOpenRequest(0)}
 	              miniMaxSettings={miniMaxSettings} onSaveMiniMaxSettings={saveSettings}
 	              onAddWardrobe={async (name, note) => { const now = new Date().toISOString(); const id = `custom-${globalThis.crypto?.randomUUID?.() ?? Date.now()}`; rethrowIfFailed(await upsertLocation({ id, name, note, sortOrder: locations.length + 1, createdAt: now, updatedAt: now }), "保存位置失败"); await refreshState(); }}
               onUpdateWardrobe={async (id, name, note) => {
@@ -1309,8 +1316,14 @@ export function WardrobeApp({ cloudAuth }: { cloudAuth?: WardrobeCloudAuth } = {
             placement="bottom"
           >
           <div
-            className={`app-toast pointer-events-auto flex items-center gap-2.5 overflow-hidden px-3 py-2.5 text-sm text-ink ${messageType === "error" ? "border-l-[3px] border-l-red-400" : messageType === "info" ? "border-l-[3px] border-l-denim" : "border-l-[3px] border-l-moss"}`}
+            className="app-toast pointer-events-auto flex items-center gap-2.5 overflow-hidden px-3 py-2.5 pl-4 text-sm text-ink"
           >
+            <span
+              className={`absolute bottom-2 left-2 top-2 w-1 rounded-full ${
+                messageType === "error" ? "bg-clay" : messageType === "info" ? "bg-denim" : "bg-moss"
+              }`}
+              aria-hidden="true"
+            />
             {messageType === "error" ? (
               <span className="grid h-7 w-7 shrink-0 place-items-center ui-control-radius bg-red-50 text-red-500">
                 <AlertCircle size={15} strokeWidth={2.4} aria-hidden="true" />
@@ -1325,6 +1338,15 @@ export function WardrobeApp({ cloudAuth }: { cloudAuth?: WardrobeCloudAuth } = {
               </span>
             )}
             <span className="min-w-0 flex-1 leading-snug">{message}</span>
+            {message === MINIMAX_KEY_MISSING_MESSAGE ? (
+              <button
+                type="button"
+                className="h-9 shrink-0 ui-control-radius bg-denim px-3 text-xs font-semibold text-white active:scale-95"
+                onClick={openMiniMaxKeySettings}
+              >
+                前往设置
+              </button>
+            ) : null}
             <button
               type="button"
               title="关闭提示"
@@ -3822,6 +3844,8 @@ function SettingsView({
   route,
   cloudAuth,
   onOpenAccount,
+  openMiniMaxRequest,
+  onMiniMaxRequestConsumed,
 	  miniMaxSettings,
 	  onSaveMiniMaxSettings,
 	  onAddWardrobe,
@@ -3841,6 +3865,8 @@ function SettingsView({
   route: AppRoute;
   cloudAuth?: WardrobeCloudAuth;
   onOpenAccount?: () => void;
+  openMiniMaxRequest?: number;
+  onMiniMaxRequestConsumed?: () => void;
 	  miniMaxSettings: DeviceMiniMaxSettings;
 	  onSaveMiniMaxSettings: (settings: DeviceMiniMaxSettings) => void;
 	  onAddWardrobe: (name: string, note: string) => Promise<void>;
@@ -3866,6 +3892,14 @@ function SettingsView({
   const [showDiagnosticDescDialog, setShowDiagnosticDescDialog] = useState(false);
   const [diagnosticDescription, setDiagnosticDescription] = useState("");
   const [lastDiagnosticUpload, setLastDiagnosticUpload] = useState<LastDiagnosticUpload | null>(null);
+  const lastOpenMiniMaxRequestRef = useRef(0);
+
+  useEffect(() => {
+    if (!openMiniMaxRequest || openMiniMaxRequest === lastOpenMiniMaxRequestRef.current) return;
+    lastOpenMiniMaxRequestRef.current = openMiniMaxRequest;
+    setSubPage("minimax");
+    onMiniMaxRequestConsumed?.();
+  }, [onMiniMaxRequestConsumed, openMiniMaxRequest]);
   const [showDiagnosticSuccess, setShowDiagnosticSuccess] = useState(false);
   const [showDiagnosticFailed, setShowDiagnosticFailed] = useState(false);
   function handleStartDiagnosticUpload() {
@@ -4138,10 +4172,10 @@ function SettingsView({
       <h1 className="flex h-14 items-center px-4 pt-2 text-xl font-bold tracking-tight">设置</h1>
 
       {cloudAuth ? (
-        <article className="surface rounded-lg px-4 py-3.5">
+        <article className="ui-card px-4 py-3.5">
           <div className="flex items-start justify-between gap-3">
             <div className="flex min-w-0 items-start gap-3">
-              <div className="grid h-10 w-10 shrink-0 place-items-center rounded-lg bg-denim/10 text-denim">
+              <div className="grid h-10 w-10 shrink-0 place-items-center ui-control-radius bg-denim/10 text-denim">
                 <User size={19} aria-hidden="true" />
               </div>
               <div className="min-w-0">
@@ -4153,7 +4187,7 @@ function SettingsView({
             <button
               type="button"
               onClick={onOpenAccount}
-              className="inline-flex h-9 shrink-0 items-center gap-1 rounded-lg border border-ink/10 bg-white px-3 text-xs font-semibold active:scale-95 transition-transform"
+              className="inline-flex h-9 shrink-0 items-center gap-1 ui-control-radius border border-ink/10 bg-white px-3 text-xs font-semibold active:scale-95 transition-transform"
             >
               管理 <ChevronRight size={12} aria-hidden="true" />
             </button>
@@ -4163,7 +4197,7 @@ function SettingsView({
 
       {/* 1. 衣橱设置 (紧凑列表行, 超过 3 个折叠) */}
       {/* 2. 我的穿衣画像摘要卡 */}
-      <article className="surface rounded-lg px-4 py-3.5">
+      <article className="ui-card px-4 py-3.5">
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
             <h2 className="text-base font-semibold">我的穿衣画像</h2>
@@ -4179,7 +4213,7 @@ function SettingsView({
         </div>
         <div className="mt-3">
           {profileIsLight ? (
-            <p className="rounded-lg bg-mist px-3 py-3 text-xs leading-relaxed text-ink/55">
+            <p className="ui-inner-card px-3 py-3 text-xs leading-relaxed text-ink/55">
               还未完善画像，补充后 AI 推荐和试穿会更贴合你。
             </p>
           ) : (
@@ -4187,7 +4221,7 @@ function SettingsView({
               {profileChips.map((chip, i) => (
                 <span
                   key={i}
-                  className="inline-flex h-7 items-center gap-1 rounded-full border border-ink/10 bg-white px-2.5 text-[11px]"
+                  className="inline-flex h-7 items-center gap-1 ui-control-radius border border-ink/10 bg-white px-2.5 text-[11px]"
                 >
                   <span className="text-ink/45">{chip.label}：</span>
                   <span className="font-semibold text-ink/80">{chip.value}</span>
@@ -4199,7 +4233,7 @@ function SettingsView({
       </article>
 
       {/* 3. AI 试穿参考照片摘要卡 */}
-      <article className="surface rounded-lg px-4 py-3.5">
+      <article className="ui-card px-4 py-3.5">
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0 flex-1">
             <h2 className="text-base font-semibold">AI 试穿参考照片</h2>
@@ -4227,12 +4261,12 @@ function SettingsView({
                 <span className="shrink-0 text-xs font-semibold text-ink/80">已配置 {photosCount} 张照片</span>
                 <div className="flex items-center gap-1.5">
                   {tryOnProfile.fullBodyImage ? (
-                    <div className="h-10 w-10 shrink-0 overflow-hidden rounded-md border border-ink/10 bg-mist">
+                      <div className="h-10 w-10 shrink-0 overflow-hidden ui-control-radius border border-ink/10 bg-mist">
                       <OnlineAssetImage asset={tryOnProfile.fullBodyImage} variant="thumbnail" alt="全身照" className="h-full w-full" />
                     </div>
                   ) : null}
                   {tryOnProfile.faceImage ? (
-                    <div className="h-10 w-10 shrink-0 overflow-hidden rounded-md border border-ink/10 bg-mist">
+                      <div className="h-10 w-10 shrink-0 overflow-hidden ui-control-radius border border-ink/10 bg-mist">
                       <OnlineAssetImage asset={tryOnProfile.faceImage} variant="thumbnail" alt="脸部照" className="h-full w-full" />
                     </div>
                   ) : null}
@@ -4252,7 +4286,7 @@ function SettingsView({
       </article>
 
       {/* 4. MiniMax 设置摘要卡 */}
-      <article className="surface rounded-lg px-4 py-3.5">
+      <article className="ui-card px-4 py-3.5">
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0 flex-1">
             <h2 className="text-base font-semibold">MiniMax 设置</h2>
@@ -4280,14 +4314,14 @@ function SettingsView({
           <button
             type="button"
             onClick={() => setSubPage("minimax")}
-            className="inline-flex h-9 shrink-0 items-center gap-1 rounded-lg border border-ink/10 bg-white px-3 text-xs font-semibold active:scale-95 transition-transform"
+            className="inline-flex h-9 shrink-0 items-center gap-1 ui-control-radius border border-ink/10 bg-white px-3 text-xs font-semibold active:scale-95 transition-transform"
           >
             {hasMiniMaxKey ? "修改配置" : "配置 Key"} <ChevronRight size={12} aria-hidden="true" />
           </button>
         </div>
       </article>
 
-      <article className="surface rounded-lg px-4 py-3.5" aria-label="远程诊断">
+      <article className="ui-card px-4 py-3.5" aria-label="远程诊断">
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
             <h2 className="text-base font-semibold">远程诊断</h2>
@@ -4299,7 +4333,7 @@ function SettingsView({
           type="button"
           onClick={handleStartDiagnosticUpload}
           disabled={diagnosticUploadState.phase !== "idle"}
-          className="mt-3 inline-flex h-10 w-full items-center justify-center gap-2 rounded-lg border border-ink/10 bg-white px-3 text-sm font-semibold text-ink/75 active:bg-mist disabled:opacity-55"
+          className="mt-3 inline-flex h-10 w-full items-center justify-center gap-2 ui-control-radius border border-ink/10 bg-white px-3 text-sm font-semibold text-ink/75 active:bg-mist disabled:opacity-55"
         >
           {diagnosticUploadState.phase !== "idle" ? <Loader2 size={15} className="animate-spin" aria-hidden="true" /> : <Upload size={15} aria-hidden="true" />}
           {diagnosticUploadState.phase !== "idle" ? diagnosticUploadState.message ?? "处理中..." : "上传诊断数据"}
@@ -5640,7 +5674,7 @@ function WaterfallCardImage({
  onImageClick={() => onClick?.()}
  onCustomClick={handleCustomClick}
  className="absolute inset-0"
- imageClassName="object-contain"
+ imageClassName="object-cover"
  showDots={effectiveHasMultiple}
  variant="card"
  ariaLabel="衣物图片组"
