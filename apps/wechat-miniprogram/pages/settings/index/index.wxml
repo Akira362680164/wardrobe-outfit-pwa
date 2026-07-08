@@ -1,10 +1,10 @@
-<view class="settings-page page-shell">
+<view class="settings-page page-shell" style="padding-top: {{titleTopRpx}}rpx;">
+  <view class="page-title">设置</view>
+
   <view class="ai-banner">
-    <view class="banner-mark">✣</view>
+    <view class="banner-mark"><ui-icon name="sparkles" size="{{28}}" /></view>
     <view class="banner-copy">录入识别、衣橱诊断和单品/套装建议已走后端 AI 代理；推荐、天气和试穿预览后续单独接。</view>
   </view>
-
-  <view class="page-title">设置</view>
 
   <view class="settings-card settings-row-card" data-url="/pages/settings/account/index" bindtap="openSection">
     <view class="settings-icon"><ui-icon name="user" size="{{36}}" /></view>

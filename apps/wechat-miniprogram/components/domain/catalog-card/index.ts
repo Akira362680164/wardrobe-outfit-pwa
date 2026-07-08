@@ -9,6 +9,9 @@ Component({
     meta: String,
     submeta: String,
     badge: String,
+    categoryLabel: String,
+    colors: { type: Array, value: null },
+    summary: String,
     tone: { type: String, value: "primary" },
   },
   methods: {

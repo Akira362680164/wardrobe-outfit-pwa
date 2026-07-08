@@ -44,6 +44,9 @@ export interface MiniGarment {
   category: string;
   categoryLabel: string;
   colorText: string;
+  colorNames: string[];
+  cardColors: Array<{ name: string; swatch: string; needsBorder: boolean }>;
+  wearSummary: string;
   seasonText: string;
   imageUrl: string;
   updatedAt: string;
@@ -176,6 +179,35 @@ const SEASON_LABELS: Record<string, string> = {
   autumn: "秋",
   winter: "冬",
   all: "四季",
+};
+
+const COLOR_SWATCHES: Record<string, { bg: string; border?: string }> = {
+  "黑": { bg: "#1D2228" },
+  "白": { bg: "#F8FAFC", border: "rgba(29,34,40,0.26)" },
+  "灰": { bg: "#9CA3AF" },
+  "米白": { bg: "#F3EEE3", border: "rgba(29,34,40,0.18)" },
+  "米": { bg: "#E6D5B8", border: "rgba(29,34,40,0.16)" },
+  "卡其": { bg: "#B7A477" },
+  "棕": { bg: "#87583E" },
+  "蓝": { bg: "#355C7D" },
+  "牛仔蓝": { bg: "#3F6F9F" },
+  "绿": { bg: "#5F7058" },
+  "红": { bg: "#B84A45" },
+  "粉": { bg: "#E8A7B8" },
+  "深灰": { bg: "#4B5563" },
+  "杏": { bg: "#E6C5A5", border: "rgba(29,34,40,0.14)" },
+  "驼": { bg: "#B8845F" },
+  "咖啡": { bg: "#5F4032" },
+  "酒红": { bg: "#7B2E3A" },
+  "橙": { bg: "#D9823B" },
+  "黄": { bg: "#E3B64B", border: "rgba(29,34,40,0.12)" },
+  "天蓝": { bg: "#83B6D9" },
+  "藏青": { bg: "#243B5A" },
+  "橄榄绿": { bg: "#777B48" },
+  "墨绿": { bg: "#315B4B" },
+  "紫": { bg: "#8C4A86" },
+  "金": { bg: "#C6A15B", border: "rgba(29,34,40,0.12)" },
+  "银": { bg: "#B8C0C8", border: "rgba(29,34,40,0.16)" },
 };
 
 export function getWorkspaceReadState(): WorkspaceReadState {
@@ -409,6 +441,7 @@ async function workspaceRequest<T>(path: string): Promise<T> {
 async function toMiniGarment(entity: WorkspaceEntity): Promise<MiniGarment> {
   const payload = entity.payload;
   const category = stringValue(payload.category, "unknown");
+  const colorNames = colorList(payload.colors);
   return {
     id: entity.id,
     revision: entity.revision,
@@ -417,6 +450,9 @@ async function toMiniGarment(entity: WorkspaceEntity): Promise<MiniGarment> {
     category,
     categoryLabel: CATEGORY_LABELS[category] ?? "未分类",
     colorText: formatColors(payload.colors),
+    colorNames,
+    cardColors: colorNames.map(toCardColor),
+    wearSummary: formatWearSummary(payload.wornDates),
     seasonText: formatSeasons(payload.seasons),
     imageUrl: await resolveImageUrl(entity, "imageDataUrl", payload),
     updatedAt: entity.updatedAt,
@@ -537,6 +573,25 @@ function colorList(value: unknown): string[] {
   if (colors.mode === "main_with_accent") return [colors.primary, ...stringList(colors.accents)].filter(isNonEmptyString);
   if (colors.mode === "multicolor") return stringList(colors.primaries);
   return [];
+}
+
+function toCardColor(name: string): { name: string; swatch: string; needsBorder: boolean } {
+  const normalized = name.endsWith("色") ? name.slice(0, -1) : name;
+  const swatch = COLOR_SWATCHES[name] ?? COLOR_SWATCHES[normalized];
+  return {
+    name,
+    swatch: swatch?.bg ?? "#9CA3AF",
+    needsBorder: Boolean(swatch?.border),
+  };
+}
+
+function formatWearSummary(value: unknown): string {
+  const dates = Array.isArray(value) ? value.filter(isNonEmptyString) : [];
+  if (dates.length === 0) return "未穿过";
+  const last = dates[dates.length - 1] || "";
+  const match = /^(\d{4})-(\d{1,2})-(\d{1,2})/.exec(last);
+  const dateText = match ? `${Number(match[2])}/${Number(match[3])}` : "";
+  return dateText ? `最近 ${dateText} · 穿过 ${dates.length} 次` : `穿过 ${dates.length} 次`;
 }
 
 function garmentStatusText(value: unknown): string {

@@ -55,7 +55,7 @@
 
   <view wx:if="{{!loading && !error && garments.length === 0}}" class="status-card">
     <view class="status-title">{{emptyTitle || '还没有衣物'}}</view>
-    <view class="status-copy">添加第一件衣物后，这里会显示图片、名称、分类、颜色和季节。</view>
+    <view class="status-copy">添加第一件衣物后，这里会显示图片、名称、分类、颜色和穿着摘要。</view>
     <button class="mini-button" bindtap="handleEmptyAction">{{emptyAction || '添加衣物'}}</button>
   </view>
 
@@ -67,8 +67,9 @@
       image-url="{{item.imageUrl}}"
       fallback="{{item.categoryLabel}}"
       title="{{item.name}}"
-      meta="{{item.categoryLabel}} · {{item.colorText}}"
-      submeta="{{item.seasonText}}"
+      category-label="{{item.categoryLabel}}"
+      colors="{{item.cardColors}}"
+      summary="{{item.wearSummary}}"
       tone="primary"
       bind:select="openDetail"
     />

@@ -1,11 +1,15 @@
-.settings-page { padding: calc(env(safe-area-inset-top) + 152rpx) 32rpx calc(env(safe-area-inset-bottom) + 168rpx); }
+.settings-page { padding: 0 32rpx calc(env(safe-area-inset-bottom) + 168rpx); }
+
+.settings-page .page-title {
+  margin-bottom: 26rpx;
+}
 
 .ai-banner {
   box-sizing: border-box;
   display: flex;
   align-items: flex-start;
   gap: 18rpx;
-  margin-bottom: 64rpx;
+  margin-bottom: 0;
   padding: 24rpx 26rpx;
   border: 1rpx solid var(--color-line);
   border-radius: var(--radius-card-secondary);
@@ -14,10 +18,11 @@
 
 .banner-mark {
   flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   color: var(--color-ai);
-  font-size: var(--font-body);
-  font-weight: 800;
-  line-height: 1.35;
+  line-height: 1;
 }
 
 .banner-copy {

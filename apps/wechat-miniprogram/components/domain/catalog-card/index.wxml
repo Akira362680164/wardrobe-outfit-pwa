@@ -7,10 +7,35 @@
   </view>
   <view class="catalog-card__body">
     <view class="catalog-card__title">{{title}}</view>
-    <view class="catalog-card__meta">{{meta}}</view>
-    <view wx:if="{{submeta || badge}}" class="catalog-card__footer">
-      <view wx:if="{{submeta}}" class="catalog-card__submeta">{{submeta}}</view>
-      <view wx:if="{{badge}}" class="catalog-card__badge">{{badge}}</view>
-    </view>
+    <block wx:if="{{colors}}">
+      <view class="catalog-card__wardrobe-meta">
+        <text class="catalog-card__category">{{categoryLabel}}</text>
+        <text class="catalog-card__separator">·</text>
+        <view class="catalog-card__color-names">
+          <block wx:if="{{colors.length > 0}}">
+            <block wx:for="{{colors}}" wx:for-item="color" wx:key="name">
+              <text wx:if="{{index > 0 && index < 3}}" class="catalog-card__separator">/</text>
+              <view wx:if="{{index < 3}}" class="catalog-card__color-token">
+                <view
+                  class="catalog-card__swatch {{color.needsBorder ? 'catalog-card__swatch--border' : ''}}"
+                  style="background-color: {{color.swatch}};"
+                ></view>
+                <text class="catalog-card__color-name">{{color.name}}</text>
+              </view>
+            </block>
+            <text wx:if="{{colors.length > 3}}" class="catalog-card__more">+{{colors.length - 3}}</text>
+          </block>
+          <text wx:else>未标注</text>
+        </view>
+      </view>
+      <view class="catalog-card__summary">{{summary}}</view>
+    </block>
+    <block wx:else>
+      <view class="catalog-card__meta">{{meta}}</view>
+      <view wx:if="{{submeta || badge}}" class="catalog-card__footer">
+        <view wx:if="{{submeta}}" class="catalog-card__submeta">{{submeta}}</view>
+        <view wx:if="{{badge}}" class="catalog-card__badge">{{badge}}</view>
+      </view>
+    </block>
   </view>
 </view>

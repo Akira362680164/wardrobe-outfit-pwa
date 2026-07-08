@@ -43,10 +43,12 @@ Page({
     emptyTitle: "",
     emptyAction: "",
     createSheetOpen: false,
+    titleTopRpx: 0,
   },
 
   onLoad() {
     wx.setNavigationBarTitle({ title: "种草" });
+    this.setData({ titleTopRpx: getTitleTopRpx() });
     setCustomTabBarSelected(this, 2);
     void this.loadWishlist();
   },
@@ -142,4 +144,12 @@ function setCustomTabBarSelected(page: unknown, selected: number) {
   const pageWithTabBar = page as { getTabBar?: () => ({ setData?: (data: { selected: number }) => void } | null) };
   const tabBar = pageWithTabBar.getTabBar?.();
   if (tabBar && typeof tabBar.setData === "function") tabBar.setData({ selected });
+}
+
+function getTitleTopRpx() {
+  const systemInfo = wx.getSystemInfoSync();
+  const menuRect = (wx as unknown as { getMenuButtonBoundingClientRect?: () => { top?: number } }).getMenuButtonBoundingClientRect?.();
+  const windowWidth = (systemInfo as WechatMiniprogram.SystemInfo & { windowWidth?: number }).windowWidth || 375;
+  const pixelRatio = 750 / windowWidth;
+  return Math.round((menuRect?.top ?? (systemInfo.statusBarHeight ?? 0) + 8) * pixelRatio);
 }

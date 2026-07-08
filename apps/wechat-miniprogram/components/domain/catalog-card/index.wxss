@@ -40,11 +40,17 @@
 }
 
 .catalog-card__body {
+  box-sizing: border-box;
+  min-height: 142rpx;
   padding: 20rpx 22rpx 22rpx;
 }
 
 .catalog-card__title,
 .catalog-card__meta,
+.catalog-card__wardrobe-meta,
+.catalog-card__category,
+.catalog-card__color-names,
+.catalog-card__summary,
 .catalog-card__submeta,
 .catalog-card__badge {
   overflow: hidden;
@@ -56,12 +62,83 @@
   color: var(--color-ink);
   font-size: var(--font-body);
   font-weight: 700;
+  line-height: 1.28;
 }
 
 .catalog-card__meta {
   margin-top: 8rpx;
   color: var(--color-muted);
   font-size: var(--font-caption);
+  line-height: 1.35;
+}
+
+.catalog-card__wardrobe-meta {
+  display: flex;
+  align-items: center;
+  gap: 8rpx;
+  min-width: 0;
+  margin-top: 8rpx;
+  color: var(--color-muted);
+  font-size: var(--font-caption);
+  line-height: 1.35;
+}
+
+.catalog-card__category {
+  flex: 0 1 auto;
+  max-width: 84rpx;
+}
+
+.catalog-card__swatch {
+  box-sizing: border-box;
+  width: 16rpx;
+  height: 16rpx;
+  flex: 0 0 16rpx;
+  border-radius: 999rpx;
+}
+
+.catalog-card__swatch--border {
+  border: 1rpx solid rgba(29, 34, 40, 0.22);
+}
+
+.catalog-card__color-names {
+  display: flex;
+  align-items: center;
+  gap: 6rpx;
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
+.catalog-card__color-token {
+  display: inline-flex;
+  align-items: center;
+  gap: 6rpx;
+  min-width: 0;
+  flex: 0 1 auto;
+}
+
+.catalog-card__color-name,
+.catalog-card__more {
+  flex: 0 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.catalog-card__more {
+  flex: 0 0 auto;
+}
+
+.catalog-card__separator {
+  flex: 0 0 auto;
+  color: var(--color-muted);
+}
+
+.catalog-card__summary {
+  margin-top: 10rpx;
+  color: var(--color-muted);
+  font-size: var(--font-label);
+  line-height: 1.35;
 }
 
 .catalog-card__footer {

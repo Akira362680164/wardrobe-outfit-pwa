@@ -1,4 +1,4 @@
-<view class="page-shell">
+<view class="page-shell" style="padding-top: {{titleTopRpx}}rpx;">
   <view class="outfit-hero">
     <view class="hero-copy">
       <view class="page-title">套装</view>

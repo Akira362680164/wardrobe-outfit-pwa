@@ -1,4 +1,4 @@
-.page-shell { padding: calc(env(safe-area-inset-top) + 152rpx) 32rpx 180rpx; }
+.page-shell { padding: 0 32rpx 180rpx; }
 
 .outfit-hero {
   min-width: 0;

@@ -1,3 +1,15 @@
+## 2026-07-09 / v2.1.8-test / Codex — 小程序 UI gap 一级页与衣橱卡片修复
+
+- **执行 Agent**：Codex 主 agent 负责派发、收口、验证、截图和提交；subagent D（Euclid）负责衣橱首页卡片契约，subagent A（Copernicus）负责套装首页，subagent B（Dewey）负责种草首页，subagent C（Banach）负责设置首页；各 subagent 文件边界不重叠，未并行修改同一文件。
+- **目的**：按主工程 `docs/agent-task-bundles/2026-07-09-wechat-miniprogram-ui-gap-execution-plan.md` 执行小程序 UI gap 修复：套装、种草、设置三个一级页标题顶部对齐微信胶囊；设置页标题上移到 AI banner 前；衣橱首页卡片改为 App 一致的 3:4 媒体框、分类+颜色色块、穿着摘要展示。
+- **版本变更**：无；当前应用版本仍为 `2.1.8-test`，小程序包版本仍为 `0.1.0`。
+- **改动文件**：`apps/wechat-miniprogram/services/workspace.ts`、`apps/wechat-miniprogram/components/domain/catalog-card/index.{ts,wxml,wxss}`、`apps/wechat-miniprogram/pages/wardrobe/index/index.wxml`、`apps/wechat-miniprogram/pages/outfits/index/index.{ts,wxml,wxss}`、`apps/wechat-miniprogram/pages/wishlist/index/index.{ts,wxml,wxss}`、`apps/wechat-miniprogram/pages/settings/index/index.{ts,wxml,wxss}`、`VERSION_HISTORY.md`。
+- **改动说明**：三个一级页在页面内按 `wx.getMenuButtonBoundingClientRect()` 和 `wx.getSystemInfoSync()` 计算 `titleTopRpx`，替代固定顶部 padding，让标题与微信胶囊顶部对齐且页面内容整体移动；种草页水平边距对齐 32rpx，状态 chip 改用种草语义色；设置页标题先出现，AI banner 下移并用 `sparkles` 图标替代旧字符；衣橱数据层新增 `colorNames`、`cardColors`、`wearSummary`，首页卡片不再展示季节，颜色行改为“分类 · 色点 色名 / 色点 色名”，穿着摘要为“未穿过”或“最近 M/D · 穿过 N 次”；`catalog-card` 保留旧 `meta/submeta/badge` 兼容分支，种草卡片不受衣橱结构化字段影响。
+- **验证结果**：`npm --prefix apps/wechat-miniprogram run typecheck` 通过；`node apps/wechat-miniprogram/scripts/wechatide-compile.mjs --refresh` 通过；`compile_wxml/compile_wxss` 覆盖 `pages/outfits/index/index`、`pages/wishlist/index/index`、`pages/settings/index/index`、`pages/wardrobe/index/index`、`components/domain/catalog-card/index`、`components/domain/create-sheet/index` 均通过；`git diff --check` 通过；DevTools console grep `error|fail|timeout|typeerror|referenceerror` 无命中。
+- **截图验收**：截图目录 `/Users/fangzheng/Desktop/wechat-miniprogram-ui-gap-fix-20260709-014801/`，包含 `01-wardrobe-home.png`、`02-outfit-home.png`、`03-wishlist-home.png`、`04-settings-home.png`、`05-wardrobe-plus-sheet.png`、`06-outfit-plus-sheet.png`、`07-wishlist-plus-sheet.png`、`08-after-add-garment.png`、`09-after-add-outfit.png`、`10-after-add-wishlist.png`、`11-wardrobe-card-close-up.png`、`contact-sheet-app-vs-mini.png` 和 `route-evidence.txt`；`11` 为 DevTools 临时 `setData` 视觉验收图，不写入服务器或持久数据。
+- **风险门禁**：high（小程序运行时 UI、共享卡片组件、一级页顶部布局和截图流程变更；不改后端、不改线上数据写入、不上传体验版、不打 Android APK）；已按用户目标触发并串行使用 subagent 开发，母 agent 完成统一验证和收口。
+- **未验证风险**：当前 DevTools 会话未登录，首页截图主要覆盖未登录空态下的顶部对齐；衣橱卡片截图使用临时页面数据验证视觉契约；DevTools 组件隔离导致无法通过 selector/坐标直接点击 Sheet 内三项按钮，已通过“加号后 Sheet 展开截图 + 目标路由截图 + `route-evidence.txt` + create-sheet 源码固定路由”组合验证，未做真机预览和体验版上传。
+
 ## 2026-07-09 / v2.1.8-test / Codex — 小程序全局新建 Sheet 对齐生产 App
 
 - **执行 Agent**：Codex（未触发 subagent：用户要求按已确认方案直接修复；本轮只改小程序前端 `+` 新建入口）。
