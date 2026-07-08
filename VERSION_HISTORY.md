@@ -1,3 +1,14 @@
+## 2026-07-08 / v2.1.8-test / Codex — 真实业务流截图重采集并同步 UI 标准
+
+- **执行 Agent**：Codex（未触发 subagent：用户未通知）。
+- **目的**：按用户要求基于最新运行时代码重跑 v03-alpha 真实业务流截图，并同步更新桌面 `v03-alpha-真实业务流截图` 文件夹、项目内 UI 标准 HTML 使用的真机图资产，以及 v0.3-alpha 视觉审查页。
+- **版本变更**：无；当前应用版本仍为 `2.1.8-test`。
+- **改动文件**：`docs/designs/v0.3-alpha/live-capture-manifest.json`、`docs/designs/v0.3-alpha/screenshots/*.png`、`docs/designs/v0.3-alpha/visual-review-data.json`、`docs/designs/v0.3-alpha/visual-review.html`、`docs/designs/v0.3-alpha/beta-migration-list.md`、`docs/designs/v03-alpha-real-screenshots/live-capture-manifest.json`、`docs/designs/v03-alpha-real-screenshots/*.png`、`VERSION_HISTORY.md`；另同步本机桌面 `/Users/fangzheng/Desktop/v03-alpha-真实业务流截图/` 下同名 PNG 与 manifest（不进入 Git）。
+- **改动说明**：运行 `v03-alpha:capture` 重新生成真实业务流截图；将 `docs/designs/v0.3-alpha/screenshots/` 中 21 张最新截图覆盖同步到 UI 标准引用目录 `docs/designs/v03-alpha-real-screenshots/` 和桌面截图文件夹；重建 `wardrobe-ui-spec.html` 并确认 HTML 已使用最新同名真机图资产；重建 v0.3-alpha 视觉审查页和迁移清单。
+- **验证结果**：`npm run v03-alpha:capture` 通过（1 个 Playwright live capture 用例，2.3m）；`npm run docs:ui-spec:build`、`npm run v03-alpha:build`、`npm run docs:ui-spec:check`、`npm run test:logic:ui-spec-preview`、`npm run test:logic:v03-alpha-visual-review` 均通过；`file docs/designs/v03-alpha-real-screenshots/*.png` 和 `file /Users/fangzheng/Desktop/v03-alpha-真实业务流截图/*.png` 确认两处均为 21 张 `390 x 844` PNG。
+- **风险门禁**：high（重新跑真实业务流截图、更新 42 张项目内 PNG 与生成文档/manifest；不改运行时代码、不改业务数据结构、不改线上 API、不改 Android、不打 APK）；未触发 subagent：用户未通知。
+- **未验证风险**：未人工逐屏审美复核所有新截图；桌面目录是本机交付物，不进入 Git。
+
 ## 2026-07-08 / v2.1.8-test / Codex — 运行时 TopBar、Toast 与录入入口收口
 
 - **执行 Agent**：Codex（未触发 subagent：用户未通知）。
