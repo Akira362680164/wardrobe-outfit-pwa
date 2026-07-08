@@ -1,3 +1,14 @@
+## 2026-07-08 / v2.1.8-test / Codex — 刷新测试衣橱真实上传全流程截图
+
+- **执行 Agent**：Codex（未触发 subagent：本次为既有 E2E 截图流程复跑）。
+- **目的**：按用户要求使用 `test-clothes/` 测试衣橱图片做实际上传测试，并生成全流程各页面截图。
+- **版本变更**：无；当前应用版本仍为 `2.1.8-test`。
+- **改动文件**：`docs/designs/v0.3-alpha/live-capture-manifest.json`、`docs/designs/v0.3-alpha/screenshots/*.png`、`docs/designs/v0.3-alpha/visual-review-data.json`、`docs/designs/v0.3-alpha/visual-review.html`、`docs/designs/v0.3-alpha/beta-migration-list.md`、`VERSION_HISTORY.md`。
+- **改动说明**：复跑 `npm run v03-alpha:capture`，使用 `test-clothes/` 中 9 张图片注册新测试账号、配置 MiniMax Key、实际导入/识别/保存 9 件衣物，随后创建套装、创建种草并逐页截图；重新生成 `visual-review.html` 方便查看全部截图。
+- **验证结果**：`npm run v03-alpha:capture` 通过，Playwright live 流程 1 项通过，耗时约 3.3 分钟；生成 21 张 `390 x 844` PNG 截图；manifest 显示 `captures=21`、`source=live_business_flow`；`npm run v03-alpha:build` 通过；`npm run test:logic:v03-alpha-visual-review` 通过。
+- **风险门禁**：high（真实图片上传、MiniMax live 识别、服务端写入、截图基线刷新）；未触发 subagent：用户未通知。
+- **未验证风险**：本轮跑的是 Web E2E 正式业务流，不是微信小程序上传流；当前小程序仍只有上传页面骨架，未实现小程序端真实上传业务逻辑。
+
 ## 2026-07-08 / v2.1.8-test / Codex — 修复微信模拟器 TS 入口启动失败
 
 - **执行 Agent**：Codex（未触发 subagent：本次为单点配置修复）。
