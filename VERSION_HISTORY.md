@@ -1,3 +1,15 @@
+## 2026-07-08 / v2.1.8-test / Codex — 小程序 HTTPS 业务联调与 TabBar 运行时修复
+
+- **执行 Agent**：Codex（按用户前序要求继续使用 subagent；本轮 1 个只读 subagent 核查 `wechatide` 是否能自动选择本机图片，主 agent 负责线上测试数据、运行时修复、页面验证和提交）。
+- **目的**：在 API IP 已切换为合法 HTTPS URL 后，继续验证小程序与线上 API 的登录、业务读取、图片资产展示链路，并修复验证过程中发现的自定义 TabBar 运行时错误。
+- **版本变更**：无；当前应用版本仍为 `2.1.8-test`，小程序包版本仍为 `0.1.0`。
+- **改动文件**：`apps/wechat-miniprogram/pages/wardrobe/index/index.ts`、`apps/wechat-miniprogram/pages/outfits/index/index.ts`、`apps/wechat-miniprogram/pages/wishlist/index/index.ts`、`apps/wechat-miniprogram/pages/settings/index/index.ts`、`VERSION_HISTORY.md`。
+- **改动说明**：4 个主 Tab 页的 `setCustomTabBarSelected` 不再解构 `getTabBar` 后调用，改为保留页面实例上下文调用 `page.getTabBar?.()`，避免微信 DevTools 运行时报 `Cannot read properties of undefined (reading '__treeManager__')`。
+- **后端边界**：本轮未修改 `services/wardrobe-api/**`、`packages/cloud-contracts/**` 或 migration；线上测试数据通过既有 API 创建，不改服务器后端代码。
+- **验证结果**：`npm run typecheck`（在 `apps/wechat-miniprogram` 内）通过；`simulator_refresh` 通过；线上 `https://api.zhengfangapps.cloud/api/health`、`/api/ready` 返回 `200`；通过既有 `/api/auth/register`、`/api/workspace/assets/sessions`、临时资产 PUT、`/api/workspace/garments`、`/api/workspace/outfits`、`/api/workspace/wishlist` 创建测试数据：2 个单品、1 个套装、1 个种草，其中单品和种草均完成 original+thumbnail 上传并绑定；小程序账号密码登录 `/api/auth/login` 返回 `200`，随后衣橱页读取 2 个单品、套装页读取 1 个套装、种草页读取 1 个种草，衣橱/种草图片下载为小程序 `http://tmp/...` 临时文件；截图保存到 `test-results/wechat-miniprogram-api/01-wardrobe-real-data.png`、`02-outfits-real-data.png`、`03-wishlist-real-data.png`、`04-settings-after-login.png`；`get_app_console_content` grep `error|fail` 无命中。
+- **风险门禁**：medium（小程序主 Tab 运行时修复和线上 API 业务联调；不改后端、不改共享契约、不上传体验版）；已按用户要求触发 1 个只读 subagent。
+- **未验证风险**：微信认证登录的真实手机号选择仍依赖微信平台权限和真机环境，模拟器中不能绕过；`wechatide` 当前不能把 Mac 本地图片直接注入为小程序可读 `tempFilePath`，图片“选择”步骤仍需真机或人工选择验证，本轮用同一后端资产 API 验证上传/绑定/下载链路；正式预览/真机仍需要微信后台 request/upload/download 合法域名配置生效。
+
 ## 2026-07-08 / v2.1.8-test / Codex — 小程序 UI 规范与 App 截图对照修复
 
 - **执行 Agent**：Codex（按用户明确要求使用并行 subagent：基础 UI/token、登录协议、衣橱、套装、种草、录入、详情、设置和占位页核查；主 agent 负责合并、App 截图对照、修复、截图、验证和提交）。

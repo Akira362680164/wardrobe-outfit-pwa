@@ -134,8 +134,8 @@ Page({
 });
 
 function setCustomTabBarSelected(page: unknown, selected: number) {
-  const getTabBar = (page as { getTabBar?: () => ({ setData?: (data: { selected: number }) => void } | null) }).getTabBar;
-  const tabBar = getTabBar?.();
+  const pageWithTabBar = page as { getTabBar?: () => ({ setData?: (data: { selected: number }) => void } | null) };
+  const tabBar = pageWithTabBar.getTabBar?.();
   if (tabBar && typeof tabBar.setData === "function") tabBar.setData({ selected });
 }
 
