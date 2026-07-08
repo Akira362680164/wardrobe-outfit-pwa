@@ -1,3 +1,14 @@
+## 2026-07-08 / v2.1.8-test / Codex — 二三级页面 TopBar 按钮位置与图标权重微调
+
+- **执行 Agent**：Codex（未触发 subagent：用户未通知）。
+- **目的**：根据用户对二/三级页面截图的反馈，在保留透明毛玻璃顶部层、不恢复白色底条的前提下，让返回按钮和三点按钮更贴近屏幕边缘，并增强图标视觉重量。
+- **版本变更**：无；当前应用版本仍为 `2.1.8-test`。
+- **改动文件**：`src/components/app-sub-page-top-bar.tsx`、`scripts/test-ui-overlay-contract.ts`、`VERSION_HISTORY.md`。
+- **改动说明**：`AppSubPageTopBar` 外层左右 padding 从 `px-4` 收窄到 `px-2`，保留 `48x48` 点击热区和 `40x40` 透明圆角矩形视觉区；返回与更多图标从 `18px` 提到 `20px`，并提升 `strokeWidth` 到 `2.6`，避免删除白色底条后显得过细。
+- **验证结果**：`npm run test:logic:ui-overlay-contract`、`npm run test:logic:detail-shell`、`npm run typecheck` 均通过。
+- **风险门禁**：medium（改动共享二/三级页面 TopBar 运行时组件和合同测试；不改业务流程、数据结构、线上 API、Android 原生配置、版本号或 APK）；未触发 subagent：用户未通知。
+- **未验证风险**：未重新生成 v03-alpha 全量真实业务流截图，避免把截图资产纳入本次小范围 TopBar 代码提交；未在 Android 真机/模拟器安装 APK 做视觉回归。
+
 ## 2026-07-08 / v2.1.8-test / Codex — 真实业务流截图重采集并同步 UI 标准
 
 - **执行 Agent**：Codex（未触发 subagent：用户未通知）。

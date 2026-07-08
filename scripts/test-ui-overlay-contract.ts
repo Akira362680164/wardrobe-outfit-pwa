@@ -41,7 +41,10 @@ assert.match(confirmSheet, /label=\{cancelLabel\}[\s\S]{0,80}disabled=\{submitti
 assert.match(topBar, /aria-label="返回"[\s\S]{0,140}className="grid h-12 w-12 place-items-center -ml-1"/, "back button has 48px hit area");
 assert.match(topBar, /<span className="grid h-10 w-10 place-items-center ui-control-radius bg-transparent/, "back button keeps 40px transparent rounded-rectangle hit visual");
 assert.match(topBar, /aria-label="更多操作"[\s\S]{0,160}className="grid h-12 w-12 place-items-center -mr-1"/, "more button has 48px hit area");
-assert.match(topBar, /<span className="grid h-10 w-10 place-items-center ui-control-radius bg-transparent text-ink\/40/, "more button keeps 40px transparent rounded-rectangle hit visual");
+assert.match(topBar, /app-glass-top grid[\s\S]{0,180}min-h-14 px-2/, "sub page top bar keeps controls close to screen edges without restoring a white strip");
+assert.match(topBar, /<ChevronLeft size=\{20\} strokeWidth=\{2\.6\}/, "back icon is slightly larger and heavier after removing the white top strip");
+assert.match(topBar, /<span className="grid h-10 w-10 place-items-center ui-control-radius bg-transparent text-ink\/55/, "more button keeps 40px transparent rounded-rectangle hit visual");
+assert.match(topBar, /<MoreHorizontal size=\{20\} strokeWidth=\{2\.6\}/, "more icon is slightly larger and heavier after removing the white top strip");
 
 assert.match(globals, /--ui-radius-nav-active:\s*22px;/, "bottom nav active radius has concentric token");
 assert.match(globals, /\.app-glass-top\s*\{[\s\S]{0,160}background:\s*rgba\(255,\s*255,\s*255,\s*0\.01\);[\s\S]{0,160}box-shadow:\s*none;/, "top glass keeps blur but removes visible white strip");
