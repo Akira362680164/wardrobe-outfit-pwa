@@ -78,6 +78,7 @@ declare namespace WechatMiniprogram {
   interface FileSystemManager {
     readFile(options: {
       filePath: string;
+      encoding?: "base64" | "utf8";
       success(result: { data: ArrayBuffer | string }): void;
       fail(error: unknown): void;
     }): void;
@@ -86,6 +87,9 @@ declare namespace WechatMiniprogram {
 
 declare const wx: {
   getSystemInfoSync(): WechatMiniprogram.SystemInfo;
+  getStorageSync(key: string): unknown;
+  setStorageSync(key: string, data: unknown): void;
+  removeStorageSync(key: string): void;
   request<T = unknown>(options: {
     url: string;
     method?: "GET" | "POST" | "PUT" | "PATCH" | "DELETE";

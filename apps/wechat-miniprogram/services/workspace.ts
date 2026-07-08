@@ -50,6 +50,7 @@ export interface MiniGarment {
 }
 
 export interface MiniGarmentDetail extends MiniGarment {
+  rawPayload: Record<string, unknown>;
   meta: string;
   statusText: string;
   locationText: string;
@@ -106,6 +107,10 @@ export interface CreateGarmentInput {
   color: string;
   season: string;
   note?: string;
+  colors?: Record<string, unknown>;
+  seasons?: string[];
+  styles?: string[];
+  aiTag?: Record<string, unknown>;
   assetMutations: AssetMutation[];
 }
 
@@ -120,10 +125,27 @@ export interface CreateWishlistInput {
   clientMutationId?: string;
   name: string;
   category?: string;
+  colors?: Record<string, unknown>;
+  seasons?: string[];
+  styles?: string[];
+  aiTag?: Record<string, unknown>;
   price?: number;
   productUrl?: string;
   notes?: string;
   assetMutations?: AssetMutation[];
+}
+
+export interface UpdateGarmentInput {
+  id: string;
+  expectedRevision: number;
+  currentPayload: Record<string, unknown>;
+  name: string;
+  category: string;
+  colors: Record<string, unknown>;
+  seasons: string[];
+  styles?: string[];
+  notes?: string;
+  aiTag?: Record<string, unknown>;
 }
 
 type CatalogItemPayloadInput = {
@@ -197,6 +219,7 @@ export async function fetchGarmentDetail(id: string): Promise<MiniGarmentDetail>
   const styles = Array.isArray(payload.styles) ? payload.styles.filter(isNonEmptyString).slice(0, 3).join(" / ") : "";
   return {
     ...summary,
+    rawPayload: payload,
     meta: [summary.categoryLabel, summary.seasonText, styles].filter((part) => part && part !== "未标注").join(" · ") || summary.categoryLabel,
     statusText: garmentStatusText(payload.status),
     locationText: locationText(payload.locationId),
@@ -238,10 +261,12 @@ export async function createGarment(input: CreateGarmentInput): Promise<Workspac
         ...buildCatalogItemPayload({
           name: input.name,
           category: input.category,
-          colors: { mode: "single", primary: input.color },
-          seasons: input.season ? [input.season] : [],
+          colors: input.colors ?? { mode: "single", primary: input.color },
+          seasons: input.seasons ?? (input.season ? [input.season] : []),
+          styles: input.styles,
           notes: input.note,
         }),
+        aiRecognition: input.aiTag,
         legacyItemId: createLegacyNumericId(),
         locationId: "home",
         status: "active",
@@ -287,10 +312,12 @@ export async function createWishlistItem(input: CreateWishlistInput): Promise<Wo
         ...buildCatalogItemPayload({
           name: input.name,
           category: input.category || "tops",
-          colors: { mode: "single", primary: "未标注" },
-          seasons: [],
+          colors: input.colors ?? { mode: "single", primary: "未标注" },
+          seasons: input.seasons ?? [],
+          styles: input.styles,
           notes: input.notes,
         }),
+        aiRecognition: input.aiTag,
         price: input.price,
         productUrl: input.productUrl,
         status: "interested",
@@ -299,6 +326,31 @@ export async function createWishlistItem(input: CreateWishlistInput): Promise<Wo
     },
   });
   if (!response.entity) throw new Error("服务器未返回已保存种草");
+  return response.entity;
+}
+
+export async function updateGarment(input: UpdateGarmentInput): Promise<WorkspaceEntity> {
+  const response = await request<{ entity?: WorkspaceEntity }>({
+    method: "PUT",
+    path: `/api/workspace/garments/${encodeURIComponent(input.id)}`,
+    data: {
+      clientMutationId: createClientMutationId(),
+      expectedRevision: input.expectedRevision,
+      payload: {
+        ...input.currentPayload,
+        name: input.name,
+        category: input.category,
+        colors: input.colors,
+        seasons: input.seasons,
+        styles: input.styles ?? [],
+        notes: input.notes,
+        aiRecognition: input.aiTag,
+        updatedAt: new Date().toISOString(),
+      },
+      assetMutations: [],
+    },
+  });
+  if (!response.entity) throw new Error("服务器未返回已更新衣物");
   return response.entity;
 }
 

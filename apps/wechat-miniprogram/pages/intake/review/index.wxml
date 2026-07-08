@@ -14,7 +14,7 @@
     <view class="preview-card surface-panel">
       <view class="preview-card__top">
         <view class="section-title">确认 1 件单品</view>
-        <view class="ai-badge">当前先人工确认</view>
+        <view class="ai-badge">{{draft.source === 'ai' ? 'AI 草稿' : '人工录入'}}</view>
       </view>
       <view class="preview-media">
         <image class="preview-image" mode="aspectFill" src="{{draft.imagePath}}" />
@@ -29,7 +29,7 @@
         <view class="section-title">校对衣物草稿</view>
         <view class="review-badge">待确认</view>
       </view>
-      <view class="form-copy">AI 识别代理未接入；请先人工确认字段后再保存。</view>
+      <view class="form-copy">{{draft.source === 'ai' ? 'AI 已生成基础信息；请确认名称、分类、颜色和季节后再保存。' : '未配置 AI Key 时可人工填写字段后保存。'}}</view>
 
       <view class="field-label">名称</view>
       <input class="field-input" value="{{draft.name}}" placeholder="例如 白色衬衫" bindinput="updateName" />

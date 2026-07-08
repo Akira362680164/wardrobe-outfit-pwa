@@ -1,4 +1,5 @@
-import { fetchGarments, getWorkspaceReadState, type MiniGarment } from "../../../services/workspace";
+import { aiEnhance, hasMiniMaxKey } from "../../../services/ai";
+import { fetchGarments, fetchOutfits, getWorkspaceReadState, type MiniGarment } from "../../../services/workspace";
 
 type CategoryChip = {
   key: string;
@@ -29,6 +30,9 @@ Page({
     totalCount: 0,
     statsText: "全部 0 · 可穿 0 · 衣橱 1",
     error: "",
+    diagnosisLoading: false,
+    diagnosisSummary: "",
+    diagnosisTips: [] as string[],
     emptyTitle: "",
     emptyAction: "",
     actionMenuOpen: false,
@@ -156,7 +160,31 @@ Page({
       this.showStatsTip();
       return;
     }
-    wx.showToast({ title: "AI衣橱诊断暂未开放", icon: "none" });
+    void this.runDiagnosis();
+  },
+
+  async runDiagnosis(this: any) {
+    if (this.data.diagnosisLoading) return;
+    if (!hasMiniMaxKey()) {
+      wx.showToast({ title: "请先在设置中填写 MiniMax Key", icon: "none" });
+      return;
+    }
+    this.setData({ diagnosisLoading: true, diagnosisSummary: "", diagnosisTips: [] });
+    try {
+      const result = await aiEnhance<Record<string, unknown>>("wardrobe-diagnosis", {
+        items: this.data.garments,
+        outfits: await fetchOutfits(),
+        locations: [],
+      });
+      this.setData({
+        diagnosisSummary: typeof result.summary === "string" ? result.summary : "衣橱诊断已生成",
+        diagnosisTips: diagnosisTips(result).slice(0, 5),
+      });
+    } catch (error) {
+      wx.showToast({ title: error instanceof Error ? error.message : "诊断失败", icon: "none" });
+    } finally {
+      this.setData({ diagnosisLoading: false });
+    }
   },
 });
 
@@ -178,4 +206,21 @@ function buildCategoryChips(garments: MiniGarment[]): CategoryChip[] {
 
 function filterGarments(garments: MiniGarment[], category: string): MiniGarment[] {
   return category === "all" ? garments : garments.filter((garment) => garment.category === category);
+}
+
+function diagnosisTips(result: Record<string, unknown>): string[] {
+  return ["gaps", "duplicates", "idleItems", "reusableOutfits", "purchaseSuggestions"]
+    .flatMap((key) => {
+      const value = result[key];
+      if (!Array.isArray(value)) return [];
+      return value.map((item) => {
+        if (typeof item === "string") return item;
+        if (item && typeof item === "object") {
+          const record = item as Record<string, unknown>;
+          return [record.title, record.reason, record.suggestion].filter((part): part is string => typeof part === "string" && part.length > 0).join("：");
+        }
+        return "";
+      });
+    })
+    .filter((item) => item.length > 0);
 }

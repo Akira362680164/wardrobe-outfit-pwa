@@ -1,13 +1,26 @@
 <view class="settings-page page-shell">
   <view class="page-title">AI Key</view>
-  <view class="page-copy">小程序版本不在这里录入密钥。后续讨论后端 AI 代理后，再开放统一能力。</view>
+  <view class="page-copy">MiniMax Key 只保存在本机微信存储；小程序发给后端代理完成当次 AI 调用，识别结果由后端解析后再返回。</view>
 
   <view class="info-card">
-    <view wx:for="{{rows}}" wx:key="label" class="field">
-      <view class="field-label">{{item.label}}</view>
-      <view class="field-value">{{item.value}}</view>
+    <view class="field">
+      <view class="field-label">当前状态</view>
+      <view class="field-value">{{statusText}}</view>
+    </view>
+    <view class="field">
+      <view class="field-label">MiniMax Key</view>
+      <input class="field-input" password value="{{apiKey}}" placeholder="填入你的 MiniMax Key" bindinput="handleKeyInput" />
+    </view>
+    <view class="field">
+      <view class="field-label">API Host</view>
+      <input class="field-input" value="{{apiHost}}" placeholder="https://api.minimaxi.com" bindinput="handleHostInput" />
+    </view>
+    <view class="field">
+      <view class="field-label">模型</view>
+      <input class="field-input" value="{{model}}" placeholder="MiniMax-M3" bindinput="handleModelInput" />
     </view>
   </view>
 
-  <button class="disabled-button" disabled>暂不可配置</button>
+  <button class="primary-button" bindtap="save">保存设置</button>
+  <button class="secondary-button" bindtap="clear">清除 Key</button>
 </view>

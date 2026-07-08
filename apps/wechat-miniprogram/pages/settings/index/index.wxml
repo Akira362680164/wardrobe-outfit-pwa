@@ -1,7 +1,7 @@
 <view class="settings-page page-shell">
   <view class="ai-banner">
     <view class="banner-mark">✣</view>
-    <view class="banner-copy">尚未接入后端 AI 代理，识别、推荐和试穿功能暂不可用。</view>
+    <view class="banner-copy">录入识别、衣橱诊断和单品/套装建议已走后端 AI 代理；推荐、天气和试穿预览后续单独接。</view>
   </view>
 
   <view class="page-title">设置</view>
@@ -34,8 +34,8 @@
   <view class="settings-card settings-row-card" data-url="/pages/settings/ai-key/index" bindtap="openSection">
     <view class="settings-main">
       <view class="card-title">AI 设置</view>
-      <view class="card-copy">小程序不保存 MiniMax Key；后续统一走后端 AI 代理。</view>
-      <view class="status-line">未接入</view>
+      <view class="card-copy">MiniMax Key 只在本机保存，调用时交给后端代理解析结果。</view>
+      <view class="status-line">{{aiStatusText}}</view>
     </view>
     <view class="card-action">查看 ›</view>
   </view>

@@ -6,20 +6,29 @@
   </view>
   <view wx:elif="{{item}}">
   <detail-shell top-title="{{title}}" title="{{item.name}}" meta="{{item.meta}}" eyebrow="暂无穿着记录" image-url="{{item.imageUrl}}" hero-label="主图" hero-fallback="{{item.categoryLabel}}">
-    <view class="thumb-strip" slot="afterHero">
-      <view class="thumb is-active">
-        <image wx:if="{{item.imageUrl}}" class="thumb-image" mode="aspectFill" src="{{item.imageUrl}}" />
-        <view wx:else class="thumb-fallback"></view>
-        <view class="thumb-label">主图</view>
+    <view slot="afterHero">
+      <view class="thumb-strip">
+        <view class="thumb is-active">
+          <image wx:if="{{item.imageUrl}}" class="thumb-image" mode="aspectFill" src="{{item.imageUrl}}" />
+          <view wx:else class="thumb-fallback"></view>
+          <view class="thumb-label">主图</view>
+        </view>
+      </view>
+
+      <view class="action-row">
+        <button class="action-button edit">编辑</button>
+        <button class="action-button ai" loading="{{recognizing}}" disabled="{{recognizing}}" bindtap="reRecognize">重新识别</button>
+        <button class="action-button ai" loading="{{adviceLoading}}" disabled="{{adviceLoading}}" bindtap="generateAdvice">AI 建议</button>
+        <button class="action-button danger" bindtap="openDeleteSheet">删除</button>
       </view>
     </view>
 
-    <view class="action-row">
-      <button class="action-button edit">编辑</button>
-      <button class="action-button danger" bindtap="openDeleteSheet">删除</button>
-    </view>
-
     <view class="notice-card"><view class="check-dot">✓</view><view>已保存到衣橱</view></view>
+    <view wx:if="{{adviceLoading || adviceSummary}}" class="info-card">
+      <view class="card-title">AI 单品建议</view>
+      <view class="section-copy">{{adviceLoading ? '正在生成建议...' : adviceSummary}}</view>
+      <view wx:for="{{adviceTips}}" wx:key="*this" class="section-copy">· {{item}}</view>
+    </view>
     <view class="info-card">
       <view class="card-title">基础信息</view>
       <view class="info-row"><text>衣橱</text><text>{{item.locationText}}</text></view>

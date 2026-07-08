@@ -86,6 +86,10 @@ Page({
         color: draft.color.trim() || "未标注",
         season: draft.season,
         note: draft.note.trim(),
+        colors: draft.aiTag?.colors as Record<string, unknown> | undefined,
+        seasons: draft.aiTag?.seasons as string[] | undefined,
+        styles: draft.styles,
+        aiTag: draft.aiTag,
         assetMutations,
       });
       await fetchGarmentDetail(entity.id);

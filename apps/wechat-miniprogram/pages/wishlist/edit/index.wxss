@@ -44,6 +44,14 @@
   font-weight: 700;
 }
 
+.ai-status {
+  margin: -8rpx 0 24rpx;
+  color: var(--color-ai);
+  font-size: var(--font-caption);
+  font-weight: 700;
+  line-height: 1.45;
+}
+
 .text-input,
 .textarea-input {
   box-sizing: border-box;

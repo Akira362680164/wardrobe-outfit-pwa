@@ -1,14 +1,18 @@
 import { chooseSingleImage, uploadImageForCreate } from "../../../services/assets";
+import { hasMiniMaxKey, recognizeGarmentImage, type AiGarmentTag } from "../../../services/ai";
 import { createClientMutationId, createWishlistItem, getWorkspaceReadState } from "../../../services/workspace";
 
 Page({
   data: {
     saving: false,
+    recognizing: false,
     name: "",
+    category: "tops",
     price: "",
     productUrl: "",
     notes: "",
     imagePath: "",
+    aiTag: null as AiGarmentTag | null,
   },
 
   onLoad() {
@@ -36,8 +40,26 @@ Page({
     try {
       const imagePath = await chooseSingleImage(["album", "camera"]);
       this.setData({ imagePath });
+      if (hasMiniMaxKey()) await this.recognizeWishlistImage(imagePath);
     } catch (error) {
       wx.showToast({ title: error instanceof Error ? error.message : "选择图片失败", icon: "none" });
+    }
+  },
+
+  async recognizeWishlistImage(this: any, imagePath: string) {
+    this.setData({ recognizing: true });
+    try {
+      const tag = await recognizeGarmentImage(imagePath);
+      this.setData({
+        aiTag: tag,
+        name: this.data.name || tag.candidateNames[0] || "",
+        category: tag.category,
+        notes: this.data.notes || tag.notes || "",
+      });
+    } catch (error) {
+      wx.showToast({ title: error instanceof Error ? error.message : "AI 识别失败，可继续手动填写", icon: "none" });
+    } finally {
+      this.setData({ recognizing: false });
     }
   },
 
@@ -74,6 +96,11 @@ Page({
       await createWishlistItem({
         clientMutationId,
         name,
+        category: this.data.category,
+        colors: this.data.aiTag?.colors as unknown as Record<string, unknown> | undefined,
+        seasons: this.data.aiTag?.seasons,
+        styles: this.data.aiTag?.styles,
+        aiTag: this.data.aiTag as unknown as Record<string, unknown> | undefined,
         price,
         productUrl: this.data.productUrl.trim() || undefined,
         notes: this.data.notes.trim() || undefined,

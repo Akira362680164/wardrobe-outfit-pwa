@@ -103,7 +103,7 @@
 
 .action-row {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 18rpx;
   margin-top: 28rpx;
 }
@@ -126,6 +126,11 @@
 .edit {
   color: var(--color-surface);
   background: var(--color-primary);
+}
+
+.ai {
+  color: var(--color-surface);
+  background: var(--color-ai);
 }
 
 .danger {

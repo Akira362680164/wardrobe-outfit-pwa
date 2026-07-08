@@ -155,6 +155,92 @@ export const WorkspacePackingChecklistCommandSchema = WorkspaceMutationBaseSchem
   items: z.array(z.record(z.unknown())),
 });
 
+export const MiniMaxRuntimeSettingsSchema = z.object({
+  apiKey: z.string().min(1),
+  apiHost: z.string().url().default("https://api.minimaxi.com"),
+  model: z.string().min(1).default("MiniMax-M3"),
+  timeoutMs: z.number().int().min(1_000).max(120_000).default(60_000),
+});
+
+export const AiColorInfoSchema = z.union([
+  z.object({ mode: z.literal("single"), primary: z.string().min(1) }),
+  z.object({ mode: z.literal("main_with_accent"), primary: z.string().min(1), accents: z.array(z.string()).default([]) }),
+  z.object({ mode: z.literal("multicolor"), primaries: z.array(z.string()).default([]) }),
+]);
+
+export const AiTemperatureRangeSchema = z.object({
+  minC: z.number().optional(),
+  maxC: z.number().optional(),
+});
+
+export const AiGarmentTagSchema = z.object({
+  candidateNames: z.array(z.string()).min(1).max(3),
+  category: z.enum(["tops", "pants", "skirts", "one_piece", "shoes", "bags", "hats", "jewelry", "accessories"]),
+  subcategory: z.string().optional(),
+  colors: AiColorInfoSchema,
+  seasons: z.array(z.enum(["spring", "summer", "autumn", "winter", "all"])),
+  styles: z.array(z.enum(["casual", "sweet", "elegant", "commute", "outdoor", "dinner", "vacation"])),
+  temperatureRange: AiTemperatureRangeSchema.optional(),
+  material: z.string().optional(),
+  formality: z.number().int().min(1).max(5),
+  warmth: z.number().int().min(1).max(5),
+  confidence: z.number().min(0).max(1),
+  needsReview: z.boolean(),
+  notes: z.string().optional(),
+  fitGender: z.enum(["menswear", "womenswear", "unisex", "unknown"]).optional(),
+  fitNotes: z.string().optional(),
+});
+
+export const AiGarmentRecognitionRequestSchema = z.object({
+  miniMax: MiniMaxRuntimeSettingsSchema,
+  imageDataUrl: z.string().regex(/^data:image\/[a-z0-9.+-]+;base64,/i),
+  fallbackName: z.string().min(1).max(160).default("garment.jpg"),
+});
+
+export const AiGarmentRecognitionResponseSchema = z.object({
+  tag: AiGarmentTagSchema,
+});
+
+export const AiOutfitMetadataItemSchema = z.object({
+  id: z.number().int(),
+  name: z.string(),
+  category: z.string(),
+  subcategory: z.string().optional(),
+  colors: AiColorInfoSchema.optional(),
+  seasons: z.array(z.string()).default([]),
+  styles: z.array(z.string()).default([]),
+  temperatureRange: AiTemperatureRangeSchema.optional(),
+});
+
+export const AiOutfitMetadataRequestSchema = z.object({
+  miniMax: MiniMaxRuntimeSettingsSchema,
+  itemIds: z.array(z.number().int()).default([]),
+  name: z.string().optional(),
+  outfitItems: z.array(AiOutfitMetadataItemSchema).max(50),
+});
+
+export const AiOutfitMetadataResponseSchema = z.object({
+  name: z.string().optional(),
+  seasons: z.array(z.enum(["spring", "summer", "autumn", "winter", "all"])).optional(),
+  sceneTags: z.array(z.string()).optional(),
+  styleTags: z.array(z.string()).optional(),
+  pairingTags: z.array(z.string()).optional(),
+  temperatureRange: AiTemperatureRangeSchema.optional(),
+  notes: z.string().optional(),
+});
+
+export const AiEnhancementKindSchema = z.enum([
+  "wardrobe-diagnosis",
+  "garment-style-advice",
+  "wishlist-assessment",
+  "outfit-ai-suggestion",
+]);
+
+export const AiEnhancementRequestSchema = z.object({
+  miniMax: MiniMaxRuntimeSettingsSchema,
+  input: z.record(z.unknown()),
+});
+
 export type WorkspaceEntityKind = z.infer<typeof WorkspaceEntityKindSchema>;
 export type WorkspaceErrorCode = z.infer<typeof WorkspaceErrorCodeSchema>;
 export type WorkspaceErrorResponse = z.infer<typeof WorkspaceErrorResponseSchema>;
@@ -177,3 +263,14 @@ export type WorkspaceStateCommand = z.infer<typeof WorkspaceStateCommandSchema>;
 export type WorkspaceWishlistConvertCommand = z.infer<typeof WorkspaceWishlistConvertCommandSchema>;
 export type WorkspacePlanMarkWornCommand = z.infer<typeof WorkspacePlanMarkWornCommandSchema>;
 export type WorkspacePackingChecklistCommand = z.infer<typeof WorkspacePackingChecklistCommandSchema>;
+export type MiniMaxRuntimeSettings = z.infer<typeof MiniMaxRuntimeSettingsSchema>;
+export type AiColorInfo = z.infer<typeof AiColorInfoSchema>;
+export type AiTemperatureRange = z.infer<typeof AiTemperatureRangeSchema>;
+export type AiGarmentTag = z.infer<typeof AiGarmentTagSchema>;
+export type AiGarmentRecognitionRequest = z.infer<typeof AiGarmentRecognitionRequestSchema>;
+export type AiGarmentRecognitionResponse = z.infer<typeof AiGarmentRecognitionResponseSchema>;
+export type AiOutfitMetadataItem = z.infer<typeof AiOutfitMetadataItemSchema>;
+export type AiOutfitMetadataRequest = z.infer<typeof AiOutfitMetadataRequestSchema>;
+export type AiOutfitMetadataResponse = z.infer<typeof AiOutfitMetadataResponseSchema>;
+export type AiEnhancementKind = z.infer<typeof AiEnhancementKindSchema>;
+export type AiEnhancementRequest = z.infer<typeof AiEnhancementRequestSchema>;

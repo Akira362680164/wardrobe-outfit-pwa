@@ -1,6 +1,6 @@
 <view class="page-shell">
   <view class="page-title">新增种草</view>
-  <view class="page-copy">保存商品图、价格和购买线索；AI 评估等后端代理确定后再接。</view>
+  <view class="page-copy">选择商品图后可用 AI 生成草稿，确认后保存到服务器种草清单。</view>
 
   <view class="form-card">
     <view class="field-label">商品图</view>
@@ -8,6 +8,8 @@
       <image wx:if="{{imagePath}}" class="image-preview" mode="aspectFill" src="{{imagePath}}" />
       <view wx:else class="image-empty">选择图片</view>
     </view>
+    <view wx:if="{{recognizing}}" class="ai-status">AI 正在识别商品图...</view>
+    <view wx:elif="{{aiTag}}" class="ai-status">AI 已生成草稿，请确认后保存。</view>
 
     <view class="field-label">商品名称</view>
     <input class="text-input" value="{{name}}" placeholder="例如：米色短风衣" bindinput="handleNameInput" />

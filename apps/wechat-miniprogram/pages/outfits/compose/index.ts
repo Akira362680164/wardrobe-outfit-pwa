@@ -1,3 +1,4 @@
+import { generateOutfitMetadata, hasMiniMaxKey } from "../../../services/ai";
 import {
   createOutfit,
   fetchGarments,
@@ -11,12 +12,59 @@ Page({
   data: {
     loading: false,
     saving: false,
+    generating: false,
     name: "",
+    sceneText: "",
+    seasonText: "",
+    aiNotes: "",
+    seasons: [] as string[],
+    sceneTags: [] as string[],
     garments: [] as SelectableGarment[],
     selectedCount: 0,
     error: "",
     emptyTitle: "",
     emptyAction: "",
+  },
+
+  async generateBaseInfo(this: any) {
+    if (this.data.generating) return;
+    const selected = this.data.garments.filter((item: SelectableGarment) => item.selected);
+    if (selected.length < 2) {
+      wx.showToast({ title: "至少选择 2 件衣物", icon: "none" });
+      return;
+    }
+    if (!hasMiniMaxKey()) {
+      wx.showToast({ title: "请先在设置中填写 MiniMax Key", icon: "none" });
+      return;
+    }
+
+    this.setData({ generating: true });
+    try {
+      const metadata = await generateOutfitMetadata({
+        name: this.data.name.trim() || undefined,
+        itemIds: selected.map((item: SelectableGarment) => item.legacyItemId),
+        outfitItems: selected.map((item: SelectableGarment) => ({
+          id: item.legacyItemId,
+          name: item.name,
+          category: item.category,
+          colors: { mode: "single", primary: item.colorText || "未标注" },
+          seasons: item.seasonText ? [item.seasonText] : [],
+          styles: [],
+        })),
+      });
+      this.setData({
+        name: this.data.name.trim() || metadata.name || "",
+        seasons: metadata.seasons ?? [],
+        sceneTags: metadata.sceneTags ?? [],
+        seasonText: (metadata.seasons ?? []).join(" / "),
+        sceneText: (metadata.sceneTags ?? []).join(" / "),
+        aiNotes: metadata.notes ?? "",
+      });
+    } catch (error) {
+      wx.showToast({ title: error instanceof Error ? error.message : "生成失败", icon: "none" });
+    } finally {
+      this.setData({ generating: false });
+    }
   },
 
   onLoad() {
@@ -86,7 +134,12 @@ Page({
 
     this.setData({ saving: true });
     try {
-      await createOutfit({ name, legacyItemIds: selected.map((item) => item.legacyItemId) });
+      await createOutfit({
+        name,
+        legacyItemIds: selected.map((item) => item.legacyItemId),
+        seasons: this.data.seasons,
+        sceneTags: this.data.sceneTags,
+      });
       wx.showToast({ title: "套装已保存", icon: "success" });
       wx.switchTab({ url: "/pages/outfits/index/index" });
     } catch (error) {

@@ -5,6 +5,11 @@ export interface IntakeDraft {
   color: string;
   season: string;
   note: string;
+  styles?: string[];
+  confidence?: number;
+  needsReview?: boolean;
+  source?: "manual" | "ai";
+  aiTag?: Record<string, unknown>;
 }
 
 let draft: IntakeDraft | null = null;

@@ -41,19 +41,25 @@
 
   <view wx:if="{{loading}}" class="status-card">正在读取衣橱...</view>
 
-  <view wx:elif="{{error}}" class="status-card">
+  <view wx:if="{{diagnosisLoading || diagnosisSummary}}" class="status-card">
+    <view class="status-title">AI 衣橱诊断</view>
+    <view class="status-copy">{{diagnosisLoading ? '正在生成诊断...' : diagnosisSummary}}</view>
+    <view wx:for="{{diagnosisTips}}" wx:key="*this" class="status-copy">· {{item}}</view>
+  </view>
+
+  <view wx:if="{{!loading && error}}" class="status-card">
     <view class="status-title">读取失败</view>
     <view class="status-copy">{{error}}</view>
     <button class="mini-button" bindtap="loadGarments">重试</button>
   </view>
 
-  <view wx:elif="{{garments.length === 0}}" class="status-card">
+  <view wx:if="{{!loading && !error && garments.length === 0}}" class="status-card">
     <view class="status-title">{{emptyTitle || '还没有衣物'}}</view>
     <view class="status-copy">添加第一件衣物后，这里会显示图片、名称、分类、颜色和季节。</view>
     <button class="mini-button" bindtap="handleEmptyAction">{{emptyAction || '添加衣物'}}</button>
   </view>
 
-  <view wx:else class="garment-grid">
+  <view wx:if="{{!loading && !error && garments.length > 0}}" class="garment-grid">
     <catalog-card
       wx:for="{{visibleGarments}}"
       wx:key="id"

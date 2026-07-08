@@ -1,5 +1,5 @@
 const SENSITIVE_KEY_PATTERN =
-  /password|passwordHash|token|accessToken|refreshToken|clientSecret|authorization|cookie/i;
+  /password|passwordHash|token|accessToken|refreshToken|clientSecret|apiKey|miniMaxKey|authorization|cookie/i;
 
 const PHONE_E164_PATTERN = /\+?\d{7,15}/g;
 

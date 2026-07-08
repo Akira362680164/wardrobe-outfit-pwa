@@ -5,6 +5,12 @@
   <view class="form-card">
     <view class="field-label">套装名称</view>
     <input class="text-input" value="{{name}}" placeholder="例如：通勤基础套装" bindinput="handleNameInput" />
+    <button class="ai-button" loading="{{generating}}" disabled="{{generating || selectedCount < 2}}" bindtap="generateBaseInfo">AI 生成基础信息</button>
+    <view wx:if="{{seasonText || sceneText || aiNotes}}" class="ai-result">
+      <view wx:if="{{seasonText}}">季节：{{seasonText}}</view>
+      <view wx:if="{{sceneText}}">场景：{{sceneText}}</view>
+      <view wx:if="{{aiNotes}}">{{aiNotes}}</view>
+    </view>
   </view>
 
   <view wx:if="{{loading}}" class="status-card">正在读取衣物...</view>
