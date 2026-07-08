@@ -1,3 +1,14 @@
+## 2026-07-08 / v2.1.8-test / Codex — 修复微信模拟器 TS 入口启动失败
+
+- **执行 Agent**：Codex（未触发 subagent：本次为单点配置修复）。
+- **目的**：修复微信开发者工具模拟器报错 `app.json: 未找到 ["pages"][0] 对应的 pages/login/index.js 文件`。
+- **版本变更**：无；当前应用版本仍为 `2.1.8-test`。
+- **改动文件**：`apps/wechat-miniprogram/project.config.json`、`VERSION_HISTORY.md`。
+- **改动说明**：小程序源码使用 `.ts`，但项目配置仍为 `useCompilerPlugins: false`，DevTools 因此按 `.js` 查找页面入口；改为启用原生 TypeScript 编译插件 `["typescript"]`，不新增自定义构建脚本。
+- **验证结果**：`npx tsc --noEmit -p apps/wechat-miniprogram/tsconfig.json` 通过；`project.config.json` JSON 解析通过；`wechatide -c wardrobe-mini -t simulator_refresh --project .../apps/wechat-miniprogram` 成功；`wechatide -c wardrobe-mini -t simulator_open_page --project .../apps/wechat-miniprogram --page pages/login/index` 成功；console 缓冲区 grep 未再发现 `pages/login`、`未找到`、`Error`、`Cannot` 等入口错误。
+- **风险门禁**：low（单文件小程序项目配置修复）；未触发 subagent：用户未通知。
+- **未验证风险**：`automation_runtime_info` 和 `automation_viewport_action screenshot` 仍出现 automator ready/response timeout，因此未拿到 CLI 截图；当前验证以模拟器刷新、打开页面命令和 console 错误缓冲为准。
+
 ## 2026-07-08 / v2.1.8-test / Codex — 微信小程序首批完整版基础落地
 
 - **执行 Agent**：Codex（按用户明确要求使用 4 个并行 subagent：平台/CLI、原生小程序脚手架、UI 系统、微信手机号登录后端；主 agent 负责集成、补迁移、验证和版本记录）。
