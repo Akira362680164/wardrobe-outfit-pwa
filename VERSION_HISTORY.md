@@ -1,3 +1,15 @@
+## 2026-07-09 / v2.1.9-test / Codex — 修复 App 后台返回后在线图片统一恢复
+
+- **执行 Agent**：Codex（未触发 subagent：用户未通知）。
+- **目的**：修复 Android App 返回桌面一段时间后再回到应用，在线图片全部加载失败且单图“重试”无效的问题；同时将任意图片重试改为刷新当前页面所有在线图片。
+- **版本变更**：`package.json` / `package-lock.json` 从 `2.1.8-test` 升级到 `2.1.9-test`；Android `versionCode` 由构建脚本推导为 `20109`。
+- **改动文件**：`src/components/auth/auth-provider.tsx`、`src/components/auth/workspace-gate.tsx`、`src/components/app-root.tsx`、`src/components/online/online-asset-image.tsx`、`src/lib/online/online-repository.ts`、`scripts/test-online-auth-shell.ts`、`package.json`、`package-lock.json`、`VERSION_HISTORY.md`。
+- **改动说明**：`refreshSession()` 在 access token 仍新鲜时直接返回，避免频繁前台切换导致无意义 token 轮换；App 回前台时若 token 已过期或即将过期自动刷新会话；`WorkspaceGate` 新增全局图片恢复函数和 `imageRefreshVersion`，后台超过 30 秒返回、图片下载遇到 401、或用户点击任意图片“重试”时，都会清理在线图片 object URL 缓存并通知所有在线图片重新拉取；手工“重试”强制绕过自动恢复限流；在线图片下载不再固定使用创建仓库时的旧 session，而是重新拉取时读取最新本机会话。
+- **交付产物**：`/Users/fangzheng/Documents/wardrobe-online-image-recovery/衣橱穿搭助手-v2.1.9-test.apk`，大小 9.5MB；包名 `com.wardrobe.outfit`，versionName `2.1.9-test`，versionCode `20109`，签名主体 `CN=fangzheng, OU=Dev, O=Wardrobe, L=Beijing, ST=Beijing, C=CN`。
+- **验证结果**：`npm run test:logic:online-auth-shell`、`npm run test:logic:online-workspace`、`npm run typecheck`、`npm run build`、`npm run android:apk` 均通过；`aapt dump badging` 与 `apksigner verify --print-certs` 核验通过；备用模拟器 `wardrobe-visible-test`（Android 15 / API 35）完成 APK 覆盖安装、显式启动、版本核对、回桌面等待 35 秒后返回应用和 logcat 崩溃筛查，日志保存在 `test-results/android-v2.1.9-test/`，未发现 `FATAL EXCEPTION` 或 `Process: com.wardrobe.outfit` 崩溃。
+- **风险门禁**：high（改动认证恢复、在线图片下载、Android 前后台恢复和 APK 交付链路）；未触发 subagent：用户未通知。
+- **未验证风险**：未登录真实账号等待 token 过期后做端到端在线图片恢复实测；当前以代码契约、构建、APK 安装启动和 Android 前后台生命周期回归覆盖。
+
 ## 2026-07-09 / v2.1.8-test / Codex — 小程序 UI 差距修复执行方案任务包
 
 - **执行 Agent**：Codex（未触发 subagent：本轮只编写执行方案，不派发实现任务）。

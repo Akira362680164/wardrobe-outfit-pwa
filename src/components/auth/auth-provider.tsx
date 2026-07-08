@@ -69,6 +69,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const refreshSession = useCallback(async () => {
     const current = session ?? await loadAuthSessionSnapshot();
+    if (isAccessTokenFresh(current)) return current;
     if (!current.refreshToken) return null;
     const cloud = await updateConnectivity();
     if (cloud !== "cloud_ready") return current.user ? current : null;
@@ -95,14 +96,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     void updateConnectivity();
     const listener = subscribeNetworkChanges(() => void updateConnectivity());
     const handleVisibility = () => {
-      if (document.visibilityState === "visible") void updateConnectivity();
+      if (document.visibilityState !== "visible") return;
+      void updateConnectivity();
+      if (session?.refreshToken && !isAccessTokenFresh(session)) void refreshSession();
     };
     document.addEventListener("visibilitychange", handleVisibility);
     return () => {
       listener.disconnect();
       document.removeEventListener("visibilitychange", handleVisibility);
     };
-  }, [updateConnectivity]);
+  }, [refreshSession, session, updateConnectivity]);
 
   useEffect(() => {
     let cancelled = false;
