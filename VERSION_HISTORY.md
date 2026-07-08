@@ -1,3 +1,15 @@
+## 2026-07-08 / v2.1.8-test / Codex — 小程序登录官方名称纠正
+
+- **执行 Agent**：Codex（未触发 subagent：本次为登录页文案与按钮展示单点修复）。
+- **目的**：按用户确认，将小程序登录能力的官方名称统一为 `微信认证登录`，并保证登录主按钮在正常、禁用和提交中状态都固定展示这六个字。
+- **版本变更**：无；当前应用版本仍为 `2.1.8-test`，小程序包版本仍为 `0.1.0`。
+- **改动文件**：`apps/wechat-miniprogram/pages/login/index.ts`、`apps/wechat-miniprogram/pages/login/index.wxml`、`docs/wechat-mini/auth-api.md`、`docs/wechat-mini/execution-board.md`、`VERSION_HISTORY.md`。
+- **改动说明**：登录主按钮固定为 `微信认证登录`，不再根据 `submitting` 切换成其他文案，也不再使用微信原生 loading 图标挤压按钮文本；登录说明、授权说明和微信授权失败提示同步使用 `微信认证登录`；当前小程序文档标题和执行看板同步改名。
+- **后端边界**：本轮未修改 `services/wardrobe-api/**`、`packages/cloud-contracts/**` 或 migration。
+- **验证结果**：`npm --prefix apps/wechat-miniprogram run typecheck` 通过；`compile_wxml pages/login/index.wxml` 通过。
+- **风险门禁**：low（文案和按钮展示修复，不改业务接口、不改后端、不上传体验版）；未触发 subagent：用户未通知。
+- **未验证风险**：未重新做真机截图；本轮通过固定六字文案和移除原生 loading 挤压来规避机型差异。
+
 ## 2026-07-08 / v2.1.8-test / Codex — 小程序登录增加账号密码兜底
 
 - **执行 Agent**：Codex（未触发 subagent：本次为小程序登录单点修复）。

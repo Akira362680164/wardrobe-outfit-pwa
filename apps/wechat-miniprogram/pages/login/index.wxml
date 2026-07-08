@@ -2,17 +2,16 @@
   <view class="login-hero glass-panel-strong">
     <view class="login-kicker">智能衣橱</view>
     <view class="login-title text-wrap-safe">同步你的衣橱与穿搭数据</view>
-    <view class="login-copy text-wrap-safe">用微信认证手机号安全登录，自动同步你的衣橱与穿搭数据。</view>
+    <view class="login-copy text-wrap-safe">使用微信认证登录，自动同步你的衣橱与穿搭数据。</view>
 
     <button
       class="phone-login-button"
       open-type="getPhoneNumber"
-      loading="{{submitting}}"
       disabled="{{submitting}}"
       hover-class="phone-login-button--hover"
       bindgetphonenumber="onGetPhoneNumber"
     >
-      {{submitting ? '微信登录中...' : '微信手机号登录'}}
+      微信认证登录
     </button>
 
     <view wx:if="{{errorMessage}}" class="login-error text-wrap-safe">{{errorMessage}}</view>
@@ -31,7 +30,7 @@
       <text class="agreement-link" bindtap="openAgreement">《用户服务协议》</text>
       和
       <text class="agreement-link" bindtap="openPrivacy">《隐私政策》</text>，
-      并授权我们通过微信认证手机号完成登录/注册。
+      并授权我们通过微信认证登录完成登录/注册。
     </view>
   </view>
 </view>

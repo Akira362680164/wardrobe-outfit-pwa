@@ -89,6 +89,6 @@ function loginErrorMessage(error: unknown): string {
 }
 
 function phoneAuthErrorMessage(errMsg?: string): string {
-  if (!errMsg || /deny|cancel/i.test(errMsg)) return "微信未返回认证手机号，请改用手机号密码登录。";
-  return `微信手机号授权失败：${errMsg}`;
+  if (!errMsg || /deny|cancel/i.test(errMsg)) return "微信认证登录未完成，请改用手机号密码登录。";
+  return `微信认证登录失败：${errMsg}`;
 }
