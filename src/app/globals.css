@@ -19,6 +19,7 @@
   --ui-radius-inner: 22px;
   --ui-radius-control: 16px;
   --ui-radius-nav: 30px;
+  --ui-radius-nav-active: 22px;
   --ui-glass-bg: rgba(251, 251, 248, 0.75);
   --ui-glass-border: rgba(29, 34, 40, 0.08);
   --ui-soft-shadow: 0 18px 50px rgba(29, 34, 40, 0.09);
@@ -104,6 +105,7 @@ button {
 }
 
 .app-glass-top {
+  background: rgba(255, 255, 255, 0.01);
   border-width: 0 0 1px;
   border-color: transparent;
   box-shadow: none;

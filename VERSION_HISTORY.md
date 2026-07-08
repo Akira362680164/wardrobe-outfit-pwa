@@ -1,3 +1,14 @@
+## 2026-07-08 / v2.1.8-test / Codex — 运行时 TopBar、Toast 与录入入口收口
+
+- **执行 Agent**：Codex（未触发 subagent：用户未通知）。
+- **目的**：按已确认的 1-5 项范围修复运行时代码：顶部无色毛玻璃保留但删除可见白条、Toast 改为正文式三行以内展示、底部导航选中项同心圆角、录入页拍照/图库入口接入新版圆角矩形，并补充对应测试约束。
+- **版本变更**：无；当前应用版本仍为 `2.1.8-test`。
+- **改动文件**：`src/app/globals.css`、`src/components/wardrobe-app.tsx`、`src/components/garment-intake-flow.tsx`、`scripts/test-ui-overlay-contract.ts`、`scripts/test-intake-fullscreen-layout.ts`、`scripts/test-garment-intake-multi-image.ts`、`VERSION_HISTORY.md`。
+- **改动说明**：`app-glass-top` 改为极低透明度背景并保留 backdrop blur，避免二/三级页和录入页标题区下方出现独立白色/米色色带；底部导航新增选中项圆角 token，使外框与选中项保持同心圆角；全局 Toast 删除旧左侧满高状态条，改为正文最多三行、状态图标/关闭按钮按 Toast 高度上下居中；录入页空态拍照/图库入口、已选图追加拍照/图库按钮和缩略图操作浮层接入新版圆角矩形与半透明白底；测试补齐上述运行时约束。
+- **验证结果**：`npm run test:logic:ui-overlay-contract`、`npm run test:logic:intake-fullscreen-layout`、`npm run test:logic:garment-intake-multi-image`、`npm run typecheck`、`npm run build` 均通过；额外启动本地开发服务并用 Chrome/Playwright 访问 `http://127.0.0.1:3001`，确认首屏可渲染登录页。
+- **风险门禁**：high（改动运行时全局 UI 基础样式、核心 App Toast/底部导航和录入流程入口；不改业务数据、线上 API、路由结构、Android 原生配置、版本号或 APK）；未触发 subagent：用户未通知。
+- **未验证风险**：未在 Android 真机/模拟器安装 APK 做视觉回归；未逐屏检查全部二/三级页面，当前以共享组件和合同测试覆盖。
+
 ## 2026-07-08 / v2.1.8-test / Codex — UI 规范 Toast 三行与 TopBar 玻璃预览修正
 
 - **执行 Agent**：Codex（未触发 subagent：用户未通知）。

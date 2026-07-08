@@ -98,6 +98,8 @@ check("GarmentIntakeFlow 展示「已选择 X 张」", /已选择\s*\{imageItems
 // GarmentIntakeFlow keeps compact add actions after images are selected.
 check("GarmentIntakeFlow 展示小按钮「继续从图库选择」", /继续从图库选择/.test(garmentIntakeFlow));
 check("IntakeStepOneImagePicker 有预览时隐藏大号拍照/图库卡片", /\{!previewNode \? \([\s\S]*min-h-\[144px\][\s\S]*\) : null\}/.test(garmentIntakeFlow));
+check("IntakeStepOneImagePicker 拍照/图库入口接入新版圆角矩形", /min-h-\[144px\][^"]*ui-control-radius[^"]*bg-white\/82[^"]*shadow-sm/.test(garmentIntakeFlow));
+check("GarmentIntakeFlow 已选图追加入口接入新版圆角矩形", /bg-white\/82[\s\S]{0,120}shadow-sm[\s\S]{0,120}继续拍照/.test(garmentIntakeFlow) && /bg-white\/82[\s\S]{0,120}shadow-sm[\s\S]{0,120}继续从图库选择/.test(garmentIntakeFlow));
 
 // GarmentIntakeFlow selected thumbnail actions
 check("GarmentIntakeFlow 缩略图浮层展示「裁切/旋转」", /裁切\/旋转/.test(garmentIntakeFlow));

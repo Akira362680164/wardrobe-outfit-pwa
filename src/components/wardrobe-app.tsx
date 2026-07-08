@@ -1316,32 +1316,31 @@ export function WardrobeApp({ cloudAuth }: { cloudAuth?: WardrobeCloudAuth } = {
             placement="bottom"
           >
           <div
-            className="app-toast pointer-events-auto flex items-center gap-2.5 overflow-hidden px-3 py-2.5 pl-4 text-sm text-ink"
+            className="app-toast pointer-events-auto flex items-center gap-2.5 overflow-hidden px-3 py-2.5 text-sm text-ink"
           >
-            <span
-              className={`absolute bottom-2 left-2 top-2 w-1 rounded-full ${
-                messageType === "error" ? "bg-clay" : messageType === "info" ? "bg-denim" : "bg-moss"
-              }`}
-              aria-hidden="true"
-            />
             {messageType === "error" ? (
-              <span className="grid h-7 w-7 shrink-0 place-items-center ui-control-radius bg-red-50 text-red-500">
+              <span className="grid h-7 w-7 shrink-0 self-center place-items-center ui-control-radius bg-red-50 text-red-500">
                 <AlertCircle size={15} strokeWidth={2.4} aria-hidden="true" />
               </span>
             ) : messageType === "info" ? (
-              <span className="grid h-7 w-7 shrink-0 place-items-center ui-control-radius bg-denim/10 text-denim">
+              <span className="grid h-7 w-7 shrink-0 self-center place-items-center ui-control-radius bg-denim/10 text-denim">
                 <Info size={15} strokeWidth={2.4} aria-hidden="true" />
               </span>
             ) : (
-              <span className="grid h-7 w-7 shrink-0 place-items-center ui-control-radius bg-moss/12 text-moss">
+              <span className="grid h-7 w-7 shrink-0 self-center place-items-center ui-control-radius bg-moss/12 text-moss">
                 <Check size={14} strokeWidth={2.6} />
               </span>
             )}
-            <span className="min-w-0 flex-1 leading-snug">{message}</span>
+            <span
+              className="min-w-0 flex-1 overflow-hidden leading-snug"
+              style={{ display: "-webkit-box", WebkitBoxOrient: "vertical", WebkitLineClamp: 3 }}
+            >
+              {message}
+            </span>
             {message === MINIMAX_KEY_MISSING_MESSAGE ? (
               <button
                 type="button"
-                className="h-9 shrink-0 ui-control-radius bg-denim px-3 text-xs font-semibold text-white active:scale-95"
+                className="h-9 shrink-0 self-center ui-control-radius bg-denim px-3 text-xs font-semibold text-white active:scale-95"
                 onClick={openMiniMaxKeySettings}
               >
                 前往设置
@@ -1351,7 +1350,7 @@ export function WardrobeApp({ cloudAuth }: { cloudAuth?: WardrobeCloudAuth } = {
               type="button"
               title="关闭提示"
               aria-label="关闭提示"
-              className="grid h-11 w-11 shrink-0 place-items-center ui-control-radius text-ink/45 transition-colors active:bg-ink/5 hover:text-ink/70"
+              className="grid h-11 w-11 shrink-0 self-center place-items-center ui-control-radius text-ink/45 transition-colors active:bg-ink/5 hover:text-ink/70"
               onClick={clearMessage}
             >
               <X size={16} aria-hidden="true" />
@@ -5504,7 +5503,7 @@ function MobileNavButton({ view, active, onClick, compact }: { view: (typeof vie
         color: active ? "#ffffff" : "rgba(0,0,0,0.62)",
       }}
       transition={spring.snappy}
-      className={`grid ${compact ? "h-10" : "h-14"} place-content-center justify-items-center gap-1 ui-control-radius px-1 text-[11px] font-semibold`}
+      className={`grid ${compact ? "h-10 ui-control-radius" : "h-14 rounded-[var(--ui-radius-nav-active)]"} place-content-center justify-items-center gap-1 px-1 text-[11px] font-semibold`}
       whileTap={{ scale: 0.94 }}
     >
       {!compact && (

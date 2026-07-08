@@ -914,7 +914,7 @@ function MultiImageSelectStep({
               )}
             </button>
             {item.id === activeImageId && onCropActive ? (
-              <div className="absolute bottom-[calc(100%+8px)] left-1/2 z-20 flex -translate-x-1/2 items-center gap-1 ui-control-radius border border-ink/10 bg-white p-1 shadow-lg">
+              <div className="absolute bottom-[calc(100%+8px)] left-1/2 z-20 flex -translate-x-1/2 items-center gap-1 ui-control-radius border border-ink/10 bg-white/88 p-1 shadow-lg backdrop-blur-xl">
                 <button
                   type="button"
                   onClick={onCropActive}
@@ -929,7 +929,7 @@ function MultiImageSelectStep({
                 >
                   <Trash2 size={13} aria-hidden="true" /> 删除
                 </button>
-                <span className="absolute left-1/2 top-full h-2 w-2 -translate-x-1/2 -translate-y-1/2 rotate-45 border-b border-r border-ink/10 bg-white" aria-hidden="true" />
+                <span className="absolute left-1/2 top-full h-2 w-2 -translate-x-1/2 -translate-y-1/2 rotate-45 border-b border-r border-ink/10 bg-white/88" aria-hidden="true" />
               </div>
             ) : null}
           </div>
@@ -940,7 +940,7 @@ function MultiImageSelectStep({
           type="button"
           onClick={onAddFromCamera}
           disabled={isPicking}
-          className="flex-1 h-10 ui-control-radius border border-ink/10 bg-white text-sm font-semibold disabled:opacity-35 flex items-center justify-center gap-1"
+          className="flex-1 h-10 ui-control-radius border border-ink/10 bg-white/82 text-sm font-semibold disabled:opacity-35 flex items-center justify-center gap-1 shadow-sm"
         >
           <Camera size={14} /> 继续拍照
         </button>
@@ -948,7 +948,7 @@ function MultiImageSelectStep({
           type="button"
           onClick={onAddFromAlbum}
           disabled={isPicking}
-          className="flex-1 h-10 ui-control-radius border border-ink/10 bg-white text-sm font-semibold disabled:opacity-35 flex items-center justify-center gap-1"
+          className="flex-1 h-10 ui-control-radius border border-ink/10 bg-white/82 text-sm font-semibold disabled:opacity-35 flex items-center justify-center gap-1 shadow-sm"
         >
           <ImageIcon size={14} /> 继续从图库选择
         </button>
@@ -1711,7 +1711,7 @@ export function IntakeStepOneImagePicker({
             type="button"
             onClick={onCameraClick}
             disabled={disabled}
-            className="min-h-[144px] ui-control-radius border border-ink/10 bg-white text-sm font-semibold flex flex-col items-center justify-center gap-2"
+            className="min-h-[144px] ui-control-radius border border-ink/10 bg-white/82 text-sm font-semibold flex flex-col items-center justify-center gap-2 shadow-sm"
           >
             <Camera size={24} className="text-denim" />
             拍照
@@ -1720,7 +1720,7 @@ export function IntakeStepOneImagePicker({
             type="button"
             onClick={onGalleryClick}
             disabled={disabled}
-            className="min-h-[144px] ui-control-radius border border-ink/10 bg-white text-sm font-semibold flex flex-col items-center justify-center gap-2"
+            className="min-h-[144px] ui-control-radius border border-ink/10 bg-white/82 text-sm font-semibold flex flex-col items-center justify-center gap-2 shadow-sm"
           >
             <ImageIcon size={24} className="text-denim" />
             从图库选择
