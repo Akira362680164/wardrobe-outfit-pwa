@@ -1,3 +1,13 @@
+## 2026-07-08 / v2.1.8-test / Codex — 部署后 live AI 识别流程复测
+
+- **执行 Agent**：Codex（未触发 subagent：用户未通知）。
+- **目的**：按用户要求不再用临时自写验证替代验收，执行项目已有 live AI 业务流，验证 MiniMax 后端迁移后录入识别能真实通过。
+- **版本变更**：无；当前应用版本仍为 `2.1.8-test`。
+- **改动文件**：`docs/designs/v0.3-alpha/live-capture-manifest.json`、`docs/designs/v0.3-alpha/screenshots/*.png`（既有 live capture 流程重采集产物）、`VERSION_HISTORY.md`。
+- **验证结果**：线上后端已部署 `wardrobe-api:9faa819`，`https://api.zhengfangapps.cloud/api/version` 返回 `gitCommit=9faa819c1ae0a40bb96b735a024c26f6920bfab1`；`npm run v03-alpha:capture` 通过（1 test passed，2.2m），流程覆盖 UI 注册/登录、配置 Keychain 中的 MiniMax Key、9 张单品图片导入、点击“下一步 AI 识别”、进入“核对 AI 识别结果”、保存 9 件单品、套装与种草后续业务流。`live-capture-manifest.json` 记录 `intake_single_confirm` 截图时间为 `2026-07-08T14:57:51Z`，页面标识为“已识别 9 件单品 / 校对衣物草稿”。
+- **风险门禁**：high（验证 MiniMax live 调用、线上后端部署结果和录入主链；本次不改业务源码、不改数据库 schema、不重新打 APK）；未触发 subagent：用户未通知。
+- **未验证风险**：本条使用项目既有 Playwright live capture 流程验证真实业务识别；未新增或保留临时 WebView/ADB 自写测试脚本。
+
 ## 2026-07-08 / v2.1.8-test / Codex — 展示增强类 MiniMax 调用迁移到后端
 
 - **执行 Agent**：Codex（未触发 subagent：用户未通知）。
