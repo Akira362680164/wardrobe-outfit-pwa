@@ -584,6 +584,23 @@ export class SessionService {
     deviceId: string;
     deviceLabel?: string | null;
   }) {
+    return this.issueTokensForUser({
+      ...input,
+      eventType: "registration.succeeded",
+      eventMetadata: { maskedPhone: input.maskedPhone },
+    });
+  }
+
+  async issueTokensForUser(input: {
+    userId: string;
+    maskedPhone: string;
+    deviceId: string;
+    deviceLabel?: string | null;
+    eventType: string;
+    ip?: string;
+    userAgent?: string;
+    eventMetadata?: Record<string, unknown>;
+  }) {
     const now = this.now();
     const refreshToken = generateOpaqueToken();
     const refreshTokenExpiresAt = new Date(now.getTime() + REFRESH_TOKEN_TTL_MS);
@@ -603,8 +620,10 @@ export class SessionService {
 
     await this.store.recordSecurityEvent({
       userId: input.userId,
-      eventType: "registration.succeeded",
-      metadata: { maskedPhone: input.maskedPhone },
+      eventType: input.eventType,
+      ip: input.ip,
+      userAgent: input.userAgent,
+      metadata: input.eventMetadata ?? { maskedPhone: input.maskedPhone },
     });
 
     return this.buildTokenResponse({

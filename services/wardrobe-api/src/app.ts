@@ -10,6 +10,7 @@ import { registerAuthRoutes } from "./auth/routes.js";
 import { type RegistrationService } from "./auth/registrations.js";
 import { registerSessionRoutes } from "./auth/session-routes.js";
 import { SessionService } from "./auth/session.js";
+import { registerWechatPhoneAuthRoutes, WechatPhoneAuthService } from "./auth/wechat-phone.js";
 import { registerAssetRoutes } from "./assets/routes.js";
 import { AssetService } from "./assets/service.js";
 import { registerDiagnosticRoutes, registerDiagnosticAdminRoutes } from "./diagnostics/routes.js";
@@ -39,6 +40,7 @@ export interface BuildAppOptions {
   diagnosticService?: DiagnosticService;
   storageProvider?: StorageProvider | null;
   jwtReadinessCheck?: () => Promise<boolean>;
+  wechatPhoneAuthService?: WechatPhoneAuthService;
 }
 
 export function buildApp(options: BuildAppOptions = {}): FastifyInstance {
@@ -127,6 +129,12 @@ export function buildApp(options: BuildAppOptions = {}): FastifyInstance {
 
   registerAuthRoutes(app, options.registrationService, sharedSessionService);
   registerSessionRoutes(app, sharedSessionService);
+  registerWechatPhoneAuthRoutes(
+    app,
+    options.wechatPhoneAuthService ?? new WechatPhoneAuthService({
+      sessionService: sharedSessionService ?? new SessionService(),
+    }),
+  );
   registerAssetRoutes(app, assetService, sharedSessionService ?? new SessionService(), storageConfig.maxAssetBytes);
   registerWorkspaceRoutes(
     app,

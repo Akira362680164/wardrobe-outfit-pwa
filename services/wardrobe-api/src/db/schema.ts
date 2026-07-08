@@ -183,6 +183,25 @@ export const accountSecurityEvents = pgTable(
   }),
 );
 
+export const wechatAccounts = pgTable(
+  "wechat_accounts",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: uuid("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+    appId: text("app_id").notNull(),
+    openid: text("openid").notNull(),
+    unionid: text("unionid"),
+    phoneHash: text("phone_hash").notNull(),
+    phoneMasked: text("phone_masked").notNull(),
+    ...timestamps,
+  },
+  (table) => ({
+    appOpenidUnique: uniqueIndex("wechat_accounts_app_openid_unique").on(table.appId, table.openid),
+    userIdx: index("wechat_accounts_user_id_idx").on(table.userId),
+    phoneHashIdx: index("wechat_accounts_phone_hash_idx").on(table.phoneHash),
+  }),
+);
+
 const syncEntityColumns = {
   userId: uuid("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
   revision: integer("revision").notNull().default(1),
