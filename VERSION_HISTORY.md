@@ -1,3 +1,14 @@
+## 2026-07-08 / v2.1.8-test / Codex — 小程序 API 切换到正式 HTTPS 域名
+
+- **执行 Agent**：Codex（未触发 subagent：用户未通知）。
+- **目的**：在 `api.zhengfangapps.cloud` HTTPS 可达后，将微信小程序全局 API 地址从空配置切换为正式 HTTPS URL，供登录和线上业务页面直接请求正式 API。
+- **版本变更**：无；当前应用版本仍为 `2.1.8-test`，小程序包版本仍为 `0.1.0`。
+- **改动文件**：`apps/wechat-miniprogram/app.ts`、`VERSION_HISTORY.md`。
+- **改动说明**：`globalData.apiBaseUrl` 设置为 `https://api.zhengfangapps.cloud`，复用现有 `services/http.ts` 的统一请求封装，不新增接口、不改后端、不引入环境分支。
+- **验证结果**：切换前已确认 `https://api.zhengfangapps.cloud/api/health`、`/api/ready`、`/api/version` 均返回 `200 OK`；`npm --prefix apps/wechat-miniprogram run typecheck` 通过。
+- **风险门禁**：medium（小程序登录和业务请求目标从未配置切换到正式远程 API；不改页面结构、不改后端、不上传体验版）；未触发 subagent：用户未通知。
+- **未验证风险**：未在微信真机/预览版完成 live 登录；微信后台仍需将 `https://api.zhengfangapps.cloud` 配入合法 request/upload/download 域名后，真机请求才能通过平台校验。
+
 ## 2026-07-08 / v2.1.8-test / Codex — 小程序登录官方名称纠正
 
 - **执行 Agent**：Codex（未触发 subagent：本次为登录页文案与按钮展示单点修复）。

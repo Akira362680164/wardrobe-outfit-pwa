@@ -7,7 +7,7 @@ export interface WardrobeMiniAppGlobalData {
 }
 
 const globalData: WardrobeMiniAppGlobalData = {
-  apiBaseUrl: "",
+  apiBaseUrl: "https://api.zhengfangapps.cloud",
   safeAreaBottom: 0,
   statusBarHeight: 0,
 };
