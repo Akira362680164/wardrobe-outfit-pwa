@@ -70,5 +70,6 @@
     </view>
   </view>
 
-  <button class="content-fab" aria-label="创建套装" bindtap="openCompose">＋</button>
+  <button class="content-fab" aria-label="新建" bindtap="openCreateSheet">＋</button>
+  <create-sheet open="{{createSheetOpen}}" active="create_outfit" bind:close="closeCreateSheet" />
 </view>

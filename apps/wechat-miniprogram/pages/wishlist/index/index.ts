@@ -42,6 +42,7 @@ Page({
     error: "",
     emptyTitle: "",
     emptyAction: "",
+    createSheetOpen: false,
   },
 
   onLoad() {
@@ -121,6 +122,14 @@ Page({
 
   openEdit() {
     wx.navigateTo({ url: "/pages/wishlist/edit/index" });
+  },
+
+  openCreateSheet() {
+    this.setData({ createSheetOpen: true });
+  },
+
+  closeCreateSheet() {
+    this.setData({ createSheetOpen: false });
   },
 
   openDetail(event: { detail?: { id?: string }; currentTarget?: { dataset?: { id?: string } } }) {

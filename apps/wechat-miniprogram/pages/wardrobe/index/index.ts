@@ -36,6 +36,7 @@ Page({
     emptyTitle: "",
     emptyAction: "",
     actionMenuOpen: false,
+    createSheetOpen: false,
   },
 
   onLoad() {
@@ -124,6 +125,14 @@ Page({
   openIntake() {
     this.setData({ actionMenuOpen: false });
     wx.navigateTo({ url: "/pages/intake/camera/index" });
+  },
+
+  openCreateSheet() {
+    this.setData({ actionMenuOpen: false, createSheetOpen: true });
+  },
+
+  closeCreateSheet() {
+    this.setData({ createSheetOpen: false });
   },
 
   openDetail(event: { detail?: { id?: string } }) {

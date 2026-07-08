@@ -9,7 +9,7 @@ const tabs = [
 ];
 
 Component({
-  data: { selected: 0, tabs },
+  data: { selected: 0, tabs, hidden: false },
   lifetimes: {
     attached(this: any) {
       this.syncSelected();

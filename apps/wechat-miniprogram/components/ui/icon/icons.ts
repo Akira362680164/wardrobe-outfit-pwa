@@ -1,7 +1,9 @@
 export const ICON_PATHS = {
   home: "/assets/icons/home.svg",
   wardrobe: "/assets/icons/wardrobe.svg",
+  camera: "/assets/icons/camera.svg",
   "camera-plus": "/assets/icons/camera-plus.svg",
+  layers: "/assets/icons/layers.svg",
   sparkles: "/assets/icons/sparkles.svg",
   "shopping-bag": "/assets/icons/shopping-bag.svg",
   user: "/assets/icons/user.svg",

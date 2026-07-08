@@ -80,7 +80,8 @@
     <button class="mini-button" bindtap="openIntake">添加衣物</button>
   </view>
 
-  <button class="content-fab wardrobe-fab" aria-label="添加衣物" catchtap="openIntake">
+  <button class="content-fab wardrobe-fab" aria-label="新建" catchtap="openCreateSheet">
     <ui-icon name="plus" size="48" color="currentColor" />
   </button>
+  <create-sheet open="{{createSheetOpen}}" active="add_single_item" bind:close="closeCreateSheet" />
 </view>

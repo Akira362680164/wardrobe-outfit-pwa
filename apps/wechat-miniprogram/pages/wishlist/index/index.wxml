@@ -54,5 +54,6 @@
     </view>
   </view>
 
-  <button class="content-fab" bindtap="openEdit">＋</button>
+  <button class="content-fab" aria-label="新建" bindtap="openCreateSheet">＋</button>
+  <create-sheet open="{{createSheetOpen}}" active="add_wishlist_item" bind:close="closeCreateSheet" />
 </view>

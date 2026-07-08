@@ -19,6 +19,7 @@ Page({
       { week: "日", day: "12" },
     ],
     outfitCountLabel: "0 套",
+    createSheetOpen: false,
   },
 
   onLoad() {
@@ -77,6 +78,14 @@ Page({
 
   openCompose() {
     wx.navigateTo({ url: "/pages/outfits/compose/index" });
+  },
+
+  openCreateSheet() {
+    this.setData({ createSheetOpen: true });
+  },
+
+  closeCreateSheet() {
+    this.setData({ createSheetOpen: false });
   },
 
   openDetail(event: any) {

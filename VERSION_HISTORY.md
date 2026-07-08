@@ -1,3 +1,14 @@
+## 2026-07-09 / v2.1.8-test / Codex — 小程序全局新建 Sheet 对齐生产 App
+
+- **执行 Agent**：Codex（未触发 subagent：用户要求按已确认方案直接修复；本轮只改小程序前端 `+` 新建入口）。
+- **目的**：修复衣橱、套装、种草首页点击右下 `+` 后直接进入单品录入或 Sheet 样式错误的问题，对齐生产 App 的全局“新建”底部面板。
+- **版本变更**：无；当前应用版本仍为 `2.1.8-test`，小程序包版本仍为 `0.1.0`。
+- **改动文件**：`apps/wechat-miniprogram/components/domain/create-sheet/**`、`apps/wechat-miniprogram/components/ui/sheet/index.wxss`、`apps/wechat-miniprogram/assets/icons/{camera,layers}.svg`、`apps/wechat-miniprogram/components/ui/icon/icons.ts`、`apps/wechat-miniprogram/custom-tab-bar/index.{ts,wxml}`、`apps/wechat-miniprogram/pages/{wardrobe,outfits,wishlist}/index/index.{json,ts,wxml}`、`VERSION_HISTORY.md`。
+- **改动说明**：新增共享 `create-sheet`，三项固定为 `添加衣物 / 添加套装 / 添加种草单品`，图标对应 `Camera / Layers / ShoppingBag`；衣橱、套装、种草首页 `+` 改为打开该 Sheet，并分别高亮当前业务项；选项使用普通 `view` 点击容器，宽度锁定为 `calc(100vw - 64rpx)`，与一级卡片同宽，标题和描述均单行不折行；打开 Sheet 时临时隐藏自定义 TabBar，避免 TabBar 盖住底部面板；通用 `ui-sheet` 层级提升到 `90`，确保遮罩覆盖衣橱页操作胶囊等页面内高层按钮。
+- **验证结果**：`npm --prefix apps/wechat-miniprogram run typecheck` 通过；`compile_wxml` 覆盖 `components/domain/create-sheet/index.wxml`、衣橱/套装/种草首页通过；`compile_wxss components/domain/create-sheet/index.wxss` 通过；`compile_wxml custom-tab-bar/index.wxml` 通过；`git diff --check` 通过；DevTools 截图保存到 `/Users/fangzheng/Desktop/wechat-mini-create-sheet-20260709/07-outfits-create-sheet-fullwidth.png`、`08-wardrobe-create-sheet-fullwidth.png`、`09-wishlist-create-sheet-fullwidth.png`；console grep `error|fail|timeout|typeerror|referenceerror` 无命中。
+- **风险门禁**：medium（共享 Sheet、三个主 Tab 入口、TabBar 临时隐藏和新增图标资产；不改后端、不改创建页业务、不上传体验版）；未触发 subagent：用户未通知。
+- **未验证风险**：截图基于 DevTools 模拟器；未做真机预览和体验版上传。
+
 ## 2026-07-09 / v2.1.8-test / Codex — 小程序接入后端 MiniMax AI 代理前六步
 
 - **执行 Agent**：Codex（未触发 subagent：用户未通知；本轮按用户批准的前六步直接开发与测试）。

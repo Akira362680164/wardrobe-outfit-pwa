@@ -1,0 +1,77 @@
+@import "../../../styles/index.wxss";
+
+.create-sheet {
+  display: flex;
+  flex-direction: column;
+  gap: 12rpx;
+  padding-bottom: 8rpx;
+}
+
+.create-sheet__item {
+  display: flex;
+  width: calc(100vw - 64rpx);
+  max-width: none;
+  min-height: 116rpx;
+  align-items: center;
+  gap: 24rpx;
+  box-sizing: border-box;
+  margin: 0;
+  padding: 20rpx 24rpx;
+  border: 1rpx solid transparent;
+  border-radius: 40rpx;
+  color: var(--color-ink);
+  background: transparent;
+  line-height: 1;
+  text-align: left;
+}
+
+.create-sheet__item::after {
+  border: 0;
+}
+
+.create-sheet__item--active {
+  border-color: rgba(53, 92, 125, 0.15);
+  color: var(--color-primary);
+  background: rgba(53, 92, 125, 0.08);
+}
+
+.create-sheet__icon {
+  display: grid;
+  width: 72rpx;
+  height: 72rpx;
+  flex: 0 0 72rpx;
+  place-items: center;
+  border-radius: 50%;
+  color: var(--color-ink);
+  background: var(--color-mist);
+}
+
+.create-sheet__item--active .create-sheet__icon {
+  color: var(--color-surface);
+  background: var(--color-primary);
+}
+
+.create-sheet__copy {
+  min-width: 0;
+  flex: 1;
+}
+
+.create-sheet__title {
+  overflow: hidden;
+  color: currentColor;
+  font-size: 30rpx;
+  font-weight: 700;
+  line-height: 1.25;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.create-sheet__desc {
+  margin-top: 6rpx;
+  overflow: hidden;
+  color: var(--color-muted);
+  font-size: 24rpx;
+  line-height: 1.35;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}

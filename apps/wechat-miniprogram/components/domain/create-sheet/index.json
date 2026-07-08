@@ -1,0 +1,7 @@
+{
+  "component": true,
+  "usingComponents": {
+    "ui-sheet": "../../ui/sheet/index",
+    "ui-icon": "../../ui/icon/index"
+  }
+}

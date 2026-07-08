@@ -1,1 +1,5 @@
-{}
+{
+  "usingComponents": {
+    "create-sheet": "../../../components/domain/create-sheet/index"
+  }
+}
