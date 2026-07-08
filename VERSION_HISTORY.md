@@ -1,3 +1,14 @@
+## 2026-07-08 / v2.1.8-test / Codex — UI 规范 Toast 三行与 TopBar 玻璃预览修正
+
+- **执行 Agent**：Codex（未触发 subagent：用户未通知）。
+- **目的**：按用户确认后的预览方案，正式修正 UI 规范中 Toast 三行状态、状态图标垂直居中，以及二/三级页和录入页 TopBar 预览里误画出的独立白色/米色色带。
+- **版本变更**：无；当前应用版本仍为 `2.1.8-test`。
+- **改动文件**：`docs/designs/wardrobe-ui-spec.md`、`docs/designs/wardrobe-ui-spec.html`、`scripts/generate-ui-spec-preview.mjs`、`scripts/test-ui-spec-preview-contract.ts`、`scripts/test-ui-spec-preview-render.ts`、`VERSION_HISTORY.md`。
+- **改动说明**：Toast 规范补充一行、两行、三行状态下左侧语义图标槽和右侧关闭按钮都按整条 Toast 高度上下居中；生成器里的三行错误 Toast 改为真实三行长文，去掉旧 `strong/small` 标题正文样式；TopBar 预览删除独立矩形条的背景、边框和阴影，只保留透明毛玻璃层与按钮自身圆角背景；补充合同测试和 Playwright 渲染测试，防止三行 Toast 退回两行或图标贴顶部。
+- **验证结果**：`npm run docs:ui-spec:build`、`npm run docs:ui-spec:check`、`npm run test:logic:ui-spec-preview`、`npm run typecheck` 均通过；额外截取 `/tmp/wardrobe-ui-spec-toast-formal-v2.png` 和 `/tmp/wardrobe-ui-spec-shell-formal-v2.png` 做视觉复核。
+- **风险门禁**：low（仅 UI 规范 Markdown、生成 HTML、生成脚本和规范预览测试；不改运行时代码、不改业务流程、不改 Android、不打 APK）；未触发 subagent：用户未通知。
+- **未验证风险**：未在 Android 真机/模拟器验证运行时页面；本轮只更新规范和规范预览。
+
 ## 2026-07-08 / v2.1.8-test / Codex — UI 规范 Toast 样式重设
 
 - **执行 Agent**：Codex（未触发 subagent：用户未通知）。

@@ -198,11 +198,14 @@ function icon(name) {
     layers: '<path d="m12 3 8 4-8 4-8-4 8-4z"></path><path d="m4 12 8 4 8-4"></path><path d="m4 17 8 4 8-4"></path>',
     bag: '<path d="M6 8h12l-1 13H7L6 8z"></path><path d="M9 8a3 3 0 0 1 6 0"></path>',
     settings: '<circle cx="12" cy="12" r="3"></circle><path d="M19 12a7 7 0 0 0-.1-1l2-1.5-2-3.4-2.4 1a7 7 0 0 0-1.7-1L14.5 3h-5l-.4 3.1a7 7 0 0 0-1.7 1l-2.4-1-2 3.4L5.1 11a7 7 0 0 0 0 2l-2 1.5 2 3.4 2.4-1a7 7 0 0 0 1.7 1l.4 3.1h5l.4-3.1a7 7 0 0 0 1.7-1l2.4 1 2-3.4-2.1-1.5a7 7 0 0 0 .1-1z"></path>',
+    chevronLeft: '<path d="m15 18-6-6 6-6"></path>',
     chevronDown: '<path d="m6 9 6 6 6-6"></path>',
     check: '<path d="M20 6 9 17l-5-5"></path>',
     info: '<circle cx="12" cy="12" r="9"></circle><path d="M12 10v6"></path><path d="M12 7h.01"></path>',
     alert: '<path d="M12 9v4"></path><path d="M12 17h.01"></path><path d="M10.3 3.9 2.4 18a2 2 0 0 0 1.7 3h15.8a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"></path>',
     x: '<path d="M18 6 6 18"></path><path d="m6 6 12 12"></path>',
+    camera: '<path d="M14.5 4 16 7h3a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V9a2 2 0 0 1 2-2h3l1.5-3h5z"></path><circle cx="12" cy="13" r="3"></circle>',
+    image: '<rect x="3" y="5" width="18" height="14" rx="2"></rect><circle cx="8.5" cy="10.5" r="1.5"></circle><path d="m21 15-5-5L5 21"></path>',
   };
   return `<svg class="demo-icon" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${paths[name] ?? ""}</svg>`;
 }
@@ -430,6 +433,21 @@ function renderSectionVisual(section) {
 
   if (title.includes("App Shell")) {
     return `
+      <div class="visual-phone-mini shell-demo">
+        <div class="visual-status"><span>9:41</span><span>5G 82%</span></div>
+        <div class="visual-top-glass shell-topbar-demo">
+          <button aria-label="返回">${icon("chevronLeft")}</button>
+          <b>二级页 TopBar</b>
+          <button aria-label="更多">${icon("settings")}</button>
+        </div>
+        <div class="visual-scroll-cards"><span></span><span></span><span></span></div>
+        <div class="visual-floating-nav" data-visual="bottom-nav-concentric">
+          <span class="nav-tab active">${icon("shirt")}<b>衣橱</b></span>
+          <span class="nav-tab">${icon("layers")}<b>套装</b></span>
+          <span class="nav-tab">${icon("bag")}<b>种草</b></span>
+          <span class="nav-tab">${icon("settings")}<b>设置</b></span>
+        </div>
+      </div>
       ${productionShotGrid([
         ["wardrobe_home_390_top.png", "衣橱 Shell", "顶部控件、Toast、圆形 FAB 和底部 Tab 以生产截图为准"],
         ["settings_home_390_top.png", "设置 Shell", "设置页同一底部 Tab，不重新设计页面结构"],
@@ -484,6 +502,18 @@ function renderSectionVisual(section) {
 
   if (title.includes("录入流程")) {
     return `
+      <div class="intake-contract-demo" data-visual="intake-glass-actions">
+        <div class="visual-top-glass intake-topbar-demo">
+          <button aria-label="返回">${icon("chevronLeft")}</button>
+          <span><b>添加单品</b><small>步骤 1 / 2 · 选择照片</small></span>
+          <button aria-label="关闭">${icon("x")}</button>
+          <i></i>
+        </div>
+        <div class="intake-action-grid">
+          <button>${icon("camera")}<b>拍照</b><small>打开相机录入</small></button>
+          <button>${icon("image")}<b>从图库选择</b><small>最多 20 张</small></button>
+        </div>
+      </div>
       ${productionShotGrid([
         ["intake_single_step1_empty_390_top.png", "Step 1 空状态", "添加单品 / 选择照片"],
         ["intake_single_step1_imported_390_top.png", "Step 1 已导入", "缩略图、继续拍照、图库入口、清空"],
@@ -507,20 +537,20 @@ function renderSectionVisual(section) {
     return `
       <div class="toast-stage">
         <div class="toast-style-board">
-          <div class="spec-toast success">
+          <div class="spec-toast success one-line">
             <span class="toast-icon">${icon("check")}</span>
-            <span class="toast-copy"><strong>已保存 9 件单品</strong><small>草稿已清空，可继续整理衣橱。</small></span>
+            <span class="toast-copy">已保存 9 件单品，草稿已清空。</span>
             <button class="toast-close" aria-label="关闭">${icon("x")}</button>
           </div>
-          <div class="spec-toast info">
+          <div class="spec-toast info two-line">
             <span class="toast-icon">${icon("info")}</span>
-            <span class="toast-copy"><strong>尚未配置 MiniMax Key</strong><small>AI 识别和推荐功能暂不可用。</small></span>
+            <span class="toast-copy">尚未配置 MiniMax Key，AI 识别和推荐功能暂不可用。</span>
             <button class="toast-action">前往设置</button>
             <button class="toast-close" aria-label="关闭">${icon("x")}</button>
           </div>
-          <div class="spec-toast error">
+          <div class="spec-toast error three-line">
             <span class="toast-icon">${icon("alert")}</span>
-            <span class="toast-copy"><strong>保存失败，草稿已保留</strong><small>检查网络后可直接重试。</small></span>
+            <span class="toast-copy">保存失败，当前页面草稿已完整保留。请先检查网络连接后直接重试；如果仍然失败，请稍后再试，或返回当前页面继续编辑后重新保存。</span>
             <button class="toast-close" aria-label="关闭">${icon("x")}</button>
           </div>
         </div>
@@ -921,11 +951,47 @@ function renderHtml({ frontMatter, sections, colorTokens, sourceHash }) {
       display: grid;
       gap: 4px;
       padding: 18px;
-      background: rgba(251,251,248,.75);
+      background: transparent;
+      border: 0;
+      box-shadow: none;
       backdrop-filter: blur(30px) saturate(1.5);
       -webkit-backdrop-filter: blur(30px) saturate(1.5);
     }
     .visual-top-glass span { color: var(--muted); font-size: 11px; font-weight: 800; }
+    .shell-topbar-demo, .intake-topbar-demo {
+      grid-template-columns: 44px 1fr 44px;
+      align-items: center;
+      border-bottom: 0;
+      background: transparent;
+      box-shadow: none;
+    }
+    .shell-topbar-demo b, .intake-topbar-demo b {
+      display: block;
+      text-align: center;
+      font-size: 13px;
+      font-weight: 950;
+    }
+    .shell-topbar-demo button, .intake-topbar-demo button {
+      width: 40px;
+      height: 40px;
+      border: 1px solid rgba(53,92,125,.13);
+      border-radius: 16px;
+      background: rgba(255,255,252,.36);
+      color: var(--denim);
+      display: grid;
+      place-items: center;
+      box-shadow: none;
+    }
+    .shell-topbar-demo .demo-icon, .intake-topbar-demo .demo-icon { width: 20px; height: 20px; }
+    .intake-topbar-demo { grid-template-rows: auto 5px; row-gap: 10px; }
+    .intake-topbar-demo span { color: var(--ink); text-align: center; }
+    .intake-topbar-demo small { display: block; color: var(--muted); font-size: 10px; font-weight: 850; }
+    .intake-topbar-demo i {
+      grid-column: 1 / -1;
+      height: 5px;
+      border-radius: 999px;
+      background: linear-gradient(90deg, var(--denim) 0 50%, rgba(29,34,40,.05) 50%);
+    }
     .visual-scroll-cards { display: grid; gap: 10px; padding: 16px; }
     .visual-scroll-cards span, .mini-card {
       height: 58px;
@@ -934,7 +1000,7 @@ function renderHtml({ frontMatter, sections, colorTokens, sourceHash }) {
       background: rgba(255,255,252,.82);
     }
     .visual-floating-nav {
-      --nav-radius: 28px;
+      --nav-radius: 30px;
       --nav-padding: 8px;
       position: absolute;
       left: 14px;
@@ -954,12 +1020,13 @@ function renderHtml({ frontMatter, sections, colorTokens, sourceHash }) {
       display: grid;
       place-items: center;
       gap: 3px;
-      min-height: 48px;
+      min-height: 54px;
       border-radius: calc(var(--nav-radius) - var(--nav-padding));
       color: var(--muted);
       font-size: 11px;
       font-weight: 900;
     }
+    .visual-floating-nav .nav-tab b { font-size: 11px; font-weight: 950; }
     .visual-floating-nav .demo-icon { width: 18px; height: 18px; }
     .visual-floating-nav .active { background: var(--denim); color: white; }
     .route-chain, .pipeline, .step-flow {
@@ -1107,29 +1174,38 @@ function renderHtml({ frontMatter, sections, colorTokens, sourceHash }) {
       border-radius: 15px;
       display: grid;
       place-items: center;
+      align-self: center;
+      justify-self: center;
     }
     .spec-toast .toast-icon .demo-icon { width: 19px; height: 19px; }
     .spec-toast.success .toast-icon { background: rgba(95,112,88,.14); color: var(--moss); }
     .spec-toast.info .toast-icon { background: rgba(53,92,125,.14); color: var(--denim); }
     .spec-toast.error .toast-icon { background: rgba(220,38,38,.10); color: var(--danger); }
-    .spec-toast .toast-copy { display: grid; gap: 2px; min-width: 0; }
-    .spec-toast .toast-copy strong {
+    .spec-toast .toast-copy {
+      min-width: 0;
       overflow: hidden;
       text-overflow: ellipsis;
       white-space: nowrap;
       font-size: 13px;
-      line-height: 1.25;
+      line-height: 18px;
       color: var(--ink);
       font-weight: 900;
     }
-    .spec-toast .toast-copy small {
-      overflow: hidden;
-      text-overflow: ellipsis;
-      white-space: nowrap;
-      color: var(--muted);
-      font-size: 11px;
-      line-height: 1.25;
-      font-weight: 800;
+    .spec-toast.two-line .toast-copy,
+    .spec-toast.three-line .toast-copy {
+      white-space: normal;
+      display: -webkit-box;
+      -webkit-box-orient: vertical;
+    }
+    .spec-toast.two-line .toast-copy { -webkit-line-clamp: 2; }
+    .spec-toast.three-line {
+      min-height: 104px;
+      align-items: center;
+    }
+    .spec-toast.three-line .toast-copy {
+      max-width: 330px;
+      min-height: 54px;
+      -webkit-line-clamp: 3;
     }
     .spec-toast .toast-action {
       min-width: 74px;
@@ -1145,6 +1221,8 @@ function renderHtml({ frontMatter, sections, colorTokens, sourceHash }) {
       border-radius: 15px;
       background: rgba(29,34,40,.06);
       color: var(--muted);
+      align-self: center;
+      justify-self: center;
     }
     .spec-toast .toast-close .demo-icon { width: 17px; height: 17px; margin: auto; }
     .mini-bottom-bar { position: absolute; left: 0; right: 0; bottom: 0; text-align: center; }
