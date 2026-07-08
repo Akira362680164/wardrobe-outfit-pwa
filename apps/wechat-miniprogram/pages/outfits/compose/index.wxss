@@ -1,1 +1,177 @@
-.page-shell { padding-bottom: 160rpx; }
+.page-shell { padding: 48rpx 28rpx 220rpx; }
+
+.form-card,
+.status-card,
+.select-card {
+  box-sizing: border-box;
+  border: 1rpx solid var(--color-line);
+  background: rgba(255, 255, 252, 0.78);
+  box-shadow: var(--shadow-card);
+}
+
+.form-card {
+  margin-top: 28rpx;
+  padding: 28rpx;
+  border-radius: 32rpx;
+}
+
+.field-label {
+  margin-bottom: 14rpx;
+  color: var(--color-ink);
+  font-size: var(--font-caption);
+  font-weight: 700;
+}
+
+.text-input {
+  height: 88rpx;
+  padding: 0 24rpx;
+  border-radius: var(--radius-control);
+  background: rgba(29, 34, 40, 0.05);
+  color: var(--color-ink);
+  font-size: var(--font-body);
+}
+
+.status-card {
+  margin-top: 28rpx;
+  padding: 32rpx;
+  border-radius: var(--radius-card-inner);
+  color: var(--color-muted);
+  font-size: var(--font-body);
+}
+
+.status-title,
+.section-title {
+  color: var(--color-ink);
+  font-size: var(--font-section);
+  font-weight: 700;
+}
+
+.status-copy {
+  margin-top: 12rpx;
+  color: var(--color-muted);
+  font-size: var(--font-body);
+  line-height: 1.55;
+}
+
+.mini-button,
+.save-button {
+  box-sizing: border-box;
+  height: 88rpx;
+  border: 0;
+  border-radius: var(--radius-pill);
+  font-size: var(--font-body);
+  font-weight: 700;
+  line-height: 88rpx;
+}
+
+.mini-button {
+  width: 220rpx;
+  margin-top: 28rpx;
+  background: var(--color-ink);
+  color: #fff;
+}
+
+.mini-button::after,
+.save-button::after { border: 0; }
+
+.garment-list {
+  display: flex;
+  flex-direction: column;
+  gap: 16rpx;
+  margin-top: 32rpx;
+}
+
+.section-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20rpx;
+}
+
+.section-count {
+  color: var(--color-muted);
+  font-size: var(--font-caption);
+}
+
+.select-card {
+  display: flex;
+  align-items: center;
+  gap: 20rpx;
+  padding: 18rpx;
+  border-radius: 28rpx;
+}
+
+.select-card--active {
+  border-color: rgba(53, 92, 125, 0.38);
+  background: rgba(53, 92, 125, 0.08);
+}
+
+.thumb {
+  width: 112rpx;
+  height: 112rpx;
+  border-radius: 24rpx;
+  background: var(--color-mist);
+}
+
+.fallback {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--color-muted);
+  font-size: var(--font-label);
+}
+
+.garment-main { min-width: 0; flex: 1; }
+
+.garment-name,
+.garment-meta {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.garment-name {
+  color: var(--color-ink);
+  font-size: var(--font-body);
+  font-weight: 700;
+}
+
+.garment-meta {
+  margin-top: 8rpx;
+  color: var(--color-muted);
+  font-size: var(--font-caption);
+}
+
+.check-dot {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 48rpx;
+  height: 48rpx;
+  border-radius: var(--radius-pill);
+  background: var(--color-ink);
+  color: #fff;
+  font-size: 28rpx;
+  font-weight: 800;
+}
+
+.bottom-bar {
+  position: fixed;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  padding: 20rpx 28rpx calc(env(safe-area-inset-bottom) + 24rpx);
+  background: rgba(251, 251, 248, 0.86);
+  backdrop-filter: blur(28rpx);
+}
+
+.save-button {
+  width: 100%;
+  background: var(--color-ink);
+  color: #fff;
+}
+
+.save-button[disabled] {
+  background: rgba(29, 34, 40, 0.14);
+  color: rgba(29, 34, 40, 0.42);
+}

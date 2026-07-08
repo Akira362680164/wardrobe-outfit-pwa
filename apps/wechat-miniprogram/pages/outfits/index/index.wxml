@@ -1,7 +1,33 @@
 <view class="page-shell">
-  <view class="page-title">{{title}}</view>
-  <view class="page-copy">{{description}}</view>
-  <view class="placeholder-card">
-    <view class="placeholder-label">页面骨架已就绪，业务实现由后续批次接入线上 API。</view>
+  <view class="page-header">
+    <view>
+      <view class="page-title">穿搭</view>
+      <view class="page-copy">从服务器读取的套装列表。</view>
+    </view>
+    <button class="icon-action" bindtap="openCompose">＋</button>
+  </view>
+
+  <view wx:if="{{loading}}" class="status-card">正在读取套装...</view>
+
+  <view wx:elif="{{error}}" class="status-card">
+    <view class="status-title">读取失败</view>
+    <view class="status-copy">{{error}}</view>
+    <button class="mini-button" bindtap="loadOutfits">重试</button>
+  </view>
+
+  <view wx:elif="{{outfits.length === 0}}" class="status-card">
+    <view class="status-title">{{emptyTitle || '还没有套装'}}</view>
+    <view class="status-copy">选择几件已有衣物，保存成常穿组合。</view>
+    <button class="mini-button" bindtap="handleEmptyAction">{{emptyAction || '创建套装'}}</button>
+  </view>
+
+  <view wx:else class="outfit-list">
+    <view wx:for="{{outfits}}" wx:key="id" class="outfit-card" data-id="{{item.id}}" bindtap="openDetail">
+      <view class="outfit-main">
+        <view class="outfit-name">{{item.name}}</view>
+        <view class="outfit-meta">{{item.sceneText}} · {{item.seasonText}}</view>
+      </view>
+      <view class="count-pill">{{item.itemCount}} 件</view>
+    </view>
   </view>
 </view>

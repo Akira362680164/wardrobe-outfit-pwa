@@ -1,7 +1,17 @@
 <view class="page-shell">
-  <view class="page-title">{{title}}</view>
-  <view class="page-copy">{{description}}</view>
-  <view class="placeholder-card">
-    <view class="placeholder-label">页面骨架已就绪，业务实现由后续批次接入线上 API。</view>
+  <view wx:if="{{loading}}" class="status-card">正在读取种草...</view>
+  <view wx:elif="{{error}}" class="status-card">
+    <view class="status-title">读取失败</view>
+    <view class="status-copy">{{error}}</view>
+  </view>
+  <view wx:elif="{{item}}" class="detail-card">
+    <image wx:if="{{item.imageUrl}}" class="hero-image" mode="aspectFill" src="{{item.imageUrl}}" />
+    <view wx:else class="hero-image fallback">{{item.categoryLabel}}</view>
+    <view class="page-title">{{item.name}}</view>
+    <view class="page-copy">{{item.categoryLabel}} · {{item.priceText}} · {{item.statusText}}</view>
+    <view class="section-title">商品链接</view>
+    <view class="section-copy">{{item.productUrl || '未填写'}}</view>
+    <view class="section-title">备注</view>
+    <view class="section-copy">{{item.notes}}</view>
   </view>
 </view>

@@ -1,10 +1,44 @@
+import { clearSession, getSession, isLoggedIn } from "../../../stores/session";
+
 Page({
   data: {
-    title: "账号",
-    description: "手机号脱敏展示、登录状态和退出登录。",
+    loggedIn: false,
+    phoneMasked: "未登录",
+    displayName: "",
+    deviceId: "",
   },
 
   onLoad() {
     wx.setNavigationBarTitle({ title: "账号" });
+    this.refreshAccount();
+  },
+
+  onShow() {
+    this.refreshAccount();
+  },
+
+  refreshAccount() {
+    const session = getSession();
+    this.setData({
+      loggedIn: isLoggedIn(),
+      phoneMasked: session?.user?.phoneMasked ?? "未登录",
+      displayName: session?.user?.displayName ?? "",
+      deviceId: session?.deviceId ? maskDeviceId(session.deviceId) : "未生成",
+    });
+  },
+
+  login() {
+    wx.redirectTo({ url: "/pages/login/index" });
+  },
+
+  logout() {
+    clearSession();
+    wx.showToast({ title: "已退出登录", icon: "none" });
+    this.refreshAccount();
   },
 });
+
+function maskDeviceId(deviceId: string): string {
+  if (deviceId.length <= 14) return deviceId;
+  return `${deviceId.slice(0, 10)}...${deviceId.slice(-4)}`;
+}

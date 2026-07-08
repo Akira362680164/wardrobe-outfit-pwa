@@ -22,7 +22,7 @@
 | UI 系统 | subagent-miniapp-ui-system | done | `apps/wechat-miniprogram/styles/**`, `components/ui/**`, `custom-tab-bar/**`, `assets/icons/**`, `docs/wechat-mini/ui-*`, `icon-license.md` | UI digest、可行性矩阵、token、基础组件和 tab bar 完成 |
 | 微信登录后端 | subagent-auth-backend | done | `packages/cloud-contracts/src/auth/**`, `services/wardrobe-api/src/auth/**`, migrations/tests | 微信手机号登录契约、服务端 mock 测试和 SQL migration 完成 |
 | 小程序登录前端 | subagent-miniapp-auth-frontend | done | `apps/wechat-miniprogram/pages/login/**`, `services/auth.ts`, `stores/session.ts` | getPhoneNumber + wx.login + 现有后端登录接口完成 |
-| 小程序业务页 | subagent-miniapp-business-pages | in_progress | `apps/wechat-miniprogram/pages/{home,wardrobe,outfits,wishlist,settings}/**`, business services/stores | 首页摘要和衣橱列表已接现有 workspace 只读接口 |
+| 小程序业务页 | subagent-miniapp-business-pages | done | `apps/wechat-miniprogram/pages/{home,wardrobe,outfits,wishlist,settings}/**`, business services/stores | 首页、衣橱、录入、套装、种草、设置页已接现有 workspace/asset 接口 |
 | AI 后端 | subagent-ai-proxy-backend | blocked | `packages/cloud-contracts/src/ai/**`, `services/wardrobe-api/src/ai/**`, migrations/tests | 等认证和资产链路稳定 |
 | 小程序 AI | subagent-miniapp-ai | blocked | `apps/wechat-miniprogram/pages/intake/**`, `pages/settings/ai-key/**`, `services/ai.ts`, `stores/ai-jobs.ts` | 等 AI 契约稳定 |
 | Android AI | subagent-android-ai-client | blocked | `src/lib/**`, `src/components/**`, docs | 等 AI 后端稳定 |
@@ -38,6 +38,11 @@
 - [x] 小程序登录前端：登录页接 `getPhoneNumber`、`wx.login` 和 `/api/auth/wechat/phone-login`。
 - [x] 小程序只读业务闭环：首页摘要和衣橱列表复用现有 `/api/workspace/overview`、`/api/workspace/garments`。
 - [x] CLI 补缺：新增 `wechatide-help`、`wechatide-preview`、`wechatide-upload`；上传脚本默认拒绝，必须显式确认。
+- [x] 图片资产正式展示：衣橱和种草列表优先通过现有 `/api/assets/:assetId/:variant/content` 下载临时展示图，失败时回退 payload URL 或分类占位。
+- [x] 上传录入：新增拍照/相册选图、录入确认、临时资产会话上传、单品创建和结果页。
+- [x] 套装业务：新增套装列表、手动搭配创建和套装详情，复用现有 `/api/workspace/outfits`。
+- [x] 种草业务：新增种草列表、商品图选择/上传、文字信息保存和种草详情，复用现有 `/api/workspace/wishlist`。
+- [x] 设置页业务：账号、隐私、AI Key、诊断和关于页从占位改为当前可用状态说明；AI Key/诊断写操作等后端代理确认后再启用。
 
 ## 当前验证记录
 
@@ -56,11 +61,18 @@
 - `npm run wechatide:upload -- --version 0.1.0 --dry-run`：按预期拒绝上传；带 `--confirm-upload --dry-run` 仅打印命令，未上传。
 - `git diff -- services/wardrobe-api packages/cloud-contracts | wc -l`：`0`，本轮未改后端和共享契约。
 - `npm run cloud:contracts:typecheck`、`npm run api:typecheck`、`npm --workspace @wardrobe/wardrobe-api run test -- tests/wechat-phone-auth.test.ts`、`npm run typecheck`：通过。
+- `compile_wxml` 覆盖录入、套装、种草、设置页 15 个页面：通过。
+- `compile_wxss` 覆盖录入、套装、种草、设置页 15 个页面：通过。
+- `simulator_open_page` 覆盖录入、套装、种草、设置页 15 个页面：通过。
+- `get_app_console_content` grep `error`：无命中。
+- `get_app_network_content`：仅见微信开发者工具自身上报请求，未见业务接口异常。
 
 ## 当前未完成
 
 - 真实手机号登录 live 验证：依赖微信平台手机号能力、合法域名、AppSecret 和小程序 API baseURL 配置。
-- 小程序图片资产显示：当前衣橱页只读 payload 里的图片 URL；正式资产下载/缩略图 URL 还未接。
-- 小程序上传、录入确认、套装、种草、AI、设置页业务仍未完成。
+- live API 写入验证：备案未过且 request/upload/download 合法域名、生产 API baseURL 尚未完成配置，本轮只完成代码与 DevTools 编译/路由验证。
+- 小程序图片上传当前复用原图字节作为 thumbnail 槽位，后续如需要节省流量，再补小程序端压缩/裁切缩略图。
+- 套装当前支持手动创建、列表和详情；封面图、编辑、删除、收藏切换等高级动作未做。
+- 种草当前支持商品图和文字保存；购买评估、转入衣橱、状态切换等高级动作未做。
 - AI 后端代理与 Android AI 共享改造因用户要求本轮不改后端，保持待办。
-- 预览二维码和体验版上传未执行；体验版上传必须用户明确授权。
+- 体验版上传未执行；体验版上传必须用户明确授权。

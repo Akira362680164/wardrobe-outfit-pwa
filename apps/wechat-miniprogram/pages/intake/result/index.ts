@@ -1,10 +1,20 @@
+import { getLastCreatedGarmentId } from "../../../stores/intake";
+
 Page({
   data: {
-    title: "导入结果",
-    description: "入库结果、继续添加和查看详情入口。",
+    garmentId: "",
   },
 
   onLoad() {
     wx.setNavigationBarTitle({ title: "导入结果" });
+    this.setData({ garmentId: getLastCreatedGarmentId() });
+  },
+
+  addMore() {
+    wx.redirectTo({ url: "/pages/intake/camera/index" });
+  },
+
+  openWardrobe() {
+    wx.switchTab({ url: "/pages/wardrobe/index/index" });
   },
 });

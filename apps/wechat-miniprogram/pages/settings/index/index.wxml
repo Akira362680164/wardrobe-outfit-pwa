@@ -1,7 +1,20 @@
-<view class="page-shell">
-  <view class="page-title">{{title}}</view>
-  <view class="page-copy">{{description}}</view>
-  <view class="placeholder-card">
-    <view class="placeholder-label">页面骨架已就绪，业务实现由后续批次接入线上 API。</view>
+<view class="settings-page page-shell">
+  <view class="page-title">我的</view>
+  <view class="page-copy">账号、安全、隐私和服务状态。</view>
+
+  <view class="settings-list">
+    <view
+      wx:for="{{sections}}"
+      wx:key="title"
+      class="settings-row"
+      data-url="{{item.url}}"
+      bindtap="openSection"
+    >
+      <view class="row-text">
+        <view class="row-title">{{item.title}}</view>
+        <view class="row-copy">{{item.copy}}</view>
+      </view>
+      <view class="row-arrow">›</view>
+    </view>
   </view>
 </view>

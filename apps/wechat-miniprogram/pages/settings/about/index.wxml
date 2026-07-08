@@ -1,7 +1,11 @@
-<view class="page-shell">
-  <view class="page-title">{{title}}</view>
-  <view class="page-copy">{{description}}</view>
-  <view class="placeholder-card">
-    <view class="placeholder-label">页面骨架已就绪，业务实现由后续批次接入线上 API。</view>
+<view class="settings-page page-shell">
+  <view class="page-title">关于</view>
+  <view class="page-copy">衣橱穿搭助手小程序版，当前处于业务接入开发阶段。</view>
+
+  <view class="info-card">
+    <view wx:for="{{rows}}" wx:key="label" class="field">
+      <view class="field-label">{{item.label}}</view>
+      <view class="field-value">{{item.value}}</view>
+    </view>
   </view>
 </view>

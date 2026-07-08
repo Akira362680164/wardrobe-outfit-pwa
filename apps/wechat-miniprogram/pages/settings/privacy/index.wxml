@@ -1,7 +1,14 @@
-<view class="page-shell">
-  <view class="page-title">{{title}}</view>
-  <view class="page-copy">{{description}}</view>
-  <view class="placeholder-card">
-    <view class="placeholder-label">页面骨架已就绪，业务实现由后续批次接入线上 API。</view>
+<view class="settings-page page-shell">
+  <view class="page-title">隐私</view>
+  <view class="page-copy">这里先明确小程序的数据边界；正式协议页面走 WebView 入口。</view>
+
+  <view class="info-card">
+    <view wx:for="{{items}}" wx:key="*this" class="bullet-row">
+      <view class="bullet-dot"></view>
+      <view class="bullet-text">{{item}}</view>
+    </view>
   </view>
+
+  <button class="link-button" bindtap="openAgreement">用户服务协议</button>
+  <button class="link-button" bindtap="openPrivacy">隐私政策</button>
 </view>

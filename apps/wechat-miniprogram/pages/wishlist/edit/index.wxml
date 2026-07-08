@@ -1,7 +1,30 @@
 <view class="page-shell">
-  <view class="page-title">{{title}}</view>
-  <view class="page-copy">{{description}}</view>
-  <view class="placeholder-card">
-    <view class="placeholder-label">页面骨架已就绪，业务实现由后续批次接入线上 API。</view>
+  <view class="page-title">新增种草</view>
+  <view class="page-copy">保存商品图、价格和购买线索；AI 评估等后端代理确定后再接。</view>
+
+  <view class="form-card">
+    <view class="field-label">商品图</view>
+    <view class="image-picker" bindtap="chooseImage">
+      <image wx:if="{{imagePath}}" class="image-preview" mode="aspectFill" src="{{imagePath}}" />
+      <view wx:else class="image-empty">选择图片</view>
+    </view>
+
+    <view class="field-label">商品名称</view>
+    <input class="text-input" value="{{name}}" placeholder="例如：米色短风衣" bindinput="handleNameInput" />
+
+    <view class="field-label field-gap">价格</view>
+    <input class="text-input" value="{{price}}" type="digit" placeholder="例如：399" bindinput="handlePriceInput" />
+
+    <view class="field-label field-gap">商品链接</view>
+    <input class="text-input" value="{{productUrl}}" placeholder="粘贴淘宝/小红书等链接" bindinput="handleUrlInput" />
+
+    <view class="field-label field-gap">备注</view>
+    <textarea class="textarea-input" value="{{notes}}" placeholder="尺码、材质、为什么想买" maxlength="300" bindinput="handleNotesInput" />
+  </view>
+
+  <view class="bottom-bar">
+    <button class="save-button" disabled="{{saving || !name}}" bindtap="saveWishlist">
+      {{saving ? '保存中...' : '保存种草'}}
+    </button>
   </view>
 </view>

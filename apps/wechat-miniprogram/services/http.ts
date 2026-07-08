@@ -37,6 +37,15 @@ export function configureHttp(options: { baseUrl: string }): void {
   apiBaseUrl = options.baseUrl.replace(/\/$/, "");
 }
 
+export function getConfiguredApiBaseUrl(): string {
+  const app = getApp<{ globalData?: { apiBaseUrl?: string } }>();
+  return (apiBaseUrl || app.globalData?.apiBaseUrl || "").replace(/\/$/, "");
+}
+
+export function buildAuthHeaders(requestId = requestIdForTrace()): Record<string, string> {
+  return buildHeaders(true, requestId);
+}
+
 export async function request<T>(options: RequestOptions): Promise<T> {
   const requestId = requestIdForTrace();
   const header = buildHeaders(options.auth !== false, requestId);
@@ -82,8 +91,7 @@ export async function uploadFile<T = unknown>(options: UploadOptions): Promise<T
 function buildUrl(path: string): string {
   if (/^https?:\/\//.test(path)) return path;
 
-  const app = getApp<{ globalData?: { apiBaseUrl?: string } }>();
-  const baseUrl = (apiBaseUrl || app.globalData?.apiBaseUrl || "").replace(/\/$/, "");
+  const baseUrl = getConfiguredApiBaseUrl();
   if (!baseUrl) throw new HttpError(0, "missing_api_base_url", "请先配置后端 API 域名");
   return `${baseUrl}${path.startsWith("/") ? path : `/${path}`}`;
 }

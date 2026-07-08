@@ -1,7 +1,45 @@
 <view class="page-shell">
-  <view class="page-title">{{title}}</view>
-  <view class="page-copy">{{description}}</view>
-  <view class="placeholder-card">
-    <view class="placeholder-label">页面骨架已就绪，业务实现由后续批次接入线上 API。</view>
+  <view class="page-title">创建套装</view>
+  <view class="page-copy">选择已有衣物组合保存，不上传图片。</view>
+
+  <view class="form-card">
+    <view class="field-label">套装名称</view>
+    <input class="text-input" value="{{name}}" placeholder="例如：通勤基础套装" bindinput="handleNameInput" />
+  </view>
+
+  <view wx:if="{{loading}}" class="status-card">正在读取衣物...</view>
+
+  <view wx:elif="{{error}}" class="status-card">
+    <view class="status-title">读取失败</view>
+    <view class="status-copy">{{error}}</view>
+    <button class="mini-button" bindtap="loadGarments">重试</button>
+  </view>
+
+  <view wx:elif="{{garments.length === 0}}" class="status-card">
+    <view class="status-title">{{emptyTitle || '还没有可选衣物'}}</view>
+    <view class="status-copy">先添加衣物，再回来组合套装。</view>
+    <button class="mini-button" bindtap="handleEmptyAction">{{emptyAction || '去衣橱'}}</button>
+  </view>
+
+  <view wx:else class="garment-list">
+    <view class="section-row">
+      <view class="section-title">选择衣物</view>
+      <view class="section-count">已选 {{selectedCount}}</view>
+    </view>
+    <view wx:for="{{garments}}" wx:key="id" class="select-card {{item.selected ? 'select-card--active' : ''}}" data-id="{{item.legacyItemId}}" bindtap="toggleGarment">
+      <image wx:if="{{item.imageUrl}}" class="thumb" mode="aspectFill" src="{{item.imageUrl}}" />
+      <view wx:else class="thumb fallback">{{item.categoryLabel}}</view>
+      <view class="garment-main">
+        <view class="garment-name">{{item.name}}</view>
+        <view class="garment-meta">{{item.categoryLabel}} · {{item.colorText}}</view>
+      </view>
+      <view class="check-dot">{{item.selected ? '✓' : ''}}</view>
+    </view>
+  </view>
+
+  <view class="bottom-bar">
+    <button class="save-button" disabled="{{saving || selectedCount < 2 || !name}}" bindtap="saveOutfit">
+      {{saving ? '保存中...' : '保存套装'}}
+    </button>
   </view>
 </view>

@@ -1,1 +1,32 @@
-.page-shell { padding-bottom: 160rpx; }
+.settings-page { padding: 48rpx 28rpx 160rpx; }
+
+.info-card {
+  margin-top: 32rpx;
+  padding: 28rpx 30rpx;
+  border: 1rpx solid var(--color-line);
+  border-radius: var(--radius-card-inner);
+  background: rgba(255, 255, 252, 0.78);
+  box-shadow: var(--shadow-card);
+}
+
+.rule-row {
+  padding: 18rpx 0;
+  border-bottom: 1rpx solid var(--color-line);
+  color: var(--color-ink);
+  font-size: var(--font-body);
+  line-height: 1.55;
+}
+
+.rule-row:last-child { border-bottom: 0; }
+
+.disabled-button {
+  height: 88rpx;
+  margin-top: 28rpx;
+  border: 0;
+  border-radius: var(--radius-pill);
+  background: rgba(29, 34, 40, 0.08);
+  color: var(--color-muted);
+  font-size: var(--font-body);
+  font-weight: 700;
+  line-height: 88rpx;
+}

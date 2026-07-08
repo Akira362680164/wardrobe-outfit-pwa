@@ -1,1 +1,64 @@
-.page-shell { padding-bottom: 160rpx; }
+.settings-page { padding: 48rpx 28rpx 160rpx; }
+
+.info-card {
+  margin-top: 32rpx;
+  padding: 30rpx;
+  border: 1rpx solid var(--color-line);
+  border-radius: var(--radius-card-inner);
+  background: rgba(255, 255, 252, 0.78);
+  box-shadow: var(--shadow-card);
+}
+
+.status-pill {
+  display: inline-flex;
+  margin-bottom: 18rpx;
+  padding: 8rpx 18rpx;
+  border-radius: var(--radius-pill);
+  background: rgba(29, 34, 40, 0.08);
+  color: var(--color-muted);
+  font-size: var(--font-caption);
+  font-weight: 700;
+}
+
+.status-pill--ok {
+  background: rgba(95, 112, 88, 0.16);
+  color: var(--color-success);
+}
+
+.field {
+  padding: 20rpx 0;
+  border-top: 1rpx solid var(--color-line);
+}
+
+.field-label {
+  color: var(--color-muted);
+  font-size: var(--font-caption);
+}
+
+.field-value {
+  margin-top: 8rpx;
+  overflow-wrap: anywhere;
+  font-size: var(--font-body);
+  font-weight: 700;
+}
+
+.primary-button,
+.danger-button {
+  height: 88rpx;
+  margin-top: 28rpx;
+  border: 0;
+  border-radius: var(--radius-pill);
+  font-size: var(--font-body);
+  font-weight: 700;
+  line-height: 88rpx;
+}
+
+.primary-button {
+  background: var(--color-ink);
+  color: #fff;
+}
+
+.danger-button {
+  background: rgba(220, 38, 38, 0.10);
+  color: var(--color-danger);
+}

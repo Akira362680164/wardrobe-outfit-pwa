@@ -1,1 +1,96 @@
-.page-shell { padding-bottom: 160rpx; }
+.page-shell { padding: 48rpx 28rpx 220rpx; }
+
+.form-card {
+  box-sizing: border-box;
+  margin-top: 28rpx;
+  padding: 28rpx;
+  border: 1rpx solid var(--color-line);
+  border-radius: 32rpx;
+  background: rgba(255, 255, 252, 0.78);
+  box-shadow: var(--shadow-card);
+}
+
+.field-label {
+  margin-bottom: 14rpx;
+  color: var(--color-ink);
+  font-size: var(--font-caption);
+  font-weight: 700;
+}
+
+.field-gap { margin-top: 28rpx; }
+
+.image-picker {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  width: 180rpx;
+  height: 180rpx;
+  margin-bottom: 28rpx;
+  overflow: hidden;
+  border: 1rpx dashed rgba(29, 34, 40, 0.24);
+  border-radius: 28rpx;
+  background: rgba(29, 34, 40, 0.04);
+}
+
+.image-preview {
+  width: 100%;
+  height: 100%;
+}
+
+.image-empty {
+  color: rgba(29, 34, 40, 0.56);
+  font-size: var(--font-caption);
+  font-weight: 700;
+}
+
+.text-input,
+.textarea-input {
+  box-sizing: border-box;
+  width: 100%;
+  padding: 0 24rpx;
+  border-radius: var(--radius-control);
+  background: rgba(29, 34, 40, 0.05);
+  color: var(--color-ink);
+  font-size: var(--font-body);
+}
+
+.text-input {
+  height: 88rpx;
+}
+
+.textarea-input {
+  min-height: 180rpx;
+  padding-top: 22rpx;
+  line-height: 1.45;
+}
+
+.bottom-bar {
+  position: fixed;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  padding: 20rpx 28rpx calc(env(safe-area-inset-bottom) + 24rpx);
+  background: rgba(251, 251, 248, 0.86);
+  backdrop-filter: blur(28rpx);
+}
+
+.save-button {
+  box-sizing: border-box;
+  width: 100%;
+  height: 88rpx;
+  border: 0;
+  border-radius: var(--radius-pill);
+  background: var(--color-shopping);
+  color: #fff;
+  font-size: var(--font-body);
+  font-weight: 700;
+  line-height: 88rpx;
+}
+
+.save-button::after { border: 0; }
+
+.save-button[disabled] {
+  background: rgba(29, 34, 40, 0.14);
+  color: rgba(29, 34, 40, 0.42);
+}

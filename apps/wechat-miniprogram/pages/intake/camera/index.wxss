@@ -1,1 +1,6 @@
-.page-shell { padding-bottom: 160rpx; }
+.page-shell { padding: 48rpx 28rpx 160rpx; }
+.action-card { box-sizing: border-box; margin-top: 32rpx; padding: 32rpx; border: 1rpx solid var(--color-line); border-radius: var(--radius-card-inner); background: rgba(255,255,252,0.78); box-shadow: var(--shadow-card); }
+.primary-action, .secondary-action { box-sizing: border-box; width: 100%; height: 92rpx; border: 0; border-radius: var(--radius-pill); font-size: var(--font-body); font-weight: 700; line-height: 92rpx; }
+.primary-action { color: #fff; background: var(--color-ink); }
+.secondary-action { margin-top: 18rpx; color: var(--color-ink); background: rgba(29,34,40,0.08); }
+.error-text { margin-top: 22rpx; color: var(--color-danger); font-size: var(--font-caption); line-height: 1.45; }

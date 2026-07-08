@@ -1,7 +1,36 @@
 <view class="page-shell">
-  <view class="page-title">{{title}}</view>
-  <view class="page-copy">{{description}}</view>
-  <view class="placeholder-card">
-    <view class="placeholder-label">页面骨架已就绪，业务实现由后续批次接入线上 API。</view>
+  <view class="page-title">确认衣物信息</view>
+  <view class="page-copy">当前版本先做人工确认和服务器入库，AI 识别后续接后端代理。</view>
+
+  <view wx:if="{{!draft}}" class="panel">
+    <view class="status-title">没有待确认图片</view>
+    <button class="primary-action" bindtap="goBack">返回选择</button>
+  </view>
+
+  <view wx:else>
+    <image class="preview-image" mode="aspectFill" src="{{draft.imagePath}}" />
+    <view class="form-card">
+      <view class="field-label">名称</view>
+      <input class="field-input" value="{{draft.name}}" placeholder="例如 白色衬衫" bindinput="updateName" />
+
+      <view class="field-label">分类</view>
+      <view class="chip-row">
+        <view wx:for="{{categories}}" wx:key="value" data-value="{{item.value}}" class="chip {{draft.category === item.value ? 'chip-active' : ''}}" bindtap="chooseCategory">{{item.label}}</view>
+      </view>
+
+      <view class="field-label">颜色</view>
+      <input class="field-input" value="{{draft.color}}" placeholder="例如 白色" bindinput="updateColor" />
+
+      <view class="field-label">季节</view>
+      <view class="chip-row">
+        <view wx:for="{{seasons}}" wx:key="value" data-value="{{item.value}}" class="chip {{draft.season === item.value ? 'chip-active' : ''}}" bindtap="chooseSeason">{{item.label}}</view>
+      </view>
+
+      <view class="field-label">备注</view>
+      <textarea class="field-textarea" value="{{draft.note}}" placeholder="可选" bindinput="updateNote" />
+
+      <view wx:if="{{error}}" class="error-text">{{error}}</view>
+      <button class="primary-action" loading="{{saving}}" disabled="{{saving}}" bindtap="save">保存到衣橱</button>
+    </view>
   </view>
 </view>

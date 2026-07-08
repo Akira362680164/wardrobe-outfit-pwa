@@ -1,7 +1,23 @@
-<view class="page-shell">
-  <view class="page-title">{{title}}</view>
-  <view class="page-copy">{{description}}</view>
-  <view class="placeholder-card">
-    <view class="placeholder-label">页面骨架已就绪，业务实现由后续批次接入线上 API。</view>
+<view class="settings-page page-shell">
+  <view class="page-title">账号</view>
+  <view class="page-copy">当前小程序只保留运行时登录会话，不保存衣橱业务缓存。</view>
+
+  <view class="info-card">
+    <view class="status-pill {{loggedIn ? 'status-pill--ok' : ''}}">{{loggedIn ? '已登录' : '未登录'}}</view>
+    <view class="field">
+      <view class="field-label">手机号</view>
+      <view class="field-value">{{phoneMasked}}</view>
+    </view>
+    <view class="field">
+      <view class="field-label">昵称</view>
+      <view class="field-value">{{displayName || '未设置'}}</view>
+    </view>
+    <view class="field">
+      <view class="field-label">设备标识</view>
+      <view class="field-value">{{deviceId}}</view>
+    </view>
   </view>
+
+  <button wx:if="{{loggedIn}}" class="danger-button" bindtap="logout">退出登录</button>
+  <button wx:else class="primary-button" bindtap="login">去登录</button>
 </view>

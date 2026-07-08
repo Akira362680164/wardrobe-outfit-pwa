@@ -1,7 +1,17 @@
 <view class="page-shell">
-  <view class="page-title">{{title}}</view>
-  <view class="page-copy">{{description}}</view>
-  <view class="placeholder-card">
-    <view class="placeholder-label">页面骨架已就绪，业务实现由后续批次接入线上 API。</view>
+  <view wx:if="{{loading}}" class="status-card">正在读取套装...</view>
+  <view wx:elif="{{error}}" class="status-card">
+    <view class="status-title">读取失败</view>
+    <view class="status-copy">{{error}}</view>
+  </view>
+  <view wx:elif="{{outfit}}" class="detail-card">
+    <view class="page-title">{{outfit.name}}</view>
+    <view class="page-copy">{{outfit.sceneText}} · {{outfit.seasonText}}</view>
+    <view class="metric-row">
+      <view class="metric"><view class="metric-value">{{outfit.itemCount}}</view><view class="metric-label">组成衣物</view></view>
+      <view class="metric"><view class="metric-value">{{outfit.favorite ? '是' : '否'}}</view><view class="metric-label">收藏</view></view>
+    </view>
+    <view class="section-title">备注</view>
+    <view class="section-copy">{{outfit.notes}}</view>
   </view>
 </view>

@@ -1,7 +1,10 @@
-<view class="page-shell">
-  <view class="page-title">{{title}}</view>
-  <view class="page-copy">{{description}}</view>
-  <view class="placeholder-card">
-    <view class="placeholder-label">页面骨架已就绪，业务实现由后续批次接入线上 API。</view>
+<view class="settings-page page-shell">
+  <view class="page-title">诊断</view>
+  <view class="page-copy">诊断入口先展示规则，正式上传等后端诊断接口接入后再启用。</view>
+
+  <view class="info-card">
+    <view wx:for="{{rows}}" wx:key="*this" class="rule-row">{{item}}</view>
   </view>
+
+  <button class="disabled-button" bindtap="showUnavailable">上传诊断数据</button>
 </view>

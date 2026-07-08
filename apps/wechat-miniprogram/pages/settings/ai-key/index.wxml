@@ -1,7 +1,13 @@
-<view class="page-shell">
-  <view class="page-title">{{title}}</view>
-  <view class="page-copy">{{description}}</view>
-  <view class="placeholder-card">
-    <view class="placeholder-label">页面骨架已就绪，业务实现由后续批次接入线上 API。</view>
+<view class="settings-page page-shell">
+  <view class="page-title">AI Key</view>
+  <view class="page-copy">小程序版本不在这里录入密钥。后续讨论后端 AI 代理后，再开放统一能力。</view>
+
+  <view class="info-card">
+    <view wx:for="{{rows}}" wx:key="label" class="field">
+      <view class="field-label">{{item.label}}</view>
+      <view class="field-value">{{item.value}}</view>
+    </view>
   </view>
+
+  <button class="disabled-button" disabled>暂不可配置</button>
 </view>

@@ -1,3 +1,15 @@
+## 2026-07-08 / v2.1.8-test / Codex — 小程序录入、套装、种草和设置页业务补齐
+
+- **执行 Agent**：Codex（按用户明确要求使用 2 个并行 subagent：设置页业务、套装/种草业务；主 agent 负责上传录入、图片资产服务、集成修正、验证、文档和提交）。
+- **目的**：在备案未通过、暂不讨论 AI 后端代理的前提下，继续开发微信小程序后续业务页面；严格遵守用户边界：本轮不修改服务器后端代码，避免影响 Android/App 端。
+- **版本变更**：无；当前应用版本仍为 `2.1.8-test`，小程序包版本仍为 `0.1.0`。
+- **改动文件**：`apps/wechat-miniprogram/services/assets.ts`、`apps/wechat-miniprogram/services/http.ts`、`apps/wechat-miniprogram/services/workspace.ts`、`apps/wechat-miniprogram/stores/intake.ts`、`apps/wechat-miniprogram/typings/index.d.ts`、`apps/wechat-miniprogram/pages/intake/**`、`apps/wechat-miniprogram/pages/outfits/**`、`apps/wechat-miniprogram/pages/wishlist/**`、`apps/wechat-miniprogram/pages/settings/**`、`docs/wechat-mini/execution-board.md`、`VERSION_HISTORY.md`。
+- **改动说明**：新增小程序资产服务，衣橱/种草正式展示优先通过现有 `/api/assets/:assetId/:variant/content` 下载临时展示图，失败时回退 payload URL 或分类占位；新增上传录入运行时草稿、拍照/相册选图、录入确认、临时资产会话上传、单品创建和结果页；新增套装列表、手动搭配创建和详情页，复用现有 `/api/workspace/outfits`；新增种草列表、商品图选择/上传、文字信息保存和详情页，复用现有 `/api/workspace/wishlist`；设置页补齐账号、隐私、AI Key、诊断和关于页当前可用状态，其中 AI Key/诊断写操作等后端代理确认后再启用。
+- **后端边界**：本轮未修改 `services/wardrobe-api/**`、`packages/cloud-contracts/**` 或 migration；`git diff -- services/wardrobe-api packages/cloud-contracts | wc -l` 为 `0`。
+- **验证结果**：`npm --prefix apps/wechat-miniprogram run typecheck` 通过；`compile_wxml` 覆盖录入、套装、种草、设置页 15 个页面通过；`compile_wxss` 覆盖录入、套装、种草、设置页 15 个页面通过；`simulator_open_page` 覆盖录入、套装、种草、设置页 15 个页面通过；`get_app_console_content` grep `error` 无命中；`get_app_network_content` 仅见微信开发者工具自身上报请求，未见业务接口异常；`node scripts/wechatide-compile.mjs --refresh` 通过；`npm run wechatide:preview` 通过并展示预览二维码窗口。
+- **风险门禁**：high（小程序图片上传/下载、业务写入页面、设置页、跨多个页面和多 subagent 并行集成）；已按用户要求触发并行 subagent。两个 subagent 均报告未修改后端目录，主 agent 最终复核后端 diff 为 `0`。
+- **未验证风险**：备案未过且 request/upload/download 合法域名、生产 API baseURL 尚未完成配置，因此未做真实手机号登录和 live API 写入验证；小程序图片上传当前复用原图字节作为 thumbnail 槽位，后续如需节省流量再补小程序端压缩/裁切缩略图；套装高级动作（封面图、编辑、删除、收藏切换）未做；种草高级动作（购买评估、转入衣橱、状态切换）未做；AI 后端代理与 Android AI 共享改造按用户要求保留到后续讨论；体验版上传未执行，上传必须用户明确授权。
+
 ## 2026-07-08 / v2.1.8-test / Codex — 小程序登录与只读业务闭环继续开发
 
 - **执行 Agent**：Codex（按用户明确要求使用 3 个并行 subagent：登录前端、业务只读页面、CLI/AppID；主 agent 负责后端只读边界、集成修正、验证和版本记录）。

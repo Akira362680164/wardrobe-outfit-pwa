@@ -1,1 +1,30 @@
-.page-shell { padding-bottom: 160rpx; }
+.settings-page { padding: 48rpx 28rpx 160rpx; }
+
+.info-card {
+  margin-top: 32rpx;
+  padding: 30rpx;
+  border: 1rpx solid var(--color-line);
+  border-radius: var(--radius-card-inner);
+  background: rgba(255, 255, 252, 0.78);
+  box-shadow: var(--shadow-card);
+}
+
+.field {
+  padding: 18rpx 0;
+  border-bottom: 1rpx solid var(--color-line);
+}
+
+.field:last-child { border-bottom: 0; }
+
+.field-label {
+  color: var(--color-muted);
+  font-size: var(--font-caption);
+}
+
+.field-value {
+  margin-top: 8rpx;
+  overflow-wrap: anywhere;
+  font-size: var(--font-body);
+  font-weight: 700;
+  line-height: 1.45;
+}

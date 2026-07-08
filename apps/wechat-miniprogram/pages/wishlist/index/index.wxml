@@ -1,7 +1,35 @@
 <view class="page-shell">
-  <view class="page-title">{{title}}</view>
-  <view class="page-copy">{{description}}</view>
-  <view class="placeholder-card">
-    <view class="placeholder-label">页面骨架已就绪，业务实现由后续批次接入线上 API。</view>
+  <view class="page-header">
+    <view>
+      <view class="page-title">种草</view>
+      <view class="page-copy">记录想买但还没入衣橱的单品。</view>
+    </view>
+    <button class="icon-action" bindtap="openEdit">＋</button>
+  </view>
+
+  <view wx:if="{{loading}}" class="status-card">正在读取种草...</view>
+
+  <view wx:elif="{{error}}" class="status-card">
+    <view class="status-title">读取失败</view>
+    <view class="status-copy">{{error}}</view>
+    <button class="mini-button" bindtap="loadWishlist">重试</button>
+  </view>
+
+  <view wx:elif="{{items.length === 0}}" class="status-card">
+    <view class="status-title">{{emptyTitle || '还没有种草'}}</view>
+    <view class="status-copy">先记录名称、价格和链接，图片和 AI 评估后续再接。</view>
+    <button class="mini-button" bindtap="handleEmptyAction">{{emptyAction || '新增种草'}}</button>
+  </view>
+
+  <view wx:else class="wishlist-list">
+    <view wx:for="{{items}}" wx:key="id" class="wishlist-card" data-id="{{item.id}}" bindtap="openDetail">
+      <image wx:if="{{item.imageUrl}}" class="wishlist-image" mode="aspectFill" src="{{item.imageUrl}}" />
+      <view wx:else class="wishlist-image fallback">{{item.categoryLabel}}</view>
+      <view class="wishlist-main">
+        <view class="wishlist-name">{{item.name}}</view>
+        <view class="wishlist-meta">{{item.categoryLabel}} · {{item.priceText}}</view>
+      </view>
+      <view class="status-pill">{{item.statusText}}</view>
+    </view>
   </view>
 </view>

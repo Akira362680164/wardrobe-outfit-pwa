@@ -1,1 +1,42 @@
-.page-shell { padding-bottom: 160rpx; }
+.settings-page { padding: 48rpx 28rpx 160rpx; }
+
+.settings-list {
+  margin-top: 32rpx;
+  overflow: hidden;
+  border: 1rpx solid var(--color-line);
+  border-radius: var(--radius-card-inner);
+  background: rgba(255, 255, 252, 0.78);
+  box-shadow: var(--shadow-card);
+}
+
+.settings-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24rpx;
+  min-height: 116rpx;
+  padding: 24rpx 28rpx;
+  border-bottom: 1rpx solid var(--color-line);
+}
+
+.settings-row:last-child { border-bottom: 0; }
+
+.row-text { min-width: 0; }
+
+.row-title {
+  font-size: var(--font-body);
+  font-weight: 700;
+}
+
+.row-copy {
+  margin-top: 8rpx;
+  color: var(--color-muted);
+  font-size: var(--font-caption);
+  line-height: 1.45;
+}
+
+.row-arrow {
+  flex: 0 0 auto;
+  color: var(--color-muted);
+  font-size: 44rpx;
+}
