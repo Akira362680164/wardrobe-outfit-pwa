@@ -1,0 +1,13 @@
+{
+  "appid": "touristappid",
+  "projectname": "wardrobe-outfit-miniapp",
+  "miniprogramRoot": "./",
+  "compileType": "miniprogram",
+  "setting": {
+    "es6": true,
+    "enhance": true,
+    "minified": true,
+    "postcss": true,
+    "urlCheck": true
+  }
+}

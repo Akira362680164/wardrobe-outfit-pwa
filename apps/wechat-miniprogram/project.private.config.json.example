@@ -1,0 +1,7 @@
+{
+  "description": "复制为 project.private.config.json，并填写本机私有配置和正式小程序 AppID。",
+  "appid": "请替换为小程序 AppID",
+  "setting": {
+    "urlCheck": true
+  }
+}

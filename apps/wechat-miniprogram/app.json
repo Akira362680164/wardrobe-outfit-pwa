@@ -1,0 +1,48 @@
+{
+  "pages": [
+    "pages/login/index",
+    "pages/home/index",
+    "pages/wardrobe/index/index",
+    "pages/wardrobe/detail/index",
+    "pages/wardrobe/edit/index",
+    "pages/outfits/index/index",
+    "pages/outfits/detail/index",
+    "pages/outfits/compose/index",
+    "pages/outfits/calendar/index",
+    "pages/recommendations/index/index",
+    "pages/trips/index/index",
+    "pages/trips/detail/index",
+    "pages/intake/camera/index",
+    "pages/intake/review/index",
+    "pages/intake/result/index",
+    "pages/wishlist/index/index",
+    "pages/wishlist/detail/index",
+    "pages/wishlist/edit/index",
+    "pages/try-on/index/index",
+    "pages/settings/index/index",
+    "pages/settings/ai-key/index",
+    "pages/settings/account/index",
+    "pages/settings/privacy/index",
+    "pages/settings/diagnostics/index",
+    "pages/settings/about/index",
+    "pages/webview/agreement/index",
+    "pages/webview/privacy/index"
+  ],
+  "window": {
+    "navigationStyle": "custom",
+    "backgroundColor": "#f7f2eb",
+    "backgroundTextStyle": "dark"
+  },
+  "tabBar": {
+    "custom": true,
+    "list": [
+      { "pagePath": "pages/home/index", "text": "首页" },
+      { "pagePath": "pages/wardrobe/index/index", "text": "衣橱" },
+      { "pagePath": "pages/intake/camera/index", "text": "添加" },
+      { "pagePath": "pages/outfits/index/index", "text": "穿搭" },
+      { "pagePath": "pages/settings/index/index", "text": "我的" }
+    ]
+  },
+  "style": "v2",
+  "lazyCodeLoading": "requiredComponents"
+}
