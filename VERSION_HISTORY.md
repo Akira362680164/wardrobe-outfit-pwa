@@ -1,3 +1,14 @@
+## 2026-07-08 / v2.1.8-test / Codex — 录入类 MiniMax 调用迁移到后端
+
+- **执行 Agent**：Codex（未触发 subagent：用户未通知）。
+- **目的**：将单品录入识别、编辑页重新识别、套装录入基础信息生成从前端直连 MiniMax 迁移为前端临时提交 MiniMax Key，由 wardrobe API 统一调用 MiniMax、解析结果并返回前端展示，避免 App 与后续小程序各维护一套 prompt 和解析规则。
+- **版本变更**：无；当前应用版本仍为 `2.1.8-test`。
+- **改动文件**：`packages/cloud-contracts/src/workspace/contracts.ts`、`services/wardrobe-api/src/ai/*`、`services/wardrobe-api/src/app.ts`、`services/wardrobe-api/src/shared/redact.ts`、`services/wardrobe-api/tests/ai-intake.test.ts`、`src/lib/online/online-ai-intake-client.ts`、`src/components/wardrobe-app.tsx`、`src/components/outfit-list-view.tsx`、`src/app/legal/privacy/page.tsx`、`src/app/legal/terms/page.tsx`、`src/components/auth/auth-gate.tsx`、`README.md`、相关录入合同测试脚本、`VERSION_HISTORY.md`。
+- **改动说明**：新增 AI intake 共享契约和后端 `/api/workspace/ai/intake/garment-recognition`、`/api/workspace/ai/intake/outfit-metadata` 路由；后端复用现有登录态与设备校验，临时使用请求中的 MiniMax Key 调用 MiniMax 并做 JSON 解析、白名单清洗和错误映射；前端单品录入、种草复用录入、编辑页重新识别、套装录入/编辑基础信息生成改走 `online-ai-intake-client`；推荐、诊断、试穿、设置页 Key 验证暂不迁移；同步隐私/协议/README 文案和服务端日志脱敏规则。
+- **验证结果**：`npm --workspace @wardrobe/cloud-contracts run build`、`npm --workspace @wardrobe/wardrobe-api run typecheck`、`npm --workspace @wardrobe/wardrobe-api run test -- tests/ai-intake.test.ts`、`npm run typecheck`、`npm run test:logic:ai-intake-live-contract`、`npm run test:logic:intake-upgrade-patch5`、`npm run test:logic:garment-intake-multi-image`、`npm run test:logic:intake-entry-crop-regression`、`npm run test:logic:outfit-intake-confirm-contract`、`npm run build`、`git diff --check` 均通过。
+- **风险门禁**：high（改动 MiniMax Key 传输边界、AI prompt/解析位置、后端 API、前端录入主链和隐私文案；不改数据库 schema、不自动入库、不改 Android 原生配置、不打 APK）；未触发 subagent：用户未通知。
+- **未验证风险**：未使用真实 MiniMax Key 做 live 识别；`npm run test:logic:item-wishlist-edit-recognition-layout` 因脚本读取已不存在的 `src/lib/migrate.ts` 在进入本次断言前失败，属于既有脚本依赖问题；未在 Android 真机/模拟器安装 APK 验证。
+
 ## 2026-07-08 / v2.1.8-test / Codex — 二三级页面 TopBar 按钮位置与图标权重微调
 
 - **执行 Agent**：Codex（未触发 subagent：用户未通知）。

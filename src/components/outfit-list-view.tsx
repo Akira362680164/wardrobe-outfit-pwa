@@ -56,7 +56,8 @@ import {
 import { OutfitIntakeFlow } from "@/components/outfit-intake-flow";
 import { fileToCompressedDataUrl, IMAGE_FILE_ACCEPT } from "@/lib/image";
 import { buildLocalOutfitAiSuggestion, getCachedReplacementSuggestionForItem, getReplacementCandidatesForOutfitItem } from "@/lib/outfit-ai-suggestion";
-import { generateOutfitAiSuggestionOnDevice, generateOutfitMetadataOnDevice, hasDeviceMiniMaxKey, loadMiniMaxSettings } from "@/lib/device-minimax";
+import { generateOutfitAiSuggestionOnDevice, hasDeviceMiniMaxKey, loadMiniMaxSettings } from "@/lib/device-minimax";
+import { generateOutfitMetadataOnServer } from "@/lib/online/online-ai-intake-client";
 import { buildLocalOutfitMetadataFromItems } from "@/lib/outfit-ai-metadata";
 import { outfitDraftToSavedOutfit } from "@/lib/intake-save-adapters";
 import type { OutfitIntakeDraft } from "@/lib/intake-draft";
@@ -364,7 +365,7 @@ export function OutfitListView({
  return patchIntakeDraftFromMetadata(draft, local);
  }
  try {
- const generated = await generateOutfitMetadataOnDevice(
+ const generated = await generateOutfitMetadataOnServer(
  { itemIds: validIds, name: draft.name.value },
  { outfitItems, allItems: items },
  settings,
@@ -407,7 +408,7 @@ export function OutfitListView({
  return;
  }
  try {
- const generated = await generateOutfitMetadataOnDevice(
+ const generated = await generateOutfitMetadataOnServer(
  { itemIds: validIds, name: createName },
  { outfitItems, allItems: items },
  settings,

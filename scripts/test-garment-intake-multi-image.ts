@@ -156,7 +156,7 @@ check("GarmentIntakeFlow 失败草稿顶部 banner 显示「AI 识别失败」",
 check("GarmentIntakeFlow 缩略图 strip 显示「识别中」loading", /item\.status === "recognizing"[\s\S]+?识别中/.test(garmentIntakeFlow));
 check("GarmentIntakeFlow 把 aiTag 映射到 buildLocalGarmentDraft", /mapAiTagToGarmentDraftInput/.test(garmentIntakeFlow));
 check("wardrobe-app GarmentIntakeFlow wiring 传 onProcessImage", /<GarmentIntakeFlow[\s\S]+?onProcessImage=\{processGarmentIntakeImage\}/.test(wardrobeApp));
-check("wardrobe-app processGarmentIntakeImage 调 recognizeSingleItemFromDataUrl", /processGarmentIntakeImage[\s\S]+?recognizeSingleItemFromDataUrl\(/.test(wardrobeApp));
+check("wardrobe-app processGarmentIntakeImage 调后端录入识别", /processGarmentIntakeImage[\s\S]+?recognizeGarmentOnServer\(/.test(wardrobeApp));
 
 console.log(`\ngarment intake multi-image tests: ${pass} passed, ${fail} failed`);
 if (fail > 0) process.exit(1);

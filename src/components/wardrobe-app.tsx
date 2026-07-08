@@ -116,11 +116,11 @@ import {
  generateGarmentStyleAdviceOnDevice,
  hasDeviceMiniMaxKey,
  loadMiniMaxSettings,
- recognizeSingleItemFromDataUrl,
  saveMiniMaxSettings,
  validateMiniMaxKey,
  type DeviceMiniMaxSettings,
 } from "@/lib/device-minimax";
+import { recognizeGarmentOnServer } from "@/lib/online/online-ai-intake-client";
 import { ImageCropEditor } from "@/components/image-crop-editor";
 import { createTemporaryCroppedImage, dataUrlToFile, fileToAiRequestDataUrl, fileToCompressedDataUrl, fileToOriginalDataUrl, isHeicFile, type NormalizedCropBox } from "@/lib/image";
 import { useSoftAiProgress } from "@/lib/use-soft-ai-progress";
@@ -689,8 +689,8 @@ export function WardrobeApp({ cloudAuth }: { cloudAuth?: WardrobeCloudAuth } = {
   // v1.1.16-dev commit1 §3.4.1: 单品录入 AI 识别接线。
   // GarmentIntakeFlow.processAllImagesForRecognition 会调 onProcessImage;
   // 这里返回 LocalImageProcessingResult, 实际 AI 识别由 flow 内部 onProcessImage 完成后
-  // 通过 buildLocalGarmentDraft 整合 tagResult。Recognize 走单件属性识别
-  // (recognizeSingleItemFromDataUrl), 失败时 throw, flow catch 分支用 fallback。
+  // 通过 buildLocalGarmentDraft 整合 tagResult。Recognize 走后端单件属性识别,
+  // 失败时 throw, flow catch 分支用 fallback。
   async function processGarmentIntakeImage(input: { imageDataUrl: string; sourceImageDataUrl?: string; fileName?: string; cropBox?: NormalizedCropBox }): Promise<{
     transparentBackgroundStatus?: "ready" | "skipped" | "failed";
     qualityWarnings?: string[];
@@ -705,13 +705,13 @@ export function WardrobeApp({ cloudAuth }: { cloudAuth?: WardrobeCloudAuth } = {
     const fileName = input.fileName ?? "garment.jpg";
     // 若有 cropBox 则裁切后再送 AI，避免 AI 看到未裁切的完整原图
     const aiInputImage = await createTemporaryCroppedImage({ originalImage: imageDataUrl, cropBox: input.cropBox });
-    // v1.1.31 patch5: 取消无 Key 短路。无 Key 必须走到 recognizeSingleItemFromDataUrl
+    // v1.1.31 patch5: 取消无 Key 短路。无 Key 必须走到识别入口
     // 让其抛 GarmentRecognitionError("not_configured")，flow 内部走 failed draft + blocking
     // issue 路径，绝不返回默认"成功"草稿伪装为可编辑。
     const file = await dataUrlToFile(aiInputImage, fileName).catch(() => null);
     const aiRequestDataUrl = file ? await fileToAiRequestDataUrl(file).catch(() => aiInputImage) : aiInputImage;
     const recognition = await withKeepAwake(() =>
-      recognizeSingleItemFromDataUrl(aiRequestDataUrl, sourceImageDataUrl ?? imageDataUrl, fileName, miniMaxSettings),
+      recognizeGarmentOnServer({ aiRequestDataUrl, originalDataUrl: sourceImageDataUrl ?? imageDataUrl, fileName, settings: miniMaxSettings }),
     );
     return {
       transparentBackgroundStatus: "skipped",
@@ -2106,7 +2106,7 @@ function WardrobeView(props: WardrobeViewProps) {
       const file = await dataUrlToFile(croppedSource, `${editDraft.name || "garment"}.jpg`).catch(() => null);
       const aiRequestDataUrl = file ? await fileToAiRequestDataUrl(file).catch(() => croppedSource) : croppedSource;
       const recognition = await withKeepAwake(() =>
-        recognizeSingleItemFromDataUrl(aiRequestDataUrl, source, editDraft.name || "garment.jpg", miniMaxSettings),
+        recognizeGarmentOnServer({ aiRequestDataUrl, originalDataUrl: source, fileName: editDraft.name || "garment.jpg", settings: miniMaxSettings }),
       );
       const tag = recognition.tag;
       const patch = buildWardrobeEditRecognitionPatch(tag, {
@@ -5390,7 +5390,7 @@ function MiniMaxDetailPage({
 
       <div className="flex items-start gap-2 px-1 text-[11px] leading-relaxed text-ink/50">
         <Lock size={13} className="mt-0.5 shrink-0 text-ink/45" aria-hidden="true" />
-        <span>密钥仅保存在本机，不会上传至服务器。点击保存时会调用 validateMiniMaxKey 验证有效性，失败会保留输入。</span>
+        <span>密钥保存在本机；AI 录入识别时会临时经服务器代调 MiniMax，服务器不保存密钥。点击保存会验证有效性，失败会保留输入。</span>
       </div>
     </div>
   );

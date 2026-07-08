@@ -10,6 +10,8 @@ import { registerAuthRoutes } from "./auth/routes.js";
 import { type RegistrationService } from "./auth/registrations.js";
 import { registerSessionRoutes } from "./auth/session-routes.js";
 import { SessionService } from "./auth/session.js";
+import { registerAiIntakeRoutes } from "./ai/routes.js";
+import { MiniMaxIntakeService, type MiniMaxIntakeServiceLike } from "./ai/minimax-intake-service.js";
 import { registerAssetRoutes } from "./assets/routes.js";
 import { AssetService } from "./assets/service.js";
 import { registerDiagnosticRoutes, registerDiagnosticAdminRoutes } from "./diagnostics/routes.js";
@@ -37,6 +39,7 @@ export interface BuildAppOptions {
   workspaceQueryService?: WorkspaceQueryService;
   workspaceCommandService?: WorkspaceCommandService;
   diagnosticService?: DiagnosticService;
+  miniMaxIntakeService?: MiniMaxIntakeServiceLike;
   storageProvider?: StorageProvider | null;
   jwtReadinessCheck?: () => Promise<boolean>;
 }
@@ -135,6 +138,7 @@ export function buildApp(options: BuildAppOptions = {}): FastifyInstance {
     assetService,
     sharedSessionService ?? new SessionService(),
   );
+  registerAiIntakeRoutes(app, sharedSessionService ?? new SessionService(), options.miniMaxIntakeService ?? new MiniMaxIntakeService());
   const diagnosticService = options.diagnosticService ?? new DiagnosticService(storage);
   registerDiagnosticRoutes(app, sharedSessionService ?? new SessionService(), diagnosticService);
   registerDiagnosticAdminRoutes(app, diagnosticService);

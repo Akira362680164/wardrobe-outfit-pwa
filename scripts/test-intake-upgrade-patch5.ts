@@ -88,7 +88,7 @@ const procFnStart = wardrobeApp.indexOf("async function processGarmentIntakeImag
 const procFnEnd = wardrobeApp.indexOf("async function saveBatchGarmentIntakeDrafts", procFnStart);
 const procFnBody = procFnStart >= 0 && procFnEnd > procFnStart ? wardrobeApp.slice(procFnStart, procFnEnd) : (procFnMatch ? procFnMatch[0] : "");
 check("processGarmentIntakeImage 不再有 hasDeviceMiniMaxKey 短路（patch5）", !/!hasDeviceMiniMaxKey\(miniMaxSettings\)/.test(procFnBody));
-check("processGarmentIntakeImage 无条件走 recognizeSingleItemFromDataUrl", /recognizeSingleItemFromDataUrl\(/.test(procFnBody));
+check("processGarmentIntakeImage 无条件走后端录入识别", /recognizeGarmentOnServer\(/.test(procFnBody));
 
 const recFnMatch = garmentIntake.match(/async function recognizeImageItem\([\s\S]*?\n  \}/);
 check("recognizeImageItem 函数体存在", !!recFnMatch);
