@@ -1,7 +1,9 @@
 <view class="catalog-card catalog-card--{{tone}}" data-id="{{id}}" bindtap="onTap">
   <view class="catalog-card__media">
-    <image wx:if="{{imageUrl}}" class="catalog-card__image" mode="aspectFit" src="{{imageUrl}}" />
-    <view wx:else class="catalog-card__fallback">{{fallback}}</view>
+    <view class="catalog-card__media-frame media-3x4">
+      <image wx:if="{{imageUrl}}" class="catalog-card__image" mode="aspectFit" src="{{imageUrl}}" />
+      <view wx:else class="catalog-card__fallback">{{fallback}}</view>
+    </view>
   </view>
   <view class="catalog-card__body">
     <view class="catalog-card__title">{{title}}</view>

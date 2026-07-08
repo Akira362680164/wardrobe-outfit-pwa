@@ -1,19 +1,35 @@
-<view class="page-shell">
+<view class="page-shell wardrobe-page" bindtap="closeActionMenu">
   <view class="wardrobe-top">
-    <view class="filter-card">
+    <view class="filter-card glass-panel">
+      <ui-icon name="wardrobe" size="42" color="currentColor" />
       <view class="filter-main">
         <view class="filter-title">全部衣橱</view>
         <view class="filter-count">{{totalCount}}件</view>
       </view>
+      <ui-icon name="chevron-down" size="34" color="currentColor" />
     </view>
   </view>
 
-  <view class="stats-line">{{statsText}}</view>
-
-  <view class="wardrobe-actions">
-    <view class="top-action" bindtap="showSearchTip">搜索</view>
-    <view class="top-action" bindtap="showStatsTip">统计</view>
-    <view class="top-action top-action-primary" bindtap="openIntake">添加</view>
+  <view class="stats-row">
+    <view class="stats-line">{{statsText}}</view>
+    <button class="action-pill glass-panel" aria-label="打开衣橱操作" catchtap="toggleActionMenu">
+      <text>搜索</text><text class="action-pill-divider"></text><text>统计</text><text class="action-pill-divider"></text><text>AI衣橱诊断</text>
+    </button>
+    <view wx:if="{{actionMenuOpen}}" class="action-menu-backdrop" bindtap="closeActionMenu"></view>
+    <view wx:if="{{actionMenuOpen}}" class="action-menu glass-panel-strong" catchtap="noop">
+      <view class="action-menu-item" data-action="search" catchtap="handleActionMenuTap">
+        <ui-icon name="search" size="40" color="currentColor" />
+        <text>搜索</text>
+      </view>
+      <view class="action-menu-item" data-action="stats" catchtap="handleActionMenuTap">
+        <ui-icon name="bar-chart-3" size="40" color="currentColor" />
+        <text>统计</text>
+      </view>
+      <view class="action-menu-item action-menu-item--ai" data-action="ai" catchtap="handleActionMenuTap">
+        <ui-icon name="wand-sparkles" size="40" color="currentColor" />
+        <text>AI衣橱诊断</text>
+      </view>
+    </view>
   </view>
 
   <scroll-view class="category-scroll" scroll-x enable-flex>
@@ -57,4 +73,8 @@
     <view class="status-copy">切回全部衣橱，或添加一件当前分类的单品。</view>
     <button class="mini-button" bindtap="openIntake">添加衣物</button>
   </view>
+
+  <button class="content-fab wardrobe-fab" aria-label="添加衣物" catchtap="openIntake">
+    <ui-icon name="plus" size="48" color="currentColor" />
+  </button>
 </view>

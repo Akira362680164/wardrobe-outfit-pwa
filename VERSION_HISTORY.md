@@ -1,3 +1,14 @@
+## 2026-07-08 / v2.1.8-test / Codex — 小程序衣橱首页胶囊菜单与首页视觉修复
+
+- **执行 Agent**：Codex（未触发 subagent：用户未通知；本轮按用户逐页对比反馈直接修复衣橱首页）。
+- **目的**：按用户确认的小程序专用首页方案，避让右上角微信官方胶囊，将 `搜索 | 统计 | AI衣橱诊断` 收敛为统计行右侧紧凑胶囊并点击展开纵向菜单，同时修正新增 FAB、底部导航和瀑布流图片比例。
+- **版本变更**：无；当前应用版本仍为 `2.1.8-test`，小程序包版本仍为 `0.1.0`。
+- **改动文件**：`apps/wechat-miniprogram/pages/wardrobe/index/**`、`apps/wechat-miniprogram/components/domain/catalog-card/**`、`apps/wechat-miniprogram/custom-tab-bar/index.wxss`、`apps/wechat-miniprogram/components/ui/icon/icons.ts`、`apps/wechat-miniprogram/assets/icons/{chevron-down,search,bar-chart-3,wand-sparkles,plus}.svg`、`VERSION_HISTORY.md`。
+- **改动说明**：衣橱首页顶部保留左侧 `全部衣橱` 选择胶囊并让出右上官方胶囊区域；统计行右侧新增 `搜索 | 统计 | AI衣橱诊断` 紧凑胶囊，点击后弹出 `Search`、`BarChart3`、`WandSparkles` 纵向菜单，点击页面透明层关闭；新增右下角圆形 `Plus` FAB 并与内容卡片和底部导航右边缘统一为 `32rpx`；`catalog-card` 图片框改为共享 `.media-3x4` 竖向 3:4；底部导航 active 使用规范主色 `#355c7d` 与 `#fffffc`，外层使用 `rgba(255,255,252,0.75)`、`blur(60rpx) saturate(1.5)`、`rgba(29,34,40,0.10)` 边框和 `52rpx` 圆角，避免自定义 tabbar 内 CSS 变量继承不稳定。
+- **验证结果**：`npm --prefix apps/wechat-miniprogram run typecheck` 通过；`node apps/wechat-miniprogram/scripts/wechatide-compile.mjs --refresh` 通过；`compile_wxml pages/wardrobe/index/index.wxml`、`compile_wxss pages/wardrobe/index/index.wxss`、`compile_wxml components/domain/catalog-card/index.wxml`、`compile_wxss components/domain/catalog-card/index.wxss`、`compile_wxss custom-tab-bar/index.wxss` 均通过；`git diff --check` 通过；DevTools 截图输出到 `/Users/fangzheng/Desktop/wechat-mini-wardrobe-home-fix-20260708/`，覆盖折叠态、菜单展开态、点击页面关闭、注入瀑布流卡片 3:4 比例；console grep `error|fail|timeout|typeerror|referenceerror` 无命中。
+- **风险门禁**：medium（衣橱首页 UI、公共卡片图片比例、底部导航视觉和新增图标资产；不改业务接口、不改后端、不上传体验版）；未触发 subagent：用户未通知。
+- **未验证风险**：当前截图以 DevTools 模拟器为准；真实账号数据截图需要重新登录后再捕获，未做真机预览验证。
+
 ## 2026-07-08 / v2.1.8-test / Codex — 小程序 v03-alpha A-E 业务与 UI 复检修复
 
 - **执行 Agent**：Codex（按用户明确要求先使用多 subagent 分析，再由父 agent 汇总执行；本轮 3 个只读 subagent 分别核查详情/数据流、录入/删除/日历/设置、截图/CLI 流程）。

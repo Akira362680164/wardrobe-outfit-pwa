@@ -1,27 +1,23 @@
-.page-shell {
+.wardrobe-page {
   padding: calc(env(safe-area-inset-top) + 152rpx) 32rpx calc(env(safe-area-inset-bottom) + 176rpx);
 }
 
 .wardrobe-top {
-  display: block;
-}
-
-.filter-card,
-.top-action {
-  box-sizing: border-box;
-  min-height: 112rpx;
-  border: 1rpx solid var(--color-line);
-  border-radius: var(--radius-control);
-  background: rgba(255, 255, 252, 0.80);
-  box-shadow: var(--shadow-card);
+  display: flex;
+  justify-content: flex-start;
 }
 
 .filter-card {
   display: flex;
   align-items: center;
-  min-width: 0;
+  gap: 16rpx;
+  box-sizing: border-box;
+  width: 304rpx;
+  max-width: calc(100vw - 292rpx);
   min-height: 112rpx;
   padding: 0 22rpx;
+  border-radius: var(--radius-control);
+  color: var(--color-ink);
 }
 
 .filter-main {
@@ -50,44 +46,92 @@
   line-height: 1.2;
 }
 
-.top-action {
+.stats-row {
+  position: relative;
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  justify-content: space-between;
+  gap: 16rpx;
+  margin-top: 24rpx;
+}
+
+.stats-line {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--color-muted);
+  font-size: var(--font-caption);
+  line-height: 1.35;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.action-pill {
+  position: relative;
+  z-index: 72;
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 100%;
-  min-width: 0;
+  flex: 0 0 auto;
+  box-sizing: border-box;
+  max-width: 340rpx;
+  height: 56rpx;
+  min-height: 56rpx;
   margin: 0;
-  padding: 0;
+  padding: 0 18rpx;
+  border-radius: var(--radius-control);
   color: var(--color-ink);
   font-size: var(--font-label);
   font-weight: 700;
   line-height: 1;
+  white-space: nowrap;
 }
 
-.top-action-primary {
-  border-color: rgba(53, 92, 125, 0.18);
-  background: var(--color-primary);
-  color: var(--color-surface);
-  box-shadow: 0 18rpx 44rpx rgba(53, 92, 125, 0.22);
+.action-pill-divider {
+  display: block;
+  width: 1rpx;
+  height: 24rpx;
+  margin: 0 10rpx;
+  background: var(--color-line);
 }
 
-.top-action::after,
+.action-menu-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 69;
+  background: transparent;
+}
+
+.action-menu {
+  position: absolute;
+  top: 68rpx;
+  right: 0;
+  z-index: 70;
+  box-sizing: border-box;
+  width: 300rpx;
+  padding: 12rpx;
+  border-radius: var(--radius-card-secondary);
+}
+
+.action-menu-item {
+  display: flex;
+  align-items: center;
+  gap: 18rpx;
+  min-height: 84rpx;
+  padding: 0 18rpx;
+  border-radius: var(--radius-control);
+  color: var(--color-ink);
+  font-size: var(--font-body);
+  font-weight: 700;
+}
+
+.action-menu-item--ai {
+  color: var(--color-ai);
+}
+
+.action-pill::after,
 .category-chip::after,
 .mini-button::after { border: 0; }
-
-.stats-line {
-  margin-top: 24rpx;
-  color: var(--color-muted);
-  font-size: var(--font-caption);
-  line-height: 1.35;
-}
-
-.wardrobe-actions {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 16rpx;
-  margin-top: 22rpx;
-}
 
 .category-scroll {
   width: 100%;
@@ -174,4 +218,8 @@
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 24rpx;
   margin-top: 28rpx;
+}
+
+.wardrobe-fab {
+  right: 32rpx;
 }

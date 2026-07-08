@@ -31,6 +31,7 @@ Page({
     error: "",
     emptyTitle: "",
     emptyAction: "",
+    actionMenuOpen: false,
   },
 
   onLoad() {
@@ -117,6 +118,7 @@ Page({
   },
 
   openIntake() {
+    this.setData({ actionMenuOpen: false });
     wx.navigateTo({ url: "/pages/intake/camera/index" });
   },
 
@@ -131,6 +133,30 @@ Page({
 
   showStatsTip() {
     wx.showToast({ title: this.data.statsText, icon: "none" });
+  },
+
+  toggleActionMenu() {
+    this.setData({ actionMenuOpen: !this.data.actionMenuOpen });
+  },
+
+  closeActionMenu() {
+    if (this.data.actionMenuOpen) this.setData({ actionMenuOpen: false });
+  },
+
+  noop() {},
+
+  handleActionMenuTap(event: { currentTarget: { dataset: { action?: string } } }) {
+    const action = event.currentTarget.dataset.action;
+    this.setData({ actionMenuOpen: false });
+    if (action === "search") {
+      this.showSearchTip();
+      return;
+    }
+    if (action === "stats") {
+      this.showStatsTip();
+      return;
+    }
+    wx.showToast({ title: "AI衣橱诊断暂未开放", icon: "none" });
   },
 });
 
