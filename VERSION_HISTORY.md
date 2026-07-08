@@ -1,3 +1,14 @@
+## 2026-07-08 / v2.1.8-test / Codex — UI 规范真实截图重采集
+
+- **执行 Agent**：Codex（未触发 subagent：用户未通知）。
+- **目的**：按用户要求重新采集 `wardrobe-ui-spec.html` 使用的真实业务流截图，并更新规范页截图部分对应的本地图片资产。
+- **版本变更**：无；当前应用版本仍为 `2.1.8-test`。
+- **改动文件**：`docs/designs/v0.3-alpha/live-capture-manifest.json`、`docs/designs/v0.3-alpha/screenshots/*.png`、`docs/designs/v03-alpha-real-screenshots/live-capture-manifest.json`、`docs/designs/v03-alpha-real-screenshots/*.png`、`VERSION_HISTORY.md`。
+- **改动说明**：重跑 `v03-alpha:capture` 真实业务流，重新生成 21 张 390×844 截图和 capture manifest；将生成结果同步到 `wardrobe-ui-spec.html` 实际引用的 `docs/designs/v03-alpha-real-screenshots/`；重建 `docs/designs/wardrobe-ui-spec.html` 并校验预览页已同步。HTML 文本引用路径未变化，因此本轮 HTML 文件本身无 diff，截图内容通过同名资产更新。
+- **验证结果**：`npm run v03-alpha:capture` 通过（1 个 Playwright live capture 用例，3.8m）；`npm run docs:ui-spec:build`、`npm run docs:ui-spec:check`、`npm run test:logic:ui-spec-preview`、`npm run test:logic:v03-alpha-visual-review` 通过；`file docs/designs/v03-alpha-real-screenshots/*.png` 确认 21 张规范截图均为 `390 x 844`。
+- **风险门禁**：high（真实业务流截图、live MiniMax 识别、44 个截图/manifest 文件更新；未改运行时代码、不改业务流程、不改 Android、不打 APK）；未触发 subagent：用户未通知。
+- **未验证风险**：本轮只验证 HTML 引用和截图资产存在/尺寸正确，未人工逐屏审美复核；浏览器若已打开旧页面，需要刷新页面才能看到同名图片资产的新内容。
+
 ## 2026-07-08 / v2.1.8-test / Codex — 运行时 UI 基础层首轮优化
 
 - **执行 Agent**：Codex（未触发 subagent：用户未通知）。
