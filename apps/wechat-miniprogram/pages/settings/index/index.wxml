@@ -7,7 +7,7 @@
   <view class="page-title">设置</view>
 
   <view class="settings-card settings-row-card" data-url="/pages/settings/account/index" bindtap="openSection">
-    <view class="settings-icon">♙</view>
+    <view class="settings-icon"><ui-icon name="user" size="{{36}}" /></view>
     <view class="settings-main">
       <view class="card-title">账号服务</view>
       <view class="card-copy">微信认证登录、手机号和退出登录。</view>

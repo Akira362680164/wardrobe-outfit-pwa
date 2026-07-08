@@ -1,8 +1,10 @@
-import { fetchOutfitDetail, type MiniOutfitDetail } from "../../../services/workspace";
+import { deleteWorkspaceEntity, fetchOutfitDetail, type MiniOutfitDetail } from "../../../services/workspace";
 
 Page({
   data: {
     loading: false,
+    deleting: false,
+    deleteSheetOpen: false,
     outfit: null as MiniOutfitDetail | null,
     error: "",
   },
@@ -19,6 +21,28 @@ Page({
       this.setData({ outfit: await fetchOutfitDetail(id), loading: false });
     } catch (error) {
       this.setData({ loading: false, error: error instanceof Error ? error.message : "读取套装失败" });
+    }
+  },
+
+  openDeleteSheet() {
+    this.setData({ deleteSheetOpen: true });
+  },
+
+  closeDeleteSheet() {
+    if (!this.data.deleting) this.setData({ deleteSheetOpen: false });
+  },
+
+  async confirmDelete(this: any) {
+    const outfit = this.data.outfit as MiniOutfitDetail | null;
+    if (!outfit || this.data.deleting) return;
+    this.setData({ deleting: true });
+    try {
+      await deleteWorkspaceEntity("outfits", outfit.id, outfit.revision);
+      wx.showToast({ title: "已删除", icon: "success" });
+      wx.navigateBack({ delta: 1 });
+    } catch (error) {
+      wx.showToast({ title: error instanceof Error ? error.message : "删除失败", icon: "none" });
+      this.setData({ deleting: false });
     }
   },
 });

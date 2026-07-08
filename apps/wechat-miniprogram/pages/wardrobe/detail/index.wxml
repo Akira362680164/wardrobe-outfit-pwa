@@ -1,14 +1,28 @@
 <view class="page-shell detail-page">
-  <detail-shell top-title="{{title}}" title="{{item.name}}" meta="{{item.meta}}" eyebrow="{{item.recordText}}" hero-label="主图" hero-fallback="3:4 单品图片">
+  <view wx:if="{{loading}}" class="status-card">正在读取单品...</view>
+  <view wx:elif="{{error}}" class="status-card">
+    <view class="status-title">读取失败</view>
+    <view class="status-copy">{{error}}</view>
+  </view>
+  <view wx:elif="{{item}}">
+  <detail-shell top-title="{{title}}" title="{{item.name}}" meta="{{item.meta}}" eyebrow="暂无穿着记录" image-url="{{item.imageUrl}}" hero-label="主图" hero-fallback="{{item.categoryLabel}}">
     <view class="thumb-strip" slot="afterHero">
-      <view class="thumb is-active"><view class="thumb-fallback"></view><view class="thumb-label">主图</view></view>
-      <view class="thumb add-thumb"><view class="plus">＋</view><view class="thumb-label muted">灵感</view></view>
+      <view class="thumb is-active">
+        <image wx:if="{{item.imageUrl}}" class="thumb-image" mode="aspectFill" src="{{item.imageUrl}}" />
+        <view wx:else class="thumb-fallback"></view>
+        <view class="thumb-label">主图</view>
+      </view>
     </view>
 
-    <view class="notice-card"><view class="check-dot">✓</view><view>{{item.savedText}}</view></view>
+    <view class="action-row">
+      <button class="action-button edit">编辑</button>
+      <button class="action-button danger" bindtap="openDeleteSheet">删除</button>
+    </view>
+
+    <view class="notice-card"><view class="check-dot">✓</view><view>已保存到衣橱</view></view>
     <view class="info-card">
       <view class="card-title">基础信息</view>
-      <view class="info-row"><text>衣橱</text><text>{{item.closetText}}</text></view>
+      <view class="info-row"><text>衣橱</text><text>{{item.locationText}}</text></view>
       <view class="info-row"><text>购买日期</text><text>{{item.purchaseDate}}</text></view>
       <view class="info-row"><text>状态</text><text>{{item.statusText}}</text></view>
     </view>
@@ -16,7 +30,7 @@
       <view class="card-title">颜色</view>
       <view class="info-row"><text>主色</text><view class="chip"><view class="dot dot-white"></view><text>{{item.primaryColor}}</text></view></view>
       <view class="info-row"><text>辅助色</text><view class="chip"><view class="dot dot-black"></view><text>{{item.secondaryColor}}</text></view></view>
-      <view class="info-row"><text>颜色模式</text><text>主色 + 点缀色</text></view>
+      <view class="info-row"><text>颜色模式</text><text>{{item.colorText}}</text></view>
     </view>
     <view class="info-card">
       <view class="card-title">穿着属性</view>
@@ -31,4 +45,12 @@
       <view class="section-copy">{{item.notes}}</view>
     </view>
   </detail-shell>
+  </view>
+
+  <ui-sheet open="{{deleteSheetOpen}}" title="删除这件衣物？" description="删除后将从服务器衣橱移除，相关套装仍可能保留但不再显示这件衣物。" bind:close="closeDeleteSheet">
+    <view class="delete-actions">
+      <button class="sheet-button sheet-button--danger" loading="{{deleting}}" disabled="{{deleting}}" bindtap="confirmDelete">确认删除</button>
+      <button class="sheet-button sheet-button--secondary" disabled="{{deleting}}" bindtap="closeDeleteSheet">取消</button>
+    </view>
+  </ui-sheet>
 </view>

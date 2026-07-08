@@ -16,7 +16,7 @@
 
   <view wx:elif="{{items.length === 0}}" class="status-card">
     <view class="status-title">{{emptyTitle || '还没有种草'}}</view>
-    <view class="status-copy">先记录名称、价格和链接，图片和 AI 评估后续再接。</view>
+    <view class="status-copy">先记录名称、价格、链接和商品图；AI 评估后续再接。</view>
     <button class="mini-button" bindtap="handleEmptyAction">{{emptyAction || '新增种草'}}</button>
   </view>
 

@@ -1,3 +1,16 @@
+## 2026-07-08 / v2.1.8-test / Codex — 小程序 v03-alpha A-E 业务与 UI 复检修复
+
+- **执行 Agent**：Codex（按用户明确要求先使用多 subagent 分析，再由父 agent 汇总执行；本轮 3 个只读 subagent 分别核查详情/数据流、录入/删除/日历/设置、截图/CLI 流程）。
+- **目的**：对照 `/Users/fangzheng/Desktop/wechat-miniprogram-v03-alpha-flow-screenshots/WECHAT_MINI_VS_APP_UI_AUDIT_REPORT.md` 中任务 A-E，修复小程序真实业务流页面与 APP v03-alpha 截图的关键差距，并重新截图出具复检报告。
+- **版本变更**：无；当前应用版本仍为 `2.1.8-test`，小程序包版本仍为 `0.1.0`。
+- **改动文件**：`apps/wechat-miniprogram/services/workspace.ts`、`apps/wechat-miniprogram/pages/wardrobe/detail/**`、`apps/wechat-miniprogram/pages/wardrobe/index/index.ts`、`apps/wechat-miniprogram/pages/outfits/index/**`、`apps/wechat-miniprogram/pages/outfits/detail/**`、`apps/wechat-miniprogram/pages/outfits/calendar/**`、`apps/wechat-miniprogram/pages/wishlist/index/index.wxml`、`apps/wechat-miniprogram/pages/wishlist/detail/**`、`apps/wechat-miniprogram/pages/intake/camera/**`、`apps/wechat-miniprogram/pages/intake/review/index.ts`、`apps/wechat-miniprogram/pages/settings/index/**`、`VERSION_HISTORY.md`。
+- **改动说明**：单品详情从样例页改为真实服务端详情读取；单品、套装、种草详情继续复用 `detail-shell` 公共骨架并保留各自差异字段；套装列表和详情基于关联衣物生成真实图片组合；新增统一删除确认底部弹层和 `expectedRevision` 删除请求；添加单品页补齐已选图待校对状态，保存后读回服务端详情确认；日历页显示可安排套装且不伪造计划，并修复日期 key 月份；设置页替换字符图标；`outerwear` 类目映射为 `外套`，温度范围兼容 `min/max` 与 `minC/maxC`。
+- **后端边界**：本轮未修改 `services/**`、`packages/**` 或 migration；`git diff -- services packages | wc -l` 为 `0`。
+- **截图与报告**：重新登录真实测试账号并通过小程序内部导航截图，输出到 `/Users/fangzheng/Desktop/wechat-miniprogram-v03-alpha-flow-screenshots-20260708-220231/`；联系表为 `00-mini-captured-contact-sheet.jpg`；复检报告为 `WECHAT_MINI_VS_APP_UI_RECHECK_REPORT.md`。
+- **验证结果**：`npm --prefix apps/wechat-miniprogram run typecheck` 通过；`node apps/wechat-miniprogram/scripts/wechatide-compile.mjs --refresh` 通过；`git diff --check` 通过；`get_app_console_content` grep `error|fail|timeout|typeerror|referenceerror` 无命中；关键 WXML/WXSS 页面在修复过程中已通过 DevTools CLI 编译；后端 diff 为 0。
+- **风险门禁**：high（多页面业务 UI、详情数据读取、图片展示、删除动作、录入状态、截图复检和多 subagent 分析合并）；已按用户要求触发 3 个只读 subagent。
+- **未验证风险**：微信认证登录和真机手机号选择仍未验证；录入已选图与确认页截图中部分步骤依赖 DevTools 状态注入，CLI 仍不能完整模拟用户从 Mac 本机相册选择测试图片；MiniMax live AI 识别未调用；日历当前只显示可安排套装，真实计划写入仍待小程序侧接入。
+
 ## 2026-07-08 / v2.1.8-test / Codex — 小程序登录页规范名称修正
 
 - **执行 Agent**：Codex（未触发 subagent：本次为登录页名称单点修复）。

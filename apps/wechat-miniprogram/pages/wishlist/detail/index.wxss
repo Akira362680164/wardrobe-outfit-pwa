@@ -63,6 +63,11 @@
   background: rgba(255, 255, 252, 0.72);
 }
 
+.danger {
+  color: var(--color-surface);
+  background: var(--color-danger);
+}
+
 .notice-card {
   display: flex;
   align-items: center;
@@ -107,4 +112,33 @@
 
 .break-text {
   overflow-wrap: anywhere;
+}
+
+.delete-actions {
+  display: grid;
+  gap: 18rpx;
+}
+
+.sheet-button {
+  width: 100%;
+  height: 92rpx;
+  margin: 0;
+  border-radius: var(--radius-control);
+  font-size: var(--font-body);
+  font-weight: 800;
+  line-height: 92rpx;
+}
+
+.sheet-button::after {
+  border: 0;
+}
+
+.sheet-button--danger {
+  color: var(--color-surface);
+  background: var(--color-danger);
+}
+
+.sheet-button--secondary {
+  color: var(--color-ink);
+  background: rgba(244, 245, 243, 0.88);
 }

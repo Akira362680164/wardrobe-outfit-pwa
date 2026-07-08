@@ -1,14 +1,20 @@
 import { chooseSingleImage } from "../../../services/assets";
-import { setIntakeDraft } from "../../../stores/intake";
+import { clearIntakeDraft, getIntakeDraft, setIntakeDraft, type IntakeDraft } from "../../../stores/intake";
 
 Page({
   data: {
     selecting: false,
+    draft: null as IntakeDraft | null,
     error: "",
   },
 
   onLoad() {
     wx.setNavigationBarTitle({ title: "添加衣物" });
+    this.setData({ draft: getIntakeDraft() });
+  },
+
+  onShow() {
+    this.setData({ draft: getIntakeDraft() });
   },
 
   async chooseFromAlbum(this: any) {
@@ -24,19 +30,33 @@ Page({
     this.setData({ selecting: true, error: "" });
     try {
       const imagePath = await chooseSingleImage(sourceType);
-      setIntakeDraft({
+      const draft = {
         imagePath,
         name: "",
         category: "tops",
         color: "未标注",
         season: "all",
         note: "",
-      });
-      wx.navigateTo({ url: "/pages/intake/review/index" });
+      };
+      setIntakeDraft(draft);
+      this.setData({ draft });
     } catch (error) {
       this.setData({ error: error instanceof Error ? error.message : "选择图片失败" });
     } finally {
       this.setData({ selecting: false });
     }
+  },
+
+  clearSelected() {
+    clearIntakeDraft();
+    this.setData({ draft: null, error: "" });
+  },
+
+  goReview() {
+    if (!this.data.draft) {
+      this.setData({ error: "请先选择图片" });
+      return;
+    }
+    wx.navigateTo({ url: "/pages/intake/review/index" });
   },
 });

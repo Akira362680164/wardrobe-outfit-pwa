@@ -141,3 +141,42 @@
   color: rgba(29, 34, 40, 0.42);
   font-size: var(--font-body);
 }
+
+.plan-card {
+  box-sizing: border-box;
+  margin-top: 28rpx;
+  padding: 28rpx;
+  border: 1rpx solid var(--color-line);
+  border-radius: var(--radius-card-inner);
+  color: var(--color-muted);
+  background: rgba(255, 255, 252, 0.66);
+  box-shadow: var(--shadow-card);
+  font-size: var(--font-body);
+}
+
+.plan-card__title {
+  margin-bottom: 16rpx;
+  color: var(--color-ink);
+  font-size: var(--font-body);
+  font-weight: 800;
+}
+
+.plan-row {
+  padding: 18rpx 0;
+  border-top: 1rpx solid var(--color-line);
+}
+
+.plan-row__name {
+  overflow: hidden;
+  color: var(--color-ink);
+  font-size: var(--font-body);
+  font-weight: 800;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.plan-row__meta {
+  margin-top: 6rpx;
+  color: var(--color-muted);
+  font-size: var(--font-caption);
+}

@@ -1,26 +1,49 @@
+import { deleteWorkspaceEntity, fetchGarmentDetail, type MiniGarmentDetail } from "../../../services/workspace";
+
 Page({
   data: {
     title: "单品详情",
-    item: {
-      name: "单品详情样例",
-      meta: "鞋履 · 春 / 夏 / 秋 / 冬 · 休闲 / 户外",
-      recordText: "暂无穿着记录",
-      savedText: "已保存到衣橱",
-      closetText: "默认衣橱",
-      purchaseDate: "未记录",
-      statusText: "可穿",
-      primaryColor: "白",
-      secondaryColor: "黑",
-      temperatureText: "未识别",
-      formalityText: "1/5",
-      warmthText: "1/5",
-      materialText: "网布鞋面 + 合成革",
-      fitText: "中性版型",
-      notes: "当前小程序单品详情仍使用占位数据，后续接入线上详情 API 后直接替换字段来源。",
-    },
+    loading: false,
+    deleting: false,
+    deleteSheetOpen: false,
+    item: null as MiniGarmentDetail | null,
+    error: "",
   },
 
-  onLoad() {
+  onLoad(query?: { id?: string }) {
     wx.setNavigationBarTitle({ title: "单品详情" });
+    if (query?.id) void this.loadDetail(query.id);
+    else this.setData({ error: "缺少单品 ID" });
+  },
+
+  async loadDetail(this: any, id: string) {
+    this.setData({ loading: true, error: "" });
+    try {
+      this.setData({ item: await fetchGarmentDetail(id), loading: false });
+    } catch (error) {
+      this.setData({ loading: false, error: error instanceof Error ? error.message : "读取单品失败" });
+    }
+  },
+
+  openDeleteSheet() {
+    this.setData({ deleteSheetOpen: true });
+  },
+
+  closeDeleteSheet() {
+    if (!this.data.deleting) this.setData({ deleteSheetOpen: false });
+  },
+
+  async confirmDelete(this: any) {
+    const item = this.data.item as MiniGarmentDetail | null;
+    if (!item || this.data.deleting) return;
+    this.setData({ deleting: true });
+    try {
+      await deleteWorkspaceEntity("garments", item.id, item.revision);
+      wx.showToast({ title: "已删除", icon: "success" });
+      wx.navigateBack({ delta: 1 });
+    } catch (error) {
+      wx.showToast({ title: error instanceof Error ? error.message : "删除失败", icon: "none" });
+      this.setData({ deleting: false });
+    }
   },
 });

@@ -7,6 +7,7 @@ type CategoryChip = {
 };
 
 const CATEGORY_LABELS: Record<string, string> = {
+  outerwear: "外套",
   tops: "上衣",
   pants: "裤子",
   skirts: "半裙",

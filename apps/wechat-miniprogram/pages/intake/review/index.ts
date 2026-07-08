@@ -1,5 +1,5 @@
 import { uploadImageForCreate } from "../../../services/assets";
-import { createClientMutationId, createGarment } from "../../../services/workspace";
+import { createClientMutationId, createGarment, fetchGarmentDetail } from "../../../services/workspace";
 import { clearIntakeDraft, getIntakeDraft, setIntakeDraft, setLastCreatedGarmentId, type IntakeDraft } from "../../../stores/intake";
 
 Page({
@@ -88,6 +88,7 @@ Page({
         note: draft.note.trim(),
         assetMutations,
       });
+      await fetchGarmentDetail(entity.id);
       clearIntakeDraft();
       setLastCreatedGarmentId(entity.id);
       wx.redirectTo({ url: "/pages/intake/result/index" });

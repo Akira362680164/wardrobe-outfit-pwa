@@ -49,10 +49,17 @@
     </scroll-view>
     <view wx:for="{{outfits}}" wx:key="id" class="outfit-card" data-id="{{item.id}}" bindtap="openDetail">
       <view class="outfit-collage">
-        <view class="collage-pane collage-pane--main">{{item.itemCount}}件</view>
+        <view class="collage-pane collage-pane--main">
+          <image wx:if="{{item.imageUrl}}" class="collage-image" mode="aspectFit" src="{{item.imageUrl}}" />
+          <text wx:else>{{item.itemCount}}件</text>
+        </view>
         <view class="collage-stack">
-          <view class="collage-pane collage-pane--sub"></view>
-          <view class="collage-pane collage-pane--sub"></view>
+          <view class="collage-pane collage-pane--sub">
+            <image wx:if="{{item.itemImages[1]}}" class="collage-image" mode="aspectFit" src="{{item.itemImages[1]}}" />
+          </view>
+          <view class="collage-pane collage-pane--sub">
+            <image wx:if="{{item.itemImages[2]}}" class="collage-image" mode="aspectFit" src="{{item.itemImages[2]}}" />
+          </view>
         </view>
       </view>
       <view class="outfit-main">

@@ -7,10 +7,14 @@
 
   <view class="photo-card surface-panel">
     <view class="section-title">选择单品照片</view>
-    <view class="empty-preview">请拍照或从图库选择单品图片</view>
+    <view wx:if="{{draft}}" class="imported-preview">
+      <image class="imported-image" mode="aspectFit" src="{{draft.imagePath}}" />
+      <view class="imported-label">已导入 1 张单品图片</view>
+    </view>
+    <view wx:else class="empty-preview">请拍照或从图库选择单品图片</view>
   </view>
 
-  <view class="source-grid">
+  <view class="source-grid {{draft ? 'source-grid--compact' : ''}}">
     <button class="source-button" loading="{{selecting}}" disabled="{{selecting}}" bindtap="chooseFromCamera">
       <view>拍照</view>
     </button>
@@ -19,11 +23,13 @@
     </button>
   </view>
 
-  <view class="limit-copy">当前先选择 1 张单品图片</view>
+  <button wx:if="{{draft}}" class="clear-button" disabled="{{selecting}}" bindtap="clearSelected">清空已选图片</button>
+
+  <view class="limit-copy">{{draft ? '下一步将进入校对信息，当前小程序先支持单张手动确认。' : '当前先选择 1 张单品图片'}}</view>
   <view wx:if="{{error}}" class="error-text">{{error}}</view>
 
   <view class="bottom-bar bottom-glass-bar">
     <button class="secondary-button bottom-button" disabled>上一步</button>
-    <button class="primary-button bottom-button" disabled="{{selecting}}" loading="{{selecting}}" bindtap="chooseFromAlbum">下一步（AI 识别）</button>
+    <button class="primary-button bottom-button" disabled="{{selecting || !draft}}" loading="{{selecting}}" bindtap="goReview">下一步（校对信息）</button>
   </view>
 </view>

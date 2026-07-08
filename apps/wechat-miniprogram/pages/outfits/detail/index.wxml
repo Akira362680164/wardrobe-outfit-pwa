@@ -5,10 +5,18 @@
     <view class="status-copy">{{error}}</view>
   </view>
   <view wx:elif="{{outfit}}">
-    <detail-shell top-title="套装详情" title="{{outfit.name}}" meta="{{outfit.itemCount}}件 · {{outfit.seasonText}} · {{outfit.sceneText}}" eyebrow="暂无穿着记录" hero-label="主图" hero-fallback="套装示意">
+    <detail-shell top-title="套装详情" title="{{outfit.name}}" meta="{{outfit.itemCount}}件 · {{outfit.seasonText}} · {{outfit.sceneText}}" eyebrow="暂无穿着记录" image-url="{{outfit.imageUrl}}" hero-label="主图" hero-fallback="套装示意">
       <view class="thumb-strip" slot="afterHero">
-        <view class="thumb is-active"><view class="thumb-fallback"></view><view class="thumb-label">主图</view></view>
-        <view class="thumb add-thumb"><view class="plus">＋</view><view class="thumb-label muted">套装示意</view></view>
+        <view wx:for="{{outfit.itemImages}}" wx:key="*this" class="thumb {{index === 0 ? 'is-active' : ''}}">
+          <image class="thumb-image" mode="aspectFill" src="{{item}}" />
+          <view class="thumb-label">{{index === 0 ? '主图' : '单品'}}</view>
+        </view>
+        <view wx:if="{{outfit.itemImages.length === 0}}" class="thumb is-active"><view class="thumb-fallback"></view><view class="thumb-label">主图</view></view>
+      </view>
+
+      <view class="action-row">
+        <button class="action-button edit">编辑</button>
+        <button class="action-button danger" bindtap="openDeleteSheet">删除</button>
       </view>
 
       <view class="notice-card"><view class="check-dot">✓</view><view>套装已创建</view></view>
@@ -34,4 +42,11 @@
       </view>
     </detail-shell>
   </view>
+
+  <ui-sheet open="{{deleteSheetOpen}}" title="删除这套穿搭？" description="删除后将从服务器套装列表移除，衣橱里的单品不会被删除。" bind:close="closeDeleteSheet">
+    <view class="delete-actions">
+      <button class="sheet-button sheet-button--danger" loading="{{deleting}}" disabled="{{deleting}}" bindtap="confirmDelete">确认删除</button>
+      <button class="sheet-button sheet-button--secondary" disabled="{{deleting}}" bindtap="closeDeleteSheet">取消</button>
+    </view>
+  </ui-sheet>
 </view>

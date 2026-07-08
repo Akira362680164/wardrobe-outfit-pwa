@@ -38,6 +38,7 @@ export interface WorkspaceSummary {
 
 export interface MiniGarment {
   id: string;
+  revision: number;
   legacyItemId: number;
   name: string;
   category: string;
@@ -48,10 +49,30 @@ export interface MiniGarment {
   updatedAt: string;
 }
 
+export interface MiniGarmentDetail extends MiniGarment {
+  meta: string;
+  statusText: string;
+  locationText: string;
+  purchaseDate: string;
+  primaryColor: string;
+  secondaryColor: string;
+  temperatureText: string;
+  formalityText: string;
+  warmthText: string;
+  materialText: string;
+  fitText: string;
+  notes: string;
+}
+
 export interface MiniOutfit {
   id: string;
+  revision: number;
   name: string;
   itemCount: number;
+  itemIds: number[];
+  itemEntityIds: string[];
+  imageUrl: string;
+  itemImages: string[];
   seasonText: string;
   sceneText: string;
   favorite: boolean;
@@ -60,6 +81,7 @@ export interface MiniOutfit {
 
 export interface MiniWishlistItem {
   id: string;
+  revision: number;
   name: string;
   categoryLabel: string;
   priceText: string;
@@ -114,6 +136,7 @@ type CatalogItemPayloadInput = {
 };
 
 const CATEGORY_LABELS: Record<string, string> = {
+  outerwear: "外套",
   tops: "上装",
   pants: "裤装",
   skirts: "半裙",
@@ -157,7 +180,8 @@ export async function fetchGarments(limit = 60): Promise<MiniGarment[]> {
 
 export async function fetchOutfits(limit = 60): Promise<MiniOutfit[]> {
   const response = await workspaceRequest<WorkspaceListResponse>(`/api/workspace/outfits?limit=${limit}`);
-  return (response.items ?? []).map(toMiniOutfit);
+  const garments = await fetchGarmentsForOutfits();
+  return Promise.all((response.items ?? []).map((entity) => toMiniOutfit(entity, garments)));
 }
 
 export async function fetchWishlist(limit = 60): Promise<MiniWishlistItem[]> {
@@ -165,9 +189,32 @@ export async function fetchWishlist(limit = 60): Promise<MiniWishlistItem[]> {
   return Promise.all((response.items ?? []).map(toMiniWishlistItem));
 }
 
+export async function fetchGarmentDetail(id: string): Promise<MiniGarmentDetail> {
+  const response = await workspaceRequest<{ data: WorkspaceEntity }>(`/api/workspace/garments/${encodeURIComponent(id)}`);
+  const summary = await toMiniGarment(response.data);
+  const payload = response.data.payload;
+  const colors = colorList(payload.colors);
+  const styles = Array.isArray(payload.styles) ? payload.styles.filter(isNonEmptyString).slice(0, 3).join(" / ") : "";
+  return {
+    ...summary,
+    meta: [summary.categoryLabel, summary.seasonText, styles].filter((part) => part && part !== "未标注").join(" · ") || summary.categoryLabel,
+    statusText: garmentStatusText(payload.status),
+    locationText: locationText(payload.locationId),
+    purchaseDate: stringValue(payload.purchaseDate, "未记录"),
+    primaryColor: colors[0] ?? "未标注",
+    secondaryColor: colors[1] ?? "无",
+    temperatureText: temperatureText(payload.temperatureRange),
+    formalityText: scoreText(payload.formality),
+    warmthText: scoreText(payload.warmth),
+    materialText: firstString(payload.material, payload.materialText, payload.fabric, payload.fabricText) || "未记录",
+    fitText: firstString(payload.fit, payload.fitNotes, payload.fitGender) || "未记录",
+    notes: stringValue(payload.notes, "无备注"),
+  };
+}
+
 export async function fetchOutfitDetail(id: string): Promise<MiniOutfitDetail> {
   const response = await workspaceRequest<{ data: WorkspaceEntity }>(`/api/workspace/outfits/${encodeURIComponent(id)}`);
-  const summary = toMiniOutfit(response.data);
+  const summary = await toMiniOutfit(response.data, await fetchGarmentsForOutfits());
   return { ...summary, notes: stringValue(response.data.payload.notes, "无备注") };
 }
 
@@ -255,6 +302,14 @@ export async function createWishlistItem(input: CreateWishlistInput): Promise<Wo
   return response.entity;
 }
 
+export async function deleteWorkspaceEntity(resource: "garments" | "outfits" | "wishlist", id: string, expectedRevision: number): Promise<void> {
+  await request({
+    method: "DELETE",
+    path: `/api/workspace/${resource}/${encodeURIComponent(id)}`,
+    data: { clientMutationId: createClientMutationId(), expectedRevision },
+  });
+}
+
 function buildCatalogItemPayload(input: CatalogItemPayloadInput): Record<string, unknown> {
   const now = new Date().toISOString();
   return {
@@ -304,6 +359,7 @@ async function toMiniGarment(entity: WorkspaceEntity): Promise<MiniGarment> {
   const category = stringValue(payload.category, "unknown");
   return {
     id: entity.id,
+    revision: entity.revision,
     legacyItemId: numberValue(payload.legacyItemId) ?? numericId(entity.id),
     name: stringValue(payload.name, "未命名单品"),
     category,
@@ -315,13 +371,23 @@ async function toMiniGarment(entity: WorkspaceEntity): Promise<MiniGarment> {
   };
 }
 
-function toMiniOutfit(entity: WorkspaceEntity): MiniOutfit {
+async function toMiniOutfit(entity: WorkspaceEntity, garments: MiniGarment[] = []): Promise<MiniOutfit> {
   const payload = entity.payload;
-  const ids = [payload.legacyItemIds, payload.itemEntityIds, payload.itemIds, payload.itemNames].find(Array.isArray);
+  const itemIds = numberList(payload.legacyItemIds).length ? numberList(payload.legacyItemIds) : numberList(payload.itemIds);
+  const itemEntityIds = stringList(payload.itemEntityIds);
+  const itemNames = stringList(payload.itemNames);
+  const itemCount = itemIds.length || itemEntityIds.length || itemNames.length;
+  const itemImages = outfitItemImages(itemIds, itemEntityIds, garments);
+  const coverUrl = await resolveImageUrl(entity, "coverImageDataUrl", payload);
   return {
     id: entity.id,
+    revision: entity.revision,
     name: stringValue(payload.name, "未命名套装"),
-    itemCount: Array.isArray(ids) ? ids.length : 0,
+    itemCount,
+    itemIds,
+    itemEntityIds,
+    imageUrl: coverUrl || itemImages[0] || "",
+    itemImages,
     seasonText: formatSeasons(payload.seasons),
     sceneText: Array.isArray(payload.sceneTags) ? payload.sceneTags.filter(isNonEmptyString).slice(0, 3).join(" / ") || "未标注场景" : "未标注场景",
     favorite: payload.favorite === true,
@@ -334,6 +400,7 @@ async function toMiniWishlistItem(entity: WorkspaceEntity): Promise<MiniWishlist
   const category = stringValue(payload.category, "unknown");
   return {
     id: entity.id,
+    revision: entity.revision,
     name: stringValue(payload.name, "未命名种草"),
     categoryLabel: CATEGORY_LABELS[category] ?? "未分类",
     priceText: typeof payload.price === "number" && Number.isFinite(payload.price) ? `¥${payload.price}` : "未记录价格",
@@ -365,6 +432,31 @@ function numberValue(value: unknown): number | undefined {
   return typeof value === "number" && Number.isSafeInteger(value) ? value : undefined;
 }
 
+function numberList(value: unknown): number[] {
+  return Array.isArray(value) ? value.filter((entry): entry is number => typeof entry === "number" && Number.isFinite(entry)) : [];
+}
+
+function stringList(value: unknown): string[] {
+  return Array.isArray(value) ? value.filter(isNonEmptyString) : [];
+}
+
+async function fetchGarmentsForOutfits(): Promise<MiniGarment[]> {
+  try {
+    return await fetchGarments();
+  } catch {
+    return [];
+  }
+}
+
+function outfitItemImages(itemIds: number[], itemEntityIds: string[], garments: MiniGarment[]): string[] {
+  const byLegacy = new Map(garments.map((garment) => [garment.legacyItemId, garment]));
+  const byEntity = new Map(garments.map((garment) => [garment.id, garment]));
+  return [
+    ...itemIds.map((id) => byLegacy.get(id)?.imageUrl),
+    ...itemEntityIds.map((id) => byEntity.get(id)?.imageUrl),
+  ].filter(isNonEmptyString).slice(0, 4);
+}
+
 function formatColors(value: unknown): string {
   if (Array.isArray(value)) return value.filter(isNonEmptyString).slice(0, 3).join(" / ") || "未标注";
   if (!value || typeof value !== "object") return "未标注";
@@ -383,6 +475,43 @@ function formatSeasons(value: unknown): string {
 
 function isNonEmptyString(value: unknown): value is string {
   return typeof value === "string" && value.length > 0;
+}
+
+function colorList(value: unknown): string[] {
+  if (Array.isArray(value)) return value.filter(isNonEmptyString);
+  if (!value || typeof value !== "object") return [];
+  const colors = value as Record<string, unknown>;
+  if (colors.mode === "single") return [colors.primary].filter(isNonEmptyString);
+  if (colors.mode === "main_with_accent") return [colors.primary, ...stringList(colors.accents)].filter(isNonEmptyString);
+  if (colors.mode === "multicolor") return stringList(colors.primaries);
+  return [];
+}
+
+function garmentStatusText(value: unknown): string {
+  if (value === "inactive") return "暂不穿";
+  if (value === "archived") return "已归档";
+  if (value === "laundry") return "清洗中";
+  return "可穿";
+}
+
+function locationText(value: unknown): string {
+  if (value === "home") return "默认衣橱";
+  return stringValue(value, "默认衣橱");
+}
+
+function scoreText(value: unknown): string {
+  return typeof value === "number" && Number.isFinite(value) ? `${value}/5` : "未识别";
+}
+
+function temperatureText(value: unknown): string {
+  if (!value || typeof value !== "object") return "未识别";
+  const record = value as Record<string, unknown>;
+  const min = typeof record.min === "number" ? record.min : typeof record.minC === "number" ? record.minC : undefined;
+  const max = typeof record.max === "number" ? record.max : typeof record.maxC === "number" ? record.maxC : undefined;
+  if (min !== undefined && max !== undefined) return `${min}℃ - ${max}℃`;
+  if (min !== undefined) return `${min}℃以上`;
+  if (max !== undefined) return `${max}℃以下`;
+  return "未识别";
 }
 
 function wishlistStatusText(value: unknown): string {

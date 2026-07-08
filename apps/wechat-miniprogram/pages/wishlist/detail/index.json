@@ -1,1 +1,1 @@
-{ "usingComponents": { "detail-shell": "../../../components/domain/detail-shell/index" } }
+{ "usingComponents": { "detail-shell": "../../../components/domain/detail-shell/index", "ui-sheet": "../../../components/ui/sheet/index" } }

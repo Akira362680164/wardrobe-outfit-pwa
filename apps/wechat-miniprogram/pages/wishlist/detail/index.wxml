@@ -9,7 +9,7 @@
       <view class="action-row" slot="afterHero">
         <button class="action-button bought">✓ 已买</button>
         <button class="action-button reject">× 不想买</button>
-        <button class="action-button edit">编辑</button>
+        <button class="action-button danger" bindtap="openDeleteSheet">删除</button>
       </view>
 
       <view class="notice-card"><view class="check-dot">✓</view><view>已添加种草单品</view></view>
@@ -33,4 +33,11 @@
       </view>
     </detail-shell>
   </view>
+
+  <ui-sheet open="{{deleteSheetOpen}}" title="删除这件种草？" description="删除后将从服务器种草列表移除，不会影响衣橱里的正式单品。" bind:close="closeDeleteSheet">
+    <view class="delete-actions">
+      <button class="sheet-button sheet-button--danger" loading="{{deleting}}" disabled="{{deleting}}" bindtap="confirmDelete">确认删除</button>
+      <button class="sheet-button sheet-button--secondary" disabled="{{deleting}}" bindtap="closeDeleteSheet">取消</button>
+    </view>
+  </ui-sheet>
 </view>

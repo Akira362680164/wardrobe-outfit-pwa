@@ -28,6 +28,16 @@
 
   <view class="month-empty">
     <view class="month-empty__title">这个月还没有套装计划</view>
-    <view class="month-empty__copy">点击安排套装，先建立一套可加入计划的组合。</view>
+    <view class="month-empty__copy">当前小程序先读取可安排套装，计划写入待后端计划接口接入。</view>
+  </view>
+
+  <view wx:if="{{loading}}" class="plan-card">正在读取可安排套装...</view>
+  <view wx:elif="{{error}}" class="plan-card">{{error}}</view>
+  <view wx:elif="{{outfits.length > 0}}" class="plan-card">
+    <view class="plan-card__title">可安排套装</view>
+    <view wx:for="{{outfits}}" wx:key="id" class="plan-row" data-id="{{item.id}}" bindtap="openOutfit">
+      <view class="plan-row__name">{{item.name}}</view>
+      <view class="plan-row__meta">{{item.itemCount}}件 · {{item.sceneText}}</view>
+    </view>
   </view>
 </view>
