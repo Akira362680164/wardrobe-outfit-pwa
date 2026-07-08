@@ -1,3 +1,14 @@
+## 2026-07-08 / v2.1.8-test / Codex — 小程序登录页规范名称修正
+
+- **执行 Agent**：Codex（未触发 subagent：本次为登录页名称单点修复）。
+- **目的**：按用户截图反馈，将小程序端规范名称从 `智能衣橱` 修正为 `个人衣物助手`。
+- **版本变更**：无；当前应用版本仍为 `2.1.8-test`，小程序包版本仍为 `0.1.0`。
+- **改动文件**：`apps/wechat-miniprogram/pages/login/index.wxml`、`apps/wechat-miniprogram/pages/login/index.ts`、`VERSION_HISTORY.md`。
+- **改动说明**：登录页 kicker 与页面导航标题统一改为 `个人衣物助手`。
+- **验证结果**：`compile_wxml pages/login/index.wxml` 通过；`compile_js pages/login/index.js` 通过；`simulator_open_page pages/login/index` 通过；登录页截图保存到 `test-results/wechat-miniprogram-login/login-kicker-name.png`。
+- **风险门禁**：low（文案改动，不改接口、不改后端、不改样式）；未触发 subagent：用户未通知。
+- **未验证风险**：未做真机截图；本轮使用 DevTools 模拟器截图确认。
+
 ## 2026-07-08 / v2.1.8-test / Codex — 小程序登录页注册说明补充
 
 - **执行 Agent**：Codex（未触发 subagent：本次为登录页单行文案修复）。

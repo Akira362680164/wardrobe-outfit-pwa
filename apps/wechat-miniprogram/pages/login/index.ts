@@ -21,7 +21,7 @@ Page({
   },
 
   onLoad() {
-    wx.setNavigationBarTitle({ title: "智能衣橱" });
+    wx.setNavigationBarTitle({ title: "个人衣物助手" });
   },
 
   async onGetPhoneNumber(this: any, event: WechatMiniprogram.GetPhoneNumberEvent) {
