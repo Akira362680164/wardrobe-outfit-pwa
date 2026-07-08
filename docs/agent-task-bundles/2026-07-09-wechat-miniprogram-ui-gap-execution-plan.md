@@ -11,12 +11,13 @@
 ## Global Constraints
 
 - 不改 `node_modules`，不改密钥、登录态或线上数据写入规则。
-- 衣橱首页顶部避让已修复，本轮只做回归截图，不重新设计衣橱首页。
+- 衣橱首页顶部避让已修复；本轮新增衣橱首页卡片修复项：瀑布流卡片比例和字段展示方式必须与 App 首页一致。
 - 三个仍需顶部修复的一级页是 `套装`、`种草`、`设置`。
 - `设置` 页必须把 `设置` 标题作为顶部第一视觉元素；AI banner 放到标题下方。
 - 顶部避让不能硬编码某张图的 y 坐标；必须使用微信运行时胶囊信息。
 - 每个 subagent 只能编辑自己被分配的文件组；不得多个 subagent 同时改同一文件。
 - 母 agent 统一做共享文件、合并、测试、截图、版本历史和提交。
+- 衣橱首页卡片修复由单独 subagent 执行；不得与套装/种草/设置顶部修复 subagent 并行编辑同一文件。
 - 本次是小程序 UI 修复，不打 Android APK。
 
 ---
@@ -109,6 +110,19 @@ Use existing mini `ui-icon` names from `components/ui/icon/icons.ts`; add assets
 | AI / banner | `sparkles` or `wand-sparkles`, not `✣` |
 | More / chevron | `chevron-right` or existing text arrow only if no icon asset is available |
 
+### Wardrobe Home Card Contract
+
+The wardrobe home card must match the App home card content model, not the current mini program text-only model.
+
+| Row | Required content | Notes |
+| --- | --- | --- |
+| Media | 3:4 garment image frame | Image may use `aspectFit`, but the frame must stay 3:4 and must not be stretched by text content. |
+| Title | garment name | One line, truncate with ellipsis. |
+| Meta | category + color swatches + color names | Example: `上衣 · ● 蓝 / ● 橙`; use real colored dots, not only text. |
+| Summary | wear summary | `未穿过` or `最近 M/D · 穿过 N 次`; do not show season here. |
+
+Do not show `seasonText` on wardrobe home cards. Season stays available on detail pages and edit/confirm flows.
+
 ## Top Capsule Alignment Rule
 
 The implementation must compute a title top value from the actual WeChat capsule:
@@ -145,9 +159,10 @@ Subagents own isolated page groups:
 | A: Outfit home | `pages/outfits/index/index.ts`, `.wxml`, `.wxss`, `.json` | Capsule title alignment and minor visual token cleanup for 套装首页 |
 | B: Wishlist home | `pages/wishlist/index/index.ts`, `.wxml`, `.wxss`, `.json` | Capsule title alignment and minor visual token cleanup for 种草首页 |
 | C: Settings home | `pages/settings/index/index.ts`, `.wxml`, `.wxss`, `.json` | Move title above banner, capsule title alignment, stale banner/icon cleanup |
-| D: Read-only visual QA | no edits | Screenshot checklist, compare against App reference, report issues |
+| D: Wardrobe card contract | `services/workspace.ts`, `pages/wardrobe/index/index.{ts,wxml,wxss}`, `components/domain/catalog-card/index.{ts,wxml,wxss}` | 3:4 wardrobe cards and App-aligned field display |
+| E: Read-only visual QA | no edits | Screenshot checklist, compare against App reference, report issues |
 
-Do not run A/B/C in parallel until the mother agent has either finished shared setup or explicitly states no shared setup is needed. D can run after A/B/C produce a buildable state.
+Do not run A/B/C/D in parallel if their write scopes overlap. D may run independently of A/B/C only because it owns wardrobe card/data files; if another task needs `catalog-card` or `workspace.ts`, pause D until that task is merged.
 
 ## Task 0: Mother Agent Setup
 
@@ -201,6 +216,118 @@ Checklist:
 - [ ] Remove page-level hard top padding that fights the runtime value.
 - [ ] Confirm title, subtitle, calendar action, week card, filters, cards all move together.
 - [ ] Confirm no title text or action overlaps capsule at 390 and 360 width.
+
+## Task 1A: Wardrobe Home Card Contract
+
+**Files:**
+- Modify: `apps/wechat-miniprogram/services/workspace.ts`
+- Modify: `apps/wechat-miniprogram/pages/wardrobe/index/index.wxml`
+- Modify: `apps/wechat-miniprogram/pages/wardrobe/index/index.wxss`
+- Modify: `apps/wechat-miniprogram/components/domain/catalog-card/index.ts`
+- Modify: `apps/wechat-miniprogram/components/domain/catalog-card/index.wxml`
+- Modify: `apps/wechat-miniprogram/components/domain/catalog-card/index.wxss`
+
+Implementation requirements:
+
+- Keep the existing wardrobe home top/capsule layout; do not reopen the top header task.
+- The card media frame must remain 3:4.
+- The visible wardrobe card content must be: title, category + color swatches, wear summary.
+- Remove `seasonText` from the wardrobe home card display.
+- Add structured card fields in `MiniGarment` instead of parsing display strings in WXML.
+- Preserve wishlist cards that already use `catalog-card`; do not force wishlist into wardrobe-only display.
+
+Data interface:
+
+```ts
+export interface MiniGarment {
+  id: string;
+  revision: number;
+  legacyItemId: number;
+  name: string;
+  category: string;
+  categoryLabel: string;
+  colorText: string;
+  colorNames: string[];
+  cardColors: Array<{ name: string; swatch: string; needsBorder: boolean }>;
+  wearSummary: string;
+  seasonText: string;
+  imageUrl: string;
+  updatedAt: string;
+}
+```
+
+Color swatch values must follow the App color catalog for common colors:
+
+```ts
+const COLOR_SWATCHES: Record<string, { bg: string; border?: string }> = {
+  "黑": { bg: "#1D2228" },
+  "白": { bg: "#F8FAFC", border: "rgba(29,34,40,0.26)" },
+  "灰": { bg: "#9CA3AF" },
+  "米白": { bg: "#F3EEE3", border: "rgba(29,34,40,0.18)" },
+  "米": { bg: "#E6D5B8", border: "rgba(29,34,40,0.16)" },
+  "卡其": { bg: "#B7A477" },
+  "棕": { bg: "#87583E" },
+  "蓝": { bg: "#355C7D" },
+  "牛仔蓝": { bg: "#3F6F9F" },
+  "绿": { bg: "#5F7058" },
+  "红": { bg: "#B84A45" },
+  "粉": { bg: "#E8A7B8" },
+  "深灰": { bg: "#4B5563" },
+  "杏": { bg: "#E6C5A5", border: "rgba(29,34,40,0.14)" },
+  "驼": { bg: "#B8845F" },
+  "咖啡": { bg: "#5F4032" },
+  "酒红": { bg: "#7B2E3A" },
+  "橙": { bg: "#D9823B" },
+  "黄": { bg: "#E3B64B", border: "rgba(29,34,40,0.12)" },
+  "天蓝": { bg: "#83B6D9" },
+  "藏青": { bg: "#243B5A" },
+  "橄榄绿": { bg: "#777B48" },
+  "墨绿": { bg: "#315B4B" },
+  "紫": { bg: "#8C4A86" },
+  "金": { bg: "#C6A15B", border: "rgba(29,34,40,0.12)" },
+  "银": { bg: "#B8C0C8", border: "rgba(29,34,40,0.16)" },
+};
+```
+
+Wear summary logic:
+
+```ts
+function formatWearSummary(value: unknown): string {
+  const dates = Array.isArray(value) ? value.filter(isNonEmptyString) : [];
+  if (dates.length === 0) return "未穿过";
+  const last = dates[dates.length - 1] || "";
+  const match = /^(\d{4})-(\d{1,2})-(\d{1,2})/.exec(last);
+  const dateText = match ? `${Number(match[2])}/${Number(match[3])}` : "";
+  return dateText ? `最近 ${dateText} · 穿过 ${dates.length} 次` : `穿过 ${dates.length} 次`;
+}
+```
+
+Catalog card compatibility:
+
+- Keep existing `meta`, `submeta`, and `badge` properties for wishlist and other generic usage.
+- Add optional properties such as `categoryLabel`, `colors`, and `summary`; render the structured wardrobe meta only when `colors` is present.
+- The structured colors should render at most 3 colors; if more exist, show `+N`.
+- Text must remain one line and truncate.
+
+Checklist:
+
+- [ ] Extend `MiniGarment` and `toMiniGarment()` with `colorNames`, `cardColors`, and `wearSummary`.
+- [ ] Add small color swatch helper functions in `workspace.ts`; do not create a new dependency.
+- [ ] Update wardrobe home `catalog-card` usage to pass `category-label`, `colors`, and `summary`, and stop passing season as `submeta`.
+- [ ] Update `catalog-card` to render structured category/color line only for wardrobe cards.
+- [ ] Make card text area fixed enough that long names and colors do not stretch the card.
+- [ ] Verify wishlist cards still display category/price/status as before.
+
+Validation:
+
+```bash
+npm --prefix apps/wechat-miniprogram run typecheck
+node apps/wechat-miniprogram/scripts/wechatide-compile.mjs --wxml pages/wardrobe/index/index.wxml
+node apps/wechat-miniprogram/scripts/wechatide-compile.mjs --wxss pages/wardrobe/index/index.wxss
+node apps/wechat-miniprogram/scripts/wechatide-compile.mjs --wxml components/domain/catalog-card/index.wxml
+node apps/wechat-miniprogram/scripts/wechatide-compile.mjs --wxss components/domain/catalog-card/index.wxss
+node apps/wechat-miniprogram/scripts/wechatide-compile.mjs --wxml pages/wishlist/index/index.wxml
+```
 
 ## Task 2: Wishlist Home
 
@@ -288,7 +415,8 @@ These are accepted but lower priority than the three primary page top fixes.
 
 | Page | Accept | Implementation owner |
 | --- | --- | --- |
-| 衣橱首页 | 已修复；只回归截图 | Mother agent |
+| 衣橱首页顶部 | 已修复；只回归截图 | Mother agent |
+| 衣橱首页卡片 | 新增修复：瀑布流媒体 3:4，字段改成 App 首页的标题、分类+颜色色块、穿着摘要 | Wardrobe card subagent only |
 | 套装月历 | Use shared transparent subpage TopBar, no white oval top band | Separate future subagent, files under `pages/outfits/calendar/*` |
 | 套装详情 | 3:4 hero, filmstrip, no top-right custom capsule button | Separate future subagent, detail files only |
 | 种草详情 | 3:4 product hero, actions not squeezed into three tiny buttons | Separate future subagent, wishlist detail files only |
@@ -320,6 +448,7 @@ Required captures:
 | 08 | after `添加衣物` | `intake_single_step1_empty_390_top.png` |
 | 09 | after `添加套装` | no exact App screenshot in current set; confirm route and layout |
 | 10 | after `添加种草单品` | wishlist intake/edit target; confirm route and layout |
+| 11 | wardrobe card close-up after 3:4 + field fix | `wardrobe_home_390_top.png` plus user screenshot `/Users/fangzheng/Downloads/Screenshot_2026-07-09-01-19-10-43_ccf0e574077213e.jpg` |
 
 Also keep a contact sheet comparing App reference and mini screenshots.
 
