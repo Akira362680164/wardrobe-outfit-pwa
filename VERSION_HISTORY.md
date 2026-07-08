@@ -1,3 +1,14 @@
+## 2026-07-08 / v2.1.8-test / Codex — 启动微信小程序完整版多 subagent 开发
+
+- **执行 Agent**：Codex（用户明确要求多 subagent 执行；主 agent 建立隔离 worktree、执行看板和首批并行泳道）。
+- **目的**：根据 `CODEX_WECHAT_MINIPROGRAM_ZERO_START_TASK_V5_IDE_CLI_ONLY.md` V6 方案，启动原生微信小程序完整版开发，包含 `wechatide` 工具链、小程序脚手架、UI 系统、微信手机号登录后端、后续业务页面、AI 代理和 Android AI 同步改造。
+- **版本变更**：无；当前应用版本仍为 `2.1.8-test`。
+- **改动文件**：`docs/wechat-mini/execution-board.md`、`docs/superpowers/plans/2026-07-08-wechat-miniprogram-v1.md`、`VERSION_HISTORY.md`。
+- **改动说明**：在独立 worktree `/Users/fangzheng/Documents/wardrobe-wechat-miniprogram` 和分支 `feature/wechat-miniprogram-v1` 下建立主控看板，冻结目录边界、API 复用规则、高风险授权边界和首批并行 subagent 泳道；写入首批实现计划，先并行推进平台/CLI、工程脚手架、UI 系统和微信登录后端。
+- **验证结果**：文档检查通过；尚未改运行时代码。
+- **风险门禁**：high（后续涉及小程序完整工程、后端认证、AI 代理、Android 同步和多 agent 并行集成；本条仅建立执行基线，不改业务运行时代码）；已按用户要求触发多 subagent 流程。
+- **未验证风险**：尚未运行小程序编译、服务端测试、`wechatide`、Android 回归或体验版上传。
+
 ## 2026-07-08 / v2.1.8-test / Codex — UI 规范加入真实页面视觉优化参考与全局渐变背景
 
 - **执行 Agent**：Codex（按用户明确允许使用并行 subagent，启动 4 个只读 subagent 分组核对认证/设置、衣橱/衣物详情、录入流程、套装/种草/覆盖层；subagent 均未编辑文件，结论由主 agent 合并进规范生成器）。
