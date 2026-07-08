@@ -1,3 +1,14 @@
+## 2026-07-09 / v2.1.8-test / Codex — 小程序 UI 差距修复执行方案任务包
+
+- **执行 Agent**：Codex（未触发 subagent：本轮只编写执行方案，不派发实现任务）。
+- **目的**：按用户补充要求，把 ChatGPT 页面分析收敛为可执行 MD 任务包，明确三个未修复一级页的微信胶囊避让规则、UI token 取值、加号弹层截图链路、subagent 文件边界和母 agent 收口验证方式。
+- **版本变更**：无；当前应用版本仍为 `2.1.8-test`。
+- **改动文件**：`docs/agent-task-bundles/2026-07-09-wechat-miniprogram-ui-gap-execution-plan.md`、`VERSION_HISTORY.md`。
+- **改动说明**：新增小程序 UI gap 完整执行计划，明确衣橱首页只做回归，套装/种草/设置标题顶部与微信胶囊顶部按运行时胶囊信息对齐；补充颜色、圆角、遮罩、玻璃、Icon 标准；规定 subagent A/B/C 分别只改套装、种草、设置文件组，母 agent 负责共享文件、合并、测试、截图和提交；补齐加号弹层及三个新建入口跳转截图矩阵。
+- **验证结果**：只读核对主工程规则、用户经验档案、`README.md`、`package.json`、`VERSION_HISTORY.md`、UI 标准、小程序 token、三个一级页、create-sheet 和桌面截图目录；本轮为文档任务包，未运行小程序 typecheck 或 WeChat 编译。
+- **风险门禁**：low（仅新增执行方案文档和版本历史；不改运行时代码、不改线上 API、不改 Android、不打 APK）；未触发 subagent：用户未通知执行实现。
+- **未验证风险**：执行方案尚未在小程序中实施；顶部胶囊对齐、加号弹层跳转和截图矩阵需后续实现阶段验证。
+
 ## 2026-07-08 / v2.1.8-test / Codex — 部署后 live AI 识别流程复测
 
 - **执行 Agent**：Codex（未触发 subagent：用户未通知）。
