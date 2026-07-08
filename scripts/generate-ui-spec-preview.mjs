@@ -212,7 +212,7 @@ function productionShotGrid(shots) {
 }
 
 const visualReferences = [
-  ["auth_login_390_top.png", "认证 / 登录页", "登录衣橱账号", ["背景收敛到 paper/mist，减少营销感。", "主卡 28px 圆角，输入框 12-14px，focus 用 denim。", "登录按钮启用态用 primary，Shield 图标统一 lucide 20px。"]],
+  ["auth_login_390_top.png", "认证 / 登录页", "登录衣橱账号", ["保留 background.appAmbient 全局渐变，不退回 paper/mist 纯底。", "主卡 28px 圆角，输入框 12-14px，focus 用 denim。", "登录按钮启用态用 primary，Shield 图标统一 lucide 20px。"]],
   ["auth_register_390_top.png", "认证 / 注册页", "注册衣橱账号", ["沿用登录页背景、主卡和表单控件 token。", "协议勾选命中区补到 44px，链接用 denim 600。", "注册按钮图标用 UserPlus，输入框 R 角和边框一致。"]],
   ["settings_home_390_top.png", "设置 / 首页", "账号服务、MiniMax、画像与位置入口", ["MiniMax 提示条用 ai 浅 tint，关闭 X 用 muted。", "设置列表一级卡 28px，二级提示块 18-20px。", "底部导航 glass 75%，选中项与外框同心圆角。"]],
   ["wardrobe_home_390_top.png", "衣橱 / 首页", "顶部筛选、瀑布流、Toast、底部导航", ["顶部按钮使用 glass 背景，图标统一 lucide 20px。", "瀑布流卡片与内图保持同心圆角，边框用 line。", "Toast 固定在导航上方，覆盖 FAB，关闭区 44px。"]],

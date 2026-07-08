@@ -4,7 +4,7 @@
 - **目的**：修正“生产截图就是视觉标准”的误解，基于真实业务流截图识别具体页面，并在不改变页面结构的前提下给出颜色、圆角、字体、Icon、毛玻璃、阴影、层级和全局背景的优化参考。
 - **版本变更**：无；当前应用版本仍为 `2.1.8-test`。
 - **改动文件**：`docs/designs/wardrobe-ui-spec.md`、`docs/designs/wardrobe-ui-spec.html`、`scripts/generate-ui-spec-preview.mjs`、`scripts/test-ui-spec-preview-contract.ts`、`scripts/test-ui-spec-preview-render.ts`、`VERSION_HISTORY.md`。
-- **改动说明**：产品视觉方案实操区从单纯截图展示升级为 21 张真实截图对应的参考卡，每张包含页面识别、截图结构基准和“视觉优化参考”清单；明确截图只证明页面结构和真实状态，不代表最终视觉标准；新增 `background.appAmbient`，将当前登录/注册页的低饱和暖灰、纸白、青灰渐变沉淀为所有页面的全局底层背景；合同测试要求每张生产截图都有对应 `reference-shot`、`data-page-state` 和优化说明面板，并校验全局背景 token 与预览 CSS 变量存在。
+- **改动说明**：产品视觉方案实操区从单纯截图展示升级为 21 张真实截图对应的参考卡，每张包含页面识别、截图结构基准和“视觉优化参考”清单；明确截图只证明页面结构和真实状态，不代表最终视觉标准；新增 `background.appAmbient`，将当前登录/注册页的低饱和暖灰、纸白、青灰渐变沉淀为所有页面的全局底层背景；登录页视觉优化参考同步改为“保留 `background.appAmbient` 全局渐变”，不再写“收敛到 paper/mist”；合同测试要求每张生产截图都有对应 `reference-shot`、`data-page-state` 和优化说明面板，并校验全局背景 token 与预览 CSS 变量存在。
 - **验证结果**：`npm run docs:ui-spec:build`、`npm run docs:ui-spec:check`、`node --import tsx scripts/test-ui-spec-preview-contract.ts`、`node --import tsx scripts/test-ui-spec-preview-render.ts`、`npm run test:logic:ui-spec-preview`、`npm run typecheck` 通过；生成 HTML 包含 21 张截图、21 个参考卡、21 个优化说明面板，以及 `background.appAmbient` 全局背景 token 与 `--app-ambient` 预览变量。
 - **风险门禁**：high（规范 HTML、生成器和测试变更较多；实际改动仍限定为静态规范和测试，不改运行时代码、不改业务流程、不改 Android、不打 APK）；已按用户要求使用只读 subagent 分组核对。
 - **未验证风险**：本轮只修改静态 UI 规范、生成 HTML 和测试，未改运行时代码；未在真实 Android App 内验证全局背景落地效果。
