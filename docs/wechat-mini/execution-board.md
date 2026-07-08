@@ -17,10 +17,10 @@
 
 | 泳道 | Owner | 状态 | 可改路径 | 验收 |
 |---|---|---|---|---|
-| 平台/CLI | subagent-wechat-platform | todo | `docs/wechat-mini/*wechatide*`, `apps/wechat-miniprogram/scripts/**` | `wechatide` help/open/preview 脚本可运行 |
-| 小程序脚手架 | subagent-miniapp-architecture | todo | `apps/wechat-miniprogram/app.*`, `project.config.json`, `pages/**`, `services/**`, `stores/**`, `utils/**` | 小程序 TypeScript 基础检查可运行 |
-| UI 系统 | subagent-miniapp-ui-system | todo | `apps/wechat-miniprogram/styles/**`, `components/ui/**`, `custom-tab-bar/**`, `assets/icons/**`, `docs/wechat-mini/ui-*`, `icon-license.md` | UI digest、可行性矩阵、基础组件完成 |
-| 微信登录后端 | subagent-auth-backend | todo | `packages/cloud-contracts/src/auth/**`, `services/wardrobe-api/src/auth/**`, migrations/tests | 微信手机号登录契约和测试完成 |
+| 平台/CLI | subagent-wechat-platform | done | `docs/wechat-mini/*wechatide*`, `apps/wechat-miniprogram/scripts/**` | wrapper help/dry-run 通过，真实 DevTools 状态检查通过，项目已导入 |
+| 小程序脚手架 | subagent-miniapp-architecture | done | `apps/wechat-miniprogram/app.*`, `project.config.json`, `pages/**`, `services/**`, `stores/**`, `utils/**` | 27 个页面占位齐全，小程序 TypeScript 检查通过 |
+| UI 系统 | subagent-miniapp-ui-system | done | `apps/wechat-miniprogram/styles/**`, `components/ui/**`, `custom-tab-bar/**`, `assets/icons/**`, `docs/wechat-mini/ui-*`, `icon-license.md` | UI digest、可行性矩阵、token、基础组件和 tab bar 完成 |
+| 微信登录后端 | subagent-auth-backend | done | `packages/cloud-contracts/src/auth/**`, `services/wardrobe-api/src/auth/**`, migrations/tests | 微信手机号登录契约、服务端 mock 测试和 SQL migration 完成 |
 | 小程序业务页 | subagent-miniapp-business-pages | blocked | `apps/wechat-miniprogram/pages/{home,wardrobe,outfits,wishlist,settings}/**`, business services/stores | 等脚手架和 UI 基础稳定 |
 | AI 后端 | subagent-ai-proxy-backend | blocked | `packages/cloud-contracts/src/ai/**`, `services/wardrobe-api/src/ai/**`, migrations/tests | 等认证和资产链路稳定 |
 | 小程序 AI | subagent-miniapp-ai | blocked | `apps/wechat-miniprogram/pages/intake/**`, `pages/settings/ai-key/**`, `services/ai.ts`, `stores/ai-jobs.ts` | 等 AI 契约稳定 |
@@ -29,8 +29,16 @@
 
 ## 当前批次
 
-- [ ] 平台/CLI：实现 `wechatide:*` 脚本和 help 文档。
-- [ ] 小程序脚手架：创建完整原生小程序目录和页面占位。
-- [ ] UI 系统：提炼 UI 规范并建立 token / 基础组件 / tab bar。
-- [ ] 微信登录后端：新增契约草案、服务端接口骨架和测试。
+- [x] 平台/CLI：实现 `wechatide:*` 脚本和 help 文档。
+- [x] 小程序脚手架：创建完整原生小程序目录和页面占位。
+- [x] UI 系统：提炼 UI 规范并建立 token / 基础组件 / tab bar。
+- [x] 微信登录后端：新增契约、服务端接口、测试和 `wechat_accounts` migration。
 
+## 当前验证记录
+
+- `npx tsc --noEmit -p apps/wechat-miniprogram/tsconfig.json`：通过。
+- 小程序 JSON 解析、27 个页面文件齐全、组件引用检查、WXSS 文本防溢出静态检查：通过。
+- `node apps/wechat-miniprogram/scripts/wechatide-status.mjs --no-projects`：真实 DevTools 状态检查通过，skill `0.1.18`。
+- `node apps/wechat-miniprogram/scripts/wechatide-open.mjs --import-only`：项目导入成功。
+- `wechatide` 单文件编译：未执行成功；当前 `project.config.json` 使用 `touristappid`，安全脚本阻止打开项目窗口，需要填入真实 AppID 后重跑。
+- `npm run cloud:contracts:typecheck`、`npm run api:typecheck`、`npm --workspace @wardrobe/wardrobe-api run test -- tests/wechat-phone-auth.test.ts`、`npm run typecheck`：通过。

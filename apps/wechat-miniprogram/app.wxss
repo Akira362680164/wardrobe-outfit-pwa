@@ -1,29 +1,17 @@
-page {
-  min-height: 100%;
-  color: #1f2933;
-  background:
-    radial-gradient(circle at 18% 0%, rgba(255, 255, 255, 0.94), rgba(255, 255, 255, 0) 36%),
-    linear-gradient(160deg, #f7f2eb 0%, #edf3f0 48%, #f8f7f3 100%);
-  font-family: -apple-system, BlinkMacSystemFont, "Helvetica Neue", sans-serif;
-}
-
-.page-shell {
-  box-sizing: border-box;
-  min-height: 100vh;
-  padding: 96rpx 32rpx 48rpx;
-}
+@import "./styles/index.wxss";
 
 .page-title {
   margin: 0 0 18rpx;
-  font-size: 44rpx;
+  font-size: var(--font-title);
   font-weight: 700;
   line-height: 1.18;
+  letter-spacing: 0;
 }
 
 .page-copy {
   margin: 0;
-  color: #66737f;
-  font-size: 28rpx;
+  color: var(--color-muted);
+  font-size: var(--font-body);
   line-height: 1.65;
 }
 
@@ -31,13 +19,13 @@ page {
   box-sizing: border-box;
   margin-top: 36rpx;
   padding: 32rpx;
-  border: 1rpx solid rgba(119, 137, 150, 0.24);
-  border-radius: 28rpx;
-  background: rgba(255, 255, 255, 0.72);
-  box-shadow: 0 18rpx 60rpx rgba(43, 55, 68, 0.08);
+  border: 1rpx solid var(--color-line);
+  border-radius: var(--radius-card-inner);
+  background: rgba(255, 255, 252, 0.72);
+  box-shadow: var(--shadow-card);
 }
 
 .placeholder-label {
-  color: #7d8a96;
-  font-size: 24rpx;
+  color: var(--color-muted);
+  font-size: var(--font-caption);
 }

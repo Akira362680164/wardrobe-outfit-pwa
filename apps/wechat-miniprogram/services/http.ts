@@ -71,8 +71,8 @@ export async function uploadFile<T = unknown>(options: UploadOptions): Promise<T
       header,
       timeout: options.timeoutMs ?? 60000,
       success: (result) => {
-        const data = parseUploadData(result.data);
-        handleResponse(result.statusCode, data, result.header, requestId, true).then(resolve).catch(reject);
+        const data = parseUploadData(result.data) as T;
+        handleResponse<T>(result.statusCode, data, result.header, requestId, true).then(resolve).catch(reject);
       },
       fail: (error) => reject(toNetworkError(error, requestId, true)),
     });

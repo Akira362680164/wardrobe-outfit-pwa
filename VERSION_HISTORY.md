@@ -1,3 +1,14 @@
+## 2026-07-08 / v2.1.8-test / Codex — 微信小程序首批完整版基础落地
+
+- **执行 Agent**：Codex（按用户明确要求使用 4 个并行 subagent：平台/CLI、原生小程序脚手架、UI 系统、微信手机号登录后端；主 agent 负责集成、补迁移、验证和版本记录）。
+- **目的**：按 `CODEX_WECHAT_MINIPROGRAM_ZERO_START_TASK_V5_IDE_CLI_ONLY.md` V6 完整版方案，完成微信小程序开发的第一批可继续开发基础，而不是最小 MVP：原生小程序工程骨架、微信 IDE CLI 安全包装、UI token/基础组件/自定义 tab bar、微信手机号登录契约和后端 mock 可测实现。
+- **版本变更**：无；当前应用版本仍为 `2.1.8-test`。
+- **改动文件**：`.gitignore`、`VERSION_HISTORY.md`、`docs/superpowers/plans/2026-07-08-wechat-miniprogram-v1.md`、`docs/wechat-mini/**`、`apps/wechat-miniprogram/**`、`packages/cloud-contracts/src/auth/contracts.ts`、`packages/cloud-contracts/src/index.ts`、`services/wardrobe-api/src/app.ts`、`services/wardrobe-api/src/auth/session.ts`、`services/wardrobe-api/src/auth/wechat-phone.ts`、`services/wardrobe-api/src/db/schema.ts`、`services/wardrobe-api/migrations/0013_wechat_accounts.sql`、`services/wardrobe-api/migrations/meta/_journal.json`、`services/wardrobe-api/tests/wechat-phone-auth.test.ts`。
+- **改动说明**：新增 `apps/wechat-miniprogram` 原生微信小程序 TypeScript 工程，包含 27 个完整版页面占位、运行态 session store、线上 API request/upload 封装和自定义 tabBar 基础；新增 `wechatide` wrapper 脚本，覆盖状态检查、导入/打开、单文件编译、页面打开、console/network/runtime 读取，并阻断云写入、上传体验版、项目删除等高风险动作；将现有 Web/App UI 规范映射到小程序 WXSS token、glass、motion、基础组件和本地 SVG icon 入口；新增微信手机号登录共享契约、服务端接口 `POST /api/auth/wechat/phone-login`、可注入微信客户端、mock 测试和 `wechat_accounts` 非破坏性迁移；把 DevTools 私有配置加入 `.gitignore`。
+- **验证结果**：`npx tsc --noEmit -p apps/wechat-miniprogram/tsconfig.json` 通过；小程序 JSON 解析、27 个页面文件齐全、组件引用检查、WXSS 文本防溢出静态检查通过；`node --check` 覆盖 6 个 `wechatide` wrapper 脚本；wrapper dry-run 覆盖 status/import/compile/page/debug；真实 `node apps/wechat-miniprogram/scripts/wechatide-status.mjs --no-projects` 通过，DevTools skill `0.1.18`；真实 `node apps/wechat-miniprogram/scripts/wechatide-open.mjs --import-only` 成功导入项目；`npm run cloud:contracts:typecheck`、`npm run api:typecheck`、`npm --workspace @wardrobe/wardrobe-api run test -- tests/wechat-phone-auth.test.ts`、`npm run typecheck` 通过。
+- **风险门禁**：high（新增小程序工程、认证后端、数据库迁移、UI 基础组件和多 subagent 并行集成）；已按用户要求触发多 subagent 执行。`review-gate` 在 subagent 阶段因新文件数量判定 high，主 agent 追加了迁移和集成验证。
+- **未验证风险**：`project.config.json` 仍使用 `touristappid`，安全脚本阻止打开项目窗口，因此未执行真实 WXML/WXSS/JS 编译、模拟器页面运行、手机预览或体验版上传；未调用真实微信生产接口，后端登录测试使用 mock 微信客户端；未执行生产数据库迁移；未实现业务页面真实读写、AI 代理、小程序图片上传完整链路或 Android AI 改造。
+
 ## 2026-07-08 / v2.1.8-test / Codex — 启动微信小程序完整版多 subagent 开发
 
 - **执行 Agent**：Codex（用户明确要求多 subagent 执行；主 agent 建立隔离 worktree、执行看板和首批并行泳道）。

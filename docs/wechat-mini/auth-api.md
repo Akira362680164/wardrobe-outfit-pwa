@@ -67,7 +67,7 @@
 
 ## Schema 风险
 
-本批代码在 Drizzle schema 中新增 `wechat_accounts` 表定义，但未执行数据库迁移，也未新增 SQL migration 文件。上线前需要补一条非破坏性迁移：
+本批代码在 Drizzle schema 中新增 `wechat_accounts` 表定义，并提供非破坏性 SQL migration：`services/wardrobe-api/migrations/0013_wechat_accounts.sql`。部署前需要按现有 API 发布流程执行迁移：
 
 ```sql
 CREATE TABLE wechat_accounts (

@@ -92,6 +92,13 @@
       "when": 1782892800002,
       "tag": "0012_relax_canonical_asset_field",
       "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1783555200000,
+      "tag": "0013_wechat_accounts",
+      "breakpoints": true
     }
   ]
 }

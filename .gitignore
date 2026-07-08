@@ -21,6 +21,7 @@ android/app/src/main/assets/public
 .env.local
 .env.*.local
 android/local.properties
+apps/wechat-miniprogram/project.private.config.json
 
 # Signing credentials stay local; keep a separate backup outside Git.
 android/signing/*.jks

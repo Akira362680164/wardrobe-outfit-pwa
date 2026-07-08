@@ -11,6 +11,8 @@
   },
   "include": [
     "app.ts",
+    "components/**/*.ts",
+    "custom-tab-bar/**/*.ts",
     "pages/**/*.ts",
     "services/**/*.ts",
     "stores/**/*.ts",
