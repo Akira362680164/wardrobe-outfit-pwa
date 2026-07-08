@@ -58,12 +58,14 @@ assert.ok(editCard.includes("EditSectionCard"), "EditSectionCard exists");
 
 // Card shell structure
 assert.ok(cardShell.includes("h-[304px]"), "card shell has h-[304px]");
-assert.ok(cardShell.includes("h-[210px]"), "card shell has h-[210px]");
+assert.ok(cardShell.includes("h-[194px]"), "card shell has h-[194px]");
 assert.ok(
-  cardShell.includes('h-[210px] w-full shrink-0'),
-  "card media slot keeps full width when its content is absolutely positioned",
+  cardShell.includes("ui-inner-card") &&
+    cardShell.includes("mx-3 mt-3 h-[194px] w-auto shrink-0"),
+  "card media slot uses the shared inner-card token and inset card geometry",
 );
-assert.ok(cardShell.includes("h-[94px]"), "card shell has h-[94px]");
+assert.ok(cardShell.includes("h-[97px]"), "card shell has h-[97px]");
+assert.ok(cardShell.includes("ui-card"), "card shell uses shared ui-card token");
 assert.ok(cardShell.includes("shadow-none"), "card shell has shadow-none");
 assert.ok(
   !cardShell.includes("shadow-soft"),

@@ -119,14 +119,14 @@ export function IntakeFlowShell({
   if (!mounted || typeof document === "undefined") return null;
 
   return createPortal(
-    <div className="fixed inset-0 z-[90] flex h-[100dvh] flex-col overflow-hidden bg-[#fbfbf8]">
-      <header className="sticky top-0 z-30 border-b border-ink/8 bg-[#fbfbf8]/95 px-4 pb-3 pt-[calc(env(safe-area-inset-top)+0.5rem)] backdrop-blur-xl">
+    <div className="app-ambient-bg fixed inset-0 z-[90] flex h-[100dvh] flex-col overflow-hidden">
+      <header className="app-glass-top sticky top-0 z-30 px-4 pb-3 pt-[calc(env(safe-area-inset-top)+0.5rem)]">
         <div className="flex h-10 items-center justify-between gap-2">
           <button
             type="button"
             onClick={onBack}
             disabled={backDisabled || !onBack}
-            className="grid h-10 w-10 shrink-0 place-items-center rounded-lg text-ink/70 active:bg-mist disabled:opacity-35"
+            className="grid h-10 w-10 shrink-0 place-items-center ui-control-radius text-ink/70 active:bg-mist disabled:opacity-35"
             aria-label="返回上一步"
           >
             <ChevronLeft size={21} aria-hidden="true" />
@@ -140,7 +140,7 @@ export function IntakeFlowShell({
           <button
             type="button"
             onClick={requestExit}
-            className="grid h-10 w-10 shrink-0 place-items-center rounded-lg text-ink/60 active:bg-mist"
+            className="grid h-10 w-10 shrink-0 place-items-center ui-control-radius text-ink/60 active:bg-mist"
             aria-label="退出录入"
           >
             <X size={18} aria-hidden="true" />
@@ -160,14 +160,14 @@ export function IntakeFlowShell({
       </header>
 
       {error ? (
-        <div className="mx-auto mt-3 flex w-full max-w-md items-start gap-2 rounded-lg border border-clay/20 bg-clay/5 px-3 py-2 text-xs text-clay">
+        <div className="mx-auto mt-3 flex w-full max-w-md items-start gap-2 ui-control-radius border border-clay/20 bg-clay/5 px-3 py-2 text-xs text-clay">
           <AlertCircle size={14} className="mt-0.5 shrink-0" aria-hidden="true" />
           <p className="min-w-0 flex-1 leading-relaxed">{error}</p>
         </div>
       ) : null}
 
       {busy ? (
-        <div className="mx-auto mt-3 flex w-full max-w-md items-center gap-2 rounded-lg bg-denim/5 px-3 py-2 text-xs text-ink/65">
+        <div className="mx-auto mt-3 flex w-full max-w-md items-center gap-2 ui-control-radius bg-denim/5 px-3 py-2 text-xs text-ink/65">
           <Loader2 size={14} className="animate-spin text-denim" aria-hidden="true" />
           <span className="min-w-0 flex-1">
             {submitState.status === "submitting" ? submitState.message : processingText || "正在处理，请稍候……"}
@@ -182,13 +182,13 @@ export function IntakeFlowShell({
         {children}
       </main>
 
-      <footer className="safe-bottom fixed inset-x-0 bottom-0 z-40 border-t border-ink/10 bg-[#fbfbf8]/98 px-4 py-3 backdrop-blur-xl">
+      <footer className="app-glass-bottom safe-bottom fixed inset-x-0 bottom-0 z-40 px-4 py-3">
         <div className="mx-auto grid max-w-md grid-cols-[1fr_1.6fr] gap-2">
           <button
             type="button"
             onClick={onBack}
             disabled={backDisabled || busy || !onBack}
-            className="h-12 rounded-lg border border-ink/10 bg-white text-sm font-semibold text-ink/70 disabled:opacity-35"
+            className="h-12 ui-control-radius border border-ink/10 bg-white/76 text-sm font-semibold text-ink/70 disabled:opacity-35"
           >
             {backLabel}
           </button>
@@ -196,7 +196,7 @@ export function IntakeFlowShell({
             type="button"
             onClick={onNext}
             disabled={nextDisabled || busy || !onNext}
-            className="h-12 rounded-lg bg-denim text-sm font-semibold text-white disabled:opacity-35"
+            className="h-12 ui-control-radius bg-denim text-sm font-semibold text-white disabled:opacity-35"
           >
             {nextLabel}
           </button>
@@ -211,10 +211,10 @@ export function IntakeFlowShell({
               {busy ? "正在处理本次录入，退出只会停止等待，已发送的请求可能仍会在服务器完成。" : "当前草稿尚未保存，退出后会丢失本次录入进度。"}
             </p>
             <div className="mt-5 grid grid-cols-2 gap-2">
-              <button type="button" onClick={() => setConfirmExit(false)} className="h-11 rounded-lg border border-ink/10 bg-white text-sm font-semibold">
+              <button type="button" onClick={() => setConfirmExit(false)} className="h-11 ui-control-radius border border-ink/10 bg-white text-sm font-semibold">
                 继续录入
               </button>
-              <button type="button" onClick={onExit} className="h-11 rounded-lg bg-clay text-sm font-semibold text-white">
+              <button type="button" onClick={onExit} className="h-11 ui-control-radius bg-clay text-sm font-semibold text-white">
                 退出
               </button>
             </div>

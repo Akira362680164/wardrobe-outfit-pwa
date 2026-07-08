@@ -4,6 +4,24 @@
 
 :root {
   color-scheme: light;
+  --color-ink: #1d2228;
+  --color-paper: #fbfbf8;
+  --color-mist: #f4f5f3;
+  --color-surface: #fffffc;
+  --color-denim: #355c7d;
+  --color-moss: #5f7058;
+  --color-clay: #b97155;
+  --app-ambient:
+    radial-gradient(circle at 18% 8%, rgba(185, 113, 85, 0.16) 0, rgba(185, 113, 85, 0) 34%),
+    radial-gradient(circle at 82% 92%, rgba(95, 112, 88, 0.14) 0, rgba(95, 112, 88, 0) 36%),
+    linear-gradient(180deg, #fbfbf8 0%, #f4f5f3 100%);
+  --ui-radius-card: 28px;
+  --ui-radius-inner: 22px;
+  --ui-radius-control: 16px;
+  --ui-radius-nav: 30px;
+  --ui-glass-bg: rgba(251, 251, 248, 0.75);
+  --ui-glass-border: rgba(29, 34, 40, 0.08);
+  --ui-soft-shadow: 0 18px 50px rgba(29, 34, 40, 0.09);
   background: #f4f5f3;
   color: #1d2228;
 }
@@ -19,9 +37,7 @@ html {
 body {
   margin: 0;
   min-height: 100vh;
-  background:
-    radial-gradient(circle at top left, rgba(185, 113, 85, 0.14), transparent 26rem),
-    linear-gradient(180deg, #fbfbf8 0%, #f4f5f3 46%, #ecf0ed 100%);
+  background: var(--app-ambient);
   font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   letter-spacing: 0;
 }
@@ -47,10 +63,67 @@ button {
 }
 
 .surface {
-  border: 1px solid rgba(29, 34, 40, 0.08);
-  background: rgba(255, 255, 252, 0.86);
-  box-shadow: 0 18px 50px rgba(29, 34, 40, 0.08);
-  backdrop-filter: blur(18px);
+  border: 1px solid var(--ui-glass-border);
+  border-radius: var(--ui-radius-card);
+  background: rgba(255, 255, 252, 0.78);
+  box-shadow: var(--ui-soft-shadow);
+  -webkit-backdrop-filter: blur(22px) saturate(1.1);
+  backdrop-filter: blur(22px) saturate(1.1);
+}
+
+.app-ambient-bg {
+  background: var(--app-ambient);
+}
+
+.ui-card {
+  border: 1px solid var(--ui-glass-border);
+  border-radius: var(--ui-radius-card);
+  background: rgba(255, 255, 252, 0.82);
+  box-shadow: 0 14px 38px rgba(29, 34, 40, 0.07);
+}
+
+.ui-inner-card {
+  border: 1px solid rgba(29, 34, 40, 0.06);
+  border-radius: var(--ui-radius-inner);
+  background: rgba(251, 251, 248, 0.72);
+}
+
+.ui-control-radius {
+  border-radius: var(--ui-radius-control);
+}
+
+.app-glass-top,
+.app-glass-bottom,
+.app-floating-nav,
+.app-toast {
+  border: 1px solid var(--ui-glass-border);
+  background: var(--ui-glass-bg);
+  box-shadow: 0 16px 46px rgba(29, 34, 40, 0.1);
+  -webkit-backdrop-filter: blur(24px) saturate(1.15);
+  backdrop-filter: blur(24px) saturate(1.15);
+}
+
+.app-glass-top {
+  border-width: 0 0 1px;
+}
+
+.app-glass-bottom {
+  border-width: 1px 0 0;
+}
+
+.app-floating-nav {
+  left: 1rem;
+  right: 1rem;
+  bottom: max(0.75rem, env(safe-area-inset-bottom));
+  max-width: 28rem;
+  margin-inline: auto;
+  padding: 0.5rem;
+  border-radius: var(--ui-radius-nav);
+}
+
+.app-toast {
+  width: min(calc(100vw - 2rem), 28rem);
+  border-radius: var(--ui-radius-nav);
 }
 
 .hide-scrollbar {

@@ -31,10 +31,11 @@ const waterfallSource = wardrobeApp.slice(waterfallStart, waterfallEnd > -1 ? wa
 
 assert(waterfallSource.includes('imageClassName="object-contain"'), "WaterfallCardImage uses object-contain");
 assert(!waterfallSource.includes('imageClassName="object-cover"'), "WaterfallCardImage no longer uses object-cover");
-assert(catalogCard.includes("overflow-hidden rounded-2xl"), "CatalogWaterfallCardShell clips content to the card radius");
-assert(!catalogCard.includes("rounded-t-2xl bg-mist"), "CatalogWaterfallCardShell image well relies on card clipping instead of its own top radius");
-assert(wardrobeApp.includes("overflow-hidden rounded-2xl"), "Wardrobe home cards clip content to the card radius");
-assert(!wardrobeApp.includes("h-[210px] overflow-hidden rounded-t-2xl bg-mist"), "Wardrobe home image well relies on card clipping instead of its own top radius");
+assert(catalogCard.includes("ui-card") && catalogCard.includes("overflow-hidden"), "CatalogWaterfallCardShell clips content to the shared card radius");
+assert(catalogCard.includes("ui-inner-card"), "CatalogWaterfallCardShell image well uses the shared inner radius");
+assert(!catalogCard.includes("rounded-t-2xl bg-mist"), "CatalogWaterfallCardShell image well no longer uses the old top-only radius");
+assert(wardrobeApp.includes("<CatalogWaterfallCardShell"), "Wardrobe home cards use the shared waterfall card shell");
+assert(!wardrobeApp.includes("h-[210px] overflow-hidden rounded-t-2xl bg-mist"), "Wardrobe home image well no longer uses the old top-only radius");
 assert(
   catalogFormat.includes("return getAllColors(item.colors)") &&
     catalogFormat.includes("getGarmentCardColors(item"),

@@ -1,3 +1,14 @@
+## 2026-07-08 / v2.1.8-test / Codex — 运行时 UI 基础层首轮优化
+
+- **执行 Agent**：Codex（未触发 subagent：用户未通知）。
+- **目的**：按“设计 token、通用 UI 组件/样式层、页面样式接入、ICON 统一”四个方向开始落地运行时 UI 优化，在不改变页面结构、业务状态和数据链路的前提下，把当前 UI 规范中的圆角矩形、毛玻璃、全局渐变背景、Toast 和图标约束接入前端组件层。
+- **版本变更**：无；当前应用版本仍为 `2.1.8-test`。
+- **改动文件**：`src/app/globals.css`、`src/components/wardrobe-app.tsx`、`src/components/app-sub-page-top-bar.tsx`、`src/components/intake-flow-shell.tsx`、`src/components/auth/auth-gate.tsx`、`src/components/catalog-selection/catalog-multi-select-bar.tsx`、`src/components/item-shell/catalog-waterfall-card-shell.tsx`、`src/components/item-shell/item-surface-tokens.ts`、`scripts/test-detail-shell-ui.ts`、`scripts/test-home-card-edit-wishlist-delete-hotfix.ts`、`scripts/test-shared-item-shells.ts`、`scripts/test-ui-overlay-contract.ts`。
+- **改动说明**：新增全局 `appAmbient` 渐变背景、统一色彩变量、卡片/内卡/控件/导航圆角 token，以及 `app-glass-top`、`app-glass-bottom`、`app-floating-nav`、`app-toast` 等通用样式类；首页底部导航改为悬浮毛玻璃圆角矩形，Toast 改为与底部操作栏同宽并悬浮在导航上方，错误/信息图标改用 `lucide-react`；二级页顶部栏、录入流程顶部/底部栏、多选操作栏、登录注册页和衣物瀑布流卡片接入统一圆角矩形和毛玻璃样式；衣物卡片图片槽改为同心圆角内卡；同步相关测试断言到新的组件层 token。
+- **验证结果**：`npm run typecheck`、`npm run test:logic:shared-item-shells`、`npm run test:logic:detail-shell`、`npm run test:logic:home-card-edit-wishlist-delete-hotfix`、`npm run test:logic:ui-overlay-contract`、`npm run test:logic:ui-token-contract`、`npm run test:logic:catalog-card-content`、`npm run test:logic:catalog-multi-select-integration`、`npm run test:logic:intake-fullscreen-layout`、`npm run build`、`git diff --check` 均通过；`node scripts/review-gate.mjs --staged` 判定 `risk_gate=high`，符合本条风险记录。
+- **风险门禁**：high（改动跨运行时 UI 基础样式、首页、录入流程、登录页、共享卡片和测试；未改业务流程、线上数据、Android 原生配置、版本号或 APK）。
+- **未验证风险**：未在 Android 真机/模拟器安装 APK 做视觉回归；未逐屏截图核验所有 36 个页面级状态，后续需要继续把剩余页面接入同一 token 与组件层。
+
 ## 2026-07-08 / v2.1.8-test / Codex — UI 规范加入真实页面视觉优化参考与全局渐变背景
 
 - **执行 Agent**：Codex（按用户明确允许使用并行 subagent，启动 4 个只读 subagent 分组核对认证/设置、衣橱/衣物详情、录入流程、套装/种草/覆盖层；subagent 均未编辑文件，结论由主 agent 合并进规范生成器）。

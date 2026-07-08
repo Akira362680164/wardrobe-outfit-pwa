@@ -1,5 +1,5 @@
 export const ITEM_SURFACE_CLASS =
-  "min-w-0 max-w-full overflow-hidden rounded-2xl border border-ink/8 bg-white shadow-none";
+  "ui-card min-w-0 max-w-full overflow-hidden shadow-none";
 
 export const ITEM_PAGE_ROOT_CLASS =
   "flex h-full min-h-0 flex-col overflow-hidden";

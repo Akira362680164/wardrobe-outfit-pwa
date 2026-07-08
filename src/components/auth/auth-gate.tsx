@@ -282,9 +282,9 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
 
 function AuthShell({ children }: { children: React.ReactNode }) {
   return (
-    <main className="min-h-dvh bg-linen px-4 py-5 text-ink">
+    <main className="app-ambient-bg min-h-dvh px-4 py-5 text-ink">
       <div className="mx-auto grid min-h-[calc(100dvh-40px)] w-full max-w-md content-center">
-        <section className="surface rounded-lg px-4 py-5 shadow-soft">
+        <section className="surface px-4 py-5 shadow-soft">
           {children}
         </section>
       </div>
@@ -334,7 +334,7 @@ function LoginForm({
       <button
         type="submit"
         disabled={!valid || isBusy}
-        className="inline-flex h-11 items-center justify-center gap-2 rounded-lg text-sm font-semibold text-white disabled:cursor-not-allowed"
+        className="inline-flex h-11 items-center justify-center gap-2 ui-control-radius text-sm font-semibold text-white disabled:cursor-not-allowed"
         style={{ backgroundColor: valid && !isBusy ? "var(--color-denim, #156596)" : "rgba(21,101,150,0.4)" }}
       >
         {isBusy ? <Loader2 size={16} className="animate-spin" aria-hidden="true" /> : <Lock size={16} aria-hidden="true" />}
@@ -416,7 +416,7 @@ function RegisterForm({
       <button
         type="submit"
         disabled={!valid || isBusy}
-        className="inline-flex h-11 items-center justify-center gap-2 rounded-lg text-sm font-semibold text-white disabled:cursor-not-allowed"
+        className="inline-flex h-11 items-center justify-center gap-2 ui-control-radius text-sm font-semibold text-white disabled:cursor-not-allowed"
         style={{ backgroundColor: valid && !isBusy ? "var(--color-denim, #156596)" : "rgba(21,101,150,0.4)" }}
       >
         {isBusy ? <Loader2 size={16} className="animate-spin" aria-hidden="true" /> : <User size={16} aria-hidden="true" />}
@@ -434,12 +434,12 @@ function BlockedLocalOwner() {
   return (
     <div className="grid gap-4">
       <AuthHeader title="本机已有其他账号数据" />
-      <div className="rounded-lg border border-clay/20 bg-clay/8 px-3 py-3 text-sm">
+      <div className="ui-control-radius border border-clay/20 bg-clay/8 px-3 py-3 text-sm">
         <p className="text-ink/70">当前本机衣橱属于</p>
         <p className="mt-1 font-semibold">{auth.blocked?.owner.maskedPhone ?? "旧账号"}</p>
         <p className="mt-2 text-xs text-ink/55">请使用该账号登录。</p>
       </div>
-      <button type="button" onClick={auth.returnToLoginFromBlocked} className="h-11 rounded-lg bg-denim text-sm font-semibold text-white">
+      <button type="button" onClick={auth.returnToLoginFromBlocked} className="h-11 ui-control-radius bg-denim text-sm font-semibold text-white">
         返回登录
       </button>
     </div>
@@ -449,17 +449,17 @@ function BlockedLocalOwner() {
 function ExitDialog({ onClose }: { onClose: () => void }) {
   return (
     <div className="fixed inset-0 z-50 grid place-items-center bg-ink/20 px-4" onClick={onClose}>
-      <div className="surface w-full max-w-xs rounded-lg px-5 py-5 shadow-strong" onClick={(event) => event.stopPropagation()}>
+      <div className="surface w-full max-w-xs px-5 py-5 shadow-strong" onClick={(event) => event.stopPropagation()}>
         <h2 className="text-base font-bold text-ink">退出应用</h2>
         <p className="mt-2 text-sm text-ink/65">确定要退出衣橱穿搭助手吗？</p>
         <div className="mt-4 flex justify-end gap-3">
-          <button type="button" onClick={onClose} className="h-9 rounded-lg px-4 text-sm font-semibold text-ink/60">
+          <button type="button" onClick={onClose} className="h-9 ui-control-radius px-4 text-sm font-semibold text-ink/60">
             取消
           </button>
           <button
             type="button"
             onClick={() => App.exitApp()}
-            className="h-9 rounded-lg bg-denim px-4 text-sm font-semibold text-white"
+            className="h-9 ui-control-radius bg-denim px-4 text-sm font-semibold text-white"
           >
             退出
           </button>
@@ -472,7 +472,7 @@ function ExitDialog({ onClose }: { onClose: () => void }) {
 function AuthHeader({ title }: { title: string }) {
   return (
     <header className="grid gap-2">
-      <div className="grid h-11 w-11 place-items-center rounded-lg bg-denim/10 text-denim">
+      <div className="grid h-11 w-11 place-items-center ui-control-radius bg-denim/10 text-denim">
         <Shield size={22} aria-hidden="true" />
       </div>
       <h1 className="text-xl font-bold tracking-tight">{title}</h1>
@@ -481,7 +481,7 @@ function AuthHeader({ title }: { title: string }) {
 }
 
 function AuthErrorMessage({ text }: { text: string }) {
-  return <p className="rounded-lg bg-clay/10 px-3 py-2 text-sm text-clay">{text}</p>;
+  return <p className="ui-control-radius bg-clay/10 px-3 py-2 text-sm text-clay">{text}</p>;
 }
 
 function TextField({
@@ -508,7 +508,7 @@ function TextField({
         type={type}
         autoComplete={autoComplete}
         inputMode={inputMode}
-        className="h-11 rounded-lg border border-ink/10 bg-white px-3 text-base outline-none focus:border-denim"
+        className="h-11 ui-control-radius border border-ink/10 bg-white/76 px-3 text-base outline-none focus:border-denim"
       />
     </label>
   );

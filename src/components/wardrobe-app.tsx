@@ -7,6 +7,7 @@ import { useAppNavigationController } from "@/components/use-app-navigation-cont
 import type { AppRoute } from "@/lib/app-route";
 import { getBackRoute, isDetailRoute, isGlobalCreateAllowedRoute, isIntakeRouteName } from "@/lib/app-route";
 import {
+  AlertCircle,
   Archive,
   BarChart3,
   Briefcase,
@@ -22,6 +23,7 @@ import {
   EyeOff,
   FileJson,
   GalleryVerticalEnd,
+  Info,
   KeyRound,
   Loader2,
   Lock,
@@ -901,11 +903,11 @@ export function WardrobeApp({ cloudAuth }: { cloudAuth?: WardrobeCloudAuth } = {
 
   return (
     <>
-    <main className={`min-h-screen text-ink lg:pb-10 ${hideMobileNav ? "pb-8" : "pb-28"}`}>
+    <main className={`app-ambient-bg min-h-screen text-ink lg:pb-10 ${hideMobileNav ? "pb-8" : "pb-28"}`}>
       <div className="safe-top" />
       <div className="mx-auto grid max-w-6xl gap-5 px-4 pt-3 lg:grid-cols-[260px_minmax(0,1fr)]">
         <aside className="hidden lg:block">
-          <div className="surface sticky top-4 rounded-lg p-3">
+          <div className="surface sticky top-4 p-3">
             <nav className="grid gap-1">
               {viewItems.map((view) => (
                 <NavButton key={view.key} view={view} active={navigation.mainTab === view.key} onClick={() => {
@@ -1185,7 +1187,7 @@ export function WardrobeApp({ cloudAuth }: { cloudAuth?: WardrobeCloudAuth } = {
           <button
             type="button"
             onClick={() => setShowCreateSheet(true)}
-            className="fixed right-4 z-40 grid h-12 w-12 place-items-center rounded-full bg-denim p-0 leading-none text-white shadow-lg transition-transform active:scale-95 lg:hidden" style={{ bottom: "calc(env(safe-area-inset-bottom) + 5rem)" }}
+            className="fixed right-5 z-40 grid h-12 w-12 place-items-center rounded-full bg-denim p-0 leading-none text-white shadow-lg transition-transform active:scale-95 lg:hidden" style={{ bottom: "calc(env(safe-area-inset-bottom) + 6rem)" }}
             aria-label="新建"
             data-testid="global-create"
           >
@@ -1237,8 +1239,8 @@ export function WardrobeApp({ cloudAuth }: { cloudAuth?: WardrobeCloudAuth } = {
         onGalleryClick={imageIntake.triggerGalleryInput}
       />
 
-	      {!hideMobileNav ? <nav className="safe-bottom fixed inset-x-0 bottom-0 z-30 border-t border-ink/10 bg-[#fbfbf8]/94 px-2 pt-2 backdrop-blur-xl lg:hidden">
-        <div className="mx-auto grid max-w-md grid-cols-4 gap-1">
+	      {!hideMobileNav ? <nav className="app-floating-nav fixed z-30 lg:hidden">
+        <div className="grid grid-cols-4 gap-1">
           {viewItems.map((view) => (<MobileNavButton key={view.key} view={view} active={navigation.mainTab === view.key} onClick={() => {
             const routeBefore = navigation.route;
             const fromMainTab = navigation.mainTab;
@@ -1298,8 +1300,8 @@ export function WardrobeApp({ cloudAuth }: { cloudAuth?: WardrobeCloudAuth } = {
           外层 div 用 style={{ bottom }} 把 toast 抬到底导航上方 (env(safe-area-inset-bottom) + 5.25rem)。 */}
       {typeof document !== "undefined" && createPortal(
         <div
-          className="pointer-events-none fixed inset-x-0 z-[75] px-4"
-          style={{ bottom: "calc(env(safe-area-inset-bottom) + 5.25rem)" }}
+          className="pointer-events-none fixed inset-x-0 z-[75] flex justify-center px-4"
+          style={{ bottom: "calc(env(safe-area-inset-bottom) + 5.9rem)" }}
         >
           <MotionToast
             visible={!!message && !expandedImage && !captureCropJob}
@@ -1307,18 +1309,18 @@ export function WardrobeApp({ cloudAuth }: { cloudAuth?: WardrobeCloudAuth } = {
             placement="bottom"
           >
           <div
-            className={`pointer-events-auto mx-auto flex max-w-md items-center gap-2.5 overflow-hidden rounded-2xl border border-ink/10 bg-white/95 px-3 py-2.5 text-sm text-ink shadow-lg backdrop-blur-md ${messageType === "error" ? "border-l-[3px] border-l-red-400" : messageType === "info" ? "border-l-[3px] border-l-denim" : "border-l-[3px] border-l-moss"}`}
+            className={`app-toast pointer-events-auto flex items-center gap-2.5 overflow-hidden px-3 py-2.5 text-sm text-ink ${messageType === "error" ? "border-l-[3px] border-l-red-400" : messageType === "info" ? "border-l-[3px] border-l-denim" : "border-l-[3px] border-l-moss"}`}
           >
             {messageType === "error" ? (
-              <span className="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-red-50 text-red-500">
-                <span className="text-base font-bold leading-none">!</span>
+              <span className="grid h-7 w-7 shrink-0 place-items-center ui-control-radius bg-red-50 text-red-500">
+                <AlertCircle size={15} strokeWidth={2.4} aria-hidden="true" />
               </span>
             ) : messageType === "info" ? (
-              <span className="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-denim/10 text-denim">
-                <span className="text-sm font-semibold leading-none">i</span>
+              <span className="grid h-7 w-7 shrink-0 place-items-center ui-control-radius bg-denim/10 text-denim">
+                <Info size={15} strokeWidth={2.4} aria-hidden="true" />
               </span>
             ) : (
-              <span className="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-moss/12 text-moss">
+              <span className="grid h-7 w-7 shrink-0 place-items-center ui-control-radius bg-moss/12 text-moss">
                 <Check size={14} strokeWidth={2.6} />
               </span>
             )}
@@ -1327,10 +1329,10 @@ export function WardrobeApp({ cloudAuth }: { cloudAuth?: WardrobeCloudAuth } = {
               type="button"
               title="关闭提示"
               aria-label="关闭提示"
-              className="grid h-11 w-11 shrink-0 place-items-center rounded-lg text-ink/45 transition-colors active:bg-ink/5 hover:text-ink/70"
+              className="grid h-11 w-11 shrink-0 place-items-center ui-control-radius text-ink/45 transition-colors active:bg-ink/5 hover:text-ink/70"
               onClick={clearMessage}
             >
-              ×
+              <X size={16} aria-hidden="true" />
             </button>
           </div>
           </MotionToast>
@@ -1341,7 +1343,7 @@ export function WardrobeApp({ cloudAuth }: { cloudAuth?: WardrobeCloudAuth } = {
       {/* P0 收口: 单品与种草正式录入只允许走 GarmentIntakeFlow（衣橱用 flowKind="garment"，种草用 flowKind="wishlist"）。
           SelectedImagesReview 仅允许服务灵感图添加 (imageIntakePurpose === "reference")。 */}
       {captureImageQueue.length > 0 && typeof document !== "undefined" && createPortal(
-        <div className="fixed inset-0 z-[100] flex h-[100dvh] w-screen flex-col overflow-hidden bg-[#fbfbf8]">
+        <div className="app-ambient-bg fixed inset-0 z-[100] flex h-[100dvh] w-screen flex-col overflow-hidden">
           <WardrobeSelectedImagesReviewPortal
             images={captureImageQueue}
             currentIndex={captureQueueIndex}
@@ -2961,7 +2963,7 @@ function WardrobeView(props: WardrobeViewProps) {
           onClick={() => setIsSearchOpen(true)}
           aria-label="搜索衣物"
           title="搜索衣物"
-          className="surface grid h-14 w-14 shrink-0 place-items-center rounded-lg text-ink/65 active:bg-mist transition-colors"
+          className="surface grid h-14 w-14 shrink-0 place-items-center ui-control-radius text-ink/65 active:bg-mist transition-colors"
         >
           <Search size={20} aria-hidden="true" />
         </button>
@@ -2971,7 +2973,7 @@ function WardrobeView(props: WardrobeViewProps) {
           onClick={() => setShowWearStatistics(true)}
           aria-label="查看穿着统计"
           title="穿着统计"
-          className="surface grid h-14 w-14 shrink-0 place-items-center rounded-lg text-ink/65 active:bg-mist transition-colors"
+          className="surface grid h-14 w-14 shrink-0 place-items-center ui-control-radius text-ink/65 active:bg-mist transition-colors"
         >
           <BarChart3 size={20} aria-hidden="true" />
         </button>
@@ -3004,7 +3006,7 @@ function WardrobeView(props: WardrobeViewProps) {
                     ? "查看上次诊断结果"
                     : "AI 衣橱诊断已打开"
           }
-          className={`grid h-14 w-14 shrink-0 place-items-center rounded-lg text-white shadow-sm disabled:opacity-60 transition-colors ${
+          className={`grid h-14 w-14 shrink-0 place-items-center ui-control-radius text-white shadow-sm disabled:opacity-60 transition-colors ${
             diagnosisState === "collapsed" || diagnosisState === "expanded"
               ? "bg-moss"
               : "bg-clay"
@@ -3041,7 +3043,7 @@ function WardrobeView(props: WardrobeViewProps) {
           <button
             type="button"
             onClick={() => setHomeCategoryFilter("all")}
-            className={`shrink-0 inline-flex h-8 items-center rounded-full px-3 text-xs font-medium transition-colors ${
+            className={`shrink-0 inline-flex h-8 items-center ui-control-radius px-3 text-xs font-medium transition-colors ${
               homeCategoryFilter === "all"
                 ? "bg-denim text-white shadow-sm"
                 : "bg-mist text-ink/65 active:bg-ink/10"
@@ -3054,11 +3056,11 @@ function WardrobeView(props: WardrobeViewProps) {
               type="button"
               onClick={() => setHomeCategoryFilter("all")}
               aria-label={`已筛选 ${hiddenSelectedCat.label} ${hiddenSelectedCat.count}，点此清除`}
-              className="shrink-0 inline-flex h-8 items-center gap-1 rounded-full bg-denim/10 pl-3 pr-2 text-xs font-medium text-denim"
+              className="shrink-0 inline-flex h-8 items-center gap-1 ui-control-radius bg-denim/10 pl-3 pr-2 text-xs font-medium text-denim"
             >
               <Check size={12} aria-hidden="true" />
               {hiddenSelectedCat.label} {hiddenSelectedCat.count}
-              <span className="grid h-5 w-5 place-items-center rounded-full bg-denim/20 text-denim" aria-hidden="true">×</span>
+              <span className="grid h-5 w-5 place-items-center ui-control-radius bg-denim/20 text-denim" aria-hidden="true">×</span>
             </button>
           ) : null}
           {visibleCats.map((c) => {
@@ -3068,7 +3070,7 @@ function WardrobeView(props: WardrobeViewProps) {
                 key={c.id}
                 type="button"
                 onClick={() => setHomeCategoryFilter(c.id)}
-                className={`shrink-0 inline-flex h-8 items-center rounded-full px-3 text-xs font-medium transition-colors ${
+                className={`shrink-0 inline-flex h-8 items-center ui-control-radius px-3 text-xs font-medium transition-colors ${
                   active
                     ? "bg-denim text-white shadow-sm"
                     : "border border-ink/10 bg-white text-ink/65 active:bg-mist"
@@ -3086,7 +3088,7 @@ function WardrobeView(props: WardrobeViewProps) {
                 aria-expanded={moreCatsOpen}
                 aria-label={hiddenSelectedCat ? `更多分类（当前选中：${hiddenSelectedCat.label} ${hiddenSelectedCat.count}）` : "更多分类"}
                 title={hiddenSelectedCat ? `当前选中：${hiddenSelectedCat.label} ${hiddenSelectedCat.count}` : undefined}
-                className={`inline-flex h-8 items-center gap-1 rounded-full px-3 text-xs font-medium transition-colors ${
+                className={`inline-flex h-8 items-center gap-1 ui-control-radius px-3 text-xs font-medium transition-colors ${
                   moreCatsOpen || hiddenSelectedCat
                     ? "bg-denim/10 text-denim"
                     : "border border-ink/10 bg-white text-ink/65 active:bg-mist"
@@ -3101,7 +3103,7 @@ function WardrobeView(props: WardrobeViewProps) {
                   transition={{ duration: 0.15, ease: ease.app }}
                   role="menu"
                   style={{ position: "fixed", top: moreCatsPos.top, right: moreCatsPos.right, minWidth: moreCatsPos.triggerWidth }}
-                  className="z-[100] grid grid-cols-3 gap-1.5 rounded-lg border border-ink/10 bg-white p-2 shadow-lg"
+                  className="z-[100] grid grid-cols-3 gap-1.5 ui-control-radius border border-ink/10 bg-white/88 p-2 shadow-lg backdrop-blur-xl"
                 >
                   {hiddenCats.map((c) => {
                     const active = homeCategoryFilter === c.id;
@@ -3110,7 +3112,7 @@ function WardrobeView(props: WardrobeViewProps) {
                         key={c.id}
                         type="button"
                         onClick={() => { setHomeCategoryFilter(c.id); setMoreCatsOpen(false); }}
-                        className={`inline-flex h-11 items-center justify-center rounded-full px-2 text-[11px] font-medium transition-colors ${
+                        className={`inline-flex h-11 items-center justify-center ui-control-radius px-2 text-[11px] font-medium transition-colors ${
                           active ? "bg-denim text-white" : "bg-mist text-ink/70 active:bg-ink/10"
                         }`}
                       >{c.label} {c.count}</button>
@@ -5439,7 +5441,7 @@ function NavButton({ view, active, onClick }: { view: (typeof viewItems)[number]
     <motion.button
       type="button"
       onClick={onClick}
-      className={`flex h-11 items-center gap-3 rounded-lg px-3 text-sm font-semibold ${
+      className={`flex h-11 items-center gap-3 ui-control-radius px-3 text-sm font-semibold ${
         active ? "bg-denim text-white" : "text-ink/68 hover:bg-ink/5"
       }`}
       whileTap={{ scale: 0.96 }}
@@ -5464,11 +5466,11 @@ function MobileNavButton({ view, active, onClick, compact }: { view: (typeof vie
       type="button"
       onClick={onClick}
       animate={{
-        backgroundColor: active ? "#355c7d" : "rgba(0,0,0,0)",
+        backgroundColor: active ? "var(--color-denim)" : "rgba(0,0,0,0)",
         color: active ? "#ffffff" : "rgba(0,0,0,0.62)",
       }}
       transition={spring.snappy}
-      className={`grid ${compact ? "h-10" : "h-12"} place-content-center justify-items-center gap-0 rounded-lg px-1 text-[11px] font-semibold`}
+      className={`grid ${compact ? "h-10" : "h-14"} place-content-center justify-items-center gap-1 ui-control-radius px-1 text-[11px] font-semibold`}
       whileTap={{ scale: 0.94 }}
     >
       {!compact && (
