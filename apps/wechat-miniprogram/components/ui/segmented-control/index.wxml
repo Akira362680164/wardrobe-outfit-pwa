@@ -1,0 +1,5 @@
+<view class="ui-segmented" role="tablist">
+  <view wx:for="{{options}}" wx:key="value" class="ui-segmented__item {{item.value === value ? 'ui-segmented__item--active' : ''}}" data-value="{{item.value}}" role="tab" aria-selected="{{item.value === value ? 'true' : 'false'}}" bindtap="onSelect">
+    <text class="ui-segmented__text text-one-line">{{item.label}}</text>
+  </view>
+</view>

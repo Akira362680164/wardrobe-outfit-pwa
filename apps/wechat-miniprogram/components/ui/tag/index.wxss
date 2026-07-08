@@ -1,0 +1,8 @@
+@import "../../../styles/index.wxss";
+.ui-tag { display: inline-flex; min-width: 0; max-width: 100%; align-items: center; justify-content: center; min-height: 56rpx; padding: 0 20rpx; border: 1rpx solid var(--color-line); border-radius: var(--radius-pill); color: rgba(29, 34, 40, 0.68); background: rgba(255, 255, 252, 0.68); box-sizing: border-box; font-size: var(--font-label); font-weight: 700; }
+.ui-tag--primary.ui-tag--selected { color: var(--color-primary); border-color: rgba(53, 92, 125, 0.28); background: rgba(53, 92, 125, 0.10); }
+.ui-tag--success.ui-tag--selected { color: var(--color-success); border-color: rgba(95, 112, 88, 0.28); background: rgba(95, 112, 88, 0.12); }
+.ui-tag--ai.ui-tag--selected { color: var(--color-ai); border-color: rgba(185, 113, 85, 0.28); background: rgba(185, 113, 85, 0.12); }
+.ui-tag--shopping.ui-tag--selected { color: var(--color-shopping); border-color: rgba(140, 74, 98, 0.28); background: rgba(140, 74, 98, 0.12); }
+.ui-tag--disabled { opacity: 0.45; }
+.ui-tag__text { display: block; }

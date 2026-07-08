@@ -1,0 +1,13 @@
+@import "../../../styles/index.wxss";
+.ui-input { display: flex; min-width: 0; flex-direction: column; gap: 12rpx; }
+.ui-input__header { display: flex; min-width: 0; align-items: center; justify-content: space-between; gap: 16rpx; }
+.ui-input__label { color: var(--color-ink); font-size: var(--font-caption); font-weight: 700; }
+.ui-input__count, .ui-input__message { color: var(--color-muted); font-size: 22rpx; line-height: 1.35; }
+.ui-input__control { display: flex; min-width: 0; align-items: center; min-height: 88rpx; padding: 0 24rpx; border: 1rpx solid var(--color-line); border-radius: var(--radius-control); background: rgba(255, 255, 252, 0.86); box-sizing: border-box; }
+.ui-input--error .ui-input__control { border-color: rgba(220, 38, 38, 0.48); background: rgba(220, 38, 38, 0.05); }
+.ui-input__field { min-width: 0; flex: 1; height: 84rpx; color: var(--color-ink); font-size: 30rpx; line-height: 84rpx; }
+.ui-input__placeholder { color: rgba(29, 34, 40, 0.32); }
+.ui-input__clear { display: flex; align-items: center; justify-content: center; width: 64rpx; height: 64rpx; padding: 0; border: 0; border-radius: var(--radius-pill); color: rgba(29, 34, 40, 0.44); background: transparent; }
+.ui-input__clear::after { border: 0; }
+.ui-input__clear--hover { background: rgba(29, 34, 40, 0.06); }
+.ui-input__message--error { color: var(--color-danger); }

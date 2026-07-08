@@ -1,0 +1,2 @@
+@import "../../../styles/index.wxss";
+.ui-glass-panel { min-width: 0; padding: 28rpx; border-radius: var(--radius-card); box-sizing: border-box; }

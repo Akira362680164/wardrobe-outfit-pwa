@@ -1,0 +1,5 @@
+<button class="ui-button ui-button--{{variant}} ui-button--{{size}} {{block ? 'ui-button--block' : ''}}" disabled="{{disabled || loading}}" hover-class="ui-button--hover" aria-busy="{{loading ? 'true' : 'false'}}" bindtap="onTap">
+  <ui-icon wx:if="{{loading}}" name="loader" size="{{32}}" color="currentColor" spin />
+  <slot wx:else name="icon" />
+  <view class="ui-button__text text-one-line"><slot /></view>
+</button>

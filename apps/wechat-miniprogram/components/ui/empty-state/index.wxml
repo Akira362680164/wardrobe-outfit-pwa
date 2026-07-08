@@ -1,0 +1,6 @@
+<view class="ui-empty">
+  <view class="ui-empty__icon"><ui-icon name="{{icon}}" size="{{56}}" color="currentColor" /></view>
+  <text class="ui-empty__title text-wrap-safe">{{title}}</text>
+  <text wx:if="{{description}}" class="ui-empty__description text-wrap-safe">{{description}}</text>
+  <ui-button wx:if="{{actionText}}" class="ui-empty__action" variant="{{actionVariant}}" size="sm" bind:tap="onAction">{{actionText}}</ui-button>
+</view>

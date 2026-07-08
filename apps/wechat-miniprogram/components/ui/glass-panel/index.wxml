@@ -1,0 +1,1 @@
+<view class="{{strong ? 'glass-panel-strong' : 'glass-panel'}} ui-glass-panel"><slot /></view>

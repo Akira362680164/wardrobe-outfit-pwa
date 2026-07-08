@@ -1,0 +1,10 @@
+<view class="ui-card ui-card--{{variant}} {{pressable ? 'pressable' : ''}} {{selected ? 'selected-ring' : ''}}" bindtap="onTap">
+  <view wx:if="{{title || subtitle}}" class="ui-card__header">
+    <view class="ui-card__title-block">
+      <text wx:if="{{title}}" class="ui-card__title text-one-line">{{title}}</text>
+      <text wx:if="{{subtitle}}" class="ui-card__subtitle text-wrap-safe">{{subtitle}}</text>
+    </view>
+    <slot name="right" />
+  </view>
+  <slot />
+</view>

@@ -1,0 +1,1 @@
+{ "component": true, "usingComponents": { "ui-icon": "../icon/index", "ui-button": "../button/index" } }

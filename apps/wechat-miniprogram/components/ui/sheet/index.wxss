@@ -1,0 +1,10 @@
+@import "../../../styles/index.wxss";
+.ui-sheet { position: fixed; inset: 0; z-index: 50; }
+.ui-sheet__mask { position: absolute; inset: 0; background: rgba(29, 34, 40, 0.40); }
+.ui-sheet__panel { position: absolute; right: 0; bottom: 0; left: 0; max-height: 92vh; padding: 16rpx 32rpx calc(env(safe-area-inset-bottom) + 32rpx); border-radius: var(--radius-sheet) var(--radius-sheet) 0 0; box-sizing: border-box; overflow-y: auto; animation: sheet-in 320ms cubic-bezier(0.2, 0.8, 0.2, 1); }
+.ui-sheet__grabber { width: 72rpx; height: 8rpx; margin: 0 auto 20rpx; border-radius: var(--radius-pill); background: rgba(29, 34, 40, 0.16); }
+.ui-sheet__header { display: flex; min-width: 0; align-items: flex-start; justify-content: space-between; gap: 20rpx; margin-bottom: 24rpx; }
+.ui-sheet__title-block { min-width: 0; flex: 1; }
+.ui-sheet__title { display: block; color: var(--color-ink); font-size: 34rpx; font-weight: 700; line-height: 1.25; }
+.ui-sheet__description { display: block; margin-top: 8rpx; color: var(--color-muted); font-size: var(--font-caption); line-height: 1.45; }
+.ui-sheet__body { min-width: 0; }

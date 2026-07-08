@@ -1,0 +1,9 @@
+.page-shell { min-height: 100vh; padding: calc(env(safe-area-inset-top) + 24rpx) 32rpx calc(env(safe-area-inset-bottom) + 168rpx); box-sizing: border-box; }
+.safe-top { padding-top: calc(env(safe-area-inset-top) + 24rpx); }
+.safe-bottom { padding-bottom: calc(env(safe-area-inset-bottom) + 24rpx); }
+.stack-sm { display: flex; flex-direction: column; gap: var(--space-4); }
+.stack-md { display: flex; flex-direction: column; gap: var(--space-6); }
+.row-center { display: flex; align-items: center; min-width: 0; }
+.tap-target { min-width: 80rpx; min-height: 80rpx; }
+.media-3x4 { position: relative; width: 100%; overflow: hidden; border-radius: var(--radius-card-inner); background: var(--color-mist); }
+.media-3x4::before { display: block; padding-top: 133.333%; content: ""; }

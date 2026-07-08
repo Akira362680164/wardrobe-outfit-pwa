@@ -1,0 +1,5 @@
+@import "../../../styles/index.wxss";
+.ui-segmented { display: flex; min-width: 0; gap: 6rpx; padding: 6rpx; border-radius: var(--radius-control); background: var(--color-mist); box-sizing: border-box; }
+.ui-segmented__item { display: flex; min-width: 0; flex: 1; align-items: center; justify-content: center; height: 72rpx; padding: 0 16rpx; border-radius: 18rpx; color: rgba(29, 34, 40, 0.48); box-sizing: border-box; font-size: var(--font-caption); font-weight: 700; transition: color 160ms ease, background 160ms ease, box-shadow 160ms ease; }
+.ui-segmented__item--active { color: var(--color-ink); background: rgba(255, 255, 252, 0.92); box-shadow: 0 10rpx 26rpx rgba(29, 34, 40, 0.08); }
+.ui-segmented__text { display: block; }

@@ -1,0 +1,43 @@
+page {
+  --color-ink: #1d2228;
+  --color-paper: #fbfbf8;
+  --color-mist: #f4f5f3;
+  --color-surface: #fffffc;
+  --color-line: rgba(29, 34, 40, 0.10);
+  --color-line-strong: rgba(29, 34, 40, 0.16);
+  --color-muted: rgba(29, 34, 40, 0.56);
+  --color-primary: #355c7d;
+  --color-success: #5f7058;
+  --color-ai: #b97155;
+  --color-shopping: #8c4a62;
+  --color-danger: #dc2626;
+  --radius-control: 24rpx;
+  --radius-card: 56rpx;
+  --radius-card-inner: 40rpx;
+  --radius-sheet: 52rpx;
+  --radius-thumb: 20rpx;
+  --radius-pill: 999rpx;
+  --space-1: 4rpx;
+  --space-2: 8rpx;
+  --space-3: 12rpx;
+  --space-4: 16rpx;
+  --space-5: 24rpx;
+  --space-6: 32rpx;
+  --space-7: 40rpx;
+  --space-8: 48rpx;
+  --font-title: 44rpx;
+  --font-section: 34rpx;
+  --font-body: 28rpx;
+  --font-caption: 24rpx;
+  --font-label: 22rpx;
+  --shadow-soft: 0 36rpx 100rpx rgba(29, 34, 40, 0.10);
+  --shadow-card: 0 28rpx 80rpx rgba(29, 34, 40, 0.08);
+  --glass-border: rgba(255, 255, 252, 0.72);
+  min-height: 100%;
+  color: var(--color-ink);
+  background:
+    radial-gradient(circle at 18% 8%, rgba(185, 113, 85, 0.16) 0, rgba(185, 113, 85, 0) 34%),
+    radial-gradient(circle at 82% 92%, rgba(95, 112, 88, 0.14) 0, rgba(95, 112, 88, 0) 36%),
+    linear-gradient(180deg, #fbfbf8 0%, #f4f5f3 100%);
+  font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Segoe UI", sans-serif;
+}

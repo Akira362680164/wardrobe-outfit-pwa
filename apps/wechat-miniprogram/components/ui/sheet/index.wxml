@@ -1,0 +1,14 @@
+<view wx:if="{{open}}" class="ui-sheet">
+  <view class="ui-sheet__mask" catchtap="onMaskTap" catchtouchmove="noop" />
+  <view class="ui-sheet__panel {{strong ? 'glass-panel-strong' : 'glass-panel'}}" catchtap="noop">
+    <view class="ui-sheet__grabber" />
+    <view wx:if="{{title || description || showClose}}" class="ui-sheet__header">
+      <view class="ui-sheet__title-block">
+        <text wx:if="{{title}}" class="ui-sheet__title text-one-line">{{title}}</text>
+        <text wx:if="{{description}}" class="ui-sheet__description text-wrap-safe">{{description}}</text>
+      </view>
+      <ui-icon-button wx:if="{{showClose}}" icon="x" label="关闭" size="sm" bind:tap="onClose" />
+    </view>
+    <view class="ui-sheet__body"><slot /></view>
+  </view>
+</view>
