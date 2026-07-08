@@ -1,3 +1,26 @@
+## 2026-07-09 / v2.1.8-test / Codex — 小程序接入后端 MiniMax AI 代理前六步
+
+- **执行 Agent**：Codex（未触发 subagent：用户未通知；本轮按用户批准的前六步直接开发与测试）。
+- **目的**：参考已迁移的 App AI 后端能力，给微信小程序接入 AI 识别模块前六步：后端 AI 代理同步、小程序 MiniMax Key 设置、单品录入、单品重新识别、种草录入、套装基础信息生成、衣橱诊断、衣物/套装 AI 建议。
+- **版本变更**：无；当前应用版本仍为 `2.1.8-test`，小程序包版本仍为 `0.1.0`。
+- **改动文件**：`packages/cloud-contracts/src/workspace/contracts.ts`、`services/wardrobe-api/src/ai/**`、`services/wardrobe-api/src/app.ts`、`services/wardrobe-api/src/shared/redact.ts`、`services/wardrobe-api/tests/ai-intake.test.ts`、`apps/wechat-miniprogram/services/ai.ts`、`apps/wechat-miniprogram/services/workspace.ts`、`apps/wechat-miniprogram/stores/intake.ts`、`apps/wechat-miniprogram/typings/index.d.ts`、`apps/wechat-miniprogram/pages/settings/**`、`apps/wechat-miniprogram/pages/intake/**`、`apps/wechat-miniprogram/pages/wishlist/edit/**`、`apps/wechat-miniprogram/pages/outfits/{compose,detail}/**`、`apps/wechat-miniprogram/pages/wardrobe/{index,detail}/index.{ts,wxml}`、`apps/wechat-miniprogram/pages/wardrobe/detail/index.wxss`。
+- **改动说明**：同步后端 `/api/workspace/ai/intake/garment-recognition`、`/api/workspace/ai/intake/outfit-metadata`、`/api/workspace/ai/enhance/:kind` 代理能力，并保留小程序分支已有微信手机号登录注册；小程序新增本机 MiniMax Key 设置和统一 AI 请求封装，Key 只保存在微信本地存储，调用时交给后端代理；单品选图后生成 AI 草稿，确认后保存结构化字段；单品详情支持基于当前主图重新识别并更新服务器字段；种草录入选择商品图后生成草稿；套装创建可按已选衣物生成名称、季节和场景；衣橱首页可生成诊断；单品/套装详情可生成 AI 建议。穿搭推荐、天气判断、买前评估、试穿预览仍按用户口径作为老功能不在本轮重建。
+- **UI 规范对齐**：新增详情页快捷操作放入小程序 `detail-shell` 的 `afterHero` 区域，顺序保持为媒体/胶片栏/快捷操作/标题元信息；AI 建议卡放在快捷操作下方、主信息上方；录入页继续保持两步流程，识别中只是过渡态，不新增步骤；按钮和信息卡复用当前小程序详情页、表单页已有 `.action-button`、`.info-card`、`.form-card` 形态。
+- **验证结果**：`npm run typecheck` 通过；`npm run cloud:contracts:typecheck` 通过；`npm run api:typecheck` 通过；`npm run api:test` 通过（10 files / 66 tests）；`npm run test:logic:outfit-metadata` 通过；`npm run test:logic:outfit-ai` 通过；`npm run test:logic:ai-intake-live-contract` 通过；`npm run test:logic:intake-current-item-rerecognition` 通过；`npm run test:logic:intake-recognition-failure-semantics` 通过；`npm run typecheck`（`apps/wechat-miniprogram`）通过；微信开发者工具 CLI `compile_wxml` 覆盖 `pages/wardrobe/index/index.wxml`、`pages/wardrobe/detail/index.wxml`、`pages/outfits/compose/index.wxml`、`pages/outfits/detail/index.wxml`、`pages/wishlist/edit/index.wxml`、`pages/intake/review/index.wxml`、`pages/settings/index/index.wxml`、`pages/settings/ai-key/index.wxml` 均通过；`compile_wxss` 覆盖 `pages/wardrobe/detail/index.wxss`、`pages/outfits/detail/index.wxss`、`pages/outfits/compose/index.wxss`、`pages/wishlist/edit/index.wxss`、`pages/settings/ai-key/index.wxss` 均通过。
+- **风险门禁**：high（后端 AI 代理、MiniMax Key 传递、图片识别、服务器写入字段、小程序多页面 AI 入口和 UI 状态）；未触发 subagent：用户未通知。
+- **未验证风险**：未执行 MiniMax live 图片调用，避免在测试日志中处理真实 Key 和图片；`wechatide compile_js` 只能编译已生成 `.js`，当前小程序源码为 TypeScript，已用 `tsc` 覆盖 TS 源；`npm run test:logic:item-wishlist-edit-recognition-layout` 未通过，失败原因是旧测试脚本直接读取当前分支已不存在的 `src/lib/migrate.ts`，尚未进入断言阶段；本轮未做真机预览、未上传体验版、未重建穿搭推荐/天气判断/买前评估/试穿预览。
+
+## 2026-07-09 / v2.1.8-test / Codex — 小程序衣橱首页对齐与导航圆角规范修复
+
+- **执行 Agent**：Codex（未触发 subagent：用户本轮要求直接修复截图标注问题；本轮仅处理衣橱首页和公共底部导航视觉）。
+- **目的**：按用户截图反馈继续修复衣橱首页：衣橱切换胶囊上沿对齐微信官方胶囊上沿、操作胶囊贴齐一级卡片右边缘、分类筛选不再渲染成卡片、右下角 `+` 居中，并按 UI 设计文档严格执行底部导航圆角矩形规则。
+- **版本变更**：无；当前应用版本仍为 `2.1.8-test`，小程序包版本仍为 `0.1.0`。
+- **改动文件**：`apps/wechat-miniprogram/pages/wardrobe/index/index.wxml`、`apps/wechat-miniprogram/pages/wardrobe/index/index.wxss`、`apps/wechat-miniprogram/custom-tab-bar/index.wxss`、`apps/wechat-miniprogram/assets/icons/wardrobe.svg`、`VERSION_HISTORY.md`。
+- **改动说明**：衣橱页顶部安全区由 `152rpx` 收紧到 `104rpx`；统计行右侧 `搜索｜统计｜AI衣橱诊断` 固定为 `340rpx` 并贴齐内容区右边缘；分类项由原生 `button` 改为 `view`，避免微信按钮默认样式把胶囊撑成卡片；右下 FAB 使用 grid 居中 `+`；衣橱 Tab 图标改回与 App 一致的 `Shirt` 轮廓；底部导航定义 `--tab-radius: 52rpx` 与 `--tab-inset: 10rpx`，选中态半径统一为 `calc(var(--tab-radius) - var(--tab-inset))`，对应 UI 文档“外层半径 - 内边距 = active 半径”的规则，后续一级卡片、二级卡片和导航圆角不得脱离该规范自行取值。
+- **验证结果**：`compile_wxss custom-tab-bar/index.wxss` 通过；`compile_wxss pages/wardrobe/index/index.wxss` 通过；`compile_wxml pages/wardrobe/index/index.wxml` 通过；`git diff --check` 通过；DevTools 首页截图保存到 `/Users/fangzheng/Desktop/wechat-mini-wardrobe-home-fix-20260709/04-wardrobe-home-radius-final.png`，点击右下 `+` 后截图保存到 `/Users/fangzheng/Desktop/wechat-mini-wardrobe-home-fix-20260709/05-after-plus-intake.png`；console grep `error|fail|timeout|typeerror|referenceerror` 无命中。
+- **风险门禁**：medium（衣橱首页布局、公共底部导航视觉和图标资产修复；不改后端、不改共享契约、不上传体验版）；未触发 subagent：用户未通知。
+- **未验证风险**：`npm --prefix apps/wechat-miniprogram run typecheck` 当前被工作区未跟踪的 `apps/wechat-miniprogram/services/ai.ts` 阻断，报 `wx.getStorageSync` / `setStorageSync` / `removeStorageSync` 类型定义缺失和 `readFile` `encoding` 字段类型不匹配；该文件不是本轮首页 UI 修复改动，本轮未处理。当前截图使用 DevTools 模拟器，未做真机预览。
+
 ## 2026-07-08 / v2.1.8-test / Codex — 小程序衣橱首页胶囊菜单与首页视觉修复
 
 - **执行 Agent**：Codex（未触发 subagent：用户未通知；本轮按用户逐页对比反馈直接修复衣橱首页）。

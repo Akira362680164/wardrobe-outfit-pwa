@@ -34,8 +34,8 @@
 
   <scroll-view class="category-scroll" scroll-x enable-flex>
     <view class="category-row">
-      <button class="category-chip {{activeCategory === 'all' ? 'is-active' : ''}}" data-category="all" bindtap="handleCategoryTap">全部 {{totalCount}}</button>
-      <button wx:for="{{categoryChips}}" wx:key="key" class="category-chip {{item.key === activeCategory ? 'is-active' : ''}}" data-category="{{item.key}}" bindtap="handleCategoryTap">{{item.label}} {{item.count}}</button>
+      <view class="category-chip {{activeCategory === 'all' ? 'is-active' : ''}}" data-category="all" bindtap="handleCategoryTap">全部 {{totalCount}}</view>
+      <view wx:for="{{categoryChips}}" wx:key="key" class="category-chip {{item.key === activeCategory ? 'is-active' : ''}}" data-category="{{item.key}}" bindtap="handleCategoryTap">{{item.label}} {{item.count}}</view>
     </view>
   </scroll-view>
 
