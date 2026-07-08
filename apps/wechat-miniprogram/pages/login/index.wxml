@@ -2,7 +2,7 @@
   <view class="login-hero glass-panel">
     <view class="login-kicker">智能衣橱</view>
     <view class="login-title text-wrap-safe">同步你的衣橱与穿搭数据</view>
-    <view class="login-copy text-wrap-safe">使用微信认证登录，自动同步你的衣橱与穿搭数据。</view>
+    <view class="login-copy text-wrap-safe">使用微信认证登录，自动同步你的衣橱与穿搭数据。未注册的手机号，登录后将自动注册账号。</view>
 
     <view class="login-actions">
       <button

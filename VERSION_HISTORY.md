@@ -1,3 +1,14 @@
+## 2026-07-08 / v2.1.8-test / Codex — 小程序登录页注册说明补充
+
+- **执行 Agent**：Codex（未触发 subagent：本次为登录页单行文案修复）。
+- **目的**：按用户截图标注，在登录首页小字说明后补充未注册手机号的自动注册说明。
+- **版本变更**：无；当前应用版本仍为 `2.1.8-test`，小程序包版本仍为 `0.1.0`。
+- **改动文件**：`apps/wechat-miniprogram/pages/login/index.wxml`、`VERSION_HISTORY.md`。
+- **改动说明**：登录页说明文案改为 `使用微信认证登录，自动同步你的衣橱与穿搭数据。未注册的手机号，登录后将自动注册账号。`，不新增样式和结构。
+- **验证结果**：`compile_wxml pages/login/index.wxml` 通过；`simulator_open_page pages/login/index` 通过；登录页截图保存到 `test-results/wechat-miniprogram-login/login-register-copy.png`。
+- **风险门禁**：low（单行文案改动，不改接口、不改后端、不改样式）；未触发 subagent：用户未通知。
+- **未验证风险**：未做真机截图；本轮使用 DevTools 模拟器截图确认。
+
 ## 2026-07-08 / v2.1.8-test / Codex — 小程序 HTTPS 业务联调与 TabBar 运行时修复
 
 - **执行 Agent**：Codex（按用户前序要求继续使用 subagent；本轮 1 个只读 subagent 核查 `wechatide` 是否能自动选择本机图片，主 agent 负责线上测试数据、运行时修复、页面验证和提交）。
