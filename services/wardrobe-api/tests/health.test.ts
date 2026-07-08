@@ -76,7 +76,7 @@ describe("cloud API skeleton", () => {
 
   it("only echoes configured CORS origins", async () => {
     const previous = process.env.ALLOWED_ORIGINS;
-    process.env.ALLOWED_ORIGINS = "http://111.231.98.86, capacitor://localhost";
+    process.env.ALLOWED_ORIGINS = "https://zhengfangapps.cloud, capacitor://localhost";
     const app = buildApp({
       readinessCheck: async () => ({ database: "ready" }),
     });
@@ -85,7 +85,7 @@ describe("cloud API skeleton", () => {
       const allowed = await app.inject({
         method: "OPTIONS",
         url: "/api/auth/login",
-        headers: { origin: "http://111.231.98.86" },
+        headers: { origin: "https://zhengfangapps.cloud" },
       });
       const blocked = await app.inject({
         method: "OPTIONS",
@@ -94,7 +94,7 @@ describe("cloud API skeleton", () => {
       });
 
       expect(allowed.statusCode).toBe(204);
-      expect(allowed.headers["access-control-allow-origin"]).toBe("http://111.231.98.86");
+      expect(allowed.headers["access-control-allow-origin"]).toBe("https://zhengfangapps.cloud");
       expect(blocked.statusCode).toBe(204);
       expect(blocked.headers["access-control-allow-origin"]).toBeUndefined();
     } finally {

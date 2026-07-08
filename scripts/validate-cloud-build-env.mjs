@@ -53,14 +53,11 @@ const apiBase = env.NEXT_PUBLIC_WARDROBE_API_BASE_URL;
 if (!apiBase) {
   console.error("❌ NEXT_PUBLIC_WARDROBE_API_BASE_URL: 未设置");
   failed = true;
-} else if (!/^https?:\/\/.+/.test(apiBase)) {
-  console.error(`❌ NEXT_PUBLIC_WARDROBE_API_BASE_URL: 不是合法绝对 URL: ${apiBase}`);
+} else if (!/^https:\/\/.+/.test(apiBase)) {
+  console.error(`❌ NEXT_PUBLIC_WARDROBE_API_BASE_URL: 必须使用 HTTPS 绝对 URL: ${apiBase}`);
   failed = true;
 } else {
   console.log(`  ✅ NEXT_PUBLIC_WARDROBE_API_BASE_URL=${apiBase}`);
-  if (apiBase.startsWith("http://")) {
-    console.log("  ⚠ HTTP 明文 API 地址，仅用于当前临时测试，域名 HTTPS 可用后切换");
-  }
 }
 
 if (failed) {

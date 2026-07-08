@@ -1,3 +1,14 @@
+## 2026-07-08 / v2.1.8-test / Codex — 切换 App API 到正式 HTTPS 域名
+
+- **执行 Agent**：Codex（未触发 subagent：用户未通知）。
+- **目的**：在 `api.zhengfangapps.cloud` HTTPS 可达后，将 App 本机构建 API 地址从备案前临时公网 IP 切换到正式 HTTPS URL。
+- **版本变更**：无；当前应用版本仍为 `2.1.8-test`。
+- **改动文件**：`.env`（本机忽略文件）、`.env.production`（本机忽略文件）、`deploy/.env.production.example`（本机未跟踪模板）、`deploy/docs/production-deploy.md`、`scripts/validate-cloud-build-env.mjs`、`services/wardrobe-api/tests/health.test.ts`、`VERSION_HISTORY.md`。
+- **改动说明**：`NEXT_PUBLIC_WARDROBE_API_BASE_URL` 改为 `https://api.zhengfangapps.cloud`；构建环境校验改为必须使用 HTTPS API；生产部署说明和 CORS 示例改为正式域名时代的配置；CORS 单测从旧 IP origin 更新为 `https://zhengfangapps.cloud`。
+- **验证结果**：切换前已确认 `https://api.zhengfangapps.cloud/api/health`、`/api/ready`、`/api/version` 均返回 `200 OK`，证书为 Let's Encrypt `CN=api.zhengfangapps.cloud`；`node scripts/validate-cloud-build-env.mjs`、`npm --workspace @wardrobe/wardrobe-api run test -- tests/health.test.ts`（6 项）、`npm run typecheck` 均通过。
+- **风险门禁**：medium（App/API 构建入口从 HTTP IP 切换到 HTTPS 域名，影响后续 Android/Web 构建；不改业务流程、不改数据结构、不打 APK）；未触发 subagent：用户未通知。
+- **未验证风险**：本轮不重新打包 APK、不安装真机/模拟器；服务器当前运行环境的 `ALLOWED_ORIGINS` 未重启 API 更新为 Web 根域名，小程序请求不受浏览器 CORS 影响，Android App 仍使用已允许的 `capacitor://localhost`。
+
 ## 2026-07-08 / v2.1.8-test / Codex — 运行时 UI 细节修正与规范截图刷新
 
 - **执行 Agent**：Codex（未触发 subagent：用户未通知）。
