@@ -182,7 +182,7 @@ git commit -m "v2.1.11 add tencent ses email sender"
 - Consumes: `EmailVerificationStore`, `EmailSendError`, hashed IPs, and the existing challenge table.
 - Produces: cross-purpose 60-second cooldown, durable hourly counts, and failed-dispatch cleanup.
 
-- [ ] **Step 1: Write failing state-machine tests**
+- [x] **Step 1: Write failing state-machine tests**
 
 Cover these exact assertions:
 
@@ -195,7 +195,7 @@ expect(store.challenges).toHaveLength(0); // after provider failure
 
 Use timestamps separated by at least 60 seconds for hourly-limit tests so cooldown does not mask the intended assertion.
 
-- [ ] **Step 2: Run the focused test and confirm failure**
+- [x] **Step 2: Run the focused test and confirm failure**
 
 Run:
 
@@ -205,7 +205,7 @@ npm --workspace @wardrobe/wardrobe-api run test -- tests/email-verification.test
 
 Expected: current 30-second cooldown and missing count/delete methods fail.
 
-- [ ] **Step 3: Add query indexes and migration**
+- [x] **Step 3: Add query indexes and migration**
 
 Add these indexes in both Drizzle schema and SQL migration:
 
@@ -218,7 +218,7 @@ CREATE INDEX "email_verification_challenges_ip_created_at_idx"
 
 Append migration index 15 to `_journal.json` without editing prior entries.
 
-- [ ] **Step 4: Extend the store and state machine**
+- [x] **Step 4: Extend the store and state machine**
 
 Add store methods for latest challenge by email, recent count by email or IP, and challenge deletion. Set:
 
@@ -231,11 +231,11 @@ export const EMAIL_CODE_IP_RATE_MAX = 20;
 
 Check availability and limits before creation. Create a challenge, call the sender, and delete that exact challenge when dispatch throws. Convert `EmailSendError` into 503 `AuthApiError` without provider details.
 
-- [ ] **Step 5: Update in-memory stores in auth tests**
+- [x] **Step 5: Update in-memory stores in auth tests**
 
 Each test store implements the new methods by filtering its challenge array. `deleteChallenge(id)` removes only the matching challenge and leaves existing verified/consumed fixtures unchanged.
 
-- [ ] **Step 6: Run state-machine and auth validation**
+- [x] **Step 6: Run state-machine and auth validation**
 
 Run:
 
@@ -246,7 +246,7 @@ npm --workspace @wardrobe/wardrobe-api run test -- tests/email-verification.test
 
 Expected: all pass; no challenge JSON contains the plaintext code.
 
-- [ ] **Step 7: Record and commit Task 2**
+- [x] **Step 7: Record and commit Task 2**
 
 Update `VERSION_HISTORY.md`, stage only Task 2 files, verify the staged diff, then commit:
 

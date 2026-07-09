@@ -1,3 +1,14 @@
+## 2026-07-10 / v2.1.11-test / Codex — 邮箱验证码持久限流与失败清理
+
+- **执行 Agent**：Codex（未触发 subagent：用户要求当前会话按实施计划直接执行；本轮完成第二批验证码状态机改造）。
+- **目的**：把验证码发送冷却统一为 60 秒，并在 PostgreSQL challenge 记录上补齐每邮箱/每 IP 小时限流，防止服务重启或多实例绕过配额。
+- **版本变更**：无；当前应用版本仍为 `2.1.11-test`。本轮不打 APK、不部署数据库迁移。
+- **改动文件**：`services/wardrobe-api/src/db/schema.ts`、`services/wardrobe-api/migrations/0015_email_verification_rate_limit_indexes.sql`、`services/wardrobe-api/migrations/meta/_journal.json`、`services/wardrobe-api/src/auth/email-verification.ts`、`services/wardrobe-api/tests/{email-verification,account-password-auth,wechat-openid-auth}.test.ts`、`docs/superpowers/plans/2026-07-10-tencent-ses-email-provider.md`、`VERSION_HISTORY.md`。
+- **改动说明**：同一邮箱跨 purpose 统一 60 秒冷却；一小时内同邮箱最多 5 次、同 IP 最多 20 次，均按 challenge 表持久计数；新增 email/IP + created_at 复合索引；发送器失败时删除刚创建的 challenge 并且不写开发验证码映射，失败发送不占冷却或小时配额；旧账号测试显式推进 60 秒后再覆盖找回密码和修改密码流程。
+- **验证结果**：新增状态机测试先确认旧实现 6 项失败；实现后 `npm run api:typecheck` 通过；`npm --workspace @wardrobe/wardrobe-api run test -- tests/email-verification.test.ts tests/account-password-auth.test.ts tests/wechat-openid-auth.test.ts tests/session.test.ts tests/registration.test.ts` 通过（34 项）。
+- **风险门禁**：high（认证验证码、持久限流、PostgreSQL schema 索引与迁移）；未触发 subagent：用户未通知。
+- **未验证风险**：迁移文件未在生产数据库执行；并发请求仍依赖数据库已提交 challenge 的可见性，极短窗口内的并发突发由上游 API 限流继续兜底，后续只有出现实测穿透才需要事务级账户锁。
+
 ## 2026-07-10 / v2.1.11-test / Codex — 腾讯云 SES Provider 与邮件就绪检查
 
 - **执行 Agent**：Codex（未触发 subagent：用户要求当前会话按实施计划直接执行；本轮完成第一批 Provider/ready 改造）。

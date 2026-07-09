@@ -100,6 +100,7 @@ class MemoryEmailStore implements EmailVerificationStore {
     userId?: string | null;
     bindingTicketId?: string | null;
     expiresAt: Date;
+    createdIpHash?: string | null;
     now: Date;
   }) {
     const challenge: EmailChallengeRecord = {
@@ -109,6 +110,7 @@ class MemoryEmailStore implements EmailVerificationStore {
       purpose: input.purpose,
       userId: input.userId ?? null,
       bindingTicketId: input.bindingTicketId ?? null,
+      createdIpHash: input.createdIpHash ?? null,
       attempts: 0,
       expiresAt: input.expiresAt,
       consumedAt: null,
@@ -126,6 +128,25 @@ class MemoryEmailStore implements EmailVerificationStore {
   async consumeChallenge(challengeId: string, now: Date) {
     const challenge = this.challenges.find((item) => item.id === challengeId);
     if (challenge) challenge.consumedAt = now;
+  }
+
+  async findLatestChallengeForEmail(emailNormalized: string) {
+    return this.challenges
+      .filter((challenge) => challenge.emailNormalized === emailNormalized)
+      .sort((left, right) => right.createdAt.getTime() - left.createdAt.getTime())[0] ?? null;
+  }
+
+  async countChallengesSince(input: { emailNormalized?: string; createdIpHash?: string; since: Date }) {
+    return this.challenges.filter((challenge) =>
+      challenge.createdAt >= input.since
+      && (!input.emailNormalized || challenge.emailNormalized === input.emailNormalized)
+      && (!input.createdIpHash || challenge.createdIpHash === input.createdIpHash)
+    ).length;
+  }
+
+  async deleteChallenge(challengeId: string) {
+    const index = this.challenges.findIndex((challenge) => challenge.id === challengeId);
+    if (index >= 0) this.challenges.splice(index, 1);
   }
 }
 
@@ -204,7 +225,7 @@ class MemoryAccountStore implements AccountPasswordStore {
 }
 
 function makeFixture() {
-  const now = new Date("2026-07-09T00:00:00.000Z");
+  let now = new Date("2026-07-09T00:00:00.000Z");
   const accountStore = new MemoryAccountStore();
   const emailSender = new MockEmailSender();
   const emailService = new EmailVerificationService({
@@ -226,7 +247,16 @@ function makeFixture() {
     limiter: new FixedWindowRateLimiter({ maxAttempts: 5, windowMs: 15 * 60 * 1000 }),
     now: () => now,
   });
-  return { service, accountStore, emailService, emailSender, sessionStore };
+  return {
+    service,
+    accountStore,
+    emailService,
+    emailSender,
+    sessionStore,
+    advance(milliseconds: number) {
+      now = new Date(now.getTime() + milliseconds);
+    },
+  };
 }
 
 describe("account password auth service", () => {
@@ -276,7 +306,7 @@ describe("account password auth service", () => {
   });
 
   it("resets password through verified email and revokes old sessions", async () => {
-    const { service, accountStore, emailService, emailSender } = makeFixture();
+    const { service, accountStore, emailService, emailSender, advance } = makeFixture();
     await emailService.sendCode({ email: "user@example.com", purpose: "register" });
     const tokens = await service.register({
       email: "user@example.com",
@@ -285,6 +315,7 @@ describe("account password auth service", () => {
       deviceId: "device-a",
     });
 
+    advance(60_000);
     await service.requestPasswordReset({ email: "user@example.com" });
     const resetCode = emailSender.messages.at(-1)!.code;
     await service.confirmPasswordReset({
@@ -303,7 +334,7 @@ describe("account password auth service", () => {
   });
 
   it("changes password through the logged-in email code", async () => {
-    const { service, emailService, emailSender, sessionStore } = makeFixture();
+    const { service, emailService, emailSender, sessionStore, advance } = makeFixture();
     await emailService.sendCode({ email: "user@example.com", purpose: "register" });
     const tokens = await service.register({
       email: "user@example.com",
@@ -314,6 +345,7 @@ describe("account password auth service", () => {
     const sessionId = [...sessionStore.sessions.entries()].find(([, session]) => session.userId === tokens.user.id)![0];
     const claims = { userId: tokens.user.id, sessionId, deviceId: "device-a" };
 
+    advance(60_000);
     await service.requestPasswordChangeCode(claims, {});
     const message = emailSender.messages.at(-1)!;
     expect(message.to).toBe("user@example.com");
