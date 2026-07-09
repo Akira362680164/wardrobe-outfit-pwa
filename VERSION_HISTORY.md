@@ -1,3 +1,14 @@
+## 2026-07-09 / v2.1.9-test / Codex — 小程序月历切换与计划管理修复
+
+- **执行 Agent**：Codex（未触发 subagent：用户未通知；本轮在独立 worktree `/Users/fangzheng/Documents/wardrobe-wechat-calendar-plan-fix` 的 `codex/wechat-calendar-plan-fix` 分支执行，未改动既有小程序 worktree 中的无关未提交文件）。
+- **目的**：修复小程序月历页不能切换月份和日期、返回按钮视觉错误、`+计划` 缺失、计划详情仍为占位页等问题；对齐用户提供的 App 截图，实现旅行、出差、自定义计划的添加、修改、删除和套装安排入口。
+- **版本变更**：无；当前应用版本仍为 `2.1.9-test`，小程序包版本仍为 `0.1.0`。
+- **改动文件**：`apps/wechat-miniprogram/app.json`、`apps/wechat-miniprogram/services/workspace.ts`、`apps/wechat-miniprogram/utils/calendar.ts`、`apps/wechat-miniprogram/pages/outfits/calendar/index.{json,ts,wxml,wxss}`、`apps/wechat-miniprogram/pages/trips/detail/index.{json,ts,wxml,wxss}`、`apps/wechat-miniprogram/pages/trips/edit/index.{json,ts,wxml,wxss}`、`VERSION_HISTORY.md`。
+- **改动说明**：月历页改为 42 格真实月历，支持左右切换月份、点击选择日期、展示计划彩条和当天穿搭安排；顶部返回按钮改为圆形，避开微信胶囊，右上 `+计划` 打开底部 Sheet，三项为旅行、出差、自定义；安排穿搭底部 Sheet 读取已有套装并写入 `/api/workspace/outfit-plans`；新增计划编辑页，支持名称、地点/目的地、日期范围、活动关键词、备注、彩条颜色和打包清单开关；计划详情页读取 `/api/workspace/trip-plans` 和 overview 快照，支持编辑、删除确认和每日穿搭展示；未登录态按钮改为“去登录”，未配置 API 态按钮改为“去设置”，真实读取失败才显示“重试”。
+- **验证结果**：使用主项目已安装 TypeScript 执行 `/Users/fangzheng/Documents/衣柜识别+根据要去的地方和活动自动搭配穿搭的APP/node_modules/.bin/tsc -p apps/wechat-miniprogram/tsconfig.json --noEmit` 通过；微信开发者工具 CLI `compile_wxml/compile_wxss` 覆盖月历页、计划编辑页、计划详情页通过；`node apps/wechat-miniprogram/scripts/wechatide-compile.mjs --refresh` 通过；`simulator_open_page` 打开 `pages/outfits/calendar/index`、`pages/trips/edit/index`、`pages/trips/detail/index` 通过；使用用户提供的测试账号在生产 API 完成真实登录，创建临时自定义计划、修改计划、删除计划并确认 404 清理通过；该账号原本无套装，进一步用账号内衣物创建临时套装、创建临时计划、创建 `outfit-plans` 穿搭安排、overview 读回验证，再删除临时穿搭安排、计划和套装，全部清理通过；`git diff --check` 通过。
+- **风险门禁**：high（小程序月历交互、计划新增/编辑/删除、线上 workspace 写入和多页 UI 状态变化；不改服务端、不改共享契约、不上传体验版、不打 Android APK）；未触发 subagent：用户未通知。
+- **未验证风险**：本轮未做真机预览或体验版上传；小程序 `package.json` 未声明本地 `tsc` 依赖，因此 `npm --prefix apps/wechat-miniprogram run typecheck` 在该独立 worktree 会找不到 `tsc`，本轮改用主项目已安装的同版本工具执行同一 tsconfig。
+
 ## 2026-07-09 / v2.1.9-test / Codex — 小程序当前分支同步到基线前收口
 
 - **执行 Agent**：Codex（未触发 subagent：用户要求将当前小程序分支推进到基线分支，本轮只做合并前收口和推送）。

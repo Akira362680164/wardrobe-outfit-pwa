@@ -13,6 +13,7 @@
     "pages/recommendations/index/index",
     "pages/trips/index/index",
     "pages/trips/detail/index",
+    "pages/trips/edit/index",
     "pages/intake/camera/index",
     "pages/intake/review/index",
     "pages/intake/result/index",

@@ -15,6 +15,8 @@ type WorkspaceOverviewResponse = {
   garments?: WorkspaceEntity[];
   outfits?: WorkspaceEntity[];
   wishlistItems?: WorkspaceEntity[];
+  tripPlans?: WorkspaceEntity[];
+  outfitPlans?: WorkspaceEntity[];
   serverRevision?: number;
   requestId?: string;
 };
@@ -109,6 +111,52 @@ export interface MiniWishlistDetail extends MiniWishlistItem {
   notes: string;
 }
 
+export type MiniCalendarPlanType = "travel" | "business" | "custom";
+export type MiniCalendarPlanTone = "denim" | "moss" | "clay" | "amber" | "rose" | "purple" | "slate";
+export type MiniOutfitPlanEntryStatus = "planned" | "worn" | "skipped" | "changed";
+
+export interface MiniCalendarPlan {
+  id: string;
+  revision: number;
+  type: MiniCalendarPlanType;
+  typeLabel: string;
+  title: string;
+  startDate: string;
+  endDate: string;
+  tone: MiniCalendarPlanTone;
+  destination: string;
+  activities: string[];
+  weatherNote: string;
+  notes: string;
+  packingEnabled: boolean;
+  rawPayload: Record<string, unknown>;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface MiniOutfitPlanEntry {
+  id: string;
+  revision: number;
+  date: string;
+  outfitId: string;
+  calendarPlanId: string;
+  status: MiniOutfitPlanEntryStatus;
+  title: string;
+  scene: string;
+  weatherNote: string;
+  notes: string;
+  isPrimary: boolean;
+  rawPayload: Record<string, unknown>;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface PlanningSnapshot {
+  outfits: MiniOutfit[];
+  calendarPlans: MiniCalendarPlan[];
+  outfitPlanEntries: MiniOutfitPlanEntry[];
+}
+
 export interface CreateGarmentInput {
   clientMutationId: string;
   name: string;
@@ -165,6 +213,30 @@ export interface UpdateGarmentInput {
   aiTag?: Record<string, unknown>;
 }
 
+export interface SaveCalendarPlanInput {
+  id?: string;
+  expectedRevision?: number;
+  currentPayload?: Record<string, unknown>;
+  type: MiniCalendarPlanType;
+  title?: string;
+  startDate: string;
+  endDate: string;
+  tone: MiniCalendarPlanTone;
+  destination?: string;
+  activities?: string[];
+  weatherNote?: string;
+  notes?: string;
+  packingEnabled?: boolean;
+}
+
+export interface CreateOutfitPlanEntryInput {
+  date: string;
+  outfitId: string;
+  calendarPlanId?: string;
+  makePrimary?: boolean;
+  title?: string;
+}
+
 type CatalogItemPayloadInput = {
   name: string;
   category?: string;
@@ -201,6 +273,14 @@ const SEASON_LABELS: Record<string, string> = {
   winter: "冬",
   all: "四季",
 };
+
+const PLAN_TYPE_LABELS: Record<MiniCalendarPlanType, string> = {
+  travel: "旅行",
+  business: "出差",
+  custom: "计划",
+};
+
+const PLAN_TONES = new Set<MiniCalendarPlanTone>(["denim", "moss", "clay", "amber", "rose", "purple", "slate"]);
 
 const COLOR_SWATCHES: Record<string, { bg: string; border?: string }> = {
   "黑": { bg: "#1D2228" },
@@ -257,6 +337,22 @@ export async function fetchOutfits(limit = 60): Promise<MiniOutfit[]> {
   const response = await workspaceRequest<WorkspaceListResponse>(`/api/workspace/outfits?limit=${limit}`);
   const garments = await fetchGarmentsForOutfits();
   return Promise.all((response.items ?? []).map((entity) => toMiniOutfit(entity, garments)));
+}
+
+export async function fetchPlanningSnapshot(): Promise<PlanningSnapshot> {
+  const response = await workspaceRequest<WorkspaceOverviewResponse>("/api/workspace/overview");
+  const garments = await Promise.all((response.garments ?? []).map(toMiniGarment));
+  const outfits = await Promise.all((response.outfits ?? []).map((entity) => toMiniOutfit(entity, garments)));
+  return {
+    outfits,
+    calendarPlans: (response.tripPlans ?? []).map(toMiniCalendarPlan),
+    outfitPlanEntries: (response.outfitPlans ?? []).map(toMiniOutfitPlanEntry),
+  };
+}
+
+export async function fetchCalendarPlanDetail(id: string): Promise<MiniCalendarPlan> {
+  const response = await workspaceRequest<{ data: WorkspaceEntity }>(`/api/workspace/trip-plans/${encodeURIComponent(id)}`);
+  return toMiniCalendarPlan(response.data);
 }
 
 export async function fetchWishlist(limit = 60): Promise<MiniWishlistItem[]> {
@@ -522,6 +618,69 @@ export async function deleteWorkspaceEntity(resource: "garments" | "outfits" | "
   });
 }
 
+export async function saveCalendarPlan(input: SaveCalendarPlanInput): Promise<MiniCalendarPlan> {
+  const now = new Date().toISOString();
+  const payload = {
+    ...(input.currentPayload ?? {}),
+    type: input.type,
+    title: input.title?.trim() || defaultPlanTitle(input.type),
+    startDate: input.startDate,
+    endDate: input.endDate,
+    tone: input.tone,
+    destination: input.destination?.trim() || undefined,
+    activities: (input.activities ?? []).map((item) => item.trim()).filter(Boolean).slice(0, 8),
+    weatherNote: input.weatherNote?.trim() || undefined,
+    notes: input.notes?.trim() || undefined,
+    packingEnabled: input.packingEnabled ?? input.type !== "custom",
+    createdAt: stringValue(input.currentPayload?.createdAt, now),
+    updatedAt: now,
+  };
+
+  const response = await request<{ entity?: WorkspaceEntity }>({
+    method: input.id ? "PUT" : "POST",
+    path: input.id ? `/api/workspace/trip-plans/${encodeURIComponent(input.id)}` : "/api/workspace/trip-plans",
+    data: {
+      clientMutationId: createClientMutationId(),
+      ...(input.id ? { expectedRevision: input.expectedRevision } : {}),
+      payload,
+      assetMutations: [],
+    },
+  });
+  if (!response.entity) throw new Error("服务器未返回已保存计划");
+  return toMiniCalendarPlan(response.entity);
+}
+
+export async function deleteCalendarPlan(id: string, expectedRevision: number): Promise<void> {
+  await request({
+    method: "DELETE",
+    path: `/api/workspace/trip-plans/${encodeURIComponent(id)}`,
+    data: { clientMutationId: createClientMutationId(), expectedRevision },
+  });
+}
+
+export async function createOutfitPlanEntry(input: CreateOutfitPlanEntryInput): Promise<MiniOutfitPlanEntry> {
+  const now = new Date().toISOString();
+  const payload = {
+    date: input.date,
+    planDate: input.date,
+    outfitId: input.outfitId,
+    ...(input.calendarPlanId ? { calendarPlanId: input.calendarPlanId, tripPlanId: input.calendarPlanId } : {}),
+    title: input.title,
+    status: "planned",
+    isPrimary: input.makePrimary ?? true,
+    role: "other",
+    createdAt: now,
+    updatedAt: now,
+  };
+  const response = await request<{ entity?: WorkspaceEntity }>({
+    method: "POST",
+    path: "/api/workspace/outfit-plans",
+    data: { clientMutationId: createClientMutationId(), payload, assetMutations: [] },
+  });
+  if (!response.entity) throw new Error("服务器未返回已保存穿搭计划");
+  return toMiniOutfitPlanEntry(response.entity);
+}
+
 function buildCatalogItemPayload(input: CatalogItemPayloadInput): Record<string, unknown> {
   const now = new Date().toISOString();
   return {
@@ -645,6 +804,49 @@ async function toMiniWishlistItem(entity: WorkspaceEntity): Promise<MiniWishlist
     status: wishlistStatus(payload),
     statusText: wishlistStatusText(payload),
     imageUrl: await resolveImageUrl(entity, "imageDataUrl", payload),
+    updatedAt: entity.updatedAt,
+  };
+}
+
+function toMiniCalendarPlan(entity: WorkspaceEntity): MiniCalendarPlan {
+  const payload = entity.payload;
+  const type = planType(payload.type);
+  return {
+    id: entity.id,
+    revision: entity.revision,
+    type,
+    typeLabel: PLAN_TYPE_LABELS[type],
+    title: stringValue(payload.title, defaultPlanTitle(type)),
+    startDate: stringValue(payload.startDate, localDateKey()),
+    endDate: stringValue(payload.endDate, stringValue(payload.startDate, localDateKey())),
+    tone: planTone(payload.tone, type),
+    destination: firstString(payload.destination),
+    activities: stringList(payload.activities).slice(0, 8),
+    weatherNote: firstString(payload.weatherNote),
+    notes: firstString(payload.notes),
+    packingEnabled: typeof payload.packingEnabled === "boolean" ? payload.packingEnabled : type !== "custom",
+    rawPayload: payload,
+    createdAt: entity.createdAt,
+    updatedAt: entity.updatedAt,
+  };
+}
+
+function toMiniOutfitPlanEntry(entity: WorkspaceEntity): MiniOutfitPlanEntry {
+  const payload = entity.payload;
+  return {
+    id: entity.id,
+    revision: entity.revision,
+    date: firstString(payload.date, payload.planDate),
+    outfitId: firstString(payload.outfitId, payload.actualOutfitId),
+    calendarPlanId: firstString(payload.calendarPlanId, payload.tripPlanId),
+    status: planEntryStatus(payload.status),
+    title: firstString(payload.title),
+    scene: firstString(payload.scene),
+    weatherNote: firstString(payload.weatherNote),
+    notes: firstString(payload.notes),
+    isPrimary: payload.isPrimary === true,
+    rawPayload: payload,
+    createdAt: entity.createdAt,
     updatedAt: entity.updatedAt,
   };
 }
@@ -785,6 +987,28 @@ function wishlistStatus(payload: Record<string, unknown>): "interested" | "purch
   if (payload.status === "rejected") return "rejected";
   if (payload.status === "archived") return "archived";
   return "interested";
+}
+
+function planType(value: unknown): MiniCalendarPlanType {
+  return value === "travel" || value === "business" || value === "custom" ? value : "custom";
+}
+
+function planTone(value: unknown, type: MiniCalendarPlanType): MiniCalendarPlanTone {
+  if (typeof value === "string" && PLAN_TONES.has(value as MiniCalendarPlanTone)) return value as MiniCalendarPlanTone;
+  if (type === "travel") return "clay";
+  if (type === "business") return "moss";
+  return "denim";
+}
+
+function planEntryStatus(value: unknown): MiniOutfitPlanEntryStatus {
+  if (value === "worn" || value === "skipped" || value === "changed") return value;
+  return "planned";
+}
+
+function defaultPlanTitle(type: MiniCalendarPlanType): string {
+  if (type === "travel") return "未命名旅行";
+  if (type === "business") return "未命名出差";
+  return "未命名计划";
 }
 
 function localDateKey(): string {
