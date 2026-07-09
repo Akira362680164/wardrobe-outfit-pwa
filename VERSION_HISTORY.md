@@ -1,3 +1,16 @@
+## 2026-07-09 / v2.1.11-test / Codex — 裁切工作台、缩略图浮层与详情滚动修复
+
+- **执行 Agent**：Codex（未触发 subagent：用户要求直接执行 1-6 代码修复）。
+- **目的**：修复单品/种草详情页无法下拖滚动、编辑页裁切预览不撑满与卡片间距不一致、重新裁切缺少自由/3:4 和左右旋转、录入裁切页按钮被底部菜单遮挡、缩略图浮层越界且箭头不准等问题。
+- **版本变更**：`package.json` / `package-lock.json` 从 `2.1.10-test` 升至 `2.1.11-test`，Android `versionCode` 由构建脚本推导为 `20111`。
+- **改动文件**：`src/components/image-crop-editor.tsx`、`src/components/garment-intake-flow.tsx`、`src/components/intake-flow-shell.tsx`、`src/components/item/edit-image-action-card.tsx`、`src/components/item-shell/item-surface-tokens.ts`、`src/components/wardrobe-app.tsx`、`src/components/wishlist-view-2.0.tsx`、`scripts/test-intake-entry-and-crop-regression.ts`、`scripts/test-intake-fullscreen-layout.ts`、`package.json`、`package-lock.json`、`VERSION_HISTORY.md`。
+- **改动说明**：详情/编辑共享壳根容器改为 `h-[100dvh]`，保证详情内部滚动区域可用；新增共享 `EditImageActionCard`，单品和种草编辑页统一为一级卡片 `--ui-radius-card` 28px、内层 3:4 二级图片区 20px、内图 12px，预览图用覆盖填满方式显示；全屏裁切器和录入内嵌裁切器支持 `自由` / `3:4`，并提供左转 90°、右转 90°、重置；录入裁切页进入沉浸模式，主区域不滚动，顺序固定为图片裁切框、比例、旋转/重置、底部 `取消` / `应用`，不再显示 `上一步` / `下一步`；缩略图浮层固定 212px 宽并根据选中缩略图和缩略图轨道动态 clamp，箭头按选中缩略图中心重新计算，按钮 `裁切/旋转`、`删除` 均 `white-space: nowrap`。
+- **色卡与 UI 规范**：本轮涉及的运行时代码使用规范色 `#355c7d`（denim 主按钮/选中态）、`#1d2228`（ink 文本/裁切底色）、`#fffffc`（surface/paper）、`#f4f5f3`（mist 二级底）、`#b97155`（clay 删除态）；一级卡片继续复用 `ui-card` / `--ui-radius-card: 28px`，二级图片区使用 20px，按钮使用 `ui-control-radius` / `--ui-radius-control: 16px`。
+- **交付产物**：根目录 `衣橱穿搭助手-v2.1.11-test.apk`，大小 9.5MB，SHA-256 `076bbb86591ecb45918c458330ea690cd6a2f0ad07dd2f83acef009c9ea2c487`；构建归档 `apk-local/app-release-ebd5198.apk`。
+- **验证结果**：`npm run typecheck` 通过；`npm run test:logic:intake-entry-crop-regression` 通过（55 项）；`npm run test:logic:intake-fullscreen-layout` 通过（32 项）；`npm run test:logic:detail-shell` 通过；`npm run test:logic:garment-intake-multi-image` 通过（69 项）；`npm run test:logic:wishlist-intake-confirm-contract` 通过；`npm run test:logic:shared-item-shells` 通过；`npm run build` 以 `2.1.11-test` 通过；`npm run android:apk` 通过；`APK_PATH="$PWD/衣橱穿搭助手-v2.1.11-test.apk" APK_EXPECTED_SIGNER_CN=fangzheng ANDROID_SERIAL=481QFGFH23AY7 RESULTS_DIR="$PWD/test-results/android-v2.1.11-test-script" npm run android:verify:full` 通过，设备 `481QFGFH23AY7` / MEIZU 21 Pro / Android 16，结果目录 `test-results/android-v2.1.11-test-script/20260709-223200/`，包名 `com.wardrobe.outfit`、`versionName=2.1.11-test`、`versionCode=20111`、签名证书 `CN=fangzheng`，三段 crash 日志为空。
+- **风险门禁**：high（裁切器、图片预览、移动端触摸/滚动、Android APK 交付）；未触发 subagent：用户未通知。
+- **未验证风险**：本轮未在生产账号里手工走相册选图到裁切页的完整业务操作，避免向线上生产数据写入测试内容；已用真实 APK 完成安装、启动、返回键、清数据重启与 crash 筛查，并用逻辑回归覆盖裁切布局、比例切换、左右旋转、缩略图浮层边界和详情壳滚动约束。
+
 ## 2026-07-09 / v2.1.10-test / Codex — 重新打包最新版 Android APK
 
 - **执行 Agent**：Codex（未触发 subagent：用户只要求打包最新版 APK）。

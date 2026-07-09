@@ -2,7 +2,7 @@ export const ITEM_SURFACE_CLASS =
   "ui-card min-w-0 max-w-full overflow-hidden shadow-none";
 
 export const ITEM_PAGE_ROOT_CLASS =
-  "flex h-full min-h-0 flex-col overflow-hidden";
+  "flex h-[100dvh] min-h-0 flex-col overflow-hidden";
 
 export const ITEM_PAGE_SCROLL_CLASS =
   "min-h-0 flex-1 overflow-y-auto overflow-x-hidden overscroll-contain";

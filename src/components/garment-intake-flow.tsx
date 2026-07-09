@@ -17,7 +17,7 @@ import {
   Tag,
   Trash2,
 } from "lucide-react";
-import { useCallback, useEffect, useMemo, useRef, useState, type ChangeEvent, type ReactNode } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ChangeEvent, type ReactNode, type RefObject } from "react";
 import {
   IntakeFlowShell,
   type IntakeFlowStep,
@@ -823,6 +823,7 @@ export function GarmentIntakeFlow({
       nextDisabled={nextDisabled}
       backDisabled={stepIndex === "select_photo" && !isCropping}
       rootBackOverridesExit={isCropping}
+      immersiveContent={isCropping}
       onBack={handleBack}
       onNext={handleNext}
       onExit={onExit}
@@ -925,6 +926,8 @@ function MultiImageSelectStep({
   const hasImages = imageItems.length > 0;
   const displayItems = imageItems;
   const flowNoun = flowKind === "wishlist" ? "种草" : "单品";
+  const thumbRowRef = useRef<HTMLDivElement | null>(null);
+  const activeThumbRef = useRef<HTMLDivElement | null>(null);
 
   // Custom preview: shown inside IntakeStepSection when images are selected
   const previewNode = hasImages ? (
@@ -946,10 +949,11 @@ function MultiImageSelectStep({
         )}
       </div>
       {/* Thumbnail row */}
-      <div className="flex gap-2 mb-3 overflow-x-auto overflow-y-visible pt-12 pb-1">
+      <div ref={thumbRowRef} className="relative flex gap-2 mb-3 overflow-x-auto overflow-y-visible pt-14 pb-1">
         {displayItems.map((item, idx) => (
           <div
             key={item.id}
+            ref={item.id === activeImageId ? activeThumbRef : undefined}
             className="relative h-14 w-14 shrink-0 overflow-visible"
           >
             <button
@@ -971,27 +975,17 @@ function MultiImageSelectStep({
                 <span className="absolute inset-0 grid place-items-center bg-denim/55 text-[8px] font-semibold text-white">识别中</span>
               )}
             </button>
-            {item.id === activeImageId && onCropActive ? (
-              <div className="absolute bottom-[calc(100%+8px)] left-1/2 z-20 flex -translate-x-1/2 items-center gap-1 ui-control-radius border border-ink/10 bg-white/88 p-1 shadow-lg backdrop-blur-xl">
-                <button
-                  type="button"
-                  onClick={onCropActive}
-                  className="flex h-8 items-center gap-1 ui-control-radius px-2 text-[11px] font-semibold text-ink active:bg-mist"
-                >
-                  <Scissors size={13} aria-hidden="true" /> 裁切/旋转
-                </button>
-                <button
-                  type="button"
-                  onClick={() => onRemoveImage(item.id)}
-                  className="flex h-8 items-center gap-1 ui-control-radius px-2 text-[11px] font-semibold text-clay active:bg-clay/8"
-                >
-                  <Trash2 size={13} aria-hidden="true" /> 删除
-                </button>
-                <span className="absolute left-1/2 top-full h-2 w-2 -translate-x-1/2 -translate-y-1/2 rotate-45 border-b border-r border-ink/10 bg-white/88" aria-hidden="true" />
-              </div>
-            ) : null}
           </div>
         ))}
+        {activeImageId && onCropActive ? (
+          <ThumbnailActionPopover
+            rowRef={thumbRowRef}
+            targetRef={activeThumbRef}
+            activeId={activeImageId}
+            onCrop={onCropActive}
+            onRemove={() => onRemoveImage(activeImageId)}
+          />
+        ) : null}
       </div>
       <div className="flex gap-2">
         <button
@@ -1036,6 +1030,78 @@ function MultiImageSelectStep({
   );
 }
 
+function ThumbnailActionPopover({
+  rowRef,
+  targetRef,
+  activeId,
+  onCrop,
+  onRemove,
+}: {
+  rowRef: RefObject<HTMLDivElement | null>;
+  targetRef: RefObject<HTMLDivElement | null>;
+  activeId: string;
+  onCrop: () => void;
+  onRemove: () => void;
+}) {
+  const WIDTH = 212;
+  const ARROW_SAFE = 18;
+  const [layout, setLayout] = useState<{ left: number; arrowLeft: number } | null>(null);
+
+  useLayoutEffect(() => {
+    const row = rowRef.current;
+    const target = targetRef.current;
+    if (!row || !target) return;
+
+    const update = () => {
+      const selectedCenter = target.offsetLeft + target.offsetWidth / 2;
+      const minLeft = row.scrollLeft;
+      const maxLeft = Math.max(minLeft, row.scrollLeft + row.clientWidth - WIDTH);
+      const left = Math.max(minLeft, Math.min(selectedCenter - WIDTH / 2, maxLeft));
+      const arrowLeft = Math.max(ARROW_SAFE, Math.min(selectedCenter - left, WIDTH - ARROW_SAFE));
+      setLayout({ left, arrowLeft });
+    };
+
+    update();
+    row.addEventListener("scroll", update, { passive: true });
+    window.addEventListener("resize", update);
+    const ro = new ResizeObserver(update);
+    ro.observe(row);
+    ro.observe(target);
+    return () => {
+      row.removeEventListener("scroll", update);
+      window.removeEventListener("resize", update);
+      ro.disconnect();
+    };
+  }, [activeId, rowRef, targetRef]);
+
+  return (
+    <div
+      className="absolute top-1 z-20 grid w-[212px] grid-cols-[1fr_74px] gap-1 rounded-[16px] border border-[rgba(29,34,40,0.10)] bg-[rgba(255,255,252,0.88)] p-1 shadow-lg backdrop-blur-xl"
+      style={{ left: layout?.left ?? 0, visibility: layout ? "visible" : "hidden" }}
+    >
+      <button
+        type="button"
+        onClick={onCrop}
+        className="flex h-9 items-center justify-center gap-1 rounded-[12px] px-2 text-[12px] font-semibold text-[#1d2228] active:bg-[#f4f5f3] whitespace-nowrap"
+      >
+        <Scissors size={13} aria-hidden="true" /> 裁切/旋转
+      </button>
+      <button
+        type="button"
+        onClick={onRemove}
+        className="flex h-9 items-center justify-center gap-1 rounded-[12px] px-2 text-[12px] font-semibold text-[#b97155] active:bg-[#b97155]/8 whitespace-nowrap"
+      >
+        <Trash2 size={13} aria-hidden="true" /> 删除
+      </button>
+      <span
+        className="absolute top-full h-2 w-2 -translate-x-1/2 -translate-y-1/2 rotate-45 border-b border-r border-[rgba(29,34,40,0.10)] bg-[rgba(255,255,252,0.88)]"
+        style={{ left: layout?.arrowLeft ?? WIDTH / 2 }}
+        aria-hidden="true"
+      />
+    </div>
+  );
+}
+
 // Step 2: Multi-image crop
 function MultiImageCropStep({
   imageItem,
@@ -1067,9 +1133,15 @@ function MultiImageCropStep({
   }
 
   return (
-    <div className="flex min-h-[calc(100dvh-13rem)] flex-col gap-3">
-      <IntakeStepSection title="裁切/旋转" icon={<Scissors size={16} aria-hidden="true" />}>
-        <div className="h-[min(46dvh,360px)] min-h-[260px] overflow-hidden ui-inner-card bg-ink">
+    <div className="flex h-full min-h-0 flex-col gap-3 overflow-hidden">
+      <section className="ui-card flex min-h-0 flex-1 flex-col p-4" aria-label="裁切/旋转">
+        <div className="mb-3 flex items-center gap-2">
+          <span className="grid h-8 w-8 shrink-0 place-items-center rounded-xl bg-[#355c7d]/8 text-[#355c7d]">
+            <Scissors size={16} aria-hidden="true" />
+          </span>
+          <h2 className="min-w-0 flex-1 truncate text-sm font-semibold text-[#1d2228]">裁切/旋转</h2>
+        </div>
+        <div className="min-h-0 flex-1 overflow-hidden rounded-[20px] border border-[rgba(29,34,40,0.06)] bg-[#1d2228]">
           <ImageCropEditor
             ref={cropEditorRef}
             source={imageItem.originalDataUrl}
@@ -1081,56 +1153,55 @@ function MultiImageCropStep({
             onReadyChange={setCropReady}
           />
         </div>
-      </IntakeStepSection>
+      </section>
 
-      <div className="ui-card p-3">
-        <div className="grid grid-cols-2 gap-2">
-          {[
-            { label: "自由", value: "free" as const },
-            { label: "3:4", value: 0.75 },
-          ].map((option) => (
-            <button
-              key={option.label}
-              type="button"
-              onClick={() => setAspectRatio(option.value)}
-              className={`h-9 ui-control-radius text-xs font-semibold ${
-                aspectRatio === option.value ? "bg-denim text-white" : "border border-ink/10 bg-[#fbfbf8] text-ink/60"
-              }`}
-            >
-              {option.label}
-            </button>
-          ))}
-        </div>
-        <div className="mt-2 grid grid-cols-3 gap-2">
+      <div className="grid h-11 shrink-0 grid-cols-2 gap-1 rounded-[16px] bg-[#f4f5f3] p-1">
+        {[
+          { label: "自由", value: "free" as const },
+          { label: "3:4", value: 0.75 },
+        ].map((option) => (
           <button
+            key={option.label}
             type="button"
-            onClick={() => onRotate("left")}
-            className="flex h-10 items-center justify-center gap-1 ui-control-radius border border-ink/10 bg-white text-xs font-semibold"
+            onClick={() => setAspectRatio(option.value)}
+            className={`rounded-[12px] text-sm font-semibold ${
+              aspectRatio === option.value ? "bg-[#355c7d] text-[#fffffc]" : "text-[#1d2228]/60"
+            }`}
           >
-            <RotateCcw size={14} aria-hidden="true" /> 左转90°
+            {option.label}
           </button>
-          <button
-            type="button"
-            onClick={() => onRotate("right")}
-            className="flex h-10 items-center justify-center gap-1 ui-control-radius border border-ink/10 bg-white text-xs font-semibold"
-          >
-            <RotateCw size={14} aria-hidden="true" /> 右转90°
-          </button>
-          <button
-            type="button"
-            onClick={handleResetAll}
-            className="flex h-10 items-center justify-center gap-1 ui-control-radius border border-ink/10 bg-white text-xs font-semibold"
-          >
-            <RefreshCw size={14} aria-hidden="true" /> 重置
-          </button>
-        </div>
+        ))}
       </div>
 
-      <div className="grid grid-cols-[1fr_1.6fr] gap-2">
+      <div className="grid shrink-0 grid-cols-3 gap-2">
+        <button
+          type="button"
+          onClick={() => onRotate("left")}
+          className="flex h-11 items-center justify-center gap-1 ui-control-radius border border-[rgba(29,34,40,0.10)] bg-[#fffffc] px-2 text-xs font-semibold text-[#1d2228]/70 whitespace-nowrap"
+        >
+          <RotateCcw size={14} aria-hidden="true" /> 左转90°
+        </button>
+        <button
+          type="button"
+          onClick={() => onRotate("right")}
+          className="flex h-11 items-center justify-center gap-1 ui-control-radius border border-[rgba(29,34,40,0.10)] bg-[#fffffc] px-2 text-xs font-semibold text-[#1d2228]/70 whitespace-nowrap"
+        >
+          <RotateCw size={14} aria-hidden="true" /> 右转90°
+        </button>
+        <button
+          type="button"
+          onClick={handleResetAll}
+          className="flex h-11 items-center justify-center gap-1 ui-control-radius border border-[rgba(29,34,40,0.10)] bg-[#fffffc] px-2 text-xs font-semibold text-[#1d2228]/70 whitespace-nowrap"
+        >
+          <RefreshCw size={14} aria-hidden="true" /> 重置
+        </button>
+      </div>
+
+      <div className="grid shrink-0 grid-cols-[1fr_1.6fr] gap-2" style={{ paddingBottom: "max(12px, env(safe-area-inset-bottom))" }}>
         <button
           type="button"
           onClick={onCancel}
-          className="h-11 ui-control-radius border border-ink/10 bg-white text-sm font-semibold text-ink/70"
+          className="h-12 ui-control-radius border border-[rgba(29,34,40,0.10)] bg-[rgba(255,255,252,0.76)] text-sm font-semibold text-[#1d2228]/70"
         >
           取消
         </button>
@@ -1138,7 +1209,7 @@ function MultiImageCropStep({
           type="button"
           onClick={() => cropEditorRef.current?.runConfirm()}
           disabled={!cropReady}
-          className="h-11 ui-control-radius bg-denim text-sm font-semibold text-white disabled:opacity-35"
+          className="h-12 ui-control-radius bg-[#355c7d] text-sm font-semibold text-[#fffffc] disabled:opacity-35"
         >
           应用
         </button>

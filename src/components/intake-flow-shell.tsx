@@ -30,6 +30,7 @@ export interface IntakeFlowShellProps {
   nextDisabled?: boolean;
   backDisabled?: boolean;
   rootBackOverridesExit?: boolean;
+  immersiveContent?: boolean;
   children: React.ReactNode;
   onBack?: () => void;
   onNext?: () => void;
@@ -51,6 +52,7 @@ export function IntakeFlowShell({
   nextDisabled = false,
   backDisabled = false,
   rootBackOverridesExit = false,
+  immersiveContent = false,
   children,
   onBack,
   onNext,
@@ -178,30 +180,39 @@ export function IntakeFlowShell({
         </div>
       ) : null}
 
-      <main className="mx-auto min-h-0 w-full max-w-md flex-1 overflow-y-auto px-4 pb-[calc(env(safe-area-inset-bottom)+104px)] pt-3">
+      <main
+        className={[
+          "mx-auto min-h-0 w-full max-w-md flex-1 px-4 pt-3",
+          immersiveContent
+            ? "flex flex-col overflow-hidden pb-3"
+            : "overflow-y-auto pb-[calc(env(safe-area-inset-bottom)+104px)]",
+        ].join(" ")}
+      >
         {children}
       </main>
 
-      <footer className="app-glass-bottom safe-bottom fixed inset-x-0 bottom-0 z-40 px-4 py-3">
-        <div className="mx-auto grid max-w-md grid-cols-[1fr_1.6fr] gap-2">
-          <button
-            type="button"
-            onClick={onBack}
-            disabled={backDisabled || busy || !onBack}
-            className="h-12 ui-control-radius border border-ink/10 bg-white/76 text-sm font-semibold text-ink/70 disabled:opacity-35"
-          >
-            {backLabel}
-          </button>
-          <button
-            type="button"
-            onClick={onNext}
-            disabled={nextDisabled || busy || !onNext}
-            className="h-12 ui-control-radius bg-denim text-sm font-semibold text-white disabled:opacity-35"
-          >
-            {nextLabel}
-          </button>
-        </div>
-      </footer>
+      {!immersiveContent ? (
+        <footer className="app-glass-bottom safe-bottom fixed inset-x-0 bottom-0 z-40 px-4 py-3">
+          <div className="mx-auto grid max-w-md grid-cols-[1fr_1.6fr] gap-2">
+            <button
+              type="button"
+              onClick={onBack}
+              disabled={backDisabled || busy || !onBack}
+              className="h-12 ui-control-radius border border-ink/10 bg-white/76 text-sm font-semibold text-ink/70 disabled:opacity-35"
+            >
+              {backLabel}
+            </button>
+            <button
+              type="button"
+              onClick={onNext}
+              disabled={nextDisabled || busy || !onNext}
+              className="h-12 ui-control-radius bg-denim text-sm font-semibold text-white disabled:opacity-35"
+            >
+              {nextLabel}
+            </button>
+          </div>
+        </footer>
+      ) : null}
 
       {confirmExit ? (
         <div className="fixed inset-0 z-[120] grid place-items-center bg-black/35 px-4" onClick={() => setConfirmExit(false)}>
