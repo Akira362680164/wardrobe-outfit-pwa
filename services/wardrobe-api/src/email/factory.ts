@@ -44,6 +44,8 @@ function loadTencentSesConfig(env: NodeJS.ProcessEnv): TencentSesConfig | null {
 }
 
 class UnavailableEmailSender implements EmailSender {
+  readonly readiness = "unavailable" as const;
+
   async sendVerificationCode(_input: SendVerificationCodeInput): Promise<never> {
     throw new EmailSendError("email_provider_not_configured", "Email provider is not configured");
   }

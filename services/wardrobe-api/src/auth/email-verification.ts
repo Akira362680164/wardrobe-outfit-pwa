@@ -175,6 +175,7 @@ export class EmailVerificationService {
     bindingTicketId?: string | null;
     ip?: string;
   }) {
+    this.ensureDeliveryAvailable();
     const now = this.now();
     const emailNormalized = normalizeEmail(input.email);
     const emailMasked = maskEmail(emailNormalized);
@@ -234,6 +235,12 @@ export class EmailVerificationService {
       cooldownSeconds: EMAIL_CODE_COOLDOWN_MS / 1000,
       expiresInSeconds: EMAIL_CODE_TTL_MS / 1000,
     };
+  }
+
+  ensureDeliveryAvailable() {
+    if (this.sender.readiness === "unavailable") {
+      throw new AuthApiError(503, "email_provider_not_configured", "Email provider is not configured");
+    }
   }
 
   async verifyCode(input: {

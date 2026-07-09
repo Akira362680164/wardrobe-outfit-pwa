@@ -26,6 +26,7 @@ import {
   type EmailVerificationStore,
 } from "../src/auth/email-verification.js";
 import { MockEmailSender } from "../src/email/mock-sender.js";
+import { createEmailSenderFromEnv } from "../src/email/factory.js";
 import { hashPassword } from "../src/security/password.js";
 
 class MemoryAccessTokenIssuer implements AccessTokenIssuer {
@@ -224,11 +225,11 @@ class MemoryAccountStore implements AccountPasswordStore {
   async recordSecurityEvent(input: SecurityEventInput) { this.events.push(input); }
 }
 
-function makeFixture() {
+function makeFixture(emailServiceOverride?: EmailVerificationService) {
   let now = new Date("2026-07-09T00:00:00.000Z");
   const accountStore = new MemoryAccountStore();
   const emailSender = new MockEmailSender();
-  const emailService = new EmailVerificationService({
+  const emailService = emailServiceOverride ?? new EmailVerificationService({
     store: new MemoryEmailStore(),
     sender: emailSender,
     now: () => now,
@@ -260,6 +261,20 @@ function makeFixture() {
 }
 
 describe("account password auth service", () => {
+  it("returns the same provider error for unknown password-reset emails", async () => {
+    const emailService = new EmailVerificationService({
+      store: new MemoryEmailStore(),
+      sender: createEmailSenderFromEnv({
+        NODE_ENV: "production",
+        EMAIL_PROVIDER: "tencent-ses",
+      }),
+    });
+    const { service } = makeFixture(emailService);
+
+    await expect(service.requestPasswordReset({ email: "missing@example.com" }))
+      .rejects.toMatchObject({ code: "email_provider_not_configured", statusCode: 503 });
+  });
+
   it("registers with verified email and keeps phone as an unverified login name", async () => {
     const { service, accountStore, emailService, emailSender } = makeFixture();
     await emailService.sendCode({ email: "user@example.com", purpose: "register" });

@@ -14,6 +14,7 @@ export interface SendVerificationCodeResult {
 }
 
 export interface EmailSender {
+  readonly readiness?: "ready" | "unavailable";
   sendVerificationCode(input: SendVerificationCodeInput): Promise<SendVerificationCodeResult>;
 }
 

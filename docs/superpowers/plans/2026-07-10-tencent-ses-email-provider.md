@@ -349,7 +349,7 @@ git commit -m "v2.1.11 use server email resend cooldown"
 - Consumes: all three implementation commits.
 - Produces: a reproducible local acceptance record and explicit live-validation boundary.
 
-- [ ] **Step 1: Run full required validation**
+- [x] **Step 1: Run full required validation**
 
 Run:
 
@@ -371,15 +371,15 @@ git diff --check
 
 Expected: every command passes without real Tencent credentials.
 
-- [ ] **Step 2: Run source-safety scans**
+- [x] **Step 2: Run source-safety scans**
 
 Run searches proving no Secret or phone-number JSAPI entered client code, and verify only backend files import the Tencent SDK. Do not print values from `.env` files.
 
-- [ ] **Step 3: Finalize the history and plan status**
+- [x] **Step 3: Finalize the history and plan status**
 
 Record actual test results and these remaining risks: template approval pending, no TemplateID, no production configuration/deployment, no real inbox, no mini-program real-device preview, and no Android APK rebuild.
 
-- [ ] **Step 4: Commit acceptance metadata if changed**
+- [x] **Step 4: Commit acceptance metadata if changed**
 
 If validation changes only plan/history files, stage those exact files and commit:
 

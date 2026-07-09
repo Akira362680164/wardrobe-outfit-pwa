@@ -1,3 +1,15 @@
+## 2026-07-10 / v2.1.11-test / Codex — 腾讯云 SES 接入本地验收与可用性防枚举
+
+- **执行 Agent**：Codex（未触发 subagent：用户要求当前会话按实施计划直接执行；本轮完成最终验收和邮件配置不可用边界加固）。
+- **目的**：完成腾讯云 SES 增量任务的全部本地门禁，并确保邮件 Provider 未配置时，公开验证码接口和未知邮箱找回密码返回一致 503，不通过响应差异暴露账号是否存在。
+- **版本变更**：无；当前应用版本仍为 `2.1.11-test`。本轮不打 APK、不上传小程序、不部署服务或数据库迁移。
+- **改动文件**：`services/wardrobe-api/src/email/{types,factory}.ts`、`services/wardrobe-api/src/auth/{email-verification,account-password}.ts`、`services/wardrobe-api/tests/{email-verification,account-password-auth}.test.ts`、`docs/superpowers/plans/2026-07-10-tencent-ses-email-provider.md`、`VERSION_HISTORY.md`。
+- **改动说明**：不可用 sender 暴露内部 readiness 状态，`EmailVerificationService` 在查询/创建 challenge 前统一拒绝；找回密码在查找邮箱前执行同一邮件可用性检查，已注册与未注册邮箱在 Provider 未配置时均返回 `503 email_provider_not_configured`；新增路由和未知邮箱防枚举回归测试，均确认不创建 challenge。
+- **验证结果**：`npm run cloud:contracts:typecheck`、`npm run api:typecheck`、`npm run typecheck`、`npm --prefix apps/wechat-miniprogram run typecheck` 通过；完整 API 测试 15 files / 96 tests 通过；`test:logic:online-auth-shell`、`auth-flow-v2-0-1`（42 项）、`auth-client-shell`（49 项）、`app-email-auth-flow`、`wechat-email-auth-flow`、`online-workspace` 通过；`npm run build` 以 `2.1.11-test` 成功；迁移 journal JSON 有效；`git diff --check` 和源码安全扫描通过，腾讯 SDK 仅由后端 sender 引用，客户端无 Secret 环境变量、`getPhoneNumber` 或 30 秒倒计时硬编码。
+- **依赖审计**：`npm audit --omit=dev` 报告 6 项（5 moderate、1 high）；high 为仓库现有 `drizzle-orm <0.45.2` 标识符转义公告，腾讯 SDK 路径新增 `uuid <11.1.1` moderate。自动修复会引入 Drizzle/SDK 等破坏性版本变化，本任务不扩大范围执行。
+- **风险门禁**：high（邮件认证 Provider、密码找回防枚举、数据库迁移、App/小程序共享认证契约）；未触发 subagent：用户未通知。
+- **未验证风险**：腾讯云模板仍在审批，尚无 TemplateID，未配置生产 Secret、未执行迁移/部署、未真实收件、未做微信 DevTools/真机预览或 Android APK 安装；模板通过后按设计文档激活 runbook 完成真实邮箱与跨端验证。
+
 ## 2026-07-10 / v2.1.11-test / Codex — App 与小程序使用服务端验证码倒计时
 
 - **执行 Agent**：Codex（未触发 subagent：用户要求当前会话按实施计划直接执行；本轮完成第三批客户端倒计时改造）。

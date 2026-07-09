@@ -4,6 +4,7 @@ import type { EmailCodePurpose } from "@wardrobe/cloud-contracts";
 import { afterEach, describe, expect, it } from "vitest";
 
 import { buildApp } from "../src/app.js";
+import { createEmailSenderFromEnv } from "../src/email/factory.js";
 import {
   EMAIL_CODE_MAX_ATTEMPTS,
   EmailVerificationService,
@@ -241,6 +242,32 @@ describe("email verification service", () => {
 });
 
 describe("email verification routes", () => {
+  it("returns 503 without creating a challenge when Tencent SES is incomplete", async () => {
+    const store = new MemoryEmailVerificationStore();
+    const service = new EmailVerificationService({
+      store,
+      sender: createEmailSenderFromEnv({
+        NODE_ENV: "production",
+        EMAIL_PROVIDER: "tencent-ses",
+      }),
+    });
+    const app = buildApp({
+      readinessCheck: async () => ({ database: "ready" }),
+      emailVerificationService: service,
+    });
+
+    const response = await app.inject({
+      method: "POST",
+      url: "/api/auth/email/send-code",
+      payload: { email: "user@example.com", purpose: "register" },
+    });
+
+    expect(response.statusCode).toBe(503);
+    expect(response.json()).toMatchObject({ code: "email_provider_not_configured" });
+    expect(store.challenges).toHaveLength(0);
+    await app.close();
+  });
+
   it("sends codes and serves the test code in test mode", async () => {
     const fixture = makeFixture();
     const app = buildApp({
