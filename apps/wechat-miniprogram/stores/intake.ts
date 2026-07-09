@@ -15,7 +15,16 @@ export interface IntakeDraft {
   aiTag?: Record<string, unknown>;
 }
 
-export type IntakeQueueItemStatus = "selected" | "uploading" | "ready" | "failed";
+export type IntakeQueueItemStatus =
+  | "selected"
+  | "uploading"
+  | "ready"
+  | "recognizing"
+  | "needs_confirm"
+  | "confirmed"
+  | "saving"
+  | "saved"
+  | "failed";
 
 export interface IntakeQueueItem {
   clientItemId: string;
@@ -26,10 +35,12 @@ export interface IntakeQueueItem {
   error: string;
   assetMutations: AssetMutation[];
   draft: IntakeDraft;
+  serverEntityId?: string;
 }
 
 let queue: IntakeQueueItem[] = [];
 let lastCreatedId = "";
+let lastSaveResult = { succeeded: 0, failed: 0, savedIds: [] as string[], failedItemIds: [] as string[] };
 
 export function setIntakeDraft(next: IntakeDraft): void {
   queue = [draftToQueueItem(next)];
@@ -53,6 +64,18 @@ export function getIntakeQueue(): IntakeQueueItem[] {
 
 export function updateIntakeQueueItem(clientItemId: string, patch: Partial<IntakeQueueItem>): void {
   queue = queue.map((item) => item.clientItemId === clientItemId ? { ...item, ...patch, draft: patch.draft ?? item.draft } : item);
+}
+
+export function setLastIntakeSaveResult(result: { succeeded: number; failed: number; savedIds: string[]; failedItemIds: string[] }): void {
+  lastSaveResult = result;
+}
+
+export function getLastIntakeSaveResult(): { succeeded: number; failed: number; savedIds: string[]; failedItemIds: string[] } {
+  return lastSaveResult;
+}
+
+export function clearSavedIntakeQueueItems(): void {
+  queue = queue.filter((item) => item.status === "failed");
 }
 
 export function setLastCreatedGarmentId(id: string): void {

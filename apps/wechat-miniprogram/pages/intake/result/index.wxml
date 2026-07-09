@@ -1,9 +1,29 @@
 <view class="page-shell result-page">
   <view class="result-card surface-panel">
-    <view class="result-mark">已保存</view>
-    <view class="page-title">已保存到衣橱</view>
-    <view class="page-copy">服务器提交成功，返回衣橱页后会重新读取最新数据。</view>
-    <view wx:if="{{garmentId}}" class="result-meta">单品编号 {{garmentId}}</view>
+    <view class="result-mark">已完成</view>
+    <view class="page-title">批量导入结果</view>
+    <view class="page-copy">服务器已处理本次提交，返回衣橱页会重新读取最新数据。</view>
+
+    <view class="result-stats">
+      <view class="result-stat">
+        <view class="stat-number">{{successCount}}</view>
+        <view class="stat-label">保存成功</view>
+      </view>
+      <view class="result-stat result-stat--failed">
+        <view class="stat-number">{{failedCount}}</view>
+        <view class="stat-label">失败保留</view>
+      </view>
+    </view>
+
+    <view wx:if="{{savedIds.length}}" class="result-meta">最新单品编号 {{savedIds[0]}}</view>
+  </view>
+
+  <view wx:if="{{failedItems.length}}" class="failed-card surface-panel">
+    <view class="section-title">失败项</view>
+    <view wx:for="{{failedItems}}" wx:key="clientItemId" class="failed-row">
+      <view class="failed-name">{{item.name}}</view>
+      <view class="failed-error">{{item.error}}</view>
+    </view>
   </view>
 
   <view class="bottom-bar bottom-glass-bar">

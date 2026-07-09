@@ -1,3 +1,14 @@
+## 2026-07-09 / v2.1.9-test / Codex — 小程序多图录入 A/B checkpoint
+
+- **执行 Agent**：Codex 主 agent 负责派发、验收和提交；subagent A 负责小程序选图、队列和临时资产上传；subagent B 负责批量 AI 识别、逐件确认和批量保存。A/B 执行时间较长，主 agent 收口时保留 subagent 产出并完成本地验收。
+- **目的**：按后端已支持的 10 张并发 AI 识别能力，把小程序单品录入从单图临时流程升级为最多 10 张的真实多图录入流程；单次 AI 请求 body 仍按 8MB 上限拆分，避免为了临时过渡后续重做。
+- **版本变更**：无；当前应用版本仍为 `2.1.9-test`，小程序包版本仍为 `0.1.0`。
+- **改动文件**：`apps/wechat-miniprogram/services/{assets,ai,workspace}.ts`、`apps/wechat-miniprogram/stores/intake.ts`、`apps/wechat-miniprogram/pages/intake/{camera,review,result}/**`、`apps/wechat-miniprogram/typings/index.d.ts`、`VERSION_HISTORY.md`。
+- **改动说明**：录入首页支持最多 10 张照片选择，逐张上传为服务端临时资产并形成内存队列；确认页调用 `/api/workspace/ai/intake/garment-recognition/batch`，按最多 10 张且 JSON body 小于 8MB 自动拆批，单张超限只标记该图失败；用户逐件确认草稿后通过 `/api/workspace/garments/batch` 批量创建，保存成功后逐件读回服务端详情；失败项保留在内存队列中，不写入本地持久业务缓存。
+- **验证结果**：`npm --prefix apps/wechat-miniprogram run typecheck` 通过。
+- **风险门禁**：high（小程序图片选择、临时资产上传、MiniMax 图片识别、服务端批量写入、录入结果状态流）；已按用户要求触发 subagent A/B，主 agent 负责验收。
+- **未验证风险**：本 checkpoint 尚未运行微信开发者工具编译、截图或真机预览；未用真实 MiniMax Key 做 live 图片识别；C/D 改造尚未进入本条记录。
+
 ## 2026-07-09 / v2.1.9-test / Codex — AI 识别 10 并发与种草批量保存
 
 - **执行 Agent**：Codex（未触发 subagent：用户未通知）。

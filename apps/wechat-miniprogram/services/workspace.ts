@@ -117,6 +117,14 @@ export interface CreateGarmentInput {
   assetMutations: AssetMutation[];
 }
 
+export interface BatchCreateGarmentInput extends CreateGarmentInput {
+  clientItemId: string;
+}
+
+export type BatchCreateGarmentResult =
+  | { clientItemId: string; clientMutationId: string; status: "succeeded"; entity: WorkspaceEntity }
+  | { clientItemId: string; clientMutationId: string; status: "failed"; error: string };
+
 export interface CreateOutfitInput {
   name: string;
   legacyItemIds: number[];
@@ -158,6 +166,13 @@ type CatalogItemPayloadInput = {
   seasons?: string[];
   styles?: string[];
   notes?: string;
+};
+
+type WorkspaceCommandResponse = {
+  status: "committed" | "in_progress";
+  entity?: WorkspaceEntity;
+  entities?: WorkspaceEntity[];
+  requestId?: string;
 };
 
 const CATEGORY_LABELS: Record<string, string> = {
@@ -289,25 +304,67 @@ export async function createGarment(input: CreateGarmentInput): Promise<Workspac
     path: "/api/workspace/garments",
     data: {
       clientMutationId: input.clientMutationId,
-      payload: {
-        ...buildCatalogItemPayload({
-          name: input.name,
-          category: input.category,
-          colors: input.colors ?? { mode: "single", primary: input.color },
-          seasons: input.seasons ?? (input.season ? [input.season] : []),
-          styles: input.styles,
-          notes: input.note,
-        }),
-        aiRecognition: input.aiTag,
-        legacyItemId: createLegacyNumericId(),
-        locationId: "home",
-        status: "active",
-      },
+      payload: buildCreateGarmentPayload(input),
       assetMutations: input.assetMutations,
     },
   });
   if (!response.entity) throw new Error("服务器未返回已保存衣物");
   return response.entity;
+}
+
+export async function batchCreateGarments(items: BatchCreateGarmentInput[]): Promise<BatchCreateGarmentResult[]> {
+  if (!items.length) return [];
+  try {
+    const response = await request<WorkspaceCommandResponse>({
+      method: "POST",
+      path: "/api/workspace/garments/batch",
+      data: {
+        items: items.map((item) => ({
+          clientMutationId: item.clientMutationId,
+          payload: buildCreateGarmentPayload(item),
+          assetMutations: item.assetMutations,
+        })),
+      },
+    });
+    if (response.status === "in_progress") throw new Error("服务器仍在处理本次提交，请稍后重试");
+
+    const entities = response.entities ?? [];
+    return Promise.all(items.map(async (item, index) => {
+      const entity = entities[index];
+      if (!entity) {
+        return {
+          clientItemId: item.clientItemId,
+          clientMutationId: item.clientMutationId,
+          status: "failed" as const,
+          error: "服务器未返回该件衣物",
+        };
+      }
+      try {
+        const detail = await workspaceRequest<{ data: WorkspaceEntity }>(`/api/workspace/garments/${encodeURIComponent(entity.id)}`);
+        return {
+          clientItemId: item.clientItemId,
+          clientMutationId: item.clientMutationId,
+          status: "succeeded" as const,
+          entity: detail.data,
+        };
+      } catch (error) {
+        return {
+          clientItemId: item.clientItemId,
+          clientMutationId: item.clientMutationId,
+          status: "failed" as const,
+          error: error instanceof Error ? error.message : "保存后读回失败",
+        };
+      }
+    }));
+  } catch (error) {
+    const message = error instanceof Error && error.message ? error.message : "批量保存失败";
+    return items.map((item) => ({
+      clientItemId: item.clientItemId,
+      clientMutationId: item.clientMutationId,
+      status: "failed" as const,
+      error: message,
+    }));
+  }
 }
 
 export async function createOutfit(input: CreateOutfitInput): Promise<WorkspaceEntity> {
@@ -405,6 +462,23 @@ function buildCatalogItemPayload(input: CatalogItemPayloadInput): Record<string,
     notes: input.notes,
     createdAt: now,
     updatedAt: now,
+  };
+}
+
+function buildCreateGarmentPayload(input: CreateGarmentInput): Record<string, unknown> {
+  return {
+    ...buildCatalogItemPayload({
+      name: input.name,
+      category: input.category,
+      colors: input.colors ?? { mode: "single", primary: input.color },
+      seasons: input.seasons ?? (input.season ? [input.season] : []),
+      styles: input.styles,
+      notes: input.note,
+    }),
+    aiRecognition: input.aiTag,
+    legacyItemId: createLegacyNumericId(input.clientMutationId),
+    locationId: "home",
+    status: "active",
   };
 }
 
@@ -635,8 +709,8 @@ export function createClientMutationId(): string {
   });
 }
 
-function createLegacyNumericId(): number {
-  return Math.floor(Date.now() % 1_000_000_000);
+function createLegacyNumericId(seed = ""): number {
+  return seed ? numericId(seed) : Math.floor(Date.now() % 1_000_000_000);
 }
 
 function numericId(value: string): number {

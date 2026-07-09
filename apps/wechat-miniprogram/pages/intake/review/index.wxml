@@ -1,11 +1,11 @@
 <view class="page-shell intake-page">
   <view class="intake-header">
     <view class="page-title">添加单品</view>
-    <view class="step-copy">步骤 2 / 2 · 确认信息</view>
+    <view class="step-copy">步骤 2 / 2 · 逐件确认后批量保存</view>
     <view class="progress-track"><view class="progress-fill"></view></view>
   </view>
 
-  <view wx:if="{{!draft}}" class="panel">
+  <view wx:if="{{!current}}" class="panel">
     <view class="status-title">没有待确认图片</view>
     <button class="primary-button panel-action" bindtap="goBack">返回选择</button>
   </view>
@@ -13,49 +13,63 @@
   <view wx:else>
     <view class="preview-card surface-panel">
       <view class="preview-card__top">
-        <view class="section-title">确认 1 件单品</view>
-        <view class="ai-badge">{{draft.source === 'ai' ? 'AI 草稿' : '人工录入'}}</view>
+        <view class="section-title">确认 {{currentPositionText}} 件</view>
+        <view class="ai-badge {{current.status === 'failed' ? 'badge-danger' : current.status === 'confirmed' ? 'badge-success' : ''}}">{{currentStatusText}}</view>
       </view>
+      <view class="queue-summary">{{confirmedCount}} 件已确认，{{failedCount}} 件失败{{recognizing ? '，AI 正在识别' : ''}}</view>
       <view class="preview-media">
-        <image class="preview-image" mode="aspectFill" src="{{draft.imagePath}}" />
+        <image class="preview-image" mode="aspectFill" src="{{current.stablePath || current.imagePath}}" />
       </view>
       <view class="thumb-row">
-        <image class="thumb-image thumb-active" mode="aspectFill" src="{{draft.imagePath}}" />
+        <view wx:for="{{items}}" wx:key="clientItemId" data-index="{{index}}" class="thumb-wrap {{index === currentIndex ? 'thumb-active' : ''}} {{item.status === 'failed' ? 'thumb-failed' : ''}}" bindtap="chooseItem">
+          <image class="thumb-image" mode="aspectFill" src="{{item.stablePath || item.imagePath}}" />
+          <view class="thumb-dot status-{{item.status}}"></view>
+        </view>
       </view>
     </view>
 
     <view class="form-card surface-panel">
       <view class="form-card__top">
         <view class="section-title">校对衣物草稿</view>
-        <view class="review-badge">待确认</view>
+        <view class="review-badge">{{current.draft.source === 'ai' ? 'AI 草稿' : '人工录入'}}</view>
       </view>
-      <view class="form-copy">{{draft.source === 'ai' ? 'AI 已生成基础信息；请确认名称、分类、颜色和季节后再保存。' : '未配置 AI Key 时可人工填写字段后保存。'}}</view>
+      <view class="form-copy">
+        {{current.status === 'failed' ? '这张图片处理失败；可以手动补全后确认，也可以跳过。' : current.status === 'recognizing' || current.status === 'ready' ? 'AI 正在识别这张图片，请稍候。' : '请确认名称、分类、颜色和季节。'}}
+      </view>
+      <view wx:if="{{current.error}}" class="item-error">{{current.error}}</view>
 
       <view class="field-label">名称</view>
-      <input class="field-input" value="{{draft.name}}" placeholder="例如 白色衬衫" bindinput="updateName" />
+      <input class="field-input" value="{{current.draft.name}}" placeholder="例如 白色衬衫" disabled="{{current.status === 'recognizing' || current.status === 'saving'}}" bindinput="updateName" />
 
       <view class="field-label">分类</view>
       <view class="chip-row">
-        <view wx:for="{{categories}}" wx:key="value" data-value="{{item.value}}" class="chip {{draft.category === item.value ? 'chip-active' : ''}}" bindtap="chooseCategory">{{item.label}}</view>
+        <view wx:for="{{categories}}" wx:key="value" data-value="{{item.value}}" class="chip {{current.draft.category === item.value ? 'chip-active' : ''}} {{current.status === 'recognizing' || current.status === 'saving' ? 'chip-disabled' : ''}}" bindtap="chooseCategory">{{item.label}}</view>
       </view>
 
       <view class="field-label">颜色</view>
-      <input class="field-input" value="{{draft.color}}" placeholder="例如 白色" bindinput="updateColor" />
+      <input class="field-input" value="{{current.draft.color}}" placeholder="例如 白色" disabled="{{current.status === 'recognizing' || current.status === 'saving'}}" bindinput="updateColor" />
 
       <view class="field-label">季节</view>
       <view class="chip-row">
-        <view wx:for="{{seasons}}" wx:key="value" data-value="{{item.value}}" class="chip {{draft.season === item.value ? 'chip-active' : ''}}" bindtap="chooseSeason">{{item.label}}</view>
+        <view wx:for="{{seasons}}" wx:key="value" data-value="{{item.value}}" class="chip {{current.draft.season === item.value ? 'chip-active' : ''}} {{current.status === 'recognizing' || current.status === 'saving' ? 'chip-disabled' : ''}}" bindtap="chooseSeason">{{item.label}}</view>
       </view>
 
       <view class="field-label">备注</view>
-      <textarea class="field-textarea" value="{{draft.note}}" placeholder="可选" bindinput="updateNote" />
+      <textarea class="field-textarea" value="{{current.draft.note}}" placeholder="可选" disabled="{{current.status === 'recognizing' || current.status === 'saving'}}" bindinput="updateNote" />
 
       <view wx:if="{{error}}" class="error-text">{{error}}</view>
+
+      <view class="review-actions">
+        <button wx:if="{{current.status === 'failed'}}" class="secondary-button action-button" disabled="{{saving}}" bindtap="skipCurrent">跳过此项</button>
+        <button class="primary-button action-button" disabled="{{saving || current.status === 'recognizing' || current.status === 'saving' || current.status === 'confirmed'}}" bindtap="confirmCurrent">
+          {{current.status === 'confirmed' ? '已确认' : current.status === 'failed' ? '手动确认本件' : '确认本件'}}
+        </button>
+      </view>
     </view>
 
     <view class="bottom-bar bottom-glass-bar">
       <button class="secondary-button bottom-button" disabled="{{saving}}" bindtap="goBack">上一步</button>
-      <button class="primary-button bottom-button" loading="{{saving}}" disabled="{{saving}}" bindtap="save">保存到衣橱</button>
+      <button class="primary-button bottom-button" loading="{{saving}}" disabled="{{!canSave || saving}}" bindtap="saveAll">保存 {{confirmedCount}} 件</button>
     </view>
   </view>
 </view>

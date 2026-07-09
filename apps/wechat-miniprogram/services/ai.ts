@@ -41,7 +41,25 @@ export interface AiOutfitMetadata {
 
 export type AiEnhancementKind = "wardrobe-diagnosis" | "garment-style-advice" | "wishlist-assessment" | "outfit-ai-suggestion";
 
+export interface RecognizeGarmentImageInput {
+  clientItemId: string;
+  stablePath: string;
+  fallbackName?: string;
+}
+
+export type RecognizeGarmentImageResult =
+  | { clientItemId: string; status: "succeeded"; tag: AiGarmentTag }
+  | { clientItemId: string; status: "failed"; error: string };
+
+type PreparedBatchItem = {
+  clientItemId: string;
+  imageDataUrl: string;
+  fallbackName: string;
+};
+
 const STORAGE_KEY = "wardrobe-miniprogram-minimax-settings";
+const AI_RECOGNITION_MAX_BATCH_ITEMS = 10;
+const AI_RECOGNITION_MAX_BODY_BYTES = 8 * 1024 * 1024;
 const DEFAULT_SETTINGS: MiniMaxSettings = {
   apiKey: "",
   apiHost: "https://api.minimaxi.com",
@@ -92,6 +110,61 @@ export async function recognizeGarmentImage(filePath: string): Promise<AiGarment
   return response.tag;
 }
 
+export async function recognizeGarmentImages(items: RecognizeGarmentImageInput[]): Promise<RecognizeGarmentImageResult[]> {
+  const miniMax = runtimeSettings();
+  const prepared: PreparedBatchItem[] = [];
+  const results: RecognizeGarmentImageResult[] = [];
+
+  for (const item of items) {
+    try {
+      prepared.push({
+        clientItemId: item.clientItemId,
+        imageDataUrl: await imageSourceToDataUrl(item.stablePath),
+        fallbackName: item.fallbackName || fileNameFromPath(item.stablePath),
+      });
+    } catch (error) {
+      results.push({ clientItemId: item.clientItemId, status: "failed", error: errorMessage(error, "读取图片失败") });
+    }
+  }
+
+  const plan = planRecognitionBatches(prepared, miniMax);
+  results.push(...plan.tooLargeItems.map((item) => ({
+    clientItemId: item.clientItemId,
+    status: "failed" as const,
+    error: "图片超过 8MB AI 请求限制，请重新选择或裁切",
+  })));
+
+  for (const chunk of plan.chunks) {
+    try {
+      const response = await request<{ items: RecognizeGarmentImageResult[] }>({
+        method: "POST",
+        path: "/api/workspace/ai/intake/garment-recognition/batch",
+        data: {
+          miniMax,
+          items: chunk,
+        },
+        timeoutMs: 120000,
+      });
+      const byId = new Map(response.items.map((item) => [item.clientItemId, item]));
+      results.push(...chunk.map((item) => byId.get(item.clientItemId) ?? {
+        clientItemId: item.clientItemId,
+        status: "failed" as const,
+        error: "服务器未返回该图片识别结果",
+      }));
+    } catch (error) {
+      const message = errorMessage(error, "批量识别失败，请重试");
+      results.push(...chunk.map((item) => ({ clientItemId: item.clientItemId, status: "failed" as const, error: message })));
+    }
+  }
+
+  const byId = new Map(results.map((item) => [item.clientItemId, item]));
+  return items.map((item) => byId.get(item.clientItemId) ?? {
+    clientItemId: item.clientItemId,
+    status: "failed" as const,
+    error: "识别失败，请重试",
+  });
+}
+
 export async function generateOutfitMetadata(input: {
   name?: string;
   itemIds: number[];
@@ -133,6 +206,47 @@ function runtimeSettings(): MiniMaxSettings {
   const settings = loadMiniMaxSettings();
   if (!settings.apiKey.trim()) throw new Error("请先在设置中填写 MiniMax Key");
   return settings;
+}
+
+function planRecognitionBatches(items: PreparedBatchItem[], miniMax: MiniMaxSettings): { chunks: PreparedBatchItem[][]; tooLargeItems: PreparedBatchItem[] } {
+  const chunks: PreparedBatchItem[][] = [];
+  const tooLargeItems: PreparedBatchItem[] = [];
+  let current: PreparedBatchItem[] = [];
+
+  for (const item of items) {
+    if (recognitionBatchBodyBytes([item], miniMax) >= AI_RECOGNITION_MAX_BODY_BYTES) {
+      if (current.length) {
+        chunks.push(current);
+        current = [];
+      }
+      tooLargeItems.push(item);
+      continue;
+    }
+
+    const next = [...current, item];
+    if (next.length > AI_RECOGNITION_MAX_BATCH_ITEMS || recognitionBatchBodyBytes(next, miniMax) >= AI_RECOGNITION_MAX_BODY_BYTES) {
+      if (current.length) chunks.push(current);
+      current = [item];
+    } else {
+      current = next;
+    }
+  }
+
+  if (current.length) chunks.push(current);
+  return { chunks, tooLargeItems };
+}
+
+function recognitionBatchBodyBytes(items: PreparedBatchItem[], miniMax: MiniMaxSettings): number {
+  return utf8ByteLength(JSON.stringify({ miniMax, items }));
+}
+
+function utf8ByteLength(value: string): number {
+  let bytes = 0;
+  for (let i = 0; i < value.length; i += 1) {
+    const code = value.charCodeAt(i);
+    bytes += code < 0x80 ? 1 : code < 0x800 ? 2 : code >= 0xd800 && code <= 0xdbff ? (i += 1, 4) : 3;
+  }
+  return bytes;
 }
 
 async function imageSourceToDataUrl(source: string): Promise<string> {
@@ -179,4 +293,8 @@ function mimeTypeForPath(path: string): string {
   if (lower.includes(".png")) return "image/png";
   if (lower.includes(".webp")) return "image/webp";
   return "image/jpeg";
+}
+
+function errorMessage(error: unknown, fallback: string): string {
+  return error instanceof Error && error.message ? error.message : fallback;
 }
