@@ -13,7 +13,9 @@ const root = process.cwd();
 const deviceMiniMax = readFileSync(join(root, "src/lib/device-minimax.ts"), "utf8");
 const garmentFlow = readFileSync(join(root, "src/components/garment-intake-flow.tsx"), "utf8");
 const colorEditor = readFileSync(join(root, "src/components/item/color-fields.tsx"), "utf8");
-const colorCatalog = readFileSync(join(root, "src/lib/color-catalog.ts"), "utf8");
+const colorCatalog = readFileSync(join(root, "packages/domain-catalog/src/colors.ts"), "utf8");
+const colorPrompt = readFileSync(join(root, "packages/domain-catalog/src/ai-prompts.ts"), "utf8");
+const colorCatalogCompat = readFileSync(join(root, "src/lib/color-catalog.ts"), "utf8");
 
 assert.equal(COLOR_OPTIONS.length, 26, "COLOR_OPTIONS 应为 26 色");
 // v1.1.27: 26 个标准色由 buildColorRecognitionPrompt() 动态生成。
@@ -46,9 +48,10 @@ assert.equal(normalizeSystemColorValue("荧光橙"), null);
 const illegal = normalizeAiColorInfo({ mode: "single", primary: "燕麦拿铁色" });
 assert.equal(illegal.needsReview, true);
 assert.ok(illegal.reviewReason?.includes("燕麦拿铁色"), `reviewReason 必须包含非法原值，实际: ${illegal.reviewReason}`);
-// v1.1.27: color-catalog 是唯一颜色目录，源码应出现 26 色唯一数组。
-assert.ok(colorCatalog.includes("COLOR_CATALOG"), "color-catalog 必须导出 COLOR_CATALOG 唯一目录");
-assert.match(colorCatalog, /系统标准颜色仅允许以下 \$\{COLOR_OPTIONS\.length\}/, "buildColorRecognitionPrompt 必须动态拼接 26 色数字");
+// 共享包是唯一颜色目录，App 原路径只做兼容导出。
+assert.ok(colorCatalog.includes("COLOR_CATALOG"), "共享包必须导出 COLOR_CATALOG 唯一目录");
+assert.ok(colorCatalogCompat.includes("@wardrobe/domain-catalog"), "App 颜色目录必须兼容导出共享包");
+assert.match(colorPrompt, /系统标准颜色仅允许以下 \$\{COLOR_OPTIONS\.length\}/, "buildColorRecognitionPrompt 必须动态拼接 26 色数字");
 assert.match(deviceMiniMax, /\.\.\.buildColorRecognitionPrompt\(\)/, "device-minimax 必须复用 buildColorRecognitionPrompt");
 assert.ok(!garmentFlow.includes("本地"));
 console.log("intake field contract passed");

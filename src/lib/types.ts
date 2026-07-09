@@ -1,17 +1,18 @@
-export type GarmentCategory =
-  | "tops"
-  | "pants"
-  | "skirts"
-  | "one_piece"
-  | "shoes"
-  | "bags"
-  | "hats"
-  | "jewelry"
-  | "accessories";
+import type {
+  GarmentCategory,
+  GarmentStatus,
+  GarmentStyle,
+  Season,
+  WishlistStatus,
+} from "@wardrobe/domain-catalog";
 
-export type Season = "spring" | "summer" | "autumn" | "winter" | "all";
-export type GarmentStyle = "casual" | "sweet" | "elegant" | "commute" | "outdoor" | "dinner" | "vacation";
-export type GarmentStatus = "active" | "laundry" | "repair" | "archived";
+export type {
+  GarmentCategory,
+  GarmentStatus,
+  GarmentStyle,
+  Season,
+  WishlistStatus,
+} from "@wardrobe/domain-catalog";
 
 /**
  * v2 (2026-06-23): 颜色信息 discriminated union。
@@ -29,9 +30,6 @@ export interface TemperatureRange {
   minC?: number;
   maxC?: number;
 }
-
-/** v0.9.46-dev 基础设施批次 1: 种草单品状态 */
-export type WishlistStatus = "interested" | "rejected" | "archived";
 
 /** v0.9.46-dev 基础设施批次 1: 种草 AI 评估结论 */
 export type WishlistVerdict =
@@ -695,42 +693,13 @@ export interface ShoppingAssessment {
   nextActions: string[];
 }
 
-export const CATEGORY_LABELS: Record<GarmentCategory, string> = {
-  tops: "上衣",
-  pants: "裤子",
-  skirts: "半身裙",
-  one_piece: "连体装",
-  shoes: "鞋",
-  bags: "包",
-  hats: "帽子",
-  jewelry: "首饰",
-  accessories: "配饰",
-};
-
-export const SEASON_LABELS: Record<Season, string> = {
-  spring: "春",
-  summer: "夏",
-  autumn: "秋",
-  winter: "冬",
-  all: "四季",
-};
-
-export const STYLE_LABELS: Record<GarmentStyle, string> = {
-  casual: "休闲",
-  sweet: "甜美",
-  elegant: "优雅",
-  commute: "通勤",
-  outdoor: "户外",
-  dinner: "吃饭",
-  vacation: "旅行",
-};
-
-export const STATUS_LABELS: Record<GarmentStatus, string> = {
-  active: "可穿",
-  laundry: "待洗",
-  repair: "待修",
-  archived: "暂不穿",
-};
+export {
+  CATEGORY_LABELS,
+  GARMENT_STATUS_LABELS as STATUS_LABELS,
+  SEASON_LABELS,
+  STYLE_LABELS,
+  WISHLIST_STATUS_LABELS,
+} from "@wardrobe/domain-catalog";
 
 // v1.1.27: 标准颜色目录已迁移至 @/lib/color-catalog。types.ts 不再维护 COLOR_OPTIONS。
 // 业务类型 ColorInfo / ColorMode 仍在本文件内。

@@ -18,6 +18,7 @@
   },
   "dependencies": {
     "@wardrobe/cloud-contracts": "file:../../packages/cloud-contracts",
+    "@wardrobe/domain-catalog": "file:../../packages/domain-catalog",
     "argon2": "^0.44.0",
     "drizzle-orm": "^0.44.7",
     "fastify": "^5.5.0",

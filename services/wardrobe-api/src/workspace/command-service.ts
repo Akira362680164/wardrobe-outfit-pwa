@@ -17,6 +17,11 @@ import { getDb } from "../db/client.js";
 import { assetBindings, assets, syncChanges, syncMutations } from "../db/schema.js";
 import type * as schema from "../db/schema.js";
 import { WorkspaceApiError } from "./errors.js";
+import {
+  normalizeGarmentPayload,
+  normalizeWishlistPayload,
+  normalizeWorkspacePayload,
+} from "./payload-normalizer.js";
 import { WORKSPACE_RESOURCES, type WorkspaceResource } from "./query-service.js";
 
 type Db = NodePgDatabase<typeof schema>;
@@ -38,7 +43,7 @@ export class WorkspaceCommandService {
       const descriptor = WORKSPACE_RESOURCES[input.resource];
       const table = descriptor.table as AnyPgTable & Record<string, any>;
       const now = new Date();
-      const payload = sanitizePayload(input.command.payload);
+      const payload = normalizeWorkspacePayload(input.resource, sanitizePayload(input.command.payload));
       await tx.insert(table).values({
         id: entityId, userId: input.userId, revision: 1, originDeviceId: input.deviceId,
         payload, ...specialColumns(input.resource, payload), createdAt: now, updatedAt: now,
@@ -71,7 +76,7 @@ export class WorkspaceCommandService {
       assertRevision(row.revision, input.command.expectedRevision, row);
       const now = new Date();
       const revision = row.revision + 1;
-      const payload = sanitizePayload(input.command.payload);
+      const payload = normalizeWorkspacePayload(input.resource, sanitizePayload(input.command.payload));
       await tx.update(table).set({ revision, originDeviceId: input.deviceId, payload, ...specialColumns(input.resource, payload), updatedAt: now })
         .where(and(eq(table.id, input.entityId), eq(table.userId, input.userId), eq(table.revision, row.revision), isNull(table.deletedAt)));
       await applyAssetMutations(tx, {
@@ -117,13 +122,13 @@ export class WorkspaceCommandService {
       const now = new Date();
       const garmentId = randomUUID();
       const legacyItemId = stableNumericId(garmentId);
-      const payload = {
+      const payload = normalizeGarmentPayload({
         ...asRecord(row.payload), ...sanitizePayload(input.command.payload), sourceWishlistId: input.entityId,
         legacyItemId, locationId: input.command.locationId, status: "active", wornDates: [],
         createdAt: now.toISOString(), updatedAt: now.toISOString(),
-      };
+      });
       await tx.insert(garmentTable).values({ id: garmentId, userId: input.userId, revision: 1, originDeviceId: input.deviceId, payload, ...specialColumns("garments", payload), createdAt: now, updatedAt: now });
-      const wishlistPayload = { ...asRecord(row.payload), purchased: true, convertedGarmentId: garmentId, convertedItemId: legacyItemId, convertedAt: now.toISOString() };
+      const wishlistPayload = normalizeWishlistPayload({ ...asRecord(row.payload), purchased: true, convertedGarmentId: garmentId, convertedItemId: legacyItemId, convertedAt: now.toISOString() });
       await tx.update(wishlistTable).set({ revision: row.revision + 1, payload: wishlistPayload, updatedAt: now }).where(eq(wishlistTable.id, input.entityId));
       const wishlistBindings = await tx.select().from(assetBindings).where(and(
         eq(assetBindings.userId, input.userId), eq(assetBindings.ownerEntityType, "wishlistItem"), eq(assetBindings.ownerEntityId, input.entityId),
@@ -156,7 +161,7 @@ export class WorkspaceCommandService {
           await appendChange(tx, input.userId, "garment", garmentId, "delete", garment.revision + 1, {});
         }
       }
-      const nextPayload = { ...payload, purchased: false, convertedGarmentId: null, convertedItemId: null, convertedAt: null };
+      const nextPayload = normalizeWishlistPayload({ ...payload, purchased: false, convertedGarmentId: null, convertedItemId: null, convertedAt: null });
       const revision = row.revision + 1;
       await tx.update(wishlistTable).set({ revision, payload: nextPayload, updatedAt: now }).where(eq(wishlistTable.id, input.entityId));
       await appendChange(tx, input.userId, "wishlistItem", input.entityId, "update", revision, nextPayload);
@@ -178,7 +183,8 @@ export class WorkspaceCommandService {
         ? { garmentId: input.entityId, wornAt: input.command.wornAt }
         : { outfitPlanId: input.entityId, outfitId: input.command.outfitId ?? asRecord(row.payload).outfitId, wornAt: input.command.wornAt };
       await tx.insert(wearTable).values({ id: wearEventId, userId: input.userId, revision: 1, originDeviceId: input.deviceId, payload: wearPayload, ...specialColumns("wear-events", wearPayload), createdAt: now, updatedAt: now });
-      const nextPayload = { ...asRecord(row.payload), worn: true, wornAt: input.command.wornAt, wearEventId };
+      const rawNextPayload = { ...asRecord(row.payload), worn: true, wornAt: input.command.wornAt, wearEventId };
+      const nextPayload = input.resource === "garments" ? normalizeGarmentPayload(rawNextPayload) : rawNextPayload;
       const revision = row.revision + 1;
       await tx.update(table).set({ revision, payload: nextPayload, updatedAt: now }).where(eq(table.id, input.entityId));
       await appendChange(tx, input.userId, "wearEvent", wearEventId, "create", 1, wearPayload);
@@ -205,7 +211,8 @@ export class WorkspaceCommandService {
           await appendChange(tx, input.userId, "wearEvent", wearEventId, "delete", event.revision + 1, {});
         }
       }
-      const nextPayload = { ...payload, worn: false, wornAt: null, wearEventId: null };
+      const rawNextPayload = { ...payload, worn: false, wornAt: null, wearEventId: null };
+      const nextPayload = input.resource === "garments" ? normalizeGarmentPayload(rawNextPayload) : rawNextPayload;
       const revision = row.revision + 1;
       await tx.update(table).set({ revision, payload: nextPayload, updatedAt: now }).where(eq(table.id, input.entityId));
       await appendChange(tx, input.userId, descriptor.entityType, input.entityId, "update", revision, nextPayload);
@@ -264,7 +271,7 @@ async function markOutfitWearTransaction(
   const wornGarments = garments.filter((row) => itemIds.includes(Number(asRecord(row.payload).legacyItemId)));
   for (const garment of wornGarments) {
     const payload = asRecord(garment.payload);
-    const nextPayload = { ...payload, wornDates: addDate(payload.wornDates, dateKey), updatedAt: now.toISOString() };
+    const nextPayload = normalizeGarmentPayload({ ...payload, wornDates: addDate(payload.wornDates, dateKey), updatedAt: now.toISOString() });
     await tx.update(garmentTable).set({ revision: garment.revision + 1, originDeviceId: input.deviceId, payload: nextPayload, updatedAt: now }).where(eq(garmentTable.id, garment.id));
     await appendChange(tx, input.userId, "garment", garment.id, "update", garment.revision + 1, nextPayload);
   }
@@ -373,7 +380,7 @@ async function cancelOutfitWearTransaction(
     const payload = asRecord(garment.payload);
     const legacyItemId = Number(payload.legacyItemId);
     if (!itemIds.includes(legacyItemId) || otherWornItemIds.has(legacyItemId)) continue;
-    const nextPayload = { ...payload, wornDates: removeDate(payload.wornDates, dateKey), updatedAt: now.toISOString() };
+    const nextPayload = normalizeGarmentPayload({ ...payload, wornDates: removeDate(payload.wornDates, dateKey), updatedAt: now.toISOString() });
     await tx.update(garmentTable).set({ revision: garment.revision + 1, originDeviceId: input.deviceId, payload: nextPayload, updatedAt: now }).where(eq(garmentTable.id, garment.id));
     await appendChange(tx, input.userId, "garment", garment.id, "update", garment.revision + 1, nextPayload);
   }

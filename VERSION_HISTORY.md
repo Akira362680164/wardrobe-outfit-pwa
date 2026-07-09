@@ -1,3 +1,14 @@
+## 2026-07-10 / v2.1.11-test / Codex — App、云契约与服务端接入共享领域字典
+
+- **执行 Agent**：Codex（未触发 subagent：用户未通知）。
+- **目的**：让 App 兼容路径、云端 AI 契约和 garment/wishlist 服务端写入统一消费 `@wardrobe/domain-catalog`。
+- **版本变更**：无；当前应用版本仍为 `2.1.11-test`。本批次不改页面结构、不打 APK、不上传小程序体验版。
+- **改动文件**：`src/lib/{color-catalog,garment-category-catalog,types}.ts`、`src/components/item/wishlist-extras.tsx`、`packages/cloud-contracts/{package.json,src/workspace/contracts.ts}`、`services/wardrobe-api/{package.json,src/workspace/command-service.ts,src/workspace/payload-normalizer.ts,tests/payload-normalizer.test.ts}`、`scripts/test-{color-catalog,intake-field-contract,pants-category-ai-contract}.ts`、`package.json`、`package-lock.json`、`VERSION_HISTORY.md`。
+- **改动说明**：App 原颜色/分类文件改为兼容 re-export，核心 union 与 label 表改由共享包提供；风格、衣物状态和种草状态文案统一为共享标准；云契约的分类/季节/风格 Zod 枚举从共享 tuple 派生；服务端创建、批量创建、更新、种草转衣橱、撤销购买及穿着状态写入统一归一化分类、二级分类、颜色、季节和风格，非法值回退并标记 `needsReview`。
+- **验证结果**：`npm run cloud:contracts:typecheck`、`npm run api:typecheck`、`npm run typecheck` 通过；`npm --workspace @wardrobe/wardrobe-api run test -- tests/workspace.test.ts tests/payload-normalizer.test.ts` 通过（10 项）；`npm run test:logic:domain-catalog`、`test:logic:catalog`（39 项）、`test:logic:color-catalog`（94 项）、`test:logic:intake-field-contract`、`test:logic:pants-category-ai-contract`（33 项）通过；`git diff --check` 通过。
+- **风险门禁**：high（共享类型、AI 契约和服务端正式写入路径变化）；未触发 subagent：用户未通知。
+- **未验证风险**：尚未跑完整 API 测试与生产数据库事务验证；小程序仍未接入生成目录，完整 build 和微信开发者工具编译留待后续批次。
+
 ## 2026-07-10 / v2.1.11-test / Codex — 建立领域字典共享包
 
 - **执行 Agent**：Codex（未触发 subagent：用户未通知）。
