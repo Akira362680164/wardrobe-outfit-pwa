@@ -1,3 +1,14 @@
+## 2026-07-10 / v2.1.11-test / Codex — App 与小程序使用服务端验证码倒计时
+
+- **执行 Agent**：Codex（未触发 subagent：用户要求当前会话按实施计划直接执行；本轮完成第三批客户端倒计时改造）。
+- **目的**：移除 App/PWA 和小程序邮箱验证码入口中的 30 秒硬编码，统一使用后端返回的 60 秒 `cooldownSeconds`，避免客户端与服务端限流口径漂移。
+- **版本变更**：无；当前应用版本仍为 `2.1.11-test`。本轮不改页面结构或样式、不打 APK、不上传小程序体验版。
+- **改动文件**：`src/components/auth/{auth-gate,account-views,auth-provider}.tsx`、`apps/wechat-miniprogram/pages/login/{register-email,forgot-password}/index.ts`、`apps/wechat-miniprogram/pages/settings/change-password/index.ts`、`services/wardrobe-api/tests/email-sender.test.ts`、`scripts/test-{app-email-auth-flow,auth-client-shell,auth-flow-v2-0-1,wechat-email-auth-flow}.ts`、`docs/superpowers/specs/2026-07-09-account-auth-email-wechat-design.md`、`docs/superpowers/plans/2026-07-10-tencent-ses-email-provider.md`、`VERSION_HISTORY.md`。
+- **改动说明**：注册、找回密码和修改密码发送入口均读取响应的 `cooldownSeconds`；App 与小程序补齐 `email_code_rate_limited`、`email_provider_not_configured`、`email_provider_error` 中文提示；原账号设计中的 30 秒说明同步更新为响应驱动 60 秒；不新增页面、路由、颜色或布局。
+- **验证结果**：四组客户端契约测试先确认旧实现失败；修改后 `npm run typecheck` 通过；`npm --prefix apps/wechat-miniprogram run typecheck` 通过；`npm run test:logic:auth-client-shell` 通过（49 项）；`npm run test:logic:auth-flow-v2-0-1` 通过（42 项）；`npm run test:logic:app-email-auth-flow`、`npm run test:logic:wechat-email-auth-flow`、`npm run test:logic:online-auth-shell`、`npm run test:logic:online-workspace` 均通过；Provider 测试 7 项通过。
+- **风险门禁**：high（跨 App/PWA/小程序认证入口与服务端限流契约）；未触发 subagent：用户未通知。
+- **未验证风险**：未运行微信开发者工具模拟器或真机预览，未构建/安装 Android APK；本轮没有视觉结构变化，最终生产构建与完整 API 测试在下一批执行。
+
 ## 2026-07-10 / v2.1.11-test / Codex — 邮箱验证码持久限流与失败清理
 
 - **执行 Agent**：Codex（未触发 subagent：用户要求当前会话按实施计划直接执行；本轮完成第二批验证码状态机改造）。

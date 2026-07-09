@@ -276,7 +276,7 @@ git commit -m "v2.1.11 enforce email verification limits"
 - Consumes: existing `SendEmailCodeResponse.cooldownSeconds` returned by registration, reset, and password-change requests.
 - Produces: server-driven countdown behavior in all App/PWA and mini-program email-code screens.
 
-- [ ] **Step 1: Update failing source-contract tests**
+- [x] **Step 1: Update failing source-contract tests**
 
 Require send handlers to assign the returned response and call:
 
@@ -292,7 +292,7 @@ this.startCountdown(response.cooldownSeconds);
 
 Also assert the provider error codes have Chinese messages and mini-program login code contains neither `getPhoneNumber` nor `open-type="getPhoneNumber"`.
 
-- [ ] **Step 2: Run the client contract tests and confirm failure**
+- [x] **Step 2: Run the client contract tests and confirm failure**
 
 Run:
 
@@ -305,15 +305,15 @@ npm run test:logic:wechat-email-auth-flow
 
 Expected: failure while handlers still call `setCountdown(30)` or `startCountdown(30)`.
 
-- [ ] **Step 3: Use the API response in every send handler**
+- [x] **Step 3: Use the API response in every send handler**
 
 Registration, password reset, and password change capture the response and use its positive integer `cooldownSeconds`. Add messages for `email_code_rate_limited`, `email_provider_not_configured`, and `email_provider_error`. Do not change layout, styling, or route structure.
 
-- [ ] **Step 4: Update the superseded account design values**
+- [x] **Step 4: Update the superseded account design values**
 
 Change phase-one design references from 30 seconds to 60 seconds and state that the duration comes from `cooldownSeconds` so the documentation matches runtime behavior.
 
-- [ ] **Step 5: Run client validation**
+- [x] **Step 5: Run client validation**
 
 Run:
 
@@ -330,7 +330,7 @@ npm run test:logic:online-workspace
 
 Expected: all pass and no auth client hard-codes a 30-second email resend timer.
 
-- [ ] **Step 6: Record and commit Task 3**
+- [x] **Step 6: Record and commit Task 3**
 
 Update `VERSION_HISTORY.md`, stage only Task 3 files, verify the staged diff, then commit:
 

@@ -17,7 +17,7 @@ afterEach(() => {
 
 describe("email sender factory", () => {
   it("does not log verification codes in test mode", async () => {
-    process.env.NODE_ENV = "test";
+    process.env = { ...process.env, NODE_ENV: "test" };
     const consoleInfo = vi.spyOn(console, "info").mockImplementation(() => undefined);
 
     await new LogEmailSender().sendVerificationCode({
