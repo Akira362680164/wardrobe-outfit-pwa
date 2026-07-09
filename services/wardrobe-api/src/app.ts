@@ -7,8 +7,9 @@ import {
 import Fastify, { type FastifyInstance } from "fastify";
 
 import { registerAuthRoutes } from "./auth/routes.js";
+import { AccountPasswordAuthService } from "./auth/account-password.js";
 import { registerEmailAuthRoutes } from "./auth/email-routes.js";
-import { type EmailVerificationService } from "./auth/email-verification.js";
+import { EmailVerificationService } from "./auth/email-verification.js";
 import { type RegistrationService } from "./auth/registrations.js";
 import { registerSessionRoutes } from "./auth/session-routes.js";
 import { SessionService } from "./auth/session.js";
@@ -48,6 +49,7 @@ export interface BuildAppOptions {
   jwtReadinessCheck?: () => Promise<boolean>;
   wechatPhoneAuthService?: WechatPhoneAuthService;
   emailVerificationService?: EmailVerificationService;
+  accountPasswordAuthService?: AccountPasswordAuthService;
 }
 
 export function buildApp(options: BuildAppOptions = {}): FastifyInstance {
@@ -133,12 +135,17 @@ export function buildApp(options: BuildAppOptions = {}): FastifyInstance {
 
   const sharedSessionService =
     options.sessionService ?? (options.registrationService ? undefined : new SessionService());
+  const emailVerificationService = options.emailVerificationService ?? new EmailVerificationService();
+  const accountPasswordAuthService = options.accountPasswordAuthService ?? new AccountPasswordAuthService({
+    sessionService: sharedSessionService ?? new SessionService(),
+    emailVerificationService,
+  });
 
   const assetService = options.assetService ?? new AssetService(storage);
 
-  registerAuthRoutes(app, options.registrationService, sharedSessionService);
-  registerSessionRoutes(app, sharedSessionService);
-  registerEmailAuthRoutes(app, options.emailVerificationService);
+  registerAuthRoutes(app, options.registrationService, sharedSessionService, accountPasswordAuthService);
+  registerSessionRoutes(app, sharedSessionService, accountPasswordAuthService);
+  registerEmailAuthRoutes(app, emailVerificationService);
   registerWechatPhoneAuthRoutes(
     app,
     options.wechatPhoneAuthService ?? new WechatPhoneAuthService({

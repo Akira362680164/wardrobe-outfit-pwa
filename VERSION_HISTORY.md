@@ -1,3 +1,14 @@
+## 2026-07-09 / v2.1.11-test / Codex — 邮箱主认证与密码账号接口
+
+- **执行 Agent**：Codex（未触发 subagent：用户未通知；本轮继续执行已批准账号体系设计）。
+- **目的**：把邮箱作为主认证身份接入注册、登录、找回密码、修改密码和账号安全接口，同时保持旧手机号密码注册/登录兼容，支撑 App/PWA 与小程序共用 userId、token 和 workspace。
+- **版本变更**：无；当前应用版本仍为 `2.1.11-test`。本轮不打 APK。
+- **改动文件**：`services/wardrobe-api/src/auth/account-password.ts`、`services/wardrobe-api/src/auth/routes.ts`、`services/wardrobe-api/src/auth/session-routes.ts`、`services/wardrobe-api/src/auth/session.ts`、`services/wardrobe-api/src/app.ts`、`services/wardrobe-api/tests/account-password-auth.test.ts`、`VERSION_HISTORY.md`。
+- **改动说明**：`POST /api/auth/register` 支持邮箱必填注册、邮箱验证码校验和可选手机号登录名；`POST /api/auth/login` 支持新 `account` 字段按邮箱或手机号登录，旧 `phone` 字段继续兼容；新增 `/api/auth/password/reset/request`、`/api/auth/password/reset/confirm`、`/api/auth/password/change`、`/api/auth/password/change-with-email-code` 和 `GET /api/auth/account/security`；token user 快照新增 `emailMasked`、`emailVerified`、`phoneMasked`、`phoneVerified`、`displayName`，并保留旧 `maskedPhone` 兼容字段。
+- **验证结果**：`npm --workspace @wardrobe/wardrobe-api run test -- tests/account-password-auth.test.ts` 通过（4 项）；`npm run api:typecheck` 通过；`npm --workspace @wardrobe/wardrobe-api run test -- tests/registration.test.ts tests/session.test.ts tests/email-verification.test.ts` 通过（22 项）；`git diff --check` 通过。
+- **风险门禁**：high（账号认证、密码重置、session token user shape、后端接口契约和旧路径兼容）；未触发 subagent：用户未通知。
+- **未验证风险**：本提交未接微信 OpenID 绑定流程、未改 App/小程序 UI、未在真实数据库执行迁移、未跑完整 `api:test` 与 Android 真机验证；这些会在后续批次继续完成。
+
 ## 2026-07-09 / v2.1.11-test / Codex — 邮箱验证码 Mock/Log Provider 与状态机
 
 - **执行 Agent**：Codex（未触发 subagent：用户未通知；本轮继续执行已批准账号体系设计）。
