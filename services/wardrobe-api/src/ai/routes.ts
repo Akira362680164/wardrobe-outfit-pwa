@@ -1,6 +1,7 @@
 import {
   AiEnhancementKindSchema,
   AiEnhancementRequestSchema,
+  AiGarmentRecognitionBatchRequestSchema,
   AiGarmentRecognitionRequestSchema,
   AiOutfitMetadataRequestSchema,
 } from "@wardrobe/cloud-contracts";
@@ -21,6 +22,12 @@ export function registerAiIntakeRoutes(
     await authenticate(request.headers.authorization, request.headers["x-wardrobe-device-id"], sessionService);
     const body = AiGarmentRecognitionRequestSchema.parse(request.body);
     return aiService.recognizeGarment(body);
+  }));
+
+  app.post("/api/workspace/ai/intake/garment-recognition/batch", { bodyLimit: AI_BODY_LIMIT_BYTES }, async (request, reply) => handle(reply, async () => {
+    await authenticate(request.headers.authorization, request.headers["x-wardrobe-device-id"], sessionService);
+    const body = AiGarmentRecognitionBatchRequestSchema.parse(request.body);
+    return aiService.recognizeGarments(body);
   }));
 
   app.post("/api/workspace/ai/intake/outfit-metadata", { bodyLimit: AI_BODY_LIMIT_BYTES }, async (request, reply) => handle(reply, async () => {

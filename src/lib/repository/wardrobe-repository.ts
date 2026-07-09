@@ -56,6 +56,18 @@ export interface RepoBatchCreateGarmentResult {
   error?: string;
 }
 
+export interface RepoBatchCreateWishlistInput {
+  item: Omit<WishlistItemDraft, "id">;
+  clientMutationId: string;
+}
+
+export interface RepoBatchCreateWishlistResult {
+  clientMutationId: string;
+  status: "succeeded" | "failed";
+  item?: WishlistItem;
+  error?: string;
+}
+
 const reader = new OnlineWorkspaceRepository();
 
 function ok<T>(data?: T): RepoResult<T> { return { ok: true, data }; }
@@ -366,6 +378,36 @@ export async function repoCreateWishlistItem(item: Omit<WishlistItemDraft, "id">
   } catch (error) { return fail(message(error, "保存种草商品失败，请重试")); }
 }
 
+export async function repoCreateWishlistItemsBatch(inputs: RepoBatchCreateWishlistInput[]): Promise<RepoBatchCreateWishlistResult[]> {
+  const prepared = await Promise.all(inputs.map(async ({ item, clientMutationId }) => {
+    const legacyWishlistId = `wishlist-${clientMutationId}`;
+    try {
+      const committedEntity = await committedMutationEntity(clientMutationId, "wishlist");
+      if (committedEntity) return { kind: "committed" as const, item, clientMutationId, committedEntity };
+      const assetMutations = await mainAssetMutations({
+        entityType: "wishlistItem",
+        clientMutationId,
+        patch: item,
+        mappings: [{ formalField: "mainImage", assetField: "imageDataUrl", originalField: "localOriginalDataUrl", thumbnailField: "localThumbnailDataUrl" }],
+      });
+      return { kind: "ready" as const, item, command: { clientMutationId, payload: { ...withoutImages(item, "cropBox"), legacyWishlistId }, assetMutations } };
+    } catch (error) {
+      return { kind: "failed" as const, item, clientMutationId, error: message(error, "图片上传失败") };
+    }
+  }));
+  const ready = prepared.filter((entry): entry is Extract<typeof entry, { kind: "ready" }> => entry.kind === "ready");
+  const commandResults = ready.length ? await onlineWriteRepository.createBatch("wishlist", { items: ready.map((entry) => entry.command) }) : [];
+  const byMutation = new Map(commandResults.map((result) => [result.clientMutationId, result]));
+  return Promise.all(prepared.map(async (entry) => {
+    if (entry.kind === "committed") return { clientMutationId: entry.clientMutationId, status: "succeeded", item: await reader.mapWishlistItem(entry.committedEntity) } as const;
+    if (entry.kind === "failed") return { clientMutationId: entry.clientMutationId, status: "failed", error: entry.error } as const;
+    const command = entry.command;
+    const result = byMutation.get(command.clientMutationId);
+    if (!result?.entity) return { clientMutationId: command.clientMutationId, status: "failed", error: result?.error ?? "服务器未返回该种草单品" } as const;
+    return { clientMutationId: command.clientMutationId, status: "succeeded", item: await reader.mapWishlistItem(result.entity) } as const;
+  }));
+}
+
 export async function repoUpdateWishlistItem(item: WishlistItem, patch: Partial<WishlistItemDraft>, context: RepoMutationContext = {}): Promise<RepoResult<WishlistItem>> {
   const mutation = mutationContext(item, context);
   if (!mutation) return fail("种草版本信息缺失，请刷新后重试");
@@ -623,7 +665,7 @@ export { getUndoPurchaseRisk, type UndoPurchaseRisk };
 export const wardrobeRepository = {
   createGarment: repoCreateGarment, createGarmentsBatch: repoCreateGarmentsBatch, updateGarment: repoUpdateGarment,
   deleteGarments: repoDeleteGarments, updateItemStatus: repoUpdateItemStatus, saveEditedGarment: repoSaveEditedGarment,
-  createWishlistItem: repoCreateWishlistItem, updateWishlistItem: repoUpdateWishlistItem,
+  createWishlistItem: repoCreateWishlistItem, createWishlistItemsBatch: repoCreateWishlistItemsBatch, updateWishlistItem: repoUpdateWishlistItem,
   deleteWishlistItems: repoDeleteWishlistItems, convertWishlistItem: repoConvertWishlistItem,
   undoWishlistPurchase: repoUndoWishlistPurchase, getUndoPurchaseRisk,
   createOutfit: repoCreateOutfit, updateOutfit: repoUpdateOutfit, deleteOutfit: repoDeleteOutfit,

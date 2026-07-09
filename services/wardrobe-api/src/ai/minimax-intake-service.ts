@@ -1,8 +1,11 @@
 import {
+  AiGarmentRecognitionBatchResponseSchema,
   AiGarmentRecognitionResponseSchema,
   AiOutfitMetadataResponseSchema,
   type AiColorInfo,
   type AiEnhancementKind,
+  type AiGarmentRecognitionBatchRequest,
+  type AiGarmentRecognitionBatchResponse,
   type AiGarmentRecognitionRequest,
   type AiGarmentRecognitionResponse,
   type AiGarmentTag,
@@ -15,6 +18,7 @@ import { WorkspaceApiError } from "../workspace/errors.js";
 
 export interface MiniMaxIntakeServiceLike {
   recognizeGarment(input: AiGarmentRecognitionRequest): Promise<AiGarmentRecognitionResponse>;
+  recognizeGarments(input: AiGarmentRecognitionBatchRequest): Promise<AiGarmentRecognitionBatchResponse>;
   generateOutfitMetadata(input: AiOutfitMetadataRequest): Promise<AiOutfitMetadataResponse>;
   enhance(kind: AiEnhancementKind, input: { miniMax: MiniMaxRuntimeSettings; input: Record<string, unknown> }): Promise<unknown>;
 }
@@ -29,6 +33,7 @@ const SEASONS = ["spring", "summer", "autumn", "winter", "all"] as const;
 const STYLES = ["casual", "sweet", "elegant", "commute", "outdoor", "dinner", "vacation"] as const;
 const CATEGORIES = ["tops", "pants", "skirts", "one_piece", "shoes", "bags", "hats", "jewelry", "accessories"] as const;
 const FIT_GENDERS = ["menswear", "womenswear", "unisex", "unknown"] as const;
+const GARMENT_RECOGNITION_BATCH_CONCURRENCY = 10;
 
 export class MiniMaxIntakeService implements MiniMaxIntakeServiceLike {
   async recognizeGarment(input: AiGarmentRecognitionRequest): Promise<AiGarmentRecognitionResponse> {
@@ -45,6 +50,22 @@ export class MiniMaxIntakeService implements MiniMaxIntakeServiceLike {
     ], 0.1, 900);
     const tag = normalizeGarmentTag(parseJsonObject(content), input.fallbackName);
     return AiGarmentRecognitionResponseSchema.parse({ tag });
+  }
+
+  async recognizeGarments(input: AiGarmentRecognitionBatchRequest): Promise<AiGarmentRecognitionBatchResponse> {
+    const items = await runLimited(input.items, GARMENT_RECOGNITION_BATCH_CONCURRENCY, async (item) => {
+      try {
+        const response = await this.recognizeGarment({
+          miniMax: input.miniMax,
+          imageDataUrl: item.imageDataUrl,
+          fallbackName: item.fallbackName,
+        });
+        return { clientItemId: item.clientItemId, status: "succeeded" as const, tag: response.tag };
+      } catch (error) {
+        return { clientItemId: item.clientItemId, status: "failed" as const, error: recognitionErrorMessage(error) };
+      }
+    });
+    return AiGarmentRecognitionBatchResponseSchema.parse({ items });
   }
 
   async generateOutfitMetadata(input: AiOutfitMetadataRequest): Promise<AiOutfitMetadataResponse> {
@@ -68,6 +89,24 @@ export class MiniMaxIntakeService implements MiniMaxIntakeServiceLike {
         return generateOutfitAiSuggestion(request.miniMax, request.input);
     }
   }
+}
+
+async function runLimited<T, R>(items: T[], limit: number, task: (item: T) => Promise<R>): Promise<R[]> {
+  const results = new Array<R>(items.length);
+  let nextIndex = 0;
+  async function worker() {
+    while (nextIndex < items.length) {
+      const currentIndex = nextIndex;
+      nextIndex += 1;
+      results[currentIndex] = await task(items[currentIndex]!);
+    }
+  }
+  await Promise.all(Array.from({ length: Math.min(limit, items.length) }, worker));
+  return results;
+}
+
+function recognitionErrorMessage(error: unknown): string {
+  return error instanceof Error && error.message ? error.message.slice(0, 500) : "识别失败，请重试";
 }
 
 async function chat(settings: MiniMaxRuntimeSettings, messages: unknown[], temperature: number, maxTokens: number): Promise<string> {

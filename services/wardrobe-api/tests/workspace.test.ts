@@ -112,14 +112,17 @@ describe("workspace routes", () => {
     const create = await app.inject({ method: "POST", url: "/api/workspace/garments", headers, payload: { clientMutationId: mutationId, payload: { name: "coat", userId: "attacker" }, assetMutations: [] } });
     expect(WorkspaceCommandResponseSchema.parse(create.json()).status).toBe("committed");
     await app.inject({ method: "POST", url: "/api/workspace/garments/batch", headers, payload: { items: [{ clientMutationId: mutationId, payload: {}, assetMutations: [] }] } });
+    await app.inject({ method: "POST", url: "/api/workspace/wishlist/batch", headers, payload: { items: [{ clientMutationId: mutationId, payload: {}, assetMutations: [] }] } });
     const mutation = await app.inject({ method: "GET", url: `/api/workspace/mutations/${mutationId}`, headers });
     expect(mutation.json()).toMatchObject({ response: { status: "committed" } });
     await app.inject({ method: "POST", url: `/api/workspace/outfits/${entityId}/favorite`, headers, payload: { clientMutationId: mutationId, expectedRevision: 1, value: true, payload: {} } });
     await app.inject({ method: "POST", url: `/api/workspace/outfits/${entityId}/mark-worn`, headers, payload: { clientMutationId: mutationId, expectedRevision: 1, wornAt: now } });
     await app.inject({ method: "POST", url: `/api/workspace/outfits/${entityId}/cancel-worn`, headers, payload: { clientMutationId: mutationId, expectedRevision: 1, date: "2026-06-30", payload: {} } });
     await app.inject({ method: "DELETE", url: `/api/workspace/garments/${entityId}`, headers, payload: { clientMutationId: mutationId, expectedRevision: 1 } });
-    expect(calls.map((call) => call.name)).toEqual(["create", "batchCreate", "mutationResult", "patchPayload", "markWorn", "cancelWorn", "delete"]);
+    expect(calls.map((call) => call.name)).toEqual(["create", "batchCreate", "batchCreate", "mutationResult", "patchPayload", "markWorn", "cancelWorn", "delete"]);
     expect(calls.every((call) => call.input.userId === "user-1")).toBe(true);
+    expect(calls[1].input.resource).toBe("garments");
+    expect(calls[2].input.resource).toBe("wishlist");
     await app.close();
   });
 

@@ -201,6 +201,26 @@ export const AiGarmentRecognitionResponseSchema = z.object({
   tag: AiGarmentTagSchema,
 });
 
+export const AiGarmentRecognitionBatchItemSchema = z.object({
+  clientItemId: z.string().min(1).max(160),
+  imageDataUrl: z.string().regex(/^data:image\/[a-z0-9.+-]+;base64,/i),
+  fallbackName: z.string().min(1).max(160).default("garment.jpg"),
+});
+
+export const AiGarmentRecognitionBatchRequestSchema = z.object({
+  miniMax: MiniMaxRuntimeSettingsSchema,
+  items: z.array(AiGarmentRecognitionBatchItemSchema).min(1).max(10),
+});
+
+export const AiGarmentRecognitionBatchResponseItemSchema = z.discriminatedUnion("status", [
+  z.object({ clientItemId: z.string().min(1), status: z.literal("succeeded"), tag: AiGarmentTagSchema }),
+  z.object({ clientItemId: z.string().min(1), status: z.literal("failed"), error: z.string().min(1).max(500) }),
+]);
+
+export const AiGarmentRecognitionBatchResponseSchema = z.object({
+  items: z.array(AiGarmentRecognitionBatchResponseItemSchema),
+});
+
 export const AiOutfitMetadataItemSchema = z.object({
   id: z.number().int(),
   name: z.string(),
@@ -269,6 +289,10 @@ export type AiTemperatureRange = z.infer<typeof AiTemperatureRangeSchema>;
 export type AiGarmentTag = z.infer<typeof AiGarmentTagSchema>;
 export type AiGarmentRecognitionRequest = z.infer<typeof AiGarmentRecognitionRequestSchema>;
 export type AiGarmentRecognitionResponse = z.infer<typeof AiGarmentRecognitionResponseSchema>;
+export type AiGarmentRecognitionBatchItem = z.infer<typeof AiGarmentRecognitionBatchItemSchema>;
+export type AiGarmentRecognitionBatchRequest = z.infer<typeof AiGarmentRecognitionBatchRequestSchema>;
+export type AiGarmentRecognitionBatchResponseItem = z.infer<typeof AiGarmentRecognitionBatchResponseItemSchema>;
+export type AiGarmentRecognitionBatchResponse = z.infer<typeof AiGarmentRecognitionBatchResponseSchema>;
 export type AiOutfitMetadataItem = z.infer<typeof AiOutfitMetadataItemSchema>;
 export type AiOutfitMetadataRequest = z.infer<typeof AiOutfitMetadataRequestSchema>;
 export type AiOutfitMetadataResponse = z.infer<typeof AiOutfitMetadataResponseSchema>;

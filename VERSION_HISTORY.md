@@ -1,3 +1,14 @@
+## 2026-07-09 / v2.1.9-test / Codex — AI 识别 10 并发与种草批量保存
+
+- **执行 Agent**：Codex（未触发 subagent：用户未通知）。
+- **目的**：把衣橱衣物和种草衣物的首次 AI 识别从逐张串行改为服务端批量识别；每批最多 10 张，且每次 AI 代理请求体限制为 8MB；同步减少种草多图录入保存时逐条创建的等待。
+- **版本变更**：`package.json` / `package-lock.json` 从 `2.1.8-test` 升至 `2.1.9-test`，Android `versionCode` 由构建脚本推导为 `20109`。
+- **改动文件**：`packages/cloud-contracts/src/workspace/contracts.ts`、`services/wardrobe-api/src/ai/{routes,minimax-intake-service}.ts`、`services/wardrobe-api/src/workspace/routes.ts`、`services/wardrobe-api/tests/{ai-intake,workspace}.test.ts`、`src/lib/online/{online-ai-intake-client,online-write-repository}.ts`、`src/lib/repository/wardrobe-repository.ts`、`src/components/{garment-intake-flow,wardrobe-app,wishlist-view-2.0}.tsx`、`scripts/test-{ai-intake-live-contract,garment-intake-multi-image,online-write-repository,wishlist-intake-confirm-contract}.ts`、`package.json`、`package-lock.json`、`VERSION_HISTORY.md`。
+- **改动说明**：新增 `AiGarmentRecognitionBatch*` 共享契约和 `/api/workspace/ai/intake/garment-recognition/batch` 后端路由，路由沿用 8MB `bodyLimit`，服务端内部以 10 并发复用现有单张 MiniMax 识别；App 端新增批量识别客户端，按最多 10 张且 JSON body 不超过 8MB 自动拆批，超限单张转为该图失败结果；`GarmentIntakeFlow` 新增 `onProcessImages` 批量入口，衣橱与种草首次识别使用批量，确认页重新识别继续单张；种草录入保存新增 `wishlist/batch` 与 `createWishlistItemsBatch`，复用临时资产上传和服务端读回。
+- **验证结果**：`npm run cloud:contracts:typecheck` 通过；`npm --workspace @wardrobe/wardrobe-api run test -- tests/ai-intake.test.ts tests/workspace.test.ts` 通过；`npm run test:logic:garment-intake-multi-image` 通过；`npm run test:logic:online-writes` 通过；`npm run api:typecheck` 通过；`npm run test:logic:ai-intake-live-contract` 通过；`npm run test:logic:wishlist-intake-confirm-contract` 通过；`npm run api:test` 通过（10 files / 67 tests）；`npm run build` 以 `2.1.9-test` 通过；`npm run typecheck` 以 `2.1.9-test` 通过。期间一次并行 `typecheck` 抢在 `build` 重建 `.next/types` 前运行而报生成文件缺失，构建完成后单独重跑已通过。
+- **风险门禁**：high（后端 AI 代理、MiniMax 图片请求、App 批量识别、种草图片保存和服务端批量写入）；未触发 subagent：用户未通知。
+- **未验证风险**：本轮未打 Android APK、未做模拟器/真机安装验证、未部署线上服务；新的批量路由未用真实 MiniMax Key 做 live 图片调用，真实并发容量依据本轮修改前在生产服务器容器内跑过的 MiniMax 服务实例并发测试结果。
+
 ## 2026-07-09 / v2.1.8-test / Codex — GitHub Actions 文档提交降噪
 
 - **执行 Agent**：Codex（未触发 subagent：用户未通知）。

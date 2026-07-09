@@ -86,6 +86,9 @@ check("GarmentIntakeFlowProps 使用 onPickImages", /onPickImages:\s*\(source:\s
 // GarmentIntakeFlowProps uses onSaveBatch
 check("GarmentIntakeFlowProps 使用 onSaveBatch", /onSaveBatch:\s*\(drafts:\s*GarmentIntakeDraft\[\]/.test(garmentIntakeFlow));
 
+// GarmentIntakeFlowProps supports batch recognition
+check("GarmentIntakeFlowProps 支持 onProcessImages 批量识别", /onProcessImages\?:\s*\(inputs:\s*GarmentImageBatchProcessingInput\[\]/.test(garmentIntakeFlow));
+
 // GarmentIntakeFlow no longer saves single draft
 check("GarmentIntakeFlow 不再只保存单个 draft", !/onSave:\s*\(\s*draft:\s*GarmentIntakeDraft/.test(garmentIntakeFlow));
 
@@ -120,8 +123,8 @@ check("GarmentIntakeFlow 展示动态「保存 X 件」文案", /保存\s*\$\{sa
 // GarmentIntakeFlow calls onProcessImage with croppedImageDataUrl
 check("GarmentIntakeFlow 调用 onProcessImage 时使用 croppedImageDataUrl", /croppedImageDataUrl\s*\?\?\s*item\.displayDataUrl\s*\?\?\s*item\.originalDataUrl/.test(garmentIntakeFlow));
 
-// GarmentIntakeFlow processes images one by one
-check("GarmentIntakeFlow 逐张识别", /for\s*\(\s*const\s+item\s+of\s+pendingItems\s*\)/.test(garmentIntakeFlow) || /forEach/.test(garmentIntakeFlow));
+// GarmentIntakeFlow can process initial recognition through a batch callback
+check("GarmentIntakeFlow 首次识别支持批量回调", /if\s*\(onProcessImages\)/.test(garmentIntakeFlow) && /imageItemId:\s*item\.id/.test(garmentIntakeFlow));
 
 // GarmentIntakeFlow single image failure doesn't interrupt batch
 check("GarmentIntakeFlow 单张失败不中断整批", /buildFailedRecognitionDraft/.test(garmentIntakeFlow) || /catch \(err\)[\s\S]{0,200}setGarmentIntakeImageRecognitionFailure/.test(garmentIntakeFlow));
@@ -157,6 +160,8 @@ check("GarmentIntakeFlow 缩略图 strip 显示「识别中」loading", /item\.s
 check("GarmentIntakeFlow 把 aiTag 映射到 buildLocalGarmentDraft", /mapAiTagToGarmentDraftInput/.test(garmentIntakeFlow));
 check("wardrobe-app GarmentIntakeFlow wiring 传 onProcessImage", /<GarmentIntakeFlow[\s\S]+?onProcessImage=\{processGarmentIntakeImage\}/.test(wardrobeApp));
 check("wardrobe-app processGarmentIntakeImage 调后端录入识别", /processGarmentIntakeImage[\s\S]+?recognizeGarmentOnServer\(/.test(wardrobeApp));
+check("wardrobe-app GarmentIntakeFlow wiring 传 onProcessImages", /<GarmentIntakeFlow[\s\S]+?onProcessImages=\{processGarmentIntakeImages\}/.test(wardrobeApp));
+check("wardrobe-app 批量识别调后端 batch API", /processGarmentIntakeImages[\s\S]+?recognizeGarmentsBatchOnServer\(/.test(wardrobeApp));
 
 console.log(`\ngarment intake multi-image tests: ${pass} passed, ${fail} failed`);
 if (fail > 0) process.exit(1);

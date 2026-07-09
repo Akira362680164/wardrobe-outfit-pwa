@@ -12,6 +12,7 @@ const deviceMiniMax = readFileSync(join(root, "src/lib/device-minimax.ts"), "utf
 const onlineAiIntake = readFileSync(join(root, "src/lib/online/online-ai-intake-client.ts"), "utf8");
 const serverAiRoutes = readFileSync(join(root, "services/wardrobe-api/src/ai/routes.ts"), "utf8");
 const wishlistFromAi = readFileSync(join(root, "src/lib/wishlist-intake-from-ai.ts"), "utf8");
+const cloudContracts = readFileSync(join(root, "packages/cloud-contracts/src/workspace/contracts.ts"), "utf8");
 
 let pass = 0;
 let fail = 0;
@@ -70,6 +71,22 @@ check(
   "服务端注册单品识别路由",
   /\/api\/workspace\/ai\/intake\/garment-recognition/.test(serverAiRoutes),
 );
+check(
+  "共享契约包含单品批量识别 schema 且每批最多 10 张",
+  /AiGarmentRecognitionBatchRequestSchema/.test(cloudContracts) && /items:\s*z\.array\(AiGarmentRecognitionBatchItemSchema\)\.min\(1\)\.max\(10\)/.test(cloudContracts),
+);
+check(
+  "online-ai-intake-client 调后端单品批量识别 API",
+  /recognizeGarmentsBatchOnServer/.test(onlineAiIntake) && /\/api\/workspace\/ai\/intake\/garment-recognition\/batch/.test(onlineAiIntake),
+);
+check(
+  "online-ai-intake-client 限制每批 10 张且请求体 8MB",
+  /AI_RECOGNITION_MAX_BATCH_ITEMS\s*=\s*10/.test(onlineAiIntake) && /AI_RECOGNITION_MAX_BODY_BYTES\s*=\s*8\s*\*\s*1024\s*\*\s*1024/.test(onlineAiIntake),
+);
+check(
+  "服务端注册单品批量识别路由并使用 8MB bodyLimit",
+  /\/api\/workspace\/ai\/intake\/garment-recognition\/batch[\s\S]+?bodyLimit:\s*AI_BODY_LIMIT_BYTES/.test(serverAiRoutes),
+);
 // 7. garment-intake-flow.tsx 把 aiTag 映射到 buildLocalGarmentDraft
 check(
   "GarmentIntakeFlow 把 aiTag 映射到 buildLocalGarmentDraft",
@@ -91,12 +108,20 @@ check(
   /<GarmentIntakeFlow[\s\S]+?onProcessImage=\{onProcessIntakeImage\}/.test(wishlistView),
 );
 check(
+  "WishlistView20 给种草 GarmentIntakeFlow 传 onProcessImages",
+  /<GarmentIntakeFlow[\s\S]+?onProcessImages=\{onProcessIntakeImages\}/.test(wishlistView),
+);
+check(
   "WishlistView20 批量保存种草草稿",
-  /handleSaveIntakeDrafts[\s\S]+?garmentDraftToWishlistItem/.test(wishlistView),
+  /handleSaveIntakeDrafts[\s\S]+?createWishlistItemsBatch/.test(wishlistView),
 );
 check(
   "wardrobe-app 给 WishlistView20 传种草录入多图与识别回调",
   /<WishlistView20[\s\S]+?onPickIntakeImages=\{pickGarmentIntakeImages\}[\s\S]+?onProcessIntakeImage=\{processGarmentIntakeImage\}/.test(wardrobeApp),
+);
+check(
+  "wardrobe-app 给 WishlistView20 传种草批量识别回调",
+  /<WishlistView20[\s\S]+?onProcessIntakeImages=\{processGarmentIntakeImages\}/.test(wardrobeApp),
 );
 
 console.log("\n=== §3.4.3 套装录入 AI 复核 ===");

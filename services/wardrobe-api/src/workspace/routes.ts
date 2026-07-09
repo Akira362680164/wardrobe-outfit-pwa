@@ -79,6 +79,12 @@ export function registerWorkspaceRoutes(
     return commandService.batchCreate({ resource: "garments", commands: body.items, userId: claims.userId, deviceId: claims.deviceId, requestId: requestId(request) });
   }));
 
+  app.post("/api/workspace/wishlist/batch", async (request, reply) => handle(reply, async () => {
+    const claims = await authenticate(request.headers.authorization, request.headers["x-wardrobe-device-id"], sessionService);
+    const body = WorkspaceBatchCreateCommandSchema.parse(request.body);
+    return commandService.batchCreate({ resource: "wishlist", commands: body.items, userId: claims.userId, deviceId: claims.deviceId, requestId: requestId(request) });
+  }));
+
   app.post("/api/workspace/wishlist/:id/convert", async (request, reply) => handle(reply, async () => {
     const claims = await authenticate(request.headers.authorization, request.headers["x-wardrobe-device-id"], sessionService);
     const { id } = z.object({ id: z.string().uuid() }).parse(request.params);

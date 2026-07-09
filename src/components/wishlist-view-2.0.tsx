@@ -120,6 +120,7 @@ interface WishlistView20Props {
   onCreateClosed?: () => void;
   onPickIntakeImages: React.ComponentProps<typeof GarmentIntakeFlow>["onPickImages"];
   onProcessIntakeImage?: React.ComponentProps<typeof GarmentIntakeFlow>["onProcessImage"];
+  onProcessIntakeImages?: React.ComponentProps<typeof GarmentIntakeFlow>["onProcessImages"];
   onMessage: (msg: string, type?: "success" | "error" | "info") => void;
   onExpandImage: (image: { src: string; alt: string }) => void;
   onSubPageChange?: (active: boolean) => void;
@@ -192,6 +193,7 @@ export function WishlistView20({
   onWishlistConvertedToWardrobe,
   onPickIntakeImages,
   onProcessIntakeImage,
+  onProcessIntakeImages,
   onDataChanged,
 }: WishlistView20Props) {
   const [subPage, setSubPage] = useState<SubPage>("home");
@@ -615,31 +617,42 @@ export function WishlistView20({
     context?: IntakeSaveBatchContext,
   ): Promise<IntakeBatchSaveResult> => {
     const now = new Date().toISOString();
-    const results: IntakeBatchSaveResult["items"] = [];
-    for (const [index, draft] of drafts.entries()) {
-      const clientMutationId = context?.submissions[index]?.clientMutationId ?? createClientMutationId();
+    const prepared = await Promise.all(drafts.map(async (draft) => {
+      const submission = context?.submissions.find((entry) => entry.draftId === draft.id);
+      const clientMutationId = submission?.clientMutationId ?? createClientMutationId();
       try {
         const readyDraft = await ensureGarmentIntakeDraftThumbnail(draft);
         const { id: _legacyId, ...createItem } = garmentDraftToWishlistItem(readyDraft, { now });
-        const result = await wardrobeRepository.createWishlistItem(createItem, { clientMutationId });
-        results.push({
-          draftId: draft.id,
-          clientMutationId,
-          status: result.ok ? "succeeded" : "failed",
-          error: result.error,
-        });
+        return { kind: "ready" as const, draftId: draft.id, item: createItem, clientMutationId };
       } catch (error) {
-        results.push({
+        return {
+          kind: "failed" as const,
           draftId: draft.id,
           clientMutationId,
-          status: "failed",
           error: isIntakeThumbnailGenerationError(error)
             ? "缩略图生成失败，请重试"
             : error instanceof Error ? error.message : "保存种草失败，请重试",
-        });
+        };
       }
-      context?.onProgress(index + 1, drafts.length);
-    }
+    }));
+    const ready = prepared.filter((entry): entry is Extract<typeof entry, { kind: "ready" }> => entry.kind === "ready");
+    const batchResults = ready.length > 0
+      ? await wardrobeRepository.createWishlistItemsBatch(ready.map(({ item, clientMutationId }) => ({ item, clientMutationId })))
+      : [];
+    const byMutation = new Map(batchResults.map((item) => [item.clientMutationId, item]));
+    const results: IntakeBatchSaveResult["items"] = prepared.map((entry) => {
+      if (entry.kind === "failed") {
+        return { draftId: entry.draftId, clientMutationId: entry.clientMutationId, status: "failed", error: entry.error };
+      }
+      const result = byMutation.get(entry.clientMutationId);
+      return {
+        draftId: entry.draftId,
+        clientMutationId: entry.clientMutationId,
+        status: result?.status ?? "failed",
+        error: result?.error ?? (result ? undefined : "服务器未返回该种草单品"),
+      };
+    });
+    context?.onProgress(drafts.length, drafts.length);
     await onDataChanged?.();
     const failed = results.filter((item) => item.status === "failed").length;
     if (failed === 0) {
@@ -1159,6 +1172,7 @@ export function WishlistView20({
         defaultLocationId={locations[0]?.id ?? "home"}
         onPickImages={onPickIntakeImages}
         onProcessImage={onProcessIntakeImage}
+        onProcessImages={onProcessIntakeImages}
         onSaveBatch={handleSaveIntakeDrafts}
         onExit={closeWishlistIntake}
       />

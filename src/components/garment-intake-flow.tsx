@@ -93,6 +93,16 @@ export interface GarmentImageProcessingInput {
   cropBox?: import("@/lib/image").NormalizedCropBox;
 }
 
+export interface GarmentImageBatchProcessingInput extends GarmentImageProcessingInput {
+  imageItemId: string;
+}
+
+export interface GarmentImageBatchProcessingResult {
+  imageItemId: string;
+  result?: LocalImageProcessingResult;
+  error?: string;
+}
+
 export interface GarmentIntakeFlowProps {
   title?: string;
   flowKind?: "garment" | "wishlist";
@@ -104,6 +114,7 @@ export interface GarmentIntakeFlowProps {
   isSaving?: boolean;
   onPickImages: (source: GarmentImageSource, remaining: number) => IntakeAsyncResult<GarmentIntakePickedImage[]>;
   onProcessImage?: (input: GarmentImageProcessingInput) => IntakeAsyncResult<LocalImageProcessingResult>;
+  onProcessImages?: (inputs: GarmentImageBatchProcessingInput[]) => IntakeAsyncResult<GarmentImageBatchProcessingResult[]>;
   onEnhanceDraft?: (draft: GarmentIntakeDraft) => IntakeAsyncResult<GarmentIntakeDraft>;
   onDraftChange?: (drafts: GarmentIntakeDraft[]) => void;
   onSaveBatch: (drafts: GarmentIntakeDraft[], context?: IntakeSaveBatchContext) => IntakeAsyncResult<void | IntakeBatchSaveResult>;
@@ -182,6 +193,7 @@ export function GarmentIntakeFlow({
   isSaving = false,
   onPickImages,
   onProcessImage,
+  onProcessImages,
   onEnhanceDraft: _onEnhanceDraft,
   onDraftChange,
   onSaveBatch,
@@ -424,34 +436,58 @@ export function GarmentIntakeFlow({
         return;
       }
 
-      for (const item of pendingItems) {
-        completed += 1;
-        setRecognitionProgress({ current: completed, total });
+      if (onProcessImages) {
+        const pendingIds = new Set(pendingItems.map((item) => item.id));
         setImageItems((prev) =>
           prev.map((it) =>
-            it.id === item.id ? { ...it, status: "recognizing" as const } : it,
+            pendingIds.has(it.id) ? { ...it, status: "recognizing" as const } : it,
           ),
         );
-        try {
-          const draft = await recognizeImageItem(item);
-          setImageItems((prev) => setGarmentIntakeImageDraft(prev, item.id, draft));
-          newlyResolved += 1;
-        } catch (err) {
-          // v1.1.31 commit2: 失败写失败草稿 + status=failed + 错误文案，绝不假成功。
-          const message = err instanceof Error ? err.message : "识别失败";
-          const imageToProcess = item.croppedImageDataUrl ?? item.displayDataUrl ?? item.originalDataUrl;
-          const failedDraft = buildFailedRecognitionDraft({
-            id: item.draft?.id,
-            imageDataUrl: item.originalDataUrl,
-            croppedImageDataUrl: imageToProcess,
-            cropBox: item.cropBox,
-            thumbnailDataUrl: item.thumbnailDataUrl,
-            transparentImageDataUrl: item.draft?.transparentImageDataUrl,
-            locationId: defaultLocationId,
-          });
+        const batchInputs = pendingItems.map((item) => ({
+          imageItemId: item.id,
+          imageDataUrl: item.originalDataUrl,
+          sourceImageDataUrl: item.originalDataUrl,
+          fileName: item.fileName,
+          cropBox: item.cropBox,
+        }));
+        const outputs = await Promise.resolve(onProcessImages(batchInputs)).catch((err: unknown) => pendingItems.map((item): GarmentImageBatchProcessingResult => ({
+          imageItemId: item.id,
+          error: formatIntakeError(err, "识别失败"),
+        })));
+        const resultById = new Map(outputs.map((item) => [item.imageItemId, item]));
+        for (const item of pendingItems) {
+          completed += 1;
+          setRecognitionProgress({ current: completed, total });
+          const output = resultById.get(item.id);
+          if (!output || output.error || !output.result) {
+            failImageItemRecognition(item, output?.error ?? "识别失败");
+            continue;
+          }
+          try {
+            const draft = buildDraftFromProcessingResult(item, output.result);
+            setImageItems((prev) => setGarmentIntakeImageDraft(prev, item.id, draft));
+            newlyResolved += 1;
+          } catch (err) {
+            failImageItemRecognition(item, err instanceof Error ? err.message : "识别失败");
+          }
+        }
+      } else {
+        for (const item of pendingItems) {
+          completed += 1;
+          setRecognitionProgress({ current: completed, total });
           setImageItems((prev) =>
-            setGarmentIntakeImageRecognitionFailure(prev, item.id, failedDraft, message),
+            prev.map((it) =>
+              it.id === item.id ? { ...it, status: "recognizing" as const } : it,
+            ),
           );
+          try {
+            const draft = await recognizeImageItem(item);
+            setImageItems((prev) => setGarmentIntakeImageDraft(prev, item.id, draft));
+            newlyResolved += 1;
+          } catch (err) {
+            // v1.1.31 commit2: 失败写失败草稿 + status=failed + 错误文案，绝不假成功。
+            failImageItemRecognition(item, err instanceof Error ? err.message : "识别失败");
+          }
         }
       }
       // v1.1.31 commit2: 即使全部失败，只要存在失败草稿也进入确认信息阶段。
@@ -491,6 +527,12 @@ export function GarmentIntakeFlow({
       fileName: item.fileName,
       cropBox: item.cropBox,
     });
+    return buildDraftFromProcessingResult(item, processed);
+  }
+
+  function buildDraftFromProcessingResult(item: GarmentIntakeImageItem, processed: LocalImageProcessingResult): GarmentIntakeDraft {
+    const imageToProcess =
+      item.croppedImageDataUrl ?? item.displayDataUrl ?? item.originalDataUrl;
     const aiTag = (processed as { aiTag?: import("@/lib/types").GarmentTagResult }).aiTag;
     if (!aiTag) {
       // v1.1.31 patch5: 任何"无 aiTag"的结果都不应伪装为可编辑默认草稿。
@@ -529,6 +571,22 @@ export function GarmentIntakeFlow({
       }
     }
     return localDraft;
+  }
+
+  function failImageItemRecognition(item: GarmentIntakeImageItem, message: string) {
+    const imageToProcess = item.croppedImageDataUrl ?? item.displayDataUrl ?? item.originalDataUrl;
+    const failedDraft = buildFailedRecognitionDraft({
+      id: item.draft?.id,
+      imageDataUrl: item.originalDataUrl,
+      croppedImageDataUrl: imageToProcess,
+      cropBox: item.cropBox,
+      thumbnailDataUrl: item.thumbnailDataUrl,
+      transparentImageDataUrl: item.draft?.transparentImageDataUrl,
+      locationId: defaultLocationId,
+    });
+    setImageItems((prev) =>
+      setGarmentIntakeImageRecognitionFailure(prev, item.id, failedDraft, message),
+    );
   }
 
   // v1.1.31 commit2: 确认信息阶段重新识别当前件。

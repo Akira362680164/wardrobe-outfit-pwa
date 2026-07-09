@@ -31,6 +31,12 @@ const request: OnlineWriteRequester = async <T>(path: string, options = {}) => {
     return { status: "committed", entities: [entity(firstId), entity(secondId)] } as WorkspaceCommandResponse as T;
   }
   if (path.endsWith(`/garments/${secondId}`)) throw new Error("read-back failed");
+  if (path.endsWith("/wishlist/batch")) {
+    return { status: "committed", entities: [entity(firstId)] } as WorkspaceCommandResponse as T;
+  }
+  if (path.endsWith(`/wishlist/${firstId}`)) {
+    return { data: { ...entity(firstId), payload: { legacyWishlistId: "wishlist-1" } } } as WorkspaceDetailResponse as T;
+  }
   if (path.endsWith("/assets/sessions") && options.method === "POST") {
     const body = options.body as { clientMutationId: string; slots: Array<Record<string, unknown>> };
     return {
@@ -91,6 +97,14 @@ const batch = await repository.createBatch("garments", {
 assert.deepEqual(batch.map((item) => item.status), ["succeeded", "failed"], "batch returns one status per item");
 assert.equal(batch[0].entity?.revision, 2);
 assert.match(batch[1].error ?? "", /read-back failed/);
+
+const wishlistBatch = await repository.createBatch("wishlist", {
+  items: [
+    { clientMutationId: "ffffffff-ffff-4fff-8fff-ffffffffffff", payload: {}, assetMutations: [] },
+  ],
+});
+assert.deepEqual(wishlistBatch.map((item) => item.status), ["succeeded"], "wishlist batch uses the same read-back path");
+assert.equal(wishlistBatch[0].entity?.payload.legacyWishlistId, "wishlist-1");
 
 const uploaded = await repository.uploadAssetInputs({
   clientMutationId: "eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee",

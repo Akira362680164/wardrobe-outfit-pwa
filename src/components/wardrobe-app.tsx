@@ -48,7 +48,7 @@ import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } fr
 import { createPortal } from "react-dom";
 import { OutfitListView } from "@/components/outfit-list-view";
 import { GarmentDetail30 } from "@/components/garment-detail-3.0";
-import { GarmentIntakeFlow, type IntakeBatchSaveResult, type IntakeSaveBatchContext } from "@/components/garment-intake-flow";
+import { GarmentIntakeFlow, type GarmentImageBatchProcessingInput, type GarmentImageBatchProcessingResult, type IntakeBatchSaveResult, type IntakeSaveBatchContext } from "@/components/garment-intake-flow";
 import { OutfitCover } from "@/components/outfit-cover";
 import { WishlistView20 } from "@/components/wishlist-view-2.0";
 import { WearStatisticsView } from "@/components/wear-statistics-view";
@@ -118,7 +118,7 @@ import {
  validateMiniMaxKey,
  type DeviceMiniMaxSettings,
 } from "@/lib/device-minimax";
-import { recognizeGarmentOnServer } from "@/lib/online/online-ai-intake-client";
+import { recognizeGarmentOnServer, recognizeGarmentsBatchOnServer } from "@/lib/online/online-ai-intake-client";
 import { diagnoseWardrobeOnServer, generateGarmentStyleAdviceOnServer } from "@/lib/online/online-ai-enhancement-client";
 import { ImageCropEditor } from "@/components/image-crop-editor";
 import { createTemporaryCroppedImage, dataUrlToFile, fileToAiRequestDataUrl, fileToCompressedDataUrl, fileToOriginalDataUrl, isHeicFile, type NormalizedCropBox } from "@/lib/image";
@@ -720,6 +720,60 @@ export function WardrobeApp({ cloudAuth }: { cloudAuth?: WardrobeCloudAuth } = {
     };
   }
 
+  async function processGarmentIntakeImages(inputs: GarmentImageBatchProcessingInput[]): Promise<GarmentImageBatchProcessingResult[]> {
+    const prepared = await Promise.all(inputs.map(async (input) => {
+      try {
+        const fileName = input.fileName ?? "garment.jpg";
+        const aiInputImage = await createTemporaryCroppedImage({ originalImage: input.imageDataUrl, cropBox: input.cropBox });
+        const file = await dataUrlToFile(aiInputImage, fileName).catch(() => null);
+        const aiRequestDataUrl = file ? await fileToAiRequestDataUrl(file).catch(() => aiInputImage) : aiInputImage;
+        return {
+          kind: "ready" as const,
+          imageItemId: input.imageItemId,
+          aiRequestDataUrl,
+          originalDataUrl: input.sourceImageDataUrl ?? input.imageDataUrl,
+          fileName,
+        };
+      } catch (error) {
+        return {
+          kind: "failed" as const,
+          imageItemId: input.imageItemId,
+          error: error instanceof Error && error.message ? error.message : "图片处理失败，请重试",
+        };
+      }
+    }));
+    const ready = prepared.filter((item): item is Extract<typeof item, { kind: "ready" }> => item.kind === "ready");
+    const failed: GarmentImageBatchProcessingResult[] = prepared
+      .filter((item): item is Extract<typeof item, { kind: "failed" }> => item.kind === "failed")
+      .map((item) => ({ imageItemId: item.imageItemId, error: item.error }));
+    const recognized = ready.length > 0
+      ? await withKeepAwake(() => recognizeGarmentsBatchOnServer({
+          items: ready.map((item) => ({
+            imageItemId: item.imageItemId,
+            aiRequestDataUrl: item.aiRequestDataUrl,
+            originalDataUrl: item.originalDataUrl,
+            fileName: item.fileName,
+          })),
+          settings: miniMaxSettings,
+        }))
+      : [];
+    const byId = new Map<string, GarmentImageBatchProcessingResult>(
+      [...failed, ...recognized.map((item): GarmentImageBatchProcessingResult => {
+        if (!item.result) return { imageItemId: item.imageItemId, error: item.error ?? "识别失败，请重试" };
+        return {
+          imageItemId: item.imageItemId,
+          result: {
+            transparentBackgroundStatus: "skipped",
+            qualityWarnings: [],
+            aiTag: item.result.tag,
+            aiSourceImageDataUrl: item.result.sourceImageDataUrl,
+          },
+        };
+      })].map((item) => [item.imageItemId, item]),
+    );
+    return inputs.map((input) => byId.get(input.imageItemId) ?? { imageItemId: input.imageItemId, error: "识别失败，请重试" });
+  }
+
   async function saveBatchGarmentIntakeDrafts(drafts: GarmentIntakeDraft[], context?: IntakeSaveBatchContext): Promise<IntakeBatchSaveResult | void> {
     if (drafts.length === 0) {
       showMessage("没有可保存的单品", "info");
@@ -1039,6 +1093,7 @@ export function WardrobeApp({ cloudAuth }: { cloudAuth?: WardrobeCloudAuth } = {
                 // 裁切确认后 GarmentIntakeFlow 会调 onProcessImage,
                 // 这里调 MiniMax 单件属性识别, 失败 throw 由 flow catch 处理。
                 onProcessImage={processGarmentIntakeImage}
+                onProcessImages={processGarmentIntakeImages}
                 onSaveBatch={(drafts, context) => saveBatchGarmentIntakeDrafts(drafts, context)}
                 onExit={() => {
                   setShowGarmentIntakeFlow(false);
@@ -1091,6 +1146,7 @@ export function WardrobeApp({ cloudAuth }: { cloudAuth?: WardrobeCloudAuth } = {
               onCreateClosed={closeCreateFlow}
               onPickIntakeImages={pickGarmentIntakeImages}
               onProcessIntakeImage={processGarmentIntakeImage}
+              onProcessIntakeImages={processGarmentIntakeImages}
               onSubPageChange={setShoppingSubPageActive}
               onNavigateToItem={async (itemId) => {
                 await refreshState();

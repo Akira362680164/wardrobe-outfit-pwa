@@ -26,10 +26,12 @@ assert.ok(intakeThumbnail.includes("ensureGarmentIntakeDraftThumbnail"), "shared
 assert.ok(intakeThumbnail.includes("ensureLocalImageThumbnail"), "shared local image thumbnail helper exists");
 assert.ok(wardrobeApp.includes("ensureGarmentIntakeDraftThumbnail(draft)"), "garment intake save uses shared thumbnail helper");
 assert.ok(wishlistView.includes("ensureGarmentIntakeDraftThumbnail(draft)"), "wishlist intake save uses shared thumbnail helper");
+assert.ok(wishlistView.includes("createWishlistItemsBatch"), "wishlist intake save uses repository batch create");
 assert.ok(wishlistView.includes("ensureLocalImageThumbnail(base)"), "wishlist add/edit form backfills thumbnails before online write");
 assert.ok(!wishlistView.includes("generateThumbnailSafe(thumbnailSource)"), "wishlist intake no longer has a separate thumbnail backfill patch");
 assert.ok(!wishlistView.includes("WishlistItemDraft"), "wishlist add_edit form no longer keeps an unreachable create branch");
 assert.ok(wardrobeApp.includes("onProcessIntakeImage={processGarmentIntakeImage}"));
+assert.ok(wardrobeApp.includes("onProcessIntakeImages={processGarmentIntakeImages}"));
 assert.ok(!/price:\s*overrideIfPresent/.test(wardrobeApp));
 assert.ok(!/disabled=\{isProcessing\}/.test(shell));
 assert.ok(shell.includes("退出后会丢失本次录入进度"));

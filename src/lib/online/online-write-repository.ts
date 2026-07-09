@@ -94,7 +94,7 @@ export function createOnlineWriteRepository(request: OnlineWriteRequester = onli
   }
 
   async function createBatch(
-    resource: "garments",
+    resource: "garments" | "wishlist",
     command: WorkspaceBatchCreateCommand,
   ): Promise<OnlineBatchItemResult[]> {
     try {
@@ -106,7 +106,7 @@ export function createOnlineWriteRepository(request: OnlineWriteRequester = onli
       const entities = response.entities ?? [];
       return Promise.all(command.items.map(async (item, index) => {
         const entity = entities[index];
-        if (!entity) return { clientMutationId: item.clientMutationId, status: "failed", error: "服务器未返回该单品" };
+        if (!entity) return { clientMutationId: item.clientMutationId, status: "failed", error: "服务器未返回该条数据" };
         try {
           return {
             clientMutationId: item.clientMutationId,
