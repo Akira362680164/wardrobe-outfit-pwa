@@ -1,4 +1,11 @@
 import { getSession, isLoggedIn } from "../stores/session";
+import {
+  MINI_CATEGORY_LABELS,
+  MINI_COLOR_SWATCHES,
+  MINI_GARMENT_STATUS_LABELS,
+  MINI_SEASON_LABELS,
+  MINI_WISHLIST_STATUS_LABELS,
+} from "../generated/catalogs";
 import { downloadAssetImage, type AssetMutation, type AssetRef } from "./assets";
 import { request } from "./http";
 
@@ -42,6 +49,7 @@ export interface MiniGarment {
   legacyItemId: number;
   name: string;
   category: string;
+  subcategory?: string;
   categoryLabel: string;
   colorText: string;
   colorNames: string[];
@@ -107,6 +115,7 @@ export interface CreateGarmentInput {
   clientMutationId: string;
   name: string;
   category: string;
+  subcategory?: string;
   color: string;
   season: string;
   note?: string;
@@ -128,6 +137,7 @@ export interface CreateWishlistInput {
   clientMutationId?: string;
   name: string;
   category?: string;
+  subcategory?: string;
   colors?: Record<string, unknown>;
   seasons?: string[];
   styles?: string[];
@@ -144,6 +154,7 @@ export interface UpdateGarmentInput {
   currentPayload: Record<string, unknown>;
   name: string;
   category: string;
+  subcategory?: string;
   colors: Record<string, unknown>;
   seasons: string[];
   styles?: string[];
@@ -154,60 +165,11 @@ export interface UpdateGarmentInput {
 type CatalogItemPayloadInput = {
   name: string;
   category?: string;
+  subcategory?: string;
   colors?: Record<string, unknown>;
   seasons?: string[];
   styles?: string[];
   notes?: string;
-};
-
-const CATEGORY_LABELS: Record<string, string> = {
-  outerwear: "外套",
-  tops: "上装",
-  pants: "裤装",
-  skirts: "半裙",
-  one_piece: "连衣装",
-  shoes: "鞋履",
-  bags: "包袋",
-  hats: "帽子",
-  jewelry: "首饰",
-  accessories: "配饰",
-};
-
-const SEASON_LABELS: Record<string, string> = {
-  spring: "春",
-  summer: "夏",
-  autumn: "秋",
-  winter: "冬",
-  all: "四季",
-};
-
-const COLOR_SWATCHES: Record<string, { bg: string; border?: string }> = {
-  "黑": { bg: "#1D2228" },
-  "白": { bg: "#F8FAFC", border: "rgba(29,34,40,0.26)" },
-  "灰": { bg: "#9CA3AF" },
-  "米白": { bg: "#F3EEE3", border: "rgba(29,34,40,0.18)" },
-  "米": { bg: "#E6D5B8", border: "rgba(29,34,40,0.16)" },
-  "卡其": { bg: "#B7A477" },
-  "棕": { bg: "#87583E" },
-  "蓝": { bg: "#355C7D" },
-  "牛仔蓝": { bg: "#3F6F9F" },
-  "绿": { bg: "#5F7058" },
-  "红": { bg: "#B84A45" },
-  "粉": { bg: "#E8A7B8" },
-  "深灰": { bg: "#4B5563" },
-  "杏": { bg: "#E6C5A5", border: "rgba(29,34,40,0.14)" },
-  "驼": { bg: "#B8845F" },
-  "咖啡": { bg: "#5F4032" },
-  "酒红": { bg: "#7B2E3A" },
-  "橙": { bg: "#D9823B" },
-  "黄": { bg: "#E3B64B", border: "rgba(29,34,40,0.12)" },
-  "天蓝": { bg: "#83B6D9" },
-  "藏青": { bg: "#243B5A" },
-  "橄榄绿": { bg: "#777B48" },
-  "墨绿": { bg: "#315B4B" },
-  "紫": { bg: "#8C4A86" },
-  "金": { bg: "#C6A15B", border: "rgba(29,34,40,0.12)" },
-  "银": { bg: "#B8C0C8", border: "rgba(29,34,40,0.16)" },
 };
 
 export function getWorkspaceReadState(): WorkspaceReadState {
@@ -293,6 +255,7 @@ export async function createGarment(input: CreateGarmentInput): Promise<Workspac
         ...buildCatalogItemPayload({
           name: input.name,
           category: input.category,
+          subcategory: input.subcategory,
           colors: input.colors ?? { mode: "single", primary: input.color },
           seasons: input.seasons ?? (input.season ? [input.season] : []),
           styles: input.styles,
@@ -344,6 +307,7 @@ export async function createWishlistItem(input: CreateWishlistInput): Promise<Wo
         ...buildCatalogItemPayload({
           name: input.name,
           category: input.category || "tops",
+          subcategory: input.subcategory,
           colors: input.colors ?? { mode: "single", primary: "未标注" },
           seasons: input.seasons ?? [],
           styles: input.styles,
@@ -372,6 +336,7 @@ export async function updateGarment(input: UpdateGarmentInput): Promise<Workspac
         ...input.currentPayload,
         name: input.name,
         category: input.category,
+        subcategory: input.subcategory,
         colors: input.colors,
         seasons: input.seasons,
         styles: input.styles ?? [],
@@ -399,6 +364,7 @@ function buildCatalogItemPayload(input: CatalogItemPayloadInput): Record<string,
   return {
     name: input.name,
     category: input.category || "tops",
+    subcategory: input.subcategory || undefined,
     colors: input.colors ?? { mode: "single", primary: "未标注" },
     seasons: input.seasons ?? [],
     styles: input.styles ?? [],
@@ -448,7 +414,8 @@ async function toMiniGarment(entity: WorkspaceEntity): Promise<MiniGarment> {
     legacyItemId: numberValue(payload.legacyItemId) ?? numericId(entity.id),
     name: stringValue(payload.name, "未命名单品"),
     category,
-    categoryLabel: CATEGORY_LABELS[category] ?? "未分类",
+    subcategory: typeof payload.subcategory === "string" ? payload.subcategory : undefined,
+    categoryLabel: MINI_CATEGORY_LABELS[category] ?? (category === "unknown" ? "未分类" : category),
     colorText: formatColors(payload.colors),
     colorNames,
     cardColors: colorNames.map(toCardColor),
@@ -490,9 +457,9 @@ async function toMiniWishlistItem(entity: WorkspaceEntity): Promise<MiniWishlist
     id: entity.id,
     revision: entity.revision,
     name: stringValue(payload.name, "未命名种草"),
-    categoryLabel: CATEGORY_LABELS[category] ?? "未分类",
+    categoryLabel: MINI_CATEGORY_LABELS[category] ?? (category === "unknown" ? "未分类" : category),
     priceText: typeof payload.price === "number" && Number.isFinite(payload.price) ? `¥${payload.price}` : "未记录价格",
-    statusText: wishlistStatusText(payload.status),
+    statusText: wishlistStatusText(payload.purchased === true ? "purchased" : payload.status),
     imageUrl: await resolveImageUrl(entity, "imageDataUrl", payload),
     updatedAt: entity.updatedAt,
   };
@@ -558,7 +525,7 @@ function formatColors(value: unknown): string {
 
 function formatSeasons(value: unknown): string {
   if (!Array.isArray(value)) return "未标注";
-  return value.filter(isNonEmptyString).map((season) => SEASON_LABELS[season] ?? season).slice(0, 4).join(" / ") || "未标注";
+  return value.filter(isNonEmptyString).map((season) => MINI_SEASON_LABELS[season] ?? season).slice(0, 4).join(" / ") || "未标注";
 }
 
 function isNonEmptyString(value: unknown): value is string {
@@ -577,7 +544,7 @@ function colorList(value: unknown): string[] {
 
 function toCardColor(name: string): { name: string; swatch: string; needsBorder: boolean } {
   const normalized = name.endsWith("色") ? name.slice(0, -1) : name;
-  const swatch = COLOR_SWATCHES[name] ?? COLOR_SWATCHES[normalized];
+  const swatch = MINI_COLOR_SWATCHES[name] ?? MINI_COLOR_SWATCHES[normalized];
   return {
     name,
     swatch: swatch?.bg ?? "#9CA3AF",
@@ -595,10 +562,8 @@ function formatWearSummary(value: unknown): string {
 }
 
 function garmentStatusText(value: unknown): string {
-  if (value === "inactive") return "暂不穿";
-  if (value === "archived") return "已归档";
-  if (value === "laundry") return "清洗中";
-  return "可穿";
+  const status = value === "inactive" ? "archived" : typeof value === "string" ? value : "active";
+  return MINI_GARMENT_STATUS_LABELS[status] ?? MINI_GARMENT_STATUS_LABELS.active ?? status;
 }
 
 function locationText(value: unknown): string {
@@ -622,10 +587,8 @@ function temperatureText(value: unknown): string {
 }
 
 function wishlistStatusText(value: unknown): string {
-  if (value === "purchased") return "已购买";
-  if (value === "rejected") return "已放弃";
-  if (value === "archived") return "已归档";
-  return "想买";
+  const status = typeof value === "string" ? value : "interested";
+  return MINI_WISHLIST_STATUS_LABELS[status] ?? MINI_WISHLIST_STATUS_LABELS.interested ?? status;
 }
 
 export function createClientMutationId(): string {

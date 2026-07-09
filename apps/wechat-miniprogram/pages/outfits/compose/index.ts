@@ -47,6 +47,7 @@ Page({
           id: item.legacyItemId,
           name: item.name,
           category: item.category,
+          subcategory: item.subcategory,
           colors: { mode: "single", primary: item.colorText || "未标注" },
           seasons: item.seasonText ? [item.seasonText] : [],
           styles: [],

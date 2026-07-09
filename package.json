@@ -30,6 +30,8 @@
     "diagnosis:inspect": "tsx scripts/diagnosis-inspect.ts",
     "docs:ui-spec:build": "node scripts/generate-ui-spec-preview.mjs",
     "docs:ui-spec:check": "node scripts/generate-ui-spec-preview.mjs --check",
+    "catalog:miniprogram:generate": "npm run build --workspace @wardrobe/domain-catalog && node scripts/generate-miniprogram-catalogs.mjs",
+    "catalog:miniprogram:check": "npm run build --workspace @wardrobe/domain-catalog && node scripts/generate-miniprogram-catalogs.mjs --check",
     "test:logic:domain-catalog": "tsx scripts/test-domain-catalog.ts",
     "v03-alpha:capture": "tsx scripts/capture-v03-alpha-screenshots.ts",
     "v03-alpha:build": "node scripts/generate-v03-alpha-visual-review.mjs",

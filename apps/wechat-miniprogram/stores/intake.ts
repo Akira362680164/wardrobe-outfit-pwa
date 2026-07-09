@@ -2,6 +2,7 @@ export interface IntakeDraft {
   imagePath: string;
   name: string;
   category: string;
+  subcategory?: string;
   color: string;
   season: string;
   note: string;

@@ -1,23 +1,11 @@
 import { aiEnhance, hasMiniMaxKey } from "../../../services/ai";
+import { MINI_CATEGORY_LABELS } from "../../../generated/catalogs";
 import { fetchGarments, fetchOutfits, getWorkspaceReadState, type MiniGarment } from "../../../services/workspace";
 
 type CategoryChip = {
   key: string;
   label: string;
   count: number;
-};
-
-const CATEGORY_LABELS: Record<string, string> = {
-  outerwear: "外套",
-  tops: "上衣",
-  pants: "裤子",
-  skirts: "半裙",
-  one_piece: "连体",
-  shoes: "鞋",
-  bags: "包",
-  hats: "帽子",
-  jewelry: "首饰",
-  accessories: "配饰",
 };
 
 Page({
@@ -209,7 +197,7 @@ function buildCategoryChips(garments: MiniGarment[]): CategoryChip[] {
   return Array.from(counts.entries()).map(([key, count]) => ({
     key,
     count,
-    label: CATEGORY_LABELS[key] ?? garments.find((garment) => garment.category === key)?.categoryLabel ?? "未分类",
+    label: MINI_CATEGORY_LABELS[key] ?? garments.find((garment) => garment.category === key)?.categoryLabel ?? key,
   }));
 }
 

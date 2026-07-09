@@ -52,6 +52,7 @@ Page({
         currentPayload: item.rawPayload,
         name: tag.candidateNames[0] ?? item.name,
         category: tag.category,
+        subcategory: tag.subcategory,
         colors: tag.colors as unknown as Record<string, unknown>,
         seasons: tag.seasons,
         styles: tag.styles,

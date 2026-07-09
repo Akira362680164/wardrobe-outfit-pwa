@@ -39,6 +39,13 @@
         <view wx:for="{{categories}}" wx:key="value" data-value="{{item.value}}" class="chip {{draft.category === item.value ? 'chip-active' : ''}}" bindtap="chooseCategory">{{item.label}}</view>
       </view>
 
+      <block wx:if="{{subcategories.length > 0}}">
+        <view class="field-label">细分类</view>
+        <view class="chip-row">
+          <view wx:for="{{subcategories}}" wx:key="value" data-value="{{item.value}}" class="chip {{draft.subcategory === item.value ? 'chip-active' : ''}}" bindtap="chooseSubcategory">{{item.label}}</view>
+        </view>
+      </block>
+
       <view class="field-label">颜色</view>
       <input class="field-input" value="{{draft.color}}" placeholder="例如 白色" bindinput="updateColor" />
 

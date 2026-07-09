@@ -1,33 +1,29 @@
 import { uploadImageForCreate } from "../../../services/assets";
+import { MINI_CATEGORY_CATALOG, MINI_SEASON_CATALOG } from "../../../generated/catalogs";
 import { createClientMutationId, createGarment, fetchGarmentDetail } from "../../../services/workspace";
 import { clearIntakeDraft, getIntakeDraft, setIntakeDraft, setLastCreatedGarmentId, type IntakeDraft } from "../../../stores/intake";
+
+const intakeCategories = MINI_CATEGORY_CATALOG.map((category) => ({ value: category.id, label: category.label }));
+
+function subcategoriesFor(categoryId: string) {
+  return MINI_CATEGORY_CATALOG.find((category) => category.id === categoryId)?.subcategories
+    .map((subcategory) => ({ value: subcategory.id, label: subcategory.label })) ?? [];
+}
 
 Page({
   data: {
     draft: null as IntakeDraft | null,
     saving: false,
     error: "",
-    categories: [
-      { value: "tops", label: "上装" },
-      { value: "pants", label: "裤装" },
-      { value: "skirts", label: "半裙" },
-      { value: "one_piece", label: "连衣装" },
-      { value: "shoes", label: "鞋履" },
-      { value: "bags", label: "包袋" },
-      { value: "accessories", label: "配饰" },
-    ],
-    seasons: [
-      { value: "all", label: "四季" },
-      { value: "spring", label: "春" },
-      { value: "summer", label: "夏" },
-      { value: "autumn", label: "秋" },
-      { value: "winter", label: "冬" },
-    ],
+    categories: intakeCategories,
+    subcategories: [] as Array<{ value: string; label: string }>,
+    seasons: MINI_SEASON_CATALOG,
   },
 
   onLoad() {
     wx.setNavigationBarTitle({ title: "识别确认" });
-    this.setData({ draft: getIntakeDraft() });
+    const draft = getIntakeDraft();
+    this.setData({ draft, subcategories: subcategoriesFor(draft?.category ?? "") });
   },
 
   goBack() {
@@ -47,7 +43,13 @@ Page({
   },
 
   chooseCategory(this: any, event: any) {
-    this.patchDraft({ category: event.currentTarget.dataset.value });
+    const category = String(event.currentTarget.dataset.value || "tops");
+    this.patchDraft({ category, subcategory: undefined });
+    this.setData({ subcategories: subcategoriesFor(category) });
+  },
+
+  chooseSubcategory(this: any, event: any) {
+    this.patchDraft({ subcategory: String(event.currentTarget.dataset.value || "") || undefined });
   },
 
   chooseSeason(this: any, event: any) {
@@ -83,6 +85,7 @@ Page({
         clientMutationId,
         name: draft.name.trim(),
         category: draft.category,
+        subcategory: draft.subcategory,
         color: draft.color.trim() || "未标注",
         season: draft.season,
         note: draft.note.trim(),

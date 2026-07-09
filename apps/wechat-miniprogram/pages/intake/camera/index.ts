@@ -59,6 +59,7 @@ Page({
         imagePath,
         name: tag.candidateNames[0] ?? "",
         category: tag.category,
+        subcategory: tag.subcategory,
         color: colorLabel(tag.colors),
         season: tag.seasons[0] ?? "all",
         note: tag.notes ?? "",

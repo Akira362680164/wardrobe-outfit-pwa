@@ -97,6 +97,7 @@ Page({
         clientMutationId,
         name,
         category: this.data.category,
+        subcategory: this.data.aiTag?.subcategory,
         colors: this.data.aiTag?.colors as unknown as Record<string, unknown> | undefined,
         seasons: this.data.aiTag?.seasons,
         styles: this.data.aiTag?.styles,

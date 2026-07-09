@@ -1,3 +1,14 @@
+## 2026-07-10 / v2.1.11-test / Codex — 微信小程序接入生成领域字典
+
+- **执行 Agent**：Codex（未触发 subagent：用户未通知）。
+- **目的**：让微信小程序从共享包生成平台可直接消费的领域常量，移除分类、季节、颜色和状态的局部硬编码，并补齐二级分类保存链路。
+- **版本变更**：无；当前应用版本仍为 `2.1.11-test`。本批次不上传小程序体验版、不打 APK。
+- **改动文件**：`scripts/generate-miniprogram-catalogs.mjs`、`apps/wechat-miniprogram/generated/catalogs.ts`、`apps/wechat-miniprogram/{tsconfig.json,services/{workspace,ai}.ts,stores/intake.ts,pages/intake/{camera,review}/**,pages/wardrobe/{index,detail}/index.ts,pages/wishlist/edit/index.ts,pages/outfits/compose/index.ts}`、`package.json`、`VERSION_HISTORY.md`。
+- **改动说明**：新增可生成/校验小程序目录的脚本；生成颜色、一级/二级分类、季节、风格和状态常量；录入确认页改为完整 9 类并按一级分类显示二级分类；`subcategory` 从 AI 识别、录入草稿、创建/更新、种草和套装元数据请求完整透传；衣橱列表和 workspace 展示统一读取生成 label、色卡与状态表。
+- **验证结果**：`npm run catalog:miniprogram:generate` 通过；`npm run catalog:miniprogram:check` 通过；`npm --prefix apps/wechat-miniprogram run typecheck` 通过；小程序源码扫描确认不再命中“上装/连衣装/鞋履”、局部 `const CATEGORY_LABELS`、局部 `const COLOR_SWATCHES`；`git diff --check` 通过。
+- **风险门禁**：high（小程序录入字段、云端写入 payload 和跨端共享目录变化）；未触发 subagent：用户未通知。
+- **未验证风险**：尚未运行微信开发者工具编译、模拟器交互或真机预览；完整仓库测试和 build 留待最终批次。
+
 ## 2026-07-10 / v2.1.11-test / Codex — App、云契约与服务端接入共享领域字典
 
 - **执行 Agent**：Codex（未触发 subagent：用户未通知）。
