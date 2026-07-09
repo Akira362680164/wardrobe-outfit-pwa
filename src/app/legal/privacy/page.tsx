@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { LegalDocumentView, type LegalSection } from "@/components/auth/legal-document-view";
 
-const LAST_UPDATED = "2026-07-01";
+const LAST_UPDATED = "2026-07-09";
 const APP_NAME = "衣橱穿搭助手";
 
 export const metadata: Metadata = {
@@ -14,7 +14,7 @@ const SECTIONS: LegalSection[] = [
     title: "1. 我们处理的数据",
     children: (
       <>
-        <p><strong>账号数据：</strong>手机号登录标识（规范化保存）、密码 Argon2id 哈希、设备会话信息。新注册手机号当前不经过短信归属核验。</p>
+        <p><strong>账号数据：</strong>邮箱登录标识、邮箱验证状态、选填手机号登录名、密码 Argon2id 哈希、设备会话信息。选填手机号当前不经过短信归属核验。</p>
         <p><strong>云端工作区数据：</strong>衣物、套装、心愿单、穿着记录、行程计划和相关同步数据。</p>
         <p><strong>图片数据：</strong>用户主动提交时会上传原图、缩略图和必要的图片元数据。</p>
         <p><strong>AI Key：</strong>MiniMax Key 保存在本机 localStorage；仅在用户主动发起 AI 功能时，经 HTTPS 临时发送给 wardrobe API 代为调用 MiniMax，服务器不保存、不写日志。</p>
@@ -26,7 +26,7 @@ const SECTIONS: LegalSection[] = [
     title: "2. 数据用途",
     children: (
       <p>
-        账号数据用于身份认证与多设备会话管理。衣橱结构化数据用于跨设备同步与穿搭推荐。
+        账号数据用于身份认证、验证码校验与多设备会话管理。衣橱结构化数据用于跨设备同步与穿搭推荐。
         图片数据用于在设备间同步衣物视觉信息。安全事件用于限流、防滥用和安全审计。
       </p>
     ),
@@ -45,7 +45,7 @@ const SECTIONS: LegalSection[] = [
     title: "4. 数据安全",
     children: (
       <>
-        <p>密码使用 Argon2id 哈希后写入数据库，不可逆。Token 使用短期 Access + 可撤销 Refresh 机制。</p>
+        <p>密码使用 Argon2id 哈希后写入数据库，不可逆。邮箱验证码只保存哈希、状态和有效期。Token 使用短期 Access + 可撤销 Refresh 机制。</p>
         <p>图片通过需要账号和设备认证的 wardrobe API 上传和下载；本机安全存储保存认证凭据。</p>
       </>
     ),

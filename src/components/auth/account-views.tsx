@@ -1,8 +1,9 @@
 "use client";
 
-import { useState } from "react";
-import { ChevronLeft, ChevronRight, Loader2, Lock, LogOut, User } from "lucide-react";
-import type { AuthUserSnapshot } from "@/lib/auth-session-store";
+import { useEffect, useState, type ReactNode } from "react";
+import { ChevronLeft, ChevronRight, Loader2, Lock, LogOut, Mail, MessageCircle, Phone, Smartphone, User } from "lucide-react";
+import { getAuthUserDisplayName, type AuthUserSnapshot } from "@/lib/auth-session-store";
+import * as authApi from "@/lib/cloud-auth-api";
 
 export interface WardrobeCloudAuth {
   user: AuthUserSnapshot;
@@ -24,21 +25,79 @@ export function AccountManagementView({
   onChangePassword: () => void;
 }) {
   const [confirmingLogout, setConfirmingLogout] = useState(false);
+  const [security, setSecurity] = useState<authApi.AccountSecurityResponse | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    if (!auth.accessToken) return undefined;
+    authApi.getAccountSecurity(auth.accessToken)
+      .then((result) => {
+        if (!cancelled) {
+          setSecurity(result);
+          setLoadError(null);
+        }
+      })
+      .catch(() => {
+        if (!cancelled) setLoadError("账号安全信息暂时无法刷新");
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [auth.accessToken]);
+
+  const emailMasked = security?.email.masked ?? auth.user.emailMasked;
+  const phoneMasked = security?.phone.masked ?? auth.user.phoneMasked ?? auth.user.maskedPhone;
   return (
     <div className="grid min-w-0 grid-cols-[minmax(0,1fr)] gap-3.5">
-      <SubPageHeader title="账号管理" onBack={onBack} />
+      <SubPageHeader title="账号安全" onBack={onBack} />
       <article className="surface rounded-lg px-4 py-3.5">
         <div className="flex items-start gap-3">
           <div className="grid h-10 w-10 shrink-0 place-items-center rounded-lg bg-denim/10 text-denim">
             <User size={20} aria-hidden="true" />
           </div>
           <div className="min-w-0 flex-1">
-            <h2 className="text-base font-semibold">{auth.user.maskedPhone}</h2>
+            <h2 className="text-base font-semibold">{getAuthUserDisplayName(auth.user)}</h2>
             <p className="mt-1 text-xs text-ink/55">状态：已登录</p>
             <p className="mt-1 truncate text-[11px] text-ink/45">设备：{auth.deviceLabel}</p>
           </div>
         </div>
       </article>
+
+      {loadError ? <p className="rounded-lg bg-clay/10 px-3 py-2 text-sm text-clay">{loadError}</p> : null}
+
+      <section className="grid gap-2">
+        <SecurityRow
+          icon={<Mail size={16} aria-hidden="true" />}
+          title="邮箱"
+          value={emailMasked ?? "未绑定"}
+          note={security?.email.verified ?? auth.user.emailVerified ? "已验证，主认证身份" : "未验证"}
+        />
+        <SecurityRow
+          icon={<Phone size={16} aria-hidden="true" />}
+          title="手机号"
+          value={phoneMasked || "未设置"}
+          note={security?.phone.bound || auth.user.phoneMasked ? "可作为手机号加密码登录名，未标记为已验证" : "可在后续版本绑定为登录名"}
+        />
+        <SecurityRow
+          icon={<MessageCircle size={16} aria-hidden="true" />}
+          title="微信"
+          value={security?.wechat.bound ? "已绑定" : "未绑定"}
+          note={security?.wechat.bound ? "小程序可用微信快捷登录" : "首次小程序微信登录时可绑定此账号"}
+        />
+        <SecurityRow
+          icon={<Lock size={16} aria-hidden="true" />}
+          title="密码"
+          value={security?.password.set === false ? "未设置" : "已设置"}
+          note={security?.password.changedAt ? `最近更新 ${formatDate(security.password.changedAt)}` : "用于邮箱/手机号密码登录"}
+        />
+        <SecurityRow
+          icon={<Smartphone size={16} aria-hidden="true" />}
+          title="当前设备"
+          value={auth.deviceLabel}
+          note="本设备使用独立 token，会话可单独退出"
+        />
+      </section>
 
       <div className="grid gap-2">
         <button
@@ -74,6 +133,41 @@ export function AccountManagementView({
       </div>
     </div>
   );
+}
+
+function SecurityRow({
+  icon,
+  title,
+  value,
+  note,
+}: {
+  icon: ReactNode;
+  title: string;
+  value: string;
+  note: string;
+}) {
+  return (
+    <article className="rounded-lg border border-ink/10 bg-white px-4 py-3">
+      <div className="flex items-start gap-3">
+        <div className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-mist text-denim">
+          {icon}
+        </div>
+        <div className="min-w-0 flex-1">
+          <div className="flex items-start justify-between gap-3">
+            <h2 className="text-sm font-semibold text-ink">{title}</h2>
+            <p className="min-w-0 truncate text-right text-sm font-semibold text-ink/75">{value}</p>
+          </div>
+          <p className="mt-1 text-xs leading-relaxed text-ink/50">{note}</p>
+        </div>
+      </div>
+    </article>
+  );
+}
+
+function formatDate(value: string): string {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "未知时间";
+  return `${date.getFullYear()}/${date.getMonth() + 1}/${date.getDate()}`;
 }
 
 export function ChangePasswordView({

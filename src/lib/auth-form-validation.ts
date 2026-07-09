@@ -1,4 +1,4 @@
-// ponytail: shared validation, one regex for phone across login/register
+// ponytail: shared auth validation kept small enough to read at call sites
 
 export function isValidAuthPhone(phone: string): boolean {
   const compact = phone.trim().replace(/[\s().-]/g, "");
@@ -12,6 +12,16 @@ export function isValidAuthPhone(phone: string): boolean {
   return /^\+[1-9]\d{7,14}$/.test(compact);
 }
 
+export function isValidAuthEmail(email: string): boolean {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim());
+}
+
+export function isValidLoginAccount(account: string): boolean {
+  const value = account.trim();
+  if (!value) return false;
+  return value.includes("@") ? isValidAuthEmail(value) : isValidAuthPhone(value);
+}
+
 export function validatePassword(password: string): string | null {
   if (password.length < 8) return "密码至少需要 8 位";
   if (password.length > 256) return "密码不能超过 256 位";
@@ -19,26 +29,31 @@ export function validatePassword(password: string): string | null {
 }
 
 export interface LoginFormState {
-  phone: string;
+  account: string;
   password: string;
 }
 
 export interface RegisterFormState {
-  phone: string;
+  email: string;
+  emailCode: string;
   password: string;
   confirmPassword: string;
+  phone: string;
   accepted: boolean;
 }
 
 export function isLoginFormValid(state: LoginFormState): boolean {
-  return isValidAuthPhone(state.phone) && validatePassword(state.password) === null;
+  return isValidLoginAccount(state.account) && validatePassword(state.password) === null;
 }
 
 export function isRegisterFormValid(state: RegisterFormState): boolean {
+  const phone = state.phone.trim();
   return (
-    isValidAuthPhone(state.phone) &&
+    isValidAuthEmail(state.email) &&
+    /^\d{6}$/.test(state.emailCode.trim()) &&
     validatePassword(state.password) === null &&
     state.password === state.confirmPassword &&
+    (!phone || isValidAuthPhone(phone)) &&
     state.accepted
   );
 }

@@ -25,11 +25,28 @@ export interface AccountMeResponse {
   deviceId: string;
 }
 
+export interface SendEmailCodeResponse {
+  status: "sent";
+  emailMasked: string;
+  cooldownSeconds: number;
+  expiresInSeconds: number;
+}
+
+export interface AccountSecurityResponse {
+  user: { id: string; displayName: string };
+  email: { bound: boolean; masked?: string; verified: boolean };
+  phone: { bound: boolean; masked?: string; verified: boolean; usage: "login_name" };
+  wechat: { bound: boolean; appId?: string };
+  password: { set: boolean; changedAt?: string };
+}
+
 const refreshPromiseMap = new Map<string, Promise<AuthTokenPayload>>();
 
 export async function register(input: {
-  phone: string;
+  email: string;
+  emailCode: string;
   password: string;
+  phone?: string;
   deviceId: string;
   deviceLabel: string;
 }): Promise<AuthTokenPayload> {
@@ -52,12 +69,40 @@ export async function cancelRegistration(input: {
 }
 
 export async function login(input: {
-  phone: string;
+  account: string;
   password: string;
   deviceId: string;
   deviceLabel: string;
 }): Promise<AuthTokenPayload> {
   return requestJson("/api/auth/login", {
+    method: "POST",
+    body: input,
+  });
+}
+
+export function sendEmailCode(input: {
+  email: string;
+  purpose: "register" | "reset_password" | "change_password";
+}): Promise<SendEmailCodeResponse> {
+  return requestJson("/api/auth/email/send-code", {
+    method: "POST",
+    body: input,
+  });
+}
+
+export function requestPasswordReset(email: string): Promise<SendEmailCodeResponse> {
+  return requestJson("/api/auth/password/reset/request", {
+    method: "POST",
+    body: { email },
+  });
+}
+
+export function confirmPasswordReset(input: {
+  email: string;
+  emailCode: string;
+  newPassword: string;
+}): Promise<{ status: "ok" }> {
+  return requestJson("/api/auth/password/reset/confirm", {
     method: "POST",
     body: input,
   });
@@ -100,7 +145,7 @@ export async function changePassword(input: {
   currentPassword: string;
   newPassword: string;
 }): Promise<void> {
-  await requestJson("/api/auth/change-password", {
+  await requestJson("/api/auth/password/change", {
     method: "POST",
     accessToken: input.accessToken,
     body: {
@@ -112,6 +157,13 @@ export async function changePassword(input: {
 
 export async function getAccountMe(accessToken: string): Promise<AccountMeResponse> {
   return requestJson("/api/account/me", {
+    method: "GET",
+    accessToken,
+  });
+}
+
+export async function getAccountSecurity(accessToken: string): Promise<AccountSecurityResponse> {
+  return requestJson("/api/auth/account/security", {
     method: "GET",
     accessToken,
   });

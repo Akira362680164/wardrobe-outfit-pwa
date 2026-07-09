@@ -1,3 +1,14 @@
+## 2026-07-09 / v2.1.11-test / Codex — App 邮箱主认证与账号安全 UI
+
+- **执行 Agent**：Codex（未触发 subagent：用户未通知；本轮继续执行已批准账号体系设计）。
+- **目的**：将 App/PWA 认证界面从手机号注册主流程改为邮箱主认证，补齐邮箱验证码注册、邮箱/手机号登录、找回密码和账号安全页。
+- **版本变更**：无；当前应用版本仍为 `2.1.11-test`。本轮不打 APK。
+- **改动文件**：`src/lib/cloud-auth-api.ts`、`src/lib/auth-session-store.ts`、`src/lib/auth-form-validation.ts`、`src/components/auth/auth-provider.tsx`、`src/components/auth/auth-gate.tsx`、`src/components/auth/account-views.tsx`、`src/components/wardrobe-app.tsx`、`src/app/legal/{terms,privacy}/page.tsx`、`scripts/test-app-email-auth-flow.ts`、`scripts/test-auth-client-shell.ts`、`scripts/test-auth-flow-v2-0-1.ts`、`package.json`、`VERSION_HISTORY.md`。
+- **改动说明**：登录页改为邮箱或手机号 + 密码；注册页改为邮箱必填、密码必填、确认密码必填、手机号选填；邮箱输入框右侧提供发送验证码按钮，点击后弹二次确认，确认后显示验证码输入框并进入 30 秒倒计时，结束后显示再次发送；新增找回密码页，邮箱验证码确认后重置密码；账号安全页改为加载 `/api/auth/account/security`，统一展示邮箱、手机号登录名、微信、密码和当前设备状态；法律文案同步“邮箱主认证、手机号仅登录名且未验证”的口径。
+- **验证结果**：`npm run typecheck` 通过；`npm run test:logic:app-email-auth-flow` 通过；`npm run test:logic:auth-client-shell` 通过（49 项）；`npm run test:logic:auth-flow-v2-0-1` 通过（42 项）；`npm run build` 以 `2.1.11-test` 通过；用户可见文案扫描确认旧“手机号注册为主”口径无残留；`git diff --check` 通过。
+- **风险门禁**：high（App 登录/注册/找回密码、认证 token user shape、账号安全页和法律文案变更）；未触发 subagent：用户未通知。
+- **未验证风险**：本提交未安装 Android APK、未在真机上打开输入法验证验证码按钮位置和弹窗安全区、未连接真实邮件服务收取验证码；第一阶段仍使用后端 Mock/Log 邮件 Provider。
+
 ## 2026-07-09 / v2.1.11-test / Codex — 小程序微信 OpenID 与邮箱注册登录 UI
 
 - **执行 Agent**：Codex（未触发 subagent：用户未通知；本轮继续执行已批准账号体系设计）。

@@ -18,7 +18,7 @@ import { probeCloudConnectivity, subscribeNetworkChanges, type ConnectivityState
 export type AuthPhase = "initializing" | "anonymous" | "authenticated" | "blocked";
 
 export interface AuthBlockedState {
-  owner: { maskedPhone: string };
+  owner: { maskedPhone: string; maskedIdentity?: string };
   attemptedUser: AuthUserSnapshot;
 }
 
@@ -32,8 +32,8 @@ interface AuthContextValue {
   isBusy: boolean;
   error: string | null;
   connectivity: ConnectivityState;
-  login: (phone: string, password: string) => Promise<void>;
-  register: (phone: string, password: string) => Promise<void>;
+  login: (account: string, password: string) => Promise<void>;
+  register: (input: { email: string; emailCode: string; password: string; phone?: string }) => Promise<void>;
   refreshSession: () => Promise<AuthSessionSnapshot | null>;
   logout: () => Promise<void>;
   logoutAll: () => Promise<void>;
@@ -162,13 +162,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     };
   }, [setTokenSession, updateConnectivity]);
 
-  const login = useCallback(async (phone: string, password: string) => {
+  const login = useCallback(async (account: string, password: string) => {
     setIsBusy(true);
     setError(null);
     try {
       const current = session ?? await loadAuthSessionSnapshot();
       const tokens = await authApi.login({
-        phone,
+        account,
         password,
         deviceId: current.deviceId,
         deviceLabel: current.deviceLabel,
@@ -184,14 +184,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }, [session, setTokenSession, updateConnectivity]);
 
-  const register = useCallback(async (phone: string, password: string) => {
+  const register = useCallback(async (input: { email: string; emailCode: string; password: string; phone?: string }) => {
     setIsBusy(true);
     setError(null);
     try {
       const current = session ?? await loadAuthSessionSnapshot();
       const tokens = await authApi.register({
-        phone,
-        password,
+        email: input.email,
+        emailCode: input.emailCode,
+        password: input.password,
+        phone: input.phone,
         deviceId: current.deviceId,
         deviceLabel: current.deviceLabel,
       });
@@ -334,9 +336,15 @@ export function useAuth() {
 
 function toUserMessage(error: unknown): string {
   if (error instanceof authApi.CloudAuthApiError) {
-    if (error.code === "invalid_credentials") return "手机号或密码不正确";
+    if (error.code === "invalid_credentials") return "邮箱/手机号或密码不正确";
+    if (error.code === "invalid_account_format") return "请输入正确的邮箱或手机号";
     if (error.code === "rate_limited") return "操作过于频繁，请稍后再试";
-    if (error.code === "phone_already_registered") return "该手机号已注册，请直接登录";
+    if (error.code === "email_already_registered") return "该邮箱已注册，请直接登录";
+    if (error.code === "phone_already_registered") return "该手机号已被其他账号作为登录名使用";
+    if (error.code === "email_code_invalid") return "邮箱验证码不正确";
+    if (error.code === "email_code_expired") return "邮箱验证码已过期，请重新获取";
+    if (error.code === "email_code_attempts_exceeded") return "验证码错误次数过多，请重新获取";
+    if (error.code === "email_rate_limited") return "验证码发送过于频繁，请稍后再试";
     if (error.code === "network_unavailable") return "网络连接失败，请检查网络后重试";
     if (error.code === "service_unavailable") return "账号服务暂时不可用，请稍后重试";
     return "操作失败，请稍后重试";

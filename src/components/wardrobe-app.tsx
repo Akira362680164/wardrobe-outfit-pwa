@@ -75,6 +75,7 @@ import { ensureGarmentIntakeDraftThumbnail, isIntakeThumbnailGenerationError } f
 import { GarmentImage } from "@/components/garment-image";
 import { ConfirmActionSheet, NoticeSheet } from "@/components/dialogs";
 import { OnlineInlineNotice } from "@/components/online/online-inline-notice";
+import { getAuthUserDisplayName } from "@/lib/auth-session-store";
 
 // v1.1.23 six-page design: 共享的 item/ 编辑/详情展示小组件。
 import { ItemField } from "@/components/item/field";
@@ -4217,7 +4218,7 @@ function SettingsView({
               </div>
               <div className="min-w-0">
                 <h2 className="text-base font-semibold">账号服务</h2>
-                <p className="mt-0.5 truncate text-xs text-ink/55">{cloudAuth.user.maskedPhone} · {cloudAuth.deviceLabel}</p>
+                <p className="mt-0.5 truncate text-xs text-ink/55">{getAuthUserDisplayName(cloudAuth.user)} · {cloudAuth.deviceLabel}</p>
                 <p className="mt-1 text-[11px] leading-relaxed text-ink/45">本地数据跟随应用生命周期，卸载重装后从云端账号同步。</p>
               </div>
             </div>
