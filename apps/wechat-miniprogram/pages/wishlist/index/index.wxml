@@ -42,7 +42,7 @@
       <catalog-card
         wx:for="{{filteredItems}}"
         wx:key="id"
-        id="{{item.id}}"
+        item-id="{{item.id}}"
         image-url="{{item.imageUrl}}"
         fallback="{{item.categoryLabel}}"
         title="{{item.name}}"

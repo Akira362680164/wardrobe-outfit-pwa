@@ -2,6 +2,8 @@ import { chooseImages, uploadImagesForCreate, type ChosenImage } from "../../../
 import { createClientMutationId } from "../../../services/workspace";
 import { clearIntakeDraft, getIntakeQueue, setIntakeQueue, updateIntakeQueueItem, type IntakeDraft, type IntakeQueueItem } from "../../../stores/intake";
 
+declare const getCurrentPages: () => unknown[];
+
 const MAX_IMAGES = 10;
 
 Page({
@@ -43,6 +45,7 @@ Page({
     this.setData({ selecting: true, error: "" });
     try {
       const images = await chooseImages(sourceType, remaining);
+      if (!images.length) return;
       const items = images.map(createQueueItem);
       setIntakeQueue([...getIntakeQueue(), ...items].slice(0, MAX_IMAGES));
       this.refreshQueue();
@@ -85,9 +88,14 @@ Page({
     this.setData({ error: "" });
   },
 
+  cancel() {
+    if (getCurrentPages().length > 1) wx.navigateBack({ delta: 1 });
+    else wx.switchTab({ url: "/pages/wardrobe/index/index" });
+  },
+
   goReview() {
     if (!getIntakeQueue().some((item) => item.status === "ready")) {
-      this.setData({ error: "请先等待至少 1 张图片准备完成" });
+      wx.showToast({ title: "请先选择图片", icon: "none" });
       return;
     }
     wx.navigateTo({ url: "/pages/intake/review/index" });

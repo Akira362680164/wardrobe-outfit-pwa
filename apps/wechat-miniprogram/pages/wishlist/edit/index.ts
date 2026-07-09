@@ -1,4 +1,4 @@
-import { chooseSingleImage, uploadImageForCreate } from "../../../services/assets";
+import { ImageSelectionCanceledError, chooseSingleImage, uploadImageForCreate } from "../../../services/assets";
 import { hasMiniMaxKey, recognizeGarmentImage, type AiGarmentTag } from "../../../services/ai";
 import { createClientMutationId, createWishlistItem, getWorkspaceReadState } from "../../../services/workspace";
 
@@ -42,6 +42,7 @@ Page({
       this.setData({ imagePath });
       if (hasMiniMaxKey()) await this.recognizeWishlistImage(imagePath);
     } catch (error) {
+      if (error instanceof ImageSelectionCanceledError) return;
       wx.showToast({ title: error instanceof Error ? error.message : "选择图片失败", icon: "none" });
     }
   },

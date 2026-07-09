@@ -1,1 +1,3 @@
-<view class="ui-icon {{spin ? 'ui-icon--spin' : ''}}" style="{{iconStyle}}" aria-label="{{label}}" />
+<view class="ui-icon {{spin ? 'ui-icon--spin' : ''}}" style="{{iconStyle}}" aria-label="{{label}}">
+  <text class="ui-icon__glyph">{{iconGlyph}}</text>
+</view>

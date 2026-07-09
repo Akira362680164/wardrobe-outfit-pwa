@@ -3,6 +3,7 @@ declare const Component: any;
 Component({
   properties: {
     id: String,
+    itemId: String,
     imageUrl: String,
     fallback: String,
     title: String,
@@ -16,7 +17,7 @@ Component({
   },
   methods: {
     onTap(this: any) {
-      this.triggerEvent("select", { id: this.properties.id });
+      this.triggerEvent("select", { id: this.properties.itemId || this.properties.id });
     },
   },
 });

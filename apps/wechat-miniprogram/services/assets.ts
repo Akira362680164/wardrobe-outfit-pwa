@@ -56,9 +56,16 @@ export interface UploadImageForCreateResult {
   error?: string;
 }
 
+export class ImageSelectionCanceledError extends Error {
+  constructor() {
+    super("用户取消选择图片");
+    this.name = "ImageSelectionCanceledError";
+  }
+}
+
 export async function chooseSingleImage(sourceType: Array<"album" | "camera"> = ["album", "camera"]): Promise<string> {
   const image = (await chooseImages(sourceType, 1))[0];
-  if (!image?.stablePath) throw new Error("没有选择图片");
+  if (!image?.stablePath) throw new ImageSelectionCanceledError();
   return image.stablePath;
 }
 
@@ -82,9 +89,17 @@ export async function chooseImages(sourceType: Array<"album" | "camera"> = ["alb
           reject(error);
         }
       },
-      fail: () => reject(new Error("选择图片失败")),
+      fail: (error) => {
+        if (isImageSelectionCancel(error)) resolve([]);
+        else reject(new Error("选择图片失败"));
+      },
     });
   });
+}
+
+function isImageSelectionCancel(error: unknown): boolean {
+  const errMsg = typeof (error as { errMsg?: unknown })?.errMsg === "string" ? (error as { errMsg: string }).errMsg : "";
+  return /cancel|取消/i.test(errMsg);
 }
 
 export async function downloadAssetImage(ref?: AssetRef, variant: "thumbnail" | "original" = "thumbnail"): Promise<string> {

@@ -20,3 +20,24 @@ export const ICON_PATHS = {
 } as const;
 
 export type UiIconName = keyof typeof ICON_PATHS;
+
+export const ICON_GLYPHS: Record<UiIconName, string> = {
+  home: "⌂",
+  wardrobe: "▣",
+  camera: "□",
+  "camera-plus": "+",
+  layers: "▤",
+  sparkles: "✦",
+  "shopping-bag": "▢",
+  user: "○",
+  settings: "⚙",
+  "chevron-right": ">",
+  "chevron-down": "⌄",
+  search: "⌕",
+  "bar-chart-3": "▥",
+  "wand-sparkles": "✦",
+  plus: "+",
+  x: "×",
+  check: "✓",
+  loader: "○",
+};

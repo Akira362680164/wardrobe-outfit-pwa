@@ -39,13 +39,11 @@
 
   <button wx:if="{{queue.length}}" class="clear-button" disabled="{{selecting || uploadingCount}}" bindtap="clearSelected">清空已选图片</button>
 
-  <view class="limit-copy">
-    {{totalCount ? readyCount + ' 张已准备，' + failedCount + ' 张失败；失败图片不会影响其他图片。' : '当前最多选择 10 张，图片会逐张上传为临时资产。'}}
-  </view>
+  <view class="limit-copy">最多选择 10 张图片</view>
   <view wx:if="{{error}}" class="error-text">{{error}}</view>
 
   <view class="bottom-bar bottom-glass-bar">
-    <button class="secondary-button bottom-button" disabled>上一步</button>
-    <button class="primary-button bottom-button" disabled="{{selecting || uploadingCount || !readyCount}}" loading="{{selecting || uploadingCount}}" bindtap="goReview">下一步（AI识别）</button>
+    <view class="bottom-action bottom-action--secondary" bindtap="cancel">取消</view>
+    <view class="bottom-action bottom-action--primary {{selecting || uploadingCount || !readyCount ? 'bottom-action--disabled' : ''}}" bindtap="goReview">下一步（AI识别）</view>
   </view>
 </view>

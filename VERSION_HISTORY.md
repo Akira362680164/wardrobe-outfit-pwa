@@ -1,3 +1,14 @@
+## 2026-07-09 / v2.1.9-test / Codex — 小程序真机 Smoke 脚本与首屏缺陷修复
+
+- **执行 Agent**：Codex（未触发 subagent：用户要求直接连接安卓手机写测试用例并修复真机发现的问题，本轮做最小测试脚本和首屏缺陷补丁）。
+- **目的**：建立小程序真机半自动 Smoke 验证入口；修复真机上发现的取消选图误报失败、添加单品页横向溢出、底部按钮分裂、全局 icon 不显示、衣橱卡片点击丢单品 ID、衣橱瀑布流图片未填满图像框等问题。
+- **版本变更**：无；当前应用版本仍为 `2.1.9-test`，小程序包版本仍为 `0.1.0`。
+- **改动文件**：`apps/wechat-miniprogram/scripts/wechat-phone-smoke.mjs`、`apps/wechat-miniprogram/package.json`、`apps/wechat-miniprogram/services/assets.ts`、`apps/wechat-miniprogram/components/ui/icon/**`、`apps/wechat-miniprogram/components/domain/catalog-card/**`、`apps/wechat-miniprogram/pages/intake/camera/index.{ts,wxml,wxss}`、`apps/wechat-miniprogram/pages/wardrobe/index/index.wxml`、`apps/wechat-miniprogram/pages/wishlist/{index/index.wxml,edit/index.ts}`、`VERSION_HISTORY.md`。
+- **改动说明**：新增 `test:phone-smoke`，通过 ADB + wechatide preview + 服务端登录/衣物列表前后对比 + 截图目录完成半自动真机 Smoke，测试账号密码只从环境变量读取，不写入报告；`wx.chooseMedia` 取消选择时返回空选择，添加单品和种草选图不再提示失败；添加单品页只保留“最多选择 10 张图片”的用户文案，点禁用下一步时轻提示“请先选择图片”；选图按钮使用 `minmax(0, *)` 避免横向溢出，底部动作改为同一玻璃容器内的普通等宽 `view` 按钮，避开原生 `button disabled` 背景重叠，左侧改为“取消”；`ui-icon` 从 CSS mask/SVG 加载改为字体符号渲染，避免真机 SVG/mask 兼容问题；`catalog-card` 改用显式 `item-id` 传详情 ID，卡片图片改 `aspectFill`。
+- **验证结果**：`node apps/wechat-miniprogram/scripts/wechat-phone-smoke.mjs --self-check` 通过；`npm --prefix apps/wechat-miniprogram run test:phone-smoke -- --self-check` 通过；`npm --prefix apps/wechat-miniprogram run typecheck` 通过；`node apps/wechat-miniprogram/scripts/wechatide-compile.mjs --refresh` 通过；`compile_wxml/compile_wxss` 覆盖 `pages/intake/camera/index`、`components/ui/icon/index`、`components/domain/catalog-card/index`、`pages/wardrobe/index/index`、`pages/wishlist/index/index` 通过；`git diff --check` 通过；`node apps/wechat-miniprogram/scripts/wechatide-preview.mjs --auto` 已成功推送预览包（249075 bytes）；DevTools console grep `error|fail|缺少|TypeError|ReferenceError` 无命中。
+- **风险门禁**：medium（小程序真机测试脚本、选图取消语义、共享 icon 和共享卡片组件修复；不改服务端、不改共享契约、不上传体验版、不改 Android APK）；未触发 subagent：用户未通知。
+- **未验证风险**：手机当前已打开的小程序会话没有自动热替换到新预览包，当前截图仍是旧包画面；需要用户在微信中打开最新推送的预览后再补真机截图确认 icon、详情跳转和添加单品布局。
+
 ## 2026-07-09 / v2.1.9-test / Codex — 小程序当前分支同步到基线前收口
 
 - **执行 Agent**：Codex（未触发 subagent：用户要求将当前小程序分支推进到基线分支，本轮只做合并前收口和推送）。
