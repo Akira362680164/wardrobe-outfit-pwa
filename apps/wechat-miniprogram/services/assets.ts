@@ -36,19 +36,51 @@ export interface AssetMutation {
 
 export interface LocalImageAssetInput {
   filePath: string;
+  stablePath?: string;
   fieldName?: string;
+  clientItemId?: string;
+  clientMutationId?: string;
+}
+
+export interface ChosenImage {
+  imagePath: string;
+  stablePath: string;
+  size?: number;
+}
+
+export interface UploadImageForCreateResult {
+  clientItemId?: string;
+  clientMutationId: string;
+  image: LocalImageAssetInput;
+  assetMutations?: AssetMutation[];
+  error?: string;
 }
 
 export async function chooseSingleImage(sourceType: Array<"album" | "camera"> = ["album", "camera"]): Promise<string> {
+  const image = (await chooseImages(sourceType, 1))[0];
+  if (!image?.stablePath) throw new Error("没有选择图片");
+  return image.stablePath;
+}
+
+export async function chooseImages(sourceType: Array<"album" | "camera"> = ["album", "camera"], maxCount = 10): Promise<ChosenImage[]> {
+  const count = Math.min(Math.max(Math.floor(maxCount), 1), 10);
   return new Promise((resolve, reject) => {
     wx.chooseMedia({
-      count: 1,
+      count,
       mediaType: ["image"],
       sourceType,
-      success: (result) => {
-        const file = result.tempFiles[0];
-        if (!file?.tempFilePath) reject(new Error("没有选择图片"));
-        else resolve(file.tempFilePath);
+      success: async (result) => {
+        try {
+          const files = result.tempFiles.filter((file) => Boolean(file.tempFilePath)).slice(0, count);
+          if (!files.length) throw new Error("没有选择图片");
+          resolve(await Promise.all(files.map(async (file, index) => ({
+            imagePath: file.tempFilePath,
+            stablePath: await copyToStableIntakePath(file.tempFilePath, index),
+            size: file.size,
+          }))));
+        } catch (error) {
+          reject(error);
+        }
       },
       fail: () => reject(new Error("选择图片失败")),
     });
@@ -77,7 +109,8 @@ export async function uploadImageForCreate(input: {
   image: LocalImageAssetInput;
 }): Promise<AssetMutation[]> {
   const fieldName = input.image.fieldName ?? "imageDataUrl";
-  const metadata = await getLocalImageMetadata(input.image.filePath, fieldName);
+  const filePath = await ensureStableImagePath(input.image.stablePath ?? input.image.filePath);
+  const metadata = await getLocalImageMetadata(filePath, fieldName);
   const slots: TemporaryAssetSlotRequest[] = [
     { ...metadata, variant: "original" },
     // ponytail: reuse the selected image as thumbnail until miniapp-side resizing is needed.
@@ -89,7 +122,7 @@ export async function uploadImageForCreate(input: {
     data: { clientMutationId: input.clientMutationId, entityType: input.entityType, slots },
   });
 
-  const bytes = await readFileBytes(input.image.filePath);
+  const bytes = await readFileBytes(filePath);
   for (const asset of session.assets) {
     await uploadTemporaryBytes(session.sessionId, asset.assetId, bytes, asset.mimeType);
   }
@@ -100,6 +133,38 @@ export async function uploadImageForCreate(input: {
   const uploaded = status.assets.filter((asset) => asset.fieldName === fieldName).map((asset) => asset.assetId);
   if (!status.ready || uploaded.length < 2) throw new Error("图片上传尚未完成，请重试");
   return [{ kind: "create_or_replace", fieldName, temporaryAssetIds: uploaded }];
+}
+
+export async function uploadImagesForCreate(input: {
+  entityType: "garment" | "outfit" | "wishlistItem" | "profile";
+  images: LocalImageAssetInput[];
+}): Promise<UploadImageForCreateResult[]> {
+  return Promise.all(input.images.map(async (image) => {
+    const clientMutationId = image.clientMutationId;
+    if (!clientMutationId) {
+      return {
+        clientItemId: image.clientItemId,
+        clientMutationId: "",
+        image,
+        error: "缺少图片 clientMutationId",
+      };
+    }
+    try {
+      return {
+        clientItemId: image.clientItemId,
+        clientMutationId,
+        image,
+        assetMutations: await uploadImageForCreate({ clientMutationId, entityType: input.entityType, image }),
+      };
+    } catch (error) {
+      return {
+        clientItemId: image.clientItemId,
+        clientMutationId,
+        image,
+        error: error instanceof Error ? error.message : "图片上传失败",
+      };
+    }
+  }));
 }
 
 async function uploadTemporaryBytes(sessionId: string, assetId: string, data: ArrayBuffer, mimeType: string): Promise<void> {
@@ -126,7 +191,7 @@ async function getLocalImageMetadata(filePath: string, fieldName: string): Promi
   return {
     fieldName,
     sha256: file.digest,
-    mimeType: mimeTypeForPath(filePath),
+    mimeType: mimeTypeForImageType(image.type) || mimeTypeForPath(filePath),
     sizeBytes: file.size,
     width: image.width,
     height: image.height,
@@ -151,6 +216,7 @@ function readFileBytes(filePath: string): Promise<ArrayBuffer> {
       filePath,
       success: (result) => {
         if (result.data instanceof ArrayBuffer) resolve(result.data);
+        else if (typeof result.data === "string") resolve(wx.base64ToArrayBuffer(result.data));
         else reject(new Error("图片读取格式无效"));
       },
       fail: () => reject(new Error("读取图片失败")),
@@ -158,9 +224,68 @@ function readFileBytes(filePath: string): Promise<ArrayBuffer> {
   });
 }
 
+async function ensureStableImagePath(filePath: string): Promise<string> {
+  if (filePath.startsWith(intakeDirPath())) return filePath;
+  return copyToStableIntakePath(filePath, 0);
+}
+
+async function copyToStableIntakePath(filePath: string, index: number): Promise<string> {
+  await ensureIntakeDir();
+  const destPath = `${intakeDirPath()}/intake-${Date.now()}-${index}.${extensionForPath(filePath)}`;
+  return new Promise((resolve, reject) => {
+    wx.getFileSystemManager().copyFile({
+      srcPath: filePath,
+      destPath,
+      success: () => resolve(destPath),
+      fail: () => reject(new Error("复制图片失败，请重试")),
+    });
+  });
+}
+
+function ensureIntakeDir(): Promise<void> {
+  return new Promise((resolve) => {
+    wx.getFileSystemManager().mkdir({
+      dirPath: intakeDirPath(),
+      recursive: true,
+      success: () => resolve(),
+      fail: () => resolve(),
+    });
+  });
+}
+
+function intakeDirPath(): string {
+  return `${wx.env.USER_DATA_PATH}/intake`;
+}
+
+function extensionForPath(path: string): string {
+  const lower = path.toLowerCase().split(/[?#]/)[0];
+  if (lower.endsWith(".png")) return "png";
+  if (lower.endsWith(".webp")) return "webp";
+  if (lower.endsWith(".gif")) return "gif";
+  if (lower.endsWith(".heic")) return "heic";
+  if (lower.endsWith(".heif")) return "heif";
+  return "jpg";
+}
+
+function mimeTypeForImageType(type?: string): string {
+  const normalized = type?.toLowerCase();
+  if (!normalized) return "";
+  if (normalized.startsWith("image/")) return normalized;
+  if (normalized === "jpg" || normalized === "jpeg") return "image/jpeg";
+  if (normalized === "png") return "image/png";
+  if (normalized === "webp") return "image/webp";
+  if (normalized === "gif") return "image/gif";
+  if (normalized === "heic") return "image/heic";
+  if (normalized === "heif") return "image/heif";
+  return "";
+}
+
 function mimeTypeForPath(path: string): string {
-  const lower = path.toLowerCase();
+  const lower = path.toLowerCase().split(/[?#]/)[0];
   if (lower.endsWith(".png")) return "image/png";
   if (lower.endsWith(".webp")) return "image/webp";
+  if (lower.endsWith(".gif")) return "image/gif";
+  if (lower.endsWith(".heic")) return "image/heic";
+  if (lower.endsWith(".heif")) return "image/heif";
   return "image/jpeg";
 }

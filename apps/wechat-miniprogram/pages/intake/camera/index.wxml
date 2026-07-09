@@ -1,35 +1,45 @@
 <view class="page-shell intake-page">
   <view class="intake-header">
     <view class="page-title">添加单品</view>
-    <view class="step-copy">步骤 1 / 2 · 选择照片</view>
+    <view class="step-copy">步骤 1 / 2 · 选择照片，最多 10 张</view>
     <view class="progress-track"><view class="progress-fill progress-half"></view></view>
   </view>
 
   <view class="photo-card surface-panel">
-    <view class="section-title">选择单品照片</view>
-    <view wx:if="{{draft}}" class="imported-preview">
-      <image class="imported-image" mode="aspectFit" src="{{draft.imagePath}}" />
-      <view class="imported-label">{{recognizing ? 'AI 识别中...' : (draft.source === 'ai' ? 'AI 已生成草稿' : '已导入 1 张单品图片')}}</view>
+    <view class="section-row">
+      <view class="section-title">已选照片</view>
+      <view class="count-pill">{{totalCount}} / {{maxCount}}</view>
+    </view>
+    <view wx:if="{{queue.length}}" class="queue-grid">
+      <view wx:for="{{queue}}" wx:key="clientItemId" class="queue-item {{item.status === 'failed' ? 'is-failed' : ''}}">
+        <image class="queue-image" mode="aspectFill" src="{{item.stablePath || item.imagePath}}" />
+        <view class="queue-status status-{{item.status}}">
+          {{item.status === 'ready' ? '已准备' : item.status === 'uploading' ? '上传中' : item.status === 'failed' ? '失败' : '待上传'}}
+        </view>
+        <view wx:if="{{item.error}}" class="queue-error">{{item.error}}</view>
+      </view>
     </view>
     <view wx:else class="empty-preview">请拍照或从图库选择单品图片</view>
   </view>
 
-  <view class="source-grid {{draft ? 'source-grid--compact' : ''}}">
-    <button class="source-button" loading="{{selecting}}" disabled="{{selecting}}" bindtap="chooseFromCamera">
+  <view class="source-grid {{totalCount ? 'source-grid--compact' : ''}}">
+    <button class="source-button" loading="{{selecting}}" disabled="{{selecting || totalCount >= maxCount}}" bindtap="chooseFromCamera">
       <view>拍照</view>
     </button>
-    <button class="source-button" disabled="{{selecting}}" bindtap="chooseFromAlbum">
+    <button class="source-button" disabled="{{selecting || totalCount >= maxCount}}" bindtap="chooseFromAlbum">
       <view>从图库选择</view>
     </button>
   </view>
 
-  <button wx:if="{{draft}}" class="clear-button" disabled="{{selecting}}" bindtap="clearSelected">清空已选图片</button>
+  <button wx:if="{{queue.length}}" class="clear-button" disabled="{{selecting || uploadingCount}}" bindtap="clearSelected">清空已选图片</button>
 
-  <view class="limit-copy">{{draft ? '下一步将进入校对信息；AI 结果也需要人工确认后再保存。' : '当前先选择 1 张单品图片'}}</view>
+  <view class="limit-copy">
+    {{totalCount ? readyCount + ' 张已准备，' + failedCount + ' 张失败；失败图片不会影响其他图片。' : '当前最多选择 10 张，图片会逐张上传为临时资产。'}}
+  </view>
   <view wx:if="{{error}}" class="error-text">{{error}}</view>
 
   <view class="bottom-bar bottom-glass-bar">
     <button class="secondary-button bottom-button" disabled>上一步</button>
-    <button class="primary-button bottom-button" disabled="{{selecting || recognizing || !draft}}" loading="{{selecting || recognizing}}" bindtap="goReview">下一步（校对信息）</button>
+    <button class="primary-button bottom-button" disabled="{{selecting || uploadingCount || !readyCount}}" loading="{{selecting || uploadingCount}}" bindtap="goReview">下一步（批量识别）</button>
   </view>
 </view>

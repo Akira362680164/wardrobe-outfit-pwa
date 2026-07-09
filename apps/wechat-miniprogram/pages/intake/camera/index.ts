@@ -1,22 +1,28 @@
-import { chooseSingleImage } from "../../../services/assets";
-import { colorLabel, hasMiniMaxKey, recognizeGarmentImage } from "../../../services/ai";
-import { clearIntakeDraft, getIntakeDraft, setIntakeDraft, type IntakeDraft } from "../../../stores/intake";
+import { chooseImages, uploadImagesForCreate, type ChosenImage } from "../../../services/assets";
+import { createClientMutationId } from "../../../services/workspace";
+import { clearIntakeDraft, getIntakeQueue, setIntakeQueue, updateIntakeQueueItem, type IntakeDraft, type IntakeQueueItem } from "../../../stores/intake";
+
+const MAX_IMAGES = 10;
 
 Page({
   data: {
     selecting: false,
-    recognizing: false,
-    draft: null as IntakeDraft | null,
+    queue: [] as IntakeQueueItem[],
+    totalCount: 0,
+    readyCount: 0,
+    failedCount: 0,
+    uploadingCount: 0,
+    maxCount: MAX_IMAGES,
     error: "",
   },
 
   onLoad() {
     wx.setNavigationBarTitle({ title: "添加衣物" });
-    this.setData({ draft: getIntakeDraft() });
+    this.refreshQueue();
   },
 
   onShow() {
-    this.setData({ draft: getIntakeDraft() });
+    this.refreshQueue();
   },
 
   async chooseFromAlbum(this: any) {
@@ -29,64 +35,97 @@ Page({
 
   async chooseImage(this: any, sourceType: Array<"album" | "camera">) {
     if (this.data.selecting) return;
+    const remaining = MAX_IMAGES - getIntakeQueue().length;
+    if (remaining <= 0) {
+      this.setData({ error: "最多选择 10 张图片" });
+      return;
+    }
     this.setData({ selecting: true, error: "" });
     try {
-      const imagePath = await chooseSingleImage(sourceType);
-      const draft: IntakeDraft = {
-        imagePath,
-        name: "",
-        category: "tops",
-        color: "未标注",
-        season: "all",
-        note: "",
-        source: "manual",
-      };
-      setIntakeDraft(draft);
-      this.setData({ draft });
-      if (hasMiniMaxKey()) await this.recognizeDraft(imagePath);
+      const images = await chooseImages(sourceType, remaining);
+      const items = images.map(createQueueItem);
+      setIntakeQueue([...getIntakeQueue(), ...items].slice(0, MAX_IMAGES));
+      this.refreshQueue();
+      await this.prepareAssets(items);
     } catch (error) {
       this.setData({ error: error instanceof Error ? error.message : "选择图片失败" });
     } finally {
       this.setData({ selecting: false });
+      this.refreshQueue();
     }
   },
 
-  async recognizeDraft(this: any, imagePath: string) {
-    this.setData({ recognizing: true });
-    try {
-      const tag = await recognizeGarmentImage(imagePath);
-      const draft: IntakeDraft = {
-        imagePath,
-        name: tag.candidateNames[0] ?? "",
-        category: tag.category,
-        color: colorLabel(tag.colors),
-        season: tag.seasons[0] ?? "all",
-        note: tag.notes ?? "",
-        styles: tag.styles,
-        confidence: tag.confidence,
-        needsReview: tag.needsReview,
-        source: "ai",
-        aiTag: tag as unknown as Record<string, unknown>,
-      };
-      setIntakeDraft(draft);
-      this.setData({ draft });
-    } catch (error) {
-      this.setData({ error: error instanceof Error ? error.message : "AI 识别失败，可继续人工录入" });
-    } finally {
-      this.setData({ recognizing: false });
+  async prepareAssets(this: any, items: IntakeQueueItem[]) {
+    for (const item of items) updateIntakeQueueItem(item.clientItemId, { status: "uploading", error: "" });
+    this.refreshQueue();
+    const results = await uploadImagesForCreate({
+      entityType: "garment",
+      images: items.map((item) => ({
+        clientItemId: item.clientItemId,
+        clientMutationId: item.clientMutationId,
+        filePath: item.stablePath,
+        stablePath: item.stablePath,
+      })),
+    });
+    for (const result of results) {
+      if (!result.clientItemId) continue;
+      const status = result.error ? "failed" : "ready";
+      updateIntakeQueueItem(result.clientItemId, {
+        status,
+        error: result.error ?? "",
+        assetMutations: result.assetMutations ?? [],
+      });
     }
+    this.refreshQueue();
   },
 
   clearSelected() {
     clearIntakeDraft();
-    this.setData({ draft: null, error: "" });
+    this.refreshQueue();
+    this.setData({ error: "" });
   },
 
   goReview() {
-    if (!this.data.draft) {
-      this.setData({ error: "请先选择图片" });
+    if (!getIntakeQueue().some((item) => item.status === "ready")) {
+      this.setData({ error: "请先等待至少 1 张图片准备完成" });
       return;
     }
     wx.navigateTo({ url: "/pages/intake/review/index" });
   },
+
+  refreshQueue(this: any) {
+    const queue = getIntakeQueue();
+    this.setData({
+      queue,
+      totalCount: queue.length,
+      readyCount: queue.filter((item) => item.status === "ready").length,
+      failedCount: queue.filter((item) => item.status === "failed").length,
+      uploadingCount: queue.filter((item) => item.status === "uploading").length,
+    });
+  },
 });
+
+function createQueueItem(image: ChosenImage): IntakeQueueItem {
+  const clientItemId = createClientMutationId();
+  const clientMutationId = createClientMutationId();
+  const draft: IntakeDraft = {
+    imagePath: image.imagePath,
+    stablePath: image.stablePath,
+    name: "",
+    category: "tops",
+    color: "未标注",
+    season: "all",
+    note: "",
+    source: "manual",
+  };
+  return {
+    clientItemId,
+    clientMutationId,
+    imagePath: image.imagePath,
+    stablePath: image.stablePath,
+    status: "selected",
+    error: "",
+    assetMutations: [],
+    draft,
+  };
+}
