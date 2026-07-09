@@ -1,3 +1,14 @@
+## 2026-07-09 / v2.1.11-test / Codex — 微信 OpenID 登录分流与绑定接口
+
+- **执行 Agent**：Codex（未触发 subagent：用户未通知；本轮继续执行已批准账号体系设计）。
+- **目的**：用微信 OpenID 快捷登录/注册替代小程序手机号授权主流程，后端支持首次微信登录分流为绑定已有账号或邮箱注册新账号，并确保 OpenID/UnionID 不回传客户端、不明文入库。
+- **版本变更**：无；当前应用版本仍为 `2.1.11-test`。本轮不打 APK。
+- **改动文件**：`services/wardrobe-api/src/auth/wechat-openid.ts`、`services/wardrobe-api/src/app.ts`、`services/wardrobe-api/tests/wechat-openid-auth.test.ts`、`VERSION_HISTORY.md`。
+- **改动说明**：新增 `POST /api/auth/wechat/login`，已绑定时返回统一 token，未绑定时创建 10 分钟一次性 binding ticket 并返回 `requires_account_binding`；新增 `POST /api/auth/wechat/bind-existing-account` 和 `POST /api/auth/wechat/register-with-email`；OpenID/UnionID 使用服务端 HMAC 后写入 `wechat_identities` / `wechat_binding_tickets`；旧 `/api/auth/wechat/phone-login` 仍保留兼容旧代码，但新主流程不依赖它。
+- **验证结果**：`npm --workspace @wardrobe/wardrobe-api run test -- tests/wechat-openid-auth.test.ts` 通过（3 项）；`npm run api:typecheck` 通过；`npm --workspace @wardrobe/wardrobe-api run test -- tests/account-password-auth.test.ts tests/email-verification.test.ts tests/wechat-openid-auth.test.ts tests/wechat-phone-auth.test.ts tests/session.test.ts tests/registration.test.ts` 通过（33 项）；`git diff --check` 通过。
+- **风险门禁**：high（微信登录、账号绑定、OpenID 隐私、跨端 token 和账号注册事务）；未触发 subagent：用户未通知。
+- **未验证风险**：本提交未调用真实微信 `jscode2session`、未改小程序 UI、未跑微信开发者工具编译；真实小程序分流和页面路径将在后续小程序 UI 批次验证。
+
 ## 2026-07-09 / v2.1.11-test / Codex — 邮箱主认证与密码账号接口
 
 - **执行 Agent**：Codex（未触发 subagent：用户未通知；本轮继续执行已批准账号体系设计）。

@@ -13,6 +13,7 @@ import { EmailVerificationService } from "./auth/email-verification.js";
 import { type RegistrationService } from "./auth/registrations.js";
 import { registerSessionRoutes } from "./auth/session-routes.js";
 import { SessionService } from "./auth/session.js";
+import { registerWechatOpenIdAuthRoutes, WechatOpenIdAuthService } from "./auth/wechat-openid.js";
 import { registerWechatPhoneAuthRoutes, WechatPhoneAuthService } from "./auth/wechat-phone.js";
 import { registerAiIntakeRoutes } from "./ai/routes.js";
 import { MiniMaxIntakeService, type MiniMaxIntakeServiceLike } from "./ai/minimax-intake-service.js";
@@ -48,6 +49,7 @@ export interface BuildAppOptions {
   storageProvider?: StorageProvider | null;
   jwtReadinessCheck?: () => Promise<boolean>;
   wechatPhoneAuthService?: WechatPhoneAuthService;
+  wechatOpenIdAuthService?: WechatOpenIdAuthService;
   emailVerificationService?: EmailVerificationService;
   accountPasswordAuthService?: AccountPasswordAuthService;
 }
@@ -146,6 +148,13 @@ export function buildApp(options: BuildAppOptions = {}): FastifyInstance {
   registerAuthRoutes(app, options.registrationService, sharedSessionService, accountPasswordAuthService);
   registerSessionRoutes(app, sharedSessionService, accountPasswordAuthService);
   registerEmailAuthRoutes(app, emailVerificationService);
+  registerWechatOpenIdAuthRoutes(
+    app,
+    options.wechatOpenIdAuthService ?? new WechatOpenIdAuthService({
+      sessionService: sharedSessionService ?? new SessionService(),
+      emailVerificationService,
+    }),
+  );
   registerWechatPhoneAuthRoutes(
     app,
     options.wechatPhoneAuthService ?? new WechatPhoneAuthService({
