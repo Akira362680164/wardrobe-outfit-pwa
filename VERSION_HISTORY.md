@@ -1,3 +1,14 @@
+## 2026-07-10 / v2.1.11-test / Codex — 腾讯云 SES Provider 与邮件就绪检查
+
+- **执行 Agent**：Codex（未触发 subagent：用户要求当前会话按实施计划直接执行；本轮完成第一批 Provider/ready 改造）。
+- **目的**：在不配置真实腾讯云 Secret、不调用真实发信 API 的前提下，把开发期邮件抽象接入可配置腾讯云 SES Provider，并让服务健康检查准确反映邮件配置状态。
+- **版本变更**：无；当前应用版本仍为 `2.1.11-test`。本轮不打 APK、不上传小程序体验版。
+- **改动文件**：`packages/cloud-contracts/src/{auth/contracts,common/health}.ts`、`services/wardrobe-api/src/email/{types,log-sender,mock-sender,tencent-ses-sender,factory}.ts`、`services/wardrobe-api/src/auth/email-verification.ts`、`services/wardrobe-api/src/app.ts`、`services/wardrobe-api/tests/{email-sender,health}.test.ts`、`services/wardrobe-api/package.json`、`package-lock.json`、`docs/superpowers/plans/2026-07-10-tencent-ses-email-provider.md`、`VERSION_HISTORY.md`。
+- **改动说明**：新增腾讯云 `SendEmail` 模板发送器和环境工厂；测试环境强制 Log Provider 且不输出验证码；开发/未配置默认继续使用 Log Provider；配置 `tencent-ses` 但缺少必需值时 `/api/ready` 返回 `email=unavailable`，验证码发送返回 503；模板 payload 固定包含 `purposeText/code/minutes`，SDK 仅在后端加载；共享契约新增 `change_email` 预留用途和邮件 Provider 错误码。
+- **验证结果**：`npm run cloud:contracts:typecheck` 通过；`npm run api:typecheck` 通过；`npm --workspace @wardrobe/wardrobe-api run test -- tests/email-sender.test.ts tests/health.test.ts tests/email-verification.test.ts` 通过（补充日志隐私用例后共 20 项，提交前重跑）；所有腾讯云测试使用假 client，不发网络请求。
+- **风险门禁**：high（后端邮件服务、认证验证码和 `/api/ready` 契约）；未触发 subagent：用户未通知。
+- **未验证风险**：模板仍待审批，未配置 TemplateID/Secret、未调用腾讯云、未验证真实邮箱；`tencentcloud-sdk-nodejs` 安装后 npm 审计报告 11 个现有与传递依赖漏洞（10 moderate、1 high），本轮未自动运行会改变依赖树的修复命令。
+
 ## 2026-07-10 / v2.1.11-test / Codex — 腾讯云 SES 邮件接入实施计划
 
 - **执行 Agent**：Codex（未触发 subagent：用户明确要求在当前会话生成计划并直接执行；本轮先落下可追踪实施计划）。

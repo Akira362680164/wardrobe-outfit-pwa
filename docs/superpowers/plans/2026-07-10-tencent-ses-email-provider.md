@@ -43,7 +43,7 @@
 - Consumes: existing `EmailCodePurpose`, `EmailVerificationService`, and `/api/ready` route.
 - Produces: `SendVerificationCodeResult`, `EmailSendError`, `emailPurposeText`, `TencentSesEmailSender`, `createEmailSenderFromEnv`, and `getEmailProviderReadiness`.
 
-- [ ] **Step 1: Install the backend-only SDK**
+- [x] **Step 1: Install the backend-only SDK**
 
 Run:
 
@@ -53,7 +53,7 @@ npm --workspace @wardrobe/wardrobe-api install tencentcloud-sdk-nodejs
 
 Expected: the API workspace dependency and root lockfile include `tencentcloud-sdk-nodejs`; no client package imports it.
 
-- [ ] **Step 2: Write failing sender, factory, and health tests**
+- [x] **Step 2: Write failing sender, factory, and health tests**
 
 Add tests that construct `TencentSesEmailSender` with a fake client and assert this exact payload:
 
@@ -78,7 +78,7 @@ expect(request).toEqual({
 
 Also assert: test env forces log, incomplete Tencent config is unavailable, unknown provider throws, provider failures are normalized, and `/api/ready` includes `email`.
 
-- [ ] **Step 3: Run the focused tests and confirm failure**
+- [x] **Step 3: Run the focused tests and confirm failure**
 
 Run:
 
@@ -88,7 +88,7 @@ npm --workspace @wardrobe/wardrobe-api run test -- tests/email-sender.test.ts te
 
 Expected: failure because the sender/factory and `dependencies.email` do not exist.
 
-- [ ] **Step 4: Extend the shared contracts**
+- [x] **Step 4: Extend the shared contracts**
 
 Add `change_email` to `EmailCodePurposeSchema`, add the provider error codes to `AuthErrorCodeSchema`, and require the email dependency:
 
@@ -98,7 +98,7 @@ email: z.enum(["ready", "unavailable"]),
 
 Keep all existing auth values for backwards compatibility.
 
-- [ ] **Step 5: Implement the existing sender boundary**
+- [x] **Step 5: Implement the existing sender boundary**
 
 Use these exact public types in `email/types.ts`:
 
@@ -121,7 +121,7 @@ export class EmailSendError extends Error {
 
 `emailPurposeText` must map all five current purposes and `change_email` to Chinese template text. `LogEmailSender` returns `{ provider: "log" }`; test mode logs nothing.
 
-- [ ] **Step 6: Implement the Tencent sender and factory**
+- [x] **Step 6: Implement the Tencent sender and factory**
 
 The Tencent sender accepts a narrow client with `SendEmail`, sends one destination, and returns:
 
@@ -140,11 +140,11 @@ return readiness === "ready" ? new TencentSesEmailSender(config) : new Unavailab
 
 Only the API-side Tencent sender may call `createRequire(import.meta.url)`.
 
-- [ ] **Step 7: Wire sender and readiness into the app**
+- [x] **Step 7: Wire sender and readiness into the app**
 
 Default `EmailVerificationService` to `createEmailSenderFromEnv()`. Add an injectable `emailReadinessCheck` to `BuildAppOptions`, set `deps.email`, and include it in `allReady`. Incomplete configured SES returns `503` from `/api/ready` and email-send attempts return `503 email_provider_not_configured`.
 
-- [ ] **Step 8: Run provider validation**
+- [x] **Step 8: Run provider validation**
 
 Run:
 
@@ -156,7 +156,7 @@ npm --workspace @wardrobe/wardrobe-api run test -- tests/email-sender.test.ts te
 
 Expected: all pass without a Tencent credential or network request.
 
-- [ ] **Step 9: Record and commit Task 1**
+- [x] **Step 9: Record and commit Task 1**
 
 Update `VERSION_HISTORY.md`, stage only Task 1 files, verify `git diff --cached --check`, then commit:
 

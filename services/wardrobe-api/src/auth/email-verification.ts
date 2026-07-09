@@ -4,8 +4,8 @@ import type { EmailCodePurpose } from "@wardrobe/cloud-contracts";
 
 import { getDb } from "../db/client.js";
 import { emailVerificationChallenges } from "../db/schema.js";
-import type { EmailSender } from "../email/types.js";
-import { LogEmailSender } from "../email/log-sender.js";
+import { createEmailSenderFromEnv } from "../email/factory.js";
+import { EmailSendError, type EmailSender } from "../email/types.js";
 import { hmacSha256Base64Url } from "../security/hmac.js";
 import { hashToken } from "../security/token-hash.js";
 import { AuthApiError } from "./registrations.js";
@@ -118,7 +118,7 @@ export class EmailVerificationService {
     now?: () => Date;
   } = {}) {
     this.store = options.store ?? new PostgresEmailVerificationStore();
-    this.sender = options.sender ?? new LogEmailSender();
+    this.sender = options.sender ?? createEmailSenderFromEnv();
     this.now = options.now ?? (() => new Date());
   }
 
@@ -150,13 +150,26 @@ export class EmailVerificationService {
       now,
     });
     this.setDevelopmentCode(emailNormalized, input.purpose, code);
-    await this.sender.sendVerificationCode({
-      to: emailNormalized,
-      emailMasked,
-      code,
-      purpose: input.purpose,
-      minutes: EMAIL_CODE_TTL_MS / 60_000,
-    });
+    try {
+      await this.sender.sendVerificationCode({
+        to: emailNormalized,
+        emailMasked,
+        code,
+        purpose: input.purpose,
+        minutes: EMAIL_CODE_TTL_MS / 60_000,
+      });
+    } catch (error) {
+      if (error instanceof EmailSendError) {
+        throw new AuthApiError(
+          503,
+          error.code,
+          error.code === "email_provider_not_configured"
+            ? "Email provider is not configured"
+            : "Email delivery failed",
+        );
+      }
+      throw error;
+    }
     return {
       status: "sent" as const,
       emailMasked,

@@ -10,6 +10,7 @@ describe("cloud API skeleton", () => {
       readinessCheck: async () => ({ database: "ready" }),
       storageProvider: readyStorage(),
       jwtReadinessCheck: async () => true,
+      emailReadinessCheck: () => true,
     });
 
     const response = await app.inject({ method: "GET", url: "/api/health" });
@@ -34,7 +35,26 @@ describe("cloud API skeleton", () => {
     expect(response.statusCode).toBe(200);
     expect(response.json()).toMatchObject({
       status: "ok",
-      dependencies: { database: "ready", storage: "ready", jwt: "ready" },
+      dependencies: { database: "ready", storage: "ready", jwt: "ready", email: "ready" },
+    });
+
+    await app.close();
+  });
+
+  it("returns degraded ready when email delivery is unavailable", async () => {
+    const app = buildApp({
+      readinessCheck: async () => ({ database: "ready" }),
+      storageProvider: readyStorage(),
+      jwtReadinessCheck: async () => true,
+      emailReadinessCheck: () => false,
+    });
+
+    const response = await app.inject({ method: "GET", url: "/api/ready" });
+
+    expect(response.statusCode).toBe(503);
+    expect(response.json()).toMatchObject({
+      status: "degraded",
+      dependencies: { email: "unavailable" },
     });
 
     await app.close();

@@ -13,7 +13,8 @@ export interface MockEmailMessage {
 export class MockEmailSender implements EmailSender {
   readonly messages: MockEmailMessage[] = [];
 
-  async sendVerificationCode(input: MockEmailMessage): Promise<void> {
+  async sendVerificationCode(input: MockEmailMessage) {
     this.messages.push(input);
+    return { provider: "log" as const };
   }
 }

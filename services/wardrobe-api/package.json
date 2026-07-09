@@ -23,6 +23,7 @@
     "fastify": "^5.5.0",
     "jose": "^6.2.3",
     "pg": "^8.16.3",
+    "tencentcloud-sdk-nodejs": "^4.1.264",
     "zod": "^3.25.76"
   },
   "devDependencies": {
