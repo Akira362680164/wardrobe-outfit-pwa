@@ -1,3 +1,14 @@
+## 2026-07-09 / v2.1.9-test / Codex — AGENTS 补充真实 APK E2E 链路说明
+
+- **执行 Agent**：Codex（未触发 subagent：用户要求直接补文档）。
+- **目的**：把新增的真实 APK Smoke/Critical/Full/AI live 业务测试链路写入 `AGENTS.md`，避免后续 agent 把 `android:verify:full` 误认为完整业务链路测试。
+- **版本变更**：无；当前应用版本仍为 `2.1.9-test`。本轮只改项目规则文档，不改运行时代码、不重新打包 APK。
+- **改动文件**：`AGENTS.md`、`VERSION_HISTORY.md`。
+- **改动说明**：在 Android 测试流程后新增“真实 APK E2E 业务链路脚本”小节，说明 `android:verify:full` 与 `android:e2e:*` 的边界，列出 Smoke、Critical、Full、AI live 的覆盖链路和必要环境变量，并明确 Full 网络失败重试依赖测试 API 的 `/api/test/faults` 与 `E2E_FAULT_TOKEN`，相册/拍照系统权限仍留给后续 Appium 或 ADB 辅助。
+- **验证结果**：`git diff --check` 通过。
+- **风险门禁**：low（文档规则更新，不改业务代码、不改测试脚本、不打 APK）；未触发 subagent：用户未通知。
+- **未验证风险**：未重新运行真实 APK E2E；本轮只固化已新增脚本的使用规则。
+
 ## 2026-07-09 / v2.1.9-test / Codex — 真实 APK E2E Full 深链路补齐
 
 - **执行 Agent**：Codex（未触发 subagent：本轮用户要求直接开始写 Full 链路；此前 Smoke/Critical 子任务已完成并由主 agent 整合）。
