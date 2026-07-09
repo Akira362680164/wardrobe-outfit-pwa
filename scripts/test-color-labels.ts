@@ -10,6 +10,7 @@ import {
   labelStyleTag,
 } from "../src/lib/display-labels";
 import { getColorSwatchStyle } from "../src/lib/catalog-card-format";
+import { COLOR_SWATCHES } from "../src/lib/color-catalog";
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -41,8 +42,8 @@ assertEq("STYLE_DISPLAY_LABELS.sweet === '甜美'", STYLE_DISPLAY_LABELS.sweet, 
 assertEq("STYLE_DISPLAY_LABELS.elegant === '优雅'", STYLE_DISPLAY_LABELS.elegant, "优雅");
 assertEq("STYLE_DISPLAY_LABELS.commute === '通勤'", STYLE_DISPLAY_LABELS.commute, "通勤");
 assertEq("STYLE_DISPLAY_LABELS.outdoor === '户外'", STYLE_DISPLAY_LABELS.outdoor, "户外");
-assertEq("STYLE_DISPLAY_LABELS.dinner === '吃饭'", STYLE_DISPLAY_LABELS.dinner, "吃饭");
-assertEq("STYLE_DISPLAY_LABELS.vacation === '旅行'", STYLE_DISPLAY_LABELS.vacation, "旅行");
+assertEq("STYLE_DISPLAY_LABELS.dinner === '约会/宴请'", STYLE_DISPLAY_LABELS.dinner, "约会/宴请");
+assertEq("STYLE_DISPLAY_LABELS.vacation === '度假'", STYLE_DISPLAY_LABELS.vacation, "度假");
 
 // Unknown key falls back to key itself
 assertEq("unknown style tag falls back to key", labelStyleTag("hiphop"), "hiphop");
@@ -117,9 +118,9 @@ if (ColorChipList) {
 // ---------------------------------------------------------------------------
 
 console.log("\n=== 4b. Catalog waterfall swatches ===");
-assertEq("short color 白 maps to white", getColorSwatchStyle("白").backgroundColor, "#ffffff");
-assertEq("short color 黑 maps to black", getColorSwatchStyle("黑").backgroundColor, "#1f1f1f");
-assertEq("short color 米 maps to beige", getColorSwatchStyle("米").backgroundColor, "#e8dcc2");
+assertEq("short color 白 maps to shared swatch", getColorSwatchStyle("白").backgroundColor, COLOR_SWATCHES["白"].bg);
+assertEq("short color 黑 maps to shared swatch", getColorSwatchStyle("黑").backgroundColor, COLOR_SWATCHES["黑"].bg);
+assertEq("short color 米 maps to shared swatch", getColorSwatchStyle("米").backgroundColor, COLOR_SWATCHES["米"].bg);
 check("short color 白 needs border", getColorSwatchStyle("白").needsBorder === true);
 
 // ---------------------------------------------------------------------------

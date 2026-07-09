@@ -233,7 +233,7 @@ function buildRecommendation(
     reasons: [
       `匹配「${request.destination || "目的地"}」和${request.temperatureC}度的温度`,
       `优先选择${request.availableLocationIds.length}个可用地点内的衣服`,
-      "已避开待洗、待修和暂不穿的衣服",
+      "已避开清洗中、维修中和已归档的衣服",
     ],
   };
 }

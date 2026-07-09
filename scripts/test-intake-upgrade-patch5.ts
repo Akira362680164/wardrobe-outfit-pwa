@@ -100,7 +100,11 @@ check("recognizeImageItem 不再走 '...(aiTag ? ... : {})' 三元", !/\.\.\.\(a
 check("device-minimax recognizeSingleItemFromDataUrl 无 Key 抛 not_configured", /hasDeviceMiniMaxKey\(settings\)[\s\S]{0,200}throw new GarmentRecognitionError\([\s\S]{0,200}"not_configured"/.test(deviceMinimax));
 check("garment-intake-flow 引入 GarmentRecognitionError", /import\s*\{[^}]*GarmentRecognitionError[^}]*\}\s*from\s*"@\/lib\/device-minimax"/.test(garmentIntake));
 
-check("processAllImagesForRecognition catch 写失败草稿", /catch\s*\(err\)[\s\S]{0,500}buildFailedRecognitionDraft/.test(garmentIntake));
+check(
+  "processAllImagesForRecognition catch 写失败草稿",
+  /catch\s*\(err\)[\s\S]{0,500}failImageItemRecognition/.test(garmentIntake) &&
+    /function failImageItemRecognition[\s\S]{0,500}buildFailedRecognitionDraft/.test(garmentIntake),
+);
 check("handleRetryCurrentItem catch 保留草稿（不退化为 garment）", /catch\s*\(err\)[\s\S]{0,500}保留现有草稿/.test(garmentIntake));
 check("handleRetryCurrentItem catch 对已识别项保留 recognized 状态", /item\.status === "recognized" \? "recognized" as const : "failed" as const/.test(garmentIntake));
 

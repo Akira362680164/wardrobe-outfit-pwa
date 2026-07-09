@@ -3,7 +3,7 @@
  * 用于全项目替换直接展示内部枚举的 UI。
  */
 
-import { CATEGORY_LABELS, SEASON_LABELS, STATUS_LABELS } from "@/lib/types";
+import { CATEGORY_LABELS, SEASON_LABELS, STATUS_LABELS, STYLE_LABELS } from "@/lib/types";
 import { getSubcategoryLabel } from "@/lib/garment-category-catalog";
 
 export const COLOR_MODE_LABELS = {
@@ -12,15 +12,7 @@ export const COLOR_MODE_LABELS = {
   multicolor: "多色/拼色",
 } as const;
 
-export const STYLE_DISPLAY_LABELS = {
-  casual: "休闲",
-  sweet: "甜美",
-  elegant: "优雅",
-  commute: "通勤",
-  outdoor: "户外",
-  dinner: "吃饭",
-  vacation: "旅行",
-} as const;
+export const STYLE_DISPLAY_LABELS = STYLE_LABELS;
 
 export const FIT_GENDER_LABELS = {
   menswear: "男装版型",
@@ -55,7 +47,7 @@ export function formatColorModeLabel(mode: string | undefined): string {
 
 /**
  * formatStyleLabel
- * 风格中文映射：casual→休闲, sweet→甜美, elegant→优雅, commute→通勤, outdoor→户外, dinner→吃饭, vacation→旅行
+ * 风格中文映射由共享 STYLE_LABELS 提供。
  */
 export function formatStyleLabel(style: string | undefined): string {
   if (!style) return "未识别";

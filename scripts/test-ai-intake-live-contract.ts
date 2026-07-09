@@ -5,6 +5,7 @@ import { join } from "node:path";
 
 const root = join(__dirname, "..");
 const wardrobeApp = readFileSync(join(root, "src/components/wardrobe-app.tsx"), "utf8");
+const editImageActionCard = readFileSync(join(root, "src/components/item/edit-image-action-card.tsx"), "utf8");
 const garmentFlow = readFileSync(join(root, "src/components/garment-intake-flow.tsx"), "utf8");
 const wishlistView = readFileSync(join(root, "src/components/wishlist-view-2.0.tsx"), "utf8");
 const outfitFlow = readFileSync(join(root, "src/components/outfit-intake-flow.tsx"), "utf8");
@@ -178,7 +179,8 @@ check(
 // 19. WardrobeEditPage 渲染「重新裁切」按钮
 check(
   "WardrobeEditPage 渲染「重新裁切」按钮 (onClick={onCrop})",
-  /onClick=\{onCrop\}[\s\S]+?重新裁切/.test(wardrobeApp),
+  /<EditImageActionCard[\s\S]+?onCrop=\{onCrop\}/.test(wardrobeApp) &&
+    /onClick=\{onCrop\}[\s\S]+?重新裁切/.test(editImageActionCard),
 );
 // 20. WardrobeEditPage 不再渲染「从原图重新裁切」按钮
 check(

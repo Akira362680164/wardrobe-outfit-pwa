@@ -52,6 +52,7 @@ import {
   SEASON_LABELS,
   STATUS_LABELS,
   STYLE_LABELS,
+  WISHLIST_STATUS_LABELS,
   type ClosetLocation,
   type GarmentCategory,
   type GarmentFitGender,
@@ -1386,11 +1387,10 @@ function MultiImageReviewStep({
                 <SelectField
                   label="状态"
                   value={String(draft.status.value)}
-                  options={[
-                    { value: "interested", label: "感兴趣" },
-                    { value: "rejected", label: "不感兴趣" },
-                    { value: "archived", label: "归档" },
-                  ]}
+                  options={(["interested", "rejected", "archived"] as const).map((status) => ({
+                    value: status,
+                    label: WISHLIST_STATUS_LABELS[status],
+                  }))}
                   onChange={(value) => onPatchDraft({ status: userField(value as never) } as Partial<GarmentIntakeDraft>)}
                 />
               ) : null}

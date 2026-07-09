@@ -1,3 +1,14 @@
+## 2026-07-10 / v2.1.11-test / Codex — 共享领域字典防漂移门禁与验收
+
+- **执行 Agent**：Codex（未触发 subagent：用户未通知）。
+- **目的**：补齐共享目录到小程序生成文件的一致性门禁，将长期维护规则写入本机 `AGENTS.md`，并完成跨 App、小程序、云契约和服务端的最终验收。
+- **版本变更**：无；当前应用版本仍为 `2.1.11-test`。本任务不交付 APK、不上传小程序体验版。
+- **改动文件**：`scripts/test-miniprogram-catalog-consistency.ts`、`scripts/test-{ai-intake-live-contract,color-labels,intake-upgrade-patch5}.ts`、`src/lib/{display-labels,recommendations}.ts`、`src/components/garment-intake-flow.tsx`、`package.json`、`VERSION_HISTORY.md`；本机忽略文件 `AGENTS.md` 新增“共享领域字典维护”章节（因 `.gitignore` 的公开仓库规则不纳入提交）。
+- **改动说明**：新增生成文件与共享源码的深度一致性检查、色卡覆盖和小程序硬编码扫描；将 App 残留风格/种草状态展示改为共享 label；修正三条已因组件拆分或共享色卡迁移而过时的静态测试断言；`test:logic:all` 纳入共享目录与小程序目录门禁。
+- **验证结果**：`npm run typecheck`、`npm run cloud:contracts:typecheck`、`npm run api:typecheck`、`npm --prefix apps/wechat-miniprogram run typecheck` 通过；`npm run api:test` 通过（15 files / 85 tests）；`npm run catalog:miniprogram:check`、`npm run test:logic:domain-catalog`、`test:logic:miniprogram-catalog`、`test:logic:catalog`（39 项）、`test:logic:color-catalog`（94 项）、`test:logic:ai-intake-live-contract`（37 项）、`test:logic:garment-intake-confirm-contract`、`test:logic:wishlist-intake-confirm-contract`、`test:logic:intake-field-contract`、`test:logic:wishlist-flow`（40 + 48 项）和 `test:logic:intake-upgrade-patch5`（28 项）通过；`npm run build` 以 `2.1.11-test` 通过；微信开发者工具成功打开项目、`simulator_refresh` 成功，`pages/intake/review/index.wxml` 单文件编译成功；`git diff --check` 通过。
+- **风险门禁**：high（跨端领域标准、AI 契约、服务端写入归一化、小程序录入字段与生成链路）；未触发 subagent：用户未通知。
+- **未验证风险**：`npm run test:logic:all` 已通过本任务相关及其之前的全部套件，但在既有 `test:logic:ui-token-contract` 处失败，命中本任务未修改的 `src/components/auth/account-views.tsx`、`src/components/image-crop-editor.tsx`、`src/components/item/edit-image-action-card.tsx` 硬编码 UI 色值，因此后续 `ui-overlay-contract` 未执行；微信单文件 `compile_js` 不接受 `.ts` 源并提示缺少同名 JS，TypeScript 部分以小程序 typecheck 和整体 simulator refresh 验证；未做真机预览、体验版上传、生产服务部署或真实数据库写入验证。
+
 ## 2026-07-10 / v2.1.11-test / Codex — 微信小程序接入生成领域字典
 
 - **执行 Agent**：Codex（未触发 subagent：用户未通知）。
