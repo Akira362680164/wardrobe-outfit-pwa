@@ -25,7 +25,11 @@
       <view wx:for="{{weekDays}}" wx:key="key" data-date="{{item.key}}" class="week-day {{item.active ? 'week-day--active' : ''}}" bindtap="selectWeekDate">
         <view class="week-day__label">{{item.week}}</view>
         <view class="week-day__date">{{item.day}}</view>
-        <image wx:if="{{item.thumbnail}}" class="week-day__thumb" mode="aspectFill" src="{{item.thumbnail}}" />
+        <view wx:if="{{item.thumbnails.length}}" class="week-day__thumb cover-collage cover-collage--{{item.thumbnails.length >= 4 ? '4' : item.thumbnails.length}}">
+          <view wx:for="{{item.thumbnails}}" wx:for-item="image" wx:key="*this" wx:if="{{index < 4}}" class="cover-collage__cell">
+            <image class="cover-collage__image" mode="aspectFill" src="{{image}}" />
+          </view>
+        </view>
         <view wx:else class="week-day__plus">＋</view>
         <view wx:if="{{item.toneClass}}" class="week-day__bar {{item.toneClass}}"></view>
       </view>
@@ -37,11 +41,13 @@
       </view>
       <view class="week-plan__body">
         <view class="week-plan__covers">
-          <image wx:if="{{selectedWeekEntry.imageUrl}}" class="week-plan__cover" mode="aspectFill" src="{{selectedWeekEntry.imageUrl}}" />
-          <block wx:else>
-            <image wx:for="{{selectedWeekEntry.itemImages}}" wx:for-item="image" wx:key="*this" wx:if="{{index < 2}}" class="week-plan__cover" mode="aspectFill" src="{{image}}" />
-            <view wx:if="{{selectedWeekEntry.itemImages.length === 0}}" class="week-plan__cover week-plan__cover--empty">套</view>
-          </block>
+          <view wx:if="{{selectedWeekEntry.itemImages.length}}" class="week-plan__cover cover-collage cover-collage--{{selectedWeekEntry.itemImages.length >= 4 ? '4' : selectedWeekEntry.itemImages.length}}">
+            <view wx:for="{{selectedWeekEntry.itemImages}}" wx:for-item="image" wx:key="*this" wx:if="{{index < 4}}" class="cover-collage__cell">
+              <image class="cover-collage__image" mode="aspectFill" src="{{image}}" />
+            </view>
+          </view>
+          <image wx:elif="{{selectedWeekEntry.imageUrl}}" class="week-plan__cover" mode="aspectFill" src="{{selectedWeekEntry.imageUrl}}" />
+          <view wx:else class="week-plan__cover week-plan__cover--empty">套</view>
         </view>
         <view class="week-plan__main">
           <view class="week-plan__name">{{selectedWeekEntry.name}}</view>
@@ -80,18 +86,13 @@
     <view class="outfit-grid">
       <view wx:for="{{outfits}}" wx:key="id" class="outfit-card" data-id="{{item.id}}" bindtap="openDetail">
         <view class="outfit-collage">
-          <view class="collage-pane collage-pane--main">
-            <image wx:if="{{item.imageUrl}}" class="collage-image" mode="aspectFill" src="{{item.imageUrl}}" />
-            <text wx:else>{{item.itemCount}}件</text>
-          </view>
-          <view class="collage-stack">
-            <view class="collage-pane collage-pane--sub">
-              <image wx:if="{{item.itemImages[1]}}" class="collage-image" mode="aspectFill" src="{{item.itemImages[1]}}" />
-            </view>
-            <view class="collage-pane collage-pane--sub">
-              <image wx:if="{{item.itemImages[2]}}" class="collage-image" mode="aspectFill" src="{{item.itemImages[2]}}" />
+          <view wx:if="{{item.itemImages.length}}" class="cover-collage cover-collage--{{item.itemImages.length >= 4 ? '4' : item.itemImages.length}}">
+            <view wx:for="{{item.itemImages}}" wx:for-item="image" wx:key="*this" wx:if="{{index < 4}}" class="cover-collage__cell">
+              <image class="cover-collage__image" mode="aspectFill" src="{{image}}" />
             </view>
           </view>
+          <image wx:elif="{{item.imageUrl}}" class="collage-image" mode="aspectFill" src="{{item.imageUrl}}" />
+          <view wx:else class="collage-empty">{{item.itemCount}}件</view>
         </view>
         <view class="outfit-main">
           <view class="outfit-name">{{item.name}}</view>

@@ -16,7 +16,7 @@ type WeekDayView = {
   week: string;
   day: string;
   active: boolean;
-  thumbnail: string;
+  thumbnails: string[];
   entryLabel: string;
   toneClass: string;
 };
@@ -211,7 +211,7 @@ Page({
         week: ["一", "二", "三", "四", "五", "六", "日"][index],
         day: String(parseDateKey(date).day),
         active: date === this.data.selectedDate,
-        thumbnail: outfit?.imageUrl || outfit?.itemImages[0] || "",
+        thumbnails: outfit?.itemImages?.length ? outfit.itemImages : outfit?.imageUrl ? [outfit.imageUrl] : [],
         entryLabel: entry ? (entry.status === "worn" ? "已穿" : "计划") : "",
         toneClass: plan ? TONE_CLASS[plan.tone] : "",
       };

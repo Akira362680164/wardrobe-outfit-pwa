@@ -1,3 +1,15 @@
+## 2026-07-09 / v2.1.9-test / Codex — 小程序套装拼图封面对齐 App
+
+- **执行 Agent**：Codex（未触发 subagent：用户未通知；延续独立 worktree `/Users/fangzheng/Documents/wardrobe-wechat-calendar-plan-fix` 的 `codex/wechat-calendar-plan-fix` 分支）。
+- **目的**：按 App `OutfitCover` 的自动拼图实现修正小程序套装首页三处封面：周日期缩略图、当天穿搭卡片、套装瀑布流卡片都由套装内衣物拼接成封面，不再使用“大图 + 右侧小图”的临时布局。
+- **版本变更**：无；当前应用版本仍为 `2.1.9-test`，小程序包版本仍为 `0.1.0`。
+- **App 对照**：App 通过 `OutfitCover` / `getOutfitCover` 渲染套装封面；无手工封面时走 `auto_collage`，取套装内有效衣物图，1 张单图、2 张左右等分、3 张上 1 下 2、4 张四宫格。
+- **改动文件**：`apps/wechat-miniprogram/services/workspace.ts`、`apps/wechat-miniprogram/pages/outfits/index.{ts,wxml,wxss}`、`VERSION_HISTORY.md`。
+- **改动说明**：保留小程序 `MiniOutfit.itemImages` 作为套装拼图来源；周日期缩略图、当天穿搭卡片和瀑布流卡片统一用 `.cover-collage` 渲染 1/2/3/4 张图的等分拼图；无衣物图时才回退到单张 `imageUrl` 或“套”占位。
+- **验证结果**：`/Users/fangzheng/Documents/衣柜识别+根据要去的地方和活动自动搭配穿搭的APP/node_modules/.bin/tsc -p apps/wechat-miniprogram/tsconfig.json --noEmit` 通过；微信开发者工具 CLI `compile_wxml/compile_wxss` 覆盖 `pages/outfits/index/index` 通过；`git diff --check` 通过；DevTools 模拟器注入两件真实衣物图后截图确认三处均为等分拼图封面，截图为 `/Users/fangzheng/Desktop/wechat-calendar-plan-align-screenshots/12-outfits-app-collage-cover.png`。
+- **风险门禁**：medium（小程序套装首页图片来源和 UI 展示调整；不改后端、不改共享契约、不上传体验版、不打 Android APK）；未触发 subagent：用户未通知。
+- **未验证风险**：未做真机预览或体验版上传；截图使用 DevTools 页面内注入展示数据，不写服务器数据。
+
 ## 2026-07-09 / v2.1.9-test / Codex — 小程序套装图片等比填充修正
 
 - **执行 Agent**：Codex（未触发 subagent：用户未通知；延续独立 worktree `/Users/fangzheng/Documents/wardrobe-wechat-calendar-plan-fix` 的 `codex/wechat-calendar-plan-fix` 分支）。
