@@ -3,6 +3,9 @@ name: Test Full
 on:
   push:
     branches: [main]
+    paths-ignore:
+      - '**/*.md'
+      - 'docs/**'
   workflow_dispatch:
 
 jobs:

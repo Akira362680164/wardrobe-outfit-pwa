@@ -1,3 +1,14 @@
+## 2026-07-09 / v2.1.8-test / Codex — GitHub Actions 文档提交降噪
+
+- **执行 Agent**：Codex（未触发 subagent：用户未通知）。
+- **目的**：减少纯文档/设计说明/版本历史提交触发 GitHub Actions 失败邮件；保留代码提交的自动 CI。
+- **版本变更**：无；当前应用版本仍为 `2.1.8-test`。
+- **改动文件**：`.github/workflows/test-fast.yml`、`.github/workflows/test-full.yml`、`VERSION_HISTORY.md`。
+- **改动说明**：给 `Test Fast` 和 `Test Full` 的 push 触发器增加 `paths-ignore`，忽略纯 `**/*.md` 与 `docs/**` 变更；`Test Fast` 的 pull_request 同步忽略纯文档变更。只要同次提交包含源码、配置、脚本、工作流或资源文件，CI 仍会触发。
+- **验证结果**：`git diff --check` 通过。
+- **风险门禁**：low（CI 触发条件和文档记录；不改运行时代码、不改线上 API、不改 Android、不打 APK）；未触发 subagent：用户未通知。
+- **未验证风险**：本次不会验证 GitHub Actions 实际运行结果；推送提交将使用 `[skip ci]` 避免本次 workflow 配置变更再触发邮件。
+
 ## 2026-07-09 / v2.1.8-test / Codex — 整理本地 worktree 与小程序分支
 
 - **执行 Agent**：Codex（未触发 subagent：用户未通知）。
