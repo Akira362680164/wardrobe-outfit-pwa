@@ -1,1 +1,1 @@
-{ "component": true, "usingComponents": { "ui-icon-button": "../icon-button/index" } }
+{ "component": true, "usingComponents": { "ui-icon-button": "/components/ui/icon-button/index" } }

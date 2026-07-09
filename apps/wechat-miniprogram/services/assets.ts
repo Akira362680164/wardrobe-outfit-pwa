@@ -215,8 +215,15 @@ function readFileBytes(filePath: string): Promise<ArrayBuffer> {
     wx.getFileSystemManager().readFile({
       filePath,
       success: (result) => {
-        if (result.data instanceof ArrayBuffer) resolve(result.data);
-        else if (typeof result.data === "string") resolve(wx.base64ToArrayBuffer(result.data));
+        const data: unknown = result.data;
+        if (data instanceof ArrayBuffer) resolve(data);
+        else if (typeof data === "string") resolve(wx.base64ToArrayBuffer(data));
+        else if (ArrayBuffer.isView(data)) {
+          const view = data as ArrayBufferView;
+          const bytes = new Uint8Array(view.byteLength);
+          bytes.set(new Uint8Array(view.buffer, view.byteOffset, view.byteLength));
+          resolve(bytes.buffer);
+        }
         else reject(new Error("图片读取格式无效"));
       },
       fail: () => reject(new Error("读取图片失败")),

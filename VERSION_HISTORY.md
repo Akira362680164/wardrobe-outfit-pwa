@@ -1,3 +1,14 @@
+## 2026-07-09 / v2.1.9-test / Codex — 小程序当前分支同步到基线前收口
+
+- **执行 Agent**：Codex（未触发 subagent：用户要求将当前小程序分支推进到基线分支，本轮只做合并前收口和推送）。
+- **目的**：在把 `codex/wechat-mini-multi-intake` 同步到 `wechat/miniprogram` 前，提交当前 worktree 中仍未入库的小程序运行修正，避免基线缺少真实运行所需的组件路径和图片读取兼容。
+- **版本变更**：无；当前应用版本仍为 `2.1.9-test`，小程序包版本仍为 `0.1.0`。
+- **改动文件**：`apps/wechat-miniprogram/components/**/index.json`、`apps/wechat-miniprogram/pages/{wardrobe,wishlist,outfits,settings}/**/index.json`、`apps/wechat-miniprogram/custom-tab-bar/index.json`、`apps/wechat-miniprogram/services/assets.ts`、`VERSION_HISTORY.md`。
+- **改动说明**：小程序页面和组件 `usingComponents` 改为根路径引用，避免跨层级相对路径在开发者工具/分包解析中失效；图片读取兼容 `ArrayBufferView` 返回值，转为独立 `ArrayBuffer` 后继续走现有临时资产上传链路。
+- **验证结果**：`npm --prefix apps/wechat-miniprogram run typecheck` 通过；`node apps/wechat-miniprogram/scripts/wechatide-compile.mjs --refresh` 通过；`git diff --check` 通过；已执行 `git fetch origin wechat/miniprogram` 确认远端基线引用可用于后续快进。
+- **风险门禁**：medium（小程序组件解析和图片资产读取兼容修正，影响小程序运行路径；不改服务端、不改共享契约、不上传体验版、不改 Android APK）；未触发 subagent：用户未通知。
+- **未验证风险**：本轮未做真机预览、体验版上传或真实图片录入端到端点击，只完成小程序类型检查和开发者工具刷新编译。
+
 ## 2026-07-09 / v2.1.9-test / Codex — 小程序录入确认页对齐 App 结构
 
 - **执行 Agent**：Codex（接收外部 thread delegation 后直接修正；未启动新的 subagent，本轮只做当前 review 页最小补丁）。
