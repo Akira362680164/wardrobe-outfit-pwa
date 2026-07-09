@@ -54,25 +54,47 @@
       </view>
     </view>
 
-    <view wx:if="{{selectedEntries.length}}" class="entry-list">
-      <view wx:for="{{selectedEntries}}" wx:key="id" class="entry-card" data-id="{{item.outfitId}}" bindtap="openOutfit">
-        <image wx:if="{{item.imageUrl}}" class="entry-cover" mode="aspectFill" src="{{item.imageUrl}}" />
+    <view wx:if="{{selectedPrimaryEntry}}" class="entry-list">
+      <view class="entry-card" data-id="{{selectedPrimaryEntry.outfitId}}" bindtap="openOutfit">
+        <view wx:if="{{selectedPrimaryEntry.itemImages.length}}" class="entry-cover cover-collage cover-collage--{{selectedPrimaryEntry.itemImages.length >= 4 ? '4' : selectedPrimaryEntry.itemImages.length}}">
+          <view wx:for="{{selectedPrimaryEntry.itemImages}}" wx:for-item="image" wx:key="*this" wx:if="{{index < 4}}" class="cover-collage__cell">
+            <image class="cover-collage__image" mode="aspectFill" src="{{image}}" />
+          </view>
+        </view>
+        <image wx:elif="{{selectedPrimaryEntry.imageUrl}}" class="entry-cover" mode="aspectFill" src="{{selectedPrimaryEntry.imageUrl}}" />
         <view wx:else class="entry-cover entry-cover--empty">套</view>
         <view class="entry-main">
           <view class="entry-head">
-            <view class="entry-name">{{item.name}}</view>
-            <view class="entry-status">{{item.statusLabel}}</view>
+            <view class="entry-name">{{selectedPrimaryEntry.name}}</view>
+            <view class="entry-status {{selectedPrimaryEntry.statusClass}}">{{selectedPrimaryEntry.statusLabel}}</view>
           </view>
-          <view class="entry-meta">{{item.meta}}</view>
+          <view class="entry-meta">{{selectedPrimaryEntry.meta}}</view>
+          <view class="entry-actions" catchtap="noop">
+            <button wx:if="{{selectedPrimaryEntry.primaryAction}}" class="state-button state-button--worn {{selectedPrimaryEntry.statusClass}}" loading="{{savingEntry}}" disabled="{{savingEntry}}" bindtap="handlePrimaryAction">{{selectedPrimaryEntry.primaryActionLabel}}</button>
+            <button wx:if="{{selectedPrimaryEntry.canChangePlan}}" class="state-button state-button--secondary" disabled="{{savingEntry}}" bindtap="openChangeSelector">更改计划</button>
+            <button wx:if="{{selectedPrimaryEntry.canAddBackup}}" class="state-button state-button--secondary" disabled="{{savingEntry}}" bindtap="openBackupSelector">添加备选穿搭</button>
+          </view>
         </view>
       </view>
-      <button class="primary-button state-button" disabled="{{savingEntry}}" bindtap="openOutfitSelect">添加备选穿搭</button>
+      <view wx:if="{{selectedBackupEntries.length}}" class="backup-list">
+        <view class="backup-list__title">备选穿搭</view>
+        <view wx:for="{{selectedBackupEntries}}" wx:key="id" class="backup-list__item" data-id="{{item.outfitId}}" bindtap="openOutfit">
+          <view wx:if="{{item.itemImages.length}}" class="backup-list__cover cover-collage cover-collage--{{item.itemImages.length >= 4 ? '4' : item.itemImages.length}}">
+            <view wx:for="{{item.itemImages}}" wx:for-item="image" wx:key="*this" wx:if="{{index < 4}}" class="cover-collage__cell">
+              <image class="cover-collage__image" mode="aspectFill" src="{{image}}" />
+            </view>
+          </view>
+          <image wx:elif="{{item.imageUrl}}" class="backup-list__cover" mode="aspectFill" src="{{item.imageUrl}}" />
+          <view wx:else class="backup-list__cover backup-list__cover--empty">套</view>
+          <view class="backup-list__name">{{item.name}}</view>
+        </view>
+      </view>
     </view>
 
     <view wx:else class="today-state">
       <view class="state-title">{{selectedEmptyTitle}}</view>
       <view class="state-copy">{{selectedEmptyCopy}}</view>
-      <button class="primary-button state-button" disabled="{{savingEntry}}" bindtap="openOutfitSelect">{{selectedActionLabel}}</button>
+      <button class="primary-button state-button" disabled="{{savingEntry}}" bindtap="openSelectedDateSelector">{{selectedActionLabel}}</button>
     </view>
   </view>
 
@@ -104,7 +126,7 @@
     </view>
   </ui-sheet>
 
-  <ui-sheet open="{{selectSheetOpen}}" title="为 {{selectedDateLabel}} 安排穿搭" description="选择的套装置入日历计划，不计入穿着次数。" bind:close="closeOutfitSelect">
+  <ui-sheet open="{{selectSheetOpen}}" title="{{selectionTitle}}" description="{{selectionDescription}}" bind:close="closeOutfitSelector">
     <view class="outfit-select">
       <view class="search-box">
         <text class="search-icon">⌕</text>
@@ -119,7 +141,12 @@
           class="outfit-option"
           bindtap="chooseOutfit"
         >
-          <image wx:if="{{item.imageUrl}}" class="outfit-option__cover" mode="aspectFill" src="{{item.imageUrl}}" />
+          <view wx:if="{{item.itemImages.length}}" class="outfit-option__cover cover-collage cover-collage--{{item.itemImages.length >= 4 ? '4' : item.itemImages.length}}">
+            <view wx:for="{{item.itemImages}}" wx:for-item="image" wx:key="*this" wx:if="{{index < 4}}" class="cover-collage__cell">
+              <image class="cover-collage__image" mode="aspectFill" src="{{image}}" />
+            </view>
+          </view>
+          <image wx:elif="{{item.imageUrl}}" class="outfit-option__cover" mode="aspectFill" src="{{item.imageUrl}}" />
           <view wx:else class="outfit-option__cover outfit-option__cover--empty">套</view>
           <view class="outfit-option__main">
             <view class="outfit-option__name">{{item.name}}</view>

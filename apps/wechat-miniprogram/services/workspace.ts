@@ -139,6 +139,7 @@ export interface MiniOutfitPlanEntry {
   revision: number;
   date: string;
   outfitId: string;
+  actualOutfitId: string;
   calendarPlanId: string;
   status: MiniOutfitPlanEntryStatus;
   title: string;
@@ -146,6 +147,9 @@ export interface MiniOutfitPlanEntry {
   weatherNote: string;
   notes: string;
   isPrimary: boolean;
+  isPrimaryActual: boolean;
+  role: "primary" | "backup" | "other";
+  sortOrder: number;
   rawPayload: Record<string, unknown>;
   createdAt: string;
   updatedAt: string;
@@ -234,7 +238,18 @@ export interface CreateOutfitPlanEntryInput {
   outfitId: string;
   calendarPlanId?: string;
   makePrimary?: boolean;
+  role?: "primary" | "backup" | "other";
   title?: string;
+}
+
+export interface UpdateOutfitPlanEntryInput {
+  id: string;
+  expectedRevision: number;
+  currentPayload: Record<string, unknown>;
+  outfitId: string;
+  title: string;
+  makePrimary?: boolean;
+  role?: "primary" | "backup" | "other";
 }
 
 type CatalogItemPayloadInput = {
@@ -555,21 +570,29 @@ export async function setOutfitFavorite(id: string, expectedRevision: number, va
   return fetchOutfitDetail(id);
 }
 
-export async function markOutfitWornToday(id: string, expectedRevision: number): Promise<MiniOutfitDetail> {
+export async function markOutfitWornOnDate(id: string, expectedRevision: number, dateKey: string): Promise<void> {
   await request<WorkspaceCommandResponse>({
     method: "POST",
     path: `/api/workspace/outfits/${encodeURIComponent(id)}/mark-worn`,
-    data: { clientMutationId: createClientMutationId(), expectedRevision, wornAt: `${localDateKey()}T12:00:00.000Z` },
+    data: { clientMutationId: createClientMutationId(), expectedRevision, wornAt: `${dateKey}T12:00:00.000Z` },
   });
+}
+
+export async function markOutfitWornToday(id: string, expectedRevision: number): Promise<MiniOutfitDetail> {
+  await markOutfitWornOnDate(id, expectedRevision, localDateKey());
   return fetchOutfitDetail(id);
 }
 
-export async function cancelOutfitWornToday(id: string, expectedRevision: number): Promise<MiniOutfitDetail> {
+export async function cancelOutfitWornOnDate(id: string, expectedRevision: number, dateKey: string): Promise<void> {
   await request<WorkspaceCommandResponse>({
     method: "POST",
     path: `/api/workspace/outfits/${encodeURIComponent(id)}/cancel-worn`,
-    data: { clientMutationId: createClientMutationId(), expectedRevision, date: localDateKey(), payload: {} },
+    data: { clientMutationId: createClientMutationId(), expectedRevision, date: dateKey, payload: {} },
   });
+}
+
+export async function cancelOutfitWornToday(id: string, expectedRevision: number): Promise<MiniOutfitDetail> {
+  await cancelOutfitWornOnDate(id, expectedRevision, localDateKey());
   return fetchOutfitDetail(id);
 }
 
@@ -668,7 +691,7 @@ export async function createOutfitPlanEntry(input: CreateOutfitPlanEntryInput): 
     title: input.title,
     status: "planned",
     isPrimary: input.makePrimary ?? true,
-    role: "other",
+    role: input.role ?? ((input.makePrimary ?? true) ? "primary" : "backup"),
     createdAt: now,
     updatedAt: now,
   };
@@ -678,6 +701,29 @@ export async function createOutfitPlanEntry(input: CreateOutfitPlanEntryInput): 
     data: { clientMutationId: createClientMutationId(), payload, assetMutations: [] },
   });
   if (!response.entity) throw new Error("服务器未返回已保存穿搭计划");
+  return toMiniOutfitPlanEntry(response.entity);
+}
+
+export async function updateOutfitPlanEntry(input: UpdateOutfitPlanEntryInput): Promise<MiniOutfitPlanEntry> {
+  const response = await request<{ entity?: WorkspaceEntity }>({
+    method: "PUT",
+    path: `/api/workspace/outfit-plans/${encodeURIComponent(input.id)}`,
+    data: {
+      clientMutationId: createClientMutationId(),
+      expectedRevision: input.expectedRevision,
+      payload: {
+        ...input.currentPayload,
+        outfitId: input.outfitId,
+        title: input.title,
+        status: "planned",
+        isPrimary: input.makePrimary ?? true,
+        role: input.role ?? ((input.makePrimary ?? true) ? "primary" : "backup"),
+        updatedAt: new Date().toISOString(),
+      },
+      assetMutations: [],
+    },
+  });
+  if (!response.entity) throw new Error("服务器未返回已更新穿搭计划");
   return toMiniOutfitPlanEntry(response.entity);
 }
 
@@ -838,6 +884,7 @@ function toMiniOutfitPlanEntry(entity: WorkspaceEntity): MiniOutfitPlanEntry {
     revision: entity.revision,
     date: firstString(payload.date, payload.planDate),
     outfitId: firstString(payload.outfitId, payload.actualOutfitId),
+    actualOutfitId: firstString(payload.actualOutfitId),
     calendarPlanId: firstString(payload.calendarPlanId, payload.tripPlanId),
     status: planEntryStatus(payload.status),
     title: firstString(payload.title),
@@ -845,6 +892,9 @@ function toMiniOutfitPlanEntry(entity: WorkspaceEntity): MiniOutfitPlanEntry {
     weatherNote: firstString(payload.weatherNote),
     notes: firstString(payload.notes),
     isPrimary: payload.isPrimary === true,
+    isPrimaryActual: payload.isPrimaryActual === true,
+    role: outfitPlanRole(payload.role),
+    sortOrder: numberValue(payload.sortOrder) ?? 9999,
     rawPayload: payload,
     createdAt: entity.createdAt,
     updatedAt: entity.updatedAt,
@@ -1003,6 +1053,11 @@ function planTone(value: unknown, type: MiniCalendarPlanType): MiniCalendarPlanT
 function planEntryStatus(value: unknown): MiniOutfitPlanEntryStatus {
   if (value === "worn" || value === "skipped" || value === "changed") return value;
   return "planned";
+}
+
+function outfitPlanRole(value: unknown): "primary" | "backup" | "other" {
+  if (value === "primary" || value === "backup") return value;
+  return "other";
 }
 
 function defaultPlanTitle(type: MiniCalendarPlanType): string {

@@ -4413,3 +4413,14 @@
 - **风险门禁**：**high**（Android 原生网络与线上图片主链路）。
 - **未触发 subagent**：用户未通知。
 - **待完成验证**：提交后重建固定签名 APK，在 Android 35 模拟器重新登录同一线上账号并确认原图显示、重装后服务器恢复及无致命 logcat。
+## 2026-07-10 / v2.1.9-test / Codex - 小程序计划穿搭与实际穿着分流
+
+- **执行 Agent**：Codex（未触发 subagent：用户未通知；继续在独立 worktree `/Users/fangzheng/Documents/wardrobe-wechat-calendar-plan-fix` 的 `codex/wechat-calendar-plan-fix` 分支实现）。
+- **目的**：将小程序套装首页周历与月历页的穿搭状态对齐 App：历史日期补登实际穿着；今天和未来日期均支持主计划与备选穿搭；今天可将主计划标记为已穿并撤销，未来可更改主计划；同一天不能把同一套装重复安排为主计划和备选。
+- **版本变更**：无；当前应用版本仍为 `2.1.9-test`，小程序包版本仍为 `0.1.0`。
+- **改动边界**：仅改 `apps/wechat-miniprogram` 前端和本记录；未改 `services/wardrobe-api`、`packages/cloud-contracts`、数据库或线上接口契约，复用既有 `/api/workspace/outfit-plans`、穿着记录和计划读写接口。
+- **改动文件**：`apps/wechat-miniprogram/services/workspace.ts`、`apps/wechat-miniprogram/utils/outfit-plan-state.ts`、`apps/wechat-miniprogram/scripts/test-outfit-plan-state.ts`、`apps/wechat-miniprogram/pages/outfits/index.{ts,wxml,wxss}`、`apps/wechat-miniprogram/pages/outfits/calendar/index.{ts,wxml,wxss}`、`VERSION_HISTORY.md`。
+- **改动说明**：新增计划状态归类、主计划排序与备选筛选纯函数；小程序读取服务端 `actualOutfitId`、实际主穿搭、角色和排序字段；套装首页周卡和月历选择卡统一展示主计划、备选列表及套装拼图封面。历史日期仅开放“补记已穿”；今天主计划显示“标记已穿”或“撤销已穿”，且可添加备选；未来主计划支持“更改计划”和“添加备选”。每次写入等待服务端提交后重新读取 planning snapshot，不做乐观更新；失败时保留选择面板和当前草稿。月历页顶部标题与 `+计划` 按钮固定在微信胶囊下方，避免互相遮挡。
+- **验证结果**：主项目 TypeScript 执行 `tsc -p apps/wechat-miniprogram/tsconfig.json --noEmit` 通过；`test-outfit-plan-state.ts` 的 11 条计划状态与重复保护断言通过；微信开发者工具 CLI 编译 `pages/outfits/index/index` 与 `pages/outfits/calendar/index` 的 WXML/WXSS 全部通过，并完成模拟器刷新；模拟器检查月历页主计划、标记已穿、备选入口、备选选择面板和顶部标题布局，截图为 `/Users/fangzheng/Desktop/wechat-calendar-plan-align-screenshots/16-calendar-header-main-plan-backup.png`、`/Users/fangzheng/Desktop/wechat-calendar-plan-align-screenshots/17-calendar-backup-selector.png`、`/Users/fangzheng/Desktop/wechat-calendar-plan-align-screenshots/18-outfits-home-header-position.png`；DevTools console 的 error/fail/typeerror/referenceerror 过滤为空；`git diff --check` 通过。使用用户授权的真实测试账号调用现有线上接口，验证今天主计划与备选、未来主计划与备选、今天标记已穿、未来替换主计划、历史补登及取消补登，全部读回成功，临时套装和计划均已清理。
+- **风险门禁**：high（小程序日历交互、服务器状态写入和移动端底部面板；不改服务端、不改共享契约、不上传体验版、不打 Android APK）；未触发 subagent：用户未通知。
+- **未验证风险**：真实接口验证经由已授权账号完成，但微信开发者工具的密码登录页面在接口返回 200 后仍停留在提交态，属于 DevTools 页面运行问题，故截图使用页面内注入展示状态且不写入服务器；未做真机预览或体验版上传。

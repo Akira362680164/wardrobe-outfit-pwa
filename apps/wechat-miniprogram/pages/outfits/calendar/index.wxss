@@ -6,11 +6,7 @@
 
 .sub-top {
   position: relative;
-  display: flex;
-  align-items: center;
-  justify-content: center;
   min-height: 96rpx;
-  padding-right: 180rpx;
 }
 
 .back-button {
@@ -30,23 +26,36 @@
 }
 
 .sub-title {
+  position: absolute;
+  top: 0;
+  right: 344rpx;
+  left: 96rpx;
+  display: flex;
+  align-items: center;
   min-width: 0;
+  height: 88rpx;
+  overflow: hidden;
   color: var(--color-ink);
   font-size: var(--font-section);
   font-weight: 800;
   line-height: 1.25;
-  text-align: center;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .plan-add-button {
   position: absolute;
   right: 180rpx;
+  box-sizing: border-box;
   display: flex;
   align-items: center;
   justify-content: center;
   width: 148rpx;
+  min-width: 0;
+  max-width: 148rpx;
   height: 88rpx;
   margin: 0;
+  padding: 0;
   padding: 0;
   border: 0;
   border-radius: 44rpx;
@@ -266,6 +275,39 @@
   background: var(--color-mist);
 }
 
+.cover-collage {
+  display: grid;
+  overflow: hidden;
+  background: rgba(244, 245, 243, 0.78);
+}
+
+.cover-collage--1 { grid-template-columns: 1fr; }
+
+.cover-collage--2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+
+.cover-collage--3 {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-rows: repeat(2, minmax(0, 1fr));
+}
+
+.cover-collage--3 .cover-collage__cell:first-child { grid-column: 1 / 3; }
+
+.cover-collage--4 {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-rows: repeat(2, minmax(0, 1fr));
+}
+
+.cover-collage__cell {
+  overflow: hidden;
+  border-right: 1rpx solid rgba(255, 255, 252, 0.72);
+  border-bottom: 1rpx solid rgba(255, 255, 252, 0.72);
+}
+
+.cover-collage__image {
+  width: 100%;
+  height: 100%;
+}
+
 .entry-cover--empty,
 .outfit-option__cover--empty {
   display: flex;
@@ -304,6 +346,93 @@
   color: var(--color-primary);
   font-size: var(--font-label);
   font-weight: 700;
+}
+
+.entry-status.is-worn { color: var(--color-success); }
+.entry-status.is-changed { color: #B97155; }
+
+.entry-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12rpx;
+  margin-top: 16rpx;
+}
+
+.entry-actions .state-button {
+  width: auto;
+  min-width: 138rpx;
+  height: 56rpx;
+  min-height: 56rpx;
+  margin: 0;
+  padding: 0 20rpx;
+  border-radius: 28rpx;
+  font-size: 22rpx;
+  line-height: 56rpx;
+}
+
+.state-button--worn {
+  background: var(--color-success);
+}
+
+.state-button--worn.is-worn {
+  border: 1rpx solid var(--color-line);
+  background: rgba(255, 255, 252, 0.92);
+  color: var(--color-muted);
+}
+
+.state-button--secondary {
+  border: 1rpx solid var(--color-line);
+  background: rgba(255, 255, 252, 0.92);
+  color: var(--color-muted);
+}
+
+.backup-list {
+  margin-top: 18rpx;
+  padding-top: 18rpx;
+  border-top: 1rpx solid rgba(29, 34, 40, 0.08);
+}
+
+.backup-list__title {
+  margin-bottom: 10rpx;
+  color: rgba(29, 34, 40, 0.46);
+  font-size: var(--font-label);
+  font-weight: 700;
+}
+
+.backup-list__item {
+  display: flex;
+  align-items: center;
+  gap: 14rpx;
+  min-width: 0;
+  padding: 10rpx 0;
+}
+
+.backup-list__cover {
+  width: 64rpx;
+  height: 64rpx;
+  flex: 0 0 64rpx;
+  overflow: hidden;
+  border-radius: 12rpx;
+  background: var(--color-mist);
+}
+
+.backup-list__cover--empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: rgba(29, 34, 40, 0.32);
+  font-size: 22rpx;
+  font-weight: 800;
+}
+
+.backup-list__name {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--color-ink);
+  font-size: var(--font-caption);
+  font-weight: 700;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .entry-meta,
