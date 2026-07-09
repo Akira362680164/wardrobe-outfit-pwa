@@ -9,6 +9,17 @@ export interface WorkspaceEntity {
   id: string;
   revision: number;
   payload: Record<string, unknown>;
+  assetRefs?: Record<string, WorkspaceAssetReference>;
+}
+
+export interface WorkspaceAssetReference {
+  assetId: string;
+  variants: Array<"original" | "thumbnail">;
+  sha256: string;
+  mimeType: string;
+  width?: number;
+  height?: number;
+  variantSha256?: Partial<Record<"original" | "thumbnail", string>>;
 }
 
 export interface WorkspaceOverview {
@@ -16,8 +27,10 @@ export interface WorkspaceOverview {
   outfits: WorkspaceEntity[];
   wishlistItems: WorkspaceEntity[];
   locations: WorkspaceEntity[];
+  tripPlans?: WorkspaceEntity[];
   outfitPlans: WorkspaceEntity[];
   wearEvents: WorkspaceEntity[];
+  profiles?: WorkspaceEntity[];
 }
 
 export interface AuthSession {
@@ -36,8 +49,26 @@ export interface AndroidE2EApi {
   update(session: AuthSession, resource: string, entity: WorkspaceEntity, payload: Record<string, unknown>): Promise<{ entity: WorkspaceEntity }>;
   remove(session: AuthSession, resource: string, entity: WorkspaceEntity): Promise<void>;
   post<T>(session: AuthSession, path: string, body: Record<string, unknown>): Promise<T>;
-  request<T>(session: AuthSession, path: string, options?: { method?: string; body?: unknown }): Promise<T>;
-  workspace<T>(session: AuthSession, path: string, options?: { method?: string; body?: unknown }): Promise<T>;
+  request<T>(session: AuthSession, path: string, options?: ApiRequestOptions): Promise<T>;
+  workspace<T>(session: AuthSession, path: string, options?: ApiRequestOptions): Promise<T>;
+  upload<T>(session: AuthSession, path: string, body: Uint8Array, contentType: string): Promise<T>;
+  setFault(fault: AndroidE2EFault): Promise<void>;
+  clearFaults(): Promise<void>;
+}
+
+export interface ApiRequestOptions {
+  method?: string;
+  body?: unknown;
+  headers?: Record<string, string>;
+}
+
+export interface AndroidE2EFault {
+  method?: string;
+  pathIncludes: string;
+  times?: number;
+  statusCode?: number;
+  code?: string;
+  message?: string;
 }
 
 export interface AndroidE2EDevice {
@@ -45,6 +76,8 @@ export interface AndroidE2EDevice {
   startApp(packageName?: string): Promise<Page | void>;
   clearAppData(packageName?: string): Promise<void>;
   forceStop(packageName?: string): Promise<void>;
+  pressBack(): Promise<void>;
+  screenshot(name: string): Promise<void>;
 }
 
 export interface AndroidE2EArtifacts {

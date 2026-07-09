@@ -6,9 +6,11 @@ import { join, resolve } from "node:path";
 import { expect, type Page } from "@playwright/test";
 import { chromium, type Browser } from "playwright";
 
+import { aiLiveCases as aiLiveWorkerCases } from "./suites/ai-live";
 import { criticalSuite as criticalWorkerCases } from "./suites/critical";
+import { fullCases as fullWorkerCases } from "./suites/full";
 import { smokeCases as smokeWorkerCases } from "./suites/smoke";
-import type { AndroidE2EAccount, AndroidE2EApi, AndroidE2ECase, AndroidE2EContext, AuthSession, WorkspaceEntity } from "./suites/types";
+import type { AndroidE2EAccount, AndroidE2EApi, AndroidE2ECase, AndroidE2EContext, AndroidE2EFault, ApiRequestOptions, AuthSession, WorkspaceEntity } from "./suites/types";
 
 const ROOT = resolve(new URL("../..", import.meta.url).pathname);
 const PACKAGE_NAME = "com.wardrobe.outfit";
@@ -80,6 +82,8 @@ async function main() {
         startApp: async () => startAppAndAttach(),
         clearAppData: async () => device.clearApp(),
         forceStop: async () => device.forceStop(),
+        pressBack: async () => device.pressBack(),
+        screenshot: async (name: string) => device.screenshot(name),
       },
       artifacts,
       expect,
@@ -129,8 +133,10 @@ function selectedCases(): AndroidE2ECase[] {
     : MODE === "critical"
       ? criticalCases()
       : MODE === "full"
-        ? [...smokeCases(), ...criticalCases()]
-        : fail(`未知 suite：${MODE}`);
+        ? [...smokeCases(), ...criticalCases(), ...fullWorkerCases()]
+        : MODE === "ai-live"
+          ? aiLiveWorkerCases()
+          : fail(`未知 suite：${MODE}`);
   const selected = CASE_FILTER ? cases.filter((item) => item.id === CASE_FILTER) : cases;
   if (selected.length === 0) fail(`未找到 case：${CASE_FILTER ?? "(empty)"}`);
   return selected;
@@ -216,6 +222,18 @@ class AdbDevice {
 
   forceStop() {
     this.shell(["am", "force-stop", PACKAGE_NAME]);
+  }
+
+  pressBack() {
+    this.shell(["input", "keyevent", "KEYCODE_BACK"]);
+  }
+
+  screenshot(name: string) {
+    const output = execFileSync("adb", ["-s", this.serial, "exec-out", "screencap", "-p"], {
+      cwd: ROOT,
+      stdio: "pipe",
+    });
+    writeFileSync(join(RESULTS_DIR, safeName(name)), output);
   }
 
   launchApp() {
@@ -376,23 +394,47 @@ class ApiClient implements AndroidE2EApi {
     return this.requestJson<T>(path, "POST", session, body);
   }
 
-  async request<T>(session: AuthSession, path: string, options: { method?: string; body?: unknown } = {}) {
-    return this.requestJson<T>(path, options.method ?? "GET", session, options.body);
+  async request<T>(session: AuthSession, path: string, options: ApiRequestOptions = {}) {
+    return this.requestJson<T>(path, options.method ?? "GET", session, options.body, options.headers);
   }
 
-  async workspace<T>(session: AuthSession, path: string, options: { method?: string; body?: unknown } = {}) {
+  async workspace<T>(session: AuthSession, path: string, options: ApiRequestOptions = {}) {
     return this.request<T>(session, path, options);
   }
 
-  private async requestJson<T>(path: string, method: string, session?: AuthSession, body?: unknown): Promise<T> {
+  async upload<T>(session: AuthSession, path: string, body: Uint8Array, contentType: string) {
+    return this.requestJson<T>(path, "PUT", session, body, { "Content-Type": contentType }, true);
+  }
+
+  async setFault(fault: AndroidE2EFault) {
+    const token = process.env.E2E_FAULT_TOKEN;
+    if (!token) throw new Error("Full E2E network retry requires E2E_FAULT_TOKEN and a test API with WARDROBE_E2E_FAULTS=1 or WARDROBE_ENV=test");
+    await this.requestJson("/api/test/faults", "POST", undefined, fault, { "X-E2E-Fault-Token": token });
+  }
+
+  async clearFaults() {
+    const token = process.env.E2E_FAULT_TOKEN;
+    if (!token) return;
+    await this.requestJson("/api/test/faults", "DELETE", undefined, undefined, { "X-E2E-Fault-Token": token });
+  }
+
+  private async requestJson<T>(
+    path: string,
+    method: string,
+    session?: AuthSession,
+    body?: unknown,
+    headers: Record<string, string> = {},
+    rawBody = false,
+  ): Promise<T> {
     const response = await fetch(`${this.baseUrl}${path}`, {
       method,
       headers: {
         Accept: "application/json",
         ...(session ? { Authorization: `Bearer ${session.accessToken}`, "X-Wardrobe-Device-Id": session.deviceId } : {}),
-        ...(body === undefined ? {} : { "Content-Type": "application/json" }),
+        ...(body === undefined || rawBody ? {} : { "Content-Type": "application/json" }),
+        ...headers,
       },
-      ...(body === undefined ? {} : { body: JSON.stringify(body) }),
+      ...(body === undefined ? {} : { body: rawBody ? body as BodyInit : JSON.stringify(body) }),
     });
     const text = await response.text();
     const data = text ? JSON.parse(text) : {};

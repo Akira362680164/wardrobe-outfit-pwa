@@ -1,3 +1,14 @@
+## 2026-07-09 / v2.1.9-test / Codex — 真实 APK E2E Full 深链路补齐
+
+- **执行 Agent**：Codex（未触发 subagent：本轮用户要求直接开始写 Full 链路；此前 Smoke/Critical 子任务已完成并由主 agent 整合）。
+- **目的**：在既有真实 APK Smoke/Critical runner 基础上补齐 Full 业务深链路，覆盖图片资产、带图种草转换、级联删除、服务端故障重试、无 MiniMax Key 兜底入口和 Android 原生边界。
+- **版本变更**：无；当前应用版本仍为 `2.1.9-test`。本轮只改测试脚本和测试专用服务端 fault injection，不改 APK 内正式业务代码、不重新打包 APK。
+- **改动文件**：`scripts/android-e2e/run-android-e2e.ts`、`scripts/android-e2e/suites/{types,helpers,full,ai-live}.ts`、`services/wardrobe-api/src/{app,test/fault-injection}.ts`、`services/wardrobe-api/tests/fault-injection.test.ts`、`package.json`、`tests/manifest/fragments/e2e.ts`、`VERSION_HISTORY.md`。
+- **改动说明**：`android:e2e:full` 现在串行执行 Smoke、Critical 和新增 Full cases；Full 新增真实图片临时资产上传、单品首页图片 object-fit 与重启恢复、带图种草转衣橱后资产跟随、撤销购买回到种草并删除对应衣橱单品、删除被套装/计划/已买种草/穿着事件引用的单品后服务端引用清理、服务端 503 保存失败停留编辑页且恢复后重试成功、固定 `clientMutationId` 幂等创建、无 MiniMax Key 录入入口兜底、Android 返回键/清数据重登/ADB 竖屏截图；新增 `android:e2e:ai-live` 手动套件，必须显式开关和 MiniMax Key 才会调用 live MiniMax；服务端新增 `/api/test/faults` 测试专用故障注入，受 `E2E_FAULT_TOKEN` 和测试环境开关双门禁保护。
+- **验证结果**：`npm run typecheck` 通过；`npm run api:typecheck` 通过；`npm --workspace @wardrobe/wardrobe-api run test -- tests/fault-injection.test.ts` 通过；`npm run test:manifest` 通过，并按预期提示 Android/E2E manual blocking 项无法进入纯自动 gate；`git diff --check` 通过。
+- **风险门禁**：high（真实 APK 自动化、图片资产上传、服务端故障注入、业务删除一致性和 Android 原生边界脚本）；未触发 subagent：用户未通知本轮 Full 继续派发。
+- **未验证风险**：本轮未实际连接测试 API 跑 `npm run android:e2e:full`，因此新增 UI 定位和真实服务端一致性仍需首次真机/模拟器实跑校准；Full 的级联删除断言是严格业务验收，若当前服务端删除事务仍未清理套装/计划/已买种草引用，首次实跑会暴露失败；相册/拍照系统权限和原生 Photo Picker 暂未纳入第一版自动化，后续适合用 Appium 或 ADB 辅助补齐；AI no-key case 首版覆盖入口不崩和隐藏 input 兜底路径，未完整控制系统相册选择；AI live 仅在显式 `ALLOW_LIVE_AI_TEST=true E2E_AI_MODE=live ANDROID_E2E_AI_LIVE=1 MINIMAX_API_KEY=...` 下执行。
+
 ## 2026-07-09 / v2.1.9-test / Codex — 真实 APK E2E Smoke/Critical 脚本接入
 
 - **执行 Agent**：Codex 主 agent 负责派发、整合、校验和提交；Smoke 子任务由 Singer 完成并提交 `01be458`；Critical 子任务由 Zeno 完成后由主 agent 整合进统一 runner。

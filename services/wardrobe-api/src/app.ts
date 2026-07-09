@@ -26,6 +26,7 @@ import { loadStorageConfig } from "./storage/config.js";
 import { createStorageProviderFromEnv } from "./storage/factory.js";
 import { UnavailableStorageProvider, type StorageProvider } from "./storage/provider.js";
 import { isStorageReady } from "./storage/readiness.js";
+import { registerTestFaultInjection } from "./test/fault-injection.js";
 import { registerWorkspaceRoutes } from "./workspace/routes.js";
 import { WorkspaceQueryService } from "./workspace/query-service.js";
 import { WorkspaceCommandService } from "./workspace/command-service.js";
@@ -74,6 +75,8 @@ export function buildApp(options: BuildAppOptions = {}): FastifyInstance {
     }
     if (request.method === "OPTIONS") return reply.code(204).send();
   });
+
+  registerTestFaultInjection(app);
 
   app.get("/api/health", async () =>
     HealthResponseSchema.parse({
