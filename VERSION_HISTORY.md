@@ -1,3 +1,14 @@
+## 2026-07-09 / v2.1.8-test / Codex — 整理本地 worktree 与小程序分支
+
+- **执行 Agent**：Codex（未触发 subagent：用户未通知）。
+- **目的**：按用户要求把小程序从本地 `main` 占用中拆出来，恢复主 App 目录作为 `main` 工作入口，并把防误操作规则写入 `AGENTS.md`。
+- **版本变更**：无；当前应用版本仍为 `2.1.8-test`。
+- **改动文件**：`AGENTS.md`（本机忽略文件，长期规则）、`VERSION_HISTORY.md`。
+- **本地 Git 调整**：从 `main@7b6e82e` 创建并推送 `wechat/miniprogram`，小程序目录 `/Users/fangzheng/Documents/wardrobe-wechat-miniprogram` 已跟踪 `origin/wechat/miniprogram`；主 App 目录已切回 `main` 并跟踪 `origin/main`。
+- **验证结果**：已核对 `git worktree list`、两个关键目录的 `git status --short --branch`；`git diff --check` 通过。
+- **风险门禁**：low（本地分支治理与文档规则；不改运行时代码、不改线上 API、不改 Android、不打 APK）；未触发 subagent：用户未通知。
+- **未验证风险**：未运行构建或业务测试；主 App 目录仍保留既有未跟踪本地项 `.ai-bridge/`、`.env.production`、`deploy/.env.production.example`、`docs/agent-task-bundles/test-system-remodel-bundles.md`、`tmp/`，本次不处理。
+
 ## 2026-07-09 / v2.1.8-test / Codex — 小程序 UI gap 一级页与衣橱卡片修复
 
 - **执行 Agent**：Codex 主 agent 负责派发、收口、验证、截图和提交；subagent D（Euclid）负责衣橱首页卡片契约，subagent A（Copernicus）负责套装首页，subagent B（Dewey）负责种草首页，subagent C（Banach）负责设置首页；各 subagent 文件边界不重叠，未并行修改同一文件。
