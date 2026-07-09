@@ -1,3 +1,14 @@
+## 2026-07-09 / v2.1.9-test / Codex — 小程序录入确认页对齐 App 结构
+
+- **执行 Agent**：Codex（接收外部 thread delegation 后直接修正；未启动新的 subagent，本轮只做当前 review 页最小补丁）。
+- **目的**：修正 A/B/C/D 后小程序 `pages/intake/review` 与 App 确认页结构和状态语义不一致的问题；优先保证 AI 成功默认可保存、AI 失败才进入待确认。
+- **版本变更**：无；当前应用版本仍为 `2.1.9-test`，小程序包版本仍为 `0.1.0`。
+- **改动文件**：`apps/wechat-miniprogram/pages/intake/review/index.{ts,wxml,wxss}`、`VERSION_HISTORY.md`。
+- **改动说明**：AI 识别成功项从 `needs_confirm` 改为直接 `confirmed`；AI 识别失败和整批异常改为 `needs_confirm`，保留错误提示，`failed` 继续留给上传/保存等真正失败；新增当前图重新识别入口并保护临时资产缺失项；页面拆成主图胶片卡、AI 识别结果/置信度卡、字段校对卡，缩略图去掉叠字状态标签；底部固定按钮改为 `取消 / 保存 N 件单品`，保存按钮继续由 `pendingCount === 0` 控制。
+- **验证结果**：`npm --prefix apps/wechat-miniprogram run typecheck` 通过；`wechatide compile_wxss pages/intake/review/index.wxss` 通过；`node apps/wechat-miniprogram/scripts/wechatide-compile.mjs --refresh` 通过；`git diff --check` 通过；源码核对确认识别失败不再写入 `failed`，保存失败仍写入 `failed`。
+- **风险门禁**：medium（小程序录入确认页状态流和 UI 结构修正，只改 review 页，不改服务端、不改共享契约、不改录入上传/保存接口）；未触发 subagent：本轮是外部 delegation 的单点修正。
+- **未验证风险**：`wechatide compile_wxml` 当前对任意页面均报 `WXML file not found: ./components/ui/icon-button/index.wxml`，但该文件真实存在且已被 Git 跟踪，判断为当前 DevTools 编译器/项目解析状态问题，本轮未改该全局组件；未做真实录入截图、真机预览或 live MiniMax 图片识别。
+
 ## 2026-07-09 / v2.1.9-test / Codex — 小程序多图录入 C/D 收口与已有能力接线
 
 - **执行 Agent**：Codex 主 agent 负责派发、验收和提交；subagent C 负责多图录入 UI/移动端体验收口；subagent D 负责套装和种草详情中已有后端能力接线。主 agent 保留 subagent 产出，补充种草旧状态兼容并完成统一验证。

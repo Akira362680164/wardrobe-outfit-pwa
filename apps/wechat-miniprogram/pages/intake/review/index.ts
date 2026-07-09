@@ -17,6 +17,7 @@ Page({
     currentIndex: 0,
     currentPositionText: "",
     currentStatusText: "",
+    confidenceText: "--",
     confirmedCount: 0,
     failedCount: 0,
     pendingCount: 0,
@@ -70,22 +71,34 @@ Page({
         const item = getIntakeQueue().find((entry) => entry.clientItemId === result.clientItemId);
         if (!item) continue;
         if (result.status === "failed") {
-          updateIntakeQueueItem(item.clientItemId, { status: "failed", error: result.error });
+          updateIntakeQueueItem(item.clientItemId, { status: "needs_confirm", error: result.error || "AI识别失败，请手工确认后保存" });
           continue;
         }
         updateIntakeQueueItem(item.clientItemId, {
-          status: "needs_confirm",
+          status: "confirmed",
           error: "",
           draft: draftFromTag(item, result.tag),
         });
       }
     } catch (error) {
-      const message = error instanceof Error && error.message ? error.message : "批量识别失败，请手动填写或稍后重试";
-      targets.forEach((item) => updateIntakeQueueItem(item.clientItemId, { status: "failed", error: message }));
+      const message = error instanceof Error && error.message ? error.message : "AI识别失败，请手工确认后保存";
+      targets.forEach((item) => updateIntakeQueueItem(item.clientItemId, { status: "needs_confirm", error: message }));
     } finally {
       this.setData({ recognizing: false });
       this.refreshQueue(this.data.currentIndex);
     }
+  },
+
+  async retryRecognition(this: any) {
+    const item = this.currentQueueItem();
+    if (!item || this.data.recognizing || this.data.saving || item.status === "saving") return;
+    if (!item.assetMutations.length) {
+      this.setData({ error: "图片未上传成功，请返回重选" });
+      return;
+    }
+    updateIntakeQueueItem(item.clientItemId, { status: "ready", error: "" });
+    this.refreshQueue(this.data.currentIndex);
+    await this.ensureRecognition();
   },
 
   chooseItem(this: any, event: any) {
@@ -128,14 +141,10 @@ Page({
       return;
     }
     if (!item.assetMutations.length) {
-      this.setData({ error: "图片未上传成功，请返回重选或跳过此项" });
+      this.setData({ error: "图片未上传成功，请返回重选" });
       return;
     }
     updateIntakeQueueItem(item.clientItemId, { status: "confirmed", error: "", draft });
-    this.refreshQueue(this.data.currentIndex + 1);
-  },
-
-  skipCurrent(this: any) {
     this.refreshQueue(this.data.currentIndex + 1);
   },
 
@@ -196,6 +205,7 @@ Page({
       currentIndex: index,
       currentPositionText: current ? `${index + 1} / ${items.length}` : "",
       currentStatusText: current ? statusText(current.status) : "",
+      confidenceText: confidenceText(current),
       confirmedCount,
       failedCount: getIntakeQueue().filter((item) => item.status === "failed").length,
       pendingCount,
@@ -216,8 +226,15 @@ function statusText(status: IntakeQueueItemStatus): string {
   if (status === "needs_confirm") return "待确认";
   if (status === "confirmed") return "已确认";
   if (status === "saving") return "保存中";
-  if (status === "failed") return "失败/可跳过";
+  if (status === "failed") return "失败";
   return "待处理";
+}
+
+function confidenceText(item: IntakeQueueItem | null): string {
+  const confidence = item?.draft.confidence;
+  if (typeof confidence !== "number" || !Number.isFinite(confidence)) return "--";
+  const percent = confidence <= 1 ? confidence * 100 : confidence;
+  return String(Math.max(0, Math.min(100, Math.round(percent))));
 }
 
 function draftFromTag(item: IntakeQueueItem, tag: AiGarmentTag): IntakeDraft {

@@ -1,7 +1,7 @@
 <view class="page-shell intake-page">
   <view class="intake-header">
     <view class="page-title">添加单品</view>
-    <view class="step-copy">步骤 2 / 2 · 逐件确认后批量保存</view>
+    <view class="step-copy">步骤 2 / 2 · 确认信息</view>
     <view class="progress-track"><view class="progress-fill"></view></view>
   </view>
 
@@ -13,39 +13,38 @@
   <view wx:else>
     <view class="preview-card surface-panel">
       <view class="preview-card__top">
-        <view class="section-title">确认 {{currentPositionText}} 件</view>
-        <view class="ai-badge {{current.status === 'failed' ? 'badge-danger' : current.status === 'confirmed' ? 'badge-success' : ''}}">{{currentStatusText}}</view>
+        <view class="section-title">已识别 {{totalCount}} 件单品</view>
+        <button class="retry-button" loading="{{recognizing}}" disabled="{{recognizing || saving || current.status === 'saving'}}" bindtap="retryRecognition">重新识别</button>
       </view>
-      <view class="state-strip">
-        <view class="state-chip state-confirmed">{{confirmedCount}} 已确认</view>
-        <view class="state-chip state-pending">{{pendingCount}} 待处理</view>
-        <view class="state-chip state-failed">{{failedCount}} 失败</view>
-      </view>
-      <view class="queue-summary">{{confirmedCount}} 件已确认，{{failedCount}} 件失败{{recognizing ? '，AI 正在识别' : ''}}</view>
       <view class="preview-media">
         <image class="preview-image" mode="aspectFill" src="{{current.stablePath || current.imagePath}}" />
       </view>
       <view class="thumb-row">
-        <view wx:for="{{items}}" wx:key="clientItemId" data-index="{{index}}" class="thumb-wrap thumb-{{item.status}} {{index === currentIndex ? 'thumb-active' : ''}} {{item.status === 'failed' ? 'thumb-failed' : ''}}" bindtap="chooseItem">
+        <view wx:for="{{items}}" wx:key="clientItemId" data-index="{{index}}" class="thumb-wrap {{index === currentIndex ? 'thumb-active' : ''}} {{item.status === 'needs_confirm' ? 'thumb-needs-confirm' : ''}} {{item.status === 'failed' ? 'thumb-failed' : ''}}" bindtap="chooseItem">
           <image class="thumb-image" mode="aspectFill" src="{{item.stablePath || item.imagePath}}" />
-          <view class="thumb-number">{{index + 1}}</view>
-          <view class="thumb-dot status-{{item.status}}"></view>
-          <view class="thumb-label status-label-{{item.status}}">
-            {{item.status === 'confirmed' ? '已确认' : item.status === 'failed' ? '失败' : item.status === 'recognizing' || item.status === 'ready' ? '识别中' : item.status === 'saving' ? '保存中' : '待确认'}}
-          </view>
         </view>
       </view>
     </view>
 
-    <view class="form-card surface-panel">
-      <view class="form-card__top">
+    <view class="ai-card surface-panel">
+      <view class="ai-card__top">
         <view class="section-title">校对衣物草稿</view>
-        <view class="review-badge">{{current.draft.source === 'ai' ? 'AI 草稿' : '人工录入'}}</view>
+        <view class="ai-card__badges">
+          <view class="ai-badge">AI {{confidenceText}}</view>
+          <view class="review-badge {{current.status === 'needs_confirm' ? 'badge-danger' : current.status === 'confirmed' ? 'badge-success' : ''}}">{{currentStatusText}}</view>
+        </view>
       </view>
       <view class="form-copy">
-        {{current.status === 'failed' ? '这张图片处理失败；可以手动补全后确认，也可以跳过。' : current.status === 'recognizing' || current.status === 'ready' ? 'AI 正在识别这张图片，请稍候。' : '请确认名称、分类、颜色和季节。'}}
+        {{current.status === 'needs_confirm' ? 'AI识别失败，请手工确认后保存。' : current.status === 'recognizing' || current.status === 'ready' ? 'AI 正在识别这张图片，请稍候。' : 'AI 已生成草稿，可直接保存。'}}
       </view>
       <view wx:if="{{current.error}}" class="item-error">{{current.error}}</view>
+    </view>
+
+    <view class="form-card surface-panel">
+      <view class="form-card__top">
+        <view class="section-title">确认内容</view>
+        <view class="position-text">{{currentPositionText}}</view>
+      </view>
 
       <view class="field-label">名称</view>
       <input class="field-input" value="{{current.draft.name}}" placeholder="例如 白色衬衫" disabled="{{current.status === 'recognizing' || current.status === 'saving'}}" bindinput="updateName" />
@@ -68,17 +67,16 @@
 
       <view wx:if="{{error}}" class="error-text">{{error}}</view>
 
-      <view class="review-actions">
-        <button wx:if="{{current.status === 'failed'}}" class="secondary-button action-button" disabled="{{saving}}" bindtap="skipCurrent">跳过此项</button>
+      <view wx:if="{{current.status === 'needs_confirm' || current.status === 'failed'}}" class="review-actions">
         <button class="primary-button action-button" disabled="{{saving || current.status === 'recognizing' || current.status === 'saving' || current.status === 'confirmed'}}" bindtap="confirmCurrent">
-          {{current.status === 'confirmed' ? '已确认' : current.status === 'failed' ? '手动确认本件' : '确认本件'}}
+          确认本件
         </button>
       </view>
     </view>
 
     <view class="bottom-bar bottom-glass-bar">
-      <button class="secondary-button bottom-button" disabled="{{saving}}" bindtap="goBack">上一步</button>
-      <button class="primary-button bottom-button" loading="{{saving}}" disabled="{{!canSave || saving}}" bindtap="saveAll">保存 {{confirmedCount}} 件</button>
+      <button class="secondary-button bottom-button" disabled="{{saving}}" bindtap="goBack">取消</button>
+      <button class="primary-button bottom-button" loading="{{saving}}" disabled="{{!canSave || saving}}" bindtap="saveAll">保存 {{confirmedCount}} 件单品</button>
     </view>
   </view>
 </view>
