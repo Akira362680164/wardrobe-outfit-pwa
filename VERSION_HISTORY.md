@@ -1,3 +1,15 @@
+## 2026-07-09 / v2.1.10-test / Codex — 重新打包最新版 Android APK
+
+- **执行 Agent**：Codex（未触发 subagent：用户只要求打包最新版 APK）。
+- **目的**：按当前本地主 App `main` 基线重新递增测试版本并生成固定签名 Android APK，提供可安装产物。
+- **版本变更**：`package.json` / `package-lock.json` 从 `2.1.9-test` 升至 `2.1.10-test`，Android `versionCode` 由构建脚本推导为 `20110`。
+- **改动文件**：`package.json`、`package-lock.json`、`VERSION_HISTORY.md`。
+- **交付产物**：根目录 `衣橱穿搭助手-v2.1.10-test.apk`，大小 9.5MB，SHA-256 `2e22d09274d1f827a04adbc9ff8e516eadbc9bd048bf0b8f1ec015089071cceb`；构建归档 `apk-local/app-release-f98bd1b.apk`。
+- **验证结果**：`npm run typecheck` 通过；`npm run android:apk` 通过；`aapt dump badging` 确认包名 `com.wardrobe.outfit`、`versionName=2.1.10-test`、`versionCode=20110`；`apksigner verify --print-certs` 确认证书 `CN=fangzheng`；`APK_PATH="$PWD/衣橱穿搭助手-v2.1.10-test.apk" APK_EXPECTED_SIGNER_CN=fangzheng ANDROID_SERIAL=emulator-5554 RESULTS_DIR="$PWD/test-results/android-v2.1.10-test-script" npm run android:verify:full` 通过，设备 `emulator-5554` / Android 15 / `sdk_gphone64_arm64`，结果目录 `test-results/android-v2.1.10-test-script/20260709-214235/`，三段 crash 日志为空。
+- **Git 基线说明**：本地 `HEAD` 与本地记录的 `origin/main` 均为 `f98bd1b`；本轮尝试 `git fetch origin` 时 GitHub 连接返回 `LibreSSL SSL_connect: SSL_ERROR_SYSCALL`，因此未刷新远端最新引用。
+- **风险门禁**：high（Android APK 交付、版本号、签名与模拟器安装启动验证）；未触发 subagent：用户未通知。
+- **未验证风险**：未安装到已连接真机，避免清理或覆盖真机登录态和本机 MiniMax Key；本轮未跑真实业务 E2E Smoke/Critical/Full，也未验证线上生产账号登录和 live MiniMax 图片调用。
+
 ## 2026-07-09 / v2.1.9-test / Codex — AGENTS 补充真实 APK E2E 链路说明
 
 - **执行 Agent**：Codex（未触发 subagent：用户要求直接补文档）。
