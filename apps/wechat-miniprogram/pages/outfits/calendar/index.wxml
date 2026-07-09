@@ -1,4 +1,4 @@
-<view class="page-shell calendar-page" style="padding-top: {{titleTopRpx}}rpx;">
+<view class="page-shell calendar-page" style="padding-top: {{titleTopRpx}}rpx;" bindtouchstart="onMonthTouchStart" bindtouchend="onMonthTouchEnd">
   <view class="sub-top">
     <view class="back-button" aria-label="返回" bindtap="goBack">‹</view>
     <view class="sub-title">穿搭计划</view>

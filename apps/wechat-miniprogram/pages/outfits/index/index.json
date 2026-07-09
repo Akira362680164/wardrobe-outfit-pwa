@@ -1,5 +1,6 @@
 {
   "usingComponents": {
-    "create-sheet": "/components/domain/create-sheet/index"
+    "create-sheet": "/components/domain/create-sheet/index",
+    "ui-sheet": "/components/ui/sheet/index"
   }
 }

@@ -14,6 +14,7 @@ import {
   getMonthRange,
   localDateKey,
   monthTitle,
+  parseDateKey,
   rangeOverlaps,
   shiftMonthKey,
 } from "../../../utils/calendar";
@@ -41,6 +42,7 @@ type SelectedPlanView = MiniCalendarPlan & {
   dateText: string;
 };
 type DatasetEvent = { currentTarget: { dataset: Record<string, unknown> } };
+type TouchLikeEvent = { touches?: Array<{ clientX: number }>; changedTouches?: Array<{ clientX: number }> };
 
 const WEEKDAYS = ["一", "二", "三", "四", "五", "六", "日"];
 const PLAN_OPTIONS: Array<{ type: MiniCalendarPlanType; label: string; desc: string }> = [
@@ -86,6 +88,7 @@ Page({
     addPlanSheetOpen: false,
     planOptions: PLAN_OPTIONS,
     error: "",
+    touchStartX: 0,
   },
 
   onLoad() {
@@ -104,7 +107,27 @@ Page({
 
   shiftMonth(event: DatasetEvent) {
     const delta = event.currentTarget.dataset.delta === "next" ? 1 : -1;
-    this.setData({ monthKey: shiftMonthKey(this.data.monthKey, delta) });
+    this.shiftMonthBy(delta);
+  },
+
+  onMonthTouchStart(event: TouchLikeEvent) {
+    this.setData({ touchStartX: event.touches?.[0]?.clientX ?? 0 });
+  },
+
+  onMonthTouchEnd(event: TouchLikeEvent) {
+    const startX = this.data.touchStartX;
+    const endX = event.changedTouches?.[0]?.clientX ?? startX;
+    const delta = endX - startX;
+    if (Math.abs(delta) < 48) return;
+    this.shiftMonthBy(delta < 0 ? 1 : -1);
+  },
+
+  shiftMonthBy(delta: -1 | 1) {
+    const nextMonthKey = shiftMonthKey(this.data.monthKey, delta);
+    const selectedDay = parseDateKey(this.data.selectedDate).day;
+    const lastDay = parseDateKey(getMonthRange(nextMonthKey).lastDay).day;
+    const selectedDate = `${nextMonthKey}-${String(Math.min(selectedDay, lastDay)).padStart(2, "0")}`;
+    this.setData({ monthKey: nextMonthKey, selectedDate });
     this.rebuildCalendar();
   },
 

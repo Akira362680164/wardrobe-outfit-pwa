@@ -1,3 +1,14 @@
+## 2026-07-09 / v2.1.9-test / Codex — 小程序套装首页周历与计划入口对齐
+
+- **执行 Agent**：Codex（未触发 subagent：用户未通知；本轮继续在独立 worktree `/Users/fangzheng/Documents/wardrobe-wechat-calendar-plan-fix` 的 `codex/wechat-calendar-plan-fix` 分支执行）。
+- **目的**：按用户提供的 App 套装页截图修正小程序套装首页：`月历` / `+计划` 入口放到微信胶囊下方，不遮挡标题；本周范围当前年份不显示年份；套装列表改为一屏两列瀑布流；`+计划` 面板不再被底部导航压住。
+- **版本变更**：无；当前应用版本仍为 `2.1.9-test`，小程序包版本仍为 `0.1.0`。
+- **改动文件**：`apps/wechat-miniprogram/pages/outfits/index.{json,ts,wxml,wxss}`、`apps/wechat-miniprogram/pages/outfits/calendar/index.{ts,wxml}`、`VERSION_HISTORY.md`。
+- **改动说明**：套装首页改为读取 planning snapshot，将套装、计划、穿搭安排一起驱动周历；周历支持点击日期、左右箭头和左右滑动切换周；周卡展示当天计划 chip、套装入口和状态；顶部新增 `+计划` Sheet，三项为旅行、出差、自定义，跳转到计划编辑页并带入当前日期；`月历` / `+计划` 采用固定宽度点击控件，定位到微信胶囊下方右侧；套装列表增加 `outfit-grid` 两列布局，沿用衣橱瀑布流的两列密度；打开计划 Sheet 时隐藏自定义 tabBar 和 FAB，关闭或跳转时恢复；月历页根容器支持左右滑动切换月份。
+- **验证结果**：`/Users/fangzheng/Documents/衣柜识别+根据要去的地方和活动自动搭配穿搭的APP/node_modules/.bin/tsc -p apps/wechat-miniprogram/tsconfig.json --noEmit` 通过；微信开发者工具 CLI `compile_wxml/compile_wxss` 覆盖 `pages/outfits/index/index` 通过；DevTools 模拟器打开 `pages/outfits/index/index` 并截图验证主页面、两列套装流和 `+计划` Sheet，截图为 `/Users/fangzheng/Desktop/wechat-calendar-plan-align-screenshots/05-outfits-main-final.png`、`/Users/fangzheng/Desktop/wechat-calendar-plan-align-screenshots/07-add-plan-sheet-final-hidden.png`；使用用户提供的测试账号真实登录接口返回 200，并创建/读回/删除本轮临时套装、计划和穿搭安排，清理结果均为 `committed`。
+- **风险门禁**：high（小程序套装首页、周历交互、计划入口、线上 workspace 临时写入验证和多层弹窗状态；不改服务端、不改共享契约、不上传体验版、不打 Android APK）；未触发 subagent：用户未通知。
+- **未验证风险**：本轮截图基于 DevTools 模拟器和注入的展示数据验证视觉状态；未做真机预览或体验版上传；真实账号测试数据已清理，最终截图中的两列卡片为展示布局数据。
+
 ## 2026-07-09 / v2.1.9-test / Codex — 小程序月历切换与计划管理修复
 
 - **执行 Agent**：Codex（未触发 subagent：用户未通知；本轮在独立 worktree `/Users/fangzheng/Documents/wardrobe-wechat-calendar-plan-fix` 的 `codex/wechat-calendar-plan-fix` 分支执行，未改动既有小程序 worktree 中的无关未提交文件）。

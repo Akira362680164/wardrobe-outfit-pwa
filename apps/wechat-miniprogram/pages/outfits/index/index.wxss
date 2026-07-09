@@ -1,19 +1,29 @@
 .page-shell { padding: 0 32rpx 180rpx; }
 
 .outfit-hero {
+  position: relative;
+  min-height: 184rpx;
   min-width: 0;
 }
 
 .hero-copy { min-width: 0; flex: 1; }
 
-.outfit-actions {
+.hero-actions {
+  position: absolute;
+  right: 0;
+  top: 86rpx;
   display: flex;
-  justify-content: flex-start;
-  margin-top: 18rpx;
+  justify-content: flex-end;
+  gap: 16rpx;
+  width: 330rpx;
 }
 
 .content-fab::after,
-.mini-button::after { border: 0; }
+.mini-button::after,
+.hero-control::after,
+.week-empty__button::after,
+.worn-button::after,
+.backup-button::after { border: 0; }
 
 .content-fab {
   position: fixed;
@@ -64,7 +74,6 @@
   line-height: 1.55;
 }
 
-.hero-control,
 .mini-button {
   box-sizing: border-box;
   display: flex;
@@ -82,11 +91,39 @@
 }
 
 .hero-control {
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   flex: 0 0 auto;
-  min-width: 128rpx;
-  padding: 0 30rpx;
-  background: rgba(53, 92, 125, 0.10);
-  color: var(--color-primary);
+  height: 88rpx;
+  min-height: 88rpx;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 44rpx;
+  font-size: 30rpx;
+  font-weight: 800;
+  line-height: 88rpx;
+  white-space: nowrap;
+}
+
+.hero-control--calendar {
+  width: 148rpx;
+  min-width: 148rpx;
+  max-width: 148rpx;
+  background: rgba(255, 255, 252, 0.92);
+  color: #355C7D;
+  box-shadow: 0 12rpx 28rpx rgba(29, 34, 40, 0.10);
+}
+
+.hero-control--plan {
+  width: 164rpx;
+  min-width: 164rpx;
+  max-width: 164rpx;
+  background: #355C7D;
+  color: #FFFFFC;
+  box-shadow: 0 18rpx 44rpx rgba(53, 92, 125, 0.22);
 }
 
 .mini-button {
@@ -95,31 +132,61 @@
 }
 
 .week-card {
-  margin-top: 28rpx;
+  margin-top: 26rpx;
   padding: 28rpx 24rpx 24rpx;
-  border-radius: var(--radius-card);
+  border: 1rpx solid rgba(29, 34, 40, 0.06);
+  border-radius: 36rpx;
+  background: rgba(255, 255, 252, 0.82);
+  box-shadow: 0 24rpx 60rpx rgba(29, 34, 40, 0.08);
 }
 
 .week-card__head {
   display: flex;
-  align-items: baseline;
+  align-items: center;
+  justify-content: space-between;
   gap: 14rpx;
   min-width: 0;
 }
 
+.week-card__copy {
+  display: flex;
+  align-items: baseline;
+  min-width: 0;
+  gap: 14rpx;
+}
+
 .week-card__title {
   flex: 0 0 auto;
-  color: var(--color-ink);
-  font-size: var(--font-body);
+  color: #1D2228;
+  font-size: 30rpx;
   font-weight: 800;
 }
 
 .week-card__range {
   overflow: hidden;
-  color: var(--color-muted);
-  font-size: var(--font-caption);
+  color: rgba(29, 34, 40, 0.50);
+  font-size: 26rpx;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.week-card__arrows {
+  display: flex;
+  align-items: center;
+  gap: 8rpx;
+  flex: 0 0 auto;
+}
+
+.week-arrow {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 64rpx;
+  height: 64rpx;
+  color: #1D2228;
+  font-size: 48rpx;
+  font-weight: 700;
+  line-height: 1;
 }
 
 .week-strip {
@@ -132,19 +199,21 @@
 .week-day {
   display: flex;
   min-width: 0;
-  height: 124rpx;
+  height: 148rpx;
   flex-direction: column;
   align-items: center;
-  justify-content: center;
+  justify-content: flex-start;
+  padding-top: 10rpx;
   border: 1rpx solid transparent;
-  border-radius: var(--radius-control);
+  border-radius: 28rpx;
   color: var(--color-muted);
+  box-sizing: border-box;
 }
 
 .week-day--active {
-  border-color: rgba(53, 92, 125, 0.24);
+  border-color: rgba(53, 92, 125, 0.28);
   background: rgba(53, 92, 125, 0.10);
-  color: var(--color-primary);
+  color: #355C7D;
 }
 
 .week-day__label,
@@ -154,9 +223,9 @@
 }
 
 .week-day__date {
-  margin-top: 10rpx;
-  color: var(--color-ink);
-  font-size: var(--font-body);
+  margin-top: 8rpx;
+  color: #1D2228;
+  font-size: 30rpx;
   font-weight: 800;
   line-height: 1;
 }
@@ -164,6 +233,150 @@
 .week-day__plus {
   margin-top: 12rpx;
   color: rgba(29, 34, 40, 0.30);
+}
+
+.week-day__thumb {
+  width: 48rpx;
+  height: 58rpx;
+  margin-top: 10rpx;
+  border-radius: 8rpx;
+  background: var(--color-mist);
+}
+
+.week-day__bar {
+  width: 44rpx;
+  height: 8rpx;
+  margin-top: 8rpx;
+  border-radius: 999rpx;
+}
+
+.tone-denim { background: #355C7D; }
+.tone-moss { background: #5F7058; }
+.tone-clay { background: #B97155; }
+.tone-amber { background: #F4BE42; }
+.tone-rose { background: #F47182; }
+.tone-purple { background: #BC8CEC; }
+.tone-slate { background: #94A3B8; }
+
+.week-plan-card {
+  margin-top: 22rpx;
+  padding: 24rpx;
+  border: 1rpx solid rgba(29, 34, 40, 0.06);
+  border-radius: 32rpx;
+  background: rgba(255, 255, 252, 0.72);
+}
+
+.week-plan__head {
+  display: flex;
+  align-items: center;
+  gap: 16rpx;
+  min-width: 0;
+}
+
+.week-plan__date {
+  flex: 0 0 auto;
+  color: #1D2228;
+  font-size: 30rpx;
+  font-weight: 800;
+}
+
+.week-plan__chip {
+  min-width: 0;
+  overflow: hidden;
+  padding: 8rpx 16rpx;
+  border: 1rpx solid rgba(53, 92, 125, 0.20);
+  border-radius: 999rpx;
+  background: rgba(53, 92, 125, 0.12);
+  color: #355C7D;
+  font-size: 24rpx;
+  font-weight: 800;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.week-plan__body {
+  display: flex;
+  align-items: center;
+  gap: 24rpx;
+  margin-top: 22rpx;
+}
+
+.week-plan__covers {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 8rpx;
+  min-width: 120rpx;
+}
+
+.week-plan__cover {
+  width: 120rpx;
+  height: 150rpx;
+  border-radius: 14rpx;
+  background: var(--color-mist);
+}
+
+.week-plan__cover--empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: rgba(29, 34, 40, 0.32);
+  font-size: 30rpx;
+  font-weight: 800;
+}
+
+.week-plan__main {
+  min-width: 0;
+  flex: 1;
+}
+
+.week-plan__name {
+  overflow: hidden;
+  color: #1D2228;
+  font-size: 38rpx;
+  font-weight: 800;
+  line-height: 1.25;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.week-plan__actions {
+  display: flex;
+  align-items: center;
+  gap: 16rpx;
+  margin-top: 24rpx;
+}
+
+.worn-button,
+.backup-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 64rpx;
+  margin: 0;
+  padding: 0;
+  border-radius: 999rpx;
+  font-size: 26rpx;
+  font-weight: 800;
+  line-height: 64rpx;
+}
+
+.worn-button {
+  width: 164rpx;
+  border: 0;
+  background: #5F7058;
+  color: #FFFFFC;
+}
+
+.worn-button.is-planned {
+  background: #355C7D;
+}
+
+.backup-button {
+  width: 220rpx;
+  border: 1rpx solid rgba(29, 34, 40, 0.10);
+  background: #FFFFFC;
+  color: rgba(29, 34, 40, 0.45);
 }
 
 .week-empty {
@@ -197,7 +410,6 @@
 .outfit-list {
   display: flex;
   flex-direction: column;
-  gap: 20rpx;
   margin-top: 24rpx;
 }
 
@@ -205,6 +417,13 @@
   display: flex;
   width: calc(100vw - 64rpx);
   white-space: nowrap;
+}
+
+.outfit-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 24rpx;
+  margin-top: 20rpx;
 }
 
 .filter-chip {
@@ -238,7 +457,7 @@
 .outfit-collage {
   display: grid;
   grid-template-columns: 1.2fr 1fr;
-  height: 210rpx;
+  height: 246rpx;
   overflow: hidden;
   background: var(--color-mist);
 }
@@ -272,13 +491,13 @@
 
 .outfit-main {
   min-width: 0;
-  padding: 22rpx 24rpx 24rpx;
+  padding: 20rpx 20rpx 22rpx;
 }
 
 .outfit-name {
   overflow: hidden;
   color: var(--color-ink);
-  font-size: var(--font-body);
+  font-size: 26rpx;
   font-weight: 700;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -288,7 +507,7 @@
   overflow: hidden;
   margin-top: 10rpx;
   color: var(--color-muted);
-  font-size: var(--font-caption);
+  font-size: 22rpx;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -296,5 +515,31 @@
 .outfit-wear {
   margin-top: 8rpx;
   color: rgba(29, 34, 40, 0.42);
-  font-size: var(--font-caption);
+  font-size: 22rpx;
+}
+
+.sheet-options {
+  display: flex;
+  flex-direction: column;
+  gap: 22rpx;
+}
+
+.sheet-option {
+  padding: 28rpx;
+  border: 1rpx solid rgba(29, 34, 40, 0.10);
+  border-radius: 24rpx;
+  background: rgba(255, 255, 252, 0.90);
+}
+
+.sheet-option__title {
+  color: #1D2228;
+  font-size: 30rpx;
+  font-weight: 800;
+}
+
+.sheet-option__copy {
+  margin-top: 10rpx;
+  color: rgba(29, 34, 40, 0.46);
+  font-size: 24rpx;
+  line-height: 1.45;
 }
