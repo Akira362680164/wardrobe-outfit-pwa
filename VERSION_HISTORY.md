@@ -1,3 +1,14 @@
+## 2026-07-09 / v2.1.9-test / Codex — 真实 APK E2E Smoke/Critical 脚本接入
+
+- **执行 Agent**：Codex 主 agent 负责派发、整合、校验和提交；Smoke 子任务由 Singer 完成并提交 `01be458`；Critical 子任务由 Zeno 完成后由主 agent 整合进统一 runner。
+- **目的**：把当前 E2E 的核心阻塞链路从浏览器 Dev Server 脚本替换为真实 APK 自动化脚本，采用 ADB 安装/启动/清数据/logcat + Android WebView CDP + Playwright 操作页面，并覆盖用户指定的 Smoke 与 Critical 业务链路。
+- **版本变更**：无；当前应用版本仍为 `2.1.9-test`。本轮只改测试脚本和测试清单，不改 APK 内运行时代码、不重新打包 APK。
+- **改动文件**：`package.json`、`scripts/test/run-suite.ts`、`tests/manifest/fragments/e2e.ts`、`scripts/android-e2e/run-android-e2e.ts`、`scripts/android-e2e/suites/{types,smoke,critical}.ts`、`VERSION_HISTORY.md`。
+- **改动说明**：新增 Android E2E 主 runner，执行 APK 包名、版本、签名、安装、清数据、启动、前台窗口、logcat crash 和 WebView CDP 连接检查；新增 Smoke suite，覆盖安装启动、注册/退出/重登、默认衣橱单例、四个主 Tab 与全局新建入口；新增 Critical suite，覆盖单品创建/详情/编辑/删除，种草转衣橱与撤销购买级联删除，套装创建/编辑/计划/已穿/取消已穿一致性，账号隔离，以及退出/重登/force-stop 后服务器恢复；`test:e2e*` 入口改为真实 APK runner，旧浏览器入口保留为 `test:web:e2e*`；测试清单用 `e2e:android-smoke`、`e2e:android-critical`、`e2e:android-full` 替代原核心浏览器 E2E 条目。
+- **验证结果**：`npm run typecheck` 通过；`npm run test:manifest` 通过，并按预期提示 Android/E2E manual blocking 项无法进入纯自动 gate。真实 APK Smoke/Critical 未在本轮执行，runner 已强制要求 `ANDROID_E2E_API_BASE_URL` 指向测试 API，且默认拒绝生产 API，避免误向线上生产账号/数据写入测试数据。
+- **风险门禁**：high（真实 Android APK 自动化、ADB 安装启动、WebView CDP、账号注册和服务端写入/删除全链路测试脚本）；已按用户明确要求派出 subagent，主 agent 完成统一整合。
+- **未验证风险**：本轮未实际连接测试 API 跑 `npm run android:e2e:full`，因此 UI 定位、WebView CDP 重连、服务端测试数据契约仍需首次真机/模拟器实跑校准；未重新构建 APK，后续执行脚本需确保 `APK_PATH` 指向与当前 `package.json` 版本一致且签名为 `CN=fangzheng` 的测试 APK，并且 APK 构建时注入的业务 API 地址与 `ANDROID_E2E_API_BASE_URL` 指向同一个测试后端。
+
 ## 2026-07-09 / v2.1.9-test / Codex — AI 识别 10 并发与种草批量保存
 
 - **执行 Agent**：Codex（未触发 subagent：用户未通知）。
