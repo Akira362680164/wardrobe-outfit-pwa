@@ -1,0 +1,31 @@
+<view class="auth-page">
+  <button class="back-button" bindtap="goBack">‹</button>
+  <view class="auth-card">
+    <view class="auth-title text-wrap-safe">找回密码</view>
+    <view class="auth-copy text-wrap-safe">请输入已验证邮箱，验证码将发送到该邮箱。</view>
+
+    <view class="field-label">邮箱</view>
+    <view class="email-row">
+      <input class="email-input" value="{{email}}" placeholder="输入邮箱" bindinput="handleEmailInput" />
+      <button class="send-code-button" disabled="{{sending || countdown > 0}}" bindtap="sendCode">
+        {{countdown > 0 ? countdown + 's' : (codeSent ? '再次发送' : '发送验证码')}}
+      </button>
+    </view>
+
+    <block wx:if="{{codeSent}}">
+      <view class="field-label code-label">邮箱验证码</view>
+      <input class="auth-input" value="{{emailCode}}" type="number" maxlength="6" placeholder="输入 6 位验证码" bindinput="handleCodeInput" />
+    </block>
+
+    <view class="field-label">新密码</view>
+    <input class="auth-input" value="{{newPassword}}" password placeholder="至少 8 位" bindinput="handlePasswordInput" />
+
+    <view class="field-label">确认新密码</view>
+    <input class="auth-input" value="{{confirmPassword}}" password placeholder="再次输入新密码" bindinput="handleConfirmInput" />
+
+    <view wx:if="{{errorMessage}}" class="auth-error text-wrap-safe">{{errorMessage}}</view>
+    <view wx:if="{{successMessage}}" class="auth-success text-wrap-safe">{{successMessage}}</view>
+
+    <button class="primary-button submit-button" disabled="{{submitting || !email || !newPassword || !confirmPassword}}" bindtap="submit">重置密码</button>
+  </view>
+</view>

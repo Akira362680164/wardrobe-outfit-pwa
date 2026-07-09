@@ -1,3 +1,14 @@
+## 2026-07-09 / v2.1.11-test / Codex — 小程序微信 OpenID 与邮箱注册登录 UI
+
+- **执行 Agent**：Codex（未触发 subagent：用户未通知；本轮继续执行已批准账号体系设计）。
+- **目的**：移除小程序 `getPhoneNumber` 微信手机号认证入口，改为三入口登录页：微信登录/注册、邮箱/手机号登录、通过邮箱注册；补齐首次微信登录后的绑定已有账号/注册新账号分流页面。
+- **版本变更**：无；当前应用版本仍为 `2.1.11-test`。本轮不打 APK，不上传小程序体验版。
+- **改动文件**：`apps/wechat-miniprogram/app.json`、`apps/wechat-miniprogram/services/auth.ts`、`apps/wechat-miniprogram/stores/session.ts`、`apps/wechat-miniprogram/typings/index.d.ts`、`apps/wechat-miniprogram/pages/login/**`、`apps/wechat-miniprogram/pages/settings/account/**`、`scripts/test-wechat-email-auth-flow.ts`、`package.json`、`VERSION_HISTORY.md`。
+- **改动说明**：登录首页首按钮改为 `微信登录/注册`，调用 `/api/auth/wechat/login`；已绑定账号直接进入衣橱，未绑定时跳转 `connect-account`，由用户选择绑定已有账号或注册新账号；第二入口为邮箱/手机号 + 密码登录；第三入口为邮箱注册。邮箱注册页和微信注册新账号页统一为邮箱必填、密码必填、确认密码必填、手机号选填，邮箱输入框右侧发送验证码，点击后弹二次确认，确认后显示验证码输入框并进入 30 秒倒计时，倒计时结束按钮变为再次发送；账号安全页统一展示邮箱、手机号登录名、微信、密码和当前设备。
+- **验证结果**：`npm run test:logic:wechat-email-auth-flow` 通过；`npm --prefix apps/wechat-miniprogram run typecheck` 通过；关键字扫描确认 `apps/wechat-miniprogram/pages/login` 和 `apps/wechat-miniprogram/services/auth.ts` 不再包含 `getPhoneNumber`、`bindgetphonenumber`、`phone-login`、`loginWithWechatPhone`、`微信认证登录`；`git diff --check` 通过。
+- **风险门禁**：high（小程序登录入口、微信首次登录分流、邮箱验证码 UI、账号安全信息展示和跨端 token 接入）；未触发 subagent：用户未通知。
+- **未验证风险**：`node scripts/wechatide-compile.mjs --refresh` 在当前 DevTools 会话返回 `cant find MainWebWinId by projectpath .../apps/wechat-miniprogram`，因此本提交未完成微信开发者工具编译、模拟器截图、真机预览或体验版上传；后续需要重新打开/导入小程序项目后再跑 DevTools 编译和交互验收。
+
 ## 2026-07-09 / v2.1.11-test / Codex — 微信 OpenID 登录分流与绑定接口
 
 - **执行 Agent**：Codex（未触发 subagent：用户未通知；本轮继续执行已批准账号体系设计）。

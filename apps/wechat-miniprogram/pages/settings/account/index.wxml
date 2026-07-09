@@ -1,23 +1,47 @@
 <view class="settings-page page-shell">
-  <view class="page-title">账号</view>
-  <view class="page-copy">当前小程序只保留运行时登录会话，不保存衣橱业务缓存。</view>
+  <view class="page-title">账号安全</view>
+  <view class="page-copy">管理 App 与小程序共用的登录方式。</view>
 
-  <view class="info-card">
-    <view class="status-pill {{loggedIn ? 'status-pill--ok' : ''}}">{{loggedIn ? '已登录' : '未登录'}}</view>
-    <view class="field">
-      <view class="field-label">手机号</view>
-      <view class="field-value">{{phoneMasked}}</view>
+  <view wx:if="{{errorMessage}}" class="account-error">{{errorMessage}}</view>
+
+  <view class="security-card">
+    <view class="card-head">
+      <view class="card-title">邮箱</view>
+      <view class="status-chip">{{emailStatus}}</view>
     </view>
-    <view class="field">
-      <view class="field-label">昵称</view>
-      <view class="field-value">{{displayName || '未设置'}}</view>
-    </view>
-    <view class="field">
-      <view class="field-label">设备标识</view>
-      <view class="field-value">{{deviceId}}</view>
-    </view>
+    <view class="card-main">{{emailLine}}</view>
   </view>
 
-  <button wx:if="{{loggedIn}}" class="danger-button" bindtap="logout">退出登录</button>
-  <button wx:else class="primary-button" bindtap="login">去登录</button>
+  <view class="security-card">
+    <view class="card-head">
+      <view class="card-title">手机号</view>
+      <view class="status-chip status-chip--muted">{{phoneStatus}}</view>
+    </view>
+    <view class="card-main">{{phoneLine}}</view>
+    <view class="card-hint">手机号暂不验证，仅用于手机号+密码登录。</view>
+  </view>
+
+  <view class="security-card">
+    <view class="card-head">
+      <view class="card-title">微信登录</view>
+    </view>
+    <view class="card-main">{{wechatLine}}</view>
+    <view class="card-hint">微信登录仅在小程序端使用。</view>
+  </view>
+
+  <view class="security-card" bindtap="changePassword">
+    <view class="card-head">
+      <view class="card-title">密码</view>
+      <view class="card-action">修改密码</view>
+    </view>
+    <view class="card-main">{{passwordLine}}</view>
+  </view>
+
+  <view class="security-card">
+    <view class="card-title">设备</view>
+    <view class="card-main">{{deviceId}}</view>
+  </view>
+
+  <button wx:if="{{loggedIn}}" class="danger-button logout-button" bindtap="logout">退出登录</button>
+  <button wx:else class="primary-button logout-button" bindtap="login">去登录</button>
 </view>

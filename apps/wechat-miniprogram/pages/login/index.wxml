@@ -1,33 +1,28 @@
-<view class="login-page page-shell">
-  <view class="login-hero glass-panel">
-    <view class="login-kicker">个人衣物助手</view>
-    <view class="login-title text-wrap-safe">同步你的衣橱与穿搭数据</view>
-    <view class="login-copy text-wrap-safe">使用微信认证登录，自动同步你的衣橱与穿搭数据。未注册的手机号，登录后将自动注册账号。</view>
+<view class="login-page">
+  <view class="login-hero">
+    <view class="login-title text-wrap-safe">Wardora</view>
+    <view class="login-copy text-wrap-safe">管理你的衣橱、套装与种草清单</view>
 
     <view class="login-actions">
-      <button
-        class="primary-button login-action"
-        open-type="getPhoneNumber"
-        disabled="{{submitting}}"
-        hover-class="login-action--hover"
-        bindgetphonenumber="onGetPhoneNumber"
-      >
-        微信认证登录
+      <button class="primary-button login-action" disabled="{{submitting}}" hover-class="login-action--hover" bindtap="onWechatLogin">
+        微信登录/注册
       </button>
-
       <button class="secondary-button login-action login-secondary" hover-class="login-action--hover" bindtap="openPasswordLogin">
-        账号密码登录
+        邮箱/手机号登录
+      </button>
+      <button class="login-tertiary" hover-class="login-action--hover" bindtap="openEmailRegister">
+        通过邮箱注册
       </button>
     </view>
 
     <view wx:if="{{errorMessage}}" class="login-error text-wrap-safe">{{errorMessage}}</view>
 
+    <view class="login-tip text-wrap-safe">首次微信登录需要绑定已有账号或注册新账号。</view>
     <view class="agreement-tip text-wrap-safe">
-      点击该按钮后代表您已阅读并认可
+      继续即代表您已阅读并同意
       <text class="agreement-link" bindtap="openAgreement">《用户服务协议》</text>
       和
-      <text class="agreement-link" bindtap="openPrivacy">《隐私政策》</text>，
-      并授权我们通过微信认证登录完成登录/注册。
+      <text class="agreement-link" bindtap="openPrivacy">《隐私政策》</text>。
     </view>
   </view>
 </view>

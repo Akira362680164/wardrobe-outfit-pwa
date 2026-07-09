@@ -1,0 +1,18 @@
+<view class="auth-page">
+  <button class="back-button" bindtap="goBack">‹</button>
+  <view class="auth-card">
+    <view class="auth-title text-wrap-safe">绑定已有账号</view>
+    <view class="auth-copy text-wrap-safe">使用 App 已注册的邮箱/手机号和密码登录，绑定后 App 与小程序将同步同一套衣橱数据。</view>
+
+    <view class="field-label">邮箱或手机号</view>
+    <input class="auth-input" value="{{account}}" placeholder="输入邮箱或手机号" bindinput="handleAccountInput" />
+
+    <view class="field-label">密码</view>
+    <input class="auth-input" value="{{password}}" password placeholder="输入密码" bindinput="handlePasswordInput" />
+
+    <view wx:if="{{errorMessage}}" class="auth-error text-wrap-safe">{{errorMessage}}</view>
+
+    <button class="primary-button submit-button" disabled="{{submitting || !account || !password}}" bindtap="submit">绑定并登录</button>
+    <view class="text-link" bindtap="openForgotPassword">忘记密码？使用邮箱找回</view>
+  </view>
+</view>

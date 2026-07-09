@@ -1,17 +1,16 @@
 <view class="password-page page-shell">
   <view class="password-card glass-panel">
-    <view class="login-kicker">账号密码登录</view>
-    <view class="login-title text-wrap-safe">使用 App 账号继续登录</view>
-    <view class="login-copy text-wrap-safe">输入你在衣橱 App 使用的手机号和密码，登录后继续同步衣橱与穿搭数据。</view>
+    <view class="login-kicker">邮箱/手机号登录</view>
+    <view class="login-title text-wrap-safe">使用 Wardora 账号登录</view>
+    <view class="login-copy text-wrap-safe">输入邮箱或手机号和密码，登录后同步同一套衣橱数据。</view>
 
     <view class="form-area">
-      <view class="field-label">手机号</view>
+      <view class="field-label">邮箱或手机号</view>
       <input
         class="login-input"
-        value="{{phone}}"
-        type="number"
-        placeholder="输入 App 账号手机号"
-        bindinput="handlePhoneInput"
+        value="{{account}}"
+        placeholder="输入邮箱或手机号"
+        bindinput="handleAccountInput"
       />
       <view class="field-label">密码</view>
       <input
@@ -22,12 +21,17 @@
         bindinput="handlePasswordInput"
       />
       <view wx:if="{{errorMessage}}" class="login-error text-wrap-safe">{{errorMessage}}</view>
-      <button class="primary-button form-button" disabled="{{submitting || !phone || !password}}" bindtap="loginByPassword">
+      <button class="primary-button form-button" disabled="{{submitting || !account || !password}}" bindtap="loginByPassword">
         登录
       </button>
     </view>
 
-    <button class="secondary-button form-button back-button" hover-class="form-button--hover" bindtap="goBack">返回微信认证登录</button>
+    <view class="link-row">
+      <text class="text-link" bindtap="openForgotPassword">忘记密码？使用邮箱找回</text>
+      <text class="text-link" bindtap="openEmailRegister">通过邮箱注册</text>
+    </view>
+
+    <button class="secondary-button form-button back-button" hover-class="form-button--hover" bindtap="goBack">返回</button>
 
     <view class="agreement-tip text-wrap-safe">
       登录代表您已阅读并认可

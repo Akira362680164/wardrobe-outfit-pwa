@@ -7,6 +7,7 @@ type MiniPageInstance<T> = T & {
 
 declare function Page<T extends object>(options: T & ThisType<MiniPageInstance<T>>): void;
 declare function getApp<T extends object = Record<string, unknown>>(): T;
+declare function getCurrentPages(): unknown[];
 
 declare namespace WechatMiniprogram {
   interface SafeArea {
@@ -140,6 +141,14 @@ declare const wx: {
     fail(error: unknown): void;
   }): void;
   showToast(options: { title: string; icon?: "success" | "error" | "loading" | "none"; duration?: number }): void;
+  showModal(options: {
+    title: string;
+    content: string;
+    cancelText?: string;
+    confirmText?: string;
+    success(result: { confirm?: boolean; cancel?: boolean }): void;
+    fail?(error: unknown): void;
+  }): void;
   switchTab(options: { url: string }): void;
   redirectTo(options: { url: string }): void;
   navigateTo(options: { url: string }): void;

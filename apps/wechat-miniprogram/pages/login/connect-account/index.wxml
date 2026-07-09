@@ -1,0 +1,23 @@
+<view class="connect-page">
+  <button class="back-button" bindtap="goBack">‹</button>
+  <view class="connect-content">
+    <view class="connect-title text-wrap-safe">连接 Wardora 账号</view>
+    <view class="connect-copy text-wrap-safe">请选择绑定已有账号，或创建一个新账号。</view>
+
+    <view class="choice-card" bindtap="bindExisting">
+      <view>
+        <view class="choice-title">绑定已有账号</view>
+        <view class="choice-copy">使用 App 已注册的邮箱/手机号和密码登录</view>
+      </view>
+      <view class="choice-action">绑定账号</view>
+    </view>
+
+    <view class="choice-card" bindtap="registerNew">
+      <view>
+        <view class="choice-title">注册新账号</view>
+        <view class="choice-copy">使用邮箱创建账号，并自动绑定当前微信</view>
+      </view>
+      <view class="choice-action">注册账号</view>
+    </view>
+  </view>
+</view>
