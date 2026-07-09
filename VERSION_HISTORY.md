@@ -1,3 +1,25 @@
+## 2026-07-10 / v2.1.11-test / Codex — 建立领域字典共享包
+
+- **执行 Agent**：Codex（未触发 subagent：用户未通知）。
+- **目的**：以 `104f9ef` 最新 HEAD 为基线，建立 App、小程序、云契约和服务端共同消费的领域字典单一来源。
+- **版本变更**：无；当前应用版本仍为 `2.1.11-test`。本批次只建立共享包和测试，不切换现有消费者、不打 APK、不上传小程序体验版。
+- **改动文件**：`packages/domain-catalog/**`、`scripts/test-domain-catalog.ts`、`package.json`、`package-lock.json`、`VERSION_HISTORY.md`。
+- **改动说明**：新增颜色、分类/二级分类、季节、风格、衣物/种草状态、领域归一化和 AI 颜色提示词导出；根工作区新增 `@wardrobe/domain-catalog`，安装阶段先构建共享包；新增共享目录完整性测试并纳入 `test:logic:all`。
+- **验证结果**：`npm install --prefer-offline --no-audit --no-fund` 通过；`npm run test:logic:domain-catalog` 通过；`npm run typecheck --workspace @wardrobe/domain-catalog` 通过；`npm run test:logic:catalog` 通过（39 项）；`npm run test:logic:color-catalog` 通过（94 项）；`git diff --check` 通过。
+- **风险门禁**：high（新增跨 App、小程序、云契约和服务端共用的领域基础包，最终任务跨 5 个以上文件）；未触发 subagent：用户未通知。
+- **未验证风险**：本批次尚未让 App、云契约、服务端或小程序消费共享包，完整 typecheck/build 和小程序编译留待后续批次完成。
+
+## 2026-07-10 / v2.1.11-test / Codex — 腾讯云 SES 邮件接入实施计划
+
+- **执行 Agent**：Codex（未触发 subagent：用户明确要求在当前会话生成计划并直接执行；本轮先落下可追踪实施计划）。
+- **目的**：把已批准的腾讯云 SES 邮箱发送器设计拆为 Provider/ready、验证码持久限流、App/小程序 60 秒倒计时和全量验收四个可独立验证批次。
+- **版本变更**：无；当前应用版本仍为 `2.1.11-test`。计划阶段不改运行时代码、不打 APK、不上传小程序体验版。
+- **改动文件**：`docs/superpowers/plans/2026-07-10-tencent-ses-email-provider.md`、`VERSION_HISTORY.md`。
+- **改动说明**：计划固定每批文件边界、共享接口、先失败后实现的测试顺序、迁移索引、错误码、完整验证命令和分批 commit 信息；用户已选择本会话直接执行，因此计划提交后继续开发，不再等待执行方式确认。
+- **验证结果**：计划自检和 `git diff --check` 待提交前执行；未运行代码测试，因为计划提交不修改运行时。
+- **风险门禁**：low（实施计划与版本记录；不改后端、数据库、客户端或环境配置）；未触发 subagent：用户未通知。
+- **未验证风险**：腾讯云模板仍待审批，计划执行不会配置 Secret、部署服务或调用真实邮件；真实邮箱和真机验证保留至模板通过后的激活阶段。
+
 ## 2026-07-10 / v2.1.11-test / Codex — 腾讯云 SES 邮箱发送器设计定稿
 
 - **执行 Agent**：Codex（未触发 subagent：用户未通知；本轮仅将已确认的腾讯云 SES 增量范围写成实施设计）。
