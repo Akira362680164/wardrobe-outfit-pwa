@@ -161,6 +161,41 @@ export function confirmPasswordReset(input: {
   });
 }
 
+export function changePasswordWithCurrentPassword(input: {
+  currentPassword: string;
+  newPassword: string;
+}): Promise<{ status: "ok" }> {
+  return request<{ status: "ok" }>({
+    method: "POST",
+    path: "/api/auth/password/change",
+    auth: true,
+    toast: false,
+    data: input,
+  });
+}
+
+export function requestPasswordChangeCode(): Promise<SendEmailCodeResponse> {
+  return request<SendEmailCodeResponse>({
+    method: "POST",
+    path: "/api/auth/password/change/request-code",
+    auth: true,
+    toast: false,
+  });
+}
+
+export function changePasswordWithEmailCode(input: {
+  emailCode: string;
+  newPassword: string;
+}): Promise<{ status: "ok" }> {
+  return request<{ status: "ok" }>({
+    method: "POST",
+    path: "/api/auth/password/change-with-email-code",
+    auth: true,
+    toast: false,
+    data: input,
+  });
+}
+
 export function getAccountSecurity(): Promise<AccountSecurityResponse> {
   return request<AccountSecurityResponse>({
     method: "GET",

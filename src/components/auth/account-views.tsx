@@ -170,6 +170,20 @@ function formatDate(value: string): string {
   return `${date.getFullYear()}/${date.getMonth() + 1}/${date.getDate()}`;
 }
 
+function toAccountAuthMessage(error: unknown, fallback: string): string {
+  if (error instanceof authApi.CloudAuthApiError) {
+    if (error.code === "invalid_credentials") return "当前密码不正确，请重试";
+    if (error.code === "email_unverified") return "邮箱尚未验证，暂不能使用邮箱验证码修改密码";
+    if (error.code === "email_code_invalid") return "邮箱验证码不正确";
+    if (error.code === "email_code_expired") return "邮箱验证码已过期，请重新获取";
+    if (error.code === "email_code_attempts_exceeded") return "验证码错误次数过多，请重新获取";
+    if (error.code === "email_rate_limited") return "验证码发送过于频繁，请稍后再试";
+    if (error.code === "network_unavailable") return "网络连接失败，请检查网络后重试";
+    if (error.code === "service_unavailable") return "账号服务暂时不可用，请稍后重试";
+  }
+  return error instanceof Error ? error.message : fallback;
+}
+
 export function ChangePasswordView({
   auth,
   onBack,
@@ -179,10 +193,37 @@ export function ChangePasswordView({
   onBack: () => void;
   onDone: () => void;
 }) {
+  const [mode, setMode] = useState<"current" | "email">("current");
   const [currentPassword, setCurrentPassword] = useState("");
+  const [emailCode, setEmailCode] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
+  const [codeSent, setCodeSent] = useState(false);
+  const [sendingCode, setSendingCode] = useState(false);
+  const [countdown, setCountdown] = useState(0);
   const [message, setMessage] = useState<string | null>(null);
+  const emailMasked = auth.user.emailMasked;
+
+  useEffect(() => {
+    if (countdown <= 0) return undefined;
+    const timer = window.setTimeout(() => setCountdown((current) => Math.max(0, current - 1)), 1000);
+    return () => window.clearTimeout(timer);
+  }, [countdown]);
+
+  const sendChangeCode = async () => {
+    if (!auth.accessToken || sendingCode || countdown > 0) return;
+    setSendingCode(true);
+    setMessage(null);
+    try {
+      await authApi.requestPasswordChangeCode(auth.accessToken);
+      setCodeSent(true);
+      setCountdown(30);
+    } catch (error) {
+      setMessage(toAccountAuthMessage(error, "验证码发送失败，请稍后再试"));
+    } finally {
+      setSendingCode(false);
+    }
+  };
 
   return (
     <form
@@ -199,17 +240,80 @@ export function ChangePasswordView({
           return;
         }
         try {
-          await auth.onChangePassword(currentPassword, newPassword);
+          if (mode === "current") {
+            await auth.onChangePassword(currentPassword, newPassword);
+          } else {
+            if (!auth.accessToken) {
+              setMessage("请重新登录后再修改密码");
+              return;
+            }
+            if (!/^\d{6}$/.test(emailCode.trim())) {
+              setMessage("请输入 6 位邮箱验证码");
+              return;
+            }
+            await authApi.changePasswordWithEmailCode({
+              accessToken: auth.accessToken,
+              emailCode: emailCode.trim(),
+              newPassword,
+            });
+          }
           onDone();
         } catch (error) {
-          const msg = error instanceof Error ? error.message : "修改失败，请稍后再试";
+          const msg = toAccountAuthMessage(error, "修改失败，请稍后再试");
           setMessage(msg === "Invalid phone or password" ? "当前密码不正确，请重试" : msg);
         }
       }}
     >
       <SubPageHeader title="修改密码" onBack={onBack} />
       {message ? <p className="rounded-lg bg-clay/10 px-3 py-2 text-sm text-clay">{message}</p> : null}
-      <PasswordField label="当前密码" value={currentPassword} onChange={setCurrentPassword} autoComplete="current-password" />
+      <div className="grid grid-cols-2 gap-2 rounded-lg bg-white p-1">
+        <button
+          type="button"
+          onClick={() => { setMode("current"); setMessage(null); }}
+          className={`h-10 rounded-lg text-sm font-semibold ${mode === "current" ? "bg-[#2F6B4F] text-white" : "border border-ink/10 bg-white text-ink/55"}`}
+        >
+          当前密码
+        </button>
+        <button
+          type="button"
+          onClick={() => { setMode("email"); setMessage(null); }}
+          className={`h-10 rounded-lg text-sm font-semibold ${mode === "email" ? "bg-[#2F6B4F] text-white" : "border border-ink/10 bg-white text-ink/55"}`}
+        >
+          邮箱验证码
+        </button>
+      </div>
+      {mode === "current" ? (
+        <PasswordField label="当前密码" value={currentPassword} onChange={setCurrentPassword} autoComplete="current-password" />
+      ) : (
+        <section className="grid gap-2 rounded-lg border border-ink/10 bg-white px-3 py-3">
+          <div className="flex items-center justify-between gap-3">
+            <div className="min-w-0">
+              <p className="text-sm font-semibold text-ink">邮箱</p>
+              <p className="mt-1 truncate text-xs text-ink/55">{emailMasked ?? "未绑定邮箱"}</p>
+            </div>
+            <button
+              type="button"
+              onClick={sendChangeCode}
+              disabled={!emailMasked || !auth.accessToken || sendingCode || countdown > 0}
+              className="inline-flex h-9 shrink-0 items-center justify-center rounded-lg bg-denim px-3 text-xs font-semibold text-white disabled:bg-denim/35"
+            >
+              {sendingCode ? "发送中" : countdown > 0 ? `${countdown}s` : codeSent ? "再次发送" : "发送验证码"}
+            </button>
+          </div>
+          {codeSent ? (
+            <label className="grid gap-1.5 text-sm font-medium">
+              邮箱验证码
+              <input
+                value={emailCode}
+                onChange={(event) => setEmailCode(event.target.value)}
+                inputMode="numeric"
+                autoComplete="one-time-code"
+                className="h-11 w-full rounded-lg border border-ink/10 bg-white px-3 text-base outline-none focus:border-denim"
+              />
+            </label>
+          ) : null}
+        </section>
+      )}
       <PasswordField label="新密码" value={newPassword} onChange={setNewPassword} autoComplete="new-password" />
       <PasswordField label="确认新密码" value={confirmPassword} onChange={setConfirmPassword} autoComplete="new-password" />
       <button

@@ -155,6 +155,28 @@ export async function changePassword(input: {
   });
 }
 
+export function requestPasswordChangeCode(accessToken: string): Promise<SendEmailCodeResponse> {
+  return requestJson("/api/auth/password/change/request-code", {
+    method: "POST",
+    accessToken,
+  });
+}
+
+export async function changePasswordWithEmailCode(input: {
+  accessToken: string;
+  emailCode: string;
+  newPassword: string;
+}): Promise<void> {
+  await requestJson("/api/auth/password/change-with-email-code", {
+    method: "POST",
+    accessToken: input.accessToken,
+    body: {
+      emailCode: input.emailCode,
+      newPassword: input.newPassword,
+    },
+  });
+}
+
 export async function getAccountMe(accessToken: string): Promise<AccountMeResponse> {
   return requestJson("/api/account/me", {
     method: "GET",

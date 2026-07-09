@@ -62,7 +62,7 @@ Page({
   },
 
   changePassword() {
-    wx.navigateTo({ url: "/pages/login/forgot-password/index" });
+    wx.navigateTo({ url: "/pages/settings/change-password/index" });
   },
 
   logout() {

@@ -329,6 +329,17 @@ export class AccountPasswordAuthService {
     return { status: "ok" as const };
   }
 
+  async requestPasswordChangeCode(claims: AccessTokenClaims, input: { ip?: string }) {
+    const email = await this.store.findEmailByUser(claims.userId);
+    if (!email?.verified) throw new AuthApiError(400, "email_unverified", "Email is not verified");
+    return this.emailVerificationService.sendCode({
+      email: email.emailNormalized,
+      purpose: "change_password",
+      userId: claims.userId,
+      ip: input.ip,
+    });
+  }
+
   async changePasswordWithEmailCode(claims: AccessTokenClaims, input: { emailCode: string; newPassword: string }) {
     const now = this.now();
     const email = await this.store.findEmailByUser(claims.userId);

@@ -1,3 +1,14 @@
+## 2026-07-09 / v2.1.11-test / Codex — 修改密码邮箱验证码模式补齐
+
+- **执行 Agent**：Codex（未触发 subagent：用户未通知；本轮继续执行已批准账号体系设计）。
+- **目的**：补齐设计文档中“修改密码”流程的双模式要求：当前密码和邮箱验证码；小程序账号安全页的“修改密码”进入专用子页面，而不是跳到找回密码。
+- **版本变更**：无；当前应用版本仍为 `2.1.11-test`。本轮不打 APK，不上传小程序体验版。
+- **改动文件**：`packages/cloud-contracts/src/auth/contracts.ts`、`services/wardrobe-api/src/auth/account-password.ts`、`services/wardrobe-api/src/auth/session-routes.ts`、`services/wardrobe-api/tests/account-password-auth.test.ts`、`src/lib/cloud-auth-api.ts`、`src/components/auth/account-views.tsx`、`apps/wechat-miniprogram/app.json`、`apps/wechat-miniprogram/services/auth.ts`、`apps/wechat-miniprogram/pages/settings/account/index.ts`、`apps/wechat-miniprogram/pages/settings/change-password/**`、`scripts/test-{app-email-auth-flow,wechat-email-auth-flow,auth-client-shell,auth-flow-v2-0-1}.ts`、`VERSION_HISTORY.md`。
+- **改动说明**：新增认证态 `POST /api/auth/password/change/request-code`，服务端按当前登录用户查已验证邮箱并发送 `change_password` 验证码，客户端只展示脱敏邮箱、不保存或输入真实邮箱；App 修改密码页新增 `当前密码 / 邮箱验证码` 分段模式；小程序新增 `pages/settings/change-password/index`，支持同样两种修改密码模式、二次确认发送验证码和 30 秒倒计时；账号安全页的密码卡片跳转到该页面。
+- **验证结果**：`npm run cloud:contracts:typecheck` 通过；`npm run api:typecheck` 通过；`npm run typecheck` 通过；`npm --prefix apps/wechat-miniprogram run typecheck` 通过；`npm --workspace @wardrobe/wardrobe-api run test -- tests/account-password-auth.test.ts tests/email-verification.test.ts tests/wechat-openid-auth.test.ts tests/wechat-phone-auth.test.ts tests/session.test.ts tests/registration.test.ts` 通过（34 项）；`npm run test:logic:auth-client-shell` 通过（49 项）；`npm run test:logic:auth-flow-v2-0-1` 通过（42 项）；`npm run test:logic:app-email-auth-flow` 通过；`npm run test:logic:wechat-email-auth-flow` 通过；`npm run build` 以 `2.1.11-test` 通过；`git diff --check` 通过。
+- **风险门禁**：high（密码修改、邮箱验证码、认证态接口、App 与小程序账号安全页）；未触发 subagent：用户未通知。
+- **未验证风险**：`node apps/wechat-miniprogram/scripts/wechatide-compile.mjs --refresh` 仍返回 `cant find MainWebWinId by projectpath .../apps/wechat-miniprogram`，因此小程序未完成 DevTools 编译、模拟器截图、真机预览或体验版上传；本轮未安装 Android APK、未用真实邮箱收取验证码，邮件发送仍停留在 Mock/Log Provider 阶段。
+
 ## 2026-07-09 / v2.1.11-test / Codex — App 邮箱主认证与账号安全 UI
 
 - **执行 Agent**：Codex（未触发 subagent：用户未通知；本轮继续执行已批准账号体系设计）。

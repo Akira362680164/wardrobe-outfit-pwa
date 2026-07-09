@@ -153,6 +153,18 @@ export function registerSessionRoutes(
     }
   });
 
+  app.post("/api/auth/password/change/request-code", async (request, reply) => {
+    try {
+      if (!accountPasswordAuthService) {
+        return reply.code(500).send({ code: "internal_error", message: "Account service unavailable" });
+      }
+      const claims = await sessionService.authenticate(request.headers.authorization);
+      return await accountPasswordAuthService.requestPasswordChangeCode(claims, { ip: request.ip });
+    } catch (error) {
+      return sendSessionError(reply, error);
+    }
+  });
+
   app.post("/api/auth/password/change-with-email-code", async (request, reply) => {
     try {
       if (!accountPasswordAuthService) {

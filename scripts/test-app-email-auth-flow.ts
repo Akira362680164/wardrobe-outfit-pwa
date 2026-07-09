@@ -28,12 +28,16 @@ assert(authGate.includes("手机号暂不验证，仅作为手机号加密码登
 assert(authApi.includes("/api/auth/email/send-code"), "API client must send email verification codes");
 assert(authApi.includes("/api/auth/password/reset/request"), "API client must request password reset codes");
 assert(authApi.includes("/api/auth/password/reset/confirm"), "API client must confirm password resets");
+assert(authApi.includes("/api/auth/password/change/request-code"), "API client must request change-password email codes without raw email");
+assert(authApi.includes("/api/auth/password/change-with-email-code"), "API client must change password through email code");
 assert(authApi.includes("/api/auth/account/security"), "API client must load account security state");
 assert(authApi.includes("account: string"), "login API must use account field");
 assert(validation.includes("isValidLoginAccount"), "validation must support email or phone login");
 assert(validation.includes("(!phone || isValidAuthPhone(phone))"), "register validation must keep phone optional");
 assert(accountViews.includes("账号安全"), "account page title must be account security");
 assert(accountViews.includes("邮箱") && accountViews.includes("手机号") && accountViews.includes("微信") && accountViews.includes("密码"), "account page must show all security bindings");
+assert(accountViews.includes("当前密码") && accountViews.includes("邮箱验证码"), "change-password page must expose both password modes");
+assert(accountViews.includes("requestPasswordChangeCode"), "change-password email mode must request code from current session");
 assert(sessionStore.includes("emailMasked") && sessionStore.includes("phoneVerified"), "session user snapshot must keep email and phone verification fields");
 
 console.log("app email auth flow checks passed");

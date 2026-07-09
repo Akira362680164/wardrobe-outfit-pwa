@@ -302,6 +302,36 @@ describe("account password auth service", () => {
     })).resolves.toBeTruthy();
   });
 
+  it("changes password through the logged-in email code", async () => {
+    const { service, emailService, emailSender, sessionStore } = makeFixture();
+    await emailService.sendCode({ email: "user@example.com", purpose: "register" });
+    const tokens = await service.register({
+      email: "user@example.com",
+      emailCode: emailSender.messages[0].code,
+      password: "password-123",
+      deviceId: "device-a",
+    });
+    const sessionId = [...sessionStore.sessions.entries()].find(([, session]) => session.userId === tokens.user.id)![0];
+    const claims = { userId: tokens.user.id, sessionId, deviceId: "device-a" };
+
+    await service.requestPasswordChangeCode(claims, {});
+    const message = emailSender.messages.at(-1)!;
+    expect(message.to).toBe("user@example.com");
+    expect(message.purpose).toBe("change_password");
+
+    await service.changePasswordWithEmailCode(claims, {
+      emailCode: message.code,
+      newPassword: "password-789",
+    });
+
+    await expect(service.login({
+      account: "user@example.com",
+      password: "password-789",
+      deviceId: "device-b",
+      rateLimitKey: "test",
+    })).resolves.toBeTruthy();
+  });
+
   it("returns the account security snapshot", async () => {
     const { service, emailService, emailSender, sessionStore } = makeFixture();
     await emailService.sendCode({ email: "user@example.com", purpose: "register" });

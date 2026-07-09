@@ -77,6 +77,8 @@ export const PasswordChangeWithEmailCodeRequestSchema = z.object({
   newPassword: z.string().min(8).max(256),
 });
 
+export const PasswordChangeCodeRequestResponseSchema = SendEmailCodeResponseSchema;
+
 export const AccountSecurityResponseSchema = z.object({
   user: z.object({
     id: z.string().uuid(),
@@ -223,6 +225,7 @@ export type PasswordResetRequest = z.infer<typeof PasswordResetRequestSchema>;
 export type PasswordResetConfirmRequest = z.infer<typeof PasswordResetConfirmRequestSchema>;
 export type PasswordChangeRequest = z.infer<typeof PasswordChangeRequestSchema>;
 export type PasswordChangeWithEmailCodeRequest = z.infer<typeof PasswordChangeWithEmailCodeRequestSchema>;
+export type PasswordChangeCodeRequestResponse = z.infer<typeof PasswordChangeCodeRequestResponseSchema>;
 export type AccountSecurityResponse = z.infer<typeof AccountSecurityResponseSchema>;
 export type WechatOpenIdLoginRequest = z.infer<typeof WechatOpenIdLoginRequestSchema>;
 export type WechatOpenIdLoginResponse = z.infer<typeof WechatOpenIdLoginResponseSchema>;
