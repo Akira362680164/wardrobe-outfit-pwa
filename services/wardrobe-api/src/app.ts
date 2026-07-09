@@ -7,6 +7,8 @@ import {
 import Fastify, { type FastifyInstance } from "fastify";
 
 import { registerAuthRoutes } from "./auth/routes.js";
+import { registerEmailAuthRoutes } from "./auth/email-routes.js";
+import { type EmailVerificationService } from "./auth/email-verification.js";
 import { type RegistrationService } from "./auth/registrations.js";
 import { registerSessionRoutes } from "./auth/session-routes.js";
 import { SessionService } from "./auth/session.js";
@@ -45,6 +47,7 @@ export interface BuildAppOptions {
   storageProvider?: StorageProvider | null;
   jwtReadinessCheck?: () => Promise<boolean>;
   wechatPhoneAuthService?: WechatPhoneAuthService;
+  emailVerificationService?: EmailVerificationService;
 }
 
 export function buildApp(options: BuildAppOptions = {}): FastifyInstance {
@@ -135,6 +138,7 @@ export function buildApp(options: BuildAppOptions = {}): FastifyInstance {
 
   registerAuthRoutes(app, options.registrationService, sharedSessionService);
   registerSessionRoutes(app, sharedSessionService);
+  registerEmailAuthRoutes(app, options.emailVerificationService);
   registerWechatPhoneAuthRoutes(
     app,
     options.wechatPhoneAuthService ?? new WechatPhoneAuthService({

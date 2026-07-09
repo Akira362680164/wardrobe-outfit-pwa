@@ -1,3 +1,14 @@
+## 2026-07-09 / v2.1.11-test / Codex — 邮箱验证码 Mock/Log Provider 与状态机
+
+- **执行 Agent**：Codex（未触发 subagent：用户未通知；本轮继续执行已批准账号体系设计）。
+- **目的**：完成第一阶段邮件服务的可测试基础：验证码生成、HMAC 存储、30 秒冷却、10 分钟有效期、错误次数限制、消费状态、Mock/Log Provider 和测试环境验证码查询接口。
+- **版本变更**：无；当前应用版本仍为 `2.1.11-test`。本轮不打 APK。
+- **改动文件**：`services/wardrobe-api/src/security/hmac.ts`、`services/wardrobe-api/src/email/types.ts`、`services/wardrobe-api/src/email/mock-sender.ts`、`services/wardrobe-api/src/email/log-sender.ts`、`services/wardrobe-api/src/auth/email-verification.ts`、`services/wardrobe-api/src/auth/email-routes.ts`、`services/wardrobe-api/src/app.ts`、`services/wardrobe-api/tests/email-verification.test.ts`、`VERSION_HISTORY.md`。
+- **改动说明**：新增 `EmailVerificationService` 和 `POST /api/auth/email/send-code`；验证码明文只交给 Mock/Log Provider 与测试/开发内存查询，不写入数据库；生产环境缺少 `AUTH_HMAC_SECRET` 时禁止使用默认 HMAC secret；新增 `GET /api/auth/email/test-code`，仅在 `NODE_ENV=test` 或 `WARDROBE_AUTH_TEST=1` 可用。
+- **验证结果**：`npm --workspace @wardrobe/wardrobe-api run test -- tests/email-verification.test.ts` 通过（6 项）；`npm run api:typecheck` 通过。
+- **风险门禁**：high（账号安全、验证码状态机、后端认证路由和测试环境调试口子）；未触发 subagent：用户未通知。
+- **未验证风险**：本提交仍未接真实邮件服务、未接注册/找回/修改密码业务接口、未部署到真实开发服务器查看日志；真实邮件 Provider 将在第二阶段替换同一接口。
+
 ## 2026-07-09 / v2.1.11-test / Codex — 账号体系 schema 与共享契约落地
 
 - **执行 Agent**：Codex（未触发 subagent：用户未通知；本轮按已批准设计进入实现）。
