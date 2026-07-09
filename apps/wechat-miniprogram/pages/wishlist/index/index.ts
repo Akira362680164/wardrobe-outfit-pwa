@@ -119,11 +119,11 @@ Page({
       wx.switchTab({ url: "/pages/settings/index/index" });
       return;
     }
-    wx.navigateTo({ url: "/pages/wishlist/edit/index" });
+    wx.navigateTo({ url: "/pages/intake/camera/index?kind=wishlist" });
   },
 
   openEdit() {
-    wx.navigateTo({ url: "/pages/wishlist/edit/index" });
+    wx.navigateTo({ url: "/pages/intake/camera/index?kind=wishlist" });
   },
 
   openCreateSheet() {

@@ -1,32 +1,121 @@
-<view class="page-shell">
-  <view class="page-title">新增种草</view>
-  <view class="page-copy">选择商品图后可用 AI 生成草稿，确认后保存到服务器种草清单。</view>
-
-  <view class="form-card">
-    <view class="field-label">商品图</view>
-    <view class="image-picker" bindtap="chooseImage">
-      <image wx:if="{{imagePath}}" class="image-preview" mode="aspectFill" src="{{imagePath}}" />
-      <view wx:else class="image-empty">选择图片</view>
-    </view>
-    <view wx:if="{{recognizing}}" class="ai-status">AI 正在识别商品图...</view>
-    <view wx:elif="{{aiTag}}" class="ai-status">AI 已生成草稿，请确认后保存。</view>
-
-    <view class="field-label">商品名称</view>
-    <input class="text-input" value="{{name}}" placeholder="例如：米色短风衣" bindinput="handleNameInput" />
-
-    <view class="field-label field-gap">价格</view>
-    <input class="text-input" value="{{price}}" type="digit" placeholder="例如：399" bindinput="handlePriceInput" />
-
-    <view class="field-label field-gap">商品链接</view>
-    <input class="text-input" value="{{productUrl}}" placeholder="粘贴淘宝/小红书等链接" bindinput="handleUrlInput" />
-
-    <view class="field-label field-gap">备注</view>
-    <textarea class="textarea-input" value="{{notes}}" placeholder="尺码、材质、为什么想买" maxlength="300" bindinput="handleNotesInput" />
+<view class="page-shell edit-page">
+  <view wx:if="{{loading}}" class="status-card">正在读取种草...</view>
+  <view wx:elif="{{error}}" class="status-card">
+    <view class="status-title">读取失败</view>
+    <view class="status-copy">{{error}}</view>
   </view>
+  <view wx:elif="{{item}}">
+    <item-edit-shell title="编辑种草" subtitle="{{item.name}}" image-url="{{item.imageUrl}}" image-label="商品图" image-fallback="{{item.categoryLabel}}">
+      <view slot="mediaActions" class="media-actions">
+        <button class="outline-button">重新裁切</button>
+        <button class="primary-inline-button">重新识别</button>
+      </view>
 
-  <view class="save-bar bottom-glass-bar">
-    <button class="save-button" disabled="{{saving || !name}}" bindtap="saveWishlist">
-      {{saving ? '保存中...' : '保存种草'}}
-    </button>
+      <view class="edit-card">
+        <view class="card-title">基础信息</view>
+        <view class="field-label">商品名称 *</view>
+        <input class="field-input" value="{{name}}" data-field="name" placeholder="例如：米色短风衣" bindinput="updateField" />
+
+        <view class="field-label">分类</view>
+        <view class="chip-row">
+          <view wx:for="{{categories}}" wx:key="value" data-value="{{item.value}}" class="select-chip {{category === item.value ? 'is-active' : ''}}" bindtap="chooseCategory">{{item.label}}</view>
+        </view>
+
+        <view class="field-label">细分</view>
+        <view class="chip-row">
+          <view data-value="" class="select-chip {{!subcategory ? 'is-active neutral' : ''}}" bindtap="chooseSubcategory">不限</view>
+          <view wx:for="{{subcategoryOptions}}" wx:key="value" data-value="{{item.value}}" class="select-chip {{item.selected ? 'is-active' : ''}}" bindtap="chooseSubcategory">{{item.label}}</view>
+        </view>
+
+        <view class="field-label">种草状态</view>
+        <view class="chip-row">
+          <view wx:for="{{statusOptions}}" wx:key="value" data-field="status" data-value="{{item.value}}" class="select-chip {{status === item.value ? 'is-active' : ''}}" bindtap="chooseValue">{{item.label}}</view>
+        </view>
+      </view>
+
+      <view class="edit-card">
+        <view class="card-title">购买信息</view>
+        <view class="field-label">价格</view>
+        <input class="field-input" value="{{price}}" type="digit" data-field="price" placeholder="例如 399，非必填" bindinput="updateField" />
+        <view class="field-label">商品链接</view>
+        <input class="field-input" value="{{productUrl}}" data-field="productUrl" placeholder="粘贴淘宝/小红书等链接，非必填" bindinput="updateField" />
+      </view>
+
+      <view class="edit-card">
+        <view class="card-title">颜色</view>
+        <view class="field-label">颜色模式</view>
+        <view class="segmented">
+          <view wx:for="{{colorModes}}" wx:key="value" data-field="colorMode" data-value="{{item.value}}" class="segment {{colorMode === item.value ? 'is-active' : ''}}" bindtap="chooseValue">{{item.label}}</view>
+        </view>
+
+        <view class="field-label">主色</view>
+        <view class="color-grid">
+          <view wx:for="{{colorOptions}}" wx:key="name" data-role="primary" data-value="{{item.name}}" class="color-choice {{primaryColor === item.name ? 'is-active' : ''}}" bindtap="chooseColor">
+            <view class="color-dot" style="{{item.style}}"></view>
+            <text>{{item.name}}</text>
+          </view>
+        </view>
+
+        <view wx:if="{{colorMode !== 'single'}}" class="field-label">辅助色</view>
+        <view wx:if="{{colorMode !== 'single'}}" class="color-grid">
+          <view wx:for="{{colorOptions}}" wx:key="name" data-role="accent" data-value="{{item.name}}" class="color-choice {{accentColor === item.name ? 'is-active' : ''}}" bindtap="chooseColor">
+            <view class="color-dot" style="{{item.style}}"></view>
+            <text>{{item.name}}</text>
+          </view>
+        </view>
+      </view>
+
+      <view class="edit-card">
+        <view class="card-title">穿着属性</view>
+        <view class="field-label">季节</view>
+        <view class="chip-row">
+          <view wx:for="{{seasonsOptions}}" wx:key="value" data-field="seasons" data-value="{{item.value}}" class="select-chip {{item.selected ? 'is-active' : ''}}" bindtap="toggleArray">{{item.label}}</view>
+        </view>
+
+        <view class="field-label">风格</view>
+        <view class="chip-row">
+          <view wx:for="{{styleOptions}}" wx:key="value" data-field="styles" data-value="{{item.value}}" class="select-chip {{item.selected ? 'is-active' : ''}}" bindtap="toggleArray">{{item.label}}</view>
+        </view>
+
+        <view class="range-row">
+          <view class="range-title">适穿温度</view>
+          <view class="range-value">{{minTemp}}℃ ~ {{maxTemp}}℃</view>
+        </view>
+        <slider min="-20" max="40" value="{{minTemp}}" activeColor="#355C7D" backgroundColor="rgba(29,34,40,0.08)" data-field="minTemp" bindchange="updateNumber" />
+        <slider min="-20" max="40" value="{{maxTemp}}" activeColor="#355C7D" backgroundColor="rgba(29,34,40,0.08)" data-field="maxTemp" bindchange="updateNumber" />
+
+        <view class="range-row">
+          <view class="range-title">正式度</view>
+          <view class="range-value">{{formality}}/5</view>
+        </view>
+        <slider min="1" max="5" step="1" value="{{formality}}" activeColor="#355C7D" backgroundColor="rgba(29,34,40,0.08)" data-field="formality" bindchange="updateNumber" />
+
+        <view class="range-row">
+          <view class="range-title">保暖度</view>
+          <view class="range-value">{{warmth}}/5</view>
+        </view>
+        <slider min="1" max="5" step="1" value="{{warmth}}" activeColor="#355C7D" backgroundColor="rgba(29,34,40,0.08)" data-field="warmth" bindchange="updateNumber" />
+
+        <view class="field-label">材质</view>
+        <input class="field-input" value="{{material}}" data-field="material" placeholder="例如：羊毛混纺" bindinput="updateField" />
+
+        <view class="field-label">版型倾向</view>
+        <view class="chip-row">
+          <view wx:for="{{fitGenderOptions}}" wx:key="value" data-field="fitGender" data-value="{{item.value}}" class="select-chip {{fitGender === item.value ? 'is-active' : ''}}" bindtap="chooseValue">{{item.label}}</view>
+        </view>
+
+        <view class="field-label">版型说明</view>
+        <textarea class="field-textarea" value="{{fitNotes}}" data-field="fitNotes" maxlength="120" placeholder="尺码、版型、上身顾虑" bindinput="updateField" />
+      </view>
+
+      <view class="edit-card">
+        <view class="card-title">备注</view>
+        <textarea class="field-textarea" value="{{notes}}" data-field="notes" maxlength="300" placeholder="尺码、材质、为什么想买" bindinput="updateField" />
+      </view>
+
+      <view slot="bottom" class="bottom-save bottom-glass-bar">
+        <button class="save-button" loading="{{saving}}" disabled="{{saving || !name}}" bindtap="save">{{saving ? '保存中...' : '保存种草'}}</button>
+      </view>
+    </item-edit-shell>
   </view>
 </view>

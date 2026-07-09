@@ -1,6 +1,6 @@
 <view class="page-shell intake-page">
   <view class="intake-header">
-    <view class="page-title">添加单品</view>
+    <view class="page-title">{{pageTitle}}</view>
     <view class="step-copy">步骤 1 / 2 · 选择照片，最多 10 张</view>
     <view class="progress-track"><view class="progress-fill progress-half"></view></view>
   </view>
@@ -25,7 +25,7 @@
         <view wx:if="{{item.error}}" class="queue-error">{{item.error}}</view>
       </view>
     </view>
-    <view wx:else class="empty-preview">请拍照或从图库选择单品图片</view>
+    <view wx:else class="empty-preview">{{emptyText}}</view>
   </view>
 
   <view class="source-grid {{totalCount ? 'source-grid--compact' : ''}}">
@@ -44,6 +44,6 @@
 
   <view class="bottom-bar bottom-glass-bar">
     <view class="bottom-action bottom-action--secondary" bindtap="cancel">取消</view>
-    <view class="bottom-action bottom-action--primary {{selecting || uploadingCount || !readyCount ? 'bottom-action--disabled' : ''}}" bindtap="goReview">下一步（AI识别）</view>
+    <view class="bottom-action bottom-action--primary {{selecting || uploadingCount || !readyCount ? 'bottom-action--disabled' : ''}}" bindtap="goReview">{{nextText}}</view>
   </view>
 </view>

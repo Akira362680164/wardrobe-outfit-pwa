@@ -1,14 +1,28 @@
 import type { AssetMutation } from "../services/assets";
 
+export type IntakeKind = "garment" | "wishlist";
+
 export interface IntakeDraft {
   imagePath: string;
   stablePath?: string;
   name: string;
   category: string;
+  subcategory?: string;
   color: string;
   season: string;
+  seasons?: string[];
   note: string;
   styles?: string[];
+  temperatureRange?: { minC?: number; maxC?: number };
+  formality?: number;
+  warmth?: number;
+  material?: string;
+  fitGender?: string;
+  fitNotes?: string;
+  locationId?: string;
+  status?: string;
+  price?: string;
+  productUrl?: string;
   confidence?: number;
   needsReview?: boolean;
   source?: "manual" | "ai";
@@ -39,8 +53,17 @@ export interface IntakeQueueItem {
 }
 
 let queue: IntakeQueueItem[] = [];
+let intakeKind: IntakeKind = "garment";
 let lastCreatedId = "";
 let lastSaveResult = { succeeded: 0, failed: 0, savedIds: [] as string[], failedItemIds: [] as string[] };
+
+export function setIntakeKind(kind: IntakeKind): void {
+  intakeKind = kind;
+}
+
+export function getIntakeKind(): IntakeKind {
+  return intakeKind;
+}
 
 export function setIntakeDraft(next: IntakeDraft): void {
   queue = [draftToQueueItem(next)];

@@ -29,9 +29,13 @@
 .field-input, .field-textarea { box-sizing: border-box; width: 100%; border: 1rpx solid var(--color-line); border-radius: var(--radius-control); background: rgba(244, 245, 243, 0.78); color: var(--color-ink); font-size: var(--font-body); }
 .field-input { height: 88rpx; padding: 0 24rpx; }
 .field-textarea { min-height: 132rpx; padding: 22rpx 24rpx; }
+.range-row { display: flex; justify-content: space-between; gap: 20rpx; margin-top: 28rpx; }
+.range-title { color: var(--color-ink); font-size: var(--font-caption); font-weight: 800; }
+.range-value { color: var(--color-muted); font-size: var(--font-caption); font-weight: 800; }
 .chip-row { display: flex; flex-wrap: wrap; gap: 14rpx; }
 .chip { padding: 14rpx 20rpx; border: 1rpx solid var(--color-line); border-radius: var(--radius-control); color: var(--color-muted); background: rgba(255, 255, 252, 0.62); font-size: var(--font-caption); }
 .chip-active { color: var(--color-surface); background: var(--color-primary); border-color: var(--color-primary); }
+.chip-active.chip-neutral { background: rgba(29, 34, 40, 0.82); border-color: #1D2228; }
 .chip-disabled { opacity: 0.58; pointer-events: none; }
 .panel-action { display: block; width: 100%; margin-top: 30rpx; }
 .panel-action::after { border: 0; }

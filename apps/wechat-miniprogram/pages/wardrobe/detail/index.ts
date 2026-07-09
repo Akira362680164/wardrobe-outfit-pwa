@@ -11,6 +11,7 @@ Page({
     adviceSummary: "",
     adviceTips: [] as string[],
     deleteSheetOpen: false,
+    activeTab: "info",
     item: null as MiniGarmentDetail | null,
     error: "",
   },
@@ -84,6 +85,16 @@ Page({
 
   openDeleteSheet() {
     this.setData({ deleteSheetOpen: true });
+  },
+
+  editItem(this: any) {
+    const item = this.data.item as MiniGarmentDetail | null;
+    if (item) wx.navigateTo({ url: `/pages/wardrobe/edit/index?id=${encodeURIComponent(item.id)}` });
+  },
+
+  switchTab(event: { currentTarget: { dataset: { tab?: string } } }) {
+    const tab = event.currentTarget.dataset.tab;
+    if (tab === "info" || tab === "inspiration" || tab === "pairing") this.setData({ activeTab: tab });
   },
 
   closeDeleteSheet() {

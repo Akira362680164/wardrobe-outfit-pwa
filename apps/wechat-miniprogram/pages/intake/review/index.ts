@@ -1,11 +1,15 @@
 import { colorLabel, recognizeGarmentImages, type AiGarmentTag } from "../../../services/ai";
-import { batchCreateGarments, type BatchCreateGarmentInput } from "../../../services/workspace";
+import { buildSubcategoryChoices, CATEGORY_OPTIONS, isSubcategoryInCategory, normalizeCategoryId } from "../../../services/category-catalog";
+import { batchCreateGarments, createWishlistItem, type BatchCreateGarmentInput, type CreateWishlistInput } from "../../../services/workspace";
 import {
+  getIntakeKind,
   getIntakeQueue,
+  setIntakeKind,
   setLastCreatedGarmentId,
   setLastIntakeSaveResult,
   updateIntakeQueueItem,
   type IntakeDraft,
+  type IntakeKind,
   type IntakeQueueItem,
   type IntakeQueueItemStatus,
 } from "../../../stores/intake";
@@ -22,19 +26,17 @@ Page({
     failedCount: 0,
     pendingCount: 0,
     totalCount: 0,
+    kind: "garment" as IntakeKind,
+    pageTitle: "添加单品",
+    recognizedTitle: "已识别 0 件单品",
+    draftTitle: "校对衣物草稿",
+    saveLabel: "保存 0 件单品",
     recognizing: false,
     saving: false,
     canSave: false,
     error: "",
-    categories: [
-      { value: "tops", label: "上装" },
-      { value: "pants", label: "裤装" },
-      { value: "skirts", label: "半裙" },
-      { value: "one_piece", label: "连衣装" },
-      { value: "shoes", label: "鞋履" },
-      { value: "bags", label: "包袋" },
-      { value: "accessories", label: "配饰" },
-    ],
+    categories: CATEGORY_OPTIONS,
+    subcategoryOptions: buildSubcategoryChoices("tops"),
     seasons: [
       { value: "all", label: "四季" },
       { value: "spring", label: "春" },
@@ -42,10 +44,32 @@ Page({
       { value: "autumn", label: "秋" },
       { value: "winter", label: "冬" },
     ],
+    styles: [
+      { value: "casual", label: "休闲" },
+      { value: "sweet", label: "甜美" },
+      { value: "elegant", label: "优雅" },
+      { value: "commute", label: "通勤" },
+      { value: "outdoor", label: "户外" },
+      { value: "dinner", label: "吃饭" },
+      { value: "vacation", label: "旅行" },
+    ],
+    fitGenders: [
+      { value: "unisex", label: "中性" },
+      { value: "menswear", label: "男装" },
+      { value: "womenswear", label: "女装" },
+      { value: "unknown", label: "未判断" },
+    ],
   },
 
-  onLoad(this: any) {
-    wx.setNavigationBarTitle({ title: "识别确认" });
+  onLoad(this: any, query?: { kind?: string }) {
+    const kind: IntakeKind = query?.kind === "wishlist" ? "wishlist" : getIntakeKind();
+    setIntakeKind(kind);
+    wx.setNavigationBarTitle({ title: kind === "wishlist" ? "种草确认" : "识别确认" });
+    this.setData({
+      kind,
+      pageTitle: kind === "wishlist" ? "新增种草" : "添加单品",
+      draftTitle: kind === "wishlist" ? "校对种草草稿" : "校对衣物草稿",
+    });
     this.refreshQueue(0);
     void this.ensureRecognition();
   },
@@ -117,12 +141,51 @@ Page({
     this.patchDraft({ note: event.detail.value });
   },
 
+  updateDraftField(this: any, event: WechatMiniprogram.InputEvent) {
+    const field = (event as unknown as { currentTarget?: { dataset?: { field?: string } } }).currentTarget?.dataset?.field;
+    if (typeof field === "string") this.patchDraft({ [field]: event.detail.value } as Partial<IntakeDraft>);
+  },
+
+  updateDraftNumber(this: any, event: any) {
+    const field = event.currentTarget.dataset.field;
+    const value = Number(event.detail.value);
+    if (typeof field !== "string" || !Number.isFinite(value)) return;
+    if (field === "minTemp" || field === "maxTemp") {
+      const current = this.currentQueueItem()?.draft.temperatureRange ?? {};
+      this.patchDraft({ temperatureRange: field === "minTemp" ? { ...current, minC: value } : { ...current, maxC: value } });
+      return;
+    }
+    this.patchDraft({ [field]: value } as Partial<IntakeDraft>);
+  },
+
   chooseCategory(this: any, event: any) {
-    this.patchDraft({ category: String(event.currentTarget.dataset.value || "tops") });
+    const nextCategory = toKnownCategory(String(event.currentTarget.dataset.value || "tops"));
+    const item = this.currentQueueItem();
+    this.patchDraft({ category: nextCategory, subcategory: item?.draft.category === nextCategory ? item.draft.subcategory : undefined });
+  },
+
+  chooseSubcategory(this: any, event: any) {
+    const item = this.currentQueueItem();
+    if (!item) return;
+    const category = toKnownCategory(item.draft.category);
+    const value = String(event.currentTarget.dataset.value || "");
+    const next = value && isSubcategoryInCategory(category, value) ? value : undefined;
+    this.patchDraft({ subcategory: next === item.draft.subcategory ? undefined : next });
   },
 
   chooseSeason(this: any, event: any) {
-    this.patchDraft({ season: String(event.currentTarget.dataset.value || "all") });
+    const value = String(event.currentTarget.dataset.value || "all");
+    this.patchDraft({ season: value, seasons: value ? [value] : [] });
+  },
+
+  toggleStyle(this: any, event: any) {
+    const value = String(event.currentTarget.dataset.value || "");
+    const current = this.currentQueueItem()?.draft.styles ?? [];
+    this.patchDraft({ styles: current.includes(value) ? current.filter((item: string) => item !== value) : [...current, value] });
+  },
+
+  chooseFitGender(this: any, event: any) {
+    this.patchDraft({ fitGender: String(event.currentTarget.dataset.value || "unisex") });
   },
 
   patchDraft(this: any, patch: Partial<IntakeDraft>) {
@@ -137,8 +200,15 @@ Page({
     if (!item || item.status === "recognizing" || item.status === "saving" || item.status === "saved") return;
     const draft = normalizeDraft(item.draft);
     if (!draft.name) {
-      this.setData({ error: "请填写衣物名称" });
+      this.setData({ error: getIntakeKind() === "wishlist" ? "请填写商品名称" : "请填写衣物名称" });
       return;
+    }
+    if (getIntakeKind() === "wishlist" && draft.price) {
+      const price = Number(draft.price);
+      if (!Number.isFinite(price) || price < 0) {
+        this.setData({ error: "价格格式不正确" });
+        return;
+      }
     }
     if (!item.assetMutations.length) {
       this.setData({ error: "图片未上传成功，请返回重选" });
@@ -159,7 +229,8 @@ Page({
     this.setData({ saving: true, error: "" });
     this.refreshQueue(this.data.currentIndex);
 
-    const results = await batchCreateGarments(confirmed.map(toBatchCreateInput));
+    const kind = getIntakeKind();
+    const results = kind === "wishlist" ? await saveWishlistItems(confirmed) : await batchCreateGarments(confirmed.map(toBatchCreateInput));
     const savedIds: string[] = [];
     const failedItemIds: string[] = [];
     for (const result of results) {
@@ -178,7 +249,7 @@ Page({
       savedIds,
       failedItemIds,
     });
-    setLastCreatedGarmentId(savedIds[0] ?? "");
+    setLastCreatedGarmentId(kind === "garment" ? savedIds[0] ?? "" : "");
     this.setData({ saving: false });
     this.refreshQueue(this.data.currentIndex);
     wx.redirectTo({ url: "/pages/intake/result/index" });
@@ -210,6 +281,12 @@ Page({
       failedCount: getIntakeQueue().filter((item) => item.status === "failed").length,
       pendingCount,
       totalCount: items.length,
+      seasons: markSelected(this.data.seasons, current?.draft.seasons?.length ? current.draft.seasons : current?.draft.season ? [current.draft.season] : []),
+      subcategoryOptions: buildSubcategoryChoices(toKnownCategory(current?.draft.category), current?.draft.subcategory),
+      styles: markSelected(this.data.styles, current?.draft.styles ?? []),
+      fitGenders: markSelected(this.data.fitGenders, current?.draft.fitGender ? [current.draft.fitGender] : []),
+      recognizedTitle: `${recognizing ? '正在识别' : '已识别'} ${items.length} 件${getIntakeKind() === "wishlist" ? "种草" : "单品"}`,
+      saveLabel: `保存 ${confirmedCount} 件${getIntakeKind() === "wishlist" ? "种草" : "单品"}`,
       recognizing,
       canSave: confirmedCount > 0 && pendingCount === 0 && !recognizing && !saving,
       error: "",
@@ -238,14 +315,24 @@ function confidenceText(item: IntakeQueueItem | null): string {
 }
 
 function draftFromTag(item: IntakeQueueItem, tag: AiGarmentTag): IntakeDraft {
+  const category = toKnownCategory(tag.category || item.draft.category);
+  const subcategory = (tag as unknown as { subcategory?: string }).subcategory ?? item.draft.subcategory;
   return {
     ...item.draft,
     name: tag.candidateNames.find(Boolean) ?? item.draft.name,
-    category: tag.category || item.draft.category,
+    category,
+    subcategory: isSubcategoryInCategory(category, subcategory) ? subcategory : undefined,
     color: colorLabel(tag.colors),
     season: tag.seasons[0] || item.draft.season || "all",
+    seasons: tag.seasons,
     note: tag.notes ?? item.draft.note,
     styles: tag.styles,
+    temperatureRange: tag.temperatureRange ?? item.draft.temperatureRange,
+    formality: tag.formality ?? item.draft.formality,
+    warmth: tag.warmth ?? item.draft.warmth,
+    material: tag.material ?? item.draft.material,
+    fitGender: tag.fitGender ?? item.draft.fitGender,
+    fitNotes: tag.fitNotes ?? item.draft.fitNotes,
     confidence: tag.confidence,
     needsReview: tag.needsReview,
     source: "ai",
@@ -254,11 +341,20 @@ function draftFromTag(item: IntakeQueueItem, tag: AiGarmentTag): IntakeDraft {
 }
 
 function normalizeDraft(draft: IntakeDraft): IntakeDraft {
+  const category = toKnownCategory(draft.category);
+  const subcategory = isSubcategoryInCategory(category, draft.subcategory) ? draft.subcategory : undefined;
   return {
     ...draft,
+    category,
+    subcategory,
     name: draft.name.trim(),
     color: draft.color.trim() || "未标注",
+    seasons: draft.seasons?.length ? draft.seasons : draft.season ? [draft.season] : [],
     note: draft.note.trim(),
+    material: draft.material?.trim(),
+    fitNotes: draft.fitNotes?.trim(),
+    price: draft.price?.trim(),
+    productUrl: draft.productUrl?.trim(),
   };
 }
 
@@ -273,8 +369,61 @@ function toBatchCreateInput(item: IntakeQueueItem): BatchCreateGarmentInput {
     season: draft.season,
     note: draft.note,
     colors: colorsForDraft(draft),
-    seasons: draft.season ? [draft.season] : [],
+    seasons: draft.seasons?.length ? draft.seasons : draft.season ? [draft.season] : [],
     styles: draft.styles,
+    subcategory: draft.subcategory,
+    temperatureRange: draft.temperatureRange,
+    formality: draft.formality,
+    warmth: draft.warmth,
+    material: draft.material,
+    fitGender: draft.fitGender,
+    fitNotes: draft.fitNotes,
+    locationId: draft.locationId,
+    status: draft.status,
+    aiTag: draft.aiTag,
+    assetMutations: item.assetMutations,
+  };
+}
+
+async function saveWishlistItems(items: IntakeQueueItem[]) {
+  const results = [];
+  for (const item of items) {
+    try {
+      const entity = await createWishlistItem(toWishlistCreateInput(item));
+      results.push({ clientItemId: item.clientItemId, clientMutationId: item.clientMutationId, status: "succeeded" as const, entity });
+    } catch (error) {
+      results.push({
+        clientItemId: item.clientItemId,
+        clientMutationId: item.clientMutationId,
+        status: "failed" as const,
+        error: error instanceof Error ? error.message : "保存种草失败",
+      });
+    }
+  }
+  return results;
+}
+
+function toWishlistCreateInput(item: IntakeQueueItem): CreateWishlistInput {
+  const draft = normalizeDraft(item.draft);
+  const price = draft.price ? Number(draft.price) : undefined;
+  return {
+    clientMutationId: item.clientMutationId,
+    name: draft.name,
+    category: draft.category,
+    subcategory: draft.subcategory,
+    colors: colorsForDraft(draft),
+    seasons: draft.seasons?.length ? draft.seasons : draft.season ? [draft.season] : [],
+    styles: draft.styles,
+    temperatureRange: draft.temperatureRange,
+    formality: draft.formality,
+    warmth: draft.warmth,
+    material: draft.material,
+    fitGender: draft.fitGender,
+    fitNotes: draft.fitNotes,
+    price: Number.isFinite(price) ? price : undefined,
+    productUrl: draft.productUrl || undefined,
+    status: "interested",
+    notes: draft.note,
     aiTag: draft.aiTag,
     assetMutations: item.assetMutations,
   };
@@ -284,4 +433,13 @@ function colorsForDraft(draft: IntakeDraft): Record<string, unknown> {
   const aiColors = draft.aiTag?.colors as Record<string, unknown> | undefined;
   if (aiColors && draft.color === colorLabel(aiColors as AiGarmentTag["colors"])) return aiColors;
   return { mode: "single", primary: draft.color || "未标注" };
+}
+
+function markSelected<T extends { value: string; label: string }>(options: T[], selected: string[]): Array<T & { selected: boolean }> {
+  return options.map((option) => ({ ...option, selected: selected.includes(option.value) }));
+}
+
+function toKnownCategory(category?: string): string {
+  const normalized = normalizeCategoryId(category || "tops");
+  return CATEGORY_OPTIONS.some((option) => option.value === normalized) ? normalized : "tops";
 }

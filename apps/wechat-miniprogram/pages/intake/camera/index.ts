@@ -1,6 +1,6 @@
 import { chooseImages, uploadImagesForCreate, type ChosenImage } from "../../../services/assets";
 import { createClientMutationId } from "../../../services/workspace";
-import { clearIntakeDraft, getIntakeQueue, setIntakeQueue, updateIntakeQueueItem, type IntakeDraft, type IntakeQueueItem } from "../../../stores/intake";
+import { clearIntakeDraft, getIntakeKind, getIntakeQueue, setIntakeKind, setIntakeQueue, updateIntakeQueueItem, type IntakeDraft, type IntakeKind, type IntakeQueueItem } from "../../../stores/intake";
 
 declare const getCurrentPages: () => unknown[];
 
@@ -15,11 +15,24 @@ Page({
     failedCount: 0,
     uploadingCount: 0,
     maxCount: MAX_IMAGES,
+    kind: "garment" as IntakeKind,
+    pageTitle: "添加单品",
+    emptyText: "请拍照或从图库选择单品图片",
+    nextText: "下一步（AI识别）",
     error: "",
   },
 
-  onLoad() {
-    wx.setNavigationBarTitle({ title: "添加衣物" });
+  onLoad(this: any, query?: { kind?: string }) {
+    const kind: IntakeKind = query?.kind === "wishlist" ? "wishlist" : "garment";
+    if (getIntakeKind() !== kind) clearIntakeDraft();
+    setIntakeKind(kind);
+    this.setData({
+      kind,
+      pageTitle: kind === "wishlist" ? "新增种草" : "添加单品",
+      emptyText: kind === "wishlist" ? "请拍照或从图库选择商品图片" : "请拍照或从图库选择单品图片",
+      nextText: kind === "wishlist" ? "下一步（识别种草）" : "下一步（AI识别）",
+    });
+    wx.setNavigationBarTitle({ title: kind === "wishlist" ? "新增种草" : "添加衣物" });
     this.refreshQueue();
   },
 
@@ -46,7 +59,7 @@ Page({
     try {
       const images = await chooseImages(sourceType, remaining);
       if (!images.length) return;
-      const items = images.map(createQueueItem);
+      const items = images.map((image) => createQueueItem(image, getIntakeKind()));
       setIntakeQueue([...getIntakeQueue(), ...items].slice(0, MAX_IMAGES));
       this.refreshQueue();
       await this.prepareAssets(items);
@@ -62,7 +75,7 @@ Page({
     for (const item of items) updateIntakeQueueItem(item.clientItemId, { status: "uploading", error: "" });
     this.refreshQueue();
     const results = await uploadImagesForCreate({
-      entityType: "garment",
+      entityType: getIntakeKind() === "wishlist" ? "wishlistItem" : "garment",
       images: items.map((item) => ({
         clientItemId: item.clientItemId,
         clientMutationId: item.clientMutationId,
@@ -90,7 +103,7 @@ Page({
 
   cancel() {
     if (getCurrentPages().length > 1) wx.navigateBack({ delta: 1 });
-    else wx.switchTab({ url: "/pages/wardrobe/index/index" });
+    else wx.switchTab({ url: getIntakeKind() === "wishlist" ? "/pages/wishlist/index/index" : "/pages/wardrobe/index/index" });
   },
 
   goReview() {
@@ -98,7 +111,7 @@ Page({
       wx.showToast({ title: "请先选择图片", icon: "none" });
       return;
     }
-    wx.navigateTo({ url: "/pages/intake/review/index" });
+    wx.navigateTo({ url: `/pages/intake/review/index?kind=${getIntakeKind()}` });
   },
 
   refreshQueue(this: any) {
@@ -113,7 +126,7 @@ Page({
   },
 });
 
-function createQueueItem(image: ChosenImage): IntakeQueueItem {
+function createQueueItem(image: ChosenImage, kind: IntakeKind): IntakeQueueItem {
   const clientItemId = createClientMutationId();
   const clientMutationId = createClientMutationId();
   const draft: IntakeDraft = {
@@ -123,7 +136,19 @@ function createQueueItem(image: ChosenImage): IntakeQueueItem {
     category: "tops",
     color: "未标注",
     season: "all",
+    seasons: [],
     note: "",
+    styles: [],
+    temperatureRange: { minC: 10, maxC: 25 },
+    formality: 3,
+    warmth: 2,
+    material: "",
+    fitGender: "unisex",
+    fitNotes: "",
+    locationId: "home",
+    status: kind === "wishlist" ? "interested" : "active",
+    price: "",
+    productUrl: "",
     source: "manual",
   };
   return {

@@ -13,6 +13,7 @@ Page({
     deleting: false,
     actioning: "",
     deleteSheetOpen: false,
+    activeTab: "info",
     item: null as MiniWishlistDetail | null,
     error: "",
   },
@@ -72,6 +73,16 @@ Page({
   openDeleteSheet() {
     if (this.data.actioning) return;
     this.setData({ deleteSheetOpen: true });
+  },
+
+  editItem(this: any) {
+    const item = this.data.item as MiniWishlistDetail | null;
+    if (item) wx.navigateTo({ url: `/pages/wishlist/edit/index?id=${encodeURIComponent(item.id)}` });
+  },
+
+  switchTab(event: { currentTarget: { dataset: { tab?: string } } }) {
+    const tab = event.currentTarget.dataset.tab;
+    if (tab === "info" || tab === "pairing" || tab === "record") this.setData({ activeTab: tab });
   },
 
   closeDeleteSheet() {

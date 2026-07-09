@@ -1,1 +1,207 @@
-.page-shell { padding-bottom: 160rpx; }
+@import "../../../styles/index.wxss";
+
+.edit-page {
+  padding: 0;
+}
+
+.status-card,
+.edit-card {
+  box-sizing: border-box;
+  margin-top: 28rpx;
+  padding: 32rpx;
+  border: 1rpx solid var(--color-line);
+  border-radius: var(--radius-card-inner);
+  background: rgba(255, 255, 252, 0.86);
+  box-shadow: var(--shadow-card);
+}
+
+.status-title {
+  color: var(--color-ink);
+  font-size: var(--font-section);
+  font-weight: 800;
+}
+
+.status-copy {
+  margin-top: 12rpx;
+  color: var(--color-muted);
+  font-size: var(--font-body);
+  line-height: 1.55;
+}
+
+.card-title {
+  margin-bottom: 22rpx;
+  color: var(--color-ink);
+  font-size: var(--font-section);
+  font-weight: 800;
+}
+
+.media-actions {
+  display: grid;
+  gap: 18rpx;
+  margin-top: 22rpx;
+}
+
+.outline-button,
+.primary-inline-button,
+.save-button {
+  box-sizing: border-box;
+  height: 82rpx;
+  margin: 0;
+  border-radius: var(--radius-control);
+  font-size: var(--font-body);
+  font-weight: 800;
+  line-height: 82rpx;
+}
+
+.outline-button {
+  border: 1rpx solid var(--color-line);
+  color: var(--color-ink);
+  background: rgba(255, 255, 252, 0.78);
+}
+
+.primary-inline-button,
+.save-button {
+  color: var(--color-surface);
+  background: var(--color-primary);
+}
+
+.outline-button::after,
+.primary-inline-button::after,
+.save-button::after {
+  border: 0;
+}
+
+.field-label {
+  margin: 24rpx 0 12rpx;
+  color: var(--color-ink);
+  font-size: var(--font-caption);
+  font-weight: 800;
+}
+
+.field-input,
+.field-textarea {
+  box-sizing: border-box;
+  width: 100%;
+  border: 1rpx solid var(--color-line);
+  border-radius: var(--radius-control);
+  background: rgba(244, 245, 243, 0.78);
+  color: var(--color-ink);
+  font-size: var(--font-body);
+}
+
+.field-input {
+  height: 88rpx;
+  padding: 0 24rpx;
+}
+
+.field-textarea {
+  min-height: 132rpx;
+  padding: 22rpx 24rpx;
+}
+
+.chip-row,
+.color-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14rpx;
+}
+
+.select-chip,
+.segment,
+.color-choice {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 64rpx;
+  padding: 0 22rpx;
+  border: 1rpx solid var(--color-line);
+  border-radius: var(--radius-control);
+  color: var(--color-muted);
+  background: rgba(255, 255, 252, 0.72);
+  font-size: var(--font-caption);
+  font-weight: 800;
+}
+
+.select-chip.is-active,
+.segment.is-active {
+  border-color: var(--color-primary);
+  color: var(--color-surface);
+  background: var(--color-primary);
+}
+
+.select-chip.is-active.neutral {
+  border-color: #1D2228;
+  color: var(--color-surface);
+  background: rgba(29, 34, 40, 0.82);
+}
+
+.segmented {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12rpx;
+}
+
+.color-choice {
+  gap: 10rpx;
+  width: calc((100% - 28rpx) / 3);
+  padding: 0 10rpx;
+}
+
+.color-choice.is-active {
+  border-color: var(--color-primary);
+  color: var(--color-primary);
+  background: rgba(53, 92, 125, 0.08);
+}
+
+.color-dot {
+  box-sizing: border-box;
+  width: 30rpx;
+  height: 30rpx;
+  flex: 0 0 30rpx;
+  border-radius: 50%;
+}
+
+.two-col {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 6rpx;
+}
+
+.range-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 20rpx;
+  margin-top: 28rpx;
+}
+
+.range-title {
+  color: var(--color-ink);
+  font-size: var(--font-caption);
+  font-weight: 800;
+}
+
+.range-value {
+  color: var(--color-muted);
+  font-size: var(--font-caption);
+  font-weight: 800;
+}
+
+.bottom-save {
+  position: fixed;
+  right: 20rpx;
+  bottom: calc(env(safe-area-inset-bottom) + 18rpx);
+  left: 20rpx;
+  z-index: 30;
+  box-sizing: border-box;
+  padding: 18rpx;
+  border-radius: var(--radius-card-secondary);
+}
+
+.save-button {
+  width: 100%;
+}
+
+.save-button[disabled] {
+  background: rgba(29, 34, 40, 0.14);
+  color: rgba(29, 34, 40, 0.42);
+}

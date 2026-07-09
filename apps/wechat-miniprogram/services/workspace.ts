@@ -1,5 +1,6 @@
 import { getSession, isLoggedIn } from "../stores/session";
 import { downloadAssetImage, type AssetMutation, type AssetRef } from "./assets";
+import { getCategoryLabel, getSubcategoryLabel, normalizeCategoryId } from "./category-catalog";
 import { request } from "./http";
 
 type WorkspaceEntity = {
@@ -15,6 +16,7 @@ type WorkspaceOverviewResponse = {
   garments?: WorkspaceEntity[];
   outfits?: WorkspaceEntity[];
   wishlistItems?: WorkspaceEntity[];
+  locations?: WorkspaceEntity[];
   serverRevision?: number;
   requestId?: string;
 };
@@ -43,11 +45,32 @@ export interface MiniGarment {
   name: string;
   category: string;
   categoryLabel: string;
+  subcategory: string;
+  subcategoryLabel: string;
+  locationId: string;
+  status: string;
+  statusText: string;
+  colorsRaw: unknown;
   colorText: string;
   colorNames: string[];
   cardColors: Array<{ name: string; swatch: string; needsBorder: boolean }>;
+  seasonsRaw: unknown;
+  seasons: string[];
+  seasonLabels: string[];
   wearSummary: string;
   seasonText: string;
+  stylesRaw: unknown;
+  styles: string[];
+  styleLabels: string[];
+  temperatureRangeRaw: unknown;
+  temperatureRange: { minC?: number; maxC?: number };
+  formality?: number;
+  warmth?: number;
+  material: string;
+  fitRaw: unknown;
+  fitGender: string;
+  fitGenderText: string;
+  fitNotes: string;
   imageUrl: string;
   updatedAt: string;
 }
@@ -60,6 +83,10 @@ export interface MiniGarmentDetail extends MiniGarment {
   purchaseDate: string;
   primaryColor: string;
   secondaryColor: string;
+  colorMode: string;
+  colorModeText: string;
+  primaryColorChips: Array<{ name: string; swatch: string; needsBorder: boolean }>;
+  accentColorChips: Array<{ name: string; swatch: string; needsBorder: boolean }>;
   temperatureText: string;
   formalityText: string;
   warmthText: string;
@@ -91,7 +118,30 @@ export interface MiniWishlistItem {
   id: string;
   revision: number;
   name: string;
+  category: string;
   categoryLabel: string;
+  subcategory: string;
+  subcategoryLabel: string;
+  colorsRaw: unknown;
+  colorText: string;
+  colorNames: string[];
+  cardColors: Array<{ name: string; swatch: string; needsBorder: boolean }>;
+  seasonsRaw: unknown;
+  seasons: string[];
+  seasonLabels: string[];
+  seasonText: string;
+  stylesRaw: unknown;
+  styles: string[];
+  styleLabels: string[];
+  temperatureRangeRaw: unknown;
+  temperatureRange: { minC?: number; maxC?: number };
+  formality?: number;
+  warmth?: number;
+  material: string;
+  fitRaw: unknown;
+  fitGender: string;
+  fitGenderText: string;
+  fitNotes: string;
   priceText: string;
   status: "interested" | "purchased" | "rejected" | "archived";
   statusText: string;
@@ -105,20 +155,52 @@ export interface MiniOutfitDetail extends MiniOutfit {
 
 export interface MiniWishlistDetail extends MiniWishlistItem {
   rawPayload: Record<string, unknown>;
+  meta: string;
+  colorMode: string;
+  colorModeText: string;
+  primaryColor: string;
+  secondaryColor: string;
+  primaryColorChips: Array<{ name: string; swatch: string; needsBorder: boolean }>;
+  accentColorChips: Array<{ name: string; swatch: string; needsBorder: boolean }>;
+  temperatureText: string;
+  formalityText: string;
+  warmthText: string;
+  materialText: string;
+  fitText: string;
+  price?: number;
   productUrl: string;
   notes: string;
+}
+
+export interface MiniClosetLocation {
+  id: string;
+  name: string;
+  note: string;
+  sortOrder: number;
 }
 
 export interface CreateGarmentInput {
   clientMutationId: string;
   name: string;
   category: string;
+  subcategory?: string;
   color: string;
   season: string;
   note?: string;
   colors?: Record<string, unknown>;
   seasons?: string[];
   styles?: string[];
+  temperatureRange?: { minC?: number; maxC?: number };
+  formality?: number;
+  warmth?: number;
+  material?: string;
+  fitGender?: string;
+  fitNotes?: string;
+  price?: number;
+  productUrl?: string;
+  locationId?: string;
+  status?: string;
+  purchaseDate?: string;
   aiTag?: Record<string, unknown>;
   assetMutations: AssetMutation[];
 }
@@ -142,9 +224,17 @@ export interface CreateWishlistInput {
   clientMutationId?: string;
   name: string;
   category?: string;
+  subcategory?: string;
   colors?: Record<string, unknown>;
   seasons?: string[];
   styles?: string[];
+  temperatureRange?: { minC?: number; maxC?: number };
+  formality?: number;
+  warmth?: number;
+  material?: string;
+  fitGender?: string;
+  fitNotes?: string;
+  status?: "interested" | "purchased" | "rejected" | "archived";
   aiTag?: Record<string, unknown>;
   price?: number;
   productUrl?: string;
@@ -158,9 +248,44 @@ export interface UpdateGarmentInput {
   currentPayload: Record<string, unknown>;
   name: string;
   category: string;
+  subcategory?: string;
   colors: Record<string, unknown>;
   seasons: string[];
   styles?: string[];
+  temperatureRange?: { minC?: number; maxC?: number };
+  formality?: number;
+  warmth?: number;
+  material?: string;
+  fitGender?: string;
+  fitNotes?: string;
+  price?: number;
+  productUrl?: string;
+  locationId?: string;
+  status?: string;
+  purchaseDate?: string;
+  notes?: string;
+  aiTag?: Record<string, unknown>;
+}
+
+export interface UpdateWishlistInput {
+  id: string;
+  expectedRevision: number;
+  currentPayload: Record<string, unknown>;
+  name: string;
+  category: string;
+  subcategory?: string;
+  colors: Record<string, unknown>;
+  seasons: string[];
+  styles?: string[];
+  temperatureRange?: { minC?: number; maxC?: number };
+  formality?: number;
+  warmth?: number;
+  material?: string;
+  fitGender?: string;
+  fitNotes?: string;
+  price?: number;
+  productUrl?: string;
+  status?: "interested" | "purchased" | "rejected" | "archived";
   notes?: string;
   aiTag?: Record<string, unknown>;
 }
@@ -168,9 +293,16 @@ export interface UpdateGarmentInput {
 type CatalogItemPayloadInput = {
   name: string;
   category?: string;
+  subcategory?: string;
   colors?: Record<string, unknown>;
   seasons?: string[];
   styles?: string[];
+  temperatureRange?: { minC?: number; maxC?: number };
+  formality?: number;
+  warmth?: number;
+  material?: string;
+  fitGender?: string;
+  fitNotes?: string;
   notes?: string;
 };
 
@@ -181,19 +313,6 @@ type WorkspaceCommandResponse = {
   requestId?: string;
 };
 
-const CATEGORY_LABELS: Record<string, string> = {
-  outerwear: "外套",
-  tops: "上装",
-  pants: "裤装",
-  skirts: "半裙",
-  one_piece: "连衣装",
-  shoes: "鞋履",
-  bags: "包袋",
-  hats: "帽子",
-  jewelry: "首饰",
-  accessories: "配饰",
-};
-
 const SEASON_LABELS: Record<string, string> = {
   spring: "春",
   summer: "夏",
@@ -202,34 +321,62 @@ const SEASON_LABELS: Record<string, string> = {
   all: "四季",
 };
 
-const COLOR_SWATCHES: Record<string, { bg: string; border?: string }> = {
-  "黑": { bg: "#1D2228" },
-  "白": { bg: "#F8FAFC", border: "rgba(29,34,40,0.26)" },
-  "灰": { bg: "#9CA3AF" },
-  "米白": { bg: "#F3EEE3", border: "rgba(29,34,40,0.18)" },
-  "米": { bg: "#E6D5B8", border: "rgba(29,34,40,0.16)" },
-  "卡其": { bg: "#B7A477" },
-  "棕": { bg: "#87583E" },
-  "蓝": { bg: "#355C7D" },
-  "牛仔蓝": { bg: "#3F6F9F" },
-  "绿": { bg: "#5F7058" },
-  "红": { bg: "#B84A45" },
-  "粉": { bg: "#E8A7B8" },
-  "深灰": { bg: "#4B5563" },
-  "杏": { bg: "#E6C5A5", border: "rgba(29,34,40,0.14)" },
-  "驼": { bg: "#B8845F" },
-  "咖啡": { bg: "#5F4032" },
-  "酒红": { bg: "#7B2E3A" },
-  "橙": { bg: "#D9823B" },
-  "黄": { bg: "#E3B64B", border: "rgba(29,34,40,0.12)" },
-  "天蓝": { bg: "#83B6D9" },
-  "藏青": { bg: "#243B5A" },
-  "橄榄绿": { bg: "#777B48" },
-  "墨绿": { bg: "#315B4B" },
-  "紫": { bg: "#8C4A86" },
-  "金": { bg: "#C6A15B", border: "rgba(29,34,40,0.12)" },
-  "银": { bg: "#B8C0C8", border: "rgba(29,34,40,0.16)" },
+const STYLE_LABELS: Record<string, string> = {
+  casual: "休闲",
+  sweet: "甜美",
+  elegant: "优雅",
+  commute: "通勤",
+  outdoor: "户外",
+  dinner: "吃饭",
+  vacation: "旅行",
 };
+
+const FIT_GENDER_LABELS: Record<string, string> = {
+  menswear: "男装",
+  womenswear: "女装",
+  unisex: "中性",
+  unknown: "未识别",
+};
+
+const COLOR_MODE_LABELS: Record<string, string> = {
+  single: "单主色",
+  main_with_accent: "主辅色",
+  multicolor: "拼色",
+};
+
+export const WARDROBE_COLOR_CATALOG = [
+  { name: "黑", bg: "#1D2228" },
+  { name: "白", bg: "#F8FAFC", border: "rgba(29,34,40,0.26)" },
+  { name: "灰", bg: "#9CA3AF" },
+  { name: "米白", bg: "#F3EEE3", border: "rgba(29,34,40,0.18)" },
+  { name: "米", bg: "#E6D5B8", border: "rgba(29,34,40,0.16)" },
+  { name: "卡其", bg: "#B7A477" },
+  { name: "棕", bg: "#87583E" },
+  { name: "蓝", bg: "#355C7D" },
+  { name: "牛仔蓝", bg: "#3F6F9F" },
+  { name: "绿", bg: "#5F7058" },
+  { name: "红", bg: "#B84A45" },
+  { name: "粉", bg: "#E8A7B8" },
+  { name: "深灰", bg: "#4B5563" },
+  { name: "杏", bg: "#E6C5A5", border: "rgba(29,34,40,0.14)" },
+  { name: "驼", bg: "#B8845F" },
+  { name: "咖啡", bg: "#5F4032" },
+  { name: "酒红", bg: "#7B2E3A" },
+  { name: "橙", bg: "#D9823B" },
+  { name: "黄", bg: "#E3B64B", border: "rgba(29,34,40,0.12)" },
+  { name: "天蓝", bg: "#83B6D9" },
+  { name: "藏青", bg: "#243B5A" },
+  { name: "橄榄绿", bg: "#777B48" },
+  { name: "墨绿", bg: "#315B4B" },
+  { name: "紫", bg: "#8C4A86" },
+  { name: "金", bg: "#C6A15B", border: "rgba(29,34,40,0.12)" },
+  { name: "银", bg: "#B8C0C8", border: "rgba(29,34,40,0.16)" },
+] as const;
+
+const COLOR_SWATCHES: Record<string, { bg: string; border?: string }> = WARDROBE_COLOR_CATALOG.reduce((result, item) => {
+  result[item.name] = { bg: item.bg, border: "border" in item ? item.border : undefined };
+  return result;
+}, {} as Record<string, { bg: string; border?: string }>);
 
 export function getWorkspaceReadState(): WorkspaceReadState {
   if (!isLoggedIn()) return "logged_out";
@@ -264,12 +411,18 @@ export async function fetchWishlist(limit = 60): Promise<MiniWishlistItem[]> {
   return Promise.all((response.items ?? []).map(toMiniWishlistItem));
 }
 
+export async function fetchClosetLocations(): Promise<MiniClosetLocation[]> {
+  const response = await workspaceRequest<WorkspaceOverviewResponse>("/api/workspace/overview");
+  return (response.locations ?? []).map(toMiniClosetLocation).sort((a, b) => a.sortOrder - b.sortOrder);
+}
+
 export async function fetchGarmentDetail(id: string): Promise<MiniGarmentDetail> {
   const response = await workspaceRequest<{ data: WorkspaceEntity }>(`/api/workspace/garments/${encodeURIComponent(id)}`);
   const summary = await toMiniGarment(response.data);
   const payload = response.data.payload;
   const colors = colorList(payload.colors);
-  const styles = Array.isArray(payload.styles) ? payload.styles.filter(isNonEmptyString).slice(0, 3).join(" / ") : "";
+  const colorParts = parseColorParts(payload.colors);
+  const styles = summary.styleLabels.slice(0, 3).join(" / ");
   return {
     ...summary,
     rawPayload: payload,
@@ -279,11 +432,15 @@ export async function fetchGarmentDetail(id: string): Promise<MiniGarmentDetail>
     purchaseDate: stringValue(payload.purchaseDate, "未记录"),
     primaryColor: colors[0] ?? "未标注",
     secondaryColor: colors[1] ?? "无",
+    colorMode: colorParts.mode,
+    colorModeText: COLOR_MODE_LABELS[colorParts.mode] ?? colorParts.mode,
+    primaryColorChips: colorParts.primary.map(toCardColor),
+    accentColorChips: colorParts.accent.map(toCardColor),
     temperatureText: temperatureText(payload.temperatureRange),
     formalityText: scoreText(payload.formality),
     warmthText: scoreText(payload.warmth),
     materialText: firstString(payload.material, payload.materialText, payload.fabric, payload.fabricText) || "未记录",
-    fitText: firstString(payload.fit, payload.fitNotes, payload.fitGender) || "未记录",
+    fitText: fitText(payload),
     notes: stringValue(payload.notes, "无备注"),
   };
 }
@@ -297,11 +454,28 @@ export async function fetchOutfitDetail(id: string): Promise<MiniOutfitDetail> {
 export async function fetchWishlistDetail(id: string): Promise<MiniWishlistDetail> {
   const response = await workspaceRequest<{ data: WorkspaceEntity }>(`/api/workspace/wishlist/${encodeURIComponent(id)}`);
   const summary = await toMiniWishlistItem(response.data);
+  const payload = response.data.payload;
+  const colors = colorList(payload.colors);
+  const colorParts = parseColorParts(payload.colors);
+  const styles = summary.styleLabels.slice(0, 3).join(" / ");
   return {
     ...summary,
-    rawPayload: response.data.payload,
-    productUrl: stringValue(response.data.payload.productUrl, ""),
-    notes: stringValue(response.data.payload.notes, "无备注"),
+    rawPayload: payload,
+    meta: [summary.categoryLabel, summary.seasonText, styles, summary.statusText].filter((part) => part && part !== "未标注").join(" · ") || summary.categoryLabel,
+    colorMode: colorParts.mode,
+    colorModeText: COLOR_MODE_LABELS[colorParts.mode] ?? colorParts.mode,
+    primaryColor: colors[0] ?? "未标注",
+    secondaryColor: colors[1] ?? "无",
+    primaryColorChips: colorParts.primary.map(toCardColor),
+    accentColorChips: colorParts.accent.map(toCardColor),
+    temperatureText: temperatureText(payload.temperatureRange),
+    formalityText: scoreText(payload.formality),
+    warmthText: scoreText(payload.warmth),
+    materialText: firstString(payload.material, payload.materialText, payload.fabric, payload.fabricText) || "未记录",
+    fitText: fitText(payload),
+    price: typeof payload.price === "number" && Number.isFinite(payload.price) ? payload.price : undefined,
+    productUrl: stringValue(payload.productUrl, ""),
+    notes: stringValue(payload.notes, "无备注"),
   };
 }
 
@@ -408,15 +582,22 @@ export async function createWishlistItem(input: CreateWishlistInput): Promise<Wo
         ...buildCatalogItemPayload({
           name: input.name,
           category: input.category || "tops",
+          subcategory: input.subcategory,
           colors: input.colors ?? { mode: "single", primary: "未标注" },
           seasons: input.seasons ?? [],
           styles: input.styles,
+          temperatureRange: input.temperatureRange,
+          formality: input.formality,
+          warmth: input.warmth,
+          material: input.material,
+          fitGender: input.fitGender,
+          fitNotes: input.fitNotes,
           notes: input.notes,
         }),
         aiRecognition: input.aiTag,
         price: input.price,
         productUrl: input.productUrl,
-        status: "interested",
+        status: input.status ?? "interested",
       },
       assetMutations: input.assetMutations ?? [],
     },
@@ -436,9 +617,21 @@ export async function updateGarment(input: UpdateGarmentInput): Promise<Workspac
         ...input.currentPayload,
         name: input.name,
         category: input.category,
+        subcategory: input.subcategory,
         colors: input.colors,
         seasons: input.seasons,
         styles: input.styles ?? [],
+        temperatureRange: input.temperatureRange,
+        formality: input.formality,
+        warmth: input.warmth,
+        material: input.material,
+        fitGender: input.fitGender,
+        fitNotes: input.fitNotes,
+        price: input.price,
+        productUrl: input.productUrl,
+        locationId: input.locationId ?? input.currentPayload.locationId,
+        status: input.status ?? input.currentPayload.status,
+        purchaseDate: input.purchaseDate,
         notes: input.notes,
         aiRecognition: input.aiTag,
         updatedAt: new Date().toISOString(),
@@ -448,6 +641,40 @@ export async function updateGarment(input: UpdateGarmentInput): Promise<Workspac
   });
   if (!response.entity) throw new Error("服务器未返回已更新衣物");
   return response.entity;
+}
+
+export async function updateWishlistItem(input: UpdateWishlistInput): Promise<MiniWishlistDetail> {
+  await request<WorkspaceCommandResponse>({
+    method: "PUT",
+    path: `/api/workspace/wishlist/${encodeURIComponent(input.id)}`,
+    data: {
+      clientMutationId: createClientMutationId(),
+      expectedRevision: input.expectedRevision,
+      payload: {
+        ...input.currentPayload,
+        name: input.name,
+        category: input.category,
+        subcategory: input.subcategory,
+        colors: input.colors,
+        seasons: input.seasons,
+        styles: input.styles ?? [],
+        temperatureRange: input.temperatureRange,
+        formality: input.formality,
+        warmth: input.warmth,
+        material: input.material,
+        fitGender: input.fitGender,
+        fitNotes: input.fitNotes,
+        price: input.price,
+        productUrl: input.productUrl,
+        status: input.status ?? input.currentPayload.status ?? "interested",
+        notes: input.notes,
+        aiRecognition: input.aiTag,
+        updatedAt: new Date().toISOString(),
+      },
+      assetMutations: [],
+    },
+  });
+  return fetchWishlistDetail(input.id);
 }
 
 export async function setOutfitFavorite(id: string, expectedRevision: number, value: boolean): Promise<MiniOutfitDetail> {
@@ -499,7 +726,7 @@ export async function updateWishlistStatus(input: {
   id: string;
   expectedRevision: number;
   currentPayload: Record<string, unknown>;
-  status: "interested" | "rejected";
+  status: "interested" | "rejected" | "archived";
 }): Promise<MiniWishlistDetail> {
   await request<WorkspaceCommandResponse>({
     method: "PUT",
@@ -527,9 +754,16 @@ function buildCatalogItemPayload(input: CatalogItemPayloadInput): Record<string,
   return {
     name: input.name,
     category: input.category || "tops",
+    subcategory: input.subcategory,
     colors: input.colors ?? { mode: "single", primary: "未标注" },
     seasons: input.seasons ?? [],
     styles: input.styles ?? [],
+    temperatureRange: input.temperatureRange,
+    formality: input.formality,
+    warmth: input.warmth,
+    material: input.material,
+    fitGender: input.fitGender,
+    fitNotes: input.fitNotes,
     notes: input.notes,
     createdAt: now,
     updatedAt: now,
@@ -541,15 +775,25 @@ function buildCreateGarmentPayload(input: CreateGarmentInput): Record<string, un
     ...buildCatalogItemPayload({
       name: input.name,
       category: input.category,
+      subcategory: input.subcategory,
       colors: input.colors ?? { mode: "single", primary: input.color },
       seasons: input.seasons ?? (input.season ? [input.season] : []),
       styles: input.styles,
+      temperatureRange: input.temperatureRange,
+      formality: input.formality,
+      warmth: input.warmth,
+      material: input.material,
+      fitGender: input.fitGender,
+      fitNotes: input.fitNotes,
       notes: input.note,
     }),
     aiRecognition: input.aiTag,
     legacyItemId: createLegacyNumericId(input.clientMutationId),
-    locationId: "home",
-    status: "active",
+    price: input.price,
+    productUrl: input.productUrl,
+    locationId: input.locationId ?? "home",
+    status: input.status ?? "active",
+    purchaseDate: input.purchaseDate,
   };
 }
 
@@ -585,20 +829,46 @@ async function workspaceRequest<T>(path: string): Promise<T> {
 
 async function toMiniGarment(entity: WorkspaceEntity): Promise<MiniGarment> {
   const payload = entity.payload;
-  const category = stringValue(payload.category, "unknown");
+  const category = normalizeCategoryId(stringValue(payload.category, "unknown"));
+  const subcategory = firstString(payload.subcategory);
   const colorNames = colorList(payload.colors);
+  const seasons = stringList(payload.seasons);
+  const styles = stringList(payload.styles);
+  const temperatureRange = normalizeTemperatureRange(payload.temperatureRange);
+  const fitGender = firstString(payload.fitGender, payload.fit);
   return {
     id: entity.id,
     revision: entity.revision,
     legacyItemId: numberValue(payload.legacyItemId) ?? numericId(entity.id),
     name: stringValue(payload.name, "未命名单品"),
     category,
-    categoryLabel: CATEGORY_LABELS[category] ?? "未分类",
+    categoryLabel: getCategoryLabel(category),
+    subcategory,
+    subcategoryLabel: getSubcategoryLabel(category, subcategory),
+    locationId: stringValue(payload.locationId, "home"),
+    status: stringValue(payload.status, "active"),
+    statusText: garmentStatusText(payload.status),
+    colorsRaw: payload.colors,
     colorText: formatColors(payload.colors),
     colorNames,
     cardColors: colorNames.map(toCardColor),
+    seasonsRaw: payload.seasons,
+    seasons,
+    seasonLabels: seasons.map((season) => SEASON_LABELS[season] ?? season),
     wearSummary: formatWearSummary(payload.wornDates),
     seasonText: formatSeasons(payload.seasons),
+    stylesRaw: payload.styles,
+    styles,
+    styleLabels: styles.map((style) => STYLE_LABELS[style] ?? style),
+    temperatureRangeRaw: payload.temperatureRange,
+    temperatureRange,
+    formality: safeNumber(payload.formality),
+    warmth: safeNumber(payload.warmth),
+    material: firstString(payload.material, payload.materialText, payload.fabric, payload.fabricText),
+    fitRaw: payload.fit ?? { fitGender: payload.fitGender, fitNotes: payload.fitNotes },
+    fitGender,
+    fitGenderText: FIT_GENDER_LABELS[fitGender] ?? fitGender,
+    fitNotes: firstString(payload.fitNotes),
     imageUrl: await resolveImageUrl(entity, "imageDataUrl", payload),
     updatedAt: entity.updatedAt,
   };
@@ -635,17 +905,57 @@ async function toMiniOutfit(entity: WorkspaceEntity, garments: MiniGarment[] = [
 
 async function toMiniWishlistItem(entity: WorkspaceEntity): Promise<MiniWishlistItem> {
   const payload = entity.payload;
-  const category = stringValue(payload.category, "unknown");
+  const category = normalizeCategoryId(stringValue(payload.category, "unknown"));
+  const subcategory = firstString(payload.subcategory);
+  const colorNames = colorList(payload.colors);
+  const seasons = stringList(payload.seasons);
+  const styles = stringList(payload.styles);
+  const temperatureRange = normalizeTemperatureRange(payload.temperatureRange);
+  const fitGender = firstString(payload.fitGender, payload.fit);
   return {
     id: entity.id,
     revision: entity.revision,
     name: stringValue(payload.name, "未命名种草"),
-    categoryLabel: CATEGORY_LABELS[category] ?? "未分类",
+    category,
+    categoryLabel: getCategoryLabel(category),
+    subcategory,
+    subcategoryLabel: getSubcategoryLabel(category, subcategory),
+    colorsRaw: payload.colors,
+    colorText: formatColors(payload.colors),
+    colorNames,
+    cardColors: colorNames.map(toCardColor),
+    seasonsRaw: payload.seasons,
+    seasons,
+    seasonLabels: seasons.map((season) => SEASON_LABELS[season] ?? season),
+    seasonText: formatSeasons(payload.seasons),
+    stylesRaw: payload.styles,
+    styles,
+    styleLabels: styles.map((style) => STYLE_LABELS[style] ?? style),
+    temperatureRangeRaw: payload.temperatureRange,
+    temperatureRange,
+    formality: safeNumber(payload.formality),
+    warmth: safeNumber(payload.warmth),
+    material: firstString(payload.material, payload.materialText, payload.fabric, payload.fabricText),
+    fitRaw: payload.fit ?? { fitGender: payload.fitGender, fitNotes: payload.fitNotes },
+    fitGender,
+    fitGenderText: FIT_GENDER_LABELS[fitGender] ?? fitGender,
+    fitNotes: firstString(payload.fitNotes),
     priceText: typeof payload.price === "number" && Number.isFinite(payload.price) ? `¥${payload.price}` : "未记录价格",
     status: wishlistStatus(payload),
     statusText: wishlistStatusText(payload),
     imageUrl: await resolveImageUrl(entity, "imageDataUrl", payload),
     updatedAt: entity.updatedAt,
+  };
+}
+
+function toMiniClosetLocation(entity: WorkspaceEntity): MiniClosetLocation {
+  const payload = entity.payload;
+  const id = stringValue(payload.dexieId, entity.id);
+  return {
+    id,
+    name: stringValue(payload.name, id === "home" ? "默认衣橱" : "未命名衣橱"),
+    note: firstString(payload.note),
+    sortOrder: safeNumber(payload.sortOrder) ?? 0,
   };
 }
 
@@ -669,6 +979,10 @@ function firstString(...values: unknown[]): string {
 
 function numberValue(value: unknown): number | undefined {
   return typeof value === "number" && Number.isSafeInteger(value) ? value : undefined;
+}
+
+function safeNumber(value: unknown): number | undefined {
+  return typeof value === "number" && Number.isFinite(value) ? value : undefined;
 }
 
 function numberList(value: unknown): number[] {
@@ -705,6 +1019,16 @@ function formatColors(value: unknown): string {
   if (colors.mode === "main_with_accent") return [colors.primary, ...(Array.isArray(colors.accents) ? colors.accents : [])].filter(isNonEmptyString).slice(0, 3).join(" / ") || "未标注";
   if (colors.mode === "multicolor") return (Array.isArray(colors.primaries) ? colors.primaries : []).filter(isNonEmptyString).slice(0, 3).join(" / ") || "多色";
   return "未标注";
+}
+
+function parseColorParts(value: unknown): { mode: string; primary: string[]; accent: string[] } {
+  if (Array.isArray(value)) return { mode: "single", primary: value.filter(isNonEmptyString).slice(0, 1), accent: value.filter(isNonEmptyString).slice(1) };
+  if (!value || typeof value !== "object") return { mode: "single", primary: [], accent: [] };
+  const colors = value as Record<string, unknown>;
+  const mode = stringValue(colors.mode, "single");
+  if (mode === "main_with_accent") return { mode, primary: [colors.primary].filter(isNonEmptyString), accent: stringList(colors.accents) };
+  if (mode === "multicolor") return { mode, primary: stringList(colors.primaries), accent: stringList(colors.accents) };
+  return { mode, primary: [colors.primary].filter(isNonEmptyString), accent: stringList(colors.accents) };
 }
 
 function formatSeasons(value: unknown): string {
@@ -762,14 +1086,28 @@ function scoreText(value: unknown): string {
 }
 
 function temperatureText(value: unknown): string {
-  if (!value || typeof value !== "object") return "未识别";
-  const record = value as Record<string, unknown>;
-  const min = typeof record.min === "number" ? record.min : typeof record.minC === "number" ? record.minC : undefined;
-  const max = typeof record.max === "number" ? record.max : typeof record.maxC === "number" ? record.maxC : undefined;
+  const { minC: min, maxC: max } = normalizeTemperatureRange(value);
   if (min !== undefined && max !== undefined) return `${min}℃ - ${max}℃`;
   if (min !== undefined) return `${min}℃以上`;
   if (max !== undefined) return `${max}℃以下`;
   return "未识别";
+}
+
+function normalizeTemperatureRange(value: unknown): { minC?: number; maxC?: number } {
+  if (!value || typeof value !== "object") return {};
+  const record = value as Record<string, unknown>;
+  const minC = typeof record.minC === "number" ? record.minC : typeof record.min === "number" ? record.min : undefined;
+  const maxC = typeof record.maxC === "number" ? record.maxC : typeof record.max === "number" ? record.max : undefined;
+  return {
+    ...(minC !== undefined ? { minC } : {}),
+    ...(maxC !== undefined ? { maxC } : {}),
+  };
+}
+
+function fitText(payload: Record<string, unknown>): string {
+  return [FIT_GENDER_LABELS[firstString(payload.fitGender, payload.fit)] ?? firstString(payload.fitGender, payload.fit), firstString(payload.fitNotes)]
+    .filter(Boolean)
+    .join(" · ") || "未记录";
 }
 
 function wishlistStatusText(value: unknown): string {

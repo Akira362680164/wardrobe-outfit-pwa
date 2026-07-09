@@ -1,6 +1,6 @@
 <view class="page-shell intake-page">
   <view class="intake-header">
-    <view class="page-title">添加单品</view>
+    <view class="page-title">{{pageTitle}}</view>
     <view class="step-copy">步骤 2 / 2 · 确认信息</view>
     <view class="progress-track"><view class="progress-fill"></view></view>
   </view>
@@ -13,7 +13,7 @@
   <view wx:else>
     <view class="preview-card surface-panel">
       <view class="preview-card__top">
-        <view class="section-title">已识别 {{totalCount}} 件单品</view>
+        <view class="section-title">{{recognizedTitle}}</view>
         <button class="retry-button" loading="{{recognizing}}" disabled="{{recognizing || saving || current.status === 'saving'}}" bindtap="retryRecognition">重新识别</button>
       </view>
       <view class="preview-media">
@@ -28,7 +28,7 @@
 
     <view class="ai-card surface-panel">
       <view class="ai-card__top">
-        <view class="section-title">校对衣物草稿</view>
+        <view class="section-title">{{draftTitle}}</view>
         <view class="ai-card__badges">
           <view class="ai-badge">AI {{confidenceText}}</view>
           <view class="review-badge {{current.status === 'needs_confirm' ? 'badge-danger' : current.status === 'confirmed' ? 'badge-success' : ''}}">{{currentStatusText}}</view>
@@ -46,21 +46,70 @@
         <view class="position-text">{{currentPositionText}}</view>
       </view>
 
-      <view class="field-label">名称</view>
-      <input class="field-input" value="{{current.draft.name}}" placeholder="例如 白色衬衫" disabled="{{current.status === 'recognizing' || current.status === 'saving'}}" bindinput="updateName" />
+      <view class="field-label">{{kind === 'wishlist' ? '商品名称 *' : '名称 *'}}</view>
+      <input class="field-input" value="{{current.draft.name}}" placeholder="{{kind === 'wishlist' ? '例如 米色短风衣' : '例如 白色衬衫'}}" disabled="{{current.status === 'recognizing' || current.status === 'saving'}}" bindinput="updateName" />
 
       <view class="field-label">分类</view>
       <view class="chip-row">
         <view wx:for="{{categories}}" wx:key="value" data-value="{{item.value}}" class="chip {{current.draft.category === item.value ? 'chip-active' : ''}} {{current.status === 'recognizing' || current.status === 'saving' ? 'chip-disabled' : ''}}" bindtap="chooseCategory">{{item.label}}</view>
       </view>
 
+      <view class="field-label">细分</view>
+      <view class="chip-row">
+        <view data-value="" class="chip {{!current.draft.subcategory ? 'chip-active chip-neutral' : ''}} {{current.status === 'recognizing' || current.status === 'saving' ? 'chip-disabled' : ''}}" bindtap="chooseSubcategory">不限</view>
+        <view wx:for="{{subcategoryOptions}}" wx:key="value" data-value="{{item.value}}" class="chip {{item.selected ? 'chip-active' : ''}} {{current.status === 'recognizing' || current.status === 'saving' ? 'chip-disabled' : ''}}" bindtap="chooseSubcategory">{{item.label}}</view>
+      </view>
+
+      <block wx:if="{{kind === 'wishlist'}}">
+        <view class="field-label">价格</view>
+        <input class="field-input" value="{{current.draft.price}}" data-field="price" type="digit" placeholder="例如：399，非必填" disabled="{{current.status === 'recognizing' || current.status === 'saving'}}" bindinput="updateDraftField" />
+
+        <view class="field-label">商品链接</view>
+        <input class="field-input" value="{{current.draft.productUrl}}" data-field="productUrl" placeholder="粘贴淘宝/小红书等链接，非必填" disabled="{{current.status === 'recognizing' || current.status === 'saving'}}" bindinput="updateDraftField" />
+      </block>
+
       <view class="field-label">颜色</view>
       <input class="field-input" value="{{current.draft.color}}" placeholder="例如 白色" disabled="{{current.status === 'recognizing' || current.status === 'saving'}}" bindinput="updateColor" />
 
       <view class="field-label">季节</view>
       <view class="chip-row">
-        <view wx:for="{{seasons}}" wx:key="value" data-value="{{item.value}}" class="chip {{current.draft.season === item.value ? 'chip-active' : ''}} {{current.status === 'recognizing' || current.status === 'saving' ? 'chip-disabled' : ''}}" bindtap="chooseSeason">{{item.label}}</view>
+        <view wx:for="{{seasons}}" wx:key="value" data-value="{{item.value}}" class="chip {{item.selected ? 'chip-active' : ''}} {{current.status === 'recognizing' || current.status === 'saving' ? 'chip-disabled' : ''}}" bindtap="chooseSeason">{{item.label}}</view>
       </view>
+
+      <view class="field-label">风格</view>
+      <view class="chip-row">
+        <view wx:for="{{styles}}" wx:key="value" data-value="{{item.value}}" class="chip {{item.selected ? 'chip-active' : ''}} {{current.status === 'recognizing' || current.status === 'saving' ? 'chip-disabled' : ''}}" bindtap="toggleStyle">{{item.label}}</view>
+      </view>
+
+      <view class="range-row">
+        <view class="range-title">适穿温度</view>
+        <view class="range-value">{{current.draft.temperatureRange.minC || 10}}℃ ~ {{current.draft.temperatureRange.maxC || 25}}℃</view>
+      </view>
+      <slider min="-20" max="40" value="{{current.draft.temperatureRange.minC || 10}}" activeColor="#355C7D" backgroundColor="rgba(29,34,40,0.08)" data-field="minTemp" bindchange="updateDraftNumber" />
+      <slider min="-20" max="40" value="{{current.draft.temperatureRange.maxC || 25}}" activeColor="#355C7D" backgroundColor="rgba(29,34,40,0.08)" data-field="maxTemp" bindchange="updateDraftNumber" />
+
+      <view class="range-row">
+        <view class="range-title">正式度</view>
+        <view class="range-value">{{current.draft.formality || 3}}/5</view>
+      </view>
+      <slider min="1" max="5" step="1" value="{{current.draft.formality || 3}}" activeColor="#355C7D" backgroundColor="rgba(29,34,40,0.08)" data-field="formality" bindchange="updateDraftNumber" />
+
+      <view class="range-row">
+        <view class="range-title">保暖度</view>
+        <view class="range-value">{{current.draft.warmth || 2}}/5</view>
+      </view>
+      <slider min="1" max="5" step="1" value="{{current.draft.warmth || 2}}" activeColor="#355C7D" backgroundColor="rgba(29,34,40,0.08)" data-field="warmth" bindchange="updateDraftNumber" />
+
+      <view class="field-label">材质</view>
+      <input class="field-input" value="{{current.draft.material}}" data-field="material" placeholder="例如：涤纶防风面料" disabled="{{current.status === 'recognizing' || current.status === 'saving'}}" bindinput="updateDraftField" />
+
+      <view class="field-label">版型倾向</view>
+      <view class="chip-row">
+        <view wx:for="{{fitGenders}}" wx:key="value" data-value="{{item.value}}" class="chip {{item.selected ? 'chip-active' : ''}} {{current.status === 'recognizing' || current.status === 'saving' ? 'chip-disabled' : ''}}" bindtap="chooseFitGender">{{item.label}}</view>
+      </view>
+
+      <view class="field-label">版型说明</view>
+      <textarea class="field-textarea" value="{{current.draft.fitNotes}}" data-field="fitNotes" maxlength="120" placeholder="版型、尺码、上身顾虑" disabled="{{current.status === 'recognizing' || current.status === 'saving'}}" bindinput="updateDraftField" />
 
       <view class="field-label">备注</view>
       <textarea class="field-textarea" value="{{current.draft.note}}" placeholder="可选" disabled="{{current.status === 'recognizing' || current.status === 'saving'}}" bindinput="updateNote" />
@@ -76,7 +125,7 @@
 
     <view class="bottom-bar bottom-glass-bar">
       <button class="secondary-button bottom-button" disabled="{{saving}}" bindtap="goBack">取消</button>
-      <button class="primary-button bottom-button" loading="{{saving}}" disabled="{{!canSave || saving}}" bindtap="saveAll">保存 {{confirmedCount}} 件单品</button>
+      <button class="primary-button bottom-button" loading="{{saving}}" disabled="{{!canSave || saving}}" bindtap="saveAll">{{saveLabel}}</button>
     </view>
   </view>
 </view>

@@ -1,0 +1,26 @@
+<view class="item-edit-shell">
+  <view class="item-edit-shell__topbar">
+    <navigator class="item-edit-shell__back" open-type="navigateBack" aria-label="返回">
+      <ui-icon name="chevron-left" size="44" color="currentColor" />
+    </navigator>
+    <view class="item-edit-shell__title-wrap">
+      <view class="item-edit-shell__title">{{title}}</view>
+      <view wx:if="{{subtitle}}" class="item-edit-shell__subtitle">{{subtitle}}</view>
+    </view>
+    <slot name="topAction" />
+  </view>
+
+  <view class="item-edit-shell__media-card">
+    <view class="item-edit-shell__media">
+      <image wx:if="{{imageUrl}}" class="item-edit-shell__image" mode="aspectFit" src="{{imageUrl}}" />
+      <view wx:else class="item-edit-shell__fallback">{{imageFallback}}</view>
+    </view>
+    <view class="item-edit-shell__media-side">
+      <view class="item-edit-shell__media-title">{{imageLabel || '主图'}}</view>
+      <slot name="mediaActions" />
+    </view>
+  </view>
+
+  <slot />
+  <slot name="bottom" />
+</view>

@@ -1,10 +1,19 @@
-import { ICON_GLYPHS, type UiIconName } from "./icons";
+import { ICON_GLYPHS, ICON_PATHS, type UiIconName } from "./icons";
 
 declare const Component: any;
+
+function safeIconSize(size: number): number {
+  return Number.isFinite(size) && size > 0 ? size : 40;
+}
 
 function buildIconStyle(size: number) {
   const safeSize = Number.isFinite(size) && size > 0 ? size : 40;
   return `width:${safeSize}rpx;height:${safeSize}rpx;font-size:${safeSize}rpx;line-height:${safeSize}rpx;`;
+}
+
+function buildMaskStyle(src: string, size: number) {
+  const safeSize = safeIconSize(size);
+  return `width:${safeSize}rpx;height:${safeSize}rpx;-webkit-mask-image:url(${src});mask-image:url(${src});`;
 }
 
 Component({
@@ -16,16 +25,28 @@ Component({
     label: { type: String, value: "" },
     spin: { type: Boolean, value: false },
   },
-  data: { iconGlyph: "", iconStyle: "" },
+  data: { iconGlyph: "", iconSrc: "", iconStyle: "", maskStyle: "" },
   observers: {
-    "name, src, size, color": function updateIcon(this: any, name: UiIconName, _src: string, size: number) {
-      this.setData({ iconGlyph: ICON_GLYPHS[name] || ICON_GLYPHS.home, iconStyle: buildIconStyle(size) });
+    "name, src, size, color": function updateIcon(this: any, name: UiIconName, src: string, size: number) {
+      const iconSrc = src || ICON_PATHS[name] || "";
+      this.setData({
+        iconGlyph: ICON_GLYPHS[name] || ICON_GLYPHS.home,
+        iconSrc,
+        iconStyle: buildIconStyle(size),
+        maskStyle: iconSrc ? buildMaskStyle(iconSrc, size) : "",
+      });
     },
   },
   lifetimes: {
     attached(this: any) {
-      const { name, size } = this.properties as { name: UiIconName; size: number };
-      this.setData({ iconGlyph: ICON_GLYPHS[name] || ICON_GLYPHS.home, iconStyle: buildIconStyle(size) });
+      const { name, src, size } = this.properties as { name: UiIconName; src: string; size: number };
+      const iconSrc = src || ICON_PATHS[name] || "";
+      this.setData({
+        iconGlyph: ICON_GLYPHS[name] || ICON_GLYPHS.home,
+        iconSrc,
+        iconStyle: buildIconStyle(size),
+        maskStyle: iconSrc ? buildMaskStyle(iconSrc, size) : "",
+      });
     },
   },
 });

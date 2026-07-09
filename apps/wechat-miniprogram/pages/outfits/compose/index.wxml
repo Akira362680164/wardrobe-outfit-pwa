@@ -39,7 +39,7 @@
         <view class="garment-name">{{item.name}}</view>
         <view class="garment-meta">{{item.categoryLabel}} · {{item.colorText}}</view>
       </view>
-      <view class="check-dot">{{item.selected ? '✓' : ''}}</view>
+      <view class="check-dot {{item.selected ? 'is-active' : ''}}">{{item.selected ? '✓' : ''}}</view>
     </view>
   </view>
 

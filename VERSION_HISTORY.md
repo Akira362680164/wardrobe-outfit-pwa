@@ -1,3 +1,14 @@
+## 2026-07-09 / v2.1.9-test / Codex — 小程序详情/编辑共享壳与 App 分类目录对齐
+
+- **执行 Agent**：Codex（未触发 subagent：用户要求按顺序直接修复，本轮在小程序 worktree 内收口详情、编辑、录入、首页和套装选择问题）。
+- **目的**：把小程序单品/种草详情与编辑流对齐 App 的共享壳、信息卡结构、颜色色卡、图标和分类细分目录；修复首页“全部衣橱”筛选、种草与单品新增流程不一致、创建套装勾选控件异常深蓝、底部 icon 与 SVG 渲染不一致等问题。
+- **版本变更**：无；当前应用版本仍为 `2.1.9-test`，小程序包版本仍为 `0.1.0`。
+- **改动文件**：`apps/wechat-miniprogram/services/{workspace,category-catalog}.ts`、`apps/wechat-miniprogram/stores/intake.ts`、`apps/wechat-miniprogram/components/domain/{item-detail-shell,item-edit-shell,create-sheet}/**`、`apps/wechat-miniprogram/components/ui/icon/**`、`apps/wechat-miniprogram/assets/icons/chevron-left.svg`、`apps/wechat-miniprogram/pages/wardrobe/{index,detail,edit}/**`、`apps/wechat-miniprogram/pages/wishlist/{index,detail,edit}/**`、`apps/wechat-miniprogram/pages/intake/{camera,review,result}/**`、`apps/wechat-miniprogram/pages/outfits/compose/index.{wxml,wxss}`、`VERSION_HISTORY.md`。
+- **改动说明**：新增 26 色色卡和 App 同源的 9 个一级分类/二级细分目录，服务层保留原始 `colors/seasons/styles/temperatureRange/fit` 字段并补充中文展示字段；`ui-icon` 改为 SVG mask 渲染并补齐返回图标；新增 `item-detail-shell`，单品详情迁移为信息/灵感/搭配三 Tab，补齐基础信息、颜色、穿着属性、备注和 AI/编辑/重识别/删除动作；种草详情复用同一 shell，按信息/搭配/记录和已买转衣橱、不想买、编辑、删除动作补齐差异；新增 `item-edit-shell`，单品和种草编辑复用同一媒体/基础信息/颜色/穿着属性/购买信息/备注结构；新增种草改走 `kind=wishlist` 的同一图片选择、AI 识别、校对和保存流程，差异字段为价格/商品链接；首页“全部衣橱”按钮改为下方气泡菜单，第一行全部衣橱，后续按衣橱名称展示右侧数量；创建套装勾选从深蓝实心点改为浅底描边对勾/空心未选状态；分类和细分改为 App 的 9 类目录和联动 chip，切换一级分类时清空细分，详情页显示中文细分 `subcategoryLabel`。
+- **验证结果**：`npm --prefix apps/wechat-miniprogram run typecheck` 通过；微信开发者工具 `compile_wxml` 覆盖单品详情、种草详情、单品编辑、种草编辑、录入确认页均通过；`compile_wxss` 覆盖单品编辑、种草编辑、录入确认页均通过；DevTools 模拟器截图核对过衣橱首页、单品详情三 Tab、种草详情三 Tab、编辑衣物、编辑种草、新增单品、新增种草、创建套装，并补充截图确认分类/细分修正后的 `garment-edit-category-fixed.png`、`intake-wishlist-category-fixed-scrolled.png`、`outfit-compose-fixed.png`；DevTools console grep `error|fail|TypeError|ReferenceError|SyntaxError` 无命中。
+- **风险门禁**：high（小程序共享壳、详情/编辑/录入流程、服务端字段映射、图标渲染和首页筛选均受影响；不改服务端、不改 Android APK、不上传体验版）；未触发 subagent：用户未通知。
+- **未验证风险**：当前 DevTools 会话未使用真实账号登录，截图通过临时 `setData` 和运行时临时 token 注入代表性页面数据完成 UI 结构核对，没有写入服务器；微信开发者工具 `compile_js` 对本 TS 源码项目要求已生成 JS 文件并报 `summer-compiler miss js file`，本轮以 `tsc --noEmit` 覆盖 TS 编译，以 DevTools 页面运行、WXML/WXSS 编译和控制台错误扫描覆盖小程序运行风险；未做真机预览、体验版上传或真实线上保存点击。
+
 ## 2026-07-09 / v2.1.9-test / Codex — 小程序真机 Smoke 脚本与首屏缺陷修复
 
 - **执行 Agent**：Codex（未触发 subagent：用户要求直接连接安卓手机写测试用例并修复真机发现的问题，本轮做最小测试脚本和首屏缺陷补丁）。

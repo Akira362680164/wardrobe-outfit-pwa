@@ -1,12 +1,20 @@
-<view class="page-shell wardrobe-page" bindtap="closeActionMenu">
+<view class="page-shell wardrobe-page" bindtap="closeOverlays">
   <view class="wardrobe-top">
-    <view class="filter-card glass-panel">
+    <view class="filter-wrap" catchtap="noop">
+    <view class="filter-card glass-panel" bindtap="toggleLocationMenu">
       <ui-icon name="wardrobe" size="42" color="currentColor" />
       <view class="filter-main">
-        <view class="filter-title">全部衣橱</view>
-        <view class="filter-count">{{totalCount}}件</view>
+        <view class="filter-title">{{scopeLabel}}</view>
+        <view class="filter-count">{{scopeCount}}件</view>
       </view>
       <ui-icon name="chevron-down" size="34" color="currentColor" />
+    </view>
+    <view wx:if="{{locationMenuOpen}}" class="location-popover glass-panel-strong">
+      <view wx:for="{{locationOptions}}" wx:key="id" data-id="{{item.id}}" class="location-option {{wardrobeScope === item.id ? 'is-active' : ''}}" bindtap="selectWardrobe">
+        <view class="location-name">{{item.name}}</view>
+        <view class="location-count">{{item.count}}件</view>
+      </view>
+    </view>
     </view>
   </view>
 

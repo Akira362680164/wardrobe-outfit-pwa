@@ -5,55 +5,102 @@
     <view class="status-copy">{{error}}</view>
   </view>
   <view wx:elif="{{item}}">
-  <detail-shell top-title="{{title}}" title="{{item.name}}" meta="{{item.meta}}" eyebrow="暂无穿着记录" image-url="{{item.imageUrl}}" hero-label="主图" hero-fallback="{{item.categoryLabel}}">
-    <view slot="afterHero">
-      <view class="thumb-strip">
-        <view class="thumb is-active">
-          <image wx:if="{{item.imageUrl}}" class="thumb-image" mode="aspectFill" src="{{item.imageUrl}}" />
-          <view wx:else class="thumb-fallback"></view>
-          <view class="thumb-label">主图</view>
+    <item-detail-shell top-title="{{title}}" title="{{item.name}}" meta="{{item.meta}}" eyebrow="{{item.wearSummary}}" image-url="{{item.imageUrl}}" hero-label="主图" hero-fallback="{{item.categoryLabel}}">
+      <view slot="afterHero">
+        <view class="thumb-strip">
+          <view class="thumb is-active">
+            <image wx:if="{{item.imageUrl}}" class="thumb-image" mode="aspectFill" src="{{item.imageUrl}}" />
+            <view wx:else class="thumb-fallback"></view>
+            <view class="thumb-label">主图</view>
+          </view>
+          <view class="thumb add-thumb">
+            <ui-icon name="plus" size="36" color="currentColor" />
+            <view class="thumb-label muted">灵感</view>
+          </view>
+        </view>
+
+        <view class="action-row">
+          <button class="action-button edit" bindtap="editItem">编辑</button>
+          <button class="action-button ai" loading="{{recognizing}}" disabled="{{recognizing}}" bindtap="reRecognize">重新识别</button>
+          <button class="action-button ai" loading="{{adviceLoading}}" disabled="{{adviceLoading}}" bindtap="generateAdvice">AI 建议</button>
+          <button class="action-button danger" bindtap="openDeleteSheet">删除</button>
         </view>
       </view>
 
-      <view class="action-row">
-        <button class="action-button edit">编辑</button>
-        <button class="action-button ai" loading="{{recognizing}}" disabled="{{recognizing}}" bindtap="reRecognize">重新识别</button>
-        <button class="action-button ai" loading="{{adviceLoading}}" disabled="{{adviceLoading}}" bindtap="generateAdvice">AI 建议</button>
-        <button class="action-button danger" bindtap="openDeleteSheet">删除</button>
+      <view class="detail-tabs" slot="tabs">
+        <view class="detail-tab {{activeTab === 'info' ? 'is-active' : ''}}" data-tab="info" bindtap="switchTab">信息</view>
+        <view class="detail-tab {{activeTab === 'inspiration' ? 'is-active' : ''}}" data-tab="inspiration" bindtap="switchTab">灵感</view>
+        <view class="detail-tab {{activeTab === 'pairing' ? 'is-active' : ''}}" data-tab="pairing" bindtap="switchTab">搭配</view>
       </view>
-    </view>
 
-    <view class="notice-card"><view class="check-dot">✓</view><view>已保存到衣橱</view></view>
-    <view wx:if="{{adviceLoading || adviceSummary}}" class="info-card">
-      <view class="card-title">AI 单品建议</view>
-      <view class="section-copy">{{adviceLoading ? '正在生成建议...' : adviceSummary}}</view>
-      <view wx:for="{{adviceTips}}" wx:key="*this" class="section-copy">· {{item}}</view>
-    </view>
-    <view class="info-card">
-      <view class="card-title">基础信息</view>
-      <view class="info-row"><text>衣橱</text><text>{{item.locationText}}</text></view>
-      <view class="info-row"><text>购买日期</text><text>{{item.purchaseDate}}</text></view>
-      <view class="info-row"><text>状态</text><text>{{item.statusText}}</text></view>
-    </view>
-    <view class="info-card">
-      <view class="card-title">颜色</view>
-      <view class="info-row"><text>主色</text><view class="chip"><view class="dot dot-white"></view><text>{{item.primaryColor}}</text></view></view>
-      <view class="info-row"><text>辅助色</text><view class="chip"><view class="dot dot-black"></view><text>{{item.secondaryColor}}</text></view></view>
-      <view class="info-row"><text>颜色模式</text><text>{{item.colorText}}</text></view>
-    </view>
-    <view class="info-card">
-      <view class="card-title">穿着属性</view>
-      <view class="info-row"><text>适穿温度</text><text>{{item.temperatureText}}</text></view>
-      <view class="info-row"><text>正式度</text><text>{{item.formalityText}}</text></view>
-      <view class="info-row"><text>保暖度</text><text>{{item.warmthText}}</text></view>
-      <view class="info-row"><text>材质</text><text>{{item.materialText}}</text></view>
-      <view class="info-row"><text>版型倾向</text><text>{{item.fitText}}</text></view>
-    </view>
-    <view class="info-card">
-      <view class="card-title">备注</view>
-      <view class="section-copy">{{item.notes}}</view>
-    </view>
-  </detail-shell>
+      <block wx:if="{{activeTab === 'info'}}">
+        <view class="notice-card"><view class="check-dot">✓</view><view>已保存到衣橱</view></view>
+        <view wx:if="{{adviceLoading || adviceSummary}}" class="info-card">
+          <view class="card-title">AI 单品建议</view>
+          <view class="section-copy">{{adviceLoading ? '正在生成建议...' : adviceSummary}}</view>
+          <view wx:for="{{adviceTips}}" wx:key="*this" class="section-copy">· {{item}}</view>
+        </view>
+        <view class="info-card">
+          <view class="card-title">基础信息</view>
+          <view class="info-row"><text>分类</text><text>{{item.categoryLabel}}{{item.subcategoryLabel ? ' / ' + item.subcategoryLabel : ''}}</text></view>
+          <view class="info-row"><text>衣橱</text><text>{{item.locationText}}</text></view>
+          <view class="info-row"><text>购买日期</text><text>{{item.purchaseDate}}</text></view>
+          <view class="info-row"><text>状态</text><text>{{item.statusText}}</text></view>
+        </view>
+        <view class="info-card">
+          <view class="card-title">颜色</view>
+          <view class="info-row"><text>颜色模式</text><text>{{item.colorModeText}}</text></view>
+          <view class="info-row">
+            <text>主色</text>
+            <view class="chip-list">
+              <view wx:for="{{item.primaryColorChips}}" wx:key="name" class="chip">
+                <view class="dot" style="background:{{item.swatch}}; border:{{item.needsBorder ? '1rpx solid rgba(29,34,40,0.22)' : '0'}}"></view>
+                <text>{{item.name}}</text>
+              </view>
+              <view wx:if="{{!item.primaryColorChips.length}}" class="chip">未标注</view>
+            </view>
+          </view>
+          <view class="info-row">
+            <text>辅助色</text>
+            <view class="chip-list">
+              <view wx:for="{{item.accentColorChips}}" wx:key="name" class="chip">
+                <view class="dot" style="background:{{item.swatch}}; border:{{item.needsBorder ? '1rpx solid rgba(29,34,40,0.22)' : '0'}}"></view>
+                <text>{{item.name}}</text>
+              </view>
+              <view wx:if="{{!item.accentColorChips.length}}" class="chip">无</view>
+            </view>
+          </view>
+        </view>
+        <view class="info-card">
+          <view class="card-title">穿着属性</view>
+          <view class="tag-line"><text wx:for="{{item.seasonLabels}}" wx:key="*this" class="mini-tag">{{item}}</text></view>
+          <view class="tag-line"><text wx:for="{{item.styleLabels}}" wx:key="*this" class="mini-tag">{{item}}</text></view>
+          <view class="info-row"><text>适穿温度</text><text>{{item.temperatureText}}</text></view>
+          <view class="info-row"><text>正式度</text><text>{{item.formalityText}}</text></view>
+          <view class="info-row"><text>保暖度</text><text>{{item.warmthText}}</text></view>
+          <view class="info-row"><text>材质</text><text>{{item.materialText}}</text></view>
+          <view class="info-row"><text>版型倾向</text><text>{{item.fitText}}</text></view>
+        </view>
+        <view class="info-card">
+          <view class="card-title">备注</view>
+          <view class="section-copy">{{item.notes}}</view>
+        </view>
+      </block>
+
+      <block wx:elif="{{activeTab === 'inspiration'}}">
+        <view class="info-card empty-panel">
+          <view class="card-title">灵感</view>
+          <view class="section-copy">暂无灵感图。编辑衣物后可补充参考搭配图。</view>
+        </view>
+      </block>
+
+      <block wx:elif="{{activeTab === 'pairing'}}">
+        <view class="info-card empty-panel">
+          <view class="card-title">搭配</view>
+          <view class="section-copy">暂无关联套装。可在套装页选择这件衣物创建搭配。</view>
+        </view>
+      </block>
+    </item-detail-shell>
   </view>
 
   <ui-sheet open="{{deleteSheetOpen}}" title="删除这件衣物？" description="删除后将从服务器衣橱移除，相关套装仍可能保留但不再显示这件衣物。" bind:close="closeDeleteSheet">
