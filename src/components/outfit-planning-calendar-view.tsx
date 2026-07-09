@@ -136,7 +136,7 @@ export function OutfitPlanningCalendarView({
             type="button"
             onClick={onAdd}
             aria-label="添加计划"
-            className="inline-flex h-11 items-center justify-center rounded-full bg-denim px-4 text-sm font-semibold text-white shadow-sm active:scale-95 whitespace-nowrap min-w-[72px]"
+            className="inline-flex h-11 items-center justify-center ui-control-radius bg-denim px-4 text-sm font-semibold text-white shadow-sm active:scale-95 whitespace-nowrap min-w-[72px]"
           >
             +计划
           </button>

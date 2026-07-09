@@ -91,7 +91,7 @@ check("recognizeEditDraftAgain 不修改 cropBox / imageDataUrl",
     const end = wardrobeApp.indexOf("async function saveEditedItem", start);
     if (start < 0 || end < 0) return false;
     const body = wardrobeApp.slice(start, end);
-    return body.includes("recognizeSingleItemFromDataUrl") && !body.includes("detectGarmentsOnDevice") && !body.includes("candidate");
+    return body.includes("recognizeGarmentOnServer") && !body.includes("detectGarmentsOnDevice") && !body.includes("candidate");
   })(),
 );
 check("WardrobeEditPage 不再接收 onCropFromSource prop", !/onCropFromSource/.test(wardrobeApp));

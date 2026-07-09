@@ -7,6 +7,7 @@ const outfit = readFileSync(join(root, "src/components/outfit-list-view.tsx"), "
 const device = readFileSync(join(root, "src/lib/device-minimax.ts"), "utf8");
 
 assert.ok(!outfit.includes("recognizeSingleItemFromDataUrl"));
+assert.ok(outfit.includes("generateOutfitMetadataOnServer"));
 assert.ok(device.includes("generateOutfitNameOnDevice"));
 assert.ok(device.includes("name / seasons / sceneTags / styleTags / pairingTags / temperatureRange / notes"));
 for (const text of ["套装名称", "季节", "场景", "风格", "搭配", "适穿温度", "备注"]) {

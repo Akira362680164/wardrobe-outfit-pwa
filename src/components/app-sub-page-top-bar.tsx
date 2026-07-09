@@ -4,7 +4,7 @@
  * AppSubPageTopBar — 统一二级页顶部栏
  * 用于单品详情、套装详情、月历页、已买单品页、计划详情页、打包清单页。
  * 总高度 56px（h-14，与衣橱首页按钮行 token 一致），左右列 48px，
- * 返回按钮 / 更多按钮 40×40 视觉圆 + 48×48 点击热区。
+ * 返回按钮 / 更多按钮 40×40 圆角矩形视觉 + 48×48 点击热区。
  */
 import { ChevronLeft, MoreHorizontal } from "lucide-react";
 import type { RefObject } from "react";
@@ -27,7 +27,7 @@ export function AppSubPageTopBar({
   moreButtonRef,
 }: AppSubPageTopBarProps) {
   return (
-    <div className={`grid ${rightAction ? "grid-cols-[48px_1fr_auto]" : "grid-cols-[48px_1fr_48px]"} items-stretch min-h-14 border-b border-ink/5 px-4`}>
+    <div className={`app-glass-top grid ${rightAction ? "grid-cols-[48px_1fr_auto]" : "grid-cols-[48px_1fr_48px]"} items-stretch min-h-14 px-2`}>
       {/* Left: back button area (48px wide, includes px-4 indent) — 视觉圆顶对齐到行顶，与首页"全部衣橱"按钮顶部一致 */}
       <div className="flex items-start justify-start">
         <button
@@ -36,8 +36,8 @@ export function AppSubPageTopBar({
           aria-label="返回"
           className="grid h-12 w-12 place-items-center -ml-1"
         >
-          <span className="grid h-10 w-10 place-items-center rounded-full bg-white text-ink/70 shadow-soft active:scale-95 hover:bg-ink/5 transition">
-            <ChevronLeft size={18} />
+          <span className="grid h-10 w-10 place-items-center ui-control-radius bg-transparent text-ink/75 active:scale-95 transition">
+            <ChevronLeft size={20} strokeWidth={2.6} />
           </span>
         </button>
       </div>
@@ -66,8 +66,8 @@ export function AppSubPageTopBar({
             aria-label="更多操作"
             className="grid h-12 w-12 place-items-center -mr-1"
           >
-            <span className="grid h-10 w-10 place-items-center rounded-full text-ink/40 hover:bg-mist transition">
-              <MoreHorizontal size={18} />
+            <span className="grid h-10 w-10 place-items-center ui-control-radius bg-transparent text-ink/55 active:scale-95 transition">
+              <MoreHorizontal size={20} strokeWidth={2.6} />
             </span>
           </button>
         ) : null}

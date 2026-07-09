@@ -39,10 +39,10 @@ docker compose \
 
 Asset files are stored under the host directory `/srv/wardrobe/storage`, mounted at `/var/lib/wardrobe-api/storage` in the API container. Create the host directory before deployment, keep it writable only by the service administrator, and include it in file-level backups alongside PostgreSQL backups. `ASSET_MAX_BYTES` defaults to `15728640` bytes (15 MiB).
 
-`ALLOWED_ORIGINS` is a comma-separated CORS allowlist. For the temporary IP drill, include:
+`ALLOWED_ORIGINS` is a comma-separated CORS allowlist. For production, include the filed web origin, local development origins, and Capacitor:
 
 ```text
-http://111.231.98.86,http://localhost:3000,http://127.0.0.1:3000,capacitor://localhost
+https://zhengfangapps.cloud,http://localhost:3000,http://127.0.0.1:3000,capacitor://localhost
 ```
 
 ## Caddy
@@ -58,26 +58,24 @@ deploy/scripts/wardrobe-cloud.sh apply-caddy
 
 `apply-caddy` backs up `/etc/caddy/Caddyfile`, validates the candidate config, then reloads Caddy.
 
-Before `zhengfangapps.cloud` completes ICP filing, use the temporary HTTP IP endpoint:
+Use the filed HTTPS API endpoint:
 
 ```bash
-HEALTH_BASE_URL=http://111.231.98.86 deploy/scripts/wardrobe-cloud.sh health
+HEALTH_BASE_URL=https://api.zhengfangapps.cloud deploy/scripts/wardrobe-cloud.sh health
 ```
-
-The temporary IP endpoint is only for stage 1A testing. Do not treat it as the final production URL.
 
 ## API Endpoint Switch Points
 
-The app must not hard-code the temporary IP in source code. Keep the endpoint modular through these knobs:
+The app must not hard-code server IP addresses in source code. Keep the endpoint modular through these knobs:
 
-| Layer | Current temporary value | Domain-era value |
-| --- | --- | --- |
-| Frontend / Android build API base | `NEXT_PUBLIC_WARDROBE_API_BASE_URL=http://111.231.98.86` | `NEXT_PUBLIC_WARDROBE_API_BASE_URL=https://api.zhengfangapps.cloud` |
-| API CORS allowlist | `ALLOWED_ORIGINS=http://111.231.98.86,http://localhost:3000,http://127.0.0.1:3000,capacitor://localhost` | Replace the IP origin with the filed web origin, keep dev and `capacitor://localhost` as needed |
-| Health checks | `HEALTH_BASE_URL=http://111.231.98.86` | `HEALTH_BASE_URL=https://api.zhengfangapps.cloud` |
-| Caddy public entry | temporary `http://111.231.98.86` site block | HTTPS site block for `api.zhengfangapps.cloud` after ICP/DNS/TLS is usable |
+| Layer | Production value |
+| --- | --- |
+| Frontend / Android build API base | `NEXT_PUBLIC_WARDROBE_API_BASE_URL=https://api.zhengfangapps.cloud` |
+| API CORS allowlist | `ALLOWED_ORIGINS=https://zhengfangapps.cloud,http://localhost:3000,http://127.0.0.1:3000,capacitor://localhost` |
+| Health checks | `HEALTH_BASE_URL=https://api.zhengfangapps.cloud` |
+| Caddy public entry | HTTPS site block for `api.zhengfangapps.cloud` |
 
-When switching away from the IP, change these configuration values and rebuild the frontend/APK with the new `NEXT_PUBLIC_WARDROBE_API_BASE_URL`. Do not add account-specific endpoint branching in React components or business modules.
+Rebuild the frontend/APK after changing `NEXT_PUBLIC_WARDROBE_API_BASE_URL`. Do not add account-specific endpoint branching in React components or business modules.
 
 ## External TLS Troubleshooting
 

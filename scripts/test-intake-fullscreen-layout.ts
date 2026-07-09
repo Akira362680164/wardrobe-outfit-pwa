@@ -20,7 +20,7 @@ function check(name: string, cond: boolean, detail?: string) {
 
 check("IntakeFlowShell 引入 createPortal", /import\s*\{[^}]*createPortal[^}]*\}\s*from\s*"react-dom"/.test(intakeShell));
 check("IntakeFlowShell Portal 目标为 document.body", /createPortal\([\s\S]*?document\.body/.test(intakeShell));
-check("IntakeFlowShell 根节点含 fixed inset-0", /<div className="fixed inset-0/.test(intakeShell));
+check("IntakeFlowShell 根节点含 fixed inset-0", /<div className="[^"]*fixed inset-0/.test(intakeShell));
 check("IntakeFlowShell 根节点含 h-[100dvh]", /fixed inset-0 z-\[90\][^"]*h-\[100dvh\]/.test(intakeShell));
 check("IntakeFlowShell 根节点锁住自身 overflow", /fixed inset-0 z-\[90\][^"]*overflow-hidden/.test(intakeShell));
 check("IntakeFlowShell z-index 高于底部导航 (z-40 nav, z-90 shell)", /z-\[90\]/.test(intakeShell));
@@ -40,6 +40,7 @@ check("wardrobe-app GarmentIntakeFlow 传 locations", /<GarmentIntakeFlow[\s\S]*
 check("wishview GarmentIntakeFlow 传 locations", /<GarmentIntakeFlow[\s\S]*?locations=\{locations\}/.test(wishlist));
 check("intake shell 不再依赖 min-h-[100dvh] 外层", !/<div className="min-h-\[100dvh\]/.test(intakeShell));
 check("IntakeStepOneImagePicker 有预览时不渲染大号拍照/图库卡片", /\{!previewNode \? \([\s\S]*grid grid-cols-2 gap-4[\s\S]*min-h-\[144px\][\s\S]*\) : null\}/.test(garmentIntake));
+check("IntakeStepOneImagePicker 拍照/图库入口使用新版圆角矩形", /min-h-\[144px\][^"]*ui-control-radius[^"]*bg-white\/82[^"]*shadow-sm/.test(garmentIntake));
 check("GarmentIntakeFlow 已选图预览高度收敛到一屏", /h-\[min\(34dvh,280px\)\]/.test(garmentIntake));
 check("GarmentIntakeFlow 裁切页不再使用嵌套 calc 固定高度", !/height:\s*"calc\(100dvh - 280px\)"/.test(garmentIntake));
 check("GarmentIntakeFlow 裁切工具栏使用短标签", /自由/.test(garmentIntake) && /3:4/.test(garmentIntake) && /左转90°/.test(garmentIntake) && /右转90°/.test(garmentIntake) && /重置/.test(garmentIntake));

@@ -7,6 +7,7 @@ import { useAppNavigationController } from "@/components/use-app-navigation-cont
 import type { AppRoute } from "@/lib/app-route";
 import { getBackRoute, isDetailRoute, isGlobalCreateAllowedRoute, isIntakeRouteName } from "@/lib/app-route";
 import {
+  AlertCircle,
   Archive,
   BarChart3,
   Briefcase,
@@ -22,6 +23,7 @@ import {
   EyeOff,
   FileJson,
   GalleryVerticalEnd,
+  Info,
   KeyRound,
   Loader2,
   Lock,
@@ -110,15 +112,14 @@ import { wardrobeRepository } from "@/lib/repository/wardrobe-repository";
 import { rethrowIfFailed, upsertOutfit, upsertLocation, deleteLocation, repoUpdateWishlistItem, repoCreateGarment, repoCreateGarmentsBatch, repoUpdateGarment, repoUpdateOutfit, repoDeleteGarments, repoDeleteLocation, repoSaveProfile } from "@/lib/repository/wardrobe-repository";
 import {
  defaultMiniMaxSettings,
- diagnoseWardrobeOnDevice,
- generateGarmentStyleAdviceOnDevice,
  hasDeviceMiniMaxKey,
  loadMiniMaxSettings,
- recognizeSingleItemFromDataUrl,
  saveMiniMaxSettings,
  validateMiniMaxKey,
  type DeviceMiniMaxSettings,
 } from "@/lib/device-minimax";
+import { recognizeGarmentOnServer } from "@/lib/online/online-ai-intake-client";
+import { diagnoseWardrobeOnServer, generateGarmentStyleAdviceOnServer } from "@/lib/online/online-ai-enhancement-client";
 import { ImageCropEditor } from "@/components/image-crop-editor";
 import { createTemporaryCroppedImage, dataUrlToFile, fileToAiRequestDataUrl, fileToCompressedDataUrl, fileToOriginalDataUrl, isHeicFile, type NormalizedCropBox } from "@/lib/image";
 import { useSoftAiProgress } from "@/lib/use-soft-ai-progress";
@@ -165,6 +166,8 @@ import {
 } from "@/lib/types";
 import { buildColorInfo, emptyColorInfo, getAccentColors, getAllColors, getPrimaryColor, getPrimaryColors, uniqueTrimmed } from "@/lib/color-fields";
 import type { GarmentIntakeDraft } from "@/lib/intake-draft";
+
+const MINIMAX_KEY_MISSING_MESSAGE = "尚未配置 MiniMax Key，AI 识别和推荐功能暂不可用。";
 
 // ViewKey now imported from wardrobe-create-actions
 type PendingCreateAction = "add_single_item" | "create_outfit" | "add_wishlist_item";
@@ -351,7 +354,8 @@ export function WardrobeApp({ cloudAuth }: { cloudAuth?: WardrobeCloudAuth } = {
   const [isRecognizing] = useState(false);
   const tagProgress = useSoftAiProgress("garment_detection", { label: "AI 识别衣物" });
 	  const [miniMaxSettings, setMiniMaxSettings] = useState<DeviceMiniMaxSettings>(() => defaultMiniMaxSettings());
-  const [showKeyBanner, setShowKeyBanner] = useState(true);
+  const [settingsMiniMaxOpenRequest, setSettingsMiniMaxOpenRequest] = useState(0);
+  const minimaxMissingToastShownRef = useRef(false);
   const [showGarmentIntakeFlow, setShowGarmentIntakeFlow] = useState(false);
   // v1.1.20-dev (方案 C): 删除 v1.1.7 4A 的 route.mainTab → activeView useEffect 同步逻辑。
   // 旧逻辑是 Bug 1 根因之一 — useEffect 异步同步 + showGarmentIntakeFlow guard + React 18 同值 bail out
@@ -406,6 +410,20 @@ export function WardrobeApp({ cloudAuth }: { cloudAuth?: WardrobeCloudAuth } = {
     setIsReady(true);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  const openMiniMaxKeySettings = useCallback(() => {
+    clearMessage();
+    setSettingsMiniMaxOpenRequest((value) => value + 1);
+    navigation.openRoute({ name: "settings_home" });
+  }, [clearMessage, navigation]);
+
+  useEffect(() => {
+    if (!isReady) return;
+    if (hasDeviceMiniMaxKey(miniMaxSettings)) return;
+    if (minimaxMissingToastShownRef.current) return;
+    minimaxMissingToastShownRef.current = true;
+    showMessage(MINIMAX_KEY_MISSING_MESSAGE, "info");
+  }, [isReady, miniMaxSettings, showMessage]);
 
   // v1.1.20-dev (方案 C): 删除 v0.9.31-dev "activeViewRef 同步" useEffect — activeViewRef 不再存在。
   // v0.9.31-dev: pendingRestoreViewRef 单一入口 (subagent I-2 修法 B)。
@@ -670,8 +688,8 @@ export function WardrobeApp({ cloudAuth }: { cloudAuth?: WardrobeCloudAuth } = {
   // v1.1.16-dev commit1 §3.4.1: 单品录入 AI 识别接线。
   // GarmentIntakeFlow.processAllImagesForRecognition 会调 onProcessImage;
   // 这里返回 LocalImageProcessingResult, 实际 AI 识别由 flow 内部 onProcessImage 完成后
-  // 通过 buildLocalGarmentDraft 整合 tagResult。Recognize 走单件属性识别
-  // (recognizeSingleItemFromDataUrl), 失败时 throw, flow catch 分支用 fallback。
+  // 通过 buildLocalGarmentDraft 整合 tagResult。Recognize 走后端单件属性识别,
+  // 失败时 throw, flow catch 分支用 fallback。
   async function processGarmentIntakeImage(input: { imageDataUrl: string; sourceImageDataUrl?: string; fileName?: string; cropBox?: NormalizedCropBox }): Promise<{
     transparentBackgroundStatus?: "ready" | "skipped" | "failed";
     qualityWarnings?: string[];
@@ -686,13 +704,13 @@ export function WardrobeApp({ cloudAuth }: { cloudAuth?: WardrobeCloudAuth } = {
     const fileName = input.fileName ?? "garment.jpg";
     // 若有 cropBox 则裁切后再送 AI，避免 AI 看到未裁切的完整原图
     const aiInputImage = await createTemporaryCroppedImage({ originalImage: imageDataUrl, cropBox: input.cropBox });
-    // v1.1.31 patch5: 取消无 Key 短路。无 Key 必须走到 recognizeSingleItemFromDataUrl
+    // v1.1.31 patch5: 取消无 Key 短路。无 Key 必须走到识别入口
     // 让其抛 GarmentRecognitionError("not_configured")，flow 内部走 failed draft + blocking
     // issue 路径，绝不返回默认"成功"草稿伪装为可编辑。
     const file = await dataUrlToFile(aiInputImage, fileName).catch(() => null);
     const aiRequestDataUrl = file ? await fileToAiRequestDataUrl(file).catch(() => aiInputImage) : aiInputImage;
     const recognition = await withKeepAwake(() =>
-      recognizeSingleItemFromDataUrl(aiRequestDataUrl, sourceImageDataUrl ?? imageDataUrl, fileName, miniMaxSettings),
+      recognizeGarmentOnServer({ aiRequestDataUrl, originalDataUrl: sourceImageDataUrl ?? imageDataUrl, fileName, settings: miniMaxSettings }),
     );
     return {
       transparentBackgroundStatus: "skipped",
@@ -747,7 +765,7 @@ export function WardrobeApp({ cloudAuth }: { cloudAuth?: WardrobeCloudAuth } = {
     await refreshState();
   }
 
-  async function saveSettings(nextSettings: DeviceMiniMaxSettings) { const normalizedSettings = { ...nextSettings, model: "MiniMax-M3" }; saveMiniMaxSettings(normalizedSettings); setMiniMaxSettings(normalizedSettings); if (!hasDeviceMiniMaxKey(normalizedSettings)) { showMessage("MiniMax 设置已保存在本机"); return; } showMessage("正在验证 MiniMax Key..."); const result = await withKeepAwake(() => validateMiniMaxKey(normalizedSettings)); if (result.valid) setShowKeyBanner(false); showMessage(result.message); }
+  async function saveSettings(nextSettings: DeviceMiniMaxSettings) { const normalizedSettings = { ...nextSettings, model: "MiniMax-M3" }; saveMiniMaxSettings(normalizedSettings); setMiniMaxSettings(normalizedSettings); if (!hasDeviceMiniMaxKey(normalizedSettings)) { showMessage("MiniMax 设置已保存在本机"); return; } showMessage("正在验证 MiniMax Key..."); const result = await withKeepAwake(() => validateMiniMaxKey(normalizedSettings)); showMessage(result.message); }
 
 	  async function seedDemoItems() {
     const now = new Date().toISOString();
@@ -785,7 +803,6 @@ export function WardrobeApp({ cloudAuth }: { cloudAuth?: WardrobeCloudAuth } = {
     showMessage("已加入示例衣物和 1 套示例套装（含灵感图）");
   }
 
-  const hasKey = hasDeviceMiniMaxKey(miniMaxSettings);
   const stats = useMemo(() => {
     const activeCount = items.filter((item) => item.status === "active").length;
     const needReviewCount = items.filter((item) => item.needsReview).length;
@@ -901,11 +918,11 @@ export function WardrobeApp({ cloudAuth }: { cloudAuth?: WardrobeCloudAuth } = {
 
   return (
     <>
-    <main className={`min-h-screen text-ink lg:pb-10 ${hideMobileNav ? "pb-8" : "pb-28"}`}>
+    <main className={`app-ambient-bg min-h-screen text-ink lg:pb-10 ${hideMobileNav ? "pb-8" : "pb-28"}`}>
       <div className="safe-top" />
       <div className="mx-auto grid max-w-6xl gap-5 px-4 pt-3 lg:grid-cols-[260px_minmax(0,1fr)]">
         <aside className="hidden lg:block">
-          <div className="surface sticky top-4 rounded-lg p-3">
+          <div className="surface sticky top-4 p-3">
             <nav className="grid gap-1">
               {viewItems.map((view) => (
                 <NavButton key={view.key} view={view} active={navigation.mainTab === view.key} onClick={() => {
@@ -937,17 +954,6 @@ export function WardrobeApp({ cloudAuth }: { cloudAuth?: WardrobeCloudAuth } = {
           ) : null}
           {wardrobeData.onlineState.status === "refresh_error" ? (
             <div className="mb-3"><OnlineInlineNotice message={wardrobeData.onlineState.message} tone="error" onRetry={() => void refreshState().catch(() => undefined)} /></div>
-          ) : null}
-
-          {!hasKey && showKeyBanner && !hideMobileNav ? (
-            <div className="mb-4 flex items-center gap-3 rounded-lg border border-clay/20 bg-clay/6 px-4 py-3 text-sm">
-              <WandSparkles size={18} className="shrink-0 text-clay" />
-              <span className="min-w-0 flex-1 text-ink/80">
-                尚未配置 MiniMax Key，AI 识别和推荐功能暂不可用。
-                <button type="button" onClick={() => { navigation.openRoute({ name: "settings_home" }); setShowKeyBanner(false); }} className="ml-2 font-semibold text-clay underline">前往设置</button>
-              </span>
-              <button type="button" className="shrink-0 text-ink/40" onClick={() => setShowKeyBanner(false)}>×</button>
-            </div>
           ) : null}
 
 <AnimatePresence mode="wait" initial={false}>
@@ -1107,6 +1113,8 @@ export function WardrobeApp({ cloudAuth }: { cloudAuth?: WardrobeCloudAuth } = {
 	              items={items} locations={locations} outfits={outfits} wishlistItems={wishlistItems} activeView={activeViewForCreateActions} route={route}
               cloudAuth={cloudAuth}
               onOpenAccount={() => navigation.openRoute({ name: "account_management" })}
+              openMiniMaxRequest={settingsMiniMaxOpenRequest}
+              onMiniMaxRequestConsumed={() => setSettingsMiniMaxOpenRequest(0)}
 	              miniMaxSettings={miniMaxSettings} onSaveMiniMaxSettings={saveSettings}
 	              onAddWardrobe={async (name, note) => { const now = new Date().toISOString(); const id = `custom-${globalThis.crypto?.randomUUID?.() ?? Date.now()}`; rethrowIfFailed(await upsertLocation({ id, name, note, sortOrder: locations.length + 1, createdAt: now, updatedAt: now }), "保存位置失败"); await refreshState(); }}
               onUpdateWardrobe={async (id, name, note) => {
@@ -1185,7 +1193,7 @@ export function WardrobeApp({ cloudAuth }: { cloudAuth?: WardrobeCloudAuth } = {
           <button
             type="button"
             onClick={() => setShowCreateSheet(true)}
-            className="fixed right-4 z-40 grid h-12 w-12 place-items-center rounded-full bg-denim p-0 leading-none text-white shadow-lg transition-transform active:scale-95 lg:hidden" style={{ bottom: "calc(env(safe-area-inset-bottom) + 5rem)" }}
+            className="fixed right-5 z-40 grid h-12 w-12 place-items-center rounded-full bg-denim p-0 leading-none text-white shadow-lg transition-transform active:scale-95 lg:hidden" style={{ bottom: "calc(env(safe-area-inset-bottom) + 6rem)" }}
             aria-label="新建"
             data-testid="global-create"
           >
@@ -1237,8 +1245,8 @@ export function WardrobeApp({ cloudAuth }: { cloudAuth?: WardrobeCloudAuth } = {
         onGalleryClick={imageIntake.triggerGalleryInput}
       />
 
-	      {!hideMobileNav ? <nav className="safe-bottom fixed inset-x-0 bottom-0 z-30 border-t border-ink/10 bg-[#fbfbf8]/94 px-2 pt-2 backdrop-blur-xl lg:hidden">
-        <div className="mx-auto grid max-w-md grid-cols-4 gap-1">
+	      {!hideMobileNav ? <nav className="app-floating-nav fixed z-30 lg:hidden">
+        <div className="grid grid-cols-4 gap-1">
           {viewItems.map((view) => (<MobileNavButton key={view.key} view={view} active={navigation.mainTab === view.key} onClick={() => {
             const routeBefore = navigation.route;
             const fromMainTab = navigation.mainTab;
@@ -1298,8 +1306,8 @@ export function WardrobeApp({ cloudAuth }: { cloudAuth?: WardrobeCloudAuth } = {
           外层 div 用 style={{ bottom }} 把 toast 抬到底导航上方 (env(safe-area-inset-bottom) + 5.25rem)。 */}
       {typeof document !== "undefined" && createPortal(
         <div
-          className="pointer-events-none fixed inset-x-0 z-[75] px-4"
-          style={{ bottom: "calc(env(safe-area-inset-bottom) + 5.25rem)" }}
+          className="pointer-events-none fixed inset-x-0 z-[75] flex justify-center px-4"
+          style={{ bottom: "calc(env(safe-area-inset-bottom) + 5.9rem)" }}
         >
           <MotionToast
             visible={!!message && !expandedImage && !captureCropJob}
@@ -1307,30 +1315,44 @@ export function WardrobeApp({ cloudAuth }: { cloudAuth?: WardrobeCloudAuth } = {
             placement="bottom"
           >
           <div
-            className={`pointer-events-auto mx-auto flex max-w-md items-center gap-2.5 overflow-hidden rounded-2xl border border-ink/10 bg-white/95 px-3 py-2.5 text-sm text-ink shadow-lg backdrop-blur-md ${messageType === "error" ? "border-l-[3px] border-l-red-400" : messageType === "info" ? "border-l-[3px] border-l-denim" : "border-l-[3px] border-l-moss"}`}
+            className="app-toast pointer-events-auto flex items-center gap-2.5 overflow-hidden px-3 py-2.5 text-sm text-ink"
           >
             {messageType === "error" ? (
-              <span className="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-red-50 text-red-500">
-                <span className="text-base font-bold leading-none">!</span>
+              <span className="grid h-7 w-7 shrink-0 self-center place-items-center ui-control-radius bg-red-50 text-red-500">
+                <AlertCircle size={15} strokeWidth={2.4} aria-hidden="true" />
               </span>
             ) : messageType === "info" ? (
-              <span className="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-denim/10 text-denim">
-                <span className="text-sm font-semibold leading-none">i</span>
+              <span className="grid h-7 w-7 shrink-0 self-center place-items-center ui-control-radius bg-denim/10 text-denim">
+                <Info size={15} strokeWidth={2.4} aria-hidden="true" />
               </span>
             ) : (
-              <span className="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-moss/12 text-moss">
+              <span className="grid h-7 w-7 shrink-0 self-center place-items-center ui-control-radius bg-moss/12 text-moss">
                 <Check size={14} strokeWidth={2.6} />
               </span>
             )}
-            <span className="min-w-0 flex-1 leading-snug">{message}</span>
+            <span
+              className="min-w-0 flex-1 overflow-hidden leading-snug"
+              style={{ display: "-webkit-box", WebkitBoxOrient: "vertical", WebkitLineClamp: 3 }}
+            >
+              {message}
+            </span>
+            {message === MINIMAX_KEY_MISSING_MESSAGE ? (
+              <button
+                type="button"
+                className="h-9 shrink-0 self-center ui-control-radius bg-denim px-3 text-xs font-semibold text-white active:scale-95"
+                onClick={openMiniMaxKeySettings}
+              >
+                前往设置
+              </button>
+            ) : null}
             <button
               type="button"
               title="关闭提示"
               aria-label="关闭提示"
-              className="grid h-11 w-11 shrink-0 place-items-center rounded-lg text-ink/45 transition-colors active:bg-ink/5 hover:text-ink/70"
+              className="grid h-11 w-11 shrink-0 self-center place-items-center ui-control-radius text-ink/45 transition-colors active:bg-ink/5 hover:text-ink/70"
               onClick={clearMessage}
             >
-              ×
+              <X size={16} aria-hidden="true" />
             </button>
           </div>
           </MotionToast>
@@ -1341,7 +1363,7 @@ export function WardrobeApp({ cloudAuth }: { cloudAuth?: WardrobeCloudAuth } = {
       {/* P0 收口: 单品与种草正式录入只允许走 GarmentIntakeFlow（衣橱用 flowKind="garment"，种草用 flowKind="wishlist"）。
           SelectedImagesReview 仅允许服务灵感图添加 (imageIntakePurpose === "reference")。 */}
       {captureImageQueue.length > 0 && typeof document !== "undefined" && createPortal(
-        <div className="fixed inset-0 z-[100] flex h-[100dvh] w-screen flex-col overflow-hidden bg-[#fbfbf8]">
+        <div className="app-ambient-bg fixed inset-0 z-[100] flex h-[100dvh] w-screen flex-col overflow-hidden">
           <WardrobeSelectedImagesReviewPortal
             images={captureImageQueue}
             currentIndex={captureQueueIndex}
@@ -1693,7 +1715,7 @@ function WardrobeView(props: WardrobeViewProps) {
     const runId = ++aiAdviceRunIdRef.current;
     setAiAdviceState("loading");
     try {
-      const advice = await generateGarmentStyleAdviceOnDevice(viewingItem, miniMaxSettings);
+      const advice = await generateGarmentStyleAdviceOnServer(viewingItem, miniMaxSettings);
       if (runId !== aiAdviceRunIdRef.current) return;
       const now = new Date().toISOString();
       const savedItem = rethrowIfFailed(await repoUpdateGarment(viewingItem, { aiStyleAdvice: advice, updatedAt: now }), "更新单品失败");
@@ -2083,7 +2105,7 @@ function WardrobeView(props: WardrobeViewProps) {
       const file = await dataUrlToFile(croppedSource, `${editDraft.name || "garment"}.jpg`).catch(() => null);
       const aiRequestDataUrl = file ? await fileToAiRequestDataUrl(file).catch(() => croppedSource) : croppedSource;
       const recognition = await withKeepAwake(() =>
-        recognizeSingleItemFromDataUrl(aiRequestDataUrl, source, editDraft.name || "garment.jpg", miniMaxSettings),
+        recognizeGarmentOnServer({ aiRequestDataUrl, originalDataUrl: source, fileName: editDraft.name || "garment.jpg", settings: miniMaxSettings }),
       );
       const tag = recognition.tag;
       const patch = buildWardrobeEditRecognitionPatch(tag, {
@@ -2350,7 +2372,7 @@ function WardrobeView(props: WardrobeViewProps) {
     isDiagnosisRunningRef.current = true; // 入口同步加锁（setDiagnosisState 触发的是异步 render 提交，加锁必须同步）
     try {
       const next = await withKeepAwake(() =>
-        diagnoseWardrobeOnDevice(allItems, outfits, locations, miniMaxSettings),
+        diagnoseWardrobeOnServer(allItems, outfits, locations, miniMaxSettings),
       );
       if (myRunId !== diagnosisRunIdRef.current) return; // run 已被关闭 / 覆盖, 丢弃结果
       setDiagnosis(next);
@@ -2961,7 +2983,7 @@ function WardrobeView(props: WardrobeViewProps) {
           onClick={() => setIsSearchOpen(true)}
           aria-label="搜索衣物"
           title="搜索衣物"
-          className="surface grid h-14 w-14 shrink-0 place-items-center rounded-lg text-ink/65 active:bg-mist transition-colors"
+          className="surface grid h-14 w-14 shrink-0 place-items-center ui-control-radius text-ink/65 active:bg-mist transition-colors"
         >
           <Search size={20} aria-hidden="true" />
         </button>
@@ -2971,7 +2993,7 @@ function WardrobeView(props: WardrobeViewProps) {
           onClick={() => setShowWearStatistics(true)}
           aria-label="查看穿着统计"
           title="穿着统计"
-          className="surface grid h-14 w-14 shrink-0 place-items-center rounded-lg text-ink/65 active:bg-mist transition-colors"
+          className="surface grid h-14 w-14 shrink-0 place-items-center ui-control-radius text-ink/65 active:bg-mist transition-colors"
         >
           <BarChart3 size={20} aria-hidden="true" />
         </button>
@@ -3004,7 +3026,7 @@ function WardrobeView(props: WardrobeViewProps) {
                     ? "查看上次诊断结果"
                     : "AI 衣橱诊断已打开"
           }
-          className={`grid h-14 w-14 shrink-0 place-items-center rounded-lg text-white shadow-sm disabled:opacity-60 transition-colors ${
+          className={`grid h-14 w-14 shrink-0 place-items-center ui-control-radius text-white shadow-sm disabled:opacity-60 transition-colors ${
             diagnosisState === "collapsed" || diagnosisState === "expanded"
               ? "bg-moss"
               : "bg-clay"
@@ -3041,7 +3063,7 @@ function WardrobeView(props: WardrobeViewProps) {
           <button
             type="button"
             onClick={() => setHomeCategoryFilter("all")}
-            className={`shrink-0 inline-flex h-8 items-center rounded-full px-3 text-xs font-medium transition-colors ${
+            className={`shrink-0 inline-flex h-8 items-center ui-control-radius px-3 text-xs font-medium transition-colors ${
               homeCategoryFilter === "all"
                 ? "bg-denim text-white shadow-sm"
                 : "bg-mist text-ink/65 active:bg-ink/10"
@@ -3054,11 +3076,11 @@ function WardrobeView(props: WardrobeViewProps) {
               type="button"
               onClick={() => setHomeCategoryFilter("all")}
               aria-label={`已筛选 ${hiddenSelectedCat.label} ${hiddenSelectedCat.count}，点此清除`}
-              className="shrink-0 inline-flex h-8 items-center gap-1 rounded-full bg-denim/10 pl-3 pr-2 text-xs font-medium text-denim"
+              className="shrink-0 inline-flex h-8 items-center gap-1 ui-control-radius bg-denim/10 pl-3 pr-2 text-xs font-medium text-denim"
             >
               <Check size={12} aria-hidden="true" />
               {hiddenSelectedCat.label} {hiddenSelectedCat.count}
-              <span className="grid h-5 w-5 place-items-center rounded-full bg-denim/20 text-denim" aria-hidden="true">×</span>
+              <span className="grid h-5 w-5 place-items-center ui-control-radius bg-denim/20 text-denim" aria-hidden="true">×</span>
             </button>
           ) : null}
           {visibleCats.map((c) => {
@@ -3068,7 +3090,7 @@ function WardrobeView(props: WardrobeViewProps) {
                 key={c.id}
                 type="button"
                 onClick={() => setHomeCategoryFilter(c.id)}
-                className={`shrink-0 inline-flex h-8 items-center rounded-full px-3 text-xs font-medium transition-colors ${
+                className={`shrink-0 inline-flex h-8 items-center ui-control-radius px-3 text-xs font-medium transition-colors ${
                   active
                     ? "bg-denim text-white shadow-sm"
                     : "border border-ink/10 bg-white text-ink/65 active:bg-mist"
@@ -3086,7 +3108,7 @@ function WardrobeView(props: WardrobeViewProps) {
                 aria-expanded={moreCatsOpen}
                 aria-label={hiddenSelectedCat ? `更多分类（当前选中：${hiddenSelectedCat.label} ${hiddenSelectedCat.count}）` : "更多分类"}
                 title={hiddenSelectedCat ? `当前选中：${hiddenSelectedCat.label} ${hiddenSelectedCat.count}` : undefined}
-                className={`inline-flex h-8 items-center gap-1 rounded-full px-3 text-xs font-medium transition-colors ${
+                className={`inline-flex h-8 items-center gap-1 ui-control-radius px-3 text-xs font-medium transition-colors ${
                   moreCatsOpen || hiddenSelectedCat
                     ? "bg-denim/10 text-denim"
                     : "border border-ink/10 bg-white text-ink/65 active:bg-mist"
@@ -3101,7 +3123,7 @@ function WardrobeView(props: WardrobeViewProps) {
                   transition={{ duration: 0.15, ease: ease.app }}
                   role="menu"
                   style={{ position: "fixed", top: moreCatsPos.top, right: moreCatsPos.right, minWidth: moreCatsPos.triggerWidth }}
-                  className="z-[100] grid grid-cols-3 gap-1.5 rounded-lg border border-ink/10 bg-white p-2 shadow-lg"
+                  className="z-[100] grid grid-cols-3 gap-1.5 ui-control-radius border border-ink/10 bg-white/88 p-2 shadow-lg backdrop-blur-xl"
                 >
                   {hiddenCats.map((c) => {
                     const active = homeCategoryFilter === c.id;
@@ -3110,7 +3132,7 @@ function WardrobeView(props: WardrobeViewProps) {
                         key={c.id}
                         type="button"
                         onClick={() => { setHomeCategoryFilter(c.id); setMoreCatsOpen(false); }}
-                        className={`inline-flex h-11 items-center justify-center rounded-full px-2 text-[11px] font-medium transition-colors ${
+                        className={`inline-flex h-11 items-center justify-center ui-control-radius px-2 text-[11px] font-medium transition-colors ${
                           active ? "bg-denim text-white" : "bg-mist text-ink/70 active:bg-ink/10"
                         }`}
                       >{c.label} {c.count}</button>
@@ -3820,6 +3842,8 @@ function SettingsView({
   route,
   cloudAuth,
   onOpenAccount,
+  openMiniMaxRequest,
+  onMiniMaxRequestConsumed,
 	  miniMaxSettings,
 	  onSaveMiniMaxSettings,
 	  onAddWardrobe,
@@ -3839,6 +3863,8 @@ function SettingsView({
   route: AppRoute;
   cloudAuth?: WardrobeCloudAuth;
   onOpenAccount?: () => void;
+  openMiniMaxRequest?: number;
+  onMiniMaxRequestConsumed?: () => void;
 	  miniMaxSettings: DeviceMiniMaxSettings;
 	  onSaveMiniMaxSettings: (settings: DeviceMiniMaxSettings) => void;
 	  onAddWardrobe: (name: string, note: string) => Promise<void>;
@@ -3864,6 +3890,14 @@ function SettingsView({
   const [showDiagnosticDescDialog, setShowDiagnosticDescDialog] = useState(false);
   const [diagnosticDescription, setDiagnosticDescription] = useState("");
   const [lastDiagnosticUpload, setLastDiagnosticUpload] = useState<LastDiagnosticUpload | null>(null);
+  const lastOpenMiniMaxRequestRef = useRef(0);
+
+  useEffect(() => {
+    if (!openMiniMaxRequest || openMiniMaxRequest === lastOpenMiniMaxRequestRef.current) return;
+    lastOpenMiniMaxRequestRef.current = openMiniMaxRequest;
+    setSubPage("minimax");
+    onMiniMaxRequestConsumed?.();
+  }, [onMiniMaxRequestConsumed, openMiniMaxRequest]);
   const [showDiagnosticSuccess, setShowDiagnosticSuccess] = useState(false);
   const [showDiagnosticFailed, setShowDiagnosticFailed] = useState(false);
   function handleStartDiagnosticUpload() {
@@ -4136,10 +4170,10 @@ function SettingsView({
       <h1 className="flex h-14 items-center px-4 pt-2 text-xl font-bold tracking-tight">设置</h1>
 
       {cloudAuth ? (
-        <article className="surface rounded-lg px-4 py-3.5">
+        <article className="ui-card px-4 py-3.5">
           <div className="flex items-start justify-between gap-3">
             <div className="flex min-w-0 items-start gap-3">
-              <div className="grid h-10 w-10 shrink-0 place-items-center rounded-lg bg-denim/10 text-denim">
+              <div className="grid h-10 w-10 shrink-0 place-items-center ui-control-radius bg-denim/10 text-denim">
                 <User size={19} aria-hidden="true" />
               </div>
               <div className="min-w-0">
@@ -4151,7 +4185,7 @@ function SettingsView({
             <button
               type="button"
               onClick={onOpenAccount}
-              className="inline-flex h-9 shrink-0 items-center gap-1 rounded-lg border border-ink/10 bg-white px-3 text-xs font-semibold active:scale-95 transition-transform"
+              className="inline-flex h-9 shrink-0 items-center gap-1 ui-control-radius border border-ink/10 bg-white px-3 text-xs font-semibold active:scale-95 transition-transform"
             >
               管理 <ChevronRight size={12} aria-hidden="true" />
             </button>
@@ -4161,7 +4195,7 @@ function SettingsView({
 
       {/* 1. 衣橱设置 (紧凑列表行, 超过 3 个折叠) */}
       {/* 2. 我的穿衣画像摘要卡 */}
-      <article className="surface rounded-lg px-4 py-3.5">
+      <article className="ui-card px-4 py-3.5">
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
             <h2 className="text-base font-semibold">我的穿衣画像</h2>
@@ -4177,7 +4211,7 @@ function SettingsView({
         </div>
         <div className="mt-3">
           {profileIsLight ? (
-            <p className="rounded-lg bg-mist px-3 py-3 text-xs leading-relaxed text-ink/55">
+            <p className="ui-inner-card px-3 py-3 text-xs leading-relaxed text-ink/55">
               还未完善画像，补充后 AI 推荐和试穿会更贴合你。
             </p>
           ) : (
@@ -4185,7 +4219,7 @@ function SettingsView({
               {profileChips.map((chip, i) => (
                 <span
                   key={i}
-                  className="inline-flex h-7 items-center gap-1 rounded-full border border-ink/10 bg-white px-2.5 text-[11px]"
+                  className="inline-flex h-7 items-center gap-1 ui-control-radius border border-ink/10 bg-white px-2.5 text-[11px]"
                 >
                   <span className="text-ink/45">{chip.label}：</span>
                   <span className="font-semibold text-ink/80">{chip.value}</span>
@@ -4197,7 +4231,7 @@ function SettingsView({
       </article>
 
       {/* 3. AI 试穿参考照片摘要卡 */}
-      <article className="surface rounded-lg px-4 py-3.5">
+      <article className="ui-card px-4 py-3.5">
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0 flex-1">
             <h2 className="text-base font-semibold">AI 试穿参考照片</h2>
@@ -4225,12 +4259,12 @@ function SettingsView({
                 <span className="shrink-0 text-xs font-semibold text-ink/80">已配置 {photosCount} 张照片</span>
                 <div className="flex items-center gap-1.5">
                   {tryOnProfile.fullBodyImage ? (
-                    <div className="h-10 w-10 shrink-0 overflow-hidden rounded-md border border-ink/10 bg-mist">
+                      <div className="h-10 w-10 shrink-0 overflow-hidden ui-control-radius border border-ink/10 bg-mist">
                       <OnlineAssetImage asset={tryOnProfile.fullBodyImage} variant="thumbnail" alt="全身照" className="h-full w-full" />
                     </div>
                   ) : null}
                   {tryOnProfile.faceImage ? (
-                    <div className="h-10 w-10 shrink-0 overflow-hidden rounded-md border border-ink/10 bg-mist">
+                      <div className="h-10 w-10 shrink-0 overflow-hidden ui-control-radius border border-ink/10 bg-mist">
                       <OnlineAssetImage asset={tryOnProfile.faceImage} variant="thumbnail" alt="脸部照" className="h-full w-full" />
                     </div>
                   ) : null}
@@ -4250,7 +4284,7 @@ function SettingsView({
       </article>
 
       {/* 4. MiniMax 设置摘要卡 */}
-      <article className="surface rounded-lg px-4 py-3.5">
+      <article className="ui-card px-4 py-3.5">
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0 flex-1">
             <h2 className="text-base font-semibold">MiniMax 设置</h2>
@@ -4278,14 +4312,14 @@ function SettingsView({
           <button
             type="button"
             onClick={() => setSubPage("minimax")}
-            className="inline-flex h-9 shrink-0 items-center gap-1 rounded-lg border border-ink/10 bg-white px-3 text-xs font-semibold active:scale-95 transition-transform"
+            className="inline-flex h-9 shrink-0 items-center gap-1 ui-control-radius border border-ink/10 bg-white px-3 text-xs font-semibold active:scale-95 transition-transform"
           >
             {hasMiniMaxKey ? "修改配置" : "配置 Key"} <ChevronRight size={12} aria-hidden="true" />
           </button>
         </div>
       </article>
 
-      <article className="surface rounded-lg px-4 py-3.5" aria-label="远程诊断">
+      <article className="ui-card px-4 py-3.5" aria-label="远程诊断">
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
             <h2 className="text-base font-semibold">远程诊断</h2>
@@ -4297,7 +4331,7 @@ function SettingsView({
           type="button"
           onClick={handleStartDiagnosticUpload}
           disabled={diagnosticUploadState.phase !== "idle"}
-          className="mt-3 inline-flex h-10 w-full items-center justify-center gap-2 rounded-lg border border-ink/10 bg-white px-3 text-sm font-semibold text-ink/75 active:bg-mist disabled:opacity-55"
+          className="mt-3 inline-flex h-10 w-full items-center justify-center gap-2 ui-control-radius border border-ink/10 bg-white px-3 text-sm font-semibold text-ink/75 active:bg-mist disabled:opacity-55"
         >
           {diagnosticUploadState.phase !== "idle" ? <Loader2 size={15} className="animate-spin" aria-hidden="true" /> : <Upload size={15} aria-hidden="true" />}
           {diagnosticUploadState.phase !== "idle" ? diagnosticUploadState.message ?? "处理中..." : "上传诊断数据"}
@@ -5355,7 +5389,7 @@ function MiniMaxDetailPage({
 
       <div className="flex items-start gap-2 px-1 text-[11px] leading-relaxed text-ink/50">
         <Lock size={13} className="mt-0.5 shrink-0 text-ink/45" aria-hidden="true" />
-        <span>密钥仅保存在本机，不会上传至服务器。点击保存时会调用 validateMiniMaxKey 验证有效性，失败会保留输入。</span>
+        <span>密钥保存在本机；AI 功能会临时经服务器代调 MiniMax，服务器不保存密钥。点击保存会验证有效性，失败会保留输入。</span>
       </div>
     </div>
   );
@@ -5439,7 +5473,7 @@ function NavButton({ view, active, onClick }: { view: (typeof viewItems)[number]
     <motion.button
       type="button"
       onClick={onClick}
-      className={`flex h-11 items-center gap-3 rounded-lg px-3 text-sm font-semibold ${
+      className={`flex h-11 items-center gap-3 ui-control-radius px-3 text-sm font-semibold ${
         active ? "bg-denim text-white" : "text-ink/68 hover:bg-ink/5"
       }`}
       whileTap={{ scale: 0.96 }}
@@ -5464,11 +5498,11 @@ function MobileNavButton({ view, active, onClick, compact }: { view: (typeof vie
       type="button"
       onClick={onClick}
       animate={{
-        backgroundColor: active ? "#355c7d" : "rgba(0,0,0,0)",
+        backgroundColor: active ? "var(--color-denim)" : "rgba(0,0,0,0)",
         color: active ? "#ffffff" : "rgba(0,0,0,0.62)",
       }}
       transition={spring.snappy}
-      className={`grid ${compact ? "h-10" : "h-12"} place-content-center justify-items-center gap-0 rounded-lg px-1 text-[11px] font-semibold`}
+      className={`grid ${compact ? "h-10 ui-control-radius" : "h-14 rounded-[var(--ui-radius-nav-active)]"} place-content-center justify-items-center gap-1 px-1 text-[11px] font-semibold`}
       whileTap={{ scale: 0.94 }}
     >
       {!compact && (
@@ -5638,7 +5672,7 @@ function WaterfallCardImage({
  onImageClick={() => onClick?.()}
  onCustomClick={handleCustomClick}
  className="absolute inset-0"
- imageClassName="object-contain"
+ imageClassName="object-cover"
  showDots={effectiveHasMultiple}
  variant="card"
  ariaLabel="衣物图片组"

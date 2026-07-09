@@ -2,7 +2,7 @@
 <!--
   DO NOT EDIT BY HAND.
   Generated from docs/designs/wardrobe-ui-spec.md by scripts/generate-ui-spec-preview.mjs.
-  Source SHA256: c794b575e6f7a9d703d39dce6c7cf8ede8a10e002ec6db9861ec0c96ac4d98e7
+  Source SHA256: 9e92df9f37b46894f8f71f5f9626aa4361ec3d15541bc75cf3f9dcc9f57dcad3
 -->
 <html lang="zh-CN">
 <head>
@@ -319,11 +319,47 @@
       display: grid;
       gap: 4px;
       padding: 18px;
-      background: rgba(251,251,248,.75);
+      background: transparent;
+      border: 0;
+      box-shadow: none;
       backdrop-filter: blur(30px) saturate(1.5);
       -webkit-backdrop-filter: blur(30px) saturate(1.5);
     }
     .visual-top-glass span { color: var(--muted); font-size: 11px; font-weight: 800; }
+    .shell-topbar-demo, .intake-topbar-demo {
+      grid-template-columns: 44px 1fr 44px;
+      align-items: center;
+      border-bottom: 0;
+      background: transparent;
+      box-shadow: none;
+    }
+    .shell-topbar-demo b, .intake-topbar-demo b {
+      display: block;
+      text-align: center;
+      font-size: 13px;
+      font-weight: 950;
+    }
+    .shell-topbar-demo button, .intake-topbar-demo button {
+      width: 40px;
+      height: 40px;
+      border: 1px solid rgba(53,92,125,.13);
+      border-radius: 16px;
+      background: rgba(255,255,252,.36);
+      color: var(--denim);
+      display: grid;
+      place-items: center;
+      box-shadow: none;
+    }
+    .shell-topbar-demo .demo-icon, .intake-topbar-demo .demo-icon { width: 20px; height: 20px; }
+    .intake-topbar-demo { grid-template-rows: auto 5px; row-gap: 10px; }
+    .intake-topbar-demo span { color: var(--ink); text-align: center; }
+    .intake-topbar-demo small { display: block; color: var(--muted); font-size: 10px; font-weight: 850; }
+    .intake-topbar-demo i {
+      grid-column: 1 / -1;
+      height: 5px;
+      border-radius: 999px;
+      background: linear-gradient(90deg, var(--denim) 0 50%, rgba(29,34,40,.05) 50%);
+    }
     .visual-scroll-cards { display: grid; gap: 10px; padding: 16px; }
     .visual-scroll-cards span, .mini-card {
       height: 58px;
@@ -332,6 +368,8 @@
       background: rgba(255,255,252,.82);
     }
     .visual-floating-nav {
+      --nav-radius: 30px;
+      --nav-padding: 8px;
       position: absolute;
       left: 14px;
       right: 14px;
@@ -340,9 +378,9 @@
       grid-template-columns: repeat(4, 1fr);
       gap: 6px;
       border: 1px solid rgba(53,92,125,.18);
-      border-radius: 24px;
+      border-radius: var(--nav-radius);
       background: rgba(255,255,252,.75);
-      padding: 7px;
+      padding: var(--nav-padding);
       backdrop-filter: blur(30px) saturate(1.5);
       -webkit-backdrop-filter: blur(30px) saturate(1.5);
     }
@@ -350,12 +388,13 @@
       display: grid;
       place-items: center;
       gap: 3px;
-      min-height: 42px;
-      border-radius: 17px;
+      min-height: 54px;
+      border-radius: calc(var(--nav-radius) - var(--nav-padding));
       color: var(--muted);
       font-size: 11px;
       font-weight: 900;
     }
+    .visual-floating-nav .nav-tab b { font-size: 11px; font-weight: 950; }
     .visual-floating-nav .demo-icon { width: 18px; height: 18px; }
     .visual-floating-nav .active { background: var(--denim); color: white; }
     .route-chain, .pipeline, .step-flow {
@@ -452,7 +491,7 @@
     .step-card small { color: var(--muted); font-size: 11px; font-weight: 800; }
     .step-card.active { background: var(--denim); color: white; }
     .step-card.active b { background: rgba(255,255,255,.2); color: white; }
-    .thumb-strip button, .bulk-bar button, .focus-demo button, .mini-toast button {
+    .thumb-strip button, .bulk-bar button, .focus-demo button, .spec-toast button {
       border: 0;
       border-radius: 14px;
       background: var(--denim);
@@ -471,32 +510,89 @@
     }
     .toast-stage {
       position: relative;
-      min-height: 230px;
       display: grid;
       gap: 10px;
-      padding-bottom: 70px;
     }
-    .mini-toast {
-      position: absolute;
-      left: 0;
-      right: 0;
-      bottom: 58px;
+    .toast-style-board {
       display: grid;
-      grid-template-columns: 10px 1fr 38px;
+      gap: 10px;
+      border: 1px solid var(--line);
+      border-radius: 28px;
+      background: var(--app-ambient);
+      padding: 12px;
+      overflow: hidden;
+    }
+    .spec-toast {
+      display: grid;
+      grid-template-columns: 38px minmax(0, 1fr) auto auto;
       gap: 10px;
       align-items: center;
-      min-height: 52px;
-      border: 1px solid rgba(53,92,125,.18);
-      border-radius: 20px;
-      background: rgba(255,255,252,.95);
-      box-shadow: var(--deep);
-      padding: 10px 12px;
-      backdrop-filter: blur(30px) saturate(1.5);
-      -webkit-backdrop-filter: blur(30px) saturate(1.5);
+      min-height: 58px;
+      border: 1px solid rgba(29,34,40,.10);
+      border-radius: 22px;
+      background: rgba(255,255,252,.88);
+      box-shadow: 0 18px 50px rgba(29,34,40,.10);
+      padding: 9px 10px;
+      backdrop-filter: blur(30px) saturate(1.35);
+      -webkit-backdrop-filter: blur(30px) saturate(1.35);
     }
-    .mini-toast b { width: 8px; height: 28px; border-radius: 999px; background: var(--moss); }
-    .mini-toast span { font-size: 12px; font-weight: 900; }
-    .mini-toast button { width: 38px; height: 38px; padding: 0; background: rgba(29,34,40,.08); color: var(--ink); }
+    .spec-toast .toast-icon {
+      width: 38px;
+      height: 38px;
+      border-radius: 15px;
+      display: grid;
+      place-items: center;
+      align-self: center;
+      justify-self: center;
+    }
+    .spec-toast .toast-icon .demo-icon { width: 19px; height: 19px; }
+    .spec-toast.success .toast-icon { background: rgba(95,112,88,.14); color: var(--moss); }
+    .spec-toast.info .toast-icon { background: rgba(53,92,125,.14); color: var(--denim); }
+    .spec-toast.error .toast-icon { background: rgba(220,38,38,.10); color: var(--danger); }
+    .spec-toast .toast-copy {
+      min-width: 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      font-size: 13px;
+      line-height: 18px;
+      color: var(--ink);
+      font-weight: 900;
+    }
+    .spec-toast.two-line .toast-copy,
+    .spec-toast.three-line .toast-copy {
+      white-space: normal;
+      display: -webkit-box;
+      -webkit-box-orient: vertical;
+    }
+    .spec-toast.two-line .toast-copy { -webkit-line-clamp: 2; }
+    .spec-toast.three-line {
+      min-height: 104px;
+      align-items: center;
+    }
+    .spec-toast.three-line .toast-copy {
+      max-width: 330px;
+      min-height: 54px;
+      -webkit-line-clamp: 3;
+    }
+    .spec-toast .toast-action {
+      min-width: 74px;
+      min-height: 38px;
+      padding: 0 12px;
+      border-radius: 15px;
+      box-shadow: none;
+    }
+    .spec-toast .toast-close {
+      width: 38px;
+      height: 38px;
+      padding: 0;
+      border-radius: 15px;
+      background: rgba(29,34,40,.06);
+      color: var(--muted);
+      align-self: center;
+      justify-self: center;
+    }
+    .spec-toast .toast-close .demo-icon { width: 17px; height: 17px; margin: auto; }
     .mini-bottom-bar { position: absolute; left: 0; right: 0; bottom: 0; text-align: center; }
     .copy-board { align-items: stretch; }
     .copy-board div {
@@ -742,7 +838,7 @@
           <div class="meta-row">
             <span class="pill active">v0.2-final</span>
             <span class="pill">Markdown 唯一事实源</span>
-            <span class="pill">Source SHA256 c794b575e6f7</span>
+            <span class="pill">Source SHA256 9e92df9f37b4</span>
           </div>
           <h1>衣橱穿搭助手 UI 规范</h1>
           <p>本页由规范 Markdown 自动生成，用于快速走查页面框架、组件契约、通知样式和验收映射。</p>
@@ -788,8 +884,9 @@
         <div class="radius-demo outer"><div class="radius-demo inner"></div></div>
         <div class="radius-stack"><span>一级卡片 28px</span><span>内层图片 = 外框半径 - 内边距</span><span>选中按钮与外框弧度一致</span></div>
       </div>
-<div class="table-wrap"><table><thead><tr><th>对象</th><th>半径</th><th>规则</th></tr></thead><tbody><tr><td>手机容器</td><td><code>32px</code></td><td>预览画板使用，生产容器不强制包一层手机壳</td></tr><tr><td>一级卡片</td><td><code>28px</code> 目标 / 当前代码多为 <code>rounded-2xl</code></td><td>主要内容容器，后续应逐步统一</td></tr><tr><td>一级卡片内图片</td><td><code>卡片半径 - 内边距</code></td><td>图片与外框保持同心圆角，不同半径但弧度一致</td></tr><tr><td>二级卡片</td><td><code>18px-20px</code></td><td>一级卡片内部的选择块、空状态、预览块</td></tr><tr><td>普通控件</td><td><code>12px-14px</code></td><td>筛选、输入、普通按钮</td></tr><tr><td>底部菜单外框</td><td><code>26px</code></td><td>悬浮毛玻璃圆角矩形</td></tr><tr><td>底部菜单选中项</td><td><code>外框半径 - 内边距</code></td><td>不使用圆形激活按钮</td></tr><tr><td>缩略图</td><td><code>8px-12px</code></td><td>详情胶片栏、录入缩略图、队列图</td></tr></tbody></table></div>
+<div class="table-wrap"><table><thead><tr><th>对象</th><th>半径</th><th>规则</th></tr></thead><tbody><tr><td>手机容器</td><td><code>32px</code></td><td>预览画板使用，生产容器不强制包一层手机壳</td></tr><tr><td>一级卡片</td><td><code>28px</code> 目标 / 当前代码多为 <code>rounded-2xl</code></td><td>主要内容容器，后续应逐步统一</td></tr><tr><td>一级卡片内图片</td><td><code>卡片半径 - 内边距</code></td><td>图片与外框保持同心圆角，不同半径但弧度一致</td></tr><tr><td>二级卡片</td><td><code>18px-20px</code></td><td>一级卡片内部的选择块、空状态、预览块</td></tr><tr><td>普通控件</td><td><code>12px-14px</code></td><td>筛选、输入、普通按钮</td></tr><tr><td>底部菜单外框</td><td><code>26px</code></td><td>悬浮毛玻璃圆角矩形</td></tr><tr><td>底部菜单选中项</td><td><code>外框半径 - 内边距</code></td><td>不使用圆形激活按钮；选中项色块弧线必须与外框同心</td></tr><tr><td>缩略图</td><td><code>8px-12px</code></td><td>详情胶片栏、录入缩略图、队列图</td></tr></tbody></table></div>
 <p>判断标准：外框和内层按钮的弧线要像同一组同心圆。不要把外框做圆角矩形、内层做正圆，除非是明确的 FAB。</p>
+<p>底部 4 个功能切换按钮的预览与实现都按同一公式：<code>activeRadius = outerRadius - inset</code>。例如外框 <code>28px</code>、内边距 <code>8px</code> 时，选中项为 <code>20px</code>；不得使用 <code>rounded-full</code> 或固定圆形激活态。</p>
 <h3>2.3 Glass、阴影与层级</h3>
       <div class="part-visual" data-visual="glass-layer">
         <div class="glass-scene">
@@ -798,7 +895,7 @@
         </div>
         <div class="shadow-samples"><span>soft</span><span>card</span><span>deep</span></div>
       </div>
-<div class="table-wrap"><table><thead><tr><th>Token</th><th>目标规范</th><th>当前代码事实</th></tr></thead><tbody><tr><td><code>glass.top.bg</code></td><td><code>rgba(251,251,248,0.75)</code></td><td>多处仍为 <code>#fbfbf8/95</code> 或实色</td></tr><tr><td><code>glass.top.blur</code></td><td><code>blur(30px) saturate(1.5)</code></td><td><code>backdrop-blur-xl</code> / <code>.surface blur(18px)</code></td></tr><tr><td><code>glass.bottom.bg</code></td><td><code>rgba(255,255,252,0.75)</code></td><td>底部导航当前 <code>#fbfbf8/94</code></td></tr><tr><td><code>glass.toast.bg</code></td><td><code>rgba(255,255,252,0.95)</code></td><td>当前 Toast <code>bg-white/95 backdrop-blur-md</code></td></tr><tr><td><code>shadow.soft</code></td><td><code>0 18px 50px rgba(29,34,40,0.10)</code></td><td>Tailwind <code>shadow.soft</code></td></tr><tr><td><code>shadow.card</code></td><td><code>0 18px 50px rgba(29,34,40,0.08)</code></td><td><code>.surface</code></td></tr></tbody></table></div>
+<div class="table-wrap"><table><thead><tr><th>Token</th><th>目标规范</th><th>当前代码事实</th></tr></thead><tbody><tr><td><code>glass.top.bg</code></td><td><code>rgba(251,251,248,0.75)</code></td><td>多处仍为 <code>#fbfbf8/95</code> 或实色</td></tr><tr><td><code>glass.top.blur</code></td><td><code>blur(30px) saturate(1.5)</code></td><td><code>backdrop-blur-xl</code> / <code>.surface blur(18px)</code></td></tr><tr><td><code>glass.bottom.bg</code></td><td><code>rgba(255,255,252,0.75)</code></td><td>底部导航当前 <code>#fbfbf8/94</code></td></tr><tr><td><code>glass.toast.bg</code></td><td><code>rgba(255,255,252,0.88)</code></td><td>Toast 应比页面卡片更浮，但不能变成实心白卡</td></tr><tr><td><code>shadow.soft</code></td><td><code>0 18px 50px rgba(29,34,40,0.10)</code></td><td>Tailwind <code>shadow.soft</code></td></tr><tr><td><code>shadow.card</code></td><td><code>0 18px 50px rgba(29,34,40,0.08)</code></td><td><code>.surface</code></td></tr></tbody></table></div>
 <p>新组件不要裸写新的 glass 参数；如果当前代码未统一，规范记录为“目标契约”，后续改代码时逐步收敛。</p>
 <h3>2.4 Motion</h3>
       <div class="part-visual" data-visual="motion-token">
@@ -833,9 +930,25 @@
 <p>规则：</p>
 <ul><li>页面结构以 <code>docs/designs/v03-alpha-real-screenshots/</code> 的真实业务流截图为准；截图只证明页面结构和真实状态，不代表最终视觉标准。</li><li>规范预览不得手绘重排页面结构，也不得把生产截图原样当作合格视觉终稿。</li><li>只允许在结构不变的前提下优化颜色、圆角、字体、字重、字间距、Icon、阴影和毛玻璃效果。</li><li>如果需要 2K/高分辨率导出，只能基于真实结构等比输出，不得改变布局层级。</li><li>顶部固定区使用 <code>env(safe-area-inset-top)</code>。</li><li>底部导航、FAB、Toast、底部操作栏使用 <code>env(safe-area-inset-bottom)</code>。</li><li>录入流、裁切器、Lightbox 使用 <code>100dvh</code> 或等价动态视口。</li><li>360px 宽度不得出现横向滚动；按钮文案必须截断、换行或缩短。</li><li>软键盘弹出时，当前输入框和主操作按钮不得同时不可操作。</li></ul></div></section>
 <section class="section" id="4-app-shell"><h2>4. App Shell</h2><div class="module-visual" aria-label="4. App Shell 视觉示意">
+      <div class="visual-phone-mini shell-demo">
+        <div class="visual-status"><span>9:41</span><span>5G 82%</span></div>
+        <div class="visual-top-glass shell-topbar-demo">
+          <button aria-label="返回"><svg class="demo-icon" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"></path></svg></button>
+          <b>二级页 TopBar</b>
+          <button aria-label="更多"><svg class="demo-icon" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M19 12a7 7 0 0 0-.1-1l2-1.5-2-3.4-2.4 1a7 7 0 0 0-1.7-1L14.5 3h-5l-.4 3.1a7 7 0 0 0-1.7 1l-2.4-1-2 3.4L5.1 11a7 7 0 0 0 0 2l-2 1.5 2 3.4 2.4-1a7 7 0 0 0 1.7 1l.4 3.1h5l.4-3.1a7 7 0 0 0 1.7-1l2.4 1 2-3.4-2.1-1.5a7 7 0 0 0 .1-1z"></path></svg></button>
+        </div>
+        <div class="visual-scroll-cards"><span></span><span></span><span></span></div>
+        <div class="visual-floating-nav" data-visual="bottom-nav-concentric">
+          <span class="nav-tab active"><svg class="demo-icon" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 4 4 6l2 4 2-1v11h8V9l2 1 2-4-4-2-2 3h-4L8 4z"></path></svg><b>衣橱</b></span>
+          <span class="nav-tab"><svg class="demo-icon" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m12 3 8 4-8 4-8-4 8-4z"></path><path d="m4 12 8 4 8-4"></path><path d="m4 17 8 4 8-4"></path></svg><b>套装</b></span>
+          <span class="nav-tab"><svg class="demo-icon" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 8h12l-1 13H7L6 8z"></path><path d="M9 8a3 3 0 0 1 6 0"></path></svg><b>种草</b></span>
+          <span class="nav-tab"><svg class="demo-icon" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M19 12a7 7 0 0 0-.1-1l2-1.5-2-3.4-2.4 1a7 7 0 0 0-1.7-1L14.5 3h-5l-.4 3.1a7 7 0 0 0-1.7 1l-2.4-1-2 3.4L5.1 11a7 7 0 0 0 0 2l-2 1.5 2 3.4 2.4-1a7 7 0 0 0 1.7 1l.4 3.1h5l.4-3.1a7 7 0 0 0 1.7-1l2.4 1 2-3.4-2.1-1.5a7 7 0 0 0 .1-1z"></path></svg><b>设置</b></span>
+        </div>
+      </div>
       <div class="production-shot-grid"><figure class="production-shot"><img src="v03-alpha-real-screenshots/wardrobe_home_390_top.png" alt="衣橱 Shell"><figcaption><b>衣橱 Shell</b><span>顶部控件、Toast、圆形 FAB 和底部 Tab 以生产截图为准</span></figcaption></figure><figure class="production-shot"><img src="v03-alpha-real-screenshots/settings_home_390_top.png" alt="设置 Shell"><figcaption><b>设置 Shell</b><span>设置页同一底部 Tab，不重新设计页面结构</span></figcaption></figure></div></div><div class="module-copy"><p>每个页面由以下层组成：</p>
 <ol><li>基础页面容器。</li><li>独立顶部层：状态栏安全区、标题、返回/关闭、必要筛选或统计。</li><li>可滚动内容区。</li><li>可选 FAB。</li><li>可选底部导航或底部操作栏。</li><li>可选覆盖层：Toast、Popover、Sheet、Dialog、Lightbox、Cropper。</li></ol>
 <p>顶部层不加硬边框和额外渐变过渡区。滚动内容可经过顶部层下方，但应被 glass 背景遮住。</p>
+<p>二级和三级页面的 <code>AppSubPageTopBar</code> 必须是透明底 + 毛玻璃层：只保留页面顶部整体 glass，不允许在标题区域下方再画独立矩形条、固定高度色带、实心白色矩形或白色条块；返回、关闭、更多按钮可以保留自己的圆角按钮背景。录入流顶部同样遵守该规则，标题、步骤说明和进度条叠在 glass 层上。</p>
 <p>底部导航固定 4 项：</p>
 <div class="table-wrap"><table><thead><tr><th>Tab key</th><th>显示</th><th>图标语义</th><th>首页 route</th></tr></thead><tbody><tr><td><code>wardrobe</code></td><td>衣橱</td><td>衣物</td><td><code>wardrobe_home</code></td></tr><tr><td><code>recommend</code></td><td>套装</td><td>套装/推荐</td><td><code>outfit_home</code></td></tr><tr><td><code>shopping</code></td><td>种草</td><td>购物袋</td><td><code>wishlist_home</code></td></tr><tr><td><code>settings</code></td><td>设置</td><td>齿轮</td><td><code>settings_home</code></td></tr></tbody></table></div></div></section>
 <section class="section" id="5-route-与页面状态矩阵"><h2>5. Route 与页面状态矩阵</h2><div class="module-visual" aria-label="5. Route 与页面状态矩阵 视觉示意">
@@ -912,12 +1025,25 @@
       </div>
 <p>季节、风格、状态必须从 <code>src/lib/types.ts</code> 和显示标签工具派生。新增枚举时同步：类型、显示 label、AI prompt、测试、规范。</p></div></section>
 <section class="section" id="9-录入流程状态机"><h2>9. 录入流程状态机</h2><div class="module-visual" aria-label="9. 录入流程状态机 视觉示意">
+      <div class="intake-contract-demo" data-visual="intake-glass-actions">
+        <div class="visual-top-glass intake-topbar-demo">
+          <button aria-label="返回"><svg class="demo-icon" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"></path></svg></button>
+          <span><b>添加单品</b><small>步骤 1 / 2 · 选择照片</small></span>
+          <button aria-label="关闭"><svg class="demo-icon" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"></path><path d="m6 6 12 12"></path></svg></button>
+          <i></i>
+        </div>
+        <div class="intake-action-grid">
+          <button><svg class="demo-icon" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 4 16 7h3a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V9a2 2 0 0 1 2-2h3l1.5-3h5z"></path><circle cx="12" cy="13" r="3"></circle></svg><b>拍照</b><small>打开相机录入</small></button>
+          <button><svg class="demo-icon" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"></rect><circle cx="8.5" cy="10.5" r="1.5"></circle><path d="m21 15-5-5L5 21"></path></svg><b>从图库选择</b><small>最多 20 张</small></button>
+        </div>
+      </div>
       <div class="production-shot-grid"><figure class="production-shot"><img src="v03-alpha-real-screenshots/intake_single_step1_empty_390_top.png" alt="Step 1 空状态"><figcaption><b>Step 1 空状态</b><span>添加单品 / 选择照片</span></figcaption></figure><figure class="production-shot"><img src="v03-alpha-real-screenshots/intake_single_step1_imported_390_top.png" alt="Step 1 已导入"><figcaption><b>Step 1 已导入</b><span>缩略图、继续拍照、图库入口、清空</span></figcaption></figure><figure class="production-shot"><img src="v03-alpha-real-screenshots/intake_single_confirm_390_top.png" alt="Step 2 确认首屏"><figcaption><b>Step 2 确认首屏</b><span>已识别单品、重新识别、校对草稿</span></figcaption></figure><figure class="production-shot"><img src="v03-alpha-real-screenshots/intake_single_confirm_390_bottom.png" alt="Step 2 保存区"><figcaption><b>Step 2 保存区</b><span>保存按钮与底部操作栏沿用生产</span></figcaption></figure></div></div><div class="module-copy"><p>用户可见只允许两步：</p>
 <div class="table-wrap"><table><thead><tr><th>Step</th><th>ID</th><th>标题</th><th>用户目标</th><th>主按钮</th></tr></thead><tbody><tr><td>1</td><td><code>select_photo</code></td><td>选择照片</td><td>拍照/图库选择，可裁切旋转</td><td>下一步（AI 识别）</td></tr><tr><td>2</td><td><code>confirm_params</code></td><td>确认信息</td><td>复核 AI 结果、修改字段、保存</td><td>保存 N 件单品/种草</td></tr></tbody></table></div>
 <p>内部子状态不是新步骤：</p>
 <div class="table-wrap"><table><thead><tr><th>子状态</th><th>属于</th><th>UI 要求</th></tr></thead><tbody><tr><td><code>idle_empty</code></td><td>Step 1</td><td>空状态、拍照、图库入口</td></tr><tr><td><code>image_queue</code></td><td>Step 1</td><td>缩略图队列，当前图 Denim 边框</td></tr><tr><td><code>crop</code></td><td>Step 1 子状态</td><td>裁切/旋转，返回先退出裁切</td></tr><tr><td><code>recognizing</code></td><td>Step 1 -&gt; Step 2</td><td>过渡态，不显示第三步</td></tr><tr><td><code>recognized</code></td><td>Step 2</td><td>字段预填，显示来源和置信度</td></tr><tr><td><code>recognition_failed</code></td><td>Step 2</td><td>失败草稿，可手动补全/重新识别</td></tr><tr><td><code>retrying</code></td><td>Step 2</td><td>仅当前件局部 loading</td></tr><tr><td><code>retry_failed</code></td><td>Step 2</td><td>保留旧草稿并提示失败</td></tr><tr><td><code>partial_save_confirm</code></td><td>Overlay</td><td>说明未完成项不会入库</td></tr><tr><td><code>saving</code></td><td>Step 2</td><td>禁止重复提交</td></tr><tr><td><code>save_failed</code></td><td>Step 2</td><td>草稿保留，可重试</td></tr></tbody></table></div>
 <p>页面标题不得出现 <code>3 / 3</code>。保存按钮数量必须等于真实可保存数量。</p>
-<p>规范预览必须使用真实业务流截图展示录入实际状态；截图包未捕获的子页面不得手绘补位。</p></div></section>
+<p>规范预览必须使用真实业务流截图展示录入实际状态；截图包未捕获的子页面不得手绘补位。</p>
+<p>Step 1 顶部必须使用透明底 + 毛玻璃层，不得在标题、步骤说明或进度条后方绘制实心白条。拍照、从图库选择、继续拍照和继续从图库选择入口全部使用最新圆角矩形控件：外框与内部图标槽保持同心圆角，按钮之间不使用旧版直角白卡或大面积实心白底。</p></div></section>
 <section class="section" id="10-ai-与系统状态"><h2>10. AI 与系统状态</h2><div class="module-copy"><h3>10.1 AI 状态</h3>
       <div class="part-visual" data-visual="ai-state">
         <div class="status-board"><span><b></b>识别中</span><span><b></b>低置信待确认</span><span><b></b>失败可重试</span><span><b></b>保存失败草稿保留</span></div>
@@ -930,8 +1056,27 @@
 <div class="table-wrap"><table><thead><tr><th>状态</th><th>当前事实 / 目标</th></tr></thead><tbody><tr><td><code>auth_initializing</code></td><td><code>AuthGate</code> 初始化</td></tr><tr><td><code>unauthenticated</code></td><td>登录/注册入口</td></tr><tr><td><code>auth_blocked</code></td><td>账号阻断/退出确认</td></tr><tr><td><code>workspace_loading</code></td><td><code>WorkspaceGate</code> 加载</td></tr><tr><td><code>workspace_error</code></td><td><code>OnlinePageError</code> + 重试</td></tr><tr><td><code>sync_refreshing</code></td><td>页面内轻提示</td></tr><tr><td><code>sync_refresh_error</code></td><td><code>OnlineInlineNotice</code> + 重试</td></tr><tr><td><code>offline/no_network</code></td><td>现有能力分散，规范目标是统一 banner/Toast</td></tr><tr><td><code>camera_permission_denied</code></td><td>文案提示前往系统设置开启</td></tr><tr><td><code>ai_key_missing</code></td><td>引导到设置页</td></tr><tr><td><code>diagnostic_uploading/success/failed</code></td><td>设置页诊断上传状态，失败码要可读</td></tr></tbody></table></div></div></section>
 <section class="section" id="11-通知-toast"><h2>11. 通知 Toast</h2><div class="module-visual" aria-label="11. 通知 Toast 视觉示意">
       <div class="toast-stage">
+        <div class="toast-style-board">
+          <div class="spec-toast success one-line">
+            <span class="toast-icon"><svg class="demo-icon" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"></path></svg></span>
+            <span class="toast-copy">已保存 9 件单品，草稿已清空。</span>
+            <button class="toast-close" aria-label="关闭"><svg class="demo-icon" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"></path><path d="m6 6 12 12"></path></svg></button>
+          </div>
+          <div class="spec-toast info two-line">
+            <span class="toast-icon"><svg class="demo-icon" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"></circle><path d="M12 10v6"></path><path d="M12 7h.01"></path></svg></span>
+            <span class="toast-copy">尚未配置 MiniMax Key，AI 识别和推荐功能暂不可用。</span>
+            <button class="toast-action">前往设置</button>
+            <button class="toast-close" aria-label="关闭"><svg class="demo-icon" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"></path><path d="m6 6 12 12"></path></svg></button>
+          </div>
+          <div class="spec-toast error three-line">
+            <span class="toast-icon"><svg class="demo-icon" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 9v4"></path><path d="M12 17h.01"></path><path d="M10.3 3.9 2.4 18a2 2 0 0 0 1.7 3h15.8a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"></path></svg></span>
+            <span class="toast-copy">保存失败，当前页面草稿已完整保留。请先检查网络连接后直接重试；如果仍然失败，请稍后再试，或返回当前页面继续编辑后重新保存。</span>
+            <button class="toast-close" aria-label="关闭"><svg class="demo-icon" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"></path><path d="m6 6 12 12"></path></svg></button>
+          </div>
+        </div>
         <div class="production-shot-grid"><figure class="production-shot"><img src="v03-alpha-real-screenshots/wardrobe_home_390_top.png" alt="衣橱保存 Toast"><figcaption><b>衣橱保存 Toast</b><span>同底部操作区宽，覆盖 FAB</span></figcaption></figure><figure class="production-shot"><img src="v03-alpha-real-screenshots/outfit_home_390_top.png" alt="套装创建 Toast"><figcaption><b>套装创建 Toast</b><span>结构不变，只优化毛玻璃与圆角</span></figcaption></figure><figure class="production-shot"><img src="v03-alpha-real-screenshots/wishlist_home_390_top.png" alt="种草添加 Toast"><figcaption><b>种草添加 Toast</b><span>悬浮于页面与底部导航之上</span></figcaption></figure></div>
-      </div></div><div class="module-copy"><ul><li>Toast 悬浮在所有页面内容之上，不参与文档流。</li><li>宽度与底部操作栏同一内容宽度，底部定位在导航上方：<code>env(safe-area-inset-bottom) + 5.25rem</code>。</li><li>当前层级 <code>z-[75]</code>；Lightbox 或裁切器打开时隐藏。</li><li>Error 使用 <code>role=&quot;alert&quot;</code> + <code>aria-live=&quot;assertive&quot;</code>；success/info 使用 <code>role=&quot;status&quot;</code> + <code>aria-live=&quot;polite&quot;</code>。</li><li>关闭按钮命中区 44px。</li><li>样式：圆角矩形、毛玻璃背景、左侧语义标记；不要做顶部窄条或普通页面卡片。</li></ul></div></section>
+      </div></div><div class="module-copy"><ul><li>Toast 悬浮在所有页面内容之上，不参与文档流。</li><li>宽度与底部操作栏同一内容宽度，底部定位在导航上方：<code>env(safe-area-inset-bottom) + 5.25rem</code>。</li><li>当前层级 <code>z-[75]</code>；Lightbox 或裁切器打开时隐藏。</li><li>Error 使用 <code>role=&quot;alert&quot;</code> + <code>aria-live=&quot;assertive&quot;</code>；success/info 使用 <code>role=&quot;status&quot;</code> + <code>aria-live=&quot;polite&quot;</code>。</li><li>关闭按钮命中区 44px。</li><li>样式：圆角矩形、毛玻璃背景、左侧语义图标槽、右侧关闭/动作按钮。</li><li>Toast 只有正文，不区分标题和正文；不得再使用 <code>title + description</code>、<code>strong + small</code> 或两套字重表达层级。</li><li>一行 Toast：最常见成功反馈，正文单行截断，整体高度约 <code>52px-56px</code>。</li><li>两行 Toast：用于带动作的提醒，例如缺少 MiniMax Key；正文最多两行，操作按钮仍在右侧。</li><li>三行 Toast：只用于较长错误或权限说明；正文最多三行，超出时改用 Sheet 或页面内提示，不继续撑高 Toast。</li><li>左侧语义图标槽和右侧关闭按钮都按 Toast 总高度上下居中；一行、两行、三行使用同一居中规则，三行错误态不得让图标贴近顶部。</li><li>不使用满高竖条、粗色条或顶部窄条表达状态；状态由 <code>lucide-react</code> 图标、轻 tint 图标槽和细边框表达。</li><li>Success 图标槽用 <code>moss</code> tint，Info / Key 缺失用 <code>denim</code> tint，Error 用 <code>danger</code> tint。</li><li>有动作时按钮放右侧，例如 MiniMax Key 缺失使用 <code>前往设置</code> 主按钮；按钮与 Toast 外框保持同心圆角。</li><li>MiniMax Key 缺失 Toast 只在每次 App 启动后检测到未输入 Key，或首次登录后检测到未输入 Key 时弹出一次；点击 <code>前往设置</code> 必须直达 MiniMax Key 输入页，不是泛化设置首页。</li><li>Toast 允许覆盖 FAB 和底部内容，不得把页面内容往上挤。</li></ul>
+<p>相关未改代码约束：二级/三级页面 TopBar 不得出现实心白条；录入页顶部同样使用透明底毛玻璃；拍照/从图库选择入口必须使用最新圆角矩形控件。</p></div></section>
 <section class="section" id="12-无障碍"><h2>12. 无障碍</h2><div class="module-visual" aria-label="12. 无障碍 视觉示意">
       <div class="a11y-board">
         <span>44px 命中区</span><span>aria-label</span><span>focus ring</span><span>不只靠颜色</span>
@@ -966,13 +1111,13 @@
     <div class="reference-notes"><span>视觉优化参考</span><ul><li>沿用登录页背景、主卡和表单控件 token。</li><li>协议勾选命中区补到 44px，链接用 denim 600。</li><li>注册按钮图标用 UserPlus，输入框 R 角和边框一致。</li></ul></div>
   </article><article class="reference-shot" data-page-state="settings_home_390_top">
     <figure class="production-shot"><img src="v03-alpha-real-screenshots/settings_home_390_top.png" alt="设置 / 首页"><figcaption><b>设置 / 首页</b><span>账号服务、MiniMax、画像与位置入口</span></figcaption></figure>
-    <div class="reference-notes"><span>视觉优化参考</span><ul><li>MiniMax 提示条用 ai 浅 tint，关闭 X 用 muted。</li><li>设置列表一级卡 28px，二级提示块 18-20px。</li><li>底部导航 glass 75%，选中项与外框同心圆角。</li></ul></div>
+    <div class="reference-notes"><span>视觉优化参考</span><ul><li>MiniMax 缺 Key 提醒改为启动后 Toast，不长期占据页面顶部。</li><li>设置列表一级卡 28px，二级提示块 18-20px。</li><li>底部导航 glass 75%，选中项与外框同心圆角。</li></ul></div>
   </article><article class="reference-shot" data-page-state="wardrobe_home_390_top">
     <figure class="production-shot"><img src="v03-alpha-real-screenshots/wardrobe_home_390_top.png" alt="衣橱 / 首页"><figcaption><b>衣橱 / 首页</b><span>顶部筛选、瀑布流、Toast、底部导航</span></figcaption></figure>
     <div class="reference-notes"><span>视觉优化参考</span><ul><li>顶部按钮使用 glass 背景，图标统一 lucide 20px。</li><li>瀑布流卡片与内图保持同心圆角，边框用 line。</li><li>Toast 固定在导航上方，覆盖 FAB，关闭区 44px。</li></ul></div>
   </article><article class="reference-shot" data-page-state="garment_detail_390_top">
     <figure class="production-shot"><img src="v03-alpha-real-screenshots/garment_detail_390_top.png" alt="衣物 / 详情首屏"><figcaption><b>衣物 / 详情首屏</b><span>主图、胶片、标题与操作</span></figcaption></figure>
-    <div class="reference-notes"><span>视觉优化参考</span><ul><li>TopBar 改轻 glass，弱化硬分割线。</li><li>主图 3:4 和外框 28px，浮层胶囊降对比。</li><li>胶片选中态用 Denim 边框，缩略图 8-12px 圆角。</li></ul></div>
+    <div class="reference-notes"><span>视觉优化参考</span><ul><li>TopBar 改为透明底 + 毛玻璃，删除实心白条。</li><li>主图 3:4 和外框 28px，浮层胶囊降对比。</li><li>胶片选中态用 Denim 边框，缩略图 8-12px 圆角。</li></ul></div>
   </article><article class="reference-shot" data-page-state="garment_detail_390_info">
     <figure class="production-shot"><img src="v03-alpha-real-screenshots/garment_detail_390_info.png" alt="衣物 / 详情信息入口"><figcaption><b>衣物 / 详情信息入口</b><span>AI 建议露出、标题与 Toast</span></figcaption></figure>
     <div class="reference-notes"><span>视觉优化参考</span><ul><li>AI 卡用 surface，Toast 用更强 glass 区分层级。</li><li>标题、记录提示、meta 间距按 12/16/20 节奏。</li><li>生成按钮 lucide 18-20px，按钮 R 角统一。</li></ul></div>
@@ -984,7 +1129,7 @@
     <div class="reference-notes"><span>视觉优化参考</span><ul><li>遮罩用 ink 半透明 + blur，不压暗过重。</li><li>Sheet 顶部 26-28px，surface 干净无硬边。</li><li>取消和删除按钮同高同 R，删除用 danger。</li></ul></div>
   </article><article class="reference-shot" data-page-state="intake_single_step1_empty_390_top">
     <figure class="production-shot"><img src="v03-alpha-real-screenshots/intake_single_step1_empty_390_top.png" alt="录入 / Step 1 空态"><figcaption><b>录入 / Step 1 空态</b><span>选择单品照片</span></figcaption></figure>
-    <div class="reference-notes"><span>视觉优化参考</span><ul><li>顶部栏收敛到 top glass，不加硬边框。</li><li>一级选择卡 28px，内部虚线框 12-14px。</li><li>拍照/图库图标用 Camera/Image，禁用下一步更明确。</li></ul></div>
+    <div class="reference-notes"><span>视觉优化参考</span><ul><li>顶部栏使用透明底 + top glass，不出现白色条块。</li><li>一级选择卡 28px，内部虚线框 12-14px。</li><li>拍照/图库入口改为最新圆角矩形按钮，图标用 Camera/Image。</li></ul></div>
   </article><article class="reference-shot" data-page-state="intake_single_step1_imported_390_top">
     <figure class="production-shot"><img src="v03-alpha-real-screenshots/intake_single_step1_imported_390_top.png" alt="录入 / Step 1 已导入"><figcaption><b>录入 / Step 1 已导入</b><span>图片队列与裁切入口</span></figcaption></figure>
     <div class="reference-notes"><span>视觉优化参考</span><ul><li>主预览保持 3:4，图片与卡片圆角同心。</li><li>选中缩略图用 Denim 边框 + 轻 ring。</li><li>继续拍照/图库按钮减阴影，清空只用 danger 文本/边框。</li></ul></div>
@@ -999,7 +1144,7 @@
     <div class="reference-notes"><span>视觉优化参考</span><ul><li>周历一级容器 28px，选中日期用 Denim 淡底细边。</li><li>顶部按钮和底部导航 glass 75%，激活项圆角矩形。</li><li>套装卡图片 3:4 主体居中，Toast 上移到导航上方。</li></ul></div>
   </article><article class="reference-shot" data-page-state="outfit_detail_390_top">
     <figure class="production-shot"><img src="v03-alpha-real-screenshots/outfit_detail_390_top.png" alt="套装 / 详情首屏"><figcaption><b>套装 / 详情首屏</b><span>套装主图与元信息</span></figcaption></figure>
-    <div class="reference-notes"><span>视觉优化参考</span><ul><li>返回/更多栏用轻 glass，分割线更淡。</li><li>Hero 图保持结构，只调 object-position 保完整主体。</li><li>主图和标记按钮用半透明 surface，字重 600。</li></ul></div>
+    <div class="reference-notes"><span>视觉优化参考</span><ul><li>返回/更多栏用透明 glass，删除二级/三级页白色条块。</li><li>Hero 图保持结构，只调 object-position 保完整主体。</li><li>主图和标记按钮用半透明 surface，字重 600。</li></ul></div>
   </article><article class="reference-shot" data-page-state="outfit_detail_390_info">
     <figure class="production-shot"><img src="v03-alpha-real-screenshots/outfit_detail_390_info.png" alt="套装 / 详情信息入口"><figcaption><b>套装 / 详情信息入口</b><span>主图区与 AI 卡露出</span></figcaption></figure>
     <div class="reference-notes"><span>视觉优化参考</span><ul><li>胶片选中边框 Denim，虚线占位更淡。</li><li>标记今天穿了按钮减阴影。</li><li>AI 卡使用二级卡 18-20px，与主图区分层。</li></ul></div>

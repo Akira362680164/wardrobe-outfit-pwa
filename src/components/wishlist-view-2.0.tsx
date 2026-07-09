@@ -26,6 +26,7 @@ import {
 import { formatGarmentFitGender, formatSubcategoryLabel } from "@/lib/display-labels";
 import type { DeviceMiniMaxSettings } from "@/lib/device-minimax";
 import { hasDeviceMiniMaxKey } from "@/lib/device-minimax";
+import { assessWishlistItemOnServer } from "@/lib/online/online-ai-enhancement-client";
 import { buildWishlistEditRecognitionPatch } from "@/lib/item-recognition-patch";
 
 import {
@@ -841,8 +842,7 @@ export function WishlistView20({
       let usedLocalFallback = false;
       if (hasDeviceMiniMaxKey(settings)) {
         try {
-          const { assessWishlistItemOnDevice } = await import("@/lib/device-minimax");
-          assessment = await assessWishlistItemOnDevice(
+          assessment = await assessWishlistItemOnServer(
             wishlistItem,
             { ruleAssessment, wardrobeItems: items, outfits },
             settings,
@@ -1289,7 +1289,7 @@ export function WishlistView20({
     subPageNode = (
       <div className="flex flex-col h-full">
         <div className="flex h-[60px] items-center gap-2 px-4 border-b border-ink/10">
-          <button type="button" onClick={goBack} className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-white text-ink/70 shadow-soft active:scale-95" aria-label="返回">
+          <button type="button" onClick={goBack} className="grid h-11 w-11 shrink-0 place-items-center ui-control-radius bg-transparent text-ink/70 active:scale-95" aria-label="返回">
             <ChevronLeft size={20} />
           </button>
           <h2 className="text-base font-semibold">{title}</h2>
@@ -1703,7 +1703,7 @@ export function WishlistView20({
                     summary={getWishlistCardSubtitle(w, rule)}
                     media={
                       w.mainImage ? (
-                        <OnlineAssetImage asset={w.mainImage.asset} variant="thumbnail" alt={w.name} className="h-full w-full" />
+                        <OnlineAssetImage asset={w.mainImage.asset} variant="thumbnail" alt={w.name} className="h-full w-full" imageClassName="object-cover" />
                       ) : (
                         <div className="grid h-full w-full place-items-center text-ink/20">
                           <ImageIcon size={36} />

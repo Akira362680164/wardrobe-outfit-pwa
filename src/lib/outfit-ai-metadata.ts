@@ -1,5 +1,5 @@
 // src/lib/outfit-ai-metadata.ts
-// v1.0套装基础信息生成 (与 generateOutfitAiSuggestionOnDevice独立):
+// v1.0套装基础信息生成 (与套装详情 AI 建议独立):
 // - 输入: 已选衣物的结构化字段 +套装名称候选
 // - 输出: name / seasons / sceneTags / styleTags / pairingTags / temperatureRange / notes
 // - 不写数据库; 仅给 OutfitIntakeFlow / 编辑页 "重新使用 AI 生成信息" 回填表单

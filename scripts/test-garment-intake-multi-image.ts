@@ -98,6 +98,8 @@ check("GarmentIntakeFlow 展示「已选择 X 张」", /已选择\s*\{imageItems
 // GarmentIntakeFlow keeps compact add actions after images are selected.
 check("GarmentIntakeFlow 展示小按钮「继续从图库选择」", /继续从图库选择/.test(garmentIntakeFlow));
 check("IntakeStepOneImagePicker 有预览时隐藏大号拍照/图库卡片", /\{!previewNode \? \([\s\S]*min-h-\[144px\][\s\S]*\) : null\}/.test(garmentIntakeFlow));
+check("IntakeStepOneImagePicker 拍照/图库入口接入新版圆角矩形", /min-h-\[144px\][^"]*ui-control-radius[^"]*bg-white\/82[^"]*shadow-sm/.test(garmentIntakeFlow));
+check("GarmentIntakeFlow 已选图追加入口接入新版圆角矩形", /bg-white\/82[\s\S]{0,120}shadow-sm[\s\S]{0,120}继续拍照/.test(garmentIntakeFlow) && /bg-white\/82[\s\S]{0,120}shadow-sm[\s\S]{0,120}继续从图库选择/.test(garmentIntakeFlow));
 
 // GarmentIntakeFlow selected thumbnail actions
 check("GarmentIntakeFlow 缩略图浮层展示「裁切/旋转」", /裁切\/旋转/.test(garmentIntakeFlow));
@@ -154,7 +156,7 @@ check("GarmentIntakeFlow 失败草稿顶部 banner 显示「AI 识别失败」",
 check("GarmentIntakeFlow 缩略图 strip 显示「识别中」loading", /item\.status === "recognizing"[\s\S]+?识别中/.test(garmentIntakeFlow));
 check("GarmentIntakeFlow 把 aiTag 映射到 buildLocalGarmentDraft", /mapAiTagToGarmentDraftInput/.test(garmentIntakeFlow));
 check("wardrobe-app GarmentIntakeFlow wiring 传 onProcessImage", /<GarmentIntakeFlow[\s\S]+?onProcessImage=\{processGarmentIntakeImage\}/.test(wardrobeApp));
-check("wardrobe-app processGarmentIntakeImage 调 recognizeSingleItemFromDataUrl", /processGarmentIntakeImage[\s\S]+?recognizeSingleItemFromDataUrl\(/.test(wardrobeApp));
+check("wardrobe-app processGarmentIntakeImage 调后端录入识别", /processGarmentIntakeImage[\s\S]+?recognizeGarmentOnServer\(/.test(wardrobeApp));
 
 console.log(`\ngarment intake multi-image tests: ${pass} passed, ${fail} failed`);
 if (fail > 0) process.exit(1);

@@ -6,9 +6,9 @@
     "height": 844
   },
   "source": "live_business_flow",
-  "generatedAt": "2026-07-08T03:41:40.999Z",
-  "validatedAgainstCommit": "b2a23f077c6abda51e0e457a02e39e3a45d8bbd6",
-  "validatedAgainstBranch": "feature/wechat-miniprogram-v1",
+  "generatedAt": "2026-07-08T13:04:48.890Z",
+  "validatedAgainstCommit": "acb0e5dd962d572e8edf4a5a7182f1a53b820863",
+  "validatedAgainstBranch": "codex/v03-alpha-live-visual-review",
   "captureManifestAvailable": true,
   "captureManifest": {
     "version": "v0.3-alpha",
@@ -17,8 +17,8 @@
       "height": 844
     },
     "source": "live_business_flow",
-    "accountPhoneSuffix": "7371",
-    "capturedAt": "2026-07-08T03:41:15.783Z",
+    "accountPhoneSuffix": "7251",
+    "capturedAt": "2026-07-08T13:01:49.887Z",
     "captures": [
       {
         "stateId": "auth_login",
@@ -27,7 +27,7 @@
         "businessStep": "打开 App 后的登录页",
         "triggerAction": "page.goto('/')",
         "routeOrVisiblePage": "/ :: 登录衣橱账号",
-        "capturedAt": "2026-07-08T03:38:05.315Z",
+        "capturedAt": "2026-07-08T12:59:41.291Z",
         "repeatability": "repeatable",
         "source": "live_business_flow"
       },
@@ -38,7 +38,7 @@
         "businessStep": "注册页提交前",
         "triggerAction": "点击去注册",
         "routeOrVisiblePage": "/ :: 注册衣橱账号",
-        "capturedAt": "2026-07-08T03:38:05.737Z",
+        "capturedAt": "2026-07-08T12:59:41.725Z",
         "repeatability": "repeatable",
         "source": "live_business_flow"
       },
@@ -49,7 +49,7 @@
         "businessStep": "登录后设置首页",
         "triggerAction": "点击设置 Tab",
         "routeOrVisiblePage": "/ :: 设置 / 账号服务 / 我的穿衣画像",
-        "capturedAt": "2026-07-08T03:38:14.170Z",
+        "capturedAt": "2026-07-08T12:59:50.182Z",
         "repeatability": "repeatable",
         "source": "live_business_flow"
       },
@@ -60,7 +60,7 @@
         "businessStep": "单品录入 Step 1 空状态",
         "triggerAction": "点击新建 > 添加衣物",
         "routeOrVisiblePage": "/ :: 添加单品 / 选择单品照片",
-        "capturedAt": "2026-07-08T03:38:20.986Z",
+        "capturedAt": "2026-07-08T12:59:58.517Z",
         "repeatability": "one_time",
         "source": "live_business_flow"
       },
@@ -71,7 +71,7 @@
         "businessStep": "9 张图片导入后、AI 识别前",
         "triggerAction": "从图库选择 9 张图片",
         "routeOrVisiblePage": "/ :: 添加单品 / 选择单品照片",
-        "capturedAt": "2026-07-08T03:38:21.474Z",
+        "capturedAt": "2026-07-08T12:59:59.019Z",
         "repeatability": "one_time",
         "source": "live_business_flow"
       },
@@ -82,7 +82,7 @@
         "businessStep": "live MiniMax 识别后的确认页首屏",
         "triggerAction": "点击下一步 AI 识别",
         "routeOrVisiblePage": "/ :: 添加单品 / 已识别 9 件单品 / 校对衣物草稿",
-        "capturedAt": "2026-07-08T03:40:34.813Z",
+        "capturedAt": "2026-07-08T13:01:10.502Z",
         "repeatability": "one_time",
         "source": "live_business_flow"
       },
@@ -93,7 +93,7 @@
         "businessStep": "live MiniMax 识别后的确认页底部",
         "triggerAction": "滚动到保存区域",
         "routeOrVisiblePage": "/ :: 添加单品 / 已识别 9 件单品 / 校对衣物草稿",
-        "capturedAt": "2026-07-08T03:40:35.482Z",
+        "capturedAt": "2026-07-08T13:01:11.185Z",
         "repeatability": "one_time",
         "source": "live_business_flow"
       },
@@ -104,7 +104,7 @@
         "businessStep": "单品保存并服务器读回后的衣橱首页",
         "triggerAction": "点击衣橱 Tab",
         "routeOrVisiblePage": "/ :: ",
-        "capturedAt": "2026-07-08T03:40:39.774Z",
+        "capturedAt": "2026-07-08T13:01:15.501Z",
         "repeatability": "repeatable",
         "source": "live_business_flow"
       },
@@ -114,8 +114,8 @@
         "filename": "screenshots/garment_detail_390_top.png",
         "businessStep": "真实单品详情首屏",
         "triggerAction": "点击衣橱首件单品",
-        "routeOrVisiblePage": "/ :: 白色网面透气运动鞋 / 基础信息 / 颜色",
-        "capturedAt": "2026-07-08T03:40:40.504Z",
+        "routeOrVisiblePage": "/ :: 白色网面跑步运动鞋 / 基础信息 / 颜色",
+        "capturedAt": "2026-07-08T13:01:16.224Z",
         "repeatability": "repeatable",
         "source": "live_business_flow"
       },
@@ -125,8 +125,8 @@
         "filename": "screenshots/garment_detail_390_info.png",
         "businessStep": "真实单品详情信息区",
         "triggerAction": "滚动到信息区",
-        "routeOrVisiblePage": "/ :: 白色网面透气运动鞋 / 基础信息 / 颜色",
-        "capturedAt": "2026-07-08T03:40:40.864Z",
+        "routeOrVisiblePage": "/ :: 白色网面跑步运动鞋 / 基础信息 / 颜色",
+        "capturedAt": "2026-07-08T13:01:16.579Z",
         "repeatability": "repeatable",
         "source": "live_business_flow"
       },
@@ -136,8 +136,8 @@
         "filename": "screenshots/garment_detail_390_bottom.png",
         "businessStep": "真实单品详情底部区",
         "triggerAction": "滚动到页面底部",
-        "routeOrVisiblePage": "/ :: 白色网面透气运动鞋 / 基础信息 / 颜色",
-        "capturedAt": "2026-07-08T03:40:41.532Z",
+        "routeOrVisiblePage": "/ :: 白色网面跑步运动鞋 / 基础信息 / 颜色",
+        "capturedAt": "2026-07-08T13:01:17.225Z",
         "repeatability": "repeatable",
         "source": "live_business_flow"
       },
@@ -147,8 +147,8 @@
         "filename": "screenshots/confirm_delete_sheet_390_top.png",
         "businessStep": "删除确认 Sheet",
         "triggerAction": "详情页更多菜单 > 删除衣物",
-        "routeOrVisiblePage": "/ :: 白色网面透气运动鞋 / 基础信息 / 颜色",
-        "capturedAt": "2026-07-08T03:40:42.144Z",
+        "routeOrVisiblePage": "/ :: 白色网面跑步运动鞋 / 基础信息 / 颜色",
+        "capturedAt": "2026-07-08T13:01:17.836Z",
         "repeatability": "one_time",
         "source": "live_business_flow"
       },
@@ -159,7 +159,7 @@
         "businessStep": "正式创建套装后的套装首页",
         "triggerAction": "点击套装 Tab",
         "routeOrVisiblePage": "/ :: 套装",
-        "capturedAt": "2026-07-08T03:40:57.945Z",
+        "capturedAt": "2026-07-08T13:01:31.111Z",
         "repeatability": "repeatable",
         "source": "live_business_flow"
       },
@@ -170,7 +170,7 @@
         "businessStep": "真实套装详情首屏",
         "triggerAction": "点击 live 套装",
         "routeOrVisiblePage": "/ :: v03-alpha live 套装 / 套装概况 / 适穿信息",
-        "capturedAt": "2026-07-08T03:40:58.684Z",
+        "capturedAt": "2026-07-08T13:01:31.818Z",
         "repeatability": "repeatable",
         "source": "live_business_flow"
       },
@@ -181,7 +181,7 @@
         "businessStep": "真实套装详情信息区",
         "triggerAction": "滚动到信息区",
         "routeOrVisiblePage": "/ :: v03-alpha live 套装 / 套装概况 / 适穿信息",
-        "capturedAt": "2026-07-08T03:40:59.039Z",
+        "capturedAt": "2026-07-08T13:01:32.178Z",
         "repeatability": "repeatable",
         "source": "live_business_flow"
       },
@@ -192,7 +192,7 @@
         "businessStep": "真实套装详情底部区",
         "triggerAction": "滚动到页面底部",
         "routeOrVisiblePage": "/ :: v03-alpha live 套装 / 套装概况 / 适穿信息",
-        "capturedAt": "2026-07-08T03:40:59.687Z",
+        "capturedAt": "2026-07-08T13:01:32.846Z",
         "repeatability": "repeatable",
         "source": "live_business_flow"
       },
@@ -203,7 +203,7 @@
         "businessStep": "套装月历页",
         "triggerAction": "点击月历",
         "routeOrVisiblePage": "/ :: ",
-        "capturedAt": "2026-07-08T03:41:00.142Z",
+        "capturedAt": "2026-07-08T13:01:33.304Z",
         "repeatability": "repeatable",
         "source": "live_business_flow"
       },
@@ -214,7 +214,7 @@
         "businessStep": "正式创建种草后的种草首页",
         "triggerAction": "点击种草 Tab",
         "routeOrVisiblePage": "/ :: 种草",
-        "capturedAt": "2026-07-08T03:41:13.992Z",
+        "capturedAt": "2026-07-08T13:01:48.126Z",
         "repeatability": "repeatable",
         "source": "live_business_flow"
       },
@@ -225,7 +225,7 @@
         "businessStep": "真实种草详情首屏",
         "triggerAction": "点击种草单品",
         "routeOrVisiblePage": "/ :: v03-alpha live 种草 / 基础信息 / 颜色",
-        "capturedAt": "2026-07-08T03:41:14.744Z",
+        "capturedAt": "2026-07-08T13:01:48.860Z",
         "repeatability": "repeatable",
         "source": "live_business_flow"
       },
@@ -236,7 +236,7 @@
         "businessStep": "真实种草详情信息区",
         "triggerAction": "滚动到信息区",
         "routeOrVisiblePage": "/ :: v03-alpha live 种草 / 基础信息 / 颜色",
-        "capturedAt": "2026-07-08T03:41:15.117Z",
+        "capturedAt": "2026-07-08T13:01:49.223Z",
         "repeatability": "repeatable",
         "source": "live_business_flow"
       },
@@ -247,7 +247,7 @@
         "businessStep": "真实种草详情底部区",
         "triggerAction": "滚动到页面底部",
         "routeOrVisiblePage": "/ :: v03-alpha live 种草 / 基础信息 / 颜色",
-        "capturedAt": "2026-07-08T03:41:15.783Z",
+        "capturedAt": "2026-07-08T13:01:49.887Z",
         "repeatability": "repeatable",
         "source": "live_business_flow"
       }

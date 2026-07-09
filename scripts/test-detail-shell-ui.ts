@@ -104,10 +104,9 @@ assert.doesNotMatch(garmentDetail, /className="px-4 mt-4 pb-8"/, "GarmentDetail3
 assert.doesNotMatch(appSubPageTopBar, /min-h-\[76px\] px-4 border-b/, "AppSubPageTopBar 不再叠加二级页横向边距");
 assert.match(detailShell, /<DetailSectionCard title=\{title\}>/, "DetailSurfaceCard 必须委托 DetailSectionCard");
 assert.ok(
-  itemSurfaceTokens.includes("rounded-2xl") &&
-    itemSurfaceTokens.includes("bg-white") &&
+  itemSurfaceTokens.includes("ui-card") &&
     itemSurfaceTokens.includes("shadow-none"),
-  "ITEM_SURFACE_CLASS 应统一卡片圆角、背景、无阴影",
+  "ITEM_SURFACE_CLASS 应统一使用 UI 卡片 token 且无旧阴影",
 );
 assert.match(garmentDetail, /<ItemDetailSections[\s\S]{0,800}basicExtraRows=\{\([\s\S]{0,260}<WardrobeExtras[\s\S]{0,80}mode="view"/, "衣橱详情必须通过 ItemDetailSections + WardrobeExtras 渲染字段");
 assert.match(wishlistView, /<ItemDetailSections[\s\S]{0,800}basicExtraRows=\{<WishlistExtras mode="view"/, "种草详情必须通过 ItemDetailSections + WishlistExtras 渲染字段");

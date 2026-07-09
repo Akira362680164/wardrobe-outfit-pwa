@@ -28,6 +28,14 @@ async function checkViewport(width: number, height: number) {
     assert.equal(await page.locator(".reference-shot").count(), 21, "product practice has optimized reference cards");
     assert.equal(await page.locator(".reference-notes").count(), 21, "each reference card has optimization notes");
     assert.ok(await page.locator(".toast-stage .production-shot img").count() >= 3, "toast visual uses production screenshots");
+    const toastBox = await page.locator(".spec-toast.three-line").first().boundingBox();
+    const iconBox = await page.locator(".spec-toast.three-line .toast-icon").first().boundingBox();
+    assert.ok(toastBox && iconBox, "three-line toast and icon render");
+    const toastCenter = toastBox.y + toastBox.height / 2;
+    const iconCenter = iconBox.y + iconBox.height / 2;
+    assert.ok(Math.abs(toastCenter - iconCenter) <= 2, "three-line toast icon is vertically centered");
+    const copyBox = await page.locator(".spec-toast.three-line .toast-copy").first().boundingBox();
+    assert.ok(copyBox && copyBox.height >= 50, "three-line toast copy occupies three lines");
   } finally {
     await browser.close();
   }

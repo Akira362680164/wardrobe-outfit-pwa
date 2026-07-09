@@ -536,7 +536,6 @@
 - **Android 修复**：`android/app/build.gradle` 中 `compileSdk / minSdkVersion / targetSdkVersion` 从变量引用改为字面值（AGP 8.13 兼容性）。
 - **未完成**：模拟器已被其他 session 占用，未执行 Android 功能验证。
 - **风险门禁**：**high**（Android 原生构建与签名）。
->>>>>>> parent of a78e880 (v2.1.3-test APK build success + fixed signing)
 ## 2026-07-01 / v2.1.3-test / Codex — jsdom + testing-library 组件测试框架、远程 API 烟测验证
 
 - **目的**：补齐组件测试框架（jsdom + @testing-library/react）并验证 postrelease 远程 API 烟测。

@@ -41,7 +41,7 @@ const recogStart = wardrobeApp.indexOf("async function recognizeEditDraftAgain")
 const nextFnStart = wardrobeApp.indexOf("async function saveEditedItem", recogStart);
 const recogFnBody = wardrobeApp.slice(recogStart, nextFnStart);
 ok(recogStart > 0, "recognizeEditDraftAgain 函数存在");
-ok(recogFnBody.includes("recognizeSingleItemFromDataUrl"), "编辑页重新识别调用 recognizeSingleItemFromDataUrl");
+ok(recogFnBody.includes("recognizeGarmentOnServer"), "编辑页重新识别调用后端录入识别");
 ok(!recogFnBody.includes("detectGarmentsOnDevice"), "编辑页重新识别不再调用 detectGarmentsOnDevice");
 ok(wardrobeApp.includes("buildWardrobeEditRecognitionPatch"), "使用统一识别补丁");
 ok(!/buildWardrobeEditRecognitionPatch\(tag,\s*\{[\s\S]{0,120}currentName:/.test(recogFnBody), "单品编辑重新识别会用 AI 新名称覆盖当前名称");

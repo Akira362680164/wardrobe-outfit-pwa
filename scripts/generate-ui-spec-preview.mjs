@@ -198,7 +198,14 @@ function icon(name) {
     layers: '<path d="m12 3 8 4-8 4-8-4 8-4z"></path><path d="m4 12 8 4 8-4"></path><path d="m4 17 8 4 8-4"></path>',
     bag: '<path d="M6 8h12l-1 13H7L6 8z"></path><path d="M9 8a3 3 0 0 1 6 0"></path>',
     settings: '<circle cx="12" cy="12" r="3"></circle><path d="M19 12a7 7 0 0 0-.1-1l2-1.5-2-3.4-2.4 1a7 7 0 0 0-1.7-1L14.5 3h-5l-.4 3.1a7 7 0 0 0-1.7 1l-2.4-1-2 3.4L5.1 11a7 7 0 0 0 0 2l-2 1.5 2 3.4 2.4-1a7 7 0 0 0 1.7 1l.4 3.1h5l.4-3.1a7 7 0 0 0 1.7-1l2.4 1 2-3.4-2.1-1.5a7 7 0 0 0 .1-1z"></path>',
+    chevronLeft: '<path d="m15 18-6-6 6-6"></path>',
     chevronDown: '<path d="m6 9 6 6 6-6"></path>',
+    check: '<path d="M20 6 9 17l-5-5"></path>',
+    info: '<circle cx="12" cy="12" r="9"></circle><path d="M12 10v6"></path><path d="M12 7h.01"></path>',
+    alert: '<path d="M12 9v4"></path><path d="M12 17h.01"></path><path d="M10.3 3.9 2.4 18a2 2 0 0 0 1.7 3h15.8a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"></path>',
+    x: '<path d="M18 6 6 18"></path><path d="m6 6 12 12"></path>',
+    camera: '<path d="M14.5 4 16 7h3a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V9a2 2 0 0 1 2-2h3l1.5-3h5z"></path><circle cx="12" cy="13" r="3"></circle>',
+    image: '<rect x="3" y="5" width="18" height="14" rx="2"></rect><circle cx="8.5" cy="10.5" r="1.5"></circle><path d="m21 15-5-5L5 21"></path>',
   };
   return `<svg class="demo-icon" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${paths[name] ?? ""}</svg>`;
 }
@@ -214,18 +221,18 @@ function productionShotGrid(shots) {
 const visualReferences = [
   ["auth_login_390_top.png", "认证 / 登录页", "登录衣橱账号", ["保留 background.appAmbient 全局渐变，不退回 paper/mist 纯底。", "主卡 28px 圆角，输入框 12-14px，focus 用 denim。", "登录按钮启用态用 primary，Shield 图标统一 lucide 20px。"]],
   ["auth_register_390_top.png", "认证 / 注册页", "注册衣橱账号", ["沿用登录页背景、主卡和表单控件 token。", "协议勾选命中区补到 44px，链接用 denim 600。", "注册按钮图标用 UserPlus，输入框 R 角和边框一致。"]],
-  ["settings_home_390_top.png", "设置 / 首页", "账号服务、MiniMax、画像与位置入口", ["MiniMax 提示条用 ai 浅 tint，关闭 X 用 muted。", "设置列表一级卡 28px，二级提示块 18-20px。", "底部导航 glass 75%，选中项与外框同心圆角。"]],
+  ["settings_home_390_top.png", "设置 / 首页", "账号服务、MiniMax、画像与位置入口", ["MiniMax 缺 Key 提醒改为启动后 Toast，不长期占据页面顶部。", "设置列表一级卡 28px，二级提示块 18-20px。", "底部导航 glass 75%，选中项与外框同心圆角。"]],
   ["wardrobe_home_390_top.png", "衣橱 / 首页", "顶部筛选、瀑布流、Toast、底部导航", ["顶部按钮使用 glass 背景，图标统一 lucide 20px。", "瀑布流卡片与内图保持同心圆角，边框用 line。", "Toast 固定在导航上方，覆盖 FAB，关闭区 44px。"]],
-  ["garment_detail_390_top.png", "衣物 / 详情首屏", "主图、胶片、标题与操作", ["TopBar 改轻 glass，弱化硬分割线。", "主图 3:4 和外框 28px，浮层胶囊降对比。", "胶片选中态用 Denim 边框，缩略图 8-12px 圆角。"]],
+  ["garment_detail_390_top.png", "衣物 / 详情首屏", "主图、胶片、标题与操作", ["TopBar 改为透明底 + 毛玻璃，删除实心白条。", "主图 3:4 和外框 28px，浮层胶囊降对比。", "胶片选中态用 Denim 边框，缩略图 8-12px 圆角。"]],
   ["garment_detail_390_info.png", "衣物 / 详情信息入口", "AI 建议露出、标题与 Toast", ["AI 卡用 surface，Toast 用更强 glass 区分层级。", "标题、记录提示、meta 间距按 12/16/20 节奏。", "生成按钮 lucide 18-20px，按钮 R 角统一。"]],
   ["garment_detail_390_bottom.png", "衣物 / 详情底部", "颜色、穿着属性、备注", ["信息卡统一一级内容卡圆角和 shadow.card。", "色点与 chip 边线更淡，label muted、value ink。", "温度条低饱和蓝红渐变，handle 20px。"]],
   ["confirm_delete_sheet_390_top.png", "覆盖层 / 删除确认", "衣物详情删除 Sheet", ["遮罩用 ink 半透明 + blur，不压暗过重。", "Sheet 顶部 26-28px，surface 干净无硬边。", "取消和删除按钮同高同 R，删除用 danger。"]],
-  ["intake_single_step1_empty_390_top.png", "录入 / Step 1 空态", "选择单品照片", ["顶部栏收敛到 top glass，不加硬边框。", "一级选择卡 28px，内部虚线框 12-14px。", "拍照/图库图标用 Camera/Image，禁用下一步更明确。"]],
+  ["intake_single_step1_empty_390_top.png", "录入 / Step 1 空态", "选择单品照片", ["顶部栏使用透明底 + top glass，不出现白色条块。", "一级选择卡 28px，内部虚线框 12-14px。", "拍照/图库入口改为最新圆角矩形按钮，图标用 Camera/Image。"]],
   ["intake_single_step1_imported_390_top.png", "录入 / Step 1 已导入", "图片队列与裁切入口", ["主预览保持 3:4，图片与卡片圆角同心。", "选中缩略图用 Denim 边框 + 轻 ring。", "继续拍照/图库按钮减阴影，清空只用 danger 文本/边框。"]],
   ["intake_single_confirm_390_top.png", "录入 / Step 2 确认", "已识别 9 件单品", ["进度条 primary + mist 轨道，不用渐变。", "重新识别为次级 AI 操作，RefreshCw 18px。", "AI/待确认徽标用浅底深字，保存栏用 bottom glass。"]],
   ["intake_single_confirm_390_bottom.png", "录入 / Step 2 保存区", "确认页底部截图", ["当前截图与首屏一致，不能凭空新增字段结构。", "可见提示卡按 24-28px 一级卡处理。", "下方字段若出现，只优化字重、色卡、badge，不改顺序。"]],
   ["outfit_home_390_top.png", "套装 / 首页", "周历、套装卡、Toast", ["周历一级容器 28px，选中日期用 Denim 淡底细边。", "顶部按钮和底部导航 glass 75%，激活项圆角矩形。", "套装卡图片 3:4 主体居中，Toast 上移到导航上方。"]],
-  ["outfit_detail_390_top.png", "套装 / 详情首屏", "套装主图与元信息", ["返回/更多栏用轻 glass，分割线更淡。", "Hero 图保持结构，只调 object-position 保完整主体。", "主图和标记按钮用半透明 surface，字重 600。"]],
+  ["outfit_detail_390_top.png", "套装 / 详情首屏", "套装主图与元信息", ["返回/更多栏用透明 glass，删除二级/三级页白色条块。", "Hero 图保持结构，只调 object-position 保完整主体。", "主图和标记按钮用半透明 surface，字重 600。"]],
   ["outfit_detail_390_info.png", "套装 / 详情信息入口", "主图区与 AI 卡露出", ["胶片选中边框 Denim，虚线占位更淡。", "标记今天穿了按钮减阴影。", "AI 卡使用二级卡 18-20px，与主图区分层。"]],
   ["outfit_detail_390_bottom.png", "套装 / 详情底部", "AI 建议、概况、适穿信息", ["Tab 激活态弱化阴影，减少卡片套卡片感。", "信息块靠 28px，内部少阴影靠文字层级。", "温度条低饱和，label muted、value ink。"]],
   ["outfit_calendar_390_top.png", "套装 / 月历页", "穿搭计划月历", ["月份标题、Chevron、星期行拉开字号层级。", "选中日期用 Denim 淡底 + 12-14px 圆角。", "+计划按钮与套装首页主按钮统一。"]],
@@ -426,6 +433,21 @@ function renderSectionVisual(section) {
 
   if (title.includes("App Shell")) {
     return `
+      <div class="visual-phone-mini shell-demo">
+        <div class="visual-status"><span>9:41</span><span>5G 82%</span></div>
+        <div class="visual-top-glass shell-topbar-demo">
+          <button aria-label="返回">${icon("chevronLeft")}</button>
+          <b>二级页 TopBar</b>
+          <button aria-label="更多">${icon("settings")}</button>
+        </div>
+        <div class="visual-scroll-cards"><span></span><span></span><span></span></div>
+        <div class="visual-floating-nav" data-visual="bottom-nav-concentric">
+          <span class="nav-tab active">${icon("shirt")}<b>衣橱</b></span>
+          <span class="nav-tab">${icon("layers")}<b>套装</b></span>
+          <span class="nav-tab">${icon("bag")}<b>种草</b></span>
+          <span class="nav-tab">${icon("settings")}<b>设置</b></span>
+        </div>
+      </div>
       ${productionShotGrid([
         ["wardrobe_home_390_top.png", "衣橱 Shell", "顶部控件、Toast、圆形 FAB 和底部 Tab 以生产截图为准"],
         ["settings_home_390_top.png", "设置 Shell", "设置页同一底部 Tab，不重新设计页面结构"],
@@ -480,6 +502,18 @@ function renderSectionVisual(section) {
 
   if (title.includes("录入流程")) {
     return `
+      <div class="intake-contract-demo" data-visual="intake-glass-actions">
+        <div class="visual-top-glass intake-topbar-demo">
+          <button aria-label="返回">${icon("chevronLeft")}</button>
+          <span><b>添加单品</b><small>步骤 1 / 2 · 选择照片</small></span>
+          <button aria-label="关闭">${icon("x")}</button>
+          <i></i>
+        </div>
+        <div class="intake-action-grid">
+          <button>${icon("camera")}<b>拍照</b><small>打开相机录入</small></button>
+          <button>${icon("image")}<b>从图库选择</b><small>最多 20 张</small></button>
+        </div>
+      </div>
       ${productionShotGrid([
         ["intake_single_step1_empty_390_top.png", "Step 1 空状态", "添加单品 / 选择照片"],
         ["intake_single_step1_imported_390_top.png", "Step 1 已导入", "缩略图、继续拍照、图库入口、清空"],
@@ -502,6 +536,24 @@ function renderSectionVisual(section) {
   if (title.includes("通知 Toast")) {
     return `
       <div class="toast-stage">
+        <div class="toast-style-board">
+          <div class="spec-toast success one-line">
+            <span class="toast-icon">${icon("check")}</span>
+            <span class="toast-copy">已保存 9 件单品，草稿已清空。</span>
+            <button class="toast-close" aria-label="关闭">${icon("x")}</button>
+          </div>
+          <div class="spec-toast info two-line">
+            <span class="toast-icon">${icon("info")}</span>
+            <span class="toast-copy">尚未配置 MiniMax Key，AI 识别和推荐功能暂不可用。</span>
+            <button class="toast-action">前往设置</button>
+            <button class="toast-close" aria-label="关闭">${icon("x")}</button>
+          </div>
+          <div class="spec-toast error three-line">
+            <span class="toast-icon">${icon("alert")}</span>
+            <span class="toast-copy">保存失败，当前页面草稿已完整保留。请先检查网络连接后直接重试；如果仍然失败，请稍后再试，或返回当前页面继续编辑后重新保存。</span>
+            <button class="toast-close" aria-label="关闭">${icon("x")}</button>
+          </div>
+        </div>
         ${productionShotGrid([
           ["wardrobe_home_390_top.png", "衣橱保存 Toast", "同底部操作区宽，覆盖 FAB"],
           ["outfit_home_390_top.png", "套装创建 Toast", "结构不变，只优化毛玻璃与圆角"],
@@ -899,11 +951,47 @@ function renderHtml({ frontMatter, sections, colorTokens, sourceHash }) {
       display: grid;
       gap: 4px;
       padding: 18px;
-      background: rgba(251,251,248,.75);
+      background: transparent;
+      border: 0;
+      box-shadow: none;
       backdrop-filter: blur(30px) saturate(1.5);
       -webkit-backdrop-filter: blur(30px) saturate(1.5);
     }
     .visual-top-glass span { color: var(--muted); font-size: 11px; font-weight: 800; }
+    .shell-topbar-demo, .intake-topbar-demo {
+      grid-template-columns: 44px 1fr 44px;
+      align-items: center;
+      border-bottom: 0;
+      background: transparent;
+      box-shadow: none;
+    }
+    .shell-topbar-demo b, .intake-topbar-demo b {
+      display: block;
+      text-align: center;
+      font-size: 13px;
+      font-weight: 950;
+    }
+    .shell-topbar-demo button, .intake-topbar-demo button {
+      width: 40px;
+      height: 40px;
+      border: 1px solid rgba(53,92,125,.13);
+      border-radius: 16px;
+      background: rgba(255,255,252,.36);
+      color: var(--denim);
+      display: grid;
+      place-items: center;
+      box-shadow: none;
+    }
+    .shell-topbar-demo .demo-icon, .intake-topbar-demo .demo-icon { width: 20px; height: 20px; }
+    .intake-topbar-demo { grid-template-rows: auto 5px; row-gap: 10px; }
+    .intake-topbar-demo span { color: var(--ink); text-align: center; }
+    .intake-topbar-demo small { display: block; color: var(--muted); font-size: 10px; font-weight: 850; }
+    .intake-topbar-demo i {
+      grid-column: 1 / -1;
+      height: 5px;
+      border-radius: 999px;
+      background: linear-gradient(90deg, var(--denim) 0 50%, rgba(29,34,40,.05) 50%);
+    }
     .visual-scroll-cards { display: grid; gap: 10px; padding: 16px; }
     .visual-scroll-cards span, .mini-card {
       height: 58px;
@@ -912,6 +1000,8 @@ function renderHtml({ frontMatter, sections, colorTokens, sourceHash }) {
       background: rgba(255,255,252,.82);
     }
     .visual-floating-nav {
+      --nav-radius: 30px;
+      --nav-padding: 8px;
       position: absolute;
       left: 14px;
       right: 14px;
@@ -920,9 +1010,9 @@ function renderHtml({ frontMatter, sections, colorTokens, sourceHash }) {
       grid-template-columns: repeat(4, 1fr);
       gap: 6px;
       border: 1px solid rgba(53,92,125,.18);
-      border-radius: 24px;
+      border-radius: var(--nav-radius);
       background: rgba(255,255,252,.75);
-      padding: 7px;
+      padding: var(--nav-padding);
       backdrop-filter: blur(30px) saturate(1.5);
       -webkit-backdrop-filter: blur(30px) saturate(1.5);
     }
@@ -930,12 +1020,13 @@ function renderHtml({ frontMatter, sections, colorTokens, sourceHash }) {
       display: grid;
       place-items: center;
       gap: 3px;
-      min-height: 42px;
-      border-radius: 17px;
+      min-height: 54px;
+      border-radius: calc(var(--nav-radius) - var(--nav-padding));
       color: var(--muted);
       font-size: 11px;
       font-weight: 900;
     }
+    .visual-floating-nav .nav-tab b { font-size: 11px; font-weight: 950; }
     .visual-floating-nav .demo-icon { width: 18px; height: 18px; }
     .visual-floating-nav .active { background: var(--denim); color: white; }
     .route-chain, .pipeline, .step-flow {
@@ -1032,7 +1123,7 @@ function renderHtml({ frontMatter, sections, colorTokens, sourceHash }) {
     .step-card small { color: var(--muted); font-size: 11px; font-weight: 800; }
     .step-card.active { background: var(--denim); color: white; }
     .step-card.active b { background: rgba(255,255,255,.2); color: white; }
-    .thumb-strip button, .bulk-bar button, .focus-demo button, .mini-toast button {
+    .thumb-strip button, .bulk-bar button, .focus-demo button, .spec-toast button {
       border: 0;
       border-radius: 14px;
       background: var(--denim);
@@ -1051,32 +1142,89 @@ function renderHtml({ frontMatter, sections, colorTokens, sourceHash }) {
     }
     .toast-stage {
       position: relative;
-      min-height: 230px;
       display: grid;
       gap: 10px;
-      padding-bottom: 70px;
     }
-    .mini-toast {
-      position: absolute;
-      left: 0;
-      right: 0;
-      bottom: 58px;
+    .toast-style-board {
       display: grid;
-      grid-template-columns: 10px 1fr 38px;
+      gap: 10px;
+      border: 1px solid var(--line);
+      border-radius: 28px;
+      background: var(--app-ambient);
+      padding: 12px;
+      overflow: hidden;
+    }
+    .spec-toast {
+      display: grid;
+      grid-template-columns: 38px minmax(0, 1fr) auto auto;
       gap: 10px;
       align-items: center;
-      min-height: 52px;
-      border: 1px solid rgba(53,92,125,.18);
-      border-radius: 20px;
-      background: rgba(255,255,252,.95);
-      box-shadow: var(--deep);
-      padding: 10px 12px;
-      backdrop-filter: blur(30px) saturate(1.5);
-      -webkit-backdrop-filter: blur(30px) saturate(1.5);
+      min-height: 58px;
+      border: 1px solid rgba(29,34,40,.10);
+      border-radius: 22px;
+      background: rgba(255,255,252,.88);
+      box-shadow: 0 18px 50px rgba(29,34,40,.10);
+      padding: 9px 10px;
+      backdrop-filter: blur(30px) saturate(1.35);
+      -webkit-backdrop-filter: blur(30px) saturate(1.35);
     }
-    .mini-toast b { width: 8px; height: 28px; border-radius: 999px; background: var(--moss); }
-    .mini-toast span { font-size: 12px; font-weight: 900; }
-    .mini-toast button { width: 38px; height: 38px; padding: 0; background: rgba(29,34,40,.08); color: var(--ink); }
+    .spec-toast .toast-icon {
+      width: 38px;
+      height: 38px;
+      border-radius: 15px;
+      display: grid;
+      place-items: center;
+      align-self: center;
+      justify-self: center;
+    }
+    .spec-toast .toast-icon .demo-icon { width: 19px; height: 19px; }
+    .spec-toast.success .toast-icon { background: rgba(95,112,88,.14); color: var(--moss); }
+    .spec-toast.info .toast-icon { background: rgba(53,92,125,.14); color: var(--denim); }
+    .spec-toast.error .toast-icon { background: rgba(220,38,38,.10); color: var(--danger); }
+    .spec-toast .toast-copy {
+      min-width: 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      font-size: 13px;
+      line-height: 18px;
+      color: var(--ink);
+      font-weight: 900;
+    }
+    .spec-toast.two-line .toast-copy,
+    .spec-toast.three-line .toast-copy {
+      white-space: normal;
+      display: -webkit-box;
+      -webkit-box-orient: vertical;
+    }
+    .spec-toast.two-line .toast-copy { -webkit-line-clamp: 2; }
+    .spec-toast.three-line {
+      min-height: 104px;
+      align-items: center;
+    }
+    .spec-toast.three-line .toast-copy {
+      max-width: 330px;
+      min-height: 54px;
+      -webkit-line-clamp: 3;
+    }
+    .spec-toast .toast-action {
+      min-width: 74px;
+      min-height: 38px;
+      padding: 0 12px;
+      border-radius: 15px;
+      box-shadow: none;
+    }
+    .spec-toast .toast-close {
+      width: 38px;
+      height: 38px;
+      padding: 0;
+      border-radius: 15px;
+      background: rgba(29,34,40,.06);
+      color: var(--muted);
+      align-self: center;
+      justify-self: center;
+    }
+    .spec-toast .toast-close .demo-icon { width: 17px; height: 17px; margin: auto; }
     .mini-bottom-bar { position: absolute; left: 0; right: 0; bottom: 0; text-align: center; }
     .copy-board { align-items: stretch; }
     .copy-board div {

@@ -864,17 +864,15 @@ function MultiImageSelectStep({
   flowKind: "garment" | "wishlist";
   onCropActive?: () => void;
 }) {
-  const [expanded, setExpanded] = useState(false);
   const hasImages = imageItems.length > 0;
-  const displayItems = expanded ? imageItems : imageItems.slice(0, 4);
-  const extraCount = expanded ? 0 : imageItems.length - 4;
+  const displayItems = imageItems;
   const flowNoun = flowKind === "wishlist" ? "种草" : "单品";
 
   // Custom preview: shown inside IntakeStepSection when images are selected
   const previewNode = hasImages ? (
     <>
       <p className="text-xs text-ink/55 mb-2">已选择 {imageItems.length} 张{flowNoun}照片，可点击缩略图编辑图片</p>
-      <div className="overflow-hidden rounded-lg bg-mist mb-3">
+      <div className="ui-inner-card overflow-hidden bg-mist mb-3">
         {activeImageId ? (
           <img
             src={imageItems.find((i) => i.id === activeImageId)?.displayDataUrl ?? ""}
@@ -890,7 +888,7 @@ function MultiImageSelectStep({
         )}
       </div>
       {/* Thumbnail row */}
-      <div className="flex gap-2 flex-wrap mb-3 overflow-visible pt-12">
+      <div className="flex gap-2 mb-3 overflow-x-auto overflow-y-visible pt-12 pb-1">
         {displayItems.map((item, idx) => (
           <div
             key={item.id}
@@ -899,7 +897,7 @@ function MultiImageSelectStep({
             <button
               type="button"
               onClick={() => onSelectImage(item.id)}
-              className={`relative block h-full w-full overflow-hidden rounded-lg border-2 ${
+              className={`relative block h-full w-full overflow-hidden ui-control-radius border-2 ${
                 item.id === activeImageId ? "border-denim" : "border-transparent"
               }`}
               aria-label={`选择第 ${idx + 1} 张图片`}
@@ -916,42 +914,33 @@ function MultiImageSelectStep({
               )}
             </button>
             {item.id === activeImageId && onCropActive ? (
-              <div className="absolute bottom-[calc(100%+8px)] left-1/2 z-20 flex -translate-x-1/2 items-center gap-1 rounded-lg border border-ink/10 bg-white p-1 shadow-lg">
+              <div className="absolute bottom-[calc(100%+8px)] left-1/2 z-20 flex -translate-x-1/2 items-center gap-1 ui-control-radius border border-ink/10 bg-white/88 p-1 shadow-lg backdrop-blur-xl">
                 <button
                   type="button"
                   onClick={onCropActive}
-                  className="flex h-8 items-center gap-1 rounded-md px-2 text-[11px] font-semibold text-ink active:bg-mist"
+                  className="flex h-8 items-center gap-1 ui-control-radius px-2 text-[11px] font-semibold text-ink active:bg-mist"
                 >
                   <Scissors size={13} aria-hidden="true" /> 裁切/旋转
                 </button>
                 <button
                   type="button"
                   onClick={() => onRemoveImage(item.id)}
-                  className="flex h-8 items-center gap-1 rounded-md px-2 text-[11px] font-semibold text-clay active:bg-clay/8"
+                  className="flex h-8 items-center gap-1 ui-control-radius px-2 text-[11px] font-semibold text-clay active:bg-clay/8"
                 >
                   <Trash2 size={13} aria-hidden="true" /> 删除
                 </button>
-                <span className="absolute left-1/2 top-full h-2 w-2 -translate-x-1/2 -translate-y-1/2 rotate-45 border-b border-r border-ink/10 bg-white" aria-hidden="true" />
+                <span className="absolute left-1/2 top-full h-2 w-2 -translate-x-1/2 -translate-y-1/2 rotate-45 border-b border-r border-ink/10 bg-white/88" aria-hidden="true" />
               </div>
             ) : null}
           </div>
         ))}
-        {extraCount > 0 && (
-          <button
-            type="button"
-            onClick={() => setExpanded(true)}
-            className="w-14 h-14 rounded-lg bg-ink/10 grid place-items-center text-xs font-semibold text-ink/55"
-          >
-            +{extraCount}
-          </button>
-        )}
       </div>
       <div className="flex gap-2">
         <button
           type="button"
           onClick={onAddFromCamera}
           disabled={isPicking}
-          className="flex-1 h-10 rounded-lg border border-ink/10 bg-white text-sm font-semibold disabled:opacity-35 flex items-center justify-center gap-1"
+          className="flex-1 h-10 ui-control-radius border border-ink/10 bg-white/82 text-sm font-semibold disabled:opacity-35 flex items-center justify-center gap-1 shadow-sm"
         >
           <Camera size={14} /> 继续拍照
         </button>
@@ -959,7 +948,7 @@ function MultiImageSelectStep({
           type="button"
           onClick={onAddFromAlbum}
           disabled={isPicking}
-          className="flex-1 h-10 rounded-lg border border-ink/10 bg-white text-sm font-semibold disabled:opacity-35 flex items-center justify-center gap-1"
+          className="flex-1 h-10 ui-control-radius border border-ink/10 bg-white/82 text-sm font-semibold disabled:opacity-35 flex items-center justify-center gap-1 shadow-sm"
         >
           <ImageIcon size={14} /> 继续从图库选择
         </button>
@@ -967,7 +956,7 @@ function MultiImageSelectStep({
       <button
         type="button"
         onClick={onClearAll}
-        className="w-full h-10 rounded-lg border border-clay/30 text-clay text-sm font-semibold mt-2"
+        className="w-full h-10 ui-control-radius border border-clay/30 text-clay text-sm font-semibold mt-2"
       >
         清空
       </button>
@@ -1022,7 +1011,7 @@ function MultiImageCropStep({
   return (
     <div className="flex min-h-[calc(100dvh-13rem)] flex-col gap-3">
       <IntakeStepSection title="裁切/旋转" icon={<Scissors size={16} aria-hidden="true" />}>
-        <div className="h-[min(46dvh,360px)] min-h-[260px] overflow-hidden rounded-lg bg-ink">
+        <div className="h-[min(46dvh,360px)] min-h-[260px] overflow-hidden ui-inner-card bg-ink">
           <ImageCropEditor
             ref={cropEditorRef}
             source={imageItem.originalDataUrl}
@@ -1036,7 +1025,7 @@ function MultiImageCropStep({
         </div>
       </IntakeStepSection>
 
-      <div className="rounded-lg border border-ink/10 bg-white p-3">
+      <div className="ui-card p-3">
         <div className="grid grid-cols-2 gap-2">
           {[
             { label: "自由", value: "free" as const },
@@ -1046,7 +1035,7 @@ function MultiImageCropStep({
               key={option.label}
               type="button"
               onClick={() => setAspectRatio(option.value)}
-              className={`h-9 rounded-lg text-xs font-semibold ${
+              className={`h-9 ui-control-radius text-xs font-semibold ${
                 aspectRatio === option.value ? "bg-denim text-white" : "border border-ink/10 bg-[#fbfbf8] text-ink/60"
               }`}
             >
@@ -1058,21 +1047,21 @@ function MultiImageCropStep({
           <button
             type="button"
             onClick={() => onRotate("left")}
-            className="flex h-10 items-center justify-center gap-1 rounded-lg border border-ink/10 bg-white text-xs font-semibold"
+            className="flex h-10 items-center justify-center gap-1 ui-control-radius border border-ink/10 bg-white text-xs font-semibold"
           >
             <RotateCcw size={14} aria-hidden="true" /> 左转90°
           </button>
           <button
             type="button"
             onClick={() => onRotate("right")}
-            className="flex h-10 items-center justify-center gap-1 rounded-lg border border-ink/10 bg-white text-xs font-semibold"
+            className="flex h-10 items-center justify-center gap-1 ui-control-radius border border-ink/10 bg-white text-xs font-semibold"
           >
             <RotateCw size={14} aria-hidden="true" /> 右转90°
           </button>
           <button
             type="button"
             onClick={handleResetAll}
-            className="flex h-10 items-center justify-center gap-1 rounded-lg border border-ink/10 bg-white text-xs font-semibold"
+            className="flex h-10 items-center justify-center gap-1 ui-control-radius border border-ink/10 bg-white text-xs font-semibold"
           >
             <RefreshCw size={14} aria-hidden="true" /> 重置
           </button>
@@ -1083,7 +1072,7 @@ function MultiImageCropStep({
         <button
           type="button"
           onClick={onCancel}
-          className="h-11 rounded-lg border border-ink/10 bg-white text-sm font-semibold text-ink/70"
+          className="h-11 ui-control-radius border border-ink/10 bg-white text-sm font-semibold text-ink/70"
         >
           取消
         </button>
@@ -1091,7 +1080,7 @@ function MultiImageCropStep({
           type="button"
           onClick={() => cropEditorRef.current?.runConfirm()}
           disabled={!cropReady}
-          className="h-11 rounded-lg bg-denim text-sm font-semibold text-white disabled:opacity-35"
+          className="h-11 ui-control-radius bg-denim text-sm font-semibold text-white disabled:opacity-35"
         >
           应用
         </button>
@@ -1178,7 +1167,7 @@ function MultiImageReviewStep({
         }
       >
         {previewDataUrl ? (
-          <div className="mb-3 overflow-hidden rounded-lg bg-mist">
+          <div className="ui-inner-card mb-3 overflow-hidden bg-mist">
             <img
               src={previewDataUrl}
               alt={`当前${flowNoun}图片`}
@@ -1196,7 +1185,7 @@ function MultiImageReviewStep({
                 onSelectItem(item.id);
               }}
               disabled={retryingReviewId !== null && retryingReviewId !== item.id}
-              className={`relative shrink-0 w-12 h-12 rounded-lg overflow-hidden border-2 ${
+              className={`relative shrink-0 w-12 h-12 ui-control-radius overflow-hidden border-2 ${
                 item.id === activeReviewId ? "border-denim" : "border-transparent"
               } ${retryingReviewId && retryingReviewId !== item.id ? "opacity-50" : ""}`}
             >
@@ -1395,7 +1384,7 @@ function MultiImageReviewStep({
           type="button"
           onClick={onPrev}
           disabled={activeReviewIndex === 0}
-          className="flex-1 h-12 rounded-lg border border-ink/10 bg-white text-sm font-semibold disabled:opacity-35 flex items-center justify-center gap-1"
+          className="flex-1 h-12 ui-control-radius border border-ink/10 bg-white text-sm font-semibold disabled:opacity-35 flex items-center justify-center gap-1"
         >
           <ChevronLeft size={16} /> 上一件
         </button>
@@ -1403,7 +1392,7 @@ function MultiImageReviewStep({
           type="button"
           onClick={onNext}
           disabled={activeReviewIndex >= recognizedItems.length - 1}
-          className="flex-1 h-12 rounded-lg border border-ink/10 bg-white text-sm font-semibold disabled:opacity-35 flex items-center justify-center gap-1"
+          className="flex-1 h-12 ui-control-radius border border-ink/10 bg-white text-sm font-semibold disabled:opacity-35 flex items-center justify-center gap-1"
         >
           下一件 <ChevronRight size={16} />
         </button>
@@ -1722,7 +1711,7 @@ export function IntakeStepOneImagePicker({
             type="button"
             onClick={onCameraClick}
             disabled={disabled}
-            className="min-h-[144px] rounded-xl border border-ink/10 bg-white text-sm font-semibold flex flex-col items-center justify-center gap-2"
+            className="min-h-[144px] ui-control-radius border border-ink/10 bg-white/82 text-sm font-semibold flex flex-col items-center justify-center gap-2 shadow-sm"
           >
             <Camera size={24} className="text-denim" />
             拍照
@@ -1731,7 +1720,7 @@ export function IntakeStepOneImagePicker({
             type="button"
             onClick={onGalleryClick}
             disabled={disabled}
-            className="min-h-[144px] rounded-xl border border-ink/10 bg-white text-sm font-semibold flex flex-col items-center justify-center gap-2"
+            className="min-h-[144px] ui-control-radius border border-ink/10 bg-white/82 text-sm font-semibold flex flex-col items-center justify-center gap-2 shadow-sm"
           >
             <ImageIcon size={24} className="text-denim" />
             从图库选择
@@ -1749,7 +1738,7 @@ export function IntakeStepOneImagePicker({
 }
 
 export function EmptyStateBox({ text }: { text: string }) {
-  return <div className="rounded-lg border border-dashed border-ink/12 bg-white/60 p-4 text-center text-xs text-ink/45">{text}</div>;
+  return <div className="ui-inner-card border-dashed bg-white/60 p-4 text-center text-xs text-ink/45">{text}</div>;
 }
 
 export function TextareaField({

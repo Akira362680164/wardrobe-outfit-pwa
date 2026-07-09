@@ -9,6 +9,8 @@ const garmentFlow = readFileSync(join(root, "src/components/garment-intake-flow.
 const wishlistView = readFileSync(join(root, "src/components/wishlist-view-2.0.tsx"), "utf8");
 const outfitFlow = readFileSync(join(root, "src/components/outfit-intake-flow.tsx"), "utf8");
 const deviceMiniMax = readFileSync(join(root, "src/lib/device-minimax.ts"), "utf8");
+const onlineAiIntake = readFileSync(join(root, "src/lib/online/online-ai-intake-client.ts"), "utf8");
+const serverAiRoutes = readFileSync(join(root, "services/wardrobe-api/src/ai/routes.ts"), "utf8");
 const wishlistFromAi = readFileSync(join(root, "src/lib/wishlist-intake-from-ai.ts"), "utf8");
 
 let pass = 0;
@@ -50,15 +52,23 @@ check(
   "wardrobe-app GarmentIntakeFlow wiring 传 onProcessImage",
   /<GarmentIntakeFlow[\s\S]+?onProcessImage=\{processGarmentIntakeImage\}/.test(wardrobeApp),
 );
-// 5. wardrobe-app 的 processGarmentIntakeImage 调 recognizeSingleItemFromDataUrl
+// 5. wardrobe-app 的 processGarmentIntakeImage 调后端识别 client
 check(
-  "wardrobe-app processGarmentIntakeImage 调 recognizeSingleItemFromDataUrl",
-  /async function processGarmentIntakeImage[\s\S]+?recognizeSingleItemFromDataUrl\(/.test(wardrobeApp),
+  "wardrobe-app processGarmentIntakeImage 调 recognizeGarmentOnServer",
+  /async function processGarmentIntakeImage[\s\S]+?recognizeGarmentOnServer\(/.test(wardrobeApp),
 );
 // 6. processGarmentIntakeImage 用裁切图（imageToProcess）作 AI 源
 check(
   "processGarmentIntakeImage 使用裁切图 imageDataUrl 作为 AI 请求源",
-  /processGarmentIntakeImage[\s\S]+?recognizeSingleItemFromDataUrl\([\s\S]+?aiRequestDataUrl/.test(wardrobeApp),
+  /processGarmentIntakeImage[\s\S]+?recognizeGarmentOnServer\(\{[\s\S]+?aiRequestDataUrl/.test(wardrobeApp),
+);
+check(
+  "online-ai-intake-client 调后端单品识别 API",
+  /\/api\/workspace\/ai\/intake\/garment-recognition/.test(onlineAiIntake),
+);
+check(
+  "服务端注册单品识别路由",
+  /\/api\/workspace\/ai\/intake\/garment-recognition/.test(serverAiRoutes),
 );
 // 7. garment-intake-flow.tsx 把 aiTag 映射到 buildLocalGarmentDraft
 check(
@@ -115,7 +125,7 @@ check(
     const end = wardrobeApp.indexOf("async function saveEditedItem", start);
     if (start < 0 || end < 0) return false;
     const body = wardrobeApp.slice(start, end);
-    return body.includes("recognizeSingleItemFromDataUrl") && !body.includes("detectGarmentsOnDevice") && !body.includes("candidate");
+    return body.includes("recognizeGarmentOnServer") && !body.includes("detectGarmentsOnDevice") && !body.includes("candidate");
   })(),
 );
 

@@ -42,7 +42,7 @@ const SECTIONS: LegalSection[] = [
     children: (
       <p>
         用户不得滥用、攻击、批量注册或绕过安全限制。不得注册或使用不属于自己的手机号。
-        MiniMax Key 属于本机设置，不上传至 wardrobe API。
+        MiniMax Key 属于本机设置；仅在用户主动发起 AI 功能时临时用于服务器代调 MiniMax，不在服务器保存。
       </p>
     ),
   },

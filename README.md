@@ -7,7 +7,7 @@ AI agent 修改本项目代码前，必须先读取并遵守根目录 `AGENTS.md
 ## 功能
 
 - 拍照或上传衣物照片
-- 在手机本机调用 MiniMax 生成衣物标签候选
+- 由后端临时使用用户本机 MiniMax Key 调用 MiniMax，生成衣物标签候选
 - 手动确认衣物类别、颜色、季节、风格、地点和状态
 - 按地点、类别、季节筛选衣橱
 - 输入目的地、活动、天气和风格偏好后生成 3 套穿搭
@@ -29,7 +29,7 @@ npm run dev
 
 ## Android 本机运行
 
-Android 版本使用 Capacitor 打包静态前端到 APK。业务数据和图片只从线上 API 读写；选图、裁切、缩略图和 AI 识别结果在提交前仅存在当前页面内存。MiniMax Key 在 App 的「设置」页填写并保存在手机本机，不写进 APK。
+Android 版本使用 Capacitor 打包静态前端到 APK。业务数据和图片只从线上 API 读写；选图、裁切、缩略图和 AI 识别结果在提交前仅存在当前页面内存。MiniMax Key 在 App 的「设置」页填写并保存在手机本机，不写进 APK；AI 请求会临时经线上 API 代调 MiniMax，服务器不保存 Key。
 
 ```bash
 npm run android:sync
@@ -53,7 +53,7 @@ npm run android:apk
 - 回退模型：`MiniMax-M2.7`
 - API Key：你的 MiniMax Key
 
-衣物打标优先使用 M3 多模态 Chat，旧 VLM 仅作为失败回退。穿搭推荐会调用 `chat/completions`，发送衣物名称、标签、地点、状态和收藏套装等结构化字段，不发送衣物图片。买前评估会发送用户主动上传的商品图或试穿图用于评估，默认不会写入正式衣橱。
+衣物打标、套装基础信息和当前展示增强类 AI 功能由后端代调 MiniMax，统一维护提示词和解析规则。已下线的旧穿搭推荐、天气判断、买前评估和试穿预览前端直连实现不再保留。
 
 ## 验证
 

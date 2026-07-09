@@ -10,6 +10,8 @@ const imageSourceSheet = read("src/components/wardrobe-image-source-sheet.tsx");
 const confirmSheet = read("src/components/dialogs/confirm-action-sheet.tsx");
 const topBar = read("src/components/app-sub-page-top-bar.tsx");
 const garmentFlow = read("src/components/garment-intake-flow.tsx");
+const globals = read("src/app/globals.css");
+const wardrobe = read("src/components/wardrobe-app.tsx");
 
 const motionSheetStart = motion.indexOf("export function MotionSheet");
 const motionSheetEnd = motion.indexOf("/* ------------------------------------------------------------------ */", motionSheetStart + 1);
@@ -37,9 +39,18 @@ assert.ok(confirmSheet.includes("onClose={submitting ? () => undefined : onClose
 assert.match(confirmSheet, /label=\{cancelLabel\}[\s\S]{0,80}disabled=\{submitting\}/, "submitting disables cancel action");
 
 assert.match(topBar, /aria-label="返回"[\s\S]{0,140}className="grid h-12 w-12 place-items-center -ml-1"/, "back button has 48px hit area");
-assert.match(topBar, /<span className="grid h-10 w-10 place-items-center rounded-full bg-white/, "back button keeps 40px visual circle");
+assert.match(topBar, /<span className="grid h-10 w-10 place-items-center ui-control-radius bg-transparent/, "back button keeps 40px transparent rounded-rectangle hit visual");
 assert.match(topBar, /aria-label="更多操作"[\s\S]{0,160}className="grid h-12 w-12 place-items-center -mr-1"/, "more button has 48px hit area");
-assert.match(topBar, /<span className="grid h-10 w-10 place-items-center rounded-full text-ink\/40/, "more button keeps 40px visual circle");
+assert.match(topBar, /app-glass-top grid[\s\S]{0,180}min-h-14 px-2/, "sub page top bar keeps controls close to screen edges without restoring a white strip");
+assert.match(topBar, /<ChevronLeft size=\{20\} strokeWidth=\{2\.6\}/, "back icon is slightly larger and heavier after removing the white top strip");
+assert.match(topBar, /<span className="grid h-10 w-10 place-items-center ui-control-radius bg-transparent text-ink\/55/, "more button keeps 40px transparent rounded-rectangle hit visual");
+assert.match(topBar, /<MoreHorizontal size=\{20\} strokeWidth=\{2\.6\}/, "more icon is slightly larger and heavier after removing the white top strip");
+
+assert.match(globals, /--ui-radius-nav-active:\s*22px;/, "bottom nav active radius has concentric token");
+assert.match(globals, /\.app-glass-top\s*\{[\s\S]{0,160}background:\s*rgba\(255,\s*255,\s*255,\s*0\.01\);[\s\S]{0,160}box-shadow:\s*none;/, "top glass keeps blur but removes visible white strip");
+assert.ok(!wardrobe.includes("bottom-2 left-2 top-2 w-1"), "runtime toast does not use a full-height status strip");
+assert.ok(wardrobe.includes("WebkitLineClamp: 3"), "runtime toast clamps body copy to three lines");
+assert.ok(wardrobe.includes("rounded-[var(--ui-radius-nav-active)]"), "mobile nav active item uses concentric nav radius");
 
 assert.ok(!garmentFlow.includes("Step 3"), "garment intake code must not mention Step 3");
 assert.ok(!garmentFlow.includes("步骤 3"), "garment intake code must not mention 步骤 3");

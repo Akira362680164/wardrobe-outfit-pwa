@@ -56,7 +56,9 @@ import {
 import { OutfitIntakeFlow } from "@/components/outfit-intake-flow";
 import { fileToCompressedDataUrl, IMAGE_FILE_ACCEPT } from "@/lib/image";
 import { buildLocalOutfitAiSuggestion, getCachedReplacementSuggestionForItem, getReplacementCandidatesForOutfitItem } from "@/lib/outfit-ai-suggestion";
-import { generateOutfitAiSuggestionOnDevice, generateOutfitMetadataOnDevice, hasDeviceMiniMaxKey, loadMiniMaxSettings } from "@/lib/device-minimax";
+import { hasDeviceMiniMaxKey, loadMiniMaxSettings } from "@/lib/device-minimax";
+import { generateOutfitAiSuggestionOnServer } from "@/lib/online/online-ai-enhancement-client";
+import { generateOutfitMetadataOnServer } from "@/lib/online/online-ai-intake-client";
 import { buildLocalOutfitMetadataFromItems } from "@/lib/outfit-ai-metadata";
 import { outfitDraftToSavedOutfit } from "@/lib/intake-save-adapters";
 import type { OutfitIntakeDraft } from "@/lib/intake-draft";
@@ -352,7 +354,7 @@ export function OutfitListView({
  onCreateClosed?.();
  }
 
- // v1.0: 创建流程的 AI增强回调 — 与 generateOutfitAiSuggestionOnDevice独立
+ // v1.0: 创建流程的 AI增强回调 — 与套装详情 AI 建议独立
  async function handleEnhanceOutfitDraft(draft: OutfitIntakeDraft): Promise<OutfitIntakeDraft> {
  const itemIds = draft.itemIds.value.filter((id): id is number => typeof id === "number");
  const itemIdSet = new Set(items.map((i) => i.id).filter((id): id is number => typeof id === "number"));
@@ -364,7 +366,7 @@ export function OutfitListView({
  return patchIntakeDraftFromMetadata(draft, local);
  }
  try {
- const generated = await generateOutfitMetadataOnDevice(
+ const generated = await generateOutfitMetadataOnServer(
  { itemIds: validIds, name: draft.name.value },
  { outfitItems, allItems: items },
  settings,
@@ -407,7 +409,7 @@ export function OutfitListView({
  return;
  }
  try {
- const generated = await generateOutfitMetadataOnDevice(
+ const generated = await generateOutfitMetadataOnServer(
  { itemIds: validIds, name: createName },
  { outfitItems, allItems: items },
  settings,
@@ -1423,7 +1425,7 @@ function OutfitDetailView({
         onMessage("未配置 MiniMax Key，已生成本地规则建议", "info");
         return;
       }
-      const generated = await generateOutfitAiSuggestionOnDevice(outfit, { outfitItems: items, allItems }, settings);
+      const generated = await generateOutfitAiSuggestionOnServer(outfit, { outfitItems: items, allItems }, settings);
       await saveAiSuggestion(generated);
       setDetailTab("ai");
       onMessage("套装 AI 建议已生成");
@@ -1443,7 +1445,7 @@ function OutfitDetailView({
     <ItemDetailPageShell
       contentClassName="mx-auto w-full max-w-4xl pb-[calc(env(safe-area-inset-bottom)+24px)]"
       topBar={<DetailTopBar title="" onBack={onBack} onMore={() => setMenuOpen(!menuOpen)} moreButtonRef={menuAnchorRef} />}
-      hero={<DetailHeroGallery slides={gallerySlides} currentIndex={Math.min(activeSlide, Math.max(gallerySlides.length - 1, 0))} onIndexChange={setActiveSlide} onExpandImage={onExpandImage} bottomRightAction={<button type="button" onClick={(event) => { event.stopPropagation(); onMarkWorn(); }} className="inline-flex h-9 items-center gap-1 rounded-full bg-white/90 border border-white/60 px-3 text-xs font-semibold shadow-sm text-ink/80">{wearSummary.hasToday ? "✓ 今天已穿" : "标记今天穿了"}</button>} emptyIcon={<Shirt size={48} />} emptyText="暂无套装封面" />}
+      hero={<DetailHeroGallery slides={gallerySlides} currentIndex={Math.min(activeSlide, Math.max(gallerySlides.length - 1, 0))} onIndexChange={setActiveSlide} onExpandImage={onExpandImage} bottomRightAction={<button type="button" onClick={(event) => { event.stopPropagation(); onMarkWorn(); }} className="inline-flex h-9 items-center gap-1 ui-control-radius bg-white/75 border border-white/60 px-3 text-xs font-semibold text-ink/80 backdrop-blur-xl">{wearSummary.hasToday ? "✓ 今天已穿" : "标记今天穿了"}</button>} emptyIcon={<Shirt size={48} />} emptyText="暂无套装封面" />}
       filmstrip={<DetailFilmstrip items={filmstripItems} activeId={activeFilmstripId} onSelect={(id) => { const index = allSlides.findIndex((slide) => slide.kind === "cover" ? id === "cover" : slide.kind === "real" && slide.image.id === id); if (index >= 0) setActiveSlide(index); }} addLabel="套装示意" onAdd={onAddRealImage} />}
       titleBlock={<DetailTitleMetaBlock eyebrow={wearSummary.label} title={outfit.name} metaParts={[`${items.length}件`, seasonLabels, sceneLabels, styleLabels]} />}
       tabs={<DetailTabs tabs={[{ key: "info", label: "信息" }, { key: "items", label: "组成" }, { key: "ai", label: "AI建议" }, { key: "records", label: "记录" }]} activeTab={detailTab} onChange={setDetailTab} />}
