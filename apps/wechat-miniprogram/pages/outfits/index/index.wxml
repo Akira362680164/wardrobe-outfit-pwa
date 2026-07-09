@@ -37,9 +37,9 @@
       </view>
       <view class="week-plan__body">
         <view class="week-plan__covers">
-          <image wx:if="{{selectedWeekEntry.imageUrl}}" class="week-plan__cover" mode="aspectFit" src="{{selectedWeekEntry.imageUrl}}" />
+          <image wx:if="{{selectedWeekEntry.imageUrl}}" class="week-plan__cover" mode="aspectFill" src="{{selectedWeekEntry.imageUrl}}" />
           <block wx:else>
-            <image wx:for="{{selectedWeekEntry.itemImages}}" wx:for-item="image" wx:key="*this" wx:if="{{index < 2}}" class="week-plan__cover" mode="aspectFit" src="{{image}}" />
+            <image wx:for="{{selectedWeekEntry.itemImages}}" wx:for-item="image" wx:key="*this" wx:if="{{index < 2}}" class="week-plan__cover" mode="aspectFill" src="{{image}}" />
             <view wx:if="{{selectedWeekEntry.itemImages.length === 0}}" class="week-plan__cover week-plan__cover--empty">套</view>
           </block>
         </view>
@@ -81,15 +81,15 @@
       <view wx:for="{{outfits}}" wx:key="id" class="outfit-card" data-id="{{item.id}}" bindtap="openDetail">
         <view class="outfit-collage">
           <view class="collage-pane collage-pane--main">
-            <image wx:if="{{item.imageUrl}}" class="collage-image" mode="aspectFit" src="{{item.imageUrl}}" />
+            <image wx:if="{{item.imageUrl}}" class="collage-image" mode="aspectFill" src="{{item.imageUrl}}" />
             <text wx:else>{{item.itemCount}}件</text>
           </view>
           <view class="collage-stack">
             <view class="collage-pane collage-pane--sub">
-              <image wx:if="{{item.itemImages[1]}}" class="collage-image" mode="aspectFit" src="{{item.itemImages[1]}}" />
+              <image wx:if="{{item.itemImages[1]}}" class="collage-image" mode="aspectFill" src="{{item.itemImages[1]}}" />
             </view>
             <view class="collage-pane collage-pane--sub">
-              <image wx:if="{{item.itemImages[2]}}" class="collage-image" mode="aspectFit" src="{{item.itemImages[2]}}" />
+              <image wx:if="{{item.itemImages[2]}}" class="collage-image" mode="aspectFill" src="{{item.itemImages[2]}}" />
             </view>
           </view>
         </view>

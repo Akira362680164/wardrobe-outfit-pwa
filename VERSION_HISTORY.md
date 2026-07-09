@@ -1,3 +1,14 @@
+## 2026-07-09 / v2.1.9-test / Codex — 小程序套装图片等比填充修正
+
+- **执行 Agent**：Codex（未触发 subagent：用户未通知；延续独立 worktree `/Users/fangzheng/Documents/wardrobe-wechat-calendar-plan-fix` 的 `codex/wechat-calendar-plan-fix` 分支）。
+- **目的**：修正小程序套装周卡和瀑布流卡片图片使用完整显示导致图片区域留白的问题，改为按比例放大填满展示区域。
+- **版本变更**：无；当前应用版本仍为 `2.1.9-test`，小程序包版本仍为 `0.1.0`。
+- **改动文件**：`apps/wechat-miniprogram/pages/outfits/index/index.wxml`、`VERSION_HISTORY.md`。
+- **改动说明**：将周卡封面、周卡衣物图、套装瀑布流主图和副图从 `aspectFit` 改为 `aspectFill`，保持衣物图片比例不变，并填满各自图片展示区域。
+- **验证结果**：微信开发者工具 CLI `compile_wxml pages/outfits/index/index.wxml` 通过；`git diff --check` 通过；DevTools 模拟器重新打开 `pages/outfits/index/index`，注入真实衣物图片数据后截图确认周卡和两列套装流图片均使用等比填充，截图为 `/Users/fangzheng/Desktop/wechat-calendar-plan-align-screenshots/10-outfits-week-and-grid-aspectfill.png`。
+- **风险门禁**：low（只改小程序套装图片显示模式，不改接口、数据结构、服务端或共享契约）；未触发 subagent：用户未通知。
+- **未验证风险**：未做真机预览或体验版上传；截图中的演示计划 ID 匹配只在 DevTools 页面内临时调整，用于视觉验证，不写服务器数据。
+
 ## 2026-07-09 / v2.1.9-test / Codex — 小程序套装首页周历与计划入口对齐
 
 - **执行 Agent**：Codex（未触发 subagent：用户未通知；本轮继续在独立 worktree `/Users/fangzheng/Documents/wardrobe-wechat-calendar-plan-fix` 的 `codex/wechat-calendar-plan-fix` 分支执行）。
