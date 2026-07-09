@@ -1,3 +1,14 @@
+## 2026-07-09 / v2.1.9-test / Codex — 小程序多图录入 C/D 收口与已有能力接线
+
+- **执行 Agent**：Codex 主 agent 负责派发、验收和提交；subagent C 负责多图录入 UI/移动端体验收口；subagent D 负责套装和种草详情中已有后端能力接线。主 agent 保留 subagent 产出，补充种草旧状态兼容并完成统一验证。
+- **目的**：在 A/B 多图录入链路基础上收口手机竖屏可用性，并把方案中“已有后端端点但小程序按钮未接线”的能力先落地；不做临时假功能，不隐藏暂未完整实现的入口。
+- **版本变更**：无；当前应用版本仍为 `2.1.9-test`，小程序包版本仍为 `0.1.0`。
+- **改动文件**：`apps/wechat-miniprogram/pages/intake/{camera,review,result}/**`、`apps/wechat-miniprogram/pages/outfits/detail/index.{ts,wxml,wxss}`、`apps/wechat-miniprogram/pages/wishlist/detail/index.{ts,wxml,wxss}`、`apps/wechat-miniprogram/services/workspace.ts`、`VERSION_HISTORY.md`。
+- **改动说明**：录入第 1 步增加多图队列状态汇总和图片序号；第 2 步增加已确认/待处理/失败状态条、缩略图序号和状态标签，并扩大底部安全留白；结果页明确失败项仍保留并展示失败缩略图。套装详情接入收藏/取消收藏、今天穿过/撤销穿着，动作成功后重新读取服务端详情；种草详情接入已买转衣橱、撤销购买、不想买/恢复想买，转衣橱暂按现有规则默认 `home` 位置，不新增假位置管理。
+- **验证结果**：`npm --prefix apps/wechat-miniprogram run typecheck` 通过；`node apps/wechat-miniprogram/scripts/wechatide-compile.mjs --refresh` 通过；微信开发者工具 CLI `compile_wxml` / `compile_wxss` 覆盖 `pages/intake/camera/index`、`pages/intake/review/index`、`pages/intake/result/index`、`pages/outfits/detail/index`、`pages/wishlist/detail/index` 均通过；`git diff --check` 通过。
+- **风险门禁**：high（小程序多图录入 UI、套装穿着记录、套装收藏、种草转衣橱和服务端状态写入）；已按用户要求触发 subagent C/D，主 agent 负责验收。
+- **未验证风险**：未做真实登录后的按钮点击/live API 验证、未用真实 MiniMax Key 做图片识别、未做真机预览或截图走查；位置迁移删除、完整套装编辑、完整月历/打包仍未实现，因本轮只接已有可靠端点，不新增后端原子能力。
+
 ## 2026-07-09 / v2.1.9-test / Codex — 小程序多图录入 A/B checkpoint
 
 - **执行 Agent**：Codex 主 agent 负责派发、验收和提交；subagent A 负责小程序选图、队列和临时资产上传；subagent B 负责批量 AI 识别、逐件确认和批量保存。A/B 执行时间较长，主 agent 收口时保留 subagent 产出并完成本地验收。

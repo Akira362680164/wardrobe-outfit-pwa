@@ -5,7 +5,7 @@ Page({
     successCount: 0,
     failedCount: 0,
     savedIds: [] as string[],
-    failedItems: [] as Array<{ clientItemId: string; name: string; error: string }>,
+    failedItems: [] as Array<{ clientItemId: string; name: string; error: string; imagePath: string }>,
   },
 
   onLoad() {
@@ -17,6 +17,7 @@ Page({
         clientItemId: item.clientItemId,
         name: item.draft.name || "未命名单品",
         error: item.error || "未保存",
+        imagePath: item.stablePath || item.imagePath,
       }));
     this.setData({
       successCount: result.succeeded,

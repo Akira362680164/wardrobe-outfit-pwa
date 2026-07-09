@@ -1,4 +1,4 @@
-.intake-page { padding: calc(env(safe-area-inset-top) + 152rpx) 32rpx 220rpx; }
+.intake-page { padding: calc(env(safe-area-inset-top) + 152rpx) 32rpx calc(env(safe-area-inset-bottom) + 300rpx); }
 .intake-header { margin-bottom: 28rpx; text-align: center; }
 .step-copy { margin-top: 6rpx; color: var(--color-muted); font-size: var(--font-caption); line-height: 1.4; }
 .progress-track { width: 100%; height: 10rpx; margin-top: 22rpx; overflow: hidden; border-radius: 999rpx; background: var(--color-mist); }
@@ -10,20 +10,31 @@
 .review-badge { color: var(--color-danger); background: rgba(220, 38, 38, 0.08); }
 .badge-danger { color: var(--color-danger); background: rgba(220, 38, 38, 0.08); }
 .badge-success { color: var(--color-success); background: rgba(22, 163, 74, 0.10); }
+.state-strip { display: flex; gap: 10rpx; margin-top: 18rpx; overflow-x: auto; }
+.state-chip { flex: 0 0 auto; padding: 8rpx 14rpx; border-radius: var(--radius-control); font-size: 22rpx; font-weight: 800; line-height: 1.2; white-space: nowrap; }
+.state-confirmed { color: var(--color-success); background: rgba(95, 112, 88, 0.12); }
+.state-pending { color: var(--color-ai); background: rgba(185, 113, 85, 0.12); }
+.state-failed { color: var(--color-danger); background: rgba(220, 38, 38, 0.08); }
 .queue-summary { margin-top: 16rpx; color: var(--color-muted); font-size: var(--font-caption); line-height: 1.45; }
 .preview-media { position: relative; width: 100%; margin-top: 26rpx; overflow: hidden; border-radius: var(--radius-thumb); background: var(--color-mist); }
 .preview-media::before { display: block; padding-top: 133.333%; content: ""; }
 .preview-image { position: absolute; inset: 0; width: 100%; height: 100%; }
-.thumb-row { display: flex; gap: 14rpx; margin-top: 18rpx; overflow-x: auto; }
-.thumb-wrap { position: relative; flex: 0 0 auto; width: 76rpx; height: 102rpx; overflow: hidden; border-radius: var(--radius-thumb); background: var(--color-mist); }
+.thumb-row { display: flex; gap: 14rpx; margin-top: 18rpx; overflow-x: auto; padding-bottom: 4rpx; }
+.thumb-wrap { position: relative; flex: 0 0 auto; width: 92rpx; height: 124rpx; overflow: hidden; border: 2rpx solid transparent; border-radius: var(--radius-thumb); background: var(--color-mist); }
 .thumb-image { width: 100%; height: 100%; }
-.thumb-active { outline: 4rpx solid var(--color-primary); outline-offset: -4rpx; }
-.thumb-failed { opacity: 0.72; }
+.thumb-active { border-color: var(--color-primary); }
+.thumb-confirmed { border-color: rgba(95, 112, 88, 0.48); }
+.thumb-failed { border-color: rgba(220, 38, 38, 0.48); opacity: 0.86; }
+.thumb-number { position: absolute; top: 6rpx; left: 6rpx; display: flex; align-items: center; justify-content: center; width: 30rpx; height: 30rpx; border-radius: 999rpx; color: var(--color-ink); background: rgba(255, 255, 252, 0.84); font-size: 18rpx; font-weight: 900; line-height: 1; }
 .thumb-dot { position: absolute; right: 6rpx; bottom: 6rpx; width: 16rpx; height: 16rpx; border: 2rpx solid rgba(255, 255, 252, 0.9); border-radius: 999rpx; background: var(--color-muted); }
+.thumb-label { position: absolute; right: 6rpx; bottom: 6rpx; left: 6rpx; padding: 5rpx 6rpx; border-radius: 999rpx; color: var(--color-surface); background: rgba(29, 34, 40, 0.62); font-size: 18rpx; font-weight: 800; line-height: 1.1; text-align: center; white-space: nowrap; }
 .status-needs_confirm, .status-ready, .status-recognizing { background: var(--color-ai); }
 .status-confirmed, .status-saved { background: var(--color-success); }
 .status-failed { background: var(--color-danger); }
 .status-saving { background: var(--color-primary); }
+.status-label-confirmed, .status-label-saved { background: rgba(95, 112, 88, 0.88); }
+.status-label-failed { background: rgba(220, 38, 38, 0.88); }
+.status-label-recognizing, .status-label-ready { background: rgba(185, 113, 85, 0.90); }
 .form-copy { margin-top: 18rpx; color: var(--color-muted); font-size: var(--font-caption); line-height: 1.55; }
 .item-error { margin-top: 16rpx; padding: 16rpx 18rpx; border-radius: var(--radius-control); color: var(--color-danger); background: rgba(220, 38, 38, 0.08); font-size: var(--font-caption); line-height: 1.45; }
 .field-label { margin: 24rpx 0 12rpx; color: var(--color-ink); font-size: var(--font-caption); font-weight: 700; }

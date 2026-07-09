@@ -80,6 +80,10 @@ export interface MiniOutfit {
   seasonText: string;
   sceneText: string;
   favorite: boolean;
+  wornDates: string[];
+  wornToday: boolean;
+  wearSummary: string;
+  lastWornText: string;
   updatedAt: string;
 }
 
@@ -89,6 +93,7 @@ export interface MiniWishlistItem {
   name: string;
   categoryLabel: string;
   priceText: string;
+  status: "interested" | "purchased" | "rejected" | "archived";
   statusText: string;
   imageUrl: string;
   updatedAt: string;
@@ -99,6 +104,7 @@ export interface MiniOutfitDetail extends MiniOutfit {
 }
 
 export interface MiniWishlistDetail extends MiniWishlistItem {
+  rawPayload: Record<string, unknown>;
   productUrl: string;
   notes: string;
 }
@@ -293,6 +299,7 @@ export async function fetchWishlistDetail(id: string): Promise<MiniWishlistDetai
   const summary = await toMiniWishlistItem(response.data);
   return {
     ...summary,
+    rawPayload: response.data.payload,
     productUrl: stringValue(response.data.payload.productUrl, ""),
     notes: stringValue(response.data.payload.notes, "无备注"),
   };
@@ -443,6 +450,70 @@ export async function updateGarment(input: UpdateGarmentInput): Promise<Workspac
   return response.entity;
 }
 
+export async function setOutfitFavorite(id: string, expectedRevision: number, value: boolean): Promise<MiniOutfitDetail> {
+  await request<WorkspaceCommandResponse>({
+    method: "POST",
+    path: `/api/workspace/outfits/${encodeURIComponent(id)}/favorite`,
+    data: { clientMutationId: createClientMutationId(), expectedRevision, value, payload: {} },
+  });
+  return fetchOutfitDetail(id);
+}
+
+export async function markOutfitWornToday(id: string, expectedRevision: number): Promise<MiniOutfitDetail> {
+  await request<WorkspaceCommandResponse>({
+    method: "POST",
+    path: `/api/workspace/outfits/${encodeURIComponent(id)}/mark-worn`,
+    data: { clientMutationId: createClientMutationId(), expectedRevision, wornAt: `${localDateKey()}T12:00:00.000Z` },
+  });
+  return fetchOutfitDetail(id);
+}
+
+export async function cancelOutfitWornToday(id: string, expectedRevision: number): Promise<MiniOutfitDetail> {
+  await request<WorkspaceCommandResponse>({
+    method: "POST",
+    path: `/api/workspace/outfits/${encodeURIComponent(id)}/cancel-worn`,
+    data: { clientMutationId: createClientMutationId(), expectedRevision, date: localDateKey(), payload: {} },
+  });
+  return fetchOutfitDetail(id);
+}
+
+export async function convertWishlistToWardrobe(id: string, expectedRevision: number, locationId = "home"): Promise<MiniWishlistDetail> {
+  await request<WorkspaceCommandResponse>({
+    method: "POST",
+    path: `/api/workspace/wishlist/${encodeURIComponent(id)}/convert`,
+    data: { clientMutationId: createClientMutationId(), expectedRevision, locationId },
+  });
+  return fetchWishlistDetail(id);
+}
+
+export async function undoWishlistPurchase(id: string, expectedRevision: number): Promise<MiniWishlistDetail> {
+  await request<WorkspaceCommandResponse>({
+    method: "POST",
+    path: `/api/workspace/wishlist/${encodeURIComponent(id)}/undo-purchase`,
+    data: { clientMutationId: createClientMutationId(), expectedRevision },
+  });
+  return fetchWishlistDetail(id);
+}
+
+export async function updateWishlistStatus(input: {
+  id: string;
+  expectedRevision: number;
+  currentPayload: Record<string, unknown>;
+  status: "interested" | "rejected";
+}): Promise<MiniWishlistDetail> {
+  await request<WorkspaceCommandResponse>({
+    method: "PUT",
+    path: `/api/workspace/wishlist/${encodeURIComponent(input.id)}`,
+    data: {
+      clientMutationId: createClientMutationId(),
+      expectedRevision: input.expectedRevision,
+      payload: { ...input.currentPayload, status: input.status, updatedAt: new Date().toISOString() },
+      assetMutations: [],
+    },
+  });
+  return fetchWishlistDetail(input.id);
+}
+
 export async function deleteWorkspaceEntity(resource: "garments" | "outfits" | "wishlist", id: string, expectedRevision: number): Promise<void> {
   await request({
     method: "DELETE",
@@ -541,6 +612,7 @@ async function toMiniOutfit(entity: WorkspaceEntity, garments: MiniGarment[] = [
   const itemCount = itemIds.length || itemEntityIds.length || itemNames.length;
   const itemImages = outfitItemImages(itemIds, itemEntityIds, garments);
   const coverUrl = await resolveImageUrl(entity, "coverImageDataUrl", payload);
+  const wornDates = stringList(payload.wornDates);
   return {
     id: entity.id,
     revision: entity.revision,
@@ -553,6 +625,10 @@ async function toMiniOutfit(entity: WorkspaceEntity, garments: MiniGarment[] = [
     seasonText: formatSeasons(payload.seasons),
     sceneText: Array.isArray(payload.sceneTags) ? payload.sceneTags.filter(isNonEmptyString).slice(0, 3).join(" / ") || "未标注场景" : "未标注场景",
     favorite: payload.favorite === true,
+    wornDates,
+    wornToday: wornDates.includes(localDateKey()),
+    wearSummary: formatWearSummary(wornDates),
+    lastWornText: wornDates.length ? wornDates[wornDates.length - 1] ?? "暂无记录" : "暂无记录",
     updatedAt: entity.updatedAt,
   };
 }
@@ -566,7 +642,8 @@ async function toMiniWishlistItem(entity: WorkspaceEntity): Promise<MiniWishlist
     name: stringValue(payload.name, "未命名种草"),
     categoryLabel: CATEGORY_LABELS[category] ?? "未分类",
     priceText: typeof payload.price === "number" && Number.isFinite(payload.price) ? `¥${payload.price}` : "未记录价格",
-    statusText: wishlistStatusText(payload.status),
+    status: wishlistStatus(payload),
+    statusText: wishlistStatusText(payload),
     imageUrl: await resolveImageUrl(entity, "imageDataUrl", payload),
     updatedAt: entity.updatedAt,
   };
@@ -696,10 +773,23 @@ function temperatureText(value: unknown): string {
 }
 
 function wishlistStatusText(value: unknown): string {
+  if (value && typeof value === "object") return wishlistStatusText(wishlistStatus(value as Record<string, unknown>));
   if (value === "purchased") return "已购买";
   if (value === "rejected") return "已放弃";
   if (value === "archived") return "已归档";
   return "想买";
+}
+
+function wishlistStatus(payload: Record<string, unknown>): "interested" | "purchased" | "rejected" | "archived" {
+  if (payload.status === "purchased" || payload.purchased === true || typeof payload.convertedItemId === "number" || isNonEmptyString(payload.convertedAt)) return "purchased";
+  if (payload.status === "rejected") return "rejected";
+  if (payload.status === "archived") return "archived";
+  return "interested";
+}
+
+function localDateKey(): string {
+  const date = new Date();
+  return new Date(date.getTime() - date.getTimezoneOffset() * 60000).toISOString().slice(0, 10);
 }
 
 export function createClientMutationId(): string {

@@ -1,8 +1,8 @@
 <view class="page-shell result-page">
   <view class="result-card surface-panel">
-    <view class="result-mark">已完成</view>
+    <view class="result-mark">处理完成</view>
     <view class="page-title">批量导入结果</view>
-    <view class="page-copy">服务器已处理本次提交，返回衣橱页会重新读取最新数据。</view>
+    <view class="page-copy">保存成功的单品会从服务器重新读取；失败项仍保留，可继续处理。</view>
 
     <view class="result-stats">
       <view class="result-stat">
@@ -21,8 +21,11 @@
   <view wx:if="{{failedItems.length}}" class="failed-card surface-panel">
     <view class="section-title">失败项</view>
     <view wx:for="{{failedItems}}" wx:key="clientItemId" class="failed-row">
-      <view class="failed-name">{{item.name}}</view>
-      <view class="failed-error">{{item.error}}</view>
+      <image class="failed-thumb" mode="aspectFill" src="{{item.imagePath}}" />
+      <view class="failed-copy">
+        <view class="failed-name">{{item.name}}</view>
+        <view class="failed-error">{{item.error}}</view>
+      </view>
     </view>
   </view>
 

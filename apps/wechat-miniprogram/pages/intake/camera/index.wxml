@@ -10,9 +10,15 @@
       <view class="section-title">已选照片</view>
       <view class="count-pill">{{totalCount}} / {{maxCount}}</view>
     </view>
+    <view wx:if="{{queue.length}}" class="queue-state-row">
+      <view class="state-chip state-ready">{{readyCount}} 已准备</view>
+      <view class="state-chip state-uploading">{{uploadingCount}} 上传中</view>
+      <view class="state-chip state-failed">{{failedCount}} 失败</view>
+    </view>
     <view wx:if="{{queue.length}}" class="queue-grid">
       <view wx:for="{{queue}}" wx:key="clientItemId" class="queue-item {{item.status === 'failed' ? 'is-failed' : ''}}">
         <image class="queue-image" mode="aspectFill" src="{{item.stablePath || item.imagePath}}" />
+        <view class="queue-index">{{index + 1}}</view>
         <view class="queue-status status-{{item.status}}">
           {{item.status === 'ready' ? '已准备' : item.status === 'uploading' ? '上传中' : item.status === 'failed' ? '失败' : '待上传'}}
         </view>
@@ -40,6 +46,6 @@
 
   <view class="bottom-bar bottom-glass-bar">
     <button class="secondary-button bottom-button" disabled>上一步</button>
-    <button class="primary-button bottom-button" disabled="{{selecting || uploadingCount || !readyCount}}" loading="{{selecting || uploadingCount}}" bindtap="goReview">下一步（批量识别）</button>
+    <button class="primary-button bottom-button" disabled="{{selecting || uploadingCount || !readyCount}}" loading="{{selecting || uploadingCount}}" bindtap="goReview">下一步（AI识别）</button>
   </view>
 </view>

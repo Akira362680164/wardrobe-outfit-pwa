@@ -16,14 +16,23 @@
         <view class="section-title">确认 {{currentPositionText}} 件</view>
         <view class="ai-badge {{current.status === 'failed' ? 'badge-danger' : current.status === 'confirmed' ? 'badge-success' : ''}}">{{currentStatusText}}</view>
       </view>
+      <view class="state-strip">
+        <view class="state-chip state-confirmed">{{confirmedCount}} 已确认</view>
+        <view class="state-chip state-pending">{{pendingCount}} 待处理</view>
+        <view class="state-chip state-failed">{{failedCount}} 失败</view>
+      </view>
       <view class="queue-summary">{{confirmedCount}} 件已确认，{{failedCount}} 件失败{{recognizing ? '，AI 正在识别' : ''}}</view>
       <view class="preview-media">
         <image class="preview-image" mode="aspectFill" src="{{current.stablePath || current.imagePath}}" />
       </view>
       <view class="thumb-row">
-        <view wx:for="{{items}}" wx:key="clientItemId" data-index="{{index}}" class="thumb-wrap {{index === currentIndex ? 'thumb-active' : ''}} {{item.status === 'failed' ? 'thumb-failed' : ''}}" bindtap="chooseItem">
+        <view wx:for="{{items}}" wx:key="clientItemId" data-index="{{index}}" class="thumb-wrap thumb-{{item.status}} {{index === currentIndex ? 'thumb-active' : ''}} {{item.status === 'failed' ? 'thumb-failed' : ''}}" bindtap="chooseItem">
           <image class="thumb-image" mode="aspectFill" src="{{item.stablePath || item.imagePath}}" />
+          <view class="thumb-number">{{index + 1}}</view>
           <view class="thumb-dot status-{{item.status}}"></view>
+          <view class="thumb-label status-label-{{item.status}}">
+            {{item.status === 'confirmed' ? '已确认' : item.status === 'failed' ? '失败' : item.status === 'recognizing' || item.status === 'ready' ? '识别中' : item.status === 'saving' ? '保存中' : '待确认'}}
+          </view>
         </view>
       </view>
     </view>

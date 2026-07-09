@@ -5,7 +5,7 @@
     <view class="status-copy">{{error}}</view>
   </view>
   <view wx:elif="{{outfit}}">
-    <detail-shell top-title="套装详情" title="{{outfit.name}}" meta="{{outfit.itemCount}}件 · {{outfit.seasonText}} · {{outfit.sceneText}}" eyebrow="暂无穿着记录" image-url="{{outfit.imageUrl}}" hero-label="主图" hero-fallback="套装示意">
+    <detail-shell top-title="套装详情" title="{{outfit.name}}" meta="{{outfit.itemCount}}件 · {{outfit.seasonText}} · {{outfit.sceneText}}" eyebrow="{{outfit.wearSummary}}" image-url="{{outfit.imageUrl}}" hero-label="主图" hero-fallback="套装示意">
       <view slot="afterHero">
         <view class="thumb-strip">
           <view wx:for="{{outfit.itemImages}}" wx:key="*this" class="thumb {{index === 0 ? 'is-active' : ''}}">
@@ -17,8 +17,10 @@
 
         <view class="action-row">
           <button class="action-button edit">编辑</button>
+          <button class="action-button favorite" loading="{{actioning === 'favorite'}}" disabled="{{actioning || adviceLoading}}" bindtap="toggleFavorite">{{outfit.favorite ? '取消收藏' : '收藏'}}</button>
+          <button class="action-button worn" loading="{{actioning === 'worn'}}" disabled="{{actioning || adviceLoading}}" bindtap="toggleTodayWorn">{{outfit.wornToday ? '撤销穿着' : '今天穿过'}}</button>
           <button class="action-button ai" loading="{{adviceLoading}}" disabled="{{adviceLoading}}" bindtap="generateAdvice">AI 建议</button>
-          <button class="action-button danger" bindtap="openDeleteSheet">删除</button>
+          <button class="action-button danger" disabled="{{actioning || adviceLoading}}" bindtap="openDeleteSheet">删除</button>
         </view>
       </view>
 
@@ -42,7 +44,8 @@
         <view class="card-title">适穿信息</view>
         <view class="temperature-row"><text>适穿温度</text><view class="temperature-bar"><view class="temperature-band"></view></view></view>
         <view class="info-row"><text>风格标签</text><text>{{outfit.sceneText}}</text></view>
-        <view class="info-row"><text>穿着次数</text><text>0 次</text></view>
+        <view class="info-row"><text>穿着次数</text><text>{{outfit.wornDates.length}} 次</text></view>
+        <view class="info-row"><text>最近穿着</text><text>{{outfit.lastWornText}}</text></view>
       </view>
 
       <view class="info-card">

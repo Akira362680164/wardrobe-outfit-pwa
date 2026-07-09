@@ -7,9 +7,9 @@
   <view wx:elif="{{item}}">
     <detail-shell top-title="种草详情" title="{{item.name}}" meta="{{item.statusText}} · {{item.categoryLabel}} · {{item.priceText}}" image-url="{{item.imageUrl}}" hero-label="商品图" hero-fallback="{{item.categoryLabel}}">
       <view class="action-row" slot="afterHero">
-        <button class="action-button bought">✓ 已买</button>
-        <button class="action-button reject">× 不想买</button>
-        <button class="action-button danger" bindtap="openDeleteSheet">删除</button>
+        <button class="action-button bought" loading="{{actioning === 'purchase'}}" disabled="{{actioning}}" bindtap="togglePurchase">{{item.status === 'purchased' ? '撤销购买' : '已买转衣橱'}}</button>
+        <button class="action-button reject" loading="{{actioning === 'reject'}}" disabled="{{actioning || item.status === 'purchased'}}" bindtap="toggleRejected">{{item.status === 'rejected' ? '恢复想买' : '不想买'}}</button>
+        <button class="action-button danger" disabled="{{actioning}}" bindtap="openDeleteSheet">删除</button>
       </view>
 
       <view class="notice-card"><view class="check-dot">✓</view><view>已添加种草单品</view></view>

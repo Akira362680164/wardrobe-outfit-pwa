@@ -1,16 +1,57 @@
 import { aiEnhance, hasMiniMaxKey } from "../../../services/ai";
-import { deleteWorkspaceEntity, fetchGarments, fetchOutfitDetail, type MiniOutfitDetail } from "../../../services/workspace";
+import {
+  cancelOutfitWornToday,
+  deleteWorkspaceEntity,
+  fetchGarments,
+  fetchOutfitDetail,
+  markOutfitWornToday,
+  setOutfitFavorite,
+  type MiniOutfitDetail,
+} from "../../../services/workspace";
 
 Page({
   data: {
     loading: false,
     deleting: false,
+    actioning: "",
     adviceLoading: false,
     adviceSummary: "",
     adviceTips: [] as string[],
     deleteSheetOpen: false,
     outfit: null as MiniOutfitDetail | null,
     error: "",
+  },
+
+  async toggleFavorite(this: any) {
+    const outfit = this.data.outfit as MiniOutfitDetail | null;
+    if (!outfit || this.data.actioning) return;
+    this.setData({ actioning: "favorite" });
+    try {
+      const next = await setOutfitFavorite(outfit.id, outfit.revision, !outfit.favorite);
+      this.setData({ outfit: next });
+      wx.showToast({ title: next.favorite ? "已收藏" : "已取消收藏", icon: "success" });
+    } catch (error) {
+      wx.showToast({ title: error instanceof Error ? error.message : "更新收藏失败", icon: "none" });
+    } finally {
+      this.setData({ actioning: "" });
+    }
+  },
+
+  async toggleTodayWorn(this: any) {
+    const outfit = this.data.outfit as MiniOutfitDetail | null;
+    if (!outfit || this.data.actioning) return;
+    this.setData({ actioning: "worn" });
+    try {
+      const next = outfit.wornToday
+        ? await cancelOutfitWornToday(outfit.id, outfit.revision)
+        : await markOutfitWornToday(outfit.id, outfit.revision);
+      this.setData({ outfit: next });
+      wx.showToast({ title: next.wornToday ? "已记录穿着" : "已撤销穿着", icon: "success" });
+    } catch (error) {
+      wx.showToast({ title: error instanceof Error ? error.message : "更新穿着失败", icon: "none" });
+    } finally {
+      this.setData({ actioning: "" });
+    }
   },
 
   async generateAdvice(this: any) {
@@ -52,6 +93,7 @@ Page({
   },
 
   openDeleteSheet() {
+    if (this.data.actioning) return;
     this.setData({ deleteSheetOpen: true });
   },
 
