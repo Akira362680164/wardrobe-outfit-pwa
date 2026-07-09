@@ -99,6 +99,13 @@
       "when": 1783555200000,
       "tag": "0013_wechat_accounts",
       "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "7",
+      "when": 1783641600000,
+      "tag": "0014_unified_email_wechat_auth",
+      "breakpoints": true
     }
   ]
 }

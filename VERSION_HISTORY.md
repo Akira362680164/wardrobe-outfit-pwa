@@ -1,3 +1,14 @@
+## 2026-07-09 / v2.1.11-test / Codex — 账号体系 schema 与共享契约落地
+
+- **执行 Agent**：Codex（未触发 subagent：用户未通知；本轮按已批准设计进入实现）。
+- **目的**：为“邮箱主认证 + 手机号登录名 + 微信 OpenID 快捷登录/注册”落地第一批基础结构，先提供数据库表、迁移和共享请求/响应契约。
+- **版本变更**：无；当前应用版本仍为 `2.1.11-test`。本轮不打 APK。
+- **改动文件**：`services/wardrobe-api/src/db/schema.ts`、`services/wardrobe-api/migrations/0014_unified_email_wechat_auth.sql`、`services/wardrobe-api/migrations/meta/_journal.json`、`packages/cloud-contracts/src/auth/contracts.ts`、`VERSION_HISTORY.md`。
+- **改动说明**：新增 `email_identities`、`email_verification_challenges`、`wechat_identities`、`wechat_binding_tickets` 表定义和 SQL 迁移；扩展共享认证契约，包含统一 token user shape、邮箱验证码、邮箱注册、邮箱/手机号密码登录、密码重置/修改、账号安全、微信 OpenID 登录分流、绑定已有账号和邮箱注册绑定微信，同时保留旧微信手机号登录类型供旧代码编译。
+- **验证结果**：`npm run cloud:contracts:typecheck` 通过；`npm run api:typecheck` 通过。
+- **风险门禁**：high（数据库 schema、PostgreSQL 迁移和跨端认证契约变更）；未触发 subagent：用户未通知。
+- **未验证风险**：本提交只提供结构和类型，不注册新接口、不改客户端调用、不运行数据库迁移实库验证；邮箱验证码状态机、密码认证、微信 OpenID 业务流和 UI 将在后续提交继续实现。
+
 ## 2026-07-09 / v2.1.11-test / Codex — 统一账号与邮箱微信认证设计定稿
 
 - **执行 Agent**：Codex（未触发 subagent：本轮只整理用户已确认的开发方案）。
