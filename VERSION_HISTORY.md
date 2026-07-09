@@ -1,3 +1,14 @@
+## 2026-07-10 / v2.1.11-test / Codex — 腾讯云 SES 邮箱发送器设计定稿
+
+- **执行 Agent**：Codex（未触发 subagent：用户未通知；本轮仅将已确认的腾讯云 SES 增量范围写成实施设计）。
+- **目的**：在发信域名和发信地址已注册、HTML 模板仍待腾讯云审批的条件下，定义第二阶段邮件 Provider 接入方式，并以最新确认覆盖验证码 30 秒倒计时为 60 秒。
+- **版本变更**：无；当前应用版本仍为 `2.1.11-test`。本轮不改运行时代码、不打 APK、不上传小程序体验版。
+- **改动文件**：`docs/superpowers/specs/2026-07-10-tencent-ses-email-provider-design.md`、`VERSION_HISTORY.md`。
+- **改动说明**：固定腾讯云 SES `SendEmail` 模板变量和环境变量边界；明确后端 SDK 仅在 API 进程加载，测试/开发继续使用 Log Provider；定义 `/api/ready` 的 email 依赖状态、503 错误语义、60 秒冷却、每邮箱每小时 5 次、每 IP 每小时 20 次、发送失败 challenge 清理和 `change_email` 的仅契约预留；保留已上线的 `wechat_register` 协议值，不重命名为平行的 `wechat_bind`。
+- **验证结果**：设计文档自检通过；`git diff --check` 待提交前执行。本轮不运行构建或业务测试，因为未修改运行时代码。
+- **风险门禁**：low（设计文档与版本记录；不改后端接口、数据库、前端、小程序、环境变量或部署）；未触发 subagent：用户未通知。
+- **未验证风险**：腾讯云模板尚未审批，未获得 TemplateID、未配置生产 Secret、未调用腾讯云 API、未在真实邮箱或真机验证；后续实现仍需补齐 Provider、限流、ready、客户端 60 秒倒计时与完整测试。
+
 ## 2026-07-09 / v2.1.11-test / Codex — 修改密码邮箱验证码模式补齐
 
 - **执行 Agent**：Codex（未触发 subagent：用户未通知；本轮继续执行已批准账号体系设计）。
