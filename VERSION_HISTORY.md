@@ -1,3 +1,13 @@
+## 2026-07-11 / v2.1.13-test / Codex — Manifest BFS 严格证据执行骨架
+
+- **执行 Agent**：Codex 主协调 agent；三个文件隔离 subagent 分别实现 obligation/checkpoint runner、APP 通用执行器和小程序通用执行器，主 agent 接入 CLI/package 并复核。
+- **目的**：把 51 Screen / 125 语义 Action 转为逐平台可恢复的 250 条执行义务，严格阻止静态阅读或不完整截图被误报为 PASS。
+- **版本变更**：无；保持 `2.1.13-test`，仅新增 parity 测试基础设施。
+- **能力**：支持 domain/screen/platform 过滤、execution evidence 递归导入、原子 checkpoint 与断点恢复；APP/小程序执行器统一支持 route、parity-id 点击/输入、返回、稳定等待、四阶段截图/UI/route/network，危险副作用必须命中 fixture allowlist；小程序连接失败和语义映射缺失分别落 `BLOCKED`/`NOT_EXECUTED`。
+- **严格门禁**：四阶段 PNG、UI tree、route 缺一不可 PASS；声明 serverAssertion 的 Action 还必须具备 network 与 server-readback。当前导入结果为 obligations=250、PASS=4、DEFECT=1、NOT_EXECUTED=245，审计完整性门禁继续 FAIL。
+- **验证结果**：BFS runner 5/5、通用执行器 11/11、完整 `npm run typecheck`、`git diff --check` 通过；CLI `npm run parity:bfs -- --run-id parity-build-20260711-001` 成功生成 `bfs-checkpoint.json`。
+- **未验证风险**：通用 driver 仍需为 245 条义务补齐具体 route/fixture/action 映射并实际运行；微信 DevTools 当前连接恢复仍在处理中，任何连接失败项不得降级为 PASS。
+
 ## 2026-07-11 / v2.1.13-test / Codex — Android Full 深链路与删除引用级联闭环
 
 - **执行 Agent**：Codex 主协调 agent；一个文件隔离 subagent 实现服务端 garment 删除级联，主 agent 复核、补 E2E 漂移并在真实设备复测。

@@ -11,6 +11,7 @@ import { seedParityFixtures } from "./seed";
 import { captureAppCalendarSample, captureAppDiagnosticsSample, captureAppGarmentDetailSample } from "./adapters/app";
 import { captureMiniCalendarSample, captureMiniDiagnosticsSample, captureMiniGarmentDetailSample } from "./adapters/mini";
 import { generateInstrumentationPlan } from "./instrumentation";
+import { createObligations, importEvidence, loadCheckpoint, loadDomainManifests, resumeResults, writeCheckpoint } from "./bfs-runner";
 
 interface CliArgs {
   command: string;
@@ -64,6 +65,8 @@ function printHelp(): void {
   tsx scripts/parity/cli.ts capture-app-calendar-sample --run-id <runId> --serial <adb serial>
   tsx scripts/parity/cli.ts capture-mini-calendar-sample --run-id <runId> --client <wechatide client> --project <mini root>
   tsx scripts/parity/cli.ts instrumentation-plan --run-id <runId> [--apply true]
+  tsx scripts/parity/cli.ts bfs-plan --run-id <runId> [--domain wardrobe] [--screen wardrobe.garment.detail] [--platform app|mini]
+  tsx scripts/parity/cli.ts bfs-import --run-id <runId> [--domain wardrobe] [--screen wardrobe.garment.detail] [--platform app|mini]
 
 Common options:
   --app-ref main
@@ -273,6 +276,32 @@ async function main(): Promise<void> {
       apply: value(args, "apply", "false") === "true",
     });
     console.log(JSON.stringify({ ok: true, counts: result.counts, appliedFiles: result.appliedFiles.length }, null, 2));
+    return;
+  }
+  if (args.command === "bfs-plan" || args.command === "bfs-import") {
+    const runId = value(args, "run-id");
+    const runRoot = path.join(outputRoot, runId);
+    const platform = args.values.get("platform") as "app" | "mini" | undefined;
+    if (platform && platform !== "app" && platform !== "mini") throw new Error(`Invalid --platform: ${platform}`);
+    const manifests = await loadDomainManifests(path.join(cwd, "scripts", "parity", "manifests"));
+    const obligations = createObligations(manifests, {
+      domains: args.values.has("domain") ? [value(args, "domain")] : undefined,
+      screens: args.values.has("screen") ? [value(args, "screen")] : undefined,
+      platforms: platform ? [platform] : undefined,
+    });
+    const checkpointFile = path.resolve(args.values.get("checkpoint") ?? path.join(runRoot, "bfs-checkpoint.json"));
+    const results = args.command === "bfs-import"
+      ? await importEvidence(obligations, runRoot)
+      : resumeResults(obligations, await loadCheckpoint(checkpointFile));
+    await writeCheckpoint(checkpointFile, results);
+    console.log(JSON.stringify({
+      ok: true,
+      checkpointFile,
+      obligations: results.length,
+      pass: results.filter((result) => result.status === "PASS").length,
+      defect: results.filter((result) => result.status === "DEFECT").length,
+      notExecuted: results.filter((result) => result.status === "NOT_EXECUTED").length,
+    }, null, 2));
     return;
   }
   throw new Error(`Unsupported parity command: ${args.command}`);

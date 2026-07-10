@@ -179,6 +179,8 @@
     ,"parity:capture:mini:calendar:sample": "tsx scripts/parity/cli.ts capture-mini-calendar-sample"
     ,"parity:instrumentation:plan": "tsx scripts/parity/cli.ts instrumentation-plan"
     ,"parity:report": "tsx scripts/parity/report.ts"
+    ,"parity:bfs": "tsx scripts/parity/cli.ts bfs-import"
+    ,"parity:bfs:test": "npx tsx --test scripts/parity/tests/bfs-runner.test.ts"
   },
   "dependencies": {
     "@wardrobe/domain-catalog": "file:packages/domain-catalog",
