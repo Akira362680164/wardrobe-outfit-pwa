@@ -41,6 +41,11 @@ type CalendarDayView = {
   entryLabel: string;
   dots: DayDot[];
 };
+type CalendarWeekView = {
+  key: string;
+  days: CalendarDayView[];
+  containsSelectedDate: boolean;
+};
 type SelectedEntryView = {
   id: string;
   outfitId: string;
@@ -94,7 +99,7 @@ Page({
     selectedDate: localDateKey(),
     selectedDateLabel: "",
     weekdays: WEEKDAYS,
-    days: [] as CalendarDayView[],
+    calendarWeeks: [] as CalendarWeekView[],
     loading: false,
     savingEntry: false,
     outfits: [] as MiniOutfit[],
@@ -372,7 +377,7 @@ Page({
     const { firstDay, lastDay } = getMonthRange(this.data.monthKey);
     const monthHasData = this.data.outfitPlanEntries.some((entry) => entry.date >= firstDay && entry.date <= lastDay)
       || this.data.calendarPlans.some((plan) => rangeOverlaps(plan.startDate, plan.endDate, firstDay, lastDay));
-    const days = getMonthGrid(this.data.monthKey, this.data.todayKey).map((cell) => {
+    const dayViews = getMonthGrid(this.data.monthKey, this.data.todayKey).map((cell) => {
       const entry = this.primaryEntryForDate(cell.dateKey);
       const plans = this.plansForDate(cell.dateKey);
       return {
@@ -385,6 +390,11 @@ Page({
         dots: plans.slice(0, 2).map((plan) => ({ id: plan.id, title: plan.title, className: TONE_CLASS[plan.tone] })),
       };
     });
+    const calendarWeeks = chunkIntoWeeks(dayViews).map((days) => ({
+      key: days[0]?.key || "",
+      days,
+      containsSelectedDate: days.some((day) => day.key === this.data.selectedDate),
+    }));
     const selectedPlans = this.plansForDate(this.data.selectedDate).map((plan) => ({
       ...plan,
       toneClass: TONE_CLASS[plan.tone],
@@ -422,14 +432,18 @@ Page({
     this.setData({
       monthTitle: monthTitle(this.data.monthKey),
       selectedDateLabel: formatDateLabel(this.data.selectedDate),
-      days,
+      calendarWeeks,
       selectedPlans,
       selectedPrimaryEntry,
       selectedBackupEntries,
       monthHasData,
-      selectedEmptyTitle: relation === "past" ? `${formatDateWithWeek(this.data.selectedDate)}还没有穿着记录` : `${formatDateWithWeek(this.data.selectedDate)}还没有安排穿搭`,
-      selectedEmptyCopy: relation === "past" ? "可以补记当天实际穿过的套装。" : "先安排主计划，再添加备选穿搭。",
-      selectedActionLabel: relation === "past" ? "补记已穿" : "安排主穿搭",
+      selectedEmptyTitle: relation === "past"
+        ? `${formatDateWithWeek(this.data.selectedDate)}还没有穿着记录`
+        : relation === "today"
+          ? "今天还没有安排穿搭"
+          : `${formatDateWithWeek(this.data.selectedDate)}还没有安排穿搭`,
+      selectedEmptyCopy: relation === "past" ? "可以补记当天实际穿过的套装。" : "可以先把想穿的套装放进计划。",
+      selectedActionLabel: relation === "past" ? "补记已穿" : "安排穿搭",
     });
   },
 
@@ -453,6 +467,12 @@ function entryLabel(entry: MiniOutfitPlanEntry | undefined, dateKey: string, tod
   if (entry.status === "worn") return "已穿";
   if (entry.status === "changed") return "已变更";
   return dateKey < todayKey ? "未确认" : "计划";
+}
+
+function chunkIntoWeeks(days: CalendarDayView[]): CalendarDayView[][] {
+  const weeks: CalendarDayView[][] = [];
+  for (let index = 0; index < days.length; index += 7) weeks.push(days.slice(index, index + 7));
+  return weeks;
 }
 
 function getTitleTopRpx(): number {

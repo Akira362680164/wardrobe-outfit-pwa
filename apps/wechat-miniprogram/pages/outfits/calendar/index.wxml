@@ -15,32 +15,37 @@
     <view wx:for="{{weekdays}}" wx:key="*this" class="weekday">{{item}}</view>
   </view>
 
-  <view class="calendar-grid">
-    <view
-      wx:for="{{days}}"
-      wx:key="key"
-      data-date="{{item.key}}"
-      class="calendar-day {{item.muted ? 'calendar-day--muted' : ''}} {{item.active ? 'calendar-day--active' : ''}}"
-      bindtap="selectDate"
-    >
-      <view class="calendar-day__num {{item.today ? 'calendar-day__num--today' : ''}}">{{item.label}}</view>
-      <view class="calendar-day__body">
-        <text wx:if="{{item.entryLabel}}" class="entry-label">{{item.entryLabel}}</text>
+  <view class="calendar-weeks">
+    <block wx:for="{{calendarWeeks}}" wx:for-item="week" wx:key="key">
+      <view class="calendar-week">
+        <view class="calendar-week__days">
+          <view
+            wx:for="{{week.days}}"
+            wx:for-item="day"
+            wx:key="key"
+            data-date="{{day.key}}"
+            class="calendar-day {{day.muted ? 'calendar-day--muted' : ''}} {{day.active ? 'calendar-day--active' : ''}}"
+            bindtap="selectDate"
+          >
+            <view class="calendar-day__num {{day.today ? 'calendar-day__num--today' : ''}}">{{day.label}}</view>
+            <view class="calendar-day__body">
+              <text wx:if="{{day.entryLabel}}" class="entry-label">{{day.entryLabel}}</text>
+            </view>
+            <view wx:if="{{day.dots.length}}" class="plan-dots">
+              <view
+                wx:for="{{day.dots}}"
+                wx:for-item="dot"
+                wx:key="id"
+                data-id="{{dot.id}}"
+                class="plan-dot {{dot.className}}"
+                catchtap="openPlanDetail"
+              />
+            </view>
+          </view>
+        </view>
       </view>
-      <view wx:if="{{item.dots.length}}" class="plan-dots">
-        <view
-          wx:for="{{item.dots}}"
-          wx:for-item="dot"
-          wx:key="id"
-          data-id="{{dot.id}}"
-          class="plan-dot {{dot.className}}"
-          catchtap="openPlanDetail"
-        />
-      </view>
-    </view>
-  </view>
 
-  <view class="selected-card">
+  <view wx:if="{{week.containsSelectedDate}}" class="selected-card">
     <view wx:if="{{selectedPlans.length}}" class="selected-plan-row">
       <view
         wx:for="{{selectedPlans}}"
@@ -96,6 +101,8 @@
       <view class="state-copy">{{selectedEmptyCopy}}</view>
       <button class="primary-button state-button" disabled="{{savingEntry}}" bindtap="openSelectedDateSelector">{{selectedActionLabel}}</button>
     </view>
+  </view>
+    </block>
   </view>
 
   <view wx:if="{{loading}}" class="month-empty">

@@ -1,3 +1,23 @@
+## 2026-07-10 / v2.1.9-test / Codex - 小程序月历按周插入详情卡
+
+- **执行 Agent**：Codex（未触发 subagent：用户未通知；继续在独立 worktree `/Users/fangzheng/Documents/wardrobe-wechat-calendar-plan-fix` 的 `codex/wechat-calendar-plan-fix` 分支实现）。
+- **目的**：按用户提供的当前 App 月历页，修正小程序月历“先完整渲染六周、再显示详情卡”的结构偏差，并补齐空状态与有套装状态的视觉验收。
+- **版本变更**：无；当前应用版本仍为 `2.1.9-test`，小程序包版本仍为 `0.1.0`。
+- **改动边界**：仅改小程序前端日期布局、页面结构与样式；未改 `services/wardrobe-api`、`packages/cloud-contracts`、数据库或线上接口契约。
+- **改动文件**：`apps/wechat-miniprogram/utils/calendar.ts`、`apps/wechat-miniprogram/scripts/test-calendar-layout.ts`、`apps/wechat-miniprogram/pages/outfits/calendar/index.{ts,wxml,wxss}`、`VERSION_HISTORY.md`。
+- **改动说明**：月历改为按自然周动态生成 35 或 42 个日期格；选中日期的详情卡直接插在其所属周之后，后续日期继续排在卡片下方；移除多余第六周；二级页顶部改为透明箭头命中区、标题在可用区域居中、取消标题下硬分割线；空状态文案、按钮和轻量卡片对齐 App，主计划和备选穿搭状态保持既有业务能力。
+- **验证结果**：主项目 TypeScript 执行 `tsc -p apps/wechat-miniprogram/tsconfig.json --noEmit` 通过；`test-calendar-layout.ts` 的 7 条动态月历断言通过；`test-outfit-plan-state.ts` 的 11 条状态断言通过；微信开发者工具 CLI 编译月历 WXML/WXSS 并刷新模拟器通过；DevTools console 的 error/fail/typeerror/referenceerror 过滤为空。截图已确认空状态和有套装状态：`/Users/fangzheng/Desktop/wechat-calendar-plan-align-screenshots/19-calendar-inline-empty-state.png`、`/Users/fangzheng/Desktop/wechat-calendar-plan-align-screenshots/20-calendar-inline-outfit-state.png`。有套装截图只读下载用户已有两件衣物缩略图，在模拟器内注入展示状态，不创建或修改服务器数据。
+- **风险门禁**：high（小程序月历结构、触摸选择、详情卡和移动端视觉状态调整；不改服务端、不上传体验版、不打 Android APK）；未触发 subagent：用户未通知。
+- **未验证风险**：未做真机预览或体验版上传；开发者工具密码登录页面仍有成功响应后停留提交态的问题，因此截图使用页面内展示数据验证布局。
+
+## 2026-07-10 / v2.1.9-test / Codex - 小程序计划穿搭与实际穿着分流
+
+- **提交**：`c578ea1f`（该记录已从文件末尾移回最新记录区域）。
+- **目的**：将小程序套装首页周历与月历页的穿搭状态对齐 App：历史日期补登实际穿着；今天和未来日期均支持主计划与备选穿搭；今天可将主计划标记为已穿并撤销，未来可更改主计划；同一天不能把同一套装重复安排为主计划和备选。
+- **改动边界**：仅改 `apps/wechat-miniprogram` 前端；未改 `services/wardrobe-api`、`packages/cloud-contracts`、数据库或线上接口契约。
+- **验证结果**：TypeScript、11 条计划状态与重复保护断言、月历和套装页 WXML/WXSS 编译、模拟器刷新及 DevTools console 检查通过；经用户授权的真实账号现有接口完成主计划、备选、标记已穿、替换主计划、历史补登与取消补登验证，临时数据已清理。
+- **未验证风险**：未做真机预览或体验版上传；当时的展示截图只用于模拟器布局验证。
+
 ## 2026-07-09 / v2.1.9-test / Codex — 小程序套装拼图封面对齐 App
 
 - **执行 Agent**：Codex（未触发 subagent：用户未通知；延续独立 worktree `/Users/fangzheng/Documents/wardrobe-wechat-calendar-plan-fix` 的 `codex/wechat-calendar-plan-fix` 分支）。
@@ -4413,14 +4433,3 @@
 - **风险门禁**：**high**（Android 原生网络与线上图片主链路）。
 - **未触发 subagent**：用户未通知。
 - **待完成验证**：提交后重建固定签名 APK，在 Android 35 模拟器重新登录同一线上账号并确认原图显示、重装后服务器恢复及无致命 logcat。
-## 2026-07-10 / v2.1.9-test / Codex - 小程序计划穿搭与实际穿着分流
-
-- **执行 Agent**：Codex（未触发 subagent：用户未通知；继续在独立 worktree `/Users/fangzheng/Documents/wardrobe-wechat-calendar-plan-fix` 的 `codex/wechat-calendar-plan-fix` 分支实现）。
-- **目的**：将小程序套装首页周历与月历页的穿搭状态对齐 App：历史日期补登实际穿着；今天和未来日期均支持主计划与备选穿搭；今天可将主计划标记为已穿并撤销，未来可更改主计划；同一天不能把同一套装重复安排为主计划和备选。
-- **版本变更**：无；当前应用版本仍为 `2.1.9-test`，小程序包版本仍为 `0.1.0`。
-- **改动边界**：仅改 `apps/wechat-miniprogram` 前端和本记录；未改 `services/wardrobe-api`、`packages/cloud-contracts`、数据库或线上接口契约，复用既有 `/api/workspace/outfit-plans`、穿着记录和计划读写接口。
-- **改动文件**：`apps/wechat-miniprogram/services/workspace.ts`、`apps/wechat-miniprogram/utils/outfit-plan-state.ts`、`apps/wechat-miniprogram/scripts/test-outfit-plan-state.ts`、`apps/wechat-miniprogram/pages/outfits/index.{ts,wxml,wxss}`、`apps/wechat-miniprogram/pages/outfits/calendar/index.{ts,wxml,wxss}`、`VERSION_HISTORY.md`。
-- **改动说明**：新增计划状态归类、主计划排序与备选筛选纯函数；小程序读取服务端 `actualOutfitId`、实际主穿搭、角色和排序字段；套装首页周卡和月历选择卡统一展示主计划、备选列表及套装拼图封面。历史日期仅开放“补记已穿”；今天主计划显示“标记已穿”或“撤销已穿”，且可添加备选；未来主计划支持“更改计划”和“添加备选”。每次写入等待服务端提交后重新读取 planning snapshot，不做乐观更新；失败时保留选择面板和当前草稿。月历页顶部标题与 `+计划` 按钮固定在微信胶囊下方，避免互相遮挡。
-- **验证结果**：主项目 TypeScript 执行 `tsc -p apps/wechat-miniprogram/tsconfig.json --noEmit` 通过；`test-outfit-plan-state.ts` 的 11 条计划状态与重复保护断言通过；微信开发者工具 CLI 编译 `pages/outfits/index/index` 与 `pages/outfits/calendar/index` 的 WXML/WXSS 全部通过，并完成模拟器刷新；模拟器检查月历页主计划、标记已穿、备选入口、备选选择面板和顶部标题布局，截图为 `/Users/fangzheng/Desktop/wechat-calendar-plan-align-screenshots/16-calendar-header-main-plan-backup.png`、`/Users/fangzheng/Desktop/wechat-calendar-plan-align-screenshots/17-calendar-backup-selector.png`、`/Users/fangzheng/Desktop/wechat-calendar-plan-align-screenshots/18-outfits-home-header-position.png`；DevTools console 的 error/fail/typeerror/referenceerror 过滤为空；`git diff --check` 通过。使用用户授权的真实测试账号调用现有线上接口，验证今天主计划与备选、未来主计划与备选、今天标记已穿、未来替换主计划、历史补登及取消补登，全部读回成功，临时套装和计划均已清理。
-- **风险门禁**：high（小程序日历交互、服务器状态写入和移动端底部面板；不改服务端、不改共享契约、不上传体验版、不打 Android APK）；未触发 subagent：用户未通知。
-- **未验证风险**：真实接口验证经由已授权账号完成，但微信开发者工具的密码登录页面在接口返回 200 后仍停留在提交态，属于 DevTools 页面运行问题，故截图使用页面内注入展示状态且不写入服务器；未做真机预览或体验版上传。

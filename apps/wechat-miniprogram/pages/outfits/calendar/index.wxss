@@ -6,7 +6,7 @@
 
 .sub-top {
   position: relative;
-  min-height: 96rpx;
+  min-height: 88rpx;
 }
 
 .back-button {
@@ -17,11 +17,10 @@
   justify-content: center;
   width: 80rpx;
   height: 80rpx;
-  border-radius: 50%;
-  background: rgba(255, 255, 252, 0.88);
+  background: transparent;
   color: var(--color-ink);
   font-size: 52rpx;
-  font-weight: 700;
+  font-weight: 500;
   line-height: 1;
 }
 
@@ -32,6 +31,7 @@
   left: 96rpx;
   display: flex;
   align-items: center;
+  justify-content: center;
   min-width: 0;
   height: 88rpx;
   overflow: hidden;
@@ -56,7 +56,6 @@
   height: 88rpx;
   margin: 0;
   padding: 0;
-  padding: 0;
   border: 0;
   border-radius: 44rpx;
   background: var(--color-primary);
@@ -77,9 +76,7 @@
   display: grid;
   grid-template-columns: 80rpx 1fr 80rpx;
   align-items: center;
-  margin-top: 24rpx;
-  padding-top: 22rpx;
-  border-top: 1rpx solid var(--color-line);
+  margin-top: 12rpx;
 }
 
 .month-title {
@@ -100,7 +97,7 @@
 }
 
 .weekday-row,
-.calendar-grid {
+.calendar-week__days {
   display: grid;
   grid-template-columns: repeat(7, minmax(0, 1fr));
 }
@@ -115,10 +112,11 @@
   text-align: center;
 }
 
-.calendar-grid {
-  row-gap: 14rpx;
+.calendar-weeks {
   margin-top: 16rpx;
 }
+
+.calendar-week { margin-top: 10rpx; }
 
 .calendar-day {
   display: flex;
@@ -145,7 +143,7 @@
 
 .calendar-day__num {
   font-size: var(--font-body);
-  font-weight: 800;
+  font-weight: 700;
   line-height: 36rpx;
 }
 
@@ -190,10 +188,10 @@
 .tone-slate { background: rgba(148, 163, 184, 0.62); }
 
 .selected-card {
-  margin: 20rpx 0 0;
-  padding: 24rpx;
-  border-radius: var(--radius-card-inner);
-  background: rgba(255, 255, 252, 0.58);
+  margin: 10rpx 0 22rpx;
+  padding: 28rpx 24rpx;
+  border-radius: 32rpx;
+  background: rgba(255, 255, 252, 0.44);
 }
 
 .selected-plan-row {
@@ -446,7 +444,7 @@
 }
 
 .month-empty {
-  margin-top: 56rpx;
+  margin-top: 48rpx;
   text-align: center;
 }
 

@@ -36,8 +36,10 @@ export function getMonthGrid(monthKey: string, todayKey = localDateKey()): Calen
   const first = new Date(year, month - 1, 1);
   const offset = (first.getDay() + 6) % 7;
   const start = new Date(year, month - 1, 1 - offset);
+  const daysInMonth = new Date(year, month, 0).getDate();
+  const cellCount = Math.ceil((offset + daysInMonth) / 7) * 7;
   const cells: CalendarDayCell[] = [];
-  while (cells.length < 42) {
+  while (cells.length < cellCount) {
     const day = new Date(start.getFullYear(), start.getMonth(), start.getDate() + cells.length);
     const dateKey = ymd(day.getFullYear(), day.getMonth() + 1, day.getDate());
     cells.push({
