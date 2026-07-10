@@ -17,7 +17,27 @@
 - **验证结果**：`npm run cloud:contracts:typecheck`、`npm run api:typecheck`、`npm run typecheck`、`npm --prefix apps/wechat-miniprogram run typecheck`、`npm run test:logic:domain-catalog`、`npm run catalog:miniprogram:check`、`npm run test:logic:miniprogram-catalog`、`npm run test:logic:wechat-email-auth-flow`、`npm run build` 和 `git diff --check` 通过；`test-calendar-layout.ts` 7 条、`test-outfit-plan-state.ts` 11 条断言通过；微信开发者工具 `simulator_refresh` 成功，套装首页、月历、计划编辑页可打开，套装首页/月历/计划详情/计划编辑 4 页 WXML 与 WXSS 单文件编译成功，console 的 error/fail/TypeError/ReferenceError/SyntaxError 过滤为空。
 - **风险门禁**：high（跨基线认证/服务端同步、小程序计划读写、月历交互、共享领域目录和多页面 UI）；未触发 subagent：用户未要求。
 - **未验证风险**：未上传体验版、未做本轮真机预览、未使用真实账号重新执行计划写入；微信开发者工具 `automation_runtime_info currentPage` 因当前会话 domain 未挂载返回工具错误，但页面打开、整体刷新、WXML/WXSS 编译和 console 检查均成功。
+## 2026-07-10 / v2.1.12-test / Codex — 腾讯 SES 生产激活配置
 
+- **执行 Agent**：Codex（未触发 subagent：用户授权当前 Session 执行生产邮件激活）。
+- **目的**：在腾讯云验证码模板审核通过后，补齐生产容器的 SES 与认证 HMAC 环境变量透传，并按备份、迁移、readiness、真实邮箱的顺序激活邮件发送。
+- **版本变更**：无；当前应用版本仍为 `2.1.12-test`。本批次只改生产部署配置和文档，不改 App/小程序页面，不打 APK。
+- **改动文件**：`deploy/compose.production.yaml`、`deploy/docs/production-deploy.md`、`services/wardrobe-api/Dockerfile`、`VERSION_HISTORY.md`。
+- **改动说明**：API 容器新增 `AUTH_HMAC_SECRET`、`EMAIL_PROVIDER` 和腾讯 SES 配置透传；部署手册明确主线只使用一个 `AUTH_HMAC_SECRET`，以及模板通过后的备份、自动迁移、`email: ready` 和受控真实邮箱验收门禁；Docker 构建上下文补齐 API 已依赖的 `@wardrobe/domain-catalog` workspace 包。
+- **验证结果**：生产 Compose YAML 解析通过，并通过服务器 Compose v2 使用无敏感占位值完成只读 `config` 渲染；`npm run cloud:contracts:typecheck`、`npm run api:typecheck`、根目录与小程序 typecheck 通过；`npm run api:test` 通过（16 files / 99 tests）；App/小程序邮箱认证、`auth-flow-v2-0-1`（42 项）和 online workspace 合同测试通过；`npm run build` 以 `2.1.12-test` / `e41a6499` 成功；`git diff --check` 通过。生产数据库备份 `/opt/wardrobe-cloud/backups/postgres/wardrobe-20260710-151056.sql` 为 459733 bytes、权限 `600`、SHA-256 `eb9cae7202d842ed5e0dff74672b1075d185d19dd779d894b97a1f8721e68c59`；服务器实际构建并部署镜像 `wardrobe-api:49343d0b`，公网 health、`email: ready` 和 version commit `49343d0b7e732c996b0c8f440356182dbd466339` 通过；迁移索引 `email_verification_challenges_{email,ip}_created_at_idx` 均存在。腾讯云创建无控制台登录的编程访问用户 `wardora-ses-sender`，只关联自定义策略 `WardoraSesSendEmailOnly`，策略 JSON 唯一 action 为 `ses:SendEmail`；Secret 仅写入权限 `600` 的服务器 `.env`。控制台核验实际资源地域为中国香港、模板 ID `203864` 且审核通过；真实注册、找回密码和修改密码三类验证码接口均返回 `200 sent`，QQ 邮箱均收到来自 `Wardora <no-reply@mail.zhengfangapps.cloud>` 的验证码邮件。使用真实验证码完成邮箱注册，用户 ID `0180487a-b2a6-48b0-975d-e4d519e7f255`、邮箱已验证、token 正常、默认衣橱位置 1 个；找回密码和登录态验证码修改密码均完成，每次旧密码登录均为 `401`，新密码登录成功且 userId 不变；最终测试密码只保存在 macOS Keychain 服务 `WARDORA_TEST_ACCOUNT_PASSWORD`。
+- **风险门禁**：high（生产认证密钥、数据库自动迁移、真实邮件发送）；未触发 subagent：用户未要求。
+- **未验证风险**：微信绑定需要小程序真实 `wx.login` code；微信开发者工具 `scan_login` 返回 `Connection failed: This operation was aborted, rediscovering port...`，未继续猜测或绕过，因此尚未在开发者工具或真机执行微信分流/绑定；未重新打 APK 或上传小程序体验版。
+
+## 2026-07-10 / v2.1.12-test / Codex — Git Session 与 Worktree 隔离治理
+
+- **执行 Agent**：Codex（未触发 subagent：用户要求当前 Session 直接执行文档治理）。
+- **目的**：固定本地 `main` / `wechat/miniprogram` 双基线、独立 Session worktree、正式目录串行集成和安全清理规则，避免多个 Session 共用目录、依赖未提交成果或遗留大量短期分支。
+- **版本变更**：无；当前应用版本仍为 `2.1.12-test`。本轮只修改治理文档，不改运行时代码、不打 APK、不上传小程序。
+- **改动文件**：本机忽略文件 `AGENTS.md`、`docs/development/git-session-workflow.md`、`docs/superpowers/plans/2026-07-10-git-session-governance.md`、`VERSION_HISTORY.md`。
+- **改动说明**：在 `AGENTS.md` 前部加入精简强约束并链接详细手册；操作手册覆盖基线检查、Session 创建、固定 worktree、串行合并、跨 App/小程序共享任务、GitHub 备份和废纸篓清理；保留 `AGENTS.md` 当前本机治理文件定位，不改变公开仓库忽略策略。
+- **验证结果**：操作手册 9 个必要章节和 `AGENTS.md` 前部链接检查通过；精简隔离规则共 14 行（含标题与空行）；计划占位词扫描无命中；`git diff --check` 通过；`package.json` 版本确认仍为 `2.1.12-test`。正式基线合并与远程同步在集成步骤完成。
+- **风险门禁**：low（Git 与文档治理；不改业务代码、数据、接口或构建配置）；未触发 subagent：用户未要求。
+- **未验证风险**：规则依赖后续 Agent 按约定执行，Git 本身不能阻止错误 Session 在错误目录操作；未新增自动化 preflight hook。
 ## 2026-07-10 / v2.1.12-test / Codex — App 主线功能分支收口
 
 - **执行 Agent**：Codex（未触发 subagent：用户要求先完成基线合并和推送，分支清理留到后续）。

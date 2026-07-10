@@ -45,6 +45,40 @@ Asset files are stored under the host directory `/srv/wardrobe/storage`, mounted
 https://zhengfangapps.cloud,http://localhost:3000,http://127.0.0.1:3000,capacitor://localhost
 ```
 
+## Email Verification
+
+Production email verification uses Tencent SES. Store these values only in
+`/opt/wardrobe-cloud/.env`; do not commit them or print the file contents:
+
+```text
+AUTH_HMAC_SECRET=<at-least-32-random-bytes>
+EMAIL_PROVIDER=tencent-ses
+TENCENTCLOUD_SECRET_ID=<secret-id>
+TENCENTCLOUD_SECRET_KEY=<secret-key>
+TENCENT_SES_REGION=ap-hongkong
+TENCENT_SES_ENDPOINT=ses.tencentcloudapi.com
+TENCENT_SES_FROM=Wardora <no-reply@mail.zhengfangapps.cloud>
+TENCENT_SES_REPLY_TO=
+TENCENT_SES_VERIFY_TEMPLATE_ID=<approved-template-id>
+```
+
+`AUTH_HMAC_SECRET` is the single production HMAC secret used for email codes,
+WeChat identities, and binding tickets. Generate it once before enabling the
+new auth routes and retain it across deployments. Rotating it invalidates
+unconsumed email codes and outstanding binding tickets.
+
+Wardora's verified sender domain, sender address, and template are provisioned
+in Tencent SES region `ap-hongkong`. Keep the API region aligned with those
+resources; using another supported SES region still makes the template and
+sender unavailable to the request.
+
+After the template is approved, back up PostgreSQL, build the new API image,
+and start it with the complete configuration. Activation is successful only
+when `/api/ready` reports `dependencies.email: "ready"`. Then send one
+controlled registration code to the designated test inbox before testing
+password reset, password change, and WeChat binding. Do not use the production
+`log` provider as a delivery fallback.
+
 ## Caddy
 
 The server already has Caddy at `/usr/bin/caddy`. Do not reinstall, downgrade, or clear `/var/lib/caddy`.
@@ -99,6 +133,11 @@ deploy/scripts/wardrobe-cloud.sh health
 ```
 
 `deploy` pulls the `postgres` base image only. The API image is expected to exist locally from `build-image`, or to point to a reachable registry image if you override `WARDROBE_API_IMAGE`.
+
+The API runs pending Drizzle migrations before listening. Always run
+`backup-db` before deploying an image that contains new migrations. If startup
+or readiness fails, keep the database backup and previous image; do not attempt
+to reverse migration SQL automatically.
 
 ## Backup And Restore Drill
 
