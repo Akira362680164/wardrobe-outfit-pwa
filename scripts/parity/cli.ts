@@ -8,6 +8,7 @@ import { validateStaticDefects } from "./defects";
 import { validateFixtures } from "./fixtures";
 import { validateParityEnvironment } from "./environment";
 import { seedParityFixtures } from "./seed";
+import { captureAppGarmentDetailSample } from "./adapters/app";
 
 interface CliArgs {
   command: string;
@@ -54,6 +55,7 @@ function printHelp(): void {
   tsx scripts/parity/cli.ts fixture-check --run-id <runId>
   tsx scripts/parity/cli.ts environment-check --run-id <runId> --env-file <absolute path>
   tsx scripts/parity/cli.ts seed --run-id <runId> --platform app|mini --api-base-url http://127.0.0.1:3100
+  tsx scripts/parity/cli.ts capture-app-sample --run-id <runId> --serial <adb serial>
 
 Common options:
   --app-ref main
@@ -179,6 +181,18 @@ async function main(): Promise<void> {
       apiBaseUrl: value(args, "api-base-url"),
     });
     console.log(JSON.stringify({ ok: true, platform, manifestFile: result.manifestFile, runtimeSessionStored: true }, null, 2));
+    return;
+  }
+  if (args.command === "capture-app-sample") {
+    const runId = value(args, "run-id");
+    const result = await captureAppGarmentDetailSample({
+      cwd,
+      runRoot: path.join(outputRoot, runId),
+      runId,
+      serial: value(args, "serial"),
+      runtimeSessionFile: path.join(cwd, ".parity-runtime", runId, "app", "session.json"),
+    });
+    console.log(JSON.stringify({ ok: true, ...result }, null, 2));
     return;
   }
   throw new Error(`Unsupported parity command: ${args.command}`);

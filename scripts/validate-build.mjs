@@ -16,7 +16,7 @@ const root = join(__dirname, "..");
 
 function readEnv() {
   const envPath = join(root, ".env");
-  const env = {};
+  const env = { ...process.env };
   if (existsSync(envPath)) {
     for (const line of readFileSync(envPath, "utf8").split("\n")) {
       const trimmed = line.trim();

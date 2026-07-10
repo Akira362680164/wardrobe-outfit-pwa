@@ -4,8 +4,8 @@
  * Usage: node scripts/test/write-apk-build-manifest.mjs --type <test-harness|candidate>
  */
 import { execSync } from 'child_process';
-import { existsSync, readFileSync, writeFileSync } from 'fs';
-import { resolve } from 'path';
+import { existsSync, readdirSync, statSync, writeFileSync } from 'fs';
+import { join, resolve } from 'path';
 
 const TYPE_INDEX = process.argv.indexOf('--type');
 const TYPE = TYPE_INDEX >= 0 ? process.argv[TYPE_INDEX + 1] : 'candidate';
@@ -16,9 +16,17 @@ if (!['test-harness', 'candidate'].includes(TYPE)) {
 }
 
 // Find APK
-const apkDir = resolve(process.cwd(), 'android/app/build/outputs/apk/release');
-const apkFiles = execSync(`find "${apkDir}" -name "*.apk" 2>/dev/null || true`, { encoding: 'utf-8' }).trim().split('\n').filter(Boolean);
-const apkPath = apkFiles.find(f => f.includes('release')) || apkFiles[0];
+const apkDirs = [
+  resolve(process.cwd(), 'android/app/build/outputs/apk/release'),
+  resolve(process.cwd(), 'apk-local'),
+];
+const apkFiles = apkDirs.flatMap((directory) => {
+  if (!existsSync(directory)) return [];
+  return readdirSync(directory)
+    .filter((name) => name.endsWith('.apk'))
+    .map((name) => join(directory, name));
+}).sort((left, right) => statSync(right).mtimeMs - statSync(left).mtimeMs);
+const apkPath = apkFiles[0];
 
 if (!apkPath || !existsSync(apkPath)) {
   console.error('APK not found. Build it first with npm run android:apk');

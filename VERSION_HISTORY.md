@@ -1,3 +1,14 @@
+## 2026-07-11 / v2.1.13-test / Codex — APP 真机一致性执行器样例与本地测试 APK
+
+- **执行 Agent**：Codex 主协调 agent（未新增 subagent）。
+- **目的**：用固定签名 Android APK、真实隔离 fixture 和设备 WebView 完成首个可重复的一致性 Action 样例，验证执行器能落盘操作前后截图、UI 树、路由、网络和系统返回证据。
+- **版本变更**：无；当前应用版本仍为 `2.1.13-test`。本批次只放宽显式 `PARITY_TEST_BUILD=1` 下的 localhost 测试构建，不改变正式构建的 HTTPS 门禁或业务行为。
+- **改动文件**：`scripts/parity/{adapters/app.ts,cli.ts}`、`scripts/{validate-build.mjs,validate-cloud-build-env.mjs,test/write-apk-build-manifest.mjs}`、`package.json`、`VERSION_HISTORY.md`。
+- **改动说明**：新增 ADB + WebView CDP 执行器，凭据仅从 `0600` runtime session 内存读取；真实登录后定位 fixture 单品，执行“更多操作”弹层与 Android 系统返回；每个检查点保存 ADB 原生整屏图、交互 UI 树和路由状态，并保存脱敏网络记录。构建校验现可继承调用方显式环境，本地 HTTP 仅允许 parity 测试标记；APK manifest writer 同时识别 Gradle 输出和已归档的 `apk-local` 最新文件。
+- **验证结果**：独立 `tsc` 与 `git diff --check` 通过；构建 `apk-local/app-release-74bba388.apk`，包名 `com.wardrobe.outfit`、`versionName=2.1.13-test`、`versionCode=20113`、签名 `CN=fangzheng`，SHA-256 `4ab55a52dc8dba9bc173121e4b80821dc1e3a27c00988f16239228646d32c3f8`；真机 MEIZU 21 Pro / Android 16 以 `adb install -r` 安装，`adb reverse tcp:3100` 连接本地 E2E API，清数据后用隔离账号登录并读到 6 件 fixture 衣物；`garment.detail.more` 样例 PASS，生成 5 个强制检查点及 UI/route/network/execution 证据，系统返回关闭弹层，logcat 未发现 `FATAL`/`AndroidRuntime`。
+- **风险门禁**：high（本地测试 APK、真机自动操作和测试账号会话）。
+- **未验证风险**：当前仅完成衣物详情“更多操作”样例，尚未覆盖 APP 其余 Action、小程序对应样例、服务端写入副作用和全量报告；测试 APK 不得作为生产交付包。
+
 ## 2026-07-11 / v2.1.13-test / Codex — 双平台测试 fixture 真实 seed 与读回
 
 - **执行 Agent**：Codex 主协调 agent（未新增 subagent）。
