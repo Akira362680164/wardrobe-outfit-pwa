@@ -1,3 +1,13 @@
+## 2026-07-11 / v2.1.12-test / Codex — 备案网站名称对齐实施计划
+
+- **执行 Agent**：Codex（未触发 subagent：用户未要求；继续使用独立 `codex/closet-site-rebrand` worktree）。
+- **目的**：把已批准的“个人内网穿透及衣橱小站”公开命名设计拆解为网站、共享法律文本、版本、响应式、APK 和 Android 验证任务。
+- **版本变更**：无；当前仍为 `2.1.12-test`。本批次只提交实施计划，实际实施计划目标版本为 `2.1.13-test`。
+- **改动文件**：`docs/superpowers/plans/2026-07-11-closet-site-public-name.md`、`VERSION_HISTORY.md`。
+- **改动说明**：计划按 TDD 和小提交拆分为集中命名合同、官网公开品牌、共享法律与版本、静态网站验收、固定签名 APK 与 Android 回归、最终基线集成六个任务。
+- **验证结果**：完成规格覆盖、占位符、类型名称和命令自检；每项设计要求均映射到具体文件、失败测试、实现、验证和提交步骤。
+- **未验证风险**：本批次尚未执行代码、构建、视觉或 Android 验证；这些内容在计划执行阶段完成。
+
 ## 2026-07-11 / v2.1.12-test / Codex — 备案网站名称对齐设计
 
 - **执行 Agent**：Codex（未触发 subagent：用户未要求；在独立 `codex/closet-site-rebrand` worktree 内完成设计）。
