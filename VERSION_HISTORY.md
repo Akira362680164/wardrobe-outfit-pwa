@@ -1,3 +1,12 @@
+## 2026-07-10 / v2.1.13-test / Codex — App 注销最终 APK 与 Android 验收
+
+- **执行 Agent**：Codex（未触发 subagent；在独立 `codex/account-deletion-design` worktree 完成最终构建和真机环境等价的 Android 模拟器验收）。
+- **目的**：重新构建包含账号页底部安全间距修复的最终固定签名 APK，并以独立模拟器确认“注销账号”入口位置、三次确认前两段页面、Android 返回键和运行日志。
+- **版本变更**：无；保持 `2.1.13-test`，Android `versionCode=20113`。
+- **交付产物**：根目录 `衣橱穿搭助手-v2.1.13-test.apk`，SHA-256 `93f2e11536d91881e6389b03b2c666e36864add475dc98b67cb99b54fd587d32`；构建归档 `apk-local/app-release-090ac083.apk`；包名 `com.wardrobe.outfit`，签名证书 `CN=fangzheng`。
+- **验证结果**：最终 APK 在独立 AVD `wardrobe-account-deletion`（`emulator-5560`）覆盖安装并正常启动；实际页面确认账号安全页最底端的“注销账号”为居中红色下划线文字、无按钮外观且完整位于固定底栏上方，入口保留 44px 触摸热区；使用真实测试账号依次检查风险告知、动态身份方式选择和密码核验页，未执行永久删除；Android 返回键后 App 仍保持前台且无崩溃。最终 logcat 未发现 `FATAL` 或 `AndroidRuntime`，测试后已关闭模拟器。截图证据保存在 `test-results/android-v2.1.13-account-deletion/ui-5560/`（忽略目录，不进入 Git）。
+- **未验证风险**：生产 API 尚未部署 0016 迁移与注销路由，所以未点击最终确认、未验证生产数据库/对象存储真实删除，也未覆盖真实邮箱验证码；这些必须在服务端部署后用专用可删除账号验收，不能用长期测试账号直接试删。
+
 ## 2026-07-10 / v2.1.13-test / Codex — App 注销发布准备与法律文本同步
 
 - **执行 Agent**：Codex（未触发 subagent：用户要求当前会话完整实施；本批在独立 worktree 完成 App 发布准备）。
