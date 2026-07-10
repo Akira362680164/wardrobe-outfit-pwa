@@ -1,3 +1,12 @@
+## 2026-07-11 / v2.1.13-test / Codex — 插桩版固定签名测试 APK 真机验收
+
+- **执行 Agent**：Codex 主协调 agent（未新增 subagent）。
+- **目的**：把 APP 全 Action parity-id 与首批 P0 guard 修复构建进测试 APK，并确认真实 Android 设备可安装、启动和连接隔离 API。
+- **版本变更**：无；保持 `2.1.13-test` / `versionCode=20113`。该 APK 是 parity 测试 harness，不是生产交付包。
+- **构建产物**：`apk-local/app-release-2992cc1d.apk`，SHA-256 `5e56fc2b2d5b5d44bfb88a121b283ab9bab04120a284d249089e98206d066220`，包名 `com.wardrobe.outfit`，固定签名 `CN=fangzheng`，API 为 `http://127.0.0.1:3100`（仅配合 `adb reverse`）。
+- **验证结果**：`npm run android:build:test-harness` 成功；真机 MEIZU 21 Pro / Android 16 使用 `adb install -r` 成功，随后 `pm clear`、`adb reverse tcp:3100`、冷启动成功；系统安装版本和前台 `MainActivity` 正确，筛选 logcat 未发现 `FATAL` 或 `AndroidRuntime`。
+- **未验证风险**：该轮仅验证安装/启动基础门禁；插桩版完整 APP BFS、Android 返回键矩阵和全部服务端副作用仍在后续审计周期执行。
+
 ## 2026-07-11 / v2.1.13-test / Codex — APP 全 Action 插桩与首批服务端 P0 修复
 
 - **执行 Agent**：Codex 主协调 agent；两个文件互斥 subagent 分别补齐 APP 动态循环 a–m、n–z 插桩，主 agent 应用静态计划、处理共享控件透传、修复服务端 P0 并完成门禁。
