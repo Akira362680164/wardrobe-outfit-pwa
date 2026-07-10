@@ -19,11 +19,6 @@ const CASE_FILTER = readArg("--case");
 const RUN_ID = new Date().toISOString().replace(/[-:]/g, "").replace(/\..+/, "").replace("T", "-");
 const RESULTS_DIR = resolve(process.env.RESULTS_DIR ?? join(ROOT, "test-results", "android-e2e", RUN_ID));
 
-main().catch((error) => {
-  console.error(error instanceof Error ? error.stack ?? error.message : error);
-  process.exit(1);
-});
-
 async function main() {
   loadEnvFile(join(ROOT, ".env.e2e.local"));
   mkdirSync(RESULTS_DIR, { recursive: true });
@@ -182,9 +177,8 @@ class Artifacts {
   async screenshot(page: Page, name: string): Promise<void>;
   async screenshot(name: string, page?: Page): Promise<void>;
   async screenshot(pageOrName: Page | string, nameOrPage?: string | Page): Promise<void> {
-    const page = typeof pageOrName === "string" ? nameOrPage as Page : pageOrName;
     const name = typeof pageOrName === "string" ? pageOrName : nameOrPage as string;
-    await page.screenshot({ path: join(this.dir, `${safeName(name)}.png`), fullPage: true });
+    this.device.screenshot(`${safeName(name)}.png`);
   }
 
   async writeJson(name: string, value: unknown) {
@@ -252,7 +246,7 @@ class AdbDevice {
   assertNoCrash(name: string) {
     const output = this.run(["logcat", "-d", "-t", "1200"], { encoding: "utf8" });
     writeFileSync(join(RESULTS_DIR, name), output);
-    if (/FATAL EXCEPTION|AndroidRuntime|Process: com\.wardrobe\.outfit/.test(output)) {
+    if (/Process: com\.wardrobe\.outfit|FATAL EXCEPTION[^\n]*\n(?:.*\n){0,20}.*com\.wardrobe\.outfit/u.test(output)) {
       throw new Error(`发现 Android 致命日志：${join(RESULTS_DIR, name)}`);
     }
   }
@@ -525,3 +519,8 @@ async function waitForHttp(url: string, timeoutMs: number) {
 function fail(message: string): never {
   throw new Error(message);
 }
+
+main().catch((error) => {
+  console.error(error instanceof Error ? error.stack ?? error.message : error);
+  process.exit(1);
+});

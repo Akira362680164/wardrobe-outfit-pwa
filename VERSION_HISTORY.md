@@ -1,3 +1,13 @@
+## 2026-07-11 / v2.1.13-test / Codex — Android Smoke/Critical 真机闭环与 E2E 漂移修复
+
+- **执行 Agent**：Codex 主协调 agent（未新增 subagent）。
+- **目的**：在 MEIZU 21 Pro 上运行插桩/修复版 APK 的真实 Smoke 与 Critical，并修复测试框架相对当前产品 UI/Android 环境的漂移。
+- **版本变更**：无；保持 `2.1.13-test`。测试 APK `app-release-dbc4956.apk`，SHA-256 `69d89001c327e150479f501e19764fd43f54834d0622bec275f706d5f3db096f`，固定签名 `CN=fangzheng`。
+- **测试框架修复**：main 调用移到类初始化后；当前注册入口改为 API 隔离账号 seed + 真实 UI 登录，补登录协议；账号页标题更新为“账号安全”；强制截图改为 ADB 原生截图；崩溃筛选只匹配本 App，排除其他进程正常 `AndroidRuntime` 退出；critical API 方法绑定回 ctx.api；详情页先返回再切 Tab；视口外菜单使用 DOM click 兜底。
+- **验证结果**：Smoke 4/4 通过（启动、注册种子/真实 UI 登录、服务端退出/重登、默认衣橱单例、刷新/force-stop 恢复、主 Tab/FAB）；Critical 5/5 通过（单品创建/详情/编辑/删除、种草转衣橱/撤销级联、套装计划/穿着一致性、账号隔离、退出/重登/force-stop 恢复）。证据位于 `artifacts/parity/parity-build-20260711-001/android-e2e/{smoke-rerun4,critical-rerun4}`。
+- **缺陷状态**：`STATIC-INFRA-006` 已以真实认证 workspace 请求验证为 `VERIFIED`；图片 mutationId 的 `STATIC-INFRA-007` 仍等待 full 带图读回。
+- **未验证风险**：Full 深链路、故障注入、真实图片恢复和 APP 打包清单 force-stop 仍未执行。
+
 ## 2026-07-11 / v2.1.13-test / Codex — Android E2E deviceId 与图片 mutationId P0 修复
 
 - **执行 Agent**：Codex 主协调 agent；一个文件隔离 subagent 完成 Android E2E helper 修复，主 agent 复核并更新缺陷状态。
