@@ -6,6 +6,7 @@ const configDir = path.dirname(fileURLToPath(import.meta.url));
 
 const nextConfig: NextConfig = {
   devIndicators: false,
+  distDir: process.env.WARDORA_BUILD_TARGET === "website" ? ".next-website" : ".next",
   output: "export",
   outputFileTracingRoot: configDir,
   reactStrictMode: true,
@@ -33,6 +34,19 @@ const nextConfig: NextConfig = {
   // v2.0.2: 生产构建时不将 ESLint warning 视为 error（大量历史未使用变量警告不影响功能）
   eslint: {
     ignoreDuringBuilds: true,
+  },
+  webpack(config, { webpack }) {
+    if (process.env.WARDORA_BUILD_TARGET === "website") {
+      const websiteHome = path.join(
+        configDir,
+        "src/components/site/build-home-website.tsx"
+      );
+      config.resolve.alias["@/components/build-home"] = websiteHome;
+      config.plugins.push(
+        new webpack.NormalModuleReplacementPlugin(/components[\\/]build-home$/, websiteHome)
+      );
+    }
+    return config;
   },
 };
 

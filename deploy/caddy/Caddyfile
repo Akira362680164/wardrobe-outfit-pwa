@@ -1,3 +1,32 @@
+zhengfangapps.cloud {
+    root * /srv/wardora-website/current
+    encode zstd gzip
+
+    header {
+        Strict-Transport-Security "max-age=63072000; includeSubDomains"
+        X-Content-Type-Options "nosniff"
+        X-Frame-Options "DENY"
+        Referrer-Policy "strict-origin-when-cross-origin"
+        Permissions-Policy "camera=(), microphone=(), geolocation=()"
+    }
+
+    try_files {path} {path}/ /404.html
+    file_server
+
+    log {
+        output file /var/log/caddy/wardora-website-access.log {
+            roll_size 10MiB
+            roll_keep 10
+            roll_keep_for 336h
+        }
+        format json
+    }
+}
+
+www.zhengfangapps.cloud {
+    redir https://zhengfangapps.cloud{uri} permanent
+}
+
 api.zhengfangapps.cloud {
     encode zstd gzip
 

@@ -1,6 +1,8 @@
 node_modules
 .next
+.next-website
 out
+out-website
 dist
 coverage
 

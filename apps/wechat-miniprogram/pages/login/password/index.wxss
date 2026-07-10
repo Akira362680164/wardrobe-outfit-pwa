@@ -60,13 +60,14 @@
 }
 
 .login-error {
-  margin-top: 20rpx;
-  padding: 18rpx 22rpx;
-  border-radius: var(--radius-control);
-  border: 1rpx solid var(--color-danger);
-  color: var(--color-danger);
-  font-size: var(--font-caption);
-  line-height: 1.45;
+  margin-top: 24rpx;
+  padding: 20rpx;
+  border: 0;
+  border-radius: 20rpx;
+  background: #fef3f2;
+  color: #b42318;
+  font-size: 24rpx;
+  line-height: 36rpx;
 }
 
 .form-button {
@@ -87,6 +88,11 @@
   opacity: 0.62;
 }
 
+.form-button--consent-pending {
+  background: #d1d5db;
+  color: #6b7280;
+}
+
 .back-button {
   margin: 18rpx 0 0;
   font-size: var(--font-caption);
@@ -99,7 +105,7 @@
 }
 
 .text-link {
-  color: #2f6b4f;
+  color: var(--color-primary);
   font-size: 24rpx;
   font-weight: 700;
   line-height: 36rpx;
@@ -109,8 +115,27 @@
   opacity: 0.88;
 }
 
-.agreement-tip {
+.agreement-row {
+  display: flex;
+  align-items: flex-start;
   margin-top: 26rpx;
+}
+
+.agreement-checkbox-group {
+  flex: 0 0 auto;
+}
+
+.agreement-checkbox-hit {
+  display: flex;
+  min-width: 56rpx;
+  min-height: 56rpx;
+  align-items: flex-start;
+  justify-content: flex-start;
+}
+
+.agreement-tip {
+  min-width: 0;
+  padding-top: 4rpx;
   color: var(--color-muted);
   font-size: 22rpx;
   line-height: 1.65;
