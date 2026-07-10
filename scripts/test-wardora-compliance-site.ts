@@ -42,6 +42,10 @@ assert.equal(privacySections.length, 15, "privacy policy must contain all 15 req
 assert.equal(termsSections.length, 15, "terms must contain all 15 required chapters");
 assert.equal(accountDeletionSections.length, 7, "account deletion guide must contain all 7 required topics");
 
+const legalSource = read("src/content/legal-content.tsx");
+assert.doesNotMatch(legalSource, /Wardora/i);
+assert.match(legalSource, /siteConfig\.productName/);
+
 const packageJson = JSON.parse(read("package.json")) as { scripts: Record<string, string> };
 assert.equal(packageJson.scripts["build:website"], "node scripts/build-website.mjs");
 assert.equal(packageJson.scripts["test:logic:website"], "tsx scripts/test-wardora-compliance-site.ts");
