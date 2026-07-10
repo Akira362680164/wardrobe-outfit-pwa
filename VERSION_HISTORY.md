@@ -1,3 +1,14 @@
+## 2026-07-10 / v2.1.12-test / Codex — Git Session 与 Worktree 隔离治理
+
+- **执行 Agent**：Codex（未触发 subagent：用户要求当前 Session 直接执行文档治理）。
+- **目的**：固定本地 `main` / `wechat/miniprogram` 双基线、独立 Session worktree、正式目录串行集成和安全清理规则，避免多个 Session 共用目录、依赖未提交成果或遗留大量短期分支。
+- **版本变更**：无；当前应用版本仍为 `2.1.12-test`。本轮只修改治理文档，不改运行时代码、不打 APK、不上传小程序。
+- **改动文件**：本机忽略文件 `AGENTS.md`、`docs/development/git-session-workflow.md`、`docs/superpowers/plans/2026-07-10-git-session-governance.md`、`VERSION_HISTORY.md`。
+- **改动说明**：在 `AGENTS.md` 前部加入精简强约束并链接详细手册；操作手册覆盖基线检查、Session 创建、固定 worktree、串行合并、跨 App/小程序共享任务、GitHub 备份和废纸篓清理；保留 `AGENTS.md` 当前本机治理文件定位，不改变公开仓库忽略策略。
+- **验证结果**：操作手册 9 个必要章节和 `AGENTS.md` 前部链接检查通过；精简隔离规则共 14 行（含标题与空行）；计划占位词扫描无命中；`git diff --check` 通过；`package.json` 版本确认仍为 `2.1.12-test`。正式基线合并与远程同步在集成步骤完成。
+- **风险门禁**：low（Git 与文档治理；不改业务代码、数据、接口或构建配置）；未触发 subagent：用户未要求。
+- **未验证风险**：规则依赖后续 Agent 按约定执行，Git 本身不能阻止错误 Session 在错误目录操作；未新增自动化 preflight hook。
+
 ## 2026-07-10 / v2.1.12-test / Codex — App 主线功能分支收口
 
 - **执行 Agent**：Codex（未触发 subagent：用户要求先完成基线合并和推送，分支清理留到后续）。
