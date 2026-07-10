@@ -1,3 +1,14 @@
+## 2026-07-10 / v2.1.12-test / Codex — 小程序基线同步主线并收口月历计划
+
+- **执行 Agent**：Codex（未触发 subagent：用户要求先完成两条基线合并和推送，分支清理留待后续）。
+- **目的**：将已推送的 `main` 主线同步到 `wechat/miniprogram`，让小程序继承共享领域字典、v2.1.12 认证/SES 契约和服务端能力，并合入已完成的小程序月历、旅行/出差/自定义计划及计划穿搭功能。
+- **版本变更**：主应用版本随 `main` 更新为 `2.1.12-test`；小程序包版本仍为 `0.1.0`；本轮不上传体验版。
+- **改动文件**：同步 `main` 的共享契约、服务端和 App 改动；小程序侧涉及 `apps/wechat-miniprogram/{app.json,services/workspace.ts,utils/{calendar,outfit-plan-state}.ts,pages/outfits/{index,calendar}/**,pages/trips/{detail,edit}/**,scripts/test-{calendar-layout,outfit-plan-state}.ts}` 与 `VERSION_HISTORY.md`。
+- **改动说明**：`workspace.ts` 同时保留共享领域生成目录、衣橱位置读取和新增的 `tripPlans/outfitPlans` 映射，未恢复本地颜色/季节平行字典；套装首页与月历支持周/月切换、主计划/备选/实际穿着分流、拼图封面和标记已穿；计划支持新增、编辑、删除及每日穿搭安排。
+- **验证结果**：`npm run cloud:contracts:typecheck`、`npm run api:typecheck`、`npm run typecheck`、`npm --prefix apps/wechat-miniprogram run typecheck`、`npm run test:logic:domain-catalog`、`npm run catalog:miniprogram:check`、`npm run test:logic:miniprogram-catalog`、`npm run test:logic:wechat-email-auth-flow`、`npm run build` 和 `git diff --check` 通过；`test-calendar-layout.ts` 7 条、`test-outfit-plan-state.ts` 11 条断言通过；微信开发者工具 `simulator_refresh` 成功，套装首页、月历、计划编辑页可打开，套装首页/月历/计划详情/计划编辑 4 页 WXML 与 WXSS 单文件编译成功，console 的 error/fail/TypeError/ReferenceError/SyntaxError 过滤为空。
+- **风险门禁**：high（跨基线认证/服务端同步、小程序计划读写、月历交互、共享领域目录和多页面 UI）；未触发 subagent：用户未要求。
+- **未验证风险**：未上传体验版、未做本轮真机预览、未使用真实账号重新执行计划写入；微信开发者工具 `automation_runtime_info currentPage` 因当前会话 domain 未挂载返回工具错误，但页面打开、整体刷新、WXML/WXSS 编译和 console 检查均成功。
+
 ## 2026-07-10 / v2.1.12-test / Codex — App 主线功能分支收口
 
 - **执行 Agent**：Codex（未触发 subagent：用户要求先完成基线合并和推送，分支清理留到后续）。
