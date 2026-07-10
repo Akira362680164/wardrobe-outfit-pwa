@@ -1,6 +1,8 @@
 import { HttpError } from "../../services/http";
 import { loginWithWechatOpenId } from "../../services/auth";
 
+const AUTH_CONSENT_ERROR = "请先阅读并同意《用户服务协议》和《隐私政策》";
+
 const LOGIN_ERROR_MESSAGES: Record<string, string> = {
   invalid_credentials: "账号或密码不正确。",
   missing_api_base_url: "请先配置后端 API 域名。",
@@ -15,6 +17,7 @@ Page({
   data: {
     submitting: false,
     errorMessage: "",
+    accepted: false,
   },
 
   onLoad() {
@@ -23,6 +26,10 @@ Page({
 
   async onWechatLogin(this: any) {
     if (this.data.submitting) return;
+    if (!this.data.accepted) {
+      this.setData({ errorMessage: AUTH_CONSENT_ERROR });
+      return;
+    }
     this.setData({ submitting: true, errorMessage: "" });
     try {
       const result = await loginWithWechatOpenId();
@@ -44,6 +51,14 @@ Page({
 
   openEmailRegister() {
     wx.navigateTo({ url: "/pages/login/register-email/index" });
+  },
+
+  handleAgreementChange(event: any) {
+    const accepted = event.detail.value.includes("accepted");
+    this.setData({
+      accepted,
+      errorMessage: accepted && this.data.errorMessage === AUTH_CONSENT_ERROR ? "" : this.data.errorMessage,
+    });
   },
 
   openAgreement() {

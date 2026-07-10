@@ -4,7 +4,7 @@
     <view class="login-copy text-wrap-safe">管理你的衣橱、套装与种草清单</view>
 
     <view class="login-actions">
-      <button class="primary-button login-action" disabled="{{submitting}}" hover-class="login-action--hover" bindtap="onWechatLogin">
+      <button class="primary-button login-action {{accepted ? '' : 'login-action--consent-pending'}}" disabled="{{submitting}}" hover-class="login-action--hover" bindtap="onWechatLogin">
         微信登录/注册
       </button>
       <button class="secondary-button login-action login-secondary" hover-class="login-action--hover" bindtap="openPasswordLogin">
@@ -15,14 +15,20 @@
       </button>
     </view>
 
-    <view wx:if="{{errorMessage}}" class="login-error text-wrap-safe">{{errorMessage}}</view>
-
     <view class="login-tip text-wrap-safe">首次微信登录需要绑定已有账号或注册新账号。</view>
-    <view class="agreement-tip text-wrap-safe">
-      继续即代表您已阅读并同意
-      <text class="agreement-link" bindtap="openAgreement">《用户服务协议》</text>
-      和
-      <text class="agreement-link" bindtap="openPrivacy">《隐私政策》</text>。
+    <view class="agreement-row">
+      <checkbox-group class="agreement-checkbox-group" bindchange="handleAgreementChange">
+        <label class="agreement-checkbox-hit">
+          <checkbox value="accepted" checked="{{accepted}}" color="#355c7d" />
+        </label>
+      </checkbox-group>
+      <view class="agreement-tip text-wrap-safe">
+        我已阅读并同意
+        <text class="agreement-link" bindtap="openAgreement">《用户服务协议》</text>
+        和
+        <text class="agreement-link" bindtap="openPrivacy">《隐私政策》</text>
+      </view>
     </view>
+    <view wx:if="{{errorMessage}}" class="login-error text-wrap-safe">{{errorMessage}}</view>
   </view>
 </view>
