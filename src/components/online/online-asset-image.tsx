@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState, type ReactNode } from "react";
 import { useOnlineWorkspaceGate } from "@/components/auth/workspace-gate";
 import { OnlineImageLoadError, OnlineImagePlaceholder } from "@/components/online/online-image-state";
 import { OriginalCroppedImage } from "@/components/original-cropped-image";
+import { OnlineRequestError } from "@/lib/online/online-error";
 import type { OnlineImageVariant } from "@/lib/online/online-image-client";
 import type { ImageAssetReference } from "@/lib/types";
 
@@ -21,22 +22,24 @@ export function useOnlineAssetUrl(asset: ImageAssetReference | undefined, varian
     const expectedSha256 = asset.variantSha256?.[variant] ?? (variant === "original" ? asset.sha256 : undefined);
     void gate.repository.images.acquire(asset.assetId, variant, expectedSha256).then(
       (url) => { if (active) setState({ status: "loaded", url }); },
-      () => { if (active) setState({ status: "error", url: fallbackUrl }); },
+      async (error) => {
+        if (error instanceof OnlineRequestError && error.status === 401 && await gate.recoverImages()) return;
+        if (active) setState({ status: "error", url: fallbackUrl });
+      },
     );
     return () => {
       active = false;
       gate.repository.images.release(asset.assetId, variant, expectedSha256);
     };
-  }, [asset, fallbackUrl, gate, variant]);
+  }, [asset, fallbackUrl, gate, gate?.imageRefreshVersion, variant]);
 
   const retry = useCallback(() => {
     if (!asset || !gate) return;
     setState((current) => ({ status: "loading", url: current.url ?? fallbackUrl }));
-    void gate.repository.images.retry(asset.assetId, variant, asset.variantSha256?.[variant] ?? (variant === "original" ? asset.sha256 : undefined)).then(
-      (url) => setState({ status: "loaded", url }),
-      () => setState({ status: "error", url: fallbackUrl }),
-    );
-  }, [asset, fallbackUrl, gate, variant]);
+    void gate.recoverImages(true).then((recovered) => {
+      if (!recovered) setState({ status: "error", url: fallbackUrl });
+    });
+  }, [asset, fallbackUrl, gate]);
 
   return { ...state, retry, hasAsset: Boolean(asset?.variants.includes(variant)) };
 }

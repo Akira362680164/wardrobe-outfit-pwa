@@ -52,7 +52,7 @@ export class OnlineWorkspaceRepository {
   readonly images: OnlineImageClient;
 
   constructor(private readonly session?: Pick<AuthSessionSnapshot, "accessToken" | "deviceId">) {
-    this.images = new OnlineImageClient({ session });
+    this.images = new OnlineImageClient();
   }
 
   async getOverview(): Promise<OnlineWorkspaceSnapshot> {
