@@ -4,11 +4,13 @@ WORKDIR /app
 
 COPY package.json package-lock.json ./
 COPY packages/cloud-contracts/package.json packages/cloud-contracts/package.json
+COPY packages/domain-catalog/package.json packages/domain-catalog/package.json
 COPY services/wardrobe-api/package.json services/wardrobe-api/package.json
 
 RUN npm ci --ignore-scripts
 
 COPY packages/cloud-contracts packages/cloud-contracts
+COPY packages/domain-catalog packages/domain-catalog
 COPY services/wardrobe-api services/wardrobe-api
 
 RUN npm --workspace @wardrobe/wardrobe-api run build \
