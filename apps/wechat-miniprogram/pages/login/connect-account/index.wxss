@@ -1,11 +1,18 @@
 .connect-page {
   box-sizing: border-box;
+  display: flex;
+  position: relative;
+  flex-direction: column;
+  justify-content: center;
   min-height: 100vh;
-  padding: calc(env(safe-area-inset-top) + 8rpx) 32rpx calc(env(safe-area-inset-bottom) + 64rpx);
+  padding: calc(env(safe-area-inset-top) + 64rpx) 32rpx calc(env(safe-area-inset-bottom) + 64rpx);
   background: #fbfbf8;
 }
 
 .back-button {
+  position: absolute;
+  top: calc(env(safe-area-inset-top) + 16rpx);
+  left: 32rpx;
   width: 72rpx;
   height: 72rpx;
   margin: 0;
@@ -24,7 +31,7 @@
 .connect-content {
   width: 100%;
   max-width: 686rpx;
-  margin: 48rpx auto 0;
+  margin: 0 auto;
 }
 
 .connect-title {

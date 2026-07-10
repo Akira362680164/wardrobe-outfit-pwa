@@ -1,7 +1,9 @@
 .login-page {
   box-sizing: border-box;
+  display: flex;
   min-height: 100vh;
-  padding: calc(env(safe-area-inset-top) + 128rpx) 32rpx calc(env(safe-area-inset-bottom) + 80rpx);
+  align-items: center;
+  padding: calc(env(safe-area-inset-top) + 64rpx) 32rpx calc(env(safe-area-inset-bottom) + 64rpx);
   background: #fbfbf8;
 }
 
