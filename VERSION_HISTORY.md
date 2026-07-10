@@ -1,3 +1,10 @@
+## 2026-07-11 / v2.1.13-test / Codex — 小程序裁切、媒体与打包修复登记
+
+- **执行 Agent**：Codex 主协调 agent（汇总独立小程序修复分支 `baefd42` 的验证结果）。
+- **目的**：将 `STATIC-INTAKE-001/002`、`STATIC-WISHLIST-001`、`STATIC-OUTFITS-005` 从 OPEN 更新为 `FIXED_UNVERIFIED`，纳入统一报告和后续定向复测。
+- **版本变更**：无；本分支只更新审计缺陷状态，不复制小程序业务源码。
+- **验证结果**：小程序完整 typecheck 与 diff check 已在独立分支通过；四项仍等待微信真机裁切/图片/AI/force-stop readback，不标 VERIFIED。
+
 ## 2026-07-11 / v2.1.13-test / Codex — Android Smoke/Critical 真机闭环与 E2E 漂移修复
 
 - **执行 Agent**：Codex 主协调 agent（未新增 subagent）。
