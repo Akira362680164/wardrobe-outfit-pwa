@@ -85,7 +85,13 @@ async function main(): Promise<void> {
   }
   if (args.command === "inventory") {
     const runId = value(args, "run-id");
-    const result = await generateInventory({ cwd, appRoot, miniRoot, runRoot: path.join(outputRoot, runId) });
+    const result = await generateInventory({
+      cwd,
+      appRoot,
+      miniRoot,
+      runRoot: path.join(outputRoot, runId),
+      resolutionsFile: path.join(cwd, "scripts", "parity", "config", "unresolved-resolutions.json"),
+    });
     console.log(JSON.stringify({
       ok: true,
       runId,
@@ -95,7 +101,7 @@ async function main(): Promise<void> {
         overlays: result.app.overlays.length,
         transitions: result.app.transitions.length,
         sideEffects: result.app.sideEffects.length,
-        unresolved: result.app.unresolved.length,
+        unresolvedCandidates: result.app.unresolved.length,
       },
       mini: {
         screens: result.mini.screens.length,
@@ -103,8 +109,10 @@ async function main(): Promise<void> {
         overlays: result.mini.overlays.length,
         transitions: result.mini.transitions.length,
         sideEffects: result.mini.sideEffects.length,
-        unresolved: result.mini.unresolved.length,
+        unresolvedCandidates: result.mini.unresolved.length,
       },
+      resolved: result.resolved,
+      unresolved: result.unresolved,
     }, null, 2));
     return;
   }

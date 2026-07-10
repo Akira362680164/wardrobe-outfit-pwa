@@ -1,3 +1,14 @@
+## 2026-07-11 / v2.1.13-test / Codex — 一致性审计动态目标人工解析门禁
+
+- **执行 Agent**：Codex 主协调 agent（未新增 subagent；使用第一批只读盘点证据逐项复核源码）。
+- **目的**：将静态扫描无法直接确定的 23 个动态导航目标逐项解析为受版本控制的明确目标，确保 `unresolved.json` 真正归零且保留原始候选审计链。
+- **版本变更**：无；当前应用版本仍为 `2.1.13-test`。本批次不改业务代码、不打 APK、不上传小程序体验版。
+- **改动文件**：`scripts/parity/{cli.ts,inventory.ts,types.ts,validate.ts,config/unresolved-resolutions.json}`、`VERSION_HISTORY.md`。
+- **改动说明**：保留 `unresolved-candidates.json`，新增 `resolved.json` 和严格 ID 对齐校验；逐条解析 AppRoute 对象、返回派生、AuthView、详情 Tab、计划子页、设置 data-url、创建入口、录入结果 Tab 分流和自定义 Tab；将小程序 `goHome()` 使用 `wx.switchTab('/pages/home/index')` 的不可达非法目标记录为 `UNREACHABLE_DEFECT`，不以人工解析掩盖缺陷。
+- **验证结果**：重新生成 `parity-build-20260711-001` inventory；23 / 23 动态候选有明确 resolution，`unresolved = 0`；`npm run parity:inventory:check` 无 warning 通过；独立 `tsc` 编译和 `git diff --check` 通过。
+- **风险门禁**：medium（测试库存解析规则与后续覆盖率分母）。
+- **未验证风险**：人工解析只解决静态目标不确定性；884 个 Action 仍缺 parity-id，运行时可达性、状态分支、服务端收件和视觉证据仍待后续阶段验证。
+
 ## 2026-07-11 / v2.1.13-test / Codex — APP 与小程序一致性审计框架第一批
 
 - **执行 Agent**：Codex 主协调 agent；使用三个只读 subagent 分别盘点 APP、小程序、服务端与现有测试资产，各自固定在独立 detached worktree，未修改基线。

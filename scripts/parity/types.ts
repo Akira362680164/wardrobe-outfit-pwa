@@ -93,6 +93,16 @@ export interface UnresolvedInventoryItem {
   evidence: string;
 }
 
+export interface UnresolvedResolution {
+  id: string;
+  status: "RESOLVED";
+  classification: "STATIC_TARGETS" | "DERIVED_TARGETS" | "UNREACHABLE_DEFECT";
+  targets: string[];
+  rationale: string;
+  reviewedBy: string;
+  reviewedAt: string;
+}
+
 export interface InventoryBundle {
   schemaVersion: 1;
   generatedAt: string;

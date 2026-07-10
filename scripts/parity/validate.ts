@@ -1,7 +1,7 @@
 import { promises as fs } from "node:fs";
 import path from "node:path";
 import { pathExists, readJson, writeJson } from "./lib/fs";
-import type { ActionInventoryItem, InventoryBundle } from "./types";
+import type { ActionInventoryItem, InventoryBundle, UnresolvedInventoryItem, UnresolvedResolution } from "./types";
 
 export interface ValidationResult {
   valid: boolean;
@@ -33,6 +33,10 @@ export async function validateInventory(runRoot: string): Promise<ValidationResu
     readJson<InventoryBundle>(path.join(inventoryRoot, "app-inventory.json")),
     readJson<InventoryBundle>(path.join(inventoryRoot, "mini-inventory.json")),
   ]);
+  const [unresolved, resolved] = await Promise.all([
+    readJson<UnresolvedInventoryItem[]>(path.join(inventoryRoot, "unresolved.json")),
+    readJson<UnresolvedResolution[]>(path.join(inventoryRoot, "resolved.json")),
+  ]);
   const errors: string[] = [];
   const warnings: string[] = [];
   if (app.schemaVersion !== 1 || app.platform !== "app") errors.push("invalid APP inventory header");
@@ -49,9 +53,7 @@ export async function validateInventory(runRoot: string): Promise<ValidationResu
   if (app.screens.length === 0 || mini.screens.length === 0) errors.push("screen inventory is empty");
   if (app.actions.length === 0 || mini.actions.length === 0) errors.push("action inventory is empty");
   if (mini.screens.length !== 35) warnings.push(`expected current mini baseline to register 35 pages, found ${mini.screens.length}`);
-  if (app.unresolved.length + mini.unresolved.length > 0) {
-    warnings.push(`${app.unresolved.length + mini.unresolved.length} unresolved static candidates require manual mapping`);
-  }
+  if (unresolved.length > 0) warnings.push(`${unresolved.length} unresolved static candidates require manual mapping`);
   const metrics = {
     appScreens: app.screens.length,
     miniScreens: mini.screens.length,
@@ -63,7 +65,8 @@ export async function validateInventory(runRoot: string): Promise<ValidationResu
     miniTransitions: mini.transitions.length,
     appSideEffects: app.sideEffects.length,
     miniSideEffects: mini.sideEffects.length,
-    unresolved: app.unresolved.length + mini.unresolved.length,
+    resolved: resolved.length,
+    unresolved: unresolved.length,
   };
   const result = { valid: errors.length === 0, errors, warnings, metrics };
   await writeJson(path.join(inventoryRoot, "validation.json"), result);
