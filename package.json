@@ -162,6 +162,10 @@
     "android:build:test-harness": "npm run android:apk && node scripts/test/write-apk-build-manifest.mjs --type test-harness",
     "android:build:candidate": "npm run android:apk && node scripts/test/write-apk-build-manifest.mjs --type candidate",
     "android:verify:candidate": "tsx scripts/test/run-suite.ts android --tag candidate"
+    ,"parity:lock": "tsx scripts/parity/cli.ts lock"
+    ,"parity:inventory": "tsx scripts/parity/cli.ts inventory"
+    ,"parity:inventory:check": "tsx scripts/parity/cli.ts inventory-check"
+    ,"parity:instrumentation:check": "tsx scripts/parity/cli.ts instrumentation-check"
   },
   "dependencies": {
     "@wardrobe/domain-catalog": "file:packages/domain-catalog",

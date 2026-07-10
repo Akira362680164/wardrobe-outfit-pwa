@@ -1,3 +1,14 @@
+## 2026-07-11 / v2.1.13-test / Codex — APP 与小程序一致性审计框架第一批
+
+- **执行 Agent**：Codex 主协调 agent；使用三个只读 subagent 分别盘点 APP、小程序、服务端与现有测试资产，各自固定在独立 detached worktree，未修改基线。
+- **目的**：按 `codex_app_miniprogram_parity_execution_plan.md` 建立可重复运行的本地基线锁和静态库存生成器，让 Screen、Action、Overlay、Transition、Side Effect 与 unresolved 分母由源码生成，而不是由模型自由决定测试范围。
+- **版本变更**：无；当前应用版本仍为 `2.1.13-test`。本批次只建设测试框架，不改业务行为、不打 APK、不上传小程序体验版。
+- **改动文件**：`scripts/parity/{AGENTS.md,cli.ts,inventory.ts,lock.ts,types.ts,validate.ts,lib/**,scanners/**}`、`package.json`、`.gitignore`、`VERSION_HISTORY.md`。
+- **改动说明**：新增四周期 runId 与 `baseline-lock.json`；记录本地双分支 SHA/tree hash、Android 真机、微信工具、测试 API、fault token 和 MiniMax 可用性；使用 TypeScript AST 扫描 APP，使用可处理引号内 `>` 的 WXML 结构扫描器与 TypeScript AST 扫描小程序；生成计划要求的八类 inventory 文件；新增来源存在性、唯一 ID 和 instrumentation 门禁；`scripts/parity/AGENTS.md` 固化禁止远端覆盖、废纸篓删除、证据与结果状态规则。
+- **验证结果**：`npm install --prefer-offline --no-audit --no-fund` 通过；`parity-build-20260711-001` 基线锁成功；`npm run parity:inventory` 成功生成 APP 80 Screen / 578 Action / 63 Overlay / 103 Transition / 568 Side Effect，小程序 35 Screen / 306 Action（含 303 个 WXML 事件和 3 个 navigator）/ 129 Overlay / 96 Transition / 150 Side Effect；`npm run parity:inventory:check` 通过来源、结构和唯一 ID 校验；独立 `tsc` 编译通过；`git diff --check` 通过。
+- **风险门禁**：high（新增长期审计基础设施，后续将驱动跨端插桩、真机执行与缺陷修复）。
+- **未验证风险**：23 个动态静态候选仍在 `unresolved.json`，必须人工映射后才能通过审计门禁；instrumentation 门禁按预期失败，APP 578 个、小程序 306 个 Action 均缺少 parity-id；运行时状态图、fixture reset、APP/小程序执行器、服务端收件断言、截图 diff 和 HTML 报告尚未进入本批次。
+
 ## 2026-07-10 / v2.1.13-test / Codex — 注销功能双基线集成与最终 APK
 
 - **执行 Agent**：Codex（未触发 subagent；完成 `main` 与 `wechat/miniprogram` 串行集成后，在正式 App 目录重新构建最终合并态 APK）。
