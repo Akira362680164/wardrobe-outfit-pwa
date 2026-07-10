@@ -1,3 +1,13 @@
+## 2026-07-11 / v2.1.12-test / Codex — 备案网站名称对齐设计
+
+- **执行 Agent**：Codex（未触发 subagent：用户未要求；在独立 `codex/closet-site-rebrand` worktree 内完成设计）。
+- **目的**：将官网公开名称与腾讯云备案服务名称“个人内网穿透及衣橱小站”对齐，同时保留 App 产品名“衣橱穿搭助手”，明确不提供独立公众内网穿透服务。
+- **版本变更**：无；当前仍为 `2.1.12-test`。本批次只提交设计规格，不修改运行代码、不打 APK。
+- **改动文件**：`docs/superpowers/specs/2026-07-11-closet-site-public-name-design.md`、`VERSION_HISTORY.md`。
+- **改动说明**：确定网站名、产品名、运营主体、SEO、manifest、法律页面、页脚、ICP备案、公安备案状态、App 边界、验证门禁和后续 APK 闭环；内部工程标识不做无收益重命名。
+- **验证结果**：规格完成占位符、矛盾、歧义和范围自检；未发现 `TBD`、`TODO` 或未决实现选择，明确公开邮箱仍需用户单独授权。
+- **未验证风险**：本批次尚未实施或构建；网站长中文名称的手机端排版、共享法律内容的 App 展示和 Android 回归将在用户批准规格后执行。
+
 ## 2026-07-10 / v2.1.12-test / Codex — 官网腾讯云备案信息回填
 
 - **执行 Agent**：Codex（未触发 subagent：用户未要求；在独立 `codex/wardora-compliance-config` worktree 内完成）。
