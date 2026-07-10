@@ -20,8 +20,21 @@
         placeholder="输入密码"
         bindinput="handlePasswordInput"
       />
+      <view class="agreement-row">
+        <checkbox-group class="agreement-checkbox-group" bindchange="handleAgreementChange">
+          <label class="agreement-checkbox-hit">
+            <checkbox value="accepted" checked="{{accepted}}" color="#355c7d" />
+          </label>
+        </checkbox-group>
+        <view class="agreement-tip text-wrap-safe">
+          我已阅读并同意
+          <text class="agreement-link" bindtap="openAgreement">《用户服务协议》</text>
+          和
+          <text class="agreement-link" bindtap="openPrivacy">《隐私政策》</text>
+        </view>
+      </view>
       <view wx:if="{{errorMessage}}" class="login-error text-wrap-safe">{{errorMessage}}</view>
-      <button class="primary-button form-button" disabled="{{submitting || !account || !password}}" bindtap="loginByPassword">
+      <button class="primary-button form-button {{accepted ? '' : 'form-button--consent-pending'}}" disabled="{{submitting || !account || !password}}" bindtap="loginByPassword">
         登录
       </button>
     </view>
@@ -32,12 +45,5 @@
     </view>
 
     <button class="secondary-button form-button back-button" hover-class="form-button--hover" bindtap="goBack">返回</button>
-
-    <view class="agreement-tip text-wrap-safe">
-      登录代表您已阅读并认可
-      <text class="agreement-link" bindtap="openAgreement">《用户服务协议》</text>
-      和
-      <text class="agreement-link" bindtap="openPrivacy">《隐私政策》</text>。
-    </view>
   </view>
 </view>

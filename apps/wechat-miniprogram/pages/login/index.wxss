@@ -1,7 +1,9 @@
 .login-page {
   box-sizing: border-box;
+  display: flex;
   min-height: 100vh;
-  padding: calc(env(safe-area-inset-top) + 128rpx) 32rpx calc(env(safe-area-inset-bottom) + 80rpx);
+  align-items: center;
+  padding: calc(env(safe-area-inset-top) + 80rpx) 32rpx calc(env(safe-area-inset-bottom) + 80rpx);
   background: #fbfbf8;
 }
 
@@ -56,6 +58,11 @@
   opacity: 0.62;
 }
 
+.login-action--consent-pending {
+  background: #d1d5db;
+  color: #6b7280;
+}
+
 .login-secondary {
   margin: 24rpx 0 0;
   border: 1rpx solid rgba(31, 41, 51, 0.10);
@@ -71,7 +78,7 @@
   padding: 0;
   border: 0;
   background: transparent;
-  color: #2f6b4f;
+  color: var(--color-primary);
   font-size: 28rpx;
   font-weight: 700;
   letter-spacing: 0;
@@ -80,6 +87,7 @@
 .login-error {
   margin-top: 24rpx;
   padding: 20rpx;
+  border: 0;
   border-radius: 20rpx;
   background: #fef3f2;
   color: #b42318;
@@ -94,14 +102,33 @@
   line-height: 36rpx;
 }
 
-.agreement-tip {
+.agreement-row {
+  display: flex;
+  align-items: flex-start;
   margin-top: 20rpx;
+}
+
+.agreement-checkbox-group {
+  flex: 0 0 auto;
+}
+
+.agreement-checkbox-hit {
+  display: flex;
+  min-width: 56rpx;
+  min-height: 56rpx;
+  align-items: flex-start;
+  justify-content: flex-start;
+}
+
+.agreement-tip {
+  min-width: 0;
+  padding-top: 4rpx;
   color: #9ca3af;
   font-size: 22rpx;
   line-height: 34rpx;
 }
 
 .agreement-link {
-  color: #2f6b4f;
+  color: var(--color-primary);
   font-weight: 700;
 }

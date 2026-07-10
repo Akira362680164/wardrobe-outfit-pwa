@@ -4,8 +4,8 @@
   margin-top: 24rpx;
   padding: 20rpx;
   border-radius: 20rpx;
-  background: rgba(47, 107, 79, 0.10);
-  color: #2f6b4f;
+  background: rgba(95, 112, 88, 0.10);
+  color: var(--color-success);
   font-size: 24rpx;
   line-height: 36rpx;
 }
