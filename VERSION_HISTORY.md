@@ -5,7 +5,7 @@
 - **版本变更**：`package.json` / `package-lock.json` 从 `2.1.12-test` 升至 `2.1.13-test`；Android `versionCode` 由构建脚本推导为 `20113`。
 - **改动文件**：`src/lib/site-config.ts`、`src/components/site/`、`src/app/` 官网页面与 metadata、`app/layout.tsx`、`src/content/legal-content.tsx`、`public/site.webmanifest`（替代 `public/wardora.webmanifest`）、`scripts/test-wardora-compliance-site.ts`、`docs/deployment/wardora-website.md`、设计与实施计划、`package.json`、`package-lock.json`、`VERSION_HISTORY.md`。
 - **改动说明**：官网页头和首页使用完整备案名称，短名称为“衣橱小站”，副标题与法律文本使用“衣橱穿搭助手”；联系页分开展示网站名、关联产品、服务类型和个人主体“方正”；首页明确网站不向公众提供独立内网穿透服务；页脚版权改为运营主体；SEO、Open Graph 和公开 manifest 同步改名；ICP备案号“鲁ICP备2026037404号-1”及公安备案办理中状态保持不变。内部构建脚本、环境变量和服务器发布目录不做无收益重命名。
-- **验证结果**：`npm run test:logic:website`、`npm run typecheck`、默认 `npm run build` 已通过；默认 App 静态构建仍以“衣橱穿搭助手”为产品身份，版本为 `2.1.13-test`。官网构建、响应式检查、固定签名 APK 与 Android 验证结果见本记录后续补充提交。
+- **验证结果**：`npm run test:logic:website`、`npm run typecheck`、默认 `npm run build`、`npm run build:website` 和 `npm run test:website:visual` 通过；默认 App 静态构建仍以“衣橱穿搭助手”为产品身份，版本为 `2.1.13-test`。官网在 375、390、430、768、1024、1440px 无横向溢出、控制台错误或失败请求，人工检查 390px 与 1440px 首页确认长中文站名无裁切、遮挡或异常断行。`out-website` 的 HTML、文本和 manifest 扫描确认包含备案网站名、产品名、ICP备案号与公安备案办理中状态，不包含 Wardora、公安联网备案数据码或腾讯云实名认证敏感信息。固定签名 APK 与 Android 验证结果将在下一验证提交写入本记录。
 - **未验证风险**：公开联系邮箱仍未配置；未猜测或公开腾讯云脱敏邮箱。生产 DNS、部署、ICP备案、公安备案和 APP 备案状态均未修改。
 
 ## 2026-07-11 / v2.1.12-test / Codex — 备案网站名称对齐实施计划
