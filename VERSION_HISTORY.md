@@ -1,3 +1,13 @@
+## 2026-07-10 / v2.1.13-test / Codex — 注销功能双基线集成与最终 APK
+
+- **执行 Agent**：Codex（未触发 subagent；完成 `main` 与 `wechat/miniprogram` 串行集成后，在正式 App 目录重新构建最终合并态 APK）。
+- **目的**：确保账号注销、全入口协议主动同意和备案公开名称三项同期改动同时进入最终 Android 包，避免同版本旧 APK 覆盖新功能。
+- **版本变更**：无；保持 `2.1.13-test` / `versionCode=20113`。
+- **基线结果**：`main` 合入提交 `a9c6f722`，包含共享注销契约、0016 迁移、服务端状态机和 App 三次确认；`wechat/miniprogram` 合入提交 `91c329f6`，包含小程序动态微信/邮箱/密码核验与三次确认。两条正式基线均已推送 GitHub。
+- **交付产物**：正式根目录 `衣橱穿搭助手-v2.1.13-test.apk`，构建归档 `apk-local/app-release-a9c6f722.apk`，SHA-256 `734d28c2f0848a001a622375ab6782e0bd52745eacb72dd60e9f94286c788f15`；包名 `com.wardrobe.outfit`，签名证书 `CN=fangzheng`。
+- **验证结果**：正式目录先重建共享契约产物，再执行 `npm run android:apk` 成功；APK 元数据、版本和固定签名通过。独立 AVD `wardrobe-account-deletion` / Android 15 使用 `adb install -r`、`pm clear` 和显式 `MainActivity` 冷启动成功，前台窗口与进程正常，登录页确认包含同期协议主动同意界面；Android 返回键后 App 仍在前台，筛选 logcat 未发现 `FATAL` 或 `AndroidRuntime`，测试后已关闭模拟器。第一次使用 `monkey` 的启动尝试停留 Launcher 且无 App 崩溃日志，改用显式 Activity 启动后验证通过。
+- **未验证风险**：生产 API 仍未部署 0016 迁移和注销路由，最终 APK 只完成客户端合并态启动验证，未对生产账号执行永久注销；小程序自动化 runtime/screenshot 工具持续超时，未完成真实微信 code 端到端删除。上线前仍需先部署服务端，再以专用可删除账号完成 App 邮箱/密码及小程序微信核验的真实删除验收。
+
 ## 2026-07-10 / v2.1.13-test / Codex — App 注销最终 APK 与 Android 验收
 
 - **执行 Agent**：Codex（未触发 subagent；在独立 `codex/account-deletion-design` worktree 完成最终构建和真机环境等价的 Android 模拟器验收）。
