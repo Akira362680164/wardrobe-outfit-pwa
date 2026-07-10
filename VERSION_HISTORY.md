@@ -31,7 +31,78 @@
 - **验证结果**：`node apps/wechat-miniprogram/scripts/wechat-phone-smoke.mjs --self-check` 通过；`npm --prefix apps/wechat-miniprogram run test:phone-smoke -- --self-check` 通过；`npm --prefix apps/wechat-miniprogram run typecheck` 通过；`node apps/wechat-miniprogram/scripts/wechatide-compile.mjs --refresh` 通过；`compile_wxml/compile_wxss` 覆盖 `pages/intake/camera/index`、`components/ui/icon/index`、`components/domain/catalog-card/index`、`pages/wardrobe/index/index`、`pages/wishlist/index/index` 通过；`git diff --check` 通过；`node apps/wechat-miniprogram/scripts/wechatide-preview.mjs --auto` 已成功推送预览包（249075 bytes）；DevTools console grep `error|fail|缺少|TypeError|ReferenceError` 无命中。
 - **风险门禁**：medium（小程序真机测试脚本、选图取消语义、共享 icon 和共享卡片组件修复；不改服务端、不改共享契约、不上传体验版、不改 Android APK）；未触发 subagent：用户未通知。
 - **未验证风险**：手机当前已打开的小程序会话没有自动热替换到新预览包，当前截图仍是旧包画面；需要用户在微信中打开最新推送的预览后再补真机截图确认 icon、详情跳转和添加单品布局。
+## 2026-07-10 / v2.1.9-test / Codex - 小程序标记已穿按钮主色修正
 
+- **目的**：按用户截图将“标记已穿”从 moss 绿改为主操作蓝底白字，保持与 `+计划` 和“安排穿搭”一致。
+- **改动边界**：仅改小程序套装首页周历与月历页的按钮样式；未改服务端、共享契约、数据或交互逻辑。
+- **改动文件**：`apps/wechat-miniprogram/pages/outfits/index/index.wxss`、`apps/wechat-miniprogram/pages/outfits/calendar/index.wxss`、`VERSION_HISTORY.md`。
+- **验证结果**：微信开发者工具 CLI 编译两处 WXSS 通过。
+- **未验证风险**：按用户要求仅做简单样式验证，未做真机预览或体验版上传。
+
+## 2026-07-10 / v2.1.9-test / Codex - 小程序月历按周插入详情卡
+
+- **执行 Agent**：Codex（未触发 subagent：用户未通知；继续在独立 worktree `/Users/fangzheng/Documents/wardrobe-wechat-calendar-plan-fix` 的 `codex/wechat-calendar-plan-fix` 分支实现）。
+- **目的**：按用户提供的当前 App 月历页，修正小程序月历“先完整渲染六周、再显示详情卡”的结构偏差，并补齐空状态与有套装状态的视觉验收。
+- **版本变更**：无；当前应用版本仍为 `2.1.9-test`，小程序包版本仍为 `0.1.0`。
+- **改动边界**：仅改小程序前端日期布局、页面结构与样式；未改 `services/wardrobe-api`、`packages/cloud-contracts`、数据库或线上接口契约。
+- **改动文件**：`apps/wechat-miniprogram/utils/calendar.ts`、`apps/wechat-miniprogram/scripts/test-calendar-layout.ts`、`apps/wechat-miniprogram/pages/outfits/calendar/index.{ts,wxml,wxss}`、`VERSION_HISTORY.md`。
+- **改动说明**：月历改为按自然周动态生成 35 或 42 个日期格；选中日期的详情卡直接插在其所属周之后，后续日期继续排在卡片下方；移除多余第六周；二级页顶部改为透明箭头命中区、标题在可用区域居中、取消标题下硬分割线；空状态文案、按钮和轻量卡片对齐 App，主计划和备选穿搭状态保持既有业务能力。
+- **验证结果**：主项目 TypeScript 执行 `tsc -p apps/wechat-miniprogram/tsconfig.json --noEmit` 通过；`test-calendar-layout.ts` 的 7 条动态月历断言通过；`test-outfit-plan-state.ts` 的 11 条状态断言通过；微信开发者工具 CLI 编译月历 WXML/WXSS 并刷新模拟器通过；DevTools console 的 error/fail/typeerror/referenceerror 过滤为空。截图已确认空状态和有套装状态：`/Users/fangzheng/Desktop/wechat-calendar-plan-align-screenshots/19-calendar-inline-empty-state.png`、`/Users/fangzheng/Desktop/wechat-calendar-plan-align-screenshots/20-calendar-inline-outfit-state.png`。有套装截图只读下载用户已有两件衣物缩略图，在模拟器内注入展示状态，不创建或修改服务器数据。
+- **风险门禁**：high（小程序月历结构、触摸选择、详情卡和移动端视觉状态调整；不改服务端、不上传体验版、不打 Android APK）；未触发 subagent：用户未通知。
+- **未验证风险**：未做真机预览或体验版上传；开发者工具密码登录页面仍有成功响应后停留提交态的问题，因此截图使用页面内展示数据验证布局。
+
+## 2026-07-10 / v2.1.9-test / Codex - 小程序计划穿搭与实际穿着分流
+
+- **提交**：`c578ea1f`（该记录已从文件末尾移回最新记录区域）。
+- **目的**：将小程序套装首页周历与月历页的穿搭状态对齐 App：历史日期补登实际穿着；今天和未来日期均支持主计划与备选穿搭；今天可将主计划标记为已穿并撤销，未来可更改主计划；同一天不能把同一套装重复安排为主计划和备选。
+- **改动边界**：仅改 `apps/wechat-miniprogram` 前端；未改 `services/wardrobe-api`、`packages/cloud-contracts`、数据库或线上接口契约。
+- **验证结果**：TypeScript、11 条计划状态与重复保护断言、月历和套装页 WXML/WXSS 编译、模拟器刷新及 DevTools console 检查通过；经用户授权的真实账号现有接口完成主计划、备选、标记已穿、替换主计划、历史补登与取消补登验证，临时数据已清理。
+- **未验证风险**：未做真机预览或体验版上传；当时的展示截图只用于模拟器布局验证。
+
+## 2026-07-09 / v2.1.9-test / Codex — 小程序套装拼图封面对齐 App
+
+- **执行 Agent**：Codex（未触发 subagent：用户未通知；延续独立 worktree `/Users/fangzheng/Documents/wardrobe-wechat-calendar-plan-fix` 的 `codex/wechat-calendar-plan-fix` 分支）。
+- **目的**：按 App `OutfitCover` 的自动拼图实现修正小程序套装首页三处封面：周日期缩略图、当天穿搭卡片、套装瀑布流卡片都由套装内衣物拼接成封面，不再使用“大图 + 右侧小图”的临时布局。
+- **版本变更**：无；当前应用版本仍为 `2.1.9-test`，小程序包版本仍为 `0.1.0`。
+- **App 对照**：App 通过 `OutfitCover` / `getOutfitCover` 渲染套装封面；无手工封面时走 `auto_collage`，取套装内有效衣物图，1 张单图、2 张左右等分、3 张上 1 下 2、4 张四宫格。
+- **改动文件**：`apps/wechat-miniprogram/services/workspace.ts`、`apps/wechat-miniprogram/pages/outfits/index.{ts,wxml,wxss}`、`VERSION_HISTORY.md`。
+- **改动说明**：保留小程序 `MiniOutfit.itemImages` 作为套装拼图来源；周日期缩略图、当天穿搭卡片和瀑布流卡片统一用 `.cover-collage` 渲染 1/2/3/4 张图的等分拼图；无衣物图时才回退到单张 `imageUrl` 或“套”占位。
+- **验证结果**：`/Users/fangzheng/Documents/衣柜识别+根据要去的地方和活动自动搭配穿搭的APP/node_modules/.bin/tsc -p apps/wechat-miniprogram/tsconfig.json --noEmit` 通过；微信开发者工具 CLI `compile_wxml/compile_wxss` 覆盖 `pages/outfits/index/index` 通过；`git diff --check` 通过；DevTools 模拟器注入两件真实衣物图后截图确认三处均为等分拼图封面，截图为 `/Users/fangzheng/Desktop/wechat-calendar-plan-align-screenshots/12-outfits-app-collage-cover.png`。
+- **风险门禁**：medium（小程序套装首页图片来源和 UI 展示调整；不改后端、不改共享契约、不上传体验版、不打 Android APK）；未触发 subagent：用户未通知。
+- **未验证风险**：未做真机预览或体验版上传；截图使用 DevTools 页面内注入展示数据，不写服务器数据。
+
+## 2026-07-09 / v2.1.9-test / Codex — 小程序套装图片等比填充修正
+
+- **执行 Agent**：Codex（未触发 subagent：用户未通知；延续独立 worktree `/Users/fangzheng/Documents/wardrobe-wechat-calendar-plan-fix` 的 `codex/wechat-calendar-plan-fix` 分支）。
+- **目的**：修正小程序套装周卡和瀑布流卡片图片使用完整显示导致图片区域留白的问题，改为按比例放大填满展示区域。
+- **版本变更**：无；当前应用版本仍为 `2.1.9-test`，小程序包版本仍为 `0.1.0`。
+- **改动文件**：`apps/wechat-miniprogram/pages/outfits/index/index.wxml`、`VERSION_HISTORY.md`。
+- **改动说明**：将周卡封面、周卡衣物图、套装瀑布流主图和副图从 `aspectFit` 改为 `aspectFill`，保持衣物图片比例不变，并填满各自图片展示区域。
+- **验证结果**：微信开发者工具 CLI `compile_wxml pages/outfits/index/index.wxml` 通过；`git diff --check` 通过；DevTools 模拟器重新打开 `pages/outfits/index/index`，注入真实衣物图片数据后截图确认周卡和两列套装流图片均使用等比填充，截图为 `/Users/fangzheng/Desktop/wechat-calendar-plan-align-screenshots/10-outfits-week-and-grid-aspectfill.png`。
+- **风险门禁**：low（只改小程序套装图片显示模式，不改接口、数据结构、服务端或共享契约）；未触发 subagent：用户未通知。
+- **未验证风险**：未做真机预览或体验版上传；截图中的演示计划 ID 匹配只在 DevTools 页面内临时调整，用于视觉验证，不写服务器数据。
+
+## 2026-07-09 / v2.1.9-test / Codex — 小程序套装首页周历与计划入口对齐
+
+- **执行 Agent**：Codex（未触发 subagent：用户未通知；本轮继续在独立 worktree `/Users/fangzheng/Documents/wardrobe-wechat-calendar-plan-fix` 的 `codex/wechat-calendar-plan-fix` 分支执行）。
+- **目的**：按用户提供的 App 套装页截图修正小程序套装首页：`月历` / `+计划` 入口放到微信胶囊下方，不遮挡标题；本周范围当前年份不显示年份；套装列表改为一屏两列瀑布流；`+计划` 面板不再被底部导航压住。
+- **版本变更**：无；当前应用版本仍为 `2.1.9-test`，小程序包版本仍为 `0.1.0`。
+- **改动文件**：`apps/wechat-miniprogram/pages/outfits/index.{json,ts,wxml,wxss}`、`apps/wechat-miniprogram/pages/outfits/calendar/index.{ts,wxml}`、`VERSION_HISTORY.md`。
+- **改动说明**：套装首页改为读取 planning snapshot，将套装、计划、穿搭安排一起驱动周历；周历支持点击日期、左右箭头和左右滑动切换周；周卡展示当天计划 chip、套装入口和状态；顶部新增 `+计划` Sheet，三项为旅行、出差、自定义，跳转到计划编辑页并带入当前日期；`月历` / `+计划` 采用固定宽度点击控件，定位到微信胶囊下方右侧；套装列表增加 `outfit-grid` 两列布局，沿用衣橱瀑布流的两列密度；打开计划 Sheet 时隐藏自定义 tabBar 和 FAB，关闭或跳转时恢复；月历页根容器支持左右滑动切换月份。
+- **验证结果**：`/Users/fangzheng/Documents/衣柜识别+根据要去的地方和活动自动搭配穿搭的APP/node_modules/.bin/tsc -p apps/wechat-miniprogram/tsconfig.json --noEmit` 通过；微信开发者工具 CLI `compile_wxml/compile_wxss` 覆盖 `pages/outfits/index/index` 通过；DevTools 模拟器打开 `pages/outfits/index/index` 并截图验证主页面、两列套装流和 `+计划` Sheet，截图为 `/Users/fangzheng/Desktop/wechat-calendar-plan-align-screenshots/05-outfits-main-final.png`、`/Users/fangzheng/Desktop/wechat-calendar-plan-align-screenshots/07-add-plan-sheet-final-hidden.png`；使用用户提供的测试账号真实登录接口返回 200，并创建/读回/删除本轮临时套装、计划和穿搭安排，清理结果均为 `committed`。
+- **风险门禁**：high（小程序套装首页、周历交互、计划入口、线上 workspace 临时写入验证和多层弹窗状态；不改服务端、不改共享契约、不上传体验版、不打 Android APK）；未触发 subagent：用户未通知。
+- **未验证风险**：本轮截图基于 DevTools 模拟器和注入的展示数据验证视觉状态；未做真机预览或体验版上传；真实账号测试数据已清理，最终截图中的两列卡片为展示布局数据。
+
+## 2026-07-09 / v2.1.9-test / Codex — 小程序月历切换与计划管理修复
+
+- **执行 Agent**：Codex（未触发 subagent：用户未通知；本轮在独立 worktree `/Users/fangzheng/Documents/wardrobe-wechat-calendar-plan-fix` 的 `codex/wechat-calendar-plan-fix` 分支执行，未改动既有小程序 worktree 中的无关未提交文件）。
+- **目的**：修复小程序月历页不能切换月份和日期、返回按钮视觉错误、`+计划` 缺失、计划详情仍为占位页等问题；对齐用户提供的 App 截图，实现旅行、出差、自定义计划的添加、修改、删除和套装安排入口。
+- **版本变更**：无；当前应用版本仍为 `2.1.9-test`，小程序包版本仍为 `0.1.0`。
+- **改动文件**：`apps/wechat-miniprogram/app.json`、`apps/wechat-miniprogram/services/workspace.ts`、`apps/wechat-miniprogram/utils/calendar.ts`、`apps/wechat-miniprogram/pages/outfits/calendar/index.{json,ts,wxml,wxss}`、`apps/wechat-miniprogram/pages/trips/detail/index.{json,ts,wxml,wxss}`、`apps/wechat-miniprogram/pages/trips/edit/index.{json,ts,wxml,wxss}`、`VERSION_HISTORY.md`。
+- **改动说明**：月历页改为 42 格真实月历，支持左右切换月份、点击选择日期、展示计划彩条和当天穿搭安排；顶部返回按钮改为圆形，避开微信胶囊，右上 `+计划` 打开底部 Sheet，三项为旅行、出差、自定义；安排穿搭底部 Sheet 读取已有套装并写入 `/api/workspace/outfit-plans`；新增计划编辑页，支持名称、地点/目的地、日期范围、活动关键词、备注、彩条颜色和打包清单开关；计划详情页读取 `/api/workspace/trip-plans` 和 overview 快照，支持编辑、删除确认和每日穿搭展示；未登录态按钮改为“去登录”，未配置 API 态按钮改为“去设置”，真实读取失败才显示“重试”。
+- **验证结果**：使用主项目已安装 TypeScript 执行 `/Users/fangzheng/Documents/衣柜识别+根据要去的地方和活动自动搭配穿搭的APP/node_modules/.bin/tsc -p apps/wechat-miniprogram/tsconfig.json --noEmit` 通过；微信开发者工具 CLI `compile_wxml/compile_wxss` 覆盖月历页、计划编辑页、计划详情页通过；`node apps/wechat-miniprogram/scripts/wechatide-compile.mjs --refresh` 通过；`simulator_open_page` 打开 `pages/outfits/calendar/index`、`pages/trips/edit/index`、`pages/trips/detail/index` 通过；使用用户提供的测试账号在生产 API 完成真实登录，创建临时自定义计划、修改计划、删除计划并确认 404 清理通过；该账号原本无套装，进一步用账号内衣物创建临时套装、创建临时计划、创建 `outfit-plans` 穿搭安排、overview 读回验证，再删除临时穿搭安排、计划和套装，全部清理通过；`git diff --check` 通过。
+- **风险门禁**：high（小程序月历交互、计划新增/编辑/删除、线上 workspace 写入和多页 UI 状态变化；不改服务端、不改共享契约、不上传体验版、不打 Android APK）；未触发 subagent：用户未通知。
+- **未验证风险**：本轮未做真机预览或体验版上传；小程序 `package.json` 未声明本地 `tsc` 依赖，因此 `npm --prefix apps/wechat-miniprogram run typecheck` 在该独立 worktree 会找不到 `tsc`，本轮改用主项目已安装的同版本工具执行同一 tsconfig。
 ## 2026-07-09 / v2.1.9-test / Codex — 小程序当前分支同步到基线前收口
 
 - **执行 Agent**：Codex（未触发 subagent：用户要求将当前小程序分支推进到基线分支，本轮只做合并前收口和推送）。

@@ -1,0 +1,71 @@
+<view class="page-shell plan-edit" style="padding-top: {{titleTopRpx}}rpx;">
+  <view class="edit-top">
+    <view class="top-left" bindtap="goBack">
+      <text class="top-back">‹</text>
+      <text class="top-title">{{pageTitle}}</text>
+    </view>
+    <button class="save-button" loading="{{saving}}" disabled="{{saving || loading}}" bindtap="save">保存</button>
+  </view>
+
+  <view wx:if="{{loading}}" class="status-card">正在读取计划...</view>
+  <view wx:else class="form-stack">
+    <view wx:if="{{error}}" class="error-card">{{error}}</view>
+
+    <view class="field">
+      <view class="field-label">计划名称</view>
+      <input class="field-input" value="{{title}}" placeholder="{{titlePlaceholder}}" bindinput="onTitleInput" />
+    </view>
+
+    <view wx:if="{{type !== 'custom'}}" class="field">
+      <view class="field-label">{{destinationLabel}}</view>
+      <input class="field-input" value="{{destination}}" placeholder="{{destinationPlaceholder}}" bindinput="onDestinationInput" />
+    </view>
+
+    <view class="field">
+      <view class="field-label">日期范围</view>
+      <view class="date-row">
+        <picker mode="date" value="{{startDate}}" bindchange="onStartDateChange">
+          <view class="date-picker">{{startDate}} <text class="date-caret">⌄</text></view>
+        </picker>
+        <view class="date-to">至</view>
+        <picker mode="date" value="{{endDate}}" bindchange="onEndDateChange">
+          <view class="date-picker">{{endDate}} <text class="date-caret">⌄</text></view>
+        </picker>
+      </view>
+    </view>
+
+    <view class="field">
+      <view class="field-label">活动关键词</view>
+      <view class="activity-row">
+        <input class="field-input activity-input" value="{{activityInput}}" placeholder="输入后回车添加" bindinput="onActivityInput" bindconfirm="addActivity" />
+        <button class="activity-add" bindtap="addActivity">添加</button>
+      </view>
+      <view wx:if="{{activities.length}}" class="tag-row">
+        <view wx:for="{{activities}}" wx:key="*this" data-value="{{item}}" class="tag" bindtap="removeActivity">{{item}} ×</view>
+      </view>
+    </view>
+
+    <view class="field">
+      <view class="field-label">{{noteLabel}}</view>
+      <input class="field-input" value="{{noteValue}}" placeholder="{{notePlaceholder}}" bindinput="onNoteInput" />
+    </view>
+
+    <view class="field">
+      <view class="field-label">计划彩条颜色</view>
+      <view class="tone-row">
+        <view
+          wx:for="{{toneOptions}}"
+          wx:key="tone"
+          data-tone="{{item.tone}}"
+          class="tone-dot {{item.className}} {{tone === item.tone ? 'tone-dot--active' : ''}}"
+          bindtap="chooseTone"
+        />
+      </view>
+    </view>
+
+    <view class="packing-row">
+      <view class="field-label">自动生成打包清单</view>
+      <switch checked="{{packingEnabled}}" color="#5F7058" bindchange="onPackingChange" />
+    </view>
+  </view>
+</view>
