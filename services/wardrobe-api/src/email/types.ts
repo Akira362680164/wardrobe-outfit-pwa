@@ -34,6 +34,7 @@ export function emailPurposeText(purpose: EmailCodePurpose): string {
     reset_password: "重置密码",
     change_password: "修改密码",
     change_email: "更换邮箱",
+    delete_account: "注销账号",
   };
   return mapping[purpose];
 }
