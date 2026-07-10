@@ -260,3 +260,11 @@ export interface StaticDefect {
   suspectedFiles: string[];
   status: DefectStatus;
 }
+
+export interface FixtureDefinition {
+  id: string;
+  category: "account" | "garment" | "outfit" | "calendar" | "wishlist" | "settings" | "diagnostics" | "network" | "visual";
+  destructive: boolean;
+  description: string;
+  data: Record<string, unknown>;
+}

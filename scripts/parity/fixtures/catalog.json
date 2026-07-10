@@ -1,0 +1,41 @@
+[
+  {"id":"account.empty","category":"account","destructive":false,"description":"Logged-in account with the single default home wardrobe and no business entities.","data":{"locations":["home"],"garments":0,"outfits":0,"wishlist":0}},
+  {"id":"account.normal","category":"account","destructive":false,"description":"Logged-in account containing the complete semantic fixture matrix.","data":{"namespace":"parity-<runId>-<shard>-<platform>"}},
+  {"id":"account.session_expired","category":"account","destructive":false,"description":"Account whose access token receives 401 while the UI is on a business Screen.","data":{"fault":"401"}},
+
+  {"id":"garment.complete","category":"garment","destructive":false,"description":"Fully populated garment with deterministic image, tags, wear record and outfit association.","data":{"alias":"complete","image":"e2e/assets/red-shirt.jpg","category":"tops","subcategory":"t-shirt","colors":{"mode":"single","primary":"红"},"seasons":["all"],"styles":["casual"]}},
+  {"id":"garment.no_image","category":"garment","destructive":false,"description":"Garment with complete metadata and no image asset.","data":{"alias":"no-image"}},
+  {"id":"garment.long_name","category":"garment","destructive":false,"description":"Garment whose name stresses narrow-screen wrapping.","data":{"alias":"long-name","nameLength":80}},
+  {"id":"garment.long_text","category":"garment","destructive":false,"description":"Garment with long notes, fit notes and material copy.","data":{"alias":"long-text","paragraphs":4}},
+  {"id":"garment.many_tags","category":"garment","destructive":false,"description":"Garment with the maximum meaningful season/style/color tag set.","data":{"alias":"many-tags"}},
+  {"id":"garment.ai_unavailable","category":"garment","destructive":false,"description":"Garment used with deterministic AI failure/no-key states.","data":{"alias":"ai-unavailable","ai":"failure"}},
+  {"id":"garment.delete_target","category":"garment","destructive":true,"description":"Isolated garment used only by delete cases.","data":{"alias":"delete-target"}},
+
+  {"id":"outfit.complete","category":"outfit","destructive":false,"description":"Outfit with two garments, complete metadata and an image-capable card.","data":{"alias":"complete","garmentAliases":["complete","no-image"]}},
+  {"id":"outfit.with_real_image","category":"outfit","destructive":false,"description":"Outfit with a deterministic real-photo asset.","data":{"image":"e2e/assets/black-shoes.jpg"}},
+  {"id":"outfit.empty_selection","category":"outfit","destructive":false,"description":"Compose state with fewer than two selected garments.","data":{"selected":1}},
+  {"id":"outfit.delete_target","category":"outfit","destructive":true,"description":"Isolated outfit used only by delete cases.","data":{"alias":"delete-target"}},
+
+  {"id":"calendar.empty","category":"calendar","destructive":false,"description":"Frozen July 2026 month without plans or entries.","data":{"frozenTime":"2026-07-15T04:00:00.000Z","timezone":"Asia/Shanghai","month":"2026-07"}},
+  {"id":"calendar.with_plan","category":"calendar","destructive":false,"description":"Golden month with overlapping travel/business plans, primary and backup outfits.","data":{"frozenTime":"2026-07-15T04:00:00.000Z","plans":[{"id":"P1","type":"travel","start":"2026-07-14","end":"2026-07-18","tone":"clay"},{"id":"P2","type":"business","start":"2026-07-15","end":"2026-07-16","tone":"moss"}],"entries":["past-worn","today-primary","today-backup","future-changed"]}},
+  {"id":"calendar.month_boundary","category":"calendar","destructive":false,"description":"Plan and selected date spanning adjacent months.","data":{"start":"2026-07-30","end":"2026-08-03"}},
+  {"id":"calendar.with_trip","category":"calendar","destructive":false,"description":"Date covered by travel, business and custom plans for deterministic overlap order.","data":{"date":"2026-07-15","planTypes":["travel","business","custom"]}},
+
+  {"id":"wishlist.normal","category":"wishlist","destructive":false,"description":"Interested wishlist item with image and complete metadata.","data":{"status":"interested"}},
+  {"id":"wishlist.purchased","category":"wishlist","destructive":false,"description":"Purchased wishlist item linked to a converted garment.","data":{"status":"purchased","convertedGarment":true}},
+  {"id":"wishlist.rejected","category":"wishlist","destructive":false,"description":"Rejected wishlist item.","data":{"status":"rejected"}},
+  {"id":"wishlist.archived","category":"wishlist","destructive":false,"description":"Archived wishlist item.","data":{"status":"archived"}},
+  {"id":"wishlist.delete_target","category":"wishlist","destructive":true,"description":"Isolated wishlist record used only by delete cases.","data":{"status":"interested"}},
+
+  {"id":"settings.ai_key_missing","category":"settings","destructive":false,"description":"Device settings with no MiniMax Key.","data":{"keyConfigured":false}},
+  {"id":"settings.ai_key_configured","category":"settings","destructive":false,"description":"Device settings with Keychain-provided MiniMax Key injected only at runtime.","data":{"keyConfigured":true,"persistSecretInArtifacts":false}},
+  {"id":"diagnostics.normal","category":"diagnostics","destructive":false,"description":"Valid build identity and sanitized bounded diagnostic events.","data":{"description":"parity diagnostic fixture","eventCount":12}},
+  {"id":"diagnostics.upload_failure","category":"diagnostics","destructive":false,"description":"One-shot fault on diagnostic content upload followed by retry.","data":{"method":"PUT","pathIncludes":"/api/diagnostics/cases/","times":1,"statusCode":503}},
+
+  {"id":"network.offline","category":"network","destructive":false,"description":"Client offline before request dispatch.","data":{"mode":"offline"}},
+  {"id":"network.timeout","category":"network","destructive":false,"description":"Request exceeds client timeout.","data":{"mode":"timeout"}},
+  {"id":"network.401","category":"network","destructive":false,"description":"Authenticated request returns 401.","data":{"statusCode":401}},
+  {"id":"network.409","category":"network","destructive":false,"description":"Write uses a stale expectedRevision.","data":{"statusCode":409}},
+  {"id":"network.500","category":"network","destructive":false,"description":"One-shot server error followed by retry.","data":{"statusCode":500,"times":1}},
+  {"id":"glass.high_contrast","category":"visual","destructive":false,"description":"High-frequency image/card background scrolled beneath headers and bottom navigation.","data":{"image":"e2e/assets/blue-jeans.jpg"}}
+]

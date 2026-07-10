@@ -1,3 +1,14 @@
+## 2026-07-11 / v2.1.13-test / Codex — Fixture、平台例外与本机环境门禁
+
+- **执行 Agent**：Codex 主协调 agent（未新增 subagent）。
+- **目的**：为详细状态图提供可重复的账号、衣物、套装、日历、种草、设置、诊断、网络和视觉 fixture，并在任何写入前证明数据库、设备、预览 SHA 与密钥环境安全可用。
+- **版本变更**：无；当前应用版本仍为 `2.1.13-test`。本批次不写测试数据、不改业务行为、不打 APK、不上传小程序体验版。
+- **改动文件**：`scripts/parity/{environment.ts,fixtures.ts,fixtures/catalog.json,config/platform-exceptions.yaml,cli.ts,types.ts}`、`package.json`、`VERSION_HISTORY.md`。
+- **改动说明**：新增 33 个 fixture（3 个破坏性实体均要求独立使用）；固定 2026-07-15 / Asia/Shanghai 月历 golden matrix；MiniMax fixture 只记录可用性不保存 Key；将用户已批准的 `WX-CAPSULE-001` 物化为唯一平台例外，只允许运行时胶囊矩形与 8px 左安全边距；新增无明文输出的 E2E env、数据库 allowlist、JWT 文件、ADB、预览 SHA 和 Key 可用性检查。
+- **验证结果**：`npm run parity:fixture:check` 无 error/warning 通过（33 fixture，destructive=3）；`npm run parity:environment:check` 无 error/warning 通过，4/4 E2E 变量已配置，本地 `wardrobe_e2e` PostgreSQL 可达、Android 真机 ready、预览 SHA 匹配、MiniMax Key 可用；独立 `tsc` 编译和 `git diff --check` 通过。
+- **风险门禁**：high（后续 fixture 写入、真机与 live AI 的执行前置）。
+- **未验证风险**：fixture 当前只有声明和门禁，尚未实现 API seed/readback/teardown；未生成任何生产或测试数据库写入，也未验证真实 QQ 邮件收件。
+
 ## 2026-07-11 / v2.1.13-test / Codex — 静态缺陷库与证据门禁
 
 - **执行 Agent**：Codex 主协调 agent（汇总三个成对业务域 subagent 和服务端/测试资产 subagent 的只读源码证据）。

@@ -5,6 +5,8 @@ import { createBaselineLock } from "./lock";
 import { checkInstrumentation, validateInventory } from "./validate";
 import { validateManifests } from "./manifest";
 import { validateStaticDefects } from "./defects";
+import { validateFixtures } from "./fixtures";
+import { validateParityEnvironment } from "./environment";
 
 interface CliArgs {
   command: string;
@@ -48,6 +50,8 @@ function printHelp(): void {
   tsx scripts/parity/cli.ts instrumentation-check --run-id <runId>
   tsx scripts/parity/cli.ts manifest-check --run-id <runId>
   tsx scripts/parity/cli.ts defects-static-check --run-id <runId>
+  tsx scripts/parity/cli.ts fixture-check --run-id <runId>
+  tsx scripts/parity/cli.ts environment-check --run-id <runId> --env-file <absolute path>
 
 Common options:
   --app-ref main
@@ -142,6 +146,23 @@ async function main(): Promise<void> {
     const result = await validateStaticDefects({ cwd, runRoot: path.join(outputRoot, runId) });
     console.log(JSON.stringify(result, null, 2));
     if (!result.valid) process.exitCode = 1;
+    return;
+  }
+  if (args.command === "fixture-check") {
+    const runId = value(args, "run-id");
+    const result = await validateFixtures({ cwd, runRoot: path.join(outputRoot, runId) });
+    console.log(JSON.stringify(result, null, 2));
+    if (!result.valid) process.exitCode = 1;
+    return;
+  }
+  if (args.command === "environment-check") {
+    const runId = value(args, "run-id");
+    const result = await validateParityEnvironment({
+      runRoot: path.join(outputRoot, runId),
+      envFile: path.resolve(value(args, "env-file")),
+    });
+    console.log(JSON.stringify(result, null, 2));
+    if (!result.valid) process.exitCode = 4;
     return;
   }
   throw new Error(`Unsupported parity command: ${args.command}`);

@@ -168,6 +168,8 @@
     ,"parity:instrumentation:check": "tsx scripts/parity/cli.ts instrumentation-check"
     ,"parity:manifest:check": "tsx scripts/parity/cli.ts manifest-check"
     ,"parity:defects:static:check": "tsx scripts/parity/cli.ts defects-static-check"
+    ,"parity:fixture:check": "tsx scripts/parity/cli.ts fixture-check"
+    ,"parity:environment:check": "tsx scripts/parity/cli.ts environment-check"
   },
   "dependencies": {
     "@wardrobe/domain-catalog": "file:packages/domain-catalog",
