@@ -19,6 +19,25 @@ assert.equal(siteStatus.icpUrl, "https://beian.miit.gov.cn/");
 assert.equal(siteStatus.policeUrl, null, "missing police record must not create an empty link");
 assert.match(siteStatus.policeLabel, /办理中/);
 assert.ok(siteLinks.every((link) => link.href && link.label));
+
+const publicWebsiteSources = [
+  "src/components/site/site-mark.tsx",
+  "src/components/site/site-home.tsx",
+  "src/components/site/site-footer.tsx",
+  "src/components/site/legal-page.tsx",
+  "src/app/layout.tsx",
+  "src/app/not-found.tsx",
+  "src/app/privacy/page.tsx",
+  "src/app/terms/page.tsx",
+  "src/app/account-deletion/page.tsx",
+  "src/app/contact/page.tsx",
+  "public/site.webmanifest",
+];
+for (const path of publicWebsiteSources) {
+  assert.doesNotMatch(read(path), /Wardora/i, `${path} must not expose the retired public name`);
+}
+
+assert.match(read("src/app/layout.tsx"), /manifest:\s*["']\/site\.webmanifest["']/);
 assert.equal(privacySections.length, 15, "privacy policy must contain all 15 required chapters");
 assert.equal(termsSections.length, 15, "terms must contain all 15 required chapters");
 assert.equal(accountDeletionSections.length, 7, "account deletion guide must contain all 7 required topics");

@@ -1,8 +1,8 @@
-# Wardora 官网部署说明
+# 个人内网穿透及衣橱小站部署说明
 
 ## 1. 部署边界
 
-Wardora 官网使用 `https://zhengfangapps.cloud` 作为唯一规范地址，`https://www.zhengfangapps.cloud` 永久跳转至根域名。官网是独立静态产物，不连接数据库。
+个人内网穿透及衣橱小站使用 `https://zhengfangapps.cloud` 作为唯一规范地址，`https://www.zhengfangapps.cloud` 永久跳转至根域名。官网是衣橱穿搭助手的产品介绍及合规信息展示页面，不连接数据库，也不向公众提供独立的内网穿透服务。
 
 `https://api.zhengfangapps.cloud` 继续只承载 wardrobe API，保留现有 Caddy `reverse_proxy 127.0.0.1:3000`、容器、端口和健康检查。本说明不会提交备案申请，也不授权直接修改生产 DNS。
 
