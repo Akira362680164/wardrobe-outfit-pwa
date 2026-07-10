@@ -4,7 +4,6 @@
       <text class="top-back">‹</text>
       <text class="top-title">{{pageTitle}}</text>
     </view>
-    <button class="save-button" loading="{{saving}}" disabled="{{saving || loading}}" bindtap="save">保存</button>
   </view>
 
   <view wx:if="{{loading}}" class="status-card">正在读取计划...</view>
@@ -67,5 +66,7 @@
       <view class="field-label">自动生成打包清单</view>
       <switch checked="{{packingEnabled}}" color="#5F7058" bindchange="onPackingChange" />
     </view>
+
+    <button class="save-button" loading="{{saving}}" disabled="{{saving || loading}}" bindtap="save">保存</button>
   </view>
 </view>

@@ -1,3 +1,12 @@
+## 2026-07-10 / v2.1.12-test / Codex - 小程序计划保存按钮与认证页居中布局
+
+- **目的**：按用户截图将计划编辑页的“保存”从顶部工具栏移至表单底部，并将小程序登录、注册及账号绑定表单置于页面中央。
+- **改动边界**：仅改小程序计划编辑与认证页结构、样式；未改服务端、接口、计划数据、认证数据或保存逻辑。App 的 `AuthShell` 原本已居中，本轮未改 App。
+- **改动文件**：`apps/wechat-miniprogram/pages/trips/edit/index.{wxml,wxss}`、`apps/wechat-miniprogram/pages/login/{index,register-email,bind-existing,connect-account}/index.wxss`、`VERSION_HISTORY.md`。
+- **改动说明**：顶部栏仅保留返回与标题；表单底部新增全宽保存按钮，尺寸为 `88rpx` 高、`28rpx` 圆角，沿用主操作色 `#355C7D` 与白字，并保留既有 loading、禁用与保存事件。小程序首页操作组、注册、找回密码、绑定账号和微信绑定选择页的内容容器改为竖向居中，返回按钮移至安全区左上固定位置；密码登录页原本已居中，保持不变。
+- **验证结果**：当前 worktree 的小程序 TypeScript 检查通过；微信开发者工具 CLI 编译登录入口、注册、找回密码、绑定账号、微信绑定选择和计划编辑页 WXSS 通过；模拟器刷新通过，入口页与注册页截图确认内容位于可视区中部、无文字重叠，console 的 `error/fail/TypeError/ReferenceError/SyntaxError` 过滤为空，`git diff --check` 通过。
+- **未验证风险**：开发者工具单文件 WXML 编译在当前会话报 Builder `getRootFactory Not Define Env`，但整体模拟器刷新成功；计划编辑页整页视觉截图未生成。未做真机预览或体验版上传。
+
 ## 2026-07-10 / v2.1.12-test / Codex — 小程序基线同步主线并收口月历计划
 
 - **执行 Agent**：Codex（未触发 subagent：用户要求先完成两条基线合并和推送，分支清理留待后续）。
