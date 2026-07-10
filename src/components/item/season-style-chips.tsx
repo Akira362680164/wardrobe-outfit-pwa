@@ -74,6 +74,7 @@ export function SeasonStyleChips(props: SeasonStyleChipsProps) {
           return (
             <button
               key={opt}
+              data-parity-id={`parity.app.app.src.components.item.season.style.chips.7a717cbc03.${opt}`}
               type="button"
               disabled={disabled}
               onClick={() => {

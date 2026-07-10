@@ -108,8 +108,8 @@ export function OutfitWeeklyPlanStrip({
           <span className="text-[11px] text-ink/50">{weekLabel}</span>
         </div>
         <div className="flex items-center gap-1">
-          <button type="button" className="grid h-6 w-6 place-items-center rounded-full hover:bg-ink/5" onClick={() => shiftWeekWithDirection(-1)} aria-label="上一周"><ChevronLeft size={14} /></button>
-          <button type="button" className="grid h-6 w-6 place-items-center rounded-full hover:bg-ink/5" onClick={() => shiftWeekWithDirection(1)} aria-label="下一周"><ChevronRight size={14} /></button>
+          <button type="button" className="grid h-6 w-6 place-items-center rounded-full hover:bg-ink/5" data-parity-id="parity.app.app.src.components.outfit.weekly.plan.strip.326d6090aa" onClick={() => shiftWeekWithDirection(-1)} aria-label="上一周"><ChevronLeft size={14} /></button>
+          <button type="button" className="grid h-6 w-6 place-items-center rounded-full hover:bg-ink/5" data-parity-id="parity.app.app.src.components.outfit.weekly.plan.strip.d8d6fa76f4" onClick={() => shiftWeekWithDirection(1)} aria-label="下一周"><ChevronRight size={14} /></button>
         </div>
       </div>
 
@@ -155,7 +155,7 @@ export function OutfitWeeklyPlanStrip({
                     className={`relative flex flex-col items-center rounded-lg py-1.5 transition-colors ${
                       isSelected ? "bg-denim/8 ring-1 ring-denim/30" : "hover:bg-ink/3"
                     }`}
-                    onClick={() => handleDateClick(dateKey)}
+                    data-parity-id="parity.app.app.src.components.outfit.weekly.plan.strip.8383341358" onClick={() => handleDateClick(dateKey)}
                   >
                     <span className="text-[10px] text-ink/40">{WEEKDAY_LABELS[new Date(
                       parseInt(dateKey.split("-")[0]!), parseInt(dateKey.split("-")[1]!) - 1, d

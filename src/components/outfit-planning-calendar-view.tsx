@@ -134,6 +134,7 @@ export function OutfitPlanningCalendarView({
         rightAction={
           <button
             type="button"
+            data-parity-id="parity.app.app.src.components.outfit.planning.calendar.view.e7e2007f8b"
             onClick={onAdd}
             aria-label="添加计划"
             className="inline-flex h-11 items-center justify-center ui-control-radius bg-denim px-4 text-sm font-semibold text-white shadow-sm active:scale-95 whitespace-nowrap min-w-[72px]"
@@ -145,7 +146,7 @@ export function OutfitPlanningCalendarView({
 
       {/* Month header */}
       <div className="relative h-11 px-5">
-        <button type="button" className="absolute left-5 top-1 grid h-9 w-9 place-items-center rounded-full hover:bg-ink/5" onClick={() => shiftMonthWithDirection(-1)} aria-label="上一月">
+        <button type="button" data-parity-id="parity.app.app.src.components.outfit.planning.calendar.view.cf2a254c24" className="absolute left-5 top-1 grid h-9 w-9 place-items-center rounded-full hover:bg-ink/5" onClick={() => shiftMonthWithDirection(-1)} aria-label="上一月">
           <ChevronLeft size={18} />
         </button>
         <div className="absolute left-1/2 top-0 flex h-11 -translate-x-1/2 items-center justify-center">
@@ -155,21 +156,21 @@ export function OutfitPlanningCalendarView({
           {!isViewingToday ? (
             <button
               type="button"
-              onClick={handleTodayClick}
+              data-parity-id="parity.app.app.src.components.outfit.planning.calendar.view.0b460a0af4" onClick={handleTodayClick}
               aria-label="回到今天"
               className="inline-flex h-9 items-center justify-center rounded-full border border-ink/10 bg-white px-2.5 text-[11px] font-semibold text-denim shadow-sm active:scale-95"
             >
               今天
             </button>
           ) : null}
-          <button type="button" className="grid h-9 w-9 place-items-center rounded-full hover:bg-ink/5" onClick={() => shiftMonthWithDirection(1)} aria-label="下一月">
+          <button type="button" className="grid h-9 w-9 place-items-center rounded-full hover:bg-ink/5" data-parity-id="parity.app.app.src.components.outfit.planning.calendar.view.60a1ddd8b9" onClick={() => shiftMonthWithDirection(1)} aria-label="下一月">
             <ChevronRight size={18} />
           </button>
         </div>
       </div>
 
       {/* Calendar grid */}
-      <div className="px-2 flex-1 overflow-y-auto pb-[calc(env(safe-area-inset-bottom)+4rem)]" onClick={() => setExpandedDate(null)}>
+      <div className="px-2 flex-1 overflow-y-auto pb-[calc(env(safe-area-inset-bottom)+4rem)]" data-parity-id="parity.app.app.src.components.outfit.planning.calendar.view.189b8fb927" onClick={() => setExpandedDate(null)}>
         {/* Weekday headers */}
         <div className="grid grid-cols-7 gap-0.5 mb-1">
           {WEEKDAY_HEADERS.map((h) => (
@@ -217,6 +218,7 @@ export function OutfitPlanningCalendarView({
                       return (
                         <div
                           key={cell.dateKey}
+                          data-parity-id={`parity.app.app.src.components.outfit.planning.calendar.view.1803ec14dd.${cell.dateKey}`}
                           role="button"
                           tabIndex={0}
                           className={`relative flex flex-col items-center rounded-lg py-1 min-h-[56px] transition-colors ${
@@ -271,6 +273,7 @@ export function OutfitPlanningCalendarView({
                               {cellPlans.slice(0, 2).map((p) => (
                                 <button
                                   key={p.id}
+                                  data-parity-id={`parity.app.app.src.components.outfit.planning.calendar.view.36293ba0bc.${p.id}`}
                                   type="button"
                                   className={`h-[5px] w-4 rounded-full ${PLAN_TONE_BG_MAP[p.tone]}`}
                                   aria-label={`${p.title} · ${planTypeLabel(p.type)}`}
@@ -291,7 +294,7 @@ export function OutfitPlanningCalendarView({
                   {/* Day detail card after the selected row */}
                   {expandedDate && expandedRowIndex === rowIdx && (
                     <AnimatePresence mode="wait">
-                      <motion.div onClick={(e) => e.stopPropagation()}
+                      <motion.div data-parity-id="parity.app.app.src.components.outfit.planning.calendar.view.681fe1f11b" onClick={(e) => e.stopPropagation()}
                         key={expandedDate ?? "collapsed"}
                         initial={{ height: 0, opacity: 0 }}
                         animate={{ height: "auto", opacity: 1 }}

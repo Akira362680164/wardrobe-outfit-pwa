@@ -88,11 +88,11 @@ export function OutfitPlanDayCard({
           {isPast ? "可以补记当天实际穿过的套装。" : "可以先把想穿的套装放进计划。"}
         </p>
         <div className="flex items-center justify-center gap-2 mt-2">
-          <button type="button" className="rounded-full bg-denim px-3 py-1 text-[11px] font-semibold text-white" onClick={onSelectOutfit}>
+          <button type="button" className="rounded-full bg-denim px-3 py-1 text-[11px] font-semibold text-white" data-parity-id="parity.app.app.src.components.outfit.plan.day.card.f51b44bc1f" onClick={onSelectOutfit}>
             {isPast ? "补记已穿" : "安排穿搭"}
           </button>
           {onAiRecommend && (
-            <button type="button" className="rounded-full border border-denim/20 bg-denim/5 px-3 py-1 text-[11px] font-semibold text-denim" onClick={onAiRecommend}><Sparkles size={12} className="inline mr-1" />AI 推荐</button>
+            <button type="button" className="rounded-full border border-denim/20 bg-denim/5 px-3 py-1 text-[11px] font-semibold text-denim" data-parity-id="parity.app.app.src.components.outfit.plan.day.card.c90e47bb9b" onClick={onAiRecommend}><Sparkles size={12} className="inline mr-1" />AI 推荐</button>
           )}
         </div>
       </div>
@@ -109,7 +109,7 @@ export function OutfitPlanDayCard({
           <button
             type="button"
             className={`rounded-full px-1.5 py-0.5 text-[10px] font-medium border truncate max-w-[160px] cursor-pointer ${toneClass}`}
-            onClick={() => onOpenCalendarPlan(mainPlan.id)}
+            data-parity-id="parity.app.app.src.components.outfit.plan.day.card.23ba2b8cc8" onClick={() => onOpenCalendarPlan(mainPlan.id)}
           >
             {mainPlan.title} · {planTypeLabel(mainPlan.type)}
           </button>
@@ -119,10 +119,10 @@ export function OutfitPlanDayCard({
         )}
         <p className="text-[11px] text-ink/40 mb-2">尚未安排当天穿搭</p>
         <div className="flex items-center gap-2">
-          <button type="button" className="rounded-full bg-denim px-3 py-1 text-[11px] font-semibold text-white" onClick={onSelectOutfit}>
+          <button type="button" className="rounded-full bg-denim px-3 py-1 text-[11px] font-semibold text-white" data-parity-id="parity.app.app.src.components.outfit.plan.day.card.39898bf1eb" onClick={onSelectOutfit}>
             {isPast ? "补记已穿" : "安排套装"}
           </button>
-          <button type="button" className="rounded-full border border-ink/15 bg-white px-3 py-1 text-[11px] font-medium text-ink/70" onClick={() => onOpenCalendarPlan(mainPlan.id)}>查看计划</button>
+          <button type="button" className="rounded-full border border-ink/15 bg-white px-3 py-1 text-[11px] font-medium text-ink/70" data-parity-id="parity.app.app.src.components.outfit.plan.day.card.186b301ce6" onClick={() => onOpenCalendarPlan(mainPlan.id)}>查看计划</button>
         </div>
       </div>
     );
@@ -148,43 +148,43 @@ export function OutfitPlanDayCard({
             <button
               type="button"
               className={`rounded-full px-1.5 py-0.5 text-[10px] font-medium border cursor-pointer ${PLAN_TONE_CLASS_MAP[mainPlan.tone]}`}
-              onClick={() => onOpenCalendarPlan(mainPlan.id)}
+              data-parity-id="parity.app.app.src.components.outfit.plan.day.card.c15500fc75" onClick={() => onOpenCalendarPlan(mainPlan.id)}
             >
               {mainPlan.title} · {planTypeLabel(mainPlan.type)}
             </button>
           )}
         </div>
         <div className="flex items-start gap-3">
-          <button type="button" onClick={() => onViewOutfit(outfitId)} className="h-[72px] w-[72px] shrink-0 overflow-hidden rounded-[14px] bg-milk-darker/40 active:scale-95" aria-label="查看套装">
+          <button type="button" data-parity-id="parity.app.app.src.components.outfit.plan.day.card.3f1fe79c56" onClick={() => onViewOutfit(outfitId)} className="h-[72px] w-[72px] shrink-0 overflow-hidden rounded-[14px] bg-milk-darker/40 active:scale-95" aria-label="查看套装">
             <OutfitCover outfit={outfit} items={items} size="card" />
           </button>
           <div className="flex-1 min-w-0">
-            <button type="button" onClick={() => onViewOutfit(outfitId)} className="text-[17px] font-bold text-ink truncate text-left hover:underline">{primaryDisplayEntry?.title || outfit.name}</button>
+            <button type="button" data-parity-id="parity.app.app.src.components.outfit.plan.day.card.82b8eae78e" onClick={() => onViewOutfit(outfitId)} className="text-[17px] font-bold text-ink truncate text-left hover:underline">{primaryDisplayEntry?.title || outfit.name}</button>
             {primaryDisplayEntry?.scene && <p className="text-[11px] text-ink/50 mt-0.5">{primaryDisplayEntry.scene}{primaryDisplayEntry.weatherNote ? ` · ${primaryDisplayEntry.weatherNote}` : ""}</p>}
             {isChanged && changedEntry && (
               <p className="text-[10px] text-amber-600 mt-0.5">原计划：{changedEntry.title || "已变更"}</p>
             )}
             <div className="flex flex-wrap items-center gap-2 mt-3">
               {isWorn && onCancelWear ? (
-                <button type="button" className="rounded-full border border-ink/10 bg-white px-3 py-1 text-[11px] font-medium text-ink/50" onClick={() => onCancelWear(outfitId)}>取消已穿</button>
+                <button type="button" className="rounded-full border border-ink/10 bg-white px-3 py-1 text-[11px] font-medium text-ink/50" data-parity-id="parity.app.app.src.components.outfit.plan.day.card.297ab020da" onClick={() => onCancelWear(outfitId)}>取消已穿</button>
               ) : isPlanned ? (
                 <>
                   {!isFuture && (
-                    <button type="button" className="rounded-full bg-moss px-3 py-1 text-[11px] font-semibold text-white" onClick={onMarkWornToday}>
+                    <button type="button" className="rounded-full bg-moss px-3 py-1 text-[11px] font-semibold text-white" data-parity-id="parity.app.app.src.components.outfit.plan.day.card.1560441caa" onClick={onMarkWornToday}>
                       {isPast ? "补记已穿" : "今天穿了"}
                     </button>
                   )}
                   {!isFuture && isPast && onMarkSkipped && (
-                    <button type="button" className="rounded-full border border-ink/10 bg-white px-2.5 py-0.5 text-[11px] font-medium text-ink/50" onClick={() => onMarkSkipped(primaryDisplayEntry!)}>标记未穿</button>
+                    <button type="button" className="rounded-full border border-ink/10 bg-white px-2.5 py-0.5 text-[11px] font-medium text-ink/50" data-parity-id="parity.app.app.src.components.outfit.plan.day.card.2ed56f5130" onClick={() => onMarkSkipped(primaryDisplayEntry!)}>标记未穿</button>
                   )}
                 </>
               ) : null}
               {isFuture && onChangeOutfit && onDeleteEntry ? (
-                <button type="button" className="rounded-full border border-denim/20 bg-denim/5 px-3 py-1 text-[11px] font-medium text-denim" onClick={() => setShowChangeDeleteSheet(true)}>更改/删除</button>
+                <button type="button" className="rounded-full border border-denim/20 bg-denim/5 px-3 py-1 text-[11px] font-medium text-denim" data-parity-id="parity.app.app.src.components.outfit.plan.day.card.6ccdb3a6e8" onClick={() => setShowChangeDeleteSheet(true)}>更改/删除</button>
               ) : isFuture && onChangeOutfit ? (
-                <button type="button" className="rounded-full border border-denim/20 bg-denim/5 px-3 py-1 text-[11px] font-medium text-denim" onClick={onChangeOutfit}>更改计划</button>
+                <button type="button" className="rounded-full border border-denim/20 bg-denim/5 px-3 py-1 text-[11px] font-medium text-denim" data-parity-id="parity.app.app.src.components.outfit.plan.day.card.b3a6fbaf8b" onClick={onChangeOutfit}>更改计划</button>
               ) : null}
-              <button type="button" className="rounded-full border border-ink/10 bg-white px-3 py-1 text-[11px] font-medium text-ink/50" onClick={onSelectOutfit}>添加备选穿搭</button>
+              <button type="button" className="rounded-full border border-ink/10 bg-white px-3 py-1 text-[11px] font-medium text-ink/50" data-parity-id="parity.app.app.src.components.outfit.plan.day.card.35dbc32380" onClick={onSelectOutfit}>添加备选穿搭</button>
             </div>
           </div>
         </div>
@@ -202,6 +202,7 @@ export function OutfitPlanDayCard({
                   return (
                     <button
                       key={be.id}
+                      data-parity-id={`parity.app.app.src.components.outfit.plan.day.card.4af75560b7.${be.id}`}
                       type="button"
                       className="flex w-full items-center gap-2 rounded-lg p-1.5 hover:bg-ink/3 text-left"
                       onClick={() => onViewOutfit(bo.id)}
@@ -218,13 +219,13 @@ export function OutfitPlanDayCard({
           );
         })()}
         {showChangeDeleteSheet && primaryEntry ? (
-          <div className="fixed inset-0 z-[90] flex items-end justify-center bg-ink/35 px-4 pb-[calc(env(safe-area-inset-bottom)+1rem)]" onClick={() => setShowChangeDeleteSheet(false)}>
-            <div className="w-full max-w-sm rounded-3xl bg-white p-5 shadow-xl" onClick={(e) => e.stopPropagation()}>
+          <div className="fixed inset-0 z-[90] flex items-end justify-center bg-ink/35 px-4 pb-[calc(env(safe-area-inset-bottom)+1rem)]" data-parity-id="parity.app.app.src.components.outfit.plan.day.card.542c3ba025" onClick={() => setShowChangeDeleteSheet(false)}>
+            <div className="w-full max-w-sm rounded-3xl bg-white p-5 shadow-xl" data-parity-id="parity.app.app.src.components.outfit.plan.day.card.1d5272c0b0" onClick={(e) => e.stopPropagation()}>
               <h3 className="text-base font-semibold text-ink mb-3">{dateLabel}</h3>
               <button
                 type="button"
                 className="w-full rounded-xl border border-ink/10 bg-white p-3 text-left hover:bg-ink/2 mb-2"
-                onClick={() => { setShowChangeDeleteSheet(false); onChangeOutfit?.(); }}
+                data-parity-id="parity.app.app.src.components.outfit.plan.day.card.0707484004" onClick={() => { setShowChangeDeleteSheet(false); onChangeOutfit?.(); }}
               >
                 <p className="text-sm font-semibold text-denim">更改计划</p>
                 <p className="text-[11px] text-ink/45 mt-0.5">从套装列表中选择新的套装替换当前计划</p>
@@ -232,7 +233,7 @@ export function OutfitPlanDayCard({
               <button
                 type="button"
                 className="w-full rounded-xl border border-red-200 bg-white p-3 text-left hover:bg-red-50"
-                onClick={() => { setShowChangeDeleteSheet(false); setShowDeleteConfirm(true); }}
+                data-parity-id="parity.app.app.src.components.outfit.plan.day.card.d54549f3cd" onClick={() => { setShowChangeDeleteSheet(false); setShowDeleteConfirm(true); }}
               >
                 <p className="text-sm font-semibold text-red-600">删除计划</p>
                 <p className="text-[11px] text-ink/45 mt-0.5">删除当天的这条穿搭安排</p>
@@ -240,19 +241,19 @@ export function OutfitPlanDayCard({
               <button
                 type="button"
                 className="w-full h-11 rounded-full border border-ink/10 text-sm font-medium text-ink/50 mt-3"
-                onClick={() => setShowChangeDeleteSheet(false)}
+                data-parity-id="parity.app.app.src.components.outfit.plan.day.card.dab51c6b09" onClick={() => setShowChangeDeleteSheet(false)}
               >取消</button>
             </div>
           </div>
         ) : null}
         {showDeleteConfirm && primaryEntry ? (
-          <div className="fixed inset-0 z-[90] flex items-center justify-center bg-ink/35 px-4" onClick={() => setShowDeleteConfirm(false)}>
-            <div className="w-full max-w-sm rounded-3xl bg-white p-5 shadow-xl" onClick={(e) => e.stopPropagation()}>
+          <div className="fixed inset-0 z-[90] flex items-center justify-center bg-ink/35 px-4" data-parity-id="parity.app.app.src.components.outfit.plan.day.card.019e9fd1a3" onClick={() => setShowDeleteConfirm(false)}>
+            <div className="w-full max-w-sm rounded-3xl bg-white p-5 shadow-xl" data-parity-id="parity.app.app.src.components.outfit.plan.day.card.f325b05f82" onClick={(e) => e.stopPropagation()}>
               <h3 className="text-base font-semibold text-ink">删除当天穿搭？</h3>
               <p className="mt-1 text-sm text-ink/55">只会删除 {dateLabel} 的这条穿搭记录。</p>
               <div className="mt-4 grid grid-cols-2 gap-3">
-                <button type="button" className="h-11 rounded-full border border-ink/10 text-sm font-medium text-ink/70" onClick={() => setShowDeleteConfirm(false)}>取消</button>
-                <button type="button" className="h-11 rounded-full bg-red-600 text-sm font-semibold text-white" onClick={() => { setShowDeleteConfirm(false); onDeleteEntry?.(primaryEntry); }}>删除穿搭</button>
+                <button type="button" className="h-11 rounded-full border border-ink/10 text-sm font-medium text-ink/70" data-parity-id="parity.app.app.src.components.outfit.plan.day.card.9ed272735f" onClick={() => setShowDeleteConfirm(false)}>取消</button>
+                <button type="button" className="h-11 rounded-full bg-red-600 text-sm font-semibold text-white" data-parity-id="parity.app.app.src.components.outfit.plan.day.card.52b940dcf6" onClick={() => { setShowDeleteConfirm(false); onDeleteEntry?.(primaryEntry); }}>删除穿搭</button>
               </div>
             </div>
           </div>

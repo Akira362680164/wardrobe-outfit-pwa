@@ -217,7 +217,7 @@ export function GarmentDetail30({
           bottomRightAction={
             <button
               type="button"
-              onClick={(event) => { event.stopPropagation(); onWearToggle(); }}
+              data-parity-id="parity.app.app.src.components.garment.detail.3.0.1dc3a8601d" onClick={(event) => { event.stopPropagation(); onWearToggle(); }}
               className="inline-flex h-9 items-center gap-1 ui-control-radius bg-white/75 border border-white/60 px-3 text-xs font-semibold text-ink/80 backdrop-blur-xl"
             >
               {wearSummary.hasToday ? "✓ 今天已穿" : "标记今天穿了"}
@@ -246,7 +246,7 @@ export function GarmentDetail30({
             { key: "pairing", label: "搭配" },
           ]}
           activeTab={activeTab}
-          onChange={setActiveTab}
+          data-parity-id="parity.app.app.src.components.garment.detail.3.0.9db31a7ba8" onChange={setActiveTab}
         />
       }
       overlays={
@@ -259,14 +259,14 @@ export function GarmentDetail30({
           <div className="min-w-[160px] p-1">
             <button
               type="button"
-              onClick={() => { setMenuOpen(false); onEdit(); }}
+              data-parity-id="parity.app.app.src.components.garment.detail.3.0.055d5aec7c" onClick={() => { setMenuOpen(false); onEdit(); }}
               className="flex w-full items-center gap-2 rounded-lg px-3 py-2.5 text-sm text-ink/80 hover:bg-mist"
             >
               <Settings size={14} /> 编辑衣物
             </button>
             <button
               type="button"
-              onClick={() => { setMenuOpen(false); setMoveSheetOpen(true); }}
+              data-parity-id="parity.app.app.src.components.garment.detail.3.0.cd80917fa4" onClick={() => { setMenuOpen(false); setMoveSheetOpen(true); }}
               disabled={!hasMultipleLocations}
               className={`flex w-full items-center gap-2 rounded-lg px-3 py-2.5 text-sm hover:bg-mist ${hasMultipleLocations ? "text-ink/80" : "text-ink/25"}`}
             >
@@ -274,7 +274,7 @@ export function GarmentDetail30({
             </button>
             <button
               type="button"
-              onClick={() => { setMenuOpen(false); setDeleteError(null); setDeleteConfirmOpen(true); }}
+              data-parity-id="parity.app.app.src.components.garment.detail.3.0.7ffc6b969d" onClick={() => { setMenuOpen(false); setDeleteError(null); setDeleteConfirmOpen(true); }}
               className="flex w-full items-center gap-2 rounded-lg px-3 py-2.5 text-sm text-red-600 hover:bg-red-50"
             >
               <Trash2 size={14} /> 删除衣物
@@ -423,7 +423,7 @@ function InspirationTab({
         </p>
         <button
           type="button"
-          onClick={onAdd}
+          data-parity-id="parity.app.app.src.components.garment.detail.3.0.7e931ab7cd" onClick={onAdd}
           className="mt-4 inline-flex items-center gap-1.5 rounded-full bg-denim px-4 py-2 text-sm font-semibold text-white hover:bg-denim/90 transition-colors"
         >
           <Plus size={16} /> 添加灵感图
@@ -441,6 +441,7 @@ function InspirationTab({
         {refs.map((ref) => (
           <div key={ref.id} className="relative group">
             <button
+              data-parity-id={`parity.app.app.src.components.garment.detail.3.0.79092c76a8.${ref.id}`}
               type="button"
               onClick={() => onView(ref)}
               className="block w-full aspect-[3/4] overflow-hidden rounded-xl bg-mist"
@@ -482,6 +483,7 @@ function PairingTab({
               const validCount = outfit.itemIds.length;
               return (
                 <button
+                  data-parity-id={`parity.app.app.src.components.garment.detail.3.0.8356c98bbc.${outfit.id}`}
                   key={outfit.id}
                   type="button"
                   onClick={() => onViewOutfit(outfit.id)}
@@ -560,6 +562,7 @@ function MoveLocationSheet({
         <div className="space-y-1">
           {locations.map((loc) => (
             <button
+              data-parity-id={`parity.app.app.src.components.garment.detail.3.0.d800184d31.${loc.id}`}
               key={loc.id}
               type="button"
               onClick={() => setSelected(loc.id)}
@@ -573,10 +576,10 @@ function MoveLocationSheet({
           ))}
         </div>
         <div className="flex gap-2 mt-4">
-          <button type="button" onClick={onClose}
+          <button data-parity-id={`parity.app.app.src.components.garment.detail.3.0.9c9ffcd54c.${selected}`} type="button" onClick={onClose}
             className="flex-1 rounded-xl border border-ink/10 py-2.5 text-sm font-semibold text-ink/60 hover:bg-mist transition-colors"
           >取消</button>
-          <button type="button" onClick={() => onMove(selected)}
+          <button data-parity-id={`parity.app.app.src.components.garment.detail.3.0.20e18a1418.${selected}`} type="button" onClick={() => onMove(selected)}
             className="flex-1 rounded-xl bg-denim py-2.5 text-sm font-semibold text-white hover:bg-denim/90 transition-colors"
           >移动</button>
         </div>

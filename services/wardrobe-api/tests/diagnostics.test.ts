@@ -4,8 +4,18 @@ import { buildApp } from "../src/app.js";
 import type { SessionService } from "../src/auth/session.js";
 import { verifyReaderToken, hashReaderToken } from "../src/diagnostics/reader-auth.js";
 import { generateCaseId } from "../src/diagnostics/case-id.js";
+import { readFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
 
 describe("diagnostics", () => {
+  it("links request traces only when request, user and device ownership all match", () => {
+    const serviceSource = readFileSync(fileURLToPath(new URL("../src/diagnostics/service.ts", import.meta.url)), "utf8");
+    const ownershipQuery = serviceSource.slice(serviceSource.indexOf("private async linkRequestTraces"));
+    expect(ownershipQuery).toContain("eq(apiRequestTraces.requestId, requestId)");
+    expect(ownershipQuery).toContain("eq(apiRequestTraces.userIdHash, userHash)");
+    expect(ownershipQuery).toContain("eq(apiRequestTraces.deviceIdHash, deviceHash)");
+  });
+
   it("generates valid case IDs", () => {
     const id = generateCaseId();
     expect(id).toMatch(/^WD-\d{8}-[A-Z0-9]{6}$/);

@@ -39,7 +39,7 @@ export function CatalogBulkDeleteSheet({
       <div className="grid grid-cols-2 gap-2">
         <button
           type="button"
-          onClick={onClose}
+          data-parity-id="parity.app.app.src.components.catalog.selection.catalog.bulk.delete.sheet.3623ae10d2" onClick={onClose}
           disabled={submitting}
           className="h-10 rounded-lg border border-ink/10 text-sm disabled:opacity-45"
         >
@@ -47,7 +47,7 @@ export function CatalogBulkDeleteSheet({
         </button>
         <button
           type="button"
-          onClick={onConfirm}
+          data-parity-id="parity.app.app.src.components.catalog.selection.catalog.bulk.delete.sheet.6cf258f93b" onClick={onConfirm}
           disabled={submitting}
           className="h-10 rounded-lg bg-red-600 text-sm font-semibold text-white disabled:opacity-60"
         >

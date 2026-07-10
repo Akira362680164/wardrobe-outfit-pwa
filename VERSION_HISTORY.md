@@ -1,3 +1,15 @@
+## 2026-07-11 / v2.1.13-test / Codex — APP 全 Action 插桩与首批服务端 P0 修复
+
+- **执行 Agent**：Codex 主协调 agent；两个文件互斥 subagent 分别补齐 APP 动态循环 a–m、n–z 插桩，主 agent 应用静态计划、处理共享控件透传、修复服务端 P0 并完成门禁。
+- **目的**：让 APP 全部运行时 Action 具备稳定 parity-id，并优先修复审计发现的诊断轨迹越权关联、测试 reset 占位/漏表和永久删除策略问题。
+- **版本变更**：无；当前应用版本仍为 `2.1.13-test`。parity-id 只用于测试定位，不改变业务事件、视觉或服务端契约。
+- **改动文件**：`src/components/**/*.tsx` 共 55 个插桩文件；`services/wardrobe-api/src/{diagnostics/service.ts,admin/reset-test-data.ts}`、对应 diagnostics/reset 测试；`scripts/test/drop-test-schema.ts`、`package.json`、`scripts/parity/config/static-defects.json`、`VERSION_HISTORY.md`。
+- **插桩结果**：静态控件使用确定性 ID；循环控件追加 item/id/key/date/value 等稳定业务键；NavButton、MobileNavButton、SettingsSwitch 和 WardrobeRow 由可选 parityId 透传到底层 DOM，并保留 data-parity-id 源定位。重新扫描 APP 562/562 Action、小程序 300/300 Action 均有 parity-id，缺失=0、冲突=0、unresolved=0。
+- **P0 修复**：诊断 trace 关联同时强制 requestId、userIdHash、deviceIdHash 相等；`test:env:reset` 改为真实 guarded API reset CLI，32/32 schema 表精确覆盖并由 schema-derived 测试约束；旧 schema teardown 不再使用 `fs.rmSync(recursive, force)`，改用参数安全的 psql 和显式 `trash`，缺少废纸篓能力时失败关闭。
+- **验证结果**：`npm run typecheck`、`npm run api:typecheck`、diagnostics 11/11、reset 3/3、reset E2E 数据库 dry-run（32 tables、471 storage keys、无写入）、instrumentation check、inventory check 和 `git diff --check` 通过；`STATIC-SERVER-001`、`STATIC-INFRA-001/002/003` 更新为 `FIXED_UNVERIFIED`。
+- **风险门禁**：critical（全 APP Action 定位契约、诊断隐私和测试环境清理）。
+- **未验证风险**：trace 修复尚缺真实双用户/双设备碰撞数据库测试；reset 尚未对当前 fixture 执行清理与 after=0/storage=0 验证；parity-id 运行时唯一性尚未覆盖所有循环 fixture；4 个缺陷在完成相应集成复测前不得标 `VERIFIED`。
+
 ## 2026-07-11 / v2.1.13-test / Codex — 三组跨端样例、全量 manifest 与静态审核报告
 
 - **执行 Agent**：Codex 主协调 agent；使用三个并行 subagent，分别限定文件所有权完成报告生成器、剩余 manifest 和 parity-id 插桩规划器，主 agent 负责真机/DevTools 执行、合并、隐私门禁与验证。

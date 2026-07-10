@@ -871,19 +871,19 @@ export function GarmentIntakeFlow({
         />
       ) : null}
       {pendingSaveDrafts ? (
-        <div className="fixed inset-0 z-[110] grid place-items-center bg-black/35 px-4" onClick={() => setPendingSaveDrafts(null)}>
-          <div className="w-full max-w-sm rounded-2xl bg-white p-5 shadow-xl" onClick={(event) => event.stopPropagation()}>
+        <div className="fixed inset-0 z-[110] grid place-items-center bg-black/35 px-4" data-parity-id="parity.app.app.src.components.garment.intake.flow.95d649b378" onClick={() => setPendingSaveDrafts(null)}>
+          <div className="w-full max-w-sm rounded-2xl bg-white p-5 shadow-xl" data-parity-id="parity.app.app.src.components.garment.intake.flow.d5d698d703" onClick={(event) => event.stopPropagation()}>
             <h2 className="text-base font-semibold">还有 {recognizedItems.length - pendingSaveDrafts.length} 件{flowNoun}尚未完成确认</h2>
             <p className="mt-2 text-sm leading-relaxed text-ink/58">
               本次将保存 {pendingSaveDrafts.length} 件，未完成的 {recognizedItems.length - pendingSaveDrafts.length} 件不会入库。
             </p>
             <div className="mt-5 grid grid-cols-2 gap-2">
-              <button type="button" onClick={() => setPendingSaveDrafts(null)} className="h-11 rounded-lg border border-ink/10 bg-white text-sm font-semibold">
+              <button type="button" data-parity-id="parity.app.app.src.components.garment.intake.flow.46f80c328e" onClick={() => setPendingSaveDrafts(null)} className="h-11 rounded-lg border border-ink/10 bg-white text-sm font-semibold">
                 继续修改
               </button>
               <button
                 type="button"
-                onClick={async () => {
+                data-parity-id="parity.app.app.src.components.garment.intake.flow.cabc2ebbf1" onClick={async () => {
                   const drafts = pendingSaveDrafts;
                   setPendingSaveDrafts(null);
                   await submitDrafts(drafts);
@@ -958,6 +958,7 @@ function MultiImageSelectStep({
             className="relative h-14 w-14 shrink-0 overflow-visible"
           >
             <button
+              data-parity-id={`parity.app.app.src.components.garment.intake.flow.e453a4f807.${item.id}`}
               type="button"
               onClick={() => onSelectImage(item.id)}
               className={`relative block h-full w-full overflow-hidden ui-control-radius border-2 ${
@@ -990,6 +991,7 @@ function MultiImageSelectStep({
       </div>
       <div className="flex gap-2">
         <button
+          data-parity-id={`parity.app.app.src.components.garment.intake.flow.2f02d078d9.${activeImageId ?? "none"}`}
           type="button"
           onClick={onAddFromCamera}
           disabled={isPicking}
@@ -999,7 +1001,7 @@ function MultiImageSelectStep({
         </button>
         <button
           type="button"
-          onClick={onAddFromAlbum}
+          data-parity-id="parity.app.app.src.components.garment.intake.flow.95ecf9c92a" onClick={onAddFromAlbum}
           disabled={isPicking}
           className="flex-1 h-10 ui-control-radius border border-ink/10 bg-white/82 text-sm font-semibold disabled:opacity-35 flex items-center justify-center gap-1 shadow-sm"
         >
@@ -1008,7 +1010,7 @@ function MultiImageSelectStep({
       </div>
       <button
         type="button"
-        onClick={onClearAll}
+        data-parity-id="parity.app.app.src.components.garment.intake.flow.f78054381b" onClick={onClearAll}
         className="w-full h-10 ui-control-radius border border-clay/30 text-clay text-sm font-semibold mt-2"
       >
         清空
@@ -1082,14 +1084,14 @@ function ThumbnailActionPopover({
     >
       <button
         type="button"
-        onClick={onCrop}
+        data-parity-id="parity.app.app.src.components.garment.intake.flow.043ef37fcf" onClick={onCrop}
         className="flex h-9 items-center justify-center gap-1 rounded-[12px] px-2 text-[12px] font-semibold text-[#1d2228] active:bg-[#f4f5f3] whitespace-nowrap"
       >
         <Scissors size={13} aria-hidden="true" /> 裁切/旋转
       </button>
       <button
         type="button"
-        onClick={onRemove}
+        data-parity-id="parity.app.app.src.components.garment.intake.flow.338f4bc324" onClick={onRemove}
         className="flex h-9 items-center justify-center gap-1 rounded-[12px] px-2 text-[12px] font-semibold text-[#b97155] active:bg-[#b97155]/8 whitespace-nowrap"
       >
         <Trash2 size={13} aria-hidden="true" /> 删除
@@ -1162,6 +1164,7 @@ function MultiImageCropStep({
           { label: "3:4", value: 0.75 },
         ].map((option) => (
           <button
+            data-parity-id={`parity.app.app.src.components.garment.intake.flow.700cc00864.${imageItem.id}.${option.value}`}
             key={option.label}
             type="button"
             onClick={() => setAspectRatio(option.value)}
@@ -1176,6 +1179,7 @@ function MultiImageCropStep({
 
       <div className="grid shrink-0 grid-cols-3 gap-2">
         <button
+          data-parity-id={`parity.app.app.src.components.garment.intake.flow.15293a38da.${imageItem.id}`}
           type="button"
           onClick={() => onRotate("left")}
           className="flex h-11 items-center justify-center gap-1 ui-control-radius border border-[rgba(29,34,40,0.10)] bg-[#fffffc] px-2 text-xs font-semibold text-[#1d2228]/70 whitespace-nowrap"
@@ -1183,6 +1187,7 @@ function MultiImageCropStep({
           <RotateCcw size={14} aria-hidden="true" /> 左转90°
         </button>
         <button
+          data-parity-id={`parity.app.app.src.components.garment.intake.flow.1d1dea7135.${imageItem.id}`}
           type="button"
           onClick={() => onRotate("right")}
           className="flex h-11 items-center justify-center gap-1 ui-control-radius border border-[rgba(29,34,40,0.10)] bg-[#fffffc] px-2 text-xs font-semibold text-[#1d2228]/70 whitespace-nowrap"
@@ -1190,6 +1195,7 @@ function MultiImageCropStep({
           <RotateCw size={14} aria-hidden="true" /> 右转90°
         </button>
         <button
+          data-parity-id={`parity.app.app.src.components.garment.intake.flow.81165f861a.${imageItem.id}`}
           type="button"
           onClick={handleResetAll}
           className="flex h-11 items-center justify-center gap-1 ui-control-radius border border-[rgba(29,34,40,0.10)] bg-[#fffffc] px-2 text-xs font-semibold text-[#1d2228]/70 whitespace-nowrap"
@@ -1200,6 +1206,7 @@ function MultiImageCropStep({
 
       <div className="grid shrink-0 grid-cols-[1fr_1.6fr] gap-2" style={{ paddingBottom: "max(12px, env(safe-area-inset-bottom))" }}>
         <button
+          data-parity-id={`parity.app.app.src.components.garment.intake.flow.0309436348.${imageItem.id}`}
           type="button"
           onClick={onCancel}
           className="h-12 ui-control-radius border border-[rgba(29,34,40,0.10)] bg-[rgba(255,255,252,0.76)] text-sm font-semibold text-[#1d2228]/70"
@@ -1207,6 +1214,7 @@ function MultiImageCropStep({
           取消
         </button>
         <button
+          data-parity-id={`parity.app.app.src.components.garment.intake.flow.4b81be6ee0.${imageItem.id}`}
           type="button"
           onClick={() => cropEditorRef.current?.runConfirm()}
           disabled={!cropReady}
@@ -1284,7 +1292,7 @@ function MultiImageReviewStep({
             ) : (
               <button
                 type="button"
-                onClick={() => onRetryCurrent(activeReviewId)}
+                data-parity-id="parity.app.app.src.components.garment.intake.flow.c172dd9aaa" onClick={() => onRetryCurrent(activeReviewId)}
                 disabled={retryingReviewId !== null}
                 className="inline-flex items-center gap-1 rounded-md bg-denim/10 px-2 py-1 text-[11px] font-medium text-denim active:bg-denim/20 disabled:opacity-50"
                 aria-label="重新识别当前单品"
@@ -1308,6 +1316,7 @@ function MultiImageReviewStep({
         <div className="flex min-w-0 gap-2 overflow-x-auto pb-1">
           {recognizedItems.map((item, idx) => (
             <button
+              data-parity-id={`parity.app.app.src.components.garment.intake.flow.f6a95737fc.${item.id}`}
               key={item.id}
               type="button"
               onClick={() => {
@@ -1356,6 +1365,7 @@ function MultiImageReviewStep({
           <EditSectionCard title="基础信息">
             <div className="grid gap-3" data-item-form-section="intake-basic">
               <TextField
+                data-parity-id={`parity.app.app.src.components.garment.intake.flow.e286c22358.${activeReviewId ?? "none"}`}
                 label="名称"
                 value={draft.name.value}
                 field={draft.name}
@@ -1373,13 +1383,13 @@ function MultiImageReviewStep({
                     label="衣橱位置"
                     value={draft.locationId.value}
                     options={(locations ?? []).map((loc) => ({ value: loc.id, label: loc.name }))}
-                    onChange={(value) => onPatchDraft({ locationId: userField(value) })}
+                    data-parity-id="parity.app.app.src.components.garment.intake.flow.830b66fc41" onChange={(value) => onPatchDraft({ locationId: userField(value) })}
                   />
                   <SelectField
                     label="状态"
                     value={draft.status.value}
                     options={STATUS_OPTIONS.map((status) => ({ value: status, label: STATUS_LABELS[status] }))}
-                    onChange={(value) => onPatchDraft({ status: userField(value as GarmentStatus) })}
+                    data-parity-id="parity.app.app.src.components.garment.intake.flow.bab0f102b6" onChange={(value) => onPatchDraft({ status: userField(value as GarmentStatus) })}
                   />
                 </>
               ) : null}
@@ -1391,7 +1401,7 @@ function MultiImageReviewStep({
                     value: status,
                     label: WISHLIST_STATUS_LABELS[status],
                   }))}
-                  onChange={(value) => onPatchDraft({ status: userField(value as never) } as Partial<GarmentIntakeDraft>)}
+                  data-parity-id="parity.app.app.src.components.garment.intake.flow.7626835014" onChange={(value) => onPatchDraft({ status: userField(value as never) } as Partial<GarmentIntakeDraft>)}
                 />
               ) : null}
               <TextField
@@ -1399,7 +1409,7 @@ function MultiImageReviewStep({
                 value={draft.price?.value ?? ""}
                 field={draft.price}
                 placeholder="非必填，例如 399"
-                onChange={(value) => onPatchDraft({ price: userField(value) })}
+                data-parity-id="parity.app.app.src.components.garment.intake.flow.ef4f9a0c63" onChange={(value) => onPatchDraft({ price: userField(value) })}
                 optional
               />
               <TextField
@@ -1407,7 +1417,7 @@ function MultiImageReviewStep({
                 value={draft.productUrl?.value ?? ""}
                 field={draft.productUrl}
                 placeholder="非必填，商品链接"
-                onChange={(value) => onPatchDraft({ productUrl: userField(value) })}
+                data-parity-id="parity.app.app.src.components.garment.intake.flow.77e00d1406" onChange={(value) => onPatchDraft({ productUrl: userField(value) })}
                 optional
               />
               {flowKind === "garment" ? (
@@ -1416,7 +1426,7 @@ function MultiImageReviewStep({
                   value={draft.purchaseDate?.value ?? ""}
                   field={draft.purchaseDate}
                   placeholder="YYYY-MM-DD"
-                  onChange={(value) => onPatchDraft({ purchaseDate: userField(value) })}
+                  data-parity-id="parity.app.app.src.components.garment.intake.flow.254cfd708f" onChange={(value) => onPatchDraft({ purchaseDate: userField(value) })}
                   optional
                 />
               ) : null}
@@ -1429,7 +1439,7 @@ function MultiImageReviewStep({
                 mode="edit"
                 colors={draft.colors.value}
                 sourceLabel={getIntakeSourceLabel(draft.colors)}
-                onChange={(colors) => onPatchDraft({ colors: userField(colors) })}
+                data-parity-id="parity.app.app.src.components.garment.intake.flow.15386653fd" onChange={(colors) => onPatchDraft({ colors: userField(colors) })}
               />
             </div>
           </EditSectionCard>
@@ -1439,7 +1449,7 @@ function MultiImageReviewStep({
               <FitGenderChips
                 value={draft.fitGender?.value ?? "unknown"}
                 sourceLabel={getIntakeSourceLabel(draft.fitGender)}
-                onChange={(value) => onPatchDraft({ fitGender: userField<GarmentFitGender>(value) })}
+                data-parity-id="parity.app.app.src.components.garment.intake.flow.59e54efbe2" onChange={(value) => onPatchDraft({ fitGender: userField<GarmentFitGender>(value) })}
               />
               <TextField
                 label="版型说明"
@@ -1447,26 +1457,26 @@ function MultiImageReviewStep({
                 field={draft.fitNotes}
                 placeholder={`最多 ${FIT_NOTES_MAX_LEN} 字，例如「宽松男款衬衫，肩线下落」`}
                 maxLength={FIT_NOTES_MAX_LEN}
-                onChange={(value) => onPatchDraft({ fitNotes: userField(value) })}
+                data-parity-id="parity.app.app.src.components.garment.intake.flow.e8fd1711b0" onChange={(value) => onPatchDraft({ fitNotes: userField(value) })}
                 optional
               />
               <TagToggleGroup
                 label="季节"
                 values={draft.seasons.value}
                 options={SEASON_OPTIONS.map((season) => ({ value: season, label: SEASON_LABELS[season] }))}
-                onChange={(values) => onPatchDraft({ seasons: userField(values) })}
+                data-parity-id="parity.app.app.src.components.garment.intake.flow.1f75c3a8eb" onChange={(values) => onPatchDraft({ seasons: userField(values) })}
               />
               <TagToggleGroup
                 label="风格"
                 values={draft.styles.value}
                 options={STYLE_OPTIONS.map((style) => ({ value: style, label: STYLE_LABELS[style] }))}
-                onChange={(values) => onPatchDraft({ styles: userField(values) })}
+                data-parity-id="parity.app.app.src.components.garment.intake.flow.15d6730086" onChange={(values) => onPatchDraft({ styles: userField(values) })}
               />
               <TextField
                 label="材质"
                 value={draft.material?.value ?? ""}
                 field={draft.material}
-                onChange={(value) => onPatchDraft({ material: userField(value) })}
+                data-parity-id="parity.app.app.src.components.garment.intake.flow.4871b9560a" onChange={(value) => onPatchDraft({ material: userField(value) })}
                 optional
               />
               <NumberStepper
@@ -1475,7 +1485,7 @@ function MultiImageReviewStep({
                 field={draft.formality}
                 min={1}
                 max={5}
-                onChange={(value) => onPatchDraft({ formality: userField(value) })}
+                data-parity-id="parity.app.app.src.components.garment.intake.flow.0d37593835" onChange={(value) => onPatchDraft({ formality: userField(value) })}
               />
               <NumberStepper
                 label="保暖度"
@@ -1483,11 +1493,11 @@ function MultiImageReviewStep({
                 field={draft.warmth}
                 min={1}
                 max={5}
-                onChange={(value) => onPatchDraft({ warmth: userField(value) })}
+                data-parity-id="parity.app.app.src.components.garment.intake.flow.59efb6e062" onChange={(value) => onPatchDraft({ warmth: userField(value) })}
               />
               <TemperatureRangeSlider
                 value={draft.temperatureRange?.value ?? undefined}
-                onChange={(value) => onPatchDraft({ temperatureRange: userField<TemperatureRange | null>(value) })}
+                data-parity-id="parity.app.app.src.components.garment.intake.flow.80d1f6ba97" onChange={(value) => onPatchDraft({ temperatureRange: userField<TemperatureRange | null>(value) })}
               />
             </div>
           </EditSectionCard>
@@ -1499,7 +1509,7 @@ function MultiImageReviewStep({
                 value={draft.notes?.value ?? ""}
                 field={draft.notes}
                 placeholder="补充版型、材质观感或搭配提示"
-                onChange={(value) => onPatchDraft({ notes: userField(value) })}
+                data-parity-id="parity.app.app.src.components.garment.intake.flow.fc594390a3" onChange={(value) => onPatchDraft({ notes: userField(value) })}
                 optional
               />
             </div>
@@ -1511,7 +1521,7 @@ function MultiImageReviewStep({
       <div className="flex gap-2 px-4">
         <button
           type="button"
-          onClick={onPrev}
+          data-parity-id="parity.app.app.src.components.garment.intake.flow.a0c196c979" onClick={onPrev}
           disabled={activeReviewIndex === 0}
           className="flex-1 h-12 ui-control-radius border border-ink/10 bg-white text-sm font-semibold disabled:opacity-35 flex items-center justify-center gap-1"
         >
@@ -1519,7 +1529,7 @@ function MultiImageReviewStep({
         </button>
         <button
           type="button"
-          onClick={onNext}
+          data-parity-id="parity.app.app.src.components.garment.intake.flow.cadcc809ea" onClick={onNext}
           disabled={activeReviewIndex >= recognizedItems.length - 1}
           className="flex-1 h-12 ui-control-radius border border-ink/10 bg-white text-sm font-semibold disabled:opacity-35 flex items-center justify-center gap-1"
         >
@@ -1571,14 +1581,14 @@ export function FilePickCard({
       className={`flex cursor-pointer flex-col items-center justify-center rounded-lg border border-ink/10 bg-[#fbfbf8] text-center active:bg-mist ${
         compact ? "min-h-[64px] p-2" : "min-h-[116px] p-3"
       }`}
-      onClick={onClick}
+      data-parity-id="parity.app.app.src.components.garment.intake.flow.5c05dd1ced" onClick={onClick}
     >
       <input
         type="file"
         accept="image/*"
         capture={capture}
         className="sr-only"
-        onChange={(event: ChangeEvent<HTMLInputElement>) => onFileSelected(event.target.files?.[0])}
+        data-parity-id="parity.app.app.src.components.garment.intake.flow.b9a728b9b7" onChange={(event: ChangeEvent<HTMLInputElement>) => onFileSelected(event.target.files?.[0])}
       />
       <span className="grid h-9 w-9 place-items-center rounded-lg bg-denim/10 text-denim">{icon}</span>
       <span className="mt-2 text-sm font-semibold">{title}</span>
@@ -1662,6 +1672,7 @@ export function DraftQualityRow({
 }
 
 export function TextField<TValue extends string>({
+  "data-parity-id": dataParityId,
   label,
   value,
   field,
@@ -1670,6 +1681,7 @@ export function TextField<TValue extends string>({
   maxLength,
   optional = false,
 }: {
+  "data-parity-id"?: string;
   label: string;
   value: TValue;
   field?: IntakeField<unknown>;
@@ -1684,7 +1696,7 @@ export function TextField<TValue extends string>({
       <input
         value={value}
         placeholder={placeholder}
-        onChange={(event) => onChange(event.target.value)}
+        data-parity-id={dataParityId ?? "parity.app.app.src.components.garment.intake.flow.6e350d7409"} onChange={(event) => onChange(event.target.value)}
         maxLength={maxLength}
         className="h-11 w-full min-w-0 rounded-lg border border-ink/10 bg-[#fbfbf8] px-3 text-sm outline-none focus:border-denim/45"
       />
@@ -1717,7 +1729,7 @@ export function SelectField({
       <FieldLabel label={label} field={field} optional={optional} />
       <select
         value={value}
-        onChange={(event) => onChange(event.target.value)}
+        data-parity-id="parity.app.app.src.components.garment.intake.flow.88b9e1c302" onChange={(event) => onChange(event.target.value)}
         className="h-11 w-full min-w-0 rounded-lg border border-ink/10 bg-[#fbfbf8] px-3 text-sm outline-none focus:border-denim/45"
       >
         {options.map((option) => (
@@ -1752,7 +1764,7 @@ export function NumberStepper({
       <div className="grid grid-cols-[44px_1fr_44px] items-center overflow-hidden rounded-lg border border-ink/10 bg-[#fbfbf8]">
         <button
           type="button"
-          onClick={() => onChange(Math.max(min, safeValue - 1))}
+          data-parity-id="parity.app.app.src.components.garment.intake.flow.bd733f610d" onClick={() => onChange(Math.max(min, safeValue - 1))}
           className="h-11 border-r border-ink/8 text-lg font-semibold text-denim disabled:opacity-35"
           disabled={safeValue <= min}
         >
@@ -1761,7 +1773,7 @@ export function NumberStepper({
         <div className="text-center text-sm font-semibold">{safeValue}</div>
         <button
           type="button"
-          onClick={() => onChange(Math.min(max, safeValue + 1))}
+          data-parity-id="parity.app.app.src.components.garment.intake.flow.2d5c9714ef" onClick={() => onChange(Math.min(max, safeValue + 1))}
           className="h-11 border-l border-ink/8 text-lg font-semibold text-denim disabled:opacity-35"
           disabled={safeValue >= max}
         >
@@ -1791,6 +1803,7 @@ export function TagToggleGroup<TValue extends string>({
           const selected = values.includes(option.value);
           return (
             <button
+              data-parity-id={`parity.app.app.src.components.garment.intake.flow.1ba07b63ce.${option.value}`}
               key={option.value}
               type="button"
               onClick={() => onChange(toggleArrayValue(values, option.value))}
@@ -1838,7 +1851,7 @@ export function IntakeStepOneImagePicker({
         <div className="grid grid-cols-2 gap-4">
           <button
             type="button"
-            onClick={onCameraClick}
+            data-parity-id="parity.app.app.src.components.garment.intake.flow.3e301f728c" onClick={onCameraClick}
             disabled={disabled}
             className="min-h-[144px] ui-control-radius border border-ink/10 bg-white/82 text-sm font-semibold flex flex-col items-center justify-center gap-2 shadow-sm"
           >
@@ -1847,7 +1860,7 @@ export function IntakeStepOneImagePicker({
           </button>
           <button
             type="button"
-            onClick={onGalleryClick}
+            data-parity-id="parity.app.app.src.components.garment.intake.flow.8b349a35cd" onClick={onGalleryClick}
             disabled={disabled}
             className="min-h-[144px] ui-control-radius border border-ink/10 bg-white/82 text-sm font-semibold flex flex-col items-center justify-center gap-2 shadow-sm"
           >
@@ -1891,7 +1904,7 @@ export function TextareaField({
       <textarea
         value={value}
         placeholder={placeholder}
-        onChange={(event) => onChange(event.target.value)}
+        data-parity-id="parity.app.app.src.components.garment.intake.flow.6967f1f120" onChange={(event) => onChange(event.target.value)}
         rows={3}
         className="w-full min-w-0 resize-none rounded-lg border border-ink/10 bg-[#fbfbf8] px-3 py-2 text-sm leading-relaxed outline-none focus:border-denim/45"
       />
@@ -1942,7 +1955,7 @@ export function ConfirmSummaryCard({
         </div>
       </div>
       <p className="mt-3 text-xs leading-relaxed text-ink/55">{footer}</p>
-      <button type="button" onClick={onEdit} className="mt-3 h-10 w-full rounded-lg border border-ink/10 bg-white text-sm font-semibold text-ink/65">
+      <button data-parity-id={`parity.app.app.src.components.garment.intake.flow.24a1fe0199.${title}`} type="button" onClick={onEdit} className="mt-3 h-10 w-full rounded-lg border border-ink/10 bg-white text-sm font-semibold text-ink/65">
         返回修改
       </button>
     </IntakeStepSection>

@@ -52,7 +52,7 @@ export function ItemEditPageShell({
         onBack={onBack}
         rightAction={
           <AsyncActionButton
-            onClick={onSave}
+            data-parity-id="parity.app.app.src.components.item.shell.item.edit.page.shell.fb86183c1b" onClick={onSave}
             disabled={saveDisabled || saving}
             loading={saving}
             label="保存"

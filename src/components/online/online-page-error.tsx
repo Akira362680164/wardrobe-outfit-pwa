@@ -21,7 +21,7 @@ export function OnlinePageError({
         <p className="mt-2 text-sm leading-6 text-ink/60">{message}</p>
         <button
           type="button"
-          onClick={onRetry}
+          data-parity-id="parity.app.app.src.components.online.online.page.error.99754a856a" onClick={onRetry}
           disabled={retrying}
           className="mt-6 inline-flex h-12 min-w-32 items-center justify-center gap-2 rounded-xl bg-denim px-5 text-sm font-medium text-white shadow-sm transition-opacity disabled:opacity-60"
         >
