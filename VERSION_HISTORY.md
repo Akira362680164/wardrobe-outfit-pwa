@@ -1,3 +1,13 @@
+## 2026-07-10 / v2.1.12-test / Codex — 全入口协议主动同意整改设计
+
+- **执行 Agent**：Codex（未触发 subagent；本轮先按 brainstorming 设计门禁在独立 `codex/consent-all-entry-20260710` worktree 编写规格）。
+- **目的**：确定 Android App、衣橱 Web App与微信小程序所有认证入口的协议主动同意规则，消除默认自动同意行为，并明确官网无认证入口时不做无关扩展。
+- **版本变更**：无；当前仍为 `2.1.12-test`。本提交只包含设计规格，不进入 APK。
+- **改动文件**：`docs/superpowers/specs/2026-07-10-auth-consent-all-entry-design.md`、`VERSION_HISTORY.md`。
+- **设计结论**：认证页复选框默认未勾选；未同意时点击登录、注册、微信授权或注册验证码入口，不发起网络请求，只在当前页面显示红色固定提示“请先阅读并同意《用户服务协议》和《隐私政策》”；勾选且其他输入有效后恢复现有蓝色主按钮。App 与 Web 共用 React 认证组件，小程序分别覆盖微信登录、密码登录和邮箱注册；合规官网保持无登录入口。
+- **验证结果**：设计规格已完成占位符、范围、状态流、错误文案和验证矩阵自检；尚未修改运行时代码。
+- **未验证风险**：实际按钮状态、窄屏换行、Android APK 与微信开发者工具交互将在实现阶段验证。
+
 ## 2026-07-10 / v2.1.12-test / Codex — Wardora 合规官网
 
 - **执行 Agent**：Codex（未触发 subagent：用户未要求；本轮在独立 `codex/wardora-compliance-site` worktree 内串行完成设计、实现与验证）。
