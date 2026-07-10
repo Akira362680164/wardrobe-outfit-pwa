@@ -11,7 +11,6 @@ import {
   MoreVertical, X, ImageIcon, Trash2, RotateCcw,
   Edit3, Package,
   MinusCircle, ChevronDown, Check, Shirt,
-  Crop, RefreshCw, Loader2,
 } from "lucide-react";
 
 import type {
@@ -51,7 +50,6 @@ import {
   type IntakeSaveBatchContext,
 } from "@/components/garment-intake-flow";
 import { ImageCropEditor } from "@/components/image-crop-editor";
-import { GarmentImage } from "@/components/garment-image";
 import { garmentDraftToWishlistItem } from "@/lib/intake-save-adapters";
 import type { GarmentIntakeDraft } from "@/lib/intake-draft";
 import { generateThumbnailSafe } from "@/lib/thumbnail-runtime";
@@ -83,6 +81,7 @@ import {
 import { NotesBlock } from "@/components/item/notes-block";
 import { ItemField } from "@/components/item/field";
 import { WishlistExtras } from "@/components/item/wishlist-extras";
+import { EditImageActionCard } from "@/components/item/edit-image-action-card";
 import { SeasonStyleChips } from "@/components/item/season-style-chips";
 import { FormalityWarmthStepper } from "@/components/item/formality-warmth-stepper";
 import { ItemDetailSections } from "@/components/item/detail-sections";
@@ -936,69 +935,24 @@ export function WishlistView20({
   if (subPage === "add_edit") {
     subPageNode = (
       <ItemEditPageShell title="编辑种草" onBack={goBack} onSave={handleSaveForm} saving={isFormSaving} saveDisabled={!formName.trim()}>
-          {/* v1.1.28 commit: 种草图片区对齐衣橱编辑页 —— 左侧 3:4 小图, 右侧竖排 重新裁切 / 重新识别 */}
           <div className="mt-3">
-            <EditSectionCard className="p-3">
-              <div className="flex items-center gap-3">
-                <div className="relative aspect-[3/4] w-28 shrink-0 overflow-hidden rounded-xl bg-mist" aria-label="商品图预览">
-                  {formImageDataUrl ? (
-                    <>
-                      <GarmentImage
-                        src={formImageDataUrl}
-                        alt={formName || "商品图"}
-                        fallbackSize={34}
-                        imageClassName="bg-transparent"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setFormImageDataUrl("");
-                          setFormSourceImageDataUrl("");
-                          setFormCropBox(undefined);
-                          setFormThumbnailDataUrl(undefined);
-                        }}
-                        className="absolute right-1 top-1 grid h-7 w-7 place-items-center rounded-full bg-black/50 text-white active:scale-95 transition-transform"
-                        aria-label="移除图片"
-                      >
-                        <X size={14} />
-                      </button>
-                    </>
-                  ) : (
-                    <button
-                      type="button"
-                      onClick={() => addFileInputRef.current?.click()}
-                      className="grid h-full w-full place-items-center text-ink/40"
-                      aria-label="添加图片"
-                    >
-                      <div className="text-center">
-                        <ImageIcon size={28} />
-                        <span className="mt-1 block text-[11px]">添加图片</span>
-                      </div>
-                    </button>
-                  )}
-                </div>
-                <div className="grid min-w-0 flex-1 gap-2">
-                  <button
-                    type="button"
-                    onClick={handleStartCrop}
-                    disabled={!formImageDataUrl}
-                    className="inline-flex h-10 items-center justify-center gap-2 rounded-lg border border-ink/10 bg-white px-3 text-sm font-semibold text-ink/70 disabled:opacity-45"
-                  >
-                    <Crop size={15} aria-hidden="true" />
-                    重新裁切
-                  </button>
-                  <button
-                    type="button"
-                    onClick={handleRescanAI}
-                    disabled={isRescanning || !formImageDataUrl}
-                    className="inline-flex h-10 items-center justify-center gap-2 rounded-lg bg-denim px-3 text-sm font-semibold text-white disabled:opacity-60"
-                  >
-                    {isRescanning ? <Loader2 size={15} className="animate-spin" aria-hidden="true" /> : <RefreshCw size={15} aria-hidden="true" />}
-                    {isRescanning ? "识别中" : "重新识别"}
-                  </button>
-                </div>
-              </div>
-            </EditSectionCard>
+            <EditImageActionCard
+              imageUrl={formImageDataUrl}
+              alt={formName || "商品图"}
+              onCrop={handleStartCrop}
+              cropDisabled={!formImageDataUrl}
+              onRecognize={handleRescanAI}
+              recognizing={isRescanning}
+              recognizeDisabled={!formImageDataUrl}
+              onRemove={() => {
+                setFormImageDataUrl("");
+                setFormSourceImageDataUrl("");
+                setFormCropBox(undefined);
+                setFormThumbnailDataUrl(undefined);
+              }}
+              onAdd={() => addFileInputRef.current?.click()}
+              addLabel="添加图片"
+            />
             <input ref={addFileInputRef} type="file" accept="image/jpeg,image/png,image/webp" className="hidden"
               onChange={(e) => handleAddImage(e.target.files?.[0])} />
           </div>

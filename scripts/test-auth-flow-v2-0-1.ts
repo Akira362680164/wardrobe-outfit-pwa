@@ -39,7 +39,9 @@ check("AuthProvider 无 completePendingRegistration", !/completePendingRegistrat
 check("auth-gate 无 PendingVerificationForm", !/PendingVerificationForm/.test(authGate));
 
 // 3. AuthView state machine
-check("AuthView 包含 login/register/terms/privacy", /"login" \| "register" \| "terms" \| "privacy"/.test(authGate));
+check("AuthView 包含 login/register/forgot_password/terms/privacy", /"login" \| "register" \| "forgot_password" \| "terms" \| "privacy"/.test(authGate));
+check("客户端包含邮箱验证码、找回密码与修改密码验证码接口", /sendEmailCode/.test(authApi) && /requestPasswordReset/.test(authApi) && /confirmPasswordReset/.test(authApi) && /requestPasswordChangeCode/.test(authApi));
+check("注册页使用邮箱验证码二次确认和 30 秒倒计时", /发送邮箱验证码/.test(authGate) && /确认发送/.test(authGate) && /setCountdown\(30\)/.test(authGate));
 
 // 4. No cloud_ready dependency for buttons
 check("auth-gate 无 ensureCloudReady", !/ensureCloudReady/.test(authGate));
@@ -47,9 +49,10 @@ check("auth-gate 无 connectivity !== cloud_ready 禁用逻辑", !/connectivity 
 
 // 5. Form validation
 check("isValidAuthPhone 存在", /isValidAuthPhone/.test(authFormValidation));
+check("isValidAuthEmail 存在", /isValidAuthEmail/.test(authFormValidation));
 check("isLoginFormValid 存在", /isLoginFormValid/.test(authFormValidation));
 check("isRegisterFormValid 存在", /isRegisterFormValid/.test(authFormValidation));
-check("login 和 register 共用同一手机号正则", authFormValidation.includes("1[3-9]") && authFormValidation.includes("isLoginFormValid") && authFormValidation.includes("isRegisterFormValid"));
+check("登录支持邮箱或手机号，注册手机号选填", /isValidLoginAccount/.test(authFormValidation) && /\(!phone \|\| isValidAuthPhone\(phone\)\)/.test(authFormValidation));
 
 // 6. Legal pages use shared component
 check("legal-document-view 组件存在", /LegalDocumentView/.test(legalDoc));

@@ -1,14 +1,19 @@
 import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 import { z } from "zod";
 
+import { AccountPasswordAuthService } from "./account-password.js";
 import { AuthApiError, RegistrationService } from "./registrations.js";
 import { type SessionService } from "./session.js";
 
 const RegisterBodySchema = z.object({
-  phone: z.string().min(1),
+  email: z.string().email().optional(),
+  emailCode: z.string().regex(/^\d{6}$/).optional(),
+  phone: z.string().min(1).optional(),
   password: z.string().min(8).max(256),
   deviceId: z.string().min(1).max(200),
   deviceLabel: z.string().max(200).optional(),
+  agreementVersion: z.string().min(1).optional(),
+  privacyVersion: z.string().min(1).optional(),
 });
 
 const RegistrationParamsSchema = z.object({
@@ -23,10 +28,28 @@ export function registerAuthRoutes(
   app: FastifyInstance,
   registrationService = new RegistrationService(),
   sessionService?: SessionService,
+  accountPasswordAuthService?: AccountPasswordAuthService,
 ) {
   app.post("/api/auth/register", async (request, reply) => {
     try {
       const body = RegisterBodySchema.parse(request.body);
+      if (body.email) {
+        if (!body.emailCode) throw new AuthApiError(400, "invalid_request", "emailCode is required");
+        if (!accountPasswordAuthService) {
+          return reply.code(500).send({ code: "internal_error", message: "Account service unavailable" });
+        }
+        return await accountPasswordAuthService.register({
+          email: body.email,
+          emailCode: body.emailCode,
+          password: body.password,
+          phone: body.phone,
+          deviceId: body.deviceId,
+          deviceLabel: body.deviceLabel,
+          ip: request.ip,
+          userAgent: request.headers["user-agent"],
+        });
+      }
+      if (!body.phone) throw new AuthApiError(400, "invalid_request", "phone is required");
       const result = await registrationService.directRegister({
         phone: body.phone,
         password: body.password,

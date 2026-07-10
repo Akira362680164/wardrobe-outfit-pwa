@@ -5,6 +5,7 @@ import {
   type MiniWishlistDetail,
 } from "../../../services/workspace";
 import { buildSubcategoryChoices, CATEGORY_OPTIONS, isSubcategoryInCategory } from "../../../services/category-catalog";
+import { MINI_SEASON_CATALOG, MINI_STYLE_CATALOG, MINI_WISHLIST_STATUS_LABELS } from "../../../generated/catalogs";
 
 const COLOR_MODES = [
   { value: "single", label: "单主色" },
@@ -12,29 +13,9 @@ const COLOR_MODES = [
   { value: "multicolor", label: "拼色" },
 ];
 
-const SEASONS = [
-  { value: "spring", label: "春" },
-  { value: "summer", label: "夏" },
-  { value: "autumn", label: "秋" },
-  { value: "winter", label: "冬" },
-  { value: "all", label: "四季" },
-];
-
-const STYLES = [
-  { value: "casual", label: "休闲" },
-  { value: "sweet", label: "甜美" },
-  { value: "elegant", label: "优雅" },
-  { value: "commute", label: "通勤" },
-  { value: "outdoor", label: "户外" },
-  { value: "dinner", label: "吃饭" },
-  { value: "vacation", label: "旅行" },
-];
-
-const STATUSES = [
-  { value: "interested", label: "想买" },
-  { value: "rejected", label: "不想买" },
-  { value: "archived", label: "已归档" },
-];
+const STATUSES = Object.entries(MINI_WISHLIST_STATUS_LABELS)
+  .filter(([value]) => value !== "purchased")
+  .map(([value, label]) => ({ value, label }));
 
 const FIT_GENDERS = [
   { value: "unisex", label: "中性" },
@@ -53,8 +34,8 @@ Page({
     categories: CATEGORY_OPTIONS,
     subcategoryOptions: buildSubcategoryChoices("tops"),
     colorModes: COLOR_MODES,
-    seasonsOptions: buildChoices(SEASONS, []),
-    styleOptions: buildChoices(STYLES, []),
+    seasonsOptions: buildChoices(MINI_SEASON_CATALOG, []),
+    styleOptions: buildChoices(MINI_STYLE_CATALOG, []),
     statusOptions: STATUSES,
     fitGenderOptions: FIT_GENDERS,
     name: "",
@@ -103,9 +84,9 @@ Page({
         primaryColor: item.primaryColorChips[0]?.name || item.colorNames[0] || "黑",
         accentColor: item.accentColorChips[0]?.name || item.colorNames[1] || "",
         seasons: item.seasons,
-        seasonsOptions: buildChoices(SEASONS, item.seasons),
+        seasonsOptions: buildChoices(MINI_SEASON_CATALOG, item.seasons),
         styles: item.styles,
-        styleOptions: buildChoices(STYLES, item.styles),
+        styleOptions: buildChoices(MINI_STYLE_CATALOG, item.styles),
         status: item.status,
         minTemp: item.temperatureRange.minC ?? 10,
         maxTemp: item.temperatureRange.maxC ?? 25,
@@ -170,7 +151,7 @@ Page({
     const current = Array.isArray(this.data[field]) ? this.data[field] as string[] : [];
     const next = current.includes(value) ? current.filter((item) => item !== value) : [...current, value];
     const optionKey = field === "seasons" ? "seasonsOptions" : field === "styles" ? "styleOptions" : "";
-    const source = field === "seasons" ? SEASONS : field === "styles" ? STYLES : [];
+    const source = field === "seasons" ? MINI_SEASON_CATALOG : field === "styles" ? MINI_STYLE_CATALOG : [];
     this.setData({ [field]: next, ...(optionKey ? { [optionKey]: buildChoices(source, next) } : {}) });
   },
 
@@ -235,6 +216,6 @@ function buildColors(mode: string, primary: string, accent: string): Record<stri
   return { mode: "single", primary: safePrimary };
 }
 
-function buildChoices(options: Array<{ value: string; label: string }>, selected: string[]) {
+function buildChoices(options: ReadonlyArray<{ value: string; label: string }>, selected: string[]) {
   return options.map((option) => ({ ...option, selected: selected.includes(option.value) }));
 }

@@ -1,0 +1,33 @@
+<view class="password-page">
+  <view class="page-title">修改密码</view>
+  <view class="mode-switch">
+    <button class="mode-button {{mode === 'current' ? 'mode-button--active' : ''}}" bindtap="switchCurrent">当前密码</button>
+    <button class="mode-button {{mode === 'email' ? 'mode-button--active' : ''}}" bindtap="switchEmail">邮箱验证码</button>
+  </view>
+
+  <view wx:if="{{errorMessage}}" class="form-error">{{errorMessage}}</view>
+
+  <view wx:if="{{mode === 'current'}}" class="form-card">
+    <input class="form-input" type="password" password placeholder="当前密码" value="{{currentPassword}}" bindinput="handleCurrentInput" />
+  </view>
+
+  <view wx:if="{{mode === 'email'}}" class="form-card">
+    <view class="email-row">
+      <view class="email-copy">
+        <view class="field-label">邮箱</view>
+        <view class="email-value">{{emailMasked}}</view>
+      </view>
+      <button class="code-button" disabled="{{sending || countdown > 0 || emailMasked === '未绑定邮箱'}}" bindtap="sendCode">
+        {{sending ? '发送中' : countdown > 0 ? countdown + 's' : codeSent ? '再次发送' : '发送验证码'}}
+      </button>
+    </view>
+    <input wx:if="{{codeSent}}" class="form-input" type="number" placeholder="邮箱验证码" value="{{emailCode}}" bindinput="handleCodeInput" />
+  </view>
+
+  <view class="form-card">
+    <input class="form-input" type="password" password placeholder="新密码" value="{{newPassword}}" bindinput="handleNewPasswordInput" />
+    <input class="form-input" type="password" password placeholder="确认新密码" value="{{confirmPassword}}" bindinput="handleConfirmInput" />
+  </view>
+
+  <button class="primary-button" disabled="{{submitting}}" bindtap="submit">{{submitting ? '保存中' : '保存新密码'}}</button>
+</view>

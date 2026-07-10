@@ -7,9 +7,13 @@ import {
 import Fastify, { type FastifyInstance } from "fastify";
 
 import { registerAuthRoutes } from "./auth/routes.js";
+import { AccountPasswordAuthService } from "./auth/account-password.js";
+import { registerEmailAuthRoutes } from "./auth/email-routes.js";
+import { EmailVerificationService } from "./auth/email-verification.js";
 import { type RegistrationService } from "./auth/registrations.js";
 import { registerSessionRoutes } from "./auth/session-routes.js";
 import { SessionService } from "./auth/session.js";
+import { registerWechatOpenIdAuthRoutes, WechatOpenIdAuthService } from "./auth/wechat-openid.js";
 import { registerWechatPhoneAuthRoutes, WechatPhoneAuthService } from "./auth/wechat-phone.js";
 import { registerAiIntakeRoutes } from "./ai/routes.js";
 import { MiniMaxIntakeService, type MiniMaxIntakeServiceLike } from "./ai/minimax-intake-service.js";
@@ -26,6 +30,7 @@ import { loadStorageConfig } from "./storage/config.js";
 import { createStorageProviderFromEnv } from "./storage/factory.js";
 import { UnavailableStorageProvider, type StorageProvider } from "./storage/provider.js";
 import { isStorageReady } from "./storage/readiness.js";
+import { registerTestFaultInjection } from "./test/fault-injection.js";
 import { registerWorkspaceRoutes } from "./workspace/routes.js";
 import { WorkspaceQueryService } from "./workspace/query-service.js";
 import { WorkspaceCommandService } from "./workspace/command-service.js";
@@ -44,6 +49,9 @@ export interface BuildAppOptions {
   storageProvider?: StorageProvider | null;
   jwtReadinessCheck?: () => Promise<boolean>;
   wechatPhoneAuthService?: WechatPhoneAuthService;
+  wechatOpenIdAuthService?: WechatOpenIdAuthService;
+  emailVerificationService?: EmailVerificationService;
+  accountPasswordAuthService?: AccountPasswordAuthService;
 }
 
 export function buildApp(options: BuildAppOptions = {}): FastifyInstance {
@@ -74,6 +82,8 @@ export function buildApp(options: BuildAppOptions = {}): FastifyInstance {
     }
     if (request.method === "OPTIONS") return reply.code(204).send();
   });
+
+  registerTestFaultInjection(app);
 
   app.get("/api/health", async () =>
     HealthResponseSchema.parse({
@@ -127,11 +137,24 @@ export function buildApp(options: BuildAppOptions = {}): FastifyInstance {
 
   const sharedSessionService =
     options.sessionService ?? (options.registrationService ? undefined : new SessionService());
+  const emailVerificationService = options.emailVerificationService ?? new EmailVerificationService();
+  const accountPasswordAuthService = options.accountPasswordAuthService ?? new AccountPasswordAuthService({
+    sessionService: sharedSessionService ?? new SessionService(),
+    emailVerificationService,
+  });
 
   const assetService = options.assetService ?? new AssetService(storage);
 
-  registerAuthRoutes(app, options.registrationService, sharedSessionService);
-  registerSessionRoutes(app, sharedSessionService);
+  registerAuthRoutes(app, options.registrationService, sharedSessionService, accountPasswordAuthService);
+  registerSessionRoutes(app, sharedSessionService, accountPasswordAuthService);
+  registerEmailAuthRoutes(app, emailVerificationService);
+  registerWechatOpenIdAuthRoutes(
+    app,
+    options.wechatOpenIdAuthService ?? new WechatOpenIdAuthService({
+      sessionService: sharedSessionService ?? new SessionService(),
+      emailVerificationService,
+    }),
+  );
   registerWechatPhoneAuthRoutes(
     app,
     options.wechatPhoneAuthService ?? new WechatPhoneAuthService({

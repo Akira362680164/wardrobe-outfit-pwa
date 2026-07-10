@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { GARMENT_CATEGORY_IDS, SEASON_VALUES, STYLE_VALUES } from "@wardrobe/domain-catalog";
 
 export const WorkspaceEntityKindSchema = z.enum([
   "garment",
@@ -175,11 +176,11 @@ export const AiTemperatureRangeSchema = z.object({
 
 export const AiGarmentTagSchema = z.object({
   candidateNames: z.array(z.string()).min(1).max(3),
-  category: z.enum(["tops", "pants", "skirts", "one_piece", "shoes", "bags", "hats", "jewelry", "accessories"]),
+  category: z.enum(GARMENT_CATEGORY_IDS),
   subcategory: z.string().optional(),
   colors: AiColorInfoSchema,
-  seasons: z.array(z.enum(["spring", "summer", "autumn", "winter", "all"])),
-  styles: z.array(z.enum(["casual", "sweet", "elegant", "commute", "outdoor", "dinner", "vacation"])),
+  seasons: z.array(z.enum(SEASON_VALUES)),
+  styles: z.array(z.enum(STYLE_VALUES)),
   temperatureRange: AiTemperatureRangeSchema.optional(),
   material: z.string().optional(),
   formality: z.number().int().min(1).max(5),
@@ -241,7 +242,7 @@ export const AiOutfitMetadataRequestSchema = z.object({
 
 export const AiOutfitMetadataResponseSchema = z.object({
   name: z.string().optional(),
-  seasons: z.array(z.enum(["spring", "summer", "autumn", "winter", "all"])).optional(),
+  seasons: z.array(z.enum(SEASON_VALUES)).optional(),
   sceneTags: z.array(z.string()).optional(),
   styleTags: z.array(z.string()).optional(),
   pairingTags: z.array(z.string()).optional(),

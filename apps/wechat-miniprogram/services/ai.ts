@@ -10,6 +10,7 @@ export interface MiniMaxSettings {
 export interface AiGarmentTag {
   candidateNames: string[];
   category: string;
+  subcategory?: string;
   colors: AiColorInfo;
   seasons: string[];
   styles: string[];
@@ -172,6 +173,7 @@ export async function generateOutfitMetadata(input: {
     id: number;
     name: string;
     category: string;
+    subcategory?: string;
     colors?: AiColorInfo;
     seasons?: string[];
     styles?: string[];

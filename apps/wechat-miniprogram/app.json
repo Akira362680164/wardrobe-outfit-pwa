@@ -2,6 +2,10 @@
   "pages": [
     "pages/login/index",
     "pages/login/password/index",
+    "pages/login/connect-account/index",
+    "pages/login/bind-existing/index",
+    "pages/login/register-email/index",
+    "pages/login/forgot-password/index",
     "pages/home/index",
     "pages/wardrobe/index/index",
     "pages/wardrobe/detail/index",
@@ -23,6 +27,7 @@
     "pages/settings/index/index",
     "pages/settings/ai-key/index",
     "pages/settings/account/index",
+    "pages/settings/change-password/index",
     "pages/settings/privacy/index",
     "pages/settings/diagnostics/index",
     "pages/settings/about/index",

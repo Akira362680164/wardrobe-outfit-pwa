@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { LegalDocumentView, type LegalSection } from "@/components/auth/legal-document-view";
 
-const LAST_UPDATED = "2026-07-01";
+const LAST_UPDATED = "2026-07-09";
 const APP_NAME = "衣橱穿搭助手";
 
 export const metadata: Metadata = {
@@ -14,8 +14,8 @@ const SECTIONS: LegalSection[] = [
     title: "1. 服务说明",
     children: (
       <p>
-        衣橱穿搭助手是一款手机优先的衣橱识别、穿搭推荐与买前评估应用。用户使用手机号作为登录标识，
-        注册后可使用云端工作区同步结构化衣橱数据。
+        衣橱穿搭助手是一款手机优先的衣橱识别、穿搭推荐与买前评估应用。用户使用邮箱作为主认证身份，
+        可选手机号仅作为手机号加密码登录名，注册后可使用云端工作区同步结构化衣橱数据。
       </p>
     ),
   },
@@ -23,8 +23,8 @@ const SECTIONS: LegalSection[] = [
     title: "2. 账号注册与使用",
     children: (
       <>
-        <p>用户使用手机号和密码注册账号。当前注册使用手机号与密码，不代表平台已经核验手机号归属。密码以 Argon2id 安全哈希形式保存，服务器不保存明文密码。</p>
-        <p>一个账号可以在多个设备上登录。用户可修改密码、退出当前设备或退出全部设备。</p>
+        <p>用户使用邮箱验证码、邮箱和密码注册账号。手机号为选填登录名，不代表平台已经核验手机号归属。密码以 Argon2id 安全哈希形式保存，服务器不保存明文密码。</p>
+        <p>一个账号可以在多个设备上登录。用户可修改密码、找回密码、退出当前设备或退出全部设备。</p>
       </>
     ),
   },
@@ -41,7 +41,7 @@ const SECTIONS: LegalSection[] = [
     title: "4. 用户责任",
     children: (
       <p>
-        用户不得滥用、攻击、批量注册或绕过安全限制。不得注册或使用不属于自己的手机号。
+        用户不得滥用、攻击、批量注册或绕过安全限制。不得注册或使用不属于自己的邮箱或手机号。
         MiniMax Key 属于本机设置；仅在用户主动发起 AI 功能时临时用于服务器代调 MiniMax，不在服务器保存。
       </p>
     ),

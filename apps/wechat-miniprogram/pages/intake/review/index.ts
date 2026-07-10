@@ -1,3 +1,4 @@
+import { MINI_CATEGORY_CATALOG, MINI_SEASON_CATALOG, MINI_STYLE_CATALOG } from "../../../generated/catalogs";
 import { colorLabel, recognizeGarmentImages, type AiGarmentTag } from "../../../services/ai";
 import { buildSubcategoryChoices, CATEGORY_OPTIONS, isSubcategoryInCategory, normalizeCategoryId } from "../../../services/category-catalog";
 import { batchCreateGarments, createWishlistItem, type BatchCreateGarmentInput, type CreateWishlistInput } from "../../../services/workspace";
@@ -13,6 +14,8 @@ import {
   type IntakeQueueItem,
   type IntakeQueueItemStatus,
 } from "../../../stores/intake";
+
+const intakeCategories = MINI_CATEGORY_CATALOG.map((category) => ({ value: category.id, label: category.label }));
 
 Page({
   data: {
@@ -35,24 +38,10 @@ Page({
     saving: false,
     canSave: false,
     error: "",
-    categories: CATEGORY_OPTIONS,
+    categories: intakeCategories,
     subcategoryOptions: buildSubcategoryChoices("tops"),
-    seasons: [
-      { value: "all", label: "四季" },
-      { value: "spring", label: "春" },
-      { value: "summer", label: "夏" },
-      { value: "autumn", label: "秋" },
-      { value: "winter", label: "冬" },
-    ],
-    styles: [
-      { value: "casual", label: "休闲" },
-      { value: "sweet", label: "甜美" },
-      { value: "elegant", label: "优雅" },
-      { value: "commute", label: "通勤" },
-      { value: "outdoor", label: "户外" },
-      { value: "dinner", label: "吃饭" },
-      { value: "vacation", label: "旅行" },
-    ],
+    seasons: MINI_SEASON_CATALOG,
+    styles: MINI_STYLE_CATALOG,
     fitGenders: [
       { value: "unisex", label: "中性" },
       { value: "menswear", label: "男装" },

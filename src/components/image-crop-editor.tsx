@@ -40,6 +40,10 @@ export interface ImageCropEditorHandle {
   reset: () => void;
   /** 顺时针旋转 90° */
   rotate: () => void;
+  /** 逆时针旋转 90° */
+  rotateLeft: () => void;
+  /** 顺时针旋转 90° */
+  rotateRight: () => void;
   /** 当前是否已 ready (imageRect + cropFrame 已计算) */
   isReady: boolean;
   /** 内部 confirming / rotating 状态 (父级可读) */
@@ -96,6 +100,7 @@ export const ImageCropEditor = forwardRef<ImageCropEditorHandle, ImageCropEditor
 
   // === Source / rotation ===
   const [sourceUrl, setSourceUrl] = useState(source);
+  const [fullscreenAspectRatio, setFullscreenAspectRatio] = useState<AspectRatio>(aspectRatio);
   const rotatedRef = useRef(0);
   const [activeCropBox, setActiveCropBox] = useState<NormalizedCropBox | undefined>(initialCropBox);
   const [rotating, setRotating] = useState(false);
@@ -120,12 +125,14 @@ export const ImageCropEditor = forwardRef<ImageCropEditorHandle, ImageCropEditor
   const pointers = useRef<Map<number, PointerSnapshot>>(new Map());
   const dragMode = useRef<CropFrameHandle | null>(null);
   const [isInteracting, setIsInteracting] = useState(false);
+  const effectiveAspectRatio = isEmbedded ? aspectRatio : fullscreenAspectRatio;
 
   // source prop 变化时 reset 所有内部 state
   const lastSourceRef = useRef(source);
   if (lastSourceRef.current !== source) {
     lastSourceRef.current = source;
     setSourceUrl(source);
+    setFullscreenAspectRatio(aspectRatio);
     rotatedRef.current = 0;
     setActiveCropBox(initialCropBox);
     initialized.current = false;
@@ -149,17 +156,17 @@ export const ImageCropEditor = forwardRef<ImageCropEditorHandle, ImageCropEditor
       const h = activeCropBox.height * ih;
       const x = imageRect.x + activeCropBox.x * iw;
       const y = imageRect.y + activeCropBox.y * ih;
-      setCropFrame(clampCropFrameToImage({ x, y, width: w, height: h }, imageRect, aspectRatio));
+      setCropFrame(clampCropFrameToImage({ x, y, width: w, height: h }, imageRect, effectiveAspectRatio));
     } else {
-      setCropFrame(getInitialCropFrameInImage(imageRect, aspectRatio));
+      setCropFrame(getInitialCropFrameInImage(imageRect, effectiveAspectRatio));
     }
-  }, [imageRect, activeCropBox, aspectRatio]);
+  }, [imageRect, activeCropBox, effectiveAspectRatio]);
 
   useEffect(() => {
     if (!initialized.current) return;
     if (imageRect.width === 0 || imageRect.height === 0) return;
-    setCropFrame((f) => clampCropFrameToImage(f, imageRect, aspectRatio));
-  }, [imageRect, aspectRatio]);
+    setCropFrame((f) => clampCropFrameToImage(f, imageRect, effectiveAspectRatio));
+  }, [imageRect, effectiveAspectRatio]);
 
   // === 触摸屏幕坐标 → 容器坐标 ===
   const toLocal = useCallback((clientX: number, clientY: number): PointerSnapshot => {
@@ -210,9 +217,9 @@ export const ImageCropEditor = forwardRef<ImageCropEditorHandle, ImageCropEditor
 
     if (pointers.current.size === 1 && dragMode.current) {
       const handle = dragMode.current;
-      setCropFrame((f) => applyCropFrameDrag(handle, dx, dy, f, imageRect, aspectRatio));
+      setCropFrame((f) => applyCropFrameDrag(handle, dx, dy, f, imageRect, effectiveAspectRatio));
     }
-  }, [toLocal, imageRect, aspectRatio]);
+  }, [toLocal, imageRect, effectiveAspectRatio]);
 
   const onPointerUp = useCallback((e: React.PointerEvent) => {
     if (!pointers.current.has(e.pointerId)) return;
@@ -251,6 +258,7 @@ export const ImageCropEditor = forwardRef<ImageCropEditorHandle, ImageCropEditor
   // === 还原 ===
   const handleReset = useCallback(() => {
     setSourceUrl(source);
+    setFullscreenAspectRatio(aspectRatio);
     rotatedRef.current = 0;
     setActiveCropBox(initialCropBox);
     initialized.current = false;
@@ -259,10 +267,9 @@ export const ImageCropEditor = forwardRef<ImageCropEditorHandle, ImageCropEditor
     pointers.current.clear();
     dragMode.current = null;
     setIsInteracting(false);
-  }, [source, initialCropBox]);
+  }, [source, initialCropBox, aspectRatio]);
 
-  // === 顺时针旋转 90° ===
-  const handleRotateRight = useCallback(() => {
+  const rotateBy = useCallback((degrees: -90 | 90) => {
     if (rotating || !sourceUrl || naturalSize.w === 0) return;
     setRotating(true);
     const img = new Image();
@@ -278,11 +285,11 @@ export const ImageCropEditor = forwardRef<ImageCropEditorHandle, ImageCropEditor
         return;
       }
       ctx.translate(canvas.width / 2, canvas.height / 2);
-      ctx.rotate((90 * Math.PI) / 180);
+      ctx.rotate((degrees * Math.PI) / 180);
       ctx.drawImage(img, -img.naturalWidth / 2, -img.naturalHeight / 2);
       const newDataUrl = canvas.toDataURL("image/jpeg", 0.95);
       setSourceUrl(newDataUrl);
-      rotatedRef.current = (rotatedRef.current + 90) % 360;
+      rotatedRef.current = (rotatedRef.current + degrees + 360) % 360;
       setActiveCropBox(undefined);
       initialized.current = false;
       setNaturalSize({ w: 0, h: 0 });
@@ -299,15 +306,20 @@ export const ImageCropEditor = forwardRef<ImageCropEditorHandle, ImageCropEditor
     img.src = sourceUrl;
   }, [rotating, sourceUrl, naturalSize.w]);
 
+  const handleRotateLeft = useCallback(() => rotateBy(-90), [rotateBy]);
+  const handleRotateRight = useCallback(() => rotateBy(90), [rotateBy]);
+
   // === 暴露 handle 给父级 (embedded 模式用) ===
   useImperativeHandle(ref, () => ({
     runConfirm,
     reset: handleReset,
     rotate: handleRotateRight,
+    rotateLeft: handleRotateLeft,
+    rotateRight: handleRotateRight,
     isReady: vp.width > 0 && naturalSize.w > 0 && cropFrame.width > 0,
     confirming,
     rotating,
-  }), [runConfirm, handleReset, handleRotateRight, vp.width, naturalSize.w, cropFrame.width, confirming, rotating]);
+  }), [runConfirm, handleReset, handleRotateLeft, handleRotateRight, vp.width, naturalSize.w, cropFrame.width, confirming, rotating]);
 
   // === 键盘 Arrow 移动裁切框 ===
   const onKeyDown = useCallback((e: React.KeyboardEvent) => {
@@ -322,8 +334,8 @@ export const ImageCropEditor = forwardRef<ImageCropEditorHandle, ImageCropEditor
     else return;
     e.preventDefault();
     e.stopPropagation();
-    setCropFrame((f) => applyCropFrameDrag("CENTER", dx, dy, f, imageRect, aspectRatio));
-  }, [cropFrame.width, imageRect, aspectRatio]);
+    setCropFrame((f) => applyCropFrameDrag("CENTER", dx, dy, f, imageRect, effectiveAspectRatio));
+  }, [cropFrame.width, imageRect, effectiveAspectRatio]);
 
   // === 渲染 ===
   // ===== Canvas 区域 (图片 + 裁切框 + 4 角 L + 4 边短横 + 蒙层 + 9 宫格) =====
@@ -406,6 +418,11 @@ export const ImageCropEditor = forwardRef<ImageCropEditorHandle, ImageCropEditor
     return canvas;
   }
 
+  const fullscreenAspectOptions: Array<{ label: string; value: AspectRatio }> = [
+    { label: "自由", value: "free" },
+    { label: "3:4", value: 0.75 },
+  ];
+
   // ===== Fullscreen 模式: 包外层 fixed + 顶部/底部工具栏 =====
   // v0.9.37-dev P0 §5: fullscreen 模式用 createPortal 渲染到 document.body,
   // 绕开外层 (motion.div transform-gpu + main 流的 padding / scroll)
@@ -416,36 +433,62 @@ export const ImageCropEditor = forwardRef<ImageCropEditorHandle, ImageCropEditor
       className="fixed inset-0 z-[120] flex h-[100dvh] w-screen flex-col overflow-hidden bg-black text-white select-none"
       style={{ touchAction: "none" }}
     >
-      {/* 顶部工具栏: 左 X 关闭 + 中部标题 + 右 ✓ 确认 (按微信截图样式) */}
-      <div className="flex h-14 shrink-0 items-center justify-between px-4">
+      <div className="flex shrink-0 items-center justify-between px-4 pb-2 pt-[calc(env(safe-area-inset-top)+0.5rem)]">
         <button
           type="button"
           onClick={onCancel}
           aria-label="取消"
-          className="grid h-10 w-10 place-items-center rounded-full bg-white/15 text-base font-bold text-white backdrop-blur-sm hover:bg-white/25 transition-colors"
+          className="grid h-10 w-10 place-items-center ui-control-radius bg-white/15 text-base font-bold text-white backdrop-blur-sm hover:bg-white/25 transition-colors"
         >
           ✕
         </button>
         <div className="text-sm font-medium">裁切衣物</div>
-        <button
-          type="button"
-          onClick={runConfirm}
-          disabled={confirming || !ready}
-          aria-label="确认"
-          className="grid h-10 w-10 place-items-center rounded-full bg-white/15 text-base font-bold text-white backdrop-blur-sm hover:bg-white/25 transition-colors disabled:opacity-50"
-        >
-          ✓
-        </button>
+        <span className="h-10 w-10" aria-hidden="true" />
       </div>
       {canvas}
-      {/* 底部工具栏: 还原 / 旋转 / 取消 / 裁剪 + safe-area-inset-bottom */}
+      {/* 底部工具栏: 比例 / 旋转 / 取消应用 + safe-area-inset-bottom */}
       <div
-        className="flex h-[72px] shrink-0 items-center justify-around bg-black/95 px-4 backdrop-blur-xl border-t border-white/5"
+        className="shrink-0 space-y-2 border-t border-white/5 bg-black/95 px-4 py-3 backdrop-blur-xl"
         style={{ paddingBottom: "max(12px, env(safe-area-inset-bottom, 0px))" }}
       >
-        <BottomButton label="还原" icon="↺" onClick={handleReset} disabled={confirming || rotating} />
-        <BottomButton label="旋转" icon="⟳" onClick={handleRotateRight} disabled={confirming || rotating} />
-        <BottomButton label="取消" onClick={onCancel} disabled={confirming || rotating} />
+        <div className="grid h-11 grid-cols-2 gap-1 rounded-[16px] bg-white/10 p-1">
+          {fullscreenAspectOptions.map((option) => (
+            <button
+              key={option.label}
+              type="button"
+              onClick={() => setFullscreenAspectRatio(option.value)}
+              disabled={confirming || rotating}
+              className={`rounded-[12px] text-sm font-semibold transition-colors disabled:opacity-55 ${
+                fullscreenAspectRatio === option.value ? "bg-[#355c7d] text-[#fffffc]" : "text-white/72"
+              }`}
+            >
+              {option.label}
+            </button>
+          ))}
+        </div>
+        <div className="grid grid-cols-3 gap-2">
+          <BottomButton label="左转90°" icon="↺" onClick={handleRotateLeft} disabled={confirming || rotating} />
+          <BottomButton label="右转90°" icon="⟳" onClick={handleRotateRight} disabled={confirming || rotating} />
+          <BottomButton label="重置" icon="↻" onClick={handleReset} disabled={confirming || rotating} />
+        </div>
+        <div className="grid grid-cols-[1fr_1.6fr] gap-2">
+          <button
+            type="button"
+            onClick={onCancel}
+            disabled={confirming || rotating}
+            className="h-12 ui-control-radius border border-white/15 bg-white/10 text-sm font-semibold text-white/85 disabled:opacity-55"
+          >
+            取消
+          </button>
+          <button
+            type="button"
+            onClick={runConfirm}
+            disabled={confirming || rotating || !ready}
+            className="h-12 ui-control-radius bg-[#355c7d] text-sm font-semibold text-[#fffffc] disabled:opacity-45"
+          >
+            {confirming ? "应用中" : "应用"}
+          </button>
+        </div>
       </div>
     </div>
   );
@@ -499,9 +542,9 @@ function BottomButton({ label, icon, onClick, disabled }: { label: string; icon?
       type="button"
       onClick={onClick}
       disabled={disabled}
-      className="flex flex-col items-center gap-1 text-white/85 text-[11px] font-medium active:scale-95 transition-transform disabled:opacity-60"
+      className="flex h-11 items-center justify-center gap-1 ui-control-radius border border-white/12 bg-white/8 px-2 text-white/85 text-xs font-semibold active:scale-95 transition-transform disabled:opacity-60 whitespace-nowrap"
     >
-      {icon && <span className="text-[22px] leading-none">{icon}</span>}
+      {icon && <span className="text-[18px] leading-none">{icon}</span>}
       <span className="leading-tight">{label}</span>
     </button>
   );

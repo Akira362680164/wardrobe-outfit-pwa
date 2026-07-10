@@ -1,0 +1,11 @@
+@import "../register-email/index.wxss";
+
+.auth-success {
+  margin-top: 24rpx;
+  padding: 20rpx;
+  border-radius: 20rpx;
+  background: rgba(47, 107, 79, 0.10);
+  color: #2f6b4f;
+  font-size: 24rpx;
+  line-height: 36rpx;
+}

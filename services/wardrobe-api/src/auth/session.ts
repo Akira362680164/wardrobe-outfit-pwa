@@ -7,6 +7,7 @@ import { getDb } from "../db/client.js";
 import {
   accountSecurityEvents,
   deviceSessions,
+  emailIdentities,
   passwordCredentials,
   phoneIdentities,
   refreshTokens,
@@ -103,6 +104,11 @@ export class JwtAccessTokenIssuer implements AccessTokenIssuer {
 export interface SessionUserRecord {
   userId: string;
   maskedPhone: string;
+  emailMasked?: string;
+  emailVerified?: boolean;
+  phoneMasked?: string;
+  phoneVerified?: boolean;
+  displayName?: string;
   passwordHash: string;
   disabledAt: Date | null;
 }
@@ -110,6 +116,11 @@ export interface SessionUserRecord {
 export interface SessionAccountRecord {
   userId: string;
   maskedPhone: string;
+  emailMasked?: string;
+  emailVerified?: boolean;
+  phoneMasked?: string;
+  phoneVerified?: boolean;
+  displayName?: string;
   disabledAt: Date | null;
   sessionRevokedAt: Date | null;
   deviceId: string;
@@ -133,6 +144,11 @@ export interface RefreshTokenRecord {
   sessionRevokedAt: Date | null;
   userDisabledAt: Date | null;
   maskedPhone: string;
+  emailMasked?: string;
+  emailVerified?: boolean;
+  phoneMasked?: string;
+  phoneVerified?: boolean;
+  displayName?: string;
 }
 
 export interface SessionStore {
@@ -278,6 +294,11 @@ export class PostgresSessionStore implements SessionStore {
       .from(phoneIdentities)
       .where(eq(phoneIdentities.userId, user.id))
       .limit(1);
+    const [emailIdentity] = await getDb()
+      .select()
+      .from(emailIdentities)
+      .where(eq(emailIdentities.userId, user.id))
+      .limit(1);
 
     return {
       id: token.id,
@@ -297,6 +318,11 @@ export class PostgresSessionStore implements SessionStore {
       sessionRevokedAt: session.revokedAt,
       userDisabledAt: user.disabledAt,
       maskedPhone: identity?.maskedPhone ?? "****",
+      phoneMasked: identity?.maskedPhone,
+      phoneVerified: identity ? identity.verifiedAt !== null : undefined,
+      emailMasked: emailIdentity?.emailMasked,
+      emailVerified: emailIdentity ? emailIdentity.verifiedAt !== null : undefined,
+      displayName: user.displayName ?? undefined,
     };
   }
 
@@ -396,11 +422,21 @@ export class PostgresSessionStore implements SessionStore {
       .from(phoneIdentities)
       .where(eq(phoneIdentities.userId, userId))
       .limit(1);
+    const [emailIdentity] = await getDb()
+      .select()
+      .from(emailIdentities)
+      .where(eq(emailIdentities.userId, userId))
+      .limit(1);
 
     if (!session || !user) return null;
     return {
       userId,
       maskedPhone: identity?.maskedPhone ?? "****",
+      phoneMasked: identity?.maskedPhone,
+      phoneVerified: identity ? identity.verifiedAt !== null : undefined,
+      emailMasked: emailIdentity?.emailMasked,
+      emailVerified: emailIdentity ? emailIdentity.verifiedAt !== null : undefined,
+      displayName: user.displayName ?? undefined,
       disabledAt: user.disabledAt,
       sessionRevokedAt: session.revokedAt,
       deviceId: session.deviceId,
@@ -471,7 +507,12 @@ export interface SessionTokens {
   refreshTokenExpiresAt: string;
   user: {
     id: string;
-    maskedPhone: string;
+    maskedPhone?: string;
+    phoneMasked?: string;
+    phoneVerified?: boolean;
+    emailMasked?: string;
+    emailVerified?: boolean;
+    displayName?: string;
   };
 }
 
@@ -575,12 +616,22 @@ export class SessionService {
       refreshTokenExpiresAt,
       userId: user.userId,
       maskedPhone: user.maskedPhone,
+      phoneMasked: user.phoneMasked ?? user.maskedPhone,
+      phoneVerified: user.phoneVerified,
+      emailMasked: user.emailMasked,
+      emailVerified: user.emailVerified,
+      displayName: user.displayName,
     });
   }
 
   async completeNewRegistration(input: {
     userId: string;
     maskedPhone: string;
+    phoneMasked?: string;
+    phoneVerified?: boolean;
+    emailMasked?: string;
+    emailVerified?: boolean;
+    displayName?: string;
     deviceId: string;
     deviceLabel?: string | null;
   }) {
@@ -594,6 +645,11 @@ export class SessionService {
   async issueTokensForUser(input: {
     userId: string;
     maskedPhone: string;
+    phoneMasked?: string;
+    phoneVerified?: boolean;
+    emailMasked?: string;
+    emailVerified?: boolean;
+    displayName?: string;
     deviceId: string;
     deviceLabel?: string | null;
     eventType: string;
@@ -633,6 +689,11 @@ export class SessionService {
       refreshTokenExpiresAt,
       userId: input.userId,
       maskedPhone: input.maskedPhone,
+      phoneMasked: input.phoneMasked ?? input.maskedPhone,
+      phoneVerified: input.phoneVerified,
+      emailMasked: input.emailMasked,
+      emailVerified: input.emailVerified,
+      displayName: input.displayName,
     });
   }
 
@@ -641,6 +702,11 @@ export class SessionService {
     sessionId: string;
     deviceId: string;
     maskedPhone: string;
+    phoneMasked?: string;
+    phoneVerified?: boolean;
+    emailMasked?: string;
+    emailVerified?: boolean;
+    displayName?: string;
   }) {
     const now = this.now();
     const refreshToken = generateOpaqueToken();
@@ -664,6 +730,11 @@ export class SessionService {
       refreshTokenExpiresAt,
       userId: input.userId,
       maskedPhone: input.maskedPhone,
+      phoneMasked: input.phoneMasked ?? input.maskedPhone,
+      phoneVerified: input.phoneVerified,
+      emailMasked: input.emailMasked,
+      emailVerified: input.emailVerified,
+      displayName: input.displayName,
     });
   }
 
@@ -713,6 +784,11 @@ export class SessionService {
       refreshTokenExpiresAt: newRefreshTokenExpiresAt,
       userId: old.userId,
       maskedPhone: old.maskedPhone,
+      phoneMasked: old.phoneMasked ?? old.maskedPhone,
+      phoneVerified: old.phoneVerified,
+      emailMasked: old.emailMasked,
+      emailVerified: old.emailVerified,
+      displayName: old.displayName,
     });
     const idempotency = encryptRefreshIdempotencyPayload(
       await this.getRefreshIdempotencyKey(),
@@ -812,6 +888,11 @@ export class SessionService {
       user: {
         id: account.userId,
         maskedPhone: account.maskedPhone,
+        phoneMasked: account.phoneMasked ?? account.maskedPhone,
+        phoneVerified: account.phoneVerified,
+        emailMasked: account.emailMasked,
+        emailVerified: account.emailVerified,
+        displayName: account.displayName,
       },
       deviceId: account.deviceId,
     };
@@ -883,6 +964,11 @@ export class SessionService {
     refreshTokenExpiresAt: Date;
     userId: string;
     maskedPhone: string;
+    phoneMasked?: string;
+    phoneVerified?: boolean;
+    emailMasked?: string;
+    emailVerified?: boolean;
+    displayName?: string;
   }): SessionTokens {
     return {
       accessToken: input.accessToken,
@@ -892,6 +978,11 @@ export class SessionService {
       user: {
         id: input.userId,
         maskedPhone: input.maskedPhone,
+        phoneMasked: input.phoneMasked ?? input.maskedPhone,
+        phoneVerified: input.phoneVerified,
+        emailMasked: input.emailMasked,
+        emailVerified: input.emailVerified,
+        displayName: input.displayName,
       },
     };
   }

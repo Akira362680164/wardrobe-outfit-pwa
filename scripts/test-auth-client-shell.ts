@@ -64,7 +64,9 @@ check("客户端不包含 requestRegistration(除 cancel)", !/export async funct
 check("AuthProvider login 不调用 ensureCloudReady", !/ensureCloudReady/.test(authProvider));
 check("AuthProvider register 直接调用 authApi.register", /authApi\.register/.test(authProvider));
 check("注册页不使用 Next Link 跳转法律页", !/href=.legal/.test(authGate));
-check("AuthView 包含 login/register/terms/privacy", /"login" \| "register" \| "terms" \| "privacy"/.test(authGate));
+check("AuthView 包含 login/register/forgot_password/terms/privacy", /"login" \| "register" \| "forgot_password" \| "terms" \| "privacy"/.test(authGate));
+check("客户端包含邮箱验证码、修改密码验证码与账号安全接口", /sendEmailCode/.test(authApi) && /requestPasswordReset/.test(authApi) && /requestPasswordChangeCode/.test(authApi) && /getAccountSecurity/.test(authApi));
+check("注册页使用邮箱验证码二次确认和 30 秒倒计时", /发送邮箱验证码/.test(authGate) && /确认发送/.test(authGate) && /setCountdown\(30\)/.test(authGate));
 check("登录页包含退出确认弹窗", /showExitDialog/.test(authGate) && /退出应用/.test(authGate) && /App\.exitApp/.test(authGate));
 check("auth-gate 包含 backButton 监听", /backButton/.test(authGate) && /App\.addListener/.test(authGate));
 check("旧 pendingRegistration 会被清理", /pendingRegistration/.test(authProvider) && /_removed/.test(authProvider));
@@ -80,7 +82,7 @@ check("Blocked 页改为新标题", /本机已有其他账号数据/.test(authGa
 
 // v2.0.1: form validation
 check("auth-form-validation 存在", /isValidAuthPhone/.test(read("src/lib/auth-form-validation.ts")));
-check("auth-form-validation 导出 login/register 校验", /isLoginFormValid/.test(read("src/lib/auth-form-validation.ts")) && /isRegisterFormValid/.test(read("src/lib/auth-form-validation.ts")));
+check("auth-form-validation 导出 email/login/register 校验", /isValidAuthEmail/.test(read("src/lib/auth-form-validation.ts")) && /isLoginFormValid/.test(read("src/lib/auth-form-validation.ts")) && /isRegisterFormValid/.test(read("src/lib/auth-form-validation.ts")));
 check("登录按钮不依赖 connectivity", !/auth\.connectivity/.test(authGate) || /isLoginFormValid/.test(authGate));
 check("legal-document-view 组件存在", /LegalDocumentView/.test(read("src/components/auth/legal-document-view.tsx")));
 

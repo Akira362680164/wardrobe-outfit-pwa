@@ -21,7 +21,9 @@ import { normalizeGarmentTag } from "../src/lib/device-minimax";
 
 const root = process.cwd();
 const typesTs = readFileSync(join(root, "src/lib/types.ts"), "utf8");
-const colorCatalogTs = readFileSync(join(root, "src/lib/color-catalog.ts"), "utf8");
+const colorCatalogCompatTs = readFileSync(join(root, "src/lib/color-catalog.ts"), "utf8");
+const colorCatalogTs = readFileSync(join(root, "packages/domain-catalog/src/colors.ts"), "utf8");
+const colorPromptTs = readFileSync(join(root, "packages/domain-catalog/src/ai-prompts.ts"), "utf8");
 const colorFieldsTs = readFileSync(join(root, "src/lib/color-fields.ts"), "utf8");
 const colorChipTsx = readFileSync(join(root, "src/components/color-chip.tsx"), "utf8");
 const itemColorFieldsTsx = readFileSync(join(root, "src/components/item/color-fields.tsx"), "utf8");
@@ -183,8 +185,13 @@ check(
   "8b. outfit-ai-suggestion.ts 不包含 normalizeColorName",
   !codeLinesExcludingComments(outfitAiSuggestionTs).some((l) => /normalizeColorName/.test(l)),
 );
-// 9. COLOR_CATALOG 仅定义于 color-catalog.ts
-check("9. COLOR_CATALOG 仅定义于 color-catalog.ts", /export const COLOR_CATALOG/.test(colorCatalogTs));
+// 9. COLOR_CATALOG 仅定义于共享目录，App 路径只做兼容导出
+check(
+  "9. COLOR_CATALOG 仅定义于共享目录",
+  /export const COLOR_CATALOG/.test(colorCatalogTs) &&
+    !/export const COLOR_CATALOG/.test(colorCatalogCompatTs) &&
+    /from "@wardrobe\/domain-catalog"/.test(colorCatalogCompatTs),
+);
 // 10. 标准颜色数组仅从 COLOR_CATALOG 派生
 check(
   "10. 标准颜色数组仅从 COLOR_CATALOG 派生",
@@ -213,7 +220,7 @@ console.log("\n=== §12.5 AI Prompt 测试（15 项） ===");
 const promptLines = buildColorRecognitionPrompt();
 const promptText = promptLines.join("\n");
 check("1. 单品与种草共同调用 buildColorRecognitionPrompt()", /\.\.\.buildColorRecognitionPrompt\(\)/.test(deviceMiniMaxTs));
-check("2. Prompt 使用 COLOR_OPTIONS.length", /\$\{COLOR_OPTIONS\.length\}/.test(colorCatalogTs));
+check("2. Prompt 使用 COLOR_OPTIONS.length", /\$\{COLOR_OPTIONS\.length\}/.test(colorPromptTs));
 check("3. Prompt 包含 26 个标准色", COLOR_OPTIONS.every((c) => promptText.includes(c)));
 check("4. Prompt 包含卡其与米、驼、棕边界", promptText.includes("卡其") && promptText.includes("不等于米色") && promptText.includes("棕"));
 check("5. Prompt 包含藏青与黑边界", promptText.includes("藏青") && promptText.includes("不等于黑色"));

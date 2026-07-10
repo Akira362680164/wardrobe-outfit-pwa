@@ -63,6 +63,217 @@
 - **验证结果**：`npm --prefix apps/wechat-miniprogram run typecheck` 通过。
 - **风险门禁**：high（小程序图片选择、临时资产上传、MiniMax 图片识别、服务端批量写入、录入结果状态流）；已按用户要求触发 subagent A/B，主 agent 负责验收。
 - **未验证风险**：本 checkpoint 尚未运行微信开发者工具编译、截图或真机预览；未用真实 MiniMax Key 做 live 图片识别；C/D 改造尚未进入本条记录。
+## 2026-07-10 / v2.1.11-test / Codex — 共享领域字典防漂移门禁与验收
+
+- **执行 Agent**：Codex（未触发 subagent：用户未通知）。
+- **目的**：补齐共享目录到小程序生成文件的一致性门禁，将长期维护规则写入本机 `AGENTS.md`，并完成跨 App、小程序、云契约和服务端的最终验收。
+- **版本变更**：无；当前应用版本仍为 `2.1.11-test`。本任务不交付 APK、不上传小程序体验版。
+- **改动文件**：`scripts/test-miniprogram-catalog-consistency.ts`、`scripts/test-{ai-intake-live-contract,color-labels,intake-upgrade-patch5}.ts`、`src/lib/{display-labels,recommendations}.ts`、`src/components/garment-intake-flow.tsx`、`package.json`、`VERSION_HISTORY.md`；本机忽略文件 `AGENTS.md` 新增“共享领域字典维护”章节（因 `.gitignore` 的公开仓库规则不纳入提交）。
+- **改动说明**：新增生成文件与共享源码的深度一致性检查、色卡覆盖和小程序硬编码扫描；将 App 残留风格/种草状态展示改为共享 label；修正三条已因组件拆分或共享色卡迁移而过时的静态测试断言；`test:logic:all` 纳入共享目录与小程序目录门禁。
+- **验证结果**：`npm run typecheck`、`npm run cloud:contracts:typecheck`、`npm run api:typecheck`、`npm --prefix apps/wechat-miniprogram run typecheck` 通过；`npm run api:test` 通过（15 files / 85 tests）；`npm run catalog:miniprogram:check`、`npm run test:logic:domain-catalog`、`test:logic:miniprogram-catalog`、`test:logic:catalog`（39 项）、`test:logic:color-catalog`（94 项）、`test:logic:ai-intake-live-contract`（37 项）、`test:logic:garment-intake-confirm-contract`、`test:logic:wishlist-intake-confirm-contract`、`test:logic:intake-field-contract`、`test:logic:wishlist-flow`（40 + 48 项）和 `test:logic:intake-upgrade-patch5`（28 项）通过；`npm run build` 以 `2.1.11-test` 通过；微信开发者工具成功打开项目、`simulator_refresh` 成功，`pages/intake/review/index.wxml` 单文件编译成功；`git diff --check` 通过。
+- **风险门禁**：high（跨端领域标准、AI 契约、服务端写入归一化、小程序录入字段与生成链路）；未触发 subagent：用户未通知。
+- **未验证风险**：`npm run test:logic:all` 已通过本任务相关及其之前的全部套件，但在既有 `test:logic:ui-token-contract` 处失败，命中本任务未修改的 `src/components/auth/account-views.tsx`、`src/components/image-crop-editor.tsx`、`src/components/item/edit-image-action-card.tsx` 硬编码 UI 色值，因此后续 `ui-overlay-contract` 未执行；微信单文件 `compile_js` 不接受 `.ts` 源并提示缺少同名 JS，TypeScript 部分以小程序 typecheck 和整体 simulator refresh 验证；未做真机预览、体验版上传、生产服务部署或真实数据库写入验证。
+
+## 2026-07-10 / v2.1.11-test / Codex — 微信小程序接入生成领域字典
+
+- **执行 Agent**：Codex（未触发 subagent：用户未通知）。
+- **目的**：让微信小程序从共享包生成平台可直接消费的领域常量，移除分类、季节、颜色和状态的局部硬编码，并补齐二级分类保存链路。
+- **版本变更**：无；当前应用版本仍为 `2.1.11-test`。本批次不上传小程序体验版、不打 APK。
+- **改动文件**：`scripts/generate-miniprogram-catalogs.mjs`、`apps/wechat-miniprogram/generated/catalogs.ts`、`apps/wechat-miniprogram/{tsconfig.json,services/{workspace,ai}.ts,stores/intake.ts,pages/intake/{camera,review}/**,pages/wardrobe/{index,detail}/index.ts,pages/wishlist/edit/index.ts,pages/outfits/compose/index.ts}`、`package.json`、`VERSION_HISTORY.md`。
+- **改动说明**：新增可生成/校验小程序目录的脚本；生成颜色、一级/二级分类、季节、风格和状态常量；录入确认页改为完整 9 类并按一级分类显示二级分类；`subcategory` 从 AI 识别、录入草稿、创建/更新、种草和套装元数据请求完整透传；衣橱列表和 workspace 展示统一读取生成 label、色卡与状态表。
+- **验证结果**：`npm run catalog:miniprogram:generate` 通过；`npm run catalog:miniprogram:check` 通过；`npm --prefix apps/wechat-miniprogram run typecheck` 通过；小程序源码扫描确认不再命中“上装/连衣装/鞋履”、局部 `const CATEGORY_LABELS`、局部 `const COLOR_SWATCHES`；`git diff --check` 通过。
+- **风险门禁**：high（小程序录入字段、云端写入 payload 和跨端共享目录变化）；未触发 subagent：用户未通知。
+- **未验证风险**：尚未运行微信开发者工具编译、模拟器交互或真机预览；完整仓库测试和 build 留待最终批次。
+
+## 2026-07-10 / v2.1.11-test / Codex — App、云契约与服务端接入共享领域字典
+
+- **执行 Agent**：Codex（未触发 subagent：用户未通知）。
+- **目的**：让 App 兼容路径、云端 AI 契约和 garment/wishlist 服务端写入统一消费 `@wardrobe/domain-catalog`。
+- **版本变更**：无；当前应用版本仍为 `2.1.11-test`。本批次不改页面结构、不打 APK、不上传小程序体验版。
+- **改动文件**：`src/lib/{color-catalog,garment-category-catalog,types}.ts`、`src/components/item/wishlist-extras.tsx`、`packages/cloud-contracts/{package.json,src/workspace/contracts.ts}`、`services/wardrobe-api/{package.json,src/workspace/command-service.ts,src/workspace/payload-normalizer.ts,tests/payload-normalizer.test.ts}`、`scripts/test-{color-catalog,intake-field-contract,pants-category-ai-contract}.ts`、`package.json`、`package-lock.json`、`VERSION_HISTORY.md`。
+- **改动说明**：App 原颜色/分类文件改为兼容 re-export，核心 union 与 label 表改由共享包提供；风格、衣物状态和种草状态文案统一为共享标准；云契约的分类/季节/风格 Zod 枚举从共享 tuple 派生；服务端创建、批量创建、更新、种草转衣橱、撤销购买及穿着状态写入统一归一化分类、二级分类、颜色、季节和风格，非法值回退并标记 `needsReview`。
+- **验证结果**：`npm run cloud:contracts:typecheck`、`npm run api:typecheck`、`npm run typecheck` 通过；`npm --workspace @wardrobe/wardrobe-api run test -- tests/workspace.test.ts tests/payload-normalizer.test.ts` 通过（10 项）；`npm run test:logic:domain-catalog`、`test:logic:catalog`（39 项）、`test:logic:color-catalog`（94 项）、`test:logic:intake-field-contract`、`test:logic:pants-category-ai-contract`（33 项）通过；`git diff --check` 通过。
+- **风险门禁**：high（共享类型、AI 契约和服务端正式写入路径变化）；未触发 subagent：用户未通知。
+- **未验证风险**：尚未跑完整 API 测试与生产数据库事务验证；小程序仍未接入生成目录，完整 build 和微信开发者工具编译留待后续批次。
+
+## 2026-07-10 / v2.1.11-test / Codex — 建立领域字典共享包
+
+- **执行 Agent**：Codex（未触发 subagent：用户未通知）。
+- **目的**：以 `104f9ef` 最新 HEAD 为基线，建立 App、小程序、云契约和服务端共同消费的领域字典单一来源。
+- **版本变更**：无；当前应用版本仍为 `2.1.11-test`。本批次只建立共享包和测试，不切换现有消费者、不打 APK、不上传小程序体验版。
+- **改动文件**：`packages/domain-catalog/**`、`scripts/test-domain-catalog.ts`、`package.json`、`package-lock.json`、`VERSION_HISTORY.md`。
+- **改动说明**：新增颜色、分类/二级分类、季节、风格、衣物/种草状态、领域归一化和 AI 颜色提示词导出；根工作区新增 `@wardrobe/domain-catalog`，安装阶段先构建共享包；新增共享目录完整性测试并纳入 `test:logic:all`。
+- **验证结果**：`npm install --prefer-offline --no-audit --no-fund` 通过；`npm run test:logic:domain-catalog` 通过；`npm run typecheck --workspace @wardrobe/domain-catalog` 通过；`npm run test:logic:catalog` 通过（39 项）；`npm run test:logic:color-catalog` 通过（94 项）；`git diff --check` 通过。
+- **风险门禁**：high（新增跨 App、小程序、云契约和服务端共用的领域基础包，最终任务跨 5 个以上文件）；未触发 subagent：用户未通知。
+- **未验证风险**：本批次尚未让 App、云契约、服务端或小程序消费共享包，完整 typecheck/build 和小程序编译留待后续批次完成。
+
+## 2026-07-10 / v2.1.11-test / Codex — 腾讯云 SES 邮件接入实施计划
+
+- **执行 Agent**：Codex（未触发 subagent：用户明确要求在当前会话生成计划并直接执行；本轮先落下可追踪实施计划）。
+- **目的**：把已批准的腾讯云 SES 邮箱发送器设计拆为 Provider/ready、验证码持久限流、App/小程序 60 秒倒计时和全量验收四个可独立验证批次。
+- **版本变更**：无；当前应用版本仍为 `2.1.11-test`。计划阶段不改运行时代码、不打 APK、不上传小程序体验版。
+- **改动文件**：`docs/superpowers/plans/2026-07-10-tencent-ses-email-provider.md`、`VERSION_HISTORY.md`。
+- **改动说明**：计划固定每批文件边界、共享接口、先失败后实现的测试顺序、迁移索引、错误码、完整验证命令和分批 commit 信息；用户已选择本会话直接执行，因此计划提交后继续开发，不再等待执行方式确认。
+- **验证结果**：计划自检和 `git diff --check` 待提交前执行；未运行代码测试，因为计划提交不修改运行时。
+- **风险门禁**：low（实施计划与版本记录；不改后端、数据库、客户端或环境配置）；未触发 subagent：用户未通知。
+- **未验证风险**：腾讯云模板仍待审批，计划执行不会配置 Secret、部署服务或调用真实邮件；真实邮箱和真机验证保留至模板通过后的激活阶段。
+
+## 2026-07-10 / v2.1.11-test / Codex — 腾讯云 SES 邮箱发送器设计定稿
+
+- **执行 Agent**：Codex（未触发 subagent：用户未通知；本轮仅将已确认的腾讯云 SES 增量范围写成实施设计）。
+- **目的**：在发信域名和发信地址已注册、HTML 模板仍待腾讯云审批的条件下，定义第二阶段邮件 Provider 接入方式，并以最新确认覆盖验证码 30 秒倒计时为 60 秒。
+- **版本变更**：无；当前应用版本仍为 `2.1.11-test`。本轮不改运行时代码、不打 APK、不上传小程序体验版。
+- **改动文件**：`docs/superpowers/specs/2026-07-10-tencent-ses-email-provider-design.md`、`VERSION_HISTORY.md`。
+- **改动说明**：固定腾讯云 SES `SendEmail` 模板变量和环境变量边界；明确后端 SDK 仅在 API 进程加载，测试/开发继续使用 Log Provider；定义 `/api/ready` 的 email 依赖状态、503 错误语义、60 秒冷却、每邮箱每小时 5 次、每 IP 每小时 20 次、发送失败 challenge 清理和 `change_email` 的仅契约预留；保留已上线的 `wechat_register` 协议值，不重命名为平行的 `wechat_bind`。
+- **验证结果**：设计文档自检通过；`git diff --check` 待提交前执行。本轮不运行构建或业务测试，因为未修改运行时代码。
+- **风险门禁**：low（设计文档与版本记录；不改后端接口、数据库、前端、小程序、环境变量或部署）；未触发 subagent：用户未通知。
+- **未验证风险**：腾讯云模板尚未审批，未获得 TemplateID、未配置生产 Secret、未调用腾讯云 API、未在真实邮箱或真机验证；后续实现仍需补齐 Provider、限流、ready、客户端 60 秒倒计时与完整测试。
+
+## 2026-07-09 / v2.1.11-test / Codex — 修改密码邮箱验证码模式补齐
+
+- **执行 Agent**：Codex（未触发 subagent：用户未通知；本轮继续执行已批准账号体系设计）。
+- **目的**：补齐设计文档中“修改密码”流程的双模式要求：当前密码和邮箱验证码；小程序账号安全页的“修改密码”进入专用子页面，而不是跳到找回密码。
+- **版本变更**：无；当前应用版本仍为 `2.1.11-test`。本轮不打 APK，不上传小程序体验版。
+- **改动文件**：`packages/cloud-contracts/src/auth/contracts.ts`、`services/wardrobe-api/src/auth/account-password.ts`、`services/wardrobe-api/src/auth/session-routes.ts`、`services/wardrobe-api/tests/account-password-auth.test.ts`、`src/lib/cloud-auth-api.ts`、`src/components/auth/account-views.tsx`、`apps/wechat-miniprogram/app.json`、`apps/wechat-miniprogram/services/auth.ts`、`apps/wechat-miniprogram/pages/settings/account/index.ts`、`apps/wechat-miniprogram/pages/settings/change-password/**`、`scripts/test-{app-email-auth-flow,wechat-email-auth-flow,auth-client-shell,auth-flow-v2-0-1}.ts`、`VERSION_HISTORY.md`。
+- **改动说明**：新增认证态 `POST /api/auth/password/change/request-code`，服务端按当前登录用户查已验证邮箱并发送 `change_password` 验证码，客户端只展示脱敏邮箱、不保存或输入真实邮箱；App 修改密码页新增 `当前密码 / 邮箱验证码` 分段模式；小程序新增 `pages/settings/change-password/index`，支持同样两种修改密码模式、二次确认发送验证码和 30 秒倒计时；账号安全页的密码卡片跳转到该页面。
+- **验证结果**：`npm run cloud:contracts:typecheck` 通过；`npm run api:typecheck` 通过；`npm run typecheck` 通过；`npm --prefix apps/wechat-miniprogram run typecheck` 通过；`npm --workspace @wardrobe/wardrobe-api run test -- tests/account-password-auth.test.ts tests/email-verification.test.ts tests/wechat-openid-auth.test.ts tests/wechat-phone-auth.test.ts tests/session.test.ts tests/registration.test.ts` 通过（34 项）；`npm run test:logic:auth-client-shell` 通过（49 项）；`npm run test:logic:auth-flow-v2-0-1` 通过（42 项）；`npm run test:logic:app-email-auth-flow` 通过；`npm run test:logic:wechat-email-auth-flow` 通过；`npm run build` 以 `2.1.11-test` 通过；`git diff --check` 通过。
+- **风险门禁**：high（密码修改、邮箱验证码、认证态接口、App 与小程序账号安全页）；未触发 subagent：用户未通知。
+- **未验证风险**：`node apps/wechat-miniprogram/scripts/wechatide-compile.mjs --refresh` 仍返回 `cant find MainWebWinId by projectpath .../apps/wechat-miniprogram`，因此小程序未完成 DevTools 编译、模拟器截图、真机预览或体验版上传；本轮未安装 Android APK、未用真实邮箱收取验证码，邮件发送仍停留在 Mock/Log Provider 阶段。
+
+## 2026-07-09 / v2.1.11-test / Codex — App 邮箱主认证与账号安全 UI
+
+- **执行 Agent**：Codex（未触发 subagent：用户未通知；本轮继续执行已批准账号体系设计）。
+- **目的**：将 App/PWA 认证界面从手机号注册主流程改为邮箱主认证，补齐邮箱验证码注册、邮箱/手机号登录、找回密码和账号安全页。
+- **版本变更**：无；当前应用版本仍为 `2.1.11-test`。本轮不打 APK。
+- **改动文件**：`src/lib/cloud-auth-api.ts`、`src/lib/auth-session-store.ts`、`src/lib/auth-form-validation.ts`、`src/components/auth/auth-provider.tsx`、`src/components/auth/auth-gate.tsx`、`src/components/auth/account-views.tsx`、`src/components/wardrobe-app.tsx`、`src/app/legal/{terms,privacy}/page.tsx`、`scripts/test-app-email-auth-flow.ts`、`scripts/test-auth-client-shell.ts`、`scripts/test-auth-flow-v2-0-1.ts`、`package.json`、`VERSION_HISTORY.md`。
+- **改动说明**：登录页改为邮箱或手机号 + 密码；注册页改为邮箱必填、密码必填、确认密码必填、手机号选填；邮箱输入框右侧提供发送验证码按钮，点击后弹二次确认，确认后显示验证码输入框并进入 30 秒倒计时，结束后显示再次发送；新增找回密码页，邮箱验证码确认后重置密码；账号安全页改为加载 `/api/auth/account/security`，统一展示邮箱、手机号登录名、微信、密码和当前设备状态；法律文案同步“邮箱主认证、手机号仅登录名且未验证”的口径。
+- **验证结果**：`npm run typecheck` 通过；`npm run test:logic:app-email-auth-flow` 通过；`npm run test:logic:auth-client-shell` 通过（49 项）；`npm run test:logic:auth-flow-v2-0-1` 通过（42 项）；`npm run build` 以 `2.1.11-test` 通过；用户可见文案扫描确认旧“手机号注册为主”口径无残留；`git diff --check` 通过。
+- **风险门禁**：high（App 登录/注册/找回密码、认证 token user shape、账号安全页和法律文案变更）；未触发 subagent：用户未通知。
+- **未验证风险**：本提交未安装 Android APK、未在真机上打开输入法验证验证码按钮位置和弹窗安全区、未连接真实邮件服务收取验证码；第一阶段仍使用后端 Mock/Log 邮件 Provider。
+
+## 2026-07-09 / v2.1.11-test / Codex — 小程序微信 OpenID 与邮箱注册登录 UI
+
+- **执行 Agent**：Codex（未触发 subagent：用户未通知；本轮继续执行已批准账号体系设计）。
+- **目的**：移除小程序 `getPhoneNumber` 微信手机号认证入口，改为三入口登录页：微信登录/注册、邮箱/手机号登录、通过邮箱注册；补齐首次微信登录后的绑定已有账号/注册新账号分流页面。
+- **版本变更**：无；当前应用版本仍为 `2.1.11-test`。本轮不打 APK，不上传小程序体验版。
+- **改动文件**：`apps/wechat-miniprogram/app.json`、`apps/wechat-miniprogram/services/auth.ts`、`apps/wechat-miniprogram/stores/session.ts`、`apps/wechat-miniprogram/typings/index.d.ts`、`apps/wechat-miniprogram/pages/login/**`、`apps/wechat-miniprogram/pages/settings/account/**`、`scripts/test-wechat-email-auth-flow.ts`、`package.json`、`VERSION_HISTORY.md`。
+- **改动说明**：登录首页首按钮改为 `微信登录/注册`，调用 `/api/auth/wechat/login`；已绑定账号直接进入衣橱，未绑定时跳转 `connect-account`，由用户选择绑定已有账号或注册新账号；第二入口为邮箱/手机号 + 密码登录；第三入口为邮箱注册。邮箱注册页和微信注册新账号页统一为邮箱必填、密码必填、确认密码必填、手机号选填，邮箱输入框右侧发送验证码，点击后弹二次确认，确认后显示验证码输入框并进入 30 秒倒计时，倒计时结束按钮变为再次发送；账号安全页统一展示邮箱、手机号登录名、微信、密码和当前设备。
+- **验证结果**：`npm run test:logic:wechat-email-auth-flow` 通过；`npm --prefix apps/wechat-miniprogram run typecheck` 通过；关键字扫描确认 `apps/wechat-miniprogram/pages/login` 和 `apps/wechat-miniprogram/services/auth.ts` 不再包含 `getPhoneNumber`、`bindgetphonenumber`、`phone-login`、`loginWithWechatPhone`、`微信认证登录`；`git diff --check` 通过。
+- **风险门禁**：high（小程序登录入口、微信首次登录分流、邮箱验证码 UI、账号安全信息展示和跨端 token 接入）；未触发 subagent：用户未通知。
+- **未验证风险**：`node scripts/wechatide-compile.mjs --refresh` 在当前 DevTools 会话返回 `cant find MainWebWinId by projectpath .../apps/wechat-miniprogram`，因此本提交未完成微信开发者工具编译、模拟器截图、真机预览或体验版上传；后续需要重新打开/导入小程序项目后再跑 DevTools 编译和交互验收。
+
+## 2026-07-09 / v2.1.11-test / Codex — 微信 OpenID 登录分流与绑定接口
+
+- **执行 Agent**：Codex（未触发 subagent：用户未通知；本轮继续执行已批准账号体系设计）。
+- **目的**：用微信 OpenID 快捷登录/注册替代小程序手机号授权主流程，后端支持首次微信登录分流为绑定已有账号或邮箱注册新账号，并确保 OpenID/UnionID 不回传客户端、不明文入库。
+- **版本变更**：无；当前应用版本仍为 `2.1.11-test`。本轮不打 APK。
+- **改动文件**：`services/wardrobe-api/src/auth/wechat-openid.ts`、`services/wardrobe-api/src/app.ts`、`services/wardrobe-api/tests/wechat-openid-auth.test.ts`、`VERSION_HISTORY.md`。
+- **改动说明**：新增 `POST /api/auth/wechat/login`，已绑定时返回统一 token，未绑定时创建 10 分钟一次性 binding ticket 并返回 `requires_account_binding`；新增 `POST /api/auth/wechat/bind-existing-account` 和 `POST /api/auth/wechat/register-with-email`；OpenID/UnionID 使用服务端 HMAC 后写入 `wechat_identities` / `wechat_binding_tickets`；旧 `/api/auth/wechat/phone-login` 仍保留兼容旧代码，但新主流程不依赖它。
+- **验证结果**：`npm --workspace @wardrobe/wardrobe-api run test -- tests/wechat-openid-auth.test.ts` 通过（3 项）；`npm run api:typecheck` 通过；`npm --workspace @wardrobe/wardrobe-api run test -- tests/account-password-auth.test.ts tests/email-verification.test.ts tests/wechat-openid-auth.test.ts tests/wechat-phone-auth.test.ts tests/session.test.ts tests/registration.test.ts` 通过（33 项）；`git diff --check` 通过。
+- **风险门禁**：high（微信登录、账号绑定、OpenID 隐私、跨端 token 和账号注册事务）；未触发 subagent：用户未通知。
+- **未验证风险**：本提交未调用真实微信 `jscode2session`、未改小程序 UI、未跑微信开发者工具编译；真实小程序分流和页面路径将在后续小程序 UI 批次验证。
+
+## 2026-07-09 / v2.1.11-test / Codex — 邮箱主认证与密码账号接口
+
+- **执行 Agent**：Codex（未触发 subagent：用户未通知；本轮继续执行已批准账号体系设计）。
+- **目的**：把邮箱作为主认证身份接入注册、登录、找回密码、修改密码和账号安全接口，同时保持旧手机号密码注册/登录兼容，支撑 App/PWA 与小程序共用 userId、token 和 workspace。
+- **版本变更**：无；当前应用版本仍为 `2.1.11-test`。本轮不打 APK。
+- **改动文件**：`services/wardrobe-api/src/auth/account-password.ts`、`services/wardrobe-api/src/auth/routes.ts`、`services/wardrobe-api/src/auth/session-routes.ts`、`services/wardrobe-api/src/auth/session.ts`、`services/wardrobe-api/src/app.ts`、`services/wardrobe-api/tests/account-password-auth.test.ts`、`VERSION_HISTORY.md`。
+- **改动说明**：`POST /api/auth/register` 支持邮箱必填注册、邮箱验证码校验和可选手机号登录名；`POST /api/auth/login` 支持新 `account` 字段按邮箱或手机号登录，旧 `phone` 字段继续兼容；新增 `/api/auth/password/reset/request`、`/api/auth/password/reset/confirm`、`/api/auth/password/change`、`/api/auth/password/change-with-email-code` 和 `GET /api/auth/account/security`；token user 快照新增 `emailMasked`、`emailVerified`、`phoneMasked`、`phoneVerified`、`displayName`，并保留旧 `maskedPhone` 兼容字段。
+- **验证结果**：`npm --workspace @wardrobe/wardrobe-api run test -- tests/account-password-auth.test.ts` 通过（4 项）；`npm run api:typecheck` 通过；`npm --workspace @wardrobe/wardrobe-api run test -- tests/registration.test.ts tests/session.test.ts tests/email-verification.test.ts` 通过（22 项）；`git diff --check` 通过。
+- **风险门禁**：high（账号认证、密码重置、session token user shape、后端接口契约和旧路径兼容）；未触发 subagent：用户未通知。
+- **未验证风险**：本提交未接微信 OpenID 绑定流程、未改 App/小程序 UI、未在真实数据库执行迁移、未跑完整 `api:test` 与 Android 真机验证；这些会在后续批次继续完成。
+
+## 2026-07-09 / v2.1.11-test / Codex — 邮箱验证码 Mock/Log Provider 与状态机
+
+- **执行 Agent**：Codex（未触发 subagent：用户未通知；本轮继续执行已批准账号体系设计）。
+- **目的**：完成第一阶段邮件服务的可测试基础：验证码生成、HMAC 存储、30 秒冷却、10 分钟有效期、错误次数限制、消费状态、Mock/Log Provider 和测试环境验证码查询接口。
+- **版本变更**：无；当前应用版本仍为 `2.1.11-test`。本轮不打 APK。
+- **改动文件**：`services/wardrobe-api/src/security/hmac.ts`、`services/wardrobe-api/src/email/types.ts`、`services/wardrobe-api/src/email/mock-sender.ts`、`services/wardrobe-api/src/email/log-sender.ts`、`services/wardrobe-api/src/auth/email-verification.ts`、`services/wardrobe-api/src/auth/email-routes.ts`、`services/wardrobe-api/src/app.ts`、`services/wardrobe-api/tests/email-verification.test.ts`、`VERSION_HISTORY.md`。
+- **改动说明**：新增 `EmailVerificationService` 和 `POST /api/auth/email/send-code`；验证码明文只交给 Mock/Log Provider 与测试/开发内存查询，不写入数据库；生产环境缺少 `AUTH_HMAC_SECRET` 时禁止使用默认 HMAC secret；新增 `GET /api/auth/email/test-code`，仅在 `NODE_ENV=test` 或 `WARDROBE_AUTH_TEST=1` 可用。
+- **验证结果**：`npm --workspace @wardrobe/wardrobe-api run test -- tests/email-verification.test.ts` 通过（6 项）；`npm run api:typecheck` 通过。
+- **风险门禁**：high（账号安全、验证码状态机、后端认证路由和测试环境调试口子）；未触发 subagent：用户未通知。
+- **未验证风险**：本提交仍未接真实邮件服务、未接注册/找回/修改密码业务接口、未部署到真实开发服务器查看日志；真实邮件 Provider 将在第二阶段替换同一接口。
+
+## 2026-07-09 / v2.1.11-test / Codex — 账号体系 schema 与共享契约落地
+
+- **执行 Agent**：Codex（未触发 subagent：用户未通知；本轮按已批准设计进入实现）。
+- **目的**：为“邮箱主认证 + 手机号登录名 + 微信 OpenID 快捷登录/注册”落地第一批基础结构，先提供数据库表、迁移和共享请求/响应契约。
+- **版本变更**：无；当前应用版本仍为 `2.1.11-test`。本轮不打 APK。
+- **改动文件**：`services/wardrobe-api/src/db/schema.ts`、`services/wardrobe-api/migrations/0014_unified_email_wechat_auth.sql`、`services/wardrobe-api/migrations/meta/_journal.json`、`packages/cloud-contracts/src/auth/contracts.ts`、`VERSION_HISTORY.md`。
+- **改动说明**：新增 `email_identities`、`email_verification_challenges`、`wechat_identities`、`wechat_binding_tickets` 表定义和 SQL 迁移；扩展共享认证契约，包含统一 token user shape、邮箱验证码、邮箱注册、邮箱/手机号密码登录、密码重置/修改、账号安全、微信 OpenID 登录分流、绑定已有账号和邮箱注册绑定微信，同时保留旧微信手机号登录类型供旧代码编译。
+- **验证结果**：`npm run cloud:contracts:typecheck` 通过；`npm run api:typecheck` 通过。
+- **风险门禁**：high（数据库 schema、PostgreSQL 迁移和跨端认证契约变更）；未触发 subagent：用户未通知。
+- **未验证风险**：本提交只提供结构和类型，不注册新接口、不改客户端调用、不运行数据库迁移实库验证；邮箱验证码状态机、密码认证、微信 OpenID 业务流和 UI 将在后续提交继续实现。
+
+## 2026-07-09 / v2.1.11-test / Codex — 统一账号与邮箱微信认证设计定稿
+
+- **执行 Agent**：Codex（未触发 subagent：本轮只整理用户已确认的开发方案）。
+- **目的**：将“邮箱主认证 + 手机号登录名 + 微信 OpenID 快捷登录/注册 + App/小程序共用 userId 与 workspace”的账号体系改造方案落成可评审设计文档，明确第一阶段使用 Mock/Log 邮件发送器和开发验证码日志，不接真实邮件服务。
+- **版本变更**：无；当前应用版本仍为 `2.1.11-test`。本轮只新增设计文档和版本记录，不改运行时代码、不打 APK。
+- **改动文件**：`docs/superpowers/specs/2026-07-09-account-auth-email-wechat-design.md`、`VERSION_HISTORY.md`。
+- **改动说明**：设计文档详细定义数据库表、后端接口、邮箱验证码状态机、微信首次登录分流、三入口小程序登录页、邮箱注册页、邮箱/手机号登录页、找回密码、修改密码、账号安全页、UI 色值/样式、错误文案、分批 commit 计划和三阶段验证矩阵。
+- **验证结果**：设计文档自检通过；`git diff --check` 通过。
+- **风险门禁**：low（设计文档与版本记录；不改业务代码、不改后端接口、不改数据库、不上传小程序、不打 Android APK）；未触发 subagent：用户未通知。
+- **未验证风险**：未生成实现计划，未改代码，未运行 typecheck/build/API/小程序编译；后续实现仍需按高风险账号体系改造执行完整后端、前端、小程序和真机验证。
+
+## 2026-07-09 / v2.1.11-test / Codex — 裁切工作台、缩略图浮层与详情滚动修复
+
+- **执行 Agent**：Codex（未触发 subagent：用户要求直接执行 1-6 代码修复）。
+- **目的**：修复单品/种草详情页无法下拖滚动、编辑页裁切预览不撑满与卡片间距不一致、重新裁切缺少自由/3:4 和左右旋转、录入裁切页按钮被底部菜单遮挡、缩略图浮层越界且箭头不准等问题。
+- **版本变更**：`package.json` / `package-lock.json` 从 `2.1.10-test` 升至 `2.1.11-test`，Android `versionCode` 由构建脚本推导为 `20111`。
+- **改动文件**：`src/components/image-crop-editor.tsx`、`src/components/garment-intake-flow.tsx`、`src/components/intake-flow-shell.tsx`、`src/components/item/edit-image-action-card.tsx`、`src/components/item-shell/item-surface-tokens.ts`、`src/components/wardrobe-app.tsx`、`src/components/wishlist-view-2.0.tsx`、`scripts/test-intake-entry-and-crop-regression.ts`、`scripts/test-intake-fullscreen-layout.ts`、`package.json`、`package-lock.json`、`VERSION_HISTORY.md`。
+- **改动说明**：详情/编辑共享壳根容器改为 `h-[100dvh]`，保证详情内部滚动区域可用；新增共享 `EditImageActionCard`，单品和种草编辑页统一为一级卡片 `--ui-radius-card` 28px、内层 3:4 二级图片区 20px、内图 12px，预览图用覆盖填满方式显示；全屏裁切器和录入内嵌裁切器支持 `自由` / `3:4`，并提供左转 90°、右转 90°、重置；录入裁切页进入沉浸模式，主区域不滚动，顺序固定为图片裁切框、比例、旋转/重置、底部 `取消` / `应用`，不再显示 `上一步` / `下一步`；缩略图浮层固定 212px 宽并根据选中缩略图和缩略图轨道动态 clamp，箭头按选中缩略图中心重新计算，按钮 `裁切/旋转`、`删除` 均 `white-space: nowrap`。
+- **色卡与 UI 规范**：本轮涉及的运行时代码使用规范色 `#355c7d`（denim 主按钮/选中态）、`#1d2228`（ink 文本/裁切底色）、`#fffffc`（surface/paper）、`#f4f5f3`（mist 二级底）、`#b97155`（clay 删除态）；一级卡片继续复用 `ui-card` / `--ui-radius-card: 28px`，二级图片区使用 20px，按钮使用 `ui-control-radius` / `--ui-radius-control: 16px`。
+- **交付产物**：根目录 `衣橱穿搭助手-v2.1.11-test.apk`，大小 9.5MB，SHA-256 `076bbb86591ecb45918c458330ea690cd6a2f0ad07dd2f83acef009c9ea2c487`；构建归档 `apk-local/app-release-ebd5198.apk`。
+- **验证结果**：`npm run typecheck` 通过；`npm run test:logic:intake-entry-crop-regression` 通过（55 项）；`npm run test:logic:intake-fullscreen-layout` 通过（32 项）；`npm run test:logic:detail-shell` 通过；`npm run test:logic:garment-intake-multi-image` 通过（69 项）；`npm run test:logic:wishlist-intake-confirm-contract` 通过；`npm run test:logic:shared-item-shells` 通过；`npm run build` 以 `2.1.11-test` 通过；`npm run android:apk` 通过；`APK_PATH="$PWD/衣橱穿搭助手-v2.1.11-test.apk" APK_EXPECTED_SIGNER_CN=fangzheng ANDROID_SERIAL=481QFGFH23AY7 RESULTS_DIR="$PWD/test-results/android-v2.1.11-test-script" npm run android:verify:full` 通过，设备 `481QFGFH23AY7` / MEIZU 21 Pro / Android 16，结果目录 `test-results/android-v2.1.11-test-script/20260709-223200/`，包名 `com.wardrobe.outfit`、`versionName=2.1.11-test`、`versionCode=20111`、签名证书 `CN=fangzheng`，三段 crash 日志为空。
+- **风险门禁**：high（裁切器、图片预览、移动端触摸/滚动、Android APK 交付）；未触发 subagent：用户未通知。
+- **未验证风险**：本轮未在生产账号里手工走相册选图到裁切页的完整业务操作，避免向线上生产数据写入测试内容；已用真实 APK 完成安装、启动、返回键、清数据重启与 crash 筛查，并用逻辑回归覆盖裁切布局、比例切换、左右旋转、缩略图浮层边界和详情壳滚动约束。
+
+## 2026-07-09 / v2.1.10-test / Codex — 重新打包最新版 Android APK
+
+- **执行 Agent**：Codex（未触发 subagent：用户只要求打包最新版 APK）。
+- **目的**：按当前本地主 App `main` 基线重新递增测试版本并生成固定签名 Android APK，提供可安装产物。
+- **版本变更**：`package.json` / `package-lock.json` 从 `2.1.9-test` 升至 `2.1.10-test`，Android `versionCode` 由构建脚本推导为 `20110`。
+- **改动文件**：`package.json`、`package-lock.json`、`VERSION_HISTORY.md`。
+- **交付产物**：根目录 `衣橱穿搭助手-v2.1.10-test.apk`，大小 9.5MB，SHA-256 `2e22d09274d1f827a04adbc9ff8e516eadbc9bd048bf0b8f1ec015089071cceb`；构建归档 `apk-local/app-release-f98bd1b.apk`。
+- **验证结果**：`npm run typecheck` 通过；`npm run android:apk` 通过；`aapt dump badging` 确认包名 `com.wardrobe.outfit`、`versionName=2.1.10-test`、`versionCode=20110`；`apksigner verify --print-certs` 确认证书 `CN=fangzheng`；`APK_PATH="$PWD/衣橱穿搭助手-v2.1.10-test.apk" APK_EXPECTED_SIGNER_CN=fangzheng ANDROID_SERIAL=emulator-5554 RESULTS_DIR="$PWD/test-results/android-v2.1.10-test-script" npm run android:verify:full` 通过，设备 `emulator-5554` / Android 15 / `sdk_gphone64_arm64`，结果目录 `test-results/android-v2.1.10-test-script/20260709-214235/`，三段 crash 日志为空。
+- **Git 基线说明**：本地 `HEAD` 与本地记录的 `origin/main` 均为 `f98bd1b`；本轮尝试 `git fetch origin` 时 GitHub 连接返回 `LibreSSL SSL_connect: SSL_ERROR_SYSCALL`，因此未刷新远端最新引用。
+- **风险门禁**：high（Android APK 交付、版本号、签名与模拟器安装启动验证）；未触发 subagent：用户未通知。
+- **未验证风险**：未安装到已连接真机，避免清理或覆盖真机登录态和本机 MiniMax Key；本轮未跑真实业务 E2E Smoke/Critical/Full，也未验证线上生产账号登录和 live MiniMax 图片调用。
+
+## 2026-07-09 / v2.1.9-test / Codex — AGENTS 补充真实 APK E2E 链路说明
+
+- **执行 Agent**：Codex（未触发 subagent：用户要求直接补文档）。
+- **目的**：把新增的真实 APK Smoke/Critical/Full/AI live 业务测试链路写入 `AGENTS.md`，避免后续 agent 把 `android:verify:full` 误认为完整业务链路测试。
+- **版本变更**：无；当前应用版本仍为 `2.1.9-test`。本轮只改项目规则文档，不改运行时代码、不重新打包 APK。
+- **改动文件**：`AGENTS.md`、`VERSION_HISTORY.md`。
+- **改动说明**：在 Android 测试流程后新增“真实 APK E2E 业务链路脚本”小节，说明 `android:verify:full` 与 `android:e2e:*` 的边界，列出 Smoke、Critical、Full、AI live 的覆盖链路和必要环境变量，并明确 Full 网络失败重试依赖测试 API 的 `/api/test/faults` 与 `E2E_FAULT_TOKEN`，相册/拍照系统权限仍留给后续 Appium 或 ADB 辅助。
+- **验证结果**：`git diff --check` 通过。
+- **风险门禁**：low（文档规则更新，不改业务代码、不改测试脚本、不打 APK）；未触发 subagent：用户未通知。
+- **未验证风险**：未重新运行真实 APK E2E；本轮只固化已新增脚本的使用规则。
+
+## 2026-07-09 / v2.1.9-test / Codex — 真实 APK E2E Full 深链路补齐
+
+- **执行 Agent**：Codex（未触发 subagent：本轮用户要求直接开始写 Full 链路；此前 Smoke/Critical 子任务已完成并由主 agent 整合）。
+- **目的**：在既有真实 APK Smoke/Critical runner 基础上补齐 Full 业务深链路，覆盖图片资产、带图种草转换、级联删除、服务端故障重试、无 MiniMax Key 兜底入口和 Android 原生边界。
+- **版本变更**：无；当前应用版本仍为 `2.1.9-test`。本轮只改测试脚本和测试专用服务端 fault injection，不改 APK 内正式业务代码、不重新打包 APK。
+- **改动文件**：`scripts/android-e2e/run-android-e2e.ts`、`scripts/android-e2e/suites/{types,helpers,full,ai-live}.ts`、`services/wardrobe-api/src/{app,test/fault-injection}.ts`、`services/wardrobe-api/tests/fault-injection.test.ts`、`package.json`、`tests/manifest/fragments/e2e.ts`、`VERSION_HISTORY.md`。
+- **改动说明**：`android:e2e:full` 现在串行执行 Smoke、Critical 和新增 Full cases；Full 新增真实图片临时资产上传、单品首页图片 object-fit 与重启恢复、带图种草转衣橱后资产跟随、撤销购买回到种草并删除对应衣橱单品、删除被套装/计划/已买种草/穿着事件引用的单品后服务端引用清理、服务端 503 保存失败停留编辑页且恢复后重试成功、固定 `clientMutationId` 幂等创建、无 MiniMax Key 录入入口兜底、Android 返回键/清数据重登/ADB 竖屏截图；新增 `android:e2e:ai-live` 手动套件，必须显式开关和 MiniMax Key 才会调用 live MiniMax；服务端新增 `/api/test/faults` 测试专用故障注入，受 `E2E_FAULT_TOKEN` 和测试环境开关双门禁保护。
+- **验证结果**：`npm run typecheck` 通过；`npm run api:typecheck` 通过；`npm --workspace @wardrobe/wardrobe-api run test -- tests/fault-injection.test.ts` 通过；`npm run test:manifest` 通过，并按预期提示 Android/E2E manual blocking 项无法进入纯自动 gate；`git diff --check` 通过。
+- **风险门禁**：high（真实 APK 自动化、图片资产上传、服务端故障注入、业务删除一致性和 Android 原生边界脚本）；未触发 subagent：用户未通知本轮 Full 继续派发。
+- **未验证风险**：本轮未实际连接测试 API 跑 `npm run android:e2e:full`，因此新增 UI 定位和真实服务端一致性仍需首次真机/模拟器实跑校准；Full 的级联删除断言是严格业务验收，若当前服务端删除事务仍未清理套装/计划/已买种草引用，首次实跑会暴露失败；相册/拍照系统权限和原生 Photo Picker 暂未纳入第一版自动化，后续适合用 Appium 或 ADB 辅助补齐；AI no-key case 首版覆盖入口不崩和隐藏 input 兜底路径，未完整控制系统相册选择；AI live 仅在显式 `ALLOW_LIVE_AI_TEST=true E2E_AI_MODE=live ANDROID_E2E_AI_LIVE=1 MINIMAX_API_KEY=...` 下执行。
+
+## 2026-07-09 / v2.1.9-test / Codex — 真实 APK E2E Smoke/Critical 脚本接入
+
+- **执行 Agent**：Codex 主 agent 负责派发、整合、校验和提交；Smoke 子任务由 Singer 完成并提交 `01be458`；Critical 子任务由 Zeno 完成后由主 agent 整合进统一 runner。
+- **目的**：把当前 E2E 的核心阻塞链路从浏览器 Dev Server 脚本替换为真实 APK 自动化脚本，采用 ADB 安装/启动/清数据/logcat + Android WebView CDP + Playwright 操作页面，并覆盖用户指定的 Smoke 与 Critical 业务链路。
+- **版本变更**：无；当前应用版本仍为 `2.1.9-test`。本轮只改测试脚本和测试清单，不改 APK 内运行时代码、不重新打包 APK。
+- **改动文件**：`package.json`、`scripts/test/run-suite.ts`、`tests/manifest/fragments/e2e.ts`、`scripts/android-e2e/run-android-e2e.ts`、`scripts/android-e2e/suites/{types,smoke,critical}.ts`、`VERSION_HISTORY.md`。
+- **改动说明**：新增 Android E2E 主 runner，执行 APK 包名、版本、签名、安装、清数据、启动、前台窗口、logcat crash 和 WebView CDP 连接检查；新增 Smoke suite，覆盖安装启动、注册/退出/重登、默认衣橱单例、四个主 Tab 与全局新建入口；新增 Critical suite，覆盖单品创建/详情/编辑/删除，种草转衣橱与撤销购买级联删除，套装创建/编辑/计划/已穿/取消已穿一致性，账号隔离，以及退出/重登/force-stop 后服务器恢复；`test:e2e*` 入口改为真实 APK runner，旧浏览器入口保留为 `test:web:e2e*`；测试清单用 `e2e:android-smoke`、`e2e:android-critical`、`e2e:android-full` 替代原核心浏览器 E2E 条目。
+- **验证结果**：`npm run typecheck` 通过；`npm run test:manifest` 通过，并按预期提示 Android/E2E manual blocking 项无法进入纯自动 gate。真实 APK Smoke/Critical 未在本轮执行，runner 已强制要求 `ANDROID_E2E_API_BASE_URL` 指向测试 API，且默认拒绝生产 API，避免误向线上生产账号/数据写入测试数据。
+- **风险门禁**：high（真实 Android APK 自动化、ADB 安装启动、WebView CDP、账号注册和服务端写入/删除全链路测试脚本）；已按用户明确要求派出 subagent，主 agent 完成统一整合。
+- **未验证风险**：本轮未实际连接测试 API 跑 `npm run android:e2e:full`，因此 UI 定位、WebView CDP 重连、服务端测试数据契约仍需首次真机/模拟器实跑校准；未重新构建 APK，后续执行脚本需确保 `APK_PATH` 指向与当前 `package.json` 版本一致且签名为 `CN=fangzheng` 的测试 APK，并且 APK 构建时注入的业务 API 地址与 `ANDROID_E2E_API_BASE_URL` 指向同一个测试后端。
 
 ## 2026-07-09 / v2.1.9-test / Codex — AI 识别 10 并发与种草批量保存
 
@@ -71,9 +282,9 @@
 - **版本变更**：`package.json` / `package-lock.json` 从 `2.1.8-test` 升至 `2.1.9-test`，Android `versionCode` 由构建脚本推导为 `20109`。
 - **改动文件**：`packages/cloud-contracts/src/workspace/contracts.ts`、`services/wardrobe-api/src/ai/{routes,minimax-intake-service}.ts`、`services/wardrobe-api/src/workspace/routes.ts`、`services/wardrobe-api/tests/{ai-intake,workspace}.test.ts`、`src/lib/online/{online-ai-intake-client,online-write-repository}.ts`、`src/lib/repository/wardrobe-repository.ts`、`src/components/{garment-intake-flow,wardrobe-app,wishlist-view-2.0}.tsx`、`scripts/test-{ai-intake-live-contract,garment-intake-multi-image,online-write-repository,wishlist-intake-confirm-contract}.ts`、`package.json`、`package-lock.json`、`VERSION_HISTORY.md`。
 - **改动说明**：新增 `AiGarmentRecognitionBatch*` 共享契约和 `/api/workspace/ai/intake/garment-recognition/batch` 后端路由，路由沿用 8MB `bodyLimit`，服务端内部以 10 并发复用现有单张 MiniMax 识别；App 端新增批量识别客户端，按最多 10 张且 JSON body 不超过 8MB 自动拆批，超限单张转为该图失败结果；`GarmentIntakeFlow` 新增 `onProcessImages` 批量入口，衣橱与种草首次识别使用批量，确认页重新识别继续单张；种草录入保存新增 `wishlist/batch` 与 `createWishlistItemsBatch`，复用临时资产上传和服务端读回。
-- **验证结果**：`npm run cloud:contracts:typecheck` 通过；`npm --workspace @wardrobe/wardrobe-api run test -- tests/ai-intake.test.ts tests/workspace.test.ts` 通过；`npm run test:logic:garment-intake-multi-image` 通过；`npm run test:logic:online-writes` 通过；`npm run api:typecheck` 通过；`npm run test:logic:ai-intake-live-contract` 通过；`npm run test:logic:wishlist-intake-confirm-contract` 通过；`npm run api:test` 通过（10 files / 67 tests）；`npm run build` 以 `2.1.9-test` 通过；`npm run typecheck` 以 `2.1.9-test` 通过。期间一次并行 `typecheck` 抢在 `build` 重建 `.next/types` 前运行而报生成文件缺失，构建完成后单独重跑已通过。
+- **验证结果**：`npm run cloud:contracts:typecheck` 通过；`npm --workspace @wardrobe/wardrobe-api run test -- tests/ai-intake.test.ts tests/workspace.test.ts` 通过；`npm run test:logic:garment-intake-multi-image` 通过；`npm run test:logic:online-writes` 通过；`npm run api:typecheck` 通过；`npm run test:logic:ai-intake-live-contract` 通过；`npm run test:logic:wishlist-intake-confirm-contract` 通过；`npm run api:test` 通过（10 files / 67 tests）；`npm run build` 以 `2.1.9-test` 通过；`npm run typecheck` 以 `2.1.9-test` 通过；`npm run android:apk` 通过，根目录 APK 为 `衣橱穿搭助手-v2.1.9-test.apk`，大小 9.5MB，SHA-256 `345f7ff27b04c2f531b2d471f9051e3b4e2761efcbee0d8f41fa805aa67398ec`，包名 `com.wardrobe.outfit`，`versionName=2.1.9-test`，`versionCode=20109`，签名证书 `CN=fangzheng`；`APK_PATH="$PWD/衣橱穿搭助手-v2.1.9-test.apk" APK_EXPECTED_SIGNER_CN=fangzheng ANDROID_SERIAL=emulator-5554 RESULTS_DIR="$PWD/test-results/android-v2.1.9-test-script" npm run android:verify:full` 通过，设备 `emulator-5554` / Android 15 / `sdk_gphone64_arm64`，结果目录 `test-results/android-v2.1.9-test-script/20260709-155848/`，前台窗口为 `com.wardrobe.outfit/.MainActivity`，三段 crash 日志为空，`portrait.png` 覆盖 Android 返回键退出确认弹窗。期间一次并行 `typecheck` 抢在 `build` 重建 `.next/types` 前运行而报生成文件缺失，构建完成后单独重跑已通过。
 - **风险门禁**：high（后端 AI 代理、MiniMax 图片请求、App 批量识别、种草图片保存和服务端批量写入）；未触发 subagent：用户未通知。
-- **未验证风险**：本轮未打 Android APK、未做模拟器/真机安装验证、未部署线上服务；新的批量路由未用真实 MiniMax Key 做 live 图片调用，真实并发容量依据本轮修改前在生产服务器容器内跑过的 MiniMax 服务实例并发测试结果。
+- **未验证风险**：本轮未部署线上服务、未做真机安装验证；新的批量路由未用真实 MiniMax Key 做 live 图片调用，真实并发容量依据本轮修改前在生产服务器容器内跑过的 MiniMax 服务实例并发测试结果。
 
 ## 2026-07-09 / v2.1.8-test / Codex — GitHub Actions 文档提交降噪
 
@@ -4390,3 +4601,13 @@
 - **风险门禁**：**high**（Android 原生网络与线上图片主链路）。
 - **未触发 subagent**：用户未通知。
 - **待完成验证**：提交后重建固定签名 APK，在 Android 35 模拟器重新登录同一线上账号并确认原图显示、重装后服务器恢复及无致命 logcat。
+## 2026-07-10 / v2.1.11-test / Codex — `main` 与小程序基线统一领域源集成
+
+- **执行 Agent**：Codex（未触发 subagent：用户未要求委派；本轮由主 agent 完成分支核对、冲突解析、验证和提交）。
+- **目的**：将 `codex/shared-domain-catalog` 快进合入 `main`，再把更新后的 `main` 合并到本地小程序基线 `wechat/miniprogram@17212f3a`，保留小程序最新多图录入、共享详情/编辑壳和真机修复，同时消除小程序平行领域字典。
+- **版本变更**：无；根应用版本保持 `2.1.11-test`，小程序包版本保持 `0.1.0`。本轮不打 APK、不上传体验版、不部署生产服务。
+- **改动文件**：合并 `main` 的账号认证、共享目录、云契约、服务端归一化和小程序生成目录相关文件；冲突收口集中在 `apps/wechat-miniprogram/pages/{intake/review,wardrobe/index,wishlist/edit}/**`、`apps/wechat-miniprogram/services/{workspace,category-catalog}.ts`、`packages/domain-catalog/src/categories.ts`、`scripts/{generate-miniprogram-catalogs.mjs,test-miniprogram-catalog-consistency.ts}`、`VERSION_HISTORY.md`。
+- **改动说明**：保留小程序批量图片识别、逐件确认和批量保存链路；分类、二级分类、颜色、季节、风格、单品状态和种草状态统一消费 `generated/catalogs.ts`；将旧分类兼容映射提升到 `packages/domain-catalog` 并生成 `MINI_LEGACY_CATEGORY_MAP`；`services/category-catalog.ts` 改为只消费生成目录的兼容适配层；衣物/种草编辑页删除本地季节、风格和状态数组；防漂移测试扩大到编辑页和兼容层。
+- **验证结果**：`npm run catalog:miniprogram:check`、`npm run test:logic:{domain-catalog,miniprogram-catalog,catalog,color-catalog,intake,wishlist-flow,app-email-auth-flow,wechat-email-auth-flow}`、`npm run cloud:contracts:typecheck`、`npm run api:typecheck`、`npm run typecheck`、`npm --prefix apps/wechat-miniprogram run typecheck` 全部通过；`npm run api:test` 通过（15 files / 85 tests）；`npm run build` 以 `2.1.11-test` 通过。微信开发者工具 skill `v0.2.2` 登录与版本检查通过，集成项目窗口打开、`simulator_refresh` 成功；录入确认、单品编辑、种草编辑、登录、邮箱注册、修改密码共 6 个 WXML 与 6 个 WXSS 单文件编译通过；模拟器实际打开 `pages/login/index`，console 错误关键字扫描无命中；`git diff --check` 与 staged diff 检查通过。
+- **风险门禁**：high（跨 App、小程序、共享契约、服务端写入归一化、账号认证和领域目录生成链的分支集成）；未触发 subagent：用户未要求。
+- **未验证风险**：未使用真实账号点击登录/注册/保存，未执行真实图片 MiniMax 调用、真机预览、体验版上传、生产部署或真实数据库写入；模拟器刷新只证明项目运行态可刷新，TypeScript 由小程序 typecheck 覆盖，页面模板和样式由单文件编译覆盖。

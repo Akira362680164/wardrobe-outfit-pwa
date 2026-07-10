@@ -10,15 +10,9 @@
  */
 
 import type { ReactNode } from "react";
-import type { WishlistStatus, WishlistAssessment } from "@/lib/types";
+import { WISHLIST_STATUS_LABELS, type WishlistStatus, type WishlistAssessment } from "@/lib/types";
 import { ItemRow } from "@/components/item/row";
 import { ItemField } from "@/components/item/field";
-
-const WISHLIST_STATUS_LABELS: Record<WishlistStatus, string> = {
-  interested: "感兴趣",
-  rejected: "不感兴趣",
-  archived: "归档",
-};
 
 const WISHLIST_STATUS_OPTIONS: WishlistStatus[] = ["interested", "rejected", "archived"];
 

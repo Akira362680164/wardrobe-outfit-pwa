@@ -1,6 +1,9 @@
 export interface SessionUser {
   id: string;
+  emailMasked?: string;
+  emailVerified?: boolean;
   phoneMasked?: string;
+  phoneVerified?: boolean;
   displayName?: string;
   avatarUrl?: string;
 }

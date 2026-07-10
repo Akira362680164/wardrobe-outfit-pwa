@@ -85,6 +85,22 @@ export const phoneIdentities = pgTable(
   }),
 );
 
+export const emailIdentities = pgTable(
+  "email_identities",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: uuid("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+    emailNormalized: text("email_normalized").notNull(),
+    emailMasked: text("email_masked").notNull(),
+    verifiedAt: timestamp("verified_at", { withTimezone: true }),
+    ...timestamps,
+  },
+  (table) => ({
+    emailUnique: uniqueIndex("email_identities_email_normalized_unique").on(table.emailNormalized),
+    userUnique: uniqueIndex("email_identities_user_id_unique").on(table.userId),
+  }),
+);
+
 export const passwordCredentials = pgTable(
   "password_credentials",
   {
@@ -97,6 +113,27 @@ export const passwordCredentials = pgTable(
   },
   (table) => ({
     userUnique: uniqueIndex("password_credentials_user_id_unique").on(table.userId),
+  }),
+);
+
+export const emailVerificationChallenges = pgTable(
+  "email_verification_challenges",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    emailNormalized: text("email_normalized").notNull(),
+    codeHash: text("code_hash").notNull(),
+    purpose: text("purpose").notNull(),
+    userId: uuid("user_id").references(() => users.id, { onDelete: "cascade" }),
+    bindingTicketId: uuid("binding_ticket_id"),
+    attempts: integer("attempts").notNull().default(0),
+    expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+    consumedAt: timestamp("consumed_at", { withTimezone: true }),
+    createdIpHash: text("created_ip_hash"),
+    ...timestamps,
+  },
+  (table) => ({
+    emailPurposeIdx: index("email_verification_challenges_email_purpose_idx").on(table.emailNormalized, table.purpose),
+    expiresAtIdx: index("email_verification_challenges_expires_at_idx").on(table.expiresAt),
   }),
 );
 
@@ -199,6 +236,40 @@ export const wechatAccounts = pgTable(
     appOpenidUnique: uniqueIndex("wechat_accounts_app_openid_unique").on(table.appId, table.openid),
     userIdx: index("wechat_accounts_user_id_idx").on(table.userId),
     phoneHashIdx: index("wechat_accounts_phone_hash_idx").on(table.phoneHash),
+  }),
+);
+
+export const wechatIdentities = pgTable(
+  "wechat_identities",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: uuid("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+    appId: text("app_id").notNull(),
+    openidHash: text("openid_hash").notNull(),
+    unionidHash: text("unionid_hash"),
+    ...timestamps,
+  },
+  (table) => ({
+    appOpenidUnique: uniqueIndex("wechat_identities_app_openid_unique").on(table.appId, table.openidHash),
+    userAppUnique: uniqueIndex("wechat_identities_user_app_unique").on(table.userId, table.appId),
+  }),
+);
+
+export const wechatBindingTickets = pgTable(
+  "wechat_binding_tickets",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    ticketHash: text("ticket_hash").notNull(),
+    appId: text("app_id").notNull(),
+    openidHash: text("openid_hash").notNull(),
+    unionidHash: text("unionid_hash"),
+    expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+    consumedAt: timestamp("consumed_at", { withTimezone: true }),
+    ...timestamps,
+  },
+  (table) => ({
+    ticketHashUnique: uniqueIndex("wechat_binding_tickets_ticket_hash_unique").on(table.ticketHash),
+    expiresAtIdx: index("wechat_binding_tickets_expires_at_idx").on(table.expiresAt),
   }),
 );
 

@@ -4,7 +4,7 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 
 const root = join(__dirname, "..");
-const catalog = readFileSync(join(root, "src/lib/garment-category-catalog.ts"), "utf8");
+const catalog = readFileSync(join(root, "packages/domain-catalog/src/categories.ts"), "utf8");
 const deviceMinimax = readFileSync(join(root, "src/lib/device-minimax.ts"), "utf8");
 const retryLib = readFileSync(join(root, "src/lib/intake-recognition-retry.ts"), "utf8");
 

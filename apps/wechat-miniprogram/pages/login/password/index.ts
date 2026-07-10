@@ -2,8 +2,10 @@ import { HttpError } from "../../../services/http";
 import { loginWithPassword } from "../../../services/auth";
 
 const LOGIN_ERROR_MESSAGES: Record<string, string> = {
-  invalid_credentials: "手机号或密码不正确。",
+  invalid_credentials: "账号或密码不正确。",
+  invalid_account_format: "请输入正确的邮箱或手机号。",
   invalid_phone: "手机号格式不正确。",
+  email_unverified: "请先验证邮箱后继续使用。",
   missing_api_base_url: "请先配置后端 API 域名。",
   network: "网络连接异常，请稍后重试。",
   rate_limited: "登录尝试过多，请稍后再试。",
@@ -14,16 +16,16 @@ Page({
   data: {
     submitting: false,
     errorMessage: "",
-    phone: "",
+    account: "",
     password: "",
   },
 
   onLoad() {
-    wx.setNavigationBarTitle({ title: "账号密码登录" });
+    wx.setNavigationBarTitle({ title: "邮箱/手机号登录" });
   },
 
-  handlePhoneInput(event: WechatMiniprogram.InputEvent) {
-    this.setData({ phone: event.detail.value });
+  handleAccountInput(event: WechatMiniprogram.InputEvent) {
+    this.setData({ account: event.detail.value });
   },
 
   handlePasswordInput(event: WechatMiniprogram.InputEvent) {
@@ -32,22 +34,30 @@ Page({
 
   async loginByPassword(this: any) {
     if (this.data.submitting) return;
-    const phone = this.data.phone.trim();
+    const account = this.data.account.trim();
     const password = this.data.password;
-    if (!phone || !password) {
-      this.setData({ errorMessage: "请填写手机号和密码。" });
+    if (!account || !password) {
+      this.setData({ errorMessage: "请填写邮箱/手机号和密码。" });
       return;
     }
 
     this.setData({ submitting: true, errorMessage: "" });
     try {
-      await loginWithPassword(phone, password);
+      await loginWithPassword(account, password);
       wx.switchTab({ url: "/pages/wardrobe/index/index" });
     } catch (error) {
       this.setData({ errorMessage: loginErrorMessage(error) });
     } finally {
       this.setData({ submitting: false });
     }
+  },
+
+  openForgotPassword() {
+    wx.navigateTo({ url: "/pages/login/forgot-password/index" });
+  },
+
+  openEmailRegister() {
+    wx.navigateTo({ url: "/pages/login/register-email/index" });
   },
 
   goBack() {

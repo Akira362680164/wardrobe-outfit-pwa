@@ -1,5 +1,5 @@
 import { aiEnhance, hasMiniMaxKey } from "../../../services/ai";
-import { getCategoryLabel } from "../../../services/category-catalog";
+import { MINI_CATEGORY_LABELS } from "../../../generated/catalogs";
 import { fetchClosetLocations, fetchGarments, fetchOutfits, getWorkspaceReadState, type MiniClosetLocation, type MiniGarment } from "../../../services/workspace";
 
 type CategoryChip = {
@@ -14,7 +14,6 @@ type LocationOption = {
   note: string;
   count: number;
 };
-
 Page({
   data: {
     loading: false,
@@ -253,7 +252,7 @@ function buildCategoryChips(garments: MiniGarment[]): CategoryChip[] {
   return Array.from(counts.entries()).map(([key, count]) => ({
     key,
     count,
-    label: getCategoryLabel(key) || garments.find((garment) => garment.category === key)?.categoryLabel || "未分类",
+    label: MINI_CATEGORY_LABELS[key] ?? garments.find((garment) => garment.category === key)?.categoryLabel ?? key,
   }));
 }
 

@@ -1,4 +1,12 @@
 import { getSession, isLoggedIn } from "../stores/session";
+import {
+  MINI_COLOR_CATALOG,
+  MINI_COLOR_SWATCHES,
+  MINI_GARMENT_STATUS_LABELS,
+  MINI_SEASON_LABELS,
+  MINI_STYLE_LABELS,
+  MINI_WISHLIST_STATUS_LABELS,
+} from "../generated/catalogs";
 import { downloadAssetImage, type AssetMutation, type AssetRef } from "./assets";
 import { getCategoryLabel, getSubcategoryLabel, normalizeCategoryId } from "./category-catalog";
 import { request } from "./http";
@@ -313,24 +321,6 @@ type WorkspaceCommandResponse = {
   requestId?: string;
 };
 
-const SEASON_LABELS: Record<string, string> = {
-  spring: "春",
-  summer: "夏",
-  autumn: "秋",
-  winter: "冬",
-  all: "四季",
-};
-
-const STYLE_LABELS: Record<string, string> = {
-  casual: "休闲",
-  sweet: "甜美",
-  elegant: "优雅",
-  commute: "通勤",
-  outdoor: "户外",
-  dinner: "吃饭",
-  vacation: "旅行",
-};
-
 const FIT_GENDER_LABELS: Record<string, string> = {
   menswear: "男装",
   womenswear: "女装",
@@ -344,40 +334,11 @@ const COLOR_MODE_LABELS: Record<string, string> = {
   multicolor: "拼色",
 };
 
-export const WARDROBE_COLOR_CATALOG = [
-  { name: "黑", bg: "#1D2228" },
-  { name: "白", bg: "#F8FAFC", border: "rgba(29,34,40,0.26)" },
-  { name: "灰", bg: "#9CA3AF" },
-  { name: "米白", bg: "#F3EEE3", border: "rgba(29,34,40,0.18)" },
-  { name: "米", bg: "#E6D5B8", border: "rgba(29,34,40,0.16)" },
-  { name: "卡其", bg: "#B7A477" },
-  { name: "棕", bg: "#87583E" },
-  { name: "蓝", bg: "#355C7D" },
-  { name: "牛仔蓝", bg: "#3F6F9F" },
-  { name: "绿", bg: "#5F7058" },
-  { name: "红", bg: "#B84A45" },
-  { name: "粉", bg: "#E8A7B8" },
-  { name: "深灰", bg: "#4B5563" },
-  { name: "杏", bg: "#E6C5A5", border: "rgba(29,34,40,0.14)" },
-  { name: "驼", bg: "#B8845F" },
-  { name: "咖啡", bg: "#5F4032" },
-  { name: "酒红", bg: "#7B2E3A" },
-  { name: "橙", bg: "#D9823B" },
-  { name: "黄", bg: "#E3B64B", border: "rgba(29,34,40,0.12)" },
-  { name: "天蓝", bg: "#83B6D9" },
-  { name: "藏青", bg: "#243B5A" },
-  { name: "橄榄绿", bg: "#777B48" },
-  { name: "墨绿", bg: "#315B4B" },
-  { name: "紫", bg: "#8C4A86" },
-  { name: "金", bg: "#C6A15B", border: "rgba(29,34,40,0.12)" },
-  { name: "银", bg: "#B8C0C8", border: "rgba(29,34,40,0.16)" },
-] as const;
-
-const COLOR_SWATCHES: Record<string, { bg: string; border?: string }> = WARDROBE_COLOR_CATALOG.reduce((result, item) => {
-  result[item.name] = { bg: item.bg, border: "border" in item ? item.border : undefined };
-  return result;
-}, {} as Record<string, { bg: string; border?: string }>);
-
+export const WARDROBE_COLOR_CATALOG = MINI_COLOR_CATALOG.map((item) => ({
+  name: item.value,
+  bg: item.swatch,
+  ...("border" in item && item.border ? { border: item.border } : {}),
+}));
 export function getWorkspaceReadState(): WorkspaceReadState {
   if (!isLoggedIn()) return "logged_out";
   if (!getApiBaseUrl()) return "api_not_configured";
@@ -854,12 +815,12 @@ async function toMiniGarment(entity: WorkspaceEntity): Promise<MiniGarment> {
     cardColors: colorNames.map(toCardColor),
     seasonsRaw: payload.seasons,
     seasons,
-    seasonLabels: seasons.map((season) => SEASON_LABELS[season] ?? season),
+    seasonLabels: seasons.map((season) => MINI_SEASON_LABELS[season] ?? season),
     wearSummary: formatWearSummary(payload.wornDates),
     seasonText: formatSeasons(payload.seasons),
     stylesRaw: payload.styles,
     styles,
-    styleLabels: styles.map((style) => STYLE_LABELS[style] ?? style),
+    styleLabels: styles.map((style) => MINI_STYLE_LABELS[style] ?? style),
     temperatureRangeRaw: payload.temperatureRange,
     temperatureRange,
     formality: safeNumber(payload.formality),
@@ -926,11 +887,11 @@ async function toMiniWishlistItem(entity: WorkspaceEntity): Promise<MiniWishlist
     cardColors: colorNames.map(toCardColor),
     seasonsRaw: payload.seasons,
     seasons,
-    seasonLabels: seasons.map((season) => SEASON_LABELS[season] ?? season),
+    seasonLabels: seasons.map((season) => MINI_SEASON_LABELS[season] ?? season),
     seasonText: formatSeasons(payload.seasons),
     stylesRaw: payload.styles,
     styles,
-    styleLabels: styles.map((style) => STYLE_LABELS[style] ?? style),
+    styleLabels: styles.map((style) => MINI_STYLE_LABELS[style] ?? style),
     temperatureRangeRaw: payload.temperatureRange,
     temperatureRange,
     formality: safeNumber(payload.formality),
@@ -1033,7 +994,7 @@ function parseColorParts(value: unknown): { mode: string; primary: string[]; acc
 
 function formatSeasons(value: unknown): string {
   if (!Array.isArray(value)) return "未标注";
-  return value.filter(isNonEmptyString).map((season) => SEASON_LABELS[season] ?? season).slice(0, 4).join(" / ") || "未标注";
+  return value.filter(isNonEmptyString).map((season) => MINI_SEASON_LABELS[season] ?? season).slice(0, 4).join(" / ") || "未标注";
 }
 
 function isNonEmptyString(value: unknown): value is string {
@@ -1052,7 +1013,7 @@ function colorList(value: unknown): string[] {
 
 function toCardColor(name: string): { name: string; swatch: string; needsBorder: boolean } {
   const normalized = name.endsWith("色") ? name.slice(0, -1) : name;
-  const swatch = COLOR_SWATCHES[name] ?? COLOR_SWATCHES[normalized];
+  const swatch = MINI_COLOR_SWATCHES[name] ?? MINI_COLOR_SWATCHES[normalized];
   return {
     name,
     swatch: swatch?.bg ?? "#9CA3AF",
@@ -1070,10 +1031,8 @@ function formatWearSummary(value: unknown): string {
 }
 
 function garmentStatusText(value: unknown): string {
-  if (value === "inactive") return "暂不穿";
-  if (value === "archived") return "已归档";
-  if (value === "laundry") return "清洗中";
-  return "可穿";
+  const status = value === "inactive" ? "archived" : typeof value === "string" ? value : "active";
+  return MINI_GARMENT_STATUS_LABELS[status] ?? MINI_GARMENT_STATUS_LABELS.active ?? status;
 }
 
 function locationText(value: unknown): string {
@@ -1112,10 +1071,8 @@ function fitText(payload: Record<string, unknown>): string {
 
 function wishlistStatusText(value: unknown): string {
   if (value && typeof value === "object") return wishlistStatusText(wishlistStatus(value as Record<string, unknown>));
-  if (value === "purchased") return "已购买";
-  if (value === "rejected") return "已放弃";
-  if (value === "archived") return "已归档";
-  return "想买";
+  const status = typeof value === "string" ? value : "interested";
+  return MINI_WISHLIST_STATUS_LABELS[status] ?? MINI_WISHLIST_STATUS_LABELS.interested ?? status;
 }
 
 function wishlistStatus(payload: Record<string, unknown>): "interested" | "purchased" | "rejected" | "archived" {

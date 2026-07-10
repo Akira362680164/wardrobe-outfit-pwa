@@ -6,10 +6,13 @@
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "scripts": {
+    "prebuild": "npm --workspace @wardrobe/domain-catalog run build",
     "typecheck": "tsc --noEmit -p tsconfig.json",
+    "pretypecheck": "npm --workspace @wardrobe/domain-catalog run build",
     "build": "tsc -p tsconfig.json"
   },
   "dependencies": {
+    "@wardrobe/domain-catalog": "file:../domain-catalog",
     "zod": "^3.25.76"
   },
   "devDependencies": {

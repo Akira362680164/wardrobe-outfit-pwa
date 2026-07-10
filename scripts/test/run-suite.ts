@@ -46,10 +46,13 @@ async function main() {
 
   // E2E layer: delegate to Playwright runner
   if (layer === 'e2e') {
+    const androidE2e = path.join(process.cwd(), 'scripts', 'android-e2e', 'run-android-e2e.ts');
     const e2eScript = path.join(process.cwd(), 'scripts', 'run-e2e-local.sh');
-    const tagArg = tag ? `--grep @${tag}` : '';
+    const command = !tag || tag === 'smoke' || tag === 'critical' || tag === 'full'
+      ? `npx tsx "${androidE2e}" --suite ${tag || 'full'}`
+      : `bash "${e2eScript}" --grep @${tag}`;
     try {
-      execSync(`bash "${e2eScript}" ${tagArg}`, { stdio: 'inherit', timeout: 300000 });
+      execSync(command, { stdio: 'inherit', timeout: 600000 });
       const output: RunResultJson = {
         testId: `e2e:${tag || 'all'}`,
         layer, status: 'PASSED', startedAt: new Date().toISOString(),

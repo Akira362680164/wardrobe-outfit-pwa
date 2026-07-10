@@ -17,7 +17,6 @@ import {
   ChevronLeft,
   ChevronRight,
   ChevronUp,
-  Crop,
   Download,
   Eye,
   EyeOff,
@@ -76,11 +75,13 @@ import { ensureGarmentIntakeDraftThumbnail, isIntakeThumbnailGenerationError } f
 import { GarmentImage } from "@/components/garment-image";
 import { ConfirmActionSheet, NoticeSheet } from "@/components/dialogs";
 import { OnlineInlineNotice } from "@/components/online/online-inline-notice";
+import { getAuthUserDisplayName } from "@/lib/auth-session-store";
 
 // v1.1.23 six-page design: 共享的 item/ 编辑/详情展示小组件。
 import { ItemField } from "@/components/item/field";
 import { WardrobeExtras } from "@/components/item/wardrobe-extras";
 import { EditSectionCard } from "@/components/item-shell/edit-section-card";
+import { EditImageActionCard } from "@/components/item/edit-image-action-card";
 import { ItemColorFields } from "@/components/item/color-fields";
 import { CategorySubcategoryPicker } from "@/components/category-subcategory-picker";
 import { TemperatureRangeSlider } from "@/components/temperature-range-slider";
@@ -3558,33 +3559,16 @@ function WardrobeEditPage({
         </button>
       </div>
 
-      <EditSectionCard className="p-3">
-        <div className="flex items-center gap-3">
-          <div className="aspect-[3/4] w-28 shrink-0 overflow-hidden rounded-xl bg-mist" aria-label="衣物图片预览">
-            <GarmentImage src={draft.localThumbnailDataUrl || draft.localCroppedPreviewDataUrl} asset={draft.mainImage?.asset} alt={draft.name || "衣物图片"} fallbackSize={34} imageClassName="bg-transparent object-contain" />
-          </div>
-          <div className="grid min-w-0 flex-1 gap-2">
-            <button
-              type="button"
-              onClick={onCrop}
-              disabled={!onCrop}
-              className="inline-flex h-10 items-center justify-center gap-2 rounded-lg border border-ink/10 bg-white px-3 text-sm font-semibold text-ink/70 disabled:opacity-45"
-            >
-              <Crop size={15} aria-hidden="true" />
-              重新裁切
-            </button>
-            <button
-              type="button"
-              onClick={onRecognize}
-              disabled={isRecognizing}
-              className="inline-flex h-10 items-center justify-center gap-2 rounded-lg bg-denim px-3 text-sm font-semibold text-white disabled:opacity-60"
-            >
-              {isRecognizing ? <Loader2 size={15} className="animate-spin" aria-hidden="true" /> : <RefreshCw size={15} aria-hidden="true" />}
-              {isRecognizing ? "识别中" : "重新识别"}
-            </button>
-          </div>
-        </div>
-      </EditSectionCard>
+      <EditImageActionCard
+        imageUrl={draft.localThumbnailDataUrl || draft.localCroppedPreviewDataUrl}
+        asset={draft.mainImage?.asset}
+        alt={draft.name || "衣物图片"}
+        onCrop={onCrop}
+        cropDisabled={!onCrop}
+        onRecognize={onRecognize}
+        recognizing={isRecognizing}
+        recognizeDisabled={!draft.localOriginalDataUrl}
+      />
 
       <EditSectionCard title="基础信息" bodyClassName="grid gap-3" className="item-edit-section">
           <ItemField label="名称" required>
@@ -4234,7 +4218,7 @@ function SettingsView({
               </div>
               <div className="min-w-0">
                 <h2 className="text-base font-semibold">账号服务</h2>
-                <p className="mt-0.5 truncate text-xs text-ink/55">{cloudAuth.user.maskedPhone} · {cloudAuth.deviceLabel}</p>
+                <p className="mt-0.5 truncate text-xs text-ink/55">{getAuthUserDisplayName(cloudAuth.user)} · {cloudAuth.deviceLabel}</p>
                 <p className="mt-1 text-[11px] leading-relaxed text-ink/45">本地数据跟随应用生命周期，卸载重装后从云端账号同步。</p>
               </div>
             </div>

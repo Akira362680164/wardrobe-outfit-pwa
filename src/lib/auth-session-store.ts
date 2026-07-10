@@ -5,6 +5,11 @@ import { Capacitor, registerPlugin } from "@capacitor/core";
 export interface AuthUserSnapshot {
   id: string;
   maskedPhone: string;
+  emailMasked?: string;
+  emailVerified?: boolean;
+  phoneMasked?: string;
+  phoneVerified?: boolean;
+  displayName?: string;
 }
 
 export interface PendingRegistrationSnapshot {
@@ -17,6 +22,7 @@ export interface PendingRegistrationSnapshot {
 export interface LocalOwnerSnapshot {
   userId: string;
   maskedPhone: string;
+  maskedIdentity?: string;
   boundAt: string;
 }
 
@@ -107,6 +113,7 @@ export async function bindLocalOwnerIfNeeded(
         localOwner: {
           userId: user.id,
           maskedPhone: user.maskedPhone,
+          maskedIdentity: getAuthUserDisplayName(user),
           boundAt: new Date().toISOString(),
         },
       };
@@ -127,6 +134,10 @@ export function computeOfflineAccessUntil(refreshTokenExpiresAt: string, now = n
   const refreshExpiry = Date.parse(refreshTokenExpiresAt);
   const maxOffline = now.getTime() + 30 * 24 * 60 * 60 * 1000;
   return new Date(Math.min(refreshExpiry, maxOffline)).toISOString();
+}
+
+export function getAuthUserDisplayName(user: AuthUserSnapshot | null | undefined): string {
+  return user?.emailMasked ?? user?.phoneMasked ?? user?.maskedPhone ?? user?.displayName ?? "Wardora 用户";
 }
 
 function parseSessionSnapshot(raw: string | null): AuthSessionSnapshot | null {
