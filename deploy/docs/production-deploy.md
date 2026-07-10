@@ -55,7 +55,7 @@ AUTH_HMAC_SECRET=<at-least-32-random-bytes>
 EMAIL_PROVIDER=tencent-ses
 TENCENTCLOUD_SECRET_ID=<secret-id>
 TENCENTCLOUD_SECRET_KEY=<secret-key>
-TENCENT_SES_REGION=ap-guangzhou
+TENCENT_SES_REGION=ap-hongkong
 TENCENT_SES_ENDPOINT=ses.tencentcloudapi.com
 TENCENT_SES_FROM=Wardora <no-reply@mail.zhengfangapps.cloud>
 TENCENT_SES_REPLY_TO=
@@ -66,6 +66,11 @@ TENCENT_SES_VERIFY_TEMPLATE_ID=<approved-template-id>
 WeChat identities, and binding tickets. Generate it once before enabling the
 new auth routes and retain it across deployments. Rotating it invalidates
 unconsumed email codes and outstanding binding tickets.
+
+Wardora's verified sender domain, sender address, and template are provisioned
+in Tencent SES region `ap-hongkong`. Keep the API region aligned with those
+resources; using another supported SES region still makes the template and
+sender unavailable to the request.
 
 After the template is approved, back up PostgreSQL, build the new API image,
 and start it with the complete configuration. Activation is successful only
