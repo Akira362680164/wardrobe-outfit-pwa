@@ -28,6 +28,7 @@ function AuthenticatedWardrobeApp() {
           accessToken: auth.session.accessToken,
           isBusy: auth.isBusy,
           onLogout: auth.logout,
+          onAccountDeleted: auth.completeAccountDeletion,
           onChangePassword: auth.changePassword,
         }}
       />

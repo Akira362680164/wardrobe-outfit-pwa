@@ -9,11 +9,11 @@ import { siteConfig } from "@/lib/site-config";
 export function generateMetadata(): Metadata {
   if (isWebsiteBuild()) return {
     metadataBase: new URL(siteConfig.domain),
-    title: { default: "Wardora｜个人衣橱与穿搭管理工具", template: "%s｜Wardora" },
-    description: "Wardora 帮助个人用户记录衣物、整理衣橱、保存穿搭组合并规划每日穿搭。",
-    manifest: "/wardora.webmanifest",
+    title: { default: `${siteConfig.siteName}｜${siteConfig.productName}官方信息与合规页面`, template: `%s｜${siteConfig.siteName}` },
+    description: siteConfig.siteDescription,
+    manifest: "/site.webmanifest",
     alternates: { canonical: "/" },
-    openGraph: { title: "Wardora", description: siteConfig.siteDescription, url: siteConfig.domain, siteName: "Wardora", locale: "zh_CN", type: "website" },
+    openGraph: { title: siteConfig.siteName, description: siteConfig.siteDescription, url: siteConfig.domain, siteName: siteConfig.siteName, locale: "zh_CN", type: "website" },
     icons: { icon: "/icon.svg" },
   };
   return {

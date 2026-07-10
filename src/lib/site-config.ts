@@ -25,8 +25,10 @@ function emailAddress(value: string | undefined): string | null {
 }
 
 export const siteConfig = {
-  siteName: "Wardora",
-  siteDescription: "个人衣橱与穿搭管理工具",
+  siteName: "个人内网穿透及衣橱小站",
+  siteShortName: "衣橱小站",
+  productName: "衣橱穿搭助手",
+  siteDescription: "衣橱穿搭助手官方信息与合规页面",
   domain: httpsUrl(process.env.NEXT_PUBLIC_WARDORA_SITE_DOMAIN, DEFAULT_DOMAIN) ?? DEFAULT_DOMAIN,
   contactEmail: emailAddress(process.env.NEXT_PUBLIC_WARDORA_SITE_CONTACT_EMAIL),
   operatorName:

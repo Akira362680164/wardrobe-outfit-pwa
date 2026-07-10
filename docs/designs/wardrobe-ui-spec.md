@@ -182,6 +182,7 @@ Icon-only 按钮必须有 `aria-label`；图标与文字组合时图标使用 `a
 | `wishlist_archived` | 种草 | 子页面 | 否 | `AppSubPageTopBar` | 否 | `wishlist_home` |
 | `settings_home` | 设置 | 主页面 | 是 | 主页面自有顶部区 | 否 | 停留 / 退出确认 |
 | `account_management` | 设置 | 子页面 | 否 | `AppSubPageTopBar` | 否 | `settings_home` |
+| `account_deletion` | 设置 | 子页面 / 最终确认 Sheet | 否 | `AppSubPageTopBar` | 否 | `account_management`；处理中不可返回业务页 |
 | `change_password` | 设置 | 子页面 | 否 | `AppSubPageTopBar` | 否 | `account_management` |
 | `intake_single_item` | 衣橱 | 录入流 | 否 | `IntakeFlowShell` | 否 | `returnTo` |
 | `intake_outfit` | 套装 | 录入流 | 否 | `IntakeFlowShell` | 否 | `returnTo` |
@@ -195,7 +196,9 @@ Icon-only 按钮必须有 `aria-label`；图标与文字组合时图标使用 `a
 | 录入流 | `IntakeFlowShell` |
 | 覆盖层 | Overlay 自带标题栏 |
 
-视觉画板可以按“页面级状态”覆盖约 36 个状态：衣橱首页、搜索、统计、衣物详情、编辑衣物、裁切/旋转、单品录入两步、套装首页/详情/编辑/实图、套装录入两步、月历、计划增改查、打包清单、种草首页/详情/编辑/录入/加入衣橱/已买/不感兴趣/归档、设置、试穿画像、参考照片、MiniMax、位置、账号、改密。它们是视觉覆盖清单，不是 route 枚举。
+视觉画板可以按“页面级状态”覆盖约 36 个状态：衣橱首页、搜索、统计、衣物详情、编辑衣物、裁切/旋转、单品录入两步、套装首页/详情/编辑/实图、套装录入两步、月历、计划增改查、打包清单、种草首页/详情/编辑/录入/加入衣橱/已买/不感兴趣/归档、设置、试穿画像、参考照片、MiniMax、位置、账号、注销、改密。它们是视觉覆盖清单，不是 route 枚举。
+
+账号注销入口固定在账号安全页内容最底端，位于退出登录之后，以红色下划线文字呈现，不使用边框、背景或圆角按钮外观；语义控件仍保留至少 44px 点击热区。注销流程依次为风险告知、已有身份任选一种核验、最终永久注销 Sheet。App 只展示邮箱验证码和当前密码，小程序可额外展示当前已绑定微信。最终确认后的处理中与成功状态不得返回业务页面，且只有服务端确认数据库及图片删除完成后才能展示“账号已注销”。
 
 ## 6. Overlay / Sheet / Dialog
 

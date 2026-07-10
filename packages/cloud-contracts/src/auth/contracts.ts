@@ -24,6 +24,7 @@ export const EmailCodePurposeSchema = z.enum([
   "reset_password",
   "change_password",
   "change_email",
+  "delete_account",
 ]);
 
 export const SendEmailCodeRequestSchema = z.object({
@@ -106,6 +107,47 @@ export const AccountSecurityResponseSchema = z.object({
   }),
 });
 
+export const AccountDeletionMethodSchema = z.enum(["email", "password", "wechat"]);
+
+export const AccountDeletionEmailCodeRequestResponseSchema = SendEmailCodeResponseSchema;
+
+export const AccountDeletionVerifyRequestSchema = z.discriminatedUnion("method", [
+  z.object({
+    method: z.literal("email"),
+    emailCode: z.string().regex(/^\d{6}$/),
+  }),
+  z.object({
+    method: z.literal("password"),
+    currentPassword: z.string().min(8).max(256),
+  }),
+  z.object({
+    method: z.literal("wechat"),
+    loginCode: z.string().min(1),
+    appId: z.string().min(1),
+  }),
+]);
+
+export const AccountDeletionVerifyResponseSchema = z.object({
+  authorizationToken: z.string().min(32),
+  expiresAt: z.string().datetime(),
+});
+
+export const AccountDeletionConfirmRequestSchema = z.object({
+  authorizationToken: z.string().min(32),
+  confirmationText: z.literal("DELETE_ACCOUNT"),
+});
+
+export const AccountDeletionConfirmResponseSchema = z.object({
+  receiptToken: z.string().min(32),
+  status: z.enum(["processing", "completed"]),
+});
+
+export const AccountDeletionStatusResponseSchema = z.object({
+  status: z.enum(["processing", "completed", "failed"]),
+  completedAt: z.string().datetime().optional(),
+  referenceCode: z.string().min(1).optional(),
+});
+
 export const WechatOpenIdLoginRequestSchema = z.object({
   loginCode: z.string().min(1),
   appId: z.string().min(1),
@@ -165,6 +207,9 @@ export const AuthErrorCodeSchema = z.enum([
   "wechat_already_bound",
   "account_already_bound_wechat",
   "binding_ticket_expired",
+  "account_deletion_method_unavailable",
+  "account_deletion_authorization_invalid",
+  "account_deletion_receipt_not_found",
   "session_unavailable",
 ]);
 
@@ -231,6 +276,13 @@ export type PasswordChangeRequest = z.infer<typeof PasswordChangeRequestSchema>;
 export type PasswordChangeWithEmailCodeRequest = z.infer<typeof PasswordChangeWithEmailCodeRequestSchema>;
 export type PasswordChangeCodeRequestResponse = z.infer<typeof PasswordChangeCodeRequestResponseSchema>;
 export type AccountSecurityResponse = z.infer<typeof AccountSecurityResponseSchema>;
+export type AccountDeletionMethod = z.infer<typeof AccountDeletionMethodSchema>;
+export type AccountDeletionEmailCodeRequestResponse = z.infer<typeof AccountDeletionEmailCodeRequestResponseSchema>;
+export type AccountDeletionVerifyRequest = z.infer<typeof AccountDeletionVerifyRequestSchema>;
+export type AccountDeletionVerifyResponse = z.infer<typeof AccountDeletionVerifyResponseSchema>;
+export type AccountDeletionConfirmRequest = z.infer<typeof AccountDeletionConfirmRequestSchema>;
+export type AccountDeletionConfirmResponse = z.infer<typeof AccountDeletionConfirmResponseSchema>;
+export type AccountDeletionStatusResponse = z.infer<typeof AccountDeletionStatusResponseSchema>;
 export type WechatOpenIdLoginRequest = z.infer<typeof WechatOpenIdLoginRequestSchema>;
 export type WechatOpenIdLoginResponse = z.infer<typeof WechatOpenIdLoginResponseSchema>;
 export type WechatBindExistingAccountRequest = z.infer<typeof WechatBindExistingAccountRequestSchema>;

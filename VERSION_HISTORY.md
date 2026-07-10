@@ -1,3 +1,91 @@
+## 2026-07-10 / v2.1.13-test / Codex — App 注销最终 APK 与 Android 验收
+
+- **执行 Agent**：Codex（未触发 subagent；在独立 `codex/account-deletion-design` worktree 完成最终构建和真机环境等价的 Android 模拟器验收）。
+- **目的**：重新构建包含账号页底部安全间距修复的最终固定签名 APK，并以独立模拟器确认“注销账号”入口位置、三次确认前两段页面、Android 返回键和运行日志。
+- **版本变更**：无；保持 `2.1.13-test`，Android `versionCode=20113`。
+- **交付产物**：根目录 `衣橱穿搭助手-v2.1.13-test.apk`，SHA-256 `93f2e11536d91881e6389b03b2c666e36864add475dc98b67cb99b54fd587d32`；构建归档 `apk-local/app-release-090ac083.apk`；包名 `com.wardrobe.outfit`，签名证书 `CN=fangzheng`。
+- **验证结果**：最终 APK 在独立 AVD `wardrobe-account-deletion`（`emulator-5560`）覆盖安装并正常启动；实际页面确认账号安全页最底端的“注销账号”为居中红色下划线文字、无按钮外观且完整位于固定底栏上方，入口保留 44px 触摸热区；使用真实测试账号依次检查风险告知、动态身份方式选择和密码核验页，未执行永久删除；Android 返回键后 App 仍保持前台且无崩溃。最终 logcat 未发现 `FATAL` 或 `AndroidRuntime`，测试后已关闭模拟器。截图证据保存在 `test-results/android-v2.1.13-account-deletion/ui-5560/`（忽略目录，不进入 Git）。
+- **未验证风险**：生产 API 尚未部署 0016 迁移与注销路由，所以未点击最终确认、未验证生产数据库/对象存储真实删除，也未覆盖真实邮箱验证码；这些必须在服务端部署后用专用可删除账号验收，不能用长期测试账号直接试删。
+
+## 2026-07-10 / v2.1.13-test / Codex — App 注销发布准备与法律文本同步
+
+- **执行 Agent**：Codex（未触发 subagent：用户要求当前会话完整实施；本批在独立 worktree 完成 App 发布准备）。
+- **目的**：将已完成的注销能力升版进入 Android 构建，并让隐私政策、用户协议和账号注销说明与真实入口和服务端状态一致。
+- **版本变更**：`package.json` / `package-lock.json` 从 `2.1.12-test` 升到 `2.1.13-test`，Android 推导 `versionCode=20113`。
+- **改动文件**：`package.json`、`package-lock.json`、`src/content/legal-content.tsx`、账号页与注销页底部安全间距、`VERSION_HISTORY.md`。
+- **改动说明**：法律内容改为 App/小程序“设置 → 账号安全 → 注销账号”自助路径，说明三次确认、已有身份任选一种验证、立即停用、全会话失效、真实删除完成才报成功及法定留存例外；独立 Android 视觉检查发现固定底部导航会遮住账号页最后一行，账号页和注销页补充 112px 加安全区的底部滚动留白，保证红色下划线入口完整显示。
+- **验证结果**：账号注销两组专项测试、官网合同、`test:fast`、component、repository integration、API 17 files / 104 tests、共享/API/App/小程序 typecheck 与 `npm run build` 全部通过；初次固定签名 APK 构建成功并通过元数据、签名和 `android:verify:full`，随后在独立 `wardrobe-account-deletion` / `emulator-5560` 上用真实测试账号完成账号安全、风险告知、动态验证方式和密码验证页截图。底部间距修复后的最终 APK 与截图将在下一条收口记录中重新生成。
+- **未验证风险**：生产 API 尚未部署 0016 迁移和注销路由，因此未对生产测试账号执行最终永久注销；没有调用最终确认，避免在旧生产 API 上误操作或删除长期测试账号。
+
+## 2026-07-10 / v2.1.12-test / Codex — Android App 账号注销三次确认 UI
+
+- **执行 Agent**：Codex（未触发 subagent：用户要求当前会话开始实施；本批按项目 UI 规范串行完成 App 端）。
+- **目的**：在不接入微信 Android SDK、不改变既有退出登录的前提下，为 App 增加入口克制但完整可执行的自助注销流程。
+- **版本变更**：无；当前仍为 `2.1.12-test`，待 APK 批次统一升到 `2.1.13-test`。
+- **改动文件**：`src/components/auth/{account-views,account-deletion-view,auth-provider}.tsx`、`src/components/{app-root,wardrobe-app}.tsx`、`src/lib/{app-route,auth-session-store,cloud-auth-api,device-minimax}.ts`、UI 规范源与生成预览、App 合同测试、`package.json`。
+- **改动说明**：账号安全页在退出登录之后新增最底端红色下划线“注销账号”文字入口，无可见按钮边框/背景/圆角但保留 44px 热区；新增风险告知、动态邮箱/密码任选一种核验、最终不可恢复 Sheet 三次确认，以及处理中、成功和已停用异常状态。App 不显示微信验证；最终提交开始后清除本机 MiniMax Key，成功返回登录页时清除 token、用户和本机 owner 绑定，避免已注销账号阻塞新账号。新增独立 `account_deletion` 路由和服务端回执轮询。
+- **验证结果**：`npm run test:logic:account-deletion-app`、`npm run typecheck`、`npm run test:logic:auth-client-shell`（49/49）、`npm run test:logic:app-route`（46/46）通过；UI token 门禁仍命中基线已记录的历史硬编码（包括本任务未新增的账号改密色值、裁切、图片操作卡和官网 CSS），未把该既有失败误归因于注销页面。
+- **未验证风险**：尚未运行 `npm run build`、浏览器/Android 视觉交互、真实邮箱验证码或 APK；处理中页面当前会话可轮询匿名回执，但关闭 App 后将由服务端继续删除并在下次启动因会话失效回到登录页。
+
+## 2026-07-10 / v2.1.12-test / Codex — 账号注销共享契约与服务端状态机
+
+- **执行 Agent**：Codex（未触发 subagent：用户要求当前会话开始实施，本批在独立 `codex/account-deletion-design` worktree 串行完成）。
+- **目的**：先建立 App 与小程序共用的注销合同，并实现能够跨数据库与对象存储诚实报告状态的服务端删除链路。
+- **版本变更**：无；当前仍为 `2.1.12-test`，计划在 App APK 交付批次统一升到 `2.1.13-test`。
+- **改动文件**：`packages/cloud-contracts/src/auth/contracts.ts`、`services/wardrobe-api/migrations/0016_account_deletion.sql`、迁移 journal、`services/wardrobe-api/src/db/schema.ts`、`services/wardrobe-api/src/auth/account-deletion*.ts`、`services/wardrobe-api/src/{app,server}.ts`、微信 OpenID 客户端导出、邮箱用途文案、契约与 API 测试、`package.json`。
+- **改动说明**：新增邮箱/密码/微信三种动态核验合同、5 分钟单用途授权、最终确认、回执查询和 `processing/completed/failed` 状态；最终确认事务内停用账号并撤销全部设备会话，持久化待删图片与诊断存储键，立即尝试删除并由现有服务器定时器重试；数据库完成删除前不报告成功。删除完成时同步清理业务/auth 级联数据、诊断访问审计、残留微信绑定票据、手机号待注册数据，并擦除安全事件及 API trace 中的用户/设备关联；注销任务完成后清空用户 UUID 与存储键。
+- **验证结果**：`npm run cloud:contracts:typecheck`、`npm run api:typecheck`、`npm run test:logic:account-deletion` 通过；`npm run api:test` 通过（17 files / 104 tests），其中账号注销 5 项覆盖一次性授权、未绑定方式拒绝、存储失败保持处理中、自动重试完成、重复确认同一回执以及真实 Fastify 路由；`git diff --check` 通过。
+- **未验证风险**：本批未连接真实 PostgreSQL 执行 0016 迁移、未对生产对象存储做删除调用，也未实现 App/小程序页面；真实微信 code 与生产邮件留待客户端和部署验收阶段。
+
+## 2026-07-10 / v2.1.12-test / Codex — App 与小程序账号注销实施计划
+
+- **执行 Agent**：Codex（未触发 subagent：用户要求开始实施，本轮先按已批准设计在当前独立 worktree 编写可执行计划）。
+- **目的**：将账号注销设计拆成共享契约、服务端删除状态机、App、Android 验证、小程序、微信验证和双基线集成七个可独立检查的批次。
+- **版本变更**：无；计划约定运行时代码和 APK 交付时从 `2.1.12-test` 升到 `2.1.13-test`，本批次尚未修改版本。
+- **改动文件**：`docs/superpowers/plans/2026-07-10-account-deletion.md`、`VERSION_HISTORY.md`。
+- **改动说明**：计划锁定动态身份方式、单用途注销授权、立即停用与全会话撤销、持久化删除任务、对象存储失败重试、前端真实状态、App 本地敏感设置清理、法律文本同步、固定签名 APK、微信开发者工具验证和 `main`/`wechat/miniprogram` 串行集成路径；不引入 App 拉起小程序或新运行时依赖。
+- **验证结果**：逐项对照已批准设计完成覆盖检查；接口名、状态枚举和文件边界保持一致；占位词扫描与 `git diff --check` 通过。
+- **未验证风险**：本批次仅是实施计划；运行时代码、迁移、对象存储删除、Android APK 和真实微信 `wx.login` 尚未执行，将在后续任务逐项验证。
+
+## 2026-07-10 / v2.1.12-test / Codex — App 与小程序账号注销设计定稿
+
+- **执行 Agent**：Codex（未触发 subagent：用户未要求；本轮仅在独立 `codex/account-deletion-design` worktree 固化已确认设计）。
+- **目的**：为 App 与微信小程序增加入口清晰、身份核验合理、数据真实删除且跨端一致的账号注销能力，先锁定产品与工程边界再进入实施计划。
+- **版本变更**：无；当前应用版本仍为 `2.1.12-test`。本轮只新增设计文档，不改运行时代码、不打 APK、不上传小程序。
+- **改动文件**：`docs/superpowers/specs/2026-07-10-account-deletion-design.md`、`VERSION_HISTORY.md`。
+- **改动说明**：确认注销入口位于账号安全页最底端，以红色下划线文字展示且不使用按钮外观；流程采用风险告知、既有身份任选一种核验、最终永久授权三次确认。App 仅展示邮箱验证码和当前密码，小程序按绑定情况展示微信、邮箱和密码，不建设 App 拉起小程序验证。服务端采用立即停用、全会话撤销、持久化删除任务、对象存储与数据库真实完成后才报告成功的状态机，并明确删除范围、异常文案、备份防复活、法律文本同步和跨端验证要求。
+- **验证结果**：设计逐项覆盖用户确认的入口位置、视觉形式、三次确认、动态身份验证方式、App 不跳小程序、立即停用与删除、失败不误报成功；完成占位词、内部一致性、范围和歧义自审；`git diff --check` 通过。
+- **未验证风险**：本轮没有实现或运行服务端、App、小程序及真实微信身份验证；正式实施前仍需把数据库与对象存储删除状态机拆成详细任务，并由运营主体复核法定留存、备份期限和公开联系渠道。
+## 2026-07-11 / v2.1.13-test / Codex — 备案网站名称与产品法律名称对齐
+
+- **执行 Agent**：Codex（未触发 subagent：用户未要求；在独立 `codex/closet-site-rebrand` worktree 内串行实施）。
+- **目的**：将官网公开名称与腾讯云备案服务名称“个人内网穿透及衣橱小站”一致，将关联 App 和共享法律文本统一称为“衣橱穿搭助手”，移除公开 Wardora 名称。
+- **版本变更**：`package.json` / `package-lock.json` 从 `2.1.12-test` 升至 `2.1.13-test`；Android `versionCode` 由构建脚本推导为 `20113`。
+- **改动文件**：`src/lib/site-config.ts`、`src/components/site/`、`src/app/` 官网页面与 metadata、`app/layout.tsx`、`src/content/legal-content.tsx`、`public/site.webmanifest`（替代 `public/wardora.webmanifest`）、`scripts/test-wardora-compliance-site.ts`、`docs/deployment/wardora-website.md`、设计与实施计划、`package.json`、`package-lock.json`、`VERSION_HISTORY.md`。
+- **改动说明**：官网页头和首页使用完整备案名称，短名称为“衣橱小站”，副标题与法律文本使用“衣橱穿搭助手”；联系页分开展示网站名、关联产品、服务类型和个人主体“方正”；首页明确网站不向公众提供独立内网穿透服务；页脚版权改为运营主体；SEO、Open Graph 和公开 manifest 同步改名；ICP备案号“鲁ICP备2026037404号-1”及公安备案办理中状态保持不变。内部构建脚本、环境变量和服务器发布目录不做无收益重命名。
+- **交付产物**：合入最新认证同意基线后重新生成根目录 `衣橱穿搭助手-v2.1.13-test.apk`，大小 9.5MB，SHA-256 `bb482638e5533395c0bc946c8400c9f053a3670d1b87bd2043e6cc4f07d04003`；最终构建归档 `apk-local/app-release-51f2dae6.apk`。
+- **验证结果**：`npm run test:logic:auth-consent`、`npm run test:logic:website`、`npm run typecheck`、默认 `npm run build`、`npm run build:website` 和 `npm run test:website:visual` 通过；默认 App 静态构建仍以“衣橱穿搭助手”为产品身份，版本为 `2.1.13-test`。官网在 375、390、430、768、1024、1440px 无横向溢出、控制台错误或失败请求，人工检查 390px 与 1440px 首页确认长中文站名无裁切、遮挡或异常断行。`out-website` 的 HTML、文本和 manifest 扫描确认包含备案网站名、产品名、ICP备案号与公安备案办理中状态，不包含 Wardora、公安联网备案数据码或腾讯云实名认证敏感信息。合入 `main` 的认证主动同意整改后重新执行 `npm run android:apk` 成功；最终 APK 包名 `com.wardrobe.outfit`、versionName `2.1.13-test`、versionCode `20113`、application label“衣橱穿搭助手”、签名 `CN=fangzheng`。`android:verify:full` 在 `emulator-5554` / `sdk_gphone64_arm64` / Android 15 通过覆盖安装、启动、前台窗口、返回键、竖屏、清数据重启和三段崩溃日志检查，结果目录 `test-results/android-v2.1.13-test-site-name-merged/20260711-002410/`；通过 Android WebView CDP 读取最终 APK 内 `/legal/privacy/index.html`，确认存在“衣橱穿搭助手”且不含 Wardora，最终 logcat 无 App FATAL 签名。
+- **未验证风险**：公开联系邮箱仍未配置；未猜测或公开腾讯云脱敏邮箱。生产 DNS、部署、ICP备案、公安备案和 APP 备案状态均未修改。
+
+## 2026-07-11 / v2.1.12-test / Codex — 备案网站名称对齐实施计划
+
+- **执行 Agent**：Codex（未触发 subagent：用户未要求；继续使用独立 `codex/closet-site-rebrand` worktree）。
+- **目的**：把已批准的“个人内网穿透及衣橱小站”公开命名设计拆解为网站、共享法律文本、版本、响应式、APK 和 Android 验证任务。
+- **版本变更**：无；当前仍为 `2.1.12-test`。本批次只提交实施计划，实际实施计划目标版本为 `2.1.13-test`。
+- **改动文件**：`docs/superpowers/plans/2026-07-11-closet-site-public-name.md`、`VERSION_HISTORY.md`。
+- **改动说明**：计划按 TDD 和小提交拆分为集中命名合同、官网公开品牌、共享法律与版本、静态网站验收、固定签名 APK 与 Android 回归、最终基线集成六个任务。
+- **验证结果**：完成规格覆盖、占位符、类型名称和命令自检；每项设计要求均映射到具体文件、失败测试、实现、验证和提交步骤。
+- **未验证风险**：本批次尚未执行代码、构建、视觉或 Android 验证；这些内容在计划执行阶段完成。
+
+## 2026-07-11 / v2.1.12-test / Codex — 备案网站名称对齐设计
+
+- **执行 Agent**：Codex（未触发 subagent：用户未要求；在独立 `codex/closet-site-rebrand` worktree 内完成设计）。
+- **目的**：将官网公开名称与腾讯云备案服务名称“个人内网穿透及衣橱小站”对齐，同时保留 App 产品名“衣橱穿搭助手”，明确不提供独立公众内网穿透服务。
+- **版本变更**：无；当前仍为 `2.1.12-test`。本批次只提交设计规格，不修改运行代码、不打 APK。
+- **改动文件**：`docs/superpowers/specs/2026-07-11-closet-site-public-name-design.md`、`VERSION_HISTORY.md`。
+- **改动说明**：确定网站名、产品名、运营主体、SEO、manifest、法律页面、页脚、ICP备案、公安备案状态、App 边界、验证门禁和后续 APK 闭环；内部工程标识不做无收益重命名。
+- **验证结果**：规格完成占位符、矛盾、歧义和范围自检；未发现 `TBD`、`TODO` 或未决实现选择，明确公开邮箱仍需用户单独授权。
+- **未验证风险**：本批次尚未实施或构建；网站长中文名称的手机端排版、共享法律内容的 App 展示和 Android 回归将在用户批准规格后执行。
 ## 2026-07-11 / v2.1.13-test / Codex — App/Web/小程序全入口协议主动同意整改
 
 - **执行 Agent**：Codex（未触发 subagent；在独立 `codex/consent-all-entry-20260710` worktree 串行实施，完成后按双基线流程合并）。

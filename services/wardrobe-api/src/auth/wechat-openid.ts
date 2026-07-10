@@ -417,7 +417,7 @@ export function hashWechatUnionId(appId: string, unionid: string) {
   return hmacSha256Base64Url(`wechat-unionid:${appId}:${unionid}`);
 }
 
-class WechatCodeSessionClient implements WechatOpenIdClient {
+export class WechatCodeSessionClient implements WechatOpenIdClient {
   async codeToSession(input: { appId: string; loginCode: string }) {
     const secret = requireWechatSecret(input.appId);
     const url = new URL("https://api.weixin.qq.com/sns/jscode2session");

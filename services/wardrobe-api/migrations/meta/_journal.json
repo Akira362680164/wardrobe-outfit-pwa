@@ -113,6 +113,13 @@
       "when": 1783641600001,
       "tag": "0015_email_verification_rate_limit_indexes",
       "breakpoints": true
+    },
+    {
+      "idx": 16,
+      "version": "7",
+      "when": 1783641600002,
+      "tag": "0016_account_deletion",
+      "breakpoints": true
     }
   ]
 }

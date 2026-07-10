@@ -98,6 +98,15 @@ export async function clearAuthTokens(snapshot: AuthSessionSnapshot): Promise<Au
   return next;
 }
 
+export async function clearDeletedAccountSession(snapshot: AuthSessionSnapshot): Promise<AuthSessionSnapshot> {
+  const next: AuthSessionSnapshot = {
+    deviceId: snapshot.deviceId,
+    deviceLabel: snapshot.deviceLabel,
+  };
+  await saveAuthSessionSnapshot(next);
+  return next;
+}
+
 export async function bindLocalOwnerIfNeeded(
   snapshot: AuthSessionSnapshot,
   user: AuthUserSnapshot,

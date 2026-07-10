@@ -1,4 +1,5 @@
 import type { LegalSection } from "@/content/legal-content";
+import { siteConfig } from "@/lib/site-config";
 import { SiteLayout } from "./site-layout";
 
 export function LegalPage({ title, intro, updatedAt, sections }: { title: string; intro: string; updatedAt: string; sections: LegalSection[] }) {
@@ -7,7 +8,7 @@ export function LegalPage({ title, intro, updatedAt, sections }: { title: string
       <main className="site-legal-main">
         <article className="site-reading">
           <header className="site-legal-hero">
-            <p className="site-eyebrow">Wardora 公开文件</p>
+            <p className="site-eyebrow">{siteConfig.siteShortName}公开文件</p>
             <h1>{title}</h1>
             <p>{intro}</p>
             <p className="site-legal-date">最近更新：{updatedAt}</p>

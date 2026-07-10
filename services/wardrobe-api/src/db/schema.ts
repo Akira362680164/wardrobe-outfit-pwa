@@ -62,12 +62,55 @@ export const diagnosticCaseStatus = pgEnum("diagnostic_case_status", [
   "expired",
 ]);
 
+export const accountDeletionJobStatus = pgEnum("account_deletion_job_status", [
+  "processing",
+  "completed",
+  "failed",
+]);
+
 export const users = pgTable("users", {
   id: uuid("id").primaryKey().defaultRandom(),
   displayName: text("display_name"),
   disabledAt: timestamp("disabled_at", { withTimezone: true }),
   ...timestamps,
 });
+
+export const accountDeletionAuthorizations = pgTable(
+  "account_deletion_authorizations",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: uuid("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+    deviceId: text("device_id").notNull(),
+    method: text("method").notNull(),
+    tokenHash: text("token_hash").notNull(),
+    expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+    consumedAt: timestamp("consumed_at", { withTimezone: true }),
+    ...timestamps,
+  },
+  (table) => ({
+    tokenUnique: uniqueIndex("account_deletion_authorizations_token_unique").on(table.tokenHash),
+    userExpiresIdx: index("account_deletion_authorizations_user_expires_idx").on(table.userId, table.expiresAt),
+  }),
+);
+
+export const accountDeletionJobs = pgTable(
+  "account_deletion_jobs",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    receiptTokenHash: text("receipt_token_hash").notNull(),
+    subjectUserId: uuid("subject_user_id"),
+    status: accountDeletionJobStatus("status").notNull().default("processing"),
+    storageKeys: jsonb("storage_keys").$type<string[]>().notNull().default([]),
+    attempts: integer("attempts").notNull().default(0),
+    lastErrorCode: text("last_error_code"),
+    completedAt: timestamp("completed_at", { withTimezone: true }),
+    ...timestamps,
+  },
+  (table) => ({
+    receiptUnique: uniqueIndex("account_deletion_jobs_receipt_unique").on(table.receiptTokenHash),
+    statusUpdatedIdx: index("account_deletion_jobs_status_updated_idx").on(table.status, table.updatedAt),
+  }),
+);
 
 export const phoneIdentities = pgTable(
   "phone_identities",

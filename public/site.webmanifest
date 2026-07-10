@@ -1,0 +1,10 @@
+{
+  "name": "个人内网穿透及衣橱小站",
+  "short_name": "衣橱小站",
+  "description": "衣橱穿搭助手官方信息与合规页面",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#f4f5f3",
+  "theme_color": "#33483a",
+  "icons": [{ "src": "/icon.svg", "sizes": "any", "type": "image/svg+xml" }]
+}

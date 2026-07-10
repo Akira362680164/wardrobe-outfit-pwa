@@ -40,6 +40,26 @@ export interface AccountSecurityResponse {
   password: { set: boolean; changedAt?: string };
 }
 
+export type AccountDeletionVerifyInput =
+  | { method: "email"; emailCode: string }
+  | { method: "password"; currentPassword: string };
+
+export interface AccountDeletionVerifyResponse {
+  authorizationToken: string;
+  expiresAt: string;
+}
+
+export interface AccountDeletionConfirmResponse {
+  receiptToken: string;
+  status: "processing" | "completed";
+}
+
+export interface AccountDeletionStatusResponse {
+  status: "processing" | "completed" | "failed";
+  completedAt?: string;
+  referenceCode?: string;
+}
+
 const refreshPromiseMap = new Map<string, Promise<AuthTokenPayload>>();
 
 export async function register(input: {
@@ -189,6 +209,36 @@ export async function getAccountSecurity(accessToken: string): Promise<AccountSe
     method: "GET",
     accessToken,
   });
+}
+
+export function requestAccountDeletionEmailCode(accessToken: string): Promise<SendEmailCodeResponse> {
+  return requestJson("/api/auth/account-deletion/email/request", { method: "POST", accessToken });
+}
+
+export function verifyAccountDeletion(input: {
+  accessToken: string;
+  verification: AccountDeletionVerifyInput;
+}): Promise<AccountDeletionVerifyResponse> {
+  return requestJson("/api/auth/account-deletion/verify", {
+    method: "POST",
+    accessToken: input.accessToken,
+    body: input.verification,
+  });
+}
+
+export function confirmAccountDeletion(input: {
+  accessToken: string;
+  authorizationToken: string;
+}): Promise<AccountDeletionConfirmResponse> {
+  return requestJson("/api/auth/account-deletion/confirm", {
+    method: "POST",
+    accessToken: input.accessToken,
+    body: { authorizationToken: input.authorizationToken, confirmationText: "DELETE_ACCOUNT" },
+  });
+}
+
+export function getAccountDeletionStatus(receiptToken: string): Promise<AccountDeletionStatusResponse> {
+  return requestJson(`/api/auth/account-deletion/status/${encodeURIComponent(receiptToken)}`, { method: "GET" });
 }
 
 async function requestJson<T>(
