@@ -4,6 +4,7 @@ import { runMigrations } from "./db/migrate.js";
 import { cleanupExpiredRefreshIdempotencyPayloads } from "./security/refresh-idempotency-cleanup.js";
 import { cleanupExpiredDiagnosticCases } from "./diagnostics/cleanup.js";
 import { cleanupAssetStorage, validateStoredAssets } from "./assets/cleanup.js";
+import { retryPendingAccountDeletions } from "./auth/account-deletion-cleanup.js";
 
 const port = Number(process.env.PORT ?? 3000);
 const host = process.env.HOST ?? "0.0.0.0";
@@ -34,10 +35,12 @@ void cleanupExpiredRefreshIdempotencyPayloads().catch(() => {});
 void cleanupExpiredDiagnosticCases().catch(() => {});
 void validateStoredAssets().catch(() => {});
 void cleanupAssetStorage().catch(() => {});
+void retryPendingAccountDeletions().catch(() => {});
 cleanupTimer = setInterval(() => {
   cleanupExpiredRefreshIdempotencyPayloads().catch(() => {});
   cleanupExpiredDiagnosticCases().catch(() => {});
   validateStoredAssets().catch(() => {});
   cleanupAssetStorage().catch(() => {});
+  retryPendingAccountDeletions().catch(() => {});
 }, CLEANUP_INTERVAL_MS);
 cleanupTimer.unref();

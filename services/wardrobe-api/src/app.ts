@@ -8,6 +8,8 @@ import Fastify, { type FastifyInstance } from "fastify";
 
 import { registerAuthRoutes } from "./auth/routes.js";
 import { AccountPasswordAuthService } from "./auth/account-password.js";
+import { AccountDeletionService } from "./auth/account-deletion.js";
+import { registerAccountDeletionRoutes } from "./auth/account-deletion-routes.js";
 import { registerEmailAuthRoutes } from "./auth/email-routes.js";
 import { EmailVerificationService } from "./auth/email-verification.js";
 import { type RegistrationService } from "./auth/registrations.js";
@@ -54,6 +56,7 @@ export interface BuildAppOptions {
   wechatOpenIdAuthService?: WechatOpenIdAuthService;
   emailVerificationService?: EmailVerificationService;
   accountPasswordAuthService?: AccountPasswordAuthService;
+  accountDeletionService?: AccountDeletionService;
 }
 
 export function buildApp(options: BuildAppOptions = {}): FastifyInstance {
@@ -157,6 +160,14 @@ export function buildApp(options: BuildAppOptions = {}): FastifyInstance {
   registerAuthRoutes(app, options.registrationService, sharedSessionService, accountPasswordAuthService);
   registerSessionRoutes(app, sharedSessionService, accountPasswordAuthService);
   registerEmailAuthRoutes(app, emailVerificationService);
+  registerAccountDeletionRoutes(
+    app,
+    sharedSessionService ?? new SessionService(),
+    options.accountDeletionService ?? new AccountDeletionService({
+      storage,
+      emailVerificationService,
+    }),
+  );
   registerWechatOpenIdAuthRoutes(
     app,
     options.wechatOpenIdAuthService ?? new WechatOpenIdAuthService({

@@ -1,3 +1,13 @@
+## 2026-07-10 / v2.1.12-test / Codex — 账号注销共享契约与服务端状态机
+
+- **执行 Agent**：Codex（未触发 subagent：用户要求当前会话开始实施，本批在独立 `codex/account-deletion-design` worktree 串行完成）。
+- **目的**：先建立 App 与小程序共用的注销合同，并实现能够跨数据库与对象存储诚实报告状态的服务端删除链路。
+- **版本变更**：无；当前仍为 `2.1.12-test`，计划在 App APK 交付批次统一升到 `2.1.13-test`。
+- **改动文件**：`packages/cloud-contracts/src/auth/contracts.ts`、`services/wardrobe-api/migrations/0016_account_deletion.sql`、迁移 journal、`services/wardrobe-api/src/db/schema.ts`、`services/wardrobe-api/src/auth/account-deletion*.ts`、`services/wardrobe-api/src/{app,server}.ts`、微信 OpenID 客户端导出、邮箱用途文案、契约与 API 测试、`package.json`。
+- **改动说明**：新增邮箱/密码/微信三种动态核验合同、5 分钟单用途授权、最终确认、回执查询和 `processing/completed/failed` 状态；最终确认事务内停用账号并撤销全部设备会话，持久化待删图片与诊断存储键，立即尝试删除并由现有服务器定时器重试；数据库完成删除前不报告成功。删除完成时同步清理业务/auth 级联数据、诊断访问审计、残留微信绑定票据、手机号待注册数据，并擦除安全事件及 API trace 中的用户/设备关联；注销任务完成后清空用户 UUID 与存储键。
+- **验证结果**：`npm run cloud:contracts:typecheck`、`npm run api:typecheck`、`npm run test:logic:account-deletion` 通过；`npm run api:test` 通过（17 files / 104 tests），其中账号注销 5 项覆盖一次性授权、未绑定方式拒绝、存储失败保持处理中、自动重试完成、重复确认同一回执以及真实 Fastify 路由；`git diff --check` 通过。
+- **未验证风险**：本批未连接真实 PostgreSQL 执行 0016 迁移、未对生产对象存储做删除调用，也未实现 App/小程序页面；真实微信 code 与生产邮件留待客户端和部署验收阶段。
+
 ## 2026-07-10 / v2.1.12-test / Codex — App 与小程序账号注销实施计划
 
 - **执行 Agent**：Codex（未触发 subagent：用户要求开始实施，本轮先按已批准设计在当前独立 worktree 编写可执行计划）。

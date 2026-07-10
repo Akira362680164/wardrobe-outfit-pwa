@@ -207,6 +207,9 @@ export const AuthErrorCodeSchema = z.enum([
   "wechat_already_bound",
   "account_already_bound_wechat",
   "binding_ticket_expired",
+  "account_deletion_method_unavailable",
+  "account_deletion_authorization_invalid",
+  "account_deletion_receipt_not_found",
   "session_unavailable",
 ]);
 
