@@ -9,7 +9,9 @@ const root = process.cwd();
 const read = (path: string) => readFileSync(join(root, path), "utf8");
 
 assert.equal(getSiteBuildTarget(), "app", "default build target must remain app");
-assert.equal(siteConfig.siteName, "Wardora");
+assert.equal(siteConfig.siteName, "个人内网穿透及衣橱小站");
+assert.equal(siteConfig.siteShortName, "衣橱小站");
+assert.equal(siteConfig.productName, "衣橱穿搭助手");
 assert.equal(siteConfig.domain, "https://zhengfangapps.cloud");
 assert.equal(siteStatus.operatorLabel, "方正");
 assert.equal(siteStatus.icpLabel, "鲁ICP备2026037404号-1");
@@ -17,9 +19,32 @@ assert.equal(siteStatus.icpUrl, "https://beian.miit.gov.cn/");
 assert.equal(siteStatus.policeUrl, null, "missing police record must not create an empty link");
 assert.match(siteStatus.policeLabel, /办理中/);
 assert.ok(siteLinks.every((link) => link.href && link.label));
+
+const publicWebsiteSources = [
+  "src/components/site/site-mark.tsx",
+  "src/components/site/site-home.tsx",
+  "src/components/site/site-footer.tsx",
+  "src/components/site/legal-page.tsx",
+  "src/app/layout.tsx",
+  "src/app/not-found.tsx",
+  "src/app/privacy/page.tsx",
+  "src/app/terms/page.tsx",
+  "src/app/account-deletion/page.tsx",
+  "src/app/contact/page.tsx",
+  "public/site.webmanifest",
+];
+for (const path of publicWebsiteSources) {
+  assert.doesNotMatch(read(path), /Wardora/i, `${path} must not expose the retired public name`);
+}
+
+assert.match(read("src/app/layout.tsx"), /manifest:\s*["']\/site\.webmanifest["']/);
 assert.equal(privacySections.length, 15, "privacy policy must contain all 15 required chapters");
 assert.equal(termsSections.length, 15, "terms must contain all 15 required chapters");
 assert.equal(accountDeletionSections.length, 7, "account deletion guide must contain all 7 required topics");
+
+const legalSource = read("src/content/legal-content.tsx");
+assert.doesNotMatch(legalSource, /Wardora/i);
+assert.match(legalSource, /siteConfig\.productName/);
 
 const packageJson = JSON.parse(read("package.json")) as { scripts: Record<string, string> };
 assert.equal(packageJson.scripts["build:website"], "node scripts/build-website.mjs");

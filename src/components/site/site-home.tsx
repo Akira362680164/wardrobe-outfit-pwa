@@ -1,4 +1,5 @@
 import { CalendarDays, Cloud, ScanSearch, Shirt, Sparkles, Tags } from "lucide-react";
+import { siteConfig } from "@/lib/site-config";
 import { SiteLayout } from "./site-layout";
 
 const features = [
@@ -17,10 +18,10 @@ export function SiteHome() {
         <section className="site-hero">
           <div className="site-container site-hero__grid">
             <div className="site-hero__copy">
-              <p className="site-eyebrow">个人衣橱与穿搭管理工具</p>
-              <h1>Wardora</h1>
+              <p className="site-eyebrow">{siteConfig.productName}官方信息与合规页面</p>
+              <h1>{siteConfig.siteName}</h1>
               <p className="site-hero__lead">轻松记录衣物，整理衣橱，规划每日穿搭。</p>
-              <p className="site-hero__description">Wardora 是一款面向个人用户的衣橱与穿搭管理工具，帮助用户记录衣物、整理分类、管理穿搭组合与穿搭计划。</p>
+              <p className="site-hero__description">{siteConfig.productName}是一款面向个人用户的衣橱与穿搭管理工具，帮助用户记录衣物、整理分类、管理穿搭组合与穿搭计划。</p>
               <div className="site-actions">
                 <a className="site-button site-button--primary" href="#features">了解主要功能</a>
                 <a className="site-button site-button--secondary" href="/privacy/">查看隐私政策</a>
@@ -56,8 +57,8 @@ export function SiteHome() {
           <div className="site-container">
             <div className="site-boundary-card">
               <p className="site-eyebrow">服务边界</p>
-              <h2 id="boundary-title">专注个人衣橱，不延伸至交易与公众服务</h2>
-              <p>Wardora 是个人衣橱管理工具，不提供电商交易、公众内容发布、社交论坛、金融服务或其他需专项行政许可的服务。</p>
+              <h2 id="boundary-title">官网用于产品介绍与合规信息展示</h2>
+              <p>本网站当前只提供产品介绍、隐私政策、用户协议、账号注销说明、联系渠道及备案信息，不向公众提供独立的内网穿透服务。{siteConfig.productName}不提供电商交易、公众内容发布、社交论坛或金融服务。</p>
             </div>
           </div>
         </section>

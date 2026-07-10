@@ -31,6 +31,7 @@ export function validatePassword(password: string): string | null {
 export interface LoginFormState {
   account: string;
   password: string;
+  accepted: boolean;
 }
 
 export interface RegisterFormState {
@@ -53,7 +54,6 @@ export function isRegisterFormValid(state: RegisterFormState): boolean {
     /^\d{6}$/.test(state.emailCode.trim()) &&
     validatePassword(state.password) === null &&
     state.password === state.confirmPassword &&
-    (!phone || isValidAuthPhone(phone)) &&
-    state.accepted
+    (!phone || isValidAuthPhone(phone))
   );
 }

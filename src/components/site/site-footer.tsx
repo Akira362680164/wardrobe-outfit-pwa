@@ -18,7 +18,7 @@ export function SiteFooter() {
         </nav>
       </div>
       <div className="site-container site-footer__bottom">
-        <span>© 2026 Wardora</span>
+        <span>© 2026 {siteStatus.operatorLabel}</span>
         <span className="site-footer__records">
           <OptionalLink href={siteStatus.icpUrl}>{siteStatus.icpLabel}</OptionalLink>
           <span aria-hidden="true">·</span>
