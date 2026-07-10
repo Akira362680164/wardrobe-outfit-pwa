@@ -7,6 +7,7 @@ import { validateManifests } from "./manifest";
 import { validateStaticDefects } from "./defects";
 import { validateFixtures } from "./fixtures";
 import { validateParityEnvironment } from "./environment";
+import { seedParityFixtures } from "./seed";
 
 interface CliArgs {
   command: string;
@@ -52,6 +53,7 @@ function printHelp(): void {
   tsx scripts/parity/cli.ts defects-static-check --run-id <runId>
   tsx scripts/parity/cli.ts fixture-check --run-id <runId>
   tsx scripts/parity/cli.ts environment-check --run-id <runId> --env-file <absolute path>
+  tsx scripts/parity/cli.ts seed --run-id <runId> --platform app|mini --api-base-url http://127.0.0.1:3100
 
 Common options:
   --app-ref main
@@ -163,6 +165,20 @@ async function main(): Promise<void> {
     });
     console.log(JSON.stringify(result, null, 2));
     if (!result.valid) process.exitCode = 4;
+    return;
+  }
+  if (args.command === "seed") {
+    const runId = value(args, "run-id");
+    const platform = value(args, "platform") as "app" | "mini";
+    if (platform !== "app" && platform !== "mini") throw new Error(`Invalid --platform: ${platform}`);
+    const result = await seedParityFixtures({
+      cwd,
+      runRoot: path.join(outputRoot, runId),
+      runId,
+      platform,
+      apiBaseUrl: value(args, "api-base-url"),
+    });
+    console.log(JSON.stringify({ ok: true, platform, manifestFile: result.manifestFile, runtimeSessionStored: true }, null, 2));
     return;
   }
   throw new Error(`Unsupported parity command: ${args.command}`);

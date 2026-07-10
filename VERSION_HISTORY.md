@@ -1,3 +1,14 @@
+## 2026-07-11 / v2.1.13-test / Codex — 双平台测试 fixture 真实 seed 与读回
+
+- **执行 Agent**：Codex 主协调 agent（未新增 subagent）。
+- **目的**：把声明式 fixture 转成 APP/小程序相互隔离的真实测试 API 数据，并保存不含凭据的实体别名清单供页面执行器使用。
+- **版本变更**：无；当前应用版本仍为 `2.1.13-test`。本批次只写入本机 allowlist 通过的 `wardrobe_e2e` 数据库和 E2E storage，不连接生产 API、不改业务代码、不打 APK。
+- **改动文件**：`scripts/parity/{seed.ts,lib/api.ts,cli.ts,config/static-defects.json}`、`.gitignore`、`package.json`、`VERSION_HISTORY.md`。
+- **改动说明**：新增只接受 localhost API 的关联 Header 客户端；按 run/platform 生成确定性手机号、deviceId 和 clientMutationId；注册或复用隔离账号，上传 deterministic original/thumbnail，创建衣物、套装、种草、旅行和日计划并执行 overview readback；token/密码只写 `.parity-runtime` 的 `0600` 文件，artifact 只保存 masked account、实体 ID/revision 和计数。
+- **验证结果**：APP 与小程序 seed 均成功；每端分别读回 garments=6、outfits=1、wishlist=4、tripPlans=2、outfitPlans=1、locations=1，共 14 个别名实体；server artifact 扫描不含 accessToken、refreshToken、测试密码、Bearer 或 MiniMax Key；两个 runtime session 文件权限均为 `-rw-------`；静态缺陷门禁更新后通过（51 条，P0=18/P1=30/P2=3）；独立 `tsc` 和 `git diff --check` 通过。
+- **风险门禁**：critical（真实测试数据写入、资产绑定与测试会话）。
+- **未验证风险**：尚未实现按 case 的业务实体 teardown；当前依赖唯一 namespace 和幂等 mutationId 隔离。运行中证实既有 Android E2E 未保留 deviceId，且图片会话/实体创建 mutationId 不一致，已新增两条 P0 基础设施缺陷，尚未修复。
+
 ## 2026-07-11 / v2.1.13-test / Codex — Fixture、平台例外与本机环境门禁
 
 - **执行 Agent**：Codex 主协调 agent（未新增 subagent）。

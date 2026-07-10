@@ -170,6 +170,7 @@
     ,"parity:defects:static:check": "tsx scripts/parity/cli.ts defects-static-check"
     ,"parity:fixture:check": "tsx scripts/parity/cli.ts fixture-check"
     ,"parity:environment:check": "tsx scripts/parity/cli.ts environment-check"
+    ,"parity:seed": "tsx scripts/parity/cli.ts seed"
   },
   "dependencies": {
     "@wardrobe/domain-catalog": "file:packages/domain-catalog",
