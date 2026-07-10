@@ -242,3 +242,21 @@ export interface AppSourceDisposition {
   targets: string[];
   rationale: string;
 }
+
+export type DefectSeverity = "P0" | "P1" | "P2" | "P3";
+export type DefectStatus = "OPEN" | "FIXED_UNVERIFIED" | "VERIFIED" | "WAIVED_BY_HUMAN";
+
+export interface StaticDefect {
+  defectId: string;
+  severity: DefectSeverity;
+  category: string;
+  screenId: string;
+  actionId?: string;
+  confirmation: "STATIC_CONFIRMED" | "RUNTIME_CONFIRMATION_REQUIRED";
+  expected: string;
+  actual: string;
+  sourceEvidence: string[];
+  acceptanceCriteria: string[];
+  suspectedFiles: string[];
+  status: DefectStatus;
+}

@@ -1,3 +1,14 @@
+## 2026-07-11 / v2.1.13-test / Codex — 静态缺陷库与证据门禁
+
+- **执行 Agent**：Codex 主协调 agent（汇总三个成对业务域 subagent 和服务端/测试资产 subagent 的只读源码证据）。
+- **目的**：把成对盘点发现的确定差异、APP 基准写入错误、隐私/会话风险和测试基础设施阻断转成可校验的结构化缺陷，防止后续只关注像素差而遗漏确定的业务问题。
+- **版本变更**：无；当前应用版本仍为 `2.1.13-test`。本批次不修复缺陷、不改业务行为、不打 APK、不上传小程序体验版。
+- **改动文件**：`scripts/parity/{defects.ts,types.ts,config/static-defects.json,cli.ts}`、`package.json`、`VERSION_HISTORY.md`。
+- **改动说明**：新增 StaticDefect schema、唯一 defectId、语义 Screen、源码证据、验收标准、疑似文件、静态确认/运行确认和状态校验；登记衣橱、录入、种草、套装计划、设置/账号、诊断、隐私及测试 reset/report 共 49 条 OPEN 缺陷；APP 基准问题与小程序 parity 问题分开分类，未把静态候选直接标记 VERIFIED。
+- **验证结果**：`npm run parity:defects:static:check` 无 error/warning 通过；共 49 条（P0=16、P1=30、P2=3、P3=0），其中 46 条有静态确定证据、3 条明确要求运行确认；独立 `tsc` 编译和 `git diff --check` 通过。
+- **风险门禁**：critical（包含会话未吊销、诊断 trace 所有权、破坏性操作无确认、APP 写入假成功、测试 reset 占位等 P0）。
+- **未验证风险**：所有缺陷仍为 OPEN；尚未附运行截图、网络记录、服务端 readback 或真机复现证据，修复阶段不得仅凭本文件把状态改成 VERIFIED。
+
 ## 2026-07-11 / v2.1.13-test / Codex — 双端 Screen 语义映射与三个样板 manifest
 
 - **执行 Agent**：Codex 主协调 agent；使用三个只读成对业务域 subagent 分别映射共享壳层/衣橱、录入/种草、套装/设置，每个 subagent 同时读取独立 APP 与小程序 detached worktree。
