@@ -1,3 +1,13 @@
+## 2026-07-10 / v2.1.13-test / Codex — App 注销发布准备与法律文本同步
+
+- **执行 Agent**：Codex（未触发 subagent：用户要求当前会话完整实施；本批在独立 worktree 完成 App 发布准备）。
+- **目的**：将已完成的注销能力升版进入 Android 构建，并让隐私政策、用户协议和账号注销说明与真实入口和服务端状态一致。
+- **版本变更**：`package.json` / `package-lock.json` 从 `2.1.12-test` 升到 `2.1.13-test`，Android 推导 `versionCode=20113`。
+- **改动文件**：`package.json`、`package-lock.json`、`src/content/legal-content.tsx`、账号页与注销页底部安全间距、`VERSION_HISTORY.md`。
+- **改动说明**：法律内容改为 App/小程序“设置 → 账号安全 → 注销账号”自助路径，说明三次确认、已有身份任选一种验证、立即停用、全会话失效、真实删除完成才报成功及法定留存例外；独立 Android 视觉检查发现固定底部导航会遮住账号页最后一行，账号页和注销页补充 112px 加安全区的底部滚动留白，保证红色下划线入口完整显示。
+- **验证结果**：账号注销两组专项测试、官网合同、`test:fast`、component、repository integration、API 17 files / 104 tests、共享/API/App/小程序 typecheck 与 `npm run build` 全部通过；初次固定签名 APK 构建成功并通过元数据、签名和 `android:verify:full`，随后在独立 `wardrobe-account-deletion` / `emulator-5560` 上用真实测试账号完成账号安全、风险告知、动态验证方式和密码验证页截图。底部间距修复后的最终 APK 与截图将在下一条收口记录中重新生成。
+- **未验证风险**：生产 API 尚未部署 0016 迁移和注销路由，因此未对生产测试账号执行最终永久注销；没有调用最终确认，避免在旧生产 API 上误操作或删除长期测试账号。
+
 ## 2026-07-10 / v2.1.12-test / Codex — Android App 账号注销三次确认 UI
 
 - **执行 Agent**：Codex（未触发 subagent：用户要求当前会话开始实施；本批按项目 UI 规范串行完成 App 端）。

@@ -139,7 +139,7 @@ export function AccountDeletionView({ auth, onBack }: { auth: WardrobeCloudAuth;
   }
 
   return (
-    <div className="grid min-w-0 gap-4 pb-[calc(24px+env(safe-area-inset-bottom))]">
+    <div className="grid min-w-0 gap-4 pb-[calc(112px+env(safe-area-inset-bottom))]">
       <AppSubPageTopBar title="注销账号" onBack={stage === "notice" ? onBack : () => setStage(previousStage(stage))} />
       {message ? <p role="alert" className="rounded-lg bg-red-50 px-3 py-2 text-sm leading-relaxed text-red-700">{message}</p> : null}
 

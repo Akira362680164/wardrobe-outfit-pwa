@@ -52,7 +52,7 @@ export function AccountManagementView({
   const emailMasked = security?.email.masked ?? auth.user.emailMasked;
   const phoneMasked = security?.phone.masked ?? auth.user.phoneMasked ?? auth.user.maskedPhone;
   return (
-    <div className="grid min-w-0 grid-cols-[minmax(0,1fr)] gap-3.5">
+    <div className="grid min-w-0 grid-cols-[minmax(0,1fr)] gap-3.5 pb-[calc(112px+env(safe-area-inset-bottom))]">
       <SubPageHeader title="账号安全" onBack={onBack} />
       <article className="surface rounded-lg px-4 py-3.5">
         <div className="flex items-start gap-3">
