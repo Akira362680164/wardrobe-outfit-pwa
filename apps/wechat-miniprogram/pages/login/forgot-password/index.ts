@@ -7,6 +7,9 @@ const ERROR_MESSAGES: Record<string, string> = {
   email_code_expired: "验证码已过期，请重新获取。",
   email_code_attempts_exceeded: "验证码错误次数过多，请重新获取。",
   email_rate_limited: "验证码发送过于频繁，请稍后再试。",
+  email_code_rate_limited: "验证码请求过多，请稍后再试。",
+  email_provider_not_configured: "邮件服务尚未配置，请稍后再试。",
+  email_provider_error: "邮件发送失败，请稍后再试。",
 };
 
 Page({
@@ -46,9 +49,9 @@ Page({
     if (!confirmed) return;
     this.setData({ sending: true, errorMessage: "", successMessage: "" });
     try {
-      await requestPasswordReset(email);
+      const response = await requestPasswordReset(email);
       this.setData({ codeSent: true });
-      this.startCountdown(30);
+      this.startCountdown(response.cooldownSeconds);
     } catch (error) {
       this.setData({ errorMessage: errorMessage(error) });
     } finally {

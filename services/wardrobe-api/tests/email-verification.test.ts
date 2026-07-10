@@ -4,6 +4,7 @@ import type { EmailCodePurpose } from "@wardrobe/cloud-contracts";
 import { afterEach, describe, expect, it } from "vitest";
 
 import { buildApp } from "../src/app.js";
+import { createEmailSenderFromEnv } from "../src/email/factory.js";
 import {
   EMAIL_CODE_MAX_ATTEMPTS,
   EmailVerificationService,
@@ -12,6 +13,7 @@ import {
   hashEmailCode,
 } from "../src/auth/email-verification.js";
 import { MockEmailSender } from "../src/email/mock-sender.js";
+import { EmailSendError, type EmailSender } from "../src/email/types.js";
 
 class MemoryEmailVerificationStore implements EmailVerificationStore {
   readonly challenges: EmailChallengeRecord[] = [];
@@ -39,6 +41,7 @@ class MemoryEmailVerificationStore implements EmailVerificationStore {
       purpose: input.purpose,
       userId: input.userId ?? null,
       bindingTicketId: input.bindingTicketId ?? null,
+      createdIpHash: input.createdIpHash ?? null,
       attempts: 0,
       expiresAt: input.expiresAt,
       consumedAt: null,
@@ -61,17 +64,49 @@ class MemoryEmailVerificationStore implements EmailVerificationStore {
     const challenge = this.challenges.find((item) => item.id === challengeId);
     if (challenge) challenge.consumedAt = now;
   }
+
+  async findLatestChallengeForEmail(emailNormalized: string) {
+    return this.challenges
+      .filter((challenge) => challenge.emailNormalized === emailNormalized)
+      .sort((left, right) => right.createdAt.getTime() - left.createdAt.getTime())[0] ?? null;
+  }
+
+  async countChallengesSince(input: {
+    emailNormalized?: string;
+    createdIpHash?: string;
+    since: Date;
+  }) {
+    return this.challenges.filter((challenge) =>
+      challenge.createdAt >= input.since
+      && (!input.emailNormalized || challenge.emailNormalized === input.emailNormalized)
+      && (!input.createdIpHash || challenge.createdIpHash === input.createdIpHash)
+    ).length;
+  }
+
+  async deleteChallenge(challengeId: string) {
+    const index = this.challenges.findIndex((challenge) => challenge.id === challengeId);
+    if (index >= 0) this.challenges.splice(index, 1);
+  }
 }
 
 function makeFixture(now = new Date("2026-07-09T00:00:00.000Z")) {
+  let currentNow = now;
   const store = new MemoryEmailVerificationStore();
   const sender = new MockEmailSender();
   const service = new EmailVerificationService({
     store,
     sender,
-    now: () => now,
+    now: () => currentNow,
   });
-  return { store, sender, service, now };
+  return {
+    store,
+    sender,
+    service,
+    now,
+    advance(milliseconds: number) {
+      currentNow = new Date(currentNow.getTime() + milliseconds);
+    },
+  };
 }
 
 afterEach(() => {
@@ -91,7 +126,7 @@ describe("email verification service", () => {
     expect(result).toMatchObject({
       status: "sent",
       emailMasked: "u***@example.com",
-      cooldownSeconds: 30,
+      cooldownSeconds: 60,
       expiresInSeconds: 600,
     });
     expect(sender.messages).toHaveLength(1);
@@ -106,7 +141,58 @@ describe("email verification service", () => {
     await service.sendCode({ email: "user@example.com", purpose: "register" });
 
     await expect(service.sendCode({ email: "user@example.com", purpose: "register" }))
-      .rejects.toMatchObject({ code: "email_rate_limited", retryAfterSeconds: 30 });
+      .rejects.toMatchObject({ code: "email_rate_limited", retryAfterSeconds: 60 });
+  });
+
+  it("enforces cooldown across purposes for the same email", async () => {
+    const { service } = makeFixture();
+    await service.sendCode({ email: "user@example.com", purpose: "register" });
+
+    await expect(service.sendCode({ email: "user@example.com", purpose: "reset_password" }))
+      .rejects.toMatchObject({ code: "email_rate_limited", retryAfterSeconds: 60 });
+  });
+
+  it("limits one email to five sends per hour", async () => {
+    const fixture = makeFixture();
+    for (let index = 0; index < 5; index += 1) {
+      await fixture.service.sendCode({ email: "user@example.com", purpose: "register" });
+      fixture.advance(60_000);
+    }
+
+    await expect(fixture.service.sendCode({ email: "user@example.com", purpose: "register" }))
+      .rejects.toMatchObject({ code: "email_code_rate_limited", statusCode: 429 });
+  });
+
+  it("limits one IP to twenty sends per hour", async () => {
+    const fixture = makeFixture();
+    for (let index = 0; index < 20; index += 1) {
+      await fixture.service.sendCode({
+        email: `user-${index}@example.com`,
+        purpose: "register",
+        ip: "127.0.0.1",
+      });
+    }
+
+    await expect(fixture.service.sendCode({
+      email: "user-20@example.com",
+      purpose: "register",
+      ip: "127.0.0.1",
+    })).rejects.toMatchObject({ code: "email_code_rate_limited", statusCode: 429 });
+  });
+
+  it("removes the challenge when delivery fails", async () => {
+    const store = new MemoryEmailVerificationStore();
+    const sender: EmailSender = {
+      async sendVerificationCode() {
+        throw new EmailSendError("email_provider_error", "Email delivery failed");
+      },
+    };
+    const service = new EmailVerificationService({ store, sender });
+
+    await expect(service.sendCode({ email: "user@example.com", purpose: "register" }))
+      .rejects.toMatchObject({ code: "email_provider_error", statusCode: 503 });
+    expect(store.challenges).toHaveLength(0);
+    expect(service.getDevelopmentCode({ email: "user@example.com", purpose: "register" })).toBeNull();
   });
 
   it("exposes the latest code through the test-mode helper", async () => {
@@ -156,6 +242,32 @@ describe("email verification service", () => {
 });
 
 describe("email verification routes", () => {
+  it("returns 503 without creating a challenge when Tencent SES is incomplete", async () => {
+    const store = new MemoryEmailVerificationStore();
+    const service = new EmailVerificationService({
+      store,
+      sender: createEmailSenderFromEnv({
+        NODE_ENV: "production",
+        EMAIL_PROVIDER: "tencent-ses",
+      }),
+    });
+    const app = buildApp({
+      readinessCheck: async () => ({ database: "ready" }),
+      emailVerificationService: service,
+    });
+
+    const response = await app.inject({
+      method: "POST",
+      url: "/api/auth/email/send-code",
+      payload: { email: "user@example.com", purpose: "register" },
+    });
+
+    expect(response.statusCode).toBe(503);
+    expect(response.json()).toMatchObject({ code: "email_provider_not_configured" });
+    expect(store.challenges).toHaveLength(0);
+    await app.close();
+  });
+
   it("sends codes and serves the test code in test mode", async () => {
     const fixture = makeFixture();
     const app = buildApp({

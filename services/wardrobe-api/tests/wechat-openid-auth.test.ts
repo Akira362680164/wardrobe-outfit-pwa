@@ -70,7 +70,10 @@ class MemoryEmailStore implements EmailVerificationStore {
     emailNormalized: string;
     codeHash: string;
     purpose: EmailCodePurpose;
+    userId?: string | null;
+    bindingTicketId?: string | null;
     expiresAt: Date;
+    createdIpHash?: string | null;
     now: Date;
   }) {
     const challenge: EmailChallengeRecord = {
@@ -78,8 +81,9 @@ class MemoryEmailStore implements EmailVerificationStore {
       emailNormalized: input.emailNormalized,
       codeHash: input.codeHash,
       purpose: input.purpose,
-      userId: null,
-      bindingTicketId: null,
+      userId: input.userId ?? null,
+      bindingTicketId: input.bindingTicketId ?? null,
+      createdIpHash: input.createdIpHash ?? null,
       attempts: 0,
       expiresAt: input.expiresAt,
       consumedAt: null,
@@ -95,6 +99,22 @@ class MemoryEmailStore implements EmailVerificationStore {
   async consumeChallenge(challengeId: string, now: Date) {
     const challenge = this.challenges.find((item) => item.id === challengeId);
     if (challenge) challenge.consumedAt = now;
+  }
+  async findLatestChallengeForEmail(emailNormalized: string) {
+    return this.challenges
+      .filter((challenge) => challenge.emailNormalized === emailNormalized)
+      .sort((left, right) => right.createdAt.getTime() - left.createdAt.getTime())[0] ?? null;
+  }
+  async countChallengesSince(input: { emailNormalized?: string; createdIpHash?: string; since: Date }) {
+    return this.challenges.filter((challenge) =>
+      challenge.createdAt >= input.since
+      && (!input.emailNormalized || challenge.emailNormalized === input.emailNormalized)
+      && (!input.createdIpHash || challenge.createdIpHash === input.createdIpHash)
+    ).length;
+  }
+  async deleteChallenge(challengeId: string) {
+    const index = this.challenges.findIndex((challenge) => challenge.id === challengeId);
+    if (index >= 0) this.challenges.splice(index, 1);
   }
 }
 

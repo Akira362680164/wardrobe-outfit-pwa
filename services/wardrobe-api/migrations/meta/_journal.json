@@ -106,6 +106,13 @@
       "when": 1783641600000,
       "tag": "0014_unified_email_wechat_auth",
       "breakpoints": true
+    },
+    {
+      "idx": 15,
+      "version": "7",
+      "when": 1783641600001,
+      "tag": "0015_email_verification_rate_limit_indexes",
+      "breakpoints": true
     }
   ]
 }

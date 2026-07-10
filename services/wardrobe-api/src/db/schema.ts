@@ -133,6 +133,8 @@ export const emailVerificationChallenges = pgTable(
   },
   (table) => ({
     emailPurposeIdx: index("email_verification_challenges_email_purpose_idx").on(table.emailNormalized, table.purpose),
+    emailCreatedAtIdx: index("email_verification_challenges_email_created_at_idx").on(table.emailNormalized, table.createdAt),
+    ipCreatedAtIdx: index("email_verification_challenges_ip_created_at_idx").on(table.createdIpHash, table.createdAt),
     expiresAtIdx: index("email_verification_challenges_expires_at_idx").on(table.expiresAt),
   }),
 );

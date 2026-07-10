@@ -305,6 +305,7 @@ export class AccountPasswordAuthService {
   }
 
   async requestPasswordReset(input: { email: string; ip?: string }): Promise<SendEmailCodeResponse> {
+    this.emailVerificationService.ensureDeliveryAvailable();
     const emailNormalized = normalizeEmail(input.email);
     const user = await this.store.findByEmail(emailNormalized);
     if (user?.emailVerified) {
