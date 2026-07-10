@@ -23,6 +23,7 @@ export const EmailCodePurposeSchema = z.enum([
   "wechat_register",
   "reset_password",
   "change_password",
+  "change_email",
 ]);
 
 export const SendEmailCodeRequestSchema = z.object({
@@ -155,6 +156,9 @@ export const AuthErrorCodeSchema = z.enum([
   "email_code_expired",
   "email_code_attempts_exceeded",
   "email_rate_limited",
+  "email_code_rate_limited",
+  "email_provider_not_configured",
+  "email_provider_error",
   "email_service_unavailable",
   "wechat_code_invalid",
   "wechat_service_unavailable",

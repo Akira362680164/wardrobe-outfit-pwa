@@ -150,7 +150,7 @@ Behavior:
 - Store only HMAC/hash, never plaintext.
 - Expire after 10 minutes.
 - Allow at most 5 attempts.
-- Enforce 30-second resend cooldown for the same email and purpose.
+- Enforce a 60-second resend cooldown for the same email across all purposes.
 - In development, log a redacted line with masked email and code.
 - In test mode, expose the code through a test-only helper or endpoint gated by test env.
 
@@ -160,7 +160,7 @@ Response:
 {
   "status": "sent",
   "emailMasked": "u***@example.com",
-  "cooldownSeconds": 30,
+  "cooldownSeconds": 60,
   "expiresInSeconds": 600
 }
 ```
@@ -585,7 +585,7 @@ Content:
 - Title for WeChat registration: `注册新账号`
 - Description: `邮箱用于登录、找回密码和账号安全验证。`
 - Field: `邮箱`
-- Inline email action button: `发送验证码`, then `30s`, then `再次发送`
+- Inline email action button: `发送验证码`, then the API `cooldownSeconds` countdown (currently `60s`), then `再次发送`
 - Confirm dialog title: `发送邮箱验证码`
 - Confirm dialog body: `验证码将发送至 {emailMasked}，10 分钟内有效。确认发送？`
 - Confirm dialog buttons: `取消`, `确认发送`
@@ -615,7 +615,7 @@ Operation:
 4. Client shows confirm dialog.
 5. User taps `确认发送`.
 6. Client calls `/api/auth/email/send-code`.
-7. Button becomes disabled and displays `30s`.
+7. Button becomes disabled and displays the API `cooldownSeconds` countdown, currently `60s`.
 8. `邮箱验证码` input appears.
 9. After countdown, button becomes enabled with `再次发送`.
 10. User enters code, password, confirm password, and optional phone.
@@ -685,7 +685,7 @@ Content:
 
 Style:
 
-- Same inline email-code component and 30-second countdown.
+- Same inline email-code component and response-driven 60-second countdown.
 - Primary button `#2F6B4F`.
 - Success message background `rgba(47,107,79,0.10)`, text `#2F6B4F`.
 

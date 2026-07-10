@@ -41,7 +41,7 @@ check("auth-gate 无 PendingVerificationForm", !/PendingVerificationForm/.test(a
 // 3. AuthView state machine
 check("AuthView 包含 login/register/forgot_password/terms/privacy", /"login" \| "register" \| "forgot_password" \| "terms" \| "privacy"/.test(authGate));
 check("客户端包含邮箱验证码、找回密码与修改密码验证码接口", /sendEmailCode/.test(authApi) && /requestPasswordReset/.test(authApi) && /confirmPasswordReset/.test(authApi) && /requestPasswordChangeCode/.test(authApi));
-check("注册页使用邮箱验证码二次确认和 30 秒倒计时", /发送邮箱验证码/.test(authGate) && /确认发送/.test(authGate) && /setCountdown\(30\)/.test(authGate));
+check("注册页使用邮箱验证码二次确认和服务端倒计时", /发送邮箱验证码/.test(authGate) && /确认发送/.test(authGate) && /setCountdown\(response\.cooldownSeconds\)/.test(authGate));
 
 // 4. No cloud_ready dependency for buttons
 check("auth-gate 无 ensureCloudReady", !/ensureCloudReady/.test(authGate));

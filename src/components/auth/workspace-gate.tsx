@@ -13,6 +13,8 @@ import { purgeLegacyLocalBusinessData } from "@/lib/online/purge-local-business-
 interface OnlineWorkspaceContextValue {
   repository: OnlineWorkspaceRepository;
   initialSnapshot: OnlineWorkspaceSnapshot;
+  imageRefreshVersion: number;
+  recoverImages: (force?: boolean) => Promise<boolean>;
 }
 
 const OnlineWorkspaceContext = createContext<OnlineWorkspaceContextValue | null>(null);
@@ -28,19 +30,58 @@ type WorkspaceGateState =
 
 export function WorkspaceGate({
   session,
+  onRecoverSession,
   children,
 }: {
   session: AuthSessionSnapshot;
+  onRecoverSession?: () => Promise<AuthSessionSnapshot | null>;
   children: React.ReactNode;
 }) {
   const repositoryRef = useRef<OnlineWorkspaceRepository | null>(null);
+  const recoveryPromiseRef = useRef<Promise<boolean> | null>(null);
+  const lastRecoveryAtRef = useRef(0);
+  const hiddenAtRef = useRef<number | null>(null);
   const [state, setState] = useState<WorkspaceGateState>({ status: "loading" });
   const [attempt, setAttempt] = useState(0);
+  const [imageRefreshVersion, setImageRefreshVersion] = useState(0);
 
   const retry = useCallback(() => {
     setState({ status: "loading" });
     setAttempt((value) => value + 1);
   }, []);
+
+  const recoverImages = useCallback(async (force = false) => {
+    if (recoveryPromiseRef.current) return recoveryPromiseRef.current;
+    const now = Date.now();
+    if (!force && now - lastRecoveryAtRef.current < 3_000) return false;
+    const promise = (async () => {
+      lastRecoveryAtRef.current = Date.now();
+      await onRecoverSession?.().catch(() => null);
+      repositoryRef.current?.images.clear();
+      setImageRefreshVersion((value) => value + 1);
+      return true;
+    })();
+    recoveryPromiseRef.current = promise;
+    try {
+      return await promise;
+    } finally {
+      recoveryPromiseRef.current = null;
+    }
+  }, [onRecoverSession]);
+
+  useEffect(() => {
+    const handleVisibility = () => {
+      if (document.visibilityState === "hidden") {
+        hiddenAtRef.current = Date.now();
+        return;
+      }
+      const hiddenAt = hiddenAtRef.current;
+      hiddenAtRef.current = null;
+      if (hiddenAt && Date.now() - hiddenAt > 30_000) void recoverImages();
+    };
+    document.addEventListener("visibilitychange", handleVisibility);
+    return () => document.removeEventListener("visibilitychange", handleVisibility);
+  }, [recoverImages]);
 
   useEffect(() => {
     const repository = new OnlineWorkspaceRepository(session);
@@ -76,7 +117,7 @@ export function WorkspaceGate({
   if (state.status === "loading") return <OnlinePageLoader />;
   if (state.status === "error") return <OnlinePageError message={state.message} onRetry={retry} />;
   return (
-    <OnlineWorkspaceContext.Provider value={{ repository: repositoryRef.current!, initialSnapshot: state.snapshot }}>
+    <OnlineWorkspaceContext.Provider value={{ repository: repositoryRef.current!, initialSnapshot: state.snapshot, imageRefreshVersion, recoverImages }}>
       {children}
     </OnlineWorkspaceContext.Provider>
   );

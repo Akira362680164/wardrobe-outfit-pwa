@@ -22,7 +22,9 @@ assert(authGate.includes("通过邮箱注册"), "login page must expose email re
 assert(authGate.includes("找回密码"), "login page must expose password reset");
 assert(authGate.includes("发送邮箱验证码"), "register/reset flow must confirm sending email code");
 assert(authGate.includes("确认发送"), "email code flow must require second confirmation");
-assert(authGate.includes("setCountdown(30)"), "email code button must start a 30 second countdown");
+assert((authGate.match(/setCountdown\(response\.cooldownSeconds\)/g) ?? []).length >= 2, "register and reset must use the server cooldown");
+assert(accountViews.includes("setCountdown(response.cooldownSeconds)"), "change password must use the server cooldown");
+assert(!authGate.includes("setCountdown(30)") && !accountViews.includes("setCountdown(30)"), "App email countdown must not hard-code 30 seconds");
 assert(authGate.includes("手机号（选填）"), "register page must label phone as optional");
 assert(authGate.includes("手机号暂不验证，仅作为手机号加密码登录名使用。"), "register page must explain phone is only a login name");
 assert(authApi.includes("/api/auth/email/send-code"), "API client must send email verification codes");

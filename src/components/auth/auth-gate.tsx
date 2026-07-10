@@ -430,9 +430,9 @@ function RegisterForm({
     setSending(true);
     setCodeError(null);
     try {
-      await onSendEmailCode(pendingEmail);
+      const response = await onSendEmailCode(pendingEmail);
       setCodeSent(true);
-      setCountdown(30);
+      setCountdown(response.cooldownSeconds);
       setPendingEmail(null);
     } catch (err) {
       setCodeError(toEmailCodeMessage(err));
@@ -566,9 +566,9 @@ function ForgotPasswordForm({ onGoLogin }: { onGoLogin: () => void }) {
     setSending(true);
     setMessage(null);
     try {
-      await authApi.requestPasswordReset(pendingEmail);
+      const response = await authApi.requestPasswordReset(pendingEmail);
       setCodeSent(true);
-      setCountdown(30);
+      setCountdown(response.cooldownSeconds);
       setPendingEmail(null);
     } catch (err) {
       setMessage(toEmailCodeMessage(err));
@@ -795,6 +795,9 @@ function TextField({
 function toEmailCodeMessage(error: unknown): string {
   if (error instanceof authApi.CloudAuthApiError) {
     if (error.code === "email_rate_limited") return "验证码发送过于频繁，请稍后再试";
+    if (error.code === "email_code_rate_limited") return "验证码请求过多，请稍后再试";
+    if (error.code === "email_provider_not_configured") return "邮件服务尚未配置，请稍后再试";
+    if (error.code === "email_provider_error") return "邮件发送失败，请稍后再试";
     if (error.code === "email_code_invalid") return "验证码不正确";
     if (error.code === "email_code_expired") return "验证码已过期，请重新获取";
     if (error.code === "email_code_attempts_exceeded") return "验证码错误次数过多，请重新获取";

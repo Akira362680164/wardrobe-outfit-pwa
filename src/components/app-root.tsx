@@ -19,7 +19,7 @@ function AuthenticatedWardrobeApp() {
   const auth = useAuth();
   if (!auth.user || !auth.session) return null;
   return (
-    <WorkspaceGate session={auth.session}>
+    <WorkspaceGate session={auth.session} onRecoverSession={auth.refreshSession}>
       <WardrobeApp
         cloudAuth={{
           user: auth.user,

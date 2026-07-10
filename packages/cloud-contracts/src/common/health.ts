@@ -13,6 +13,7 @@ export const ReadyResponseSchema = z.object({
     database: z.enum(["ready", "unavailable"]),
     storage: z.enum(["ready", "unavailable"]),
     jwt: z.enum(["ready", "unavailable"]),
+    email: z.enum(["ready", "unavailable"]),
   }).passthrough(),
   serverTime: z.string().datetime(),
 });

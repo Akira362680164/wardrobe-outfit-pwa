@@ -66,7 +66,7 @@ check("AuthProvider register 直接调用 authApi.register", /authApi\.register/
 check("注册页不使用 Next Link 跳转法律页", !/href=.legal/.test(authGate));
 check("AuthView 包含 login/register/forgot_password/terms/privacy", /"login" \| "register" \| "forgot_password" \| "terms" \| "privacy"/.test(authGate));
 check("客户端包含邮箱验证码、修改密码验证码与账号安全接口", /sendEmailCode/.test(authApi) && /requestPasswordReset/.test(authApi) && /requestPasswordChangeCode/.test(authApi) && /getAccountSecurity/.test(authApi));
-check("注册页使用邮箱验证码二次确认和 30 秒倒计时", /发送邮箱验证码/.test(authGate) && /确认发送/.test(authGate) && /setCountdown\(30\)/.test(authGate));
+check("注册页使用邮箱验证码二次确认和服务端倒计时", /发送邮箱验证码/.test(authGate) && /确认发送/.test(authGate) && /setCountdown\(response\.cooldownSeconds\)/.test(authGate));
 check("登录页包含退出确认弹窗", /showExitDialog/.test(authGate) && /退出应用/.test(authGate) && /App\.exitApp/.test(authGate));
 check("auth-gate 包含 backButton 监听", /backButton/.test(authGate) && /App\.addListener/.test(authGate));
 check("旧 pendingRegistration 会被清理", /pendingRegistration/.test(authProvider) && /_removed/.test(authProvider));

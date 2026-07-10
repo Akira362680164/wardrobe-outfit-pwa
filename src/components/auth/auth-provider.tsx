@@ -69,6 +69,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const refreshSession = useCallback(async () => {
     const current = session ?? await loadAuthSessionSnapshot();
+    if (isAccessTokenFresh(current)) return current;
     if (!current.refreshToken) return null;
     const cloud = await updateConnectivity();
     if (cloud !== "cloud_ready") return current.user ? current : null;
@@ -95,14 +96,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     void updateConnectivity();
     const listener = subscribeNetworkChanges(() => void updateConnectivity());
     const handleVisibility = () => {
-      if (document.visibilityState === "visible") void updateConnectivity();
+      if (document.visibilityState !== "visible") return;
+      void updateConnectivity();
+      if (session?.refreshToken && !isAccessTokenFresh(session)) void refreshSession();
     };
     document.addEventListener("visibilitychange", handleVisibility);
     return () => {
       listener.disconnect();
       document.removeEventListener("visibilitychange", handleVisibility);
     };
-  }, [updateConnectivity]);
+  }, [refreshSession, session, updateConnectivity]);
 
   useEffect(() => {
     let cancelled = false;
@@ -345,6 +348,9 @@ function toUserMessage(error: unknown): string {
     if (error.code === "email_code_expired") return "邮箱验证码已过期，请重新获取";
     if (error.code === "email_code_attempts_exceeded") return "验证码错误次数过多，请重新获取";
     if (error.code === "email_rate_limited") return "验证码发送过于频繁，请稍后再试";
+    if (error.code === "email_code_rate_limited") return "验证码请求过多，请稍后再试";
+    if (error.code === "email_provider_not_configured") return "邮件服务尚未配置，请稍后再试";
+    if (error.code === "email_provider_error") return "邮件发送失败，请稍后再试";
     if (error.code === "network_unavailable") return "网络连接失败，请检查网络后重试";
     if (error.code === "service_unavailable") return "账号服务暂时不可用，请稍后重试";
     return "操作失败，请稍后重试";

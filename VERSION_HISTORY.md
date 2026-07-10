@@ -1,3 +1,15 @@
+## 2026-07-10 / v2.1.12-test / Codex — App 主线功能分支收口
+
+- **执行 Agent**：Codex（未触发 subagent：用户要求先完成基线合并和推送，分支清理留到后续）。
+- **目的**：将已完成但尚未进入长期基线的在线图片恢复与腾讯云 SES 邮件能力合入 `main`，保留共享领域字典单一来源，并为小程序基线后续同步提供稳定主线。
+- **版本变更**：`package.json` / `package-lock.json` 从 `2.1.11-test` 升至 `2.1.12-test`；Android `versionCode` 由构建脚本推导为 `20112`。
+- **改动文件**：在线图片恢复涉及 `src/components/{app-root,auth/{auth-provider,workspace-gate},online/online-asset-image}.tsx`、`src/lib/online/online-repository.ts` 与合同测试；SES 涉及共享认证/health 契约、API 邮件 Provider、验证码限流迁移、App/小程序验证码倒计时、相关测试与实施计划；同步整理 `VERSION_HISTORY.md`。
+- **改动说明**：前后台恢复、401 和手工重试统一刷新当前页面在线图片；腾讯云 SES 作为后端可配置 Provider 接入，验证码冷却改为服务端权威 60 秒并增加邮箱/IP 持久限流、失败清理、readiness 与防枚举边界；`packages/domain-catalog` 及小程序生成目录保持当前主线实现。
+- **交付产物**：根目录 `衣橱穿搭助手-v2.1.12-test.apk`，大小 9.5MB，SHA-256 `343c5b0c5d56fca959e978fa9648c65e965747f7252a53d180f7185e3eed762c`；构建归档 `apk-local/app-release-d0c39caf.apk`。
+- **验证结果**：`npm run cloud:contracts:typecheck`、`npm run api:typecheck`、`npm run typecheck`、小程序 typecheck、共享目录生成检查与两组目录测试通过；在线认证/工作区、App/小程序邮箱认证和认证壳合同测试通过；`npm run api:test` 通过（16 files / 99 tests）；`npm run build` 通过；迁移 journal JSON 与 `git diff --check` 通过；`npm run android:apk` 以 `2.1.12-test` 成功；`APK_PATH="$PWD/衣橱穿搭助手-v2.1.12-test.apk" APK_EXPECTED_SIGNER_CN=fangzheng ANDROID_SERIAL=emulator-5554 RESULTS_DIR="$PWD/test-results/android-v2.1.12-test-closeout" npm run android:verify:full` 在 `wardrobe-test` / Android 15 模拟器通过，覆盖安装启动、前台窗口、返回键、竖屏、清数据重启与三段崩溃日志检查；包名 `com.wardrobe.outfit`、versionName `2.1.12-test`、versionCode `20112`、签名 `CN=fangzheng`，结果目录 `test-results/android-v2.1.12-test-closeout/20260710-121247/`。
+- **风险门禁**：high（认证恢复、在线图片、邮件 Provider、验证码状态机、数据库迁移、App/小程序共享认证契约和 Android 交付）；未触发 subagent：用户未要求。
+- **未验证风险**：腾讯云模板仍在审批，未配置生产 Secret、未部署迁移或真实收件；未登录真实账号等待 token 过期后做在线图片恢复端到端验证，未运行真实邮箱和 MiniMax live 调用。
+
 ## 2026-07-09 / v2.1.9-test / Codex — 小程序详情/编辑共享壳与 App 分类目录对齐
 
 - **执行 Agent**：Codex（未触发 subagent：用户要求按顺序直接修复，本轮在小程序 worktree 内收口详情、编辑、录入、首页和套装选择问题）。
@@ -106,6 +118,62 @@
 - **验证结果**：`npm install --prefer-offline --no-audit --no-fund` 通过；`npm run test:logic:domain-catalog` 通过；`npm run typecheck --workspace @wardrobe/domain-catalog` 通过；`npm run test:logic:catalog` 通过（39 项）；`npm run test:logic:color-catalog` 通过（94 项）；`git diff --check` 通过。
 - **风险门禁**：high（新增跨 App、小程序、云契约和服务端共用的领域基础包，最终任务跨 5 个以上文件）；未触发 subagent：用户未通知。
 - **未验证风险**：本批次尚未让 App、云契约、服务端或小程序消费共享包，完整 typecheck/build 和小程序编译留待后续批次完成。
+## 2026-07-10 / v2.1.11-test / Codex — 腾讯云 SES 接入本地验收与可用性防枚举
+
+- **执行 Agent**：Codex（未触发 subagent：用户要求当前会话按实施计划直接执行；本轮完成最终验收和邮件配置不可用边界加固）。
+- **目的**：完成腾讯云 SES 增量任务的全部本地门禁，并确保邮件 Provider 未配置时，公开验证码接口和未知邮箱找回密码返回一致 503，不通过响应差异暴露账号是否存在。
+- **版本变更**：无；当前应用版本仍为 `2.1.11-test`。本轮不打 APK、不上传小程序、不部署服务或数据库迁移。
+- **改动文件**：`services/wardrobe-api/src/email/{types,factory}.ts`、`services/wardrobe-api/src/auth/{email-verification,account-password}.ts`、`services/wardrobe-api/tests/{email-verification,account-password-auth}.test.ts`、`docs/superpowers/plans/2026-07-10-tencent-ses-email-provider.md`、`VERSION_HISTORY.md`。
+- **改动说明**：不可用 sender 暴露内部 readiness 状态，`EmailVerificationService` 在查询/创建 challenge 前统一拒绝；找回密码在查找邮箱前执行同一邮件可用性检查，已注册与未注册邮箱在 Provider 未配置时均返回 `503 email_provider_not_configured`；新增路由和未知邮箱防枚举回归测试，均确认不创建 challenge。
+- **验证结果**：`npm run cloud:contracts:typecheck`、`npm run api:typecheck`、`npm run typecheck`、`npm --prefix apps/wechat-miniprogram run typecheck` 通过；完整 API 测试 15 files / 96 tests 通过；`test:logic:online-auth-shell`、`auth-flow-v2-0-1`（42 项）、`auth-client-shell`（49 项）、`app-email-auth-flow`、`wechat-email-auth-flow`、`online-workspace` 通过；`npm run build` 以 `2.1.11-test` 成功；迁移 journal JSON 有效；`git diff --check` 和源码安全扫描通过，腾讯 SDK 仅由后端 sender 引用，客户端无 Secret 环境变量、`getPhoneNumber` 或 30 秒倒计时硬编码。
+- **依赖审计**：`npm audit --omit=dev` 报告 6 项（5 moderate、1 high）；high 为仓库现有 `drizzle-orm <0.45.2` 标识符转义公告，腾讯 SDK 路径新增 `uuid <11.1.1` moderate。自动修复会引入 Drizzle/SDK 等破坏性版本变化，本任务不扩大范围执行。
+- **风险门禁**：high（邮件认证 Provider、密码找回防枚举、数据库迁移、App/小程序共享认证契约）；未触发 subagent：用户未通知。
+- **未验证风险**：腾讯云模板仍在审批，尚无 TemplateID，未配置生产 Secret、未执行迁移/部署、未真实收件、未做微信 DevTools/真机预览或 Android APK 安装；模板通过后按设计文档激活 runbook 完成真实邮箱与跨端验证。
+
+## 2026-07-10 / v2.1.11-test / Codex — App 与小程序使用服务端验证码倒计时
+
+- **执行 Agent**：Codex（未触发 subagent：用户要求当前会话按实施计划直接执行；本轮完成第三批客户端倒计时改造）。
+- **目的**：移除 App/PWA 和小程序邮箱验证码入口中的 30 秒硬编码，统一使用后端返回的 60 秒 `cooldownSeconds`，避免客户端与服务端限流口径漂移。
+- **版本变更**：无；当前应用版本仍为 `2.1.11-test`。本轮不改页面结构或样式、不打 APK、不上传小程序体验版。
+- **改动文件**：`src/components/auth/{auth-gate,account-views,auth-provider}.tsx`、`apps/wechat-miniprogram/pages/login/{register-email,forgot-password}/index.ts`、`apps/wechat-miniprogram/pages/settings/change-password/index.ts`、`services/wardrobe-api/tests/email-sender.test.ts`、`scripts/test-{app-email-auth-flow,auth-client-shell,auth-flow-v2-0-1,wechat-email-auth-flow}.ts`、`docs/superpowers/specs/2026-07-09-account-auth-email-wechat-design.md`、`docs/superpowers/plans/2026-07-10-tencent-ses-email-provider.md`、`VERSION_HISTORY.md`。
+- **改动说明**：注册、找回密码和修改密码发送入口均读取响应的 `cooldownSeconds`；App 与小程序补齐 `email_code_rate_limited`、`email_provider_not_configured`、`email_provider_error` 中文提示；原账号设计中的 30 秒说明同步更新为响应驱动 60 秒；不新增页面、路由、颜色或布局。
+- **验证结果**：四组客户端契约测试先确认旧实现失败；修改后 `npm run typecheck` 通过；`npm --prefix apps/wechat-miniprogram run typecheck` 通过；`npm run test:logic:auth-client-shell` 通过（49 项）；`npm run test:logic:auth-flow-v2-0-1` 通过（42 项）；`npm run test:logic:app-email-auth-flow`、`npm run test:logic:wechat-email-auth-flow`、`npm run test:logic:online-auth-shell`、`npm run test:logic:online-workspace` 均通过；Provider 测试 7 项通过。
+- **风险门禁**：high（跨 App/PWA/小程序认证入口与服务端限流契约）；未触发 subagent：用户未通知。
+- **未验证风险**：未运行微信开发者工具模拟器或真机预览，未构建/安装 Android APK；本轮没有视觉结构变化，最终生产构建与完整 API 测试在下一批执行。
+
+## 2026-07-10 / v2.1.11-test / Codex — 邮箱验证码持久限流与失败清理
+
+- **执行 Agent**：Codex（未触发 subagent：用户要求当前会话按实施计划直接执行；本轮完成第二批验证码状态机改造）。
+- **目的**：把验证码发送冷却统一为 60 秒，并在 PostgreSQL challenge 记录上补齐每邮箱/每 IP 小时限流，防止服务重启或多实例绕过配额。
+- **版本变更**：无；当前应用版本仍为 `2.1.11-test`。本轮不打 APK、不部署数据库迁移。
+- **改动文件**：`services/wardrobe-api/src/db/schema.ts`、`services/wardrobe-api/migrations/0015_email_verification_rate_limit_indexes.sql`、`services/wardrobe-api/migrations/meta/_journal.json`、`services/wardrobe-api/src/auth/email-verification.ts`、`services/wardrobe-api/tests/{email-verification,account-password-auth,wechat-openid-auth}.test.ts`、`docs/superpowers/plans/2026-07-10-tencent-ses-email-provider.md`、`VERSION_HISTORY.md`。
+- **改动说明**：同一邮箱跨 purpose 统一 60 秒冷却；一小时内同邮箱最多 5 次、同 IP 最多 20 次，均按 challenge 表持久计数；新增 email/IP + created_at 复合索引；发送器失败时删除刚创建的 challenge 并且不写开发验证码映射，失败发送不占冷却或小时配额；旧账号测试显式推进 60 秒后再覆盖找回密码和修改密码流程。
+- **验证结果**：新增状态机测试先确认旧实现 6 项失败；实现后 `npm run api:typecheck` 通过；`npm --workspace @wardrobe/wardrobe-api run test -- tests/email-verification.test.ts tests/account-password-auth.test.ts tests/wechat-openid-auth.test.ts tests/session.test.ts tests/registration.test.ts` 通过（34 项）。
+- **风险门禁**：high（认证验证码、持久限流、PostgreSQL schema 索引与迁移）；未触发 subagent：用户未通知。
+- **未验证风险**：迁移文件未在生产数据库执行；并发请求仍依赖数据库已提交 challenge 的可见性，极短窗口内的并发突发由上游 API 限流继续兜底，后续只有出现实测穿透才需要事务级账户锁。
+
+## 2026-07-10 / v2.1.11-test / Codex — 腾讯云 SES Provider 与邮件就绪检查
+
+- **执行 Agent**：Codex（未触发 subagent：用户要求当前会话按实施计划直接执行；本轮完成第一批 Provider/ready 改造）。
+- **目的**：在不配置真实腾讯云 Secret、不调用真实发信 API 的前提下，把开发期邮件抽象接入可配置腾讯云 SES Provider，并让服务健康检查准确反映邮件配置状态。
+- **版本变更**：无；当前应用版本仍为 `2.1.11-test`。本轮不打 APK、不上传小程序体验版。
+- **改动文件**：`packages/cloud-contracts/src/{auth/contracts,common/health}.ts`、`services/wardrobe-api/src/email/{types,log-sender,mock-sender,tencent-ses-sender,factory}.ts`、`services/wardrobe-api/src/auth/email-verification.ts`、`services/wardrobe-api/src/app.ts`、`services/wardrobe-api/tests/{email-sender,health}.test.ts`、`services/wardrobe-api/package.json`、`package-lock.json`、`docs/superpowers/plans/2026-07-10-tencent-ses-email-provider.md`、`VERSION_HISTORY.md`。
+- **改动说明**：新增腾讯云 `SendEmail` 模板发送器和环境工厂；测试环境强制 Log Provider 且不输出验证码；开发/未配置默认继续使用 Log Provider；配置 `tencent-ses` 但缺少必需值时 `/api/ready` 返回 `email=unavailable`，验证码发送返回 503；模板 payload 固定包含 `purposeText/code/minutes`，SDK 仅在后端加载；共享契约新增 `change_email` 预留用途和邮件 Provider 错误码。
+- **验证结果**：`npm run cloud:contracts:typecheck` 通过；`npm run api:typecheck` 通过；`npm --workspace @wardrobe/wardrobe-api run test -- tests/email-sender.test.ts tests/health.test.ts tests/email-verification.test.ts` 通过（补充日志隐私用例后共 20 项，提交前重跑）；所有腾讯云测试使用假 client，不发网络请求。
+- **风险门禁**：high（后端邮件服务、认证验证码和 `/api/ready` 契约）；未触发 subagent：用户未通知。
+- **未验证风险**：模板仍待审批，未配置 TemplateID/Secret、未调用腾讯云、未验证真实邮箱；`tencentcloud-sdk-nodejs` 安装后 npm 审计报告 11 个现有与传递依赖漏洞（10 moderate、1 high），本轮未自动运行会改变依赖树的修复命令。
+
+## 2026-07-09 / v2.1.9-test / Codex — 修复 App 后台返回后在线图片统一恢复
+
+- **执行 Agent**：Codex（未触发 subagent：用户未通知）。
+- **目的**：修复 Android App 返回桌面一段时间后再回到应用，在线图片全部加载失败且单图“重试”无效的问题；同时将任意图片重试改为刷新当前页面所有在线图片。
+- **版本变更**：`package.json` / `package-lock.json` 从 `2.1.8-test` 升级到 `2.1.9-test`；Android `versionCode` 由构建脚本推导为 `20109`。
+- **改动文件**：`src/components/auth/auth-provider.tsx`、`src/components/auth/workspace-gate.tsx`、`src/components/app-root.tsx`、`src/components/online/online-asset-image.tsx`、`src/lib/online/online-repository.ts`、`scripts/test-online-auth-shell.ts`、`package.json`、`package-lock.json`、`VERSION_HISTORY.md`。
+- **改动说明**：`refreshSession()` 在 access token 仍新鲜时直接返回，避免频繁前台切换导致无意义 token 轮换；App 回前台时若 token 已过期或即将过期自动刷新会话；`WorkspaceGate` 新增全局图片恢复函数和 `imageRefreshVersion`，后台超过 30 秒返回、图片下载遇到 401、或用户点击任意图片“重试”时，都会清理在线图片 object URL 缓存并通知所有在线图片重新拉取；手工“重试”强制绕过自动恢复限流；在线图片下载不再固定使用创建仓库时的旧 session，而是重新拉取时读取最新本机会话。
+- **交付产物**：`/Users/fangzheng/Documents/wardrobe-online-image-recovery/衣橱穿搭助手-v2.1.9-test.apk`，大小 9.5MB；包名 `com.wardrobe.outfit`，versionName `2.1.9-test`，versionCode `20109`，签名主体 `CN=fangzheng, OU=Dev, O=Wardrobe, L=Beijing, ST=Beijing, C=CN`。
+- **验证结果**：`npm run test:logic:online-auth-shell`、`npm run test:logic:online-workspace`、`npm run typecheck`、`npm run build`、`npm run android:apk` 均通过；`aapt dump badging` 与 `apksigner verify --print-certs` 核验通过；备用模拟器 `wardrobe-visible-test`（Android 15 / API 35）完成 APK 覆盖安装、显式启动、版本核对、回桌面等待 35 秒后返回应用和 logcat 崩溃筛查，日志保存在 `test-results/android-v2.1.9-test/`，未发现 `FATAL EXCEPTION` 或 `Process: com.wardrobe.outfit` 崩溃。
+- **风险门禁**：high（改动认证恢复、在线图片下载、Android 前后台恢复和 APK 交付链路）；未触发 subagent：用户未通知。
+- **未验证风险**：未登录真实账号等待 token 过期后做端到端在线图片恢复实测；当前以代码契约、构建、APK 安装启动和 Android 前后台生命周期回归覆盖。
 
 ## 2026-07-10 / v2.1.11-test / Codex — 腾讯云 SES 邮件接入实施计划
 
@@ -114,7 +182,7 @@
 - **版本变更**：无；当前应用版本仍为 `2.1.11-test`。计划阶段不改运行时代码、不打 APK、不上传小程序体验版。
 - **改动文件**：`docs/superpowers/plans/2026-07-10-tencent-ses-email-provider.md`、`VERSION_HISTORY.md`。
 - **改动说明**：计划固定每批文件边界、共享接口、先失败后实现的测试顺序、迁移索引、错误码、完整验证命令和分批 commit 信息；用户已选择本会话直接执行，因此计划提交后继续开发，不再等待执行方式确认。
-- **验证结果**：计划自检和 `git diff --check` 待提交前执行；未运行代码测试，因为计划提交不修改运行时。
+- **验证结果**：计划自检和 `git diff --check` 通过；未运行代码测试，因为计划提交不修改运行时。
 - **风险门禁**：low（实施计划与版本记录；不改后端、数据库、客户端或环境配置）；未触发 subagent：用户未通知。
 - **未验证风险**：腾讯云模板仍待审批，计划执行不会配置 Secret、部署服务或调用真实邮件；真实邮箱和真机验证保留至模板通过后的激活阶段。
 

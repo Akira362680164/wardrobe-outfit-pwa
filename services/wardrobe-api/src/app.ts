@@ -26,6 +26,7 @@ import { readFile } from "node:fs/promises";
 import { checkDatabaseReady } from "./db/client.js";
 import { getApiVersion } from "./version.js";
 import { redactedLogSerializer } from "./shared/redact.js";
+import { getEmailProviderReadiness } from "./email/factory.js";
 import { loadStorageConfig } from "./storage/config.js";
 import { createStorageProviderFromEnv } from "./storage/factory.js";
 import { UnavailableStorageProvider, type StorageProvider } from "./storage/provider.js";
@@ -48,6 +49,7 @@ export interface BuildAppOptions {
   miniMaxIntakeService?: MiniMaxIntakeServiceLike;
   storageProvider?: StorageProvider | null;
   jwtReadinessCheck?: () => Promise<boolean>;
+  emailReadinessCheck?: () => boolean;
   wechatPhoneAuthService?: WechatPhoneAuthService;
   wechatOpenIdAuthService?: WechatOpenIdAuthService;
   emailVerificationService?: EmailVerificationService;
@@ -94,7 +96,12 @@ export function buildApp(options: BuildAppOptions = {}): FastifyInstance {
 
   app.get("/api/ready", async (_request, reply) => {
     const serverTime = new Date().toISOString();
-    const deps: ReadyResponse["dependencies"] = { database: "unavailable", storage: "unavailable", jwt: "unavailable" };
+    const deps: ReadyResponse["dependencies"] = {
+      database: "unavailable",
+      storage: "unavailable",
+      jwt: "unavailable",
+      email: "unavailable",
+    };
 
     try {
       await readinessCheck();
@@ -106,8 +113,10 @@ export function buildApp(options: BuildAppOptions = {}): FastifyInstance {
     deps.storage = await isStorageReady(configuredStorage) ? "ready" : "unavailable";
     const jwtReady = await (options.jwtReadinessCheck ?? checkJwtKeysReady)();
     deps.jwt = jwtReady ? "ready" : "unavailable";
+    const emailReady = (options.emailReadinessCheck ?? (() => getEmailProviderReadiness() === "ready"))();
+    deps.email = emailReady ? "ready" : "unavailable";
 
-    const allReady = deps.database === "ready" && deps.storage === "ready" && jwtReady;
+    const allReady = deps.database === "ready" && deps.storage === "ready" && jwtReady && emailReady;
     if (!allReady) {
       reply.code(503);
       return ReadyResponseSchema.parse({
@@ -121,7 +130,7 @@ export function buildApp(options: BuildAppOptions = {}): FastifyInstance {
 
     return ReadyResponseSchema.parse({
       status: "ok",
-      dependencies: { database: "ready", storage: "ready", jwt: "ready" },
+      dependencies: { database: "ready", storage: "ready", jwt: "ready", email: "ready" },
       serverTime,
     });
   });
