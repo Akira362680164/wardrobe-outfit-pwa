@@ -341,21 +341,23 @@ class ApiClient implements AndroidE2EApi {
   constructor(private readonly baseUrl: string) {}
 
   async register(account: AndroidE2EAccount, deviceId = freshDeviceId()) {
-    return this.requestJson<AuthSession>("/api/auth/register", "POST", undefined, {
+    const session = await this.requestJson<Omit<AuthSession, "deviceId">>("/api/auth/register", "POST", undefined, {
       phone: account.phone,
       password: account.password,
       deviceId,
       deviceLabel: "Android E2E",
     });
+    return { ...session, deviceId };
   }
 
   async login(account: AndroidE2EAccount, deviceId = freshDeviceId()) {
-    return this.requestJson<AuthSession>("/api/auth/login", "POST", undefined, {
+    const session = await this.requestJson<Omit<AuthSession, "deviceId">>("/api/auth/login", "POST", undefined, {
       phone: account.phone,
       password: account.password,
       deviceId,
       deviceLabel: "Android E2E",
     });
+    return { ...session, deviceId };
   }
 
   async overview(session: AuthSession) {

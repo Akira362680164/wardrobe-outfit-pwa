@@ -1,3 +1,13 @@
+## 2026-07-11 / v2.1.13-test / Codex — Android E2E deviceId 与图片 mutationId P0 修复
+
+- **执行 Agent**：Codex 主协调 agent；一个文件隔离 subagent 完成 Android E2E helper 修复，主 agent 复核并更新缺陷状态。
+- **目的**：修复 `STATIC-INFRA-006/007`，让真实 APK E2E 的认证 Header 与图片资产绑定契约可用。
+- **版本变更**：无；保持 `2.1.13-test`，只修改测试基础设施。
+- **改动文件**：`scripts/android-e2e/{run-android-e2e.ts,suites/helpers.ts,tests/helpers.test.ts}`、`scripts/parity/config/static-defects.json`、`VERSION_HISTORY.md`。
+- **改动说明**：register/login 将请求使用的 deviceId 合并回 auth session；createImageEntity 只生成一次 clientMutationId，并贯穿临时资产 session、上传和 entity create，未放宽服务端绑定校验。
+- **验证结果**：定向 helper 测试 1/1、`npm run typecheck`、完整 `npm run test:logic`、`git diff --check` 通过；两个缺陷更新为 `FIXED_UNVERIFIED`。
+- **未验证风险**：尚未重新运行真实 APK critical/full 与带图实体 original/thumbnail readback，完成前不得标 `VERIFIED`。
+
 ## 2026-07-11 / v2.1.13-test / Codex — 穿搭计划与打包清单四项 APP P0 修复
 
 - **执行 Agent**：Codex 主协调 agent；一个文件隔离 subagent 修复指定三个组件，主 agent 复核缺陷状态并运行完整验证。

@@ -144,10 +144,11 @@ export async function createEntity(
   resource: "garments" | "wishlist" | "outfits" | "outfit-plans",
   payload: Record<string, unknown>,
   assetMutations: WorkspaceAssetMutation[] = [],
+  clientMutationId = randomUUID(),
 ): Promise<WorkspaceEntity> {
   const response = await ctx.api.request<CommandResponse>(session, `/api/workspace/${resource}`, {
     method: "POST",
-    body: { clientMutationId: randomUUID(), payload, assetMutations },
+    body: { clientMutationId, payload, assetMutations },
   });
   assert(response.status === "committed" && response.entity, `create ${resource} did not commit`);
   return response.entity;
@@ -189,6 +190,7 @@ export async function uploadMainImage(
   session: AuthSession,
   entityType: "garment" | "wishlistItem" | "outfit" = "garment",
   imagePath = fixtureImagePath(),
+  clientMutationId = randomUUID(),
 ): Promise<WorkspaceAssetMutation[]> {
   const original = readFileSync(imagePath);
   const originalMeta = await sharp(original).metadata();
@@ -198,7 +200,6 @@ export async function uploadMainImage(
     .jpeg({ quality: 84 })
     .toBuffer();
   const thumbnailMeta = await sharp(thumbnail).metadata();
-  const clientMutationId = randomUUID();
   const request = {
     clientMutationId,
     entityType,
@@ -252,8 +253,9 @@ export async function createImageEntity(
   payload: Record<string, unknown>,
   imagePath = fixtureImagePath(),
 ): Promise<WorkspaceEntity> {
-  const assetMutations = await uploadMainImage(ctx, session, entityType, imagePath);
-  return createEntity(ctx, session, resource, payload, assetMutations);
+  const clientMutationId = randomUUID();
+  const assetMutations = await uploadMainImage(ctx, session, entityType, imagePath, clientMutationId);
+  return createEntity(ctx, session, resource, payload, assetMutations, clientMutationId);
 }
 
 export function garmentPayload(name: string, patch: Record<string, unknown> = {}): Record<string, unknown> {
