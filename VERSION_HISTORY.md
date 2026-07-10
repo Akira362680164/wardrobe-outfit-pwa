@@ -1,3 +1,13 @@
+## 2026-07-10 / v2.1.12-test / Codex — 全入口协议主动同意实施计划
+
+- **执行 Agent**：Codex（未触发 subagent；用户已明确开始改造，本 Session 采用 inline execution）。
+- **目的**：把已批准的全入口协议主动同意设计拆成 App/Web、小程序、测试、APK 与双基线集成的可执行步骤。
+- **版本变更**：无；当前仍为 `2.1.12-test`。本提交只包含实施计划，不进入 APK。
+- **改动文件**：`docs/superpowers/plans/2026-07-10-auth-consent-all-entry.md`、`VERSION_HISTORY.md`。
+- **计划结论**：先建立失败合同测试，再改 App/Web 共用认证组件和小程序三个认证页面，随后递增版本、构建固定签名 APK、完成 Android 与微信开发者工具实际验证，最后串行合并回 `main` 和 `wechat/miniprogram`。
+- **验证结果**：计划已对照设计规格完成范围、接口、固定文案、按钮状态、测试命令和双 worktree 集成顺序自检；尚未修改运行时代码。
+- **未验证风险**：实际代码、构建、APK 与小程序模拟器结果将在实施阶段记录。
+
 ## 2026-07-10 / v2.1.12-test / Codex — 全入口协议主动同意整改设计
 
 - **执行 Agent**：Codex（未触发 subagent；本轮先按 brainstorming 设计门禁在独立 `codex/consent-all-entry-20260710` worktree 编写规格）。
