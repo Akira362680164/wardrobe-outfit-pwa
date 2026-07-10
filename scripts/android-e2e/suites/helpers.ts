@@ -65,8 +65,12 @@ export async function startApp(ctx: AndroidE2EContext): Promise<Page> {
 
 export async function loginByUi(page: Page, account: AndroidE2EAccount): Promise<void> {
   if (await page.getByTestId("global-create").isVisible({ timeout: 1_500 }).catch(() => false)) return;
-  await fillLabeled(page, "手机号", account.phone);
+  await fillLabeled(page, "邮箱或手机号", account.phone);
   await fillLabeled(page, "密码", account.password);
+  const terms = page.locator("#auth-login-terms-accepted");
+  if (await terms.isVisible({ timeout: 2_000 }).catch(() => false)) {
+    if (!(await terms.isChecked())) await page.locator('label[for="auth-login-terms-accepted"]').click();
+  }
   await clickButton(page, /^登录$/);
 }
 
@@ -79,6 +83,13 @@ export async function waitForMainApp(page: Page): Promise<void> {
 }
 
 export async function navigateToTab(page: Page, tab: "衣橱" | "套装" | "种草" | "设置"): Promise<void> {
+  const tabButton = page.getByRole("button", { name: new RegExp(`^${escapeRegExp(tab)}$`) }).first();
+  for (let depth = 0; depth < 3 && !(await tabButton.isVisible().catch(() => false)); depth += 1) {
+    const back = page.getByRole("button", { name: "返回", exact: true }).first();
+    if (!(await back.isVisible().catch(() => false))) break;
+    await back.click();
+    await page.waitForTimeout(300);
+  }
   await clickButton(page, new RegExp(`^${escapeRegExp(tab)}$`));
   await page.waitForTimeout(300);
 }
@@ -109,14 +120,14 @@ export async function clickButton(page: Page, name: string | RegExp): Promise<vo
   const button = page.getByRole("button", { name }).first();
   await button.waitFor({ state: "visible", timeout: 20_000 });
   await button.scrollIntoViewIfNeeded().catch(() => undefined);
-  await button.click();
+  await button.click({ timeout: 5_000 }).catch(async () => button.evaluate((element) => (element as HTMLButtonElement).click()));
 }
 
 export async function clickLastButton(page: Page, name: string | RegExp): Promise<void> {
   const button = page.getByRole("button", { name }).last();
   await button.waitFor({ state: "visible", timeout: 20_000 });
   await button.scrollIntoViewIfNeeded().catch(() => undefined);
-  await button.click();
+  await button.click({ timeout: 5_000 }).catch(async () => button.evaluate((element) => (element as HTMLButtonElement).click()));
 }
 
 export async function fillLabeled(page: Page, label: string, value: string): Promise<void> {

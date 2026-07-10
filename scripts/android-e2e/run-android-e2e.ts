@@ -226,6 +226,7 @@ class AdbDevice {
     const output = execFileSync("adb", ["-s", this.serial, "exec-out", "screencap", "-p"], {
       cwd: ROOT,
       stdio: "pipe",
+      maxBuffer: 20 * 1024 * 1024,
     });
     writeFileSync(join(RESULTS_DIR, safeName(name)), output);
   }

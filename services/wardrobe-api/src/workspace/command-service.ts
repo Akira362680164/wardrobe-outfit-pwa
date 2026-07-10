@@ -99,6 +99,15 @@ export class WorkspaceCommandService {
       const revision = row.revision + 1;
       await tx.update(table).set({ revision, originDeviceId: input.deviceId, deletedAt: now, updatedAt: now })
         .where(and(eq(table.id, input.entityId), eq(table.userId, input.userId), eq(table.revision, row.revision), isNull(table.deletedAt)));
+      if (input.resource === "garments") {
+        await cascadeDeletedGarmentReferences(tx, {
+          userId: input.userId,
+          deviceId: input.deviceId,
+          garmentId: input.entityId,
+          legacyItemId: numberOrNull(asRecord(row.payload).legacyItemId),
+          now,
+        });
+      }
       await removeOwnerBindings(tx, input.userId, descriptor.entityType, input.entityId, now);
       await appendChange(tx, input.userId, descriptor.entityType, input.entityId, "delete", revision, {});
       return { revision };
@@ -157,6 +166,14 @@ export class WorkspaceCommandService {
         const [garment] = await tx.select().from(garmentTable).where(and(eq(garmentTable.id, garmentId), eq(garmentTable.userId, input.userId), isNull(garmentTable.deletedAt))).limit(1) as any[];
         if (garment) {
           await tx.update(garmentTable).set({ revision: garment.revision + 1, deletedAt: now, updatedAt: now }).where(eq(garmentTable.id, garmentId));
+          await cascadeDeletedGarmentReferences(tx, {
+            userId: input.userId,
+            deviceId: input.deviceId,
+            garmentId,
+            legacyItemId: numberOrNull(asRecord(garment.payload).legacyItemId),
+            now,
+            excludedWishlistId: input.entityId,
+          });
           await removeOwnerBindings(tx, input.userId, "garment", garmentId, now);
           await appendChange(tx, input.userId, "garment", garmentId, "delete", garment.revision + 1, {});
         }
@@ -411,6 +428,91 @@ async function createWearEvent(tx: Tx, input: { userId: string; deviceId: string
   await appendChange(tx, input.userId, "wearEvent", id, "create", 1, input.payload);
 }
 
+async function cascadeDeletedGarmentReferences(tx: Tx, input: {
+  userId: string;
+  deviceId: string;
+  garmentId: string;
+  legacyItemId: number | null;
+  now: Date;
+  excludedWishlistId?: string;
+}): Promise<void> {
+  const resources = ["outfits", "outfit-plans", "wishlist", "wear-events"] as const;
+  for (const resource of resources) {
+    const descriptor = WORKSPACE_RESOURCES[resource];
+    const table = descriptor.table as AnyPgTable & Record<string, any>;
+    const rows = await tx.select().from(table).where(and(eq(table.userId, input.userId), isNull(table.deletedAt))) as any[];
+    for (const row of rows) {
+      if (resource === "wishlist" && row.id === input.excludedWishlistId) continue;
+      const cleanup = removeGarmentReferences(resource, asRecord(row.payload), input.garmentId, input.legacyItemId, input.now.toISOString());
+      if (!cleanup.changed) continue;
+      const revision = row.revision + 1;
+      if (cleanup.deleteEntity) {
+        await tx.update(table).set({
+          revision,
+          originDeviceId: input.deviceId,
+          deletedAt: input.now,
+          updatedAt: input.now,
+          ...(resource === "wear-events" ? { garmentId: null } : {}),
+        }).where(and(eq(table.id, row.id), eq(table.userId, input.userId), eq(table.revision, row.revision), isNull(table.deletedAt)));
+        await appendChange(tx, input.userId, descriptor.entityType, row.id, "delete", revision, {});
+        continue;
+      }
+      const payload = { ...cleanup.payload, updatedAt: input.now.toISOString() };
+      await tx.update(table).set({
+        revision,
+        originDeviceId: input.deviceId,
+        payload,
+        ...specialColumns(resource, payload),
+        updatedAt: input.now,
+      }).where(and(eq(table.id, row.id), eq(table.userId, input.userId), eq(table.revision, row.revision), isNull(table.deletedAt)));
+      await appendChange(tx, input.userId, descriptor.entityType, row.id, "update", revision, payload);
+    }
+  }
+}
+
+export function removeGarmentReferences(
+  resource: "outfits" | "outfit-plans" | "wishlist" | "wear-events",
+  payload: Record<string, unknown>,
+  garmentId: string,
+  legacyItemId: number | null,
+  deletedAt = new Date().toISOString(),
+): { changed: boolean; deleteEntity: boolean; payload: Record<string, unknown> } {
+  if (resource === "wear-events") {
+    const referencesGarment = payload.garmentId === garmentId
+      || (legacyItemId !== null && payload.garmentId === legacyItemId)
+      || (legacyItemId !== null && payload.itemId === legacyItemId);
+    return { changed: referencesGarment, deleteEntity: referencesGarment, payload };
+  }
+
+  const next = { ...payload };
+  let changed = false;
+  for (const key of ["itemIds", "legacyItemIds", "garmentIds", "legacyGarmentIds"] as const) {
+    if (!Array.isArray(next[key])) continue;
+    const filtered = next[key].filter((value) => value !== garmentId && (legacyItemId === null || value !== legacyItemId));
+    if (filtered.length !== next[key].length) {
+      next[key] = filtered;
+      changed = true;
+    }
+  }
+  for (const key of ["garmentId", "convertedGarmentId"] as const) {
+    if (next[key] === garmentId) {
+      next[key] = null;
+      changed = true;
+    }
+  }
+  for (const key of ["itemId", "convertedItemId"] as const) {
+    if (legacyItemId !== null && next[key] === legacyItemId) {
+      next[key] = null;
+      changed = true;
+    }
+  }
+  if (resource === "wishlist" && changed) {
+    next.convertedAt = null;
+    next.convertedItemDeletedAt = deletedAt;
+  }
+  return { changed, deleteEntity: false, payload: next };
+}
+
 async function ownedActiveRow(tx: Tx, table: AnyPgTable & Record<string, any>, id: string, userId: string): Promise<any> {
   const [row] = await tx.select().from(table).where(and(eq(table.id, id), eq(table.userId, userId), isNull(table.deletedAt))).limit(1);
   if (!row) throw new WorkspaceApiError(404, "not_found", "数据不存在");
@@ -641,6 +743,7 @@ function specialColumns(resource: WorkspaceResource, payload: Record<string, unk
 }
 
 function stringOrNull(value: unknown): string | null { return typeof value === "string" ? value : null; }
+function numberOrNull(value: unknown): number | null { return typeof value === "number" && Number.isFinite(value) ? value : null; }
 function uuidOrNull(value: unknown): string | null { return typeof value === "string" && /^[0-9a-f-]{36}$/i.test(value) ? value : null; }
 function asRecord(value: unknown): Record<string, any> { return value && typeof value === "object" && !Array.isArray(value) ? value as Record<string, any> : {}; }
 function stringList(value: unknown): string[] { return Array.isArray(value) ? value.filter((entry): entry is string => typeof entry === "string") : []; }

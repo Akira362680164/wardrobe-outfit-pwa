@@ -1,3 +1,13 @@
+## 2026-07-11 / v2.1.13-test / Codex — Android Full 深链路与删除引用级联闭环
+
+- **执行 Agent**：Codex 主协调 agent；一个文件隔离 subagent 实现服务端 garment 删除级联，主 agent 复核、补 E2E 漂移并在真实设备复测。
+- **目的**：闭合真实图片恢复、种草图片转换、引用删除、故障重试、无 Key 兜底和 Android 原生边界，并修复运行时发现的跨实体悬空引用。
+- **版本变更**：无；保持 `2.1.13-test`。测试 APK 为固定签名 `CN=fangzheng` 的 `app-release-dbc4956.apk`。
+- **业务修复**：删除 garment 与撤销种草购买删除转换 garment 时，在同一事务清理 outfit、outfit-plan、已购买 wishlist 和 wear-event 的 UUID/legacy item-id 引用；保留其他衣物及购买历史，所有受影响实体递增 revision、更新设备/时间并写 change log。
+- **测试框架修复**：Full 清数据重登复用当前“邮箱或手机号”登录与协议勾选助手；故障注入在确认失败文案和保存页仍可操作后才清除，避免测试抢先解除故障；ADB 截图缓冲适配真实竖屏分辨率。
+- **验证结果**：服务端定向测试 5/5、`npm run api:typecheck`、静态缺陷门禁和 `git diff --check` 通过；MEIZU 21 Pro / Android 16 上 `full:cascade-delete-references`、`full:network-failure-retry`、`full:native-boundaries` 通过，此前 `full:image-garment-asset-restore`、`full:wishlist-image-asset-convert`、`full:ai-no-key-fallback-entry` 已通过。`STATIC-INFRA-007` 与新增 `RUNTIME-SERVER-001` 更新为 `VERIFIED`。
+- **未验证风险**：跨端 51 Screen 的全量 BFS 与小程序裁切/媒体/打包真机复测仍在后续审计周期执行；本记录不代表最终一致性门禁已通过。
+
 ## 2026-07-11 / v2.1.13-test / Codex — 小程序裁切、媒体与打包修复登记
 
 - **执行 Agent**：Codex 主协调 agent（汇总独立小程序修复分支 `baefd42` 的验证结果）。
