@@ -138,11 +138,12 @@ const PRIVACY_SECTIONS: LegalSection[] = [
 ];
 
 const HISTORY_KEY = "authView";
+const AUTH_CONSENT_ERROR = "请先阅读并同意《用户服务协议》和《隐私政策》";
 
 export function AuthGate({ children }: { children: ReactNode }) {
   const auth = useAuth();
   const [view, setView] = useState<AuthView>("login");
-  const [loginForm, setLoginForm] = useState<LoginFormState>({ account: "", password: "" });
+  const [loginForm, setLoginForm] = useState<LoginFormState>({ account: "", password: "", accepted: false });
   const [registerForm, setRegisterForm] = useState<RegisterFormState>({
     email: "",
     emailCode: "",
@@ -237,21 +238,33 @@ export function AuthGate({ children }: { children: ReactNode }) {
       {view === "login" && (
         <LoginForm
           form={loginForm}
-          onChange={setLoginForm}
+          onChange={(next) => {
+            setLoginForm(next);
+            if (next.accepted && localError === AUTH_CONSENT_ERROR) setLocalError(null);
+          }}
           error={localError ?? auth.error}
           isBusy={auth.isBusy}
           onLogin={async () => {
+            if (!loginForm.accepted) {
+              setLocalError(AUTH_CONSENT_ERROR);
+              return;
+            }
             clearLocalError();
             await auth.login(loginForm.account.trim(), loginForm.password);
           }}
           onGoRegister={() => updateAuthView("register")}
           onForgotPassword={() => updateAuthView("forgot_password")}
+          onOpenTerms={() => updateAuthView("terms")}
+          onOpenPrivacy={() => updateAuthView("privacy")}
         />
       )}
       {view === "register" && (
         <RegisterForm
           form={registerForm}
-          onChange={setRegisterForm}
+          onChange={(next) => {
+            setRegisterForm(next);
+            if (next.accepted && localError === AUTH_CONSENT_ERROR) setLocalError(null);
+          }}
           error={localError ?? auth.error}
           isBusy={auth.isBusy}
           onSendEmailCode={(email) => authApi.sendEmailCode({ email, purpose: "register" })}
@@ -261,7 +274,7 @@ export function AuthGate({ children }: { children: ReactNode }) {
               return;
             }
             if (!registerForm.accepted) {
-              setLocalError("请先同意用户协议和隐私政策");
+              setLocalError(AUTH_CONSENT_ERROR);
               return;
             }
             clearLocalError();
@@ -332,6 +345,8 @@ function LoginForm({
   onLogin,
   onGoRegister,
   onForgotPassword,
+  onOpenTerms,
+  onOpenPrivacy,
 }: {
   form: LoginFormState;
   onChange: (form: LoginFormState) => void;
@@ -340,6 +355,8 @@ function LoginForm({
   onLogin: () => Promise<void>;
   onGoRegister: () => void;
   onForgotPassword: () => void;
+  onOpenTerms: () => void;
+  onOpenPrivacy: () => void;
 }) {
   const valid = isLoginFormValid(form);
 
@@ -356,11 +373,18 @@ function LoginForm({
       {error && <AuthErrorMessage text={error} />}
       <TextField label="邮箱或手机号" value={form.account} onChange={(account) => onChange({ ...form, account })} autoComplete="username" inputMode="email" />
       <TextField label="密码" value={form.password} onChange={(password) => onChange({ ...form, password })} type="password" autoComplete="current-password" />
+      <AuthConsentField
+        id="auth-login-terms-accepted"
+        accepted={form.accepted}
+        onAcceptedChange={(accepted) => onChange({ ...form, accepted })}
+        onOpenTerms={onOpenTerms}
+        onOpenPrivacy={onOpenPrivacy}
+      />
       <button
         type="submit"
         disabled={!valid || isBusy}
         className="inline-flex h-11 items-center justify-center gap-2 ui-control-radius text-sm font-semibold text-white disabled:cursor-not-allowed"
-        style={{ backgroundColor: valid && !isBusy ? "var(--color-denim, #156596)" : "rgba(21,101,150,0.4)" }}
+        style={{ backgroundColor: valid && form.accepted && !isBusy ? "var(--color-denim, #156596)" : "rgba(21,101,150,0.4)" }}
       >
         {isBusy ? <Loader2 size={16} className="animate-spin" aria-hidden="true" /> : <Lock size={16} aria-hidden="true" />}
         登录
@@ -374,6 +398,42 @@ function LoginForm({
         </button>
       </div>
     </form>
+  );
+}
+
+function AuthConsentField({
+  id,
+  accepted,
+  onAcceptedChange,
+  onOpenTerms,
+  onOpenPrivacy,
+}: {
+  id: string;
+  accepted: boolean;
+  onAcceptedChange: (accepted: boolean) => void;
+  onOpenTerms: () => void;
+  onOpenPrivacy: () => void;
+}) {
+  return (
+    <div className="flex items-start gap-2 text-xs leading-relaxed text-ink/60">
+      <input
+        id={id}
+        type="checkbox"
+        checked={accepted}
+        onChange={(event) => onAcceptedChange(event.target.checked)}
+        className="mt-0.5 h-4 w-4 shrink-0 accent-denim"
+      />
+      <span>
+        <label htmlFor={id}>我已阅读并同意</label>
+        <button type="button" onClick={onOpenTerms} className="font-semibold text-denim underline-offset-2 hover:underline">
+          《用户服务协议》
+        </button>
+        <span>和</span>
+        <button type="button" onClick={onOpenPrivacy} className="font-semibold text-denim underline-offset-2 hover:underline">
+          《隐私政策》
+        </button>
+      </span>
+    </div>
   );
 }
 
@@ -418,6 +478,10 @@ function RegisterForm({
   const askSendCode = () => {
     const email = form.email.trim();
     setCodeError(null);
+    if (!form.accepted) {
+      setCodeError(AUTH_CONSENT_ERROR);
+      return;
+    }
     if (!isValidAuthEmail(email)) {
       setCodeError("邮箱格式不正确");
       return;
@@ -465,6 +529,7 @@ function RegisterForm({
             onClick={askSendCode}
             disabled={sending || countdown > 0}
             className="absolute right-1 top-1 inline-flex h-9 items-center justify-center rounded-[12px] bg-denim px-3 text-xs font-semibold text-white disabled:bg-denim/35"
+            style={{ backgroundColor: form.accepted && !sending && countdown <= 0 ? "var(--color-denim, #156596)" : "rgba(21,101,150,0.4)" }}
           >
             {sending ? "发送中" : countdown > 0 ? `${countdown}s` : codeSent ? "再次发送" : "发送验证码"}
           </button>
@@ -487,30 +552,21 @@ function RegisterForm({
         <p className="mt-1 text-xs leading-relaxed text-ink/45">手机号暂不验证，仅作为手机号加密码登录名使用。</p>
         {phoneError && <p className="mt-1 text-xs text-clay">{phoneError}</p>}
       </div>
-      <div className="flex items-start gap-2 text-xs leading-relaxed text-ink/60">
-        <input
-          id="auth-terms-accepted"
-          type="checkbox"
-          checked={form.accepted}
-          onChange={(event) => onChange({ ...form, accepted: event.target.checked })}
-          className="mt-0.5 h-4 w-4 accent-denim"
-        />
-        <span>
-          <label htmlFor="auth-terms-accepted">我已阅读并同意</label>
-          <button type="button" onClick={onOpenTerms} className="font-semibold text-denim underline-offset-2 hover:underline">
-            《用户协议》
-          </button>
-          <span>和</span>
-          <button type="button" onClick={onOpenPrivacy} className="font-semibold text-denim underline-offset-2 hover:underline">
-            《隐私政策》
-          </button>
-        </span>
-      </div>
+      <AuthConsentField
+        id="auth-terms-accepted"
+        accepted={form.accepted}
+        onAcceptedChange={(accepted) => {
+          onChange({ ...form, accepted });
+          if (accepted && codeError === AUTH_CONSENT_ERROR) setCodeError(null);
+        }}
+        onOpenTerms={onOpenTerms}
+        onOpenPrivacy={onOpenPrivacy}
+      />
       <button
         type="submit"
         disabled={!valid || isBusy}
         className="inline-flex h-11 items-center justify-center gap-2 ui-control-radius text-sm font-semibold text-white disabled:cursor-not-allowed"
-        style={{ backgroundColor: valid && !isBusy ? "var(--color-denim, #156596)" : "rgba(21,101,150,0.4)" }}
+        style={{ backgroundColor: valid && form.accepted && !isBusy ? "var(--color-denim, #156596)" : "rgba(21,101,150,0.4)" }}
       >
         {isBusy ? <Loader2 size={16} className="animate-spin" aria-hidden="true" /> : <User size={16} aria-hidden="true" />}
         注册
@@ -754,7 +810,7 @@ function AuthHeader({ title }: { title: string }) {
 }
 
 function AuthErrorMessage({ text }: { text: string }) {
-  return <p className="ui-control-radius bg-clay/10 px-3 py-2 text-sm text-clay">{text}</p>;
+  return <p className="rounded-[10px] border-0 bg-[#fef3f2] p-[10px] text-xs leading-[18px] text-[#b42318]">{text}</p>;
 }
 
 function TextField({

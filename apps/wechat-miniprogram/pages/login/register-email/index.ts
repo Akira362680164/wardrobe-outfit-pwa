@@ -1,6 +1,8 @@
 import { HttpError } from "../../../services/http";
 import { registerWithEmail, sendEmailCode } from "../../../services/auth";
 
+const AUTH_CONSENT_ERROR = "请先阅读并同意《用户服务协议》和《隐私政策》";
+
 const ERROR_MESSAGES: Record<string, string> = {
   invalid_email: "邮箱格式不正确。",
   email_already_registered: "该邮箱已注册，请改用邮箱/手机号登录或绑定已有账号。",
@@ -27,6 +29,7 @@ Page({
     submitting: false,
     countdown: 0,
     errorMessage: "",
+    accepted: false,
   },
 
   countdownTimer: 0 as number,
@@ -46,8 +49,20 @@ Page({
   handleConfirmInput(event: WechatMiniprogram.InputEvent) { this.setData({ confirmPassword: event.detail.value }); },
   handlePhoneInput(event: WechatMiniprogram.InputEvent) { this.setData({ phone: event.detail.value }); },
 
+  handleAgreementChange(event: any) {
+    const accepted = event.detail.value.includes("accepted");
+    this.setData({
+      accepted,
+      errorMessage: accepted && this.data.errorMessage === AUTH_CONSENT_ERROR ? "" : this.data.errorMessage,
+    });
+  },
+
   async sendCode(this: any) {
     if (this.data.sending || this.data.countdown > 0) return;
+    if (!this.data.accepted) {
+      this.setData({ errorMessage: AUTH_CONSENT_ERROR });
+      return;
+    }
     const email = this.data.email.trim();
     if (!isEmail(email)) {
       this.setData({ errorMessage: "邮箱格式不正确。" });
@@ -87,6 +102,10 @@ Page({
 
   async submit(this: any) {
     if (this.data.submitting) return;
+    if (!this.data.accepted) {
+      this.setData({ errorMessage: AUTH_CONSENT_ERROR });
+      return;
+    }
     const email = this.data.email.trim();
     const phone = this.data.phone.trim();
     if (!isEmail(email)) return this.setData({ errorMessage: "邮箱格式不正确。" });
@@ -112,6 +131,14 @@ Page({
 
   goBack() {
     wx.navigateBack({ delta: 1 });
+  },
+
+  openAgreement() {
+    wx.navigateTo({ url: "/pages/webview/agreement/index" });
+  },
+
+  openPrivacy() {
+    wx.navigateTo({ url: "/pages/webview/privacy/index" });
   },
 });
 

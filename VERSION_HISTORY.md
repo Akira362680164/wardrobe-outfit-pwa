@@ -28,6 +28,38 @@
 - **改动说明**：确定网站名、产品名、运营主体、SEO、manifest、法律页面、页脚、ICP备案、公安备案状态、App 边界、验证门禁和后续 APK 闭环；内部工程标识不做无收益重命名。
 - **验证结果**：规格完成占位符、矛盾、歧义和范围自检；未发现 `TBD`、`TODO` 或未决实现选择，明确公开邮箱仍需用户单独授权。
 - **未验证风险**：本批次尚未实施或构建；网站长中文名称的手机端排版、共享法律内容的 App 展示和 Android 回归将在用户批准规格后执行。
+## 2026-07-11 / v2.1.13-test / Codex — App/Web/小程序全入口协议主动同意整改
+
+- **执行 Agent**：Codex（未触发 subagent；在独立 `codex/consent-all-entry-20260710` worktree 串行实施，完成后按双基线流程合并）。
+- **目的**：修复审核指出的协议与隐私政策默认自动同意问题，覆盖 Android App、衣橱 Web App和微信小程序全部登录/注册入口，并按用户现场反馈统一小程序登录页居中、认证主色和红色错误提示样式。
+- **版本变更**：`2.1.12-test` → `2.1.13-test`，Android `versionCode=20113`。
+- **改动文件**：`src/lib/auth-form-validation.ts`、`src/components/auth/auth-gate.tsx`、`apps/wechat-miniprogram/pages/login/{index,password,register-email}/`、`apps/wechat-miniprogram/pages/login/{bind-existing,connect-account,forgot-password}/*.wxss`、`scripts/test-auth-consent-all-entry.ts`、`package.json`、`package-lock.json`、设计规格、实施计划及本记录。
+- **改动说明**：App/Web 登录状态新增默认 `false` 的 `accepted`，登录、注册和注册验证码请求均在 API 前校验；小程序微信登录、密码登录和邮箱注册分别维护页面内 `accepted: false`，未同意时不调用网络，只显示固定文案“请先阅读并同意《用户服务协议》和《隐私政策》”。协议页面不会自动勾选，状态不持久化或跨页面继承。小程序微信登录首页改为安全区内垂直居中；认证目录移除遗留 `#2f6b4f` 绿色主色，统一使用 `#355c7d` / `var(--color-primary)`；App/Web 与小程序认证错误统一为 `#fef3f2` 浅红底、`#b42318` 红字、10px 等价圆角/内边距、12px 等价字号和18px 等价行高。
+- **自动验证**：`npm run test:logic:auth-consent`、`npm run test:logic:app-email-auth-flow`、`npm run test:logic:wechat-email-auth-flow`、`npm run test:logic:auth-flow-v2-0-1`（42/42）、`npm run test:logic:auth-client-shell`（49/49）、`npm run typecheck`、`npm --prefix apps/wechat-miniprogram run typecheck`、`npm run build` 通过；小程序认证目录源码扫描无旧绿色；合同测试锁定三个小程序错误 CSS 块完全一致以及 App/Web 等价样式。
+- **微信小程序验证**：微信开发者工具内置 skill `0.2.5` 登录态和版本检查通过；iPhone 12/13 Pro 模拟器 390×844 上确认微信登录页垂直居中、默认未勾选、未勾选显示固定红色提示、勾选后错误清除且主按钮为 `rgb(53, 92, 125)`；密码登录和邮箱注册未同意拦截文案通过，三个页面最终截图确认浅红提示样式一致；TypeScript 与 simulator refresh 通过。未上传体验版、未发布。
+- **Android 验证**：`npm run android:apk` 使用正式 HTTPS API 和固定签名成功；APK 元数据为 `com.wardrobe.outfit` / `2.1.13-test` / `20113`，签名 `CN=fangzheng`。在 `wardrobe-test`（Android 15 / API 35）模拟器执行 `adb install -r`、`pm clear`、冷启动和 WebView CDP 交互；确认登录页竖屏居中、默认未勾选、未同意时固定提示且不进入认证请求、勾选后提示消失且按钮变为 `rgb(53, 92, 125)`；最终错误样式计算值为背景 `rgb(254,243,242)`、文字 `rgb(180,35,24)`、圆角/内边距 `10px`、字号/行高 `12px/18px`；筛选日志未发现 `FATAL EXCEPTION`。
+- **APK 交付**：根目录 `衣橱穿搭助手-v2.1.13-test.apk`，大小 10,006,590 bytes，SHA-256 `53baa585f7b887327bef83af9e113feb155435fda0057941a93f8e2d58217aaf`，不提交 Git。
+- **未验证风险**：未使用真实账号提交登录/注册，避免产生业务数据；本次通过请求前置守卫、源码合同和界面状态证明未同意不会发起认证。微信开发者工具连续切页时偶发 `page destroyed` / `getCurrentPagesByDomain` 工具错误，但逐页截图与状态读取成功。Android `adb keyevent BACK` 后 App 保持前台但未观察到既有退出确认弹窗，本次未修改返回键逻辑，列为独立既有风险；未做小程序真机预览、体验版上传或商店重新提交。
+
+## 2026-07-10 / v2.1.12-test / Codex — 全入口协议主动同意实施计划
+
+- **执行 Agent**：Codex（未触发 subagent；用户已明确开始改造，本 Session 采用 inline execution）。
+- **目的**：把已批准的全入口协议主动同意设计拆成 App/Web、小程序、测试、APK 与双基线集成的可执行步骤。
+- **版本变更**：无；当前仍为 `2.1.12-test`。本提交只包含实施计划，不进入 APK。
+- **改动文件**：`docs/superpowers/plans/2026-07-10-auth-consent-all-entry.md`、`VERSION_HISTORY.md`。
+- **计划结论**：先建立失败合同测试，再改 App/Web 共用认证组件和小程序三个认证页面，随后递增版本、构建固定签名 APK、完成 Android 与微信开发者工具实际验证，最后串行合并回 `main` 和 `wechat/miniprogram`。
+- **验证结果**：计划已对照设计规格完成范围、接口、固定文案、按钮状态、测试命令和双 worktree 集成顺序自检；尚未修改运行时代码。
+- **未验证风险**：实际代码、构建、APK 与小程序模拟器结果将在实施阶段记录。
+
+## 2026-07-10 / v2.1.12-test / Codex — 全入口协议主动同意整改设计
+
+- **执行 Agent**：Codex（未触发 subagent；本轮先按 brainstorming 设计门禁在独立 `codex/consent-all-entry-20260710` worktree 编写规格）。
+- **目的**：确定 Android App、衣橱 Web App与微信小程序所有认证入口的协议主动同意规则，消除默认自动同意行为，并明确官网无认证入口时不做无关扩展。
+- **版本变更**：无；当前仍为 `2.1.12-test`。本提交只包含设计规格，不进入 APK。
+- **改动文件**：`docs/superpowers/specs/2026-07-10-auth-consent-all-entry-design.md`、`VERSION_HISTORY.md`。
+- **设计结论**：认证页复选框默认未勾选；未同意时点击登录、注册、微信授权或注册验证码入口，不发起网络请求，只在当前页面显示红色固定提示“请先阅读并同意《用户服务协议》和《隐私政策》”；勾选且其他输入有效后恢复现有蓝色主按钮。App 与 Web 共用 React 认证组件，小程序分别覆盖微信登录、密码登录和邮箱注册；合规官网保持无登录入口。
+- **验证结果**：设计规格已完成占位符、范围、状态流、错误文案和验证矩阵自检；尚未修改运行时代码。
+- **未验证风险**：实际按钮状态、窄屏换行、Android APK 与微信开发者工具交互将在实现阶段验证。
 
 ## 2026-07-10 / v2.1.12-test / Codex — 官网腾讯云备案信息回填
 
