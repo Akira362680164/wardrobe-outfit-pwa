@@ -24,7 +24,7 @@ import { getWearSummary, hasWornDate } from "@/lib/wear-records";
 import { useLocalDateKey } from "@/lib/use-local-date-key";
 import { addOutfitToDate, recordActualOutfitWear, cancelActualOutfitWearForDate, formatOutfitWearSyncError } from "@/lib/outfit-wear-sync";
 import { wardrobeRepository } from "@/lib/repository/wardrobe-repository";
-import { rethrowIfFailed, upsertOutfit, upsertTripPlan, repoUpsertOutfitPlanEntry, repoDeleteOutfitPlanEntry, repoDeleteTripPlan } from "@/lib/repository/wardrobe-repository";
+import { rethrowIfFailed, upsertOutfit, upsertTripPlan, repoUpsertOutfitPlanEntry, repoDeleteOutfitPlanEntry, repoDeleteTripPlan, repoUpdatePackingChecklist } from "@/lib/repository/wardrobe-repository";
 import { OutfitCover } from "@/components/outfit-cover";
 import { OutfitWeeklyPlanStrip } from "@/components/outfit-weekly-plan-strip";
 import { OutfitPlanningCalendarView } from "@/components/outfit-planning-calendar-view";
@@ -603,13 +603,15 @@ export function OutfitListView({
 
 		  async function handleDeleteCalendarPlan(planId: string) {
 		    try {
-		      void repoDeleteTripPlan(planId as unknown as OutfitCalendarPlan);
+		      const plan = outfitCalendarPlans.find((candidate) => candidate.id === planId);
+		      if (!plan) throw new Error("旅行计划不存在，请刷新后重试");
+		      rethrowIfFailed(await repoDeleteTripPlan(plan), "删除旅行计划失败");
 		      await onPlanDataChange();
           setActiveCalendarPlanId(null);
           setSubPage("planning_calendar");
 		      onMessage("已删除旅行计划");
-		    } catch {
-		      onMessage("操作失败，请重试", "error");
+		    } catch (error) {
+		      onMessage(error instanceof Error ? error.message : "操作失败，请重试", "error");
 		    }
 		  }
 
@@ -619,42 +621,42 @@ export function OutfitListView({
       if (entry.status === "worn") {
         const outfitId = entry.outfitId ?? entry.actualOutfitId;
         if (outfitId) {
-          await handleCancelOutfitWearForDate(outfitId, entry.date);
+          await handleCancelOutfitWearForDate(entry.date, outfitId);
           return;
         }
       }
-      void repoDeleteOutfitPlanEntry(entry.id as unknown as OutfitPlanEntry).then(r => { if (!r.ok) console.error("删除计划失败", r.error); });
-      await syncPackingChecklistForDate(entry.date);
+      rethrowIfFailed(await repoDeleteOutfitPlanEntry(entry), "删除当天穿搭失败");
+      try {
+        await syncPackingChecklistForDate(entry.date, entry.id);
+      } catch (error) {
+        await onPlanDataChange();
+        onMessage(error instanceof Error ? `穿搭已删除，但${error.message}` : "穿搭已删除，但打包清单同步失败，请重试", "error");
+        return;
+      }
       await onPlanDataChange();
       onMessage("已删除当天穿搭");
-    } catch {
-      onMessage("删除失败，请重试", "error");
+    } catch (error) {
+      onMessage(error instanceof Error ? error.message : "删除失败，请重试", "error");
+      throw error;
     }
   }
 
 	  async function handleTogglePackingItemChecked(itemId: string, checked: boolean) {
-	    try {
-        if (activeCalendarPlanId) {
-        const plan = outfitCalendarPlans.find((p) => p.id === activeCalendarPlanId);
-        if (plan) {
-          const now = new Date().toISOString();
-          const updatedItems = planPackingChecklistItems.map((ci) =>
-            ci.id === itemId ? { ...ci, checked, updatedAt: now } : ci
-          );
-          void upsertTripPlan(plan, updatedItems).then(r => { if (!r.ok) console.error("保存计划失败", r.error); });
-        }
-      }
-	      await onPlanDataChange();
-	    } catch {
-	      onMessage("操作失败，请重试", "error");
-	    }
+      if (!activeCalendarPlanId) throw new Error("旅行计划不存在，请刷新后重试");
+      const plan = outfitCalendarPlans.find((candidate) => candidate.id === activeCalendarPlanId);
+      if (!plan) throw new Error("旅行计划不存在，请刷新后重试");
+      const now = new Date().toISOString();
+      const updatedItems = planPackingChecklistItems
+        .filter((item) => item.calendarPlanId === activeCalendarPlanId)
+        .map((item) => item.id === itemId ? { ...item, checked, updatedAt: now } : item);
+      rethrowIfFailed(await repoUpdatePackingChecklist(plan, updatedItems), "更新打包清单失败");
+      await onPlanDataChange();
 	  }
 
 	  async function handleSaveManualPackingItem(input: { label: string; category?: string; quantity?: number }) {
-	    if (!activeCalendarPlanId) return;
-	    try {
+	    if (!activeCalendarPlanId) throw new Error("旅行计划不存在，请刷新后重试");
 	      const plan = outfitCalendarPlans.find((p) => p.id === activeCalendarPlanId);
-	      if (plan) {
+	      if (!plan) throw new Error("旅行计划不存在，请刷新后重试");
 	        const now = new Date().toISOString();
 	        const newItem: PlanPackingChecklistItem = {
 	          id: `packing-${activeCalendarPlanId}-manual-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
@@ -667,46 +669,33 @@ export function OutfitListView({
 	          createdAt: now,
 	          updatedAt: now,
 	        };
-	        void upsertTripPlan(plan, [...planPackingChecklistItems, newItem]).then(r => { if (!r.ok) console.error("保存计划失败", r.error); });
-	      }
+	        const currentItems = planPackingChecklistItems.filter((item) => item.calendarPlanId === activeCalendarPlanId);
+	        rethrowIfFailed(await repoUpdatePackingChecklist(plan, [...currentItems, newItem]), "更新打包清单失败");
 	      await onPlanDataChange();
-	    } catch {
-	      onMessage("操作失败，请重试", "error");
-	    }
 	  }
 
 	  async function handleMarkAllPacked() {
-	    if (!activeCalendarPlanId) return;
-	    try {
+	    if (!activeCalendarPlanId) throw new Error("旅行计划不存在，请刷新后重试");
 	      const plan = outfitCalendarPlans.find((p) => p.id === activeCalendarPlanId);
-	      if (plan) {
+	      if (!plan) throw new Error("旅行计划不存在，请刷新后重试");
 	        const now = new Date().toISOString();
-	        const updatedItems = planPackingChecklistItems.map((ci) =>
-	          ci.calendarPlanId === activeCalendarPlanId ? { ...ci, checked: true, updatedAt: now } : ci
-	        );
-	        void upsertTripPlan(plan, updatedItems).then(r => { if (!r.ok) console.error("保存计划失败", r.error); });
-	      }
+	        const updatedItems = planPackingChecklistItems
+	          .filter((item) => item.calendarPlanId === activeCalendarPlanId)
+	          .map((item) => ({ ...item, checked: true, updatedAt: now }));
+	        rethrowIfFailed(await repoUpdatePackingChecklist(plan, updatedItems), "更新打包清单失败");
 	      await onPlanDataChange();
-	    } catch {
-	      onMessage("操作失败，请重试", "error");
-	    }
 	  }
 
 	  async function handleResetAllPacking() {
-	    if (!activeCalendarPlanId) return;
-	    try {
+	    if (!activeCalendarPlanId) throw new Error("旅行计划不存在，请刷新后重试");
 	      const plan = outfitCalendarPlans.find((p) => p.id === activeCalendarPlanId);
-	      if (plan) {
+	      if (!plan) throw new Error("旅行计划不存在，请刷新后重试");
 	        const now = new Date().toISOString();
-	        const updatedItems = planPackingChecklistItems.map((ci) =>
-	          ci.calendarPlanId === activeCalendarPlanId ? { ...ci, checked: false, updatedAt: now } : ci
-	        );
-	        void upsertTripPlan(plan, updatedItems).then(r => { if (!r.ok) console.error("保存计划失败", r.error); });
-	      }
+	        const updatedItems = planPackingChecklistItems
+	          .filter((item) => item.calendarPlanId === activeCalendarPlanId)
+	          .map((item) => ({ ...item, checked: false, updatedAt: now }));
+	        rethrowIfFailed(await repoUpdatePackingChecklist(plan, updatedItems), "更新打包清单失败");
 	      await onPlanDataChange();
-	    } catch {
-	      onMessage("操作失败，请重试", "error");
-	    }
 	  }
 
 	  // v1.1.0 fix:统一使用 recordActualOutfitWear，不限于 Today
@@ -838,10 +827,12 @@ export function OutfitListView({
   }
 
   // v1.1.4-dev 打包清单自动同步 (单一 plan)
-  async function syncPackingChecklistForPlan(planId: string): Promise<void> {
+  async function syncPackingChecklistForPlan(planId: string, excludedEntryId?: string): Promise<void> {
     const plan = outfitCalendarPlans.find((p) => p.id === planId);
     if (!plan) return;
-    const allEntries = outfitPlanEntries;
+    const allEntries = excludedEntryId
+      ? outfitPlanEntries.filter((entry) => entry.id !== excludedEntryId)
+      : outfitPlanEntries;
     const allOutfits = outfits;
     const allItems = items;
     const allChecklist = planPackingChecklistItems.filter((ci) => ci.calendarPlanId === planId);
@@ -852,16 +843,16 @@ export function OutfitListView({
       items: allItems,
       existingChecklistItems: allChecklist,
     });
-    void upsertTripPlan(plan, newItems).then(r => { if (!r.ok) console.error("保存计划失败", r.error); });
+    rethrowIfFailed(await repoUpdatePackingChecklist(plan, newItems), "同步打包清单失败");
   }
 
   // v1.1.4-dev 打包清单自动同步 (按日期 → 同步所有覆盖该日期的 plan)
-  async function syncPackingChecklistForDate(dateKey: string): Promise<void> {
+  async function syncPackingChecklistForDate(dateKey: string, excludedEntryId?: string): Promise<void> {
     const matchedPlans = outfitCalendarPlans.filter(
       (p) => dateKey >= p.startDate && dateKey <= p.endDate,
     );
     for (const plan of matchedPlans) {
-      await syncPackingChecklistForPlan(plan.id);
+      await syncPackingChecklistForPlan(plan.id, excludedEntryId);
     }
   }
 

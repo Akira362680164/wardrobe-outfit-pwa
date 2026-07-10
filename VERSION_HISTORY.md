@@ -1,3 +1,14 @@
+## 2026-07-11 / v2.1.13-test / Codex — 穿搭计划与打包清单四项 APP P0 修复
+
+- **执行 Agent**：Codex 主协调 agent；一个文件隔离 subagent 修复指定三个组件，主 agent 复核缺陷状态并运行完整验证。
+- **目的**：修复 `STATIC-OUTFITS-001~004` 中旅行计划删除、日计划删除、打包清单写入和取消已穿参数的 APP 基准错误，避免假成功和错误服务端写入。
+- **版本变更**：无；保持 `2.1.13-test`。
+- **改动文件**：`src/components/{outfit-list-view.tsx,outfit-plan-day-card.tsx,plan-packing-checklist-view.tsx}`、`scripts/parity/config/static-defects.json`、`VERSION_HISTORY.md`。
+- **改动说明**：计划与日条目删除改用完整实体并 await repository result，失败保留确认层、成功前 refresh；日条目删除后只以剩余条目同步 checklist；toggle/add/all/reset/open-sync 全部走 `repoUpdatePackingChecklist`，失败保留弹层/草稿；cancel-worn 参数顺序改为 dateKey、outfitId。
+- **验证结果**：`npm run typecheck`、完整 `npm run test:logic`、打包清单 40/40、穿着状态 36/36、穿搭计划 51/51、`git diff --check` 通过；四个缺陷改为 `FIXED_UNVERIFIED`。
+- **风险门禁**：critical（服务端 CRUD、计划/穿着一致性和打包清单持久化）。
+- **未验证风险**：尚未在真实 APK 上执行删除后的服务端 absence、force-stop 后 checklist readback 和 cancel-worn 反向状态复原，因此不得标 `VERIFIED`。
+
 ## 2026-07-11 / v2.1.13-test / Codex — 插桩版固定签名测试 APK 真机验收
 
 - **执行 Agent**：Codex 主协调 agent（未新增 subagent）。

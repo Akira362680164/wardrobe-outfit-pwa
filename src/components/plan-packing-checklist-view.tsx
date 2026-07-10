@@ -201,7 +201,7 @@ export function PlanPackingChecklistView({
           <p className="text-sm text-ink/55 mt-1">所有物品将标记为未打包。</p>
           <div className="flex items-center gap-3 mt-4">
             <button type="button" className="flex-1 rounded-full border border-ink/10 py-2 text-sm font-medium text-ink/70" data-parity-id="parity.app.app.src.components.plan.packing.checklist.view.cc4a562ad5" onClick={() => setShowReset(false)}>取消</button>
-            <button type="button" className="flex-1 rounded-full bg-moss py-2 text-sm font-semibold text-white" data-parity-id="parity.app.app.src.components.plan.packing.checklist.view.32237cea90" onClick={async () => { try { setShowReset(false); await onResetAll(); onMessage("已重置"); } catch { onMessage("操作失败", "error"); } }}>重置</button>
+            <button type="button" disabled={saving} className="flex-1 rounded-full bg-moss py-2 text-sm font-semibold text-white disabled:opacity-50" data-parity-id="parity.app.app.src.components.plan.packing.checklist.view.32237cea90" onClick={async () => { setSaving(true); try { await onResetAll(); setShowReset(false); onMessage("已重置"); } catch { onMessage("操作失败", "error"); } finally { setSaving(false); } }}>{saving ? "重置中..." : "重置"}</button>
           </div>
         </div>
       </MotionSheet>

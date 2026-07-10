@@ -21,7 +21,7 @@ interface OutfitPlanDayCardProps {
   onCancelWear?: (outfitId: string) => void;
   onSetPrimary?: (entry: OutfitPlanEntry) => void;
   onMarkSkipped?: (entry: OutfitPlanEntry) => void;
-  onDeleteEntry?: (entry: OutfitPlanEntry) => void;
+  onDeleteEntry?: (entry: OutfitPlanEntry) => void | Promise<void>;
   onOpenCalendarPlan: (planId: string) => void;
   onAiRecommend?: () => void;
   onMessage: (msg: string, type?: "success" | "error" | "info") => void;
@@ -60,6 +60,7 @@ export function OutfitPlanDayCard({
 }: OutfitPlanDayCardProps) {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [showChangeDeleteSheet, setShowChangeDeleteSheet] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const isToday = dateKey === todayKey;
   const isPast = dateKey < todayKey;
   const isFuture = dateKey > todayKey;
@@ -253,7 +254,24 @@ export function OutfitPlanDayCard({
               <p className="mt-1 text-sm text-ink/55">只会删除 {dateLabel} 的这条穿搭记录。</p>
               <div className="mt-4 grid grid-cols-2 gap-3">
                 <button type="button" className="h-11 rounded-full border border-ink/10 text-sm font-medium text-ink/70" data-parity-id="parity.app.app.src.components.outfit.plan.day.card.9ed272735f" onClick={() => setShowDeleteConfirm(false)}>取消</button>
-                <button type="button" className="h-11 rounded-full bg-red-600 text-sm font-semibold text-white" data-parity-id="parity.app.app.src.components.outfit.plan.day.card.52b940dcf6" onClick={() => { setShowDeleteConfirm(false); onDeleteEntry?.(primaryEntry); }}>删除穿搭</button>
+                <button
+                  type="button"
+                  disabled={deleting}
+                  className="h-11 rounded-full bg-red-600 text-sm font-semibold text-white disabled:opacity-50"
+                  data-parity-id="parity.app.app.src.components.outfit.plan.day.card.52b940dcf6"
+                  onClick={async () => {
+                    if (!onDeleteEntry) return;
+                    setDeleting(true);
+                    try {
+                      await onDeleteEntry(primaryEntry);
+                      setShowDeleteConfirm(false);
+                    } catch {
+                      // The parent reports the repository error; keep this confirmation open for retry.
+                    } finally {
+                      setDeleting(false);
+                    }
+                  }}
+                >{deleting ? "删除中..." : "删除穿搭"}</button>
               </div>
             </div>
           </div>
