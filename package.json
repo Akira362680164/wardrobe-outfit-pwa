@@ -172,6 +172,7 @@
     ,"parity:environment:check": "tsx scripts/parity/cli.ts environment-check"
     ,"parity:seed": "tsx scripts/parity/cli.ts seed"
     ,"parity:capture:app:sample": "tsx scripts/parity/cli.ts capture-app-sample"
+    ,"parity:capture:mini:sample": "tsx scripts/parity/cli.ts capture-mini-sample"
   },
   "dependencies": {
     "@wardrobe/domain-catalog": "file:packages/domain-catalog",

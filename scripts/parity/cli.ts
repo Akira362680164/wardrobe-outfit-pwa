@@ -9,6 +9,7 @@ import { validateFixtures } from "./fixtures";
 import { validateParityEnvironment } from "./environment";
 import { seedParityFixtures } from "./seed";
 import { captureAppGarmentDetailSample } from "./adapters/app";
+import { captureMiniGarmentDetailSample } from "./adapters/mini";
 
 interface CliArgs {
   command: string;
@@ -56,6 +57,7 @@ function printHelp(): void {
   tsx scripts/parity/cli.ts environment-check --run-id <runId> --env-file <absolute path>
   tsx scripts/parity/cli.ts seed --run-id <runId> --platform app|mini --api-base-url http://127.0.0.1:3100
   tsx scripts/parity/cli.ts capture-app-sample --run-id <runId> --serial <adb serial>
+  tsx scripts/parity/cli.ts capture-mini-sample --run-id <runId> --client <wechatide client> --project <mini root> --api-base-url http://127.0.0.1:3100
 
 Common options:
   --app-ref main
@@ -191,6 +193,21 @@ async function main(): Promise<void> {
       runId,
       serial: value(args, "serial"),
       runtimeSessionFile: path.join(cwd, ".parity-runtime", runId, "app", "session.json"),
+    });
+    console.log(JSON.stringify({ ok: true, ...result }, null, 2));
+    return;
+  }
+  if (args.command === "capture-mini-sample") {
+    const runId = value(args, "run-id");
+    const result = await captureMiniGarmentDetailSample({
+      cwd,
+      runRoot: path.join(outputRoot, runId),
+      runId,
+      client: value(args, "client"),
+      project: path.resolve(value(args, "project")),
+      apiBaseUrl: value(args, "api-base-url"),
+      runtimeSessionFile: path.join(cwd, ".parity-runtime", runId, "mini", "session.json"),
+      fixtureManifestFile: path.join(outputRoot, runId, "server", "fixture-seed-mini.json"),
     });
     console.log(JSON.stringify({ ok: true, ...result }, null, 2));
     return;

@@ -1,3 +1,15 @@
+## 2026-07-11 / v2.1.13-test / Codex — 小程序执行器样例与详情操作差异实证
+
+- **执行 Agent**：Codex 主协调 agent（未新增 subagent）。
+- **目的**：使用微信开发者工具 Automator、隔离测试 API 和真实 fixture 完成小程序首个对应 Action 样例，并验证微信胶囊、返回区域、毛玻璃、弹层与网络证据采集。
+- **版本变更**：无；当前应用版本仍为 `2.1.13-test`。本批次未修改小程序业务源码、未上传体验版，运行时 API 覆盖仅存在于当前 DevTools 会话。
+- **改动文件**：`scripts/parity/{adapters/mini.ts,cli.ts}`、`package.json`、`VERSION_HISTORY.md`。
+- **改动说明**：新增 wechatide 执行器，凭据只从 `0600` runtime session 读取并在子进程内写入页面状态；自动设置 localhost 测试 API、登录、打开 fixture 单品详情、调用详情操作与关闭方法；每个检查点保存模拟器原图、页面数据、按钮/图片节点和路由栈。网络证据只从 DevTools 缓冲提取 method、URL、status，禁止保存请求/响应正文、Header 或凭据。
+- **验证结果**：独立 `tsc` 与 `git diff --check` 通过；DevTools 使用 APP 隔离账号之外的 mini fixture 账号登录，`POST /api/auth/login`、garments、overview 和指定 garment readback 均为 HTTP 200；生成 5 个截图检查点及 UI/route/network/execution 证据。运行实证确认 `STATIC-WARDROBE-004`：APP 为右上角三点菜单（编辑/移动/删除），小程序为四个行内按钮（编辑/重新识别/AI 建议/删除）且缺移动，样例按 `DEFECT` 落盘。截图确认胶囊位于右上安全区、胶囊本体不作为缺陷；返回区存在明显浅色圆形白框，详情背景与删除 Sheet 毛玻璃/遮罩可见。
+- **隐私门禁**：首次直接保存 DevTools network 原始缓冲时发现其包含转义后的登录正文和 token；该临时文件在提交前已按废纸篓规则移除，执行器改成仅保存结构化元数据，最终 evidence 通过密码、token、Bearer 和 JWT 扫描。
+- **风险门禁**：critical（小程序自动登录、DevTools 网络缓冲和真实测试会话）。
+- **未验证风险**：当前只覆盖小程序衣物详情对应样例；返回按钮白框和两端详情操作层级仍是 OPEN 缺陷，尚未修复和定向复测；手机二维码预览已由用户装载，但本批自动化证据来自 DevTools 模拟器，手机真机全量路径仍待后续周期。
+
 ## 2026-07-11 / v2.1.13-test / Codex — APP 真机一致性执行器样例与本地测试 APK
 
 - **执行 Agent**：Codex 主协调 agent（未新增 subagent）。
