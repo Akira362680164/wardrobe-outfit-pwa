@@ -204,3 +204,131 @@ export async function captureAppGarmentDetailSample(options: {
     await runCommand("adb", ["-s", options.serial, "forward", "--remove", `tcp:${forwardPort}`], { allowFailure: true });
   }
 }
+
+export async function captureAppDiagnosticsSample(options: {
+  cwd: string;
+  runRoot: string;
+  runId: string;
+  serial: string;
+  runtimeSessionFile: string;
+}): Promise<{ evidenceRoot: string; caseId: string; requests: number }> {
+  const auth = JSON.parse(await fs.readFile(options.runtimeSessionFile, "utf8")) as RuntimeAuth;
+  await runCommand("adb", ["-s", options.serial, "shell", "monkey", "-p", "com.wardrobe.outfit", "-c", "android.intent.category.LAUNCHER", "1"]);
+  const { browser, page, forwardPort } = await connectWebView(options.serial);
+  const network: NetworkEvidence[] = [];
+  page.on("request", (request) => network.push({ startedAt: new Date().toISOString(), method: request.method(), url: request.url() }));
+  page.on("response", (response) => {
+    const entry = [...network].reverse().find((candidate) => candidate.url === response.url() && candidate.status === undefined);
+    if (entry) entry.status = response.status();
+  });
+  const evidenceRoot = path.join(options.runRoot, "settings", "settings.diagnostics.upload", "diagnostics.normal", "diagnostics.upload.confirm", "app");
+  try {
+    await ensureLoggedIn(page, auth);
+    if (await page.getByRole("heading", { name: "诊断数据上传成功", exact: true }).isVisible().catch(() => false)) {
+      await page.getByRole("button", { name: "关闭", exact: true }).click();
+    }
+    if (!await page.getByRole("button", { name: "设置", exact: true }).isVisible().catch(() => false)) {
+      await runCommand("adb", ["-s", options.serial, "shell", "input", "keyevent", "KEYCODE_BACK"]);
+      await page.getByRole("button", { name: "设置", exact: true }).waitFor({ state: "visible", timeout: 20_000 });
+    }
+    await page.getByRole("button", { name: "设置", exact: true }).click();
+    const uploadButton = page.getByRole("button", { name: "上传诊断数据", exact: true });
+    await uploadButton.scrollIntoViewIfNeeded();
+    await uploadButton.waitFor({ state: "visible", timeout: 20_000 });
+    await waitForStable(page);
+    await saveCheckpoint({ page, serial: options.serial, directory: evidenceRoot, name: "00-before-raw" });
+    await uploadButton.evaluate((element) => { element.style.outline = "3px solid #ef4444"; element.style.outlineOffset = "2px"; });
+    await saveCheckpoint({ page, serial: options.serial, directory: evidenceRoot, name: "00-before-annotated" });
+    await uploadButton.evaluate((element) => { element.style.outline = ""; element.style.outlineOffset = ""; });
+    await uploadButton.click();
+    await page.getByRole("heading", { name: "补充问题描述", exact: true }).waitFor({ state: "visible", timeout: 10_000 });
+    await page.getByPlaceholder(/请描述刚才进行了什么操作/u).fill(`${options.runId} APP parity diagnostics sample`);
+    await saveCheckpoint({ page, serial: options.serial, directory: evidenceRoot, name: "01-immediate" });
+    await page.getByRole("button", { name: "确认上传", exact: true }).click();
+    await page.getByRole("heading", { name: "诊断数据上传成功", exact: true }).waitFor({ state: "visible", timeout: 30_000 });
+    await waitForStable(page);
+    await saveCheckpoint({ page, serial: options.serial, directory: evidenceRoot, name: "02-settled" });
+    const caseId = (await page.locator("p.font-mono").innerText()).trim();
+    if (!/^WD-\d{8}-[A-Z0-9]+$/u.test(caseId)) throw new Error("Diagnostic case id missing from success dialog");
+    await page.getByRole("button", { name: "关闭", exact: true }).click();
+    await waitForStable(page);
+    await saveCheckpoint({ page, serial: options.serial, directory: evidenceRoot, name: "03-return-or-close" });
+    const diagnosticNetwork = network.filter((entry) => entry.url.includes("/api/diagnostics/cases"));
+    await writeJson(path.join(evidenceRoot, "network.json"), diagnosticNetwork.map((entry) => ({
+      method: entry.method,
+      url: entry.url.replace(caseId, "{caseId}"),
+      status: entry.status,
+    })));
+    await writeJson(path.join(evidenceRoot, "execution.json"), {
+      schemaVersion: 1,
+      platform: "app",
+      screenId: "settings.diagnostics.upload",
+      stateId: "success",
+      actionId: "diagnostics.upload.confirm",
+      status: "PASS",
+      caseId,
+      sideEffect: "diagnostic-create-upload-checksum",
+      evidenceFiles: ["00-before-raw.png", "00-before-annotated.png", "01-immediate.png", "02-settled.png", "03-return-or-close.png"],
+    });
+    return { evidenceRoot, caseId, requests: diagnosticNetwork.length };
+  } finally {
+    await browser.close();
+    await runCommand("adb", ["-s", options.serial, "forward", "--remove", `tcp:${forwardPort}`], { allowFailure: true });
+  }
+}
+
+export async function captureAppCalendarSample(options: {
+  runRoot: string;
+  runId: string;
+  serial: string;
+  runtimeSessionFile: string;
+}): Promise<{ evidenceRoot: string }> {
+  const auth = JSON.parse(await fs.readFile(options.runtimeSessionFile, "utf8")) as RuntimeAuth;
+  await runCommand("adb", ["-s", options.serial, "shell", "monkey", "-p", "com.wardrobe.outfit", "-c", "android.intent.category.LAUNCHER", "1"]);
+  const { browser, page, forwardPort } = await connectWebView(options.serial);
+  const evidenceRoot = path.join(options.runRoot, "outfits", "outfits.planning.calendar", "calendar.with_plan", "outfits.calendar.next-month", "app");
+  try {
+    await ensureLoggedIn(page, auth);
+    if (await page.getByRole("heading", { name: /诊断数据上传/u }).isVisible().catch(() => false)) {
+      const close = page.getByRole("button", { name: "关闭", exact: true });
+      if (await close.isVisible().catch(() => false)) await close.click();
+    }
+    const nextMonth = page.getByRole("button", { name: "下一月", exact: true });
+    if (!await nextMonth.isVisible().catch(() => false)) {
+      await page.getByRole("button", { name: "套装", exact: true }).click();
+      await page.getByRole("button", { name: "打开穿搭月历", exact: true }).click();
+    }
+    await nextMonth.waitFor({ state: "visible", timeout: 20_000 });
+    await waitForStable(page);
+    await saveCheckpoint({ page, serial: options.serial, directory: evidenceRoot, name: "00-before-raw" });
+    await nextMonth.evaluate((element) => { element.style.outline = "3px solid #ef4444"; element.style.outlineOffset = "2px"; });
+    await saveCheckpoint({ page, serial: options.serial, directory: evidenceRoot, name: "00-before-annotated" });
+    await nextMonth.evaluate((element) => { element.style.outline = ""; element.style.outlineOffset = ""; });
+    const monthTitle = page.getByText(/^\d{4}年\d{1,2}月$/u).first();
+    const beforeTitle = await monthTitle.innerText();
+    await nextMonth.click();
+    await saveCheckpoint({ page, serial: options.serial, directory: evidenceRoot, name: "01-immediate" });
+    await waitForStable(page);
+    const afterTitle = await monthTitle.innerText();
+    if (afterTitle === beforeTitle) throw new Error("APP calendar next month did not change month title");
+    await saveCheckpoint({ page, serial: options.serial, directory: evidenceRoot, name: "02-settled" });
+    await runCommand("adb", ["-s", options.serial, "shell", "input", "keyevent", "KEYCODE_BACK"]);
+    await waitForStable(page);
+    await saveCheckpoint({ page, serial: options.serial, directory: evidenceRoot, name: "03-return-or-close" });
+    await writeJson(path.join(evidenceRoot, "execution.json"), {
+      schemaVersion: 1,
+      platform: "app",
+      screenId: "outfits.planning.calendar",
+      stateId: "month.with-plan",
+      actionId: "outfits.calendar.next-month",
+      status: "PASS",
+      beforeTitle,
+      afterTitle,
+      evidenceFiles: ["00-before-raw.png", "00-before-annotated.png", "01-immediate.png", "02-settled.png", "03-return-or-close.png"],
+    });
+    return { evidenceRoot };
+  } finally {
+    await browser.close();
+    await runCommand("adb", ["-s", options.serial, "forward", "--remove", `tcp:${forwardPort}`], { allowFailure: true });
+  }
+}

@@ -8,8 +8,9 @@ import { validateStaticDefects } from "./defects";
 import { validateFixtures } from "./fixtures";
 import { validateParityEnvironment } from "./environment";
 import { seedParityFixtures } from "./seed";
-import { captureAppGarmentDetailSample } from "./adapters/app";
-import { captureMiniGarmentDetailSample } from "./adapters/mini";
+import { captureAppCalendarSample, captureAppDiagnosticsSample, captureAppGarmentDetailSample } from "./adapters/app";
+import { captureMiniCalendarSample, captureMiniDiagnosticsSample, captureMiniGarmentDetailSample } from "./adapters/mini";
+import { generateInstrumentationPlan } from "./instrumentation";
 
 interface CliArgs {
   command: string;
@@ -58,6 +59,11 @@ function printHelp(): void {
   tsx scripts/parity/cli.ts seed --run-id <runId> --platform app|mini --api-base-url http://127.0.0.1:3100
   tsx scripts/parity/cli.ts capture-app-sample --run-id <runId> --serial <adb serial>
   tsx scripts/parity/cli.ts capture-mini-sample --run-id <runId> --client <wechatide client> --project <mini root> --api-base-url http://127.0.0.1:3100
+  tsx scripts/parity/cli.ts capture-app-diagnostics-sample --run-id <runId> --serial <adb serial>
+  tsx scripts/parity/cli.ts capture-mini-diagnostics-sample --run-id <runId> --client <wechatide client> --project <mini root>
+  tsx scripts/parity/cli.ts capture-app-calendar-sample --run-id <runId> --serial <adb serial>
+  tsx scripts/parity/cli.ts capture-mini-calendar-sample --run-id <runId> --client <wechatide client> --project <mini root>
+  tsx scripts/parity/cli.ts instrumentation-plan --run-id <runId> [--apply true]
 
 Common options:
   --app-ref main
@@ -210,6 +216,63 @@ async function main(): Promise<void> {
       fixtureManifestFile: path.join(outputRoot, runId, "server", "fixture-seed-mini.json"),
     });
     console.log(JSON.stringify({ ok: true, ...result }, null, 2));
+    return;
+  }
+  if (args.command === "capture-app-diagnostics-sample") {
+    const runId = value(args, "run-id");
+    const result = await captureAppDiagnosticsSample({
+      cwd,
+      runRoot: path.join(outputRoot, runId),
+      runId,
+      serial: value(args, "serial"),
+      runtimeSessionFile: path.join(cwd, ".parity-runtime", runId, "app", "session.json"),
+    });
+    console.log(JSON.stringify({ ok: true, ...result }, null, 2));
+    return;
+  }
+  if (args.command === "capture-mini-diagnostics-sample") {
+    const runId = value(args, "run-id");
+    const result = await captureMiniDiagnosticsSample({
+      runRoot: path.join(outputRoot, runId),
+      client: value(args, "client"),
+      project: path.resolve(value(args, "project")),
+    });
+    console.log(JSON.stringify({ ok: true, ...result }, null, 2));
+    return;
+  }
+  if (args.command === "capture-app-calendar-sample") {
+    const runId = value(args, "run-id");
+    const result = await captureAppCalendarSample({
+      runRoot: path.join(outputRoot, runId),
+      runId,
+      serial: value(args, "serial"),
+      runtimeSessionFile: path.join(cwd, ".parity-runtime", runId, "app", "session.json"),
+    });
+    console.log(JSON.stringify({ ok: true, ...result }, null, 2));
+    return;
+  }
+  if (args.command === "capture-mini-calendar-sample") {
+    const runId = value(args, "run-id");
+    const result = await captureMiniCalendarSample({
+      runRoot: path.join(outputRoot, runId),
+      client: value(args, "client"),
+      project: path.resolve(value(args, "project")),
+      runtimeSessionFile: path.join(cwd, ".parity-runtime", runId, "mini", "session.json"),
+      apiBaseUrl: value(args, "api-base-url"),
+    });
+    console.log(JSON.stringify({ ok: true, ...result }, null, 2));
+    return;
+  }
+  if (args.command === "instrumentation-plan") {
+    const runId = value(args, "run-id");
+    const result = await generateInstrumentationPlan({
+      inventoryFile: path.join(outputRoot, runId, "inventory", "actions.json"),
+      appRoot,
+      miniRoot,
+      outputFile: path.join(outputRoot, runId, "inventory", "instrumentation-plan.json"),
+      apply: value(args, "apply", "false") === "true",
+    });
+    console.log(JSON.stringify({ ok: true, counts: result.counts, appliedFiles: result.appliedFiles.length }, null, 2));
     return;
   }
   throw new Error(`Unsupported parity command: ${args.command}`);

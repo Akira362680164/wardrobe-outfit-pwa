@@ -1,3 +1,17 @@
+## 2026-07-11 / v2.1.13-test / Codex — 三组跨端样例、全量 manifest 与静态审核报告
+
+- **执行 Agent**：Codex 主协调 agent；使用三个并行 subagent，分别限定文件所有权完成报告生成器、剩余 manifest 和 parity-id 插桩规划器，主 agent 负责真机/DevTools 执行、合并、隐私门禁与验证。
+- **目的**：完成计划要求的衣物详情、诊断上传、穿搭月历三组高价值样例，补齐所有语义 Screen 的详细执行定义，并产出可人工审核的静态 HTML 与机器可读报告。
+- **版本变更**：无；当前应用版本仍为 `2.1.13-test`。本批次未修改业务源码、未上传小程序体验版，所有写操作仅指向 allowlist 的本机 E2E API/数据库和隔离账号。
+- **改动文件**：`scripts/parity/{adapters/app.ts,adapters/mini.ts,instrumentation.ts,report.ts,cli.ts,manifests/{shared-shell,intake,recommendations,wishlist,statistics,settings}.yaml}`、`package.json`、`VERSION_HISTORY.md`。
+- **框架结果**：51/51 语义 Screen 都具备详细 manifest，覆盖 165 个 State/Checkpoint、125 个核心语义 Action，APP 96/96 与小程序 35/35 静态 Screen 来源已映射；884 个静态 Action 合并为 862 个真实控件，705 个可自动插入确定性 parity-id、157 个动态循环要求稳定业务键，冲突和无法定位均为 0，默认只生成 dry-run plan。
+- **运行样例**：衣物详情 APP “更多操作” PASS，小程序因四个行内操作取代三点菜单而登记 `STATIC-WARDROBE-004` DEFECT；诊断 APP 真实创建并上传工单 `WD-20260711-0F4368`，PostgreSQL readback 为 `uploaded`、SHA-256 `dde866bbb64fd7ac24ab7c346d96147444c2f9f435b246cd0d791fb590d8ec3e`、8084 bytes、events=9/items=6/outfits=1/wishlist=4，小程序仅 toast 且无诊断请求，登记 `STATIC-SETTINGS-001` DEFECT；日历两端“下一月”均从 2026 年 7 月切至 8 月并 PASS。
+- **额外运行发现**：APP access token 过期后诊断上传显示“登录已过期”而未自动刷新，失败弹层已作为运行证据保留；随后仅清除本机 App 会话并重新登录完成成功闭环。微信项目窗口关闭并从锁定 worktree 重新打开后，运行 WXML 与 `b567cee7` 源码的 `data-delta`/`bindtap` 一致，日历证据有效。
+- **报告产物**：生成 `report/index.html`、8 个业务域页、51 个 Screen 详情页、`coverage.json`、`defects.json`、`results.json`、`repair-plan.md`、`junit.xml` 和脱敏 baseline lock；页面包含 APP/小程序并排、透明叠加滑杆、原图入口、Action/副作用/服务端断言和明确 `NOT_EXECUTED` 状态。当前样例口径为 PASS=4、DEFECT=2，静态缺陷 51 条（P0=18/P1=30/P2=3）。
+- **验证结果**：manifest 与 static-defect 门禁 0 error/0 warning；APP 固定签名真机和微信 DevTools 共生成 6 个 execution、46 张样例/设备截图及 UI/route/network/server readback 证据；报告 JSON、JUnit XML、本地链接和秘密扫描通过；独立 TypeScript 与 `git diff --check` 通过。
+- **风险门禁**：critical（真机诊断写入、测试会话、跨端执行器、报告隐私和全量覆盖分母）。
+- **未验证风险**：当前只执行 6/884 个静态 Action，878 个仍为 `NOT_EXECUTED`，审计完整性门禁和产品一致性门禁均未通过；705 个自动 parity-id 和 157 个动态循环 ID 尚未应用到业务源码；51 个 OPEN 缺陷尚未修复，报告当前只能作为阶段性审核报告，不能作为一致性通过结论。
+
 ## 2026-07-11 / v2.1.13-test / Codex — 小程序执行器样例与详情操作差异实证
 
 - **执行 Agent**：Codex 主协调 agent（未新增 subagent）。

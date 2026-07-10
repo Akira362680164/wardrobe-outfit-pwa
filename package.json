@@ -173,6 +173,12 @@
     ,"parity:seed": "tsx scripts/parity/cli.ts seed"
     ,"parity:capture:app:sample": "tsx scripts/parity/cli.ts capture-app-sample"
     ,"parity:capture:mini:sample": "tsx scripts/parity/cli.ts capture-mini-sample"
+    ,"parity:capture:app:diagnostics:sample": "tsx scripts/parity/cli.ts capture-app-diagnostics-sample"
+    ,"parity:capture:mini:diagnostics:sample": "tsx scripts/parity/cli.ts capture-mini-diagnostics-sample"
+    ,"parity:capture:app:calendar:sample": "tsx scripts/parity/cli.ts capture-app-calendar-sample"
+    ,"parity:capture:mini:calendar:sample": "tsx scripts/parity/cli.ts capture-mini-calendar-sample"
+    ,"parity:instrumentation:plan": "tsx scripts/parity/cli.ts instrumentation-plan"
+    ,"parity:report": "tsx scripts/parity/report.ts"
   },
   "dependencies": {
     "@wardrobe/domain-catalog": "file:packages/domain-catalog",

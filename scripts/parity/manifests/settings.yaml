@@ -6,7 +6,7 @@
       "id": "settings.diagnostics.upload",
       "domain": "settings",
       "sourceOfTruth": "app",
-      "mappingStatus": "EQUIVALENT",
+      "mappingStatus": "MINI_ONLY_DEFECT",
       "app": {
         "routes": ["settings_home:diagnostic-upload"],
         "sourceInventoryIds": ["app.route.settings.home", "app.src.components.wardrobe.app"],

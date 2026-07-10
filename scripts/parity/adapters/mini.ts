@@ -184,3 +184,104 @@ export async function captureMiniGarmentDetailSample(options: {
   });
   return { evidenceRoot };
 }
+
+export async function captureMiniDiagnosticsSample(options: {
+  runRoot: string;
+  client: string;
+  project: string;
+}): Promise<{ evidenceRoot: string }> {
+  await wechatide(options.client, "automation_navigate", [
+    "--project", options.project,
+    "--action", "navigateTo",
+    "--url", "/pages/settings/diagnostics/index",
+  ]);
+  await waitForRoute(options.client, options.project, "pages/settings/diagnostics/index");
+  const evidenceRoot = path.join(options.runRoot, "settings", "settings.diagnostics.upload", "diagnostics.normal", "diagnostics.upload.confirm", "mini");
+  await saveCheckpoint({ client: options.client, project: options.project, directory: evidenceRoot, name: "00-before-raw" });
+  await saveCheckpoint({ client: options.client, project: options.project, directory: evidenceRoot, name: "00-before-annotated" });
+  await pageAction(options.client, options.project, "callMethod", ["--method", "showUnavailable"]);
+  await saveCheckpoint({ client: options.client, project: options.project, directory: evidenceRoot, name: "01-immediate" });
+  await new Promise((resolve) => setTimeout(resolve, 1800));
+  await saveCheckpoint({ client: options.client, project: options.project, directory: evidenceRoot, name: "02-settled" });
+  await saveCheckpoint({ client: options.client, project: options.project, directory: evidenceRoot, name: "03-return-or-close" });
+  const network = await wechatideText(options.client, "get_app_network_content", [
+    "--project", options.project,
+    "--command", "grep '/api/diagnostics/cases' | tail -50",
+  ]);
+  await writeJson(path.join(evidenceRoot, "network.json"), summarizeNetworkDebug(network));
+  await writeJson(path.join(evidenceRoot, "execution.json"), {
+    schemaVersion: 1,
+    platform: "mini",
+    screenId: "settings.diagnostics.upload",
+    stateId: "idle",
+    actionId: "diagnostics.upload.confirm",
+    status: "DEFECT",
+    transition: "toast-only",
+    sideEffect: "NONE",
+    defectId: "STATIC-SETTINGS-001",
+    defectReason: "小程序仅提示诊断上传暂未开放，未创建或上传诊断工单",
+    evidenceFiles: ["00-before-raw.png", "00-before-annotated.png", "01-immediate.png", "02-settled.png", "03-return-or-close.png"],
+  });
+  return { evidenceRoot };
+}
+
+export async function captureMiniCalendarSample(options: {
+  runRoot: string;
+  client: string;
+  project: string;
+  runtimeSessionFile: string;
+  apiBaseUrl: string;
+}): Promise<{ evidenceRoot: string }> {
+  const auth = JSON.parse(await fs.readFile(options.runtimeSessionFile, "utf8")) as RuntimeAuth;
+  await wechatide(options.client, "automation_evaluate", [
+    "--project", options.project,
+    "--fn-source", `() => { const app = getApp(); app.globalData.apiBaseUrl = ${JSON.stringify(options.apiBaseUrl)}; return true; }`,
+  ]);
+  await wechatide(options.client, "automation_navigate", [
+    "--project", options.project,
+    "--action", "reLaunch",
+    "--url", "/pages/login/index",
+  ]);
+  await waitForRoute(options.client, options.project, "pages/login/index");
+  await pageAction(options.client, options.project, "callMethod", ["--method", "openPasswordLogin"]);
+  await waitForRoute(options.client, options.project, "pages/login/password/index");
+  await pageAction(options.client, options.project, "setData", [
+    "--patch", JSON.stringify({ account: auth.phone, password: auth.password, accepted: true }),
+  ]);
+  await pageAction(options.client, options.project, "callMethod", ["--method", "loginByPassword"]);
+  await waitForRoute(options.client, options.project, "pages/wardrobe/index/index");
+  await wechatide(options.client, "automation_navigate", [
+    "--project", options.project,
+    "--action", "navigateTo",
+    "--url", "/pages/outfits/calendar/index",
+  ]);
+  await waitForRoute(options.client, options.project, "pages/outfits/calendar/index");
+  const evidenceRoot = path.join(options.runRoot, "outfits", "outfits.planning.calendar", "calendar.with_plan", "outfits.calendar.next-month", "mini");
+  const before = await pageAction(options.client, options.project, "getData") as { monthTitle?: string };
+  await saveCheckpoint({ client: options.client, project: options.project, directory: evidenceRoot, name: "00-before-raw" });
+  await saveCheckpoint({ client: options.client, project: options.project, directory: evidenceRoot, name: "00-before-annotated" });
+  await wechatide(options.client, "automation_element_action", [
+    "--project", options.project,
+    "--action", "tap",
+    "--selector", "[data-delta=\"next\"]",
+  ]);
+  await saveCheckpoint({ client: options.client, project: options.project, directory: evidenceRoot, name: "01-immediate" });
+  await new Promise((resolve) => setTimeout(resolve, 500));
+  const after = await pageAction(options.client, options.project, "getData") as { monthTitle?: string };
+  await saveCheckpoint({ client: options.client, project: options.project, directory: evidenceRoot, name: "02-settled" });
+  await saveCheckpoint({ client: options.client, project: options.project, directory: evidenceRoot, name: "03-return-or-close" });
+  await writeJson(path.join(evidenceRoot, "execution.json"), {
+    schemaVersion: 1,
+    platform: "mini",
+    screenId: "outfits.planning.calendar",
+    stateId: "month.with-plan",
+    actionId: "outfits.calendar.next-month",
+    status: after.monthTitle === before.monthTitle ? "DEFECT" : "PASS",
+    beforeTitle: before.monthTitle,
+    afterTitle: after.monthTitle,
+    sideEffect: "NONE",
+    defectReason: after.monthTitle === before.monthTitle ? "小程序月份箭头是无事件绑定的静态 view，点击后月份不变" : undefined,
+    evidenceFiles: ["00-before-raw.png", "00-before-annotated.png", "01-immediate.png", "02-settled.png", "03-return-or-close.png"],
+  });
+  return { evidenceRoot };
+}

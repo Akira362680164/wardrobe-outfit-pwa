@@ -1,5 +1,2435 @@
 {
   "schemaVersion": 1,
   "domain": "shared-shell",
-  "screens": []
+  "screens": [
+    {
+      "id": "shell.main",
+      "domain": "shared-shell",
+      "sourceOfTruth": "app",
+      "mappingStatus": "EQUIVALENT",
+      "app": {
+        "routes": [],
+        "sourceInventoryIds": [],
+        "sourceFiles": []
+      },
+      "mini": {
+        "routes": [
+          "/pages/wardrobe/index/index",
+          "/pages/outfits/index/index",
+          "/pages/wishlist/index/index",
+          "/pages/settings/index/index"
+        ],
+        "sourceInventoryIds": [
+          "mini.route.pages.wardrobe.index.index",
+          "mini.route.pages.outfits.index.index",
+          "mini.route.pages.wishlist.index.index",
+          "mini.route.pages.settings.index.index"
+        ],
+        "sourceFiles": []
+      },
+      "fixtures": [
+        "account.normal",
+        "network.401"
+      ],
+      "entryPaths": [
+        {
+          "id": "direct",
+          "actions": []
+        },
+        {
+          "id": "navigation",
+          "actions": [
+            "shell.tab.wardrobe"
+          ]
+        }
+      ],
+      "states": [
+        {
+          "id": "wardrobe-tab",
+          "fixture": "account.normal",
+          "checkpoint": true,
+          "expectedOn": [
+            "app",
+            "mini"
+          ]
+        },
+        {
+          "id": "outfits-tab",
+          "fixture": "network.401",
+          "checkpoint": true,
+          "expectedOn": [
+            "app",
+            "mini"
+          ]
+        },
+        {
+          "id": "global-create-open",
+          "fixture": "network.401",
+          "checkpoint": true,
+          "expectedOn": [
+            "app",
+            "mini"
+          ]
+        }
+      ],
+      "requiredActions": [
+        {
+          "id": "shell.tab.wardrobe",
+          "event": "tap",
+          "requiredOn": [
+            "app",
+            "mini"
+          ],
+          "sourceActionIds": {},
+          "expectedTransition": "tab",
+          "target": "shell.tab",
+          "sideEffect": "NONE"
+        },
+        {
+          "id": "shell.tab.outfits",
+          "event": "tap",
+          "requiredOn": [
+            "app",
+            "mini"
+          ],
+          "sourceActionIds": {},
+          "expectedTransition": "tab",
+          "target": "shell.tab",
+          "sideEffect": "NONE"
+        },
+        {
+          "id": "shell.global-create",
+          "event": "tap",
+          "requiredOn": [
+            "app",
+            "mini"
+          ],
+          "sourceActionIds": {},
+          "expectedTransition": "overlay-open",
+          "sideEffect": "LOCAL_STATE"
+        }
+      ],
+      "overlays": [
+        "shell.global-create.overlay"
+      ],
+      "checkpoints": [
+        "wardrobe-tab",
+        "outfits-tab",
+        "global-create-open"
+      ],
+      "platformExceptionIds": [
+        "WX-CAPSULE-001"
+      ]
+    },
+    {
+      "id": "auth.wechat-login",
+      "domain": "shared-shell",
+      "sourceOfTruth": "app",
+      "mappingStatus": "LOGIN_EXCLUDED",
+      "app": {
+        "routes": [
+          "internal.authview.login"
+        ],
+        "sourceInventoryIds": [
+          "app.internal.authview.login"
+        ],
+        "sourceFiles": []
+      },
+      "mini": {
+        "routes": [
+          "/pages/login/index"
+        ],
+        "sourceInventoryIds": [
+          "mini.route.pages.login.index"
+        ],
+        "sourceFiles": []
+      },
+      "fixtures": [
+        "account.empty",
+        "network.401"
+      ],
+      "entryPaths": [
+        {
+          "id": "direct",
+          "actions": []
+        },
+        {
+          "id": "navigation",
+          "actions": [
+            "auth.wechat.authorize"
+          ]
+        }
+      ],
+      "states": [
+        {
+          "id": "idle",
+          "fixture": "account.empty",
+          "checkpoint": true,
+          "expectedOn": [
+            "app",
+            "mini"
+          ]
+        },
+        {
+          "id": "authorizing",
+          "fixture": "network.401",
+          "checkpoint": true,
+          "expectedOn": [
+            "app",
+            "mini"
+          ]
+        },
+        {
+          "id": "failed",
+          "fixture": "network.401",
+          "checkpoint": true,
+          "expectedOn": [
+            "app",
+            "mini"
+          ]
+        }
+      ],
+      "requiredActions": [
+        {
+          "id": "auth.wechat.authorize",
+          "event": "tap",
+          "requiredOn": [
+            "app",
+            "mini"
+          ],
+          "sourceActionIds": {},
+          "expectedTransition": "host-native",
+          "sideEffect": "THIRD_PARTY",
+          "serverAssertion": "wechat-auth-session-readback"
+        },
+        {
+          "id": "auth.wechat.retry",
+          "event": "tap",
+          "requiredOn": [
+            "app",
+            "mini"
+          ],
+          "sourceActionIds": {},
+          "expectedTransition": "state-change",
+          "sideEffect": "BACKEND_READ",
+          "serverAssertion": "auth-session-readback"
+        }
+      ],
+      "overlays": [],
+      "checkpoints": [
+        "idle",
+        "authorizing",
+        "failed"
+      ],
+      "platformExceptionIds": [
+        "WX-CAPSULE-001"
+      ]
+    },
+    {
+      "id": "auth.password-login",
+      "domain": "shared-shell",
+      "sourceOfTruth": "app",
+      "mappingStatus": "LOGIN_EXCLUDED",
+      "app": {
+        "routes": [
+          "internal.authview.login"
+        ],
+        "sourceInventoryIds": [
+          "app.internal.authview.login"
+        ],
+        "sourceFiles": []
+      },
+      "mini": {
+        "routes": [
+          "/pages/login/password/index"
+        ],
+        "sourceInventoryIds": [
+          "mini.route.pages.login.password.index"
+        ],
+        "sourceFiles": []
+      },
+      "fixtures": [
+        "account.empty",
+        "network.401"
+      ],
+      "entryPaths": [
+        {
+          "id": "direct",
+          "actions": []
+        },
+        {
+          "id": "navigation",
+          "actions": [
+            "auth.password.submit"
+          ]
+        }
+      ],
+      "states": [
+        {
+          "id": "idle",
+          "fixture": "account.empty",
+          "checkpoint": true,
+          "expectedOn": [
+            "app",
+            "mini"
+          ]
+        },
+        {
+          "id": "submitting",
+          "fixture": "network.401",
+          "checkpoint": true,
+          "expectedOn": [
+            "app",
+            "mini"
+          ]
+        },
+        {
+          "id": "error",
+          "fixture": "network.401",
+          "checkpoint": true,
+          "expectedOn": [
+            "app",
+            "mini"
+          ]
+        }
+      ],
+      "requiredActions": [
+        {
+          "id": "auth.password.submit",
+          "event": "tap",
+          "requiredOn": [
+            "app",
+            "mini"
+          ],
+          "sourceActionIds": {},
+          "expectedTransition": "replace",
+          "target": "auth.password",
+          "sideEffect": "BACKEND_READ",
+          "serverAssertion": "password-auth-session-readback"
+        },
+        {
+          "id": "auth.password.forgot",
+          "event": "tap",
+          "requiredOn": [
+            "app",
+            "mini"
+          ],
+          "sourceActionIds": {},
+          "expectedTransition": "push",
+          "target": "auth.password",
+          "sideEffect": "NONE"
+        }
+      ],
+      "overlays": [],
+      "checkpoints": [
+        "idle",
+        "submitting",
+        "error"
+      ],
+      "platformExceptionIds": [
+        "WX-CAPSULE-001"
+      ]
+    },
+    {
+      "id": "auth.connect-account",
+      "domain": "shared-shell",
+      "sourceOfTruth": "app",
+      "mappingStatus": "LOGIN_EXCLUDED",
+      "app": {
+        "routes": [],
+        "sourceInventoryIds": [],
+        "sourceFiles": []
+      },
+      "mini": {
+        "routes": [
+          "/pages/login/connect/account/index"
+        ],
+        "sourceInventoryIds": [
+          "mini.route.pages.login.connect.account.index"
+        ],
+        "sourceFiles": []
+      },
+      "fixtures": [
+        "account.empty",
+        "network.401"
+      ],
+      "entryPaths": [
+        {
+          "id": "direct",
+          "actions": []
+        },
+        {
+          "id": "navigation",
+          "actions": [
+            "auth.connect.create"
+          ]
+        }
+      ],
+      "states": [
+        {
+          "id": "choice",
+          "fixture": "account.empty",
+          "checkpoint": true,
+          "expectedOn": [
+            "app",
+            "mini"
+          ]
+        },
+        {
+          "id": "connecting",
+          "fixture": "network.401",
+          "checkpoint": true,
+          "expectedOn": [
+            "app",
+            "mini"
+          ]
+        },
+        {
+          "id": "failure",
+          "fixture": "network.401",
+          "checkpoint": true,
+          "expectedOn": [
+            "app",
+            "mini"
+          ]
+        }
+      ],
+      "requiredActions": [
+        {
+          "id": "auth.connect.create",
+          "event": "tap",
+          "requiredOn": [
+            "app",
+            "mini"
+          ],
+          "sourceActionIds": {},
+          "expectedTransition": "replace",
+          "target": "auth.connect",
+          "sideEffect": "BACKEND_WRITE",
+          "serverAssertion": "wechat-account-create-readback"
+        },
+        {
+          "id": "auth.connect.bind",
+          "event": "tap",
+          "requiredOn": [
+            "app",
+            "mini"
+          ],
+          "sourceActionIds": {},
+          "expectedTransition": "push",
+          "target": "auth.connect",
+          "sideEffect": "NONE"
+        }
+      ],
+      "overlays": [],
+      "checkpoints": [
+        "choice",
+        "connecting",
+        "failure"
+      ],
+      "platformExceptionIds": [
+        "WX-CAPSULE-001"
+      ]
+    },
+    {
+      "id": "auth.bind-existing",
+      "domain": "shared-shell",
+      "sourceOfTruth": "app",
+      "mappingStatus": "LOGIN_EXCLUDED",
+      "app": {
+        "routes": [],
+        "sourceInventoryIds": [],
+        "sourceFiles": []
+      },
+      "mini": {
+        "routes": [
+          "/pages/login/bind/existing/index"
+        ],
+        "sourceInventoryIds": [
+          "mini.route.pages.login.bind.existing.index"
+        ],
+        "sourceFiles": []
+      },
+      "fixtures": [
+        "account.empty",
+        "network.401"
+      ],
+      "entryPaths": [
+        {
+          "id": "direct",
+          "actions": []
+        },
+        {
+          "id": "navigation",
+          "actions": [
+            "auth.bind.submit"
+          ]
+        }
+      ],
+      "states": [
+        {
+          "id": "form",
+          "fixture": "account.empty",
+          "checkpoint": true,
+          "expectedOn": [
+            "app",
+            "mini"
+          ]
+        },
+        {
+          "id": "binding",
+          "fixture": "network.401",
+          "checkpoint": true,
+          "expectedOn": [
+            "app",
+            "mini"
+          ]
+        },
+        {
+          "id": "conflict",
+          "fixture": "network.401",
+          "checkpoint": true,
+          "expectedOn": [
+            "app",
+            "mini"
+          ]
+        }
+      ],
+      "requiredActions": [
+        {
+          "id": "auth.bind.submit",
+          "event": "tap",
+          "requiredOn": [
+            "app",
+            "mini"
+          ],
+          "sourceActionIds": {},
+          "expectedTransition": "replace",
+          "target": "auth.bind",
+          "sideEffect": "BACKEND_WRITE",
+          "serverAssertion": "wechat-account-bind-readback"
+        },
+        {
+          "id": "auth.bind.back",
+          "event": "tap",
+          "requiredOn": [
+            "app",
+            "mini"
+          ],
+          "sourceActionIds": {},
+          "expectedTransition": "pop",
+          "sideEffect": "NONE"
+        }
+      ],
+      "overlays": [],
+      "checkpoints": [
+        "form",
+        "binding",
+        "conflict"
+      ],
+      "platformExceptionIds": [
+        "WX-CAPSULE-001"
+      ]
+    },
+    {
+      "id": "auth.register-email",
+      "domain": "shared-shell",
+      "sourceOfTruth": "app",
+      "mappingStatus": "LOGIN_EXCLUDED",
+      "app": {
+        "routes": [
+          "internal.authview.register"
+        ],
+        "sourceInventoryIds": [
+          "app.internal.authview.register"
+        ],
+        "sourceFiles": []
+      },
+      "mini": {
+        "routes": [
+          "/pages/login/register/email/index"
+        ],
+        "sourceInventoryIds": [
+          "mini.route.pages.login.register.email.index"
+        ],
+        "sourceFiles": []
+      },
+      "fixtures": [
+        "account.empty",
+        "network.401"
+      ],
+      "entryPaths": [
+        {
+          "id": "direct",
+          "actions": []
+        },
+        {
+          "id": "navigation",
+          "actions": [
+            "auth.register.send-code"
+          ]
+        }
+      ],
+      "states": [
+        {
+          "id": "form",
+          "fixture": "account.empty",
+          "checkpoint": true,
+          "expectedOn": [
+            "app",
+            "mini"
+          ]
+        },
+        {
+          "id": "code-sent",
+          "fixture": "network.401",
+          "checkpoint": true,
+          "expectedOn": [
+            "app",
+            "mini"
+          ]
+        },
+        {
+          "id": "validation-error",
+          "fixture": "network.401",
+          "checkpoint": true,
+          "expectedOn": [
+            "app",
+            "mini"
+          ]
+        }
+      ],
+      "requiredActions": [
+        {
+          "id": "auth.register.send-code",
+          "event": "tap",
+          "requiredOn": [
+            "app",
+            "mini"
+          ],
+          "sourceActionIds": {},
+          "expectedTransition": "state-change",
+          "sideEffect": "BACKEND_WRITE",
+          "serverAssertion": "verification-code-issued"
+        },
+        {
+          "id": "auth.register.submit",
+          "event": "tap",
+          "requiredOn": [
+            "app",
+            "mini"
+          ],
+          "sourceActionIds": {},
+          "expectedTransition": "replace",
+          "target": "auth.register",
+          "sideEffect": "BACKEND_WRITE",
+          "serverAssertion": "account-create-session-readback"
+        }
+      ],
+      "overlays": [],
+      "checkpoints": [
+        "form",
+        "code-sent",
+        "validation-error"
+      ],
+      "platformExceptionIds": [
+        "WX-CAPSULE-001"
+      ]
+    },
+    {
+      "id": "auth.forgot-password",
+      "domain": "shared-shell",
+      "sourceOfTruth": "app",
+      "mappingStatus": "LOGIN_EXCLUDED",
+      "app": {
+        "routes": [
+          "internal.authview.forgot.password"
+        ],
+        "sourceInventoryIds": [
+          "app.internal.authview.forgot.password"
+        ],
+        "sourceFiles": []
+      },
+      "mini": {
+        "routes": [
+          "/pages/login/forgot/password/index"
+        ],
+        "sourceInventoryIds": [
+          "mini.route.pages.login.forgot.password.index"
+        ],
+        "sourceFiles": []
+      },
+      "fixtures": [
+        "account.empty",
+        "network.401"
+      ],
+      "entryPaths": [
+        {
+          "id": "direct",
+          "actions": []
+        },
+        {
+          "id": "navigation",
+          "actions": [
+            "auth.forgot.send-code"
+          ]
+        }
+      ],
+      "states": [
+        {
+          "id": "request",
+          "fixture": "account.empty",
+          "checkpoint": true,
+          "expectedOn": [
+            "app",
+            "mini"
+          ]
+        },
+        {
+          "id": "code-sent",
+          "fixture": "network.401",
+          "checkpoint": true,
+          "expectedOn": [
+            "app",
+            "mini"
+          ]
+        },
+        {
+          "id": "reset-error",
+          "fixture": "network.401",
+          "checkpoint": true,
+          "expectedOn": [
+            "app",
+            "mini"
+          ]
+        }
+      ],
+      "requiredActions": [
+        {
+          "id": "auth.forgot.send-code",
+          "event": "tap",
+          "requiredOn": [
+            "app",
+            "mini"
+          ],
+          "sourceActionIds": {},
+          "expectedTransition": "state-change",
+          "sideEffect": "BACKEND_WRITE",
+          "serverAssertion": "password-reset-code-issued"
+        },
+        {
+          "id": "auth.forgot.submit",
+          "event": "tap",
+          "requiredOn": [
+            "app",
+            "mini"
+          ],
+          "sourceActionIds": {},
+          "expectedTransition": "replace",
+          "target": "auth.forgot",
+          "sideEffect": "BACKEND_WRITE",
+          "serverAssertion": "password-reset-login-readback"
+        }
+      ],
+      "overlays": [],
+      "checkpoints": [
+        "request",
+        "code-sent",
+        "reset-error"
+      ],
+      "platformExceptionIds": [
+        "WX-CAPSULE-001"
+      ]
+    },
+    {
+      "id": "shared.legacy-home",
+      "domain": "shared-shell",
+      "sourceOfTruth": "app",
+      "mappingStatus": "MINI_ONLY_DEFECT",
+      "app": {
+        "routes": [],
+        "sourceInventoryIds": [],
+        "sourceFiles": []
+      },
+      "mini": {
+        "routes": [
+          "/pages/home/index"
+        ],
+        "sourceInventoryIds": [
+          "mini.route.pages.home.index"
+        ],
+        "sourceFiles": []
+      },
+      "fixtures": [
+        "account.normal",
+        "network.401"
+      ],
+      "entryPaths": [
+        {
+          "id": "direct",
+          "actions": []
+        },
+        {
+          "id": "navigation",
+          "actions": [
+            "legacy.home.open"
+          ]
+        }
+      ],
+      "states": [
+        {
+          "id": "registered-unreachable",
+          "fixture": "account.normal",
+          "checkpoint": true,
+          "expectedOn": [
+            "app",
+            "mini"
+          ]
+        },
+        {
+          "id": "invalid-tab-target",
+          "fixture": "network.401",
+          "checkpoint": true,
+          "expectedOn": [
+            "app",
+            "mini"
+          ]
+        },
+        {
+          "id": "fallback",
+          "fixture": "network.401",
+          "checkpoint": true,
+          "expectedOn": [
+            "app",
+            "mini"
+          ]
+        }
+      ],
+      "requiredActions": [
+        {
+          "id": "legacy.home.open",
+          "event": "tap",
+          "requiredOn": [
+            "app",
+            "mini"
+          ],
+          "sourceActionIds": {},
+          "expectedTransition": "reset",
+          "target": "legacy.home",
+          "sideEffect": "LOCAL_STATE"
+        },
+        {
+          "id": "legacy.home.back",
+          "event": "tap",
+          "requiredOn": [
+            "app",
+            "mini"
+          ],
+          "sourceActionIds": {},
+          "expectedTransition": "pop",
+          "sideEffect": "NONE"
+        }
+      ],
+      "overlays": [],
+      "checkpoints": [
+        "registered-unreachable",
+        "invalid-tab-target",
+        "fallback"
+      ],
+      "platformExceptionIds": [
+        "WX-CAPSULE-001"
+      ]
+    },
+    {
+      "id": "wardrobe.home",
+      "domain": "wardrobe",
+      "sourceOfTruth": "app",
+      "mappingStatus": "EQUIVALENT",
+      "app": {
+        "routes": [
+          "route.wardrobe.home"
+        ],
+        "sourceInventoryIds": [
+          "app.route.wardrobe.home"
+        ],
+        "sourceFiles": []
+      },
+      "mini": {
+        "routes": [
+          "/pages/wardrobe/index/index"
+        ],
+        "sourceInventoryIds": [
+          "mini.route.pages.wardrobe.index.index"
+        ],
+        "sourceFiles": []
+      },
+      "fixtures": [
+        "garment.complete",
+        "garment.no_image",
+        "network.500"
+      ],
+      "entryPaths": [
+        {
+          "id": "direct",
+          "actions": []
+        },
+        {
+          "id": "navigation",
+          "actions": [
+            "wardrobe.search.open"
+          ]
+        }
+      ],
+      "states": [
+        {
+          "id": "populated",
+          "fixture": "garment.complete",
+          "checkpoint": true,
+          "expectedOn": [
+            "app",
+            "mini"
+          ]
+        },
+        {
+          "id": "empty",
+          "fixture": "garment.no_image",
+          "checkpoint": true,
+          "expectedOn": [
+            "app",
+            "mini"
+          ]
+        },
+        {
+          "id": "bulk-select",
+          "fixture": "network.500",
+          "checkpoint": true,
+          "expectedOn": [
+            "app",
+            "mini"
+          ]
+        }
+      ],
+      "requiredActions": [
+        {
+          "id": "wardrobe.search.open",
+          "event": "tap",
+          "requiredOn": [
+            "app",
+            "mini"
+          ],
+          "sourceActionIds": {},
+          "expectedTransition": "push",
+          "target": "wardrobe.search",
+          "sideEffect": "NONE"
+        },
+        {
+          "id": "wardrobe.bulk.toggle",
+          "event": "tap",
+          "requiredOn": [
+            "app",
+            "mini"
+          ],
+          "sourceActionIds": {},
+          "expectedTransition": "state-change",
+          "sideEffect": "LOCAL_STATE"
+        },
+        {
+          "id": "wardrobe.garment.open",
+          "event": "tap",
+          "requiredOn": [
+            "app",
+            "mini"
+          ],
+          "sourceActionIds": {},
+          "expectedTransition": "push",
+          "target": "wardrobe.garment",
+          "sideEffect": "BACKEND_READ",
+          "serverAssertion": "garment-detail-readback"
+        }
+      ],
+      "overlays": [],
+      "checkpoints": [
+        "populated",
+        "empty",
+        "bulk-select"
+      ],
+      "platformExceptionIds": [
+        "WX-CAPSULE-001"
+      ]
+    },
+    {
+      "id": "wardrobe.garment.edit",
+      "domain": "wardrobe",
+      "sourceOfTruth": "app",
+      "mappingStatus": "EQUIVALENT",
+      "app": {
+        "routes": [
+          "src.components.item.shell.item.edit.page.shell"
+        ],
+        "sourceInventoryIds": [
+          "app.src.components.item.shell.item.edit.page.shell"
+        ],
+        "sourceFiles": []
+      },
+      "mini": {
+        "routes": [
+          "/pages/wardrobe/edit/index"
+        ],
+        "sourceInventoryIds": [
+          "mini.route.pages.wardrobe.edit.index"
+        ],
+        "sourceFiles": []
+      },
+      "fixtures": [
+        "garment.complete",
+        "garment.no_image",
+        "network.500"
+      ],
+      "entryPaths": [
+        {
+          "id": "direct",
+          "actions": []
+        },
+        {
+          "id": "navigation",
+          "actions": [
+            "garment.edit.save"
+          ]
+        }
+      ],
+      "states": [
+        {
+          "id": "form",
+          "fixture": "garment.complete",
+          "checkpoint": true,
+          "expectedOn": [
+            "app",
+            "mini"
+          ]
+        },
+        {
+          "id": "media-actions",
+          "fixture": "garment.no_image",
+          "checkpoint": true,
+          "expectedOn": [
+            "app",
+            "mini"
+          ]
+        },
+        {
+          "id": "dirty",
+          "fixture": "network.500",
+          "checkpoint": true,
+          "expectedOn": [
+            "app",
+            "mini"
+          ]
+        }
+      ],
+      "requiredActions": [
+        {
+          "id": "garment.edit.save",
+          "event": "tap",
+          "requiredOn": [
+            "app",
+            "mini"
+          ],
+          "sourceActionIds": {},
+          "expectedTransition": "pop",
+          "sideEffect": "BACKEND_WRITE",
+          "serverAssertion": "garment-update-readback"
+        },
+        {
+          "id": "garment.edit.media.add",
+          "event": "tap",
+          "requiredOn": [
+            "app",
+            "mini"
+          ],
+          "sourceActionIds": {},
+          "expectedTransition": "host-native",
+          "sideEffect": "HOST_NATIVE",
+          "serverAssertion": "media-picker-result-contract"
+        },
+        {
+          "id": "garment.edit.back",
+          "event": "tap",
+          "requiredOn": [
+            "app",
+            "mini"
+          ],
+          "sourceActionIds": {},
+          "expectedTransition": "pop",
+          "sideEffect": "NONE"
+        }
+      ],
+      "overlays": [],
+      "checkpoints": [
+        "form",
+        "media-actions",
+        "dirty"
+      ],
+      "platformExceptionIds": [
+        "WX-CAPSULE-001"
+      ]
+    },
+    {
+      "id": "settings.home",
+      "domain": "settings",
+      "sourceOfTruth": "app",
+      "mappingStatus": "EQUIVALENT",
+      "app": {
+        "routes": [
+          "route.settings.home"
+        ],
+        "sourceInventoryIds": [
+          "app.route.settings.home"
+        ],
+        "sourceFiles": []
+      },
+      "mini": {
+        "routes": [
+          "/pages/settings/index/index"
+        ],
+        "sourceInventoryIds": [
+          "mini.route.pages.settings.index.index"
+        ],
+        "sourceFiles": []
+      },
+      "fixtures": [
+        "account.normal",
+        "network.401"
+      ],
+      "entryPaths": [
+        {
+          "id": "direct",
+          "actions": []
+        },
+        {
+          "id": "navigation",
+          "actions": [
+            "settings.account.open"
+          ]
+        }
+      ],
+      "states": [
+        {
+          "id": "account-ready",
+          "fixture": "account.normal",
+          "checkpoint": true,
+          "expectedOn": [
+            "app",
+            "mini"
+          ]
+        },
+        {
+          "id": "entries",
+          "fixture": "network.401",
+          "checkpoint": true,
+          "expectedOn": [
+            "app",
+            "mini"
+          ]
+        },
+        {
+          "id": "logout-confirm",
+          "fixture": "network.401",
+          "checkpoint": true,
+          "expectedOn": [
+            "app",
+            "mini"
+          ]
+        }
+      ],
+      "requiredActions": [
+        {
+          "id": "settings.account.open",
+          "event": "tap",
+          "requiredOn": [
+            "app",
+            "mini"
+          ],
+          "sourceActionIds": {},
+          "expectedTransition": "push",
+          "target": "settings.account",
+          "sideEffect": "NONE"
+        },
+        {
+          "id": "settings.minimax.open",
+          "event": "tap",
+          "requiredOn": [
+            "app",
+            "mini"
+          ],
+          "sourceActionIds": {},
+          "expectedTransition": "push",
+          "target": "settings.minimax",
+          "sideEffect": "NONE"
+        },
+        {
+          "id": "settings.logout",
+          "event": "tap",
+          "requiredOn": [
+            "app",
+            "mini"
+          ],
+          "sourceActionIds": {},
+          "expectedTransition": "overlay-open",
+          "sideEffect": "LOCAL_STATE"
+        }
+      ],
+      "overlays": [
+        "settings.logout.overlay"
+      ],
+      "checkpoints": [
+        "account-ready",
+        "entries",
+        "logout-confirm"
+      ],
+      "platformExceptionIds": [
+        "WX-CAPSULE-001"
+      ]
+    },
+    {
+      "id": "settings.minimax",
+      "domain": "settings",
+      "sourceOfTruth": "app",
+      "mappingStatus": "EQUIVALENT",
+      "app": {
+        "routes": [
+          "internal.settingsubpage.minimax"
+        ],
+        "sourceInventoryIds": [
+          "app.internal.settingsubpage.minimax"
+        ],
+        "sourceFiles": []
+      },
+      "mini": {
+        "routes": [
+          "/pages/settings/ai/key/index"
+        ],
+        "sourceInventoryIds": [
+          "mini.route.pages.settings.ai.key.index"
+        ],
+        "sourceFiles": []
+      },
+      "fixtures": [
+        "settings.ai_key_missing",
+        "settings.ai_key_configured"
+      ],
+      "entryPaths": [
+        {
+          "id": "direct",
+          "actions": []
+        },
+        {
+          "id": "navigation",
+          "actions": [
+            "settings.minimax.validate"
+          ]
+        }
+      ],
+      "states": [
+        {
+          "id": "missing",
+          "fixture": "settings.ai_key_missing",
+          "checkpoint": true,
+          "expectedOn": [
+            "app",
+            "mini"
+          ]
+        },
+        {
+          "id": "configured",
+          "fixture": "settings.ai_key_configured",
+          "checkpoint": true,
+          "expectedOn": [
+            "app",
+            "mini"
+          ]
+        },
+        {
+          "id": "validation-failed",
+          "fixture": "settings.ai_key_configured",
+          "checkpoint": true,
+          "expectedOn": [
+            "app",
+            "mini"
+          ]
+        }
+      ],
+      "requiredActions": [
+        {
+          "id": "settings.minimax.validate",
+          "event": "tap",
+          "requiredOn": [
+            "app",
+            "mini"
+          ],
+          "sourceActionIds": {},
+          "expectedTransition": "state-change",
+          "sideEffect": "THIRD_PARTY",
+          "serverAssertion": "minimax-validation-response"
+        },
+        {
+          "id": "settings.minimax.save",
+          "event": "tap",
+          "requiredOn": [
+            "app",
+            "mini"
+          ],
+          "sourceActionIds": {},
+          "expectedTransition": "pop",
+          "sideEffect": "LOCAL_STATE"
+        }
+      ],
+      "overlays": [],
+      "checkpoints": [
+        "missing",
+        "configured",
+        "validation-failed"
+      ],
+      "platformExceptionIds": [
+        "WX-CAPSULE-001"
+      ]
+    },
+    {
+      "id": "settings.account",
+      "domain": "settings",
+      "sourceOfTruth": "app",
+      "mappingStatus": "EQUIVALENT",
+      "app": {
+        "routes": [
+          "route.account.management",
+          "src.components.auth.account.views"
+        ],
+        "sourceInventoryIds": [
+          "app.route.account.management",
+          "app.src.components.auth.account.views"
+        ],
+        "sourceFiles": []
+      },
+      "mini": {
+        "routes": [
+          "/pages/settings/account/index"
+        ],
+        "sourceInventoryIds": [
+          "mini.route.pages.settings.account.index"
+        ],
+        "sourceFiles": []
+      },
+      "fixtures": [
+        "account.normal",
+        "network.401"
+      ],
+      "entryPaths": [
+        {
+          "id": "direct",
+          "actions": []
+        },
+        {
+          "id": "navigation",
+          "actions": [
+            "settings.account.logout"
+          ]
+        }
+      ],
+      "states": [
+        {
+          "id": "summary",
+          "fixture": "account.normal",
+          "checkpoint": true,
+          "expectedOn": [
+            "app",
+            "mini"
+          ]
+        },
+        {
+          "id": "logout-confirm",
+          "fixture": "network.401",
+          "checkpoint": true,
+          "expectedOn": [
+            "app",
+            "mini"
+          ]
+        },
+        {
+          "id": "revoke-failed",
+          "fixture": "network.401",
+          "checkpoint": true,
+          "expectedOn": [
+            "app",
+            "mini"
+          ]
+        }
+      ],
+      "requiredActions": [
+        {
+          "id": "settings.account.logout",
+          "event": "tap",
+          "requiredOn": [
+            "app",
+            "mini"
+          ],
+          "sourceActionIds": {},
+          "expectedTransition": "replace",
+          "target": "settings.account",
+          "sideEffect": "BACKEND_WRITE",
+          "serverAssertion": "session-revocation-readback"
+        },
+        {
+          "id": "settings.account.delete",
+          "event": "tap",
+          "requiredOn": [
+            "app",
+            "mini"
+          ],
+          "sourceActionIds": {},
+          "expectedTransition": "push",
+          "target": "settings.account",
+          "sideEffect": "NONE"
+        }
+      ],
+      "overlays": [],
+      "checkpoints": [
+        "summary",
+        "logout-confirm",
+        "revoke-failed"
+      ],
+      "platformExceptionIds": [
+        "WX-CAPSULE-001"
+      ]
+    },
+    {
+      "id": "settings.delete-account",
+      "domain": "settings",
+      "sourceOfTruth": "app",
+      "mappingStatus": "EQUIVALENT",
+      "app": {
+        "routes": [
+          "route.account.deletion",
+          "src.components.auth.account.deletion.view"
+        ],
+        "sourceInventoryIds": [
+          "app.route.account.deletion",
+          "app.src.components.auth.account.deletion.view"
+        ],
+        "sourceFiles": []
+      },
+      "mini": {
+        "routes": [
+          "/pages/settings/account/deletion/index"
+        ],
+        "sourceInventoryIds": [
+          "mini.route.pages.settings.account.deletion.index"
+        ],
+        "sourceFiles": []
+      },
+      "fixtures": [
+        "account.normal",
+        "network.401"
+      ],
+      "entryPaths": [
+        {
+          "id": "direct",
+          "actions": []
+        },
+        {
+          "id": "navigation",
+          "actions": [
+            "settings.delete.confirm"
+          ]
+        }
+      ],
+      "states": [
+        {
+          "id": "warning",
+          "fixture": "account.normal",
+          "checkpoint": true,
+          "expectedOn": [
+            "app",
+            "mini"
+          ]
+        },
+        {
+          "id": "authorizing",
+          "fixture": "network.401",
+          "checkpoint": true,
+          "expectedOn": [
+            "app",
+            "mini"
+          ]
+        },
+        {
+          "id": "receipt-pending",
+          "fixture": "network.401",
+          "checkpoint": true,
+          "expectedOn": [
+            "app",
+            "mini"
+          ]
+        }
+      ],
+      "requiredActions": [
+        {
+          "id": "settings.delete.confirm",
+          "event": "tap",
+          "requiredOn": [
+            "app",
+            "mini"
+          ],
+          "sourceActionIds": {},
+          "expectedTransition": "state-change",
+          "sideEffect": "BACKEND_WRITE",
+          "serverAssertion": "account-deletion-receipt-readback"
+        },
+        {
+          "id": "settings.delete.poll",
+          "event": "tap",
+          "requiredOn": [
+            "app",
+            "mini"
+          ],
+          "sourceActionIds": {},
+          "expectedTransition": "state-change",
+          "sideEffect": "BACKEND_READ",
+          "serverAssertion": "account-deletion-status-readback"
+        }
+      ],
+      "overlays": [],
+      "checkpoints": [
+        "warning",
+        "authorizing",
+        "receipt-pending"
+      ],
+      "platformExceptionIds": [
+        "WX-CAPSULE-001"
+      ]
+    },
+    {
+      "id": "settings.change-password",
+      "domain": "settings",
+      "sourceOfTruth": "app",
+      "mappingStatus": "EQUIVALENT",
+      "app": {
+        "routes": [
+          "route.change.password"
+        ],
+        "sourceInventoryIds": [
+          "app.route.change.password"
+        ],
+        "sourceFiles": []
+      },
+      "mini": {
+        "routes": [
+          "/pages/settings/change/password/index"
+        ],
+        "sourceInventoryIds": [
+          "mini.route.pages.settings.change.password.index"
+        ],
+        "sourceFiles": []
+      },
+      "fixtures": [
+        "account.normal",
+        "network.401"
+      ],
+      "entryPaths": [
+        {
+          "id": "direct",
+          "actions": []
+        },
+        {
+          "id": "navigation",
+          "actions": [
+            "settings.password.send-code"
+          ]
+        }
+      ],
+      "states": [
+        {
+          "id": "current-password-mode",
+          "fixture": "account.normal",
+          "checkpoint": true,
+          "expectedOn": [
+            "app",
+            "mini"
+          ]
+        },
+        {
+          "id": "email-code-mode",
+          "fixture": "network.401",
+          "checkpoint": true,
+          "expectedOn": [
+            "app",
+            "mini"
+          ]
+        },
+        {
+          "id": "validation-error",
+          "fixture": "network.401",
+          "checkpoint": true,
+          "expectedOn": [
+            "app",
+            "mini"
+          ]
+        }
+      ],
+      "requiredActions": [
+        {
+          "id": "settings.password.send-code",
+          "event": "tap",
+          "requiredOn": [
+            "app",
+            "mini"
+          ],
+          "sourceActionIds": {},
+          "expectedTransition": "state-change",
+          "sideEffect": "BACKEND_WRITE",
+          "serverAssertion": "verification-code-issued"
+        },
+        {
+          "id": "settings.password.save",
+          "event": "tap",
+          "requiredOn": [
+            "app",
+            "mini"
+          ],
+          "sourceActionIds": {},
+          "expectedTransition": "pop",
+          "sideEffect": "BACKEND_WRITE",
+          "serverAssertion": "password-change-session-readback"
+        }
+      ],
+      "overlays": [],
+      "checkpoints": [
+        "current-password-mode",
+        "email-code-mode",
+        "validation-error"
+      ],
+      "platformExceptionIds": [
+        "WX-CAPSULE-001"
+      ]
+    },
+    {
+      "id": "settings.privacy-hub",
+      "domain": "settings",
+      "sourceOfTruth": "app",
+      "mappingStatus": "MINI_ONLY_DEFECT",
+      "app": {
+        "routes": [],
+        "sourceInventoryIds": [],
+        "sourceFiles": []
+      },
+      "mini": {
+        "routes": [
+          "/pages/settings/privacy/index"
+        ],
+        "sourceInventoryIds": [
+          "mini.route.pages.settings.privacy.index"
+        ],
+        "sourceFiles": []
+      },
+      "fixtures": [
+        "account.normal",
+        "network.401"
+      ],
+      "entryPaths": [
+        {
+          "id": "direct",
+          "actions": []
+        },
+        {
+          "id": "navigation",
+          "actions": [
+            "settings.privacy.agreement"
+          ]
+        }
+      ],
+      "states": [
+        {
+          "id": "visible-mini-only",
+          "fixture": "account.normal",
+          "checkpoint": true,
+          "expectedOn": [
+            "app",
+            "mini"
+          ]
+        },
+        {
+          "id": "disclosures",
+          "fixture": "network.401",
+          "checkpoint": true,
+          "expectedOn": [
+            "app",
+            "mini"
+          ]
+        },
+        {
+          "id": "back",
+          "fixture": "network.401",
+          "checkpoint": true,
+          "expectedOn": [
+            "app",
+            "mini"
+          ]
+        }
+      ],
+      "requiredActions": [
+        {
+          "id": "settings.privacy.agreement",
+          "event": "tap",
+          "requiredOn": [
+            "app",
+            "mini"
+          ],
+          "sourceActionIds": {},
+          "expectedTransition": "push",
+          "target": "settings.privacy",
+          "sideEffect": "NONE"
+        },
+        {
+          "id": "settings.privacy.policy",
+          "event": "tap",
+          "requiredOn": [
+            "app",
+            "mini"
+          ],
+          "sourceActionIds": {},
+          "expectedTransition": "push",
+          "target": "settings.privacy",
+          "sideEffect": "NONE"
+        }
+      ],
+      "overlays": [],
+      "checkpoints": [
+        "visible-mini-only",
+        "disclosures",
+        "back"
+      ],
+      "platformExceptionIds": [
+        "WX-CAPSULE-001"
+      ]
+    },
+    {
+      "id": "settings.about",
+      "domain": "settings",
+      "sourceOfTruth": "app",
+      "mappingStatus": "MINI_ONLY_DEFECT",
+      "app": {
+        "routes": [],
+        "sourceInventoryIds": [],
+        "sourceFiles": []
+      },
+      "mini": {
+        "routes": [
+          "/pages/settings/about/index"
+        ],
+        "sourceInventoryIds": [
+          "mini.route.pages.settings.about.index"
+        ],
+        "sourceFiles": []
+      },
+      "fixtures": [
+        "account.normal",
+        "network.401"
+      ],
+      "entryPaths": [
+        {
+          "id": "direct",
+          "actions": []
+        },
+        {
+          "id": "navigation",
+          "actions": [
+            "settings.about.agreement"
+          ]
+        }
+      ],
+      "states": [
+        {
+          "id": "version",
+          "fixture": "account.normal",
+          "checkpoint": true,
+          "expectedOn": [
+            "app",
+            "mini"
+          ]
+        },
+        {
+          "id": "legal-links",
+          "fixture": "network.401",
+          "checkpoint": true,
+          "expectedOn": [
+            "app",
+            "mini"
+          ]
+        },
+        {
+          "id": "stale-copy",
+          "fixture": "network.401",
+          "checkpoint": true,
+          "expectedOn": [
+            "app",
+            "mini"
+          ]
+        }
+      ],
+      "requiredActions": [
+        {
+          "id": "settings.about.agreement",
+          "event": "tap",
+          "requiredOn": [
+            "app",
+            "mini"
+          ],
+          "sourceActionIds": {},
+          "expectedTransition": "push",
+          "target": "settings.about",
+          "sideEffect": "NONE"
+        },
+        {
+          "id": "settings.about.privacy",
+          "event": "tap",
+          "requiredOn": [
+            "app",
+            "mini"
+          ],
+          "sourceActionIds": {},
+          "expectedTransition": "push",
+          "target": "settings.about",
+          "sideEffect": "NONE"
+        }
+      ],
+      "overlays": [],
+      "checkpoints": [
+        "version",
+        "legal-links",
+        "stale-copy"
+      ],
+      "platformExceptionIds": [
+        "WX-CAPSULE-001"
+      ]
+    },
+    {
+      "id": "legal.agreement",
+      "domain": "settings",
+      "sourceOfTruth": "app",
+      "mappingStatus": "EQUIVALENT",
+      "app": {
+        "routes": [
+          "internal.authview.terms",
+          "src.components.auth.legal.document.view"
+        ],
+        "sourceInventoryIds": [
+          "app.internal.authview.terms",
+          "app.src.components.auth.legal.document.view"
+        ],
+        "sourceFiles": []
+      },
+      "mini": {
+        "routes": [
+          "/pages/webview/agreement/index"
+        ],
+        "sourceInventoryIds": [
+          "mini.route.pages.webview.agreement.index"
+        ],
+        "sourceFiles": []
+      },
+      "fixtures": [
+        "account.normal",
+        "network.401"
+      ],
+      "entryPaths": [
+        {
+          "id": "direct",
+          "actions": []
+        },
+        {
+          "id": "navigation",
+          "actions": [
+            "legal.agreement.scroll"
+          ]
+        }
+      ],
+      "states": [
+        {
+          "id": "document-top",
+          "fixture": "account.normal",
+          "checkpoint": true,
+          "expectedOn": [
+            "app",
+            "mini"
+          ]
+        },
+        {
+          "id": "document-bottom",
+          "fixture": "network.401",
+          "checkpoint": true,
+          "expectedOn": [
+            "app",
+            "mini"
+          ]
+        },
+        {
+          "id": "version-mismatch",
+          "fixture": "network.401",
+          "checkpoint": true,
+          "expectedOn": [
+            "app",
+            "mini"
+          ]
+        }
+      ],
+      "requiredActions": [
+        {
+          "id": "legal.agreement.scroll",
+          "event": "scroll",
+          "requiredOn": [
+            "app",
+            "mini"
+          ],
+          "sourceActionIds": {},
+          "expectedTransition": "state-change",
+          "sideEffect": "LOCAL_STATE"
+        },
+        {
+          "id": "legal.agreement.back",
+          "event": "tap",
+          "requiredOn": [
+            "app",
+            "mini"
+          ],
+          "sourceActionIds": {},
+          "expectedTransition": "pop",
+          "sideEffect": "NONE"
+        }
+      ],
+      "overlays": [],
+      "checkpoints": [
+        "document-top",
+        "document-bottom",
+        "version-mismatch"
+      ],
+      "platformExceptionIds": [
+        "WX-CAPSULE-001"
+      ]
+    },
+    {
+      "id": "legal.privacy",
+      "domain": "settings",
+      "sourceOfTruth": "app",
+      "mappingStatus": "EQUIVALENT",
+      "app": {
+        "routes": [
+          "internal.authview.privacy",
+          "src.components.auth.legal.document.view"
+        ],
+        "sourceInventoryIds": [
+          "app.internal.authview.privacy",
+          "app.src.components.auth.legal.document.view"
+        ],
+        "sourceFiles": []
+      },
+      "mini": {
+        "routes": [
+          "/pages/webview/privacy/index"
+        ],
+        "sourceInventoryIds": [
+          "mini.route.pages.webview.privacy.index"
+        ],
+        "sourceFiles": []
+      },
+      "fixtures": [
+        "account.normal",
+        "network.401"
+      ],
+      "entryPaths": [
+        {
+          "id": "direct",
+          "actions": []
+        },
+        {
+          "id": "navigation",
+          "actions": [
+            "legal.privacy.scroll"
+          ]
+        }
+      ],
+      "states": [
+        {
+          "id": "document-top",
+          "fixture": "account.normal",
+          "checkpoint": true,
+          "expectedOn": [
+            "app",
+            "mini"
+          ]
+        },
+        {
+          "id": "disclosure-section",
+          "fixture": "network.401",
+          "checkpoint": true,
+          "expectedOn": [
+            "app",
+            "mini"
+          ]
+        },
+        {
+          "id": "storage-contradiction",
+          "fixture": "network.401",
+          "checkpoint": true,
+          "expectedOn": [
+            "app",
+            "mini"
+          ]
+        }
+      ],
+      "requiredActions": [
+        {
+          "id": "legal.privacy.scroll",
+          "event": "scroll",
+          "requiredOn": [
+            "app",
+            "mini"
+          ],
+          "sourceActionIds": {},
+          "expectedTransition": "state-change",
+          "sideEffect": "LOCAL_STATE"
+        },
+        {
+          "id": "legal.privacy.back",
+          "event": "tap",
+          "requiredOn": [
+            "app",
+            "mini"
+          ],
+          "sourceActionIds": {},
+          "expectedTransition": "pop",
+          "sideEffect": "NONE"
+        }
+      ],
+      "overlays": [],
+      "checkpoints": [
+        "document-top",
+        "disclosure-section",
+        "storage-contradiction"
+      ],
+      "platformExceptionIds": [
+        "WX-CAPSULE-001"
+      ]
+    },
+    {
+      "id": "wardrobe.search",
+      "domain": "wardrobe",
+      "sourceOfTruth": "app",
+      "mappingStatus": "APP_ONLY_DEFECT",
+      "app": {
+        "routes": [],
+        "sourceInventoryIds": [],
+        "sourceFiles": []
+      },
+      "mini": {
+        "routes": [
+          "/pages/wardrobe/index/index"
+        ],
+        "sourceInventoryIds": [
+          "mini.route.pages.wardrobe.index.index"
+        ],
+        "sourceFiles": []
+      },
+      "fixtures": [
+        "garment.complete",
+        "garment.no_image",
+        "network.500"
+      ],
+      "entryPaths": [
+        {
+          "id": "direct",
+          "actions": []
+        },
+        {
+          "id": "navigation",
+          "actions": [
+            "wardrobe.search.input"
+          ]
+        }
+      ],
+      "states": [
+        {
+          "id": "query-empty",
+          "fixture": "garment.complete",
+          "checkpoint": true,
+          "expectedOn": [
+            "app",
+            "mini"
+          ]
+        },
+        {
+          "id": "results",
+          "fixture": "garment.no_image",
+          "checkpoint": true,
+          "expectedOn": [
+            "app",
+            "mini"
+          ]
+        },
+        {
+          "id": "no-results",
+          "fixture": "network.500",
+          "checkpoint": true,
+          "expectedOn": [
+            "app",
+            "mini"
+          ]
+        }
+      ],
+      "requiredActions": [
+        {
+          "id": "wardrobe.search.input",
+          "event": "input",
+          "requiredOn": [
+            "app",
+            "mini"
+          ],
+          "sourceActionIds": {},
+          "expectedTransition": "state-change",
+          "sideEffect": "LOCAL_STATE"
+        },
+        {
+          "id": "wardrobe.search.result",
+          "event": "tap",
+          "requiredOn": [
+            "app",
+            "mini"
+          ],
+          "sourceActionIds": {},
+          "expectedTransition": "push",
+          "target": "wardrobe.search",
+          "sideEffect": "BACKEND_READ",
+          "serverAssertion": "garment-detail-readback"
+        }
+      ],
+      "overlays": [],
+      "checkpoints": [
+        "query-empty",
+        "results",
+        "no-results"
+      ],
+      "platformExceptionIds": [
+        "WX-CAPSULE-001"
+      ]
+    },
+    {
+      "id": "settings.profile",
+      "domain": "settings",
+      "sourceOfTruth": "app",
+      "mappingStatus": "APP_ONLY_DEFECT",
+      "app": {
+        "routes": [
+          "internal.settingsubpage.profile"
+        ],
+        "sourceInventoryIds": [
+          "app.internal.settingsubpage.profile"
+        ],
+        "sourceFiles": []
+      },
+      "mini": {
+        "routes": [
+          "/pages/settings/index/index"
+        ],
+        "sourceInventoryIds": [
+          "mini.route.pages.settings.index.index"
+        ],
+        "sourceFiles": []
+      },
+      "fixtures": [
+        "account.normal",
+        "network.401"
+      ],
+      "entryPaths": [
+        {
+          "id": "direct",
+          "actions": []
+        },
+        {
+          "id": "navigation",
+          "actions": [
+            "settings.profile.save"
+          ]
+        }
+      ],
+      "states": [
+        {
+          "id": "form",
+          "fixture": "account.normal",
+          "checkpoint": true,
+          "expectedOn": [
+            "app",
+            "mini"
+          ]
+        },
+        {
+          "id": "saving",
+          "fixture": "network.401",
+          "checkpoint": true,
+          "expectedOn": [
+            "app",
+            "mini"
+          ]
+        },
+        {
+          "id": "mini-placeholder",
+          "fixture": "network.401",
+          "checkpoint": true,
+          "expectedOn": [
+            "app",
+            "mini"
+          ]
+        }
+      ],
+      "requiredActions": [
+        {
+          "id": "settings.profile.save",
+          "event": "tap",
+          "requiredOn": [
+            "app",
+            "mini"
+          ],
+          "sourceActionIds": {},
+          "expectedTransition": "pop",
+          "sideEffect": "BACKEND_WRITE",
+          "serverAssertion": "profile-update-readback"
+        },
+        {
+          "id": "settings.profile.avatar",
+          "event": "tap",
+          "requiredOn": [
+            "app",
+            "mini"
+          ],
+          "sourceActionIds": {},
+          "expectedTransition": "host-native",
+          "sideEffect": "HOST_NATIVE",
+          "serverAssertion": "avatar-picker-contract"
+        }
+      ],
+      "overlays": [],
+      "checkpoints": [
+        "form",
+        "saving",
+        "mini-placeholder"
+      ],
+      "platformExceptionIds": [
+        "WX-CAPSULE-001"
+      ]
+    },
+    {
+      "id": "settings.tryon-photos",
+      "domain": "settings",
+      "sourceOfTruth": "app",
+      "mappingStatus": "APP_ONLY_DEFECT",
+      "app": {
+        "routes": [
+          "internal.settingsubpage.photos"
+        ],
+        "sourceInventoryIds": [
+          "app.internal.settingsubpage.photos"
+        ],
+        "sourceFiles": []
+      },
+      "mini": {
+        "routes": [
+          "/pages/settings/index/index"
+        ],
+        "sourceInventoryIds": [
+          "mini.route.pages.settings.index.index"
+        ],
+        "sourceFiles": []
+      },
+      "fixtures": [
+        "account.normal",
+        "network.401"
+      ],
+      "entryPaths": [
+        {
+          "id": "direct",
+          "actions": []
+        },
+        {
+          "id": "navigation",
+          "actions": [
+            "settings.photos.add"
+          ]
+        }
+      ],
+      "states": [
+        {
+          "id": "gallery",
+          "fixture": "account.normal",
+          "checkpoint": true,
+          "expectedOn": [
+            "app",
+            "mini"
+          ]
+        },
+        {
+          "id": "empty",
+          "fixture": "network.401",
+          "checkpoint": true,
+          "expectedOn": [
+            "app",
+            "mini"
+          ]
+        },
+        {
+          "id": "mini-disabled",
+          "fixture": "network.401",
+          "checkpoint": true,
+          "expectedOn": [
+            "app",
+            "mini"
+          ]
+        }
+      ],
+      "requiredActions": [
+        {
+          "id": "settings.photos.add",
+          "event": "tap",
+          "requiredOn": [
+            "app",
+            "mini"
+          ],
+          "sourceActionIds": {},
+          "expectedTransition": "host-native",
+          "sideEffect": "OBJECT_UPLOAD",
+          "serverAssertion": "reference-photo-upload-readback"
+        },
+        {
+          "id": "settings.photos.delete",
+          "event": "tap",
+          "requiredOn": [
+            "app",
+            "mini"
+          ],
+          "sourceActionIds": {},
+          "expectedTransition": "state-change",
+          "sideEffect": "BACKEND_WRITE",
+          "serverAssertion": "reference-photo-delete-readback"
+        }
+      ],
+      "overlays": [],
+      "checkpoints": [
+        "gallery",
+        "empty",
+        "mini-disabled"
+      ],
+      "platformExceptionIds": [
+        "WX-CAPSULE-001"
+      ]
+    },
+    {
+      "id": "settings.wardrobes",
+      "domain": "settings",
+      "sourceOfTruth": "app",
+      "mappingStatus": "APP_ONLY_DEFECT",
+      "app": {
+        "routes": [
+          "internal.settingsubpage.wardrobes"
+        ],
+        "sourceInventoryIds": [
+          "app.internal.settingsubpage.wardrobes"
+        ],
+        "sourceFiles": []
+      },
+      "mini": {
+        "routes": [
+          "/pages/settings/index/index"
+        ],
+        "sourceInventoryIds": [
+          "mini.route.pages.settings.index.index"
+        ],
+        "sourceFiles": []
+      },
+      "fixtures": [
+        "account.normal",
+        "network.401"
+      ],
+      "entryPaths": [
+        {
+          "id": "direct",
+          "actions": []
+        },
+        {
+          "id": "navigation",
+          "actions": [
+            "settings.wardrobes.add"
+          ]
+        }
+      ],
+      "states": [
+        {
+          "id": "list",
+          "fixture": "account.normal",
+          "checkpoint": true,
+          "expectedOn": [
+            "app",
+            "mini"
+          ]
+        },
+        {
+          "id": "edit",
+          "fixture": "network.401",
+          "checkpoint": true,
+          "expectedOn": [
+            "app",
+            "mini"
+          ]
+        },
+        {
+          "id": "mini-missing",
+          "fixture": "network.401",
+          "checkpoint": true,
+          "expectedOn": [
+            "app",
+            "mini"
+          ]
+        }
+      ],
+      "requiredActions": [
+        {
+          "id": "settings.wardrobes.add",
+          "event": "tap",
+          "requiredOn": [
+            "app",
+            "mini"
+          ],
+          "sourceActionIds": {},
+          "expectedTransition": "state-change",
+          "sideEffect": "BACKEND_WRITE",
+          "serverAssertion": "wardrobe-location-create-readback"
+        },
+        {
+          "id": "settings.wardrobes.rename",
+          "event": "tap",
+          "requiredOn": [
+            "app",
+            "mini"
+          ],
+          "sourceActionIds": {},
+          "expectedTransition": "state-change",
+          "sideEffect": "BACKEND_WRITE",
+          "serverAssertion": "wardrobe-location-update-readback"
+        }
+      ],
+      "overlays": [],
+      "checkpoints": [
+        "list",
+        "edit",
+        "mini-missing"
+      ],
+      "platformExceptionIds": [
+        "WX-CAPSULE-001"
+      ]
+    }
+  ]
 }
