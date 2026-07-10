@@ -1,3 +1,13 @@
+## 2026-07-10 / v2.1.12-test / Codex — Wardora 合规官网
+
+- **执行 Agent**：Codex（未触发 subagent：用户未要求；本轮在独立 `codex/wardora-compliance-site` worktree 内串行完成设计、实现与验证）。
+- **目的**：在不改变 Android App 根入口、微信小程序和 `api.zhengfangapps.cloud` 行为的前提下，建设 Wardora 官方合规网站，提供产品说明、隐私政策、用户协议、账号注销说明、联系渠道、ICP备案与公安联网备案状态展示能力。
+- **版本变更**：无；当前应用版本仍为 `2.1.12-test`。官网使用独立 `out-website` 静态产物，不进入 APK，因此本轮不打 APK。
+- **改动文件**：`.gitignore`、`app/` 官网活动路由转发与根布局、`src/app/` 官网页面/SEO/样式及 App 兼容法律页、`src/components/build-home.tsx`、`src/components/site/`、`src/content/legal-content.tsx`、`src/lib/site-build-target.ts`、`src/lib/site-config.ts`、`public/wardora.webmanifest`、`next.config.ts`、`package.json`、`scripts/build-web-with-info.mjs`、`scripts/build-website.mjs`、`scripts/test-wardora-compliance-site.ts`、`scripts/verify-wardora-website.ts`、`scripts/test-auth-client-shell.ts`、`deploy/caddy/Caddyfile`、`docs/deployment/wardora-website.md`、设计规格、实施计划及本记录。
+- **改动说明**：默认 `npm run build` 继续通过 `BuildHome → AppRoot` 输出 App 到 `out`；`npm run build:website` 使用独立 distDir 和构建别名只打官网首页，并输出到 `out-website`，官网根路由首载约 108 kB，不携带完整 App 业务包。新增首页、`/privacy`、`/terms`、`/account-deletion`、`/contact`、404、robots、sitemap、Wardora manifest、响应式导航和统一页脚；法律内容依据实际云端数据、图片、MiniMax、腾讯 SES、微信接口、Capacitor 能力和诊断边界编写，App 内法律页复用同一内容源。统一站点配置在真实主体、邮箱或备案号缺失时显示诚实状态，不生成空链接或假编号。Caddy 新增根域静态站点和 `www` 跳转，原 API 站点块保持不变；部署手册覆盖 DNS、HTTPS、环境变量、不可变发布、验证和回滚。
+- **验证结果**：`npm run lint` 退出 0（仅报告仓库既有 hooks/unused/alt 警告）；`npm run typecheck`、`npm test`、`npm run test:logic:website`、`npm run test:logic:auth-client-shell`（49/49）、`npm run test:logic:app-email-auth-flow` 通过；默认 `npm run build` 与 `npm run build:website` 均通过。Playwright 对首页、四个公开页面、移动菜单、页脚、404、控制台、空链接和横向溢出在 375/390/430/768/1024/1440px 全部通过，并人工检查 390px 与 1440px 首页截图。产物扫描未发现密钥名、数据库配置、内部路径、私有端口或历史公网 IP；`out` 保持“衣橱穿搭助手”App 身份，`out-website` 包含 Wardora 官网且 App 产物不含官网首页文案；`git diff --check` 通过，未修改服务端路由、Android 原生或微信小程序文件。
+- **未验证风险**：本机没有 `caddy` 命令，未本地执行 Caddy 语法校验，部署前必须在服务器运行 `sudo caddy validate --config /etc/caddy/Caddyfile`；未修改或验证生产 DNS、证书和线上静态目录，未提交任何备案申请。运营主体、公开邮箱、真实 ICP 备案号、公安备案号及链接、服务器地域、实际数据期限和完整第三方 SDK 清单仍需用户上线前补充和复核；当前没有 App 内账号注销入口，必须作为高优先级合规待办。法律页面为基础合规文本，不能替代正式法律意见。
+
 ## 2026-07-10 / v2.1.12-test / Codex — 腾讯 SES 生产激活配置
 
 - **执行 Agent**：Codex（未触发 subagent：用户授权当前 Session 执行生产邮件激活）。

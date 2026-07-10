@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
-import { LegalDocumentView, type LegalSection } from "@/components/auth/legal-document-view";
+import { LegalDocumentView } from "@/components/auth/legal-document-view";
+import { privacySections } from "@/content/legal-content";
 
 const LAST_UPDATED = "2026-07-09";
 const APP_NAME = "衣橱穿搭助手";
@@ -9,65 +10,6 @@ export const metadata: Metadata = {
   description: `${APP_NAME} 隐私政策。`,
 };
 
-const SECTIONS: LegalSection[] = [
-  {
-    title: "1. 我们处理的数据",
-    children: (
-      <>
-        <p><strong>账号数据：</strong>邮箱登录标识、邮箱验证状态、选填手机号登录名、密码 Argon2id 哈希、设备会话信息。选填手机号当前不经过短信归属核验。</p>
-        <p><strong>云端工作区数据：</strong>衣物、套装、心愿单、穿着记录、行程计划和相关同步数据。</p>
-        <p><strong>图片数据：</strong>用户主动提交时会上传原图、缩略图和必要的图片元数据。</p>
-        <p><strong>AI Key：</strong>MiniMax Key 保存在本机 localStorage；仅在用户主动发起 AI 功能时，经 HTTPS 临时发送给 wardrobe API 代为调用 MiniMax，服务器不保存、不写日志。</p>
-        <p><strong>安全事件：</strong>只保存脱敏或哈希后的必要信息，不保存明文密码或 Token。</p>
-      </>
-    ),
-  },
-  {
-    title: "2. 数据用途",
-    children: (
-      <p>
-        账号数据用于身份认证、验证码校验与多设备会话管理。衣橱结构化数据用于跨设备同步与穿搭推荐。
-        图片数据用于在设备间同步衣物视觉信息。安全事件用于限流、防滥用和安全审计。
-      </p>
-    ),
-  },
-  {
-    title: "3. 本机数据与云端数据",
-    children: (
-      <>
-        <p>正式衣橱数据和图片仅以服务器返回为准；本机仅在当前页面会话内保留选图、缩略图和未提交草稿，不写入 IndexedDB、文件系统或持久图片缓存。</p>
-        <p>认证凭据在 Android 使用 Keystore 支持的安全存储，浏览器开发环境使用 sessionStorage；服务器仅保存 Refresh Token 哈希。</p>
-        <p>MiniMax AI Key 仅保存在本机 localStorage。</p>
-      </>
-    ),
-  },
-  {
-    title: "4. 数据安全",
-    children: (
-      <>
-        <p>密码使用 Argon2id 哈希后写入数据库，不可逆。邮箱验证码只保存哈希、状态和有效期。Token 使用短期 Access + 可撤销 Refresh 机制。</p>
-        <p>图片通过需要账号和设备认证的 wardrobe API 上传和下载；本机安全存储保存认证凭据。</p>
-      </>
-    ),
-  },
-  {
-    title: "5. 数据保留",
-    children: (
-      <>
-        <p>账号与结构化数据保留至用户请求删除。退出账号会清除本机认证凭据并吊销 Token，但不会自动清除云端数据。</p>
-        <p>未提交的页面内存草稿在 App 关闭后会丢失。MiniMax AI Key 仍保存在本机，可由用户在设置中清理。</p>
-      </>
-    ),
-  },
-  {
-    title: "6. 政策更新",
-    children: (
-      <p>
-        本政策随版本升级而更新。重大变更会在 App 内重新展示。继续使用即视为同意更新后的政策。
-      </p>
-    ),
-  },
-];
 
 export default function PrivacyPage() {
   return (
@@ -76,7 +18,7 @@ export default function PrivacyPage() {
         <LegalDocumentView
           title={`${APP_NAME} 隐私政策`}
           lastUpdated={LAST_UPDATED}
-          sections={SECTIONS}
+          sections={privacySections}
         />
       </div>
     </main>

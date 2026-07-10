@@ -8,6 +8,7 @@ const read = (path: string) => readFileSync(join(root, path), "utf8");
 
 const page = read("src/app/page.tsx");
 const activeAppPage = read("app/page.tsx");
+const buildHome = read("src/components/build-home.tsx");
 const activeAppLayout = read("app/layout.tsx");
 const activeTermsPage = read("app/legal/terms/page.tsx");
 const activePrivacyPage = read("app/legal/privacy/page.tsx");
@@ -39,8 +40,8 @@ function check(name: string, cond: boolean, detail?: string) {
 }
 
 console.log("\n=== Auth Client Shell v2.0.1 ===");
-check("page.tsx 接入 AppRoot", /import \{ AppRoot \} from "@\/components\/app-root"/.test(page) && /<AppRoot \/>/.test(page));
-check("Next 活跃根路由接入 AppRoot", /import \{ AppRoot \} from "@\/components\/app-root"/.test(activeAppPage) && /<AppRoot \/>/.test(activeAppPage));
+check("page.tsx 经默认构建入口接入 AppRoot", /BuildHome/.test(page) && /import \{ AppRoot \} from "@\/components\/app-root"/.test(buildHome) && /<AppRoot \/>/.test(buildHome));
+check("Next 活跃根路由转发默认构建入口", /@\/app\/page/.test(activeAppPage) && /BuildHome/.test(page));
 check("Next 活跃根布局保留 motion 与 service worker", /<MotionProvider>\{children\}<\/MotionProvider>/.test(activeAppLayout) && /<ServiceWorkerRegister \/>/.test(activeAppLayout));
 check("Next 活跃法律页转发到 src/app/legal", /@\/app\/legal\/terms\/page/.test(activeTermsPage) && /@\/app\/legal\/privacy\/page/.test(activePrivacyPage));
 check("AppRoot 渲染 OnlineWorkspaceGate", /<WorkspaceGate/.test(appRoot));

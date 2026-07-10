@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
-import { LegalDocumentView, type LegalSection } from "@/components/auth/legal-document-view";
+import { LegalDocumentView } from "@/components/auth/legal-document-view";
+import { termsSections } from "@/content/legal-content";
 
 const LAST_UPDATED = "2026-07-09";
 const APP_NAME = "衣橱穿搭助手";
@@ -9,60 +10,6 @@ export const metadata: Metadata = {
   description: `${APP_NAME} 用户协议。`,
 };
 
-const SECTIONS: LegalSection[] = [
-  {
-    title: "1. 服务说明",
-    children: (
-      <p>
-        衣橱穿搭助手是一款手机优先的衣橱识别、穿搭推荐与买前评估应用。用户使用邮箱作为主认证身份，
-        可选手机号仅作为手机号加密码登录名，注册后可使用云端工作区同步结构化衣橱数据。
-      </p>
-    ),
-  },
-  {
-    title: "2. 账号注册与使用",
-    children: (
-      <>
-        <p>用户使用邮箱验证码、邮箱和密码注册账号。手机号为选填登录名，不代表平台已经核验手机号归属。密码以 Argon2id 安全哈希形式保存，服务器不保存明文密码。</p>
-        <p>一个账号可以在多个设备上登录。用户可修改密码、找回密码、退出当前设备或退出全部设备。</p>
-      </>
-    ),
-  },
-  {
-    title: "3. 云端数据与本机数据",
-    children: (
-      <>
-        <p>账号登录后直接从云端工作区读写衣物、套装、心愿单、穿着记录、行程和穿搭计划；用户提交时会通过自有 API 上传原图及缩略图至服务器持久化存储。</p>
-        <p>本机不持久化保存正式衣橱业务数据或图片缓存，仅在当前页面会话内保留未提交草稿。退出账号不会自动删除云端账号数据。</p>
-      </>
-    ),
-  },
-  {
-    title: "4. 用户责任",
-    children: (
-      <p>
-        用户不得滥用、攻击、批量注册或绕过安全限制。不得注册或使用不属于自己的邮箱或手机号。
-        MiniMax Key 属于本机设置；仅在用户主动发起 AI 功能时临时用于服务器代调 MiniMax，不在服务器保存。
-      </p>
-    ),
-  },
-  {
-    title: "5. 服务变更与终止",
-    children: (
-      <p>
-        我们保留根据需要调整、暂停或终止服务的权利。服务变更时将在 App 内展示更新后的协议。
-      </p>
-    ),
-  },
-  {
-    title: "6. 适用法律",
-    children: (
-      <p>
-        本协议适用中华人民共和国法律。争议优先友好协商；协商不成的，提交服务器运营方所在地有管辖权的人民法院解决。
-      </p>
-    ),
-  },
-];
 
 export default function TermsPage() {
   return (
@@ -71,7 +18,7 @@ export default function TermsPage() {
         <LegalDocumentView
           title={`${APP_NAME} 用户协议`}
           lastUpdated={LAST_UPDATED}
-          sections={SECTIONS}
+          sections={termsSections}
         />
       </div>
     </main>
