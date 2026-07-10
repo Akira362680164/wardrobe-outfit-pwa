@@ -1,3 +1,13 @@
+## 2026-07-10 / v2.1.12-test / Codex — Android App 账号注销三次确认 UI
+
+- **执行 Agent**：Codex（未触发 subagent：用户要求当前会话开始实施；本批按项目 UI 规范串行完成 App 端）。
+- **目的**：在不接入微信 Android SDK、不改变既有退出登录的前提下，为 App 增加入口克制但完整可执行的自助注销流程。
+- **版本变更**：无；当前仍为 `2.1.12-test`，待 APK 批次统一升到 `2.1.13-test`。
+- **改动文件**：`src/components/auth/{account-views,account-deletion-view,auth-provider}.tsx`、`src/components/{app-root,wardrobe-app}.tsx`、`src/lib/{app-route,auth-session-store,cloud-auth-api,device-minimax}.ts`、UI 规范源与生成预览、App 合同测试、`package.json`。
+- **改动说明**：账号安全页在退出登录之后新增最底端红色下划线“注销账号”文字入口，无可见按钮边框/背景/圆角但保留 44px 热区；新增风险告知、动态邮箱/密码任选一种核验、最终不可恢复 Sheet 三次确认，以及处理中、成功和已停用异常状态。App 不显示微信验证；最终提交开始后清除本机 MiniMax Key，成功返回登录页时清除 token、用户和本机 owner 绑定，避免已注销账号阻塞新账号。新增独立 `account_deletion` 路由和服务端回执轮询。
+- **验证结果**：`npm run test:logic:account-deletion-app`、`npm run typecheck`、`npm run test:logic:auth-client-shell`（49/49）、`npm run test:logic:app-route`（46/46）通过；UI token 门禁仍命中基线已记录的历史硬编码（包括本任务未新增的账号改密色值、裁切、图片操作卡和官网 CSS），未把该既有失败误归因于注销页面。
+- **未验证风险**：尚未运行 `npm run build`、浏览器/Android 视觉交互、真实邮箱验证码或 APK；处理中页面当前会话可轮询匿名回执，但关闭 App 后将由服务端继续删除并在下次启动因会话失效回到登录页。
+
 ## 2026-07-10 / v2.1.12-test / Codex — 账号注销共享契约与服务端状态机
 
 - **执行 Agent**：Codex（未触发 subagent：用户要求当前会话开始实施，本批在独立 `codex/account-deletion-design` worktree 串行完成）。

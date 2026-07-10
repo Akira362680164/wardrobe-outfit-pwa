@@ -12,6 +12,7 @@ export interface WardrobeCloudAuth {
   accessToken?: string;
   isBusy: boolean;
   onLogout: () => Promise<void>;
+  onAccountDeleted: () => Promise<void>;
   onChangePassword: (currentPassword: string, newPassword: string) => Promise<void>;
 }
 
@@ -19,10 +20,12 @@ export function AccountManagementView({
   auth,
   onBack,
   onChangePassword,
+  onDeleteAccount,
 }: {
   auth: WardrobeCloudAuth;
   onBack: () => void;
   onChangePassword: () => void;
+  onDeleteAccount: () => void;
 }) {
   const [confirmingLogout, setConfirmingLogout] = useState(false);
   const [security, setSecurity] = useState<authApi.AccountSecurityResponse | null>(null);
@@ -131,6 +134,13 @@ export function AccountManagementView({
           </button>
         )}
       </div>
+      <button
+        type="button"
+        onClick={onDeleteAccount}
+        className="mx-auto mt-6 flex min-h-11 items-center bg-transparent px-4 text-sm font-medium text-red-600 underline decoration-red-600/70 underline-offset-4 active:text-red-700"
+      >
+        注销账号
+      </button>
     </div>
   );
 }

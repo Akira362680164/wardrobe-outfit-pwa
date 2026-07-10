@@ -59,6 +59,7 @@ import { useWardrobeLightboxController } from "@/components/use-wardrobe-lightbo
 import { WardrobeImageSourceSheet } from "@/components/wardrobe-image-source-sheet";
 import { WardrobeHiddenImageInputs } from "@/components/wardrobe-hidden-image-inputs";
 import { AccountManagementView, ChangePasswordView, type WardrobeCloudAuth } from "@/components/auth/account-views";
+import { AccountDeletionView } from "@/components/auth/account-deletion-view";
 import { createActionsForView, preferredCreateActionByView, type ViewKey } from "@/components/wardrobe-create-actions";
 import { useWardrobeImageIntakeController } from "@/components/use-wardrobe-image-intake-controller";
 import { WardrobeSelectedImagesReviewPortal } from "@/components/wardrobe-selected-images-review-portal";
@@ -485,7 +486,7 @@ export function WardrobeApp({ cloudAuth }: { cloudAuth?: WardrobeCloudAuth } = {
       logTopLevelBack("outfitCalendar");
       return true;
     }
-    if (route.name === "account_management" || route.name === "change_password") {
+    if (route.name === "account_management" || route.name === "account_deletion" || route.name === "change_password") {
       navigation.goBack();
       logTopLevelBack("accountRoute");
       return true;
@@ -1210,6 +1211,14 @@ export function WardrobeApp({ cloudAuth }: { cloudAuth?: WardrobeCloudAuth } = {
               auth={cloudAuth}
               onBack={() => navigation.goBack()}
               onChangePassword={() => navigation.openRoute({ name: "change_password" })}
+              onDeleteAccount={() => navigation.openRoute({ name: "account_deletion" })}
+            />
+          ) : null}
+
+          {route.name === "account_deletion" && cloudAuth ? (
+            <AccountDeletionView
+              auth={cloudAuth}
+              onBack={() => navigation.goBack()}
             />
           ) : null}
 

@@ -3,6 +3,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 import {
   clearAuthTokens,
+  clearDeletedAccountSession,
   createRefreshRequestId,
   isAccessTokenFresh,
   loadAuthSessionSnapshot,
@@ -13,6 +14,7 @@ import {
   type AuthUserSnapshot,
 } from "@/lib/auth-session-store";
 import * as authApi from "@/lib/cloud-auth-api";
+import { clearMiniMaxSettings } from "@/lib/device-minimax";
 import { probeCloudConnectivity, subscribeNetworkChanges, type ConnectivityState } from "@/lib/online/online-connectivity";
 
 export type AuthPhase = "initializing" | "anonymous" | "authenticated" | "blocked";
@@ -37,6 +39,7 @@ interface AuthContextValue {
   refreshSession: () => Promise<AuthSessionSnapshot | null>;
   logout: () => Promise<void>;
   logoutAll: () => Promise<void>;
+  completeAccountDeletion: () => Promise<void>;
   changePassword: (currentPassword: string, newPassword: string) => Promise<void>;
   clearError: () => void;
   returnToLoginFromBlocked: () => Promise<void>;
@@ -260,6 +263,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }, [session]);
 
+  const completeAccountDeletion = useCallback(async () => {
+    const current = session ?? await loadAuthSessionSnapshot();
+    clearMiniMaxSettings();
+    const cleared = await clearDeletedAccountSession(current);
+    setSession(cleared);
+    setBlocked(null);
+    setError(null);
+    setPhase("anonymous");
+  }, [session]);
+
   const changePassword = useCallback(async (currentPassword: string, newPassword: string) => {
     setIsBusy(true);
     setError(null);
@@ -309,6 +322,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     refreshSession,
     logout,
     logoutAll,
+    completeAccountDeletion,
     changePassword,
     clearError: () => setError(null),
     returnToLoginFromBlocked,
@@ -324,6 +338,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     refreshSession,
     logout,
     logoutAll,
+    completeAccountDeletion,
     changePassword,
     returnToLoginFromBlocked,
   ]);

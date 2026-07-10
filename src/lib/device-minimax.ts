@@ -294,6 +294,11 @@ export function saveMiniMaxSettings(settings: DeviceMiniMaxSettings) {
   );
 }
 
+export function clearMiniMaxSettings() {
+  if (typeof window === "undefined") return;
+  window.localStorage.removeItem(SETTINGS_KEY);
+}
+
 export function hasDeviceMiniMaxKey(settings: DeviceMiniMaxSettings) {
   return settings.apiKey.trim().length > 0;
 }
