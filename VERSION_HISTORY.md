@@ -1,3 +1,14 @@
+## 2026-07-10 / v2.1.12-test / Codex — 腾讯 SES 生产激活配置
+
+- **执行 Agent**：Codex（未触发 subagent：用户授权当前 Session 执行生产邮件激活）。
+- **目的**：在腾讯云验证码模板审核通过后，补齐生产容器的 SES 与认证 HMAC 环境变量透传，并按备份、迁移、readiness、真实邮箱的顺序激活邮件发送。
+- **版本变更**：无；当前应用版本仍为 `2.1.12-test`。本批次只改生产部署配置和文档，不改 App/小程序页面，不打 APK。
+- **改动文件**：`deploy/compose.production.yaml`、`deploy/docs/production-deploy.md`、`VERSION_HISTORY.md`。
+- **改动说明**：API 容器新增 `AUTH_HMAC_SECRET`、`EMAIL_PROVIDER` 和腾讯 SES 配置透传；部署手册明确主线只使用一个 `AUTH_HMAC_SECRET`，以及模板通过后的备份、自动迁移、`email: ready` 和受控真实邮箱验收门禁。
+- **验证结果**：生产 Compose YAML 解析通过，并通过服务器 Compose v2 使用无敏感占位值完成只读 `config` 渲染；`npm run cloud:contracts:typecheck`、`npm run api:typecheck` 通过；`npm run api:test` 通过（16 files / 99 tests）；`git diff --check` 通过。生产备份、镜像部署、公开 health/ready/version 和真实邮箱收件验证待服务器阶段补记。
+- **风险门禁**：high（生产认证密钥、数据库自动迁移、真实邮件发送）；未触发 subagent：用户未要求。
+- **未验证风险**：腾讯云 Secret 尚未在本机或服务器现有密钥环境中找到；在凭据安全配置完成前不得切换 `EMAIL_PROVIDER=tencent-ses` 或执行真实发送。
+
 ## 2026-07-10 / v2.1.12-test / Codex — Git Session 与 Worktree 隔离治理
 
 - **执行 Agent**：Codex（未触发 subagent：用户要求当前 Session 直接执行文档治理）。
