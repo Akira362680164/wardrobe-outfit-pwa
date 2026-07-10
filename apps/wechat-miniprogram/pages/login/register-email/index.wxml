@@ -7,7 +7,7 @@
     <view class="field-label">邮箱</view>
     <view class="email-row">
       <input class="email-input" value="{{email}}" placeholder="输入邮箱" bindinput="handleEmailInput" />
-      <button class="send-code-button" disabled="{{sending || countdown > 0}}" bindtap="sendCode">
+      <button class="send-code-button {{accepted ? '' : 'send-code-button--consent-pending'}}" disabled="{{sending || countdown > 0}}" bindtap="sendCode">
         {{countdown > 0 ? countdown + 's' : (codeSent ? '再次发送' : '发送验证码')}}
       </button>
     </view>
@@ -27,8 +27,22 @@
     <input class="auth-input" value="{{phone}}" type="number" placeholder="仅作为手机号+密码登录名" bindinput="handlePhoneInput" />
     <view class="phone-hint">手机号暂不验证，仅作为手机号+密码登录名使用。</view>
 
+    <view class="agreement-row">
+      <checkbox-group class="agreement-checkbox-group" bindchange="handleAgreementChange">
+        <label class="agreement-checkbox-hit">
+          <checkbox value="accepted" checked="{{accepted}}" color="#355c7d" />
+        </label>
+      </checkbox-group>
+      <view class="agreement-tip text-wrap-safe">
+        我已阅读并同意
+        <text class="agreement-link" bindtap="openAgreement">《用户服务协议》</text>
+        和
+        <text class="agreement-link" bindtap="openPrivacy">《隐私政策》</text>
+      </view>
+    </view>
+
     <view wx:if="{{errorMessage}}" class="auth-error text-wrap-safe">{{errorMessage}}</view>
 
-    <button class="primary-button submit-button" disabled="{{submitting || !email || !password || !confirmPassword}}" bindtap="submit">注册并登录</button>
+    <button class="primary-button submit-button {{accepted ? '' : 'submit-button--consent-pending'}}" disabled="{{submitting || !email || !password || !confirmPassword}}" bindtap="submit">注册并登录</button>
   </view>
 </view>

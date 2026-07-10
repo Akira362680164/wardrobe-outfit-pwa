@@ -1,5 +1,5 @@
-import { AppRoot } from "@/components/app-root";
+import { BuildHome } from "@/components/build-home";
 
 export default function Home() {
-  return <AppRoot />;
+  return <BuildHome />;
 }

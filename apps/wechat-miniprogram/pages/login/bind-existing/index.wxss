@@ -83,7 +83,7 @@
   height: 96rpx;
   margin: 40rpx 0 0;
   border-radius: 28rpx;
-  background: #2f6b4f;
+  background: var(--color-primary);
   color: #ffffff;
 }
 
@@ -94,7 +94,7 @@
 
 .text-link {
   margin-top: 24rpx;
-  color: #2f6b4f;
+  color: var(--color-primary);
   font-size: 24rpx;
   font-weight: 700;
   line-height: 36rpx;

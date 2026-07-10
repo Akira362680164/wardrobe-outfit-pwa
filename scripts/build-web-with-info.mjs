@@ -50,6 +50,7 @@ function main() {
 
   const buildTime = new Date().toISOString();
   const buildChannel = process.env.BUILD_CHANNEL ?? "internal";
+  const buildTarget = process.env.WARDORA_BUILD_TARGET === "website" ? "website" : "app";
 
   console.log("🔨 开始构建...");
   console.log("   版本:", version);
@@ -57,6 +58,7 @@ function main() {
   console.log("   Git Commit:", gitCommit);
   console.log("   构建时间:", buildTime);
   console.log("   渠道:", buildChannel);
+  console.log("   构建目标:", buildTarget);
 
   const env = {
     ...process.env,
@@ -67,6 +69,7 @@ function main() {
     NEXT_PUBLIC_BUILD_TIME: buildTime,
     NEXT_PUBLIC_BUILD_CHANNEL: buildChannel,
     NEXT_PUBLIC_REPOSITORY: "Akira362680164/wardrobe-outfit-pwa",
+    WARDORA_BUILD_TARGET: buildTarget,
   };
 
   execSync("next build", {
