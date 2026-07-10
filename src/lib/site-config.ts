@@ -1,4 +1,6 @@
 const DEFAULT_DOMAIN = "https://zhengfangapps.cloud";
+const DEFAULT_OPERATOR_NAME = "方正";
+const DEFAULT_ICP_NUMBER = "鲁ICP备2026037404号-1";
 const ICP_QUERY_URL = "https://beian.miit.gov.cn/";
 
 function optionalValue(value: string | undefined): string | null {
@@ -27,8 +29,9 @@ export const siteConfig = {
   siteDescription: "个人衣橱与穿搭管理工具",
   domain: httpsUrl(process.env.NEXT_PUBLIC_WARDORA_SITE_DOMAIN, DEFAULT_DOMAIN) ?? DEFAULT_DOMAIN,
   contactEmail: emailAddress(process.env.NEXT_PUBLIC_WARDORA_SITE_CONTACT_EMAIL),
-  operatorName: optionalValue(process.env.NEXT_PUBLIC_WARDORA_SITE_OPERATOR_NAME),
-  icpNumber: optionalValue(process.env.NEXT_PUBLIC_WARDORA_SITE_ICP_NUMBER),
+  operatorName:
+    optionalValue(process.env.NEXT_PUBLIC_WARDORA_SITE_OPERATOR_NAME) ?? DEFAULT_OPERATOR_NAME,
+  icpNumber: optionalValue(process.env.NEXT_PUBLIC_WARDORA_SITE_ICP_NUMBER) ?? DEFAULT_ICP_NUMBER,
   policeRecordNumber: optionalValue(process.env.NEXT_PUBLIC_WARDORA_SITE_POLICE_RECORD_NUMBER),
   policeRecordUrl: httpsUrl(process.env.NEXT_PUBLIC_WARDORA_SITE_POLICE_RECORD_URL),
   privacyUpdatedAt: optionalValue(process.env.NEXT_PUBLIC_WARDORA_SITE_PRIVACY_UPDATED_AT) ?? "2026-07-10",

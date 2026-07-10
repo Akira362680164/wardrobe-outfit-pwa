@@ -1,3 +1,13 @@
+## 2026-07-10 / v2.1.12-test / Codex — 官网腾讯云备案信息回填
+
+- **执行 Agent**：Codex（未触发 subagent：用户未要求；在独立 `codex/wardora-compliance-config` worktree 内完成）。
+- **目的**：按用户要求从已登录的腾讯云控制台核验 Wardora 官网主体与备案信息，并将可公开的真实值写入官网默认配置。
+- **版本变更**：无；当前应用版本仍为 `2.1.12-test`。本轮仅调整官网静态构建配置、测试和部署说明，不进入 APK。
+- **改动文件**：`src/lib/site-config.ts`、`scripts/test-wardora-compliance-site.ts`、`docs/deployment/wardora-website.md`、`VERSION_HISTORY.md`。
+- **改动说明**：官网运营主体默认值设为腾讯云实名认证及 ICP 主体一致的个人“方正”；ICP 展示默认值设为网站互联网信息服务备案号“鲁ICP备2026037404号-1”，继续链接工信部备案查询站。保留环境变量覆盖能力；公开联系邮箱仍未写入，因为腾讯云仅展示个人 QQ 邮箱脱敏值，未确认其可公开用途。公安备案继续显示“办理中”，明确腾讯云公安联网备案数据码不等同于正式公安备案号。APP 备案列表在腾讯云当前为空，不在官网伪造 APP 备案信息。
+- **验证结果**：腾讯云域名实名认证页确认用户类型为个人、域名所有者与联系人均为“方正”；ICP备案管理页确认主体备案号“鲁ICP备2026037404号”、网站互联网信息服务备案号“鲁ICP备2026037404号-1”、主体与服务状态均为正常；APP 备案页为 0 条。`npm run test:logic:website`、`npm run typecheck`、`npm run build:website` 通过，静态产物扫描确认显示“方正”“鲁ICP备2026037404号-1”“公安备案信息办理中”，备案号链接指向 `https://beian.miit.gov.cn/`，且不包含公安联网备案数据码及腾讯云实名认证页的住址、手机号、证件号。
+- **未验证风险**：腾讯云当前网站服务名称仍为“个人内网穿透及衣橱小站”，与 Wardora 品牌名称不完全一致；本轮未发起变更备案、公安联网备案或 APP 备案，也未公开域名实名认证中的住址、手机号、证件号等敏感信息。
+
 ## 2026-07-10 / v2.1.12-test / Codex — Wardora 合规官网
 
 - **执行 Agent**：Codex（未触发 subagent：用户未要求；本轮在独立 `codex/wardora-compliance-site` worktree 内串行完成设计、实现与验证）。

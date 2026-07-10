@@ -12,16 +12,18 @@ Wardora 官网使用 `https://zhengfangapps.cloud` 作为唯一规范地址，`h
 
 ```bash
 export NEXT_PUBLIC_WARDORA_SITE_DOMAIN='https://zhengfangapps.cloud'
-export NEXT_PUBLIC_WARDORA_SITE_OPERATOR_NAME='真实运营主体名称'
+# 腾讯云已核验默认值为个人主体“方正”；仅在备案主体正式变更后覆盖。
+export NEXT_PUBLIC_WARDORA_SITE_OPERATOR_NAME='方正'
 export NEXT_PUBLIC_WARDORA_SITE_CONTACT_EMAIL='公开联系邮箱'
-export NEXT_PUBLIC_WARDORA_SITE_ICP_NUMBER='已取得的真实 ICP 备案号'
+# 使用“互联网信息服务”记录中的网站备案号，不是主体备案号。
+export NEXT_PUBLIC_WARDORA_SITE_ICP_NUMBER='鲁ICP备2026037404号-1'
 export NEXT_PUBLIC_WARDORA_SITE_POLICE_RECORD_NUMBER='已取得后再填写'
 export NEXT_PUBLIC_WARDORA_SITE_POLICE_RECORD_URL='已取得后填写真实公安备案查询链接'
 export NEXT_PUBLIC_WARDORA_SITE_PRIVACY_UPDATED_AT='YYYY-MM-DD'
 export NEXT_PUBLIC_WARDORA_SITE_TERMS_UPDATED_AT='YYYY-MM-DD'
 ```
 
-尚未取得公安备案号时，不设置两项公安备案变量即可，页面会显示“公安备案信息办理中”。尚未取得 ICP 备案号时不得填写模拟编号。
+代码已内置 2026-07-10 从腾讯云控制台核验的个人主体“方正”和网站备案号“鲁ICP备2026037404号-1”，环境变量仍可用于正式变更后的覆盖。尚未取得公安备案号时，不设置两项公安备案变量即可，页面会显示“公安备案信息办理中”。腾讯云显示的“公安联网备案数据码”只用于办理流程，不是正式公安备案号，禁止填入官网备案号字段。
 
 环境变量只允许放公开展示信息；数据库口令、JWT、腾讯云 Secret、MiniMax Key 等敏感值不得进入官网构建环境。
 
