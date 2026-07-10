@@ -71,6 +71,7 @@
     "test:logic:app-email-auth-flow": "tsx scripts/test-app-email-auth-flow.ts",
     "test:logic:account-deletion": "tsx scripts/test-account-deletion-contract.ts",
     "test:logic:account-deletion-app": "tsx scripts/test-account-deletion-app.ts",
+    "test:logic:account-deletion-miniprogram": "tsx scripts/test-account-deletion-miniprogram.ts",
     "test:logic:auth-consent": "tsx scripts/test-auth-consent-all-entry.ts",
     "test:logic:online-auth-shell": "tsx scripts/test-online-auth-shell.ts",
     "test:logic:wechat-email-auth-flow": "tsx scripts/test-wechat-email-auth-flow.ts",

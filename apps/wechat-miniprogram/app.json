@@ -28,6 +28,7 @@
     "pages/settings/index/index",
     "pages/settings/ai-key/index",
     "pages/settings/account/index",
+    "pages/settings/account-deletion/index",
     "pages/settings/change-password/index",
     "pages/settings/privacy/index",
     "pages/settings/diagnostics/index",

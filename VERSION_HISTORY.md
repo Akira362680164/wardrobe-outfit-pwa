@@ -1,3 +1,13 @@
+## 2026-07-10 / v2.1.13-test / Codex — 微信小程序账号注销三次确认
+
+- **执行 Agent**：Codex（未触发 subagent；先将最新 `main` 合入 `wechat/miniprogram`，再在独立 `codex/miniprogram-account-deletion` worktree 实施）。
+- **目的**：让微信小程序与 App 共用同一注销状态机，并在小程序内提供微信、邮箱和密码三种动态本人核验方式。
+- **版本变更**：无；保持 `2.1.13-test`。本批不上传体验版、不发布小程序，也不重新构建 Android APK。
+- **改动文件**：`apps/wechat-miniprogram/app.json`、`pages/settings/account/`、新增 `pages/settings/account-deletion/`、`services/auth.ts`、`scripts/test-account-deletion-miniprogram.ts`、`package.json`、`VERSION_HISTORY.md`。
+- **改动说明**：账号安全页在退出登录之后新增最底端居中的红色下划线“注销账号”文字入口，无可见按钮背景、边框和圆角，保留 88rpx 触摸区；注销页依次提供风险告知、已有身份动态选择、最终不可恢复勾选三次确认。第二阶段在全部已绑定时显示微信身份、邮箱验证码、当前密码三个按钮；微信方式直接调用本小程序 `wx.login` 获取一次性 code，并与固定 AppID 一起交给服务端核验绑定 OpenID，不跳转 App。最终确认后清除小程序 MiniMax Key 和内存会话，使用无认证回执轮询，数据库与文件删除完成前不显示注销成功。
+- **验证结果**：`npm run test:logic:account-deletion`、`test:logic:account-deletion-app`、`test:logic:account-deletion-miniprogram`、共享契约 typecheck、API typecheck、小程序 typecheck 和 `git diff --check` 通过。微信开发者工具登录态及 skill `0.2.5` 一致，成功打开独立任务项目窗口、刷新模拟器并编译打开 `pages/settings/account-deletion/index`；console 未发现 compile、syntax、WXML、WXSS、TypeError 或 ReferenceError。验证后已关闭任务项目窗口。
+- **未验证风险**：当前微信开发者工具的 `compile_js` 返回 `unknown tool`，自动化 runtime/screenshot 调用持续超时且未产出截图，因此没有在本批模拟器内完成登录后的三页逐项点击；生产 API 尚未部署 0016 迁移和注销路由，也未用真实微信 code、邮箱验证码或专用账号执行永久删除。上线前必须先部署服务端，再用可删除测试账号完成微信真机或稳定模拟器端到端验收。
+
 ## 2026-07-10 / v2.1.13-test / Codex — App 注销最终 APK 与 Android 验收
 
 - **执行 Agent**：Codex（未触发 subagent；在独立 `codex/account-deletion-design` worktree 完成最终构建和真机环境等价的 Android 模拟器验收）。

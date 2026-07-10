@@ -1,5 +1,6 @@
 .settings-page {
   min-height: 100vh;
+  padding-bottom: calc(96rpx + env(safe-area-inset-bottom));
   background: #fbfbf8;
 }
 
@@ -82,4 +83,17 @@
   width: 100% !important;
   margin: 36rpx 0 0;
   border-radius: 28rpx;
+}
+
+.delete-account-entry {
+  display: flex;
+  min-height: 88rpx;
+  align-items: center;
+  justify-content: center;
+  margin-top: 20rpx;
+  color: #b42318;
+  font-size: 26rpx;
+  line-height: 40rpx;
+  text-decoration: underline;
+  text-underline-offset: 6rpx;
 }

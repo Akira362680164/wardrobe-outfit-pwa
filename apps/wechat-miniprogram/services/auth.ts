@@ -37,6 +37,27 @@ export interface AccountSecurityResponse {
   password: { set: boolean; changedAt?: string };
 }
 
+export type AccountDeletionVerification =
+  | { method: "email"; emailCode: string }
+  | { method: "password"; currentPassword: string }
+  | { method: "wechat"; loginCode: string; appId: string };
+
+export interface AccountDeletionVerifyResponse {
+  authorizationToken: string;
+  expiresAt: string;
+}
+
+export interface AccountDeletionConfirmResponse {
+  receiptToken: string;
+  status: "processing" | "completed";
+}
+
+export interface AccountDeletionStatusResponse {
+  status: "processing" | "completed" | "failed";
+  completedAt?: string;
+  referenceCode?: string;
+}
+
 let runtimeDeviceId = "";
 
 export async function loginWithWechatOpenId(): Promise<WechatLoginResponse> {
@@ -201,6 +222,52 @@ export function getAccountSecurity(): Promise<AccountSecurityResponse> {
     method: "GET",
     path: "/api/auth/account/security",
     auth: true,
+    toast: false,
+  });
+}
+
+export function requestAccountDeletionEmailCode(): Promise<SendEmailCodeResponse> {
+  return request<SendEmailCodeResponse>({
+    method: "POST",
+    path: "/api/auth/account-deletion/email/request",
+    auth: true,
+    toast: false,
+  });
+}
+
+export function verifyAccountDeletion(verification: AccountDeletionVerification): Promise<AccountDeletionVerifyResponse> {
+  return request<AccountDeletionVerifyResponse>({
+    method: "POST",
+    path: "/api/auth/account-deletion/verify",
+    auth: true,
+    toast: false,
+    data: verification,
+  });
+}
+
+export async function verifyAccountDeletionWithWechat(): Promise<AccountDeletionVerifyResponse> {
+  return verifyAccountDeletion({
+    method: "wechat",
+    loginCode: await getLoginCode(),
+    appId: WECHAT_MINIPROGRAM_APP_ID,
+  });
+}
+
+export function confirmAccountDeletion(authorizationToken: string): Promise<AccountDeletionConfirmResponse> {
+  return request<AccountDeletionConfirmResponse>({
+    method: "POST",
+    path: "/api/auth/account-deletion/confirm",
+    auth: true,
+    toast: false,
+    data: { authorizationToken, confirmationText: "DELETE_ACCOUNT" },
+  });
+}
+
+export function getAccountDeletionStatus(receiptToken: string): Promise<AccountDeletionStatusResponse> {
+  return request<AccountDeletionStatusResponse>({
+    method: "GET",
+    path: `/api/auth/account-deletion/status/${encodeURIComponent(receiptToken)}`,
+    auth: false,
     toast: false,
   });
 }
