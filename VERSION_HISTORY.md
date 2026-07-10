@@ -5,9 +5,10 @@
 - **版本变更**：`package.json` / `package-lock.json` 从 `2.1.11-test` 升至 `2.1.12-test`；Android `versionCode` 由构建脚本推导为 `20112`。
 - **改动文件**：在线图片恢复涉及 `src/components/{app-root,auth/{auth-provider,workspace-gate},online/online-asset-image}.tsx`、`src/lib/online/online-repository.ts` 与合同测试；SES 涉及共享认证/health 契约、API 邮件 Provider、验证码限流迁移、App/小程序验证码倒计时、相关测试与实施计划；同步整理 `VERSION_HISTORY.md`。
 - **改动说明**：前后台恢复、401 和手工重试统一刷新当前页面在线图片；腾讯云 SES 作为后端可配置 Provider 接入，验证码冷却改为服务端权威 60 秒并增加邮箱/IP 持久限流、失败清理、readiness 与防枚举边界；`packages/domain-catalog` 及小程序生成目录保持当前主线实现。
-- **验证结果**：`npm run cloud:contracts:typecheck`、`npm run api:typecheck`、`npm run typecheck`、小程序 typecheck、共享目录生成检查与两组目录测试通过；在线认证/工作区、App/小程序邮箱认证和认证壳合同测试通过；`npm run api:test` 通过（16 files / 99 tests）；`npm run build` 以合并前版本 `2.1.11-test` 通过；迁移 journal JSON 与 `git diff --check` 通过。固定签名 APK 构建与 Android 启动验证将在主目录本机配置下完成后补记。
+- **交付产物**：根目录 `衣橱穿搭助手-v2.1.12-test.apk`，大小 9.5MB，SHA-256 `343c5b0c5d56fca959e978fa9648c65e965747f7252a53d180f7185e3eed762c`；构建归档 `apk-local/app-release-d0c39caf.apk`。
+- **验证结果**：`npm run cloud:contracts:typecheck`、`npm run api:typecheck`、`npm run typecheck`、小程序 typecheck、共享目录生成检查与两组目录测试通过；在线认证/工作区、App/小程序邮箱认证和认证壳合同测试通过；`npm run api:test` 通过（16 files / 99 tests）；`npm run build` 通过；迁移 journal JSON 与 `git diff --check` 通过；`npm run android:apk` 以 `2.1.12-test` 成功；`APK_PATH="$PWD/衣橱穿搭助手-v2.1.12-test.apk" APK_EXPECTED_SIGNER_CN=fangzheng ANDROID_SERIAL=emulator-5554 RESULTS_DIR="$PWD/test-results/android-v2.1.12-test-closeout" npm run android:verify:full` 在 `wardrobe-test` / Android 15 模拟器通过，覆盖安装启动、前台窗口、返回键、竖屏、清数据重启与三段崩溃日志检查；包名 `com.wardrobe.outfit`、versionName `2.1.12-test`、versionCode `20112`、签名 `CN=fangzheng`，结果目录 `test-results/android-v2.1.12-test-closeout/20260710-121247/`。
 - **风险门禁**：high（认证恢复、在线图片、邮件 Provider、验证码状态机、数据库迁移、App/小程序共享认证契约和 Android 交付）；未触发 subagent：用户未要求。
-- **未验证风险**：腾讯云模板仍在审批，未配置生产 Secret、未部署迁移或真实收件；Android 构建和安装启动结果待主目录本机配置验证。
+- **未验证风险**：腾讯云模板仍在审批，未配置生产 Secret、未部署迁移或真实收件；未登录真实账号等待 token 过期后做在线图片恢复端到端验证，未运行真实邮箱和 MiniMax live 调用。
 
 ## 2026-07-10 / v2.1.11-test / Codex — 共享领域字典防漂移门禁与验收
 
