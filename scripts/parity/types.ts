@@ -165,3 +165,80 @@ export interface BaselineLock {
   liveAiEnabled: boolean;
   deviceProfile: DeviceProfile;
 }
+
+export type ScreenMappingStatus =
+  | "EQUIVALENT"
+  | "APP_ONLY_DEFECT"
+  | "MINI_ONLY_DEFECT"
+  | "MINI_ONLY_PLATFORM"
+  | "HOST_WRAPPER"
+  | "LOGIN_EXCLUDED"
+  | "UNMAPPED";
+
+export interface ManifestPlatformScreen {
+  routes: string[];
+  sourceInventoryIds: string[];
+  sourceFiles: string[];
+}
+
+export interface ManifestState {
+  id: string;
+  fixture: string;
+  checkpoint: boolean;
+  expectedOn: Platform[];
+}
+
+export interface ManifestAction {
+  id: string;
+  event: string;
+  requiredOn: Platform[];
+  sourceActionIds: Partial<Record<Platform, string[]>>;
+  expectedTransition: TransitionType;
+  target?: string;
+  sideEffect: SideEffectType;
+  serverAssertion?: string;
+  notApplicable?: Partial<Record<Platform, string>>;
+}
+
+export interface ScreenManifest {
+  id: string;
+  domain: string;
+  sourceOfTruth: "app";
+  mappingStatus: ScreenMappingStatus;
+  app: ManifestPlatformScreen;
+  mini: ManifestPlatformScreen;
+  fixtures: string[];
+  entryPaths: Array<{ id: string; actions: string[] }>;
+  states: ManifestState[];
+  requiredActions: ManifestAction[];
+  overlays: string[];
+  checkpoints: string[];
+  platformExceptionIds: string[];
+}
+
+export interface DomainManifest {
+  schemaVersion: 1;
+  domain: string;
+  screens: ScreenManifest[];
+}
+
+export interface ScreenMapEntry {
+  id: string;
+  domain: string;
+  mappingStatus: ScreenMappingStatus;
+  appInventoryIds: string[];
+  miniInventoryIds: string[];
+  notes: string;
+}
+
+export interface ScreenMapManifest {
+  schemaVersion: 1;
+  screens: ScreenMapEntry[];
+}
+
+export interface AppSourceDisposition {
+  id: string;
+  classification: "STATE_OF_SCREEN" | "COMPONENT_OF_SCREEN" | "SHARED_SCREEN_INFRASTRUCTURE";
+  targets: string[];
+  rationale: string;
+}

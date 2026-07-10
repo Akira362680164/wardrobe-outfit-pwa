@@ -1,3 +1,14 @@
+## 2026-07-11 / v2.1.13-test / Codex — 双端 Screen 语义映射与三个样板 manifest
+
+- **执行 Agent**：Codex 主协调 agent；使用三个只读成对业务域 subagent 分别映射共享壳层/衣橱、录入/种草、套装/设置，每个 subagent 同时读取独立 APP 与小程序 detached worktree。
+- **目的**：把静态库存转换为 APP 与小程序的业务语义映射，区分真正 Screen、Screen 内 State、共享组件、平台页和缺陷页，并为衣物详情、诊断上传、套装计划月历建立首批可执行详细 manifest。
+- **版本变更**：无；当前应用版本仍为 `2.1.13-test`。本批次不改业务行为、不打 APK、不上传小程序体验版。
+- **改动文件**：`scripts/parity/{manifest.ts,types.ts,scanners/app.ts,manifests/**}`、`package.json`、`VERSION_HISTORY.md`；用户批准的外部执行计划同步新增 `MINI_ONLY_DEFECT` 状态。
+- **改动说明**：APP AST 扫描补齐 AppRoute discriminated union 的 16 个正式路由；`screen-map.yaml` 登记 51 个语义 Screen，并新增 `MINI_ONLY_DEFECT` 表达小程序额外占位/遗留业务页；`app-source-dispositions.json` 将非独立布局的 41 个 APP 候选逐项归类为 Screen State、Screen Component 或共享基础设施；详细样板 manifest 定义 21 个 State、18 个核心 Action、21 个 Checkpoint、fixture、入口、Overlay、Transition 和服务端断言。
+- **验证结果**：重新生成 inventory 后 APP Screen 候选增至 96；`npm run parity:inventory:check` 通过且 unresolved=0；`npm run parity:manifest:check` 无 error/warning 通过，51 个语义 Screen 覆盖 APP 96/96 来源与小程序 35/35 注册页面；独立 `tsc` 编译和 `git diff --check` 通过。
+- **风险门禁**：high（跨端 Screen/State/Action 分母与后续修复边界）。
+- **未验证风险**：只有三个样板具备详细执行 manifest，其余 48 个语义 Screen 仍需补齐 State/Action/Checkpoint；884 个 Action 仍缺 parity-id；成对源码盘点已发现多项 P0/P1 候选，必须进入结构化 defects、运行证据和复测闭环后才可定案或关闭。
+
 ## 2026-07-11 / v2.1.13-test / Codex — 一致性审计动态目标人工解析门禁
 
 - **执行 Agent**：Codex 主协调 agent（未新增 subagent；使用第一批只读盘点证据逐项复核源码）。

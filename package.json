@@ -166,6 +166,7 @@
     ,"parity:inventory": "tsx scripts/parity/cli.ts inventory"
     ,"parity:inventory:check": "tsx scripts/parity/cli.ts inventory-check"
     ,"parity:instrumentation:check": "tsx scripts/parity/cli.ts instrumentation-check"
+    ,"parity:manifest:check": "tsx scripts/parity/cli.ts manifest-check"
   },
   "dependencies": {
     "@wardrobe/domain-catalog": "file:packages/domain-catalog",

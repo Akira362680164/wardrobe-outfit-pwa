@@ -1,0 +1,51 @@
+{
+  "schemaVersion": 1,
+  "domain": "wardrobe",
+  "screens": [
+    {
+      "id": "wardrobe.garment.detail",
+      "domain": "wardrobe",
+      "sourceOfTruth": "app",
+      "mappingStatus": "EQUIVALENT",
+      "app": {
+        "routes": ["garment_detail"],
+        "sourceInventoryIds": ["app.route.garment.detail", "app.src.components.garment.detail.3.0"],
+        "sourceFiles": ["src/components/garment-detail-3.0.tsx", "src/components/detail-shell.tsx", "src/components/item-shell/item-detail-page-shell.tsx"]
+      },
+      "mini": {
+        "routes": ["/pages/wardrobe/detail/index"],
+        "sourceInventoryIds": ["mini.route.pages.wardrobe.detail.index"],
+        "sourceFiles": ["apps/wechat-miniprogram/pages/wardrobe/detail/index.ts", "apps/wechat-miniprogram/pages/wardrobe/detail/index.wxml", "apps/wechat-miniprogram/pages/wardrobe/detail/index.wxss"]
+      },
+      "fixtures": ["garment.complete", "garment.long_text", "garment.no_image", "garment.ai_unavailable", "garment.delete_target"],
+      "entryPaths": [
+        {"id": "direct", "actions": []},
+        {"id": "from_wardrobe", "actions": ["shell.tab.wardrobe", "wardrobe.garment-card.complete"]}
+      ],
+      "states": [
+        {"id": "info.top", "fixture": "garment.complete", "checkpoint": true, "expectedOn": ["app", "mini"]},
+        {"id": "info.bottom", "fixture": "garment.long_text", "checkpoint": true, "expectedOn": ["app", "mini"]},
+        {"id": "inspiration", "fixture": "garment.complete", "checkpoint": true, "expectedOn": ["app", "mini"]},
+        {"id": "pairing", "fixture": "garment.complete", "checkpoint": true, "expectedOn": ["app", "mini"]},
+        {"id": "more.open", "fixture": "garment.complete", "checkpoint": true, "expectedOn": ["app", "mini"]},
+        {"id": "delete.confirm", "fixture": "garment.delete_target", "checkpoint": true, "expectedOn": ["app", "mini"]},
+        {"id": "ai.loading", "fixture": "garment.complete", "checkpoint": true, "expectedOn": ["app", "mini"]},
+        {"id": "ai.success", "fixture": "garment.complete", "checkpoint": true, "expectedOn": ["app", "mini"]},
+        {"id": "ai.failure", "fixture": "garment.ai_unavailable", "checkpoint": true, "expectedOn": ["app", "mini"]},
+        {"id": "image.preview", "fixture": "garment.complete", "checkpoint": true, "expectedOn": ["app", "mini"]}
+      ],
+      "requiredActions": [
+        {"id": "garment.detail.back", "event": "tap", "requiredOn": ["app", "mini"], "sourceActionIds": {}, "expectedTransition": "pop", "sideEffect": "NONE"},
+        {"id": "garment.detail.more", "event": "tap", "requiredOn": ["app", "mini"], "sourceActionIds": {}, "expectedTransition": "overlay-open", "target": "garment.detail.action-menu", "sideEffect": "LOCAL_STATE"},
+        {"id": "garment.detail.edit", "event": "tap", "requiredOn": ["app", "mini"], "sourceActionIds": {}, "expectedTransition": "push", "target": "wardrobe.garment.edit", "sideEffect": "NONE"},
+        {"id": "garment.detail.rerecognize", "event": "tap", "requiredOn": ["app", "mini"], "sourceActionIds": {}, "expectedTransition": "state-change", "sideEffect": "ASYNC_JOB", "serverAssertion": "ai-recognition-response-contract"},
+        {"id": "garment.detail.ai-advice", "event": "tap", "requiredOn": ["app", "mini"], "sourceActionIds": {}, "expectedTransition": "state-change", "sideEffect": "ASYNC_JOB", "serverAssertion": "garment-ai-advice-response-contract"},
+        {"id": "garment.detail.delete.cancel", "event": "tap", "requiredOn": ["app", "mini"], "sourceActionIds": {}, "expectedTransition": "overlay-close", "sideEffect": "NONE"},
+        {"id": "garment.detail.delete.confirm", "event": "tap", "requiredOn": ["app", "mini"], "sourceActionIds": {}, "expectedTransition": "pop", "sideEffect": "BACKEND_WRITE", "serverAssertion": "garment-delete-readback"}
+      ],
+      "overlays": ["garment.detail.action-menu", "garment.detail.delete-confirm", "garment.detail.image-preview"],
+      "checkpoints": ["info.top", "info.bottom", "inspiration", "pairing", "more.open", "delete.confirm", "ai.loading", "ai.success", "ai.failure", "image.preview"],
+      "platformExceptionIds": ["WX-CAPSULE-001"]
+    }
+  ]
+}

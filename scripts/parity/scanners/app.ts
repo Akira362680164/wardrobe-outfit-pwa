@@ -102,16 +102,34 @@ export async function scanApp(options: {
     const visit = (node: ts.Node): void => {
       if (ts.isTypeAliasDeclaration(node) && SCREEN_TYPE_NAMES.test(node.name.text) && ts.isUnionTypeNode(node.type)) {
         for (const member of node.type.types) {
-          if (!ts.isLiteralTypeNode(member) || !ts.isStringLiteral(member.literal)) continue;
-          const location = tsLocation(options.root, sourceFile, member);
-          screens.push({
-            id: `app.internal.${slug(node.name.text)}.${slug(member.literal.text)}`,
-            platform: "app",
-            kind: "internal",
-            source: location,
-            stateHint: member.literal.text,
-            evidence: `${node.name.text} union member`,
-          });
+          if (ts.isLiteralTypeNode(member) && ts.isStringLiteral(member.literal)) {
+            const location = tsLocation(options.root, sourceFile, member);
+            screens.push({
+              id: `app.internal.${slug(node.name.text)}.${slug(member.literal.text)}`,
+              platform: "app",
+              kind: "internal",
+              source: location,
+              stateHint: member.literal.text,
+              evidence: `${node.name.text} union member`,
+            });
+          }
+          if (ts.isTypeLiteralNode(member)) {
+            const nameProperty = member.members.find(
+              (candidate): candidate is ts.PropertySignature => ts.isPropertySignature(candidate) && candidate.name?.getText(sourceFile) === "name",
+            );
+            if (nameProperty?.type && ts.isLiteralTypeNode(nameProperty.type) && ts.isStringLiteral(nameProperty.type.literal)) {
+              const routeName = nameProperty.type.literal.text;
+              const location = tsLocation(options.root, sourceFile, member);
+              screens.push({
+                id: `app.route.${slug(routeName)}`,
+                platform: "app",
+                kind: "route",
+                source: location,
+                routeHint: routeName,
+                evidence: `${node.name.text} discriminated union member`,
+              });
+            }
+          }
         }
       }
 

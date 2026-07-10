@@ -3,6 +3,7 @@ import path from "node:path";
 import { generateInventory } from "./inventory";
 import { createBaselineLock } from "./lock";
 import { checkInstrumentation, validateInventory } from "./validate";
+import { validateManifests } from "./manifest";
 
 interface CliArgs {
   command: string;
@@ -44,6 +45,7 @@ function printHelp(): void {
   tsx scripts/parity/cli.ts inventory --run-id <runId> [options]
   tsx scripts/parity/cli.ts inventory-check --run-id <runId>
   tsx scripts/parity/cli.ts instrumentation-check --run-id <runId>
+  tsx scripts/parity/cli.ts manifest-check --run-id <runId>
 
 Common options:
   --app-ref main
@@ -122,6 +124,13 @@ async function main(): Promise<void> {
     const result = args.command === "inventory-check"
       ? await validateInventory(runRoot)
       : await checkInstrumentation(runRoot);
+    console.log(JSON.stringify(result, null, 2));
+    if (!result.valid) process.exitCode = 1;
+    return;
+  }
+  if (args.command === "manifest-check") {
+    const runId = value(args, "run-id");
+    const result = await validateManifests({ cwd, runRoot: path.join(outputRoot, runId) });
     console.log(JSON.stringify(result, null, 2));
     if (!result.valid) process.exitCode = 1;
     return;
