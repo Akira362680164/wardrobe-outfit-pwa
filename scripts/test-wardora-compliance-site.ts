@@ -9,7 +9,9 @@ const root = process.cwd();
 const read = (path: string) => readFileSync(join(root, path), "utf8");
 
 assert.equal(getSiteBuildTarget(), "app", "default build target must remain app");
-assert.equal(siteConfig.siteName, "Wardora");
+assert.equal(siteConfig.siteName, "个人内网穿透及衣橱小站");
+assert.equal(siteConfig.siteShortName, "衣橱小站");
+assert.equal(siteConfig.productName, "衣橱穿搭助手");
 assert.equal(siteConfig.domain, "https://zhengfangapps.cloud");
 assert.equal(siteStatus.operatorLabel, "方正");
 assert.equal(siteStatus.icpLabel, "鲁ICP备2026037404号-1");
