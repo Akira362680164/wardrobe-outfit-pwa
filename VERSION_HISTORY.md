@@ -1,3 +1,13 @@
+## 2026-07-11 / v2.1.13-test / Codex — 小程序注册页验证码按钮微调设计
+
+- **执行 Agent**：Codex（未触发 subagent；本轮按 brainstorming 设计门禁在独立 `codex/wechat-register-code-button` worktree 固化用户已确认的视觉微调）。
+- **目的**：将邮箱注册页“发送验证码”按钮缩短到当前视觉长度的一半左右，并保证所有按钮状态文案不换行。
+- **版本变更**：无；保持 `2.1.13-test`。本批只提交设计，不修改运行时代码、不上传体验版、不发布小程序。
+- **改动文件**：`docs/superpowers/specs/2026-07-11-wechat-register-code-button-design.md`、`VERSION_HISTORY.md`。
+- **设计结论**：运行时补丁只在注册页将按钮固定为 `168rpx`，使用 `flex: 0 0 168rpx` 阻止默认宽度拉伸，并保留 `white-space: nowrap`；邮箱输入框继续占据剩余宽度。
+- **验证结果**：已自查设计文档不存在 `TBD`、`TODO`、范围冲突或双重解释；运行时代码尚未修改。
+- **未验证风险**：尚未执行小程序 typecheck、微信开发者工具编译和手机竖屏视觉检查，待设计复核后进入实施阶段完成。
+
 ## 2026-07-10 / v2.1.13-test / Codex — 注销功能双基线集成与最终 APK
 
 - **执行 Agent**：Codex（未触发 subagent；完成 `main` 与 `wechat/miniprogram` 串行集成后，在正式 App 目录重新构建最终合并态 APK）。
