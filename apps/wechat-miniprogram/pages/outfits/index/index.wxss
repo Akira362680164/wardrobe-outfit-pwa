@@ -406,12 +406,12 @@
 .worn-button {
   width: 164rpx;
   border: 0;
-  background: #5F7058;
+  background: #355C7D;
   color: #FFFFFC;
 }
 
 .worn-button.is-planned {
-  background: #5F7058;
+  background: #355C7D;
 }
 
 .worn-button.is-worn {
@@ -421,7 +421,7 @@
 }
 
 .worn-button.is-changed {
-  background: #5F7058;
+  background: #355C7D;
 }
 
 .backup-button,

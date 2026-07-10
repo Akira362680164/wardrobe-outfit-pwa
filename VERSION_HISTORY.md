@@ -1,3 +1,11 @@
+## 2026-07-10 / v2.1.9-test / Codex - 小程序标记已穿按钮主色修正
+
+- **目的**：按用户截图将“标记已穿”从 moss 绿改为主操作蓝底白字，保持与 `+计划` 和“安排穿搭”一致。
+- **改动边界**：仅改小程序套装首页周历与月历页的按钮样式；未改服务端、共享契约、数据或交互逻辑。
+- **改动文件**：`apps/wechat-miniprogram/pages/outfits/index/index.wxss`、`apps/wechat-miniprogram/pages/outfits/calendar/index.wxss`、`VERSION_HISTORY.md`。
+- **验证结果**：微信开发者工具 CLI 编译两处 WXSS 通过。
+- **未验证风险**：按用户要求仅做简单样式验证，未做真机预览或体验版上传。
+
 ## 2026-07-10 / v2.1.9-test / Codex - 小程序月历按周插入详情卡
 
 - **执行 Agent**：Codex（未触发 subagent：用户未通知；继续在独立 worktree `/Users/fangzheng/Documents/wardrobe-wechat-calendar-plan-fix` 的 `codex/wechat-calendar-plan-fix` 分支实现）。

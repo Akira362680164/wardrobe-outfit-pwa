@@ -369,7 +369,8 @@
 }
 
 .state-button--worn {
-  background: var(--color-success);
+  background: var(--color-primary);
+  color: var(--color-surface);
 }
 
 .state-button--worn.is-worn {
