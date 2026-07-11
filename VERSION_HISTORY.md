@@ -255,6 +255,16 @@
 - **风险门禁**：high（新增长期审计基础设施，后续将驱动跨端插桩、真机执行与缺陷修复）。
 - **未验证风险**：23 个动态静态候选仍在 `unresolved.json`，必须人工映射后才能通过审计门禁；instrumentation 门禁按预期失败，APP 578 个、小程序 306 个 Action 均缺少 parity-id；运行时状态图、fixture reset、APP/小程序执行器、服务端收件断言、截图 diff 和 HTML 报告尚未进入本批次。
 
+## 2026-07-11 / v2.1.13-test / Codex — Parity 合并缺陷账本与可信双门禁
+
+- **执行 Agent**：Codex（未触发 subagent；按用户批准的 `final-merged-repair-plan.md` 执行 Task 0）。
+- **目的**：将现场真机与 Session 合并发现补入唯一缺陷账本，并把报告覆盖率从文件数量改为 case/obligation 级证据判定，防止缺执行、截图、网络或服务端读回时误报完成。
+- **版本变更**：无；当前版本仍为 `2.1.13-test`，本批只修改测试框架、缺陷账本与版本记录。
+- **改动文件**：`scripts/parity/config/static-defects.json`、`scripts/parity/bfs-runner.ts`、`scripts/parity/report.ts`、`scripts/parity/defects.ts`、`scripts/parity/tests/bfs-runner.test.ts`、`scripts/parity/tests/report-gate.test.ts`、`VERSION_HISTORY.md`。
+- **改动说明**：补录跨端鉴权、长期会话、双 TabBar、真机图标、录入状态机、额外结果页、Android 顶部安全区、设置开发备注、详情字段及推荐/试穿 placeholder 共 12 个编号缺陷；写操作与上传/异步任务无条件要求 network 与 server-readback；每个 obligation 强制四阶段截图/UI tree/route，重复 execution 直接失败；`coverage.json` 新增 obligation 级计数、`auditGate` 和 `productGate`，HTML 首页显示失败原因；placeholder 屏幕无缺陷编号时静态门禁失败。
+- **验证结果**：`npm run typecheck` 通过；`npm run parity:bfs:test` 7/7 通过；`npx tsx --test scripts/parity/tests/report-gate.test.ts` 3/3 通过；静态缺陷校验通过；报告重新生成且 JSON、HTML 链接、secret scan 通过。当前旧基线报告诚实显示 `auditGate=FAIL`（250 obligations 中 244 未执行/缺证据）与 `productGate=FAIL`（7 OPEN P0、35 OPEN P1、4 OPEN P2、6 FIXED_UNVERIFIED）。
+- **未验证风险**：本批只建立可信门禁，不关闭业务缺陷；旧报告 artifacts 不进入 Git，最终修复回归将生成全新 repair/regression run。
+
 ## 2026-07-10 / v2.1.13-test / Codex — 注销功能双基线集成与最终 APK
 
 - **执行 Agent**：Codex（未触发 subagent；完成 `main` 与 `wechat/miniprogram` 串行集成后，在正式 App 目录重新构建最终合并态 APK）。

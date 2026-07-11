@@ -1,6 +1,7 @@
 import { promises as fs } from "node:fs";
 import path from "node:path";
 import type { DomainManifest, InventoryBundle, ScreenManifest, ScreenMapManifest, StaticDefect } from "./types";
+import { createObligations, importEvidence, loadDomainManifests, type BfsResult } from "./bfs-runner";
 
 type ResultStatus = "PASS" | "DEFECT" | "ALLOWED_PLATFORM_DIFFERENCE" | "BLOCKED" | "NOT_EXECUTED";
 
@@ -18,6 +19,41 @@ interface ExecutionResult {
 const statuses = new Set<ResultStatus>(["PASS", "DEFECT", "ALLOWED_PLATFORM_DIFFERENCE", "BLOCKED", "NOT_EXECUTED"]);
 const secretKey = /(?:password|secret|token|authorization|cookie|api.?key|credential|session)/iu;
 const secretText = /(?:Bearer\s+)[A-Za-z0-9._~+\/-]+|([?&](?:token|key|code|secret)=)[^&\s"']+|("?(?:password|secret|token|authorization|cookie|api.?key)"?\s*[:=]\s*")[^"]+/giu;
+
+export interface ParityGate {
+  status: "PASS" | "FAIL";
+  failures: string[];
+}
+
+export function computeParityGates(input: {
+  obligations: BfsResult[];
+  unmappedScreens: number;
+  unclassifiedDifferences: number;
+  defects: StaticDefect[];
+}): { auditGate: ParityGate; productGate: ParityGate } {
+  const auditFailures: string[] = [];
+  const notExecuted = input.obligations.filter((item) => item.status === "NOT_EXECUTED").length;
+  const blocked = input.obligations.filter((item) => item.importedExecutionStatus === "BLOCKED").length;
+  const missingEvidence = input.obligations.filter((item) => item.missingEvidence.length > 0).length;
+  if (input.obligations.length === 0) auditFailures.push("no obligations generated");
+  if (input.unmappedScreens > 0) auditFailures.push(`${input.unmappedScreens} screens unmapped`);
+  if (notExecuted > 0) auditFailures.push(`${notExecuted} obligations not executed`);
+  if (blocked > 0) auditFailures.push(`${blocked} obligations blocked`);
+  if (missingEvidence > 0) auditFailures.push(`${missingEvidence} obligations missing evidence`);
+  if (input.unclassifiedDifferences > 0) auditFailures.push(`${input.unclassifiedDifferences} differences unclassified`);
+
+  const productFailures: string[] = [];
+  for (const severity of ["P0", "P1", "P2"] as const) {
+    const count = input.defects.filter((item) => item.severity === severity && item.status === "OPEN").length;
+    if (count > 0) productFailures.push(`${count} OPEN ${severity}`);
+  }
+  const pending = input.defects.filter((item) => item.status === "FIXED_UNVERIFIED").length;
+  if (pending > 0) productFailures.push(`${pending} FIXED_UNVERIFIED`);
+  return {
+    auditGate: { status: auditFailures.length ? "FAIL" : "PASS", failures: auditFailures },
+    productGate: { status: productFailures.length ? "FAIL" : "PASS", failures: productFailures },
+  };
+}
 
 function redactText(value: string): string {
   return value.replace(secretText, (match, queryPrefix: string | undefined, jsonPrefix: string | undefined) =>
@@ -103,12 +139,12 @@ export async function generateParityReport(options: { cwd: string; runRoot: stri
     if (!statuses.has(result.status) || !result.screenId || !result.actionId || !result.platform) throw new Error(`Invalid execution result ${file}`);
     executions.push({ ...result, file });
   }
-  const executedKeys = new Set(executions.map((item) => `${item.screenId}:${item.actionId}:${item.platform}`));
+  const obligationResults = await importEvidence(createObligations(await loadDomainManifests(path.join(cwd, "scripts", "parity", "manifests"))), runRoot);
   const detailedActions = screens.flatMap((screen) => screen.requiredActions.map((action) => ({ screen, action })));
-  const expectedExecutions = detailedActions.reduce((sum, { action }) => sum + action.requiredOn.length, 0);
   const imageFiles = allFiles.filter((file) => /\.(?:png|webp|jpe?g)$/iu.test(file));
-  const requiredScreenshots = screens.reduce((sum, screen) => sum + screen.states.filter((state) => state.checkpoint).reduce((count, state) => count + state.expectedOn.length, 0) + screen.requiredActions.reduce((count, action) => count + action.requiredOn.length * 4, 0), 0);
+  const requiredScreenshots = obligationResults.length * 4;
   const writeActions = detailedActions.filter(({ action }) => ["BACKEND_WRITE", "ASYNC_JOB", "OBJECT_UPLOAD"].includes(action.sideEffect));
+  const gates = computeParityGates({ obligations: obligationResults, unmappedScreens: screenMap.screens.filter((item) => item.mappingStatus === "UNMAPPED").length, unclassifiedDifferences: 0, defects: staticDefects });
   const coverage = redact({
     schemaVersion: 1, runId: path.basename(runRoot), generatedAt: new Date().toISOString(),
     auditCompleteness: {
@@ -116,18 +152,25 @@ export async function generateParityReport(options: { cwd: string; runRoot: stri
       mappedScreens: screenMap.screens.filter((item) => item.mappingStatus !== "UNMAPPED").length,
       unmappedScreens: screenMap.screens.filter((item) => item.mappingStatus === "UNMAPPED").length,
       totalStates: screens.reduce((sum, screen) => sum + screen.states.length, 0), executedStates: new Set(executions.map((item) => `${item.screenId}:${item.stateId}:${item.platform}`)).size,
-      staticActions: appInventory.actions.length + miniInventory.actions.length, executedStaticActions: executions.length,
+      obligations: obligationResults.length,
+      executedObligations: obligationResults.filter((item) => item.status !== "NOT_EXECUTED").length,
+      passedObligations: obligationResults.filter((item) => item.status === "PASS").length,
+      defectObligations: obligationResults.filter((item) => item.status === "DEFECT").length,
+      staticActions: appInventory.actions.length + miniInventory.actions.length,
+      executedStaticActions: new Set(obligationResults.filter((item) => item.status !== "NOT_EXECUTED").map((item) => item.id)).size,
       runtimeAddedActions: 0, unclassifiedRuntimeActions: 0,
       overlays: appInventory.overlays.length + miniInventory.overlays.length, openedOverlays: executions.filter((item) => item.transition === "overlay-open").length,
       overlayExitPaths: screens.reduce((sum, screen) => sum + screen.requiredActions.filter((action) => action.expectedTransition === "overlay-close").length, 0),
       executedOverlayExitPaths: executions.filter((item) => item.transition === "overlay-close").length,
       transitions: appInventory.transitions.length + miniInventory.transitions.length, verifiedTransitions: executions.filter((item) => Boolean(item.transition)).length,
       writeActions: writeActions.length, writesWithServerAssertions: writeActions.filter(({ action }) => Boolean(action.serverAssertion)).length,
-      requiredScreenshots, actualScreenshots: imageFiles.length,
-      blocked: executions.filter((item) => item.status === "BLOCKED").length,
-      notExecuted: Math.max(appInventory.actions.length + miniInventory.actions.length - executions.length, Math.max(0, expectedExecutions - executedKeys.size)) + executions.filter((item) => item.status === "NOT_EXECUTED").length,
+      requiredScreenshots, actualScreenshots: obligationResults.reduce((sum, item) => sum + 4 - item.missingEvidence.filter((name) => /\.png$/u.test(name)).length, 0),
+      blocked: obligationResults.filter((item) => item.importedExecutionStatus === "BLOCKED").length,
+      notExecuted: obligationResults.filter((item) => item.status === "NOT_EXECUTED").length,
+      missingEvidence: obligationResults.filter((item) => item.missingEvidence.length > 0).length,
       unclassifiedDifferences: 0,
     },
+    ...gates,
     productConsistency: {
       PASS: executions.filter((item) => item.status === "PASS").length,
       DEFECT: executions.filter((item) => item.status === "DEFECT").length,
@@ -191,7 +234,7 @@ export async function generateParityReport(options: { cwd: string; runRoot: stri
   const metrics = Object.entries(audit).map(([key, value]) => `<div class="card"><div class="metric">${value}</div><div class="muted">${html(key)}</div></div>`).join("");
   const productMetrics = Object.entries(product).map(([key, value]) => `<div class="card"><div class="metric">${value}</div><div class="muted">${html(key)}</div></div>`).join("");
   const domainLinks = domains.map((domain) => `<a class="card" href="domains/${html(domain)}.html">${html(domain)}</a>`).join("");
-  await fs.writeFile(path.join(reportRoot, "index.html"), `<!doctype html><html lang="zh-CN"><meta charset="utf-8"><title>Parity ${html(path.basename(runRoot))}</title>${stylesheet()}<header><h1>APP / 小程序一致性审计</h1><p class="muted">${html(path.basename(runRoot))} · 静态文件报告</p></header><main><h2>审计完整性</h2><div class="grid">${metrics}</div><h2>产品一致性</h2><div class="grid">${productMetrics}</div><h2>业务域</h2><div class="grid">${domainLinks}</div><h2>产物</h2><p><a href="coverage.json">coverage.json</a> · <a href="defects.json">defects.json</a> · <a href="repair-plan.md">repair-plan.md</a> · <a href="junit.xml">junit.xml</a></p></main></html>`);
+  await fs.writeFile(path.join(reportRoot, "index.html"), `<!doctype html><html lang="zh-CN"><meta charset="utf-8"><title>Parity ${html(path.basename(runRoot))}</title>${stylesheet()}<header><h1>APP / 小程序一致性审计</h1><p class="muted">${html(path.basename(runRoot))} · 静态文件报告</p></header><main><h2>门禁</h2><div class="grid"><div class="card"><div class="metric ${gates.auditGate.status}">${gates.auditGate.status}</div><div>auditGate</div><div class="muted">${html(gates.auditGate.failures.join("; ") || "all audit obligations proved")}</div></div><div class="card"><div class="metric ${gates.productGate.status}">${gates.productGate.status}</div><div>productGate</div><div class="muted">${html(gates.productGate.failures.join("; ") || "no release-blocking defects")}</div></div></div><h2>审计完整性</h2><div class="grid">${metrics}</div><h2>产品一致性</h2><div class="grid">${productMetrics}</div><h2>业务域</h2><div class="grid">${domainLinks}</div><h2>产物</h2><p><a href="coverage.json">coverage.json</a> · <a href="defects.json">defects.json</a> · <a href="repair-plan.md">repair-plan.md</a> · <a href="junit.xml">junit.xml</a></p></main></html>`);
   const reportFiles = await listFiles(reportRoot);
   for (const file of reportFiles.filter((item) => item.endsWith(".json"))) await readJson(file);
   for (const file of reportFiles.filter((item) => item.endsWith(".html"))) {

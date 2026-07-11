@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import path from "node:path";
 import test from "node:test";
-import { createObligations, importEvidence, loadDomainManifests, resumeResults } from "../bfs-runner";
+import { createObligations, evidenceRequirements, importEvidence, loadDomainManifests, resumeResults } from "../bfs-runner";
 
 const cwd = process.cwd();
 const manifestsRoot = path.join(cwd, "scripts/parity/manifests");
@@ -49,6 +49,21 @@ test("does not pass backend assertions without execution evidence", async () => 
   const [result] = await importEvidence([obligation], path.join(cwd, "artifacts/parity/__missing-evidence__"));
   assert.equal(result.status, "NOT_EXECUTED");
   assert.ok(result.missingEvidence.includes("execution.json"));
+});
+
+test("requires four screenshot stages plus route and UI tree evidence", () => {
+  const required = evidenceRequirements({ id: "s:a:mini", domain: "d", screenId: "s", actionId: "a", platform: "mini", sideEffect: "NONE", fixtures: [] });
+  assert.equal(required.filter((item) => item.endsWith(".png")).length, 4);
+  assert.equal(required.filter((item) => item.endsWith("-ui-tree.json")).length, 4);
+  assert.equal(required.filter((item) => item.endsWith("-route.json")).length, 4);
+});
+
+test("requires network and server readback for every server side effect", () => {
+  for (const sideEffect of ["BACKEND_WRITE", "ASYNC_JOB", "OBJECT_UPLOAD"] as const) {
+    const required = evidenceRequirements({ id: `s:${sideEffect}:mini`, domain: "d", screenId: "s", actionId: sideEffect, platform: "mini", sideEffect, fixtures: [] });
+    assert.ok(required.includes("network.json"));
+    assert.ok(required.includes("server-readback.json"));
+  }
 });
 
 test("resume keeps matching terminal results and initializes new obligations", () => {

@@ -102,17 +102,21 @@ async function findExecutionFiles(root: string): Promise<string[]> {
   return output.sort();
 }
 
-function evidenceRequirements(obligation: BfsObligation): string[] {
+export function evidenceRequirements(obligation: BfsObligation): string[] {
   const files = STAGES.flatMap((stage) => [`${stage}.png`, `${stage}-ui-tree.json`, `${stage}-route.json`]);
-  if (obligation.serverAssertion) files.push("network.json", "server-readback.json");
+  if (obligation.serverAssertion || ["BACKEND_WRITE", "ASYNC_JOB", "OBJECT_UPLOAD"].includes(obligation.sideEffect)) {
+    files.push("network.json", "server-readback.json");
+  }
   return files;
 }
 
 export async function validateImportedEvidence(obligation: BfsObligation, executionFile?: string): Promise<BfsResult> {
-  if (!executionFile) return { ...obligation, status: "NOT_EXECUTED", missingEvidence: ["execution.json"] };
+  if (!executionFile) return { ...obligation, status: "NOT_EXECUTED", missingEvidence: ["execution.json", ...evidenceRequirements(obligation)] };
   const directory = path.dirname(executionFile);
   const execution = JSON.parse(await fs.readFile(executionFile, "utf8")) as Record<string, unknown>;
   const missingEvidence: string[] = [];
+  const executionKey = `${execution.screenId}:${execution.actionId}:${execution.platform}`;
+  if (executionKey !== obligation.id) missingEvidence.push("execution.identity");
   for (const required of evidenceRequirements(obligation)) {
     if (!(await exists(path.join(directory, required)))) missingEvidence.push(required);
   }
@@ -131,7 +135,8 @@ export async function importEvidence(obligations: BfsObligation[], evidenceRoot:
   for (const file of candidates) {
     const execution = JSON.parse(await fs.readFile(file, "utf8")) as Record<string, unknown>;
     const key = `${execution.screenId}:${execution.actionId}:${execution.platform}`;
-    if (!indexed.has(key)) indexed.set(key, file);
+    if (indexed.has(key)) throw new Error(`Duplicate execution evidence for ${key}: ${indexed.get(key)} and ${file}`);
+    indexed.set(key, file);
   }
   const results: BfsResult[] = [];
   for (const obligation of obligations) results.push(await validateImportedEvidence(obligation, indexed.get(obligation.id)));

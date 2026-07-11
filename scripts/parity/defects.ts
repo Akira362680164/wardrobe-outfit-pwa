@@ -26,6 +26,12 @@ export async function validateStaticDefects(options: {
     if (defect.suspectedFiles.length === 0) errors.push(`${defect.defectId}: suspectedFiles is empty`);
     if (defect.status !== "OPEN") warnings.push(`${defect.defectId}: static seed status is ${defect.status}`);
   }
+  const defectScreens = new Set(defects.map((defect) => defect.screenId));
+  for (const screen of screenMap.screens) {
+    if ((screen.id.includes(".placeholder") || /placeholder/iu.test(screen.notes)) && !defectScreens.has(screen.id)) {
+      errors.push(`unnumbered placeholder screen ${screen.id}`);
+    }
+  }
   const metrics = {
     defects: defects.length,
     p0: defects.filter((defect) => defect.severity === "P0").length,
