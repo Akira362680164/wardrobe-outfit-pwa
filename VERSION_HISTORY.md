@@ -1,3 +1,13 @@
+## 2026-07-11 / v2.1.13-test / Codex — 小程序唯一图片临时资产生命周期
+
+- **执行 Agent**：Codex（未触发 subagent；从 Task 2 已验证提交创建独立 `codex/parity-mini-assets-20260711` worktree）。
+- **目的**：建立单品、种草、灵感和试穿参考照可复用的内存录入会话与临时资产底层，纠正原图直接冒充缩略图、选图阶段提前绑定业务实体和退出未清理临时资产的问题。
+- **版本变更**：无；保持 `2.1.13-test`，本批不发布小程序。
+- **改动文件**：`apps/wechat-miniprogram/services/assets.ts`、`services/intake-session.ts`、`stores/intake.ts`、录入队列构造、`scripts/test-miniprogram-asset-lifecycle.ts`、`package.json`、`VERSION_HISTORY.md`。
+- **改动说明**：内存会话逐图保存 sourcePath、processedPath、状态、错误、UUID clientMutationId、temporary sessionId 和待绑定 mutations；新增替换、移除、清空、abandon 与提交接口；微信原生 `cropImage` 取消只返回当前步骤；上传前用 `compressImage` 生成 480px/72 质量的独立缩略图，原图与缩略图分别计算元数据并上传，服务端会话未 ready 或不足双资产时禁止业务绑定。
+- **验证结果**：`npm --prefix apps/wechat-miniprogram run typecheck` 通过；`npm run test:logic:miniprogram-asset-lifecycle` 通过，覆盖纯内存会话、不改 source 的裁切替换、单图移除、整会话清空、原生裁剪/缩略图/双字节上传/ready 门禁/DELETE abandon 合同；`git diff --check` 通过。
+- **未验证风险**：本批为共享底层，页面接线在 Task 4/6/10/11 完成；真实相册、微信原生裁剪、压缩结果、双资产上传和取消裁剪将在 Task 13 使用已连接安卓真机验证，当前标记 FIXED_UNVERIFIED。
+
 ## 2026-07-11 / v2.1.13-test / Codex — 小程序单底栏、PNG 图标与胶囊布局统一
 
 - **执行 Agent**：Codex（未触发 subagent；按已审核 Parity 修复计划在独立 `codex/parity-mini-shell-20260711` worktree 实施）。

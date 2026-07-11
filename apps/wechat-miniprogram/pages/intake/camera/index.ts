@@ -156,6 +156,8 @@ function createQueueItem(image: ChosenImage, kind: IntakeKind): IntakeQueueItem 
     clientMutationId,
     imagePath: image.imagePath,
     stablePath: image.stablePath,
+    sourcePath: image.imagePath,
+    processedPath: image.stablePath,
     status: "selected",
     error: "",
     assetMutations: [],

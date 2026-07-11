@@ -56,6 +56,11 @@ export interface UploadImageForCreateResult {
   error?: string;
 }
 
+export interface PreparedImageAssetResult {
+  sessionId: string;
+  assetMutations: AssetMutation[];
+}
+
 export class ImageSelectionCanceledError extends Error {
   constructor() {
     super("用户取消选择图片");
@@ -97,6 +102,18 @@ export async function chooseImages(sourceType: Array<"album" | "camera"> = ["alb
   });
 }
 
+export async function cropImageWithNativeEditor(src: string): Promise<string | null> {
+  const cropImage = (wx as typeof wx & {
+    cropImage?: (options: { src: string; cropScale?: string; success: (result: { tempFilePath: string }) => void; fail: (error: unknown) => void }) => void;
+  }).cropImage;
+  if (!cropImage) throw new Error("当前微信版本不支持图片裁剪，请升级微信后重试");
+  return new Promise((resolve, reject) => cropImage({
+    src,
+    success: (result) => resolve(result.tempFilePath),
+    fail: (error) => isImageSelectionCancel(error) ? resolve(null) : reject(new Error("裁剪图片失败")),
+  }));
+}
+
 function isImageSelectionCancel(error: unknown): boolean {
   const errMsg = typeof (error as { errMsg?: unknown })?.errMsg === "string" ? (error as { errMsg: string }).errMsg : "";
   return /cancel|取消/i.test(errMsg);
@@ -125,29 +142,57 @@ export async function uploadImageForCreate(input: {
 }): Promise<AssetMutation[]> {
   const fieldName = input.image.fieldName ?? "imageDataUrl";
   const filePath = await ensureStableImagePath(input.image.stablePath ?? input.image.filePath);
-  const metadata = await getLocalImageMetadata(filePath, fieldName);
+  const prepared = await uploadPreparedImageAssets({
+    clientMutationId: input.clientMutationId,
+    entityType: input.entityType,
+    fieldName,
+    originalPath: filePath,
+    processedPath: filePath,
+  });
+  return prepared.assetMutations;
+}
+
+export async function uploadPreparedImageAssets(input: {
+  clientMutationId: string;
+  entityType: "garment" | "outfit" | "wishlistItem" | "profile";
+  fieldName: string;
+  originalPath: string;
+  processedPath: string;
+}): Promise<PreparedImageAssetResult> {
+  const originalPath = await ensureStableImagePath(input.originalPath);
+  const processedPath = await ensureStableImagePath(input.processedPath);
+  const thumbnailPath = await createThumbnail(processedPath);
+  const [originalMetadata, thumbnailMetadata] = await Promise.all([
+    getLocalImageMetadata(originalPath, input.fieldName),
+    getLocalImageMetadata(thumbnailPath, input.fieldName),
+  ]);
   const slots: TemporaryAssetSlotRequest[] = [
-    { ...metadata, variant: "original" },
-    // ponytail: reuse the selected image as thumbnail until miniapp-side resizing is needed.
-    { ...metadata, variant: "thumbnail" },
+    { ...originalMetadata, variant: "original" },
+    { ...thumbnailMetadata, variant: "thumbnail" },
   ];
   const session = await request<TemporaryAssetSession>({
     method: "POST",
     path: "/api/workspace/assets/sessions",
     data: { clientMutationId: input.clientMutationId, entityType: input.entityType, slots },
   });
-
-  const bytes = await readFileBytes(filePath);
   for (const asset of session.assets) {
-    await uploadTemporaryBytes(session.sessionId, asset.assetId, bytes, asset.mimeType);
+    const path = asset.variant === "thumbnail" ? thumbnailPath : originalPath;
+    await uploadTemporaryBytes(session.sessionId, asset.assetId, await readFileBytes(path), asset.mimeType);
   }
 
   const status = await request<TemporaryAssetSession>({
     path: `/api/workspace/assets/sessions/${encodeURIComponent(session.sessionId)}`,
   });
-  const uploaded = status.assets.filter((asset) => asset.fieldName === fieldName).map((asset) => asset.assetId);
+  const uploaded = status.assets.filter((asset) => asset.fieldName === input.fieldName).map((asset) => asset.assetId);
   if (!status.ready || uploaded.length < 2) throw new Error("图片上传尚未完成，请重试");
-  return [{ kind: "create_or_replace", fieldName, temporaryAssetIds: uploaded }];
+  return { sessionId: session.sessionId, assetMutations: [{ kind: "create_or_replace", fieldName: input.fieldName, temporaryAssetIds: uploaded }] };
+}
+
+export async function abandonTemporaryAssetSessions(sessionIds: string[]): Promise<void> {
+  await Promise.all([...new Set(sessionIds.filter(Boolean))].map(async (sessionId) => {
+    try { await request({ method: "DELETE", path: `/api/workspace/assets/sessions/${encodeURIComponent(sessionId)}` }); }
+    catch { /* Expired/already-bound sessions need no client retry. */ }
+  }));
 }
 
 export async function uploadImagesForCreate(input: {
@@ -261,6 +306,21 @@ function readFileBytes(filePath: string): Promise<ArrayBuffer> {
 async function ensureStableImagePath(filePath: string): Promise<string> {
   if (filePath.startsWith(intakeDirPath())) return filePath;
   return copyToStableIntakePath(filePath, 0);
+}
+
+async function createThumbnail(filePath: string): Promise<string> {
+  const compressImage = (wx as typeof wx & {
+    compressImage?: (options: { src: string; quality: number; compressedWidth: number; success: (result: { tempFilePath: string }) => void; fail: () => void }) => void;
+  }).compressImage;
+  if (!compressImage) throw new Error("当前微信版本无法生成缩略图，请升级微信后重试");
+  const compressed = await new Promise<string>((resolve, reject) => compressImage({
+    src: filePath,
+    quality: 72,
+    compressedWidth: 480,
+    success: (result) => resolve(result.tempFilePath),
+    fail: () => reject(new Error("生成缩略图失败")),
+  }));
+  return ensureStableImagePath(compressed);
 }
 
 async function copyToStableIntakePath(filePath: string, index: number): Promise<string> {

@@ -77,6 +77,7 @@
     "test:logic:long-lived-device-session": "tsx scripts/test-long-lived-device-session.ts",
     "test:logic:miniprogram-auth-refresh": "tsx scripts/test-miniprogram-auth-refresh.ts",
     "test:logic:miniprogram-shell": "tsx scripts/test-miniprogram-shell.ts",
+    "test:logic:miniprogram-asset-lifecycle": "tsx scripts/test-miniprogram-asset-lifecycle.ts",
     "test:logic:wechat-email-auth-flow": "tsx scripts/test-wechat-email-auth-flow.ts",
     "test:logic:cloud-connectivity": "tsx scripts/test-cloud-connectivity-state.ts",
     "test:logic:online-workspace": "tsx scripts/test-online-workspace-client.ts",
