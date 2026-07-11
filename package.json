@@ -75,6 +75,7 @@
     "test:logic:auth-consent": "tsx scripts/test-auth-consent-all-entry.ts",
     "test:logic:online-auth-shell": "tsx scripts/test-online-auth-shell.ts",
     "test:logic:long-lived-device-session": "tsx scripts/test-long-lived-device-session.ts",
+    "test:logic:android-safe-area": "tsx scripts/test-android-safe-area.ts",
     "test:logic:miniprogram-auth-refresh": "tsx scripts/test-miniprogram-auth-refresh.ts",
     "test:logic:miniprogram-shell": "tsx scripts/test-miniprogram-shell.ts",
     "test:logic:miniprogram-asset-lifecycle": "tsx scripts/test-miniprogram-asset-lifecycle.ts",
