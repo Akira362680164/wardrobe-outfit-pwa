@@ -42,12 +42,15 @@
     "backgroundTextStyle": "dark"
   },
   "tabBar": {
-    "custom": true,
+    "color": "#6f777f",
+    "selectedColor": "#355c7d",
+    "backgroundColor": "#fffffc",
+    "borderStyle": "white",
     "list": [
-      { "pagePath": "pages/wardrobe/index/index", "text": "衣橱" },
-      { "pagePath": "pages/outfits/index/index", "text": "套装" },
-      { "pagePath": "pages/wishlist/index/index", "text": "种草" },
-      { "pagePath": "pages/settings/index/index", "text": "设置" }
+      { "pagePath": "pages/wardrobe/index/index", "text": "衣橱", "iconPath": "assets/tabbar/wardrobe.png", "selectedIconPath": "assets/tabbar/wardrobe-selected.png" },
+      { "pagePath": "pages/outfits/index/index", "text": "套装", "iconPath": "assets/tabbar/outfits.png", "selectedIconPath": "assets/tabbar/outfits-selected.png" },
+      { "pagePath": "pages/wishlist/index/index", "text": "种草", "iconPath": "assets/tabbar/wishlist.png", "selectedIconPath": "assets/tabbar/wishlist-selected.png" },
+      { "pagePath": "pages/settings/index/index", "text": "设置", "iconPath": "assets/tabbar/settings.png", "selectedIconPath": "assets/tabbar/settings-selected.png" }
     ]
   },
   "style": "v2",

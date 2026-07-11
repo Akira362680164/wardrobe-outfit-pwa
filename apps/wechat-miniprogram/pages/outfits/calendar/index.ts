@@ -11,6 +11,7 @@ import {
   type MiniOutfit,
   type MiniOutfitPlanEntry,
 } from "../../../services/workspace";
+import { getCapsuleGeometry } from "../../../utils/capsule-layout";
 import {
   getBackupOutfitPlanEntries,
   getDisplayOutfitId,
@@ -476,8 +477,5 @@ function chunkIntoWeeks(days: CalendarDayView[]): CalendarDayView[][] {
 }
 
 function getTitleTopRpx(): number {
-  const systemInfo = wx.getSystemInfoSync();
-  const menuRect = (wx as unknown as { getMenuButtonBoundingClientRect?: () => { top?: number } }).getMenuButtonBoundingClientRect?.();
-  const windowWidth = (systemInfo as WechatMiniprogram.SystemInfo & { windowWidth?: number }).windowWidth || 375;
-  return Math.round((menuRect?.top ?? (systemInfo.statusBarHeight ?? 0) + 8) * (750 / windowWidth));
+  return getCapsuleGeometry().topRpx;
 }

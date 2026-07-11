@@ -1,4 +1,5 @@
 import { fetchWishlist, getWorkspaceReadState, type MiniWishlistItem } from "../../../services/workspace";
+import { getCapsuleGeometry } from "../../../utils/capsule-layout";
 
 interface WishlistStatusChip {
   key: string;
@@ -147,9 +148,5 @@ function setCustomTabBarSelected(page: unknown, selected: number) {
 }
 
 function getTitleTopRpx() {
-  const systemInfo = wx.getSystemInfoSync();
-  const menuRect = (wx as unknown as { getMenuButtonBoundingClientRect?: () => { top?: number } }).getMenuButtonBoundingClientRect?.();
-  const windowWidth = (systemInfo as WechatMiniprogram.SystemInfo & { windowWidth?: number }).windowWidth || 375;
-  const pixelRatio = 750 / windowWidth;
-  return Math.round((menuRect?.top ?? (systemInfo.statusBarHeight ?? 0) + 8) * pixelRatio);
+  return getCapsuleGeometry().topRpx;
 }

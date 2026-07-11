@@ -1,3 +1,13 @@
+## 2026-07-11 / v2.1.13-test / Codex — 小程序单底栏、PNG 图标与胶囊布局统一
+
+- **执行 Agent**：Codex（未触发 subagent；按已审核 Parity 修复计划在独立 `codex/parity-mini-shell-20260711` worktree 实施）。
+- **目的**：修复小程序真实设备上原生底栏与自定义底栏叠加、SVG mask 图标缺失，以及各页面重复计算微信胶囊位置造成的标题偏移风险。
+- **版本变更**：无；保持 `2.1.13-test`。本批不上传体验版、不发布小程序。
+- **改动文件**：`apps/wechat-miniprogram/app.json`、`assets/icons/*.png`、`assets/tabbar/*.png`、`components/ui/icon/*`、`custom-tab-bar/index.ts`、六个胶囊标题页面、`utils/capsule-layout.ts`、`scripts/test-miniprogram-shell.ts`、`package.json`、`VERSION_HISTORY.md`。
+- **改动说明**：底栏切换为微信原生 `tabBar` 单一所有权并配置四组本地 PNG 图标；通用图标组件从设备兼容性不稳定的 CSS mask 改为 `<image>` 读取本地 PNG；保留自定义底栏代码但当前不挂载，并使重复点击当前项不再触发切页；页面标题统一消费共享胶囊几何函数，避免各页各算一套。绿色 vConsole 为测试版调试窗口，明确不计为软件缺陷。
+- **验证结果**：`npm --prefix apps/wechat-miniprogram run typecheck` 通过；`npm run test:logic:miniprogram-shell` 通过，覆盖原生底栏唯一所有权、四项 PNG 文件存在、图标组件不再使用 mask、当前项重复点击无操作及共享胶囊合同；PNG 元数据确认通用图标为 `72×72`、底栏图标为 `81×81`；`git diff --check` 通过。
+- **未验证风险**：微信开发者工具 `compile_wxml` 在任务 worktree 上等待 60 秒仍无结果，已终止未执行写操作；修复版预览码/真机上的单底栏、图标显示、四 Tab 重复点击和胶囊白框视觉将在 Task 13 最终回归关闭，当前标记 FIXED_UNVERIFIED。
+
 ## 2026-07-11 / v2.1.13-test / Codex — 小程序注册页验证码按钮微调设计
 
 - **执行 Agent**：Codex（未触发 subagent；本轮按 brainstorming 设计门禁在独立 `codex/wechat-register-code-button` worktree 固化用户已确认的视觉微调）。
