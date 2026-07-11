@@ -7,7 +7,8 @@
 - **改动文件**：`src/components/outfit-list-view.tsx`、`src/components/outfit-weekly-plan-strip.tsx`、`src/components/outfit-plan-day-card.tsx`、Android parity regression suite/test、静态缺陷清单、`VERSION_HISTORY.md`。
 - **改动说明**：名称按钮限制为卡片宽度并省略显示；页面、周卡与日卡增加 `min-w-0/max-w-full` 和局部横向裁剪，不修改服务端名称或详情页完整文本。
 - **验证结果**：`npm run typecheck`、Android parity regression 单测 3/3、`git diff --check` 通过；新增 200+ 字符名称真机用例同时断言 document/body scrollWidth、`+计划`、全局新建和底部导航边界。
-- **未验证风险**：新 APK 真机用例通过前，`RUNTIME-ANDROID-002` 保持 `FIXED_UNVERIFIED`；Android 底部系统栏白条 `RUNTIME-ANDROID-001` 仍为独立 OPEN 缺陷。
+- **真机验证**：MEIZU 21 Pro / Android 16 安装固定签名 `app-release-0330ec0.apk`；200+ 字符套装名下 `innerWidth=documentScrollWidth=bodyScrollWidth=390`，`+计划`、全局新建和底部导航右边界分别为 374、370、374，均在视口内；截图和 logcat 无本 App 崩溃。
+- **缺陷状态**：`RUNTIME-ANDROID-002` 更新为 `VERIFIED`；Android 底部系统栏白条 `RUNTIME-ANDROID-001` 仍为独立 OPEN 缺陷。
 
 ## 2026-07-11 / v2.1.13-test / Codex — 月历取消已穿入口接线修复
 

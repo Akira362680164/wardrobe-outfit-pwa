@@ -165,18 +165,18 @@ async function longOutfitNameViewportContainment(ctx: AndroidE2EContext): Promis
   await page.getByRole("button", { name: /^套装$/ }).first().evaluate((element) => (element as HTMLButtonElement).click());
   await page.waitForTimeout(1_500);
   const metrics = await page.evaluate(() => {
-    const rect = (selector: string) => {
-      const value = document.querySelector(selector)?.getBoundingClientRect();
-      return value ? { left: value.left, right: value.right, width: value.width } : null;
-    };
+    const addPlanRect = document.querySelector('[data-parity-id="parity.app.app.src.components.outfit.list.view.5546e4b500"]')?.getBoundingClientRect();
+    const globalCreateRect = document.querySelector('[data-testid="global-create"]')?.getBoundingClientRect();
+    const bottomNavRect = document.querySelector(".app-floating-nav")?.getBoundingClientRect();
+    const outfitNameRect = document.querySelector('[data-parity-id="parity.app.app.src.components.outfit.plan.day.card.82b8eae78e"]')?.getBoundingClientRect();
     return {
       innerWidth: window.innerWidth,
       documentScrollWidth: document.documentElement.scrollWidth,
       bodyScrollWidth: document.body.scrollWidth,
-      addPlan: rect('[data-parity-id="parity.app.app.src.components.outfit.list.view.5546e4b500"]'),
-      globalCreate: rect('[data-testid="global-create"]'),
-      bottomNav: rect(".app-floating-nav"),
-      outfitName: rect('[data-parity-id="parity.app.app.src.components.outfit.plan.day.card.82b8eae78e"]'),
+      addPlan: addPlanRect ? { left: addPlanRect.left, right: addPlanRect.right, width: addPlanRect.width } : null,
+      globalCreate: globalCreateRect ? { left: globalCreateRect.left, right: globalCreateRect.right, width: globalCreateRect.width } : null,
+      bottomNav: bottomNavRect ? { left: bottomNavRect.left, right: bottomNavRect.right, width: bottomNavRect.width } : null,
+      outfitName: outfitNameRect ? { left: outfitNameRect.left, right: outfitNameRect.right, width: outfitNameRect.width } : null,
     };
   });
   await ctx.artifacts.writeJson("parity-long-outfit-name-layout.json", metrics);
