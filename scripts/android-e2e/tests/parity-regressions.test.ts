@@ -3,10 +3,10 @@ import test from "node:test";
 import { PARITY_OUTFIT_DEFECTS, assertCancelWornRestored, assertPlanAbsent, parityRegressionCases } from "../suites/parity-regressions";
 import type { WorkspaceOverview } from "../suites/types";
 
-test("exports one isolated regression case for every STATIC-OUTFITS P0", () => {
+test("exports one isolated regression case for every tracked outfit parity defect", () => {
   const cases = parityRegressionCases();
   assert.deepEqual(cases.map((entry) => entry.id), PARITY_OUTFIT_DEFECTS.map((id) => `parity:${id}`));
-  assert.equal(new Set(cases.map((entry) => entry.id)).size, 4);
+  assert.equal(new Set(cases.map((entry) => entry.id)).size, 5);
 });
 
 test("plan absence assertion rejects a remaining server entity", () => {

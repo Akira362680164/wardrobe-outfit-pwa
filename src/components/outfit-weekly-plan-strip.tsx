@@ -100,7 +100,7 @@ export function OutfitWeeklyPlanStrip({
   }, [selectedEntry, outfits]);
 
   return (
-    <div className="rounded-2xl bg-white p-3 shadow-soft border border-ink/5">
+    <div className="w-full min-w-0 max-w-full overflow-hidden rounded-2xl bg-white p-3 shadow-soft border border-ink/5">
       {/* Header */}
       <div className="flex items-center justify-between mb-2 px-1">
         <div className="flex items-center gap-2">

@@ -1,3 +1,14 @@
+## 2026-07-11 / v2.1.13-test / Codex — 套装首页超长名称横向溢出修复
+
+- **执行 Agent**：Codex 主协调 agent；用户在 Android 真机发现套装名称过长时页面被拉宽，右侧加号和底部导航不能在一屏展示。
+- **目的**：确保任意长度的套装名称只在卡片内部截断，不改变手机视口宽度或固定控件位置。
+- **版本变更**：无；保持 `2.1.13-test`，需重建固定签名测试 APK。
+- **根因**：本周穿搭日卡的名称按钮使用 `truncate` 但缺少 `w-full/min-w-0/max-w-full`，保留长文本固有宽度；套装首页和周卡根容器也没有最终横向溢出边界。
+- **改动文件**：`src/components/outfit-list-view.tsx`、`src/components/outfit-weekly-plan-strip.tsx`、`src/components/outfit-plan-day-card.tsx`、Android parity regression suite/test、静态缺陷清单、`VERSION_HISTORY.md`。
+- **改动说明**：名称按钮限制为卡片宽度并省略显示；页面、周卡与日卡增加 `min-w-0/max-w-full` 和局部横向裁剪，不修改服务端名称或详情页完整文本。
+- **验证结果**：`npm run typecheck`、Android parity regression 单测 3/3、`git diff --check` 通过；新增 200+ 字符名称真机用例同时断言 document/body scrollWidth、`+计划`、全局新建和底部导航边界。
+- **未验证风险**：新 APK 真机用例通过前，`RUNTIME-ANDROID-002` 保持 `FIXED_UNVERIFIED`；Android 底部系统栏白条 `RUNTIME-ANDROID-001` 仍为独立 OPEN 缺陷。
+
 ## 2026-07-11 / v2.1.13-test / Codex — 月历取消已穿入口接线修复
 
 - **执行 Agent**：Codex 主协调 agent；用户在 MEIZU 21 Pro 真机同步观察并确认 7 月 11 日“已穿”状态无法取消。

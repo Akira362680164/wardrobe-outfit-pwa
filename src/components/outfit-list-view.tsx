@@ -870,7 +870,7 @@ export function OutfitListView({
   }
   // Render
   return (
-    <div className="space-y-4">
+    <div className="w-full min-w-0 max-w-full overflow-x-hidden space-y-4">
       {subPage === "library" && (
         <>
           {/* Header - 与 AppSubPageTopBar / 衣橱首页顶部按钮行一致 h-14 (56px) */}

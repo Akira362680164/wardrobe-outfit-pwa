@@ -3,7 +3,7 @@ import type { Page } from "@playwright/test";
 import type { AndroidE2ECase, AndroidE2EContext, AuthSession, WorkspaceEntity, WorkspaceOverview } from "./types";
 import { assert, createEntity, ensureAccount, garmentPayload, getOverview, localDateKey, loginFreshApp, navigateToTab, outfitPayload, outfitPlanPayload, postAction, uniqueName, waitForOverview } from "./helpers";
 
-export const PARITY_OUTFIT_DEFECTS = ["STATIC-OUTFITS-001", "STATIC-OUTFITS-002", "STATIC-OUTFITS-003", "STATIC-OUTFITS-004"] as const;
+export const PARITY_OUTFIT_DEFECTS = ["STATIC-OUTFITS-001", "STATIC-OUTFITS-002", "STATIC-OUTFITS-003", "STATIC-OUTFITS-004", "RUNTIME-ANDROID-002"] as const;
 
 async function createTrip(ctx: AndroidE2EContext, session: AuthSession, title: string, date: string, packingChecklist: Record<string, unknown>[] = []): Promise<WorkspaceEntity> {
   const response = await ctx.api.request<{ status: string; entity?: WorkspaceEntity }>(session, "/api/workspace/trip-plans", {
@@ -42,6 +42,7 @@ export function parityRegressionCases(): AndroidE2ECase[] {
     { id: "parity:STATIC-OUTFITS-002", title: "日计划删除后剩余打包清单一致", run: dayPlanDeleteChecklist },
     { id: "parity:STATIC-OUTFITS-003", title: "打包 toggle/add/all/reset force-stop 恢复", run: packingForceStopReadback },
     { id: "parity:STATIC-OUTFITS-004", title: "取消已穿恢复计划与穿着状态", run: cancelWornRestoration },
+    { id: "parity:RUNTIME-ANDROID-002", title: "超长套装名不撑宽首页或挤出固定导航", run: longOutfitNameViewportContainment },
   ];
 }
 
@@ -152,4 +153,37 @@ async function cancelWornRestoration(ctx: AndroidE2EContext): Promise<void> {
     try { assertCancelWornRestored(value, outfit.id, plan.id, date); return true; } catch { return false; }
   }, "cancel-worn did not restore state");
   assertCancelWornRestored(restored, outfit.id, plan.id, date);
+}
+
+async function longOutfitNameViewportContainment(ctx: AndroidE2EContext): Promise<void> {
+  const account = await ensureAccount(ctx); const session = await ctx.api.login(account); const date = localDateKey();
+  const garment = await createEntity(ctx, session, "garments", garmentPayload(uniqueName("parity长名称衣物")));
+  const longName = "超长套装名称用于验证页面绝不横向扩张".repeat(12);
+  const outfit = await createEntity(ctx, session, "outfits", outfitPayload(longName, [Number(garment.payload.legacyItemId)]));
+  await createEntity(ctx, session, "outfit-plans", outfitPlanPayload(String(outfit.payload.legacyOutfitId), date));
+  const page = await loginFreshApp(ctx, account);
+  await page.getByRole("button", { name: /^套装$/ }).first().evaluate((element) => (element as HTMLButtonElement).click());
+  await page.waitForTimeout(1_500);
+  const metrics = await page.evaluate(() => {
+    const rect = (selector: string) => {
+      const value = document.querySelector(selector)?.getBoundingClientRect();
+      return value ? { left: value.left, right: value.right, width: value.width } : null;
+    };
+    return {
+      innerWidth: window.innerWidth,
+      documentScrollWidth: document.documentElement.scrollWidth,
+      bodyScrollWidth: document.body.scrollWidth,
+      addPlan: rect('[data-parity-id="parity.app.app.src.components.outfit.list.view.5546e4b500"]'),
+      globalCreate: rect('[data-testid="global-create"]'),
+      bottomNav: rect(".app-floating-nav"),
+      outfitName: rect('[data-parity-id="parity.app.app.src.components.outfit.plan.day.card.82b8eae78e"]'),
+    };
+  });
+  await ctx.artifacts.writeJson("parity-long-outfit-name-layout.json", metrics);
+  await ctx.artifacts.screenshot("parity-long-outfit-name-layout", page);
+  assert(metrics.documentScrollWidth <= metrics.innerWidth + 1 && metrics.bodyScrollWidth <= metrics.innerWidth + 1, "long outfit name widened the page");
+  for (const [label, value] of [["add-plan", metrics.addPlan], ["global-create", metrics.globalCreate], ["bottom-nav", metrics.bottomNav]] as const) {
+    assert(value && value.left >= -1 && value.right <= metrics.innerWidth + 1, `${label} left the viewport`);
+  }
+  assert(metrics.outfitName && metrics.outfitName.width <= metrics.innerWidth, "long outfit name control exceeded the viewport");
 }

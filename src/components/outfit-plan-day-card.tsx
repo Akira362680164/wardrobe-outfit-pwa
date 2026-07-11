@@ -104,7 +104,7 @@ export function OutfitPlanDayCard({
   if (!hasOutfit && hasPlans && mainPlan) {
     const toneClass = PLAN_TONE_CLASS_MAP[mainPlan.tone];
     return (
-      <div className="rounded-3xl bg-white p-4 border border-ink/5">
+      <div className="min-w-0 max-w-full overflow-hidden rounded-3xl bg-white p-4 border border-ink/5">
         <div className="flex items-center gap-2 mb-2">
           <span className="text-xs font-semibold text-ink">{dateLabel}</span>
           <button
@@ -160,7 +160,7 @@ export function OutfitPlanDayCard({
             <OutfitCover outfit={outfit} items={items} size="card" />
           </button>
           <div className="flex-1 min-w-0">
-            <button type="button" data-parity-id="parity.app.app.src.components.outfit.plan.day.card.82b8eae78e" onClick={() => onViewOutfit(outfitId)} className="text-[17px] font-bold text-ink truncate text-left hover:underline">{primaryDisplayEntry?.title || outfit.name}</button>
+            <button type="button" data-parity-id="parity.app.app.src.components.outfit.plan.day.card.82b8eae78e" onClick={() => onViewOutfit(outfitId)} className="block w-full min-w-0 max-w-full truncate text-left text-[17px] font-bold text-ink hover:underline">{primaryDisplayEntry?.title || outfit.name}</button>
             {primaryDisplayEntry?.scene && <p className="text-[11px] text-ink/50 mt-0.5">{primaryDisplayEntry.scene}{primaryDisplayEntry.weatherNote ? ` · ${primaryDisplayEntry.weatherNote}` : ""}</p>}
             {isChanged && changedEntry && (
               <p className="text-[10px] text-amber-600 mt-0.5">原计划：{changedEntry.title || "已变更"}</p>
