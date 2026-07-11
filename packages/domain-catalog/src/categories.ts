@@ -209,22 +209,23 @@ export function getSubcategoryLabel(groupId: string, subcategoryId?: string): st
   return sub?.label ?? subcategoryId;
 }
 
+export const LEGACY_CATEGORY_MAP: Readonly<Record<string, GarmentCategory>> = {
+  top: "tops",
+  outerwear: "tops",
+  bottom: "pants",
+  dress: "one_piece",
+  shoes: "shoes",
+  bag: "bags",
+  hat: "hats",
+  necklace: "jewelry",
+  bracelet: "jewelry",
+  bangle: "jewelry",
+};
+
 /**
  * 旧 GarmentCategory 枚举 → 新 catalog group id 兼容映射。
  * 旧值不在映射中时返回 undefined，调用方可自行兜底。
  */
 export function mapLegacyCategoryToCatalogGroup(category: string): GarmentCategory | undefined {
-  const map: Record<string, GarmentCategory> = {
-    top: "tops",
-    outerwear: "tops",
-    bottom: "pants",
-    dress: "one_piece",
-    shoes: "shoes",
-    bag: "bags",
-    hat: "hats",
-    necklace: "jewelry",
-    bracelet: "jewelry",
-    bangle: "jewelry",
-  };
-  return map[category];
+  return LEGACY_CATEGORY_MAP[category];
 }

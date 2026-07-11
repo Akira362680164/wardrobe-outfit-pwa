@@ -1,1 +1,1 @@
-{}
+{ "usingComponents": { "item-edit-shell": "/components/domain/item-edit-shell/index" } }

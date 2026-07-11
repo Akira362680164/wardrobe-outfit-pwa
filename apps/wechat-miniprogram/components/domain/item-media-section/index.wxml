@@ -1,0 +1,10 @@
+<view class="media-strip">
+  <view wx:if="{{imageUrl}}" class="media-thumb is-main" data-url="{{imageUrl}}" bindtap="preview">
+    <image class="media-image" mode="aspectFill" src="{{imageUrl}}" /><view class="media-label">主图</view>
+  </view>
+  <view wx:for="{{inspirationImages}}" wx:key="id" class="media-thumb" data-id="{{item.id}}" data-url="{{item.imageUrl}}" bindtap="preview">
+    <image class="media-image" mode="aspectFill" src="{{item.imageUrl}}" />
+    <button class="media-remove" catchtap="remove" data-id="{{item.id}}" aria-label="删除灵感图">×</button>
+  </view>
+  <view class="media-thumb media-add" bindtap="add"><ui-icon name="plus" size="34" color="currentColor" /><view class="media-label">添加灵感</view></view>
+</view>

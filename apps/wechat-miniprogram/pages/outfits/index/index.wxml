@@ -4,28 +4,78 @@
       <view class="page-title">套装</view>
       <view class="page-copy">{{outfitCountLabel}}</view>
     </view>
-  </view>
-
-  <view class="outfit-actions">
-    <button class="hero-control" bindtap="openCalendar">月历</button>
-  </view>
-
-  <view class="week-card surface-panel">
-    <view class="week-card__head">
-      <view class="week-card__title">本周套装</view>
-      <view class="week-card__range">2026年7月6日 - 7月12日</view>
+    <view class="hero-actions">
+      <view class="hero-control hero-control--calendar" role="button" bindtap="openCalendar">月历</view>
+      <view class="hero-control hero-control--plan" role="button" bindtap="openAddPlanSheet">+计划</view>
     </view>
-    <view class="week-strip">
-      <view wx:for="{{weekDays}}" wx:key="day" class="week-day {{item.active ? 'week-day--active' : ''}}">
-        <view class="week-day__label">{{item.week}}</view>
-        <view class="week-day__date">{{item.day}}</view>
-        <view class="week-day__plus">＋</view>
+  </view>
+
+  <view class="week-card surface-panel" bindtouchstart="onWeekTouchStart" bindtouchend="onWeekTouchEnd">
+    <view class="week-card__head">
+      <view class="week-card__copy">
+        <view class="week-card__title">本周穿搭</view>
+        <view class="week-card__range">{{weekRangeLabel}}</view>
+      </view>
+      <view class="week-card__arrows">
+        <view class="week-arrow" data-delta="prev" bindtap="shiftWeek">‹</view>
+        <view class="week-arrow" data-delta="next" bindtap="shiftWeek">›</view>
       </view>
     </view>
-    <view class="week-empty">
-      <view class="week-empty__title">今天还没有安排套装</view>
-      <view class="week-empty__copy">可以先把想穿的套装放进计划。</view>
-      <button class="primary-button week-empty__button" bindtap="openCompose">安排套装</button>
+    <view class="week-strip">
+      <view wx:for="{{weekDays}}" wx:key="key" data-date="{{item.key}}" class="week-day {{item.active ? 'week-day--active' : ''}}" bindtap="selectWeekDate">
+        <view class="week-day__label">{{item.week}}</view>
+        <view class="week-day__date">{{item.day}}</view>
+        <view wx:if="{{item.thumbnails.length}}" class="week-day__thumb cover-collage cover-collage--{{item.thumbnails.length >= 4 ? '4' : item.thumbnails.length}}">
+          <view wx:for="{{item.thumbnails}}" wx:for-item="image" wx:key="*this" wx:if="{{index < 4}}" class="cover-collage__cell">
+            <image class="cover-collage__image" mode="aspectFill" src="{{image}}" />
+          </view>
+        </view>
+        <view wx:else class="week-day__plus">＋</view>
+        <view wx:if="{{item.toneClass}}" class="week-day__bar {{item.toneClass}}"></view>
+      </view>
+    </view>
+    <view wx:if="{{selectedWeekEntry}}" class="week-plan-card">
+      <view class="week-plan__head">
+        <view class="week-plan__date">{{selectedDateLabel}}</view>
+        <view wx:if="{{selectedWeekEntry.planId}}" class="week-plan__chip">{{selectedWeekEntry.planTitle}} · {{selectedWeekEntry.planTypeLabel}}</view>
+      </view>
+      <view class="week-plan__body">
+        <view class="week-plan__covers">
+          <view wx:if="{{selectedWeekEntry.itemImages.length}}" class="week-plan__cover cover-collage cover-collage--{{selectedWeekEntry.itemImages.length >= 4 ? '4' : selectedWeekEntry.itemImages.length}}">
+            <view wx:for="{{selectedWeekEntry.itemImages}}" wx:for-item="image" wx:key="*this" wx:if="{{index < 4}}" class="cover-collage__cell">
+              <image class="cover-collage__image" mode="aspectFill" src="{{image}}" />
+            </view>
+          </view>
+          <image wx:elif="{{selectedWeekEntry.imageUrl}}" class="week-plan__cover" mode="aspectFill" src="{{selectedWeekEntry.imageUrl}}" />
+          <view wx:else class="week-plan__cover week-plan__cover--empty">套</view>
+        </view>
+        <view class="week-plan__main">
+          <view class="week-plan__name">{{selectedWeekEntry.name}}</view>
+          <view class="week-plan__actions">
+            <button wx:if="{{selectedWeekEntry.primaryAction}}" class="worn-button {{selectedWeekEntry.statusClass}}" loading="{{savingEntry}}" disabled="{{savingEntry}}" bindtap="handlePrimaryAction">{{selectedWeekEntry.primaryActionLabel}}</button>
+            <button wx:if="{{selectedWeekEntry.canChangePlan}}" class="secondary-button" disabled="{{savingEntry}}" bindtap="openChangeSelector">更改计划</button>
+            <button wx:if="{{selectedWeekEntry.canAddBackup}}" class="backup-button" disabled="{{savingEntry}}" bindtap="openBackupSelector">添加备选穿搭</button>
+          </view>
+        </view>
+      </view>
+      <view wx:if="{{selectedWeekEntry.backups.length}}" class="backup-list">
+        <view class="backup-list__title">备选穿搭</view>
+        <view wx:for="{{selectedWeekEntry.backups}}" wx:key="id" class="backup-list__item" data-id="{{item.outfitId}}" bindtap="openDetail">
+          <view wx:if="{{item.itemImages.length}}" class="backup-list__cover cover-collage cover-collage--{{item.itemImages.length >= 4 ? '4' : item.itemImages.length}}">
+            <view wx:for="{{item.itemImages}}" wx:for-item="image" wx:key="*this" wx:if="{{index < 4}}" class="cover-collage__cell">
+              <image class="cover-collage__image" mode="aspectFill" src="{{image}}" />
+            </view>
+          </view>
+          <image wx:elif="{{item.imageUrl}}" class="backup-list__cover" mode="aspectFill" src="{{item.imageUrl}}" />
+          <view wx:else class="backup-list__cover backup-list__cover--empty">套</view>
+          <view class="backup-list__name">{{item.name}}</view>
+        </view>
+      </view>
+    </view>
+    <view wx:else class="week-empty">
+      <view class="week-empty__title">{{selectedEmptyTitle}}</view>
+      <view class="week-empty__copy">{{selectedEmptyCopy}}</view>
+      <button class="primary-button week-empty__button" disabled="{{savingEntry}}" bindtap="openSelectedDateSelector">{{selectedEmptyAction}}</button>
     </view>
   </view>
 
@@ -47,29 +97,61 @@
     <scroll-view class="filter-row" scroll-x enable-flex>
       <view wx:for="{{filters}}" wx:key="*this" class="filter-chip {{item === activeFilter ? 'filter-chip--active' : ''}}">{{item}}</view>
     </scroll-view>
-    <view wx:for="{{outfits}}" wx:key="id" class="outfit-card" data-id="{{item.id}}" bindtap="openDetail">
-      <view class="outfit-collage">
-        <view class="collage-pane collage-pane--main">
-          <image wx:if="{{item.imageUrl}}" class="collage-image" mode="aspectFit" src="{{item.imageUrl}}" />
-          <text wx:else>{{item.itemCount}}件</text>
-        </view>
-        <view class="collage-stack">
-          <view class="collage-pane collage-pane--sub">
-            <image wx:if="{{item.itemImages[1]}}" class="collage-image" mode="aspectFit" src="{{item.itemImages[1]}}" />
+    <view class="outfit-grid">
+      <view wx:for="{{outfits}}" wx:key="id" class="outfit-card" data-id="{{item.id}}" bindtap="openDetail">
+        <view class="outfit-collage">
+          <view wx:if="{{item.itemImages.length}}" class="cover-collage cover-collage--{{item.itemImages.length >= 4 ? '4' : item.itemImages.length}}">
+            <view wx:for="{{item.itemImages}}" wx:for-item="image" wx:key="*this" wx:if="{{index < 4}}" class="cover-collage__cell">
+              <image class="cover-collage__image" mode="aspectFill" src="{{image}}" />
+            </view>
           </view>
-          <view class="collage-pane collage-pane--sub">
-            <image wx:if="{{item.itemImages[2]}}" class="collage-image" mode="aspectFit" src="{{item.itemImages[2]}}" />
-          </view>
+          <image wx:elif="{{item.imageUrl}}" class="collage-image" mode="aspectFill" src="{{item.imageUrl}}" />
+          <view wx:else class="collage-empty">{{item.itemCount}}件</view>
         </view>
-      </view>
-      <view class="outfit-main">
-        <view class="outfit-name">{{item.name}}</view>
-        <view class="outfit-meta">{{item.sceneText}} · {{item.seasonText}}</view>
-        <view class="outfit-wear">暂无穿着记录</view>
+        <view class="outfit-main">
+          <view class="outfit-name">{{item.name}}</view>
+          <view class="outfit-meta">{{item.sceneText}} · {{item.seasonText}}</view>
+          <view class="outfit-wear">暂无穿着记录</view>
+        </view>
       </view>
     </view>
   </view>
 
-  <button class="content-fab" aria-label="新建" bindtap="openCreateSheet">＋</button>
+  <button wx:if="{{!addPlanSheetOpen && !createSheetOpen}}" class="content-fab" aria-label="新建" bindtap="openCreateSheet">＋</button>
   <create-sheet open="{{createSheetOpen}}" active="create_outfit" bind:close="closeCreateSheet" />
+  <ui-sheet open="{{addPlanSheetOpen}}" title="添加计划" show-close="{{false}}" bind:close="closeAddPlanSheet">
+    <view class="sheet-options">
+      <view wx:for="{{planOptions}}" wx:key="type" data-type="{{item.type}}" class="sheet-option" bindtap="choosePlanType">
+        <view class="sheet-option__title">{{item.label}}</view>
+        <view class="sheet-option__copy">{{item.desc}}</view>
+      </view>
+    </view>
+  </ui-sheet>
+  <ui-sheet open="{{selectSheetOpen}}" title="{{selectionTitle}}" description="{{selectionDescription}}" bind:close="closeOutfitSelector">
+    <view class="outfit-select">
+      <view class="search-box">
+        <text class="search-icon">⌕</text>
+        <input class="search-input" value="{{outfitSearch}}" placeholder="搜索套装名称 / 场景" bindinput="onSearchOutfit" />
+      </view>
+      <view wx:if="{{filteredOutfits.length}}" class="outfit-select__list">
+        <view wx:for="{{filteredOutfits}}" wx:key="id" data-id="{{item.id}}" class="outfit-option" bindtap="chooseOutfit">
+          <view wx:if="{{item.itemImages.length}}" class="outfit-option__cover cover-collage cover-collage--{{item.itemImages.length >= 4 ? '4' : item.itemImages.length}}">
+            <view wx:for="{{item.itemImages}}" wx:for-item="image" wx:key="*this" wx:if="{{index < 4}}" class="cover-collage__cell">
+              <image class="cover-collage__image" mode="aspectFill" src="{{image}}" />
+            </view>
+          </view>
+          <image wx:elif="{{item.imageUrl}}" class="outfit-option__cover" mode="aspectFill" src="{{item.imageUrl}}" />
+          <view wx:else class="outfit-option__cover outfit-option__cover--empty">套</view>
+          <view class="outfit-option__main">
+            <view class="outfit-option__name">{{item.name}}</view>
+            <view class="outfit-option__meta">{{item.itemCount}}件 · {{item.sceneText}}</view>
+          </view>
+        </view>
+      </view>
+      <view wx:else class="sheet-empty">
+        <view class="sheet-empty__title">{{outfits.length ? '没有匹配的套装' : '还没有可选择的套装'}}</view>
+        <view class="sheet-empty__copy">{{outfits.length ? '换个关键词试试。' : '先从套装页创建一套，再回来安排到日历。'}}</view>
+      </view>
+    </view>
+  </ui-sheet>
 </view>

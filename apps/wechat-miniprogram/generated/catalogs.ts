@@ -820,6 +820,19 @@ export const MINI_CATEGORY_CATALOG = [
   }
 ] as const;
 
+export const MINI_LEGACY_CATEGORY_MAP: Readonly<Record<string, string>> = {
+  "top": "tops",
+  "outerwear": "tops",
+  "bottom": "pants",
+  "dress": "one_piece",
+  "shoes": "shoes",
+  "bag": "bags",
+  "hat": "hats",
+  "necklace": "jewelry",
+  "bracelet": "jewelry",
+  "bangle": "jewelry"
+};
+
 export const MINI_CATEGORY_LABELS: Readonly<Record<string, string>> = {
   "tops": "上衣",
   "pants": "裤子",

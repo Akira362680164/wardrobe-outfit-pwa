@@ -40,10 +40,15 @@ const miniprogramSources = [
   "apps/wechat-miniprogram/services/workspace.ts",
   "apps/wechat-miniprogram/pages/intake/review/index.ts",
   "apps/wechat-miniprogram/pages/wardrobe/index/index.ts",
+  "apps/wechat-miniprogram/pages/wardrobe/edit/index.ts",
+  "apps/wechat-miniprogram/pages/wishlist/edit/index.ts",
+  "apps/wechat-miniprogram/services/category-catalog.ts",
 ].map((path) => readFileSync(join(root, path), "utf8")).join("\n");
 
 assert.doesNotMatch(miniprogramSources, /上装|连衣装|鞋履/);
 assert.doesNotMatch(miniprogramSources, /const\s+(?:CATEGORY_LABELS|COLOR_SWATCHES|SEASON_LABELS)\b/);
+assert.doesNotMatch(miniprogramSources, /const\s+(?:SEASONS|STYLES|STATUSES)\s*=\s*\[/);
+assert.doesNotMatch(miniprogramSources, /#1D2228|#F8FAFC/);
 assert.match(miniprogramSources, /MINI_CATEGORY_CATALOG/);
 assert.match(miniprogramSources, /MINI_COLOR_SWATCHES/);
 assert.match(miniprogramSources, /subcategory/);

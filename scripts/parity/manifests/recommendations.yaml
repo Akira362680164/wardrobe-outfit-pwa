@@ -1,6 +1,10 @@
 {
   "schemaVersion": 1,
   "domain": "recommendations",
+  "privacy": {
+    "sendsGarmentImages": false,
+    "sendsStructuredWardrobe": true
+  },
   "screens": [
     {
       "id": "outfits.home",

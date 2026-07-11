@@ -1,6 +1,6 @@
 {
   "usingComponents": {
-    "catalog-card": "../../../components/domain/catalog-card/index",
-    "create-sheet": "../../../components/domain/create-sheet/index"
+    "catalog-card": "/components/domain/catalog-card/index",
+    "create-sheet": "/components/domain/create-sheet/index"
   }
 }

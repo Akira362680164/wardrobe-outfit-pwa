@@ -10,6 +10,8 @@
     "pages/wardrobe/index/index",
     "pages/wardrobe/detail/index",
     "pages/wardrobe/edit/index",
+    "pages/wardrobe/search/index",
+    "pages/wardrobe/statistics/index",
     "pages/outfits/index/index",
     "pages/outfits/detail/index",
     "pages/outfits/compose/index",
@@ -17,9 +19,9 @@
     "pages/recommendations/index/index",
     "pages/trips/index/index",
     "pages/trips/detail/index",
+    "pages/trips/edit/index",
     "pages/intake/camera/index",
     "pages/intake/review/index",
-    "pages/intake/result/index",
     "pages/wishlist/index/index",
     "pages/wishlist/detail/index",
     "pages/wishlist/edit/index",
@@ -27,10 +29,13 @@
     "pages/settings/index/index",
     "pages/settings/ai-key/index",
     "pages/settings/account/index",
+    "pages/settings/account-deletion/index",
     "pages/settings/change-password/index",
     "pages/settings/privacy/index",
     "pages/settings/diagnostics/index",
     "pages/settings/about/index",
+    "pages/settings/profile/index",
+    "pages/settings/tryon-photos/index",
     "pages/webview/agreement/index",
     "pages/webview/privacy/index"
   ],
@@ -40,12 +45,15 @@
     "backgroundTextStyle": "dark"
   },
   "tabBar": {
-    "custom": true,
+    "color": "#6f777f",
+    "selectedColor": "#355c7d",
+    "backgroundColor": "#fffffc",
+    "borderStyle": "white",
     "list": [
-      { "pagePath": "pages/wardrobe/index/index", "text": "衣橱" },
-      { "pagePath": "pages/outfits/index/index", "text": "套装" },
-      { "pagePath": "pages/wishlist/index/index", "text": "种草" },
-      { "pagePath": "pages/settings/index/index", "text": "设置" }
+      { "pagePath": "pages/wardrobe/index/index", "text": "衣橱", "iconPath": "assets/tabbar/wardrobe.png", "selectedIconPath": "assets/tabbar/wardrobe-selected.png" },
+      { "pagePath": "pages/outfits/index/index", "text": "套装", "iconPath": "assets/tabbar/outfits.png", "selectedIconPath": "assets/tabbar/outfits-selected.png" },
+      { "pagePath": "pages/wishlist/index/index", "text": "种草", "iconPath": "assets/tabbar/wishlist.png", "selectedIconPath": "assets/tabbar/wishlist-selected.png" },
+      { "pagePath": "pages/settings/index/index", "text": "设置", "iconPath": "assets/tabbar/settings.png", "selectedIconPath": "assets/tabbar/settings-selected.png" }
     ]
   },
   "style": "v2",

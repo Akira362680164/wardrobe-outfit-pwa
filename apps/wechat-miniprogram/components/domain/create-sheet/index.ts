@@ -7,7 +7,7 @@ type CreateActionType = "add_single_item" | "create_outfit" | "add_wishlist_item
 const ROUTES: Record<CreateActionType, string> = {
   add_single_item: "/pages/intake/camera/index",
   create_outfit: "/pages/outfits/compose/index",
-  add_wishlist_item: "/pages/wishlist/edit/index",
+  add_wishlist_item: "/pages/intake/camera/index?kind=wishlist",
 };
 
 Component({

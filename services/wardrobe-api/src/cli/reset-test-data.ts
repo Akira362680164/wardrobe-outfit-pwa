@@ -12,13 +12,17 @@ try {
       WARDROBE_ENV: process.env.WARDROBE_ENV,
       ALLOW_TEST_DATA_RESET: process.env.ALLOW_TEST_DATA_RESET,
       RESET_CONFIRMATION: process.env.RESET_CONFIRMATION,
+      TEST_RUN_ID: process.env.TEST_RUN_ID,
     },
     execute,
   });
   process.stdout.write(`${JSON.stringify(report, null, 2)}\n`);
-  if (execute && (!report.databaseCleared || !report.storageCleared)) process.exitCode = 2;
+  if (execute && (!report.databaseCleared || !report.storageCleared))
+    process.exitCode = 2;
 } catch (error) {
-  process.stderr.write(`${error instanceof Error ? error.message : "reset failed"}\n`);
+  process.stderr.write(
+    `${error instanceof Error ? error.message : "reset failed"}\n`,
+  );
   process.exitCode = 1;
 } finally {
   await closeDatabase();

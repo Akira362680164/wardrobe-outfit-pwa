@@ -1,6 +1,6 @@
 import { aiEnhance, hasMiniMaxKey } from "../../../services/ai";
 import { MINI_CATEGORY_LABELS } from "../../../generated/catalogs";
-import { fetchGarments, fetchOutfits, getWorkspaceReadState, type MiniGarment } from "../../../services/workspace";
+import { deleteWorkspaceEntity, fetchClosetLocations, fetchGarments, fetchOutfits, getWorkspaceReadState, type MiniClosetLocation, type MiniGarment } from "../../../services/workspace";
 
 type CategoryChip = {
   key: string;
@@ -8,11 +8,22 @@ type CategoryChip = {
   count: number;
 };
 
+type LocationOption = {
+  id: string;
+  name: string;
+  note: string;
+  count: number;
+};
 Page({
   data: {
     loading: false,
     garments: [] as MiniGarment[],
     visibleGarments: [] as MiniGarment[],
+    locations: [] as MiniClosetLocation[],
+    locationOptions: [] as LocationOption[],
+    wardrobeScope: "all",
+    scopeLabel: "全部衣橱",
+    scopeCount: 0,
     categoryChips: [] as CategoryChip[],
     activeCategory: "all",
     totalCount: 0,
@@ -21,10 +32,17 @@ Page({
     diagnosisLoading: false,
     diagnosisSummary: "",
     diagnosisTips: [] as string[],
+    diagnosisError: "",
+    diagnosisExpanded: true,
     emptyTitle: "",
     emptyAction: "",
     actionMenuOpen: false,
+    locationMenuOpen: false,
     createSheetOpen: false,
+    selectionMode: false,
+    selectedIds: [] as string[],
+    selectedMap: {} as Record<string, boolean>,
+    deletingSelection: false,
   },
 
   onLoad() {
@@ -49,6 +67,11 @@ Page({
         loading: false,
         garments: [],
         visibleGarments: [],
+        locations: [],
+        locationOptions: [],
+        wardrobeScope: "all",
+        scopeLabel: "全部衣橱",
+        scopeCount: 0,
         categoryChips: [],
         totalCount: 0,
         statsText: "全部 0 · 可穿 0 · 衣橱 1",
@@ -61,26 +84,38 @@ Page({
 
     this.setData({ loading: true, error: "" });
     try {
-      this.applyGarments(await fetchGarments());
+      const [garments, locations] = await Promise.all([fetchGarments(), fetchClosetLocations().catch(() => [])]);
+      this.applyGarments(garments, locations);
     } catch (error) {
       this.setData({ loading: false, garments: [], visibleGarments: [], error: error instanceof Error ? error.message : "读取衣橱失败" });
     }
   },
 
-  applyGarments(garments: MiniGarment[]) {
+  applyGarments(this: any, garments: MiniGarment[], locations?: MiniClosetLocation[]) {
+    const currentLocations = locations ?? this.data.locations;
     const current = this.data.activeCategory;
-    const categoryChips = buildCategoryChips(garments);
+    const wardrobeScope = this.data.wardrobeScope;
+    const locationOptions = buildLocationOptions(garments, currentLocations);
+    const activeScope = wardrobeScope === "all" || locationOptions.some((option) => option.id === wardrobeScope) ? wardrobeScope : "all";
+    const scopeItems = filterByLocation(garments, activeScope);
+    const categoryChips = buildCategoryChips(scopeItems);
     const activeCategory = current === "all" || categoryChips.some((chip) => chip.key === current) ? current : "all";
-    const visibleGarments = filterGarments(garments, activeCategory);
+    const visibleGarments = filterGarments(scopeItems, activeCategory);
     const totalCount = garments.length;
+    const scopeLabel = locationOptions.find((option) => option.id === activeScope)?.name ?? "全部衣橱";
     this.setData({
       loading: false,
       garments,
+      locations: currentLocations,
+      locationOptions,
+      wardrobeScope: activeScope,
+      scopeLabel,
+      scopeCount: scopeItems.length,
       visibleGarments,
       categoryChips,
       activeCategory,
       totalCount,
-      statsText: `全部 ${totalCount} · 可穿 ${totalCount} · 衣橱 1`,
+      statsText: buildStatsText(scopeItems, activeScope, currentLocations.length || 1),
       emptyTitle: "",
       emptyAction: "",
     });
@@ -88,9 +123,31 @@ Page({
 
   handleCategoryTap(event: { currentTarget: { dataset: { category?: string } } }) {
     const category = String(event.currentTarget.dataset.category || "all");
+    const scopeItems = filterByLocation(this.data.garments, this.data.wardrobeScope);
     this.setData({
       activeCategory: category,
-      visibleGarments: filterGarments(this.data.garments, category),
+      visibleGarments: filterGarments(scopeItems, category),
+    });
+  },
+
+  toggleLocationMenu() {
+    this.setData({ locationMenuOpen: !this.data.locationMenuOpen, actionMenuOpen: false });
+  },
+
+  selectWardrobe(event: { currentTarget: { dataset: { id?: string } } }) {
+    const scope = String(event.currentTarget.dataset.id || "all");
+    const scopeItems = filterByLocation(this.data.garments, scope);
+    const categoryChips = buildCategoryChips(scopeItems);
+    const activeCategory = categoryChips.some((chip) => chip.key === this.data.activeCategory) ? this.data.activeCategory : "all";
+    this.setData({
+      wardrobeScope: scope,
+      scopeLabel: this.data.locationOptions.find((option) => option.id === scope)?.name ?? "全部衣橱",
+      scopeCount: scopeItems.length,
+      categoryChips,
+      activeCategory,
+      visibleGarments: filterGarments(scopeItems, activeCategory),
+      statsText: buildStatsText(scopeItems, scope, this.data.locations.length || 1),
+      locationMenuOpen: false,
     });
   },
 
@@ -125,15 +182,16 @@ Page({
 
   openDetail(event: { detail?: { id?: string } }) {
     const id = event.detail?.id;
+    if (this.data.selectionMode) { this.toggleSelected(id); return; }
     wx.navigateTo({ url: `/pages/wardrobe/detail/index${id ? `?id=${encodeURIComponent(id)}` : ""}` });
   },
 
-  showSearchTip() {
-    wx.showToast({ title: "搜索暂未开放", icon: "none" });
+  openSearch() {
+    wx.navigateTo({ url: "/pages/wardrobe/search/index" });
   },
 
-  showStatsTip() {
-    wx.showToast({ title: this.data.statsText, icon: "none" });
+  openStatistics() {
+    wx.navigateTo({ url: "/pages/wardrobe/statistics/index" });
   },
 
   toggleActionMenu() {
@@ -144,17 +202,21 @@ Page({
     if (this.data.actionMenuOpen) this.setData({ actionMenuOpen: false });
   },
 
+  closeOverlays() {
+    if (this.data.actionMenuOpen || this.data.locationMenuOpen) this.setData({ actionMenuOpen: false, locationMenuOpen: false });
+  },
+
   noop() {},
 
   handleActionMenuTap(event: { currentTarget: { dataset: { action?: string } } }) {
     const action = event.currentTarget.dataset.action;
     this.setData({ actionMenuOpen: false });
     if (action === "search") {
-      this.showSearchTip();
+      this.openSearch();
       return;
     }
     if (action === "stats") {
-      this.showStatsTip();
+      this.openStatistics();
       return;
     }
     void this.runDiagnosis();
@@ -166,7 +228,7 @@ Page({
       wx.showToast({ title: "请先在设置中填写 MiniMax Key", icon: "none" });
       return;
     }
-    this.setData({ diagnosisLoading: true, diagnosisSummary: "", diagnosisTips: [] });
+    this.setData({ diagnosisLoading: true, diagnosisSummary: "", diagnosisTips: [], diagnosisError: "", diagnosisExpanded: true });
     try {
       const result = await aiEnhance<Record<string, unknown>>("wardrobe-diagnosis", {
         items: this.data.garments,
@@ -178,10 +240,47 @@ Page({
         diagnosisTips: diagnosisTips(result).slice(0, 5),
       });
     } catch (error) {
-      wx.showToast({ title: error instanceof Error ? error.message : "诊断失败", icon: "none" });
+      this.setData({ diagnosisError: error instanceof Error ? error.message : "诊断失败" });
     } finally {
       this.setData({ diagnosisLoading: false });
     }
+  },
+
+  toggleDiagnosis() { this.setData({ diagnosisExpanded: !this.data.diagnosisExpanded }); },
+  closeDiagnosis() { this.setData({ diagnosisSummary: "", diagnosisTips: [], diagnosisError: "", diagnosisLoading: false }); },
+
+  enterSelection(this: any, event: any) {
+    const id = event.detail?.id;
+    if (id) this.setData({ selectionMode: true, selectedIds: [id], selectedMap: { [id]: true } });
+  },
+
+  toggleSelected(this: any, id?: string) {
+    if (!id) return;
+    const current = this.data.selectedIds as string[];
+    const selectedIds = current.includes(id) ? current.filter((entry) => entry !== id) : [...current, id];
+    this.setData({ selectedIds, selectedMap: Object.fromEntries(selectedIds.map((entry) => [entry, true])) });
+  },
+
+  cancelSelection() { this.setData({ selectionMode: false, selectedIds: [], selectedMap: {} }); },
+
+  confirmBatchDelete(this: any) {
+    const count = this.data.selectedIds.length;
+    if (!count) return;
+    wx.showModal({ title: `删除选中的 ${count} 件衣物？`, content: "服务器提交成功后才会从列表移除。", confirmText: "确认删除", success: (result) => { if (result.confirm) void this.batchDeleteSelected(); } });
+  },
+
+  async batchDeleteSelected(this: any) {
+    if (this.data.deletingSelection) return;
+    this.setData({ deletingSelection: true });
+    try {
+      for (const id of this.data.selectedIds as string[]) {
+        const item = (this.data.garments as MiniGarment[]).find((entry) => entry.id === id);
+        if (item) await deleteWorkspaceEntity("garments", item.id, item.revision);
+      }
+      this.cancelSelection();
+      await this.loadGarments();
+    } catch (error) { wx.showToast({ title: error instanceof Error ? error.message : "批量删除失败", icon: "none" }); }
+    finally { this.setData({ deletingSelection: false }); }
   },
 });
 
@@ -201,8 +300,30 @@ function buildCategoryChips(garments: MiniGarment[]): CategoryChip[] {
   }));
 }
 
+function buildLocationOptions(garments: MiniGarment[], locations: MiniClosetLocation[]): LocationOption[] {
+  const fallback = locations.length ? locations : [{ id: "home", name: "默认衣橱", note: "", sortOrder: 1 }];
+  return [
+    { id: "all", name: "全部衣橱", note: "包含所有衣物", count: garments.length },
+    ...fallback.map((location) => ({
+      id: location.id,
+      name: location.name,
+      note: location.note,
+      count: garments.filter((garment) => garment.locationId === location.id).length,
+    })),
+  ];
+}
+
+function filterByLocation(garments: MiniGarment[], scope: string): MiniGarment[] {
+  return scope === "all" ? garments : garments.filter((garment) => garment.locationId === scope);
+}
+
 function filterGarments(garments: MiniGarment[], category: string): MiniGarment[] {
   return category === "all" ? garments : garments.filter((garment) => garment.category === category);
+}
+
+function buildStatsText(items: MiniGarment[], scope: string, locationCount: number): string {
+  const activeCount = items.filter((item) => item.status === "active").length;
+  return scope === "all" ? `全部 ${items.length} · 可穿 ${activeCount} · 衣橱 ${locationCount}` : `全部 ${items.length} · 可穿 ${activeCount}`;
 }
 
 function diagnosisTips(result: Record<string, unknown>): string[] {

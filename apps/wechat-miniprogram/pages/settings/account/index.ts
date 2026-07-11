@@ -65,6 +65,10 @@ Page({
     wx.navigateTo({ url: "/pages/settings/change-password/index" });
   },
 
+  deleteAccount() {
+    wx.navigateTo({ url: "/pages/settings/account-deletion/index" });
+  },
+
   logout() {
     clearSession();
     wx.showToast({ title: "已退出登录", icon: "none" });

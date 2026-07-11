@@ -68,6 +68,7 @@ declare namespace WechatMiniprogram {
     width: number;
     height: number;
     path: string;
+    type?: string;
   }
 
   interface DownloadFileSuccessCallbackResult {
@@ -83,11 +84,27 @@ declare namespace WechatMiniprogram {
       success(result: { data: ArrayBuffer | string }): void;
       fail(error: unknown): void;
     }): void;
+    copyFile(options: {
+      srcPath: string;
+      destPath: string;
+      success(): void;
+      fail(error: unknown): void;
+    }): void;
+    mkdir(options: {
+      dirPath: string;
+      recursive?: boolean;
+      success(): void;
+      fail(error: unknown): void;
+    }): void;
   }
 }
 
 declare const wx: {
+  env: {
+    USER_DATA_PATH: string;
+  };
   getSystemInfoSync(): WechatMiniprogram.SystemInfo;
+  base64ToArrayBuffer(base64: string): ArrayBuffer;
   getStorageSync(key: string): unknown;
   setStorageSync(key: string, data: unknown): void;
   removeStorageSync(key: string): void;

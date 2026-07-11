@@ -1,0 +1,97 @@
+@import "../../../styles/index.wxss";
+
+.item-edit-shell {
+  display: block;
+  padding: 0 32rpx calc(env(safe-area-inset-bottom) + 280rpx);
+}
+
+.item-edit-shell__topbar {
+  display: grid;
+  grid-template-columns: 80rpx minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 20rpx;
+  margin: 0 -32rpx 28rpx;
+  padding: calc(env(safe-area-inset-top) + 20rpx) 32rpx 20rpx;
+  background: rgba(251, 251, 248, 0.75);
+  -webkit-backdrop-filter: blur(60rpx) saturate(1.5);
+  backdrop-filter: blur(60rpx) saturate(1.5);
+}
+
+.item-edit-shell__back {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 80rpx;
+  height: 80rpx;
+  border-radius: 50%;
+  color: var(--color-ink);
+  background: rgba(255, 255, 252, 0.9);
+  text-decoration: none;
+}
+
+.item-edit-shell__title-wrap {
+  min-width: 0;
+}
+
+.item-edit-shell__title,
+.item-edit-shell__subtitle {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.item-edit-shell__title {
+  color: var(--color-ink);
+  font-size: 32rpx;
+  font-weight: 800;
+  line-height: 1.25;
+}
+
+.item-edit-shell__subtitle {
+  margin-top: 4rpx;
+  color: var(--color-muted);
+  font-size: var(--font-label);
+  line-height: 1.35;
+}
+
+.item-edit-shell__media-card {
+  box-sizing: border-box;
+  display: grid;
+  grid-template-columns: 250rpx minmax(0, 1fr);
+  gap: 28rpx;
+  align-items: center;
+  padding: 28rpx;
+  border: 1rpx solid var(--color-line);
+  border-radius: var(--radius-card-inner);
+  background: rgba(255, 255, 252, 0.86);
+  box-shadow: var(--shadow-card);
+}
+
+.item-edit-shell__media {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 250rpx;
+  height: 334rpx;
+  overflow: hidden;
+  border-radius: var(--radius-thumb);
+  background: var(--color-mist);
+}
+
+.item-edit-shell__image {
+  width: 100%;
+  height: 100%;
+}
+
+.item-edit-shell__fallback {
+  padding: 0 24rpx;
+  color: var(--color-muted);
+  font-size: var(--font-caption);
+  text-align: center;
+}
+
+.item-edit-shell__media-title {
+  color: var(--color-ink);
+  font-size: var(--font-section);
+  font-weight: 800;
+}

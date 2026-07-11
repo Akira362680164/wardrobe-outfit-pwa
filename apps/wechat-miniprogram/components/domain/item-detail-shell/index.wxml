@@ -1,0 +1,26 @@
+<view class="item-detail-shell">
+  <view class="item-detail-shell__topbar">
+    <navigator class="item-detail-shell__back" open-type="navigateBack" aria-label="返回">
+      <ui-icon name="chevron-left" size="44" color="currentColor" />
+    </navigator>
+    <view class="item-detail-shell__top-title">{{topTitle || title}}</view>
+    <slot name="topRight" />
+  </view>
+
+  <view class="item-detail-shell__hero">
+    <view wx:if="{{heroLabel}}" class="item-detail-shell__badge">{{heroLabel}}</view>
+    <image wx:if="{{imageUrl}}" class="item-detail-shell__image" mode="aspectFit" src="{{imageUrl}}" />
+    <view wx:else class="item-detail-shell__fallback">{{heroFallback}}</view>
+  </view>
+
+  <slot name="afterHero" />
+
+  <view class="item-detail-shell__heading">
+    <view wx:if="{{eyebrow}}" class="item-detail-shell__eyebrow">{{eyebrow}}</view>
+    <view class="item-detail-shell__title">{{title}}</view>
+    <view wx:if="{{meta}}" class="item-detail-shell__meta">{{meta}}</view>
+  </view>
+
+  <slot name="tabs" />
+  <slot />
+</view>
