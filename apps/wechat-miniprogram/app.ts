@@ -1,4 +1,5 @@
 import { hydrateSession } from "./stores/session";
+import { recoverSession } from "./services/http";
 
 export interface WardrobeMiniAppGlobalData {
   apiBaseUrl: string;
@@ -18,7 +19,8 @@ App<{
   globalData,
 
   onLaunch() {
-    hydrateSession();
+    const session = hydrateSession();
+    if (session?.refreshToken) void recoverSession().catch(() => undefined);
 
     const systemInfo = wx.getSystemInfoSync();
     globalData.statusBarHeight = systemInfo.statusBarHeight ?? 0;

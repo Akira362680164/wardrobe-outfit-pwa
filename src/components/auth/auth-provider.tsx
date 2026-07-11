@@ -14,6 +14,7 @@ import {
   type AuthUserSnapshot,
 } from "@/lib/auth-session-store";
 import * as authApi from "@/lib/cloud-auth-api";
+import { registerAuthSessionRecovery } from "@/lib/auth-session-recovery";
 import { clearMiniMaxSettings } from "@/lib/device-minimax";
 import { probeCloudConnectivity, subscribeNetworkChanges, type ConnectivityState } from "@/lib/online/online-connectivity";
 
@@ -36,7 +37,7 @@ interface AuthContextValue {
   connectivity: ConnectivityState;
   login: (account: string, password: string) => Promise<void>;
   register: (input: { email: string; emailCode: string; password: string; phone?: string }) => Promise<void>;
-  refreshSession: () => Promise<AuthSessionSnapshot | null>;
+  refreshSession: (options?: { force?: boolean }) => Promise<AuthSessionSnapshot | null>;
   logout: () => Promise<void>;
   logoutAll: () => Promise<void>;
   completeAccountDeletion: () => Promise<void>;
@@ -70,9 +71,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return saved;
   }, []);
 
-  const refreshSession = useCallback(async () => {
+  const refreshSession = useCallback(async (options: { force?: boolean } = {}) => {
     const current = session ?? await loadAuthSessionSnapshot();
-    if (isAccessTokenFresh(current)) return current;
+    if (!options.force && isAccessTokenFresh(current)) return current;
     if (!current.refreshToken) return null;
     const cloud = await updateConnectivity();
     if (cloud !== "cloud_ready") return current.user ? current : null;
@@ -94,6 +95,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       return current.user ? current : null;
     }
   }, [session, setTokenSession, updateConnectivity]);
+
+  useEffect(() => registerAuthSessionRecovery(({ force }) => refreshSession({ force })), [refreshSession]);
 
   useEffect(() => {
     void updateConnectivity();

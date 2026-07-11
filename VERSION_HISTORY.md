@@ -1,3 +1,13 @@
+## 2026-07-11 / v2.1.13-test / Codex — 跨端长期设备会话与 401 自动续期
+
+- **执行 Agent**：Codex（未触发 subagent；用户要求当前会话直接按已审核 Parity 修复计划实施）。
+- **目的**：修复 App 线上工作区/AI 请求遇到服务端提前拒绝 access token 时直接暴露 `Invalid access token`，以及小程序杀进程丢登录态、任意 401 立即误登出、工作区读取绕过公共 HTTP 层的问题。
+- **版本变更**：无；当前版本仍为 `2.1.13-test`。本批次不打 APK、不上传小程序。
+- **改动文件**：`src/lib/auth-session-recovery.ts`、`src/lib/online/online-request.ts`、`src/components/auth/auth-provider.tsx`、`apps/wechat-miniprogram/stores/session.ts`、`apps/wechat-miniprogram/services/http.ts`、`apps/wechat-miniprogram/services/workspace.ts`、`apps/wechat-miniprogram/services/assets.ts`、`apps/wechat-miniprogram/app.ts`、`services/wardrobe-api/vitest.config.ts`、`services/wardrobe-api/tests/session.test.ts`、`scripts/test-long-lived-device-session.ts`、`scripts/test-miniprogram-auth-refresh.ts`、`scripts/test-online-auth-shell.ts`、`package.json`、`VERSION_HISTORY.md`。
+- **改动说明**：App 增加全局 session recovery 协调器，线上请求遇到 401 时强制续期，所有并发请求共享同一个 refresh Promise，每个原请求最多重放一次；小程序将设备会话写入微信认证存储，冷启动 hydrate 后把有效 refresh 凭证视为已授权，公共 JSON、multipart 和临时资产二进制上传统一处理 refresh 轮换、并发互斥和一次重放，网络失败保留 refresh token，只有服务端明确撤销、token 重放或账号删除才清除会话；工作区 GET 移除原始 `wx.request` 旁路；服务端专项测试验证每 29 天滚动刷新可持续超过 30 天且始终只有一个 active refresh token。
+- **验证结果**：`npm run typecheck` 通过；`npm --prefix apps/wechat-miniprogram run typecheck` 通过；`npm run test:logic:long-lived-device-session` 通过，覆盖 App/小程序各 10 个并发 401 仅一次 refresh、每请求仅一次重放、小程序轮换凭证冷启动恢复及 refreshable session 不闪登出态；`npm run test:logic:miniprogram-auth-refresh`、`npm run test:logic:online-auth-shell` 通过；服务端 `session.test.ts` 7/7 通过，含 87 天滚动会话；`npm run build` 通过；`git diff --check` 通过。
+- **未验证风险**：本批次尚未在修复版真实 APK/小程序预览上完成 login/refresh/workspace/AI 抓包、断网恢复、主动退出、撤销设备和注销验收；这些在 Task 13 最终回归关闭，当前只可标记 FIXED_UNVERIFIED。
+
 ## 2026-07-10 / v2.1.13-test / Codex — 注销功能双基线集成与最终 APK
 
 - **执行 Agent**：Codex（未触发 subagent；完成 `main` 与 `wechat/miniprogram` 串行集成后，在正式 App 目录重新构建最终合并态 APK）。

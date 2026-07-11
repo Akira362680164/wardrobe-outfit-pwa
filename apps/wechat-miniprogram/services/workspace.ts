@@ -375,33 +375,7 @@ function buildCatalogItemPayload(input: CatalogItemPayloadInput): Record<string,
 }
 
 async function workspaceRequest<T>(path: string): Promise<T> {
-  const session = getSession() as ({ token?: string; deviceId?: string } | null);
-  const baseUrl = getApiBaseUrl();
-  if (!session?.token) throw new Error("请先登录后查看衣橱数据");
-  if (!baseUrl) throw new Error("请先配置后端 API 域名");
-
-  return new Promise<T>((resolve, reject) => {
-    wx.request<T>({
-      url: `${baseUrl}${path}`,
-      method: "GET",
-      header: {
-        Accept: "application/json",
-        Authorization: `Bearer ${session.token}`,
-        ...(session.deviceId ? { "X-Wardrobe-Device-Id": session.deviceId } : {}),
-        "X-Wardrobe-Request-Id": `mini-workspace-${Date.now()}`,
-      },
-      timeout: 30000,
-      success: (result) => {
-        if (result.statusCode < 400) {
-          resolve(result.data);
-          return;
-        }
-        const body = result.data && typeof result.data === "object" ? result.data as Record<string, unknown> : {};
-        reject(new Error(typeof body.message === "string" ? body.message : "读取衣橱数据失败"));
-      },
-      fail: () => reject(new Error("网络连接失败，请稍后重试")),
-    });
-  });
+  return request<T>({ method: "GET", path, toast: false });
 }
 
 async function toMiniGarment(entity: WorkspaceEntity): Promise<MiniGarment> {
