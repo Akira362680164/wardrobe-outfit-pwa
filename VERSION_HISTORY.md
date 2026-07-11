@@ -5365,3 +5365,11 @@
 - **改动说明**：删除已移除 `intake.result` 的语义映射，搜索、统计、画像和试穿参考照改为真实独立 mini route 并标记与 APP 等价；4 个因源码行位变化重算的动态跳转 ID 重新人工分类；BFS 测试改为自行生成确定性证据，不再依赖某个 worktree 的未跟踪运行产物；JSON manifest 隐私断言和 Java `public/protected onResume` 合同兼容真实实现。
 - **验证结果**：合并态 inventory 盘点 APP 96 Screen / mini 38 Screen，24 个动态候选已分类、未分类 0；manifest 50/50 语义 Screen 详细映射且两端 inventory 未映射均为 0；static defect、fixture、BFS 7 项及定向 AI/种草/安全区合同通过；`git diff --check` 通过。
 - **未验证风险**：运行时截图、服务端回读、APK 与微信真机门禁仍由最终 Task 13 回归关闭。
+## 2026-07-11 / v2.1.14-test / Codex — Parity 修复候选版本升级
+
+- **执行 Agent**：Codex（未触发 subagent；最终集成 worktree）。
+- **目的**：为本轮 App、小程序、共享契约和服务端修复生成独立可安装、可追踪的候选版本。
+- **版本变更**：`2.1.13-test` → `2.1.14-test`，Android 构建将推导 `versionCode=20114`；小程序关于页构建信息同步生成。
+- **改动文件**：`package.json`、`package-lock.json`、`apps/wechat-miniprogram/generated/build-info.ts`、`VERSION_HISTORY.md`。
+- **验证结果**：版本命令与 `build-info:miniprogram:generate/check` 通过；升版前合并态 App/小程序类型、API 114 项、生产构建和 parity 静态门禁均通过。
+- **未验证风险**：本条仅锁定候选版本；固定签名 APK、Android 双设备、微信 CLI/真机和最终报告将在后续收口记录中补齐。
