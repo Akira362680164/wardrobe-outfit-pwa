@@ -122,7 +122,7 @@ export function IntakeFlowShell({
 
   return createPortal(
     <div className="app-ambient-bg fixed inset-0 z-[90] flex h-[100dvh] flex-col overflow-hidden">
-      <header className="app-glass-top sticky top-0 z-30 px-4 pb-3 pt-[calc(env(safe-area-inset-top)+0.5rem)]">
+      <header className="app-glass-top sticky top-0 z-30 px-4 pb-3" style={{ paddingTop: "calc(max(env(safe-area-inset-top, 0px), var(--android-safe-area-top, 0px)) + 0.5rem)" }}>
         <div className="flex h-10 items-center justify-between gap-2">
           <button
             type="button"
@@ -185,14 +185,15 @@ export function IntakeFlowShell({
           "mx-auto min-h-0 w-full max-w-md flex-1 px-4 pt-3",
           immersiveContent
             ? "flex flex-col overflow-hidden pb-3"
-            : "overflow-y-auto pb-[calc(env(safe-area-inset-bottom)+104px)]",
+            : "overflow-y-auto",
         ].join(" ")}
+        style={immersiveContent ? undefined : { paddingBottom: "calc(max(env(safe-area-inset-bottom, 0px), var(--android-safe-area-bottom, 0px)) + 104px)" }}
       >
         {children}
       </main>
 
       {!immersiveContent ? (
-        <footer className="app-glass-bottom safe-bottom fixed inset-x-0 bottom-0 z-40 px-4 py-3">
+        <footer className="app-glass-bottom fixed inset-x-0 bottom-0 z-40 px-4 pt-3" style={{ paddingBottom: "max(1rem, env(safe-area-inset-bottom, 0px), var(--android-safe-area-bottom, 0px))" }}>
           <div className="mx-auto grid max-w-md grid-cols-[1fr_1.6fr] gap-2">
             <button
               type="button"

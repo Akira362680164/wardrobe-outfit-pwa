@@ -1,3 +1,13 @@
+## 2026-07-11 / v2.1.13-test / Codex — Android 动态系统安全区与 edge-to-edge
+
+- **执行 Agent**：Codex（未触发 subagent；从含 Task 1 的本地 main 创建独立 `codex/parity-app-safearea-20260711` worktree）。
+- **目的**：修复 Android 录入页顶部被系统栏遮挡及底部手势区出现白条，同时避免按机型写死 padding。
+- **版本变更**：无；保持 `2.1.13-test`，最终 APK 在 Task 13 统一构建。
+- **改动文件**：`MainActivity.java`、Android `styles.xml`、`src/app/globals.css`、`src/components/intake-flow-shell.tsx`、UI 规范源与生成 HTML、`scripts/test-android-safe-area.ts`、`package.json`、`VERSION_HISTORY.md`。
+- **改动说明**：原生窗口统一透明状态栏/导航栏并启用 edge-to-edge，从 `WindowInsetsCompat.Type.systemBars()` 动态取得顶/底 inset，通过 WebView CSS 变量发布；冷启动和 onResume 均重新请求；录入壳层取 CSS env 与 Android 变量最大值，背景延伸到手势区、标题和操作内容避让系统栏；无品牌/机型分支和固定安全区补丁。
+- **验证结果**：安全区合同测试、UI 规范 build/check、App typecheck、生产 build 通过；Capacitor sync 后 `:app:compileDebugJavaWithJavac` 成功（首次发现 onResume 访问级别需为 public，修正后通过）；`git diff --check` 通过。
+- **未验证风险**：本批尚未打最终固定签名 APK，也未在 Android 15 模拟器和 MEIZU 21 Pro / Android 16 实测冷启动、相册返回、后台恢复、键盘、顶部标题和底部手势区；这些由 Task 13 双设备回归关闭，当前标记 FIXED_UNVERIFIED。
+
 ## 2026-07-11 / v2.1.13-test / Codex — 跨端长期设备会话与 401 自动续期
 
 - **执行 Agent**：Codex（未触发 subagent；用户要求当前会话直接按已审核 Parity 修复计划实施）。

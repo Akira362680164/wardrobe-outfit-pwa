@@ -463,6 +463,12 @@ PR 规则：
 
 ## 17. 验收与测试映射
 
+### Android edge-to-edge 与安全区
+
+- Android 15+ 与异形屏统一使用系统 `WindowInsetsCompat.Type.systemBars()`，由原生层发布 `--android-safe-area-top`、`--android-safe-area-bottom`；禁止按品牌、机型或固定像素补丁适配。
+- Web 页面取 `max(env(safe-area-inset-*), var(--android-safe-area-*))`。顶部玻璃壳位于状态栏下方，底部页面背景延伸到手势区，固定操作栏内容位于导航 inset 之上。
+- 冷启动、页面直达、系统相册返回和后台恢复均重新申请 inset；状态栏与导航栏保持透明并使用适合浅色页面的深色系统图标。
+
 | 变更范围 | 必跑脚本 / 检查 |
 | --- | --- |
 | 路由/返回 | `npm run test:logic:app-route` |
