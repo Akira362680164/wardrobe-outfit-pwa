@@ -1,3 +1,13 @@
+## 2026-07-11 / v2.1.13-test / Codex — 诊断轨迹隔离与 32 表安全测试重置
+
+- **执行 Agent**：Codex（未触发 subagent；从 Task 11 提交创建独立 `codex/parity-server-diagnostics-reset-20260711` worktree）。
+- **目的**：阻止相同 requestId 跨用户/设备误关联，并把测试数据 reset 收紧为只作用于显式独立 schema 的完整 32 表闭环。
+- **版本变更**：无；保持 `2.1.13-test`。
+- **改动文件**：诊断服务与测试、reset 服务/CLI/测试、测试 schema 清理脚本、`VERSION_HISTORY.md`。
+- **改动说明**：诊断 trace 查询同时匹配 requestId、userIdHash 和 deviceIdHash；reset 表清单由 25 张补齐为 schema 全部 32 张，新增 `TEST_RUN_ID=run_*` 与 `current_schema()` 双重门禁，所有 count/truncate/storage-key 查询均显式限定该 schema；清理脚本改用参数化 `psql` 调用并把测试存储目录移入系统废纸篓，不再永久递归删除。
+- **验证结果**：API typecheck、诊断/reset 专项 14 项、服务端全量 108 项测试通过；真实本机 PostgreSQL `wardrobe_test` 中创建 `run_parity_reset_20260711` 的 32 张影子表并各写 1 行，guarded reset 后 32 表全部为 0，public 指纹前后均为 `25:53`；资产清理专项用内存存储验证 2 个引用均删除且审计报告不含原始路径/测试 secret；测试 schema 已清理；`git diff --check` 通过。
+- **未验证风险**：未对生产库、生产资产或真实诊断内容执行 reset；这是安全边界，不属于本任务测试范围。
+
 ## 2026-07-11 / v2.1.13-test / Codex — 小程序场景推荐与 AI 试穿真实闭环
 
 - **执行 Agent**：Codex（未触发 subagent；从 Task 10 提交创建独立 `codex/parity-mini-ai-flows-20260711` worktree）。
