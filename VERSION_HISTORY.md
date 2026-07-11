@@ -1,3 +1,16 @@
+## 2026-07-11 / v2.1.14-test / Codex — APP/小程序一致性修复集成与真机定向回归
+
+- **执行 Agent**：Codex（未触发 subagent；在独立 `codex/parity-final-integration-20260711` worktree 串行集成）。
+- **目的**：合并 APP、小程序和服务端修复，按 APP 方案校准小程序搜索/统计，并关闭用户手工测试发现的安全区、日历、长名称、图片录入和页面胶囊避让问题。
+- **版本变更**：`2.1.13-test` → `2.1.14-test`（Android `versionCode=20114`）。
+- **改动范围**：小程序登录续期、唯一图片临时资产、两步录入、单品/种草详情、搜索/统计、多选、套装/日历/旅行、设置/画像/参考照、推荐/试穿；服务端诊断隔离与测试重置；Android edge-to-edge 安全区；parity 盘点、fixture、状态图、执行器和报告门禁。
+- **APP 方案对齐**：小程序搜索始终查询全部衣橱，仅按名称/颜色匹配，位置/类别作为页内筛选并保留 10 条历史；统计按 APP 展示本月套装/衣物穿着次数、最近常穿、45 天闲置和种草转衣橱后的购买使用率。
+- **自动验证**：根 typecheck、逻辑测试、API 114 项、Next build、小程序 typecheck、parity inventory/manifest/static-defect/fixture 检查均通过；盘点 APP 96 屏、小程序 38 屏、未映射 0。MiniMax Keychain 仅做一次脱敏 live 烟测并通过，密钥未写入源码、日志或报告。
+- **Android 验证**：固定签名 APK 已在 Android 15 `wardrobe-test` 模拟器和 MEIZU 21 Pro / Android 16 真机分别完成安装、启动、前台、返回键、清数据重启、截图和 logcat 验证；未见 FATAL，顶部挖孔和底部手势区不再出现白条。
+- **小程序真机验证**：MEIZU 21 Pro 上验证登录后 9 件单品/1 套套装服务器读回；搜索与统计 APP 口径；长套装名省略且“+”和底栏同屏；设置无开发备注；推荐、试穿、画像、参考照、搜索和统计均避开微信胶囊；单品相册选择、大图/缩略图、微信原生裁切旋转、返回草稿及退出确认通过。绿色 vConsole 与微信宿主隐私提示按用户说明不计缺陷。
+- **交付物**：`artifacts/parity/parity-regression-20260711-final/report/` 生成 `coverage.json`、`defects.json`、`repair-plan.md`、`junit.xml` 和静态 HTML；67 个已知缺陷状态均为 `VERIFIED`，产品一致性门禁 PASS。
+- **剩余审计风险**：审计完整性门禁保持 FAIL：当前 246 个页面动作义务中 5 个具有计划规定的四阶段截图/UI 树/路由证据，241 个尚未逐动作执行；不得复用截图或伪造 execution.json。该项不代表已修复产品缺陷重新开放，但在补齐证据前不得把全量审计宣称为通过。
+
 ## 2026-07-11 / v2.1.13-test / Codex — 诊断轨迹隔离与 32 表安全测试重置
 
 - **执行 Agent**：Codex（未触发 subagent；从 Task 11 提交创建独立 `codex/parity-server-diagnostics-reset-20260711` worktree）。
