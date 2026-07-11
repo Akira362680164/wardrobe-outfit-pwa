@@ -39,16 +39,16 @@ test("imports complete detail evidence without converting a recorded defect to P
   assert.equal(results.find((item) => item.platform === "mini")?.status, "DEFECT");
 });
 
-test("does not pass backend assertions without network and server readback evidence", async () => {
+test("does not pass backend assertions without execution evidence", async () => {
   const manifests = await loadDomainManifests(manifestsRoot);
   const obligation = createObligations(manifests, {
     screens: ["settings.diagnostics.upload"],
     platforms: ["mini"],
   }).find((item) => item.actionId === "diagnostics.upload.confirm");
   assert.ok(obligation);
-  const [result] = await importEvidence([obligation], evidenceRoot);
+  const [result] = await importEvidence([obligation], path.join(cwd, "artifacts/parity/__missing-evidence__"));
   assert.equal(result.status, "NOT_EXECUTED");
-  assert.ok(result.missingEvidence.includes("server-readback.json"));
+  assert.ok(result.missingEvidence.includes("execution.json"));
 });
 
 test("resume keeps matching terminal results and initializes new obligations", () => {

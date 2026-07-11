@@ -32,9 +32,12 @@ export class ParityApiClient {
   constructor(
     baseUrl: string,
     private readonly correlation: { runId: string; caseId: string; actionId: string; platform: "app" | "mini" },
+    options: { allowNonLocal?: boolean } = {},
   ) {
     const url = new URL(baseUrl);
-    if (!["127.0.0.1", "localhost", "::1"].includes(url.hostname)) throw new Error(`Parity seed refuses non-local API host: ${url.hostname}`);
+    if (!["127.0.0.1", "localhost", "::1"].includes(url.hostname) && !options.allowNonLocal) {
+      throw new Error(`Parity seed refuses non-local API host: ${url.hostname}`);
+    }
     this.baseUrl = baseUrl.replace(/\/$/u, "");
   }
 
@@ -44,7 +47,7 @@ export class ParityApiClient {
   }
 
   async login(phone: string, password: string, deviceId: string): Promise<ParitySession> {
-    const session = await this.request<Omit<ParitySession, "deviceId">>("/api/auth/login", { method: "POST", body: { phone, password, deviceId, deviceLabel: `Parity ${this.correlation.platform}` } });
+    const session = await this.request<Omit<ParitySession, "deviceId">>("/api/auth/login", { method: "POST", body: { account: phone, password, deviceId, deviceLabel: `Parity ${this.correlation.platform}` } });
     return { ...session, deviceId };
   }
 

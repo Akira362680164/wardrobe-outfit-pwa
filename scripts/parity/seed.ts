@@ -54,22 +54,27 @@ export async function seedParityFixtures(options: {
   runId: string;
   platform: "app" | "mini";
   apiBaseUrl: string;
+  existingAccount?: string;
+  existingPassword?: string;
+  allowNonLocal?: boolean;
 }): Promise<{ manifestFile: string; runtimeSessionFile: string }> {
   const namespace = `${options.runId}-samples-${options.platform}`;
-  const phone = deterministicPhone(namespace);
+  const phone = options.existingAccount ?? deterministicPhone(namespace);
+  const password = options.existingPassword ?? TEST_PASSWORD;
   const deviceId = `parity-${options.platform}-${deterministicUuid(namespace, "device")}`;
   const api = new ParityApiClient(options.apiBaseUrl, {
     runId: options.runId,
     caseId: "seed.samples",
     actionId: "fixtures.seed",
     platform: options.platform,
-  });
+  }, { allowNonLocal: options.allowNonLocal });
   let session: ParitySession;
   try {
-    session = await api.register(phone, TEST_PASSWORD, deviceId);
+    if (options.existingAccount) throw new Error("existing account login required");
+    session = await api.register(phone, password, deviceId);
   } catch (error) {
-    if (!String(error).includes("409") && !String(error).includes("already")) throw error;
-    session = await api.login(phone, TEST_PASSWORD, deviceId);
+    if (!options.existingAccount && !String(error).includes("409") && !String(error).includes("already")) throw error;
+    session = await api.login(phone, password, deviceId);
   }
 
   const imagePath = path.join(options.cwd, "e2e", "assets", "red-shirt.jpg");
@@ -164,7 +169,7 @@ export async function seedParityFixtures(options: {
   const runtimeRoot = path.join(options.cwd, ".parity-runtime", options.runId, options.platform);
   await ensureDir(runtimeRoot);
   const runtimeSessionFile = path.join(runtimeRoot, "session.json");
-  await fs.writeFile(runtimeSessionFile, `${JSON.stringify({ phone, password: TEST_PASSWORD, session }, null, 2)}\n`, { mode: 0o600 });
+  await fs.writeFile(runtimeSessionFile, `${JSON.stringify({ phone, password, session }, null, 2)}\n`, { mode: 0o600 });
   await fs.chmod(runtimeSessionFile, 0o600);
   const manifestFile = path.join(options.runRoot, "server", `fixture-seed-${options.platform}.json`);
   await writeJson(manifestFile, {

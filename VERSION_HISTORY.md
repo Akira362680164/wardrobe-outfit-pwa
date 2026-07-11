@@ -5034,3 +5034,12 @@
 - **风险门禁**：**high**（Android 原生网络与线上图片主链路）。
 - **未触发 subagent**：用户未通知。
 - **待完成验证**：提交后重建固定签名 APK，在 Android 35 模拟器重新登录同一线上账号并确认原图显示、重装后服务器恢复及无致命 logcat。
+## 2026-07-11 / v2.1.13-test / Codex — Parity 生产测试账号夹具与小程序真机证据回填
+
+- **执行 Agent**：Codex 主协调 agent；未使用 subagent，自动盘点、数据夹具、模拟器与报告门禁均走 CLI。
+- **目的**：让 parity 框架能够在显式授权时向既有测试账号写入幂等夹具，并把小程序真机裁切及 access-token 自动续期证据纳入缺陷账本。
+- **版本变更**：无；保持 `2.1.13-test`。
+- **改动文件**：`scripts/parity/{cli,seed}.ts`、`scripts/parity/lib/api.ts`、`scripts/parity/config/static-defects.json`、`scripts/parity/tests/bfs-runner.test.ts`、`VERSION_HISTORY.md`。
+- **改动说明**：seed 新增环境变量名参数与显式 `--allow-non-local true` 双门禁，默认仍拒绝非本机 API；登录合同修正为 `account`；既有账号模式不注册、只登录并幂等写入。真机裁切缺陷更新为 VERIFIED，新增已验证的长表单 token 自动续期缺陷记录；BFS 缺证据测试改用确定不存在的目录，避免真实运行证据使负向测试漂移。
+- **验证结果**：生产测试账号 `362680164@qq.com` 已幂等写入 6 单品、1 套装、4 种草、2 旅行计划、1 穿搭计划和 1 衣橱位置；fixture check、static defects check、BFS 与 parity 测试通过，运行时密钥仅保存在权限 600 的忽略目录且未输出。
+- **未验证风险**：完整 coverage 仍需导入本轮 CLI/真机动作证据并重建最终 HTML、JUnit、defects 与 repair plan；现有 OPEN parity 缺陷不因框架与 P0 修复通过而自动关闭。

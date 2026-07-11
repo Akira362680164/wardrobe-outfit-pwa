@@ -58,6 +58,7 @@ function printHelp(): void {
   tsx scripts/parity/cli.ts fixture-check --run-id <runId>
   tsx scripts/parity/cli.ts environment-check --run-id <runId> --env-file <absolute path>
   tsx scripts/parity/cli.ts seed --run-id <runId> --platform app|mini --api-base-url http://127.0.0.1:3100
+    [--existing-account-env PARITY_ACCOUNT --existing-password-env PARITY_PASSWORD --allow-non-local true]
   tsx scripts/parity/cli.ts capture-app-sample --run-id <runId> --serial <adb serial>
   tsx scripts/parity/cli.ts capture-mini-sample --run-id <runId> --client <wechatide client> --project <mini root> --api-base-url http://127.0.0.1:3100
   tsx scripts/parity/cli.ts capture-app-diagnostics-sample --run-id <runId> --serial <adb serial>
@@ -184,12 +185,21 @@ async function main(): Promise<void> {
     const runId = value(args, "run-id");
     const platform = value(args, "platform") as "app" | "mini";
     if (platform !== "app" && platform !== "mini") throw new Error(`Invalid --platform: ${platform}`);
+    const accountEnvName = args.values.get("existing-account-env");
+    const passwordEnvName = args.values.get("existing-password-env");
+    if (Boolean(accountEnvName) !== Boolean(passwordEnvName)) throw new Error("Both existing account/password env names are required");
+    const existingAccount = accountEnvName ? process.env[accountEnvName] : undefined;
+    const existingPassword = passwordEnvName ? process.env[passwordEnvName] : undefined;
+    if (accountEnvName && (!existingAccount || !existingPassword)) throw new Error("Existing account environment variables are empty");
     const result = await seedParityFixtures({
       cwd,
       runRoot: path.join(outputRoot, runId),
       runId,
       platform,
       apiBaseUrl: value(args, "api-base-url"),
+      existingAccount,
+      existingPassword,
+      allowNonLocal: value(args, "allow-non-local", "false") === "true",
     });
     console.log(JSON.stringify({ ok: true, platform, manifestFile: result.manifestFile, runtimeSessionStored: true }, null, 2));
     return;
