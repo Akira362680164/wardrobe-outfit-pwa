@@ -195,7 +195,8 @@
     "parity:instrumentation:plan": "tsx scripts/parity/cli.ts instrumentation-plan",
     "parity:report": "tsx scripts/parity/report.ts",
     "parity:bfs": "tsx scripts/parity/cli.ts bfs-import",
-    "parity:bfs:test": "npx tsx --test scripts/parity/tests/bfs-runner.test.ts"
+    "parity:bfs:test": "npx tsx --test scripts/parity/tests/bfs-runner.test.ts",
+    "parity:vitest": "vitest run --root scripts/parity --config vitest.config.ts"
   },
   "dependencies": {
     "@wardrobe/domain-catalog": "file:packages/domain-catalog",
