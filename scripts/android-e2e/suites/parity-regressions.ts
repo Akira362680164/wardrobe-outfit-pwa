@@ -59,8 +59,12 @@ async function dayPlanDeleteChecklist(ctx: AndroidE2EContext): Promise<void> {
   const account = await ensureAccount(ctx); const session = await ctx.api.login(account); const date = futureDateKey();
   const garment = await createEntity(ctx, session, "garments", garmentPayload(uniqueName("parity日计划衣物")));
   const outfit = await createEntity(ctx, session, "outfits", outfitPayload(uniqueName("parity日计划套装"), [Number(garment.payload.legacyItemId)]));
-  const keep = { id: "packing-keep", calendarPlanId: "pending", label: "保留物品", category: "手动新增", quantity: 1, checked: false, sourceItemIds: [] };
-  const trip = await createTrip(ctx, session, uniqueName("parity日计划旅行"), date, [keep]);
+  const trip = await createTrip(ctx, session, uniqueName("parity日计划旅行"), date);
+  const keep = { id: "packing-keep", calendarPlanId: trip.id, source: "manual", label: "保留物品", category: "手动新增", quantity: 1, checked: false, sourceItemIds: [] };
+  await ctx.api.request(session, `/api/workspace/trip-plans/${trip.id}/checklist`, {
+    method: "PUT",
+    body: { clientMutationId: randomUUID(), expectedRevision: trip.revision, items: [keep] },
+  });
   const plan = await createEntity(ctx, session, "outfit-plans", {
     ...outfitPlanPayload(String(outfit.payload.legacyOutfitId), date),
     calendarPlanId: trip.id,
@@ -74,8 +78,8 @@ async function dayPlanDeleteChecklist(ctx: AndroidE2EContext): Promise<void> {
   await page.locator('[data-parity-id="parity.app.app.src.components.outfit.plan.day.card.d54549f3cd"]').click();
   await page.locator('[data-parity-id="parity.app.app.src.components.outfit.plan.day.card.52b940dcf6"]').click();
   await waitForOverview(ctx, session, (value) => !value.outfitPlans.some((entry) => entry.id === plan.id), "day plan deletion not read back");
-  const refreshed = await ctx.api.request<{ entity: WorkspaceEntity }>(session, `/api/workspace/trip-plans/${trip.id}`);
-  const items = (refreshed.entity.payload.packingChecklist ?? refreshed.entity.payload.packingChecklistItems) as Array<{ label?: string }> | undefined;
+  const refreshed = await ctx.api.request<{ data: WorkspaceEntity }>(session, `/api/workspace/trip-plans/${trip.id}/checklist`);
+  const items = (refreshed.data.payload.packingChecklist ?? refreshed.data.payload.packingChecklistItems) as Array<{ label?: string }> | undefined;
   assert(Array.isArray(items) && items.some((entry) => entry.label === "保留物品"), "remaining checklist missing after day plan deletion");
 }
 
