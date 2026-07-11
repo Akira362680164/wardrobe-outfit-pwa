@@ -1,1 +1,4 @@
-<view class="ui-icon {{spin ? 'ui-icon--spin' : ''}}" style="{{iconStyle}}" aria-label="{{label}}" />
+<view class="ui-icon {{spin ? 'ui-icon--spin' : ''}}" style="{{iconStyle}}" aria-label="{{label}}">
+  <image wx:if="{{iconSrc}}" class="ui-icon__image" style="{{iconStyle}}" src="{{iconSrc}}" mode="aspectFit" />
+  <text wx:else class="ui-icon__glyph">{{iconGlyph}}</text>
+</view>

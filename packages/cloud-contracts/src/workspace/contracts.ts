@@ -1,5 +1,9 @@
 import { z } from "zod";
-import { GARMENT_CATEGORY_IDS, SEASON_VALUES, STYLE_VALUES } from "@wardrobe/domain-catalog";
+import {
+  GARMENT_CATEGORY_IDS,
+  SEASON_VALUES,
+  STYLE_VALUES,
+} from "@wardrobe/domain-catalog";
 
 export const WorkspaceEntityKindSchema = z.enum([
   "garment",
@@ -39,7 +43,12 @@ export const WorkspaceAssetReferenceSchema = z.object({
   mimeType: z.string().regex(/^image\/[a-z0-9.+-]+$/),
   width: z.number().int().positive().optional(),
   height: z.number().int().positive().optional(),
-  variantSha256: z.record(z.enum(["original", "thumbnail"]), z.string().regex(/^[a-f0-9]{64}$/)).optional(),
+  variantSha256: z
+    .record(
+      z.enum(["original", "thumbnail"]),
+      z.string().regex(/^[a-f0-9]{64}$/),
+    )
+    .optional(),
 });
 
 export const WorkspaceEntitySchema = z.object({
@@ -57,9 +66,22 @@ export const WorkspaceMutationBaseSchema = z.object({
 });
 
 export const WorkspaceAssetMutationSchema = z.discriminatedUnion("kind", [
-  z.object({ kind: z.literal("create_or_replace"), fieldName: z.string().min(1), temporaryAssetIds: z.array(z.string().uuid()).min(1) }),
-  z.object({ kind: z.literal("update_thumbnail"), fieldName: z.string().min(1), assetId: z.string().uuid(), temporaryAssetId: z.string().uuid() }),
-  z.object({ kind: z.literal("reuse"), fieldName: z.string().min(1), assetId: z.string().uuid() }),
+  z.object({
+    kind: z.literal("create_or_replace"),
+    fieldName: z.string().min(1),
+    temporaryAssetIds: z.array(z.string().uuid()).min(1),
+  }),
+  z.object({
+    kind: z.literal("update_thumbnail"),
+    fieldName: z.string().min(1),
+    assetId: z.string().uuid(),
+    temporaryAssetId: z.string().uuid(),
+  }),
+  z.object({
+    kind: z.literal("reuse"),
+    fieldName: z.string().min(1),
+    assetId: z.string().uuid(),
+  }),
   z.object({ kind: z.literal("remove"), fieldName: z.string().min(1) }),
 ]);
 
@@ -76,10 +98,11 @@ export const WorkspacePaginationQuerySchema = z.object({
   limit: z.coerce.number().int().min(1).max(200).default(50),
 });
 
-export const WorkspaceDateRangeQuerySchema = WorkspacePaginationQuerySchema.extend({
-  startDate: z.string().date().optional(),
-  endDate: z.string().date().optional(),
-});
+export const WorkspaceDateRangeQuerySchema =
+  WorkspacePaginationQuerySchema.extend({
+    startDate: z.string().date().optional(),
+    endDate: z.string().date().optional(),
+  });
 
 export const WorkspaceListResponseSchema = z.object({
   items: z.array(WorkspaceEntitySchema),
@@ -107,7 +130,10 @@ export const WorkspaceOverviewResponseSchema = z.object({
 });
 
 export const WorkspaceWearSummaryResponseSchema = z.object({
-  garmentWearCounts: z.record(z.string().uuid(), z.number().int().nonnegative()),
+  garmentWearCounts: z.record(
+    z.string().uuid(),
+    z.number().int().nonnegative(),
+  ),
   outfitWearCounts: z.record(z.string().uuid(), z.number().int().nonnegative()),
   recentEvents: z.array(WorkspaceEntitySchema),
   serverRevision: z.number().int().nonnegative(),
@@ -140,21 +166,24 @@ export const WorkspaceStateCommandSchema = WorkspaceMutationBaseSchema.extend({
   payload: z.record(z.unknown()).default({}),
 });
 
-export const WorkspaceWishlistConvertCommandSchema = WorkspaceMutationBaseSchema.extend({
-  expectedRevision: z.number().int().positive(),
-  locationId: z.string().min(1),
-});
+export const WorkspaceWishlistConvertCommandSchema =
+  WorkspaceMutationBaseSchema.extend({
+    expectedRevision: z.number().int().positive(),
+    locationId: z.string().min(1),
+  });
 
-export const WorkspacePlanMarkWornCommandSchema = WorkspaceMutationBaseSchema.extend({
-  expectedRevision: z.number().int().positive(),
-  wornAt: z.string().datetime(),
-  outfitId: z.string().uuid().optional(),
-});
+export const WorkspacePlanMarkWornCommandSchema =
+  WorkspaceMutationBaseSchema.extend({
+    expectedRevision: z.number().int().positive(),
+    wornAt: z.string().datetime(),
+    outfitId: z.string().uuid().optional(),
+  });
 
-export const WorkspacePackingChecklistCommandSchema = WorkspaceMutationBaseSchema.extend({
-  expectedRevision: z.number().int().positive(),
-  items: z.array(z.record(z.unknown())),
-});
+export const WorkspacePackingChecklistCommandSchema =
+  WorkspaceMutationBaseSchema.extend({
+    expectedRevision: z.number().int().positive(),
+    items: z.array(z.record(z.unknown())),
+  });
 
 export const MiniMaxRuntimeSettingsSchema = z.object({
   apiKey: z.string().min(1),
@@ -165,8 +194,15 @@ export const MiniMaxRuntimeSettingsSchema = z.object({
 
 export const AiColorInfoSchema = z.union([
   z.object({ mode: z.literal("single"), primary: z.string().min(1) }),
-  z.object({ mode: z.literal("main_with_accent"), primary: z.string().min(1), accents: z.array(z.string()).default([]) }),
-  z.object({ mode: z.literal("multicolor"), primaries: z.array(z.string()).default([]) }),
+  z.object({
+    mode: z.literal("main_with_accent"),
+    primary: z.string().min(1),
+    accents: z.array(z.string()).default([]),
+  }),
+  z.object({
+    mode: z.literal("multicolor"),
+    primaries: z.array(z.string()).default([]),
+  }),
 ]);
 
 export const AiTemperatureRangeSchema = z.object({
@@ -213,10 +249,21 @@ export const AiGarmentRecognitionBatchRequestSchema = z.object({
   items: z.array(AiGarmentRecognitionBatchItemSchema).min(1).max(10),
 });
 
-export const AiGarmentRecognitionBatchResponseItemSchema = z.discriminatedUnion("status", [
-  z.object({ clientItemId: z.string().min(1), status: z.literal("succeeded"), tag: AiGarmentTagSchema }),
-  z.object({ clientItemId: z.string().min(1), status: z.literal("failed"), error: z.string().min(1).max(500) }),
-]);
+export const AiGarmentRecognitionBatchResponseItemSchema = z.discriminatedUnion(
+  "status",
+  [
+    z.object({
+      clientItemId: z.string().min(1),
+      status: z.literal("succeeded"),
+      tag: AiGarmentTagSchema,
+    }),
+    z.object({
+      clientItemId: z.string().min(1),
+      status: z.literal("failed"),
+      error: z.string().min(1).max(500),
+    }),
+  ],
+);
 
 export const AiGarmentRecognitionBatchResponseSchema = z.object({
   items: z.array(AiGarmentRecognitionBatchResponseItemSchema),
@@ -255,6 +302,7 @@ export const AiEnhancementKindSchema = z.enum([
   "garment-style-advice",
   "wishlist-assessment",
   "outfit-ai-suggestion",
+  "outfit-recommendation",
 ]);
 
 export const AiEnhancementRequestSchema = z.object({
@@ -264,38 +312,88 @@ export const AiEnhancementRequestSchema = z.object({
 
 export type WorkspaceEntityKind = z.infer<typeof WorkspaceEntityKindSchema>;
 export type WorkspaceErrorCode = z.infer<typeof WorkspaceErrorCodeSchema>;
-export type WorkspaceErrorResponse = z.infer<typeof WorkspaceErrorResponseSchema>;
-export type WorkspaceAssetReference = z.infer<typeof WorkspaceAssetReferenceSchema>;
+export type WorkspaceErrorResponse = z.infer<
+  typeof WorkspaceErrorResponseSchema
+>;
+export type WorkspaceAssetReference = z.infer<
+  typeof WorkspaceAssetReferenceSchema
+>;
 export type WorkspaceEntity = z.infer<typeof WorkspaceEntitySchema>;
 export type WorkspaceMutationBase = z.infer<typeof WorkspaceMutationBaseSchema>;
-export type WorkspaceAssetMutation = z.infer<typeof WorkspaceAssetMutationSchema>;
-export type WorkspaceCommandResponse = z.infer<typeof WorkspaceCommandResponseSchema>;
-export type WorkspacePaginationQuery = z.infer<typeof WorkspacePaginationQuerySchema>;
-export type WorkspaceDateRangeQuery = z.infer<typeof WorkspaceDateRangeQuerySchema>;
+export type WorkspaceAssetMutation = z.infer<
+  typeof WorkspaceAssetMutationSchema
+>;
+export type WorkspaceCommandResponse = z.infer<
+  typeof WorkspaceCommandResponseSchema
+>;
+export type WorkspacePaginationQuery = z.infer<
+  typeof WorkspacePaginationQuerySchema
+>;
+export type WorkspaceDateRangeQuery = z.infer<
+  typeof WorkspaceDateRangeQuerySchema
+>;
 export type WorkspaceListResponse = z.infer<typeof WorkspaceListResponseSchema>;
-export type WorkspaceDetailResponse = z.infer<typeof WorkspaceDetailResponseSchema>;
-export type WorkspaceOverviewResponse = z.infer<typeof WorkspaceOverviewResponseSchema>;
-export type WorkspaceWearSummaryResponse = z.infer<typeof WorkspaceWearSummaryResponseSchema>;
-export type WorkspaceCreateCommand = z.infer<typeof WorkspaceCreateCommandSchema>;
-export type WorkspaceBatchCreateCommand = z.infer<typeof WorkspaceBatchCreateCommandSchema>;
-export type WorkspaceUpdateCommand = z.infer<typeof WorkspaceUpdateCommandSchema>;
-export type WorkspaceDeleteCommand = z.infer<typeof WorkspaceDeleteCommandSchema>;
+export type WorkspaceDetailResponse = z.infer<
+  typeof WorkspaceDetailResponseSchema
+>;
+export type WorkspaceOverviewResponse = z.infer<
+  typeof WorkspaceOverviewResponseSchema
+>;
+export type WorkspaceWearSummaryResponse = z.infer<
+  typeof WorkspaceWearSummaryResponseSchema
+>;
+export type WorkspaceCreateCommand = z.infer<
+  typeof WorkspaceCreateCommandSchema
+>;
+export type WorkspaceBatchCreateCommand = z.infer<
+  typeof WorkspaceBatchCreateCommandSchema
+>;
+export type WorkspaceUpdateCommand = z.infer<
+  typeof WorkspaceUpdateCommandSchema
+>;
+export type WorkspaceDeleteCommand = z.infer<
+  typeof WorkspaceDeleteCommandSchema
+>;
 export type WorkspaceStateCommand = z.infer<typeof WorkspaceStateCommandSchema>;
-export type WorkspaceWishlistConvertCommand = z.infer<typeof WorkspaceWishlistConvertCommandSchema>;
-export type WorkspacePlanMarkWornCommand = z.infer<typeof WorkspacePlanMarkWornCommandSchema>;
-export type WorkspacePackingChecklistCommand = z.infer<typeof WorkspacePackingChecklistCommandSchema>;
-export type MiniMaxRuntimeSettings = z.infer<typeof MiniMaxRuntimeSettingsSchema>;
+export type WorkspaceWishlistConvertCommand = z.infer<
+  typeof WorkspaceWishlistConvertCommandSchema
+>;
+export type WorkspacePlanMarkWornCommand = z.infer<
+  typeof WorkspacePlanMarkWornCommandSchema
+>;
+export type WorkspacePackingChecklistCommand = z.infer<
+  typeof WorkspacePackingChecklistCommandSchema
+>;
+export type MiniMaxRuntimeSettings = z.infer<
+  typeof MiniMaxRuntimeSettingsSchema
+>;
 export type AiColorInfo = z.infer<typeof AiColorInfoSchema>;
 export type AiTemperatureRange = z.infer<typeof AiTemperatureRangeSchema>;
 export type AiGarmentTag = z.infer<typeof AiGarmentTagSchema>;
-export type AiGarmentRecognitionRequest = z.infer<typeof AiGarmentRecognitionRequestSchema>;
-export type AiGarmentRecognitionResponse = z.infer<typeof AiGarmentRecognitionResponseSchema>;
-export type AiGarmentRecognitionBatchItem = z.infer<typeof AiGarmentRecognitionBatchItemSchema>;
-export type AiGarmentRecognitionBatchRequest = z.infer<typeof AiGarmentRecognitionBatchRequestSchema>;
-export type AiGarmentRecognitionBatchResponseItem = z.infer<typeof AiGarmentRecognitionBatchResponseItemSchema>;
-export type AiGarmentRecognitionBatchResponse = z.infer<typeof AiGarmentRecognitionBatchResponseSchema>;
+export type AiGarmentRecognitionRequest = z.infer<
+  typeof AiGarmentRecognitionRequestSchema
+>;
+export type AiGarmentRecognitionResponse = z.infer<
+  typeof AiGarmentRecognitionResponseSchema
+>;
+export type AiGarmentRecognitionBatchItem = z.infer<
+  typeof AiGarmentRecognitionBatchItemSchema
+>;
+export type AiGarmentRecognitionBatchRequest = z.infer<
+  typeof AiGarmentRecognitionBatchRequestSchema
+>;
+export type AiGarmentRecognitionBatchResponseItem = z.infer<
+  typeof AiGarmentRecognitionBatchResponseItemSchema
+>;
+export type AiGarmentRecognitionBatchResponse = z.infer<
+  typeof AiGarmentRecognitionBatchResponseSchema
+>;
 export type AiOutfitMetadataItem = z.infer<typeof AiOutfitMetadataItemSchema>;
-export type AiOutfitMetadataRequest = z.infer<typeof AiOutfitMetadataRequestSchema>;
-export type AiOutfitMetadataResponse = z.infer<typeof AiOutfitMetadataResponseSchema>;
+export type AiOutfitMetadataRequest = z.infer<
+  typeof AiOutfitMetadataRequestSchema
+>;
+export type AiOutfitMetadataResponse = z.infer<
+  typeof AiOutfitMetadataResponseSchema
+>;
 export type AiEnhancementKind = z.infer<typeof AiEnhancementKindSchema>;
 export type AiEnhancementRequest = z.infer<typeof AiEnhancementRequestSchema>;

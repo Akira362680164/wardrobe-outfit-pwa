@@ -128,6 +128,16 @@
   background: var(--color-primary);
 }
 
+.favorite {
+  color: var(--color-surface);
+  background: var(--color-success);
+}
+
+.worn {
+  color: var(--color-ink);
+  background: rgba(244, 245, 243, 0.88);
+}
+
 .ai {
   color: var(--color-surface);
   background: var(--color-ai);
@@ -137,6 +147,10 @@
   border: 1rpx solid rgba(220, 38, 38, 0.35);
   color: var(--color-danger);
   background: rgba(255, 255, 252, 0.72);
+}
+
+.action-button[disabled] {
+  opacity: 0.58;
 }
 
 .check-dot {

@@ -1,7 +1,20 @@
-.result-page { display: flex; align-items: center; padding: calc(env(safe-area-inset-top) + 152rpx) 32rpx 220rpx; }
+.result-page { padding: calc(env(safe-area-inset-top) + 152rpx) 32rpx calc(env(safe-area-inset-bottom) + 260rpx); }
 .result-card { box-sizing: border-box; width: 100%; padding: 48rpx 32rpx; border-radius: var(--radius-card); text-align: center; }
 .result-mark { display: inline-flex; align-items: center; justify-content: center; min-width: 128rpx; height: 72rpx; margin-bottom: 28rpx; padding: 0 24rpx; border-radius: var(--radius-control); color: var(--color-surface); background: var(--color-success); font-size: var(--font-caption); font-weight: 800; line-height: 72rpx; }
+.result-stats { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18rpx; margin-top: 30rpx; }
+.result-stat { padding: 22rpx 16rpx; border-radius: var(--radius-card-inner); background: rgba(22, 163, 74, 0.10); }
+.result-stat--failed { background: rgba(220, 38, 38, 0.08); }
+.stat-number { color: var(--color-ink); font-size: 44rpx; font-weight: 900; line-height: 1; }
+.stat-label { margin-top: 10rpx; color: var(--color-muted); font-size: var(--font-caption); font-weight: 700; }
 .result-meta { margin-top: 26rpx; color: var(--color-muted); font-size: var(--font-label); line-height: 1.45; word-break: break-all; }
+.failed-card { box-sizing: border-box; margin-top: 24rpx; padding: 28rpx; border-radius: var(--radius-card-inner); }
+.section-title { color: var(--color-ink); font-size: var(--font-section); font-weight: 800; line-height: 1.25; }
+.failed-row { display: flex; gap: 18rpx; padding: 20rpx 0; border-bottom: 1rpx solid var(--color-line); }
+.failed-row:last-child { border-bottom: 0; }
+.failed-thumb { flex: 0 0 auto; width: 72rpx; height: 96rpx; border-radius: var(--radius-thumb); background: var(--color-mist); }
+.failed-copy { min-width: 0; flex: 1; }
+.failed-name { color: var(--color-ink); font-size: var(--font-body); font-weight: 800; line-height: 1.35; }
+.failed-error { margin-top: 6rpx; color: var(--color-danger); font-size: var(--font-caption); line-height: 1.45; }
 .bottom-bar { position: fixed; right: 20rpx; bottom: calc(env(safe-area-inset-bottom) + 18rpx); left: 20rpx; z-index: 30; box-sizing: border-box; display: grid; grid-template-columns: 0.9fr 1.1fr; gap: 18rpx; padding: 18rpx; }
 .bottom-button { display: block; width: 100%; margin: 0; text-align: center; white-space: nowrap; }
 .bottom-button::after { border: 0; }

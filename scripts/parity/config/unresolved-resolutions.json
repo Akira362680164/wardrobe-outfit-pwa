@@ -153,29 +153,11 @@
     "reviewedAt": "2026-07-11"
   },
   {
-    "id": "mini.unresolved.transition.2d5c1de4e4",
-    "status": "RESOLVED",
-    "classification": "DERIVED_TARGETS",
-    "targets": ["/pages/settings/account/index", "/pages/settings/ai-key/index", "/pages/settings/diagnostics/index", "/pages/settings/privacy/index", "/pages/settings/about/index"],
-    "rationale": "The URL is supplied by the five static data-url values in settings/index.wxml.",
-    "reviewedBy": "Codex",
-    "reviewedAt": "2026-07-11"
-  },
-  {
     "id": "mini.unresolved.transition.2f1f7e8e22",
     "status": "RESOLVED",
     "classification": "DERIVED_TARGETS",
     "targets": ["/pages/intake/camera/index", "/pages/outfits/compose/index", "/pages/intake/camera/index?kind=wishlist"],
     "rationale": "ROUTES is a closed Record keyed by the CreateActionType union.",
-    "reviewedBy": "Codex",
-    "reviewedAt": "2026-07-11"
-  },
-  {
-    "id": "mini.unresolved.transition.9ebb6a2236",
-    "status": "RESOLVED",
-    "classification": "STATIC_TARGETS",
-    "targets": ["/pages/wishlist/index/index", "/pages/wardrobe/index/index"],
-    "rationale": "Both conditional branches are static tab routes.",
     "reviewedBy": "Codex",
     "reviewedAt": "2026-07-11"
   },
@@ -189,20 +171,47 @@
     "reviewedAt": "2026-07-11"
   },
   {
-    "id": "mini.unresolved.transition.a9f40d7886",
-    "status": "RESOLVED",
-    "classification": "DERIVED_TARGETS",
-    "targets": ["/pages/wardrobe/index/index", "/pages/outfits/index/index", "/pages/wishlist/index/index", "/pages/settings/index/index"],
-    "rationale": "The custom tab bar URL is selected from the closed static tabs array.",
-    "reviewedBy": "Codex",
-    "reviewedAt": "2026-07-11"
-  },
-  {
     "id": "mini.unresolved.transition.e6b4012321",
     "status": "RESOLVED",
     "classification": "UNREACHABLE_DEFECT",
     "targets": ["/pages/home/index"],
     "rationale": "HOME is static, but wx.switchTab targets a page that is not registered in tabBar. goHome currently has no callers; retain as a static defect instead of suppressing it.",
+    "reviewedBy": "Codex",
+    "reviewedAt": "2026-07-11"
+  },
+  {
+    "id": "mini.unresolved.transition.497a0e862c",
+    "status": "RESOLVED",
+    "classification": "DERIVED_TARGETS",
+    "targets": ["/pages/wardrobe/index/index", "/pages/outfits/index/index", "/pages/wishlist/index/index", "/pages/settings/index/index"],
+    "rationale": "The custom tab target comes from the closed four-item tabs array.",
+    "reviewedBy": "Codex",
+    "reviewedAt": "2026-07-11"
+  },
+  {
+    "id": "mini.unresolved.transition.8b9bcfe8c7",
+    "status": "RESOLVED",
+    "classification": "STATIC_TARGETS",
+    "targets": ["/pages/wishlist/index/index", "/pages/wardrobe/index/index"],
+    "rationale": "Both intake-kind conditional branches are static tab routes.",
+    "reviewedBy": "Codex",
+    "reviewedAt": "2026-07-11"
+  },
+  {
+    "id": "mini.unresolved.transition.b7a4d17975",
+    "status": "RESOLVED",
+    "classification": "DERIVED_TARGETS",
+    "targets": ["/pages/settings/account/index", "/pages/settings/profile/index", "/pages/settings/tryon-photos/index", "/pages/settings/ai-key/index", "/pages/settings/diagnostics/index", "/pages/settings/privacy/index", "/pages/settings/about/index"],
+    "rationale": "The URL is supplied only by the seven static data-url values in settings/index.wxml.",
+    "reviewedBy": "Codex",
+    "reviewedAt": "2026-07-11"
+  },
+  {
+    "id": "mini.unresolved.transition.b98c86a2e3",
+    "status": "RESOLVED",
+    "classification": "STATIC_TARGETS",
+    "targets": ["/pages/wishlist/index/index", "/pages/wardrobe/index/index"],
+    "rationale": "Both review completion conditional branches are static tab routes.",
     "reviewedBy": "Codex",
     "reviewedAt": "2026-07-11"
   }

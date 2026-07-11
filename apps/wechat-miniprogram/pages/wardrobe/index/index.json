@@ -1,7 +1,7 @@
 {
   "usingComponents": {
-    "catalog-card": "../../../components/domain/catalog-card/index",
-    "create-sheet": "../../../components/domain/create-sheet/index",
-    "ui-icon": "../../../components/ui/icon/index"
+    "catalog-card": "/components/domain/catalog-card/index",
+    "create-sheet": "/components/domain/create-sheet/index",
+    "ui-icon": "/components/ui/icon/index"
   }
 }

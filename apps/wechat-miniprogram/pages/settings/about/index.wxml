@@ -1,6 +1,6 @@
 <view class="settings-page page-shell">
   <view class="page-title">关于</view>
-  <view class="page-copy">衣橱穿搭助手小程序版，当前处于业务接入开发阶段。</view>
+  <view class="page-copy">衣橱穿搭助手微信小程序。</view>
 
   <view class="info-card">
     <view wx:for="{{rows}}" wx:key="label" class="field">

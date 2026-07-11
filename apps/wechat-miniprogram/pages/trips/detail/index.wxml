@@ -1,7 +1,75 @@
-<view class="page-shell">
-  <view class="page-title">{{title}}</view>
-  <view class="page-copy">{{description}}</view>
-  <view class="placeholder-card">
-    <view class="placeholder-label">页面骨架已就绪，业务实现由后续批次接入线上 API。</view>
+<view class="page-shell plan-detail" style="padding-top: {{titleTopRpx}}rpx;">
+  <view class="detail-top">
+    <view class="top-left" bindtap="goBack">
+      <text class="top-back">‹</text>
+      <text class="top-title">计划详情</text>
+    </view>
   </view>
+
+  <view wx:if="{{loading}}" class="status-card">正在读取计划...</view>
+  <view wx:elif="{{error}}" class="status-card status-card--error">
+    <view>{{error}}</view>
+    <button class="retry-button" bindtap="retryLoad">{{statusActionLabel || '重试'}}</button>
+  </view>
+
+  <view wx:elif="{{plan}}" class="detail-stack">
+    <view class="summary-card">
+      <view class="summary-head">
+        <view class="summary-main">
+          <view class="summary-title">{{plan.title}}</view>
+          <view class="summary-date">{{plan.dateText}} · 共 {{plan.dayCount}} 天</view>
+        </view>
+        <view class="type-pill {{plan.toneClass}}">{{plan.typeLabel}}</view>
+      </view>
+
+      <view class="summary-line">
+        <text class="summary-label">{{plan.type === 'travel' ? '目的地' : plan.type === 'business' ? '地点' : '范围'}}</text>
+        <text class="summary-value">{{plan.type === 'custom' ? plan.dateText : plan.destinationText}}</text>
+      </view>
+      <view class="summary-line">
+        <text class="summary-label">活动</text>
+        <text class="summary-value">{{plan.activityText}}</text>
+      </view>
+      <view class="summary-line">
+        <text class="summary-label">{{plan.type === 'travel' ? '天气备注' : '备注'}}</text>
+        <text class="summary-value">{{plan.memoText}}</text>
+      </view>
+
+      <view class="action-row">
+        <button class="primary-action" bindtap="editPlan">编辑计划</button>
+        <button class="danger-action" bindtap="openDeleteSheet">删除计划</button>
+      </view>
+    </view>
+
+    <view class="daily-card">
+      <view class="section-title">每日穿搭安排</view>
+      <view class="day-row" wx:for="{{rows}}" wx:key="date">
+        <view class="day-date">{{item.label}}</view>
+        <view wx:if="{{!item.empty}}" class="day-outfit" data-id="{{item.outfitId}}" bindtap="openOutfit">
+          <image wx:if="{{item.imageUrl}}" class="day-cover" mode="aspectFill" src="{{item.imageUrl}}" />
+          <view wx:else class="day-cover day-cover--empty">套</view>
+          <view class="day-info">
+            <view class="day-title">{{item.outfitName}}</view>
+            <view class="day-meta">{{item.outfitMeta}}</view>
+          </view>
+          <view class="day-status">{{item.statusLabel}}</view>
+        </view>
+        <view wx:else class="day-empty">
+          <text>尚未安排当天穿搭</text>
+        </view>
+      </view>
+    </view>
+
+    <view class="packing-card {{plan.packingEnabled ? '' : 'packing-card--disabled'}}">
+      <view class="packing-title">打包清单</view>
+      <view class="packing-copy">{{plan.packingEnabled ? '后续可根据已安排穿搭自动生成。' : '此计划未启用打包清单，可在编辑计划中开启。'}}</view>
+    </view>
+  </view>
+
+  <ui-sheet open="{{deleteSheetOpen}}" title="删除计划？" description="只会删除计划本身，每日穿搭安排会保留。" bind:close="closeDeleteSheet">
+    <view class="delete-actions">
+      <button class="cancel-delete" disabled="{{deleting}}" bindtap="closeDeleteSheet">取消</button>
+      <button class="confirm-delete" loading="{{deleting}}" disabled="{{deleting}}" bindtap="confirmDelete">删除计划</button>
+    </view>
+  </ui-sheet>
 </view>

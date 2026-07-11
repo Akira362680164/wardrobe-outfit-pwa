@@ -24,7 +24,7 @@
   {"id":"app.src.components.detail.shell","classification":"SHARED_SCREEN_INFRASTRUCTURE","targets":["wardrobe.garment.detail","outfits.detail","wishlist.detail"],"rationale":"Reusable detail layout shell."},
   {"id":"app.src.components.garment.immersive.detail","classification":"COMPONENT_OF_SCREEN","targets":["wardrobe.garment.detail"],"rationale":"Alternative garment detail presentation component; runtime reachability remains an action/state concern."},
   {"id":"app.src.components.intake.color.mode.editor","classification":"COMPONENT_OF_SCREEN","targets":["intake.review"],"rationale":"Field editor inside the intake review Screen."},
-  {"id":"app.src.components.intake.flow.shell","classification":"SHARED_SCREEN_INFRASTRUCTURE","targets":["intake.select","intake.review","intake.result"],"rationale":"Shared intake flow shell."},
+  {"id":"app.src.components.intake.flow.shell","classification":"SHARED_SCREEN_INFRASTRUCTURE","targets":["intake.select","intake.review"],"rationale":"Shared intake flow shell; successful save now returns directly without a result screen."},
   {"id":"app.src.components.intake.source.badge","classification":"COMPONENT_OF_SCREEN","targets":["intake.review"],"rationale":"Source indicator inside review cards."},
   {"id":"app.src.components.item.detail.sections","classification":"COMPONENT_OF_SCREEN","targets":["wardrobe.garment.detail","wishlist.detail"],"rationale":"Reusable detail sections."},
   {"id":"app.src.components.item.review.pill","classification":"COMPONENT_OF_SCREEN","targets":["intake.review","wardrobe.garment.detail","wishlist.detail"],"rationale":"Review state badge, not an independent Screen."},

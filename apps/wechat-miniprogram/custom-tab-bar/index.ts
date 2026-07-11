@@ -33,7 +33,9 @@ Component({
     switchTab(this: any, event: any) {
       const { index, url } = event.currentTarget.dataset;
       if (!url) return;
-      this.setData({ selected: index || 0 });
+      const selected = Number(index) || 0;
+      if (selected === Number(this.data.selected)) return;
+      this.setData({ selected });
       wx.switchTab({ url });
     },
   },

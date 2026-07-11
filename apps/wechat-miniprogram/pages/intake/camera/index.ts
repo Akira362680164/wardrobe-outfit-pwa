@@ -1,22 +1,47 @@
-import { chooseSingleImage } from "../../../services/assets";
-import { colorLabel, hasMiniMaxKey, recognizeGarmentImage } from "../../../services/ai";
-import { clearIntakeDraft, getIntakeDraft, setIntakeDraft, type IntakeDraft } from "../../../stores/intake";
+import { chooseImages, cropImageWithNativeEditor, uploadImagesForCreate, type ChosenImage } from "../../../services/assets";
+import { colorLabel, recognizeGarmentImages } from "../../../services/ai";
+import { createClientMutationId } from "../../../services/workspace";
+import { clearIntakeDraft, getIntakeKind, getIntakeQueue, setIntakeKind, setIntakeQueue, updateIntakeQueueItem, type IntakeDraft, type IntakeKind, type IntakeQueueItem } from "../../../stores/intake";
+
+declare const getCurrentPages: () => unknown[];
+
+const MAX_IMAGES = 10;
 
 Page({
   data: {
     selecting: false,
-    recognizing: false,
-    draft: null as IntakeDraft | null,
+    queue: [] as IntakeQueueItem[],
+    totalCount: 0,
+    readyCount: 0,
+    failedCount: 0,
+    uploadingCount: 0,
+    maxCount: MAX_IMAGES,
+    kind: "garment" as IntakeKind,
+    pageTitle: "添加单品",
+    emptyText: "请拍照或从图库选择单品图片",
+    nextText: "下一步（AI识别）",
     error: "",
+    currentIndex: 0,
+    current: null as IntakeQueueItem | null,
   },
 
-  onLoad() {
-    wx.setNavigationBarTitle({ title: "添加衣物" });
-    this.setData({ draft: getIntakeDraft() });
+  onLoad(this: any, query?: { kind?: string }) {
+    const kind: IntakeKind = query?.kind === "wishlist" ? "wishlist" : "garment";
+    if (getIntakeKind() !== kind) clearIntakeDraft();
+    setIntakeKind(kind);
+    this.setData({
+      kind,
+      pageTitle: kind === "wishlist" ? "新增种草" : "添加单品",
+      emptyText: kind === "wishlist" ? "请拍照或从图库选择商品图片" : "请拍照或从图库选择单品图片",
+      nextText: kind === "wishlist" ? "下一步（识别种草）" : "下一步（AI识别）",
+    });
+    wx.setNavigationBarTitle({ title: kind === "wishlist" ? "新增种草" : "添加衣物" });
+    this.refreshQueue();
+    this.syncExitGuard();
   },
 
   onShow() {
-    this.setData({ draft: getIntakeDraft() });
+    this.refreshQueue();
   },
 
   async chooseFromAlbum(this: any) {
@@ -29,65 +54,213 @@ Page({
 
   async chooseImage(this: any, sourceType: Array<"album" | "camera">) {
     if (this.data.selecting) return;
+    const remaining = MAX_IMAGES - getIntakeQueue().length;
+    if (remaining <= 0) {
+      this.setData({ error: "最多选择 10 张图片" });
+      return;
+    }
     this.setData({ selecting: true, error: "" });
     try {
-      const imagePath = await chooseSingleImage(sourceType);
-      const draft: IntakeDraft = {
-        imagePath,
-        name: "",
-        category: "tops",
-        color: "未标注",
-        season: "all",
-        note: "",
-        source: "manual",
-      };
-      setIntakeDraft(draft);
-      this.setData({ draft });
-      if (hasMiniMaxKey()) await this.recognizeDraft(imagePath);
+      const images = await chooseImages(sourceType, remaining);
+      if (!images.length) return;
+      const items = images.map((image) => createQueueItem(image, getIntakeKind()));
+      setIntakeQueue([...getIntakeQueue(), ...items].slice(0, MAX_IMAGES));
+      this.refreshQueue();
+      this.syncExitGuard();
     } catch (error) {
       this.setData({ error: error instanceof Error ? error.message : "选择图片失败" });
     } finally {
       this.setData({ selecting: false });
+      this.refreshQueue();
     }
   },
 
-  async recognizeDraft(this: any, imagePath: string) {
-    this.setData({ recognizing: true });
-    try {
-      const tag = await recognizeGarmentImage(imagePath);
-      const draft: IntakeDraft = {
-        imagePath,
-        name: tag.candidateNames[0] ?? "",
-        category: tag.category,
-        subcategory: tag.subcategory,
-        color: colorLabel(tag.colors),
-        season: tag.seasons[0] ?? "all",
-        note: tag.notes ?? "",
-        styles: tag.styles,
-        confidence: tag.confidence,
-        needsReview: tag.needsReview,
-        source: "ai",
-        aiTag: tag as unknown as Record<string, unknown>,
-      };
-      setIntakeDraft(draft);
-      this.setData({ draft });
-    } catch (error) {
-      this.setData({ error: error instanceof Error ? error.message : "AI 识别失败，可继续人工录入" });
-    } finally {
-      this.setData({ recognizing: false });
+  async prepareAssets(this: any, items: IntakeQueueItem[]) {
+    for (const item of items) updateIntakeQueueItem(item.clientItemId, { status: "uploading", error: "" });
+    this.refreshQueue();
+    const results = await uploadImagesForCreate({
+      entityType: getIntakeKind() === "wishlist" ? "wishlistItem" : "garment",
+      images: items.map((item) => ({
+        clientItemId: item.clientItemId,
+        clientMutationId: item.clientMutationId,
+        filePath: item.stablePath,
+        stablePath: item.stablePath,
+      })),
+    });
+    for (const result of results) {
+      if (!result.clientItemId) continue;
+      const status = result.error ? "failed" : "ready";
+      updateIntakeQueueItem(result.clientItemId, {
+        status,
+        error: result.error ?? "",
+        assetMutations: result.assetMutations ?? [],
+      });
     }
+    this.refreshQueue();
   },
 
-  clearSelected() {
+  selectCurrent(this: any, event: any) {
+    this.setData({ currentIndex: Number(event.currentTarget.dataset.index) || 0 });
+    this.refreshQueue();
+  },
+
+  async editCurrent(this: any) {
+    const item = this.data.current as IntakeQueueItem | null;
+    if (!item) return;
+    const cropped = await cropImageWithNativeEditor(item.processedPath || item.stablePath);
+    if (!cropped) return;
+    updateIntakeQueueItem(item.clientItemId, {
+      processedPath: cropped,
+      stablePath: cropped,
+      imagePath: cropped,
+      status: "selected",
+      error: "",
+      assetMutations: [],
+      draft: { ...item.draft, imagePath: cropped, stablePath: cropped },
+    });
+    this.refreshQueue();
+  },
+
+  removeCurrent(this: any) {
+    const item = this.data.current as IntakeQueueItem | null;
+    if (!item) return;
+    setIntakeQueue(getIntakeQueue().filter((entry) => entry.clientItemId !== item.clientItemId));
+    this.setData({ currentIndex: Math.max(0, this.data.currentIndex - 1) });
+    this.refreshQueue();
+    this.syncExitGuard();
+  },
+
+  clearSelected(this: any) {
     clearIntakeDraft();
-    this.setData({ draft: null, error: "" });
+    this.refreshQueue();
+    this.setData({ error: "" });
+    this.syncExitGuard();
   },
 
-  goReview() {
-    if (!this.data.draft) {
-      this.setData({ error: "请先选择图片" });
+  cancel(this: any) {
+    if (!getIntakeQueue().length) return this.exitNow();
+    wx.showModal({
+      title: "退出本次录入？",
+      content: "退出后，本次选择的图片和填写内容将被清空。",
+      confirmText: "确认退出",
+      cancelText: "继续录入",
+      success: (result) => { if (result.confirm) { clearIntakeDraft(); this.syncExitGuard(); this.exitNow(); } },
+    });
+  },
+
+  async goReview(this: any) {
+    const selected = getIntakeQueue().filter((item) => item.status === "selected" || item.status === "failed");
+    if (!selected.length && !getIntakeQueue().some((item) => item.status === "ready")) {
+      wx.showToast({ title: "请先选择图片", icon: "none" });
       return;
     }
-    wx.navigateTo({ url: "/pages/intake/review/index" });
+    if (selected.length) await this.prepareAssets(selected);
+    if (!getIntakeQueue().some((item) => item.status === "ready")) return;
+    await this.recognizeBeforeReview();
+    this.disableExitGuard();
+    wx.navigateTo({ url: `/pages/intake/review/index?kind=${getIntakeKind()}` });
+  },
+
+  async recognizeBeforeReview(this: any) {
+    const targets = getIntakeQueue().filter((item) => item.status === "ready");
+    targets.forEach((item) => updateIntakeQueueItem(item.clientItemId, { status: "recognizing", error: "" }));
+    this.refreshQueue();
+    try {
+      const results = await recognizeGarmentImages(targets.map((item) => ({ clientItemId: item.clientItemId, stablePath: item.processedPath, fallbackName: `${item.clientItemId}.jpg` })));
+      for (const result of results) {
+        const item = getIntakeQueue().find((entry) => entry.clientItemId === result.clientItemId);
+        if (!item) continue;
+        if (result.status === "failed") {
+          updateIntakeQueueItem(item.clientItemId, { status: "needs_confirm", error: result.error || "AI识别失败，请手工确认" });
+        } else {
+          const tag = result.tag;
+          updateIntakeQueueItem(item.clientItemId, { status: "confirmed", error: "", draft: {
+            ...item.draft,
+            name: tag.candidateNames.find(Boolean) ?? item.draft.name,
+            category: tag.category || item.draft.category,
+            color: colorLabel(tag.colors),
+            season: tag.seasons[0] || item.draft.season,
+            seasons: tag.seasons,
+            styles: tag.styles,
+            note: tag.notes ?? item.draft.note,
+            confidence: tag.confidence,
+            source: "ai",
+            aiTag: tag as unknown as Record<string, unknown>,
+          } });
+        }
+      }
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "AI识别失败，请手工确认";
+      targets.forEach((item) => updateIntakeQueueItem(item.clientItemId, { status: "needs_confirm", error: message }));
+    }
+    this.refreshQueue();
+  },
+
+  exitNow() {
+    if (getCurrentPages().length > 1) wx.navigateBack({ delta: 1 });
+    else wx.switchTab({ url: getIntakeKind() === "wishlist" ? "/pages/wishlist/index/index" : "/pages/wardrobe/index/index" });
+  },
+
+  syncExitGuard() {
+    const api = wx as typeof wx & { enableAlertBeforeUnload?: (options: { message: string }) => void; disableAlertBeforeUnload?: () => void };
+    if (getIntakeQueue().length) api.enableAlertBeforeUnload?.({ message: "退出本次录入？" });
+    else api.disableAlertBeforeUnload?.();
+  },
+
+  disableExitGuard() {
+    (wx as typeof wx & { disableAlertBeforeUnload?: () => void }).disableAlertBeforeUnload?.();
+  },
+
+  refreshQueue(this: any) {
+    const queue = getIntakeQueue();
+    const currentIndex = Math.min(this.data.currentIndex || 0, Math.max(0, queue.length - 1));
+    this.setData({
+      queue,
+      currentIndex,
+      current: queue[currentIndex] ?? null,
+      totalCount: queue.length,
+      readyCount: queue.filter((item) => item.status === "ready").length,
+      failedCount: queue.filter((item) => item.status === "failed").length,
+      uploadingCount: queue.filter((item) => item.status === "uploading").length,
+    });
   },
 });
+
+function createQueueItem(image: ChosenImage, kind: IntakeKind): IntakeQueueItem {
+  const clientItemId = createClientMutationId();
+  const clientMutationId = createClientMutationId();
+  const draft: IntakeDraft = {
+    imagePath: image.imagePath,
+    stablePath: image.stablePath,
+    name: "",
+    category: "tops",
+    color: "未标注",
+    season: "all",
+    seasons: [],
+    note: "",
+    styles: [],
+    temperatureRange: { minC: 10, maxC: 25 },
+    formality: 3,
+    warmth: 2,
+    material: "",
+    fitGender: "unisex",
+    fitNotes: "",
+    locationId: "home",
+    status: kind === "wishlist" ? "interested" : "active",
+    price: "",
+    productUrl: "",
+    source: "manual",
+  };
+  return {
+    clientItemId,
+    clientMutationId,
+    imagePath: image.imagePath,
+    stablePath: image.stablePath,
+    sourcePath: image.imagePath,
+    processedPath: image.stablePath,
+    status: "selected",
+    error: "",
+    assetMutations: [],
+    draft,
+  };
+}

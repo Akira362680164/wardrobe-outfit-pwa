@@ -1,7 +1,134 @@
-<view class="page-shell">
-  <view class="page-title">{{title}}</view>
-  <view class="page-copy">{{description}}</view>
-  <view class="placeholder-card">
-    <view class="placeholder-label">页面骨架已就绪，业务实现由后续批次接入线上 API。</view>
+<view class="page-shell edit-page">
+  <view wx:if="{{loading}}" class="status-card">正在读取衣物...</view>
+  <view wx:elif="{{error}}" class="status-card">
+    <view class="status-title">读取失败</view>
+    <view class="status-copy">{{error}}</view>
+  </view>
+  <view wx:elif="{{item}}">
+    <item-edit-shell title="编辑衣物" subtitle="{{item.name}}" image-url="{{item.imageUrl}}" image-label="衣物图片" image-fallback="{{item.categoryLabel}}">
+      <view slot="mediaActions" class="media-actions">
+        <button class="outline-button" bindtap="recropImage">重新裁切</button>
+        <button class="primary-inline-button" bindtap="reRecognize">重新识别</button>
+      </view>
+
+      <view class="edit-card">
+        <view class="card-title">基础信息</view>
+        <view class="field-label">名称 *</view>
+        <input class="field-input" value="{{name}}" data-field="name" placeholder="例如：天蓝连帽防风夹克" bindinput="updateField" />
+
+        <view class="field-label">分类</view>
+        <view class="chip-row">
+          <view wx:for="{{categories}}" wx:key="value" data-value="{{item.value}}" class="select-chip {{category === item.value ? 'is-active' : ''}}" bindtap="chooseCategory">{{item.label}}</view>
+        </view>
+
+        <view class="field-label">细分</view>
+        <view class="chip-row">
+          <view data-value="" class="select-chip {{!subcategory ? 'is-active neutral' : ''}}" bindtap="chooseSubcategory">不限</view>
+          <view wx:for="{{subcategoryOptions}}" wx:key="value" data-value="{{item.value}}" class="select-chip {{item.selected ? 'is-active' : ''}}" bindtap="chooseSubcategory">{{item.label}}</view>
+        </view>
+
+        <view class="two-col">
+          <view>
+            <view class="field-label">衣橱位置</view>
+            <view class="chip-row">
+              <view wx:for="{{locations}}" wx:key="id" data-field="locationId" data-value="{{item.id}}" class="select-chip {{locationId === item.id ? 'is-active' : ''}}" bindtap="chooseValue">{{item.name}}</view>
+            </view>
+          </view>
+          <view>
+            <view class="field-label">状态</view>
+            <view class="chip-row">
+              <view wx:for="{{statusOptions}}" wx:key="value" data-field="status" data-value="{{item.value}}" class="select-chip {{status === item.value ? 'is-active' : ''}}" bindtap="chooseValue">{{item.label}}</view>
+            </view>
+          </view>
+        </view>
+
+        <view class="field-label">购买日期</view>
+        <input class="field-input" value="{{purchaseDate}}" data-field="purchaseDate" placeholder="2026-07-09，非必填" bindinput="updateField" />
+      </view>
+
+      <view class="edit-card">
+        <view class="card-title">颜色</view>
+        <view class="field-label">颜色模式</view>
+        <view class="segmented">
+          <view wx:for="{{colorModes}}" wx:key="value" data-field="colorMode" data-value="{{item.value}}" class="segment {{colorMode === item.value ? 'is-active' : ''}}" bindtap="chooseValue">{{item.label}}</view>
+        </view>
+
+        <view class="field-label">主色</view>
+        <view class="color-grid">
+          <view wx:for="{{colorOptions}}" wx:key="name" data-role="primary" data-value="{{item.name}}" class="color-choice {{primaryColor === item.name ? 'is-active' : ''}}" bindtap="chooseColor">
+            <view class="color-dot" style="{{item.style}}"></view>
+            <text>{{item.name}}</text>
+          </view>
+        </view>
+
+        <view wx:if="{{colorMode === 'main_with_accent'}}" class="field-label">辅助色</view>
+        <view wx:if="{{colorMode === 'main_with_accent'}}" class="color-grid">
+          <view wx:for="{{colorOptions}}" wx:key="name" data-role="accent" data-value="{{item.name}}" class="color-choice {{accentColor === item.name ? 'is-active' : ''}}" bindtap="chooseColor">
+            <view class="color-dot" style="{{item.style}}"></view>
+            <text>{{item.name}}</text>
+          </view>
+        </view>
+      </view>
+
+      <view class="edit-card">
+        <view class="card-title">穿着属性</view>
+        <view class="field-label">季节</view>
+        <view class="chip-row">
+          <view wx:for="{{seasonsOptions}}" wx:key="value" data-field="seasons" data-value="{{item.value}}" class="select-chip {{item.selected ? 'is-active' : ''}}" bindtap="toggleArray">{{item.label}}</view>
+        </view>
+
+        <view class="field-label">风格</view>
+        <view class="chip-row">
+          <view wx:for="{{styleOptions}}" wx:key="value" data-field="styles" data-value="{{item.value}}" class="select-chip {{item.selected ? 'is-active' : ''}}" bindtap="toggleArray">{{item.label}}</view>
+        </view>
+
+        <view class="range-row">
+          <view class="range-title">适穿温度</view>
+          <view class="range-value">{{minTemp}}℃ ~ {{maxTemp}}℃</view>
+        </view>
+        <slider min="-20" max="40" value="{{minTemp}}" activeColor="#355C7D" backgroundColor="rgba(29,34,40,0.08)" data-field="minTemp" bindchange="updateNumber" />
+        <slider min="-20" max="40" value="{{maxTemp}}" activeColor="#355C7D" backgroundColor="rgba(29,34,40,0.08)" data-field="maxTemp" bindchange="updateNumber" />
+
+        <view class="range-row">
+          <view class="range-title">正式度</view>
+          <view class="range-value">{{formality}}/5</view>
+        </view>
+        <slider min="1" max="5" step="1" value="{{formality}}" activeColor="#355C7D" backgroundColor="rgba(29,34,40,0.08)" data-field="formality" bindchange="updateNumber" />
+
+        <view class="range-row">
+          <view class="range-title">保暖度</view>
+          <view class="range-value">{{warmth}}/5</view>
+        </view>
+        <slider min="1" max="5" step="1" value="{{warmth}}" activeColor="#355C7D" backgroundColor="rgba(29,34,40,0.08)" data-field="warmth" bindchange="updateNumber" />
+
+        <view class="field-label">材质</view>
+        <input class="field-input" value="{{material}}" data-field="material" placeholder="例如：涤纶防风面料" bindinput="updateField" />
+
+        <view class="field-label">版型倾向</view>
+        <view class="chip-row">
+          <view wx:for="{{fitGenderOptions}}" wx:key="value" data-field="fitGender" data-value="{{item.value}}" class="select-chip {{fitGender === item.value ? 'is-active' : ''}}" bindtap="chooseValue">{{item.label}}</view>
+        </view>
+
+        <view class="field-label">版型说明</view>
+        <textarea class="field-textarea" value="{{fitNotes}}" data-field="fitNotes" maxlength="120" placeholder="例如：中性宽松版型，肩线常规" bindinput="updateField" />
+      </view>
+
+      <view class="edit-card">
+        <view class="card-title">购买信息</view>
+        <view class="field-label">价格</view>
+        <input class="field-input" value="{{price}}" type="digit" data-field="price" placeholder="例如 299，非必填" bindinput="updateField" />
+        <view class="field-label">商品链接</view>
+        <input class="field-input" value="{{productUrl}}" data-field="productUrl" placeholder="https://item.taobao.com/...，非必填" bindinput="updateField" />
+      </view>
+
+      <view class="edit-card">
+        <view class="card-title">备注</view>
+        <textarea class="field-textarea" value="{{notes}}" data-field="notes" maxlength="300" placeholder="补充尺码、来源、搭配想法" bindinput="updateField" />
+      </view>
+
+      <view slot="bottom" class="bottom-save bottom-glass-bar">
+        <button class="save-button" loading="{{saving}}" disabled="{{saving || !name}}" bindtap="save">{{saving ? '保存中...' : '保存修改'}}</button>
+      </view>
+    </item-edit-shell>
   </view>
 </view>

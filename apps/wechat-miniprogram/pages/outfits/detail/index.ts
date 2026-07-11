@@ -1,16 +1,61 @@
 import { aiEnhance, hasMiniMaxKey } from "../../../services/ai";
-import { deleteWorkspaceEntity, fetchGarments, fetchOutfitDetail, type MiniOutfitDetail } from "../../../services/workspace";
+import { chooseImages, uploadPreparedImageAssets, type AssetMutation } from "../../../services/assets";
+import {
+  cancelOutfitWornToday,
+  deleteWorkspaceEntity,
+  fetchGarments,
+  fetchOutfitDetail,
+  markOutfitWornToday,
+  setOutfitFavorite,
+  updateOutfit,
+  createClientMutationId,
+  type MiniOutfitDetail,
+} from "../../../services/workspace";
 
 Page({
   data: {
     loading: false,
     deleting: false,
+    actioning: "",
     adviceLoading: false,
     adviceSummary: "",
     adviceTips: [] as string[],
     deleteSheetOpen: false,
     outfit: null as MiniOutfitDetail | null,
     error: "",
+    activeTab: "info",
+  },
+
+  async toggleFavorite(this: any) {
+    const outfit = this.data.outfit as MiniOutfitDetail | null;
+    if (!outfit || this.data.actioning) return;
+    this.setData({ actioning: "favorite" });
+    try {
+      const next = await setOutfitFavorite(outfit.id, outfit.revision, !outfit.favorite);
+      this.setData({ outfit: next });
+      wx.showToast({ title: next.favorite ? "已收藏" : "已取消收藏", icon: "success" });
+    } catch (error) {
+      wx.showToast({ title: error instanceof Error ? error.message : "更新收藏失败", icon: "none" });
+    } finally {
+      this.setData({ actioning: "" });
+    }
+  },
+
+  async toggleTodayWorn(this: any) {
+    const outfit = this.data.outfit as MiniOutfitDetail | null;
+    if (!outfit || this.data.actioning) return;
+    this.setData({ actioning: "worn" });
+    try {
+      const next = outfit.wornToday
+        ? await cancelOutfitWornToday(outfit.id, outfit.revision)
+        : await markOutfitWornToday(outfit.id, outfit.revision);
+      this.setData({ outfit: next });
+      wx.showToast({ title: next.wornToday ? "已记录穿着" : "已撤销穿着", icon: "success" });
+    } catch (error) {
+      wx.showToast({ title: error instanceof Error ? error.message : "更新穿着失败", icon: "none" });
+    } finally {
+      this.setData({ actioning: "" });
+    }
   },
 
   async generateAdvice(this: any) {
@@ -36,6 +81,11 @@ Page({
     }
   },
 
+  switchTab(this: any, event: any) { this.setData({ activeTab: event.currentTarget.dataset.tab }); },
+  previewPhoto(this: any, event: any) { const outfit = this.data.outfit as MiniOutfitDetail | null; if (!outfit) return; const urls = outfit.wornPhotos.map((photo) => photo.imageUrl).filter(Boolean); (wx as typeof wx & { previewImage: (options: { current?: string; urls: string[] }) => void }).previewImage({ current: event.detail.url || urls[0], urls }); },
+  async addWornPhoto(this: any) { const outfit = this.data.outfit as MiniOutfitDetail | null; if (!outfit) return; try { const images = await chooseImages(["album", "camera"], Math.max(1, 9 - outfit.wornPhotos.length)); if (!images.length) return; const now = new Date().toISOString(); const refs = photoMetadata(outfit); const mutations: AssetMutation[] = []; for (const image of images) { const id = createClientMutationId(); const fieldName = `actualWornPhoto.${id}`; const uploaded = await uploadPreparedImageAssets({ clientMutationId: createClientMutationId(), entityType: "outfit", fieldName, originalPath: image.imagePath, processedPath: image.stablePath }); mutations.push(...uploaded.assetMutations); refs.push({ id, fieldName, caption: "", createdAt: now, updatedAt: now }); } this.setData({ outfit: await updateOutfit({ id: outfit.id, expectedRevision: outfit.revision, currentPayload: outfit.rawPayload, patch: { actualWornPhotos: refs }, assetMutations: mutations }) }); } catch (error) { wx.showToast({ title: error instanceof Error ? error.message : "添加实穿照片失败", icon: "none" }); } },
+  async removeWornPhoto(this: any, event: any) { const outfit = this.data.outfit as MiniOutfitDetail | null; const id = event.detail.id; if (!outfit || !id) return; const target = outfit.wornPhotos.find((photo) => photo.id === id); if (!target) return; this.setData({ outfit: await updateOutfit({ id: outfit.id, expectedRevision: outfit.revision, currentPayload: outfit.rawPayload, patch: { actualWornPhotos: photoMetadata(outfit).filter((photo) => photo.id !== id) }, assetMutations: [{ kind: "remove", fieldName: target.fieldName }] }) }); },
+
   onLoad(query?: { id?: string }) {
     wx.setNavigationBarTitle({ title: "套装详情" });
     if (query?.id) void this.loadDetail(query.id);
@@ -52,6 +102,7 @@ Page({
   },
 
   openDeleteSheet() {
+    if (this.data.actioning) return;
     this.setData({ deleteSheetOpen: true });
   },
 
@@ -77,3 +128,4 @@ Page({
 function stringList(value: unknown): string[] {
   return Array.isArray(value) ? value.filter((item): item is string => typeof item === "string" && item.length > 0) : [];
 }
+function photoMetadata(outfit: MiniOutfitDetail): Array<{ id: string; fieldName: string; caption?: string; createdAt?: string; updatedAt?: string }> { return Array.isArray(outfit.rawPayload.actualWornPhotos) ? outfit.rawPayload.actualWornPhotos.filter((entry): entry is { id: string; fieldName: string } => Boolean(entry && typeof entry === "object" && "id" in entry && "fieldName" in entry)) : []; }

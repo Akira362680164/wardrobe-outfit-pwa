@@ -1,11 +1,25 @@
 import assert from "node:assert/strict";
+import fs from "node:fs/promises";
+import os from "node:os";
 import path from "node:path";
 import test from "node:test";
 import { createObligations, evidenceRequirements, importEvidence, loadDomainManifests, resumeResults } from "../bfs-runner";
 
 const cwd = process.cwd();
 const manifestsRoot = path.join(cwd, "scripts/parity/manifests");
-const evidenceRoot = path.join(cwd, "artifacts/parity/parity-build-20260711-001");
+
+async function evidenceRootFor(obligations: ReturnType<typeof createObligations>, statuses: Record<string, "PASS" | "DEFECT">) {
+  const root = await fs.mkdtemp(path.join(os.tmpdir(), "wardrobe-parity-bfs-"));
+  for (const obligation of obligations) {
+    const directory = path.join(root, obligation.platform, obligation.actionId.replaceAll(".", "-"));
+    await fs.mkdir(directory, { recursive: true });
+    await fs.writeFile(path.join(directory, "execution.json"), JSON.stringify({ screenId: obligation.screenId, actionId: obligation.actionId, platform: obligation.platform, status: statuses[obligation.platform] ?? "PASS" }));
+    for (const required of evidenceRequirements(obligation)) {
+      await fs.writeFile(path.join(directory, required), required.endsWith(".png") ? Buffer.from("png") : "{}");
+    }
+  }
+  return root;
+}
 
 test("creates platform obligations with domain, screen and platform filters", async () => {
   const manifests = await loadDomainManifests(manifestsRoot);
@@ -24,6 +38,7 @@ test("imports complete calendar evidence as PASS", async () => {
   const obligations = createObligations(manifests, {
     screens: ["outfits.planning.calendar"],
   }).filter((item) => item.actionId === "outfits.calendar.next-month");
+  const evidenceRoot = await evidenceRootFor(obligations, { app: "PASS", mini: "PASS" });
   const results = await importEvidence(obligations, evidenceRoot);
   assert.deepEqual(results.map((item) => item.status), ["PASS", "PASS"]);
   assert.ok(results.every((item) => item.missingEvidence.length === 0));
@@ -34,6 +49,7 @@ test("imports complete detail evidence without converting a recorded defect to P
   const obligations = createObligations(manifests, {
     screens: ["wardrobe.garment.detail"],
   }).filter((item) => item.actionId === "garment.detail.more");
+  const evidenceRoot = await evidenceRootFor(obligations, { app: "PASS", mini: "DEFECT" });
   const results = await importEvidence(obligations, evidenceRoot);
   assert.equal(results.find((item) => item.platform === "app")?.status, "PASS");
   assert.equal(results.find((item) => item.platform === "mini")?.status, "DEFECT");

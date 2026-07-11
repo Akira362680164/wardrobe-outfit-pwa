@@ -44,4 +44,8 @@
 
   <button wx:if="{{loggedIn}}" class="danger-button logout-button" bindtap="logout">退出登录</button>
   <button wx:else class="primary-button logout-button" bindtap="login">去登录</button>
+
+  <view wx:if="{{loggedIn}}" class="delete-account-entry" role="button" aria-label="注销账号" bindtap="deleteAccount">
+    <text>注销账号</text>
+  </view>
 </view>

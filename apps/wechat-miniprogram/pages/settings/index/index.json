@@ -1,1 +1,1 @@
-{ "usingComponents": { "ui-icon": "../../../components/ui/icon/index" } }
+{ "usingComponents": { "ui-icon": "/components/ui/icon/index" } }

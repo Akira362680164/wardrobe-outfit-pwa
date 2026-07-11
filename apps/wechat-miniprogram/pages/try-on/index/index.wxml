@@ -1,7 +1,59 @@
-<view class="page-shell">
-  <view class="page-title">{{title}}</view>
-  <view class="page-copy">{{description}}</view>
-  <view class="placeholder-card">
-    <view class="placeholder-label">页面骨架已就绪，业务实现由后续批次接入线上 API。</view>
-  </view>
-</view>
+<view class="page-shell tryon-page" style="padding-top: {{contentTopRpx}}rpx;"
+  ><view class="page-title">AI 试穿</view
+  ><view class="page-copy"
+    >只有点击生成后才会把所选参考照和衣物图发送给 MiniMax。</view
+  ><view class="reference"
+    ><image
+      wx:if="{{referencePath}}"
+      src="{{referencePath}}"
+      mode="aspectFit"
+    /><view wx:else class="empty">请选择全身参考照</view
+    ><button bindtap="chooseReference">
+      {{referencePath?'替换 / 裁切参考照':'选择参考照'}}
+    </button></view
+  ><view class="section-title">选择衣物（最多 8 件）</view
+  ><scroll-view scroll-x
+    ><view class="garments"
+      ><view
+        wx:for="{{garments}}"
+        wx:key="id"
+        data-id="{{item.id}}"
+        class="garment {{selectedMap[item.id]?'active':''}}"
+        bindtap="toggleGarment"
+        ><image src="{{item.imageUrl}}" mode="aspectFill" /><text
+          >{{item.name}}</text
+        ></view
+      ></view
+    ></scroll-view
+  ><input
+    value="{{prompt}}"
+    placeholder="补充试穿要求（可选）"
+    bindinput="input"
+  /><button class="generate" loading="{{loading}}" bindtap="generate">
+    {{preview?'重新生成':'确认并生成'}}</button
+  ><view wx:if="{{error}}" class="status-card"
+    >{{error}}<button wx:if="{{needsSettings}}" bindtap="openSettings">
+      前往设置</button
+    ><button wx:else bindtap="generate">重试</button></view
+  ><view wx:if="{{loading}}" class="status-card">正在生成试穿预览...</view
+  ><view wx:if="{{preview}}" class="preview"
+    ><image src="{{preview}}" mode="aspectFit" /><button
+      loading="{{saving}}"
+      bindtap="savePreview"
+    >
+      保存预览
+    </button></view
+  ><view wx:if="{{profile && profile.tryOnPreviews.length}}" class="saved"
+    ><view class="section-title">已保存预览</view
+    ><view class="saved-grid"
+      ><view wx:for="{{profile.tryOnPreviews}}" wx:key="id"
+        ><image src="{{item.imageUrl}}" mode="aspectFill" /><button
+          data-id="{{item.id}}"
+          bindtap="deletePreview"
+        >
+          删除
+        </button></view
+      ></view
+    ></view
+  ></view
+>
