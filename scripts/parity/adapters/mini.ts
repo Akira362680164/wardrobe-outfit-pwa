@@ -199,9 +199,19 @@ export async function captureMiniDiagnosticsSample(options: {
   const evidenceRoot = path.join(options.runRoot, "settings", "settings.diagnostics.upload", "diagnostics.normal", "diagnostics.upload.confirm", "mini");
   await saveCheckpoint({ client: options.client, project: options.project, directory: evidenceRoot, name: "00-before-raw" });
   await saveCheckpoint({ client: options.client, project: options.project, directory: evidenceRoot, name: "00-before-annotated" });
-  await pageAction(options.client, options.project, "callMethod", ["--method", "showUnavailable"]);
+  const description = `parity mini diagnostics ${Date.now()}`;
+  await pageAction(options.client, options.project, "callMethod", ["--method", "startUpload"]);
+  await pageAction(options.client, options.project, "setData", [
+    "--patch", JSON.stringify({ description, canSubmit: true }),
+  ]);
+  await pageAction(options.client, options.project, "callMethod", ["--method", "retryUpload"]);
   await saveCheckpoint({ client: options.client, project: options.project, directory: evidenceRoot, name: "01-immediate" });
-  await new Promise((resolve) => setTimeout(resolve, 1800));
+  let settled: { phase?: string; caseId?: string; uploadedAt?: string; errorMessage?: string } = {};
+  for (let attempt = 0; attempt < 80; attempt += 1) {
+    settled = await pageAction(options.client, options.project, "getData") as typeof settled;
+    if (settled.phase === "success" || settled.phase === "failed") break;
+    await new Promise((resolve) => setTimeout(resolve, 250));
+  }
   await saveCheckpoint({ client: options.client, project: options.project, directory: evidenceRoot, name: "02-settled" });
   await saveCheckpoint({ client: options.client, project: options.project, directory: evidenceRoot, name: "03-return-or-close" });
   const network = await wechatideText(options.client, "get_app_network_content", [
@@ -209,17 +219,20 @@ export async function captureMiniDiagnosticsSample(options: {
     "--command", "grep '/api/diagnostics/cases' | tail -50",
   ]);
   await writeJson(path.join(evidenceRoot, "network.json"), summarizeNetworkDebug(network));
+  const passed = settled.phase === "success" && Boolean(settled.caseId) && Boolean(settled.uploadedAt);
   await writeJson(path.join(evidenceRoot, "execution.json"), {
     schemaVersion: 1,
     platform: "mini",
     screenId: "settings.diagnostics.upload",
     stateId: "idle",
     actionId: "diagnostics.upload.confirm",
-    status: "DEFECT",
-    transition: "toast-only",
-    sideEffect: "NONE",
-    defectId: "STATIC-SETTINGS-001",
-    defectReason: "小程序仅提示诊断上传暂未开放，未创建或上传诊断工单",
+    status: passed ? "PASS" : "DEFECT",
+    transition: settled.phase,
+    sideEffect: "BACKEND_WRITE",
+    caseId: settled.caseId,
+    uploadedAt: settled.uploadedAt,
+    defectId: passed ? undefined : "STATIC-SETTINGS-001",
+    defectReason: passed ? undefined : settled.errorMessage || `诊断上传未进入成功态：${settled.phase ?? "unknown"}`,
     evidenceFiles: ["00-before-raw.png", "00-before-annotated.png", "01-immediate.png", "02-settled.png", "03-return-or-close.png"],
   });
   return { evidenceRoot };

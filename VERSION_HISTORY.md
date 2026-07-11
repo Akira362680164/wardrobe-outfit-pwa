@@ -1,3 +1,14 @@
+## 2026-07-11 / v2.1.13-test / Codex — 小程序诊断真实闭环与域级动作映射
+
+- **执行 Agent**：Codex 主协调 agent；三个文件隔离 subagent 分别建立衣橱/录入、套装/推荐、种草/设置的语义 Action 映射，主 agent 恢复微信 CLI 自动化并执行诊断复测。
+- **目的**：把通用 BFS runner 连接到真实 route、fixture、parity-id/callMethod，同时验证小程序诊断修复不再是占位实现。
+- **版本变更**：无；保持 `2.1.13-test`。小程序修复基线为 `baefd42`，CLI 预览包大小 517,537 bytes。
+- **运行结果**：微信 CLI 编译、`simulator_open_page`、`simulator_refresh` 与 automation 已恢复；小程序诊断创建工单 `WD-20260711-989CCC`，POST create/PUT content 均 HTTP 200，UI 到达 success。PostgreSQL readback 为 uploaded、SHA-256 `deebbce4a39b6df5e230637ce81c9e2a39880dcc2742a4913cb1b3ce64e706ab`、695 bytes、items=6/outfits=1/wishlist=4。
+- **缺陷状态**：`STATIC-SETTINGS-001` 更新为 `VERIFIED`；执行证据包含四阶段截图、UI tree、route、脱敏 network 与 server-readback。
+- **映射结果**：新增三个域映射表；衣橱/录入 38 obligations 中 26 mapped，套装/推荐 68 中 29 mapped，种草/设置 44 中 29 mapped；其余全部明确 `semanticMappingMissing`，不得假 PASS。
+- **验证结果**：映射测试、通用执行器测试、BFS runner 测试和完整 typecheck 在本批提交前执行；静态缺陷门禁继续以未执行义务为 FAIL。
+- **未验证风险**：小程序裁切、媒体重裁、旅行打包和其余映射动作仍需逐项运行；测试期间仅临时关闭 DevTools URL 校验，完成本地 API 复测后恢复。
+
 ## 2026-07-11 / v2.1.13-test / Codex — Manifest BFS 严格证据执行骨架
 
 - **执行 Agent**：Codex 主协调 agent；三个文件隔离 subagent 分别实现 obligation/checkpoint runner、APP 通用执行器和小程序通用执行器，主 agent 接入 CLI/package 并复核。
