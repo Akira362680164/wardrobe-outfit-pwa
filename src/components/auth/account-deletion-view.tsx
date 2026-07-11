@@ -122,7 +122,7 @@ export function AccountDeletionView({ auth, onBack }: { auth: WardrobeCloudAuth;
     return (
       <StatusPanel icon={<CheckCircle2 className="text-moss" size={34} aria-hidden="true" />} title="账号已注销">
         <p>你的账号、衣橱数据和图片已删除，所有设备均已退出登录。</p>
-        <button type="button" onClick={() => void auth.onAccountDeleted()} className="mt-3 h-12 w-full rounded-lg bg-denim text-sm font-semibold text-white">
+        <button type="button" data-parity-id="parity.app.app.src.components.auth.account.deletion.view.5e6085663b" onClick={() => void auth.onAccountDeleted()} className="mt-3 h-12 w-full rounded-lg bg-denim text-sm font-semibold text-white">
           返回登录页
         </button>
       </StatusPanel>
@@ -165,10 +165,10 @@ export function AccountDeletionView({ auth, onBack }: { auth: WardrobeCloudAuth;
             </ul>
             <p className="mt-4 text-sm leading-relaxed text-red-700">所有 App 和小程序登录会话将同时失效。删除完成后无法恢复。</p>
           </div>
-          <button type="button" onClick={() => setStage("verify-choice")} className="h-12 rounded-lg bg-red-600 text-sm font-semibold text-white active:bg-red-700">
+          <button type="button" data-parity-id="parity.app.app.src.components.auth.account.deletion.view.6317ea9216" onClick={() => setStage("verify-choice")} className="h-12 rounded-lg bg-red-600 text-sm font-semibold text-white active:bg-red-700">
             我已了解，继续注销
           </button>
-          <button type="button" onClick={onBack} className="h-11 text-sm font-medium text-ink/55">暂不注销</button>
+          <button type="button" data-parity-id="parity.app.app.src.components.auth.account.deletion.view.5c55d31f42" onClick={onBack} className="h-11 text-sm font-medium text-ink/55">暂不注销</button>
         </section>
       ) : null}
 
@@ -179,10 +179,10 @@ export function AccountDeletionView({ auth, onBack }: { auth: WardrobeCloudAuth;
             <p className="mt-2 text-sm leading-relaxed text-ink/60">为防止他人误操作，请选择一种已经绑定的方式验证身份。验证信息仅用于本次注销。</p>
           </div>
           {security?.email.bound && security.email.verified ? (
-            <MethodButton icon={<Mail size={18} aria-hidden="true" />} title="使用邮箱验证码验证" note={security.email.masked ?? "已验证邮箱"} onClick={() => setStage("verify-email")} />
+            <MethodButton icon={<Mail size={18} aria-hidden="true" />} title="使用邮箱验证码验证" note={security.email.masked ?? "已验证邮箱"} data-parity-id="parity.app.app.src.components.auth.account.deletion.view.39a96107aa" onClick={() => setStage("verify-email")} />
           ) : null}
           {security?.password.set ? (
-            <MethodButton icon={<KeyRound size={18} aria-hidden="true" />} title="使用当前密码验证" note="输入当前账号密码" onClick={() => setStage("verify-password")} />
+            <MethodButton icon={<KeyRound size={18} aria-hidden="true" />} title="使用当前密码验证" note="输入当前账号密码" data-parity-id="parity.app.app.src.components.auth.account.deletion.view.3d3f3592be" onClick={() => setStage("verify-password")} />
           ) : null}
           {security && !(security.email.bound && security.email.verified) && !security.password.set ? (
             <p className="rounded-lg bg-red-50 p-3 text-sm leading-relaxed text-red-700">当前账号没有可用于 App 验证的身份方式，请通过公开联系渠道处理，并提供页面错误信息。</p>
@@ -195,14 +195,14 @@ export function AccountDeletionView({ auth, onBack }: { auth: WardrobeCloudAuth;
           <div className="rounded-2xl border border-ink/10 bg-white/85 p-4">
             <h1 className="text-base font-bold">邮箱验证码</h1>
             <p className="mt-1 text-sm text-ink/55">验证码将发送至 {security?.email.masked ?? "已绑定邮箱"}</p>
-            <button type="button" onClick={() => void sendEmailCode()} disabled={sendingCode || countdown > 0} className="mt-4 h-10 rounded-lg bg-denim px-4 text-sm font-semibold text-white disabled:opacity-45">
+            <button type="button" data-parity-id="parity.app.app.src.components.auth.account.deletion.view.ff82dde1d8" onClick={() => void sendEmailCode()} disabled={sendingCode || countdown > 0} className="mt-4 h-10 rounded-lg bg-denim px-4 text-sm font-semibold text-white disabled:opacity-45">
               {sendingCode ? "发送中" : countdown > 0 ? `${countdown}s 后可重发` : "发送验证码"}
             </button>
           </div>
           <label className="grid gap-1.5 text-sm font-medium">邮箱验证码
-            <input value={emailCode} onChange={(event) => setEmailCode(event.target.value.replace(/\D/g, "").slice(0, 6))} inputMode="numeric" autoComplete="one-time-code" className="h-12 rounded-lg border border-ink/10 bg-white px-3 text-base outline-none focus:border-denim" />
+            <input value={emailCode} data-parity-id="parity.app.app.src.components.auth.account.deletion.view.dfe54ee639" onChange={(event) => setEmailCode(event.target.value.replace(/\D/g, "").slice(0, 6))} inputMode="numeric" autoComplete="one-time-code" className="h-12 rounded-lg border border-ink/10 bg-white px-3 text-base outline-none focus:border-denim" />
           </label>
-          <button type="button" onClick={() => void verify({ method: "email", emailCode })} disabled={busy || !/^\d{6}$/.test(emailCode)} className="h-12 rounded-lg bg-red-600 text-sm font-semibold text-white disabled:opacity-40">
+          <button type="button" data-parity-id="parity.app.app.src.components.auth.account.deletion.view.2c508eadc2" onClick={() => void verify({ method: "email", emailCode })} disabled={busy || !/^\d{6}$/.test(emailCode)} className="h-12 rounded-lg bg-red-600 text-sm font-semibold text-white disabled:opacity-40">
             {busy ? "验证中" : "验证并继续"}
           </button>
         </section>
@@ -215,9 +215,9 @@ export function AccountDeletionView({ auth, onBack }: { auth: WardrobeCloudAuth;
             <p className="mt-1 text-sm text-ink/55">请输入当前账号密码验证身份。</p>
           </div>
           <label className="grid gap-1.5 text-sm font-medium">当前密码
-            <input value={currentPassword} onChange={(event) => setCurrentPassword(event.target.value)} type="password" autoComplete="current-password" className="h-12 rounded-lg border border-ink/10 bg-white px-3 text-base outline-none focus:border-denim" />
+            <input value={currentPassword} data-parity-id="parity.app.app.src.components.auth.account.deletion.view.8e5777f7b1" onChange={(event) => setCurrentPassword(event.target.value)} type="password" autoComplete="current-password" className="h-12 rounded-lg border border-ink/10 bg-white px-3 text-base outline-none focus:border-denim" />
           </label>
-          <button type="button" onClick={() => void verify({ method: "password", currentPassword })} disabled={busy || currentPassword.length < 8} className="h-12 rounded-lg bg-red-600 text-sm font-semibold text-white disabled:opacity-40">
+          <button type="button" data-parity-id="parity.app.app.src.components.auth.account.deletion.view.3ff839def8" onClick={() => void verify({ method: "password", currentPassword })} disabled={busy || currentPassword.length < 8} className="h-12 rounded-lg bg-red-600 text-sm font-semibold text-white disabled:opacity-40">
             {busy ? "验证中" : "验证并继续"}
           </button>
         </section>
@@ -232,12 +232,12 @@ export function AccountDeletionView({ auth, onBack }: { auth: WardrobeCloudAuth;
           </div>
           {message ? <p role="alert" className="rounded-lg bg-red-50 p-3 text-sm text-red-700">{message}</p> : null}
           <label className="flex min-h-12 items-center gap-3 rounded-lg border border-red-200 bg-red-50/60 px-3 text-sm leading-relaxed">
-            <input type="checkbox" checked={confirmed} onChange={(event) => setConfirmed(event.target.checked)} className="h-5 w-5 accent-red-600" />
+            <input type="checkbox" checked={confirmed} data-parity-id="parity.app.app.src.components.auth.account.deletion.view.c6843a05e4" onChange={(event) => setConfirmed(event.target.checked)} className="h-5 w-5 accent-red-600" />
             我确认不再需要此账号及其中的数据
           </label>
           <div className="grid grid-cols-2 gap-2">
-            <button type="button" onClick={() => setStage("verify-choice")} disabled={busy} className="h-11 rounded-lg border border-ink/10 text-sm font-semibold">取消</button>
-            <button type="button" onClick={() => void confirmDeletion()} disabled={!confirmed || busy} className="inline-flex h-11 items-center justify-center gap-2 rounded-lg bg-red-600 text-sm font-semibold text-white disabled:opacity-40">
+            <button type="button" data-parity-id="parity.app.app.src.components.auth.account.deletion.view.fd43990d2f" onClick={() => setStage("verify-choice")} disabled={busy} className="h-11 rounded-lg border border-ink/10 text-sm font-semibold">取消</button>
+            <button type="button" data-parity-id="parity.app.app.src.components.auth.account.deletion.view.b87e6c1032" onClick={() => void confirmDeletion()} disabled={!confirmed || busy} className="inline-flex h-11 items-center justify-center gap-2 rounded-lg bg-red-600 text-sm font-semibold text-white disabled:opacity-40">
               {busy ? <Loader2 size={16} className="animate-spin" aria-hidden="true" /> : null}永久注销账号
             </button>
           </div>
@@ -249,7 +249,7 @@ export function AccountDeletionView({ auth, onBack }: { auth: WardrobeCloudAuth;
 
 function MethodButton({ icon, title, note, onClick }: { icon: React.ReactNode; title: string; note: string; onClick: () => void }) {
   return (
-    <button type="button" onClick={onClick} className="flex min-h-16 items-center gap-3 rounded-2xl border border-ink/10 bg-white/85 px-4 text-left active:bg-mist">
+    <button type="button" data-parity-id="parity.app.app.src.components.auth.account.deletion.view.0b1b4f2056" onClick={onClick} className="flex min-h-16 items-center gap-3 rounded-2xl border border-ink/10 bg-white/85 px-4 text-left active:bg-mist">
       <span className="grid h-10 w-10 shrink-0 place-items-center rounded-lg bg-denim/10 text-denim">{icon}</span>
       <span className="min-w-0"><span className="block text-sm font-semibold">{title}</span><span className="mt-1 block truncate text-xs text-ink/50">{note}</span></span>
     </button>

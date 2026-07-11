@@ -207,7 +207,7 @@ export function TemperatureRangeSlider({
             {clearable && (
               <button
                 type="button"
-                onClick={onClear}
+                data-parity-id="parity.app.app.src.components.temperature.range.slider.54dbc15fb8" onClick={onClear}
                 className="text-ink/40 hover:text-ink/70 text-xs"
                 aria-label="清除适穿温度"
               >
@@ -222,7 +222,7 @@ export function TemperatureRangeSlider({
         className="relative w-full select-none touch-none"
         style={{ height: HANDLE_HIT, paddingTop: (HANDLE_HIT - TRACK_HEIGHT) / 2 }}
         // 关键：阻止轨道点击改变数值（AGENTS.md 移动端硬规则）
-        onClick={(e) => e.preventDefault()}
+        data-parity-id="parity.app.app.src.components.temperature.range.slider.431c5a9203" onClick={(e) => e.preventDefault()}
       >
         {/* 轨道渐变 */}
         <div
@@ -259,7 +259,7 @@ export function TemperatureRangeSlider({
             hitSize={HANDLE_HIT}
             containerHeight={HANDLE_HIT}
             active={activeHandle === "min"}
-            onPointerDown={onHandlePointerDown("min")}
+            data-parity-id="parity.app.app.src.components.temperature.range.slider.3e0d86554b" onPointerDown={onHandlePointerDown("min")}
             onKeyDown={onHandleKeyDown("min")}
             label="最低温度"
             value={minC as number}
@@ -275,7 +275,7 @@ export function TemperatureRangeSlider({
             hitSize={HANDLE_HIT}
             containerHeight={HANDLE_HIT}
             active={activeHandle === "max"}
-            onPointerDown={onHandlePointerDown("max")}
+            data-parity-id="parity.app.app.src.components.temperature.range.slider.09bdc5d708" onPointerDown={onHandlePointerDown("max")}
             onKeyDown={onHandleKeyDown("max")}
             label="最高温度"
             value={maxC as number}
@@ -339,7 +339,7 @@ function Handle({
       aria-valuenow={value}
       aria-orientation="horizontal"
       data-handle={side}
-      onPointerDown={onPointerDown}
+      data-parity-id="parity.app.app.src.components.temperature.range.slider.004c11cfec" onPointerDown={onPointerDown}
       onKeyDown={onKeyDown}
       className="absolute rounded-full border-0 bg-transparent p-0 cursor-grab active:cursor-grabbing"
       style={{

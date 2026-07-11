@@ -177,8 +177,16 @@ export async function runSmokeSuite(ctx: AndroidSmokeContext): Promise<void> {
 
 async function registerByUi(ctx: AndroidSmokeContext, account: AndroidSmokeAccount): Promise<void> {
   const { page } = ctx;
-  await visibleExpect(ctx, page.getByRole("button", { name: "还没有账号，去注册" }));
-  await page.getByRole("button", { name: "还没有账号，去注册" }).click();
+  const legacyRegistration = page.getByRole("button", { name: "还没有账号，去注册" });
+  if (!await isVisible(legacyRegistration, 1_000)) {
+    // Current production UI registers through verified email. Seed the isolated
+    // phone account through the test API, then exercise the real login UI.
+    await ctx.api.register(account);
+    await loginByUi(ctx, account);
+    return;
+  }
+  await visibleExpect(ctx, legacyRegistration);
+  await legacyRegistration.click();
   await page.getByLabel("手机号").fill(account.phone);
   await page.getByLabel("密码", { exact: true }).fill(account.password);
   await page.getByLabel("确认密码").fill(account.password);
@@ -196,6 +204,10 @@ async function loginByUi(ctx: AndroidSmokeContext, account: AndroidSmokeAccount)
   await visibleExpect(ctx, page.getByRole("button", { name: "登录" }));
   await page.getByLabel("手机号").fill(account.phone);
   await page.getByLabel("密码", { exact: true }).fill(account.password);
+  const terms = page.locator("#auth-login-terms-accepted");
+  if (await terms.isVisible({ timeout: 2_000 }).catch(() => false)) {
+    if (!(await terms.isChecked())) await page.locator('label[for="auth-login-terms-accepted"]').click();
+  }
   await page.getByRole("button", { name: "登录" }).click();
 }
 
@@ -204,7 +216,7 @@ async function logoutByUi(ctx: AndroidSmokeContext): Promise<void> {
   await waitForMainUi(ctx);
   await navigateToTab(ctx, "settings");
   await page.getByRole("button", { name: /^管理$/ }).click();
-  await visibleExpect(ctx, page.getByRole("heading", { name: "账号管理" }));
+  await visibleExpect(ctx, page.getByRole("heading", { name: "账号安全" }));
   const logout = page.getByRole("button", { name: "退出登录" }).first();
   await logout.scrollIntoViewIfNeeded();
   await logout.click();

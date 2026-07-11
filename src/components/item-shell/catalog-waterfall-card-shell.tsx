@@ -52,7 +52,7 @@ export function CatalogWaterfallCardShell({
       aria-pressed={selected || undefined}
       whileTap={{ scale: 0.97 }}
       transition={spring.snappy}
-      onClick={handleClick}
+      data-parity-id="parity.app.app.src.components.item.shell.catalog.waterfall.card.shell.f30d27758f" onClick={handleClick}
       onContextMenu={handleContextMenu}
       className={`ui-card relative flex h-[304px] min-w-0 flex-col overflow-hidden text-left shadow-none select-none touch-manipulation [-webkit-touch-callout:none] ${
         selected ? "border-denim ring-2 ring-denim/30" : "border-ink/8"

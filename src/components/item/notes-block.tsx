@@ -83,7 +83,7 @@ export function NotesBlock({
         id={textareaId}
         ref={textareaRef}
         value={value ?? ""}
-        onChange={(e) => onChange?.(e.target.value)}
+        data-parity-id="parity.app.app.src.components.item.notes.block.bf9c5f2342" onChange={(e) => onChange?.(e.target.value)}
         onKeyDown={onKeyDown}
         onFocus={onFocus}
         rows={rows}

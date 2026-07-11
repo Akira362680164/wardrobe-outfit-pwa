@@ -45,7 +45,7 @@ export function OutfitPlanSelectSheet({ open, onClose, outfits, items, todayKey,
       <div className="flex flex-col max-h-[75vh]">
         <div className="flex items-center justify-between mb-3">
           <h2 className="text-base font-semibold text-ink">{sheetTitle}</h2>
-          <button type="button" className="grid h-8 w-8 place-items-center rounded-full hover:bg-ink/5" onClick={onClose}><X size={18} /></button>
+          <button type="button" className="grid h-8 w-8 place-items-center rounded-full hover:bg-ink/5" data-parity-id="parity.app.app.src.components.outfit.plan.select.sheet.bbbf433f0d" onClick={onClose}><X size={18} /></button>
         </div>
 
         {/* Hint */}
@@ -57,7 +57,7 @@ export function OutfitPlanSelectSheet({ open, onClose, outfits, items, todayKey,
           <input
             type="text"
             value={search}
-            onChange={(e) => setSearch(e.target.value)}
+            data-parity-id="parity.app.app.src.components.outfit.plan.select.sheet.3f08442d2a" onChange={(e) => setSearch(e.target.value)}
             placeholder="搜索套装名称 / 场景"
             className="w-full rounded-full border border-ink/10 bg-mist/40 py-2 pl-9 pr-4 text-sm text-ink placeholder:text-ink/30 focus:outline-none focus:ring-2 focus:ring-denim/30"
           />
@@ -85,6 +85,7 @@ export function OutfitPlanSelectSheet({ open, onClose, outfits, items, todayKey,
               {filtered.map((outfit) => { return (
                   <button
                     key={outfit.id}
+                    data-parity-id={`parity.app.app.src.components.outfit.plan.select.sheet.2d75a662a3.${outfit.id}`}
                     type="button"
                     className="flex w-full items-center gap-3 rounded-xl border border-ink/5 bg-white p-2 text-left hover:bg-ink/2 transition-colors"
                     onClick={() => onSelect(outfit)}

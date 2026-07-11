@@ -54,7 +54,7 @@ export function WearStatisticsView({
         <div className="flex h-11 items-center gap-2">
           <button
             type="button"
-            onClick={onBack}
+            data-parity-id="parity.app.app.src.components.wear.statistics.view.90bd088a87" onClick={onBack}
             aria-label="返回衣橱"
             className="grid h-10 w-10 shrink-0 place-items-center ui-control-radius bg-transparent text-ink/70 active:scale-95"
           >

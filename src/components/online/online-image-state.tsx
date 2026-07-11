@@ -14,7 +14,7 @@ export function OnlineImageLoadError({ onRetry }: { onRetry: () => void }) {
     <div className="flex h-full min-h-28 w-full flex-col items-center justify-center gap-1.5 bg-clay/5 px-3 text-center text-xs text-clay" role="alert">
       <ImageOff aria-hidden="true" className="h-5 w-5" strokeWidth={1.6} />
       <span>照片加载失败</span>
-      <button type="button" onClick={onRetry} className="rounded-full px-2 py-1 font-medium underline underline-offset-2">重试</button>
+      <button type="button" data-parity-id="parity.app.app.src.components.online.online.image.state.7151a10f75" onClick={onRetry} className="rounded-full px-2 py-1 font-medium underline underline-offset-2">重试</button>
     </div>
   );
 }

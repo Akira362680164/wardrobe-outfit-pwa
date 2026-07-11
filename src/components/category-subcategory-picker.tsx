@@ -64,6 +64,7 @@ export function CategorySubcategoryPicker({
             const active = g.id === category;
             return (
               <button
+                data-parity-id={`parity.app.app.src.components.category.subcategory.picker.93226a557d.${g.id}`}
                 key={g.id}
                 type="button"
                 role="radio"
@@ -109,7 +110,7 @@ export function CategorySubcategoryPicker({
               type="button"
               role="radio"
               aria-checked={subcategory == null || subcategory === ""}
-              onClick={() => onSubcategoryChange(undefined)}
+              data-parity-id="parity.app.app.src.components.category.subcategory.picker.b020b9f1bb" onClick={() => onSubcategoryChange(undefined)}
               className={[
                 "rounded-full px-2.5 py-1 text-xs font-medium transition-colors",
                 subcategory == null || subcategory === ""
@@ -123,6 +124,7 @@ export function CategorySubcategoryPicker({
               const active = s.id === subcategory;
               return (
                 <button
+                  data-parity-id={`parity.app.app.src.components.category.subcategory.picker.43b97e6c55.${s.id}`}
                   key={s.id}
                   type="button"
                   role="radio"

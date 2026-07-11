@@ -197,8 +197,13 @@ function toOutfitPlanEntry(entity: WorkspaceEntity): OutfitPlanEntry {
   return withServerMetadata({ ...p, id: stringValue(p.legacyPlanEntryId, entity.id), date: stringValue(p.date), status: (p.status ?? "planned") as OutfitPlanEntry["status"], createdAt: entity.createdAt, updatedAt: entity.updatedAt } as OutfitPlanEntry, entity, "outfitPlan");
 }
 
-function packingItems(plans: WorkspaceEntity[]): PlanPackingChecklistItem[] {
-  return plans.flatMap((entity) => Array.isArray(entity.payload.packingChecklistItems) ? entity.payload.packingChecklistItems as PlanPackingChecklistItem[] : []);
+export function packingItems(plans: WorkspaceEntity[]): PlanPackingChecklistItem[] {
+  return plans.flatMap((entity) => {
+    const canonical = entity.payload.packingChecklist;
+    if (Array.isArray(canonical)) return canonical as PlanPackingChecklistItem[];
+    const legacy = entity.payload.packingChecklistItems;
+    return Array.isArray(legacy) ? legacy as PlanPackingChecklistItem[] : [];
+  });
 }
 
 function assetReference(entity: WorkspaceEntity, field: string): ImageAssetReference | undefined {

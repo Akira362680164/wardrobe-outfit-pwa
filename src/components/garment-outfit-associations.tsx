@@ -61,6 +61,7 @@ export function GarmentOutfitAssociations({ itemId, outfits, items, onViewOutfit
               const validCount = outfit.itemIds.length;
               return (
                 <button
+                  data-parity-id={`parity.app.app.src.components.garment.outfit.associations.8d7d9d4db7.${outfit.id}`}
                   key={outfit.id}
                   type="button"
                   onClick={() => onViewOutfit(outfit.id)}

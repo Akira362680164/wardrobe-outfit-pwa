@@ -1,6 +1,5 @@
 #!/usr/bin/env tsx
-import { execSync } from 'child_process';
-import * as fs from 'fs';
+import { execFileSync } from 'child_process';
 import * as path from 'path';
 
 async function main() {
@@ -13,16 +12,23 @@ async function main() {
     process.exit(1);
   }
 
+  if (!dbUrl) throw new Error('DATABASE_URL is required');
   console.log(`Dropping schema: ${runId}`);
-  execSync(`psql "${dbUrl}" -c "DROP SCHEMA IF EXISTS ${runId} CASCADE;"`, { stdio: 'inherit' });
+  execFileSync('psql', [dbUrl, '-c', `DROP SCHEMA IF EXISTS "${runId}" CASCADE;`], { stdio: 'inherit' });
 
-  if (storageRoot && storageRoot.startsWith(process.cwd())) {
-    console.log(`Cleaning storage: ${storageRoot}`);
-    fs.rmSync(storageRoot, { recursive: true, force: true });
+  const resolvedStorageRoot = storageRoot ? path.resolve(storageRoot) : '';
+  const resolvedCwd = path.resolve(process.cwd());
+  if (resolvedStorageRoot && resolvedStorageRoot.startsWith(`${resolvedCwd}${path.sep}`)) {
+    console.log(`Moving test storage to trash: ${resolvedStorageRoot}`);
+    try {
+      execFileSync('trash', [resolvedStorageRoot], { stdio: 'inherit' });
+    } catch {
+      throw new Error(`Unable to move test storage to trash; preserved at ${resolvedStorageRoot}`);
+    }
   }
 
   // Verify public schema has no new business records
-  const recordCount = execSync(`psql "${dbUrl}" -tAc "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema='public' AND table_type='BASE TABLE';"`, { encoding: 'utf-8' }).trim();
+  const recordCount = execFileSync('psql', [dbUrl, '-tAc', "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema='public' AND table_type='BASE TABLE';"], { encoding: 'utf-8' }).trim();
   console.log(`Public schema tables: ${recordCount}`);
 
   console.log('Cleanup complete');

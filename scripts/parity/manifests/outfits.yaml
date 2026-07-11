@@ -1,0 +1,47 @@
+{
+  "schemaVersion": 1,
+  "domain": "outfits",
+  "screens": [
+    {
+      "id": "outfits.planning.calendar",
+      "domain": "outfits",
+      "sourceOfTruth": "app",
+      "mappingStatus": "EQUIVALENT",
+      "app": {
+        "routes": ["outfit_calendar", "planning_calendar"],
+        "sourceInventoryIds": ["app.route.outfit.calendar", "app.internal.subpage.planning.calendar", "app.src.components.outfit.planning.calendar.view"],
+        "sourceFiles": ["src/components/outfit-planning-calendar-view.tsx", "src/components/outfit-plan-day-card.tsx", "src/components/outfit-list-view.tsx"]
+      },
+      "mini": {
+        "routes": ["/pages/outfits/calendar/index"],
+        "sourceInventoryIds": ["mini.route.pages.outfits.calendar.index"],
+        "sourceFiles": ["apps/wechat-miniprogram/pages/outfits/calendar/index.ts", "apps/wechat-miniprogram/pages/outfits/calendar/index.wxml", "apps/wechat-miniprogram/pages/outfits/calendar/index.wxss"]
+      },
+      "fixtures": ["calendar.empty", "calendar.with_plan", "calendar.month_boundary", "calendar.with_trip"],
+      "entryPaths": [
+        {"id": "direct", "actions": []},
+        {"id": "from_outfits", "actions": ["shell.tab.outfits", "outfits.calendar.open"]}
+      ],
+      "states": [
+        {"id": "month.empty", "fixture": "calendar.empty", "checkpoint": true, "expectedOn": ["app", "mini"]},
+        {"id": "month.with-plan", "fixture": "calendar.with_plan", "checkpoint": true, "expectedOn": ["app", "mini"]},
+        {"id": "date.expanded", "fixture": "calendar.with_plan", "checkpoint": true, "expectedOn": ["app", "mini"]},
+        {"id": "month.boundary", "fixture": "calendar.month_boundary", "checkpoint": true, "expectedOn": ["app", "mini"]},
+        {"id": "add-plan.open", "fixture": "calendar.with_plan", "checkpoint": true, "expectedOn": ["app", "mini"]},
+        {"id": "outfit-selector.open", "fixture": "calendar.with_plan", "checkpoint": true, "expectedOn": ["app", "mini"]}
+      ],
+      "requiredActions": [
+        {"id": "outfits.calendar.back", "event": "tap", "requiredOn": ["app", "mini"], "sourceActionIds": {}, "expectedTransition": "pop", "sideEffect": "NONE"},
+        {"id": "outfits.calendar.previous-month", "event": "tap", "requiredOn": ["app", "mini"], "sourceActionIds": {}, "expectedTransition": "state-change", "sideEffect": "LOCAL_STATE"},
+        {"id": "outfits.calendar.next-month", "event": "tap", "requiredOn": ["app", "mini"], "sourceActionIds": {}, "expectedTransition": "state-change", "sideEffect": "LOCAL_STATE"},
+        {"id": "outfits.calendar.select-date", "event": "tap", "requiredOn": ["app", "mini"], "sourceActionIds": {}, "expectedTransition": "state-change", "sideEffect": "LOCAL_STATE"},
+        {"id": "outfits.calendar.add-plan", "event": "tap", "requiredOn": ["app", "mini"], "sourceActionIds": {}, "expectedTransition": "overlay-open", "target": "outfits.calendar.add-plan-sheet", "sideEffect": "LOCAL_STATE"},
+        {"id": "outfits.calendar.mark-worn", "event": "tap", "requiredOn": ["app", "mini"], "sourceActionIds": {}, "expectedTransition": "state-change", "sideEffect": "BACKEND_WRITE", "serverAssertion": "outfit-plan-mark-worn-readback"},
+        {"id": "outfits.calendar.cancel-worn", "event": "tap", "requiredOn": ["app", "mini"], "sourceActionIds": {}, "expectedTransition": "state-change", "sideEffect": "BACKEND_WRITE", "serverAssertion": "outfit-plan-cancel-worn-readback"}
+      ],
+      "overlays": ["outfits.calendar.add-plan-sheet", "outfits.calendar.outfit-selector"],
+      "checkpoints": ["month.empty", "month.with-plan", "date.expanded", "month.boundary", "add-plan.open", "outfit-selector.open"],
+      "platformExceptionIds": ["WX-CAPSULE-001"]
+    }
+  ]
+}

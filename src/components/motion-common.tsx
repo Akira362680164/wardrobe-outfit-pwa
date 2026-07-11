@@ -167,7 +167,7 @@ export function MotionSheet({
             animate="in"
             exit="out"
             transition={{ duration: duration.fast }}
-            onClick={handleBackdrop}
+            data-parity-id="parity.app.app.src.components.motion.common.d07c4d282a" onClick={handleBackdrop}
           />
           {/* Sheet panel — overscroll-behavior:contain 阻止弹窗内部滚到边界时
               链式触发底层 body 滚动; useScrollLock 同步锁定底层滚动容器 */}
@@ -183,7 +183,7 @@ export function MotionSheet({
             animate="in"
             exit="out"
             transition={{ duration: duration.panel, ease: ease.app }}
-            onClick={stopProp}
+            data-parity-id="parity.app.app.src.components.motion.common.3ff559809b" onClick={stopProp}
           >
             {children}
           </motion.div>
@@ -300,7 +300,7 @@ export function MotionCard({
     <motion.article
       layoutId={layoutId}
       className={base}
-      onClick={onClick}
+      data-parity-id="parity.app.app.src.components.motion.common.3e04f7dca0" onClick={onClick}
       onContextMenu={onContextMenu}
       whileTap={disableTap ? undefined : { scale: 0.97 }}
       whileHover={{}}
@@ -346,7 +346,7 @@ export function MotionImageLightbox({
           animate="in"
           exit="out"
           transition={{ duration: duration.fast }}
-          onClick={onClose}
+          data-parity-id="parity.app.app.src.components.motion.common.4584c58a8f" onClick={onClose}
         >
           {/* Image container: 自身也算可点击区域, 点击图片任意位置也可关闭 */}
           <motion.div
@@ -368,7 +368,7 @@ export function MotionImageLightbox({
             <button
               type="button"
               className="absolute top-2 right-2 z-10 grid h-11 w-11 place-items-center rounded-full bg-black/55 text-white shadow-md backdrop-blur-sm hover:bg-black/75 active:scale-95 transition-all"
-              onClick={(event) => {
+              data-parity-id="parity.app.app.src.components.motion.common.c59e73fe7f" onClick={(event) => {
                 event.stopPropagation();
                 onClose();
               }}
@@ -548,7 +548,7 @@ export function MotionPopoverMenu({
             exit="out"
             transition={{ duration: duration.fast, ease: ease.accelerate }}
             // popover 内部点击不冒泡到外层卡片 (但 document 级 pointerdown 已识别 contains 跳过)
-            onClick={(e: React.MouseEvent) => e.stopPropagation()}
+            data-parity-id="parity.app.app.src.components.motion.common.307ed3f33d" onClick={(e: React.MouseEvent) => e.stopPropagation()}
           >
             {children}
           </motion.div>
@@ -573,7 +573,7 @@ export function MotionPopoverMenu({
                   animate="in"
                   exit="out"
                   transition={{ duration: duration.fast, ease: ease.accelerate }}
-                  onClick={(e: React.MouseEvent) => e.stopPropagation()}
+                  data-parity-id="parity.app.app.src.components.motion.common.8e918697ef" onClick={(e: React.MouseEvent) => e.stopPropagation()}
                 >
                   {children}
                 </motion.div>,

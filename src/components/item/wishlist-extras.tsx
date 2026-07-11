@@ -54,7 +54,7 @@ export function WishlistExtras(props: WishlistExtrasProps) {
     <ItemField label="状态" review={statusReview}>
       <select
         value={status}
-        onChange={(e) => onPatch({ status: e.target.value as WishlistStatus })}
+        data-parity-id="parity.app.app.src.components.item.wishlist.extras.50cf85f128" onChange={(e) => onPatch({ status: e.target.value as WishlistStatus })}
         className="h-11 rounded-lg border border-ink/10 bg-white px-3 text-base outline-none focus:border-denim"
       >
         {WISHLIST_STATUS_OPTIONS.map((s) => (

@@ -120,14 +120,14 @@ function SwipeImagePage({ slide, isDragging, imageFitClass, onClickImage, varian
     const image = mode === "original-cropped"
       ? <OnlineCroppedAssetImage asset={slide.asset} cropBox={slide.cropBox} alt={slide.alt || ""} className="h-full w-full" fallback={slide.fallbackContent} onOpen={slide.onAssetOpen} />
       : <OnlineAssetImage asset={slide.asset} variant={slide.assetVariant ?? (variant === "card" ? "thumbnail" : "original")} alt={slide.alt || ""} className="h-full w-full" imageClassName={imageFitClass} fallback={slide.fallbackContent} onOpen={slide.onAssetOpen} />;
-    return <div className="relative h-full w-full" onClick={(event) => { onClickImage(slide); event.stopPropagation(); }}>{image}</div>;
+    return <div className="relative h-full w-full" data-parity-id="parity.app.app.src.components.swipe.image.carousel.31d8ee2d44" onClick={(event) => { onClickImage(slide); event.stopPropagation(); }}>{image}</div>;
   }
 
   if (mode === "original-cropped" && slide.originalSrc) {
     return (
       <div
         className="relative h-full w-full"
-        onClick={(e) => { onClickImage(slide); e.stopPropagation(); }}
+        data-parity-id="parity.app.app.src.components.swipe.image.carousel.d3f18d77b0" onClick={(e) => { onClickImage(slide); e.stopPropagation(); }}
       >
         <OriginalCroppedImage
           originalSrc={slide.originalSrc}
@@ -159,7 +159,7 @@ function SwipeImagePage({ slide, isDragging, imageFitClass, onClickImage, varian
   return (
     <div
       className="relative h-full w-full"
-      onClick={(e) => { onClickImage(slide); e.stopPropagation(); }}
+      data-parity-id="parity.app.app.src.components.swipe.image.carousel.ffbd9215bd" onClick={(e) => { onClickImage(slide); e.stopPropagation(); }}
     >
       {slide.imageDataUrl ? (
         <GarmentImage
@@ -197,7 +197,7 @@ function SwipeAddPage({ slide, onClickAdd }: SwipeAddPageProps) {
     <div className="grid h-full w-full place-items-center bg-mist p-4" aria-label={slide.title}>
       <button
         type="button"
-        onClick={(e) => { onClickAdd(slide); e.stopPropagation(); }}
+        data-parity-id="parity.app.app.src.components.swipe.image.carousel.b229c3c0fc" onClick={(e) => { onClickAdd(slide); e.stopPropagation(); }}
         className="grid max-w-[260px] place-items-center gap-3 rounded-2xl border border-ink/8 bg-white px-6 py-7 text-center shadow-soft transition-transform active:scale-[0.98]"
         aria-label={slide.title}
       >
@@ -225,7 +225,7 @@ function SwipeCustomPage({ slide, onClickCustom }: SwipeCustomPageProps) {
   return (
     <div
       className="relative h-full w-full"
-      onClick={(e) => { onClickCustom(slide); e.stopPropagation(); }}
+      data-parity-id="parity.app.app.src.components.swipe.image.carousel.45817abff6" onClick={(e) => { onClickCustom(slide); e.stopPropagation(); }}
       aria-label={slide.ariaLabel}
     >
       {slide.content}
@@ -479,7 +479,7 @@ export function SwipeImageCarousel({
       role="region"
       aria-label={ariaLabel ?? `图片 ${safeIndex + 1}/${slides.length}`}
       aria-roledescription={slides.length > 1 ? "carousel" : undefined}
-      onPointerDown={handlePointerDown}
+      data-parity-id="parity.app.app.src.components.swipe.image.carousel.65182710d3" onPointerDown={handlePointerDown}
       onPointerMove={handlePointerMove}
       onPointerUp={handlePointerEnd}
       onPointerCancel={handlePointerEnd}

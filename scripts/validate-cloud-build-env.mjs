@@ -7,6 +7,7 @@ const REQUIRED = {
   NEXT_PUBLIC_ACCOUNT_WORKSPACE_ENABLED: "true",
   NEXT_PUBLIC_CLOUD_SYNC_ENABLED: "true",
 };
+const parityTestBuild = process.env.PARITY_TEST_BUILD === "1";
 
 let failed = false;
 
@@ -53,7 +54,7 @@ const apiBase = env.NEXT_PUBLIC_WARDROBE_API_BASE_URL;
 if (!apiBase) {
   console.error("❌ NEXT_PUBLIC_WARDROBE_API_BASE_URL: 未设置");
   failed = true;
-} else if (!/^https:\/\/.+/.test(apiBase)) {
+} else if (!/^https:\/\/.+/.test(apiBase) && !(parityTestBuild && /^http:\/\/(?:127\.0\.0\.1|localhost)(?::\d+)?(?:\/|$)/.test(apiBase))) {
   console.error(`❌ NEXT_PUBLIC_WARDROBE_API_BASE_URL: 必须使用 HTTPS 绝对 URL: ${apiBase}`);
   failed = true;
 } else {

@@ -49,7 +49,7 @@ export function EditImageActionCard({
               {onRemove ? (
                 <button
                   type="button"
-                  onClick={onRemove}
+                  data-parity-id="parity.app.app.src.components.item.edit.image.action.card.1d8f79eab7" onClick={onRemove}
                   className="absolute right-2 top-2 grid h-7 w-7 place-items-center rounded-[12px] bg-black/55 text-white active:scale-95 transition-transform"
                   aria-label="移除图片"
                 >
@@ -60,7 +60,7 @@ export function EditImageActionCard({
           ) : (
             <button
               type="button"
-              onClick={onAdd}
+              data-parity-id="parity.app.app.src.components.item.edit.image.action.card.c743eb5523" onClick={onAdd}
               className="grid h-full w-full place-items-center rounded-[12px] bg-[#fffffc] text-[#1d2228]/40"
               aria-label={addLabel}
             >
@@ -75,7 +75,7 @@ export function EditImageActionCard({
         <div className="grid min-w-0 flex-1 gap-2">
           <button
             type="button"
-            onClick={onCrop}
+            data-parity-id="parity.app.app.src.components.item.edit.image.action.card.ee383bd490" onClick={onCrop}
             disabled={cropDisabled || !hasImage || !onCrop}
             className="inline-flex h-11 items-center justify-center gap-2 ui-control-radius border border-[rgba(29,34,40,0.10)] bg-[#fffffc] px-3 text-sm font-semibold text-[#1d2228]/70 disabled:opacity-45 whitespace-nowrap"
           >
@@ -84,7 +84,7 @@ export function EditImageActionCard({
           </button>
           <button
             type="button"
-            onClick={onRecognize}
+            data-parity-id="parity.app.app.src.components.item.edit.image.action.card.ecce54371d" onClick={onRecognize}
             disabled={recognizeDisabled || recognizing || !hasImage}
             className="inline-flex h-11 items-center justify-center gap-2 ui-control-radius bg-[#355c7d] px-3 text-sm font-semibold text-[#fffffc] disabled:opacity-60 whitespace-nowrap"
           >

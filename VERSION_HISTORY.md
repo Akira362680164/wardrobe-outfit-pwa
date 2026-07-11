@@ -7,6 +7,272 @@
 - **改动说明**：App 增加全局 session recovery 协调器，线上请求遇到 401 时强制续期，所有并发请求共享同一个 refresh Promise，每个原请求最多重放一次；小程序将设备会话写入微信认证存储，冷启动 hydrate 后把有效 refresh 凭证视为已授权，公共 JSON、multipart 和临时资产二进制上传统一处理 refresh 轮换、并发互斥和一次重放，网络失败保留 refresh token，只有服务端明确撤销、token 重放或账号删除才清除会话；工作区 GET 移除原始 `wx.request` 旁路；服务端专项测试验证每 29 天滚动刷新可持续超过 30 天且始终只有一个 active refresh token。
 - **验证结果**：`npm run typecheck` 通过；`npm --prefix apps/wechat-miniprogram run typecheck` 通过；`npm run test:logic:long-lived-device-session` 通过，覆盖 App/小程序各 10 个并发 401 仅一次 refresh、每请求仅一次重放、小程序轮换凭证冷启动恢复及 refreshable session 不闪登出态；`npm run test:logic:miniprogram-auth-refresh`、`npm run test:logic:online-auth-shell` 通过；服务端 `session.test.ts` 7/7 通过，含 87 天滚动会话；`npm run build` 通过；`git diff --check` 通过。
 - **未验证风险**：本批次尚未在修复版真实 APK/小程序预览上完成 login/refresh/workspace/AI 抓包、断网恢复、主动退出、撤销设备和注销验收；这些在 Task 13 最终回归关闭，当前只可标记 FIXED_UNVERIFIED。
+## 2026-07-11 / v2.1.13-test / Codex — 小程序裁切上传运行时复测与真机差异登记
+
+- **执行 Agent**：Codex 主协调 agent；用户在手机预览同步观察小程序录入页。
+- **目的**：验证小程序裁切/旋转/上传底层修复，同时避免把模拟器能力误报为 APP 等价真机体验。
+- **小程序提交**：独立修复分支 `46b511c`；官方 `auto_preview` 推送成功，包大小 518,259 bytes，未上传体验版、未发布。
+- **模拟器证据**：安全图片夹具经右转 0→90、重置 90→0；首次确认暴露 tainted canvas，修复后生成 82,591 字节有效 JPEG；跨 realm `[object ArrayBuffer]` 修复后临时资产 original/thumbnail 双槽上传成功，队列 ready 且含两个 assetId。
+- **真机观察**：用户报告手机上没有与 APP 相同的缩略图和裁切旋转反馈；因此 `STATIC-INTAKE-001` 仍为 `FIXED_UNVERIFIED`，产品一致性门禁继续 FAIL。最新预览已重新推送，需以该包再次观察才可更新状态。
+- **隐私/环境**：原生文件选择器仅选择仓库安全夹具；本地隔离账号与 E2E API 使用运行时注入，不写源码；小程序本机忽略配置恢复 `urlCheck=true`。
+
+## 2026-07-11 / v2.1.13-test / Codex — 套装首页超长名称横向溢出修复
+
+- **执行 Agent**：Codex 主协调 agent；用户在 Android 真机发现套装名称过长时页面被拉宽，右侧加号和底部导航不能在一屏展示。
+- **目的**：确保任意长度的套装名称只在卡片内部截断，不改变手机视口宽度或固定控件位置。
+- **版本变更**：无；保持 `2.1.13-test`，需重建固定签名测试 APK。
+- **根因**：本周穿搭日卡的名称按钮使用 `truncate` 但缺少 `w-full/min-w-0/max-w-full`，保留长文本固有宽度；套装首页和周卡根容器也没有最终横向溢出边界。
+- **改动文件**：`src/components/outfit-list-view.tsx`、`src/components/outfit-weekly-plan-strip.tsx`、`src/components/outfit-plan-day-card.tsx`、Android parity regression suite/test、静态缺陷清单、`VERSION_HISTORY.md`。
+- **改动说明**：名称按钮限制为卡片宽度并省略显示；页面、周卡与日卡增加 `min-w-0/max-w-full` 和局部横向裁剪，不修改服务端名称或详情页完整文本。
+- **验证结果**：`npm run typecheck`、Android parity regression 单测 3/3、`git diff --check` 通过；新增 200+ 字符名称真机用例同时断言 document/body scrollWidth、`+计划`、全局新建和底部导航边界。
+- **真机验证**：MEIZU 21 Pro / Android 16 安装固定签名 `app-release-0330ec0.apk`；200+ 字符套装名下 `innerWidth=documentScrollWidth=bodyScrollWidth=390`，`+计划`、全局新建和底部导航右边界分别为 374、370、374，均在视口内；截图和 logcat 无本 App 崩溃。
+- **缺陷状态**：`RUNTIME-ANDROID-002` 更新为 `VERIFIED`；Android 底部系统栏白条 `RUNTIME-ANDROID-001` 仍为独立 OPEN 缺陷。
+
+## 2026-07-11 / v2.1.13-test / Codex — 月历取消已穿入口接线修复
+
+- **执行 Agent**：Codex 主协调 agent；用户在 MEIZU 21 Pro 真机同步观察并确认 7 月 11 日“已穿”状态无法取消。
+- **目的**：修复 App 月历日卡已正确显示“实际已穿”，但因月历入口漏传取消回调而不渲染“取消已穿”的问题。
+- **版本变更**：无；保持 `2.1.13-test`，需重建固定签名测试 APK 后定向复测。
+- **运行证据**：Android parity 用例读取到展开卡 `height=129.714px`、`opacity=1`，文本包含“实际已穿”和目标套装，但 `cancelWornCount=0`；源码确认周视图已传 `onCancelWear={handleCancelOutfitWearForDate}`，月历入口缺失同一属性。
+- **改动文件**：`src/components/outfit-list-view.tsx`、`scripts/android-e2e/suites/parity-regressions.ts`、`VERSION_HISTORY.md`。
+- **改动说明**：月历复用现有 `handleCancelOutfitWearForDate`；定向回归增加稳定等待、DOM 状态证据和低速点击策略，避免魅族系统手势把 WebView 坐标点击误识别为上滑最近任务。
+- **验证结果**：`npm run typecheck`、online repository packing 单测 2/2、Android parity regression 单测 3/3、`git diff --check` 通过；打包清单 `STATIC-OUTFITS-003` 在同一真机低速重跑通过。
+- **未验证风险**：本条提交后的 APK 尚未重建；`STATIC-OUTFITS-004` 必须在新 APK 上完成 UI 入口、服务端计划恢复、wornDates 清除与 wear-event 删除读回后才能标 VERIFIED。Android 底部系统导航栏纯白与页面 ambient 背景不一致另记视觉缺陷，尚未修复。
+
+## 2026-07-11 / v2.1.13-test / Codex — 计划详情同步后的 revision 刷新修复
+
+- **执行 Agent**：Codex 主协调 agent；一个文件隔离 subagent 提供四项 Android 定向回归 suite，主 agent 接入 runner 并在 MEIZU 21 Pro 真机发现运行时缺陷。
+- **目的**：修复进入旅行计划详情时打包清单同步已推进服务端 revision、详情仍持有旧 revision，导致随后删除/写入冲突的问题。
+- **版本变更**：无；保持 `2.1.13-test`，测试 harness APK 后续重建。
+- **运行证据**：`parity:STATIC-OUTFITS-001` 首轮服务端 readback 显示计划 revision 已从 1 变为 2 且未删除，UI 停留详情页；`STATIC-OUTFITS-002` 展开未来日计划后没有“更改/删除”入口，组件条件实证为缺少 `onChangeOutfit`；入口修复后删除成功，但服务端清单被覆盖为空，追踪到 APP 只读取旧字段 `packingChecklistItems`。
+- **改动文件**：`src/components/outfit-list-view.tsx`、`src/components/outfit-planning-calendar-view.tsx`、`src/lib/online/online-repository.ts`、对应 packing unit test、Android parity regression suite/runner、`VERSION_HISTORY.md`。
+- **改动说明**：`openPlanDetail` 在 `syncPackingChecklistForPlan` 成功后强制 `onPlanDataChange()`，刷新计划实体后才进入详情；月历展开的日计划卡补传 `onChangeOutfit`；repository 优先读取服务端规范字段 `packingChecklist`，并兼容旧 `packingChecklistItems`，防止同步误清空手工物品。
+- **验证计划**：typecheck、Android parity suite 单测、重建固定签名本地测试 APK，真机重跑 `STATIC-OUTFITS-001~004`。
+- **未验证风险**：新 APK 真机结果完成前不得把 `STATIC-OUTFITS-001~004` 标 VERIFIED。
+
+## 2026-07-11 / v2.1.13-test / Codex — 小程序退出会话撤销闭环
+
+- **执行 Agent**：Codex 主协调 agent。
+- **目的**：对 `STATIC-SETTINGS-002` 执行真实退出与旧 token 失效验证，并修复运行时发现的空 JSON 请求兼容问题。
+- **版本变更**：无；小程序修复分支新增提交 `1456678`。
+- **运行发现与修复**：微信运行时拒绝带 JSON Content-Type 但无 body 的 logout；小程序 `logoutCurrentSession` 改为显式发送 `{}`，服务端接口与清理顺序不变。
+- **验证结果**：小程序 typecheck、微信 CLI 编译通过；隔离账号真实登录后 POST logout 成功，本地 session 清除；旧 access token 只在运行时闭包中使用且未输出/落盘，workspace overview 返回 401。
+- **缺陷状态**：`STATIC-SETTINGS-002` 更新为 `VERIFIED`。
+- **未验证风险**：手机预览端未重复该自动化用例；服务端撤销与本地清理核心闭环已由模拟器 + 本地 E2E API 证明。
+
+## 2026-07-11 / v2.1.13-test / Codex — 小程序种草转换与旅行打包定向复测
+
+- **执行 Agent**：Codex 主协调 agent；三个文件隔离 subagent 新增小程序录入、种草媒体和旅行打包的严格证据采集器，主 agent 使用微信 CLI 执行真实服务端链路。
+- **目的**：验证小程序修复分支的高风险 CRUD/级联/打包持久化，并为后续重复回归提供四阶段采集器。
+- **版本变更**：无；保持 `2.1.13-test`，运行源码为小程序修复提交 `baefd42`。
+- **种草结果**：真实默认衣橱位置被读取并选中；转换成功产生 purchased + converted garment readback。撤销弹层取消后 revision 保持 4、转换引用不变；确认后 revision=5、引用清空，PostgreSQL 显示转换 garment 已软删除。
+- **打包结果**：toggle、manual add（“测试收纳袋”数量 2）、mark-all、reset 依次推进 plan revision 2→5；重启登录后强制 GET 仍为 total=4、packed=0 且手动物品存在。
+- **缺陷状态**：`STATIC-WISHLIST-002/003` 与 `STATIC-OUTFITS-005` 更新为 `VERIFIED`；`STATIC-WISHLIST-001` 媒体重裁仍等待安全原生图片 fixture，不提前标记通过。
+- **基础设施**：新增 mini intake/wishlist/packing regression 采集器，危险 fixture 精确 allowlist；四阶段 screenshot/UI/route/network 与 server-readback 缺失时不得 PASS，原生媒体不可自动化时明确 BLOCKED。
+- **未验证风险**：采集器的真实 driver/CLI 接入仍需补齐统一入口；本轮命令级证据已验证业务状态，但最终报告仍以落盘 action evidence 完整性为准。
+
+## 2026-07-11 / v2.1.13-test / Codex — 小程序诊断真实闭环与域级动作映射
+
+- **执行 Agent**：Codex 主协调 agent；三个文件隔离 subagent 分别建立衣橱/录入、套装/推荐、种草/设置的语义 Action 映射，主 agent 恢复微信 CLI 自动化并执行诊断复测。
+- **目的**：把通用 BFS runner 连接到真实 route、fixture、parity-id/callMethod，同时验证小程序诊断修复不再是占位实现。
+- **版本变更**：无；保持 `2.1.13-test`。小程序修复基线为 `baefd42`，CLI 预览包大小 517,537 bytes。
+- **运行结果**：微信 CLI 编译、`simulator_open_page`、`simulator_refresh` 与 automation 已恢复；小程序诊断创建工单 `WD-20260711-989CCC`，POST create/PUT content 均 HTTP 200，UI 到达 success。PostgreSQL readback 为 uploaded、SHA-256 `deebbce4a39b6df5e230637ce81c9e2a39880dcc2742a4913cb1b3ce64e706ab`、695 bytes、items=6/outfits=1/wishlist=4。
+- **缺陷状态**：`STATIC-SETTINGS-001` 更新为 `VERIFIED`；执行证据包含四阶段截图、UI tree、route、脱敏 network 与 server-readback。
+- **映射结果**：新增三个域映射表；衣橱/录入 38 obligations 中 26 mapped，套装/推荐 68 中 29 mapped，种草/设置 44 中 29 mapped；其余全部明确 `semanticMappingMissing`，不得假 PASS。
+- **验证结果**：映射测试、通用执行器测试、BFS runner 测试和完整 typecheck 在本批提交前执行；静态缺陷门禁继续以未执行义务为 FAIL。
+- **未验证风险**：小程序裁切、媒体重裁、旅行打包和其余映射动作仍需逐项运行；测试期间仅临时关闭 DevTools URL 校验，完成本地 API 复测后恢复。
+
+## 2026-07-11 / v2.1.13-test / Codex — Manifest BFS 严格证据执行骨架
+
+- **执行 Agent**：Codex 主协调 agent；三个文件隔离 subagent 分别实现 obligation/checkpoint runner、APP 通用执行器和小程序通用执行器，主 agent 接入 CLI/package 并复核。
+- **目的**：把 51 Screen / 125 语义 Action 转为逐平台可恢复的 250 条执行义务，严格阻止静态阅读或不完整截图被误报为 PASS。
+- **版本变更**：无；保持 `2.1.13-test`，仅新增 parity 测试基础设施。
+- **能力**：支持 domain/screen/platform 过滤、execution evidence 递归导入、原子 checkpoint 与断点恢复；APP/小程序执行器统一支持 route、parity-id 点击/输入、返回、稳定等待、四阶段截图/UI/route/network，危险副作用必须命中 fixture allowlist；小程序连接失败和语义映射缺失分别落 `BLOCKED`/`NOT_EXECUTED`。
+- **严格门禁**：四阶段 PNG、UI tree、route 缺一不可 PASS；声明 serverAssertion 的 Action 还必须具备 network 与 server-readback。当前导入结果为 obligations=250、PASS=4、DEFECT=1、NOT_EXECUTED=245，审计完整性门禁继续 FAIL。
+- **验证结果**：BFS runner 5/5、通用执行器 11/11、完整 `npm run typecheck`、`git diff --check` 通过；CLI `npm run parity:bfs -- --run-id parity-build-20260711-001` 成功生成 `bfs-checkpoint.json`。
+- **未验证风险**：通用 driver 仍需为 245 条义务补齐具体 route/fixture/action 映射并实际运行；微信 DevTools 当前连接恢复仍在处理中，任何连接失败项不得降级为 PASS。
+
+## 2026-07-11 / v2.1.13-test / Codex — Android Full 深链路与删除引用级联闭环
+
+- **执行 Agent**：Codex 主协调 agent；一个文件隔离 subagent 实现服务端 garment 删除级联，主 agent 复核、补 E2E 漂移并在真实设备复测。
+- **目的**：闭合真实图片恢复、种草图片转换、引用删除、故障重试、无 Key 兜底和 Android 原生边界，并修复运行时发现的跨实体悬空引用。
+- **版本变更**：无；保持 `2.1.13-test`。测试 APK 为固定签名 `CN=fangzheng` 的 `app-release-dbc4956.apk`。
+- **业务修复**：删除 garment 与撤销种草购买删除转换 garment 时，在同一事务清理 outfit、outfit-plan、已购买 wishlist 和 wear-event 的 UUID/legacy item-id 引用；保留其他衣物及购买历史，所有受影响实体递增 revision、更新设备/时间并写 change log。
+- **测试框架修复**：Full 清数据重登复用当前“邮箱或手机号”登录与协议勾选助手；故障注入在确认失败文案和保存页仍可操作后才清除，避免测试抢先解除故障；ADB 截图缓冲适配真实竖屏分辨率。
+- **验证结果**：服务端定向测试 5/5、`npm run api:typecheck`、静态缺陷门禁和 `git diff --check` 通过；MEIZU 21 Pro / Android 16 上 `full:cascade-delete-references`、`full:network-failure-retry`、`full:native-boundaries` 通过，此前 `full:image-garment-asset-restore`、`full:wishlist-image-asset-convert`、`full:ai-no-key-fallback-entry` 已通过。`STATIC-INFRA-007` 与新增 `RUNTIME-SERVER-001` 更新为 `VERIFIED`。
+- **未验证风险**：跨端 51 Screen 的全量 BFS 与小程序裁切/媒体/打包真机复测仍在后续审计周期执行；本记录不代表最终一致性门禁已通过。
+
+## 2026-07-11 / v2.1.13-test / Codex — 小程序裁切、媒体与打包修复登记
+
+- **执行 Agent**：Codex 主协调 agent（汇总独立小程序修复分支 `baefd42` 的验证结果）。
+- **目的**：将 `STATIC-INTAKE-001/002`、`STATIC-WISHLIST-001`、`STATIC-OUTFITS-005` 从 OPEN 更新为 `FIXED_UNVERIFIED`，纳入统一报告和后续定向复测。
+- **版本变更**：无；本分支只更新审计缺陷状态，不复制小程序业务源码。
+- **验证结果**：小程序完整 typecheck 与 diff check 已在独立分支通过；四项仍等待微信真机裁切/图片/AI/force-stop readback，不标 VERIFIED。
+
+## 2026-07-11 / v2.1.13-test / Codex — Android Smoke/Critical 真机闭环与 E2E 漂移修复
+
+- **执行 Agent**：Codex 主协调 agent（未新增 subagent）。
+- **目的**：在 MEIZU 21 Pro 上运行插桩/修复版 APK 的真实 Smoke 与 Critical，并修复测试框架相对当前产品 UI/Android 环境的漂移。
+- **版本变更**：无；保持 `2.1.13-test`。测试 APK `app-release-dbc4956.apk`，SHA-256 `69d89001c327e150479f501e19764fd43f54834d0622bec275f706d5f3db096f`，固定签名 `CN=fangzheng`。
+- **测试框架修复**：main 调用移到类初始化后；当前注册入口改为 API 隔离账号 seed + 真实 UI 登录，补登录协议；账号页标题更新为“账号安全”；强制截图改为 ADB 原生截图；崩溃筛选只匹配本 App，排除其他进程正常 `AndroidRuntime` 退出；critical API 方法绑定回 ctx.api；详情页先返回再切 Tab；视口外菜单使用 DOM click 兜底。
+- **验证结果**：Smoke 4/4 通过（启动、注册种子/真实 UI 登录、服务端退出/重登、默认衣橱单例、刷新/force-stop 恢复、主 Tab/FAB）；Critical 5/5 通过（单品创建/详情/编辑/删除、种草转衣橱/撤销级联、套装计划/穿着一致性、账号隔离、退出/重登/force-stop 恢复）。证据位于 `artifacts/parity/parity-build-20260711-001/android-e2e/{smoke-rerun4,critical-rerun4}`。
+- **缺陷状态**：`STATIC-INFRA-006` 已以真实认证 workspace 请求验证为 `VERIFIED`；图片 mutationId 的 `STATIC-INFRA-007` 仍等待 full 带图读回。
+- **未验证风险**：Full 深链路、故障注入、真实图片恢复和 APP 打包清单 force-stop 仍未执行。
+
+## 2026-07-11 / v2.1.13-test / Codex — Android E2E deviceId 与图片 mutationId P0 修复
+
+- **执行 Agent**：Codex 主协调 agent；一个文件隔离 subagent 完成 Android E2E helper 修复，主 agent 复核并更新缺陷状态。
+- **目的**：修复 `STATIC-INFRA-006/007`，让真实 APK E2E 的认证 Header 与图片资产绑定契约可用。
+- **版本变更**：无；保持 `2.1.13-test`，只修改测试基础设施。
+- **改动文件**：`scripts/android-e2e/{run-android-e2e.ts,suites/helpers.ts,tests/helpers.test.ts}`、`scripts/parity/config/static-defects.json`、`VERSION_HISTORY.md`。
+- **改动说明**：register/login 将请求使用的 deviceId 合并回 auth session；createImageEntity 只生成一次 clientMutationId，并贯穿临时资产 session、上传和 entity create，未放宽服务端绑定校验。
+- **验证结果**：定向 helper 测试 1/1、`npm run typecheck`、完整 `npm run test:logic`、`git diff --check` 通过；两个缺陷更新为 `FIXED_UNVERIFIED`。
+- **未验证风险**：尚未重新运行真实 APK critical/full 与带图实体 original/thumbnail readback，完成前不得标 `VERIFIED`。
+
+## 2026-07-11 / v2.1.13-test / Codex — 穿搭计划与打包清单四项 APP P0 修复
+
+- **执行 Agent**：Codex 主协调 agent；一个文件隔离 subagent 修复指定三个组件，主 agent 复核缺陷状态并运行完整验证。
+- **目的**：修复 `STATIC-OUTFITS-001~004` 中旅行计划删除、日计划删除、打包清单写入和取消已穿参数的 APP 基准错误，避免假成功和错误服务端写入。
+- **版本变更**：无；保持 `2.1.13-test`。
+- **改动文件**：`src/components/{outfit-list-view.tsx,outfit-plan-day-card.tsx,plan-packing-checklist-view.tsx}`、`scripts/parity/config/static-defects.json`、`VERSION_HISTORY.md`。
+- **改动说明**：计划与日条目删除改用完整实体并 await repository result，失败保留确认层、成功前 refresh；日条目删除后只以剩余条目同步 checklist；toggle/add/all/reset/open-sync 全部走 `repoUpdatePackingChecklist`，失败保留弹层/草稿；cancel-worn 参数顺序改为 dateKey、outfitId。
+- **验证结果**：`npm run typecheck`、完整 `npm run test:logic`、打包清单 40/40、穿着状态 36/36、穿搭计划 51/51、`git diff --check` 通过；四个缺陷改为 `FIXED_UNVERIFIED`。
+- **风险门禁**：critical（服务端 CRUD、计划/穿着一致性和打包清单持久化）。
+- **未验证风险**：尚未在真实 APK 上执行删除后的服务端 absence、force-stop 后 checklist readback 和 cancel-worn 反向状态复原，因此不得标 `VERIFIED`。
+
+## 2026-07-11 / v2.1.13-test / Codex — 插桩版固定签名测试 APK 真机验收
+
+- **执行 Agent**：Codex 主协调 agent（未新增 subagent）。
+- **目的**：把 APP 全 Action parity-id 与首批 P0 guard 修复构建进测试 APK，并确认真实 Android 设备可安装、启动和连接隔离 API。
+- **版本变更**：无；保持 `2.1.13-test` / `versionCode=20113`。该 APK 是 parity 测试 harness，不是生产交付包。
+- **构建产物**：`apk-local/app-release-2992cc1d.apk`，SHA-256 `5e56fc2b2d5b5d44bfb88a121b283ab9bab04120a284d249089e98206d066220`，包名 `com.wardrobe.outfit`，固定签名 `CN=fangzheng`，API 为 `http://127.0.0.1:3100`（仅配合 `adb reverse`）。
+- **验证结果**：`npm run android:build:test-harness` 成功；真机 MEIZU 21 Pro / Android 16 使用 `adb install -r` 成功，随后 `pm clear`、`adb reverse tcp:3100`、冷启动成功；系统安装版本和前台 `MainActivity` 正确，筛选 logcat 未发现 `FATAL` 或 `AndroidRuntime`。
+- **未验证风险**：该轮仅验证安装/启动基础门禁；插桩版完整 APP BFS、Android 返回键矩阵和全部服务端副作用仍在后续审计周期执行。
+
+## 2026-07-11 / v2.1.13-test / Codex — APP 全 Action 插桩与首批服务端 P0 修复
+
+- **执行 Agent**：Codex 主协调 agent；两个文件互斥 subagent 分别补齐 APP 动态循环 a–m、n–z 插桩，主 agent 应用静态计划、处理共享控件透传、修复服务端 P0 并完成门禁。
+- **目的**：让 APP 全部运行时 Action 具备稳定 parity-id，并优先修复审计发现的诊断轨迹越权关联、测试 reset 占位/漏表和永久删除策略问题。
+- **版本变更**：无；当前应用版本仍为 `2.1.13-test`。parity-id 只用于测试定位，不改变业务事件、视觉或服务端契约。
+- **改动文件**：`src/components/**/*.tsx` 共 55 个插桩文件；`services/wardrobe-api/src/{diagnostics/service.ts,admin/reset-test-data.ts}`、对应 diagnostics/reset 测试；`scripts/test/drop-test-schema.ts`、`package.json`、`scripts/parity/config/static-defects.json`、`VERSION_HISTORY.md`。
+- **插桩结果**：静态控件使用确定性 ID；循环控件追加 item/id/key/date/value 等稳定业务键；NavButton、MobileNavButton、SettingsSwitch 和 WardrobeRow 由可选 parityId 透传到底层 DOM，并保留 data-parity-id 源定位。重新扫描 APP 562/562 Action、小程序 300/300 Action 均有 parity-id，缺失=0、冲突=0、unresolved=0。
+- **P0 修复**：诊断 trace 关联同时强制 requestId、userIdHash、deviceIdHash 相等；`test:env:reset` 改为真实 guarded API reset CLI，32/32 schema 表精确覆盖并由 schema-derived 测试约束；旧 schema teardown 不再使用 `fs.rmSync(recursive, force)`，改用参数安全的 psql 和显式 `trash`，缺少废纸篓能力时失败关闭。
+- **验证结果**：`npm run typecheck`、`npm run api:typecheck`、diagnostics 11/11、reset 3/3、reset E2E 数据库 dry-run（32 tables、471 storage keys、无写入）、instrumentation check、inventory check 和 `git diff --check` 通过；`STATIC-SERVER-001`、`STATIC-INFRA-001/002/003` 更新为 `FIXED_UNVERIFIED`。
+- **风险门禁**：critical（全 APP Action 定位契约、诊断隐私和测试环境清理）。
+- **未验证风险**：trace 修复尚缺真实双用户/双设备碰撞数据库测试；reset 尚未对当前 fixture 执行清理与 after=0/storage=0 验证；parity-id 运行时唯一性尚未覆盖所有循环 fixture；4 个缺陷在完成相应集成复测前不得标 `VERIFIED`。
+
+## 2026-07-11 / v2.1.13-test / Codex — 三组跨端样例、全量 manifest 与静态审核报告
+
+- **执行 Agent**：Codex 主协调 agent；使用三个并行 subagent，分别限定文件所有权完成报告生成器、剩余 manifest 和 parity-id 插桩规划器，主 agent 负责真机/DevTools 执行、合并、隐私门禁与验证。
+- **目的**：完成计划要求的衣物详情、诊断上传、穿搭月历三组高价值样例，补齐所有语义 Screen 的详细执行定义，并产出可人工审核的静态 HTML 与机器可读报告。
+- **版本变更**：无；当前应用版本仍为 `2.1.13-test`。本批次未修改业务源码、未上传小程序体验版，所有写操作仅指向 allowlist 的本机 E2E API/数据库和隔离账号。
+- **改动文件**：`scripts/parity/{adapters/app.ts,adapters/mini.ts,instrumentation.ts,report.ts,cli.ts,manifests/{shared-shell,intake,recommendations,wishlist,statistics,settings}.yaml}`、`package.json`、`VERSION_HISTORY.md`。
+- **框架结果**：51/51 语义 Screen 都具备详细 manifest，覆盖 165 个 State/Checkpoint、125 个核心语义 Action，APP 96/96 与小程序 35/35 静态 Screen 来源已映射；884 个静态 Action 合并为 862 个真实控件，705 个可自动插入确定性 parity-id、157 个动态循环要求稳定业务键，冲突和无法定位均为 0，默认只生成 dry-run plan。
+- **运行样例**：衣物详情 APP “更多操作” PASS，小程序因四个行内操作取代三点菜单而登记 `STATIC-WARDROBE-004` DEFECT；诊断 APP 真实创建并上传工单 `WD-20260711-0F4368`，PostgreSQL readback 为 `uploaded`、SHA-256 `dde866bbb64fd7ac24ab7c346d96147444c2f9f435b246cd0d791fb590d8ec3e`、8084 bytes、events=9/items=6/outfits=1/wishlist=4，小程序仅 toast 且无诊断请求，登记 `STATIC-SETTINGS-001` DEFECT；日历两端“下一月”均从 2026 年 7 月切至 8 月并 PASS。
+- **额外运行发现**：APP access token 过期后诊断上传显示“登录已过期”而未自动刷新，失败弹层已作为运行证据保留；随后仅清除本机 App 会话并重新登录完成成功闭环。微信项目窗口关闭并从锁定 worktree 重新打开后，运行 WXML 与 `b567cee7` 源码的 `data-delta`/`bindtap` 一致，日历证据有效。
+- **报告产物**：生成 `report/index.html`、8 个业务域页、51 个 Screen 详情页、`coverage.json`、`defects.json`、`results.json`、`repair-plan.md`、`junit.xml` 和脱敏 baseline lock；页面包含 APP/小程序并排、透明叠加滑杆、原图入口、Action/副作用/服务端断言和明确 `NOT_EXECUTED` 状态。当前样例口径为 PASS=4、DEFECT=2，静态缺陷 51 条（P0=18/P1=30/P2=3）。
+- **验证结果**：manifest 与 static-defect 门禁 0 error/0 warning；APP 固定签名真机和微信 DevTools 共生成 6 个 execution、46 张样例/设备截图及 UI/route/network/server readback 证据；报告 JSON、JUnit XML、本地链接和秘密扫描通过；独立 TypeScript 与 `git diff --check` 通过。
+- **风险门禁**：critical（真机诊断写入、测试会话、跨端执行器、报告隐私和全量覆盖分母）。
+- **未验证风险**：当前只执行 6/884 个静态 Action，878 个仍为 `NOT_EXECUTED`，审计完整性门禁和产品一致性门禁均未通过；705 个自动 parity-id 和 157 个动态循环 ID 尚未应用到业务源码；51 个 OPEN 缺陷尚未修复，报告当前只能作为阶段性审核报告，不能作为一致性通过结论。
+
+## 2026-07-11 / v2.1.13-test / Codex — 小程序执行器样例与详情操作差异实证
+
+- **执行 Agent**：Codex 主协调 agent（未新增 subagent）。
+- **目的**：使用微信开发者工具 Automator、隔离测试 API 和真实 fixture 完成小程序首个对应 Action 样例，并验证微信胶囊、返回区域、毛玻璃、弹层与网络证据采集。
+- **版本变更**：无；当前应用版本仍为 `2.1.13-test`。本批次未修改小程序业务源码、未上传体验版，运行时 API 覆盖仅存在于当前 DevTools 会话。
+- **改动文件**：`scripts/parity/{adapters/mini.ts,cli.ts}`、`package.json`、`VERSION_HISTORY.md`。
+- **改动说明**：新增 wechatide 执行器，凭据只从 `0600` runtime session 读取并在子进程内写入页面状态；自动设置 localhost 测试 API、登录、打开 fixture 单品详情、调用详情操作与关闭方法；每个检查点保存模拟器原图、页面数据、按钮/图片节点和路由栈。网络证据只从 DevTools 缓冲提取 method、URL、status，禁止保存请求/响应正文、Header 或凭据。
+- **验证结果**：独立 `tsc` 与 `git diff --check` 通过；DevTools 使用 APP 隔离账号之外的 mini fixture 账号登录，`POST /api/auth/login`、garments、overview 和指定 garment readback 均为 HTTP 200；生成 5 个截图检查点及 UI/route/network/execution 证据。运行实证确认 `STATIC-WARDROBE-004`：APP 为右上角三点菜单（编辑/移动/删除），小程序为四个行内按钮（编辑/重新识别/AI 建议/删除）且缺移动，样例按 `DEFECT` 落盘。截图确认胶囊位于右上安全区、胶囊本体不作为缺陷；返回区存在明显浅色圆形白框，详情背景与删除 Sheet 毛玻璃/遮罩可见。
+- **隐私门禁**：首次直接保存 DevTools network 原始缓冲时发现其包含转义后的登录正文和 token；该临时文件在提交前已按废纸篓规则移除，执行器改成仅保存结构化元数据，最终 evidence 通过密码、token、Bearer 和 JWT 扫描。
+- **风险门禁**：critical（小程序自动登录、DevTools 网络缓冲和真实测试会话）。
+- **未验证风险**：当前只覆盖小程序衣物详情对应样例；返回按钮白框和两端详情操作层级仍是 OPEN 缺陷，尚未修复和定向复测；手机二维码预览已由用户装载，但本批自动化证据来自 DevTools 模拟器，手机真机全量路径仍待后续周期。
+
+## 2026-07-11 / v2.1.13-test / Codex — APP 真机一致性执行器样例与本地测试 APK
+
+- **执行 Agent**：Codex 主协调 agent（未新增 subagent）。
+- **目的**：用固定签名 Android APK、真实隔离 fixture 和设备 WebView 完成首个可重复的一致性 Action 样例，验证执行器能落盘操作前后截图、UI 树、路由、网络和系统返回证据。
+- **版本变更**：无；当前应用版本仍为 `2.1.13-test`。本批次只放宽显式 `PARITY_TEST_BUILD=1` 下的 localhost 测试构建，不改变正式构建的 HTTPS 门禁或业务行为。
+- **改动文件**：`scripts/parity/{adapters/app.ts,cli.ts}`、`scripts/{validate-build.mjs,validate-cloud-build-env.mjs,test/write-apk-build-manifest.mjs}`、`package.json`、`VERSION_HISTORY.md`。
+- **改动说明**：新增 ADB + WebView CDP 执行器，凭据仅从 `0600` runtime session 内存读取；真实登录后定位 fixture 单品，执行“更多操作”弹层与 Android 系统返回；每个检查点保存 ADB 原生整屏图、交互 UI 树和路由状态，并保存脱敏网络记录。构建校验现可继承调用方显式环境，本地 HTTP 仅允许 parity 测试标记；APK manifest writer 同时识别 Gradle 输出和已归档的 `apk-local` 最新文件。
+- **验证结果**：独立 `tsc` 与 `git diff --check` 通过；构建 `apk-local/app-release-74bba388.apk`，包名 `com.wardrobe.outfit`、`versionName=2.1.13-test`、`versionCode=20113`、签名 `CN=fangzheng`，SHA-256 `4ab55a52dc8dba9bc173121e4b80821dc1e3a27c00988f16239228646d32c3f8`；真机 MEIZU 21 Pro / Android 16 以 `adb install -r` 安装，`adb reverse tcp:3100` 连接本地 E2E API，清数据后用隔离账号登录并读到 6 件 fixture 衣物；`garment.detail.more` 样例 PASS，生成 5 个强制检查点及 UI/route/network/execution 证据，系统返回关闭弹层，logcat 未发现 `FATAL`/`AndroidRuntime`。
+- **风险门禁**：high（本地测试 APK、真机自动操作和测试账号会话）。
+- **未验证风险**：当前仅完成衣物详情“更多操作”样例，尚未覆盖 APP 其余 Action、小程序对应样例、服务端写入副作用和全量报告；测试 APK 不得作为生产交付包。
+
+## 2026-07-11 / v2.1.13-test / Codex — 双平台测试 fixture 真实 seed 与读回
+
+- **执行 Agent**：Codex 主协调 agent（未新增 subagent）。
+- **目的**：把声明式 fixture 转成 APP/小程序相互隔离的真实测试 API 数据，并保存不含凭据的实体别名清单供页面执行器使用。
+- **版本变更**：无；当前应用版本仍为 `2.1.13-test`。本批次只写入本机 allowlist 通过的 `wardrobe_e2e` 数据库和 E2E storage，不连接生产 API、不改业务代码、不打 APK。
+- **改动文件**：`scripts/parity/{seed.ts,lib/api.ts,cli.ts,config/static-defects.json}`、`.gitignore`、`package.json`、`VERSION_HISTORY.md`。
+- **改动说明**：新增只接受 localhost API 的关联 Header 客户端；按 run/platform 生成确定性手机号、deviceId 和 clientMutationId；注册或复用隔离账号，上传 deterministic original/thumbnail，创建衣物、套装、种草、旅行和日计划并执行 overview readback；token/密码只写 `.parity-runtime` 的 `0600` 文件，artifact 只保存 masked account、实体 ID/revision 和计数。
+- **验证结果**：APP 与小程序 seed 均成功；每端分别读回 garments=6、outfits=1、wishlist=4、tripPlans=2、outfitPlans=1、locations=1，共 14 个别名实体；server artifact 扫描不含 accessToken、refreshToken、测试密码、Bearer 或 MiniMax Key；两个 runtime session 文件权限均为 `-rw-------`；静态缺陷门禁更新后通过（51 条，P0=18/P1=30/P2=3）；独立 `tsc` 和 `git diff --check` 通过。
+- **风险门禁**：critical（真实测试数据写入、资产绑定与测试会话）。
+- **未验证风险**：尚未实现按 case 的业务实体 teardown；当前依赖唯一 namespace 和幂等 mutationId 隔离。运行中证实既有 Android E2E 未保留 deviceId，且图片会话/实体创建 mutationId 不一致，已新增两条 P0 基础设施缺陷，尚未修复。
+
+## 2026-07-11 / v2.1.13-test / Codex — Fixture、平台例外与本机环境门禁
+
+- **执行 Agent**：Codex 主协调 agent（未新增 subagent）。
+- **目的**：为详细状态图提供可重复的账号、衣物、套装、日历、种草、设置、诊断、网络和视觉 fixture，并在任何写入前证明数据库、设备、预览 SHA 与密钥环境安全可用。
+- **版本变更**：无；当前应用版本仍为 `2.1.13-test`。本批次不写测试数据、不改业务行为、不打 APK、不上传小程序体验版。
+- **改动文件**：`scripts/parity/{environment.ts,fixtures.ts,fixtures/catalog.json,config/platform-exceptions.yaml,cli.ts,types.ts}`、`package.json`、`VERSION_HISTORY.md`。
+- **改动说明**：新增 33 个 fixture（3 个破坏性实体均要求独立使用）；固定 2026-07-15 / Asia/Shanghai 月历 golden matrix；MiniMax fixture 只记录可用性不保存 Key；将用户已批准的 `WX-CAPSULE-001` 物化为唯一平台例外，只允许运行时胶囊矩形与 8px 左安全边距；新增无明文输出的 E2E env、数据库 allowlist、JWT 文件、ADB、预览 SHA 和 Key 可用性检查。
+- **验证结果**：`npm run parity:fixture:check` 无 error/warning 通过（33 fixture，destructive=3）；`npm run parity:environment:check` 无 error/warning 通过，4/4 E2E 变量已配置，本地 `wardrobe_e2e` PostgreSQL 可达、Android 真机 ready、预览 SHA 匹配、MiniMax Key 可用；独立 `tsc` 编译和 `git diff --check` 通过。
+- **风险门禁**：high（后续 fixture 写入、真机与 live AI 的执行前置）。
+- **未验证风险**：fixture 当前只有声明和门禁，尚未实现 API seed/readback/teardown；未生成任何生产或测试数据库写入，也未验证真实 QQ 邮件收件。
+
+## 2026-07-11 / v2.1.13-test / Codex — 静态缺陷库与证据门禁
+
+- **执行 Agent**：Codex 主协调 agent（汇总三个成对业务域 subagent 和服务端/测试资产 subagent 的只读源码证据）。
+- **目的**：把成对盘点发现的确定差异、APP 基准写入错误、隐私/会话风险和测试基础设施阻断转成可校验的结构化缺陷，防止后续只关注像素差而遗漏确定的业务问题。
+- **版本变更**：无；当前应用版本仍为 `2.1.13-test`。本批次不修复缺陷、不改业务行为、不打 APK、不上传小程序体验版。
+- **改动文件**：`scripts/parity/{defects.ts,types.ts,config/static-defects.json,cli.ts}`、`package.json`、`VERSION_HISTORY.md`。
+- **改动说明**：新增 StaticDefect schema、唯一 defectId、语义 Screen、源码证据、验收标准、疑似文件、静态确认/运行确认和状态校验；登记衣橱、录入、种草、套装计划、设置/账号、诊断、隐私及测试 reset/report 共 49 条 OPEN 缺陷；APP 基准问题与小程序 parity 问题分开分类，未把静态候选直接标记 VERIFIED。
+- **验证结果**：`npm run parity:defects:static:check` 无 error/warning 通过；共 49 条（P0=16、P1=30、P2=3、P3=0），其中 46 条有静态确定证据、3 条明确要求运行确认；独立 `tsc` 编译和 `git diff --check` 通过。
+- **风险门禁**：critical（包含会话未吊销、诊断 trace 所有权、破坏性操作无确认、APP 写入假成功、测试 reset 占位等 P0）。
+- **未验证风险**：所有缺陷仍为 OPEN；尚未附运行截图、网络记录、服务端 readback 或真机复现证据，修复阶段不得仅凭本文件把状态改成 VERIFIED。
+
+## 2026-07-11 / v2.1.13-test / Codex — 双端 Screen 语义映射与三个样板 manifest
+
+- **执行 Agent**：Codex 主协调 agent；使用三个只读成对业务域 subagent 分别映射共享壳层/衣橱、录入/种草、套装/设置，每个 subagent 同时读取独立 APP 与小程序 detached worktree。
+- **目的**：把静态库存转换为 APP 与小程序的业务语义映射，区分真正 Screen、Screen 内 State、共享组件、平台页和缺陷页，并为衣物详情、诊断上传、套装计划月历建立首批可执行详细 manifest。
+- **版本变更**：无；当前应用版本仍为 `2.1.13-test`。本批次不改业务行为、不打 APK、不上传小程序体验版。
+- **改动文件**：`scripts/parity/{manifest.ts,types.ts,scanners/app.ts,manifests/**}`、`package.json`、`VERSION_HISTORY.md`；用户批准的外部执行计划同步新增 `MINI_ONLY_DEFECT` 状态。
+- **改动说明**：APP AST 扫描补齐 AppRoute discriminated union 的 16 个正式路由；`screen-map.yaml` 登记 51 个语义 Screen，并新增 `MINI_ONLY_DEFECT` 表达小程序额外占位/遗留业务页；`app-source-dispositions.json` 将非独立布局的 41 个 APP 候选逐项归类为 Screen State、Screen Component 或共享基础设施；详细样板 manifest 定义 21 个 State、18 个核心 Action、21 个 Checkpoint、fixture、入口、Overlay、Transition 和服务端断言。
+- **验证结果**：重新生成 inventory 后 APP Screen 候选增至 96；`npm run parity:inventory:check` 通过且 unresolved=0；`npm run parity:manifest:check` 无 error/warning 通过，51 个语义 Screen 覆盖 APP 96/96 来源与小程序 35/35 注册页面；独立 `tsc` 编译和 `git diff --check` 通过。
+- **风险门禁**：high（跨端 Screen/State/Action 分母与后续修复边界）。
+- **未验证风险**：只有三个样板具备详细执行 manifest，其余 48 个语义 Screen 仍需补齐 State/Action/Checkpoint；884 个 Action 仍缺 parity-id；成对源码盘点已发现多项 P0/P1 候选，必须进入结构化 defects、运行证据和复测闭环后才可定案或关闭。
+
+## 2026-07-11 / v2.1.13-test / Codex — 一致性审计动态目标人工解析门禁
+
+- **执行 Agent**：Codex 主协调 agent（未新增 subagent；使用第一批只读盘点证据逐项复核源码）。
+- **目的**：将静态扫描无法直接确定的 23 个动态导航目标逐项解析为受版本控制的明确目标，确保 `unresolved.json` 真正归零且保留原始候选审计链。
+- **版本变更**：无；当前应用版本仍为 `2.1.13-test`。本批次不改业务代码、不打 APK、不上传小程序体验版。
+- **改动文件**：`scripts/parity/{cli.ts,inventory.ts,types.ts,validate.ts,config/unresolved-resolutions.json}`、`VERSION_HISTORY.md`。
+- **改动说明**：保留 `unresolved-candidates.json`，新增 `resolved.json` 和严格 ID 对齐校验；逐条解析 AppRoute 对象、返回派生、AuthView、详情 Tab、计划子页、设置 data-url、创建入口、录入结果 Tab 分流和自定义 Tab；将小程序 `goHome()` 使用 `wx.switchTab('/pages/home/index')` 的不可达非法目标记录为 `UNREACHABLE_DEFECT`，不以人工解析掩盖缺陷。
+- **验证结果**：重新生成 `parity-build-20260711-001` inventory；23 / 23 动态候选有明确 resolution，`unresolved = 0`；`npm run parity:inventory:check` 无 warning 通过；独立 `tsc` 编译和 `git diff --check` 通过。
+- **风险门禁**：medium（测试库存解析规则与后续覆盖率分母）。
+- **未验证风险**：人工解析只解决静态目标不确定性；884 个 Action 仍缺 parity-id，运行时可达性、状态分支、服务端收件和视觉证据仍待后续阶段验证。
+
+## 2026-07-11 / v2.1.13-test / Codex — APP 与小程序一致性审计框架第一批
+
+- **执行 Agent**：Codex 主协调 agent；使用三个只读 subagent 分别盘点 APP、小程序、服务端与现有测试资产，各自固定在独立 detached worktree，未修改基线。
+- **目的**：按 `codex_app_miniprogram_parity_execution_plan.md` 建立可重复运行的本地基线锁和静态库存生成器，让 Screen、Action、Overlay、Transition、Side Effect 与 unresolved 分母由源码生成，而不是由模型自由决定测试范围。
+- **版本变更**：无；当前应用版本仍为 `2.1.13-test`。本批次只建设测试框架，不改业务行为、不打 APK、不上传小程序体验版。
+- **改动文件**：`scripts/parity/{AGENTS.md,cli.ts,inventory.ts,lock.ts,types.ts,validate.ts,lib/**,scanners/**}`、`package.json`、`.gitignore`、`VERSION_HISTORY.md`。
+- **改动说明**：新增四周期 runId 与 `baseline-lock.json`；记录本地双分支 SHA/tree hash、Android 真机、微信工具、测试 API、fault token 和 MiniMax 可用性；使用 TypeScript AST 扫描 APP，使用可处理引号内 `>` 的 WXML 结构扫描器与 TypeScript AST 扫描小程序；生成计划要求的八类 inventory 文件；新增来源存在性、唯一 ID 和 instrumentation 门禁；`scripts/parity/AGENTS.md` 固化禁止远端覆盖、废纸篓删除、证据与结果状态规则。
+- **验证结果**：`npm install --prefer-offline --no-audit --no-fund` 通过；`parity-build-20260711-001` 基线锁成功；`npm run parity:inventory` 成功生成 APP 80 Screen / 578 Action / 63 Overlay / 103 Transition / 568 Side Effect，小程序 35 Screen / 306 Action（含 303 个 WXML 事件和 3 个 navigator）/ 129 Overlay / 96 Transition / 150 Side Effect；`npm run parity:inventory:check` 通过来源、结构和唯一 ID 校验；独立 `tsc` 编译通过；`git diff --check` 通过。
+- **风险门禁**：high（新增长期审计基础设施，后续将驱动跨端插桩、真机执行与缺陷修复）。
+- **未验证风险**：23 个动态静态候选仍在 `unresolved.json`，必须人工映射后才能通过审计门禁；instrumentation 门禁按预期失败，APP 578 个、小程序 306 个 Action 均缺少 parity-id；运行时状态图、fixture reset、APP/小程序执行器、服务端收件断言、截图 diff 和 HTML 报告尚未进入本批次。
+
+## 2026-07-11 / v2.1.13-test / Codex — Parity 合并缺陷账本与可信双门禁
+
+- **执行 Agent**：Codex（未触发 subagent；按用户批准的 `final-merged-repair-plan.md` 执行 Task 0）。
+- **目的**：将现场真机与 Session 合并发现补入唯一缺陷账本，并把报告覆盖率从文件数量改为 case/obligation 级证据判定，防止缺执行、截图、网络或服务端读回时误报完成。
+- **版本变更**：无；当前版本仍为 `2.1.13-test`，本批只修改测试框架、缺陷账本与版本记录。
+- **改动文件**：`scripts/parity/config/static-defects.json`、`scripts/parity/bfs-runner.ts`、`scripts/parity/report.ts`、`scripts/parity/defects.ts`、`scripts/parity/tests/bfs-runner.test.ts`、`scripts/parity/tests/report-gate.test.ts`、`VERSION_HISTORY.md`。
+- **改动说明**：补录跨端鉴权、长期会话、双 TabBar、真机图标、录入状态机、额外结果页、Android 顶部安全区、设置开发备注、详情字段及推荐/试穿 placeholder 共 12 个编号缺陷；写操作与上传/异步任务无条件要求 network 与 server-readback；每个 obligation 强制四阶段截图/UI tree/route，重复 execution 直接失败；`coverage.json` 新增 obligation 级计数、`auditGate` 和 `productGate`，HTML 首页显示失败原因；placeholder 屏幕无缺陷编号时静态门禁失败。
+- **验证结果**：`npm run typecheck` 通过；`npm run parity:bfs:test` 7/7 通过；`npx tsx --test scripts/parity/tests/report-gate.test.ts` 3/3 通过；静态缺陷校验通过；报告重新生成且 JSON、HTML 链接、secret scan 通过。当前旧基线报告诚实显示 `auditGate=FAIL`（250 obligations 中 244 未执行/缺证据）与 `productGate=FAIL`（7 OPEN P0、35 OPEN P1、4 OPEN P2、6 FIXED_UNVERIFIED）。
+- **未验证风险**：本批只建立可信门禁，不关闭业务缺陷；旧报告 artifacts 不进入 Git，最终修复回归将生成全新 repair/regression run。
 
 ## 2026-07-10 / v2.1.13-test / Codex — 注销功能双基线集成与最终 APK
 
@@ -4787,3 +5053,12 @@
 - **风险门禁**：**high**（Android 原生网络与线上图片主链路）。
 - **未触发 subagent**：用户未通知。
 - **待完成验证**：提交后重建固定签名 APK，在 Android 35 模拟器重新登录同一线上账号并确认原图显示、重装后服务器恢复及无致命 logcat。
+## 2026-07-11 / v2.1.13-test / Codex — Parity 生产测试账号夹具与小程序真机证据回填
+
+- **执行 Agent**：Codex 主协调 agent；未使用 subagent，自动盘点、数据夹具、模拟器与报告门禁均走 CLI。
+- **目的**：让 parity 框架能够在显式授权时向既有测试账号写入幂等夹具，并把小程序真机裁切及 access-token 自动续期证据纳入缺陷账本。
+- **版本变更**：无；保持 `2.1.13-test`。
+- **改动文件**：`scripts/parity/{cli,seed}.ts`、`scripts/parity/lib/api.ts`、`scripts/parity/config/static-defects.json`、`scripts/parity/tests/bfs-runner.test.ts`、`VERSION_HISTORY.md`。
+- **改动说明**：seed 新增环境变量名参数与显式 `--allow-non-local true` 双门禁，默认仍拒绝非本机 API；登录合同修正为 `account`；既有账号模式不注册、只登录并幂等写入。真机裁切缺陷更新为 VERIFIED，新增已验证的长表单 token 自动续期缺陷记录；BFS 缺证据测试改用确定不存在的目录，避免真实运行证据使负向测试漂移。
+- **验证结果**：生产测试账号 `362680164@qq.com` 已幂等写入 6 单品、1 套装、4 种草、2 旅行计划、1 穿搭计划和 1 衣橱位置；fixture check、static defects check、BFS 与 parity 测试通过，运行时密钥仅保存在权限 600 的忽略目录且未输出。
+- **未验证风险**：完整 coverage 仍需导入本轮 CLI/真机动作证据并重建最终 HTML、JUnit、defects 与 repair plan；现有 OPEN parity 缺陷不因框架与 P0 修复通过而自动关闭。

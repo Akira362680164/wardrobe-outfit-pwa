@@ -1,0 +1,43 @@
+{
+  "schemaVersion": 1,
+  "domain": "settings",
+  "screens": [
+    {
+      "id": "settings.diagnostics.upload",
+      "domain": "settings",
+      "sourceOfTruth": "app",
+      "mappingStatus": "MINI_ONLY_DEFECT",
+      "app": {
+        "routes": ["settings_home:diagnostic-upload"],
+        "sourceInventoryIds": ["app.route.settings.home", "app.src.components.wardrobe.app"],
+        "sourceFiles": ["src/components/wardrobe-app.tsx", "src/lib/diagnostic-log.ts"]
+      },
+      "mini": {
+        "routes": ["/pages/settings/diagnostics/index"],
+        "sourceInventoryIds": ["mini.route.pages.settings.diagnostics.index"],
+        "sourceFiles": ["apps/wechat-miniprogram/pages/settings/diagnostics/index.ts", "apps/wechat-miniprogram/pages/settings/diagnostics/index.wxml"]
+      },
+      "fixtures": ["diagnostics.normal", "diagnostics.upload_failure"],
+      "entryPaths": [
+        {"id": "direct", "actions": []},
+        {"id": "from_settings", "actions": ["shell.tab.settings", "settings.diagnostics.open"]}
+      ],
+      "states": [
+        {"id": "idle", "fixture": "diagnostics.normal", "checkpoint": true, "expectedOn": ["app", "mini"]},
+        {"id": "describing", "fixture": "diagnostics.normal", "checkpoint": true, "expectedOn": ["app", "mini"]},
+        {"id": "uploading", "fixture": "diagnostics.normal", "checkpoint": true, "expectedOn": ["app", "mini"]},
+        {"id": "success", "fixture": "diagnostics.normal", "checkpoint": true, "expectedOn": ["app", "mini"]},
+        {"id": "failed", "fixture": "diagnostics.upload_failure", "checkpoint": true, "expectedOn": ["app", "mini"]}
+      ],
+      "requiredActions": [
+        {"id": "diagnostics.upload.open", "event": "tap", "requiredOn": ["app", "mini"], "sourceActionIds": {}, "expectedTransition": "overlay-open", "target": "diagnostics.description", "sideEffect": "LOCAL_STATE"},
+        {"id": "diagnostics.upload.cancel", "event": "tap", "requiredOn": ["app", "mini"], "sourceActionIds": {}, "expectedTransition": "overlay-close", "sideEffect": "NONE"},
+        {"id": "diagnostics.upload.confirm", "event": "tap", "requiredOn": ["app", "mini"], "sourceActionIds": {}, "expectedTransition": "state-change", "sideEffect": "OBJECT_UPLOAD", "serverAssertion": "diagnostic-create-upload-checksum-readback"},
+        {"id": "diagnostics.upload.retry", "event": "tap", "requiredOn": ["app", "mini"], "sourceActionIds": {}, "expectedTransition": "state-change", "sideEffect": "OBJECT_UPLOAD", "serverAssertion": "diagnostic-retry-idempotency"}
+      ],
+      "overlays": ["diagnostics.description", "diagnostics.success", "diagnostics.failure"],
+      "checkpoints": ["idle", "describing", "uploading", "success", "failed"],
+      "platformExceptionIds": ["WX-CAPSULE-001"]
+    }
+  ]
+}

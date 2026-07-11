@@ -238,7 +238,7 @@ export function AuthGate({ children }: { children: ReactNode }) {
       {view === "login" && (
         <LoginForm
           form={loginForm}
-          onChange={(next) => {
+          data-parity-id="parity.app.app.src.components.auth.auth.gate.28cd8b390e" onChange={(next) => {
             setLoginForm(next);
             if (next.accepted && localError === AUTH_CONSENT_ERROR) setLocalError(null);
           }}
@@ -261,7 +261,7 @@ export function AuthGate({ children }: { children: ReactNode }) {
       {view === "register" && (
         <RegisterForm
           form={registerForm}
-          onChange={(next) => {
+          data-parity-id="parity.app.app.src.components.auth.auth.gate.aacbc93e19" onChange={(next) => {
             setRegisterForm(next);
             if (next.accepted && localError === AUTH_CONSENT_ERROR) setLocalError(null);
           }}
@@ -363,7 +363,7 @@ function LoginForm({
   return (
     <form
       className="grid gap-4"
-      onSubmit={async (event) => {
+      data-parity-id="parity.app.app.src.components.auth.auth.gate.636179c371" onSubmit={async (event) => {
         event.preventDefault();
         if (!valid || isBusy) return;
         await onLogin();
@@ -371,8 +371,8 @@ function LoginForm({
     >
       <AuthHeader title="登录衣橱账号" />
       {error && <AuthErrorMessage text={error} />}
-      <TextField label="邮箱或手机号" value={form.account} onChange={(account) => onChange({ ...form, account })} autoComplete="username" inputMode="email" />
-      <TextField label="密码" value={form.password} onChange={(password) => onChange({ ...form, password })} type="password" autoComplete="current-password" />
+      <TextField label="邮箱或手机号" value={form.account} data-parity-id="parity.app.app.src.components.auth.auth.gate.48a80adfff" onChange={(account) => onChange({ ...form, account })} autoComplete="username" inputMode="email" />
+      <TextField label="密码" value={form.password} data-parity-id="parity.app.app.src.components.auth.auth.gate.07eb164e23" onChange={(password) => onChange({ ...form, password })} type="password" autoComplete="current-password" />
       <AuthConsentField
         id="auth-login-terms-accepted"
         accepted={form.accepted}
@@ -390,10 +390,10 @@ function LoginForm({
         登录
       </button>
       <div className="grid grid-cols-2 gap-2">
-        <button type="button" onClick={onGoRegister} className="h-10 text-sm font-semibold text-denim">
+        <button type="button" data-parity-id="parity.app.app.src.components.auth.auth.gate.d867dd8ea8" onClick={onGoRegister} className="h-10 text-sm font-semibold text-denim">
           通过邮箱注册
         </button>
-        <button type="button" onClick={onForgotPassword} className="h-10 text-sm font-semibold text-ink/60">
+        <button type="button" data-parity-id="parity.app.app.src.components.auth.auth.gate.2e4dfae6a3" onClick={onForgotPassword} className="h-10 text-sm font-semibold text-ink/60">
           忘记密码
         </button>
       </div>
@@ -420,16 +420,16 @@ function AuthConsentField({
         id={id}
         type="checkbox"
         checked={accepted}
-        onChange={(event) => onAcceptedChange(event.target.checked)}
+        data-parity-id="parity.app.app.src.components.auth.auth.gate.8bacc4f4e4" onChange={(event) => onAcceptedChange(event.target.checked)}
         className="mt-0.5 h-4 w-4 shrink-0 accent-denim"
       />
       <span>
         <label htmlFor={id}>我已阅读并同意</label>
-        <button type="button" onClick={onOpenTerms} className="font-semibold text-denim underline-offset-2 hover:underline">
+        <button type="button" data-parity-id="parity.app.app.src.components.auth.auth.gate.d827e8c2e5" onClick={onOpenTerms} className="font-semibold text-denim underline-offset-2 hover:underline">
           《用户服务协议》
         </button>
         <span>和</span>
-        <button type="button" onClick={onOpenPrivacy} className="font-semibold text-denim underline-offset-2 hover:underline">
+        <button type="button" data-parity-id="parity.app.app.src.components.auth.auth.gate.8088ae4d1d" onClick={onOpenPrivacy} className="font-semibold text-denim underline-offset-2 hover:underline">
           《隐私政策》
         </button>
       </span>
@@ -508,7 +508,7 @@ function RegisterForm({
   return (
     <form
       className="grid gap-4"
-      onSubmit={async (event) => {
+      data-parity-id="parity.app.app.src.components.auth.auth.gate.d473ed6f0c" onSubmit={async (event) => {
         event.preventDefault();
         if (!valid || isBusy) return;
         await onRegister();
@@ -520,13 +520,13 @@ function RegisterForm({
       <TextField
         label="邮箱"
         value={form.email}
-        onChange={(email) => onChange({ ...form, email })}
+        data-parity-id="parity.app.app.src.components.auth.auth.gate.1ee0985438" onChange={(email) => onChange({ ...form, email })}
         autoComplete="email"
         inputMode="email"
         trailing={(
           <button
             type="button"
-            onClick={askSendCode}
+            data-parity-id="parity.app.app.src.components.auth.auth.gate.0c7debd239" onClick={askSendCode}
             disabled={sending || countdown > 0}
             className="absolute right-1 top-1 inline-flex h-9 items-center justify-center rounded-[12px] bg-denim px-3 text-xs font-semibold text-white disabled:bg-denim/35"
             style={{ backgroundColor: form.accepted && !sending && countdown <= 0 ? "var(--color-denim, #156596)" : "rgba(21,101,150,0.4)" }}
@@ -537,18 +537,18 @@ function RegisterForm({
       />
       {emailError && <p className="text-xs text-clay">{emailError}</p>}
       {codeSent ? (
-        <TextField label="邮箱验证码" value={form.emailCode} onChange={(emailCode) => onChange({ ...form, emailCode })} autoComplete="one-time-code" inputMode="numeric" />
+        <TextField label="邮箱验证码" value={form.emailCode} data-parity-id="parity.app.app.src.components.auth.auth.gate.c98950cc8f" onChange={(emailCode) => onChange({ ...form, emailCode })} autoComplete="one-time-code" inputMode="numeric" />
       ) : null}
       <div>
-        <TextField label="密码" value={form.password} onChange={(password) => onChange({ ...form, password })} type="password" autoComplete="new-password" />
+        <TextField label="密码" value={form.password} data-parity-id="parity.app.app.src.components.auth.auth.gate.428f3052c1" onChange={(password) => onChange({ ...form, password })} type="password" autoComplete="new-password" />
         {pwError && <p className="mt-1 text-xs text-clay">{pwError}</p>}
       </div>
       <div>
-        <TextField label="确认密码" value={form.confirmPassword} onChange={(confirmPassword) => onChange({ ...form, confirmPassword })} type="password" autoComplete="new-password" />
+        <TextField label="确认密码" value={form.confirmPassword} data-parity-id="parity.app.app.src.components.auth.auth.gate.8f11fb341d" onChange={(confirmPassword) => onChange({ ...form, confirmPassword })} type="password" autoComplete="new-password" />
         {confirmError && <p className="mt-1 text-xs text-clay">{confirmError}</p>}
       </div>
       <div>
-        <TextField label="手机号（选填）" value={form.phone} onChange={(phone) => onChange({ ...form, phone })} autoComplete="tel" inputMode="tel" />
+        <TextField label="手机号（选填）" value={form.phone} data-parity-id="parity.app.app.src.components.auth.auth.gate.7e71263359" onChange={(phone) => onChange({ ...form, phone })} autoComplete="tel" inputMode="tel" />
         <p className="mt-1 text-xs leading-relaxed text-ink/45">手机号暂不验证，仅作为手机号加密码登录名使用。</p>
         {phoneError && <p className="mt-1 text-xs text-clay">{phoneError}</p>}
       </div>
@@ -571,7 +571,7 @@ function RegisterForm({
         {isBusy ? <Loader2 size={16} className="animate-spin" aria-hidden="true" /> : <User size={16} aria-hidden="true" />}
         注册
       </button>
-      <button type="button" onClick={onGoLogin} className="h-10 text-sm font-semibold text-denim">
+      <button type="button" data-parity-id="parity.app.app.src.components.auth.auth.gate.b54698020b" onClick={onGoLogin} className="h-10 text-sm font-semibold text-denim">
         已有账号，去登录
       </button>
       {pendingEmail ? (
@@ -638,7 +638,7 @@ function ForgotPasswordForm({ onGoLogin }: { onGoLogin: () => void }) {
       <div className="grid gap-4">
         <AuthHeader title="密码已重置" />
         <p className="ui-control-radius bg-denim/10 px-3 py-3 text-sm leading-relaxed text-ink/70">请使用新密码重新登录。</p>
-        <button type="button" onClick={onGoLogin} className="h-11 ui-control-radius bg-denim text-sm font-semibold text-white">
+        <button type="button" data-parity-id="parity.app.app.src.components.auth.auth.gate.62dfcea06e" onClick={onGoLogin} className="h-11 ui-control-radius bg-denim text-sm font-semibold text-white">
           返回登录
         </button>
       </div>
@@ -648,7 +648,7 @@ function ForgotPasswordForm({ onGoLogin }: { onGoLogin: () => void }) {
   return (
     <form
       className="grid gap-4"
-      onSubmit={async (event) => {
+      data-parity-id="parity.app.app.src.components.auth.auth.gate.02b583206f" onSubmit={async (event) => {
         event.preventDefault();
         setMessage(null);
         if (newPassword !== confirmPassword) {
@@ -676,13 +676,13 @@ function ForgotPasswordForm({ onGoLogin }: { onGoLogin: () => void }) {
       <TextField
         label="邮箱"
         value={email}
-        onChange={setEmail}
+        data-parity-id="parity.app.app.src.components.auth.auth.gate.859cfb2f39" onChange={setEmail}
         autoComplete="email"
         inputMode="email"
         trailing={(
           <button
             type="button"
-            onClick={askSendCode}
+            data-parity-id="parity.app.app.src.components.auth.auth.gate.d483bdc7b7" onClick={askSendCode}
             disabled={sending || countdown > 0}
             className="absolute right-1 top-1 inline-flex h-9 items-center justify-center rounded-[12px] bg-denim px-3 text-xs font-semibold text-white disabled:bg-denim/35"
           >
@@ -691,14 +691,14 @@ function ForgotPasswordForm({ onGoLogin }: { onGoLogin: () => void }) {
         )}
       />
       {codeSent ? (
-        <TextField label="邮箱验证码" value={emailCode} onChange={setEmailCode} autoComplete="one-time-code" inputMode="numeric" />
+        <TextField label="邮箱验证码" value={emailCode} data-parity-id="parity.app.app.src.components.auth.auth.gate.0ec3f32deb" onChange={setEmailCode} autoComplete="one-time-code" inputMode="numeric" />
       ) : null}
       <div>
-        <TextField label="新密码" value={newPassword} onChange={setNewPassword} type="password" autoComplete="new-password" />
+        <TextField label="新密码" value={newPassword} data-parity-id="parity.app.app.src.components.auth.auth.gate.55473436db" onChange={setNewPassword} type="password" autoComplete="new-password" />
         {pwError && <p className="mt-1 text-xs text-clay">{pwError}</p>}
       </div>
       <div>
-        <TextField label="确认新密码" value={confirmPassword} onChange={setConfirmPassword} type="password" autoComplete="new-password" />
+        <TextField label="确认新密码" value={confirmPassword} data-parity-id="parity.app.app.src.components.auth.auth.gate.a084b7dcc7" onChange={setConfirmPassword} type="password" autoComplete="new-password" />
         {confirmPassword && newPassword !== confirmPassword ? <p className="mt-1 text-xs text-clay">两次输入的新密码不一致</p> : null}
       </div>
       <button
@@ -710,7 +710,7 @@ function ForgotPasswordForm({ onGoLogin }: { onGoLogin: () => void }) {
         {submitting ? <Loader2 size={16} className="animate-spin" aria-hidden="true" /> : <KeyRound size={16} aria-hidden="true" />}
         重置密码
       </button>
-      <button type="button" onClick={onGoLogin} className="h-10 text-sm font-semibold text-denim">
+      <button type="button" data-parity-id="parity.app.app.src.components.auth.auth.gate.da3c724921" onClick={onGoLogin} className="h-10 text-sm font-semibold text-denim">
         返回登录
       </button>
       {pendingEmail ? (
@@ -735,7 +735,7 @@ function BlockedLocalOwner() {
         <p className="mt-1 font-semibold">{auth.blocked?.owner.maskedIdentity ?? auth.blocked?.owner.maskedPhone ?? "旧账号"}</p>
         <p className="mt-2 text-xs text-ink/55">请使用该账号登录。</p>
       </div>
-      <button type="button" onClick={auth.returnToLoginFromBlocked} className="h-11 ui-control-radius bg-denim text-sm font-semibold text-white">
+      <button type="button" data-parity-id="parity.app.app.src.components.auth.auth.gate.2bf99990ad" onClick={auth.returnToLoginFromBlocked} className="h-11 ui-control-radius bg-denim text-sm font-semibold text-white">
         返回登录
       </button>
     </div>
@@ -754,18 +754,18 @@ function ConfirmEmailDialog({
   onConfirm: () => void;
 }) {
   return (
-    <div className="fixed inset-0 z-50 grid place-items-center bg-ink/24 px-4" onClick={busy ? undefined : onCancel}>
-      <div className="surface w-full max-w-xs px-5 py-5 shadow-strong" onClick={(event) => event.stopPropagation()}>
+    <div className="fixed inset-0 z-50 grid place-items-center bg-ink/24 px-4" data-parity-id="parity.app.app.src.components.auth.auth.gate.830064ec17" onClick={busy ? undefined : onCancel}>
+      <div className="surface w-full max-w-xs px-5 py-5 shadow-strong" data-parity-id="parity.app.app.src.components.auth.auth.gate.9711bbd536" onClick={(event) => event.stopPropagation()}>
         <div className="grid h-10 w-10 place-items-center ui-control-radius bg-denim/10 text-denim">
           <Mail size={20} aria-hidden="true" />
         </div>
         <h2 className="mt-3 text-base font-bold text-ink">发送邮箱验证码</h2>
         <p className="mt-2 text-sm leading-relaxed text-ink/65">验证码将发送至 {email}，10 分钟内有效。确认发送？</p>
         <div className="mt-4 grid grid-cols-2 gap-2">
-          <button type="button" onClick={onCancel} disabled={busy} className="h-10 ui-control-radius border border-ink/10 text-sm font-semibold text-ink/60 disabled:opacity-60">
+          <button type="button" data-parity-id="parity.app.app.src.components.auth.auth.gate.47c5ea990d" onClick={onCancel} disabled={busy} className="h-10 ui-control-radius border border-ink/10 text-sm font-semibold text-ink/60 disabled:opacity-60">
             取消
           </button>
-          <button type="button" onClick={onConfirm} disabled={busy} className="inline-flex h-10 items-center justify-center gap-2 ui-control-radius bg-denim text-sm font-semibold text-white disabled:opacity-60">
+          <button type="button" data-parity-id="parity.app.app.src.components.auth.auth.gate.6a892b1190" onClick={onConfirm} disabled={busy} className="inline-flex h-10 items-center justify-center gap-2 ui-control-radius bg-denim text-sm font-semibold text-white disabled:opacity-60">
             {busy ? <Loader2 size={14} className="animate-spin" aria-hidden="true" /> : null}
             确认发送
           </button>
@@ -777,17 +777,17 @@ function ConfirmEmailDialog({
 
 function ExitDialog({ onClose }: { onClose: () => void }) {
   return (
-    <div className="fixed inset-0 z-50 grid place-items-center bg-ink/20 px-4" onClick={onClose}>
-      <div className="surface w-full max-w-xs px-5 py-5 shadow-strong" onClick={(event) => event.stopPropagation()}>
+    <div className="fixed inset-0 z-50 grid place-items-center bg-ink/20 px-4" data-parity-id="parity.app.app.src.components.auth.auth.gate.19c4cf559a" onClick={onClose}>
+      <div className="surface w-full max-w-xs px-5 py-5 shadow-strong" data-parity-id="parity.app.app.src.components.auth.auth.gate.52c358e6ee" onClick={(event) => event.stopPropagation()}>
         <h2 className="text-base font-bold text-ink">退出应用</h2>
         <p className="mt-2 text-sm text-ink/65">确定要退出衣橱穿搭助手吗？</p>
         <div className="mt-4 flex justify-end gap-3">
-          <button type="button" onClick={onClose} className="h-9 ui-control-radius px-4 text-sm font-semibold text-ink/60">
+          <button type="button" data-parity-id="parity.app.app.src.components.auth.auth.gate.e7547b1720" onClick={onClose} className="h-9 ui-control-radius px-4 text-sm font-semibold text-ink/60">
             取消
           </button>
           <button
             type="button"
-            onClick={() => App.exitApp()}
+            data-parity-id="parity.app.app.src.components.auth.auth.gate.6ac1bc21a4" onClick={() => App.exitApp()}
             className="h-9 ui-control-radius bg-denim px-4 text-sm font-semibold text-white"
           >
             退出
@@ -836,7 +836,7 @@ function TextField({
       <span className="relative block">
         <input
           value={value}
-          onChange={(event) => onChange(event.target.value)}
+          data-parity-id="parity.app.app.src.components.auth.auth.gate.9a04ff7893" onChange={(event) => onChange(event.target.value)}
           type={type}
           autoComplete={autoComplete}
           inputMode={inputMode}
