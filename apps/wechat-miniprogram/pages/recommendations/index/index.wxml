@@ -1,7 +1,6 @@
-<view class="page-shell">
-  <view class="page-title">{{title}}</view>
-  <view class="page-copy">{{description}}</view>
-  <view class="placeholder-card">
-    <view class="placeholder-label">页面骨架已就绪，业务实现由后续批次接入线上 API。</view>
-  </view>
+<view class="page-shell recommend-page">
+  <view class="page-title">场景穿搭推荐</view><view class="page-copy">根据地点、天气、活动和衣橱结构化信息生成；不会发送衣物图片。</view>
+  <view class="form"><input data-field="destination" value="{{destination}}" placeholder="目的地 / 地点" bindinput="input"/><input data-field="activity" value="{{activity}}" placeholder="活动或场景（必填）" bindinput="input"/><input data-field="weather" value="{{weather}}" placeholder="天气说明" bindinput="input"/><view class="row"><input data-field="temperature" type="number" value="{{temperature}}" placeholder="温度℃" bindinput="input"/><picker mode="selector" range="{{timeOptions}}" bindchange="chooseTime"><view class="picker">{{timeOfDay==='day'?'白天':'晚上'}}</view></picker></view><input data-field="style" value="{{style}}" placeholder="风格偏好（可选）" bindinput="input"/><slider min="1" max="5" value="{{formality}}" data-field="formality" bindchange="input"/><button loading="{{loading}}" bindtap="generate">{{results.length?'重新生成':'生成推荐'}}</button></view>
+  <view wx:if="{{error}}" class="status-card"><view>{{error}}</view><button wx:if="{{error.indexOf('MiniMax')>=0}}" bindtap="openSettings">前往设置</button><button wx:else bindtap="refresh">重试</button></view><view wx:if="{{loading}}" class="status-card">AI 正在理解场景并组合衣橱...</view><view wx:if="{{summary}}" class="summary">{{summary}}</view>
+  <view wx:for="{{results}}" wx:key="title" class="result"><view class="title">{{item.title}}</view><view class="copy">{{item.reason}}</view><scroll-view scroll-x><view class="thumbs"><view wx:for="{{item.items}}" wx:for-item="garment" wx:key="id" data-id="{{garment.id}}" bindtap="openItem"><image src="{{garment.imageUrl}}" mode="aspectFill"/><text>{{garment.name}}</text></view></view></scroll-view><view wx:for="{{item.sceneTips}}" wx:for-item="tip" wx:key="*this" class="copy">· {{tip}}</view></view><view wx:for="{{warnings}}" wx:key="*this" class="warning">{{item}}</view>
 </view>

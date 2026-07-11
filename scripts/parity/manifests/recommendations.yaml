@@ -1,0 +1,8 @@
+id: recommendations
+platforms: [app, miniprogram]
+inputs: [destination, activity, weather, temperatureC, timeOfDay, formality, style]
+privacy:
+  sendsGarmentImages: false
+  sendsStructuredWardrobe: true
+states: [empty, generating, success, error, retry, refreshed]
+resultActions: [openGarment, regenerate]

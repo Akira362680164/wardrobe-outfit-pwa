@@ -1,3 +1,13 @@
+## 2026-07-11 / v2.1.13-test / Codex — 小程序场景推荐与 AI 试穿真实闭环
+
+- **执行 Agent**：Codex（未触发 subagent；从 Task 10 提交创建独立 `codex/parity-mini-ai-flows-20260711` worktree）。
+- **目的**：移除推荐与 AI 试穿占位，按 APP 的场景输入和用户主动图片授权补齐生成、失败恢复、预览与服务器资产闭环。
+- **版本变更**：无；保持 `2.1.13-test`。
+- **改动文件**：小程序推荐/试穿页面、AI 与 workspace 服务、共享 AI kind、服务端 MiniMax 路由与实现、推荐 parity manifest、专项测试、`package.json`、`VERSION_HISTORY.md`。
+- **改动说明**：推荐页覆盖目的地、活动、天气、温度、时段、正式度和风格，只发送结构化衣橱/套装/画像字段且明确剔除图片；结果支持生成中、成功、失败、重试、刷新和打开单品。AI 试穿只有在用户选择参考照并勾选衣物后才上传图片；参考照复用原生裁切，所选衣物先经多模态识别为服装描述，再按 MiniMax 官方单人物 `subject_reference` 限制调用 `image-01`，结果支持预览、重试、双资产保存、服务器读回和删除；无 Key 提供设置入口。
+- **验证结果**：共享契约 typecheck、API typecheck、小程序 typecheck、AI 流程专项测试和 API 路由 6 项测试通过；Keychain live 烟测 `MiniMax-M3` 调用 1 次成功，requestId 仅记录为 `06a18b…4067`；`git diff --check` 通过。
+- **未验证风险**：真机相册/裁切、多件衣物生成质量、`image-01` 真实试穿费用调用、预览资产上传/删除读回和微信页面视觉留 Task 13 关闭；当前标记 FIXED_UNVERIFIED。
+
 ## 2026-07-11 / v2.1.13-test / Codex — 小程序设置、画像、参考照与法律内容一致性
 
 - **执行 Agent**：Codex（未触发 subagent；从 Task 9 提交创建独立 `codex/parity-mini-settings-20260711` worktree）。

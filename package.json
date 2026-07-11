@@ -86,6 +86,7 @@
     "build-info:miniprogram:generate": "tsx scripts/generate-miniprogram-build-info.ts",
     "build-info:miniprogram:check": "tsx scripts/generate-miniprogram-build-info.ts --check",
     "test:logic:miniprogram-settings": "tsx scripts/parity/tests/mini-settings-regression.test.ts",
+    "test:logic:miniprogram-ai-flows": "tsx scripts/parity/tests/mini-ai-flows.test.ts",
     "test:logic:wechat-email-auth-flow": "tsx scripts/test-wechat-email-auth-flow.ts",
     "test:logic:cloud-connectivity": "tsx scripts/test-cloud-connectivity-state.ts",
     "test:logic:online-workspace": "tsx scripts/test-online-workspace-client.ts",
