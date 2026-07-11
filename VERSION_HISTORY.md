@@ -1,3 +1,13 @@
+## 2026-07-11 / v2.1.13-test / Codex — 小程序单品与种草共享详情及灵感资产
+
+- **执行 Agent**：Codex（未触发 subagent；从 Task 4 提交创建独立 `codex/parity-mini-details-20260711` worktree）。
+- **目的**：消除单品/种草详情重复字段与动作逻辑，补齐 APP 同语义菜单、颜色/温度展示、编辑媒体以及灵感多图生命周期。
+- **版本变更**：无；保持 `2.1.13-test`，本批不发布小程序。
+- **改动文件**：新增共享 `item-media-section`、`item-field-sections`，修改 `item-detail-shell` 消费页、单品/种草详情与编辑、`services/workspace.ts`、`services/assets.ts`、专项合同测试、`package.json`、`VERSION_HISTORY.md`。
+- **改动说明**：两类详情统一使用共享媒体/字段组件；右上三点菜单承载编辑、移动、归档/恢复、打开已转换单品和删除；重新识别移入编辑页；辅助色只在主辅色模式显示，拼色/单色隐藏整行；温度保留文本并增加语义色带；灵感最后一格固定添加入口，支持多图临时资产上传、预览、删除 mutation 与服务端读回；编辑页原生裁切及重新识别接入 Task 3 资产层。
+- **验证结果**：小程序 typecheck、`test:logic:miniprogram-item-detail`、资产生命周期测试及 `git diff --check` 通过；共享合同禁止两页复制辅助色条件，并覆盖菜单、温度条、灵感增删、归档、converted garment 入口及编辑媒体动作。
+- **未验证风险**：真实微信相册、原生裁切、灵感双资产绑定、删除对象读回、移动衣橱和 converted garment 已删除异常态仍需 Task 13 真机/服务端回归；当前标记 FIXED_UNVERIFIED。
+
 ## 2026-07-11 / v2.1.13-test / Codex — 小程序单品与种草录入状态机对齐 APP
 
 - **执行 Agent**：Codex（未触发 subagent；从唯一资产层提交创建独立 `codex/parity-mini-intake-20260711` worktree）。

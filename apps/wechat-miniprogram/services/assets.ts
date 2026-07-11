@@ -28,11 +28,9 @@ export interface TemporaryAssetSession {
   ready?: boolean;
 }
 
-export interface AssetMutation {
-  kind: "create_or_replace";
-  fieldName: string;
-  temporaryAssetIds: string[];
-}
+export type AssetMutation =
+  | { kind: "create_or_replace"; fieldName: string; temporaryAssetIds: string[] }
+  | { kind: "remove"; fieldName: string };
 
 export interface LocalImageAssetInput {
   filePath: string;

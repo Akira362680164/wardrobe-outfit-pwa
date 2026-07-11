@@ -262,3 +262,5 @@
   color: var(--color-ink);
   background: rgba(244, 245, 243, 0.88);
 }
+.more-button { width: 72rpx; height: 64rpx; margin: 0; padding: 0; border-radius: var(--radius-control); color: var(--color-ink); background: rgba(255,255,252,.72); font-size: 28rpx; line-height: 64rpx; letter-spacing: 2rpx; }
+.more-button::after { border: 0; }

@@ -103,6 +103,7 @@ export interface MiniGarmentDetail extends MiniGarment {
   materialText: string;
   fitText: string;
   notes: string;
+  inspirationImages: Array<{ id: string; fieldName: string; imageUrl: string; caption: string }>;
 }
 
 export interface MiniOutfit {
@@ -180,6 +181,8 @@ export interface MiniWishlistDetail extends MiniWishlistItem {
   price?: number;
   productUrl: string;
   notes: string;
+  inspirationImages: Array<{ id: string; fieldName: string; imageUrl: string; caption: string }>;
+  convertedGarmentId: string;
 }
 
 export interface MiniClosetLocation {
@@ -325,6 +328,8 @@ export interface UpdateGarmentInput {
   purchaseDate?: string;
   notes?: string;
   aiTag?: Record<string, unknown>;
+  referenceOutfitImages?: Array<{ id: string; fieldName: string; caption?: string; createdAt?: string; updatedAt?: string }>;
+  assetMutations?: AssetMutation[];
 }
 
 export interface UpdateWishlistInput {
@@ -348,6 +353,8 @@ export interface UpdateWishlistInput {
   status?: "interested" | "purchased" | "rejected" | "archived";
   notes?: string;
   aiTag?: Record<string, unknown>;
+  referenceOutfitImages?: Array<{ id: string; fieldName: string; caption?: string; createdAt?: string; updatedAt?: string }>;
+  assetMutations?: AssetMutation[];
 }
 
 export interface SaveCalendarPlanInput {
@@ -514,6 +521,7 @@ export async function fetchGarmentDetail(id: string): Promise<MiniGarmentDetail>
     materialText: firstString(payload.material, payload.materialText, payload.fabric, payload.fabricText) || "未记录",
     fitText: fitText(payload),
     notes: stringValue(payload.notes, "无备注"),
+    inspirationImages: await resolveInspirationImages(response.data),
   };
 }
 
@@ -548,6 +556,8 @@ export async function fetchWishlistDetail(id: string): Promise<MiniWishlistDetai
     price: typeof payload.price === "number" && Number.isFinite(payload.price) ? payload.price : undefined,
     productUrl: stringValue(payload.productUrl, ""),
     notes: stringValue(payload.notes, "无备注"),
+    inspirationImages: await resolveInspirationImages(response.data),
+    convertedGarmentId: stringValue(payload.convertedGarmentId, ""),
   };
 }
 
@@ -706,9 +716,10 @@ export async function updateGarment(input: UpdateGarmentInput): Promise<Workspac
         purchaseDate: input.purchaseDate,
         notes: input.notes,
         aiRecognition: input.aiTag,
+        referenceOutfitImages: input.referenceOutfitImages ?? input.currentPayload.referenceOutfitImages,
         updatedAt: new Date().toISOString(),
       },
-      assetMutations: [],
+      assetMutations: input.assetMutations ?? [],
     },
   });
   if (!response.entity) throw new Error("服务器未返回已更新衣物");
@@ -741,9 +752,10 @@ export async function updateWishlistItem(input: UpdateWishlistInput): Promise<Mi
         status: input.status ?? input.currentPayload.status ?? "interested",
         notes: input.notes,
         aiRecognition: input.aiTag,
+        referenceOutfitImages: input.referenceOutfitImages ?? input.currentPayload.referenceOutfitImages,
         updatedAt: new Date().toISOString(),
       },
-      assetMutations: [],
+      assetMutations: input.assetMutations ?? [],
     },
   });
   return fetchWishlistDetail(input.id);
@@ -1149,6 +1161,23 @@ function toMiniOutfitPlanEntry(entity: WorkspaceEntity): MiniOutfitPlanEntry {
 async function resolveImageUrl(entity: WorkspaceEntity, fieldName: string, payload: Record<string, unknown>): Promise<string> {
   const downloaded = await downloadAssetImage(entity.assetRefs?.[fieldName], "thumbnail");
   return downloaded || firstString(payload.thumbnailUrl, payload.imageUrl, payload.imageDataUrl);
+}
+
+async function resolveInspirationImages(entity: WorkspaceEntity): Promise<Array<{ id: string; fieldName: string; imageUrl: string; caption: string }>> {
+  const entries = Array.isArray(entity.payload.referenceOutfitImages) ? entity.payload.referenceOutfitImages : [];
+  return Promise.all(entries.flatMap((value) => {
+    if (!value || typeof value !== "object") return [];
+    const record = value as Record<string, unknown>;
+    const id = firstString(record.id);
+    const fieldName = firstString(record.fieldName);
+    if (!id || !fieldName) return [];
+    return [{ id, fieldName, caption: firstString(record.caption), ref: entity.assetRefs?.[fieldName] }];
+  }).map(async (entry) => ({
+    id: entry.id,
+    fieldName: entry.fieldName,
+    caption: entry.caption,
+    imageUrl: await downloadAssetImage(entry.ref, "thumbnail"),
+  })));
 }
 
 function getApiBaseUrl(): string {
