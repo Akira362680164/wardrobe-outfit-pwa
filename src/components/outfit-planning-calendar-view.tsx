@@ -310,6 +310,7 @@ export function OutfitPlanningCalendarView({
                           outfit={detailOutfit}
                           items={items}
                           onSelectOutfit={() => onSelectOutfitForDate(expandedDate!)}
+                          onChangeOutfit={() => onSelectOutfitForDate(expandedDate!)}
                           onViewOutfit={() => detailOutfit && onViewOutfit(detailOutfit.id)}
                           onMarkWornToday={() => detailEntry && onMarkWornToday(detailEntry)}
                           onCancelWear={onCancelWear ? (outfitId: string) => onCancelWear(expandedDate!, outfitId) : undefined}
