@@ -1,6 +1,16 @@
 Warning: truncated output (original token count: 197467)
 Total output lines: 5406
 
+## 2026-07-12 / v2.1.14-test / Codex — 一致性修复自动化测试收口
+
+- **执行 Agent**：Codex（未触发 subagent；使用独立 `codex/parity-completion-audit-20260712` worktree）。
+- **目的**：按用户调整后的验收范围，以自动化测试验证合并修复清单，并补齐可直接运行的 Parity Vitest 入口。
+- **版本变更**：无；保持 `2.1.14-test`。
+- **改动文件**：`package.json`、`scripts/parity/vitest.config.ts`、`VERSION_HISTORY.md`。
+- **改动说明**：新增 `npm run parity:vitest`，只收集四个使用 Vitest API 的 Parity suite；Node `assert` 合同继续使用各自 `tsx`/npm 入口，避免根 Vitest 的 jsdom setup 被错误解析，也避免把无 `it()` 的合同脚本误判为零测试 suite。
+- **自动验证**：`test:local:full` 全通过（manifest、typecheck、contract 3、unit 10、component 14、repository integration 4、API 18 文件 114 项、Next build）；小程序 typecheck 及 shell、长期会话、资产生命周期、录入状态机、详情、搜索统计、种草、套装旅行、设置、AI、注销、目录生成合同全部通过；Parity BFS 7 项、Parity Vitest 4 文件 20 项、outfits/recommendations 3 项、report gate 3 项、packing 2 项及 inventory/manifest/static-defect/fixture 门禁通过。按用户指令，本轮不要求补齐每个页面动作的完整人工/真机四阶段证据。
+- **未验证风险**：本轮未重新执行 246 个动作的逐项截图 BFS；此前 Android 模拟器/真机与微信真机证据仍保留在最终报告和上一条版本记录中。
+
 ## 2026-07-11 / v2.1.14-test / Codex — APP/小程序一致性修复集成与真机定向回归
 
 - **执行 Agent**：Codex（未触发 subagent；在独立 `codex/parity-final-integration-20260711` worktree 串行集成）。
