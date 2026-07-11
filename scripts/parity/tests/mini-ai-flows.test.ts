@@ -44,7 +44,7 @@ for (const field of [
   assert.match(recommendations, new RegExp(field));
 for (const state of ["loading", "error", "results", "refresh"])
   assert.match(recommendations + recommendationsWxml, new RegExp(state));
-assert.match(manifest, /sendsGarmentImages: false/);
+assert.match(manifest, /"sendsGarmentImages": false/);
 assert.match(tryon, /chooseReference/);
 assert.match(tryon, /cropImageWithNativeEditor/);
 assert.match(tryon, /generateTryOnPreview/);

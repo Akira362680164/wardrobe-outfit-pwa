@@ -6,7 +6,7 @@
       "id": "wardrobe.statistics",
       "domain": "statistics",
       "sourceOfTruth": "app",
-      "mappingStatus": "APP_ONLY_DEFECT",
+      "mappingStatus": "EQUIVALENT",
       "app": {
         "routes": [
           "src.components.wear.statistics.view"
@@ -18,10 +18,10 @@
       },
       "mini": {
         "routes": [
-          "/pages/wardrobe/index/index"
+          "/pages/wardrobe/statistics/index"
         ],
         "sourceInventoryIds": [
-          "mini.route.pages.wardrobe.index.index"
+          "mini.route.pages.wardrobe.statistics.index"
         ],
         "sourceFiles": []
       },

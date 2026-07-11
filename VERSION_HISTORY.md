@@ -5356,3 +5356,12 @@
 - **验证结果**：`npm run catalog:miniprogram:check`、`npm run test:logic:{domain-catalog,miniprogram-catalog,catalog,color-catalog,intake,wishlist-flow,app-email-auth-flow,wechat-email-auth-flow}`、`npm run cloud:contracts:typecheck`、`npm run api:typecheck`、`npm run typecheck`、`npm --prefix apps/wechat-miniprogram run typecheck` 全部通过；`npm run api:test` 通过（15 files / 85 tests）；`npm run build` 以 `2.1.11-test` 通过。微信开发者工具 skill `v0.2.2` 登录与版本检查通过，集成项目窗口打开、`simulator_refresh` 成功；录入确认、单品编辑、种草编辑、登录、邮箱注册、修改密码共 6 个 WXML 与 6 个 WXSS 单文件编译通过；模拟器实际打开 `pages/login/index`，console 错误关键字扫描无命中；`git diff --check` 与 staged diff 检查通过。
 - **风险门禁**：high（跨 App、小程序、共享契约、服务端写入归一化、账号认证和领域目录生成链的分支集成）；未触发 subagent：用户未要求。
 - **未验证风险**：未使用真实账号点击登录/注册/保存，未执行真实图片 MiniMax 调用、真机预览、体验版上传、生产部署或真实数据库写入；模拟器刷新只证明项目运行态可刷新，TypeScript 由小程序 typecheck 覆盖，页面模板和样式由单文件编译覆盖。
+## 2026-07-11 / v2.1.13-test / Codex — Parity 合并态盘点映射校准
+
+- **执行 Agent**：Codex（未触发 subagent；在独立 `codex/parity-final-integration-20260711` worktree 串行合并与校准）。
+- **目的**：让合并后的新页面、已移除录入结果页及 AI/安全区合同进入同一套可重复静态盘点门禁。
+- **版本变更**：无；保持 `2.1.13-test`。
+- **改动文件**：parity unresolved/static defect/source disposition/screen map/领域 manifests、BFS 测试、AI 与 Android 安全区合同测试、`VERSION_HISTORY.md`。
+- **改动说明**：删除已移除 `intake.result` 的语义映射，搜索、统计、画像和试穿参考照改为真实独立 mini route 并标记与 APP 等价；4 个因源码行位变化重算的动态跳转 ID 重新人工分类；BFS 测试改为自行生成确定性证据，不再依赖某个 worktree 的未跟踪运行产物；JSON manifest 隐私断言和 Java `public/protected onResume` 合同兼容真实实现。
+- **验证结果**：合并态 inventory 盘点 APP 96 Screen / mini 38 Screen，24 个动态候选已分类、未分类 0；manifest 50/50 语义 Screen 详细映射且两端 inventory 未映射均为 0；static defect、fixture、BFS 7 项及定向 AI/种草/安全区合同通过；`git diff --check` 通过。
+- **未验证风险**：运行时截图、服务端回读、APK 与微信真机门禁仍由最终 Task 13 回归关闭。

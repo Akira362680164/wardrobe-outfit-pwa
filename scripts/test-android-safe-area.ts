@@ -9,7 +9,7 @@ assert.match(activity, /WindowCompat\.setDecorFitsSystemWindows\(getWindow\(\), 
 assert.match(activity, /WindowInsetsCompat\.Type\.systemBars\(\)/);
 assert.match(activity, /--android-safe-area-top/);
 assert.match(activity, /--android-safe-area-bottom/);
-assert.match(activity, /protected void onResume/);
+assert.match(activity, /(public|protected) void onResume/);
 assert.doesNotMatch(activity, /Build\.MODEL|MEIZU|Pixel|paddingTop|paddingBottom/);
 assert.match(styles, /android:statusBarColor[^\n]+transparent/);
 assert.match(styles, /android:navigationBarColor[^\n]+transparent/);

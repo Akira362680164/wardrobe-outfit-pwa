@@ -2022,18 +2022,18 @@
       "id": "wardrobe.search",
       "domain": "wardrobe",
       "sourceOfTruth": "app",
-      "mappingStatus": "APP_ONLY_DEFECT",
+      "mappingStatus": "EQUIVALENT",
       "app": {
-        "routes": [],
-        "sourceInventoryIds": [],
+        "routes": ["wardrobe_home:search"],
+        "sourceInventoryIds": ["app.route.wardrobe.home"],
         "sourceFiles": []
       },
       "mini": {
         "routes": [
-          "/pages/wardrobe/index/index"
+          "/pages/wardrobe/search/index"
         ],
         "sourceInventoryIds": [
-          "mini.route.pages.wardrobe.index.index"
+          "mini.route.pages.wardrobe.search.index"
         ],
         "sourceFiles": []
       },
@@ -2123,7 +2123,7 @@
       "id": "settings.profile",
       "domain": "settings",
       "sourceOfTruth": "app",
-      "mappingStatus": "APP_ONLY_DEFECT",
+      "mappingStatus": "EQUIVALENT",
       "app": {
         "routes": [
           "internal.settingsubpage.profile"
@@ -2135,10 +2135,10 @@
       },
       "mini": {
         "routes": [
-          "/pages/settings/index/index"
+          "/pages/settings/profile/index"
         ],
         "sourceInventoryIds": [
-          "mini.route.pages.settings.index.index"
+          "mini.route.pages.settings.profile.index"
         ],
         "sourceFiles": []
       },
@@ -2227,7 +2227,7 @@
       "id": "settings.tryon-photos",
       "domain": "settings",
       "sourceOfTruth": "app",
-      "mappingStatus": "APP_ONLY_DEFECT",
+      "mappingStatus": "EQUIVALENT",
       "app": {
         "routes": [
           "internal.settingsubpage.photos"
@@ -2239,10 +2239,10 @@
       },
       "mini": {
         "routes": [
-          "/pages/settings/index/index"
+          "/pages/settings/tryon-photos/index"
         ],
         "sourceInventoryIds": [
-          "mini.route.pages.settings.index.index"
+          "mini.route.pages.settings.tryon.photos.index"
         ],
         "sourceFiles": []
       },
