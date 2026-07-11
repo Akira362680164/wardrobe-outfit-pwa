@@ -14,6 +14,19 @@
 .state-uploading { color: var(--color-ai); background: rgba(185, 113, 85, 0.12); }
 .state-failed { color: var(--color-danger); background: rgba(220, 38, 38, 0.08); }
 .empty-preview { box-sizing: border-box; display: flex; align-items: center; justify-content: center; min-height: 96rpx; margin-top: 24rpx; border: 1rpx dashed rgba(29, 34, 40, 0.18); border-radius: var(--radius-thumb); color: var(--color-muted); background: rgba(255, 255, 252, 0.58); font-size: var(--font-caption); line-height: 1.4; }
+.hero-wrap { position: relative; height: 720rpx; margin-top: 24rpx; overflow: hidden; border-radius: var(--radius-card-inner); background: var(--color-mist); }
+.hero-image { width: 100%; height: 100%; }
+.hero-progress { position: absolute; right: 20rpx; bottom: 20rpx; left: 20rpx; padding: 14rpx 18rpx; border-radius: var(--radius-control); color: var(--color-surface); background: rgba(29, 34, 40, 0.72); font-size: var(--font-caption); text-align: center; }
+.thumb-strip { display: flex; gap: 14rpx; margin-top: 18rpx; padding: 4rpx 2rpx 8rpx; overflow-x: auto; }
+.thumb { position: relative; flex: 0 0 112rpx; width: 112rpx; height: 112rpx; overflow: hidden; border: 4rpx solid transparent; border-radius: var(--radius-thumb); background: var(--color-mist); }
+.thumb-active { border-color: var(--color-primary); }
+.thumb-failed { border-color: var(--color-danger); }
+.thumb-image { width: 100%; height: 100%; }
+.thumb-status { position: absolute; right: 6rpx; bottom: 6rpx; min-width: 32rpx; padding: 5rpx 8rpx; border-radius: 999rpx; color: var(--color-surface); background: rgba(29, 34, 40, 0.68); font-size: 18rpx; line-height: 1; text-align: center; }
+.image-actions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14rpx; margin-top: 18rpx; }
+.image-action { height: 76rpx; margin: 0; border-radius: var(--radius-control); color: var(--color-primary); background: rgba(53, 92, 125, 0.10); font-size: var(--font-caption); font-weight: 800; line-height: 76rpx; }
+.image-action::after { border: 0; }
+.image-action--danger { color: var(--color-danger); background: rgba(193, 76, 67, 0.08); }
 .queue-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18rpx; margin-top: 24rpx; }
 .queue-item { position: relative; min-width: 0; overflow: hidden; border: 1rpx solid rgba(29, 34, 40, 0.08); border-radius: var(--radius-thumb); background: var(--color-mist); }
 .queue-item::before { display: block; padding-top: 133.333%; content: ""; }

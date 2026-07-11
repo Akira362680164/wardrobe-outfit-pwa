@@ -1,1 +1,2 @@
 @import "../../wardrobe/edit/index.wxss";
+.conflict-card{border:2rpx solid rgba(185,113,85,.3);background:rgba(185,113,85,.08)}

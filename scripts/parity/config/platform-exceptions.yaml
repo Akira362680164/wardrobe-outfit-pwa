@@ -1,0 +1,20 @@
+{
+  "schemaVersion": 1,
+  "approvedBy": "user",
+  "approvedAt": "2026-07-11",
+  "exceptions": [
+    {
+      "id": "WX-CAPSULE-001",
+      "owner": "human-approved",
+      "platform": "mini",
+      "appliesTo": ["shell.main", "wardrobe.garment.detail", "outfits.planning.calendar", "settings.diagnostics.upload"],
+      "runtimeRegion": {
+        "source": "wx.getMenuButtonBoundingClientRect",
+        "padding": {"left": 8, "right": 0, "top": 0, "bottom": 0}
+      },
+      "allowed": ["ignore_host_capsule_pixels", "reserve_right_safe_space", "adjust_title_within_safe_title_region"],
+      "stillRequired": ["back_button_compared", "title_font_compared", "title_baseline_compared", "header_height_compared", "header_background_compared", "backdrop_blur_compared", "first_content_anchor_compared"],
+      "forbidden": ["mask_entire_header", "ignore_back_button_background", "ignore_missing_blur", "ignore_missing_shadow", "ignore_title_style"]
+    }
+  ]
+}

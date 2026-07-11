@@ -7,8 +7,8 @@
   <view wx:elif="{{item}}">
     <item-edit-shell title="编辑衣物" subtitle="{{item.name}}" image-url="{{item.imageUrl}}" image-label="衣物图片" image-fallback="{{item.categoryLabel}}">
       <view slot="mediaActions" class="media-actions">
-        <button class="outline-button">重新裁切</button>
-        <button class="primary-inline-button">重新识别</button>
+        <button class="outline-button" bindtap="recropImage">重新裁切</button>
+        <button class="primary-inline-button" bindtap="reRecognize">重新识别</button>
       </view>
 
       <view class="edit-card">
@@ -61,8 +61,8 @@
           </view>
         </view>
 
-        <view wx:if="{{colorMode !== 'single'}}" class="field-label">辅助色</view>
-        <view wx:if="{{colorMode !== 'single'}}" class="color-grid">
+        <view wx:if="{{colorMode === 'main_with_accent'}}" class="field-label">辅助色</view>
+        <view wx:if="{{colorMode === 'main_with_accent'}}" class="color-grid">
           <view wx:for="{{colorOptions}}" wx:key="name" data-role="accent" data-value="{{item.name}}" class="color-choice {{accentColor === item.name ? 'is-active' : ''}}" bindtap="chooseColor">
             <view class="color-dot" style="{{item.style}}"></view>
             <text>{{item.name}}</text>

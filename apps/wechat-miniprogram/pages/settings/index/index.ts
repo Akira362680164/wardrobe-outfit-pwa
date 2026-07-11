@@ -1,9 +1,8 @@
 import { hasMiniMaxKey } from "../../../services/ai";
+import { getCapsuleGeometry } from "../../../utils/capsule-layout";
 
 Page({
   data: {
-    profileCopy: "后续接入 App 端穿衣画像；小程序当前仅同步服务器衣橱和穿搭数据。",
-    aiPhotoCopy: "照片仅在用户主动触发 AI 能力时发送；当前试穿预览仍未开放。",
     aiStatusText: "未配置",
     titleTopRpx: 0,
   },
@@ -36,9 +35,5 @@ function setCustomTabBarSelected(page: unknown, selected: number) {
 }
 
 function getTitleTopRpx() {
-  const systemInfo = wx.getSystemInfoSync();
-  const menuRect = (wx as unknown as { getMenuButtonBoundingClientRect?: () => { top?: number } }).getMenuButtonBoundingClientRect?.();
-  const windowWidth = (systemInfo as WechatMiniprogram.SystemInfo & { windowWidth?: number }).windowWidth || 375;
-  const pixelRatio = 750 / windowWidth;
-  return Math.round((menuRect?.top ?? (systemInfo.statusBarHeight ?? 0) + 8) * pixelRatio);
+  return getCapsuleGeometry().topRpx;
 }

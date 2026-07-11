@@ -8,6 +8,9 @@ import {
 } from "../../../services/workspace";
 import { buildSubcategoryChoices, CATEGORY_OPTIONS, isSubcategoryInCategory } from "../../../services/category-catalog";
 import { MINI_GARMENT_STATUS_LABELS, MINI_SEASON_CATALOG, MINI_STYLE_CATALOG } from "../../../generated/catalogs";
+import { colorLabel, recognizeGarmentImage } from "../../../services/ai";
+import { cropImageWithNativeEditor, uploadPreparedImageAssets, type AssetMutation } from "../../../services/assets";
+import { createClientMutationId } from "../../../services/workspace";
 
 const COLOR_MODES = [
   { value: "single", label: "单主色" },
@@ -60,6 +63,7 @@ Page({
     price: "",
     productUrl: "",
     notes: "",
+    imageAssetMutations: [] as AssetMutation[],
   },
 
   onLoad(this: any, query?: { id?: string }) {
@@ -165,6 +169,24 @@ Page({
     if (typeof field === "string" && Number.isFinite(value)) this.setData({ [field]: value });
   },
 
+  async recropImage(this: any) {
+    const item = this.data.item as MiniGarmentDetail | null;
+    if (!item?.imageUrl) return;
+    const cropped = await cropImageWithNativeEditor(item.imageUrl);
+    if (!cropped) return;
+    const uploaded = await uploadPreparedImageAssets({ clientMutationId: createClientMutationId(), entityType: "garment", fieldName: "imageDataUrl", originalPath: item.imageUrl, processedPath: cropped });
+    this.setData({ item: { ...item, imageUrl: cropped }, imageAssetMutations: uploaded.assetMutations });
+  },
+
+  async reRecognize(this: any) {
+    const item = this.data.item as MiniGarmentDetail | null;
+    if (!item?.imageUrl) return;
+    try {
+      const tag = await recognizeGarmentImage(item.imageUrl);
+      this.setData({ name: tag.candidateNames[0] || this.data.name, category: tag.category || this.data.category, subcategory: tag.subcategory || "", primaryColor: colorLabel(tag.colors), seasons: tag.seasons, seasonsOptions: buildChoices(MINI_SEASON_CATALOG, tag.seasons), styles: tag.styles, styleOptions: buildChoices(MINI_STYLE_CATALOG, tag.styles), notes: tag.notes || this.data.notes });
+    } catch (error) { wx.showToast({ title: error instanceof Error ? error.message : "重新识别失败", icon: "none" }); }
+  },
+
   async save(this: any) {
     const item = this.data.item as MiniGarmentDetail | null;
     if (!item || this.data.saving) return;
@@ -204,6 +226,7 @@ Page({
         purchaseDate: this.data.purchaseDate.trim() || undefined,
         notes: this.data.notes.trim() || undefined,
         aiTag: item.rawPayload.aiRecognition as Record<string, unknown> | undefined,
+        assetMutations: this.data.imageAssetMutations,
       });
       wx.showToast({ title: "已保存", icon: "success" });
       wx.redirectTo({ url: `/pages/wardrobe/detail/index?id=${encodeURIComponent(item.id)}` });

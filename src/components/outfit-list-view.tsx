@@ -24,7 +24,7 @@ import { getWearSummary, hasWornDate } from "@/lib/wear-records";
 import { useLocalDateKey } from "@/lib/use-local-date-key";
 import { addOutfitToDate, recordActualOutfitWear, cancelActualOutfitWearForDate, formatOutfitWearSyncError } from "@/lib/outfit-wear-sync";
 import { wardrobeRepository } from "@/lib/repository/wardrobe-repository";
-import { rethrowIfFailed, upsertOutfit, upsertTripPlan, repoUpsertOutfitPlanEntry, repoDeleteOutfitPlanEntry, repoDeleteTripPlan } from "@/lib/repository/wardrobe-repository";
+import { rethrowIfFailed, upsertOutfit, upsertTripPlan, repoUpsertOutfitPlanEntry, repoDeleteOutfitPlanEntry, repoDeleteTripPlan, repoUpdatePackingChecklist } from "@/lib/repository/wardrobe-repository";
 import { OutfitCover } from "@/components/outfit-cover";
 import { OutfitWeeklyPlanStrip } from "@/components/outfit-weekly-plan-strip";
 import { OutfitPlanningCalendarView } from "@/components/outfit-planning-calendar-view";
@@ -603,13 +603,15 @@ export function OutfitListView({
 
 		  async function handleDeleteCalendarPlan(planId: string) {
 		    try {
-		      void repoDeleteTripPlan(planId as unknown as OutfitCalendarPlan);
+		      const plan = outfitCalendarPlans.find((candidate) => candidate.id === planId);
+		      if (!plan) throw new Error("旅行计划不存在，请刷新后重试");
+		      rethrowIfFailed(await repoDeleteTripPlan(plan), "删除旅行计划失败");
 		      await onPlanDataChange();
           setActiveCalendarPlanId(null);
           setSubPage("planning_calendar");
 		      onMessage("已删除旅行计划");
-		    } catch {
-		      onMessage("操作失败，请重试", "error");
+		    } catch (error) {
+		      onMessage(error instanceof Error ? error.message : "操作失败，请重试", "error");
 		    }
 		  }
 
@@ -619,42 +621,42 @@ export function OutfitListView({
       if (entry.status === "worn") {
         const outfitId = entry.outfitId ?? entry.actualOutfitId;
         if (outfitId) {
-          await handleCancelOutfitWearForDate(outfitId, entry.date);
+          await handleCancelOutfitWearForDate(entry.date, outfitId);
           return;
         }
       }
-      void repoDeleteOutfitPlanEntry(entry.id as unknown as OutfitPlanEntry).then(r => { if (!r.ok) console.error("删除计划失败", r.error); });
-      await syncPackingChecklistForDate(entry.date);
+      rethrowIfFailed(await repoDeleteOutfitPlanEntry(entry), "删除当天穿搭失败");
+      try {
+        await syncPackingChecklistForDate(entry.date, entry.id);
+      } catch (error) {
+        await onPlanDataChange();
+        onMessage(error instanceof Error ? `穿搭已删除，但${error.message}` : "穿搭已删除，但打包清单同步失败，请重试", "error");
+        return;
+      }
       await onPlanDataChange();
       onMessage("已删除当天穿搭");
-    } catch {
-      onMessage("删除失败，请重试", "error");
+    } catch (error) {
+      onMessage(error instanceof Error ? error.message : "删除失败，请重试", "error");
+      throw error;
     }
   }
 
 	  async function handleTogglePackingItemChecked(itemId: string, checked: boolean) {
-	    try {
-        if (activeCalendarPlanId) {
-        const plan = outfitCalendarPlans.find((p) => p.id === activeCalendarPlanId);
-        if (plan) {
-          const now = new Date().toISOString();
-          const updatedItems = planPackingChecklistItems.map((ci) =>
-            ci.id === itemId ? { ...ci, checked, updatedAt: now } : ci
-          );
-          void upsertTripPlan(plan, updatedItems).then(r => { if (!r.ok) console.error("保存计划失败", r.error); });
-        }
-      }
-	      await onPlanDataChange();
-	    } catch {
-	      onMessage("操作失败，请重试", "error");
-	    }
+      if (!activeCalendarPlanId) throw new Error("旅行计划不存在，请刷新后重试");
+      const plan = outfitCalendarPlans.find((candidate) => candidate.id === activeCalendarPlanId);
+      if (!plan) throw new Error("旅行计划不存在，请刷新后重试");
+      const now = new Date().toISOString();
+      const updatedItems = planPackingChecklistItems
+        .filter((item) => item.calendarPlanId === activeCalendarPlanId)
+        .map((item) => item.id === itemId ? { ...item, checked, updatedAt: now } : item);
+      rethrowIfFailed(await repoUpdatePackingChecklist(plan, updatedItems), "更新打包清单失败");
+      await onPlanDataChange();
 	  }
 
 	  async function handleSaveManualPackingItem(input: { label: string; category?: string; quantity?: number }) {
-	    if (!activeCalendarPlanId) return;
-	    try {
+	    if (!activeCalendarPlanId) throw new Error("旅行计划不存在，请刷新后重试");
 	      const plan = outfitCalendarPlans.find((p) => p.id === activeCalendarPlanId);
-	      if (plan) {
+	      if (!plan) throw new Error("旅行计划不存在，请刷新后重试");
 	        const now = new Date().toISOString();
 	        const newItem: PlanPackingChecklistItem = {
 	          id: `packing-${activeCalendarPlanId}-manual-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
@@ -667,46 +669,33 @@ export function OutfitListView({
 	          createdAt: now,
 	          updatedAt: now,
 	        };
-	        void upsertTripPlan(plan, [...planPackingChecklistItems, newItem]).then(r => { if (!r.ok) console.error("保存计划失败", r.error); });
-	      }
+	        const currentItems = planPackingChecklistItems.filter((item) => item.calendarPlanId === activeCalendarPlanId);
+	        rethrowIfFailed(await repoUpdatePackingChecklist(plan, [...currentItems, newItem]), "更新打包清单失败");
 	      await onPlanDataChange();
-	    } catch {
-	      onMessage("操作失败，请重试", "error");
-	    }
 	  }
 
 	  async function handleMarkAllPacked() {
-	    if (!activeCalendarPlanId) return;
-	    try {
+	    if (!activeCalendarPlanId) throw new Error("旅行计划不存在，请刷新后重试");
 	      const plan = outfitCalendarPlans.find((p) => p.id === activeCalendarPlanId);
-	      if (plan) {
+	      if (!plan) throw new Error("旅行计划不存在，请刷新后重试");
 	        const now = new Date().toISOString();
-	        const updatedItems = planPackingChecklistItems.map((ci) =>
-	          ci.calendarPlanId === activeCalendarPlanId ? { ...ci, checked: true, updatedAt: now } : ci
-	        );
-	        void upsertTripPlan(plan, updatedItems).then(r => { if (!r.ok) console.error("保存计划失败", r.error); });
-	      }
+	        const updatedItems = planPackingChecklistItems
+	          .filter((item) => item.calendarPlanId === activeCalendarPlanId)
+	          .map((item) => ({ ...item, checked: true, updatedAt: now }));
+	        rethrowIfFailed(await repoUpdatePackingChecklist(plan, updatedItems), "更新打包清单失败");
 	      await onPlanDataChange();
-	    } catch {
-	      onMessage("操作失败，请重试", "error");
-	    }
 	  }
 
 	  async function handleResetAllPacking() {
-	    if (!activeCalendarPlanId) return;
-	    try {
+	    if (!activeCalendarPlanId) throw new Error("旅行计划不存在，请刷新后重试");
 	      const plan = outfitCalendarPlans.find((p) => p.id === activeCalendarPlanId);
-	      if (plan) {
+	      if (!plan) throw new Error("旅行计划不存在，请刷新后重试");
 	        const now = new Date().toISOString();
-	        const updatedItems = planPackingChecklistItems.map((ci) =>
-	          ci.calendarPlanId === activeCalendarPlanId ? { ...ci, checked: false, updatedAt: now } : ci
-	        );
-	        void upsertTripPlan(plan, updatedItems).then(r => { if (!r.ok) console.error("保存计划失败", r.error); });
-	      }
+	        const updatedItems = planPackingChecklistItems
+	          .filter((item) => item.calendarPlanId === activeCalendarPlanId)
+	          .map((item) => ({ ...item, checked: false, updatedAt: now }));
+	        rethrowIfFailed(await repoUpdatePackingChecklist(plan, updatedItems), "更新打包清单失败");
 	      await onPlanDataChange();
-	    } catch {
-	      onMessage("操作失败，请重试", "error");
-	    }
 	  }
 
 	  // v1.1.0 fix:统一使用 recordActualOutfitWear，不限于 Today
@@ -831,6 +820,7 @@ export function OutfitListView({
     setActiveCalendarPlanId(planId);
     try {
       await syncPackingChecklistForPlan(planId);
+      await onPlanDataChange();
     } catch {
       onMessage("打包清单同步失败，请重试", "error");
     }
@@ -838,10 +828,12 @@ export function OutfitListView({
   }
 
   // v1.1.4-dev 打包清单自动同步 (单一 plan)
-  async function syncPackingChecklistForPlan(planId: string): Promise<void> {
+  async function syncPackingChecklistForPlan(planId: string, excludedEntryId?: string): Promise<void> {
     const plan = outfitCalendarPlans.find((p) => p.id === planId);
     if (!plan) return;
-    const allEntries = outfitPlanEntries;
+    const allEntries = excludedEntryId
+      ? outfitPlanEntries.filter((entry) => entry.id !== excludedEntryId)
+      : outfitPlanEntries;
     const allOutfits = outfits;
     const allItems = items;
     const allChecklist = planPackingChecklistItems.filter((ci) => ci.calendarPlanId === planId);
@@ -852,16 +844,16 @@ export function OutfitListView({
       items: allItems,
       existingChecklistItems: allChecklist,
     });
-    void upsertTripPlan(plan, newItems).then(r => { if (!r.ok) console.error("保存计划失败", r.error); });
+    rethrowIfFailed(await repoUpdatePackingChecklist(plan, newItems), "同步打包清单失败");
   }
 
   // v1.1.4-dev 打包清单自动同步 (按日期 → 同步所有覆盖该日期的 plan)
-  async function syncPackingChecklistForDate(dateKey: string): Promise<void> {
+  async function syncPackingChecklistForDate(dateKey: string, excludedEntryId?: string): Promise<void> {
     const matchedPlans = outfitCalendarPlans.filter(
       (p) => dateKey >= p.startDate && dateKey <= p.endDate,
     );
     for (const plan of matchedPlans) {
-      await syncPackingChecklistForPlan(plan.id);
+      await syncPackingChecklistForPlan(plan.id, excludedEntryId);
     }
   }
 
@@ -878,7 +870,7 @@ export function OutfitListView({
   }
   // Render
   return (
-    <div className="space-y-4">
+    <div className="w-full min-w-0 max-w-full overflow-x-hidden space-y-4">
       {subPage === "library" && (
         <>
           {/* Header - 与 AppSubPageTopBar / 衣橱首页顶部按钮行一致 h-14 (56px) */}
@@ -893,7 +885,7 @@ export function OutfitListView({
             <div className="flex shrink-0 items-center gap-2">
               <button
                 type="button"
-                onClick={openPlanningCalendarFromLibrary}
+                data-parity-id="parity.app.app.src.components.outfit.list.view.5f851a498b" onClick={openPlanningCalendarFromLibrary}
                 className="inline-flex h-10 min-w-[64px] items-center justify-center rounded-full border border-denim/20 bg-white px-3 text-sm font-semibold text-denim shadow-sm active:scale-95"
                 aria-label="打开穿搭月历"
               >
@@ -901,7 +893,7 @@ export function OutfitListView({
               </button>
               <button
                 type="button"
-                onClick={openTravelPlanSheetFromLibrary}
+                data-parity-id="parity.app.app.src.components.outfit.list.view.5546e4b500" onClick={openTravelPlanSheetFromLibrary}
                 className="inline-flex h-10 min-w-[72px] items-center justify-center rounded-full bg-denim px-3 text-sm font-semibold text-white shadow-sm active:scale-95"
                 aria-label="添加计划"
               >
@@ -946,6 +938,7 @@ export function OutfitListView({
             ].map((chip) => (
               <button
                 key={chip.key}
+                data-parity-id={`parity.app.app.src.components.outfit.list.view.d3c37fd77b.${chip.key}`}
                 type="button"
                 onClick={() => setChipFilter(chipFilter === chip.key ? "all" : chip.key)}
                 className={`shrink-0 rounded-full px-3 py-1 text-xs font-medium transition-colors ${
@@ -1059,7 +1052,7 @@ export function OutfitListView({
       {subPage === "real_image_add" && (
         <div className="space-y-4">
           <div className="flex items-center gap-3">
-            <button type="button" onClick={() => setSubPage("detail")} className="p-1 -ml-1"><ChevronLeft size={20} /></button>
+            <button type="button" data-parity-id="parity.app.app.src.components.outfit.list.view.d5844f6dd1" onClick={() => setSubPage("detail")} className="p-1 -ml-1"><ChevronLeft size={20} /></button>
             <h3 className="text-base font-semibold">添加穿搭实图</h3>
           </div>
 
@@ -1071,7 +1064,7 @@ export function OutfitListView({
             <div className="grid gap-3">
               <button
                 type="button"
-                onClick={() => realImageInputRef.current?.click()}
+                data-parity-id="parity.app.app.src.components.outfit.list.view.5d3f29e2cd" onClick={() => realImageInputRef.current?.click()}
                 className="flex items-center gap-3 rounded-xl border border-ink/10 bg-white p-4 text-sm"
               >
                 <ImageIcon size={20} className="text-ink/40" />
@@ -1079,7 +1072,7 @@ export function OutfitListView({
               </button>
               <button
                 type="button"
-                onClick={() => realImageCameraRef.current?.click()}
+                data-parity-id="parity.app.app.src.components.outfit.list.view.574b2d8b9e" onClick={() => realImageCameraRef.current?.click()}
                 className="flex items-center gap-3 rounded-xl border border-ink/10 bg-white p-4 text-sm"
               >
                 <Camera size={20} className="text-ink/40" />
@@ -1092,7 +1085,7 @@ export function OutfitListView({
             type="file"
             accept={IMAGE_FILE_ACCEPT}
             className="hidden"
-            onChange={handleRealImageFileSelected}
+            data-parity-id="parity.app.app.src.components.outfit.list.view.f17df68943" onChange={handleRealImageFileSelected}
           />
           <input
             ref={realImageCameraRef}
@@ -1100,7 +1093,7 @@ export function OutfitListView({
             accept="image/*"
             capture="environment"
             className="hidden"
-            onChange={handleRealImageFileSelected}
+            data-parity-id="parity.app.app.src.components.outfit.list.view.ab56cf440f" onChange={handleRealImageFileSelected}
           />
 
           <div className="space-y-3">
@@ -1109,7 +1102,7 @@ export function OutfitListView({
               <input
                 type="date"
                 value={realImageTakenAt}
-                onChange={(e) => setRealImageTakenAt(e.target.value)}
+                data-parity-id="parity.app.app.src.components.outfit.list.view.c5837ddcfb" onChange={(e) => setRealImageTakenAt(e.target.value)}
                 className="mt-1 w-full rounded-xl border border-ink/10 bg-white px-3 py-2 text-sm"
               />
             </div>
@@ -1118,7 +1111,7 @@ export function OutfitListView({
               <input
                 type="text"
                 value={realImageCaption}
-                onChange={(e) => setRealImageCaption(e.target.value)}
+                data-parity-id="parity.app.app.src.components.outfit.list.view.e75930158f" onChange={(e) => setRealImageCaption(e.target.value)}
                 placeholder="例如：上海出差通勤穿搭"
                 className="mt-1 w-full rounded-xl border border-ink/10 bg-white px-3 py-2 text-sm"
               />
@@ -1128,10 +1121,10 @@ export function OutfitListView({
           <p className="text-xs text-ink/30">这张照片会保存到当前套装，用于回看真实穿搭效果。</p>
 
           <div className="flex gap-3 pt-2">
-            <button type="button" onClick={() => setSubPage("detail")} className="flex-1 rounded-full border border-ink/10 py-2.5 text-sm">取消</button>
+            <button type="button" data-parity-id="parity.app.app.src.components.outfit.list.view.4abd97f970" onClick={() => setSubPage("detail")} className="flex-1 rounded-full border border-ink/10 py-2.5 text-sm">取消</button>
             <button
               type="button"
-              onClick={handleSaveRealImage}
+              data-parity-id="parity.app.app.src.components.outfit.list.view.46cea66824" onClick={handleSaveRealImage}
               disabled={!realImageFileUrl}
               className="flex-[2] rounded-full bg-denim py-2.5 text-sm font-medium text-white disabled:opacity-40"
             >
@@ -1206,7 +1199,8 @@ export function OutfitListView({
 	          onSelectOutfitForDate={openPlanOutfitSelect}
 	          onViewOutfit={(outfitId) => openOutfitDetail(outfitId, "planning_calendar")}
 	          onMarkWornToday={handleMarkPlanEntryWorn}
-            onDeleteEntry={handleDeletePlanEntry}
+	          onCancelWear={handleCancelOutfitWearForDate}
+	          onDeleteEntry={handleDeletePlanEntry}
 	          onOpenCalendarPlan={openPlanDetail}
 	          onMessage={onMessage}
 	        />
@@ -1281,6 +1275,7 @@ export function OutfitListView({
 	            ]).map((opt) => (
 	              <button
 	                key={opt.type}
+	                data-parity-id={`parity.app.app.src.components.outfit.list.view.d61cac655d.${opt.type}`}
 	                type="button"
 	                className="w-full rounded-xl border border-ink/10 bg-white p-3 text-left hover:bg-ink/2 transition-colors"
 	                onClick={() => { setPlanAddType(opt.type); setAddPlanSheetOpen(false); setSubPage("plan_add"); }}
@@ -1445,16 +1440,16 @@ function OutfitDetailView({
     <ItemDetailPageShell
       contentClassName="mx-auto w-full max-w-4xl pb-[calc(env(safe-area-inset-bottom)+24px)]"
       topBar={<DetailTopBar title="" onBack={onBack} onMore={() => setMenuOpen(!menuOpen)} moreButtonRef={menuAnchorRef} />}
-      hero={<DetailHeroGallery slides={gallerySlides} currentIndex={Math.min(activeSlide, Math.max(gallerySlides.length - 1, 0))} onIndexChange={setActiveSlide} onExpandImage={onExpandImage} bottomRightAction={<button type="button" onClick={(event) => { event.stopPropagation(); onMarkWorn(); }} className="inline-flex h-9 items-center gap-1 ui-control-radius bg-white/75 border border-white/60 px-3 text-xs font-semibold text-ink/80 backdrop-blur-xl">{wearSummary.hasToday ? "✓ 今天已穿" : "标记今天穿了"}</button>} emptyIcon={<Shirt size={48} />} emptyText="暂无套装封面" />}
+      hero={<DetailHeroGallery slides={gallerySlides} currentIndex={Math.min(activeSlide, Math.max(gallerySlides.length - 1, 0))} onIndexChange={setActiveSlide} onExpandImage={onExpandImage} bottomRightAction={<button type="button" data-parity-id="parity.app.app.src.components.outfit.list.view.1f793c0f2c" onClick={(event) => { event.stopPropagation(); onMarkWorn(); }} className="inline-flex h-9 items-center gap-1 ui-control-radius bg-white/75 border border-white/60 px-3 text-xs font-semibold text-ink/80 backdrop-blur-xl">{wearSummary.hasToday ? "✓ 今天已穿" : "标记今天穿了"}</button>} emptyIcon={<Shirt size={48} />} emptyText="暂无套装封面" />}
       filmstrip={<DetailFilmstrip items={filmstripItems} activeId={activeFilmstripId} onSelect={(id) => { const index = allSlides.findIndex((slide) => slide.kind === "cover" ? id === "cover" : slide.kind === "real" && slide.image.id === id); if (index >= 0) setActiveSlide(index); }} addLabel="套装示意" onAdd={onAddRealImage} />}
       titleBlock={<DetailTitleMetaBlock eyebrow={wearSummary.label} title={outfit.name} metaParts={[`${items.length}件`, seasonLabels, sceneLabels, styleLabels]} />}
-      tabs={<DetailTabs tabs={[{ key: "info", label: "信息" }, { key: "items", label: "组成" }, { key: "ai", label: "AI建议" }, { key: "records", label: "记录" }]} activeTab={detailTab} onChange={setDetailTab} />}
+      tabs={<DetailTabs tabs={[{ key: "info", label: "信息" }, { key: "items", label: "组成" }, { key: "ai", label: "AI建议" }, { key: "records", label: "记录" }]} activeTab={detailTab} data-parity-id="parity.app.app.src.components.outfit.list.view.0b5d63af92" onChange={setDetailTab} />}
       overlays={<>
         <MotionPopoverMenu visible={menuOpen} onClose={() => setMenuOpen(false)} anchorRef={menuAnchorRef as React.RefObject<HTMLElement | null>}>
           <div className="min-w-[160px] p-1">
-            <button type="button" onClick={() => { setMenuOpen(false); onEdit(); }} className="flex w-full items-center gap-2 rounded-lg px-3 py-2.5 text-sm text-ink/80 hover:bg-mist"><Settings size={14} />编辑套装</button>
-            <button type="button" onClick={() => { setMenuOpen(false); onToggleFavorite(); }} className="flex w-full items-center gap-2 rounded-lg px-3 py-2.5 text-sm text-ink/80 hover:bg-mist"><Sparkles size={14} />{outfit.favorite ? "取消收藏" : "收藏套装"}</button>
-            <button type="button" onClick={() => { setMenuOpen(false); setDeleteConfirm(true); }} className="flex w-full items-center gap-2 rounded-lg px-3 py-2.5 text-sm text-red-600 hover:bg-red-50"><Trash2 size={14} />删除套装</button>
+            <button type="button" data-parity-id="parity.app.app.src.components.outfit.list.view.c88032f82d" onClick={() => { setMenuOpen(false); onEdit(); }} className="flex w-full items-center gap-2 rounded-lg px-3 py-2.5 text-sm text-ink/80 hover:bg-mist"><Settings size={14} />编辑套装</button>
+            <button type="button" data-parity-id="parity.app.app.src.components.outfit.list.view.916620b4a2" onClick={() => { setMenuOpen(false); onToggleFavorite(); }} className="flex w-full items-center gap-2 rounded-lg px-3 py-2.5 text-sm text-ink/80 hover:bg-mist"><Sparkles size={14} />{outfit.favorite ? "取消收藏" : "收藏套装"}</button>
+            <button type="button" data-parity-id="parity.app.app.src.components.outfit.list.view.db73d8b142" onClick={() => { setMenuOpen(false); setDeleteConfirm(true); }} className="flex w-full items-center gap-2 rounded-lg px-3 py-2.5 text-sm text-red-600 hover:bg-red-50"><Trash2 size={14} />删除套装</button>
           </div>
         </MotionPopoverMenu>
         <ConfirmActionSheet open={deleteConfirm} title={`删除「${outfit.name}」？`} description="删除后不会影响套装内的衣物，套装实图也会一并删除。" confirmLabel="删除" tone="danger" onConfirm={handleDeleteOutfit} onClose={() => setDeleteConfirm(false)} />
@@ -1529,7 +1524,7 @@ function OutfitDetailView({
             {realImages.length > 0 ? (
               <div className="flex gap-2 overflow-x-auto">
                 {realImages.map((image) => (
-                  <button key={image.id} type="button" onClick={() => onViewRealImage(image)} className="h-20 w-16 shrink-0 overflow-hidden rounded-lg bg-milk-darker">
+                  <button key={image.id} type="button" data-parity-id={`parity.app.app.src.components.outfit.list.view.70ee9ec3bb.${image.id}`} onClick={() => onViewRealImage(image)} className="h-20 w-16 shrink-0 overflow-hidden rounded-lg bg-milk-darker">
                     <OnlineAssetImage asset={image.image.asset} variant="thumbnail" alt={image.caption ?? "穿搭实图"} className="h-full w-full" imageClassName="object-cover" />
                   </button>
                 ))}
@@ -1591,7 +1586,7 @@ function OutfitCompositionTab({
                 <p className="truncate text-sm font-semibold">{item.name}</p>
                 <p className="truncate text-[11px] text-ink/42">{CATEGORY_LABELS[item.category]} · {labelOutfitStyleTags(item.styles).join(" / ") || "未标风格"}</p>
               </div>
-              <button type="button" onClick={() => onToggleReplacement(item.id!)} className="h-8 shrink-0 rounded-md border border-ink/10 px-2 text-xs text-ink/65">
+              <button type="button" data-parity-id="parity.app.app.src.components.outfit.list.view.6a06ba69ed" onClick={() => onToggleReplacement(item.id!)} className="h-8 shrink-0 rounded-md border border-ink/10 px-2 text-xs text-ink/65">
                 替换建议
               </button>
             </div>
@@ -1644,7 +1639,7 @@ function OutfitAiSuggestionDetail({
       <div className="rounded-lg border border-dashed border-ink/12 bg-white/70 p-5 text-center">
         <p className="text-sm font-medium text-ink/65">还没有套装建议</p>
         <p className="mt-1 text-xs text-ink/45">建议只会在你点击后生成。</p>
-        <button type="button" onClick={onGenerate} disabled={isLoading} className="mt-3 h-9 rounded-lg bg-denim px-4 text-xs font-semibold text-white disabled:opacity-50">
+        <button type="button" data-parity-id="parity.app.app.src.components.outfit.list.view.1b7f0a6cfd" onClick={onGenerate} disabled={isLoading} className="mt-3 h-9 rounded-lg bg-denim px-4 text-xs font-semibold text-white disabled:opacity-50">
           生成 AI 建议
         </button>
       </div>
@@ -1743,18 +1738,18 @@ function RealImageView({
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <button type="button" onClick={onBack} className="p-1 -ml-1"><ChevronLeft size={20} /></button>
-        <button type="button" ref={menuRef} onClick={() => setMenuOpen(!menuOpen)} className="p-1">
+        <button type="button" data-parity-id="parity.app.app.src.components.outfit.list.view.983315d853" onClick={onBack} className="p-1 -ml-1"><ChevronLeft size={20} /></button>
+        <button type="button" ref={menuRef} data-parity-id="parity.app.app.src.components.outfit.list.view.ec3595582b" onClick={() => setMenuOpen(!menuOpen)} className="p-1">
           <MoreHorizontal size={18} className="text-ink/50" />
         </button>
       </div>
 
       {menuOpen && (
         <div className="absolute right-4 z-50 mt-1 w-40 rounded-xl border border-ink/8 bg-white py-1 shadow-lg">
-          <button type="button" onClick={() => { setMenuOpen(false); setEditingCaption(true); setCaptionDraft(image.caption ?? ""); }} className="flex w-full items-center gap-2 px-4 py-2.5 text-sm hover:bg-milk-darker/40">
+          <button type="button" data-parity-id="parity.app.app.src.components.outfit.list.view.fc53cffe40" onClick={() => { setMenuOpen(false); setEditingCaption(true); setCaptionDraft(image.caption ?? ""); }} className="flex w-full items-center gap-2 px-4 py-2.5 text-sm hover:bg-milk-darker/40">
             <Pencil size={14} />编辑说明
           </button>
-          <button type="button" onClick={() => { setMenuOpen(false); setDeleteConfirm(true); }} className="flex w-full items-center gap-2 px-4 py-2.5 text-sm text-red-500 hover:bg-milk-darker/40">
+          <button type="button" data-parity-id="parity.app.app.src.components.outfit.list.view.fa04042fc9" onClick={() => { setMenuOpen(false); setDeleteConfirm(true); }} className="flex w-full items-center gap-2 px-4 py-2.5 text-sm text-red-500 hover:bg-milk-darker/40">
             <Trash2 size={14} />删除实图
           </button>
         </div>
@@ -1765,18 +1760,18 @@ function RealImageView({
 
       {/* Caption edit */}
       {editingCaption && (
-        <div className="fixed inset-0 z-70 flex items-center justify-center bg-black/30" onClick={() => setEditingCaption(false)}>
-          <div className="mx-4 w-full max-w-sm rounded-2xl bg-white p-6" onClick={(e) => e.stopPropagation()}>
+        <div className="fixed inset-0 z-70 flex items-center justify-center bg-black/30" data-parity-id="parity.app.app.src.components.outfit.list.view.e384998688" onClick={() => setEditingCaption(false)}>
+          <div className="mx-4 w-full max-w-sm rounded-2xl bg-white p-6" data-parity-id="parity.app.app.src.components.outfit.list.view.aa4b7fd200" onClick={(e) => e.stopPropagation()}>
             <p className="text-sm font-medium">编辑说明</p>
             <input
               type="text"
               value={captionDraft}
-              onChange={(e) => setCaptionDraft(e.target.value)}
+              data-parity-id="parity.app.app.src.components.outfit.list.view.55c593c654" onChange={(e) => setCaptionDraft(e.target.value)}
               className="mt-2 w-full rounded-xl border border-ink/10 px-3 py-2 text-sm"
             />
             <div className="mt-4 flex gap-3">
-              <button type="button" onClick={() => setEditingCaption(false)} className="flex-1 rounded-full border border-ink/10 py-2 text-sm">取消</button>
-              <button type="button" onClick={() => { onSaveCaption(captionDraft); setEditingCaption(false); }} className="flex-1 rounded-full bg-denim py-2 text-sm font-medium text-white">保存</button>
+              <button type="button" data-parity-id="parity.app.app.src.components.outfit.list.view.c67aaefef9" onClick={() => setEditingCaption(false)} className="flex-1 rounded-full border border-ink/10 py-2 text-sm">取消</button>
+              <button type="button" data-parity-id="parity.app.app.src.components.outfit.list.view.822ac5a1bc" onClick={() => { onSaveCaption(captionDraft); setEditingCaption(false); }} className="flex-1 rounded-full bg-denim py-2 text-sm font-medium text-white">保存</button>
             </div>
           </div>
         </div>
@@ -1841,7 +1836,7 @@ function OutfitInfoForm({
  return (
  <div className="space-y-5">
  <div className="flex items-center gap-3">
- <button type="button" onClick={onBack} className="p-1 -ml-1"><ChevronLeft size={20} /></button>
+ <button type="button" data-parity-id="parity.app.app.src.components.outfit.list.view.cb3f420db8" onClick={onBack} className="p-1 -ml-1"><ChevronLeft size={20} /></button>
  <h3 className="text-base font-semibold">{isEdit ? "编辑套装信息" : "创建搭配"}</h3>
  </div>
 
@@ -1850,7 +1845,7 @@ function OutfitInfoForm({
  <div className="rounded-2xl border border-denim/12 bg-denim/5 p-3">
  <button
  type="button"
- onClick={() => { void onRegenerateInfo(); }}
+ data-parity-id="parity.app.app.src.components.outfit.list.view.4c3cea17f9" onClick={() => { void onRegenerateInfo(); }}
  disabled={isRegeneratingInfo}
  className="inline-flex w-full items-center justify-center gap-2 rounded-full bg-denim px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-50"
  >
@@ -1878,7 +1873,7 @@ function OutfitInfoForm({
       {/* Name */}
       <div>
         <label className="text-xs font-medium text-ink/50">套装名称</label>
-        <input type="text" value={name} onChange={(e) => setName(e.target.value)} placeholder="例如：蓝白通勤套装" className="mt-1 w-full rounded-xl border border-ink/10 bg-white px-3 py-2 text-sm" />
+        <input type="text" value={name} data-parity-id="parity.app.app.src.components.outfit.list.view.d0acaa7642" onChange={(e) => setName(e.target.value)} placeholder="例如：蓝白通勤套装" className="mt-1 w-full rounded-xl border border-ink/10 bg-white px-3 py-2 text-sm" />
       </div>
 
       {/* Seasons (v1.0: 重命名为"适合季节" + 增加"四季") */}
@@ -1886,7 +1881,7 @@ function OutfitInfoForm({
         <label className="text-xs font-medium text-ink/50">适合季节</label>
         <div className="mt-1 flex flex-wrap gap-2">
           {(["spring", "summer", "autumn", "winter", "all"] as Season[]).map((s) => (
-            <button key={s} type="button" onClick={() => setSeasons(toggleArr(seasons, s))}
+            <button key={s} type="button" data-parity-id={`parity.app.app.src.components.outfit.list.view.138a7e3007.${s}`} onClick={() => setSeasons(toggleArr(seasons, s))}
               className={`rounded-full px-3 py-1 text-sm ${seasons.includes(s) ? "bg-denim/10 text-denim border border-denim/30" : "border border-ink/10 bg-white text-ink/50"}`}>
               {SEASON_LABELS[s]}
             </button>
@@ -1899,7 +1894,7 @@ function OutfitInfoForm({
         <label className="text-xs font-medium text-ink/50">场景</label>
         <div className="mt-1 flex flex-wrap gap-2">
           {SCENE_OPTIONS.map((s) => (
-            <button key={s} type="button" onClick={() => setScenes(toggleArr(scenes, s))}
+            <button key={s} type="button" data-parity-id={`parity.app.app.src.components.outfit.list.view.7392ff08a7.${s}`} onClick={() => setScenes(toggleArr(scenes, s))}
               className={`rounded-full px-3 py-1 text-sm ${scenes.includes(s) ? "bg-denim/10 text-denim border border-denim/30" : "border border-ink/10 bg-white text-ink/50"}`}>
               {s}
             </button>
@@ -1911,9 +1906,9 @@ function OutfitInfoForm({
       <div>
         <label className="text-xs font-medium text-ink/50">适穿温度</label>
         <div className="mt-1 flex items-center gap-2">
-          <input type="number" value={minC} onChange={(e) => setMinC(e.target.value)} placeholder="最低℃" className="w-20 rounded-xl border border-ink/10 bg-white px-3 py-2 text-sm" />
+          <input type="number" data-parity-id="parity.app.app.src.components.outfit.list.view.4955a36c70" value={minC} onChange={(e) => setMinC(e.target.value)} placeholder="最低℃" className="w-20 rounded-xl border border-ink/10 bg-white px-3 py-2 text-sm" />
           <span className="text-xs text-ink/30">到</span>
-          <input type="number" value={maxC} onChange={(e) => setMaxC(e.target.value)} placeholder="最高℃" className="w-20 rounded-xl border border-ink/10 bg-white px-3 py-2 text-sm" />
+          <input type="number" data-parity-id="parity.app.app.src.components.outfit.list.view.4f1f66edd9" value={maxC} onChange={(e) => setMaxC(e.target.value)} placeholder="最高℃" className="w-20 rounded-xl border border-ink/10 bg-white px-3 py-2 text-sm" />
         </div>
       </div>
 
@@ -1922,7 +1917,7 @@ function OutfitInfoForm({
         <label className="text-xs font-medium text-ink/50">风格</label>
         <div className="mt-1 flex flex-wrap gap-2">
           {STYLE_OPTIONS.map((s) => (
-            <button key={s} type="button" onClick={() => setStyles(toggleArr(styles, s))}
+            <button key={s} type="button" data-parity-id={`parity.app.app.src.components.outfit.list.view.7998ccc498.${s}`} onClick={() => setStyles(toggleArr(styles, s))}
               className={`rounded-full px-3 py-1 text-sm ${styles.includes(s) ? "bg-denim/10 text-denim border border-denim/30" : "border border-ink/10 bg-white text-ink/50"}`}>
               {s}
             </button>
@@ -1935,15 +1930,15 @@ function OutfitInfoForm({
         <label className="text-xs font-medium text-ink/50">搭配标签</label>
         <div className="mt-1 flex flex-wrap gap-2">
           {PAIRING_TAG_OPTIONS.map((t) => (
-            <button key={t} type="button" onClick={() => setPairingTags(toggleArr(pairingTags, t))}
+            <button key={t} type="button" data-parity-id={`parity.app.app.src.components.outfit.list.view.79475048d9.${t}`} onClick={() => setPairingTags(toggleArr(pairingTags, t))}
               className={`rounded-full px-3 py-1 text-sm ${pairingTags.includes(t) ? "bg-denim/10 text-denim border border-denim/30" : "border border-ink/10 bg-white text-ink/50"}`}>
               {t}
             </button>
           ))}
           <div className="flex items-center gap-1">
-            <input type="text" value={customTag} onChange={(e) => setCustomTag(e.target.value)} placeholder="自定义" className="w-16 rounded-full border border-ink/10 bg-white px-3 py-1 text-sm" />
+            <input type="text" data-parity-id="parity.app.app.src.components.outfit.list.view.4ee78cf6f8" value={customTag} onChange={(e) => setCustomTag(e.target.value)} placeholder="自定义" className="w-16 rounded-full border border-ink/10 bg-white px-3 py-1 text-sm" />
             {customTag.trim() && (
-              <button type="button" onClick={() => { setPairingTags([...pairingTags, customTag.trim()]); setCustomTag(""); }}
+              <button type="button" data-parity-id="parity.app.app.src.components.outfit.list.view.cd6e8e767f" onClick={() => { setPairingTags([...pairingTags, customTag.trim()]); setCustomTag(""); }}
                 className="rounded-full bg-denim/10 p-1 text-denim">
                 <Plus size={14} />
               </button>
@@ -1955,7 +1950,7 @@ function OutfitInfoForm({
       {/* Notes */}
       <div>
         <label className="text-xs font-medium text-ink/50">备注</label>
-        <textarea value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="适合办公室、城市步行……" rows={3} className="mt-1 w-full rounded-xl border border-ink/10 bg-white px-3 py-2 text-sm resize-none" />
+        <textarea data-parity-id="parity.app.app.src.components.outfit.list.view.26ab234f9c" value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="适合办公室、城市步行……" rows={3} className="mt-1 w-full rounded-xl border border-ink/10 bg-white px-3 py-2 text-sm resize-none" />
       </div>
 
       {/* Items in outfit */}
@@ -1966,7 +1961,7 @@ function OutfitInfoForm({
             {selectedItems.map((item) => (
               <span key={item.id} className="inline-flex items-center gap-1.5 rounded-full border border-ink/10 bg-white px-3 py-1 text-sm">
                 {item.name}
-                <button type="button" onClick={() => setSelectedIds(selectedIds.filter((id) => id !== item.id))}><X size={12} /></button>
+                <button type="button" data-parity-id={`parity.app.app.src.components.outfit.list.view.27ca9e5a6b.${item.id}`} onClick={() => setSelectedIds(selectedIds.filter((id) => id !== item.id))}><X size={12} /></button>
               </span>
             ))}
           </div>
@@ -1975,8 +1970,8 @@ function OutfitInfoForm({
 
       {/* Bottom bar */}
       <div className="flex gap-3 pt-4">
-        <button type="button" onClick={onCancel} className="flex-1 rounded-full border border-ink/10 py-2.5 text-sm">取消</button>
-        <button type="button" onClick={onSave} className="flex-[2] rounded-full bg-denim py-2.5 text-sm font-medium text-white">保存套装</button>
+        <button type="button" data-parity-id="parity.app.app.src.components.outfit.list.view.5911a347e0" onClick={onCancel} className="flex-1 rounded-full border border-ink/10 py-2.5 text-sm">取消</button>
+        <button type="button" data-parity-id="parity.app.app.src.components.outfit.list.view.a91e4277f6" onClick={onSave} className="flex-[2] rounded-full bg-denim py-2.5 text-sm font-medium text-white">保存套装</button>
       </div>
     </div>
   );

@@ -19,7 +19,7 @@ export function OnlineInlineNotice({
     >
       {tone === "loading" ? <LoaderCircle aria-hidden="true" className="h-3.5 w-3.5 shrink-0 animate-spin motion-reduce:animate-none" /> : <AlertCircle aria-hidden="true" className="h-3.5 w-3.5 shrink-0" />}
       <span className="min-w-0 flex-1">{message}</span>
-      {onRetry ? <button type="button" onClick={onRetry} className="shrink-0 rounded-full px-2 py-0.5 font-medium underline-offset-2 hover:underline">{retryLabel}</button> : null}
+      {onRetry ? <button type="button" data-parity-id="parity.app.app.src.components.online.online.inline.notice.f564d4229a" onClick={onRetry} className="shrink-0 rounded-full px-2 py-0.5 font-medium underline-offset-2 hover:underline">{retryLabel}</button> : null}
     </div>
   );
 }

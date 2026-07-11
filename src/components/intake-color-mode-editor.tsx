@@ -20,7 +20,7 @@ export function IntakeColorModeEditor({
       mode="edit"
       colors={colors}
       sourceLabel={sourceLabel}
-      onChange={onChange}
+      data-parity-id="parity.app.app.src.components.intake.color.mode.editor.6ee3768fe2" onChange={onChange}
     />
   );
 }

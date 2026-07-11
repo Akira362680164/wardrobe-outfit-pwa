@@ -21,7 +21,7 @@ export function WardrobeHiddenImageInputs(props: WardrobeHiddenImageInputsProps)
         accept="image/*"
         capture="environment"
         className="hidden"
-        onChange={onCameraInputChange}
+        data-parity-id="parity.app.app.src.components.wardrobe.hidden.image.inputs.220854511b" onChange={onCameraInputChange}
       />
       <input
         ref={galleryInputRef}
@@ -29,7 +29,7 @@ export function WardrobeHiddenImageInputs(props: WardrobeHiddenImageInputsProps)
         accept="image/jpeg,image/png,image/webp,image/heic,image/heif,.heic,.heif"
         multiple
         className="hidden"
-        onChange={onGalleryInputChange}
+        data-parity-id="parity.app.app.src.components.wardrobe.hidden.image.inputs.84a54e70f3" onChange={onGalleryInputChange}
       />
     </>
   );

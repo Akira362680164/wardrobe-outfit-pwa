@@ -11,11 +11,6 @@ function buildIconStyle(size: number) {
   return `width:${safeSize}rpx;height:${safeSize}rpx;font-size:${safeSize}rpx;line-height:${safeSize}rpx;`;
 }
 
-function buildMaskStyle(src: string, size: number) {
-  const safeSize = safeIconSize(size);
-  return `width:${safeSize}rpx;height:${safeSize}rpx;-webkit-mask-image:url(${src});mask-image:url(${src});`;
-}
-
 Component({
   properties: {
     name: { type: String, value: "home" },
@@ -25,7 +20,7 @@ Component({
     label: { type: String, value: "" },
     spin: { type: Boolean, value: false },
   },
-  data: { iconGlyph: "", iconSrc: "", iconStyle: "", maskStyle: "" },
+  data: { iconGlyph: "", iconSrc: "", iconStyle: "" },
   observers: {
     "name, src, size, color": function updateIcon(this: any, name: UiIconName, src: string, size: number) {
       const iconSrc = src || ICON_PATHS[name] || "";
@@ -33,7 +28,6 @@ Component({
         iconGlyph: ICON_GLYPHS[name] || ICON_GLYPHS.home,
         iconSrc,
         iconStyle: buildIconStyle(size),
-        maskStyle: iconSrc ? buildMaskStyle(iconSrc, size) : "",
       });
     },
   },
@@ -45,7 +39,6 @@ Component({
         iconGlyph: ICON_GLYPHS[name] || ICON_GLYPHS.home,
         iconSrc,
         iconStyle: buildIconStyle(size),
-        maskStyle: iconSrc ? buildMaskStyle(iconSrc, size) : "",
       });
     },
   },

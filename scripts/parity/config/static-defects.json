@@ -1,0 +1,1431 @@
+[
+  {
+    "defectId": "STATIC-WARDROBE-001",
+    "severity": "P1",
+    "category": "FUNCTION_MISSING",
+    "screenId": "wardrobe.search",
+    "actionId": "wardrobe.search.open",
+    "confirmation": "STATIC_CONFIRMED",
+    "expected": "Open the APP-equivalent search Screen with query, history, location and category filters.",
+    "actual": "历史缺陷：Mini only calls wx.showToast with 搜索暂未开放. 修复后已由对应契约/逻辑测试、构建门禁及本轮 APP 或微信真机定向回归验证。",
+    "sourceEvidence": [
+      "src/components/wardrobe-app.tsx:2820",
+      "apps/wechat-miniprogram/pages/wardrobe/index/index.ts:182"
+    ],
+    "acceptanceCriteria": [
+      "Mini implements the complete search state graph and returns to the prior wardrobe state."
+    ],
+    "suspectedFiles": [
+      "apps/wechat-miniprogram/pages/wardrobe/index/index.ts",
+      "apps/wechat-miniprogram/pages/wardrobe/index/index.wxml"
+    ],
+    "status": "VERIFIED"
+  },
+  {
+    "defectId": "STATIC-WARDROBE-002",
+    "severity": "P1",
+    "category": "FUNCTION_MISSING",
+    "screenId": "wardrobe.statistics",
+    "actionId": "wardrobe.statistics.open",
+    "confirmation": "STATIC_CONFIRMED",
+    "expected": "Open the APP statistics Screen with overview, recent, idle and purchase-usage sections.",
+    "actual": "历史缺陷：Mini only displays a toast summary and has no registered statistics page. 修复后已由对应契约/逻辑测试、构建门禁及本轮 APP 或微信真机定向回归验证。",
+    "sourceEvidence": [
+      "src/components/wear-statistics-view.tsx:30",
+      "apps/wechat-miniprogram/pages/wardrobe/index/index.ts:186",
+      "apps/wechat-miniprogram/app.json:1"
+    ],
+    "acceptanceCriteria": [
+      "Mini exposes all APP statistics sections with empty and populated states."
+    ],
+    "suspectedFiles": [
+      "apps/wechat-miniprogram/app.json",
+      "apps/wechat-miniprogram/pages/wardrobe/index/index.ts"
+    ],
+    "status": "VERIFIED"
+  },
+  {
+    "defectId": "STATIC-WARDROBE-003",
+    "severity": "P1",
+    "category": "INTERACTION_MISSING",
+    "screenId": "wardrobe.home",
+    "actionId": "wardrobe.garment-card.long-press",
+    "confirmation": "STATIC_CONFIRMED",
+    "expected": "Long press enters multi-select with toggle, cancel and confirmed bulk deletion.",
+    "actual": "历史缺陷：Mini catalog card exposes tap/select only and has no multi-select state. 修复后已由对应契约/逻辑测试、构建门禁及本轮 APP 或微信真机定向回归验证。",
+    "sourceEvidence": [
+      "src/components/wardrobe-app.tsx:1588",
+      "apps/wechat-miniprogram/components/domain/catalog-card/index.wxml:1"
+    ],
+    "acceptanceCriteria": [
+      "Mini supports APP-equivalent multi-selection and server-verified bulk deletion."
+    ],
+    "suspectedFiles": [
+      "apps/wechat-miniprogram/components/domain/catalog-card/index.ts",
+      "apps/wechat-miniprogram/pages/wardrobe/index/index.ts"
+    ],
+    "status": "VERIFIED"
+  },
+  {
+    "defectId": "STATIC-WARDROBE-004",
+    "severity": "P1",
+    "category": "ACTION_MODEL_DIVERGED",
+    "screenId": "wardrobe.garment.detail",
+    "actionId": "garment.detail.more",
+    "confirmation": "STATIC_CONFIRMED",
+    "expected": "Use the APP three-dot action menu with edit, move and delete.",
+    "actual": "历史缺陷：Mini renders four inline actions, omits move and adds detail-level rerecognize. 修复后已由对应契约/逻辑测试、构建门禁及本轮 APP 或微信真机定向回归验证。",
+    "sourceEvidence": [
+      "src/components/garment-detail-3.0.tsx:210",
+      "apps/wechat-miniprogram/pages/wardrobe/detail/index.wxml:23"
+    ],
+    "acceptanceCriteria": [
+      "Mini action hierarchy and actions match the APP semantic model."
+    ],
+    "suspectedFiles": [
+      "apps/wechat-miniprogram/pages/wardrobe/detail/index.wxml",
+      "apps/wechat-miniprogram/pages/wardrobe/detail/index.ts"
+    ],
+    "status": "VERIFIED"
+  },
+  {
+    "defectId": "STATIC-WARDROBE-005",
+    "severity": "P1",
+    "category": "CONTENT_MISSING",
+    "screenId": "wardrobe.garment.detail",
+    "confirmation": "STATIC_CONFIRMED",
+    "expected": "Inspiration references and pairing tabs contain real content, add/preview and outfit navigation.",
+    "actual": "历史缺陷：Mini tabs contain static empty copy and the visible add tile has no action. 修复后已由对应契约/逻辑测试、构建门禁及本轮 APP 或微信真机定向回归验证。",
+    "sourceEvidence": [
+      "src/components/garment-detail-3.0.tsx:405",
+      "apps/wechat-miniprogram/pages/wardrobe/detail/index.wxml:90"
+    ],
+    "acceptanceCriteria": [
+      "Mini implements real inspiration and pairing content with the same operations."
+    ],
+    "suspectedFiles": [
+      "apps/wechat-miniprogram/pages/wardrobe/detail/index.ts",
+      "apps/wechat-miniprogram/pages/wardrobe/detail/index.wxml"
+    ],
+    "status": "VERIFIED"
+  },
+  {
+    "defectId": "STATIC-WARDROBE-006",
+    "severity": "P1",
+    "category": "FUNCTION_MISSING",
+    "screenId": "wardrobe.garment.detail",
+    "confirmation": "STATIC_CONFIRMED",
+    "expected": "Toggle today's wear and preview hero/reference images.",
+    "actual": "历史缺陷：Mini has neither the wear action nor image preview handlers. 修复后已由对应契约/逻辑测试、构建门禁及本轮 APP 或微信真机定向回归验证。",
+    "sourceEvidence": [
+      "src/components/garment-detail-3.0.tsx:220",
+      "apps/wechat-miniprogram/pages/wardrobe/detail/index.wxml:1"
+    ],
+    "acceptanceCriteria": [
+      "Mini supports server-verified wear toggling and image preview/close."
+    ],
+    "suspectedFiles": [
+      "apps/wechat-miniprogram/pages/wardrobe/detail/index.ts",
+      "apps/wechat-miniprogram/pages/wardrobe/detail/index.wxml"
+    ],
+    "status": "VERIFIED"
+  },
+  {
+    "defectId": "STATIC-WARDROBE-007",
+    "severity": "P1",
+    "category": "DEAD_CONTROL",
+    "screenId": "wardrobe.garment.edit",
+    "confirmation": "STATIC_CONFIRMED",
+    "expected": "Visible crop and rerecognize buttons execute their workflows.",
+    "actual": "历史缺陷：Mini buttons are rendered without bindtap and handlers do not exist. 修复后已由对应契约/逻辑测试、构建门禁及本轮 APP 或微信真机定向回归验证。",
+    "sourceEvidence": [
+      "apps/wechat-miniprogram/pages/wardrobe/edit/index.wxml:10",
+      "apps/wechat-miniprogram/pages/wardrobe/edit/index.ts:1"
+    ],
+    "acceptanceCriteria": [
+      "Both controls have stable IDs and complete success/failure/cancel behavior."
+    ],
+    "suspectedFiles": [
+      "apps/wechat-miniprogram/pages/wardrobe/edit/index.wxml",
+      "apps/wechat-miniprogram/pages/wardrobe/edit/index.ts"
+    ],
+    "status": "VERIFIED"
+  },
+  {
+    "defectId": "STATIC-WARDROBE-008",
+    "severity": "P2",
+    "category": "VISUAL_STYLE",
+    "screenId": "wardrobe.garment.detail",
+    "actionId": "garment.detail.back",
+    "confirmation": "STATIC_CONFIRMED",
+    "expected": "Transparent APP-style back control outside the capsule mask.",
+    "actual": "历史缺陷：Mini back control has a white circular background. 修复后已由对应契约/逻辑测试、构建门禁及本轮 APP 或微信真机定向回归验证。",
+    "sourceEvidence": [
+      "src/components/app-sub-page-top-bar.tsx:1",
+      "apps/wechat-miniprogram/components/domain/item-detail-shell/index.wxss:19"
+    ],
+    "acceptanceCriteria": [
+      "Back icon has no APP-absent white container and preserves the capsule safe region."
+    ],
+    "suspectedFiles": [
+      "apps/wechat-miniprogram/components/domain/item-detail-shell/index.wxss"
+    ],
+    "status": "VERIFIED"
+  },
+  {
+    "defectId": "STATIC-WARDROBE-009",
+    "severity": "P1",
+    "category": "SAFE_AREA",
+    "screenId": "wardrobe.garment.detail",
+    "confirmation": "STATIC_CONFIRMED",
+    "expected": "Derive capsule geometry from wx.getMenuButtonBoundingClientRect.",
+    "actual": "历史缺陷：Detail shell uses fixed grid and right padding without runtime capsule geometry. 修复后已由对应契约/逻辑测试、构建门禁及本轮 APP 或微信真机定向回归验证。",
+    "sourceEvidence": [
+      "apps/wechat-miniprogram/components/domain/item-detail-shell/index.wxss:7",
+      "apps/wechat-miniprogram/pages/wardrobe/detail/index.ts:1"
+    ],
+    "acceptanceCriteria": [
+      "Header reserves only the runtime capsule rectangle plus approved padding."
+    ],
+    "suspectedFiles": [
+      "apps/wechat-miniprogram/components/domain/item-detail-shell/index.ts",
+      "apps/wechat-miniprogram/components/domain/item-detail-shell/index.wxss"
+    ],
+    "status": "VERIFIED"
+  },
+  {
+    "defectId": "STATIC-WARDROBE-010",
+    "severity": "P2",
+    "category": "COPY_DIVERGED",
+    "screenId": "wardrobe.garment.detail",
+    "actionId": "garment.detail.delete.open",
+    "confirmation": "STATIC_CONFIRMED",
+    "expected": "Deletion cascade copy states one authoritative outcome.",
+    "actual": "历史缺陷：APP says related outfit item is removed; mini says outfit may remain but item is hidden. 修复后已由对应契约/逻辑测试、构建门禁及本轮 APP 或微信真机定向回归验证。",
+    "sourceEvidence": [
+      "src/components/garment-detail-3.0.tsx:1",
+      "apps/wechat-miniprogram/pages/wardrobe/detail/index.wxml:1"
+    ],
+    "acceptanceCriteria": [
+      "Both clients use copy matching the verified server cascade."
+    ],
+    "suspectedFiles": [
+      "apps/wechat-miniprogram/pages/wardrobe/detail/index.wxml"
+    ],
+    "status": "VERIFIED"
+  },
+  {
+    "defectId": "STATIC-WARDROBE-011",
+    "severity": "P2",
+    "category": "STATE_GRAPH_INCOMPLETE",
+    "screenId": "wardrobe.home",
+    "actionId": "wardrobe.ai-diagnosis.open",
+    "confirmation": "STATIC_CONFIRMED",
+    "expected": "Expose loading, collapsed, expanded, error, retry, close and regenerate states.",
+    "actual": "历史缺陷：Mini exposes loading, summary and tips only; failures are toast-only. 修复后已由对应契约/逻辑测试、构建门禁及本轮 APP 或微信真机定向回归验证。",
+    "sourceEvidence": [
+      "src/components/wardrobe-app.tsx:3215",
+      "apps/wechat-miniprogram/pages/wardrobe/index/index.ts:1"
+    ],
+    "acceptanceCriteria": [
+      "Mini implements all APP diagnosis states and transitions."
+    ],
+    "suspectedFiles": [
+      "apps/wechat-miniprogram/pages/wardrobe/index/index.ts",
+      "apps/wechat-miniprogram/pages/wardrobe/index/index.wxml"
+    ],
+    "status": "VERIFIED"
+  },
+  {
+    "defectId": "STATIC-INTAKE-001",
+    "severity": "P0",
+    "category": "FUNCTION_MISSING",
+    "screenId": "intake.crop",
+    "confirmation": "RUNTIME_CONFIRMED",
+    "expected": "User sees APP-equivalent source/result thumbnails and confirms interactive crop, rotation and reset before recognition and save.",
+    "actual": "Verified on the latest real-device preview: Android gallery selection opened the crop page, rotate changed the visible result, confirmation returned a processed thumbnail, original/thumbnail temporary assets both reached ready, and garment 4fe34293-24c6-4df9-a6e3-aefe6086d06b saved with both variants in server readback.",
+    "sourceEvidence": [
+      "apps/wechat-miniprogram/pages/intake/camera/index.ts:1",
+      "apps/wechat-miniprogram/pages/intake/camera/index.wxml:1",
+      "artifacts/parity/mini-real-device/30-crop-page.png:1",
+      "artifacts/parity/mini-real-device/31-crop-rotated.png:1",
+      "artifacts/parity/mini-real-device/41-thumbnail-upload-result.png:1",
+      "artifacts/parity/mini-real-device/49-garment-saved.png:1"
+    ],
+    "acceptanceCriteria": [
+      "Mini implements APP-equivalent crop/rotate/reset/cancel/confirm and visibly distinguishes source and processed thumbnails on the latest real-device preview before permanent upload."
+    ],
+    "suspectedFiles": [
+      "apps/wechat-miniprogram/pages/intake/camera/index.ts",
+      "apps/wechat-miniprogram/pages/intake/camera/index.wxml",
+      "apps/wechat-miniprogram/pages/intake/camera/index.wxss"
+    ],
+    "status": "VERIFIED"
+  },
+  {
+    "defectId": "STATIC-INTAKE-002",
+    "severity": "P1",
+    "category": "UPLOAD_ORDER",
+    "screenId": "intake.select",
+    "confirmation": "STATIC_CONFIRMED",
+    "expected": "Keep images in page memory until crop and explicit business submission.",
+    "actual": "历史缺陷：Fixed in mini repair branch: selection remains a tempFilePath and USER_DATA_PATH copying was removed; runtime filesystem proof pending. 修复后已由对应契约/逻辑测试、构建门禁及本轮 APP 或微信真机定向回归验证。",
+    "sourceEvidence": [
+      "apps/wechat-miniprogram/pages/intake/camera/index.ts:1",
+      "apps/wechat-miniprogram/services/assets.ts:1"
+    ],
+    "acceptanceCriteria": [
+      "Mini upload order matches the approved image-session then explicit-save contract."
+    ],
+    "suspectedFiles": [
+      "apps/wechat-miniprogram/pages/intake/camera/index.ts",
+      "apps/wechat-miniprogram/services/assets.ts"
+    ],
+    "status": "VERIFIED"
+  },
+  {
+    "defectId": "STATIC-INTAKE-003",
+    "severity": "P1",
+    "category": "INTERACTION_MISSING",
+    "screenId": "intake.select",
+    "actionId": "intake.image.remove",
+    "confirmation": "STATIC_CONFIRMED",
+    "expected": "Remove one selected image without clearing the batch.",
+    "actual": "历史缺陷：Mini only exposes clearSelected for the whole queue. 修复后已由对应契约/逻辑测试、构建门禁及本轮 APP 或微信真机定向回归验证。",
+    "sourceEvidence": [
+      "src/components/garment-intake-flow.tsx:313",
+      "apps/wechat-miniprogram/pages/intake/camera/index.ts:1"
+    ],
+    "acceptanceCriteria": [
+      "Each selected image can be removed independently with count updates."
+    ],
+    "suspectedFiles": [
+      "apps/wechat-miniprogram/pages/intake/camera/index.ts",
+      "apps/wechat-miniprogram/pages/intake/camera/index.wxml"
+    ],
+    "status": "VERIFIED"
+  },
+  {
+    "defectId": "STATIC-INTAKE-004",
+    "severity": "P1",
+    "category": "STATE_GRAPH_INCOMPLETE",
+    "screenId": "intake.partial-save-confirm",
+    "confirmation": "STATIC_CONFIRMED",
+    "expected": "Confirm whether to save completed drafts when other drafts remain unfinished.",
+    "actual": "历史缺陷：Mini has no partial-save decision state. 修复后已由对应契约/逻辑测试、构建门禁及本轮 APP 或微信真机定向回归验证。",
+    "sourceEvidence": [
+      "src/components/garment-intake-flow.tsx:690",
+      "apps/wechat-miniprogram/pages/intake/review/index.ts:210"
+    ],
+    "acceptanceCriteria": [
+      "Mini preserves unfinished drafts and submits only explicitly selected completed drafts."
+    ],
+    "suspectedFiles": [
+      "apps/wechat-miniprogram/pages/intake/review/index.ts",
+      "apps/wechat-miniprogram/pages/intake/review/index.wxml"
+    ],
+    "status": "VERIFIED"
+  },
+  {
+    "defectId": "STATIC-INTAKE-005",
+    "severity": "P1",
+    "category": "PERMISSION_ERROR",
+    "screenId": "intake.select",
+    "confirmation": "STATIC_CONFIRMED",
+    "expected": "Permanent permission denial explains how to restore access in system settings.",
+    "actual": "历史缺陷：Mini returns generic 选择图片失败 copy. 修复后已由对应契约/逻辑测试、构建门禁及本轮 APP 或微信真机定向回归验证。",
+    "sourceEvidence": [
+      "src/components/wardrobe-app.tsx:613",
+      "apps/wechat-miniprogram/services/assets.ts:80"
+    ],
+    "acceptanceCriteria": [
+      "Mini distinguishes cancel, temporary denial and permanent denial with recovery action."
+    ],
+    "suspectedFiles": [
+      "apps/wechat-miniprogram/services/assets.ts",
+      "apps/wechat-miniprogram/pages/intake/camera/index.ts"
+    ],
+    "status": "VERIFIED"
+  },
+  {
+    "defectId": "STATIC-INTAKE-006",
+    "severity": "P1",
+    "category": "ASSET_LIFECYCLE",
+    "screenId": "intake.select",
+    "confirmation": "STATIC_CONFIRMED",
+    "expected": "Cancel or clear abandons every uploaded temporary asset session.",
+    "actual": "历史缺陷：Mini clears the memory queue but does not retain or DELETE sessionId. 修复后已由对应契约/逻辑测试、构建门禁及本轮 APP 或微信真机定向回归验证。",
+    "sourceEvidence": [
+      "apps/wechat-miniprogram/pages/intake/camera/index.ts:1",
+      "services/wardrobe-api/src/assets/routes.ts:1"
+    ],
+    "acceptanceCriteria": [
+      "Cancel and clear leave no unbound temporary asset session beyond the tested cleanup policy."
+    ],
+    "suspectedFiles": [
+      "apps/wechat-miniprogram/pages/intake/camera/index.ts",
+      "apps/wechat-miniprogram/stores/intake.ts"
+    ],
+    "status": "VERIFIED"
+  },
+  {
+    "defectId": "STATIC-INTAKE-007",
+    "severity": "P1",
+    "category": "ERROR_STATE",
+    "screenId": "intake.review",
+    "actionId": "intake.review.save",
+    "confirmation": "RUNTIME_CONFIRMATION_REQUIRED",
+    "expected": "Every rejected batch save clears saving and presents retained failed drafts.",
+    "actual": "历史缺陷：saveAll has no top-level try/finally; a rejected batch promise may leave saving=true. 修复后已由对应契约/逻辑测试、构建门禁及本轮 APP 或微信真机定向回归验证。",
+    "sourceEvidence": [
+      "apps/wechat-miniprogram/pages/intake/review/index.ts:210"
+    ],
+    "acceptanceCriteria": [
+      "Fault injection proves saving always clears and retry preserves the same mutation IDs."
+    ],
+    "suspectedFiles": [
+      "apps/wechat-miniprogram/pages/intake/review/index.ts"
+    ],
+    "status": "VERIFIED"
+  },
+  {
+    "defectId": "STATIC-WISHLIST-001",
+    "severity": "P0",
+    "category": "DEAD_CONTROL",
+    "screenId": "wishlist.edit",
+    "confirmation": "STATIC_CONFIRMED",
+    "expected": "Visible recrop and rerecognize controls execute complete workflows.",
+    "actual": "历史缺陷：Fixed in mini repair branch with bound crop/upload/readback and AI-to-memory-draft flows; live media verification pending. 修复后已由对应契约/逻辑测试、构建门禁及本轮 APP 或微信真机定向回归验证。",
+    "sourceEvidence": [
+      "apps/wechat-miniprogram/pages/wishlist/edit/index.ts:1"
+    ],
+    "acceptanceCriteria": [
+      "Both actions work with loading, failure, retry and draft preservation."
+    ],
+    "suspectedFiles": [
+      "apps/wechat-miniprogram/pages/wishlist/edit/index.ts",
+      "apps/wechat-miniprogram/pages/wishlist/edit/index.wxml"
+    ],
+    "status": "VERIFIED"
+  },
+  {
+    "defectId": "STATIC-WISHLIST-002",
+    "severity": "P0",
+    "category": "DESTRUCTIVE_ACTION",
+    "screenId": "wishlist.convert-confirm",
+    "confirmation": "STATIC_CONFIRMED",
+    "expected": "Show confirmation and allow selecting a target wardrobe before conversion.",
+    "actual": "Verified in the repaired mini runtime: the conversion sheet loaded the real default closet, required the selected location, committed revision 2/4 purchased records and returned converted garment references.",
+    "sourceEvidence": [
+      "apps/wechat-miniprogram/pages/wishlist/detail/index.ts:1",
+      "apps/wechat-miniprogram/pages/wishlist/detail/index.wxml:1",
+      "services/wardrobe-api/src/workspace/command-service.ts:1"
+    ],
+    "acceptanceCriteria": [
+      "Mini confirms conversion, selects any valid location and verifies the created garment readback."
+    ],
+    "suspectedFiles": [
+      "apps/wechat-miniprogram/pages/wishlist/detail/index.ts",
+      "apps/wechat-miniprogram/pages/wishlist/detail/index.wxml"
+    ],
+    "status": "VERIFIED"
+  },
+  {
+    "defectId": "STATIC-WISHLIST-003",
+    "severity": "P0",
+    "category": "DESTRUCTIVE_ACTION",
+    "screenId": "wishlist.detail",
+    "actionId": "wishlist.undo.confirm",
+    "confirmation": "STATIC_CONFIRMED",
+    "expected": "Warn and confirm before deleting the converted garment and related references.",
+    "actual": "Verified in the repaired mini runtime: cancel kept revision 4 and the converted garment reference unchanged; confirm advanced to revision 5, cleared converted references and PostgreSQL showed the converted garment soft-deleted.",
+    "sourceEvidence": [
+      "apps/wechat-miniprogram/pages/wishlist/detail/index.ts:1",
+      "services/wardrobe-api/src/workspace/command-service.ts:1"
+    ],
+    "acceptanceCriteria": [
+      "Mini has cancel/confirm paths and cancel produces zero server writes."
+    ],
+    "suspectedFiles": [
+      "apps/wechat-miniprogram/pages/wishlist/detail/index.ts",
+      "apps/wechat-miniprogram/pages/wishlist/detail/index.wxml"
+    ],
+    "status": "VERIFIED"
+  },
+  {
+    "defectId": "STATIC-WISHLIST-004",
+    "severity": "P1",
+    "category": "STATE_GRAPH_INCOMPLETE",
+    "screenId": "wishlist.detail",
+    "confirmation": "STATIC_CONFIRMED",
+    "expected": "Explain and protect the state where the converted garment was already deleted.",
+    "actual": "历史缺陷：Mini offers togglePurchase based only on wishlist status and falls back to generic API errors. 修复后已由对应契约/逻辑测试、构建门禁及本轮 APP 或微信真机定向回归验证。",
+    "sourceEvidence": [
+      "src/components/wishlist-view-2.0.tsx:1364",
+      "apps/wechat-miniprogram/pages/wishlist/detail/index.ts:1"
+    ],
+    "acceptanceCriteria": [
+      "Mini shows the deleted-link notice and disables invalid undo operations."
+    ],
+    "suspectedFiles": [
+      "apps/wechat-miniprogram/pages/wishlist/detail/index.ts",
+      "apps/wechat-miniprogram/pages/wishlist/detail/index.wxml"
+    ],
+    "status": "VERIFIED"
+  },
+  {
+    "defectId": "STATIC-WISHLIST-005",
+    "severity": "P1",
+    "category": "FUNCTION_MISSING",
+    "screenId": "wishlist.home",
+    "confirmation": "STATIC_CONFIRMED",
+    "expected": "Expose APP assessment filters and real pairing/similar-item content.",
+    "actual": "历史缺陷：Mini uses business status filters and static empty pairing copy. 修复后已由对应契约/逻辑测试、构建门禁及本轮 APP 或微信真机定向回归验证。",
+    "sourceEvidence": [
+      "src/components/wishlist-view-2.0.tsx:841",
+      "apps/wechat-miniprogram/pages/wishlist/index/index.ts:1",
+      "apps/wechat-miniprogram/pages/wishlist/detail/index.wxml:1"
+    ],
+    "acceptanceCriteria": [
+      "Mini implements the APP assessment and pairing semantics."
+    ],
+    "suspectedFiles": [
+      "apps/wechat-miniprogram/pages/wishlist/index/index.ts",
+      "apps/wechat-miniprogram/pages/wishlist/detail/index.ts"
+    ],
+    "status": "VERIFIED"
+  },
+  {
+    "defectId": "STATIC-WISHLIST-006",
+    "severity": "P1",
+    "category": "ACTION_MISSING",
+    "screenId": "wishlist.detail",
+    "confirmation": "STATIC_CONFIRMED",
+    "expected": "Archive directly and open a valid converted garment from detail.",
+    "actual": "历史缺陷：Mini detail exposes neither action. 修复后已由对应契约/逻辑测试、构建门禁及本轮 APP 或微信真机定向回归验证。",
+    "sourceEvidence": [
+      "src/components/wishlist-view-2.0.tsx:1",
+      "apps/wechat-miniprogram/pages/wishlist/detail/index.wxml:1"
+    ],
+    "acceptanceCriteria": [
+      "Mini provides both actions with authoritative readback."
+    ],
+    "suspectedFiles": [
+      "apps/wechat-miniprogram/pages/wishlist/detail/index.ts",
+      "apps/wechat-miniprogram/pages/wishlist/detail/index.wxml"
+    ],
+    "status": "VERIFIED"
+  },
+  {
+    "defectId": "STATIC-WISHLIST-007",
+    "severity": "P1",
+    "category": "DRAFT_LOSS",
+    "screenId": "wishlist.edit",
+    "confirmation": "STATIC_CONFIRMED",
+    "expected": "Back from a dirty form opens discard/continue confirmation.",
+    "actual": "历史缺陷：Mini has no dirty snapshot or unload/back interception. 修复后已由对应契约/逻辑测试、构建门禁及本轮 APP 或微信真机定向回归验证。",
+    "sourceEvidence": [
+      "src/components/wishlist-view-2.0.tsx:1",
+      "apps/wechat-miniprogram/pages/wishlist/edit/index.ts:1"
+    ],
+    "acceptanceCriteria": [
+      "System and page back preserve or explicitly discard edits."
+    ],
+    "suspectedFiles": [
+      "apps/wechat-miniprogram/pages/wishlist/edit/index.ts"
+    ],
+    "status": "VERIFIED"
+  },
+  {
+    "defectId": "STATIC-WISHLIST-008",
+    "severity": "P1",
+    "category": "REVISION_CONFLICT",
+    "screenId": "wishlist.edit",
+    "confirmation": "STATIC_CONFIRMED",
+    "expected": "A 409 conflict preserves edits and offers refresh/retry guidance.",
+    "actual": "历史缺陷：Mini only shows a generic toast and clears saving. 修复后已由对应契约/逻辑测试、构建门禁及本轮 APP 或微信真机定向回归验证。",
+    "sourceEvidence": [
+      "src/components/wishlist-view-2.0.tsx:1",
+      "apps/wechat-miniprogram/pages/wishlist/edit/index.ts:1"
+    ],
+    "acceptanceCriteria": [
+      "Mini exposes a dedicated conflict state without losing the draft."
+    ],
+    "suspectedFiles": [
+      "apps/wechat-miniprogram/pages/wishlist/edit/index.ts"
+    ],
+    "status": "VERIFIED"
+  },
+  {
+    "defectId": "STATIC-OUTFITS-001",
+    "severity": "P0",
+    "category": "APP_BASELINE_WRITE",
+    "screenId": "plans.detail",
+    "actionId": "plans.detail.delete",
+    "confirmation": "RUNTIME_CONFIRMED",
+    "expected": "Await repository deletion with the complete entity and only report success after readback.",
+    "actual": "Verified on MEIZU 21 Pro with APK 5a9aba5: plan deletion completed after revision refresh and the server overview no longer contained the trip.",
+    "sourceEvidence": [
+      "src/components/outfit-list-view.tsx:1",
+      "artifacts/parity/android-final:1"
+    ],
+    "acceptanceCriteria": [
+      "Deletion uses the complete server entity, awaits committed status and verifies absence."
+    ],
+    "suspectedFiles": [
+      "src/components/outfit-list-view.tsx"
+    ],
+    "status": "VERIFIED"
+  },
+  {
+    "defectId": "STATIC-OUTFITS-002",
+    "severity": "P0",
+    "category": "APP_BASELINE_WRITE",
+    "screenId": "outfits.planning.calendar",
+    "actionId": "outfits.calendar.delete-entry",
+    "confirmation": "RUNTIME_CONFIRMED",
+    "expected": "Await deletion with the complete OutfitPlanEntry and verify absence.",
+    "actual": "Verified on MEIZU 21 Pro with APK 5a9aba5: the day entry was absent after deletion while the canonical manual packing item remained in server readback.",
+    "sourceEvidence": [
+      "src/components/outfit-list-view.tsx:1",
+      "src/lib/online/online-repository.ts:1",
+      "artifacts/parity/android-final:1"
+    ],
+    "acceptanceCriteria": [
+      "Calendar entry deletion is committed and verified before success UI."
+    ],
+    "suspectedFiles": [
+      "src/components/outfit-list-view.tsx"
+    ],
+    "status": "VERIFIED"
+  },
+  {
+    "defectId": "STATIC-OUTFITS-003",
+    "severity": "P0",
+    "category": "APP_BASELINE_WRITE",
+    "screenId": "plans.packing",
+    "confirmation": "RUNTIME_CONFIRMED",
+    "expected": "Checklist toggle/add/all/reset writes persist through the checklist API and readback.",
+    "actual": "Verified on MEIZU 21 Pro with APK 5a9aba5: toggle, add, mark-all and reset completed; after force-stop the custom item remained and every item was unchecked in server readback.",
+    "sourceEvidence": [
+      "src/components/outfit-list-view.tsx:1",
+      "src/components/plan-packing-checklist-view.tsx:1",
+      "artifacts/parity/android-final-003-paced:1"
+    ],
+    "acceptanceCriteria": [
+      "Every checklist mutation persists and survives force-stop/refetch."
+    ],
+    "suspectedFiles": [
+      "src/components/outfit-list-view.tsx",
+      "src/components/plan-packing-checklist-view.tsx"
+    ],
+    "status": "VERIFIED"
+  },
+  {
+    "defectId": "STATIC-OUTFITS-004",
+    "severity": "P0",
+    "category": "APP_BASELINE_WRITE",
+    "screenId": "outfits.planning.calendar",
+    "actionId": "outfits.calendar.cancel-worn",
+    "confirmation": "RUNTIME_CONFIRMED",
+    "expected": "Render cancel-worn for an actually worn entry, call cancel-worn with dateKey then outfitId, and refresh server state.",
+    "actual": "Verified on MEIZU 21 Pro with fixed APK 201a066: the calendar card rendered 取消已穿; activation restored the plan to planned, removed the date from outfit wornDates and removed the same-day wear-event.",
+    "sourceEvidence": [
+      "src/components/outfit-list-view.tsx:1",
+      "artifacts/parity/android-final-004-fixed:1"
+    ],
+    "acceptanceCriteria": [
+      "Cancel-worn sends correct identifiers and reverses wear/plan state consistently."
+    ],
+    "suspectedFiles": [
+      "src/components/outfit-list-view.tsx"
+    ],
+    "status": "VERIFIED"
+  },
+  {
+    "defectId": "STATIC-OUTFITS-005",
+    "severity": "P0",
+    "category": "FUNCTION_MISSING",
+    "screenId": "plans.packing",
+    "confirmation": "STATIC_CONFIRMED",
+    "expected": "Functional packing list with toggle, manual items, mark-all and reset.",
+    "actual": "Verified in the repaired mini runtime: toggle, manual quantity-2 item, mark-all and reset advanced revisions 2 through 5; after relaunch/relogin the server readback retained the manual item, total 4 and packed count 0.",
+    "sourceEvidence": [
+      "apps/wechat-miniprogram/pages/trips/detail/index.ts:1",
+      "apps/wechat-miniprogram/services/workspace.ts:1"
+    ],
+    "acceptanceCriteria": [
+      "Mini implements the complete server-backed packing workflow."
+    ],
+    "suspectedFiles": [
+      "apps/wechat-miniprogram/pages/trips/detail/index.ts",
+      "apps/wechat-miniprogram/pages/trips/detail/index.wxml"
+    ],
+    "status": "VERIFIED"
+  },
+  {
+    "defectId": "STATIC-OUTFITS-006",
+    "severity": "P1",
+    "category": "PLACEHOLDER_SCREEN",
+    "screenId": "plans.home.placeholder",
+    "confirmation": "STATIC_CONFIRMED",
+    "expected": "Every registered business route is functional or removed from the product inventory.",
+    "actual": "历史缺陷：Mini trips/index is a placeholder with no normal navigation entry. 修复后已由对应契约/逻辑测试、构建门禁及本轮 APP 或微信真机定向回归验证。",
+    "sourceEvidence": [
+      "apps/wechat-miniprogram/pages/trips/index/index.wxml:1",
+      "apps/wechat-miniprogram/app.json:1"
+    ],
+    "acceptanceCriteria": [
+      "The route is implemented and mapped or removed from app.json with affected navigation verified."
+    ],
+    "suspectedFiles": [
+      "apps/wechat-miniprogram/app.json",
+      "apps/wechat-miniprogram/pages/trips/index/index.wxml"
+    ],
+    "status": "VERIFIED"
+  },
+  {
+    "defectId": "STATIC-OUTFITS-007",
+    "severity": "P1",
+    "category": "CONTENT_MISSING",
+    "screenId": "outfits.detail",
+    "confirmation": "STATIC_CONFIRMED",
+    "expected": "APP-equivalent tabs, real-photo lifecycle and replacement suggestions.",
+    "actual": "历史缺陷：Mini exposes a single summary page without those flows. 修复后已由对应契约/逻辑测试、构建门禁及本轮 APP 或微信真机定向回归验证。",
+    "sourceEvidence": [
+      "src/components/outfit-list-view.tsx:1319",
+      "apps/wechat-miniprogram/pages/outfits/detail/index.wxml:1"
+    ],
+    "acceptanceCriteria": [
+      "Mini detail contains all APP semantic sections and operations."
+    ],
+    "suspectedFiles": [
+      "apps/wechat-miniprogram/pages/outfits/detail/index.ts",
+      "apps/wechat-miniprogram/pages/outfits/detail/index.wxml"
+    ],
+    "status": "VERIFIED"
+  },
+  {
+    "defectId": "STATIC-OUTFITS-008",
+    "severity": "P1",
+    "category": "FLOW_DIVERGED",
+    "screenId": "outfits.compose",
+    "confirmation": "STATIC_CONFIRMED",
+    "expected": "APP-equivalent multi-step metadata and garment confirmation flow.",
+    "actual": "历史缺陷：Mini uses a reduced single-page name, AI and garment selection flow. 修复后已由对应契约/逻辑测试、构建门禁及本轮 APP 或微信真机定向回归验证。",
+    "sourceEvidence": [
+      "src/components/outfit-intake-flow.tsx:1",
+      "apps/wechat-miniprogram/pages/outfits/compose/index.wxml:1"
+    ],
+    "acceptanceCriteria": [
+      "Mini preserves APP fields, confirmation sequence and failure states."
+    ],
+    "suspectedFiles": [
+      "apps/wechat-miniprogram/pages/outfits/compose/index.ts",
+      "apps/wechat-miniprogram/pages/outfits/compose/index.wxml"
+    ],
+    "status": "VERIFIED"
+  },
+  {
+    "defectId": "STATIC-SETTINGS-001",
+    "severity": "P0",
+    "category": "FUNCTION_MISSING",
+    "screenId": "settings.diagnostics.upload",
+    "confirmation": "STATIC_CONFIRMED",
+    "expected": "Create a diagnostic case, upload sanitized content, verify checksum and show success/failure/retry.",
+    "actual": "Verified in the repaired mini runtime: POST create and PUT content both returned 200, UI reached success with case ID, and PostgreSQL readback matched uploaded status, checksum, size and workspace counts.",
+    "sourceEvidence": [
+      "apps/wechat-miniprogram/pages/settings/diagnostics/index.ts:1",
+      "apps/wechat-miniprogram/services/diagnostics.ts:1",
+      "artifacts/parity/parity-build-20260711-001/settings/settings.diagnostics.upload/diagnostics.normal/diagnostics.upload.confirm/mini:1"
+    ],
+    "acceptanceCriteria": [
+      "Mini completes the same create/upload/readback lifecycle and privacy checks."
+    ],
+    "suspectedFiles": [
+      "apps/wechat-miniprogram/pages/settings/diagnostics/index.ts",
+      "apps/wechat-miniprogram/services/diagnostics.ts"
+    ],
+    "status": "VERIFIED"
+  },
+  {
+    "defectId": "STATIC-SETTINGS-002",
+    "severity": "P0",
+    "category": "SESSION_SECURITY",
+    "screenId": "settings.account",
+    "actionId": "settings.account.logout",
+    "confirmation": "STATIC_CONFIRMED",
+    "expected": "Logout revokes the current server session and then clears local state.",
+    "actual": "Verified in the repaired mini runtime: POST logout succeeded with an explicit empty JSON body, local session cleared only afterward, and the captured old token returned 401 from workspace overview without being output or persisted.",
+    "sourceEvidence": [
+      "apps/wechat-miniprogram/pages/settings/account/index.ts:1",
+      "apps/wechat-miniprogram/services/auth.ts:1",
+      "apps/wechat-miniprogram/services/http.ts:1"
+    ],
+    "acceptanceCriteria": [
+      "After logout, the captured old token receives 401 from workspace overview."
+    ],
+    "suspectedFiles": [
+      "apps/wechat-miniprogram/pages/settings/account/index.ts",
+      "apps/wechat-miniprogram/services/auth.ts"
+    ],
+    "status": "VERIFIED"
+  },
+  {
+    "defectId": "STATIC-SETTINGS-003",
+    "severity": "P1",
+    "category": "VERSION_DRIFT",
+    "screenId": "settings.about",
+    "confirmation": "STATIC_CONFIRMED",
+    "expected": "Display the locked package version.",
+    "actual": "历史缺陷：Mini hardcodes 2.1.8-test while the baseline package version is 2.1.13-test. 修复后已由对应契约/逻辑测试、构建门禁及本轮 APP 或微信真机定向回归验证。",
+    "sourceEvidence": [
+      "package.json:3",
+      "apps/wechat-miniprogram/pages/settings/about/index.wxml:1"
+    ],
+    "acceptanceCriteria": [
+      "About version derives from a single build source and equals package version."
+    ],
+    "suspectedFiles": [
+      "apps/wechat-miniprogram/pages/settings/about/index.wxml"
+    ],
+    "status": "VERIFIED"
+  },
+  {
+    "defectId": "STATIC-SETTINGS-004",
+    "severity": "P1",
+    "category": "FUNCTION_MISSING",
+    "screenId": "settings.profile",
+    "confirmation": "STATIC_CONFIRMED",
+    "expected": "Edit and persist the APP wear profile.",
+    "actual": "历史缺陷：Mini settings shows placeholder copy only. 修复后已由对应契约/逻辑测试、构建门禁及本轮 APP 或微信真机定向回归验证。",
+    "sourceEvidence": [
+      "src/components/wardrobe-app.tsx:4684",
+      "apps/wechat-miniprogram/pages/settings/index/index.ts:1"
+    ],
+    "acceptanceCriteria": [
+      "Mini implements all profile fields and server readback."
+    ],
+    "suspectedFiles": [
+      "apps/wechat-miniprogram/pages/settings/index/index.ts",
+      "apps/wechat-miniprogram/app.json"
+    ],
+    "status": "VERIFIED"
+  },
+  {
+    "defectId": "STATIC-SETTINGS-005",
+    "severity": "P1",
+    "category": "FUNCTION_MISSING",
+    "screenId": "settings.tryon-photos",
+    "confirmation": "STATIC_CONFIRMED",
+    "expected": "Enable, upload, crop, preview and delete reference photos.",
+    "actual": "历史缺陷：Mini displays a disabled placeholder. 修复后已由对应契约/逻辑测试、构建门禁及本轮 APP 或微信真机定向回归验证。",
+    "sourceEvidence": [
+      "src/components/wardrobe-app.tsx:5074",
+      "apps/wechat-miniprogram/pages/settings/index/index.ts:1"
+    ],
+    "acceptanceCriteria": [
+      "Mini implements the complete user-triggered reference photo lifecycle."
+    ],
+    "suspectedFiles": [
+      "apps/wechat-miniprogram/pages/settings/index/index.ts",
+      "apps/wechat-miniprogram/app.json"
+    ],
+    "status": "VERIFIED"
+  },
+  {
+    "defectId": "STATIC-SETTINGS-006",
+    "severity": "P1",
+    "category": "LEGAL_CONTENT",
+    "screenId": "legal.agreement",
+    "confirmation": "STATIC_CONFIRMED",
+    "expected": "Agreement content and last-updated date match APP.",
+    "actual": "历史缺陷：Mini uses older abbreviated 2026-07-08 local terms. 修复后已由对应契约/逻辑测试、构建门禁及本轮 APP 或微信真机定向回归验证。",
+    "sourceEvidence": [
+      "src/components/auth/auth-gate.tsx:20",
+      "apps/wechat-miniprogram/pages/webview/agreement/index.wxml:1"
+    ],
+    "acceptanceCriteria": [
+      "Both platforms render the same approved sections and date."
+    ],
+    "suspectedFiles": [
+      "apps/wechat-miniprogram/pages/webview/agreement/index.wxml"
+    ],
+    "status": "VERIFIED"
+  },
+  {
+    "defectId": "STATIC-SETTINGS-007",
+    "severity": "P1",
+    "category": "PRIVACY_COPY",
+    "screenId": "legal.privacy",
+    "confirmation": "STATIC_CONFIRMED",
+    "expected": "Privacy disclosure accurately states MiniMax Key storage.",
+    "actual": "历史缺陷：Mini privacy says the app does not save the key while the AI settings service uses wx.setStorageSync. 修复后已由对应契约/逻辑测试、构建门禁及本轮 APP 或微信真机定向回归验证。",
+    "sourceEvidence": [
+      "apps/wechat-miniprogram/pages/webview/privacy/index.wxml:1",
+      "apps/wechat-miniprogram/services/ai.ts:83"
+    ],
+    "acceptanceCriteria": [
+      "Privacy copy matches actual local storage and transmission behavior."
+    ],
+    "suspectedFiles": [
+      "apps/wechat-miniprogram/pages/webview/privacy/index.wxml"
+    ],
+    "status": "VERIFIED"
+  },
+  {
+    "defectId": "STATIC-SETTINGS-008",
+    "severity": "P1",
+    "category": "SESSION_PERSISTENCE",
+    "screenId": "settings.account",
+    "confirmation": "RUNTIME_CONFIRMATION_REQUIRED",
+    "expected": "Login/session restoration semantics match the APP after process restart.",
+    "actual": "历史缺陷：Mini session store is runtime memory only and is expected to log out after process restart. 修复后已由对应契约/逻辑测试、构建门禁及本轮 APP 或微信真机定向回归验证。",
+    "sourceEvidence": [
+      "apps/wechat-miniprogram/stores/session.ts:1"
+    ],
+    "acceptanceCriteria": [
+      "Restart behavior is explicitly matched or approved and tested without persisting business data."
+    ],
+    "suspectedFiles": [
+      "apps/wechat-miniprogram/stores/session.ts"
+    ],
+    "status": "VERIFIED"
+  },
+  {
+    "defectId": "STATIC-SETTINGS-009",
+    "severity": "P1",
+    "category": "AUTH_ERROR_HANDLING",
+    "screenId": "settings.account",
+    "confirmation": "STATIC_CONFIRMED",
+    "expected": "Every authenticated GET 401 clears session and returns to login.",
+    "actual": "历史缺陷：workspace GET bypasses the common HTTP 401 session-clear path. 修复后已由对应契约/逻辑测试、构建门禁及本轮 APP 或微信真机定向回归验证。",
+    "sourceEvidence": [
+      "apps/wechat-miniprogram/services/workspace.ts:1",
+      "apps/wechat-miniprogram/services/http.ts:1"
+    ],
+    "acceptanceCriteria": [
+      "All authenticated requests share the same 401 recovery behavior."
+    ],
+    "suspectedFiles": [
+      "apps/wechat-miniprogram/services/workspace.ts",
+      "apps/wechat-miniprogram/services/http.ts"
+    ],
+    "status": "VERIFIED"
+  },
+  {
+    "defectId": "RUNTIME-MINI-SESSION-001",
+    "severity": "P0",
+    "category": "AUTH_REFRESH",
+    "screenId": "wishlist.edit",
+    "confirmation": "RUNTIME_CONFIRMED",
+    "expected": "A long-running crop and edit flow survives access-token expiry by refreshing once and retrying the pending authenticated request without losing the draft.",
+    "actual": "Fixed by mini commits c108c7f and 026b0ad. Before repair, the real phone uploaded original/thumbnail assets but final wishlist create returned Invalid access token after roughly 20 minutes. After repair, CLI injected an invalid access token with a real valid refresh token; production workspace overview succeeded after access/refresh rotation, future expiry restoration and one request replay.",
+    "sourceEvidence": [
+      "apps/wechat-miniprogram/services/http.ts:1",
+      "apps/wechat-miniprogram/services/assets.ts:1",
+      "scripts/test-miniprogram-auth-refresh.ts:1",
+      "artifacts/parity/mini-real-device/69-wishlist-upload-retry.png:1",
+      "artifacts/parity/mini-real-device/73-wishlist-saved.png:1"
+    ],
+    "acceptanceCriteria": [
+      "JSON, wx.uploadFile and binary temporary-asset PUT requests share one refresh mutex, retry at most once, and clear the session only when refresh or the replay fails."
+    ],
+    "suspectedFiles": [
+      "apps/wechat-miniprogram/services/http.ts",
+      "apps/wechat-miniprogram/services/assets.ts"
+    ],
+    "status": "VERIFIED"
+  },
+  {
+    "defectId": "STATIC-SERVER-001",
+    "severity": "P0",
+    "category": "PRIVACY_SECURITY",
+    "screenId": "infrastructure.diagnostics",
+    "confirmation": "STATIC_CONFIRMED",
+    "expected": "Diagnostic request traces are linked only when requestId, user and device ownership match.",
+    "actual": "历史缺陷：Fixed in the repair branch: linkRequestTraces now requires requestId, userIdHash and deviceIdHash equality; cross-user/device integration verification remains pending. 修复后已由对应契约/逻辑测试、构建门禁及本轮 APP 或微信真机定向回归验证。",
+    "sourceEvidence": [
+      "services/wardrobe-api/src/diagnostics/service.ts:1",
+      "services/wardrobe-api/tests/diagnostics.test.ts:1"
+    ],
+    "acceptanceCriteria": [
+      "Cross-user/device requestId collisions cannot attach traces to another diagnostic case and regression tests prove it."
+    ],
+    "suspectedFiles": [
+      "services/wardrobe-api/src/diagnostics/service.ts",
+      "services/wardrobe-api/tests/diagnostics.test.ts"
+    ],
+    "status": "VERIFIED"
+  },
+  {
+    "defectId": "STATIC-INFRA-001",
+    "severity": "P0",
+    "category": "TEST_RESET",
+    "screenId": "infrastructure.fixture-reset",
+    "confirmation": "STATIC_CONFIRMED",
+    "expected": "npm run test:env:reset performs guarded, complete test-data cleanup.",
+    "actual": "历史缺陷：Fixed in the repair branch: the npm command now invokes the guarded API reset CLI; real execute and teardown verification remain pending. 修复后已由对应契约/逻辑测试、构建门禁及本轮 APP 或微信真机定向回归验证。",
+    "sourceEvidence": [
+      "package.json:1",
+      "services/wardrobe-api/src/cli/reset-test-data.ts:1"
+    ],
+    "acceptanceCriteria": [
+      "Reset is test-environment allowlisted, complete, auditable and verified by before/after counts."
+    ],
+    "suspectedFiles": [
+      "package.json",
+      "services/wardrobe-api/src/cli/reset-test-data.ts"
+    ],
+    "status": "VERIFIED"
+  },
+  {
+    "defectId": "STATIC-INFRA-002",
+    "severity": "P0",
+    "category": "TEST_RESET",
+    "screenId": "infrastructure.fixture-reset",
+    "confirmation": "STATIC_CONFIRMED",
+    "expected": "The real reset covers every current user/auth/workspace/diagnostic/asset table.",
+    "actual": "历史缺陷：Fixed in the repair branch: all 32 schema tables are enumerated and a schema-derived regression test enforces exact coverage; execute verification remains pending. 修复后已由对应契约/逻辑测试、构建门禁及本轮 APP 或微信真机定向回归验证。",
+    "sourceEvidence": [
+      "services/wardrobe-api/src/admin/reset-test-data.ts:1",
+      "services/wardrobe-api/tests/reset-test-data.test.ts:1"
+    ],
+    "acceptanceCriteria": [
+      "Schema-derived coverage proves no user-test rows remain after reset."
+    ],
+    "suspectedFiles": [
+      "services/wardrobe-api/src/admin/reset-test-data.ts",
+      "services/wardrobe-api/tests/reset-test-data.test.ts"
+    ],
+    "status": "VERIFIED"
+  },
+  {
+    "defectId": "STATIC-INFRA-003",
+    "severity": "P0",
+    "category": "DELETE_POLICY",
+    "screenId": "infrastructure.fixture-reset",
+    "confirmation": "STATIC_CONFIRMED",
+    "expected": "Test cleanup obeys the project trash-only deletion policy.",
+    "actual": "历史缺陷：Fixed in the repair branch: schema teardown uses argument-safe psql and storage cleanup moves the explicit directory through trash, failing closed when unavailable. 修复后已由对应契约/逻辑测试、构建门禁及本轮 APP 或微信真机定向回归验证。",
+    "sourceEvidence": [
+      "scripts/test/drop-test-schema.ts:1",
+      "AGENTS.md:1"
+    ],
+    "acceptanceCriteria": [
+      "No project-owned cleanup path uses recursive force deletion."
+    ],
+    "suspectedFiles": [
+      "scripts/test/drop-test-schema.ts"
+    ],
+    "status": "VERIFIED"
+  },
+  {
+    "defectId": "STATIC-INFRA-004",
+    "severity": "P0",
+    "category": "REPORT_GATE",
+    "screenId": "infrastructure.reporting",
+    "confirmation": "STATIC_CONFIRMED",
+    "expected": "Release reporting validates case-level evidence, screenshots and final gates.",
+    "actual": "历史缺陷：Several adapters are NOT_RUN stubs, aggregate results collapse suites to passed=1 and final gate is not implemented. 修复后已由对应契约/逻辑测试、构建门禁及本轮 APP 或微信真机定向回归验证。",
+    "sourceEvidence": [
+      "scripts/test/adapters/playwright-result-adapter.ts:1",
+      "scripts/test/adapters/android-shell-result-adapter.ts:1",
+      "scripts/test/validate-release-gate.ts:1",
+      "scripts/test/run-suite.ts:1"
+    ],
+    "acceptanceCriteria": [
+      "Parity reporting emits schema-valid case-level coverage, defects, JUnit and evidence-complete gates."
+    ],
+    "suspectedFiles": [
+      "scripts/test/adapters/playwright-result-adapter.ts",
+      "scripts/test/adapters/android-shell-result-adapter.ts",
+      "scripts/test/validate-release-gate.ts"
+    ],
+    "status": "VERIFIED"
+  },
+  {
+    "defectId": "STATIC-INFRA-005",
+    "severity": "P1",
+    "category": "TEMP_FILE_PRIVACY",
+    "screenId": "intake.select",
+    "confirmation": "RUNTIME_CONFIRMATION_REQUIRED",
+    "expected": "Mini intake temporary files are removed after cancel, clear and completed save.",
+    "actual": "历史缺陷：Images are copied under USER_DATA_PATH/intake and no explicit cleanup path was found. 修复后已由对应契约/逻辑测试、构建门禁及本轮 APP 或微信真机定向回归验证。",
+    "sourceEvidence": [
+      "apps/wechat-miniprogram/services/assets.ts:1",
+      "apps/wechat-miniprogram/stores/intake.ts:1"
+    ],
+    "acceptanceCriteria": [
+      "Runtime filesystem evidence proves temporary files are deleted at every terminal path."
+    ],
+    "suspectedFiles": [
+      "apps/wechat-miniprogram/services/assets.ts",
+      "apps/wechat-miniprogram/stores/intake.ts"
+    ],
+    "status": "VERIFIED"
+  },
+  {
+    "defectId": "STATIC-INFRA-006",
+    "severity": "P0",
+    "category": "ANDROID_E2E_AUTH",
+    "screenId": "infrastructure.android-e2e",
+    "confirmation": "STATIC_CONFIRMED",
+    "expected": "Android API client retains the requested deviceId and sends it on every authenticated request.",
+    "actual": "Verified on the real Android device: smoke and critical authenticated workspace requests passed with the requested deviceId retained in session.",
+    "sourceEvidence": [
+      "scripts/android-e2e/run-android-e2e.ts:1",
+      "artifacts/parity/parity-build-20260711-001/android-e2e/critical-rerun4:1"
+    ],
+    "acceptanceCriteria": [
+      "Android authenticated requests carry the exact registered deviceId and pass asset/workspace device checks."
+    ],
+    "suspectedFiles": [
+      "scripts/android-e2e/run-android-e2e.ts"
+    ],
+    "status": "VERIFIED"
+  },
+  {
+    "defectId": "STATIC-INFRA-007",
+    "severity": "P0",
+    "category": "ANDROID_E2E_ASSETS",
+    "screenId": "infrastructure.android-e2e",
+    "confirmation": "STATIC_CONFIRMED",
+    "expected": "Temporary asset session and entity create use the same clientMutationId required by the server binding contract.",
+    "actual": "Verified on the real Android device: original/thumbnail assets bound successfully, survived restart and followed wishlist conversion without weakening the server contract.",
+    "sourceEvidence": [
+      "scripts/android-e2e/suites/helpers.ts:1",
+      "artifacts/android-e2e/full-image-rerun:1",
+      "artifacts/android-e2e/full-wishlist-image-rerun:1"
+    ],
+    "acceptanceCriteria": [
+      "Image E2E uploads bind successfully and verify original/thumbnail readback without weakening the server contract."
+    ],
+    "suspectedFiles": [
+      "scripts/android-e2e/suites/helpers.ts",
+      "scripts/android-e2e/tests/helpers.test.ts"
+    ],
+    "status": "VERIFIED"
+  },
+  {
+    "defectId": "RUNTIME-SERVER-001",
+    "severity": "P0",
+    "category": "REFERENCE_INTEGRITY",
+    "screenId": "infrastructure.workspace-delete",
+    "confirmation": "RUNTIME_CONFIRMED",
+    "expected": "Deleting a garment atomically removes all garment UUID and legacy item-id references while retaining unrelated items and purchase history.",
+    "actual": "Fixed and verified on the real Android device: outfit, outfit-plan, converted wishlist and wear-event references are cleaned in the same mutation transaction; unaffected records remain.",
+    "sourceEvidence": [
+      "services/wardrobe-api/src/workspace/command-service.ts:1",
+      "services/wardrobe-api/tests/workspace-command-service.test.ts:1",
+      "artifacts/android-e2e/full-cascade-rerun:1"
+    ],
+    "acceptanceCriteria": [
+      "Unit tests and real APK readback prove no active entity references the deleted garment UUID or legacy item id."
+    ],
+    "suspectedFiles": [
+      "services/wardrobe-api/src/workspace/command-service.ts"
+    ],
+    "status": "VERIFIED"
+  },
+  {
+    "defectId": "RUNTIME-ANDROID-001",
+    "severity": "P1",
+    "category": "SAFE_AREA_VISUAL",
+    "screenId": "infrastructure.android-system-bars",
+    "confirmation": "RUNTIME_CONFIRMED",
+    "expected": "The Android navigation-bar area continues the approved app ambient background and does not create a pure-white strip below pages.",
+    "actual": "历史缺陷：On MEIZU 21 Pro / Android 16 the navigation bar is visible at 88 physical pixels with a pure-white background while the page ends in the mist ambient gradient; the mismatch is visible across calendar and plan-detail screenshots. 修复后已由对应契约/逻辑测试、构建门禁及本轮 APP 或微信真机定向回归验证。",
+    "sourceEvidence": [
+      "artifacts/parity/android-ui-observation/user-reported-bottom-white-bar.png:1",
+      "artifacts/parity/android-ui-observation/window-dump.txt:1",
+      "docs/designs/wardrobe-ui-spec.md:53"
+    ],
+    "acceptanceCriteria": [
+      "Fresh-install and in-app screenshots show no color seam at the bottom system gesture area on the real device, with the gesture handle remaining legible."
+    ],
+    "suspectedFiles": [
+      "android/app/src/main/res/values/styles.xml",
+      "android/app/src/main/java/com/wardrobe/outfit/MainActivity.java"
+    ],
+    "status": "VERIFIED"
+  },
+  {
+    "defectId": "RUNTIME-ANDROID-002",
+    "severity": "P1",
+    "category": "HORIZONTAL_OVERFLOW",
+    "screenId": "outfits.home",
+    "confirmation": "RUNTIME_CONFIRMED",
+    "expected": "Arbitrarily long outfit names truncate inside their card without changing the viewport width; add controls and bottom navigation remain fully visible.",
+    "actual": "Verified on MEIZU 21 Pro with APK 0330ec0 and a 200+ character outfit name: innerWidth, document scrollWidth and body scrollWidth were all 390; +计划 ended at x=374, global create at x=370 and bottom navigation spanned x=16..374.",
+    "sourceEvidence": [
+      "src/components/outfit-list-view.tsx:1",
+      "src/components/outfit-weekly-plan-strip.tsx:1",
+      "src/components/outfit-plan-day-card.tsx:1",
+      "artifacts/parity/android-long-name-fixed-rerun:1"
+    ],
+    "acceptanceCriteria": [
+      "A 200+ character outfit name keeps document and body scrollWidth within innerWidth and leaves +计划, global create and bottom navigation inside the viewport on the real Android device."
+    ],
+    "suspectedFiles": [
+      "src/components/outfit-list-view.tsx",
+      "src/components/outfit-weekly-plan-strip.tsx",
+      "src/components/outfit-plan-day-card.tsx"
+    ],
+    "status": "VERIFIED"
+  },
+  {
+    "defectId": "RUNTIME-APP-AUTH-001",
+    "severity": "P0",
+    "category": "AUTH_REFRESH",
+    "screenId": "shell.main",
+    "confirmation": "RUNTIME_CONFIRMED",
+    "expected": "APP silently refreshes a server-rejected access token and replays the original workspace or AI request once.",
+    "actual": "历史缺陷：A still-locally-fresh access token rejected by the server surfaces Invalid access token and interrupts normal flows. 修复后已由对应契约/逻辑测试、构建门禁及本轮 APP 或微信真机定向回归验证。",
+    "sourceEvidence": [
+      "src/lib/online/online-request.ts:1",
+      "src/components/auth/auth-provider.tsx:1"
+    ],
+    "acceptanceCriteria": [
+      "Workspace and AI requests recover through one refresh mutex without showing Invalid access token or losing the current draft."
+    ],
+    "suspectedFiles": [
+      "src/lib/online/online-request.ts",
+      "src/components/auth/auth-provider.tsx",
+      "src/lib/cloud-auth-api.ts"
+    ],
+    "status": "VERIFIED"
+  },
+  {
+    "defectId": "RUNTIME-AUTH-LONG-SESSION-001",
+    "severity": "P0",
+    "category": "SESSION_PERSISTENCE",
+    "screenId": "settings.account",
+    "confirmation": "RUNTIME_CONFIRMED",
+    "expected": "Authorized APP and mini devices remain signed in through process death and rolling refresh until explicit revocation.",
+    "actual": "历史缺陷：The formal mini baseline returns to the login page after WeChat is force-stopped and the recent mini program is reopened. 修复后已由对应契约/逻辑测试、构建门禁及本轮 APP 或微信真机定向回归验证。",
+    "sourceEvidence": [
+      "apps/wechat-miniprogram/stores/session.ts:1",
+      "apps/wechat-miniprogram/app.ts:1",
+      "artifacts/parity/parity-audit-20260711-2030/evidence/mini-real-device/043-mini-after-force-stop-reopen.png:1"
+    ],
+    "acceptanceCriteria": [
+      "APP and mini survive process death and a 31-day time advance; only logout, device/all-device revoke, deletion or replay/theft revocation clears the device session."
+    ],
+    "suspectedFiles": [
+      "src/lib/auth-session-store.ts",
+      "apps/wechat-miniprogram/stores/session.ts",
+      "services/wardrobe-api/src/auth/session.ts"
+    ],
+    "status": "VERIFIED"
+  },
+  {
+    "defectId": "RUNTIME-MINI-SHELL-001",
+    "severity": "P0",
+    "category": "DUPLICATE_TABBAR",
+    "screenId": "shell.main",
+    "confirmation": "RUNTIME_CONFIRMED",
+    "expected": "Every mini root page has exactly one stable bottom navigation bar.",
+    "actual": "历史缺陷：After switching root tabs on the real phone, the custom tab bar and WeChat native tab bar render simultaneously and change click geometry. 修复后已由对应契约/逻辑测试、构建门禁及本轮 APP 或微信真机定向回归验证。",
+    "sourceEvidence": [
+      "apps/wechat-miniprogram/app.json:1",
+      "apps/wechat-miniprogram/custom-tab-bar/index.wxml:1",
+      "artifacts/parity/parity-audit-20260711-2030/evidence/mini-real-device/011-wishlist-home.png:1"
+    ],
+    "acceptanceCriteria": [
+      "Four root tabs and twenty repeated current-tab taps keep exactly one bottom bar with no duplicated page stack."
+    ],
+    "suspectedFiles": [
+      "apps/wechat-miniprogram/app.json",
+      "apps/wechat-miniprogram/custom-tab-bar/index.ts"
+    ],
+    "status": "VERIFIED"
+  },
+  {
+    "defectId": "RUNTIME-MINI-ICON-001",
+    "severity": "P0",
+    "category": "ICON_RENDERING",
+    "screenId": "shell.main",
+    "confirmation": "RUNTIME_CONFIRMED",
+    "expected": "All approved navigation and action icons remain visible on a real WeChat device.",
+    "actual": "历史缺陷：Root tab icons are absent on the real phone because the CSS SVG mask approach does not render reliably. 修复后已由对应契约/逻辑测试、构建门禁及本轮 APP 或微信真机定向回归验证。",
+    "sourceEvidence": [
+      "apps/wechat-miniprogram/components/ui/icon/index.wxss:1",
+      "artifacts/parity/parity-audit-20260711-2030/evidence/mini-real-device/013-wardrobe-home-return.png:1"
+    ],
+    "acceptanceCriteria": [
+      "Local normal and selected PNG icons are visible on every root tab and audited action surface."
+    ],
+    "suspectedFiles": [
+      "apps/wechat-miniprogram/components/ui/icon",
+      "apps/wechat-miniprogram/custom-tab-bar"
+    ],
+    "status": "VERIFIED"
+  },
+  {
+    "defectId": "RUNTIME-MINI-INTAKE-001",
+    "severity": "P0",
+    "category": "INTAKE_STRUCTURE",
+    "screenId": "intake.select",
+    "confirmation": "RUNTIME_CONFIRMED",
+    "expected": "Mini intake step 1 matches the APP large preview, thumbnails and append/edit/remove/clear/next structure.",
+    "actual": "历史缺陷：Mini selection and crop entry are structurally different and do not provide the approved step-1 review workspace. 修复后已由对应契约/逻辑测试、构建门禁及本轮 APP 或微信真机定向回归验证。",
+    "sourceEvidence": [
+      "apps/wechat-miniprogram/pages/intake/camera/index.wxml:1",
+      "apps/wechat-miniprogram/pages/intake/review/index.wxml:1"
+    ],
+    "acceptanceCriteria": [
+      "Single and multi-image garment and wishlist intake follow the approved step-1 structure on the real phone."
+    ],
+    "suspectedFiles": [
+      "apps/wechat-miniprogram/pages/intake/camera",
+      "apps/wechat-miniprogram/pages/intake/review"
+    ],
+    "status": "VERIFIED"
+  },
+  {
+    "defectId": "RUNTIME-MINI-INTAKE-002",
+    "severity": "P0",
+    "category": "INTAKE_STATE_MACHINE",
+    "screenId": "intake.review",
+    "confirmation": "RUNTIME_CONFIRMED",
+    "expected": "Recognition remains in step 1 and enters step 2 once after all selected images settle.",
+    "actual": "历史缺陷：Mini uses separate selection, recognition review and result navigation that diverge from the approved two-step state machine. 修复后已由对应契约/逻辑测试、构建门禁及本轮 APP 或微信真机定向回归验证。",
+    "sourceEvidence": [
+      "apps/wechat-miniprogram/pages/intake/camera/index.ts:1",
+      "apps/wechat-miniprogram/pages/intake/review/index.ts:1"
+    ],
+    "acceptanceCriteria": [
+      "Recognition progress, success, partial failure, retry and exit paths match the approved state graph."
+    ],
+    "suspectedFiles": [
+      "apps/wechat-miniprogram/pages/intake/camera",
+      "apps/wechat-miniprogram/pages/intake/review"
+    ],
+    "status": "VERIFIED"
+  },
+  {
+    "defectId": "STATIC-MINI-INTAKE-RESULT-001",
+    "severity": "P1",
+    "category": "EXTRA_RESULT_SCREEN",
+    "screenId": "intake.review",
+    "confirmation": "STATIC_CONFIRMED",
+    "expected": "Successful save returns directly to the source catalog; partial failures remain in step 2.",
+    "actual": "历史缺陷：Fixed in the mini repair branch: the result route is unregistered, successful save returns to the source catalog and partial failures stay in review. 修复后已由对应契约/逻辑测试、构建门禁及本轮 APP 或微信真机定向回归验证。",
+    "sourceEvidence": [
+      "apps/wechat-miniprogram/pages/intake/review/index.ts:1",
+      "apps/wechat-miniprogram/app.json:1"
+    ],
+    "acceptanceCriteria": [
+      "No legal navigation enters an extra result page and save/partial failure paths match the APP."
+    ],
+    "suspectedFiles": [
+      "apps/wechat-miniprogram/pages/intake/review",
+      "apps/wechat-miniprogram/app.json"
+    ],
+    "status": "VERIFIED"
+  },
+  {
+    "defectId": "RUNTIME-APP-SAFEAREA-001",
+    "severity": "P1",
+    "category": "SAFE_AREA_VISUAL",
+    "screenId": "infrastructure.android-system-bars",
+    "confirmation": "RUNTIME_CONFIRMED",
+    "expected": "APP intake headers remain below the Android status bar and camera cutout on every entry/resume path.",
+    "actual": "历史缺陷：The intake header can render beneath the Android status bar or front-camera area. 修复后已由对应契约/逻辑测试、构建门禁及本轮 APP 或微信真机定向回归验证。",
+    "sourceEvidence": [
+      "src/components/garment-intake-flow.tsx:1",
+      "android/app/src/main/java/com/wardrobe/outfit/MainActivity.java:1"
+    ],
+    "acceptanceCriteria": [
+      "Cold start, home entry, gallery return and background resume all consume real window insets without fixed-device padding."
+    ],
+    "suspectedFiles": [
+      "android/app/src/main/java/com/wardrobe/outfit/MainActivity.java",
+      "src/components/garment-intake-flow.tsx"
+    ],
+    "status": "VERIFIED"
+  },
+  {
+    "defectId": "STATIC-MINI-SETTINGS-DEVNOTE-001",
+    "severity": "P2",
+    "category": "DEVELOPER_COPY",
+    "screenId": "settings.home",
+    "confirmation": "STATIC_CONFIRMED",
+    "expected": "Settings contains only user-facing product information and actions.",
+    "actual": "历史缺陷：Settings displays a developer implementation note about backend AI proxy and future integrations. 修复后已由对应契约/逻辑测试、构建门禁及本轮 APP 或微信真机定向回归验证。",
+    "sourceEvidence": [
+      "apps/wechat-miniprogram/pages/settings/index/index.wxml:1"
+    ],
+    "acceptanceCriteria": [
+      "The entire developer note is removed without replacement technical copy."
+    ],
+    "suspectedFiles": [
+      "apps/wechat-miniprogram/pages/settings/index/index.wxml"
+    ],
+    "status": "VERIFIED"
+  },
+  {
+    "defectId": "STATIC-MINI-DETAIL-FIELDS-001",
+    "severity": "P1",
+    "category": "DETAIL_FIELD_PARITY",
+    "screenId": "wardrobe.garment.detail",
+    "confirmation": "STATIC_CONFIRMED",
+    "expected": "Mini detail fields match APP visibility rules and temperature range semantics.",
+    "actual": "历史缺陷：Auxiliary color is shown in unsupported color modes and the APP temperature interval bar is absent. 修复后已由对应契约/逻辑测试、构建门禁及本轮 APP 或微信真机定向回归验证。",
+    "sourceEvidence": [
+      "apps/wechat-miniprogram/pages/wardrobe/detail/index.wxml:1",
+      "src/components/item/detail-sections.tsx:1"
+    ],
+    "acceptanceCriteria": [
+      "Auxiliary color appears only in primary-plus-secondary mode and the readable APP-equivalent temperature bar is rendered."
+    ],
+    "suspectedFiles": [
+      "apps/wechat-miniprogram/pages/wardrobe/detail",
+      "apps/wechat-miniprogram/components/domain/item-detail-shell"
+    ],
+    "status": "VERIFIED"
+  },
+  {
+    "defectId": "STATIC-RECOMMENDATIONS-001",
+    "severity": "P1",
+    "category": "PLACEHOLDER_SCREEN",
+    "screenId": "recommendations.placeholder",
+    "confirmation": "STATIC_CONFIRMED",
+    "expected": "The recommendation route implements the approved APP-equivalent generation flow.",
+    "actual": "历史缺陷：The registered mini recommendation page is an unnumbered placeholder. 修复后已由对应契约/逻辑测试、构建门禁及本轮 APP 或微信真机定向回归验证。",
+    "sourceEvidence": [
+      "apps/wechat-miniprogram/pages/recommendations/index.wxml:1",
+      "scripts/parity/manifests/recommendations.yaml:350"
+    ],
+    "acceptanceCriteria": [
+      "Recommendation input, loading, result, retry, refresh and result actions are implemented and tested."
+    ],
+    "suspectedFiles": [
+      "apps/wechat-miniprogram/pages/recommendations",
+      "apps/wechat-miniprogram/services/ai.ts"
+    ],
+    "status": "VERIFIED"
+  },
+  {
+    "defectId": "STATIC-TRYON-001",
+    "severity": "P1",
+    "category": "PLACEHOLDER_SCREEN",
+    "screenId": "try-on.placeholder",
+    "confirmation": "STATIC_CONFIRMED",
+    "expected": "The try-on route implements the user-triggered reference and garment image lifecycle.",
+    "actual": "历史缺陷：The registered mini try-on page is an unnumbered placeholder. 修复后已由对应契约/逻辑测试、构建门禁及本轮 APP 或微信真机定向回归验证。",
+    "sourceEvidence": [
+      "apps/wechat-miniprogram/pages/try-on/index.wxml:1",
+      "scripts/parity/manifests/recommendations.yaml:778"
+    ],
+    "acceptanceCriteria": [
+      "Crop, confirm, generation, retry, preview, save and delete are implemented with explicit user image consent."
+    ],
+    "suspectedFiles": [
+      "apps/wechat-miniprogram/pages/try-on",
+      "apps/wechat-miniprogram/services/ai.ts"
+    ],
+    "status": "VERIFIED"
+  }
+]

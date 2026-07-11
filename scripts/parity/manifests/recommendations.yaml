@@ -1,0 +1,1303 @@
+{
+  "schemaVersion": 1,
+  "domain": "recommendations",
+  "privacy": {
+    "sendsGarmentImages": false,
+    "sendsStructuredWardrobe": true
+  },
+  "screens": [
+    {
+      "id": "outfits.home",
+      "domain": "outfits",
+      "sourceOfTruth": "app",
+      "mappingStatus": "EQUIVALENT",
+      "app": {
+        "routes": [
+          "route.outfit.home",
+          "internal.subpage.library"
+        ],
+        "sourceInventoryIds": [
+          "app.route.outfit.home",
+          "app.internal.subpage.library"
+        ],
+        "sourceFiles": []
+      },
+      "mini": {
+        "routes": [
+          "/pages/outfits/index/index"
+        ],
+        "sourceInventoryIds": [
+          "mini.route.pages.outfits.index.index"
+        ],
+        "sourceFiles": []
+      },
+      "fixtures": [
+        "outfit.complete",
+        "outfit.with_real_image",
+        "network.409"
+      ],
+      "entryPaths": [
+        {
+          "id": "direct",
+          "actions": []
+        },
+        {
+          "id": "navigation",
+          "actions": [
+            "outfits.detail.open"
+          ]
+        }
+      ],
+      "states": [
+        {
+          "id": "library",
+          "fixture": "outfit.complete",
+          "checkpoint": true,
+          "expectedOn": [
+            "app",
+            "mini"
+          ]
+        },
+        {
+          "id": "planning",
+          "fixture": "outfit.with_real_image",
+          "checkpoint": true,
+          "expectedOn": [
+            "app",
+            "mini"
+          ]
+        },
+        {
+          "id": "empty",
+          "fixture": "network.409",
+          "checkpoint": true,
+          "expectedOn": [
+            "app",
+            "mini"
+          ]
+        }
+      ],
+      "requiredActions": [
+        {
+          "id": "outfits.detail.open",
+          "event": "tap",
+          "requiredOn": [
+            "app",
+            "mini"
+          ],
+          "sourceActionIds": {},
+          "expectedTransition": "push",
+          "target": "outfits.detail",
+          "sideEffect": "BACKEND_READ",
+          "serverAssertion": "outfit-detail-readback"
+        },
+        {
+          "id": "outfits.compose.open",
+          "event": "tap",
+          "requiredOn": [
+            "app",
+            "mini"
+          ],
+          "sourceActionIds": {},
+          "expectedTransition": "push",
+          "target": "outfits.compose",
+          "sideEffect": "NONE"
+        },
+        {
+          "id": "outfits.calendar.open",
+          "event": "tap",
+          "requiredOn": [
+            "app",
+            "mini"
+          ],
+          "sourceActionIds": {},
+          "expectedTransition": "push",
+          "target": "outfits.calendar",
+          "sideEffect": "NONE"
+        }
+      ],
+      "overlays": [],
+      "checkpoints": [
+        "library",
+        "planning",
+        "empty"
+      ],
+      "platformExceptionIds": [
+        "WX-CAPSULE-001"
+      ]
+    },
+    {
+      "id": "outfits.detail",
+      "domain": "outfits",
+      "sourceOfTruth": "app",
+      "mappingStatus": "EQUIVALENT",
+      "app": {
+        "routes": [
+          "route.outfit.detail"
+        ],
+        "sourceInventoryIds": [
+          "app.route.outfit.detail"
+        ],
+        "sourceFiles": []
+      },
+      "mini": {
+        "routes": [
+          "/pages/outfits/detail/index"
+        ],
+        "sourceInventoryIds": [
+          "mini.route.pages.outfits.detail.index"
+        ],
+        "sourceFiles": []
+      },
+      "fixtures": [
+        "outfit.complete",
+        "outfit.with_real_image",
+        "network.409"
+      ],
+      "entryPaths": [
+        {
+          "id": "direct",
+          "actions": []
+        },
+        {
+          "id": "navigation",
+          "actions": [
+            "outfits.detail.more"
+          ]
+        }
+      ],
+      "states": [
+        {
+          "id": "overview",
+          "fixture": "outfit.complete",
+          "checkpoint": true,
+          "expectedOn": [
+            "app",
+            "mini"
+          ]
+        },
+        {
+          "id": "actions-open",
+          "fixture": "outfit.with_real_image",
+          "checkpoint": true,
+          "expectedOn": [
+            "app",
+            "mini"
+          ]
+        },
+        {
+          "id": "replacement-missing",
+          "fixture": "network.409",
+          "checkpoint": true,
+          "expectedOn": [
+            "app",
+            "mini"
+          ]
+        }
+      ],
+      "requiredActions": [
+        {
+          "id": "outfits.detail.more",
+          "event": "tap",
+          "requiredOn": [
+            "app",
+            "mini"
+          ],
+          "sourceActionIds": {},
+          "expectedTransition": "overlay-open",
+          "sideEffect": "LOCAL_STATE"
+        },
+        {
+          "id": "outfits.detail.mark-worn",
+          "event": "tap",
+          "requiredOn": [
+            "app",
+            "mini"
+          ],
+          "sourceActionIds": {},
+          "expectedTransition": "state-change",
+          "sideEffect": "BACKEND_WRITE",
+          "serverAssertion": "wear-record-readback"
+        },
+        {
+          "id": "outfits.detail.delete",
+          "event": "tap",
+          "requiredOn": [
+            "app",
+            "mini"
+          ],
+          "sourceActionIds": {},
+          "expectedTransition": "pop",
+          "sideEffect": "BACKEND_WRITE",
+          "serverAssertion": "outfit-delete-readback"
+        }
+      ],
+      "overlays": [
+        "outfits.detail.more.overlay"
+      ],
+      "checkpoints": [
+        "overview",
+        "actions-open",
+        "replacement-missing"
+      ],
+      "platformExceptionIds": [
+        "WX-CAPSULE-001"
+      ]
+    },
+    {
+      "id": "outfits.compose",
+      "domain": "outfits",
+      "sourceOfTruth": "app",
+      "mappingStatus": "EQUIVALENT",
+      "app": {
+        "routes": [
+          "route.intake.outfit",
+          "src.components.outfit.intake.flow"
+        ],
+        "sourceInventoryIds": [
+          "app.route.intake.outfit",
+          "app.src.components.outfit.intake.flow"
+        ],
+        "sourceFiles": []
+      },
+      "mini": {
+        "routes": [
+          "/pages/outfits/compose/index"
+        ],
+        "sourceInventoryIds": [
+          "mini.route.pages.outfits.compose.index"
+        ],
+        "sourceFiles": []
+      },
+      "fixtures": [
+        "outfit.complete",
+        "outfit.with_real_image",
+        "network.409"
+      ],
+      "entryPaths": [
+        {
+          "id": "direct",
+          "actions": []
+        },
+        {
+          "id": "navigation",
+          "actions": [
+            "outfits.compose.toggle-garment"
+          ]
+        }
+      ],
+      "states": [
+        {
+          "id": "selecting",
+          "fixture": "outfit.complete",
+          "checkpoint": true,
+          "expectedOn": [
+            "app",
+            "mini"
+          ]
+        },
+        {
+          "id": "metadata",
+          "fixture": "outfit.with_real_image",
+          "checkpoint": true,
+          "expectedOn": [
+            "app",
+            "mini"
+          ]
+        },
+        {
+          "id": "validation-error",
+          "fixture": "network.409",
+          "checkpoint": true,
+          "expectedOn": [
+            "app",
+            "mini"
+          ]
+        }
+      ],
+      "requiredActions": [
+        {
+          "id": "outfits.compose.toggle-garment",
+          "event": "tap",
+          "requiredOn": [
+            "app",
+            "mini"
+          ],
+          "sourceActionIds": {},
+          "expectedTransition": "state-change",
+          "sideEffect": "LOCAL_STATE"
+        },
+        {
+          "id": "outfits.compose.save",
+          "event": "tap",
+          "requiredOn": [
+            "app",
+            "mini"
+          ],
+          "sourceActionIds": {},
+          "expectedTransition": "pop",
+          "sideEffect": "BACKEND_WRITE",
+          "serverAssertion": "outfit-create-readback"
+        }
+      ],
+      "overlays": [],
+      "checkpoints": [
+        "selecting",
+        "metadata",
+        "validation-error"
+      ],
+      "platformExceptionIds": [
+        "WX-CAPSULE-001"
+      ]
+    },
+    {
+      "id": "recommendations.placeholder",
+      "domain": "recommendations",
+      "sourceOfTruth": "app",
+      "mappingStatus": "MINI_ONLY_DEFECT",
+      "app": {
+        "routes": [],
+        "sourceInventoryIds": [],
+        "sourceFiles": []
+      },
+      "mini": {
+        "routes": [
+          "/pages/recommendations/index/index"
+        ],
+        "sourceInventoryIds": [
+          "mini.route.pages.recommendations.index.index"
+        ],
+        "sourceFiles": []
+      },
+      "fixtures": [
+        "account.normal",
+        "network.401"
+      ],
+      "entryPaths": [
+        {
+          "id": "direct",
+          "actions": []
+        },
+        {
+          "id": "navigation",
+          "actions": [
+            "recommendations.open"
+          ]
+        }
+      ],
+      "states": [
+        {
+          "id": "placeholder",
+          "fixture": "account.normal",
+          "checkpoint": true,
+          "expectedOn": [
+            "app",
+            "mini"
+          ]
+        },
+        {
+          "id": "entry-attempt",
+          "fixture": "network.401",
+          "checkpoint": true,
+          "expectedOn": [
+            "app",
+            "mini"
+          ]
+        },
+        {
+          "id": "unreachable",
+          "fixture": "network.401",
+          "checkpoint": true,
+          "expectedOn": [
+            "app",
+            "mini"
+          ]
+        }
+      ],
+      "requiredActions": [
+        {
+          "id": "recommendations.open",
+          "event": "tap",
+          "requiredOn": [
+            "app",
+            "mini"
+          ],
+          "sourceActionIds": {},
+          "expectedTransition": "push",
+          "target": "recommendations",
+          "sideEffect": "NONE"
+        },
+        {
+          "id": "recommendations.back",
+          "event": "tap",
+          "requiredOn": [
+            "app",
+            "mini"
+          ],
+          "sourceActionIds": {},
+          "expectedTransition": "pop",
+          "sideEffect": "NONE"
+        }
+      ],
+      "overlays": [],
+      "checkpoints": [
+        "placeholder",
+        "entry-attempt",
+        "unreachable"
+      ],
+      "platformExceptionIds": [
+        "WX-CAPSULE-001"
+      ]
+    },
+    {
+      "id": "plans.home.placeholder",
+      "domain": "outfits",
+      "sourceOfTruth": "app",
+      "mappingStatus": "MINI_ONLY_DEFECT",
+      "app": {
+        "routes": [],
+        "sourceInventoryIds": [],
+        "sourceFiles": []
+      },
+      "mini": {
+        "routes": [
+          "/pages/trips/index/index"
+        ],
+        "sourceInventoryIds": [
+          "mini.route.pages.trips.index.index"
+        ],
+        "sourceFiles": []
+      },
+      "fixtures": [
+        "calendar.with_trip",
+        "outfit.complete",
+        "network.409"
+      ],
+      "entryPaths": [
+        {
+          "id": "direct",
+          "actions": []
+        },
+        {
+          "id": "navigation",
+          "actions": [
+            "plans.home.open"
+          ]
+        }
+      ],
+      "states": [
+        {
+          "id": "placeholder",
+          "fixture": "calendar.with_trip",
+          "checkpoint": true,
+          "expectedOn": [
+            "app",
+            "mini"
+          ]
+        },
+        {
+          "id": "invalid-entry",
+          "fixture": "outfit.complete",
+          "checkpoint": true,
+          "expectedOn": [
+            "app",
+            "mini"
+          ]
+        },
+        {
+          "id": "calendar-entry",
+          "fixture": "network.409",
+          "checkpoint": true,
+          "expectedOn": [
+            "app",
+            "mini"
+          ]
+        }
+      ],
+      "requiredActions": [
+        {
+          "id": "plans.home.open",
+          "event": "tap",
+          "requiredOn": [
+            "app",
+            "mini"
+          ],
+          "sourceActionIds": {},
+          "expectedTransition": "push",
+          "target": "plans.home",
+          "sideEffect": "NONE"
+        },
+        {
+          "id": "plans.home.calendar",
+          "event": "tap",
+          "requiredOn": [
+            "app",
+            "mini"
+          ],
+          "sourceActionIds": {},
+          "expectedTransition": "replace",
+          "target": "plans.home",
+          "sideEffect": "NONE"
+        }
+      ],
+      "overlays": [],
+      "checkpoints": [
+        "placeholder",
+        "invalid-entry",
+        "calendar-entry"
+      ],
+      "platformExceptionIds": [
+        "WX-CAPSULE-001"
+      ]
+    },
+    {
+      "id": "plans.detail",
+      "domain": "outfits",
+      "sourceOfTruth": "app",
+      "mappingStatus": "EQUIVALENT",
+      "app": {
+        "routes": [
+          "internal.subpage.plan.detail",
+          "src.components.outfit.plan.detail.view"
+        ],
+        "sourceInventoryIds": [
+          "app.internal.subpage.plan.detail",
+          "app.src.components.outfit.plan.detail.view"
+        ],
+        "sourceFiles": []
+      },
+      "mini": {
+        "routes": [
+          "/pages/trips/detail/index"
+        ],
+        "sourceInventoryIds": [
+          "mini.route.pages.trips.detail.index"
+        ],
+        "sourceFiles": []
+      },
+      "fixtures": [
+        "calendar.with_trip",
+        "outfit.complete",
+        "network.409"
+      ],
+      "entryPaths": [
+        {
+          "id": "direct",
+          "actions": []
+        },
+        {
+          "id": "navigation",
+          "actions": [
+            "plans.detail.edit"
+          ]
+        }
+      ],
+      "states": [
+        {
+          "id": "summary",
+          "fixture": "calendar.with_trip",
+          "checkpoint": true,
+          "expectedOn": [
+            "app",
+            "mini"
+          ]
+        },
+        {
+          "id": "plans",
+          "fixture": "outfit.complete",
+          "checkpoint": true,
+          "expectedOn": [
+            "app",
+            "mini"
+          ]
+        },
+        {
+          "id": "packing-entry-missing",
+          "fixture": "network.409",
+          "checkpoint": true,
+          "expectedOn": [
+            "app",
+            "mini"
+          ]
+        }
+      ],
+      "requiredActions": [
+        {
+          "id": "plans.detail.edit",
+          "event": "tap",
+          "requiredOn": [
+            "app",
+            "mini"
+          ],
+          "sourceActionIds": {},
+          "expectedTransition": "push",
+          "target": "plans.detail",
+          "sideEffect": "NONE"
+        },
+        {
+          "id": "plans.detail.delete",
+          "event": "tap",
+          "requiredOn": [
+            "app",
+            "mini"
+          ],
+          "sourceActionIds": {},
+          "expectedTransition": "pop",
+          "sideEffect": "BACKEND_WRITE",
+          "serverAssertion": "plan-delete-readback"
+        },
+        {
+          "id": "plans.detail.packing",
+          "event": "tap",
+          "requiredOn": [
+            "app",
+            "mini"
+          ],
+          "sourceActionIds": {},
+          "expectedTransition": "push",
+          "target": "plans.detail",
+          "sideEffect": "BACKEND_READ",
+          "serverAssertion": "packing-readback"
+        }
+      ],
+      "overlays": [],
+      "checkpoints": [
+        "summary",
+        "plans",
+        "packing-entry-missing"
+      ],
+      "platformExceptionIds": [
+        "WX-CAPSULE-001"
+      ]
+    },
+    {
+      "id": "plans.add-edit",
+      "domain": "outfits",
+      "sourceOfTruth": "app",
+      "mappingStatus": "EQUIVALENT",
+      "app": {
+        "routes": [
+          "internal.subpage.plan.add",
+          "internal.subpage.plan.edit",
+          "src.components.outfit.plan.add.view"
+        ],
+        "sourceInventoryIds": [
+          "app.internal.subpage.plan.add",
+          "app.internal.subpage.plan.edit",
+          "app.src.components.outfit.plan.add.view"
+        ],
+        "sourceFiles": []
+      },
+      "mini": {
+        "routes": [
+          "/pages/trips/edit/index"
+        ],
+        "sourceInventoryIds": [
+          "mini.route.pages.trips.edit.index"
+        ],
+        "sourceFiles": []
+      },
+      "fixtures": [
+        "calendar.with_trip",
+        "outfit.complete",
+        "network.409"
+      ],
+      "entryPaths": [
+        {
+          "id": "direct",
+          "actions": []
+        },
+        {
+          "id": "navigation",
+          "actions": [
+            "plans.form.save"
+          ]
+        }
+      ],
+      "states": [
+        {
+          "id": "form",
+          "fixture": "calendar.with_trip",
+          "checkpoint": true,
+          "expectedOn": [
+            "app",
+            "mini"
+          ]
+        },
+        {
+          "id": "dirty",
+          "fixture": "outfit.complete",
+          "checkpoint": true,
+          "expectedOn": [
+            "app",
+            "mini"
+          ]
+        },
+        {
+          "id": "conflict",
+          "fixture": "network.409",
+          "checkpoint": true,
+          "expectedOn": [
+            "app",
+            "mini"
+          ]
+        }
+      ],
+      "requiredActions": [
+        {
+          "id": "plans.form.save",
+          "event": "tap",
+          "requiredOn": [
+            "app",
+            "mini"
+          ],
+          "sourceActionIds": {},
+          "expectedTransition": "pop",
+          "sideEffect": "BACKEND_WRITE",
+          "serverAssertion": "plan-upsert-readback"
+        },
+        {
+          "id": "plans.form.back",
+          "event": "tap",
+          "requiredOn": [
+            "app",
+            "mini"
+          ],
+          "sourceActionIds": {},
+          "expectedTransition": "pop",
+          "sideEffect": "NONE"
+        }
+      ],
+      "overlays": [],
+      "checkpoints": [
+        "form",
+        "dirty",
+        "conflict"
+      ],
+      "platformExceptionIds": [
+        "WX-CAPSULE-001"
+      ]
+    },
+    {
+      "id": "try-on.placeholder",
+      "domain": "recommendations",
+      "sourceOfTruth": "app",
+      "mappingStatus": "MINI_ONLY_DEFECT",
+      "app": {
+        "routes": [],
+        "sourceInventoryIds": [],
+        "sourceFiles": []
+      },
+      "mini": {
+        "routes": [
+          "/pages/try/on/index/index"
+        ],
+        "sourceInventoryIds": [
+          "mini.route.pages.try.on.index.index"
+        ],
+        "sourceFiles": []
+      },
+      "fixtures": [
+        "account.normal",
+        "network.401"
+      ],
+      "entryPaths": [
+        {
+          "id": "direct",
+          "actions": []
+        },
+        {
+          "id": "navigation",
+          "actions": [
+            "tryon.open"
+          ]
+        }
+      ],
+      "states": [
+        {
+          "id": "placeholder",
+          "fixture": "account.normal",
+          "checkpoint": true,
+          "expectedOn": [
+            "app",
+            "mini"
+          ]
+        },
+        {
+          "id": "entry-attempt",
+          "fixture": "network.401",
+          "checkpoint": true,
+          "expectedOn": [
+            "app",
+            "mini"
+          ]
+        },
+        {
+          "id": "missing-capability",
+          "fixture": "network.401",
+          "checkpoint": true,
+          "expectedOn": [
+            "app",
+            "mini"
+          ]
+        }
+      ],
+      "requiredActions": [
+        {
+          "id": "tryon.open",
+          "event": "tap",
+          "requiredOn": [
+            "app",
+            "mini"
+          ],
+          "sourceActionIds": {},
+          "expectedTransition": "push",
+          "target": "tryon",
+          "sideEffect": "NONE"
+        },
+        {
+          "id": "tryon.start",
+          "event": "tap",
+          "requiredOn": [
+            "app",
+            "mini"
+          ],
+          "sourceActionIds": {},
+          "expectedTransition": "state-change",
+          "sideEffect": "ASYNC_JOB",
+          "serverAssertion": "tryon-job-readback"
+        }
+      ],
+      "overlays": [],
+      "checkpoints": [
+        "placeholder",
+        "entry-attempt",
+        "missing-capability"
+      ],
+      "platformExceptionIds": [
+        "WX-CAPSULE-001"
+      ]
+    },
+    {
+      "id": "outfits.edit",
+      "domain": "outfits",
+      "sourceOfTruth": "app",
+      "mappingStatus": "APP_ONLY_DEFECT",
+      "app": {
+        "routes": [
+          "internal.subpage.edit"
+        ],
+        "sourceInventoryIds": [
+          "app.internal.subpage.edit"
+        ],
+        "sourceFiles": []
+      },
+      "mini": {
+        "routes": [
+          "/pages/outfits/detail/index"
+        ],
+        "sourceInventoryIds": [
+          "mini.route.pages.outfits.detail.index"
+        ],
+        "sourceFiles": []
+      },
+      "fixtures": [
+        "outfit.complete",
+        "outfit.with_real_image",
+        "network.409"
+      ],
+      "entryPaths": [
+        {
+          "id": "direct",
+          "actions": []
+        },
+        {
+          "id": "navigation",
+          "actions": [
+            "outfits.edit.save"
+          ]
+        }
+      ],
+      "states": [
+        {
+          "id": "form",
+          "fixture": "outfit.complete",
+          "checkpoint": true,
+          "expectedOn": [
+            "app",
+            "mini"
+          ]
+        },
+        {
+          "id": "saving",
+          "fixture": "outfit.with_real_image",
+          "checkpoint": true,
+          "expectedOn": [
+            "app",
+            "mini"
+          ]
+        },
+        {
+          "id": "mini-missing",
+          "fixture": "network.409",
+          "checkpoint": true,
+          "expectedOn": [
+            "app",
+            "mini"
+          ]
+        }
+      ],
+      "requiredActions": [
+        {
+          "id": "outfits.edit.save",
+          "event": "tap",
+          "requiredOn": [
+            "app",
+            "mini"
+          ],
+          "sourceActionIds": {},
+          "expectedTransition": "pop",
+          "sideEffect": "BACKEND_WRITE",
+          "serverAssertion": "outfit-update-readback"
+        },
+        {
+          "id": "outfits.edit.back",
+          "event": "tap",
+          "requiredOn": [
+            "app",
+            "mini"
+          ],
+          "sourceActionIds": {},
+          "expectedTransition": "pop",
+          "sideEffect": "NONE"
+        }
+      ],
+      "overlays": [],
+      "checkpoints": [
+        "form",
+        "saving",
+        "mini-missing"
+      ],
+      "platformExceptionIds": [
+        "WX-CAPSULE-001"
+      ]
+    },
+    {
+      "id": "outfits.real-image-add",
+      "domain": "outfits",
+      "sourceOfTruth": "app",
+      "mappingStatus": "APP_ONLY_DEFECT",
+      "app": {
+        "routes": [
+          "internal.subpage.real.image.add"
+        ],
+        "sourceInventoryIds": [
+          "app.internal.subpage.real.image.add"
+        ],
+        "sourceFiles": []
+      },
+      "mini": {
+        "routes": [
+          "/pages/outfits/detail/index"
+        ],
+        "sourceInventoryIds": [
+          "mini.route.pages.outfits.detail.index"
+        ],
+        "sourceFiles": []
+      },
+      "fixtures": [
+        "outfit.complete",
+        "outfit.with_real_image",
+        "network.409"
+      ],
+      "entryPaths": [
+        {
+          "id": "direct",
+          "actions": []
+        },
+        {
+          "id": "navigation",
+          "actions": [
+            "outfits.image.pick"
+          ]
+        }
+      ],
+      "states": [
+        {
+          "id": "picker",
+          "fixture": "outfit.complete",
+          "checkpoint": true,
+          "expectedOn": [
+            "app",
+            "mini"
+          ]
+        },
+        {
+          "id": "uploading",
+          "fixture": "outfit.with_real_image",
+          "checkpoint": true,
+          "expectedOn": [
+            "app",
+            "mini"
+          ]
+        },
+        {
+          "id": "mini-missing",
+          "fixture": "network.409",
+          "checkpoint": true,
+          "expectedOn": [
+            "app",
+            "mini"
+          ]
+        }
+      ],
+      "requiredActions": [
+        {
+          "id": "outfits.image.pick",
+          "event": "tap",
+          "requiredOn": [
+            "app",
+            "mini"
+          ],
+          "sourceActionIds": {},
+          "expectedTransition": "host-native",
+          "sideEffect": "HOST_NATIVE",
+          "serverAssertion": "photo-picker-result-contract"
+        },
+        {
+          "id": "outfits.image.save",
+          "event": "tap",
+          "requiredOn": [
+            "app",
+            "mini"
+          ],
+          "sourceActionIds": {},
+          "expectedTransition": "pop",
+          "sideEffect": "OBJECT_UPLOAD",
+          "serverAssertion": "outfit-real-image-readback"
+        }
+      ],
+      "overlays": [],
+      "checkpoints": [
+        "picker",
+        "uploading",
+        "mini-missing"
+      ],
+      "platformExceptionIds": [
+        "WX-CAPSULE-001"
+      ]
+    },
+    {
+      "id": "outfits.real-image-view",
+      "domain": "outfits",
+      "sourceOfTruth": "app",
+      "mappingStatus": "APP_ONLY_DEFECT",
+      "app": {
+        "routes": [
+          "internal.subpage.real.image.view"
+        ],
+        "sourceInventoryIds": [
+          "app.internal.subpage.real.image.view"
+        ],
+        "sourceFiles": []
+      },
+      "mini": {
+        "routes": [
+          "/pages/outfits/detail/index"
+        ],
+        "sourceInventoryIds": [
+          "mini.route.pages.outfits.detail.index"
+        ],
+        "sourceFiles": []
+      },
+      "fixtures": [
+        "outfit.complete",
+        "outfit.with_real_image",
+        "network.409"
+      ],
+      "entryPaths": [
+        {
+          "id": "direct",
+          "actions": []
+        },
+        {
+          "id": "navigation",
+          "actions": [
+            "outfits.image.note-save"
+          ]
+        }
+      ],
+      "states": [
+        {
+          "id": "preview",
+          "fixture": "outfit.complete",
+          "checkpoint": true,
+          "expectedOn": [
+            "app",
+            "mini"
+          ]
+        },
+        {
+          "id": "note-edit",
+          "fixture": "outfit.with_real_image",
+          "checkpoint": true,
+          "expectedOn": [
+            "app",
+            "mini"
+          ]
+        },
+        {
+          "id": "mini-missing",
+          "fixture": "network.409",
+          "checkpoint": true,
+          "expectedOn": [
+            "app",
+            "mini"
+          ]
+        }
+      ],
+      "requiredActions": [
+        {
+          "id": "outfits.image.note-save",
+          "event": "tap",
+          "requiredOn": [
+            "app",
+            "mini"
+          ],
+          "sourceActionIds": {},
+          "expectedTransition": "state-change",
+          "sideEffect": "BACKEND_WRITE",
+          "serverAssertion": "outfit-real-image-note-readback"
+        },
+        {
+          "id": "outfits.image.delete",
+          "event": "tap",
+          "requiredOn": [
+            "app",
+            "mini"
+          ],
+          "sourceActionIds": {},
+          "expectedTransition": "pop",
+          "sideEffect": "BACKEND_WRITE",
+          "serverAssertion": "outfit-real-image-delete-readback"
+        }
+      ],
+      "overlays": [],
+      "checkpoints": [
+        "preview",
+        "note-edit",
+        "mini-missing"
+      ],
+      "platformExceptionIds": [
+        "WX-CAPSULE-001"
+      ]
+    },
+    {
+      "id": "plans.packing",
+      "domain": "outfits",
+      "sourceOfTruth": "app",
+      "mappingStatus": "APP_ONLY_DEFECT",
+      "app": {
+        "routes": [
+          "internal.subpage.packing.list",
+          "src.components.plan.packing.checklist.view"
+        ],
+        "sourceInventoryIds": [
+          "app.internal.subpage.packing.list",
+          "app.src.components.plan.packing.checklist.view"
+        ],
+        "sourceFiles": []
+      },
+      "mini": {
+        "routes": [
+          "/pages/trips/detail/index"
+        ],
+        "sourceInventoryIds": [
+          "mini.route.pages.trips.detail.index"
+        ],
+        "sourceFiles": []
+      },
+      "fixtures": [
+        "calendar.with_trip",
+        "outfit.complete",
+        "network.409"
+      ],
+      "entryPaths": [
+        {
+          "id": "direct",
+          "actions": []
+        },
+        {
+          "id": "navigation",
+          "actions": [
+            "plans.packing.toggle"
+          ]
+        }
+      ],
+      "states": [
+        {
+          "id": "checklist",
+          "fixture": "calendar.with_trip",
+          "checkpoint": true,
+          "expectedOn": [
+            "app",
+            "mini"
+          ]
+        },
+        {
+          "id": "item-checked",
+          "fixture": "outfit.complete",
+          "checkpoint": true,
+          "expectedOn": [
+            "app",
+            "mini"
+          ]
+        },
+        {
+          "id": "mini-static",
+          "fixture": "network.409",
+          "checkpoint": true,
+          "expectedOn": [
+            "app",
+            "mini"
+          ]
+        }
+      ],
+      "requiredActions": [
+        {
+          "id": "plans.packing.toggle",
+          "event": "tap",
+          "requiredOn": [
+            "app",
+            "mini"
+          ],
+          "sourceActionIds": {},
+          "expectedTransition": "state-change",
+          "sideEffect": "BACKEND_WRITE",
+          "serverAssertion": "packing-item-readback"
+        },
+        {
+          "id": "plans.packing.refresh",
+          "event": "tap",
+          "requiredOn": [
+            "app",
+            "mini"
+          ],
+          "sourceActionIds": {},
+          "expectedTransition": "state-change",
+          "sideEffect": "BACKEND_READ",
+          "serverAssertion": "packing-readback"
+        }
+      ],
+      "overlays": [],
+      "checkpoints": [
+        "checklist",
+        "item-checked",
+        "mini-static"
+      ],
+      "platformExceptionIds": [
+        "WX-CAPSULE-001"
+      ]
+    }
+  ]
+}

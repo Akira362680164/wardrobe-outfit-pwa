@@ -344,7 +344,7 @@ export const ImageCropEditor = forwardRef<ImageCropEditorHandle, ImageCropEditor
       ref={containerRef}
       className={`relative w-full overflow-hidden focus:outline-none focus-visible:ring-2 focus-visible:ring-white/40 ${isEmbedded ? "h-full" : "flex-1"}`}
       style={{ touchAction: "none", ...(isEmbedded ? {} : { minHeight: 0 }) }}
-      onPointerDown={onPointerDown}
+      data-parity-id="parity.app.app.src.components.image.crop.editor.7c2a9a0b59" onPointerDown={onPointerDown}
       onPointerMove={onPointerMove}
       onPointerUp={onPointerUp}
       onPointerCancel={onPointerUp}
@@ -435,6 +435,7 @@ export const ImageCropEditor = forwardRef<ImageCropEditorHandle, ImageCropEditor
     >
       <div className="flex shrink-0 items-center justify-between px-4 pb-2 pt-[calc(env(safe-area-inset-top)+0.5rem)]">
         <button
+          data-parity-id={`parity.app.app.src.components.image.crop.editor.0d95cfb1ff.${source.length}.${source.slice(-16)}`}
           type="button"
           onClick={onCancel}
           aria-label="取消"
@@ -454,6 +455,7 @@ export const ImageCropEditor = forwardRef<ImageCropEditorHandle, ImageCropEditor
         <div className="grid h-11 grid-cols-2 gap-1 rounded-[16px] bg-white/10 p-1">
           {fullscreenAspectOptions.map((option) => (
             <button
+              data-parity-id={`parity.app.app.src.components.image.crop.editor.07f345a0f2.${source.length}.${source.slice(-16)}.${option.value}`}
               key={option.label}
               type="button"
               onClick={() => setFullscreenAspectRatio(option.value)}
@@ -467,12 +469,13 @@ export const ImageCropEditor = forwardRef<ImageCropEditorHandle, ImageCropEditor
           ))}
         </div>
         <div className="grid grid-cols-3 gap-2">
-          <BottomButton label="左转90°" icon="↺" onClick={handleRotateLeft} disabled={confirming || rotating} />
-          <BottomButton label="右转90°" icon="⟳" onClick={handleRotateRight} disabled={confirming || rotating} />
-          <BottomButton label="重置" icon="↻" onClick={handleReset} disabled={confirming || rotating} />
+          <BottomButton data-parity-id={`parity.app.app.src.components.image.crop.editor.b7e3abca2d.${source.length}.${source.slice(-16)}`} label="左转90°" icon="↺" onClick={handleRotateLeft} disabled={confirming || rotating} />
+          <BottomButton data-parity-id={`parity.app.app.src.components.image.crop.editor.2fe51b1818.${source.length}.${source.slice(-16)}`} label="右转90°" icon="⟳" onClick={handleRotateRight} disabled={confirming || rotating} />
+          <BottomButton data-parity-id={`parity.app.app.src.components.image.crop.editor.1629111916.${source.length}.${source.slice(-16)}`} label="重置" icon="↻" onClick={handleReset} disabled={confirming || rotating} />
         </div>
         <div className="grid grid-cols-[1fr_1.6fr] gap-2">
           <button
+            data-parity-id={`parity.app.app.src.components.image.crop.editor.1366916fc1.${source.length}.${source.slice(-16)}`}
             type="button"
             onClick={onCancel}
             disabled={confirming || rotating}
@@ -481,6 +484,7 @@ export const ImageCropEditor = forwardRef<ImageCropEditorHandle, ImageCropEditor
             取消
           </button>
           <button
+            data-parity-id={`parity.app.app.src.components.image.crop.editor.ea6415b523.${source.length}.${source.slice(-16)}`}
             type="button"
             onClick={runConfirm}
             disabled={confirming || rotating || !ready}
@@ -536,11 +540,11 @@ function EdgeHandle({ edge }: { edge: "T" | "B" | "L" | "R" }) {
   return <div style={{ ...base, ...styles[edge] }} />;
 }
 
-function BottomButton({ label, icon, onClick, disabled }: { label: string; icon?: string; onClick: () => void; disabled?: boolean }) {
+function BottomButton({ label, icon, onClick, disabled, "data-parity-id": dataParityId }: { label: string; icon?: string; onClick: () => void; disabled?: boolean; "data-parity-id"?: string }) {
   return (
     <button
       type="button"
-      onClick={onClick}
+      data-parity-id={dataParityId ?? "parity.app.app.src.components.image.crop.editor.eefa41ac2c"} onClick={onClick}
       disabled={disabled}
       className="flex h-11 items-center justify-center gap-1 ui-control-radius border border-white/12 bg-white/8 px-2 text-white/85 text-xs font-semibold active:scale-95 transition-transform disabled:opacity-60 whitespace-nowrap"
     >

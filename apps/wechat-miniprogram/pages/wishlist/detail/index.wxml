@@ -1,114 +1,14 @@
 <view class="page-shell detail-page">
   <view wx:if="{{loading}}" class="status-card">正在读取种草...</view>
-  <view wx:elif="{{error}}" class="status-card">
-    <view class="status-title">读取失败</view>
-    <view class="status-copy">{{error}}</view>
-  </view>
-  <view wx:elif="{{item}}">
-    <item-detail-shell top-title="种草详情" title="{{item.name}}" meta="{{item.meta}}" eyebrow="{{item.statusText}}" image-url="{{item.imageUrl}}" hero-label="商品图" hero-fallback="{{item.categoryLabel}}">
-      <view slot="afterHero">
-        <view class="thumb-strip">
-          <view class="thumb is-active">
-            <image wx:if="{{item.imageUrl}}" class="thumb-image" mode="aspectFill" src="{{item.imageUrl}}" />
-            <view wx:else class="thumb-fallback"></view>
-            <view class="thumb-label">商品图</view>
-          </view>
-        </view>
-
-        <view class="action-row">
-          <button class="action-button bought" loading="{{actioning === 'purchase'}}" disabled="{{actioning}}" bindtap="togglePurchase">{{item.status === 'purchased' ? '撤销购买' : '已买转衣橱'}}</button>
-          <button class="action-button reject" loading="{{actioning === 'reject'}}" disabled="{{actioning || item.status === 'purchased'}}" bindtap="toggleRejected">{{item.status === 'rejected' ? '恢复想买' : '不想买'}}</button>
-          <button class="action-button edit" disabled="{{actioning}}" bindtap="editItem">编辑</button>
-          <button class="action-button danger" disabled="{{actioning}}" bindtap="openDeleteSheet">删除</button>
-        </view>
-      </view>
-
-      <view class="detail-tabs" slot="tabs">
-        <view class="detail-tab {{activeTab === 'info' ? 'is-active' : ''}}" data-tab="info" bindtap="switchTab">信息</view>
-        <view class="detail-tab {{activeTab === 'pairing' ? 'is-active' : ''}}" data-tab="pairing" bindtap="switchTab">搭配</view>
-        <view class="detail-tab {{activeTab === 'record' ? 'is-active' : ''}}" data-tab="record" bindtap="switchTab">记录</view>
-      </view>
-
-      <block wx:if="{{activeTab === 'info'}}">
-        <view class="notice-card"><view class="check-dot">✓</view><view>已添加种草单品</view></view>
-
-        <view class="info-card">
-          <view class="card-title">基础信息</view>
-          <view class="info-row"><text>名称</text><text>{{item.name}}</text></view>
-          <view class="info-row"><text>分类</text><text>{{item.categoryLabel}}{{item.subcategoryLabel ? ' / ' + item.subcategoryLabel : ''}}</text></view>
-          <view class="info-row"><text>状态</text><text>{{item.statusText}}</text></view>
-        </view>
-
-        <view class="info-card">
-          <view class="card-title">购买信息</view>
-          <view class="info-row"><text>价格</text><text>{{item.priceText}}</text></view>
-          <view class="info-row"><text>商品链接</text><text class="break-text">{{item.productUrl || '未填写'}}</text></view>
-        </view>
-
-        <view class="info-card">
-          <view class="card-title">颜色</view>
-          <view class="info-row"><text>颜色模式</text><text>{{item.colorModeText}}</text></view>
-          <view class="info-row">
-            <text>主色</text>
-            <view class="chip-list">
-              <view wx:for="{{item.primaryColorChips}}" wx:key="name" class="chip">
-                <view class="dot" style="background:{{item.swatch}}; border:{{item.needsBorder ? '1rpx solid rgba(29,34,40,0.22)' : '0'}}"></view>
-                <text>{{item.name}}</text>
-              </view>
-              <view wx:if="{{!item.primaryColorChips.length}}" class="chip">未标注</view>
-            </view>
-          </view>
-          <view class="info-row">
-            <text>辅助色</text>
-            <view class="chip-list">
-              <view wx:for="{{item.accentColorChips}}" wx:key="name" class="chip">
-                <view class="dot" style="background:{{item.swatch}}; border:{{item.needsBorder ? '1rpx solid rgba(29,34,40,0.22)' : '0'}}"></view>
-                <text>{{item.name}}</text>
-              </view>
-              <view wx:if="{{!item.accentColorChips.length}}" class="chip">无</view>
-            </view>
-          </view>
-        </view>
-
-        <view class="info-card">
-          <view class="card-title">穿着属性</view>
-          <view class="tag-line"><text wx:for="{{item.seasonLabels}}" wx:key="*this" class="mini-tag">{{item}}</text></view>
-          <view class="tag-line"><text wx:for="{{item.styleLabels}}" wx:key="*this" class="mini-tag">{{item}}</text></view>
-          <view class="info-row"><text>适穿温度</text><text>{{item.temperatureText}}</text></view>
-          <view class="info-row"><text>正式度</text><text>{{item.formalityText}}</text></view>
-          <view class="info-row"><text>保暖度</text><text>{{item.warmthText}}</text></view>
-          <view class="info-row"><text>材质</text><text>{{item.materialText}}</text></view>
-          <view class="info-row"><text>版型倾向</text><text>{{item.fitText}}</text></view>
-        </view>
-
-        <view class="info-card">
-          <view class="card-title">备注</view>
-          <view class="section-copy">{{item.notes}}</view>
-        </view>
-      </block>
-
-      <block wx:elif="{{activeTab === 'pairing'}}">
-        <view class="info-card empty-panel">
-          <view class="card-title">搭配</view>
-          <view class="section-copy">暂无搭配记录。购买后转入衣橱，可继续加入套装。</view>
-        </view>
-      </block>
-
-      <block wx:elif="{{activeTab === 'record'}}">
-        <view class="info-card">
-          <view class="card-title">种草记录</view>
-          <view class="info-row"><text>当前状态</text><text>{{item.statusText}}</text></view>
-          <view class="info-row"><text>更新时间</text><text>{{item.updatedAt}}</text></view>
-          <view class="section-copy">{{item.status === 'purchased' ? '这件种草已转入衣橱，可撤销购买状态。' : item.status === 'rejected' ? '这件种草已标记不想买，可恢复到想买。' : '仍在种草清单中，可继续比较价格和搭配价值。'}}</view>
-        </view>
-      </block>
-    </item-detail-shell>
-  </view>
-
-  <ui-sheet open="{{deleteSheetOpen}}" title="删除这件种草？" description="删除后将从服务器种草列表移除，不会影响衣橱里的正式单品。" bind:close="closeDeleteSheet">
-    <view class="delete-actions">
-      <button class="sheet-button sheet-button--danger" loading="{{deleting}}" disabled="{{deleting}}" bindtap="confirmDelete">确认删除</button>
-      <button class="sheet-button sheet-button--secondary" disabled="{{deleting}}" bindtap="closeDeleteSheet">取消</button>
-    </view>
-  </ui-sheet>
+  <view wx:elif="{{error}}" class="status-card"><view class="status-title">读取失败</view><view class="status-copy">{{error}}</view></view>
+  <item-detail-shell wx:elif="{{item}}" top-title="种草详情" title="{{item.name}}" meta="{{item.meta}}" eyebrow="{{item.statusText}}" image-url="{{item.imageUrl}}" hero-label="商品图" hero-fallback="{{item.categoryLabel}}">
+    <button slot="topRight" class="more-button" bindtap="openMenu" aria-label="更多操作">•••</button>
+    <view slot="afterHero"><item-media-section image-url="{{item.imageUrl}}" inspiration-images="{{item.inspirationImages}}" bind:add="addInspiration" bind:preview="previewMedia" bind:remove="removeInspiration" /></view>
+    <view slot="tabs" class="detail-tabs"><view class="detail-tab {{activeTab === 'info' ? 'is-active' : ''}}" data-tab="info" bindtap="switchTab">信息</view><view class="detail-tab {{activeTab === 'pairing' ? 'is-active' : ''}}" data-tab="pairing" bindtap="switchTab">搭配</view><view class="detail-tab {{activeTab === 'record' ? 'is-active' : ''}}" data-tab="record" bindtap="switchTab">记录</view></view>
+    <block wx:if="{{activeTab === 'info'}}"><view wx:if="{{item.convertedGarmentMissing}}" class="status-card converted-missing"><view class="status-title">已转换的衣橱单品已被删除</view><view class="status-copy">种草记录仍保留，但不能撤销购买；可归档或删除本记录。</view></view><view class="action-row"><button class="action-button bought" loading="{{actioning === 'purchase'}}" disabled="{{actioning || item.convertedGarmentMissing}}" bindtap="togglePurchase">{{item.status === 'purchased' ? '撤销购买' : '已买转衣橱'}}</button><button class="action-button reject" loading="{{actioning === 'reject'}}" disabled="{{actioning || item.status === 'purchased'}}" bindtap="toggleRejected">{{item.status === 'rejected' ? '恢复想买' : '不想买'}}</button></view><item-field-sections item="{{item}}" kind="wishlist" /></block>
+    <view wx:elif="{{activeTab === 'pairing'}}" class="info-card empty-panel"><view class="card-title">搭配与相似内容</view><view class="section-copy">建议优先比较同分类 {{item.categoryLabel}}、相近颜色与相同风格的现有衣物，确认是否能加入至少两套已有搭配，再决定购买。</view></view>
+    <view wx:else class="info-card"><view class="card-title">种草记录</view><view class="info-row"><text>当前状态</text><text>{{item.statusText}}</text></view><view wx:if="{{item.convertedGarmentId}}" class="section-copy">已转换单品：{{item.convertedGarmentId}}</view></view>
+  </item-detail-shell>
+  <ui-sheet open="{{menuOpen}}" title="种草操作" bind:close="closeMenu"><view class="delete-actions"><button class="sheet-button" bindtap="editItem">编辑</button><button class="sheet-button" bindtap="toggleArchived">{{item.status === 'archived' ? '恢复种草' : '归档'}}</button><button wx:if="{{item.convertedGarmentId}}" class="sheet-button" bindtap="openConvertedGarment">打开已转换单品</button><button class="sheet-button sheet-button--danger" bindtap="openDeleteSheet">删除</button></view></ui-sheet>
+  <ui-sheet open="{{deleteSheetOpen}}" title="删除这件种草？" description="删除后将从服务器种草列表移除。" bind:close="closeDeleteSheet"><view class="delete-actions"><button class="sheet-button sheet-button--danger" loading="{{deleting}}" bindtap="confirmDelete">确认删除</button><button class="sheet-button sheet-button--secondary" bindtap="closeDeleteSheet">取消</button></view></ui-sheet>
 </view>

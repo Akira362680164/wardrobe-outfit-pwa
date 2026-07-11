@@ -32,6 +32,7 @@
         {{item.label}} {{item.count}}
       </button>
     </scroll-view>
+    <scroll-view class="status-chips" scroll-x enable-flex><button wx:for="{{evaluationFilters}}" wx:key="value" class="status-chip {{activeEvaluation === item.value ? 'status-chip--active' : ''}}" data-evaluation="{{item.value}}" bindtap="setEvaluationFilter">{{item.label}}</button></scroll-view>
 
     <view wx:if="{{filteredItems.length === 0}}" class="status-card">
       <view class="status-title">当前筛选没有种草</view>
@@ -47,7 +48,7 @@
         fallback="{{item.categoryLabel}}"
         title="{{item.name}}"
         meta="{{item.categoryLabel}} · {{item.priceText}}"
-        badge="{{item.statusText}}"
+        badge="{{item.statusText}} · {{item.evaluationText}}"
         tone="shopping"
         bind:select="openDetail"
       />

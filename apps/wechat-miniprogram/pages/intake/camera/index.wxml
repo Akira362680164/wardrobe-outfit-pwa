@@ -10,30 +10,29 @@
       <view class="section-title">已选照片</view>
       <view class="count-pill">{{totalCount}} / {{maxCount}}</view>
     </view>
-    <view wx:if="{{queue.length}}" class="queue-state-row">
-      <view class="state-chip state-ready">{{readyCount}} 已准备</view>
-      <view class="state-chip state-uploading">{{uploadingCount}} 上传中</view>
-      <view class="state-chip state-failed">{{failedCount}} 失败</view>
+    <view wx:if="{{current}}" class="hero-wrap">
+      <image class="hero-image" mode="aspectFit" src="{{current.processedPath || current.stablePath || current.imagePath}}" />
+      <view wx:if="{{uploadingCount}}" class="hero-progress">正在准备图片 {{readyCount + failedCount}} / {{totalCount}}</view>
     </view>
-    <view wx:if="{{queue.length}}" class="queue-grid">
-      <view wx:for="{{queue}}" wx:key="clientItemId" class="queue-item {{item.status === 'failed' ? 'is-failed' : ''}}">
-        <image class="queue-image" mode="aspectFill" src="{{item.stablePath || item.imagePath}}" />
-        <view class="queue-index">{{index + 1}}</view>
-        <view class="queue-status status-{{item.status}}">
-          {{item.status === 'ready' ? '已准备' : item.status === 'uploading' ? '上传中' : item.status === 'failed' ? '失败' : '待上传'}}
-        </view>
-        <view wx:if="{{item.error}}" class="queue-error">{{item.error}}</view>
+    <view wx:if="{{queue.length}}" class="thumb-strip">
+      <view wx:for="{{queue}}" wx:key="clientItemId" data-index="{{index}}" class="thumb {{index === currentIndex ? 'thumb-active' : ''}} {{item.status === 'failed' ? 'thumb-failed' : ''}}" bindtap="selectCurrent">
+        <image class="thumb-image" mode="aspectFill" src="{{item.processedPath || item.stablePath || item.imagePath}}" />
+        <view class="thumb-status">{{item.status === 'uploading' ? '上传中' : item.status === 'failed' ? '重试' : index + 1}}</view>
       </view>
     </view>
     <view wx:else class="empty-preview">{{emptyText}}</view>
+    <view wx:if="{{current}}" class="image-actions">
+      <button class="image-action" bindtap="editCurrent">裁切 / 旋转</button>
+      <button class="image-action image-action--danger" bindtap="removeCurrent">移除当前</button>
+    </view>
   </view>
 
   <view class="source-grid {{totalCount ? 'source-grid--compact' : ''}}">
     <button class="source-button" loading="{{selecting}}" disabled="{{selecting || totalCount >= maxCount}}" bindtap="chooseFromCamera">
-      <view>拍照</view>
+      <view>{{totalCount ? '继续拍照' : '拍照'}}</view>
     </button>
     <button class="source-button" disabled="{{selecting || totalCount >= maxCount}}" bindtap="chooseFromAlbum">
-      <view>从图库选择</view>
+      <view>{{totalCount ? '继续从图库选择' : '从图库选择'}}</view>
     </button>
   </view>
 
@@ -44,6 +43,6 @@
 
   <view class="bottom-bar bottom-glass-bar">
     <view class="bottom-action bottom-action--secondary" bindtap="cancel">取消</view>
-    <view class="bottom-action bottom-action--primary {{selecting || uploadingCount || !readyCount ? 'bottom-action--disabled' : ''}}" bindtap="goReview">{{nextText}}</view>
+    <view class="bottom-action bottom-action--primary {{selecting || uploadingCount || !totalCount ? 'bottom-action--disabled' : ''}}" bindtap="goReview">{{nextText}}</view>
   </view>
 </view>

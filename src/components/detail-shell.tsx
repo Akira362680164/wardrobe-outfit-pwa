@@ -210,6 +210,7 @@ export function DetailFilmstrip({
         const active = item.id === activeId;
         return (
           <button
+            data-parity-id={`parity.app.app.src.components.detail.shell.2111b218d4.${item.id}`}
             key={item.id}
             type="button"
             onClick={() => onSelect(item.id)}
@@ -232,7 +233,7 @@ export function DetailFilmstrip({
       {onAdd ? (
         <button
           type="button"
-          onClick={onAdd}
+          data-parity-id="parity.app.app.src.components.detail.shell.0352098a63" onClick={onAdd}
           className="grid h-14 w-14 shrink-0 place-items-center ui-control-radius border border-dashed border-ink/20 bg-mist/45 text-ink/45"
         >
           <span className="grid place-items-center gap-0.5">
@@ -253,6 +254,7 @@ export function DetailQuickActions({ actions, layout = "flex" }: { actions: Deta
     >
       {actions.map((action) => (
         <button
+          data-parity-id={`parity.app.app.src.components.detail.shell.b98001c8cd.${action.key}`}
           key={action.key}
           type="button"
           onClick={action.onClick}
@@ -305,6 +307,7 @@ export function DetailTabs<T extends string>({
       <div className="grid rounded-2xl bg-mist p-1" style={{ gridTemplateColumns: `repeat(${tabs.length}, minmax(0, 1fr))` }}>
         {tabs.map((tab) => (
           <button
+            data-parity-id={`parity.app.app.src.components.detail.shell.1d27688359.${tab.key}`}
             key={tab.key}
             type="button"
             onClick={() => onChange(tab.key)}
@@ -388,7 +391,7 @@ export function DetailAiCard({
         {onAction && actionLabel ? (
           <button
             type="button"
-            onClick={onAction}
+            data-parity-id="parity.app.app.src.components.detail.shell.df580c9129" onClick={onAction}
             disabled={loading}
             className="inline-flex h-9 shrink-0 items-center gap-1 ui-control-radius bg-mist px-3 text-xs font-semibold text-denim disabled:opacity-50"
           >

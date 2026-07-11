@@ -45,6 +45,9 @@ export interface IntakeQueueItem {
   clientMutationId: string;
   imagePath: string;
   stablePath: string;
+  sourcePath: string;
+  processedPath: string;
+  temporarySessionId?: string;
   status: IntakeQueueItemStatus;
   error: string;
   assetMutations: AssetMutation[];
@@ -117,6 +120,8 @@ function draftToQueueItem(draft: IntakeDraft): IntakeQueueItem {
     clientMutationId: id,
     imagePath: draft.imagePath,
     stablePath,
+    sourcePath: draft.imagePath,
+    processedPath: stablePath,
     status: "selected",
     error: "",
     assetMutations: [],

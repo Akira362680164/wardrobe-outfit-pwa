@@ -56,7 +56,7 @@ export function WardrobeExtras(props: WardrobeExtrasProps) {
       <ItemField label="衣橱位置" review={locationReview}>
         <select
           value={draft.locationId}
-          onChange={(e) => onPatch({ locationId: e.target.value })}
+          data-parity-id="parity.app.app.src.components.item.wardrobe.extras.b29ea24409" onChange={(e) => onPatch({ locationId: e.target.value })}
           className="h-11 rounded-lg border border-ink/10 bg-white px-3 text-base outline-none focus:border-denim"
         >
           {locations.map((location) => (
@@ -68,6 +68,7 @@ export function WardrobeExtras(props: WardrobeExtrasProps) {
       </ItemField>
       <ItemField label="状态" review={statusReview}>
         <select
+          data-parity-id="parity.app.app.src.components.item.wardrobe.extras.4352ef4cd3"
           value={draft.status}
           onChange={(e) => onPatch({ status: e.target.value as GarmentStatus })}
           className="h-11 rounded-lg border border-ink/10 bg-white px-3 text-base outline-none focus:border-denim"
@@ -81,6 +82,7 @@ export function WardrobeExtras(props: WardrobeExtrasProps) {
       </ItemField>
       <ItemField label="购买日期" review={purchaseDateReview} className="sm:col-span-2" hint="非必填；记录首次购入日期">
         <input
+          data-parity-id="parity.app.app.src.components.item.wardrobe.extras.bad6ae5179"
           type="date"
           value={draft.purchaseDate ?? ""}
           onChange={(e) => onPatch({ purchaseDate: e.target.value || undefined })}

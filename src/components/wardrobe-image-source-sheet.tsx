@@ -31,7 +31,7 @@ export function WardrobeImageSourceSheet(props: WardrobeImageSourceSheetProps): 
           </div>
           <button
             type="button"
-            onClick={onClose}
+            data-parity-id="parity.app.app.src.components.wardrobe.image.source.sheet.fdda821431" onClick={onClose}
             className="grid h-10 w-10 place-items-center rounded-full text-ink/50 hover:bg-ink/5"
             aria-label="关闭"
           >
@@ -44,7 +44,7 @@ export function WardrobeImageSourceSheet(props: WardrobeImageSourceSheetProps): 
           {/* 拍照录入 */}
           <button
             type="button"
-            onClick={() => {
+            data-parity-id="parity.app.app.src.components.wardrobe.image.source.sheet.40dc14601e" onClick={() => {
               onClose();
               requestAnimationFrame(() => onCameraClick());
             }}
@@ -61,7 +61,7 @@ export function WardrobeImageSourceSheet(props: WardrobeImageSourceSheetProps): 
           {/* 相册录入 */}
           <button
             type="button"
-            onClick={() => {
+            data-parity-id="parity.app.app.src.components.wardrobe.image.source.sheet.da13c96d63" onClick={() => {
               onClose();
               requestAnimationFrame(() => onGalleryClick());
             }}
@@ -79,7 +79,7 @@ export function WardrobeImageSourceSheet(props: WardrobeImageSourceSheetProps): 
         {/* Cancel button */}
         <button
           type="button"
-          onClick={onClose}
+          data-parity-id="parity.app.app.src.components.wardrobe.image.source.sheet.d27f59b6c3" onClick={onClose}
           className="mt-3 flex w-full items-center justify-center h-12 rounded-xl bg-ink/5 text-sm font-semibold text-ink/70 active:bg-ink/10"
         >
           取消

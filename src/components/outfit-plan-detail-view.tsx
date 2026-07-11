@@ -115,10 +115,10 @@ export function OutfitPlanDetailView({
           ) : null}
 
           <div className="mt-5 grid grid-cols-2 gap-2">
-            <button type="button" onClick={onEdit} className="h-11 rounded-full bg-denim text-sm font-semibold text-white active:scale-[0.98]">
+            <button type="button" data-parity-id="parity.app.app.src.components.outfit.plan.detail.view.98e1061a39" onClick={onEdit} className="h-11 rounded-full bg-denim text-sm font-semibold text-white active:scale-[0.98]">
               编辑计划
             </button>
-            <button type="button" onClick={() => setShowDeleteConfirm(true)} className="h-11 rounded-full border border-red-200 bg-white text-sm font-semibold text-red-600 active:scale-[0.98]">
+            <button type="button" data-parity-id="parity.app.app.src.components.outfit.plan.detail.view.563a0bc152" onClick={() => setShowDeleteConfirm(true)} className="h-11 rounded-full border border-red-200 bg-white text-sm font-semibold text-red-600 active:scale-[0.98]">
               删除计划
             </button>
           </div>
@@ -156,25 +156,25 @@ export function OutfitPlanDetailView({
 
                   {hasOutfit && outfit ? (
                     <div className="flex items-start gap-3">
-                      <button type="button" onClick={() => onViewOutfit(outfit.id)} className="h-14 w-14 shrink-0 overflow-hidden rounded-2xl bg-milk-darker/40 active:scale-95" aria-label="查看套装">
+                      <button type="button" data-parity-id={`parity.app.app.src.components.outfit.plan.detail.view.a1592c9e67.${outfit.id}`} onClick={() => onViewOutfit(outfit.id)} className="h-14 w-14 shrink-0 overflow-hidden rounded-2xl bg-milk-darker/40 active:scale-95" aria-label="查看套装">
                         <OutfitCover outfit={outfit} items={items} size="card" />
                       </button>
                       <div className="flex-1 min-w-0">
-                        <button type="button" onClick={() => onViewOutfit(outfit.id)} className="truncate text-sm font-medium text-ink text-left hover:underline">{primaryEntry?.title || outfit.name}</button>
+                        <button type="button" data-parity-id="parity.app.app.src.components.outfit.plan.detail.view.eb81bb3024" onClick={() => onViewOutfit(outfit.id)} className="truncate text-sm font-medium text-ink text-left hover:underline">{primaryEntry?.title || outfit.name}</button>
                         {cover?.asset && primaryEntry?.scene ? (
                           <p className="text-[11px] text-ink/45 mt-0.5">{primaryEntry.scene}</p>
                         ) : null}
                         <div className="mt-2 flex items-center gap-2">
                           <button
                             type="button"
-                            onClick={() => onViewOutfit(outfit.id)}
+                            data-parity-id="parity.app.app.src.components.outfit.plan.detail.view.0bf07f52ee" onClick={() => onViewOutfit(outfit.id)}
                             className="rounded-full border border-ink/15 bg-white px-2.5 py-0.5 text-[11px] font-medium text-ink/70"
                           >
                             查看套装
                           </button>
                           <button
                             type="button"
-                            onClick={() => onSelectOutfitForDate(dateKey)}
+                            data-parity-id="parity.app.app.src.components.outfit.plan.detail.view.2000c2835a" onClick={() => onSelectOutfitForDate(dateKey)}
                             className="rounded-full border border-ink/10 bg-white px-2.5 py-0.5 text-[11px] font-medium text-ink/50"
                           >
                             更换套装
@@ -187,7 +187,7 @@ export function OutfitPlanDetailView({
                       <p className="text-[11px] text-ink/40">尚未安排当天穿搭</p>
                       <button
                         type="button"
-                        onClick={() => onSelectOutfitForDate(dateKey)}
+                        data-parity-id="parity.app.app.src.components.outfit.plan.detail.view.51776f5905" onClick={() => onSelectOutfitForDate(dateKey)}
                         className="rounded-full bg-denim px-3 py-1 text-[11px] font-semibold text-white"
                       >
                         安排套装
@@ -212,7 +212,7 @@ export function OutfitPlanDetailView({
           </div>
           <button
             type="button"
-            onClick={onOpenPackingList}
+            data-parity-id="parity.app.app.src.components.outfit.plan.detail.view.2494d0b8fa" onClick={onOpenPackingList}
             disabled={!calendarPlan.packingEnabled}
             title={!calendarPlan.packingEnabled ? "此计划未启用打包清单，可在编辑计划中开启" : undefined}
             className="mt-3 h-11 w-full rounded-full bg-denim text-sm font-semibold text-white disabled:bg-ink/10 disabled:text-ink/35 disabled:cursor-not-allowed"
@@ -229,8 +229,8 @@ export function OutfitPlanDetailView({
           <h3 className="text-base font-semibold text-ink">删除{calendarPlan.type === "custom" ? "" : typeLabel}计划？</h3>
           <p className="mt-1 text-sm text-ink/55">只会删除{calendarPlan.type === "custom" ? "" : typeLabel}计划和它的打包清单，每日穿搭安排会保留。</p>
           <div className="mt-4 grid grid-cols-2 gap-3">
-            <button type="button" className="h-11 rounded-full border border-ink/10 text-sm font-medium text-ink/70" onClick={() => setShowDeleteConfirm(false)}>取消</button>
-            <button type="button" className="h-11 rounded-full bg-red-600 text-sm font-semibold text-white disabled:opacity-50" disabled={deleting} onClick={confirmDelete}>
+            <button type="button" className="h-11 rounded-full border border-ink/10 text-sm font-medium text-ink/70" data-parity-id="parity.app.app.src.components.outfit.plan.detail.view.1492018fc9" onClick={() => setShowDeleteConfirm(false)}>取消</button>
+            <button type="button" className="h-11 rounded-full bg-red-600 text-sm font-semibold text-white disabled:opacity-50" disabled={deleting} data-parity-id="parity.app.app.src.components.outfit.plan.detail.view.1d2ed2125a" onClick={confirmDelete}>
               {deleting ? "删除中..." : "删除计划"}
             </button>
           </div>

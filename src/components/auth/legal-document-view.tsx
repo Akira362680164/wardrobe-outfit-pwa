@@ -34,7 +34,7 @@ export function LegalDocumentView({
       <header className="surface rounded-lg px-4 py-4">
         <button
           type="button"
-          onClick={handleBack}
+          data-parity-id="parity.app.app.src.components.auth.legal.document.view.d5059412f3" onClick={handleBack}
           className="inline-flex items-center gap-1 text-sm font-semibold text-denim"
         >
           <ArrowLeft size={16} aria-hidden="true" />

@@ -1,4 +1,4 @@
-import { clearSession, getAccessToken, getSession } from "../stores/session";
+import { clearSession, getAccessToken, getSession, setSession, type SessionState } from "../stores/session";
 
 export type HttpMethod = "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
 
@@ -32,6 +32,7 @@ export class HttpError extends Error {
 }
 
 let apiBaseUrl = "";
+let refreshPromise: Promise<SessionState> | null = null;
 
 export function configureHttp(options: { baseUrl: string }): void {
   apiBaseUrl = options.baseUrl.replace(/\/$/, "");
@@ -47,6 +48,10 @@ export function buildAuthHeaders(requestId = requestIdForTrace()): Record<string
 }
 
 export async function request<T>(options: RequestOptions): Promise<T> {
+  return performRequest<T>(options, false);
+}
+
+async function performRequest<T>(options: RequestOptions, replayed: boolean): Promise<T> {
   const requestId = requestIdForTrace();
   const header = buildHeaders(options.auth !== false, requestId);
 
@@ -58,7 +63,8 @@ export async function request<T>(options: RequestOptions): Promise<T> {
       header,
       timeout: options.timeoutMs ?? 30000,
       success: (result) => {
-        handleResponse(result.statusCode, result.data, result.header, requestId, options.toast !== false)
+        handleResponse(result.statusCode, result.data, result.header, requestId, options.toast !== false, options.auth !== false, replayed)
+          .then(async (data): Promise<T> => data === RETRY_AFTER_REFRESH ? performRequest<T>(options, true) : data)
           .then(resolve)
           .catch(reject);
       },
@@ -68,6 +74,10 @@ export async function request<T>(options: RequestOptions): Promise<T> {
 }
 
 export async function uploadFile<T = unknown>(options: UploadOptions): Promise<T> {
+  return performUpload<T>(options, false);
+}
+
+async function performUpload<T>(options: UploadOptions, replayed: boolean): Promise<T> {
   const requestId = requestIdForTrace();
   const header = buildHeaders(options.auth !== false, requestId);
 
@@ -81,7 +91,9 @@ export async function uploadFile<T = unknown>(options: UploadOptions): Promise<T
       timeout: options.timeoutMs ?? 60000,
       success: (result) => {
         const data = parseUploadData(result.data) as T;
-        handleResponse<T>(result.statusCode, data, result.header, requestId, true).then(resolve).catch(reject);
+        handleResponse<T>(result.statusCode, data, result.header, requestId, true, options.auth !== false, replayed)
+          .then(async (value): Promise<T> => value === RETRY_AFTER_REFRESH ? performUpload<T>(options, true) : value)
+          .then(resolve).catch(reject);
       },
       fail: (error) => reject(toNetworkError(error, requestId, true)),
     });
@@ -116,18 +128,71 @@ async function handleResponse<T>(
   header: Record<string, string> | undefined,
   fallbackRequestId: string,
   toast: boolean,
-): Promise<T> {
+  auth: boolean,
+  replayed: boolean,
+): Promise<T | typeof RETRY_AFTER_REFRESH> {
   if (statusCode < 400) return data;
 
   const body = normalizeErrorBody(data);
   const requestId = header?.["X-Wardrobe-Request-Id"] ?? header?.["x-wardrobe-request-id"] ?? fallbackRequestId;
   const error = new HttpError(statusCode, body.code, body.message, requestId);
-  if (statusCode === 401) {
+  if (statusCode === 401 && auth && !replayed) {
+    await recoverSession(true);
+    return RETRY_AFTER_REFRESH;
+  }
+  if (statusCode === 401 && isExplicitRevocation(body.code)) {
     clearSession();
     wx.redirectTo({ url: "/pages/login/index" });
   }
   if (toast) wx.showToast({ title: body.message, icon: "none" });
   throw error;
+}
+
+const RETRY_AFTER_REFRESH = Symbol("retry-after-refresh");
+
+export async function recoverSession(force = false): Promise<SessionState> {
+  const session = getSession();
+  if (!session?.refreshToken || !session.deviceId) throw new HttpError(401, "AUTH_SESSION_MISSING", "请重新登录后继续");
+  if (!force && session.expiresAt && session.expiresAt > Date.now() + 60_000) return session;
+  if (refreshPromise) return refreshPromise;
+  refreshPromise = rawRefresh(session).finally(() => { refreshPromise = null; });
+  return refreshPromise;
+}
+
+function rawRefresh(session: SessionState): Promise<SessionState> {
+  return new Promise((resolve, reject) => {
+    wx.request<Record<string, any>>({
+      url: buildUrl("/api/auth/refresh"), method: "POST",
+      data: { refreshToken: session.refreshToken, refreshRequestId: createUuid(), deviceId: session.deviceId },
+      header: { Accept: "application/json", "Content-Type": "application/json" }, timeout: 30000,
+      success: (result) => {
+        const body = normalizeErrorBody(result.data);
+        if (result.statusCode >= 400) {
+          if (isExplicitRevocation(body.code)) {
+            clearSession();
+            wx.redirectTo({ url: "/pages/login/index" });
+          }
+          reject(new HttpError(result.statusCode, body.code, body.message));
+          return;
+        }
+        const data = result.data;
+        resolve(setSession({ token: data.accessToken, refreshToken: data.refreshToken, deviceId: session.deviceId,
+          expiresAt: Date.parse(data.accessTokenExpiresAt), refreshTokenExpiresAt: Date.parse(data.refreshTokenExpiresAt), user: data.user }));
+      },
+      fail: () => reject(new HttpError(0, "network", "网络连接失败，请检查网络后重试")),
+    });
+  });
+}
+
+function isExplicitRevocation(code: string): boolean {
+  return ["AUTH_SESSION_REVOKED", "AUTH_REFRESH_REUSED", "AUTH_TOKEN_INVALID", "account_deleted"].includes(code);
+}
+
+function createUuid(): string {
+  return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, (char) => {
+    const value = Math.floor(Math.random() * 16);
+    return (char === "x" ? value : (value & 3) | 8).toString(16);
+  });
 }
 
 function normalizeErrorBody(data: unknown): { code: string; message: string } {

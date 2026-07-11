@@ -1,0 +1,218 @@
+[
+  {
+    "id": "app.unresolved.transition.0410f78f03",
+    "status": "RESOLVED",
+    "classification": "STATIC_TARGETS",
+    "targets": ["settings_home"],
+    "rationale": "Object literal contains a static AppRoute name.",
+    "reviewedBy": "Codex",
+    "reviewedAt": "2026-07-11"
+  },
+  {
+    "id": "app.unresolved.transition.102bb45d6d",
+    "status": "RESOLVED",
+    "classification": "STATIC_TARGETS",
+    "targets": ["wishlist_archived"],
+    "rationale": "Object literal contains a static AppRoute name.",
+    "reviewedBy": "Codex",
+    "reviewedAt": "2026-07-11"
+  },
+  {
+    "id": "app.unresolved.transition.19814228a3",
+    "status": "RESOLVED",
+    "classification": "STATIC_TARGETS",
+    "targets": ["garment_detail:returnTo=wardrobe_home"],
+    "rationale": "The itemId is dynamic, but route and return target are static.",
+    "reviewedBy": "Codex",
+    "reviewedAt": "2026-07-11"
+  },
+  {
+    "id": "app.unresolved.transition.1e9e29ba8b",
+    "status": "RESOLVED",
+    "classification": "STATIC_TARGETS",
+    "targets": ["garment_detail:returnTo=wishlist_purchased"],
+    "rationale": "The itemId is dynamic, but route and return target are static.",
+    "reviewedBy": "Codex",
+    "reviewedAt": "2026-07-11"
+  },
+  {
+    "id": "app.unresolved.transition.2f857c6dc2",
+    "status": "RESOLVED",
+    "classification": "DERIVED_TARGETS",
+    "targets": ["login", "register", "forgot_password", "terms", "privacy"],
+    "rationale": "History state is constrained by the AuthView union in auth-gate.tsx.",
+    "reviewedBy": "Codex",
+    "reviewedAt": "2026-07-11"
+  },
+  {
+    "id": "app.unresolved.transition.302a69a6e4",
+    "status": "RESOLVED",
+    "classification": "DERIVED_TARGETS",
+    "targets": ["wardrobe_home", "outfit_home", "wishlist_home", "settings_home"],
+    "rationale": "resolveCreateFallbackRoute maps the current AppRoute to its main tab home.",
+    "reviewedBy": "Codex",
+    "reviewedAt": "2026-07-11"
+  },
+  {
+    "id": "app.unresolved.transition.3cfe913cc6",
+    "status": "RESOLVED",
+    "classification": "DERIVED_TARGETS",
+    "targets": ["info", "inspiration", "pairing"],
+    "rationale": "initialTab is GarmentDetailTab and falls back to info.",
+    "reviewedBy": "Codex",
+    "reviewedAt": "2026-07-11"
+  },
+  {
+    "id": "app.unresolved.transition.4b90137fbd",
+    "status": "RESOLVED",
+    "classification": "STATIC_TARGETS",
+    "targets": ["plan_detail", "planning_calendar"],
+    "rationale": "Both branches of the conditional are static subpage names.",
+    "reviewedBy": "Codex",
+    "reviewedAt": "2026-07-11"
+  },
+  {
+    "id": "app.unresolved.transition.5b39d5a702",
+    "status": "RESOLVED",
+    "classification": "STATIC_TARGETS",
+    "targets": ["wardrobe_home"],
+    "rationale": "Object literal contains a static AppRoute name.",
+    "reviewedBy": "Codex",
+    "reviewedAt": "2026-07-11"
+  },
+  {
+    "id": "app.unresolved.transition.8c918958f0",
+    "status": "RESOLVED",
+    "classification": "STATIC_TARGETS",
+    "targets": ["outfit_detail:returnTo=outfit_calendar"],
+    "rationale": "The outfitId is dynamic, but route and return target are static.",
+    "reviewedBy": "Codex",
+    "reviewedAt": "2026-07-11"
+  },
+  {
+    "id": "app.unresolved.transition.8cb4ec3824",
+    "status": "RESOLVED",
+    "classification": "STATIC_TARGETS",
+    "targets": ["outfit_home"],
+    "rationale": "Object literal contains a static AppRoute name.",
+    "reviewedBy": "Codex",
+    "reviewedAt": "2026-07-11"
+  },
+  {
+    "id": "app.unresolved.transition.938d2683dd",
+    "status": "RESOLVED",
+    "classification": "STATIC_TARGETS",
+    "targets": ["wishlist_home"],
+    "rationale": "Object literal contains a static AppRoute name.",
+    "reviewedBy": "Codex",
+    "reviewedAt": "2026-07-11"
+  },
+  {
+    "id": "app.unresolved.transition.a9cd58126c",
+    "status": "RESOLVED",
+    "classification": "STATIC_TARGETS",
+    "targets": ["outfit_calendar"],
+    "rationale": "Object literal contains a static AppRoute name.",
+    "reviewedBy": "Codex",
+    "reviewedAt": "2026-07-11"
+  },
+  {
+    "id": "app.unresolved.transition.ba4c32eac5",
+    "status": "RESOLVED",
+    "classification": "STATIC_TARGETS",
+    "targets": ["wishlist_rejected"],
+    "rationale": "Object literal contains a static AppRoute name.",
+    "reviewedBy": "Codex",
+    "reviewedAt": "2026-07-11"
+  },
+  {
+    "id": "app.unresolved.transition.c5c8a97915",
+    "status": "RESOLVED",
+    "classification": "DERIVED_TARGETS",
+    "targets": ["wardrobe_home", "garment_detail", "outfit_home", "outfit_detail", "outfit_calendar", "wishlist_home", "wishlist_purchased", "wishlist_rejected", "wishlist_archived", "settings_home", "account_management", "account_deletion", "change_password", "intake_single_item", "intake_outfit", "intake_wishlist"],
+    "rationale": "getBackRoute is an exhaustive switch over AppRoute and preserves explicit detail returnRoute values.",
+    "reviewedBy": "Codex",
+    "reviewedAt": "2026-07-11"
+  },
+  {
+    "id": "app.unresolved.transition.cd0aa29301",
+    "status": "RESOLVED",
+    "classification": "STATIC_TARGETS",
+    "targets": ["outfit_detail:returnTo=outfit_home"],
+    "rationale": "The outfitId is dynamic, but route and return target are static.",
+    "reviewedBy": "Codex",
+    "reviewedAt": "2026-07-11"
+  },
+  {
+    "id": "app.unresolved.transition.da0bf120e9",
+    "status": "RESOLVED",
+    "classification": "STATIC_TARGETS",
+    "targets": ["wishlist_purchased"],
+    "rationale": "Object literal contains a static AppRoute name.",
+    "reviewedBy": "Codex",
+    "reviewedAt": "2026-07-11"
+  },
+  {
+    "id": "mini.unresolved.transition.2f1f7e8e22",
+    "status": "RESOLVED",
+    "classification": "DERIVED_TARGETS",
+    "targets": ["/pages/intake/camera/index", "/pages/outfits/compose/index", "/pages/intake/camera/index?kind=wishlist"],
+    "rationale": "ROUTES is a closed Record keyed by the CreateActionType union.",
+    "reviewedBy": "Codex",
+    "reviewedAt": "2026-07-11"
+  },
+  {
+    "id": "mini.unresolved.transition.a14684285d",
+    "status": "RESOLVED",
+    "classification": "STATIC_TARGETS",
+    "targets": ["/pages/wishlist/index/index", "/pages/wardrobe/index/index"],
+    "rationale": "Both conditional branches are static tab routes.",
+    "reviewedBy": "Codex",
+    "reviewedAt": "2026-07-11"
+  },
+  {
+    "id": "mini.unresolved.transition.e6b4012321",
+    "status": "RESOLVED",
+    "classification": "UNREACHABLE_DEFECT",
+    "targets": ["/pages/home/index"],
+    "rationale": "HOME is static, but wx.switchTab targets a page that is not registered in tabBar. goHome currently has no callers; retain as a static defect instead of suppressing it.",
+    "reviewedBy": "Codex",
+    "reviewedAt": "2026-07-11"
+  },
+  {
+    "id": "mini.unresolved.transition.497a0e862c",
+    "status": "RESOLVED",
+    "classification": "DERIVED_TARGETS",
+    "targets": ["/pages/wardrobe/index/index", "/pages/outfits/index/index", "/pages/wishlist/index/index", "/pages/settings/index/index"],
+    "rationale": "The custom tab target comes from the closed four-item tabs array.",
+    "reviewedBy": "Codex",
+    "reviewedAt": "2026-07-11"
+  },
+  {
+    "id": "mini.unresolved.transition.8b9bcfe8c7",
+    "status": "RESOLVED",
+    "classification": "STATIC_TARGETS",
+    "targets": ["/pages/wishlist/index/index", "/pages/wardrobe/index/index"],
+    "rationale": "Both intake-kind conditional branches are static tab routes.",
+    "reviewedBy": "Codex",
+    "reviewedAt": "2026-07-11"
+  },
+  {
+    "id": "mini.unresolved.transition.b7a4d17975",
+    "status": "RESOLVED",
+    "classification": "DERIVED_TARGETS",
+    "targets": ["/pages/settings/account/index", "/pages/settings/profile/index", "/pages/settings/tryon-photos/index", "/pages/settings/ai-key/index", "/pages/settings/diagnostics/index", "/pages/settings/privacy/index", "/pages/settings/about/index"],
+    "rationale": "The URL is supplied only by the seven static data-url values in settings/index.wxml.",
+    "reviewedBy": "Codex",
+    "reviewedAt": "2026-07-11"
+  },
+  {
+    "id": "mini.unresolved.transition.b98c86a2e3",
+    "status": "RESOLVED",
+    "classification": "STATIC_TARGETS",
+    "targets": ["/pages/wishlist/index/index", "/pages/wardrobe/index/index"],
+    "rationale": "Both review completion conditional branches are static tab routes.",
+    "reviewedBy": "Codex",
+    "reviewedAt": "2026-07-11"
+  }
+]

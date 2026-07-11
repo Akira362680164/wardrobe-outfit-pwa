@@ -954,7 +954,7 @@ export function WishlistView20({
               addLabel="添加图片"
             />
             <input ref={addFileInputRef} type="file" accept="image/jpeg,image/png,image/webp" className="hidden"
-              onChange={(e) => handleAddImage(e.target.files?.[0])} />
+              data-parity-id="parity.app.app.src.components.wishlist.view.2.0.1d1cbe8156" onChange={(e) => handleAddImage(e.target.files?.[0])} />
           </div>
 
           {/* C3: Form fields */}
@@ -962,7 +962,7 @@ export function WishlistView20({
             {/* 基础信息卡片 */}
             <EditSectionCard title="基础信息" className="item-edit-section" bodyClassName="space-y-3 min-w-0">
                 <ItemField label="名称" required className="min-w-0">
-                  <input value={formName} onChange={(e) => setFormName(e.target.value)}
+                  <input value={formName} data-parity-id="parity.app.app.src.components.wishlist.view.2.0.7179392c88" onChange={(e) => setFormName(e.target.value)}
                     className="h-11 w-full min-w-0 rounded-lg border border-ink/10 bg-white px-3 text-base outline-none focus:border-denim"
                     placeholder="例如 白色乐福鞋" />
                 </ItemField>
@@ -989,7 +989,7 @@ export function WishlistView20({
                     type="number"
                     inputMode="decimal"
                     value={formPrice}
-                    onChange={(e) => setFormPrice(e.target.value)}
+                    data-parity-id="parity.app.app.src.components.wishlist.view.2.0.7063501481" onChange={(e) => setFormPrice(e.target.value)}
                     className="h-11 w-full min-w-0 rounded-lg border border-ink/10 bg-white px-3 text-base outline-none focus:border-denim"
                     placeholder="例如 599" />
                 </ItemField>
@@ -998,7 +998,7 @@ export function WishlistView20({
                     type="url"
                     inputMode="url"
                     value={formProductUrl}
-                    onChange={(e) => setFormProductUrl(e.target.value)}
+                    data-parity-id="parity.app.app.src.components.wishlist.view.2.0.950151674c" onChange={(e) => setFormProductUrl(e.target.value)}
                     className="h-11 w-full min-w-0 rounded-lg border border-ink/10 bg-white px-3 text-base outline-none focus:border-denim"
                     placeholder="https://..." />
                 </ItemField>
@@ -1013,7 +1013,7 @@ export function WishlistView20({
                     formPrimaryColors.length > 0 ? formPrimaryColors : (formMainColor ? [formMainColor] : []),
                     formAccentColors,
                   )}
-                  onChange={(colors) => {
+                  data-parity-id="parity.app.app.src.components.wishlist.view.2.0.bb1eca816a" onChange={(colors) => {
                     setFormColorMode(colors.mode);
                     setFormPrimaryColors(getPrimaryColors(colors));
                     setFormMainColor(getPrimaryColor(colors));
@@ -1024,25 +1024,25 @@ export function WishlistView20({
 
             {/* 穿着属性卡片 */}
             <EditSectionCard title="穿着属性" className="item-edit-section" bodyClassName="space-y-3 min-w-0">
-                <SeasonStyleChips mode="edit" kind="season" values={formSeasons} onChange={setFormSeasons} />
-                <SeasonStyleChips mode="edit" kind="style" values={formStyles} onChange={setFormStyles} />
+                <SeasonStyleChips mode="edit" kind="season" values={formSeasons} data-parity-id="parity.app.app.src.components.wishlist.view.2.0.d962cba5ef" onChange={setFormSeasons} />
+                <SeasonStyleChips mode="edit" kind="style" values={formStyles} data-parity-id="parity.app.app.src.components.wishlist.view.2.0.2cbaed8751" onChange={setFormStyles} />
                 {/* 适穿温度 - 双端点可拖动滑块（Step 2 拆出 + Step 5+6 接入种草 add_edit） */}
                 <div className="min-w-0">
                   <TemperatureRangeSlider
                     value={formTemperatureRange ?? undefined}
-                    onChange={(next) => setFormTemperatureRange(next)}
+                    data-parity-id="parity.app.app.src.components.wishlist.view.2.0.83fb3bd5c0" onChange={(next) => setFormTemperatureRange(next)}
                   />
                 </div>
                 {/* 适穿版型 4 选 1 chip（Step 5+6 新加，影响 recommendations.ts fitGenderScore 推荐打分） */}
                 <FitGenderChips
                   value={formFitGender}
-                  onChange={(next) => setFormFitGender(next)}
+                  data-parity-id="parity.app.app.src.components.wishlist.view.2.0.ce8ed9798e" onChange={(next) => setFormFitGender(next)}
                 />
                 {/* 版型说明 带计数（≤80 字，FIT_NOTES_MAX_LEN） */}
                 <ItemField label="版型说明" counter={`${formFitNotes.length}/${FIT_NOTES_MAX_LEN}`} className="min-w-0">
                   <textarea
                     value={formFitNotes}
-                    onChange={(e) => {
+                    data-parity-id="parity.app.app.src.components.wishlist.view.2.0.391bd95a13" onChange={(e) => {
                       // 强制 ≤ FIT_NOTES_MAX_LEN，防止粘贴超出
                       const v = e.target.value.slice(0, FIT_NOTES_MAX_LEN);
                       setFormFitNotes(v);
@@ -1057,16 +1057,16 @@ export function WishlistView20({
                   <FormalityWarmthStepper
                     label="正式度"
                     value={formFormality ? parseInt(formFormality, 10) : undefined}
-                    onChange={(value) => setFormFormality(String(value))}
+                    data-parity-id="parity.app.app.src.components.wishlist.view.2.0.9b9d29e2bd" onChange={(value) => setFormFormality(String(value))}
                   />
                   <FormalityWarmthStepper
                     label="保暖度"
                     value={formWarmth ? parseInt(formWarmth, 10) : undefined}
-                    onChange={(value) => setFormWarmth(String(value))}
+                    data-parity-id="parity.app.app.src.components.wishlist.view.2.0.14d200dc0e" onChange={(value) => setFormWarmth(String(value))}
                   />
                 </div>
                 <ItemField label="材质" className="min-w-0">
-                  <input value={formMaterial} onChange={(e) => setFormMaterial(e.target.value)}
+                  <input value={formMaterial} data-parity-id="parity.app.app.src.components.wishlist.view.2.0.4f994c6b29" onChange={(e) => setFormMaterial(e.target.value)}
                     className="h-11 w-full min-w-0 rounded-lg border border-ink/10 bg-white px-3 text-base outline-none focus:border-denim" placeholder="例如 皮革 / 棉 / 羊毛" />
                 </ItemField>
             </EditSectionCard>
@@ -1075,7 +1075,7 @@ export function WishlistView20({
                 <NotesBlock
                   mode="edit"
                   value={formNote}
-                  onChange={setFormNote}
+                  data-parity-id="parity.app.app.src.components.wishlist.view.2.0.ec1ea192c4" onChange={setFormNote}
                   rows={2}
                   maxLength={100}
                   placeholder="想买来搭通勤裤和风衣……"
@@ -1145,7 +1145,7 @@ export function WishlistView20({
       <div className="flex flex-col h-full">
         {/* Header */}
         <div className="flex items-center justify-between px-4 py-3 border-b border-ink/10">
-          <button type="button" onClick={() => { setSubPage("detail"); setSelectedItem(item); }} className="inline-flex items-center gap-1 text-sm">
+          <button type="button" data-parity-id="parity.app.app.src.components.wishlist.view.2.0.f1cd95ffec" onClick={() => { setSubPage("detail"); setSelectedItem(item); }} className="inline-flex items-center gap-1 text-sm">
             <ChevronLeft size={18} /> 返回
           </button>
           <h2 className="text-base font-semibold">加入衣橱</h2>
@@ -1180,7 +1180,7 @@ export function WishlistView20({
             <button
               ref={menuAnchorRef}
               type="button"
-              onClick={() => setShowLocationSheet(true)}
+              data-parity-id="parity.app.app.src.components.wishlist.view.2.0.200d5034ed" onClick={() => setShowLocationSheet(true)}
               className="w-full h-12 rounded-2xl border border-ink/10 bg-white px-4 flex items-center justify-between"
             >
               <span className="text-sm font-medium truncate">{selectedLocationName}</span>
@@ -1194,8 +1194,8 @@ export function WishlistView20({
 
         {/* Bottom actions */}
         <div className="grid grid-cols-2 gap-3 p-4 border-t border-ink/10">
-          <button type="button" onClick={() => { setSubPage("detail"); setSelectedItem(item); }} className="h-11 rounded-xl border border-ink/10 text-sm">取消</button>
-          <button type="button" onClick={handleConfirmConvert} disabled={convertingId === item.id}
+          <button type="button" data-parity-id="parity.app.app.src.components.wishlist.view.2.0.a5a11401d7" onClick={() => { setSubPage("detail"); setSelectedItem(item); }} className="h-11 rounded-xl border border-ink/10 text-sm">取消</button>
+          <button type="button" data-parity-id="parity.app.app.src.components.wishlist.view.2.0.ac69c93ea7" onClick={handleConfirmConvert} disabled={convertingId === item.id}
             className="h-11 rounded-xl bg-denim text-sm font-semibold text-white disabled:opacity-50">
             {convertingId === item.id ? "处理中..." : "确认加入衣橱"}
           </button>
@@ -1214,6 +1214,7 @@ export function WishlistView20({
             {locations.map((loc) => (
               <button
                 key={loc.id}
+                data-parity-id={`parity.app.app.src.components.wishlist.view.2.0.90b9b18c7e.${loc.id}`}
                 type="button"
                 onClick={() => {
                   setSelectedLocationId(loc.id);
@@ -1229,6 +1230,7 @@ export function WishlistView20({
           <div className="p-4 border-t border-ink/10">
             <button
               type="button"
+              data-parity-id="parity.app.app.src.components.wishlist.view.2.0.9d134cfa04"
               onClick={() => setShowLocationSheet(false)}
               className="w-full h-11 rounded-xl border border-ink/10 text-sm"
             >
@@ -1257,7 +1259,7 @@ export function WishlistView20({
     subPageNode = (
       <div className="flex flex-col h-full">
         <div className="flex h-[60px] items-center gap-2 px-4 border-b border-ink/10">
-          <button type="button" onClick={goBack} className="grid h-11 w-11 shrink-0 place-items-center ui-control-radius bg-transparent text-ink/70 active:scale-95" aria-label="返回">
+          <button type="button" data-parity-id="parity.app.app.src.components.wishlist.view.2.0.c6265d689d" onClick={goBack} className="grid h-11 w-11 shrink-0 place-items-center ui-control-radius bg-transparent text-ink/70 active:scale-95" aria-label="返回">
             <ChevronLeft size={20} />
           </button>
           <h2 className="text-base font-semibold">{title}</h2>
@@ -1301,11 +1303,11 @@ export function WishlistView20({
                       <div className="mt-3 flex gap-2">
                         {subPage === "purchased" && w.convertedItemId && (
                           <>
-                            <button type="button" onClick={() => { void openConvertedWardrobeItem(w); }}
+                            <button type="button" data-parity-id={`parity.app.app.src.components.wishlist.view.2.0.8fd5a3e95a.${w.id}`} onClick={() => { void openConvertedWardrobeItem(w); }}
                               className="flex-1 rounded-full bg-denim px-3 py-2 text-xs font-semibold text-white">
                               查看衣物
                             </button>
-                            <button type="button" onClick={() => requestUndoPurchase(w)}
+                            <button type="button" data-parity-id="parity.app.app.src.components.wishlist.view.2.0.cdce9000a4" onClick={() => requestUndoPurchase(w)}
                               className="flex-1 rounded-full border border-red-200 bg-white px-3 py-2 text-xs font-semibold text-red-600">
                               撤销购买
                             </button>
@@ -1313,11 +1315,11 @@ export function WishlistView20({
                         )}
                         {subPage === "rejected" && (
                           <>
-                            <button type="button" onClick={() => handleRestore(w)}
+                            <button type="button" data-parity-id="parity.app.app.src.components.wishlist.view.2.0.ad16ad2e42" onClick={() => handleRestore(w)}
                               className="flex-1 rounded-full bg-denim px-3 py-2 text-xs font-semibold text-white">
                               恢复种草
                             </button>
-                            <button type="button" onClick={() => { setSelectedItem(w); setShowDeleteRecordConfirm(true); }}
+                            <button type="button" data-parity-id="parity.app.app.src.components.wishlist.view.2.0.5b702291f0" onClick={() => { setSelectedItem(w); setShowDeleteRecordConfirm(true); }}
                               className="flex-1 rounded-full border border-red-200 bg-white px-3 py-2 text-xs font-semibold text-red-600">
                               删除记录
                             </button>
@@ -1325,11 +1327,11 @@ export function WishlistView20({
                         )}
                         {subPage === "archived" && (
                           <>
-                            <button type="button" onClick={() => handleRestoreArchived(w)}
+                            <button type="button" data-parity-id="parity.app.app.src.components.wishlist.view.2.0.70fac64691" onClick={() => handleRestoreArchived(w)}
                               className="rounded-md bg-mist px-2 py-1 text-[11px] font-medium text-ink/60">
                               恢复到种草
                             </button>
-                            <button type="button" onClick={() => { setSelectedItem(w); setShowDeleteRecordConfirm(true); }}
+                            <button type="button" data-parity-id="parity.app.app.src.components.wishlist.view.2.0.a080dcfac5" onClick={() => { setSelectedItem(w); setShowDeleteRecordConfirm(true); }}
                               className="rounded-md bg-red-50 px-2 py-1 text-[11px] font-medium text-red-500">
                               删除记录
                             </button>
@@ -1396,8 +1398,8 @@ export function WishlistView20({
         hero={<DetailHeroGallery slides={productSlides} currentIndex={0} onIndexChange={() => undefined} emptyIcon={<ImageIcon size={36} />} emptyText="暂无商品图" />}
         quickActions={<DetailQuickActions actions={quickActions} layout="grid" />}
         titleBlock={<DetailTitleMetaBlock title={item.name} metaParts={[statusLabel, categoryLabel, subcategoryLabel, seasonLabel, styleLabel]} />}
-        tabs={<DetailTabs tabs={[{ key: "assessment", label: "信息" }, { key: "pairing", label: "搭配" }, { key: "record", label: "记录" }]} activeTab={detailTab} onChange={setDetailTab} />}
-        overlays={<MotionPopoverMenu visible={menuOpen} onClose={() => setMenuOpen(false)} anchorRef={menuAnchorRef}><div className="min-w-[176px] p-1"><button type="button" onClick={() => { setMenuOpen(false); openEditForm(item); }} className="flex items-center gap-2 w-full rounded-lg px-3 py-2.5 text-sm hover:bg-mist/50"><Edit3 size={15} /> 编辑种草单品</button>{item.convertedItemId ? <button type="button" onClick={() => { setMenuOpen(false); requestUndoPurchase(item); }} className="flex items-center gap-2 w-full rounded-lg px-3 py-2.5 text-sm hover:bg-mist/50 text-red-500"><RotateCcw size={15} /> 撤销购买</button> : null}<button type="button" onClick={() => { setMenuOpen(false); handleArchive(item); }} className="flex items-center gap-2 w-full rounded-lg px-3 py-2.5 text-sm hover:bg-mist/50"><Package size={15} /> 归档</button><button type="button" onClick={() => { setMenuOpen(false); setSelectedItem(item); setShowDeleteRecordConfirm(true); }} className="flex items-center gap-2 w-full rounded-lg px-3 py-2.5 text-sm hover:bg-mist/50 text-red-500"><Trash2 size={15} /> 删除记录</button></div></MotionPopoverMenu>}
+        tabs={<DetailTabs tabs={[{ key: "assessment", label: "信息" }, { key: "pairing", label: "搭配" }, { key: "record", label: "记录" }]} activeTab={detailTab} data-parity-id="parity.app.app.src.components.wishlist.view.2.0.37c3979a6c" onChange={setDetailTab} />}
+        overlays={<MotionPopoverMenu visible={menuOpen} onClose={() => setMenuOpen(false)} anchorRef={menuAnchorRef}><div className="min-w-[176px] p-1"><button type="button" data-parity-id="parity.app.app.src.components.wishlist.view.2.0.bfa7a5961e" onClick={() => { setMenuOpen(false); openEditForm(item); }} className="flex items-center gap-2 w-full rounded-lg px-3 py-2.5 text-sm hover:bg-mist/50"><Edit3 size={15} /> 编辑种草单品</button>{item.convertedItemId ? <button type="button" data-parity-id="parity.app.app.src.components.wishlist.view.2.0.b8324ff5d5" onClick={() => { setMenuOpen(false); requestUndoPurchase(item); }} className="flex items-center gap-2 w-full rounded-lg px-3 py-2.5 text-sm hover:bg-mist/50 text-red-500"><RotateCcw size={15} /> 撤销购买</button> : null}<button type="button" data-parity-id="parity.app.app.src.components.wishlist.view.2.0.7560657dff" onClick={() => { setMenuOpen(false); handleArchive(item); }} className="flex items-center gap-2 w-full rounded-lg px-3 py-2.5 text-sm hover:bg-mist/50"><Package size={15} /> 归档</button><button type="button" data-parity-id="parity.app.app.src.components.wishlist.view.2.0.a64cb8e7c5" onClick={() => { setMenuOpen(false); setSelectedItem(item); setShowDeleteRecordConfirm(true); }} className="flex items-center gap-2 w-full rounded-lg px-3 py-2.5 text-sm hover:bg-mist/50 text-red-500"><Trash2 size={15} /> 删除记录</button></div></MotionPopoverMenu>}
       >
             {detailTab === "assessment" && (
               <div className="space-y-4">
@@ -1582,6 +1584,7 @@ export function WishlistView20({
           <div className="relative flex shrink-0 items-center gap-2">
             <button
               type="button"
+              data-parity-id="parity.app.app.src.components.wishlist.view.2.0.212406c3d0"
               onClick={() => setMenuOpen((v) => !v)}
               data-testid="wishlist-header-menu"
               className="inline-flex h-10 w-10 items-center justify-center rounded-full hover:bg-mist/50 active:bg-mist"
@@ -1591,15 +1594,15 @@ export function WishlistView20({
             </button>
             <MotionPopoverMenu visible={menuOpen} onClose={() => setMenuOpen(false)} anchorRef={menuAnchorRef}>
                   <div className="min-w-[176px] p-1">
-                    <button type="button" disabled={purchasedCount === 0} onClick={() => { setMenuOpen(false); setSubPage("purchased"); }}
+                    <button type="button" disabled={purchasedCount === 0} data-parity-id="parity.app.app.src.components.wishlist.view.2.0.30df29552a" onClick={() => { setMenuOpen(false); setSubPage("purchased"); }}
                       className="flex items-center justify-between w-full px-4 py-2.5 text-sm hover:bg-mist/50 disabled:opacity-30">
                       已买单品 <span className="text-ink/30 text-xs">{purchasedCount}</span>
                     </button>
-                    <button type="button" disabled={rejectedCount === 0} onClick={() => { setMenuOpen(false); setSubPage("rejected"); }}
+                    <button type="button" disabled={rejectedCount === 0} data-parity-id="parity.app.app.src.components.wishlist.view.2.0.c4bf8aafc6" onClick={() => { setMenuOpen(false); setSubPage("rejected"); }}
                       className="flex items-center justify-between w-full px-4 py-2.5 text-sm hover:bg-mist/50 disabled:opacity-30">
                       不感兴趣 <span className="text-ink/30 text-xs">{rejectedCount}</span>
                     </button>
-                    <button type="button" disabled={archivedCount === 0} onClick={() => { setMenuOpen(false); setSubPage("archived"); }}
+                    <button type="button" disabled={archivedCount === 0} data-parity-id="parity.app.app.src.components.wishlist.view.2.0.58eaef33c8" onClick={() => { setMenuOpen(false); setSubPage("archived"); }}
                       className="flex items-center justify-between w-full px-4 py-2.5 text-sm hover:bg-mist/50 disabled:opacity-30">
                       已归档 <span className="text-ink/30 text-xs">{archivedCount}</span>
                     </button>
@@ -1619,7 +1622,7 @@ export function WishlistView20({
             { key: "consider", label: "再考虑", count: mainStatCounts.consider },
             { key: "not_recommended", label: "不建议", count: mainStatCounts.notRecommended },
           ] as const).map(({ key, label, count }) => (
-            <button key={key} type="button" onClick={() => setMainFilter(key)}
+            <button key={key} type="button" data-parity-id="parity.app.app.src.components.wishlist.view.2.0.a01176f31e" onClick={() => setMainFilter(key)}
               className={`shrink-0 rounded-full px-3 py-1 text-xs font-medium transition-colors flex items-center gap-1.5 ${
                 mainFilter === key
                   ? "bg-denim/10 text-denim border border-denim/30"

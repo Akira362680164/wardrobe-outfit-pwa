@@ -1,105 +1,26 @@
-import {
-  convertWishlistToWardrobe,
-  deleteWorkspaceEntity,
-  fetchWishlistDetail,
-  type MiniWishlistDetail,
-  undoWishlistPurchase,
-  updateWishlistStatus,
-} from "../../../services/workspace";
+import { chooseImages, uploadPreparedImageAssets, type AssetMutation } from "../../../services/assets";
+import { convertWishlistToWardrobe, createClientMutationId, deleteWorkspaceEntity, fetchWishlistDetail, undoWishlistPurchase, updateWishlistItem, updateWishlistStatus, type MiniWishlistDetail } from "../../../services/workspace";
+
+type ReferenceMetadata = { id: string; fieldName: string; caption?: string; createdAt?: string; updatedAt?: string };
 
 Page({
-  data: {
-    loading: false,
-    deleting: false,
-    actioning: "",
-    deleteSheetOpen: false,
-    activeTab: "info",
-    item: null as MiniWishlistDetail | null,
-    error: "",
-  },
-
-  onLoad(query?: { id?: string }) {
-    wx.setNavigationBarTitle({ title: "种草详情" });
-    if (query?.id) void this.loadDetail(query.id);
-    else this.setData({ error: "缺少种草 ID" });
-  },
-
-  async loadDetail(this: any, id: string) {
-    this.setData({ loading: true, error: "" });
-    try {
-      this.setData({ item: await fetchWishlistDetail(id), loading: false });
-    } catch (error) {
-      this.setData({ loading: false, error: error instanceof Error ? error.message : "读取种草失败" });
-    }
-  },
-
-  async togglePurchase(this: any) {
-    const item = this.data.item as MiniWishlistDetail | null;
-    if (!item || this.data.actioning) return;
-    this.setData({ actioning: "purchase" });
-    try {
-      const next = item.status === "purchased"
-        ? await undoWishlistPurchase(item.id, item.revision)
-        : await convertWishlistToWardrobe(item.id, item.revision, "home");
-      this.setData({ item: next });
-      wx.showToast({ title: next.status === "purchased" ? "已转入衣橱" : "已撤销购买", icon: "success" });
-    } catch (error) {
-      wx.showToast({ title: error instanceof Error ? error.message : "更新购买状态失败", icon: "none" });
-    } finally {
-      this.setData({ actioning: "" });
-    }
-  },
-
-  async toggleRejected(this: any) {
-    const item = this.data.item as MiniWishlistDetail | null;
-    if (!item || this.data.actioning || item.status === "purchased") return;
-    this.setData({ actioning: "reject" });
-    try {
-      const next = await updateWishlistStatus({
-        id: item.id,
-        expectedRevision: item.revision,
-        currentPayload: item.rawPayload,
-        status: item.status === "rejected" ? "interested" : "rejected",
-      });
-      this.setData({ item: next });
-      wx.showToast({ title: next.status === "rejected" ? "已标记不想买" : "已恢复想买", icon: "success" });
-    } catch (error) {
-      wx.showToast({ title: error instanceof Error ? error.message : "更新种草状态失败", icon: "none" });
-    } finally {
-      this.setData({ actioning: "" });
-    }
-  },
-
-  openDeleteSheet() {
-    if (this.data.actioning) return;
-    this.setData({ deleteSheetOpen: true });
-  },
-
-  editItem(this: any) {
-    const item = this.data.item as MiniWishlistDetail | null;
-    if (item) wx.navigateTo({ url: `/pages/wishlist/edit/index?id=${encodeURIComponent(item.id)}` });
-  },
-
-  switchTab(event: { currentTarget: { dataset: { tab?: string } } }) {
-    const tab = event.currentTarget.dataset.tab;
-    if (tab === "info" || tab === "pairing" || tab === "record") this.setData({ activeTab: tab });
-  },
-
-  closeDeleteSheet() {
-    if (!this.data.deleting) this.setData({ deleteSheetOpen: false });
-  },
-
-  async confirmDelete(this: any) {
-    const item = this.data.item as MiniWishlistDetail | null;
-    if (!item || this.data.deleting) return;
-    this.setData({ deleting: true });
-    try {
-      await deleteWorkspaceEntity("wishlist", item.id, item.revision);
-      wx.showToast({ title: "已删除", icon: "success" });
-      wx.navigateBack({ delta: 1 });
-    } catch (error) {
-      wx.showToast({ title: error instanceof Error ? error.message : "删除失败", icon: "none" });
-      this.setData({ deleting: false });
-    }
-  },
+  data: { loading: false, deleting: false, actioning: "", deleteSheetOpen: false, menuOpen: false, activeTab: "info", item: null as MiniWishlistDetail | null, error: "" },
+  onLoad(query?: { id?: string }) { wx.setNavigationBarTitle({ title: "种草详情" }); if (query?.id) void this.loadDetail(query.id); else this.setData({ error: "缺少种草 ID" }); },
+  onShow(this: any) { const item = this.data.item as MiniWishlistDetail | null; if (item) void this.loadDetail(item.id); },
+  async loadDetail(this: any, id: string) { this.setData({ loading: true, error: "" }); try { this.setData({ item: await fetchWishlistDetail(id), loading: false }); } catch (error) { this.setData({ loading: false, error: error instanceof Error ? error.message : "读取种草失败" }); } },
+  openMenu() { this.setData({ menuOpen: true }); }, closeMenu() { this.setData({ menuOpen: false }); },
+  editItem(this: any) { const item = this.data.item as MiniWishlistDetail | null; if (item) wx.navigateTo({ url: `/pages/wishlist/edit/index?id=${encodeURIComponent(item.id)}` }); },
+  switchTab(event: any) { const tab = event.currentTarget.dataset.tab; if (["info", "pairing", "record"].includes(tab)) this.setData({ activeTab: tab }); },
+  async toggleArchived(this: any) { const item = this.data.item as MiniWishlistDetail | null; if (!item || this.data.actioning) return; this.setData({ actioning: "archive" }); try { const next = await updateWishlistStatus({ id: item.id, expectedRevision: item.revision, currentPayload: item.rawPayload, status: item.status === "archived" ? "interested" : "archived" }); this.setData({ item: next, menuOpen: false }); } finally { this.setData({ actioning: "" }); } },
+  async togglePurchase(this: any) { const item = this.data.item as MiniWishlistDetail | null; if (!item || this.data.actioning || (item.status === "purchased" && item.convertedGarmentMissing)) return; this.setData({ actioning: "purchase" }); try { const next = item.status === "purchased" ? await undoWishlistPurchase(item.id, item.revision) : await convertWishlistToWardrobe(item.id, item.revision, "home"); this.setData({ item: next }); } catch (error) { wx.showToast({ title: error instanceof Error ? error.message : "购买状态更新失败", icon: "none" }); } finally { this.setData({ actioning: "" }); } },
+  async toggleRejected(this: any) { const item = this.data.item as MiniWishlistDetail | null; if (!item || this.data.actioning || item.status === "purchased") return; this.setData({ actioning: "reject" }); try { this.setData({ item: await updateWishlistStatus({ id: item.id, expectedRevision: item.revision, currentPayload: item.rawPayload, status: item.status === "rejected" ? "interested" : "rejected" }) }); } finally { this.setData({ actioning: "" }); } },
+  openConvertedGarment(this: any) { const item = this.data.item as MiniWishlistDetail | null; if (item?.convertedGarmentId) wx.navigateTo({ url: `/pages/wardrobe/detail/index?id=${encodeURIComponent(item.convertedGarmentId)}` }); },
+  previewMedia(this: any, event: any) { const item = this.data.item as MiniWishlistDetail | null; if (!item) return; const urls = [item.imageUrl, ...item.inspirationImages.map((image) => image.imageUrl)].filter(Boolean); (wx as typeof wx & { previewImage: (options: { current?: string; urls: string[] }) => void }).previewImage({ current: event.detail.url || urls[0], urls }); },
+  async addInspiration(this: any) { const item = this.data.item as MiniWishlistDetail | null; if (!item) return; try { const images = await chooseImages(["album", "camera"], Math.max(1, 9 - item.inspirationImages.length)); if (!images.length) return; const now = new Date().toISOString(); const references = referenceMetadata(item); const mutations: AssetMutation[] = []; for (const image of images) { const id = createClientMutationId(); const fieldName = `referenceOutfitImage.${id}`; const uploaded = await uploadPreparedImageAssets({ clientMutationId: createClientMutationId(), entityType: "wishlistItem", fieldName, originalPath: image.imagePath, processedPath: image.stablePath }); mutations.push(...uploaded.assetMutations); references.push({ id, fieldName, caption: "", createdAt: now, updatedAt: now }); } await saveReferences(item, references, mutations); this.setData({ item: await fetchWishlistDetail(item.id) }); } catch (error) { wx.showToast({ title: error instanceof Error ? error.message : "添加灵感失败", icon: "none" }); } },
+  async removeInspiration(this: any, event: any) { const item = this.data.item as MiniWishlistDetail | null; const id = event.detail.id; if (!item || !id) return; const target = item.inspirationImages.find((image) => image.id === id); if (!target) return; await saveReferences(item, referenceMetadata(item).filter((entry) => entry.id !== id), [{ kind: "remove", fieldName: target.fieldName }]); this.setData({ item: await fetchWishlistDetail(item.id) }); },
+  openDeleteSheet() { this.setData({ deleteSheetOpen: true, menuOpen: false }); }, closeDeleteSheet() { if (!this.data.deleting) this.setData({ deleteSheetOpen: false }); },
+  async confirmDelete(this: any) { const item = this.data.item as MiniWishlistDetail | null; if (!item || this.data.deleting) return; this.setData({ deleting: true }); try { await deleteWorkspaceEntity("wishlist", item.id, item.revision); wx.showToast({ title: "已删除", icon: "success" }); wx.navigateBack({ delta: 1 }); } catch (error) { wx.showToast({ title: error instanceof Error ? error.message : "删除失败", icon: "none" }); this.setData({ deleting: false }); } },
 });
+
+function referenceMetadata(item: MiniWishlistDetail): ReferenceMetadata[] { return Array.isArray(item.rawPayload.referenceOutfitImages) ? item.rawPayload.referenceOutfitImages.filter((entry): entry is ReferenceMetadata => Boolean(entry && typeof entry === "object" && "id" in entry && "fieldName" in entry)) : []; }
+function saveReferences(item: MiniWishlistDetail, referenceOutfitImages: ReferenceMetadata[], assetMutations: AssetMutation[]) { return updateWishlistItem({ id: item.id, expectedRevision: item.revision, currentPayload: item.rawPayload, name: item.name, category: item.category, subcategory: item.subcategory || undefined, colors: item.colorsRaw as Record<string, unknown>, seasons: item.seasons, styles: item.styles, temperatureRange: item.temperatureRange, formality: item.formality, warmth: item.warmth, material: item.material, fitGender: item.fitGender, fitNotes: item.fitNotes, price: item.price, productUrl: item.productUrl, status: item.status, notes: item.notes === "无备注" ? undefined : item.notes, referenceOutfitImages, assetMutations }); }

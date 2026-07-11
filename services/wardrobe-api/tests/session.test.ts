@@ -243,7 +243,7 @@ class MemorySessionStore implements SessionStore {
 
 function makeFixture(options: { loginMaxAttempts?: number; refreshMaxAttempts?: number } = {}) {
   const store = new MemorySessionStore();
-  const now = new Date("2026-06-26T00:00:00.000Z");
+  let now = new Date("2026-06-26T00:00:00.000Z");
   const service = new SessionService({
     store,
     tokenIssuer: new MemoryAccessTokenIssuer(),
@@ -262,7 +262,7 @@ function makeFixture(options: { loginMaxAttempts?: number; refreshMaxAttempts?: 
     readinessCheck: async () => ({ database: "ready" }),
     sessionService: service,
   });
-  return { app, store };
+  return { app, store, advanceDays(days: number) { now = new Date(now.getTime() + days * 24 * 60 * 60 * 1000); } };
 }
 
 async function login(app: ReturnType<typeof buildApp>, phone = "+8613812345678", deviceId = "device-a") {
@@ -392,6 +392,23 @@ describe("session API", () => {
     expect(replay.json()).toMatchObject({ code: "AUTH_REFRESH_REUSED" });
     expect(store.refreshTokens.get(hashToken(nextRefreshToken))?.status).toBe("revoked");
 
+    await app.close();
+  });
+
+  it("keeps an authorized device alive beyond 30 days through rolling refresh rotation", async () => {
+    const { app, store, advanceDays } = makeFixture();
+    await store.addUser("+8613812345678", "test-password-123");
+    let tokens = await login(app);
+    for (let cycle = 0; cycle < 3; cycle += 1) {
+      advanceDays(29);
+      const response = await app.inject({
+        method: "POST", url: "/api/auth/refresh",
+        payload: { refreshToken: tokens.refreshToken, refreshRequestId: randomUUID(), deviceId: "device-a" },
+      });
+      expect(response.statusCode).toBe(200);
+      tokens = response.json();
+    }
+    expect([...store.refreshTokens.values()].filter((item) => item.status === "active")).toHaveLength(1);
     await app.close();
   });
 

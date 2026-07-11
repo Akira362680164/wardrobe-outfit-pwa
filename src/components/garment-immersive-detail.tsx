@@ -330,7 +330,7 @@ extraImages,
  <div className="flex items-center gap-2 px-1">
  <button
  type="button"
- onClick={onBack}
+ data-parity-id="parity.app.app.src.components.garment.immersive.detail.079fb65d20" onClick={onBack}
  aria-label="返回"
  className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-mist text-ink hover:bg-ink/10 transition-colors"
  >
@@ -385,7 +385,7 @@ extraImages,
   {(onCrop || onCropAt) && safeSlide?.kind === "image" ? (
   <button
   type="button"
-  onClick={() => {
+  data-parity-id="parity.app.app.src.components.garment.immersive.detail.63e02b4e31" onClick={() => {
   if (onCropAt) onCropAt(safeIndex);
   else if (onCrop) onCrop();
   }}

@@ -8,6 +8,7 @@ import {
   type MiniOutfitPlanEntry,
 } from "../../../services/workspace";
 import { enumerateDateRange, formatDateWithWeek } from "../../../utils/calendar";
+import { getCapsuleGeometry } from "../../../utils/capsule-layout";
 
 type DayArrangement = {
   date: string;
@@ -192,8 +193,5 @@ function statusRank(status: MiniOutfitPlanEntry["status"]): number {
 }
 
 function getTitleTopRpx(): number {
-  const systemInfo = wx.getSystemInfoSync();
-  const menuRect = (wx as unknown as { getMenuButtonBoundingClientRect?: () => { top?: number } }).getMenuButtonBoundingClientRect?.();
-  const windowWidth = (systemInfo as WechatMiniprogram.SystemInfo & { windowWidth?: number }).windowWidth || 375;
-  return Math.round((menuRect?.top ?? (systemInfo.statusBarHeight ?? 0) + 8) * (750 / windowWidth));
+  return getCapsuleGeometry().topRpx;
 }

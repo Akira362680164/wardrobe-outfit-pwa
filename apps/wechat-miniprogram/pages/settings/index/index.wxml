@@ -1,11 +1,6 @@
 <view class="settings-page page-shell" style="padding-top: {{titleTopRpx}}rpx;">
   <view class="page-title">设置</view>
 
-  <view class="ai-banner">
-    <view class="banner-mark"><ui-icon name="sparkles" size="{{28}}" /></view>
-    <view class="banner-copy">录入识别、衣橱诊断和单品/套装建议已走后端 AI 代理；推荐、天气和试穿预览后续单独接。</view>
-  </view>
-
   <view class="settings-card settings-row-card" data-url="/pages/settings/account/index" bindtap="openSection">
     <view class="settings-icon"><ui-icon name="user" size="{{36}}" /></view>
     <view class="settings-main">
@@ -16,19 +11,19 @@
     <view class="card-action">管理 ›</view>
   </view>
 
-  <view class="settings-card">
+  <view class="settings-card settings-row-card" data-url="/pages/settings/profile/index" bindtap="openSection">
     <view class="card-title">我的穿衣画像</view>
     <view class="card-copy">用于推荐、买前评估和 AI 试穿。</view>
-    <view class="muted-panel">{{profileCopy}}</view>
+    <view class="card-action">编辑 ›</view>
   </view>
 
-  <view class="settings-card settings-row-card">
+  <view class="settings-card settings-row-card" data-url="/pages/settings/tryon-photos/index" bindtap="openSection">
     <view class="settings-main">
       <view class="card-title">AI 试穿参考照片</view>
       <view class="card-copy">照片仅在生成试穿图时使用。</view>
-      <view class="card-foot">{{aiPhotoCopy}}</view>
+      <view class="card-foot">全身照和脸部照仅用于主动生成试穿图。</view>
     </view>
-    <view class="toggle-off"></view>
+    <view class="card-action">管理 ›</view>
   </view>
 
   <view class="settings-card settings-row-card" data-url="/pages/settings/ai-key/index" bindtap="openSection">

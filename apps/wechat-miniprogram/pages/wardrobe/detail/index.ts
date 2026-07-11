@@ -1,122 +1,26 @@
-import { aiEnhance, hasMiniMaxKey, recognizeGarmentImage } from "../../../services/ai";
-import { deleteWorkspaceEntity, fetchGarmentDetail, updateGarment, type MiniGarmentDetail } from "../../../services/workspace";
+import { aiEnhance, hasMiniMaxKey } from "../../../services/ai";
+import { chooseImages, uploadPreparedImageAssets, type AssetMutation } from "../../../services/assets";
+import { createClientMutationId, deleteWorkspaceEntity, fetchGarmentDetail, updateGarment, type MiniGarmentDetail } from "../../../services/workspace";
+
+type ReferenceMetadata = { id: string; fieldName: string; caption?: string; createdAt?: string; updatedAt?: string };
 
 Page({
-  data: {
-    title: "单品详情",
-    loading: false,
-    deleting: false,
-    recognizing: false,
-    adviceLoading: false,
-    adviceSummary: "",
-    adviceTips: [] as string[],
-    deleteSheetOpen: false,
-    activeTab: "info",
-    item: null as MiniGarmentDetail | null,
-    error: "",
-  },
-
-  async generateAdvice(this: any) {
-    const item = this.data.item as MiniGarmentDetail | null;
-    if (!item || this.data.adviceLoading) return;
-    if (!hasMiniMaxKey()) {
-      wx.showToast({ title: "请先在设置中填写 MiniMax Key", icon: "none" });
-      return;
-    }
-    this.setData({ adviceLoading: true, adviceSummary: "", adviceTips: [] });
-    try {
-      const result = await aiEnhance<Record<string, unknown>>("garment-style-advice", { item });
-      this.setData({
-        adviceSummary: typeof result.summary === "string" ? result.summary : "已生成单品建议",
-        adviceTips: ["scenes", "pairingTips", "avoidTips"].flatMap((key) => stringList(result[key])).slice(0, 6),
-      });
-    } catch (error) {
-      wx.showToast({ title: error instanceof Error ? error.message : "生成建议失败", icon: "none" });
-    } finally {
-      this.setData({ adviceLoading: false });
-    }
-  },
-
-  async reRecognize(this: any) {
-    const item = this.data.item as MiniGarmentDetail | null;
-    if (!item || this.data.recognizing) return;
-    if (!item.imageUrl) {
-      wx.showToast({ title: "这件衣物没有可识别图片", icon: "none" });
-      return;
-    }
-    this.setData({ recognizing: true });
-    try {
-      const tag = await recognizeGarmentImage(item.imageUrl);
-      await updateGarment({
-        id: item.id,
-        expectedRevision: item.revision,
-        currentPayload: item.rawPayload,
-        name: tag.candidateNames[0] ?? item.name,
-        category: tag.category,
-        subcategory: tag.subcategory,
-        colors: tag.colors as unknown as Record<string, unknown>,
-        seasons: tag.seasons,
-        styles: tag.styles,
-        notes: tag.notes,
-        aiTag: tag as unknown as Record<string, unknown>,
-      });
-      this.setData({ item: await fetchGarmentDetail(item.id) });
-      wx.showToast({ title: "已重新识别", icon: "success" });
-    } catch (error) {
-      wx.showToast({ title: error instanceof Error ? error.message : "重新识别失败", icon: "none" });
-    } finally {
-      this.setData({ recognizing: false });
-    }
-  },
-
-  onLoad(query?: { id?: string }) {
-    wx.setNavigationBarTitle({ title: "单品详情" });
-    if (query?.id) void this.loadDetail(query.id);
-    else this.setData({ error: "缺少单品 ID" });
-  },
-
-  async loadDetail(this: any, id: string) {
-    this.setData({ loading: true, error: "" });
-    try {
-      this.setData({ item: await fetchGarmentDetail(id), loading: false });
-    } catch (error) {
-      this.setData({ loading: false, error: error instanceof Error ? error.message : "读取单品失败" });
-    }
-  },
-
-  openDeleteSheet() {
-    this.setData({ deleteSheetOpen: true });
-  },
-
-  editItem(this: any) {
-    const item = this.data.item as MiniGarmentDetail | null;
-    if (item) wx.navigateTo({ url: `/pages/wardrobe/edit/index?id=${encodeURIComponent(item.id)}` });
-  },
-
-  switchTab(event: { currentTarget: { dataset: { tab?: string } } }) {
-    const tab = event.currentTarget.dataset.tab;
-    if (tab === "info" || tab === "inspiration" || tab === "pairing") this.setData({ activeTab: tab });
-  },
-
-  closeDeleteSheet() {
-    if (!this.data.deleting) this.setData({ deleteSheetOpen: false });
-  },
-
-  async confirmDelete(this: any) {
-    const item = this.data.item as MiniGarmentDetail | null;
-    if (!item || this.data.deleting) return;
-    this.setData({ deleting: true });
-    try {
-      await deleteWorkspaceEntity("garments", item.id, item.revision);
-      wx.showToast({ title: "已删除", icon: "success" });
-      wx.navigateBack({ delta: 1 });
-    } catch (error) {
-      wx.showToast({ title: error instanceof Error ? error.message : "删除失败", icon: "none" });
-      this.setData({ deleting: false });
-    }
-  },
+  data: { loading: false, deleting: false, adviceLoading: false, adviceSummary: "", adviceTips: [] as string[], deleteSheetOpen: false, menuOpen: false, activeTab: "info", item: null as MiniGarmentDetail | null, error: "" },
+  onLoad(query?: { id?: string }) { wx.setNavigationBarTitle({ title: "单品详情" }); if (query?.id) void this.loadDetail(query.id); else this.setData({ error: "缺少单品 ID" }); },
+  onShow(this: any) { const item = this.data.item as MiniGarmentDetail | null; if (item) void this.loadDetail(item.id); },
+  async loadDetail(this: any, id: string) { this.setData({ loading: true, error: "" }); try { this.setData({ item: await fetchGarmentDetail(id), loading: false }); } catch (error) { this.setData({ loading: false, error: error instanceof Error ? error.message : "读取单品失败" }); } },
+  openMenu() { this.setData({ menuOpen: true }); }, closeMenu() { this.setData({ menuOpen: false }); },
+  editItem(this: any) { const item = this.data.item as MiniGarmentDetail | null; if (item) wx.navigateTo({ url: `/pages/wardrobe/edit/index?id=${encodeURIComponent(item.id)}` }); },
+  moveItem(this: any) { this.closeMenu(); this.editItem(); },
+  switchTab(event: any) { const tab = event.currentTarget.dataset.tab; if (["info", "inspiration", "pairing"].includes(tab)) this.setData({ activeTab: tab }); },
+  async generateAdvice(this: any) { const item = this.data.item as MiniGarmentDetail | null; if (!item || this.data.adviceLoading) return; if (!hasMiniMaxKey()) { wx.showToast({ title: "请先在设置中填写 MiniMax Key", icon: "none" }); return; } this.setData({ adviceLoading: true }); try { const result = await aiEnhance<Record<string, unknown>>("garment-style-advice", { item }); this.setData({ adviceSummary: typeof result.summary === "string" ? result.summary : "已生成单品建议", adviceTips: ["scenes", "pairingTips", "avoidTips"].flatMap((key) => stringList(result[key])).slice(0, 6) }); } catch (error) { wx.showToast({ title: error instanceof Error ? error.message : "生成建议失败", icon: "none" }); } finally { this.setData({ adviceLoading: false }); } },
+  previewMedia(this: any, event: any) { const item = this.data.item as MiniGarmentDetail | null; if (!item) return; const urls = [item.imageUrl, ...item.inspirationImages.map((image) => image.imageUrl)].filter(Boolean); (wx as typeof wx & { previewImage: (options: { current?: string; urls: string[] }) => void }).previewImage({ current: event.detail.url || urls[0], urls }); },
+  async addInspiration(this: any) { const item = this.data.item as MiniGarmentDetail | null; if (!item) return; try { const images = await chooseImages(["album", "camera"], Math.max(1, 9 - item.inspirationImages.length)); if (!images.length) return; const now = new Date().toISOString(); const references = referenceMetadata(item); const mutations: AssetMutation[] = []; for (const image of images) { const id = createClientMutationId(); const fieldName = `referenceOutfitImage.${id}`; const uploaded = await uploadPreparedImageAssets({ clientMutationId: createClientMutationId(), entityType: "garment", fieldName, originalPath: image.imagePath, processedPath: image.stablePath }); mutations.push(...uploaded.assetMutations); references.push({ id, fieldName, caption: "", createdAt: now, updatedAt: now }); } await saveReferences(item, references, mutations); this.setData({ item: await fetchGarmentDetail(item.id) }); } catch (error) { wx.showToast({ title: error instanceof Error ? error.message : "添加灵感失败", icon: "none" }); } },
+  async removeInspiration(this: any, event: any) { const item = this.data.item as MiniGarmentDetail | null; const id = event.detail.id; if (!item || !id) return; const target = item.inspirationImages.find((image) => image.id === id); if (!target) return; await saveReferences(item, referenceMetadata(item).filter((entry) => entry.id !== id), [{ kind: "remove", fieldName: target.fieldName }]); this.setData({ item: await fetchGarmentDetail(item.id) }); },
+  openDeleteSheet() { this.setData({ deleteSheetOpen: true, menuOpen: false }); }, closeDeleteSheet() { if (!this.data.deleting) this.setData({ deleteSheetOpen: false }); },
+  async confirmDelete(this: any) { const item = this.data.item as MiniGarmentDetail | null; if (!item || this.data.deleting) return; this.setData({ deleting: true }); try { await deleteWorkspaceEntity("garments", item.id, item.revision); wx.showToast({ title: "已删除", icon: "success" }); wx.navigateBack({ delta: 1 }); } catch (error) { wx.showToast({ title: error instanceof Error ? error.message : "删除失败", icon: "none" }); this.setData({ deleting: false }); } },
 });
 
-function stringList(value: unknown): string[] {
-  return Array.isArray(value) ? value.filter((item): item is string => typeof item === "string" && item.length > 0) : [];
-}
+function referenceMetadata(item: MiniGarmentDetail): ReferenceMetadata[] { return Array.isArray(item.rawPayload.referenceOutfitImages) ? item.rawPayload.referenceOutfitImages.filter((entry): entry is ReferenceMetadata => Boolean(entry && typeof entry === "object" && "id" in entry && "fieldName" in entry)) : []; }
+function saveReferences(item: MiniGarmentDetail, referenceOutfitImages: ReferenceMetadata[], assetMutations: AssetMutation[]) { return updateGarment({ id: item.id, expectedRevision: item.revision, currentPayload: item.rawPayload, name: item.name, category: item.category, subcategory: item.subcategory || undefined, colors: item.colorsRaw as Record<string, unknown>, seasons: item.seasons, styles: item.styles, temperatureRange: item.temperatureRange, formality: item.formality, warmth: item.warmth, material: item.material, fitGender: item.fitGender, fitNotes: item.fitNotes, locationId: item.locationId, status: item.status, notes: item.notes === "无备注" ? undefined : item.notes, referenceOutfitImages, assetMutations }); }
+function stringList(value: unknown): string[] { return Array.isArray(value) ? value.filter((item): item is string => typeof item === "string" && item.length > 0) : []; }

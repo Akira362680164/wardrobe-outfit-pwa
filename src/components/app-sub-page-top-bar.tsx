@@ -32,7 +32,7 @@ export function AppSubPageTopBar({
       <div className="flex items-start justify-start">
         <button
           type="button"
-          onClick={onBack}
+          data-parity-id="parity.app.app.src.components.app.sub.page.top.bar.06136d0714" onClick={onBack}
           aria-label="返回"
           className="grid h-12 w-12 place-items-center -ml-1"
         >
@@ -62,7 +62,7 @@ export function AppSubPageTopBar({
           <button
             ref={moreButtonRef}
             type="button"
-            onClick={onMore}
+            data-parity-id="parity.app.app.src.components.app.sub.page.top.bar.eb7c5db4cb" onClick={onMore}
             aria-label="更多操作"
             className="grid h-12 w-12 place-items-center -mr-1"
           >

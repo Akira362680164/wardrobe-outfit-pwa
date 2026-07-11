@@ -1,4 +1,5 @@
 import { fetchWishlist, getWorkspaceReadState, type MiniWishlistItem } from "../../../services/workspace";
+import { getCapsuleGeometry } from "../../../utils/capsule-layout";
 
 interface WishlistStatusChip {
   key: string;
@@ -21,8 +22,8 @@ function buildStatusChips(items: MiniWishlistItem[]): WishlistStatusChip[] {
   }));
 }
 
-function filterItems(items: MiniWishlistItem[], status: string): MiniWishlistItem[] {
-  return status === "all" ? items : items.filter((item) => item.statusText === status);
+function filterItems(items: MiniWishlistItem[], status: string, evaluation = "all"): MiniWishlistItem[] {
+  return items.filter((item) => (status === "all" || item.statusText === status) && (evaluation === "all" || item.evaluation === evaluation));
 }
 
 function buildSummaryText(items: MiniWishlistItem[]): string {
@@ -37,6 +38,8 @@ Page({
     items: [] as MiniWishlistItem[],
     filteredItems: [] as MiniWishlistItem[],
     activeStatus: "all",
+    activeEvaluation: "all",
+    evaluationFilters: [{ value: "all", label: "全部评估" }, { value: "buy", label: "值得买" }, { value: "consider", label: "再看看" }, { value: "avoid", label: "不建议" }, { value: "unrated", label: "未评估" }],
     statusChips: buildStatusChips([]),
     summaryText: "0 件",
     error: "",
@@ -83,7 +86,7 @@ Page({
       const items = await fetchWishlist();
       this.setData({
         items,
-        filteredItems: filterItems(items, this.data.activeStatus),
+        filteredItems: filterItems(items, this.data.activeStatus, this.data.activeEvaluation),
         statusChips: buildStatusChips(items),
         summaryText: buildSummaryText(items),
         loading: false,
@@ -105,8 +108,13 @@ Page({
     if (typeof status !== "string") return;
     this.setData({
       activeStatus: status,
-      filteredItems: filterItems(this.data.items, status),
+      filteredItems: filterItems(this.data.items, status, this.data.activeEvaluation),
     });
+  },
+
+  setEvaluationFilter(event: any) {
+    const evaluation = String(event.currentTarget.dataset.evaluation || "all");
+    this.setData({ activeEvaluation: evaluation, filteredItems: filterItems(this.data.items, this.data.activeStatus, evaluation) });
   },
 
   handleEmptyAction() {
@@ -147,9 +155,5 @@ function setCustomTabBarSelected(page: unknown, selected: number) {
 }
 
 function getTitleTopRpx() {
-  const systemInfo = wx.getSystemInfoSync();
-  const menuRect = (wx as unknown as { getMenuButtonBoundingClientRect?: () => { top?: number } }).getMenuButtonBoundingClientRect?.();
-  const windowWidth = (systemInfo as WechatMiniprogram.SystemInfo & { windowWidth?: number }).windowWidth || 375;
-  const pixelRatio = 750 / windowWidth;
-  return Math.round((menuRect?.top ?? (systemInfo.statusBarHeight ?? 0) + 8) * pixelRatio);
+  return getCapsuleGeometry().topRpx;
 }

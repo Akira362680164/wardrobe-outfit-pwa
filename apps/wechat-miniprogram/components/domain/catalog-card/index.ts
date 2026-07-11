@@ -14,10 +14,14 @@ Component({
     colors: { type: Array, value: null },
     summary: String,
     tone: { type: String, value: "primary" },
+    selected: Boolean,
   },
   methods: {
     onTap(this: any) {
       this.triggerEvent("select", { id: this.properties.itemId || this.properties.id });
+    },
+    onLongPress(this: any) {
+      this.triggerEvent("longpress", { id: this.properties.itemId || this.properties.id });
     },
   },
 });

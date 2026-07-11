@@ -1,0 +1,110 @@
+{
+  "schemaVersion": 1,
+  "domain": "statistics",
+  "screens": [
+    {
+      "id": "wardrobe.statistics",
+      "domain": "statistics",
+      "sourceOfTruth": "app",
+      "mappingStatus": "EQUIVALENT",
+      "app": {
+        "routes": [
+          "src.components.wear.statistics.view"
+        ],
+        "sourceInventoryIds": [
+          "app.src.components.wear.statistics.view"
+        ],
+        "sourceFiles": []
+      },
+      "mini": {
+        "routes": [
+          "/pages/wardrobe/statistics/index"
+        ],
+        "sourceInventoryIds": [
+          "mini.route.pages.wardrobe.statistics.index"
+        ],
+        "sourceFiles": []
+      },
+      "fixtures": [
+        "garment.complete",
+        "garment.no_image",
+        "network.500"
+      ],
+      "entryPaths": [
+        {
+          "id": "direct",
+          "actions": []
+        },
+        {
+          "id": "navigation",
+          "actions": [
+            "statistics.period.change"
+          ]
+        }
+      ],
+      "states": [
+        {
+          "id": "overview",
+          "fixture": "garment.complete",
+          "checkpoint": true,
+          "expectedOn": [
+            "app",
+            "mini"
+          ]
+        },
+        {
+          "id": "category-breakdown",
+          "fixture": "garment.no_image",
+          "checkpoint": true,
+          "expectedOn": [
+            "app",
+            "mini"
+          ]
+        },
+        {
+          "id": "mini-toast",
+          "fixture": "network.500",
+          "checkpoint": true,
+          "expectedOn": [
+            "app",
+            "mini"
+          ]
+        }
+      ],
+      "requiredActions": [
+        {
+          "id": "statistics.period.change",
+          "event": "tap",
+          "requiredOn": [
+            "app",
+            "mini"
+          ],
+          "sourceActionIds": {},
+          "expectedTransition": "state-change",
+          "sideEffect": "LOCAL_STATE"
+        },
+        {
+          "id": "statistics.refresh",
+          "event": "tap",
+          "requiredOn": [
+            "app",
+            "mini"
+          ],
+          "sourceActionIds": {},
+          "expectedTransition": "state-change",
+          "sideEffect": "BACKEND_READ",
+          "serverAssertion": "wear-statistics-readback"
+        }
+      ],
+      "overlays": [],
+      "checkpoints": [
+        "overview",
+        "category-breakdown",
+        "mini-toast"
+      ],
+      "platformExceptionIds": [
+        "WX-CAPSULE-001"
+      ]
+    }
+  ]
+}

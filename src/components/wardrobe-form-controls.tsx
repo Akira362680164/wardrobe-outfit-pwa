@@ -103,6 +103,7 @@ export function SelectableChipGroup<T extends string>({
             <button
               type="button"
               key={option}
+              data-parity-id={`parity.app.app.src.components.wardrobe.form.controls.e5466170d1.${option}`}
               data-active={active}
               aria-pressed={active}
               aria-disabled={disabled}
@@ -124,7 +125,7 @@ export function SelectableChipGroup<T extends string>({
         {hiddenCount > 0 ? (
           <button
             type="button"
-            onClick={() => setExpanded(true)}
+            data-parity-id="parity.app.app.src.components.wardrobe.form.controls.93f013bee3" onClick={() => setExpanded(true)}
             className="inline-flex min-h-9 items-center rounded-lg border border-ink/10 bg-white px-3 text-sm font-semibold text-ink/60 active:bg-mist"
           >
             展开更多 <span className="ml-1 text-ink/45">+{hiddenCount}</span>
@@ -132,7 +133,7 @@ export function SelectableChipGroup<T extends string>({
         ) : expanded && orderedOptions.length > maxCollapsedOptions ? (
           <button
             type="button"
-            onClick={() => setExpanded(false)}
+            data-parity-id="parity.app.app.src.components.wardrobe.form.controls.c285970df9" onClick={() => setExpanded(false)}
             className="inline-flex min-h-9 items-center rounded-lg border border-ink/10 bg-white px-3 text-sm font-semibold text-ink/60 active:bg-mist"
           >
             收起
@@ -168,6 +169,7 @@ export function ChipGroup<T extends string>({
             <button
               type="button"
               key={option}
+              data-parity-id={`parity.app.app.src.components.wardrobe.form.controls.36f7bde6e4.${option}`}
               data-active={active}
               onClick={() => onChange(toggle(values, option))}
               className={`shrink-0 min-h-9 rounded-lg border px-3 text-sm ${
@@ -247,7 +249,7 @@ export function RangeField({ label, value, onChange }: { label: string; value: n
           aria-valuemax={max}
           aria-valuenow={clampedValue}
           aria-valuetext={`${clampedValue}/5`}
-          onPointerDown={handleThumbPointerDown}
+          data-parity-id="parity.app.app.src.components.wardrobe.form.controls.95f932f565" onPointerDown={handleThumbPointerDown}
           onPointerMove={handleThumbPointerMove}
           onPointerUp={handleThumbPointerEnd}
           onPointerCancel={handleThumbPointerEnd}

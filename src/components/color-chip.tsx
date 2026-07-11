@@ -120,7 +120,7 @@ export function ColorSwatchButton(props: {
   return (
     <button
       type="button"
-      onClick={onClick}
+      data-parity-id="parity.app.app.src.components.color.chip.c9a46b7ff7" onClick={onClick}
       className={`inline-flex h-9 items-center gap-2 rounded-full border px-3 text-xs font-medium transition-colors ${
         selected
           ? "bg-denim text-white border-denim"

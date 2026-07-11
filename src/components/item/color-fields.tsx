@@ -117,6 +117,7 @@ export function ItemColorFields(props: ItemColorFieldsProps) {
       <div className="grid min-w-0 grid-cols-3 gap-2">
         {modeOptions.map((option) => (
           <button
+            data-parity-id={`parity.app.app.src.components.item.color.fields.8f6a8e48d0.${option.value}`}
             key={option.value}
             type="button"
             onClick={() => switchMode(option.value)}
@@ -196,6 +197,7 @@ function ColorSwatchPicker({
       <div className="grid min-w-0 grid-cols-3 gap-2">
         {COMMON_COLOR_OPTIONS.map((color) => (
           <SwatchButton
+            data-parity-id={`parity.app.app.src.components.item.color.fields.b99ce88c0e.${title}.${color}`}
             key={color}
             color={color}
             selected={selected.includes(color)}
@@ -206,6 +208,7 @@ function ColorSwatchPicker({
       </div>
 
       <button
+        data-parity-id={`parity.app.app.src.components.item.color.fields.92c84cf061.${title}.${expanded ? "expanded" : "collapsed"}`}
         type="button"
         onClick={() => setExpanded((v) => !v)}
         className="inline-flex min-h-10 w-full items-center justify-between gap-2 rounded-lg border border-ink/10 bg-white px-3 text-xs font-semibold text-ink/65"
@@ -224,6 +227,7 @@ function ColorSwatchPicker({
               <div className="grid min-w-0 grid-cols-3 gap-2">
                 {group.colors.map((color) => (
                   <SwatchButton
+                    data-parity-id={`parity.app.app.src.components.item.color.fields.6bbc200aae.${title}.${group.family}.${color}`}
                     key={color}
                     color={color}
                     selected={selected.includes(color)}
@@ -255,7 +259,7 @@ function SelectedColorChip({ color, onRemove }: { color: string; onRemove: () =>
       <span>{color}</span>
       <button
         type="button"
-        onClick={onRemove}
+        data-parity-id="parity.app.app.src.components.item.color.fields.e1a0cdb1b3" onClick={onRemove}
         aria-label={`移除${color}`}
         className="ml-1 inline-flex h-7 w-7 items-center justify-center rounded-full text-ink/45 hover:bg-ink/5"
       >
@@ -266,11 +270,13 @@ function SelectedColorChip({ color, onRemove }: { color: string; onRemove: () =>
 }
 
 function SwatchButton({
+  "data-parity-id": dataParityId,
   color,
   selected,
   disabled,
   onClick,
 }: {
+  "data-parity-id"?: string;
   color: SystemColor;
   selected: boolean;
   disabled: boolean;
@@ -281,7 +287,7 @@ function SwatchButton({
     <button
       type="button"
       disabled={disabled}
-      onClick={onClick}
+      data-parity-id={dataParityId ?? "parity.app.app.src.components.item.color.fields.7742d84635"} onClick={onClick}
       data-color-swatch={color}
       data-color-selected={selected}
       data-color-disabled={disabled}

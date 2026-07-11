@@ -62,7 +62,7 @@ export function GarmentImage({
 
   if (onClick) {
     return (
-      <button type="button" onClick={onClick} className="w-full h-full">
+      <button type="button" data-parity-id="parity.app.app.src.components.garment.image.13df1429db" onClick={onClick} className="w-full h-full">
         {img}
       </button>
     );

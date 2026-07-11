@@ -2,7 +2,7 @@
 <!--
   DO NOT EDIT BY HAND.
   Generated from docs/designs/wardrobe-ui-spec.md by scripts/generate-ui-spec-preview.mjs.
-  Source SHA256: a1269db1fd883cf729e9e3bea593aa38d5fe7aa5160897e11315150c89ffe3cf
+  Source SHA256: 179f6f62cbaf088dbc66c6289adcb0ac9333ee36466c488a1a8716002e5fbe5a
 -->
 <html lang="zh-CN">
 <head>
@@ -838,7 +838,7 @@
           <div class="meta-row">
             <span class="pill active">v0.2-final</span>
             <span class="pill">Markdown 唯一事实源</span>
-            <span class="pill">Source SHA256 a1269db1fd88</span>
+            <span class="pill">Source SHA256 179f6f62cbaf</span>
           </div>
           <h1>衣橱穿搭助手 UI 规范</h1>
           <p>本页由规范 Markdown 自动生成，用于快速走查页面框架、组件契约、通知样式和验收映射。</p>
@@ -1169,11 +1169,9 @@
     <div class="reference-notes"><span>视觉优化参考</span><ul><li>颜色色卡边线更淡，不像可编辑输入框。</li><li>label 统一 muted，长文本行高 1.5。</li><li>备注只调行高、字重和内边距，不新增说明块。</li></ul></div>
   </article></div></div><div class="module-copy"><p>本节用上面的规范拼出主要页面小稿，作为开发前快速对齐用。它不是新路由，也不替代 <code>Route 与页面状态矩阵</code>。</p>
 <ul><li>衣橱首页：顶部 glass、筛选、瀑布流、底部导航、FAB。</li><li>衣物详情：3:4 主图、胶片栏、名称属性直接落在底层、色卡、温度条。</li><li>单品录入：两步流程、选图、缩略图、裁切/旋转入口、底部操作栏。</li><li>套装首页：周历横滑、套装缩略图、计划入口。</li><li>种草首页：商品图、状态、加入衣橱/已买/不感兴趣入口。</li><li>设置页：账号、MiniMax、试穿画像、位置、诊断等列表入口。</li><li>本节必须用真实业务流截图作为结构底图，覆盖衣橱、套装、种草、设置及其已捕获的详情/子页面；每张图都要标明页面识别和视觉优化参考，不得用自画卡片替代生产结构。</li></ul></div></section>
-<section class="section" id="17-验收与测试映射"><h2>17. 验收与测试映射</h2><div class="module-visual" aria-label="17. 验收与测试映射 视觉示意">
-      <div class="test-board">
-        <span>ui-spec-preview</span><span>ui-token-contract</span><span>ui-overlay-contract</span>
-        <span>app-route</span><span>detail-shell</span><span>color-catalog</span>
-      </div></div><div class="module-copy"><div class="table-wrap"><table><thead><tr><th>变更范围</th><th>必跑脚本 / 检查</th></tr></thead><tbody><tr><td>路由/返回</td><td><code>npm run test:logic:app-route</code></td></tr><tr><td>详情框架/媒体</td><td><code>npm run test:logic:detail-shell</code></td></tr><tr><td>组件复用</td><td><code>npm run test:logic:component-reuse</code></td></tr><tr><td>色卡</td><td><code>npm run test:logic:color-catalog</code></td></tr><tr><td>温度范围</td><td><code>npm run test:logic:temperature-confidence</code></td></tr><tr><td>录入流程</td><td><code>npm run test:logic:garment-intake-multi-image</code>、<code>npm run test:logic:intake-entry-crop-regression</code>、<code>npm run test:logic:intake-fullscreen-layout</code></td></tr><tr><td>多选/批量删除</td><td><code>npm run test:logic:catalog-multi-select</code>、<code>npm run test:logic:catalog-multi-select-integration</code></td></tr><tr><td>设置页窄屏</td><td><code>npm run test:logic:ui-overflow</code></td></tr><tr><td>静态 HTML 规范</td><td>Playwright 打开 <code>docs/designs/wardrobe-ui-spec.html</code>，检查桌面和 390px 无横向溢出</td></tr></tbody></table></div>
+<section class="section" id="17-验收与测试映射"><h2>17. 验收与测试映射</h2><div class="module-copy"><h3>Android edge-to-edge 与安全区</h3><div class="part-visual" data-visual="generic-part"><div class="visual-card"><b>Android edge-to-edge 与安全区</b><span>此小节必须配合对应视觉示意。</span></div></div>
+<ul><li>Android 15+ 与异形屏统一使用系统 <code>WindowInsetsCompat.Type.systemBars()</code>，由原生层发布 <code>--android-safe-area-top</code>、<code>--android-safe-area-bottom</code>；禁止按品牌、机型或固定像素补丁适配。</li><li>Web 页面取 <code>max(env(safe-area-inset-*), var(--android-safe-area-*))</code>。顶部玻璃壳位于状态栏下方，底部页面背景延伸到手势区，固定操作栏内容位于导航 inset 之上。</li><li>冷启动、页面直达、系统相册返回和后台恢复均重新申请 inset；状态栏与导航栏保持透明并使用适合浅色页面的深色系统图标。</li></ul>
+<div class="table-wrap"><table><thead><tr><th>变更范围</th><th>必跑脚本 / 检查</th></tr></thead><tbody><tr><td>路由/返回</td><td><code>npm run test:logic:app-route</code></td></tr><tr><td>详情框架/媒体</td><td><code>npm run test:logic:detail-shell</code></td></tr><tr><td>组件复用</td><td><code>npm run test:logic:component-reuse</code></td></tr><tr><td>色卡</td><td><code>npm run test:logic:color-catalog</code></td></tr><tr><td>温度范围</td><td><code>npm run test:logic:temperature-confidence</code></td></tr><tr><td>录入流程</td><td><code>npm run test:logic:garment-intake-multi-image</code>、<code>npm run test:logic:intake-entry-crop-regression</code>、<code>npm run test:logic:intake-fullscreen-layout</code></td></tr><tr><td>多选/批量删除</td><td><code>npm run test:logic:catalog-multi-select</code>、<code>npm run test:logic:catalog-multi-select-integration</code></td></tr><tr><td>设置页窄屏</td><td><code>npm run test:logic:ui-overflow</code></td></tr><tr><td>静态 HTML 规范</td><td>Playwright 打开 <code>docs/designs/wardrobe-ui-spec.html</code>，检查桌面和 390px 无横向溢出</td></tr></tbody></table></div>
 <p>人工视觉检查至少覆盖：</p>
 <ul><li>360px / 390px / 430px 宽度。</li><li>顶部 glass、底部导航、Toast 同屏。</li><li>瀑布流滚动时顶部遮罩。</li><li>录入两步、裁切/旋转、失败草稿、部分保存确认。</li><li>详情页颜色色卡、温度条、媒体胶片栏。</li></ul></div></section>
     </main>

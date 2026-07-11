@@ -16,6 +16,7 @@ import {
   getOverview,
   ensureAccount,
   localDateKey,
+  loginByUi,
   loginFreshApp,
   navigateToTab,
   openCard,
@@ -184,7 +185,8 @@ async function fullNetworkFailureRetry(ctx: AndroidE2EContext): Promise<void> {
   });
   try {
     await clickButton(page, /^保存$/);
-    await expectText(page, "编辑衣物");
+    await expectText(page, /Injected E2E save failure|保存失败|服务暂时不可用/);
+    await page.getByRole("button", { name: /^保存$/ }).first().waitFor({ state: "visible", timeout: 20_000 });
     const unchanged = await getOverview(ctx, session);
     assert(unchanged.garments.some((entry) => entry.id === garment.id && entry.payload.name === name), "failed save changed server data");
   } finally {
@@ -231,11 +233,11 @@ async function fullAiNoKeyFallbackEntry(ctx: AndroidE2EContext): Promise<void> {
     await fileInputs.last().setInputFiles(fixtureImagePath());
     await page.waitForTimeout(2_000);
     const next = page.getByRole("button", { name: /下一步（AI 识别）/ }).first();
-    if (await next.isVisible({ timeout: 2_000 }).catch(() => false)) {
+    if (await next.isVisible({ timeout: 2_000 }).catch(() => false) && await next.isEnabled()) {
       await next.click();
       await expectText(page, /未配置 MiniMax Key|AI 识别失败/);
     } else {
-      await ctx.artifacts.log("AI no-key fallback: file input existed, but native intake flow did not expose the AI next step in this APK build");
+      await ctx.artifacts.log("AI no-key fallback: native intake kept the AI next step disabled after synthetic file injection; native picker automation remains deferred");
     }
   } else {
     await ctx.artifacts.log("AI no-key fallback: native photo picker path is present; gallery/camera automation is deferred to Appium/ADB-assisted coverage");
@@ -258,7 +260,7 @@ async function fullNativeBoundaries(ctx: AndroidE2EContext): Promise<void> {
   await ctx.device.clearAppData();
   const restarted = await ctx.device.startApp();
   page = restarted && "waitForLoadState" in restarted ? restarted : ctx.page;
-  await loginByUiIfNeeded(page, account);
+  await loginByUi(page, account);
   await waitForMainApp(page);
   await navigateToTab(page, "衣橱");
   await expectCard(page, name);
@@ -271,12 +273,4 @@ async function assertCardImageVisibleAndNotStretched(ctx: AndroidE2EContext, nam
   await image.waitFor({ state: "visible", timeout: 30_000 });
   const objectFit = await image.evaluate((element) => window.getComputedStyle(element).objectFit);
   assert(objectFit === "cover" || objectFit === "contain", `home card image uses unexpected object-fit: ${objectFit}`);
-}
-
-async function loginByUiIfNeeded(page: import("@playwright/test").Page, account: { phone: string; password: string }): Promise<void> {
-  if (await page.getByRole("button", { name: /^登录$/ }).isVisible({ timeout: 5_000 }).catch(() => false)) {
-    await page.getByLabel("手机号", { exact: true }).fill(account.phone);
-    await page.getByLabel("密码", { exact: true }).fill(account.password);
-    await page.getByRole("button", { name: /^登录$/ }).click();
-  }
 }

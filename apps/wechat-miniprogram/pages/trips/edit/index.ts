@@ -6,6 +6,7 @@ import {
   type MiniCalendarPlanType,
 } from "../../../services/workspace";
 import { enumerateDateRange, localDateKey } from "../../../utils/calendar";
+import { getCapsuleGeometry } from "../../../utils/capsule-layout";
 
 type ToneOption = { tone: MiniCalendarPlanTone; className: string };
 type DatasetEvent = { currentTarget: { dataset: Record<string, unknown> } };
@@ -208,8 +209,5 @@ function validateDateRange(startDate: string, endDate: string): string {
 }
 
 function getTitleTopRpx(): number {
-  const systemInfo = wx.getSystemInfoSync();
-  const menuRect = (wx as unknown as { getMenuButtonBoundingClientRect?: () => { top?: number } }).getMenuButtonBoundingClientRect?.();
-  const windowWidth = (systemInfo as WechatMiniprogram.SystemInfo & { windowWidth?: number }).windowWidth || 375;
-  return Math.round((menuRect?.top ?? (systemInfo.statusBarHeight ?? 0) + 8) * (750 / windowWidth));
+  return getCapsuleGeometry().topRpx;
 }
