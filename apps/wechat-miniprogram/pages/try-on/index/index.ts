@@ -12,9 +12,11 @@ import {
   type MiniGarment,
   type MiniTryOnProfile,
 } from "../../../services/workspace";
+import { getCapsuleGeometry } from "../../../utils/capsule-layout";
 
 Page({
   data: {
+    contentTopRpx: 0,
     loading: false,
     error: "",
     needsSettings: false,
@@ -29,6 +31,7 @@ Page({
   },
   onLoad() {
     wx.setNavigationBarTitle({ title: "AI 试穿" });
+    this.setData({ contentTopRpx: getCapsuleGeometry().contentTopRpx });
     void this.load();
   },
   async load(this: any) {

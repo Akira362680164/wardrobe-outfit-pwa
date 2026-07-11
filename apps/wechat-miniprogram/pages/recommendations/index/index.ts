@@ -5,6 +5,7 @@ import {
   fetchTryOnProfile,
   type MiniGarment,
 } from "../../../services/workspace";
+import { getCapsuleGeometry } from "../../../utils/capsule-layout";
 
 type Recommendation = {
   title: string;
@@ -15,6 +16,7 @@ type Recommendation = {
 };
 Page({
   data: {
+    contentTopRpx: 0,
     loading: false,
     error: "",
     summary: "",
@@ -32,6 +34,7 @@ Page({
   },
   onLoad() {
     wx.setNavigationBarTitle({ title: "场景穿搭推荐" });
+    this.setData({ contentTopRpx: getCapsuleGeometry().contentTopRpx });
     void this.load();
   },
   async load(this: any) {
