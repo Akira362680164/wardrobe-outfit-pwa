@@ -1,10 +1,11 @@
 import { fetchGarments, fetchOutfits, fetchWishlist, type MiniGarment, type MiniOutfit, type MiniWishlistItem } from "../../../services/workspace";
+import { getCapsuleGeometry } from "../../../utils/capsule-layout";
 
 type Row = { id: string; name: string; subtitle: string; badge: string; value: string; imageUrl: string };
 
 Page({
-  data: { loading: false, error: "", monthLabel: "", itemCount: 0, outfitCount: 0, monthlyOutfitCount: 0, monthlyOutfitEvents: 0, monthlyItemCount: 0, monthlyItemEvents: 0, idleCount: 0, recentRows: [] as Row[], idleRows: [] as Row[], purchaseRows: [] as Row[] },
-  onLoad() { void this.load(); },
+  data: { contentTopRpx: 0, loading: false, error: "", monthLabel: "", itemCount: 0, outfitCount: 0, monthlyOutfitCount: 0, monthlyOutfitEvents: 0, monthlyItemCount: 0, monthlyItemEvents: 0, idleCount: 0, recentRows: [] as Row[], idleRows: [] as Row[], purchaseRows: [] as Row[] },
+  onLoad(this: any) { this.setData({ contentTopRpx: getCapsuleGeometry().contentTopRpx }); void this.load(); },
   async load(this: any) { this.setData({ loading: true, error: "" }); try { const [items, outfits, wishlist] = await Promise.all([fetchGarments(), fetchOutfits(), fetchWishlist()]); this.setData(buildStatistics(items, outfits, wishlist)); } catch (error) { this.setData({ loading: false, error: error instanceof Error ? error.message : "统计读取失败" }); } },
 });
 

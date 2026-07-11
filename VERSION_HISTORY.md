@@ -5373,3 +5373,12 @@
 - **改动文件**：`package.json`、`package-lock.json`、`apps/wechat-miniprogram/generated/build-info.ts`、`VERSION_HISTORY.md`。
 - **验证结果**：版本命令与 `build-info:miniprogram:generate/check` 通过；升版前合并态 App/小程序类型、API 114 项、生产构建和 parity 静态门禁均通过。
 - **未验证风险**：本条仅锁定候选版本；固定签名 APK、Android 双设备、微信 CLI/真机和最终报告将在后续收口记录中补齐。
+## 2026-07-11 / v2.1.14-test / Codex — 搜索与统计真机胶囊避让
+
+- **执行 Agent**：Codex（未触发 subagent；最终集成真机回归中发现并修复）。
+- **目的**：修复新搜索页首行输入区与微信右上胶囊重叠，并预防同结构统计页发生相同问题。
+- **版本变更**：无；保持 `2.1.14-test`。
+- **改动文件**：小程序衣橱搜索/统计 `index.ts` 与 `index.wxml`、`VERSION_HISTORY.md`。
+- **改动说明**：两页统一消费 `getCapsuleGeometry().contentTopRpx`，整块业务内容从胶囊下方开始；不使用机型固定 padding，搜索和统计口径仍完全遵循 APP 方案。
+- **验证结果**：小程序 typecheck、衣橱专项回归及 `git diff --check` 通过；修复前 MEIZU 21 Pro 真机截图已确认重叠，修复后预览复测在下一条收口记录给出。
+- **未验证风险**：等待修复包真机视觉复测后关闭。

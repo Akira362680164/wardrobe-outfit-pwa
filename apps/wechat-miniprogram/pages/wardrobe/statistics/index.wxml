@@ -1,1 +1,11 @@
-<view class="page-shell stats-page"><view wx:if="{{loading}}" class="status-card">正在统计...</view><view wx:elif="{{error}}" class="status-card"><view>读取失败：{{error}}</view><button bindtap="load">重试</button></view><block wx:else><view class="month-copy">{{monthLabel}} · {{itemCount}} 件衣物 · {{outfitCount}} 套</view><view class="card"><view class="title">本月概览</view><view class="overview"><view class="metric"><text>{{monthlyOutfitCount}}</text><text>穿过套装</text><text>{{monthlyOutfitEvents}} 次</text></view><view class="metric"><text>{{monthlyItemCount}}</text><text>穿过衣物</text><text>{{monthlyItemEvents}} 次</text></view><view class="metric"><text>{{idleCount}}</text><text>闲置衣物</text><text>45天+</text></view></view></view><stat-section title="最近常穿" rows="{{recentRows}}" empty="本月还没有穿着记录" /><stat-section title="很久没穿" rows="{{idleRows}}" empty="暂时没有 45 天以上未穿的衣物" /><stat-section title="购买后使用率" rows="{{purchaseRows}}" empty="暂无从种草转入衣橱的记录" /></block></view>
+<view class="page-shell stats-page" style="padding-top: {{contentTopRpx}}rpx;">
+  <view wx:if="{{loading}}" class="status-card">正在统计...</view>
+  <view wx:elif="{{error}}" class="status-card"><view>读取失败：{{error}}</view><button bindtap="load">重试</button></view>
+  <block wx:else>
+    <view class="month-copy">{{monthLabel}} · {{itemCount}} 件衣物 · {{outfitCount}} 套</view>
+    <view class="card"><view class="title">本月概览</view><view class="overview"><view class="metric"><text>{{monthlyOutfitCount}}</text><text>穿过套装</text><text>{{monthlyOutfitEvents}} 次</text></view><view class="metric"><text>{{monthlyItemCount}}</text><text>穿过衣物</text><text>{{monthlyItemEvents}} 次</text></view><view class="metric"><text>{{idleCount}}</text><text>闲置衣物</text><text>45天+</text></view></view></view>
+    <stat-section title="最近常穿" rows="{{recentRows}}" empty="本月还没有穿着记录" />
+    <stat-section title="很久没穿" rows="{{idleRows}}" empty="暂时没有 45 天以上未穿的衣物" />
+    <stat-section title="购买后使用率" rows="{{purchaseRows}}" empty="暂无从种草转入衣橱的记录" />
+  </block>
+</view>
