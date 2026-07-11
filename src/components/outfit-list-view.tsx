@@ -1199,7 +1199,8 @@ export function OutfitListView({
 	          onSelectOutfitForDate={openPlanOutfitSelect}
 	          onViewOutfit={(outfitId) => openOutfitDetail(outfitId, "planning_calendar")}
 	          onMarkWornToday={handleMarkPlanEntryWorn}
-            onDeleteEntry={handleDeletePlanEntry}
+	          onCancelWear={handleCancelOutfitWearForDate}
+	          onDeleteEntry={handleDeletePlanEntry}
 	          onOpenCalendarPlan={openPlanDetail}
 	          onMessage={onMessage}
 	        />

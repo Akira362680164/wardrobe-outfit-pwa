@@ -1,3 +1,14 @@
+## 2026-07-11 / v2.1.13-test / Codex — 月历取消已穿入口接线修复
+
+- **执行 Agent**：Codex 主协调 agent；用户在 MEIZU 21 Pro 真机同步观察并确认 7 月 11 日“已穿”状态无法取消。
+- **目的**：修复 App 月历日卡已正确显示“实际已穿”，但因月历入口漏传取消回调而不渲染“取消已穿”的问题。
+- **版本变更**：无；保持 `2.1.13-test`，需重建固定签名测试 APK 后定向复测。
+- **运行证据**：Android parity 用例读取到展开卡 `height=129.714px`、`opacity=1`，文本包含“实际已穿”和目标套装，但 `cancelWornCount=0`；源码确认周视图已传 `onCancelWear={handleCancelOutfitWearForDate}`，月历入口缺失同一属性。
+- **改动文件**：`src/components/outfit-list-view.tsx`、`scripts/android-e2e/suites/parity-regressions.ts`、`VERSION_HISTORY.md`。
+- **改动说明**：月历复用现有 `handleCancelOutfitWearForDate`；定向回归增加稳定等待、DOM 状态证据和低速点击策略，避免魅族系统手势把 WebView 坐标点击误识别为上滑最近任务。
+- **验证结果**：`npm run typecheck`、online repository packing 单测 2/2、Android parity regression 单测 3/3、`git diff --check` 通过；打包清单 `STATIC-OUTFITS-003` 在同一真机低速重跑通过。
+- **未验证风险**：本条提交后的 APK 尚未重建；`STATIC-OUTFITS-004` 必须在新 APK 上完成 UI 入口、服务端计划恢复、wornDates 清除与 wear-event 删除读回后才能标 VERIFIED。Android 底部系统导航栏纯白与页面 ambient 背景不一致另记视觉缺陷，尚未修复。
+
 ## 2026-07-11 / v2.1.13-test / Codex — 计划详情同步后的 revision 刷新修复
 
 - **执行 Agent**：Codex 主协调 agent；一个文件隔离 subagent 提供四项 Android 定向回归 suite，主 agent 接入 runner 并在 MEIZU 21 Pro 真机发现运行时缺陷。

@@ -92,11 +92,24 @@ function futureDateKey(): string {
 
 async function packingForceStopReadback(ctx: AndroidE2EContext): Promise<void> {
   const account = await ensureAccount(ctx); const session = await ctx.api.login(account); const date = localDateKey();
-  const item = { id: "packing-e2e", calendarPlanId: "fixture", label: "上衣", category: "衣物", quantity: 1, checked: false, sourceItemIds: [] };
-  const trip = await createTrip(ctx, session, uniqueName("parity打包"), date, [item]);
+  const trip = await createTrip(ctx, session, uniqueName("parity打包"), date);
+  const item = { id: "packing-e2e", calendarPlanId: trip.id, source: "manual", label: "上衣", category: "衣物", quantity: 1, checked: false, sourceItemIds: [] };
+  await ctx.api.request(session, `/api/workspace/trip-plans/${trip.id}/checklist`, {
+    method: "PUT",
+    body: { clientMutationId: randomUUID(), expectedRevision: trip.revision, items: [item] },
+  });
   let page = await loginFreshApp(ctx, account); await openPlan(page, date, trip);
-  await page.locator('[data-parity-id="parity.app.app.src.components.outfit.plan.detail.view.2494d0b8fa"]').click();
-  await page.locator('[data-parity-id^="parity.app.app.src.components.plan.packing.checklist.view.714a3e5eb0."]').first().click();
+  const openPacking = page.locator('[data-parity-id="parity.app.app.src.components.outfit.plan.detail.view.2494d0b8fa"]');
+  await openPacking.scrollIntoViewIfNeeded();
+  await ctx.artifacts.writeJson("parity-packing-open-bounds.json", await openPacking.boundingBox());
+  await ctx.artifacts.screenshot("parity-packing-before-open", page);
+  await page.waitForTimeout(1_500);
+  await openPacking.evaluate((element) => (element as HTMLButtonElement).click());
+  await page.waitForTimeout(1_500);
+  const firstPackingItem = page.locator('[data-parity-id^="parity.app.app.src.components.plan.packing.checklist.view.714a3e5eb0."]').first();
+  await firstPackingItem.scrollIntoViewIfNeeded();
+  await ctx.artifacts.screenshot("parity-packing-before-toggle", page);
+  await firstPackingItem.click();
   await page.locator('[data-parity-id="parity.app.app.src.components.plan.packing.checklist.view.a4c8d5520e"]').click();
   await page.locator('[data-parity-id="parity.app.app.src.components.plan.packing.checklist.view.d026691b40"]').fill("充电器");
   await page.locator('[data-parity-id="parity.app.app.src.components.plan.packing.checklist.view.bba5519b83"]').click();
@@ -117,8 +130,24 @@ async function cancelWornRestoration(ctx: AndroidE2EContext): Promise<void> {
   const plan = await createEntity(ctx, session, "outfit-plans", outfitPlanPayload(String(outfit.payload.legacyOutfitId), date));
   await postAction(ctx, session, `/api/workspace/outfits/${outfit.id}/mark-worn`, { clientMutationId: randomUUID(), expectedRevision: outfit.revision, wornAt: `${date}T12:00:00.000Z` });
   const page = await loginFreshApp(ctx, account); await openCalendar(page);
-  await page.locator(`[data-parity-id="parity.app.app.src.components.outfit.planning.calendar.view.1803ec14dd.${date}"]`).click();
-  await page.locator('[data-parity-id="parity.app.app.src.components.outfit.plan.day.card.297ab020da"]').click();
+  const cancelWorn = page.locator('[data-parity-id="parity.app.app.src.components.outfit.plan.day.card.297ab020da"]');
+  const expandedCard = page.locator('[data-parity-id="parity.app.app.src.components.outfit.planning.calendar.view.681fe1f11b"]');
+  await page.waitForTimeout(1_500);
+  for (let attempt = 0; attempt < 2 && await cancelWorn.count() === 0; attempt += 1) {
+    await page.locator(`[data-parity-id="parity.app.app.src.components.outfit.planning.calendar.view.1803ec14dd.${date}"]`).evaluate((element) => (element as HTMLElement).click());
+    await page.waitForTimeout(1_500);
+  }
+  const expandedCardState = await expandedCard.count() > 0 ? await expandedCard.first().evaluate((element) => ({
+    text: element.textContent,
+    inlineStyle: element.getAttribute("style"),
+    computedHeight: getComputedStyle(element).height,
+    opacity: getComputedStyle(element).opacity,
+    parityIds: Array.from(element.querySelectorAll("[data-parity-id]"), (node) => node.getAttribute("data-parity-id")),
+  })) : null;
+  await ctx.artifacts.writeJson("parity-cancel-worn-dom.json", { expandedCardCount: await expandedCard.count(), cancelWornCount: await cancelWorn.count(), expandedCardState });
+  await ctx.artifacts.screenshot("parity-cancel-worn-before", page);
+  await cancelWorn.evaluate((element) => (element as HTMLButtonElement).click());
+  await page.waitForTimeout(1_500);
   const restored = await waitForOverview(ctx, session, (value) => {
     try { assertCancelWornRestored(value, outfit.id, plan.id, date); return true; } catch { return false; }
   }, "cancel-worn did not restore state");
