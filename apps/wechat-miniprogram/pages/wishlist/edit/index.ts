@@ -9,6 +9,7 @@ import { MINI_SEASON_CATALOG, MINI_STYLE_CATALOG, MINI_WISHLIST_STATUS_LABELS } 
 import { colorLabel, recognizeGarmentImage } from "../../../services/ai";
 import { cropImageWithNativeEditor, uploadPreparedImageAssets, type AssetMutation } from "../../../services/assets";
 import { createClientMutationId } from "../../../services/workspace";
+import { HttpError } from "../../../services/http";
 
 const COLOR_MODES = [
   { value: "single", label: "单主色" },
@@ -61,6 +62,9 @@ Page({
     productUrl: "",
     notes: "",
     imageAssetMutations: [] as AssetMutation[],
+    dirty: false,
+    conflict: false,
+    draftMutationId: "",
   },
 
   onLoad(this: any, query?: { id?: string }) {
@@ -110,13 +114,13 @@ Page({
 
   updateField(this: any, event: WechatMiniprogram.InputEvent) {
     const field = (event as unknown as { currentTarget?: { dataset?: { field?: string } } }).currentTarget?.dataset?.field;
-    if (typeof field === "string") this.setData({ [field]: event.detail.value });
+    if (typeof field === "string") { this.setData({ [field]: event.detail.value }); this.markDirty(); }
   },
 
   chooseValue(this: any, event: any) {
     const field = event.currentTarget.dataset.field;
     const value = event.currentTarget.dataset.value;
-    if (typeof field === "string" && typeof value === "string") this.setData({ [field]: value });
+    if (typeof field === "string" && typeof value === "string") { this.setData({ [field]: value }); this.markDirty(); }
   },
 
   chooseCategory(this: any, event: any) {
@@ -129,6 +133,7 @@ Page({
       subcategory,
       subcategoryOptions: buildSubcategoryChoices(nextCategory, subcategory),
     });
+    this.markDirty();
   },
 
   chooseSubcategory(this: any, event: any) {
@@ -139,13 +144,14 @@ Page({
       subcategory,
       subcategoryOptions: buildSubcategoryChoices(this.data.category, subcategory),
     });
+    this.markDirty();
   },
 
   chooseColor(this: any, event: any) {
     const role = event.currentTarget.dataset.role;
     const value = event.currentTarget.dataset.value;
     if (typeof value !== "string") return;
-    this.setData(role === "accent" ? { accentColor: value } : { primaryColor: value });
+    this.setData(role === "accent" ? { accentColor: value } : { primaryColor: value }); this.markDirty();
   },
 
   toggleArray(this: any, event: any) {
@@ -157,12 +163,13 @@ Page({
     const optionKey = field === "seasons" ? "seasonsOptions" : field === "styles" ? "styleOptions" : "";
     const source = field === "seasons" ? MINI_SEASON_CATALOG : field === "styles" ? MINI_STYLE_CATALOG : [];
     this.setData({ [field]: next, ...(optionKey ? { [optionKey]: buildChoices(source, next) } : {}) });
+    this.markDirty();
   },
 
   updateNumber(this: any, event: any) {
     const field = event.currentTarget.dataset.field;
     const value = Number(event.detail.value);
-    if (typeof field === "string" && Number.isFinite(value)) this.setData({ [field]: value });
+    if (typeof field === "string" && Number.isFinite(value)) { this.setData({ [field]: value }); this.markDirty(); }
   },
 
   async recropImage(this: any) {
@@ -172,13 +179,24 @@ Page({
     if (!cropped) return;
     const uploaded = await uploadPreparedImageAssets({ clientMutationId: createClientMutationId(), entityType: "wishlistItem", fieldName: "imageDataUrl", originalPath: item.imageUrl, processedPath: cropped });
     this.setData({ item: { ...item, imageUrl: cropped }, imageAssetMutations: uploaded.assetMutations });
+    this.markDirty();
   },
 
   async reRecognize(this: any) {
     const item = this.data.item as MiniWishlistDetail | null;
     if (!item?.imageUrl) return;
-    try { const tag = await recognizeGarmentImage(item.imageUrl); this.setData({ name: tag.candidateNames[0] || this.data.name, category: tag.category || this.data.category, subcategory: tag.subcategory || "", primaryColor: colorLabel(tag.colors), seasons: tag.seasons, seasonsOptions: buildChoices(MINI_SEASON_CATALOG, tag.seasons), styles: tag.styles, styleOptions: buildChoices(MINI_STYLE_CATALOG, tag.styles), notes: tag.notes || this.data.notes }); }
+    try { const tag = await recognizeGarmentImage(item.imageUrl); this.setData({ name: tag.candidateNames[0] || this.data.name, category: tag.category || this.data.category, subcategory: tag.subcategory || "", primaryColor: colorLabel(tag.colors), seasons: tag.seasons, seasonsOptions: buildChoices(MINI_SEASON_CATALOG, tag.seasons), styles: tag.styles, styleOptions: buildChoices(MINI_STYLE_CATALOG, tag.styles), notes: tag.notes || this.data.notes }); this.markDirty(); }
     catch (error) { wx.showToast({ title: error instanceof Error ? error.message : "重新识别失败", icon: "none" }); }
+  },
+
+  markDirty(this: any) {
+    this.setData({ dirty: true, conflict: false, draftMutationId: createClientMutationId() });
+    (wx as typeof wx & { enableAlertBeforeUnload?: (options: { message: string }) => void }).enableAlertBeforeUnload?.({ message: "继续编辑或放弃修改" });
+  },
+
+  requestBack(this: any) {
+    if (!this.data.dirty) { wx.navigateBack({ delta: 1 }); return; }
+    wx.showModal({ title: "放弃本次修改？", content: "继续编辑会保留全部字段；只有确认放弃才清除本页草稿。", cancelText: "继续编辑", confirmText: "放弃修改", success: (result) => { if (result.confirm) { (wx as typeof wx & { disableAlertBeforeUnload?: () => void }).disableAlertBeforeUnload?.(); wx.navigateBack({ delta: 1 }); } } });
   },
 
   async save(this: any) {
@@ -219,12 +237,18 @@ Page({
         notes: this.data.notes.trim() || undefined,
         aiTag: item.rawPayload.aiRecognition as Record<string, unknown> | undefined,
         assetMutations: this.data.imageAssetMutations,
+        clientMutationId: this.data.draftMutationId || createClientMutationId(),
       });
+      (wx as typeof wx & { disableAlertBeforeUnload?: () => void }).disableAlertBeforeUnload?.();
       wx.showToast({ title: "已保存", icon: "success" });
       wx.redirectTo({ url: `/pages/wishlist/detail/index?id=${encodeURIComponent(item.id)}` });
     } catch (error) {
-      wx.showToast({ title: error instanceof Error ? error.message : "保存失败", icon: "none" });
-      this.setData({ saving: false });
+      if (error instanceof HttpError && error.statusCode === 409) {
+        const latest = await fetchWishlistDetail(item.id).catch(() => null);
+        this.setData({ saving: false, conflict: true, item: latest ? { ...item, revision: latest.revision, rawPayload: latest.rawPayload } : item });
+        return;
+      }
+      wx.showToast({ title: error instanceof Error ? error.message : "保存失败", icon: "none" }); this.setData({ saving: false });
     }
   },
 });

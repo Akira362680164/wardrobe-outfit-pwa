@@ -264,3 +264,4 @@
 }
 .more-button { width: 72rpx; height: 64rpx; margin: 0; padding: 0; border-radius: var(--radius-control); color: var(--color-ink); background: rgba(255,255,252,.72); font-size: 28rpx; line-height: 64rpx; letter-spacing: 2rpx; }
 .more-button::after { border: 0; }
+.converted-missing{border:2rpx solid rgba(193,76,67,.28);background:rgba(193,76,67,.06)}

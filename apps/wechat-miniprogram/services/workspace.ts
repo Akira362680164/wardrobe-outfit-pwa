@@ -83,6 +83,8 @@ export interface MiniGarment {
   fitNotes: string;
   imageUrl: string;
   updatedAt: string;
+  createdAt: string;
+  wornDates: string[];
 }
 
 export interface MiniGarmentDetail extends MiniGarment {
@@ -158,6 +160,10 @@ export interface MiniWishlistItem {
   statusText: string;
   imageUrl: string;
   updatedAt: string;
+  evaluation: string;
+  evaluationText: string;
+  convertedAt: string;
+  convertedGarmentId: string;
 }
 
 export interface MiniOutfitDetail extends MiniOutfit {
@@ -182,7 +188,7 @@ export interface MiniWishlistDetail extends MiniWishlistItem {
   productUrl: string;
   notes: string;
   inspirationImages: Array<{ id: string; fieldName: string; imageUrl: string; caption: string }>;
-  convertedGarmentId: string;
+  convertedGarmentMissing: boolean;
 }
 
 export interface MiniClosetLocation {
@@ -355,6 +361,7 @@ export interface UpdateWishlistInput {
   aiTag?: Record<string, unknown>;
   referenceOutfitImages?: Array<{ id: string; fieldName: string; caption?: string; createdAt?: string; updatedAt?: string }>;
   assetMutations?: AssetMutation[];
+  clientMutationId?: string;
 }
 
 export interface SaveCalendarPlanInput {
@@ -538,6 +545,8 @@ export async function fetchWishlistDetail(id: string): Promise<MiniWishlistDetai
   const colors = colorList(payload.colors);
   const colorParts = parseColorParts(payload.colors);
   const styles = summary.styleLabels.slice(0, 3).join(" / ");
+  const convertedGarmentId = stringValue(payload.convertedGarmentId, "");
+  const convertedGarmentMissing = convertedGarmentId ? !(await garmentExists(convertedGarmentId)) : false;
   return {
     ...summary,
     rawPayload: payload,
@@ -557,8 +566,14 @@ export async function fetchWishlistDetail(id: string): Promise<MiniWishlistDetai
     productUrl: stringValue(payload.productUrl, ""),
     notes: stringValue(payload.notes, "无备注"),
     inspirationImages: await resolveInspirationImages(response.data),
-    convertedGarmentId: stringValue(payload.convertedGarmentId, ""),
+    convertedGarmentId,
+    convertedGarmentMissing,
   };
+}
+
+async function garmentExists(id: string): Promise<boolean> {
+  try { await workspaceRequest(`/api/workspace/garments/${encodeURIComponent(id)}`); return true; }
+  catch (error) { return (error as { statusCode?: number }).statusCode !== 404 ? true : false; }
 }
 
 export async function createGarment(input: CreateGarmentInput): Promise<WorkspaceEntity> {
@@ -731,7 +746,7 @@ export async function updateWishlistItem(input: UpdateWishlistInput): Promise<Mi
     method: "PUT",
     path: `/api/workspace/wishlist/${encodeURIComponent(input.id)}`,
     data: {
-      clientMutationId: createClientMutationId(),
+      clientMutationId: input.clientMutationId ?? createClientMutationId(),
       expectedRevision: input.expectedRevision,
       payload: {
         ...input.currentPayload,
@@ -1023,6 +1038,8 @@ async function toMiniGarment(entity: WorkspaceEntity): Promise<MiniGarment> {
     fitNotes: firstString(payload.fitNotes),
     imageUrl: await resolveImageUrl(entity, "imageDataUrl", payload),
     updatedAt: entity.updatedAt,
+    createdAt: entity.createdAt,
+    wornDates: stringList(payload.wornDates),
   };
 }
 
@@ -1064,6 +1081,7 @@ async function toMiniWishlistItem(entity: WorkspaceEntity): Promise<MiniWishlist
   const styles = stringList(payload.styles);
   const temperatureRange = normalizeTemperatureRange(payload.temperatureRange);
   const fitGender = firstString(payload.fitGender, payload.fit);
+  const evaluation = firstString(payload.evaluation, payload.assessment, payload.purchaseRecommendation) || "unrated";
   return {
     id: entity.id,
     revision: entity.revision,
@@ -1097,6 +1115,10 @@ async function toMiniWishlistItem(entity: WorkspaceEntity): Promise<MiniWishlist
     statusText: wishlistStatusText(payload),
     imageUrl: await resolveImageUrl(entity, "imageDataUrl", payload),
     updatedAt: entity.updatedAt,
+    evaluation,
+    evaluationText: ({ buy: "值得买", consider: "再看看", avoid: "不建议", unrated: "未评估" } as Record<string, string>)[evaluation] ?? evaluation,
+    convertedAt: stringValue(payload.convertedAt, ""),
+    convertedGarmentId: stringValue(payload.convertedGarmentId, ""),
   };
 }
 

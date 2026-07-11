@@ -187,7 +187,7 @@ Page({
   },
 
   openSearch() {
-    wx.navigateTo({ url: `/pages/wardrobe/search/index?scope=${encodeURIComponent(this.data.wardrobeScope)}&category=${encodeURIComponent(this.data.activeCategory)}` });
+    wx.navigateTo({ url: "/pages/wardrobe/search/index" });
   },
 
   openStatistics() {

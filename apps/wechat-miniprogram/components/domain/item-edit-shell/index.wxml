@@ -1,6 +1,9 @@
 <view class="item-edit-shell">
   <view class="item-edit-shell__topbar">
-    <navigator class="item-edit-shell__back" open-type="navigateBack" aria-label="返回">
+    <button wx:if="{{guardedBack}}" class="item-edit-shell__back" bindtap="onBack" aria-label="返回">
+      <ui-icon name="chevron-left" size="44" color="currentColor" />
+    </button>
+    <navigator wx:else class="item-edit-shell__back" open-type="navigateBack" aria-label="返回">
       <ui-icon name="chevron-left" size="44" color="currentColor" />
     </navigator>
     <view class="item-edit-shell__title-wrap">

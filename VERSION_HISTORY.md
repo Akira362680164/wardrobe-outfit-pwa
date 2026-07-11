@@ -1,3 +1,13 @@
+## 2026-07-11 / v2.1.13-test / Codex — 小程序种草异常状态与 APP 搜索统计口径校准
+
+- **执行 Agent**：Codex（未触发 subagent；从 Task 7 提交创建独立 `codex/parity-mini-wishlist-state-20260711` worktree，并按用户补充要求回看 APP 当前实现校准搜索/统计）。
+- **目的**：补齐种草 converted garment 缺失、评估筛选、搭配语义、脏草稿与 409 冲突恢复，同时纠正初版小程序搜索/统计与 APP 口径不一致。
+- **版本变更**：无；保持 `2.1.13-test`。
+- **改动文件**：种草首页/详情/编辑、共享编辑壳、`services/workspace.ts`；衣橱搜索/统计、共享统计段；两组专项测试、`package.json`、`VERSION_HISTORY.md`。
+- **改动说明**：已转换单品被删除时显示专门状态并禁用无效撤销；补评估筛选、归档/恢复、打开 converted item 及搭配/相似内容语义；编辑返回明确“继续编辑/放弃修改”，只有放弃才清草稿；409 保留全部字段，只刷新 revision/raw payload，未变化草稿重试复用 mutationId，字段变化才换 ID。搜索按 APP 始终覆盖全部衣橱、不继承首页筛选，仅名称/颜色查询，位置/类别为页内筛选，保留 10 条历史；统计按 APP 展示本月套装/衣物穿着次数、最近常穿、45 天闲置及种草转衣橱后的购买使用率。
+- **验证结果**：小程序 typecheck、衣橱回归、种草回归、共享详情合同及 `git diff --check` 通过。
+- **未验证风险**：真实 409、converted garment 删除、搜索返回状态、写操作服务端读回和统计样本仍需 Task 13 fixture/CLI 覆盖；当前标记 FIXED_UNVERIFIED。
+
 ## 2026-07-11 / v2.1.13-test / Codex — 小程序衣橱搜索、统计、多选与 AI 诊断闭环
 
 - **执行 Agent**：Codex（未触发 subagent；从 Task 6 提交创建独立 `codex/parity-mini-wardrobe-tools-20260711` worktree）。

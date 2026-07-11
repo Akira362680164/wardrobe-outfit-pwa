@@ -10,11 +10,16 @@ const card = fs.readFileSync("apps/wechat-miniprogram/components/domain/catalog-
 
 for (const page of ["pages/wardrobe/search/index", "pages/wardrobe/statistics/index"]) assert.ok(app.pages.includes(page));
 assert.doesNotMatch(indexTs, /搜索暂未开放/);
-assert.match(search, /searchHistory/);
+assert.match(search, /wardrobe-search-history/);
+assert.match(search, /wx\.setStorageSync/);
+assert.doesNotMatch(search, /query\?\.scope|query\?\.category/);
 assert.match(search, /locationId === this\.data\.scope/);
 assert.match(search, /item\.category === this\.data\.category/);
-assert.match(stats, /usageRate/);
-assert.match(stats, /idle/);
+assert.match(stats, /monthlyOutfitCount/);
+assert.match(stats, /monthlyItemCount/);
+assert.match(stats, /days >= 45/);
+assert.match(stats, /convertedGarmentId/);
+assert.match(stats, /usesPer30Days|per30/);
 assert.match(card, /bindlongpress="onLongPress"/);
 assert.match(indexTs, /confirmBatchDelete/);
 assert.match(indexTs, /deleteWorkspaceEntity/);
