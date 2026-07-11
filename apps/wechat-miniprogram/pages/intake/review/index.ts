@@ -5,6 +5,7 @@ import { batchCreateGarments, createWishlistItem, type BatchCreateGarmentInput, 
 import {
   getIntakeKind,
   getIntakeQueue,
+  clearSavedIntakeQueueItems,
   setIntakeKind,
   setLastCreatedGarmentId,
   setLastIntakeSaveResult,
@@ -207,6 +208,14 @@ Page({
     this.refreshQueue(this.data.currentIndex + 1);
   },
 
+  toggleCurrentSelection(this: any) {
+    const item = this.currentQueueItem();
+    if (!item || item.status === "recognizing" || item.status === "saving") return;
+    if (item.status === "confirmed") updateIntakeQueueItem(item.clientItemId, { status: "needs_confirm" });
+    else this.confirmCurrent();
+    this.refreshQueue(this.data.currentIndex);
+  },
+
   async saveAll(this: any) {
     const confirmed = getIntakeQueue().filter((item) => item.status === "confirmed");
     if (!confirmed.length) {
@@ -241,7 +250,13 @@ Page({
     setLastCreatedGarmentId(kind === "garment" ? savedIds[0] ?? "" : "");
     this.setData({ saving: false });
     this.refreshQueue(this.data.currentIndex);
-    wx.redirectTo({ url: "/pages/intake/result/index" });
+    clearSavedIntakeQueueItems();
+    if (failedItemIds.length) {
+      this.refreshQueue(0);
+      this.setData({ error: `已保存 ${savedIds.length} 件，${failedItemIds.length} 件失败，请修改后重试` });
+      return;
+    }
+    wx.switchTab({ url: kind === "wishlist" ? "/pages/wishlist/index/index" : "/pages/wardrobe/index/index" });
   },
 
   currentQueueItem(this: any): IntakeQueueItem | null {

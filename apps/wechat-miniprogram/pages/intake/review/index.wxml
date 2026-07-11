@@ -116,9 +116,9 @@
 
       <view wx:if="{{error}}" class="error-text">{{error}}</view>
 
-      <view wx:if="{{current.status === 'needs_confirm' || current.status === 'failed'}}" class="review-actions">
-        <button class="primary-button action-button" disabled="{{saving || current.status === 'recognizing' || current.status === 'saving' || current.status === 'confirmed'}}" bindtap="confirmCurrent">
-          确认本件
+      <view class="review-actions">
+        <button class="{{current.status === 'confirmed' ? 'secondary-button' : 'primary-button'}} action-button" disabled="{{saving || current.status === 'recognizing' || current.status === 'saving'}}" bindtap="toggleCurrentSelection">
+          {{current.status === 'confirmed' ? '取消保存本件' : '选择保存本件'}}
         </button>
       </view>
     </view>

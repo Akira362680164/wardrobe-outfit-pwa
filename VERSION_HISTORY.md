@@ -1,3 +1,13 @@
+## 2026-07-11 / v2.1.13-test / Codex — 小程序单品与种草录入状态机对齐 APP
+
+- **执行 Agent**：Codex（未触发 subagent；从唯一资产层提交创建独立 `codex/parity-mini-intake-20260711` worktree）。
+- **目的**：按用户确认的 APP 步骤 1/2 流程统一小程序单品与种草录入，移除选图即上传、自制裁剪面板式网格和保存后中间结果页。
+- **版本变更**：无；保持 `2.1.13-test`，本批不上传体验版。
+- **改动文件**：小程序 `pages/intake/camera/*`、`pages/intake/review/index.{ts,wxml}`、`app.json`、`scripts/parity/tests/mini-intake-state-machine.test.ts`、`package.json`、`VERSION_HISTORY.md`。
+- **改动说明**：步骤 1 固定为大图、横向缩略图、当前图原生裁切/旋转、单张移除、继续拍照、继续图库、清空、下一步；选图只入内存，点击下一步才逐张上传并在本页展示进度，识别结束一次进入步骤 2；原生裁剪取消保留全部草稿；返回/取消统一“退出本次录入？”与“继续录入”；步骤 2 支持逐项选择/取消，保存数取真实 confirmed 数；全成功直接回衣橱/种草，部分失败只保留失败项；批量结果页已从 app 路由移除。
+- **验证结果**：小程序 typecheck 通过；资产生命周期测试通过；`test:logic:miniprogram-intake-state-machine` 通过，覆盖选图不上传、下一步上传后识别再跳转、强制布局动作、退出文案、逐项选择、成功直返及结果页移除；`git diff --check` 通过。
+- **未验证风险**：修复版尚未在真实微信页面检查基准截图级间距、原生裁切内的旋转控件、系统返回拦截和多图上传/识别/部分失败服务端读回；单品与种草两条真机链路留 Task 13 关闭，当前标记 FIXED_UNVERIFIED。
+
 ## 2026-07-11 / v2.1.13-test / Codex — 小程序唯一图片临时资产生命周期
 
 - **执行 Agent**：Codex（未触发 subagent；从 Task 2 已验证提交创建独立 `codex/parity-mini-assets-20260711` worktree）。
