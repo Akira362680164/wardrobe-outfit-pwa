@@ -31,8 +31,8 @@ export function ConfirmActionSheet({ open, title, description, confirmLabel, can
     {children}
     {error ? <p role="alert" className="mt-3 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-600">{error}</p> : null}
     <div className="mt-4 grid grid-cols-2 gap-2">
-      <AsyncActionButton label={cancelLabel} tone="neutral" disabled={submitting} onClick={onClose} />
-      <AsyncActionButton label={confirmLabel} loadingLabel={`${confirmLabel}中…`} tone={tone} loading={submitting} onClick={onConfirm} />
+      <AsyncActionButton label={cancelLabel} tone="neutral" disabled={submitting} data-parity-id="parity.app.app.src.components.dialogs.confirm.action.sheet.ab99c876dd" onClick={onClose} />
+      <AsyncActionButton label={confirmLabel} loadingLabel={`${confirmLabel}中…`} tone={tone} loading={submitting} data-parity-id="parity.app.app.src.components.dialogs.confirm.action.sheet.e9c85107f7" onClick={onConfirm} />
     </div>
   </MotionSheet>;
 }

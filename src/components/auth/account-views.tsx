@@ -105,7 +105,7 @@ export function AccountManagementView({
       <div className="grid gap-2">
         <button
           type="button"
-          onClick={onChangePassword}
+          data-parity-id="parity.app.app.src.components.auth.account.views.403282308f" onClick={onChangePassword}
           className="flex h-12 items-center justify-between rounded-lg border border-ink/10 bg-white px-4 text-sm font-semibold"
         >
           <span className="inline-flex items-center gap-2"><Lock size={16} aria-hidden="true" /> 修改密码</span>
@@ -116,10 +116,10 @@ export function AccountManagementView({
             <p className="text-sm font-semibold text-clay">退出登录？</p>
             <p className="text-xs text-ink/60">退出后将清空当前登录会话；重新登录后会从服务器读取衣橱数据。</p>
             <div className="grid grid-cols-2 gap-2">
-              <button type="button" onClick={() => setConfirmingLogout(false)} disabled={auth.isBusy} className="h-10 rounded-lg border border-ink/10 text-sm disabled:opacity-60">取消</button>
+              <button type="button" data-parity-id="parity.app.app.src.components.auth.account.views.6d20ff8799" onClick={() => setConfirmingLogout(false)} disabled={auth.isBusy} className="h-10 rounded-lg border border-ink/10 text-sm disabled:opacity-60">取消</button>
               <button
                 type="button"
-                onClick={async () => { setConfirmingLogout(false); await auth.onLogout(); }}
+                data-parity-id="parity.app.app.src.components.auth.account.views.fe4acff3e3" onClick={async () => { setConfirmingLogout(false); await auth.onLogout(); }}
                 disabled={auth.isBusy}
                 className="inline-flex h-10 items-center justify-center gap-2 rounded-lg bg-clay text-sm font-semibold text-white disabled:opacity-60"
               >
@@ -129,14 +129,14 @@ export function AccountManagementView({
             </div>
           </div>
         ) : (
-          <button type="button" onClick={() => setConfirmingLogout(true)} className="inline-flex h-12 items-center justify-center gap-2 rounded-lg border border-ink/10 bg-white text-sm font-semibold">
+          <button type="button" data-parity-id="parity.app.app.src.components.auth.account.views.a6b890e10f" onClick={() => setConfirmingLogout(true)} className="inline-flex h-12 items-center justify-center gap-2 rounded-lg border border-ink/10 bg-white text-sm font-semibold">
             <LogOut size={16} aria-hidden="true" />退出登录
           </button>
         )}
       </div>
       <button
         type="button"
-        onClick={onDeleteAccount}
+        data-parity-id="parity.app.app.src.components.auth.account.views.42eb4fb5ac" onClick={onDeleteAccount}
         className="mx-auto mt-6 flex min-h-11 items-center bg-transparent px-4 text-sm font-medium text-red-600 underline decoration-red-600/70 underline-offset-4 active:text-red-700"
       >
         注销账号
@@ -241,7 +241,7 @@ export function ChangePasswordView({
   return (
     <form
       className="grid min-w-0 grid-cols-[minmax(0,1fr)] gap-3.5"
-      onSubmit={async (event) => {
+      data-parity-id="parity.app.app.src.components.auth.account.views.d784e7bb96" onSubmit={async (event) => {
         event.preventDefault();
         setMessage(null);
         if (newPassword.length < 8) {
@@ -282,21 +282,21 @@ export function ChangePasswordView({
       <div className="grid grid-cols-2 gap-2 rounded-lg bg-white p-1">
         <button
           type="button"
-          onClick={() => { setMode("current"); setMessage(null); }}
+          data-parity-id="parity.app.app.src.components.auth.account.views.26c700e3e0" onClick={() => { setMode("current"); setMessage(null); }}
           className={`h-10 rounded-lg text-sm font-semibold ${mode === "current" ? "bg-[#2F6B4F] text-white" : "border border-ink/10 bg-white text-ink/55"}`}
         >
           当前密码
         </button>
         <button
           type="button"
-          onClick={() => { setMode("email"); setMessage(null); }}
+          data-parity-id="parity.app.app.src.components.auth.account.views.8fde9a8cfa" onClick={() => { setMode("email"); setMessage(null); }}
           className={`h-10 rounded-lg text-sm font-semibold ${mode === "email" ? "bg-[#2F6B4F] text-white" : "border border-ink/10 bg-white text-ink/55"}`}
         >
           邮箱验证码
         </button>
       </div>
       {mode === "current" ? (
-        <PasswordField label="当前密码" value={currentPassword} onChange={setCurrentPassword} autoComplete="current-password" />
+        <PasswordField label="当前密码" value={currentPassword} data-parity-id="parity.app.app.src.components.auth.account.views.4d316b2d8d" onChange={setCurrentPassword} autoComplete="current-password" />
       ) : (
         <section className="grid gap-2 rounded-lg border border-ink/10 bg-white px-3 py-3">
           <div className="flex items-center justify-between gap-3">
@@ -306,7 +306,7 @@ export function ChangePasswordView({
             </div>
             <button
               type="button"
-              onClick={sendChangeCode}
+              data-parity-id="parity.app.app.src.components.auth.account.views.62684c1a0d" onClick={sendChangeCode}
               disabled={!emailMasked || !auth.accessToken || sendingCode || countdown > 0}
               className="inline-flex h-9 shrink-0 items-center justify-center rounded-lg bg-denim px-3 text-xs font-semibold text-white disabled:bg-denim/35"
             >
@@ -318,7 +318,7 @@ export function ChangePasswordView({
               邮箱验证码
               <input
                 value={emailCode}
-                onChange={(event) => setEmailCode(event.target.value)}
+                data-parity-id="parity.app.app.src.components.auth.account.views.801a5126de" onChange={(event) => setEmailCode(event.target.value)}
                 inputMode="numeric"
                 autoComplete="one-time-code"
                 className="h-11 w-full rounded-lg border border-ink/10 bg-white px-3 text-base outline-none focus:border-denim"
@@ -327,8 +327,8 @@ export function ChangePasswordView({
           ) : null}
         </section>
       )}
-      <PasswordField label="新密码" value={newPassword} onChange={setNewPassword} autoComplete="new-password" />
-      <PasswordField label="确认新密码" value={confirmPassword} onChange={setConfirmPassword} autoComplete="new-password" />
+      <PasswordField label="新密码" value={newPassword} data-parity-id="parity.app.app.src.components.auth.account.views.3800000c38" onChange={setNewPassword} autoComplete="new-password" />
+      <PasswordField label="确认新密码" value={confirmPassword} data-parity-id="parity.app.app.src.components.auth.account.views.a097e02bc6" onChange={setConfirmPassword} autoComplete="new-password" />
       <button
         type="submit"
         disabled={auth.isBusy}
@@ -344,7 +344,7 @@ export function ChangePasswordView({
 function SubPageHeader({ title, onBack }: { title: string; onBack: () => void }) {
   return (
     <header className="flex h-14 items-center gap-2 px-1 pt-2">
-      <button type="button" onClick={onBack} className="grid h-10 w-10 place-items-center ui-control-radius bg-transparent text-ink/65 active:scale-95" aria-label="返回">
+      <button type="button" data-parity-id="parity.app.app.src.components.auth.account.views.c6bfc649ca" onClick={onBack} className="grid h-10 w-10 place-items-center ui-control-radius bg-transparent text-ink/65 active:scale-95" aria-label="返回">
         <ChevronLeft size={20} aria-hidden="true" />
       </button>
       <h1 className="min-w-0 truncate text-xl font-bold tracking-tight">{title}</h1>
@@ -368,7 +368,7 @@ function PasswordField({
       {label}
       <input
         value={value}
-        onChange={(event) => onChange(event.target.value)}
+        data-parity-id="parity.app.app.src.components.auth.account.views.f612c52b87" onChange={(event) => onChange(event.target.value)}
         type="password"
         autoComplete={autoComplete}
         className="h-11 w-full rounded-lg border border-ink/10 bg-white px-3 text-base outline-none focus:border-denim"

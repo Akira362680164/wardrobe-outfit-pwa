@@ -46,7 +46,7 @@ export function FormalityWarmthStepper({ label, value, onChange, review, disable
       <div className="inline-flex h-11 items-center gap-3 rounded-lg border border-ink/10 bg-white px-3">
         <button
           type="button"
-          onClick={dec}
+          data-parity-id="parity.app.app.src.components.item.formality.warmth.stepper.333e06a023" onClick={dec}
           disabled={disabled || v <= 1}
           aria-label={`${label} 减一`}
           className="grid h-7 w-7 place-items-center rounded-md text-ink/60 hover:bg-mist disabled:opacity-30"
@@ -58,7 +58,7 @@ export function FormalityWarmthStepper({ label, value, onChange, review, disable
         </span>
         <button
           type="button"
-          onClick={inc}
+          data-parity-id="parity.app.app.src.components.item.formality.warmth.stepper.96ec77e2b8" onClick={inc}
           disabled={disabled || v >= 5}
           aria-label={`${label} 加一`}
           className="grid h-7 w-7 place-items-center rounded-md text-ink/60 hover:bg-mist disabled:opacity-30"

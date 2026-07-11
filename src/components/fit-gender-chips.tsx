@@ -67,6 +67,7 @@ export function FitGenderChips({
           const active = option === current;
           return (
             <button
+              data-parity-id={`parity.app.app.src.components.fit.gender.chips.471b168c42.${option}`}
               key={option}
               type="button"
               role="radio"

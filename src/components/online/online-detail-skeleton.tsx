@@ -4,7 +4,7 @@ export function OnlineDetailSkeleton({ onBack }: { onBack: () => void }) {
   return (
     <div className="min-h-[100dvh] bg-mist text-ink" aria-label="正在加载详情" role="status">
       <header className="flex h-14 items-center px-3 pt-[env(safe-area-inset-top)]">
-        <button type="button" onClick={onBack} aria-label="返回" className="grid h-11 w-11 place-items-center rounded-full text-ink/70">
+        <button type="button" data-parity-id="parity.app.app.src.components.online.online.detail.skeleton.c0e62ce375" onClick={onBack} aria-label="返回" className="grid h-11 w-11 place-items-center rounded-full text-ink/70">
           <ChevronLeft aria-hidden="true" className="h-6 w-6" />
         </button>
       </header>

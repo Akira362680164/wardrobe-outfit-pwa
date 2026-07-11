@@ -981,7 +981,7 @@ export function WardrobeApp({ cloudAuth }: { cloudAuth?: WardrobeCloudAuth } = {
           <div className="surface sticky top-4 p-3">
             <nav className="grid gap-1">
               {viewItems.map((view) => (
-                <NavButton key={view.key} view={view} active={navigation.mainTab === view.key} onClick={() => {
+                <NavButton key={view.key} data-parity-id={`parity.app.app.src.components.wardrobe.app.1f8eaa7f23.${view.key}`} parityId={`parity.app.app.src.components.wardrobe.app.1f8eaa7f23.${view.key}`} view={view} active={navigation.mainTab === view.key} onClick={() => {
                   const routeBefore = navigation.route;
                   const fromMainTab = navigation.mainTab;
                   recordDiagnosticEvent("nav_clicked", {
@@ -1258,7 +1258,7 @@ export function WardrobeApp({ cloudAuth }: { cloudAuth?: WardrobeCloudAuth } = {
         {shouldShowGlobalCreate ? (
           <button
             type="button"
-            onClick={() => setShowCreateSheet(true)}
+            data-parity-id="parity.app.app.src.components.wardrobe.app.33eb0ef1bd" onClick={() => setShowCreateSheet(true)}
             className="fixed right-5 z-40 grid h-12 w-12 place-items-center rounded-full bg-denim p-0 leading-none text-white shadow-lg transition-transform active:scale-95 lg:hidden" style={{ bottom: "calc(env(safe-area-inset-bottom) + 6rem)" }}
             aria-label="新建"
             data-testid="global-create"
@@ -1278,6 +1278,7 @@ export function WardrobeApp({ cloudAuth }: { cloudAuth?: WardrobeCloudAuth } = {
               return (
                 <motion.button
                   key={action.type}
+                  data-parity-id={`parity.app.app.src.components.wardrobe.app.8a55b3b72b.${action.type}`}
                   type="button"
                   whileTap={{ scale: 0.98 }}
                   onClick={() => handleCreateAction(action.type)}
@@ -1313,7 +1314,7 @@ export function WardrobeApp({ cloudAuth }: { cloudAuth?: WardrobeCloudAuth } = {
 
 	      {!hideMobileNav ? <nav className="app-floating-nav fixed z-30 lg:hidden">
         <div className="grid grid-cols-4 gap-1">
-          {viewItems.map((view) => (<MobileNavButton key={view.key} view={view} active={navigation.mainTab === view.key} onClick={() => {
+          {viewItems.map((view) => (<MobileNavButton key={view.key} data-parity-id={`parity.app.app.src.components.wardrobe.app.cdedbdd588.${view.key}`} parityId={`parity.app.app.src.components.wardrobe.app.cdedbdd588.${view.key}`} view={view} active={navigation.mainTab === view.key} onClick={() => {
             const routeBefore = navigation.route;
             const fromMainTab = navigation.mainTab;
             recordDiagnosticEvent("nav_clicked", {
@@ -1355,8 +1356,8 @@ export function WardrobeApp({ cloudAuth }: { cloudAuth?: WardrobeCloudAuth } = {
         <p className="text-base font-semibold mb-1">是否退出应用？</p>
         <p className="text-xs text-ink/50 mb-4">退出应用后将丢失所有未保存内容</p>
         <div className="grid grid-cols-2 gap-2">
-          <button type="button" onClick={() => setShowExitDialog(false)} className="h-10 rounded-lg border border-ink/10 text-sm">取消</button>
-          <button type="button" onClick={() => { try { App.exitApp(); } catch { window.close(); } }} className="h-10 rounded-lg bg-red-600 text-sm font-semibold text-white">退出</button>
+          <button type="button" data-parity-id="parity.app.app.src.components.wardrobe.app.09e65fa5b3" onClick={() => setShowExitDialog(false)} className="h-10 rounded-lg border border-ink/10 text-sm">取消</button>
+          <button type="button" data-parity-id="parity.app.app.src.components.wardrobe.app.7cb1f8a008" onClick={() => { try { App.exitApp(); } catch { window.close(); } }} className="h-10 rounded-lg bg-red-600 text-sm font-semibold text-white">退出</button>
         </div>
       </MotionSheet>
 
@@ -1406,7 +1407,7 @@ export function WardrobeApp({ cloudAuth }: { cloudAuth?: WardrobeCloudAuth } = {
               <button
                 type="button"
                 className="h-9 shrink-0 self-center ui-control-radius bg-denim px-3 text-xs font-semibold text-white active:scale-95"
-                onClick={openMiniMaxKeySettings}
+                data-parity-id="parity.app.app.src.components.wardrobe.app.4a31b88935" onClick={openMiniMaxKeySettings}
               >
                 前往设置
               </button>
@@ -1416,7 +1417,7 @@ export function WardrobeApp({ cloudAuth }: { cloudAuth?: WardrobeCloudAuth } = {
               title="关闭提示"
               aria-label="关闭提示"
               className="grid h-11 w-11 shrink-0 self-center place-items-center ui-control-radius text-ink/45 transition-colors active:bg-ink/5 hover:text-ink/70"
-              onClick={clearMessage}
+              data-parity-id="parity.app.app.src.components.wardrobe.app.456d91ab8b" onClick={clearMessage}
             >
               <X size={16} aria-hidden="true" />
             </button>
@@ -2540,7 +2541,7 @@ function WardrobeView(props: WardrobeViewProps) {
               accept="image/jpeg,image/png,image/webp,image/heic,image/heif,.heic,.heif"
               multiple
               className="hidden"
-              onChange={async (e) => {
+              data-parity-id="parity.app.app.src.components.wardrobe.app.226a575c85" onChange={async (e) => {
                 const files = e.target.files;
                 if (!files || files.length === 0 || typeof viewingItem.id !== "number") {
                   if (referenceOutfitGalleryInputRef.current) referenceOutfitGalleryInputRef.current.value = "";
@@ -2604,10 +2605,10 @@ function WardrobeView(props: WardrobeViewProps) {
               <p className="text-base font-semibold mb-1">删除这张灵感图？</p>
               <p className="text-xs text-ink/60 mb-4">该操作不可恢复。</p>
               <div className="grid grid-cols-2 gap-2">
-                <button type="button" onClick={() => setViewingRefDeleteConfirm(null)} className="h-10 rounded-lg border border-ink/10 text-sm">取消</button>
+                <button type="button" data-parity-id="parity.app.app.src.components.wardrobe.app.5cc43724c7" onClick={() => setViewingRefDeleteConfirm(null)} className="h-10 rounded-lg border border-ink/10 text-sm">取消</button>
                 <button
                   type="button"
-                  onClick={async () => {
+                  data-parity-id="parity.app.app.src.components.wardrobe.app.ae9784a150" onClick={async () => {
                     const target = viewingRefDeleteConfirm;
                     if (!target || typeof viewingItem.id !== "number") {
                       setViewingRefDeleteConfirm(null);
@@ -2643,16 +2644,16 @@ function WardrobeView(props: WardrobeViewProps) {
                     className="w-full rounded-xl border border-ink/10 px-3 py-2 text-sm resize-none"
                     rows={3}
                     value={refCaptionDraft}
-                    onChange={(e) => setRefCaptionDraft(e.target.value)}
+                    data-parity-id="parity.app.app.src.components.wardrobe.app.d5332a9d93" onChange={(e) => setRefCaptionDraft(e.target.value)}
                     placeholder="添加一段说明..."
                     maxLength={100}
                   />
                   <p className="text-[10px] text-ink/30 mt-1">{refCaptionDraft.length}/100</p>
                   <div className="grid grid-cols-2 gap-2 mt-3">
-                    <button type="button" onClick={() => setEditingRefCaption(null)} className="h-10 rounded-xl border border-ink/10 text-sm">取消</button>
+                    <button type="button" data-parity-id="parity.app.app.src.components.wardrobe.app.1f27e40cdd" onClick={() => setEditingRefCaption(null)} className="h-10 rounded-xl border border-ink/10 text-sm">取消</button>
                     <button
                       type="button"
-                      onClick={async () => {
+                      data-parity-id="parity.app.app.src.components.wardrobe.app.84d954847d" onClick={async () => {
                         if (typeof viewingItem.id !== "number" || !editingRefCaption) return;
                         const caption = refCaptionDraft.trim() || undefined;
                         const now = new Date().toISOString();
@@ -2713,8 +2714,8 @@ function WardrobeView(props: WardrobeViewProps) {
           <p className="text-base font-semibold mb-1">是否退出编辑？</p>
           <p className="text-xs text-ink/50 mb-4">将会丢失未保存的内容</p>
           <div className="grid grid-cols-2 gap-2">
-            <button type="button" onClick={() => setShowEditExitDialog(false)} className="h-10 rounded-lg border border-ink/10 text-sm">取消退出</button>
-            <button type="button" onClick={closeEditWithoutPrompt} className="h-10 rounded-lg bg-red-600 text-sm font-semibold text-white">确认退出</button>
+            <button type="button" data-parity-id="parity.app.app.src.components.wardrobe.app.100cbea8e8" onClick={() => setShowEditExitDialog(false)} className="h-10 rounded-lg border border-ink/10 text-sm">取消退出</button>
+            <button type="button" data-parity-id="parity.app.app.src.components.wardrobe.app.4e4462bb43" onClick={closeEditWithoutPrompt} className="h-10 rounded-lg bg-red-600 text-sm font-semibold text-white">确认退出</button>
           </div>
         </MotionSheet>
         {/* v0.9.9: 衣物详情页长按 1 秒裁切 (放在 viewingItem AnimatedPage 内部) */}
@@ -2844,7 +2845,7 @@ function WardrobeView(props: WardrobeViewProps) {
             <input
               autoFocus
               value={query}
-              onChange={(e) => setQuery(e.target.value)}
+              data-parity-id="parity.app.app.src.components.wardrobe.app.760ea157f0" onChange={(e) => setQuery(e.target.value)}
               onKeyDown={(e) => { if (e.key === "Enter" && query.trim()) applySearch(query.trim()); }}
               placeholder="搜索衣服名称、颜色"
               aria-label="搜索衣物"
@@ -2853,7 +2854,7 @@ function WardrobeView(props: WardrobeViewProps) {
           </label>
           <button
             type="button"
-            onClick={closeSearch}
+            data-parity-id="parity.app.app.src.components.wardrobe.app.c167c12f4b" onClick={closeSearch}
             aria-label="取消搜索"
             className="inline-flex h-11 shrink-0 items-center justify-center rounded-lg px-3 text-sm font-semibold text-denim active:bg-denim/8"
           >取消</button>
@@ -2871,18 +2872,20 @@ function WardrobeView(props: WardrobeViewProps) {
           <div className="flex gap-2">
             <select
               value={searchLocationFilter}
-              onChange={(e) => setSearchLocationFilter(e.target.value)}
+              data-parity-id="parity.app.app.src.components.wardrobe.app.d152b0ed6e" onChange={(e) => setSearchLocationFilter(e.target.value)}
               aria-label="按衣橱筛选"
               className="h-10 flex-1 min-w-0 rounded-lg border border-ink/10 bg-white px-3 text-xs"
             ><option value="all">全部衣橱</option>{locations.map((l) => (<option key={l.id} value={l.id}>{l.name}</option>))}</select>
             <select
               value={searchCategoryFilter}
+              data-parity-id="parity.app.app.src.components.wardrobe.app.49adce6b47"
               onChange={(e) => setSearchCategoryFilter(e.target.value as GarmentCategory | "all")}
               aria-label="按分类筛选"
               className="h-10 flex-1 min-w-0 rounded-lg border border-ink/10 bg-white px-3 text-xs"
             ><option value="all">全部类别</option>{categoryOptions.map((c) => (<option key={c} value={c}>{CATEGORY_LABELS[c]}</option>))}</select>
             <button
               type="button"
+              data-parity-id="parity.app.app.src.components.wardrobe.app.471a852a06"
               onClick={() => { if (query.trim()) applySearch(query.trim()); }}
               className="inline-flex h-10 shrink-0 items-center gap-1.5 rounded-lg bg-denim px-4 text-sm font-semibold text-white"
             ><Search size={15} aria-hidden="true" />搜索</button>
@@ -2894,6 +2897,7 @@ function WardrobeView(props: WardrobeViewProps) {
                 {searchHistory.map((h) => (
                   <button
                     key={h}
+                    data-parity-id={`parity.app.app.src.components.wardrobe.app.85ba06be29.${encodeURIComponent(h)}`}
                     type="button"
                     onClick={() => { setQuery(h); applySearch(h); }}
                     className="shrink-0 inline-flex h-8 items-center gap-1 rounded-full border border-ink/10 bg-white px-3 text-xs text-ink/60 hover:border-denim"
@@ -2927,6 +2931,7 @@ function WardrobeView(props: WardrobeViewProps) {
                 <div>
                   <select
                     title="状态"
+                    data-parity-id={`parity.app.app.src.components.wardrobe.app.d991517a3b.${item.id ?? item.name}`}
                     value={item.status}
                     onChange={(e) => onStatusChange(item, e.target.value as GarmentStatus)}
                     className="h-9 w-full min-w-0 rounded-lg border border-ink/10 bg-white px-2 text-xs"
@@ -2966,6 +2971,7 @@ function WardrobeView(props: WardrobeViewProps) {
         <div className="relative flex-1 min-w-0">
           <button
             ref={scopeTriggerRef}
+            data-parity-id="parity.app.app.src.components.wardrobe.app.c4eb28c908"
             type="button"
             onClick={() => setScopePopoverOpen((v) => !v)}
             aria-haspopup="listbox"
@@ -3009,6 +3015,7 @@ function WardrobeView(props: WardrobeViewProps) {
                     return (
                       <button
                         key={opt.id}
+                        data-parity-id={`parity.app.app.src.components.wardrobe.app.255d3df41b.${opt.id}`}
                         type="button"
                         role="option"
                         aria-selected={selected}
@@ -3046,7 +3053,7 @@ function WardrobeView(props: WardrobeViewProps) {
         {/* 搜索按钮：固定方形（不受 wardrobeScope 影响，点击进入全局搜索） */}
         <button
           type="button"
-          onClick={() => setIsSearchOpen(true)}
+          data-parity-id="parity.app.app.src.components.wardrobe.app.bb1d269a09" onClick={() => setIsSearchOpen(true)}
           aria-label="搜索衣物"
           title="搜索衣物"
           className="surface grid h-14 w-14 shrink-0 place-items-center ui-control-radius text-ink/65 active:bg-mist transition-colors"
@@ -3056,7 +3063,7 @@ function WardrobeView(props: WardrobeViewProps) {
 
         <button
           type="button"
-          onClick={() => setShowWearStatistics(true)}
+          data-parity-id="parity.app.app.src.components.wardrobe.app.2dfbfe1f7b" onClick={() => setShowWearStatistics(true)}
           aria-label="查看穿着统计"
           title="穿着统计"
           className="surface grid h-14 w-14 shrink-0 place-items-center ui-control-radius text-ink/65 active:bg-mist transition-colors"
@@ -3068,7 +3075,7 @@ function WardrobeView(props: WardrobeViewProps) {
             错误态刻意保持 clay 棕橙（不变成错误色），保持视觉一致性 */}
         <button
           type="button"
-          onClick={handleTopDiagnosisClick}
+          data-parity-id="parity.app.app.src.components.wardrobe.app.902639d5f3" onClick={handleTopDiagnosisClick}
           disabled={diagnosisState === "loading" || diagnosisState === "collapsed" || diagnosisState === "expanded"}
           title={
             diagnosisState === "loading"
@@ -3128,7 +3135,7 @@ function WardrobeView(props: WardrobeViewProps) {
         <div className="flex gap-2 overflow-x-auto hide-scrollbar pb-1">
           <button
             type="button"
-            onClick={() => setHomeCategoryFilter("all")}
+            data-parity-id="parity.app.app.src.components.wardrobe.app.009dd28727" onClick={() => setHomeCategoryFilter("all")}
             className={`shrink-0 inline-flex h-8 items-center ui-control-radius px-3 text-xs font-medium transition-colors ${
               homeCategoryFilter === "all"
                 ? "bg-denim text-white shadow-sm"
@@ -3140,7 +3147,7 @@ function WardrobeView(props: WardrobeViewProps) {
           {hiddenSelectedCat ? (
             <button
               type="button"
-              onClick={() => setHomeCategoryFilter("all")}
+              data-parity-id="parity.app.app.src.components.wardrobe.app.4bf13d2f8e" onClick={() => setHomeCategoryFilter("all")}
               aria-label={`已筛选 ${hiddenSelectedCat.label} ${hiddenSelectedCat.count}，点此清除`}
               className="shrink-0 inline-flex h-8 items-center gap-1 ui-control-radius bg-denim/10 pl-3 pr-2 text-xs font-medium text-denim"
             >
@@ -3154,6 +3161,7 @@ function WardrobeView(props: WardrobeViewProps) {
             return (
               <button
                 key={c.id}
+                data-parity-id={`parity.app.app.src.components.wardrobe.app.cd81f203b7.${c.id}`}
                 type="button"
                 onClick={() => setHomeCategoryFilter(c.id)}
                 className={`shrink-0 inline-flex h-8 items-center ui-control-radius px-3 text-xs font-medium transition-colors ${
@@ -3169,7 +3177,7 @@ function WardrobeView(props: WardrobeViewProps) {
               <button
                 ref={moreCatsTriggerRef}
                 type="button"
-                onClick={() => setMoreCatsOpen((v) => !v)}
+                data-parity-id="parity.app.app.src.components.wardrobe.app.9ed0b0bf95" onClick={() => setMoreCatsOpen((v) => !v)}
                 aria-haspopup="true"
                 aria-expanded={moreCatsOpen}
                 aria-label={hiddenSelectedCat ? `更多分类（当前选中：${hiddenSelectedCat.label} ${hiddenSelectedCat.count}）` : "更多分类"}
@@ -3196,6 +3204,7 @@ function WardrobeView(props: WardrobeViewProps) {
                     return (
                       <button
                         key={c.id}
+                        data-parity-id={`parity.app.app.src.components.wardrobe.app.aec4ee3c75.${c.id}`}
                         type="button"
                         onClick={() => { setHomeCategoryFilter(c.id); setMoreCatsOpen(false); }}
                         className={`inline-flex h-11 items-center justify-center ui-control-radius px-2 text-[11px] font-medium transition-colors ${
@@ -3226,7 +3235,7 @@ function WardrobeView(props: WardrobeViewProps) {
             <div className="flex shrink-0 items-center gap-1">
               <button
                 type="button"
-                onClick={runDiagnosis}
+                data-parity-id="parity.app.app.src.components.wardrobe.app.e676149d09" onClick={runDiagnosis}
                 disabled={isDiagnosing}
                 title={isDiagnosing ? "正在重新生成 AI 衣橱诊断" : "重新生成 AI 衣橱诊断"}
                 aria-label="重新生成 AI 衣橱诊断"
@@ -3241,7 +3250,7 @@ function WardrobeView(props: WardrobeViewProps) {
               </button>
               <button
                 type="button"
-                onClick={closeDiagnosis}
+                data-parity-id="parity.app.app.src.components.wardrobe.app.2fa03ab47e" onClick={closeDiagnosis}
                 title="关闭 AI 衣橱诊断"
                 aria-label="关闭 AI 衣橱诊断"
                 className="grid h-10 w-10 place-items-center rounded-lg text-ink/55 active:bg-mist transition-colors"
@@ -3291,7 +3300,7 @@ function WardrobeView(props: WardrobeViewProps) {
               </p>
               <button
                 type="button"
-                onClick={runDiagnosis}
+                data-parity-id="parity.app.app.src.components.wardrobe.app.c2837bf606" onClick={runDiagnosis}
                 className="mt-2.5 inline-flex h-9 items-center gap-1 rounded-lg border border-ink/10 bg-white px-3 text-xs font-semibold text-ink/75 active:bg-mist transition-colors"
                 aria-label="重新生成 AI 衣橱诊断"
               >
@@ -3318,7 +3327,7 @@ function WardrobeView(props: WardrobeViewProps) {
           {diagnosis && diagnosisState === "collapsed" && hasDiagnosisDetails ? (
             <button
               type="button"
-              onClick={() => setDiagnosisState("expanded")}
+              data-parity-id="parity.app.app.src.components.wardrobe.app.fda6b1d749" onClick={() => setDiagnosisState("expanded")}
               className="mt-3 inline-flex h-9 w-full items-center justify-center gap-1 rounded-lg border border-ink/10 bg-white text-xs font-semibold text-ink/65 active:bg-mist transition-colors"
               aria-label="查看 AI 衣橱诊断详情"
             >
@@ -3353,6 +3362,7 @@ function WardrobeView(props: WardrobeViewProps) {
               {/* 底部"收起"：和最后一个诊断卡片之间保留合理间距 */}
               <button
                 type="button"
+                data-parity-id="parity.app.app.src.components.wardrobe.app.3c053daea1"
                 onClick={() => setDiagnosisState("collapsed")}
                 className="mt-4 inline-flex h-9 w-full items-center justify-center gap-1 rounded-lg border border-ink/10 bg-white text-xs font-semibold text-ink/65 active:bg-mist transition-colors"
                 aria-label="收起 AI 衣橱诊断详情"
@@ -3366,7 +3376,7 @@ function WardrobeView(props: WardrobeViewProps) {
       ) : null}
 
       {allItems.length === 0 ? (
-        <div className="surface rounded-lg p-6"><div className="grid gap-4 sm:grid-cols-[1fr_auto] sm:items-center"><div><h2 className="text-xl font-semibold">还没有衣服</h2><p className="mt-1 text-sm text-ink/60">先录入几件常穿单品，推荐会立即可用。</p></div><div className="flex flex-wrap gap-2"><button type="button" onClick={onStartGarmentIntake} className="inline-flex h-11 items-center gap-2 rounded-lg bg-denim px-4 text-sm font-semibold text-white"><Camera size={17} />录入第一件</button><button type="button" onClick={onSeed} className="inline-flex h-11 items-center gap-2 rounded-lg border border-ink/10 bg-white px-4 text-sm font-semibold"><GalleryVerticalEnd size={17} />示例衣橱</button></div></div></div>
+        <div className="surface rounded-lg p-6"><div className="grid gap-4 sm:grid-cols-[1fr_auto] sm:items-center"><div><h2 className="text-xl font-semibold">还没有衣服</h2><p className="mt-1 text-sm text-ink/60">先录入几件常穿单品，推荐会立即可用。</p></div><div className="flex flex-wrap gap-2"><button type="button" data-parity-id="parity.app.app.src.components.wardrobe.app.3981a77a16" onClick={onStartGarmentIntake} className="inline-flex h-11 items-center gap-2 rounded-lg bg-denim px-4 text-sm font-semibold text-white"><Camera size={17} />录入第一件</button><button type="button" data-parity-id="parity.app.app.src.components.wardrobe.app.32d4f9680f" onClick={onSeed} className="inline-flex h-11 items-center gap-2 rounded-lg border border-ink/10 bg-white px-4 text-sm font-semibold"><GalleryVerticalEnd size={17} />示例衣橱</button></div></div></div>
       ) : null}
 
  <CatalogWaterfallGrid>
@@ -3400,7 +3410,7 @@ return (
     currentIdx={currentIdx}
     allItems={allItems}
     outfits={outfits}
-    onClick={() => openWardrobeItemDetail(item, { name: "wardrobe_home" })}
+    data-parity-id="parity.app.app.src.components.wardrobe.app.560d949754" onClick={() => openWardrobeItemDetail(item, { name: "wardrobe_home" })}
     onSwipe={(next) => {
     if (!hasMultiple) return;
     setWaterfallImageIndex((prev) => ({ ...prev, [itemKey]: next }));
@@ -3549,7 +3559,7 @@ function WardrobeEditPage({
       <div className="flex items-center gap-3 px-1">
         <button
           type="button"
-          onClick={onBack}
+          data-parity-id="parity.app.app.src.components.wardrobe.app.cc19ba5c89" onClick={onBack}
           className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-mist text-ink hover:bg-ink/10 transition-colors"
           aria-label="退出编辑"
         >
@@ -3559,7 +3569,7 @@ function WardrobeEditPage({
         {/* v0.9.28-dev: 顶部保存按钮 (与底部 in-flow 按钮走同一 onSave + isSaving + canSave) */}
         <button
           type="button"
-          onClick={onSave}
+          data-parity-id="parity.app.app.src.components.wardrobe.app.520c1f686c" onClick={onSave}
           disabled={!canSave}
           className="ml-auto inline-flex h-11 items-center gap-1.5 rounded-lg bg-denim px-4 text-sm font-semibold text-white shadow-sm disabled:bg-ink/18 disabled:text-ink/42"
         >
@@ -3583,7 +3593,7 @@ function WardrobeEditPage({
           <ItemField label="名称" required>
             <input
               value={draft.name}
-              onChange={(e) => onPatch({ name: e.target.value })}
+              data-parity-id="parity.app.app.src.components.wardrobe.app.9ad4c83ebd" onChange={(e) => onPatch({ name: e.target.value })}
               className="h-11 rounded-lg border border-ink/10 bg-white px-3 text-base outline-none focus:border-denim"
               placeholder="例如 阔腿牛仔裤"
             />
@@ -3605,7 +3615,7 @@ function WardrobeEditPage({
           <ItemField label="价格">
             <input
               value={draft.price != null ? String(draft.price) : ""}
-              onChange={(e) => {
+              data-parity-id="parity.app.app.src.components.wardrobe.app.331fabace0" onChange={(e) => {
                 const v = e.target.value.trim();
                 if (v === "") { onPatch({ price: undefined }); return; }
                 const n = Number(v);
@@ -3620,7 +3630,7 @@ function WardrobeEditPage({
           <ItemField label="商品链接">
             <input
               value={draft.productUrl ?? ""}
-              onChange={(e) => onPatch({ productUrl: e.target.value || undefined })}
+              data-parity-id="parity.app.app.src.components.wardrobe.app.7130adba9f" onChange={(e) => onPatch({ productUrl: e.target.value || undefined })}
               className="h-11 rounded-lg border border-ink/10 bg-white px-3 text-base outline-none focus:border-denim"
               placeholder="例如 https://item.taobao.com/..."
               inputMode="url"
@@ -3632,7 +3642,7 @@ function WardrobeEditPage({
           <ItemColorFields
             mode="edit"
             colors={draft.colors}
-            onChange={(colors) => onPatch({ colors })}
+            data-parity-id="parity.app.app.src.components.wardrobe.app.e884ef2976" onChange={(colors) => onPatch({ colors })}
           />
       </EditSectionCard>
 
@@ -3642,7 +3652,7 @@ function WardrobeEditPage({
             options={seasonOptions}
             labels={SEASON_LABELS}
             values={draft.seasons}
-            onChange={(values) => onPatch({ seasons: values as Season[] })}
+            data-parity-id="parity.app.app.src.components.wardrobe.app.4c9eb83163" onChange={(values) => onPatch({ seasons: values as Season[] })}
             maxSelected={4}
             selectedFirst
             onLimit={onLimit}
@@ -3652,31 +3662,31 @@ function WardrobeEditPage({
             options={styleOptions}
             labels={STYLE_LABELS}
             values={draft.styles}
-            onChange={(values) => onPatch({ styles: values as GarmentStyle[] })}
+            data-parity-id="parity.app.app.src.components.wardrobe.app.0e72e56f6c" onChange={(values) => onPatch({ styles: values as GarmentStyle[] })}
             maxSelected={5}
             selectedFirst
             onLimit={onLimit}
           />
           <TemperatureRangeSlider
             value={draft.temperatureRange}
-            onChange={(tr) => onPatch({ temperatureRange: tr })}
+            data-parity-id="parity.app.app.src.components.wardrobe.app.e44cb9808c" onChange={(tr) => onPatch({ temperatureRange: tr })}
           />
           <SelectableChipGroup
             title="版型倾向"
             options={["menswear", "womenswear", "unisex", "unknown"] as GarmentFitGender[]}
             labels={{ menswear: "男装", womenswear: "女装", unisex: "中性", unknown: "未判断" }}
             values={draft.fitGender ? [draft.fitGender] : []}
-            onChange={(values) => onPatch({ fitGender: (values[0] ?? "unknown") as GarmentFitGender })}
+            data-parity-id="parity.app.app.src.components.wardrobe.app.b549084473" onChange={(values) => onPatch({ fitGender: (values[0] ?? "unknown") as GarmentFitGender })}
             mode="single"
             maxSelected={1}
             selectedFirst
           />
-          <RangeField label="正式度" value={draft.formality ?? 3} onChange={(formality) => onPatch({ formality })} />
-          <RangeField label="保暖度" value={draft.warmth ?? 3} onChange={(warmth) => onPatch({ warmth })} />
+          <RangeField label="正式度" value={draft.formality ?? 3} data-parity-id="parity.app.app.src.components.wardrobe.app.801393ea55" onChange={(formality) => onPatch({ formality })} />
+          <RangeField label="保暖度" value={draft.warmth ?? 3} data-parity-id="parity.app.app.src.components.wardrobe.app.b66f847e36" onChange={(warmth) => onPatch({ warmth })} />
           <ItemField label="材质">
             <input
               value={draft.material ?? ""}
-              onChange={(e) => onPatch({ material: e.target.value || undefined })}
+              data-parity-id="parity.app.app.src.components.wardrobe.app.8592a4c13a" onChange={(e) => onPatch({ material: e.target.value || undefined })}
               className="h-11 rounded-lg border border-ink/10 bg-white px-3 text-base outline-none focus:border-denim"
               placeholder="例如 纯棉、羊毛混纺"
             />
@@ -3684,7 +3694,7 @@ function WardrobeEditPage({
           <ItemField label="版型说明" counter={`${(draft.fitNotes ?? "").length}/${FIT_NOTES_MAX_LEN}`}>
             <textarea
               value={draft.fitNotes ?? ""}
-              onChange={(e) => {
+              data-parity-id="parity.app.app.src.components.wardrobe.app.044e17f676" onChange={(e) => {
                 const v = e.target.value.slice(0, FIT_NOTES_MAX_LEN);
                 onPatch({ fitNotes: v });
               }}
@@ -3701,7 +3711,7 @@ function WardrobeEditPage({
           <textarea
             ref={notesRef}
             value={draft.notes ?? ""}
-            onChange={(e) => {
+            data-parity-id="parity.app.app.src.components.wardrobe.app.1640f94668" onChange={(e) => {
               onPatch({ notes: e.target.value });
               // v0.9.29-dev: 退格 / 删除触发的 onChange 主动恢复滚动位置,
               // 抵消 globals.css `scroll-behavior: smooth` + 浏览器 scroll-anchoring
@@ -3746,7 +3756,7 @@ function WardrobeEditPage({
       <div className="grid gap-2">
         <button
           type="button"
-          onClick={onSave}
+          data-parity-id="parity.app.app.src.components.wardrobe.app.82a0e8cbf4" onClick={onSave}
           disabled={!canSave}
           className="inline-flex h-12 w-full items-center justify-center gap-2 rounded-lg bg-denim text-base font-semibold text-white shadow-sm disabled:bg-ink/18 disabled:text-ink/42"
         >
@@ -3855,11 +3865,13 @@ function SettingsSwitch({
   onChange,
   ariaLabel,
   className = "",
+  parityId,
 }: {
   checked: boolean;
   onChange: (next: boolean) => void;
   ariaLabel: string;
   className?: string;
+  parityId?: string;
 }) {
   return (
     <button
@@ -3867,7 +3879,7 @@ function SettingsSwitch({
       role="switch"
       aria-checked={checked}
       aria-label={ariaLabel}
-      onClick={() => onChange(!checked)}
+      data-parity-id={parityId ?? "parity.app.app.src.components.wardrobe.app.771be12433"} onClick={() => onChange(!checked)}
       className={`relative shrink-0 rounded-full transition-colors ${
         checked ? "bg-denim" : "bg-ink/20"
       } ${className}`}
@@ -4233,7 +4245,7 @@ function SettingsView({
             </div>
             <button
               type="button"
-              onClick={onOpenAccount}
+              data-parity-id="parity.app.app.src.components.wardrobe.app.a6c880d9e0" onClick={onOpenAccount}
               className="inline-flex h-9 shrink-0 items-center gap-1 ui-control-radius border border-ink/10 bg-white px-3 text-xs font-semibold active:scale-95 transition-transform"
             >
               管理 <ChevronRight size={12} aria-hidden="true" />
@@ -4252,7 +4264,7 @@ function SettingsView({
           </div>
           <button
             type="button"
-            onClick={() => setSubPage("profile")}
+            data-parity-id="parity.app.app.src.components.wardrobe.app.0ce9ab0ec4" onClick={() => setSubPage("profile")}
             className="inline-flex h-8 shrink-0 items-center gap-1 text-xs font-semibold text-denim"
           >
             编辑画像 <ChevronRight size={12} aria-hidden="true" />
@@ -4287,6 +4299,8 @@ function SettingsView({
             <p className="mt-0.5 text-xs text-ink/55">照片仅在生成试穿图时使用</p>
           </div>
           <SettingsSwitch
+            data-parity-id="parity.app.app.src.components.wardrobe.app.239ca51dbb"
+            parityId="parity.app.app.src.components.wardrobe.app.239ca51dbb"
             checked={tryOnProfile.enabled}
             onChange={async (next) => {
               const updated: TryOnProfileState = { ...tryOnProfile, enabled: next, updatedAt: new Date().toISOString() };
@@ -4323,7 +4337,7 @@ function SettingsView({
           </div>
           <button
             type="button"
-            onClick={() => setSubPage("photos")}
+            data-parity-id="parity.app.app.src.components.wardrobe.app.e170d6d091" onClick={() => setSubPage("photos")}
             className="inline-flex h-8 shrink-0 items-center gap-1 text-xs font-semibold text-ink/55 active:text-denim"
             aria-label="查看或管理参考照片"
           >
@@ -4360,7 +4374,7 @@ function SettingsView({
           )}
           <button
             type="button"
-            onClick={() => setSubPage("minimax")}
+            data-parity-id="parity.app.app.src.components.wardrobe.app.53e511c02c" onClick={() => setSubPage("minimax")}
             className="inline-flex h-9 shrink-0 items-center gap-1 ui-control-radius border border-ink/10 bg-white px-3 text-xs font-semibold active:scale-95 transition-transform"
           >
             {hasMiniMaxKey ? "修改配置" : "配置 Key"} <ChevronRight size={12} aria-hidden="true" />
@@ -4378,7 +4392,7 @@ function SettingsView({
         </div>
         <button
           type="button"
-          onClick={handleStartDiagnosticUpload}
+          data-parity-id="parity.app.app.src.components.wardrobe.app.141e00a965" onClick={handleStartDiagnosticUpload}
           disabled={diagnosticUploadState.phase !== "idle"}
           className="mt-3 inline-flex h-10 w-full items-center justify-center gap-2 ui-control-radius border border-ink/10 bg-white px-3 text-sm font-semibold text-ink/75 active:bg-mist disabled:opacity-55"
         >
@@ -4395,12 +4409,12 @@ function SettingsView({
 
       {/* 问题描述弹窗 */}
       {showDiagnosticDescDialog && (
-        <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/40 p-4" onClick={(e) => { if (e.target === e.currentTarget) { /* 点击外部不关闭 */ } }}>
+        <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/40 p-4" data-parity-id="parity.app.app.src.components.wardrobe.app.376d28c9af" onClick={(e) => { if (e.target === e.currentTarget) { /* 点击外部不关闭 */ } }}>
           <div className="w-full max-w-sm rounded-xl bg-white p-4 shadow-lg">
             <h3 className="text-base font-semibold">补充问题描述</h3>
             <textarea
               value={diagnosticDescription}
-              onChange={(e) => {
+              data-parity-id="parity.app.app.src.components.wardrobe.app.eeb0f2878c" onChange={(e) => {
                 if (e.target.value.length <= 1000) {
                   setDiagnosticDescription(e.target.value);
                 }
@@ -4413,14 +4427,14 @@ function SettingsView({
             <div className="mt-3 flex gap-2">
               <button
                 type="button"
-                onClick={handleCancelDiagnosticUpload}
+                data-parity-id="parity.app.app.src.components.wardrobe.app.2730ac63f5" onClick={handleCancelDiagnosticUpload}
                 className="h-10 flex-1 rounded-lg border border-ink/10 text-sm font-medium"
               >
                 取消
               </button>
               <button
                 type="button"
-                onClick={handleConfirmDiagnosticUpload}
+                data-parity-id="parity.app.app.src.components.wardrobe.app.3e4ba0eb4e" onClick={handleConfirmDiagnosticUpload}
                 className="h-10 flex-1 rounded-lg bg-denim text-sm font-semibold text-white"
               >
                 确认上传
@@ -4445,7 +4459,7 @@ function SettingsView({
             <div className="mt-3 flex gap-2">
               <button
                 type="button"
-                onClick={() => {
+                data-parity-id="parity.app.app.src.components.wardrobe.app.bfb013182d" onClick={() => {
                   if (diagnosticUploadState.phase === "success") {
                     void navigator.clipboard.writeText(diagnosticUploadState.caseId);
                     onMessage?.("工单号已复制");
@@ -4457,7 +4471,7 @@ function SettingsView({
               </button>
               <button
                 type="button"
-                onClick={() => { setShowDiagnosticSuccess(false); setDiagnosticUploadState({ phase: "idle" }); }}
+                data-parity-id="parity.app.app.src.components.wardrobe.app.a22acca041" onClick={() => { setShowDiagnosticSuccess(false); setDiagnosticUploadState({ phase: "idle" }); }}
                 className="h-10 flex-1 rounded-lg bg-denim text-sm font-semibold text-white"
               >
                 关闭
@@ -4486,14 +4500,14 @@ function SettingsView({
             <div className="mt-3 flex gap-2">
               <button
                 type="button"
-                onClick={() => { setShowDiagnosticFailed(false); setDiagnosticUploadState({ phase: "idle" }); }}
+                data-parity-id="parity.app.app.src.components.wardrobe.app.e8359daa5b" onClick={() => { setShowDiagnosticFailed(false); setDiagnosticUploadState({ phase: "idle" }); }}
                 className="h-10 flex-1 rounded-lg border border-ink/10 text-sm font-medium"
               >
                 关闭
               </button>
               <button
                 type="button"
-                onClick={() => {
+                data-parity-id="parity.app.app.src.components.wardrobe.app.228be4f8aa" onClick={() => {
                   setShowDiagnosticFailed(false);
                   setDiagnosticUploadState({ phase: "describing", message: "请描述遇到的问题…", problemDescription: diagnosticUploadState.problemDescription ?? "" });
                   setShowDiagnosticDescDialog(true);
@@ -4511,16 +4525,16 @@ function SettingsView({
       <MotionSheet open={showAddWardrobe} onClose={() => setShowAddWardrobe(false)} panelClassName="!max-w-sm">
         <h3 className="mb-3 text-base font-semibold">添加衣橱</h3>
         <div className="grid gap-3">
-          <ClosetNameField value={wardrobeFormName} onChange={setWardrobeFormName} placeholder="例如 办公室抽屉" />
+          <ClosetNameField value={wardrobeFormName} data-parity-id="parity.app.app.src.components.wardrobe.app.ef5580ced2" onChange={setWardrobeFormName} placeholder="例如 办公室抽屉" />
           <label className="grid gap-1 text-sm font-medium">
             衣橱简介
-            <input value={wardrobeFormNote} onChange={(e) => setWardrobeFormNote(e.target.value)} className="h-10 w-full rounded-lg border border-ink/10 bg-white px-3 text-sm outline-none focus:border-denim" placeholder="选填" />
+            <input value={wardrobeFormNote} data-parity-id="parity.app.app.src.components.wardrobe.app.015f4c29c2" onChange={(e) => setWardrobeFormNote(e.target.value)} className="h-10 w-full rounded-lg border border-ink/10 bg-white px-3 text-sm outline-none focus:border-denim" placeholder="选填" />
           </label>
           <div className="grid grid-cols-2 gap-2">
-            <button type="button" onClick={() => setShowAddWardrobe(false)} className="h-10 rounded-lg border border-ink/10 text-sm">取消</button>
+            <button type="button" data-parity-id="parity.app.app.src.components.wardrobe.app.ebc01112d0" onClick={() => setShowAddWardrobe(false)} className="h-10 rounded-lg border border-ink/10 text-sm">取消</button>
             <button
               type="button"
-              onClick={() => { if (wardrobeFormName.trim()) { void onAddWardrobe(wardrobeFormName.trim(), wardrobeFormNote.trim()); setShowAddWardrobe(false); setWardrobeFormName(""); setWardrobeFormNote(""); } }}
+              data-parity-id="parity.app.app.src.components.wardrobe.app.9d753f6364" onClick={() => { if (wardrobeFormName.trim()) { void onAddWardrobe(wardrobeFormName.trim(), wardrobeFormNote.trim()); setShowAddWardrobe(false); setWardrobeFormName(""); setWardrobeFormNote(""); } }}
               className="h-10 rounded-lg bg-denim text-sm font-semibold text-white"
             >确认添加</button>
           </div>
@@ -4530,20 +4544,20 @@ function SettingsView({
       <MotionSheet open={!!editWardrobeTarget} onClose={() => setEditWardrobeTarget(null)} panelClassName="!max-w-sm">
         <h3 className="mb-3 text-base font-semibold">编辑衣橱</h3>
         <div className="grid gap-3">
-          <ClosetNameField value={wardrobeFormName} onChange={setWardrobeFormName} />
+          <ClosetNameField value={wardrobeFormName} data-parity-id="parity.app.app.src.components.wardrobe.app.f6dcdb067a" onChange={setWardrobeFormName} />
           <label className="grid gap-1 text-sm font-medium">
             衣橱简介
-            <input value={wardrobeFormNote} onChange={(e) => setWardrobeFormNote(e.target.value)} className="h-10 w-full rounded-lg border border-ink/10 bg-white px-3 text-sm outline-none focus:border-denim" />
+            <input value={wardrobeFormNote} data-parity-id="parity.app.app.src.components.wardrobe.app.1c4efe09f0" onChange={(e) => setWardrobeFormNote(e.target.value)} className="h-10 w-full rounded-lg border border-ink/10 bg-white px-3 text-sm outline-none focus:border-denim" />
           </label>
           <div className="grid grid-cols-2 gap-2">
-            <button type="button" onClick={() => setEditWardrobeTarget(null)} className="h-10 rounded-lg border border-ink/10 text-sm">取消</button>
+            <button type="button" data-parity-id="parity.app.app.src.components.wardrobe.app.4593c0def9" onClick={() => setEditWardrobeTarget(null)} className="h-10 rounded-lg border border-ink/10 text-sm">取消</button>
             <button
               type="button"
-              onClick={() => { if (wardrobeFormName.trim() && editWardrobeTarget) { void onUpdateWardrobe(editWardrobeTarget.id, wardrobeFormName.trim(), wardrobeFormNote.trim()); setEditWardrobeTarget(null); } }}
+              data-parity-id="parity.app.app.src.components.wardrobe.app.9d38d1e3eb" onClick={() => { if (wardrobeFormName.trim() && editWardrobeTarget) { void onUpdateWardrobe(editWardrobeTarget.id, wardrobeFormName.trim(), wardrobeFormNote.trim()); setEditWardrobeTarget(null); } }}
               className="h-10 rounded-lg bg-denim text-sm font-semibold text-white"
             >保存</button>
           </div>
-          <button type="button" onClick={() => { openDeleteWardrobeSheet(editWardrobeTarget); setEditWardrobeTarget(null); }} className="h-9 w-full text-sm text-red-500">删除此衣橱</button>
+          <button type="button" data-parity-id="parity.app.app.src.components.wardrobe.app.e8a9cb5936" onClick={() => { openDeleteWardrobeSheet(editWardrobeTarget); setEditWardrobeTarget(null); }} className="h-9 w-full text-sm text-red-500">删除此衣橱</button>
         </div>
       </MotionSheet>
 
@@ -4555,7 +4569,7 @@ function SettingsView({
             迁移到
             <select
               value={deleteWardrobeTargetLocationId || deleteMigrationCandidates[0]?.id || ""}
-              onChange={(event) => setDeleteWardrobeTargetLocationId(event.target.value)}
+              data-parity-id="parity.app.app.src.components.wardrobe.app.1cd55ade9f" onChange={(event) => setDeleteWardrobeTargetLocationId(event.target.value)}
               disabled={deleteMigrationCandidates.length === 0}
               className="h-10 rounded-lg border border-ink/10 bg-white px-3 text-sm text-ink outline-none focus:border-denim disabled:bg-mist disabled:text-ink/35"
             >
@@ -4572,6 +4586,7 @@ function SettingsView({
         <div className="grid gap-2">
           <button
             type="button"
+            data-parity-id="parity.app.app.src.components.wardrobe.app.b8a9755713"
             disabled={!deleteWardrobeTargetLocationId}
             onClick={() => {
               if (!deleteWardrobeTarget || !deleteWardrobeTargetLocationId) return;
@@ -4582,13 +4597,13 @@ function SettingsView({
           >确认迁移</button>
           <button
             type="button"
-            onClick={() => {
+            data-parity-id="parity.app.app.src.components.wardrobe.app.9560fa0ba5" onClick={() => {
               if (!deleteWardrobeTarget) return;
               setShowDeleteWardrobeHardConfirm(true);
             }}
             className="h-10 rounded-lg bg-red-600 text-sm font-semibold text-white"
           >确认删除</button>
-          <button type="button" onClick={() => setDeleteWardrobeTarget(null)} className="h-10 rounded-lg border border-ink/10 text-sm">取消</button>
+          <button type="button" data-parity-id="parity.app.app.src.components.wardrobe.app.55ed5d92d7" onClick={() => setDeleteWardrobeTarget(null)} className="h-10 rounded-lg border border-ink/10 text-sm">取消</button>
         </div>
       </MotionSheet>
 
@@ -4600,12 +4615,12 @@ function SettingsView({
         <div className="grid grid-cols-2 gap-2">
           <button
             type="button"
-            onClick={() => setShowDeleteWardrobeHardConfirm(false)}
+            data-parity-id="parity.app.app.src.components.wardrobe.app.25cae11908" onClick={() => setShowDeleteWardrobeHardConfirm(false)}
             className="h-10 rounded-lg border border-ink/10 text-sm"
           >取消</button>
           <button
             type="button"
-            onClick={() => {
+            data-parity-id="parity.app.app.src.components.wardrobe.app.9546191e03" onClick={() => {
               if (!deleteWardrobeTarget) return;
               void onDeleteWardrobe(deleteWardrobeTarget.id, { mode: "delete_items" });
               setShowDeleteWardrobeHardConfirm(false);
@@ -4629,7 +4644,7 @@ function ClosetNameField({ value, onChange, placeholder }: { value: string; onCh
       </span>
       <input
         value={value}
-        onChange={(event) => onChange(event.target.value)}
+        data-parity-id="parity.app.app.src.components.wardrobe.app.a46834e936" onChange={(event) => onChange(event.target.value)}
         className="h-10 w-full rounded-lg border border-ink/10 bg-white px-3 text-sm outline-none focus:border-denim"
         placeholder={placeholder}
         required
@@ -4645,17 +4660,19 @@ function WardrobeRow({
   count,
   isDefault,
   onClick,
+  parityId,
 }: {
   location: ClosetLocation;
   count: number;
   isDefault: boolean;
   onClick?: () => void;
+  parityId?: string;
 }) {
   const Icon = isDefault ? Shirt : location.id === "office" || /办公室|office|工位|公司/.test(location.name) ? Briefcase : Shirt;
   return (
     <button
       type="button"
-      onClick={onClick}
+      data-parity-id={parityId ?? "parity.app.app.src.components.wardrobe.app.7b624add21"} onClick={onClick}
       disabled={!onClick}
       className="flex h-[60px] w-full items-center gap-3 rounded-lg border border-ink/10 bg-white px-3 text-left enabled:active:scale-[0.99] transition-transform"
     >
@@ -4750,7 +4767,7 @@ function ProfileDetailPage({
         <div className="flex items-center gap-2">
           <button
             type="button"
-            onClick={onBack}
+            data-parity-id="parity.app.app.src.components.wardrobe.app.f9a7cdb34c" onClick={onBack}
             className="grid h-10 w-10 place-items-center rounded-full bg-mist active:scale-95 transition-transform"
             aria-label="返回设置"
           >
@@ -4763,7 +4780,7 @@ function ProfileDetailPage({
         {!isKeyboardOpen ? (
           <button
             type="button"
-            onClick={handleSave}
+            data-parity-id="parity.app.app.src.components.wardrobe.app.eb3e78be97" onClick={handleSave}
             disabled={!dirty}
             className="inline-flex h-9 items-center gap-1 rounded-lg bg-denim px-3 text-sm font-semibold text-white disabled:bg-ink/15 disabled:text-ink/40"
           >
@@ -4782,6 +4799,7 @@ function ProfileDetailPage({
             return (
               <button
                 key={opt}
+                data-parity-id={`parity.app.app.src.components.wardrobe.app.3f1d2f4e11.${opt}`}
                 type="button"
                 onClick={() => setFitGender(opt)}
                 className={`inline-flex h-8 items-center rounded-full px-3 text-xs font-semibold transition-colors ${active ? "bg-denim text-white" : "border border-ink/10 bg-white text-ink/70 active:scale-95"}`}
@@ -4799,43 +4817,43 @@ function ProfileDetailPage({
           icon={<User size={16} className="text-denim" aria-hidden="true" />}
           label="身高"
           value={draft.heightCm ? `${draft.heightCm} cm` : "未设置"}
-          onClick={() => setEditingField("height")}
+          data-parity-id="parity.app.app.src.components.wardrobe.app.7498db4327" onClick={() => setEditingField("height")}
         />
         <ProfileFieldRow
           icon={<User size={16} className="text-denim" aria-hidden="true" />}
           label="体型"
           value={draft.bodyType ? (draft.bodyType === "custom" ? (draft.bodyTypeCustom?.trim() || "自定义") : BODY_TYPE_LABELS[draft.bodyType]) : "未设置"}
-          onClick={() => setEditingField("bodyType")}
+          data-parity-id="parity.app.app.src.components.wardrobe.app.1f36391a61" onClick={() => setEditingField("bodyType")}
         />
         <ProfileFieldRow
           icon={<User size={16} className="text-denim" aria-hidden="true" />}
           label="肩宽"
           value={draft.shoulderWidth ? SHOULDER_LABELS[draft.shoulderWidth] : "未设置"}
-          onClick={() => setEditingField("shoulder")}
+          data-parity-id="parity.app.app.src.components.wardrobe.app.1f207030bb" onClick={() => setEditingField("shoulder")}
         />
         <ProfileFieldRow
           icon={<User size={16} className="text-denim" aria-hidden="true" />}
           label="腿长比例"
           value={draft.legRatio ? LEG_RATIO_LABELS[draft.legRatio] : "未设置"}
-          onClick={() => setEditingField("legRatio")}
+          data-parity-id="parity.app.app.src.components.wardrobe.app.ffb3dd372b" onClick={() => setEditingField("legRatio")}
         />
         <ProfileFieldRow
           icon={<User size={16} className="text-denim" aria-hidden="true" />}
           label="发型 / 发色"
           value={draft.hairDescription?.trim() || "无"}
-          onClick={() => setEditingField("hair")}
+          data-parity-id="parity.app.app.src.components.wardrobe.app.bf16d6548c" onClick={() => setEditingField("hair")}
         />
         <ProfileFieldRow
           icon={<User size={16} className="text-denim" aria-hidden="true" />}
           label="肤色 / 妆容偏好"
           value={draft.skinToneDescription?.trim() || "无"}
-          onClick={() => setEditingField("skin")}
+          data-parity-id="parity.app.app.src.components.wardrobe.app.953cf1689f" onClick={() => setEditingField("skin")}
         />
         <ProfileFieldRow
           icon={<ScrollText size={16} className="text-denim" aria-hidden="true" />}
           label="其他备注"
           value={draft.styleNote?.trim() || "无"}
-          onClick={() => setEditingField("note")}
+          data-parity-id="parity.app.app.src.components.wardrobe.app.9229ee1878" onClick={() => setEditingField("note")}
           isLast
         />
       </article>
@@ -4857,17 +4875,17 @@ function ProfileDetailPage({
             type="number"
             inputMode="numeric"
             value={draft.heightCm ?? ""}
-            onChange={(e) => setDraft((p) => ({ ...p, heightCm: e.target.value ? Number(e.target.value) : undefined }))}
+            data-parity-id="parity.app.app.src.components.wardrobe.app.7b0cb7b8b4" onChange={(e) => setDraft((p) => ({ ...p, heightCm: e.target.value ? Number(e.target.value) : undefined }))}
             className="h-11 w-full rounded-lg border border-ink/10 bg-white px-3 text-base outline-none focus:border-denim"
             placeholder="例如 165"
             autoFocus
           />
         </label>
         <div className="grid grid-cols-2 gap-2">
-          <button type="button" onClick={() => setEditingField(null)} className="h-10 rounded-lg border border-ink/10 text-sm">完成</button>
+          <button type="button" data-parity-id="parity.app.app.src.components.wardrobe.app.c5c6cf1327" onClick={() => setEditingField(null)} className="h-10 rounded-lg border border-ink/10 text-sm">完成</button>
           <button
             type="button"
-            onClick={() => { setDraft((p) => ({ ...p, heightCm: undefined })); setEditingField(null); }}
+            data-parity-id="parity.app.app.src.components.wardrobe.app.17e055f2bf" onClick={() => { setDraft((p) => ({ ...p, heightCm: undefined })); setEditingField(null); }}
             className="h-10 rounded-lg text-sm text-ink/55"
           >清除</button>
         </div>
@@ -4883,6 +4901,7 @@ function ProfileDetailPage({
           {(["slim", "balanced", "curvy", "plus", "custom"] as const).map((opt) => (
             <button
               key={opt}
+              data-parity-id={`parity.app.app.src.components.wardrobe.app.c996563d1b.${opt}`}
               type="button"
               onClick={() => setDraft((p) => ({ ...p, bodyType: opt }))}
               className={`flex h-11 items-center justify-between rounded-lg border px-3 text-sm ${draft.bodyType === opt ? "border-denim bg-denim/5 text-denim font-semibold" : "border-ink/10 bg-white"}`}
@@ -4897,13 +4916,13 @@ function ProfileDetailPage({
             自定义描述
             <input
               value={draft.bodyTypeCustom ?? ""}
-              onChange={(e) => setDraft((p) => ({ ...p, bodyTypeCustom: e.target.value }))}
+              data-parity-id="parity.app.app.src.components.wardrobe.app.4590ea4240" onChange={(e) => setDraft((p) => ({ ...p, bodyTypeCustom: e.target.value }))}
               className="h-10 w-full rounded-lg border border-ink/10 bg-white px-3 text-sm outline-none focus:border-denim"
               placeholder="例如 微胖梨形"
             />
           </label>
         ) : null}
-        <button type="button" onClick={() => setEditingField(null)} className="h-10 w-full rounded-lg bg-denim text-sm font-semibold text-white">完成</button>
+        <button type="button" data-parity-id="parity.app.app.src.components.wardrobe.app.9e3c3c283a" onClick={() => setEditingField(null)} className="h-10 w-full rounded-lg bg-denim text-sm font-semibold text-white">完成</button>
       </ProfileFieldSheet>
 
       <ProfileFieldSheet
@@ -4916,6 +4935,7 @@ function ProfileDetailPage({
           {(["narrow", "normal", "wide"] as const).map((opt) => (
             <button
               key={opt}
+              data-parity-id={`parity.app.app.src.components.wardrobe.app.d70858424b.${opt}`}
               type="button"
               onClick={() => { setDraft((p) => ({ ...p, shoulderWidth: opt })); setEditingField(null); }}
               className={`flex h-11 items-center justify-between rounded-lg border px-3 text-sm ${draft.shoulderWidth === opt ? "border-denim bg-denim/5 text-denim font-semibold" : "border-ink/10 bg-white"}`}
@@ -4937,6 +4957,7 @@ function ProfileDetailPage({
           {(["short", "normal", "long"] as const).map((opt) => (
             <button
               key={opt}
+              data-parity-id={`parity.app.app.src.components.wardrobe.app.ba85846e29.${opt}`}
               type="button"
               onClick={() => { setDraft((p) => ({ ...p, legRatio: opt })); setEditingField(null); }}
               className={`flex h-11 items-center justify-between rounded-lg border px-3 text-sm ${draft.legRatio === opt ? "border-denim bg-denim/5 text-denim font-semibold" : "border-ink/10 bg-white"}`}
@@ -4958,15 +4979,15 @@ function ProfileDetailPage({
           发型 / 发色
           <input
             value={draft.hairDescription ?? ""}
-            onChange={(e) => setDraft((p) => ({ ...p, hairDescription: e.target.value }))}
+            data-parity-id="parity.app.app.src.components.wardrobe.app.d711ec261d" onChange={(e) => setDraft((p) => ({ ...p, hairDescription: e.target.value }))}
             className="h-11 w-full rounded-lg border border-ink/10 bg-white px-3 text-base outline-none focus:border-denim"
             placeholder="例如 黑色长发、棕色短发"
             autoFocus
           />
         </label>
         <div className="grid grid-cols-2 gap-2">
-          <button type="button" onClick={() => setEditingField(null)} className="h-10 rounded-lg border border-ink/10 text-sm">完成</button>
-          <button type="button" onClick={() => { setDraft((p) => ({ ...p, hairDescription: undefined })); setEditingField(null); }} className="h-10 rounded-lg text-sm text-ink/55">清除</button>
+          <button type="button" data-parity-id="parity.app.app.src.components.wardrobe.app.58b82a9eb9" onClick={() => setEditingField(null)} className="h-10 rounded-lg border border-ink/10 text-sm">完成</button>
+          <button type="button" data-parity-id="parity.app.app.src.components.wardrobe.app.ef05afcad0" onClick={() => { setDraft((p) => ({ ...p, hairDescription: undefined })); setEditingField(null); }} className="h-10 rounded-lg text-sm text-ink/55">清除</button>
         </div>
       </ProfileFieldSheet>
 
@@ -4980,15 +5001,15 @@ function ProfileDetailPage({
           肤色 / 妆容偏好
           <input
             value={draft.skinToneDescription ?? ""}
-            onChange={(e) => setDraft((p) => ({ ...p, skinToneDescription: e.target.value }))}
+            data-parity-id="parity.app.app.src.components.wardrobe.app.dd8e1d7082" onChange={(e) => setDraft((p) => ({ ...p, skinToneDescription: e.target.value }))}
             className="h-11 w-full rounded-lg border border-ink/10 bg-white px-3 text-base outline-none focus:border-denim"
             placeholder="例如 偏白肤色、淡妆"
             autoFocus
           />
         </label>
         <div className="grid grid-cols-2 gap-2">
-          <button type="button" onClick={() => setEditingField(null)} className="h-10 rounded-lg border border-ink/10 text-sm">完成</button>
-          <button type="button" onClick={() => { setDraft((p) => ({ ...p, skinToneDescription: undefined })); setEditingField(null); }} className="h-10 rounded-lg text-sm text-ink/55">清除</button>
+          <button type="button" data-parity-id="parity.app.app.src.components.wardrobe.app.f0e04c2cd5" onClick={() => setEditingField(null)} className="h-10 rounded-lg border border-ink/10 text-sm">完成</button>
+          <button type="button" data-parity-id="parity.app.app.src.components.wardrobe.app.7bef9b8e2f" onClick={() => { setDraft((p) => ({ ...p, skinToneDescription: undefined })); setEditingField(null); }} className="h-10 rounded-lg text-sm text-ink/55">清除</button>
         </div>
       </ProfileFieldSheet>
 
@@ -5002,7 +5023,7 @@ function ProfileDetailPage({
           其他备注
           <textarea
             value={draft.styleNote ?? ""}
-            onChange={(e) => setDraft((p) => ({ ...p, styleNote: e.target.value }))}
+            data-parity-id="parity.app.app.src.components.wardrobe.app.2309c19eb4" onChange={(e) => setDraft((p) => ({ ...p, styleNote: e.target.value }))}
             rows={3}
             className="w-full resize-none rounded-lg border border-ink/10 bg-white px-3 py-2 text-sm outline-none focus:border-denim"
             placeholder="比如 偏好 oversize / 通勤 / 户外"
@@ -5010,8 +5031,8 @@ function ProfileDetailPage({
           />
         </label>
         <div className="grid grid-cols-2 gap-2">
-          <button type="button" onClick={() => setEditingField(null)} className="h-10 rounded-lg border border-ink/10 text-sm">完成</button>
-          <button type="button" onClick={() => { setDraft((p) => ({ ...p, styleNote: undefined })); setEditingField(null); }} className="h-10 rounded-lg text-sm text-ink/55">清除</button>
+          <button type="button" data-parity-id="parity.app.app.src.components.wardrobe.app.f7962d9a3c" onClick={() => setEditingField(null)} className="h-10 rounded-lg border border-ink/10 text-sm">完成</button>
+          <button type="button" data-parity-id="parity.app.app.src.components.wardrobe.app.f33af5c175" onClick={() => { setDraft((p) => ({ ...p, styleNote: undefined })); setEditingField(null); }} className="h-10 rounded-lg text-sm text-ink/55">清除</button>
         </div>
       </ProfileFieldSheet>
     </div>
@@ -5034,7 +5055,7 @@ function ProfileFieldRow({
   return (
     <button
       type="button"
-      onClick={onClick}
+      data-parity-id="parity.app.app.src.components.wardrobe.app.689a1908cb" onClick={onClick}
       className={`flex h-[60px] w-full items-center gap-3 bg-white px-4 text-left active:bg-mist ${isLast ? "" : "border-b border-ink/8"}`}
     >
       <div className="grid h-9 w-9 shrink-0 place-items-center rounded-md bg-mist text-denim">
@@ -5142,7 +5163,7 @@ function PhotosDetailPage({
         <div className="flex items-center gap-2">
           <button
             type="button"
-            onClick={handleFinish}
+            data-parity-id="parity.app.app.src.components.wardrobe.app.e2dc829176" onClick={handleFinish}
             className="grid h-10 w-10 place-items-center rounded-full bg-mist active:scale-95 transition-transform"
             aria-label="返回设置"
           >
@@ -5152,7 +5173,7 @@ function PhotosDetailPage({
         </div>
         <button
           type="button"
-          onClick={handleFinish}
+          data-parity-id="parity.app.app.src.components.wardrobe.app.18d7d889e3" onClick={handleFinish}
           className="inline-flex h-9 items-center gap-1 rounded-lg bg-denim px-3 text-sm font-semibold text-white"
         >
           <Check size={14} aria-hidden="true" />完成
@@ -5167,7 +5188,7 @@ function PhotosDetailPage({
           </div>
           <SettingsSwitch
             checked={draft.enabled}
-            onChange={handleToggle}
+            data-parity-id="parity.app.app.src.components.wardrobe.app.8b537970c8" onChange={handleToggle}
             ariaLabel={draft.enabled ? "关闭参考照" : "启用参考照"}
             className="h-6 w-11"
           />
@@ -5197,8 +5218,8 @@ function PhotosDetailPage({
               onDelete={() => setDeletePhotoTarget("face")}
             />
           </div>
-          <input ref={fullBodyInputRef} type="file" accept="image/jpeg,image/png,image/webp,image/heic,image/heif,.heic,.heif" className="hidden" onChange={(e) => openCrop(e.target.files?.[0], "fullBody", fullBodyInputRef)} />
-          <input ref={faceInputRef} type="file" accept="image/jpeg,image/png,image/webp,image/heic,image/heif,.heic,.heif" className="hidden" onChange={(e) => openCrop(e.target.files?.[0], "face", faceInputRef)} />
+          <input ref={fullBodyInputRef} type="file" accept="image/jpeg,image/png,image/webp,image/heic,image/heif,.heic,.heif" className="hidden" data-parity-id="parity.app.app.src.components.wardrobe.app.c31a15cd05" onChange={(e) => openCrop(e.target.files?.[0], "fullBody", fullBodyInputRef)} />
+          <input ref={faceInputRef} type="file" accept="image/jpeg,image/png,image/webp,image/heic,image/heif,.heic,.heif" className="hidden" data-parity-id="parity.app.app.src.components.wardrobe.app.20fc83fa9b" onChange={(e) => openCrop(e.target.files?.[0], "face", faceInputRef)} />
 
           <div className="mt-4">
             <p className="text-[11px] font-semibold text-ink/55">如何拍摄效果更好？</p>
@@ -5282,7 +5303,7 @@ function PhotoSlot({
         {src ? (
           <button
             type="button"
-            onClick={onExpand}
+            data-parity-id="parity.app.app.src.components.wardrobe.app.2efbaba9ff" onClick={onExpand}
             className="absolute inset-0 grid place-items-center"
             aria-label="查看大图"
           >
@@ -5291,7 +5312,7 @@ function PhotoSlot({
         ) : (
           <button
             type="button"
-            onClick={disabled ? undefined : onUpload}
+            data-parity-id="parity.app.app.src.components.wardrobe.app.6591fb0860" onClick={disabled ? undefined : onUpload}
             disabled={disabled}
             className={`absolute inset-0 grid place-items-center text-ink/40 ${disabled ? "cursor-not-allowed" : "hover:text-denim"}`}
             aria-label={label}
@@ -5306,7 +5327,7 @@ function PhotoSlot({
         {src && onDelete ? (
           <button
             type="button"
-            onClick={onDelete}
+            data-parity-id="parity.app.app.src.components.wardrobe.app.a9bcd70649" onClick={onDelete}
             className="absolute right-1.5 top-1.5 grid h-6 w-6 place-items-center rounded-full bg-black/55 text-white active:scale-95 transition-transform"
             aria-label={`删除${label}`}
           >
@@ -5329,7 +5350,7 @@ function PhotoSlot({
       {src ? (
         <button
           type="button"
-          onClick={onUpload}
+          data-parity-id="parity.app.app.src.components.wardrobe.app.3791098840" onClick={onUpload}
           className="h-6 w-full rounded-md border border-ink/10 text-[10px] text-ink/65 active:scale-95 transition-transform"
         >更换</button>
       ) : null}
@@ -5376,7 +5397,7 @@ function MiniMaxDetailPage({
         <div className="flex items-center gap-2">
           <button
             type="button"
-            onClick={onBack}
+            data-parity-id="parity.app.app.src.components.wardrobe.app.21c24cab95" onClick={onBack}
             className="grid h-10 w-10 place-items-center rounded-full bg-mist active:scale-95 transition-transform"
             aria-label="返回设置"
           >
@@ -5386,7 +5407,7 @@ function MiniMaxDetailPage({
         </div>
         <button
           type="button"
-          onClick={handleSave}
+          data-parity-id="parity.app.app.src.components.wardrobe.app.9847120dbf" onClick={handleSave}
           disabled={!dirty}
           className="inline-flex h-9 items-center gap-1 rounded-lg bg-denim px-3 text-sm font-semibold text-white disabled:bg-ink/15 disabled:text-ink/40"
         >
@@ -5401,14 +5422,14 @@ function MiniMaxDetailPage({
             <input
               type={showKey ? "text" : "password"}
               value={draft.apiKey}
-              onChange={(e) => setDraft((p) => ({ ...p, apiKey: e.target.value }))}
+              data-parity-id="parity.app.app.src.components.wardrobe.app.4f0f2360b5" onChange={(e) => setDraft((p) => ({ ...p, apiKey: e.target.value }))}
               className="h-11 w-full rounded-lg border border-ink/10 bg-white px-3 pr-11 text-base outline-none focus:border-denim"
               placeholder="填写 MiniMax Key"
               autoComplete="off"
             />
             <button
               type="button"
-              onClick={() => setShowKey((v) => !v)}
+              data-parity-id="parity.app.app.src.components.wardrobe.app.df1b97f8bd" onClick={() => setShowKey((v) => !v)}
               className="absolute right-1 top-1/2 -translate-y-1/2 grid h-9 w-9 place-items-center rounded-md text-ink/55 active:scale-95 transition-transform"
               aria-label={showKey ? "隐藏密钥" : "显示密钥"}
             >
@@ -5421,7 +5442,7 @@ function MiniMaxDetailPage({
           API Host
           <input
             value={draft.apiHost}
-            onChange={(e) => setDraft((p) => ({ ...p, apiHost: e.target.value }))}
+            data-parity-id="parity.app.app.src.components.wardrobe.app.722918da0e" onChange={(e) => setDraft((p) => ({ ...p, apiHost: e.target.value }))}
             className="h-11 w-full rounded-lg border border-ink/10 bg-white px-3 text-base outline-none focus:border-denim"
           />
         </label>
@@ -5475,7 +5496,7 @@ function WardrobeListPage({
         <div className="flex items-center gap-2">
           <button
             type="button"
-            onClick={onBack}
+            data-parity-id="parity.app.app.src.components.wardrobe.app.dd5dcdfe06" onClick={onBack}
             className="grid h-10 w-10 place-items-center rounded-full bg-mist active:scale-95 transition-transform"
             aria-label="返回设置"
           >
@@ -5485,7 +5506,7 @@ function WardrobeListPage({
         </div>
         <button
           type="button"
-          onClick={onAdd}
+          data-parity-id="parity.app.app.src.components.wardrobe.app.3241f2e306" onClick={onAdd}
           className="inline-flex h-9 items-center gap-1.5 rounded-lg bg-denim px-3 text-sm font-semibold text-white"
         >
           <Plus size={14} aria-hidden="true" />添加衣橱
@@ -5499,6 +5520,8 @@ function WardrobeListPage({
           sortedLocations.map((location, idx) => (
             <div key={location.id} className={idx > 0 ? "border-t border-ink/8" : ""}>
               <WardrobeRow
+                data-parity-id={`parity.app.app.src.components.wardrobe.app.4b011941fe.${location.id}`}
+                parityId={`parity.app.app.src.components.wardrobe.app.4b011941fe.${location.id}`}
                 location={location}
                 count={locationCounts.get(location.id) ?? 0}
                 isDefault={location.id === "home"}
@@ -5516,12 +5539,12 @@ function clampNumber(value: number, min: number, max: number) {
   return Math.max(min, Math.min(max, value));
 }
 
-function NavButton({ view, active, onClick }: { view: (typeof viewItems)[number]; active: boolean; onClick: () => void }) {
+function NavButton({ view, active, onClick, parityId }: { view: (typeof viewItems)[number]; active: boolean; onClick: () => void; parityId?: string }) {
   const Icon = view.icon;
   return (
     <motion.button
       type="button"
-      onClick={onClick}
+      data-parity-id={parityId ?? "parity.app.app.src.components.wardrobe.app.a6275d2a93"} onClick={onClick}
       className={`flex h-11 items-center gap-3 ui-control-radius px-3 text-sm font-semibold ${
         active ? "bg-denim text-white" : "text-ink/68 hover:bg-ink/5"
       }`}
@@ -5540,12 +5563,12 @@ function NavButton({ view, active, onClick }: { view: (typeof viewItems)[number]
   );
 }
 
-function MobileNavButton({ view, active, onClick, compact }: { view: (typeof viewItems)[number]; active: boolean; onClick: () => void; compact?: boolean }) {
+function MobileNavButton({ view, active, onClick, compact, parityId }: { view: (typeof viewItems)[number]; active: boolean; onClick: () => void; compact?: boolean; parityId?: string }) {
   const Icon = view.icon;
   return (
     <motion.button
       type="button"
-      onClick={onClick}
+      data-parity-id={parityId ?? "parity.app.app.src.components.wardrobe.app.1d7efe6be5"} onClick={onClick}
       animate={{
         backgroundColor: active ? "var(--color-denim)" : "rgba(0,0,0,0)",
         color: active ? "#ffffff" : "rgba(0,0,0,0.62)",

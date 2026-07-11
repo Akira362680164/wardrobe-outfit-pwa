@@ -98,7 +98,7 @@ function BatchProgressRow({
   return (
     <article className="flex min-w-0 gap-2 rounded-lg border border-ink/8 bg-[#fbfbf8] p-2.5">
       <div className="mt-0.5 shrink-0">{renderStatusIcon(item.status)}</div>
-      <button type="button" onClick={() => onOpenItem?.(item)} className="min-w-0 flex-1 text-left">
+      <button type="button" data-parity-id="parity.app.app.src.components.batch.ai.progress.panel.c965b183bd" onClick={() => onOpenItem?.(item)} className="min-w-0 flex-1 text-left">
         <div className="flex min-w-0 items-center gap-2">
           <p className="min-w-0 flex-1 truncate text-sm font-medium">第 {item.index + 1} 张 · {title}</p>
           <span className={`shrink-0 text-[11px] font-medium ${meta.tone}`}>{meta.label}</span>
@@ -110,12 +110,12 @@ function BatchProgressRow({
       {item.status === "failed" ? (
         <div className="flex shrink-0 items-center gap-1">
           {onRetry ? (
-            <button type="button" onClick={() => onRetry(item)} className="grid h-8 w-8 place-items-center rounded-md bg-white text-denim" aria-label="重试">
+            <button type="button" data-parity-id="parity.app.app.src.components.batch.ai.progress.panel.94dc69a1a7" onClick={() => onRetry(item)} className="grid h-8 w-8 place-items-center rounded-md bg-white text-denim" aria-label="重试">
               <RotateCcw size={14} aria-hidden="true" />
             </button>
           ) : null}
           {onManualReview ? (
-            <button type="button" onClick={() => onManualReview(item)} className="grid h-8 w-8 place-items-center rounded-md bg-white text-ink/60" aria-label="手动校对">
+            <button type="button" data-parity-id="parity.app.app.src.components.batch.ai.progress.panel.42fcfa49f0" onClick={() => onManualReview(item)} className="grid h-8 w-8 place-items-center rounded-md bg-white text-ink/60" aria-label="手动校对">
               <Pencil size={14} aria-hidden="true" />
             </button>
           ) : null}

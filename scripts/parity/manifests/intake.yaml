@@ -1,0 +1,552 @@
+{
+  "schemaVersion": 1,
+  "domain": "intake",
+  "screens": [
+    {
+      "id": "intake.select",
+      "domain": "intake",
+      "sourceOfTruth": "app",
+      "mappingStatus": "EQUIVALENT",
+      "app": {
+        "routes": [
+          "route.intake.single.item",
+          "route.intake.wishlist",
+          "src.components.garment.intake.flow"
+        ],
+        "sourceInventoryIds": [
+          "app.route.intake.single.item",
+          "app.route.intake.wishlist",
+          "app.src.components.garment.intake.flow"
+        ],
+        "sourceFiles": []
+      },
+      "mini": {
+        "routes": [
+          "/pages/intake/camera/index"
+        ],
+        "sourceInventoryIds": [
+          "mini.route.pages.intake.camera.index"
+        ],
+        "sourceFiles": []
+      },
+      "fixtures": [
+        "garment.complete",
+        "garment.no_image",
+        "network.500"
+      ],
+      "entryPaths": [
+        {
+          "id": "direct",
+          "actions": []
+        },
+        {
+          "id": "navigation",
+          "actions": [
+            "intake.select.camera"
+          ]
+        }
+      ],
+      "states": [
+        {
+          "id": "source-picker",
+          "fixture": "garment.complete",
+          "checkpoint": true,
+          "expectedOn": [
+            "app",
+            "mini"
+          ]
+        },
+        {
+          "id": "images-selected",
+          "fixture": "garment.no_image",
+          "checkpoint": true,
+          "expectedOn": [
+            "app",
+            "mini"
+          ]
+        },
+        {
+          "id": "permission-error",
+          "fixture": "network.500",
+          "checkpoint": true,
+          "expectedOn": [
+            "app",
+            "mini"
+          ]
+        }
+      ],
+      "requiredActions": [
+        {
+          "id": "intake.select.camera",
+          "event": "tap",
+          "requiredOn": [
+            "app",
+            "mini"
+          ],
+          "sourceActionIds": {},
+          "expectedTransition": "host-native",
+          "sideEffect": "HOST_NATIVE",
+          "serverAssertion": "camera-result-contract"
+        },
+        {
+          "id": "intake.select.album",
+          "event": "tap",
+          "requiredOn": [
+            "app",
+            "mini"
+          ],
+          "sourceActionIds": {},
+          "expectedTransition": "host-native",
+          "sideEffect": "HOST_NATIVE",
+          "serverAssertion": "photo-picker-result-contract"
+        },
+        {
+          "id": "intake.select.continue",
+          "event": "tap",
+          "requiredOn": [
+            "app",
+            "mini"
+          ],
+          "sourceActionIds": {},
+          "expectedTransition": "push",
+          "target": "intake.select",
+          "sideEffect": "OBJECT_UPLOAD",
+          "serverAssertion": "temporary-assets-readback"
+        }
+      ],
+      "overlays": [],
+      "checkpoints": [
+        "source-picker",
+        "images-selected",
+        "permission-error"
+      ],
+      "platformExceptionIds": [
+        "WX-CAPSULE-001"
+      ]
+    },
+    {
+      "id": "intake.review",
+      "domain": "intake",
+      "sourceOfTruth": "app",
+      "mappingStatus": "EQUIVALENT",
+      "app": {
+        "routes": [
+          "src.components.batch.review.view"
+        ],
+        "sourceInventoryIds": [
+          "app.src.components.batch.review.view"
+        ],
+        "sourceFiles": []
+      },
+      "mini": {
+        "routes": [
+          "/pages/intake/review/index"
+        ],
+        "sourceInventoryIds": [
+          "mini.route.pages.intake.review.index"
+        ],
+        "sourceFiles": []
+      },
+      "fixtures": [
+        "garment.complete",
+        "garment.no_image",
+        "network.500"
+      ],
+      "entryPaths": [
+        {
+          "id": "direct",
+          "actions": []
+        },
+        {
+          "id": "navigation",
+          "actions": [
+            "intake.review.recognize"
+          ]
+        }
+      ],
+      "states": [
+        {
+          "id": "recognizing",
+          "fixture": "garment.complete",
+          "checkpoint": true,
+          "expectedOn": [
+            "app",
+            "mini"
+          ]
+        },
+        {
+          "id": "review-ready",
+          "fixture": "garment.no_image",
+          "checkpoint": true,
+          "expectedOn": [
+            "app",
+            "mini"
+          ]
+        },
+        {
+          "id": "partial-invalid",
+          "fixture": "network.500",
+          "checkpoint": true,
+          "expectedOn": [
+            "app",
+            "mini"
+          ]
+        }
+      ],
+      "requiredActions": [
+        {
+          "id": "intake.review.recognize",
+          "event": "tap",
+          "requiredOn": [
+            "app",
+            "mini"
+          ],
+          "sourceActionIds": {},
+          "expectedTransition": "state-change",
+          "sideEffect": "ASYNC_JOB",
+          "serverAssertion": "recognition-job-readback"
+        },
+        {
+          "id": "intake.review.save",
+          "event": "tap",
+          "requiredOn": [
+            "app",
+            "mini"
+          ],
+          "sourceActionIds": {},
+          "expectedTransition": "push",
+          "target": "intake.review",
+          "sideEffect": "BACKEND_WRITE",
+          "serverAssertion": "garment-batch-create-readback"
+        },
+        {
+          "id": "intake.review.retry",
+          "event": "tap",
+          "requiredOn": [
+            "app",
+            "mini"
+          ],
+          "sourceActionIds": {},
+          "expectedTransition": "state-change",
+          "sideEffect": "ASYNC_JOB",
+          "serverAssertion": "recognition-retry-readback"
+        }
+      ],
+      "overlays": [],
+      "checkpoints": [
+        "recognizing",
+        "review-ready",
+        "partial-invalid"
+      ],
+      "platformExceptionIds": [
+        "WX-CAPSULE-001"
+      ]
+    },
+    {
+      "id": "intake.result",
+      "domain": "intake",
+      "sourceOfTruth": "app",
+      "mappingStatus": "EQUIVALENT",
+      "app": {
+        "routes": [
+          "src.components.garment.intake.flow"
+        ],
+        "sourceInventoryIds": [
+          "app.src.components.garment.intake.flow"
+        ],
+        "sourceFiles": []
+      },
+      "mini": {
+        "routes": [
+          "/pages/intake/result/index"
+        ],
+        "sourceInventoryIds": [
+          "mini.route.pages.intake.result.index"
+        ],
+        "sourceFiles": []
+      },
+      "fixtures": [
+        "garment.complete",
+        "garment.no_image",
+        "network.500"
+      ],
+      "entryPaths": [
+        {
+          "id": "direct",
+          "actions": []
+        },
+        {
+          "id": "navigation",
+          "actions": [
+            "intake.result.view"
+          ]
+        }
+      ],
+      "states": [
+        {
+          "id": "saved-summary",
+          "fixture": "garment.complete",
+          "checkpoint": true,
+          "expectedOn": [
+            "app",
+            "mini"
+          ]
+        },
+        {
+          "id": "partial-success",
+          "fixture": "garment.no_image",
+          "checkpoint": true,
+          "expectedOn": [
+            "app",
+            "mini"
+          ]
+        },
+        {
+          "id": "failure",
+          "fixture": "network.500",
+          "checkpoint": true,
+          "expectedOn": [
+            "app",
+            "mini"
+          ]
+        }
+      ],
+      "requiredActions": [
+        {
+          "id": "intake.result.view",
+          "event": "tap",
+          "requiredOn": [
+            "app",
+            "mini"
+          ],
+          "sourceActionIds": {},
+          "expectedTransition": "push",
+          "target": "intake.result",
+          "sideEffect": "BACKEND_READ",
+          "serverAssertion": "created-garment-readback"
+        },
+        {
+          "id": "intake.result.done",
+          "event": "tap",
+          "requiredOn": [
+            "app",
+            "mini"
+          ],
+          "sourceActionIds": {},
+          "expectedTransition": "reset",
+          "target": "intake.result",
+          "sideEffect": "NONE"
+        }
+      ],
+      "overlays": [],
+      "checkpoints": [
+        "saved-summary",
+        "partial-success",
+        "failure"
+      ],
+      "platformExceptionIds": [
+        "WX-CAPSULE-001"
+      ]
+    },
+    {
+      "id": "intake.crop",
+      "domain": "intake",
+      "sourceOfTruth": "app",
+      "mappingStatus": "APP_ONLY_DEFECT",
+      "app": {
+        "routes": [],
+        "sourceInventoryIds": [],
+        "sourceFiles": []
+      },
+      "mini": {
+        "routes": [
+          "/pages/intake/camera/index"
+        ],
+        "sourceInventoryIds": [
+          "mini.route.pages.intake.camera.index"
+        ],
+        "sourceFiles": []
+      },
+      "fixtures": [
+        "garment.complete",
+        "garment.no_image",
+        "network.500"
+      ],
+      "entryPaths": [
+        {
+          "id": "direct",
+          "actions": []
+        },
+        {
+          "id": "navigation",
+          "actions": [
+            "intake.crop.rotate"
+          ]
+        }
+      ],
+      "states": [
+        {
+          "id": "crop-ready",
+          "fixture": "garment.complete",
+          "checkpoint": true,
+          "expectedOn": [
+            "app",
+            "mini"
+          ]
+        },
+        {
+          "id": "rotated",
+          "fixture": "garment.no_image",
+          "checkpoint": true,
+          "expectedOn": [
+            "app",
+            "mini"
+          ]
+        },
+        {
+          "id": "mini-missing",
+          "fixture": "network.500",
+          "checkpoint": true,
+          "expectedOn": [
+            "app",
+            "mini"
+          ]
+        }
+      ],
+      "requiredActions": [
+        {
+          "id": "intake.crop.rotate",
+          "event": "tap",
+          "requiredOn": [
+            "app",
+            "mini"
+          ],
+          "sourceActionIds": {},
+          "expectedTransition": "state-change",
+          "sideEffect": "LOCAL_STATE"
+        },
+        {
+          "id": "intake.crop.confirm",
+          "event": "tap",
+          "requiredOn": [
+            "app",
+            "mini"
+          ],
+          "sourceActionIds": {},
+          "expectedTransition": "pop",
+          "sideEffect": "LOCAL_STATE"
+        }
+      ],
+      "overlays": [],
+      "checkpoints": [
+        "crop-ready",
+        "rotated",
+        "mini-missing"
+      ],
+      "platformExceptionIds": [
+        "WX-CAPSULE-001"
+      ]
+    },
+    {
+      "id": "intake.partial-save-confirm",
+      "domain": "intake",
+      "sourceOfTruth": "app",
+      "mappingStatus": "APP_ONLY_DEFECT",
+      "app": {
+        "routes": [],
+        "sourceInventoryIds": [],
+        "sourceFiles": []
+      },
+      "mini": {
+        "routes": [
+          "/pages/intake/review/index"
+        ],
+        "sourceInventoryIds": [
+          "mini.route.pages.intake.review.index"
+        ],
+        "sourceFiles": []
+      },
+      "fixtures": [
+        "garment.complete",
+        "garment.no_image",
+        "network.500"
+      ],
+      "entryPaths": [
+        {
+          "id": "direct",
+          "actions": []
+        },
+        {
+          "id": "navigation",
+          "actions": [
+            "intake.partial.cancel"
+          ]
+        }
+      ],
+      "states": [
+        {
+          "id": "confirmation",
+          "fixture": "garment.complete",
+          "checkpoint": true,
+          "expectedOn": [
+            "app",
+            "mini"
+          ]
+        },
+        {
+          "id": "save-completed-only",
+          "fixture": "garment.no_image",
+          "checkpoint": true,
+          "expectedOn": [
+            "app",
+            "mini"
+          ]
+        },
+        {
+          "id": "mini-missing",
+          "fixture": "network.500",
+          "checkpoint": true,
+          "expectedOn": [
+            "app",
+            "mini"
+          ]
+        }
+      ],
+      "requiredActions": [
+        {
+          "id": "intake.partial.cancel",
+          "event": "tap",
+          "requiredOn": [
+            "app",
+            "mini"
+          ],
+          "sourceActionIds": {},
+          "expectedTransition": "overlay-close",
+          "sideEffect": "NONE"
+        },
+        {
+          "id": "intake.partial.confirm",
+          "event": "tap",
+          "requiredOn": [
+            "app",
+            "mini"
+          ],
+          "sourceActionIds": {},
+          "expectedTransition": "push",
+          "target": "intake.partial",
+          "sideEffect": "BACKEND_WRITE",
+          "serverAssertion": "partial-batch-create-readback"
+        }
+      ],
+      "overlays": [],
+      "checkpoints": [
+        "confirmation",
+        "save-completed-only",
+        "mini-missing"
+      ],
+      "platformExceptionIds": [
+        "WX-CAPSULE-001"
+      ]
+    }
+  ]
+}

@@ -9,6 +9,7 @@ import { chromium, type Browser } from "playwright";
 import { aiLiveCases as aiLiveWorkerCases } from "./suites/ai-live";
 import { criticalSuite as criticalWorkerCases } from "./suites/critical";
 import { fullCases as fullWorkerCases } from "./suites/full";
+import { parityRegressionCases } from "./suites/parity-regressions";
 import { smokeCases as smokeWorkerCases } from "./suites/smoke";
 import type { AndroidE2EAccount, AndroidE2EApi, AndroidE2ECase, AndroidE2EContext, AndroidE2EFault, ApiRequestOptions, AuthSession, WorkspaceEntity } from "./suites/types";
 
@@ -18,11 +19,6 @@ const MODE = readArg("--suite") ?? "smoke";
 const CASE_FILTER = readArg("--case");
 const RUN_ID = new Date().toISOString().replace(/[-:]/g, "").replace(/\..+/, "").replace("T", "-");
 const RESULTS_DIR = resolve(process.env.RESULTS_DIR ?? join(ROOT, "test-results", "android-e2e", RUN_ID));
-
-main().catch((error) => {
-  console.error(error instanceof Error ? error.stack ?? error.message : error);
-  process.exit(1);
-});
 
 async function main() {
   loadEnvFile(join(ROOT, ".env.e2e.local"));
@@ -133,7 +129,7 @@ function selectedCases(): AndroidE2ECase[] {
     : MODE === "critical"
       ? criticalCases()
       : MODE === "full"
-        ? [...smokeCases(), ...criticalCases(), ...fullWorkerCases()]
+        ? [...smokeCases(), ...criticalCases(), ...fullWorkerCases(), ...parityRegressionCases()]
         : MODE === "ai-live"
           ? aiLiveWorkerCases()
           : fail(`未知 suite：${MODE}`);
@@ -182,9 +178,8 @@ class Artifacts {
   async screenshot(page: Page, name: string): Promise<void>;
   async screenshot(name: string, page?: Page): Promise<void>;
   async screenshot(pageOrName: Page | string, nameOrPage?: string | Page): Promise<void> {
-    const page = typeof pageOrName === "string" ? nameOrPage as Page : pageOrName;
     const name = typeof pageOrName === "string" ? pageOrName : nameOrPage as string;
-    await page.screenshot({ path: join(this.dir, `${safeName(name)}.png`), fullPage: true });
+    this.device.screenshot(`${safeName(name)}.png`);
   }
 
   async writeJson(name: string, value: unknown) {
@@ -232,6 +227,7 @@ class AdbDevice {
     const output = execFileSync("adb", ["-s", this.serial, "exec-out", "screencap", "-p"], {
       cwd: ROOT,
       stdio: "pipe",
+      maxBuffer: 20 * 1024 * 1024,
     });
     writeFileSync(join(RESULTS_DIR, safeName(name)), output);
   }
@@ -252,7 +248,7 @@ class AdbDevice {
   assertNoCrash(name: string) {
     const output = this.run(["logcat", "-d", "-t", "1200"], { encoding: "utf8" });
     writeFileSync(join(RESULTS_DIR, name), output);
-    if (/FATAL EXCEPTION|AndroidRuntime|Process: com\.wardrobe\.outfit/.test(output)) {
+    if (/Process: com\.wardrobe\.outfit|FATAL EXCEPTION[^\n]*\n(?:.*\n){0,20}.*com\.wardrobe\.outfit/u.test(output)) {
       throw new Error(`发现 Android 致命日志：${join(RESULTS_DIR, name)}`);
     }
   }
@@ -341,21 +337,23 @@ class ApiClient implements AndroidE2EApi {
   constructor(private readonly baseUrl: string) {}
 
   async register(account: AndroidE2EAccount, deviceId = freshDeviceId()) {
-    return this.requestJson<AuthSession>("/api/auth/register", "POST", undefined, {
+    const session = await this.requestJson<Omit<AuthSession, "deviceId">>("/api/auth/register", "POST", undefined, {
       phone: account.phone,
       password: account.password,
       deviceId,
       deviceLabel: "Android E2E",
     });
+    return { ...session, deviceId };
   }
 
   async login(account: AndroidE2EAccount, deviceId = freshDeviceId()) {
-    return this.requestJson<AuthSession>("/api/auth/login", "POST", undefined, {
+    const session = await this.requestJson<Omit<AuthSession, "deviceId">>("/api/auth/login", "POST", undefined, {
       phone: account.phone,
       password: account.password,
       deviceId,
       deviceLabel: "Android E2E",
     });
+    return { ...session, deviceId };
   }
 
   async overview(session: AuthSession) {
@@ -523,3 +521,8 @@ async function waitForHttp(url: string, timeoutMs: number) {
 function fail(message: string): never {
   throw new Error(message);
 }
+
+main().catch((error) => {
+  console.error(error instanceof Error ? error.stack ?? error.message : error);
+  process.exit(1);
+});

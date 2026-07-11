@@ -57,7 +57,7 @@ export function OutfitCover({ outfit, items, size = "card", className = "", onCl
 
   if (onClick) {
     return (
-      <button type="button" onClick={onClick} className="w-full">
+      <button type="button" data-parity-id="parity.app.app.src.components.outfit.cover.33a0bda2f1" onClick={onClick} className="w-full">
         {wrapper}
       </button>
     );

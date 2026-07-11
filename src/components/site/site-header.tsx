@@ -21,7 +21,7 @@ export function SiteHeader() {
           aria-label={open ? "关闭导航菜单" : "打开导航菜单"}
           aria-expanded={open}
           aria-controls="site-navigation"
-          onClick={() => setOpen((value) => !value)}
+          data-parity-id="parity.app.app.src.components.site.site.header.efb7cfe2f5" onClick={() => setOpen((value) => !value)}
         >
           {open ? <X size={21} aria-hidden="true" /> : <Menu size={21} aria-hidden="true" />}
         </button>
@@ -31,6 +31,7 @@ export function SiteHeader() {
             return (
               <Link
                 key={link.href}
+                data-parity-id={`parity.app.app.src.components.site.site.header.3d66f910af.${encodeURIComponent(link.href)}`}
                 href={link.href}
                 aria-current={active ? "page" : undefined}
                 onClick={() => setOpen(false)}

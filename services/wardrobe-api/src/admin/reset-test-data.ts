@@ -10,6 +10,8 @@ export const USER_DATA_TABLES = [
   "asset_bindings", "sync_mutations", "sync_changes", "assets", "outfit_items", "wear_events",
   "outfit_plans", "trip_plans", "profiles", "wishlist_items", "outfits", "garments", "locations",
   "wardrobes", "refresh_tokens", "device_sessions", "password_credentials", "phone_identities",
+  "email_identities", "email_verification_challenges", "wechat_accounts", "wechat_identities",
+  "wechat_binding_tickets", "account_deletion_authorizations", "account_deletion_jobs",
   "pending_registrations", "account_security_events", "users",
 ] as const;
 

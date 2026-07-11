@@ -1,0 +1,777 @@
+{
+  "schemaVersion": 1,
+  "domain": "wishlist",
+  "screens": [
+    {
+      "id": "wishlist.home",
+      "domain": "wishlist",
+      "sourceOfTruth": "app",
+      "mappingStatus": "EQUIVALENT",
+      "app": {
+        "routes": [
+          "route.wishlist.home",
+          "internal.subpage.home"
+        ],
+        "sourceInventoryIds": [
+          "app.route.wishlist.home",
+          "app.internal.subpage.home"
+        ],
+        "sourceFiles": []
+      },
+      "mini": {
+        "routes": [
+          "/pages/wishlist/index/index"
+        ],
+        "sourceInventoryIds": [
+          "mini.route.pages.wishlist.index.index"
+        ],
+        "sourceFiles": []
+      },
+      "fixtures": [
+        "wishlist.normal",
+        "wishlist.purchased",
+        "network.409"
+      ],
+      "entryPaths": [
+        {
+          "id": "direct",
+          "actions": []
+        },
+        {
+          "id": "navigation",
+          "actions": [
+            "wishlist.filter"
+          ]
+        }
+      ],
+      "states": [
+        {
+          "id": "interested",
+          "fixture": "wishlist.normal",
+          "checkpoint": true,
+          "expectedOn": [
+            "app",
+            "mini"
+          ]
+        },
+        {
+          "id": "bulk-select",
+          "fixture": "wishlist.purchased",
+          "checkpoint": true,
+          "expectedOn": [
+            "app",
+            "mini"
+          ]
+        },
+        {
+          "id": "empty",
+          "fixture": "network.409",
+          "checkpoint": true,
+          "expectedOn": [
+            "app",
+            "mini"
+          ]
+        }
+      ],
+      "requiredActions": [
+        {
+          "id": "wishlist.filter",
+          "event": "tap",
+          "requiredOn": [
+            "app",
+            "mini"
+          ],
+          "sourceActionIds": {},
+          "expectedTransition": "state-change",
+          "sideEffect": "LOCAL_STATE"
+        },
+        {
+          "id": "wishlist.item.open",
+          "event": "tap",
+          "requiredOn": [
+            "app",
+            "mini"
+          ],
+          "sourceActionIds": {},
+          "expectedTransition": "push",
+          "target": "wishlist.item",
+          "sideEffect": "BACKEND_READ",
+          "serverAssertion": "wishlist-detail-readback"
+        },
+        {
+          "id": "wishlist.bulk.toggle",
+          "event": "tap",
+          "requiredOn": [
+            "app",
+            "mini"
+          ],
+          "sourceActionIds": {},
+          "expectedTransition": "state-change",
+          "sideEffect": "LOCAL_STATE"
+        }
+      ],
+      "overlays": [],
+      "checkpoints": [
+        "interested",
+        "bulk-select",
+        "empty"
+      ],
+      "platformExceptionIds": [
+        "WX-CAPSULE-001"
+      ]
+    },
+    {
+      "id": "wishlist.detail",
+      "domain": "wishlist",
+      "sourceOfTruth": "app",
+      "mappingStatus": "EQUIVALENT",
+      "app": {
+        "routes": [
+          "internal.subpage.detail"
+        ],
+        "sourceInventoryIds": [
+          "app.internal.subpage.detail"
+        ],
+        "sourceFiles": []
+      },
+      "mini": {
+        "routes": [
+          "/pages/wishlist/detail/index"
+        ],
+        "sourceInventoryIds": [
+          "mini.route.pages.wishlist.detail.index"
+        ],
+        "sourceFiles": []
+      },
+      "fixtures": [
+        "wishlist.normal",
+        "wishlist.purchased",
+        "network.409"
+      ],
+      "entryPaths": [
+        {
+          "id": "direct",
+          "actions": []
+        },
+        {
+          "id": "navigation",
+          "actions": [
+            "wishlist.detail.convert"
+          ]
+        }
+      ],
+      "states": [
+        {
+          "id": "interested",
+          "fixture": "wishlist.normal",
+          "checkpoint": true,
+          "expectedOn": [
+            "app",
+            "mini"
+          ]
+        },
+        {
+          "id": "converted",
+          "fixture": "wishlist.purchased",
+          "checkpoint": true,
+          "expectedOn": [
+            "app",
+            "mini"
+          ]
+        },
+        {
+          "id": "actions-open",
+          "fixture": "network.409",
+          "checkpoint": true,
+          "expectedOn": [
+            "app",
+            "mini"
+          ]
+        }
+      ],
+      "requiredActions": [
+        {
+          "id": "wishlist.detail.convert",
+          "event": "tap",
+          "requiredOn": [
+            "app",
+            "mini"
+          ],
+          "sourceActionIds": {},
+          "expectedTransition": "overlay-open",
+          "sideEffect": "LOCAL_STATE"
+        },
+        {
+          "id": "wishlist.detail.reject",
+          "event": "tap",
+          "requiredOn": [
+            "app",
+            "mini"
+          ],
+          "sourceActionIds": {},
+          "expectedTransition": "state-change",
+          "sideEffect": "BACKEND_WRITE",
+          "serverAssertion": "wishlist-status-readback"
+        },
+        {
+          "id": "wishlist.detail.delete",
+          "event": "tap",
+          "requiredOn": [
+            "app",
+            "mini"
+          ],
+          "sourceActionIds": {},
+          "expectedTransition": "pop",
+          "sideEffect": "BACKEND_WRITE",
+          "serverAssertion": "wishlist-delete-readback"
+        }
+      ],
+      "overlays": [
+        "wishlist.detail.convert.overlay"
+      ],
+      "checkpoints": [
+        "interested",
+        "converted",
+        "actions-open"
+      ],
+      "platformExceptionIds": [
+        "WX-CAPSULE-001"
+      ]
+    },
+    {
+      "id": "wishlist.edit",
+      "domain": "wishlist",
+      "sourceOfTruth": "app",
+      "mappingStatus": "EQUIVALENT",
+      "app": {
+        "routes": [
+          "internal.subpage.add.edit"
+        ],
+        "sourceInventoryIds": [
+          "app.internal.subpage.add.edit"
+        ],
+        "sourceFiles": []
+      },
+      "mini": {
+        "routes": [
+          "/pages/wishlist/edit/index"
+        ],
+        "sourceInventoryIds": [
+          "mini.route.pages.wishlist.edit.index"
+        ],
+        "sourceFiles": []
+      },
+      "fixtures": [
+        "wishlist.normal",
+        "wishlist.purchased",
+        "network.409"
+      ],
+      "entryPaths": [
+        {
+          "id": "direct",
+          "actions": []
+        },
+        {
+          "id": "navigation",
+          "actions": [
+            "wishlist.edit.save"
+          ]
+        }
+      ],
+      "states": [
+        {
+          "id": "form",
+          "fixture": "wishlist.normal",
+          "checkpoint": true,
+          "expectedOn": [
+            "app",
+            "mini"
+          ]
+        },
+        {
+          "id": "dirty",
+          "fixture": "wishlist.purchased",
+          "checkpoint": true,
+          "expectedOn": [
+            "app",
+            "mini"
+          ]
+        },
+        {
+          "id": "media-actions",
+          "fixture": "network.409",
+          "checkpoint": true,
+          "expectedOn": [
+            "app",
+            "mini"
+          ]
+        }
+      ],
+      "requiredActions": [
+        {
+          "id": "wishlist.edit.save",
+          "event": "tap",
+          "requiredOn": [
+            "app",
+            "mini"
+          ],
+          "sourceActionIds": {},
+          "expectedTransition": "pop",
+          "sideEffect": "BACKEND_WRITE",
+          "serverAssertion": "wishlist-update-readback"
+        },
+        {
+          "id": "wishlist.edit.media.add",
+          "event": "tap",
+          "requiredOn": [
+            "app",
+            "mini"
+          ],
+          "sourceActionIds": {},
+          "expectedTransition": "host-native",
+          "sideEffect": "HOST_NATIVE",
+          "serverAssertion": "media-picker-result-contract"
+        }
+      ],
+      "overlays": [],
+      "checkpoints": [
+        "form",
+        "dirty",
+        "media-actions"
+      ],
+      "platformExceptionIds": [
+        "WX-CAPSULE-001"
+      ]
+    },
+    {
+      "id": "wishlist.purchased",
+      "domain": "wishlist",
+      "sourceOfTruth": "app",
+      "mappingStatus": "EQUIVALENT",
+      "app": {
+        "routes": [
+          "route.wishlist.purchased",
+          "internal.subpage.purchased"
+        ],
+        "sourceInventoryIds": [
+          "app.route.wishlist.purchased",
+          "app.internal.subpage.purchased"
+        ],
+        "sourceFiles": []
+      },
+      "mini": {
+        "routes": [
+          "/pages/wishlist/index/index"
+        ],
+        "sourceInventoryIds": [
+          "mini.route.pages.wishlist.index.index"
+        ],
+        "sourceFiles": []
+      },
+      "fixtures": [
+        "wishlist.normal",
+        "wishlist.purchased",
+        "network.409"
+      ],
+      "entryPaths": [
+        {
+          "id": "direct",
+          "actions": []
+        },
+        {
+          "id": "navigation",
+          "actions": [
+            "wishlist.purchased.open"
+          ]
+        }
+      ],
+      "states": [
+        {
+          "id": "filtered",
+          "fixture": "wishlist.normal",
+          "checkpoint": true,
+          "expectedOn": [
+            "app",
+            "mini"
+          ]
+        },
+        {
+          "id": "converted-link",
+          "fixture": "wishlist.purchased",
+          "checkpoint": true,
+          "expectedOn": [
+            "app",
+            "mini"
+          ]
+        },
+        {
+          "id": "empty",
+          "fixture": "network.409",
+          "checkpoint": true,
+          "expectedOn": [
+            "app",
+            "mini"
+          ]
+        }
+      ],
+      "requiredActions": [
+        {
+          "id": "wishlist.purchased.open",
+          "event": "tap",
+          "requiredOn": [
+            "app",
+            "mini"
+          ],
+          "sourceActionIds": {},
+          "expectedTransition": "push",
+          "target": "wishlist.purchased",
+          "sideEffect": "BACKEND_READ",
+          "serverAssertion": "wishlist-detail-readback"
+        },
+        {
+          "id": "wishlist.purchased.garment",
+          "event": "tap",
+          "requiredOn": [
+            "app",
+            "mini"
+          ],
+          "sourceActionIds": {},
+          "expectedTransition": "push",
+          "target": "wishlist.purchased",
+          "sideEffect": "BACKEND_READ",
+          "serverAssertion": "converted-garment-readback"
+        }
+      ],
+      "overlays": [],
+      "checkpoints": [
+        "filtered",
+        "converted-link",
+        "empty"
+      ],
+      "platformExceptionIds": [
+        "WX-CAPSULE-001"
+      ]
+    },
+    {
+      "id": "wishlist.rejected",
+      "domain": "wishlist",
+      "sourceOfTruth": "app",
+      "mappingStatus": "EQUIVALENT",
+      "app": {
+        "routes": [
+          "route.wishlist.rejected",
+          "internal.subpage.rejected"
+        ],
+        "sourceInventoryIds": [
+          "app.route.wishlist.rejected",
+          "app.internal.subpage.rejected"
+        ],
+        "sourceFiles": []
+      },
+      "mini": {
+        "routes": [
+          "/pages/wishlist/index/index"
+        ],
+        "sourceInventoryIds": [
+          "mini.route.pages.wishlist.index.index"
+        ],
+        "sourceFiles": []
+      },
+      "fixtures": [
+        "wishlist.normal",
+        "wishlist.purchased",
+        "network.409"
+      ],
+      "entryPaths": [
+        {
+          "id": "direct",
+          "actions": []
+        },
+        {
+          "id": "navigation",
+          "actions": [
+            "wishlist.rejected.restore"
+          ]
+        }
+      ],
+      "states": [
+        {
+          "id": "filtered",
+          "fixture": "wishlist.normal",
+          "checkpoint": true,
+          "expectedOn": [
+            "app",
+            "mini"
+          ]
+        },
+        {
+          "id": "restore-action",
+          "fixture": "wishlist.purchased",
+          "checkpoint": true,
+          "expectedOn": [
+            "app",
+            "mini"
+          ]
+        },
+        {
+          "id": "empty",
+          "fixture": "network.409",
+          "checkpoint": true,
+          "expectedOn": [
+            "app",
+            "mini"
+          ]
+        }
+      ],
+      "requiredActions": [
+        {
+          "id": "wishlist.rejected.restore",
+          "event": "tap",
+          "requiredOn": [
+            "app",
+            "mini"
+          ],
+          "sourceActionIds": {},
+          "expectedTransition": "state-change",
+          "sideEffect": "BACKEND_WRITE",
+          "serverAssertion": "wishlist-status-readback"
+        },
+        {
+          "id": "wishlist.rejected.open",
+          "event": "tap",
+          "requiredOn": [
+            "app",
+            "mini"
+          ],
+          "sourceActionIds": {},
+          "expectedTransition": "push",
+          "target": "wishlist.rejected",
+          "sideEffect": "BACKEND_READ",
+          "serverAssertion": "wishlist-detail-readback"
+        }
+      ],
+      "overlays": [],
+      "checkpoints": [
+        "filtered",
+        "restore-action",
+        "empty"
+      ],
+      "platformExceptionIds": [
+        "WX-CAPSULE-001"
+      ]
+    },
+    {
+      "id": "wishlist.archived",
+      "domain": "wishlist",
+      "sourceOfTruth": "app",
+      "mappingStatus": "EQUIVALENT",
+      "app": {
+        "routes": [
+          "route.wishlist.archived",
+          "internal.subpage.archived"
+        ],
+        "sourceInventoryIds": [
+          "app.route.wishlist.archived",
+          "app.internal.subpage.archived"
+        ],
+        "sourceFiles": []
+      },
+      "mini": {
+        "routes": [
+          "/pages/wishlist/index/index"
+        ],
+        "sourceInventoryIds": [
+          "mini.route.pages.wishlist.index.index"
+        ],
+        "sourceFiles": []
+      },
+      "fixtures": [
+        "wishlist.normal",
+        "wishlist.purchased",
+        "network.409"
+      ],
+      "entryPaths": [
+        {
+          "id": "direct",
+          "actions": []
+        },
+        {
+          "id": "navigation",
+          "actions": [
+            "wishlist.archived.restore"
+          ]
+        }
+      ],
+      "states": [
+        {
+          "id": "filtered",
+          "fixture": "wishlist.normal",
+          "checkpoint": true,
+          "expectedOn": [
+            "app",
+            "mini"
+          ]
+        },
+        {
+          "id": "restore-action",
+          "fixture": "wishlist.purchased",
+          "checkpoint": true,
+          "expectedOn": [
+            "app",
+            "mini"
+          ]
+        },
+        {
+          "id": "empty",
+          "fixture": "network.409",
+          "checkpoint": true,
+          "expectedOn": [
+            "app",
+            "mini"
+          ]
+        }
+      ],
+      "requiredActions": [
+        {
+          "id": "wishlist.archived.restore",
+          "event": "tap",
+          "requiredOn": [
+            "app",
+            "mini"
+          ],
+          "sourceActionIds": {},
+          "expectedTransition": "state-change",
+          "sideEffect": "BACKEND_WRITE",
+          "serverAssertion": "wishlist-status-readback"
+        },
+        {
+          "id": "wishlist.archived.open",
+          "event": "tap",
+          "requiredOn": [
+            "app",
+            "mini"
+          ],
+          "sourceActionIds": {},
+          "expectedTransition": "push",
+          "target": "wishlist.archived",
+          "sideEffect": "BACKEND_READ",
+          "serverAssertion": "wishlist-detail-readback"
+        }
+      ],
+      "overlays": [],
+      "checkpoints": [
+        "filtered",
+        "restore-action",
+        "empty"
+      ],
+      "platformExceptionIds": [
+        "WX-CAPSULE-001"
+      ]
+    },
+    {
+      "id": "wishlist.convert-confirm",
+      "domain": "wishlist",
+      "sourceOfTruth": "app",
+      "mappingStatus": "APP_ONLY_DEFECT",
+      "app": {
+        "routes": [
+          "internal.subpage.convert.confirm"
+        ],
+        "sourceInventoryIds": [
+          "app.internal.subpage.convert.confirm"
+        ],
+        "sourceFiles": []
+      },
+      "mini": {
+        "routes": [
+          "/pages/wishlist/detail/index"
+        ],
+        "sourceInventoryIds": [
+          "mini.route.pages.wishlist.detail.index"
+        ],
+        "sourceFiles": []
+      },
+      "fixtures": [
+        "wishlist.normal",
+        "wishlist.purchased",
+        "network.409"
+      ],
+      "entryPaths": [
+        {
+          "id": "direct",
+          "actions": []
+        },
+        {
+          "id": "navigation",
+          "actions": [
+            "wishlist.convert.cancel"
+          ]
+        }
+      ],
+      "states": [
+        {
+          "id": "confirmation",
+          "fixture": "wishlist.normal",
+          "checkpoint": true,
+          "expectedOn": [
+            "app",
+            "mini"
+          ]
+        },
+        {
+          "id": "location-choice",
+          "fixture": "wishlist.purchased",
+          "checkpoint": true,
+          "expectedOn": [
+            "app",
+            "mini"
+          ]
+        },
+        {
+          "id": "mini-immediate",
+          "fixture": "network.409",
+          "checkpoint": true,
+          "expectedOn": [
+            "app",
+            "mini"
+          ]
+        }
+      ],
+      "requiredActions": [
+        {
+          "id": "wishlist.convert.cancel",
+          "event": "tap",
+          "requiredOn": [
+            "app",
+            "mini"
+          ],
+          "sourceActionIds": {},
+          "expectedTransition": "overlay-close",
+          "sideEffect": "NONE"
+        },
+        {
+          "id": "wishlist.convert.confirm",
+          "event": "tap",
+          "requiredOn": [
+            "app",
+            "mini"
+          ],
+          "sourceActionIds": {},
+          "expectedTransition": "replace",
+          "target": "wishlist.convert",
+          "sideEffect": "BACKEND_WRITE",
+          "serverAssertion": "wishlist-convert-transaction-readback"
+        }
+      ],
+      "overlays": [],
+      "checkpoints": [
+        "confirmation",
+        "location-choice",
+        "mini-immediate"
+      ],
+      "platformExceptionIds": [
+        "WX-CAPSULE-001"
+      ]
+    }
+  ]
+}

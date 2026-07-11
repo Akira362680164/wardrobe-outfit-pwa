@@ -53,6 +53,8 @@ review-artifacts/
 .e2e-runtime/
 playwright-report/
 test-results/
+artifacts/parity/
+.parity-runtime/
 playwright/.auth/
 .env.e2e.local
 AGENTS.md

@@ -320,6 +320,8 @@ export class DiagnosticService {
         .where(
           and(
             eq(apiRequestTraces.requestId, requestId),
+            eq(apiRequestTraces.userIdHash, userHash),
+            eq(apiRequestTraces.deviceIdHash, deviceHash),
             gte(apiRequestTraces.createdAt, new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)),
           ),
         )

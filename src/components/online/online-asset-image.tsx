@@ -57,7 +57,7 @@ export function OnlineAssetImage({ asset, variant, alt, className = "", imageCla
   return <div className={className}>
     {image.status === "error" ? <OnlineImageLoadError onRetry={image.retry} />
       : image.url ? (onOpen
-        ? <button type="button" onClick={() => onOpen(image.url!)} className="h-full w-full"><img src={image.url} alt={alt} decoding="async" className={`h-full w-full object-contain transition-opacity duration-150 ${imageClassName}`} /></button>
+        ? <button type="button" data-parity-id="parity.app.app.src.components.online.online.asset.image.fd9596b99a" onClick={() => onOpen(image.url!)} className="h-full w-full"><img src={image.url} alt={alt} decoding="async" className={`h-full w-full object-contain transition-opacity duration-150 ${imageClassName}`} /></button>
         : <img src={image.url} alt={alt} decoding="async" className={`h-full w-full object-contain transition-opacity duration-150 ${imageClassName}`} />)
         : image.hasAsset ? <OnlineImagePlaceholder /> : fallback ?? null}
   </div>;
@@ -77,6 +77,6 @@ export function OnlineCroppedAssetImage({ asset, cropBox, alt, className = "", f
   if (original.status === "error" && !thumbnail.url) return <div className={className}><OnlineImageLoadError onRetry={original.retry} /></div>;
   const content = <OriginalCroppedImage originalSrc={original.url} thumbnailSrc={thumbnail.url} cropBox={cropBox} alt={alt} className="h-full w-full" onOriginalLoadError={original.retry} />;
   return <div className={className}>{onOpen && original.url
-    ? <button type="button" className="h-full w-full" onClick={() => onOpen(original.url!)}>{content}</button>
+    ? <button type="button" className="h-full w-full" data-parity-id="parity.app.app.src.components.online.online.asset.image.09a7d01685" onClick={() => onOpen(original.url!)}>{content}</button>
     : content}</div>;
 }

@@ -363,7 +363,7 @@ function OutfitSelectStep({
  <div className="-mx-1 mb-2 flex gap-2 overflow-x-auto px-1 pb-1">
  <button
  type="button"
- onClick={() => onLocationFilterChange("all")}
+ data-parity-id="parity.app.app.src.components.outfit.intake.flow.1afa2b3b96" onClick={() => onLocationFilterChange("all")}
  className={`shrink-0 rounded-full px-3 py-1 text-xs font-medium transition-colors ${
  locationFilter === "all" ? "bg-denim/10 text-denim border border-denim/30" : "bg-milk-darker/50 text-ink/60 border border-transparent"
  }`}
@@ -375,6 +375,7 @@ function OutfitSelectStep({
  return (
  <button
  key={location.id}
+ data-parity-id={`parity.app.app.src.components.outfit.intake.flow.24049999f1.${location.id}`}
  type="button"
  onClick={() => onLocationFilterChange(location.id)}
  className={`shrink-0 rounded-full px-3 py-1 text-xs font-medium transition-colors ${
@@ -393,7 +394,7 @@ function OutfitSelectStep({
  <Search size={15} className="text-ink/35" aria-hidden="true" />
  <input
  value={itemSearch}
- onChange={(event) => onSearchChange(event.target.value)}
+ data-parity-id="parity.app.app.src.components.outfit.intake.flow.84d1a5cd27" onChange={(event) => onSearchChange(event.target.value)}
  placeholder="搜索名称、颜色或分类"
  className="h-10 bg-transparent text-sm outline-none"
  />
@@ -404,6 +405,7 @@ function OutfitSelectStep({
  {categoryCounts.map((chip) => (
  <button
  key={chip.key}
+ data-parity-id={`parity.app.app.src.components.outfit.intake.flow.f7029ab596.${chip.key}`}
  type="button"
  onClick={() => onCategoryFilterChange(chip.key)}
  className={`shrink-0 rounded-full px-3 py-1 text-xs font-medium transition-colors ${
@@ -427,6 +429,7 @@ function OutfitSelectStep({
  return (
  <button
  key={id}
+ data-parity-id={`parity.app.app.src.components.outfit.intake.flow.f43cb9787e.${id}`}
  type="button"
  onClick={() => onToggleItem(id)}
  className={`min-w-0 overflow-hidden rounded-lg border text-left ${selected ? "border-denim bg-denim/6" : "border-ink/8 bg-[#fbfbf8]"}`}
@@ -455,7 +458,7 @@ function OutfitSelectStep({
  return item ? (
  <span key={id} className="inline-flex items-center gap-1 rounded-full border border-ink/10 bg-white px-2 py-0.5 text-xs">
  {item.name}
- <button type="button" onClick={() => onRemoveItem(id)} className="text-ink/30 hover:text-clay">×</button>
+ <button type="button" data-parity-id={`parity.app.app.src.components.outfit.intake.flow.8c9c1fce4b.${id}`} onClick={() => onRemoveItem(id)} className="text-ink/30 hover:text-clay">×</button>
  </span>
  ) : null;
  })}
@@ -483,17 +486,17 @@ function OutfitReviewStep({
  <CompositionCard composition={composition} />
  <IntakeStepSection title="校对套装草稿" icon={<Tag size={16} aria-hidden="true" />}>
  <div className="grid gap-3">
- <TextField label="套装名称" value={draft.name.value} field={draft.name} onChange={(value) => onPatchDraft({ name: userField(value) })} />
+ <TextField label="套装名称" value={draft.name.value} field={draft.name} data-parity-id="parity.app.app.src.components.outfit.intake.flow.35ecd74489" onChange={(value) => onPatchDraft({ name: userField(value) })} />
  <TagToggleGroup
  label="季节"
  values={draft.seasons.value}
  options={SEASON_OPTIONS.map((season) => ({ value: season, label: SEASON_LABELS[season] }))}
- onChange={(values: Season[]) => onPatchDraft({ seasons: userField(values) })}
+ data-parity-id="parity.app.app.src.components.outfit.intake.flow.6d1fafb24f" onChange={(values: Season[]) => onPatchDraft({ seasons: userField(values) })}
  />
- <TextField label="场景标签" value={draft.sceneTags.value.join("、")} field={draft.sceneTags} onChange={(value) => onPatchDraft({ sceneTags: userField(parseTagInput(value)) })} />
- <TextField label="风格标签" value={draft.styleTags.value.join("、")} field={draft.styleTags} onChange={(value) => onPatchDraft({ styleTags: userField(parseTagInput(value)) })} />
- <TextField label="搭配标签" value={draft.pairingTags.value.join("、")} field={draft.pairingTags} onChange={(value) => onPatchDraft({ pairingTags: userField(parseTagInput(value)) })} />
- <TextareaField label="备注" value={draft.notes.value} field={draft.notes} onChange={(value) => onPatchDraft({ notes: userField(value) })} />
+ <TextField label="场景标签" value={draft.sceneTags.value.join("、")} field={draft.sceneTags} data-parity-id="parity.app.app.src.components.outfit.intake.flow.a8f802ea14" onChange={(value) => onPatchDraft({ sceneTags: userField(parseTagInput(value)) })} />
+ <TextField label="风格标签" value={draft.styleTags.value.join("、")} field={draft.styleTags} data-parity-id="parity.app.app.src.components.outfit.intake.flow.9b0cb2b192" onChange={(value) => onPatchDraft({ styleTags: userField(parseTagInput(value)) })} />
+ <TextField label="搭配标签" value={draft.pairingTags.value.join("、")} field={draft.pairingTags} data-parity-id="parity.app.app.src.components.outfit.intake.flow.8a1c041805" onChange={(value) => onPatchDraft({ pairingTags: userField(parseTagInput(value)) })} />
+ <TextareaField label="备注" value={draft.notes.value} field={draft.notes} data-parity-id="parity.app.app.src.components.outfit.intake.flow.d030c801c5" onChange={(value) => onPatchDraft({ notes: userField(value) })} />
  </div>
  </IntakeStepSection>
  <ProcessingIssueList issues={draft.processingIssues} />

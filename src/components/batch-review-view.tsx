@@ -105,7 +105,7 @@ function SimilarMatchesPanel({
     <div className="grid gap-2 rounded-lg border border-clay/20 bg-clay/5 p-3">
       <div className="flex items-center justify-between gap-2">
         <p className="text-sm font-semibold text-ink">发现相似衣物</p>
-        <button type="button" onClick={onKeepNew} className="rounded-lg border border-ink/10 bg-white px-2.5 py-1 text-xs font-semibold">
+        <button type="button" data-parity-id="parity.app.app.src.components.batch.review.view.dac48e0faf" onClick={onKeepNew} className="rounded-lg border border-ink/10 bg-white px-2.5 py-1 text-xs font-semibold">
           保留新增
         </button>
       </div>
@@ -113,6 +113,7 @@ function SimilarMatchesPanel({
         {matches.map((match) => (
           <div key={match.item.id} className={`w-28 shrink-0 rounded-lg border bg-white p-2 ${selectedExistingId === match.item.id ? "border-denim" : "border-ink/10"}`}>
             <button
+              data-parity-id={`parity.app.app.src.components.batch.review.view.9347bc058c.${match.item.id}`}
               type="button"
               onClick={() => undefined}
               className="aspect-square w-full overflow-hidden rounded-md bg-mist"
@@ -124,6 +125,7 @@ function SimilarMatchesPanel({
             <p className="line-clamp-2 text-[10px] text-ink/45">{match.reasons.join("、")}</p>
             {match.item.id ? (
               <button
+                data-parity-id={`parity.app.app.src.components.batch.review.view.a87d98ef22.${match.item.id}`}
                 type="button"
                 onClick={() => onUseExisting(match.item.id as number)}
                 className={`mt-2 h-7 w-full rounded-md text-[11px] font-semibold ${selectedExistingId === match.item.id ? "bg-denim text-white" : "bg-mist text-ink/70"}`}
@@ -285,7 +287,7 @@ export function BatchReviewView({
                   名称
                   <input
                     value={current.name}
-                    onChange={(event) => onUpdateDraft(currentOriginalIndex, { name: event.target.value })}
+                    data-parity-id="parity.app.app.src.components.batch.review.view.580be45959" onChange={(event) => onUpdateDraft(currentOriginalIndex, { name: event.target.value })}
                     className="h-11 rounded-lg border border-ink/10 bg-white px-3 text-base outline-none focus:border-denim"
                   />
                 </label>
@@ -294,7 +296,7 @@ export function BatchReviewView({
                   类别
                   <select
                     value={current.category}
-                    onChange={(event) => onUpdateDraft(currentOriginalIndex, { category: event.target.value as GarmentCategory })}
+                    data-parity-id="parity.app.app.src.components.batch.review.view.4b9d9f3661" onChange={(event) => onUpdateDraft(currentOriginalIndex, { category: event.target.value as GarmentCategory })}
                     className="h-11 rounded-lg border border-ink/10 bg-white px-3 text-base outline-none focus:border-denim"
                   >
                     {categoryOptions.map((cat) => (
@@ -303,24 +305,24 @@ export function BatchReviewView({
                   </select>
                 </label>
 
-                <ChipGroup title="主色" options={[...COLOR_OPTIONS]} values={current.primaryColors} onChange={(primaryColors) => onUpdateDraft(currentOriginalIndex, { primaryColors })} scrollRef={brvPrimaryRef} />
-                <ChipGroup title="配色" options={[...COLOR_OPTIONS]} values={current.secondaryColors} onChange={(secondaryColors) => onUpdateDraft(currentOriginalIndex, { secondaryColors })} scrollRef={brvSecondaryRef} />
-                <ChipGroup title="季节" options={seasonOptions} labels={SEASON_LABELS} values={current.seasons} onChange={(seasons) => onUpdateDraft(currentOriginalIndex, { seasons })} />
-                <ChipGroup title="风格" options={styleOptions} labels={STYLE_LABELS} values={current.styles} onChange={(styles) => onUpdateDraft(currentOriginalIndex, { styles })} />
+                <ChipGroup title="主色" options={[...COLOR_OPTIONS]} values={current.primaryColors} data-parity-id={`parity.app.app.src.components.batch.review.view.83f47f76ff.${current.clientId ?? currentOriginalIndex}`} onChange={(primaryColors) => onUpdateDraft(currentOriginalIndex, { primaryColors })} scrollRef={brvPrimaryRef} />
+                <ChipGroup title="配色" options={[...COLOR_OPTIONS]} values={current.secondaryColors} data-parity-id="parity.app.app.src.components.batch.review.view.9339dc5b0b" onChange={(secondaryColors) => onUpdateDraft(currentOriginalIndex, { secondaryColors })} scrollRef={brvSecondaryRef} />
+                <ChipGroup title="季节" options={seasonOptions} labels={SEASON_LABELS} values={current.seasons} data-parity-id="parity.app.app.src.components.batch.review.view.f9230ccd1f" onChange={(seasons) => onUpdateDraft(currentOriginalIndex, { seasons })} />
+                <ChipGroup title="风格" options={styleOptions} labels={STYLE_LABELS} values={current.styles} data-parity-id="parity.app.app.src.components.batch.review.view.ac626786fd" onChange={(styles) => onUpdateDraft(currentOriginalIndex, { styles })} />
                 <SelectableChipGroup
                   title="版型倾向"
                   options={["menswear", "womenswear", "unisex", "unknown"] as GarmentFitGender[]}
                   labels={{ menswear: "男装", womenswear: "女装", unisex: "中性", unknown: "未判断" }}
                   values={current.fitGender ? [current.fitGender] : []}
-                  onChange={(v) => onUpdateDraft(currentOriginalIndex, { fitGender: v[0] ?? "unknown" })}
+                  data-parity-id="parity.app.app.src.components.batch.review.view.01eaa9c631" onChange={(v) => onUpdateDraft(currentOriginalIndex, { fitGender: v[0] ?? "unknown" })}
                   mode="single"
                   maxSelected={1}
                   selectedFirst
                 />
 
                 <div className="grid gap-3 sm:grid-cols-2">
-                  <RangeField label="正式度" value={current.formality ?? 0} onChange={(formality) => onUpdateDraft(currentOriginalIndex, { formality })} />
-                  <RangeField label="保暖度" value={current.warmth ?? 0} onChange={(warmth) => onUpdateDraft(currentOriginalIndex, { warmth })} />
+                  <RangeField label="正式度" value={current.formality ?? 0} data-parity-id="parity.app.app.src.components.batch.review.view.efc6d651f0" onChange={(formality) => onUpdateDraft(currentOriginalIndex, { formality })} />
+                  <RangeField label="保暖度" value={current.warmth ?? 0} data-parity-id="parity.app.app.src.components.batch.review.view.abe89b2d54" onChange={(warmth) => onUpdateDraft(currentOriginalIndex, { warmth })} />
                 </div>
 
                 <div className="grid gap-3 sm:grid-cols-2">
@@ -334,7 +336,7 @@ export function BatchReviewView({
                     状态
                     <select
                       value={current.status}
-                      onChange={(event) => onUpdateDraft(currentOriginalIndex, { status: event.target.value as GarmentStatus })}
+                      data-parity-id="parity.app.app.src.components.batch.review.view.4f26730352" onChange={(event) => onUpdateDraft(currentOriginalIndex, { status: event.target.value as GarmentStatus })}
                       className="h-11 rounded-lg border border-ink/10 bg-white px-3 text-base outline-none focus:border-denim"
                     >
                       {statusOptions.map((s) => (
@@ -347,6 +349,7 @@ export function BatchReviewView({
                 <label className="grid gap-1 text-sm font-medium">
                   备注
                   <textarea
+                    data-parity-id={`parity.app.app.src.components.batch.review.view.ab8729140d.${current.clientId ?? currentOriginalIndex}`}
                     value={current.notes ?? ""}
                     onChange={(event) => onUpdateDraft(currentOriginalIndex, { notes: event.target.value })}
                     rows={2}
@@ -368,17 +371,17 @@ export function BatchReviewView({
 
         <div className="fixed bottom-20 left-0 right-0 z-40 px-3 pb-[env(safe-area-inset-bottom)] pointer-events-none">
           <div className="mx-auto max-w-md bg-white border border-ink/10 rounded-2xl shadow-lg p-1.5 flex items-center gap-1.5 pointer-events-auto">
-            <button type="button" onClick={goPrev} disabled={activeDisplayIndex === 0} aria-label="上一件" className="grid h-11 w-11 place-items-center rounded-full bg-mist text-ink disabled:opacity-30 hover:bg-ink/10 transition-colors">
+            <button type="button" data-parity-id="parity.app.app.src.components.batch.review.view.9fbfdd93ee" onClick={goPrev} disabled={activeDisplayIndex === 0} aria-label="上一件" className="grid h-11 w-11 place-items-center rounded-full bg-mist text-ink disabled:opacity-30 hover:bg-ink/10 transition-colors">
               <ChevronLeft size={18} aria-hidden="true" />
             </button>
             <span className="text-xs font-medium text-ink/60 tabular-nums px-1"><b className="text-ink">{activeDisplayIndex + 1}</b> / {sortedDisplay.length}</span>
-            <button type="button" onClick={goNext} disabled={activeDisplayIndex >= sortedDisplay.length - 1} aria-label="下一件" className="grid h-11 w-11 place-items-center rounded-full bg-mist text-ink disabled:opacity-30 hover:bg-ink/10 transition-colors">
+            <button type="button" data-parity-id="parity.app.app.src.components.batch.review.view.b2bcd43245" onClick={goNext} disabled={activeDisplayIndex >= sortedDisplay.length - 1} aria-label="下一件" className="grid h-11 w-11 place-items-center rounded-full bg-mist text-ink disabled:opacity-30 hover:bg-ink/10 transition-colors">
               <ChevronRight size={18} aria-hidden="true" />
             </button>
             <div className="flex-1" />
             <button
               type="button"
-              onClick={() => onSaveCurrent(currentOriginalIndex, activeDisplayIndex >= sortedDisplay.length - 1 ? 0 : activeDisplayIndex)}
+              data-parity-id="parity.app.app.src.components.batch.review.view.1648fc2625" onClick={() => onSaveCurrent(currentOriginalIndex, activeDisplayIndex >= sortedDisplay.length - 1 ? 0 : activeDisplayIndex)}
               className="inline-flex h-11 items-center justify-center gap-1.5 rounded-xl bg-clay px-4 text-sm font-semibold text-white active:scale-95 transition-transform"
             >
               <SaveAll size={15} />
@@ -416,17 +419,17 @@ export function BatchReviewView({
             <input
               type="checkbox"
               checked={saveAsOutfit}
-              onChange={(event) => setSaveAsOutfit(event.target.checked)}
+              data-parity-id="parity.app.app.src.components.batch.review.view.f735a0388f" onChange={(event) => setSaveAsOutfit(event.target.checked)}
               className="h-4 w-4 accent-denim"
             />
             收藏当前套装
           </label>
         ) : null}
         <div className="flex-1" />
-        <button type="button" onClick={onCancel} className="inline-flex h-9 items-center gap-1 rounded-lg border border-ink/10 bg-white px-3 text-sm">
+        <button type="button" data-parity-id="parity.app.app.src.components.batch.review.view.568bdbebd4" onClick={onCancel} className="inline-flex h-9 items-center gap-1 rounded-lg border border-ink/10 bg-white px-3 text-sm">
           取消
         </button>
-        <button type="button" onClick={onSaveAll} disabled={selectedDraftCount === 0} className="inline-flex h-9 items-center gap-2 rounded-lg bg-clay px-4 text-sm font-semibold text-white disabled:opacity-40">
+        <button type="button" data-parity-id="parity.app.app.src.components.batch.review.view.f76967976e" onClick={onSaveAll} disabled={selectedDraftCount === 0} className="inline-flex h-9 items-center gap-2 rounded-lg bg-clay px-4 text-sm font-semibold text-white disabled:opacity-40">
           <SaveAll size={16} aria-hidden="true" />
           {captureMode === "outfit" ? `确认套装 ${selectedDraftCount} 件` : `保存所选 ${selectedDraftCount} 件`}
         </button>
@@ -444,7 +447,7 @@ export function BatchReviewView({
             <div className={`overflow-hidden rounded-lg border bg-white shadow-sm transition-colors ${
               d.selected === false ? "border-ink/10 opacity-55" : "border-denim/35"
             }`}>
-              <button type="button" onClick={() => openDetail(displayIndex)} className="w-full text-left">
+              <button data-parity-id={`parity.app.app.src.components.batch.review.view.8b86ea79a9.${d.clientId ?? originalIndex}`} type="button" onClick={() => openDetail(displayIndex)} className="w-full text-left">
                 <div className="aspect-[4/5] bg-mist">
                   <GarmentImage src={d.imageDataUrl || undefined} alt={d.name} fallbackSize={24} />
                 </div>
@@ -462,6 +465,7 @@ export function BatchReviewView({
                 </div>
               </button>
               <button
+                data-parity-id={`parity.app.app.src.components.batch.review.view.6464ed014f.${d.clientId ?? originalIndex}`}
                 type="button"
                 onClick={() => onUpdateDraft(originalIndex, { selected: d.selected === false })}
                 className="flex h-8 w-full items-center justify-center border-t border-ink/8 text-[11px] font-semibold text-ink/62"

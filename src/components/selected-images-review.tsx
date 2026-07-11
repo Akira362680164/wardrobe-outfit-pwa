@@ -126,7 +126,7 @@ export function SelectedImagesReview({
  <header className="flex h-14 shrink-0 items-center justify-between gap-2 border-b border-ink/10 bg-white px-3">
  <button
  type="button"
- onClick={onCancel}
+ data-parity-id="parity.app.app.src.components.selected.images.review.51d318e11a" onClick={onCancel}
  disabled={busy}
  aria-label="返回"
  className="grid h-11 w-11 place-items-center rounded-full text-ink/70 hover:bg-ink/5 disabled:opacity-50"
@@ -136,7 +136,7 @@ export function SelectedImagesReview({
  <h1 className="min-w-0 truncate text-sm font-semibold text-ink/80">{title}</h1>
  <button
  type="button"
- onClick={handleConfirm}
+ data-parity-id="parity.app.app.src.components.selected.images.review.9900670233" onClick={handleConfirm}
  disabled={busy || images.length > maxCount}
  aria-label={confirmText}
  className="inline-flex h-10 items-center gap-1 rounded-lg bg-denim px-4 text-sm font-semibold text-white disabled:opacity-60"
@@ -181,7 +181,7 @@ export function SelectedImagesReview({
  <div className="flex items-center justify-between gap-2 px-3 py-2">
  <button
  type="button"
- onClick={() => onDelete(current.clientId)}
+ data-parity-id="parity.app.app.src.components.selected.images.review.b66b187d75" onClick={() => onDelete(current.clientId)}
  disabled={busy}
  aria-label={`删除${current.fileName}`}
  className="inline-flex h-10 items-center gap-1 rounded-lg border border-ink/10 px-3 text-xs font-semibold text-ink/65 active:bg-mist disabled:opacity-50"
@@ -194,7 +194,7 @@ export function SelectedImagesReview({
  </span>
  <button
  type="button"
- onClick={onCropCurrent}
+ data-parity-id="parity.app.app.src.components.selected.images.review.2d0bc0bc70" onClick={onCropCurrent}
  disabled={busy || !current.originalDataUrl}
  aria-label="裁切当前图片"
  className="inline-flex h-10 items-center gap-1 rounded-lg border border-ink/10 px-3 text-xs font-semibold text-ink/65 active:bg-mist disabled:opacity-50"
@@ -211,6 +211,7 @@ export function SelectedImagesReview({
  return (
  <div
  key={item.clientId}
+ data-parity-id={`parity.app.app.src.components.selected.images.review.1e07ed086d.${item.clientId}`}
  role="button"
  tabIndex={0}
  onClick={() => {
@@ -248,6 +249,7 @@ export function SelectedImagesReview({
  ) : null}
  <button
  type="button"
+ data-parity-id={`parity.app.app.src.components.selected.images.review.9912c790bb.${item.clientId}`}
  onClick={(e) => {
  e.stopPropagation();
  onDelete(item.clientId);
