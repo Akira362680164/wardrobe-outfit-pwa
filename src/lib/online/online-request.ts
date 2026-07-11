@@ -4,6 +4,7 @@ import { Capacitor, CapacitorHttp } from "@capacitor/core";
 
 import type { AuthSessionSnapshot } from "@/lib/auth-session-store";
 import { loadAuthSessionSnapshot } from "@/lib/auth-session-store";
+import { recoverRegisteredSession } from "@/lib/auth-session-recovery";
 import { recordDiagnosticEvent } from "@/lib/diagnostic-log";
 import { OnlineRequestError, toOnlineRequestError } from "@/lib/online/online-error";
 
@@ -30,6 +31,24 @@ export async function onlineRequest<T>(path: string, options: OnlineRequestOptio
 
 export async function onlineRequestRaw<T>(path: string, options: OnlineRequestOptions = {}): Promise<OnlineRawResponse<T>> {
   const session = options.session ?? await loadAuthSessionSnapshot();
+  if (!session.accessToken) throw new OnlineRequestError(401, "auth", "请重新登录后继续", false);
+
+  try {
+    return await performOnlineRequest<T>(path, options, session);
+  } catch (error) {
+    const normalized = normalizeFailure(error, globalThis.crypto?.randomUUID?.() ?? `request-${Date.now()}`);
+    if (normalized.status !== 401) throw normalized;
+    const recovered = await recoverRegisteredSession({ force: true });
+    if (!recovered?.accessToken || recovered.accessToken === session.accessToken) throw normalized;
+    return performOnlineRequest<T>(path, options, recovered);
+  }
+}
+
+async function performOnlineRequest<T>(
+  path: string,
+  options: OnlineRequestOptions,
+  session: Pick<AuthSessionSnapshot, "accessToken" | "deviceId">,
+): Promise<OnlineRawResponse<T>> {
   if (!session.accessToken) throw new OnlineRequestError(401, "auth", "请重新登录后继续", false);
 
   const method = options.method ?? "GET";

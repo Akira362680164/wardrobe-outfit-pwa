@@ -1,4 +1,4 @@
-import { buildAuthHeaders, getConfiguredApiBaseUrl, request } from "./http";
+import { buildAuthHeaders, getConfiguredApiBaseUrl, recoverSession, request } from "./http";
 
 export interface AssetRef {
   assetId: string;
@@ -183,6 +183,10 @@ export async function uploadImagesForCreate(input: {
 }
 
 async function uploadTemporaryBytes(sessionId: string, assetId: string, data: ArrayBuffer, mimeType: string): Promise<void> {
+  return uploadTemporaryBytesWithRefresh(sessionId, assetId, data, mimeType, false);
+}
+
+async function uploadTemporaryBytesWithRefresh(sessionId: string, assetId: string, data: ArrayBuffer, mimeType: string, replayed: boolean): Promise<void> {
   const baseUrl = getConfiguredApiBaseUrl();
   if (!baseUrl) throw new Error("请先配置后端 API 域名");
   return new Promise((resolve, reject) => {
@@ -192,9 +196,17 @@ async function uploadTemporaryBytes(sessionId: string, assetId: string, data: Ar
       data,
       header: { ...buildAuthHeaders(), "Content-Type": mimeType },
       timeout: 60000,
-      success: (result) => {
+      success: async (result) => {
         if (result.statusCode < 400) resolve();
-        else reject(new Error("图片上传失败，请稍后重试"));
+        else if (result.statusCode === 401 && !replayed) {
+          try {
+            await recoverSession(true);
+            await uploadTemporaryBytesWithRefresh(sessionId, assetId, data, mimeType, true);
+            resolve();
+          } catch (error) {
+            reject(error);
+          }
+        } else reject(new Error("图片上传失败，请稍后重试"));
       },
       fail: () => reject(new Error("图片上传失败，请检查网络")),
     });
