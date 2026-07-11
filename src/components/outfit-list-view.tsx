@@ -820,6 +820,7 @@ export function OutfitListView({
     setActiveCalendarPlanId(planId);
     try {
       await syncPackingChecklistForPlan(planId);
+      await onPlanDataChange();
     } catch {
       onMessage("打包清单同步失败，请重试", "error");
     }

@@ -1,3 +1,24 @@
+## 2026-07-11 / v2.1.13-test / Codex — 计划详情同步后的 revision 刷新修复
+
+- **执行 Agent**：Codex 主协调 agent；一个文件隔离 subagent 提供四项 Android 定向回归 suite，主 agent 接入 runner 并在 MEIZU 21 Pro 真机发现运行时缺陷。
+- **目的**：修复进入旅行计划详情时打包清单同步已推进服务端 revision、详情仍持有旧 revision，导致随后删除/写入冲突的问题。
+- **版本变更**：无；保持 `2.1.13-test`，测试 harness APK 后续重建。
+- **运行证据**：`parity:STATIC-OUTFITS-001` 首轮服务端 readback 显示计划 revision 已从 1 变为 2 且未删除，UI 停留详情页；证明确认删除使用了同步前实体。
+- **改动文件**：`src/components/outfit-list-view.tsx`、Android parity regression suite/runner、`VERSION_HISTORY.md`。
+- **改动说明**：`openPlanDetail` 在 `syncPackingChecklistForPlan` 成功后强制 `onPlanDataChange()`，刷新计划实体后才进入详情；不改变失败提示、服务端契约或打包生成逻辑。
+- **验证计划**：typecheck、Android parity suite 单测、重建固定签名本地测试 APK，真机重跑 `STATIC-OUTFITS-001~004`。
+- **未验证风险**：新 APK 真机结果完成前不得把 `STATIC-OUTFITS-001~004` 标 VERIFIED。
+
+## 2026-07-11 / v2.1.13-test / Codex — 小程序退出会话撤销闭环
+
+- **执行 Agent**：Codex 主协调 agent。
+- **目的**：对 `STATIC-SETTINGS-002` 执行真实退出与旧 token 失效验证，并修复运行时发现的空 JSON 请求兼容问题。
+- **版本变更**：无；小程序修复分支新增提交 `1456678`。
+- **运行发现与修复**：微信运行时拒绝带 JSON Content-Type 但无 body 的 logout；小程序 `logoutCurrentSession` 改为显式发送 `{}`，服务端接口与清理顺序不变。
+- **验证结果**：小程序 typecheck、微信 CLI 编译通过；隔离账号真实登录后 POST logout 成功，本地 session 清除；旧 access token 只在运行时闭包中使用且未输出/落盘，workspace overview 返回 401。
+- **缺陷状态**：`STATIC-SETTINGS-002` 更新为 `VERIFIED`。
+- **未验证风险**：手机预览端未重复该自动化用例；服务端撤销与本地清理核心闭环已由模拟器 + 本地 E2E API 证明。
+
 ## 2026-07-11 / v2.1.13-test / Codex — 小程序种草转换与旅行打包定向复测
 
 - **执行 Agent**：Codex 主协调 agent；三个文件隔离 subagent 新增小程序录入、种草媒体和旅行打包的严格证据采集器，主 agent 使用微信 CLI 执行真实服务端链路。

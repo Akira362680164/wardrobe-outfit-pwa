@@ -9,6 +9,7 @@ import { chromium, type Browser } from "playwright";
 import { aiLiveCases as aiLiveWorkerCases } from "./suites/ai-live";
 import { criticalSuite as criticalWorkerCases } from "./suites/critical";
 import { fullCases as fullWorkerCases } from "./suites/full";
+import { parityRegressionCases } from "./suites/parity-regressions";
 import { smokeCases as smokeWorkerCases } from "./suites/smoke";
 import type { AndroidE2EAccount, AndroidE2EApi, AndroidE2ECase, AndroidE2EContext, AndroidE2EFault, ApiRequestOptions, AuthSession, WorkspaceEntity } from "./suites/types";
 
@@ -128,7 +129,7 @@ function selectedCases(): AndroidE2ECase[] {
     : MODE === "critical"
       ? criticalCases()
       : MODE === "full"
-        ? [...smokeCases(), ...criticalCases(), ...fullWorkerCases()]
+        ? [...smokeCases(), ...criticalCases(), ...fullWorkerCases(), ...parityRegressionCases()]
         : MODE === "ai-live"
           ? aiLiveWorkerCases()
           : fail(`未知 suite：${MODE}`);
