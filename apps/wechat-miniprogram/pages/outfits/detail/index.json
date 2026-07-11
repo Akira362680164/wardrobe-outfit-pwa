@@ -1,1 +1,1 @@
-{ "usingComponents": { "detail-shell": "/components/domain/detail-shell/index", "ui-sheet": "/components/ui/sheet/index" } }
+{ "usingComponents": { "detail-shell": "/components/domain/detail-shell/index", "item-media-section": "/components/domain/item-media-section/index", "ui-sheet": "/components/ui/sheet/index" } }

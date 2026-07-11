@@ -1,7 +1,1 @@
-<view class="page-shell">
-  <view class="page-title">{{title}}</view>
-  <view class="page-copy">{{description}}</view>
-  <view class="placeholder-card">
-    <view class="placeholder-label">页面骨架已就绪，业务实现由后续批次接入线上 API。</view>
-  </view>
-</view>
+<view class="page-shell trips-page"><view class="header"><view><view class="page-title">旅行计划</view><view class="page-copy">目的地、日期和每日穿搭</view></view><button bindtap="createPlan">新建</button></view><view wx:if="{{loading}}" class="status-card">正在读取计划...</view><view wx:elif="{{error}}" class="status-card"><view>{{error}}</view><button bindtap="load">重试</button></view><view wx:elif="{{!plans.length}}" class="status-card"><view class="status-title">还没有旅行计划</view><view class="page-copy">创建计划后可按日期安排套装。</view><button bindtap="createPlan">创建旅行计划</button></view><view wx:else class="plan-list"><view wx:for="{{plans}}" wx:key="id" class="plan-card" data-id="{{item.id}}" bindtap="openPlan"><view class="plan-main"><view class="plan-title">{{item.title}}</view><view class="plan-meta">{{item.startDate}} - {{item.endDate}} · {{item.destination || '未填写目的地'}}</view><view class="plan-meta">{{item.activities.join(' / ') || '未填写活动'}}</view></view><view class="actions"><button data-id="{{item.id}}" catchtap="editPlan">编辑</button><button data-id="{{item.id}}" loading="{{deletingId===item.id}}" catchtap="deletePlan">删除</button></view></view></view></view>

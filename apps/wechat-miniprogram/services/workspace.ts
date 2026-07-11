@@ -168,6 +168,8 @@ export interface MiniWishlistItem {
 
 export interface MiniOutfitDetail extends MiniOutfit {
   notes: string;
+  rawPayload: Record<string, unknown>;
+  wornPhotos: Array<{ id: string; fieldName: string; imageUrl: string; caption: string }>;
 }
 
 export interface MiniWishlistDetail extends MiniWishlistItem {
@@ -287,6 +289,9 @@ export interface CreateOutfitInput {
   legacyItemIds: number[];
   seasons?: string[];
   sceneTags?: string[];
+  notes?: string;
+  assetMutations?: AssetMutation[];
+  clientMutationId?: string;
 }
 
 export interface CreateWishlistInput {
@@ -535,7 +540,12 @@ export async function fetchGarmentDetail(id: string): Promise<MiniGarmentDetail>
 export async function fetchOutfitDetail(id: string): Promise<MiniOutfitDetail> {
   const response = await workspaceRequest<{ data: WorkspaceEntity }>(`/api/workspace/outfits/${encodeURIComponent(id)}`);
   const summary = await toMiniOutfit(response.data, await fetchGarmentsForOutfits());
-  return { ...summary, notes: stringValue(response.data.payload.notes, "无备注") };
+  return { ...summary, notes: stringValue(response.data.payload.notes, "无备注"), rawPayload: response.data.payload, wornPhotos: await resolvePayloadAssetImages(response.data, "actualWornPhotos") };
+}
+
+export async function updateOutfit(input: { id: string; expectedRevision: number; currentPayload: Record<string, unknown>; patch: Record<string, unknown>; assetMutations?: AssetMutation[]; clientMutationId?: string }): Promise<MiniOutfitDetail> {
+  await request<WorkspaceCommandResponse>({ method: "PUT", path: `/api/workspace/outfits/${encodeURIComponent(input.id)}`, data: { clientMutationId: input.clientMutationId ?? createClientMutationId(), expectedRevision: input.expectedRevision, payload: { ...input.currentPayload, ...input.patch, updatedAt: new Date().toISOString() }, assetMutations: input.assetMutations ?? [] } });
+  return fetchOutfitDetail(input.id);
 }
 
 export async function fetchWishlistDetail(id: string): Promise<MiniWishlistDetail> {
@@ -650,7 +660,7 @@ export async function createOutfit(input: CreateOutfitInput): Promise<WorkspaceE
     method: "POST",
     path: "/api/workspace/outfits",
     data: {
-      clientMutationId: createClientMutationId(),
+      clientMutationId: input.clientMutationId ?? createClientMutationId(),
       payload: {
         name: input.name,
         legacyItemIds: input.legacyItemIds,
@@ -658,11 +668,12 @@ export async function createOutfit(input: CreateOutfitInput): Promise<WorkspaceE
         seasons: input.seasons ?? [],
         sceneTags: input.sceneTags ?? [],
         source: "manual",
+        notes: input.notes,
         favorite: false,
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
       },
-      assetMutations: [],
+      assetMutations: input.assetMutations ?? [],
     },
   });
   if (!response.entity) throw new Error("服务器未返回已保存套装");
@@ -1186,7 +1197,11 @@ async function resolveImageUrl(entity: WorkspaceEntity, fieldName: string, paylo
 }
 
 async function resolveInspirationImages(entity: WorkspaceEntity): Promise<Array<{ id: string; fieldName: string; imageUrl: string; caption: string }>> {
-  const entries = Array.isArray(entity.payload.referenceOutfitImages) ? entity.payload.referenceOutfitImages : [];
+  return resolvePayloadAssetImages(entity, "referenceOutfitImages");
+}
+
+async function resolvePayloadAssetImages(entity: WorkspaceEntity, payloadKey: string): Promise<Array<{ id: string; fieldName: string; imageUrl: string; caption: string }>> {
+  const entries = Array.isArray(entity.payload[payloadKey]) ? entity.payload[payloadKey] as unknown[] : [];
   return Promise.all(entries.flatMap((value) => {
     if (!value || typeof value !== "object") return [];
     const record = value as Record<string, unknown>;

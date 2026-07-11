@@ -1,3 +1,13 @@
+## 2026-07-11 / v2.1.13-test / Codex — 小程序套装、实穿照片与旅行计划闭环
+
+- **执行 Agent**：Codex（未触发 subagent；从 Task 8 提交创建独立 `codex/parity-mini-outfit-trip-20260711` worktree）。
+- **目的**：移除旅行页占位，补齐套装详情与三步创建流程，并让实穿照片进入统一资产生命周期。
+- **版本变更**：无；保持 `2.1.13-test`。
+- **改动文件**：旅行首页、套装详情/创建、`services/workspace.ts`、专项流程测试、`package.json`、`VERSION_HISTORY.md`。
+- **改动说明**：旅行首页实现服务端真实列表、加载/空/错误、打开/新建/编辑/二次确认删除；套装详情拆为信息、单品、实穿、建议 Tab，实穿支持多图上传、预览、删除和读回，建议覆盖替换风险；创建拆为图片/AI、元数据、逐件确认三步，允许逐件取消、按钮数量取真实选择数，封面和实穿复用 Task 3 双资产层；所有失败保留页面草稿，创建成功强制详情读回后返回。
+- **验证结果**：小程序 typecheck、`test:logic:miniprogram-outfit-flow`、种草回归、资产生命周期测试及 `git diff --check` 通过。
+- **未验证风险**：真实相册实穿、AI 元数据、旅行写入和服务端对象读回需 Task 13 CLI/真机覆盖；当前标记 FIXED_UNVERIFIED。
+
 ## 2026-07-11 / v2.1.13-test / Codex — 小程序种草异常状态与 APP 搜索统计口径校准
 
 - **执行 Agent**：Codex（未触发 subagent；从 Task 7 提交创建独立 `codex/parity-mini-wishlist-state-20260711` worktree，并按用户补充要求回看 APP 当前实现校准搜索/统计）。

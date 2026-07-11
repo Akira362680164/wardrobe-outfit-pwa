@@ -1,9 +1,12 @@
 import { generateOutfitMetadata, hasMiniMaxKey } from "../../../services/ai";
+import { chooseImages, uploadPreparedImageAssets, type AssetMutation } from "../../../services/assets";
 import {
   createOutfit,
   fetchGarments,
+  fetchOutfitDetail,
   getWorkspaceReadState,
   type MiniGarment,
+  createClientMutationId,
 } from "../../../services/workspace";
 
 type SelectableGarment = MiniGarment & { selected: boolean };
@@ -24,6 +27,10 @@ Page({
     error: "",
     emptyTitle: "",
     emptyAction: "",
+    step: 0,
+    coverPath: "",
+    coverAssetMutations: [] as AssetMutation[],
+    draftMutationId: createClientMutationId(),
   },
 
   async generateBaseInfo(this: any) {
@@ -99,12 +106,17 @@ Page({
     this.setData({ name: event.detail.value });
   },
 
+  async chooseCover(this:any){const [image]=await chooseImages(["album","camera"],1);if(!image)return;this.setData({coverPath:image.stablePath,coverAssetMutations:[],draftMutationId:createClientMutationId()})},
+  nextStep(this:any){if(this.data.step===1&&!this.data.name.trim()){wx.showToast({title:"先填写套装名称",icon:"none"});return}this.setData({step:Math.min(2,this.data.step+1)})},
+  previousStep(this:any){this.setData({step:Math.max(0,this.data.step-1)})},
+
   toggleGarment(event: any) {
     const id = Number(event.currentTarget.dataset.id);
     const garments = this.data.garments.map((item) => (
       item.legacyItemId === id ? { ...item, selected: !item.selected } : item
     ));
     this.setData({ garments, selectedCount: garments.filter((item) => item.selected).length });
+    this.setData({ draftMutationId: createClientMutationId() });
   },
 
   handleEmptyAction() {
@@ -135,12 +147,18 @@ Page({
 
     this.setData({ saving: true });
     try {
-      await createOutfit({
+      let coverAssetMutations=this.data.coverAssetMutations as AssetMutation[];
+      if(this.data.coverPath&&!coverAssetMutations.length){const uploaded=await uploadPreparedImageAssets({clientMutationId:createClientMutationId(),entityType:"outfit",fieldName:"coverImageDataUrl",originalPath:this.data.coverPath,processedPath:this.data.coverPath});coverAssetMutations=uploaded.assetMutations;this.setData({coverAssetMutations})}
+      const created = await createOutfit({
         name,
         legacyItemIds: selected.map((item) => item.legacyItemId),
         seasons: this.data.seasons,
         sceneTags: this.data.sceneTags,
+        notes:this.data.aiNotes,
+        assetMutations:coverAssetMutations,
+        clientMutationId:this.data.draftMutationId,
       });
+      await fetchOutfitDetail(created.id);
       wx.showToast({ title: "套装已保存", icon: "success" });
       wx.switchTab({ url: "/pages/outfits/index/index" });
     } catch (error) {
