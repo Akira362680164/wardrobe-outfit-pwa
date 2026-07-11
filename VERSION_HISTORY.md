@@ -1,3 +1,14 @@
+## 2026-07-11 / v2.1.13-test / Codex — 小程序种草转换与旅行打包定向复测
+
+- **执行 Agent**：Codex 主协调 agent；三个文件隔离 subagent 新增小程序录入、种草媒体和旅行打包的严格证据采集器，主 agent 使用微信 CLI 执行真实服务端链路。
+- **目的**：验证小程序修复分支的高风险 CRUD/级联/打包持久化，并为后续重复回归提供四阶段采集器。
+- **版本变更**：无；保持 `2.1.13-test`，运行源码为小程序修复提交 `baefd42`。
+- **种草结果**：真实默认衣橱位置被读取并选中；转换成功产生 purchased + converted garment readback。撤销弹层取消后 revision 保持 4、转换引用不变；确认后 revision=5、引用清空，PostgreSQL 显示转换 garment 已软删除。
+- **打包结果**：toggle、manual add（“测试收纳袋”数量 2）、mark-all、reset 依次推进 plan revision 2→5；重启登录后强制 GET 仍为 total=4、packed=0 且手动物品存在。
+- **缺陷状态**：`STATIC-WISHLIST-002/003` 与 `STATIC-OUTFITS-005` 更新为 `VERIFIED`；`STATIC-WISHLIST-001` 媒体重裁仍等待安全原生图片 fixture，不提前标记通过。
+- **基础设施**：新增 mini intake/wishlist/packing regression 采集器，危险 fixture 精确 allowlist；四阶段 screenshot/UI/route/network 与 server-readback 缺失时不得 PASS，原生媒体不可自动化时明确 BLOCKED。
+- **未验证风险**：采集器的真实 driver/CLI 接入仍需补齐统一入口；本轮命令级证据已验证业务状态，但最终报告仍以落盘 action evidence 完整性为准。
+
 ## 2026-07-11 / v2.1.13-test / Codex — 小程序诊断真实闭环与域级动作映射
 
 - **执行 Agent**：Codex 主协调 agent；三个文件隔离 subagent 分别建立衣橱/录入、套装/推荐、种草/设置的语义 Action 映射，主 agent 恢复微信 CLI 自动化并执行诊断复测。
