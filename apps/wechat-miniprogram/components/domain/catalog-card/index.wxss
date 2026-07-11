@@ -171,3 +171,5 @@
   background: rgba(140, 74, 98, 0.10);
   color: var(--color-shopping);
 }
+.catalog-card--selected { outline: 5rpx solid var(--color-primary); outline-offset: -5rpx; }
+.catalog-card__selected { position: absolute; top: 12rpx; right: 12rpx; z-index: 4; display:flex;align-items:center;justify-content:center;width:44rpx;height:44rpx;border-radius:999rpx;color:white;background:var(--color-primary);font-weight:900; }

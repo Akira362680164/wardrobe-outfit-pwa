@@ -1,3 +1,13 @@
+## 2026-07-11 / v2.1.13-test / Codex — 小程序衣橱搜索、统计、多选与 AI 诊断闭环
+
+- **执行 Agent**：Codex（未触发 subagent；从 Task 6 提交创建独立 `codex/parity-mini-wardrobe-tools-20260711` worktree）。
+- **目的**：替换衣橱搜索/统计 Toast 占位，补齐长按多选批量删除与 AI 诊断完整状态。
+- **版本变更**：无；保持 `2.1.13-test`，本批不发布小程序。
+- **改动文件**：新增 `pages/wardrobe/search/`、`statistics/`，修改衣橱首页、`catalog-card`、`app.json`、专项回归测试、`package.json`、`VERSION_HISTORY.md`。
+- **改动说明**：搜索支持会话内历史、位置/分类/关键词组合筛选及来源筛选状态；统计包含总览、近 30 天、闲置、购买使用率与分类分布的 loading/empty/error/normal；卡片长按进入多选、逐项切换、取消、二次确认后串行服务端删除并重新读回；AI 诊断补 loading、折叠/展开、错误、重试、关闭和重新生成。
+- **验证结果**：小程序 typecheck、`test:logic:miniprogram-wardrobe`、共享详情合同与 `git diff --check` 通过；专项合同确认两个真实路由注册、无搜索占位、筛选/历史/统计指标、多选服务端读回及 AI 全状态。
+- **未验证风险**：微信 CLI 页面 BFS、生产数据批量删除读回和 MiniMax 真实诊断结果将在 Task 13 以专用 fixture 覆盖；当前标记 FIXED_UNVERIFIED。
+
 ## 2026-07-11 / v2.1.13-test / Codex — 小程序单品与种草共享详情及灵感资产
 
 - **执行 Agent**：Codex（未触发 subagent；从 Task 4 提交创建独立 `codex/parity-mini-details-20260711` worktree）。

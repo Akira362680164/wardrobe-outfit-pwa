@@ -10,6 +10,8 @@
     "pages/wardrobe/index/index",
     "pages/wardrobe/detail/index",
     "pages/wardrobe/edit/index",
+    "pages/wardrobe/search/index",
+    "pages/wardrobe/statistics/index",
     "pages/outfits/index/index",
     "pages/outfits/detail/index",
     "pages/outfits/compose/index",

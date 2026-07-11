@@ -1,0 +1,9 @@
+import { fetchGarmentDetail, fetchGarments, type MiniGarment, type MiniGarmentDetail } from "../../../services/workspace";
+
+Page({
+  data: { loading: false, error: "", total: 0, active: 0, recent: 0, idle: 0, purchased: 0, usedPurchased: 0, usageRate: 0, categories: [] as Array<{ label: string; count: number; percent: number }> },
+  onLoad() { void this.load(); },
+  async load(this: any) { this.setData({ loading: true, error: "" }); try { const garments = await fetchGarments(); const details = await Promise.all(garments.map((item) => fetchGarmentDetail(item.id).catch(() => null))); this.setData(buildStatistics(garments, details.filter((item): item is MiniGarmentDetail => Boolean(item)))); } catch (error) { this.setData({ loading: false, error: error instanceof Error ? error.message : "统计读取失败" }); } },
+});
+
+function buildStatistics(garments: MiniGarment[], details: MiniGarmentDetail[]) { const now = Date.now(); const recent = garments.filter((item) => now - Date.parse(item.updatedAt) <= 30 * 86400000).length; const idle = garments.filter((item) => /从未|暂无/.test(item.wearSummary)).length; const purchasedDetails = details.filter((item) => item.purchaseDate !== "未记录"); const usedPurchased = purchasedDetails.filter((item) => !/从未|暂无/.test(item.wearSummary)).length; const counts = new Map<string, number>(); garments.forEach((item) => counts.set(item.categoryLabel, (counts.get(item.categoryLabel) || 0) + 1)); return { loading: false, error: "", total: garments.length, active: garments.filter((item) => item.status === "active").length, recent, idle, purchased: purchasedDetails.length, usedPurchased, usageRate: purchasedDetails.length ? Math.round(usedPurchased / purchasedDetails.length * 100) : 0, categories: [...counts].sort((a,b)=>b[1]-a[1]).map(([label,count]) => ({ label, count, percent: garments.length ? Math.round(count / garments.length * 100) : 0 })) }; }

@@ -49,10 +49,9 @@
 
   <view wx:if="{{loading}}" class="status-card">正在读取衣橱...</view>
 
-  <view wx:if="{{diagnosisLoading || diagnosisSummary}}" class="status-card">
-    <view class="status-title">AI 衣橱诊断</view>
-    <view class="status-copy">{{diagnosisLoading ? '正在生成诊断...' : diagnosisSummary}}</view>
-    <view wx:for="{{diagnosisTips}}" wx:key="*this" class="status-copy">· {{item}}</view>
+  <view wx:if="{{diagnosisLoading || diagnosisSummary || diagnosisError}}" class="status-card">
+    <view class="diagnosis-head"><view class="status-title" bindtap="toggleDiagnosis">AI 衣橱诊断 {{diagnosisExpanded ? '⌃' : '⌄'}}</view><button class="diagnosis-close" bindtap="closeDiagnosis">关闭</button></view>
+    <block wx:if="{{diagnosisExpanded}}"><view class="status-copy">{{diagnosisLoading ? '正在生成诊断...' : diagnosisError || diagnosisSummary}}</view><view wx:for="{{diagnosisTips}}" wx:key="*this" class="status-copy">· {{item}}</view><button wx:if="{{diagnosisError}}" class="mini-button" bindtap="runDiagnosis">重试</button><button wx:elif="{{diagnosisSummary && !diagnosisLoading}}" class="mini-button" bindtap="runDiagnosis">重新生成</button></block>
   </view>
 
   <view wx:if="{{!loading && error}}" class="status-card">
@@ -79,7 +78,9 @@
       colors="{{item.cardColors}}"
       summary="{{item.wearSummary}}"
       tone="primary"
+      selected="{{selectedMap[item.id]}}"
       bind:select="openDetail"
+      bind:longpress="enterSelection"
     />
   </view>
 
@@ -93,4 +94,5 @@
     <ui-icon name="plus" size="48" color="currentColor" />
   </button>
   <create-sheet open="{{createSheetOpen}}" active="add_single_item" bind:close="closeCreateSheet" />
+  <view wx:if="{{selectionMode}}" class="selection-bar bottom-glass-bar"><button class="selection-cancel" bindtap="cancelSelection">取消</button><view class="selection-count">已选 {{selectedIds.length}} 件</view><button class="selection-delete" loading="{{deletingSelection}}" disabled="{{!selectedIds.length || deletingSelection}}" bindtap="confirmBatchDelete">删除</button></view>
 </view>
