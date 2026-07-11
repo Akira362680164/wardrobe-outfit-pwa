@@ -29,6 +29,7 @@ type WorkspaceOverviewResponse = {
   outfitPlans?: WorkspaceEntity[];
   serverRevision?: number;
   requestId?: string;
+  profiles?: WorkspaceEntity[];
 };
 
 type WorkspaceListResponse = {
@@ -198,6 +199,13 @@ export interface MiniClosetLocation {
   name: string;
   note: string;
   sortOrder: number;
+}
+
+export interface MiniTryOnProfile {
+  id: string; revision: number; rawPayload: Record<string, unknown>; enabled: boolean;
+  fitGender: string; heightCm?: number; bodyType: string; bodyTypeCustom: string; shoulderWidth: string; legRatio: string;
+  hairDescription: string; skinToneDescription: string; styleNote: string;
+  fullBodyImageUrl: string; faceImageUrl: string;
 }
 
 export type MiniCalendarPlanType = "travel" | "business" | "custom";
@@ -505,6 +513,18 @@ export async function fetchWishlist(limit = 60): Promise<MiniWishlistItem[]> {
 export async function fetchClosetLocations(): Promise<MiniClosetLocation[]> {
   const response = await workspaceRequest<WorkspaceOverviewResponse>("/api/workspace/overview");
   return (response.locations ?? []).map(toMiniClosetLocation).sort((a, b) => a.sortOrder - b.sortOrder);
+}
+
+export async function fetchTryOnProfile(): Promise<MiniTryOnProfile | null> {
+  const response = await workspaceRequest<WorkspaceListResponse>("/api/workspace/profiles?limit=1");
+  const entity = response.items?.[0]; if (!entity) return null; const payload = entity.payload;
+  return { id: entity.id, revision: entity.revision, rawPayload: payload, enabled: payload.enabled === true, fitGender: stringValue(payload.fitGender, "unspecified"), heightCm: safeNumber(payload.heightCm), bodyType: firstString(payload.bodyType), bodyTypeCustom: firstString(payload.bodyTypeCustom), shoulderWidth: firstString(payload.shoulderWidth), legRatio: firstString(payload.legRatio), hairDescription: firstString(payload.hairDescription), skinToneDescription: firstString(payload.skinToneDescription), styleNote: firstString(payload.styleNote), fullBodyImageUrl: await resolveImageUrl(entity, "fullBodyImageDataUrl", payload), faceImageUrl: await resolveImageUrl(entity, "faceImageDataUrl", payload) };
+}
+
+export async function saveTryOnProfile(input: { current?: MiniTryOnProfile | null; payload: Record<string, unknown>; assetMutations?: AssetMutation[]; clientMutationId: string }): Promise<MiniTryOnProfile> {
+  const current = input.current; const path = current ? `/api/workspace/profiles/${encodeURIComponent(current.id)}` : "/api/workspace/profiles";
+  await request<WorkspaceCommandResponse>({ method: current ? "PUT" : "POST", path, data: { clientMutationId: input.clientMutationId, ...(current ? { expectedRevision: current.revision } : {}), payload: { ...(current?.rawPayload ?? {}), ...input.payload, updatedAt: new Date().toISOString() }, assetMutations: input.assetMutations ?? [] } });
+  const saved = await fetchTryOnProfile(); if (!saved) throw new Error("服务器未返回试穿档案"); return saved;
 }
 
 export async function fetchGarmentDetail(id: string): Promise<MiniGarmentDetail> {

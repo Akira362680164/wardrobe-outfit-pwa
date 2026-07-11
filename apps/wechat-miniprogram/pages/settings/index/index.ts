@@ -3,8 +3,6 @@ import { getCapsuleGeometry } from "../../../utils/capsule-layout";
 
 Page({
   data: {
-    profileCopy: "后续接入 App 端穿衣画像；小程序当前仅同步服务器衣橱和穿搭数据。",
-    aiPhotoCopy: "照片仅在用户主动触发 AI 能力时发送；当前试穿预览仍未开放。",
     aiStatusText: "未配置",
     titleTopRpx: 0,
   },

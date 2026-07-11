@@ -1,3 +1,13 @@
+## 2026-07-11 / v2.1.13-test / Codex — 小程序设置、画像、参考照与法律内容一致性
+
+- **执行 Agent**：Codex（未触发 subagent；从 Task 9 提交创建独立 `codex/parity-mini-settings-20260711` worktree）。
+- **目的**：删除设置开发备注，补齐 APP 同字段穿衣画像与试穿参考照，统一版本和法律文本来源。
+- **版本变更**：无；保持 `2.1.13-test`。关于页应用版本由根 `package.json` 生成，不再硬编码旧版本。
+- **改动文件**：设置首页/关于、新增画像与参考照页、协议/隐私页、生成的 build/legal copy、`services/workspace.ts`、生成与专项测试、`package.json`、`VERSION_HISTORY.md`。
+- **改动说明**：删除开发接入/后续开放技术备注；穿衣画像覆盖版型、身高、体型、自定义体型、肩宽、腿长、发型、肤色和备注，保存支持 409 revision 刷新；参考照支持启用、全身/脸部上传、原生裁切、预览、删除、双资产绑定和服务器读回；协议/隐私更新为 2026-07-10 批准口径，准确说明服务器唯一数据源、小程序本地 MiniMax 设置与认证凭据的区别、主动 AI 传输及注销真实删除；长期会话只回归 Task 1。
+- **验证结果**：build-info check、小程序 typecheck、设置回归、资产生命周期、鉴权续期合同及 `git diff --check` 通过。
+- **未验证风险**：参考照相册/裁切真机、画像真实 409、法律页面视觉和服务端 profile 对象读回留 Task 13 关闭；当前标记 FIXED_UNVERIFIED。
+
 ## 2026-07-11 / v2.1.13-test / Codex — 小程序套装、实穿照片与旅行计划闭环
 
 - **执行 Agent**：Codex（未触发 subagent；从 Task 8 提交创建独立 `codex/parity-mini-outfit-trip-20260711` worktree）。
