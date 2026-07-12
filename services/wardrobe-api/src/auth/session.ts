@@ -877,6 +877,12 @@ export class SessionService {
     return { status: "ok" as const };
   }
 
+  async verifyCurrentPassword(claims: AccessTokenClaims, currentPassword: string): Promise<boolean> {
+    const credential = await this.store.getPasswordCredential(claims.userId);
+    if (!credential) return false;
+    return verifyPassword(credential.passwordHash, currentPassword);
+  }
+
   async me(claims: AccessTokenClaims) {
     const account = await this.store.getAccountSession(claims.userId, claims.sessionId);
 

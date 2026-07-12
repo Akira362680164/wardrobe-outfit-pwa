@@ -63,6 +63,9 @@ export interface AccountPasswordStore {
     now: Date;
   }): Promise<void>;
   getAccountSecurity(userId: string): Promise<AccountSecuritySnapshot | null>;
+  updateEmailIdentity?(input: { userId: string; emailNormalized: string; emailMasked: string; now: Date }): Promise<void>;
+  updatePhoneIdentity?(input: { userId: string; phoneE164: string; phoneMasked: string; now: Date }): Promise<void>;
+  removeWechatIdentity?(input: { userId: string; appId: string; now: Date }): Promise<void>;
   recordSecurityEvent(input: SecurityEventInput): Promise<void>;
 }
 
@@ -197,6 +200,60 @@ export class PostgresAccountPasswordStore implements AccountPasswordStore {
       wechat: { bound: Boolean(wechat), appId: wechat?.appId },
       password: { set: Boolean(password), changedAt: password?.changedAt?.toISOString() },
     };
+  }
+
+  async updateEmailIdentity(input: { userId: string; emailNormalized: string; emailMasked: string; now: Date }) {
+    await getDb().transaction(async (tx) => {
+      const [existing] = await tx.select({ id: emailIdentities.id }).from(emailIdentities).where(eq(emailIdentities.userId, input.userId)).limit(1);
+      if (existing) {
+        await tx.update(emailIdentities).set({
+          emailNormalized: input.emailNormalized,
+          emailMasked: input.emailMasked,
+          verifiedAt: input.now,
+          updatedAt: input.now,
+        }).where(eq(emailIdentities.userId, input.userId));
+      } else {
+        await tx.insert(emailIdentities).values({
+          userId: input.userId,
+          emailNormalized: input.emailNormalized,
+          emailMasked: input.emailMasked,
+          verifiedAt: input.now,
+          createdAt: input.now,
+          updatedAt: input.now,
+        });
+      }
+    });
+  }
+
+  async updatePhoneIdentity(input: { userId: string; phoneE164: string; phoneMasked: string; now: Date }) {
+    await getDb().transaction(async (tx) => {
+      const [existing] = await tx.select({ id: phoneIdentities.id }).from(phoneIdentities).where(eq(phoneIdentities.userId, input.userId)).limit(1);
+      if (existing) {
+        await tx.update(phoneIdentities).set({
+          phoneE164: input.phoneE164,
+          maskedPhone: input.phoneMasked,
+          verifiedAt: input.now,
+          updatedAt: input.now,
+        }).where(eq(phoneIdentities.userId, input.userId));
+      } else {
+        await tx.insert(phoneIdentities).values({
+          userId: input.userId,
+          phoneE164: input.phoneE164,
+          maskedPhone: input.phoneMasked,
+          verifiedAt: input.now,
+          createdAt: input.now,
+          updatedAt: input.now,
+        });
+      }
+    });
+  }
+
+  async removeWechatIdentity(input: { userId: string; appId: string; now: Date }) {
+    const [email] = await getDb().select({ id: emailIdentities.id }).from(emailIdentities).where(eq(emailIdentities.userId, input.userId)).limit(1);
+    const [phone] = await getDb().select({ id: phoneIdentities.id }).from(phoneIdentities).where(eq(phoneIdentities.userId, input.userId)).limit(1);
+    const [password] = await getDb().select({ id: passwordCredentials.id }).from(passwordCredentials).where(eq(passwordCredentials.userId, input.userId)).limit(1);
+    if (!email && !phone && !password) throw new AuthApiError(409, "account_deletion_method_unavailable", "At least one other login method is required");
+    await getDb().delete(wechatIdentities).where(and(eq(wechatIdentities.userId, input.userId), eq(wechatIdentities.appId, input.appId)));
   }
 
   async recordSecurityEvent(input: SecurityEventInput) {
@@ -355,6 +412,82 @@ export class AccountPasswordAuthService {
     const snapshot = await this.store.getAccountSecurity(claims.userId);
     if (!snapshot) throw new AuthApiError(401, "AUTH_SESSION_REVOKED", "Session revoked");
     return snapshot;
+  }
+
+  async requestEmailChangeCode(claims: AccessTokenClaims, input: { email: string; ip?: string }) {
+    const emailNormalized = normalizeEmail(input.email);
+    const current = await this.store.findEmailByUser(claims.userId);
+    if (current?.emailNormalized === emailNormalized) {
+      throw new AuthApiError(400, "invalid_request", "New email must be different");
+    }
+    if (await this.store.hasEmail(emailNormalized)) {
+      throw new AuthApiError(409, "email_already_registered", "Email is already registered");
+    }
+    this.emailVerificationService.ensureDeliveryAvailable();
+    return this.emailVerificationService.sendCode({
+      email: emailNormalized,
+      purpose: "change_email",
+      userId: claims.userId,
+      ip: input.ip,
+    });
+  }
+
+  async changeEmail(claims: AccessTokenClaims, input: { email: string; emailCode: string }) {
+    const now = this.now();
+    const emailNormalized = normalizeEmail(input.email);
+    if (await this.store.hasEmail(emailNormalized)) {
+      const current = await this.store.findEmailByUser(claims.userId);
+      if (current?.emailNormalized !== emailNormalized) {
+        throw new AuthApiError(409, "email_already_registered", "Email is already registered");
+      }
+    }
+    await this.emailVerificationService.verifyCode({ email: emailNormalized, purpose: "change_email", code: input.emailCode, now });
+    if (!this.store.updateEmailIdentity) throw new AuthApiError(503, "session_unavailable", "Account service unavailable");
+    await this.store.updateEmailIdentity({ userId: claims.userId, emailNormalized, emailMasked: maskEmail(emailNormalized), now });
+    await this.store.recordSecurityEvent({ userId: claims.userId, eventType: "account.email_changed", metadata: { emailMasked: maskEmail(emailNormalized) } });
+    return { status: "ok" as const };
+  }
+
+  async requestAccountVerificationCode(claims: AccessTokenClaims, input: { ip?: string }) {
+    return this.requestPasswordChangeCode(claims, input);
+  }
+
+  async changePhone(claims: AccessTokenClaims, input: { phone: string; currentPassword?: string; emailCode?: string }) {
+    await this.verifyReauthentication(claims, input);
+    const now = this.now();
+    const phoneE164 = normalizePhoneE164(input.phone);
+    const snapshot = await this.getAccountSecurity(claims);
+    if (snapshot.phone.masked && snapshot.phone.masked === maskPhoneE164(phoneE164)) {
+      return { status: "ok" as const };
+    }
+    if (await this.store.hasPhone(phoneE164)) throw new AuthApiError(409, "phone_already_registered", "Phone is already registered");
+    if (!this.store.updatePhoneIdentity) throw new AuthApiError(503, "session_unavailable", "Account service unavailable");
+    await this.store.updatePhoneIdentity({ userId: claims.userId, phoneE164, phoneMasked: maskPhoneE164(phoneE164), now });
+    await this.store.recordSecurityEvent({ userId: claims.userId, eventType: "account.phone_changed", metadata: { phoneMasked: maskPhoneE164(phoneE164) } });
+    return { status: "ok" as const };
+  }
+
+  async unbindWechat(claims: AccessTokenClaims, input: { appId: string; currentPassword?: string; emailCode?: string }) {
+    await this.verifyReauthentication(claims, input);
+    if (!this.store.removeWechatIdentity) throw new AuthApiError(503, "session_unavailable", "Account service unavailable");
+    await this.store.removeWechatIdentity({ userId: claims.userId, appId: input.appId, now: this.now() });
+    await this.store.recordSecurityEvent({ userId: claims.userId, eventType: "account.wechat_unbound", metadata: { appId: input.appId } });
+    return { status: "ok" as const };
+  }
+
+  private async verifyReauthentication(claims: AccessTokenClaims, input: { currentPassword?: string; emailCode?: string }) {
+    const hasPassword = Boolean(input.currentPassword);
+    const hasEmailCode = Boolean(input.emailCode);
+    if (hasPassword === hasEmailCode) throw new AuthApiError(400, "invalid_request", "Exactly one verification method is required");
+    if (hasPassword) {
+      if (!(await this.sessionService.verifyCurrentPassword(claims, input.currentPassword!))) {
+        throw new AuthApiError(401, "invalid_credentials", "Invalid phone or password");
+      }
+      return;
+    }
+    const email = await this.store.findEmailByUser(claims.userId);
+    if (!email?.verified) throw new AuthApiError(400, "email_unverified", "Email is not verified");
+    await this.emailVerificationService.verifyCode({ email: email.emailNormalized, purpose: "change_password", code: input.emailCode!, now: this.now() });
   }
 
   private issueTokens(user: AccountIdentityRecord, input: { deviceId: string; deviceLabel?: string | null; eventType: string; ip?: string; userAgent?: string; eventMetadata?: Record<string, unknown> }) {

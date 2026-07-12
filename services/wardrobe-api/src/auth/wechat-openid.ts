@@ -1,4 +1,5 @@
 import {
+  AccountWechatRebindRequestSchema,
   WechatBindExistingAccountRequestSchema,
   WechatOpenIdLoginRequestSchema,
   WechatOpenIdLoginResponseSchema,
@@ -52,6 +53,7 @@ export interface WechatOpenIdStore {
   findBindingTicket(ticketHash: string): Promise<WechatBindingTicketRecord | null>;
   consumeBindingTicket(ticketId: string, now: Date): Promise<void>;
   bindExistingUser(input: { userId: string; appId: string; openidHash: string; unionidHash?: string | null; now: Date }): Promise<void>;
+  replaceBinding?(input: { userId: string; appId: string; openidHash: string; unionidHash?: string | null; now: Date }): Promise<void>;
   createUserWithEmailAndWechat(input: {
     appId: string;
     openidHash: string;
@@ -132,6 +134,22 @@ export class PostgresWechatOpenIdStore implements WechatOpenIdStore {
       unionidHash: input.unionidHash ?? null,
       createdAt: input.now,
       updatedAt: input.now,
+    });
+  }
+
+  async replaceBinding(input: { userId: string; appId: string; openidHash: string; unionidHash?: string | null; now: Date }) {
+    const existing = await this.findWechatUser(input.appId, input.openidHash);
+    if (existing && existing.userId !== input.userId) throw new AuthApiError(409, "wechat_already_bound", "Wechat is already bound");
+    await getDb().transaction(async (tx) => {
+      await tx.delete(wechatIdentities).where(and(eq(wechatIdentities.userId, input.userId), eq(wechatIdentities.appId, input.appId)));
+      await tx.insert(wechatIdentities).values({
+        userId: input.userId,
+        appId: input.appId,
+        openidHash: input.openidHash,
+        unionidHash: input.unionidHash ?? null,
+        createdAt: input.now,
+        updatedAt: input.now,
+      });
     });
   }
 
@@ -365,6 +383,43 @@ export class WechatOpenIdAuthService {
     }
     return ticket;
   }
+
+  async rebindAuthenticated(input: {
+    claims: import("./session.js").AccessTokenClaims;
+    appId: string;
+    loginCode: string;
+    currentPassword?: string;
+    emailCode?: string;
+    ip?: string;
+    userAgent?: string;
+  }) {
+    await this.verifyReauthentication(input.claims, input);
+    const now = this.now();
+    const session = await this.client.codeToSession({ appId: input.appId, loginCode: input.loginCode });
+    const openidHash = hashWechatOpenId(input.appId, session.openid);
+    const unionidHash = session.unionid ? hashWechatUnionId(input.appId, session.unionid) : null;
+    if (!this.store.replaceBinding) throw new AuthApiError(503, "session_unavailable", "Wechat account service unavailable");
+    await this.store.replaceBinding({ userId: input.claims.userId, appId: input.appId, openidHash, unionidHash, now });
+    await this.store.recordSecurityEvent({ userId: input.claims.userId, eventType: "account.wechat_rebound", ip: input.ip, userAgent: input.userAgent, metadata: { appId: input.appId, openidHash } });
+    return { status: "ok" as const };
+  }
+
+  async authenticate(authorizationHeader: string | undefined) {
+    return this.sessionService.authenticate(authorizationHeader);
+  }
+
+  private async verifyReauthentication(claims: import("./session.js").AccessTokenClaims, input: { currentPassword?: string; emailCode?: string }) {
+    const hasPassword = Boolean(input.currentPassword);
+    const hasEmailCode = Boolean(input.emailCode);
+    if (hasPassword === hasEmailCode) throw new AuthApiError(400, "invalid_request", "Exactly one verification method is required");
+    if (hasPassword) {
+      if (!(await this.sessionService.verifyCurrentPassword(claims, input.currentPassword!))) throw new AuthApiError(401, "invalid_credentials", "Invalid phone or password");
+      return;
+    }
+    const email = await this.accountStore.findEmailByUser(claims.userId);
+    if (!email?.verified) throw new AuthApiError(400, "email_unverified", "Email is not verified");
+    await this.emailVerificationService.verifyCode({ email: email.emailNormalized, purpose: "change_password", code: input.emailCode!, now: this.now() });
+  }
 }
 
 export function registerWechatOpenIdAuthRoutes(app: FastifyInstance, service: WechatOpenIdAuthService) {
@@ -390,6 +445,16 @@ export function registerWechatOpenIdAuthRoutes(app: FastifyInstance, service: We
     try {
       const body = WechatRegisterWithEmailRequestSchema.parse(request.body);
       return await service.registerWithEmail({ ...body, ip: request.ip, userAgent: request.headers["user-agent"] });
+    } catch (error) {
+      return sendWechatOpenIdError(reply, error);
+    }
+  });
+
+  app.post("/api/auth/account/wechat/rebind", async (request, reply) => {
+    try {
+      const body = AccountWechatRebindRequestSchema.parse(request.body);
+      const claims = await service.authenticate(request.headers.authorization);
+      return await service.rebindAuthenticated({ ...body, claims, ip: request.ip, userAgent: request.headers["user-agent"] });
     } catch (error) {
       return sendWechatOpenIdError(reply, error);
     }

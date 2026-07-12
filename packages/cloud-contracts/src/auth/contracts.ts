@@ -107,6 +107,40 @@ export const AccountSecurityResponseSchema = z.object({
   }),
 });
 
+const AccountReauthenticationFields = {
+  currentPassword: z.string().min(8).max(256).optional(),
+  emailCode: z.string().regex(/^\d{6}$/).optional(),
+};
+
+const withAccountReauthentication = <T extends z.ZodRawShape>(shape: T) => z.object({
+  ...shape,
+  ...AccountReauthenticationFields,
+}).refine((value) => Boolean(value.currentPassword) !== Boolean(value.emailCode), {
+  message: "Exactly one reauthentication method is required",
+});
+
+export const AccountEmailChangeRequestSchema = z.object({
+  email: z.string().email(),
+  emailCode: z.string().regex(/^\d{6}$/),
+});
+
+export const AccountPhoneChangeRequestSchema = withAccountReauthentication({
+  phone: z.string().min(1),
+});
+
+export const AccountWechatUnbindRequestSchema = withAccountReauthentication({
+  appId: z.string().min(1),
+});
+
+export const AccountWechatRebindRequestSchema = withAccountReauthentication({
+  appId: z.string().min(1),
+  loginCode: z.string().min(1),
+});
+
+export const WechatAccountRebindRequestSchema = AccountWechatRebindRequestSchema;
+
+export const AccountMutationResponseSchema = z.object({ status: z.literal("ok") });
+
 export const AccountDeletionMethodSchema = z.enum(["email", "password", "wechat"]);
 
 export const AccountDeletionEmailCodeRequestResponseSchema = SendEmailCodeResponseSchema;

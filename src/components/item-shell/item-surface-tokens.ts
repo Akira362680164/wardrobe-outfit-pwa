@@ -2,10 +2,10 @@ export const ITEM_SURFACE_CLASS =
   "ui-card min-w-0 max-w-full overflow-hidden shadow-none";
 
 export const ITEM_PAGE_ROOT_CLASS =
-  "flex h-[100dvh] min-h-0 flex-col overflow-hidden";
+  "relative isolate flex h-[100dvh] max-h-[100dvh] min-h-0 min-w-0 flex-col overflow-hidden overscroll-none";
 
 export const ITEM_PAGE_SCROLL_CLASS =
-  "min-h-0 flex-1 overflow-y-auto overflow-x-hidden overscroll-contain";
+  "min-h-0 min-w-0 flex-1 touch-pan-y overflow-y-auto overflow-x-hidden overscroll-contain";
 
 export const ITEM_PAGE_CONTENT_CLASS =
   "mx-auto w-full max-w-4xl px-4 pb-[calc(env(safe-area-inset-bottom)+24px)]";

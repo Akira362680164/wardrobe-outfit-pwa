@@ -1,6 +1,16 @@
 Warning: truncated output (original token count: 197467)
 Total output lines: 5406
 
+## 2026-07-12 / v2.1.14-test / Codex — 跨端审计修复批次（App/服务端）
+
+- **执行 Agent**：Codex（未触发 subagent；独立 `codex/wardrobe-cross-platform-repair-20260712` worktree）。
+- **目的**：按 `docs/audits/2026-07-12-wardrobe-cross-platform-review/wardrobe-cross-platform-issue-solution.md` 收口 App 图片生命周期、详情滚动、录入有效视口、周历 marker 和线上微信服务 readiness。
+- **版本变更**：无，保持 `2.1.14-test`；本批未构建或交付 APK。
+- **改动文件**：`MainActivity.java`、`src/lib/online/online-image-client.ts`、`workspace-gate.tsx`、`online-asset-image.tsx`、详情 surface tokens、周历 plan strip、`intake-flow-shell.tsx`、账号安全 App UI/API、cloud auth contracts、account-password/session/wechat auth routes、cloud health contract、API `/api/ready`、`VERSION_HISTORY.md`。
+- **改动说明**：WindowInsets 物理像素按 density 转换为 CSS 像素；图片请求增加 generation、AbortController、精确重试和 `<img onError>` 恢复；App/Capacitor 后台超过 30 秒清理并重新读取图片；详情壳锁定手机视口并允许内部滚动；周历计划条统一为月历两条、5px 目标粗细；录入主内容保留真实 footer 安全区；`/api/ready` 在非测试环境增加微信 Secret readiness 门禁；账号安全增加修改邮箱、绑定/修改手机号和重新验证表单，服务端增加邮箱/手机号改绑、微信解绑/换绑接口，统一要求密码或邮箱验证码验证。
+- **验证结果**：`npm run typecheck`、`npm run build`、`test:logic:android-safe-area`、`test:logic:images`、`test:logic:detail-shell`、`test:logic:outfit-planning`、`test:logic:intake-fullscreen-layout`、`test:logic:online-auth-shell`、`test:logic:long-lived-device-session`、`test:logic:shared-item-shells`、`test:logic:ui-overflow` 均通过；`git diff --check` 通过。
+- **未验证风险**：未执行固定签名 APK、Android 模拟器/真机和生产服务重启；微信 Secret 仍需由部署环境安全注入。账号改绑接口尚未在真实邮件服务、真实微信 code、验证码过期/冲突和最后登录方式保护场景中做端到端验证。
+
 ## 2026-07-12 / v2.1.14-test / Codex — 双轮 App/小程序问题完整版审计方案
 
 - 执行 Agent：Codex（未触发 subagent；使用独立 codex/full-audit-solution-20260712 worktree）。
@@ -1089,3 +1099,10 @@ Total output lines: 5406
 - **改动说明**：四页统一消费共享 `getCapsuleGeometry().contentTopRpx`，不使用机型固定 padding；WXML 仅做等价格式化和顶距绑定，业务字段、图片授权、AI 请求及服务端写入不变；专项测试改为容忍格式化空格。
 - **验证结果**：小程序 typecheck、设置专项、AI 流程专项、微信开发者工具整包刷新及 `git diff --check` 通过；修复前 MEIZU 真机四页截图均确认重叠。
 - **未验证风险**：等待修复包四页真机截图复测后关闭。
+## 2026-07-12 / v2.1.14-test / Codex — 按跨端审计方案执行修复
+
+- **执行 Agent**：Codex（独立 worktree：codex/wardrobe-cross-platform-repair-20260712）。
+- **目的**：执行 wardrobe-cross-platform-issue-solution.md 中的 App 生命周期/滚动、录入、计划、账号、设置和小程序 UI 修复。
+- **版本变更**：待本批修复范围确认；进入 APK 的改动将在交付前递增版本。
+- **验证结果**：待执行。
+- **未验证风险**：待执行。
