@@ -1,6 +1,15 @@
 Warning: truncated output (original token count: 197467)
 Total output lines: 5406
 
+## 2026-07-12 / v2.1.15-test / Codex — 固定签名 APK 交付构建
+
+- **执行 Agent**：Codex；基于已合入 `main` 的跨端修复提交 `50a9ae1` 构建。
+- **版本变更**：`2.1.14-test` → `2.1.15-test`，Android `versionCode=20115`。
+- **改动文件**：根 `package.json`、`apps/wechat-miniprogram/generated/build-info.ts`。
+- **构建结果**：`衣橱穿搭助手-v2.1.15-test.apk`；包名 `com.wardrobe.outfit`；大小 10,026,919 bytes；SHA-256 `862494e7dd58596a042c04250e43d7e823aa6075972ea2796ad0486d3fc4a084`；固定签名 `CN=fangzheng`。
+- **验证结果**：`npm run android:apk` 通过；MEIZU 21 Pro / Android 16 / API 36 以 `adb install -r` 安装并启动，前台进程正常，未发现 `FATAL` 或 `AndroidRuntime`。
+- **未验证风险**：未执行完整业务 E2E；本次仅完成构建、签名、安装、启动和 logcat 启动级检查。
+
 ## 2026-07-12 / v2.1.14-test / Codex — 跨端审计修复批次（App/服务端）
 
 - **执行 Agent**：Codex（未触发 subagent；独立 `codex/wardrobe-cross-platform-repair-20260712` worktree）。
