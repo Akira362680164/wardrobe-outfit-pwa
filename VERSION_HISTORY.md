@@ -1,3 +1,14 @@
+## 2026-07-12 / v2.1.15-test / Codex — 小程序套装录入改为两步闭环
+
+- **执行 Agent**：Codex（未触发 subagent；独立 `codex/wechat-outfit-intake-plan-20260712` worktree，实施期间已衔接最新本地 `wechat/miniprogram` 基线）。
+- **目的**：按 `2026-07-12-wechat-outfit-intake-two-step-fix-plan.md` 修复小程序与 App 不一致的三步套装录入，删除套装封面/新衣物录入，把流程收敛为“从当前衣橱选择已有衣物 → 校对并保存”。
+- **版本变更**：无，保持 `2.1.15-test`；本批不构建 APK、不上传小程序体验版、不部署服务器。
+- **改动文件**：`pages/outfits/compose/` 页面与新增纯逻辑模块、`services/workspace.ts`、`scripts/parity/tests/mini-outfit-flow.test.ts`。
+- **改动说明**：第一步只读取在用衣物，提供衣橱位置、搜索和分类筛选、三列 3:4 衣物卡、选中摘要及真实数量；第二步集中展示组成完整度与套装名称、季节、场景、风格、搭配、备注校对字段。无 MiniMax Key 或 AI 失败时使用本地草稿继续；保存补齐 `styleTags`、`pairingTags`、`temperatureRange`，保留 `clientMutationId` 幂等并在创建后强制详情读回；退出未保存内容使用项目确认 Sheet。同步将图标迁移到最新 `tone` 合同。
+- **视觉修复**：微信原生 `button` 作为三列网格项时保留默认宽度，造成 332px 网格内单卡宽 184px 并互相覆盖；改为页面隔离的可点击卡片容器后，实测单卡 106px，三列无重叠。
+- **验证结果**：根与小程序 `typecheck` 通过；套装、资产生命周期、录入状态机、衣橱、AI、壳层合同测试通过；build-info 与小程序目录同步检查通过；微信开发者工具 WXML/WXSS 编译、模拟器打开、选择卡片、选中态、两步页面和固定底栏检查通过；第一步网格实测 332px / 106px，第二步表单宽 332px；`git diff --check` 通过。
+- **未验证风险**：模拟器使用内存测试衣物验证 UI，未在真实微信账号下写入服务器或触发 live MiniMax，因此真实生产数据的创建后读回与 AI 输出仍需登录后烟测；未做微信真机预览或上传。
+
 ## 2026-07-12 / v2.1.15-test / Codex — 小程序会话、底栏、图标与账号页修复
 
 - **执行 Agent**：Codex；在独立 `codex/miniprogram-session-shell-icons-account-20260712` worktree 实施，并使用微信开发者工具模拟器做定向视觉回归。

@@ -366,6 +366,9 @@ export interface CreateOutfitInput {
   legacyItemIds: number[];
   seasons?: string[];
   sceneTags?: string[];
+  styleTags?: string[];
+  pairingTags?: string[];
+  temperatureRange?: { minC?: number; maxC?: number };
   notes?: string;
   assetMutations?: AssetMutation[];
   clientMutationId?: string;
@@ -938,6 +941,9 @@ export async function createOutfit(
         itemIds: input.legacyItemIds,
         seasons: input.seasons ?? [],
         sceneTags: input.sceneTags ?? [],
+        styleTags: input.styleTags ?? [],
+        pairingTags: input.pairingTags ?? [],
+        temperatureRange: input.temperatureRange,
         source: "manual",
         notes: input.notes,
         favorite: false,

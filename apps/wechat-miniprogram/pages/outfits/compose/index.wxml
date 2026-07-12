@@ -1,48 +1,172 @@
-<view class="page-shell compose-page">
-  <view class="page-title">创建套装</view>
-  <view class="page-copy">步骤 {{step+1}} / 3 · {{step===0?'图片 / AI':step===1?'基础信息':'逐件确认'}}</view>
-  <view class="progress"><view style="width:{{(step+1)/3*100}}%"></view></view>
-
-  <view wx:if="{{step===0}}" class="form-card">
-    <view class="field-label">套装图片（可选）</view>
-    <image wx:if="{{coverPath}}" class="cover" src="{{coverPath}}" mode="aspectFit"/>
-    <button bindtap="chooseCover">{{coverPath?'重新选择图片':'拍照或从图库选择'}}</button>
-    <view class="page-copy">也可以不上传图片，稍后按所选单品生成套装信息。</view>
-  </view>
-
-  <view wx:elif="{{step===1}}" class="form-card">
-    <view class="field-label">套装名称</view>
-    <input class="text-input" value="{{name}}" placeholder="例如：通勤基础套装" bindinput="handleNameInput"/>
-    <view wx:if="{{seasonText}}">季节：{{seasonText}}</view>
-    <view wx:if="{{sceneText}}">场景：{{sceneText}}</view>
-    <view wx:if="{{aiNotes}}">{{aiNotes}}</view>
-  </view>
-
-  <block wx:else>
-    <view wx:if="{{loading}}" class="status-card">正在读取衣物...</view>
-    <view wx:elif="{{error}}" class="status-card">{{error}}<button bindtap="loadGarments">重试</button></view>
-    <view wx:else class="garment-list">
-      <view class="section-row">
-        <view class="section-title">逐件确认</view>
-        <view class="section-count">已选 {{selectedCount}}</view>
-      </view>
-      <view wx:for="{{garments}}" wx:key="id" class="select-card {{item.selected?'select-card--active':''}}" data-id="{{item.legacyItemId}}" bindtap="toggleGarment">
-        <image wx:if="{{item.imageUrl}}" class="thumb" mode="aspectFill" src="{{item.imageUrl}}"/>
-        <view class="garment-main">
-          <view class="garment-name">{{item.name}}</view>
-          <view class="garment-meta">{{item.categoryLabel}} · {{item.colorText}}</view>
-        </view>
-        <view class="check-dot {{item.selected?'is-active':''}}">
-          <ui-icon wx:if="{{item.selected}}" name="check" size="28" tone="primary" />
-        </view>
-      </view>
-      <button class="ai-button" loading="{{generating}}" disabled="{{selectedCount<2}}" bindtap="generateBaseInfo">AI 生成 / 刷新元数据</button>
+<view class="compose-page">
+  <view class="compose-header" style="padding-top: {{capsuleTopRpx}}rpx;">
+    <view class="nav-row" style="height: {{capsuleHeightRpx}}rpx;">
+      <button class="nav-button nav-button--back {{step === 0 ? 'is-disabled' : ''}}" disabled="{{step === 0 || saving || generating}}" bindtap="previousStep" aria-label="返回上一步">
+        <ui-icon name="chevron-left" size="40" tone="ink" />
+      </button>
+      <view class="nav-title">创建套装</view>
+      <button class="nav-button nav-button--close" style="right: {{capsuleRightInsetRpx + 16}}rpx;" bindtap="requestExit" aria-label="退出录入">
+        <ui-icon name="x" size="36" tone="ink" />
+      </button>
     </view>
-  </block>
+    <view class="step-copy">步骤 {{step + 1}} / 2 · {{step === 0 ? '选择衣物' : '确认套装'}}</view>
+    <view class="progress-track"><view class="progress-fill {{step === 1 ? 'is-complete' : ''}}"></view></view>
+  </view>
+
+  <scroll-view class="compose-scroll" scroll-y enhanced show-scrollbar="{{false}}">
+    <view wx:if="{{generating}}" class="inline-notice inline-notice--processing">
+      <ui-icon name="loader" size="30" tone="primary" spin="true" />
+      <view>正在分析套装，请稍候…</view>
+    </view>
+
+    <view wx:if="{{analysisHint && !generating}}" class="inline-notice">
+      <ui-icon name="sparkles" size="30" tone="primary" />
+      <view>{{analysisHint}}</view>
+    </view>
+
+    <block wx:if="{{step === 0}}">
+      <view class="section-card surface-panel">
+        <view class="section-header">
+          <view class="section-icon"><ui-icon name="layers" size="34" tone="primary" /></view>
+          <view class="section-title">选择衣物组成套装</view>
+        </view>
+        <view class="section-description">套装必须从已有衣物组合。请至少选择 2 件，已选摘要会显示在下方。</view>
+
+        <scroll-view wx:if="{{locationOptions.length}}" class="chip-scroll" scroll-x enable-flex show-scrollbar="{{false}}">
+          <view class="chip-row">
+            <view wx:for="{{locationOptions}}" wx:key="id" class="filter-chip {{activeLocation === item.id ? 'is-active' : ''}}" data-id="{{item.id}}" bindtap="selectLocation">{{item.name}}（{{item.count}}）</view>
+          </view>
+        </scroll-view>
+
+        <view class="search-field">
+          <ui-icon name="search" size="32" tone="ink" />
+          <input value="{{searchText}}" placeholder="搜索名称、颜色或分类" bindinput="handleSearchInput" />
+        </view>
+
+        <scroll-view wx:if="{{categoryChips.length}}" class="chip-scroll category-scroll" scroll-x enable-flex show-scrollbar="{{false}}">
+          <view class="chip-row">
+            <view wx:for="{{categoryChips}}" wx:key="key" class="filter-chip {{activeCategory === item.key ? 'is-active' : ''}}" data-key="{{item.key}}" bindtap="selectCategory">{{item.label}}（{{item.count}}）</view>
+          </view>
+        </scroll-view>
+
+        <view wx:if="{{loading}}" class="status-block">正在读取衣物…</view>
+        <view wx:elif="{{error}}" class="status-block">
+          <view class="status-title">读取失败</view>
+          <view class="status-copy">{{error}}</view>
+          <button class="status-action" bindtap="loadGarments">重试</button>
+        </view>
+        <view wx:elif="{{emptyTitle}}" class="status-block">
+          <view class="status-title">{{emptyTitle}}</view>
+          <view class="status-copy">套装只能从当前衣橱中已有的在用衣物选择。</view>
+          <button wx:if="{{emptyAction}}" class="status-action" bindtap="handleEmptyAction">{{emptyAction}}</button>
+        </view>
+        <view wx:elif="{{!visibleGarments.length}}" class="status-block">当前筛选条件下没有衣物。</view>
+        <view wx:else class="outfit-garment-grid">
+          <view wx:for="{{visibleGarments}}" wx:key="id" class="outfit-garment-card {{selectedMap[item.legacyItemId] ? 'is-selected' : ''}}" data-id="{{item.legacyItemId}}" bindtap="toggleGarment" hover-class="outfit-garment-card--pressed" role="button" aria-label="{{selectedMap[item.legacyItemId] ? '取消选择' : '选择'}} {{item.name}}">
+            <view class="garment-media">
+              <image wx:if="{{item.imageUrl}}" src="{{item.imageUrl}}" mode="aspectFill" />
+              <view wx:else class="garment-fallback">{{item.categoryLabel}}</view>
+              <view wx:if="{{selectedMap[item.legacyItemId]}}" class="selected-check"><ui-icon name="check" size="24" tone="surface" /></view>
+            </view>
+            <view class="garment-copy">
+              <view class="garment-name">{{item.name}}</view>
+              <view class="garment-meta">{{item.categoryLabel}}</view>
+            </view>
+          </view>
+        </view>
+      </view>
+
+      <view class="selected-summary">
+        <view class="selected-title">已选 {{selectedCount}} 件 <text wx:if="{{selectedCount < 2}}">（至少 2 件）</text></view>
+        <view wx:if="{{selectedGarments.length}}" class="selected-list">
+          <view wx:for="{{selectedGarments}}" wx:key="id" class="selected-pill">
+            <text>{{item.name}}</text>
+            <button data-id="{{item.legacyItemId}}" catchtap="removeSelected" aria-label="取消选择 {{item.name}}">×</button>
+          </view>
+        </view>
+      </view>
+    </block>
+
+    <block wx:else>
+      <view class="metric-row">
+        <view class="metric metric--primary"><view>字段</view><text>{{fieldCount}}</text></view>
+        <view class="metric {{needsReviewCount ? 'metric--ai' : 'metric--success'}}"><view>待确认</view><text>{{needsReviewCount}}</text></view>
+        <view class="metric {{canSave ? 'metric--success' : 'metric--ai'}}"><view>可保存</view><text>{{canSave ? '是' : '否'}}</text></view>
+      </view>
+
+      <view class="section-card surface-panel">
+        <view class="section-header">
+          <view class="section-icon"><ui-icon name="layers" size="34" tone="primary" /></view>
+          <view class="section-title">组成完整度</view>
+        </view>
+        <view class="composition-grid">
+          <view wx:for="{{compositionSlots}}" wx:key="key" class="composition-slot {{item.present ? 'is-covered' : ''}}">
+            <view>{{item.label}}</view>
+            <text>{{item.statusText}}</text>
+          </view>
+        </view>
+        <view class="composition-summary">{{compositionSummary}}</view>
+      </view>
+
+      <view class="section-card surface-panel">
+        <view class="section-header">
+          <view class="section-icon"><ui-icon name="sparkles" size="34" tone="primary" /></view>
+          <view class="section-title">校对套装草稿</view>
+        </view>
+        <view class="form-stack">
+          <label class="form-field">
+            <view class="field-label">套装名称</view>
+            <input class="text-input" value="{{name}}" placeholder="例如：通勤基础套装" maxlength="40" bindinput="handleNameInput" />
+          </label>
+
+          <view class="form-field">
+            <view class="field-label">季节</view>
+            <view class="season-row">
+              <view wx:for="{{seasonOptions}}" wx:key="value" class="season-chip {{item.selected ? 'is-active' : ''}}" data-value="{{item.value}}" bindtap="toggleSeason">{{item.label}}</view>
+            </view>
+          </view>
+
+          <label class="form-field">
+            <view class="field-label">场景标签</view>
+            <input class="text-input" value="{{sceneText}}" placeholder="例如：通勤、日常" data-field="sceneText" bindinput="handleTextInput" />
+          </label>
+
+          <label class="form-field">
+            <view class="field-label">风格标签</view>
+            <input class="text-input" value="{{styleText}}" placeholder="例如：简约、休闲" data-field="styleText" bindinput="handleTextInput" />
+          </label>
+
+          <label class="form-field">
+            <view class="field-label">搭配标签</view>
+            <input class="text-input" value="{{pairingText}}" placeholder="例如：基础款、低饱和" data-field="pairingText" bindinput="handleTextInput" />
+          </label>
+
+          <label class="form-field">
+            <view class="field-label">备注</view>
+            <textarea class="textarea-input" value="{{notes}}" placeholder="补充这套搭配的使用提示" maxlength="300" data-field="notes" bindinput="handleTextInput" />
+          </label>
+        </view>
+      </view>
+
+      <view wx:if="{{issues.length}}" class="section-card surface-panel">
+        <view class="section-header">
+          <view class="section-icon section-icon--ai"><ui-icon name="sparkles" size="34" tone="ai" /></view>
+          <view class="section-title">需要留意</view>
+        </view>
+        <view class="issue-list">
+          <view wx:for="{{issues}}" wx:key="*this" class="issue-item"><text>需确认</text>{{item}}</view>
+        </view>
+      </view>
+    </block>
+
+    <view class="scroll-spacer"></view>
+  </scroll-view>
 
   <view class="bottom-bar">
-    <button wx:if="{{step>0}}" bindtap="previousStep">上一步</button>
-    <button wx:if="{{step<2}}" class="primary-button" bindtap="nextStep">下一步</button>
-    <button wx:else class="primary-button" loading="{{saving}}" disabled="{{selectedCount<2||!name}}" bindtap="saveOutfit">保存 {{selectedCount}} 件套装</button>
+    <button class="bottom-action bottom-action--secondary" disabled="{{step === 0 || saving || generating}}" bindtap="previousStep">上一步</button>
+    <button wx:if="{{step === 0}}" class="bottom-action bottom-action--primary" loading="{{generating}}" disabled="{{selectedCount < 2 || loading || generating}}" bindtap="nextStep">下一步（自动分析）</button>
+    <button wx:else class="bottom-action bottom-action--primary" loading="{{saving}}" disabled="{{!canSave || saving}}" bindtap="saveOutfit">保存 {{selectedCount}} 件套装</button>
   </view>
+
+  <ui-confirm-sheet visible="{{confirmExitOpen}}" title="退出本次录入？" content="退出后，本次选择的衣物和填写内容将被清空。" cancel-text="继续录入" confirm-text="确认退出" danger="true" bind:close="closeExitConfirm" bind:confirm="confirmExit" />
 </view>
