@@ -196,12 +196,13 @@ function currentRoute(): string {
 }
 
 function safeSystemInfo(): Record<string, unknown> {
-  const info = wx.getSystemInfoSync();
+  const deviceInfo = wx.getDeviceInfo();
+  const windowInfo = wx.getWindowInfo();
   return {
-    platform: info.platform ?? "unknown",
-    system: info.system ?? "unknown",
-    model: info.model ?? "unknown",
-    screenHeight: info.screenHeight ?? null,
+    platform: deviceInfo.platform ?? "unknown",
+    system: deviceInfo.system ?? "unknown",
+    model: deviceInfo.model ?? "unknown",
+    screenHeight: windowInfo.screenHeight ?? null,
   };
 }
 

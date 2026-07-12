@@ -3,10 +3,12 @@
 - **执行 Agent**：Codex（未触发 subagent：用户未通知）。
 - **目的**：修复审查确认的穿搭计划/套装写入未等待、小程序废弃系统 API、统计排序口径和闲置总数截断问题。
 - **版本变更**：`2.1.15-test` → `2.1.16-test`，Android `versionCode=20116`。
-- **改动文件**：服务端 `outfit-plans/:id/set-primary` 原子事务接口及路由；App 计划/AI 建议保存、幂等重试；小程序 `getWindowInfo/getDeviceInfo`、统计纯函数与定向测试；`package.json`、lockfile、生成 build-info。
-- **验证结果**：根 `typecheck`、API `typecheck`、小程序 `typecheck`、`npm run build`、API 测试 `114/114`、定向计划/统计/小程序合同测试通过；APK 构建、固定签名和元数据校验通过。完整 `test:logic:all` 在既有 UI 规范契约（`test-ui-spec-preview-contract`、`test-ui-token-contract`）处失败，相关 UI 文件本批未修改；UI overlay 合同通过。
+- **改动文件**：服务端 `outfit-plans/:id/set-primary` 原子事务接口及路由；App 计划/AI 建议保存、幂等重试；小程序 `getWindowInfo/getDeviceInfo`、诊断页系统信息迁移、统计纯函数与定向测试；`package.json`、lockfile、生成 build-info。
+- **验证结果**：根 `typecheck`、API `typecheck`、正式小程序 `typecheck`、`npm run build`、API 测试 `114/114`、定向计划/统计/小程序合同测试通过；微信开发者工具正式项目 `compile_wxml`（32,400 chars）和 `compile_wxss`（2 files）通过；体验版上传成功（AppID `wx14a1a85b7b3844d0`、版本 `2.1.16`、790,092 bytes）；APK 构建、固定签名和元数据校验通过。完整 `test:logic:all` 在既有 UI 规范契约（`test-ui-spec-preview-contract`、`test-ui-token-contract`）处失败，相关 UI 文件本批未修改；UI overlay 合同通过。
 - **风险门禁**：`high`（服务端事务、线上写入契约、AI 保存和 Android APK）；未触发 subagent：用户未通知。
-- **未验证风险**：生产服务部署、小程序开发者工具编译/上传、Android 真机业务路径和最终合入尚待完成；APK 将在最终提交后重建以写入最终 commit。
+- **生产部署**：生产数据库备份 `/opt/wardrobe-cloud/backups/postgres/wardrobe-20260713-010630.sql`；镜像 `wardrobe-api:c2c3569` 已发布，公网 `/api/health`、`/api/ready` 通过且依赖全为 `ready`，`/api/version` 返回 `gitCommit=c2c3569`；新路由未授权烟测返回预期 HTTP 401。
+- **Android 验证**：MEIZU 21 Pro（ADB `481QFGFH23AY7`）安装 `2.1.16-test` 固定签名 APK；隔离测试 API 上 `android:e2e:critical` 5/5 通过；恢复生产 API 后重新安装启动，版本 `20116`、前台窗口和无 FATAL 崩溃日志通过。
+- **未验证风险**：微信开发者工具 `simulator_open_page` 在编译子进程处超时，未把模拟器 UI 交互计为已验证；尚未用真实微信用户完成登录/绑定、真机预览或 live MiniMax；完整 `test:logic:all` 的既有 UI 规范契约失败未处理。
 
 ## 2026-07-12 / v2.1.15-test / Codex — 小程序录入与裁切闭环修复
 
