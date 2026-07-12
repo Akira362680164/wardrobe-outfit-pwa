@@ -1,6 +1,17 @@
 Warning: truncated output (original token count: 197467)
 Total output lines: 5406
 
+## 2026-07-12 / v2.1.15-test / Codex — 修复生产微信登录 Secret 注入
+
+- **执行 Agent**：Codex（未触发 subagent；在独立 `codex/wechat-login-production-fix-20260712` worktree 实施）。
+- **目的**：修复小程序点击“微信登录/注册”后生产 API 返回 `wechat_service_unavailable` 的部署配置缺口。
+- **版本变更**：无，保持 `2.1.15-test`；本批不构建 APK、不上传小程序体验版。
+- **改动文件**：`deploy/compose.production.yaml`、`deploy/docs/production-deploy.md`、`scripts/test-wechat-email-auth-flow.ts`、`VERSION_HISTORY.md`。
+- **改动说明**：生产 compose 显式注入 `WECHAT_MINIPROGRAM_APP_ID` 与 `WECHAT_MINIPROGRAM_APP_SECRET`，缺少任一变量时 fail fast；补齐生产部署验收要求，合同测试防止 Secret 映射回归；真实 Secret 仍只允许存在生产服务器环境。
+- **验证结果**：`npm run test:logic:wechat-email-auth-flow` 通过；`npm --workspace @wardrobe/wardrobe-api run test -- tests/wechat-openid-auth.test.ts` 通过（3/3）；`npm run api:typecheck`、`npm run typecheck`、`git diff --check` 通过；静态合同覆盖 compose 微信变量映射、缺 Secret fail-fast 和 `/api/ready` 验收要求。
+- **风险门禁**：`high`；认证和生产部署配置变更。未触发 subagent：用户未通知。
+- **未验证风险**：本机没有 Docker Compose 插件，未执行 `docker compose config`；本地未持有生产微信 Secret，尚未在生产机重建/重启 API，也未用真实 `wx.login` code 完成首次绑定和已绑定账号登录；部署前线上接口仍可能返回旧错误。
+
 ## 2026-07-12 / v2.1.15-test / Codex — 固定签名 APK 交付构建
 
 - **执行 Agent**：Codex；基于 `main` 发布提交 `6a9431d` 构建。
