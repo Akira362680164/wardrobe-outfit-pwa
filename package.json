@@ -1,6 +1,6 @@
 {
   "name": "wardrobe-outfit-pwa",
-  "version": "2.1.14-test",
+  "version": "2.1.15-test",
   "private": true,
   "workspaces": [
     "packages/domain-catalog",

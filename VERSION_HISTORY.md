@@ -1,6 +1,14 @@
 Warning: truncated output (original token count: 197467)
 Total output lines: 5406
 
+## 2026-07-12 / v2.1.15-test / Codex — 小程序开发版上传与开发者微信预览
+
+- **执行 Agent**：Codex；基于已合入 `wechat/miniprogram` 的跨端修复提交 `1f3648f`。
+- **版本变更**：应用构建信息由 `2.1.14-test` 更新为 `2.1.15-test`；小程序上传版本号使用 `2.1.15`。
+- **改动文件**：根 `package.json`、`apps/wechat-miniprogram/generated/build-info.ts`。
+- **上传与预览**：将通过微信开发者工具 `miniprogram_upload` 上传体验版，并通过 `auto_preview` 推送开发者微信；结果将在本条记录中补充。
+- **未验证风险**：微信审核结果、真实用户权限和生产微信 Secret 不属于本地上传/预览验证范围。
+
 ## 2026-07-12 / v2.1.14-test / Codex — 跨端审计修复批次（小程序）
 
 - **执行 Agent**：Codex（未触发 subagent；独立 `codex/wardrobe-cross-platform-mini-repair-20260712` worktree）。
