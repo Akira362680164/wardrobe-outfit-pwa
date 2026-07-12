@@ -1,3 +1,13 @@
+## 2026-07-13 / v2.1.16-test / Codex — 代码审查四项问题修复
+
+- **执行 Agent**：Codex（未触发 subagent：用户未通知）。
+- **目的**：修复审查确认的穿搭计划/套装写入未等待、小程序废弃系统 API、统计排序口径和闲置总数截断问题。
+- **版本变更**：`2.1.15-test` → `2.1.16-test`，Android `versionCode=20116`。
+- **改动文件**：服务端 `outfit-plans/:id/set-primary` 原子事务接口及路由；App 计划/AI 建议保存、幂等重试；小程序 `getWindowInfo/getDeviceInfo`、统计纯函数与定向测试；`package.json`、lockfile、生成 build-info。
+- **验证结果**：根 `typecheck`、API `typecheck`、小程序 `typecheck`、`npm run build`、API 测试 `114/114`、定向计划/统计/小程序合同测试通过；APK 构建、固定签名和元数据校验通过。完整 `test:logic:all` 在既有 UI 规范契约（`test-ui-spec-preview-contract`、`test-ui-token-contract`）处失败，相关 UI 文件本批未修改；UI overlay 合同通过。
+- **风险门禁**：`high`（服务端事务、线上写入契约、AI 保存和 Android APK）；未触发 subagent：用户未通知。
+- **未验证风险**：生产服务部署、小程序开发者工具编译/上传、Android 真机业务路径和最终合入尚待完成；APK 将在最终提交后重建以写入最终 commit。
+
 ## 2026-07-12 / v2.1.15-test / Codex — 生产微信登录服务重新部署
 
 - **执行 Agent**：Codex；基于已合入 `main` 的提交 `2a825a04` 执行生产部署。
@@ -1137,6 +1147,7 @@
 - **改动说明**：四页统一消费共享 `getCapsuleGeometry().contentTopRpx`，不使用机型固定 padding；WXML 仅做等价格式化和顶距绑定，业务字段、图片授权、AI 请求及服务端写入不变；专项测试改为容忍格式化空格。
 - **验证结果**：小程序 typecheck、设置专项、AI 流程专项、微信开发者工具整包刷新及 `git diff --check` 通过；修复前 MEIZU 真机四页截图均确认重叠。
 - **未验证风险**：等待修复包四页真机截图复测后关闭。
+
 ## 2026-07-12 / v2.1.14-test / Codex — 按跨端审计方案执行修复
 
 - **执行 Agent**：Codex（独立 worktree：codex/wardrobe-cross-platform-repair-20260712）。

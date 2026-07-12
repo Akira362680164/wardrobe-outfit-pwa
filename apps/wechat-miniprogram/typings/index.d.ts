@@ -23,6 +23,20 @@ declare namespace WechatMiniprogram {
     system?: string;
   }
 
+  interface WindowInfo {
+    windowWidth: number;
+    screenHeight: number;
+    statusBarHeight: number;
+    safeArea?: SafeArea;
+  }
+
+  interface DeviceInfo {
+    platform?: string;
+    model?: string;
+    system?: string;
+    brand?: string;
+  }
+
   interface RequestSuccessCallbackResult<T = unknown> {
     statusCode: number;
     data: T;
@@ -103,7 +117,8 @@ declare const wx: {
   env: {
     USER_DATA_PATH: string;
   };
-  getSystemInfoSync(): WechatMiniprogram.SystemInfo;
+  getWindowInfo(): WechatMiniprogram.WindowInfo;
+  getDeviceInfo(): WechatMiniprogram.DeviceInfo;
   base64ToArrayBuffer(base64: string): ArrayBuffer;
   getStorageSync(key: string): unknown;
   setStorageSync(key: string, data: unknown): void;

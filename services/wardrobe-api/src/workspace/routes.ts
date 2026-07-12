@@ -104,6 +104,12 @@ export function registerWorkspaceRoutes(
     const command = WorkspaceStateCommandSchema.parse(request.body);
     return commandService.patchPayload({ resource: "outfits", entityId: id, command, patch: { favorite: command.value ?? true }, userId: claims.userId, deviceId: claims.deviceId, requestId: requestId(request) });
   }));
+  app.post("/api/workspace/outfit-plans/:id/set-primary", async (request, reply) => handle(reply, async () => {
+    const claims = await authenticate(request.headers.authorization, request.headers["x-wardrobe-device-id"], sessionService);
+    const { id } = z.object({ id: z.string().uuid() }).parse(request.params);
+    const command = WorkspaceStateCommandSchema.parse(request.body);
+    return commandService.setOutfitPlanPrimary({ entityId: id, command, userId: claims.userId, deviceId: claims.deviceId, requestId: requestId(request) });
+  }));
   app.post("/api/workspace/outfit-plans/:id/mark-worn", async (request, reply) => wornAction(request, reply, sessionService, commandService, "outfit-plans", true));
   app.post("/api/workspace/outfit-plans/:id/cancel-worn", async (request, reply) => wornAction(request, reply, sessionService, commandService, "outfit-plans", false));
   app.post("/api/workspace/garments/:id/mark-worn", async (request, reply) => wornAction(request, reply, sessionService, commandService, "garments", true));

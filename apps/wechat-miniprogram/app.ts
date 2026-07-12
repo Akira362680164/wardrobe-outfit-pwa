@@ -22,11 +22,11 @@ App<{
     const session = hydrateSession();
     if (session?.refreshToken) void recoverSession().catch(() => undefined);
 
-    const systemInfo = wx.getSystemInfoSync();
-    globalData.statusBarHeight = systemInfo.statusBarHeight ?? 0;
+    const windowInfo = wx.getWindowInfo();
+    globalData.statusBarHeight = windowInfo.statusBarHeight ?? 0;
     globalData.safeAreaBottom = Math.max(
       0,
-      (systemInfo.screenHeight ?? 0) - (systemInfo.safeArea?.bottom ?? systemInfo.screenHeight ?? 0),
+      (windowInfo.screenHeight ?? 0) - (windowInfo.safeArea?.bottom ?? windowInfo.screenHeight ?? 0),
     );
   },
 });
