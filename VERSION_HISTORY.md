@@ -19,6 +19,17 @@ Total output lines: 5406
 - **改动说明**：拍照/图库入口补齐 SVG 语义图标并收敛尺寸；选中缩略图操作改为一级卡片内浮动气泡，边界和箭头按缩略图中心计算；自绘自由/3:4 裁切、旋转、重置、应用并按实际源图矩形导出，衣物/种草编辑和试穿参考照也改用该裁切页；业务删除/退出/验证码确认统一改为项目底部 Sheet，移除 `wx.showModal` 与 `wx.enableAlertBeforeUnload`；多选栏、计划详情按钮、空状态 `+计划穿搭`、周历两条 marker、白色 Plus 和自定义毛玻璃底栏统一；详情三点移入主图右上角；AI 建议读写服务器并区分生成/已保存状态；诊断页恢复脱敏上传并直接展示上传状态；账号安全新增邮箱改绑、手机号绑定/修改、密码验证/邮箱验证码验证和微信解绑/换绑入口；同步更新受影响的 parity 合同断言。
 - **验证结果**：`tsc --noEmit --project apps/wechat-miniprogram/tsconfig.json` 通过；录入状态机、详情、设置、AI parity 合同通过；`git diff --check` 通过；源码扫描业务 `wx.showModal`/`wx.enableAlertBeforeUnload` 为 0（仅 typings 声明保留）。
 - **未验证风险**：微信开发者工具当前入口仍只登记正式 checkout；修复 worktree 的 `project_import` 返回 `PROJECT_IMPORT_NOT_IN_LIST`，直接 `compile_wxml` 遇 `EPROTO SSLV3_ALERT_HANDSHAKE_FAILURE`，因此未完成 simulator/真机截图验证。生产微信 Secret 仍需由部署环境注入；账号改绑接口已完成代码与类型检查，但尚未在真实邮件服务、真实微信 code 和真机上验证验证码过期、唯一性冲突、最后登录方式保护及换绑闭环。
+## 2026-07-12 / v2.1.15-test / Codex — 修正跨端微信注册合同测试
+
+- **执行 Agent**：Codex（未触发 subagent；基于已合入 `main` 的生产微信登录修复重新建立独立 worktree）。
+- **目的**：修复 `main` 与 `wechat/miniprogram` 合入后共用认证合同测试对两端确认交互实现不一致的误报。
+- **版本变更**：无，保持 `2.1.15-test`；不修改小程序运行时行为，不构建 APK、不上传体验版。
+- **改动文件**：`scripts/test-wechat-email-auth-flow.ts`、`VERSION_HISTORY.md`。
+- **改动说明**：注册发送验证码前的合同同时接受 Web/App 侧 `wx.showModal` 和小程序侧已实现的 `ui-confirm-sheet`，仍强制要求发送前存在确认步骤。
+- **验证结果**：待本批提交前在 `main` 与 `wechat/miniprogram` 正式目录分别重跑认证合同和 typecheck。
+- **风险门禁**：`medium`；仅测试合同兼容性调整。未触发 subagent：用户未通知。
+- **未验证风险**：未新增运行时逻辑；真实微信登录仍受生产 Secret 注入和服务重启状态影响。
+
 ## 2026-07-12 / v2.1.15-test / Codex — 修复生产微信登录 Secret 注入
 
 - **执行 Agent**：Codex（未触发 subagent；在独立 `codex/wechat-login-production-fix-20260712` worktree 实施）。
