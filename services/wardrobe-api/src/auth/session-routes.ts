@@ -1,5 +1,11 @@
 import type { FastifyInstance, FastifyReply } from "fastify";
 import { z } from "zod";
+import {
+  AccountEmailChangeRequestSchema,
+  AccountMutationResponseSchema,
+  AccountPhoneChangeRequestSchema,
+  AccountWechatUnbindRequestSchema,
+} from "@wardrobe/cloud-contracts";
 
 import { AccountPasswordAuthService } from "./account-password.js";
 import { AuthApiError } from "./registrations.js";
@@ -185,6 +191,60 @@ export function registerSessionRoutes(
       }
       const claims = await sessionService.authenticate(request.headers.authorization);
       return await accountPasswordAuthService.getAccountSecurity(claims);
+    } catch (error) {
+      return sendSessionError(reply, error);
+    }
+  });
+
+  app.post("/api/auth/account/verification/request-code", async (request, reply) => {
+    try {
+      if (!accountPasswordAuthService) return reply.code(500).send({ code: "internal_error", message: "Account service unavailable" });
+      const claims = await sessionService.authenticate(request.headers.authorization);
+      return await accountPasswordAuthService.requestAccountVerificationCode(claims, { ip: request.ip });
+    } catch (error) {
+      return sendSessionError(reply, error);
+    }
+  });
+
+  app.post("/api/auth/account/email/request-code", async (request, reply) => {
+    try {
+      if (!accountPasswordAuthService) return reply.code(500).send({ code: "internal_error", message: "Account service unavailable" });
+      const body = z.object({ email: z.string().email() }).parse(request.body);
+      const claims = await sessionService.authenticate(request.headers.authorization);
+      return await accountPasswordAuthService.requestEmailChangeCode(claims, { email: body.email, ip: request.ip });
+    } catch (error) {
+      return sendSessionError(reply, error);
+    }
+  });
+
+  app.post("/api/auth/account/email/change", async (request, reply) => {
+    try {
+      if (!accountPasswordAuthService) return reply.code(500).send({ code: "internal_error", message: "Account service unavailable" });
+      const body = AccountEmailChangeRequestSchema.parse(request.body);
+      const claims = await sessionService.authenticate(request.headers.authorization);
+      return AccountMutationResponseSchema.parse(await accountPasswordAuthService.changeEmail(claims, body));
+    } catch (error) {
+      return sendSessionError(reply, error);
+    }
+  });
+
+  app.post("/api/auth/account/phone/change", async (request, reply) => {
+    try {
+      if (!accountPasswordAuthService) return reply.code(500).send({ code: "internal_error", message: "Account service unavailable" });
+      const body = AccountPhoneChangeRequestSchema.parse(request.body);
+      const claims = await sessionService.authenticate(request.headers.authorization);
+      return AccountMutationResponseSchema.parse(await accountPasswordAuthService.changePhone(claims, body));
+    } catch (error) {
+      return sendSessionError(reply, error);
+    }
+  });
+
+  app.post("/api/auth/account/wechat/unbind", async (request, reply) => {
+    try {
+      if (!accountPasswordAuthService) return reply.code(500).send({ code: "internal_error", message: "Account service unavailable" });
+      const body = AccountWechatUnbindRequestSchema.parse(request.body);
+      const claims = await sessionService.authenticate(request.headers.authorization);
+      return AccountMutationResponseSchema.parse(await accountPasswordAuthService.unbindWechat(claims, body));
     } catch (error) {
       return sendSessionError(reply, error);
     }

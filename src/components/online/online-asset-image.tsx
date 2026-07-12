@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import { useOnlineWorkspaceGate } from "@/components/auth/workspace-gate";
 import { OnlineImageLoadError, OnlineImagePlaceholder } from "@/components/online/online-image-state";
 import { OriginalCroppedImage } from "@/components/original-cropped-image";
@@ -11,6 +11,8 @@ import type { ImageAssetReference } from "@/lib/types";
 export function useOnlineAssetUrl(asset: ImageAssetReference | undefined, variant: OnlineImageVariant, fallbackUrl?: string) {
   const gate = useOnlineWorkspaceGate();
   const [state, setState] = useState<{ status: "idle" | "loading" | "loaded" | "error"; url?: string }>({ status: asset ? "loading" : "idle", url: fallbackUrl });
+  const retryingRef = useRef(false);
+  const expectedSha256 = asset?.variantSha256?.[variant] ?? (variant === "original" ? asset?.sha256 : undefined);
 
   useEffect(() => {
     let active = true;
@@ -19,11 +21,18 @@ export function useOnlineAssetUrl(asset: ImageAssetReference | undefined, varian
       return;
     }
     setState((current) => ({ status: "loading", url: current.url ?? fallbackUrl }));
-    const expectedSha256 = asset.variantSha256?.[variant] ?? (variant === "original" ? asset.sha256 : undefined);
     void gate.repository.images.acquire(asset.assetId, variant, expectedSha256).then(
       (url) => { if (active) setState({ status: "loaded", url }); },
       async (error) => {
-        if (error instanceof OnlineRequestError && error.status === 401 && await gate.recoverImages()) return;
+        if (error instanceof OnlineRequestError && error.status === 401 && await gate.recoverImages()) {
+          return;
+        }
+        if (error instanceof OnlineRequestError && error.status === 401) {
+          // Let the gate refresh the session and bump its image generation;
+          // the effect will acquire this asset again with the fresh session.
+          void gate.recoverImages(true);
+          return;
+        }
         if (active) setState({ status: "error", url: fallbackUrl });
       },
     );
@@ -35,11 +44,23 @@ export function useOnlineAssetUrl(asset: ImageAssetReference | undefined, varian
 
   const retry = useCallback(() => {
     if (!asset || !gate) return;
+    if (retryingRef.current) return;
+    retryingRef.current = true;
     setState((current) => ({ status: "loading", url: current.url ?? fallbackUrl }));
-    void gate.recoverImages(true).then((recovered) => {
-      if (!recovered) setState({ status: "error", url: fallbackUrl });
-    });
-  }, [asset, fallbackUrl, gate]);
+    void gate.repository.images.retry(asset.assetId, variant, expectedSha256).then(
+      (url) => setState({ status: "loaded", url }),
+      async (error) => {
+        if (error instanceof OnlineRequestError && error.status === 401 && await gate.recoverImages(true)) {
+          try {
+            const url = await gate.repository.images.retry(asset.assetId, variant, expectedSha256);
+            setState({ status: "loaded", url });
+            return;
+          } catch { /* fall through to the visible retry state */ }
+        }
+        setState({ status: "error", url: fallbackUrl });
+      },
+    ).finally(() => { retryingRef.current = false; });
+  }, [asset, expectedSha256, fallbackUrl, gate, variant]);
 
   return { ...state, retry, hasAsset: Boolean(asset?.variants.includes(variant)) };
 }
@@ -57,8 +78,8 @@ export function OnlineAssetImage({ asset, variant, alt, className = "", imageCla
   return <div className={className}>
     {image.status === "error" ? <OnlineImageLoadError onRetry={image.retry} />
       : image.url ? (onOpen
-        ? <button type="button" data-parity-id="parity.app.app.src.components.online.online.asset.image.fd9596b99a" onClick={() => onOpen(image.url!)} className="h-full w-full"><img src={image.url} alt={alt} decoding="async" className={`h-full w-full object-contain transition-opacity duration-150 ${imageClassName}`} /></button>
-        : <img src={image.url} alt={alt} decoding="async" className={`h-full w-full object-contain transition-opacity duration-150 ${imageClassName}`} />)
+        ? <button type="button" data-parity-id="parity.app.app.src.components.online.online.asset.image.fd9596b99a" onClick={() => onOpen(image.url!)} className="h-full w-full"><img src={image.url} alt={alt} decoding="async" onError={image.retry} className={`h-full w-full object-contain transition-opacity duration-150 ${imageClassName}`} /></button>
+        : <img src={image.url} alt={alt} decoding="async" onError={image.retry} className={`h-full w-full object-contain transition-opacity duration-150 ${imageClassName}`} />)
         : image.hasAsset ? <OnlineImagePlaceholder /> : fallback ?? null}
   </div>;
 }

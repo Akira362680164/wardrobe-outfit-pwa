@@ -102,7 +102,7 @@ export async function login(input: {
 
 export function sendEmailCode(input: {
   email: string;
-  purpose: "register" | "reset_password" | "change_password";
+  purpose: "register" | "reset_password" | "change_password" | "change_email";
 }): Promise<SendEmailCodeResponse> {
   return requestJson("/api/auth/email/send-code", {
     method: "POST",
@@ -180,6 +180,26 @@ export function requestPasswordChangeCode(accessToken: string): Promise<SendEmai
     method: "POST",
     accessToken,
   });
+}
+
+export function requestAccountVerificationCode(accessToken: string): Promise<SendEmailCodeResponse> {
+  return requestJson("/api/auth/account/verification/request-code", { method: "POST", accessToken });
+}
+
+export function requestEmailChangeCode(accessToken: string, email: string): Promise<SendEmailCodeResponse> {
+  return requestJson("/api/auth/account/email/request-code", { method: "POST", accessToken, body: { email } });
+}
+
+export async function changeEmail(input: { accessToken: string; email: string; emailCode: string }): Promise<void> {
+  await requestJson("/api/auth/account/email/change", { method: "POST", accessToken: input.accessToken, body: { email: input.email, emailCode: input.emailCode } });
+}
+
+export async function changePhone(input: { accessToken: string; phone: string; currentPassword?: string; emailCode?: string }): Promise<void> {
+  await requestJson("/api/auth/account/phone/change", { method: "POST", accessToken: input.accessToken, body: { phone: input.phone, currentPassword: input.currentPassword, emailCode: input.emailCode } });
+}
+
+export async function unbindWechat(input: { accessToken: string; appId: string; currentPassword?: string; emailCode?: string }): Promise<void> {
+  await requestJson("/api/auth/account/wechat/unbind", { method: "POST", accessToken: input.accessToken, body: { appId: input.appId, currentPassword: input.currentPassword, emailCode: input.emailCode } });
 }
 
 export async function changePasswordWithEmailCode(input: {

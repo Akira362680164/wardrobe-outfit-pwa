@@ -185,7 +185,7 @@ export function IntakeFlowShell({
           "mx-auto min-h-0 w-full max-w-md flex-1 px-4 pt-3",
           immersiveContent
             ? "flex flex-col overflow-hidden pb-3"
-            : "overflow-y-auto",
+            : "overflow-y-auto pb-[calc(env(safe-area-inset-bottom)+104px)]",
         ].join(" ")}
         style={immersiveContent ? undefined : { paddingBottom: "calc(max(env(safe-area-inset-bottom, 0px), var(--android-safe-area-bottom, 0px)) + 104px)" }}
       >

@@ -15,7 +15,9 @@ interface OnlineImageClientOptions {
 export class OnlineImageClient {
   private readonly urls = new Map<string, string>();
   private readonly pending = new Map<string, Promise<string>>();
+  private readonly controllers = new Map<string, AbortController>();
   private readonly references = new Map<string, number>();
+  private generation = 0;
   private readonly createObjectUrl: (blob: Blob) => string;
   private readonly revokeObjectUrl: (url: string) => void;
 
@@ -36,7 +38,13 @@ export class OnlineImageClient {
     if (cached) return cached;
     const inFlight = this.pending.get(key);
     if (inFlight) return inFlight;
-    const request = this.download(assetId, variant, expectedSha256).finally(() => this.pending.delete(key));
+    const generation = this.generation;
+    const controller = new AbortController();
+    this.controllers.set(key, controller);
+    const request = this.download(assetId, variant, expectedSha256, controller.signal, generation).finally(() => {
+      if (this.pending.get(key) === request) this.pending.delete(key);
+      if (this.controllers.get(key) === controller) this.controllers.delete(key);
+    });
     this.pending.set(key, request);
     return request;
   }
@@ -44,6 +52,7 @@ export class OnlineImageClient {
   async retry(assetId: string, variant: OnlineImageVariant, expectedSha256?: string): Promise<string> {
     const key = imageKey(assetId, variant, expectedSha256);
     const url = this.urls.get(key);
+    this.controllers.get(key)?.abort();
     if (url && (this.references.get(key) ?? 0) <= 1) this.revokeObjectUrl(url);
     this.urls.delete(key);
     this.pending.delete(key);
@@ -64,16 +73,19 @@ export class OnlineImageClient {
   }
 
   clear(): void {
+    this.generation += 1;
+    for (const controller of this.controllers.values()) controller.abort();
     for (const url of this.urls.values()) this.revokeObjectUrl(url);
     this.urls.clear();
     this.pending.clear();
+    this.controllers.clear();
     this.references.clear();
   }
 
-  private async download(assetId: string, variant: OnlineImageVariant, expectedSha256?: string): Promise<string> {
+  private async download(assetId: string, variant: OnlineImageVariant, expectedSha256: string | undefined, signal: AbortSignal, generation: number): Promise<string> {
     const response = await onlineRequestRaw<Blob>(
       `/api/assets/${encodeURIComponent(assetId)}/${variant}/content`,
-      { responseType: "blob", session: this.options.session },
+      { responseType: "blob", session: this.options.session, signal },
     );
     if (!response.data.type.startsWith("image/")) {
       throw new OnlineRequestError(502, "image_upload", "服务器返回的图片格式无效", true, response.requestId);
@@ -84,7 +96,7 @@ export class OnlineImageClient {
     }
     const url = this.createObjectUrl(response.data);
     const key = imageKey(assetId, variant, expectedSha256);
-    if ((this.references.get(key) ?? 0) === 0) {
+    if (generation !== this.generation || signal.aborted || (this.references.get(key) ?? 0) === 0) {
       this.revokeObjectUrl(url);
       return url;
     }

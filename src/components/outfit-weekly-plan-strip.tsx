@@ -183,7 +183,7 @@ export function OutfitWeeklyPlanStrip({
                     {datePlansForDay.length > 0 && (
                       <div className="flex gap-0.5 mt-0.5">
                         {datePlansForDay.slice(0, 2).map((p) => (
-                          <div key={p.id} className={`h-[3px] w-4 rounded-full ${PLAN_TONE_BG_MAP[p.tone]}`} />
+                          <div key={p.id} className={`h-[5px] w-4 rounded-full ${PLAN_TONE_BG_MAP[p.tone]}`} />
                         ))}
                         {datePlansForDay.length > 2 && <span className="text-[9px] text-ink/40">+{datePlansForDay.length - 2}</span>}
                       </div>

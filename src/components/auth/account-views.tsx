@@ -30,6 +30,15 @@ export function AccountManagementView({
   const [confirmingLogout, setConfirmingLogout] = useState(false);
   const [security, setSecurity] = useState<authApi.AccountSecurityResponse | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
+  const [editMode, setEditMode] = useState<"email" | "phone" | null>(null);
+  const [editValue, setEditValue] = useState("");
+  const [editCode, setEditCode] = useState("");
+  const [editPassword, setEditPassword] = useState("");
+  const [editVerifyMode, setEditVerifyMode] = useState<"password" | "email">("password");
+  const [editSending, setEditSending] = useState(false);
+  const [editSaving, setEditSaving] = useState(false);
+  const [editCodeSent, setEditCodeSent] = useState(false);
+  const [editCountdown, setEditCountdown] = useState(0);
 
   useEffect(() => {
     let cancelled = false;
@@ -49,8 +58,87 @@ export function AccountManagementView({
     };
   }, [auth.accessToken]);
 
+  useEffect(() => {
+    if (editCountdown <= 0) return undefined;
+    const timer = window.setTimeout(() => setEditCountdown((value) => Math.max(0, value - 1)), 1000);
+    return () => window.clearTimeout(timer);
+  }, [editCountdown]);
+
   const emailMasked = security?.email.masked ?? auth.user.emailMasked;
   const phoneMasked = security?.phone.masked ?? auth.user.phoneMasked ?? auth.user.maskedPhone;
+
+  const openBindingEditor = (mode: "email" | "phone") => {
+    setEditMode(mode);
+    setEditValue("");
+    setEditCode("");
+    setEditPassword("");
+    setEditVerifyMode("password");
+    setEditCodeSent(false);
+    setEditCountdown(0);
+    setLoadError(null);
+  };
+
+  const sendBindingCode = async () => {
+    if (!auth.accessToken || editSending || editCountdown > 0) return;
+    if (editMode === "email" && !editValue.trim()) {
+      setLoadError("请先输入新邮箱");
+      return;
+    }
+    setEditSending(true);
+    setLoadError(null);
+    try {
+      const response = editMode === "email"
+        ? await authApi.requestEmailChangeCode(auth.accessToken, editValue.trim())
+        : await authApi.requestAccountVerificationCode(auth.accessToken);
+      setEditCodeSent(true);
+      setEditCountdown(response.cooldownSeconds);
+    } catch (error) {
+      setLoadError(toAccountAuthMessage(error, "验证码发送失败，请稍后再试"));
+    } finally {
+      setEditSending(false);
+    }
+  };
+
+  const saveBinding = async () => {
+    if (!auth.accessToken || !editMode || editSaving) return;
+    if (!editValue.trim()) {
+      setLoadError(editMode === "email" ? "请输入新邮箱" : "请输入新手机号");
+      return;
+    }
+    if (editMode === "email" && !/^\d{6}$/.test(editCode.trim())) {
+      setLoadError("请输入新邮箱收到的 6 位验证码");
+      return;
+    }
+    if (editMode === "phone" && editVerifyMode === "password" && editPassword.length < 8) {
+      setLoadError("请输入当前账户密码");
+      return;
+    }
+    if (editMode === "phone" && editVerifyMode === "email" && !/^\d{6}$/.test(editCode.trim())) {
+      setLoadError("请输入 6 位邮箱验证码");
+      return;
+    }
+    setEditSaving(true);
+    setLoadError(null);
+    try {
+      if (editMode === "email") {
+        await authApi.changeEmail({ accessToken: auth.accessToken, email: editValue.trim(), emailCode: editCode.trim() });
+      } else {
+        await authApi.changePhone({
+          accessToken: auth.accessToken,
+          phone: editValue.trim(),
+          ...(editVerifyMode === "password" ? { currentPassword: editPassword } : { emailCode: editCode.trim() }),
+        });
+      }
+      const refreshed = await authApi.getAccountSecurity(auth.accessToken);
+      setSecurity(refreshed);
+      setEditMode(null);
+    } catch (error) {
+      setLoadError(toAccountAuthMessage(error, "保存失败，请稍后再试"));
+    } finally {
+      setEditSaving(false);
+    }
+  };
+
   return (
     <div className="grid min-w-0 grid-cols-[minmax(0,1fr)] gap-3.5 pb-[calc(112px+env(safe-area-inset-bottom))]">
       <SubPageHeader title="账号安全" onBack={onBack} />
@@ -75,12 +163,14 @@ export function AccountManagementView({
           title="邮箱"
           value={emailMasked ?? "未绑定"}
           note={security?.email.verified ?? auth.user.emailVerified ? "已验证，主认证身份" : "未验证"}
+          action={<button type="button" onClick={() => openBindingEditor("email")} className="shrink-0 text-xs font-semibold text-denim">修改</button>}
         />
         <SecurityRow
           icon={<Phone size={16} aria-hidden="true" />}
           title="手机号"
           value={phoneMasked || "未设置"}
           note={security?.phone.bound || auth.user.phoneMasked ? "可作为手机号加密码登录名，未标记为已验证" : "可在后续版本绑定为登录名"}
+          action={<button type="button" onClick={() => openBindingEditor("phone")} className="shrink-0 text-xs font-semibold text-denim">{phoneMasked ? "修改" : "绑定"}</button>}
         />
         <SecurityRow
           icon={<MessageCircle size={16} aria-hidden="true" />}
@@ -101,6 +191,41 @@ export function AccountManagementView({
           note="本设备使用独立 token，会话可单独退出"
         />
       </section>
+
+      {editMode ? (
+        <section className="grid gap-2 rounded-lg border border-ink/10 bg-white px-3 py-3">
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <p className="text-sm font-semibold text-ink">{editMode === "email" ? "修改邮箱" : "绑定 / 修改手机号"}</p>
+              <p className="mt-1 text-xs text-ink/55">{editMode === "email" ? "验证码发送到新邮箱后才能保存" : "操作需通过当前密码或邮箱验证码验证"}</p>
+            </div>
+            <button type="button" onClick={() => setEditMode(null)} className="text-xs text-ink/55">取消</button>
+          </div>
+          <input
+            value={editValue}
+            onChange={(event) => setEditValue(event.target.value)}
+            type={editMode === "email" ? "email" : "tel"}
+            placeholder={editMode === "email" ? "新邮箱" : "新手机号"}
+            className="h-11 w-full rounded-lg border border-ink/10 bg-white px-3 text-base outline-none focus:border-denim"
+          />
+          {editMode === "phone" ? (
+            <div className="grid grid-cols-2 gap-2 rounded-lg bg-mist p-1">
+              <button type="button" onClick={() => setEditVerifyMode("password")} className={`h-9 rounded-lg text-xs font-semibold ${editVerifyMode === "password" ? "bg-denim text-white" : "text-ink/55"}`}>账户密码</button>
+              <button type="button" onClick={() => setEditVerifyMode("email")} className={`h-9 rounded-lg text-xs font-semibold ${editVerifyMode === "email" ? "bg-denim text-white" : "text-ink/55"}`}>邮箱验证码</button>
+            </div>
+          ) : null}
+          {editMode === "email" || editVerifyMode === "email" ? (
+            <div className="flex gap-2">
+              <input value={editCode} onChange={(event) => setEditCode(event.target.value)} inputMode="numeric" placeholder="6 位验证码" className="h-11 min-w-0 flex-1 rounded-lg border border-ink/10 px-3 text-base outline-none focus:border-denim" />
+              <button type="button" onClick={sendBindingCode} disabled={editSending || editCountdown > 0 || (editMode === "email" && !editValue)} className="h-11 shrink-0 rounded-lg bg-denim px-3 text-xs font-semibold text-white disabled:opacity-35">{editSending ? "发送中" : editCountdown > 0 ? `${editCountdown}s` : editCodeSent ? "再次发送" : "发送验证码"}</button>
+            </div>
+          ) : (
+            <input value={editPassword} onChange={(event) => setEditPassword(event.target.value)} type="password" placeholder="当前账户密码" className="h-11 w-full rounded-lg border border-ink/10 px-3 text-base outline-none focus:border-denim" />
+          )}
+          {loadError ? <p className="text-xs text-clay">{loadError}</p> : null}
+          <button type="button" onClick={saveBinding} disabled={editSaving} className="h-11 rounded-lg bg-denim text-sm font-semibold text-white disabled:opacity-35">{editSaving ? "保存中…" : "保存修改"}</button>
+        </section>
+      ) : null}
 
       <div className="grid gap-2">
         <button
@@ -150,11 +275,13 @@ function SecurityRow({
   title,
   value,
   note,
+  action,
 }: {
   icon: ReactNode;
   title: string;
   value: string;
   note: string;
+  action?: ReactNode;
 }) {
   return (
     <article className="rounded-lg border border-ink/10 bg-white px-4 py-3">
@@ -165,7 +292,7 @@ function SecurityRow({
         <div className="min-w-0 flex-1">
           <div className="flex items-start justify-between gap-3">
             <h2 className="text-sm font-semibold text-ink">{title}</h2>
-            <p className="min-w-0 truncate text-right text-sm font-semibold text-ink/75">{value}</p>
+            <div className="flex min-w-0 items-center gap-2"><p className="min-w-0 truncate text-right text-sm font-semibold text-ink/75">{value}</p>{action}</div>
           </div>
           <p className="mt-1 text-xs leading-relaxed text-ink/50">{note}</p>
         </div>

@@ -49,8 +49,14 @@ public class MainActivity extends BridgeActivity {
 
     private void publishInsetsToWebView(int topPx, int bottomPx) {
         if (bridge == null || bridge.getWebView() == null) return;
-        String script = "document.documentElement.style.setProperty('--android-safe-area-top','" + topPx + "px');"
-            + "document.documentElement.style.setProperty('--android-safe-area-bottom','" + bottomPx + "px');";
+        // WindowInsets are reported in physical pixels while CSS custom properties
+        // are consumed as CSS pixels. Writing the raw values doubled the inset on
+        // high-density devices and produced the large blank bands on intake pages.
+        float density = getResources().getDisplayMetrics().density;
+        int cssTop = Math.round(topPx / Math.max(density, 1f));
+        int cssBottom = Math.round(bottomPx / Math.max(density, 1f));
+        String script = "document.documentElement.style.setProperty('--android-safe-area-top','" + cssTop + "px');"
+            + "document.documentElement.style.setProperty('--android-safe-area-bottom','" + cssBottom + "px');";
         bridge.getWebView().post(() -> bridge.getWebView().evaluateJavascript(script, null));
     }
 }

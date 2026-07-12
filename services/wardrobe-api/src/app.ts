@@ -101,9 +101,10 @@ export function buildApp(options: BuildAppOptions = {}): FastifyInstance {
     const serverTime = new Date().toISOString();
     const deps: ReadyResponse["dependencies"] = {
       database: "unavailable",
-      storage: "unavailable",
-      jwt: "unavailable",
-      email: "unavailable",
+    storage: "unavailable",
+    jwt: "unavailable",
+    email: "unavailable",
+    wechat: "unavailable",
     };
 
     try {
@@ -118,8 +119,10 @@ export function buildApp(options: BuildAppOptions = {}): FastifyInstance {
     deps.jwt = jwtReady ? "ready" : "unavailable";
     const emailReady = (options.emailReadinessCheck ?? (() => getEmailProviderReadiness() === "ready"))();
     deps.email = emailReady ? "ready" : "unavailable";
+    const wechatReady = checkWechatReady();
+    deps.wechat = wechatReady ? "ready" : "unavailable";
 
-    const allReady = deps.database === "ready" && deps.storage === "ready" && jwtReady && emailReady;
+    const allReady = deps.database === "ready" && deps.storage === "ready" && jwtReady && emailReady && wechatReady;
     if (!allReady) {
       reply.code(503);
       return ReadyResponseSchema.parse({
@@ -133,7 +136,7 @@ export function buildApp(options: BuildAppOptions = {}): FastifyInstance {
 
     return ReadyResponseSchema.parse({
       status: "ok",
-      dependencies: { database: "ready", storage: "ready", jwt: "ready", email: "ready" },
+      dependencies: { database: "ready", storage: "ready", jwt: "ready", email: "ready", wechat: "ready" },
       serverTime,
     });
   });
@@ -206,6 +209,13 @@ async function checkJwtKeysReady(): Promise<boolean> {
   } catch {
     return false;
   }
+}
+
+function checkWechatReady(): boolean {
+  // Test fixtures inject a fake WeChat client and must not require a production
+  // secret. Every non-test process needs the secret before /api/ready can be OK.
+  if (process.env.NODE_ENV === "test") return true;
+  return Boolean(process.env.WECHAT_MINIPROGRAM_APP_SECRET);
 }
 
 function getAllowedOrigins() {

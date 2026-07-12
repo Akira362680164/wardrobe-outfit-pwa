@@ -1,6 +1,7 @@
 "use client";
 
 import { createContext, useCallback, useContext, useEffect, useRef, useState } from "react";
+import { App } from "@capacitor/app";
 
 import { OnlinePageError } from "@/components/online/online-page-error";
 import { OnlinePageLoader } from "@/components/online/online-page-loader";
@@ -70,17 +71,34 @@ export function WorkspaceGate({
   }, [onRecoverSession]);
 
   useEffect(() => {
+    const recoverAfterBackground = () => {
+      const hiddenAt = hiddenAtRef.current;
+      hiddenAtRef.current = null;
+      if (hiddenAt && Date.now() - hiddenAt > 30_000) void recoverImages(true);
+    };
     const handleVisibility = () => {
       if (document.visibilityState === "hidden") {
         hiddenAtRef.current = Date.now();
         return;
       }
-      const hiddenAt = hiddenAtRef.current;
-      hiddenAtRef.current = null;
-      if (hiddenAt && Date.now() - hiddenAt > 30_000) void recoverImages();
+      recoverAfterBackground();
     };
     document.addEventListener("visibilitychange", handleVisibility);
-    return () => document.removeEventListener("visibilitychange", handleVisibility);
+    let removed = false;
+    let appStateHandle: { remove: () => void } | null = null;
+    void App.addListener("appStateChange", ({ isActive }) => {
+      if (removed) return;
+      if (!isActive) hiddenAtRef.current = Date.now();
+      else recoverAfterBackground();
+    }).then((handle) => {
+      if (removed) handle.remove();
+      else appStateHandle = handle;
+    });
+    return () => {
+      removed = true;
+      document.removeEventListener("visibilitychange", handleVisibility);
+      appStateHandle?.remove();
+    };
   }, [recoverImages]);
 
   useEffect(() => {

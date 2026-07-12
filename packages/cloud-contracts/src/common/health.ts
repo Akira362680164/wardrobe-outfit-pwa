@@ -14,6 +14,7 @@ export const ReadyResponseSchema = z.object({
     storage: z.enum(["ready", "unavailable"]),
     jwt: z.enum(["ready", "unavailable"]),
     email: z.enum(["ready", "unavailable"]),
+    wechat: z.enum(["ready", "unavailable"]).optional(),
   }).passthrough(),
   serverTime: z.string().datetime(),
 });

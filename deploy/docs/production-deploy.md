@@ -79,6 +79,26 @@ controlled registration code to the designated test inbox before testing
 password reset, password change, and WeChat binding. Do not use the production
 `log` provider as a delivery fallback.
 
+## WeChat OpenID Login
+
+The production API exchanges the one-time mini-program `wx.login` code with
+WeChat. Keep the mini-program AppID and Secret only in
+`/opt/wardrobe-cloud/.env`; never put the Secret in the mini-program bundle,
+source control, logs, or diagnostic payloads:
+
+```text
+WECHAT_MINIPROGRAM_APP_ID=wx14a1a85b7b3844d0
+WECHAT_MINIPROGRAM_APP_SECRET=<wechat-mini-program-secret>
+```
+
+`compose.production.yaml` requires both values when it renders the API
+container. A missing Secret must fail deployment instead of leaving the API
+running while every WeChat login returns `wechat_service_unavailable`.
+After deployment, `/api/ready` must report
+`dependencies.wechat: "ready"`; then verify one real `wx.login` flow from the
+mini-program, covering both first-time account binding and an already-bound
+account login.
+
 ## Caddy
 
 The server already has Caddy at `/usr/bin/caddy`. Do not reinstall, downgrade, or clear `/var/lib/caddy`.
