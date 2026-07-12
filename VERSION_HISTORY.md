@@ -26,7 +26,7 @@ Total output lines: 5406
 - **版本变更**：无，保持 `2.1.15-test`；不修改小程序运行时行为，不构建 APK、不上传体验版。
 - **改动文件**：`scripts/test-wechat-email-auth-flow.ts`、`VERSION_HISTORY.md`。
 - **改动说明**：注册发送验证码前的合同同时接受 Web/App 侧 `wx.showModal` 和小程序侧已实现的 `ui-confirm-sheet`，仍强制要求发送前存在确认步骤。
-- **验证结果**：待本批提交前在 `main` 与 `wechat/miniprogram` 正式目录分别重跑认证合同和 typecheck。
+- **验证结果**：独立 worktree 的 `npm run test:logic:wechat-email-auth-flow`、`npm run api:typecheck`、`npm run typecheck`、`git diff --check` 均通过；合入后 `main` 正式目录的认证合同/API typecheck/根 typecheck，以及 `wechat/miniprogram` 正式目录的小程序 typecheck/认证合同/diff check 均通过。
 - **风险门禁**：`medium`；仅测试合同兼容性调整。未触发 subagent：用户未通知。
 - **未验证风险**：未新增运行时逻辑；真实微信登录仍受生产 Secret 注入和服务重启状态影响。
 
