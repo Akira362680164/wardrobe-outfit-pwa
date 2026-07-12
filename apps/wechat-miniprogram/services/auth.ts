@@ -333,6 +333,6 @@ function getRuntimeDeviceId(): string {
 }
 
 function getDeviceLabel(): string {
-  const info = wx.getSystemInfoSync();
+  const info = wx.getDeviceInfo();
   return [info.platform, info.model, info.system].filter(Boolean).join(" / ").slice(0, 200);
 }

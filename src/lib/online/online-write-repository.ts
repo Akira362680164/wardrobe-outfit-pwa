@@ -235,6 +235,7 @@ export function createOnlineWriteRepository(request: OnlineWriteRequester = onli
     convertWishlist: (id: string, command: WorkspaceWishlistConvertCommand) => action("wishlist", id, "convert", command),
     undoWishlistPurchase: (id: string, command: WorkspaceStateCommand) => action("wishlist", id, "undo-purchase", command),
     setOutfitFavorite: (id: string, command: WorkspaceStateCommand) => action("outfits", id, "favorite", command),
+    setOutfitPlanPrimary: (id: string, command: WorkspaceStateCommand) => action("outfit-plans", id, "set-primary", command),
     markOutfitWorn: (id: string, command: WorkspacePlanMarkWornCommand) => action("outfits", id, "mark-worn", command),
     cancelOutfitWorn: (id: string, command: WorkspaceStateCommand) => action("outfits", id, "cancel-worn", command),
     markPlanWorn: (id: string, command: WorkspacePlanMarkWornCommand) => action("outfit-plans", id, "mark-worn", command),

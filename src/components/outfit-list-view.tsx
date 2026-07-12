@@ -24,7 +24,7 @@ import { getWearSummary, hasWornDate } from "@/lib/wear-records";
 import { useLocalDateKey } from "@/lib/use-local-date-key";
 import { addOutfitToDate, recordActualOutfitWear, cancelActualOutfitWearForDate, formatOutfitWearSyncError } from "@/lib/outfit-wear-sync";
 import { wardrobeRepository } from "@/lib/repository/wardrobe-repository";
-import { rethrowIfFailed, upsertOutfit, upsertTripPlan, repoUpsertOutfitPlanEntry, repoDeleteOutfitPlanEntry, repoDeleteTripPlan, repoUpdatePackingChecklist } from "@/lib/repository/wardrobe-repository";
+import { rethrowIfFailed, upsertOutfit, upsertTripPlan, repoUpdateOutfit, repoUpdateOutfitPlanEntry, repoSetOutfitPlanPrimary, repoDeleteOutfitPlanEntry, repoDeleteTripPlan, repoUpdatePackingChecklist } from "@/lib/repository/wardrobe-repository";
 import { OutfitCover } from "@/components/outfit-cover";
 import { OutfitWeeklyPlanStrip } from "@/components/outfit-weekly-plan-strip";
 import { OutfitPlanningCalendarView } from "@/components/outfit-planning-calendar-view";
@@ -147,6 +147,7 @@ export function OutfitListView({
   const [regenerateInfoHint, setRegenerateInfoHint] = useState("");
   const [writingOutfitId, setWritingOutfitId] = useState<string | null>(null);
   const [showRevisionConflict, setShowRevisionConflict] = useState(false);
+  const pendingPlanMutationIdsRef = useRef(new Map<string, string>());
 
   // real image state
   const [realImageViewing, setRealImageViewing] = useState<OutfitRealImage | null>(null);
@@ -712,30 +713,30 @@ export function OutfitListView({
 
 	  async function handleSkipPlanEntry(entry: OutfitPlanEntry) {
 	    try {
-        const now = new Date().toISOString();
-        void repoUpsertOutfitPlanEntry({ ...entry, status: "skipped", updatedAt: now }).then(r => { if (!r.ok) console.error("保存计划失败", r.error); });
+	      const now = new Date().toISOString();
+	      const key = `skip:${entry.id}`;
+	      const clientMutationId = pendingPlanMutationIdsRef.current.get(key) ?? crypto.randomUUID();
+	      pendingPlanMutationIdsRef.current.set(key, clientMutationId);
+	      rethrowIfFailed(await repoUpdateOutfitPlanEntry(entry, { status: "skipped", updatedAt: now }, { clientMutationId }), "保存计划失败");
+	      pendingPlanMutationIdsRef.current.delete(key);
 	      await onPlanDataChange();
 	      onMessage("已标记为未穿");
-	    } catch {
-	      onMessage("操作失败，请重试", "error");
+	    } catch (error) {
+	      onMessage(error instanceof Error ? error.message : "操作失败，请重试", "error");
 	    }
 	  }
 
 	  async function handleSetPrimaryEntry(entry: OutfitPlanEntry) {
 	    try {
-	      const now = new Date().toISOString();
-	      const sameDay = outfitPlanEntries.filter((e) => e.date === entry.date && e.status === "planned");
-	      for (const e of sameDay) {
-	        if (e.id === entry.id) {
-	          void repoUpsertOutfitPlanEntry({ ...e, isPrimary: true, updatedAt: now }).then(r => { if (!r.ok) console.error("保存计划失败", r.error); });
-	        } else if (e.isPrimary) {
-	          void repoUpsertOutfitPlanEntry({ ...e, isPrimary: false, updatedAt: now }).then(r => { if (!r.ok) console.error("保存计划失败", r.error); });
-	        }
-	      }
+	      const key = `primary:${entry.id}`;
+	      const clientMutationId = pendingPlanMutationIdsRef.current.get(key) ?? crypto.randomUUID();
+	      pendingPlanMutationIdsRef.current.set(key, clientMutationId);
+	      rethrowIfFailed(await repoSetOutfitPlanPrimary(entry, { clientMutationId }), "设置当天主展示失败");
+	      pendingPlanMutationIdsRef.current.delete(key);
 	      await onPlanDataChange();
 	      onMessage("已设为当天主展示");
-	    } catch {
-	      onMessage("操作失败，请重试", "error");
+	    } catch (error) {
+	      onMessage(error instanceof Error ? error.message : "操作失败，请重试", "error");
 	    }
 	  }
 
@@ -1348,6 +1349,8 @@ function OutfitDetailView({
   const [detailTab, setDetailTab] = useState<"info" | "items" | "ai" | "records">("info");
   const [isGeneratingAdvice, setIsGeneratingAdvice] = useState(false);
   const [adviceError, setAdviceError] = useState("");
+  const [pendingAiSuggestion, setPendingAiSuggestion] = useState<OutfitAiSuggestion | undefined>();
+  const pendingAiMutationIdRef = useRef<string | null>(null);
   const [replacementItemId, setReplacementItemId] = useState<number | null>(null);
   const menuAnchorRef = useRef<HTMLButtonElement>(null);
   const cover = getOutfitCover(outfit, allItems);
@@ -1365,7 +1368,7 @@ function OutfitDetailView({
  const styleLabels = [...labelOutfitStyleTags(outfit.styleTags ?? []), ...(outfit.pairingTags ?? [])].join(" · ");
   const seasonLabels = outfit.seasons?.map((s) => SEASON_LABELS[s]).join(" / ") || "";
   const tempLabel = <TemperatureRangeBar value={outfit.temperatureRange} size="sm" />;
-  const aiSuggestion = outfit.aiSuggestion;
+  const aiSuggestion = pendingAiSuggestion ?? outfit.aiSuggestion;
   const gallerySlides = allSlides
     .filter((slide) => slide.kind !== "add")
     .map((slide) => ({
@@ -1402,8 +1405,11 @@ function OutfitDetailView({
 
   async function saveAiSuggestion(nextSuggestion: OutfitAiSuggestion) {
     const now = new Date().toISOString();
-    const updated = { ...outfit, aiSuggestion: nextSuggestion, updatedAt: now };
-    void upsertOutfit(updated).then(r => { if (!r.ok) console.error("保存套装失败", r.error); });
+    const clientMutationId = pendingAiMutationIdRef.current ?? crypto.randomUUID();
+    pendingAiMutationIdRef.current = clientMutationId;
+    rethrowIfFailed(await repoUpdateOutfit(outfit, { aiSuggestion: nextSuggestion, updatedAt: now }, { clientMutationId }), "保存套装建议失败");
+    pendingAiMutationIdRef.current = null;
+    setPendingAiSuggestion(undefined);
     await onRefresh();
   }
 
@@ -1411,26 +1417,44 @@ function OutfitDetailView({
     if (isGeneratingAdvice) return;
     setIsGeneratingAdvice(true);
     setAdviceError("");
+    if (pendingAiSuggestion) {
+      try {
+        await saveAiSuggestion(pendingAiSuggestion);
+        setDetailTab("ai");
+        onMessage("套装 AI 建议已保存");
+      } catch (error) {
+        setAdviceError(error instanceof Error ? error.message : "保存套装建议失败，请重试");
+        onMessage(error instanceof Error ? error.message : "保存套装建议失败，请重试", "error");
+      } finally {
+        setIsGeneratingAdvice(false);
+      }
+      return;
+    }
+
+    let nextSuggestion: OutfitAiSuggestion;
+    let usedLocalFallback = false;
     try {
       const settings = loadMiniMaxSettings();
       if (!hasDeviceMiniMaxKey(settings)) {
-        const local = buildLocalOutfitAiSuggestion({ outfit, outfitItems: items, allItems });
-        await saveAiSuggestion(local);
-        setDetailTab("ai");
-        onMessage("未配置 MiniMax Key，已生成本地规则建议", "info");
-        return;
+        nextSuggestion = buildLocalOutfitAiSuggestion({ outfit, outfitItems: items, allItems });
+        usedLocalFallback = true;
+      } else {
+        nextSuggestion = await generateOutfitAiSuggestionOnServer(outfit, { outfitItems: items, allItems }, settings);
       }
-      const generated = await generateOutfitAiSuggestionOnServer(outfit, { outfitItems: items, allItems }, settings);
-      await saveAiSuggestion(generated);
-      setDetailTab("ai");
-      onMessage("套装 AI 建议已生成");
     } catch (error) {
-      const msg = error instanceof Error ? error.message : "套装 AI 建议生成失败";
-      const local = buildLocalOutfitAiSuggestion({ outfit, outfitItems: items, allItems });
-      await saveAiSuggestion(local);
+      nextSuggestion = buildLocalOutfitAiSuggestion({ outfit, outfitItems: items, allItems });
+      usedLocalFallback = true;
+      setAdviceError(`${error instanceof Error ? error.message : "套装 AI 建议生成失败"}，已切换本地规则建议`);
+    }
+
+    try {
+      await saveAiSuggestion(nextSuggestion);
       setDetailTab("ai");
-      setAdviceError(aiSuggestion ? `${msg}，已刷新为本地规则建议` : "");
-      onMessage("AI 建议失败，已生成本地规则建议", "info");
+      onMessage(usedLocalFallback ? "已保存本地规则建议" : "套装 AI 建议已生成");
+    } catch (error) {
+      setPendingAiSuggestion(nextSuggestion);
+      setAdviceError(error instanceof Error ? error.message : "保存套装建议失败，请重试");
+      onMessage(error instanceof Error ? error.message : "保存套装建议失败，请重试", "error");
     } finally {
       setIsGeneratingAdvice(false);
     }

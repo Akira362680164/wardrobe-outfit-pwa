@@ -122,6 +122,47 @@ export class WorkspaceCommandService {
     return this.update({ ...input, command: { ...input.command, payload: { ...asRecord(row.payload), ...input.patch }, assetMutations: [] } });
   }
 
+  async setOutfitPlanPrimary(input: { entityId: string; command: WorkspaceStateCommand; userId: string; deviceId: string; requestId?: string }): Promise<WorkspaceCommandResponse> {
+    return this.runMutation({ ...input, resource: "outfit-plans", operation: "update" }, async (tx) => {
+      const planTable = WORKSPACE_RESOURCES["outfit-plans"].table as AnyPgTable & Record<string, any>;
+      const target = await ownedActiveRow(tx, planTable, input.entityId, input.userId);
+      assertRevision(target.revision, input.command.expectedRevision, target);
+      const targetPayload = asRecord(target.payload);
+      if (targetPayload.status !== "planned") throw new WorkspaceApiError(409, "conflict", "只有计划中的穿搭才能设为当天主展示");
+      const dateKey = String(targetPayload.date ?? "");
+      if (!dateKey) throw new WorkspaceApiError(400, "invalid_request", "穿搭计划缺少日期");
+
+      // 同一天的主展示是跨实体约束，按用户和日期加事务锁，避免并发请求留下两个主展示。
+      await tx.execute(sql`SELECT pg_advisory_xact_lock(hashtext(${`workspace-plan-primary:${input.userId}:${dateKey}`}))`);
+      const plans = await tx.select().from(planTable).where(and(eq(planTable.userId, input.userId), isNull(planTable.deletedAt))) as any[];
+      const sameDay = plans.filter((row) => String(asRecord(row.payload).date ?? "") === dateKey);
+      const now = new Date();
+      let targetRevision = target.revision;
+      let targetPayloadAfter = targetPayload;
+
+      for (const plan of sameDay) {
+        const payload = asRecord(plan.payload);
+        if (payload.status !== "planned") continue;
+        const shouldBePrimary = plan.id === target.id;
+        if (Boolean(payload.isPrimary) === shouldBePrimary) continue;
+        const revision = plan.revision + 1;
+        const nextPayload = { ...payload, isPrimary: shouldBePrimary, updatedAt: now.toISOString() };
+        await tx.update(planTable).set({ revision, originDeviceId: input.deviceId, payload: nextPayload, updatedAt: now })
+          .where(and(eq(planTable.id, plan.id), eq(planTable.userId, input.userId), eq(planTable.revision, plan.revision), isNull(planTable.deletedAt)));
+        await appendChange(tx, input.userId, "outfitPlan", plan.id, "update", revision, nextPayload);
+        if (plan.id === target.id) {
+          targetRevision = revision;
+          targetPayloadAfter = nextPayload;
+        }
+      }
+
+      return {
+        entity: toEntity({ id: target.id, revision: targetRevision, payload: targetPayloadAfter, createdAt: target.createdAt, updatedAt: now }),
+        revision: targetRevision,
+      };
+    });
+  }
+
   async convertWishlist(input: { entityId: string; command: WorkspaceUpdateCommand & { locationId: string }; userId: string; deviceId: string; requestId?: string }): Promise<WorkspaceCommandResponse> {
     return this.runMutation({ ...input, resource: "wishlist", operation: "update" }, async (tx) => {
       const wishlistTable = WORKSPACE_RESOURCES.wishlist.table as AnyPgTable & Record<string, any>;
