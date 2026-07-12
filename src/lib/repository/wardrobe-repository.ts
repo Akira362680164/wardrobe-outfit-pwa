@@ -514,6 +514,17 @@ export async function repoSetOutfitFavorite(outfit: SavedOutfit, value: boolean,
   } catch (error) { return fail(message(error, "更新收藏失败，请重试")); }
 }
 
+export async function repoSetOutfitPlanPrimary(entry: OutfitPlanEntry, context: RepoMutationContext = {}): Promise<RepoResult<OutfitPlanEntry>> {
+  const mutation = mutationContext(entry, context);
+  if (!mutation) return fail("穿搭计划版本信息缺失，请刷新后重试");
+  try {
+    const entity = await onlineWriteRepository.setOutfitPlanPrimary(mutation.entityId, { ...mutation, payload: {} });
+    return ok(await reader.mapOutfitPlan(entity));
+  } catch (error) {
+    return conflict(error, async () => reader.mapOutfitPlan(await onlineWriteRepository.read("outfit-plans", mutation.entityId)), "设置当天主展示失败，请重试");
+  }
+}
+
 export async function repoCreateLocation(location: Omit<ClosetLocationDraft, "id">, context: RepoMutationContext = {}): Promise<RepoResult<ClosetLocation>> {
   try {
     const entity = await onlineWriteRepository.create("locations", {
