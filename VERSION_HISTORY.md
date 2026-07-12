@@ -1,5 +1,12 @@
-Warning: truncated output (original token count: 197467)
-Total output lines: 5406
+## 2026-07-12 / v2.1.15-test / Codex — 生产微信登录服务重新部署
+
+- **执行 Agent**：Codex；基于已合入 `main` 的提交 `2a825a04` 执行生产部署。
+- **目的**：将微信登录 Secret 安全注入生产服务器并重建/重启 API，关闭小程序微信登录服务不可用问题。
+- **版本变更**：无，保持 `2.1.15-test`；未构建 APK、未上传小程序体验版。
+- **改动文件**：`VERSION_HISTORY.md`。
+- **部署结果**：本机 Keychain 已保存 `Wardora_AppSecret`；生产 `/opt/wardrobe-cloud/.env` 已更新微信 AppID/Secret，未写入源码、Git、日志或镜像层；API 镜像 `wardrobe-api:2a825a0462573edd2c5cd7f43f0fb7e9eb2a3352` 已切换运行。部署前完成 compose 备份 `/opt/wardrobe-cloud/backups/compose.production.yaml.before-wechat-20260712-225111.bak` 与数据库备份 `/opt/wardrobe-cloud/backups/postgres/wardrobe-20260712-225117.sql`。
+- **验证结果**：本机 Keychain 条目存在；服务器 `/api/health`、`/api/ready` 通过，数据库、存储、JWT、邮件、微信依赖均为 `ready`；公网 `/api/ready`、`/api/version` 通过并返回提交 `2a825a04`；使用一次性无效授权码烟测返回 `wechat_code_invalid`（HTTP 401），不再返回 `wechat_service_unavailable`。
+- **未验证风险**：尚未使用真实 `wx.login` code 完成真实用户首次绑定/已绑定账号登录；需用户在微信端点击登录后再做最终业务确认。
 
 ## 2026-07-12 / v2.1.15-test / Codex — 修正跨端微信注册合同测试
 
