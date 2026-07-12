@@ -21,6 +21,8 @@ const accountTs = read("apps/wechat-miniprogram/pages/settings/account/index.ts"
 const changePasswordTs = read("apps/wechat-miniprogram/pages/settings/change-password/index.ts");
 const changePasswordWxml = read("apps/wechat-miniprogram/pages/settings/change-password/index.wxml");
 const appJson = read("apps/wechat-miniprogram/app.json");
+const productionCompose = read("deploy/compose.production.yaml");
+const productionDeployDocs = read("deploy/docs/production-deploy.md");
 
 assert(loginWxml.includes("微信登录/注册"), "login page must expose WeChat login/register");
 assert(loginWxml.includes("邮箱/手机号登录"), "login page must expose email/phone login");
@@ -45,5 +47,9 @@ assert(accountTs.includes("/pages/settings/change-password/index"), "account sec
 assert(changePasswordTs.includes("requestPasswordChangeCode"), "mini program change-password page must request code from current session");
 assert(changePasswordTs.includes("changePasswordWithEmailCode"), "mini program change-password page must save with email code");
 assert(changePasswordWxml.includes("当前密码") && changePasswordWxml.includes("邮箱验证码"), "mini program change-password page must expose both modes");
+assert(productionCompose.includes("WECHAT_MINIPROGRAM_APP_ID:") && productionCompose.includes("WECHAT_MINIPROGRAM_APP_SECRET:"), "production compose must pass WeChat credentials into the API container");
+assert(productionCompose.includes("WECHAT_MINIPROGRAM_APP_SECRET:?"), "production compose must fail fast when the WeChat Secret is missing");
+assert(productionDeployDocs.includes("WECHAT_MINIPROGRAM_APP_ID=wx14a1a85b7b3844d0"), "production deploy notes must document the mini-program AppID");
+assert(productionDeployDocs.includes("dependencies.wechat: \"ready\""), "production deploy notes must require WeChat readiness");
 
 console.log("wechat email auth flow checks passed");
