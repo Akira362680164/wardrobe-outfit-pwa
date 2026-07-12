@@ -11,7 +11,8 @@ import { MINI_GARMENT_STATUS_LABELS, MINI_SEASON_CATALOG, MINI_STYLE_CATALOG } f
 import { colorLabel, recognizeGarmentImage } from "../../../services/ai";
 import { uploadPreparedImageAssets, type AssetMutation } from "../../../services/assets";
 import { createClientMutationId } from "../../../services/workspace";
-import { consumePendingCropResult } from "../../../stores/intake";
+import { consumeCropResult, startCropJob, type CropResult } from "../../../stores/crop-job";
+import type { IntakeCropBox, IntakeCropRatio } from "../../../stores/intake";
 
 const COLOR_MODES = [
   { value: "single", label: "单主色" },
@@ -65,6 +66,10 @@ Page({
     productUrl: "",
     notes: "",
     imageAssetMutations: [] as AssetMutation[],
+    cropSourcePath: "",
+    cropBox: undefined as IntakeCropBox | undefined,
+    cropRotationDeg: 0 as 0 | 90 | 180 | 270,
+    cropRatio: "3:4" as IntakeCropRatio,
   },
 
   onLoad(this: any, query?: { id?: string }) {
@@ -74,16 +79,24 @@ Page({
   },
 
   onShow(this: any) {
-    const cropped = consumePendingCropResult();
-    if (cropped && this.data.item) void this.applyCroppedImage(cropped);
+    const item = this.data.item as MiniGarmentDetail | null;
+    const result = consumeCropResult("garment-edit", item?.id);
+    if (result && item) void this.applyCroppedImage(result);
   },
 
-  async applyCroppedImage(this: any, cropped: string) {
+  async applyCroppedImage(this: any, result: CropResult) {
     const item = this.data.item as MiniGarmentDetail | null;
     if (!item) return;
     try {
-      const uploaded = await uploadPreparedImageAssets({ clientMutationId: createClientMutationId(), entityType: "garment", fieldName: "imageDataUrl", originalPath: item.imageUrl, processedPath: cropped });
-      this.setData({ item: { ...item, imageUrl: cropped }, imageAssetMutations: uploaded.assetMutations });
+      const uploaded = await uploadPreparedImageAssets({ clientMutationId: createClientMutationId(), entityType: "garment", fieldName: "imageDataUrl", originalPath: result.sourcePath, processedPath: result.processedPath });
+      this.setData({
+        item: { ...item, imageUrl: result.processedPath },
+        imageAssetMutations: uploaded.assetMutations,
+        cropSourcePath: result.sourcePath,
+        cropBox: result.cropBox,
+        cropRotationDeg: result.rotationDeg,
+        cropRatio: result.cropRatio,
+      });
     } catch (error) {
       this.setData({ error: error instanceof Error ? error.message : "裁切图片上传失败" });
     }
@@ -123,6 +136,7 @@ Page({
         price: typeof item.rawPayload.price === "number" ? String(item.rawPayload.price) : "",
         productUrl: typeof item.rawPayload.productUrl === "string" ? item.rawPayload.productUrl : "",
         notes: item.notes === "无备注" ? "" : item.notes,
+        cropSourcePath: item.imageUrl,
       });
     } catch (error) {
       this.setData({ loading: false, error: error instanceof Error ? error.message : "读取衣物失败" });
@@ -188,8 +202,17 @@ Page({
 
   async recropImage(this: any) {
     const item = this.data.item as MiniGarmentDetail | null;
-    if (!item?.imageUrl) return;
-    wx.navigateTo({ url: `/pages/intake/crop/index?src=${encodeURIComponent(item.imageUrl)}` });
+    const sourcePath = this.data.cropSourcePath || item?.imageUrl;
+    if (!item || !sourcePath) return;
+    const job = startCropJob({
+      target: "garment-edit",
+      targetId: item.id,
+      sourcePath,
+      cropBox: this.data.cropBox,
+      rotationDeg: this.data.cropRotationDeg,
+      cropRatio: this.data.cropRatio,
+    });
+    wx.navigateTo({ url: `/pages/intake/crop/index?jobId=${encodeURIComponent(job.id)}` });
   },
 
   async reRecognize(this: any) {

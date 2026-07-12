@@ -3,6 +3,7 @@ import { colorLabel, recognizeGarmentImages, type AiGarmentTag } from "../../../
 import { buildSubcategoryChoices, CATEGORY_OPTIONS, isSubcategoryInCategory, normalizeCategoryId } from "../../../services/category-catalog";
 import { batchCreateGarments, createWishlistItem, type BatchCreateGarmentInput, type CreateWishlistInput } from "../../../services/workspace";
 import {
+  endIntakeSession,
   getIntakeKind,
   getIntakeQueue,
   clearSavedIntakeQueueItems,
@@ -15,6 +16,8 @@ import {
   type IntakeQueueItem,
   type IntakeQueueItemStatus,
 } from "../../../stores/intake";
+import { clearCropWorkflow } from "../../../stores/crop-job";
+import { getCapsuleGeometry } from "../../../utils/capsule-layout";
 
 const intakeCategories = MINI_CATEGORY_CATALOG.map((category) => ({ value: category.id, label: category.label }));
 
@@ -39,6 +42,11 @@ Page({
     saving: false,
     canSave: false,
     error: "",
+    confirmExitOpen: false,
+    leaveGuardActive: true,
+    navTopRpx: 0,
+    navHeightRpx: 64,
+    navRightRpx: 0,
     categories: intakeCategories,
     subcategoryOptions: buildSubcategoryChoices("tops"),
     seasons: MINI_SEASON_CATALOG,
@@ -55,17 +63,48 @@ Page({
     const kind: IntakeKind = query?.kind === "wishlist" ? "wishlist" : getIntakeKind();
     setIntakeKind(kind);
     wx.setNavigationBarTitle({ title: kind === "wishlist" ? "种草确认" : "识别确认" });
+    const capsule = getCapsuleGeometry();
     this.setData({
       kind,
       pageTitle: kind === "wishlist" ? "新增种草" : "添加单品",
       draftTitle: kind === "wishlist" ? "校对种草草稿" : "校对衣物草稿",
+      navTopRpx: capsule.topRpx,
+      navHeightRpx: capsule.heightRpx,
+      navRightRpx: capsule.rightInsetRpx + 12,
+      leaveGuardActive: true,
     });
     this.refreshQueue(0);
     void this.ensureRecognition();
   },
 
-  goBack() {
-    wx.navigateBack({ delta: 1 });
+  goBack(this: any) {
+    this.setData({ leaveGuardActive: false });
+    setTimeout(() => wx.navigateBack({ delta: 1 }), 0);
+  },
+
+  requestExit(this: any) {
+    if (this.data.saving) return;
+    this.setData({ confirmExitOpen: true });
+  },
+
+  onGuardBack(this: any) {
+    if (this.data.confirmExitOpen) {
+      this.closeExitConfirm();
+      return;
+    }
+    this.goBack();
+  },
+
+  closeExitConfirm(this: any) {
+    this.setData({ confirmExitOpen: false });
+  },
+
+  confirmExit(this: any) {
+    const kind = getIntakeKind();
+    endIntakeSession();
+    clearCropWorkflow();
+    this.setData({ confirmExitOpen: false, leaveGuardActive: false });
+    setTimeout(() => wx.switchTab({ url: kind === "wishlist" ? "/pages/wishlist/index/index" : "/pages/wardrobe/index/index" }), 0);
   },
 
   async ensureRecognition(this: any) {
@@ -78,7 +117,7 @@ Page({
     try {
       const results = await recognizeGarmentImages(targets.map((item) => ({
         clientItemId: item.clientItemId,
-        stablePath: item.stablePath,
+        stablePath: item.processedPath,
         fallbackName: `${item.clientItemId}.jpg`,
       })));
       for (const result of results) {
@@ -256,6 +295,9 @@ Page({
       this.setData({ error: `已保存 ${savedIds.length} 件，${failedItemIds.length} 件失败，请修改后重试` });
       return;
     }
+    endIntakeSession();
+    clearCropWorkflow();
+    this.setData({ leaveGuardActive: false });
     wx.switchTab({ url: kind === "wishlist" ? "/pages/wishlist/index/index" : "/pages/wardrobe/index/index" });
   },
 

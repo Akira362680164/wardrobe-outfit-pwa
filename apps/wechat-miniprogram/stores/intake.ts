@@ -1,6 +1,14 @@
 import type { AssetMutation } from "../services/assets";
 
 export type IntakeKind = "garment" | "wishlist";
+export type IntakeCropRatio = "free" | "3:4";
+
+export interface IntakeCropBox {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
 
 export interface IntakeDraft {
   imagePath: string;
@@ -47,6 +55,9 @@ export interface IntakeQueueItem {
   stablePath: string;
   sourcePath: string;
   processedPath: string;
+  cropBox?: IntakeCropBox;
+  rotationDeg: 0 | 90 | 180 | 270;
+  cropRatio: IntakeCropRatio;
   temporarySessionId?: string;
   status: IntakeQueueItemStatus;
   error: string;
@@ -57,9 +68,25 @@ export interface IntakeQueueItem {
 
 let queue: IntakeQueueItem[] = [];
 let intakeKind: IntakeKind = "garment";
+let intakeSessionId = "";
 let lastCreatedId = "";
-let pendingCropResult = "";
 let lastSaveResult = { succeeded: 0, failed: 0, savedIds: [] as string[], failedItemIds: [] as string[] };
+
+export function beginIntakeSession(kind: IntakeKind): string {
+  queue = [];
+  intakeKind = kind;
+  intakeSessionId = `intake-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
+  return intakeSessionId;
+}
+
+export function endIntakeSession(): void {
+  queue = [];
+  intakeSessionId = "";
+}
+
+export function getIntakeSessionId(): string {
+  return intakeSessionId;
+}
 
 export function setIntakeKind(kind: IntakeKind): void {
   intakeKind = kind;
@@ -67,16 +94,6 @@ export function setIntakeKind(kind: IntakeKind): void {
 
 export function getIntakeKind(): IntakeKind {
   return intakeKind;
-}
-
-export function setPendingCropResult(path: string): void {
-  pendingCropResult = path;
-}
-
-export function consumePendingCropResult(): string {
-  const path = pendingCropResult;
-  pendingCropResult = "";
-  return path;
 }
 
 export function setIntakeDraft(next: IntakeDraft): void {
@@ -133,6 +150,8 @@ function draftToQueueItem(draft: IntakeDraft): IntakeQueueItem {
     stablePath,
     sourcePath: draft.imagePath,
     processedPath: stablePath,
+    rotationDeg: 0,
+    cropRatio: "3:4",
     status: "selected",
     error: "",
     assetMutations: [],

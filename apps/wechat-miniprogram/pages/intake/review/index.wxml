@@ -1,7 +1,10 @@
-<view class="page-shell intake-page">
-  <view class="intake-header">
-    <view class="page-title">{{pageTitle}}</view>
-    <view class="step-copy">步骤 2 / 2 · 确认信息</view>
+<view class="page-shell intake-page" style="padding-top:{{navTopRpx + navHeightRpx + 68}}rpx;">
+  <view class="intake-header" style="padding-top:{{navTopRpx}}rpx;">
+    <view class="intake-header__row" style="height:{{navHeightRpx + 32}}rpx;">
+      <button class="header-icon-button" style="width:80rpx;min-width:0;" aria-label="返回选择照片" bindtap="goBack"><ui-icon name="chevron-left" size="40" color="#1d2228" /></button>
+      <view class="intake-header__copy"><view class="page-title">{{pageTitle}}</view><view class="step-copy">步骤 2 / 2 · 确认信息</view></view>
+      <button class="header-icon-button header-icon-button--close" style="right:{{navRightRpx}}rpx;width:80rpx;min-width:0;" aria-label="退出录入" bindtap="requestExit"><ui-icon name="x" size="32" color="#1d2228" /></button>
+    </view>
     <view class="progress-track"><view class="progress-fill"></view></view>
   </view>
 
@@ -17,11 +20,11 @@
         <button class="retry-button" loading="{{recognizing}}" disabled="{{recognizing || saving || current.status === 'saving'}}" bindtap="retryRecognition">重新识别</button>
       </view>
       <view class="preview-media">
-        <image class="preview-image" mode="aspectFill" src="{{current.stablePath || current.imagePath}}" />
+        <image class="preview-image" mode="aspectFill" src="{{current.processedPath || current.sourcePath}}" />
       </view>
       <view class="thumb-row">
         <view wx:for="{{items}}" wx:key="clientItemId" data-index="{{index}}" class="thumb-wrap {{index === currentIndex ? 'thumb-active' : ''}} {{item.status === 'needs_confirm' ? 'thumb-needs-confirm' : ''}} {{item.status === 'failed' ? 'thumb-failed' : ''}}" bindtap="chooseItem">
-          <image class="thumb-image" mode="aspectFill" src="{{item.stablePath || item.imagePath}}" />
+          <image class="thumb-image" mode="aspectFill" src="{{item.processedPath || item.sourcePath}}" />
         </view>
       </view>
     </view>
@@ -124,8 +127,10 @@
     </view>
 
     <view class="bottom-bar bottom-glass-bar">
-      <button class="secondary-button bottom-button" disabled="{{saving}}" bindtap="goBack">取消</button>
+      <button class="secondary-button bottom-button" disabled="{{saving}}" bindtap="goBack">返回选择</button>
       <button class="primary-button bottom-button" loading="{{saving}}" disabled="{{!canSave || saving}}" bindtap="saveAll">{{saveLabel}}</button>
     </view>
   </view>
+  <intake-leave-guard active="{{leaveGuardActive}}" bind:back="onGuardBack" />
+  <ui-confirm-sheet visible="{{confirmExitOpen}}" title="退出本次录入？" content="退出后，本次选择的图片、裁切结果和未保存内容都将清空。" cancel-text="继续录入" confirm-text="退出并清空" danger="true" bind:close="closeExitConfirm" bind:confirm="confirmExit" />
 </view>

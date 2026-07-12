@@ -10,7 +10,7 @@ import {
   type MiniTryOnProfile,
 } from "../../../services/workspace";
 import { getCapsuleGeometry } from "../../../utils/capsule-layout";
-import { consumePendingCropResult } from "../../../stores/intake";
+import { consumeCropResult, startCropJob } from "../../../stores/crop-job";
 
 type Target = "fullBody" | "face";
 Page({
@@ -31,9 +31,11 @@ Page({
     void this.load();
   },
   onShow(this: any) {
-    const cropped = consumePendingCropResult();
-    if (!cropped || !this.data.cropTarget) return;
-    this.setData(this.data.cropTarget === "fullBody" ? { fullBodyPath: cropped, cropTarget: "" } : { facePath: cropped, cropTarget: "" });
+    const target = this.data.cropTarget as Target | "";
+    if (!target) return;
+    const result = consumeCropResult("profile", target);
+    if (!result) { this.setData({ cropTarget: "" }); return; }
+    this.setData(target === "fullBody" ? { fullBodyPath: result.processedPath, cropTarget: "" } : { facePath: result.processedPath, cropTarget: "" });
   },
   async load(this: any) {
     this.setData({ loading: true, error: "" });
@@ -61,7 +63,8 @@ Page({
     const [image] = await chooseImages(["album", "camera"], 1);
     if (!image) return;
     this.setData({ cropTarget: target });
-    wx.navigateTo({ url: `/pages/intake/crop/index?src=${encodeURIComponent(image.stablePath)}` });
+    const job = startCropJob({ target: "profile", targetId: target, sourcePath: image.stablePath, rotationDeg: 0, cropRatio: "3:4" });
+    wx.navigateTo({ url: `/pages/intake/crop/index?jobId=${encodeURIComponent(job.id)}` });
   },
   preview(this: any, event: any) {
     const current = event.currentTarget.dataset.src;

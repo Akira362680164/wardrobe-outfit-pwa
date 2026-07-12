@@ -1,1 +1,1 @@
-{}
+{ "usingComponents": { "ui-icon": "/components/ui/icon/index", "ui-confirm-sheet": "/components/ui/confirm-sheet/index", "intake-leave-guard": "/components/ui/intake-leave-guard/index" } }

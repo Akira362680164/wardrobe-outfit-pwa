@@ -1,0 +1,9 @@
+<page-container
+  show="{{shown}}"
+  overlay="{{false}}"
+  duration="0"
+  position="bottom"
+  close-on-slide-down="{{false}}"
+  custom-style="height:1px;background:transparent;"
+  bindbeforeleave="beforeLeave"
+></page-container>

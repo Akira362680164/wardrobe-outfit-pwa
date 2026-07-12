@@ -12,7 +12,7 @@ import {
   type MiniTryOnProfile,
 } from "../../../services/workspace";
 import { getCapsuleGeometry } from "../../../utils/capsule-layout";
-import { consumePendingCropResult } from "../../../stores/intake";
+import { consumeCropResult, startCropJob } from "../../../stores/crop-job";
 
 Page({
   data: {
@@ -36,8 +36,9 @@ Page({
     void this.load();
   },
   onShow(this: any) {
-    const cropped = consumePendingCropResult();
-    if (cropped && this.data.cropTarget) this.setData({ referencePath: cropped, cropTarget: false });
+    if (!this.data.cropTarget) return;
+    const result = consumeCropResult("tryon", "reference");
+    this.setData(result ? { referencePath: result.processedPath, cropTarget: false } : { cropTarget: false });
   },
   async load(this: any) {
     this.setData({ loading: true, error: "", needsSettings: false });
@@ -76,7 +77,8 @@ Page({
     const [image] = await chooseImages(["album", "camera"], 1);
     if (!image) return;
     this.setData({ cropTarget: true });
-    wx.navigateTo({ url: `/pages/intake/crop/index?src=${encodeURIComponent(image.stablePath)}` });
+    const job = startCropJob({ target: "tryon", targetId: "reference", sourcePath: image.stablePath, rotationDeg: 0, cropRatio: "3:4" });
+    wx.navigateTo({ url: `/pages/intake/crop/index?jobId=${encodeURIComponent(job.id)}` });
   },
   input(this: any, event: any) {
     this.setData({ prompt: event.detail.value });

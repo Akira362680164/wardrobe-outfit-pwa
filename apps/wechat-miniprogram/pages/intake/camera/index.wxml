@@ -1,52 +1,65 @@
-<view class="page-shell intake-page">
-  <view class="intake-header">
-    <view class="page-title">{{pageTitle}}</view>
-    <view class="step-copy">步骤 1 / 2 · 选择照片，最多 10 张</view>
+<view class="intake-page">
+  <view class="intake-header" style="padding-top:{{navTopRpx}}rpx;">
+    <view class="intake-header__row" style="height:{{navHeightRpx + 32}}rpx;">
+      <button class="header-icon-button" style="width:80rpx;min-width:0;" aria-label="返回" bindtap="requestExit"><ui-icon name="chevron-left" size="40" color="#1d2228" /></button>
+      <view class="intake-header__copy">
+        <view class="intake-title">{{pageTitle}}</view>
+        <view class="step-copy">步骤 1 / 2 · 选择照片，最多 10 张</view>
+      </view>
+      <button class="header-icon-button header-icon-button--close" style="right:{{navRightRpx}}rpx;width:80rpx;min-width:0;" aria-label="退出录入" bindtap="requestExit"><ui-icon name="x" size="32" color="#1d2228" /></button>
+    </view>
     <view class="progress-track"><view class="progress-fill progress-half"></view></view>
   </view>
 
-  <view class="photo-card surface-panel">
-    <view class="section-row">
-      <view class="section-title">已选照片</view>
-      <view class="count-pill">{{totalCount}} / {{maxCount}}</view>
-    </view>
-    <view wx:if="{{current}}" class="hero-wrap">
-      <image class="hero-image" mode="aspectFit" src="{{current.processedPath || current.stablePath || current.imagePath}}" />
-      <view wx:if="{{uploadingCount}}" class="hero-progress">正在准备图片 {{readyCount + failedCount}} / {{totalCount}}</view>
-    </view>
-    <view wx:if="{{queue.length}}" class="thumb-strip">
-      <view wx:for="{{queue}}" wx:key="clientItemId" data-index="{{index}}" class="thumb-wrap">
-        <view wx:if="{{index === currentIndex}}" class="thumb-popover" style="{{popoverStyle}}">
-          <button class="thumb-popover__action" data-action="crop" bindtap="editCurrent"><ui-icon name="scissors" size="28" color="#355c7d" />裁切/旋转</button>
-          <button class="thumb-popover__action thumb-popover__action--danger" data-action="delete" bindtap="removeCurrent"><ui-icon name="trash" size="28" color="#dc2626" />删除</button>
-          <view class="thumb-popover__arrow" style="{{popoverArrowStyle}}"></view>
-        </view>
-        <view data-index="{{index}}" class="thumb {{index === currentIndex ? 'thumb-active' : ''}} {{item.status === 'failed' ? 'thumb-failed' : ''}}" bindtap="selectCurrent">
-          <image class="thumb-image" mode="aspectFill" src="{{item.processedPath || item.stablePath || item.imagePath}}" />
-          <view class="thumb-status">{{item.status === 'uploading' ? '上传中' : item.status === 'failed' ? '重试' : index + 1}}</view>
+  <view class="intake-main">
+    <view class="photo-card {{current ? 'photo-card--filled' : 'photo-card--empty'}} surface-panel">
+      <view class="section-row">
+        <view class="section-title">已选照片</view>
+        <view class="count-pill">{{totalCount}} / {{maxCount}}</view>
+      </view>
+      <view wx:if="{{current}}" class="hero-area" bindtap="closePopover">
+        <view class="hero-wrap">
+          <image class="hero-image" mode="aspectFit" src="{{current.processedPath || current.sourcePath}}" />
+          <view wx:if="{{uploadingCount}}" class="hero-progress">正在准备图片 {{readyCount + failedCount}} / {{totalCount}}</view>
         </view>
       </view>
+      <view wx:else class="empty-preview">{{emptyText}}</view>
+
+      <scroll-view wx:if="{{queue.length}}" scroll-x class="thumb-strip" show-scrollbar="{{false}}" bindscroll="handleThumbScroll">
+        <view class="thumb-content">
+          <view wx:for="{{queue}}" wx:key="clientItemId" data-index="{{index}}" class="thumb-wrap">
+            <view data-index="{{index}}" class="thumb {{index === currentIndex ? 'thumb-active' : ''}} {{item.status === 'failed' ? 'thumb-failed' : ''}}" catchtap="selectCurrent">
+              <image class="thumb-image" mode="aspectFill" src="{{item.processedPath || item.sourcePath}}" />
+              <view class="thumb-status">{{item.status === 'uploading' ? '上传中' : item.status === 'failed' ? '重试' : index + 1}}</view>
+            </view>
+          </view>
+        </view>
+      </scroll-view>
+
+      <view wx:if="{{activePopoverItemId}}" class="thumb-popover" style="{{popoverStyle}}" catchtap="stopTap">
+        <button class="thumb-popover__action" style="width:100%;min-width:0;" bindtap="editCurrent"><ui-icon name="scissors" size="26" color="#355c7d" /><text>裁切/旋转</text></button>
+        <button class="thumb-popover__action thumb-popover__action--danger" style="width:100%;min-width:0;" bindtap="removeCurrent"><ui-icon name="trash" size="26" color="#dc2626" /><text>删除</text></button>
+        <view class="thumb-popover__arrow" style="{{popoverArrowStyle}}"></view>
+      </view>
     </view>
-    <view wx:else class="empty-preview">{{emptyText}}</view>
+
+    <view class="source-grid {{totalCount ? 'source-grid--compact' : ''}}">
+      <button class="source-button" style="width:100%;min-width:0;" loading="{{selecting}}" disabled="{{selecting || totalCount >= maxCount}}" bindtap="chooseFromCamera">
+        <ui-icon name="camera" size="{{totalCount ? 32 : 48}}" color="#355c7d" /><text>{{totalCount ? '继续拍照' : '拍照'}}</text>
+      </button>
+      <button class="source-button" style="width:100%;min-width:0;" disabled="{{selecting || totalCount >= maxCount}}" bindtap="chooseFromAlbum">
+        <ui-icon name="image" size="{{totalCount ? 32 : 48}}" color="#355c7d" /><text>{{totalCount ? '继续从图库选择' : '从图库选择'}}</text>
+      </button>
+    </view>
+    <view wx:if="{{totalCount >= maxCount}}" class="limit-copy">已达到 10 张上限</view>
+    <view wx:if="{{error}}" class="error-text">{{error}}</view>
   </view>
-
-  <view class="source-grid {{totalCount ? 'source-grid--compact' : ''}}">
-    <button class="source-button" loading="{{selecting}}" disabled="{{selecting || totalCount >= maxCount}}" bindtap="chooseFromCamera">
-      <ui-icon name="camera" size="54" color="#355c7d" /><view>{{totalCount ? '继续拍照' : '拍照'}}</view>
-    </button>
-    <button class="source-button" disabled="{{selecting || totalCount >= maxCount}}" bindtap="chooseFromAlbum">
-      <ui-icon name="image" size="54" color="#355c7d" /><view>{{totalCount ? '继续从图库选择' : '从图库选择'}}</view>
-    </button>
-  </view>
-
-  <button wx:if="{{queue.length}}" class="clear-button" disabled="{{selecting || uploadingCount}}" bindtap="clearSelected">清空已选图片</button>
-
-  <view class="limit-copy">最多选择 10 张图片</view>
-  <view wx:if="{{error}}" class="error-text">{{error}}</view>
 
   <view class="bottom-bar bottom-glass-bar">
-    <view class="bottom-action bottom-action--secondary" bindtap="cancel">取消</view>
-    <view class="bottom-action bottom-action--primary {{selecting || uploadingCount || !totalCount ? 'bottom-action--disabled' : ''}}" bindtap="goReview">{{nextText}}</view>
+    <button class="bottom-action bottom-action--secondary" style="width:100%;min-width:0;" bindtap="cancel">取消</button>
+    <button class="bottom-action bottom-action--primary" style="width:100%;min-width:0;" loading="{{uploadingCount > 0}}" disabled="{{selecting || uploadingCount || !totalCount}}" bindtap="goReview">{{nextText}}</button>
   </view>
-  <ui-confirm-sheet visible="{{confirmExitOpen}}" title="退出本次录入？" content="退出后，本次选择的图片和填写内容将被清空。" cancel-text="继续录入" confirm-text="确认退出" danger="true" bind:close="closeExitConfirm" bind:confirm="confirmExit" />
+
+  <intake-leave-guard active="{{leaveGuardActive}}" bind:back="onGuardBack" />
+  <ui-confirm-sheet visible="{{confirmExitOpen}}" title="退出本次录入？" content="退出后，本次选择的图片、裁切结果和未保存内容都将清空。" cancel-text="继续录入" confirm-text="退出并清空" danger="true" bind:close="closeExitConfirm" bind:confirm="confirmExit" />
 </view>

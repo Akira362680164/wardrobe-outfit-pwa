@@ -10,7 +10,8 @@ import { colorLabel, recognizeGarmentImage } from "../../../services/ai";
 import { uploadPreparedImageAssets, type AssetMutation } from "../../../services/assets";
 import { createClientMutationId } from "../../../services/workspace";
 import { HttpError } from "../../../services/http";
-import { consumePendingCropResult } from "../../../stores/intake";
+import { consumeCropResult, startCropJob, type CropResult } from "../../../stores/crop-job";
+import type { IntakeCropBox, IntakeCropRatio } from "../../../stores/intake";
 
 const COLOR_MODES = [
   { value: "single", label: "单主色" },
@@ -67,6 +68,10 @@ Page({
     conflict: false,
     draftMutationId: "",
     discardConfirmOpen: false,
+    cropSourcePath: "",
+    cropBox: undefined as IntakeCropBox | undefined,
+    cropRotationDeg: 0 as 0 | 90 | 180 | 270,
+    cropRatio: "3:4" as IntakeCropRatio,
   },
 
   onLoad(this: any, query?: { id?: string }) {
@@ -76,16 +81,24 @@ Page({
   },
 
   onShow(this: any) {
-    const cropped = consumePendingCropResult();
-    if (cropped && this.data.item) void this.applyCroppedImage(cropped);
+    const item = this.data.item as MiniWishlistDetail | null;
+    const result = consumeCropResult("wishlist-edit", item?.id);
+    if (result && item) void this.applyCroppedImage(result);
   },
 
-  async applyCroppedImage(this: any, cropped: string) {
+  async applyCroppedImage(this: any, result: CropResult) {
     const item = this.data.item as MiniWishlistDetail | null;
     if (!item) return;
     try {
-      const uploaded = await uploadPreparedImageAssets({ clientMutationId: createClientMutationId(), entityType: "wishlistItem", fieldName: "imageDataUrl", originalPath: item.imageUrl, processedPath: cropped });
-      this.setData({ item: { ...item, imageUrl: cropped }, imageAssetMutations: uploaded.assetMutations });
+      const uploaded = await uploadPreparedImageAssets({ clientMutationId: createClientMutationId(), entityType: "wishlistItem", fieldName: "imageDataUrl", originalPath: result.sourcePath, processedPath: result.processedPath });
+      this.setData({
+        item: { ...item, imageUrl: result.processedPath },
+        imageAssetMutations: uploaded.assetMutations,
+        cropSourcePath: result.sourcePath,
+        cropBox: result.cropBox,
+        cropRotationDeg: result.rotationDeg,
+        cropRatio: result.cropRatio,
+      });
       this.markDirty();
     } catch (error) {
       this.setData({ error: error instanceof Error ? error.message : "裁切图片上传失败" });
@@ -125,6 +138,7 @@ Page({
         price: item.price !== undefined ? String(item.price) : "",
         productUrl: item.productUrl,
         notes: item.notes === "无备注" ? "" : item.notes,
+        cropSourcePath: item.imageUrl,
       });
     } catch (error) {
       this.setData({ loading: false, error: error instanceof Error ? error.message : "读取种草失败" });
@@ -193,8 +207,17 @@ Page({
 
   async recropImage(this: any) {
     const item = this.data.item as MiniWishlistDetail | null;
-    if (!item?.imageUrl) return;
-    wx.navigateTo({ url: `/pages/intake/crop/index?src=${encodeURIComponent(item.imageUrl)}` });
+    const sourcePath = this.data.cropSourcePath || item?.imageUrl;
+    if (!item || !sourcePath) return;
+    const job = startCropJob({
+      target: "wishlist-edit",
+      targetId: item.id,
+      sourcePath,
+      cropBox: this.data.cropBox,
+      rotationDeg: this.data.cropRotationDeg,
+      cropRatio: this.data.cropRatio,
+    });
+    wx.navigateTo({ url: `/pages/intake/crop/index?jobId=${encodeURIComponent(job.id)}` });
   },
 
   async reRecognize(this: any) {

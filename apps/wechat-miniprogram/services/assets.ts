@@ -35,6 +35,8 @@ export type AssetMutation =
 export interface LocalImageAssetInput {
   filePath: string;
   stablePath?: string;
+  originalPath?: string;
+  processedPath?: string;
   fieldName?: string;
   clientItemId?: string;
   clientMutationId?: string;
@@ -139,13 +141,14 @@ export async function uploadImageForCreate(input: {
   image: LocalImageAssetInput;
 }): Promise<AssetMutation[]> {
   const fieldName = input.image.fieldName ?? "imageDataUrl";
-  const filePath = await ensureStableImagePath(input.image.stablePath ?? input.image.filePath);
+  const originalPath = await ensureStableImagePath(input.image.originalPath ?? input.image.stablePath ?? input.image.filePath);
+  const processedPath = await ensureStableImagePath(input.image.processedPath ?? input.image.filePath);
   const prepared = await uploadPreparedImageAssets({
     clientMutationId: input.clientMutationId,
     entityType: input.entityType,
     fieldName,
-    originalPath: filePath,
-    processedPath: filePath,
+    originalPath,
+    processedPath,
   });
   return prepared.assetMutations;
 }

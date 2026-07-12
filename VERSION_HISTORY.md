@@ -1,3 +1,13 @@
+## 2026-07-12 / v2.1.15-test / Codex — 小程序录入与裁切闭环修复
+
+- **执行 Agent**：Codex；独立 worktree `codex/mini-crop-fix-plan-20260712`，未触发 subagent。
+- **目的**：按 `2026-07-12-wechat-mini-intake-crop-repair.md` 修复选图操作气泡、录入页一屏布局、退出会话、裁切页溢出、裁切坐标偏移和二次裁切错误源图，并吸收模拟器复核时用户补充的空状态高度、3:4 主预览、顶栏对齐、按钮重叠和弹层留白反馈。
+- **版本变更**：无，保持 `2.1.15-test`；本批不构建 APK、不上传小程序体验版、不部署服务器。
+- **改动文件**：`pages/intake/camera/`、`pages/intake/crop/`、`pages/intake/review/`、衣物/种草编辑和试穿裁切调用方、`stores/intake.ts`、新增 `stores/crop-job.ts` 与 `utils/crop-math.ts`、图片资产服务、共享离页守卫与退出确认 Sheet、专项测试和 `package.json`。
+- **改动说明**：缩略图气泡改为独立点击状态和照片卡片内绝对定位，新增图片后默认关闭并在横滑时重算或关闭；删除清空按钮和气泡占位，空状态收成紧凑卡片，有图主预览固定 3:4，一屏 Flex 禁止纵向滚动；顶栏按真实胶囊计算并居中标题组，所有受微信原生默认宽度影响的网格按钮显式收缩；退出使用自绘 Sheet 和录入 Session 清理；裁切统一使用结构化 CropJob、不可变原图、归一化 cropBox/rotation/ratio、实测舞台与 Canvas 像素坐标，二次裁切继续加载原图和旧框；原图与处理图分别上传。
+- **验证结果**：根 `npm run typecheck`、小程序 `tsc --noEmit`、录入状态机、资产生命周期、专项裁切工作流测试及 `git diff --check` 通过；微信开发者工具 WXML/WXSS 逐页编译和 simulator refresh 通过；390×844 模拟器实测空状态、3:4 主预览（249×332）、气泡（220×45）、图片来源按钮、固定底栏、自绘退出 Sheet 和裁切页全部按钮无重叠/出框，console 错误扫描为空；`auto_preview` 成功推送开发者微信，包体 728,210 bytes。
+- **未验证风险**：当前没有可由 Codex 操作的 MEIZU 21 Pro 微信真机交互会话，因此真实相册/相机选择、真实衣物 Canvas 像素输出、Android 系统返回/边缘返回和 360/412/430 宽度真机手势仍需在开发者微信预览中人工复核；本记录不把 simulator 与预览推送冒充真机裁切已验证。
+
 ## 2026-07-12 / v2.1.15-test / Codex — 小程序录入与裁切修复执行方案
 
 - **执行 Agent**：Codex；独立文档 worktree `codex/mini-crop-fix-plan-20260712`，未触发 subagent。

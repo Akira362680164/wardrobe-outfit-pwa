@@ -1,37 +1,45 @@
 <view class="crop-page">
-  <view class="crop-header">
-    <button class="icon-button" bindtap="cancel"><ui-icon name="chevron-left" size="42" color="#1d2228" /></button>
-    <view class="page-title">裁切 / 旋转</view>
-    <view class="header-spacer"></view>
+  <view class="crop-header" style="padding-top:{{navTopRpx}}rpx;">
+    <view class="crop-header__row" style="height:{{navHeightRpx}}rpx;">
+      <button class="icon-button" style="width:80rpx;min-width:0;" aria-label="返回选择照片" bindtap="cancel"><ui-icon name="chevron-left" size="40" color="#1d2228" /></button>
+      <view class="crop-title">裁切 / 旋转</view>
+    </view>
   </view>
+
   <view class="crop-card surface-panel">
     <view class="crop-stage" id="cropStage">
-      <image class="crop-image" mode="aspectFit" src="{{src}}" />
+      <image class="crop-image" mode="fill" src="{{src}}" style="{{imageStyle}}" />
       <view class="crop-dim crop-dim--top" style="{{dimTopStyle}}"></view>
       <view class="crop-dim crop-dim--bottom" style="{{dimBottomStyle}}"></view>
       <view class="crop-dim crop-dim--left" style="{{dimLeftStyle}}"></view>
       <view class="crop-dim crop-dim--right" style="{{dimRightStyle}}"></view>
-      <view class="crop-box" style="{{cropStyle}}" catchtouchstart="startCropMove" catchtouchmove="moveCropMove" catchtouchend="endCropMove">
+      <view wx:if="{{ready}}" class="crop-box" style="{{cropStyle}}" catchtouchstart="startCropMove" catchtouchmove="moveCropMove" catchtouchend="endCropMove" catchtouchcancel="endCropMove">
         <view class="crop-grid crop-grid--v"></view><view class="crop-grid crop-grid--h"></view>
-        <view class="crop-handle crop-handle--tl" data-handle="tl" catchtouchstart="startHandle" catchtouchmove="moveHandle" catchtouchend="endHandle"></view>
-        <view class="crop-handle crop-handle--tr" data-handle="tr" catchtouchstart="startHandle" catchtouchmove="moveHandle" catchtouchend="endHandle"></view>
-        <view class="crop-handle crop-handle--bl" data-handle="bl" catchtouchstart="startHandle" catchtouchmove="moveHandle" catchtouchend="endHandle"></view>
-        <view class="crop-handle crop-handle--br" data-handle="br" catchtouchstart="startHandle" catchtouchmove="moveHandle" catchtouchend="endHandle"></view>
+        <view class="crop-handle crop-handle--tl" data-handle="tl" catchtouchstart="startHandle" catchtouchmove="moveHandle" catchtouchend="endHandle" catchtouchcancel="endHandle"></view>
+        <view class="crop-handle crop-handle--tr" data-handle="tr" catchtouchstart="startHandle" catchtouchmove="moveHandle" catchtouchend="endHandle" catchtouchcancel="endHandle"></view>
+        <view class="crop-handle crop-handle--bl" data-handle="bl" catchtouchstart="startHandle" catchtouchmove="moveHandle" catchtouchend="endHandle" catchtouchcancel="endHandle"></view>
+        <view class="crop-handle crop-handle--br" data-handle="br" catchtouchstart="startHandle" catchtouchmove="moveHandle" catchtouchend="endHandle" catchtouchcancel="endHandle"></view>
+      </view>
+      <view wx:if="{{!ready && !error}}" class="crop-loading">正在准备图片…</view>
+    </view>
+
+    <view class="crop-controls">
+      <view class="ratio-switch">
+        <button class="ratio-option {{cropRatio === 'free' ? 'ratio-option--active' : ''}}" style="width:100%;min-width:0;" data-ratio="free" bindtap="chooseRatio">自由</button>
+        <button class="ratio-option {{cropRatio === '3:4' ? 'ratio-option--active' : ''}}" style="width:100%;min-width:0;" data-ratio="3:4" bindtap="chooseRatio">3:4</button>
+      </view>
+      <view class="crop-actions">
+        <button style="width:100%;min-width:0;" bindtap="rotateLeft"><ui-icon name="rotate-left" size="28" color="#355c7d" /><text>左转90°</text></button>
+        <button style="width:100%;min-width:0;" bindtap="rotateRight"><ui-icon name="rotate-right" size="28" color="#355c7d" /><text>右转90°</text></button>
+        <button style="width:100%;min-width:0;" bindtap="resetCrop"><ui-icon name="reset" size="28" color="#355c7d" /><text>重置</text></button>
+      </view>
+      <view wx:if="{{error}}" class="crop-error">{{error}}</view>
+      <view class="bottom-actions">
+        <button class="secondary-button" style="width:100%;min-width:0;" bindtap="cancel">取消</button>
+        <button class="primary-button" style="width:100%;min-width:0;" loading="{{applying}}" disabled="{{applying || !ready}}" bindtap="applyCrop">{{applying ? '处理中…' : '应用'}}</button>
       </view>
     </view>
-    <view class="ratio-switch">
-      <button class="ratio-option {{ratioMode === 'free' ? 'ratio-option--active' : ''}}" data-ratio="free" bindtap="chooseRatio">自由</button>
-      <button class="ratio-option {{ratioMode === '3:4' ? 'ratio-option--active' : ''}}" data-ratio="3:4" bindtap="chooseRatio">3:4</button>
-    </view>
-    <view class="crop-actions">
-      <button bindtap="rotateLeft"><ui-icon name="rotate-left" size="30" color="#355c7d" />左转90°</button>
-      <button bindtap="rotateRight"><ui-icon name="rotate-right" size="30" color="#355c7d" />右转90°</button>
-      <button bindtap="resetCrop"><ui-icon name="reset" size="30" color="#355c7d" />重置</button>
-    </view>
-    <view class="bottom-actions">
-      <button class="secondary-button" bindtap="cancel">取消</button>
-      <button class="primary-button" loading="{{applying}}" disabled="{{applying}}" bindtap="applyCrop">应用</button>
-    </view>
   </view>
-  <canvas canvas-id="cropCanvas" class="crop-canvas"></canvas>
+
+  <canvas canvas-id="cropCanvas" class="crop-canvas" style="width:{{canvasWidth}}px;height:{{canvasHeight}}px;"></canvas>
 </view>

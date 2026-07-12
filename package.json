@@ -80,6 +80,7 @@
     "test:logic:miniprogram-shell": "tsx scripts/test-miniprogram-shell.ts",
     "test:logic:miniprogram-asset-lifecycle": "tsx scripts/test-miniprogram-asset-lifecycle.ts",
     "test:logic:miniprogram-intake-state-machine": "tsx scripts/parity/tests/mini-intake-state-machine.test.ts",
+    "test:logic:miniprogram-crop-workflow": "tsx scripts/test-miniprogram-crop-workflow.ts",
     "test:logic:miniprogram-item-detail": "tsx scripts/parity/tests/mini-item-detail-contract.test.ts",
     "test:logic:miniprogram-wardrobe": "tsx scripts/parity/tests/mini-wardrobe-regression.test.ts",
     "test:logic:miniprogram-wishlist": "tsx scripts/parity/tests/mini-wishlist-state-regression.test.ts",
