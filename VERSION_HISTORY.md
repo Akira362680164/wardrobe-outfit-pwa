@@ -1,3 +1,12 @@
+## 2026-07-12 / v2.1.15-test / Codex — 小程序录入与裁切修复执行方案
+
+- **执行 Agent**：Codex；独立文档 worktree `codex/mini-crop-fix-plan-20260712`，未触发 subagent。
+- **目的**：将用户反馈的八项小程序录入/裁切问题、逐页 UI 规格、裁切数据模型、返回守卫、分批提交与真机验收整理为可在上下文压缩后独立续接的 Markdown 任务书。
+- **版本变更**：无，保持 `2.1.15-test`；本批只修改文档，不修改运行时代码，不上传小程序。
+- **改动文件**：`docs/superpowers/plans/2026-07-12-wechat-mini-intake-crop-repair.md`、`VERSION_HISTORY.md`。
+- **验证结果**：检查 Markdown 结构、关键问题覆盖、文件路径、恢复检查点和 `git diff --check`；运行时代码与裁切行为未变。
+- **未验证风险**：本文中的 `page-container` 自绘离页守卫、Canvas 像素换算、一屏布局和真实图片二次裁切必须在实施后通过微信 CLI 与 Android 微信真机验证，不能把本方案登记视为功能已修复。
+
 ## 2026-07-12 / v2.1.15-test / Codex — 生产微信登录服务重新部署
 
 - **执行 Agent**：Codex；基于已合入 `main` 的提交 `2a825a04` 执行生产部署。
