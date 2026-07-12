@@ -1,5 +1,5 @@
 <view class="auth-page">
-  <button class="back-button" bindtap="goBack">‹</button>
+  <button class="back-button" aria-label="返回" bindtap="goBack"><ui-icon name="chevron-left" size="36" tone="ink" /></button>
   <view class="auth-card">
     <view class="auth-title text-wrap-safe">绑定已有账号</view>
     <view class="auth-copy text-wrap-safe">使用 App 已注册的邮箱/手机号和密码登录，绑定后 App 与小程序将同步同一套衣橱数据。</view>

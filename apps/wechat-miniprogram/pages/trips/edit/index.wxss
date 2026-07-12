@@ -159,6 +159,9 @@
 }
 
 .tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 8rpx;
   max-width: 100%;
   padding: 8rpx 18rpx;
   border: 1rpx solid rgba(53, 92, 125, 0.16);

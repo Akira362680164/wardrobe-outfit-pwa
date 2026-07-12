@@ -2,12 +2,12 @@
   <view class="wardrobe-top">
     <view class="filter-wrap" catchtap="noop">
     <view class="filter-card glass-panel" bindtap="toggleLocationMenu">
-      <ui-icon name="wardrobe" size="42" color="currentColor" />
+      <ui-icon name="wardrobe" size="42" tone="ink" />
       <view class="filter-main">
         <view class="filter-title">{{scopeLabel}}</view>
         <view class="filter-count">{{scopeCount}}件</view>
       </view>
-      <ui-icon name="chevron-down" size="34" color="currentColor" />
+      <ui-icon name="chevron-down" size="34" tone="ink" />
     </view>
     <view wx:if="{{locationMenuOpen}}" class="location-popover glass-panel-strong">
       <view wx:for="{{locationOptions}}" wx:key="id" data-id="{{item.id}}" class="location-option {{wardrobeScope === item.id ? 'is-active' : ''}}" bindtap="selectWardrobe">
@@ -26,15 +26,15 @@
     <view wx:if="{{actionMenuOpen}}" class="action-menu-backdrop" bindtap="closeActionMenu"></view>
     <view wx:if="{{actionMenuOpen}}" class="action-menu glass-panel-strong" catchtap="noop">
       <view class="action-menu-item" data-action="search" catchtap="handleActionMenuTap">
-        <ui-icon name="search" size="40" color="currentColor" />
+        <ui-icon name="search" size="40" tone="ink" />
         <text>搜索</text>
       </view>
       <view class="action-menu-item" data-action="stats" catchtap="handleActionMenuTap">
-        <ui-icon name="bar-chart-3" size="40" color="currentColor" />
+        <ui-icon name="bar-chart-3" size="40" tone="ink" />
         <text>统计</text>
       </view>
       <view class="action-menu-item action-menu-item--ai" data-action="ai" catchtap="handleActionMenuTap">
-        <ui-icon name="wand-sparkles" size="40" color="currentColor" />
+        <ui-icon name="wand-sparkles" size="40" tone="ink" />
         <text>AI衣橱诊断</text>
       </view>
     </view>
@@ -91,7 +91,7 @@
   </view>
 
   <button class="content-fab wardrobe-fab" aria-label="新建" catchtap="openCreateSheet">
-    <ui-icon name="plus" size="48" color="#fffffc" />
+    <ui-icon name="plus" size="48" tone="surface" />
   </button>
   <create-sheet open="{{createSheetOpen}}" active="add_single_item" bind:close="closeCreateSheet" />
   <view wx:if="{{selectionMode}}" class="selection-bar bottom-glass-bar"><button class="selection-cancel" bindtap="cancelSelection">取消</button><view class="selection-count">已选 {{selectedIds.length}} 件</view><button class="selection-delete" loading="{{deletingSelection}}" disabled="{{!selectedIds.length || deletingSelection}}" bindtap="confirmBatchDelete">删除</button></view>

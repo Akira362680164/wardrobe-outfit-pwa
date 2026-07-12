@@ -1,5 +1,6 @@
 import { HttpError } from "../../services/http";
 import { loginWithWechatOpenId } from "../../services/auth";
+import { isLoggedIn, type SessionState } from "../../stores/session";
 
 const AUTH_CONSENT_ERROR = "请先阅读并同意《用户服务协议》和《隐私政策》";
 
@@ -18,10 +19,27 @@ Page({
     submitting: false,
     errorMessage: "",
     accepted: false,
+    checkingSession: true,
   },
 
-  onLoad() {
+  onLoad(this: any) {
     wx.setNavigationBarTitle({ title: "Wardora" });
+    void this.resumeSession();
+  },
+
+  async resumeSession(this: any) {
+    if (this.sessionRedirected) return;
+    try {
+      const app = getApp<{ globalData?: { sessionReady?: Promise<SessionState | null> } }>();
+      const session = await (app.globalData?.sessionReady ?? Promise.resolve(null));
+      if (session && isLoggedIn()) {
+        this.sessionRedirected = true;
+        wx.switchTab({ url: "/pages/wardrobe/index/index" });
+        return;
+      }
+    } finally {
+      if (!this.sessionRedirected) this.setData({ checkingSession: false });
+    }
   },
 
   async onWechatLogin(this: any) {

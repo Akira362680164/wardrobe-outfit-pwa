@@ -2,7 +2,7 @@
   <view class="mini-tab bottom-glass-bar">
     <block wx:for="{{tabs}}" wx:key="key">
       <button class="mini-tab__item {{selected === index ? 'mini-tab__item--active' : ''}}" data-index="{{index}}" data-url="{{item.url}}" hover-class="mini-tab__item--hover" aria-label="{{item.label}}" bindtap="switchTab">
-        <view class="mini-tab__icon-wrap"><ui-icon name="{{item.icon}}" size="38" color="{{selected === index ? '#fffffc' : '#1d2228'}}" /></view>
+        <view class="mini-tab__icon-wrap"><ui-icon name="{{item.icon}}" size="38" tone="{{selected === index ? 'surface' : 'ink'}}" /></view>
         <text class="mini-tab__label text-one-line">{{item.label}}</text>
       </button>
     </block>

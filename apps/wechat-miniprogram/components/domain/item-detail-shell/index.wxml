@@ -1,7 +1,7 @@
 <view class="item-detail-shell">
   <view class="item-detail-shell__topbar">
     <navigator class="item-detail-shell__back" open-type="navigateBack" aria-label="返回">
-      <ui-icon name="chevron-left" size="44" color="currentColor" />
+      <ui-icon name="chevron-left" size="44" tone="ink" />
     </navigator>
     <view class="item-detail-shell__top-title">{{topTitle || title}}</view>
   </view>

@@ -1,21 +1,21 @@
 <ui-sheet open="{{open}}" title="新建" show-close="{{false}}" close-on-mask="{{true}}" bind:close="onClose">
   <view class="create-sheet">
     <view class="create-sheet__item {{active === 'add_single_item' ? 'create-sheet__item--active' : ''}}" data-type="add_single_item" role="button" bindtap="onSelect">
-      <view class="create-sheet__icon"><ui-icon name="camera" size="36" color="currentColor" /></view>
+      <view class="create-sheet__icon"><ui-icon name="camera" size="36" tone="{{active === 'add_single_item' ? 'surface' : 'ink'}}" /></view>
       <view class="create-sheet__copy">
         <view class="create-sheet__title">添加衣物</view>
         <view class="create-sheet__desc">拍照并添加到衣橱。</view>
       </view>
     </view>
     <view class="create-sheet__item {{active === 'create_outfit' ? 'create-sheet__item--active' : ''}}" data-type="create_outfit" role="button" bindtap="onSelect">
-      <view class="create-sheet__icon"><ui-icon name="layers" size="36" color="currentColor" /></view>
+      <view class="create-sheet__icon"><ui-icon name="layers" size="36" tone="{{active === 'create_outfit' ? 'surface' : 'ink'}}" /></view>
       <view class="create-sheet__copy">
         <view class="create-sheet__title">添加套装</view>
         <view class="create-sheet__desc">从已有衣橱单品中创建一套穿搭。</view>
       </view>
     </view>
     <view class="create-sheet__item {{active === 'add_wishlist_item' ? 'create-sheet__item--active' : ''}}" data-type="add_wishlist_item" role="button" bindtap="onSelect">
-      <view class="create-sheet__icon"><ui-icon name="shopping-bag" size="36" color="currentColor" /></view>
+      <view class="create-sheet__icon"><ui-icon name="shopping-bag" size="36" tone="{{active === 'add_wishlist_item' ? 'surface' : 'ink'}}" /></view>
       <view class="create-sheet__copy">
         <view class="create-sheet__title">添加种草单品</view>
         <view class="create-sheet__desc">记录感兴趣但还没有购买的商品。</view>

@@ -1,3 +1,3 @@
 <button class="ui-icon-button ui-icon-button--{{variant}} ui-icon-button--{{size}}" disabled="{{disabled}}" hover-class="ui-icon-button--hover" aria-label="{{label}}" bindtap="onTap">
-  <ui-icon name="{{icon}}" size="{{iconSize}}" color="currentColor" />
+  <ui-icon name="{{icon}}" size="{{iconSize}}" tone="{{variant === 'primary' ? 'surface' : variant === 'danger' ? 'danger' : 'ink'}}" />
 </button>

@@ -39,6 +39,7 @@ async function testMiniConcurrentRecoveryAndPersistence() {
   let refreshCount = 0;
   let oldRequests = 0;
   let newRequests = 0;
+  let refreshMode: "success" | "network" | "revoked" = "success";
   (globalThis as any).getApp = () => ({ globalData: { apiBaseUrl: "https://example.test" } });
   (globalThis as any).wx = {
     getStorageSync: (key: string) => storage.get(key) ?? "",
@@ -50,6 +51,14 @@ async function testMiniConcurrentRecoveryAndPersistence() {
       queueMicrotask(() => {
         if (options.url.endsWith("/api/auth/refresh")) {
           refreshCount += 1;
+          if (refreshMode === "network") {
+            options.fail(new Error("offline"));
+            return;
+          }
+          if (refreshMode === "revoked") {
+            options.success({ statusCode: 401, data: { code: "AUTH_SESSION_REVOKED", message: "Session revoked" }, header: {} });
+            return;
+          }
           options.success({ statusCode: 200, data: { accessToken: "new-access", accessTokenExpiresAt: new Date(Date.now() + 900_000).toISOString(), refreshToken: "new-refresh-token", refreshTokenExpiresAt: new Date(Date.now() + 2_592_000_000).toISOString(), user: { id: "user-a" } }, header: {} });
           return;
         }
@@ -65,6 +74,7 @@ async function testMiniConcurrentRecoveryAndPersistence() {
   };
   const store = await import("../apps/wechat-miniprogram/stores/session");
   const http = await import("../apps/wechat-miniprogram/services/http");
+  const { bootstrapSession } = await import("../apps/wechat-miniprogram/services/session-bootstrap");
   store.setSession({ token: "old-access", refreshToken: "old-refresh-token", deviceId: "device-a", expiresAt: Date.now() + 900_000, user: { id: "user-a" } });
   const results = await Promise.all(Array.from({ length: 10 }, () => http.request<{ ok: boolean }>({ path: "/api/workspace/overview", toast: false })));
   assert.equal(results.every((item) => item.ok), true);
@@ -74,6 +84,20 @@ async function testMiniConcurrentRecoveryAndPersistence() {
   assert.equal(store.hydrateSession()?.refreshToken, "new-refresh-token", "rotated credentials must survive process hydration");
   store.setSession({ token: "expired-access", refreshToken: "still-valid-refresh", deviceId: "device-a", expiresAt: Date.now() - 1, refreshTokenExpiresAt: Date.now() + 60_000, user: { id: "user-a" } });
   assert.equal(store.isLoggedIn(), true, "a refreshable cold-start session must not flash logged-out UI");
+  const restored = await bootstrapSession();
+  assert.equal(restored?.token, "new-access", "cold start must refresh an expired access token");
+  assert.equal(refreshCount, 2);
+
+  refreshMode = "network";
+  store.setSession({ token: "expired-offline", refreshToken: "offline-refresh", deviceId: "device-a", expiresAt: Date.now() - 1, refreshTokenExpiresAt: Date.now() + 60_000, user: { id: "user-a" } });
+  const retained = await bootstrapSession();
+  assert.equal(retained?.refreshToken, "offline-refresh", "a transient network failure must retain a refreshable session");
+  assert.equal(store.getSession()?.refreshToken, "offline-refresh");
+
+  refreshMode = "revoked";
+  store.setSession({ token: "expired-revoked", refreshToken: "revoked-refresh", deviceId: "device-a", expiresAt: Date.now() - 1, refreshTokenExpiresAt: Date.now() + 60_000, user: { id: "user-a" } });
+  assert.equal(await bootstrapSession(), null, "an explicitly revoked session must return to login");
+  assert.equal(store.getSession(), null);
 }
 
 async function main() {

@@ -10,7 +10,7 @@
       <view class="status-chip">{{emailStatus}}</view>
     </view>
     <view class="card-main">{{emailLine}}</view>
-    <button class="card-action-button" bindtap="editEmail">修改邮箱</button>
+    <button class="primary-button card-action-button" bindtap="editEmail">修改邮箱</button>
   </view>
 
   <view class="security-card">
@@ -20,7 +20,7 @@
     </view>
     <view class="card-main">{{phoneLine}}</view>
     <view class="card-hint">可绑定或修改手机号，用于手机号 + 密码登录。</view>
-    <button class="card-action-button" bindtap="editPhone">{{phoneLine === '未绑定' ? '绑定手机号' : '修改手机号'}}</button>
+    <button class="primary-button card-action-button" bindtap="editPhone">{{phoneLine === '未绑定' ? '绑定手机号' : '修改手机号'}}</button>
   </view>
 
   <view class="security-card">
@@ -29,15 +29,12 @@
     </view>
     <view class="card-main">{{wechatLine}}</view>
     <view class="card-hint">微信登录仅在小程序端使用，可在这里解绑或换绑。</view>
-    <button class="card-action-button" bindtap="editWechat">{{wechatLine === '未绑定' ? '绑定微信' : '解绑 / 换绑微信'}}</button>
+    <button class="primary-button card-action-button" bindtap="editWechat">{{wechatLine === '未绑定' ? '绑定微信' : '解绑 / 换绑微信'}}</button>
   </view>
 
-  <view class="security-card" bindtap="changePassword">
-    <view class="card-head">
-      <view class="card-title">密码</view>
-      <view class="card-action">修改密码</view>
-    </view>
-    <view class="card-main">{{passwordLine}}</view>
+  <view class="security-card">
+    <view class="card-title">密码</view>
+    <button class="primary-button card-action-button" bindtap="changePassword">修改密码</button>
   </view>
 
   <view class="security-card">

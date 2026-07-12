@@ -10,6 +10,8 @@
 }
 
 .back-button {
+  display: grid;
+  place-items: center;
   position: absolute;
   top: calc(env(safe-area-inset-top) + 16rpx);
   left: 32rpx;
@@ -21,7 +23,7 @@
   background: #ffffff;
   color: #1f2933;
   font-size: 48rpx;
-  line-height: 72rpx;
+  line-height: 1;
 }
 
 .back-button::after {

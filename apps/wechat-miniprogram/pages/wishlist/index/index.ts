@@ -1,5 +1,6 @@
 import { fetchWishlist, getWorkspaceReadState, type MiniWishlistItem } from "../../../services/workspace";
 import { getCapsuleGeometry } from "../../../utils/capsule-layout";
+import { selectCustomTab } from "../../../utils/custom-tab-bar";
 
 interface WishlistStatusChip {
   key: string;
@@ -52,17 +53,17 @@ Page({
   onLoad() {
     wx.setNavigationBarTitle({ title: "种草" });
     this.setData({ titleTopRpx: getTitleTopRpx() });
-    setCustomTabBarSelected(this, 2);
+    selectCustomTab(this, 2);
     void this.loadWishlist();
   },
 
   onShow() {
-    setCustomTabBarSelected(this, 2);
+    selectCustomTab(this, 2);
     void this.loadWishlist();
   },
 
   onReady() {
-    setCustomTabBarSelected(this, 2);
+    selectCustomTab(this, 2);
   },
 
   async loadWishlist() {
@@ -147,12 +148,6 @@ Page({
     if (id) wx.navigateTo({ url: `/pages/wishlist/detail/index?id=${encodeURIComponent(id)}` });
   },
 });
-
-function setCustomTabBarSelected(page: unknown, selected: number) {
-  const pageWithTabBar = page as { getTabBar?: () => ({ setData?: (data: { selected: number }) => void } | null) };
-  const tabBar = pageWithTabBar.getTabBar?.();
-  if (tabBar && typeof tabBar.setData === "function") tabBar.setData({ selected });
-}
 
 function getTitleTopRpx() {
   return getCapsuleGeometry().topRpx;

@@ -1,1 +1,48 @@
-<view class="page-shell compose-page"><view class="page-title">创建套装</view><view class="page-copy">步骤 {{step+1}} / 3 · {{step===0?'图片 / AI':step===1?'基础信息':'逐件确认'}}</view><view class="progress"><view style="width:{{(step+1)/3*100}}%"></view></view><view wx:if="{{step===0}}" class="form-card"><view class="field-label">套装图片（可选）</view><image wx:if="{{coverPath}}" class="cover" src="{{coverPath}}" mode="aspectFit"/><button bindtap="chooseCover">{{coverPath?'重新选择图片':'拍照或从图库选择'}}</button><view class="page-copy">也可以不上传图片，稍后按所选单品生成套装信息。</view></view><view wx:elif="{{step===1}}" class="form-card"><view class="field-label">套装名称</view><input class="text-input" value="{{name}}" placeholder="例如：通勤基础套装" bindinput="handleNameInput"/><view wx:if="{{seasonText}}">季节：{{seasonText}}</view><view wx:if="{{sceneText}}">场景：{{sceneText}}</view><view wx:if="{{aiNotes}}">{{aiNotes}}</view></view><block wx:else><view wx:if="{{loading}}" class="status-card">正在读取衣物...</view><view wx:elif="{{error}}" class="status-card">{{error}}<button bindtap="loadGarments">重试</button></view><view wx:else class="garment-list"><view class="section-row"><view class="section-title">逐件确认</view><view class="section-count">已选 {{selectedCount}}</view></view><view wx:for="{{garments}}" wx:key="id" class="select-card {{item.selected?'select-card--active':''}}" data-id="{{item.legacyItemId}}" bindtap="toggleGarment"><image wx:if="{{item.imageUrl}}" class="thumb" mode="aspectFill" src="{{item.imageUrl}}"/><view class="garment-main"><view class="garment-name">{{item.name}}</view><view class="garment-meta">{{item.categoryLabel}} · {{item.colorText}}</view></view><view class="check-dot {{item.selected?'is-active':''}}">{{item.selected?'✓':''}}</view></view><button class="ai-button" loading="{{generating}}" disabled="{{selectedCount<2}}" bindtap="generateBaseInfo">AI 生成 / 刷新元数据</button></view></block><view class="bottom-bar"><button wx:if="{{step>0}}" bindtap="previousStep">上一步</button><button wx:if="{{step<2}}" class="primary-button" bindtap="nextStep">下一步</button><button wx:else class="primary-button" loading="{{saving}}" disabled="{{selectedCount<2||!name}}" bindtap="saveOutfit">保存 {{selectedCount}} 件套装</button></view></view>
+<view class="page-shell compose-page">
+  <view class="page-title">创建套装</view>
+  <view class="page-copy">步骤 {{step+1}} / 3 · {{step===0?'图片 / AI':step===1?'基础信息':'逐件确认'}}</view>
+  <view class="progress"><view style="width:{{(step+1)/3*100}}%"></view></view>
+
+  <view wx:if="{{step===0}}" class="form-card">
+    <view class="field-label">套装图片（可选）</view>
+    <image wx:if="{{coverPath}}" class="cover" src="{{coverPath}}" mode="aspectFit"/>
+    <button bindtap="chooseCover">{{coverPath?'重新选择图片':'拍照或从图库选择'}}</button>
+    <view class="page-copy">也可以不上传图片，稍后按所选单品生成套装信息。</view>
+  </view>
+
+  <view wx:elif="{{step===1}}" class="form-card">
+    <view class="field-label">套装名称</view>
+    <input class="text-input" value="{{name}}" placeholder="例如：通勤基础套装" bindinput="handleNameInput"/>
+    <view wx:if="{{seasonText}}">季节：{{seasonText}}</view>
+    <view wx:if="{{sceneText}}">场景：{{sceneText}}</view>
+    <view wx:if="{{aiNotes}}">{{aiNotes}}</view>
+  </view>
+
+  <block wx:else>
+    <view wx:if="{{loading}}" class="status-card">正在读取衣物...</view>
+    <view wx:elif="{{error}}" class="status-card">{{error}}<button bindtap="loadGarments">重试</button></view>
+    <view wx:else class="garment-list">
+      <view class="section-row">
+        <view class="section-title">逐件确认</view>
+        <view class="section-count">已选 {{selectedCount}}</view>
+      </view>
+      <view wx:for="{{garments}}" wx:key="id" class="select-card {{item.selected?'select-card--active':''}}" data-id="{{item.legacyItemId}}" bindtap="toggleGarment">
+        <image wx:if="{{item.imageUrl}}" class="thumb" mode="aspectFill" src="{{item.imageUrl}}"/>
+        <view class="garment-main">
+          <view class="garment-name">{{item.name}}</view>
+          <view class="garment-meta">{{item.categoryLabel}} · {{item.colorText}}</view>
+        </view>
+        <view class="check-dot {{item.selected?'is-active':''}}">
+          <ui-icon wx:if="{{item.selected}}" name="check" size="28" tone="primary" />
+        </view>
+      </view>
+      <button class="ai-button" loading="{{generating}}" disabled="{{selectedCount<2}}" bindtap="generateBaseInfo">AI 生成 / 刷新元数据</button>
+    </view>
+  </block>
+
+  <view class="bottom-bar">
+    <button wx:if="{{step>0}}" bindtap="previousStep">上一步</button>
+    <button wx:if="{{step<2}}" class="primary-button" bindtap="nextStep">下一步</button>
+    <button wx:else class="primary-button" loading="{{saving}}" disabled="{{selectedCount<2||!name}}" bindtap="saveOutfit">保存 {{selectedCount}} 件套装</button>
+  </view>
+</view>

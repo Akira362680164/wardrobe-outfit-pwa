@@ -1,6 +1,6 @@
 <view class="crop-page">
   <view class="crop-header">
-    <button class="icon-button" bindtap="cancel"><ui-icon name="chevron-left" size="42" color="#1d2228" /></button>
+    <button class="icon-button" bindtap="cancel"><ui-icon name="chevron-left" size="42" tone="ink" /></button>
     <view class="page-title">裁切 / 旋转</view>
     <view class="header-spacer"></view>
   </view>
@@ -24,9 +24,9 @@
       <button class="ratio-option {{ratioMode === '3:4' ? 'ratio-option--active' : ''}}" data-ratio="3:4" bindtap="chooseRatio">3:4</button>
     </view>
     <view class="crop-actions">
-      <button bindtap="rotateLeft"><ui-icon name="rotate-left" size="30" color="#355c7d" />左转90°</button>
-      <button bindtap="rotateRight"><ui-icon name="rotate-right" size="30" color="#355c7d" />右转90°</button>
-      <button bindtap="resetCrop"><ui-icon name="reset" size="30" color="#355c7d" />重置</button>
+      <button bindtap="rotateLeft"><ui-icon name="rotate-left" size="30" tone="primary" />左转90°</button>
+      <button bindtap="rotateRight"><ui-icon name="rotate-right" size="30" tone="primary" />右转90°</button>
+      <button bindtap="resetCrop"><ui-icon name="reset" size="30" tone="primary" />重置</button>
     </view>
     <view class="bottom-actions">
       <button class="secondary-button" bindtap="cancel">取消</button>

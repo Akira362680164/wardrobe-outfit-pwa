@@ -1,5 +1,5 @@
 <view class="auth-page">
-  <button class="back-button" bindtap="goBack">‹</button>
+  <button class="back-button" aria-label="返回" bindtap="goBack"><ui-icon name="chevron-left" size="36" tone="ink" /></button>
   <view class="auth-card">
     <view class="auth-title text-wrap-safe">找回密码</view>
     <view class="auth-copy text-wrap-safe">请输入已验证邮箱，验证码将发送到该邮箱。</view>

@@ -1,5 +1,6 @@
 {
   "usingComponents": {
-    "ui-sheet": "../../../components/ui/sheet/index"
+    "ui-sheet": "../../../components/ui/sheet/index",
+    "ui-icon": "/components/ui/icon/index"
   }
 }

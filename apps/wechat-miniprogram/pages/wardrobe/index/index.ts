@@ -1,6 +1,7 @@
 import { aiEnhance, hasMiniMaxKey } from "../../../services/ai";
 import { MINI_CATEGORY_LABELS } from "../../../generated/catalogs";
 import { deleteWorkspaceEntity, fetchClosetLocations, fetchGarments, fetchOutfits, getWorkspaceReadState, type MiniClosetLocation, type MiniGarment } from "../../../services/workspace";
+import { selectCustomTab } from "../../../utils/custom-tab-bar";
 
 type CategoryChip = {
   key: string;
@@ -48,17 +49,17 @@ Page({
 
   onLoad() {
     wx.setNavigationBarTitle({ title: "衣橱" });
-    setCustomTabBarSelected(this, 0);
+    selectCustomTab(this, 0);
     void this.loadGarments();
   },
 
   onShow() {
-    setCustomTabBarSelected(this, 0);
+    selectCustomTab(this, 0);
     void this.loadGarments();
   },
 
   onReady() {
-    setCustomTabBarSelected(this, 0);
+    selectCustomTab(this, 0);
   },
 
   async loadGarments() {
@@ -293,12 +294,6 @@ Page({
     finally { this.setData({ deletingSelection: false }); }
   },
 });
-
-function setCustomTabBarSelected(page: unknown, selected: number) {
-  const pageWithTabBar = page as { getTabBar?: () => ({ setData?: (data: { selected: number }) => void } | null) };
-  const tabBar = pageWithTabBar.getTabBar?.();
-  if (tabBar && typeof tabBar.setData === "function") tabBar.setData({ selected });
-}
 
 function buildCategoryChips(garments: MiniGarment[]): CategoryChip[] {
   const counts = new Map<string, number>();

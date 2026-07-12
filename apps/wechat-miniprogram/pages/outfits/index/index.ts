@@ -21,6 +21,7 @@ import {
   type OutfitPlanSelectionMode,
 } from "../../../utils/outfit-plan-state";
 import { formatDateWithWeek, localDateKey, parseDateKey, ymd } from "../../../utils/calendar";
+import { selectCustomTab, setCustomTabHidden } from "../../../utils/custom-tab-bar";
 
 type DatasetEvent = { currentTarget: { dataset: Record<string, unknown> } };
 type TouchLikeEvent = { touches?: Array<{ clientX: number }>; changedTouches?: Array<{ clientX: number }> };
@@ -112,22 +113,22 @@ Page({
   onLoad() {
     wx.setNavigationBarTitle({ title: "套装" });
     this.setData({ titleTopRpx: getTitleTopRpx() });
-    setCustomTabBarSelected(this, 1);
+    selectCustomTab(this, 1);
     this.rebuildWeek();
     void this.loadOutfits();
   },
 
   onShow() {
-    setCustomTabBarSelected(this, 1);
+    selectCustomTab(this, 1);
     void this.loadOutfits();
   },
 
   onHide() {
-    setCustomTabBarHidden(this, false);
+    setCustomTabHidden(this, false);
   },
 
   onReady() {
-    setCustomTabBarSelected(this, 1);
+    selectCustomTab(this, 1);
   },
 
   async loadOutfits(): Promise<boolean> {
@@ -170,18 +171,18 @@ Page({
   },
 
   openAddPlanSheet() {
-    setCustomTabBarHidden(this, true);
+    setCustomTabHidden(this, true);
     this.setData({ addPlanSheetOpen: true });
   },
 
   closeAddPlanSheet() {
-    setCustomTabBarHidden(this, false);
+    setCustomTabHidden(this, false);
     this.setData({ addPlanSheetOpen: false });
   },
 
   choosePlanType(event: DatasetEvent) {
     const type = String(event.currentTarget.dataset.type || "custom");
-    setCustomTabBarHidden(this, false);
+    setCustomTabHidden(this, false);
     this.setData({ addPlanSheetOpen: false });
     wx.navigateTo({ url: `/pages/trips/edit/index?type=${encodeURIComponent(type)}&date=${encodeURIComponent(this.data.selectedDate)}` });
   },
@@ -263,14 +264,14 @@ Page({
       : mode === "backup"
         ? "备选穿搭不会计入穿着次数。"
         : "选择的套装会作为当天主计划，不计入穿着次数。";
-    setCustomTabBarHidden(this, true);
+    setCustomTabHidden(this, true);
     this.setData({ selectSheetOpen: true, selectionMode: mode, selectionTitle: title, selectionDescription: description, outfitSearch: "" });
     this.filterOutfits("");
   },
 
   closeOutfitSelector() {
     if (this.data.savingEntry) return;
-    setCustomTabBarHidden(this, false);
+    setCustomTabHidden(this, false);
     this.setData({ selectSheetOpen: false, outfitSearch: "" });
   },
 
@@ -332,7 +333,7 @@ Page({
         });
       }
       if (!await this.loadOutfits()) throw new Error("已保存，但重新读取失败，请稍后重试");
-      setCustomTabBarHidden(this, false);
+      setCustomTabHidden(this, false);
       this.setData({ selectSheetOpen: false, outfitSearch: "" });
       wx.showToast({ title: mode === "worn" ? "已补记穿搭" : mode === "backup" ? "已添加备选穿搭" : mode === "replace" ? "已更改主计划" : "已安排主穿搭", icon: "success" });
     } catch (error) {
@@ -499,24 +500,6 @@ function dateRangeText(dateKey: string, includeYear: boolean): string {
 
 function toDateKey(date: Date): string {
   return ymd(date.getFullYear(), date.getMonth() + 1, date.getDate());
-}
-
-function setCustomTabBarSelected(page: unknown, selected: number) {
-  const pageWithTabBar = page as { getTabBar?: () => ({ setData?: (data: { selected: number }) => void } | null) };
-  const tabBar = pageWithTabBar.getTabBar?.();
-  if (tabBar && typeof tabBar.setData === "function") tabBar.setData({ selected });
-}
-
-function setCustomTabBarHidden(page: unknown, hidden: boolean) {
-  const pageWithTabBar = page as { getTabBar?: () => ({ setData?: (data: { hidden: boolean }) => void } | null) };
-  const tabBar = pageWithTabBar.getTabBar?.();
-  if (tabBar && typeof tabBar.setData === "function") tabBar.setData({ hidden });
-  const tabBarApi = wx as typeof wx & {
-    hideTabBar?: (options?: { animation?: boolean }) => void;
-    showTabBar?: (options?: { animation?: boolean }) => void;
-  };
-  if (hidden) tabBarApi.hideTabBar?.({ animation: false });
-  else tabBarApi.showTabBar?.({ animation: false });
 }
 
 function getTitleTopRpx() {

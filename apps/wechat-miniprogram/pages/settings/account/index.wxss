@@ -59,24 +59,24 @@
   line-height: 34rpx;
 }
 
-.card-action {
-  color: #2f6b4f;
-  font-size: 24rpx;
-  font-weight: 700;
-}
-
 .card-action-button {
-  width: auto;
-  min-width: 180rpx;
-  height: 68rpx;
-  margin: 20rpx 0 0;
-  padding: 0 22rpx;
-  border: 1rpx solid rgba(53, 92, 125, 0.2);
-  border-radius: 999rpx;
-  color: #355c7d;
-  background: rgba(53, 92, 125, 0.08);
-  font-size: 23rpx;
+  display: flex;
+  width: 100% !important;
+  min-width: 100%;
+  max-width: 100%;
+  min-height: 72rpx;
+  height: 72rpx;
+  align-items: center;
+  justify-content: center;
+  margin: 20rpx 0 0 !important;
+  padding: 0 24rpx;
+  border-radius: var(--radius-control);
+  box-sizing: border-box;
+  color: var(--color-surface);
+  background: var(--color-primary);
+  font-size: var(--font-caption);
   font-weight: 700;
+  line-height: 1;
 }
 
 .card-action-button::after { border: 0; }

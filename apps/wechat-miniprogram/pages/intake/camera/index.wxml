@@ -17,8 +17,8 @@
     <view wx:if="{{queue.length}}" class="thumb-strip">
       <view wx:for="{{queue}}" wx:key="clientItemId" data-index="{{index}}" class="thumb-wrap">
         <view wx:if="{{index === currentIndex}}" class="thumb-popover" style="{{popoverStyle}}">
-          <button class="thumb-popover__action" data-action="crop" bindtap="editCurrent"><ui-icon name="scissors" size="28" color="#355c7d" />裁切/旋转</button>
-          <button class="thumb-popover__action thumb-popover__action--danger" data-action="delete" bindtap="removeCurrent"><ui-icon name="trash" size="28" color="#dc2626" />删除</button>
+          <button class="thumb-popover__action" data-action="crop" bindtap="editCurrent"><ui-icon name="scissors" size="28" tone="primary" />裁切/旋转</button>
+          <button class="thumb-popover__action thumb-popover__action--danger" data-action="delete" bindtap="removeCurrent"><ui-icon name="trash" size="28" tone="danger" />删除</button>
           <view class="thumb-popover__arrow" style="{{popoverArrowStyle}}"></view>
         </view>
         <view data-index="{{index}}" class="thumb {{index === currentIndex ? 'thumb-active' : ''}} {{item.status === 'failed' ? 'thumb-failed' : ''}}" bindtap="selectCurrent">
@@ -32,10 +32,10 @@
 
   <view class="source-grid {{totalCount ? 'source-grid--compact' : ''}}">
     <button class="source-button" loading="{{selecting}}" disabled="{{selecting || totalCount >= maxCount}}" bindtap="chooseFromCamera">
-      <ui-icon name="camera" size="54" color="#355c7d" /><view>{{totalCount ? '继续拍照' : '拍照'}}</view>
+      <ui-icon name="camera" size="54" tone="primary" /><view>{{totalCount ? '继续拍照' : '拍照'}}</view>
     </button>
     <button class="source-button" disabled="{{selecting || totalCount >= maxCount}}" bindtap="chooseFromAlbum">
-      <ui-icon name="image" size="54" color="#355c7d" /><view>{{totalCount ? '继续从图库选择' : '从图库选择'}}</view>
+      <ui-icon name="image" size="54" tone="primary" /><view>{{totalCount ? '继续从图库选择' : '从图库选择'}}</view>
     </button>
   </view>
 

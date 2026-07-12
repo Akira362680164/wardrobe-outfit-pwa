@@ -28,6 +28,17 @@
   line-height: 42rpx;
 }
 
+.login-session-check {
+  display: flex;
+  min-height: 96rpx;
+  align-items: center;
+  justify-content: center;
+  margin-top: 72rpx;
+  color: var(--color-muted);
+  font-size: var(--font-body);
+  line-height: 1.5;
+}
+
 .login-actions {
   width: 100%;
   margin-top: 72rpx;
