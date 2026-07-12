@@ -87,6 +87,8 @@
     "test:logic:miniprogram-outfit-flow": "tsx scripts/parity/tests/mini-outfit-flow.test.ts",
     "build-info:miniprogram:generate": "tsx scripts/generate-miniprogram-build-info.ts",
     "build-info:miniprogram:check": "tsx scripts/generate-miniprogram-build-info.ts --check",
+    "icons:miniprogram:generate": "node scripts/generate-miniprogram-icons.mjs",
+    "icons:miniprogram:check": "node scripts/generate-miniprogram-icons.mjs --check",
     "test:logic:miniprogram-settings": "tsx scripts/parity/tests/mini-settings-regression.test.ts",
     "test:logic:miniprogram-ai-flows": "tsx scripts/parity/tests/mini-ai-flows.test.ts",
     "test:logic:wechat-email-auth-flow": "tsx scripts/test-wechat-email-auth-flow.ts",

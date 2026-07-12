@@ -1,5 +1,6 @@
 import { hasMiniMaxKey } from "../../../services/ai";
 import { getCapsuleGeometry } from "../../../utils/capsule-layout";
+import { selectCustomTab } from "../../../utils/custom-tab-bar";
 
 Page({
   data: {
@@ -10,16 +11,16 @@ Page({
   onLoad() {
     wx.setNavigationBarTitle({ title: "设置" });
     this.setData({ titleTopRpx: getTitleTopRpx() });
-    setCustomTabBarSelected(this, 3);
+    selectCustomTab(this, 3);
   },
 
   onShow() {
-    setCustomTabBarSelected(this, 3);
+    selectCustomTab(this, 3);
     this.setData({ aiStatusText: hasMiniMaxKey() ? "已配置" : "未配置" });
   },
 
   onReady() {
-    setCustomTabBarSelected(this, 3);
+    selectCustomTab(this, 3);
   },
 
   openSection(event: { currentTarget: { dataset: { url?: string } } }) {
@@ -27,12 +28,6 @@ Page({
     if (url) wx.navigateTo({ url });
   },
 });
-
-function setCustomTabBarSelected(page: unknown, selected: number) {
-  const pageWithTabBar = page as { getTabBar?: () => ({ setData?: (data: { selected: number }) => void } | null) };
-  const tabBar = pageWithTabBar.getTabBar?.();
-  if (tabBar && typeof tabBar.setData === "function") tabBar.setData({ selected });
-}
 
 function getTitleTopRpx() {
   return getCapsuleGeometry().topRpx;

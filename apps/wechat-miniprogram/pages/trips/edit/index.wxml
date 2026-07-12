@@ -1,7 +1,7 @@
 <view class="page-shell plan-edit" style="padding-top: {{titleTopRpx}}rpx;">
   <view class="edit-top">
     <view class="top-left" bindtap="goBack">
-      <text class="top-back">‹</text>
+      <ui-icon class="top-back" name="chevron-left" size="36" tone="ink" />
       <text class="top-title">{{pageTitle}}</text>
     </view>
   </view>
@@ -40,7 +40,7 @@
         <button class="activity-add" bindtap="addActivity">添加</button>
       </view>
       <view wx:if="{{activities.length}}" class="tag-row">
-        <view wx:for="{{activities}}" wx:key="*this" data-value="{{item}}" class="tag" bindtap="removeActivity">{{item}} ×</view>
+        <view wx:for="{{activities}}" wx:key="*this" data-value="{{item}}" class="tag" bindtap="removeActivity"><text>{{item}}</text><ui-icon name="x" size="20" tone="primary" /></view>
       </view>
     </view>
 

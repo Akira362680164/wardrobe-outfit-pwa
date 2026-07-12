@@ -1,12 +1,12 @@
 <view class="intake-page">
   <view class="intake-header" style="padding-top:{{navTopRpx}}rpx;">
     <view class="intake-header__row" style="height:{{navHeightRpx + 32}}rpx;">
-      <button class="header-icon-button" style="width:80rpx;min-width:0;" aria-label="返回" bindtap="requestExit"><ui-icon name="chevron-left" size="40" color="#1d2228" /></button>
+      <button class="header-icon-button" style="width:80rpx;min-width:0;" aria-label="返回" bindtap="requestExit"><ui-icon name="chevron-left" size="40" tone="ink" /></button>
       <view class="intake-header__copy">
         <view class="intake-title">{{pageTitle}}</view>
         <view class="step-copy">步骤 1 / 2 · 选择照片，最多 10 张</view>
       </view>
-      <button class="header-icon-button header-icon-button--close" style="right:{{navRightRpx}}rpx;width:80rpx;min-width:0;" aria-label="退出录入" bindtap="requestExit"><ui-icon name="x" size="32" color="#1d2228" /></button>
+      <button class="header-icon-button header-icon-button--close" style="right:{{navRightRpx}}rpx;width:80rpx;min-width:0;" aria-label="退出录入" bindtap="requestExit"><ui-icon name="x" size="32" tone="ink" /></button>
     </view>
     <view class="progress-track"><view class="progress-fill progress-half"></view></view>
   </view>
@@ -37,18 +37,18 @@
       </scroll-view>
 
       <view wx:if="{{activePopoverItemId}}" class="thumb-popover" style="{{popoverStyle}}" catchtap="stopTap">
-        <button class="thumb-popover__action" style="width:100%;min-width:0;" bindtap="editCurrent"><ui-icon name="scissors" size="26" color="#355c7d" /><text>裁切/旋转</text></button>
-        <button class="thumb-popover__action thumb-popover__action--danger" style="width:100%;min-width:0;" bindtap="removeCurrent"><ui-icon name="trash" size="26" color="#dc2626" /><text>删除</text></button>
+        <button class="thumb-popover__action" style="width:100%;min-width:0;" bindtap="editCurrent"><ui-icon name="scissors" size="26" tone="primary" /><text>裁切/旋转</text></button>
+        <button class="thumb-popover__action thumb-popover__action--danger" style="width:100%;min-width:0;" bindtap="removeCurrent"><ui-icon name="trash" size="26" tone="danger" /><text>删除</text></button>
         <view class="thumb-popover__arrow" style="{{popoverArrowStyle}}"></view>
       </view>
     </view>
 
     <view class="source-grid {{totalCount ? 'source-grid--compact' : ''}}">
       <button class="source-button" style="width:100%;min-width:0;" loading="{{selecting}}" disabled="{{selecting || totalCount >= maxCount}}" bindtap="chooseFromCamera">
-        <ui-icon name="camera" size="{{totalCount ? 32 : 48}}" color="#355c7d" /><text>{{totalCount ? '继续拍照' : '拍照'}}</text>
+        <ui-icon name="camera" size="{{totalCount ? 32 : 48}}" tone="primary" /><text>{{totalCount ? '继续拍照' : '拍照'}}</text>
       </button>
       <button class="source-button" style="width:100%;min-width:0;" disabled="{{selecting || totalCount >= maxCount}}" bindtap="chooseFromAlbum">
-        <ui-icon name="image" size="{{totalCount ? 32 : 48}}" color="#355c7d" /><text>{{totalCount ? '继续从图库选择' : '从图库选择'}}</text>
+        <ui-icon name="image" size="{{totalCount ? 32 : 48}}" tone="primary" /><text>{{totalCount ? '继续从图库选择' : '从图库选择'}}</text>
       </button>
     </view>
     <view wx:if="{{totalCount >= maxCount}}" class="limit-copy">已达到 10 张上限</view>

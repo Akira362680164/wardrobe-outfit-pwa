@@ -1,14 +1,14 @@
 <view class="page-shell calendar-page" style="padding-top: {{titleTopRpx}}rpx;" bindtouchstart="onMonthTouchStart" bindtouchend="onMonthTouchEnd">
   <view class="sub-top">
-    <view class="back-button" aria-label="返回" bindtap="goBack">‹</view>
+    <view class="back-button" aria-label="返回" bindtap="goBack"><ui-icon name="chevron-left" size="36" tone="ink" /></view>
     <view class="sub-title">穿搭计划</view>
     <button class="plan-add-button" bindtap="openAddPlanSheet">+计划</button>
   </view>
 
   <view class="month-row">
-    <view class="month-arrow" data-delta="prev" bindtap="shiftMonth">‹</view>
+    <view class="month-arrow" data-delta="prev" bindtap="shiftMonth"><ui-icon name="chevron-left" size="32" tone="ink" /></view>
     <view class="month-title">{{monthTitle}}</view>
-    <view class="month-arrow" data-delta="next" bindtap="shiftMonth">›</view>
+    <view class="month-arrow" data-delta="next" bindtap="shiftMonth"><ui-icon name="chevron-right" size="32" tone="ink" /></view>
   </view>
 
   <view class="weekday-row">
@@ -136,7 +136,7 @@
   <ui-sheet open="{{selectSheetOpen}}" title="{{selectionTitle}}" description="{{selectionDescription}}" bind:close="closeOutfitSelector">
     <view class="outfit-select">
       <view class="search-box">
-        <text class="search-icon">⌕</text>
+        <view class="search-icon"><ui-icon name="search" size="32" tone="ink" /></view>
         <input class="search-input" value="{{outfitSearch}}" placeholder="搜索套装名称 / 场景" bindinput="onSearchOutfit" />
       </view>
 
@@ -163,7 +163,7 @@
       </view>
 
       <view wx:else class="sheet-empty">
-        <view class="sheet-empty__icon">♧</view>
+        <view class="sheet-empty__icon"><ui-icon name="layers" size="64" tone="ink" /></view>
         <view class="sheet-empty__title">{{outfits.length ? '没有匹配的套装' : '还没有可选择的套装'}}</view>
         <view class="sheet-empty__copy">{{outfits.length ? '换个关键词试试。' : '先从套装页创建一套，再回来安排到日历。'}}</view>
       </view>

@@ -1,6 +1,8 @@
 declare const Component: any;
 declare const wx: any;
-declare function getCurrentPages(): Array<{ getTabBar?: () => ({ setData?: (data: { hidden: boolean }) => void } | null) }>;
+declare function getCurrentPages(): unknown[];
+
+import { setCustomTabHidden } from "../../../utils/custom-tab-bar";
 
 type CreateActionType = "add_single_item" | "create_outfit" | "add_wishlist_item";
 
@@ -37,8 +39,7 @@ Component({
 
 function setTabBarHidden(hidden: boolean) {
   const pages = getCurrentPages();
-  const tabBar = pages[pages.length - 1]?.getTabBar?.();
-  tabBar?.setData?.({ hidden });
+  setCustomTabHidden(pages[pages.length - 1], hidden);
 }
 
 export {};

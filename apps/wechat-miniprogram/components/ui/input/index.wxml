@@ -5,7 +5,7 @@
   </view>
   <view class="ui-input__control">
     <input class="ui-input__field" value="{{value}}" type="{{type}}" placeholder="{{placeholder}}" placeholder-class="ui-input__placeholder" disabled="{{disabled}}" maxlength="{{maxlength}}" bindinput="onInput" bindblur="onBlur" bindfocus="onFocus" />
-    <button wx:if="{{clearable && value && !disabled}}" class="ui-input__clear" aria-label="清空" hover-class="ui-input__clear--hover" bindtap="onClear"><ui-icon name="x" size="{{28}}" color="currentColor" /></button>
+    <button wx:if="{{clearable && value && !disabled}}" class="ui-input__clear" aria-label="清空" hover-class="ui-input__clear--hover" bindtap="onClear"><ui-icon name="x" size="{{28}}" tone="ink" /></button>
   </view>
   <text wx:if="{{error}}" class="ui-input__message ui-input__message--error">{{error}}</text>
   <text wx:elif="{{hint}}" class="ui-input__message">{{hint}}</text>

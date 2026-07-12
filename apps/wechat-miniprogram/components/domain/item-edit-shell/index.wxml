@@ -1,10 +1,10 @@
 <view class="item-edit-shell">
   <view class="item-edit-shell__topbar">
     <button wx:if="{{guardedBack}}" class="item-edit-shell__back" bindtap="onBack" aria-label="返回">
-      <ui-icon name="chevron-left" size="44" color="currentColor" />
+      <ui-icon name="chevron-left" size="44" tone="ink" />
     </button>
     <navigator wx:else class="item-edit-shell__back" open-type="navigateBack" aria-label="返回">
-      <ui-icon name="chevron-left" size="44" color="currentColor" />
+      <ui-icon name="chevron-left" size="44" tone="ink" />
     </navigator>
     <view class="item-edit-shell__title-wrap">
       <view class="item-edit-shell__title">{{title}}</view>

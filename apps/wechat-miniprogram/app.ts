@@ -1,16 +1,18 @@
-import { hydrateSession } from "./stores/session";
-import { recoverSession } from "./services/http";
+import type { SessionState } from "./stores/session";
+import { bootstrapSession } from "./services/session-bootstrap";
 
 export interface WardrobeMiniAppGlobalData {
   apiBaseUrl: string;
   safeAreaBottom: number;
   statusBarHeight: number;
+  sessionReady: Promise<SessionState | null>;
 }
 
 const globalData: WardrobeMiniAppGlobalData = {
   apiBaseUrl: "https://api.zhengfangapps.cloud",
   safeAreaBottom: 0,
   statusBarHeight: 0,
+  sessionReady: Promise.resolve(null),
 };
 
 App<{
@@ -19,8 +21,7 @@ App<{
   globalData,
 
   onLaunch() {
-    const session = hydrateSession();
-    if (session?.refreshToken) void recoverSession().catch(() => undefined);
+    globalData.sessionReady = bootstrapSession();
 
     const systemInfo = wx.getSystemInfoSync();
     globalData.statusBarHeight = systemInfo.statusBarHeight ?? 0;

@@ -1,6 +1,6 @@
 <view class="detail-shell">
   <view class="detail-shell__topbar">
-    <navigator class="detail-shell__back" open-type="navigateBack" aria-label="返回">‹</navigator>
+    <navigator class="detail-shell__back" open-type="navigateBack" aria-label="返回"><ui-icon name="chevron-left" size="36" tone="ink" /></navigator>
     <view class="detail-shell__top-title">{{topTitle || title}}</view>
   </view>
 

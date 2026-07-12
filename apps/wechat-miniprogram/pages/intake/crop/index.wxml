@@ -1,7 +1,7 @@
 <view class="crop-page">
   <view class="crop-header" style="padding-top:{{navTopRpx}}rpx;">
     <view class="crop-header__row" style="height:{{navHeightRpx}}rpx;">
-      <button class="icon-button" style="width:80rpx;min-width:0;" aria-label="返回选择照片" bindtap="cancel"><ui-icon name="chevron-left" size="40" color="#1d2228" /></button>
+      <button class="icon-button" style="width:80rpx;min-width:0;" aria-label="返回选择照片" bindtap="cancel"><ui-icon name="chevron-left" size="40" tone="ink" /></button>
       <view class="crop-title">裁切 / 旋转</view>
     </view>
   </view>
@@ -29,9 +29,9 @@
         <button class="ratio-option {{cropRatio === '3:4' ? 'ratio-option--active' : ''}}" style="width:100%;min-width:0;" data-ratio="3:4" bindtap="chooseRatio">3:4</button>
       </view>
       <view class="crop-actions">
-        <button style="width:100%;min-width:0;" bindtap="rotateLeft"><ui-icon name="rotate-left" size="28" color="#355c7d" /><text>左转90°</text></button>
-        <button style="width:100%;min-width:0;" bindtap="rotateRight"><ui-icon name="rotate-right" size="28" color="#355c7d" /><text>右转90°</text></button>
-        <button style="width:100%;min-width:0;" bindtap="resetCrop"><ui-icon name="reset" size="28" color="#355c7d" /><text>重置</text></button>
+        <button style="width:100%;min-width:0;" bindtap="rotateLeft"><ui-icon name="rotate-left" size="28" tone="primary" /><text>左转90°</text></button>
+        <button style="width:100%;min-width:0;" bindtap="rotateRight"><ui-icon name="rotate-right" size="28" tone="primary" /><text>右转90°</text></button>
+        <button style="width:100%;min-width:0;" bindtap="resetCrop"><ui-icon name="reset" size="28" tone="primary" /><text>重置</text></button>
       </view>
       <view wx:if="{{error}}" class="crop-error">{{error}}</view>
       <view class="bottom-actions">

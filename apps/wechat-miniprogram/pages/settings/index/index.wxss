@@ -94,6 +94,10 @@
 }
 
 .card-action {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4rpx;
   flex: 0 0 auto;
   max-width: 150rpx;
   padding: 14rpx 18rpx;

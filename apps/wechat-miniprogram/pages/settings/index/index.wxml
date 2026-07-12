@@ -8,7 +8,7 @@
       <view class="card-copy">微信认证登录、手机号和退出登录。</view>
       <view class="card-foot">后续从云端账号同步。</view>
     </view>
-    <view class="card-action">管理 ›</view>
+    <view class="card-action"><text>管理</text><ui-icon name="chevron-right" size="24" tone="primary" /></view>
   </view>
 
   <view class="settings-card settings-row-card" data-url="/pages/settings/profile/index" bindtap="openSection">
@@ -16,7 +16,7 @@
       <view class="card-title">我的穿衣画像</view>
       <view class="card-copy">用于推荐、买前评估和 AI 试穿。</view>
     </view>
-    <view class="card-action">编辑 ›</view>
+    <view class="card-action"><text>编辑</text><ui-icon name="chevron-right" size="24" tone="primary" /></view>
   </view>
 
   <view class="settings-card settings-row-card" data-url="/pages/settings/tryon-photos/index" bindtap="openSection">
@@ -25,7 +25,7 @@
       <view class="card-copy">照片仅在生成试穿图时使用。</view>
       <view class="card-foot">全身照和脸部照仅用于主动生成试穿图。</view>
     </view>
-    <view class="card-action">管理 ›</view>
+    <view class="card-action"><text>管理</text><ui-icon name="chevron-right" size="24" tone="primary" /></view>
   </view>
 
   <view class="settings-card settings-row-card" data-url="/pages/settings/ai-key/index" bindtap="openSection">
@@ -34,7 +34,7 @@
       <view class="card-copy">管理本机 AI 服务配置，信息只保存在你的设备上。</view>
       <view class="status-line">{{aiStatusText}}</view>
     </view>
-    <view class="card-action">查看 ›</view>
+    <view class="card-action"><text>查看</text><ui-icon name="chevron-right" size="24" tone="primary" /></view>
   </view>
 
   <view class="settings-card settings-row-card" data-url="/pages/settings/diagnostics/index" bindtap="openSection">
@@ -42,7 +42,7 @@
       <view class="card-title">远程诊断</view>
       <view class="card-copy">遇到同步、登录或图片问题时，主动上传脱敏诊断信息。</view>
     </view>
-    <view class="card-action">上传 ›</view>
+    <view class="card-action"><text>上传</text><ui-icon name="chevron-right" size="24" tone="primary" /></view>
   </view>
 
   <view class="settings-card settings-row-card compact" data-url="/pages/settings/privacy/index" bindtap="openSection">
@@ -50,7 +50,7 @@
       <view class="card-title">隐私与服务协议</view>
       <view class="card-copy">数据保存、图片和协议入口。</view>
     </view>
-    <view class="card-action">›</view>
+    <view class="card-action"><ui-icon name="chevron-right" size="24" tone="primary" /></view>
   </view>
 
   <view class="settings-card settings-row-card compact" data-url="/pages/settings/about/index" bindtap="openSection">
@@ -58,6 +58,6 @@
       <view class="card-title">关于</view>
       <view class="card-copy">版本、AppID 和服务说明。</view>
     </view>
-    <view class="card-action">›</view>
+    <view class="card-action"><ui-icon name="chevron-right" size="24" tone="primary" /></view>
   </view>
 </view>

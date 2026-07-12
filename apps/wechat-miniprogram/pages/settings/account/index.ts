@@ -10,7 +10,6 @@ Page({
     phoneLine: "未绑定",
     phoneStatus: "登录名",
     wechatLine: "未绑定",
-    passwordLine: "未设置",
     deviceId: "",
     errorMessage: "",
   },
@@ -53,7 +52,6 @@ Page({
       phoneLine: security.phone.masked ?? "未绑定",
       phoneStatus: "登录名",
       wechatLine: security.wechat.bound ? "已绑定当前小程序" : "未绑定",
-      passwordLine: security.password.set ? "已设置" : "未设置",
     });
   },
 

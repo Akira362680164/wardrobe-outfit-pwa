@@ -1,5 +1,5 @@
 <view class="connect-page">
-  <button class="back-button" bindtap="goBack">‹</button>
+  <button class="back-button" aria-label="返回" bindtap="goBack"><ui-icon name="chevron-left" size="36" tone="ink" /></button>
   <view class="connect-content">
     <view class="connect-title text-wrap-safe">连接 Wardora 账号</view>
     <view class="connect-copy text-wrap-safe">请选择绑定已有账号，或创建一个新账号。</view>

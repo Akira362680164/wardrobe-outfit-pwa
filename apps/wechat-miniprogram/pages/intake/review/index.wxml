@@ -1,9 +1,9 @@
 <view class="page-shell intake-page" style="padding-top:{{navTopRpx + navHeightRpx + 68}}rpx;">
   <view class="intake-header" style="padding-top:{{navTopRpx}}rpx;">
     <view class="intake-header__row" style="height:{{navHeightRpx + 32}}rpx;">
-      <button class="header-icon-button" style="width:80rpx;min-width:0;" aria-label="返回选择照片" bindtap="goBack"><ui-icon name="chevron-left" size="40" color="#1d2228" /></button>
+      <button class="header-icon-button" style="width:80rpx;min-width:0;" aria-label="返回选择照片" bindtap="goBack"><ui-icon name="chevron-left" size="40" tone="ink" /></button>
       <view class="intake-header__copy"><view class="page-title">{{pageTitle}}</view><view class="step-copy">步骤 2 / 2 · 确认信息</view></view>
-      <button class="header-icon-button header-icon-button--close" style="right:{{navRightRpx}}rpx;width:80rpx;min-width:0;" aria-label="退出录入" bindtap="requestExit"><ui-icon name="x" size="32" color="#1d2228" /></button>
+      <button class="header-icon-button header-icon-button--close" style="right:{{navRightRpx}}rpx;width:80rpx;min-width:0;" aria-label="退出录入" bindtap="requestExit"><ui-icon name="x" size="32" tone="ink" /></button>
     </view>
     <view class="progress-track"><view class="progress-fill"></view></view>
   </view>

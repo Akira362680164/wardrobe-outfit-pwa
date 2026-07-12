@@ -90,7 +90,7 @@
 
   <block wx:elif="{{stage === 'completed'}}">
     <view class="status-card">
-      <view class="success-mark">✓</view>
+      <view class="success-mark"><ui-icon name="check" size="42" tone="primary" /></view>
       <view class="final-title">账号已注销</view>
       <view class="final-copy">你的账号、衣橱数据和图片已删除，所有设备均已退出登录。</view>
       <button class="primary-action" bindtap="returnToLogin">返回登录页</button>

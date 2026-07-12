@@ -1,4 +1,4 @@
 {
   "navigationStyle": "custom",
-  "usingComponents": { "ui-confirm-sheet": "/components/ui/confirm-sheet/index" }
+  "usingComponents": { "ui-confirm-sheet": "/components/ui/confirm-sheet/index", "ui-icon": "/components/ui/icon/index" }
 }

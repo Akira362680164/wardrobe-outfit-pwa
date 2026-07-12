@@ -8,6 +8,8 @@ const profile = fs.readFileSync("apps/wechat-miniprogram/pages/settings/profile/
 const photos = fs.readFileSync("apps/wechat-miniprogram/pages/settings/tryon-photos/index.ts", "utf8");
 const legal = fs.readFileSync("apps/wechat-miniprogram/generated/legal-copy.ts", "utf8");
 const appLegal = fs.readFileSync("src/content/legal-content.tsx", "utf8");
+const accountWxml = fs.readFileSync("apps/wechat-miniprogram/pages/settings/account/index.wxml", "utf8");
+const accountTs = fs.readFileSync("apps/wechat-miniprogram/pages/settings/account/index.ts", "utf8");
 
 assert.doesNotMatch(settings, /后续接入|业务接入开发|预览仍未开放|后续单独接/);
 for (const page of ["pages/settings/profile/index", "pages/settings/tryon-photos/index"]) assert.ok(app.pages.includes(page));
@@ -24,4 +26,7 @@ for (const phrase of ["设置 → 账号安全", "数据库与文件", "MiniMax 
 assert.match(legal, /正式业务数据和图片以服务器返回为准/);
 assert.match(appLegal, /正式衣橱数据和图片以.*服务器返回为准/);
 assert.match(legal, /2026年7月10日/);
+assert.equal((accountWxml.match(/<button[^>]+primary-button card-action-button/g) ?? []).length, 4);
+assert.doesNotMatch(accountWxml, /\{\{passwordLine\}\}|已设置/);
+assert.doesNotMatch(accountTs, /passwordLine/);
 console.log("mini settings regression passed");
