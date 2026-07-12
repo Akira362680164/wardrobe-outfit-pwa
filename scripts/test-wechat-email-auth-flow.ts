@@ -36,7 +36,9 @@ assert(loginTs.includes("result.bindingTicket"), "WeChat login must pass the bin
 assert(appJson.includes("pages/login/connect-account/index"), "connect-account page must be registered");
 assert(appJson.includes("pages/login/register-email/index"), "email register page must be registered");
 assert(appJson.includes("pages/settings/change-password/index"), "change-password page must be registered");
-assert(registerTs.includes("wx.showModal"), "email register must confirm before sending code");
+const registerConfirmFlow = registerTs.includes("wx.showModal")
+  || (registerTs.includes("sendConfirmOpen") && registerTs.includes("confirmSendCode") && registerWxml.includes("ui-confirm-sheet"));
+assert(registerConfirmFlow, "email register must confirm before sending code");
 assert(registerTs.includes("startCountdown(response.cooldownSeconds)"), "email register must use the server cooldown");
 assert(forgotPasswordTs.includes("startCountdown(response.cooldownSeconds)"), "password reset must use the server cooldown");
 assert(changePasswordTs.includes("startCountdown(response.cooldownSeconds)"), "change password must use the server cooldown");

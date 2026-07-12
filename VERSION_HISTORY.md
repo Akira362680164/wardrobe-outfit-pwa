@@ -1,6 +1,17 @@
 Warning: truncated output (original token count: 197467)
 Total output lines: 5406
 
+## 2026-07-12 / v2.1.15-test / Codex — 修正跨端微信注册合同测试
+
+- **执行 Agent**：Codex（未触发 subagent；基于已合入 `main` 的生产微信登录修复重新建立独立 worktree）。
+- **目的**：修复 `main` 与 `wechat/miniprogram` 合入后共用认证合同测试对两端确认交互实现不一致的误报。
+- **版本变更**：无，保持 `2.1.15-test`；不修改小程序运行时行为，不构建 APK、不上传体验版。
+- **改动文件**：`scripts/test-wechat-email-auth-flow.ts`、`VERSION_HISTORY.md`。
+- **改动说明**：注册发送验证码前的合同同时接受 Web/App 侧 `wx.showModal` 和小程序侧已实现的 `ui-confirm-sheet`，仍强制要求发送前存在确认步骤。
+- **验证结果**：待本批提交前在 `main` 与 `wechat/miniprogram` 正式目录分别重跑认证合同和 typecheck。
+- **风险门禁**：`medium`；仅测试合同兼容性调整。未触发 subagent：用户未通知。
+- **未验证风险**：未新增运行时逻辑；真实微信登录仍受生产 Secret 注入和服务重启状态影响。
+
 ## 2026-07-12 / v2.1.15-test / Codex — 修复生产微信登录 Secret 注入
 
 - **执行 Agent**：Codex（未触发 subagent；在独立 `codex/wechat-login-production-fix-20260712` worktree 实施）。
