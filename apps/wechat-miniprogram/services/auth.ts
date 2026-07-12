@@ -146,7 +146,7 @@ export async function loginWithPassword(account: string, password: string): Prom
 
 export function sendEmailCode(input: {
   email: string;
-  purpose: "register" | "wechat_register" | "reset_password" | "change_password";
+  purpose: "register" | "wechat_register" | "reset_password" | "change_password" | "change_email";
   bindingTicket?: string;
 }): Promise<SendEmailCodeResponse> {
   return request<SendEmailCodeResponse>({
@@ -156,6 +156,30 @@ export function sendEmailCode(input: {
     toast: false,
     data: input,
   });
+}
+
+export function requestAccountVerificationCode(): Promise<SendEmailCodeResponse> {
+  return request<SendEmailCodeResponse>({ method: "POST", path: "/api/auth/account/verification/request-code", auth: true, toast: false });
+}
+
+export function requestEmailChangeCode(email: string): Promise<SendEmailCodeResponse> {
+  return request<SendEmailCodeResponse>({ method: "POST", path: "/api/auth/account/email/request-code", auth: true, toast: false, data: { email } });
+}
+
+export function changeEmail(input: { email: string; emailCode: string }): Promise<{ status: "ok" }> {
+  return request<{ status: "ok" }>({ method: "POST", path: "/api/auth/account/email/change", auth: true, toast: false, data: input });
+}
+
+export function changePhone(input: { phone: string; currentPassword?: string; emailCode?: string }): Promise<{ status: "ok" }> {
+  return request<{ status: "ok" }>({ method: "POST", path: "/api/auth/account/phone/change", auth: true, toast: false, data: input });
+}
+
+export function unbindWechat(input: { appId: string; currentPassword?: string; emailCode?: string }): Promise<{ status: "ok" }> {
+  return request<{ status: "ok" }>({ method: "POST", path: "/api/auth/account/wechat/unbind", auth: true, toast: false, data: input });
+}
+
+export function rebindWechat(input: { appId: string; loginCode: string; currentPassword?: string; emailCode?: string }): Promise<{ status: "ok" }> {
+  return request<{ status: "ok" }>({ method: "POST", path: "/api/auth/account/wechat/rebind", auth: true, toast: false, data: input });
 }
 
 export function requestPasswordReset(email: string): Promise<SendEmailCodeResponse> {

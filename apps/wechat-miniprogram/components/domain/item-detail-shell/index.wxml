@@ -4,10 +4,10 @@
       <ui-icon name="chevron-left" size="44" color="currentColor" />
     </navigator>
     <view class="item-detail-shell__top-title">{{topTitle || title}}</view>
-    <slot name="topRight" />
   </view>
 
   <view class="item-detail-shell__hero">
+    <view class="item-detail-shell__hero-action"><slot name="topRight" /></view>
     <view wx:if="{{heroLabel}}" class="item-detail-shell__badge">{{heroLabel}}</view>
     <image wx:if="{{imageUrl}}" class="item-detail-shell__image" mode="aspectFit" src="{{imageUrl}}" />
     <view wx:else class="item-detail-shell__fallback">{{heroFallback}}</view>

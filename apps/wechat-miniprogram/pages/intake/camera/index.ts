@@ -1,4 +1,4 @@
-import { chooseImages, cropImageWithNativeEditor, uploadImagesForCreate, type ChosenImage } from "../../../services/assets";
+import { chooseImages, uploadImagesForCreate, type ChosenImage } from "../../../services/assets";
 import { colorLabel, recognizeGarmentImages } from "../../../services/ai";
 import { createClientMutationId } from "../../../services/workspace";
 import { clearIntakeDraft, getIntakeKind, getIntakeQueue, setIntakeKind, setIntakeQueue, updateIntakeQueueItem, type IntakeDraft, type IntakeKind, type IntakeQueueItem } from "../../../stores/intake";
@@ -23,6 +23,9 @@ Page({
     error: "",
     currentIndex: 0,
     current: null as IntakeQueueItem | null,
+    popoverStyle: "",
+    popoverArrowStyle: "left:50%;transform:translateX(-50%) rotate(45deg);",
+    confirmExitOpen: false,
   },
 
   onLoad(this: any, query?: { kind?: string }) {
@@ -102,23 +105,15 @@ Page({
   selectCurrent(this: any, event: any) {
     this.setData({ currentIndex: Number(event.currentTarget.dataset.index) || 0 });
     this.refreshQueue();
+    this.refreshPopoverPosition();
   },
 
   async editCurrent(this: any) {
     const item = this.data.current as IntakeQueueItem | null;
     if (!item) return;
-    const cropped = await cropImageWithNativeEditor(item.processedPath || item.stablePath);
-    if (!cropped) return;
-    updateIntakeQueueItem(item.clientItemId, {
-      processedPath: cropped,
-      stablePath: cropped,
-      imagePath: cropped,
-      status: "selected",
-      error: "",
-      assetMutations: [],
-      draft: { ...item.draft, imagePath: cropped, stablePath: cropped },
+    wx.navigateTo({
+      url: `/pages/intake/crop/index?clientItemId=${encodeURIComponent(item.clientItemId)}&src=${encodeURIComponent(item.processedPath || item.stablePath)}`,
     });
-    this.refreshQueue();
   },
 
   removeCurrent(this: any) {
@@ -139,13 +134,18 @@ Page({
 
   cancel(this: any) {
     if (!getIntakeQueue().length) return this.exitNow();
-    wx.showModal({
-      title: "退出本次录入？",
-      content: "退出后，本次选择的图片和填写内容将被清空。",
-      confirmText: "确认退出",
-      cancelText: "继续录入",
-      success: (result) => { if (result.confirm) { clearIntakeDraft(); this.syncExitGuard(); this.exitNow(); } },
-    });
+    this.setData({ confirmExitOpen: true });
+  },
+
+  closeExitConfirm(this: any) {
+    this.setData({ confirmExitOpen: false });
+  },
+
+  confirmExit(this: any) {
+    clearIntakeDraft();
+    this.setData({ confirmExitOpen: false });
+    this.syncExitGuard();
+    this.exitNow();
   },
 
   async goReview(this: any) {
@@ -202,13 +202,11 @@ Page({
   },
 
   syncExitGuard() {
-    const api = wx as typeof wx & { enableAlertBeforeUnload?: (options: { message: string }) => void; disableAlertBeforeUnload?: () => void };
-    if (getIntakeQueue().length) api.enableAlertBeforeUnload?.({ message: "退出本次录入？" });
-    else api.disableAlertBeforeUnload?.();
+    // 业务确认统一由 ui-confirm-sheet 提供，避免微信原生确认页遮挡页面。
   },
 
   disableExitGuard() {
-    (wx as typeof wx & { disableAlertBeforeUnload?: () => void }).disableAlertBeforeUnload?.();
+    // 保留方法名兼容已有流程；不注册微信原生离开确认。
   },
 
   refreshQueue(this: any) {
@@ -222,6 +220,33 @@ Page({
       readyCount: queue.filter((item) => item.status === "ready").length,
       failedCount: queue.filter((item) => item.status === "failed").length,
       uploadingCount: queue.filter((item) => item.status === "uploading").length,
+    });
+    setTimeout(() => this.refreshPopoverPosition(), 0);
+  },
+
+  refreshPopoverPosition(this: any) {
+    if (!this.data.current || !this.data.queue.length) {
+      this.setData({ popoverStyle: "", popoverArrowStyle: "left:50%;transform:translateX(-50%) rotate(45deg);" });
+      return;
+    }
+    const query = (wx as typeof wx & { createSelectorQuery: () => any }).createSelectorQuery().in(this);
+    query.select(".photo-card").boundingClientRect();
+    query.selectAll(".thumb-wrap").boundingClientRect();
+    query.exec((rects: Array<any>) => {
+      const card = rects?.[0];
+      const thumbs = rects?.[1] as Array<any> | undefined;
+      const thumb = thumbs?.[this.data.currentIndex];
+      if (!card || !thumb) return;
+      const bubbleWidth = Math.min(card.width - 24, 250);
+      const midpoint = thumb.left + thumb.width / 2;
+      const left = Math.max(card.left + 12, Math.min(midpoint - bubbleWidth / 2, card.right - bubbleWidth - 12));
+      const arrowLeft = Math.max(16, Math.min(midpoint - left, bubbleWidth - 16));
+      const bubbleHeight = 58;
+      const top = Math.max(card.top + 8, thumb.top - bubbleHeight - 12);
+      this.setData({
+        popoverStyle: `left:${left}px;top:${top}px;width:${bubbleWidth}px;transform:none;`,
+        popoverArrowStyle: `left:${arrowLeft}px;transform:translateX(-50%) rotate(45deg);`,
+      });
     });
   },
 });

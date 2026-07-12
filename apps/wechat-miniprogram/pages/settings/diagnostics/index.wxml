@@ -1,10 +1,45 @@
 <view class="settings-page page-shell">
   <view class="page-title">诊断</view>
-  <view class="page-copy">诊断入口先展示规则，正式上传等后端诊断接口接入后再启用。</view>
+  <view class="page-copy">遇到问题时可主动上传脱敏诊断数据，并将工单编号提供给开发者。</view>
 
   <view class="info-card">
     <view wx:for="{{rows}}" wx:key="*this" class="rule-row">{{item}}</view>
   </view>
 
-  <button class="disabled-button" bindtap="showUnavailable">上传诊断数据</button>
+  <button wx:if="{{phase === 'idle'}}" class="primary-button" data-parity-id="parity.mini.pages.settings.diagnostics.ca6aee58af" bindtap="startUpload">上传诊断数据</button>
+
+  <view wx:if="{{phase === 'describing'}}" class="upload-card">
+    <view class="section-title">描述遇到的问题</view>
+    <textarea class="description-input" maxlength="1000" value="{{description}}" placeholder="请描述操作步骤、异常现象和期望结果" bindinput="updateDescription" />
+    <view class="counter">{{description.length}} / 1000</view>
+    <view class="action-row">
+      <button class="secondary-button" bindtap="cancelDescription">取消</button>
+      <button class="primary-button compact" disabled="{{!canSubmit}}" bindtap="confirmUpload">确认并上传</button>
+    </view>
+  </view>
+
+  <view wx:if="{{phase === 'building' || phase === 'authorizing' || phase === 'uploading'}}" class="status-card">
+    <view class="status-title">{{statusMessage}}</view>
+    <view class="status-copy">请保持网络连接，不要关闭小程序。</view>
+    <view wx:if="{{caseId}}" class="case-id">{{caseId}}</view>
+  </view>
+
+  <view wx:if="{{phase === 'success'}}" class="status-card success-card">
+    <view class="status-title">上传成功</view>
+    <view class="status-copy">请将以下诊断工单编号提供给开发者：</view>
+    <view class="case-id">{{caseId}}</view>
+    <view class="status-copy">上传时间：{{uploadedAt}}</view>
+    <button class="primary-button" bindtap="startUpload">再次上传</button>
+  </view>
+
+  <view wx:if="{{phase === 'failed'}}" class="status-card error-card">
+    <view class="status-title">上传失败</view>
+    <view class="status-copy">{{errorMessage}}</view>
+    <view wx:if="{{caseId}}" class="case-id">{{caseId}}</view>
+    <view class="action-row">
+      <button class="secondary-button" bindtap="cancelDescription">取消</button>
+      <button class="primary-button compact" bindtap="retryUpload">重试</button>
+    </view>
+  </view>
+  <ui-confirm-sheet visible="{{confirmOpen}}" title="确认上传诊断数据？" content="将上传脱敏后的运行环境、当前页面和业务数量摘要，不包含图片、AI Key、密码或登录凭据。" confirm-text="确认上传" bind:close="closeConfirm" bind:confirm="confirmUploadNow" />
 </view>

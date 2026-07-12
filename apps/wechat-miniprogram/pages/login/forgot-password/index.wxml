@@ -28,4 +28,5 @@
 
     <button class="primary-button submit-button" disabled="{{submitting || !email || !newPassword || !confirmPassword}}" bindtap="submit">重置密码</button>
   </view>
+  <ui-confirm-sheet visible="{{sendConfirmOpen}}" title="发送邮箱验证码" content="验证码将发送至 {{sendConfirmEmail}}，10 分钟内有效。确认发送？" confirm-text="确认发送" bind:close="closeSendConfirm" bind:confirm="confirmSendCode" />
 </view>

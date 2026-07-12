@@ -138,6 +138,7 @@
   border-radius: var(--radius-card-secondary);
   background: rgba(244, 245, 243, 0.78);
 }
+.ai-advice-card { box-sizing: border-box; margin-top: 28rpx; padding: 28rpx; border: 1rpx solid rgba(53,92,125,.16); border-radius: var(--radius-card-inner); background: linear-gradient(135deg, rgba(53,92,125,.10), rgba(255,255,252,.88)); box-shadow: var(--shadow-card); }.ai-advice-card__head { display:flex; align-items:center; justify-content:space-between; gap:16rpx; }.ai-advice-card__source { color:var(--color-primary); font-size:20rpx; font-weight:700; }.advice-button--secondary { color:var(--color-primary); background:rgba(53,92,125,.10); }
 
 .detail-tab {
   display: flex;

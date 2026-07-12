@@ -30,6 +30,8 @@ Page({
     countdown: 0,
     errorMessage: "",
     accepted: false,
+    sendConfirmOpen: false,
+    sendConfirmEmail: "",
   },
 
   countdownTimer: 0 as number,
@@ -69,9 +71,17 @@ Page({
       return;
     }
     const emailMasked = maskEmail(email);
-    const confirmed = await confirmSend(emailMasked);
-    if (!confirmed) return;
-    this.setData({ sending: true, errorMessage: "" });
+    this.setData({ sendConfirmOpen: true, sendConfirmEmail: emailMasked });
+  },
+
+  closeSendConfirm(this: any) {
+    this.setData({ sendConfirmOpen: false });
+  },
+
+  async confirmSendCode(this: any) {
+    if (this.data.sending) return;
+    const email = this.data.email.trim();
+    this.setData({ sendConfirmOpen: false, sending: true, errorMessage: "" });
     try {
       const response = await sendEmailCode({
         email,
@@ -141,19 +151,6 @@ Page({
     wx.navigateTo({ url: "/pages/webview/privacy/index" });
   },
 });
-
-function confirmSend(emailMasked: string): Promise<boolean> {
-  return new Promise((resolve) => {
-    wx.showModal({
-      title: "发送邮箱验证码",
-      content: `验证码将发送至 ${emailMasked}，10 分钟内有效。确认发送？`,
-      cancelText: "取消",
-      confirmText: "确认发送",
-      success: (result) => resolve(Boolean(result.confirm)),
-      fail: () => resolve(false),
-    });
-  });
-}
 
 function isEmail(email: string): boolean {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim());

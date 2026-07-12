@@ -1,7 +1,6 @@
 import { generateTryOnPreview, hasMiniMaxKey } from "../../../services/ai";
 import {
   chooseImages,
-  cropImageWithNativeEditor,
   uploadPreparedImageAssets,
 } from "../../../services/assets";
 import {
@@ -13,6 +12,7 @@ import {
   type MiniTryOnProfile,
 } from "../../../services/workspace";
 import { getCapsuleGeometry } from "../../../utils/capsule-layout";
+import { consumePendingCropResult } from "../../../stores/intake";
 
 Page({
   data: {
@@ -25,6 +25,7 @@ Page({
     selectedIds: [] as string[],
     selectedMap: {} as Record<string, boolean>,
     referencePath: "",
+    cropTarget: false,
     prompt: "",
     preview: "",
     saving: false,
@@ -33,6 +34,10 @@ Page({
     wx.setNavigationBarTitle({ title: "AI 试穿" });
     this.setData({ contentTopRpx: getCapsuleGeometry().contentTopRpx });
     void this.load();
+  },
+  onShow(this: any) {
+    const cropped = consumePendingCropResult();
+    if (cropped && this.data.cropTarget) this.setData({ referencePath: cropped, cropTarget: false });
   },
   async load(this: any) {
     this.setData({ loading: true, error: "", needsSettings: false });
@@ -70,8 +75,8 @@ Page({
   async chooseReference(this: any) {
     const [image] = await chooseImages(["album", "camera"], 1);
     if (!image) return;
-    const cropped = await cropImageWithNativeEditor(image.stablePath);
-    if (cropped) this.setData({ referencePath: cropped });
+    this.setData({ cropTarget: true });
+    wx.navigateTo({ url: `/pages/intake/crop/index?src=${encodeURIComponent(image.stablePath)}` });
   },
   input(this: any, event: any) {
     this.setData({ prompt: event.detail.value });

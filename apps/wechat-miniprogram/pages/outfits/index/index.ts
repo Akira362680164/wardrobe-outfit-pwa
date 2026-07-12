@@ -31,7 +31,8 @@ type WeekDayView = {
   active: boolean;
   thumbnails: string[];
   entryLabel: string;
-  toneClass: string;
+  toneClass?: string;
+  toneClasses: string[];
 };
 type BackupWeekEntry = {
   id: string;
@@ -386,9 +387,13 @@ Page({
   },
 
   planForDate(date: string): MiniCalendarPlan | undefined {
+    return this.plansForDate(date)[0];
+  },
+
+  plansForDate(date: string): MiniCalendarPlan[] {
     return this.data.calendarPlans
       .filter((plan) => date >= plan.startDate && date <= plan.endDate)
-      .sort((a, b) => a.startDate === b.startDate ? b.updatedAt.localeCompare(a.updatedAt) : a.startDate.localeCompare(b.startDate))[0];
+      .sort((a, b) => a.startDate === b.startDate ? b.updatedAt.localeCompare(a.updatedAt) : a.startDate.localeCompare(b.startDate));
   },
 
   rebuildWeek() {
@@ -397,7 +402,7 @@ Page({
       const date = addDays(this.data.weekStart, index);
       const entry = this.entryForDate(date);
       const outfit = entry ? this.data.outfits.find((item) => item.id === getDisplayOutfitId(entry)) : undefined;
-      const plan = this.planForDate(date);
+      const plans = this.plansForDate(date);
       return {
         key: date,
         week: ["一", "二", "三", "四", "五", "六", "日"][index],
@@ -405,7 +410,7 @@ Page({
         active: date === this.data.selectedDate,
         thumbnails: outfit?.itemImages?.length ? outfit.itemImages : outfit?.imageUrl ? [outfit.imageUrl] : [],
         entryLabel: entryLabel(entry, date, todayKey),
-        toneClass: plan ? TONE_CLASS[plan.tone] : "",
+        toneClasses: plans.slice(0, 2).map((plan) => TONE_CLASS[plan.tone]),
       };
     });
     const selectedEntries = this.entriesForDate(this.data.selectedDate);
@@ -432,7 +437,7 @@ Page({
       selectedDateLabel: formatDateWithWeek(this.data.selectedDate),
       selectedEmptyTitle: relation === "past" ? `${formatDateWithWeek(this.data.selectedDate)}还没有穿着记录` : `${formatDateWithWeek(this.data.selectedDate)}还没有安排穿搭`,
       selectedEmptyCopy: relation === "past" ? "可以补记当天实际穿过的套装。" : "先安排主计划，再添加备选穿搭。",
-      selectedEmptyAction: relation === "past" ? "补记已穿" : "安排主穿搭",
+      selectedEmptyAction: relation === "past" ? "补记已穿" : "+计划穿搭",
       selectedWeekEntry: selectedEntry && selectedOutfit ? {
         id: selectedEntry.id,
         outfitId: selectedOutfit.id,

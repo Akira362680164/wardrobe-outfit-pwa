@@ -30,4 +30,5 @@
   </view>
 
   <button class="primary-button" disabled="{{submitting}}" bindtap="submit">{{submitting ? '保存中' : '保存新密码'}}</button>
+  <ui-confirm-sheet visible="{{sendConfirmOpen}}" title="发送邮箱验证码" content="验证码将发送至 {{emailMasked}}，10 分钟内有效。确认发送？" confirm-text="确认发送" bind:close="closeSendConfirm" bind:confirm="confirmSendCode" />
 </view>

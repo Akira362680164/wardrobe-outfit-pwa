@@ -119,4 +119,5 @@
       </view>
     </item-edit-shell>
   </view>
+  <ui-confirm-sheet visible="{{discardConfirmOpen}}" title="放弃本次修改？" content="继续编辑会保留全部字段；只有确认放弃才清除本页草稿。" cancel-text="继续编辑" confirm-text="放弃修改" danger="true" bind:close="closeDiscardConfirm" bind:confirm="confirmDiscard" />
 </view>

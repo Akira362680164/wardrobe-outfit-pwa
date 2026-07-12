@@ -65,6 +65,22 @@
   font-weight: 700;
 }
 
+.card-action-button {
+  width: auto;
+  min-width: 180rpx;
+  height: 68rpx;
+  margin: 20rpx 0 0;
+  padding: 0 22rpx;
+  border: 1rpx solid rgba(53, 92, 125, 0.2);
+  border-radius: 999rpx;
+  color: #355c7d;
+  background: rgba(53, 92, 125, 0.08);
+  font-size: 23rpx;
+  font-weight: 700;
+}
+
+.card-action-button::after { border: 0; }
+
 .status-chip {
   padding: 8rpx 16rpx;
   border-radius: 999rpx;

@@ -12,8 +12,10 @@
   </view>
 
   <view class="settings-card settings-row-card" data-url="/pages/settings/profile/index" bindtap="openSection">
-    <view class="card-title">我的穿衣画像</view>
-    <view class="card-copy">用于推荐、买前评估和 AI 试穿。</view>
+    <view class="settings-main">
+      <view class="card-title">我的穿衣画像</view>
+      <view class="card-copy">用于推荐、买前评估和 AI 试穿。</view>
+    </view>
     <view class="card-action">编辑 ›</view>
   </view>
 
@@ -29,7 +31,7 @@
   <view class="settings-card settings-row-card" data-url="/pages/settings/ai-key/index" bindtap="openSection">
     <view class="settings-main">
       <view class="card-title">AI 设置</view>
-      <view class="card-copy">MiniMax Key 只在本机保存，调用时交给后端代理解析结果。</view>
+      <view class="card-copy">管理本机 AI 服务配置，信息只保存在你的设备上。</view>
       <view class="status-line">{{aiStatusText}}</view>
     </view>
     <view class="card-action">查看 ›</view>
@@ -38,9 +40,9 @@
   <view class="settings-card settings-row-card" data-url="/pages/settings/diagnostics/index" bindtap="openSection">
     <view class="settings-main">
       <view class="card-title">远程诊断</view>
-      <view class="card-copy">仅用户主动触发，用于排查同步、登录和图片问题。</view>
+      <view class="card-copy">遇到同步、登录或图片问题时，主动上传脱敏诊断信息。</view>
     </view>
-    <view class="card-action">查看 ›</view>
+    <view class="card-action">上传 ›</view>
   </view>
 
   <view class="settings-card settings-row-card compact" data-url="/pages/settings/privacy/index" bindtap="openSection">

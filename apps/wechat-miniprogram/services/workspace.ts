@@ -98,6 +98,7 @@ export interface MiniGarment {
 
 export interface MiniGarmentDetail extends MiniGarment {
   rawPayload: Record<string, unknown>;
+  aiStyleAdvice?: { summary: string; scenes: string[]; pairingTips: string[]; avoidTips: string[]; generatedAt?: string };
   meta: string;
   statusText: string;
   locationText: string;
@@ -726,8 +727,18 @@ export async function fetchGarmentDetail(
       ) || "未记录",
     fitText: fitText(payload),
     notes: stringValue(payload.notes, "无备注"),
+    aiStyleAdvice: parseAiStyleAdvice(payload.aiStyleAdvice),
     inspirationImages: await resolveInspirationImages(response.data),
   };
+}
+
+function parseAiStyleAdvice(value: unknown): MiniGarmentDetail["aiStyleAdvice"] {
+  if (!value || typeof value !== "object") return undefined;
+  const input = value as Record<string, unknown>;
+  const summary = typeof input.summary === "string" ? input.summary.trim() : "";
+  if (!summary) return undefined;
+  const list = (entry: unknown) => Array.isArray(entry) ? entry.filter((item): item is string => typeof item === "string" && item.trim().length > 0).slice(0, 8) : [];
+  return { summary, scenes: list(input.scenes), pairingTips: list(input.pairingTips), avoidTips: list(input.avoidTips), generatedAt: typeof input.generatedAt === "string" ? input.generatedAt : undefined };
 }
 
 export async function fetchOutfitDetail(id: string): Promise<MiniOutfitDetail> {

@@ -1,6 +1,16 @@
 Warning: truncated output (original token count: 197467)
 Total output lines: 5406
 
+## 2026-07-12 / v2.1.14-test / Codex — 跨端审计修复批次（小程序）
+
+- **执行 Agent**：Codex（未触发 subagent；独立 `codex/wardrobe-cross-platform-mini-repair-20260712` worktree）。
+- **目的**：按 `docs/audits/2026-07-12-wardrobe-cross-platform-review/wardrobe-cross-platform-issue-solution.md` 执行小程序录入、确认框、图标、底栏、计划日历、详情 AI 卡和设置诊断的一致性修复。
+- **版本变更**：无，保持 `2.1.14-test`；本批不构建 APK、不上传体验版。
+- **改动文件**：小程序自定义裁切页与录入页、衣物/种草编辑和试穿参考照裁切入口、SVG 图标和 `ui-confirm-sheet`、自定义底栏/FAB/详情壳、登录勾选框、计划/周月历、设置/诊断/AI 建议、账号安全编辑页、`services/diagnostics.ts`、`app.json`。
+- **改动说明**：拍照/图库入口补齐 SVG 语义图标并收敛尺寸；选中缩略图操作改为一级卡片内浮动气泡，边界和箭头按缩略图中心计算；自绘自由/3:4 裁切、旋转、重置、应用并按实际源图矩形导出，衣物/种草编辑和试穿参考照也改用该裁切页；业务删除/退出/验证码确认统一改为项目底部 Sheet，移除 `wx.showModal` 与 `wx.enableAlertBeforeUnload`；多选栏、计划详情按钮、空状态 `+计划穿搭`、周历两条 marker、白色 Plus 和自定义毛玻璃底栏统一；详情三点移入主图右上角；AI 建议读写服务器并区分生成/已保存状态；诊断页恢复脱敏上传并直接展示上传状态；账号安全新增邮箱改绑、手机号绑定/修改、密码验证/邮箱验证码验证和微信解绑/换绑入口；同步更新受影响的 parity 合同断言。
+- **验证结果**：`tsc --noEmit --project apps/wechat-miniprogram/tsconfig.json` 通过；录入状态机、详情、设置、AI parity 合同通过；`git diff --check` 通过；源码扫描业务 `wx.showModal`/`wx.enableAlertBeforeUnload` 为 0（仅 typings 声明保留）。
+- **未验证风险**：微信开发者工具当前入口仍只登记正式 checkout；修复 worktree 的 `project_import` 返回 `PROJECT_IMPORT_NOT_IN_LIST`，直接 `compile_wxml` 遇 `EPROTO SSLV3_ALERT_HANDSHAKE_FAILURE`，因此未完成 simulator/真机截图验证。生产微信 Secret 仍需由部署环境注入；账号改绑接口已完成代码与类型检查，但尚未在真实邮件服务、真实微信 code 和真机上验证验证码过期、唯一性冲突、最后登录方式保护及换绑闭环。
+
 ## 2026-07-12 / v2.1.14-test / Codex — 一致性修复自动化测试收口
 
 - **执行 Agent**：Codex（未触发 subagent；使用独立 `codex/parity-completion-audit-20260712` worktree）。

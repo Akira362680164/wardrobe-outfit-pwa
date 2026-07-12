@@ -1,6 +1,5 @@
 import {
   chooseImages,
-  cropImageWithNativeEditor,
   uploadPreparedImageAssets,
   type AssetMutation,
 } from "../../../services/assets";
@@ -11,6 +10,7 @@ import {
   type MiniTryOnProfile,
 } from "../../../services/workspace";
 import { getCapsuleGeometry } from "../../../utils/capsule-layout";
+import { consumePendingCropResult } from "../../../stores/intake";
 
 type Target = "fullBody" | "face";
 Page({
@@ -23,11 +23,17 @@ Page({
     enabled: false,
     fullBodyPath: "",
     facePath: "",
+    cropTarget: "" as Target | "",
     removeFields: [] as string[],
   },
   onLoad(this: any) {
     this.setData({ contentTopRpx: getCapsuleGeometry().contentTopRpx });
     void this.load();
+  },
+  onShow(this: any) {
+    const cropped = consumePendingCropResult();
+    if (!cropped || !this.data.cropTarget) return;
+    this.setData(this.data.cropTarget === "fullBody" ? { fullBodyPath: cropped, cropTarget: "" } : { facePath: cropped, cropTarget: "" });
   },
   async load(this: any) {
     this.setData({ loading: true, error: "" });
@@ -54,11 +60,8 @@ Page({
     const target = event.currentTarget.dataset.target as Target;
     const [image] = await chooseImages(["album", "camera"], 1);
     if (!image) return;
-    const cropped = await cropImageWithNativeEditor(image.stablePath);
-    if (!cropped) return;
-    this.setData(
-      target === "fullBody" ? { fullBodyPath: cropped } : { facePath: cropped },
-    );
+    this.setData({ cropTarget: target });
+    wx.navigateTo({ url: `/pages/intake/crop/index?src=${encodeURIComponent(image.stablePath)}` });
   },
   preview(this: any, event: any) {
     const current = event.currentTarget.dataset.src;

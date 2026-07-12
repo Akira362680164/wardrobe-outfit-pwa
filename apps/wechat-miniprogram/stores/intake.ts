@@ -58,6 +58,7 @@ export interface IntakeQueueItem {
 let queue: IntakeQueueItem[] = [];
 let intakeKind: IntakeKind = "garment";
 let lastCreatedId = "";
+let pendingCropResult = "";
 let lastSaveResult = { succeeded: 0, failed: 0, savedIds: [] as string[], failedItemIds: [] as string[] };
 
 export function setIntakeKind(kind: IntakeKind): void {
@@ -66,6 +67,16 @@ export function setIntakeKind(kind: IntakeKind): void {
 
 export function getIntakeKind(): IntakeKind {
   return intakeKind;
+}
+
+export function setPendingCropResult(path: string): void {
+  pendingCropResult = path;
+}
+
+export function consumePendingCropResult(): string {
+  const path = pendingCropResult;
+  pendingCropResult = "";
+  return path;
 }
 
 export function setIntakeDraft(next: IntakeDraft): void {

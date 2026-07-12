@@ -7,9 +7,10 @@ import {
 import { buildSubcategoryChoices, CATEGORY_OPTIONS, isSubcategoryInCategory } from "../../../services/category-catalog";
 import { MINI_SEASON_CATALOG, MINI_STYLE_CATALOG, MINI_WISHLIST_STATUS_LABELS } from "../../../generated/catalogs";
 import { colorLabel, recognizeGarmentImage } from "../../../services/ai";
-import { cropImageWithNativeEditor, uploadPreparedImageAssets, type AssetMutation } from "../../../services/assets";
+import { uploadPreparedImageAssets, type AssetMutation } from "../../../services/assets";
 import { createClientMutationId } from "../../../services/workspace";
 import { HttpError } from "../../../services/http";
+import { consumePendingCropResult } from "../../../stores/intake";
 
 const COLOR_MODES = [
   { value: "single", label: "单主色" },
@@ -65,12 +66,30 @@ Page({
     dirty: false,
     conflict: false,
     draftMutationId: "",
+    discardConfirmOpen: false,
   },
 
   onLoad(this: any, query?: { id?: string }) {
     wx.setNavigationBarTitle({ title: query?.id ? "编辑种草" : "新增种草" });
     if (query?.id) void this.load(query.id);
     else wx.redirectTo({ url: "/pages/intake/camera/index?kind=wishlist" });
+  },
+
+  onShow(this: any) {
+    const cropped = consumePendingCropResult();
+    if (cropped && this.data.item) void this.applyCroppedImage(cropped);
+  },
+
+  async applyCroppedImage(this: any, cropped: string) {
+    const item = this.data.item as MiniWishlistDetail | null;
+    if (!item) return;
+    try {
+      const uploaded = await uploadPreparedImageAssets({ clientMutationId: createClientMutationId(), entityType: "wishlistItem", fieldName: "imageDataUrl", originalPath: item.imageUrl, processedPath: cropped });
+      this.setData({ item: { ...item, imageUrl: cropped }, imageAssetMutations: uploaded.assetMutations });
+      this.markDirty();
+    } catch (error) {
+      this.setData({ error: error instanceof Error ? error.message : "裁切图片上传失败" });
+    }
   },
 
   async load(this: any, id: string) {
@@ -175,11 +194,7 @@ Page({
   async recropImage(this: any) {
     const item = this.data.item as MiniWishlistDetail | null;
     if (!item?.imageUrl) return;
-    const cropped = await cropImageWithNativeEditor(item.imageUrl);
-    if (!cropped) return;
-    const uploaded = await uploadPreparedImageAssets({ clientMutationId: createClientMutationId(), entityType: "wishlistItem", fieldName: "imageDataUrl", originalPath: item.imageUrl, processedPath: cropped });
-    this.setData({ item: { ...item, imageUrl: cropped }, imageAssetMutations: uploaded.assetMutations });
-    this.markDirty();
+    wx.navigateTo({ url: `/pages/intake/crop/index?src=${encodeURIComponent(item.imageUrl)}` });
   },
 
   async reRecognize(this: any) {
@@ -191,12 +206,17 @@ Page({
 
   markDirty(this: any) {
     this.setData({ dirty: true, conflict: false, draftMutationId: createClientMutationId() });
-    (wx as typeof wx & { enableAlertBeforeUnload?: (options: { message: string }) => void }).enableAlertBeforeUnload?.({ message: "继续编辑或放弃修改" });
   },
 
   requestBack(this: any) {
     if (!this.data.dirty) { wx.navigateBack({ delta: 1 }); return; }
-    wx.showModal({ title: "放弃本次修改？", content: "继续编辑会保留全部字段；只有确认放弃才清除本页草稿。", cancelText: "继续编辑", confirmText: "放弃修改", success: (result) => { if (result.confirm) { (wx as typeof wx & { disableAlertBeforeUnload?: () => void }).disableAlertBeforeUnload?.(); wx.navigateBack({ delta: 1 }); } } });
+    this.setData({ discardConfirmOpen: true });
+  },
+
+  closeDiscardConfirm(this: any) { this.setData({ discardConfirmOpen: false }); },
+
+  confirmDiscard(this: any) {
+    wx.navigateBack({ delta: 1 });
   },
 
   async save(this: any) {
@@ -239,7 +259,6 @@ Page({
         assetMutations: this.data.imageAssetMutations,
         clientMutationId: this.data.draftMutationId || createClientMutationId(),
       });
-      (wx as typeof wx & { disableAlertBeforeUnload?: () => void }).disableAlertBeforeUnload?.();
       wx.showToast({ title: "已保存", icon: "success" });
       wx.redirectTo({ url: `/pages/wishlist/detail/index?id=${encodeURIComponent(item.id)}` });
     } catch (error) {

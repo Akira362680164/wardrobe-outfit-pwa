@@ -14,7 +14,7 @@ for (const page of ["pages/settings/profile/index", "pages/settings/tryon-photos
 assert.match(about, /APP_BUILD_VERSION/);
 for (const field of ["fitGender", "heightCm", "bodyType", "shoulderWidth", "legRatio", "hairDescription", "skinToneDescription", "styleNote"]) assert.match(profile, new RegExp(field));
 assert.match(profile, /statusCode\s*===\s*409/);
-assert.match(photos, /cropImageWithNativeEditor/);
+assert.match(photos, /pages\/intake\/crop\/index/);
 assert.match(photos, /uploadPreparedImageAssets/);
 assert.match(photos, /kind:\s*"remove"/);
 for (const phrase of ["设置 → 账号安全", "数据库与文件", "MiniMax Key"]) {

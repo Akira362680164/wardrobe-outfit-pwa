@@ -141,6 +141,12 @@ Page({
     const id = String(event.currentTarget.dataset.id || "");
     if (id) wx.navigateTo({ url: `/pages/outfits/detail/index?id=${encodeURIComponent(id)}` });
   },
+
+  addDayOutfit(event: DatasetEvent) {
+    const date = String(event.currentTarget.dataset.date || "");
+    if (!date) return;
+    wx.navigateTo({ url: `/pages/outfits/calendar/index?date=${encodeURIComponent(date)}` });
+  },
 });
 
 function toPlanView(plan: MiniCalendarPlan): PlanDetailView {

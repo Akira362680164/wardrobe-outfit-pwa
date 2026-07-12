@@ -1,0 +1,10 @@
+<view wx:if="{{visible}}" class="confirm-sheet__backdrop" catchtap="onBackdrop">
+  <view class="confirm-sheet" catchtap="stop">
+    <view class="confirm-sheet__title">{{title}}</view>
+    <view wx:if="{{content}}" class="confirm-sheet__content">{{content}}</view>
+    <view class="confirm-sheet__actions">
+      <button class="confirm-sheet__cancel" bindtap="cancel">{{cancelText}}</button>
+      <button class="confirm-sheet__confirm {{danger ? 'confirm-sheet__confirm--danger' : ''}}" loading="{{loading}}" disabled="{{loading}}" bindtap="confirm">{{confirmText}}</button>
+    </view>
+  </view>
+</view>

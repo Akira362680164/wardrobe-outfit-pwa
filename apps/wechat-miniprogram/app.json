@@ -21,6 +21,7 @@
     "pages/trips/detail/index",
     "pages/trips/edit/index",
     "pages/intake/camera/index",
+    "pages/intake/crop/index",
     "pages/intake/review/index",
     "pages/wishlist/index/index",
     "pages/wishlist/detail/index",
@@ -29,6 +30,7 @@
     "pages/settings/index/index",
     "pages/settings/ai-key/index",
     "pages/settings/account/index",
+    "pages/settings/account/edit/index",
     "pages/settings/account-deletion/index",
     "pages/settings/change-password/index",
     "pages/settings/privacy/index",
@@ -45,6 +47,7 @@
     "backgroundTextStyle": "dark"
   },
   "tabBar": {
+    "custom": true,
     "color": "#6f777f",
     "selectedColor": "#355c7d",
     "backgroundColor": "#fffffc",

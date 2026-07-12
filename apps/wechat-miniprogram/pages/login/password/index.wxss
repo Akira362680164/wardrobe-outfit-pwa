@@ -132,6 +132,7 @@
   align-items: flex-start;
   justify-content: flex-start;
 }
+.agreement-checkbox-hit checkbox { transform: scale(.72); transform-origin: top left; }
 
 .agreement-tip {
   min-width: 0;

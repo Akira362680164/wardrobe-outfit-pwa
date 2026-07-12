@@ -42,6 +42,7 @@ Page({
     selectionMode: false,
     selectedIds: [] as string[],
     selectedMap: {} as Record<string, boolean>,
+    deleteConfirmOpen: false,
     deletingSelection: false,
   },
 
@@ -266,7 +267,16 @@ Page({
   confirmBatchDelete(this: any) {
     const count = this.data.selectedIds.length;
     if (!count) return;
-    wx.showModal({ title: `删除选中的 ${count} 件衣物？`, content: "服务器提交成功后才会从列表移除。", confirmText: "确认删除", success: (result) => { if (result.confirm) void this.batchDeleteSelected(); } });
+    this.setData({ deleteConfirmOpen: true });
+  },
+
+  closeDeleteConfirm(this: any) {
+    if (!this.data.deletingSelection) this.setData({ deleteConfirmOpen: false });
+  },
+
+  confirmDeleteSelection(this: any) {
+    this.setData({ deleteConfirmOpen: false });
+    void this.batchDeleteSelected();
   },
 
   async batchDeleteSelected(this: any) {

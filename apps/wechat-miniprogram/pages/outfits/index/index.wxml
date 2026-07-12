@@ -31,7 +31,9 @@
           </view>
         </view>
         <view wx:else class="week-day__plus">＋</view>
-        <view wx:if="{{item.toneClass}}" class="week-day__bar {{item.toneClass}}"></view>
+        <view wx:if="{{item.toneClasses.length}}" class="week-day__bars">
+          <view wx:for="{{item.toneClasses}}" wx:key="*this" class="week-day__bar {{item}}"></view>
+        </view>
       </view>
     </view>
     <view wx:if="{{selectedWeekEntry}}" class="week-plan-card">
@@ -117,7 +119,7 @@
     </view>
   </view>
 
-  <button wx:if="{{!addPlanSheetOpen && !createSheetOpen}}" class="content-fab" aria-label="新建" bindtap="openCreateSheet">＋</button>
+  <button wx:if="{{!addPlanSheetOpen && !createSheetOpen}}" class="content-fab" aria-label="新建" bindtap="openCreateSheet"><ui-icon name="plus" size="52" color="#fffffc" /></button>
   <create-sheet open="{{createSheetOpen}}" active="create_outfit" bind:close="closeCreateSheet" />
   <ui-sheet open="{{addPlanSheetOpen}}" title="添加计划" show-close="{{false}}" bind:close="closeAddPlanSheet">
     <view class="sheet-options">

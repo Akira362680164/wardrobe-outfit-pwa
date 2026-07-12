@@ -9,8 +9,9 @@ import {
 import { buildSubcategoryChoices, CATEGORY_OPTIONS, isSubcategoryInCategory } from "../../../services/category-catalog";
 import { MINI_GARMENT_STATUS_LABELS, MINI_SEASON_CATALOG, MINI_STYLE_CATALOG } from "../../../generated/catalogs";
 import { colorLabel, recognizeGarmentImage } from "../../../services/ai";
-import { cropImageWithNativeEditor, uploadPreparedImageAssets, type AssetMutation } from "../../../services/assets";
+import { uploadPreparedImageAssets, type AssetMutation } from "../../../services/assets";
 import { createClientMutationId } from "../../../services/workspace";
+import { consumePendingCropResult } from "../../../stores/intake";
 
 const COLOR_MODES = [
   { value: "single", label: "单主色" },
@@ -70,6 +71,22 @@ Page({
     wx.setNavigationBarTitle({ title: "编辑衣物" });
     if (query?.id) void this.load(query.id);
     else this.setData({ error: "缺少单品 ID" });
+  },
+
+  onShow(this: any) {
+    const cropped = consumePendingCropResult();
+    if (cropped && this.data.item) void this.applyCroppedImage(cropped);
+  },
+
+  async applyCroppedImage(this: any, cropped: string) {
+    const item = this.data.item as MiniGarmentDetail | null;
+    if (!item) return;
+    try {
+      const uploaded = await uploadPreparedImageAssets({ clientMutationId: createClientMutationId(), entityType: "garment", fieldName: "imageDataUrl", originalPath: item.imageUrl, processedPath: cropped });
+      this.setData({ item: { ...item, imageUrl: cropped }, imageAssetMutations: uploaded.assetMutations });
+    } catch (error) {
+      this.setData({ error: error instanceof Error ? error.message : "裁切图片上传失败" });
+    }
   },
 
   async load(this: any, id: string) {
@@ -172,10 +189,7 @@ Page({
   async recropImage(this: any) {
     const item = this.data.item as MiniGarmentDetail | null;
     if (!item?.imageUrl) return;
-    const cropped = await cropImageWithNativeEditor(item.imageUrl);
-    if (!cropped) return;
-    const uploaded = await uploadPreparedImageAssets({ clientMutationId: createClientMutationId(), entityType: "garment", fieldName: "imageDataUrl", originalPath: item.imageUrl, processedPath: cropped });
-    this.setData({ item: { ...item, imageUrl: cropped }, imageAssetMutations: uploaded.assetMutations });
+    wx.navigateTo({ url: `/pages/intake/crop/index?src=${encodeURIComponent(item.imageUrl)}` });
   },
 
   async reRecognize(this: any) {

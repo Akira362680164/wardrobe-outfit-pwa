@@ -65,6 +65,10 @@ Page({
     wx.navigateTo({ url: "/pages/settings/change-password/index" });
   },
 
+  editEmail() { wx.navigateTo({ url: "/pages/settings/account/edit/index?kind=email" }); },
+  editPhone() { wx.navigateTo({ url: "/pages/settings/account/edit/index?kind=phone" }); },
+  editWechat() { wx.navigateTo({ url: "/pages/settings/account/edit/index?kind=wechat" }); },
+
   deleteAccount() {
     wx.navigateTo({ url: "/pages/settings/account-deletion/index" });
   },

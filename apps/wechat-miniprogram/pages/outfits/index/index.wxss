@@ -222,6 +222,9 @@
   font-size: var(--font-label);
   line-height: 1.2;
 }
+.week-day__bars { display: flex; gap: 4rpx; height: 10rpx; margin-top: 12rpx; }
+.week-day__bar { width: 30rpx; height: 8rpx; border-radius: 999rpx; }
+.week-day__bar.tone-denim { background: rgba(53, 92, 125, 0.42); }.week-day__bar.tone-moss { background: rgba(95, 112, 88, 0.42); }.week-day__bar.tone-clay { background: rgba(185, 113, 85, 0.42); }.week-day__bar.tone-amber { background: rgba(244, 190, 66, 0.72); }.week-day__bar.tone-rose { background: rgba(244, 113, 130, 0.62); }.week-day__bar.tone-purple { background: rgba(188, 140, 236, 0.62); }.week-day__bar.tone-slate { background: rgba(148, 163, 184, 0.62); }
 
 .week-day__date {
   margin-top: 8rpx;

@@ -1,1 +1,1 @@
-{ "usingComponents": { "item-edit-shell": "/components/domain/item-edit-shell/index" } }
+{ "usingComponents": { "item-edit-shell": "/components/domain/item-edit-shell/index", "ui-confirm-sheet": "/components/ui/confirm-sheet/index" } }

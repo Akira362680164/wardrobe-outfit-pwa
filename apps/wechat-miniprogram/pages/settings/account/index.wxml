@@ -10,6 +10,7 @@
       <view class="status-chip">{{emailStatus}}</view>
     </view>
     <view class="card-main">{{emailLine}}</view>
+    <button class="card-action-button" bindtap="editEmail">修改邮箱</button>
   </view>
 
   <view class="security-card">
@@ -18,7 +19,8 @@
       <view class="status-chip status-chip--muted">{{phoneStatus}}</view>
     </view>
     <view class="card-main">{{phoneLine}}</view>
-    <view class="card-hint">手机号暂不验证，仅用于手机号+密码登录。</view>
+    <view class="card-hint">可绑定或修改手机号，用于手机号 + 密码登录。</view>
+    <button class="card-action-button" bindtap="editPhone">{{phoneLine === '未绑定' ? '绑定手机号' : '修改手机号'}}</button>
   </view>
 
   <view class="security-card">
@@ -26,7 +28,8 @@
       <view class="card-title">微信登录</view>
     </view>
     <view class="card-main">{{wechatLine}}</view>
-    <view class="card-hint">微信登录仅在小程序端使用。</view>
+    <view class="card-hint">微信登录仅在小程序端使用，可在这里解绑或换绑。</view>
+    <button class="card-action-button" bindtap="editWechat">{{wechatLine === '未绑定' ? '绑定微信' : '解绑 / 换绑微信'}}</button>
   </view>
 
   <view class="security-card" bindtap="changePassword">

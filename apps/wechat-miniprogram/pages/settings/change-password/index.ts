@@ -31,6 +31,7 @@ Page({
     submitting: false,
     countdown: 0,
     errorMessage: "",
+    sendConfirmOpen: false,
   },
 
   countdownTimer: 0 as number,
@@ -53,9 +54,14 @@ Page({
 
   async sendCode(this: any) {
     if (this.data.sending || this.data.countdown > 0 || this.data.emailMasked === "未绑定邮箱") return;
-    const confirmed = await confirmSend(this.data.emailMasked);
-    if (!confirmed) return;
-    this.setData({ sending: true, errorMessage: "" });
+    this.setData({ sendConfirmOpen: true });
+  },
+
+  closeSendConfirm(this: any) { this.setData({ sendConfirmOpen: false }); },
+
+  async confirmSendCode(this: any) {
+    if (this.data.sending) return;
+    this.setData({ sendConfirmOpen: false, sending: true, errorMessage: "" });
     try {
       const response = await requestPasswordChangeCode();
       this.setData({ codeSent: true });
@@ -108,19 +114,6 @@ Page({
     }
   },
 });
-
-function confirmSend(emailMasked: string): Promise<boolean> {
-  return new Promise((resolve) => {
-    wx.showModal({
-      title: "发送邮箱验证码",
-      content: `验证码将发送至 ${emailMasked}，10 分钟内有效。确认发送？`,
-      cancelText: "取消",
-      confirmText: "确认发送",
-      success: (result) => resolve(Boolean(result.confirm)),
-      fail: () => resolve(false),
-    });
-  });
-}
 
 function errorMessage(error: unknown): string {
   if (error instanceof HttpError) return ERROR_MESSAGES[error.code] ?? error.message;

@@ -19,7 +19,7 @@ assert.match(detailWxml, /搭配与相似内容/);
 assert.match(indexTs, /activeEvaluation/);
 assert.match(indexWxml, /evaluationFilters/);
 assert.match(editTs, /requestBack/);
-assert.match(editTs, /继续编辑/);
+assert.match(editWxml, /继续编辑/);
 assert.match(editTs, /HttpError && error\.statusCode === 409/);
 assert.match(editTs, /draftMutationId/);
 assert.match(editTs, /clientMutationId: this\.data\.draftMutationId/);

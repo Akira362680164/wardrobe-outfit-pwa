@@ -24,6 +24,8 @@ Page({
     countdown: 0,
     errorMessage: "",
     successMessage: "",
+    sendConfirmOpen: false,
+    sendConfirmEmail: "",
   },
 
   countdownTimer: 0 as number,
@@ -45,9 +47,15 @@ Page({
     if (this.data.sending || this.data.countdown > 0) return;
     const email = this.data.email.trim();
     if (!isEmail(email)) return this.setData({ errorMessage: "邮箱格式不正确。" });
-    const confirmed = await confirmSend(maskEmail(email));
-    if (!confirmed) return;
-    this.setData({ sending: true, errorMessage: "", successMessage: "" });
+    this.setData({ sendConfirmOpen: true, sendConfirmEmail: maskEmail(email) });
+  },
+
+  closeSendConfirm(this: any) { this.setData({ sendConfirmOpen: false }); },
+
+  async confirmSendCode(this: any) {
+    if (this.data.sending) return;
+    const email = this.data.email.trim();
+    this.setData({ sendConfirmOpen: false, sending: true, errorMessage: "", successMessage: "" });
     try {
       const response = await requestPasswordReset(email);
       this.setData({ codeSent: true });
@@ -98,19 +106,6 @@ Page({
     wx.navigateBack({ delta: 1 });
   },
 });
-
-function confirmSend(emailMasked: string): Promise<boolean> {
-  return new Promise((resolve) => {
-    wx.showModal({
-      title: "发送邮箱验证码",
-      content: `验证码将发送至 ${emailMasked}，10 分钟内有效。确认发送？`,
-      cancelText: "取消",
-      confirmText: "确认发送",
-      success: (result) => resolve(Boolean(result.confirm)),
-      fail: () => resolve(false),
-    });
-  });
-}
 
 function isEmail(email: string): boolean {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim());

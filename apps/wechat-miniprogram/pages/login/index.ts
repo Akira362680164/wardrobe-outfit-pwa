@@ -10,7 +10,7 @@ const LOGIN_ERROR_MESSAGES: Record<string, string> = {
   rate_limited: "登录尝试过多，请稍后再试。",
   session_unavailable: "服务正在维护，请稍后再试。",
   wechat_code_invalid: "微信登录授权已过期，请重新点击登录。",
-  wechat_service_unavailable: "服务正在维护，请稍后再试。",
+  wechat_service_unavailable: "微信登录服务暂不可用，请稍后重试；也可以先用邮箱/手机号登录。",
 };
 
 Page({

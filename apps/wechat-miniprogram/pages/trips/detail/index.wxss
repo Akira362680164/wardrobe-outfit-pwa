@@ -163,15 +163,23 @@
 .action-row {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  min-width: 0;
   gap: 16rpx;
   margin-top: 28rpx;
 }
 
 .primary-action,
 .danger-action {
+  box-sizing: border-box;
+  min-width: 0;
+  overflow: hidden;
   height: 76rpx;
+  margin: 0;
+  padding: 0 12rpx;
   font-size: var(--font-caption);
   line-height: 76rpx;
+  white-space: nowrap;
+  text-overflow: ellipsis;
 }
 
 .primary-action {
@@ -269,6 +277,7 @@
 .day-empty {
   margin-top: 14rpx;
 }
+.day-empty__button { display:block; width:100%; height:68rpx; margin:16rpx 0 0; border:0; border-radius:var(--radius-control); color:var(--color-primary); background:rgba(53,92,125,.10); font-size:22rpx; font-weight:800; line-height:68rpx; }.day-empty__button::after { border:0; }
 
 .packing-card--disabled {
   opacity: 0.72;

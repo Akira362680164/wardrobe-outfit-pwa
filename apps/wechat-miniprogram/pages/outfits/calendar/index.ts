@@ -126,9 +126,10 @@ Page({
     touchStartX: 0,
   },
 
-  onLoad() {
+  onLoad(query?: { date?: string }) {
     wx.setNavigationBarTitle({ title: "穿搭计划" });
-    this.setData({ titleTopRpx: getTitleTopRpx() });
+    const selectedDate = query?.date && /^\d{4}-\d{2}-\d{2}$/.test(query.date) ? query.date : localDateKey();
+    this.setData({ titleTopRpx: getTitleTopRpx(), selectedDate, monthKey: selectedDate.slice(0, 7) });
     this.rebuildCalendar();
   },
 
