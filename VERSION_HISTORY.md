@@ -3,7 +3,7 @@ Total output lines: 5406
 
 ## 2026-07-12 / v2.1.15-test / Codex — 小程序开发版上传与开发者微信预览
 
-- **执行 Agent**：Codex；基于已合入 `wechat/miniprogram` 的跨端修复提交 `1f3648f`。
+- **执行 Agent**：Codex；基于已合入 `wechat/miniprogram` 的发布提交 `9e693f1`。
 - **版本变更**：应用构建信息由 `2.1.14-test` 更新为 `2.1.15-test`；小程序上传版本号使用 `2.1.15`。
 - **改动文件**：根 `package.json`、`apps/wechat-miniprogram/generated/build-info.ts`。
 - **上传结果**：微信开发者工具 `miniprogram_upload` 成功，AppID `wx14a1a85b7b3844d0`，上传版本 `2.1.15`，代码包 `718,623 bytes`。
