@@ -11,6 +11,7 @@ import {
   uniqueIndex,
   uuid,
 } from "drizzle-orm/pg-core";
+import { sql } from "drizzle-orm";
 
 const timestamps = {
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
@@ -457,6 +458,10 @@ export const outfitPlans = pgTable(
     userDateIdx: index("outfit_plans_user_date_idx").on(table.userId, table.planDate),
     tripPlanIdx: index("outfit_plans_trip_plan_id_idx").on(table.tripPlanId),
     actualOutfitIdx: index("outfit_plans_actual_outfit_id_idx").on(table.actualOutfitId),
+    onePlannedPrimaryPerDay: uniqueIndex("outfit_plans_one_planned_primary_per_day").on(table.userId, table.planDate)
+      .where(sql`${table.deletedAt} IS NULL AND ${table.planDate} IS NOT NULL AND ${table.payload}->>'status' = 'planned' AND ${table.payload}->>'isPrimary' = 'true'`),
+    oneActualPrimaryPerDay: uniqueIndex("outfit_plans_one_actual_primary_per_day").on(table.userId, table.planDate)
+      .where(sql`${table.deletedAt} IS NULL AND ${table.planDate} IS NOT NULL AND ${table.payload}->>'status' = 'worn' AND ${table.payload}->>'isPrimaryActual' = 'true'`),
   }),
 );
 
@@ -469,6 +474,8 @@ export const profiles = pgTable(
   },
   (table) => ({
     userProfileTypeIdx: index("profiles_user_profile_type_idx").on(table.userId, table.profileType),
+    oneActiveProfilePerType: uniqueIndex("profiles_one_active_per_user_type").on(table.userId, table.profileType)
+      .where(sql`${table.deletedAt} IS NULL`),
   }),
 );
 

@@ -1,6 +1,6 @@
 {
   "name": "wardrobe-outfit-pwa",
-  "version": "2.1.17-test",
+  "version": "2.1.18-test",
   "private": true,
   "workspaces": [
     "packages/domain-catalog",
@@ -53,6 +53,7 @@
     "test:logic:catalog": "tsx scripts/test-category-catalog.ts",
     "test:logic:outfit": "tsx scripts/test-outfit-asset-center.ts",
     "test:logic:wishlist": "tsx scripts/test-wishlist-buy-before.ts",
+    "test:logic:wishlist-undo-inheritance": "tsx scripts/test-wishlist-undo-inheritance.ts",
     "test:logic:intake": "tsx scripts/test-intake-draft.ts && tsx scripts/test-batch-ai-progress.ts",
     "test:logic:online-writes": "tsx scripts/test-online-write-repository.ts && tsx scripts/test-repository-asset-mutations.ts && tsx scripts/test-intake-submit-state.ts",
     "test:logic:outfit-ai": "tsx scripts/test-outfit-ai-suggestion.ts",

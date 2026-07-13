@@ -8,7 +8,8 @@ const app = fs.readFileSync("src/components/outfit-list-view.tsx", "utf8");
 
 assert.match(routes, /outfit-plans\/\:id\/set-primary/);
 assert.match(commandService, /setOutfitPlanPrimary/);
-assert.match(commandService, /workspace-plan-primary:\$\{input\.userId\}:\$\{dateKey\}/);
+assert.match(commandService, /workspace-plan-date:\$\{userId\}:\$\{date\}/);
+assert.match(commandService, /lockOutfitPlanDates\(tx, input\.userId, \[dateKey\]\)/);
 assert.match(commandService, /isPrimary: shouldBePrimary/);
 assert.match(repository, /setOutfitPlanPrimary: \(id: string, command: WorkspaceStateCommand\)/);
 assert.doesNotMatch(app, /void repo(?:Upsert|Update)OutfitPlanEntry/);

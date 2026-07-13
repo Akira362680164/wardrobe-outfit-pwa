@@ -15,6 +15,11 @@ export interface SessionState {
   expiresAt?: number;
   refreshTokenExpiresAt?: number;
   user?: SessionUser;
+  pendingRefresh?: {
+    requestId: string;
+    refreshTokenPrefix: string;
+    startedAt: number;
+  };
 }
 
 let currentSession: SessionState | null = null;

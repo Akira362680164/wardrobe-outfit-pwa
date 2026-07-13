@@ -1,3 +1,23 @@
+## 2026-07-13 / v2.1.18-test / Codex — Wardora 审计修复收口
+
+- **执行 Agent**：Codex（独立收口分支 `codex/wardora-closeout-20260713`；修复提交 `8fe94d73` 已纳入，未触碰正式工作区中的既有未跟踪文件）。
+- **版本变更**：App `2.1.17-test` → `2.1.18-test`，Android `versionCode=20118`；小程序体验版随最新 main 同步。
+- **范围**：会话续期幂等与代际保护、工作区并发/事务约束、0018 数据约束迁移、请求竞态防旧响应覆盖、删除 in-progress 读回、profile singleton、小程序全量分页、撤销购买属性继承；不包含新版推荐首页、QWeather 或 PAW。
+- **本地验证**：根/App、cloud contracts、API、小程序 typecheck 通过；Next build 通过；API 测试 `115/115`；会话/在线写入/canonical UUID/主计划/撤销购买/profile singleton/小程序 refresh 与分页合同通过；空库完整迁移和生产备份恢复副本的 0018 成功、profile 重复 fail-fast/回滚演练通过。日期主计划合同已同步到统一日期锁 helper。
+- **服务器规则**：已将“服务端/迁移/云契约/生产配置改动合入 main 后，必须用最新 main 构建并更新生产 API，部署后核对迁移、health、ready、version 和未授权边界”加入正式根 `AGENTS.md`。
+- **当前状态**：生产 0018、API 部署、固定签名 APK 构建/安装和小程序体验版上传仍待本轮串行收口；未提交微信正式审核或正式发布。
+
+## 2026-07-13 / v2.1.17-test / Codex — 会话续期、工作区并发一致性与撤销购买语义修复
+
+- **执行 Agent**：Codex（独立 worktree `codex/session-repair-20260713`；未触发 subagent；未修改正式 `main`、小程序正式分支或生产环境）。
+- **目的**：修复 App 十几至几十分钟后因 refresh 竞态/响应丢失而要求重新登录；收紧同日主计划、画像单例、批量写入和列表分页的一致性；明确“种草转衣橱后撤销购买”继承衣橱侧已修改的共用属性。
+- **改动范围**：App 持久化 pending refresh、全局单飞、重试 UUID、会话代际保护、旧响应防覆盖、删除 in-progress 读回；服务端 0018 迁移、同日计划/实际主计划及画像唯一索引、日期事务锁、批量全事务、画像 upsert、衣橱属性回写；小程序 refresh 重试持久化和衣物/套装/种草分页读全；App overview 请求取消与旧响应丢弃。
+- **撤销购买 feature 边界**：回写 `name/category/subcategory/colors/seasons/styles/formality/warmth/temperatureRange/material/fitGender/fitNotes/notes`；保留种草价格、商品链接、种草状态/AI 评估；图片引用继续按既有共享资产语义保留；衣橱位置、穿着历史等生命周期字段不回写。
+- **验证结果**：根/App、cloud contracts、API、小程序 typecheck 通过；Next `npm run build` 通过；API 测试 `115/115` 通过；认证、长会话（含小程序响应丢失后复用同一 request ID）、迁移合同、撤销购买、在线写入定向测试通过；空 PostgreSQL 数据库完整迁移通过并确认 3 个新唯一索引存在；`git diff --check` 通过。
+- **生产背景**：本轮仅做只读核验，v2.1.17 迁移已确认完成；当前生产仍有 1 组同日计划主展示重复，0018 会在正式部署时确定性降级并建立约束。本轮未执行生产迁移、部署或业务写入。
+- **Android 门禁**：`android:apk` 的环境校验、Web/Capacitor 同步通过；独立 worktree 缺少本机固定签名文件 `android/signing/wardrobe-signing.properties`，Gradle 在签名校验处停止，未生成/安装 APK，未启动模拟器。
+- **未验证风险**：未在 Android 真机/模拟器执行长时间真实账号回归，未在微信开发者工具做运行时交互；0018 尚未部署到生产，需部署后核对重复组已归一且 `/api/ready` 正常。
+
 ## 2026-07-13 / v2.1.17-test / Codex — 小程序体验版与固定签名 APK 交付
 
 - **执行 Agent**：Codex（未触发 subagent；小程序基于正式 `wechat/miniprogram`，APK 基于正式 `main` 提交 `07d416c7` 构建）。
