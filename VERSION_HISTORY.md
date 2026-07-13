@@ -1,3 +1,15 @@
+## 2026-07-13 / v2.1.18-test / Codex Subagent B3 — 周计划与月历三页轨道直接操控
+
+- **执行 Agent**：Codex 实施 Subagent B3；独立分支 `codex/motion-b3-calendar-gestures-20260713`、独立 worktree `/Users/fangzheng/Documents/wardrobe-motion-b3-calendar-gestures-20260713`，基于批次提交 `00398302ae7ee8f320030f20f93048f74392591d`；未合入 integration / `main`，未推送。本 Session 由主集成 Agent 分派，未再触发下级 subagent。
+- **目的与版本**：依照 `apple-design` 的直接操控、空间连续性、可中断性和 reduced-motion 原则，修复周计划条与月历“松手后替换内容”的弱手势，使手指、轨道、箭头和选中详情共享可预测的物理状态；版本保持 `2.1.18-test`，不改业务/API/存储/小程序，不构建 APK。
+- **运行时实现**：新增纯函数 `calendar-track-gesture.ts`，统一 `9px` 横纵意图、nonlinear rubber-band、最近 `110ms` 速度、`0.2s` 终点投影和单页 snap。周计划与月历常驻前/中/后三页，使用 `touch-action: pan-y`，横向成立后才 pointer capture；拖动保持 `1:1`，释放使用无弹跳 spring。pointerdown 会停止当前 spring 并从实时 x 接管，连续同向箭头按序排队，反向箭头重定向现有轨道，提交后只更新父级日期事实并无缝回中。
+- **选中与详情连续性**：周/月选中背景改为共享 `layoutId` 移位；月历详情使用位置布局、透明度和 clip-path，不再补间 `height:auto`。reduced-motion 下切页和详情立即完成。`monthDate/selectedDate` 仍由 `OutfitListView` 父状态持有，月历重挂载从 `selectedDate` 恢复展开；未加入模块缓存或持久化。`OutfitPlanDayCard` 的按钮、busy 写入和服务端读回边界已复核，无需为 B3 强制改动。
+- **改动文件**：`src/lib/calendar-track-gesture.ts`、`outfit-weekly-plan-strip.tsx`、`outfit-planning-calendar-view.tsx`；日历/计划/返回上下文三项合同脚本；UI 规范 B3 命名小节、生成 HTML 与本记录。
+- **自动化验证**：`test:logic:outfit-planning` 通过（手势/日历 `57/57`、计划 `74/74`、打包 `40/40`），`test:logic:outfit-calendar-state-regression` `32/32`、`test:logic:followup-navigation` `82/82`、`test:logic:ui-overflow` 通过；`docs:ui-spec:build/check`、`test:logic:ui-spec-preview`、根 `typecheck`、Next `build` 与 `git diff --check` 通过。
+- **390px 触摸与视觉验证**：在隔离本地 E2E API / 测试数据库上用 Chromium Playwright `390×844`、touch Pointer Events 完成 17 项回归：周/月三页常驻、`pan-y`、纵向与纵向占优斜向不改 x、水平拖动 `1:1`、半途反向、spring 途中反向接管、一次释放只翻一页、连续三次箭头不吞步、2026-08 六行月历、选中背景 layout 移位，以及 reduced-motion 详情无行内高度/过渡。视觉截图 `/tmp/wardrobe-b3-calendar-390.png` 已人工核对无横向溢出、空页闪白或详情遮挡。in-app Browser 当前无可用 browser 实例，按 skill 故障流程确认 `browsers=[]` 后使用仓库 Playwright 回退；未向生产 API 写入。
+- **既有门禁失败证据**：要求执行的 `test:logic:outfit-plan-wear-state` 为 `35/36`；唯一失败脚本仍断言 `isPrimaryActual: Boolean(payload.isPrimary)`，但 B3 基线 `00398302` 的 `command-service.ts:484` 已是 `isPrimaryActual: wantsPrimaryActual`。测试与服务端均非 B3 所有权，且失败可在未改基线复现，本分支不越界改写；主集成 Agent 应单独同步陈旧合同后复验。
+- **风险门禁与未验证项**：`high`（周/月高频手势与日期上下文）。未在 Android 真机/模拟器、WebView、TalkBack/VoiceOver、系统高对比或生产业务数据上做最终回归；本批不交付 APK，Android 返回键、帧时序和真实 360px/412px 设备验收留给 D/集成 Wave。
+
 ## 2026-07-13 / v2.1.18-test / Codex Subagent A2-Core — 共享 Lightbox、Popover 与 Dialog 浮层收口
 
 - **执行 Agent**：Codex 实施 Subagent A2-Core；独立分支 `codex/motion-a2-core-20260713`、独立 worktree `/Users/fangzheng/Documents/wardrobe-motion-a2-core-20260713`，基于批次提交 `10d9e4176216ba3f7dcd3b47289294e9ad70e230`；未合入 integration / `main`，未推送。

@@ -11,6 +11,18 @@ import {
   enumerateDateRange,
   daysBetween,
 } from "../src/lib/outfit-calendar";
+import {
+  appendCalendarTrackVelocitySample,
+  applyCalendarTrackRubberBand,
+  createCalendarTrackGestureSession,
+  finishCalendarTrackGestureSession,
+  getCalendarTrackTargetX,
+  getCalendarTrackVelocity,
+  resolveCalendarTrackAxisIntent,
+  resolveCalendarTrackSnap,
+  rubberBandDistance,
+  updateCalendarTrackGestureSession,
+} from "../src/lib/calendar-track-gesture";
 
 let pass = 0;
 let fail = 0;
@@ -63,6 +75,9 @@ console.log("\n=== getLocalMonthGrid ===");
   // Feb 2026: 28 days, starts on Sunday (dow=0 in JS)
   const feb = getLocalMonthGrid(2026, 2);
   check("Feb 2026 has 28 days in grid", feb.filter((c) => c.isCurrentMonth).length === 28);
+
+  const march = getLocalMonthGrid(2026, 3);
+  check("March 2026 keeps all 6 calendar rows", march.length === 42, String(march.length));
 }
 
 // --- shiftMonth ---
@@ -121,6 +136,53 @@ console.log("\n=== UTC safety ===");
   // Use dates near midnight to ensure no UTC bleeding
   const r1 = shiftDateByWeeks("2026-06-12", 1);
   check("shiftDateByWeeks not affected by UTC", r1 === "2026-06-19", r1);
+}
+
+// --- B3 three-page track gesture physics ---
+console.log("\n=== B3 calendar track gesture physics ===");
+{
+  check("8px stays inside the 9px parallel intent window", resolveCalendarTrackAxisIntent(8, 1) === "pending");
+  check("horizontal wins after threshold", resolveCalendarTrackAxisIntent(12, 3) === "horizontal");
+  check("vertical wins after threshold", resolveCalendarTrackAxisIntent(4, 12) === "vertical");
+  check("equal diagonal favors vertical scrolling", resolveCalendarTrackAxisIntent(12, 12) === "vertical");
+
+  check("resident track remains 1:1 inside bounds", applyCalendarTrackRubberBand(-420, 300) === -420);
+  const firstBand = rubberBandDistance(120, 300);
+  const secondBand = rubberBandDistance(240, 300);
+  check("rubber-band compresses overflow", firstBand > 0 && firstBand < 120, String(firstBand));
+  check("rubber-band resistance increases with distance", secondBand - firstBand < firstBand, `${firstBand},${secondBand}`);
+  check("right edge applies progressive rubber-band", applyCalendarTrackRubberBand(120, 300) === firstBand);
+  check("left edge applies progressive rubber-band", applyCalendarTrackRubberBand(-720, 300) === -600 - firstBand);
+
+  let samples = appendCalendarTrackVelocitySample([], { position: 0, time: 0 });
+  samples = appendCalendarTrackVelocitySample(samples, { position: 50, time: 50 });
+  samples = appendCalendarTrackVelocitySample(samples, { position: 90, time: 130 });
+  check("velocity history drops samples older than 110ms", samples.length === 2, String(samples.length));
+  check("recent velocity uses the retained short history", getCalendarTrackVelocity(samples) === 500, String(getCalendarTrackVelocity(samples)));
+
+  check("slow release near center snaps current", resolveCalendarTrackSnap(-340, 0, 300) === 0);
+  check("fast left flick projects to next page", resolveCalendarTrackSnap(-330, -1200, 300) === 1);
+  check("fast reversal projects back to current", resolveCalendarTrackSnap(-450, 1000, 300) === 0);
+  check("one gesture never skips past resident next page", resolveCalendarTrackSnap(-590, -5000, 300) === 1);
+  check("snap targets map previous/current/next", [-1, 0, 1].map((offset) => getCalendarTrackTargetX(offset as -1 | 0 | 1, 300)).join(",") === "0,-300,-600");
+
+  const pending = createCalendarTrackGestureSession(7, { x: 100, y: 100, time: 0 }, -300);
+  const belowThreshold = updateCalendarTrackGestureSession(pending, { x: 108, y: 102, time: 16 }, 300);
+  check("below-threshold movement does not move the track", belowThreshold.trackX == null && belowThreshold.session.intent === "pending");
+  const horizontal = updateCalendarTrackGestureSession(belowThreshold.session, { x: 122, y: 104, time: 32 }, 300);
+  check("horizontal claim is reported once", horizontal.justClaimedHorizontal && horizontal.session.intent === "horizontal");
+  check("horizontal drag follows the finger 1:1", horizontal.trackX === -278, String(horizontal.trackX));
+  const reversed = updateCalendarTrackGestureSession(horizontal.session, { x: 108, y: 104, time: 48 }, 300);
+  check("halfway reversal directly retakes current presentation", reversed.trackX === -292, String(reversed.trackX));
+  const released = finishCalendarTrackGestureSession(reversed.session, { x: 100, y: 104, time: 64 }, reversed.trackX!, 300);
+  check("release returns a finite recent velocity", Number.isFinite(released.velocity) && released.wasHorizontal);
+
+  const vertical = updateCalendarTrackGestureSession(
+    createCalendarTrackGestureSession(8, { x: 100, y: 100, time: 0 }, -300),
+    { x: 104, y: 114, time: 16 },
+    300,
+  );
+  check("vertical intent never claims or moves x", vertical.session.intent === "vertical" && vertical.trackX == null && !vertical.justClaimedHorizontal);
 }
 
 // --- SUMMARY ---

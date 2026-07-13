@@ -12,6 +12,8 @@ import {
 const root = join(__dirname, "..");
 const outfitListView = readFileSync(join(root, "src/components/outfit-list-view.tsx"), "utf8");
 const outfitPlanDayCard = readFileSync(join(root, "src/components/outfit-plan-day-card.tsx"), "utf8");
+const planningCalendarView = readFileSync(join(root, "src/components/outfit-planning-calendar-view.tsx"), "utf8");
+const weeklyPlanStrip = readFileSync(join(root, "src/components/outfit-weekly-plan-strip.tsx"), "utf8");
 const outfitWearSync = readFileSync(join(root, "src/lib/outfit-wear-sync.ts"), "utf8");
 const packageJson = JSON.parse(readFileSync(join(root, "package.json"), "utf8"));
 
@@ -88,6 +90,13 @@ check("第一条 planned 默认 primary", /existingEntries\.filter\(\(e\) => e\.
 
 check("OutfitIntakeFlow 保存成功后回到套装列表", /async function handleSaveOutfitIntake[\s\S]*?await onRefresh\(\);[\s\S]*?setSubPage\("library"\)/.test(outfitListView));
 check("OutfitIntakeFlow 保存成功后关闭 create flow", /async function handleSaveOutfitIntake[\s\S]*?onCreateClosed\?\.\(\)/.test(outfitListView));
+
+check("月历 remount 从父 selectedDate 恢复展开日", /useState<string \| null>\(selectedDate\)/.test(planningCalendarView));
+check("月历月份与日期由 OutfitListView 显式父状态持有", /monthDate=\{planningMonthDate\}/.test(outfitListView) && /selectedDate=\{selectedPlanDate\}/.test(outfitListView));
+check("从月历进入套装详情记录 planning_calendar 返回目标", /openOutfitDetail\(outfitId, "planning_calendar"\)/.test(outfitListView));
+check("套装详情返回使用 detailReturnTo 恢复原月历子页", /setSubPage\(detailReturnTo\)/.test(outfitListView));
+check("周条切周仍由父层保持同一星期索引", /currentWeek\.indexOf\(selectedWeekDate\)[\s\S]{0,220}nextWeek\[currentIndex\]/.test(outfitListView));
+check("周/月横向手势不使用 touch-none", !/touch-none/.test(weeklyPlanStrip + planningCalendarView));
 
 check("package.json 包含 test:logic:outfit-calendar-state-regression", "test:logic:outfit-calendar-state-regression" in (packageJson.scripts ?? {}));
 check("test:logic:all 包含 outfit-calendar-state-regression", String(packageJson.scripts?.["test:logic:all"] ?? "").includes("test:logic:outfit-calendar-state-regression"));
