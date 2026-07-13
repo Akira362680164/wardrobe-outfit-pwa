@@ -1,7 +1,7 @@
 "use client";
 
 import { ChevronLeft, Plus, Circle, CheckCircle2 } from "lucide-react";
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 import type { OutfitCalendarPlan, OutfitPlanEntry, PlanPackingChecklistItem, SavedOutfit, WardrobeItem } from "@/lib/types";
 import { buildPackingItemsFromPlan, groupPackingItemsByCategory, formatPackingDateUsage } from "@/lib/plan-packing";
 import { AppSubPageTopBar } from "@/components/app-sub-page-top-bar";
@@ -42,8 +42,10 @@ export function PlanPackingChecklistView({
   const [manualCategory, setManualCategory] = useState("手动新增");
   const [manualQuantity, setManualQuantity] = useState(1);
   const [showReset, setShowReset] = useState(false);
-  const [saving, setSaving] = useState(false);
+  const [savingAction, setSavingAction] = useState<"add" | "toggle" | "all" | "reset" | null>(null);
+  const savingRef = useRef(false);
   const [resetError, setResetError] = useState<string | null>(null);
+  const saving = savingAction !== null;
 
   const packingItems = useMemo(
     () => buildPackingItemsFromPlan({ calendarPlan, entries, outfits, items, existingChecklistItems: checklistItems }),
@@ -59,27 +61,42 @@ export function PlanPackingChecklistView({
     ? calendarPlan.startDate.replace(/-/g, "/")
     : `${calendarPlan.startDate.replace(/-/g, "/")} - ${calendarPlan.endDate.replace(/-/g, "/")}`;
 
+  const runPackingMutation = useCallback(async (
+    action: "add" | "toggle" | "all" | "reset",
+    mutation: () => Promise<void>,
+  ): Promise<boolean> => {
+    if (savingRef.current) return false;
+    savingRef.current = true;
+    setSavingAction(action);
+    try {
+      await mutation();
+      return true;
+    } finally {
+      savingRef.current = false;
+      setSavingAction(null);
+    }
+  }, []);
+
   const handleAddManual = useCallback(async () => {
     const label = manualLabel.trim();
     if (!label) { onMessage("物品名称不能为空", "error"); return; }
     if (manualQuantity < 1 || manualQuantity > 99) { onMessage("数量需在 1-99 之间", "error"); return; }
-    setSaving(true);
     try {
-      await onAddManual({ label, category: manualCategory || undefined, quantity: manualQuantity });
+      const committed = await runPackingMutation("add", () => onAddManual({ label, category: manualCategory || undefined, quantity: manualQuantity }));
+      if (!committed) return;
       setManualLabel("");
       setManualQuantity(1);
       setShowAddManual(false);
       onMessage("已添加");
     } catch { onMessage("添加失败，请重试", "error"); }
-    finally { setSaving(false); }
-  }, [manualLabel, manualCategory, manualQuantity, onAddManual, onMessage]);
+  }, [manualLabel, manualCategory, manualQuantity, onAddManual, onMessage, runPackingMutation]);
 
   const handleBack = useCallback(() => {
-    if (saving) return;
+    if (savingRef.current) return;
     onBack();
-  }, [onBack, saving]);
+  }, [onBack]);
 
-  useStableBackHandler(() => true, saving, 20);
+  useStableBackHandler(() => savingRef.current, true, 20);
 
   const addManualSheet = (
     <MotionSheet
@@ -109,7 +126,7 @@ export function PlanPackingChecklistView({
             <input type="number" value={manualQuantity} min={1} max={99} data-parity-id="parity.app.app.src.components.plan.packing.checklist.view.054ae02d13" onChange={(e) => setManualQuantity(Math.max(1, Math.min(99, parseInt(e.target.value) || 1)))} className="mt-1 w-24 rounded-xl border border-ink/10 bg-mist/30 px-3 py-2 text-sm text-ink focus:outline-none focus:ring-2 focus:ring-denim/30" />
           </div>
           <button type="button" disabled={saving} className="w-full rounded-full bg-denim py-2 text-sm font-semibold text-white disabled:opacity-50" data-parity-id="parity.app.app.src.components.plan.packing.checklist.view.bba5519b83" onClick={handleAddManual}>
-            {saving ? "添加中..." : "添加"}
+            {savingAction === "add" ? "添加中..." : "添加"}
           </button>
         </div>
       </div>
@@ -119,7 +136,7 @@ export function PlanPackingChecklistView({
   // Empty state
   if (totalCount === 0) {
     return (
-      <div className="flex flex-col h-full">
+      <div className="flex flex-col h-full" aria-busy={saving || undefined}>
         <div className="flex items-center justify-between px-4 py-3 border-b border-ink/5">
           <button type="button" disabled={saving} className="flex items-center gap-1 text-sm font-medium text-ink/70 disabled:opacity-40" data-parity-id="parity.app.app.src.components.plan.packing.checklist.view.9740a00338" onClick={handleBack}>
             <ChevronLeft size={18} /> 计划详情
@@ -130,7 +147,7 @@ export function PlanPackingChecklistView({
           <p className="text-xs text-ink/35 mt-1">先为这个计划安排每日穿搭，或手动添加打包物品。</p>
           <div className="flex items-center gap-2 mt-3">
             <button type="button" className="rounded-full border border-ink/10 py-1.5 px-4 text-xs font-medium text-ink/60" data-parity-id="parity.app.app.src.components.plan.packing.checklist.view.f9b217acd8" onClick={handleBack}>去安排穿搭</button>
-            <button type="button" className="rounded-full bg-denim py-1.5 px-4 text-xs font-semibold text-white" data-parity-id="parity.app.app.src.components.plan.packing.checklist.view.a49d5b0b4b" onClick={() => setShowAddManual(true)}>+ 添加自定义物品</button>
+            <button type="button" disabled={saving} className="rounded-full bg-denim py-1.5 px-4 text-xs font-semibold text-white disabled:opacity-40" data-parity-id="parity.app.app.src.components.plan.packing.checklist.view.a49d5b0b4b" onClick={() => setShowAddManual(true)}>+ 添加自定义物品</button>
           </div>
         </div>
         {addManualSheet}
@@ -139,7 +156,7 @@ export function PlanPackingChecklistView({
   }
 
   return (
-    <div className="flex flex-col h-full">
+    <div className="flex flex-col h-full" aria-busy={saving || undefined}>
       {/* Header */}
       <AppSubPageTopBar
         title="打包清单"
@@ -154,7 +171,7 @@ export function PlanPackingChecklistView({
       </div>
 
       {/* Category groups */}
-      <div className="flex-1 overflow-y-auto px-4 py-3 space-y-3">
+      <div className="flex-1 overflow-y-auto px-4 py-3 space-y-3" data-outfit-scroll-region="packing-list">
         {groups.map((group) => (
           <div key={group.category}>
             <h3 className="text-xs font-semibold text-ink/55 mb-1.5">{group.category}</h3>
@@ -166,11 +183,12 @@ export function PlanPackingChecklistView({
                 >
                   <button
                     type="button"
+                    disabled={saving}
                     data-parity-id={`parity.app.app.src.components.plan.packing.checklist.view.714a3e5eb0.${ci.id}`}
-                    className="shrink-0"
+                    className="shrink-0 disabled:opacity-40"
                     onClick={async () => {
                       try {
-                        await onToggleChecked(ci.id, !ci.checked);
+                        await runPackingMutation("toggle", () => onToggleChecked(ci.id, !ci.checked));
                       } catch { onMessage("操作失败，请重试", "error"); }
                     }}
                   >
@@ -203,14 +221,14 @@ export function PlanPackingChecklistView({
 
       {/* Bottom actions */}
       <div className="px-4 py-3 border-t border-ink/5 space-y-2">
-        <button type="button" className="flex w-full items-center justify-center gap-1 rounded-full border border-ink/10 py-2 text-xs font-medium text-ink/60" data-parity-id="parity.app.app.src.components.plan.packing.checklist.view.a4c8d5520e" onClick={() => setShowAddManual(true)}>
+        <button type="button" disabled={saving} className="flex w-full items-center justify-center gap-1 rounded-full border border-ink/10 py-2 text-xs font-medium text-ink/60 disabled:opacity-40" data-parity-id="parity.app.app.src.components.plan.packing.checklist.view.a4c8d5520e" onClick={() => setShowAddManual(true)}>
           <Plus size={14} /> 添加自定义物品
         </button>
         <div className="flex gap-2">
-          <button type="button" className="flex-1 rounded-full bg-moss/10 py-2 text-xs font-semibold text-moss" data-parity-id="parity.app.app.src.components.plan.packing.checklist.view.67f7abbe88" onClick={async () => { try { await onMarkAllPacked(); onMessage("已全部标记"); } catch { onMessage("操作失败", "error"); } }}>
-            全部标记已打包
+          <button type="button" disabled={saving} className="flex-1 rounded-full bg-moss/10 py-2 text-xs font-semibold text-moss disabled:opacity-40" data-parity-id="parity.app.app.src.components.plan.packing.checklist.view.67f7abbe88" onClick={async () => { try { const committed = await runPackingMutation("all", onMarkAllPacked); if (committed) onMessage("已全部标记"); } catch { onMessage("操作失败", "error"); } }}>
+            {savingAction === "all" ? "正在标记..." : "全部标记已打包"}
           </button>
-          <button type="button" className="rounded-full border border-ink/10 py-2 px-4 text-xs font-medium text-ink/50" data-parity-id="parity.app.app.src.components.plan.packing.checklist.view.40a5d871ca" onClick={() => setShowReset(true)}>
+          <button type="button" disabled={saving} className="rounded-full border border-ink/10 py-2 px-4 text-xs font-medium text-ink/50 disabled:opacity-40" data-parity-id="parity.app.app.src.components.plan.packing.checklist.view.40a5d871ca" onClick={() => setShowReset(true)}>
             重置勾选
           </button>
         </div>
@@ -231,17 +249,15 @@ export function PlanPackingChecklistView({
           setResetError(null);
         }}
         onConfirm={async () => {
-          setSaving(true);
           setResetError(null);
           try {
-            await onResetAll();
+            const committed = await runPackingMutation("reset", onResetAll);
+            if (!committed) return;
             setShowReset(false);
             onMessage("已重置");
           } catch {
             setResetError("操作失败，请重试");
             onMessage("操作失败", "error");
-          } finally {
-            setSaving(false);
           }
         }}
       />
