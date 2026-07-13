@@ -100,7 +100,7 @@
 }
 
 .calendar-day--active {
-  height: 180rpx;
+  height: 160rpx;
 }
 
 .calendar-day__num {
