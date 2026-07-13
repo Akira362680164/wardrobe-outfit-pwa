@@ -2,7 +2,7 @@
 <!--
   DO NOT EDIT BY HAND.
   Generated from docs/designs/wardrobe-ui-spec.md by scripts/generate-ui-spec-preview.mjs.
-  Source SHA256: bc67b2421f260c0835dc56d563903fee658427da41ddb412182602a275aeae12
+  Source SHA256: 6b31bd0a0c43eb7e2a3c8b728d0c9e86f68a624a4412f34f2a71a7c31f155d2c
 -->
 <html lang="zh-CN">
 <head>
@@ -838,7 +838,7 @@
           <div class="meta-row">
             <span class="pill active">v0.2-final</span>
             <span class="pill">Markdown 唯一事实源</span>
-            <span class="pill">Source SHA256 bc67b2421f26</span>
+            <span class="pill">Source SHA256 6b31bd0a0c43</span>
           </div>
           <h1>衣橱穿搭助手 UI 规范</h1>
           <p>本页由规范 Markdown 自动生成，用于快速走查页面框架、组件契约、通知样式和验收映射。</p>
@@ -1007,6 +1007,8 @@
       </div>
 <div class="table-wrap"><table><thead><tr><th>Slide kind</th><th>标签</th><th>用途</th><th>胶片栏</th></tr></thead><tbody><tr><td><code>garment_main</code></td><td>主图</td><td>衣物主图</td><td>是</td></tr><tr><td><code>garment_reference</code></td><td>灵感</td><td>衣物灵感图</td><td>是</td></tr><tr><td><code>outfit_cover</code></td><td>主图</td><td>套装封面</td><td>是</td></tr><tr><td><code>outfit_real</code></td><td>套装示意</td><td>套装实拍/示意</td><td>是</td></tr><tr><td><code>wishlist_product</code></td><td>商品图</td><td>种草商品图</td><td>当前否</td></tr></tbody></table></div>
 <p>空图必须保持 hero 框架稳定并显示 fallback。</p>
+<p>#### 7.1.1 B2 图片轮播与预览手势</p>
+<ul><li><code>SwipeImageCarousel</code> 的轨道位移只能由一个 <code>MotionValue</code> 驱动；<code>pointermove</code> 不得逐帧写 React state。轮播在 <code>9px</code> 死区后锁定横纵意图，横向确认后才 pointer capture，纵向意图保持 <code>touch-action: pan-y</code> 并交还页面滚动。</li><li>手势开始必须停止当前轨道动画并读取真实屏幕 presentation x；释放使用最近 <code>80–120ms</code>、且只保留最新同方向尾段的速度样本，按 Apple 指数衰减投影终点、选择相邻 snap point，并把 release velocity 传入 momentum spring。动画中的快速反向从当前 x 与 velocity 接管，不允许跳到逻辑终点后再开始。</li><li>第一张向右、最后一张向左时使用随越界距离渐增的 rubber-band 曲线；新 pointer 中断边缘回弹时先反解当前阻尼值，首个有效移动仍保持 1:1，不得重复施加阻尼造成跳变。</li><li>pointerdown 不得把详情/评审原图切换成缩略图。横向滑图产生的 click suppression 只属于同一 pointer 序列；该序列后的下一次独立点击必须立即可用。轮播根保留 <code>aria-roledescription=&quot;carousel&quot;</code> 与 <code>data-app-press-gesture-owner=&quot;true&quot;</code>，避免外层卡片按压抢占手势。</li><li>reduced-motion 下保留手指直接操控，释放后即时吸附目标页，不运行 momentum spring。胶片栏或受控 index 变化复用同一轨道吸附；跨多张选择期间必须保留源页到目标页的可见轨道，不能出现空白帧。</li><li>Lightbox 下拖关闭的可复用 controller 由 <code>useLightboxDragDismiss</code> 提供：返回 <code>y</code>、<code>imageScale</code>、<code>backdropOpacity</code>、Pointer bindings、<code>reset</code> 与 <code>isEnabled</code>；下拖同样使用 presentation value、速度投影和 release spring。<code>zoomScale &gt; 1.01</code> 或 <code>isPanning=true</code> 时必须关闭下拖退出，让放大图片优先平移。本 Wave 只交付 controller 与独立验证，不修改共享 <code>MotionImageLightbox</code>；运行时接线和 source-anchor 展开/收回统一留给 C2，禁止提前复制私有 Lightbox。</li></ul>
 <h3>7.2 瀑布流与多选</h3>
       <div class="part-visual" data-visual="waterfall-multi-select">
         <div class="production-shot-grid"><figure class="production-shot"><img src="v03-alpha-real-screenshots/wardrobe_home_390_top.png" alt="衣橱瀑布流"><figcaption><b>衣橱瀑布流</b><span>真实生产截图：两列卡片、筛选、Toast、底部导航</span></figcaption></figure></div>

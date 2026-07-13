@@ -346,6 +346,15 @@ Icon-only 按钮必须有 `aria-label`；图标与文字组合时图标使用 `a
 
 空图必须保持 hero 框架稳定并显示 fallback。
 
+#### 7.1.1 B2 图片轮播与预览手势
+
+- `SwipeImageCarousel` 的轨道位移只能由一个 `MotionValue` 驱动；`pointermove` 不得逐帧写 React state。轮播在 `9px` 死区后锁定横纵意图，横向确认后才 pointer capture，纵向意图保持 `touch-action: pan-y` 并交还页面滚动。
+- 手势开始必须停止当前轨道动画并读取真实屏幕 presentation x；释放使用最近 `80–120ms`、且只保留最新同方向尾段的速度样本，按 Apple 指数衰减投影终点、选择相邻 snap point，并把 release velocity 传入 momentum spring。动画中的快速反向从当前 x 与 velocity 接管，不允许跳到逻辑终点后再开始。
+- 第一张向右、最后一张向左时使用随越界距离渐增的 rubber-band 曲线；新 pointer 中断边缘回弹时先反解当前阻尼值，首个有效移动仍保持 1:1，不得重复施加阻尼造成跳变。
+- pointerdown 不得把详情/评审原图切换成缩略图。横向滑图产生的 click suppression 只属于同一 pointer 序列；该序列后的下一次独立点击必须立即可用。轮播根保留 `aria-roledescription="carousel"` 与 `data-app-press-gesture-owner="true"`，避免外层卡片按压抢占手势。
+- reduced-motion 下保留手指直接操控，释放后即时吸附目标页，不运行 momentum spring。胶片栏或受控 index 变化复用同一轨道吸附；跨多张选择期间必须保留源页到目标页的可见轨道，不能出现空白帧。
+- Lightbox 下拖关闭的可复用 controller 由 `useLightboxDragDismiss` 提供：返回 `y`、`imageScale`、`backdropOpacity`、Pointer bindings、`reset` 与 `isEnabled`；下拖同样使用 presentation value、速度投影和 release spring。`zoomScale > 1.01` 或 `isPanning=true` 时必须关闭下拖退出，让放大图片优先平移。本 Wave 只交付 controller 与独立验证，不修改共享 `MotionImageLightbox`；运行时接线和 source-anchor 展开/收回统一留给 C2，禁止提前复制私有 Lightbox。
+
 ### 7.2 瀑布流与多选
 
 - 列表卡片统一使用 `CatalogWaterfallGrid` + `CatalogWaterfallCardShell`。
