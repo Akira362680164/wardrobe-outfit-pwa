@@ -38,6 +38,9 @@ const planDaySource = readFileSync(join(root, "src/components/outfit-plan-day-ca
 const planDetailSource = readFileSync(join(root, "src/components/outfit-plan-detail-view.tsx"), "utf8");
 const planSelectSource = readFileSync(join(root, "src/components/outfit-plan-select-sheet.tsx"), "utf8");
 const packingSource = readFileSync(join(root, "src/components/plan-packing-checklist-view.tsx"), "utf8");
+const weeklyPlanSource = readFileSync(join(root, "src/components/outfit-weekly-plan-strip.tsx"), "utf8");
+const planningCalendarSource = readFileSync(join(root, "src/components/outfit-planning-calendar-view.tsx"), "utf8");
+const calendarTrackGestureSource = readFileSync(join(root, "src/lib/calendar-track-gesture.ts"), "utf8");
 
 // --- getPlanEntryForDate ---
 console.log("\n=== getPlanEntryForDate ===");
@@ -195,6 +198,22 @@ check("plan selector has form semantics", /<MotionSheet[^>]*variant="form"[^>]*a
 check("packing add sheet is busy-safe and shared across empty state", /const addManualSheet = \([\s\S]{0,380}<MotionSheet[\s\S]{0,260}dismissible=\{!saving\}/.test(packingSource) && (packingSource.match(/\{addManualSheet\}/g) ?? []).length === 2);
 check("packing reset uses busy-safe confirm", /<ConfirmActionSheet[\s\S]{0,280}submitting=\{saving\}[\s\S]{0,80}error=\{resetError\}/.test(packingSource));
 check("add-plan chooser uses shared action sheet", /<MotionSheet[\s\S]{0,220}open=\{addPlanSheetOpen\}[\s\S]{0,180}variant="action"[\s\S]{0,80}ariaLabel="添加穿搭计划"/.test(outfitListViewSource));
+
+console.log("\n=== B3 week/month direct-manipulation contracts ===");
+check("week track keeps resident previous/current/next pages", /\(\[-1, 0, 1\] as const\)\.map\(\(pageOffset\)/.test(weeklyPlanSource));
+check("month track keeps resident previous/current/next pages", /\(\[-1, 0, 1\] as const\)\.map\(\(pageOffset\)/.test(planningCalendarSource));
+check("week and month both expose pan-y touch action", /data-calendar-track="week"[\s\S]{0,180}touchAction: "pan-y"/.test(weeklyPlanSource) && /data-calendar-track="month"[\s\S]{0,180}touchAction: "pan-y"/.test(planningCalendarSource));
+check("horizontal intent alone captures the pointer", /if \(result\.justClaimedHorizontal\) \{[\s\S]{0,100}setPointerCapture/.test(weeklyPlanSource) && /if \(result\.justClaimedHorizontal\) \{[\s\S]{0,100}setPointerCapture/.test(planningCalendarSource));
+check("legacy weak drag and wait replacement animations are removed", !/drag="x"|dragElastic|mode="wait"|touch-none/.test(weeklyPlanSource + planningCalendarSource));
+check("both surfaces use shared pure intent/rubber-band/projection helper", /updateCalendarTrackGestureSession/.test(weeklyPlanSource) && /updateCalendarTrackGestureSession/.test(planningCalendarSource) && /resolveCalendarTrackAxisIntent/.test(calendarTrackGestureSource) && /rubberBandDistance/.test(calendarTrackGestureSource) && /projectCalendarTrackPosition/.test(calendarTrackGestureSource));
+check("week arrows and drag feed the same snap function", /onClick=\{\(\) => requestWeekShift\(-1\)\}/.test(weeklyPlanSource) && /animateTrackToPage\(result\.pageOffset, result\.velocity\)/.test(weeklyPlanSource));
+check("month arrows and drag feed the same snap function", /onClick=\{\(\) => requestMonthShift\(-1\)\}/.test(planningCalendarSource) && /animateTrackToPage\(result\.pageOffset, result\.velocity\)/.test(planningCalendarSource));
+check("same-direction arrow input is queued instead of discarded", /queuedWeekStepsRef\.current \+ delta/.test(weeklyPlanSource) && /queuedMonthStepsRef\.current \+ delta/.test(planningCalendarSource));
+check("opposite arrow redirects the current presentation to center", /activePageOffset === -delta[\s\S]{0,100}animateTrackToPage\(0, 0\)/.test(weeklyPlanSource) && /activePageOffset === -delta[\s\S]{0,100}animateTrackToPage\(0, 0\)/.test(planningCalendarSource));
+check("week and month selected-date surfaces use layout indicators", /layoutId=\{`weekly-date-selection-/.test(weeklyPlanSource) && /layoutId=\{`month-date-selection-/.test(planningCalendarSource));
+check("calendar detail never animates height:auto", !/height:\s*["']auto["']/.test(planningCalendarSource));
+check("reduced motion renders calendar detail without layout spring", /reduceMotion \? \([\s\S]{0,500}showDayDetail \? \([\s\S]{0,500}dayDetailCard/.test(planningCalendarSource));
+check("calendar return context stays in explicit parent month/date state", /const \[planningMonthDate, setPlanningMonthDate\]/.test(outfitListViewSource) && /const \[selectedPlanDate, setSelectedPlanDate\]/.test(outfitListViewSource) && /openOutfitDetail\(outfitId, "planning_calendar"\)/.test(outfitListViewSource));
 
 console.log(`\n=== 总计: ${pass} pass / ${fail} fail ===`);
 if (fail > 0) {
