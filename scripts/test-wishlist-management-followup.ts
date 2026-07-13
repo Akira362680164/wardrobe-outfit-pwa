@@ -6,6 +6,8 @@ import { join } from "node:path";
 const root = join(__dirname, "..");
 const wishlist = readFileSync(join(root, "src/components/wishlist-view-2.0.tsx"), "utf8");
 const wardrobeApp = readFileSync(join(root, "src/components/wardrobe-app.tsx"), "utf8");
+const confirmActionSheet = readFileSync(join(root, "src/components/dialogs/confirm-action-sheet.tsx"), "utf8");
+const motionCommon = readFileSync(join(root, "src/components/motion-common.tsx"), "utf8");
 const wishlistCardStart = wishlist.indexOf("<CatalogWaterfallGrid");
 const wishlistCardEnd = wishlist.indexOf("<WishlistGlobalDialogs", wishlistCardStart);
 const wishlistCardBlock = wishlistCardStart >= 0 && wishlistCardEnd > wishlistCardStart
@@ -29,18 +31,21 @@ const showFlags =
   /<WishlistGlobalDialogs[\s\S]+?showUndoPurchaseConfirm=\{showUndoPurchaseConfirm\}[\s\S]+?showDeleteRecordConfirm=\{showDeleteRecordConfirm\}/.test(wishlist);
 check("<WishlistGlobalDialogs> props 显式传入 showUndoPurchaseConfirm 与 showDeleteRecordConfirm", showFlags);
 
-// 3. useStableBackHandler 顺序关闭 4 种弹窗
-// 用更简单的检测: 4 个 if (showXxxConfirm) 都在 useStableBackHandler 内
+// 3. A2 后四类确认层统一由 ConfirmActionSheet -> MotionSheet -> OverlayStack
+// 按 topmost 顺序关闭；页面级 handler 不得再重复按状态字面量抢占返回事件。
 const backHandlerStart = wishlist.indexOf("useStableBackHandler(() => {");
-const backHandlerEnd = wishlist.indexOf("}, isSubPage);");
+const backHandlerEnd = wishlist.indexOf("}, isSubPage || wishlistSelection.selectionMode || isFormSaving);", backHandlerStart);
 const backHandler = wishlist.slice(backHandlerStart, backHandlerEnd);
-const has4Order =
-  backHandler.indexOf("if (showUndoPurchaseConfirm)") < backHandler.indexOf("if (showDeleteRecordConfirm)") &&
-  backHandler.indexOf("if (showDeleteRecordConfirm)") < backHandler.indexOf("if (showRejectConfirm)") &&
-  backHandler.indexOf("if (showRejectConfirm)") < backHandler.indexOf("if (showDiscardConfirm)");
+const dialogFlags = ["showUndoPurchaseConfirm", "showDeleteRecordConfirm", "showRejectConfirm", "showDiscardConfirm"];
+const dialogStatesStayOutOfPageBackHandler = dialogFlags.every((flag) => !backHandler.includes(flag));
+const fourTopmostDialogsRemainMounted = dialogFlags.every((flag) => wishlist.includes(`<ConfirmDialog open={${flag}}`));
+const sharedTopmostContract =
+  /return <ConfirmActionSheet open=\{open\}/.test(wishlist) &&
+  /<MotionSheet[\s\S]{0,260}open=\{open\}/.test(confirmActionSheet) &&
+  /function MotionSheetLayer[\s\S]{0,2200}useOverlayLayer\(\{/.test(motionCommon);
 check(
-  "useStableBackHandler 顺序关闭 undoPurchase / deleteRecord / reject / discard 弹窗",
-  has4Order,
+  "undoPurchase / deleteRecord / reject / discard 由共享 OverlayStack topmost 顺序关闭",
+  dialogStatesStayOutOfPageBackHandler && fourTopmostDialogsRemainMounted && sharedTopmostContract,
 );
 
 // 4. 父级在 shoppingSubPageActive=true 时 return, 子级 useStableBackHandler 主动处理

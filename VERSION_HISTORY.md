@@ -21,6 +21,16 @@
 - **自动化与浏览器验证**：`test:logic:app-route` 通过（原路由 46/46 + C1 29/29），`test:logic:followup-navigation` 82/82、`test:logic:wardrobe-app-split` 47/47、`test:logic:back-priority-regression`、`test:logic:diagnostic-events` 54/54、`docs:ui-spec:build/check`、`test:logic:ui-spec-preview`、根 `typecheck`、Next `build` 均通过。隔离 Playwright `390×844` 实测 Tab 独立滚动、同步四连切、detail push/pop、Sheet 锁滚到 intake 再 pop、退出页交互归属和 reduced-motion；无 console error，截图 `/tmp/wardrobe-c1-navigation-390.png` 已人工核对无白屏、叠层溢出或位置跳闪。
 - **风险与未验证项**：`high`（App 主壳高频导航、滚动和 Overlay 交接）。未在 Android 真机/模拟器、WebView、TalkBack/VoiceOver、生产 API 或真实长列表异步增高场景做最终验收；本批不交付 APK。详情卡片精确 anchor、Lightbox 来源连续性由 C2 接续，Android 返回键与真实设备帧时序留给 D/最终集成 Wave。
 
+## 2026-07-13 / v2.1.18-test / Codex Subagent C2 — 三类详情、来源锚定与共享预览连续性
+
+- **执行 Agent**：Codex 实施 Wave 4 / C2，使用 `apple-design` 技能；独立分支 `codex/motion-c2-detail-continuity-20260713`、独立 worktree `/Users/fangzheng/Documents/wardrobe-motion-c2-detail-continuity-20260713`，基于冻结提交 `a1d6137a05890d81b4f6ab420bfe85e99f746496`；未合入 integration / `main`，未推送、未清理。本 Session 由主集成 Agent 分派，未再调用下级 subagent。
+- **目的与版本**：统一衣物、套装、种草详情的 Tab 内容运动、Popover 锚点与 Lightbox 来源连续性，并把 B2 下拖 controller 接入共享运行时；版本保持 `2.1.18-test`，不改 API、服务端、存储、领域字段、小程序或 APK 版本。
+- **详情与返回契约**：共享 `DetailTabs` 使用唯一 layout indicator 平移，`DetailTabContent` 使用 `popLayout + 120ms opacity`，不补间 `height:auto`；三类详情全部接入。套装切换实体时同步复位 Tab/hero。静态契约覆盖衣橱 → `wardrobe_home`、已买种草 → `wishlist_purchased`、套装首页 → `outfit_home`、月历 → `outfit_calendar`，月份、选中日期与嵌套 `returnRoute` 仍由既有父级持有，C1 继续单独负责路由方向和滚动恢复。
+- **Lightbox 与 Popover**：详情 Hero 只在有效图片 click 时登记一次性 DOM source hint；可见来源按 `280ms` 展开、`240ms` 收回并恢复可见性/焦点，不可见或断连来源以短 fade 降级，reduced-motion 仅 `100ms` opacity。快速关闭从当前 presentation matrix 反向接管。共享 Lightbox 消费 B2 `useLightboxDragDismiss`，保留 1:1 下拖、速度投影、背景联动与 zoom/pan 双门；同时禁用原生图片 drag，修复浏览器 `pointercancel` 抢走手势。三类详情继续使用真实 More trigger 的共享 Popover；anchor transform-origin、Arrow/Home/End、Escape 与焦点恢复均已实际验证。
+- **改动文件**：`detail-shell.tsx`、`garment-detail-3.0.tsx`、`garment-immersive-detail.tsx`、`outfit-list-view.tsx` 详情区、`wishlist-view-2.0.tsx` 详情区、`motion-common.tsx` Lightbox；新增 C2 静态与 390px 浏览器脚本；同步 Wishlist 陈旧返回合同、UI 规范 MD/生成 HTML 与本记录。冻结基线的 `test-wishlist-management-followup` 仍要求页面 handler 字面关闭四类 Dialog，已更新为现行 `ConfirmActionSheet → MotionSheet → OverlayStack topmost` 契约，并继续逐一覆盖 undo/delete/reject/discard。
+- **验证结果**：`test:logic:detail-shell`、`test:logic:wishlist`（107/107）、`test:logic:wishlist-management-followup`（54/54）、`test:logic:shared-item-shells`、`test:logic:followup-navigation`（82/82）、`test:logic:ui-overlay-contract`、C2 静态契约、UI spec build/check/preview、根 `typecheck`、Next `build` 与 `git diff --check` 通过。390×844 Playwright 实测 source enter/exit、快速反向与焦点恢复、隐藏来源 fade、慢拖 `80px → 80px`、快速 `48px` flick 关闭、zoom/pan 均 `y=0`、Popover 键盘/回焦、Tab indicator 移动约 `113.8px` 和 reduced-motion 纯淡化；截图 `/tmp/wardrobe-c2-detail-continuity-390.png` 已人工核对。
+- **风险门禁与未验证项**：`high`（共享 Lightbox、触摸手势与三类高频详情）。本批未在 Android 真机/模拟器、WebView、TalkBack/VoiceOver、生产账号或真实线上图片上执行最终回归，也未构建 APK；Android 返回键、真实触摸帧率、辅助技术和 APK 业务链路由 D Wave / 主集成最终验收。
+
 ## 2026-07-13 / v2.1.18-test / Codex 主集成 — Motion Wave 3 归并与陈旧合同同步
 
 - **执行与版本**：主 Agent 按 B1 → B2 → B3 顺序归并三项独立提交，保全并重生成 UI 规范；版本保持 `2.1.18-test`，未进入 APK 交付。

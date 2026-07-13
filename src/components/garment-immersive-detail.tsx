@@ -17,8 +17,9 @@
  * - 颜色映射仅用于色块渲染, 不替代中文颜色名 (文字 + 色块都显示)
  */
 
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import { ChevronLeft, Crop } from "lucide-react";
+import { rememberLightboxSourceAnchor } from "@/components/motion-common";
 import { SwipeImageCarousel, type SwipeAddSlide, type SwipeImageSlide, type SwipeSlide } from "@/components/swipe-image-carousel";
 import { clampCarouselIndex } from "@/lib/carousel-logic";
 import type { GarmentImageEntry } from "@/lib/garment-image-source";
@@ -228,6 +229,7 @@ extraImages,
   onCropAt,
   onRequestAddReference,
 }: GarmentImmersiveDetailProps) {
+  const sourceAnchorRef = useRef<HTMLDivElement>(null);
   // ================================================================
   // v0.9.38-dev P0 §1.5 / §3: 详情页 slide/index 模型重整
   // ------------------------------------------------------------
@@ -358,8 +360,17 @@ extraImages,
 
  {/* 中部大图 */}
  <div
+   ref={sourceAnchorRef}
    className="relative mx-auto w-full overflow-hidden rounded-2xl bg-mist select-none"
    style={imageShellStyle}
+   data-lightbox-source-anchor="garment-immersive-hero"
+   onClickCapture={(event) => {
+     if (!onOpenImageAt && !onOpenImage) return;
+     const target = event.target instanceof Element ? event.target : null;
+     if (target?.closest("img") || target?.closest("button")?.querySelector("img")) {
+       rememberLightboxSourceAnchor(sourceAnchorRef.current);
+     }
+   }}
  >
    <SwipeImageCarousel
      slides={slides}

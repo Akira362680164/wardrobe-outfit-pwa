@@ -384,6 +384,14 @@ Icon-only 按钮必须有 `aria-label`；图标与文字组合时图标使用 `a
 - reduced-motion 下保留手指直接操控，释放后即时吸附目标页，不运行 momentum spring。胶片栏或受控 index 变化复用同一轨道吸附；跨多张选择期间必须保留源页到目标页的可见轨道，不能出现空白帧。
 - Lightbox 下拖关闭的可复用 controller 由 `useLightboxDragDismiss` 提供：返回 `y`、`imageScale`、`backdropOpacity`、Pointer bindings、`reset` 与 `isEnabled`；下拖同样使用 presentation value、速度投影和 release spring。`zoomScale > 1.01` 或 `isPanning=true` 时必须关闭下拖退出，让放大图片优先平移。本 Wave 只交付 controller 与独立验证，不修改共享 `MotionImageLightbox`；运行时接线和 source-anchor 展开/收回统一留给 C2，禁止提前复制私有 Lightbox。
 
+#### 7.1.2 C2 三类详情与来源连续性
+
+- 衣物、套装、种草三类详情只使用共享 `DetailTabs` 与 `DetailTabContent`。选中背景由唯一 `layoutId` 指示器在 Tab 间平移，内容使用 `AnimatePresence(mode="popLayout")` 和 `120ms` 透明度交叉淡化；不得用 `height:auto`、大面积上下位移或同时叠加两份正文高度。
+- `MotionImageLightbox` 运行时直接消费 B2 的 `useLightboxDragDismiss`。手势层与 source-anchor 外层 transform 分离；下拖 1:1 跟手并联动图片轻缩放与背景透明度，释放使用速度投影和 spring。原生图片 drag 必须禁用，避免浏览器发出 `pointercancel` 抢走下拖序列；`zoomScale > 1.01` 或 `isPanning=true` 时下拖关闭保持禁用。
+- 详情 Hero 只在有效图片 click 序列登记一次、最长 `2s` 有效的 DOM 展示锚点，不在 pointerdown 阶段预登记，也不把 DOM ref 写入路由、领域实体、API 或持久状态。来源仍连接、可见且与视口相交时，Lightbox 以 `280ms` 从来源展开、以 `240ms` 收回并在覆盖期间隐藏来源；进入尚未完成时立即关闭，必须从当前 presentation transform 反向接管，不能先跳到完全展开态。来源隐藏、断连、离开视口或无法测量时，进入/退出退化为不超过 `140ms` 的短 fade。reduced-motion 下不运行 source FLIP 或 scale，只保留 `100ms` opacity fade，也不隐藏来源。
+- `MotionPopoverMenu` 必须使用当前可见 More 按钮的真实 `anchorRef`，按 anchor 中心计算 `transform-origin`，打开后聚焦首个有效菜单项，支持 ArrowUp/ArrowDown/Home/End，Escape 只关闭 topmost 菜单，关闭后焦点恢复到同一触发器。三类详情不得复制私有 Lightbox、Popover 或键盘 listener。
+- 返回来源保持四条既有业务路线：衣橱详情返回 `wardrobe_home`；已买种草打开的衣物详情返回 `wishlist_purchased`；套装首页详情返回 `outfit_home`；月历详情返回 `outfit_calendar`，并由父级继续持有月份、选中日期和展开上下文。C2 只冻结详情端的 `returnTo/returnRoute` 契约；路由方向、列表首帧滚动恢复和 Tab 级滚动恢复由 C1 单一负责，不在详情组件保存第二份导航上下文。
+
 ### 7.2 瀑布流与多选
 
 - 列表卡片统一使用 `CatalogWaterfallGrid` + `CatalogWaterfallCardShell`。

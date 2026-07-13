@@ -72,6 +72,7 @@ import {
   DetailAiCard,
   DetailHeroGallery,
   DetailQuickActions,
+  DetailTabContent,
   DetailTabs,
   DetailTitleMetaBlock,
   DetailTopBar,
@@ -1389,8 +1390,9 @@ export function WishlistView20({
         tabs={<DetailTabs tabs={[{ key: "assessment", label: "信息" }, { key: "pairing", label: "搭配" }, { key: "record", label: "记录" }]} activeTab={detailTab} data-parity-id="parity.app.app.src.components.wishlist.view.2.0.37c3979a6c" onChange={setDetailTab} />}
         overlays={<MotionPopoverMenu visible={menuOpen} onClose={() => setMenuOpen(false)} anchorRef={menuAnchorRef}><div className="min-w-[176px] p-1"><button type="button" data-parity-id="parity.app.app.src.components.wishlist.view.2.0.bfa7a5961e" onClick={() => { setMenuOpen(false); openEditForm(item); }} className="flex items-center gap-2 w-full rounded-lg px-3 py-2.5 text-sm hover:bg-mist/50"><Edit3 size={15} /> 编辑种草单品</button>{item.convertedItemId ? <button type="button" data-parity-id="parity.app.app.src.components.wishlist.view.2.0.b8324ff5d5" onClick={() => { setMenuOpen(false); requestUndoPurchase(item); }} className="flex items-center gap-2 w-full rounded-lg px-3 py-2.5 text-sm hover:bg-mist/50 text-red-500"><RotateCcw size={15} /> 撤销购买</button> : null}<button type="button" data-parity-id="parity.app.app.src.components.wishlist.view.2.0.7560657dff" onClick={() => { setMenuOpen(false); handleArchive(item); }} className="flex items-center gap-2 w-full rounded-lg px-3 py-2.5 text-sm hover:bg-mist/50"><Package size={15} /> 归档</button><button type="button" data-parity-id="parity.app.app.src.components.wishlist.view.2.0.a64cb8e7c5" onClick={() => { setMenuOpen(false); setSelectedItem(item); setShowDeleteRecordConfirm(true); }} className="flex items-center gap-2 w-full rounded-lg px-3 py-2.5 text-sm hover:bg-mist/50 text-red-500"><Trash2 size={15} /> 删除记录</button></div></MotionPopoverMenu>}
       >
-            {detailTab === "assessment" && (
-              <div className="space-y-4">
+            <DetailTabContent activeKey={detailTab}>
+              {detailTab === "assessment" && (
+                <div className="space-y-4">
                 <ItemDetailSections
                   name={item.name}
                   categoryLabel={item.category ? CATEGORY_LABELS[item.category] : undefined}
@@ -1409,11 +1411,11 @@ export function WishlistView20({
                   fitNotes={item.fitNotes}
                   notes={item.notes}
                 />
-              </div>
-            )}
+                </div>
+              )}
 
-            {detailTab === "pairing" && (
-              <div className="space-y-5">
+              {detailTab === "pairing" && (
+                <div className="space-y-5">
                 {/* Recommended pairings */}
                 <div>
                   <h4 className="text-sm font-semibold mb-3">可搭配已有单品</h4>
@@ -1491,19 +1493,20 @@ export function WishlistView20({
                     </ul>
                   </div>
                 )}
-              </div>
-            )}
+                </div>
+              )}
 
-            {detailTab === "record" && (
-              <div className="space-y-3 text-sm">
-                <RowItem label="创建时间" value={item.createdAt.slice(0, 10)} />
-                <RowItem label="更新时间" value={item.updatedAt.slice(0, 10)} />
-                <RowItem label="评估时间" value={item.aiAssessment?.generatedAt?.slice(0, 10) || "未评估"} />
-                {item.convertedAt && <RowItem label="加入衣橱时间" value={item.convertedAt.slice(0, 10)} />}
-                {item.convertedItemDeletedAt && <RowItem label="衣橱单品" value={`已删除 · ${item.convertedItemDeletedAt.slice(0, 10)}`} />}
-                <RowItem label="备注" value={item.notes || "未识别"} />
-              </div>
-            )}
+              {detailTab === "record" && (
+                <div className="space-y-3 text-sm">
+                  <RowItem label="创建时间" value={item.createdAt.slice(0, 10)} />
+                  <RowItem label="更新时间" value={item.updatedAt.slice(0, 10)} />
+                  <RowItem label="评估时间" value={item.aiAssessment?.generatedAt?.slice(0, 10) || "未评估"} />
+                  {item.convertedAt && <RowItem label="加入衣橱时间" value={item.convertedAt.slice(0, 10)} />}
+                  {item.convertedItemDeletedAt && <RowItem label="衣橱单品" value={`已删除 · ${item.convertedItemDeletedAt.slice(0, 10)}`} />}
+                  <RowItem label="备注" value={item.notes || "未识别"} />
+                </div>
+              )}
+            </DetailTabContent>
       </ItemDetailPageShell>
     );
   }

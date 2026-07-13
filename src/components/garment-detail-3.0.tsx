@@ -29,6 +29,7 @@ import {
   DetailAiCard,
   DetailFilmstrip,
   DetailHeroGallery,
+  DetailTabContent,
   DetailTabs,
   DetailTitleMetaBlock,
   DetailTopBar,
@@ -286,9 +287,11 @@ export function GarmentDetail30({
         </>
       }
     >
-      {activeTab === "info" ? <InfoTab item={item} aiStyleAdvice={aiStyleAdvice} aiAdviceState={aiAdviceState} hasMiniMaxKey={hasMiniMaxKey} onGenerateAdvice={onGenerateAdvice} onGoSettings={onGoSettings} locationLabel={locationLabel} seasonLabels={seasonLabels} styleLabels={styleLabels} subcategory={subcategory} material={material} purchaseDate={purchaseDate} temperatureRange={temperatureRange} notes={notes} /> : null}
-      {activeTab === "inspiration" ? <InspirationTab refs={refs} onAdd={onAddReferenceImage} onView={onViewReferenceImage} /> : null}
-      {activeTab === "pairing" ? <PairingTab allItems={allItems} historyOutfits={historyOutfits} pairingItems={pairingItems} onViewOutfit={onViewOutfit} /> : null}
+      <DetailTabContent activeKey={activeTab}>
+        {activeTab === "info" ? <InfoTab item={item} aiStyleAdvice={aiStyleAdvice} aiAdviceState={aiAdviceState} hasMiniMaxKey={hasMiniMaxKey} onGenerateAdvice={onGenerateAdvice} onGoSettings={onGoSettings} locationLabel={locationLabel} seasonLabels={seasonLabels} styleLabels={styleLabels} subcategory={subcategory} material={material} purchaseDate={purchaseDate} temperatureRange={temperatureRange} notes={notes} /> : null}
+        {activeTab === "inspiration" ? <InspirationTab refs={refs} onAdd={onAddReferenceImage} onView={onViewReferenceImage} /> : null}
+        {activeTab === "pairing" ? <PairingTab allItems={allItems} historyOutfits={historyOutfits} pairingItems={pairingItems} onViewOutfit={onViewOutfit} /> : null}
+      </DetailTabContent>
     </ItemDetailPageShell>
   );
 }
