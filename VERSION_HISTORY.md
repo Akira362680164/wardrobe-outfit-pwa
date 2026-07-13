@@ -8,6 +8,7 @@
 - **Fixture 与人工影子验收**：24 个场景覆盖雨天通勤、高温休闲、冬季低温、正式会议、旅行户外、连衣裙、保存成功套装、重复/从未穿/正负反馈、所有指定硬过滤原因及 `ready/limited/not_ready`。产物为 `tests/reports/recommendations/SHADOW_ACCEPTANCE.md` 和 `shadow-audit.json`，全部使用合成数据。
 - **自动验证**：新专项 49/49 通过，包含同 Fixture 100 次字节等价、五类输入乱序不变、UUID/归属/硬过滤/模板/去重、温差 8℃、正式度差 3、日期分桶、Jaccard、上限、三目标反算、PAW 关闭/超时/八类非法批次回退与少候选诚实返回。800 件固定大衣橱 Fixture 本轮全量 API 测试中约 10.71ms，仅报告不作唯一 CI 判据。
 - **项目门禁**：`cloud:contracts:typecheck`、`api:typecheck`、根 `typecheck`、API 全量 19 文件 164/164、既有 `test:logic`、穿搭计划/打包 125 项、`test:manifest`、`recommendations:shadow:check`、Next `build` 均通过；`git diff --check` 通过。
+- **生产 API 收口**：服务端与 cloud contracts 合入 `main` 后，以合并提交 `7f993758` 构建并切换镜像 `wardrobe-api:7f993758`（镜像 ID `sha256:ba3a78a708daaf2fe1418ec5f80e6871b0c137372ceb7b3d67efe611259f9de8`），配置备份位于 `/opt/wardrobe-cloud/backups/recommendation-engine-1a-20260713-234616/`，旧镜像 `wardrobe-api:aff43975` 保留为回滚点。本批无数据库结构变更，未执行迁移，迁移记录仍为 18；容器 healthy、重启次数 0，启动日志未检出 fatal/unhandled/migration error，本机与公网 `/api/health`、`/api/ready`、`/api/version` 均通过且版本返回 `gitCommit=7f993758`，未授权 workspace 返回 401。生产容器未设置四个推荐/PAW 环境开关（代码默认关闭），`/api/recommendations` 返回 404，确认未暴露本批明确排除的生产路由。
 - **风险门禁**：`high`（新共享合同与大规模确定性服务端逻辑）。仍待产品确认的最小假设已独立冻结在 `docs/recommendations/rule-engine-1a-assumptions.md`：未冻结原语的温度/颜色/风格基础分、warm/full-rain 外套必需语义、连体装/裙装对 body slot 的替代关系、PAW DTO 缺 warmth 时的 adapter-only 中性值。未做真实用户衣橱影子运行、真实 PAW/QWeather、数据库持久化、worker/队列、生产功能开启或新 UI；这些均在本批明确范围外。
 
 ## 2026-07-13 / v2.1.18-test / Codex — Wardora 审计修复收口
