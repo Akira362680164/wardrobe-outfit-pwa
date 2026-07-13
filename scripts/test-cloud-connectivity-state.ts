@@ -34,7 +34,7 @@ check("探测失败不降级 HTTP", !/http:\/\//.test(connectivity.replace(/NEXT
 
 console.log("\n=== Auth B6 Rules ===");
 // (removed - online-only migration) check("离线授权最长 30 天且不超过 refresh 过期", computeOfflineAccessUntil("2026-08-01T00:00:00.000Z", new Date("2026-06-26T00:00:00.000Z")) === "2026-07-26T00:00:00.000Z");
-check("refresh 401/403 才清认证凭证", /isAuthInvalidError/.test(authProvider) && /error\.status === 401 \|\| error\.status === 403/.test(authProvider) && /clearAuthTokens\(loaded\)/.test(authProvider) && /clearAuthTokens\(current\)/.test(authProvider));
+check("仅明确的认证终止码才清认证凭证", /isAuthInvalidError/.test(authProvider) && /AUTH_REFRESH_REUSED/.test(authProvider) && /AUTH_TOKEN_INVALID/.test(authProvider) && /clearAuthTokens\(current\)/.test(authProvider));
 // (removed - online-only migration) check("refresh 网络失败/降级可保留 cached session", /canUseCachedSession\(loaded\)/.test(authProvider) && /setPhase\("authenticated"\)/.test(authProvider));
 // v2.0.1: login/register no longer require cloud_ready
 check("登录/注册不依赖 ensureCloudReady", !/ensureCloudReady/.test(authProvider));

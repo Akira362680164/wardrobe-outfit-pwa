@@ -1,7 +1,7 @@
 "use client";
 
 import { Capacitor, CapacitorHttp } from "@capacitor/core";
-import type { AuthTokenPayload, AuthUserSnapshot } from "@/lib/auth-session-store";
+import { createRefreshRequestId, type AuthTokenPayload, type AuthUserSnapshot } from "@/lib/auth-session-store";
 
 export interface AuthApiErrorBody {
   code: string;
@@ -325,7 +325,7 @@ async function requestJson<T>(
     ) {
       const newTokens = await refreshWithMutex({
         refreshToken: options.refreshToken,
-        refreshRequestId: `auto-${Date.now()}-${Math.random().toString(16).slice(2)}`,
+        refreshRequestId: createRefreshRequestId(),
         deviceId: options.deviceId,
       });
       return perform(newTokens.accessToken);

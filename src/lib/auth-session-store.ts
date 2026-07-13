@@ -37,6 +37,17 @@ export interface AuthSessionSnapshot {
   pendingRegistration?: PendingRegistrationSnapshot;
   offlineAccessUntil?: string;
   localOwner?: LocalOwnerSnapshot;
+  /**
+   * A refresh attempt is persisted until the rotated credentials are safely
+   * stored.  If the response is lost, the same request id can be replayed
+   * within the server idempotency window instead of being treated as token
+   * theft.
+   */
+  pendingRefresh?: {
+    requestId: string;
+    refreshTokenPrefix: string;
+    startedAt: string;
+  };
 }
 
 export interface AuthTokenPayload {
@@ -82,6 +93,7 @@ export async function saveAuthTokens(snapshot: AuthSessionSnapshot, tokens: Auth
     refreshTokenExpiresAt: tokens.refreshTokenExpiresAt,
     user: tokens.user,
     pendingRegistration: undefined,
+    pendingRefresh: undefined,
     offlineAccessUntil: computeOfflineAccessUntil(tokens.refreshTokenExpiresAt),
   };
   await saveAuthSessionSnapshot(next);
@@ -136,7 +148,7 @@ export function isAccessTokenFresh(snapshot: AuthSessionSnapshot, skewMs = 60_00
 }
 
 export function createRefreshRequestId(): string {
-  return globalThis.crypto?.randomUUID?.() ?? `refresh-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+  return globalThis.crypto?.randomUUID?.() ?? fallbackUuid();
 }
 
 export function computeOfflineAccessUntil(refreshTokenExpiresAt: string, now = new Date()): string {
@@ -202,4 +214,11 @@ function createDeviceId(): string {
 function createDeviceLabel(): string {
   if (Capacitor.getPlatform() === "android") return "Android 手机";
   return "浏览器开发环境";
+}
+
+function fallbackUuid(): string {
+  return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, (char) => {
+    const value = Math.floor(Math.random() * 16);
+    return (char === "x" ? value : (value & 3) | 8).toString(16);
+  });
 }

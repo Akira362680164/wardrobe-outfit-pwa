@@ -27,6 +27,8 @@ import type {
 export function useWardrobeDataController() {
   const gate = useOnlineWorkspaceGate();
   const ownedRepository = useRef<OnlineWorkspaceRepository | null>(null);
+  const refreshGeneration = useRef(0);
+  const refreshController = useRef<AbortController | null>(null);
   const repository = gate?.repository ?? (ownedRepository.current ??= new OnlineWorkspaceRepository());
   const [onlineState, setOnlineState] = useState<OnlineListState<OnlineWorkspaceSnapshot>>(
     gate ? finishOnlineLoad(gate.initialSnapshot) : initialOnlineState,
@@ -53,10 +55,15 @@ export function useWardrobeDataController() {
   }, []);
 
   const refreshState = useCallback(async () => {
+    const generation = ++refreshGeneration.current;
+    refreshController.current?.abort();
+    const controller = new AbortController();
+    refreshController.current = controller;
     setOnlineState((current) => beginOnlineLoad(current));
     recordDiagnosticEvent("network", "online_workspace_refresh", { phase: "started", severity: "info" });
     try {
-      const next = await repository.getOverview();
+      const next = await repository.getOverview({ signal: controller.signal });
+      if (generation !== refreshGeneration.current || controller.signal.aborted) return;
       applySnapshot(next);
       setOnlineState(finishOnlineLoad(next));
       recordDiagnosticEvent("network", "online_workspace_refresh", {
@@ -64,6 +71,7 @@ export function useWardrobeDataController() {
         metadata: { itemCount: next.items.length, outfitCount: next.outfits.length, wishlistCount: next.wishlistItems.length },
       });
     } catch (error) {
+      if (generation !== refreshGeneration.current || controller.signal.aborted) return;
       const message = onlineErrorMessage(error);
       setOnlineState((current) => failOnlineLoad(current, message));
       recordDiagnosticEvent("network", "online_workspace_refresh", { phase: "failed", severity: "error", errorCode: "WORKSPACE_REFRESH_FAILED" });
@@ -75,6 +83,9 @@ export function useWardrobeDataController() {
     if (gate) return;
     void refreshState().catch(() => undefined);
     return () => {
+      refreshGeneration.current += 1;
+      refreshController.current?.abort();
+      refreshController.current = null;
       ownedRepository.current?.dispose();
       ownedRepository.current = null;
     };

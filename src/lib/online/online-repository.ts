@@ -55,8 +55,8 @@ export class OnlineWorkspaceRepository {
     this.images = new OnlineImageClient();
   }
 
-  async getOverview(): Promise<OnlineWorkspaceSnapshot> {
-    const response = WorkspaceOverviewResponseSchema.parse(await onlineRequest<unknown>("/api/workspace/overview", { session: this.session }));
+  async getOverview(options: { signal?: AbortSignal } = {}): Promise<OnlineWorkspaceSnapshot> {
+    const response = WorkspaceOverviewResponseSchema.parse(await onlineRequest<unknown>("/api/workspace/overview", { session: this.session, signal: options.signal }));
     const [items, outfits, wishlistItems, locations, outfitCalendarPlans, outfitPlanEntries, profiles] = await Promise.all([
       Promise.all(response.garments.map((entity) => this.mapGarment(entity))),
       Promise.all(response.outfits.map((entity) => this.mapOutfit(entity))),

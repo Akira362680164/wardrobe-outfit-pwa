@@ -81,6 +81,17 @@ export function createOnlineWriteRepository(request: OnlineWriteRequester = onli
     return response.entity;
   }
 
+  async function committedMutation(clientMutationId: string, initial: WorkspaceCommandResponse): Promise<WorkspaceCommandResponse> {
+    if (initial.status !== "in_progress") return initial;
+    const delays = [100, 250, 500, 1_000];
+    for (const delay of delays) {
+      await new Promise((resolve) => setTimeout(resolve, delay));
+      const resolved = await getMutationResult(clientMutationId);
+      if (resolved?.status === "committed") return resolved;
+    }
+    throw new Error("服务器仍在处理本次提交，请稍后重试");
+  }
+
   async function create(
     resource: OnlineWorkspaceResource,
     command: WorkspaceCreateCommand,
@@ -147,7 +158,8 @@ export function createOnlineWriteRepository(request: OnlineWriteRequester = onli
     command: WorkspaceDeleteCommand,
   ): Promise<WorkspaceCommandResponse> {
     requireRevision(command.expectedRevision);
-    return request(`${workspaceBase}/${resource}/${encodeURIComponent(id)}`, { method: "DELETE", body: command });
+    const response = await request<WorkspaceCommandResponse>(`${workspaceBase}/${resource}/${encodeURIComponent(id)}`, { method: "DELETE", body: command });
+    return committedMutation(command.clientMutationId, response);
   }
 
   async function action<TCommand extends OnlineMutationOptions>(
