@@ -323,6 +323,16 @@ Icon-only 按钮必须有 `aria-label`；图标与文字组合时图标使用 `a
 - 相册或相机取消、裁切取消、识别失败、保存失败都保留当前 `imageItems`、当前步骤、当前确认单品和内存草稿；失败只在原位置展示错误与重试入口。保存仍须等待服务端提交和读回，B4 不改变 API、字段、幂等 ID 或线上唯一数据源规则。
 - 裁切器沿用现有黑色工作台与 Denim 主操作层级，运行时代码必须消费 `denim/white/ink/mist` 等既有语义 token；不得继续以硬编码十六进制颜色复制基线，也不得借动效改造重排裁切工具栏或表单信息架构。
 
+##### 6.1.8 C1 路由运动与滚动连续性
+
+- 导航控制器必须把 `fromRoute/toRoute/source/direction` 与目标 route 原子提交；`direction` 只使用 `tab/push/pop/replace`。Tab 重置为 `tab`，前进为 `push`，返回及录入关闭为 `pop`，非层级替换为 `replace`；同 route 重复点击不得创建新 transition 或排队动画。
+- 四个主 Tab 是平级关系：新内容以 `opacity 0.96 → 1`、`y 4px → 0` 短交叉淡化，使用 `AnimatePresence mode="sync"`，快速连续切换必须中断当前呈现状态，不得使用 `mode="wait"`。底栏选中胶囊使用共享 `layoutId` 在 Tab 间移动；按钮继续只使用 B1 `AppPressable`，不得叠加第二层按压缩放。
+- push 时新页从右侧 `24px` 进入、旧页向后 `-6px`；pop 完全沿相反路径返回。退出页在动画期间必须 `inert/aria-hidden` 且不接收 pointer；reduced-motion 只保留短 opacity 变化，不保留 x/y 位移或 spring。
+- 路由容器不得常驻 `transform-gpu`、`will-change` 或统一 opacity+y 模板。页面叠层使用同一 grid cell，退出与进入可同步呈现而不把文档高度相加；方向、层级与交互归属由唯一 `NavigationMotion` 决定。
+- 滚动位置只保存在当前 App 会话内的 route-specific 内存表。每次提交在 `useLayoutEffect` 中保存实际已呈现 route 的 scrollY，并在浏览器首帧绘制前恢复目标 route；四个 Tab 相互独立，详情 pop 回列表恢复列表位置，不等待动画完成或双/三重 `requestAnimationFrame`。
+- 若全局“+”Sheet 的 fixed-body 锁仍在退出期，读取 `body.top` 对应的真实呈现位置，并只把最终恢复推迟到锁释放的同一绘制帧；不得让锁滚回写覆盖目标 route。选择“单品 / 套装 / 种草”时，关闭 Sheet、录入 trigger 与 intake push 必须在同一用户事件内提交，不添加空等定时器，使 Sheet 退出与录入页进入自然重叠。
+- C1 只负责 AppRoute 外层导航、主 Tab、全局“+”衔接和 route scrollY。卡片 source anchor、Lightbox 来源动画与三类详情内部连续性仍属于 C2；深层计划、设置和种草子页的统一路由化仍属于 C3。
+
 #### 6.2 并行 Wave 规范所有权
 
 并行 Session 对运行时文件实行独占所有权；规范只允许修改下列命名小节。生成的 HTML 与 `VERSION_HISTORY.md` 在每个 Wave 合入后由主 Agent 保全并重生成。

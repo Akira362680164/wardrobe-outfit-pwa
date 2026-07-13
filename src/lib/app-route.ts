@@ -3,6 +3,9 @@
 // 消除 wardrobe-app 顶部 activeView 独立 state（参见方案 C：route 派生 view）。
 export type MainTabKey = "wardrobe" | "recommend" | "shopping" | "settings";
 
+export type NavigationSource = "user" | "back" | "create" | "nav" | "system";
+export type NavigationDirection = "tab" | "push" | "pop" | "replace";
+
 export type AppRouteName =
   | "wardrobe_home"
   | "garment_detail"
@@ -40,6 +43,45 @@ export type AppRoute =
   | { name: "intake_single_item"; returnTo: AppRouteName }
   | { name: "intake_outfit"; returnTo: AppRouteName }
   | { name: "intake_wishlist"; returnTo: AppRouteName };
+
+/**
+ * A route change and its spatial intent travel together. Keeping this context
+ * out of individual screens lets one interruptible presenter handle Tab,
+ * forward and back transitions without asking pages to guess their direction.
+ */
+export interface NavigationTransition {
+  id: number;
+  fromRoute: AppRoute;
+  toRoute: AppRoute;
+  source: NavigationSource;
+  direction: NavigationDirection;
+}
+
+export function createNavigationTransition(
+  id: number,
+  fromRoute: AppRoute,
+  toRoute: AppRoute,
+  source: NavigationSource,
+  direction: NavigationDirection,
+): NavigationTransition {
+  return { id, fromRoute, toRoute, source, direction };
+}
+
+/** A stable, route-specific key for in-memory scroll restoration. */
+export function getRouteScrollKey(route: AppRoute): string {
+  switch (route.name) {
+    case "garment_detail":
+      return `${route.name}:${route.itemId}`;
+    case "outfit_detail":
+      return `${route.name}:${route.outfitId}`;
+    case "intake_single_item":
+    case "intake_outfit":
+    case "intake_wishlist":
+      return `${route.name}:${route.returnTo}`;
+    default:
+      return route.name;
+  }
+}
 
 const GLOBAL_CREATE_ALLOWED_ROUTE_NAMES: ReadonlySet<AppRouteName> = new Set([
   "wardrobe_home",

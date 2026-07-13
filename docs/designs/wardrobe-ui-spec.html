@@ -2,7 +2,7 @@
 <!--
   DO NOT EDIT BY HAND.
   Generated from docs/designs/wardrobe-ui-spec.md by scripts/generate-ui-spec-preview.mjs.
-  Source SHA256: a522e3564a094f3a25a739ff51e0910e866f5746a8714c5da6da0a61137c0728
+  Source SHA256: 0f3450e3140d8e437bcdbc56a8fa9a4c195392a5e3fdc1c79f560847a8231730
 -->
 <html lang="zh-CN">
 <head>
@@ -838,7 +838,7 @@
           <div class="meta-row">
             <span class="pill active">v0.2-final</span>
             <span class="pill">Markdown 唯一事实源</span>
-            <span class="pill">Source SHA256 a522e3564a09</span>
+            <span class="pill">Source SHA256 0f3450e3140d</span>
           </div>
           <h1>衣橱穿搭助手 UI 规范</h1>
           <p>本页由规范 Markdown 自动生成，用于快速走查页面框架、组件契约、通知样式和验收映射。</p>
@@ -1000,6 +1000,8 @@
 <ul><li>周计划条与月历都常驻“上一页 / 当前页 / 下一页”三页轨道。拖动和释放阶段只更新横向 <code>MotionValue/transform</code>；提交单页后再更新父级日期事实并无缝回中，五行与六行月份都不得先卸载当前页或闪空。</li><li>轨道固定 <code>touch-action: pan-y</code>，横纵意图阈值为 <code>9px</code>；纵向或纵向占优的斜向手势不得抢占页面滚动，只有横向意图成立后才 pointer capture。拖动阶段保持手指与轨道 <code>1:1</code>，仅在三页外缘使用随越界距离渐增的 nonlinear rubber-band。</li><li>周计划与月历共用 <code>calendar-track-gesture.ts</code> 的短历史速度和 snap 计算：只采最近 <code>110ms</code>，按 <code>0.2s</code> 投影终点，并把结果限制为上一页 / 当前页 / 下一页，单次 flick 不得跨两页。释放使用无弹跳、可中断 spring；新 pointerdown 从当前呈现 x 接管，途中反向不得先跳回旧目标。</li><li>左右箭头与拖动必须进入同一 snap 状态机。连续同向点击按顺序执行且不吞步；动画中点击反向箭头先重定向当前轨道，不能并发启动第二套月 / 周切换动画。</li><li>日期选中态使用共享 <code>layoutId</code> 的背景层移动，不以旧背景消失、新背景重新淡入伪装连续性。月历日期详情使用位置布局、透明度与裁切显隐；不得补间 <code>height:auto</code>。reduced-motion 下切页、选中和详情展开即时完成，不运行 spring 或大位移。</li><li><code>monthDate/selectedDate</code> 与周计划对应日期仍由父级持有；组件重挂载时从父级选中日期恢复展开详情，不增加模块级缓存、隐藏持久化或第二份返回上下文。日卡按钮、busy 写入和服务器读回边界保持原有业务语义。</li></ul>
 <p>##### 6.1.7 B4 录入裁切、滑条与中断恢复</p>
 <ul><li>裁切框拖动继续使用 pointer capture，但展示值与合法值分离：越过图片边缘时按距离施加渐进阻尼，松手后使用公共无弹跳 <code>spring.control</code> 从当前呈现值回到合法框。新 pointerdown 必须能从正在收口的呈现值接管；确认导出只读取 clamp 后的合法框，禁止把越界展示值写入业务草稿。</li><li>温度双端滑条和通用数值滑条只允许从 knob 的 44px 命中区起拖。pointerdown 记录手指相对 knob 中心的 grab offset，不立即跳值；控件固定 <code>touch-action: pan-y</code> 并在首个 <code>8px</code> 内判断横纵意图，纵向或纵向占优的手势不得修改数值。</li><li>滑条拖动、键盘和边界夹紧统一按最终整数去重；父组件尚未重渲染时也不得对相同整数重复调用 <code>onChange</code>。拖出 knob 或轨道边界后仍通过 pointer capture 连续跟手，释放或 <code>pointercancel</code> 必须清空本次手势状态。</li><li>批量逐件确认只在当前单品预览图上提供 <code>10px</code> 左右的轻方向提示，上一件向右、下一件向左进入；表单容器、字段分组和保存栏不得因切换单品重新播放整页或大位移动画。reduced-motion 下方向位移即时归零。</li><li>录入返回优先级固定为：裁切器 &gt; 图片来源 &gt; 字段浮层 &gt; 退出确认 &gt; 录入页面返回。统一 OverlayStack 只消费一次 topmost 状态；嵌入式裁切通过录入 Shell 的 root back override 关闭，不能同时退步骤或打开退出确认。</li><li>相册或相机取消、裁切取消、识别失败、保存失败都保留当前 <code>imageItems</code>、当前步骤、当前确认单品和内存草稿；失败只在原位置展示错误与重试入口。保存仍须等待服务端提交和读回，B4 不改变 API、字段、幂等 ID 或线上唯一数据源规则。</li><li>裁切器沿用现有黑色工作台与 Denim 主操作层级，运行时代码必须消费 <code>denim/white/ink/mist</code> 等既有语义 token；不得继续以硬编码十六进制颜色复制基线，也不得借动效改造重排裁切工具栏或表单信息架构。</li></ul>
+<p>##### 6.1.8 C1 路由运动与滚动连续性</p>
+<ul><li>导航控制器必须把 <code>fromRoute/toRoute/source/direction</code> 与目标 route 原子提交；<code>direction</code> 只使用 <code>tab/push/pop/replace</code>。Tab 重置为 <code>tab</code>，前进为 <code>push</code>，返回及录入关闭为 <code>pop</code>，非层级替换为 <code>replace</code>；同 route 重复点击不得创建新 transition 或排队动画。</li><li>四个主 Tab 是平级关系：新内容以 <code>opacity 0.96 → 1</code>、<code>y 4px → 0</code> 短交叉淡化，使用 <code>AnimatePresence mode=&quot;sync&quot;</code>，快速连续切换必须中断当前呈现状态，不得使用 <code>mode=&quot;wait&quot;</code>。底栏选中胶囊使用共享 <code>layoutId</code> 在 Tab 间移动；按钮继续只使用 B1 <code>AppPressable</code>，不得叠加第二层按压缩放。</li><li>push 时新页从右侧 <code>24px</code> 进入、旧页向后 <code>-6px</code>；pop 完全沿相反路径返回。退出页在动画期间必须 <code>inert/aria-hidden</code> 且不接收 pointer；reduced-motion 只保留短 opacity 变化，不保留 x/y 位移或 spring。</li><li>路由容器不得常驻 <code>transform-gpu</code>、<code>will-change</code> 或统一 opacity+y 模板。页面叠层使用同一 grid cell，退出与进入可同步呈现而不把文档高度相加；方向、层级与交互归属由唯一 <code>NavigationMotion</code> 决定。</li><li>滚动位置只保存在当前 App 会话内的 route-specific 内存表。每次提交在 <code>useLayoutEffect</code> 中保存实际已呈现 route 的 scrollY，并在浏览器首帧绘制前恢复目标 route；四个 Tab 相互独立，详情 pop 回列表恢复列表位置，不等待动画完成或双/三重 <code>requestAnimationFrame</code>。</li><li>若全局“+”Sheet 的 fixed-body 锁仍在退出期，读取 <code>body.top</code> 对应的真实呈现位置，并只把最终恢复推迟到锁释放的同一绘制帧；不得让锁滚回写覆盖目标 route。选择“单品 / 套装 / 种草”时，关闭 Sheet、录入 trigger 与 intake push 必须在同一用户事件内提交，不添加空等定时器，使 Sheet 退出与录入页进入自然重叠。</li><li>C1 只负责 AppRoute 外层导航、主 Tab、全局“+”衔接和 route scrollY。卡片 source anchor、Lightbox 来源动画与三类详情内部连续性仍属于 C2；深层计划、设置和种草子页的统一路由化仍属于 C3。</li></ul>
 <p>#### 6.2 并行 Wave 规范所有权</p>
 <p>并行 Session 对运行时文件实行独占所有权；规范只允许修改下列命名小节。生成的 HTML 与 <code>VERSION_HISTORY.md</code> 在每个 Wave 合入后由主 Agent 保全并重生成。</p>
 <div class="table-wrap"><table><thead><tr><th>Wave</th><th>规范小节所有者</th></tr></thead><tbody><tr><td>A1</td><td>OverlayRoot、OverlayStack、BackCoordinator 公共契约</td></tr><tr><td>A2-Core / App / Flows</td><td>共享浮层组件 / App 壳与账号 / 业务流浮层</td></tr><tr><td>B1 / B2 / B3</td><td>即时反馈 / 图片手势 / 周历月历手势</td></tr><tr><td>B4 / C1 / C2</td><td>录入手势 / 路由运动 / 详情连续性</td></tr><tr><td>C3-Outfit / Settings / Wishlist</td><td>穿搭计划 / 设置账号 / 种草深层流程</td></tr><tr><td>D1-Runtime / Contracts / Android</td><td>偏好与性能 / 防回归合同 / Android 验收</td></tr></tbody></table></div></div></section>
