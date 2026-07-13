@@ -1593,7 +1593,7 @@ function toMiniOutfitPlanEntry(entity: WorkspaceEntity): MiniOutfitPlanEntry {
     id: entity.id,
     revision: entity.revision,
     date: firstString(payload.date, payload.planDate),
-    outfitId: firstString(payload.outfitId, payload.actualOutfitId),
+    outfitId: firstString(payload.outfitId),
     actualOutfitId: firstString(payload.actualOutfitId),
     calendarPlanId: firstString(payload.calendarPlanId, payload.tripPlanId),
     status: planEntryStatus(payload.status),

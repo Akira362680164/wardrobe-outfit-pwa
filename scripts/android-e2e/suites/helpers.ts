@@ -307,7 +307,6 @@ export function wishlistPayload(name: string, patch: Record<string, unknown> = {
 export function outfitPayload(name: string, itemIds: number[]): Record<string, unknown> {
   const now = new Date().toISOString();
   return {
-    legacyOutfitId: `outfit-${randomUUID()}`,
     name,
     legacyItemIds: itemIds,
     itemIds,
@@ -326,7 +325,6 @@ export function outfitPayload(name: string, itemIds: number[]): Record<string, u
 export function outfitPlanPayload(outfitId: string, date: string): Record<string, unknown> {
   const now = new Date().toISOString();
   return {
-    legacyPlanEntryId: `plan-${date}-${randomUUID()}`,
     date,
     outfitId,
     status: "planned",

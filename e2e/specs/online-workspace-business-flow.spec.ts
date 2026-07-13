@@ -25,12 +25,12 @@ test("真实 PostgreSQL 完成 CRUD、计划已穿、幂等重试和种草撤销
   expect(updatedGarment.entity?.payload.name).toBe("事务白衬衫-已编辑");
 
   const outfit = await create("outfits", {
-    legacyOutfitId: "outfit-transaction-e2e", name: "事务通勤套装", legacyItemIds: [81001, 81002], itemIds: [81001, 81002],
+    name: "事务通勤套装", legacyItemIds: [81001, 81002], itemIds: [81001, 81002],
     source: "manual", favorite: false, wornDates: [], createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(),
   });
   const date = new Date().toISOString().slice(0, 10);
-  await create("outfit-plans", {
-    legacyPlanEntryId: "plan-transaction-e2e", date, outfitId: "outfit-transaction-e2e", status: "planned", isPrimary: true,
+  const plan = await create("outfit-plans", {
+    date, outfitId: outfit.entity!.id, status: "planned", isPrimary: true,
     createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(),
   });
 
@@ -43,7 +43,7 @@ test("真实 PostgreSQL 完成 CRUD、计划已穿、幂等重试和种草撤销
   let overview = await getWorkspaceOverview(page);
   expect(overview.outfits.find((entry) => entry.id === outfit.entity!.id)?.payload.wornDates).toEqual([date]);
   expect(overview.garments.filter((entry) => [81001, 81002].includes(Number(entry.payload.legacyItemId))).every((entry) => (entry.payload.wornDates as string[]).includes(date))).toBe(true);
-  expect(overview.outfitPlans.find((entry) => entry.payload.legacyPlanEntryId === "plan-transaction-e2e")?.payload.status).toBe("worn");
+  expect(overview.outfitPlans.find((entry) => entry.id === plan.entity!.id)?.payload.status).toBe("worn");
   expect(overview.wearEvents).toHaveLength(3);
 
   await workspaceRequest(page, `/api/workspace/outfits/${outfit.entity!.id}/cancel-worn`, "POST", {
@@ -52,7 +52,7 @@ test("真实 PostgreSQL 完成 CRUD、计划已穿、幂等重试和种草撤销
   overview = await getWorkspaceOverview(page);
   expect(overview.outfits.find((entry) => entry.id === outfit.entity!.id)?.payload.wornDates).toEqual([]);
   expect(overview.garments.filter((entry) => [81001, 81002].includes(Number(entry.payload.legacyItemId))).every((entry) => !(entry.payload.wornDates as string[]).includes(date))).toBe(true);
-  expect(overview.outfitPlans.find((entry) => entry.payload.legacyPlanEntryId === "plan-transaction-e2e")?.payload.status).toBe("planned");
+  expect(overview.outfitPlans.find((entry) => entry.id === plan.entity!.id)?.payload.status).toBe("planned");
   expect(overview.wearEvents).toHaveLength(0);
 
   const wishlist = await create("wishlist", { ...garmentPayload(0, "事务种草外套"), status: "interested" });

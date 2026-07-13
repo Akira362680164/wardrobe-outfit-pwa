@@ -449,12 +449,14 @@ export const outfitPlans = pgTable(
     id: uuid("id").primaryKey().defaultRandom(),
     tripPlanId: uuid("trip_plan_id").references(() => tripPlans.id, { onDelete: "set null" }),
     outfitId: uuid("outfit_id").references(() => outfits.id, { onDelete: "set null" }),
+    actualOutfitId: uuid("actual_outfit_id").references(() => outfits.id, { onDelete: "set null" }),
     planDate: text("plan_date"),
     ...syncEntityColumns,
   },
   (table) => ({
     userDateIdx: index("outfit_plans_user_date_idx").on(table.userId, table.planDate),
     tripPlanIdx: index("outfit_plans_trip_plan_id_idx").on(table.tripPlanId),
+    actualOutfitIdx: index("outfit_plans_actual_outfit_id_idx").on(table.actualOutfitId),
   }),
 );
 

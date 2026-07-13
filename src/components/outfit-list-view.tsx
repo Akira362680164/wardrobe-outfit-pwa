@@ -248,7 +248,7 @@ export function OutfitListView({
 	  const [planAddType, setPlanAddType] = useState<OutfitCalendarPlanType>("travel");
 	  const [activeCalendarPlanId, setActiveCalendarPlanId] = useState<string | null>(null);
 	  const [selectOutfitDate, setSelectOutfitDate] = useState<string | null>(null);
-	  const [selectOutfitMode, setSelectOutfitMode] = useState<"change" | "backup">("backup");
+	  const [selectOutfitMode, setSelectOutfitMode] = useState<"primary" | "change" | "backup">("primary");
 	  const [showPlanSelectSheet, setShowPlanSelectSheet] = useState(false);
   const wornThisMonth = useMemo(() => {
     const monthPrefix = todayKey.slice(0, 7);
@@ -818,7 +818,9 @@ export function OutfitListView({
 
 	  function openPlanOutfitSelect(dateKey: string) {
 	    setSelectOutfitDate(dateKey);
-	    setSelectOutfitMode("backup");
+	    const primary = outfitPlanEntries.find((entry) => entry.date === dateKey && entry.status === "planned" && entry.isPrimary);
+	    const hasResolvablePrimary = Boolean(primary && outfits.some((outfit) => outfit.id === primary.outfitId));
+	    setSelectOutfitMode(hasResolvablePrimary ? "backup" : "primary");
 	    setShowPlanSelectSheet(true);
 	  }
 
@@ -830,7 +832,7 @@ export function OutfitListView({
 
 	  async function handleSelectOutfitForPlan(outfit: SavedOutfit) {
 	    if (selectOutfitDate) {
-	      const opts = selectOutfitMode === "change" ? { makePrimary: true } : { role: "backup" as const };
+	      const opts = selectOutfitMode === "backup" ? { role: "backup" as const } : { makePrimary: true };
 	      await handleAddOutfitToDate(selectOutfitDate, outfit.id, "auto", opts);
 	    }
 	    setShowPlanSelectSheet(false);
@@ -1331,6 +1333,7 @@ export function OutfitListView({
 	          onOpenPackingList={openPackingListFromPlanDetail}
 	          onSelectOutfitForDate={(dateKey) => {
 	            setSelectOutfitDate(dateKey);
+	            setSelectOutfitMode("change");
 	            setShowPlanSelectSheet(true);
 	          }}
 	          onViewOutfit={(outfitId) => openOutfitDetail(outfitId, "plan_detail")}

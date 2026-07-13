@@ -204,7 +204,8 @@ Page({
 
   openSelectedDateSelector() {
     const relation = getOutfitPlanDateRelation(this.data.selectedDate, localDateKey());
-    this.openOutfitSelector(relation === "past" ? "worn" : "primary");
+    const hasBrokenPrimary = Boolean(this.entryForDate(this.data.selectedDate) && !this.data.selectedDayCard?.primary);
+    this.openOutfitSelector(relation === "past" ? "worn" : hasBrokenPrimary ? "replace" : "primary");
   },
 
   openBackupSelector() {
@@ -443,7 +444,7 @@ Page({
       selectedDayCard,
       selectedEmptyTitle: selectedDayCard.empty?.title || "",
       selectedEmptyCopy: selectedDayCard.empty?.copy || "",
-      selectedEmptyAction: relation === "past" ? "补记已穿" : "安排穿搭",
+      selectedEmptyAction: selectedDayCard.empty?.actionLabel || (relation === "past" ? "补记已穿" : "安排穿搭"),
     });
   },
 });

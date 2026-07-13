@@ -149,7 +149,8 @@ Page({
 
   openSelectedDateSelector() {
     const relation = getOutfitPlanDateRelation(this.data.selectedDate, this.data.todayKey);
-    this.openOutfitSelector(relation === "past" ? "worn" : "primary");
+    const hasBrokenPrimary = Boolean(this.primaryEntryForDate(this.data.selectedDate) && !this.data.selectedDayCard?.primary);
+    this.openOutfitSelector(relation === "past" ? "worn" : hasBrokenPrimary ? "replace" : "primary");
   },
 
   openBackupSelector() {
@@ -406,13 +407,9 @@ Page({
       calendarWeeks,
       selectedDayCard,
       monthHasData,
-      selectedEmptyTitle: relation === "past"
-        ? `${formatDateWithWeek(this.data.selectedDate)}还没有穿着记录`
-        : relation === "today"
-          ? "今天还没有安排穿搭"
-          : `${formatDateWithWeek(this.data.selectedDate)}还没有安排穿搭`,
-      selectedEmptyCopy: "",
-      selectedActionLabel: relation === "past" ? "补记已穿" : "安排穿搭",
+      selectedEmptyTitle: selectedDayCard.empty?.title || "",
+      selectedEmptyCopy: selectedDayCard.empty?.copy || "",
+      selectedActionLabel: selectedDayCard.empty?.actionLabel || (relation === "past" ? "补记已穿" : "安排穿搭"),
     });
   },
 

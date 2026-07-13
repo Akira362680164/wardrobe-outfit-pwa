@@ -93,6 +93,7 @@ export function buildOutfitPlanDayCard(input: {
   const primaryOutfit = visiblePrimaryEntry
     ? input.outfits.find((outfit) => outfit.id === getDisplayOutfitId(visiblePrimaryEntry))
     : undefined;
+  const hasBrokenPrimary = Boolean(visiblePrimaryEntry && !primaryOutfit);
   const dateLabel = formatDateLabel(input.dateKey);
   const weekdayLabel = formatDateWithWeek(input.dateKey).split(" ")[1] || "";
   const primary = visiblePrimaryEntry && primaryOutfit
@@ -165,14 +166,16 @@ export function buildOutfitPlanDayCard(input: {
     empty: primary
       ? null
       : {
-          title: mainPlan
+          title: hasBrokenPrimary
+            ? "计划关联的套装已失效"
+            : mainPlan
             ? "尚未安排当天穿搭"
             : relation === "past"
               ? `${dateLabel}还没有穿着记录`
               : relation === "today"
                 ? "今天还没有安排穿搭"
                 : `${dateLabel}还没有安排穿搭`,
-          copy: "",
+          copy: hasBrokenPrimary ? "该计划无法找到对应套装，请重新选择。" : "",
           actionLabel: emptyActions[0]?.label || "安排穿搭",
           hasPlan: Boolean(mainPlan),
           planId: mainPlan?.id || "",

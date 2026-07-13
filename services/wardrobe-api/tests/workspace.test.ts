@@ -21,6 +21,7 @@ const root = path.resolve(__dirname, "../../..");
 const migration = readFileSync(path.join(root, "services/wardrobe-api/migrations/0009_online_workspace.sql"), "utf8");
 const assetLifecycleMigration = readFileSync(path.join(root, "services/wardrobe-api/migrations/0011_asset_lifecycle_constraint.sql"), "utf8");
 const relaxedAssetLifecycleMigration = readFileSync(path.join(root, "services/wardrobe-api/migrations/0012_relax_canonical_asset_field.sql"), "utf8");
+const canonicalOutfitPlanMigration = readFileSync(path.join(root, "services/wardrobe-api/migrations/0017_outfit_plan_canonical_uuid.sql"), "utf8");
 const schema = readFileSync(path.join(root, "services/wardrobe-api/src/db/schema.ts"), "utf8");
 const entityId = "018f6f02-7b7a-7a20-8d1d-000000000301";
 const mutationId = "018f6f02-7b7a-7a20-8d1d-000000000302";
@@ -42,6 +43,17 @@ describe("online workspace migration", () => {
     expect(assetLifecycleMigration).toContain("temporary_session_id IS NOT NULL");
     expect(relaxedAssetLifecycleMigration).not.toMatch(/temporary_session_id IS NULL[\s\S]*field_name IS NULL/);
     expect(relaxedAssetLifecycleMigration).toContain("field_name IS NOT NULL");
+  });
+
+  it("backfills canonical outfit relationships and stops on unresolved legacy IDs", () => {
+    expect(canonicalOutfitPlanMigration).toContain('ADD COLUMN IF NOT EXISTS "actual_outfit_id" uuid');
+    expect(canonicalOutfitPlanMigration).toContain("duplicate legacyOutfitId");
+    expect(canonicalOutfitPlanMigration).toContain("unresolved outfitId exists");
+    expect(canonicalOutfitPlanMigration).toContain("outfit_id column conflicts with payload outfitId");
+    expect(canonicalOutfitPlanMigration).toContain("outfit.id::text = plan.payload->>'outfitId'");
+    expect(canonicalOutfitPlanMigration).toContain("outfit.payload->>'legacyOutfitId' = plan.payload->>'outfitId'");
+    expect(canonicalOutfitPlanMigration).toContain("payload - 'legacyOutfitId'");
+    expect(canonicalOutfitPlanMigration).toContain("outfit_plans_actual_outfit_id_outfits_id_fk");
   });
 });
 

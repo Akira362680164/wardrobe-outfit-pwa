@@ -50,7 +50,7 @@
           <view class="day-status">{{item.statusLabel}}</view>
         </view>
         <view wx:else class="day-empty">
-          <text>尚未安排当天穿搭</text>
+          <text>{{item.broken ? '计划关联的套装已失效，请重新选择' : '尚未安排当天穿搭'}}</text>
           <button class="day-empty__button" data-date="{{item.date}}" bindtap="addDayOutfit">+计划穿搭</button>
         </view>
       </view>

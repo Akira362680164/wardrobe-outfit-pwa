@@ -182,6 +182,20 @@ export function OutfitPlanDetailView({
                         </div>
                       </div>
                     </div>
+                  ) : primaryEntry ? (
+                    <div className="flex items-center justify-between gap-2 rounded-2xl border border-amber-200 bg-amber-50/70 p-3">
+                      <div>
+                        <p className="text-[11px] font-semibold text-amber-800">计划关联的套装已失效</p>
+                        <p className="mt-0.5 text-[10px] text-amber-700/80">请重新选择套装。</p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => onSelectOutfitForDate(dateKey)}
+                        className="rounded-full bg-denim px-3 py-1 text-[11px] font-semibold text-white"
+                      >
+                        重新选择
+                      </button>
+                    </div>
                   ) : (
                     <div className="flex items-center justify-between gap-2">
                       <p className="text-[11px] text-ink/40">尚未安排当天穿搭</p>

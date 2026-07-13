@@ -103,7 +103,6 @@ export async function seedParityFixtures(options: {
   const noImageLegacyId = Number(entities["garment.no_image"].payload.legacyItemId);
   const now = new Date().toISOString();
   entities["outfit.complete"] = await api.createEntity(session, "outfits", deterministicUuid(namespace, "outfit.complete"), {
-    legacyOutfitId: `outfit-${deterministicUuid(namespace, "outfit.complete.legacy")}`,
     name: `${options.runId}-outfit-complete`,
     legacyItemIds: [completeLegacyId, noImageLegacyId],
     itemIds: [completeLegacyId, noImageLegacyId],
@@ -117,7 +116,7 @@ export async function seedParityFixtures(options: {
     createdAt: now,
     updatedAt: now,
   });
-  const outfitLegacyId = String(entities["outfit.complete"].payload.legacyOutfitId);
+  const outfitId = entities["outfit.complete"].id;
   entities["wishlist.normal"] = await api.createEntity(session, "wishlist", deterministicUuid(namespace, "wishlist.normal"), wishlistPayload(options.runId, "wishlist-normal"));
   entities["wishlist.rejected"] = await api.createEntity(session, "wishlist", deterministicUuid(namespace, "wishlist.rejected"), wishlistPayload(options.runId, "wishlist-rejected", { status: "rejected" }));
   entities["wishlist.archived"] = await api.createEntity(session, "wishlist", deterministicUuid(namespace, "wishlist.archived"), wishlistPayload(options.runId, "wishlist-archived", { status: "archived" }));
@@ -150,9 +149,8 @@ export async function seedParityFixtures(options: {
     updatedAt: now,
   });
   entities["calendar.entry.primary"] = await api.createEntity(session, "outfit-plans", deterministicUuid(namespace, "calendar.entry.primary"), {
-    legacyPlanEntryId: `plan-${deterministicUuid(namespace, "calendar.entry.primary.legacy")}`,
     date: "2026-07-15",
-    outfitId: outfitLegacyId,
+    outfitId,
     status: "planned",
     isPrimary: true,
     createdAt: now,
