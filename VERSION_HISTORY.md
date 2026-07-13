@@ -1,3 +1,14 @@
+## 2026-07-13 / v2.1.16-test / Codex — 套装与穿搭计划 UUID 收口完整修复方案
+
+- **执行 Agent**：Codex（未触发 subagent；本轮按用户要求只编写方案，不修改运行时代码）。
+- **目的**：根据 Android 日历“计划存在但缩略图和当天穿搭缺失”的现场截图，补齐 App、小程序、服务端和 PostgreSQL 的跨端根因分析及完整修复实施方案。
+- **版本变更**：无，保持 `2.1.16-test`；未构建 APK、未上传小程序、未部署服务端。
+- **改动文件**：`docs/superpowers/plans/2026-07-13-outfit-plan-canonical-uuid-migration.md`、`VERSION_HISTORY.md`。
+- **方案结论**：`outfits.id`、`outfit_plans.id`、`trip_plans.id` 统一为唯一业务 UUID；迁移并约束 `outfit_id`、`actual_outfit_id`、`trip_plan_id`；删除 App `legacyOutfitId`/`legacyPlanEntryId` 映射和小程序 payload ID 回退；修正主计划/备选/更换语义；以 App→小程序和小程序→App 双向 E2E 作为发布门禁。
+- **验证结果**：方案覆盖数据审计、备份、迁移阻断条件、服务端/App/小程序文件映射、旧客户端窗口、测试矩阵、部署回滚、可观测性和最终验收；文档引用的 14 个关键源码路径均存在，代码围栏成对，`git diff --check` 通过；运行时代码未变更。
+- **风险门禁**：`high`（后续实施将涉及生产数据迁移、共享契约、跨端写入和客户端最低版本）；当前仅文档，不产生运行时风险。
+- **未验证风险**：方案尚未实施；生产数据只读审计、迁移演练、真实 Android E2E、小程序模拟器/真机预览和生产部署均未执行。
+
 ## 2026-07-13 / v2.1.16-test / Codex — App 与小程序套装组成编辑入口
 
 - **目的**：补齐 App 套装详情「组成」页签、App 编辑套装页和小程序套装详情的组成单品编辑入口。
