@@ -100,6 +100,23 @@ lastReviewedAt: 2026-07-07
 
 所有动画必须遵守 reduced-motion；减少大位移，保留必要的显隐和状态反馈。
 
+#### 2.4.1 动效修复目标契约（Wave 0 冻结）
+
+本节是 2026-07-13 动效修复批次的公共接口契约。并行 Session 只能实现或消费这些语义，不得在各页面另造一套 token、速度投影或返回优先级。
+
+| 语义 | 目标行为 |
+| --- | --- |
+| `spring.control` | 无弹跳、临界阻尼；按钮、选中指示器和普通状态反馈 |
+| `spring.panel` | 无弹跳、可中断；Sheet、Dialog 和页面层级运动 |
+| `spring.momentum` | 仅用于真实 drag/flick 释放，继承手指速度并允许轻微回弹 |
+| `motionDistance` | `near=4px`、`page=12px`、`panel=24px`；禁止单页新增随意位移档位 |
+| `projectGesture` | 使用释放前短历史速度投影终点，再选择 snap point；不得只看释放位置 |
+| `rubberBand` | 越界阻力随距离渐增；不得固定比例硬折损或直接硬停止 |
+
+手势驱动表面必须从当前屏幕呈现值接管，Pointer Events 使用 pointer capture，横纵意图阈值为 `8–10px`，拖动阶段由 MotionValue/transform 驱动而不是逐帧 React state。释放动画继承真实速度；快速反向必须从当前 x/y 与 velocity 重定向。
+
+reduced-motion 下取消大位移、spring、stagger、smooth scroll 和 `height:auto` 补间，保留 `120–160ms` cross-fade 或即时状态反馈。reduced-transparency、高对比或不支持 backdrop-filter 时，浮动材料改为近实心背景和清晰边界。
+
 ### 2.5 Icon
 
 图标事实源是 `lucide-react`，开发时只能从该库选择图标；不得用文字、emoji、特殊符号、CSS 伪元素或临时手绘 SVG 替代图标。若库内没有合适图标，先调整语义或登记设计债务，不允许直接造一个只在单页使用的新图标。
@@ -232,6 +249,31 @@ Icon-only 按钮必须有 `aria-label`；图标与文字组合时图标使用 `a
 - Sheet 和 Lightbox 打开时必须锁定底层滚动。当前 `MotionSheet`、`MotionImageLightbox` 和 `WardrobeImageSourceSheet` 均已使用共享锁滚与 Sheet 契约。
 - 遮罩点击是否关闭必须逐组件声明。
 - 危险操作必须有取消和结果明确的确认按钮，例如“删除 3 件”，不要只写“确定”。
+
+#### 6.1 OverlayRoot / OverlayStack 公共接口
+
+- `OverlayRoot` 在 App 壳层只挂载一次，所有 Sheet、Dialog、Popover、Lightbox、Cropper 都 portal 到该根；不得继续受路由 transformed ancestor 限制。
+- `OverlayStack` 的 entry 至少包含 `id/kind/dismissible/onDismiss/restoreFocusTo`。注册返回注销函数；只有 topmost entry 能消费 Escape、Android Back、Tab trap 和 backdrop。
+- Toast 不注册进 OverlayStack；不可取消的保存、删除、重置事务保留在栈顶，但 `dismissible=false`，关闭请求只反馈“操作进行中”。
+- Back/Escape 只有一个全局协调入口。一次事件最多发生一次状态转移；页面私有监听器必须迁移后删除。
+- 打开顶层覆盖层时，底层覆盖层及 App 内容设置 inert/不可被辅助技术浏览；关闭后焦点返回原触发器。
+
+`MotionSheet` 的冻结 props：`open/onClose/children`、`variant: action | form | confirm | destructive`、`role`、`ariaLabel | ariaLabelledBy`（二选一）、`closeOnBackdrop`、`closeOnEscape`、`dismissible`、`panelClassName`。共享实现必须保持迁移期向后兼容，业务 Session 不得修改该接口。
+
+`MotionPopoverMenu` 必须持有真实 trigger ref，按 anchor 计算 transform origin，打开后聚焦首项，支持 Arrow/Home/End/Escape，关闭后恢复触发器。`MotionImageLightbox` 和 Cropper 使用相同 topmost/focus/scroll-lock 生命周期。
+
+#### 6.2 并行 Wave 规范所有权
+
+并行 Session 对运行时文件实行独占所有权；规范只允许修改下列命名小节。生成的 HTML 与 `VERSION_HISTORY.md` 在每个 Wave 合入后由主 Agent 保全并重生成。
+
+| Wave | 规范小节所有者 |
+| --- | --- |
+| A1 | OverlayRoot、OverlayStack、BackCoordinator 公共契约 |
+| A2-Core / App / Flows | 共享浮层组件 / App 壳与账号 / 业务流浮层 |
+| B1 / B2 / B3 | 即时反馈 / 图片手势 / 周历月历手势 |
+| B4 / C1 / C2 | 录入手势 / 路由运动 / 详情连续性 |
+| C3-Outfit / Settings / Wishlist | 穿搭计划 / 设置账号 / 种草深层流程 |
+| D1-Runtime / Contracts / Android | 偏好与性能 / 防回归合同 / Android 验收 |
 
 ## 7. 核心组件 Contract
 

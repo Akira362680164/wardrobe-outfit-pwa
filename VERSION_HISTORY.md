@@ -1,3 +1,13 @@
+## 2026-07-13 / v2.1.18-test / Codex — 动效修复并行批次 Wave 0 基线
+
+- **执行 Agent**：Codex 主集成 Agent；独立集成分支 `codex/motion-repair-integration-20260713`，本记录未修改正式 `main`。
+- **目的**：把已审核的 Apple 风格动效改良方案固化进仓库，并冻结 Overlay、Back、手势物理、导航和无障碍公共契约，为后续最多三个 Subagent 同波并行实施建立无歧义基线。
+- **版本变更**：无；保持 `2.1.18-test`，最终进入 APK 前统一递增。
+- **改动文件**：两份动效方案文档、`docs/designs/wardrobe-ui-spec.md`、生成的 UI 规范 HTML、预览生成器、`VERSION_HISTORY.md`。
+- **改动说明**：明确运行时代码同波零重叠、共享规范受控归并、Wave 合入门禁；冻结 `OverlayRoot/OverlayStack`、单一 Back/Escape 消费、`MotionSheet` 变体和可访问命名、语义 spring、速度投影、rubber-band、reduced-motion/transparency/contrast 目标；补上既有 Android edge-to-edge 规范小节的具体视觉模块，修复预览合同中的 generic-part 基线失败。
+- **验证结果**：UI 规范 build/check、预览合同/渲染、overlay 合同、Back 优先级 20 项、根 typecheck 和 Next build 通过。`test:logic:ui-token-contract` 记录为基线既有失败：账号、裁切器、编辑图片卡和公开站点仍有 10 处硬编码颜色；本批未把该历史视觉债务误算为动效回归。
+- **未验证风险**：Wave 0 只建立文档与接口基线，运行时问题尚未修复；不得据此宣称动效、Android 返回键或手势体验已经改善。最终收口前仍须处理或重新判定上述 token 合同失败。
+
 ## 2026-07-13 / v2.1.18-test / Codex — Wardora 审计修复收口
 
 - **执行 Agent**：Codex（独立收口分支 `codex/wardora-closeout-20260713`；修复提交 `8fe94d73` 已纳入，未触碰正式工作区中的既有未跟踪文件）。
