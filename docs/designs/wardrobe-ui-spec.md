@@ -262,6 +262,14 @@ Icon-only 按钮必须有 `aria-label`；图标与文字组合时图标使用 `a
 
 `MotionPopoverMenu` 必须持有真实 trigger ref，按 anchor 计算 transform origin，打开后聚焦首项，支持 Arrow/Home/End/Escape，关闭后恢复触发器。`MotionImageLightbox` 和 Cropper 使用相同 topmost/focus/scroll-lock 生命周期。
 
+##### 6.1.1 A1 运行时基线
+
+- `src/components/overlay-root.tsx` 在 `MotionProvider` 内只挂载一次，并在 `document.body` 下创建 `#wardrobe-overlay-root`；注册的 Sheet 通过 `OverlayPortal` 进入该根。
+- `src/lib/overlay-stack.ts` 是浮层注册顺序、topmost、关闭拒绝和焦点恢复的唯一状态源。只有 topmost 能处理 Back、Escape、backdrop 和 Tab；下层浮层与 App 内容同步设置 `inert`、`aria-hidden`。
+- `src/lib/back-coordinator.ts` 先请求关闭 topmost overlay，再按 `priority + registration order` 查询页面 handler；浮层关闭或拒绝关闭后均不得继续执行页面返回。`useStableBackHandler` 只登记回调，不再创建 Capacitor listener。
+- `dismissible=false` 或 `closeOnEscape/closeOnBackdrop=false` 的关闭请求保持当前层，触发 `onDismissBlocked`，并提供“操作进行中”读屏状态；Toast 继续留在栈外。
+- A1 只建立共享 Sheet 与顶层返回基线；Lightbox、Popover、Cropper 和遗留页面私有 Back listener 的全面迁移属于 A2，不得把 A1 的局部接入误报为全 App 浮层迁移完成。
+
 #### 6.2 并行 Wave 规范所有权
 
 并行 Session 对运行时文件实行独占所有权；规范只允许修改下列命名小节。生成的 HTML 与 `VERSION_HISTORY.md` 在每个 Wave 合入后由主 Agent 保全并重生成。

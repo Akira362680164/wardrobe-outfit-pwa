@@ -6,6 +6,7 @@ import { Capacitor } from "@capacitor/core";
 import { useAppNavigationController } from "@/components/use-app-navigation-controller";
 import type { AppRoute } from "@/lib/app-route";
 import { getBackRoute, isDetailRoute, isGlobalCreateAllowedRoute, isIntakeRouteName } from "@/lib/app-route";
+import { useStableBackHandler } from "@/lib/use-stable-back-handler";
 import {
   AlertCircle,
   Archive,
@@ -511,32 +512,9 @@ export function WardrobeApp({ cloudAuth }: { cloudAuth?: WardrobeCloudAuth } = {
     wardrobeSubPageActive,
   ]);
 
-  useEffect(() => {
-    let removed = false;
-    let handle: { remove: () => void } | null = null;
-    App.addListener("backButton", () => {
-      if (removed) return;
-      handleTopLevelBack();
-    }).then((h) => {
-      if (!removed) handle = h;
-    });
-    return () => {
-      removed = true;
-      handle?.remove();
-    };
-  }, [handleTopLevelBack]);
-
-  useEffect(() => {
-    const handleEscape = (event: KeyboardEvent) => {
-      if (event.key !== "Escape") return;
-      const target = event.target as HTMLElement | null;
-      if (target && (target.tagName === "INPUT" || target.tagName === "TEXTAREA" || target.isContentEditable)) return;
-      event.preventDefault();
-      handleTopLevelBack();
-    };
-    document.addEventListener("keydown", handleEscape, true);
-    return () => document.removeEventListener("keydown", handleEscape, true);
-  }, [handleTopLevelBack]);
+  // OverlayRoot owns the only native Android Back / document Escape listeners.
+  // Page-local handlers register above this negative-priority root fallback.
+  useStableBackHandler(handleTopLevelBack, true, -1_000);
 
   // v1.1.20-dev commit2 (P2 诊断): app_visibility_changed + window_resize_observed
   // App 从后台切回前台 / 横竖屏切换 是 Android 真机高频 bug 源 (WebView 重渲染、
