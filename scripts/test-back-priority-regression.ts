@@ -1,13 +1,21 @@
 #!/usr/bin/env tsx
 import { strict as assert } from "node:assert";
-import { readFileSync } from "node:fs";
-import { join } from "node:path";
+import { readdirSync, readFileSync } from "node:fs";
+import { join, relative } from "node:path";
 
 import { BackHandlerStore, coordinateBackRequest } from "../src/lib/back-coordinator";
 import { OverlayStackStore } from "../src/lib/overlay-stack";
 
 const root = join(__dirname, "..");
 const read = (path: string) => readFileSync(join(root, path), "utf8");
+
+function listTypeScriptFiles(directory: string): string[] {
+  return readdirSync(directory, { withFileTypes: true }).flatMap((entry) => {
+    const path = join(directory, entry.name);
+    if (entry.isDirectory()) return listTypeScriptFiles(path);
+    return /\.[cm]?tsx?$/.test(entry.name) ? [path] : [];
+  });
+}
 
 async function verifyOverlayConsumesExactlyOneTransition(): Promise<void> {
   const overlays = new OverlayStackStore();
@@ -130,10 +138,26 @@ function verifyRuntimeUsesCoordinatorRegistration(): void {
   const stableBack = read("src/lib/use-stable-back-handler.ts");
   const wardrobeApp = read("src/components/wardrobe-app.tsx");
 
+  const nativeBackOwners = listTypeScriptFiles(join(root, "src")).flatMap((path) => {
+    const source = readFileSync(path, "utf8");
+    const matches = [...source.matchAll(/App\s*\.\s*addListener\s*\(\s*["']backButton["']/g)];
+    return matches.map((match) => ({
+      file: relative(root, path).replaceAll("\\", "/"),
+      line: source.slice(0, match.index).split("\n").length,
+    }));
+  });
+
   assert.equal(
     (overlayRoot.match(/App\.addListener\("backButton"/g) ?? []).length,
     1,
     "OverlayRoot owns one native Back listener",
+  );
+  assert.deepEqual(
+    nativeBackOwners.map(({ file }) => file),
+    ["src/components/overlay-root.tsx"],
+    `OverlayRoot must be the only native Back listener owner; found ${nativeBackOwners
+      .map(({ file, line }) => `${file}:${line}`)
+      .join(", ")}`,
   );
   assert.match(overlayRoot, /coordinateBackRequest\(overlayStack, backHandlers, "escape"\)/);
   assert.ok(!stableBack.includes("App.addListener"), "useStableBackHandler no longer creates native listeners");

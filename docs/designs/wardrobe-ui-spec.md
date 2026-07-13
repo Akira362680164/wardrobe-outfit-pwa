@@ -361,6 +361,15 @@ Icon-only 按钮必须有 `aria-label`；图标与文字组合时图标使用 `a
 - 首页与详情的 More 菜单必须各自持有当前可见触发器的独立 `anchorRef`。同步 push / pop 重叠期间，退出详情的 ref 清理不得清空已进入首页的菜单锚点；焦点恢复、键盘操作与 OverlayStack 优先级继续遵守 A2 / C2 公共契约。
 - 390px 竖屏验收至少覆盖：筛选并滚动列表 → 详情 → 加入衣橱失败 → 返回恢复；详情 → 编辑失败并保留图片 / 表单 → 放弃确认；已买列表 → 撤销购买 busy 锁定 → 失败保留确认与列表滚动。不得以只检查静态 DOM 或单个 happy path 代替深层流程验证。
 
+##### 6.1.12 D1-Contracts 动效与浮层防回归扫描
+
+- `test:logic:ui-motion-contract` 对 `src/app`、`src/components`、`src/lib` 全量扫描，不使用“当前文件清单”作为债务白名单；可用 `MOTION_CONTRACT_ROOT=<worktree>` 只读扫描待集成 Runtime worktree，普通 npm 入口仍以当前仓库根目录运行并校验 package scripts。任何新增 `fixed inset-0` JSX surface 只有在它实际位于 `<OverlayPortal>…</OverlayPortal>` 区间且所属文件调用 `useOverlayLayer` 时才允许；Toast、底栏等非全屏 fixed chrome 不误判，已注册的录入 Shell 与全屏裁切器继续通过。
+- Capacitor `backButton` 原生 listener 的唯一所有者是 `OverlayRoot`，且仓库中必须恰好存在一个。页面、详情、选择模式和业务流程只能注册 `useStableBackHandler`；静态合同与 `back-priority-regression` 同时保证 Overlay topmost → 页面高优先级 → App 根 fallback 的一次一层消费。
+- 每个 `MotionSheet` 调用必须显式传 `ariaLabel` 或 `ariaLabelledBy`；直接声明 `role=dialog/alertdialog/menu` 的 JSX 节点也必须在同一节点显式命名。扫描不把共享组件的通用 fallback、可见但未绑定的标题或注释当作可访问名称。
+- 普通点击反馈禁止散落 `active:scale-*`、CSS `:active { transform: scale(...) }` 或 `whileTap`；统一使用 `AppPressable` / `app-press-feedback`，由公共实现处理 pointer cancel、键盘、disabled 与 reduced-motion。该规则不禁止轮播/裁切的直接操控 transform、Lightbox source transform、选择 check 或公共 motion token 的非按压 scale。
+- reduced-motion 扫描阻止未就地分支的程序化 smooth scroll、Motion `height:auto`、stagger 和无限循环。JS 的 smooth / repeat 必须在相邻的 reduced-motion 条件中提供 instant / static 路径；CSS smooth 必须有 `prefers-reduced-motion: reduce` 的 auto/initial 覆盖。禁止仅依赖远处的全局开关掩盖局部大位移动画。
+- `test:logic:ui-contracts` 是组合入口，必须串行覆盖 motion scan、UI 规范预览、token、overlay、Back 优先级、360/390px overflow 与共享组件复用，并由 `test:logic:all` 调用。扫描命中运行时缺陷时由对应 Runtime 所有者修复；Contracts 不修改运行时代码，也不得新增例外、缩小目录或弱化正则来换取绿色结果。
+
 #### 6.2 并行 Wave 规范所有权
 
 并行 Session 对运行时文件实行独占所有权；规范只允许修改下列命名小节。生成的 HTML 与 `VERSION_HISTORY.md` 在每个 Wave 合入后由主 Agent 保全并重生成。
