@@ -5,7 +5,10 @@
 - **范围**：会话续期幂等与代际保护、工作区并发/事务约束、0018 数据约束迁移、请求竞态防旧响应覆盖、删除 in-progress 读回、profile singleton、小程序全量分页、撤销购买属性继承；不包含新版推荐首页、QWeather 或 PAW。
 - **本地验证**：根/App、cloud contracts、API、小程序 typecheck 通过；Next build 通过；API 测试 `115/115`；会话/在线写入/canonical UUID/主计划/撤销购买/profile singleton/小程序 refresh 与分页合同通过；空库完整迁移和生产备份恢复副本的 0018 成功、profile 重复 fail-fast/回滚演练通过。日期主计划合同已同步到统一日期锁 helper。
 - **服务器规则**：已将“服务端/迁移/云契约/生产配置改动合入 main 后，必须用最新 main 构建并更新生产 API，部署后核对迁移、health、ready、version 和未授权边界”加入正式根 `AGENTS.md`。
-- **当前状态**：生产 0018、API 部署、固定签名 APK 构建/安装和小程序体验版上传仍待本轮串行收口；未提交微信正式审核或正式发布。
+- **生产收口**：部署前备份位于 `/opt/wardrobe-cloud/backups/wardora-closeout-20260713-202129-10887/`（数据库转储 SHA-256 `6788c094be6e180dc84cd8eb3ef998277b09c9338449fefbc81676bf6415788a`，未记录 `.env` 内容）；生产 API 镜像 `wardrobe-api:aff43975`，镜像 SHA-256 `96d1c68f9fd94bd712566a6f47ad07108025f8a1e7146e65b0c0b0ea1fe32fb6`。迁移记录为 18，三个 0018 唯一索引存在，同日计划/实际主展示重复均为 0，active profile 重复为 0；容器 healthy、重启次数 0，`/api/health`、`/api/ready`、`/api/version` 和未授权 workspace `401` 通过。部署前重复审计为 1 组同日计划主展示重复、profile 重复 0；部署后 `refresh.replay_detected=3`、`refresh.rotated=26` 与短期基线不变，不据此宣称长期问题已完全消失。
+- **APK 收口**：固定签名产物 [衣橱穿搭助手-v2.1.18-test.apk](/Users/fangzheng/Documents/衣柜识别+根据要去的地方和活动自动搭配穿搭的APP/衣橱穿搭助手-v2.1.18-test.apk)，10,031,471 bytes，SHA-256 `dcbc995a059e1974ce740f681642cf0abe0ccbdc394b4be618976e1edb03a256`；包名 `com.wardrobe.outfit`、`versionName=2.1.18-test`、`versionCode=20118`、签名 `CN=fangzheng`。Android 15 / API 35 `wardrobe-test` 模拟器安装、启动、返回键和 fatal 日志扫描通过。
+- **小程序收口**：正式 `wechat/miniprogram` 已合入最新 main，体验版上传版本 `2.1.18` 成功，代码包 `808,752` bytes；[预览二维码](/Users/fangzheng/Downloads/衣橱穿搭助手-小程序-v2.1.18-预览二维码.jpg) 46,923 bytes，SHA-256 `d08a542e3f9fcc3d1141830543b7ded2f7096d3c7ac4bed3274dd1c0bd23e4a0`。未提交微信正式审核或正式发布。
+- **当前风险**：自动化长会话、模拟器和合同门禁已通过，但未使用生产用户数据执行跨越 15 分钟的真实账号写入回归；微信真机账号、真实业务写入读回和窄屏触摸回归仍未覆盖。服务器镜像构建仍有既有 `npm audit` 依赖告警，本轮未做无关依赖升级。
 
 ## 2026-07-13 / v2.1.17-test / Codex — 会话续期、工作区并发一致性与撤销购买语义修复
 
