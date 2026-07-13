@@ -55,7 +55,15 @@ export function BatchAiProgressPanel({
         </span>
       </div>
 
-      <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-mist">
+      <div
+        className="mt-3 h-1.5 overflow-hidden rounded-full bg-mist"
+        role="progressbar"
+        aria-label={`${title}进度`}
+        aria-valuemin={0}
+        aria-valuemax={100}
+        aria-valuenow={summary.progressPercent}
+        aria-valuetext={`${summary.completed} / ${summary.total} 已完成`}
+      >
         <div
           className="h-full rounded-full bg-denim transition-transform duration-300 ease-out motion-reduce:transition-none"
           style={{

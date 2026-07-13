@@ -413,7 +413,7 @@ export function OutfitPlanningCalendarView({
             data-parity-id="parity.app.app.src.components.outfit.planning.calendar.view.e7e2007f8b"
             onClick={onAdd}
             aria-label="添加计划"
-            className="inline-flex h-11 items-center justify-center ui-control-radius bg-denim px-4 text-sm font-semibold text-white shadow-sm active:scale-95 whitespace-nowrap min-w-[72px]"
+            className="inline-flex h-11 items-center justify-center ui-control-radius bg-denim px-4 text-sm font-semibold text-white shadow-sm app-press-feedback whitespace-nowrap min-w-[72px]"
           >
             +计划
           </button>
@@ -434,7 +434,7 @@ export function OutfitPlanningCalendarView({
               type="button"
               data-parity-id="parity.app.app.src.components.outfit.planning.calendar.view.0b460a0af4" onClick={handleTodayClick}
               aria-label="回到今天"
-              className="inline-flex h-9 items-center justify-center rounded-full border border-ink/10 bg-white px-2.5 text-[11px] font-semibold text-denim shadow-sm active:scale-95"
+              className="inline-flex h-9 items-center justify-center rounded-full border border-ink/10 bg-white px-2.5 text-[11px] font-semibold text-denim shadow-sm app-press-feedback"
             >
               今天
             </button>
@@ -467,7 +467,7 @@ export function OutfitPlanningCalendarView({
           onClickCapture={suppressSyntheticClick}
         >
           <motion.div
-            className="flex items-start will-change-transform"
+            className="flex items-start"
             style={{ x: trackX, visibility: trackWidth > 0 ? "visible" : "hidden" }}
           >
             {monthPages.map(({ pageOffset, monthDate: pageMonthDate }) => {
@@ -526,7 +526,7 @@ export function OutfitPlanningCalendarView({
                                       layoutId={`month-date-selection-${pageMonthDate}`}
                                       aria-hidden="true"
                                       className="absolute inset-0 -z-10 rounded-lg bg-denim/8 ring-1 ring-inset ring-denim/30"
-                                      transition={reduceMotion ? { duration: 0 } : spring.snappy}
+                                      transition={reduceMotion ? { duration: 0 } : spring.control}
                                     />
                                   ) : null}
                                   <span className={`relative z-10 text-xs font-semibold ${isToday ? "text-denim" : "text-ink/70"}`}>
@@ -587,7 +587,7 @@ export function OutfitPlanningCalendarView({
                             })}
                           </div>
 
-                          {/* Reduced motion uses an immediate layout and opacity-only content, never height:auto. */}
+                          {/* Reduced motion uses immediate layout and opacity-only content, never intrinsic-height interpolation. */}
                           {reduceMotion ? (
                             showDayDetail ? (
                               <div
@@ -611,7 +611,7 @@ export function OutfitPlanningCalendarView({
                                   animate={{ opacity: 1, clipPath: "inset(0 0 0% 0 round 24px)" }}
                                   exit={{ opacity: 0, clipPath: "inset(0 0 10% 0 round 24px)" }}
                                   transition={{
-                                    layout: spring.snappy,
+                                    layout: spring.control,
                                     opacity: { duration: 0.16 },
                                     clipPath: { duration: 0.16 },
                                   }}

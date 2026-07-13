@@ -44,7 +44,7 @@ import {
   WandSparkles,
   X,
 } from "lucide-react";
-import { AnimatePresence, motion } from "motion/react";
+import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { OutfitListView } from "@/components/outfit-list-view";
@@ -73,8 +73,8 @@ import { WardrobeSelectedImagesReviewPortal } from "@/components/wardrobe-select
 import {
   AppPressable,
   AnimatedPage,
-  MotionAccordion,
   MotionImageLightbox,
+  MotionPopoverMenu,
   MotionSheet,
   MotionToast,
 } from "@/components/motion-common";
@@ -1362,9 +1362,8 @@ export function WardrobeApp({ cloudAuth }: { cloudAuth?: WardrobeCloudAuth } = {
     </main>
       {/* P0 收口: 单品与种草正式录入只允许走 GarmentIntakeFlow（衣橱用 flowKind="garment"，种草用 flowKind="wishlist"）。
           SelectedImagesReview 仅允许服务灵感图添加 (imageIntakePurpose === "reference")。 */}
-      {captureImageQueue.length > 0 && typeof document !== "undefined" && createPortal(
-        <div className="app-ambient-bg fixed inset-0 z-[100] flex h-[100dvh] w-screen flex-col overflow-hidden">
-          <WardrobeSelectedImagesReviewPortal
+      {captureImageQueue.length > 0 ? (
+        <WardrobeSelectedImagesReviewPortal
             images={captureImageQueue}
             currentIndex={captureQueueIndex}
             onCurrentIndexChange={setCaptureQueueIndex}
@@ -1463,11 +1462,9 @@ export function WardrobeApp({ cloudAuth }: { cloudAuth?: WardrobeCloudAuth } = {
             confirmText={imageIntakePurpose === "reference" ? "添加" : "继续识别"}
             title={`已选择 ${captureImageQueue.length} 张`}
             maxCount={9}
-            mode={captureQueueMode}
-          />
-        </div>,
-        document.body
-      )}
+          mode={captureQueueMode}
+        />
+      ) : null}
 
   </>);
 }
@@ -1520,6 +1517,7 @@ interface WardrobeViewProps {
 }
 
 function WardrobeView(props: WardrobeViewProps) {
+  const reduceMotion = useReducedMotion();
   const {
     items, allItems, locations, locationNameById, wardrobeScope, setWardrobeScope,
     homeCategoryFilter, setHomeCategoryFilter,
@@ -1565,7 +1563,6 @@ function WardrobeView(props: WardrobeViewProps) {
   const scopePopoverRef = useRef<HTMLDivElement>(null);
   // 首页分类 chip 行的"更多"是否展开（当前所有分类数量少时也可能不用）
   const [moreCatsOpen, setMoreCatsOpen] = useState(false);
-  const moreCatsRef = useRef<HTMLDivElement>(null);
   // 搜索页本地筛选状态（不与首页联动；搜索结果也用 allItems，不受 wardrobeScope 影响）
   const [searchLocationFilter, setSearchLocationFilter] = useState("all");
   const [searchCategoryFilter, setSearchCategoryFilter] = useState<GarmentCategory | "all">("all");
@@ -1855,19 +1852,19 @@ function WardrobeView(props: WardrobeViewProps) {
     if (!editDraft) return;
     if (editPrimaryColorsKey && editPrimaryColorRef.current) {
       const first = editPrimaryColorRef.current.querySelector("[data-active=true]") as HTMLElement | null;
-      if (first) first.scrollIntoView({ inline: "center", behavior: "smooth", block: "nearest" });
+      if (first) first.scrollIntoView({ inline: "center", behavior: reduceMotion ? "auto" : "smooth", block: "nearest" });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps -- v0.9.29-dev: 故意只依赖颜色 key, 避免 notes 改动触发滚动
-  }, [editPrimaryColorsKey]);
+  }, [editPrimaryColorsKey, reduceMotion]);
 
   useEffect(() => {
     if (!editDraft) return;
     if (editAccentColorsKey && editSecondaryColorRef.current) {
       const first = editSecondaryColorRef.current.querySelector("[data-active=true]") as HTMLElement | null;
-      if (first) first.scrollIntoView({ inline: "center", behavior: "smooth", block: "nearest" });
+      if (first) first.scrollIntoView({ inline: "center", behavior: reduceMotion ? "auto" : "smooth", block: "nearest" });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps -- v0.9.29-dev: 故意只依赖颜色 key, 避免 notes 改动触发滚动
-  }, [editAccentColorsKey]);
+  }, [editAccentColorsKey, reduceMotion]);
 
   useEffect(() => {
     if (viewingItem) {
@@ -1881,38 +1878,37 @@ function WardrobeView(props: WardrobeViewProps) {
     }
   }, [editingItem]);
 
-  useEffect(() => { if (!isSearchOpen) return; window.scrollTo({ top: 0, behavior: "instant" as ScrollBehavior }); const cleanup = () => { setIsSearchOpen(false); setQuery(""); setSearchLocationFilter("all"); setSearchCategoryFilter("all"); };
-    let removed = false; let h: { remove: () => void } | null = null;
-    App.addListener("backButton", () => { if (!removed) { removed = true; cleanup(); } }).then((x) => { if (!removed) h = x; });
-    return () => { removed = true; h?.remove(); };
-  }, [isSearchOpen, setQuery]); // setters are stable; search-local filter 状态只用于搜索页内
+  useEffect(() => {
+    if (isSearchOpen) window.scrollTo({ top: 0, behavior: "instant" as ScrollBehavior });
+  }, [isSearchOpen]);
+  useStableBackHandler(() => {
+    setIsSearchOpen(false);
+    setQuery("");
+    setSearchLocationFilter("all");
+    setSearchCategoryFilter("all");
+    return true;
+  }, isSearchOpen, 30);
 
   useEffect(() => {
-    if (!showWearStatistics) return;
-    window.scrollTo({ top: 0, behavior: "instant" as ScrollBehavior });
-    let removed = false; let h: { remove: () => void } | null = null;
-    App.addListener("backButton", () => { if (!removed) { removed = true; setShowWearStatistics(false); } }).then((x) => { if (!removed) h = x; });
-    return () => { removed = true; h?.remove(); };
+    if (showWearStatistics) window.scrollTo({ top: 0, behavior: "instant" as ScrollBehavior });
   }, [showWearStatistics]);
+  useStableBackHandler(() => {
+    setShowWearStatistics(false);
+    return true;
+  }, showWearStatistics, 30);
 
-  useEffect(() => {
-    if (!wardrobeSelection.selectionMode && !wardrobeBulkDelete.deleteOpen) return;
-    let removed = false; let h: { remove: () => void } | null = null;
-    App.addListener("backButton", () => {
-      if (removed) return;
-      if (wardrobeBulkDelete.deleteOpen) {
-        if (wardrobeBulkDelete.deleting) {
-          onMessage("正在删除，请稍候", "info");
-          return;
-        }
-        wardrobeBulkDelete.cancelDelete();
-        return;
+  useStableBackHandler(() => {
+    if (wardrobeBulkDelete.deleteOpen) {
+      if (wardrobeBulkDelete.deleting) {
+        onMessage("正在删除，请稍候", "info");
+        return true;
       }
-      wardrobeSelection.clear();
-    }).then((x) => { if (!removed) h = x; });
-    return () => { removed = true; h?.remove(); };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [wardrobeSelection.selectionMode, wardrobeBulkDelete.deleteOpen, wardrobeBulkDelete.deleting, wardrobeBulkDelete.cancelDelete, wardrobeSelection.clear, onMessage]);
+      wardrobeBulkDelete.cancelDelete();
+      return true;
+    }
+    wardrobeSelection.clear();
+    return true;
+  }, wardrobeSelection.selectionMode || wardrobeBulkDelete.deleteOpen, 40);
 
   // 页面切换清理选择状态
   useEffect(() => {
@@ -1935,39 +1931,8 @@ function WardrobeView(props: WardrobeViewProps) {
     return () => document.removeEventListener("mousedown", onPointerDown);
   }, [scopePopoverOpen]);
 
-  // "更多分类" popover：使用 portal + fixed 定位，规避 chip 行 overflow-x-auto 父级
-  // 自动把 overflow-y 也强制为 auto 导致的 popover 裁剪问题。
-  const [moreCatsPos, setMoreCatsPos] = useState<{ top: number; right: number; triggerWidth: number } | null>(null);
+  // "更多分类" popover：共享 OverlayPortal 负责视口定位、外点关闭、焦点和 Back。
   const moreCatsTriggerRef = useRef<HTMLButtonElement>(null);
-  useEffect(() => {
-    if (!moreCatsOpen) { setMoreCatsPos(null); return; }
-    function update() {
-      const trigger = moreCatsTriggerRef.current;
-      if (!trigger) return;
-      const r = trigger.getBoundingClientRect();
-      setMoreCatsPos({ top: r.bottom + 6, right: Math.max(8, window.innerWidth - r.right), triggerWidth: r.width });
-    }
-    update();
-    window.addEventListener("scroll", update, true);
-    window.addEventListener("resize", update);
-    return () => {
-      window.removeEventListener("scroll", update, true);
-      window.removeEventListener("resize", update);
-    };
-  }, [moreCatsOpen]);
-  // "更多分类" popover：点击外部关闭（trigger / 浮层自身不关）
-  useEffect(() => {
-    if (!moreCatsOpen) return;
-    function onPointerDown(e: MouseEvent) {
-      const target = e.target as Node | null;
-      if (!target) return;
-      if (moreCatsTriggerRef.current?.contains(target)) return;
-      if (moreCatsRef.current?.contains(target)) return;
-      setMoreCatsOpen(false);
-    }
-    document.addEventListener("mousedown", onPointerDown);
-    return () => document.removeEventListener("mousedown", onPointerDown);
-  }, [moreCatsOpen]);
 
   // ---- 首页顶部用到的派生数据 ----
   const isAllScope = wardrobeScope === "all";
@@ -2052,8 +2017,6 @@ function WardrobeView(props: WardrobeViewProps) {
     [editCurrentSnapshot, editDraft, editInitialSnapshot],
   );
 
-  const editBackRef = useRef<{ remove: () => void } | null>(null);
-  const detailBackRef = useRef<{ remove: () => void } | null>(null);
   const editPrimaryColorRef = useRef<HTMLDivElement>(null);
   const editSecondaryColorRef = useRef<HTMLDivElement>(null);
 
@@ -2178,29 +2141,10 @@ function WardrobeView(props: WardrobeViewProps) {
     }
   }
 
-  useEffect(() => {
-    if (!editingItem) {
-      editBackRef.current?.remove();
-      editBackRef.current = null;
-      return;
-    }
-    let removed = false;
-    App.addListener("backButton", () => {
-      if (removed) return;
-      requestExitEdit();
-    }).then((h) => {
-      if (removed) {
-        h.remove();
-        return;
-      }
-      editBackRef.current = h;
-    });
-    return () => {
-      removed = true;
-      editBackRef.current?.remove();
-      editBackRef.current = null;
-    };
-  }, [editingItem, requestExitEdit]);
+  useStableBackHandler(() => {
+    requestExitEdit();
+    return true;
+  }, editingItem, 50);
 
   // v1.1.20-dev (Bug 2 修复): closeViewingItemByReturnTarget 现在用完整 AppRoute 作为 returnTarget,
   // 支持从 wardrobe_home / outfit_home / outfit_detail / outfit_calendar / wishlist_* / settings_home
@@ -2230,33 +2174,14 @@ function WardrobeView(props: WardrobeViewProps) {
     });
   }, [closeEditWithoutPrompt, garmentDetailReturnTarget, onReturnToWishlistOwned, onReturnToRoute, viewingItem?.id]);
 
-  useEffect(() => {
-    if (!viewingItem || editingItem || isSearchOpen) {
-      detailBackRef.current?.remove();
-      detailBackRef.current = null;
-      return;
+  useStableBackHandler(() => {
+    if (viewingItemCropJob) {
+      setViewingItemCropJob(null);
+      return true;
     }
-    let removed = false;
-    App.addListener("backButton", () => {
-      if (removed) return;
-      if (viewingItemCropJob) {
-        setViewingItemCropJob(null);
-        return;
-      }
-      closeViewingItemByReturnTarget();
-    }).then((h) => {
-      if (removed) {
-        h.remove();
-        return;
-      }
-      detailBackRef.current = h;
-    });
-    return () => {
-      removed = true;
-      detailBackRef.current?.remove();
-      detailBackRef.current = null;
-    };
-  }, [viewingItem, editingItem, isSearchOpen, viewingItemCropJob, closeViewingItemByReturnTarget]);
+    closeViewingItemByReturnTarget();
+    return true;
+  }, Boolean(viewingItem) && !editingItem && !isSearchOpen, 40);
 
   function applySearch(q: string, cat?: GarmentCategory | "all", loc?: string) {
     setQuery(q);
@@ -2534,7 +2459,7 @@ function WardrobeView(props: WardrobeViewProps) {
               }}
             />
             {/* v0.9.32-dev: 删除参考图确认弹窗 */}
-            <MotionSheet open={!!viewingRefDeleteConfirm} onClose={() => setViewingRefDeleteConfirm(null)} panelClassName="!max-w-xs text-center">
+            <MotionSheet open={!!viewingRefDeleteConfirm} onClose={() => setViewingRefDeleteConfirm(null)} ariaLabel="删除灵感图确认" variant="destructive" panelClassName="!max-w-xs text-center">
               <p className="text-base font-semibold mb-1">删除这张灵感图？</p>
               <p className="text-xs text-ink/60 mb-4">该操作不可恢复。</p>
               <div className="grid grid-cols-2 gap-2">
@@ -2570,7 +2495,7 @@ function WardrobeView(props: WardrobeViewProps) {
             )}
             {/* v0.9.47-dev 详情页 3.0: 编辑灵感图说明 */}
             {editingRefCaption && (
-              <MotionSheet open={!!editingRefCaption} onClose={() => setEditingRefCaption(null)} panelClassName="!max-w-sm">
+              <MotionSheet open={!!editingRefCaption} onClose={() => setEditingRefCaption(null)} ariaLabel="编辑灵感图说明" panelClassName="!max-w-sm">
                 <div className="p-4">
                   <h3 className="text-base font-semibold mb-3">编辑说明</h3>
                   <textarea
@@ -2643,7 +2568,7 @@ function WardrobeView(props: WardrobeViewProps) {
           onClose={() => setShowEditConflict(false)}
         />
 
-        <MotionSheet open={showEditExitDialog} onClose={() => setShowEditExitDialog(false)} panelClassName="!max-w-xs text-center">
+        <MotionSheet open={showEditExitDialog} onClose={() => setShowEditExitDialog(false)} ariaLabel="确认退出衣物编辑" variant="confirm" panelClassName="!max-w-xs text-center">
           <p className="text-base font-semibold mb-1">是否退出编辑？</p>
           <p className="text-xs text-ink/50 mb-4">将会丢失未保存的内容</p>
           <div className="grid grid-cols-2 gap-2">
@@ -2934,10 +2859,10 @@ function WardrobeView(props: WardrobeViewProps) {
             {scopePopoverOpen ? (
               <motion.div
                 ref={scopePopoverRef}
-                initial={{ opacity: 0, y: -4 }}
+                initial={{ opacity: 0, y: reduceMotion ? 0 : -4 }}
                 animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -4 }}
-                transition={{ duration: 0.15, ease: ease.app }}
+                exit={{ opacity: 0, y: reduceMotion ? 0 : -4 }}
+                transition={{ duration: reduceMotion ? 0.12 : 0.15, ease: ease.app }}
                 role="listbox"
                 aria-label="选择衣橱浏览范围"
                 className="absolute top-full left-0 right-0 mt-2 z-50 overflow-hidden rounded-lg border border-ink/10 bg-white shadow-lg"
@@ -3106,7 +3031,7 @@ function WardrobeView(props: WardrobeViewProps) {
             );
           })}
           {hiddenCats.length > 0 || moreCatsOpen ? (
-            <div className="relative shrink-0" ref={moreCatsRef}>
+            <div className="relative shrink-0">
               <button
                 ref={moreCatsTriggerRef}
                 type="button"
@@ -3121,17 +3046,13 @@ function WardrobeView(props: WardrobeViewProps) {
                     : "border border-ink/10 bg-white text-ink/65 active:bg-mist"
                 }`}
               >{hiddenSelectedCat ? `更多 · ${hiddenSelectedCat.label} ${hiddenSelectedCat.count}` : "更多"} <ChevronRight size={12} aria-hidden="true" /></button>
-              {/* Popover 通过 portal 渲染到 body, 规避父级 overflow-x-auto 隐式 overflow-y:auto 带来的裁剪 */}
-              {moreCatsOpen && moreCatsPos && typeof document !== "undefined" ? createPortal(
-                <motion.div
-                  initial={{ opacity: 0, y: -4 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -4 }}
-                  transition={{ duration: 0.15, ease: ease.app }}
-                  role="menu"
-                  style={{ position: "fixed", top: moreCatsPos.top, right: moreCatsPos.right, minWidth: moreCatsPos.triggerWidth }}
-                  className="z-[100] grid grid-cols-3 gap-1.5 ui-control-radius border border-ink/10 bg-white/88 p-2 shadow-lg backdrop-blur-xl"
-                >
+              <MotionPopoverMenu
+                visible={moreCatsOpen}
+                onClose={() => setMoreCatsOpen(false)}
+                anchorRef={moreCatsTriggerRef}
+                ariaLabel="选择更多衣物分类"
+                className="z-[100] grid w-[min(18rem,calc(100vw-16px))] grid-cols-3 gap-1.5 p-2"
+              >
                   {hiddenCats.map((c) => {
                     const active = homeCategoryFilter === c.id;
                     return (
@@ -3146,9 +3067,7 @@ function WardrobeView(props: WardrobeViewProps) {
                       >{c.label} {c.count}</button>
                     );
                   })}
-                </motion.div>,
-                document.body,
-              ) : null}
+              </MotionPopoverMenu>
             </div>
           ) : null}
         </div>
@@ -3271,7 +3190,7 @@ function WardrobeView(props: WardrobeViewProps) {
 
           {/* expanded 状态：详情区 + 底部"收起" */}
           {diagnosis && diagnosisState === "expanded" ? (
-            <MotionAccordion expanded={true}>
+            <>
               <div className="mt-4 grid gap-3 border-t border-ink/10 pt-3">
                 {hasDiagnosisDetails ? (
                   <>
@@ -3303,7 +3222,7 @@ function WardrobeView(props: WardrobeViewProps) {
                 收起
                 <ChevronUp size={14} aria-hidden="true" />
               </button>
-            </MotionAccordion>
+            </>
           ) : null}
         </section>
       ) : null}
@@ -3427,6 +3346,7 @@ function WardrobeEditPage({
   onPatch: (patch: Partial<WardrobeDraft>) => void;
   onLimit: (message: string) => void;
 }) {
+  const reduceMotion = useReducedMotion();
   const canSave = Boolean(draft.name.trim()) && hasChanges && !isSaving && !isRecognizing;
 
   // v0.9.28-dev: 顶部+底部普通保存按钮共用同一 onSave 句柄 + isSaving/canSave 状态
@@ -3440,8 +3360,8 @@ function WardrobeEditPage({
   const notesRef = useRef<HTMLTextAreaElement>(null);
 
   // v0.9.29-dev: 删除时滚动冻结 (录屏 52510.mp4 反馈: v0.9.28-dev 修了正常输入场景,
-  //  但**删除** (Backspace/Delete) 时浏览器 scroll-anchoring + globals.css 的
-  //  `scroll-behavior: smooth` 把页面锚到上方的 chip / slider 区域, 把备注 textarea
+  //  但**删除** (Backspace/Delete) 时浏览器 scroll-anchoring 可能把页面锚到上方的
+  //  chip / slider 区域, 把备注 textarea
   //  推出可视区。修法: onKeyDown 识别删除键时记录当前 window.scrollY,
   //  onChange (delete 触发的 state 更新) 后 rAF 恢复 — 这是**删除专用**的安全网,
   //  正常输入时 lastScrollYBeforeDelete 为 null, rAF 短路, 不影响打字体验。
@@ -3478,7 +3398,7 @@ function WardrobeEditPage({
   const handleNotesFocus = () => {
     if (typeof window === "undefined") return;
     window.setTimeout(() => {
-      notesRef.current?.scrollIntoView({ block: "nearest", behavior: "smooth" });
+      notesRef.current?.scrollIntoView({ block: "nearest", behavior: reduceMotion ? "auto" : "smooth" });
     }, 150);
   };
 
@@ -3647,12 +3567,12 @@ function WardrobeEditPage({
             data-parity-id="parity.app.app.src.components.wardrobe.app.1640f94668" onChange={(e) => {
               onPatch({ notes: e.target.value });
               // v0.9.29-dev: 退格 / 删除触发的 onChange 主动恢复滚动位置,
-              // 抵消 globals.css `scroll-behavior: smooth` + 浏览器 scroll-anchoring
+              // 抵消浏览器 scroll-anchoring
               // 在 React state 更新 + 布局重排时把页面锚到上方的副作用
               // (录屏 52510.mp4 复现: 删字后页面跳到穿搭属性/颜色信息/风格标签区域)。
               // 正常输入时 lastScrollYBeforeDelete 为 null, 此分支短路, 不影响打字。
               // v0.9.29-dev subagent I-2: 显式 behavior: "instant", 不受 globals.css
-              // 全局 `scroll-behavior: smooth` 影响 (默认走 smooth 体感差, 应该单帧
+              // 避免浏览器默认滚动策略影响（这里应该单帧
               // 跳回, 不应该动画回去)
               const savedY = lastScrollYBeforeDelete.current;
               if (savedY !== null) {
@@ -4203,7 +4123,7 @@ function SettingsView({
             <button
               type="button"
               data-parity-id="parity.app.app.src.components.wardrobe.app.a6c880d9e0" onClick={onOpenAccount}
-              className="inline-flex h-9 shrink-0 items-center gap-1 ui-control-radius border border-ink/10 bg-white px-3 text-xs font-semibold active:scale-95 transition-transform"
+              className="inline-flex h-9 shrink-0 items-center gap-1 ui-control-radius border border-ink/10 bg-white px-3 text-xs font-semibold app-press-feedback transition-transform"
             >
               管理 <ChevronRight size={12} aria-hidden="true" />
             </button>
@@ -4380,7 +4300,7 @@ function SettingsView({
           <button
             type="button"
             data-parity-id="parity.app.app.src.components.wardrobe.app.53e511c02c" onClick={() => navigateSettingsPage("minimax")}
-            className="inline-flex h-9 shrink-0 items-center gap-1 ui-control-radius border border-ink/10 bg-white px-3 text-xs font-semibold active:scale-95 transition-transform"
+            className="inline-flex h-9 shrink-0 items-center gap-1 ui-control-radius border border-ink/10 bg-white px-3 text-xs font-semibold app-press-feedback transition-transform"
           >
             {hasMiniMaxKey ? "修改配置" : "配置 Key"} <ChevronRight size={12} aria-hidden="true" />
           </button>
@@ -4774,7 +4694,7 @@ function WardrobeRow({
       type="button"
       data-parity-id={parityId ?? "parity.app.app.src.components.wardrobe.app.7b624add21"} onClick={onClick}
       disabled={!onClick}
-      className="flex h-[60px] w-full items-center gap-3 rounded-lg border border-ink/10 bg-white px-3 text-left enabled:active:scale-[0.99] transition-transform"
+      className="flex h-[60px] w-full items-center gap-3 rounded-lg border border-ink/10 bg-white px-3 text-left app-press-feedback transition-transform"
     >
       <div className="grid h-9 w-9 shrink-0 place-items-center rounded-md bg-mist text-ink/65">
         <Icon size={17} aria-hidden="true" />
@@ -4877,7 +4797,7 @@ function ProfileDetailPage({
             type="button"
             data-parity-id="parity.app.app.src.components.wardrobe.app.f9a7cdb34c" onClick={handlePageBack}
             disabled={saving}
-            className="grid h-10 w-10 place-items-center rounded-full bg-mist active:scale-95 transition-transform disabled:opacity-45"
+            className="grid h-10 w-10 place-items-center rounded-full bg-mist app-press-feedback transition-transform disabled:opacity-45"
             aria-label="返回设置"
           >
             <ChevronLeft size={18} aria-hidden="true" />
@@ -4912,7 +4832,7 @@ function ProfileDetailPage({
                 type="button"
                 onClick={() => setFitGender(opt)}
                 disabled={saving}
-                className={`inline-flex h-8 items-center rounded-full px-3 text-xs font-semibold transition-colors ${active ? "bg-denim text-white" : "border border-ink/10 bg-white text-ink/70 active:scale-95"}`}
+                className={`inline-flex h-8 items-center rounded-full px-3 text-xs font-semibold transition-colors ${active ? "bg-denim text-white" : "border border-ink/10 bg-white text-ink/70 app-press-feedback"}`}
               >
                 {FIT_GENDER_LABELS[opt]}
               </button>
@@ -5310,7 +5230,7 @@ function PhotosDetailPage({
             type="button"
             data-parity-id="parity.app.app.src.components.wardrobe.app.e2dc829176" onClick={handleFinish}
             disabled={saving}
-            className="grid h-10 w-10 place-items-center rounded-full bg-mist active:scale-95 transition-transform disabled:opacity-45"
+            className="grid h-10 w-10 place-items-center rounded-full bg-mist app-press-feedback transition-transform disabled:opacity-45"
             aria-label="返回设置"
           >
             <ChevronLeft size={18} aria-hidden="true" />
@@ -5480,7 +5400,7 @@ function PhotoSlot({
             type="button"
             data-parity-id="parity.app.app.src.components.wardrobe.app.a9bcd70649" onClick={onDelete}
             disabled={disabled}
-            className="absolute right-1.5 top-1.5 grid h-6 w-6 place-items-center rounded-full bg-black/55 text-white active:scale-95 transition-transform disabled:opacity-45"
+            className="absolute right-1.5 top-1.5 grid h-6 w-6 place-items-center rounded-full bg-black/55 text-white app-press-feedback transition-transform disabled:opacity-45"
             aria-label={`删除${label}`}
           >
             <X size={12} aria-hidden="true" />
@@ -5504,7 +5424,7 @@ function PhotoSlot({
           type="button"
           data-parity-id="parity.app.app.src.components.wardrobe.app.3791098840" onClick={onUpload}
           disabled={disabled}
-          className="h-6 w-full rounded-md border border-ink/10 text-[10px] text-ink/65 active:scale-95 transition-transform disabled:opacity-45"
+          className="h-6 w-full rounded-md border border-ink/10 text-[10px] text-ink/65 app-press-feedback transition-transform disabled:opacity-45"
         >更换</button>
       ) : null}
     </div>
@@ -5566,7 +5486,7 @@ function MiniMaxDetailPage({
             type="button"
             data-parity-id="parity.app.app.src.components.wardrobe.app.21c24cab95" onClick={handlePageBack}
             disabled={saving}
-            className="grid h-10 w-10 place-items-center rounded-full bg-mist active:scale-95 transition-transform disabled:opacity-45"
+            className="grid h-10 w-10 place-items-center rounded-full bg-mist app-press-feedback transition-transform disabled:opacity-45"
             aria-label="返回设置"
           >
             <ChevronLeft size={18} aria-hidden="true" />
@@ -5600,7 +5520,7 @@ function MiniMaxDetailPage({
               type="button"
               data-parity-id="parity.app.app.src.components.wardrobe.app.df1b97f8bd" onClick={() => setShowKey((v) => !v)}
               disabled={saving}
-              className="absolute right-1 top-1/2 -translate-y-1/2 grid h-9 w-9 place-items-center rounded-md text-ink/55 active:scale-95 transition-transform"
+              className="absolute right-1 top-1/2 -translate-y-1/2 grid h-9 w-9 place-items-center rounded-md text-ink/55 app-press-feedback transition-transform"
               aria-label={showKey ? "隐藏密钥" : "显示密钥"}
             >
               {showKey ? <EyeOff size={16} aria-hidden="true" /> : <Eye size={16} aria-hidden="true" />}
@@ -5670,7 +5590,7 @@ function WardrobeListPage({
             type="button"
             data-parity-id="parity.app.app.src.components.wardrobe.app.dd5dcdfe06" onClick={onBack}
             disabled={busy}
-            className="grid h-10 w-10 place-items-center rounded-full bg-mist active:scale-95 transition-transform disabled:opacity-45"
+            className="grid h-10 w-10 place-items-center rounded-full bg-mist app-press-feedback transition-transform disabled:opacity-45"
             aria-label="返回设置"
           >
             <ChevronLeft size={18} aria-hidden="true" />

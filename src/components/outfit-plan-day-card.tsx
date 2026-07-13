@@ -170,7 +170,7 @@ export function OutfitPlanDayCard({
           )}
         </div>
         <div className="flex items-start gap-3">
-          <button type="button" data-parity-id="parity.app.app.src.components.outfit.plan.day.card.3f1fe79c56" onClick={() => onViewOutfit(outfitId)} className="h-[72px] w-[72px] shrink-0 overflow-hidden rounded-[14px] bg-milk-darker/40 active:scale-95" aria-label="查看套装">
+          <button type="button" data-parity-id="parity.app.app.src.components.outfit.plan.day.card.3f1fe79c56" onClick={() => onViewOutfit(outfitId)} className="h-[72px] w-[72px] shrink-0 overflow-hidden rounded-[14px] bg-milk-darker/40 app-press-feedback" aria-label="查看套装">
             <OutfitCover outfit={outfit} items={items} size="card" />
           </button>
           <div className="flex-1 min-w-0">

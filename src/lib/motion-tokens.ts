@@ -59,12 +59,6 @@ export const spring = {
   gentle: panelSpring,
 };
 
-/** Shared opacity transition */
-export const fade = {
-  in: { opacity: 1 },
-  out: { opacity: 0 },
-};
-
 /** Slide-up-from-bottom entrance (for BottomSheet / Toast). */
 export const slideUp = {
   in: { opacity: 1, y: 0 },
@@ -94,31 +88,4 @@ export const slideRight = {
 export const slideRightExit = {
   in: { opacity: 1, x: 0 },
   out: { opacity: 0, x: -30 },
-};
-
-/** Scale + opacity for modals (desktop centric fallback). */
-export const scaleModal = {
-  in: { opacity: 1, scale: 1 },
-  out: { opacity: 0, scale: 0.92 },
-  initial: { opacity: 0, scale: 0.92 },
-};
-
-/** Light tab-switch fade-up (opacity + y, no horizontal displacement). */
-export const tabFade = {
-  in: { opacity: 1, y: 0 },
-  out: { opacity: 0, y: -8 },
-  initial: { opacity: 0, y: 8 },
-};
-
-/** Light stagger reveal for cards entering in sequence. */
-export const staggerReveal = {
-  in: { opacity: 1, y: 0 },
-  initial: { opacity: 0, y: 12 },
-};
-
-/** Little scale pop for badge / icon feedback. */
-export const pop = {
-  initial: { scale: 0 },
-  animate: { scale: 1 },
-  exit: { scale: 0 },
 };

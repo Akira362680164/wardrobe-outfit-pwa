@@ -400,7 +400,7 @@ extraImages,
   if (onCropAt) onCropAt(safeIndex);
   else if (onCrop) onCrop();
   }}
-  className="absolute bottom-3 right-3 inline-flex min-h-[36px] items-center gap-1 rounded-full bg-black/70 px-3 py-1.5 text-xs font-semibold text-white shadow-sm backdrop-blur-sm hover:bg-black/85 active:scale-95 transition-all"
+  className="absolute bottom-3 right-3 inline-flex min-h-[36px] items-center gap-1 rounded-full bg-black/70 px-3 py-1.5 text-xs font-semibold text-white shadow-sm backdrop-blur-sm hover:bg-black/85 app-press-feedback transition-all"
   title="基于原图重新裁切"
   aria-label="重新裁切"
   >

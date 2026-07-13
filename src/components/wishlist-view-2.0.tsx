@@ -1599,7 +1599,7 @@ export function WishlistView20({
     subPageNode = (
       <div className="flex flex-col h-full">
         <div className="flex h-[60px] items-center gap-2 px-4 border-b border-ink/10">
-          <button type="button" data-parity-id="parity.app.app.src.components.wishlist.view.2.0.c6265d689d" onClick={goBack} className="grid h-11 w-11 shrink-0 place-items-center ui-control-radius bg-transparent text-ink/70 active:scale-95" aria-label="返回">
+          <button type="button" data-parity-id="parity.app.app.src.components.wishlist.view.2.0.c6265d689d" onClick={goBack} className="grid h-11 w-11 shrink-0 place-items-center ui-control-radius bg-transparent text-ink/70 app-press-feedback" aria-label="返回">
             <ChevronLeft size={20} />
           </button>
           <h2 className="text-base font-semibold">{title}</h2>

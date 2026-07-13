@@ -121,11 +121,12 @@ export function SelectedImagesReview({
  if (images.length ===0 || !current) return null;
 
  return (
- <div className="flex h-[100dvh] flex-col overflow-hidden bg-[#fbfbf8]">
+ <div className="flex h-[100dvh] flex-col overflow-hidden bg-paper">
  {/*顶部:返回 +标题 +确认 */}
  <header className="flex h-14 shrink-0 items-center justify-between gap-2 border-b border-ink/10 bg-white px-3">
  <button
  type="button"
+ data-selected-images-cancel="true"
  data-parity-id="parity.app.app.src.components.selected.images.review.51d318e11a" onClick={onCancel}
  disabled={busy}
  aria-label="返回"
@@ -140,7 +141,6 @@ export function SelectedImagesReview({
  disabled={busy || images.length > maxCount}
  aria-label={confirmText}
  className="inline-flex h-10 items-center gap-1 rounded-lg bg-denim px-4 text-sm font-semibold text-white disabled:opacity-60"
- style={{ backgroundColor: "#355c7d" }}
  >
  {busy ? "处理中..." : confirmText}
  </button>

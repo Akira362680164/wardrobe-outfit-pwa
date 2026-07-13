@@ -93,10 +93,11 @@ lastReviewedAt: 2026-07-07
 | `duration.panel` | `0.32s`，Sheet、页面推进 |
 | `duration.slow` | `0.45s`，大面积过渡 |
 | `ease.app/out` | `[0.2, 0.8, 0.2, 1]` |
-| `spring.snappy` | 按钮、Toast、checkmark |
-| `spring.soft` | 面板、卡片进入 |
-| `spring.gentle` | 大面积转场 |
-| 变体 | `fade`、`slideUp`、`toastDrop`、`slideRight`、`slideRightExit`、`scaleModal`、`tabFade`、`staggerReveal`、`pop` |
+| `spring.control` | 无弹跳控件、选中指示器、Toast |
+| `spring.panel` | 无弹跳面板和页面层级运动 |
+| `spring.momentum` | 仅真实 drag/flick 释放后的速度继承 |
+| 兼容别名 | `spring.snappy/soft/gentle` 只保留旧调用兼容；新增调用禁止使用 |
+| 共享变体 | `slideUp`、`toastDrop`、`slideRight`、`slideRightExit`；其余重复/未使用变体已移除 |
 
 所有动画必须遵守 reduced-motion；减少大位移，保留必要的显隐和状态反馈。
 
@@ -361,6 +362,16 @@ Icon-only 按钮必须有 `aria-label`；图标与文字组合时图标使用 `a
 - 首页与详情的 More 菜单必须各自持有当前可见触发器的独立 `anchorRef`。同步 push / pop 重叠期间，退出详情的 ref 清理不得清空已进入首页的菜单锚点；焦点恢复、键盘操作与 OverlayStack 优先级继续遵守 A2 / C2 公共契约。
 - 390px 竖屏验收至少覆盖：筛选并滚动列表 → 详情 → 加入衣橱失败 → 返回恢复；详情 → 编辑失败并保留图片 / 表单 → 放弃确认；已买列表 → 撤销购买 busy 锁定 → 失败保留确认与列表滚动。不得以只检查静态 DOM 或单个 happy path 代替深层流程验证。
 
+##### 6.1.12 D1-Runtime 动效偏好、无障碍与性能收口
+
+- `MotionConfig reducedMotion="user"` 是全局基线，`AnimatedPage`、`MotionSheet`、`MotionPopoverMenu`、Toast、进度与可展开内容仍必须在组件内显式选择 reduced 分支。reduced-motion 下只允许短 opacity / 即时状态反馈；取消大位移、spring、列表 stagger、intrinsic-height 补间和无条件 smooth scroll。全局 `html` 不设置 smooth，用户触发的局部滚动必须同一表达式选择 `reduceMotion ? "auto" : "smooth"`。
+- 原生按钮若不需要 `AppPressable` 的 pointer capture / cancel 状态机，只能使用共享 `app-press-feedback`。标准偏好用 individual `scale` 合成已有 translate/rotate，不改变命中区；reduced-motion 取消 scale，只保留 opacity。页面不得再出现 `active:scale-*`、`whileTap` 或第二套私有按压反馈。
+- `.surface`、一级/二级卡片、顶部/底部 glass、浮动导航与 Toast 使用统一 material CSS variables。`prefers-reduced-transparency: reduce`、`prefers-contrast: more`、不支持 backdrop-filter 时改为近实心背景、清晰边界并关闭 blur。`MotionProvider` 只在 Android 明确暴露 `deviceMemory <= 4GB` 或 `hardwareConcurrency <= 4` 时设置 `data-motion-effects="reduced"`；缺失信号或高规格设备不猜测降级。
+- `OverlayRoot` 是唯一 Capacitor `backButton` owner。搜索、统计、批量选择、详情、编辑和批量评审只登记 `useStableBackHandler`，返回 true 后一次事件只发生一个状态转移。图片队列评审必须进入 `OverlayPortal`、注册 `useOverlayLayer`、具备动态 dialog 名称、topmost focus scope、App 背景 `inert/aria-hidden`、busy 关闭拒绝和读屏提示；分类 More 菜单复用 `MotionPopoverMenu`，不再维护私有 portal / 定位 / 外点监听。
+- 所有 `MotionSheet` / dialog / menu 调用点必须显式提供业务名称；不可只依赖“操作面板”一类共享 fallback。视觉进度条使用 `role="progressbar"`、可访问名称、`aria-valuemin/max/now` 与阶段 `aria-valuetext`；百分比不进入 live region，阶段变化继续由独立 polite status 播报。
+- 手势轨道、进度条与 Shimmer 只在真实动画期间创建 transform layer；不得常驻 `will-change-transform`。已无调用方的 wrapper、卡片、badge、transition API 和未使用 motion variants 必须删除，页面不得复制共享浮层或导航实现。
+- D1-Runtime 最低证据为：严格全仓 motion contract `0` 违规、`scripts/test-motion-runtime-d1.ts`、`scripts/test-motion-runtime-d1-browser.mjs` 的 `390 x 844` mobile/touch harness、UI spec build/check/preview、overlay/back/token/overflow/reuse 门禁、根 typecheck 与 Next build。浏览器 harness 必须覆盖 low-end Android、reduced-motion、减少透明度、高对比、dialog/menu 名称与焦点隔离、progress 语义和横向溢出。
+
 #### 6.2 并行 Wave 规范所有权
 
 并行 Session 对运行时文件实行独占所有权；规范只允许修改下列命名小节。生成的 HTML 与 `VERSION_HISTORY.md` 在每个 Wave 合入后由主 Agent 保全并重生成。
@@ -387,8 +398,9 @@ Icon-only 按钮必须有 `aria-label`；图标与文字组合时图标使用 `a
 | `ItemColorFields` | `src/components/item/color-fields.tsx` | 颜色展示和编辑唯一入口 |
 | `TemperatureRangeSlider` | `src/components/temperature-range-slider.tsx` | 温度范围编辑唯一入口 |
 | `MotionToast` | `src/components/motion-common.tsx` | 动画和播报语义；视觉由调用方提供 |
-| `MotionSheet` | `src/components/motion-common.tsx` | 移动端底部抽屉、锁滚、最高 92vh |
+| `MotionSheet` | `src/components/motion-common.tsx` | 移动端底部抽屉、锁滚、最高 92vh、显式业务名称与 reduced opacity-only |
 | `MotionImageLightbox` | `src/components/motion-common.tsx` | 全屏图片预览、锁滚、关闭按钮 44px |
+| `WardrobeSelectedImagesReviewPortal` | `src/components/wardrobe-selected-images-review-portal.tsx` | 图片队列全屏 dialog、OverlayStack、焦点圈、busy 返回保护 |
 | `IntakeFlowShell` | `src/components/intake-flow-shell.tsx` | 录入全屏容器、步骤文案、底部操作、安全区 |
 
 ### 7.1 详情媒体
@@ -568,7 +580,7 @@ Step 1 顶部必须使用透明底 + 毛玻璃层，不得在标题、步骤说�
 - 选择态不能只靠颜色，必须有勾选、边框、文本或 `aria-pressed`。
 - 表单 focus 必须可见。
 - 错误、低置信、待确认必须有文字提示。
-- Sheet / Lightbox / 裁切器打开时锁定底层滚动；目标是补齐 `role="dialog"`、`aria-modal` 和焦点管理。
+- Sheet / Dialog / Lightbox / 裁切器打开时锁定底层滚动，并具备 `role`、`aria-modal`、显式名称、topmost 焦点圈和背景隔离。
 
 当前事实：`AppSubPageTopBar` 外层按钮命中区为 `48x48`，内层视觉圆为 `40x40`；后续改动不得回退成只有 `40x40` 命中区。
 
@@ -586,7 +598,7 @@ Step 1 顶部必须使用透明底 + 毛玻璃层，不得在标题、步骤说�
 
 | ID | 文件 | 当前事实 | 目标契约 | 处理版本 | 验收 |
 | --- | --- | --- | --- | --- | --- |
-| UI-DEBT-001 | `src/app/globals.css` | `.surface` 仍使用局部 glass 参数 | 统一到 token 命名 | v0.3 | `test:logic:ui-token-contract` |
+| UI-DEBT-001 | `src/app/globals.css` | `.surface`、glass、卡片与 Toast 已统一到 material variables，并提供透明度/对比/低端降级 | 统一到 token 命名 | closed in D1-Runtime | `test:logic:ui-token-contract`、D1 runtime harness |
 | UI-DEBT-002 | `src/components/motion-common.tsx` | `MotionSheet` 已在 v0.2-final 补齐 dialog 语义与焦点管理 | `role/dialog`、`aria-modal`、锁滚、焦点进入和恢复 | closed in v0.2-final | `test:logic:ui-overlay-contract` |
 | UI-DEBT-003 | `src/components/wardrobe-image-source-sheet.tsx` | 图片来源弹层已在 v0.2-final 委托 `MotionSheet` | 统一 Sheet 行为 | closed in v0.2-final | `test:logic:ui-overlay-contract` |
 | UI-DEBT-004 | `src/components/app-sub-page-top-bar.tsx` | 顶部栏按钮已在 v0.2-final 对齐外层 48px 热区、内层 40px 视觉圆 | 外层 48px 热区，内层 40px 视觉圆 | closed in v0.2-final | `test:logic:ui-a11y-contract` |
@@ -637,6 +649,7 @@ PR 规则：
 | 录入流程 | `npm run test:logic:garment-intake-multi-image`、`npm run test:logic:intake-entry-crop-regression`、`npm run test:logic:intake-fullscreen-layout` |
 | 多选/批量删除 | `npm run test:logic:catalog-multi-select`、`npm run test:logic:catalog-multi-select-integration` |
 | 设置页窄屏 | `npm run test:logic:ui-overflow` |
+| 动效偏好与运行时 | `npx tsx scripts/test-motion-runtime-d1.ts`、`node scripts/test-motion-runtime-d1-browser.mjs`、严格 motion contract |
 | 静态 HTML 规范 | Playwright 打开 `docs/designs/wardrobe-ui-spec.html`，检查桌面和 390px 无横向溢出 |
 
 人工视觉检查至少覆盖：

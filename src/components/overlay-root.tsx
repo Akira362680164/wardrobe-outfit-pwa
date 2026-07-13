@@ -34,6 +34,14 @@ interface OverlayRuntime {
 const OverlayRuntimeContext = createContext<OverlayRuntime | null>(null);
 const fallbackOverlayStack = new OverlayStackStore();
 const fallbackBackHandlers = new BackHandlerStore();
+const FOCUSABLE_SELECTOR =
+  'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])';
+
+function getFocusableElements(scope: HTMLElement): HTMLElement[] {
+  return Array.from(scope.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR)).filter(
+    (node) => !node.hasAttribute("disabled") && node.getAttribute("aria-disabled") !== "true" && node.tabIndex !== -1,
+  );
+}
 
 function useOverlayRuntime(): OverlayRuntime {
   const runtime = useContext(OverlayRuntimeContext);
@@ -139,6 +147,55 @@ export function OverlayRoot({ children }: { children: ReactNode }) {
 export function OverlayPortal({ children }: { children: ReactNode }) {
   const { portalTarget } = useOverlayRuntime();
   return portalTarget ? createPortal(children, portalTarget) : null;
+}
+
+/**
+ * Gives the topmost overlay its initial focus and keeps keyboard navigation
+ * inside it. Focus restoration is owned separately by OverlayStack.
+ */
+export function useOverlayFocusScope(
+  scopeRef: RefObject<HTMLElement | null>,
+  isTopmost: boolean,
+  initialFocusSelector?: string,
+): void {
+  const didInitialFocusRef = useRef(false);
+
+  useLayoutEffect(() => {
+    if (!isTopmost || didInitialFocusRef.current) return;
+    const scope = scopeRef.current;
+    if (!scope) return;
+    didInitialFocusRef.current = true;
+    const preferred = initialFocusSelector
+      ? scope.querySelector<HTMLElement>(initialFocusSelector)
+      : null;
+    (preferred ?? getFocusableElements(scope)[0] ?? scope).focus({ preventScroll: true });
+  });
+
+  useEffect(() => {
+    if (!isTopmost) return;
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== "Tab") return;
+      const scope = scopeRef.current;
+      if (!scope) return;
+      const focusable = getFocusableElements(scope);
+      if (focusable.length === 0) {
+        event.preventDefault();
+        scope.focus();
+        return;
+      }
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+      if (event.shiftKey && (document.activeElement === first || !scope.contains(document.activeElement))) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && (document.activeElement === last || !scope.contains(document.activeElement))) {
+        event.preventDefault();
+        first.focus();
+      }
+    };
+    document.addEventListener("keydown", onKeyDown, true);
+    return () => document.removeEventListener("keydown", onKeyDown, true);
+  }, [isTopmost, scopeRef]);
 }
 
 type FocusTargetSource = OverlayFocusTarget | RefObject<OverlayFocusTarget | null> | null;

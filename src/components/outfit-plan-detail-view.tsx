@@ -127,10 +127,10 @@ export function OutfitPlanDetailView({
           ) : null}
 
           <div className="mt-5 grid grid-cols-2 gap-2">
-            <button type="button" disabled={deleting} data-parity-id="parity.app.app.src.components.outfit.plan.detail.view.98e1061a39" onClick={onEdit} className="h-11 rounded-full bg-denim text-sm font-semibold text-white active:scale-[0.98] disabled:opacity-40">
+            <button type="button" disabled={deleting} data-parity-id="parity.app.app.src.components.outfit.plan.detail.view.98e1061a39" onClick={onEdit} className="h-11 rounded-full bg-denim text-sm font-semibold text-white app-press-feedback disabled:opacity-40">
               编辑计划
             </button>
-            <button type="button" disabled={deleting} data-parity-id="parity.app.app.src.components.outfit.plan.detail.view.563a0bc152" onClick={() => setShowDeleteConfirm(true)} className="h-11 rounded-full border border-red-200 bg-white text-sm font-semibold text-red-600 active:scale-[0.98] disabled:opacity-40">
+            <button type="button" disabled={deleting} data-parity-id="parity.app.app.src.components.outfit.plan.detail.view.563a0bc152" onClick={() => setShowDeleteConfirm(true)} className="h-11 rounded-full border border-red-200 bg-white text-sm font-semibold text-red-600 app-press-feedback disabled:opacity-40">
               删除计划
             </button>
           </div>
@@ -168,7 +168,7 @@ export function OutfitPlanDetailView({
 
                   {hasOutfit && outfit ? (
                     <div className="flex items-start gap-3">
-                      <button type="button" data-parity-id={`parity.app.app.src.components.outfit.plan.detail.view.a1592c9e67.${outfit.id}`} onClick={() => onViewOutfit(outfit.id)} className="h-14 w-14 shrink-0 overflow-hidden rounded-2xl bg-milk-darker/40 active:scale-95" aria-label="查看套装">
+                      <button type="button" data-parity-id={`parity.app.app.src.components.outfit.plan.detail.view.a1592c9e67.${outfit.id}`} onClick={() => onViewOutfit(outfit.id)} className="h-14 w-14 shrink-0 overflow-hidden rounded-2xl bg-milk-darker/40 app-press-feedback" aria-label="查看套装">
                         <OutfitCover outfit={outfit} items={items} size="card" />
                       </button>
                       <div className="flex-1 min-w-0">

@@ -1196,7 +1196,7 @@ export function OutfitListView({
               <button
                 type="button"
                 data-parity-id="parity.app.app.src.components.outfit.list.view.5f851a498b" onClick={openPlanningCalendarFromLibrary}
-                className="inline-flex h-10 min-w-[64px] items-center justify-center rounded-full border border-denim/20 bg-white px-3 text-sm font-semibold text-denim shadow-sm active:scale-95"
+                className="inline-flex h-10 min-w-[64px] items-center justify-center rounded-full border border-denim/20 bg-white px-3 text-sm font-semibold text-denim shadow-sm app-press-feedback"
                 aria-label="打开穿搭月历"
               >
                 月历
@@ -1204,7 +1204,7 @@ export function OutfitListView({
               <button
                 type="button"
                 data-parity-id="parity.app.app.src.components.outfit.list.view.5546e4b500" onClick={openTravelPlanSheetFromLibrary}
-                className="inline-flex h-10 min-w-[72px] items-center justify-center rounded-full bg-denim px-3 text-sm font-semibold text-white shadow-sm active:scale-95"
+                className="inline-flex h-10 min-w-[72px] items-center justify-center rounded-full bg-denim px-3 text-sm font-semibold text-white shadow-sm app-press-feedback"
                 aria-label="添加计划"
               >
                 +计划

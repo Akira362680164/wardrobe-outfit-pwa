@@ -27,6 +27,11 @@ export function CatalogBulkDeleteSheet({
     <MotionSheet
       open={open}
       onClose={submitting ? (() => {}) : onClose}
+      ariaLabel={title}
+      variant="destructive"
+      dismissible={!submitting}
+      closeOnBackdrop={!submitting}
+      closeOnEscape={!submitting}
       panelClassName="!max-w-xs"
     >
       <p className="text-sm font-semibold mb-2">{title}</p>

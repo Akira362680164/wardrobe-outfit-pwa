@@ -810,7 +810,7 @@ function BottomButton({ label, icon, onClick, disabled, "data-parity-id": dataPa
       type="button"
       data-parity-id={dataParityId ?? "parity.app.app.src.components.image.crop.editor.eefa41ac2c"} onClick={onClick}
       disabled={disabled}
-      className="flex h-11 items-center justify-center gap-1 ui-control-radius border border-white/12 bg-white/8 px-2 text-white/85 text-xs font-semibold active:scale-95 transition-transform disabled:opacity-60 whitespace-nowrap"
+      className="flex h-11 items-center justify-center gap-1 ui-control-radius border border-white/12 bg-white/8 px-2 text-white/85 text-xs font-semibold app-press-feedback transition-transform disabled:opacity-60 whitespace-nowrap"
     >
       {icon && <span className="text-[18px] leading-none">{icon}</span>}
       <span className="leading-tight">{label}</span>
