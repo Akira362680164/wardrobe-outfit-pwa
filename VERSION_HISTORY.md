@@ -7,6 +7,7 @@
 - **验证结果**：`docs:ui-spec:build`、`docs:ui-spec:check`、`test:logic:ui-spec-preview`、`test:logic:ui-overlay-contract`、`test:logic:back-priority-regression`、根 `typecheck`、Next `build` 和 `git diff --check` 通过；Back 回归以可执行 store 测试证明 overlay、不可取消事务和页面 handler 任一路径一次请求最多一次状态转移，并覆盖 topmost、关闭拒绝和焦点恢复。
 - **既有门禁失败证据**：`npm run test:logic:component-reuse` 失败于未改动的 `scripts/test-component-reuse-contract.ts:21`：静态断言要求字面量 `repository.getOverview()`，基线 `use-wardrobe-data-controller.ts` 已是 `repository.getOverview({ signal: controller.signal })`。测试与被测文件均为 base `8fdb07f7` 原状，属于既有 stale 合同；按文件所有权未在 A1 越界修正，交由主集成 Agent 在 Wave 1 合入后单独更新并复验。
 - **风险门禁与未验证项**：`high`（全局浮层/Android 返回基础）。本 Session 即 Wave 1 实施 subagent。A1 仅自动接入共享 `MotionSheet` 和 `useStableBackHandler`；Lightbox、Popover、Cropper、Auth 及遗留页面私有 `App.addListener` 留给 A2，不能宣称全 App 已完成单 listener 迁移。未做 Android 真机/模拟器、TalkBack、窄屏触摸或退出动画慢放；最终 APK/Android 验收由后续 Wave 和主 Agent 完成。
+- **集成补充**：主 Agent 合入后将 `test-component-reuse-contract.ts` 的 Overview 所有权断言从过期的零参数字面量放宽为方法调用前缀，以兼容基线已存在的 AbortSignal 参数；不改变运行时行为。修正后 `test:logic:component-reuse` 纳入 Wave 1 集成门禁。
 
 ## 2026-07-13 / v2.1.18-test / Codex — 动效修复并行批次 Wave 0 基线
 
