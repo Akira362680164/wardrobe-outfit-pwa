@@ -15,7 +15,7 @@
  * - 不发任何网络/AI 请求，纯本地 UI 组件
  */
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 
 import type { TemperatureRange } from "@/lib/types";
 import { TEMPERATURE_RANGE_MAX_C as TEMP_MAX, TEMPERATURE_RANGE_MIN_C as TEMP_MIN, TEMPERATURE_RANGE_STEP_C as DEFAULT_STEP } from "@/lib/temperature-range";
@@ -23,6 +23,7 @@ import { TEMPERATURE_RANGE_MAX_C as TEMP_MAX, TEMPERATURE_RANGE_MIN_C as TEMP_MI
 const HANDLE_VISUAL = 20; // 视觉圆点
 const HANDLE_HIT = 44; // 触摸/鼠标命中区（≥44px per AGENTS.md）
 const TRACK_HEIGHT = 12;
+export const SLIDER_INTENT_THRESHOLD_PX = 8;
 
 const TEMP_GRADIENT =
   "linear-gradient(to right, hsl(210, 80%, 55%) 0%, hsl(190, 70%, 55%) 18%, hsl(45, 75%, 55%) 50%, hsl(20, 80%, 55%) 80%, hsl(0, 75%, 55%) 100%)";
@@ -42,6 +43,35 @@ function pctToC(pct: number, step: number) {
   return Math.round(raw / step) * step;
 }
 
+export type SliderDragIntent = "pending" | "horizontal" | "vertical";
+
+export function resolveSliderDragIntent(
+  dx: number,
+  dy: number,
+  threshold = SLIDER_INTENT_THRESHOLD_PX,
+): SliderDragIntent {
+  if (Math.max(Math.abs(dx), Math.abs(dy)) < threshold) return "pending";
+  return Math.abs(dx) > Math.abs(dy) ? "horizontal" : "vertical";
+}
+
+export function temperatureFromPointer({
+  clientX,
+  grabOffsetX,
+  trackLeft,
+  trackWidth,
+  step,
+}: {
+  clientX: number;
+  grabOffsetX: number;
+  trackLeft: number;
+  trackWidth: number;
+  step: number;
+}): number {
+  if (!Number.isFinite(trackWidth) || trackWidth <= 0) return TEMP_MIN;
+  const pct = clamp(((clientX - grabOffsetX - trackLeft) / trackWidth) * 100, 0, 100);
+  return clamp(pctToC(pct, step), TEMP_MIN, TEMP_MAX);
+}
+
 interface Props {
   value: TemperatureRange | null | undefined;
   onChange: (next: TemperatureRange) => void;
@@ -57,6 +87,15 @@ interface Props {
 
 type Handle = "min" | "max";
 
+interface SliderDragState {
+  handle: Handle;
+  pointerId: number;
+  startX: number;
+  startY: number;
+  grabOffsetX: number;
+  intent: SliderDragIntent;
+}
+
 export function TemperatureRangeSlider({
   value,
   onChange,
@@ -67,7 +106,9 @@ export function TemperatureRangeSlider({
   id,
 }: Props) {
   const trackRef = useRef<HTMLDivElement | null>(null);
-  const dragStateRef = useRef<{ handle: Handle; pointerId: number } | null>(null);
+  const dragStateRef = useRef<SliderDragState | null>(null);
+  const valueRef = useRef<TemperatureRange>(value ?? {});
+  valueRef.current = value ?? {};
   const [activeHandle, setActiveHandle] = useState<Handle | null>(null);
 
   const minC = value?.minC;
@@ -76,83 +117,88 @@ export function TemperatureRangeSlider({
   const hasMax = maxC != null;
   const empty = !value || (!hasMin && !hasMax);
 
-  // ── 公共：从 pointer event 提取百分比并约束 ───────────────────
-  const percentFromEvent = useCallback((clientX: number) => {
-    const rect = trackRef.current?.getBoundingClientRect();
-    if (!rect || rect.width === 0) return 0;
-    const pct = ((clientX - rect.left) / rect.width) * 100;
-    return clamp(pct, 0, 100);
-  }, []);
+  const emitRange = useCallback((next: TemperatureRange) => {
+    const current = valueRef.current;
+    if (current.minC === next.minC && current.maxC === next.maxC) return;
+    valueRef.current = next;
+    onChange(next);
+  }, [onChange]);
 
   const updateFromDrag = useCallback(
-    (handle: Handle, clientX: number) => {
-      const pct = percentFromEvent(clientX);
-      const c = clamp(pctToC(pct, step), TEMP_MIN, TEMP_MAX);
-      if (handle === "min") {
-        const upperBound = hasMax && maxC != null ? maxC : TEMP_MAX;
+    (state: SliderDragState, clientX: number) => {
+      const rect = trackRef.current?.getBoundingClientRect();
+      if (!rect || rect.width <= 0) return;
+      const current = valueRef.current;
+      const c = temperatureFromPointer({
+        clientX,
+        grabOffsetX: state.grabOffsetX,
+        trackLeft: rect.left,
+        trackWidth: rect.width,
+        step,
+      });
+      if (state.handle === "min") {
+        const upperBound = current.maxC ?? TEMP_MAX;
         const newMin = Math.min(c, upperBound);
-        onChange({ minC: newMin, maxC });
+        emitRange({ minC: newMin, maxC: current.maxC });
       } else {
-        const lowerBound = hasMin && minC != null ? minC : TEMP_MIN;
+        const lowerBound = current.minC ?? TEMP_MIN;
         const newMax = Math.max(c, lowerBound);
-        onChange({ minC, maxC: newMax });
+        emitRange({ minC: current.minC, maxC: newMax });
       }
     },
-    [hasMax, maxC, hasMin, minC, onChange, percentFromEvent, step],
+    [emitRange, step],
   );
-
-  // ── Pointer 拖动：document-level 监听以支持拖出 handle 边界 ──────
-  useEffect(() => {
-    if (activeHandle == null) return;
-
-    const handleMove = (e: PointerEvent) => {
-      const state = dragStateRef.current;
-      if (!state || e.pointerId !== state.pointerId) return;
-      e.preventDefault();
-      updateFromDrag(state.handle, e.clientX);
-    };
-    const handleUp = (e: PointerEvent) => {
-      const state = dragStateRef.current;
-      if (!state || e.pointerId !== state.pointerId) return;
-      dragStateRef.current = null;
-      setActiveHandle(null);
-      // release capture
-      try {
-        (e.target as Element | null)?.releasePointerCapture?.(state.pointerId);
-      } catch {
-        // ignore
-      }
-    };
-
-    document.addEventListener("pointermove", handleMove);
-    document.addEventListener("pointerup", handleUp);
-    document.addEventListener("pointercancel", handleUp);
-    return () => {
-      document.removeEventListener("pointermove", handleMove);
-      document.removeEventListener("pointerup", handleUp);
-      document.removeEventListener("pointercancel", handleUp);
-    };
-  }, [activeHandle, updateFromDrag]);
 
   // ── Handle pointer down：捕获指针 + 启动拖动 ───────────────────
   const onHandlePointerDown = useCallback(
     (handle: Handle) => (e: React.PointerEvent) => {
       // 鼠标左键 / 触摸 / 笔 才允许拖动
       if (e.pointerType === "mouse" && e.button !== 0) return;
-      e.preventDefault();
+      if (!e.isPrimary || dragStateRef.current) return;
       e.stopPropagation();
-      dragStateRef.current = { handle, pointerId: e.pointerId };
+      const thumbRect = e.currentTarget.getBoundingClientRect();
+      dragStateRef.current = {
+        handle,
+        pointerId: e.pointerId,
+        startX: e.clientX,
+        startY: e.clientY,
+        grabOffsetX: e.clientX - (thumbRect.left + thumbRect.width / 2),
+        intent: "pending",
+      };
       setActiveHandle(handle);
       try {
-        (e.target as Element).setPointerCapture(e.pointerId);
+        e.currentTarget.setPointerCapture(e.pointerId);
       } catch {
         // ignore
       }
-      // 初次点击立即把 handle 移到 pointer 位置
-      updateFromDrag(handle, e.clientX);
     },
-    [updateFromDrag],
+    [],
   );
+
+  const onHandlePointerMove = useCallback((e: React.PointerEvent<HTMLButtonElement>) => {
+    const state = dragStateRef.current;
+    if (!state || state.pointerId !== e.pointerId) return;
+    if (state.intent === "pending") {
+      state.intent = resolveSliderDragIntent(e.clientX - state.startX, e.clientY - state.startY);
+    }
+    if (state.intent !== "horizontal") return;
+    e.preventDefault();
+    updateFromDrag(state, e.clientX);
+  }, [updateFromDrag]);
+
+  const onHandlePointerEnd = useCallback((e: React.PointerEvent<HTMLButtonElement>) => {
+    const state = dragStateRef.current;
+    if (!state || state.pointerId !== e.pointerId) return;
+    dragStateRef.current = null;
+    setActiveHandle(null);
+    try {
+      if (e.currentTarget.hasPointerCapture(e.pointerId)) {
+        e.currentTarget.releasePointerCapture(e.pointerId);
+      }
+    } catch {
+      // Ignore browsers that release capture before pointerup/pointercancel.
+    }
+  }, []);
 
   // ── 键盘可访问性：箭头 / Home / End ─────────────────────────
   const onHandleKeyDown = useCallback(
@@ -166,24 +212,25 @@ export function TemperatureRangeSlider({
       })();
       if (delta === 0) return;
       e.preventDefault();
+      const currentRange = valueRef.current;
       if (handle === "min") {
-        const current = minC ?? TEMP_MIN;
-        const upper = hasMax && maxC != null ? maxC : TEMP_MAX;
+        const current = currentRange.minC ?? TEMP_MIN;
+        const upper = currentRange.maxC ?? TEMP_MAX;
         const next = clamp(current + delta, TEMP_MIN, upper);
-        onChange({ minC: next, maxC });
+        emitRange({ minC: next, maxC: currentRange.maxC });
       } else {
-        const current = maxC ?? TEMP_MAX;
-        const lower = hasMin && minC != null ? minC : TEMP_MIN;
+        const current = currentRange.maxC ?? TEMP_MAX;
+        const lower = currentRange.minC ?? TEMP_MIN;
         const next = clamp(current + delta, lower, TEMP_MAX);
-        onChange({ minC, maxC: next });
+        emitRange({ minC: currentRange.minC, maxC: next });
       }
     },
-    [hasMax, maxC, hasMin, minC, onChange, step],
+    [emitRange, maxC, minC, step],
   );
 
   // ── 清空 ─────────────────────────────────────────────────────
   const onClear = () => {
-    onChange({});
+    emitRange({});
   };
 
   // ── 渲染 ─────────────────────────────────────────────────────
@@ -219,7 +266,8 @@ export function TemperatureRangeSlider({
       </div>
       <div
         ref={trackRef}
-        className="relative w-full select-none touch-none"
+        className="relative w-full select-none touch-pan-y"
+        data-slider-intent-lock="8px-pan-y"
         style={{ height: HANDLE_HIT, paddingTop: (HANDLE_HIT - TRACK_HEIGHT) / 2 }}
         // 关键：阻止轨道点击改变数值（AGENTS.md 移动端硬规则）
         data-parity-id="parity.app.app.src.components.temperature.range.slider.431c5a9203" onClick={(e) => e.preventDefault()}
@@ -260,6 +308,9 @@ export function TemperatureRangeSlider({
             containerHeight={HANDLE_HIT}
             active={activeHandle === "min"}
             data-parity-id="parity.app.app.src.components.temperature.range.slider.3e0d86554b" onPointerDown={onHandlePointerDown("min")}
+            onPointerMove={onHandlePointerMove}
+            onPointerUp={onHandlePointerEnd}
+            onPointerCancel={onHandlePointerEnd}
             onKeyDown={onHandleKeyDown("min")}
             label="最低温度"
             value={minC as number}
@@ -276,6 +327,9 @@ export function TemperatureRangeSlider({
             containerHeight={HANDLE_HIT}
             active={activeHandle === "max"}
             data-parity-id="parity.app.app.src.components.temperature.range.slider.09bdc5d708" onPointerDown={onHandlePointerDown("max")}
+            onPointerMove={onHandlePointerMove}
+            onPointerUp={onHandlePointerEnd}
+            onPointerCancel={onHandlePointerEnd}
             onKeyDown={onHandleKeyDown("max")}
             label="最高温度"
             value={maxC as number}
@@ -310,6 +364,9 @@ interface HandleProps {
   containerHeight: number;
   active: boolean;
   onPointerDown: React.PointerEventHandler<HTMLButtonElement>;
+  onPointerMove: React.PointerEventHandler<HTMLButtonElement>;
+  onPointerUp: React.PointerEventHandler<HTMLButtonElement>;
+  onPointerCancel: React.PointerEventHandler<HTMLButtonElement>;
   onKeyDown: React.KeyboardEventHandler<HTMLButtonElement>;
   label: string;
   value: number;
@@ -324,6 +381,9 @@ function Handle({
   containerHeight,
   active,
   onPointerDown,
+  onPointerMove,
+  onPointerUp,
+  onPointerCancel,
   onKeyDown,
   label,
   value,
@@ -340,6 +400,9 @@ function Handle({
       aria-orientation="horizontal"
       data-handle={side}
       data-parity-id="parity.app.app.src.components.temperature.range.slider.004c11cfec" onPointerDown={onPointerDown}
+      onPointerMove={onPointerMove}
+      onPointerUp={onPointerUp}
+      onPointerCancel={onPointerCancel}
       onKeyDown={onKeyDown}
       className="absolute rounded-full border-0 bg-transparent p-0 cursor-grab active:cursor-grabbing"
       style={{
@@ -348,7 +411,7 @@ function Handle({
         width: hitSize,
         height: hitSize,
         transform: "translateX(-50%)",
-        touchAction: "none",
+        touchAction: "pan-y",
       }}
     >
       <span

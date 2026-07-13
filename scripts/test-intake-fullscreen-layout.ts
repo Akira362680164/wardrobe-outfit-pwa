@@ -34,6 +34,8 @@ check("IntakeFlowShell 不再注册私有原生返回键", !/App\.addListener\(|
 check("IntakeFlowShell 具备 modal、焦点层和下层 inert 契约", /role="dialog"/.test(intakeShell) && /aria-modal="true"/.test(intakeShell) && /data-overlay-layer=\{overlayId\}/.test(intakeShell) && /inert=\{isTopmost \? undefined : true\}/.test(intakeShell));
 check("IntakeFlowShell 退出确认复用 ConfirmActionSheet", /<ConfirmActionSheet[\s\S]{0,260}tone="danger"/.test(intakeShell) && !/bg-black\/35 px-4/.test(intakeShell));
 check("IntakeFlowShell 支持根步骤优先返回而非退出", /rootBackOverridesExit/.test(intakeShell) && /\(safeIndex > 0 \|\| rootBackOverridesExit\)/.test(intakeShell));
+check("IntakeFlowShell 固化录入 Back 优先级", /INTAKE_BACK_PRIORITY\s*=\s*\[[\s\S]{0,180}"cropper"[\s\S]{0,40}"image-source"[\s\S]{0,40}"field-overlay"[\s\S]{0,40}"exit-confirm"[\s\S]{0,40}"page"/.test(intakeShell));
+check("IntakeFlowShell 暴露当前步骤与 crop root override", /data-intake-current-step/.test(intakeShell) && /data-intake-root-back-override/.test(intakeShell));
 check("IntakeFlowShell 普通模式预留 safe-area + 104px footer", /pb-\[calc\(env\(safe-area-inset-bottom\)\+104px\)\]/.test(intakeShell));
 check("IntakeFlowShell 裁切沉浸模式隐藏上一步下一步底栏", /\{!immersiveContent \?/.test(intakeShell) && /<footer/.test(intakeShell));
 check("IntakeFlowShell 不存在录入页二次外层 padding", !/min-h-\[100dvh\][^"]*pb-\[calc/.test(intakeShell));
@@ -50,6 +52,7 @@ check("GarmentIntakeFlow 裁切工具栏使用短标签", /自由/.test(garmentI
 check("GarmentIntakeFlow 裁切页启用沉浸内容模式", /immersiveContent=\{isCropping\}/.test(garmentIntake));
 check("GarmentIntakeFlow 裁切页底部是取消和应用", /取消/.test(garmentIntake) && /应用/.test(garmentIntake) && !/保存并下一张/.test(garmentIntake));
 check("GarmentIntakeFlow 裁切页返回键先关闭裁切", /rootBackOverridesExit=\{isCropping\}/.test(garmentIntake) && /backDisabled=\{stepIndex === "select_photo" && !isCropping\}/.test(garmentIntake));
+check("GarmentIntakeFlow 裁切 Back 只关闭裁切一次", /function handleBack\(\) \{[\s\S]{0,160}if \(isCropping\) \{[\s\S]{0,80}setIsCropping\(false\);[\s\S]{0,30}return;/.test(garmentIntake));
 check("Android MainActivity 固定竖屏", /android:screenOrientation="portrait"/.test(androidManifest));
 check("Android 回归脚本不再主动生成横屏截图", !/landscape\.png|user_rotation 1/.test(androidRegression));
 

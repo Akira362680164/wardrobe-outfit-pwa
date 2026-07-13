@@ -54,7 +54,13 @@ check("ImageCropEditor ready 要求 cropFrame 宽高有效", /const ready =[\s\S
 check("ImageCropEditor ready 变化上报父组件", /onReadyChange\?\.\(ready\)/.test(imageCropEditor));
 check("ImageCropEditor runConfirm 在 !ready 时直接返回", /if \(!ready\) return/.test(imageCropEditor));
 check("ImageCropEditor 图片 onLoad 写入 naturalSize", /onLoad=\{\(e\) => \{[\s\S]{0,160}setNaturalSize/.test(imageCropEditor));
-check("ImageCropEditor 初始化默认裁切框使用当前比例", /setCropFrame\(getInitialCropFrameInImage\(imageRect, effectiveAspectRatio\)\)/.test(imageCropEditor));
+check("ImageCropEditor 初始化默认裁切框使用当前比例", /setLegalCropFrame\(getInitialCropFrameInImage\(imageRect, effectiveAspectRatio\)\)/.test(imageCropEditor));
+check("ImageCropEditor 展示值与合法值分离", /cropFrameRef/.test(imageCropEditor) && /legalCropFrameRef/.test(imageCropEditor) && /resolveCropDragFrame/.test(imageCropEditor));
+check("ImageCropEditor 越界使用渐进阻尼", /rubberBandCropDistance/.test(imageCropEditor) && /CROP_EDGE_RESISTANCE/.test(imageCropEditor));
+check("ImageCropEditor release 使用公共无回弹 control spring", /animate\(0, 1,[\s\S]{0,120}\.\.\.spring\.control/.test(imageCropEditor));
+check("ImageCropEditor 新 pointerdown 中断旧收口", /onPointerDown[\s\S]{0,420}stopSettleAnimation\(\)/.test(imageCropEditor));
+check("ImageCropEditor 确认只导出合法框", /const legalFrame = clampCropFrameToImage\(cropFrameRef\.current/.test(imageCropEditor) && /screenFrameToCropBox\(legalFrame, imageRect\)/.test(imageCropEditor));
+check("ImageCropEditor 基线主色改用语义 token", /bg-denim text-white/.test(imageCropEditor) && !/#355c7d|#fffffc/.test(imageCropEditor));
 check("ImageCropEditor 全屏支持自由与 3:4 比例切换", /setFullscreenAspectRatio/.test(imageCropEditor) && /label:\s*"自由"[\s\S]{0,120}label:\s*"3:4"[\s\S]{0,120}value:\s*0\.75/.test(imageCropEditor));
 check("ImageCropEditor 暴露左转和右转", /rotateLeft:\s*handleRotateLeft/.test(imageCropEditor) && /rotateRight:\s*handleRotateRight/.test(imageCropEditor));
 check("ImageCropEditor 全屏层接入统一 OverlayPortal", /OverlayPortal, useOverlayLayer/.test(imageCropEditor) && /<OverlayPortal>/.test(imageCropEditor));
@@ -83,6 +89,10 @@ check("GarmentIntakeFlow 步骤2不再强制保存并下一张", !/handleSaveCur
 check("GarmentIntakeFlow 部分保存确认复用 ConfirmActionSheet", /<ConfirmActionSheet[\s\S]{0,260}pendingSaveDrafts/.test(garmentIntakeFlow) && !/fixed inset-0 z-\[110\]/.test(garmentIntakeFlow));
 check("GarmentIntakeFlow 允许未裁切直接开始识别", !/请先裁切所有图片/.test(garmentIntakeFlow) && /imageToProcess =[\s\S]{0,120}item\.croppedImageDataUrl \?\? item\.displayDataUrl \?\? item\.originalDataUrl/.test(garmentIntakeFlow));
 check("GarmentIntakeFlow 相册/拍照取消直接返回空结果", /catch \(error\) \{[\s\S]{0,80}isImagePickerCancelError\(error\)[\s\S]{0,40}return \[\]/.test(wardrobeApp));
+check("GarmentIntakeFlow 相册空结果不清空现有 imageItems", /if \(picked\.length > 0\) \{[\s\S]{0,520}appendGarmentIntakeImages/.test(garmentIntakeFlow));
+check("GarmentIntakeFlow 裁切取消只关闭工具层", /onCancel=\{\(\) => setIsCropping\(false\)\}/.test(garmentIntakeFlow));
+check("GarmentIntakeFlow 识别失败原位生成待确认草稿", /setGarmentIntakeImageRecognitionFailure/.test(garmentIntakeFlow) && /buildFailedRecognitionDraft/.test(garmentIntakeFlow));
+check("GarmentIntakeFlow 保存失败保留当前页与草稿", /catch \(err\) \{[\s\S]{0,260}setSubmitState\(\{ status: "failed"/.test(garmentIntakeFlow) && !/catch \(err\) \{[\s\S]{0,260}setImageItems\(\[\]\)/.test(garmentIntakeFlow));
 check("GarmentIntakeFlow 相册 fallback 超时会清理 pendingGalleryResolverRef", /const finish = \(files: File\[\] \| null\)[\s\S]+?pendingGalleryResolverRef\.current = null[\s\S]+?timeout = setTimeout\(\(\) => finish\(null\), 30000\)/.test(wardrobeApp));
 check("隐藏 gallery input 优先回传当前录入流, 不落到旧图片队列", /if \(pendingGalleryResolverRef\.current\) \{[\s\S]{0,140}pendingGalleryResolverRef\.current\(files\)[\s\S]{0,140}return;[\s\S]{0,120}imageIntake\.handleGallerySelect\(e\.target\.files\)/.test(wardrobeApp));
 

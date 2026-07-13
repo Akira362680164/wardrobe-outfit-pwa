@@ -138,8 +138,14 @@ check("WardrobeApp 接入 onSaveBatch 并透传幂等上下文", /onSaveBatch=\{
 // Old CaptureView single-item mode does not exist
 check("旧 CaptureView 单衣物模式不存在", !/function CaptureView/.test(wardrobeApp) || wardrobeApp.split("function CaptureView").length === 1);
 
-// Old saveDraft does not exist
-check("旧 saveDraft 不存在", !/async function saveDraft/.test(wardrobeApp) || wardrobeApp.split("async function saveDraft").length === 1);
+// The old single-garment intake saveDraft must not return inside GarmentIntakeFlow.
+// Other routes may legitimately use a scoped saveDraftAndMaybeBack helper.
+check(
+  "录入流不存在旧单草稿 saveDraft",
+  !/async function saveDraft\s*\(/.test(garmentIntakeFlow)
+    && !/const \[draft,\s*setDraft\]/.test(garmentIntakeFlow)
+    && /onSaveBatch\(drafts/.test(garmentIntakeFlow),
+);
 
 // Old BatchReviewView single-item branch does not exist
 check("旧 BatchReviewView 单品分支不存在", !/captureMode\s*!==\s*"outfit"\s*[\s\S]{0,50}<BatchReviewView/.test(wardrobeApp) || !/BatchReviewView/.test(wardrobeApp));
@@ -157,6 +163,9 @@ check("GarmentIntakeFlow 使用 imageItems 状态", /imageItems:\s*GarmentIntake
 check("GarmentIntakeFlow 状态机含 recognizing 字段", /"recognizing"/.test(garmentIntakeFlow));
 check("GarmentIntakeFlow 失败草稿顶部 banner 显示「AI 识别失败」", /AI 识别失败，已生成待确认草稿/.test(garmentIntakeFlow));
 check("GarmentIntakeFlow 缩略图 strip 显示「识别中」loading", /item\.status === "recognizing"[\s\S]+?识别中/.test(garmentIntakeFlow));
+check("GarmentIntakeFlow 逐件确认记录前后方向", /setReviewDirection\(-1\)/.test(garmentIntakeFlow) && /setReviewDirection\(1\)/.test(garmentIntakeFlow));
+check("GarmentIntakeFlow 只给当前预览 10px 方向提示", /<motion\.img[\s\S]{0,420}x:\s*reviewDirection \* 10/.test(garmentIntakeFlow));
+check("GarmentIntakeFlow 不 key 整份确认表单", !/<EditSectionCard[^>]*key=/.test(garmentIntakeFlow) && !/<MultiImageReviewStep[^>]*key=/.test(garmentIntakeFlow));
 check("GarmentIntakeFlow 把 aiTag 映射到 buildLocalGarmentDraft", /mapAiTagToGarmentDraftInput/.test(garmentIntakeFlow));
 check("wardrobe-app GarmentIntakeFlow wiring 传 onProcessImage", /<GarmentIntakeFlow[\s\S]+?onProcessImage=\{processGarmentIntakeImage\}/.test(wardrobeApp));
 check("wardrobe-app processGarmentIntakeImage 调后端录入识别", /processGarmentIntakeImage[\s\S]+?recognizeGarmentOnServer\(/.test(wardrobeApp));
