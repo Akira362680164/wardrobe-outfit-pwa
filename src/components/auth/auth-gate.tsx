@@ -155,6 +155,7 @@ export function AuthGate({ children }: { children: ReactNode }) {
   });
   const [localError, setLocalError] = useState<string | null>(null);
   const [showExitDialog, setShowExitDialog] = useState(false);
+  const [authFlowTransactionBusy, setAuthFlowTransactionBusy] = useState(false);
   const previousAuthViewRef = useRef<AuthView>("login");
 
   const clearLocalError = useCallback(() => {
@@ -188,7 +189,7 @@ export function AuthGate({ children }: { children: ReactNode }) {
   }, [handlePopState]);
 
   useStableBackHandler(() => {
-    if (auth.isBusy) return true;
+    if (auth.isBusy || authFlowTransactionBusy) return true;
     const active = document.activeElement;
     if (active && (active.tagName === "INPUT" || active.tagName === "TEXTAREA")) {
       (active as HTMLElement).blur();
@@ -274,7 +275,8 @@ export function AuthGate({ children }: { children: ReactNode }) {
       )}
       {view === "forgot_password" && (
         <ForgotPasswordForm
-          onGoLogin={() => updateAuthView("login")}
+          onGoLogin={() => { if (!authFlowTransactionBusy) updateAuthView("login"); }}
+          onBusyChange={setAuthFlowTransactionBusy}
         />
       )}
       {view === "terms" && (
@@ -567,7 +569,7 @@ function RegisterForm({
   );
 }
 
-function ForgotPasswordForm({ onGoLogin }: { onGoLogin: () => void }) {
+function ForgotPasswordForm({ onGoLogin, onBusyChange }: { onGoLogin: () => void; onBusyChange: (busy: boolean) => void }) {
   const [email, setEmail] = useState("");
   const [emailCode, setEmailCode] = useState("");
   const [newPassword, setNewPassword] = useState("");
@@ -581,6 +583,13 @@ function ForgotPasswordForm({ onGoLogin }: { onGoLogin: () => void }) {
   const [done, setDone] = useState(false);
   const pwError = newPassword ? validatePassword(newPassword) : null;
   const valid = isValidAuthEmail(email) && /^\d{6}$/.test(emailCode.trim()) && !pwError && newPassword === confirmPassword;
+  const resetTransactionBusy = sending || submitting;
+
+  useEffect(() => {
+    onBusyChange(resetTransactionBusy);
+  }, [onBusyChange, resetTransactionBusy]);
+
+  useEffect(() => () => onBusyChange(false), [onBusyChange]);
 
   useEffect(() => {
     if (countdown <= 0) return undefined;
@@ -658,13 +667,14 @@ function ForgotPasswordForm({ onGoLogin }: { onGoLogin: () => void }) {
         label="邮箱"
         value={email}
         data-parity-id="parity.app.app.src.components.auth.auth.gate.859cfb2f39" onChange={setEmail}
+        disabled={resetTransactionBusy}
         autoComplete="email"
         inputMode="email"
         trailing={(
           <button
             type="button"
             data-parity-id="parity.app.app.src.components.auth.auth.gate.d483bdc7b7" onClick={askSendCode}
-            disabled={sending || countdown > 0}
+            disabled={resetTransactionBusy || countdown > 0}
             className="absolute right-1 top-1 inline-flex h-9 items-center justify-center rounded-[12px] bg-denim px-3 text-xs font-semibold text-white disabled:bg-denim/35"
           >
             {sending ? "发送中" : countdown > 0 ? `${countdown}s` : codeSent ? "再次发送" : "发送验证码"}
@@ -672,14 +682,14 @@ function ForgotPasswordForm({ onGoLogin }: { onGoLogin: () => void }) {
         )}
       />
       {codeSent ? (
-        <TextField label="邮箱验证码" value={emailCode} data-parity-id="parity.app.app.src.components.auth.auth.gate.0ec3f32deb" onChange={setEmailCode} autoComplete="one-time-code" inputMode="numeric" />
+        <TextField label="邮箱验证码" value={emailCode} data-parity-id="parity.app.app.src.components.auth.auth.gate.0ec3f32deb" onChange={setEmailCode} autoComplete="one-time-code" inputMode="numeric" disabled={resetTransactionBusy} />
       ) : null}
       <div>
-        <TextField label="新密码" value={newPassword} data-parity-id="parity.app.app.src.components.auth.auth.gate.55473436db" onChange={setNewPassword} type="password" autoComplete="new-password" />
+        <TextField label="新密码" value={newPassword} data-parity-id="parity.app.app.src.components.auth.auth.gate.55473436db" onChange={setNewPassword} type="password" autoComplete="new-password" disabled={resetTransactionBusy} />
         {pwError && <p className="mt-1 text-xs text-clay">{pwError}</p>}
       </div>
       <div>
-        <TextField label="确认新密码" value={confirmPassword} data-parity-id="parity.app.app.src.components.auth.auth.gate.a084b7dcc7" onChange={setConfirmPassword} type="password" autoComplete="new-password" />
+        <TextField label="确认新密码" value={confirmPassword} data-parity-id="parity.app.app.src.components.auth.auth.gate.a084b7dcc7" onChange={setConfirmPassword} type="password" autoComplete="new-password" disabled={resetTransactionBusy} />
         {confirmPassword && newPassword !== confirmPassword ? <p className="mt-1 text-xs text-clay">两次输入的新密码不一致</p> : null}
       </div>
       <button
@@ -691,7 +701,7 @@ function ForgotPasswordForm({ onGoLogin }: { onGoLogin: () => void }) {
         {submitting ? <Loader2 size={16} className="animate-spin" aria-hidden="true" /> : <KeyRound size={16} aria-hidden="true" />}
         重置密码
       </button>
-      <button type="button" data-parity-id="parity.app.app.src.components.auth.auth.gate.da3c724921" onClick={onGoLogin} className="h-10 text-sm font-semibold text-denim">
+      <button type="button" data-parity-id="parity.app.app.src.components.auth.auth.gate.da3c724921" onClick={onGoLogin} disabled={resetTransactionBusy} className="h-10 text-sm font-semibold text-denim disabled:opacity-45">
         返回登录
       </button>
       <ConfirmEmailDialog
@@ -814,6 +824,7 @@ function TextField({
   autoComplete,
   inputMode,
   trailing,
+  disabled = false,
 }: {
   label: string;
   value: string;
@@ -822,6 +833,7 @@ function TextField({
   autoComplete?: string;
   inputMode?: "none" | "text" | "tel" | "url" | "email" | "numeric" | "decimal" | "search";
   trailing?: ReactNode;
+  disabled?: boolean;
 }) {
   return (
     <label className="grid gap-1.5 text-sm font-medium">
@@ -833,7 +845,8 @@ function TextField({
           type={type}
           autoComplete={autoComplete}
           inputMode={inputMode}
-          className={`h-11 w-full ui-control-radius border border-ink/10 bg-white/76 px-3 text-base outline-none focus:border-denim ${trailing ? "pr-28" : ""}`}
+          disabled={disabled}
+          className={`h-11 w-full ui-control-radius border border-ink/10 bg-white/76 px-3 text-base outline-none focus:border-denim disabled:opacity-55 ${trailing ? "pr-28" : ""}`}
         />
         {trailing}
       </span>

@@ -9,6 +9,17 @@
 - **390px 浏览器证据**：Playwright Chromium `390×844`、移动触摸上下文实测 push 旧页 `x<0`、pop 旧页 `x>0`、退出页 inert、计划详情 ↔ 打包深滚动恢复、同 tick 连续 Back、连续 push 后单一 current page，以及 reduced-motion transform 归零；无 console error，截图 `/tmp/wardrobe-c3-outfit-deep-flow-390.png` 已人工检查，无横向溢出或叠页误触。
 - **风险与未验证项**：`high`（套装/计划高频深层导航、滚动和写入中断）。未在 Android 真机/模拟器、WebView、TalkBack/VoiceOver、生产账号或真实线上长列表做最终回归；未构建 APK。Android 返回键真实帧时序、360/430px 设备、系统字体放大及跨 Wave 集成后的完整业务链路留给 D Wave / 主集成验收。
 
+## 2026-07-13 / v2.1.18-test / Codex Subagent C3-Settings — 设置、画像与账号深层流程
+
+- **执行 Agent**：Codex Subagent C3-Settings 使用 `apple-design` 技能；独立分支 `codex/motion-c3-settings-20260713`、独立 worktree `/Users/fangzheng/Documents/wardrobe-motion-c3-settings-20260713`，基于 Wave 5 冻结提交 `7a2a9ece21429daa757dff25c75e697ca1d3fa38`；未合入 integration / `main`，未推送、未清理。本 Session 由主集成 Agent 分派，未再调用下级 subagent。
+- **目的与版本**：统一设置首页到穿衣画像、参考照片、MiniMax 与衣橱位置的 push/pop 和滚动连续性，并收紧设置、账号、改密、找回密码与注销的事务中断边界；版本保持 `2.1.18-test`，不改 API、业务字段、服务端、存储策略、小程序或 APK 版本。
+- **设置内层连续性**：新增唯一 `SettingsSubpageMotion` 和原子 `SettingsPageTransition`；push 复用 C1 的“新页 `+24px` / 旧页 `-6px`”，pop 完全反向，`AnimatePresence mode="sync"` 支持快速打断，退出页 `inert/aria-hidden` 且不接收 pointer，reduced-motion 只保留 opacity。设置首页 scrollY 在进入子页前保存，并在返回的 `useLayoutEffect` 首帧前恢复；账号、改密与注销继续走 C1 外层 AppRoute，未叠加第二套页面动画。
+- **设置事务与读回**：衣橱位置入口和共享 Sheet 恢复为可达状态，增改迁删期间页面、表单、Back、Escape、backdrop 与取消均锁定，操作成功只在既有 overview 读回完成后关闭。画像、参考照片、诊断上传和首页参考图开关沿用服务端实体/读回结果；诊断构建、授权、上传阶段保持不可取消进度层，失败保留问题描述。MiniMax 改为先验证内存草稿，再持久化并 pop，验证失败不覆盖既有设置、不离开子页。
+- **账号安全事务**：账号改绑、改密、找回密码和最终注销共享各自唯一 busy 事实，事务期间禁用 Back、模式切换、取消、输入与重复提交。AuthProvider 在长会话刷新后把本次改密实际使用的 fresh token 返回页面，改绑和改密用有效 token 读取最新 account security；写响应成功但读回失败时明确提示“已提交、尚未确认”并保留当前页，避免把已生效操作误报成可直接重试的普通失败。注销无论提交响应是否已标 completed，都继续用 receipt 轮询 deletion status 后才完成。账号模式按钮的冻结硬编码主色已替换为既有 `denim` 语义 token。
+- **改动文件**：`wardrobe-app.tsx`、新增 `auth/settings-subpage-motion.tsx`、`auth/account-views.tsx`、`auth/auth-provider.tsx`、`auth/auth-gate.tsx`、`auth/account-deletion-view.tsx`；新增 C3 静态合同和 390px browser harness、`package.json`；UI 规范 C3-Settings 命名小节、生成 HTML 与本记录。未修改 C1 导航控制器、底栏/全局创建衔接、穿搭计划或种草深层流程。
+- **自动化与 390px 验证**：`test:logic:urgent-account`（含新增 C3 `29/29`）、`test:logic:account-deletion-app`、`test:logic:wardrobe-app-split` `47/47`、`test:logic:ui-overflow`、UI spec build/check/preview、根 `typecheck`、Next `build`、`git diff --check` 通过。Chromium Playwright `390×844` 实测设置内 push/pop、列表滚动恢复、快速 push/pop/push、设置→账号→改密外层路由、busy 注销 Sheet 的 backdrop/Escape/Back 拒绝、失败保留路由与输入、写响应后继续等待读回、读回后才关闭、reduced-motion 与横向溢出；无 console error，截图 `/tmp/wardrobe-c3-settings-account-390.png` 已目检通过。
+- **风险门禁与未验证项**：`high`（账号改密/注销、设置写入与深层返回）。额外 `test:logic:ui-token-contract` 已不再报告 C3 所有的 `auth/account-views.tsx`，仍只报告本 Session 不拥有的冻结基线两处：`src/components/item/edit-image-action-card.tsx` 与 `src/app/site.css`，未越界修改。未在 Android 真机/模拟器、WebView、TalkBack/VoiceOver、生产账号、真实服务端写入或 live MiniMax 上执行最终回归；本批不构建 APK，Android 返回键与真实设备帧时序留给 D / 主集成 Wave。
+
 ## 2026-07-13 / v2.1.18-test / Codex Subagent B4 — 录入裁切、滑条与中断恢复
 
 - **执行 Agent**：Codex 实施 Subagent B4，使用 `apple-design` 技能；独立分支 `codex/motion-b4-intake-gestures-20260713`、独立 worktree `/Users/fangzheng/Documents/wardrobe-motion-b4-intake-gestures-20260713`，基于 Wave 3 冻结提交 `a1d6137a05890d81b4f6ab420bfe85e99f746496`；未合入 integration / `main`，未推送。本 Session 由主集成 Agent 分派，未再触发下级 subagent。
