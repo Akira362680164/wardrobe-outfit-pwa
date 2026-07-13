@@ -1,66 +1,182 @@
 #!/usr/bin/env tsx
-import { readFileSync } from "node:fs";
-import { join } from "node:path";
+import { strict as assert } from "node:assert";
+import { readdirSync, readFileSync } from "node:fs";
+import { join, relative } from "node:path";
+
+import { BackHandlerStore, coordinateBackRequest } from "../src/lib/back-coordinator";
+import { OverlayStackStore } from "../src/lib/overlay-stack";
 
 const root = join(__dirname, "..");
-const wardrobeApp = readFileSync(join(root, "src/components/wardrobe-app.tsx"), "utf8");
-const motionCommon = readFileSync(join(root, "src/components/motion-common.tsx"), "utf8");
-const packageJson = JSON.parse(readFileSync(join(root, "package.json"), "utf8"));
+const read = (path: string) => readFileSync(join(root, path), "utf8");
 
-let pass = 0;
-let fail = 0;
-
-function check(name: string, cond: boolean, detail?: string) {
-  if (cond) {
-    pass++;
-    console.log(`  ✅ ${name}`);
-  } else {
-    fail++;
-    console.log(`  ❌ ${name}${detail ? `: ${detail}` : ""}`);
-  }
+function listTypeScriptFiles(directory: string): string[] {
+  return readdirSync(directory, { withFileTypes: true }).flatMap((entry) => {
+    const path = join(directory, entry.name);
+    if (entry.isDirectory()) return listTypeScriptFiles(path);
+    return /\.[cm]?tsx?$/.test(entry.name) ? [path] : [];
+  });
 }
 
-const handlerMatch = /const handleTopLevelBack = useCallback\(\(\) => \{([\s\S]*?)\n  \}, \[/.exec(wardrobeApp);
-const handler = handlerMatch?.[1] ?? "";
-check("WardrobeApp 定义 handleTopLevelBack", Boolean(handlerMatch));
+async function verifyOverlayConsumesExactlyOneTransition(): Promise<void> {
+  const overlays = new OverlayStackStore();
+  const pages = new BackHandlerStore();
+  const transitions: string[] = [];
+  let restoredFocus = 0;
 
-const expandedIdx = handler.indexOf("if (expandedImage)");
-const createIdx = handler.indexOf("if (showCreateSheet)");
-const imageSourceIdx = handler.indexOf("if (showImageSourceSheet)");
-const cropIdx = handler.indexOf("if (captureCropJob)");
-const subPageIdx = handler.indexOf("if (wardrobeSubPageActive || outfitSubPageActive || shoppingSubPageActive)");
-const routeIdx = handler.indexOf("if (isDetailRoute(route))");
+  const unregisterLower = overlays.register({
+    id: "lower-sheet",
+    kind: "sheet",
+    dismissible: true,
+    onDismiss: () => transitions.push("lower-sheet"),
+  });
+  const unregisterUpper = overlays.register({
+    id: "upper-confirm",
+    kind: "alertdialog",
+    dismissible: true,
+    onDismiss: () => transitions.push("upper-confirm"),
+    restoreFocusTo: { focus: () => { restoredFocus += 1; } },
+  });
+  pages.register({
+    id: "root-page",
+    priority: -1_000,
+    handler: () => {
+      transitions.push("root-page");
+      return true;
+    },
+  });
 
-check("back handler 优先处理 expandedImage", expandedIdx >= 0 && expandedIdx < createIdx);
-check("back handler 优先处理 showCreateSheet", createIdx >= 0 && createIdx < imageSourceIdx);
-check("back handler 优先处理 showImageSourceSheet", imageSourceIdx >= 0 && imageSourceIdx < cropIdx);
-check("back handler 在路由返回前处理顶层浮层", cropIdx >= 0 && cropIdx < routeIdx);
-check("back handler 在详情路由返回前让子页先处理", subPageIdx >= 0 && subPageIdx < routeIdx);
+  assert.equal(overlays.getSnapshot().topmostId, "upper-confirm", "latest overlay is topmost");
+  assert.equal(
+    overlays.requestDismiss("backdrop", "lower-sheet").handled,
+    false,
+    "a lower layer cannot consume backdrop dismissal",
+  );
 
-check("关闭全局 create sheet 时清理 pendingCreateAction", /if \(showCreateSheet\)[\s\S]*setShowCreateSheet\(false\);[\s\S]*setPendingCreateAction\(null\);/.test(handler));
-check("关闭图片来源 sheet 时清理 pendingCreateAction", /if \(showImageSourceSheet\)[\s\S]*setShowImageSourceSheet\(false\);[\s\S]*setPendingCreateAction\(null\);/.test(handler));
+  const firstResult = coordinateBackRequest(overlays, pages, "android-back");
+  assert.deepEqual(transitions, ["upper-confirm"], "one Back dismisses only the topmost overlay");
+  assert.equal(firstResult.source, "overlay");
+  assert.equal(firstResult.overlay.dismissed, true);
+  assert.equal(firstResult.handlerId, null, "page fallback is not consulted after overlay dismissal");
 
-check("Android backButton 复用 handleTopLevelBack", /App\.addListener\("backButton"[\s\S]*handleTopLevelBack\(\)/.test(wardrobeApp));
-check("浏览器 Escape 复用 handleTopLevelBack", /const handleEscape = \(event: KeyboardEvent\) => \{[\s\S]*handleTopLevelBack\(\);[\s\S]*document\.addEventListener\("keydown", handleEscape, true\)/.test(wardrobeApp));
-check("Escape 不处理输入框普通输入", /target\.tagName === "INPUT"[\s\S]*target\.tagName === "TEXTAREA"[\s\S]*target\.isContentEditable/.test(wardrobeApp));
-check("全局 create sheet onClose 清理 pendingCreateAction", /<MotionSheet open=\{showCreateSheet\} onClose=\{\(\) => \{[\s\S]*setShowCreateSheet\(false\);[\s\S]*setPendingCreateAction\(null\);/.test(wardrobeApp));
+  unregisterUpper();
+  await Promise.resolve();
+  assert.equal(restoredFocus, 1, "unregistering the topmost overlay restores its trigger focus once");
+  assert.equal(overlays.getSnapshot().topmostId, "lower-sheet");
 
-const editBackStart = wardrobeApp.indexOf("if (!editingItem) {");
-const editBackEnd = wardrobeApp.indexOf("// v1.1.20-dev (Bug 2 修复): closeViewingItemByReturnTarget", editBackStart);
-const editBackBlock = wardrobeApp.slice(editBackStart, editBackEnd);
-const detailBackStart = wardrobeApp.indexOf("if (!viewingItem || editingItem || isSearchOpen) {");
-const detailBackEnd = wardrobeApp.indexOf("function applySearch", detailBackStart);
-const detailBackBlock = wardrobeApp.slice(detailBackStart, detailBackEnd);
-check("编辑页 Android back listener 防止异步注册后旧监听残留", /let removed = false[\s\S]*if \(removed\) \{[\s\S]*h\.remove\(\);[\s\S]*removed = true/.test(editBackBlock));
-check("详情页 Android back listener 防止异步注册后旧监听残留", /let removed = false[\s\S]*if \(removed\) return;[\s\S]*if \(removed\) \{[\s\S]*h\.remove\(\);[\s\S]*removed = true/.test(detailBackBlock));
+  coordinateBackRequest(overlays, pages, "escape");
+  assert.deepEqual(
+    transitions,
+    ["upper-confirm", "lower-sheet"],
+    "the next independent request advances only the next layer",
+  );
+  unregisterLower();
+}
 
-check("MotionPopoverMenu 注册 pointerdown 空白关闭", /document\.addEventListener\("pointerdown", handleDocPointerDown, true\)/.test(motionCommon));
-check("MotionPopoverMenu 注册 Escape 关闭逻辑", /handleDocKeyDown[\s\S]*e\.key !== "Escape"[\s\S]*onClose\(\)/.test(motionCommon));
-check("MotionPopoverMenu 清理 keydown 监听", /document\.removeEventListener\("keydown", handleDocKeyDown, true\)/.test(motionCommon));
+function verifyBlockedOverlayNeverFallsThrough(): void {
+  const overlays = new OverlayStackStore();
+  const pages = new BackHandlerStore();
+  const callbacks: string[] = [];
 
-check("package.json version uses semver", /^\d+\.\d+\.\d+(-[a-z0-9.]+)?$/.test(String(packageJson.version ?? "")));
-check("package.json 包含 test:logic:back-priority-regression", "test:logic:back-priority-regression" in (packageJson.scripts ?? {}));
-check("test:logic:all 包含 back-priority-regression", String(packageJson.scripts?.["test:logic:all"] ?? "").includes("test:logic:back-priority-regression"));
+  overlays.register({
+    id: "saving-transaction",
+    kind: "alertdialog",
+    dismissible: false,
+    onDismiss: () => callbacks.push("dismissed"),
+    onDismissBlocked: () => callbacks.push("blocked-feedback"),
+  });
+  pages.register({
+    id: "page",
+    handler: () => {
+      callbacks.push("page-transition");
+      return true;
+    },
+  });
 
-console.log(`\nback priority regression tests: ${pass} passed, ${fail} failed`);
-if (fail > 0) process.exit(1);
+  const result = coordinateBackRequest(overlays, pages, "android-back");
+  assert.deepEqual(callbacks, ["blocked-feedback"], "non-dismissible work rejects close without page fallthrough");
+  assert.equal(result.source, "overlay");
+  assert.equal(result.overlay.blocked, true);
+  assert.equal(result.overlay.dismissed, false);
+}
+
+function verifyPageHandlersStopAfterFirstTransition(): void {
+  const overlays = new OverlayStackStore();
+  const pages = new BackHandlerStore();
+  const transitions: string[] = [];
+
+  pages.register({
+    id: "root-fallback",
+    priority: -1_000,
+    handler: () => {
+      transitions.push("root-fallback");
+      return true;
+    },
+  });
+  const unregisterNested = pages.register({
+    id: "nested-page",
+    priority: 100,
+    handler: () => {
+      transitions.push("nested-page");
+      return true;
+    },
+  });
+
+  const nestedResult = coordinateBackRequest(overlays, pages, "android-back");
+  assert.deepEqual(transitions, ["nested-page"], "a consumed nested handler prevents the root transition");
+  assert.equal(nestedResult.handlerId, "nested-page");
+
+  unregisterNested();
+  transitions.length = 0;
+  pages.register({ id: "pass-through", priority: 100, handler: () => false });
+  const fallbackResult = coordinateBackRequest(overlays, pages, "escape");
+  assert.deepEqual(transitions, ["root-fallback"], "a false handler may fall through, but still yields one transition");
+  assert.equal(fallbackResult.handlerId, "root-fallback");
+}
+
+function verifyRuntimeUsesCoordinatorRegistration(): void {
+  const overlayRoot = read("src/components/overlay-root.tsx");
+  const stableBack = read("src/lib/use-stable-back-handler.ts");
+  const wardrobeApp = read("src/components/wardrobe-app.tsx");
+
+  const nativeBackOwners = listTypeScriptFiles(join(root, "src")).flatMap((path) => {
+    const source = readFileSync(path, "utf8");
+    const matches = [...source.matchAll(/App\s*\.\s*addListener\s*\(\s*["']backButton["']/g)];
+    return matches.map((match) => ({
+      file: relative(root, path).replaceAll("\\", "/"),
+      line: source.slice(0, match.index).split("\n").length,
+    }));
+  });
+
+  assert.equal(
+    (overlayRoot.match(/App\.addListener\("backButton"/g) ?? []).length,
+    1,
+    "OverlayRoot owns one native Back listener",
+  );
+  assert.deepEqual(
+    nativeBackOwners.map(({ file }) => file),
+    ["src/components/overlay-root.tsx"],
+    `OverlayRoot must be the only native Back listener owner; found ${nativeBackOwners
+      .map(({ file, line }) => `${file}:${line}`)
+      .join(", ")}`,
+  );
+  assert.match(overlayRoot, /coordinateBackRequest\(overlayStack, backHandlers, "escape"\)/);
+  assert.ok(!stableBack.includes("App.addListener"), "useStableBackHandler no longer creates native listeners");
+  assert.match(
+    wardrobeApp,
+    /useStableBackHandler\(handleTopLevelBack, true, -1_000\)/,
+    "WardrobeApp registers its root behavior as the lowest-priority fallback",
+  );
+}
+
+async function main(): Promise<void> {
+  await verifyOverlayConsumesExactlyOneTransition();
+  verifyBlockedOverlayNeverFallsThrough();
+  verifyPageHandlersStopAfterFirstTransition();
+  verifyRuntimeUsesCoordinatorRegistration();
+  console.log("back priority regression: one request causes at most one state transition");
+}
+
+void main().catch((error) => {
+  console.error(error);
+  process.exit(1);
+});

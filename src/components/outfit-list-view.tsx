@@ -17,7 +17,8 @@ import {
   Trash2,
   X,
 } from "lucide-react";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { AnimatePresence, motion, useIsPresent, useReducedMotion, type Variants } from "motion/react";
 
 import type { ClosetLocation, GarmentCategory, LocalOutfitRealImageDraft, OutfitAiSuggestion, OutfitCalendarPlan, OutfitCalendarPlanDraft, OutfitCalendarPlanType, OutfitPlanEntry, OutfitRealImage, PlanPackingChecklistItem, SavedOutfit, Season, WardrobeItem } from "@/lib/types";
 import { CATEGORY_LABELS, SEASON_LABELS } from "@/lib/types";
@@ -50,6 +51,7 @@ import {
   DetailHeroGallery,
   DetailInfoRow,
   DetailSurfaceCard,
+  DetailTabContent,
   DetailTabs,
   DetailTitleMetaBlock,
   DetailTopBar,
@@ -65,19 +67,167 @@ import { buildLocalOutfitMetadataFromItems } from "@/lib/outfit-ai-metadata";
 import { outfitDraftToSavedOutfit } from "@/lib/intake-save-adapters";
 import type { OutfitIntakeDraft } from "@/lib/intake-draft";
 import { useStableBackHandler } from "@/lib/use-stable-back-handler";
-import type { AppRoute } from "@/lib/app-route";
+import type { AppRoute, NavigationDirection } from "@/lib/app-route";
+import {
+  getNavigationMotionStates,
+  readPresentedWindowScrollY,
+  restoreWindowScrollBeforePaint,
+} from "@/components/navigation-motion";
+import { duration, ease, spring } from "@/lib/motion-tokens";
 import { normalizeTemperatureRange } from "@/lib/temperature-range";
 
 const SCENE_OPTIONS = ["通勤", "休闲", "旅行", "约会", "户外", "正式", "居家"];
 const STYLE_OPTIONS = ["简约", "休闲", "甜美", "优雅", "轻熟", "运动", "街头"];
 const PAIRING_TAG_OPTIONS = ["显高", "显瘦", "轻通勤", "学院风", "复古", "清爽"];
 
-type SubPage = "library" | "detail" | "create_flow" | "create_select" | "create_info" | "edit" | "edit_composition" | "real_image_add" | "real_image_view" | "planning_calendar" | "plan_add" | "plan_edit" | "plan_detail" | "packing_list";
+export type OutfitSubPage = "library" | "detail" | "create_flow" | "create_select" | "create_info" | "edit" | "edit_composition" | "real_image_add" | "real_image_view" | "planning_calendar" | "plan_add" | "plan_edit" | "plan_detail" | "packing_list";
 type CompositionEditReturnTo = "detail" | "edit";
 type OutfitDetailTab = "info" | "items" | "ai" | "records";
 
 /** 套装详情来源: 关闭详情后回到哪一页。 */
 type DetailReturnTo = "library" | "planning_calendar" | "plan_detail" | "packing_list";
+
+export type OutfitDeepFlowDirection = Extract<NavigationDirection, "push" | "pop" | "replace">;
+
+export interface OutfitDeepFlowScrollSnapshot {
+  windowY: number;
+  regionY: number;
+}
+
+export interface OutfitDeepFlowTransition {
+  id: number;
+  from: OutfitSubPage;
+  to: OutfitSubPage;
+  direction: OutfitDeepFlowDirection;
+  scrollKey: string;
+  restoreScroll: OutfitDeepFlowScrollSnapshot;
+}
+
+const EMPTY_DEEP_FLOW_SCROLL: OutfitDeepFlowScrollSnapshot = Object.freeze({ windowY: 0, regionY: 0 });
+
+/** Pure hierarchy map used by runtime Back handling and the 390px rapid-back harness. */
+export function resolveOutfitSubPageBackTarget(
+  page: OutfitSubPage,
+  detailReturnTo: DetailReturnTo = "library",
+  compositionReturnTo: CompositionEditReturnTo = "edit",
+): OutfitSubPage | null {
+  switch (page) {
+    case "edit_composition": return compositionReturnTo;
+    case "edit":
+    case "real_image_view":
+    case "real_image_add": return "detail";
+    case "detail": return detailReturnTo;
+    case "planning_calendar": return "library";
+    case "plan_add": return "planning_calendar";
+    case "plan_edit": return "plan_detail";
+    case "plan_detail": return "planning_calendar";
+    case "packing_list": return "plan_detail";
+    case "create_info": return "create_select";
+    case "create_select": return "library";
+    case "create_flow":
+    case "library": return null;
+  }
+}
+
+function getOutfitDeepFlowTransition(direction: OutfitDeepFlowDirection, reduceMotion: boolean) {
+  if (reduceMotion || direction === "replace") {
+    return { duration: duration.fast, ease: ease.app };
+  }
+  return {
+    ...spring.panel,
+    opacity: { duration: 0.14, ease: ease.app },
+  };
+}
+
+function OutfitDeepFlowPage({
+  transition,
+  reduceMotion,
+  children,
+}: {
+  transition: OutfitDeepFlowTransition;
+  reduceMotion: boolean;
+  children: React.ReactNode;
+}) {
+  const isPresent = useIsPresent();
+  const isPortalIntake = transition.to === "create_flow";
+  const variants = useMemo<Variants>(() => ({
+    enter: (activeDirection: OutfitDeepFlowDirection) => ({
+      ...getNavigationMotionStates(activeDirection, reduceMotion).enter,
+      transition: getOutfitDeepFlowTransition(activeDirection, reduceMotion),
+    }),
+    center: (activeDirection: OutfitDeepFlowDirection) => ({
+      ...getNavigationMotionStates(activeDirection, reduceMotion).center,
+      transition: getOutfitDeepFlowTransition(activeDirection, reduceMotion),
+    }),
+    exit: (activeDirection: OutfitDeepFlowDirection) => ({
+      ...getNavigationMotionStates(activeDirection, reduceMotion).exit,
+      transition: isPortalIntake
+        ? { duration: 0 }
+        : getOutfitDeepFlowTransition(activeDirection, reduceMotion),
+    }),
+  }), [isPortalIntake, reduceMotion]);
+
+  return (
+    <motion.div
+      className="relative min-w-0"
+      style={{ gridArea: "1 / 1", pointerEvents: isPresent ? "auto" : "none" }}
+      custom={transition.direction}
+      variants={variants}
+      initial="enter"
+      animate="center"
+      exit="exit"
+      aria-hidden={isPresent ? undefined : true}
+      inert={isPresent ? undefined : true}
+      data-outfit-deep-page={transition.to}
+      data-outfit-deep-direction={transition.direction}
+      data-outfit-deep-presence={isPresent ? "current" : "exiting"}
+    >
+      {children}
+    </motion.div>
+  );
+}
+
+/** C3 local deep-flow presenter. It mirrors C1 without creating a second AppRoute owner. */
+export function OutfitDeepFlowMotion({
+  transition,
+  children,
+}: {
+  transition: OutfitDeepFlowTransition;
+  children: React.ReactNode;
+}) {
+  const reduceMotion = Boolean(useReducedMotion());
+  const pageRef = useRef<HTMLDivElement | null>(null);
+
+  useLayoutEffect(() => {
+    if (transition.id === 0) return;
+    const scrollRegion = pageRef.current?.querySelector<HTMLElement>(
+      '[data-outfit-deep-presence="current"] [data-outfit-scroll-region]',
+    );
+    if (scrollRegion) scrollRegion.scrollTop = transition.restoreScroll.regionY;
+    return restoreWindowScrollBeforePaint(transition.restoreScroll.windowY);
+  }, [transition.id, transition.restoreScroll.regionY, transition.restoreScroll.windowY]);
+
+  return (
+    <div
+      ref={pageRef}
+      className="grid min-w-0"
+      data-outfit-deep-flow="true"
+      data-outfit-deep-from={transition.from}
+      data-outfit-deep-to={transition.to}
+      data-outfit-deep-direction={transition.direction}
+    >
+      <AnimatePresence mode="sync" initial={false} custom={transition.direction}>
+        <OutfitDeepFlowPage
+          key={transition.id}
+          transition={transition}
+          reduceMotion={reduceMotion}
+        >
+          {children}
+        </OutfitDeepFlowPage>
+      </AnimatePresence>
+    </div>
+  );
+}
 
 export function OutfitListView({
   outfits,
@@ -126,7 +276,19 @@ export function OutfitListView({
   planPackingChecklistItems: PlanPackingChecklistItem[];
   onPlanDataChange: () => Promise<void>;
 }) {
-  const [subPage, setSubPage] = useState<SubPage>("library");
+  const [subPage, setSubPageState] = useState<OutfitSubPage>("library");
+  const initialDeepFlowTransition = useMemo<OutfitDeepFlowTransition>(() => ({
+    id: 0,
+    from: "library",
+    to: "library",
+    direction: "replace",
+    scrollKey: "library",
+    restoreScroll: EMPTY_DEEP_FLOW_SCROLL,
+  }), []);
+  const [deepFlowTransition, setDeepFlowTransition] = useState(initialDeepFlowTransition);
+  const deepFlowTransitionRef = useRef(initialDeepFlowTransition);
+  const subPageRef = useRef<OutfitSubPage>("library");
+  const deepFlowScrollPositionsRef = useRef(new Map<string, OutfitDeepFlowScrollSnapshot>());
   const [viewingOutfitId, setViewingOutfitId] = useState<string | null>(null);
   // v1.1.4-dev 详情来源: 关闭套装详情时, 按此 subPage 返回。
   const [detailReturnTo, setDetailReturnTo] = useState<DetailReturnTo>("library");
@@ -162,8 +324,52 @@ export function OutfitListView({
   const [realImageCaption, setRealImageCaption] = useState("");
   const [realImageTakenAt, setRealImageTakenAt] = useState("");
   const [realImageFileUrl, setRealImageFileUrl] = useState("");
+  const [realImageSaving, setRealImageSaving] = useState(false);
+  const [realImageSaveError, setRealImageSaveError] = useState<string | null>(null);
   const realImageInputRef = useRef<HTMLInputElement>(null);
   const realImageCameraRef = useRef<HTMLInputElement>(null);
+
+  const writeBusyRef = useRef(false);
+  writeBusyRef.current = writingOutfitId !== null || realImageSaving;
+
+  function captureCurrentDeepFlowScroll(expectedPage: OutfitSubPage): OutfitDeepFlowScrollSnapshot | null {
+    if (typeof document === "undefined") return null;
+    const currentPage = document.querySelector<HTMLElement>('[data-outfit-deep-presence="current"]');
+    // A second Back can arrive before React commits the first pop. Never write
+    // the still-presented page's offset into the already-advanced route key.
+    if (currentPage?.dataset.outfitDeepPage !== expectedPage) return null;
+    const scrollRegion = currentPage?.querySelector<HTMLElement>("[data-outfit-scroll-region]");
+    return {
+      windowY: readPresentedWindowScrollY(),
+      regionY: scrollRegion?.scrollTop ?? 0,
+    };
+  }
+
+  function navigateSubPage(
+    to: OutfitSubPage,
+    direction: OutfitDeepFlowDirection,
+    scrollKey: string = to,
+  ): void {
+    const current = deepFlowTransitionRef.current;
+    if (current.to === to && current.scrollKey === scrollKey) return;
+
+    const presentedScroll = captureCurrentDeepFlowScroll(current.to);
+    if (presentedScroll) deepFlowScrollPositionsRef.current.set(current.scrollKey, presentedScroll);
+    const next: OutfitDeepFlowTransition = {
+      id: current.id + 1,
+      from: current.to,
+      to,
+      direction,
+      scrollKey,
+      restoreScroll: deepFlowScrollPositionsRef.current.get(scrollKey) ?? EMPTY_DEEP_FLOW_SCROLL,
+    };
+    // Update refs before React commits so rapid Back requests each consume one
+    // already-presented hierarchy level instead of replaying a stale closure.
+    deepFlowTransitionRef.current = next;
+    subPageRef.current = to;
+    setDeepFlowTransition(next);
+    setSubPageState(to);
+  }
 
   const isSubPage = subPage !== "library";
   useEffect(() => {
@@ -187,7 +393,7 @@ export function OutfitListView({
   // v1.1 review fix: 全局 FAB 触发添加穿搭计划。默认切到 plan_add 子页（用今天作为 startDate）。
   useEffect(() => {
     if (createPlanTrigger && createPlanTrigger > 0) {
-      setSubPage("plan_add");
+      navigateSubPage("plan_add", "push", `plan_add:${createPlanTrigger}`);
       onCreatePlanTriggerConsumed?.();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -195,34 +401,24 @@ export function OutfitListView({
 
   // Android back button — Subagent F: 使用稳定 handler
   useStableBackHandler(() => {
-    // 1. 图片放大层关闭（由父级 wardrobe-app 处理 expandedImage）
-    // 2. 更多菜单关闭 (menuOpen 在 OutfitDetailView 内部管理)
-    // 3. 编辑 sheet 关闭
-    if (subPage === "edit_composition") {
+    const activePage = subPageRef.current;
+    // OverlayStack always consumes Lightbox/Popover/Sheet first. Page writes
+    // are the next gate: saving/deleting must never pop a route mid-commit.
+    if (writeBusyRef.current) return true;
+    if (activePage === "edit_composition") {
       if (compositionEditDirty) { setCompositionBackConfirmOpen(true); return true; }
-      setSubPage(compositionEditReturnTo);
+      navigateSubPage(compositionEditReturnTo, "pop");
       return true;
     }
-    if (subPage === "edit") { setSubPage("detail"); return true; }
-    // 4. 实图管理页返回套装详情
-    if (subPage === "real_image_view") { setRealImageViewing(null); setSubPage("detail"); return true; }
-    if (subPage === "real_image_add") { setSubPage("detail"); return true; }
-    // 5. 套装详情按 detailReturnTo 返回 (v1.1.4-dev 详情来源链路)
-    if (subPage === "detail") { closeOutfitDetail(); return true; }
-    // 6. 月历页返回套装首页
-    if (subPage === "planning_calendar") { setSubPage("library"); return true; }
-    // 7. 计划添加页返回上一层（月历）
-    if (subPage === "plan_add") { setSubPage("planning_calendar"); return true; }
-    if (subPage === "plan_edit") { setSubPage("plan_detail"); return true; }
-    // 计划详情页返回月历
-    if (subPage === "plan_detail") { setSubPage("planning_calendar"); return true; }
-    // 打包清单页返回计划详情
-    if (subPage === "packing_list") { setSubPage("plan_detail"); return true; }
-    // create_flow 保持不动
-    if (subPage === "create_flow") return false;
-    if (subPage === "create_info") { setSubPage("create_select"); return true; }
-    if (subPage === "create_select") { setSubPage("library"); return true; }
-    return false;
+    if (activePage === "real_image_view") setRealImageViewing(null);
+    if (activePage === "detail") {
+      closeOutfitDetail();
+      return true;
+    }
+    const target = resolveOutfitSubPageBackTarget(activePage, detailReturnTo, compositionEditReturnTo);
+    if (!target) return false;
+    navigateSubPage(target, "pop");
+    return true;
   }, isSubPage);
 
   const itemIdSet = useMemo(() => new Set(items.filter((i) => i.id != null).map((i) => i.id as number)), [items]);
@@ -247,6 +443,7 @@ export function OutfitListView({
 	  const [addPlanSheetOpen, setAddPlanSheetOpen] = useState(false);
 	  const [planAddType, setPlanAddType] = useState<OutfitCalendarPlanType>("travel");
 	  const [activeCalendarPlanId, setActiveCalendarPlanId] = useState<string | null>(null);
+	  const pendingPlanReadbackIdRef = useRef<string | null>(null);
 	  const [selectOutfitDate, setSelectOutfitDate] = useState<string | null>(null);
 	  const [selectOutfitMode, setSelectOutfitMode] = useState<"primary" | "change" | "backup">("primary");
 	  const [showPlanSelectSheet, setShowPlanSelectSheet] = useState(false);
@@ -295,7 +492,8 @@ export function OutfitListView({
     setRealImageFileUrl("");
     setRealImageCaption("");
     setRealImageTakenAt(todayKey);
-    setSubPage("real_image_add");
+    setRealImageSaveError(null);
+    navigateSubPage("real_image_add", "push", `real_image_add:${viewingOutfitId ?? "unknown"}`);
   }
 
   function handleRealImageFileSelected(e: React.ChangeEvent<HTMLInputElement>) {
@@ -303,12 +501,13 @@ export function OutfitListView({
     if (!file) return;
     fileToCompressedDataUrl(file).then((dataUrl) => {
       setRealImageFileUrl(dataUrl);
+      setRealImageSaveError(null);
     }).catch(() => onMessage("图片读取失败", "error"));
     e.target.value = "";
   }
 
   async function handleSaveRealImage() {
-    if (!viewingOutfit || !realImageFileUrl) return;
+    if (!viewingOutfit || !realImageFileUrl || realImageSaving) return;
     const now = new Date().toISOString();
     const newImage: LocalOutfitRealImageDraft = {
       id: `outfit-real-image-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
@@ -320,20 +519,39 @@ export function OutfitListView({
       updatedAt: now,
     };
     const updated: LocalOutfitRealImageDraft[] = [...(viewingOutfit.outfitRealImages ?? []), newImage];
-    rethrowIfFailed(await wardrobeRepository.updateOutfit(viewingOutfit, { outfitRealImages: updated, updatedAt: now }), "保存套装失败");
-    await onRefresh();
-    setSubPage("detail");
-    onMessage("穿搭实图已保存");
+    setRealImageSaving(true);
+    setRealImageSaveError(null);
+    try {
+      rethrowIfFailed(await wardrobeRepository.updateOutfit(viewingOutfit, { outfitRealImages: updated, updatedAt: now }), "保存套装失败");
+      await onRefresh();
+      navigateSubPage("detail", "pop", `detail:${viewingOutfit.id}`);
+      onMessage("穿搭实图已保存");
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "穿搭实图保存失败，请重试";
+      setRealImageSaveError(message);
+      onMessage(message, "error");
+    } finally {
+      setRealImageSaving(false);
+    }
   }
 
   async function handleDeleteRealImage(imageId: string) {
     if (!viewingOutfit) return;
+    if (writingOutfitId === viewingOutfit.id) return;
     const updated = (viewingOutfit.outfitRealImages ?? []).filter((img) => img.id !== imageId);
-    rethrowIfFailed(await upsertOutfit({ ...viewingOutfit, outfitRealImages: updated, updatedAt: new Date().toISOString() }), "保存套装失败");
-    await onRefresh();
-    setRealImageViewing(null);
-    setSubPage("detail");
-    onMessage("穿搭实图已删除");
+    setWritingOutfitId(viewingOutfit.id);
+    try {
+      rethrowIfFailed(await upsertOutfit({ ...viewingOutfit, outfitRealImages: updated, updatedAt: new Date().toISOString() }), "保存套装失败");
+      await onRefresh();
+      setRealImageViewing(null);
+      navigateSubPage("detail", "pop", `detail:${viewingOutfit.id}`);
+      onMessage("穿搭实图已删除");
+    } catch (error) {
+      onMessage(error instanceof Error ? error.message : "穿搭实图删除失败，请重试", "error");
+      throw error;
+    } finally {
+      setWritingOutfitId(null);
+    }
   }
 
   // Create outfit: 进入4步流程 (create_flow 内 IntakeFlowShell 自己管理 selectedItemIds)
@@ -350,7 +568,7 @@ export function OutfitListView({
  setCreateSelectedIds([]);
  setIsRegeneratingInfo(false);
  setRegenerateInfoHint("");
- setSubPage("create_flow");
+ navigateSubPage("create_flow", "push", `create_flow:${createTrigger}`);
  }
 
  // v1.0: 创建流程的保存 (OutfitIntakeFlow4步流程的 step3 保存回调) — 不再处理未知单品
@@ -363,7 +581,7 @@ export function OutfitListView({
  }
  rethrowIfFailed(await wardrobeRepository.createOutfit(newOutfit), "保存套装失败");
  await onRefresh();
- setSubPage("library");
+ navigateSubPage("library", "pop");
  onMessage("套装已创建");
  onCreateClosed?.();
  }
@@ -494,7 +712,7 @@ export function OutfitListView({
  setCreateSelectedIds([...viewingOutfit.itemIds]);
  setIsRegeneratingInfo(false);
  setRegenerateInfoHint("");
- setSubPage("edit");
+ navigateSubPage("edit", "push", `edit:${viewingOutfit.id}`);
  }
 
   function startCompositionEdit(returnTo: CompositionEditReturnTo) {
@@ -505,7 +723,7 @@ export function OutfitListView({
     setCompositionEditReturnTo(returnTo);
     setCompositionEditDirty(false);
     if (returnTo === "detail") setDetailTabAfterEdit("items");
-    setSubPage("edit_composition");
+    navigateSubPage("edit_composition", "push", `edit_composition:${source.id}:${returnTo}`);
   }
 
   async function handleSaveCompositionQuick(selectedIds: number[]): Promise<boolean> {
@@ -538,7 +756,7 @@ export function OutfitListView({
       setCompositionEditDirty(false);
       setEditingOutfitId(null);
       setDetailTabAfterEdit("items");
-      setSubPage("detail");
+      navigateSubPage("detail", "pop", `detail:${viewingOutfit.id}`);
       onMessage("套装组成已更新，原 AI 建议已清除");
       return true;
     } catch (error) {
@@ -587,9 +805,11 @@ export function OutfitListView({
         return;
       }
       await onRefresh();
-      setSubPage("detail");
+      navigateSubPage("detail", "pop", `detail:${editingOutfit.id}`);
       setEditingOutfitId(null);
       onMessage("套装已更新");
+    } catch (error) {
+      onMessage(error instanceof Error ? error.message : "保存套装失败，请重试", "error");
     } finally {
       setWritingOutfitId(null);
     }
@@ -607,7 +827,7 @@ export function OutfitListView({
       await onPlanDataChange();
       await onRefresh();
       setViewingOutfitId(null);
-      setSubPage("library");
+      navigateSubPage("library", "pop");
       onCloseOutfitDetail?.();
       onMessage(`套装已删除${result.deletedPlanEntryIds.length > 0 ? `，已清理 ${result.deletedPlanEntryIds.length} 条未来计划` : ""}`);
     } catch {
@@ -623,10 +843,18 @@ export function OutfitListView({
 
 	  // P0 fix: plan_detail / packing_list 时 activeCalendarPlan 被清空（race 或并发删除），安全退回月历
 	  useEffect(() => {
-	    if ((subPage === "plan_detail" || subPage === "packing_list") && !activeCalendarPlan) {
-	      setSubPage("planning_calendar");
+	    if (activeCalendarPlan && pendingPlanReadbackIdRef.current === activeCalendarPlan.id) {
+	      pendingPlanReadbackIdRef.current = null;
+	      return;
 	    }
-	  }, [subPage, activeCalendarPlan]);
+	    if (
+	      (subPage === "plan_detail" || subPage === "packing_list")
+	      && !activeCalendarPlan
+	      && pendingPlanReadbackIdRef.current !== activeCalendarPlanId
+	    ) {
+	      navigateSubPage("planning_calendar", "pop");
+	    }
+	  }, [subPage, activeCalendarPlan, activeCalendarPlanId]);
 
 	  // v1.1.0 fix: 使用 addOutfitToDate auto 模式，今天/未来创建计划，过去补录已穿
 	  // v1.1.4-dev: 成功后调用 syncPackingChecklistForDate(dateKey), 让所有覆盖该日期的 plan 打包清单自动同步。
@@ -648,12 +876,12 @@ export function OutfitListView({
 	  // v1.1.4-dev: 计划保存/编辑后调用 syncPackingChecklistForPlan, 保证打包清单与新范围一致。
 	  async function handleSaveCalendarPlan(plan: OutfitCalendarPlan | OutfitCalendarPlanDraft) {
 	    try {
-        const wasEditing = subPage === "plan_edit";
+        const wasEditing = subPageRef.current === "plan_edit";
         const result = await upsertTripPlan(plan);
         if (!result.ok || !result.data) {
-          onMessage("计划保存失败，请重试", "error");
-          return;
+          throw new Error(!result.ok ? (result.error ?? "计划保存失败，请重试") : "计划保存失败，请重试");
         }
+	      pendingPlanReadbackIdRef.current = result.data.id;
 	      try {
 	        await syncPackingChecklistForPlan(result.data.id);
 	      } catch {
@@ -661,10 +889,15 @@ export function OutfitListView({
 	      }
 	      await onPlanDataChange();
         setActiveCalendarPlanId(result.data.id);
-	      setSubPage(wasEditing ? "plan_detail" : "planning_calendar");
+	      navigateSubPage(
+	        "plan_detail",
+	        wasEditing ? "pop" : "push",
+	        `plan_detail:${result.data.id}`,
+	      );
 	      onMessage("计划已保存");
-	    } catch {
-	      onMessage("操作失败，请重试", "error");
+	    } catch (error) {
+	      pendingPlanReadbackIdRef.current = null;
+	      throw error instanceof Error ? error : new Error("操作失败，请重试");
     }
 	  }
 
@@ -675,10 +908,11 @@ export function OutfitListView({
 		      rethrowIfFailed(await repoDeleteTripPlan(plan), "删除旅行计划失败");
 		      await onPlanDataChange();
           setActiveCalendarPlanId(null);
-          setSubPage("planning_calendar");
+          navigateSubPage("planning_calendar", "pop");
 		      onMessage("已删除旅行计划");
 		    } catch (error) {
 		      onMessage(error instanceof Error ? error.message : "操作失败，请重试", "error");
+		      throw error;
 		    }
 		  }
 
@@ -854,7 +1088,7 @@ export function OutfitListView({
 	  function openPlanningCalendarFromLibrary() {
 	    setPlanningMonthDate(selectedWeekDate.slice(0, 7));
 	    setSelectedPlanDate(selectedWeekDate);
-	    setSubPage("planning_calendar");
+	    navigateSubPage("planning_calendar", "push");
 	  }
 
 	  function openTravelPlanSheetFromLibrary() {
@@ -866,7 +1100,7 @@ export function OutfitListView({
     setViewingOutfitId(outfitId);
     setDetailTabAfterEdit("info");
     setDetailReturnTo(returnTo);
-    setSubPage("detail");
+    navigateSubPage("detail", "push", `detail:${outfitId}`);
   }
 
   function closeOutfitDetail() {
@@ -874,7 +1108,12 @@ export function OutfitListView({
       onCloseOutfitDetail?.();
       return;
     }
-    setSubPage(detailReturnTo);
+    const returnScrollKey = detailReturnTo === "plan_detail"
+      ? `plan_detail:${activeCalendarPlanId ?? "unknown"}`
+      : detailReturnTo === "packing_list"
+        ? `packing_list:${activeCalendarPlanId ?? "unknown"}`
+        : detailReturnTo;
+    navigateSubPage(detailReturnTo, "pop", returnScrollKey);
     // 保留 viewingOutfitId 一帧, 让 OutfitDetailView 卸载动画稳定完成。
   }
 
@@ -882,7 +1121,7 @@ export function OutfitListView({
     if (!activeOutfitRoute) return;
     setViewingOutfitId(activeOutfitRoute.outfitId);
     setDetailReturnTo(activeOutfitRoute.returnTo === "outfit_calendar" ? "planning_calendar" : "library");
-    setSubPage("detail");
+    navigateSubPage("detail", "replace", `detail:${activeOutfitRoute.outfitId}`);
   }, [activeOutfitRoute?.outfitId, activeOutfitRoute?.returnTo, activeOutfitRoute?.returnRoute]);
 
   // v1.1.4-dev 计划详情入口: 同步该计划打包清单, 切到 plan_detail。
@@ -894,7 +1133,7 @@ export function OutfitListView({
     } catch {
       onMessage("打包清单同步失败，请重试", "error");
     }
-    setSubPage("plan_detail");
+    navigateSubPage("plan_detail", "push", `plan_detail:${planId}`);
   }
 
   // v1.1.4-dev 打包清单自动同步 (单一 plan)
@@ -936,11 +1175,12 @@ export function OutfitListView({
       onMessage("打包清单同步失败，请重试", "error");
     }
     await onPlanDataChange();
-    setSubPage("packing_list");
+    navigateSubPage("packing_list", "push", `packing_list:${activeCalendarPlanId}`);
   }
   // Render
   return (
     <div className="w-full min-w-0 max-w-full overflow-x-hidden space-y-4">
+      <OutfitDeepFlowMotion transition={deepFlowTransition}>
       {subPage === "library" && (
         <>
           {/* Header - 与 AppSubPageTopBar / 衣橱首页顶部按钮行一致 h-14 (56px) */}
@@ -956,7 +1196,7 @@ export function OutfitListView({
               <button
                 type="button"
                 data-parity-id="parity.app.app.src.components.outfit.list.view.5f851a498b" onClick={openPlanningCalendarFromLibrary}
-                className="inline-flex h-10 min-w-[64px] items-center justify-center rounded-full border border-denim/20 bg-white px-3 text-sm font-semibold text-denim shadow-sm active:scale-95"
+                className="inline-flex h-10 min-w-[64px] items-center justify-center rounded-full border border-denim/20 bg-white px-3 text-sm font-semibold text-denim shadow-sm app-press-feedback"
                 aria-label="打开穿搭月历"
               >
                 月历
@@ -964,7 +1204,7 @@ export function OutfitListView({
               <button
                 type="button"
                 data-parity-id="parity.app.app.src.components.outfit.list.view.5546e4b500" onClick={openTravelPlanSheetFromLibrary}
-                className="inline-flex h-10 min-w-[72px] items-center justify-center rounded-full bg-denim px-3 text-sm font-semibold text-white shadow-sm active:scale-95"
+                className="inline-flex h-10 min-w-[72px] items-center justify-center rounded-full bg-denim px-3 text-sm font-semibold text-white shadow-sm app-press-feedback"
                 aria-label="添加计划"
               >
                 +计划
@@ -1090,7 +1330,10 @@ export function OutfitListView({
           onEditComposition={() => startCompositionEdit("detail")}
           onMarkWorn={() => handleMarkWornToday(viewingOutfit)}
           onAddRealImage={handleAddRealImage}
-          onViewRealImage={(img) => { setRealImageViewing(img); setSubPage("real_image_view"); }}
+          onViewRealImage={(img) => {
+            setRealImageViewing(img);
+            navigateSubPage("real_image_view", "push", `real_image_view:${img.id}`);
+          }}
           onDeleteOutfit={handleDeleteOutfit}
  onToggleFavorite={() => handleToggleFavorite(viewingOutfit)}
           onExpandImage={onExpandImage}
@@ -1104,17 +1347,26 @@ export function OutfitListView({
       {subPage === "real_image_view" && realImageViewing && (
         <RealImageView
           image={realImageViewing}
-          onBack={() => { setRealImageViewing(null); setSubPage("detail"); }}
+          onBack={() => {
+            setRealImageViewing(null);
+            navigateSubPage("detail", "pop", `detail:${viewingOutfit?.id ?? "unknown"}`);
+          }}
           onDelete={() => handleDeleteRealImage(realImageViewing.id)}
           onSaveCaption={async (caption) => {
             if (!viewingOutfit) return;
+            if (writingOutfitId === viewingOutfit.id) return;
             const updated = (viewingOutfit.outfitRealImages ?? []).map((img) =>
               img.id === realImageViewing.id ? { ...img, caption, updatedAt: new Date().toISOString() } : img
             );
-            rethrowIfFailed(await upsertOutfit({ ...viewingOutfit, outfitRealImages: updated, updatedAt: new Date().toISOString() }), "保存套装失败");
-            await onRefresh();
-            setRealImageViewing((prev) => prev ? { ...prev, caption, updatedAt: new Date().toISOString() } : null);
-            onMessage("说明已更新");
+            setWritingOutfitId(viewingOutfit.id);
+            try {
+              rethrowIfFailed(await upsertOutfit({ ...viewingOutfit, outfitRealImages: updated, updatedAt: new Date().toISOString() }), "保存套装失败");
+              await onRefresh();
+              setRealImageViewing((prev) => prev ? { ...prev, caption, updatedAt: new Date().toISOString() } : null);
+              onMessage("说明已更新");
+            } finally {
+              setWritingOutfitId(null);
+            }
           }}
           onExpandImage={onExpandImage}
         />
@@ -1124,7 +1376,13 @@ export function OutfitListView({
       {subPage === "real_image_add" && (
         <div className="space-y-4">
           <div className="flex items-center gap-3">
-            <button type="button" data-parity-id="parity.app.app.src.components.outfit.list.view.d5844f6dd1" onClick={() => setSubPage("detail")} className="p-1 -ml-1"><ChevronLeft size={20} /></button>
+            <button
+              type="button"
+              disabled={realImageSaving}
+              data-parity-id="parity.app.app.src.components.outfit.list.view.d5844f6dd1"
+              onClick={() => navigateSubPage("detail", "pop", `detail:${viewingOutfit?.id ?? "unknown"}`)}
+              className="p-1 -ml-1 disabled:opacity-40"
+            ><ChevronLeft size={20} /></button>
             <h3 className="text-base font-semibold">添加穿搭实图</h3>
           </div>
 
@@ -1191,16 +1449,17 @@ export function OutfitListView({
           </div>
 
           <p className="text-xs text-ink/30">这张照片会保存到当前套装，用于回看真实穿搭效果。</p>
+          {realImageSaveError ? <p role="alert" className="rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-600">{realImageSaveError}</p> : null}
 
           <div className="flex gap-3 pt-2">
-            <button type="button" data-parity-id="parity.app.app.src.components.outfit.list.view.4abd97f970" onClick={() => setSubPage("detail")} className="flex-1 rounded-full border border-ink/10 py-2.5 text-sm">取消</button>
+            <button type="button" disabled={realImageSaving} data-parity-id="parity.app.app.src.components.outfit.list.view.4abd97f970" onClick={() => navigateSubPage("detail", "pop", `detail:${viewingOutfit?.id ?? "unknown"}`)} className="flex-1 rounded-full border border-ink/10 py-2.5 text-sm disabled:opacity-40">取消</button>
             <button
               type="button"
               data-parity-id="parity.app.app.src.components.outfit.list.view.46cea66824" onClick={handleSaveRealImage}
-              disabled={!realImageFileUrl}
+              disabled={!realImageFileUrl || realImageSaving}
               className="flex-[2] rounded-full bg-denim py-2.5 text-sm font-medium text-white disabled:opacity-40"
             >
-              保存
+              {realImageSaving ? "保存中..." : "保存"}
             </button>
           </div>
         </div>
@@ -1215,7 +1474,7 @@ export function OutfitListView({
  onEnhanceDraft={handleEnhanceOutfitDraft}
  onSave={handleSaveOutfitIntake}
  onExit={() => {
-   setSubPage("library");
+   navigateSubPage("library", "pop");
    onCreateClosed?.();
  }}
         />
@@ -1241,9 +1500,13 @@ export function OutfitListView({
           onRegenerateInfo={handleRegenerateEditInfo}
           isRegeneratingInfo={isRegeneratingInfo}
           regenerateInfoHint={regenerateInfoHint}
-          onBack={() => setSubPage("detail")}
+          isSaving={writingOutfitId === editingOutfit.id}
+          onBack={() => navigateSubPage("detail", "pop", `detail:${editingOutfit.id}`)}
           onSave={handleSaveEdit}
-          onCancel={() => { setSubPage("detail"); setEditingOutfitId(null); }}
+          onCancel={() => {
+            navigateSubPage("detail", "pop", `detail:${editingOutfit.id}`);
+            setEditingOutfitId(null);
+          }}
         />
       )}
 
@@ -1255,13 +1518,13 @@ export function OutfitListView({
           initialSelectedIds={createSelectedIds}
           confirmLabel={compositionEditReturnTo === "detail" ? "保存组成" : "完成选择"}
           isSaving={compositionEditReturnTo === "detail" && writingOutfitId === editingOutfit.id}
-          onBack={() => setSubPage(compositionEditReturnTo)}
+          onBack={() => navigateSubPage(compositionEditReturnTo, "pop")}
           onDirtyChange={setCompositionEditDirty}
           onConfirm={async (selectedIds) => {
             setCreateSelectedIds(selectedIds);
             if (compositionEditReturnTo === "detail") return handleSaveCompositionQuick(selectedIds);
             setCompositionEditDirty(false);
-            setSubPage("edit");
+            navigateSubPage("edit", "pop", `edit:${editingOutfit.id}`);
             return true;
           }}
         />
@@ -1277,7 +1540,7 @@ export function OutfitListView({
 	          outfits={outfits}
 	          items={items}
 	          todayKey={todayKey}
-	          onBack={() => setSubPage("library")}
+	          onBack={() => navigateSubPage("library", "pop")}
 	          onAdd={() => setAddPlanSheetOpen(true)}
 	          onMonthChange={(delta) => setPlanningMonthDate((prev) => {
 	            const [y, m] = prev.split("-").map(Number) as [number, number];
@@ -1303,7 +1566,7 @@ export function OutfitListView({
 	      {subPage === "plan_add" && (
 	        <OutfitPlanAddView
 	          type={planAddType}
-	          onBack={() => setSubPage("planning_calendar")}
+	          onBack={() => navigateSubPage("planning_calendar", "pop")}
 	          onSave={handleSaveCalendarPlan}
 	          onMessage={onMessage}
 	        />
@@ -1313,7 +1576,7 @@ export function OutfitListView({
           <OutfitPlanAddView
             type={activeCalendarPlan.type}
             initialPlan={activeCalendarPlan}
-            onBack={() => setSubPage("plan_detail")}
+            onBack={() => navigateSubPage("plan_detail", "pop", `plan_detail:${activeCalendarPlan.id}`)}
             onSave={handleSaveCalendarPlan}
             onMessage={onMessage}
           />
@@ -1327,8 +1590,8 @@ export function OutfitListView({
 	          outfits={outfits}
 	          items={items}
 	          todayKey={todayKey}
-	          onBack={() => setSubPage("planning_calendar")}
-            onEdit={() => setSubPage("plan_edit")}
+	          onBack={() => navigateSubPage("planning_calendar", "pop")}
+            onEdit={() => navigateSubPage("plan_edit", "push", `plan_edit:${activeCalendarPlan.id}`)}
             onDelete={() => handleDeleteCalendarPlan(activeCalendarPlan.id)}
 	          onOpenPackingList={openPackingListFromPlanDetail}
 	          onSelectOutfitForDate={(dateKey) => {
@@ -1348,7 +1611,7 @@ export function OutfitListView({
 	          entries={outfitPlanEntries}
 	          outfits={outfits}
 	          items={items}
-	          onBack={() => setSubPage("plan_detail")}
+	          onBack={() => navigateSubPage("plan_detail", "pop", `plan_detail:${activeCalendarPlan.id}`)}
 	          onToggleChecked={handleTogglePackingItemChecked}
 	          onAddManual={handleSaveManualPackingItem}
 	          onMarkAllPacked={handleMarkAllPacked}
@@ -1356,9 +1619,10 @@ export function OutfitListView({
 	          onMessage={onMessage}
 	        />
 	      )}
+      </OutfitDeepFlowMotion>
 
 	      {/* Add Plan Sheet */}
-	      <MotionSheet open={addPlanSheetOpen} onClose={() => setAddPlanSheetOpen(false)}>
+	      <MotionSheet open={addPlanSheetOpen} onClose={() => setAddPlanSheetOpen(false)} variant="action" ariaLabel="添加穿搭计划">
 	        <div className="text-center">
 	          <h3 className="text-base font-semibold text-ink mb-3">添加计划</h3>
 	          <div className="space-y-2">
@@ -1372,7 +1636,11 @@ export function OutfitListView({
 	                data-parity-id={`parity.app.app.src.components.outfit.list.view.d61cac655d.${opt.type}`}
 	                type="button"
 	                className="w-full rounded-xl border border-ink/10 bg-white p-3 text-left hover:bg-ink/2 transition-colors"
-	                onClick={() => { setPlanAddType(opt.type); setAddPlanSheetOpen(false); setSubPage("plan_add"); }}
+	                onClick={() => {
+	                  setPlanAddType(opt.type);
+	                  setAddPlanSheetOpen(false);
+	                  navigateSubPage("plan_add", "push", `plan_add:${opt.type}:${deepFlowTransitionRef.current.id + 1}`);
+	                }}
 	              >
 	                <p className="text-sm font-semibold text-ink">{opt.label}</p>
 	                <p className="text-[11px] text-ink/45 mt-0.5">{opt.desc}</p>
@@ -1406,7 +1674,11 @@ export function OutfitListView({
         confirmLabel="放弃修改"
         cancelLabel="继续编辑"
         tone="danger"
-        onConfirm={() => { setCompositionBackConfirmOpen(false); setCompositionEditDirty(false); setSubPage(compositionEditReturnTo); }}
+        onConfirm={() => {
+          setCompositionBackConfirmOpen(false);
+          setCompositionEditDirty(false);
+          navigateSubPage(compositionEditReturnTo, "pop");
+        }}
         onClose={() => setCompositionBackConfirmOpen(false)}
       />
     </div>
@@ -1453,6 +1725,8 @@ function OutfitDetailView({
 }) {
   const [menuOpen, setMenuOpen] = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState(false);
+  const [deleteSubmitting, setDeleteSubmitting] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
   const [detailTab, setDetailTab] = useState<OutfitDetailTab>(initialTab ?? "info");
   const [isGeneratingAdvice, setIsGeneratingAdvice] = useState(false);
   const [adviceError, setAdviceError] = useState("");
@@ -1469,6 +1743,10 @@ function OutfitDetailView({
     { kind: "add" as const, label: "+套装示意" },
   ];
   const [activeSlide, setActiveSlide] = useState(0);
+  useEffect(() => {
+    setDetailTab(initialTab ?? "info");
+    setActiveSlide(0);
+  }, [initialTab, outfit.id]);
  const activeSlideData = allSlides[activeSlide];
  const sceneLabels = (outfit.sceneTags ?? []).join(" · ");
  // v1.0: 风格标签展示层中文化 (labelOutfitStyleTags 处理可能存在的英文枚举)
@@ -1501,12 +1779,18 @@ function OutfitDetailView({
   const activeFilmstripId = activeSlideData?.kind === "real" ? activeSlideData.image.id : "cover";
 
   async function handleDeleteOutfit() {
+    if (deleteSubmitting) return;
     setMenuOpen(false);
+    setDeleteSubmitting(true);
+    setDeleteError(null);
     try {
       await onDeleteOutfit();
       setDeleteConfirm(false);
-    } catch {
+    } catch (error) {
+      setDeleteError(error instanceof Error ? error.message : "删除失败，请重试");
       // 父层负责 toast；失败时保留详情页和确认弹窗。
+    } finally {
+      setDeleteSubmitting(false);
     }
   }
 
@@ -1583,12 +1867,26 @@ function OutfitDetailView({
             <button type="button" data-parity-id="parity.app.app.src.components.outfit.list.view.db73d8b142" onClick={() => { setMenuOpen(false); setDeleteConfirm(true); }} className="flex w-full items-center gap-2 rounded-lg px-3 py-2.5 text-sm text-red-600 hover:bg-red-50"><Trash2 size={14} />删除套装</button>
           </div>
         </MotionPopoverMenu>
-        <ConfirmActionSheet open={deleteConfirm} title={`删除「${outfit.name}」？`} description="删除后不会影响套装内的衣物，套装实图也会一并删除。" confirmLabel="删除" tone="danger" onConfirm={handleDeleteOutfit} onClose={() => setDeleteConfirm(false)} />
+        <ConfirmActionSheet
+          open={deleteConfirm}
+          title={`删除「${outfit.name}」？`}
+          description="删除后不会影响套装内的衣物，套装实图也会一并删除。"
+          confirmLabel="删除"
+          tone="danger"
+          submitting={deleteSubmitting}
+          error={deleteError}
+          onConfirm={handleDeleteOutfit}
+          onClose={() => {
+            setDeleteConfirm(false);
+            setDeleteError(null);
+          }}
+        />
       </>}
     >
 
-      {detailTab === "info" ? (
-        <div className="px-4 mt-3 pb-8 space-y-4">
+      <DetailTabContent activeKey={detailTab}>
+        {detailTab === "info" ? (
+          <div className="px-4 mt-3 pb-8 space-y-4">
           <DetailAiCard
             title="AI套装建议"
             summary={aiSuggestion?.summary}
@@ -1624,49 +1922,50 @@ function OutfitDetailView({
           <DetailSurfaceCard title="备注">
             <p className="text-sm leading-relaxed text-ink/65">{outfit.notes || "未填写"}</p>
           </DetailSurfaceCard>
-        </div>
-      ) : null}
-
-      {detailTab === "items" ? (
-        <div className="px-4 mt-4 pb-8">
-          <OutfitCompositionTab
-            outfit={outfit}
-            items={items}
-            allItems={allItems}
-            onEditComposition={onEditComposition}
-            suggestion={aiSuggestion}
-            replacementItemId={replacementItemId}
-            onToggleReplacement={(itemId) => setReplacementItemId((current) => current === itemId ? null : itemId)}
-          />
-        </div>
-      ) : null}
-
-      {detailTab === "ai" ? (
-        <div className="px-4 mt-3 pb-8">
-          <OutfitAiSuggestionDetail suggestion={aiSuggestion} allItems={allItems} onGenerate={handleGenerateAdvice} isLoading={isGeneratingAdvice} />
-        </div>
-      ) : null}
-
-      {detailTab === "records" ? (
-        <div className="px-4 mt-3 pb-8 space-y-3 rounded-lg border border-ink/8 bg-white p-3">
-          <InfoRow label="穿着次数" value={`${(outfit.wornDates ?? []).length} 次`} />
-          <InfoRow label="最近穿着" value={(outfit.wornDates ?? []).at(-1) ?? "暂无记录"} />
-          <div>
-            <p className="mb-2 text-xs font-medium text-ink/40">穿搭实图</p>
-            {realImages.length > 0 ? (
-              <div className="flex gap-2 overflow-x-auto">
-                {realImages.map((image) => (
-                  <button key={image.id} type="button" data-parity-id={`parity.app.app.src.components.outfit.list.view.70ee9ec3bb.${image.id}`} onClick={() => onViewRealImage(image)} className="h-20 w-16 shrink-0 overflow-hidden rounded-lg bg-milk-darker">
-                    <OnlineAssetImage asset={image.image.asset} variant="thumbnail" alt={image.caption ?? "穿搭实图"} className="h-full w-full" imageClassName="object-cover" />
-                  </button>
-                ))}
-              </div>
-            ) : (
-              <p className="text-xs text-ink/40">还没有实图记录。</p>
-            )}
           </div>
-        </div>
-      ) : null}
+        ) : null}
+
+        {detailTab === "items" ? (
+          <div className="px-4 mt-4 pb-8">
+            <OutfitCompositionTab
+              outfit={outfit}
+              items={items}
+              allItems={allItems}
+              onEditComposition={onEditComposition}
+              suggestion={aiSuggestion}
+              replacementItemId={replacementItemId}
+              onToggleReplacement={(itemId) => setReplacementItemId((current) => current === itemId ? null : itemId)}
+            />
+          </div>
+        ) : null}
+
+        {detailTab === "ai" ? (
+          <div className="px-4 mt-3 pb-8">
+            <OutfitAiSuggestionDetail suggestion={aiSuggestion} allItems={allItems} onGenerate={handleGenerateAdvice} isLoading={isGeneratingAdvice} />
+          </div>
+        ) : null}
+
+        {detailTab === "records" ? (
+          <div className="px-4 mt-3 pb-8 space-y-3 rounded-lg border border-ink/8 bg-white p-3">
+            <InfoRow label="穿着次数" value={`${(outfit.wornDates ?? []).length} 次`} />
+            <InfoRow label="最近穿着" value={(outfit.wornDates ?? []).at(-1) ?? "暂无记录"} />
+            <div>
+              <p className="mb-2 text-xs font-medium text-ink/40">穿搭实图</p>
+              {realImages.length > 0 ? (
+                <div className="flex gap-2 overflow-x-auto">
+                  {realImages.map((image) => (
+                    <button key={image.id} type="button" data-parity-id={`parity.app.app.src.components.outfit.list.view.70ee9ec3bb.${image.id}`} onClick={() => onViewRealImage(image)} className="h-20 w-16 shrink-0 overflow-hidden rounded-lg bg-milk-darker">
+                      <OnlineAssetImage asset={image.image.asset} variant="thumbnail" alt={image.caption ?? "穿搭实图"} className="h-full w-full" imageClassName="object-cover" />
+                    </button>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-xs text-ink/40">还没有实图记录。</p>
+              )}
+            </div>
+          </div>
+        ) : null}
+      </DetailTabContent>
     </ItemDetailPageShell>
   );
 }
@@ -1873,14 +2172,18 @@ function RealImageView({
 }: {
   image: OutfitRealImage;
   onBack: () => void;
-  onDelete: () => void;
-  onSaveCaption: (caption: string) => void;
+  onDelete: () => void | Promise<void>;
+  onSaveCaption: (caption: string) => void | Promise<void>;
   onExpandImage: (image: { src: string; alt: string }) => void;
 }) {
   const [menuOpen, setMenuOpen] = useState(false);
   const [editingCaption, setEditingCaption] = useState(false);
   const [captionDraft, setCaptionDraft] = useState(image.caption ?? "");
   const [deleteConfirm, setDeleteConfirm] = useState(false);
+  const [deleteSubmitting, setDeleteSubmitting] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
+  const [captionSaving, setCaptionSaving] = useState(false);
+  const [captionError, setCaptionError] = useState<string | null>(null);
   const menuRef = useRef<HTMLButtonElement>(null);
 
   return (
@@ -1892,8 +2195,8 @@ function RealImageView({
         </button>
       </div>
 
-      {menuOpen && (
-        <div className="absolute right-4 z-50 mt-1 w-40 rounded-xl border border-ink/8 bg-white py-1 shadow-lg">
+      <MotionPopoverMenu visible={menuOpen} onClose={() => setMenuOpen(false)} anchorRef={menuRef as React.RefObject<HTMLElement | null>}>
+        <div className="w-40 py-1">
           <button type="button" data-parity-id="parity.app.app.src.components.outfit.list.view.fc53cffe40" onClick={() => { setMenuOpen(false); setEditingCaption(true); setCaptionDraft(image.caption ?? ""); }} className="flex w-full items-center gap-2 px-4 py-2.5 text-sm hover:bg-milk-darker/40">
             <Pencil size={14} />编辑说明
           </button>
@@ -1901,15 +2204,54 @@ function RealImageView({
             <Trash2 size={14} />删除实图
           </button>
         </div>
-      )}
+      </MotionPopoverMenu>
 
       {/* Delete confirm */}
-      <ConfirmActionSheet open={deleteConfirm} title="删除这张穿搭实图？" description="删除后不会影响套装内的衣物，也不会删除套装。" confirmLabel="删除" tone="danger" onConfirm={onDelete} onClose={() => setDeleteConfirm(false)} />
+      <ConfirmActionSheet
+        open={deleteConfirm}
+        title="删除这张穿搭实图？"
+        description="删除后不会影响套装内的衣物，也不会删除套装。"
+        confirmLabel="删除"
+        tone="danger"
+        submitting={deleteSubmitting}
+        error={deleteError}
+        onConfirm={async () => {
+          if (deleteSubmitting) return;
+          setDeleteSubmitting(true);
+          setDeleteError(null);
+          try {
+            await onDelete();
+            setDeleteConfirm(false);
+          } catch (error) {
+            setDeleteError(error instanceof Error ? error.message : "删除失败，请重试");
+          } finally {
+            setDeleteSubmitting(false);
+          }
+        }}
+        onClose={() => {
+          setDeleteConfirm(false);
+          setDeleteError(null);
+        }}
+      />
 
       {/* Caption edit */}
-      {editingCaption && (
-        <div className="fixed inset-0 z-70 flex items-center justify-center bg-black/30" data-parity-id="parity.app.app.src.components.outfit.list.view.e384998688" onClick={() => setEditingCaption(false)}>
-          <div className="mx-4 w-full max-w-sm rounded-2xl bg-white p-6" data-parity-id="parity.app.app.src.components.outfit.list.view.aa4b7fd200" onClick={(e) => e.stopPropagation()}>
+      <MotionSheet
+        open={editingCaption}
+        onClose={() => {
+          if (!captionSaving) {
+            setEditingCaption(false);
+            setCaptionError(null);
+          }
+        }}
+        variant="form"
+        preferBottom={false}
+        ariaLabel="编辑穿搭实图说明"
+        dismissible={!captionSaving}
+        closeOnBackdrop={!captionSaving}
+        closeOnEscape={!captionSaving}
+        panelClassName="sm:max-w-sm"
+      >
+          <div>
             <p className="text-sm font-medium">编辑说明</p>
             <input
               type="text"
@@ -1917,13 +2259,31 @@ function RealImageView({
               data-parity-id="parity.app.app.src.components.outfit.list.view.55c593c654" onChange={(e) => setCaptionDraft(e.target.value)}
               className="mt-2 w-full rounded-xl border border-ink/10 px-3 py-2 text-sm"
             />
+            {captionError ? <p role="alert" className="mt-2 text-xs text-red-600">{captionError}</p> : null}
             <div className="mt-4 flex gap-3">
-              <button type="button" data-parity-id="parity.app.app.src.components.outfit.list.view.c67aaefef9" onClick={() => setEditingCaption(false)} className="flex-1 rounded-full border border-ink/10 py-2 text-sm">取消</button>
-              <button type="button" data-parity-id="parity.app.app.src.components.outfit.list.view.822ac5a1bc" onClick={() => { onSaveCaption(captionDraft); setEditingCaption(false); }} className="flex-1 rounded-full bg-denim py-2 text-sm font-medium text-white">保存</button>
+              <button type="button" disabled={captionSaving} data-parity-id="parity.app.app.src.components.outfit.list.view.c67aaefef9" onClick={() => setEditingCaption(false)} className="flex-1 rounded-full border border-ink/10 py-2 text-sm disabled:opacity-50">取消</button>
+              <button
+                type="button"
+                disabled={captionSaving}
+                data-parity-id="parity.app.app.src.components.outfit.list.view.822ac5a1bc"
+                onClick={async () => {
+                  if (captionSaving) return;
+                  setCaptionSaving(true);
+                  setCaptionError(null);
+                  try {
+                    await onSaveCaption(captionDraft);
+                    setEditingCaption(false);
+                  } catch (error) {
+                    setCaptionError(error instanceof Error ? error.message : "保存失败，请重试");
+                  } finally {
+                    setCaptionSaving(false);
+                  }
+                }}
+                className="flex-1 rounded-full bg-denim py-2 text-sm font-medium text-white disabled:opacity-50"
+              >{captionSaving ? "保存中..." : "保存"}</button>
             </div>
           </div>
-        </div>
-      )}
+      </MotionSheet>
 
       {/* Large image */}
       <OnlineAssetImage asset={image.image.asset} variant="original" alt={image.caption ?? "穿搭实图"} className="max-h-[60vh] w-full rounded-xl" onOpen={(url) => onExpandImage({ src: url, alt: image.caption ?? "穿搭实图" })} />
@@ -1953,6 +2313,7 @@ function OutfitInfoForm({
  onRegenerateInfo,
  isRegeneratingInfo,
  regenerateInfoHint,
+ isSaving = false,
  onBack,
  onSave,
  onCancel,
@@ -1973,8 +2334,9 @@ function OutfitInfoForm({
  onEditComposition?: () => void;
  /** v1.0: 仅在 edit 时调用; 只回填表单,不直接保存 */
  onRegenerateInfo?: () => Promise<void> | void;
- isRegeneratingInfo?: boolean;
- regenerateInfoHint?: string;
+  isRegeneratingInfo?: boolean;
+  regenerateInfoHint?: string;
+  isSaving?: boolean;
  onBack: () => void;
  onSave: () => void;
  onCancel: () => void;
@@ -1986,7 +2348,7 @@ function OutfitInfoForm({
  return (
  <div className="space-y-5">
  <div className="flex items-center gap-3">
- <button type="button" data-parity-id="parity.app.app.src.components.outfit.list.view.cb3f420db8" onClick={onBack} className="-ml-1 inline-flex h-11 w-11 shrink-0 items-center justify-center ui-control-radius text-ink/70" aria-label="返回"><ChevronLeft size={20} /></button>
+ <button type="button" disabled={isSaving} data-parity-id="parity.app.app.src.components.outfit.list.view.cb3f420db8" onClick={onBack} className="-ml-1 inline-flex h-11 w-11 shrink-0 items-center justify-center ui-control-radius text-ink/70 disabled:opacity-40" aria-label="返回"><ChevronLeft size={20} /></button>
  <h3 className="text-base font-semibold">{isEdit ? "编辑套装信息" : "创建搭配"}</h3>
  </div>
 
@@ -1996,7 +2358,7 @@ function OutfitInfoForm({
  <button
  type="button"
  data-parity-id="parity.app.app.src.components.outfit.list.view.4c3cea17f9" onClick={() => { void onRegenerateInfo(); }}
- disabled={isRegeneratingInfo}
+ disabled={isRegeneratingInfo || isSaving}
  className="inline-flex w-full items-center justify-center gap-2 rounded-full bg-denim px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-50"
  >
  {isRegeneratingInfo ? <RefreshCw size={14} className="animate-spin" /> : <Sparkles size={14} />}
@@ -2031,7 +2393,8 @@ function OutfitInfoForm({
               type="button"
               data-parity-id="parity.app.app.src.components.outfit.list.view.edit-form-composition"
               onClick={onEditComposition}
-              className="inline-flex min-h-11 shrink-0 items-center justify-center rounded-full border border-denim/25 bg-white px-3 text-xs font-semibold text-denim"
+              disabled={isSaving}
+              className="inline-flex min-h-11 shrink-0 items-center justify-center rounded-full border border-denim/25 bg-white px-3 text-xs font-semibold text-denim disabled:opacity-40"
             >
               编辑组成
             </button>
@@ -2137,8 +2500,8 @@ function OutfitInfoForm({
 
       {/* Bottom bar */}
       <div className="flex gap-3 pt-4">
-        <button type="button" data-parity-id="parity.app.app.src.components.outfit.list.view.5911a347e0" onClick={onCancel} className="flex-1 rounded-full border border-ink/10 py-2.5 text-sm">取消</button>
-        <button type="button" data-parity-id="parity.app.app.src.components.outfit.list.view.a91e4277f6" onClick={onSave} className="flex-[2] rounded-full bg-denim py-2.5 text-sm font-medium text-white">保存套装</button>
+        <button type="button" disabled={isSaving} data-parity-id="parity.app.app.src.components.outfit.list.view.5911a347e0" onClick={onCancel} className="flex-1 rounded-full border border-ink/10 py-2.5 text-sm disabled:opacity-40">取消</button>
+        <button type="button" disabled={isSaving} data-parity-id="parity.app.app.src.components.outfit.list.view.a91e4277f6" onClick={onSave} className="flex-[2] rounded-full bg-denim py-2.5 text-sm font-medium text-white disabled:opacity-40">{isSaving ? "保存中..." : "保存套装"}</button>
       </div>
     </div>
   );
@@ -2220,6 +2583,11 @@ function OutfitCompositionEditor({
     if (hasChanges) setDiscardOpen(true);
     else onBack();
   }
+
+  useStableBackHandler(() => {
+    requestBack();
+    return true;
+  }, true, 20);
 
   async function confirmSelection() {
     if (busy || selectedIds.length < 2) return;

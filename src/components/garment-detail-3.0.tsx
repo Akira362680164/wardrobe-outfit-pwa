@@ -29,6 +29,7 @@ import {
   DetailAiCard,
   DetailFilmstrip,
   DetailHeroGallery,
+  DetailTabContent,
   DetailTabs,
   DetailTitleMetaBlock,
   DetailTopBar,
@@ -286,9 +287,11 @@ export function GarmentDetail30({
         </>
       }
     >
-      {activeTab === "info" ? <InfoTab item={item} aiStyleAdvice={aiStyleAdvice} aiAdviceState={aiAdviceState} hasMiniMaxKey={hasMiniMaxKey} onGenerateAdvice={onGenerateAdvice} onGoSettings={onGoSettings} locationLabel={locationLabel} seasonLabels={seasonLabels} styleLabels={styleLabels} subcategory={subcategory} material={material} purchaseDate={purchaseDate} temperatureRange={temperatureRange} notes={notes} /> : null}
-      {activeTab === "inspiration" ? <InspirationTab refs={refs} onAdd={onAddReferenceImage} onView={onViewReferenceImage} /> : null}
-      {activeTab === "pairing" ? <PairingTab allItems={allItems} historyOutfits={historyOutfits} pairingItems={pairingItems} onViewOutfit={onViewOutfit} /> : null}
+      <DetailTabContent activeKey={activeTab}>
+        {activeTab === "info" ? <InfoTab item={item} aiStyleAdvice={aiStyleAdvice} aiAdviceState={aiAdviceState} hasMiniMaxKey={hasMiniMaxKey} onGenerateAdvice={onGenerateAdvice} onGoSettings={onGoSettings} locationLabel={locationLabel} seasonLabels={seasonLabels} styleLabels={styleLabels} subcategory={subcategory} material={material} purchaseDate={purchaseDate} temperatureRange={temperatureRange} notes={notes} /> : null}
+        {activeTab === "inspiration" ? <InspirationTab refs={refs} onAdd={onAddReferenceImage} onView={onViewReferenceImage} /> : null}
+        {activeTab === "pairing" ? <PairingTab allItems={allItems} historyOutfits={historyOutfits} pairingItems={pairingItems} onViewOutfit={onViewOutfit} /> : null}
+      </DetailTabContent>
     </ItemDetailPageShell>
   );
 }
@@ -554,9 +557,7 @@ function MoveLocationSheet({
   const [selected, setSelected] = useState(currentLocationId);
 
   return (
-    // v0.9.49-dev auto-fix: z-50 与项目 memory 建议的 popover:45 + sheet:50 一致, 但与 lightbox:80 距离太近;
-    // 提到 z-55, 介于 popover (45) 与 lightbox (80) 之间, 避免 lightbox 全屏时弹层仍可见。
-    <MotionSheet open onClose={onClose} panelClassName="!max-w-md">
+    <MotionSheet open onClose={onClose} variant="form" ariaLabel="移动衣物" panelClassName="!max-w-md">
         <h3 className="text-base font-semibold mb-3">移动衣物</h3>
         <p className="text-xs text-ink/40 mb-3">选择要移动到的衣橱</p>
         <div className="space-y-1">

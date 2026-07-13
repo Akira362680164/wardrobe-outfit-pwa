@@ -6,7 +6,8 @@ import type { OutfitCalendarPlan, OutfitCalendarPlanDraft, OutfitCalendarPlanTon
 import { createOutfitCalendarPlan, PLAN_TONE_BG_MAP, PLAN_TONE_LABEL_MAP } from "@/lib/outfit-planning";
 import { getLocalDateKey } from "@/lib/wear-records";
 import { daysBetween } from "@/lib/outfit-calendar";
-import { MotionSheet } from "@/components/motion-common";
+import { ConfirmActionSheet } from "@/components/dialogs";
+import { useStableBackHandler } from "@/lib/use-stable-back-handler";
 
 const TONES: OutfitCalendarPlanTone[] = ["denim", "moss", "clay", "amber", "rose", "purple", "slate"];
 
@@ -35,23 +36,36 @@ export function OutfitPlanAddView({ type, initialPlan, onBack, onSave, onMessage
   const [showDiscard, setShowDiscard] = useState(false);
 
   const dirty = useMemo(() => {
-    if (!initialPlan) return title.trim() !== "" || destination.trim() !== "" || activities.length > 0 || weatherNote.trim() !== "" || notes.trim() !== "";
+    if (!initialPlan) {
+      const defaultTone: OutfitCalendarPlanTone = type === "travel" ? "clay" : type === "business" ? "moss" : "denim";
+      return title.trim() !== "" || destination.trim() !== "" || activities.length > 0 || activityInput.trim() !== ""
+        || weatherNote.trim() !== "" || notes.trim() !== "" || startDate !== today || endDate !== today
+        || tone !== defaultTone || packingEnabled !== (type !== "custom");
+    }
     return title !== initialPlan.title || startDate !== initialPlan.startDate || endDate !== initialPlan.endDate ||
       destination !== (initialPlan.destination ?? "") || JSON.stringify(activities) !== JSON.stringify(initialPlan.activities ?? []) ||
       weatherNote !== (initialPlan.weatherNote ?? "") || notes !== (initialPlan.notes ?? "") ||
       tone !== initialPlan.tone || packingEnabled !== (initialPlan.packingEnabled ?? false);
-  }, [initialPlan, title, startDate, endDate, destination, activities, weatherNote, notes, tone, packingEnabled]);
+  }, [initialPlan, title, startDate, endDate, destination, activities, activityInput, weatherNote, notes, tone, packingEnabled, today, type]);
 
   const titleLabel = initialPlan
     ? (type === "travel" ? "编辑旅行计划" : type === "business" ? "编辑出差计划" : "编辑自定义计划")
     : (type === "travel" ? "添加旅行计划" : type === "business" ? "添加出差计划" : "添加自定义计划");
 
   const handleBack = useCallback(() => {
+    if (saving) return;
     if (dirty) { setShowDiscard(true); return; }
     onBack();
-  }, [dirty, onBack]);
+  }, [dirty, onBack, saving]);
+
+  useStableBackHandler(() => {
+    if (saving) return true;
+    handleBack();
+    return true;
+  }, true, 20);
 
   const handleSave = useCallback(async () => {
+    if (saving) return;
     setError("");
     if (!startDate || !endDate) { setError("请选择日期范围"); return; }
     if (startDate > endDate) { setError("结束日期不能早于开始日期"); return; }
@@ -74,12 +88,14 @@ export function OutfitPlanAddView({ type, initialPlan, onBack, onSave, onMessage
       });
       if (initialPlan) { plan.id = initialPlan.id; plan.createdAt = initialPlan.createdAt; }
       await onSave(plan);
-    } catch (e) {
-      onMessage("计划保存失败，请重试", "error");
+    } catch (saveError) {
+      const message = saveError instanceof Error ? saveError.message : "计划保存失败，请重试";
+      setError(message);
+      onMessage(message, "error");
     } finally {
       setSaving(false);
     }
-  }, [type, title, startDate, endDate, tone, destination, activities, weatherNote, notes, packingEnabled, initialPlan, onSave, onMessage]);
+  }, [saving, type, title, startDate, endDate, tone, destination, activities, weatherNote, notes, packingEnabled, initialPlan, onSave, onMessage]);
 
   function addActivity() {
     const v = activityInput.trim();
@@ -89,10 +105,10 @@ export function OutfitPlanAddView({ type, initialPlan, onBack, onSave, onMessage
   }
 
   return (
-    <div className="flex flex-col h-full">
+    <div className="flex flex-col h-full" aria-busy={saving || undefined}>
       {/* Header */}
       <div className="flex items-center justify-between px-4 py-3 border-b border-ink/5">
-        <button type="button" className="flex items-center gap-1 text-sm font-medium text-ink/70" data-parity-id="parity.app.app.src.components.outfit.plan.add.view.aa70f14388" onClick={handleBack}>
+        <button type="button" disabled={saving} className="flex items-center gap-1 text-sm font-medium text-ink/70 disabled:opacity-40" data-parity-id="parity.app.app.src.components.outfit.plan.add.view.aa70f14388" onClick={handleBack}>
           <ChevronLeft size={18} /> {titleLabel}
         </button>
         <button
@@ -109,7 +125,8 @@ export function OutfitPlanAddView({ type, initialPlan, onBack, onSave, onMessage
       {error && <div className="mx-4 mt-2 rounded-lg bg-clay/10 border border-clay/20 px-3 py-2 text-xs text-clay">{error}</div>}
 
       {/* Form */}
-      <div className="flex-1 overflow-y-auto px-4 py-4 space-y-4">
+      <div className="flex-1 overflow-y-auto px-4 py-4 space-y-4" data-outfit-scroll-region="plan-form">
+        <fieldset className="contents" disabled={saving}>
         {/* Title */}
         <div>
           <label className="text-xs font-medium text-ink/60">计划名称</label>
@@ -230,19 +247,23 @@ export function OutfitPlanAddView({ type, initialPlan, onBack, onSave, onMessage
             <span className={`absolute top-0.5 h-5 w-5 rounded-full bg-white shadow-sm transition-transform ${packingEnabled ? "translate-x-[22px]" : "translate-x-0.5"}`} />
           </button>
         </div>
+        </fieldset>
       </div>
 
       {/* Discard confirmation */}
-      <MotionSheet open={showDiscard} onClose={() => setShowDiscard(false)}>
-        <div className="text-center">
-          <h3 className="text-base font-semibold text-ink">放弃当前计划？</h3>
-          <p className="text-sm text-ink/55 mt-1">未保存的修改会丢失。</p>
-          <div className="flex items-center gap-3 mt-4">
-            <button type="button" data-parity-id="parity.app.app.src.components.outfit.plan.add.view.23af28837b" className="flex-1 rounded-full border border-ink/10 py-2 text-sm font-medium text-ink/70" onClick={() => setShowDiscard(false)}>继续编辑</button>
-            <button type="button" data-parity-id="parity.app.app.src.components.outfit.plan.add.view.63ed71b5bb" className="flex-1 rounded-full bg-clay py-2 text-sm font-semibold text-white" onClick={onBack}>放弃</button>
-          </div>
-        </div>
-      </MotionSheet>
+      <ConfirmActionSheet
+        open={showDiscard}
+        title="放弃当前计划？"
+        description="未保存的修改会丢失。"
+        confirmLabel="放弃"
+        cancelLabel="继续编辑"
+        tone="danger"
+        onClose={() => setShowDiscard(false)}
+        onConfirm={() => {
+          setShowDiscard(false);
+          onBack();
+        }}
+      />
     </div>
   );
 }

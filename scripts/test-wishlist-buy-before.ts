@@ -1,6 +1,9 @@
 // scripts/test-wishlist-buy-before.ts
 // v0.9.49-dev 种草 2.0: 买前评估全链路逻辑测试
 
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
+
 import {
   getWishlistDisplayState, getWishlistDisplayLabel, getWishlistStatusCapsuleColor,
   getWishlistCardSubtitle, isMainWishlistItem, filterMainWishlistItems,
@@ -59,6 +62,7 @@ function assertEq<T>(name: string, actual: T, expected: T): void {
 
 const now = new Date().toISOString();
 const today = now.slice(0, 10);
+const wishlistViewSource = readFileSync(join(__dirname, "..", "src/components/wishlist-view-2.0.tsx"), "utf8");
 const imageAsset = (id: string): ImageAssetReference => ({ id, assetId: id, variants: ["original", "thumbnail"], sha256: `sha-${id}`, mimeType: "image/jpeg" } as ImageAssetReference);
 
 function makeWishlistItem(overrides: Partial<WishlistItem> & { id: string }): WishlistItem {
@@ -618,6 +622,33 @@ console.log("\n=== 4d. Fallback Assessment ===");
 // ===================================================================
 // Summary
 // ===================================================================
+
+console.log("\n=== 5. A2-Flows overlay contracts ===");
+{
+  const backHandlerStart = wishlistViewSource.indexOf("useStableBackHandler(() => {");
+  const backHandlerEnd = wishlistViewSource.indexOf("const [showRejectConfirm", backHandlerStart);
+  const backHandler = wishlistViewSource.slice(backHandlerStart, backHandlerEnd);
+  const homeMenuStart = wishlistViewSource.indexOf('data-testid="wishlist-header-menu"');
+  const homeMenuButtonStart = wishlistViewSource.lastIndexOf("<button", homeMenuStart);
+  const homeMenuButtonEnd = wishlistViewSource.indexOf("</button>", homeMenuStart);
+  const homeMenuButton = wishlistViewSource.slice(homeMenuButtonStart, homeMenuButtonEnd);
+  const locationSelectorStart = wishlistViewSource.indexOf("{/* Location selector */}");
+  const locationSelectorEnd = wishlistViewSource.indexOf("{/* Hint */}", locationSelectorStart);
+  const locationSelector = wishlistViewSource.slice(locationSelectorStart, locationSelectorEnd);
+
+  check("wishlist page back handler leaves overlays to OverlayStack", !/showLocationSheet|showUndoPurchaseConfirm|showDeleteRecordConfirm|showRejectConfirm|showDiscardConfirm|deleteOpen/.test(backHandler));
+  check("wishlist page back handler blocks active writes", /isFormSaving \|\| convertingId !== null/.test(backHandler));
+  check("wishlist home popover ref is on current trigger", /ref=\{homeMenuAnchorRef\}/.test(homeMenuButton));
+  check("wishlist location selector no longer steals menu anchor", !/ref=\{homeMenuAnchorRef\}|ref=\{detailMenuAnchorRef\}/.test(locationSelector));
+  check("wishlist location chooser uses semantic shared form sheet", /<MotionSheet[\s\S]{0,260}variant="form"[\s\S]{0,120}ariaLabel="选择加入的衣橱"/.test(wishlistViewSource));
+  check("wishlist conversion disables explicit back and cancel while busy", (wishlistViewSource.match(/disabled=\{convertingId === item\.id\}/g) ?? []).length >= 3);
+  check(
+    "wishlist deep pages reuse C1 directional states without private fixed overlays",
+    /getNavigationMotionStates\(direction, reduceMotion\)/.test(wishlistViewSource) &&
+      /<AnimatePresence mode="sync"/.test(wishlistViewSource) &&
+      !/fixed inset-0[^\n]+data-wishlist-navigation/.test(wishlistViewSource),
+  );
+}
 
 console.log(`\n${"=".repeat(50)}`);
 console.log(`  pass=${pass}  fail=${fail}`);

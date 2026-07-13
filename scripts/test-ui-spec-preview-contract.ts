@@ -110,4 +110,16 @@ assert.ok(html.includes("background.appAmbient"), "missing global ambient backgr
 assert.ok(html.includes("--app-ambient"), "missing app ambient CSS variable in generated preview");
 assert.ok(html.includes("所有页面统一使用登录页这套低饱和渐变底层"), "missing ambient background visual guidance");
 
+for (const contractMarker of [
+  "D1-Contracts 动效与浮层防回归扫描",
+  "test:logic:ui-motion-contract",
+  "fixed inset-0",
+  "OverlayRoot",
+  "active:scale-*",
+  "test:logic:ui-contracts",
+]) {
+  assert.ok(md.includes(contractMarker), `missing D1 motion contract in markdown: ${contractMarker}`);
+  assert.ok(html.includes(contractMarker), `missing D1 motion contract in generated HTML: ${contractMarker}`);
+}
+
 console.log("ui spec preview contract: passed");

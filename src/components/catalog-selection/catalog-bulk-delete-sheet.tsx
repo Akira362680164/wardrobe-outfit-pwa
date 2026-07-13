@@ -1,4 +1,4 @@
-import { MotionSheet } from "@/components/motion-common";
+import { AppPressable, MotionSheet } from "@/components/motion-common";
 
 export interface CatalogBulkDeleteSheetProps {
   open: boolean;
@@ -27,6 +27,11 @@ export function CatalogBulkDeleteSheet({
     <MotionSheet
       open={open}
       onClose={submitting ? (() => {}) : onClose}
+      ariaLabel={title}
+      variant="destructive"
+      dismissible={!submitting}
+      closeOnBackdrop={!submitting}
+      closeOnEscape={!submitting}
       panelClassName="!max-w-xs"
     >
       <p className="text-sm font-semibold mb-2">{title}</p>
@@ -37,22 +42,24 @@ export function CatalogBulkDeleteSheet({
         </p>
       ) : null}
       <div className="grid grid-cols-2 gap-2">
-        <button
+        <AppPressable
           type="button"
+          feedback="control"
           data-parity-id="parity.app.app.src.components.catalog.selection.catalog.bulk.delete.sheet.3623ae10d2" onClick={onClose}
           disabled={submitting}
           className="h-10 rounded-lg border border-ink/10 text-sm disabled:opacity-45"
         >
           取消
-        </button>
-        <button
+        </AppPressable>
+        <AppPressable
           type="button"
+          feedback="control"
           data-parity-id="parity.app.app.src.components.catalog.selection.catalog.bulk.delete.sheet.6cf258f93b" onClick={onConfirm}
           disabled={submitting}
           className="h-10 rounded-lg bg-red-600 text-sm font-semibold text-white disabled:opacity-60"
         >
           {submitting ? "删除中..." : "确认删除"}
-        </button>
+        </AppPressable>
       </div>
     </MotionSheet>
   );

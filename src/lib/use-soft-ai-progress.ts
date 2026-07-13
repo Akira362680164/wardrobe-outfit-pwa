@@ -10,8 +10,8 @@
 //
 // v0.9.27-dev: 接入 native-progress-notification 桥接层, 把软进度
 // 同步到 Android 系统通知栏 (切后台也能看到)。保留 App 内进度
-// UI, 不替代。所有 bridge 调用走 shouldSyncNotification 节流,
-// 严禁每帧跨桥。
+// UI, 不替代。App 内软进度以 100ms 定时器更新，所有 bridge 调用再走
+// shouldSyncNotification 节流，严禁逐帧跨桥或触发 React 重绘。
 // ============================================================
 
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -65,6 +65,7 @@ const STORAGE_KEY = "wardrobe-ai-progress-history-v1";
 const HISTORY_LIMIT = 5;
 const COMPLETE_HOLD_MS = 600;
 const FAIL_HOLD_MS = 2000;
+const PROGRESS_TICK_MS = 100;
 
 export interface SoftProgressState {
   visible: boolean;
@@ -123,11 +124,11 @@ export function useSoftAiProgress(
 
   const startTimeRef = useRef<number>(0);
   const durationRef = useRef<number>(DEFAULT_DURATIONS_MS[taskType]);
-  const rafRef = useRef<number>(0);
+  const progressTimerRef = useRef<number | null>(null);
   const completedRef = useRef<boolean>(false);
   const hideTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   // 标记 taskId 切换后是否需要重新发 start (setNotificationTaskId 在 start() 之后
-  // 改变时, 下一次 rAF 同步会先发一次 start 把新 taskId 注册成新通知)。
+  // 改变时, 下一次 state 同步会先发一次 start 把新 taskId 注册成新通知)。
   const nativeNeedsRestartRef = useRef<boolean>(false);
 
   // 加载 localStorage 历史 P75 + buffer (v0.9.8: P90+5s buffer 仍太慢, 实际 AI 16s 就完但进度条 65%, 改 P75+3s 更接近真实)
@@ -171,9 +172,16 @@ export function useSoftAiProgress(
     }
   };
 
+  const clearProgressTimer = () => {
+    if (progressTimerRef.current !== null) {
+      window.clearTimeout(progressTimerRef.current);
+      progressTimerRef.current = null;
+    }
+  };
+
   const start = useCallback(() => {
     clearHideTimer();
-    if (rafRef.current) cancelAnimationFrame(rafRef.current);
+    clearProgressTimer();
     startTimeRef.current = Date.now();
     durationRef.current = loadDuration();
     completedRef.current = false;
@@ -208,12 +216,12 @@ export function useSoftAiProgress(
           ? prev
           : { visible: true, percent, stage, label: defaultLabel },
       );
-      rafRef.current = requestAnimationFrame(tick);
+      progressTimerRef.current = window.setTimeout(tick, PROGRESS_TICK_MS);
     };
-    rafRef.current = requestAnimationFrame(tick);
+    progressTimerRef.current = window.setTimeout(tick, PROGRESS_TICK_MS);
   }, [defaultLabel, loadDuration, nativeEnabled, stages]);
 
-  // 软进度更新时同步通知 (rAF 节流由 shouldSyncNotification 控制)。
+  // 软进度更新时同步通知 (跨桥节流由 shouldSyncNotification 控制)。
   // 仅在 visible 期间同步; 完成 / 失败由 complete / fail 显式处理。
   useEffect(() => {
     if (!nativeEnabled) return;
@@ -250,8 +258,7 @@ export function useSoftAiProgress(
   }, [nativeEnabled, state.visible, state.percent, state.stage, state.label]);
 
   const complete = useCallback((success: boolean = true) => {
-    if (rafRef.current) cancelAnimationFrame(rafRef.current);
-    rafRef.current = 0;
+    clearProgressTimer();
     completedRef.current = true;
     const realMs = Date.now() - startTimeRef.current;
     if (success) recordHistory(realMs);
@@ -277,8 +284,7 @@ export function useSoftAiProgress(
   }, [defaultLabel, nativeEnabled, recordHistory]);
 
   const fail = useCallback((errorMsg?: string) => {
-    if (rafRef.current) cancelAnimationFrame(rafRef.current);
-    rafRef.current = 0;
+    clearProgressTimer();
     completedRef.current = true;
     setState({
       visible: true,
@@ -302,7 +308,7 @@ export function useSoftAiProgress(
   // 短任务 (start 后立刻 complete) 也安全: complete 会先把 taskId 的通知收掉。
   useEffect(() => {
     return () => {
-      if (rafRef.current) cancelAnimationFrame(rafRef.current);
+      clearProgressTimer();
       if (hideTimerRef.current) clearTimeout(hideTimerRef.current);
       if (nativeEnabled && !completedRef.current) {
         // 仅在 hook 还没收到 complete/fail 时清理 (避免覆盖完成态)
@@ -323,7 +329,7 @@ export function useSoftAiProgress(
     // 只解 ongoing + 1.5s 自动消失, 没有立即取消。
     void dismissProgressNotification(prev);
     resetThrottle(prev);
-    // start() 之后切换: state.visible 仍为 true, 下一帧 useEffect 会发新 taskId 的 start。
+    // start() 之后切换: state.visible 仍为 true, 下一次 state effect 会发新 taskId 的 start。
     if (state.visible && !completedRef.current) {
       nativeNeedsRestartRef.current = true;
     }

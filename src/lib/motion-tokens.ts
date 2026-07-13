@@ -20,19 +20,43 @@ export const ease = {
   accelerate: [0.4, 0.0, 1.0, 1.0] as const,
 };
 
-export const spring = {
-  /** Snappy for button taps, icon scale, checkmarks. */
-  snappy: { type: "spring" as const, stiffness: 500, damping: 32 },
-  /** Softer for panel entrances, card stagger. */
-  soft: { type: "spring" as const, stiffness: 240, damping: 24 },
-  /** Very soft for large area transitions. */
-  gentle: { type: "spring" as const, stiffness: 120, damping: 18 },
+const controlSpring = {
+  type: "spring" as const,
+  stiffness: 420,
+  damping: 41,
+  mass: 1,
+  bounce: 0,
 };
 
-/** Shared opacity transition */
-export const fade = {
-  in: { opacity: 1 },
-  out: { opacity: 0 },
+const panelSpring = {
+  type: "spring" as const,
+  stiffness: 320,
+  damping: 36,
+  mass: 1,
+  bounce: 0,
+};
+
+const momentumSpring = {
+  type: "spring" as const,
+  stiffness: 320,
+  damping: 27,
+  mass: 1,
+  bounce: 0.12,
+};
+
+export const spring = {
+  /** Critically damped feedback for buttons, indicators, and ordinary state changes. */
+  control: controlSpring,
+  /** Non-bouncing, interruptible movement for panels and page-level surfaces. */
+  panel: panelSpring,
+  /** Reserved for velocity-carrying drag/flick release; never use on ordinary controls. */
+  momentum: momentumSpring,
+  /** @deprecated Compatibility alias. Prefer `spring.control`. */
+  snappy: controlSpring,
+  /** @deprecated Compatibility alias. Prefer `spring.panel`. */
+  soft: panelSpring,
+  /** @deprecated Compatibility alias. Prefer `spring.panel`. */
+  gentle: panelSpring,
 };
 
 /** Slide-up-from-bottom entrance (for BottomSheet / Toast). */
@@ -64,31 +88,4 @@ export const slideRight = {
 export const slideRightExit = {
   in: { opacity: 1, x: 0 },
   out: { opacity: 0, x: -30 },
-};
-
-/** Scale + opacity for modals (desktop centric fallback). */
-export const scaleModal = {
-  in: { opacity: 1, scale: 1 },
-  out: { opacity: 0, scale: 0.92 },
-  initial: { opacity: 0, scale: 0.92 },
-};
-
-/** Light tab-switch fade-up (opacity + y, no horizontal displacement). */
-export const tabFade = {
-  in: { opacity: 1, y: 0 },
-  out: { opacity: 0, y: -8 },
-  initial: { opacity: 0, y: 8 },
-};
-
-/** Light stagger reveal for cards entering in sequence. */
-export const staggerReveal = {
-  in: { opacity: 1, y: 0 },
-  initial: { opacity: 0, y: 12 },
-};
-
-/** Little scale pop for badge / icon feedback. */
-export const pop = {
-  initial: { scale: 0 },
-  animate: { scale: 1 },
-  exit: { scale: 0 },
 };

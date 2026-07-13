@@ -2,18 +2,16 @@
 // v1.1.9 4C: extracted BatchReviewView + SimilarMatchesPanel from wardrobe-app.tsx
 
 import { useState, useEffect, useMemo, useRef, useLayoutEffect } from "react";
-import { motion } from "motion/react";
 import {
   ChevronLeft,
   ChevronRight,
   SaveAll,
   Layers,
 } from "lucide-react";
-import { App } from "@capacitor/app";
 import { GarmentImmersiveDetail } from "@/components/garment-immersive-detail";
 import { GarmentImage } from "@/components/garment-image";
 import { ImageCropEditor } from "@/components/image-crop-editor";
-import { duration, staggerReveal } from "@/lib/motion-tokens";
+import { useStableBackHandler } from "@/lib/use-stable-back-handler";
 import type { NormalizedCropBox } from "@/lib/image";
 import { createGarmentThumbnailFromOriginal } from "@/lib/thumbnail-runtime";
 import type {
@@ -194,20 +192,14 @@ export function BatchReviewView({
     if (isDetail) window.scrollTo({ top: 0, behavior: "instant" as ScrollBehavior });
   }, [isDetail]);
 
-  useEffect(() => {
-    if (!isDetail) return;
-    let removed = false;
-    let handle: { remove: () => void } | null = null;
-    App.addListener("backButton", () => {
-      if (removed) return;
-      if (captureCropJob) {
-        setCaptureCropJob(null);
-        return;
-      }
-      setIsDetail(false);
-    }).then((h) => { if (!removed) handle = h; });
-    return () => { removed = true; handle?.remove(); };
-  }, [isDetail, captureCropJob]);
+  useStableBackHandler(() => {
+    if (captureCropJob) {
+      setCaptureCropJob(null);
+      return true;
+    }
+    setIsDetail(false);
+    return true;
+  }, isDetail, 20);
   const activeDisplayIndex = sortedDisplay.length > 0 ? Math.max(0, Math.min(reviewIndex, sortedDisplay.length - 1)) : 0;
   const currentEntry = sortedDisplay[activeDisplayIndex];
   const current = currentEntry?.draft;
@@ -382,7 +374,7 @@ export function BatchReviewView({
             <button
               type="button"
               data-parity-id="parity.app.app.src.components.batch.review.view.1648fc2625" onClick={() => onSaveCurrent(currentOriginalIndex, activeDisplayIndex >= sortedDisplay.length - 1 ? 0 : activeDisplayIndex)}
-              className="inline-flex h-11 items-center justify-center gap-1.5 rounded-xl bg-clay px-4 text-sm font-semibold text-white active:scale-95 transition-transform"
+              className="inline-flex h-11 items-center justify-center gap-1.5 rounded-xl bg-clay px-4 text-sm font-semibold text-white app-press-feedback transition-transform"
             >
               <SaveAll size={15} />
               录入这件
@@ -437,13 +429,7 @@ export function BatchReviewView({
 
       <div className="grid grid-cols-3 gap-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6">
         {sortedDisplay.map(({ draft: d, originalIndex }, displayIndex) => (
-          <motion.div
-            key={d.clientId ?? originalIndex}
-            variants={staggerReveal}
-            initial="initial"
-            animate="in"
-            transition={{ duration: duration.normal, delay: Math.min(displayIndex * 0.05, 0.3) }}
-          >
+          <div key={d.clientId ?? originalIndex}>
             <div className={`overflow-hidden rounded-lg border bg-white shadow-sm transition-colors ${
               d.selected === false ? "border-ink/10 opacity-55" : "border-denim/35"
             }`}>
@@ -473,7 +459,7 @@ export function BatchReviewView({
                 {d.selected === false ? "加入录入" : "已选择"}
               </button>
             </div>
-          </motion.div>
+          </div>
         ))}
       </div>
       <p className="text-xs text-ink/50 text-center">点击卡片查看和编辑详情，左右滑动切换上一件/下一件</p>

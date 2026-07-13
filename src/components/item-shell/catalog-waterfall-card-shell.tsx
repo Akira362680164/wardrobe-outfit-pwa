@@ -1,8 +1,7 @@
 "use client";
 
 import type { ReactElement, ReactNode } from "react";
-import { motion } from "motion/react";
-import { spring } from "@/lib/motion-tokens";
+import { AppPressable } from "@/components/motion-common";
 import { CatalogSelectionCheck } from "@/components/catalog-selection/catalog-selection-check";
 
 export interface CatalogWaterfallCardShellProps {
@@ -46,12 +45,12 @@ export function CatalogWaterfallCardShell({
   }
 
   return (
-    <motion.button
+    <AppPressable
       type="button"
+      feedback="card"
+      pressDisabled={selectionMode}
       aria-label={ariaLabel}
       aria-pressed={selected || undefined}
-      whileTap={{ scale: 0.97 }}
-      transition={spring.snappy}
       data-parity-id="parity.app.app.src.components.item.shell.catalog.waterfall.card.shell.f30d27758f" onClick={handleClick}
       onContextMenu={handleContextMenu}
       className={`ui-card relative flex h-[304px] min-w-0 flex-col overflow-hidden text-left shadow-none select-none touch-manipulation [-webkit-touch-callout:none] ${
@@ -67,6 +66,6 @@ export function CatalogWaterfallCardShell({
         <div className="truncate text-xs text-ink/54">{meta}</div>
         <div className="truncate text-xs text-ink/38">{summary}</div>
       </div>
-    </motion.button>
+    </AppPressable>
   );
 }
