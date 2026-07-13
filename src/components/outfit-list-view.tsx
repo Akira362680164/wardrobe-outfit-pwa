@@ -2,6 +2,7 @@
 
 import {
   Camera,
+  Check,
   ChevronLeft,
   ImageIcon,
   Layers,
@@ -10,6 +11,7 @@ import {
   Settings,
   Plus,
   RefreshCw,
+  Search,
   Shirt,
   Sparkles,
   Trash2,
@@ -17,7 +19,7 @@ import {
 } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 
-import type { ClosetLocation, LocalOutfitRealImageDraft, OutfitAiSuggestion, OutfitCalendarPlan, OutfitCalendarPlanDraft, OutfitCalendarPlanType, OutfitPlanEntry, OutfitRealImage, PlanPackingChecklistItem, SavedOutfit, Season, WardrobeItem } from "@/lib/types";
+import type { ClosetLocation, GarmentCategory, LocalOutfitRealImageDraft, OutfitAiSuggestion, OutfitCalendarPlan, OutfitCalendarPlanDraft, OutfitCalendarPlanType, OutfitPlanEntry, OutfitRealImage, PlanPackingChecklistItem, SavedOutfit, Season, WardrobeItem } from "@/lib/types";
 import { CATEGORY_LABELS, SEASON_LABELS } from "@/lib/types";
 import { buildOutfitCoverRefreshPatch, getOutfitCover, countValidItems } from "@/lib/outfit-cover";
 import { getWearSummary, hasWornDate } from "@/lib/wear-records";
@@ -70,7 +72,9 @@ const SCENE_OPTIONS = ["通勤", "休闲", "旅行", "约会", "户外", "正式
 const STYLE_OPTIONS = ["简约", "休闲", "甜美", "优雅", "轻熟", "运动", "街头"];
 const PAIRING_TAG_OPTIONS = ["显高", "显瘦", "轻通勤", "学院风", "复古", "清爽"];
 
-type SubPage = "library" | "detail" | "create_flow" | "create_select" | "create_info" | "edit" | "real_image_add" | "real_image_view" | "planning_calendar" | "plan_add" | "plan_edit" | "plan_detail" | "packing_list";
+type SubPage = "library" | "detail" | "create_flow" | "create_select" | "create_info" | "edit" | "edit_composition" | "real_image_add" | "real_image_view" | "planning_calendar" | "plan_add" | "plan_edit" | "plan_detail" | "packing_list";
+type CompositionEditReturnTo = "detail" | "edit";
+type OutfitDetailTab = "info" | "items" | "ai" | "records";
 
 /** 套装详情来源: 关闭详情后回到哪一页。 */
 type DetailReturnTo = "library" | "planning_calendar" | "plan_detail" | "packing_list";
@@ -127,6 +131,10 @@ export function OutfitListView({
   // v1.1.4-dev 详情来源: 关闭套装详情时, 按此 subPage 返回。
   const [detailReturnTo, setDetailReturnTo] = useState<DetailReturnTo>("library");
   const [editingOutfitId, setEditingOutfitId] = useState<string | null>(null);
+  const [compositionEditReturnTo, setCompositionEditReturnTo] = useState<CompositionEditReturnTo>("edit");
+  const [compositionEditDirty, setCompositionEditDirty] = useState(false);
+  const [compositionBackConfirmOpen, setCompositionBackConfirmOpen] = useState(false);
+  const [detailTabAfterEdit, setDetailTabAfterEdit] = useState<OutfitDetailTab>("info");
 
   // filters
   const [chipFilter, setChipFilter] = useState<string>("all");
@@ -190,6 +198,11 @@ export function OutfitListView({
     // 1. 图片放大层关闭（由父级 wardrobe-app 处理 expandedImage）
     // 2. 更多菜单关闭 (menuOpen 在 OutfitDetailView 内部管理)
     // 3. 编辑 sheet 关闭
+    if (subPage === "edit_composition") {
+      if (compositionEditDirty) { setCompositionBackConfirmOpen(true); return true; }
+      setSubPage(compositionEditReturnTo);
+      return true;
+    }
     if (subPage === "edit") { setSubPage("detail"); return true; }
     // 4. 实图管理页返回套装详情
     if (subPage === "real_image_view") { setRealImageViewing(null); setSubPage("detail"); return true; }
@@ -466,8 +479,9 @@ export function OutfitListView({
  }
 
  // Edit outfit
- function startEdit() {
+  function startEdit() {
  if (!viewingOutfit) return;
+ setDetailTabAfterEdit("info");
  setEditingOutfitId(viewingOutfit.id);
  setCreateName(viewingOutfit.name);
  setCreateSeasons(viewingOutfit.seasons ?? []);
@@ -482,6 +496,58 @@ export function OutfitListView({
  setRegenerateInfoHint("");
  setSubPage("edit");
  }
+
+  function startCompositionEdit(returnTo: CompositionEditReturnTo) {
+    const source = returnTo === "detail" ? viewingOutfit : editingOutfit;
+    if (!source) return;
+    setEditingOutfitId(source.id);
+    setCreateSelectedIds([...source.itemIds]);
+    setCompositionEditReturnTo(returnTo);
+    setCompositionEditDirty(false);
+    if (returnTo === "detail") setDetailTabAfterEdit("items");
+    setSubPage("edit_composition");
+  }
+
+  async function handleSaveCompositionQuick(selectedIds: number[]): Promise<boolean> {
+    if (!viewingOutfit || writingOutfitId === viewingOutfit.id) return false;
+    if (selectedIds.length < 2) {
+      onMessage("套装至少需要 2 件衣物", "info");
+      return false;
+    }
+    const now = new Date().toISOString();
+    const selectedItems = items.filter((item) => item.id != null && selectedIds.includes(item.id));
+    setWritingOutfitId(viewingOutfit.id);
+    try {
+      const result = await wardrobeRepository.updateOutfit(viewingOutfit, {
+        itemIds: selectedIds,
+        ...buildOutfitCoverRefreshPatch(selectedIds, selectedItems),
+        aiSuggestion: undefined,
+        updatedAt: now,
+      });
+      if (!result.ok) {
+        if (result.code === "conflict") {
+          await onRefresh();
+          setShowRevisionConflict(true);
+        } else {
+          onMessage(result.error ?? "保存套装组成失败，请重试", "error");
+        }
+        return false;
+      }
+      await onRefresh();
+      setCreateSelectedIds(selectedIds);
+      setCompositionEditDirty(false);
+      setEditingOutfitId(null);
+      setDetailTabAfterEdit("items");
+      setSubPage("detail");
+      onMessage("套装组成已更新，原 AI 建议已清除");
+      return true;
+    } catch (error) {
+      onMessage(error instanceof Error ? error.message : "保存套装组成失败，请重试", "error");
+      return false;
+    } finally {
+      setWritingOutfitId(null);
+    }
+  }
 
   async function handleSaveEdit() {
     if (!editingOutfit) return;
@@ -796,6 +862,7 @@ export function OutfitListView({
   // v1.1.4-dev 详情来源链路: 打开套装详情时记录来源, 关闭时按来源返回。
   function openOutfitDetail(outfitId: string, returnTo: DetailReturnTo) {
     setViewingOutfitId(outfitId);
+    setDetailTabAfterEdit("info");
     setDetailReturnTo(returnTo);
     setSubPage("detail");
   }
@@ -1015,8 +1082,10 @@ export function OutfitListView({
           outfit={viewingOutfit}
           items={viewingItems}
           allItems={items}
+          initialTab={detailTabAfterEdit}
           onBack={closeOutfitDetail}
           onEdit={startEdit}
+          onEditComposition={() => startCompositionEdit("detail")}
           onMarkWorn={() => handleMarkWornToday(viewingOutfit)}
           onAddRealImage={handleAddRealImage}
           onViewRealImage={(img) => { setRealImageViewing(img); setSubPage("real_image_view"); }}
@@ -1166,12 +1235,33 @@ export function OutfitListView({
           selectedIds={createSelectedIds}
           setSelectedIds={setCreateSelectedIds}
           items={items}
+          onEditComposition={() => startCompositionEdit("edit")}
           onRegenerateInfo={handleRegenerateEditInfo}
           isRegeneratingInfo={isRegeneratingInfo}
           regenerateInfoHint={regenerateInfoHint}
           onBack={() => setSubPage("detail")}
           onSave={handleSaveEdit}
           onCancel={() => { setSubPage("detail"); setEditingOutfitId(null); }}
+        />
+      )}
+
+      {subPage === "edit_composition" && editingOutfit && (
+        <OutfitCompositionEditor
+          title="编辑套装组成"
+          items={items}
+          locations={locations}
+          initialSelectedIds={createSelectedIds}
+          confirmLabel={compositionEditReturnTo === "detail" ? "保存组成" : "完成选择"}
+          isSaving={compositionEditReturnTo === "detail" && writingOutfitId === editingOutfit.id}
+          onBack={() => setSubPage(compositionEditReturnTo)}
+          onDirtyChange={setCompositionEditDirty}
+          onConfirm={async (selectedIds) => {
+            setCreateSelectedIds(selectedIds);
+            if (compositionEditReturnTo === "detail") return handleSaveCompositionQuick(selectedIds);
+            setCompositionEditDirty(false);
+            setSubPage("edit");
+            return true;
+          }}
         />
       )}
 
@@ -1306,6 +1396,16 @@ export function OutfitListView({
         actionLabel="继续编辑"
         onClose={() => setShowRevisionConflict(false)}
       />
+      <ConfirmActionSheet
+        open={compositionBackConfirmOpen}
+        title="放弃本次组成修改？"
+        description="当前选择还没有保存，返回后会丢失本次调整。"
+        confirmLabel="放弃修改"
+        cancelLabel="继续编辑"
+        tone="danger"
+        onConfirm={() => { setCompositionBackConfirmOpen(false); setCompositionEditDirty(false); setSubPage(compositionEditReturnTo); }}
+        onClose={() => setCompositionBackConfirmOpen(false)}
+      />
     </div>
   );
 }
@@ -1316,8 +1416,10 @@ function OutfitDetailView({
  outfit,
  items,
  allItems,
+ initialTab,
  onBack,
  onEdit,
+ onEditComposition,
  onMarkWorn,
  onAddRealImage,
  onViewRealImage,
@@ -1331,8 +1433,10 @@ function OutfitDetailView({
  outfit: SavedOutfit;
  items: WardrobeItem[];
  allItems: WardrobeItem[];
+ initialTab?: OutfitDetailTab;
  onBack: () => void;
  onEdit: () => void;
+ onEditComposition: () => void;
  onMarkWorn: () => void;
  onAddRealImage: () => void;
  onViewRealImage: (img: OutfitRealImage) => void;
@@ -1346,7 +1450,7 @@ function OutfitDetailView({
 }) {
   const [menuOpen, setMenuOpen] = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState(false);
-  const [detailTab, setDetailTab] = useState<"info" | "items" | "ai" | "records">("info");
+  const [detailTab, setDetailTab] = useState<OutfitDetailTab>(initialTab ?? "info");
   const [isGeneratingAdvice, setIsGeneratingAdvice] = useState(false);
   const [adviceError, setAdviceError] = useState("");
   const [pendingAiSuggestion, setPendingAiSuggestion] = useState<OutfitAiSuggestion | undefined>();
@@ -1526,6 +1630,7 @@ function OutfitDetailView({
             outfit={outfit}
             items={items}
             allItems={allItems}
+            onEditComposition={onEditComposition}
             suggestion={aiSuggestion}
             replacementItemId={replacementItemId}
             onToggleReplacement={(itemId) => setReplacementItemId((current) => current === itemId ? null : itemId)}
@@ -1576,6 +1681,7 @@ function OutfitCompositionTab({
   outfit,
   items,
   allItems,
+  onEditComposition,
   suggestion,
   replacementItemId,
   onToggleReplacement,
@@ -1583,12 +1689,27 @@ function OutfitCompositionTab({
   outfit: SavedOutfit;
   items: WardrobeItem[];
   allItems: WardrobeItem[];
+  onEditComposition: () => void;
   suggestion?: OutfitAiSuggestion;
   replacementItemId: number | null;
   onToggleReplacement: (itemId: number) => void;
 }) {
   return (
-    <div className="space-y-2">
+    <div className="space-y-3">
+      <div className="flex items-center justify-between gap-3">
+        <div className="min-w-0">
+          <p className="text-sm font-semibold text-ink">套装组成</p>
+          <p className="mt-0.5 text-xs text-ink/45">当前共 {items.length} 件衣物</p>
+        </div>
+        <button
+          type="button"
+          data-parity-id="parity.app.app.src.components.outfit.list.view.edit-composition"
+          onClick={onEditComposition}
+          className="inline-flex min-h-11 shrink-0 items-center justify-center rounded-full border border-denim/25 bg-white px-3 text-xs font-semibold text-denim"
+        >
+          编辑组成
+        </button>
+      </div>
       {items.map((item) => {
         if (typeof item.id !== "number") return null;
         const cached = getCachedReplacementSuggestionForItem(suggestion, item.id);
@@ -1610,7 +1731,7 @@ function OutfitCompositionTab({
                 <p className="truncate text-sm font-semibold">{item.name}</p>
                 <p className="truncate text-[11px] text-ink/42">{CATEGORY_LABELS[item.category]} · {labelOutfitStyleTags(item.styles).join(" / ") || "未标风格"}</p>
               </div>
-              <button type="button" data-parity-id="parity.app.app.src.components.outfit.list.view.6a06ba69ed" onClick={() => onToggleReplacement(item.id!)} className="h-8 shrink-0 rounded-md border border-ink/10 px-2 text-xs text-ink/65">
+              <button type="button" data-parity-id="parity.app.app.src.components.outfit.list.view.6a06ba69ed" onClick={() => onToggleReplacement(item.id!)} aria-label={`查看 ${item.name} 的替换建议`} className="min-h-11 shrink-0 ui-control-radius border border-ink/10 px-2 text-xs text-ink/65">
                 替换建议
               </button>
             </div>
@@ -1825,6 +1946,7 @@ function OutfitInfoForm({
  notes, setNotes,
  selectedIds, setSelectedIds,
  items,
+ onEditComposition,
  onRegenerateInfo,
  isRegeneratingInfo,
  regenerateInfoHint,
@@ -1845,6 +1967,7 @@ function OutfitInfoForm({
  selectedIds: number[];
  setSelectedIds: (v: number[]) => void;
  items: WardrobeItem[];
+ onEditComposition?: () => void;
  /** v1.0: 仅在 edit 时调用; 只回填表单,不直接保存 */
  onRegenerateInfo?: () => Promise<void> | void;
  isRegeneratingInfo?: boolean;
@@ -1860,7 +1983,7 @@ function OutfitInfoForm({
  return (
  <div className="space-y-5">
  <div className="flex items-center gap-3">
- <button type="button" data-parity-id="parity.app.app.src.components.outfit.list.view.cb3f420db8" onClick={onBack} className="p-1 -ml-1"><ChevronLeft size={20} /></button>
+ <button type="button" data-parity-id="parity.app.app.src.components.outfit.list.view.cb3f420db8" onClick={onBack} className="-ml-1 inline-flex h-11 w-11 shrink-0 items-center justify-center ui-control-radius text-ink/70" aria-label="返回"><ChevronLeft size={20} /></button>
  <h3 className="text-base font-semibold">{isEdit ? "编辑套装信息" : "创建搭配"}</h3>
  </div>
 
@@ -1893,6 +2016,38 @@ function OutfitInfoForm({
           )}
         </div>
       </div>
+
+      {isEdit ? (
+        <div className="rounded-2xl border border-ink/8 bg-white/75 p-3">
+          <div className="flex items-center justify-between gap-3">
+            <div className="min-w-0">
+              <p className="text-sm font-semibold text-ink">套装组成</p>
+              <p className="mt-0.5 text-xs text-ink/45">已选择 {selectedIds.length} 件衣物</p>
+            </div>
+            <button
+              type="button"
+              data-parity-id="parity.app.app.src.components.outfit.list.view.edit-form-composition"
+              onClick={onEditComposition}
+              className="inline-flex min-h-11 shrink-0 items-center justify-center rounded-full border border-denim/25 bg-white px-3 text-xs font-semibold text-denim"
+            >
+              编辑组成
+            </button>
+          </div>
+          <div className="mt-3 flex gap-2 overflow-x-auto pb-1">
+            {selectedItems.map((item) => (
+              <div key={item.id} className="w-20 shrink-0 text-center">
+                <div className="h-20 overflow-hidden rounded-lg bg-milk-darker/40">
+                  {item.mainImage ? (
+                    <OnlineAssetImage asset={item.mainImage.asset} variant="thumbnail" alt={item.name} className="h-full w-full" />
+                  ) : <div className="grid h-full place-items-center text-ink/25"><Shirt size={18} /></div>}
+                </div>
+                <p className="mt-1 truncate text-[11px] text-ink/65">{item.name}</p>
+              </div>
+            ))}
+          </div>
+          {selectedIds.length < 2 ? <p className="mt-2 text-xs text-clay">套装至少需要 2 件衣物</p> : null}
+        </div>
+      ) : null}
 
       {/* Name */}
       <div>
@@ -1977,26 +2132,180 @@ function OutfitInfoForm({
         <textarea data-parity-id="parity.app.app.src.components.outfit.list.view.26ab234f9c" value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="适合办公室、城市步行……" rows={3} className="mt-1 w-full rounded-xl border border-ink/10 bg-white px-3 py-2 text-sm resize-none" />
       </div>
 
-      {/* Items in outfit */}
-      {isEdit && (
-        <div>
-          <label className="text-xs font-medium text-ink/50">套装内单品</label>
-          <div className="mt-1 flex flex-wrap gap-2">
-            {selectedItems.map((item) => (
-              <span key={item.id} className="inline-flex items-center gap-1.5 rounded-full border border-ink/10 bg-white px-3 py-1 text-sm">
-                {item.name}
-                <button type="button" data-parity-id={`parity.app.app.src.components.outfit.list.view.27ca9e5a6b.${item.id}`} onClick={() => setSelectedIds(selectedIds.filter((id) => id !== item.id))}><X size={12} /></button>
-              </span>
-            ))}
-          </div>
-        </div>
-      )}
-
       {/* Bottom bar */}
       <div className="flex gap-3 pt-4">
         <button type="button" data-parity-id="parity.app.app.src.components.outfit.list.view.5911a347e0" onClick={onCancel} className="flex-1 rounded-full border border-ink/10 py-2.5 text-sm">取消</button>
         <button type="button" data-parity-id="parity.app.app.src.components.outfit.list.view.a91e4277f6" onClick={onSave} className="flex-[2] rounded-full bg-denim py-2.5 text-sm font-medium text-white">保存套装</button>
       </div>
+    </div>
+  );
+}
+
+function OutfitCompositionEditor({
+  title,
+  items,
+  locations,
+  initialSelectedIds,
+  confirmLabel = "保存组成",
+  onDirtyChange,
+  isSaving = false,
+  onBack,
+  onConfirm,
+}: {
+  title: string;
+  items: WardrobeItem[];
+  locations: ClosetLocation[];
+  initialSelectedIds: number[];
+  confirmLabel?: string;
+  onDirtyChange?: (dirty: boolean) => void;
+  isSaving?: boolean;
+  onBack: () => void;
+  onConfirm: (selectedIds: number[]) => Promise<boolean> | boolean;
+}) {
+  const [selectedIds, setSelectedIds] = useState(() => Array.from(new Set(initialSelectedIds)));
+  const [locationFilter, setLocationFilter] = useState("all");
+  const [categoryFilter, setCategoryFilter] = useState<GarmentCategory | "all">("all");
+  const [searchText, setSearchText] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [discardOpen, setDiscardOpen] = useState(false);
+
+  const initialKey = initialSelectedIds.join(",");
+  const selectedKey = selectedIds.join(",");
+  const hasChanges = initialKey !== selectedKey;
+  const activeItems = useMemo(
+    () => items.filter((item) => item.status === "active" && typeof item.id === "number"),
+    [items],
+  );
+  const locationItems = useMemo(
+    () => locationFilter === "all" ? activeItems : activeItems.filter((item) => item.locationId === locationFilter),
+    [activeItems, locationFilter],
+  );
+  const categoryChips = useMemo(() => {
+    const counts = new Map<GarmentCategory, number>();
+    locationItems.forEach((item) => counts.set(item.category, (counts.get(item.category) ?? 0) + 1));
+    const order: GarmentCategory[] = ["tops", "pants", "skirts", "one_piece", "shoes", "bags", "hats", "jewelry", "accessories"];
+    return [
+      { key: "all" as const, label: "全部", count: locationItems.length },
+      ...order.filter((key) => counts.has(key)).map((key) => ({ key, label: CATEGORY_LABELS[key], count: counts.get(key) ?? 0 })),
+    ];
+  }, [locationItems]);
+  const visibleItems = useMemo(() => {
+    const query = searchText.trim().toLowerCase();
+    return locationItems.filter((item) => {
+      if (categoryFilter !== "all" && item.category !== categoryFilter) return false;
+      if (!query) return true;
+      return [item.name, CATEGORY_LABELS[item.category], ...(item.styles ?? [])].filter(Boolean).join(" ").toLowerCase().includes(query);
+    });
+  }, [categoryFilter, locationItems, searchText]);
+  const selectedItems = useMemo(
+    () => selectedIds.map((id) => items.find((item) => item.id === id)).filter((item): item is WardrobeItem => Boolean(item)),
+    [items, selectedIds],
+  );
+  const unavailableCount = selectedIds.filter((id) => !activeItems.some((item) => item.id === id)).length;
+  const busy = isSaving || isSubmitting;
+
+  useEffect(() => {
+    onDirtyChange?.(hasChanges);
+  }, [hasChanges, onDirtyChange]);
+
+  function toggleItem(id: number) {
+    setSelectedIds((current) => current.includes(id) ? current.filter((value) => value !== id) : [...current, id]);
+  }
+
+  function requestBack() {
+    if (busy) return;
+    if (hasChanges) setDiscardOpen(true);
+    else onBack();
+  }
+
+  async function confirmSelection() {
+    if (busy || selectedIds.length < 2) return;
+    setIsSubmitting(true);
+    try {
+      await onConfirm(selectedIds);
+    } finally {
+      setIsSubmitting(false);
+    }
+  }
+
+  return (
+    <div className="min-h-[calc(100dvh-1rem)] space-y-4 pb-[calc(env(safe-area-inset-bottom)+88px)]">
+      <div className="app-glass-top sticky top-0 z-30 -mx-4 px-4 pb-3" style={{ paddingTop: "calc(max(env(safe-area-inset-top, 0px), var(--android-safe-area-top, 0px)) + 0.5rem)" }}>
+        <div className="flex items-center gap-3">
+        <button type="button" data-parity-id="parity.app.app.src.components.outfit.composition-editor.back" onClick={requestBack} disabled={busy} className="inline-flex h-11 w-11 shrink-0 items-center justify-center ui-control-radius text-ink/75 disabled:opacity-40" aria-label="返回">
+          <ChevronLeft size={22} />
+        </button>
+        <div className="min-w-0">
+          <h3 className="text-base font-semibold text-ink">{title}</h3>
+          <p className="mt-0.5 text-xs text-ink/45">从当前衣橱中选择套装单品</p>
+        </div>
+        </div>
+      </div>
+
+      <div className="rounded-2xl border border-ink/8 bg-white/75 p-3">
+        <div className="flex items-center justify-between gap-3">
+          <div>
+            <p className="text-sm font-semibold text-ink">已选 {selectedIds.length} 件</p>
+            <p className="mt-0.5 text-xs text-ink/45">套装至少需要 2 件衣物</p>
+          </div>
+          {unavailableCount > 0 ? <span className="text-right text-xs text-clay">{unavailableCount} 件已不可用</span> : null}
+        </div>
+        {selectedItems.length > 0 ? (
+          <div className="mt-3 flex gap-2 overflow-x-auto pb-1">
+            {selectedItems.map((item) => (
+              <button key={item.id} type="button" data-parity-id={`parity.app.app.src.components.outfit.composition-editor.remove.${item.id}`} onClick={() => toggleItem(item.id!)} className="inline-flex min-h-11 max-w-[160px] shrink-0 items-center gap-1.5 rounded-full border border-ink/10 bg-white px-3 text-xs text-ink/70">
+                <span className="truncate">{item.name}</span><X size={13} aria-hidden="true" />
+              </button>
+            ))}
+          </div>
+        ) : <p className="mt-3 text-xs text-ink/40">还没有选择衣物。</p>}
+      </div>
+
+      {locations.length > 0 ? (
+        <div className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-1">
+          <button type="button" data-parity-id="parity.app.app.src.components.outfit.composition-editor.location.all" onClick={() => setLocationFilter("all")} className={`min-h-11 shrink-0 rounded-full px-3 text-xs font-medium ${locationFilter === "all" ? "border border-denim/30 bg-denim/10 text-denim" : "bg-milk-darker/50 text-ink/60"}`}>全部衣橱 ({activeItems.length})</button>
+          {locations.map((location) => (
+            <button key={location.id} type="button" data-parity-id={`parity.app.app.src.components.outfit.composition-editor.location.${location.id}`} onClick={() => setLocationFilter(location.id)} className={`min-h-11 shrink-0 rounded-full px-3 text-xs font-medium ${locationFilter === location.id ? "border border-denim/30 bg-denim/10 text-denim" : "bg-milk-darker/50 text-ink/60"}`}>{location.name}</button>
+          ))}
+        </div>
+      ) : null}
+
+      <label className="flex h-11 items-center gap-2 rounded-xl border border-ink/10 bg-white px-3">
+        <Search size={16} className="text-ink/35" aria-hidden="true" />
+        <input value={searchText} onChange={(event) => setSearchText(event.target.value)} placeholder="搜索名称、风格或分类" className="min-w-0 flex-1 bg-transparent text-sm outline-none" />
+      </label>
+
+      <div className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-1">
+        {categoryChips.map((chip) => (
+          <button key={chip.key} type="button" data-parity-id={`parity.app.app.src.components.outfit.composition-editor.category.${chip.key}`} onClick={() => setCategoryFilter(chip.key)} className={`min-h-11 shrink-0 rounded-full px-3 text-xs font-medium ${categoryFilter === chip.key ? "border border-denim/30 bg-denim/10 text-denim" : "bg-milk-darker/50 text-ink/60"}`}>{chip.label} ({chip.count})</button>
+        ))}
+      </div>
+
+      {visibleItems.length > 0 ? (
+        <div className="grid grid-cols-3 gap-2">
+          {visibleItems.map((item) => {
+            const selected = selectedIds.includes(item.id!);
+            return (
+              <button key={item.id} type="button" data-parity-id={`parity.app.app.src.components.outfit.composition-editor.item.${item.id}`} onClick={() => toggleItem(item.id!)} aria-pressed={selected} className={`min-w-0 overflow-hidden rounded-xl border text-left ${selected ? "border-denim bg-denim/6" : "border-ink/8 bg-white"}`}>
+                <div className="relative aspect-[3/4] bg-mist">
+                  {item.mainImage ? <OnlineAssetImage asset={item.mainImage.asset} variant="thumbnail" alt={item.name} className="h-full w-full" imageClassName="object-contain" /> : <div className="grid h-full place-items-center text-ink/25"><Shirt size={24} /></div>}
+                  {selected ? <span className="absolute right-2 top-2 grid h-6 w-6 place-items-center rounded-full bg-denim text-white"><Check size={14} aria-hidden="true" /></span> : null}
+                </div>
+                <div className="p-2"><p className="truncate text-xs font-semibold text-ink">{item.name}</p><p className="mt-0.5 truncate text-[11px] text-ink/45">{CATEGORY_LABELS[item.category]}</p></div>
+              </button>
+            );
+          })}
+        </div>
+      ) : <div className="rounded-xl border border-dashed border-ink/12 bg-white/60 p-8 text-center text-sm text-ink/45">当前筛选条件下没有可用衣物。</div>}
+
+      <div className="app-glass-bottom sticky bottom-0 z-40 -mx-4 border-t border-ink/8 px-4 pt-3" style={{ paddingBottom: "max(1rem, env(safe-area-inset-bottom, 0px), var(--android-safe-area-bottom, 0px))" }}>
+        <div className="flex gap-3">
+          <button type="button" data-parity-id="parity.app.app.src.components.outfit.composition-editor.cancel" onClick={requestBack} disabled={busy} className="h-12 flex-1 ui-control-radius border border-ink/10 bg-white text-sm text-ink/70 disabled:opacity-40">取消</button>
+          <button type="button" data-parity-id="parity.app.app.src.components.outfit.composition-editor.confirm" onClick={() => { void confirmSelection(); }} disabled={busy || selectedIds.length < 2} className="h-12 flex-[2] ui-control-radius bg-denim text-sm font-semibold text-white disabled:opacity-40">{busy ? "正在保存…" : confirmLabel}</button>
+        </div>
+      </div>
+
+      <ConfirmActionSheet open={discardOpen} title="放弃本次修改？" description="当前选择还没有保存，返回后会丢失本次组成调整。" confirmLabel="放弃修改" cancelLabel="继续编辑" tone="danger" onConfirm={onBack} onClose={() => setDiscardOpen(false)} />
     </div>
   );
 }

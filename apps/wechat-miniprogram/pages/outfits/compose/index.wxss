@@ -157,6 +157,23 @@
   white-space: nowrap;
 }
 
+.composition-edit-link {
+  box-sizing: border-box;
+  min-width: 144rpx;
+  height: 72rpx;
+  margin: 0;
+  padding: 0 18rpx;
+  border: 1rpx solid rgba(53, 92, 125, 0.28);
+  border-radius: var(--radius-control);
+  color: var(--color-primary);
+  background: var(--color-surface);
+  font-size: var(--font-caption);
+  font-weight: 800;
+  line-height: 72rpx;
+}
+
+.composition-edit-link::after { border: 0; }
+
 .section-description {
   margin-top: 22rpx;
   color: var(--color-muted);

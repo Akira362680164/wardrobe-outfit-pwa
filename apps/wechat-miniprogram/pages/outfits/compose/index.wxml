@@ -4,12 +4,12 @@
       <button class="nav-button nav-button--back {{step === 0 ? 'is-disabled' : ''}}" disabled="{{step === 0 || saving || generating}}" bindtap="previousStep" aria-label="返回上一步">
         <ui-icon name="chevron-left" size="40" tone="ink" />
       </button>
-      <view class="nav-title">创建套装</view>
+      <view class="nav-title">{{editing ? '编辑套装' : '创建套装'}}</view>
       <button class="nav-button nav-button--close" style="right: {{capsuleRightInsetRpx + 16}}rpx;" bindtap="requestExit" aria-label="退出录入">
         <ui-icon name="x" size="36" tone="ink" />
       </button>
     </view>
-    <view class="step-copy">步骤 {{step + 1}} / 2 · {{step === 0 ? '选择衣物' : '确认套装'}}</view>
+    <view class="step-copy">步骤 {{step + 1}} / 2 · {{step === 0 ? (editing ? '编辑组成' : '选择衣物') : '确认套装'}}</view>
     <view class="progress-track"><view class="progress-fill {{step === 1 ? 'is-complete' : ''}}"></view></view>
   </view>
 
@@ -30,7 +30,7 @@
           <view class="section-icon"><ui-icon name="layers" size="34" tone="primary" /></view>
           <view class="section-title">选择衣物组成套装</view>
         </view>
-        <view class="section-description">套装必须从已有衣物组合。请至少选择 2 件，已选摘要会显示在下方。</view>
+        <view class="section-description">{{editing ? '调整这套套装的衣物组成；完成选择后返回编辑页，点击保存才会写入。' : '套装必须从已有衣物组合。请至少选择 2 件，已选摘要会显示在下方。'}}</view>
 
         <scroll-view wx:if="{{locationOptions.length}}" class="chip-scroll" scroll-x enable-flex show-scrollbar="{{false}}">
           <view class="chip-row">
@@ -98,6 +98,7 @@
         <view class="section-header">
           <view class="section-icon"><ui-icon name="layers" size="34" tone="primary" /></view>
           <view class="section-title">组成完整度</view>
+          <button wx:if="{{editing}}" class="composition-edit-link" bindtap="editComposition">编辑组成</button>
         </view>
         <view class="composition-grid">
           <view wx:for="{{compositionSlots}}" wx:key="key" class="composition-slot {{item.present ? 'is-covered' : ''}}">
@@ -164,7 +165,8 @@
 
   <view class="bottom-bar">
     <button class="bottom-action bottom-action--secondary" disabled="{{step === 0 || saving || generating}}" bindtap="previousStep">上一步</button>
-    <button wx:if="{{step === 0}}" class="bottom-action bottom-action--primary" loading="{{generating}}" disabled="{{selectedCount < 2 || loading || generating}}" bindtap="nextStep">下一步（自动分析）</button>
+    <button wx:if="{{step === 0}}" class="bottom-action bottom-action--primary" loading="{{generating}}" disabled="{{selectedCount < 2 || loading || generating}}" bindtap="nextStep">{{editing ? '完成选择' : '下一步（自动分析）'}}</button>
+    <button wx:elif="{{editing}}" class="bottom-action bottom-action--primary" loading="{{saving}}" disabled="{{!canSave || saving}}" bindtap="saveOutfit">保存套装</button>
     <button wx:else class="bottom-action bottom-action--primary" loading="{{saving}}" disabled="{{!canSave || saving}}" bindtap="saveOutfit">保存 {{selectedCount}} 件套装</button>
   </view>
 

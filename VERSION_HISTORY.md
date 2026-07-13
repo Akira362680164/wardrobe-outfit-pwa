@@ -1,64 +1,23 @@
+## 2026-07-13 / v2.1.16-test / Codex — App 与小程序套装组成编辑入口
+
+- **目的**：补齐 App 套装详情「组成」页签、App 编辑套装页和小程序套装详情的组成单品编辑入口。
+- **改动文件**：App `src/components/outfit-list-view.tsx`；小程序 `apps/wechat-miniprogram/pages/outfits/detail/index.ts`、`index.wxml`、`index.wxss`、`apps/wechat-miniprogram/pages/outfits/compose/index.ts`、`index.wxml`、`index.wxss`。
+- **改动内容**：两端共用“预选当前组成 → 筛选/搜索调整 → 至少 2 件校验 → 服务端更新后读回”的流程；App 组成页签支持快速保存，编辑页保留草稿到最终保存；小程序创建/编辑共用两步选择器；组成变化清除旧 AI 建议并同步组成 ID。
+- **验证结果**：App typecheck/build、App UI/套装定向测试、小程序 typecheck、catalog check、shell/outfit/intake 定向测试、git diff check 通过；临时 worktree 的微信 CLI 编译超过 60 秒未返回，已停止。
+- **风险门禁**：`medium`；未触发 subagent：用户未通知（仅按技能要求完成只读布局/机械扫描）。
+- **未验证风险**：正式小程序目录尚未完成本次页面的 `compile_wxml`/`compile_wxss`、模拟器/真机点击和服务端真实编辑读回；App 未执行 Android 真机触摸回归；既有 UI token 合同的历史硬编码颜色失败未处理。
+
 ## 2026-07-13 / v2.1.16-test / Codex — 代码审查四项问题修复
 
 - **执行 Agent**：Codex（未触发 subagent：用户未通知）。
 - **目的**：修复审查确认的穿搭计划/套装写入未等待、小程序废弃系统 API、统计排序口径和闲置总数截断问题。
 - **版本变更**：`2.1.15-test` → `2.1.16-test`，Android `versionCode=20116`。
-- **改动文件**：服务端 `outfit-plans/:id/set-primary` 原子事务接口及路由；App 计划/AI 建议保存、幂等重试；小程序 `getWindowInfo/getDeviceInfo`、诊断页系统信息迁移、统计纯函数与定向测试；`package.json`、lockfile、生成 build-info。
+- **改动文件**：服务端 `outfit-plans/:id/set-primary` 原子事务接口及路由；App 计划/AI 建议保存、幂等重试；小程序 `getWindowInfo/getDeviceInfo`、统计纯函数与定向测试；`package.json`、lockfile、生成 build-info。
 - **验证结果**：根 `typecheck`、API `typecheck`、正式小程序 `typecheck`、`npm run build`、API 测试 `114/114`、定向计划/统计/小程序合同测试通过；微信开发者工具正式项目 `compile_wxml`（32,400 chars）和 `compile_wxss`（2 files）通过；体验版上传成功（AppID `wx14a1a85b7b3844d0`、版本 `2.1.16`、790,092 bytes）；APK 构建、固定签名和元数据校验通过。完整 `test:logic:all` 在既有 UI 规范契约（`test-ui-spec-preview-contract`、`test-ui-token-contract`）处失败，相关 UI 文件本批未修改；UI overlay 合同通过。
 - **风险门禁**：`high`（服务端事务、线上写入契约、AI 保存和 Android APK）；未触发 subagent：用户未通知。
 - **生产部署**：生产数据库备份 `/opt/wardrobe-cloud/backups/postgres/wardrobe-20260713-010630.sql`；镜像 `wardrobe-api:c2c3569` 已发布，公网 `/api/health`、`/api/ready` 通过且依赖全为 `ready`，`/api/version` 返回 `gitCommit=c2c3569`；新路由未授权烟测返回预期 HTTP 401。
 - **Android 验证**：MEIZU 21 Pro（ADB `481QFGFH23AY7`）安装 `2.1.16-test` 固定签名 APK；隔离测试 API 上 `android:e2e:critical` 5/5 通过；恢复生产 API 后重新安装启动，版本 `20116`、前台窗口和无 FATAL 崩溃日志通过。
 - **未验证风险**：微信开发者工具 `simulator_open_page` 在编译子进程处超时，未把模拟器 UI 交互计为已验证；尚未用真实微信用户完成登录/绑定、真机预览或 live MiniMax；完整 `test:logic:all` 的既有 UI 规范契约失败未处理。
-
-## 2026-07-12 / v2.1.15-test / Codex — 小程序录入与裁切闭环修复
-
-- **执行 Agent**：Codex；独立 worktree `codex/mini-crop-fix-plan-20260712`，未触发 subagent；收口前已合入本地 `wechat/miniprogram` 的会话/图标与套装两步录入最新提交并完成交叉验证。
-- **目的**：按 `2026-07-12-wechat-mini-intake-crop-repair.md` 修复选图操作气泡、录入页一屏布局、退出会话、裁切页溢出、裁切坐标偏移和二次裁切错误源图，并吸收模拟器复核时用户补充的空状态高度、3:4 主预览、顶栏对齐、按钮重叠和弹层留白反馈。
-- **版本变更**：无，保持 `2.1.15-test`；本批不构建 APK、不上传小程序体验版、不部署服务器。
-- **改动文件**：`pages/intake/camera/`、`pages/intake/crop/`、`pages/intake/review/`、衣物/种草编辑和试穿裁切调用方、`stores/intake.ts`、新增 `stores/crop-job.ts` 与 `utils/crop-math.ts`、图片资产服务、共享离页守卫与退出确认 Sheet、专项测试和 `package.json`。
-- **改动说明**：缩略图气泡改为独立点击状态和照片卡片内绝对定位，新增图片后默认关闭并在横滑时重算或关闭；删除清空按钮和气泡占位，空状态收成紧凑卡片，有图主预览固定 3:4，一屏 Flex 禁止纵向滚动；顶栏按真实胶囊计算并居中标题组，所有受微信原生默认宽度影响的网格按钮显式收缩；退出使用自绘 Sheet 和录入 Session 清理；裁切统一使用结构化 CropJob、不可变原图、归一化 cropBox/rotation/ratio、实测舞台与 Canvas 像素坐标，二次裁切继续加载原图和旧框；原图与处理图分别上传。
-- **验证结果**：根 `npm run typecheck`、小程序 `tsc --noEmit`、录入状态机、资产生命周期、专项裁切工作流、套装两步、壳层与图标合同测试及 `git diff --check` 通过；微信开发者工具 WXML/WXSS 逐页编译和 simulator refresh 通过；390×844 模拟器实测空状态、3:4 主预览（249×332）、气泡（220×45）、图片来源按钮、固定底栏、自绘退出 Sheet 和裁切页全部按钮无重叠/出框，console 错误扫描为空；合并最新基线后再次 `auto_preview` 成功推送开发者微信，最终包体 788,982 bytes。
-- **未验证风险**：当前没有可由 Codex 操作的 MEIZU 21 Pro 微信真机交互会话，因此真实相册/相机选择、真实衣物 Canvas 像素输出、Android 系统返回/边缘返回和 360/412/430 宽度真机手势仍需在开发者微信预览中人工复核；本记录不把 simulator 与预览推送冒充真机裁切已验证。
-
-## 2026-07-12 / v2.1.15-test / Codex — 小程序录入与裁切修复执行方案
-
-- **执行 Agent**：Codex；独立文档 worktree `codex/mini-crop-fix-plan-20260712`，未触发 subagent。
-- **目的**：将用户反馈的八项小程序录入/裁切问题、逐页 UI 规格、裁切数据模型、返回守卫、分批提交与真机验收整理为可在上下文压缩后独立续接的 Markdown 任务书。
-- **版本变更**：无，保持 `2.1.15-test`；本批只修改文档，不修改运行时代码，不上传小程序。
-- **改动文件**：`docs/superpowers/plans/2026-07-12-wechat-mini-intake-crop-repair.md`、`VERSION_HISTORY.md`。
-- **验证结果**：检查 Markdown 结构、关键问题覆盖、文件路径、恢复检查点和 `git diff --check`；运行时代码与裁切行为未变。
-- **未验证风险**：本文中的 `page-container` 自绘离页守卫、Canvas 像素换算、一屏布局和真实图片二次裁切必须在实施后通过微信 CLI 与 Android 微信真机验证，不能把本方案登记视为功能已修复。
-
-## 2026-07-12 / v2.1.15-test / Codex — 小程序套装录入改为两步闭环
-
-- **执行 Agent**：Codex（未触发 subagent；独立 `codex/wechat-outfit-intake-plan-20260712` worktree，实施期间已衔接最新本地 `wechat/miniprogram` 基线）。
-- **目的**：按 `2026-07-12-wechat-outfit-intake-two-step-fix-plan.md` 修复小程序与 App 不一致的三步套装录入，删除套装封面/新衣物录入，把流程收敛为“从当前衣橱选择已有衣物 → 校对并保存”。
-- **版本变更**：无，保持 `2.1.15-test`；本批不构建 APK、不上传小程序体验版、不部署服务器。
-- **改动文件**：`pages/outfits/compose/` 页面与新增纯逻辑模块、`services/workspace.ts`、`scripts/parity/tests/mini-outfit-flow.test.ts`。
-- **改动说明**：第一步只读取在用衣物，提供衣橱位置、搜索和分类筛选、三列 3:4 衣物卡、选中摘要及真实数量；第二步集中展示组成完整度与套装名称、季节、场景、风格、搭配、备注校对字段。无 MiniMax Key 或 AI 失败时使用本地草稿继续；保存补齐 `styleTags`、`pairingTags`、`temperatureRange`，保留 `clientMutationId` 幂等并在创建后强制详情读回；退出未保存内容使用项目确认 Sheet。同步将图标迁移到最新 `tone` 合同。
-- **视觉修复**：微信原生 `button` 作为三列网格项时保留默认宽度，造成 332px 网格内单卡宽 184px 并互相覆盖；改为页面隔离的可点击卡片容器后，实测单卡 106px，三列无重叠。
-- **验证结果**：根与小程序 `typecheck` 通过；套装、资产生命周期、录入状态机、衣橱、AI、壳层合同测试通过；build-info 与小程序目录同步检查通过；微信开发者工具 WXML/WXSS 编译、模拟器打开、选择卡片、选中态、两步页面和固定底栏检查通过；第一步网格实测 332px / 106px，第二步表单宽 332px；`git diff --check` 通过。
-- **未验证风险**：模拟器使用内存测试衣物验证 UI，未在真实微信账号下写入服务器或触发 live MiniMax，因此真实生产数据的创建后读回与 AI 输出仍需登录后烟测；未做微信真机预览或上传。
-
-## 2026-07-12 / v2.1.15-test / Codex — 小程序会话、底栏、图标与账号页修复
-
-- **执行 Agent**：Codex；在独立 `codex/miniprogram-session-shell-icons-account-20260712` worktree 实施，并使用微信开发者工具模拟器做定向视觉回归。
-- **目的**：修复小程序冷启动重复登录、切换 Tab 后出现双导航栏、图标来源和状态色不统一、新建面板当前项图标对比度不足，以及账号安全页按钮样式和冗余密码状态问题。
-- **版本变更**：无，保持 `2.1.15-test`；本批不构建 APK、不上传小程序体验版、不重新部署服务器。
-- **改动文件**：小程序会话启动编排、登录页、自定义底栏工具、四个主 Tab、新建面板、统一 `ui-icon` 组件及生成 SVG 资产、使用字符图标的页面、账号安全页、相关合同测试和图标生成脚本。
-- **改动说明**：App 启动时先恢复可刷新会话，网络暂时失败时保留 refresh token，服务端明确撤销时才清除；底栏显示和选中态统一由共享工具管理并移除原生 `wx.hideTabBar`/`wx.showTabBar` 调用；基于现有 Lucide 图标生成 ink/surface/primary/danger 四种静态 SVG，删除字符和滤镜拼装；新建面板选中项固定使用白色图标；账号安全四个操作统一为卡片内容区全宽深蓝按钮、白字居中，密码卡片删除“已设置”。
-- **验证结果**：`icons:miniprogram:check`、小程序 shell、长期会话、认证刷新、设置、套装、录入、衣橱、种草合同测试全部通过；根和小程序 `typecheck`、`git diff --check` 通过；微信开发者工具 WXML/WXSS 编译及模拟器页面打开通过；连续 20 次 `switchTab` 后仍只有一套自定义底栏；截图确认选中新增项为白色完整图标，账号按钮实测宽 328px（卡片宽 358px）。
-- **未验证风险**：未使用真实用户 refresh token 做杀进程后的冷启动回归，相关分支由隔离自动化测试覆盖；当前微信开发者工具 CLI 未提供文档中的 `compile_js` 工具，TypeScript 改动改由两端 `tsc --noEmit` 覆盖；未做真机预览和微信上传。
-
-## 2026-07-12 / v2.1.15-test / Codex — 小程序套装录入两步修复任务书
-
-- **执行 Agent**：Codex（未触发 subagent；独立 `codex/wechat-outfit-intake-plan-20260712` worktree）。
-- **目的**：将用户确认的小程序套装录入修复方案固化为可跨会话接手的 Markdown 任务书，避免长上下文压缩后丢失两步状态机、UI 层级、数据字段和验收边界。
-- **版本变更**：无，保持 `2.1.15-test`；本次只新增任务书，不修改小程序运行时代码、不上传体验版。
-- **改动文件**：`docs/agent-task-bundles/2026-07-12-wechat-outfit-intake-two-step-fix-plan.md`、`VERSION_HISTORY.md`。
-- **改动说明**：任务书固定 `wardrobe-ui-spec.md` 为 UI 唯一事实源，明确删除三步/封面录入，设计“已有衣物选择 → 自动分析过渡态 → 校对保存”两步闭环，列出卡片层级、视觉 token、AI 本地兜底、保存字段、幂等规则、修改文件、执行顺序、自动验证、截图证据和完成定义。
-- **验证结果**：文档路径、事实源引用、目标源码路径、命令、两步状态机、禁止项、验证清单和 Git diff 已人工复核；`git diff --check` 通过。
-- **未验证风险**：尚未执行任务书中的运行时代码修改、微信开发者工具编译、模拟器/真机交互或服务器写入读回验证。
 
 ## 2026-07-12 / v2.1.15-test / Codex — 生产微信登录服务重新部署
 
@@ -70,24 +29,6 @@
 - **验证结果**：本机 Keychain 条目存在；服务器 `/api/health`、`/api/ready` 通过，数据库、存储、JWT、邮件、微信依赖均为 `ready`；公网 `/api/ready`、`/api/version` 通过并返回提交 `2a825a04`；使用一次性无效授权码烟测返回 `wechat_code_invalid`（HTTP 401），不再返回 `wechat_service_unavailable`。
 - **未验证风险**：尚未使用真实 `wx.login` code 完成真实用户首次绑定/已绑定账号登录；需用户在微信端点击登录后再做最终业务确认。
 
-## 2026-07-12 / v2.1.15-test / Codex — 小程序开发版上传与开发者微信预览
-
-- **执行 Agent**：Codex；基于已合入 `wechat/miniprogram` 的发布提交 `9e693f1`。
-- **版本变更**：应用构建信息由 `2.1.14-test` 更新为 `2.1.15-test`；小程序上传版本号使用 `2.1.15`。
-- **改动文件**：根 `package.json`、`apps/wechat-miniprogram/generated/build-info.ts`。
-- **上传结果**：微信开发者工具 `miniprogram_upload` 成功，AppID `wx14a1a85b7b3844d0`，上传版本 `2.1.15`，代码包 `718,623 bytes`。
-- **开发者微信预览**：`auto_preview` 成功推送到当前登录的开发者微信，预览包 `693,217 bytes`。
-- **未验证风险**：微信审核结果、真实用户权限和生产微信 Secret 不属于本地上传/预览验证范围。
-
-## 2026-07-12 / v2.1.14-test / Codex — 跨端审计修复批次（小程序）
-
-- **执行 Agent**：Codex（未触发 subagent；独立 `codex/wardrobe-cross-platform-mini-repair-20260712` worktree）。
-- **目的**：按 `docs/audits/2026-07-12-wardrobe-cross-platform-review/wardrobe-cross-platform-issue-solution.md` 执行小程序录入、确认框、图标、底栏、计划日历、详情 AI 卡和设置诊断的一致性修复。
-- **版本变更**：无，保持 `2.1.14-test`；本批不构建 APK、不上传体验版。
-- **改动文件**：小程序自定义裁切页与录入页、衣物/种草编辑和试穿参考照裁切入口、SVG 图标和 `ui-confirm-sheet`、自定义底栏/FAB/详情壳、登录勾选框、计划/周月历、设置/诊断/AI 建议、账号安全编辑页、`services/diagnostics.ts`、`app.json`。
-- **改动说明**：拍照/图库入口补齐 SVG 语义图标并收敛尺寸；选中缩略图操作改为一级卡片内浮动气泡，边界和箭头按缩略图中心计算；自绘自由/3:4 裁切、旋转、重置、应用并按实际源图矩形导出，衣物/种草编辑和试穿参考照也改用该裁切页；业务删除/退出/验证码确认统一改为项目底部 Sheet，移除 `wx.showModal` 与 `wx.enableAlertBeforeUnload`；多选栏、计划详情按钮、空状态 `+计划穿搭`、周历两条 marker、白色 Plus 和自定义毛玻璃底栏统一；详情三点移入主图右上角；AI 建议读写服务器并区分生成/已保存状态；诊断页恢复脱敏上传并直接展示上传状态；账号安全新增邮箱改绑、手机号绑定/修改、密码验证/邮箱验证码验证和微信解绑/换绑入口；同步更新受影响的 parity 合同断言。
-- **验证结果**：`tsc --noEmit --project apps/wechat-miniprogram/tsconfig.json` 通过；录入状态机、详情、设置、AI parity 合同通过；`git diff --check` 通过；源码扫描业务 `wx.showModal`/`wx.enableAlertBeforeUnload` 为 0（仅 typings 声明保留）。
-- **未验证风险**：微信开发者工具当前入口仍只登记正式 checkout；修复 worktree 的 `project_import` 返回 `PROJECT_IMPORT_NOT_IN_LIST`，直接 `compile_wxml` 遇 `EPROTO SSLV3_ALERT_HANDSHAKE_FAILURE`，因此未完成 simulator/真机截图验证。生产微信 Secret 仍需由部署环境注入；账号改绑接口已完成代码与类型检查，但尚未在真实邮件服务、真实微信 code 和真机上验证验证码过期、唯一性冲突、最后登录方式保护及换绑闭环。
 ## 2026-07-12 / v2.1.15-test / Codex — 修正跨端微信注册合同测试
 
 - **执行 Agent**：Codex（未触发 subagent；基于已合入 `main` 的生产微信登录修复重新建立独立 worktree）。

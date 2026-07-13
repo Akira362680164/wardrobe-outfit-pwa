@@ -24,6 +24,7 @@ Page({
     outfit: null as MiniOutfitDetail | null,
     error: "",
     activeTab: "info",
+    itemCards: [] as Array<{ id: string; name: string; categoryLabel: string; imageUrl: string }>,
   },
 
   async toggleFavorite(this: any) {
@@ -95,9 +96,30 @@ Page({
   async loadDetail(this: any, id: string) {
     this.setData({ loading: true, error: "" });
     try {
-      this.setData({ outfit: await fetchOutfitDetail(id), loading: false });
+      const [outfit, garments] = await Promise.all([fetchOutfitDetail(id), fetchGarments()]);
+      const itemCards = outfit.itemIds.map((legacyItemId) => garments.find((item) => item.legacyItemId === legacyItemId)).filter(Boolean).map((item) => ({
+        id: item!.id,
+        name: item!.name,
+        categoryLabel: item!.categoryLabel,
+        imageUrl: item!.imageUrl,
+      }));
+      this.setData({ outfit, itemCards, loading: false });
     } catch (error) {
       this.setData({ loading: false, error: error instanceof Error ? error.message : "读取套装失败" });
+    }
+  },
+
+  editOutfit(this: any) {
+    const outfit = this.data.outfit as MiniOutfitDetail | null;
+    if (outfit && !this.data.actioning && !this.data.deleting) {
+      wx.navigateTo({ url: `/pages/outfits/compose/index?id=${encodeURIComponent(outfit.id)}` });
+    }
+  },
+
+  editComposition(this: any) {
+    const outfit = this.data.outfit as MiniOutfitDetail | null;
+    if (outfit && !this.data.actioning && !this.data.deleting) {
+      wx.navigateTo({ url: `/pages/outfits/compose/index?id=${encodeURIComponent(outfit.id)}&focus=composition` });
     }
   },
 
