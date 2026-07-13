@@ -199,7 +199,7 @@ export async function criticalOutfitPlanWearFlow(ctx: AndroidCriticalContext): P
     "edited outfit did not reach server",
   );
   const latestOutfit = requiredEntity(edited.outfits.find((entry) => entry.id === outfit.id), "edited outfit");
-  const plan = await createEntity(ctx, session, "outfit-plans", outfitPlanPayload(String(latestOutfit.payload.legacyOutfitId), date));
+  const plan = await createEntity(ctx, session, "outfit-plans", outfitPlanPayload(latestOutfit.id, date));
   const worn = await postAction(ctx, session, `/api/workspace/outfits/${latestOutfit.id}/mark-worn`, {
     clientMutationId: randomUUID(),
     expectedRevision: latestOutfit.revision,
@@ -510,7 +510,6 @@ function wishlistPayload(name: string): Record<string, unknown> {
 function outfitPayload(name: string, itemIds: number[]): Record<string, unknown> {
   const now = new Date().toISOString();
   return {
-    legacyOutfitId: `outfit-${randomUUID()}`,
     name,
     legacyItemIds: itemIds,
     itemIds,
@@ -529,7 +528,6 @@ function outfitPayload(name: string, itemIds: number[]): Record<string, unknown>
 function outfitPlanPayload(outfitId: string, date: string): Record<string, unknown> {
   const now = new Date().toISOString();
   return {
-    legacyPlanEntryId: `plan-${date}-${randomUUID()}`,
     date,
     outfitId,
     status: "planned",

@@ -144,7 +144,7 @@ export class OnlineWorkspaceRepository {
       return image ? [{ id: stringValue(real.id), image, caption: optionalString(real.caption), createdAt: stringValue(real.createdAt, entity.createdAt), updatedAt: stringValue(real.updatedAt, entity.updatedAt) }] : [];
     });
     return withServerMetadata({
-      id: stringValue(p.legacyOutfitId, entity.id), name: stringValue(p.name), itemIds: numberArray(p.legacyItemIds ?? p.itemIds),
+      id: entity.id, name: stringValue(p.name), itemIds: numberArray(p.legacyItemIds ?? p.itemIds),
       favorite: optionalBoolean(p.favorite) ?? false, coverImage: imageReference(entity, "coverImageDataUrl", p.coverCropBox),
       destination: optionalString(p.destination), activity: optionalString(p.activity),
       style: optionalString(p.style), source: (p.source ?? "manual") as SavedOutfit["source"], seasons: p.seasons as SavedOutfit["seasons"],
@@ -189,12 +189,12 @@ function toClosetLocation(entity: WorkspaceEntity): ClosetLocation {
 
 function toCalendarPlan(entity: WorkspaceEntity): OutfitCalendarPlan {
   const p = entity.payload;
-  return withServerMetadata({ ...p, id: stringValue(p.legacyCalendarPlanId, entity.id), title: stringValue(p.title), startDate: stringValue(p.startDate), endDate: stringValue(p.endDate), type: (p.type ?? "custom") as OutfitCalendarPlan["type"], tone: (p.tone ?? "slate") as OutfitCalendarPlan["tone"], createdAt: entity.createdAt, updatedAt: entity.updatedAt } as OutfitCalendarPlan, entity, "tripPlan");
+  return withServerMetadata({ ...p, id: entity.id, title: stringValue(p.title), startDate: stringValue(p.startDate), endDate: stringValue(p.endDate), type: (p.type ?? "custom") as OutfitCalendarPlan["type"], tone: (p.tone ?? "slate") as OutfitCalendarPlan["tone"], createdAt: entity.createdAt, updatedAt: entity.updatedAt } as OutfitCalendarPlan, entity, "tripPlan");
 }
 
 function toOutfitPlanEntry(entity: WorkspaceEntity): OutfitPlanEntry {
   const p = entity.payload;
-  return withServerMetadata({ ...p, id: stringValue(p.legacyPlanEntryId, entity.id), date: stringValue(p.date), status: (p.status ?? "planned") as OutfitPlanEntry["status"], createdAt: entity.createdAt, updatedAt: entity.updatedAt } as OutfitPlanEntry, entity, "outfitPlan");
+  return withServerMetadata({ ...p, id: entity.id, date: stringValue(p.date), status: (p.status ?? "planned") as OutfitPlanEntry["status"], createdAt: entity.createdAt, updatedAt: entity.updatedAt } as OutfitPlanEntry, entity, "outfitPlan");
 }
 
 export function packingItems(plans: WorkspaceEntity[]): PlanPackingChecklistItem[] {

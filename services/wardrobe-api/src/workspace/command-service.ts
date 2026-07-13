@@ -43,7 +43,7 @@ export class WorkspaceCommandService {
       const descriptor = WORKSPACE_RESOURCES[input.resource];
       const table = descriptor.table as AnyPgTable & Record<string, any>;
       const now = new Date();
-      const payload = normalizeWorkspacePayload(input.resource, sanitizePayload(input.command.payload));
+      const payload = await canonicalWorkspacePayload(tx, input.resource, input.userId, input.command.payload);
       await tx.insert(table).values({
         id: entityId, userId: input.userId, revision: 1, originDeviceId: input.deviceId,
         payload, ...specialColumns(input.resource, payload), createdAt: now, updatedAt: now,
@@ -76,7 +76,7 @@ export class WorkspaceCommandService {
       assertRevision(row.revision, input.command.expectedRevision, row);
       const now = new Date();
       const revision = row.revision + 1;
-      const payload = normalizeWorkspacePayload(input.resource, sanitizePayload(input.command.payload));
+      const payload = await canonicalWorkspacePayload(tx, input.resource, input.userId, input.command.payload);
       await tx.update(table).set({ revision, originDeviceId: input.deviceId, payload, ...specialColumns(input.resource, payload), updatedAt: now })
         .where(and(eq(table.id, input.entityId), eq(table.userId, input.userId), eq(table.revision, row.revision), isNull(table.deletedAt)));
       await applyAssetMutations(tx, {
@@ -105,6 +105,15 @@ export class WorkspaceCommandService {
           deviceId: input.deviceId,
           garmentId: input.entityId,
           legacyItemId: numberOrNull(asRecord(row.payload).legacyItemId),
+          now,
+        });
+      }
+      if (input.resource === "outfits") {
+        await cascadeDeletedOutfitReferences(tx, {
+          userId: input.userId,
+          deviceId: input.deviceId,
+          outfitId: input.entityId,
+          outfitPayload: asRecord(row.payload),
           now,
         });
       }
@@ -317,7 +326,7 @@ async function markOutfitWearTransaction(
   const now = new Date();
   const dateKey = input.command.wornAt.slice(0, 10);
   const outfitPayload = asRecord(outfit.payload);
-  const legacyOutfitId = String(outfitPayload.legacyOutfitId ?? input.entityId);
+  const canonicalOutfitId = input.entityId;
   const itemIds = numberList(outfitPayload.legacyItemIds ?? outfitPayload.itemIds);
 
   const nextOutfitPayload = { ...outfitPayload, wornDates: addDate(outfitPayload.wornDates, dateKey), updatedAt: now.toISOString() };
@@ -338,36 +347,36 @@ async function markOutfitWearTransaction(
   const sameDay = plans.filter((row) => String(asRecord(row.payload).date ?? "") === dateKey);
   const alreadyWorn = sameDay.find((row) => {
     const payload = asRecord(row.payload);
-    return payload.status === "worn" && (payload.outfitId === legacyOutfitId || payload.actualOutfitId === legacyOutfitId);
+    return payload.status === "worn" && (payload.outfitId === canonicalOutfitId || payload.actualOutfitId === canonicalOutfitId);
   });
   if (!alreadyWorn) {
     const planned = sameDay.find((row) => {
       const payload = asRecord(row.payload);
-      return payload.outfitId === legacyOutfitId && (payload.status === "planned" || payload.status === "changed");
+      return payload.outfitId === canonicalOutfitId && (payload.status === "planned" || payload.status === "changed");
     });
     if (planned) {
       const payload = asRecord(planned.payload);
       const nextPayload = {
-        ...payload, status: "worn", wornDateLinked: dateKey, actualOutfitId: legacyOutfitId,
+        ...payload, status: "worn", wornDateLinked: dateKey, actualOutfitId: canonicalOutfitId,
         wearOrigin: "planned_confirmed", plannedBeforeWorn: true, isPrimaryActual: Boolean(payload.isPrimary), updatedAt: now.toISOString(),
       };
-      await tx.update(planTable).set({ revision: planned.revision + 1, originDeviceId: input.deviceId, payload: nextPayload, updatedAt: now }).where(eq(planTable.id, planned.id));
+      await tx.update(planTable).set({ revision: planned.revision + 1, originDeviceId: input.deviceId, payload: nextPayload, actualOutfitId: canonicalOutfitId, updatedAt: now }).where(eq(planTable.id, planned.id));
       await appendChange(tx, input.userId, "outfitPlan", planned.id, "update", planned.revision + 1, nextPayload);
     } else {
       const planId = randomUUID();
       const payload = {
-        legacyPlanEntryId: `plan-entry-${dateKey}-${planId.slice(0, 8)}`, date: dateKey, outfitId: legacyOutfitId,
+        date: dateKey, outfitId: canonicalOutfitId, actualOutfitId: canonicalOutfitId,
         status: "worn", wornDateLinked: dateKey, wearOrigin: "manual_actual", plannedBeforeWorn: false,
         isPrimaryActual: !sameDay.some((row) => asRecord(row.payload).status === "worn"), createdAt: now.toISOString(), updatedAt: now.toISOString(),
       };
-      await tx.insert(planTable).values({ id: planId, userId: input.userId, revision: 1, originDeviceId: input.deviceId, payload, planDate: dateKey, createdAt: now, updatedAt: now });
+      await tx.insert(planTable).values({ id: planId, userId: input.userId, revision: 1, originDeviceId: input.deviceId, payload, planDate: dateKey, outfitId: canonicalOutfitId, actualOutfitId: canonicalOutfitId, createdAt: now, updatedAt: now });
       await appendChange(tx, input.userId, "outfitPlan", planId, "create", 1, payload);
     }
     for (const plan of sameDay) {
       const payload = asRecord(plan.payload);
-      if (payload.status !== "planned" || !payload.isPrimary || payload.outfitId === legacyOutfitId) continue;
-      const nextPayload = { ...payload, status: "changed", actualOutfitId: legacyOutfitId, updatedAt: now.toISOString() };
-      await tx.update(planTable).set({ revision: plan.revision + 1, originDeviceId: input.deviceId, payload: nextPayload, updatedAt: now }).where(eq(planTable.id, plan.id));
+      if (payload.status !== "planned" || !payload.isPrimary || payload.outfitId === canonicalOutfitId) continue;
+      const nextPayload = { ...payload, status: "changed", actualOutfitId: canonicalOutfitId, updatedAt: now.toISOString() };
+      await tx.update(planTable).set({ revision: plan.revision + 1, originDeviceId: input.deviceId, payload: nextPayload, actualOutfitId: canonicalOutfitId, updatedAt: now }).where(eq(planTable.id, plan.id));
       await appendChange(tx, input.userId, "outfitPlan", plan.id, "update", plan.revision + 1, nextPayload);
     }
   }
@@ -396,14 +405,14 @@ async function cancelOutfitWearTransaction(
   if (!dateKey) throw new WorkspaceApiError(400, "invalid_request", "缺少穿着日期");
   const now = new Date();
   const outfitPayload = asRecord(outfit.payload);
-  const legacyOutfitId = String(outfitPayload.legacyOutfitId ?? input.entityId);
+  const canonicalOutfitId = input.entityId;
   const itemIds = numberList(outfitPayload.legacyItemIds ?? outfitPayload.itemIds);
 
   const plans = await tx.select().from(planTable).where(and(eq(planTable.userId, input.userId), isNull(planTable.deletedAt))) as any[];
   const sameDay = plans.filter((row) => String(asRecord(row.payload).date ?? "") === dateKey);
   const cancelledPlans = sameDay.filter((row) => {
     const payload = asRecord(row.payload);
-    return payload.status === "worn" && (payload.outfitId === legacyOutfitId || payload.actualOutfitId === legacyOutfitId);
+    return payload.status === "worn" && (payload.outfitId === canonicalOutfitId || payload.actualOutfitId === canonicalOutfitId);
   });
   for (const plan of cancelledPlans) {
     const payload = asRecord(plan.payload);
@@ -413,7 +422,7 @@ async function cancelOutfitWearTransaction(
         ...payload, status: "planned", isPrimary: !hasOtherPrimary, wornDateLinked: undefined,
         actualOutfitId: undefined, wearOrigin: undefined, plannedBeforeWorn: undefined, isPrimaryActual: undefined, updatedAt: now.toISOString(),
       };
-      await tx.update(planTable).set({ revision: plan.revision + 1, originDeviceId: input.deviceId, payload: nextPayload, updatedAt: now }).where(eq(planTable.id, plan.id));
+      await tx.update(planTable).set({ revision: plan.revision + 1, originDeviceId: input.deviceId, payload: nextPayload, actualOutfitId: null, updatedAt: now }).where(eq(planTable.id, plan.id));
       await appendChange(tx, input.userId, "outfitPlan", plan.id, "update", plan.revision + 1, nextPayload);
     } else {
       await tx.update(planTable).set({ revision: plan.revision + 1, originDeviceId: input.deviceId, deletedAt: now, updatedAt: now }).where(eq(planTable.id, plan.id));
@@ -422,10 +431,10 @@ async function cancelOutfitWearTransaction(
   }
 
   const otherWorn = sameDay.filter((row) => !cancelledPlans.some((cancelled) => cancelled.id === row.id) && asRecord(row.payload).status === "worn");
-  const otherLegacyOutfitIds = otherWorn.map((row) => String(asRecord(row.payload).actualOutfitId ?? asRecord(row.payload).outfitId ?? ""));
+  const otherOutfitIds = otherWorn.map((row) => String(asRecord(row.payload).actualOutfitId ?? asRecord(row.payload).outfitId ?? ""));
   const allOutfits = await tx.select().from(outfitTable).where(and(eq(outfitTable.userId, input.userId), isNull(outfitTable.deletedAt))) as any[];
   const otherWornItemIds = new Set(allOutfits
-    .filter((row) => otherLegacyOutfitIds.includes(String(asRecord(row.payload).legacyOutfitId ?? row.id)))
+    .filter((row) => otherOutfitIds.includes(row.id))
     .flatMap((row) => numberList(asRecord(row.payload).legacyItemIds ?? asRecord(row.payload).itemIds)));
 
   const nextOutfitPayload = { ...outfitPayload, wornDates: removeDate(outfitPayload.wornDates, dateKey), updatedAt: now.toISOString() };
@@ -445,12 +454,12 @@ async function cancelOutfitWearTransaction(
 
   const remainingPrimary = otherWorn.find((row) => asRecord(row.payload).isPrimaryActual) ?? otherWorn[0];
   const remainingOutfitId = remainingPrimary ? String(asRecord(remainingPrimary.payload).actualOutfitId ?? asRecord(remainingPrimary.payload).outfitId ?? "") : undefined;
-  for (const plan of sameDay.filter((row) => asRecord(row.payload).status === "changed" && asRecord(row.payload).actualOutfitId === legacyOutfitId)) {
+  for (const plan of sameDay.filter((row) => asRecord(row.payload).status === "changed" && asRecord(row.payload).actualOutfitId === canonicalOutfitId)) {
     const payload = asRecord(plan.payload);
     const nextPayload = remainingOutfitId
       ? { ...payload, actualOutfitId: remainingOutfitId, updatedAt: now.toISOString() }
       : { ...payload, status: "planned", actualOutfitId: undefined, updatedAt: now.toISOString() };
-    await tx.update(planTable).set({ revision: plan.revision + 1, originDeviceId: input.deviceId, payload: nextPayload, updatedAt: now }).where(eq(planTable.id, plan.id));
+    await tx.update(planTable).set({ revision: plan.revision + 1, originDeviceId: input.deviceId, payload: nextPayload, actualOutfitId: uuidOrNull(remainingOutfitId), updatedAt: now }).where(eq(planTable.id, plan.id));
     await appendChange(tx, input.userId, "outfitPlan", plan.id, "update", plan.revision + 1, nextPayload);
   }
 
@@ -508,6 +517,50 @@ async function cascadeDeletedGarmentReferences(tx: Tx, input: {
       }).where(and(eq(table.id, row.id), eq(table.userId, input.userId), eq(table.revision, row.revision), isNull(table.deletedAt)));
       await appendChange(tx, input.userId, descriptor.entityType, row.id, "update", revision, payload);
     }
+  }
+}
+
+async function cascadeDeletedOutfitReferences(tx: Tx, input: {
+  userId: string;
+  deviceId: string;
+  outfitId: string;
+  outfitPayload: Record<string, unknown>;
+  now: Date;
+}): Promise<void> {
+  const table = WORKSPACE_RESOURCES["outfit-plans"].table as AnyPgTable & Record<string, any>;
+  const rows = await tx.select().from(table).where(and(eq(table.userId, input.userId), isNull(table.deletedAt))) as any[];
+  for (const row of rows) {
+    const payload = asRecord(row.payload);
+    const referencesPlanned = row.outfitId === input.outfitId || payload.outfitId === input.outfitId;
+    const referencesActual = row.actualOutfitId === input.outfitId || payload.actualOutfitId === input.outfitId;
+    if (!referencesPlanned && !referencesActual) continue;
+    const revision = row.revision + 1;
+    if (payload.status !== "worn" && referencesPlanned) {
+      await tx.update(table).set({ revision, originDeviceId: input.deviceId, deletedAt: input.now, updatedAt: input.now })
+        .where(and(eq(table.id, row.id), eq(table.userId, input.userId), eq(table.revision, row.revision), isNull(table.deletedAt)));
+      await appendChange(tx, input.userId, "outfitPlan", row.id, "delete", revision, {});
+      continue;
+    }
+    const nextPayload = {
+      ...payload,
+      ...(referencesPlanned ? { outfitId: undefined } : {}),
+      ...(referencesActual ? { actualOutfitId: undefined } : {}),
+      deletedOutfitSnapshot: payload.deletedOutfitSnapshot ?? {
+        name: input.outfitPayload.name,
+        title: payload.title,
+        deletedAt: input.now.toISOString(),
+      },
+      updatedAt: input.now.toISOString(),
+    };
+    await tx.update(table).set({
+      revision,
+      originDeviceId: input.deviceId,
+      payload: nextPayload,
+      ...(referencesPlanned ? { outfitId: null } : {}),
+      ...(referencesActual ? { actualOutfitId: null } : {}),
+      updatedAt: input.now,
+    }).where(and(eq(table.id, row.id), eq(table.userId, input.userId), eq(table.revision, row.revision), isNull(table.deletedAt)));
+    await appendChange(tx, input.userId, "outfitPlan", row.id, "update", revision, nextPayload);
   }
 }
 
@@ -775,9 +828,52 @@ function sanitizePayload(payload: Record<string, unknown>): Record<string, unkno
   return Object.fromEntries(Object.entries(payload).filter(([key]) => !protectedKeys.has(key)));
 }
 
+async function canonicalWorkspacePayload(
+  tx: Tx,
+  resource: WorkspaceResource,
+  userId: string,
+  rawPayload: Record<string, unknown>,
+): Promise<Record<string, unknown>> {
+  const payload = normalizeWorkspacePayload(resource, sanitizePayload(rawPayload));
+  assertNoLegacyIdentifiers(payload);
+  if (resource === "outfits") return payload;
+  if (resource !== "outfit-plans") return payload;
+
+  const canonical = { ...payload };
+  const outfitId = requireUuid(canonical.outfitId, "穿搭计划缺少有效的套装 UUID");
+  await ownedActiveRow(tx, WORKSPACE_RESOURCES.outfits.table as AnyPgTable & Record<string, any>, outfitId, userId);
+  canonical.outfitId = outfitId;
+
+  if (canonical.actualOutfitId !== undefined && canonical.actualOutfitId !== null && canonical.actualOutfitId !== "") {
+    const actualOutfitId = requireUuid(canonical.actualOutfitId, "实际穿着缺少有效的套装 UUID");
+    await ownedActiveRow(tx, WORKSPACE_RESOURCES.outfits.table as AnyPgTable & Record<string, any>, actualOutfitId, userId);
+    canonical.actualOutfitId = actualOutfitId;
+  } else {
+    delete canonical.actualOutfitId;
+  }
+
+  const tripPlanId = canonical.tripPlanId ?? canonical.calendarPlanId;
+  if (tripPlanId !== undefined && tripPlanId !== null && tripPlanId !== "") {
+    const canonicalTripPlanId = requireUuid(tripPlanId, "穿搭计划缺少有效的行程 UUID");
+    await ownedActiveRow(tx, WORKSPACE_RESOURCES["trip-plans"].table as AnyPgTable & Record<string, any>, canonicalTripPlanId, userId);
+    canonical.tripPlanId = canonicalTripPlanId;
+    canonical.calendarPlanId = canonicalTripPlanId;
+  } else {
+    delete canonical.tripPlanId;
+    delete canonical.calendarPlanId;
+  }
+  return canonical;
+}
+
+function assertNoLegacyIdentifiers(payload: Record<string, unknown>): void {
+  const legacyKeys = ["legacyOutfitId", "legacyPlanEntryId", "legacyCalendarPlanId"];
+  const found = legacyKeys.find((key) => Object.prototype.hasOwnProperty.call(payload, key));
+  if (found) throw new WorkspaceApiError(422, "invalid_request", `旧标识 ${found} 已停用，请刷新客户端后重试`);
+}
+
 function specialColumns(resource: WorkspaceResource, payload: Record<string, unknown>) {
   if (resource === "trip-plans") return { startDate: stringOrNull(payload.startDate), endDate: stringOrNull(payload.endDate) };
-  if (resource === "outfit-plans") return { planDate: stringOrNull(payload.planDate ?? payload.date), tripPlanId: uuidOrNull(payload.tripPlanId), outfitId: uuidOrNull(payload.outfitId) };
+  if (resource === "outfit-plans") return { planDate: stringOrNull(payload.planDate ?? payload.date), tripPlanId: uuidOrNull(payload.tripPlanId ?? payload.calendarPlanId), outfitId: uuidOrNull(payload.outfitId), actualOutfitId: uuidOrNull(payload.actualOutfitId) };
   if (resource === "wear-events") return { wornAt: new Date(String(payload.wornAt ?? new Date().toISOString())), garmentId: uuidOrNull(payload.garmentId), outfitId: uuidOrNull(payload.outfitId) };
   if (resource === "profiles") return { profileType: typeof payload.profileType === "string" ? payload.profileType : "tryOn" };
   return {};
@@ -785,7 +881,12 @@ function specialColumns(resource: WorkspaceResource, payload: Record<string, unk
 
 function stringOrNull(value: unknown): string | null { return typeof value === "string" ? value : null; }
 function numberOrNull(value: unknown): number | null { return typeof value === "number" && Number.isFinite(value) ? value : null; }
-function uuidOrNull(value: unknown): string | null { return typeof value === "string" && /^[0-9a-f-]{36}$/i.test(value) ? value : null; }
+function uuidOrNull(value: unknown): string | null { return typeof value === "string" && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value) ? value : null; }
+function requireUuid(value: unknown, message: string): string {
+  const uuid = uuidOrNull(value);
+  if (!uuid) throw new WorkspaceApiError(422, "invalid_request", message);
+  return uuid;
+}
 function asRecord(value: unknown): Record<string, any> { return value && typeof value === "object" && !Array.isArray(value) ? value as Record<string, any> : {}; }
 function stringList(value: unknown): string[] { return Array.isArray(value) ? value.filter((entry): entry is string => typeof entry === "string") : []; }
 function numberList(value: unknown): number[] { return Array.isArray(value) ? value.map(Number).filter(Number.isFinite) : []; }

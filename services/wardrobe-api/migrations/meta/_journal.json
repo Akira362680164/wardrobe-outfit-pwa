@@ -120,6 +120,13 @@
       "when": 1783641600002,
       "tag": "0016_account_deletion",
       "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "7",
+      "when": 1783900800000,
+      "tag": "0017_outfit_plan_canonical_uuid",
+      "breakpoints": true
     }
   ]
 }

@@ -462,7 +462,6 @@ export async function repoUndoWishlistPurchase(item: WishlistItem, context: Repo
 
 export async function repoCreateOutfit(outfit: Omit<SavedOutfitDraft, "id">, context: RepoMutationContext = {}): Promise<RepoResult<SavedOutfit>> {
   const clientMutationId = mutationId(context.clientMutationId);
-  const legacyOutfitId = `outfit-${clientMutationId}`;
   try {
     const committed = await committedMutationEntity(clientMutationId, "outfits");
     if (committed) return ok(await reader.mapOutfit(committed));
@@ -470,7 +469,7 @@ export async function repoCreateOutfit(outfit: Omit<SavedOutfitDraft, "id">, con
       mappings: [{ formalField: "coverImage", assetField: "coverImageDataUrl", originalField: "localOriginalDataUrl", thumbnailField: "localThumbnailDataUrl" }],
       extraInputs: outfitRealAssetInputs(outfit), listMappings: [{ collectionField: "outfitRealImages", fieldName: outfitRealAssetField }],
     });
-    const entity = await onlineWriteRepository.create("outfits", { clientMutationId, payload: { ...withoutImages(outfit, "coverCropBox"), legacyOutfitId }, assetMutations });
+    const entity = await onlineWriteRepository.create("outfits", { clientMutationId, payload: withoutImages(outfit, "coverCropBox"), assetMutations });
     return ok(await reader.mapOutfit(entity));
   } catch (error) { return fail(message(error, "保存套装失败，请重试")); }
 }
@@ -487,7 +486,7 @@ export async function repoUpdateOutfit(outfit: SavedOutfit, patch: Partial<Saved
     });
     const entity = await onlineWriteRepository.update("outfits", mutation.entityId, {
       clientMutationId: mutation.clientMutationId, expectedRevision: mutation.expectedRevision,
-      payload: { ...withoutImages({ ...outfit, ...patch }, "coverCropBox"), legacyOutfitId: outfit.id }, assetMutations,
+      payload: withoutImages({ ...outfit, ...patch }, "coverCropBox"), assetMutations,
     });
     return ok(await reader.mapOutfit(entity));
   } catch (error) {

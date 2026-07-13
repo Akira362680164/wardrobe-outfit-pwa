@@ -67,7 +67,7 @@ async function dayPlanDeleteChecklist(ctx: AndroidE2EContext): Promise<void> {
     body: { clientMutationId: randomUUID(), expectedRevision: trip.revision, items: [keep] },
   });
   const plan = await createEntity(ctx, session, "outfit-plans", {
-    ...outfitPlanPayload(String(outfit.payload.legacyOutfitId), date),
+    ...outfitPlanPayload(outfit.id, date),
     calendarPlanId: trip.id,
   });
   const page = await loginFreshApp(ctx, account); await openCalendar(page);
@@ -128,7 +128,7 @@ async function cancelWornRestoration(ctx: AndroidE2EContext): Promise<void> {
   const account = await ensureAccount(ctx); const session = await ctx.api.login(account); const date = localDateKey();
   const garment = await createEntity(ctx, session, "garments", garmentPayload(uniqueName("parity取消已穿")));
   const outfit = await createEntity(ctx, session, "outfits", outfitPayload(uniqueName("parity已穿套装"), [Number(garment.payload.legacyItemId)]));
-  const plan = await createEntity(ctx, session, "outfit-plans", outfitPlanPayload(String(outfit.payload.legacyOutfitId), date));
+  const plan = await createEntity(ctx, session, "outfit-plans", outfitPlanPayload(outfit.id, date));
   await postAction(ctx, session, `/api/workspace/outfits/${outfit.id}/mark-worn`, { clientMutationId: randomUUID(), expectedRevision: outfit.revision, wornAt: `${date}T12:00:00.000Z` });
   const page = await loginFreshApp(ctx, account); await openCalendar(page);
   const cancelWorn = page.locator('[data-parity-id="parity.app.app.src.components.outfit.plan.day.card.297ab020da"]');
@@ -160,7 +160,7 @@ async function longOutfitNameViewportContainment(ctx: AndroidE2EContext): Promis
   const garment = await createEntity(ctx, session, "garments", garmentPayload(uniqueName("parity长名称衣物")));
   const longName = "超长套装名称用于验证页面绝不横向扩张".repeat(12);
   const outfit = await createEntity(ctx, session, "outfits", outfitPayload(longName, [Number(garment.payload.legacyItemId)]));
-  await createEntity(ctx, session, "outfit-plans", outfitPlanPayload(String(outfit.payload.legacyOutfitId), date));
+  await createEntity(ctx, session, "outfit-plans", outfitPlanPayload(outfit.id, date));
   const page = await loginFreshApp(ctx, account);
   await page.getByRole("button", { name: /^套装$/ }).first().evaluate((element) => (element as HTMLButtonElement).click());
   await page.waitForTimeout(1_500);

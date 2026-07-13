@@ -234,7 +234,8 @@ Page({
 
   openSelectedDateSelector() {
     const relation = getOutfitPlanDateRelation(this.data.selectedDate, localDateKey());
-    this.openOutfitSelector(relation === "past" ? "worn" : "primary");
+    const hasBrokenPrimary = Boolean(this.entryForDate(this.data.selectedDate) && !this.data.selectedWeekEntry);
+    this.openOutfitSelector(relation === "past" ? "worn" : hasBrokenPrimary ? "replace" : "primary");
   },
 
   openBackupSelector() {
@@ -430,9 +431,9 @@ Page({
       weekDays,
       weekRangeLabel: formatWeekRange(this.data.weekStart, weekEnd),
       selectedDateLabel: formatDateWithWeek(this.data.selectedDate),
-      selectedEmptyTitle: relation === "past" ? `${formatDateWithWeek(this.data.selectedDate)}还没有穿着记录` : `${formatDateWithWeek(this.data.selectedDate)}还没有安排穿搭`,
-      selectedEmptyCopy: relation === "past" ? "可以补记当天实际穿过的套装。" : "先安排主计划，再添加备选穿搭。",
-      selectedEmptyAction: relation === "past" ? "补记已穿" : "安排主穿搭",
+      selectedEmptyTitle: selectedEntry && !selectedOutfit ? "计划关联的套装已失效" : relation === "past" ? `${formatDateWithWeek(this.data.selectedDate)}还没有穿着记录` : `${formatDateWithWeek(this.data.selectedDate)}还没有安排穿搭`,
+      selectedEmptyCopy: selectedEntry && !selectedOutfit ? "该计划无法找到对应套装，请重新选择。" : relation === "past" ? "可以补记当天实际穿过的套装。" : "先安排主计划，再添加备选穿搭。",
+      selectedEmptyAction: selectedEntry && !selectedOutfit ? "重新选择套装" : relation === "past" ? "补记已穿" : "安排主穿搭",
       selectedWeekEntry: selectedEntry && selectedOutfit ? {
         id: selectedEntry.id,
         outfitId: selectedOutfit.id,

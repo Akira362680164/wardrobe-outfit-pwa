@@ -123,7 +123,7 @@ async function fullCascadeDeleteReferences(ctx: AndroidE2EContext): Promise<void
   const topLegacyId = Number(top.payload.legacyItemId);
   const bottomLegacyId = Number(bottom.payload.legacyItemId);
   const outfit = await createEntity(ctx, session, "outfits", outfitPayload(outfitName, [topLegacyId, bottomLegacyId]));
-  await createEntity(ctx, session, "outfit-plans", outfitPlanPayload(String(outfit.payload.legacyOutfitId), date));
+  await createEntity(ctx, session, "outfit-plans", outfitPlanPayload(outfit.id, date));
   const worn = await postAction(ctx, session, `/api/workspace/outfits/${outfit.id}/mark-worn`, {
     clientMutationId: randomUUID(),
     expectedRevision: outfit.revision,

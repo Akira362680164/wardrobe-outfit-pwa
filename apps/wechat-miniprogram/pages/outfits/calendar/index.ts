@@ -188,7 +188,8 @@ Page({
 
   openSelectedDateSelector() {
     const relation = getOutfitPlanDateRelation(this.data.selectedDate, this.data.todayKey);
-    this.openOutfitSelector(relation === "past" ? "worn" : "primary");
+    const hasBrokenPrimary = Boolean(this.primaryEntryForDate(this.data.selectedDate) && !this.data.selectedPrimaryEntry);
+    this.openOutfitSelector(relation === "past" ? "worn" : hasBrokenPrimary ? "replace" : "primary");
   },
 
   openBackupSelector() {
@@ -438,13 +439,17 @@ Page({
       selectedPrimaryEntry,
       selectedBackupEntries,
       monthHasData,
-      selectedEmptyTitle: relation === "past"
+      selectedEmptyTitle: primaryEntry && !primaryOutfit
+        ? "计划关联的套装已失效"
+        : relation === "past"
         ? `${formatDateWithWeek(this.data.selectedDate)}还没有穿着记录`
         : relation === "today"
           ? "今天还没有安排穿搭"
           : `${formatDateWithWeek(this.data.selectedDate)}还没有安排穿搭`,
-      selectedEmptyCopy: relation === "past" ? "可以补记当天实际穿过的套装。" : "可以先把想穿的套装放进计划。",
-      selectedActionLabel: relation === "past" ? "补记已穿" : "安排穿搭",
+      selectedEmptyCopy: primaryEntry && !primaryOutfit
+        ? "该计划无法找到对应套装，请重新选择。"
+        : relation === "past" ? "可以补记当天实际穿过的套装。" : "可以先把想穿的套装放进计划。",
+      selectedActionLabel: primaryEntry && !primaryOutfit ? "重新选择套装" : relation === "past" ? "补记已穿" : "安排穿搭",
     });
   },
 

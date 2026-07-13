@@ -73,10 +73,22 @@ export function OutfitPlanDayCard({
   const hasPlans = plans.length > 0;
   const mainPlan = plans[0];
   const dateLabel = fmtDateChinese(dateKey);
-  const isEmpty = !hasOutfit && !hasPlans;
+  const isEmpty = !primaryEntry && !hasPlans;
   const isWorn = primaryEntry?.status === "worn";
   const isChanged = primaryEntry?.status === "changed";
   const isPlanned = primaryEntry?.status === "planned";
+
+  if (primaryEntry && !outfit) {
+    return (
+      <div className="min-w-0 rounded-3xl border border-amber-200 bg-amber-50/70 p-4">
+        <p className="text-xs font-semibold text-amber-800">计划关联的套装已失效</p>
+        <p className="mt-1 text-[11px] text-amber-700/80">该计划无法找到对应套装，请重新选择后再继续。</p>
+        <button type="button" className="mt-3 rounded-full bg-denim px-3 py-1 text-[11px] font-semibold text-white" onClick={onSelectOutfit}>
+          重新选择套装
+        </button>
+      </div>
+    );
+  }
 
   // v1.1.0 fix: 空状态 — 今天/未来 vs 过去文案不同
   if (isEmpty) {

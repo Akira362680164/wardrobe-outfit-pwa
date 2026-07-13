@@ -19,6 +19,7 @@ type DayArrangement = {
   outfitMeta: string;
   imageUrl: string;
   empty: boolean;
+  broken: boolean;
 };
 
 type PlanDetailView = MiniCalendarPlan & {
@@ -175,6 +176,7 @@ function buildRows(plan: MiniCalendarPlan, entries: MiniOutfitPlanEntry[], outfi
       outfitMeta: outfit ? `${outfit.itemCount}件 · ${outfit.sceneText}` : entry?.scene || "",
       imageUrl: outfit?.imageUrl || "",
       empty: !entry || !outfit,
+      broken: Boolean(entry && !outfit),
     };
   });
 }

@@ -41,6 +41,7 @@ export type WorkspaceResource = keyof typeof WORKSPACE_RESOURCES;
 type EntityRow = {
   id: string; userId: string; revision: number; payload: unknown;
   createdAt: Date; updatedAt: Date; deletedAt: Date | null;
+  tripPlanId?: string | null; outfitId?: string | null; actualOutfitId?: string | null;
 };
 
 export class WorkspaceQueryService {
@@ -138,10 +139,18 @@ export class WorkspaceQueryService {
       };
       refs.set(binding.ownerEntityId, ownerRefs);
     }
-    return rows.map((row) => ({
-      id: row.id, revision: row.revision, createdAt: row.createdAt.toISOString(), updatedAt: row.updatedAt.toISOString(),
-      payload: asRecord(row.payload), ...(refs.get(row.id) ? { assetRefs: refs.get(row.id) } : {}),
-    }));
+    return rows.map((row) => {
+      const rawPayload = asRecord(row.payload);
+      const payload = entityType === "outfitPlan"
+        ? canonicalOutfitPlanPayload(rawPayload, row)
+        : entityType === "outfit"
+          ? withoutLegacyOutfitId(rawPayload)
+          : rawPayload;
+      return {
+        id: row.id, revision: row.revision, createdAt: row.createdAt.toISOString(), updatedAt: row.updatedAt.toISOString(),
+        payload, ...(refs.get(row.id) ? { assetRefs: refs.get(row.id) } : {}),
+      };
+    });
   }
 
   private async readAll(resource: WorkspaceResource, userId: string): Promise<WorkspaceEntity[]> {
@@ -171,4 +180,26 @@ export function decodeWorkspaceCursor(value: string): { updatedAt: string; id: s
 
 function asRecord(value: unknown): Record<string, any> {
   return value && typeof value === "object" && !Array.isArray(value) ? value as Record<string, any> : {};
+}
+
+function withoutLegacyOutfitId(payload: Record<string, any>): Record<string, any> {
+  const { legacyOutfitId: _legacyOutfitId, ...canonical } = payload;
+  return canonical;
+}
+
+function canonicalOutfitPlanPayload(payload: Record<string, any>, row: EntityRow): Record<string, any> {
+  const { legacyPlanEntryId: _legacyPlanEntryId, legacyOutfitId: _legacyOutfitId, legacyCalendarPlanId: _legacyCalendarPlanId, ...canonical } = payload;
+  if (row.outfitId) canonical.outfitId = row.outfitId;
+  else delete canonical.outfitId;
+  if (row.actualOutfitId) canonical.actualOutfitId = row.actualOutfitId;
+  else delete canonical.actualOutfitId;
+  if (row.tripPlanId) {
+    canonical.tripPlanId = row.tripPlanId;
+    canonical.calendarPlanId = row.tripPlanId;
+  }
+  else {
+    delete canonical.tripPlanId;
+    delete canonical.calendarPlanId;
+  }
+  return canonical;
 }
