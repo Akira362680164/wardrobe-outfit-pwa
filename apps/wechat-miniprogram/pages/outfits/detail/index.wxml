@@ -1,1 +1,38 @@
-<view class="page-shell detail-page"><view wx:if="{{loading}}" class="status-card">正在读取套装...</view><view wx:elif="{{error}}" class="status-card">读取失败：{{error}}</view><detail-shell wx:elif="{{outfit}}" top-title="套装详情" title="{{outfit.name}}" meta="{{outfit.itemCount}}件 · {{outfit.seasonText}} · {{outfit.sceneText}}" eyebrow="{{outfit.wearSummary}}" image-url="{{outfit.imageUrl}}" hero-label="主图" hero-fallback="套装示意"><view slot="afterHero"><view class="action-row"><button class="action-button favorite" loading="{{actioning === 'favorite'}}" bindtap="toggleFavorite">{{outfit.favorite ? '取消收藏' : '收藏'}}</button><button class="action-button worn" loading="{{actioning === 'worn'}}" bindtap="toggleTodayWorn">{{outfit.wornToday ? '撤销穿着' : '今天穿过'}}</button><button class="action-button danger" bindtap="openDeleteSheet">删除</button></view></view><view slot="tabs" class="detail-tabs"><view class="detail-tab {{activeTab==='info'?'is-active':''}}" data-tab="info" bindtap="switchTab">信息</view><view class="detail-tab {{activeTab==='items'?'is-active':''}}" data-tab="items" bindtap="switchTab">单品</view><view class="detail-tab {{activeTab==='photos'?'is-active':''}}" data-tab="photos" bindtap="switchTab">实穿</view><view class="detail-tab {{activeTab==='advice'?'is-active':''}}" data-tab="advice" bindtap="switchTab">建议</view></view><view wx:if="{{activeTab==='info'}}" class="info-card"><view class="card-title">套装概况</view><view class="info-row"><text>单品数量</text><text>{{outfit.itemCount}} 件</text></view><view class="info-row"><text>季节</text><text>{{outfit.seasonText}}</text></view><view class="info-row"><text>场景</text><text>{{outfit.sceneText}}</text></view><view class="info-row"><text>穿着次数</text><text>{{outfit.wornDates.length}} 次</text></view><view class="section-copy">{{outfit.notes}}</view></view><view wx:elif="{{activeTab==='items'}}" class="thumb-strip"><view wx:for="{{outfit.itemImages}}" wx:key="*this" class="thumb"><image class="thumb-image" mode="aspectFill" src="{{item}}"/><view class="thumb-label">单品 {{index+1}}</view></view></view><view wx:elif="{{activeTab==='photos'}}"><item-media-section image-url="" inspiration-images="{{outfit.wornPhotos}}" bind:add="addWornPhoto" bind:preview="previewPhoto" bind:remove="removeWornPhoto" /></view><view wx:else class="info-card"><view class="card-title">替换与搭配建议</view><button class="action-button ai" loading="{{adviceLoading}}" bindtap="generateAdvice">{{adviceSummary?'重新生成':'生成 AI 建议'}}</button><view class="section-copy">{{adviceLoading?'正在生成建议...':adviceSummary}}</view><view wx:for="{{adviceTips}}" wx:key="*this" class="section-copy">· {{item}}</view></view></detail-shell><ui-sheet open="{{deleteSheetOpen}}" title="删除这套穿搭？" description="衣橱单品不会被删除。" bind:close="closeDeleteSheet"><view class="delete-actions"><button class="sheet-button sheet-button--danger" loading="{{deleting}}" bindtap="confirmDelete">确认删除</button><button class="sheet-button" bindtap="closeDeleteSheet">取消</button></view></ui-sheet></view>
+<view class="page-shell detail-page">
+  <view wx:if="{{loading}}" class="status-card">正在读取套装...</view>
+  <view wx:elif="{{error}}" class="status-card">读取失败：{{error}}</view>
+  <detail-shell wx:elif="{{outfit}}" top-title="套装详情" title="{{outfit.name}}" meta="{{outfit.itemCount}}件 · {{outfit.seasonText}} · {{outfit.sceneText}}" eyebrow="{{outfit.wearSummary}}" image-url="{{outfit.imageUrl}}" hero-label="主图" hero-fallback="套装示意">
+    <view slot="afterHero">
+      <view class="action-row">
+        <button class="action-button edit" bindtap="editOutfit">编辑套装</button>
+        <button class="action-button favorite" loading="{{actioning === 'favorite'}}" bindtap="toggleFavorite">{{outfit.favorite ? '取消收藏' : '收藏'}}</button>
+        <button class="action-button worn" loading="{{actioning === 'worn'}}" bindtap="toggleTodayWorn">{{outfit.wornToday ? '撤销穿着' : '今天穿过'}}</button>
+        <button class="action-button danger" bindtap="openDeleteSheet">删除</button>
+      </view>
+    </view>
+    <view slot="tabs" class="detail-tabs">
+      <view class="detail-tab {{activeTab==='info'?'is-active':''}}" data-tab="info" bindtap="switchTab">信息</view>
+      <view class="detail-tab {{activeTab==='items'?'is-active':''}}" data-tab="items" bindtap="switchTab">组成</view>
+      <view class="detail-tab {{activeTab==='photos'?'is-active':''}}" data-tab="photos" bindtap="switchTab">实穿</view>
+      <view class="detail-tab {{activeTab==='advice'?'is-active':''}}" data-tab="advice" bindtap="switchTab">建议</view>
+    </view>
+    <view wx:if="{{activeTab==='info'}}" class="info-card">
+      <view class="card-title">套装概况</view>
+      <view class="info-row"><text>单品数量</text><text>{{outfit.itemCount}} 件</text></view>
+      <view class="info-row"><text>季节</text><text>{{outfit.seasonText}}</text></view>
+      <view class="info-row"><text>场景</text><text>{{outfit.sceneText}}</text></view>
+      <view class="info-row"><text>穿着次数</text><text>{{outfit.wornDates.length}} 次</text></view>
+      <view class="section-copy">{{outfit.notes}}</view>
+    </view>
+    <view wx:elif="{{activeTab==='items'}}" class="composition-panel">
+      <view class="composition-header"><view><view class="card-title">套装组成</view><view class="section-copy">当前共 {{outfit.itemCount}} 件衣物</view></view><button class="composition-edit-link" bindtap="editComposition">编辑组成</button></view>
+      <view wx:if="{{itemCards.length}}" class="composition-list">
+        <view wx:for="{{itemCards}}" wx:key="id" class="composition-item"><image wx:if="{{item.imageUrl}}" class="composition-item__image" mode="aspectFit" src="{{item.imageUrl}}"/><view wx:else class="composition-item__fallback">{{item.categoryLabel}}</view><view class="composition-item__copy"><view class="composition-item__name">{{item.name}}</view><view class="composition-item__meta">{{item.categoryLabel}}</view></view></view>
+      </view>
+      <view wx:else class="section-copy">暂无可展示的衣橱单品。</view>
+    </view>
+    <view wx:elif="{{activeTab==='photos'}}"><item-media-section image-url="" inspiration-images="{{outfit.wornPhotos}}" bind:add="addWornPhoto" bind:preview="previewPhoto" bind:remove="removeWornPhoto" /></view>
+    <view wx:else class="info-card"><view class="card-title">替换与搭配建议</view><button class="action-button ai" loading="{{adviceLoading}}" bindtap="generateAdvice">{{adviceSummary?'重新生成':'生成 AI 建议'}}</button><view class="section-copy">{{adviceLoading?'正在生成建议...':adviceSummary}}</view><view wx:for="{{adviceTips}}" wx:key="*this" class="section-copy">· {{item}}</view></view>
+  </detail-shell>
+  <ui-sheet open="{{deleteSheetOpen}}" title="删除这套穿搭？" description="衣橱单品不会被删除。" bind:close="closeDeleteSheet"><view class="delete-actions"><button class="sheet-button sheet-button--danger" loading="{{deleting}}" bindtap="confirmDelete">确认删除</button><button class="sheet-button" bindtap="closeDeleteSheet">取消</button></view></ui-sheet>
+</view>

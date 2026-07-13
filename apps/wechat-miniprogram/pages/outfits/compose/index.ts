@@ -7,8 +7,10 @@ import {
   fetchGarments,
   fetchOutfitDetail,
   getWorkspaceReadState,
+  updateOutfit,
   type MiniClosetLocation,
   type MiniGarment,
+  type MiniOutfitDetail,
 } from "../../../services/workspace";
 import { getCapsuleGeometry } from "../../../utils/capsule-layout";
 import {
@@ -29,6 +31,9 @@ const FIELD_COUNT = 6;
 
 Page({
   data: {
+    editing: false,
+    editingFocusComposition: false,
+    editingOutfit: null as MiniOutfitDetail | null,
     loading: false,
     saving: false,
     generating: false,
@@ -69,18 +74,23 @@ Page({
     draftMutationId: createClientMutationId(),
   },
 
-  onLoad(this: any) {
+  onLoad(this: any, query?: { id?: string; focus?: string }) {
     const capsule = getCapsuleGeometry();
+    const editingId = query?.id ? decodeURIComponent(query.id) : "";
+    const editing = Boolean(editingId);
     this.setData({
       capsuleTopRpx: capsule.topRpx,
       capsuleHeightRpx: capsule.heightRpx,
       capsuleRightInsetRpx: capsule.rightInsetRpx,
+      editing,
+      editingFocusComposition: query?.focus === "composition",
+      step: editing && query?.focus !== "composition" ? 1 : 0,
     });
-    wx.setNavigationBarTitle({ title: "创建套装" });
-    void this.loadGarments();
+    wx.setNavigationBarTitle({ title: editing ? "编辑套装" : "创建套装" });
+    void this.loadGarments(editingId || undefined);
   },
 
-  async loadGarments(this: any) {
+  async loadGarments(this: any, editingId?: string) {
     const state = getWorkspaceReadState();
     if (state !== "ready") {
       this.setData({
@@ -108,9 +118,47 @@ Page({
         garments,
         locations,
         locationOptions,
-        activeLocation: defaultLocation,
+        activeLocation: editingId ? "all" : defaultLocation,
         emptyTitle: garments.length ? "" : "当前衣橱还没有可用衣物",
       });
+      if (editingId) {
+        const outfit = await fetchOutfitDetail(editingId);
+        const selectedLegacyIds = new Set(outfit.itemIds);
+        const selectedEntityIds = new Set(outfit.itemEntityIds);
+        const selectedGarments = garments.map((item) => ({
+          ...item,
+          selected: selectedLegacyIds.has(item.legacyItemId) || selectedEntityIds.has(item.id),
+        }));
+        const payload = outfit.rawPayload;
+        const seasons = Array.isArray(payload.seasons) ? payload.seasons.filter((value): value is string => typeof value === "string") : [];
+        const sceneTags = Array.isArray(payload.sceneTags) ? payload.sceneTags.filter((value): value is string => typeof value === "string") : [];
+        const styleTags = Array.isArray(payload.styleTags) ? payload.styleTags.filter((value): value is string => typeof value === "string") : [];
+        const pairingTags = Array.isArray(payload.pairingTags) ? payload.pairingTags.filter((value): value is string => typeof value === "string") : [];
+        const selected = selectedGarments.filter((item) => item.selected);
+        const composition = analyzeComposition(selected);
+        this.setData({
+          garments: selectedGarments,
+          editingOutfit: outfit,
+          selectedGarments,
+          selectedMap: selectedGarments.filter((item) => item.selected).reduce((result: Record<string, boolean>, item) => { result[String(item.legacyItemId)] = true; return result; }, {}),
+          selectedCount: selected.length,
+          name: typeof payload.name === "string" ? payload.name : outfit.name,
+          seasons,
+          sceneText: sceneTags.join("、"),
+          styleText: styleTags.join("、"),
+          pairingText: pairingTags.join("、"),
+          notes: typeof payload.notes === "string" ? payload.notes : outfit.notes,
+          temperatureRange: payload.temperatureRange as OutfitDraft["temperatureRange"],
+          seasonOptions: MINI_SEASON_CATALOG.map((item) => ({ ...item, selected: seasons.includes(item.value) })),
+          compositionSlots: composition.slots,
+          compositionSummary: composition.summary,
+          step: this.data.editingFocusComposition ? 0 : 1,
+          analysisHint: "编辑完成后点击保存，组成和套装信息才会写入。",
+        });
+        this.applyFilters();
+        this.updateReviewSummary();
+        return;
+      }
       this.applyFilters();
     } catch (error) {
       this.setData({
@@ -198,6 +246,18 @@ Page({
   async nextStep(this: any) {
     if (this.data.generating || this.data.selectedCount < 2) return;
     const selected = this.data.selectedGarments as SelectableGarment[];
+    if (this.data.editing) {
+      const composition = analyzeComposition(selected);
+      this.setData({
+        step: 1,
+        analysisHint: "组成已调整，点击保存后才会写入。",
+        issues: [],
+        compositionSlots: composition.slots,
+        compositionSummary: composition.summary,
+      });
+      this.updateReviewSummary();
+      return;
+    }
     const localDraft = buildLocalOutfitDraft(selected);
     this.applyDraft(localDraft, false);
     this.setData({ generating: true, analysisHint: "正在分析套装…", issues: [] });
@@ -253,6 +313,11 @@ Page({
   previousStep(this: any) {
     if (this.data.saving || this.data.generating) return;
     this.setData({ step: 0, error: "" });
+  },
+
+  editComposition(this: any) {
+    if (!this.data.editing || this.data.saving || this.data.generating) return;
+    this.setData({ step: 0, error: "", analysisHint: "" });
   },
 
   applyDraft(this: any, draft: OutfitDraft, changed: boolean) {
@@ -363,6 +428,33 @@ Page({
 
     this.setData({ saving: true, issues: [], error: "" });
     try {
+      if (this.data.editing) {
+        const outfit = this.data.editingOutfit as MiniOutfitDetail | null;
+        if (!outfit) throw new Error("套装信息已失效，请返回后重试");
+        const result = await updateOutfit({
+          id: outfit.id,
+          expectedRevision: outfit.revision,
+          currentPayload: outfit.rawPayload,
+          clientMutationId: this.data.draftMutationId,
+          patch: {
+            name,
+            legacyItemIds: selected.map((item) => item.legacyItemId),
+            itemIds: selected.map((item) => item.legacyItemId),
+            itemEntityIds: selected.map((item) => item.id),
+            seasons: this.data.seasons,
+            sceneTags: parseTagInput(this.data.sceneText),
+            styleTags: parseTagInput(this.data.styleText),
+            pairingTags: parseTagInput(this.data.pairingText),
+            temperatureRange: this.data.temperatureRange,
+            notes: this.data.notes.trim() || undefined,
+            aiSuggestion: undefined,
+          },
+        });
+        await fetchOutfitDetail(result.id);
+        wx.showToast({ title: "套装已更新", icon: "success" });
+        wx.navigateBack({ delta: 1 });
+        return;
+      }
       const created = await createOutfit({
         name,
         legacyItemIds: selected.map((item) => item.legacyItemId),

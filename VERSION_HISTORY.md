@@ -1225,3 +1225,11 @@
 - **版本变更**：待本批修复范围确认；进入 APK 的改动将在交付前递增版本。
 - **验证结果**：待执行。
 - **未验证风险**：待执行。
+## 2026-07-13 / v2.1.16-test / Codex — 小程序套装组成编辑入口
+
+- **目的**：补齐小程序套装详情的编辑入口，并让现有套装选择页支持编辑已保存套装的衣物组成。
+- **改动文件**：`apps/wechat-miniprogram/pages/outfits/detail/index.ts`、`apps/wechat-miniprogram/pages/outfits/detail/index.wxml`、`apps/wechat-miniprogram/pages/outfits/detail/index.wxss`、`apps/wechat-miniprogram/pages/outfits/compose/index.ts`、`apps/wechat-miniprogram/pages/outfits/compose/index.wxml`、`apps/wechat-miniprogram/pages/outfits/compose/index.wxss`。
+- **改动内容**：详情页新增“编辑套装/编辑组成”；组成页签展示单品名称、分类和编辑按钮；创建/编辑共用两步选择流程，编辑时预选当前组成、完成选择后回到信息页，最终通过 `updateOutfit` 等待服务端读回并同步 `legacyItemIds`、`itemIds`、`itemEntityIds`；组成变化清除旧 AI 建议。
+- **验证结果**：小程序 `typecheck`、`catalog:miniprogram:check`、`test:logic:miniprogram-shell`、`test:logic:miniprogram-outfit-flow`、`test:logic:miniprogram-intake-state-machine`、`git diff --check` 通过；`wechatide compile_wxml` 在临时 worktree 连接超过 60 秒未返回，已停止。
+- **风险门禁**：`medium`；未触发 subagent：用户未通知（仅按技能要求做只读布局/机械扫描）。
+- **未验证风险**：尚未在微信开发者工具模拟器或真机完成本次编辑组成的实际点击、保存和返回键路径；正式目录合入后需重跑 `compile_wxml`/`compile_wxss`。
