@@ -573,19 +573,15 @@ export async function fetchWorkspaceSummary(): Promise<WorkspaceSummary> {
 }
 
 export async function fetchGarments(limit = 60): Promise<MiniGarment[]> {
-  const response = await workspaceRequest<WorkspaceListResponse>(
-    `/api/workspace/garments?limit=${limit}`,
-  );
-  return Promise.all((response.items ?? []).map(toMiniGarment));
+  const entities = await fetchAllWorkspaceEntities("garments", limit);
+  return Promise.all(entities.map(toMiniGarment));
 }
 
 export async function fetchOutfits(limit = 60): Promise<MiniOutfit[]> {
-  const response = await workspaceRequest<WorkspaceListResponse>(
-    `/api/workspace/outfits?limit=${limit}`,
-  );
+  const entities = await fetchAllWorkspaceEntities("outfits", limit);
   const garments = await fetchGarmentsForOutfits();
   return Promise.all(
-    (response.items ?? []).map((entity) => toMiniOutfit(entity, garments)),
+    entities.map((entity) => toMiniOutfit(entity, garments)),
   );
 }
 
@@ -616,10 +612,8 @@ export async function fetchCalendarPlanDetail(
 }
 
 export async function fetchWishlist(limit = 60): Promise<MiniWishlistItem[]> {
-  const response = await workspaceRequest<WorkspaceListResponse>(
-    `/api/workspace/wishlist?limit=${limit}`,
-  );
-  return Promise.all((response.items ?? []).map(toMiniWishlistItem));
+  const entities = await fetchAllWorkspaceEntities("wishlist", limit);
+  return Promise.all(entities.map(toMiniWishlistItem));
 }
 
 export async function fetchClosetLocations(): Promise<MiniClosetLocation[]> {
@@ -1717,6 +1711,25 @@ async function fetchGarmentsForOutfits(): Promise<MiniGarment[]> {
   } catch {
     return [];
   }
+}
+
+async function fetchAllWorkspaceEntities(resource: "garments" | "outfits" | "wishlist", limit: number): Promise<WorkspaceEntity[]> {
+  const items: WorkspaceEntity[] = [];
+  let cursor = "";
+  let pageCount = 0;
+  do {
+    const query = `limit=${encodeURIComponent(String(limit))}${cursor ? `&cursor=${encodeURIComponent(cursor)}` : ""}`;
+    const response = await workspaceRequest<WorkspaceListResponse>(
+      `/api/workspace/${resource}?${query}`,
+    );
+    items.push(...(response.items ?? []));
+    cursor = response.nextCursor ?? "";
+    pageCount += 1;
+    if (pageCount >= 1_000 && cursor) {
+      throw new Error("云端列表分页异常，请稍后重试");
+    }
+  } while (cursor);
+  return items;
 }
 
 function outfitItemImages(

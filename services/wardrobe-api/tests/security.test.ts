@@ -95,7 +95,7 @@ describe("refresh idempotency encryption", () => {
     deviceId: "device-a",
   };
 
-  it("encrypts retry payloads with a 60 second window", () => {
+  it("encrypts retry payloads with a five minute window", () => {
     const key = parseRefreshIdempotencyKey(randomBytes(32));
     const now = new Date("2026-06-26T00:00:00.000Z");
     const payload = {
@@ -105,9 +105,9 @@ describe("refresh idempotency encryption", () => {
 
     const encrypted = encryptRefreshIdempotencyPayload(key, scope, payload, now);
 
-    expect(REFRESH_IDEMPOTENCY_WINDOW_MS).toBe(60_000);
+    expect(REFRESH_IDEMPOTENCY_WINDOW_MS).toBe(5 * 60_000);
     expect(encrypted.ciphertext).not.toContain(payload.refreshToken);
-    expect(encrypted.expiresAt.toISOString()).toBe("2026-06-26T00:01:00.000Z");
+    expect(encrypted.expiresAt.toISOString()).toBe("2026-06-26T00:05:00.000Z");
     expect(
       decryptRefreshIdempotencyPayload<typeof payload>(
         key,

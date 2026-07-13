@@ -100,9 +100,51 @@ async function testMiniConcurrentRecoveryAndPersistence() {
   assert.equal(store.getSession(), null);
 }
 
+async function testMiniLostRefreshResponseReusesRequestId() {
+  const storage = new Map<string, unknown>();
+  const refreshRequestIds: string[] = [];
+  let refreshAttempts = 0;
+  (globalThis as any).getApp = () => ({ globalData: { apiBaseUrl: "https://example.test" } });
+  (globalThis as any).wx = {
+    getStorageSync: (key: string) => storage.get(key) ?? "",
+    setStorageSync: (key: string, value: unknown) => storage.set(key, value),
+    removeStorageSync: (key: string) => storage.delete(key),
+    redirectTo: () => undefined,
+    showToast: () => undefined,
+    request: (options: any) => {
+      queueMicrotask(() => {
+        if (!options.url.endsWith("/api/auth/refresh")) return;
+        refreshAttempts += 1;
+        refreshRequestIds.push(options.data.refreshRequestId);
+        if (refreshAttempts === 1) {
+          // Simulate the server rotating the token while the response is lost.
+          options.fail({ errMsg: "request:fail timeout" });
+          return;
+        }
+        options.success({ statusCode: 200, data: {
+          accessToken: "replayed-access",
+          accessTokenExpiresAt: new Date(Date.now() + 900_000).toISOString(),
+          refreshToken: "replayed-refresh",
+          refreshTokenExpiresAt: new Date(Date.now() + 2_592_000_000).toISOString(),
+          user: { id: "user-a" },
+        }, header: {} });
+      });
+    },
+  };
+  const store = await import("../apps/wechat-miniprogram/stores/session");
+  const http = await import("../apps/wechat-miniprogram/services/http");
+  store.setSession({ token: "expired-access", refreshToken: "old-refresh-token", deviceId: "device-a", expiresAt: Date.now() - 1, user: { id: "user-a" } });
+  await assert.rejects(http.recoverSession(true));
+  const recovered = await http.recoverSession(true);
+  assert.equal(recovered.refreshToken, "replayed-refresh");
+  assert.equal(refreshAttempts, 2);
+  assert.equal(refreshRequestIds[0], refreshRequestIds[1], "lost response retry must reuse the same refresh request id");
+}
+
 async function main() {
   await testAppConcurrentRecovery();
   await testMiniConcurrentRecoveryAndPersistence();
+  await testMiniLostRefreshResponseReusesRequestId();
   console.log("long-lived device session tests passed");
 }
 

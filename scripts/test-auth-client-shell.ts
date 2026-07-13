@@ -52,6 +52,9 @@ check("AuthSessionStore 声明 Android secure storage 插件", /registerPlugin<W
 check("Android 原生插件使用 AndroidKeyStore", /AndroidKeyStore/.test(securePlugin) && /AES\/GCM\/NoPadding/.test(securePlugin));
 check("MainActivity 注册 WardrobeSecureStoragePlugin", /registerPlugin\(WardrobeSecureStoragePlugin\.class\)/.test(mainActivity));
 check("API 客户端有 refresh mutex", /refreshPromiseMap/.test(authApi) && /const key = /.test(authApi));
+check("刷新请求 ID 在无 Web Crypto 时仍保持 UUID 格式", /fallbackUuid/.test(sessionStore) && /4xxx-yxxx/.test(sessionStore));
+check("App 刷新请求会持久化并复用 pendingRefresh", /pendingRefresh/.test(sessionStore) && /pendingIsReusable/.test(authProvider) && /refreshRequestId/.test(authProvider));
+check("登录/退出会阻止旧 refresh 响应覆盖新会话", /authOperationGeneration/.test(authProvider) && /generation !== authOperationGeneration\.current/.test(authProvider));
 check("AuthProvider 在线认证模式已启用", /useState/.test(authProvider));
 check("AuthProvider 退出登录流程", /onLogout/.test(authProvider) || /logout/.test(authProvider));
 check("WorkspaceGate 在线仓库模式", /OnlineWorkspaceRepository/.test(workspaceGate) || /repository/.test(workspaceGate));

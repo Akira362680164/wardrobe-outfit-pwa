@@ -127,6 +127,13 @@
       "when": 1783900800000,
       "tag": "0017_outfit_plan_canonical_uuid",
       "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "7",
+      "when": 1783900800001,
+      "tag": "0018_workspace_invariants",
+      "breakpoints": true
     }
   ]
 }

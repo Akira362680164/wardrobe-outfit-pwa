@@ -14,6 +14,7 @@ const miniMapper = read("apps/wechat-miniprogram/services/workspace.ts");
 const miniCalendar = read("apps/wechat-miniprogram/pages/outfits/calendar/index.ts");
 const miniDayCard = read("apps/wechat-miniprogram/utils/outfit-plan-day.ts");
 const migration = read("services/wardrobe-api/migrations/0017_outfit_plan_canonical_uuid.sql");
+const invariantMigration = read("services/wardrobe-api/migrations/0018_workspace_invariants.sql");
 
 assert.match(appMapper, /id: entity\.id, name: stringValue\(p\.name\)/, "App 套装必须使用服务端实体 UUID");
 assert.match(appMapper, /id: entity\.id, date: stringValue\(p\.date\)/, "App 穿搭计划必须使用服务端实体 UUID");
@@ -26,6 +27,10 @@ assert.match(apiQueries, /canonicalOutfitPlanPayload/, "服务端读取必须由
 assert.match(miniMapper, /outfitId: firstString\(payload\.outfitId\)/, "小程序不得用实际穿着 ID 冒充计划套装 ID");
 assert.match(`${miniCalendar}\n${miniDayCard}`, /计划关联的套装已失效/, "小程序必须显式展示失效关系");
 assert.match(migration, /unresolved outfitId exists/, "迁移遇到无法解析的旧关系必须中止");
+assert.match(invariantMigration, /outfit_plans_one_planned_primary_per_day/, "迁移必须建立同日计划主展示唯一约束");
+assert.match(invariantMigration, /outfit_plans_one_actual_primary_per_day/, "迁移必须建立同日实际主展示唯一约束");
+assert.match(invariantMigration, /profiles_one_active_per_user_type/, "迁移必须建立用户画像单例约束");
+assert.match(invariantMigration, /row_number\(\) OVER/, "迁移必须先确定性降级历史重复主计划");
 
 console.log("✓ App、服务端和小程序统一使用 canonical UUID");
 console.log("✓ 迁移包含回填、旧字段清理和失败前置检查");

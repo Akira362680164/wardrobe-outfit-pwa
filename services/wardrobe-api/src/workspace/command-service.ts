@@ -14,7 +14,7 @@ import type {
 } from "@wardrobe/cloud-contracts";
 
 import { getDb } from "../db/client.js";
-import { assetBindings, assets, syncChanges, syncMutations } from "../db/schema.js";
+import { assetBindings, assets, profiles, syncChanges, syncMutations } from "../db/schema.js";
 import type * as schema from "../db/schema.js";
 import { WorkspaceApiError } from "./errors.js";
 import {
@@ -22,11 +22,18 @@ import {
   normalizeWishlistPayload,
   normalizeWorkspacePayload,
 } from "./payload-normalizer.js";
+import { inheritGarmentFieldsToWishlist } from "./wishlist-inheritance.js";
 import { WORKSPACE_RESOURCES, type WorkspaceResource } from "./query-service.js";
 
 type Db = NodePgDatabase<typeof schema>;
 type Tx = Parameters<Parameters<Db["transaction"]>[0]>[0];
 type Mutation = WorkspaceCreateCommand | WorkspaceUpdateCommand | WorkspaceDeleteCommand;
+
+class BatchMutationInProgressError extends Error {
+  constructor() {
+    super("batch mutation is already in progress");
+  }
+}
 
 export class WorkspaceCommandService {
   constructor(private readonly injectedDb?: Db) {}
@@ -39,10 +46,14 @@ export class WorkspaceCommandService {
   }
 
   async create(input: { resource: WorkspaceResource; command: WorkspaceCreateCommand; userId: string; deviceId: string; requestId?: string }): Promise<WorkspaceCommandResponse> {
+    if (input.resource === "profiles") return this.createOrUpdateProfile(input);
     return this.runMutation({ ...input, operation: "create", entityId: randomUUID() }, async (tx, entityId) => {
       const descriptor = WORKSPACE_RESOURCES[input.resource];
       const table = descriptor.table as AnyPgTable & Record<string, any>;
       const now = new Date();
+      if (input.resource === "outfit-plans") {
+        await lockOutfitPlanDates(tx, input.userId, [planDateFromPayload(input.command.payload)]);
+      }
       const payload = await canonicalWorkspacePayload(tx, input.resource, input.userId, input.command.payload);
       await tx.insert(table).values({
         id: entityId, userId: input.userId, revision: 1, originDeviceId: input.deviceId,
@@ -58,14 +69,100 @@ export class WorkspaceCommandService {
     });
   }
 
+  private async createOrUpdateProfile(input: { resource: WorkspaceResource; command: WorkspaceCreateCommand; userId: string; deviceId: string; requestId?: string }): Promise<WorkspaceCommandResponse> {
+    return this.runMutation({ ...input, operation: "create", entityId: randomUUID() }, async (tx, entityId) => {
+      const table = profiles as AnyPgTable & Record<string, any>;
+      const profileType = typeof input.command.payload.profileType === "string" ? input.command.payload.profileType : "tryOn";
+      await tx.execute(sql`SELECT pg_advisory_xact_lock(hashtext(${`workspace-profile:${input.userId}:${profileType}`}))`);
+      const [existing] = await tx.select().from(table).where(and(
+        eq(table.userId, input.userId), eq(table.profileType, profileType), isNull(table.deletedAt),
+      )).limit(1) as any[];
+      const now = new Date();
+      const payload = await canonicalWorkspacePayload(tx, input.resource, input.userId, input.command.payload);
+      const targetId = existing?.id ?? entityId;
+      const revision = existing ? existing.revision + 1 : 1;
+      if (existing) {
+        await tx.update(table).set({ revision, originDeviceId: input.deviceId, payload, ...specialColumns("profiles", payload), updatedAt: now })
+          .where(and(eq(table.id, targetId), eq(table.userId, input.userId), eq(table.revision, existing.revision), isNull(table.deletedAt)));
+      } else {
+        await tx.insert(table).values({
+          id: targetId, userId: input.userId, revision, originDeviceId: input.deviceId,
+          payload, ...specialColumns("profiles", payload), createdAt: now, updatedAt: now,
+        });
+      }
+      await applyAssetMutations(tx, {
+        mutations: input.command.assetMutations, userId: input.userId, entityId: targetId,
+        entityType: "profile", clientMutationId: input.command.clientMutationId, now,
+      });
+      const assetRefs = await readAssetRefs(tx, input.userId, "profile", targetId);
+      const entity = toEntity({ id: targetId, revision, payload, createdAt: existing?.createdAt ?? now, updatedAt: now }, assetRefs);
+      await appendChange(tx, input.userId, "profile", targetId, existing ? "update" : "create", revision, payload);
+      return { entity, revision };
+    });
+  }
+
   async batchCreate(input: { resource: WorkspaceResource; commands: WorkspaceCreateCommand[]; userId: string; deviceId: string; requestId?: string }): Promise<WorkspaceCommandResponse> {
-    const entities: WorkspaceEntity[] = [];
+    const mutationIds = new Set<string>();
     for (const command of input.commands) {
-      const result = await this.create({ ...input, command });
-      if (result.status === "in_progress") return result;
-      if (result.entity) entities.push(result.entity);
+      if (mutationIds.has(command.clientMutationId)) {
+        throw new WorkspaceApiError(400, "invalid_request", "批量提交包含重复的 clientMutationId");
+      }
+      mutationIds.add(command.clientMutationId);
     }
-    return { status: "committed", entities, ...(input.requestId ? { requestId: input.requestId } : {}) };
+
+    // Batch creation is intentionally all-or-nothing. The previous per-item
+    // transaction loop could commit item 1, fail item 2, then make the App
+    // retry item 1 as if it had never been saved.
+    try {
+      return await this.database().transaction(async (tx) => {
+        const entities: WorkspaceEntity[] = [];
+        for (const command of input.commands) {
+          const descriptor = WORKSPACE_RESOURCES[input.resource];
+          const lock = await tx.execute(sql`SELECT pg_try_advisory_xact_lock(hashtext(${`${input.userId}:${command.clientMutationId}`})) AS acquired`);
+          if (!(lock.rows[0] as any)?.acquired) throw new BatchMutationInProgressError();
+          const [existing] = await tx.select().from(syncMutations).where(and(
+            eq(syncMutations.userId, input.userId), eq(syncMutations.mutationId, command.clientMutationId),
+          )).limit(1);
+          if (existing?.response) {
+            const response = existing.response as WorkspaceCommandResponse;
+            if (response.entity) entities.push(response.entity);
+            continue;
+          }
+
+          const entityId = randomUUID();
+          const table = descriptor.table as AnyPgTable & Record<string, any>;
+          const now = new Date();
+          if (input.resource === "outfit-plans") {
+            await lockOutfitPlanDates(tx, input.userId, [planDateFromPayload(command.payload)]);
+          }
+          const payload = await canonicalWorkspacePayload(tx, input.resource, input.userId, command.payload);
+          await tx.insert(table).values({
+            id: entityId, userId: input.userId, revision: 1, originDeviceId: input.deviceId,
+            payload, ...specialColumns(input.resource, payload), createdAt: now, updatedAt: now,
+          });
+          await applyAssetMutations(tx, {
+            mutations: command.assetMutations, userId: input.userId, entityId,
+            entityType: descriptor.entityType, clientMutationId: command.clientMutationId, now,
+          });
+          const assetRefs = await readAssetRefs(tx, input.userId, descriptor.entityType, entityId);
+          const entity = toEntity({ id: entityId, revision: 1, payload, createdAt: now, updatedAt: now }, assetRefs);
+          await appendChange(tx, input.userId, descriptor.entityType, entityId, "create", 1, payload);
+          const response: WorkspaceCommandResponse = { status: "committed", entity, revision: 1, ...(input.requestId ? { requestId: input.requestId } : {}) };
+          await tx.insert(syncMutations).values({
+            userId: input.userId, mutationId: command.clientMutationId, entityType: descriptor.entityType,
+            entityId, operation: "create", baseRevision: null, status: "accepted", resultRevision: 1,
+            payload: command.payload, response,
+          });
+          entities.push(entity);
+        }
+        return { status: "committed", entities, ...(input.requestId ? { requestId: input.requestId } : {}) };
+      });
+    } catch (error) {
+      if (error instanceof BatchMutationInProgressError) {
+        return { status: "in_progress", ...(input.requestId ? { requestId: input.requestId } : {}) };
+      }
+      throw error;
+    }
   }
 
   async update(input: { resource: WorkspaceResource; entityId: string; command: WorkspaceUpdateCommand; userId: string; deviceId: string; requestId?: string }): Promise<WorkspaceCommandResponse> {
@@ -74,6 +171,9 @@ export class WorkspaceCommandService {
       const table = descriptor.table as AnyPgTable & Record<string, any>;
       const row = await ownedActiveRow(tx, table, input.entityId, input.userId);
       assertRevision(row.revision, input.command.expectedRevision, row);
+      if (input.resource === "outfit-plans") {
+        await lockOutfitPlanDates(tx, input.userId, [planDateFromRow(row), planDateFromPayload(input.command.payload)]);
+      }
       const now = new Date();
       const revision = row.revision + 1;
       const payload = await canonicalWorkspacePayload(tx, input.resource, input.userId, input.command.payload);
@@ -95,6 +195,9 @@ export class WorkspaceCommandService {
       const table = descriptor.table as AnyPgTable & Record<string, any>;
       const row = await ownedActiveRow(tx, table, input.entityId, input.userId);
       assertRevision(row.revision, input.command.expectedRevision, row);
+      if (input.resource === "outfit-plans") {
+        await lockOutfitPlanDates(tx, input.userId, [planDateFromRow(row)]);
+      }
       const now = new Date();
       const revision = row.revision + 1;
       await tx.update(table).set({ revision, originDeviceId: input.deviceId, deletedAt: now, updatedAt: now })
@@ -142,7 +245,7 @@ export class WorkspaceCommandService {
       if (!dateKey) throw new WorkspaceApiError(400, "invalid_request", "穿搭计划缺少日期");
 
       // 同一天的主展示是跨实体约束，按用户和日期加事务锁，避免并发请求留下两个主展示。
-      await tx.execute(sql`SELECT pg_advisory_xact_lock(hashtext(${`workspace-plan-primary:${input.userId}:${dateKey}`}))`);
+      await lockOutfitPlanDates(tx, input.userId, [dateKey]);
       const plans = await tx.select().from(planTable).where(and(eq(planTable.userId, input.userId), isNull(planTable.deletedAt))) as any[];
       const sameDay = plans.filter((row) => String(asRecord(row.payload).date ?? "") === dateKey);
       const now = new Date();
@@ -212,9 +315,11 @@ export class WorkspaceCommandService {
       const payload = asRecord(row.payload);
       const garmentId = uuidOrNull(payload.convertedGarmentId);
       const now = new Date();
+      let restoredPayload = payload;
       if (garmentId) {
         const [garment] = await tx.select().from(garmentTable).where(and(eq(garmentTable.id, garmentId), eq(garmentTable.userId, input.userId), isNull(garmentTable.deletedAt))).limit(1) as any[];
         if (garment) {
+          restoredPayload = inheritGarmentFieldsToWishlist(payload, asRecord(garment.payload));
           await tx.update(garmentTable).set({ revision: garment.revision + 1, deletedAt: now, updatedAt: now }).where(eq(garmentTable.id, garmentId));
           await cascadeDeletedGarmentReferences(tx, {
             userId: input.userId,
@@ -228,7 +333,7 @@ export class WorkspaceCommandService {
           await appendChange(tx, input.userId, "garment", garmentId, "delete", garment.revision + 1, {});
         }
       }
-      const nextPayload = normalizeWishlistPayload({ ...payload, purchased: false, convertedGarmentId: null, convertedItemId: null, convertedAt: null });
+      const nextPayload = normalizeWishlistPayload({ ...restoredPayload, purchased: false, convertedGarmentId: null, convertedItemId: null, convertedAt: null });
       const revision = row.revision + 1;
       await tx.update(wishlistTable).set({ revision, payload: nextPayload, updatedAt: now }).where(eq(wishlistTable.id, input.entityId));
       await appendChange(tx, input.userId, "wishlistItem", input.entityId, "update", revision, nextPayload);
@@ -242,6 +347,9 @@ export class WorkspaceCommandService {
       const descriptor = WORKSPACE_RESOURCES[input.resource];
       const table = descriptor.table as AnyPgTable & Record<string, any>;
       const wearTable = WORKSPACE_RESOURCES["wear-events"].table as AnyPgTable & Record<string, any>;
+      if (input.resource === "outfit-plans") {
+        await lockOutfitPlanDates(tx, input.userId, [input.command.wornAt.slice(0, 10)]);
+      }
       const row = await ownedActiveRow(tx, table, input.entityId, input.userId);
       assertRevision(row.revision, input.command.expectedRevision, row);
       const wearEventId = randomUUID();
@@ -266,6 +374,9 @@ export class WorkspaceCommandService {
       const descriptor = WORKSPACE_RESOURCES[input.resource];
       const table = descriptor.table as AnyPgTable & Record<string, any>;
       const wearTable = WORKSPACE_RESOURCES["wear-events"].table as AnyPgTable & Record<string, any>;
+      if (input.resource === "outfit-plans" && typeof input.command.date === "string") {
+        await lockOutfitPlanDates(tx, input.userId, [input.command.date]);
+      }
       const row = await ownedActiveRow(tx, table, input.entityId, input.userId);
       assertRevision(row.revision, input.command.expectedRevision, row);
       const payload = asRecord(row.payload);
@@ -325,6 +436,7 @@ async function markOutfitWearTransaction(
   assertRevision(outfit.revision, input.command.expectedRevision, outfit);
   const now = new Date();
   const dateKey = input.command.wornAt.slice(0, 10);
+  await lockOutfitPlanDates(tx, input.userId, [dateKey]);
   const outfitPayload = asRecord(outfit.payload);
   const canonicalOutfitId = input.entityId;
   const itemIds = numberList(outfitPayload.legacyItemIds ?? outfitPayload.itemIds);
@@ -356,9 +468,20 @@ async function markOutfitWearTransaction(
     });
     if (planned) {
       const payload = asRecord(planned.payload);
+      const wantsPrimaryActual = Boolean(payload.isPrimary);
+      if (wantsPrimaryActual) {
+        for (const other of sameDay) {
+          const otherPayload = asRecord(other.payload);
+          if (other.id === planned.id || otherPayload.status !== "worn" || otherPayload.isPrimaryActual !== true) continue;
+          const demoted = { ...otherPayload, isPrimaryActual: false, updatedAt: now.toISOString() };
+          await tx.update(planTable).set({ revision: other.revision + 1, originDeviceId: input.deviceId, payload: demoted, updatedAt: now })
+            .where(and(eq(planTable.id, other.id), eq(planTable.userId, input.userId), eq(planTable.revision, other.revision), isNull(planTable.deletedAt)));
+          await appendChange(tx, input.userId, "outfitPlan", other.id, "update", other.revision + 1, demoted);
+        }
+      }
       const nextPayload = {
         ...payload, status: "worn", wornDateLinked: dateKey, actualOutfitId: canonicalOutfitId,
-        wearOrigin: "planned_confirmed", plannedBeforeWorn: true, isPrimaryActual: Boolean(payload.isPrimary), updatedAt: now.toISOString(),
+        wearOrigin: "planned_confirmed", plannedBeforeWorn: true, isPrimaryActual: wantsPrimaryActual, updatedAt: now.toISOString(),
       };
       await tx.update(planTable).set({ revision: planned.revision + 1, originDeviceId: input.deviceId, payload: nextPayload, actualOutfitId: canonicalOutfitId, updatedAt: now }).where(eq(planTable.id, planned.id));
       await appendChange(tx, input.userId, "outfitPlan", planned.id, "update", planned.revision + 1, nextPayload);
@@ -403,6 +526,7 @@ async function cancelOutfitWearTransaction(
   assertRevision(outfit.revision, input.command.expectedRevision, outfit);
   const dateKey = input.command.date;
   if (!dateKey) throw new WorkspaceApiError(400, "invalid_request", "缺少穿着日期");
+  await lockOutfitPlanDates(tx, input.userId, [dateKey]);
   const now = new Date();
   const outfitPayload = asRecord(outfit.payload);
   const canonicalOutfitId = input.entityId;
@@ -869,6 +993,22 @@ function assertNoLegacyIdentifiers(payload: Record<string, unknown>): void {
   const legacyKeys = ["legacyOutfitId", "legacyPlanEntryId", "legacyCalendarPlanId"];
   const found = legacyKeys.find((key) => Object.prototype.hasOwnProperty.call(payload, key));
   if (found) throw new WorkspaceApiError(422, "invalid_request", `旧标识 ${found} 已停用，请刷新客户端后重试`);
+}
+
+async function lockOutfitPlanDates(tx: Tx, userId: string, dates: Array<string | null | undefined>): Promise<void> {
+  const normalized = [...new Set(dates.filter((date): date is string => Boolean(date)).map((date) => date.slice(0, 10)))].sort();
+  for (const date of normalized) {
+    await tx.execute(sql`SELECT pg_advisory_xact_lock(hashtext(${`workspace-plan-date:${userId}:${date}`}))`);
+  }
+}
+
+function planDateFromPayload(payload: Record<string, unknown>): string | null {
+  const value = payload.planDate ?? payload.date;
+  return typeof value === "string" && value ? value : null;
+}
+
+function planDateFromRow(row: Record<string, any>): string | null {
+  return typeof row.planDate === "string" && row.planDate ? row.planDate : planDateFromPayload(asRecord(row.payload));
 }
 
 function specialColumns(resource: WorkspaceResource, payload: Record<string, unknown>) {
