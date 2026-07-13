@@ -1157,3 +1157,11 @@
 - **版本变更**：待本批修复范围确认；进入 APK 的改动将在交付前递增版本。
 - **验证结果**：待执行。
 - **未验证风险**：待执行。
+## 2026-07-13 / v2.1.16-test / Codex — App 套装组成编辑入口
+
+- **目的**：补齐 App 套装详情「组成」页签和编辑套装页的组成单品增删入口，复用现有衣橱选择逻辑。
+- **改动文件**：`src/components/outfit-list-view.tsx`。
+- **改动内容**：新增全屏组成选择器、衣橱/分类/搜索筛选、选中摘要、至少 2 件校验、未保存返回确认；详情页快速保存等待服务端读回，编辑页保持草稿到“保存套装”；组成变化后清除旧 AI 建议并刷新封面计算。
+- **验证结果**：`npm run typecheck`、`npm run build`、`test:logic:ui-overflow`、`test:logic:detail-shell`、`test:logic:component-reuse`、`test:logic:outfit`、`test:logic:ui-overlay-contract`、`test:logic:outfit-cover-consistency`、`git diff --check`、impeccable layout detector 均通过。
+- **风险门禁**：`medium`；未触发 subagent：用户未通知（仅按技能要求做只读布局/机械扫描）。
+- **未验证风险**：未在 Android 真机/模拟器执行本次新增编辑组成的实际触摸路径；既有 `test:logic:ui-token-contract` 仍因历史 4 项硬编码颜色失败，本批未修改相关文件。
