@@ -15,6 +15,7 @@ import {
   getOutfitPlanDateRelation,
   hasDuplicatePlannedOutfit,
   resolvePrimaryOutfitPlanEntry,
+  getDisplayOutfitId,
   type OutfitPlanSelectionMode,
 } from "../../../utils/outfit-plan-state";
 import {
@@ -40,6 +41,7 @@ type CalendarDayView = {
   muted: boolean;
   active: boolean;
   today: boolean;
+  thumbnails: string[];
   plans: ReturnType<typeof toPlanToneViews>;
 };
 type CalendarWeekView = {
@@ -253,6 +255,11 @@ Page({
   async handleDayCardAction(event: { detail?: { action?: string } }) {
     const action = event.detail?.action;
     if (!action || this.data.savingEntry) return;
+    if (action === "view_plan") {
+      const planId = String((event.detail as { planId?: string } | undefined)?.planId || "");
+      if (planId) this.openPlanDetail({ detail: { id: planId }, currentTarget: { dataset: {} } });
+      return;
+    }
     if (action === "empty_primary") {
       this.openSelectedDateSelector();
       return;
@@ -367,6 +374,7 @@ Page({
       || this.data.calendarPlans.some((plan) => rangeOverlaps(plan.startDate, plan.endDate, firstDay, lastDay));
     const dayViews = getMonthGrid(this.data.monthKey, this.data.todayKey).map((cell) => {
       const entry = this.primaryEntryForDate(cell.dateKey);
+      const outfit = entry ? this.data.outfits.find((item) => item.id === getDisplayOutfitId(entry)) : undefined;
       const plans = this.plansForDate(cell.dateKey);
       return {
         key: cell.dateKey,
@@ -374,6 +382,7 @@ Page({
         muted: cell.muted,
         active: cell.dateKey === this.data.selectedDate,
         today: cell.isToday,
+        thumbnails: outfit?.itemImages?.length ? outfit.itemImages : outfit?.imageUrl ? [outfit.imageUrl] : [],
         plans: toPlanToneViews(plans),
       };
     });

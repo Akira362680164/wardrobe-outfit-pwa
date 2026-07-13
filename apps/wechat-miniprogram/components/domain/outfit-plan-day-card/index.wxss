@@ -58,6 +58,14 @@
   white-space: nowrap;
 }
 
+.day-card__plan-chip.tone-denim { color: #355c7d; background: rgba(53, 92, 125, 0.14); }
+.day-card__plan-chip.tone-moss { color: #5f7058; background: rgba(95, 112, 88, 0.16); }
+.day-card__plan-chip.tone-clay { color: #9a5e48; background: rgba(185, 113, 85, 0.16); }
+.day-card__plan-chip.tone-amber { color: #8a6812; background: rgba(244, 190, 66, 0.24); }
+.day-card__plan-chip.tone-rose { color: #a84e5c; background: rgba(244, 113, 130, 0.18); }
+.day-card__plan-chip.tone-purple { color: #7651a1; background: rgba(188, 140, 236, 0.18); }
+.day-card__plan-chip.tone-slate { color: #536277; background: rgba(148, 163, 184, 0.22); }
+
 .day-card__primary {
   display: flex;
   align-items: center;
@@ -127,10 +135,22 @@
 }
 
 .day-card__actions {
-  display: grid;
+  display: flex;
   min-width: 0;
   gap: 8rpx;
   margin-top: 18rpx;
+}
+
+.day-card__actions--1,
+.day-card__empty-actions--1 { grid-template-columns: minmax(0, 1fr); }
+.day-card__actions--2,
+.day-card__empty-actions--2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.day-card__actions--3,
+.day-card__empty-actions--3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+
+.day-card__actions .day-card__action,
+.day-card__empty-actions .day-card__action {
+  flex: 1 1 0;
 }
 
 .day-card__action,
@@ -173,6 +193,20 @@
   text-align: center;
 }
 
+.day-card__empty--planned {
+  padding-top: 14rpx;
+  text-align: left;
+}
+
+.day-card__empty-meta {
+  margin-bottom: 12rpx;
+  overflow: hidden;
+  color: rgba(29, 34, 40, 0.50);
+  font-size: var(--font-caption);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .day-card__empty-title {
   color: var(--color-muted);
   font-size: var(--font-body);
@@ -187,11 +221,32 @@
 }
 
 .day-card__empty-action {
-  width: 240rpx;
-  margin: 18rpx auto 0;
   border-color: transparent;
   color: var(--color-surface);
   background: var(--color-primary);
+}
+
+.day-card__empty-actions {
+  display: flex;
+  min-width: 0;
+  gap: 16rpx;
+  margin-top: 16rpx;
+}
+
+.day-card__empty:not(.day-card__empty--planned) .day-card__empty-actions {
+  margin-top: 18rpx;
+}
+
+.day-card__empty:not(.day-card__empty--planned) .day-card__empty-action {
+  width: 240rpx;
+  flex: 0 0 240rpx;
+  margin: 0 auto;
+}
+
+.day-card__empty-action.day-card__action--secondary {
+  border-color: rgba(29, 34, 40, 0.14);
+  color: var(--color-muted);
+  background: rgba(255, 255, 252, 0.95);
 }
 
 .day-card__backups {

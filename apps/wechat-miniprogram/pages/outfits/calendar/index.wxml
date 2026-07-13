@@ -1,5 +1,5 @@
 <view class="page-shell calendar-page" bindtouchstart="onMonthTouchStart" bindtouchend="onMonthTouchEnd">
-  <sub-page-top-bar title="穿搭计划"><button slot="right" class="plan-add-button" bindtap="openAddPlanSheet">+计划</button></sub-page-top-bar>
+  <sub-page-top-bar title="穿搭计划"><view slot="right" class="plan-add-link" bindtap="openAddPlanSheet">+计划</view></sub-page-top-bar>
 
   <view class="month-row">
     <view class="month-arrow" data-delta="prev" bindtap="shiftMonth"><ui-icon name="chevron-left" size="32" tone="ink" /></view>
@@ -24,6 +24,12 @@
             bindtap="selectDate"
           >
             <view class="calendar-day__num {{day.today ? 'calendar-day__num--today' : ''}}">{{day.label}}</view>
+            <view wx:if="{{day.thumbnails.length}}" class="calendar-day__thumb cover-collage cover-collage--{{day.thumbnails.length >= 4 ? '4' : day.thumbnails.length}}">
+              <view wx:for="{{day.thumbnails}}" wx:for-item="image" wx:key="*this" wx:if="{{index < 4}}" class="cover-collage__cell">
+                <image class="cover-collage__image" mode="aspectFill" src="{{image}}" />
+              </view>
+            </view>
+            <view wx:else class="calendar-day__plus"><ui-icon name="plus" size="22" tone="ink" /></view>
             <plan-tone-strip plans="{{day.plans}}" bind:select="openPlanDetail" />
           </view>
         </view>

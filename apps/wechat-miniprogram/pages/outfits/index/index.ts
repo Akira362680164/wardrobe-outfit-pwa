@@ -314,6 +314,11 @@ Page({
   async handleDayCardAction(event: { detail?: { action?: string } }) {
     const action = event.detail?.action;
     if (!action || this.data.savingEntry) return;
+    if (action === "view_plan") {
+      const planId = String((event.detail as { planId?: string } | undefined)?.planId || "");
+      if (planId) this.openPlanDetail({ detail: { id: planId }, currentTarget: { dataset: {} } });
+      return;
+    }
     if (action === "empty_primary") {
       this.openSelectedDateSelector();
       return;

@@ -1,3 +1,30 @@
+## 2026-07-13 / v2.1.16-test / Codex — 周月历入口与日期槽位统一
+
+- **目的**：继续收口周历/月历视觉差异，去掉“+计划”胶囊按钮，并让两种日历的空日期占位和选中日期框保持一致。
+- **版本变更**：无，保持 `2.1.16-test`；本轮不构建 APK、不上传体验版、不发布小程序。
+- **改动内容**：周历和月历顶部“+计划”改为纯蓝色文字入口；月历日期格补齐与周历一致的浅色“+”媒体占位，已有套装时使用相同尺寸的缩略图槽位；两种日历统一日期列宽、间距、选中框边框/底色/圆角，并将选中框高度统一为 `180rpx`，普通月历日期格保留紧凑高度。
+- **改动文件**：`apps/wechat-miniprogram/pages/outfits/index/index.wxml`、`index.wxss`、`apps/wechat-miniprogram/pages/outfits/calendar/index.wxml`、`index.ts`、`index.wxss`、`scripts/parity/tests/mini-outfit-calendar-ui.test.ts`、`VERSION_HISTORY.md`。
+- **验证结果**：小程序 `typecheck`、套装日历 UI 合同、套装流程、`git diff --check`、周历/月历 WXML/WXSS 编译通过；微信开发者工具模拟器截图确认两页均为蓝色文字“+计划”、月历显示浅色“+”占位，周历/月历选中日期框尺寸和样式一致。
+- **未验证风险**：当前没有可用 Android/微信真机设备（`adb devices -l` 无设备），未完成真实账号、服务端写入读回、真机窄屏手势和系统返回键验证；本轮未执行体验版上传。
+
+## 2026-07-13 / v2.1.16-test / Codex — 周历空日期槽位对齐缩略图
+
+- **目的**：修复周历无套装日期的“+”图标颜色过深且偏上问题。
+- **版本变更**：无，保持 `2.1.16-test`；本轮不构建 APK、不上传体验版、不发布小程序。
+- **改动内容**：将空日期“+”放入与套装缩略图相同的 `48rpx × 58rpx` 媒体槽位，使用 flex 垂直居中，并通过整体透明度降低对比度；不改变周历七列宽度、日期格高度和选中框范围。
+- **改动文件**：`apps/wechat-miniprogram/pages/outfits/index/index.wxss`、`VERSION_HISTORY.md`。
+- **验证结果**：待完成周历 WXML/WXSS 编译和模拟器截图回归。
+- **未验证风险**：暂未在 Android/微信真机上验证窄屏触摸和真实数据。
+
+## 2026-07-13 / v2.1.16-test / Codex — 周历有计划空状态对齐 App
+
+- **目的**：修复周历/月历选中日期已有计划但尚未安排套装时的空状态层次与按钮布局，避免小程序只剩居中占位文案，与 App 的上下文卡片保持一致。
+- **版本变更**：无，保持 `2.1.16-test`；本轮不构建 APK、不上传体验版、不发布小程序。
+- **改动内容**：共享日计划卡区分“无计划”和“有计划无套装”两种状态；有计划时保留日期、星期、浅色计划标签、活动/目的地摘要和“尚未安排当天穿搭”，使用同一行“安排套装 / 查看计划”按钮；无计划继续使用实心蓝“安排穿搭”，不显示小字提示；计划标签改为各自 tone 的浅色样式，并补齐查看计划事件。
+- **改动文件**：`apps/wechat-miniprogram/utils/outfit-plan-day.ts`、`apps/wechat-miniprogram/components/domain/outfit-plan-day-card/`、`apps/wechat-miniprogram/pages/outfits/index/index.ts`、`apps/wechat-miniprogram/pages/outfits/calendar/index.ts`、`scripts/parity/tests/mini-outfit-calendar-ui.test.ts`。
+- **验证结果**：小程序 `typecheck`、套装日历 UI 合同、套装流程、`git diff --check`、共享日卡 WXML/WXSS 编译通过；微信开发者工具模拟器分别验证有计划空状态（浅色计划标签、活动摘要、两按钮同一行）和无计划空状态（仅实心蓝“安排穿搭”）；重复刷新后的 console 仅见 DevTools `routeDone with a webviewId ... is not found` 瞬态路由错误，未见本次 WXML/WXSS 编译错误。
+- **未验证风险**：当前没有可用 Android/微信真机设备（`adb devices -l` 无设备），未完成真实账号、服务端写入读回、真机窄屏手势和系统返回键验证；本轮未执行体验版上传。
+
 ## 2026-07-13 / v2.1.16-test / Codex — 小程序周月历套装卡与详情壳统一修复
 
 - **目的**：按 App 当前样式统一周历/月历的日期展开卡、计划彩条、按钮状态和套装详情，并修复小程序二级页顶部安全区与系统状态栏重叠。

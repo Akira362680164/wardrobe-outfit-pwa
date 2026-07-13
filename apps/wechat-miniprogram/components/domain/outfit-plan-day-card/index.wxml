@@ -2,7 +2,7 @@
   <view class="day-card__head">
     <view class="day-card__date">{{card.dateLabel}}</view>
     <view class="day-card__weekday">{{card.weekdayLabel}}</view>
-    <view wx:if="{{card.plans.length}}" class="day-card__plans">
+    <view wx:if="{{card.hasPlans}}" class="day-card__plans">
       <view
         wx:for="{{card.plans}}"
         wx:key="id"
@@ -28,16 +28,27 @@
       <view class="day-card__primary-name">{{card.primary.name}}</view>
       <view class="day-card__primary-status {{card.primary.statusClass}}">{{card.primary.statusLabel}}</view>
       <view class="day-card__primary-meta">{{card.primary.meta}}</view>
-      <view wx:if="{{card.actions.length}}" class="day-card__actions" style="grid-template-columns: repeat({{card.actions.length}}, minmax(0, 1fr));">
+      <view wx:if="{{card.actions.length}}" class="day-card__actions day-card__actions--{{card.actions.length}}">
         <button wx:for="{{card.actions}}" wx:key="key" wx:for-item="action" class="day-card__action day-card__action--{{action.tone || 'secondary'}}" data-action="{{action.key}}" bindtap="selectAction">{{action.label}}</button>
       </view>
     </view>
   </view>
 
-  <view wx:else class="day-card__empty">
+  <view wx:else class="day-card__empty {{card.empty.hasPlan ? 'day-card__empty--planned' : ''}}">
+    <view wx:if="{{card.empty.planMeta}}" class="day-card__empty-meta">{{card.empty.planMeta}}</view>
     <view class="day-card__empty-title">{{card.empty.title}}</view>
     <view wx:if="{{card.empty.copy}}" class="day-card__empty-copy">{{card.empty.copy}}</view>
-    <button class="day-card__empty-action" bindtap="selectEmptyAction">{{card.empty.actionLabel}}</button>
+    <view class="day-card__empty-actions day-card__empty-actions--{{card.empty.actions.length}}">
+      <button
+        wx:for="{{card.empty.actions}}"
+        wx:key="key"
+        wx:for-item="action"
+        class="day-card__action day-card__empty-action day-card__action--{{action.tone || 'secondary'}}"
+        data-action="{{action.key}}"
+        data-plan-id="{{card.empty.planId}}"
+        bindtap="selectAction"
+      >{{action.label}}</button>
+    </view>
   </view>
 
   <view wx:if="{{card.backups.length}}" class="day-card__backups">

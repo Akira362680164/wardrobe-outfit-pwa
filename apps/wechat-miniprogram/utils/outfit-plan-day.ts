@@ -21,7 +21,7 @@ export const TONE_CLASS: Record<MiniCalendarPlan["tone"], string> = {
   slate: "tone-slate",
 };
 
-export type DayCardActionKey = "mark_worn" | "delete_worn" | "change" | "backup" | "empty_primary";
+export type DayCardActionKey = "mark_worn" | "delete_worn" | "change" | "backup" | "empty_primary" | "view_plan";
 
 export interface PlanToneView {
   id: string;
@@ -39,6 +39,7 @@ export interface DayCardAction {
 export interface OutfitPlanDayCardView {
   dateLabel: string;
   weekdayLabel: string;
+  hasPlans: boolean;
   plans: PlanToneView[];
   primary: {
     entryId: string;
@@ -62,6 +63,10 @@ export interface OutfitPlanDayCardView {
     title: string;
     copy: string;
     actionLabel: string;
+    hasPlan: boolean;
+    planId: string;
+    planMeta: string;
+    actions: DayCardAction[];
   } | null;
 }
 
@@ -82,6 +87,7 @@ export function buildOutfitPlanDayCard(input: {
   outfits: MiniOutfit[];
 }): OutfitPlanDayCardView {
   const relation = getOutfitPlanDateRelation(input.dateKey, input.todayKey);
+  const mainPlan = input.plans[0];
   const primaryEntry = resolvePrimaryOutfitPlanEntry(input.entries);
   const visiblePrimaryEntry = relation === "past" && primaryEntry?.status !== "worn" ? undefined : primaryEntry;
   const primaryOutfit = visiblePrimaryEntry
@@ -138,19 +144,40 @@ export function buildOutfitPlanDayCard(input: {
     })
     .filter((entry): entry is NonNullable<typeof entry> => entry !== null);
 
+  const planMeta = mainPlan
+    ? mainPlan.activities.filter((value) => value.trim()).join(" / ") || mainPlan.destination || mainPlan.typeLabel
+    : "";
+  const emptyActions: DayCardAction[] = mainPlan
+    ? [
+        { key: "empty_primary", label: relation === "past" ? "补记已穿" : "安排套装", tone: "primary" },
+        { key: "view_plan", label: "查看计划", tone: "secondary" },
+      ]
+    : [{ key: "empty_primary", label: relation === "past" ? "补记已穿" : "安排穿搭", tone: "primary" }];
+
   return {
     dateLabel,
     weekdayLabel,
+    hasPlans: input.plans.length > 0,
     plans: toPlanToneViews(input.plans),
     primary,
     actions,
     backups,
-      empty: primary
+    empty: primary
       ? null
       : {
-          title: relation === "past" ? `${dateLabel}还没有穿着记录` : relation === "today" ? "今天还没有安排穿搭" : `${dateLabel}还没有安排穿搭`,
+          title: mainPlan
+            ? "尚未安排当天穿搭"
+            : relation === "past"
+              ? `${dateLabel}还没有穿着记录`
+              : relation === "today"
+                ? "今天还没有安排穿搭"
+                : `${dateLabel}还没有安排穿搭`,
           copy: "",
-          actionLabel: relation === "past" ? "补记已穿" : "安排穿搭",
+          actionLabel: emptyActions[0]?.label || "安排穿搭",
+          hasPlan: Boolean(mainPlan),
+          planId: mainPlan?.id || "",
+          planMeta,
+          actions: emptyActions,
         },
   };
 }
