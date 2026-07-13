@@ -14,6 +14,8 @@ const weekWxml = read("apps/wechat-miniprogram/pages/outfits/index/index.wxml");
 const monthWxml = read("apps/wechat-miniprogram/pages/outfits/calendar/index.wxml");
 const weekTs = read("apps/wechat-miniprogram/pages/outfits/index/index.ts");
 const monthTs = read("apps/wechat-miniprogram/pages/outfits/calendar/index.ts");
+const weekWxss = read("apps/wechat-miniprogram/pages/outfits/index/index.wxss");
+const monthWxss = read("apps/wechat-miniprogram/pages/outfits/calendar/index.wxss");
 const stripWxss = read("apps/wechat-miniprogram/components/domain/plan-tone-strip/index.wxss");
 const dayCardWxss = read("apps/wechat-miniprogram/components/domain/outfit-plan-day-card/index.wxss");
 const detailWxml = read("apps/wechat-miniprogram/pages/outfits/detail/index.wxml");
@@ -27,6 +29,11 @@ assert.match(stripWxss, /flex:\s*1\s+1\s+0/);
 assert.match(stripWxss, /width:\s*100%/);
 assert.match(dayCardWxss, /grid-template-columns:\s*repeat\(/);
 assert.match(dayCardWxss, /white-space:\s*nowrap/);
+assert.match(weekWxml, /hero-control--plan/);
+assert.match(monthWxml, /plan-add-link/);
+assert.match(monthWxml, /calendar-day__plus/);
+assert.match(weekWxss, /height:\s*180rpx/);
+assert.match(monthWxss, /\.calendar-day--active[\s\S]*height:\s*180rpx/);
 assert.match(weekTs, /deleteWorkspaceEntity\("outfit-plans"/);
 assert.match(monthTs, /deleteWorkspaceEntity\("outfit-plans"/);
 assert.match(detailWxml, /<item-detail-shell/);
@@ -37,18 +44,23 @@ const plans = Array.from({ length: 5 }, (_, index) => plan(index + 1));
 for (const count of [1, 2, 3, 5]) assert.equal(toPlanToneViews(plans.slice(0, count)).length, count);
 
 const outfit = makeOutfit("outfit-1");
-const scenarios: Array<{ date: string; entries: MiniOutfitPlanEntry[]; labels: string[]; primary: boolean }> = [
+const scenarios: Array<{ date: string; entries: MiniOutfitPlanEntry[]; labels: string[]; primary: boolean; plans?: MiniCalendarPlan[]; hasPlan?: boolean }> = [
   { date: "2026-07-12", entries: [entry("worn", "outfit-1")], labels: ["删除已穿"], primary: true },
   { date: "2026-07-13", entries: [entry("planned", "outfit-1")], labels: ["标记已穿", "更改套装", "添加备选"], primary: true },
   { date: "2026-07-13", entries: [entry("worn", "outfit-1")], labels: ["删除已穿", "更改套装", "添加备选"], primary: true },
   { date: "2026-07-14", entries: [entry("planned", "outfit-1")], labels: ["更改套装", "添加备选"], primary: true },
-  { date: "2026-07-12", entries: [entry("planned", "outfit-1")], labels: ["补记已穿"], primary: false },
+  { date: "2026-07-12", entries: [entry("planned", "outfit-1")], labels: ["补记已穿", "查看计划"], primary: false, hasPlan: true },
+  { date: "2026-07-13", entries: [], labels: ["安排穿搭"], primary: false, plans: [], hasPlan: false },
 ];
 for (const scenario of scenarios) {
-  const card = buildOutfitPlanDayCard({ dateKey: scenario.date, todayKey: "2026-07-13", plans: plans.slice(0, 3), entries: scenario.entries, outfits: [outfit] });
-  assert.deepEqual(card.primary ? card.actions.map((action) => action.label) : [card.empty?.actionLabel], scenario.labels);
+  const card = buildOutfitPlanDayCard({ dateKey: scenario.date, todayKey: "2026-07-13", plans: scenario.plans ?? plans.slice(0, 3), entries: scenario.entries, outfits: [outfit] });
+  assert.deepEqual(card.primary ? card.actions.map((action) => action.label) : card.empty?.actions.map((action) => action.label), scenario.labels);
   assert.equal(Boolean(card.primary), scenario.primary);
-  if (!card.primary) assert.equal(card.empty?.copy, "");
+  if (!card.primary) {
+    assert.equal(card.empty?.copy, "");
+    assert.equal(card.empty?.hasPlan, scenario.hasPlan);
+  }
+  assert.equal(card.hasPlans, scenario.plans ? scenario.plans.length > 0 : true);
 }
 
 const secondaryPages = [

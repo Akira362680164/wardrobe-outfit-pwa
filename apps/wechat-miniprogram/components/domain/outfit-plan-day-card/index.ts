@@ -12,7 +12,10 @@ Component({
       this.triggerEvent("outfitselect", { id: String(event.currentTarget.dataset.id || "") });
     },
     selectAction(this: any, event: any) {
-      this.triggerEvent("action", { action: String(event.currentTarget.dataset.action || "") });
+      this.triggerEvent("action", {
+        action: String(event.currentTarget.dataset.action || ""),
+        planId: String(event.currentTarget.dataset.planId || ""),
+      });
     },
     selectEmptyAction(this: any) {
       this.triggerEvent("action", { action: "empty_primary" });
