@@ -20,6 +20,10 @@ export function ConfirmActionSheet({ open, title, description, confirmLabel, can
   return <MotionSheet
     open={open}
     onClose={submitting ? () => undefined : onClose}
+    variant={tone === "danger" ? "destructive" : "confirm"}
+    dismissible={!submitting}
+    closeOnBackdrop={!submitting}
+    closeOnEscape={!submitting}
     preferBottom={false}
     className="z-[100]"
     panelClassName="sm:max-w-sm"

@@ -4,12 +4,14 @@ import { AnimatePresence, motion, useReducedMotion, type MotionProps } from "mot
 
 import { X } from "lucide-react";
 
-import React, { useCallback, useEffect, useLayoutEffect, useRef } from "react";
+import React, { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 
 import { createPortal } from "react-dom";
 import { duration, ease, pop, scaleModal, slideRight, slideRightExit, slideUp, spring, toastDrop } from "@/lib/motion-tokens";
 import { useScrollLock } from "@/lib/use-scroll-lock";
 import { OriginalCroppedImage } from "@/components/original-cropped-image";
+import { OverlayPortal, useOverlayLayer } from "@/components/overlay-root";
+import type { OverlayDismissReason } from "@/lib/overlay-stack";
 
 /* ------------------------------------------------------------------ */
 /*  AnimatedPage – sub-page enter / exit with slide-right              */
@@ -63,7 +65,9 @@ export function AnimatedPresenceShell({
 /*  MotionSheet – Bottom-sheet-style modal (mobile-first)              */
 /* ------------------------------------------------------------------ */
 
-interface MotionSheetProps {
+export type MotionSheetVariant = "action" | "form" | "confirm" | "destructive";
+
+export interface MotionSheetProps {
   open: boolean;
   onClose: () => void;
   children: React.ReactNode;
@@ -75,36 +79,66 @@ interface MotionSheetProps {
   preferBottom?: boolean;
   role?: "dialog" | "alertdialog";
   ariaLabel?: string;
+  ariaLabelledBy?: string;
   closeOnBackdrop?: boolean;
   closeOnEscape?: boolean;
+  variant?: MotionSheetVariant;
+  dismissible?: boolean;
+  onDismissBlocked?: (reason: OverlayDismissReason) => void;
 }
 
-export function MotionSheet({
-  open,
+function MotionSheetLayer({
   onClose,
   children,
   className,
   panelClassName,
   preferBottom = true,
-  role = "dialog",
+  role,
   ariaLabel,
+  ariaLabelledBy,
   closeOnBackdrop = true,
   closeOnEscape = true,
+  variant = "form",
+  dismissible = true,
+  onDismissBlocked,
 }: MotionSheetProps) {
-  // v0.9.16: 弹窗打开期间锁定 body 滚动 + 拦截 focus/touchmove 穿透,
-  // 修复 Android WebView 软键盘弹起 / 触摸拖动时底层"衣橱设置"页面跟着滚动的问题。
-  useScrollLock(open);
+  // Keep scroll locked through AnimatePresence exit, not only until `open`
+  // flips false. The layer unregisters after its visual exit completes.
+  useScrollLock(true);
 
   const panelRef = useRef<HTMLDivElement | null>(null);
-  const previousFocusRef = useRef<HTMLElement | null>(null);
+  const didInitialFocusRef = useRef(false);
+  const [blockedAnnouncement, setBlockedAnnouncement] = useState("");
+  const resolvedRole = role ?? (variant === "destructive" ? "alertdialog" : "dialog");
+  const fallbackAriaLabel = {
+    action: "操作面板",
+    form: "表单面板",
+    confirm: "确认操作",
+    destructive: "危险操作确认",
+  }[variant];
+  const canDismiss = useCallback((reason: OverlayDismissReason) => {
+    if (reason === "backdrop") return closeOnBackdrop;
+    return closeOnEscape;
+  }, [closeOnBackdrop, closeOnEscape]);
+  const handleBlockedDismiss = useCallback((reason: OverlayDismissReason) => {
+    setBlockedAnnouncement("操作进行中，暂时无法关闭");
+    onDismissBlocked?.(reason);
+  }, [onDismissBlocked]);
+  const { overlayId, isTopmost, requestDismiss } = useOverlayLayer({
+    kind: resolvedRole,
+    dismissible,
+    canDismiss,
+    onDismiss: () => onClose(),
+    onDismissBlocked: handleBlockedDismiss,
+  });
   const handleBackdrop = useCallback(() => {
-    if (closeOnBackdrop) onClose();
-  }, [closeOnBackdrop, onClose]);
+    requestDismiss("backdrop");
+  }, [requestDismiss]);
   const stopProp = useCallback((e: React.MouseEvent) => e.stopPropagation(), []);
 
   useEffect(() => {
-    if (!open) return;
-    previousFocusRef.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    if (!isTopmost || didInitialFocusRef.current) return;
+    didInitialFocusRef.current = true;
     const frame = window.requestAnimationFrame(() => {
       const panel = panelRef.current;
       if (!panel) return;
@@ -113,21 +147,12 @@ export function MotionSheet({
       );
       (focusable ?? panel).focus();
     });
-    return () => {
-      window.cancelAnimationFrame(frame);
-      previousFocusRef.current?.focus();
-      previousFocusRef.current = null;
-    };
-  }, [open]);
+    return () => window.cancelAnimationFrame(frame);
+  }, [isTopmost]);
 
   useEffect(() => {
-    if (!open) return;
+    if (!isTopmost) return;
     const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape" && closeOnEscape) {
-        event.preventDefault();
-        onClose();
-        return;
-      }
       if (event.key !== "Tab") return;
       const panel = panelRef.current;
       if (!panel) return;
@@ -149,46 +174,65 @@ export function MotionSheet({
         first.focus();
       }
     };
-    document.addEventListener("keydown", onKeyDown);
-    return () => document.removeEventListener("keydown", onKeyDown);
-  }, [closeOnEscape, onClose, open]);
+    document.addEventListener("keydown", onKeyDown, true);
+    return () => document.removeEventListener("keydown", onKeyDown, true);
+  }, [isTopmost]);
+
+  const bottomPresentation = preferBottom && (variant === "action" || variant === "form");
 
   return (
+    <OverlayPortal>
+      <div
+        className={`fixed inset-0 z-50 ${bottomPresentation ? "" : "grid place-items-center p-4"} ${className ?? ""}`}
+        data-overlay-layer={overlayId}
+        data-overlay-kind={resolvedRole}
+        data-overlay-topmost={isTopmost ? "true" : "false"}
+        aria-hidden={isTopmost ? undefined : "true"}
+        inert={isTopmost ? undefined : true}
+      >
+        {/* Backdrop — touch-none(CSS touch-action:none) 禁止该层处理触摸手势.
+            wheel/touchmove 全局拦截由 useScrollLock 在 capture 阶段完成,
+            不在此处挂 onWheel/onTouchMove 避免 React 19 passive listener 警告. */}
+        <motion.div
+          className="absolute inset-0 bg-ink/40 touch-none"
+          aria-hidden="true"
+          variants={{ in: { opacity: 1 }, out: { opacity: 0 } }}
+          initial="out"
+          animate="in"
+          exit="out"
+          transition={{ duration: duration.fast }}
+          data-parity-id="parity.app.app.src.components.motion.common.d07c4d282a" onClick={handleBackdrop}
+        />
+        {/* Sheet panel — overscroll-behavior:contain 阻止弹窗内部滚到边界时
+            链式触发底层 body 滚动; useScrollLock 同步锁定底层滚动容器 */}
+        <motion.div
+          ref={panelRef}
+          role={resolvedRole}
+          aria-modal="true"
+          aria-label={ariaLabelledBy ? undefined : (ariaLabel ?? fallbackAriaLabel)}
+          aria-labelledby={ariaLabelledBy}
+          tabIndex={-1}
+          className={`${bottomPresentation ? "absolute bottom-0 inset-x-0 mx-auto rounded-t-2xl" : "relative mx-auto w-full max-w-lg rounded-2xl"} max-h-[92vh] w-full overflow-y-auto overscroll-contain bg-paper p-4 shadow-2xl outline-none ${panelClassName ?? ""}`}
+          variants={bottomPresentation ? slideUp : scaleModal}
+          initial="initial"
+          animate="in"
+          exit="out"
+          transition={{ duration: duration.panel, ease: ease.app }}
+          data-overlay-variant={variant}
+          data-parity-id="parity.app.app.src.components.motion.common.3ff559809b" onClick={stopProp}
+        >
+          {children}
+          <span className="sr-only" role="status" aria-live="polite">{blockedAnnouncement}</span>
+        </motion.div>
+      </div>
+    </OverlayPortal>
+  );
+}
+
+export function MotionSheet(props: MotionSheetProps) {
+  return (
     <AnimatePresence>
-      {open ? (
-        <div className={`fixed inset-0 z-50 ${className ?? ""}`}>
-          {/* Backdrop — touch-none(CSS touch-action:none) 禁止该层处理触摸手势.
-              wheel/touchmove 全局拦截由 useScrollLock 在 capture 阶段完成,
-              不在此处挂 onWheel/onTouchMove 避免 React 19 passive listener 警告. */}
-          <motion.div
-            className="absolute inset-0 bg-ink/40 touch-none"
-            variants={{ in: { opacity: 1 }, out: { opacity: 0 } }}
-            initial="out"
-            animate="in"
-            exit="out"
-            transition={{ duration: duration.fast }}
-            data-parity-id="parity.app.app.src.components.motion.common.d07c4d282a" onClick={handleBackdrop}
-          />
-          {/* Sheet panel — overscroll-behavior:contain 阻止弹窗内部滚到边界时
-              链式触发底层 body 滚动; useScrollLock 同步锁定底层滚动容器 */}
-          <motion.div
-            ref={panelRef}
-            role={role}
-            aria-modal="true"
-            aria-label={ariaLabel}
-            tabIndex={-1}
-            className={`absolute bottom-0 inset-x-0 mx-auto w-full max-h-[92vh] overflow-y-auto overscroll-contain rounded-t-2xl bg-paper p-4 shadow-2xl outline-none ${preferBottom ? "" : "sm:top-1/2 sm:bottom-auto sm:inset-x-4 sm:max-w-lg sm:mx-auto sm:rounded-lg sm:-translate-y-1/2"} ${panelClassName ?? ""}`}
-            variants={preferBottom ? slideUp : scaleModal}
-            initial="initial"
-            animate="in"
-            exit="out"
-            transition={{ duration: duration.panel, ease: ease.app }}
-            data-parity-id="parity.app.app.src.components.motion.common.3ff559809b" onClick={stopProp}
-          >
-            {children}
-          </motion.div>
-        </div>
-      ) : null}
+      {props.open ? <MotionSheetLayer key="motion-sheet-layer" {...props} /> : null}
     </AnimatePresence>
   );
 }

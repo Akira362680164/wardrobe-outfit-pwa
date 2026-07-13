@@ -1,3 +1,13 @@
+## 2026-07-13 / v2.1.18-test / Codex Subagent A1 — OverlayStack 与单一 Back/Escape 基线
+
+- **执行 Agent**：Codex 实施 Subagent A1；独立分支 `codex/motion-a1-overlay-back-20260713`、独立 worktree `/Users/fangzheng/Documents/wardrobe-motion-a1-overlay-back-20260713`，基于批次提交 `8fdb07f7d17e9578f18f90f04d68f8cd8308d1a8`；未合入 integration / `main`，未推送。
+- **目的与版本**：按 Apple 式“用户一次返回只推进一层状态”的可预测性原则，建立 Wave 1 浮层与返回基础；版本保持 `2.1.18-test`，本批不构建 APK、不修改业务/API/存储/小程序，也不实现 Sheet 拖拽、路由动画或全页面浮层迁移。
+- **改动文件**：新增 `src/lib/overlay-stack.ts`、`src/lib/back-coordinator.ts`、`src/components/overlay-root.tsx`；修改 `motion-provider.tsx`、`motion-common.tsx`、`use-stable-back-handler.ts`、`wardrobe-app.tsx` 顶层返回挂载、共享确认 Sheet、两项 overlay/back 回归脚本、UI 规范及生成预览。
+- **实现摘要**：`MotionProvider` 只挂载一个 body Portal 根；OverlayStack 统一注册/注销、topmost、按原因拒绝关闭、退出后焦点恢复，App 内容和低层浮层同步 `inert/aria-hidden`；BackCoordinator 是共享 Sheet 和已登记页面 handler 的唯一 Capacitor Back / document Escape 入口，浮层消费或拒绝后不再落到页面。`MotionSheet` 向后兼容新增 `action/form/confirm/destructive`、`ariaLabelledBy`、`dismissible` 和关闭拒绝反馈，Toast 不入栈；共享提交中确认层用 `dismissible=false` 阻止 busy 状态误关。
+- **验证结果**：`docs:ui-spec:build`、`docs:ui-spec:check`、`test:logic:ui-spec-preview`、`test:logic:ui-overlay-contract`、`test:logic:back-priority-regression`、根 `typecheck`、Next `build` 和 `git diff --check` 通过；Back 回归以可执行 store 测试证明 overlay、不可取消事务和页面 handler 任一路径一次请求最多一次状态转移，并覆盖 topmost、关闭拒绝和焦点恢复。
+- **既有门禁失败证据**：`npm run test:logic:component-reuse` 失败于未改动的 `scripts/test-component-reuse-contract.ts:21`：静态断言要求字面量 `repository.getOverview()`，基线 `use-wardrobe-data-controller.ts` 已是 `repository.getOverview({ signal: controller.signal })`。测试与被测文件均为 base `8fdb07f7` 原状，属于既有 stale 合同；按文件所有权未在 A1 越界修正，交由主集成 Agent 在 Wave 1 合入后单独更新并复验。
+- **风险门禁与未验证项**：`high`（全局浮层/Android 返回基础）。本 Session 即 Wave 1 实施 subagent。A1 仅自动接入共享 `MotionSheet` 和 `useStableBackHandler`；Lightbox、Popover、Cropper、Auth 及遗留页面私有 `App.addListener` 留给 A2，不能宣称全 App 已完成单 listener 迁移。未做 Android 真机/模拟器、TalkBack、窄屏触摸或退出动画慢放；最终 APK/Android 验收由后续 Wave 和主 Agent 完成。
+
 ## 2026-07-13 / v2.1.18-test / Codex — 动效修复并行批次 Wave 0 基线
 
 - **执行 Agent**：Codex 主集成 Agent；独立集成分支 `codex/motion-repair-integration-20260713`，本记录未修改正式 `main`。
