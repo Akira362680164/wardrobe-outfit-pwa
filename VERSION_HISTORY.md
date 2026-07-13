@@ -1,3 +1,15 @@
+## 2026-07-13 / v2.1.18-test / Codex — Wardora 推荐后端 1A 测试基线与确定性规则内核
+
+- **执行 Agent**：Codex（独立 worktree / 分支 `codex/recommendation-engine-1a-20260713`；未触发 subagent：用户未通知）。
+- **版本与功能开关**：保持 `2.1.18-test`；`DAILY_RECOMMENDATIONS_ENABLED` 与三个 PAW 开关默认全为 `false`。本批未替换 `src/lib/recommendations.ts`，未改 App/小程序 UI，未新增生产 API 路由、数据表、迁移、worker、队列或真实 QWeather / PAW 调用。
+- **测试先行证据**：先写入 24 个结构化手工 Fixture 与自动断言，首次可运行红灯明确失败于尚不存在的 `src/recommendations/index.js`，后续才实现合同和内核；Fixture expected 只能人工修改，影子报告生成器不会覆盖 expected。
+- **共享合同与边界**：新增 `packages/cloud-contracts/src/recommendations/contracts.ts`，同源定义 DateContext、CandidateEvaluation、Canonicalizer、readiness、safe/fresh/comfort 分项及受控 reason/risk/missing/exclusion code；服务端实现 `RuleDateContextResolver`、neutral evaluator、确定性 canonicalizer 与三端口整体回退。PAW 候选每批最多 4 套、默认串行，候选/DateContext 硬超时 30 秒、用户/日期总预算合同 90 秒、canonicalizer 硬超时 5 秒；非法 JSON/枚举/分值/未知、缺失或重复 candidate 均当前整批 neutral 回退。
+- **确定性算法**：实现角色映射、硬过滤、readiness、单品预评分与 slot 剪枝，T1–T8、已保存套装/单角色 Top 3 替换/锚点/新组合，`BEAM_WIDTH=48`、`MAX_RAW_CANDIDATES=120`、`MAX_RULE_SCORED_CANDIDATES=60`，12–18 套分层短名单，三目标固定权重和 Jaccard `0.50 → 0.67` 放宽。纯内核只使用显式 `asOfDate/date/timezone/ruleVersion`，不读当前时间、系统时区或随机数。
+- **Fixture 与人工影子验收**：24 个场景覆盖雨天通勤、高温休闲、冬季低温、正式会议、旅行户外、连衣裙、保存成功套装、重复/从未穿/正负反馈、所有指定硬过滤原因及 `ready/limited/not_ready`。产物为 `tests/reports/recommendations/SHADOW_ACCEPTANCE.md` 和 `shadow-audit.json`，全部使用合成数据。
+- **自动验证**：新专项 49/49 通过，包含同 Fixture 100 次字节等价、五类输入乱序不变、UUID/归属/硬过滤/模板/去重、温差 8℃、正式度差 3、日期分桶、Jaccard、上限、三目标反算、PAW 关闭/超时/八类非法批次回退与少候选诚实返回。800 件固定大衣橱 Fixture 本轮全量 API 测试中约 10.71ms，仅报告不作唯一 CI 判据。
+- **项目门禁**：`cloud:contracts:typecheck`、`api:typecheck`、根 `typecheck`、API 全量 19 文件 164/164、既有 `test:logic`、穿搭计划/打包 125 项、`test:manifest`、`recommendations:shadow:check`、Next `build` 均通过；`git diff --check` 通过。
+- **风险门禁**：`high`（新共享合同与大规模确定性服务端逻辑）。仍待产品确认的最小假设已独立冻结在 `docs/recommendations/rule-engine-1a-assumptions.md`：未冻结原语的温度/颜色/风格基础分、warm/full-rain 外套必需语义、连体装/裙装对 body slot 的替代关系、PAW DTO 缺 warmth 时的 adapter-only 中性值。未做真实用户衣橱影子运行、真实 PAW/QWeather、数据库持久化、worker/队列、生产功能开启或新 UI；这些均在本批明确范围外。
+
 ## 2026-07-13 / v2.1.18-test / Codex — Wardora 审计修复收口
 
 - **执行 Agent**：Codex（独立收口分支 `codex/wardora-closeout-20260713`；修复提交 `8fe94d73` 已纳入，未触碰正式工作区中的既有未跟踪文件）。

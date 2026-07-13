@@ -1,0 +1,4511 @@
+{
+  "schemaVersion": 1,
+  "ruleVersion": "wardora-rule-1a.1",
+  "fixtureCount": 24,
+  "fixtureExpectedValuesAreHandReviewed": true,
+  "generatedFromSyntheticDataOnly": true,
+  "scenarios": [
+    {
+      "id": "rainy_commute",
+      "title": "雨天通勤",
+      "targetDate": "2026-07-14",
+      "timezone": "Asia/Shanghai",
+      "context": {
+        "sceneType": "commute",
+        "formalityTarget": 3,
+        "activityIntensity": 2,
+        "thermalStrategy": "balanced",
+        "rainStrategy": "full_rain_protection",
+        "requiredSlots": [
+          "tops",
+          "pants",
+          "shoes",
+          "outerwear"
+        ],
+        "optionalSlots": [
+          "outerwear",
+          "skirts",
+          "one_piece",
+          "bag",
+          "hat",
+          "accessory"
+        ],
+        "avoidRules": [
+          "avoid_suede",
+          "avoid_open_toe_shoes"
+        ],
+        "confidence": "high",
+        "contextSummary": "commute:balanced:full_rain_protection"
+      },
+      "readiness": {
+        "userId": "10000000-0000-4000-8000-000000000001",
+        "generatedAt": "2026-07-13T00:00:00.000Z",
+        "completeness": {
+          "primaryImageRate": 1,
+          "categoryRate": 1,
+          "colorRate": 1,
+          "seasonRate": 1,
+          "formalityRate": 1,
+          "warmthRate": 1,
+          "temperatureRangeRate": 1
+        },
+        "eligibleGarmentsBySlot": {
+          "tops": 3,
+          "outerwear": 3,
+          "pants": 2,
+          "skirts": 1,
+          "one_piece": 1,
+          "shoes": 3,
+          "bag": 1,
+          "hat": 1
+        },
+        "validCandidateCount": 60,
+        "displayableCandidateCount": 3,
+        "status": "ready",
+        "missingFieldCodes": [],
+        "missingSlotCodes": []
+      },
+      "recommendations": [
+        {
+          "objective": "safe",
+          "candidateId": "a75062df-4423-569e-a92a-aee6a2c3141f",
+          "garmentIds": [
+            "20000000-0000-4000-8000-000000000003",
+            "20000000-0000-4000-8000-000000000004",
+            "20000000-0000-4000-8000-000000000009",
+            "20000000-0000-4000-8000-000000000012"
+          ],
+          "finalScore": 79.18,
+          "ruleScores": {
+            "weatherFit": 100,
+            "sceneFit": 100,
+            "structure": 100,
+            "colorHarmony": 100,
+            "styleCoherence": 100,
+            "activityComfort": 85,
+            "rotationValue": 100,
+            "informationCompleteness": 100,
+            "ruleTotal": 98.5
+          },
+          "objectiveScores": {
+            "safe": 79.18,
+            "fresh": 87.83,
+            "comfort": 77.85
+          },
+          "reasonCodes": [
+            "good_for_commute",
+            "weather_fit",
+            "rain_ready",
+            "activity_comfort",
+            "rotation_value",
+            "new_combination",
+            "shoe_rationality",
+            "outerwear_rationality",
+            "rule_fallback"
+          ],
+          "riskCodes": [],
+          "missingSlotCodes": [],
+          "fallbackUsed": true
+        },
+        {
+          "objective": "fresh",
+          "candidateId": "1c5acea9-c4e1-5ea0-bdbb-1e54831f67bc",
+          "garmentIds": [
+            "20000000-0000-4000-8000-000000000001",
+            "20000000-0000-4000-8000-000000000006",
+            "20000000-0000-4000-8000-000000000007",
+            "20000000-0000-4000-8000-000000000012"
+          ],
+          "finalScore": 87.83,
+          "ruleScores": {
+            "weatherFit": 100,
+            "sceneFit": 100,
+            "structure": 100,
+            "colorHarmony": 100,
+            "styleCoherence": 100,
+            "activityComfort": 85,
+            "rotationValue": 100,
+            "informationCompleteness": 100,
+            "ruleTotal": 98.5
+          },
+          "objectiveScores": {
+            "safe": 79.18,
+            "fresh": 87.83,
+            "comfort": 77.85
+          },
+          "reasonCodes": [
+            "good_for_commute",
+            "weather_fit",
+            "activity_comfort",
+            "rotation_value",
+            "new_combination",
+            "shoe_rationality",
+            "outerwear_rationality",
+            "rule_fallback"
+          ],
+          "riskCodes": [],
+          "missingSlotCodes": [],
+          "fallbackUsed": true
+        },
+        {
+          "objective": "comfort",
+          "candidateId": "0cb0db94-bcb6-5d94-9200-621d8fef2573",
+          "garmentIds": [
+            "20000000-0000-4000-8000-000000000002",
+            "20000000-0000-4000-8000-000000000006",
+            "20000000-0000-4000-8000-000000000009",
+            "20000000-0000-4000-8000-000000000011"
+          ],
+          "finalScore": 77.85,
+          "ruleScores": {
+            "weatherFit": 100,
+            "sceneFit": 80,
+            "structure": 100,
+            "colorHarmony": 80,
+            "styleCoherence": 50,
+            "activityComfort": 85,
+            "rotationValue": 100,
+            "informationCompleteness": 100,
+            "ruleTotal": 86.5
+          },
+          "objectiveScores": {
+            "safe": 72.58,
+            "fresh": 83.18,
+            "comfort": 77.85
+          },
+          "reasonCodes": [
+            "good_for_commute",
+            "weather_fit",
+            "activity_comfort",
+            "rotation_value",
+            "new_combination",
+            "shoe_rationality",
+            "outerwear_rationality",
+            "rule_fallback"
+          ],
+          "riskCodes": [],
+          "missingSlotCodes": [],
+          "fallbackUsed": true
+        }
+      ],
+      "exclusions": [
+        {
+          "garmentId": "20000000-0000-4000-8000-000000000014",
+          "codes": [
+            "avoid_rule"
+          ]
+        }
+      ],
+      "metrics": {
+        "eligibleGarmentCount": 15,
+        "rawCandidateCount": 84,
+        "ruleScoredCandidateCount": 60,
+        "maxBeamObserved": 48
+      }
+    },
+    {
+      "id": "hot_casual",
+      "title": "高温休闲",
+      "targetDate": "2026-07-14",
+      "timezone": "Asia/Shanghai",
+      "context": {
+        "sceneType": "casual",
+        "formalityTarget": 2,
+        "activityIntensity": 1,
+        "thermalStrategy": "cooling",
+        "rainStrategy": "none",
+        "requiredSlots": [
+          "tops",
+          "pants",
+          "shoes"
+        ],
+        "optionalSlots": [
+          "outerwear",
+          "skirts",
+          "one_piece",
+          "bag",
+          "hat",
+          "accessory"
+        ],
+        "avoidRules": [
+          "avoid_heavy_outerwear",
+          "avoid_non_breathable"
+        ],
+        "confidence": "high",
+        "contextSummary": "casual:cooling:none"
+      },
+      "readiness": {
+        "userId": "10000000-0000-4000-8000-000000000001",
+        "generatedAt": "2026-07-13T00:00:00.000Z",
+        "completeness": {
+          "primaryImageRate": 1,
+          "categoryRate": 1,
+          "colorRate": 1,
+          "seasonRate": 1,
+          "formalityRate": 1,
+          "warmthRate": 1,
+          "temperatureRangeRate": 1
+        },
+        "eligibleGarmentsBySlot": {
+          "tops": 2,
+          "outerwear": 1,
+          "pants": 2,
+          "skirts": 1,
+          "one_piece": 1,
+          "shoes": 2,
+          "bag": 1,
+          "hat": 1
+        },
+        "validCandidateCount": 28,
+        "displayableCandidateCount": 3,
+        "status": "ready",
+        "missingFieldCodes": [],
+        "missingSlotCodes": []
+      },
+      "recommendations": [
+        {
+          "objective": "safe",
+          "candidateId": "77c521d3-6ab8-5e91-9255-1d0f510734e1",
+          "garmentIds": [
+            "20000000-0000-4000-8000-000000000002",
+            "20000000-0000-4000-8000-000000000008",
+            "20000000-0000-4000-8000-000000000011"
+          ],
+          "finalScore": 79.18,
+          "ruleScores": {
+            "weatherFit": 100,
+            "sceneFit": 100,
+            "structure": 100,
+            "colorHarmony": 100,
+            "styleCoherence": 100,
+            "activityComfort": 85,
+            "rotationValue": 100,
+            "informationCompleteness": 100,
+            "ruleTotal": 98.5
+          },
+          "objectiveScores": {
+            "safe": 79.18,
+            "fresh": 87.83,
+            "comfort": 77.85
+          },
+          "reasonCodes": [
+            "weather_fit",
+            "activity_comfort",
+            "rotation_value",
+            "new_combination",
+            "shoe_rationality",
+            "rule_fallback"
+          ],
+          "riskCodes": [],
+          "missingSlotCodes": [],
+          "fallbackUsed": true
+        },
+        {
+          "objective": "fresh",
+          "candidateId": "6cdd29e0-d8c6-5ad1-bfa3-a0f40cf451a2",
+          "garmentIds": [
+            "20000000-0000-4000-8000-000000000002",
+            "20000000-0000-4000-8000-000000000008",
+            "20000000-0000-4000-8000-000000000014"
+          ],
+          "finalScore": 86.48,
+          "ruleScores": {
+            "weatherFit": 100,
+            "sceneFit": 100,
+            "structure": 100,
+            "colorHarmony": 80,
+            "styleCoherence": 100,
+            "activityComfort": 85,
+            "rotationValue": 100,
+            "informationCompleteness": 100,
+            "ruleTotal": 95.5
+          },
+          "objectiveScores": {
+            "safe": 77.53,
+            "fresh": 86.48,
+            "comfort": 77.85
+          },
+          "reasonCodes": [
+            "weather_fit",
+            "activity_comfort",
+            "rotation_value",
+            "new_combination",
+            "shoe_rationality",
+            "rule_fallback"
+          ],
+          "riskCodes": [],
+          "missingSlotCodes": [],
+          "fallbackUsed": true
+        },
+        {
+          "objective": "comfort",
+          "candidateId": "152a833e-edfb-5885-ad28-d3e3a54bca56",
+          "garmentIds": [
+            "20000000-0000-4000-8000-000000000002",
+            "20000000-0000-4000-8000-000000000009",
+            "20000000-0000-4000-8000-000000000014"
+          ],
+          "finalScore": 77.85,
+          "ruleScores": {
+            "weatherFit": 100,
+            "sceneFit": 86.66666666666667,
+            "structure": 100,
+            "colorHarmony": 80,
+            "styleCoherence": 66.67,
+            "activityComfort": 85,
+            "rotationValue": 100,
+            "informationCompleteness": 100,
+            "ruleTotal": 89.5
+          },
+          "objectiveScores": {
+            "safe": 74.22,
+            "fresh": 84.28,
+            "comfort": 77.85
+          },
+          "reasonCodes": [
+            "weather_fit",
+            "activity_comfort",
+            "rotation_value",
+            "new_combination",
+            "shoe_rationality",
+            "rule_fallback"
+          ],
+          "riskCodes": [],
+          "missingSlotCodes": [],
+          "fallbackUsed": true
+        }
+      ],
+      "exclusions": [
+        {
+          "garmentId": "20000000-0000-4000-8000-000000000003",
+          "codes": [
+            "temperature_mismatch"
+          ]
+        },
+        {
+          "garmentId": "20000000-0000-4000-8000-000000000005",
+          "codes": [
+            "avoid_rule"
+          ]
+        },
+        {
+          "garmentId": "20000000-0000-4000-8000-000000000006",
+          "codes": [
+            "formality_mismatch"
+          ]
+        },
+        {
+          "garmentId": "20000000-0000-4000-8000-000000000012",
+          "codes": [
+            "avoid_rule"
+          ]
+        },
+        {
+          "garmentId": "20000000-0000-4000-8000-000000000013",
+          "codes": [
+            "formality_mismatch"
+          ]
+        }
+      ],
+      "metrics": {
+        "eligibleGarmentCount": 11,
+        "rawCandidateCount": 28,
+        "ruleScoredCandidateCount": 28,
+        "maxBeamObserved": 8
+      }
+    },
+    {
+      "id": "winter_low_temperature",
+      "title": "冬季低温",
+      "targetDate": "2026-07-14",
+      "timezone": "Asia/Shanghai",
+      "context": {
+        "sceneType": "commute",
+        "formalityTarget": 3,
+        "activityIntensity": 2,
+        "thermalStrategy": "warm",
+        "rainStrategy": "none",
+        "requiredSlots": [
+          "tops",
+          "pants",
+          "shoes",
+          "outerwear"
+        ],
+        "optionalSlots": [
+          "outerwear",
+          "skirts",
+          "one_piece",
+          "bag",
+          "hat",
+          "accessory"
+        ],
+        "avoidRules": [],
+        "confidence": "high",
+        "contextSummary": "commute:warm:none"
+      },
+      "readiness": {
+        "userId": "10000000-0000-4000-8000-000000000001",
+        "generatedAt": "2026-07-13T00:00:00.000Z",
+        "completeness": {
+          "primaryImageRate": 1,
+          "categoryRate": 1,
+          "colorRate": 1,
+          "seasonRate": 1,
+          "formalityRate": 1,
+          "warmthRate": 1,
+          "temperatureRangeRate": 1
+        },
+        "eligibleGarmentsBySlot": {
+          "tops": 1,
+          "outerwear": 3,
+          "pants": 1,
+          "shoes": 1,
+          "bag": 1,
+          "hat": 1
+        },
+        "validCandidateCount": 3,
+        "displayableCandidateCount": 3,
+        "status": "ready",
+        "missingFieldCodes": [],
+        "missingSlotCodes": []
+      },
+      "recommendations": [
+        {
+          "objective": "safe",
+          "candidateId": "9ba18085-5a0d-5a3b-8900-2d3a8dc5f380",
+          "garmentIds": [
+            "20000000-0000-4000-8000-000000000003",
+            "20000000-0000-4000-8000-000000000006",
+            "20000000-0000-4000-8000-000000000007",
+            "20000000-0000-4000-8000-000000000012"
+          ],
+          "finalScore": 72.99,
+          "ruleScores": {
+            "weatherFit": 55,
+            "sceneFit": 100,
+            "structure": 100,
+            "colorHarmony": 100,
+            "styleCoherence": 100,
+            "activityComfort": 85,
+            "rotationValue": 100,
+            "informationCompleteness": 100,
+            "ruleTotal": 87.25
+          },
+          "objectiveScores": {
+            "safe": 72.99,
+            "fresh": 82.76,
+            "comfort": 67.05
+          },
+          "reasonCodes": [
+            "good_for_commute",
+            "activity_comfort",
+            "rotation_value",
+            "new_combination",
+            "shoe_rationality",
+            "outerwear_rationality",
+            "rule_fallback"
+          ],
+          "riskCodes": [],
+          "missingSlotCodes": [],
+          "fallbackUsed": true
+        },
+        {
+          "objective": "fresh",
+          "candidateId": "c01e7ec6-f10e-5ac5-9dbb-1a0abac27f2e",
+          "garmentIds": [
+            "20000000-0000-4000-8000-000000000003",
+            "20000000-0000-4000-8000-000000000005",
+            "20000000-0000-4000-8000-000000000007",
+            "20000000-0000-4000-8000-000000000012"
+          ],
+          "finalScore": 82.8,
+          "ruleScores": {
+            "weatherFit": 70,
+            "sceneFit": 90,
+            "structure": 100,
+            "colorHarmony": 100,
+            "styleCoherence": 75,
+            "activityComfort": 85,
+            "rotationValue": 100,
+            "informationCompleteness": 100,
+            "ruleTotal": 86.5
+          },
+          "objectiveScores": {
+            "safe": 72.58,
+            "fresh": 82.8,
+            "comfort": 70.65
+          },
+          "reasonCodes": [
+            "good_for_commute",
+            "activity_comfort",
+            "rotation_value",
+            "new_combination",
+            "shoe_rationality",
+            "outerwear_rationality",
+            "rule_fallback"
+          ],
+          "riskCodes": [],
+          "missingSlotCodes": [],
+          "fallbackUsed": true
+        },
+        {
+          "objective": "comfort",
+          "candidateId": "dc5f10b0-69a8-5332-b3d3-073bc670c638",
+          "garmentIds": [
+            "20000000-0000-4000-8000-000000000003",
+            "20000000-0000-4000-8000-000000000004",
+            "20000000-0000-4000-8000-000000000007",
+            "20000000-0000-4000-8000-000000000012"
+          ],
+          "finalScore": 67.05,
+          "ruleScores": {
+            "weatherFit": 55,
+            "sceneFit": 100,
+            "structure": 100,
+            "colorHarmony": 100,
+            "styleCoherence": 100,
+            "activityComfort": 85,
+            "rotationValue": 100,
+            "informationCompleteness": 100,
+            "ruleTotal": 87.25
+          },
+          "objectiveScores": {
+            "safe": 72.99,
+            "fresh": 82.76,
+            "comfort": 67.05
+          },
+          "reasonCodes": [
+            "good_for_commute",
+            "activity_comfort",
+            "rotation_value",
+            "new_combination",
+            "shoe_rationality",
+            "outerwear_rationality",
+            "rule_fallback"
+          ],
+          "riskCodes": [],
+          "missingSlotCodes": [],
+          "fallbackUsed": true
+        }
+      ],
+      "exclusions": [
+        {
+          "garmentId": "20000000-0000-4000-8000-000000000001",
+          "codes": [
+            "temperature_mismatch"
+          ]
+        },
+        {
+          "garmentId": "20000000-0000-4000-8000-000000000002",
+          "codes": [
+            "temperature_mismatch"
+          ]
+        },
+        {
+          "garmentId": "20000000-0000-4000-8000-000000000008",
+          "codes": [
+            "temperature_mismatch"
+          ]
+        },
+        {
+          "garmentId": "20000000-0000-4000-8000-000000000009",
+          "codes": [
+            "temperature_mismatch"
+          ]
+        },
+        {
+          "garmentId": "20000000-0000-4000-8000-000000000010",
+          "codes": [
+            "temperature_mismatch"
+          ]
+        },
+        {
+          "garmentId": "20000000-0000-4000-8000-000000000011",
+          "codes": [
+            "temperature_mismatch"
+          ]
+        },
+        {
+          "garmentId": "20000000-0000-4000-8000-000000000013",
+          "codes": [
+            "temperature_mismatch"
+          ]
+        },
+        {
+          "garmentId": "20000000-0000-4000-8000-000000000014",
+          "codes": [
+            "temperature_mismatch"
+          ]
+        }
+      ],
+      "metrics": {
+        "eligibleGarmentCount": 8,
+        "rawCandidateCount": 3,
+        "ruleScoredCandidateCount": 3,
+        "maxBeamObserved": 3
+      }
+    },
+    {
+      "id": "formal_meeting",
+      "title": "正式会议",
+      "targetDate": "2026-07-14",
+      "timezone": "Asia/Shanghai",
+      "context": {
+        "sceneType": "business",
+        "formalityTarget": 4,
+        "activityIntensity": 1,
+        "thermalStrategy": "balanced",
+        "rainStrategy": "none",
+        "requiredSlots": [
+          "tops",
+          "pants",
+          "shoes"
+        ],
+        "optionalSlots": [
+          "outerwear",
+          "skirts",
+          "one_piece",
+          "bag",
+          "hat",
+          "accessory"
+        ],
+        "avoidRules": [],
+        "confidence": "high",
+        "contextSummary": "business:balanced:none"
+      },
+      "readiness": {
+        "userId": "10000000-0000-4000-8000-000000000001",
+        "generatedAt": "2026-07-13T00:00:00.000Z",
+        "completeness": {
+          "primaryImageRate": 1,
+          "categoryRate": 1,
+          "colorRate": 1,
+          "seasonRate": 1,
+          "formalityRate": 1,
+          "warmthRate": 1,
+          "temperatureRangeRate": 1
+        },
+        "eligibleGarmentsBySlot": {
+          "tops": 2,
+          "outerwear": 3,
+          "pants": 1,
+          "skirts": 1,
+          "one_piece": 1,
+          "shoes": 2,
+          "bag": 1
+        },
+        "validCandidateCount": 44,
+        "displayableCandidateCount": 3,
+        "status": "ready",
+        "missingFieldCodes": [],
+        "missingSlotCodes": []
+      },
+      "recommendations": [
+        {
+          "objective": "safe",
+          "candidateId": "0ffccf49-594b-53d7-92b8-9c0fc91fc87c",
+          "garmentIds": [
+            "20000000-0000-4000-8000-000000000001",
+            "20000000-0000-4000-8000-000000000007",
+            "20000000-0000-4000-8000-000000000012",
+            "20000000-0000-4000-8000-000000000015"
+          ],
+          "finalScore": 79.18,
+          "ruleScores": {
+            "weatherFit": 100,
+            "sceneFit": 100,
+            "structure": 100,
+            "colorHarmony": 100,
+            "styleCoherence": 100,
+            "activityComfort": 85,
+            "rotationValue": 100,
+            "informationCompleteness": 100,
+            "ruleTotal": 98.5
+          },
+          "objectiveScores": {
+            "safe": 79.18,
+            "fresh": 87.83,
+            "comfort": 77.85
+          },
+          "reasonCodes": [
+            "good_for_business",
+            "weather_fit",
+            "activity_comfort",
+            "rotation_value",
+            "new_combination",
+            "shoe_rationality",
+            "rule_fallback"
+          ],
+          "riskCodes": [],
+          "missingSlotCodes": [],
+          "fallbackUsed": true
+        },
+        {
+          "objective": "fresh",
+          "candidateId": "60b96cc5-8d55-5f02-a7bb-7414a9ae67da",
+          "garmentIds": [
+            "20000000-0000-4000-8000-000000000006",
+            "20000000-0000-4000-8000-000000000010",
+            "20000000-0000-4000-8000-000000000013"
+          ],
+          "finalScore": 87.83,
+          "ruleScores": {
+            "weatherFit": 100,
+            "sceneFit": 100,
+            "structure": 100,
+            "colorHarmony": 100,
+            "styleCoherence": 100,
+            "activityComfort": 85,
+            "rotationValue": 100,
+            "informationCompleteness": 100,
+            "ruleTotal": 98.5
+          },
+          "objectiveScores": {
+            "safe": 79.18,
+            "fresh": 87.83,
+            "comfort": 77.85
+          },
+          "reasonCodes": [
+            "good_for_business",
+            "weather_fit",
+            "activity_comfort",
+            "rotation_value",
+            "new_combination",
+            "shoe_rationality",
+            "outerwear_rationality",
+            "rule_fallback"
+          ],
+          "riskCodes": [],
+          "missingSlotCodes": [],
+          "fallbackUsed": true
+        },
+        {
+          "objective": "comfort",
+          "candidateId": "15d87f85-e45f-563d-995a-fc08076056df",
+          "garmentIds": [
+            "20000000-0000-4000-8000-000000000003",
+            "20000000-0000-4000-8000-000000000007",
+            "20000000-0000-4000-8000-000000000013",
+            "20000000-0000-4000-8000-000000000015"
+          ],
+          "finalScore": 76.65,
+          "ruleScores": {
+            "weatherFit": 95,
+            "sceneFit": 100,
+            "structure": 100,
+            "colorHarmony": 100,
+            "styleCoherence": 75,
+            "activityComfort": 85,
+            "rotationValue": 100,
+            "informationCompleteness": 100,
+            "ruleTotal": 94.75
+          },
+          "objectiveScores": {
+            "safe": 77.11,
+            "fresh": 86.51,
+            "comfort": 76.65
+          },
+          "reasonCodes": [
+            "good_for_business",
+            "weather_fit",
+            "activity_comfort",
+            "rotation_value",
+            "new_combination",
+            "shoe_rationality",
+            "rule_fallback"
+          ],
+          "riskCodes": [],
+          "missingSlotCodes": [],
+          "fallbackUsed": true
+        }
+      ],
+      "exclusions": [
+        {
+          "garmentId": "20000000-0000-4000-8000-000000000002",
+          "codes": [
+            "formality_mismatch"
+          ]
+        },
+        {
+          "garmentId": "20000000-0000-4000-8000-000000000008",
+          "codes": [
+            "formality_mismatch"
+          ]
+        },
+        {
+          "garmentId": "20000000-0000-4000-8000-000000000011",
+          "codes": [
+            "formality_mismatch"
+          ]
+        },
+        {
+          "garmentId": "20000000-0000-4000-8000-000000000014",
+          "codes": [
+            "formality_mismatch"
+          ]
+        },
+        {
+          "garmentId": "20000000-0000-4000-8000-000000000016",
+          "codes": [
+            "formality_mismatch"
+          ]
+        }
+      ],
+      "metrics": {
+        "eligibleGarmentCount": 11,
+        "rawCandidateCount": 44,
+        "ruleScoredCandidateCount": 44,
+        "maxBeamObserved": 12
+      }
+    },
+    {
+      "id": "travel_outdoor",
+      "title": "旅行户外",
+      "targetDate": "2026-07-14",
+      "timezone": "Asia/Shanghai",
+      "context": {
+        "sceneType": "travel",
+        "formalityTarget": 2,
+        "activityIntensity": 5,
+        "thermalStrategy": "balanced",
+        "rainStrategy": "none",
+        "requiredSlots": [
+          "tops",
+          "pants",
+          "shoes"
+        ],
+        "optionalSlots": [
+          "outerwear",
+          "skirts",
+          "one_piece",
+          "bag",
+          "hat",
+          "accessory"
+        ],
+        "avoidRules": [
+          "avoid_high_heels"
+        ],
+        "confidence": "high",
+        "contextSummary": "travel:balanced:none"
+      },
+      "readiness": {
+        "userId": "10000000-0000-4000-8000-000000000001",
+        "generatedAt": "2026-07-13T00:00:00.000Z",
+        "completeness": {
+          "primaryImageRate": 1,
+          "categoryRate": 1,
+          "colorRate": 1,
+          "seasonRate": 1,
+          "formalityRate": 1,
+          "warmthRate": 1,
+          "temperatureRangeRate": 1
+        },
+        "eligibleGarmentsBySlot": {
+          "tops": 3,
+          "outerwear": 2,
+          "pants": 2,
+          "skirts": 1,
+          "one_piece": 1,
+          "shoes": 3,
+          "bag": 1,
+          "hat": 1
+        },
+        "validCandidateCount": 60,
+        "displayableCandidateCount": 3,
+        "status": "ready",
+        "missingFieldCodes": [],
+        "missingSlotCodes": []
+      },
+      "recommendations": [
+        {
+          "objective": "safe",
+          "candidateId": "77c521d3-6ab8-5e91-9255-1d0f510734e1",
+          "garmentIds": [
+            "20000000-0000-4000-8000-000000000002",
+            "20000000-0000-4000-8000-000000000008",
+            "20000000-0000-4000-8000-000000000011"
+          ],
+          "finalScore": 79.45,
+          "ruleScores": {
+            "weatherFit": 100,
+            "sceneFit": 100,
+            "structure": 100,
+            "colorHarmony": 100,
+            "styleCoherence": 100,
+            "activityComfort": 90,
+            "rotationValue": 100,
+            "informationCompleteness": 100,
+            "ruleTotal": 99
+          },
+          "objectiveScores": {
+            "safe": 79.45,
+            "fresh": 88.05,
+            "comfort": 80.9
+          },
+          "reasonCodes": [
+            "good_for_travel",
+            "weather_fit",
+            "activity_comfort",
+            "rotation_value",
+            "new_combination",
+            "shoe_rationality",
+            "rule_fallback"
+          ],
+          "riskCodes": [],
+          "missingSlotCodes": [],
+          "fallbackUsed": true
+        },
+        {
+          "objective": "fresh",
+          "candidateId": "6cdd29e0-d8c6-5ad1-bfa3-a0f40cf451a2",
+          "garmentIds": [
+            "20000000-0000-4000-8000-000000000002",
+            "20000000-0000-4000-8000-000000000008",
+            "20000000-0000-4000-8000-000000000014"
+          ],
+          "finalScore": 86.48,
+          "ruleScores": {
+            "weatherFit": 100,
+            "sceneFit": 100,
+            "structure": 100,
+            "colorHarmony": 80,
+            "styleCoherence": 100,
+            "activityComfort": 85,
+            "rotationValue": 100,
+            "informationCompleteness": 100,
+            "ruleTotal": 95.5
+          },
+          "objectiveScores": {
+            "safe": 77.53,
+            "fresh": 86.48,
+            "comfort": 77.85
+          },
+          "reasonCodes": [
+            "good_for_travel",
+            "weather_fit",
+            "activity_comfort",
+            "rotation_value",
+            "new_combination",
+            "shoe_rationality",
+            "rule_fallback"
+          ],
+          "riskCodes": [],
+          "missingSlotCodes": [],
+          "fallbackUsed": true
+        },
+        {
+          "objective": "comfort",
+          "candidateId": "1c22db18-7933-57e0-8c3b-9622d1186a84",
+          "garmentIds": [
+            "20000000-0000-4000-8000-000000000010",
+            "20000000-0000-4000-8000-000000000011"
+          ],
+          "finalScore": 81.3,
+          "ruleScores": {
+            "weatherFit": 100,
+            "sceneFit": 80,
+            "structure": 100,
+            "colorHarmony": 100,
+            "styleCoherence": 50,
+            "activityComfort": 92.5,
+            "rotationValue": 100,
+            "informationCompleteness": 100,
+            "ruleTotal": 90.25
+          },
+          "objectiveScores": {
+            "safe": 74.64,
+            "fresh": 84.86,
+            "comfort": 81.3
+          },
+          "reasonCodes": [
+            "good_for_travel",
+            "weather_fit",
+            "activity_comfort",
+            "rotation_value",
+            "new_combination",
+            "shoe_rationality",
+            "rule_fallback"
+          ],
+          "riskCodes": [],
+          "missingSlotCodes": [],
+          "fallbackUsed": true
+        }
+      ],
+      "exclusions": [
+        {
+          "garmentId": "20000000-0000-4000-8000-000000000006",
+          "codes": [
+            "formality_mismatch"
+          ]
+        },
+        {
+          "garmentId": "20000000-0000-4000-8000-000000000013",
+          "codes": [
+            "formality_mismatch",
+            "avoid_rule"
+          ]
+        }
+      ],
+      "metrics": {
+        "eligibleGarmentCount": 14,
+        "rawCandidateCount": 108,
+        "ruleScoredCandidateCount": 60,
+        "maxBeamObserved": 36
+      }
+    },
+    {
+      "id": "dress_template",
+      "title": "连衣裙模板",
+      "targetDate": "2026-07-14",
+      "timezone": "Asia/Shanghai",
+      "context": {
+        "sceneType": "commute",
+        "formalityTarget": 3,
+        "activityIntensity": 2,
+        "thermalStrategy": "balanced",
+        "rainStrategy": "none",
+        "requiredSlots": [
+          "tops",
+          "pants",
+          "shoes"
+        ],
+        "optionalSlots": [
+          "outerwear",
+          "skirts",
+          "one_piece",
+          "bag",
+          "hat",
+          "accessory"
+        ],
+        "avoidRules": [],
+        "confidence": "high",
+        "contextSummary": "commute:balanced:none"
+      },
+      "readiness": {
+        "userId": "10000000-0000-4000-8000-000000000001",
+        "generatedAt": "2026-07-13T00:00:00.000Z",
+        "completeness": {
+          "primaryImageRate": 1,
+          "categoryRate": 1,
+          "colorRate": 1,
+          "seasonRate": 1,
+          "formalityRate": 1,
+          "warmthRate": 1,
+          "temperatureRangeRate": 1
+        },
+        "eligibleGarmentsBySlot": {
+          "tops": 3,
+          "outerwear": 3,
+          "pants": 2,
+          "skirts": 1,
+          "one_piece": 1,
+          "shoes": 4,
+          "bag": 1,
+          "hat": 1
+        },
+        "validCandidateCount": 16,
+        "displayableCandidateCount": 3,
+        "status": "ready",
+        "missingFieldCodes": [],
+        "missingSlotCodes": []
+      },
+      "recommendations": [
+        {
+          "objective": "safe",
+          "candidateId": "60b96cc5-8d55-5f02-a7bb-7414a9ae67da",
+          "garmentIds": [
+            "20000000-0000-4000-8000-000000000006",
+            "20000000-0000-4000-8000-000000000010",
+            "20000000-0000-4000-8000-000000000013"
+          ],
+          "finalScore": 79.18,
+          "ruleScores": {
+            "weatherFit": 100,
+            "sceneFit": 100,
+            "structure": 100,
+            "colorHarmony": 100,
+            "styleCoherence": 100,
+            "activityComfort": 85,
+            "rotationValue": 100,
+            "informationCompleteness": 100,
+            "ruleTotal": 98.5
+          },
+          "objectiveScores": {
+            "safe": 79.18,
+            "fresh": 87.83,
+            "comfort": 77.85
+          },
+          "reasonCodes": [
+            "good_for_commute",
+            "weather_fit",
+            "activity_comfort",
+            "rotation_value",
+            "new_combination",
+            "shoe_rationality",
+            "outerwear_rationality",
+            "rule_fallback"
+          ],
+          "riskCodes": [],
+          "missingSlotCodes": [],
+          "fallbackUsed": true
+        },
+        {
+          "objective": "fresh",
+          "candidateId": "2383b362-a1ed-58c1-abeb-590390a69c72",
+          "garmentIds": [
+            "20000000-0000-4000-8000-000000000004",
+            "20000000-0000-4000-8000-000000000010",
+            "20000000-0000-4000-8000-000000000012"
+          ],
+          "finalScore": 86.83,
+          "ruleScores": {
+            "weatherFit": 100,
+            "sceneFit": 100,
+            "structure": 100,
+            "colorHarmony": 100,
+            "styleCoherence": 66.67,
+            "activityComfort": 85,
+            "rotationValue": 100,
+            "informationCompleteness": 100,
+            "ruleTotal": 95.17
+          },
+          "objectiveScores": {
+            "safe": 77.34,
+            "fresh": 86.83,
+            "comfort": 77.85
+          },
+          "reasonCodes": [
+            "good_for_commute",
+            "weather_fit",
+            "activity_comfort",
+            "rotation_value",
+            "new_combination",
+            "shoe_rationality",
+            "outerwear_rationality",
+            "rule_fallback"
+          ],
+          "riskCodes": [],
+          "missingSlotCodes": [],
+          "fallbackUsed": true
+        },
+        {
+          "objective": "comfort",
+          "candidateId": "0a3ece58-d86d-5c07-b8da-8ef6ae998b62",
+          "garmentIds": [
+            "20000000-0000-4000-8000-000000000004",
+            "20000000-0000-4000-8000-000000000010",
+            "20000000-0000-4000-8000-000000000014"
+          ],
+          "finalScore": 77.85,
+          "ruleScores": {
+            "weatherFit": 100,
+            "sceneFit": 86.66666666666667,
+            "structure": 100,
+            "colorHarmony": 100,
+            "styleCoherence": 33.33,
+            "activityComfort": 85,
+            "rotationValue": 100,
+            "informationCompleteness": 100,
+            "ruleTotal": 89.17
+          },
+          "objectiveScores": {
+            "safe": 74.04,
+            "fresh": 84.63,
+            "comfort": 77.85
+          },
+          "reasonCodes": [
+            "good_for_commute",
+            "weather_fit",
+            "activity_comfort",
+            "rotation_value",
+            "new_combination",
+            "shoe_rationality",
+            "outerwear_rationality",
+            "rule_fallback"
+          ],
+          "riskCodes": [],
+          "missingSlotCodes": [],
+          "fallbackUsed": true
+        }
+      ],
+      "exclusions": [],
+      "metrics": {
+        "eligibleGarmentCount": 16,
+        "rawCandidateCount": 16,
+        "ruleScoredCandidateCount": 16,
+        "maxBeamObserved": 48
+      }
+    },
+    {
+      "id": "saved_successful_outfit",
+      "title": "保存成功套装",
+      "targetDate": "2026-07-14",
+      "timezone": "Asia/Shanghai",
+      "context": {
+        "sceneType": "commute",
+        "formalityTarget": 3,
+        "activityIntensity": 2,
+        "thermalStrategy": "balanced",
+        "rainStrategy": "none",
+        "requiredSlots": [
+          "tops",
+          "pants",
+          "shoes"
+        ],
+        "optionalSlots": [
+          "outerwear",
+          "skirts",
+          "one_piece",
+          "bag",
+          "hat",
+          "accessory"
+        ],
+        "avoidRules": [],
+        "confidence": "high",
+        "contextSummary": "commute:balanced:none"
+      },
+      "readiness": {
+        "userId": "10000000-0000-4000-8000-000000000001",
+        "generatedAt": "2026-07-13T00:00:00.000Z",
+        "completeness": {
+          "primaryImageRate": 1,
+          "categoryRate": 1,
+          "colorRate": 1,
+          "seasonRate": 1,
+          "formalityRate": 1,
+          "warmthRate": 1,
+          "temperatureRangeRate": 1
+        },
+        "eligibleGarmentsBySlot": {
+          "tops": 3,
+          "outerwear": 3,
+          "pants": 2,
+          "skirts": 1,
+          "one_piece": 1,
+          "shoes": 4,
+          "bag": 1,
+          "hat": 1
+        },
+        "validCandidateCount": 60,
+        "displayableCandidateCount": 3,
+        "status": "ready",
+        "missingFieldCodes": [],
+        "missingSlotCodes": []
+      },
+      "recommendations": [
+        {
+          "objective": "safe",
+          "candidateId": "79cab324-4ad6-5c78-ae2c-2ab20e750af9",
+          "garmentIds": [
+            "20000000-0000-4000-8000-000000000001",
+            "20000000-0000-4000-8000-000000000007",
+            "20000000-0000-4000-8000-000000000012"
+          ],
+          "finalScore": 87.5,
+          "ruleScores": {
+            "weatherFit": 100,
+            "sceneFit": 100,
+            "structure": 100,
+            "colorHarmony": 100,
+            "styleCoherence": 100,
+            "activityComfort": 85,
+            "rotationValue": 100,
+            "informationCompleteness": 100,
+            "ruleTotal": 100
+          },
+          "objectiveScores": {
+            "safe": 87.5,
+            "fresh": 81.75,
+            "comfort": 77.85
+          },
+          "reasonCodes": [
+            "good_for_commute",
+            "weather_fit",
+            "activity_comfort",
+            "historical_success",
+            "rotation_value",
+            "shoe_rationality",
+            "rule_fallback"
+          ],
+          "riskCodes": [],
+          "missingSlotCodes": [],
+          "fallbackUsed": true
+        },
+        {
+          "objective": "fresh",
+          "candidateId": "71a231da-919c-5c6b-9789-1325c0160575",
+          "garmentIds": [
+            "20000000-0000-4000-8000-000000000003",
+            "20000000-0000-4000-8000-000000000006",
+            "20000000-0000-4000-8000-000000000009",
+            "20000000-0000-4000-8000-000000000012"
+          ],
+          "finalScore": 87.26,
+          "ruleScores": {
+            "weatherFit": 95,
+            "sceneFit": 100,
+            "structure": 100,
+            "colorHarmony": 100,
+            "styleCoherence": 100,
+            "activityComfort": 85,
+            "rotationValue": 100,
+            "informationCompleteness": 100,
+            "ruleTotal": 97.25
+          },
+          "objectiveScores": {
+            "safe": 78.49,
+            "fresh": 87.26,
+            "comfort": 76.65
+          },
+          "reasonCodes": [
+            "good_for_commute",
+            "weather_fit",
+            "activity_comfort",
+            "rotation_value",
+            "new_combination",
+            "shoe_rationality",
+            "outerwear_rationality",
+            "rule_fallback"
+          ],
+          "riskCodes": [],
+          "missingSlotCodes": [],
+          "fallbackUsed": true
+        },
+        {
+          "objective": "comfort",
+          "candidateId": "05e33415-fd97-5d8e-951f-5c3be7d57e17",
+          "garmentIds": [
+            "20000000-0000-4000-8000-000000000001",
+            "20000000-0000-4000-8000-000000000008",
+            "20000000-0000-4000-8000-000000000012"
+          ],
+          "finalScore": 77.85,
+          "ruleScores": {
+            "weatherFit": 100,
+            "sceneFit": 86.66666666666667,
+            "structure": 100,
+            "colorHarmony": 80,
+            "styleCoherence": 66.67,
+            "activityComfort": 85,
+            "rotationValue": 100,
+            "informationCompleteness": 100,
+            "ruleTotal": 89.5
+          },
+          "objectiveScores": {
+            "safe": 74.22,
+            "fresh": 80.9,
+            "comfort": 77.85
+          },
+          "reasonCodes": [
+            "good_for_commute",
+            "weather_fit",
+            "activity_comfort",
+            "rotation_value",
+            "new_combination",
+            "shoe_rationality",
+            "rule_fallback"
+          ],
+          "riskCodes": [],
+          "missingSlotCodes": [],
+          "fallbackUsed": true
+        }
+      ],
+      "exclusions": [],
+      "metrics": {
+        "eligibleGarmentCount": 16,
+        "rawCandidateCount": 113,
+        "ruleScoredCandidateCount": 60,
+        "maxBeamObserved": 48
+      }
+    },
+    {
+      "id": "recent_repeat",
+      "title": "最近重复",
+      "targetDate": "2026-07-14",
+      "timezone": "Asia/Shanghai",
+      "context": {
+        "sceneType": "commute",
+        "formalityTarget": 3,
+        "activityIntensity": 2,
+        "thermalStrategy": "balanced",
+        "rainStrategy": "none",
+        "requiredSlots": [
+          "tops",
+          "pants",
+          "shoes"
+        ],
+        "optionalSlots": [
+          "outerwear",
+          "skirts",
+          "one_piece",
+          "bag",
+          "hat",
+          "accessory"
+        ],
+        "avoidRules": [],
+        "confidence": "high",
+        "contextSummary": "commute:balanced:none"
+      },
+      "readiness": {
+        "userId": "10000000-0000-4000-8000-000000000001",
+        "generatedAt": "2026-07-13T00:00:00.000Z",
+        "completeness": {
+          "primaryImageRate": 1,
+          "categoryRate": 1,
+          "colorRate": 1,
+          "seasonRate": 1,
+          "formalityRate": 1,
+          "warmthRate": 1,
+          "temperatureRangeRate": 1
+        },
+        "eligibleGarmentsBySlot": {
+          "tops": 3,
+          "outerwear": 3,
+          "pants": 2,
+          "skirts": 1,
+          "one_piece": 1,
+          "shoes": 4,
+          "bag": 1,
+          "hat": 1
+        },
+        "validCandidateCount": 60,
+        "displayableCandidateCount": 3,
+        "status": "ready",
+        "missingFieldCodes": [],
+        "missingSlotCodes": []
+      },
+      "recommendations": [
+        {
+          "objective": "safe",
+          "candidateId": "71a231da-919c-5c6b-9789-1325c0160575",
+          "garmentIds": [
+            "20000000-0000-4000-8000-000000000003",
+            "20000000-0000-4000-8000-000000000006",
+            "20000000-0000-4000-8000-000000000009",
+            "20000000-0000-4000-8000-000000000012"
+          ],
+          "finalScore": 77.8,
+          "ruleScores": {
+            "weatherFit": 95,
+            "sceneFit": 100,
+            "structure": 100,
+            "colorHarmony": 100,
+            "styleCoherence": 100,
+            "activityComfort": 85,
+            "rotationValue": 75,
+            "informationCompleteness": 100,
+            "ruleTotal": 96
+          },
+          "objectiveScores": {
+            "safe": 77.8,
+            "fresh": 81.7,
+            "comfort": 76.65
+          },
+          "reasonCodes": [
+            "good_for_commute",
+            "weather_fit",
+            "activity_comfort",
+            "rotation_value",
+            "new_combination",
+            "shoe_rationality",
+            "outerwear_rationality",
+            "rule_fallback"
+          ],
+          "riskCodes": [],
+          "missingSlotCodes": [],
+          "fallbackUsed": true
+        },
+        {
+          "objective": "fresh",
+          "candidateId": "1f52180f-4544-5c77-bf2c-f90534e3fb71",
+          "garmentIds": [
+            "20000000-0000-4000-8000-000000000003",
+            "20000000-0000-4000-8000-000000000004",
+            "20000000-0000-4000-8000-000000000009",
+            "20000000-0000-4000-8000-000000000013"
+          ],
+          "finalScore": 86.51,
+          "ruleScores": {
+            "weatherFit": 95,
+            "sceneFit": 100,
+            "structure": 100,
+            "colorHarmony": 100,
+            "styleCoherence": 75,
+            "activityComfort": 85,
+            "rotationValue": 100,
+            "informationCompleteness": 100,
+            "ruleTotal": 94.75
+          },
+          "objectiveScores": {
+            "safe": 77.11,
+            "fresh": 86.51,
+            "comfort": 76.65
+          },
+          "reasonCodes": [
+            "good_for_commute",
+            "weather_fit",
+            "activity_comfort",
+            "rotation_value",
+            "new_combination",
+            "shoe_rationality",
+            "outerwear_rationality",
+            "rule_fallback"
+          ],
+          "riskCodes": [],
+          "missingSlotCodes": [],
+          "fallbackUsed": true
+        },
+        {
+          "objective": "comfort",
+          "candidateId": "07402735-a16e-5776-99f7-38e5bc7232eb",
+          "garmentIds": [
+            "20000000-0000-4000-8000-000000000002",
+            "20000000-0000-4000-8000-000000000009",
+            "20000000-0000-4000-8000-000000000013"
+          ],
+          "finalScore": 77.85,
+          "ruleScores": {
+            "weatherFit": 100,
+            "sceneFit": 86.66666666666667,
+            "structure": 100,
+            "colorHarmony": 80,
+            "styleCoherence": 66.67,
+            "activityComfort": 85,
+            "rotationValue": 100,
+            "informationCompleteness": 100,
+            "ruleTotal": 89.5
+          },
+          "objectiveScores": {
+            "safe": 74.22,
+            "fresh": 84.28,
+            "comfort": 77.85
+          },
+          "reasonCodes": [
+            "good_for_commute",
+            "weather_fit",
+            "activity_comfort",
+            "rotation_value",
+            "new_combination",
+            "shoe_rationality",
+            "rule_fallback"
+          ],
+          "riskCodes": [],
+          "missingSlotCodes": [],
+          "fallbackUsed": true
+        }
+      ],
+      "exclusions": [],
+      "metrics": {
+        "eligibleGarmentCount": 16,
+        "rawCandidateCount": 120,
+        "ruleScoredCandidateCount": 60,
+        "maxBeamObserved": 48
+      }
+    },
+    {
+      "id": "never_worn",
+      "title": "从未穿",
+      "targetDate": "2026-07-14",
+      "timezone": "Asia/Shanghai",
+      "context": {
+        "sceneType": "commute",
+        "formalityTarget": 3,
+        "activityIntensity": 2,
+        "thermalStrategy": "balanced",
+        "rainStrategy": "none",
+        "requiredSlots": [
+          "tops",
+          "pants",
+          "shoes"
+        ],
+        "optionalSlots": [
+          "outerwear",
+          "skirts",
+          "one_piece",
+          "bag",
+          "hat",
+          "accessory"
+        ],
+        "avoidRules": [],
+        "confidence": "high",
+        "contextSummary": "commute:balanced:none"
+      },
+      "readiness": {
+        "userId": "10000000-0000-4000-8000-000000000001",
+        "generatedAt": "2026-07-13T00:00:00.000Z",
+        "completeness": {
+          "primaryImageRate": 1,
+          "categoryRate": 1,
+          "colorRate": 1,
+          "seasonRate": 1,
+          "formalityRate": 1,
+          "warmthRate": 1,
+          "temperatureRangeRate": 1
+        },
+        "eligibleGarmentsBySlot": {
+          "tops": 3,
+          "outerwear": 3,
+          "pants": 2,
+          "skirts": 1,
+          "one_piece": 1,
+          "shoes": 4,
+          "bag": 1,
+          "hat": 1
+        },
+        "validCandidateCount": 60,
+        "displayableCandidateCount": 3,
+        "status": "ready",
+        "missingFieldCodes": [],
+        "missingSlotCodes": []
+      },
+      "recommendations": [
+        {
+          "objective": "safe",
+          "candidateId": "1c5acea9-c4e1-5ea0-bdbb-1e54831f67bc",
+          "garmentIds": [
+            "20000000-0000-4000-8000-000000000001",
+            "20000000-0000-4000-8000-000000000006",
+            "20000000-0000-4000-8000-000000000007",
+            "20000000-0000-4000-8000-000000000012"
+          ],
+          "finalScore": 77.11,
+          "ruleScores": {
+            "weatherFit": 100,
+            "sceneFit": 100,
+            "structure": 100,
+            "colorHarmony": 100,
+            "styleCoherence": 100,
+            "activityComfort": 85,
+            "rotationValue": 25,
+            "informationCompleteness": 100,
+            "ruleTotal": 94.75
+          },
+          "objectiveScores": {
+            "safe": 77.11,
+            "fresh": 71.14,
+            "comfort": 77.85
+          },
+          "reasonCodes": [
+            "good_for_commute",
+            "weather_fit",
+            "activity_comfort",
+            "new_combination",
+            "shoe_rationality",
+            "outerwear_rationality",
+            "rule_fallback"
+          ],
+          "riskCodes": [],
+          "missingSlotCodes": [],
+          "fallbackUsed": true
+        },
+        {
+          "objective": "fresh",
+          "candidateId": "0a56c44b-3b74-52fa-8b73-8dd376a11b8a",
+          "garmentIds": [
+            "20000000-0000-4000-8000-000000000003",
+            "20000000-0000-4000-8000-000000000009",
+            "20000000-0000-4000-8000-000000000012"
+          ],
+          "finalScore": 75.95,
+          "ruleScores": {
+            "weatherFit": 93.33,
+            "sceneFit": 100,
+            "structure": 100,
+            "colorHarmony": 100,
+            "styleCoherence": 100,
+            "activityComfort": 85,
+            "rotationValue": 50,
+            "informationCompleteness": 100,
+            "ruleTotal": 94.33
+          },
+          "objectiveScores": {
+            "safe": 76.88,
+            "fresh": 75.95,
+            "comfort": 76.25
+          },
+          "reasonCodes": [
+            "good_for_commute",
+            "weather_fit",
+            "activity_comfort",
+            "new_combination",
+            "shoe_rationality",
+            "rule_fallback"
+          ],
+          "riskCodes": [],
+          "missingSlotCodes": [],
+          "fallbackUsed": true
+        },
+        {
+          "objective": "comfort",
+          "candidateId": "07402735-a16e-5776-99f7-38e5bc7232eb",
+          "garmentIds": [
+            "20000000-0000-4000-8000-000000000002",
+            "20000000-0000-4000-8000-000000000009",
+            "20000000-0000-4000-8000-000000000013"
+          ],
+          "finalScore": 77.85,
+          "ruleScores": {
+            "weatherFit": 100,
+            "sceneFit": 86.66666666666667,
+            "structure": 100,
+            "colorHarmony": 80,
+            "styleCoherence": 66.67,
+            "activityComfort": 85,
+            "rotationValue": 50,
+            "informationCompleteness": 100,
+            "ruleTotal": 87
+          },
+          "objectiveScores": {
+            "safe": 72.85,
+            "fresh": 73.15,
+            "comfort": 77.85
+          },
+          "reasonCodes": [
+            "good_for_commute",
+            "weather_fit",
+            "activity_comfort",
+            "new_combination",
+            "shoe_rationality",
+            "rule_fallback"
+          ],
+          "riskCodes": [],
+          "missingSlotCodes": [],
+          "fallbackUsed": true
+        }
+      ],
+      "exclusions": [],
+      "metrics": {
+        "eligibleGarmentCount": 16,
+        "rawCandidateCount": 120,
+        "ruleScoredCandidateCount": 60,
+        "maxBeamObserved": 48
+      }
+    },
+    {
+      "id": "positive_feedback",
+      "title": "正反馈",
+      "targetDate": "2026-07-14",
+      "timezone": "Asia/Shanghai",
+      "context": {
+        "sceneType": "commute",
+        "formalityTarget": 3,
+        "activityIntensity": 2,
+        "thermalStrategy": "balanced",
+        "rainStrategy": "none",
+        "requiredSlots": [
+          "tops",
+          "pants",
+          "shoes"
+        ],
+        "optionalSlots": [
+          "outerwear",
+          "skirts",
+          "one_piece",
+          "bag",
+          "hat",
+          "accessory"
+        ],
+        "avoidRules": [],
+        "confidence": "high",
+        "contextSummary": "commute:balanced:none"
+      },
+      "readiness": {
+        "userId": "10000000-0000-4000-8000-000000000001",
+        "generatedAt": "2026-07-13T00:00:00.000Z",
+        "completeness": {
+          "primaryImageRate": 1,
+          "categoryRate": 1,
+          "colorRate": 1,
+          "seasonRate": 1,
+          "formalityRate": 1,
+          "warmthRate": 1,
+          "temperatureRangeRate": 1
+        },
+        "eligibleGarmentsBySlot": {
+          "tops": 3,
+          "outerwear": 3,
+          "pants": 2,
+          "skirts": 1,
+          "one_piece": 1,
+          "shoes": 4,
+          "bag": 1,
+          "hat": 1
+        },
+        "validCandidateCount": 60,
+        "displayableCandidateCount": 3,
+        "status": "ready",
+        "missingFieldCodes": [],
+        "missingSlotCodes": []
+      },
+      "recommendations": [
+        {
+          "objective": "safe",
+          "candidateId": "1c5acea9-c4e1-5ea0-bdbb-1e54831f67bc",
+          "garmentIds": [
+            "20000000-0000-4000-8000-000000000001",
+            "20000000-0000-4000-8000-000000000006",
+            "20000000-0000-4000-8000-000000000007",
+            "20000000-0000-4000-8000-000000000012"
+          ],
+          "finalScore": 79.18,
+          "ruleScores": {
+            "weatherFit": 100,
+            "sceneFit": 100,
+            "structure": 100,
+            "colorHarmony": 100,
+            "styleCoherence": 100,
+            "activityComfort": 85,
+            "rotationValue": 100,
+            "informationCompleteness": 100,
+            "ruleTotal": 98.5
+          },
+          "objectiveScores": {
+            "safe": 79.18,
+            "fresh": 87.83,
+            "comfort": 77.85
+          },
+          "reasonCodes": [
+            "good_for_commute",
+            "weather_fit",
+            "activity_comfort",
+            "rotation_value",
+            "new_combination",
+            "shoe_rationality",
+            "outerwear_rationality",
+            "rule_fallback"
+          ],
+          "riskCodes": [],
+          "missingSlotCodes": [],
+          "fallbackUsed": true
+        },
+        {
+          "objective": "fresh",
+          "candidateId": "71a231da-919c-5c6b-9789-1325c0160575",
+          "garmentIds": [
+            "20000000-0000-4000-8000-000000000003",
+            "20000000-0000-4000-8000-000000000006",
+            "20000000-0000-4000-8000-000000000009",
+            "20000000-0000-4000-8000-000000000012"
+          ],
+          "finalScore": 87.26,
+          "ruleScores": {
+            "weatherFit": 95,
+            "sceneFit": 100,
+            "structure": 100,
+            "colorHarmony": 100,
+            "styleCoherence": 100,
+            "activityComfort": 85,
+            "rotationValue": 100,
+            "informationCompleteness": 100,
+            "ruleTotal": 97.25
+          },
+          "objectiveScores": {
+            "safe": 78.49,
+            "fresh": 87.26,
+            "comfort": 76.65
+          },
+          "reasonCodes": [
+            "good_for_commute",
+            "weather_fit",
+            "activity_comfort",
+            "rotation_value",
+            "new_combination",
+            "shoe_rationality",
+            "outerwear_rationality",
+            "rule_fallback"
+          ],
+          "riskCodes": [],
+          "missingSlotCodes": [],
+          "fallbackUsed": true
+        },
+        {
+          "objective": "comfort",
+          "candidateId": "05e33415-fd97-5d8e-951f-5c3be7d57e17",
+          "garmentIds": [
+            "20000000-0000-4000-8000-000000000001",
+            "20000000-0000-4000-8000-000000000008",
+            "20000000-0000-4000-8000-000000000012"
+          ],
+          "finalScore": 77.85,
+          "ruleScores": {
+            "weatherFit": 100,
+            "sceneFit": 86.66666666666667,
+            "structure": 100,
+            "colorHarmony": 80,
+            "styleCoherence": 66.67,
+            "activityComfort": 85,
+            "rotationValue": 100,
+            "informationCompleteness": 100,
+            "ruleTotal": 89.5
+          },
+          "objectiveScores": {
+            "safe": 74.22,
+            "fresh": 84.28,
+            "comfort": 77.85
+          },
+          "reasonCodes": [
+            "good_for_commute",
+            "weather_fit",
+            "activity_comfort",
+            "rotation_value",
+            "new_combination",
+            "shoe_rationality",
+            "rule_fallback"
+          ],
+          "riskCodes": [],
+          "missingSlotCodes": [],
+          "fallbackUsed": true
+        }
+      ],
+      "exclusions": [],
+      "metrics": {
+        "eligibleGarmentCount": 16,
+        "rawCandidateCount": 120,
+        "ruleScoredCandidateCount": 60,
+        "maxBeamObserved": 48
+      }
+    },
+    {
+      "id": "negative_feedback",
+      "title": "负反馈",
+      "targetDate": "2026-07-14",
+      "timezone": "Asia/Shanghai",
+      "context": {
+        "sceneType": "commute",
+        "formalityTarget": 3,
+        "activityIntensity": 2,
+        "thermalStrategy": "balanced",
+        "rainStrategy": "none",
+        "requiredSlots": [
+          "tops",
+          "pants",
+          "shoes"
+        ],
+        "optionalSlots": [
+          "outerwear",
+          "skirts",
+          "one_piece",
+          "bag",
+          "hat",
+          "accessory"
+        ],
+        "avoidRules": [],
+        "confidence": "high",
+        "contextSummary": "commute:balanced:none"
+      },
+      "readiness": {
+        "userId": "10000000-0000-4000-8000-000000000001",
+        "generatedAt": "2026-07-13T00:00:00.000Z",
+        "completeness": {
+          "primaryImageRate": 1,
+          "categoryRate": 1,
+          "colorRate": 1,
+          "seasonRate": 1,
+          "formalityRate": 1,
+          "warmthRate": 1,
+          "temperatureRangeRate": 1
+        },
+        "eligibleGarmentsBySlot": {
+          "tops": 3,
+          "outerwear": 3,
+          "pants": 2,
+          "skirts": 1,
+          "one_piece": 1,
+          "shoes": 4,
+          "bag": 1,
+          "hat": 1
+        },
+        "validCandidateCount": 60,
+        "displayableCandidateCount": 3,
+        "status": "ready",
+        "missingFieldCodes": [],
+        "missingSlotCodes": []
+      },
+      "recommendations": [
+        {
+          "objective": "safe",
+          "candidateId": "71a231da-919c-5c6b-9789-1325c0160575",
+          "garmentIds": [
+            "20000000-0000-4000-8000-000000000003",
+            "20000000-0000-4000-8000-000000000006",
+            "20000000-0000-4000-8000-000000000009",
+            "20000000-0000-4000-8000-000000000012"
+          ],
+          "finalScore": 78.49,
+          "ruleScores": {
+            "weatherFit": 95,
+            "sceneFit": 100,
+            "structure": 100,
+            "colorHarmony": 100,
+            "styleCoherence": 100,
+            "activityComfort": 85,
+            "rotationValue": 100,
+            "informationCompleteness": 100,
+            "ruleTotal": 97.25
+          },
+          "objectiveScores": {
+            "safe": 78.49,
+            "fresh": 87.26,
+            "comfort": 76.65
+          },
+          "reasonCodes": [
+            "good_for_commute",
+            "weather_fit",
+            "activity_comfort",
+            "rotation_value",
+            "new_combination",
+            "shoe_rationality",
+            "outerwear_rationality",
+            "rule_fallback"
+          ],
+          "riskCodes": [],
+          "missingSlotCodes": [],
+          "fallbackUsed": true
+        },
+        {
+          "objective": "fresh",
+          "candidateId": "dc5f10b0-69a8-5332-b3d3-073bc670c638",
+          "garmentIds": [
+            "20000000-0000-4000-8000-000000000003",
+            "20000000-0000-4000-8000-000000000004",
+            "20000000-0000-4000-8000-000000000007",
+            "20000000-0000-4000-8000-000000000012"
+          ],
+          "finalScore": 87.26,
+          "ruleScores": {
+            "weatherFit": 95,
+            "sceneFit": 100,
+            "structure": 100,
+            "colorHarmony": 100,
+            "styleCoherence": 100,
+            "activityComfort": 85,
+            "rotationValue": 100,
+            "informationCompleteness": 100,
+            "ruleTotal": 97.25
+          },
+          "objectiveScores": {
+            "safe": 78.49,
+            "fresh": 87.26,
+            "comfort": 76.65
+          },
+          "reasonCodes": [
+            "good_for_commute",
+            "weather_fit",
+            "activity_comfort",
+            "rotation_value",
+            "new_combination",
+            "shoe_rationality",
+            "outerwear_rationality",
+            "rule_fallback"
+          ],
+          "riskCodes": [],
+          "missingSlotCodes": [],
+          "fallbackUsed": true
+        },
+        {
+          "objective": "comfort",
+          "candidateId": "05e33415-fd97-5d8e-951f-5c3be7d57e17",
+          "garmentIds": [
+            "20000000-0000-4000-8000-000000000001",
+            "20000000-0000-4000-8000-000000000008",
+            "20000000-0000-4000-8000-000000000012"
+          ],
+          "finalScore": 77.85,
+          "ruleScores": {
+            "weatherFit": 100,
+            "sceneFit": 86.66666666666667,
+            "structure": 100,
+            "colorHarmony": 80,
+            "styleCoherence": 66.67,
+            "activityComfort": 85,
+            "rotationValue": 100,
+            "informationCompleteness": 100,
+            "ruleTotal": 89.5
+          },
+          "objectiveScores": {
+            "safe": 74.22,
+            "fresh": 84.28,
+            "comfort": 77.85
+          },
+          "reasonCodes": [
+            "good_for_commute",
+            "weather_fit",
+            "activity_comfort",
+            "rotation_value",
+            "new_combination",
+            "shoe_rationality",
+            "rule_fallback"
+          ],
+          "riskCodes": [],
+          "missingSlotCodes": [],
+          "fallbackUsed": true
+        }
+      ],
+      "exclusions": [],
+      "metrics": {
+        "eligibleGarmentCount": 16,
+        "rawCandidateCount": 120,
+        "ruleScoredCandidateCount": 60,
+        "maxBeamObserved": 48
+      }
+    },
+    {
+      "id": "other_user_filtered",
+      "title": "非本用户",
+      "targetDate": "2026-07-14",
+      "timezone": "Asia/Shanghai",
+      "context": {
+        "sceneType": "commute",
+        "formalityTarget": 3,
+        "activityIntensity": 2,
+        "thermalStrategy": "balanced",
+        "rainStrategy": "none",
+        "requiredSlots": [
+          "tops",
+          "pants",
+          "shoes"
+        ],
+        "optionalSlots": [
+          "outerwear",
+          "skirts",
+          "one_piece",
+          "bag",
+          "hat",
+          "accessory"
+        ],
+        "avoidRules": [],
+        "confidence": "high",
+        "contextSummary": "commute:balanced:none"
+      },
+      "readiness": {
+        "userId": "10000000-0000-4000-8000-000000000001",
+        "generatedAt": "2026-07-13T00:00:00.000Z",
+        "completeness": {
+          "primaryImageRate": 1,
+          "categoryRate": 1,
+          "colorRate": 1,
+          "seasonRate": 1,
+          "formalityRate": 1,
+          "warmthRate": 1,
+          "temperatureRangeRate": 1
+        },
+        "eligibleGarmentsBySlot": {
+          "tops": 3,
+          "outerwear": 3,
+          "pants": 2,
+          "skirts": 1,
+          "one_piece": 1,
+          "shoes": 4,
+          "bag": 1,
+          "hat": 1
+        },
+        "validCandidateCount": 60,
+        "displayableCandidateCount": 3,
+        "status": "ready",
+        "missingFieldCodes": [],
+        "missingSlotCodes": []
+      },
+      "recommendations": [
+        {
+          "objective": "safe",
+          "candidateId": "1c5acea9-c4e1-5ea0-bdbb-1e54831f67bc",
+          "garmentIds": [
+            "20000000-0000-4000-8000-000000000001",
+            "20000000-0000-4000-8000-000000000006",
+            "20000000-0000-4000-8000-000000000007",
+            "20000000-0000-4000-8000-000000000012"
+          ],
+          "finalScore": 79.18,
+          "ruleScores": {
+            "weatherFit": 100,
+            "sceneFit": 100,
+            "structure": 100,
+            "colorHarmony": 100,
+            "styleCoherence": 100,
+            "activityComfort": 85,
+            "rotationValue": 100,
+            "informationCompleteness": 100,
+            "ruleTotal": 98.5
+          },
+          "objectiveScores": {
+            "safe": 79.18,
+            "fresh": 87.83,
+            "comfort": 77.85
+          },
+          "reasonCodes": [
+            "good_for_commute",
+            "weather_fit",
+            "activity_comfort",
+            "rotation_value",
+            "new_combination",
+            "shoe_rationality",
+            "outerwear_rationality",
+            "rule_fallback"
+          ],
+          "riskCodes": [],
+          "missingSlotCodes": [],
+          "fallbackUsed": true
+        },
+        {
+          "objective": "fresh",
+          "candidateId": "71a231da-919c-5c6b-9789-1325c0160575",
+          "garmentIds": [
+            "20000000-0000-4000-8000-000000000003",
+            "20000000-0000-4000-8000-000000000006",
+            "20000000-0000-4000-8000-000000000009",
+            "20000000-0000-4000-8000-000000000012"
+          ],
+          "finalScore": 87.26,
+          "ruleScores": {
+            "weatherFit": 95,
+            "sceneFit": 100,
+            "structure": 100,
+            "colorHarmony": 100,
+            "styleCoherence": 100,
+            "activityComfort": 85,
+            "rotationValue": 100,
+            "informationCompleteness": 100,
+            "ruleTotal": 97.25
+          },
+          "objectiveScores": {
+            "safe": 78.49,
+            "fresh": 87.26,
+            "comfort": 76.65
+          },
+          "reasonCodes": [
+            "good_for_commute",
+            "weather_fit",
+            "activity_comfort",
+            "rotation_value",
+            "new_combination",
+            "shoe_rationality",
+            "outerwear_rationality",
+            "rule_fallback"
+          ],
+          "riskCodes": [],
+          "missingSlotCodes": [],
+          "fallbackUsed": true
+        },
+        {
+          "objective": "comfort",
+          "candidateId": "05e33415-fd97-5d8e-951f-5c3be7d57e17",
+          "garmentIds": [
+            "20000000-0000-4000-8000-000000000001",
+            "20000000-0000-4000-8000-000000000008",
+            "20000000-0000-4000-8000-000000000012"
+          ],
+          "finalScore": 77.85,
+          "ruleScores": {
+            "weatherFit": 100,
+            "sceneFit": 86.66666666666667,
+            "structure": 100,
+            "colorHarmony": 80,
+            "styleCoherence": 66.67,
+            "activityComfort": 85,
+            "rotationValue": 100,
+            "informationCompleteness": 100,
+            "ruleTotal": 89.5
+          },
+          "objectiveScores": {
+            "safe": 74.22,
+            "fresh": 84.28,
+            "comfort": 77.85
+          },
+          "reasonCodes": [
+            "good_for_commute",
+            "weather_fit",
+            "activity_comfort",
+            "rotation_value",
+            "new_combination",
+            "shoe_rationality",
+            "rule_fallback"
+          ],
+          "riskCodes": [],
+          "missingSlotCodes": [],
+          "fallbackUsed": true
+        }
+      ],
+      "exclusions": [
+        {
+          "garmentId": "20000000-0000-4000-8000-000000000017",
+          "codes": [
+            "not_current_user"
+          ]
+        }
+      ],
+      "metrics": {
+        "eligibleGarmentCount": 16,
+        "rawCandidateCount": 120,
+        "ruleScoredCandidateCount": 60,
+        "maxBeamObserved": 48
+      }
+    },
+    {
+      "id": "deleted_filtered",
+      "title": "deleted",
+      "targetDate": "2026-07-14",
+      "timezone": "Asia/Shanghai",
+      "context": {
+        "sceneType": "commute",
+        "formalityTarget": 3,
+        "activityIntensity": 2,
+        "thermalStrategy": "balanced",
+        "rainStrategy": "none",
+        "requiredSlots": [
+          "tops",
+          "pants",
+          "shoes"
+        ],
+        "optionalSlots": [
+          "outerwear",
+          "skirts",
+          "one_piece",
+          "bag",
+          "hat",
+          "accessory"
+        ],
+        "avoidRules": [],
+        "confidence": "high",
+        "contextSummary": "commute:balanced:none"
+      },
+      "readiness": {
+        "userId": "10000000-0000-4000-8000-000000000001",
+        "generatedAt": "2026-07-13T00:00:00.000Z",
+        "completeness": {
+          "primaryImageRate": 1,
+          "categoryRate": 1,
+          "colorRate": 1,
+          "seasonRate": 1,
+          "formalityRate": 1,
+          "warmthRate": 1,
+          "temperatureRangeRate": 1
+        },
+        "eligibleGarmentsBySlot": {
+          "tops": 3,
+          "outerwear": 3,
+          "pants": 2,
+          "skirts": 1,
+          "one_piece": 1,
+          "shoes": 4,
+          "bag": 1,
+          "hat": 1
+        },
+        "validCandidateCount": 60,
+        "displayableCandidateCount": 3,
+        "status": "ready",
+        "missingFieldCodes": [],
+        "missingSlotCodes": []
+      },
+      "recommendations": [
+        {
+          "objective": "safe",
+          "candidateId": "1c5acea9-c4e1-5ea0-bdbb-1e54831f67bc",
+          "garmentIds": [
+            "20000000-0000-4000-8000-000000000001",
+            "20000000-0000-4000-8000-000000000006",
+            "20000000-0000-4000-8000-000000000007",
+            "20000000-0000-4000-8000-000000000012"
+          ],
+          "finalScore": 79.18,
+          "ruleScores": {
+            "weatherFit": 100,
+            "sceneFit": 100,
+            "structure": 100,
+            "colorHarmony": 100,
+            "styleCoherence": 100,
+            "activityComfort": 85,
+            "rotationValue": 100,
+            "informationCompleteness": 100,
+            "ruleTotal": 98.5
+          },
+          "objectiveScores": {
+            "safe": 79.18,
+            "fresh": 87.83,
+            "comfort": 77.85
+          },
+          "reasonCodes": [
+            "good_for_commute",
+            "weather_fit",
+            "activity_comfort",
+            "rotation_value",
+            "new_combination",
+            "shoe_rationality",
+            "outerwear_rationality",
+            "rule_fallback"
+          ],
+          "riskCodes": [],
+          "missingSlotCodes": [],
+          "fallbackUsed": true
+        },
+        {
+          "objective": "fresh",
+          "candidateId": "71a231da-919c-5c6b-9789-1325c0160575",
+          "garmentIds": [
+            "20000000-0000-4000-8000-000000000003",
+            "20000000-0000-4000-8000-000000000006",
+            "20000000-0000-4000-8000-000000000009",
+            "20000000-0000-4000-8000-000000000012"
+          ],
+          "finalScore": 87.26,
+          "ruleScores": {
+            "weatherFit": 95,
+            "sceneFit": 100,
+            "structure": 100,
+            "colorHarmony": 100,
+            "styleCoherence": 100,
+            "activityComfort": 85,
+            "rotationValue": 100,
+            "informationCompleteness": 100,
+            "ruleTotal": 97.25
+          },
+          "objectiveScores": {
+            "safe": 78.49,
+            "fresh": 87.26,
+            "comfort": 76.65
+          },
+          "reasonCodes": [
+            "good_for_commute",
+            "weather_fit",
+            "activity_comfort",
+            "rotation_value",
+            "new_combination",
+            "shoe_rationality",
+            "outerwear_rationality",
+            "rule_fallback"
+          ],
+          "riskCodes": [],
+          "missingSlotCodes": [],
+          "fallbackUsed": true
+        },
+        {
+          "objective": "comfort",
+          "candidateId": "05e33415-fd97-5d8e-951f-5c3be7d57e17",
+          "garmentIds": [
+            "20000000-0000-4000-8000-000000000001",
+            "20000000-0000-4000-8000-000000000008",
+            "20000000-0000-4000-8000-000000000012"
+          ],
+          "finalScore": 77.85,
+          "ruleScores": {
+            "weatherFit": 100,
+            "sceneFit": 86.66666666666667,
+            "structure": 100,
+            "colorHarmony": 80,
+            "styleCoherence": 66.67,
+            "activityComfort": 85,
+            "rotationValue": 100,
+            "informationCompleteness": 100,
+            "ruleTotal": 89.5
+          },
+          "objectiveScores": {
+            "safe": 74.22,
+            "fresh": 84.28,
+            "comfort": 77.85
+          },
+          "reasonCodes": [
+            "good_for_commute",
+            "weather_fit",
+            "activity_comfort",
+            "rotation_value",
+            "new_combination",
+            "shoe_rationality",
+            "rule_fallback"
+          ],
+          "riskCodes": [],
+          "missingSlotCodes": [],
+          "fallbackUsed": true
+        }
+      ],
+      "exclusions": [
+        {
+          "garmentId": "20000000-0000-4000-8000-000000000018",
+          "codes": [
+            "deleted"
+          ]
+        }
+      ],
+      "metrics": {
+        "eligibleGarmentCount": 16,
+        "rawCandidateCount": 120,
+        "ruleScoredCandidateCount": 60,
+        "maxBeamObserved": 48
+      }
+    },
+    {
+      "id": "archived_filtered",
+      "title": "archived",
+      "targetDate": "2026-07-14",
+      "timezone": "Asia/Shanghai",
+      "context": {
+        "sceneType": "commute",
+        "formalityTarget": 3,
+        "activityIntensity": 2,
+        "thermalStrategy": "balanced",
+        "rainStrategy": "none",
+        "requiredSlots": [
+          "tops",
+          "pants",
+          "shoes"
+        ],
+        "optionalSlots": [
+          "outerwear",
+          "skirts",
+          "one_piece",
+          "bag",
+          "hat",
+          "accessory"
+        ],
+        "avoidRules": [],
+        "confidence": "high",
+        "contextSummary": "commute:balanced:none"
+      },
+      "readiness": {
+        "userId": "10000000-0000-4000-8000-000000000001",
+        "generatedAt": "2026-07-13T00:00:00.000Z",
+        "completeness": {
+          "primaryImageRate": 1,
+          "categoryRate": 1,
+          "colorRate": 1,
+          "seasonRate": 1,
+          "formalityRate": 1,
+          "warmthRate": 1,
+          "temperatureRangeRate": 1
+        },
+        "eligibleGarmentsBySlot": {
+          "tops": 3,
+          "outerwear": 3,
+          "pants": 2,
+          "skirts": 1,
+          "one_piece": 1,
+          "shoes": 4,
+          "bag": 1,
+          "hat": 1
+        },
+        "validCandidateCount": 60,
+        "displayableCandidateCount": 3,
+        "status": "ready",
+        "missingFieldCodes": [],
+        "missingSlotCodes": []
+      },
+      "recommendations": [
+        {
+          "objective": "safe",
+          "candidateId": "1c5acea9-c4e1-5ea0-bdbb-1e54831f67bc",
+          "garmentIds": [
+            "20000000-0000-4000-8000-000000000001",
+            "20000000-0000-4000-8000-000000000006",
+            "20000000-0000-4000-8000-000000000007",
+            "20000000-0000-4000-8000-000000000012"
+          ],
+          "finalScore": 79.18,
+          "ruleScores": {
+            "weatherFit": 100,
+            "sceneFit": 100,
+            "structure": 100,
+            "colorHarmony": 100,
+            "styleCoherence": 100,
+            "activityComfort": 85,
+            "rotationValue": 100,
+            "informationCompleteness": 100,
+            "ruleTotal": 98.5
+          },
+          "objectiveScores": {
+            "safe": 79.18,
+            "fresh": 87.83,
+            "comfort": 77.85
+          },
+          "reasonCodes": [
+            "good_for_commute",
+            "weather_fit",
+            "activity_comfort",
+            "rotation_value",
+            "new_combination",
+            "shoe_rationality",
+            "outerwear_rationality",
+            "rule_fallback"
+          ],
+          "riskCodes": [],
+          "missingSlotCodes": [],
+          "fallbackUsed": true
+        },
+        {
+          "objective": "fresh",
+          "candidateId": "71a231da-919c-5c6b-9789-1325c0160575",
+          "garmentIds": [
+            "20000000-0000-4000-8000-000000000003",
+            "20000000-0000-4000-8000-000000000006",
+            "20000000-0000-4000-8000-000000000009",
+            "20000000-0000-4000-8000-000000000012"
+          ],
+          "finalScore": 87.26,
+          "ruleScores": {
+            "weatherFit": 95,
+            "sceneFit": 100,
+            "structure": 100,
+            "colorHarmony": 100,
+            "styleCoherence": 100,
+            "activityComfort": 85,
+            "rotationValue": 100,
+            "informationCompleteness": 100,
+            "ruleTotal": 97.25
+          },
+          "objectiveScores": {
+            "safe": 78.49,
+            "fresh": 87.26,
+            "comfort": 76.65
+          },
+          "reasonCodes": [
+            "good_for_commute",
+            "weather_fit",
+            "activity_comfort",
+            "rotation_value",
+            "new_combination",
+            "shoe_rationality",
+            "outerwear_rationality",
+            "rule_fallback"
+          ],
+          "riskCodes": [],
+          "missingSlotCodes": [],
+          "fallbackUsed": true
+        },
+        {
+          "objective": "comfort",
+          "candidateId": "05e33415-fd97-5d8e-951f-5c3be7d57e17",
+          "garmentIds": [
+            "20000000-0000-4000-8000-000000000001",
+            "20000000-0000-4000-8000-000000000008",
+            "20000000-0000-4000-8000-000000000012"
+          ],
+          "finalScore": 77.85,
+          "ruleScores": {
+            "weatherFit": 100,
+            "sceneFit": 86.66666666666667,
+            "structure": 100,
+            "colorHarmony": 80,
+            "styleCoherence": 66.67,
+            "activityComfort": 85,
+            "rotationValue": 100,
+            "informationCompleteness": 100,
+            "ruleTotal": 89.5
+          },
+          "objectiveScores": {
+            "safe": 74.22,
+            "fresh": 84.28,
+            "comfort": 77.85
+          },
+          "reasonCodes": [
+            "good_for_commute",
+            "weather_fit",
+            "activity_comfort",
+            "rotation_value",
+            "new_combination",
+            "shoe_rationality",
+            "rule_fallback"
+          ],
+          "riskCodes": [],
+          "missingSlotCodes": [],
+          "fallbackUsed": true
+        }
+      ],
+      "exclusions": [
+        {
+          "garmentId": "20000000-0000-4000-8000-000000000019",
+          "codes": [
+            "unavailable_status"
+          ]
+        }
+      ],
+      "metrics": {
+        "eligibleGarmentCount": 16,
+        "rawCandidateCount": 120,
+        "ruleScoredCandidateCount": 60,
+        "maxBeamObserved": 48
+      }
+    },
+    {
+      "id": "laundry_filtered",
+      "title": "laundry",
+      "targetDate": "2026-07-14",
+      "timezone": "Asia/Shanghai",
+      "context": {
+        "sceneType": "commute",
+        "formalityTarget": 3,
+        "activityIntensity": 2,
+        "thermalStrategy": "balanced",
+        "rainStrategy": "none",
+        "requiredSlots": [
+          "tops",
+          "pants",
+          "shoes"
+        ],
+        "optionalSlots": [
+          "outerwear",
+          "skirts",
+          "one_piece",
+          "bag",
+          "hat",
+          "accessory"
+        ],
+        "avoidRules": [],
+        "confidence": "high",
+        "contextSummary": "commute:balanced:none"
+      },
+      "readiness": {
+        "userId": "10000000-0000-4000-8000-000000000001",
+        "generatedAt": "2026-07-13T00:00:00.000Z",
+        "completeness": {
+          "primaryImageRate": 1,
+          "categoryRate": 1,
+          "colorRate": 1,
+          "seasonRate": 1,
+          "formalityRate": 1,
+          "warmthRate": 1,
+          "temperatureRangeRate": 1
+        },
+        "eligibleGarmentsBySlot": {
+          "tops": 3,
+          "outerwear": 3,
+          "pants": 2,
+          "skirts": 1,
+          "one_piece": 1,
+          "shoes": 4,
+          "bag": 1,
+          "hat": 1
+        },
+        "validCandidateCount": 60,
+        "displayableCandidateCount": 3,
+        "status": "ready",
+        "missingFieldCodes": [],
+        "missingSlotCodes": []
+      },
+      "recommendations": [
+        {
+          "objective": "safe",
+          "candidateId": "1c5acea9-c4e1-5ea0-bdbb-1e54831f67bc",
+          "garmentIds": [
+            "20000000-0000-4000-8000-000000000001",
+            "20000000-0000-4000-8000-000000000006",
+            "20000000-0000-4000-8000-000000000007",
+            "20000000-0000-4000-8000-000000000012"
+          ],
+          "finalScore": 79.18,
+          "ruleScores": {
+            "weatherFit": 100,
+            "sceneFit": 100,
+            "structure": 100,
+            "colorHarmony": 100,
+            "styleCoherence": 100,
+            "activityComfort": 85,
+            "rotationValue": 100,
+            "informationCompleteness": 100,
+            "ruleTotal": 98.5
+          },
+          "objectiveScores": {
+            "safe": 79.18,
+            "fresh": 87.83,
+            "comfort": 77.85
+          },
+          "reasonCodes": [
+            "good_for_commute",
+            "weather_fit",
+            "activity_comfort",
+            "rotation_value",
+            "new_combination",
+            "shoe_rationality",
+            "outerwear_rationality",
+            "rule_fallback"
+          ],
+          "riskCodes": [],
+          "missingSlotCodes": [],
+          "fallbackUsed": true
+        },
+        {
+          "objective": "fresh",
+          "candidateId": "71a231da-919c-5c6b-9789-1325c0160575",
+          "garmentIds": [
+            "20000000-0000-4000-8000-000000000003",
+            "20000000-0000-4000-8000-000000000006",
+            "20000000-0000-4000-8000-000000000009",
+            "20000000-0000-4000-8000-000000000012"
+          ],
+          "finalScore": 87.26,
+          "ruleScores": {
+            "weatherFit": 95,
+            "sceneFit": 100,
+            "structure": 100,
+            "colorHarmony": 100,
+            "styleCoherence": 100,
+            "activityComfort": 85,
+            "rotationValue": 100,
+            "informationCompleteness": 100,
+            "ruleTotal": 97.25
+          },
+          "objectiveScores": {
+            "safe": 78.49,
+            "fresh": 87.26,
+            "comfort": 76.65
+          },
+          "reasonCodes": [
+            "good_for_commute",
+            "weather_fit",
+            "activity_comfort",
+            "rotation_value",
+            "new_combination",
+            "shoe_rationality",
+            "outerwear_rationality",
+            "rule_fallback"
+          ],
+          "riskCodes": [],
+          "missingSlotCodes": [],
+          "fallbackUsed": true
+        },
+        {
+          "objective": "comfort",
+          "candidateId": "05e33415-fd97-5d8e-951f-5c3be7d57e17",
+          "garmentIds": [
+            "20000000-0000-4000-8000-000000000001",
+            "20000000-0000-4000-8000-000000000008",
+            "20000000-0000-4000-8000-000000000012"
+          ],
+          "finalScore": 77.85,
+          "ruleScores": {
+            "weatherFit": 100,
+            "sceneFit": 86.66666666666667,
+            "structure": 100,
+            "colorHarmony": 80,
+            "styleCoherence": 66.67,
+            "activityComfort": 85,
+            "rotationValue": 100,
+            "informationCompleteness": 100,
+            "ruleTotal": 89.5
+          },
+          "objectiveScores": {
+            "safe": 74.22,
+            "fresh": 84.28,
+            "comfort": 77.85
+          },
+          "reasonCodes": [
+            "good_for_commute",
+            "weather_fit",
+            "activity_comfort",
+            "rotation_value",
+            "new_combination",
+            "shoe_rationality",
+            "rule_fallback"
+          ],
+          "riskCodes": [],
+          "missingSlotCodes": [],
+          "fallbackUsed": true
+        }
+      ],
+      "exclusions": [
+        {
+          "garmentId": "20000000-0000-4000-8000-000000000020",
+          "codes": [
+            "unavailable_status"
+          ]
+        }
+      ],
+      "metrics": {
+        "eligibleGarmentCount": 16,
+        "rawCandidateCount": 120,
+        "ruleScoredCandidateCount": 60,
+        "maxBeamObserved": 48
+      }
+    },
+    {
+      "id": "repair_filtered",
+      "title": "repair",
+      "targetDate": "2026-07-14",
+      "timezone": "Asia/Shanghai",
+      "context": {
+        "sceneType": "commute",
+        "formalityTarget": 3,
+        "activityIntensity": 2,
+        "thermalStrategy": "balanced",
+        "rainStrategy": "none",
+        "requiredSlots": [
+          "tops",
+          "pants",
+          "shoes"
+        ],
+        "optionalSlots": [
+          "outerwear",
+          "skirts",
+          "one_piece",
+          "bag",
+          "hat",
+          "accessory"
+        ],
+        "avoidRules": [],
+        "confidence": "high",
+        "contextSummary": "commute:balanced:none"
+      },
+      "readiness": {
+        "userId": "10000000-0000-4000-8000-000000000001",
+        "generatedAt": "2026-07-13T00:00:00.000Z",
+        "completeness": {
+          "primaryImageRate": 1,
+          "categoryRate": 1,
+          "colorRate": 1,
+          "seasonRate": 1,
+          "formalityRate": 1,
+          "warmthRate": 1,
+          "temperatureRangeRate": 1
+        },
+        "eligibleGarmentsBySlot": {
+          "tops": 3,
+          "outerwear": 3,
+          "pants": 2,
+          "skirts": 1,
+          "one_piece": 1,
+          "shoes": 4,
+          "bag": 1,
+          "hat": 1
+        },
+        "validCandidateCount": 60,
+        "displayableCandidateCount": 3,
+        "status": "ready",
+        "missingFieldCodes": [],
+        "missingSlotCodes": []
+      },
+      "recommendations": [
+        {
+          "objective": "safe",
+          "candidateId": "1c5acea9-c4e1-5ea0-bdbb-1e54831f67bc",
+          "garmentIds": [
+            "20000000-0000-4000-8000-000000000001",
+            "20000000-0000-4000-8000-000000000006",
+            "20000000-0000-4000-8000-000000000007",
+            "20000000-0000-4000-8000-000000000012"
+          ],
+          "finalScore": 79.18,
+          "ruleScores": {
+            "weatherFit": 100,
+            "sceneFit": 100,
+            "structure": 100,
+            "colorHarmony": 100,
+            "styleCoherence": 100,
+            "activityComfort": 85,
+            "rotationValue": 100,
+            "informationCompleteness": 100,
+            "ruleTotal": 98.5
+          },
+          "objectiveScores": {
+            "safe": 79.18,
+            "fresh": 87.83,
+            "comfort": 77.85
+          },
+          "reasonCodes": [
+            "good_for_commute",
+            "weather_fit",
+            "activity_comfort",
+            "rotation_value",
+            "new_combination",
+            "shoe_rationality",
+            "outerwear_rationality",
+            "rule_fallback"
+          ],
+          "riskCodes": [],
+          "missingSlotCodes": [],
+          "fallbackUsed": true
+        },
+        {
+          "objective": "fresh",
+          "candidateId": "71a231da-919c-5c6b-9789-1325c0160575",
+          "garmentIds": [
+            "20000000-0000-4000-8000-000000000003",
+            "20000000-0000-4000-8000-000000000006",
+            "20000000-0000-4000-8000-000000000009",
+            "20000000-0000-4000-8000-000000000012"
+          ],
+          "finalScore": 87.26,
+          "ruleScores": {
+            "weatherFit": 95,
+            "sceneFit": 100,
+            "structure": 100,
+            "colorHarmony": 100,
+            "styleCoherence": 100,
+            "activityComfort": 85,
+            "rotationValue": 100,
+            "informationCompleteness": 100,
+            "ruleTotal": 97.25
+          },
+          "objectiveScores": {
+            "safe": 78.49,
+            "fresh": 87.26,
+            "comfort": 76.65
+          },
+          "reasonCodes": [
+            "good_for_commute",
+            "weather_fit",
+            "activity_comfort",
+            "rotation_value",
+            "new_combination",
+            "shoe_rationality",
+            "outerwear_rationality",
+            "rule_fallback"
+          ],
+          "riskCodes": [],
+          "missingSlotCodes": [],
+          "fallbackUsed": true
+        },
+        {
+          "objective": "comfort",
+          "candidateId": "05e33415-fd97-5d8e-951f-5c3be7d57e17",
+          "garmentIds": [
+            "20000000-0000-4000-8000-000000000001",
+            "20000000-0000-4000-8000-000000000008",
+            "20000000-0000-4000-8000-000000000012"
+          ],
+          "finalScore": 77.85,
+          "ruleScores": {
+            "weatherFit": 100,
+            "sceneFit": 86.66666666666667,
+            "structure": 100,
+            "colorHarmony": 80,
+            "styleCoherence": 66.67,
+            "activityComfort": 85,
+            "rotationValue": 100,
+            "informationCompleteness": 100,
+            "ruleTotal": 89.5
+          },
+          "objectiveScores": {
+            "safe": 74.22,
+            "fresh": 84.28,
+            "comfort": 77.85
+          },
+          "reasonCodes": [
+            "good_for_commute",
+            "weather_fit",
+            "activity_comfort",
+            "rotation_value",
+            "new_combination",
+            "shoe_rationality",
+            "rule_fallback"
+          ],
+          "riskCodes": [],
+          "missingSlotCodes": [],
+          "fallbackUsed": true
+        }
+      ],
+      "exclusions": [
+        {
+          "garmentId": "20000000-0000-4000-8000-000000000021",
+          "codes": [
+            "unavailable_status"
+          ]
+        }
+      ],
+      "metrics": {
+        "eligibleGarmentCount": 16,
+        "rawCandidateCount": 120,
+        "ruleScoredCandidateCount": 60,
+        "maxBeamObserved": 48
+      }
+    },
+    {
+      "id": "missing_image_filtered",
+      "title": "缺主图",
+      "targetDate": "2026-07-14",
+      "timezone": "Asia/Shanghai",
+      "context": {
+        "sceneType": "commute",
+        "formalityTarget": 3,
+        "activityIntensity": 2,
+        "thermalStrategy": "balanced",
+        "rainStrategy": "none",
+        "requiredSlots": [
+          "tops",
+          "pants",
+          "shoes"
+        ],
+        "optionalSlots": [
+          "outerwear",
+          "skirts",
+          "one_piece",
+          "bag",
+          "hat",
+          "accessory"
+        ],
+        "avoidRules": [],
+        "confidence": "high",
+        "contextSummary": "commute:balanced:none"
+      },
+      "readiness": {
+        "userId": "10000000-0000-4000-8000-000000000001",
+        "generatedAt": "2026-07-13T00:00:00.000Z",
+        "completeness": {
+          "primaryImageRate": 0.9412,
+          "categoryRate": 1,
+          "colorRate": 1,
+          "seasonRate": 1,
+          "formalityRate": 1,
+          "warmthRate": 1,
+          "temperatureRangeRate": 1
+        },
+        "eligibleGarmentsBySlot": {
+          "tops": 3,
+          "outerwear": 3,
+          "pants": 2,
+          "skirts": 1,
+          "one_piece": 1,
+          "shoes": 4,
+          "bag": 1,
+          "hat": 1
+        },
+        "validCandidateCount": 60,
+        "displayableCandidateCount": 3,
+        "status": "ready",
+        "missingFieldCodes": [
+          "primary_image"
+        ],
+        "missingSlotCodes": []
+      },
+      "recommendations": [
+        {
+          "objective": "safe",
+          "candidateId": "1c5acea9-c4e1-5ea0-bdbb-1e54831f67bc",
+          "garmentIds": [
+            "20000000-0000-4000-8000-000000000001",
+            "20000000-0000-4000-8000-000000000006",
+            "20000000-0000-4000-8000-000000000007",
+            "20000000-0000-4000-8000-000000000012"
+          ],
+          "finalScore": 79.18,
+          "ruleScores": {
+            "weatherFit": 100,
+            "sceneFit": 100,
+            "structure": 100,
+            "colorHarmony": 100,
+            "styleCoherence": 100,
+            "activityComfort": 85,
+            "rotationValue": 100,
+            "informationCompleteness": 100,
+            "ruleTotal": 98.5
+          },
+          "objectiveScores": {
+            "safe": 79.18,
+            "fresh": 87.83,
+            "comfort": 77.85
+          },
+          "reasonCodes": [
+            "good_for_commute",
+            "weather_fit",
+            "activity_comfort",
+            "rotation_value",
+            "new_combination",
+            "shoe_rationality",
+            "outerwear_rationality",
+            "rule_fallback"
+          ],
+          "riskCodes": [],
+          "missingSlotCodes": [],
+          "fallbackUsed": true
+        },
+        {
+          "objective": "fresh",
+          "candidateId": "71a231da-919c-5c6b-9789-1325c0160575",
+          "garmentIds": [
+            "20000000-0000-4000-8000-000000000003",
+            "20000000-0000-4000-8000-000000000006",
+            "20000000-0000-4000-8000-000000000009",
+            "20000000-0000-4000-8000-000000000012"
+          ],
+          "finalScore": 87.26,
+          "ruleScores": {
+            "weatherFit": 95,
+            "sceneFit": 100,
+            "structure": 100,
+            "colorHarmony": 100,
+            "styleCoherence": 100,
+            "activityComfort": 85,
+            "rotationValue": 100,
+            "informationCompleteness": 100,
+            "ruleTotal": 97.25
+          },
+          "objectiveScores": {
+            "safe": 78.49,
+            "fresh": 87.26,
+            "comfort": 76.65
+          },
+          "reasonCodes": [
+            "good_for_commute",
+            "weather_fit",
+            "activity_comfort",
+            "rotation_value",
+            "new_combination",
+            "shoe_rationality",
+            "outerwear_rationality",
+            "rule_fallback"
+          ],
+          "riskCodes": [],
+          "missingSlotCodes": [],
+          "fallbackUsed": true
+        },
+        {
+          "objective": "comfort",
+          "candidateId": "05e33415-fd97-5d8e-951f-5c3be7d57e17",
+          "garmentIds": [
+            "20000000-0000-4000-8000-000000000001",
+            "20000000-0000-4000-8000-000000000008",
+            "20000000-0000-4000-8000-000000000012"
+          ],
+          "finalScore": 77.85,
+          "ruleScores": {
+            "weatherFit": 100,
+            "sceneFit": 86.66666666666667,
+            "structure": 100,
+            "colorHarmony": 80,
+            "styleCoherence": 66.67,
+            "activityComfort": 85,
+            "rotationValue": 100,
+            "informationCompleteness": 100,
+            "ruleTotal": 89.5
+          },
+          "objectiveScores": {
+            "safe": 74.22,
+            "fresh": 84.28,
+            "comfort": 77.85
+          },
+          "reasonCodes": [
+            "good_for_commute",
+            "weather_fit",
+            "activity_comfort",
+            "rotation_value",
+            "new_combination",
+            "shoe_rationality",
+            "rule_fallback"
+          ],
+          "riskCodes": [],
+          "missingSlotCodes": [],
+          "fallbackUsed": true
+        }
+      ],
+      "exclusions": [
+        {
+          "garmentId": "20000000-0000-4000-8000-000000000022",
+          "codes": [
+            "missing_primary_image"
+          ]
+        }
+      ],
+      "metrics": {
+        "eligibleGarmentCount": 16,
+        "rawCandidateCount": 120,
+        "ruleScoredCandidateCount": 60,
+        "maxBeamObserved": 48
+      }
+    },
+    {
+      "id": "missing_required_fields",
+      "title": "缺必要字段",
+      "targetDate": "2026-07-14",
+      "timezone": "Asia/Shanghai",
+      "context": {
+        "sceneType": "commute",
+        "formalityTarget": 3,
+        "activityIntensity": 2,
+        "thermalStrategy": "balanced",
+        "rainStrategy": "none",
+        "requiredSlots": [
+          "tops",
+          "pants",
+          "shoes"
+        ],
+        "optionalSlots": [
+          "outerwear",
+          "skirts",
+          "one_piece",
+          "bag",
+          "hat",
+          "accessory"
+        ],
+        "avoidRules": [],
+        "confidence": "high",
+        "contextSummary": "commute:balanced:none"
+      },
+      "readiness": {
+        "userId": "10000000-0000-4000-8000-000000000001",
+        "generatedAt": "2026-07-13T00:00:00.000Z",
+        "completeness": {
+          "primaryImageRate": 1,
+          "categoryRate": 0.9412,
+          "colorRate": 0.9412,
+          "seasonRate": 0.9412,
+          "formalityRate": 0.9412,
+          "warmthRate": 0.9412,
+          "temperatureRangeRate": 0.9412
+        },
+        "eligibleGarmentsBySlot": {
+          "tops": 3,
+          "outerwear": 3,
+          "pants": 2,
+          "skirts": 1,
+          "one_piece": 1,
+          "shoes": 4,
+          "bag": 1,
+          "hat": 1
+        },
+        "validCandidateCount": 60,
+        "displayableCandidateCount": 3,
+        "status": "ready",
+        "missingFieldCodes": [
+          "category",
+          "color",
+          "season_or_thermal",
+          "formality"
+        ],
+        "missingSlotCodes": []
+      },
+      "recommendations": [
+        {
+          "objective": "safe",
+          "candidateId": "1c5acea9-c4e1-5ea0-bdbb-1e54831f67bc",
+          "garmentIds": [
+            "20000000-0000-4000-8000-000000000001",
+            "20000000-0000-4000-8000-000000000006",
+            "20000000-0000-4000-8000-000000000007",
+            "20000000-0000-4000-8000-000000000012"
+          ],
+          "finalScore": 79.18,
+          "ruleScores": {
+            "weatherFit": 100,
+            "sceneFit": 100,
+            "structure": 100,
+            "colorHarmony": 100,
+            "styleCoherence": 100,
+            "activityComfort": 85,
+            "rotationValue": 100,
+            "informationCompleteness": 100,
+            "ruleTotal": 98.5
+          },
+          "objectiveScores": {
+            "safe": 79.18,
+            "fresh": 87.83,
+            "comfort": 77.85
+          },
+          "reasonCodes": [
+            "good_for_commute",
+            "weather_fit",
+            "activity_comfort",
+            "rotation_value",
+            "new_combination",
+            "shoe_rationality",
+            "outerwear_rationality",
+            "rule_fallback"
+          ],
+          "riskCodes": [],
+          "missingSlotCodes": [],
+          "fallbackUsed": true
+        },
+        {
+          "objective": "fresh",
+          "candidateId": "71a231da-919c-5c6b-9789-1325c0160575",
+          "garmentIds": [
+            "20000000-0000-4000-8000-000000000003",
+            "20000000-0000-4000-8000-000000000006",
+            "20000000-0000-4000-8000-000000000009",
+            "20000000-0000-4000-8000-000000000012"
+          ],
+          "finalScore": 87.26,
+          "ruleScores": {
+            "weatherFit": 95,
+            "sceneFit": 100,
+            "structure": 100,
+            "colorHarmony": 100,
+            "styleCoherence": 100,
+            "activityComfort": 85,
+            "rotationValue": 100,
+            "informationCompleteness": 100,
+            "ruleTotal": 97.25
+          },
+          "objectiveScores": {
+            "safe": 78.49,
+            "fresh": 87.26,
+            "comfort": 76.65
+          },
+          "reasonCodes": [
+            "good_for_commute",
+            "weather_fit",
+            "activity_comfort",
+            "rotation_value",
+            "new_combination",
+            "shoe_rationality",
+            "outerwear_rationality",
+            "rule_fallback"
+          ],
+          "riskCodes": [],
+          "missingSlotCodes": [],
+          "fallbackUsed": true
+        },
+        {
+          "objective": "comfort",
+          "candidateId": "05e33415-fd97-5d8e-951f-5c3be7d57e17",
+          "garmentIds": [
+            "20000000-0000-4000-8000-000000000001",
+            "20000000-0000-4000-8000-000000000008",
+            "20000000-0000-4000-8000-000000000012"
+          ],
+          "finalScore": 77.85,
+          "ruleScores": {
+            "weatherFit": 100,
+            "sceneFit": 86.66666666666667,
+            "structure": 100,
+            "colorHarmony": 80,
+            "styleCoherence": 66.67,
+            "activityComfort": 85,
+            "rotationValue": 100,
+            "informationCompleteness": 100,
+            "ruleTotal": 89.5
+          },
+          "objectiveScores": {
+            "safe": 74.22,
+            "fresh": 84.28,
+            "comfort": 77.85
+          },
+          "reasonCodes": [
+            "good_for_commute",
+            "weather_fit",
+            "activity_comfort",
+            "rotation_value",
+            "new_combination",
+            "shoe_rationality",
+            "rule_fallback"
+          ],
+          "riskCodes": [],
+          "missingSlotCodes": [],
+          "fallbackUsed": true
+        }
+      ],
+      "exclusions": [
+        {
+          "garmentId": "20000000-0000-4000-8000-000000000023",
+          "codes": [
+            "missing_required_field"
+          ]
+        }
+      ],
+      "metrics": {
+        "eligibleGarmentCount": 16,
+        "rawCandidateCount": 120,
+        "ruleScoredCandidateCount": 60,
+        "maxBeamObserved": 48
+      }
+    },
+    {
+      "id": "thermal_severe_mismatch",
+      "title": "温度严重不符",
+      "targetDate": "2026-07-14",
+      "timezone": "Asia/Shanghai",
+      "context": {
+        "sceneType": "commute",
+        "formalityTarget": 3,
+        "activityIntensity": 2,
+        "thermalStrategy": "balanced",
+        "rainStrategy": "none",
+        "requiredSlots": [
+          "tops",
+          "pants",
+          "shoes"
+        ],
+        "optionalSlots": [
+          "outerwear",
+          "skirts",
+          "one_piece",
+          "bag",
+          "hat",
+          "accessory"
+        ],
+        "avoidRules": [],
+        "confidence": "high",
+        "contextSummary": "commute:balanced:none"
+      },
+      "readiness": {
+        "userId": "10000000-0000-4000-8000-000000000001",
+        "generatedAt": "2026-07-13T00:00:00.000Z",
+        "completeness": {
+          "primaryImageRate": 1,
+          "categoryRate": 1,
+          "colorRate": 1,
+          "seasonRate": 1,
+          "formalityRate": 1,
+          "warmthRate": 1,
+          "temperatureRangeRate": 1
+        },
+        "eligibleGarmentsBySlot": {
+          "tops": 3,
+          "outerwear": 3,
+          "pants": 2,
+          "skirts": 1,
+          "one_piece": 1,
+          "shoes": 4,
+          "bag": 1,
+          "hat": 1
+        },
+        "validCandidateCount": 60,
+        "displayableCandidateCount": 3,
+        "status": "ready",
+        "missingFieldCodes": [],
+        "missingSlotCodes": []
+      },
+      "recommendations": [
+        {
+          "objective": "safe",
+          "candidateId": "1c5acea9-c4e1-5ea0-bdbb-1e54831f67bc",
+          "garmentIds": [
+            "20000000-0000-4000-8000-000000000001",
+            "20000000-0000-4000-8000-000000000006",
+            "20000000-0000-4000-8000-000000000007",
+            "20000000-0000-4000-8000-000000000012"
+          ],
+          "finalScore": 79.18,
+          "ruleScores": {
+            "weatherFit": 100,
+            "sceneFit": 100,
+            "structure": 100,
+            "colorHarmony": 100,
+            "styleCoherence": 100,
+            "activityComfort": 85,
+            "rotationValue": 100,
+            "informationCompleteness": 100,
+            "ruleTotal": 98.5
+          },
+          "objectiveScores": {
+            "safe": 79.18,
+            "fresh": 87.83,
+            "comfort": 77.85
+          },
+          "reasonCodes": [
+            "good_for_commute",
+            "weather_fit",
+            "activity_comfort",
+            "rotation_value",
+            "new_combination",
+            "shoe_rationality",
+            "outerwear_rationality",
+            "rule_fallback"
+          ],
+          "riskCodes": [],
+          "missingSlotCodes": [],
+          "fallbackUsed": true
+        },
+        {
+          "objective": "fresh",
+          "candidateId": "71a231da-919c-5c6b-9789-1325c0160575",
+          "garmentIds": [
+            "20000000-0000-4000-8000-000000000003",
+            "20000000-0000-4000-8000-000000000006",
+            "20000000-0000-4000-8000-000000000009",
+            "20000000-0000-4000-8000-000000000012"
+          ],
+          "finalScore": 87.26,
+          "ruleScores": {
+            "weatherFit": 95,
+            "sceneFit": 100,
+            "structure": 100,
+            "colorHarmony": 100,
+            "styleCoherence": 100,
+            "activityComfort": 85,
+            "rotationValue": 100,
+            "informationCompleteness": 100,
+            "ruleTotal": 97.25
+          },
+          "objectiveScores": {
+            "safe": 78.49,
+            "fresh": 87.26,
+            "comfort": 76.65
+          },
+          "reasonCodes": [
+            "good_for_commute",
+            "weather_fit",
+            "activity_comfort",
+            "rotation_value",
+            "new_combination",
+            "shoe_rationality",
+            "outerwear_rationality",
+            "rule_fallback"
+          ],
+          "riskCodes": [],
+          "missingSlotCodes": [],
+          "fallbackUsed": true
+        },
+        {
+          "objective": "comfort",
+          "candidateId": "05e33415-fd97-5d8e-951f-5c3be7d57e17",
+          "garmentIds": [
+            "20000000-0000-4000-8000-000000000001",
+            "20000000-0000-4000-8000-000000000008",
+            "20000000-0000-4000-8000-000000000012"
+          ],
+          "finalScore": 77.85,
+          "ruleScores": {
+            "weatherFit": 100,
+            "sceneFit": 86.66666666666667,
+            "structure": 100,
+            "colorHarmony": 80,
+            "styleCoherence": 66.67,
+            "activityComfort": 85,
+            "rotationValue": 100,
+            "informationCompleteness": 100,
+            "ruleTotal": 89.5
+          },
+          "objectiveScores": {
+            "safe": 74.22,
+            "fresh": 84.28,
+            "comfort": 77.85
+          },
+          "reasonCodes": [
+            "good_for_commute",
+            "weather_fit",
+            "activity_comfort",
+            "rotation_value",
+            "new_combination",
+            "shoe_rationality",
+            "rule_fallback"
+          ],
+          "riskCodes": [],
+          "missingSlotCodes": [],
+          "fallbackUsed": true
+        }
+      ],
+      "exclusions": [
+        {
+          "garmentId": "20000000-0000-4000-8000-000000000024",
+          "codes": [
+            "temperature_mismatch"
+          ]
+        }
+      ],
+      "metrics": {
+        "eligibleGarmentCount": 16,
+        "rawCandidateCount": 120,
+        "ruleScoredCandidateCount": 60,
+        "maxBeamObserved": 48
+      }
+    },
+    {
+      "id": "formality_severe_mismatch",
+      "title": "正式度严重不符",
+      "targetDate": "2026-07-14",
+      "timezone": "Asia/Shanghai",
+      "context": {
+        "sceneType": "formal",
+        "formalityTarget": 5,
+        "activityIntensity": 1,
+        "thermalStrategy": "balanced",
+        "rainStrategy": "none",
+        "requiredSlots": [
+          "tops",
+          "pants",
+          "shoes"
+        ],
+        "optionalSlots": [
+          "outerwear",
+          "skirts",
+          "one_piece",
+          "bag",
+          "hat",
+          "accessory"
+        ],
+        "avoidRules": [],
+        "confidence": "high",
+        "contextSummary": "formal:balanced:none"
+      },
+      "readiness": {
+        "userId": "10000000-0000-4000-8000-000000000001",
+        "generatedAt": "2026-07-13T00:00:00.000Z",
+        "completeness": {
+          "primaryImageRate": 1,
+          "categoryRate": 1,
+          "colorRate": 1,
+          "seasonRate": 1,
+          "formalityRate": 1,
+          "warmthRate": 1,
+          "temperatureRangeRate": 1
+        },
+        "eligibleGarmentsBySlot": {
+          "tops": 2,
+          "outerwear": 2,
+          "pants": 1,
+          "skirts": 1,
+          "one_piece": 1,
+          "shoes": 2,
+          "bag": 1
+        },
+        "validCandidateCount": 34,
+        "displayableCandidateCount": 3,
+        "status": "ready",
+        "missingFieldCodes": [],
+        "missingSlotCodes": []
+      },
+      "recommendations": [
+        {
+          "objective": "safe",
+          "candidateId": "0ffccf49-594b-53d7-92b8-9c0fc91fc87c",
+          "garmentIds": [
+            "20000000-0000-4000-8000-000000000001",
+            "20000000-0000-4000-8000-000000000007",
+            "20000000-0000-4000-8000-000000000012",
+            "20000000-0000-4000-8000-000000000015"
+          ],
+          "finalScore": 79.18,
+          "ruleScores": {
+            "weatherFit": 100,
+            "sceneFit": 100,
+            "structure": 100,
+            "colorHarmony": 100,
+            "styleCoherence": 100,
+            "activityComfort": 85,
+            "rotationValue": 100,
+            "informationCompleteness": 100,
+            "ruleTotal": 98.5
+          },
+          "objectiveScores": {
+            "safe": 79.18,
+            "fresh": 87.83,
+            "comfort": 77.85
+          },
+          "reasonCodes": [
+            "good_for_business",
+            "weather_fit",
+            "activity_comfort",
+            "rotation_value",
+            "new_combination",
+            "shoe_rationality",
+            "rule_fallback"
+          ],
+          "riskCodes": [],
+          "missingSlotCodes": [],
+          "fallbackUsed": true
+        },
+        {
+          "objective": "fresh",
+          "candidateId": "60b96cc5-8d55-5f02-a7bb-7414a9ae67da",
+          "garmentIds": [
+            "20000000-0000-4000-8000-000000000006",
+            "20000000-0000-4000-8000-000000000010",
+            "20000000-0000-4000-8000-000000000013"
+          ],
+          "finalScore": 87.83,
+          "ruleScores": {
+            "weatherFit": 100,
+            "sceneFit": 100,
+            "structure": 100,
+            "colorHarmony": 100,
+            "styleCoherence": 100,
+            "activityComfort": 85,
+            "rotationValue": 100,
+            "informationCompleteness": 100,
+            "ruleTotal": 98.5
+          },
+          "objectiveScores": {
+            "safe": 79.18,
+            "fresh": 87.83,
+            "comfort": 77.85
+          },
+          "reasonCodes": [
+            "good_for_business",
+            "weather_fit",
+            "activity_comfort",
+            "rotation_value",
+            "new_combination",
+            "shoe_rationality",
+            "outerwear_rationality",
+            "rule_fallback"
+          ],
+          "riskCodes": [],
+          "missingSlotCodes": [],
+          "fallbackUsed": true
+        },
+        {
+          "objective": "comfort",
+          "candidateId": "15d87f85-e45f-563d-995a-fc08076056df",
+          "garmentIds": [
+            "20000000-0000-4000-8000-000000000003",
+            "20000000-0000-4000-8000-000000000007",
+            "20000000-0000-4000-8000-000000000013",
+            "20000000-0000-4000-8000-000000000015"
+          ],
+          "finalScore": 76.65,
+          "ruleScores": {
+            "weatherFit": 95,
+            "sceneFit": 100,
+            "structure": 100,
+            "colorHarmony": 100,
+            "styleCoherence": 75,
+            "activityComfort": 85,
+            "rotationValue": 100,
+            "informationCompleteness": 100,
+            "ruleTotal": 94.75
+          },
+          "objectiveScores": {
+            "safe": 77.11,
+            "fresh": 86.51,
+            "comfort": 76.65
+          },
+          "reasonCodes": [
+            "good_for_business",
+            "weather_fit",
+            "activity_comfort",
+            "rotation_value",
+            "new_combination",
+            "shoe_rationality",
+            "rule_fallback"
+          ],
+          "riskCodes": [],
+          "missingSlotCodes": [],
+          "fallbackUsed": true
+        }
+      ],
+      "exclusions": [
+        {
+          "garmentId": "20000000-0000-4000-8000-000000000002",
+          "codes": [
+            "formality_mismatch"
+          ]
+        },
+        {
+          "garmentId": "20000000-0000-4000-8000-000000000005",
+          "codes": [
+            "formality_mismatch"
+          ]
+        },
+        {
+          "garmentId": "20000000-0000-4000-8000-000000000008",
+          "codes": [
+            "formality_mismatch"
+          ]
+        },
+        {
+          "garmentId": "20000000-0000-4000-8000-000000000011",
+          "codes": [
+            "formality_mismatch"
+          ]
+        },
+        {
+          "garmentId": "20000000-0000-4000-8000-000000000014",
+          "codes": [
+            "formality_mismatch"
+          ]
+        },
+        {
+          "garmentId": "20000000-0000-4000-8000-000000000016",
+          "codes": [
+            "formality_mismatch"
+          ]
+        },
+        {
+          "garmentId": "20000000-0000-4000-8000-000000000025",
+          "codes": [
+            "formality_mismatch"
+          ]
+        }
+      ],
+      "metrics": {
+        "eligibleGarmentCount": 10,
+        "rawCandidateCount": 34,
+        "ruleScoredCandidateCount": 34,
+        "maxBeamObserved": 8
+      }
+    },
+    {
+      "id": "avoid_rule",
+      "title": "avoid rule",
+      "targetDate": "2026-07-14",
+      "timezone": "Asia/Shanghai",
+      "context": {
+        "sceneType": "commute",
+        "formalityTarget": 3,
+        "activityIntensity": 2,
+        "thermalStrategy": "balanced",
+        "rainStrategy": "full_rain_protection",
+        "requiredSlots": [
+          "tops",
+          "pants",
+          "shoes",
+          "outerwear"
+        ],
+        "optionalSlots": [
+          "outerwear",
+          "skirts",
+          "one_piece",
+          "bag",
+          "hat",
+          "accessory"
+        ],
+        "avoidRules": [
+          "avoid_suede",
+          "avoid_open_toe_shoes"
+        ],
+        "confidence": "high",
+        "contextSummary": "commute:balanced:full_rain_protection"
+      },
+      "readiness": {
+        "userId": "10000000-0000-4000-8000-000000000001",
+        "generatedAt": "2026-07-13T00:00:00.000Z",
+        "completeness": {
+          "primaryImageRate": 1,
+          "categoryRate": 1,
+          "colorRate": 1,
+          "seasonRate": 1,
+          "formalityRate": 1,
+          "warmthRate": 1,
+          "temperatureRangeRate": 1
+        },
+        "eligibleGarmentsBySlot": {
+          "tops": 3,
+          "outerwear": 3,
+          "pants": 2,
+          "skirts": 1,
+          "one_piece": 1,
+          "shoes": 3,
+          "bag": 1,
+          "hat": 1
+        },
+        "validCandidateCount": 60,
+        "displayableCandidateCount": 3,
+        "status": "ready",
+        "missingFieldCodes": [],
+        "missingSlotCodes": []
+      },
+      "recommendations": [
+        {
+          "objective": "safe",
+          "candidateId": "a75062df-4423-569e-a92a-aee6a2c3141f",
+          "garmentIds": [
+            "20000000-0000-4000-8000-000000000003",
+            "20000000-0000-4000-8000-000000000004",
+            "20000000-0000-4000-8000-000000000009",
+            "20000000-0000-4000-8000-000000000012"
+          ],
+          "finalScore": 79.18,
+          "ruleScores": {
+            "weatherFit": 100,
+            "sceneFit": 100,
+            "structure": 100,
+            "colorHarmony": 100,
+            "styleCoherence": 100,
+            "activityComfort": 85,
+            "rotationValue": 100,
+            "informationCompleteness": 100,
+            "ruleTotal": 98.5
+          },
+          "objectiveScores": {
+            "safe": 79.18,
+            "fresh": 87.83,
+            "comfort": 77.85
+          },
+          "reasonCodes": [
+            "good_for_commute",
+            "weather_fit",
+            "rain_ready",
+            "activity_comfort",
+            "rotation_value",
+            "new_combination",
+            "shoe_rationality",
+            "outerwear_rationality",
+            "rule_fallback"
+          ],
+          "riskCodes": [],
+          "missingSlotCodes": [],
+          "fallbackUsed": true
+        },
+        {
+          "objective": "fresh",
+          "candidateId": "1c5acea9-c4e1-5ea0-bdbb-1e54831f67bc",
+          "garmentIds": [
+            "20000000-0000-4000-8000-000000000001",
+            "20000000-0000-4000-8000-000000000006",
+            "20000000-0000-4000-8000-000000000007",
+            "20000000-0000-4000-8000-000000000012"
+          ],
+          "finalScore": 87.83,
+          "ruleScores": {
+            "weatherFit": 100,
+            "sceneFit": 100,
+            "structure": 100,
+            "colorHarmony": 100,
+            "styleCoherence": 100,
+            "activityComfort": 85,
+            "rotationValue": 100,
+            "informationCompleteness": 100,
+            "ruleTotal": 98.5
+          },
+          "objectiveScores": {
+            "safe": 79.18,
+            "fresh": 87.83,
+            "comfort": 77.85
+          },
+          "reasonCodes": [
+            "good_for_commute",
+            "weather_fit",
+            "activity_comfort",
+            "rotation_value",
+            "new_combination",
+            "shoe_rationality",
+            "outerwear_rationality",
+            "rule_fallback"
+          ],
+          "riskCodes": [],
+          "missingSlotCodes": [],
+          "fallbackUsed": true
+        },
+        {
+          "objective": "comfort",
+          "candidateId": "0cb0db94-bcb6-5d94-9200-621d8fef2573",
+          "garmentIds": [
+            "20000000-0000-4000-8000-000000000002",
+            "20000000-0000-4000-8000-000000000006",
+            "20000000-0000-4000-8000-000000000009",
+            "20000000-0000-4000-8000-000000000011"
+          ],
+          "finalScore": 77.85,
+          "ruleScores": {
+            "weatherFit": 100,
+            "sceneFit": 80,
+            "structure": 100,
+            "colorHarmony": 80,
+            "styleCoherence": 50,
+            "activityComfort": 85,
+            "rotationValue": 100,
+            "informationCompleteness": 100,
+            "ruleTotal": 86.5
+          },
+          "objectiveScores": {
+            "safe": 72.58,
+            "fresh": 83.18,
+            "comfort": 77.85
+          },
+          "reasonCodes": [
+            "good_for_commute",
+            "weather_fit",
+            "activity_comfort",
+            "rotation_value",
+            "new_combination",
+            "shoe_rationality",
+            "outerwear_rationality",
+            "rule_fallback"
+          ],
+          "riskCodes": [],
+          "missingSlotCodes": [],
+          "fallbackUsed": true
+        }
+      ],
+      "exclusions": [
+        {
+          "garmentId": "20000000-0000-4000-8000-000000000014",
+          "codes": [
+            "avoid_rule"
+          ]
+        },
+        {
+          "garmentId": "20000000-0000-4000-8000-000000000026",
+          "codes": [
+            "avoid_rule"
+          ]
+        }
+      ],
+      "metrics": {
+        "eligibleGarmentCount": 15,
+        "rawCandidateCount": 84,
+        "ruleScoredCandidateCount": 60,
+        "maxBeamObserved": 48
+      }
+    },
+    {
+      "id": "explicit_block",
+      "title": "明确禁止推荐",
+      "targetDate": "2026-07-14",
+      "timezone": "Asia/Shanghai",
+      "context": {
+        "sceneType": "commute",
+        "formalityTarget": 3,
+        "activityIntensity": 2,
+        "thermalStrategy": "balanced",
+        "rainStrategy": "none",
+        "requiredSlots": [
+          "tops",
+          "pants",
+          "shoes"
+        ],
+        "optionalSlots": [
+          "outerwear",
+          "skirts",
+          "one_piece",
+          "bag",
+          "hat",
+          "accessory"
+        ],
+        "avoidRules": [],
+        "confidence": "high",
+        "contextSummary": "commute:balanced:none"
+      },
+      "readiness": {
+        "userId": "10000000-0000-4000-8000-000000000001",
+        "generatedAt": "2026-07-13T00:00:00.000Z",
+        "completeness": {
+          "primaryImageRate": 1,
+          "categoryRate": 1,
+          "colorRate": 1,
+          "seasonRate": 1,
+          "formalityRate": 1,
+          "warmthRate": 1,
+          "temperatureRangeRate": 1
+        },
+        "eligibleGarmentsBySlot": {
+          "tops": 3,
+          "outerwear": 3,
+          "pants": 2,
+          "skirts": 1,
+          "one_piece": 1,
+          "shoes": 4,
+          "bag": 1,
+          "hat": 1
+        },
+        "validCandidateCount": 60,
+        "displayableCandidateCount": 3,
+        "status": "ready",
+        "missingFieldCodes": [],
+        "missingSlotCodes": []
+      },
+      "recommendations": [
+        {
+          "objective": "safe",
+          "candidateId": "1c5acea9-c4e1-5ea0-bdbb-1e54831f67bc",
+          "garmentIds": [
+            "20000000-0000-4000-8000-000000000001",
+            "20000000-0000-4000-8000-000000000006",
+            "20000000-0000-4000-8000-000000000007",
+            "20000000-0000-4000-8000-000000000012"
+          ],
+          "finalScore": 79.18,
+          "ruleScores": {
+            "weatherFit": 100,
+            "sceneFit": 100,
+            "structure": 100,
+            "colorHarmony": 100,
+            "styleCoherence": 100,
+            "activityComfort": 85,
+            "rotationValue": 100,
+            "informationCompleteness": 100,
+            "ruleTotal": 98.5
+          },
+          "objectiveScores": {
+            "safe": 79.18,
+            "fresh": 87.83,
+            "comfort": 77.85
+          },
+          "reasonCodes": [
+            "good_for_commute",
+            "weather_fit",
+            "activity_comfort",
+            "rotation_value",
+            "new_combination",
+            "shoe_rationality",
+            "outerwear_rationality",
+            "rule_fallback"
+          ],
+          "riskCodes": [],
+          "missingSlotCodes": [],
+          "fallbackUsed": true
+        },
+        {
+          "objective": "fresh",
+          "candidateId": "71a231da-919c-5c6b-9789-1325c0160575",
+          "garmentIds": [
+            "20000000-0000-4000-8000-000000000003",
+            "20000000-0000-4000-8000-000000000006",
+            "20000000-0000-4000-8000-000000000009",
+            "20000000-0000-4000-8000-000000000012"
+          ],
+          "finalScore": 87.26,
+          "ruleScores": {
+            "weatherFit": 95,
+            "sceneFit": 100,
+            "structure": 100,
+            "colorHarmony": 100,
+            "styleCoherence": 100,
+            "activityComfort": 85,
+            "rotationValue": 100,
+            "informationCompleteness": 100,
+            "ruleTotal": 97.25
+          },
+          "objectiveScores": {
+            "safe": 78.49,
+            "fresh": 87.26,
+            "comfort": 76.65
+          },
+          "reasonCodes": [
+            "good_for_commute",
+            "weather_fit",
+            "activity_comfort",
+            "rotation_value",
+            "new_combination",
+            "shoe_rationality",
+            "outerwear_rationality",
+            "rule_fallback"
+          ],
+          "riskCodes": [],
+          "missingSlotCodes": [],
+          "fallbackUsed": true
+        },
+        {
+          "objective": "comfort",
+          "candidateId": "05e33415-fd97-5d8e-951f-5c3be7d57e17",
+          "garmentIds": [
+            "20000000-0000-4000-8000-000000000001",
+            "20000000-0000-4000-8000-000000000008",
+            "20000000-0000-4000-8000-000000000012"
+          ],
+          "finalScore": 77.85,
+          "ruleScores": {
+            "weatherFit": 100,
+            "sceneFit": 86.66666666666667,
+            "structure": 100,
+            "colorHarmony": 80,
+            "styleCoherence": 66.67,
+            "activityComfort": 85,
+            "rotationValue": 100,
+            "informationCompleteness": 100,
+            "ruleTotal": 89.5
+          },
+          "objectiveScores": {
+            "safe": 74.22,
+            "fresh": 84.28,
+            "comfort": 77.85
+          },
+          "reasonCodes": [
+            "good_for_commute",
+            "weather_fit",
+            "activity_comfort",
+            "rotation_value",
+            "new_combination",
+            "shoe_rationality",
+            "rule_fallback"
+          ],
+          "riskCodes": [],
+          "missingSlotCodes": [],
+          "fallbackUsed": true
+        }
+      ],
+      "exclusions": [
+        {
+          "garmentId": "20000000-0000-4000-8000-000000000027",
+          "codes": [
+            "recommendation_blocked"
+          ]
+        }
+      ],
+      "metrics": {
+        "eligibleGarmentCount": 16,
+        "rawCandidateCount": 120,
+        "ruleScoredCandidateCount": 60,
+        "maxBeamObserved": 48
+      }
+    },
+    {
+      "id": "limited_two_candidates",
+      "title": "limited",
+      "targetDate": "2026-07-14",
+      "timezone": "Asia/Shanghai",
+      "context": {
+        "sceneType": "commute",
+        "formalityTarget": 3,
+        "activityIntensity": 2,
+        "thermalStrategy": "balanced",
+        "rainStrategy": "none",
+        "requiredSlots": [
+          "tops",
+          "pants",
+          "shoes"
+        ],
+        "optionalSlots": [
+          "outerwear",
+          "skirts",
+          "one_piece",
+          "bag",
+          "hat",
+          "accessory"
+        ],
+        "avoidRules": [],
+        "confidence": "high",
+        "contextSummary": "commute:balanced:none"
+      },
+      "readiness": {
+        "userId": "10000000-0000-4000-8000-000000000001",
+        "generatedAt": "2026-07-13T00:00:00.000Z",
+        "completeness": {
+          "primaryImageRate": 1,
+          "categoryRate": 1,
+          "colorRate": 1,
+          "seasonRate": 1,
+          "formalityRate": 1,
+          "warmthRate": 1,
+          "temperatureRangeRate": 1
+        },
+        "eligibleGarmentsBySlot": {
+          "tops": 1,
+          "pants": 1,
+          "shoes": 2
+        },
+        "validCandidateCount": 2,
+        "displayableCandidateCount": 2,
+        "status": "limited",
+        "missingFieldCodes": [],
+        "missingSlotCodes": []
+      },
+      "recommendations": [
+        {
+          "objective": "safe",
+          "candidateId": "79cab324-4ad6-5c78-ae2c-2ab20e750af9",
+          "garmentIds": [
+            "20000000-0000-4000-8000-000000000001",
+            "20000000-0000-4000-8000-000000000007",
+            "20000000-0000-4000-8000-000000000012"
+          ],
+          "finalScore": 79.18,
+          "ruleScores": {
+            "weatherFit": 100,
+            "sceneFit": 100,
+            "structure": 100,
+            "colorHarmony": 100,
+            "styleCoherence": 100,
+            "activityComfort": 85,
+            "rotationValue": 100,
+            "informationCompleteness": 100,
+            "ruleTotal": 98.5
+          },
+          "objectiveScores": {
+            "safe": 79.18,
+            "fresh": 87.83,
+            "comfort": 77.85
+          },
+          "reasonCodes": [
+            "good_for_commute",
+            "weather_fit",
+            "activity_comfort",
+            "rotation_value",
+            "new_combination",
+            "shoe_rationality",
+            "rule_fallback"
+          ],
+          "riskCodes": [],
+          "missingSlotCodes": [],
+          "fallbackUsed": true
+        },
+        {
+          "objective": "fresh",
+          "candidateId": "d9fe67f9-32a4-559a-84ce-c379b58b1dfe",
+          "garmentIds": [
+            "20000000-0000-4000-8000-000000000001",
+            "20000000-0000-4000-8000-000000000007",
+            "20000000-0000-4000-8000-000000000011"
+          ],
+          "finalScore": 85.63,
+          "ruleScores": {
+            "weatherFit": 100,
+            "sceneFit": 86.66666666666667,
+            "structure": 100,
+            "colorHarmony": 100,
+            "styleCoherence": 66.67,
+            "activityComfort": 85,
+            "rotationValue": 100,
+            "informationCompleteness": 100,
+            "ruleTotal": 92.5
+          },
+          "objectiveScores": {
+            "safe": 75.88,
+            "fresh": 85.63,
+            "comfort": 77.85
+          },
+          "reasonCodes": [
+            "good_for_commute",
+            "weather_fit",
+            "activity_comfort",
+            "rotation_value",
+            "new_combination",
+            "shoe_rationality",
+            "rule_fallback"
+          ],
+          "riskCodes": [],
+          "missingSlotCodes": [],
+          "fallbackUsed": true
+        }
+      ],
+      "exclusions": [],
+      "metrics": {
+        "eligibleGarmentCount": 4,
+        "rawCandidateCount": 2,
+        "ruleScoredCandidateCount": 2,
+        "maxBeamObserved": 2
+      }
+    },
+    {
+      "id": "not_ready_missing_slot",
+      "title": "not ready",
+      "targetDate": "2026-07-14",
+      "timezone": "Asia/Shanghai",
+      "context": {
+        "sceneType": "commute",
+        "formalityTarget": 3,
+        "activityIntensity": 2,
+        "thermalStrategy": "balanced",
+        "rainStrategy": "none",
+        "requiredSlots": [
+          "tops",
+          "pants",
+          "shoes"
+        ],
+        "optionalSlots": [
+          "outerwear",
+          "skirts",
+          "one_piece",
+          "bag",
+          "hat",
+          "accessory"
+        ],
+        "avoidRules": [],
+        "confidence": "high",
+        "contextSummary": "commute:balanced:none"
+      },
+      "readiness": {
+        "userId": "10000000-0000-4000-8000-000000000001",
+        "generatedAt": "2026-07-13T00:00:00.000Z",
+        "completeness": {
+          "primaryImageRate": 1,
+          "categoryRate": 1,
+          "colorRate": 1,
+          "seasonRate": 1,
+          "formalityRate": 1,
+          "warmthRate": 1,
+          "temperatureRangeRate": 1
+        },
+        "eligibleGarmentsBySlot": {
+          "tops": 3,
+          "outerwear": 3,
+          "pants": 2,
+          "skirts": 1,
+          "one_piece": 1,
+          "bag": 1,
+          "hat": 1
+        },
+        "validCandidateCount": 0,
+        "displayableCandidateCount": 0,
+        "status": "not_ready",
+        "missingFieldCodes": [],
+        "missingSlotCodes": [
+          "shoes"
+        ]
+      },
+      "recommendations": [],
+      "exclusions": [],
+      "metrics": {
+        "eligibleGarmentCount": 12,
+        "rawCandidateCount": 0,
+        "ruleScoredCandidateCount": 0,
+        "maxBeamObserved": 0
+      }
+    }
+  ]
+}
