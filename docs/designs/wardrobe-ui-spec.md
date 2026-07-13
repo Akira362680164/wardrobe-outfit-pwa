@@ -270,6 +270,14 @@ Icon-only 按钮必须有 `aria-label`；图标与文字组合时图标使用 `a
 - `dismissible=false` 或 `closeOnEscape/closeOnBackdrop=false` 的关闭请求保持当前层，触发 `onDismissBlocked`，并提供“操作进行中”读屏状态；Toast 继续留在栈外。
 - A1 只建立共享 Sheet 与顶层返回基线；Lightbox、Popover、Cropper 和遗留页面私有 Back listener 的全面迁移属于 A2，不得把 A1 的局部接入误报为全 App 浮层迁移完成。
 
+##### 6.1.2 A2-Core 共享浮层组件
+
+- `MotionSheet` 延续 A1 冻结接口，Portal、OverlayStack、退出期锁滚和 topmost 焦点圈保持同一生命周期；居中 Dialog 只使用轻微缩放与透明度，不使用弹跳。`dismissible=false` 同时暴露 `aria-busy` 和关闭拒绝播报，不得在事务进行中被 backdrop、Escape 或 Android Back 打断。
+- `MotionImageLightbox` 统一进入 `OverlayPortal` 和 `OverlayStack(kind=lightbox)`，使用 `100dvh`、`role=dialog`、`aria-modal`、可访问名称、首焦点与 Tab 圈；关闭动画完成前持续锁滚，低层 Lightbox 必须 `inert/aria-hidden`。
+- `MotionPopoverMenu` 统一进入 `OverlayPortal` 和 `OverlayStack(kind=popover)`；真实 trigger ref 同时用于定位、按锚点中心计算 `transform-origin` 和关闭后焦点恢复。打开即聚焦首个可用菜单项，支持 ArrowUp/ArrowDown/Home/End，并由 OverlayStack 消费 Escape。
+- Popover 外点关闭在 pointerdown capture 阶段完成。防点击穿只绑定当前 `pointerId`，并在对应 click、pointercancel 或 pointerup 后首帧释放；禁止再使用 400ms 等全局定时点击抑制窗口。
+- 共享 Notice Dialog 必须提供可访问名称；危险确认使用 `alertdialog`，异步提交期间必须不可取消。A2-Core 不引入 Sheet 拖拽，拖拽关闭仍由后续手势 Wave 按速度投影和 rubber-band 契约实现。
+
 #### 6.2 并行 Wave 规范所有权
 
 并行 Session 对运行时文件实行独占所有权；规范只允许修改下列命名小节。生成的 HTML 与 `VERSION_HISTORY.md` 在每个 Wave 合入后由主 Agent 保全并重生成。

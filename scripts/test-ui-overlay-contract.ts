@@ -12,6 +12,7 @@ const backCoordinator = read("src/lib/back-coordinator.ts");
 const stableBack = read("src/lib/use-stable-back-handler.ts");
 const imageSourceSheet = read("src/components/wardrobe-image-source-sheet.tsx");
 const confirmSheet = read("src/components/dialogs/confirm-action-sheet.tsx");
+const noticeSheet = read("src/components/dialogs/notice-sheet.tsx");
 const topBar = read("src/components/app-sub-page-top-bar.tsx");
 const garmentFlow = read("src/components/garment-intake-flow.tsx");
 const globals = read("src/app/globals.css");
@@ -23,6 +24,12 @@ const motionSheet = motion.slice(motionSheetStart, motionSheetEnd);
 const motionToastStart = motion.indexOf("export function MotionToast");
 const motionToastEnd = motion.indexOf("/* ------------------------------------------------------------------ */", motionToastStart + 1);
 const motionToast = motion.slice(motionToastStart, motionToastEnd);
+const lightboxStart = motion.indexOf("function MotionImageLightboxLayer");
+const lightboxEnd = motion.indexOf("/* ------------------------------------------------------------------ */", lightboxStart + 1);
+const lightbox = motion.slice(lightboxStart, lightboxEnd);
+const popoverStart = motion.indexOf("function MotionPopoverMenuLayer");
+const popoverEnd = motion.indexOf("/* ------------------------------------------------------------------ */", popoverStart + 1);
+const popover = motion.slice(popoverStart, popoverEnd);
 
 assert.ok(motionSheet.includes("useScrollLock(true)"), "MotionSheet locks background scroll through visual exit");
 assert.ok(motionSheet.includes("<OverlayPortal>"), "MotionSheet portals into OverlayRoot");
@@ -33,10 +40,11 @@ assert.ok(motionSheet.includes("aria-labelledby={ariaLabelledBy}"), "MotionSheet
 assert.match(motion, /MotionSheetVariant = "action" \| "form" \| "confirm" \| "destructive"/, "MotionSheet exposes frozen variants");
 assert.match(motionSheet, /dismissible[\s\S]{0,320}onDismissBlocked/, "MotionSheet exposes non-dismissible feedback");
 assert.ok(!motionSheet.includes('event.key === "Escape"'), "MotionSheet delegates Escape to BackCoordinator");
-assert.match(motionSheet, /focusable[\s\S]{0,240}\.focus\(\)/, "MotionSheet moves focus into panel");
-assert.match(motionSheet, /event\.key !== "Tab"[\s\S]{0,700}preventDefault\(\)/, "MotionSheet traps Tab focus");
+assert.ok(motionSheet.includes("useTopmostFocusScope(panelRef, isTopmost)"), "MotionSheet uses the shared topmost focus scope");
+assert.match(motion, /function useTopmostFocusScope[\s\S]{0,1600}event\.key !== "Tab"[\s\S]{0,700}preventDefault\(\)/, "shared overlay focus scope traps Tab");
 assert.match(motionSheet, /aria-hidden=\{isTopmost \? undefined : "true"\}/, "lower MotionSheet layers are hidden from assistive tech");
 assert.match(motionSheet, /inert=\{isTopmost \? undefined : true\}/, "lower MotionSheet layers are inert");
+assert.ok(motionSheet.includes("aria-busy={!dismissible || undefined}"), "non-dismissible dialog exposes busy semantics");
 
 assert.match(overlayRoot, /id = "wardrobe-overlay-root"[\s\S]{0,180}document\.body\.appendChild\(root\)/, "OverlayRoot mounts once under body");
 assert.match(overlayRoot, /data-overlay-app-content="true"[\s\S]{0,180}aria-hidden=\{hasOverlay[\s\S]{0,120}inert=\{hasOverlay/, "OverlayRoot isolates App content");
@@ -46,8 +54,26 @@ assert.match(backCoordinator, /overlayStack\.requestDismiss\(reason\)[\s\S]{0,24
 assert.ok(!stableBack.includes("App.addListener"), "stable page handlers do not create native listeners");
 assert.ok(!motionToast.includes("useOverlayLayer"), "Toast stays outside OverlayStack");
 
-assert.match(motion, /export function MotionImageLightbox[\s\S]*?useScrollLock\(open\)/, "MotionImageLightbox locks background scroll");
-assert.match(motion, /export function MotionPopoverMenu[\s\S]*?document\.addEventListener\("pointerdown"/, "MotionPopoverMenu closes on outside pointerdown");
+assert.ok(lightbox.includes("useScrollLock(true)"), "MotionImageLightbox locks background scroll through visual exit");
+assert.ok(lightbox.includes("<OverlayPortal>"), "MotionImageLightbox portals into OverlayRoot");
+assert.match(lightbox, /useOverlayLayer\(\{[\s\S]{0,120}kind: "lightbox"/, "MotionImageLightbox registers with OverlayStack");
+assert.match(lightbox, /role="dialog"[\s\S]{0,160}aria-modal="true"[\s\S]{0,220}aria-label=/, "MotionImageLightbox has modal dialog semantics and an accessible name");
+assert.ok(lightbox.includes("useTopmostFocusScope(layerRef, isTopmost"), "MotionImageLightbox moves and traps focus only while topmost");
+assert.match(lightbox, /aria-hidden=\{isTopmost \? undefined : "true"\}[\s\S]{0,100}inert=\{isTopmost \? undefined : true\}/, "lower lightboxes are inert and hidden");
+
+assert.ok(popover.includes("useScrollLock(true)"), "MotionPopoverMenu keeps its anchor context stable through exit");
+assert.ok(popover.includes("<OverlayPortal>"), "MotionPopoverMenu portals into OverlayRoot in all compatibility modes");
+assert.match(popover, /useOverlayLayer\(\{[\s\S]{0,120}kind: "popover"/, "MotionPopoverMenu registers with OverlayStack");
+assert.ok(popover.includes("restoreFocusTo: anchorRef"), "MotionPopoverMenu restores focus to its trigger");
+assert.match(popover, /role="menu"[\s\S]{0,140}aria-label=/, "MotionPopoverMenu exposes named menu semantics");
+assert.ok(popover.includes("useTopmostFocusScope(popoverRef, isTopmost"), "MotionPopoverMenu focuses its first item");
+assert.match(popover, /\["ArrowDown", "ArrowUp", "Home", "End"\]/, "MotionPopoverMenu supports expected menu navigation keys");
+assert.match(popover, /event\.key === "Escape"[\s\S]{0,180}requestDismiss\("escape"\)/, "MotionPopoverMenu delegates Escape through OverlayStack");
+assert.match(popover, /rect\.left \+ rect\.width \/ 2 - left[\s\S]{0,240}style\.transformOrigin/, "MotionPopoverMenu derives transform origin from its real anchor");
+assert.match(popover, /document\.addEventListener\("pointerdown"/, "MotionPopoverMenu closes on outside pointerdown");
+assert.ok(!popover.includes("setTimeout"), "MotionPopoverMenu has no time-based global click suppression");
+assert.ok(!motion.includes("createPortal("), "shared overlays no longer bypass OverlayPortal");
+assert.match(motion, /suppressClickForPointerSequence\(pointerId[\s\S]{0,1200}pointerup[\s\S]{0,400}pointercancel/, "outside-click suppression is scoped to one pointer sequence");
 
 assert.ok(imageSourceSheet.includes("<MotionSheet"), "WardrobeImageSourceSheet delegates to MotionSheet");
 assert.ok(!imageSourceSheet.includes("AnimatePresence"), "WardrobeImageSourceSheet has no private AnimatePresence");
@@ -58,6 +84,8 @@ assert.ok(confirmSheet.includes("ariaLabel={title}"), "confirmation sheet labels
 assert.ok(confirmSheet.includes("onClose={submitting ? () => undefined : onClose}"), "submitting confirmation cannot close");
 assert.ok(confirmSheet.includes("dismissible={!submitting}"), "submitting confirmation rejects coordinated dismissal");
 assert.match(confirmSheet, /label=\{cancelLabel\}[\s\S]{0,80}disabled=\{submitting\}/, "submitting disables cancel action");
+assert.ok(noticeSheet.includes('role="dialog"'), "NoticeSheet exposes dialog semantics");
+assert.ok(noticeSheet.includes("ariaLabel={title}"), "NoticeSheet has an accessible name");
 
 assert.match(topBar, /aria-label="返回"[\s\S]{0,140}className="grid h-12 w-12 place-items-center -ml-1"/, "back button has 48px hit area");
 assert.match(topBar, /<span className="grid h-10 w-10 place-items-center ui-control-radius bg-transparent/, "back button keeps 40px transparent rounded-rectangle hit visual");

@@ -6,12 +6,97 @@ import { X } from "lucide-react";
 
 import React, { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 
-import { createPortal } from "react-dom";
 import { duration, ease, pop, scaleModal, slideRight, slideRightExit, slideUp, spring, toastDrop } from "@/lib/motion-tokens";
 import { useScrollLock } from "@/lib/use-scroll-lock";
 import { OriginalCroppedImage } from "@/components/original-cropped-image";
 import { OverlayPortal, useOverlayLayer } from "@/components/overlay-root";
 import type { OverlayDismissReason } from "@/lib/overlay-stack";
+
+const FOCUSABLE_SELECTOR =
+  'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])';
+
+const subtleOverlayScale = {
+  initial: { opacity: 0, scale: 0.98 },
+  in: {
+    opacity: 1,
+    scale: 1,
+    transition: { duration: duration.normal, ease: ease.decelerate },
+  },
+  out: {
+    opacity: 0,
+    scale: 0.985,
+    transition: { duration: duration.fast, ease: ease.accelerate },
+  },
+};
+
+const anchoredPopoverScale = {
+  initial: { opacity: 0, scale: 0.96 },
+  in: {
+    opacity: 1,
+    scale: 1,
+    transition: { duration: duration.fast, ease: ease.decelerate },
+  },
+  out: {
+    opacity: 0,
+    scale: 0.98,
+    transition: { duration: duration.fast, ease: ease.accelerate },
+  },
+};
+
+function getFocusableElements(scope: HTMLElement): HTMLElement[] {
+  return Array.from(scope.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR)).filter(
+    (node) => !node.hasAttribute("disabled") && node.getAttribute("aria-disabled") !== "true" && node.tabIndex !== -1,
+  );
+}
+
+/**
+ * Shared focus lifecycle for modal overlays. Only the current topmost layer can
+ * receive initial focus or keep Tab navigation inside itself.
+ */
+function useTopmostFocusScope(
+  scopeRef: React.RefObject<HTMLElement | null>,
+  isTopmost: boolean,
+  initialFocusSelector?: string,
+): void {
+  const didInitialFocusRef = useRef(false);
+
+  useLayoutEffect(() => {
+    if (!isTopmost || didInitialFocusRef.current) return;
+    const scope = scopeRef.current;
+    if (!scope) return;
+    didInitialFocusRef.current = true;
+    const preferred = initialFocusSelector
+      ? scope.querySelector<HTMLElement>(initialFocusSelector)
+      : null;
+    (preferred ?? getFocusableElements(scope)[0] ?? scope).focus({ preventScroll: true });
+  });
+
+  useEffect(() => {
+    if (!isTopmost) return;
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== "Tab") return;
+      const scope = scopeRef.current;
+      if (!scope) return;
+      const focusable = getFocusableElements(scope);
+      if (focusable.length === 0) {
+        event.preventDefault();
+        scope.focus();
+        return;
+      }
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+      if (event.shiftKey && (document.activeElement === first || !scope.contains(document.activeElement))) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && (document.activeElement === last || !scope.contains(document.activeElement))) {
+        event.preventDefault();
+        first.focus();
+      }
+    };
+    document.addEventListener("keydown", onKeyDown, true);
+    return () => document.removeEventListener("keydown", onKeyDown, true);
+  }, [isTopmost, scopeRef]);
+}
 
 /* ------------------------------------------------------------------ */
 /*  AnimatedPage – sub-page enter / exit with slide-right              */
@@ -107,7 +192,6 @@ function MotionSheetLayer({
   useScrollLock(true);
 
   const panelRef = useRef<HTMLDivElement | null>(null);
-  const didInitialFocusRef = useRef(false);
   const [blockedAnnouncement, setBlockedAnnouncement] = useState("");
   const resolvedRole = role ?? (variant === "destructive" ? "alertdialog" : "dialog");
   const fallbackAriaLabel = {
@@ -136,47 +220,7 @@ function MotionSheetLayer({
   }, [requestDismiss]);
   const stopProp = useCallback((e: React.MouseEvent) => e.stopPropagation(), []);
 
-  useEffect(() => {
-    if (!isTopmost || didInitialFocusRef.current) return;
-    didInitialFocusRef.current = true;
-    const frame = window.requestAnimationFrame(() => {
-      const panel = panelRef.current;
-      if (!panel) return;
-      const focusable = panel.querySelector<HTMLElement>(
-        'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])',
-      );
-      (focusable ?? panel).focus();
-    });
-    return () => window.cancelAnimationFrame(frame);
-  }, [isTopmost]);
-
-  useEffect(() => {
-    if (!isTopmost) return;
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key !== "Tab") return;
-      const panel = panelRef.current;
-      if (!panel) return;
-      const focusable = Array.from(
-        panel.querySelectorAll<HTMLElement>('button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'),
-      ).filter((node) => !node.hasAttribute("disabled") && node.tabIndex !== -1);
-      if (focusable.length === 0) {
-        event.preventDefault();
-        panel.focus();
-        return;
-      }
-      const first = focusable[0];
-      const last = focusable[focusable.length - 1];
-      if (event.shiftKey && document.activeElement === first) {
-        event.preventDefault();
-        last.focus();
-      } else if (!event.shiftKey && document.activeElement === last) {
-        event.preventDefault();
-        first.focus();
-      }
-    };
-    document.addEventListener("keydown", onKeyDown, true);
-    return () => document.removeEventListener("keydown", onKeyDown, true);
-  }, [isTopmost]);
+  useTopmostFocusScope(panelRef, isTopmost);
 
   const bottomPresentation = preferBottom && (variant === "action" || variant === "form");
 
@@ -211,9 +255,10 @@ function MotionSheetLayer({
           aria-modal="true"
           aria-label={ariaLabelledBy ? undefined : (ariaLabel ?? fallbackAriaLabel)}
           aria-labelledby={ariaLabelledBy}
+          aria-busy={!dismissible || undefined}
           tabIndex={-1}
           className={`${bottomPresentation ? "absolute bottom-0 inset-x-0 mx-auto rounded-t-2xl" : "relative mx-auto w-full max-w-lg rounded-2xl"} max-h-[92vh] w-full overflow-y-auto overscroll-contain bg-paper p-4 shadow-2xl outline-none ${panelClassName ?? ""}`}
-          variants={bottomPresentation ? slideUp : scaleModal}
+          variants={bottomPresentation ? slideUp : subtleOverlayScale}
           initial="initial"
           animate="in"
           exit="out"
@@ -367,62 +412,92 @@ interface MotionImageLightboxProps {
   thumbnailSrc?: string;
   cropBox?: { x: number; y: number; width: number; height: number };
   displayMode?: "original-cropped";
+  ariaLabel?: string;
 }
 
-export function MotionImageLightbox({
-  open,
+function MotionImageLightboxLayer({
   onClose,
   src,
   alt,
   thumbnailSrc,
   cropBox,
   displayMode,
-}: MotionImageLightboxProps) {
-  useScrollLock(open);
+  ariaLabel,
+}: Omit<MotionImageLightboxProps, "open">) {
+  // Keep both the stack entry and scroll lock alive until the exit animation
+  // has completed, so a closing image cannot briefly expose the page below.
+  useScrollLock(true);
+  const layerRef = useRef<HTMLDivElement | null>(null);
+  const { overlayId, isTopmost, requestDismiss } = useOverlayLayer({
+    kind: "lightbox",
+    onDismiss: () => onClose(),
+  });
+  useTopmostFocusScope(layerRef, isTopmost, '[data-lightbox-close="true"]');
+  const handleDismiss = useCallback(() => {
+    requestDismiss("backdrop");
+  }, [requestDismiss]);
 
   return (
-    <AnimatePresence>
-      {open ? (
+    <OverlayPortal>
+      <motion.div
+        ref={layerRef}
+        role="dialog"
+        aria-modal="true"
+        aria-label={ariaLabel ?? (alt ? `查看图片：${alt}` : "查看图片")}
+        aria-hidden={isTopmost ? undefined : "true"}
+        inert={isTopmost ? undefined : true}
+        tabIndex={-1}
+        className="fixed inset-0 z-[80] grid min-h-[100dvh] place-items-center bg-black p-4 outline-none"
+        variants={{ in: { opacity: 1 }, out: { opacity: 0 } }}
+        initial="out"
+        animate="in"
+        exit="out"
+        transition={{ duration: duration.fast }}
+        data-overlay-layer={overlayId}
+        data-overlay-kind="lightbox"
+        data-overlay-topmost={isTopmost ? "true" : "false"}
+        data-parity-id="parity.app.app.src.components.motion.common.4584c58a8f"
+        onClick={handleDismiss}
+      >
+        {/* Image container intentionally bubbles clicks: the established
+            lightbox interaction lets users tap the image or backdrop to close. */}
         <motion.div
-          className="fixed inset-0 z-[80] grid place-items-center bg-black p-4"
-          variants={{ in: { opacity: 1 }, out: { opacity: 0 } }}
-          initial="out"
+          className="relative max-h-[88dvh] max-w-4xl overflow-hidden rounded-lg bg-black"
+          variants={subtleOverlayScale}
+          initial="initial"
           animate="in"
           exit="out"
-          transition={{ duration: duration.fast }}
-          data-parity-id="parity.app.app.src.components.motion.common.4584c58a8f" onClick={onClose}
         >
-          {/* Image container: 自身也算可点击区域, 点击图片任意位置也可关闭 */}
-          <motion.div
-            className="relative max-h-[88vh] max-w-4xl overflow-hidden rounded-lg bg-black"
-            variants={scaleModal}
-            initial="initial"
-            animate="in"
-            exit="out"
-            transition={{ duration: duration.normal, ease: ease.app }}
-          >
-            {/* eslint-disable-next-line @next/next/no-img-element -- lightbox renders local data-URL images, not static assets */}
-            {displayMode === "original-cropped" ? (
-              <OriginalCroppedImage originalSrc={src} thumbnailSrc={thumbnailSrc} cropBox={cropBox} alt={alt} className="h-[88vh] w-[min(92vw,64rem)]" />
-            ) : (
-              <img loading="lazy" decoding="async" src={src} alt={alt} className="max-h-[88vh] w-full object-contain" />
-            )}
+          {/* eslint-disable-next-line @next/next/no-img-element -- lightbox renders local data-URL images, not static assets */}
+          {displayMode === "original-cropped" ? (
+            <OriginalCroppedImage originalSrc={src} thumbnailSrc={thumbnailSrc} cropBox={cropBox} alt={alt} className="h-[88dvh] w-[min(92vw,64rem)]" />
+          ) : (
+            <img loading="lazy" decoding="async" src={src} alt={alt} className="max-h-[88dvh] w-full object-contain" />
+          )}
 
-            {/* 关闭按钮: 放在图片右上角 (与图片一起缩放, 不会因屏幕尺寸错位) */}
-            <button
-              type="button"
-              className="absolute top-2 right-2 z-10 grid h-11 w-11 place-items-center rounded-full bg-black/55 text-white shadow-md backdrop-blur-sm hover:bg-black/75 active:scale-95 transition-all"
-              data-parity-id="parity.app.app.src.components.motion.common.c59e73fe7f" onClick={(event) => {
-                event.stopPropagation();
-                onClose();
-              }}
-              aria-label="关闭"
-            >
-              <X size={20} strokeWidth={2.4} aria-hidden="true" />
-            </button>
-          </motion.div>
+          <button
+            type="button"
+            className="absolute top-2 right-2 z-10 grid h-11 w-11 place-items-center rounded-full bg-black/55 text-white shadow-md backdrop-blur-sm transition-colors hover:bg-black/75 active:bg-black/80"
+            data-lightbox-close="true"
+            data-parity-id="parity.app.app.src.components.motion.common.c59e73fe7f"
+            onClick={(event) => {
+              event.stopPropagation();
+              handleDismiss();
+            }}
+            aria-label="关闭图片预览"
+          >
+            <X size={20} strokeWidth={2.4} aria-hidden="true" />
+          </button>
         </motion.div>
-      ) : null}
+      </motion.div>
+    </OverlayPortal>
+  );
+}
+
+export function MotionImageLightbox(props: MotionImageLightboxProps) {
+  return (
+    <AnimatePresence>
+      {props.open ? <MotionImageLightboxLayer key="motion-image-lightbox" {...props} /> : null}
     </AnimatePresence>
   );
 }
@@ -460,19 +535,238 @@ export function MotionCheckBadge({ visible, children, className }: MotionCheckBa
 /*  MotionPopoverMenu – opacity + scale from anchor                   */
 /* ------------------------------------------------------------------ */
 
+const MENU_ITEM_SELECTOR =
+  'button, a[href], [role="menuitem"], [role="menuitemcheckbox"], [role="menuitemradio"]';
+
+function getEnabledMenuItems(menu: HTMLElement): HTMLElement[] {
+  return Array.from(menu.querySelectorAll<HTMLElement>(MENU_ITEM_SELECTOR)).filter(
+    (node) => !node.hasAttribute("disabled") && node.getAttribute("aria-disabled") !== "true" && node.tabIndex !== -1,
+  );
+}
+
+/**
+ * Guard only the click generated by one outside pointer sequence. The guard
+ * releases on that click, pointer cancellation, or the first frame after the
+ * matching pointerup; it never leaves a time-based global suppression window.
+ */
+function suppressClickForPointerSequence(pointerId: number): () => void {
+  let active = true;
+  let releaseFrame: number | null = null;
+
+  const cleanup = () => {
+    if (!active) return;
+    active = false;
+    if (releaseFrame !== null) window.cancelAnimationFrame(releaseFrame);
+    document.removeEventListener("click", handleClick, true);
+    document.removeEventListener("pointerup", handlePointerUp, true);
+    document.removeEventListener("pointercancel", handlePointerCancel, true);
+  };
+  const handleClick = (event: MouseEvent) => {
+    event.preventDefault();
+    event.stopImmediatePropagation();
+    cleanup();
+  };
+  const handlePointerUp = (event: PointerEvent) => {
+    if (event.pointerId !== pointerId) return;
+    // A click from this sequence is dispatched before the next animation frame.
+    // If no click is generated (drag/cancel), release without delaying input.
+    releaseFrame = window.requestAnimationFrame(cleanup);
+  };
+  const handlePointerCancel = (event: PointerEvent) => {
+    if (event.pointerId === pointerId) cleanup();
+  };
+
+  document.addEventListener("click", handleClick, true);
+  document.addEventListener("pointerup", handlePointerUp, true);
+  document.addEventListener("pointercancel", handlePointerCancel, true);
+  return cleanup;
+}
+
 interface MotionPopoverMenuProps {
   visible: boolean;
   onClose: () => void;
   children: React.ReactNode;
   className?: string;
+  ariaLabel?: string;
   /**
-   * v0.9.42-dev C-1: Anchor element to position the popover relative to.
-   * When provided + visible, the popover renders via createPortal to document.body
-   * with fixed positioning computed from anchor.getBoundingClientRect().
-   * When omitted, falls back to legacy `absolute bottom-full right-0` mode
-   * (clipped by ancestor overflow-hidden / transform-gpu — used for back-compat).
+   * The trigger used for spatial positioning and focus restoration. Existing
+   * callers may omit it; a local marker preserves the old bottom-right anchor
+   * while the menu still renders through the shared OverlayPortal.
    */
   anchorRef?: React.RefObject<HTMLElement | null>;
+}
+
+interface MotionPopoverMenuLayerProps extends Omit<MotionPopoverMenuProps, "visible"> {
+  positioningAnchorRef: React.RefObject<HTMLElement | null>;
+  preferAbove: boolean;
+}
+
+function MotionPopoverMenuLayer({
+  onClose,
+  children,
+  className,
+  ariaLabel,
+  anchorRef,
+  positioningAnchorRef,
+  preferAbove,
+}: MotionPopoverMenuLayerProps) {
+  useScrollLock(true);
+  const popoverRef = useRef<HTMLDivElement | null>(null);
+  const pointerSequenceCleanupRef = useRef<(() => void) | null>(null);
+  const { overlayId, isTopmost, requestDismiss } = useOverlayLayer({
+    kind: "popover",
+    onDismiss: () => onClose(),
+    restoreFocusTo: anchorRef,
+  });
+
+  // Existing call sites provide native buttons. Promote them into menu items
+  // without forcing a breaking children API migration.
+  useLayoutEffect(() => {
+    const menu = popoverRef.current;
+    if (!menu) return;
+    const candidates = Array.from(menu.querySelectorAll<HTMLElement>(MENU_ITEM_SELECTOR));
+    candidates.forEach((candidate) => {
+      if (!candidate.hasAttribute("role")) candidate.setAttribute("role", "menuitem");
+      if (candidate.hasAttribute("disabled")) candidate.setAttribute("aria-disabled", "true");
+    });
+  }, [children]);
+
+  useTopmostFocusScope(popoverRef, isTopmost, '[role="menuitem"]:not([aria-disabled="true"])');
+
+  useLayoutEffect(() => {
+    let retryFrame: number | null = null;
+    const update = (): boolean => {
+      const anchorEl = positioningAnchorRef.current;
+      const popoverEl = popoverRef.current;
+      if (!anchorEl || !popoverEl) return false;
+      const rect = anchorEl.getBoundingClientRect();
+      const popoverH = popoverEl.offsetHeight;
+      const popoverW = popoverEl.offsetWidth;
+      const visualViewport = window.visualViewport;
+      const viewportLeft = visualViewport?.offsetLeft ?? 0;
+      const viewportTop = visualViewport?.offsetTop ?? 0;
+      const viewportWidth = visualViewport?.width ?? window.innerWidth;
+      const viewportHeight = visualViewport?.height ?? window.innerHeight;
+      const viewportRight = viewportLeft + viewportWidth;
+      const viewportBottom = viewportTop + viewportHeight;
+      const margin = 8;
+      const gap = 8;
+
+      let top: number;
+      let placement: "above" | "below";
+      const belowSpace = viewportBottom - rect.bottom - gap - margin;
+      const aboveSpace = rect.top - viewportTop - gap - margin;
+      if ((preferAbove && aboveSpace >= popoverH) || belowSpace < popoverH) {
+        placement = "above";
+        top = rect.top - popoverH - gap;
+      } else {
+        placement = "below";
+        top = rect.bottom + gap;
+      }
+      const maxTop = Math.max(viewportTop + margin, viewportBottom - popoverH - margin);
+      top = Math.max(viewportTop + margin, Math.min(maxTop, top));
+
+      let left = rect.right - popoverW;
+      const maxLeft = Math.max(viewportLeft + margin, viewportRight - popoverW - margin);
+      left = Math.max(viewportLeft + margin, Math.min(maxLeft, left));
+
+      const originX = Math.max(0, Math.min(popoverW, rect.left + rect.width / 2 - left));
+      const originY = Math.max(0, Math.min(popoverH, rect.top + rect.height / 2 - top));
+
+      popoverEl.style.top = `${top}px`;
+      popoverEl.style.left = `${left}px`;
+      popoverEl.style.transformOrigin = `${originX}px ${originY}px`;
+      popoverEl.dataset.placement = placement;
+      return true;
+    };
+    if (!update()) retryFrame = window.requestAnimationFrame(update);
+    window.addEventListener("scroll", update, true);
+    window.addEventListener("resize", update);
+    window.visualViewport?.addEventListener("resize", update);
+    window.visualViewport?.addEventListener("scroll", update);
+    return () => {
+      if (retryFrame !== null) window.cancelAnimationFrame(retryFrame);
+      window.removeEventListener("scroll", update, true);
+      window.removeEventListener("resize", update);
+      window.visualViewport?.removeEventListener("resize", update);
+      window.visualViewport?.removeEventListener("scroll", update);
+    };
+  }, [positioningAnchorRef, preferAbove]);
+
+  useEffect(() => {
+    if (!isTopmost) return;
+    const handleDocumentPointerDown = (event: PointerEvent) => {
+      const target = event.target as Node | null;
+      if (!target) return;
+      const popoverEl = popoverRef.current;
+      const anchorEl = positioningAnchorRef.current;
+      if (popoverEl && popoverEl.contains(target)) return;
+      if (anchorEl && anchorEl.contains(target)) return;
+      const result = requestDismiss("backdrop");
+      if (!result.handled) return;
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      pointerSequenceCleanupRef.current?.();
+      pointerSequenceCleanupRef.current = suppressClickForPointerSequence(event.pointerId);
+    };
+    document.addEventListener("pointerdown", handleDocumentPointerDown, true);
+    return () => {
+      document.removeEventListener("pointerdown", handleDocumentPointerDown, true);
+      pointerSequenceCleanupRef.current?.();
+      pointerSequenceCleanupRef.current = null;
+    };
+  }, [isTopmost, positioningAnchorRef, requestDismiss]);
+
+  const handleMenuKeyDown = useCallback((event: React.KeyboardEvent<HTMLDivElement>) => {
+    if (!isTopmost) return;
+    if (event.key === "Escape") {
+      event.preventDefault();
+      event.stopPropagation();
+      requestDismiss("escape");
+      return;
+    }
+    if (!["ArrowDown", "ArrowUp", "Home", "End"].includes(event.key)) return;
+    const menu = popoverRef.current;
+    if (!menu) return;
+    const items = getEnabledMenuItems(menu);
+    if (items.length === 0) return;
+    event.preventDefault();
+    const currentIndex = items.indexOf(document.activeElement as HTMLElement);
+    let nextIndex: number;
+    if (event.key === "Home") nextIndex = 0;
+    else if (event.key === "End") nextIndex = items.length - 1;
+    else if (event.key === "ArrowUp") nextIndex = currentIndex <= 0 ? items.length - 1 : currentIndex - 1;
+    else nextIndex = currentIndex < 0 || currentIndex === items.length - 1 ? 0 : currentIndex + 1;
+    items[nextIndex]?.focus();
+  }, [isTopmost, requestDismiss]);
+
+  return (
+    <OverlayPortal>
+      <motion.div
+        ref={popoverRef}
+        role="menu"
+        aria-label={ariaLabel ?? "更多操作"}
+        aria-orientation="vertical"
+        aria-hidden={isTopmost ? undefined : "true"}
+        inert={isTopmost ? undefined : true}
+        tabIndex={-1}
+        className={`fixed z-[70] min-w-[120px] max-w-[calc(100vw-16px)] rounded-lg border border-ink/10 bg-white py-1 shadow-lg outline-none ${className ?? ""}`}
+        style={{ top: -9999, left: -9999, transformOrigin: "100% 0" }}
+        variants={anchoredPopoverScale}
+        initial="initial"
+        animate="in"
+        exit="out"
+        data-overlay-layer={overlayId}
+        data-overlay-kind="popover"
+        data-overlay-topmost={isTopmost ? "true" : "false"}
+        data-parity-id="parity.app.app.src.components.motion.common.8e918697ef"
+        onKeyDown={handleMenuKeyDown}
+        onClick={(event: React.MouseEvent) => event.stopPropagation()}
+      >
+        {children}
+      </motion.div>
+    </OverlayPortal>
+  );
 }
 
 export function MotionPopoverMenu({
@@ -480,153 +774,38 @@ export function MotionPopoverMenu({
   onClose,
   children,
   className,
+  ariaLabel,
   anchorRef,
 }: MotionPopoverMenuProps) {
-  const popoverRef = useRef<HTMLDivElement>(null);
-  const usePortal = !!anchorRef;
+  const legacyAnchorRef = useRef<HTMLSpanElement | null>(null);
+  const positioningAnchorRef = (anchorRef ?? legacyAnchorRef) as React.RefObject<HTMLElement | null>;
 
-  // v0.9.42-dev C-1: 在 portal 模式下, 用 anchor.getBoundingClientRect() 算 popover 的
-  // top/left (等价于 absolute bottom-full right-0, 但用 fixed 相对 viewport, 绕开 overflow-hidden ancestor)。
-  // 监听 window scroll/resize, popover 跟随 anchor 位置。
-  useLayoutEffect(() => {
-    if (!visible || !usePortal) return;
-    const anchorEl = anchorRef?.current;
-    const popoverEl = popoverRef.current;
-    if (!anchorEl || !popoverEl) return;
-
-    const update = () => {
-      const rect = anchorEl.getBoundingClientRect();
-      const popoverH = popoverEl.offsetHeight;
-      const popoverW = popoverEl.offsetWidth;
-      const vw = window.innerWidth;
-      const vh = window.innerHeight;
-      const MARGIN = 8;
-
-      // v0.9.52-dev: viewport clamping — 优先放下方，空间不足放上方
-      let top: number;
-      const belowSpace = vh - rect.bottom - MARGIN;
-      const aboveSpace = rect.top - MARGIN;
-      if (belowSpace >= popoverH + MARGIN) {
-        // 放在 anchor 下方
-        top = rect.bottom + MARGIN;
-      } else if (aboveSpace >= popoverH + MARGIN) {
-        // 放在 anchor 上方
-        top = rect.top - popoverH - MARGIN;
-      } else {
-        // 都不够 — 放下方并 clamp
-        top = Math.max(MARGIN, Math.min(vh - popoverH - MARGIN, rect.bottom + MARGIN));
-      }
-
-      // left: 右对齐 anchor，但 clamp 到 viewport 内
-      let left = rect.right - popoverW;
-      if (left < MARGIN) left = MARGIN;
-      if (left + popoverW > vw - MARGIN) left = vw - popoverW - MARGIN;
-
-      popoverEl.style.top = `${top}px`;
-      popoverEl.style.left = `${left}px`;
-    };
-    update();
-    window.addEventListener("scroll", update, true);
-    window.addEventListener("resize", update);
-    return () => {
-      window.removeEventListener("scroll", update, true);
-      window.removeEventListener("resize", update);
-    };
-  }, [visible, usePortal, anchorRef]);
-
-  // v0.9.44-dev 问题 1: 文档级 pointerdown 监听代替"全屏 backdrop button"。
-  // - pointerdown 在 click 之前触发, 先一步关闭, 不会"先 onClick 再 onClose"
-  // - 仅当 target 既不在 popover 也不在 anchor (3-dot 按钮) 内时关闭
-  // - 关闭后用 once 性 click 拦截器 (capture 阶段) 吞掉本次 click, 避免事件穿透到底层卡片
-  //   触发进详情/多选等; 但相邻 3-dot 按钮 是 anchor 之外的 button, 同一次 pointer 序列
-  //   也只产生 1 个 click → 吞掉就吞掉, 相邻菜单按钮需用户再点一次 (与原 backdrop 行为一致)
-  // - capture 阶段挂载, 比目标节点的 onPointerDown 更早跑, 避免被 stopPropagation 漏掉
-  useEffect(() => {
-    if (!visible) return;
-    if (typeof document === "undefined") return;
-    const handleDocPointerDown = (e: PointerEvent) => {
-      const target = e.target as Node | null;
-      if (!target) return;
-      const popoverEl = popoverRef.current;
-      const anchorEl = anchorRef?.current ?? null;
-      if (popoverEl && popoverEl.contains(target)) return;
-      if (anchorEl && anchorEl.contains(target)) return;
-      onClose();
-      // 吞掉接下来同序列的 click, 防止穿透到底层卡片
-      const suppressClick = (ce: MouseEvent) => {
-        ce.stopPropagation();
-        ce.preventDefault();
-        document.removeEventListener("click", suppressClick, true);
-      };
-      document.addEventListener("click", suppressClick, true);
-      // 兜底: 若本次 pointerdown 因故没产生 click (拖动 / cancel), 100ms 后摘掉拦截器
-      window.setTimeout(() => {
-        document.removeEventListener("click", suppressClick, true);
-      }, 400);
-    };
-    document.addEventListener("pointerdown", handleDocPointerDown, true);
-    const handleDocKeyDown = (e: KeyboardEvent) => {
-      if (e.key !== "Escape") return;
-      e.preventDefault();
-      e.stopPropagation();
-      onClose();
-    };
-    document.addEventListener("keydown", handleDocKeyDown, true);
-    return () => {
-      document.removeEventListener("pointerdown", handleDocPointerDown, true);
-      document.removeEventListener("keydown", handleDocKeyDown, true);
-    };
-  }, [visible, anchorRef, onClose]);
-
-  // Legacy 模式: absolute bottom-full right-0 (在父级内, 受 ancestor overflow-hidden 约束)
-  if (!usePortal) {
-    return (
+  return (
+    <>
+      {!anchorRef ? (
+        <span
+          ref={legacyAnchorRef}
+          className="pointer-events-none absolute right-0 top-0 h-px w-px"
+          aria-hidden="true"
+          data-popover-legacy-anchor="true"
+        />
+      ) : null}
       <AnimatePresence>
         {visible ? (
-          <motion.div
-            ref={popoverRef}
-            className={`absolute bottom-full right-0 z-[70] mb-1 min-w-[120px] rounded-lg border border-ink/10 bg-white py-1 shadow-lg ${className ?? ""}`}
-            variants={scaleModal}
-            initial="initial"
-            animate="in"
-            exit="out"
-            transition={{ duration: duration.fast, ease: ease.accelerate }}
-            // popover 内部点击不冒泡到外层卡片 (但 document 级 pointerdown 已识别 contains 跳过)
-            data-parity-id="parity.app.app.src.components.motion.common.307ed3f33d" onClick={(e: React.MouseEvent) => e.stopPropagation()}
+          <MotionPopoverMenuLayer
+            key="motion-popover-menu"
+            onClose={onClose}
+            className={className}
+            ariaLabel={ariaLabel}
+            anchorRef={anchorRef}
+            positioningAnchorRef={positioningAnchorRef}
+            preferAbove={!anchorRef}
           >
             {children}
-          </motion.div>
+          </MotionPopoverMenuLayer>
         ) : null}
       </AnimatePresence>
-    );
-  }
-
-  // v0.9.42-dev C-1 Portal 模式: createPortal 到 body, fixed 定位, 绕开 ancestor overflow-hidden
-  return (
-    <AnimatePresence>
-      {visible ? (
-        <>
-          {typeof document !== "undefined"
-            ? createPortal(
-                <motion.div
-                  ref={popoverRef}
-                  className={`fixed z-[70] min-w-[120px] rounded-lg border border-ink/10 bg-white py-1 shadow-lg ${className ?? ""}`}
-                  style={{ top: -9999, left: -9999 }}
-                  variants={scaleModal}
-                  initial="initial"
-                  animate="in"
-                  exit="out"
-                  transition={{ duration: duration.fast, ease: ease.accelerate }}
-                  data-parity-id="parity.app.app.src.components.motion.common.8e918697ef" onClick={(e: React.MouseEvent) => e.stopPropagation()}
-                >
-                  {children}
-                </motion.div>,
-                document.body,
-              )
-            : null}
-        </>
-      ) : null}
-    </AnimatePresence>
+    </>
   );
 }
 

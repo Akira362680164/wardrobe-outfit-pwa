@@ -1,3 +1,12 @@
+## 2026-07-13 / v2.1.18-test / Codex Subagent A2-Core — 共享 Lightbox、Popover 与 Dialog 浮层收口
+
+- **执行 Agent**：Codex 实施 Subagent A2-Core；独立分支 `codex/motion-a2-core-20260713`、独立 worktree `/Users/fangzheng/Documents/wardrobe-motion-a2-core-20260713`，基于批次提交 `10d9e4176216ba3f7dcd3b47289294e9ad70e230`；未合入 integration / `main`，未推送。
+- **目的与版本**：按 Apple 式空间连续性、直接响应和可预测焦点原则，完成 A1 共享浮层组件层的 A2 迁移；版本保持 `2.1.18-test`，本批不改业务/API/存储/小程序，不构建 APK，也不提前实现 Sheet 拖拽。
+- **改动文件**：修改 `src/components/motion-common.tsx`、`src/components/dialogs/notice-sheet.tsx`、`scripts/test-ui-overlay-contract.ts`、`docs/designs/wardrobe-ui-spec.md`、生成的 `docs/designs/wardrobe-ui-spec.html` 与本记录；A1 的 `overlay-root.tsx`、`overlay-stack.ts`、`back-coordinator.ts` 公共接口保持兼容，无需追加运行时代码改动。
+- **实现摘要**：抽出 topmost-only 首焦点与 Tab 圈；`MotionSheet` 保持冻结 props，居中层改为轻微非弹跳缩放，`dismissible=false` 暴露 `aria-busy`。`MotionImageLightbox` 改为退出期持续存在的 `OverlayPortal + OverlayStack(kind=lightbox)` 层，补 `100dvh`、dialog 名称、首焦点、低层 inert 与锁滚。`MotionPopoverMenu` 在兼容原 props 的前提下全部进入共享 Portal/Stack，真实 anchor 同时决定 fixed 定位、transform origin 与焦点恢复，补 menu/menuitem、首项焦点、Arrow/Home/End/Escape；外点关闭的 400ms 全局 click 拦截改为仅绑定当前 `pointerId`、在 click/pointercancel/pointerup 后首帧释放的序列级保护。Notice Dialog 补齐可访问名称；危险提交确认继续使用 `alertdialog + dismissible=false`。
+- **验证结果**：`docs:ui-spec:build`、`docs:ui-spec:check`、`test:logic:ui-spec-preview`、`test:logic:ui-overlay-contract`、`test:logic:back-priority-regression`、`test:logic:component-reuse`、`test:logic:detail-shell`、`test:logic:ui-overflow`、根 `typecheck`、Next `build` 与 `git diff --check` 通过。额外用不落盘 React/JSDOM harness 真实渲染共享层：Popover 首项焦点、ArrowDown、Escape、触发器焦点恢复、外点同序列防穿透及下一次点击立即可用通过；Lightbox dialog 名称、关闭按钮首焦点、Escape、触发器焦点恢复、打开锁滚与退出释放通过。
+- **风险门禁与未验证项**：`high`（共享浮层、焦点和输入协调）。未在 Android 真机/模拟器、TalkBack/VoiceOver 或生产业务数据上做最终窄屏触摸回归；JSDOM 可验证 DOM/焦点/输入生命周期，但不替代像素、软键盘和真实 WebView 动画帧验收。最终 Android 与辅助技术验收由后续 D/集成 Wave 完成；本批明确不包含 Sheet 拖拽。
+
 ## 2026-07-13 / v2.1.18-test / Codex Subagent A1 — OverlayStack 与单一 Back/Escape 基线
 
 - **执行 Agent**：Codex 实施 Subagent A1；独立分支 `codex/motion-a1-overlay-back-20260713`、独立 worktree `/Users/fangzheng/Documents/wardrobe-motion-a1-overlay-back-20260713`，基于批次提交 `8fdb07f7d17e9578f18f90f04d68f8cd8308d1a8`；未合入 integration / `main`，未推送。
