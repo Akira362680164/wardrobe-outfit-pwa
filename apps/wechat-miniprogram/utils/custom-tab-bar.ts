@@ -1,5 +1,6 @@
 type CustomTabBar = {
   setData?: (data: { selected?: number; hidden?: boolean }) => void;
+  selectTab?: (selected: number) => void;
 };
 
 type PageWithCustomTabBar = {
@@ -7,7 +8,12 @@ type PageWithCustomTabBar = {
 };
 
 export function selectCustomTab(page: unknown, selected: number): void {
-  customTabBarFor(page)?.setData?.({ selected });
+  const tabBar = customTabBarFor(page);
+  if (tabBar?.selectTab) {
+    tabBar.selectTab(selected);
+    return;
+  }
+  tabBar?.setData?.({ selected });
 }
 
 export function setCustomTabHidden(page: unknown, hidden: boolean): void {

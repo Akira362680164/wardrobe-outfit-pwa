@@ -7,7 +7,14 @@
 - **验证结果**：根与小程序 typecheck、套装/旅行流程、周月历 UI、单品详情、衣橱、种草、壳层、runtime refresh、图片 session cache、catalog 同步检查及 `git diff --check` 全部通过；微信开发者工具对本 worktree 的套装首页、月历、套装/单品/种草/计划详情 WXML/WXSS 编译命令退出码为 0。
 - **风险门禁**：`high`（跨 17 个运行时/测试文件，涉及页面生命周期、写入读回和移动端闪烁）；用户已明确触发三个并行 subagent，本记录为详情/日历批次结果。
 - **未验证风险**：微信开发者工具 `project_import` 仍返回 `PROJECT_IMPORT_NOT_IN_LIST`，因此未形成该 worktree 的模拟器交互或截图；未使用真实微信账号覆盖弱网、前后台恢复和真机连续切换，需集成分支完成最终录屏验收。
+## 2026-07-13 / v2.1.18-test / Codex Subagent — 小程序底栏与按压闪烁修复
 
+- **执行 Agent**：Codex subagent；在独立 `codex/flicker-navigation` / `wardrobe-flicker-navigation` worktree 实施，只负责底栏、公共按压动效和定向合同测试。
+- **目的与边界**：消除自定义底栏默认选中衣橱后再延迟修正、旧页面与新页面重复播放选中态、按钮/卡片整块透明度闪烁；不改页面数据读取、图片缓存、业务契约、服务端或生产配置。
+- **改动文件**：`apps/wechat-miniprogram/custom-tab-bar/`、`utils/custom-tab-bar.ts`、`styles/motion.wxss`、公共 `button` / `icon-button` / `tag` 样式与 `scripts/test-miniprogram-navigation-motion.ts`。
+- **改动说明**：底栏以 `selected=-1` 启动并在当前路由首轮 `setData` 回调后才启用过渡，删除全部 0/300ms 定时同步；切换时不提前修改旧实例选中态，并增加单飞与失败恢复。公共动效移除 `transition: all`，按钮、筛选、FAB、卡片和图标按钮只做 120ms 轻位移/缩放，不再降低整控件及图片透明度，并保留 reduced-motion。
+- **验证结果**：小程序 typecheck、既有 `test:logic:miniprogram-shell`、新增导航运行时/静态动效合同、`git diff --check` 通过；微信开发者工具完成 TabBar 与 tag WXML、TabBar/button/icon-button/tag WXSS 编译，衣橱页面模拟器编译打开成功。
+- **未验证风险**：未在微信真机对四个 Tab 快速连点、按住滑出、弱网切换和系统 reduced-motion 做录屏；模拟器只完成编译打开，真实触摸手感留最终集成回归确认。本批不上传体验版。
 ## 2026-07-13 / v2.1.18-test / Codex — 小程序闪烁修复共享运行期基础
 
 - **执行 Agent**：Codex；在独立 `codex/miniprogram-flicker-fix-20260713` 集成 worktree 实施，作为三个并行 subagent 的已提交共同基线。

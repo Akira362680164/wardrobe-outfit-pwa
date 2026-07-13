@@ -1,3 +1,3 @@
-<view class="ui-tag ui-tag--{{tone}} {{selected ? 'ui-tag--selected' : ''}} {{disabled ? 'ui-tag--disabled' : ''}}" bindtap="onTap">
+<view class="ui-tag ui-tag--{{tone}} {{selected ? 'ui-tag--selected' : ''}} {{disabled ? 'ui-tag--disabled' : ''}}" hover-class="ui-tag--hover" hover-start-time="0" hover-stay-time="80" bindtap="onTap">
   <text class="ui-tag__text text-one-line"><slot /></text>
 </view>

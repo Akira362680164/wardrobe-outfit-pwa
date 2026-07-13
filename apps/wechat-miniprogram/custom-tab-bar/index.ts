@@ -9,34 +9,61 @@ const tabs = [
 ];
 
 Component({
-  data: { selected: 0, tabs, hidden: false },
+  data: { selected: -1, tabs, hidden: false, motionReady: false },
   lifetimes: {
     attached(this: any) {
       this.syncSelected();
-      setTimeout(() => this.syncSelected(), 0);
-      setTimeout(() => this.syncSelected(), 300);
     },
   },
   pageLifetimes: {
     show(this: any) {
+      this.switchingTab = false;
       this.syncSelected();
-      setTimeout(() => this.syncSelected(), 0);
     },
   },
   methods: {
+    commitSelected(this: any, selected: number) {
+      if (!Number.isInteger(selected) || selected < 0 || selected >= tabs.length) return;
+      if (selected === Number(this.data.selected)) {
+        if (this.selectionRenderPending) return;
+        this.enableMotionAfterRender();
+        return;
+      }
+      const selectionGeneration = Number(this.selectionGeneration || 0) + 1;
+      this.selectionGeneration = selectionGeneration;
+      this.selectionRenderPending = true;
+      this.setData({ selected, motionReady: false }, () => {
+        if (selectionGeneration !== this.selectionGeneration) return;
+        this.selectionRenderPending = false;
+        this.enableMotionAfterRender();
+      });
+    },
+    enableMotionAfterRender(this: any) {
+      if (this.data.motionReady || Number(this.data.selected) < 0) return;
+      this.setData({ motionReady: true });
+    },
     syncSelected(this: any) {
       const pages = getCurrentPages();
       const current = pages[pages.length - 1]?.route;
       const selected = tabs.findIndex((tab) => tab.url === `/${current}`);
-      if (selected >= 0 && selected !== this.data.selected) this.setData({ selected });
+      this.commitSelected(selected);
+    },
+    selectTab(this: any, selected: number) {
+      this.commitSelected(Number(selected));
     },
     switchTab(this: any, event: any) {
       const { index, url } = event.currentTarget.dataset;
       if (!url) return;
       const selected = Number(index) || 0;
       if (selected === Number(this.data.selected)) return;
-      this.setData({ selected });
-      wx.switchTab({ url });
+      if (this.switchingTab) return;
+      this.switchingTab = true;
+      (wx.switchTab as any)({
+        url,
+        fail: () => {
+          this.switchingTab = false;
+        },
+      });
     },
   },
 });
