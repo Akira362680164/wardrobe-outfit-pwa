@@ -1,1 +1,1 @@
-{ "navigationBarTitleText": "AI 试穿参考照片" }
+{ "navigationBarTitleText": "AI 试穿参考照片", "usingComponents": { "sub-page-top-bar": "/components/domain/sub-page-top-bar/index" } }

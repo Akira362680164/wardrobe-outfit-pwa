@@ -8,7 +8,6 @@ import {
   type MiniOutfitPlanEntry,
 } from "../../../services/workspace";
 import { enumerateDateRange, formatDateWithWeek } from "../../../utils/calendar";
-import { getCapsuleGeometry } from "../../../utils/capsule-layout";
 
 type DayArrangement = {
   date: string;
@@ -43,7 +42,6 @@ const TONE_CLASS: Record<MiniCalendarPlan["tone"], string> = {
 
 Page({
   data: {
-    titleTopRpx: 0,
     planId: "",
     plan: null as PlanDetailView | null,
     rows: [] as DayArrangement[],
@@ -55,7 +53,6 @@ Page({
   },
 
   onLoad(query?: { id?: string }) {
-    this.setData({ titleTopRpx: getTitleTopRpx() });
     wx.setNavigationBarTitle({ title: "计划详情" });
     if (!query?.id) {
       this.setData({ loading: false, error: "缺少计划 ID" });
@@ -67,10 +64,6 @@ Page({
 
   onShow() {
     if (this.data.planId) void this.loadPlan(this.data.planId, true);
-  },
-
-  goBack() {
-    wx.navigateBack({ delta: 1 });
   },
 
   retryLoad() {
@@ -196,8 +189,4 @@ function statusRank(status: MiniOutfitPlanEntry["status"]): number {
   if (status === "planned") return 1;
   if (status === "changed") return 2;
   return 3;
-}
-
-function getTitleTopRpx(): number {
-  return getCapsuleGeometry().topRpx;
 }

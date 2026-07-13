@@ -1,20 +1,17 @@
 import {
   cancelOutfitWornOnDate,
   createOutfitPlanEntry,
+  deleteWorkspaceEntity,
   fetchPlanningSnapshot,
   getWorkspaceReadState,
   markOutfitWornOnDate,
   updateOutfitPlanEntry,
   type MiniCalendarPlan,
-  type MiniCalendarPlanTone,
   type MiniCalendarPlanType,
   type MiniOutfit,
   type MiniOutfitPlanEntry,
 } from "../../../services/workspace";
-import { getCapsuleGeometry } from "../../../utils/capsule-layout";
 import {
-  getBackupOutfitPlanEntries,
-  getDisplayOutfitId,
   getOutfitPlanDateRelation,
   hasDuplicatePlannedOutfit,
   resolvePrimaryOutfitPlanEntry,
@@ -31,46 +28,24 @@ import {
   rangeOverlaps,
   shiftMonthKey,
 } from "../../../utils/calendar";
+import {
+  buildOutfitPlanDayCard,
+  toPlanToneViews,
+  type OutfitPlanDayCardView,
+} from "../../../utils/outfit-plan-day";
 
-type DayDot = { id: string; className: string; title: string };
 type CalendarDayView = {
   key: string;
   label: string;
   muted: boolean;
   active: boolean;
   today: boolean;
-  entryLabel: string;
-  dots: DayDot[];
+  plans: ReturnType<typeof toPlanToneViews>;
 };
 type CalendarWeekView = {
   key: string;
   days: CalendarDayView[];
   containsSelectedDate: boolean;
-};
-type SelectedEntryView = {
-  id: string;
-  outfitId: string;
-  name: string;
-  imageUrl: string;
-  itemImages: string[];
-  meta: string;
-  statusLabel: string;
-  statusClass: string;
-  primaryAction: "mark_worn" | "cancel_worn" | "";
-  primaryActionLabel: string;
-  canChangePlan: boolean;
-  canAddBackup: boolean;
-};
-type BackupEntryView = {
-  id: string;
-  outfitId: string;
-  name: string;
-  imageUrl: string;
-  itemImages: string[];
-};
-type SelectedPlanView = MiniCalendarPlan & {
-  toneClass: string;
-  dateText: string;
 };
 type DatasetEvent = { currentTarget: { dataset: Record<string, unknown> } };
 type TouchLikeEvent = { touches?: Array<{ clientX: number }>; changedTouches?: Array<{ clientX: number }> };
@@ -81,19 +56,8 @@ const PLAN_OPTIONS: Array<{ type: MiniCalendarPlanType; label: string; desc: str
   { type: "business", label: "出差", desc: "商务出行，可按日期安排偏正式穿搭" },
   { type: "custom", label: "自定义", desc: "自定义日期范围，用于活动、通勤周期及其他安排" },
 ];
-const TONE_CLASS: Record<MiniCalendarPlanTone, string> = {
-  denim: "tone-denim",
-  moss: "tone-moss",
-  clay: "tone-clay",
-  amber: "tone-amber",
-  rose: "tone-rose",
-  purple: "tone-purple",
-  slate: "tone-slate",
-};
-
 Page({
   data: {
-    titleTopRpx: 0,
     todayKey: localDateKey(),
     monthKey: localDateKey().slice(0, 7),
     monthTitle: "",
@@ -107,9 +71,7 @@ Page({
     filteredOutfits: [] as MiniOutfit[],
     calendarPlans: [] as MiniCalendarPlan[],
     outfitPlanEntries: [] as MiniOutfitPlanEntry[],
-    selectedPlans: [] as SelectedPlanView[],
-    selectedPrimaryEntry: null as SelectedEntryView | null,
-    selectedBackupEntries: [] as BackupEntryView[],
+    selectedDayCard: null as OutfitPlanDayCardView | null,
     monthHasData: false,
     selectedEmptyTitle: "",
     selectedEmptyCopy: "",
@@ -129,16 +91,12 @@ Page({
   onLoad(query?: { date?: string }) {
     wx.setNavigationBarTitle({ title: "穿搭计划" });
     const selectedDate = query?.date && /^\d{4}-\d{2}-\d{2}$/.test(query.date) ? query.date : localDateKey();
-    this.setData({ titleTopRpx: getTitleTopRpx(), selectedDate, monthKey: selectedDate.slice(0, 7) });
+    this.setData({ selectedDate, monthKey: selectedDate.slice(0, 7) });
     this.rebuildCalendar();
   },
 
   onShow() {
     void this.loadPlanning();
-  },
-
-  goBack() {
-    wx.navigateBack({ delta: 1 });
   },
 
   shiftMonth(event: DatasetEvent) {
@@ -198,7 +156,7 @@ Page({
   },
 
   openChangeSelector() {
-    if (getOutfitPlanDateRelation(this.data.selectedDate, this.data.todayKey) !== "future") return;
+    if (getOutfitPlanDateRelation(this.data.selectedDate, this.data.todayKey) === "past") return;
     this.openOutfitSelector("replace");
   },
 
@@ -292,22 +250,35 @@ Page({
     }
   },
 
-  async handlePrimaryAction() {
-    const primary = this.data.selectedPrimaryEntry;
-    if (!primary || !primary.primaryAction || this.data.savingEntry) return;
+  async handleDayCardAction(event: { detail?: { action?: string } }) {
+    const action = event.detail?.action;
+    if (!action || this.data.savingEntry) return;
+    if (action === "empty_primary") {
+      this.openSelectedDateSelector();
+      return;
+    }
+    if (action === "change") {
+      this.openChangeSelector();
+      return;
+    }
+    if (action === "backup") {
+      this.openBackupSelector();
+      return;
+    }
+    const primary = this.data.selectedDayCard?.primary;
+    if (!primary) return;
     const outfit = this.data.outfits.find((item) => item.id === primary.outfitId);
     if (!outfit) return;
-
+    if (action === "delete_worn" && !await confirmAction("删除这天的已穿记录？", "删除后只会移除当天穿着记录，套装本身会保留。")) return;
     this.setData({ savingEntry: true });
     try {
-      if (primary.primaryAction === "mark_worn") {
-        await markOutfitWornOnDate(outfit.id, outfit.revision, this.data.selectedDate);
-      } else {
+      if (action === "delete_worn") {
         await cancelOutfitWornOnDate(outfit.id, outfit.revision, this.data.selectedDate);
+      } else {
+        await markOutfitWornOnDate(outfit.id, outfit.revision, this.data.selectedDate);
       }
       if (!await this.loadPlanning()) throw new Error("已保存，但重新读取失败，请稍后重试");
-      const relation = getOutfitPlanDateRelation(this.data.selectedDate, this.data.todayKey);
-      wx.showToast({ title: primary.primaryAction === "mark_worn" ? relation === "past" ? "已补记穿搭" : "已记录今天穿着" : relation === "past" ? "已撤销补记" : "已撤销今天穿着", icon: "success" });
+      wx.showToast({ title: action === "delete_worn" ? "已删除已穿记录" : "已记录穿着", icon: "success" });
     } catch (error) {
       wx.showToast({ title: error instanceof Error ? error.message : "更新穿着失败", icon: "none" });
     } finally {
@@ -315,15 +286,30 @@ Page({
     }
   },
 
+  async handleBackupDelete(event: { detail?: { id?: string } }) {
+    const entryId = event.detail?.id;
+    if (!entryId || this.data.savingEntry) return;
+    const entry = this.data.outfitPlanEntries.find((item) => item.id === entryId);
+    if (!entry || !await confirmAction("删除这条备选穿搭？", "只会移除当天的备选计划，不会删除套装。")) return;
+    this.setData({ savingEntry: true });
+    try {
+      await deleteWorkspaceEntity("outfit-plans", entry.id, entry.revision);
+      if (!await this.loadPlanning()) throw new Error("已删除，但重新读取失败，请稍后重试");
+      wx.showToast({ title: "已删除备选", icon: "success" });
+    } catch (error) {
+      wx.showToast({ title: error instanceof Error ? error.message : "删除备选失败", icon: "none" });
+    } finally {
+      this.setData({ savingEntry: false });
+    }
+  },
+
   openOutfit(event: DatasetEvent) {
-    const id = String(event.currentTarget.dataset.id || "");
+    const id = String((event as DatasetEvent & { detail?: { id?: string } }).detail?.id || event.currentTarget.dataset.id || "");
     if (id) wx.navigateTo({ url: `/pages/outfits/detail/index?id=${encodeURIComponent(id)}` });
   },
 
-  noop() {},
-
-  openPlanDetail(event: DatasetEvent) {
-    const id = String(event.currentTarget.dataset.id || "");
+  openPlanDetail(event: DatasetEvent & { detail?: { id?: string } }) {
+    const id = String(event.detail?.id || event.currentTarget.dataset.id || "");
     if (id) wx.navigateTo({ url: `/pages/trips/detail/index?id=${encodeURIComponent(id)}` });
   },
 
@@ -388,8 +374,7 @@ Page({
         muted: cell.muted,
         active: cell.dateKey === this.data.selectedDate,
         today: cell.isToday,
-        entryLabel: entryLabel(entry, cell.dateKey, this.data.todayKey),
-        dots: plans.slice(0, 2).map((plan) => ({ id: plan.id, title: plan.title, className: TONE_CLASS[plan.tone] })),
+        plans: toPlanToneViews(plans),
       };
     });
     const calendarWeeks = chunkIntoWeeks(dayViews).map((days) => ({
@@ -397,54 +382,27 @@ Page({
       days,
       containsSelectedDate: days.some((day) => day.key === this.data.selectedDate),
     }));
-    const selectedPlans = this.plansForDate(this.data.selectedDate).map((plan) => ({
-      ...plan,
-      toneClass: TONE_CLASS[plan.tone],
-      dateText: plan.startDate === plan.endDate ? plan.startDate.replace(/-/g, "/") : `${plan.startDate.replace(/-/g, "/")} - ${plan.endDate.replace(/-/g, "/")}`,
-    }));
     const selectedEntries = this.entriesForDate(this.data.selectedDate);
-    const primaryEntry = resolvePrimaryOutfitPlanEntry(selectedEntries);
-    const primaryOutfit = primaryEntry ? this.data.outfits.find((item) => item.id === getDisplayOutfitId(primaryEntry)) : undefined;
+    const selectedDayCard = buildOutfitPlanDayCard({
+      dateKey: this.data.selectedDate,
+      todayKey: this.data.todayKey,
+      plans: this.plansForDate(this.data.selectedDate),
+      entries: selectedEntries,
+      outfits: this.data.outfits,
+    });
     const relation = getOutfitPlanDateRelation(this.data.selectedDate, this.data.todayKey);
-    const primaryAction: SelectedEntryView["primaryAction"] = relation === "future"
-      ? ""
-      : primaryEntry?.status === "worn"
-        ? "cancel_worn"
-        : "mark_worn";
-    const selectedBackupEntries = getBackupOutfitPlanEntries(selectedEntries, primaryEntry)
-      .map((entry) => {
-        const outfit = this.data.outfits.find((item) => item.id === getDisplayOutfitId(entry));
-        return outfit ? { id: entry.id, outfitId: outfit.id, name: entry.title || outfit.name, imageUrl: outfit.imageUrl, itemImages: outfit.itemImages } : null;
-      })
-      .filter((entry): entry is BackupEntryView => entry !== null);
-    const selectedPrimaryEntry = primaryEntry && primaryOutfit ? {
-      id: primaryEntry.id,
-      outfitId: primaryOutfit.id,
-      name: primaryEntry.title || primaryOutfit.name,
-      imageUrl: primaryOutfit.imageUrl,
-      itemImages: primaryOutfit.itemImages,
-      meta: `${primaryOutfit.itemCount}件 · ${primaryOutfit.sceneText}`,
-      statusLabel: primaryEntry.status === "worn" ? "实际已穿" : primaryEntry.status === "changed" ? "已变更" : relation === "past" ? "计划未确认" : "计划",
-      statusClass: primaryEntry.status === "worn" ? "is-worn" : primaryEntry.status === "changed" ? "is-changed" : "is-planned",
-      primaryAction,
-      primaryActionLabel: primaryEntry.status === "worn" ? "撤销已穿" : relation === "past" ? "补记已穿" : "标记已穿",
-      canChangePlan: relation === "future" && primaryEntry.status === "planned",
-      canAddBackup: relation !== "past",
-    } : null;
     this.setData({
       monthTitle: monthTitle(this.data.monthKey),
       selectedDateLabel: formatDateLabel(this.data.selectedDate),
       calendarWeeks,
-      selectedPlans,
-      selectedPrimaryEntry,
-      selectedBackupEntries,
+      selectedDayCard,
       monthHasData,
       selectedEmptyTitle: relation === "past"
         ? `${formatDateWithWeek(this.data.selectedDate)}还没有穿着记录`
         : relation === "today"
           ? "今天还没有安排穿搭"
           : `${formatDateWithWeek(this.data.selectedDate)}还没有安排穿搭`,
-      selectedEmptyCopy: relation === "past" ? "可以补记当天实际穿过的套装。" : "可以先把想穿的套装放进计划。",
+      selectedEmptyCopy: "",
       selectedActionLabel: relation === "past" ? "补记已穿" : "安排穿搭",
     });
   },
@@ -464,19 +422,14 @@ Page({
   },
 });
 
-function entryLabel(entry: MiniOutfitPlanEntry | undefined, dateKey: string, todayKey: string): string {
-  if (!entry) return "";
-  if (entry.status === "worn") return "已穿";
-  if (entry.status === "changed") return "已变更";
-  return dateKey < todayKey ? "未确认" : "计划";
-}
-
 function chunkIntoWeeks(days: CalendarDayView[]): CalendarDayView[][] {
   const weeks: CalendarDayView[][] = [];
   for (let index = 0; index < days.length; index += 7) weeks.push(days.slice(index, index + 7));
   return weeks;
 }
 
-function getTitleTopRpx(): number {
-  return getCapsuleGeometry().topRpx;
+function confirmAction(title: string, content: string): Promise<boolean> {
+  return new Promise((resolve) => {
+    wx.showModal({ title, content, success: (result) => resolve(result.confirm === true), fail: () => resolve(false) });
+  });
 }

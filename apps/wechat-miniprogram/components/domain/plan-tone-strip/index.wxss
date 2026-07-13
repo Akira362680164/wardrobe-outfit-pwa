@@ -1,0 +1,25 @@
+.plan-tone-strip {
+  box-sizing: border-box;
+  display: flex;
+  width: 100%;
+  min-width: 0;
+  height: 10rpx;
+  gap: 4rpx;
+  padding: 0 4rpx;
+}
+
+.plan-tone-strip__segment {
+  display: block;
+  min-width: 0;
+  flex: 1 1 0;
+  height: 8rpx;
+  border-radius: 999rpx;
+}
+
+.tone-denim { background: #355c7d; }
+.tone-moss { background: #5f7058; }
+.tone-clay { background: #b97155; }
+.tone-amber { background: #f4be42; }
+.tone-rose { background: #f47182; }
+.tone-purple { background: #bc8cec; }
+.tone-slate { background: #94a3b8; }

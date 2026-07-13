@@ -22,50 +22,19 @@
   backdrop-filter: blur(60rpx) saturate(1.5);
 }
 
-.nav-row {
-  position: relative;
+.compose-close-button {
   display: flex;
-  min-height: 64rpx;
+  width: 72rpx;
+  height: 72rpx;
   align-items: center;
   justify-content: center;
-}
-
-.nav-title {
-  max-width: 220rpx;
-  overflow: hidden;
-  font-size: 30rpx;
-  font-weight: 800;
-  line-height: 1.2;
-  text-align: center;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.nav-button {
-  position: absolute;
-  top: 50%;
-  box-sizing: border-box;
-  display: flex;
-  width: 72rpx !important;
-  min-width: 72rpx;
-  max-width: 72rpx;
-  height: 72rpx !important;
-  min-height: 72rpx;
-  max-height: 72rpx;
   margin: 0;
   padding: 0;
-  transform: translateY(-50%);
-  align-items: center;
-  justify-content: center;
-  border: 0;
-  border-radius: var(--radius-control);
-  color: var(--color-ink);
-  background: transparent;
+  border-radius: 999rpx;
+  background: rgba(255, 255, 252, 0.76);
 }
 
-.nav-button::after { border: 0; }
-.nav-button--back { left: 0; }
-.nav-button.is-disabled { opacity: 0.28; }
+.compose-close-button::after { border: 0; }
 
 .step-copy {
   margin-top: 6rpx;

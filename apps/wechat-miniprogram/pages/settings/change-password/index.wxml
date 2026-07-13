@@ -1,5 +1,5 @@
 <view class="password-page">
-  <view class="page-title">修改密码</view>
+  <sub-page-top-bar title="修改密码" />
   <view class="mode-switch">
     <button class="mode-button {{mode === 'current' ? 'mode-button--active' : ''}}" bindtap="switchCurrent">当前密码</button>
     <button class="mode-button {{mode === 'email' ? 'mode-button--active' : ''}}" bindtap="switchEmail">邮箱验证码</button>

@@ -5,11 +5,9 @@ import {
   saveTryOnProfile,
   type MiniTryOnProfile,
 } from "../../../services/workspace";
-import { getCapsuleGeometry } from "../../../utils/capsule-layout";
 
 Page({
   data: {
-    contentTopRpx: 0,
     loading: false,
     saving: false,
     error: "",
@@ -50,7 +48,6 @@ Page({
     mutationId: createClientMutationId(),
   },
   onLoad(this: any) {
-    this.setData({ contentTopRpx: getCapsuleGeometry().contentTopRpx });
     void this.load();
   },
   async load(this: any) {

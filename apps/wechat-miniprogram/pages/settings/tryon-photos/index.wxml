@@ -1,6 +1,6 @@
-<view class="page-shell photos-page" style="padding-top: {{contentTopRpx}}rpx;"
-  ><view class="page-title">AI 试穿参考照片</view
-  ><view class="switch-card"
+<view class="page-shell photos-page">
+  <sub-page-top-bar title="AI 试穿参考照片" />
+  <view class="switch-card"
     ><view
       ><view class="title">使用参考照生成试穿图</view
       ><view class="copy"

@@ -9,13 +9,11 @@ import {
   saveTryOnProfile,
   type MiniTryOnProfile,
 } from "../../../services/workspace";
-import { getCapsuleGeometry } from "../../../utils/capsule-layout";
 import { consumeCropResult, startCropJob } from "../../../stores/crop-job";
 
 type Target = "fullBody" | "face";
 Page({
   data: {
-    contentTopRpx: 0,
     loading: false,
     saving: false,
     error: "",
@@ -27,7 +25,6 @@ Page({
     removeFields: [] as string[],
   },
   onLoad(this: any) {
-    this.setData({ contentTopRpx: getCapsuleGeometry().contentTopRpx });
     void this.load();
   },
   onShow(this: any) {

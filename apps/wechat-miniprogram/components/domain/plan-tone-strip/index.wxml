@@ -1,0 +1,11 @@
+<view wx:if="{{plans.length}}" class="plan-tone-strip">
+  <view
+    wx:for="{{plans}}"
+    wx:key="id"
+    wx:for-item="plan"
+    class="plan-tone-strip__segment {{plan.toneClass}}"
+    data-id="{{plan.id}}"
+    catchtap="selectPlan"
+    aria-label="{{plan.title}}"
+  />
+</view>

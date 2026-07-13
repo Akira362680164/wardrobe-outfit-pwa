@@ -1,1 +1,1 @@
-{ "navigationBarTitleText": "穿着统计", "usingComponents": { "stat-section": "/components/domain/stat-section/index" } }
+{ "navigationBarTitleText": "穿着统计", "usingComponents": { "stat-section": "/components/domain/stat-section/index", "sub-page-top-bar": "/components/domain/sub-page-top-bar/index" } }

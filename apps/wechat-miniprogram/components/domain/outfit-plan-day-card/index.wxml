@@ -1,0 +1,59 @@
+<view class="outfit-plan-day-card">
+  <view class="day-card__head">
+    <view class="day-card__date">{{card.dateLabel}}</view>
+    <view class="day-card__weekday">{{card.weekdayLabel}}</view>
+    <view wx:if="{{card.plans.length}}" class="day-card__plans">
+      <view
+        wx:for="{{card.plans}}"
+        wx:key="id"
+        wx:for-item="plan"
+        class="day-card__plan-chip {{plan.toneClass}}"
+        data-id="{{plan.id}}"
+        catchtap="selectPlan"
+      >{{plan.title}}<text wx:if="{{plan.typeLabel}}"> · {{plan.typeLabel}}</text></view>
+    </view>
+  </view>
+
+  <view wx:if="{{card.primary}}" class="day-card__primary">
+    <view class="day-card__primary-media" data-id="{{card.primary.outfitId}}" bindtap="openOutfit">
+      <view wx:if="{{card.primary.itemImages.length}}" class="day-card__cover cover-collage cover-collage--{{card.primary.itemImages.length >= 4 ? '4' : card.primary.itemImages.length}}">
+        <view wx:for="{{card.primary.itemImages}}" wx:for-item="image" wx:key="*this" wx:if="{{index < 4}}" class="cover-collage__cell">
+          <image class="cover-collage__image" mode="aspectFill" src="{{image}}" />
+        </view>
+      </view>
+      <image wx:elif="{{card.primary.imageUrl}}" class="day-card__cover" mode="aspectFill" src="{{card.primary.imageUrl}}" />
+      <view wx:else class="day-card__cover day-card__cover--empty">套</view>
+    </view>
+    <view class="day-card__primary-main">
+      <view class="day-card__primary-name">{{card.primary.name}}</view>
+      <view class="day-card__primary-status {{card.primary.statusClass}}">{{card.primary.statusLabel}}</view>
+      <view class="day-card__primary-meta">{{card.primary.meta}}</view>
+      <view wx:if="{{card.actions.length}}" class="day-card__actions" style="grid-template-columns: repeat({{card.actions.length}}, minmax(0, 1fr));">
+        <button wx:for="{{card.actions}}" wx:key="key" wx:for-item="action" class="day-card__action day-card__action--{{action.tone || 'secondary'}}" data-action="{{action.key}}" bindtap="selectAction">{{action.label}}</button>
+      </view>
+    </view>
+  </view>
+
+  <view wx:else class="day-card__empty">
+    <view class="day-card__empty-title">{{card.empty.title}}</view>
+    <view wx:if="{{card.empty.copy}}" class="day-card__empty-copy">{{card.empty.copy}}</view>
+    <button class="day-card__empty-action" bindtap="selectEmptyAction">{{card.empty.actionLabel}}</button>
+  </view>
+
+  <view wx:if="{{card.backups.length}}" class="day-card__backups">
+    <view class="day-card__backups-title">备选穿搭</view>
+    <view wx:for="{{card.backups}}" wx:key="entryId" wx:for-item="backup" class="day-card__backup">
+      <view class="day-card__backup-media" data-id="{{backup.outfitId}}" bindtap="openOutfit">
+        <view wx:if="{{backup.itemImages.length}}" class="day-card__backup-cover cover-collage cover-collage--{{backup.itemImages.length >= 4 ? '4' : backup.itemImages.length}}">
+          <view wx:for="{{backup.itemImages}}" wx:for-item="image" wx:key="*this" wx:if="{{index < 4}}" class="cover-collage__cell">
+            <image class="cover-collage__image" mode="aspectFill" src="{{image}}" />
+          </view>
+        </view>
+        <image wx:elif="{{backup.imageUrl}}" class="day-card__backup-cover" mode="aspectFill" src="{{backup.imageUrl}}" />
+        <view wx:else class="day-card__backup-cover day-card__backup-cover--empty">套</view>
+      </view>
+      <view class="day-card__backup-name" data-id="{{backup.outfitId}}" bindtap="openOutfit">{{backup.name}}</view>
+      <button class="day-card__backup-delete" data-id="{{backup.entryId}}" catchtap="deleteBackup">删除备选</button>
+    </view>
+  </view>
+</view>

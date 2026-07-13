@@ -1,51 +1,11 @@
 .calendar-page {
+  padding-top: 0;
   padding-right: 32rpx;
   padding-bottom: calc(env(safe-area-inset-bottom) + 160rpx);
   padding-left: 32rpx;
 }
 
-.sub-top {
-  position: relative;
-  min-height: 88rpx;
-}
-
-.back-button {
-  position: absolute;
-  left: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 80rpx;
-  height: 80rpx;
-  background: transparent;
-  color: var(--color-ink);
-  font-size: 52rpx;
-  font-weight: 500;
-  line-height: 1;
-}
-
-.sub-title {
-  position: absolute;
-  top: 0;
-  right: 344rpx;
-  left: 96rpx;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  min-width: 0;
-  height: 88rpx;
-  overflow: hidden;
-  color: var(--color-ink);
-  font-size: var(--font-section);
-  font-weight: 800;
-  line-height: 1.25;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
 .plan-add-button {
-  position: absolute;
-  right: 180rpx;
   box-sizing: border-box;
   display: flex;
   align-items: center;
@@ -53,21 +13,20 @@
   width: 148rpx;
   min-width: 0;
   max-width: 148rpx;
-  height: 88rpx;
+  height: 72rpx;
   margin: 0;
   padding: 0;
   border: 0;
-  border-radius: 44rpx;
+  border-radius: 36rpx;
   background: var(--color-primary);
   color: var(--color-surface);
   font-size: var(--font-body);
   font-weight: 800;
-  line-height: 88rpx;
+  line-height: 72rpx;
   box-shadow: 0 18rpx 44rpx rgba(53, 92, 125, 0.22);
 }
 
 .plan-add-button::after,
-.state-button::after,
 .retry-button::after {
   border: 0;
 }
@@ -124,12 +83,13 @@
   flex-direction: column;
   justify-content: flex-start;
   min-width: 0;
-  height: 104rpx;
+  height: 112rpx;
   padding-top: 8rpx;
   border: 1rpx solid transparent;
   border-radius: 24rpx;
   box-sizing: border-box;
   color: var(--color-ink);
+  overflow: hidden;
 }
 
 .calendar-day--muted {
@@ -151,79 +111,10 @@
   color: var(--color-primary);
 }
 
-.calendar-day__body {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  height: 28rpx;
+.calendar-day > plan-tone-strip {
+  display: block;
+  width: 100%;
   margin-top: 4rpx;
-}
-
-.entry-label {
-  color: rgba(95, 112, 88, 0.78);
-  font-size: 20rpx;
-  font-weight: 700;
-  line-height: 1;
-}
-
-.plan-dots {
-  display: flex;
-  gap: 4rpx;
-  height: 10rpx;
-  margin-top: 4rpx;
-}
-
-.plan-dot {
-  width: 30rpx;
-  height: 8rpx;
-  border-radius: 999rpx;
-}
-
-.tone-denim { background: rgba(53, 92, 125, 0.42); }
-.tone-moss { background: rgba(95, 112, 88, 0.42); }
-.tone-clay { background: rgba(185, 113, 85, 0.42); }
-.tone-amber { background: rgba(244, 190, 66, 0.72); }
-.tone-rose { background: rgba(244, 113, 130, 0.62); }
-.tone-purple { background: rgba(188, 140, 236, 0.62); }
-.tone-slate { background: rgba(148, 163, 184, 0.62); }
-
-.selected-card {
-  margin: 10rpx 0 22rpx;
-  padding: 28rpx 24rpx;
-  border-radius: 32rpx;
-  background: rgba(255, 255, 252, 0.44);
-}
-
-.selected-plan-row {
-  display: flex;
-  flex-direction: column;
-  gap: 12rpx;
-  margin-bottom: 16rpx;
-}
-
-.selected-plan {
-  padding: 18rpx 22rpx;
-  border-radius: 24rpx;
-  background: rgba(53, 92, 125, 0.10);
-}
-
-.selected-plan__title {
-  overflow: hidden;
-  color: var(--color-ink);
-  font-size: var(--font-caption);
-  font-weight: 800;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.selected-plan__date {
-  margin-top: 4rpx;
-  color: var(--color-muted);
-  font-size: var(--font-label);
-}
-
-.today-state {
-  text-align: center;
 }
 
 .state-title {
@@ -239,32 +130,6 @@
   line-height: 1.5;
 }
 
-.state-button {
-  min-width: 180rpx;
-  min-height: 64rpx;
-  margin: 18rpx auto 0;
-  padding: 0 28rpx;
-  font-size: var(--font-caption);
-  line-height: 64rpx;
-}
-
-.entry-list {
-  display: flex;
-  flex-direction: column;
-  gap: 16rpx;
-}
-
-.entry-card {
-  display: flex;
-  align-items: center;
-  gap: 18rpx;
-  padding: 18rpx;
-  border: 1rpx solid var(--color-line);
-  border-radius: 28rpx;
-  background: rgba(255, 255, 252, 0.84);
-}
-
-.entry-cover,
 .outfit-option__cover {
   width: 96rpx;
   height: 96rpx;
@@ -306,7 +171,6 @@
   height: 100%;
 }
 
-.entry-cover--empty,
 .outfit-option__cover--empty {
   display: flex;
   align-items: center;
@@ -316,19 +180,11 @@
   font-weight: 800;
 }
 
-.entry-main,
 .outfit-option__main {
   min-width: 0;
   flex: 1;
 }
 
-.entry-head {
-  display: flex;
-  align-items: center;
-  gap: 12rpx;
-}
-
-.entry-name,
 .outfit-option__name {
   min-width: 0;
   overflow: hidden;
@@ -339,102 +195,6 @@
   white-space: nowrap;
 }
 
-.entry-status {
-  flex: 0 0 auto;
-  color: var(--color-primary);
-  font-size: var(--font-label);
-  font-weight: 700;
-}
-
-.entry-status.is-worn { color: var(--color-success); }
-.entry-status.is-changed { color: #B97155; }
-
-.entry-actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 12rpx;
-  margin-top: 16rpx;
-}
-
-.entry-actions .state-button {
-  width: auto;
-  min-width: 138rpx;
-  height: 56rpx;
-  min-height: 56rpx;
-  margin: 0;
-  padding: 0 20rpx;
-  border-radius: 28rpx;
-  font-size: 22rpx;
-  line-height: 56rpx;
-}
-
-.state-button--worn {
-  background: var(--color-primary);
-  color: var(--color-surface);
-}
-
-.state-button--worn.is-worn {
-  border: 1rpx solid var(--color-line);
-  background: rgba(255, 255, 252, 0.92);
-  color: var(--color-muted);
-}
-
-.state-button--secondary {
-  border: 1rpx solid var(--color-line);
-  background: rgba(255, 255, 252, 0.92);
-  color: var(--color-muted);
-}
-
-.backup-list {
-  margin-top: 18rpx;
-  padding-top: 18rpx;
-  border-top: 1rpx solid rgba(29, 34, 40, 0.08);
-}
-
-.backup-list__title {
-  margin-bottom: 10rpx;
-  color: rgba(29, 34, 40, 0.46);
-  font-size: var(--font-label);
-  font-weight: 700;
-}
-
-.backup-list__item {
-  display: flex;
-  align-items: center;
-  gap: 14rpx;
-  min-width: 0;
-  padding: 10rpx 0;
-}
-
-.backup-list__cover {
-  width: 64rpx;
-  height: 64rpx;
-  flex: 0 0 64rpx;
-  overflow: hidden;
-  border-radius: 12rpx;
-  background: var(--color-mist);
-}
-
-.backup-list__cover--empty {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: rgba(29, 34, 40, 0.32);
-  font-size: 22rpx;
-  font-weight: 800;
-}
-
-.backup-list__name {
-  min-width: 0;
-  overflow: hidden;
-  color: var(--color-ink);
-  font-size: var(--font-caption);
-  font-weight: 700;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.entry-meta,
 .outfit-option__meta {
   overflow: hidden;
   margin-top: 8rpx;

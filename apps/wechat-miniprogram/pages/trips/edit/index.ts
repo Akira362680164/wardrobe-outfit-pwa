@@ -6,7 +6,6 @@ import {
   type MiniCalendarPlanType,
 } from "../../../services/workspace";
 import { enumerateDateRange, localDateKey } from "../../../utils/calendar";
-import { getCapsuleGeometry } from "../../../utils/capsule-layout";
 
 type ToneOption = { tone: MiniCalendarPlanTone; className: string };
 type DatasetEvent = { currentTarget: { dataset: Record<string, unknown> } };
@@ -25,7 +24,6 @@ const TONES: ToneOption[] = [
 
 Page({
   data: {
-    titleTopRpx: 0,
     pageTitle: "添加旅行计划",
     planId: "",
     expectedRevision: 0,
@@ -52,7 +50,6 @@ Page({
   },
 
   onLoad(query?: { id?: string; type?: string; date?: string }) {
-    this.setData({ titleTopRpx: getTitleTopRpx() });
     if (query?.id) {
       void this.loadPlan(query.id);
       return;
@@ -73,10 +70,6 @@ Page({
     } finally {
       this.setData({ loading: false });
     }
-  },
-
-  goBack() {
-    wx.navigateBack({ delta: 1 });
   },
 
   onTitleInput(event: WechatMiniprogram.InputEvent) {
@@ -206,8 +199,4 @@ function validateDateRange(startDate: string, endDate: string): string {
   if (endDate < startDate) return "结束日期不能早于开始日期";
   if (enumerateDateRange(startDate, endDate).length > 365) return "计划最长支持 365 天";
   return "";
-}
-
-function getTitleTopRpx(): number {
-  return getCapsuleGeometry().topRpx;
 }

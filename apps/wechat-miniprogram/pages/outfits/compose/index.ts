@@ -12,7 +12,6 @@ import {
   type MiniGarment,
   type MiniOutfitDetail,
 } from "../../../services/workspace";
-import { getCapsuleGeometry } from "../../../utils/capsule-layout";
 import {
   activeSelectableGarments,
   analyzeComposition,
@@ -38,9 +37,6 @@ Page({
     saving: false,
     generating: false,
     step: 0,
-    capsuleTopRpx: 0,
-    capsuleHeightRpx: 64,
-    capsuleRightInsetRpx: 192,
     garments: [] as SelectableGarment[],
     visibleGarments: [] as SelectableGarment[],
     selectedGarments: [] as SelectableGarment[],
@@ -75,13 +71,9 @@ Page({
   },
 
   onLoad(this: any, query?: { id?: string; focus?: string }) {
-    const capsule = getCapsuleGeometry();
     const editingId = query?.id ? decodeURIComponent(query.id) : "";
     const editing = Boolean(editingId);
     this.setData({
-      capsuleTopRpx: capsule.topRpx,
-      capsuleHeightRpx: capsule.heightRpx,
-      capsuleRightInsetRpx: capsule.rightInsetRpx,
       editing,
       editingFocusComposition: query?.focus === "composition",
       step: editing && query?.focus !== "composition" ? 1 : 0,

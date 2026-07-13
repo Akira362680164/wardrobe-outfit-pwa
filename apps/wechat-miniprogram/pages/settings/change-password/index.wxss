@@ -1,8 +1,7 @@
 .password-page {
   min-height: 100vh;
   box-sizing: border-box;
-  padding: 32rpx;
-  padding-top: calc(env(safe-area-inset-top) + 32rpx);
+  padding: 0 32rpx 32rpx;
   background: #fbfbf8;
   color: #1f2933;
 }

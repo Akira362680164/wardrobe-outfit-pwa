@@ -1,1 +1,1 @@
-{ "usingComponents": { "ui-icon": "/components/ui/icon/index" } }
+{ "usingComponents": { "sub-page-top-bar": "/components/domain/sub-page-top-bar/index", "ui-icon": "/components/ui/icon/index" } }

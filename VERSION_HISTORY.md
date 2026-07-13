@@ -1,3 +1,12 @@
+## 2026-07-13 / v2.1.16-test / Codex — 小程序周月历套装卡与详情壳统一修复
+
+- **目的**：按 App 当前样式统一周历/月历的日期展开卡、计划彩条、按钮状态和套装详情，并修复小程序二级页顶部安全区与系统状态栏重叠。
+- **版本变更**：无，保持 `2.1.16-test`；本轮不构建 APK、不上传体验版、不发布小程序。
+- **改动范围**：新增共享 `sub-page-top-bar`、`plan-tone-strip`、`outfit-plan-day-card` 和日期卡数据转换；周历/月历改为同一展开卡；彩条按计划数量等分且总宽固定；空状态按钮统一为实心蓝色“安排穿搭”并移除小字提示；过去/今天/未来按钮矩阵、删除已穿/删除备选确认和服务器读回；套装详情切换到 `item-detail-shell` 新壳；单品、种草、旅行、设置、搜索、统计、推荐、试穿、法律和导入结果等二级页接入共享安全区。
+- **改动文件**：`apps/wechat-miniprogram/components/domain/{sub-page-top-bar,plan-tone-strip,outfit-plan-day-card}/`、`apps/wechat-miniprogram/utils/outfit-plan-day.ts`、周历/月历/套装详情及相关二级页、`apps/wechat-miniprogram/services/workspace.ts`、`scripts/parity/tests/mini-outfit-calendar-ui.test.ts`、`scripts/parity/tests/mini-outfit-flow.test.ts`、`package.json`。
+- **验证结果**：根 `typecheck`、`build`、计划/穿着状态/日历/封面定向测试、小程序 `typecheck`、目录一致性、套装日历 UI 合同、套装流程、壳层、详情和设置合同均通过；`git diff --check` 通过；微信开发者工具关键 WXML/WXSS 编译、周历/月历/套装详情/设置/旅行页模拟器打开、周历/月历截图和 console 错误扫描通过；截图确认空状态仅保留“安排穿搭”实心蓝按钮，月历标题避开“+计划”。
+- **未验证风险**：当前没有可用 Android/微信真机设备（`adb devices -l` 无设备），因此未完成真机预览、真实账号写入读回、系统返回键和真机 360px 手势回归；本轮未执行体验版上传。
+
 ## 2026-07-13 / v2.1.16-test / Codex — App 与小程序套装组成编辑入口
 
 - **目的**：补齐 App 套装详情「组成」页签、App 编辑套装页和小程序套装详情的组成单品编辑入口。

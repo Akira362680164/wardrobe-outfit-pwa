@@ -1,42 +1,8 @@
 .plan-detail {
+  padding-top: 0;
   padding-right: 32rpx;
   padding-bottom: calc(env(safe-area-inset-bottom) + 160rpx);
   padding-left: 32rpx;
-}
-
-.detail-top {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  min-height: 96rpx;
-}
-
-.top-left {
-  display: flex;
-  align-items: center;
-  min-width: 0;
-}
-
-.top-back {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 64rpx;
-  height: 64rpx;
-  margin-right: 12rpx;
-  color: var(--color-ink);
-  font-size: 52rpx;
-  font-weight: 700;
-  line-height: 1;
-}
-
-.top-title {
-  overflow: hidden;
-  color: var(--color-ink);
-  font-size: var(--font-section);
-  font-weight: 800;
-  text-overflow: ellipsis;
-  white-space: nowrap;
 }
 
 .status-card,

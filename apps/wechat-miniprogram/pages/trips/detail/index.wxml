@@ -1,10 +1,5 @@
-<view class="page-shell plan-detail" style="padding-top: {{titleTopRpx}}rpx;">
-  <view class="detail-top">
-    <view class="top-left" bindtap="goBack">
-      <ui-icon class="top-back" name="chevron-left" size="36" tone="ink" />
-      <text class="top-title">计划详情</text>
-    </view>
-  </view>
+<view class="page-shell plan-detail">
+  <sub-page-top-bar title="计划详情" />
 
   <view wx:if="{{loading}}" class="status-card">正在读取计划...</view>
   <view wx:elif="{{error}}" class="status-card status-card--error">

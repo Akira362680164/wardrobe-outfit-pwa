@@ -1,4 +1,5 @@
 <view class="deletion-page">
+  <sub-page-top-bar title="注销账号" />
   <view wx:if="{{errorMessage}}" class="form-error">{{errorMessage}}</view>
 
   <block wx:if="{{stage === 'notice'}}">

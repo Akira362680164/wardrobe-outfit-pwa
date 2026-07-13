@@ -1,5 +1,5 @@
 <view class="settings-page page-shell">
-  <view class="page-title">账号安全</view>
+  <sub-page-top-bar title="账号安全" />
   <view class="page-copy">管理 App 与小程序共用的登录方式。</view>
 
   <view wx:if="{{errorMessage}}" class="account-error">{{errorMessage}}</view>

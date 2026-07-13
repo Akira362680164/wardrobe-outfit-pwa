@@ -1,6 +1,6 @@
-<view class="page-shell form-page" style="padding-top: {{contentTopRpx}}rpx;"
-  ><view class="page-title">穿衣画像</view
-  ><view class="page-copy">用于推荐、买前评估和 AI 试穿姿态参考。</view
+<view class="page-shell form-page">
+  <sub-page-top-bar title="穿衣画像" />
+  <view class="page-copy">用于推荐、买前评估和 AI 试穿姿态参考。</view
   ><view wx:if="{{loading}}" class="status-card">正在读取...</view
   ><view wx:elif="{{error}}" class="status-card"
     >{{error}}<button bindtap="load">重试</button></view
