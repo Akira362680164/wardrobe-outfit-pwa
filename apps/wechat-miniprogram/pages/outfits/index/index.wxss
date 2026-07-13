@@ -119,13 +119,12 @@
 }
 
 .hero-control--plan {
-  width: auto;
-  min-width: 0;
-  max-width: none;
-  padding: 0 8rpx;
-  background: transparent;
-  color: var(--color-primary);
-  box-shadow: none;
+  width: 164rpx;
+  min-width: 164rpx;
+  max-width: 164rpx;
+  background: #355C7D;
+  color: #FFFFFC;
+  box-shadow: 0 18rpx 44rpx rgba(53, 92, 125, 0.22);
 }
 
 .mini-button {
@@ -251,7 +250,7 @@
 
 .week-day > plan-tone-strip {
   display: block;
-  width: 100%;
+  width: 64rpx;
   margin-top: 12rpx;
 }
 

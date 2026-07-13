@@ -5,18 +5,30 @@
   padding-left: 32rpx;
 }
 
-.plan-add-link {
+.month-row {
+  position: relative;
+}
+
+.month-plan-link {
+  position: absolute;
+  top: 0;
+  left: calc(75% - 20rpx);
   display: flex;
+  width: 120rpx;
+  height: 80rpx;
   align-items: center;
   justify-content: center;
-  height: 100%;
   margin: 0;
-  padding: 0 8rpx;
+  transform: translateX(-50%);
   color: var(--color-primary);
   font-size: 28rpx;
   font-weight: 800;
   line-height: 1;
   white-space: nowrap;
+}
+
+.month-plan-link::after {
+  border: 0;
 }
 
 .retry-button::after {
@@ -99,10 +111,6 @@
   background: rgba(53, 92, 125, 0.10);
 }
 
-.calendar-day--active {
-  height: 160rpx;
-}
-
 .calendar-day__num {
   font-size: var(--font-body);
   font-weight: 700;
@@ -130,7 +138,7 @@
 
 .calendar-day > plan-tone-strip {
   display: block;
-  width: 100%;
+  width: 64rpx;
   margin-top: 4rpx;
 }
 

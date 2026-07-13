@@ -7,6 +7,7 @@ Component({
   properties: {
     title: String,
     subtitle: String,
+    centeredTitle: { type: Boolean, value: false },
     showBack: { type: Boolean, value: true },
     guardedBack: { type: Boolean, value: false },
   },

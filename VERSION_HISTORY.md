@@ -1,3 +1,13 @@
+## 2026-07-13 / v2.1.17-test / Codex — 小程序套装首页与月历布局收口
+
+- **执行 Agent**：Codex；在独立 `codex/mini-calendar-layout-20260713` worktree 实施，正式集成目标为 `wechat/miniprogram`。
+- **目的**：修复套装首页“+计划”误变文字样式、周历/月历日程彩线过长、月历选中日期框底部留白，以及月历页标题和“+计划”位置不符合截图要求的问题。
+- **版本变更**：无，保持 `2.1.17-test`；本批不构建 APK、不上传体验版、不提交微信审核。
+- **改动文件**：`apps/wechat-miniprogram/pages/outfits/index/index.wxss`、`apps/wechat-miniprogram/pages/outfits/calendar/index.wxml`、`apps/wechat-miniprogram/pages/outfits/calendar/index.wxss`、`apps/wechat-miniprogram/components/domain/sub-page-top-bar/index.{ts,wxml,wxss}`、`scripts/parity/tests/mini-outfit-calendar-ui.test.ts`。
+- **改动说明**：首页“+计划”恢复 `164rpx` 蓝色实心按钮；周历/月历彩条宿主统一为 `64rpx`，扣除组件左右内边距后实际彩色线约 `56rpx`；月历日期格移除额外 `160rpx` 选中高度，恢复 `136rpx` 紧凑槽位；月历顶栏启用专用居中标题模式，“+计划”移动到月份文字与右箭头之间，并同步修正空状态文案；共享顶部栏默认行为保持不变。
+- **验证结果**：`npm --prefix apps/wechat-miniprogram run typecheck`、`npm run test:logic:miniprogram-outfit-calendar-ui`、`npm run test:logic:miniprogram-outfit-flow`、`git diff --check` 通过；微信开发者工具 `compile_wxml`（周历/月历，`codeLength=32400`）和 `compile_wxss`（周历/月历/共享顶部栏，`files=2`、`totalCodeLength=34090`）通过。
+- **未验证风险**：微信开发者工具项目窗口可打开，但 `simulator_open_page` 无有效返回，自动化运行时和截图接口均因 `waitForAutomatorReady timeout` 失败；因此本批未形成模拟器截图证据，未覆盖真实账号数据下的周历/月历视觉与触摸回归，需在开发者工具自动化恢复或真机预览后补验。
+
 ## 2026-07-13 / v2.1.17-test / Codex — 小程序体验版与固定签名 APK 交付
 
 - **执行 Agent**：Codex（未触发 subagent；小程序基于正式 `wechat/miniprogram`，APK 基于正式 `main` 提交 `07d416c7` 构建）。

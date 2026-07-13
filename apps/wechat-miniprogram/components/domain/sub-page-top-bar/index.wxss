@@ -53,6 +53,10 @@
   white-space: nowrap;
 }
 
+.sub-page-top-bar__title--centered {
+  right: 96rpx;
+}
+
 .sub-page-top-bar__right {
   position: absolute;
   top: 0;

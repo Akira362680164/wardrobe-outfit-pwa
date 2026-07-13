@@ -1,10 +1,11 @@
 <view class="page-shell calendar-page" bindtouchstart="onMonthTouchStart" bindtouchend="onMonthTouchEnd">
-  <sub-page-top-bar title="穿搭计划"><view slot="right" class="plan-add-link" bindtap="openAddPlanSheet">+计划</view></sub-page-top-bar>
+  <sub-page-top-bar title="穿搭计划" centered-title />
 
   <view class="month-row">
     <view class="month-arrow" data-delta="prev" bindtap="shiftMonth"><ui-icon name="chevron-left" size="32" tone="ink" /></view>
     <view class="month-title">{{monthTitle}}</view>
     <view class="month-arrow" data-delta="next" bindtap="shiftMonth"><ui-icon name="chevron-right" size="32" tone="ink" /></view>
+    <view class="month-plan-link" bindtap="openAddPlanSheet">+计划</view>
   </view>
 
   <view class="weekday-row">
@@ -55,7 +56,7 @@
   </view>
   <view wx:elif="{{!monthHasData}}" class="month-empty">
     <view class="month-empty__title">这个月还没有套装计划</view>
-    <view class="month-empty__copy">点击右上角 + 添加旅行、出差或单日穿搭。</view>
+    <view class="month-empty__copy">点击月份右侧 +计划，添加旅行、出差或单日穿搭。</view>
   </view>
 
   <ui-sheet open="{{addPlanSheetOpen}}" title="添加计划" show-close="{{false}}" bind:close="closeAddPlanSheet">
