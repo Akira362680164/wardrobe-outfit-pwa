@@ -8,6 +8,7 @@
 - **交互修复**：App 空日期首次选择改为主穿搭，不再误建备选；计划详情更换明确进入主穿搭替换。App、小程序周历/月历/旅行详情遇到关联套装缺失时显示“计划关联的套装已失效”，不再伪装成未安排；小程序失效主计划从原实体执行替换。
 - **测试与 fixture**：新增 canonical UUID 合同测试，API workspace 迁移断言，更新 Web/Android E2E 与 parity seed，全部改用服务端实体 UUID；API 测试 `115/115` 通过。根/App、cloud contracts、API、小程序 typecheck，穿搭计划/主计划/穿着状态、小程序套装旅行/统计定向测试，Next build 和 `git diff --check` 均通过。
 - **小程序验证**：微信开发者工具已打开本 worktree，`simulator_refresh` 成功；修改过的旅行详情 WXML 编译成功（`codeLength=32400`），console 未检出 `error|fail|exception`。未上传体验版、未做微信真机预览。
+- **小程序正式集成**：`main` 合入 `wechat/miniprogram` 时保留该分支已完成的共享日卡和周/月历紧凑布局，将失效关系提示下沉到 `utils/outfit-plan-day.ts`；正式目录再次通过小程序 typecheck、套装流程、日历 UI 合同、共享日卡/旅行详情 WXML 编译、模拟器刷新和 console 错误扫描。
 - **Android 验证**：固定签名 APK `衣橱穿搭助手-v2.1.17-test.apk`，大小 `10,030,678` bytes，SHA-256 `39d9120e8f19ccb1d65d42659e9a844cbfc5adc27717be4b89bdc55ea48ea837`，签名 `CN=fangzheng`；Android 15 `wardrobe-test` 模拟器 `adb install -r` 成功，版本/前台 Activity/进程/登录页竖屏截图通过，未发现 FATAL 崩溃，返回键检查后已关闭模拟器。
 - **风险门禁**：`high`。本提交尚未执行生产只读审计、生产备份/迁移/API 部署，也未上传小程序；由于生产迁移尚未实施且本轮不使用生产账号写业务数据，Android 未执行真实登录后的“安排日期 → 双端读回”业务 E2E。上线必须按方案先审计/备份/迁移，再部署 API，最后发布 App/小程序并执行双向读回验收。
 
