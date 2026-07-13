@@ -23,16 +23,21 @@ export interface SessionState {
 }
 
 let currentSession: SessionState | null = null;
+let runtimeSessionGeneration = 0;
 const SESSION_STORAGE_KEY = "wardrobe-device-session-v1";
 
 // ponytail: runtime-only store until the auth contract decides whether session persistence is allowed.
 export function hydrateSession(snapshot?: SessionState | null): SessionState | null {
   currentSession = snapshot === undefined ? readStoredSession() : snapshot;
+  runtimeSessionGeneration += 1;
   return currentSession;
 }
 
 export function setSession(next: SessionState): SessionState {
+  const previousIdentity = sessionIdentity(currentSession);
+  const nextIdentity = sessionIdentity(next);
   currentSession = next;
+  if (previousIdentity !== nextIdentity) runtimeSessionGeneration += 1;
   wx.setStorageSync(SESSION_STORAGE_KEY, next);
   return currentSession;
 }
@@ -45,6 +50,10 @@ export function getAccessToken(): string | null {
   return currentSession?.token ?? null;
 }
 
+export function getRuntimeSessionScope(): string {
+  return `${sessionIdentity(currentSession)}:${runtimeSessionGeneration}`;
+}
+
 export function isLoggedIn(): boolean {
   if (!currentSession) return false;
   if (currentSession.refreshToken && (!currentSession.refreshTokenExpiresAt || currentSession.refreshTokenExpiresAt > Date.now())) return true;
@@ -54,7 +63,12 @@ export function isLoggedIn(): boolean {
 
 export function clearSession(): void {
   currentSession = null;
+  runtimeSessionGeneration += 1;
   wx.removeStorageSync(SESSION_STORAGE_KEY);
+}
+
+function sessionIdentity(session: SessionState | null): string {
+  return session?.user?.id || session?.deviceId || "anonymous";
 }
 
 function readStoredSession(): SessionState | null {

@@ -1,3 +1,12 @@
+## 2026-07-13 / v2.1.18-test / Codex — 小程序闪烁修复共享运行期基础
+
+- **执行 Agent**：Codex；在独立 `codex/miniprogram-flicker-fix-20260713` 集成 worktree 实施，作为三个并行 subagent 的已提交共同基线。
+- **目的与边界**：增加当前小程序进程内的受账号会话隔离图片复用、并发下载去重和页面领域刷新协调；不写入持久化 Storage、不保存业务对象、不增加离线数据库或后台同步。
+- **改动文件**：`apps/wechat-miniprogram/services/assets.ts`、`stores/session.ts`、新增 `utils/runtime-refresh.ts`、两项定向测试及 `package.json` 测试入口。
+- **验证结果**：小程序 typecheck、运行期刷新去重/dirty/generation 测试、图片同会话复用/失败重试/跨账号隔离测试、`git diff --check` 通过。
+- **风险门禁**：`high`（认证会话隔离、受保护图片和跨页面刷新基础）；用户已明确通知使用 subagent，同步页面接入、导航按压和详情日历修复将在独立 worktree 完成后串行集成审查。
+- **未验证风险**：共享基础尚未接入业务页面，未运行微信开发者工具或真机录屏；临时文件被系统回收后的 `<image>` 加载失败恢复将在集成阶段补验。
+
 ## 2026-07-13 / v2.1.18-test / Codex — Wardora 审计修复正式小程序集成与体验版
 
 - **基线**：`wechat/miniprogram` 已串行合入正式 `main` 的 Wardora 修复；保留该分支既有套装首页、周历/月历布局改动，并纳入 refresh pending ID、会话代际保护和衣物/套装/种草全量 cursor 分页。

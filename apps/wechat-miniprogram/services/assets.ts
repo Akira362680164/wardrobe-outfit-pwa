@@ -1,4 +1,5 @@
 import { buildAuthHeaders, getConfiguredApiBaseUrl, recoverSession, request } from "./http";
+import { getRuntimeSessionScope } from "../stores/session";
 
 export interface AssetRef {
   assetId: string;
@@ -68,6 +69,12 @@ export class ImageSelectionCanceledError extends Error {
   }
 }
 
+const downloadedAssetImages = new Map<string, Promise<string>>();
+
+export function clearDownloadedAssetImageCache(): void {
+  downloadedAssetImages.clear();
+}
+
 export async function chooseSingleImage(sourceType: Array<"album" | "camera"> = ["album", "camera"]): Promise<string> {
   const image = (await chooseImages(sourceType, 1))[0];
   if (!image?.stablePath) throw new ImageSelectionCanceledError();
@@ -124,7 +131,10 @@ export async function downloadAssetImage(ref?: AssetRef, variant: "thumbnail" | 
   const baseUrl = getConfiguredApiBaseUrl();
   if (!baseUrl) return "";
   const targetVariant = ref.variants?.includes(variant) ? variant : "original";
-  return new Promise((resolve) => {
+  const cacheKey = `${getRuntimeSessionScope()}:${ref.assetId}:${targetVariant}`;
+  const cached = downloadedAssetImages.get(cacheKey);
+  if (cached) return cached;
+  const download = new Promise<string>((resolve) => {
     wx.downloadFile({
       url: `${baseUrl}/api/assets/${encodeURIComponent(ref.assetId)}/${targetVariant}/content`,
       header: buildAuthHeaders(),
@@ -132,7 +142,12 @@ export async function downloadAssetImage(ref?: AssetRef, variant: "thumbnail" | 
       success: (result) => resolve(result.statusCode < 400 ? result.tempFilePath : ""),
       fail: () => resolve(""),
     });
+  }).then((path) => {
+    if (!path) downloadedAssetImages.delete(cacheKey);
+    return path;
   });
+  downloadedAssetImages.set(cacheKey, download);
+  return download;
 }
 
 export async function uploadImageForCreate(input: {

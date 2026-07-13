@@ -83,6 +83,8 @@
     "test:logic:miniprogram-auth-refresh": "tsx scripts/test-miniprogram-auth-refresh.ts",
     "test:logic:miniprogram-shell": "tsx scripts/test-miniprogram-shell.ts",
     "test:logic:miniprogram-asset-lifecycle": "tsx scripts/test-miniprogram-asset-lifecycle.ts",
+    "test:logic:miniprogram-runtime-refresh": "tsx scripts/test-miniprogram-runtime-refresh.ts",
+    "test:logic:miniprogram-image-session-cache": "tsx scripts/test-miniprogram-image-session-cache.ts",
     "test:logic:miniprogram-intake-state-machine": "tsx scripts/parity/tests/mini-intake-state-machine.test.ts",
     "test:logic:miniprogram-crop-workflow": "tsx scripts/test-miniprogram-crop-workflow.ts",
     "test:logic:miniprogram-item-detail": "tsx scripts/parity/tests/mini-item-detail-contract.test.ts",
