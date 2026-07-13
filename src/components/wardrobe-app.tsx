@@ -65,13 +65,14 @@ import { createActionsForView, preferredCreateActionByView, type ViewKey } from 
 import { useWardrobeImageIntakeController } from "@/components/use-wardrobe-image-intake-controller";
 import { WardrobeSelectedImagesReviewPortal } from "@/components/wardrobe-selected-images-review-portal";
 import {
+  AppPressable,
   AnimatedPage,
   MotionAccordion,
   MotionImageLightbox,
   MotionSheet,
   MotionToast,
 } from "@/components/motion-common";
-import { ease, spring } from "@/lib/motion-tokens";
+import { ease } from "@/lib/motion-tokens";
 import { createGarmentThumbnailFromOriginal, generateThumbnailSafe } from "@/lib/thumbnail-runtime";
 import { ensureGarmentIntakeDraftThumbnail, isIntakeThumbnailGenerationError } from "@/lib/intake-thumbnail";
 import { GarmentImage } from "@/components/garment-image";
@@ -325,7 +326,14 @@ export function WardrobeApp({ cloudAuth }: { cloudAuth?: WardrobeCloudAuth } = {
   const tryOnProfile: TryOnProfileState = savedTryOnProfile ?? { id: "default", enabled: false, fitGender: "unspecified", updatedAt: new Date().toISOString() };
   const [isReady, setIsReady] = useState(false);
   const messageCtrl = useWardrobeMessageController();
-  const { message, messageType, showMessage, clearMessage } = messageCtrl;
+  const {
+    message,
+    messageType,
+    showMessage,
+    clearMessage,
+    pauseMessageDismiss,
+    resumeMessageDismiss,
+  } = messageCtrl;
 
   // 4C Follow-up: 图片队列状态与控制器（先初始化，供 image intake controller 使用）
   const [captureCropJob, setCaptureCropJob] = useState<CaptureCropJob | null>(null);
@@ -425,7 +433,7 @@ export function WardrobeApp({ cloudAuth }: { cloudAuth?: WardrobeCloudAuth } = {
     if (hasDeviceMiniMaxKey(miniMaxSettings)) return;
     if (minimaxMissingToastShownRef.current) return;
     minimaxMissingToastShownRef.current = true;
-    showMessage(MINIMAX_KEY_MISSING_MESSAGE, "info");
+    showMessage(MINIMAX_KEY_MISSING_MESSAGE, "action");
   }, [isReady, miniMaxSettings, showMessage]);
 
   // v1.1.20-dev (方案 C): 删除 v0.9.31-dev "activeViewRef 同步" useEffect — activeViewRef 不再存在。
@@ -1234,15 +1242,16 @@ export function WardrobeApp({ cloudAuth }: { cloudAuth?: WardrobeCloudAuth } = {
 
         {/* v1.0: 全局浮动 — Plus居中 + active反馈 + 按钮 */}
         {shouldShowGlobalCreate ? (
-          <button
+          <AppPressable
             type="button"
+            feedback="icon"
             data-parity-id="parity.app.app.src.components.wardrobe.app.33eb0ef1bd" onClick={() => setShowCreateSheet(true)}
-            className="fixed right-5 z-40 grid h-12 w-12 place-items-center rounded-full bg-denim p-0 leading-none text-white shadow-lg transition-transform active:scale-95 lg:hidden" style={{ bottom: "calc(env(safe-area-inset-bottom) + 6rem)" }}
+            className="fixed right-5 z-40 grid h-12 w-12 place-items-center rounded-full bg-denim p-0 leading-none text-white shadow-lg lg:hidden" style={{ bottom: "calc(env(safe-area-inset-bottom) + 6rem)" }}
             aria-label="新建"
             data-testid="global-create"
           >
             <Plus size={24} strokeWidth={2.2} className="block" aria-hidden="true" />
-          </button>
+          </AppPressable>
         ) : null}
 
         <MotionSheet
@@ -1259,11 +1268,11 @@ export function WardrobeApp({ cloudAuth }: { cloudAuth?: WardrobeCloudAuth } = {
             {createActionsForView(activeViewForCreateActions).map((action) => {
               const highlighted = action.type === preferredCreateActionByView[activeViewForCreateActions];
               return (
-                <motion.button
+                <AppPressable
                   key={action.type}
                   data-parity-id={`parity.app.app.src.components.wardrobe.app.8a55b3b72b.${action.type}`}
                   type="button"
-                  whileTap={{ scale: 0.98 }}
+                  feedback="control"
                   onClick={() => handleCreateAction(action.type)}
                   className={[
                     "flex w-full items-center gap-3 rounded-xl px-3 py-3 text-left transition-colors",
@@ -1281,7 +1290,7 @@ export function WardrobeApp({ cloudAuth }: { cloudAuth?: WardrobeCloudAuth } = {
                     <div className={["text-sm font-semibold", highlighted ? "text-denim" : "text-ink"].join(" ")}>{action.title}</div>
                     <div className="text-xs text-ink/50">{action.description}</div>
                   </div>
-                </motion.button>
+                </AppPressable>
               );
             })}
           </div>
@@ -1372,12 +1381,28 @@ export function WardrobeApp({ cloudAuth }: { cloudAuth?: WardrobeCloudAuth } = {
           >
           <div
             className="app-toast pointer-events-auto flex items-center gap-2.5 overflow-hidden px-3 py-2.5 text-sm text-ink"
+            onPointerEnter={(event) => {
+              if (event.pointerType === "mouse") pauseMessageDismiss("hover");
+            }}
+            onPointerLeave={(event) => {
+              if (event.pointerType === "mouse") resumeMessageDismiss("hover");
+              resumeMessageDismiss("press");
+            }}
+            onPointerDown={() => pauseMessageDismiss("press")}
+            onPointerUp={() => resumeMessageDismiss("press")}
+            onPointerCancel={() => resumeMessageDismiss("press")}
+            onFocusCapture={() => pauseMessageDismiss("focus")}
+            onBlurCapture={(event) => {
+              if (!event.currentTarget.contains(event.relatedTarget as Node | null)) {
+                resumeMessageDismiss("focus");
+              }
+            }}
           >
             {messageType === "error" ? (
               <span className="grid h-7 w-7 shrink-0 self-center place-items-center ui-control-radius bg-red-50 text-red-500">
                 <AlertCircle size={15} strokeWidth={2.4} aria-hidden="true" />
               </span>
-            ) : messageType === "info" ? (
+            ) : messageType === "info" || messageType === "action" ? (
               <span className="grid h-7 w-7 shrink-0 self-center place-items-center ui-control-radius bg-denim/10 text-denim">
                 <Info size={15} strokeWidth={2.4} aria-hidden="true" />
               </span>
@@ -1393,23 +1418,25 @@ export function WardrobeApp({ cloudAuth }: { cloudAuth?: WardrobeCloudAuth } = {
               {message}
             </span>
             {message === MINIMAX_KEY_MISSING_MESSAGE ? (
-              <button
+              <AppPressable
                 type="button"
-                className="h-9 shrink-0 self-center ui-control-radius bg-denim px-3 text-xs font-semibold text-white active:scale-95"
+                feedback="control"
+                className="h-9 shrink-0 self-center ui-control-radius bg-denim px-3 text-xs font-semibold text-white"
                 data-parity-id="parity.app.app.src.components.wardrobe.app.4a31b88935" onClick={openMiniMaxKeySettings}
               >
                 前往设置
-              </button>
+              </AppPressable>
             ) : null}
-            <button
+            <AppPressable
               type="button"
+              feedback="icon"
               title="关闭提示"
               aria-label="关闭提示"
-              className="grid h-11 w-11 shrink-0 self-center place-items-center ui-control-radius text-ink/45 transition-colors active:bg-ink/5 hover:text-ink/70"
+              className="grid h-11 w-11 shrink-0 self-center place-items-center ui-control-radius text-ink/45 transition-colors hover:text-ink/70"
               data-parity-id="parity.app.app.src.components.wardrobe.app.456d91ab8b" onClick={clearMessage}
             >
               <X size={16} aria-hidden="true" />
-            </button>
+            </AppPressable>
           </div>
           </MotionToast>
         </div>,
@@ -5656,52 +5683,42 @@ function clampNumber(value: number, min: number, max: number) {
 function NavButton({ view, active, onClick, parityId }: { view: (typeof viewItems)[number]; active: boolean; onClick: () => void; parityId?: string }) {
   const Icon = view.icon;
   return (
-    <motion.button
+    <AppPressable
       type="button"
+      feedback="control"
       data-parity-id={parityId ?? "parity.app.app.src.components.wardrobe.app.a6275d2a93"} onClick={onClick}
-      className={`flex h-11 items-center gap-3 ui-control-radius px-3 text-sm font-semibold ${
+      className={`flex h-11 items-center gap-3 ui-control-radius px-3 text-sm font-semibold transition-colors duration-150 ${
         active ? "bg-denim text-white" : "text-ink/68 hover:bg-ink/5"
       }`}
-      whileTap={{ scale: 0.96 }}
-      transition={spring.snappy}
+      aria-current={active ? "page" : undefined}
     >
-      <motion.span
-        animate={active ? { scale: 1.08 } : { scale: 1 }}
-        transition={spring.snappy}
-        style={{ display: "inline-flex" }}
-      >
+      <span className="inline-flex">
         <Icon size={17} aria-hidden="true" />
-      </motion.span>
+      </span>
       {view.label}
-    </motion.button>
+    </AppPressable>
   );
 }
 
 function MobileNavButton({ view, active, onClick, compact, parityId }: { view: (typeof viewItems)[number]; active: boolean; onClick: () => void; compact?: boolean; parityId?: string }) {
   const Icon = view.icon;
   return (
-    <motion.button
+    <AppPressable
       type="button"
+      feedback="control"
       data-parity-id={parityId ?? "parity.app.app.src.components.wardrobe.app.1d7efe6be5"} onClick={onClick}
-      animate={{
-        backgroundColor: active ? "var(--color-denim)" : "rgba(0,0,0,0)",
-        color: active ? "#ffffff" : "rgba(0,0,0,0.62)",
-      }}
-      transition={spring.snappy}
-      className={`grid ${compact ? "h-10 ui-control-radius" : "h-14 rounded-[var(--ui-radius-nav-active)]"} place-content-center justify-items-center gap-1 px-1 text-[11px] font-semibold`}
-      whileTap={{ scale: 0.94 }}
+      aria-current={active ? "page" : undefined}
+      className={`grid ${compact ? "h-10 ui-control-radius" : "h-14 rounded-[var(--ui-radius-nav-active)]"} place-content-center justify-items-center gap-1 px-1 text-[11px] font-semibold transition-colors duration-150 ${
+        active ? "bg-denim text-white" : "text-ink/62"
+      }`}
     >
       {!compact && (
-        <motion.span
-          animate={active ? { scale: 1.08 } : { scale: 1 }}
-          transition={spring.snappy}
-          style={{ display: "inline-flex" }}
-        >
+        <span className="inline-flex">
           <Icon size={17} aria-hidden="true" />
-        </motion.span>
+        </span>
       )}
       <span className={compact ? "leading-none" : "leading-tight"}>{view.label}</span>
-    </motion.button>
+    </AppPressable>
   );
 }
 

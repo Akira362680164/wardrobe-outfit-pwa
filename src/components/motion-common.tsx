@@ -300,15 +300,18 @@ interface MotionToastProps {
    * - "error" → role="alert" + aria-live="assertive" (用户必须立刻知道失败)
    * - "success" / "info" / undefined → role="status" + aria-live="polite" (延后播报即可)
    */
-  type?: "success" | "error" | "info";
+  type?: "success" | "error" | "info" | "action";
 }
 
 export function MotionToast({ visible, children, className, placement = "bottom", type }: MotionToastProps) {
-  const variants = placement === "top" ? toastDrop : slideUp;
+  const prefersReducedMotion = useReducedMotion();
+  const variants = prefersReducedMotion
+    ? { initial: { opacity: 0 }, in: { opacity: 1 }, out: { opacity: 0 } }
+    : placement === "top" ? toastDrop : slideUp;
   const isError = type === "error";
   const ariaProps = isError
-    ? { role: "alert" as const, "aria-live": "assertive" as const }
-    : { role: "status" as const, "aria-live": "polite" as const };
+    ? { role: "alert" as const, "aria-live": "assertive" as const, "aria-atomic": true as const }
+    : { role: "status" as const, "aria-live": "polite" as const, "aria-atomic": true as const };
   return (
     <AnimatePresence>
       {visible ? (
@@ -318,7 +321,10 @@ export function MotionToast({ visible, children, className, placement = "bottom"
           initial="initial"
           animate="in"
           exit="out"
-          transition={{ ...spring.snappy, opacity: { duration: duration.fast } }}
+          transition={prefersReducedMotion
+            ? { duration: duration.fast, ease: ease.out }
+            : { ...spring.control, opacity: { duration: duration.fast, ease: ease.out } }}
+          data-toast-type={type ?? "info"}
         >
           <div {...ariaProps}>{children}</div>
         </motion.div>
@@ -328,28 +334,259 @@ export function MotionToast({ visible, children, className, placement = "bottom"
 }
 
 /* ------------------------------------------------------------------ */
-/*  PressableMotionButton – tap-scale feedback                        */
+/*  AppPressable – pointer-first, cancelable press feedback            */
 /* ------------------------------------------------------------------ */
 
-interface PressableMotionButtonProps
+export type AppPressableFeedback = "control" | "icon" | "card";
+
+const PRESS_CANCEL_DISTANCE_PX = 10;
+const PRESS_FEEDBACK_SCALE: Record<AppPressableFeedback, number> = {
+  control: 0.985,
+  icon: 0.98,
+  card: 0.99,
+};
+
+interface ActivePressPointer {
+  pointerId: number;
+  startX: number;
+  startY: number;
+  canceled: boolean;
+}
+
+export interface AppPressableProps
   extends Omit<React.ButtonHTMLAttributes<HTMLButtonElement>, "children"> {
   children: React.ReactNode;
   className?: string;
-  /** Scale target while pressed. Default 0.97 */
-  scale?: number;
+  /** Shared, restrained feedback preset. */
+  feedback?: AppPressableFeedback;
+  /** Keep the control clickable while suppressing press scale, e.g. selection mode. */
+  pressDisabled?: boolean;
+  layoutId?: MotionProps["layoutId"];
 }
 
-export function PressableMotionButton({
+export function AppPressable({
   children,
   className,
-  scale = 0.97,
+  feedback = "control",
+  pressDisabled = false,
+  disabled = false,
+  type = "button",
+  layoutId,
+  style,
+  onBlur,
+  onClick,
+  onContextMenu,
+  onKeyDown,
+  onKeyUp,
+  onLostPointerCapture,
+  onPointerCancel,
+  onPointerDown,
+  onPointerLeave,
+  onPointerMove,
+  onPointerUp,
+  "aria-disabled": ariaDisabled,
   ...rest
-}: PressableMotionButtonProps) {
+}: AppPressableProps) {
+  const prefersReducedMotion = useReducedMotion();
+  const [pressed, setPressed] = useState(false);
+  const activePointerRef = useRef<ActivePressPointer | null>(null);
+  const keyboardPressedRef = useRef(false);
+  const suppressClickRef = useRef(false);
+  const suppressionTimerRef = useRef<number | null>(null);
+  const interactionDisabled = disabled || ariaDisabled === true || ariaDisabled === "true";
+
+  const clearClickSuppression = useCallback(() => {
+    suppressClickRef.current = false;
+    if (suppressionTimerRef.current !== null && typeof window !== "undefined") {
+      window.clearTimeout(suppressionTimerRef.current);
+      suppressionTimerRef.current = null;
+    }
+  }, []);
+
+  const releaseClickSuppressionAfterSequence = useCallback(() => {
+    if (!suppressClickRef.current || typeof window === "undefined") return;
+    if (suppressionTimerRef.current !== null) window.clearTimeout(suppressionTimerRef.current);
+    suppressionTimerRef.current = window.setTimeout(() => {
+      suppressClickRef.current = false;
+      suppressionTimerRef.current = null;
+    }, 0);
+  }, []);
+
+  const cancelCurrentPress = useCallback(() => {
+    const activePointer = activePointerRef.current;
+    if (activePointer) activePointer.canceled = true;
+    suppressClickRef.current = true;
+    setPressed(false);
+  }, []);
+
+  useEffect(() => () => {
+    if (suppressionTimerRef.current !== null) window.clearTimeout(suppressionTimerRef.current);
+  }, []);
+
+  const handlePointerDown = useCallback((event: React.PointerEvent<HTMLButtonElement>) => {
+    onPointerDown?.(event);
+    if (
+      event.defaultPrevented ||
+      interactionDisabled ||
+      pressDisabled ||
+      event.button !== 0 ||
+      !event.isPrimary
+    ) return;
+    clearClickSuppression();
+    activePointerRef.current = {
+      pointerId: event.pointerId,
+      startX: event.clientX,
+      startY: event.clientY,
+      canceled: false,
+    };
+    setPressed(true);
+    const eventTarget = event.target instanceof Element ? event.target : null;
+    const nestedGestureOwner = eventTarget?.closest(
+      '[data-app-press-gesture-owner="true"], [aria-roledescription="carousel"]',
+    );
+    if (nestedGestureOwner && nestedGestureOwner !== event.currentTarget) return;
+    try {
+      event.currentTarget.setPointerCapture(event.pointerId);
+    } catch {
+      // Some WebViews may end the sequence before capture; the remaining
+      // pointer/blur handlers still restore the visual state safely.
+    }
+  }, [clearClickSuppression, interactionDisabled, onPointerDown, pressDisabled]);
+
+  const handlePointerMove = useCallback((event: React.PointerEvent<HTMLButtonElement>) => {
+    const activePointer = activePointerRef.current;
+    if (activePointer?.pointerId === event.pointerId && !activePointer.canceled) {
+      const distance = Math.hypot(
+        event.clientX - activePointer.startX,
+        event.clientY - activePointer.startY,
+      );
+      const rect = event.currentTarget.getBoundingClientRect();
+      const outside = event.clientX < rect.left || event.clientX > rect.right ||
+        event.clientY < rect.top || event.clientY > rect.bottom;
+      if (distance > PRESS_CANCEL_DISTANCE_PX || outside) cancelCurrentPress();
+    }
+    onPointerMove?.(event);
+  }, [cancelCurrentPress, onPointerMove]);
+
+  const handlePointerLeave = useCallback((event: React.PointerEvent<HTMLButtonElement>) => {
+    if (activePointerRef.current?.pointerId === event.pointerId) cancelCurrentPress();
+    onPointerLeave?.(event);
+  }, [cancelCurrentPress, onPointerLeave]);
+
+  const handlePointerUp = useCallback((event: React.PointerEvent<HTMLButtonElement>) => {
+    const activePointer = activePointerRef.current;
+    if (activePointer?.pointerId === event.pointerId) {
+      const rect = event.currentTarget.getBoundingClientRect();
+      if (event.clientX < rect.left || event.clientX > rect.right ||
+        event.clientY < rect.top || event.clientY > rect.bottom) {
+        cancelCurrentPress();
+      }
+      const canceled = activePointer.canceled;
+      activePointerRef.current = null;
+      setPressed(false);
+      try {
+        if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+          event.currentTarget.releasePointerCapture(event.pointerId);
+        }
+      } catch {
+        // Pointer capture may already have been released by the browser.
+      }
+      if (canceled || suppressClickRef.current) releaseClickSuppressionAfterSequence();
+    }
+    onPointerUp?.(event);
+  }, [cancelCurrentPress, onPointerUp, releaseClickSuppressionAfterSequence]);
+
+  const handlePointerCancel = useCallback((event: React.PointerEvent<HTMLButtonElement>) => {
+    if (activePointerRef.current?.pointerId === event.pointerId) {
+      cancelCurrentPress();
+      activePointerRef.current = null;
+      releaseClickSuppressionAfterSequence();
+    }
+    onPointerCancel?.(event);
+  }, [cancelCurrentPress, onPointerCancel, releaseClickSuppressionAfterSequence]);
+
+  const handleLostPointerCapture = useCallback((event: React.PointerEvent<HTMLButtonElement>) => {
+    if (activePointerRef.current?.pointerId === event.pointerId) {
+      cancelCurrentPress();
+      activePointerRef.current = null;
+      releaseClickSuppressionAfterSequence();
+    }
+    onLostPointerCapture?.(event);
+  }, [cancelCurrentPress, onLostPointerCapture, releaseClickSuppressionAfterSequence]);
+
+  const handleKeyDown = useCallback((event: React.KeyboardEvent<HTMLButtonElement>) => {
+    onKeyDown?.(event);
+    if (event.defaultPrevented || interactionDisabled || pressDisabled || event.repeat) return;
+    if (event.key === "Enter" || event.key === " " || event.key === "Spacebar") {
+      clearClickSuppression();
+      keyboardPressedRef.current = true;
+      setPressed(true);
+    }
+  }, [clearClickSuppression, interactionDisabled, onKeyDown, pressDisabled]);
+
+  const handleKeyUp = useCallback((event: React.KeyboardEvent<HTMLButtonElement>) => {
+    if (keyboardPressedRef.current && (event.key === "Enter" || event.key === " " || event.key === "Spacebar")) {
+      keyboardPressedRef.current = false;
+      setPressed(false);
+    }
+    onKeyUp?.(event);
+  }, [onKeyUp]);
+
+  const handleBlur = useCallback((event: React.FocusEvent<HTMLButtonElement>) => {
+    keyboardPressedRef.current = false;
+    if (activePointerRef.current) {
+      cancelCurrentPress();
+      activePointerRef.current = null;
+      releaseClickSuppressionAfterSequence();
+    } else {
+      setPressed(false);
+    }
+    onBlur?.(event);
+  }, [cancelCurrentPress, onBlur, releaseClickSuppressionAfterSequence]);
+
+  const handleContextMenu = useCallback((event: React.MouseEvent<HTMLButtonElement>) => {
+    if (activePointerRef.current) cancelCurrentPress();
+    onContextMenu?.(event);
+  }, [cancelCurrentPress, onContextMenu]);
+
+  const handleClick = useCallback((event: React.MouseEvent<HTMLButtonElement>) => {
+    if (interactionDisabled || suppressClickRef.current) {
+      event.preventDefault();
+      event.stopPropagation();
+      clearClickSuppression();
+      return;
+    }
+    onClick?.(event);
+  }, [clearClickSuppression, interactionDisabled, onClick]);
+
   return (
     <motion.button
       className={className}
-      whileTap={{ scale }}
-      transition={{ duration: duration.fast }}
+      type={type}
+      disabled={disabled}
+      aria-disabled={ariaDisabled}
+      layoutId={layoutId}
+      data-pressed={pressed ? "true" : undefined}
+      data-press-feedback={feedback}
+      animate={{
+        scale: pressed && !prefersReducedMotion ? PRESS_FEEDBACK_SCALE[feedback] : 1,
+        opacity: pressed ? 0.78 : 1,
+      }}
+      transition={prefersReducedMotion
+        ? { duration: 0 }
+        : { ...spring.control, opacity: { duration: 0.06, ease: ease.out } }}
+      style={{ transformOrigin: "center", ...style }}
+      onBlur={handleBlur}
+      onClick={handleClick}
+      onContextMenu={handleContextMenu}
+      onKeyDown={handleKeyDown}
+      onKeyUp={handleKeyUp}
+      onLostPointerCapture={handleLostPointerCapture}
+      onPointerCancel={handlePointerCancel}
+      onPointerDown={handlePointerDown}
+      onPointerLeave={handlePointerLeave}
+      onPointerMove={handlePointerMove}
+      onPointerUp={handlePointerUp}
       {...(rest as MotionProps &
         React.ButtonHTMLAttributes<HTMLButtonElement>)}
     >
@@ -358,8 +595,15 @@ export function PressableMotionButton({
   );
 }
 
+/* Compatibility wrapper for callers that have not yet adopted AppPressable. */
+interface PressableMotionButtonProps extends Omit<AppPressableProps, "feedback"> {}
+
+export function PressableMotionButton(props: PressableMotionButtonProps) {
+  return <AppPressable feedback="control" {...props} />;
+}
+
 /* ------------------------------------------------------------------ */
-/*  MotionCard – whileTap + optional hover for garment cards           */
+/*  MotionCard – shared card press feedback                            */
 /* ------------------------------------------------------------------ */
 
 interface MotionCardProps {
@@ -386,17 +630,18 @@ export function MotionCard({
   const base = `overflow-hidden rounded-lg border ${selected ? "border-denim ring-1 ring-denim" : "border-ink/10"} bg-white shadow-sm ${className ?? ""}`;
 
   return (
-    <motion.article
+    <AppPressable
+      type="button"
+      feedback="card"
+      pressDisabled={disableTap}
       layoutId={layoutId}
-      className={base}
+      className={`${base} w-full text-left`}
+      aria-pressed={selected || undefined}
       data-parity-id="parity.app.app.src.components.motion.common.3e04f7dca0" onClick={onClick}
       onContextMenu={onContextMenu}
-      whileTap={disableTap ? undefined : { scale: 0.97 }}
-      whileHover={{}}
-      transition={{ duration: duration.fast }}
     >
       {children}
-    </motion.article>
+    </AppPressable>
   );
 }
 
@@ -838,8 +1083,7 @@ export function AiTaskProgressCard({
   return (
     <div
       className="rounded-lg border border-denim/20 bg-denim/5 p-3"
-      role="status"
-      aria-live="polite"
+      aria-busy={clamped < 100 || undefined}
     >
       <div className="flex items-center justify-between gap-3">
         <div className="min-w-0 flex-1">
@@ -858,11 +1102,16 @@ export function AiTaskProgressCard({
         <div
           className="h-full rounded-full bg-denim"
           style={{
-            width: `${clamped}%`,
-            transition: prefersReducedMotion ? "none" : "width 0.3s ease-out",
+            transform: `scaleX(${clamped / 100})`,
+            transformOrigin: "left center",
+            transition: prefersReducedMotion ? "none" : "transform 0.3s ease-out",
+            willChange: clamped > 0 && clamped < 100 ? "transform" : undefined,
           }}
         />
       </div>
+      <span className="sr-only" role="status" aria-live="polite" aria-atomic="true">
+        {label}：{stage}
+      </span>
     </div>
   );
 }
@@ -890,9 +1139,10 @@ export function MotionShimmer({ className }: MotionShimmerProps) {
           style={{
             background:
               "linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.45) 50%, transparent 100%)",
-            backgroundSize: "200% 100%",
+            willChange: "transform",
           }}
-          animate={{ backgroundPosition: ["200% 0", "-200% 0"] }}
+          initial={{ x: "-100%" }}
+          animate={{ x: "100%" }}
           transition={{ repeat: Infinity, duration: 1.8, ease: "linear" }}
         />
       )}
@@ -918,12 +1168,14 @@ export function MotionAccordion({
   className,
   animateHeight = true,
 }: MotionAccordionProps) {
-  const heightAnim = animateHeight
+  const prefersReducedMotion = useReducedMotion();
+  const shouldAnimateHeight = animateHeight && !prefersReducedMotion;
+  const heightAnim = shouldAnimateHeight
     ? { height: 0 as const, opacity: 0 }
-    : { opacity: 0, y: 8 };
-  const heightAnimIn = animateHeight
+    : prefersReducedMotion ? { opacity: 0 } : { opacity: 0, y: 8 };
+  const heightAnimIn = shouldAnimateHeight
     ? { height: "auto" as const, opacity: 1 }
-    : { opacity: 1, y: 0 };
+    : prefersReducedMotion ? { opacity: 1 } : { opacity: 1, y: 0 };
 
   return (
     <AnimatePresence initial={false}>
@@ -933,7 +1185,10 @@ export function MotionAccordion({
           initial={heightAnim}
           animate={heightAnimIn}
           exit={heightAnim}
-          transition={{ duration: duration.normal, ease: ease.app }}
+          transition={{
+            duration: prefersReducedMotion ? duration.fast : duration.normal,
+            ease: ease.app,
+          }}
         >
           {children}
         </motion.div>

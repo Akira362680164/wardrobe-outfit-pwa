@@ -41,6 +41,7 @@
     "test:logic:v03-alpha-visual-review": "tsx scripts/test-v03-alpha-visual-review.ts",
     "test:logic:ui-spec-preview": "npm run docs:ui-spec:check && tsx scripts/test-ui-spec-preview-contract.ts && tsx scripts/test-ui-spec-preview-render.ts",
     "test:logic:ui-token-contract": "tsx scripts/test-ui-token-contract.ts",
+    "test:logic:motion-feedback-b1": "tsx scripts/test-motion-feedback-b1.ts",
     "test:logic:ui-overlay-contract": "tsx scripts/test-ui-overlay-contract.ts",
     "test:logic": "tsx scripts/test-recommendations.ts",
     "test:logic:website": "tsx scripts/test-wardora-compliance-site.ts",

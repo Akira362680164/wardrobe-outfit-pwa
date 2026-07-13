@@ -1,3 +1,14 @@
+## 2026-07-13 / v2.1.18-test / Codex Subagent B1 — 即时按压、Toast、Progress 与 Shimmer 收口
+
+- **执行 Agent**：Codex 实施 Subagent B1；独立分支 `codex/motion-b1-feedback-20260713`、独立 worktree `/Users/fangzheng/Documents/wardrobe-motion-b1-feedback-20260713`，基于 Wave 2 集成提交 `00398302ae7ee8f320030f20f93048f74392591d`；未合入 integration / `main`，未推送。本 Session 由主集成 Agent 分派，未再触发下级 subagent。
+- **目的与版本**：按 `apple-design` 的同帧直接反馈、可取消输入、克制物理与 reduced-motion 原则完成 Wave 3 / B1；版本保持 `2.1.18-test`，不改 API、存储、服务端、小程序、图片轮播、日历或录入手势，不构建 APK。
+- **公共反馈原语**：`motion-tokens.ts` 新增无弹跳 `spring.control`、无弹跳 `spring.panel` 与仅供真实 drag/flick 的轻回弹 `spring.momentum`，旧 `snappy/soft/gentle` 保留兼容别名。`AppPressable` 统一 control / icon / card 三档克制反馈；主指针按下同帧进入 pressed，使用 pointer capture，位移超过 10px、拖离、pointercancel、失去 capture、失焦或 contextmenu 即取消并只抑制本次 click；Space / Enter、disabled 与 reduced-motion 同步覆盖。后代 Carousel / gesture owner 不被父层抢 capture，选择模式不缩放整卡。
+- **高频入口迁移**：三个目录首页共用的 `CatalogWaterfallCardShell`、选择 check / 底栏 / 删除操作、批量 AI 行操作，以及 App 全局 FAB、新建 action、Toast 动作/关闭、桌面与移动底部导航统一接入 `AppPressable`；普通控件不再叠加私有 `whileTap` 或回弹，专项合同同时检查无嵌套 `AppPressable` 重复缩放。
+- **Toast 与加载反馈**：success 2.8s、info 4s，error / action 不自动消失；隐藏、失焦、悬停、焦点进入和触摸按住暂停剩余倒计时。MiniMax Key 缺失改为 action 语义。AI 和批量进度改为左原点 `scaleX`，百分比展示与阶段 live region 分离；软进度从逐帧 rAF 改为 100ms 定时更新。Shimmer 只动画 transform，reduced-motion 静态化；Accordion 在 reduced-motion 下不再做 `height:auto` 补间。
+- **改动文件**：`src/lib/motion-tokens.ts`、`src/lib/use-soft-ai-progress.ts`、`src/components/motion-common.tsx`、`src/components/use-wardrobe-message-controller.ts`、`src/components/batch-ai-progress-panel.tsx`、`src/components/item-shell/catalog-waterfall-card-shell.tsx`、三个 `src/components/catalog-selection/` 反馈组件、`src/components/wardrobe-app.tsx` 的 B1 独占区域、`scripts/test-motion-feedback-b1.ts`、`package.json`、UI 规范及生成 HTML、本记录。
+- **验证结果**：`docs:ui-spec:build/check`、`test:logic:ui-spec-preview`、`test:logic:motion-feedback-b1`、`test:logic:component-reuse`、`test:logic:intake`、`test:logic:catalog-multi-select`、`test:logic:catalog-multi-select-integration`、`test:logic:ui-overflow`、根 `typecheck`、Next `build` 与 `git diff --check` 通过。B1 JSDOM harness 实际覆盖 pointerdown、阈值内移动、超过 10px 取消、拖离、pointercancel、后续独立点击恢复、Space 键反馈和嵌套 Carousel 不抢 capture。
+- **基线失败与风险门禁**：`high`（共享按压、全局 Toast 与进度反馈）。`test:logic:ui-token-contract` 仍仅报告冻结基线四处：`auth/account-views.tsx`、`image-crop-editor.tsx`、`item/edit-image-action-card.tsx`、`src/app/site.css`；均不属于 B1 修改范围，B1 新增 diff 无 hex 色值，批量进度旧 `bg-[#fbfbf8]` 已改语义 token。未做 Android 真机/模拟器、TalkBack/VoiceOver、低端 WebView 帧率或 360/390/430px 视觉慢放；最终跨 Wave 触摸、读屏与性能验收由后续 D / 集成 Wave 完成。
+
 ## 2026-07-13 / v2.1.18-test / Codex Subagent A2-Core — 共享 Lightbox、Popover 与 Dialog 浮层收口
 
 - **执行 Agent**：Codex 实施 Subagent A2-Core；独立分支 `codex/motion-a2-core-20260713`、独立 worktree `/Users/fangzheng/Documents/wardrobe-motion-a2-core-20260713`，基于批次提交 `10d9e4176216ba3f7dcd3b47289294e9ad70e230`；未合入 integration / `main`，未推送。
