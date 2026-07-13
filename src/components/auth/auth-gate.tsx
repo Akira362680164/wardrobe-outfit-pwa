@@ -2,11 +2,12 @@
 
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import { App } from "@capacitor/app";
-import { Capacitor } from "@capacitor/core";
 import { KeyRound, Loader2, Lock, Mail, Shield, User } from "lucide-react";
 import { useAuth } from "@/components/auth/auth-provider";
 import { LegalDocumentView, type LegalSection } from "@/components/auth/legal-document-view";
+import { MotionSheet } from "@/components/motion-common";
 import * as authApi from "@/lib/cloud-auth-api";
+import { useStableBackHandler } from "@/lib/use-stable-back-handler";
 import {
   isLoginFormValid,
   isRegisterFormValid,
@@ -154,8 +155,6 @@ export function AuthGate({ children }: { children: ReactNode }) {
   });
   const [localError, setLocalError] = useState<string | null>(null);
   const [showExitDialog, setShowExitDialog] = useState(false);
-  const removedRef = useRef(false);
-  const backListenerHandle = useRef<{ remove: () => void } | null>(null);
   const previousAuthViewRef = useRef<AuthView>("login");
 
   const clearLocalError = useCallback(() => {
@@ -188,50 +187,33 @@ export function AuthGate({ children }: { children: ReactNode }) {
     return () => window.removeEventListener("popstate", handlePopState);
   }, [handlePopState]);
 
-  useEffect(() => {
-    if (!Capacitor.isNativePlatform()) return;
-    const register = async () => {
-      try {
-        const handle = await App.addListener("backButton", () => {
-          if (showExitDialog) {
-            setShowExitDialog(false);
-            return;
-          }
-          const active = document.activeElement;
-          if (active && (active.tagName === "INPUT" || active.tagName === "TEXTAREA")) {
-            (active as HTMLElement).blur();
-            return;
-          }
-          if (view === "terms" || view === "privacy") {
-            updateAuthView(previousAuthViewRef.current, false);
-          } else if (view === "register" || view === "forgot_password") {
-            window.history.back();
-          } else {
-            setShowExitDialog(true);
-          }
-        });
-        if (removedRef.current) {
-          handle.remove();
-        } else {
-          backListenerHandle.current = handle;
-        }
-      } catch {
-        // Capacitor not available
-      }
-    };
-    register();
-    return () => {
-      removedRef.current = true;
-      if (backListenerHandle.current) {
-        backListenerHandle.current.remove();
-        backListenerHandle.current = null;
-      }
-    };
-  }, [view, showExitDialog, updateAuthView]);
+  useStableBackHandler(() => {
+    if (auth.isBusy) return true;
+    const active = document.activeElement;
+    if (active && (active.tagName === "INPUT" || active.tagName === "TEXTAREA")) {
+      (active as HTMLElement).blur();
+      return true;
+    }
+    if (view === "terms" || view === "privacy") {
+      updateAuthView(previousAuthViewRef.current, false);
+    } else if (view === "register" || view === "forgot_password") {
+      window.history.back();
+    } else {
+      setShowExitDialog(true);
+    }
+    return true;
+  }, auth.phase === "anonymous" || auth.phase === "blocked", 100);
 
   if (auth.phase === "authenticated") return <>{children}</>;
   if (auth.phase === "initializing") return <AuthShell><LoadingState /></AuthShell>;
-  if (auth.phase === "blocked") return <AuthShell><BlockedLocalOwner /></AuthShell>;
+  if (auth.phase === "blocked") {
+    return (
+      <AuthShell>
+        <BlockedLocalOwner />
+        <ExitDialog open={showExitDialog} onClose={() => setShowExitDialog(false)} />
+      </AuthShell>
+    );
+  }
 
   return (
     <AuthShell>
@@ -311,7 +293,7 @@ export function AuthGate({ children }: { children: ReactNode }) {
           onBack={() => updateAuthView(previousAuthViewRef.current, false)}
         />
       )}
-      {showExitDialog && <ExitDialog onClose={() => setShowExitDialog(false)} />}
+      <ExitDialog open={showExitDialog} onClose={() => setShowExitDialog(false)} />
     </AuthShell>
   );
 }
@@ -574,14 +556,13 @@ function RegisterForm({
       <button type="button" data-parity-id="parity.app.app.src.components.auth.auth.gate.b54698020b" onClick={onGoLogin} className="h-10 text-sm font-semibold text-denim">
         已有账号，去登录
       </button>
-      {pendingEmail ? (
-        <ConfirmEmailDialog
-          email={maskEmail(pendingEmail)}
-          busy={sending}
-          onCancel={() => setPendingEmail(null)}
-          onConfirm={confirmSendCode}
-        />
-      ) : null}
+      <ConfirmEmailDialog
+        open={pendingEmail !== null}
+        email={pendingEmail ? maskEmail(pendingEmail) : ""}
+        busy={sending}
+        onCancel={() => setPendingEmail(null)}
+        onConfirm={confirmSendCode}
+      />
     </form>
   );
 }
@@ -713,14 +694,13 @@ function ForgotPasswordForm({ onGoLogin }: { onGoLogin: () => void }) {
       <button type="button" data-parity-id="parity.app.app.src.components.auth.auth.gate.da3c724921" onClick={onGoLogin} className="h-10 text-sm font-semibold text-denim">
         返回登录
       </button>
-      {pendingEmail ? (
-        <ConfirmEmailDialog
-          email={maskEmail(pendingEmail)}
-          busy={sending}
-          onCancel={() => setPendingEmail(null)}
-          onConfirm={confirmSendCode}
-        />
-      ) : null}
+      <ConfirmEmailDialog
+        open={pendingEmail !== null}
+        email={pendingEmail ? maskEmail(pendingEmail) : ""}
+        busy={sending}
+        onCancel={() => setPendingEmail(null)}
+        onConfirm={confirmSendCode}
+      />
     </form>
   );
 }
@@ -743,58 +723,71 @@ function BlockedLocalOwner() {
 }
 
 function ConfirmEmailDialog({
+  open,
   email,
   busy,
   onCancel,
   onConfirm,
 }: {
+  open: boolean;
   email: string;
   busy: boolean;
   onCancel: () => void;
   onConfirm: () => void;
 }) {
   return (
-    <div className="fixed inset-0 z-50 grid place-items-center bg-ink/24 px-4" data-parity-id="parity.app.app.src.components.auth.auth.gate.830064ec17" onClick={busy ? undefined : onCancel}>
-      <div className="surface w-full max-w-xs px-5 py-5 shadow-strong" data-parity-id="parity.app.app.src.components.auth.auth.gate.9711bbd536" onClick={(event) => event.stopPropagation()}>
-        <div className="grid h-10 w-10 place-items-center ui-control-radius bg-denim/10 text-denim">
-          <Mail size={20} aria-hidden="true" />
-        </div>
-        <h2 className="mt-3 text-base font-bold text-ink">发送邮箱验证码</h2>
-        <p className="mt-2 text-sm leading-relaxed text-ink/65">验证码将发送至 {email}，10 分钟内有效。确认发送？</p>
-        <div className="mt-4 grid grid-cols-2 gap-2">
-          <button type="button" data-parity-id="parity.app.app.src.components.auth.auth.gate.47c5ea990d" onClick={onCancel} disabled={busy} className="h-10 ui-control-radius border border-ink/10 text-sm font-semibold text-ink/60 disabled:opacity-60">
-            取消
-          </button>
-          <button type="button" data-parity-id="parity.app.app.src.components.auth.auth.gate.6a892b1190" onClick={onConfirm} disabled={busy} className="inline-flex h-10 items-center justify-center gap-2 ui-control-radius bg-denim text-sm font-semibold text-white disabled:opacity-60">
-            {busy ? <Loader2 size={14} className="animate-spin" aria-hidden="true" /> : null}
-            确认发送
-          </button>
-        </div>
+    <MotionSheet
+      open={open}
+      onClose={busy ? () => undefined : onCancel}
+      variant="confirm"
+      ariaLabel="确认发送邮箱验证码"
+      dismissible={!busy}
+      closeOnBackdrop={!busy}
+      closeOnEscape={!busy}
+      panelClassName="!max-w-xs px-5 py-5"
+    >
+      <div className="grid h-10 w-10 place-items-center ui-control-radius bg-denim/10 text-denim">
+        <Mail size={20} aria-hidden="true" />
       </div>
-    </div>
+      <h2 className="mt-3 text-base font-bold text-ink">发送邮箱验证码</h2>
+      <p className="mt-2 text-sm leading-relaxed text-ink/65">验证码将发送至 {email}，10 分钟内有效。确认发送？</p>
+      <div className="mt-4 grid grid-cols-2 gap-2">
+        <button type="button" data-parity-id="parity.app.app.src.components.auth.auth.gate.47c5ea990d" onClick={onCancel} disabled={busy} className="h-10 ui-control-radius border border-ink/10 text-sm font-semibold text-ink/60 disabled:opacity-60">
+          取消
+        </button>
+        <button type="button" data-parity-id="parity.app.app.src.components.auth.auth.gate.6a892b1190" onClick={onConfirm} disabled={busy} className="inline-flex h-10 items-center justify-center gap-2 ui-control-radius bg-denim text-sm font-semibold text-white disabled:opacity-60">
+          {busy ? <Loader2 size={14} className="animate-spin" aria-hidden="true" /> : null}
+          确认发送
+        </button>
+      </div>
+    </MotionSheet>
   );
 }
 
-function ExitDialog({ onClose }: { onClose: () => void }) {
+function ExitDialog({ open, onClose }: { open: boolean; onClose: () => void }) {
   return (
-    <div className="fixed inset-0 z-50 grid place-items-center bg-ink/20 px-4" data-parity-id="parity.app.app.src.components.auth.auth.gate.19c4cf559a" onClick={onClose}>
-      <div className="surface w-full max-w-xs px-5 py-5 shadow-strong" data-parity-id="parity.app.app.src.components.auth.auth.gate.52c358e6ee" onClick={(event) => event.stopPropagation()}>
-        <h2 className="text-base font-bold text-ink">退出应用</h2>
-        <p className="mt-2 text-sm text-ink/65">确定要退出衣橱穿搭助手吗？</p>
-        <div className="mt-4 flex justify-end gap-3">
-          <button type="button" data-parity-id="parity.app.app.src.components.auth.auth.gate.e7547b1720" onClick={onClose} className="h-9 ui-control-radius px-4 text-sm font-semibold text-ink/60">
-            取消
-          </button>
-          <button
-            type="button"
-            data-parity-id="parity.app.app.src.components.auth.auth.gate.6ac1bc21a4" onClick={() => App.exitApp()}
-            className="h-9 ui-control-radius bg-denim px-4 text-sm font-semibold text-white"
-          >
-            退出
-          </button>
-        </div>
+    <MotionSheet
+      open={open}
+      onClose={onClose}
+      variant="confirm"
+      ariaLabel="确认退出应用"
+      panelClassName="!max-w-xs px-5 py-5"
+    >
+      <h2 className="text-base font-bold text-ink">退出应用</h2>
+      <p className="mt-2 text-sm text-ink/65">确定要退出衣橱穿搭助手吗？</p>
+      <div className="mt-4 flex justify-end gap-3">
+        <button type="button" data-parity-id="parity.app.app.src.components.auth.auth.gate.e7547b1720" onClick={onClose} className="h-9 ui-control-radius px-4 text-sm font-semibold text-ink/60">
+          取消
+        </button>
+        <button
+          type="button"
+          data-parity-id="parity.app.app.src.components.auth.auth.gate.6ac1bc21a4" onClick={() => App.exitApp()}
+          className="h-9 ui-control-radius bg-denim px-4 text-sm font-semibold text-white"
+        >
+          退出
+        </button>
       </div>
-    </div>
+    </MotionSheet>
   );
 }
 

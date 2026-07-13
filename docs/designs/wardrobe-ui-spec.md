@@ -270,6 +270,14 @@ Icon-only 按钮必须有 `aria-label`；图标与文字组合时图标使用 `a
 - `dismissible=false` 或 `closeOnEscape/closeOnBackdrop=false` 的关闭请求保持当前层，触发 `onDismissBlocked`，并提供“操作进行中”读屏状态；Toast 继续留在栈外。
 - A1 只建立共享 Sheet 与顶层返回基线；Lightbox、Popover、Cropper 和遗留页面私有 Back listener 的全面迁移属于 A2，不得把 A1 的局部接入误报为全 App 浮层迁移完成。
 
+##### 6.1.2 A2-App 壳层、设置与账号迁移
+
+- App 全局“新建 / 退出”、Auth 登录壳邮箱验证码与退出确认、设置诊断描述 / 成功 / 失败，以及设置内衣橱增删改统一使用冻结 `MotionSheet` 变体；这些区域不得再创建私有 `fixed inset-0` 对话框。
+- Auth、设置首页、穿衣画像、参考照片、MiniMax、衣橱列表、账号安全、改密和注销页只通过 `useStableBackHandler` 登记页面决策；`OverlayRoot` 仍是唯一原生 Android Back / document Escape listener。Overlay 优先于页面，页面优先于 App 根退出 fallback。
+- 表单、确认和危险确认必须提供可访问名称；打开时焦点进入 topmost，底层 App 与下层浮层保持 `inert/aria-hidden`，关闭后恢复原触发器。诊断遮罩按既有产品语义不关闭，Back / Escape 仍只关闭当前诊断层。
+- 衣橱新增、编辑、迁移、删除，画像 / 参考照 / MiniMax 保存，账号改绑 / 改密与最终注销在请求完成和服务端读回前保持当前页面或 Sheet；busy 时 `dismissible=false`，Back、Escape、backdrop、取消和重复提交均不得中断事务。
+- 本小节只声明 A2-App 独占区域完成迁移；衣橱列表 / 详情、套装、种草、录入、Lightbox、Popover 与 Cropper 的遗留 listener 或私有覆盖层由 A2-Core / A2-Flows 及后续命名 Wave 负责，不得据此宣称全 App 已无遗留层。
+
 #### 6.2 并行 Wave 规范所有权
 
 并行 Session 对运行时文件实行独占所有权；规范只允许修改下列命名小节。生成的 HTML 与 `VERSION_HISTORY.md` 在每个 Wave 合入后由主 Agent 保全并重生成。

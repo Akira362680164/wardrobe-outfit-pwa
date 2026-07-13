@@ -1,3 +1,13 @@
+## 2026-07-13 / v2.1.18-test / Codex Subagent A2-App — App 壳、设置与账号浮层 / Back 迁移
+
+- **执行 Agent**：Codex 实施 Subagent A2-App；独立分支 `codex/motion-a2-app-20260713`、独立 worktree `/Users/fangzheng/Documents/wardrobe-motion-a2-app-20260713`，基于 A1 后批次提交 `10d9e4176216ba3f7dcd3b47289294e9ad70e230`；未合入 integration / `main`，未推送。本 Session 由主集成 Agent 分派，未再触发下级 subagent。
+- **目的与版本**：依照 Apple 式可预测层级、可中断性与无障碍焦点原则，把 A2-App 独占范围接入 A1 冻结 Overlay / Back API；版本保持 `2.1.18-test`，本批不构建 APK、不修改共享 Overlay API、业务契约、服务端、存储或小程序。
+- **改动范围**：修改 `wardrobe-app.tsx` 的 App 全局新建 / 退出、SettingsView、诊断和四个设置子页；修改 `auth-gate.tsx`、`account-views.tsx`、`account-deletion-view.tsx`；更新账号 / 认证专项合同、UI 规范及生成 HTML。未修改 A1/Core 所有的 `motion-common.tsx`、`overlay-root.tsx`、OverlayStack / BackCoordinator 与其共享测试，也未触碰套装、种草、录入和详情组件。
+- **实现摘要**：Auth 邮箱验证码与退出确认、诊断描述 / 成功 / 失败和设置内衣橱增删改不再自建 fixed dialog，统一使用具名 `MotionSheet` 变体；Auth、设置首页、画像、参考照、MiniMax、衣橱列表、账号安全、改密和注销页删除私有 Capacitor Back listener，改为带优先级的 `useStableBackHandler`。Overlay 先于页面、页面先于 App 根 fallback；焦点进入、背景 inert、topmost 和焦点恢复由 A1 共享层统一提供。
+- **事务保护**：衣橱新增 / 编辑 / 迁移 / 删除等待线上操作和 `refreshState` 完成后才关闭 Sheet，失败保留当前表单；画像、参考照和 MiniMax 保存等待服务端 / Key 校验完成；账号改绑、改密与永久注销 busy 时拒绝 Back / Escape / backdrop，禁用取消和重复提交，注销 processing / completed / failed 状态不返回业务页。
+- **验证结果**：`docs:ui-spec:build`、`docs:ui-spec:check`、`test:logic:ui-spec-preview`、`test:logic:ui-overlay-contract`、`test:logic:back-priority-regression`、`test:logic:urgent-account`、`test:logic:account-deletion-app`、`test:logic:auth-flow-v2-0-1`、`test:logic:auth-client-shell`、`test:logic:wardrobe-app-split`、`test:logic:ui-overflow`、根 `typecheck`、Next `build` 与 `git diff --check` 通过。
+- **风险门禁与未验证项**：`high`（认证、全局返回和线上写入关闭时机）。A2-App 范围内已无私有 `App.addListener("backButton")` 或 raw fixed dialog；`wardrobe-app.tsx` 的衣橱列表 / 统计 / 详情编辑区域仍有 5 处本批禁止触碰的遗留 listener，归 A2-Flows / 后续所有者，不能宣称全 App 已完成迁移。未做 Android 真机 / 模拟器、TalkBack、物理键盘焦点、窄屏触摸或退出动画慢放；未运行或修复既有 UI token 基线失败，最终 APK / Android 验收由主集成 Agent 收口。
+
 ## 2026-07-13 / v2.1.18-test / Codex Subagent A1 — OverlayStack 与单一 Back/Escape 基线
 
 - **执行 Agent**：Codex 实施 Subagent A1；独立分支 `codex/motion-a1-overlay-back-20260713`、独立 worktree `/Users/fangzheng/Documents/wardrobe-motion-a1-overlay-back-20260713`，基于批次提交 `8fdb07f7d17e9578f18f90f04d68f8cd8308d1a8`；未合入 integration / `main`，未推送。
