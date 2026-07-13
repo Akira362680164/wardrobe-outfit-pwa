@@ -333,6 +333,15 @@ Icon-only 按钮必须有 `aria-label`；图标与文字组合时图标使用 `a
 - 若全局“+”Sheet 的 fixed-body 锁仍在退出期，读取 `body.top` 对应的真实呈现位置，并只把最终恢复推迟到锁释放的同一绘制帧；不得让锁滚回写覆盖目标 route。选择“单品 / 套装 / 种草”时，关闭 Sheet、录入 trigger 与 intake push 必须在同一用户事件内提交，不添加空等定时器，使 Sheet 退出与录入页进入自然重叠。
 - C1 只负责 AppRoute 外层导航、主 Tab、全局“+”衔接和 route scrollY。卡片 source anchor、Lightbox 来源动画与三类详情内部连续性仍属于 C2；深层计划、设置和种草子页的统一路由化仍属于 C3。
 
+##### 6.1.9 C3-Settings 设置、画像与账号深层流程
+
+- 设置首页、穿衣画像、参考照片、MiniMax 与衣橱位置共用唯一原子 `SettingsPageTransition`，同时提交 `fromPage/toPage/direction`。进入子页沿用 C1 push 的“新页 `+24px` / 旧页 `-6px`”，返回完全反向；`AnimatePresence mode="sync"` 允许快速 push/pop/push 从当前呈现状态接管，退出页必须 `inert/aria-hidden` 且不接收 pointer。reduced-motion 只保留短 opacity，不运行 x 位移。
+- 设置内层只保存 `settings_home` 的会话内滚动位置。进入子页前读取实际呈现 scrollY，返回首页时在 `useLayoutEffect` 中于首帧绘制前恢复；子页从页首开始。账号安全、改密与注销继续使用 C1 外层 AppRoute，不再套第二层设置位移动画，避免双重滑动。
+- 画像、参考照片、MiniMax、衣橱位置、诊断上传、账号改绑、改密、验证码重置和最终注销的异步事务，在提交及服务端读回期间必须保持当前页面或 topmost Sheet。Back、Escape、backdrop、显式取消、重复提交和表单控件都不得中断 busy 事务；关闭请求继续通过共享 OverlayStack 播报“操作进行中”。
+- 请求失败必须保留当前子页、确认层、字段值、图片草稿和重试入口，不得弹回设置首页或清空输入。请求成功也不能以写响应直接结束：画像 / 参考照 / 衣橱采用保存后的服务端实体或 overview 读回，账号改绑 / 改密读取最新 security 状态，注销轮询完成状态后，才允许关闭当前层并显示成功。
+- MiniMax 设置先对内存草稿执行真实连接验证，通过后才写入设备设置并 pop；验证失败时不覆盖既有 Key、不离开当前页。诊断上传把构建、授权和上传视为一笔不可取消事务，失败仍保留问题描述。
+- 390px 深层流程验收至少覆盖：设置内 push/pop 与列表滚动恢复、快速方向反转、设置→账号→改密的外层路由、注销 Sheet 的 backdrop/Escape/Back 拒绝、失败保留路由与输入、写入确认后仍等待读回、读回成功才关闭，以及 reduced-motion 无位移和无横向溢出。
+
 #### 6.2 并行 Wave 规范所有权
 
 并行 Session 对运行时文件实行独占所有权；规范只允许修改下列命名小节。生成的 HTML 与 `VERSION_HISTORY.md` 在每个 Wave 合入后由主 Agent 保全并重生成。

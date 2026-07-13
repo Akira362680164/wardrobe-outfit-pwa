@@ -62,6 +62,11 @@ import { WardrobeImageSourceSheet } from "@/components/wardrobe-image-source-she
 import { WardrobeHiddenImageInputs } from "@/components/wardrobe-hidden-image-inputs";
 import { AccountManagementView, ChangePasswordView, type WardrobeCloudAuth } from "@/components/auth/account-views";
 import { AccountDeletionView } from "@/components/auth/account-deletion-view";
+import {
+  createSettingsPageTransition,
+  SettingsSubpageMotion,
+  type SettingsPageName,
+} from "@/components/auth/settings-subpage-motion";
 import { createActionsForView, preferredCreateActionByView, type ViewKey } from "@/components/wardrobe-create-actions";
 import { useWardrobeImageIntakeController } from "@/components/use-wardrobe-image-intake-controller";
 import { WardrobeSelectedImagesReviewPortal } from "@/components/wardrobe-selected-images-review-portal";
@@ -759,7 +764,19 @@ export function WardrobeApp({ cloudAuth }: { cloudAuth?: WardrobeCloudAuth } = {
     await refreshState();
   }
 
-  async function saveSettings(nextSettings: DeviceMiniMaxSettings) { const normalizedSettings = { ...nextSettings, model: "MiniMax-M3" }; saveMiniMaxSettings(normalizedSettings); setMiniMaxSettings(normalizedSettings); if (!hasDeviceMiniMaxKey(normalizedSettings)) { showMessage("MiniMax 设置已保存在本机"); return; } showMessage("正在验证 MiniMax Key..."); const result = await withKeepAwake(() => validateMiniMaxKey(normalizedSettings)); showMessage(result.message); }
+  async function saveSettings(nextSettings: DeviceMiniMaxSettings): Promise<boolean> {
+    const normalizedSettings = { ...nextSettings, model: "MiniMax-M3" };
+    if (hasDeviceMiniMaxKey(normalizedSettings)) {
+      showMessage("正在验证 MiniMax Key...", "info");
+      const result = await withKeepAwake(() => validateMiniMaxKey(normalizedSettings));
+      showMessage(result.message, result.valid ? "success" : "error");
+      if (!result.valid) return false;
+    }
+    saveMiniMaxSettings(normalizedSettings);
+    setMiniMaxSettings(normalizedSettings);
+    if (!hasDeviceMiniMaxKey(normalizedSettings)) showMessage("MiniMax 设置已保存在本机", "success");
+    return true;
+  }
 
 	  async function seedDemoItems() {
     const now = new Date().toISOString();
@@ -3686,7 +3703,7 @@ function WardrobeEditPage({
     </div>
   );
 }
-type SettingSubPage = null | "profile" | "photos" | "minimax" | "wardrobes";
+type SettingSubPage = Exclude<SettingsPageName, "home">;
 
 const FIT_GENDER_LABELS: Record<FitGender, string> = {
   menswear: "男装版型",
@@ -3780,12 +3797,14 @@ function SettingsSwitch({
   checked,
   onChange,
   ariaLabel,
+  disabled = false,
   className = "",
   parityId,
 }: {
   checked: boolean;
   onChange: (next: boolean) => void;
   ariaLabel: string;
+  disabled?: boolean;
   className?: string;
   parityId?: string;
 }) {
@@ -3795,10 +3814,11 @@ function SettingsSwitch({
       role="switch"
       aria-checked={checked}
       aria-label={ariaLabel}
-      data-parity-id={parityId ?? "parity.app.app.src.components.wardrobe.app.771be12433"} onClick={() => onChange(!checked)}
+      disabled={disabled}
+      data-parity-id={parityId ?? "parity.app.app.src.components.wardrobe.app.771be12433"} onClick={() => { if (!disabled) onChange(!checked); }}
       className={`relative shrink-0 rounded-full transition-colors ${
         checked ? "bg-denim" : "bg-ink/20"
-      } ${className}`}
+      } disabled:opacity-55 ${className}`}
     >
       <span
         aria-hidden="true"
@@ -3843,7 +3863,7 @@ function SettingsView({
   openMiniMaxRequest?: number;
   onMiniMaxRequestConsumed?: () => void;
 	  miniMaxSettings: DeviceMiniMaxSettings;
-	  onSaveMiniMaxSettings: (settings: DeviceMiniMaxSettings) => void;
+	  onSaveMiniMaxSettings: (settings: DeviceMiniMaxSettings) => Promise<boolean> | boolean;
 	  onAddWardrobe: (name: string, note: string) => Promise<void>;
   onUpdateWardrobe: (id: string, name: string, note: string) => Promise<void>;
   onDeleteWardrobe: (id: string, action: { mode: "migrate"; targetLocationId: string } | { mode: "delete_items" }) => Promise<void>;
@@ -3853,8 +3873,27 @@ function SettingsView({
   onExpandImage?: (img: { src: string; alt: string }) => void;
   onRefreshState?: () => Promise<void> | void;
 }) {
-  // v0.9.22: SettingsView 内部子页面路由 (null = 首页, "profile" / "photos" / "minimax" / "wardrobes" = 子页)
-  const [subPage, setSubPage] = useState<SettingSubPage>(null);
+  const [settingsNavigation, setSettingsNavigation] = useState(() => ({
+    page: "home" as SettingsPageName,
+    transition: createSettingsPageTransition(0, "home", "home", "push"),
+  }));
+  const subPage: SettingSubPage | null = settingsNavigation.page === "home" ? null : settingsNavigation.page;
+  const navigateSettingsPage = useCallback((nextPage: SettingsPageName) => {
+    setSettingsNavigation((current) => {
+      if (current.page === nextPage) return current;
+      const direction = nextPage === "home" ? "pop" : "push";
+      return {
+        page: nextPage,
+        transition: createSettingsPageTransition(
+          current.transition.id + 1,
+          current.page,
+          nextPage,
+          direction,
+        ),
+      };
+    });
+  }, []);
+  const popSettingsPage = useCallback(() => navigateSettingsPage("home"), [navigateSettingsPage]);
   const [showAddWardrobe, setShowAddWardrobe] = useState(false);
   const [editWardrobeTarget, setEditWardrobeTarget] = useState<ClosetLocation | null>(null);
   const [deleteWardrobeTarget, setDeleteWardrobeTarget] = useState<ClosetLocation | null>(null);
@@ -3864,6 +3903,7 @@ function SettingsView({
   const [wardrobeFormNote, setWardrobeFormNote] = useState("");
   const [wardrobeListExpanded, setWardrobeListExpanded] = useState(false);
   const [wardrobeMutation, setWardrobeMutation] = useState<null | "add" | "edit" | "migrate" | "delete">(null);
+  const [settingsInlineMutation, setSettingsInlineMutation] = useState<null | "profile-toggle">(null);
   const [diagnosticUploadState, setDiagnosticUploadState] = useState<DiagnosticUploadState>({ phase: "idle" });
   const [showDiagnosticDescDialog, setShowDiagnosticDescDialog] = useState(false);
   const [diagnosticDescription, setDiagnosticDescription] = useState("");
@@ -3873,11 +3913,14 @@ function SettingsView({
   useEffect(() => {
     if (!openMiniMaxRequest || openMiniMaxRequest === lastOpenMiniMaxRequestRef.current) return;
     lastOpenMiniMaxRequestRef.current = openMiniMaxRequest;
-    setSubPage("minimax");
+    navigateSettingsPage("minimax");
     onMiniMaxRequestConsumed?.();
-  }, [onMiniMaxRequestConsumed, openMiniMaxRequest]);
+  }, [navigateSettingsPage, onMiniMaxRequestConsumed, openMiniMaxRequest]);
   const [showDiagnosticSuccess, setShowDiagnosticSuccess] = useState(false);
   const [showDiagnosticFailed, setShowDiagnosticFailed] = useState(false);
+  const diagnosticBusy = diagnosticUploadState.phase === "building"
+    || diagnosticUploadState.phase === "authorizing"
+    || diagnosticUploadState.phase === "uploading";
   function handleStartDiagnosticUpload() {
     if (diagnosticUploadState.phase !== "idle") return;
     setDiagnosticUploadState({ phase: "describing", message: "请描述遇到的问题…", problemDescription: diagnosticDescription });
@@ -3885,13 +3928,14 @@ function SettingsView({
   }
 
   function handleCancelDiagnosticUpload() {
+    if (diagnosticBusy) return;
     setShowDiagnosticDescDialog(false);
     setDiagnosticUploadState({ phase: "idle" });
   }
 
   async function handleConfirmDiagnosticUpload() {
+    if (diagnosticBusy) return;
     const description = diagnosticDescription.trim() || null;
-    setShowDiagnosticDescDialog(false);
     setDiagnosticUploadState({ phase: "building", message: "正在整理诊断数据…", problemDescription: description });
     recordDiagnosticEvent("diagnostic_upload_started", { activeView, route });
 
@@ -4008,6 +4052,7 @@ function SettingsView({
         gitCommitShort: buildIdentity.gitCommitShort,
       });
       setDiagnosticDescription("");
+      setShowDiagnosticDescDialog(false);
       setShowDiagnosticSuccess(true);
     } catch (error) {
       const errMsg = error instanceof Error ? error.message : "未知错误";
@@ -4027,6 +4072,7 @@ function SettingsView({
         message: errMsg,
         problemDescription: description,
       });
+      setShowDiagnosticDescDialog(false);
       setShowDiagnosticFailed(true);
     }
   }
@@ -4041,9 +4087,14 @@ function SettingsView({
   // 具体页面转换由本组件及各子页登记到 BackCoordinator，一次 Back 只推进一层。
   useEffect(() => {
     hasSubPageRef.current = subPage !== null;
+    return () => {
+      hasSubPageRef.current = false;
+    };
   }, [subPage]);
 
   useStableBackHandler(() => {
+    if (diagnosticBusy) return true;
+    if (settingsInlineMutation !== null) return true;
     if (wardrobeMutation !== null) return true;
     if (wardrobeListExpanded) {
       setWardrobeListExpanded(false);
@@ -4051,56 +4102,6 @@ function SettingsView({
     }
     return false;
   }, subPage === null, 20);
-
-  // ---------- 子页面: 穿衣画像详情 ----------
-  if (subPage === "profile") {
-    return (
-      <ProfileDetailPage
-        tryOnProfile={tryOnProfile}
-        onSave={async (profile) => { await onSaveTryOnProfile(profile); onMessage?.("穿衣画像已保存"); }}
-        onBack={() => setSubPage(null)}
-        onMessage={onMessage}
-      />
-    );
-  }
-
-  // ---------- 子页面: AI 试穿参考照片详情 ----------
-  if (subPage === "photos") {
-    return (
-      <PhotosDetailPage
-        tryOnProfile={tryOnProfile}
-        onSave={async (profile) => { await onSaveTryOnProfile(profile); onMessage?.("AI 试穿参考照片已保存"); }}
-        onBack={() => setSubPage(null)}
-        onMessage={onMessage}
-        onExpandImage={onExpandImage}
-      />
-    );
-  }
-
-  // ---------- 子页面: MiniMax 配置详情 ----------
-  if (subPage === "minimax") {
-    return (
-      <MiniMaxDetailPage
-        settings={miniMaxSettings}
-        onSave={async (s) => { await onSaveMiniMaxSettings(s); setSubPage(null); }}
-        onBack={() => setSubPage(null)}
-        onMessage={onMessage}
-      />
-    );
-  }
-
-  // ---------- 子页面: 全部衣橱管理 ----------
-  if (subPage === "wardrobes") {
-    return (
-      <WardrobeListPage
-        items={items}
-        locations={locations}
-        onBack={() => setSubPage(null)}
-        onAdd={() => setShowAddWardrobe(true)}
-        onEdit={(loc) => setEditWardrobeTarget(loc)}
-      />
-    );
-  }
 
   // ---------- 首页摘要视图 ----------
   const locationCounts = new Map<string, number>();
@@ -4143,7 +4144,46 @@ function SettingsView({
   const hasMiniMaxKey = miniMaxSettings.apiKey.trim().length > 0;
 
   return (
-    <div className="grid min-w-0 grid-cols-[minmax(0,1fr)] gap-3.5 [&>.surface]:shadow-none">
+    <>
+      <SettingsSubpageMotion transition={settingsNavigation.transition}>
+        {subPage === "profile" ? (
+          <ProfileDetailPage
+            tryOnProfile={tryOnProfile}
+            onSave={async (profile) => { await onSaveTryOnProfile(profile); }}
+            onBack={popSettingsPage}
+            onMessage={onMessage}
+          />
+        ) : subPage === "photos" ? (
+          <PhotosDetailPage
+            tryOnProfile={tryOnProfile}
+            onSave={async (profile) => { await onSaveTryOnProfile(profile); }}
+            onBack={popSettingsPage}
+            onMessage={onMessage}
+            onExpandImage={onExpandImage}
+          />
+        ) : subPage === "minimax" ? (
+          <MiniMaxDetailPage
+            settings={miniMaxSettings}
+            onSave={onSaveMiniMaxSettings}
+            onSaved={popSettingsPage}
+            onBack={popSettingsPage}
+            onMessage={onMessage}
+          />
+        ) : subPage === "wardrobes" ? (
+          <WardrobeListPage
+            items={items}
+            locations={locations}
+            busy={wardrobeMutation !== null}
+            onBack={popSettingsPage}
+            onAdd={() => setShowAddWardrobe(true)}
+            onEdit={(loc) => setEditWardrobeTarget(loc)}
+          />
+        ) : (
+          <div
+            className="grid min-w-0 grid-cols-[minmax(0,1fr)] gap-3.5 [&>.surface]:shadow-none"
+            aria-busy={settingsInlineMutation !== null || diagnosticBusy || undefined}
+            inert={settingsInlineMutation !== null ? true : undefined}
+          >
       {/* Header - 与 AppSubPageTopBar / 衣橱首页按钮行 / 套装/种草首页 header 一致 h-14 (56px) */}
       <h1 className="flex h-14 items-center px-4 pt-2 text-xl font-bold tracking-tight">设置</h1>
 
@@ -4172,6 +4212,45 @@ function SettingsView({
       ) : null}
 
       {/* 1. 衣橱设置 (紧凑列表行, 超过 3 个折叠) */}
+      <article className="ui-card px-4 py-3.5">
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0">
+            <h2 className="text-base font-semibold">衣橱位置</h2>
+            <p className="mt-0.5 text-xs text-ink/55">管理衣物所在的位置</p>
+          </div>
+          <AppPressable
+            type="button"
+            feedback="control"
+            onClick={() => navigateSettingsPage("wardrobes")}
+            className="inline-flex h-8 shrink-0 items-center gap-1 text-xs font-semibold text-denim"
+          >
+            管理全部 <ChevronRight size={12} aria-hidden="true" />
+          </AppPressable>
+        </div>
+        <div className="mt-3 grid gap-2">
+          {visibleLocations.map((location) => (
+            <WardrobeRow
+              key={location.id}
+              location={location}
+              count={locationCounts.get(location.id) ?? 0}
+              isDefault={location.id === "home"}
+              onClick={location.id === "home" ? undefined : () => setEditWardrobeTarget(location)}
+            />
+          ))}
+        </div>
+        {hasMoreLocations ? (
+          <button
+            type="button"
+            onClick={() => setWardrobeListExpanded((expanded) => !expanded)}
+            className="mt-2 inline-flex min-h-10 w-full items-center justify-center gap-1 text-xs font-semibold text-ink/55"
+            aria-expanded={wardrobeListExpanded}
+          >
+            {wardrobeListExpanded ? "收起" : `展开其余 ${sortedLocations.length - 3} 个`}
+            {wardrobeListExpanded ? <ChevronUp size={13} aria-hidden="true" /> : <ChevronDown size={13} aria-hidden="true" />}
+          </button>
+        ) : null}
+      </article>
+
       {/* 2. 我的穿衣画像摘要卡 */}
       <article className="ui-card px-4 py-3.5">
         <div className="flex items-start justify-between gap-3">
@@ -4181,7 +4260,7 @@ function SettingsView({
           </div>
           <button
             type="button"
-            data-parity-id="parity.app.app.src.components.wardrobe.app.0ce9ab0ec4" onClick={() => setSubPage("profile")}
+            data-parity-id="parity.app.app.src.components.wardrobe.app.0ce9ab0ec4" onClick={() => navigateSettingsPage("profile")}
             className="inline-flex h-8 shrink-0 items-center gap-1 text-xs font-semibold text-denim"
           >
             编辑画像 <ChevronRight size={12} aria-hidden="true" />
@@ -4220,10 +4299,19 @@ function SettingsView({
             parityId="parity.app.app.src.components.wardrobe.app.239ca51dbb"
             checked={tryOnProfile.enabled}
             onChange={async (next) => {
+              if (settingsInlineMutation !== null) return;
               const updated: TryOnProfileState = { ...tryOnProfile, enabled: next, updatedAt: new Date().toISOString() };
-              await onSaveTryOnProfile(updated);
-              onMessage?.(next ? "已启用参考照生成试穿图" : "已关闭参考照，试穿时将不发送照片");
+              setSettingsInlineMutation("profile-toggle");
+              try {
+                await onSaveTryOnProfile(updated);
+                onMessage?.(next ? "已启用参考照生成试穿图" : "已关闭参考照，试穿时将不发送照片");
+              } catch (error) {
+                onMessage?.(getErrorMessage(error));
+              } finally {
+                setSettingsInlineMutation(null);
+              }
             }}
+            disabled={settingsInlineMutation !== null}
             ariaLabel={tryOnProfile.enabled ? "关闭参考照" : "启用参考照"}
             className="h-6 w-11"
           />
@@ -4254,7 +4342,7 @@ function SettingsView({
           </div>
           <button
             type="button"
-            data-parity-id="parity.app.app.src.components.wardrobe.app.e170d6d091" onClick={() => setSubPage("photos")}
+            data-parity-id="parity.app.app.src.components.wardrobe.app.e170d6d091" onClick={() => navigateSettingsPage("photos")}
             className="inline-flex h-8 shrink-0 items-center gap-1 text-xs font-semibold text-ink/55 active:text-denim"
             aria-label="查看或管理参考照片"
           >
@@ -4291,7 +4379,7 @@ function SettingsView({
           )}
           <button
             type="button"
-            data-parity-id="parity.app.app.src.components.wardrobe.app.53e511c02c" onClick={() => setSubPage("minimax")}
+            data-parity-id="parity.app.app.src.components.wardrobe.app.53e511c02c" onClick={() => navigateSettingsPage("minimax")}
             className="inline-flex h-9 shrink-0 items-center gap-1 ui-control-radius border border-ink/10 bg-white px-3 text-xs font-semibold active:scale-95 transition-transform"
           >
             {hasMiniMaxKey ? "修改配置" : "配置 Key"} <ChevronRight size={12} aria-hidden="true" />
@@ -4323,44 +4411,61 @@ function SettingsView({
           </p>
         )}
       </article>
+          </div>
+        )}
+      </SettingsSubpageMotion>
 
       <MotionSheet
         open={showDiagnosticDescDialog}
-        onClose={handleCancelDiagnosticUpload}
+        onClose={diagnosticBusy ? () => undefined : handleCancelDiagnosticUpload}
         variant="form"
         ariaLabel="补充诊断问题描述"
+        dismissible={!diagnosticBusy}
         closeOnBackdrop={false}
+        closeOnEscape={!diagnosticBusy}
         panelClassName="!max-w-sm pb-[calc(16px+env(safe-area-inset-bottom))]"
       >
-        <h3 className="text-base font-semibold">补充问题描述</h3>
-        <textarea
-          value={diagnosticDescription}
-          data-parity-id="parity.app.app.src.components.wardrobe.app.eeb0f2878c" onChange={(e) => {
-            if (e.target.value.length <= 1000) {
-              setDiagnosticDescription(e.target.value);
-            }
-          }}
-          placeholder="请描述刚才进行了什么操作，以及出现了什么问题。&#10;此项非必填，留空也可以继续上传。"
-          className="mt-3 h-28 w-full resize-none rounded-lg border border-ink/10 bg-white px-3 py-2 text-sm outline-none focus:border-denim"
-          rows={4}
-        />
-        <p className="mt-1 text-right text-[11px] text-ink/40">{diagnosticDescription.length}/1000</p>
-        <div className="mt-3 flex gap-2">
-          <button
-            type="button"
-            data-parity-id="parity.app.app.src.components.wardrobe.app.2730ac63f5" onClick={handleCancelDiagnosticUpload}
-            className="h-10 flex-1 rounded-lg border border-ink/10 text-sm font-medium"
-          >
-            取消
-          </button>
-          <button
-            type="button"
-            data-parity-id="parity.app.app.src.components.wardrobe.app.3e4ba0eb4e" onClick={handleConfirmDiagnosticUpload}
-            className="h-10 flex-1 rounded-lg bg-denim text-sm font-semibold text-white"
-          >
-            确认上传
-          </button>
-        </div>
+        {diagnosticBusy ? (
+          <div className="grid min-h-36 place-items-center gap-3 text-center" aria-live="polite">
+            <Loader2 size={24} className="animate-spin text-denim" aria-hidden="true" />
+            <div>
+              <h3 className="text-base font-semibold">正在上传诊断数据</h3>
+              <p className="mt-1 text-sm text-ink/55">{diagnosticUploadState.message ?? "请稍候…"}</p>
+            </div>
+          </div>
+        ) : (
+          <>
+            <h3 className="text-base font-semibold">补充问题描述</h3>
+            <textarea
+              value={diagnosticDescription}
+              data-parity-id="parity.app.app.src.components.wardrobe.app.eeb0f2878c" onChange={(e) => {
+                if (e.target.value.length <= 1000) {
+                  setDiagnosticDescription(e.target.value);
+                }
+              }}
+              placeholder="请描述刚才进行了什么操作，以及出现了什么问题。&#10;此项非必填，留空也可以继续上传。"
+              className="mt-3 h-28 w-full resize-none rounded-lg border border-ink/10 bg-white px-3 py-2 text-sm outline-none focus:border-denim"
+              rows={4}
+            />
+            <p className="mt-1 text-right text-[11px] text-ink/40">{diagnosticDescription.length}/1000</p>
+            <div className="mt-3 flex gap-2">
+              <button
+                type="button"
+                data-parity-id="parity.app.app.src.components.wardrobe.app.2730ac63f5" onClick={handleCancelDiagnosticUpload}
+                className="h-10 flex-1 rounded-lg border border-ink/10 text-sm font-medium"
+              >
+                取消
+              </button>
+              <button
+                type="button"
+                data-parity-id="parity.app.app.src.components.wardrobe.app.3e4ba0eb4e" onClick={handleConfirmDiagnosticUpload}
+                className="h-10 flex-1 rounded-lg bg-denim text-sm font-semibold text-white"
+              >
+                确认上传
+              </button>
+            </div>
+          </>
+        )}
       </MotionSheet>
 
       <MotionSheet
@@ -4464,10 +4569,10 @@ function SettingsView({
       >
         <h3 className="mb-3 text-base font-semibold">添加衣橱</h3>
         <div className="grid gap-3">
-          <ClosetNameField value={wardrobeFormName} data-parity-id="parity.app.app.src.components.wardrobe.app.ef5580ced2" onChange={setWardrobeFormName} placeholder="例如 办公室抽屉" />
+          <ClosetNameField value={wardrobeFormName} data-parity-id="parity.app.app.src.components.wardrobe.app.ef5580ced2" onChange={setWardrobeFormName} placeholder="例如 办公室抽屉" disabled={wardrobeMutation !== null} />
           <label className="grid gap-1 text-sm font-medium">
             衣橱简介
-            <input value={wardrobeFormNote} data-parity-id="parity.app.app.src.components.wardrobe.app.015f4c29c2" onChange={(e) => setWardrobeFormNote(e.target.value)} className="h-10 w-full rounded-lg border border-ink/10 bg-white px-3 text-sm outline-none focus:border-denim" placeholder="选填" />
+            <input value={wardrobeFormNote} data-parity-id="parity.app.app.src.components.wardrobe.app.015f4c29c2" onChange={(e) => setWardrobeFormNote(e.target.value)} disabled={wardrobeMutation !== null} className="h-10 w-full rounded-lg border border-ink/10 bg-white px-3 text-sm outline-none focus:border-denim disabled:opacity-55" placeholder="选填" />
           </label>
           <div className="grid grid-cols-2 gap-2">
             <button type="button" data-parity-id="parity.app.app.src.components.wardrobe.app.ebc01112d0" onClick={() => setShowAddWardrobe(false)} disabled={wardrobeMutation !== null} className="h-10 rounded-lg border border-ink/10 text-sm disabled:opacity-50">取消</button>
@@ -4501,10 +4606,10 @@ function SettingsView({
       >
         <h3 className="mb-3 text-base font-semibold">编辑衣橱</h3>
         <div className="grid gap-3">
-          <ClosetNameField value={wardrobeFormName} data-parity-id="parity.app.app.src.components.wardrobe.app.f6dcdb067a" onChange={setWardrobeFormName} />
+          <ClosetNameField value={wardrobeFormName} data-parity-id="parity.app.app.src.components.wardrobe.app.f6dcdb067a" onChange={setWardrobeFormName} disabled={wardrobeMutation !== null} />
           <label className="grid gap-1 text-sm font-medium">
             衣橱简介
-            <input value={wardrobeFormNote} data-parity-id="parity.app.app.src.components.wardrobe.app.1c4efe09f0" onChange={(e) => setWardrobeFormNote(e.target.value)} className="h-10 w-full rounded-lg border border-ink/10 bg-white px-3 text-sm outline-none focus:border-denim" />
+            <input value={wardrobeFormNote} data-parity-id="parity.app.app.src.components.wardrobe.app.1c4efe09f0" onChange={(e) => setWardrobeFormNote(e.target.value)} disabled={wardrobeMutation !== null} className="h-10 w-full rounded-lg border border-ink/10 bg-white px-3 text-sm outline-none focus:border-denim disabled:opacity-55" />
           </label>
           <div className="grid grid-cols-2 gap-2">
             <button type="button" data-parity-id="parity.app.app.src.components.wardrobe.app.4593c0def9" onClick={() => setEditWardrobeTarget(null)} disabled={wardrobeMutation !== null} className="h-10 rounded-lg border border-ink/10 text-sm disabled:opacity-50">取消</button>
@@ -4625,11 +4730,11 @@ function SettingsView({
         </div>
       </MotionSheet>
 
-    </div>
+    </>
   );
 }
 
-function ClosetNameField({ value, onChange, placeholder }: { value: string; onChange: (value: string) => void; placeholder?: string }) {
+function ClosetNameField({ value, onChange, placeholder, disabled = false }: { value: string; onChange: (value: string) => void; placeholder?: string; disabled?: boolean }) {
   return (
     <label className="grid gap-1 text-sm font-medium">
       <span className="inline-flex items-center gap-0.5">
@@ -4639,7 +4744,8 @@ function ClosetNameField({ value, onChange, placeholder }: { value: string; onCh
       <input
         value={value}
         data-parity-id="parity.app.app.src.components.wardrobe.app.a46834e936" onChange={(event) => onChange(event.target.value)}
-        className="h-10 w-full rounded-lg border border-ink/10 bg-white px-3 text-sm outline-none focus:border-denim"
+        disabled={disabled}
+        className="h-10 w-full rounded-lg border border-ink/10 bg-white px-3 text-sm outline-none focus:border-denim disabled:opacity-55"
         placeholder={placeholder}
         required
         aria-required="true"
@@ -4805,6 +4911,7 @@ function ProfileDetailPage({
                 data-parity-id={`parity.app.app.src.components.wardrobe.app.3f1d2f4e11.${opt}`}
                 type="button"
                 onClick={() => setFitGender(opt)}
+                disabled={saving}
                 className={`inline-flex h-8 items-center rounded-full px-3 text-xs font-semibold transition-colors ${active ? "bg-denim text-white" : "border border-ink/10 bg-white text-ink/70 active:scale-95"}`}
               >
                 {FIT_GENDER_LABELS[opt]}
@@ -4820,42 +4927,49 @@ function ProfileDetailPage({
           icon={<User size={16} className="text-denim" aria-hidden="true" />}
           label="身高"
           value={draft.heightCm ? `${draft.heightCm} cm` : "未设置"}
+          disabled={saving}
           data-parity-id="parity.app.app.src.components.wardrobe.app.7498db4327" onClick={() => setEditingField("height")}
         />
         <ProfileFieldRow
           icon={<User size={16} className="text-denim" aria-hidden="true" />}
           label="体型"
           value={draft.bodyType ? (draft.bodyType === "custom" ? (draft.bodyTypeCustom?.trim() || "自定义") : BODY_TYPE_LABELS[draft.bodyType]) : "未设置"}
+          disabled={saving}
           data-parity-id="parity.app.app.src.components.wardrobe.app.1f36391a61" onClick={() => setEditingField("bodyType")}
         />
         <ProfileFieldRow
           icon={<User size={16} className="text-denim" aria-hidden="true" />}
           label="肩宽"
           value={draft.shoulderWidth ? SHOULDER_LABELS[draft.shoulderWidth] : "未设置"}
+          disabled={saving}
           data-parity-id="parity.app.app.src.components.wardrobe.app.1f207030bb" onClick={() => setEditingField("shoulder")}
         />
         <ProfileFieldRow
           icon={<User size={16} className="text-denim" aria-hidden="true" />}
           label="腿长比例"
           value={draft.legRatio ? LEG_RATIO_LABELS[draft.legRatio] : "未设置"}
+          disabled={saving}
           data-parity-id="parity.app.app.src.components.wardrobe.app.ffb3dd372b" onClick={() => setEditingField("legRatio")}
         />
         <ProfileFieldRow
           icon={<User size={16} className="text-denim" aria-hidden="true" />}
           label="发型 / 发色"
           value={draft.hairDescription?.trim() || "无"}
+          disabled={saving}
           data-parity-id="parity.app.app.src.components.wardrobe.app.bf16d6548c" onClick={() => setEditingField("hair")}
         />
         <ProfileFieldRow
           icon={<User size={16} className="text-denim" aria-hidden="true" />}
           label="肤色 / 妆容偏好"
           value={draft.skinToneDescription?.trim() || "无"}
+          disabled={saving}
           data-parity-id="parity.app.app.src.components.wardrobe.app.953cf1689f" onClick={() => setEditingField("skin")}
         />
         <ProfileFieldRow
           icon={<ScrollText size={16} className="text-denim" aria-hidden="true" />}
           label="其他备注"
           value={draft.styleNote?.trim() || "无"}
+          disabled={saving}
           data-parity-id="parity.app.app.src.components.wardrobe.app.9229ee1878" onClick={() => setEditingField("note")}
           isLast
         />
@@ -5047,19 +5161,22 @@ function ProfileFieldRow({
   label,
   value,
   onClick,
+  disabled = false,
   isLast = false,
 }: {
   icon: React.ReactNode;
   label: string;
   value: string;
   onClick: () => void;
+  disabled?: boolean;
   isLast?: boolean;
 }) {
   return (
     <button
       type="button"
       data-parity-id="parity.app.app.src.components.wardrobe.app.689a1908cb" onClick={onClick}
-      className={`flex h-[60px] w-full items-center gap-3 bg-white px-4 text-left active:bg-mist ${isLast ? "" : "border-b border-ink/8"}`}
+      disabled={disabled}
+      className={`flex h-[60px] w-full items-center gap-3 bg-white px-4 text-left active:bg-mist disabled:opacity-55 ${isLast ? "" : "border-b border-ink/8"}`}
     >
       <div className="grid h-9 w-9 shrink-0 place-items-center rounded-md bg-mist text-denim">
         {icon}
@@ -5219,6 +5336,7 @@ function PhotosDetailPage({
           <SettingsSwitch
             checked={draft.enabled}
             data-parity-id="parity.app.app.src.components.wardrobe.app.8b537970c8" onChange={(value) => { if (!saving) void handleToggle(value); }}
+            disabled={saving}
             ariaLabel={draft.enabled ? "关闭参考照" : "启用参考照"}
             className="h-6 w-11"
           />
@@ -5233,6 +5351,7 @@ function PhotosDetailPage({
             <PhotoSlot
               label="全身照"
               required
+              disabled={saving}
               src={draft.localFullBodyImageDataUrl ?? fullBodyOnline.url}
               inUse={Boolean(draft.localFullBodyImageDataUrl ?? draft.fullBodyImage)}
               onUpload={() => fullBodyInputRef.current?.click()}
@@ -5241,6 +5360,7 @@ function PhotosDetailPage({
             />
             <PhotoSlot
               label="脸部照"
+              disabled={saving}
               src={draft.localFaceImageDataUrl ?? faceOnline.url}
               inUse={Boolean(draft.localFaceImageDataUrl ?? draft.faceImage)}
               onUpload={() => faceInputRef.current?.click()}
@@ -5248,8 +5368,8 @@ function PhotosDetailPage({
               onDelete={() => setDeletePhotoTarget("face")}
             />
           </div>
-          <input ref={fullBodyInputRef} type="file" accept="image/jpeg,image/png,image/webp,image/heic,image/heif,.heic,.heif" className="hidden" data-parity-id="parity.app.app.src.components.wardrobe.app.c31a15cd05" onChange={(e) => openCrop(e.target.files?.[0], "fullBody", fullBodyInputRef)} />
-          <input ref={faceInputRef} type="file" accept="image/jpeg,image/png,image/webp,image/heic,image/heif,.heic,.heif" className="hidden" data-parity-id="parity.app.app.src.components.wardrobe.app.20fc83fa9b" onChange={(e) => openCrop(e.target.files?.[0], "face", faceInputRef)} />
+          <input ref={fullBodyInputRef} type="file" accept="image/jpeg,image/png,image/webp,image/heic,image/heif,.heic,.heif" disabled={saving} className="hidden" data-parity-id="parity.app.app.src.components.wardrobe.app.c31a15cd05" onChange={(e) => openCrop(e.target.files?.[0], "fullBody", fullBodyInputRef)} />
+          <input ref={faceInputRef} type="file" accept="image/jpeg,image/png,image/webp,image/heic,image/heif,.heic,.heif" disabled={saving} className="hidden" data-parity-id="parity.app.app.src.components.wardrobe.app.20fc83fa9b" onChange={(e) => openCrop(e.target.files?.[0], "face", faceInputRef)} />
 
           <div className="mt-4">
             <p className="text-[11px] font-semibold text-ink/55">如何拍摄效果更好？</p>
@@ -5334,7 +5454,8 @@ function PhotoSlot({
           <button
             type="button"
             data-parity-id="parity.app.app.src.components.wardrobe.app.2efbaba9ff" onClick={onExpand}
-            className="absolute inset-0 grid place-items-center"
+            disabled={disabled}
+            className="absolute inset-0 grid place-items-center disabled:opacity-55"
             aria-label="查看大图"
           >
             <GarmentImage src={src} alt={label} />
@@ -5358,7 +5479,8 @@ function PhotoSlot({
           <button
             type="button"
             data-parity-id="parity.app.app.src.components.wardrobe.app.a9bcd70649" onClick={onDelete}
-            className="absolute right-1.5 top-1.5 grid h-6 w-6 place-items-center rounded-full bg-black/55 text-white active:scale-95 transition-transform"
+            disabled={disabled}
+            className="absolute right-1.5 top-1.5 grid h-6 w-6 place-items-center rounded-full bg-black/55 text-white active:scale-95 transition-transform disabled:opacity-45"
             aria-label={`删除${label}`}
           >
             <X size={12} aria-hidden="true" />
@@ -5381,7 +5503,8 @@ function PhotoSlot({
         <button
           type="button"
           data-parity-id="parity.app.app.src.components.wardrobe.app.3791098840" onClick={onUpload}
-          className="h-6 w-full rounded-md border border-ink/10 text-[10px] text-ink/65 active:scale-95 transition-transform"
+          disabled={disabled}
+          className="h-6 w-full rounded-md border border-ink/10 text-[10px] text-ink/65 active:scale-95 transition-transform disabled:opacity-45"
         >更换</button>
       ) : null}
     </div>
@@ -5392,11 +5515,13 @@ function PhotoSlot({
 function MiniMaxDetailPage({
   settings,
   onSave,
+  onSaved,
   onBack,
   onMessage,
 }: {
   settings: DeviceMiniMaxSettings;
-  onSave: (settings: DeviceMiniMaxSettings) => Promise<void> | void;
+  onSave: (settings: DeviceMiniMaxSettings) => Promise<boolean> | boolean;
+  onSaved: () => void;
   onBack: () => void;
   onMessage?: (msg: string) => void;
 }) {
@@ -5424,8 +5549,8 @@ function MiniMaxDetailPage({
     if (saving) return;
     setSaving(true);
     try {
-      await onSave(draft);
-      onMessage?.("MiniMax 设置已保存");
+      const saved = await onSave(draft);
+      if (saved) onSaved();
     } catch (error) {
       onMessage?.(getErrorMessage(error));
     } finally {
@@ -5466,6 +5591,7 @@ function MiniMaxDetailPage({
               type={showKey ? "text" : "password"}
               value={draft.apiKey}
               data-parity-id="parity.app.app.src.components.wardrobe.app.4f0f2360b5" onChange={(e) => setDraft((p) => ({ ...p, apiKey: e.target.value }))}
+              disabled={saving}
               className="h-11 w-full rounded-lg border border-ink/10 bg-white px-3 pr-11 text-base outline-none focus:border-denim"
               placeholder="填写 MiniMax Key"
               autoComplete="off"
@@ -5473,6 +5599,7 @@ function MiniMaxDetailPage({
             <button
               type="button"
               data-parity-id="parity.app.app.src.components.wardrobe.app.df1b97f8bd" onClick={() => setShowKey((v) => !v)}
+              disabled={saving}
               className="absolute right-1 top-1/2 -translate-y-1/2 grid h-9 w-9 place-items-center rounded-md text-ink/55 active:scale-95 transition-transform"
               aria-label={showKey ? "隐藏密钥" : "显示密钥"}
             >
@@ -5486,6 +5613,7 @@ function MiniMaxDetailPage({
           <input
             value={draft.apiHost}
             data-parity-id="parity.app.app.src.components.wardrobe.app.722918da0e" onChange={(e) => setDraft((p) => ({ ...p, apiHost: e.target.value }))}
+            disabled={saving}
             className="h-11 w-full rounded-lg border border-ink/10 bg-white px-3 text-base outline-none focus:border-denim"
           />
         </label>
@@ -5512,12 +5640,14 @@ function MiniMaxDetailPage({
 function WardrobeListPage({
   items,
   locations,
+  busy,
   onBack,
   onAdd,
   onEdit,
 }: {
   items: WardrobeItem[];
   locations: ClosetLocation[];
+  busy: boolean;
   onBack: () => void;
   onAdd: () => void;
   onEdit: (location: ClosetLocation) => void;
@@ -5527,6 +5657,7 @@ function WardrobeListPage({
   const sortedLocations = [...locations].sort((a, b) => a.sortOrder - b.sortOrder);
 
   useStableBackHandler(() => {
+    if (busy) return true;
     onBack();
     return true;
   }, true, 50);
@@ -5538,7 +5669,8 @@ function WardrobeListPage({
           <button
             type="button"
             data-parity-id="parity.app.app.src.components.wardrobe.app.dd5dcdfe06" onClick={onBack}
-            className="grid h-10 w-10 place-items-center rounded-full bg-mist active:scale-95 transition-transform"
+            disabled={busy}
+            className="grid h-10 w-10 place-items-center rounded-full bg-mist active:scale-95 transition-transform disabled:opacity-45"
             aria-label="返回设置"
           >
             <ChevronLeft size={18} aria-hidden="true" />
@@ -5548,7 +5680,8 @@ function WardrobeListPage({
         <button
           type="button"
           data-parity-id="parity.app.app.src.components.wardrobe.app.3241f2e306" onClick={onAdd}
-          className="inline-flex h-9 items-center gap-1.5 rounded-lg bg-denim px-3 text-sm font-semibold text-white"
+          disabled={busy}
+          className="inline-flex h-9 items-center gap-1.5 rounded-lg bg-denim px-3 text-sm font-semibold text-white disabled:opacity-45"
         >
           <Plus size={14} aria-hidden="true" />添加衣橱
         </button>

@@ -41,7 +41,7 @@ interface AuthContextValue {
   logout: () => Promise<void>;
   logoutAll: () => Promise<void>;
   completeAccountDeletion: () => Promise<void>;
-  changePassword: (currentPassword: string, newPassword: string) => Promise<void>;
+  changePassword: (currentPassword: string, newPassword: string) => Promise<string>;
   clearError: () => void;
   returnToLoginFromBlocked: () => Promise<void>;
 }
@@ -313,6 +313,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         currentPassword,
         newPassword,
       });
+      return current.accessToken;
     } catch (err) {
       setError(toUserMessage(err));
       throw err;
