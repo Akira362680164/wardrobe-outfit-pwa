@@ -17,6 +17,7 @@ const storage = new Map<string, unknown>();
 
 const { clearDownloadedAssetImageCache, downloadAssetImage } = await import("../apps/wechat-miniprogram/services/assets");
 const { clearSession, setSession } = await import("../apps/wechat-miniprogram/stores/session");
+const { getRuntimeRefreshSnapshot, runRuntimeDomainRefresh } = await import("../apps/wechat-miniprogram/utils/runtime-refresh");
 
 setSession({ token: "token-a", deviceId: "device-a", user: { id: "user-a" } });
 const ref = { assetId: "asset-a", variants: ["thumbnail", "original"] };
@@ -25,9 +26,12 @@ assert.equal(downloadCalls, 1, "concurrent image reads share one download");
 assert.equal(first, concurrent);
 assert.equal(await downloadAssetImage(ref), first);
 assert.equal(downloadCalls, 1, "resolved image path is reused in the same session");
+await runRuntimeDomainRefresh("garments", async () => "loaded", { hasData: false });
+assert.equal(getRuntimeRefreshSnapshot("garments").dirty, false);
 
 clearSession();
 setSession({ token: "token-b", deviceId: "device-b", user: { id: "user-b" } });
+assert.equal(getRuntimeRefreshSnapshot("garments").dirty, true, "switching sessions invalidates page freshness state");
 await downloadAssetImage(ref);
 assert.equal(downloadCalls, 2, "a different session cannot reuse the previous path");
 

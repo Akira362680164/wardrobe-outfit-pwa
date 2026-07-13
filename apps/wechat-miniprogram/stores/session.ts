@@ -1,3 +1,5 @@
+import { resetRuntimeRefreshState } from "../utils/runtime-refresh";
+
 export interface SessionUser {
   id: string;
   emailMasked?: string;
@@ -30,6 +32,7 @@ const SESSION_STORAGE_KEY = "wardrobe-device-session-v1";
 export function hydrateSession(snapshot?: SessionState | null): SessionState | null {
   currentSession = snapshot === undefined ? readStoredSession() : snapshot;
   runtimeSessionGeneration += 1;
+  resetRuntimeRefreshState();
   return currentSession;
 }
 
@@ -37,7 +40,10 @@ export function setSession(next: SessionState): SessionState {
   const previousIdentity = sessionIdentity(currentSession);
   const nextIdentity = sessionIdentity(next);
   currentSession = next;
-  if (previousIdentity !== nextIdentity) runtimeSessionGeneration += 1;
+  if (previousIdentity !== nextIdentity) {
+    runtimeSessionGeneration += 1;
+    resetRuntimeRefreshState();
+  }
   wx.setStorageSync(SESSION_STORAGE_KEY, next);
   return currentSession;
 }
@@ -64,6 +70,7 @@ export function isLoggedIn(): boolean {
 export function clearSession(): void {
   currentSession = null;
   runtimeSessionGeneration += 1;
+  resetRuntimeRefreshState();
   wx.removeStorageSync(SESSION_STORAGE_KEY);
 }
 
