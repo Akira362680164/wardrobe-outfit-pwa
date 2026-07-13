@@ -319,15 +319,31 @@ try {
   // matrix instead of snapping to the fully-open identity frame first.
   await page.click("#hero-source");
   await page.waitForSelector("[data-lightbox-source-transition=\"source\"]");
-  await page.waitForTimeout(45);
-  const quickCloseStart = await transition.evaluate((node) => getComputedStyle(node).transform);
+  const quickCloseStart = await transition.evaluate(async (node) => {
+    const animations = node.getAnimations();
+    if (animations.length !== 1) {
+      throw new Error(`expected one entrance animation, got ${animations.length}`);
+    }
+    const [entrance] = animations;
+    entrance.pause();
+    await entrance.ready;
+    entrance.currentTime = 45;
+    return {
+      currentTime: entrance.currentTime,
+      playState: entrance.playState,
+      transform: getComputedStyle(node).transform,
+    };
+  });
+  assert.equal(quickCloseStart.playState, "paused");
+  assert.equal(quickCloseStart.currentTime, 45);
+  assert.ok(!matrixIsIdentity(quickCloseStart.transform));
   await page.keyboard.press("Escape");
   const quickCloseFirstFrame = await transition.evaluate((node) => {
     const animation = node.getAnimations().at(-1);
     const effect = animation?.effect;
     return effect instanceof KeyframeEffect ? effect.getKeyframes()[0]?.transform : null;
   });
-  assert.equal(quickCloseFirstFrame, quickCloseStart);
+  assert.equal(quickCloseFirstFrame, quickCloseStart.transform);
   await page.waitForSelector("[data-overlay-kind=\"lightbox\"]", { state: "detached" });
   evidence.visibleSource.interruptibleClose = true;
 

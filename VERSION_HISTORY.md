@@ -1,3 +1,9 @@
+## 2026-07-14 / v2.1.18-test / Codex 主集成 — Motion Wave 6 归并与确定性首帧门禁
+
+- **执行与版本**：主 Agent 按 D1-Runtime → D1-Contracts → D1-Android 顺序归并三项独立提交并重生成 UI 规范；版本保持 `2.1.18-test`，最终 APK 版本递增在全量门禁后统一执行。
+- **门禁修正**：`test-detail-continuity-browser.mjs` 原先用两次 Playwright 协议调用比较仍在运行的入口动画与 Escape 退出首帧，冻结矩阵累计出现 `2/8` 相邻帧字符串差异。现改为在浏览器同一 WAAPI 时间轴暂停入口、固定 `currentTime=45` 后读取 presentation，再走真实 Escape 并继续对退出 `keyframe[0]` 做字符串严格相等；不使用 retry、容差或弱化连续性语义。
+- **验证与风险**：确定性 C2 浏览器门禁连续 `5/5` 通过；完整 `test:logic:all`、token / overlay / Back / overflow / reuse 与严格 motion contract（`198` 个源码文件、`0` 违规）通过。首轮全量测试发现并同步两条 C3-Outfit 日历旧静态断言及一条 C3-Wishlist 录入旧静态断言，修正后全量入口转绿。根 typecheck、最终构建、Android 动效矩阵和最终 APK/设备六项继续执行；完成前不宣称最终验收。
+
 ## 2026-07-14 / v2.1.18-test / Codex Subagent D1-Runtime — 动效偏好、无障碍与性能收口
 
 - **执行与版本**：Codex Subagent D1-Runtime 使用 `apple-design` 技能，在独立分支 `codex/motion-d1-runtime-20260713`、独立 worktree `/Users/fangzheng/Documents/wardrobe-motion-d1-runtime-20260713` 上基于冻结提交 `99af582da5537b7d400878d0ecc56aca5131a2c9` 实施；版本保持 `2.1.18-test`，未合入 integration / `main`、未推送、未构建 APK，本 Session 未再分派下级 subagent。

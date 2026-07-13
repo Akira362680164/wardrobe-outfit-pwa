@@ -50,7 +50,7 @@ assert(
 );
 assert(wishlistView.includes("onExit={closeWishlistIntake}"), "Wishlist intake onExit is wired to closeWishlistIntake");
 assert(wishlistView.includes('flowKind="wishlist"'), "Wishlist intake reuses GarmentIntakeFlow wishlist mode");
-assert(includesAll(wishlistView, ["const closeWishlistIntake = useCallback", 'setSubPage("home")']), "closeWishlistIntake returns to home");
+assert(includesAll(wishlistView, ["const closeWishlistIntake = useCallback", "sourcePage = intakeSourceSnapshotRef.current?.sourcePage", 'replaceWishlistStack([{ page: sourcePage }], "pop")']), "closeWishlistIntake pops to its recorded source page");
 assert(includesAll(wishlistView, ["const closeWishlistIntake = useCallback", "setSelectedItem(null)"]), "closeWishlistIntake clears selected item");
 assert(includesAll(wishlistView, ["const closeWishlistIntake = useCallback", "onCreateClosed?.()"]), "closeWishlistIntake closes outer create flow");
 assert(wishlistView.includes('if (subPage === "intake")') && wishlistView.includes("closeWishlistIntake();"), "useStableBackHandler handles intake subpage");
