@@ -1,3 +1,9 @@
+## 2026-07-13 / v2.1.18-test / Codex 主集成 — Motion Wave 3 归并与陈旧合同同步
+
+- **执行与版本**：主 Agent 按 B1 → B2 → B3 顺序归并三项独立提交，保全并重生成 UI 规范；版本保持 `2.1.18-test`，未进入 APK 交付。
+- **集成修正**：`scripts/test-outfit-plan-wear-state.ts` 的服务端源码合同从旧表达式 `Boolean(payload.isPrimary)` 同步为当前基线已采用的 `wantsPrimaryActual`，只修测试字面量，不改变服务端业务逻辑。
+- **验证与风险**：轮播/Lightbox、反馈、详情壳、共享壳、穿搭规划、日历状态、wear-state、后续导航、窄屏、UI 规范、根 `typecheck` 与 Next `build` 组合门禁通过。`ui-token-contract` 仍只报告冻结基线四处硬编码色值，将由后续拥有对应文件的 B4、C2、C3-Settings 与 D1-Contracts 收口；Android/WebView 和辅助技术留在 D Wave 与最终 APK 验收。
+
 ## 2026-07-13 / v2.1.18-test / Codex Subagent B3 — 周计划与月历三页轨道直接操控
 
 - **执行 Agent**：Codex 实施 Subagent B3；独立分支 `codex/motion-b3-calendar-gestures-20260713`、独立 worktree `/Users/fangzheng/Documents/wardrobe-motion-b3-calendar-gestures-20260713`，基于批次提交 `00398302ae7ee8f320030f20f93048f74392591d`；未合入 integration / `main`，未推送。本 Session 由主集成 Agent 分派，未再触发下级 subagent。
