@@ -7,6 +7,7 @@ import {
   applyCropFrameDrag,
   screenFrameToCropBox,
 } from "../src/lib/cropper-math";
+import { resolveCropDragFrame, rubberBandCropDistance } from "../src/components/image-crop-editor";
 
 const VP = { width: 390, height: 700 };
 
@@ -189,6 +190,45 @@ console.log("\n=== I4 v0.9.1.1 单测: 极长/极宽/极小 viewport/极小原�
   //   5000x100 → 100x5000, contain 模式应直接 fit 100 边
   const rotatedRect = getContainedImageRect(100, 5000, 390, 700);
   checkApprox("旋转 90° 后 (100x5000) 短边 = 14", rotatedRect.width, 14, 0.5);
+}
+
+console.log("\n=== B4 渐进边缘阻尼 + 合法 release 目标 (390px) ===");
+{
+  const imageRect = { x: 0, y: 0, width: 390, height: 520 };
+  const near = rubberBandCropDistance(-40, imageRect);
+  const far = rubberBandCropDistance(-160, imageRect);
+  checkInRange("越界 40px 的呈现阻尼保持同方向且小于原距离", near, -39.99, -0.01);
+  checkInRange("越界更远仍继续移动，但增量递减", far, -159.99, near - 0.01);
+  checkInRange("阻尼呈现受短边比例上限约束", Math.abs(far), 0, 44);
+}
+{
+  const imageRect = { x: 0, y: 0, width: 390, height: 520 };
+  const resolved = resolveCropDragFrame({
+    handle: "CENTER",
+    dx: -160,
+    dy: -120,
+    rawFrame: { x: 24, y: 40, width: 240, height: 300 },
+    imageRect,
+    aspectRatio: "free",
+  });
+  checkInRange("拖出左边时 presentation 允许轻微越界", resolved.presentation.x, resolved.raw.x + 0.01, -0.01);
+  checkInRange("拖出上边时 presentation 允许轻微越界", resolved.presentation.y, resolved.raw.y + 0.01, -0.01);
+  checkApprox("release 合法目标 x 回到图片边", resolved.legal.x, 0, 0.01);
+  checkApprox("release 合法目标 y 回到图片边", resolved.legal.y, 0, 0.01);
+}
+{
+  const imageRect = { x: 0, y: 0, width: 390, height: 520 };
+  const resolved = resolveCropDragFrame({
+    handle: "BR",
+    dx: 260,
+    dy: 260,
+    rawFrame: { x: 30, y: 40, width: 180, height: 240 },
+    imageRect,
+    aspectRatio: 0.75,
+  });
+  checkApprox("3:4 resize 的合法 release 目标保持比例", resolved.legal.width / resolved.legal.height, 0.75, 0.01);
+  checkInRange("3:4 resize release 目标不越过右边", resolved.legal.x + resolved.legal.width, 0, imageRect.width);
+  checkInRange("3:4 resize release 目标不越过下边", resolved.legal.y + resolved.legal.height, 0, imageRect.height);
 }
 
 console.log(`\n=== 结果: ${pass} 通过 / ${fail} 失败 ===`);

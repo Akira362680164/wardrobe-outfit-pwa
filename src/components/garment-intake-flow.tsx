@@ -17,6 +17,7 @@ import {
   Tag,
   Trash2,
 } from "lucide-react";
+import { motion, useReducedMotion } from "motion/react";
 import { useCallback, useEffect, useMemo, useRef, useState, type ChangeEvent, type ReactNode, type RefObject } from "react";
 import {
   IntakeFlowShell,
@@ -49,6 +50,7 @@ import { fileToCompressedDataUrl, rotateImageDataUrl } from "@/lib/image";
 import { GarmentRecognitionError } from "@/lib/device-minimax";
 import { createGarmentThumbnailFromOriginal, generateThumbnailSafe } from "@/lib/thumbnail-runtime";
 import { recordDiagnosticEvent } from "@/lib/diagnostic-log";
+import { duration, ease } from "@/lib/motion-tokens";
 import {
   FIT_NOTES_MAX_LEN,
   SEASON_LABELS,
@@ -211,6 +213,7 @@ export function GarmentIntakeFlow({
   });
   const [activeImageId, setActiveImageId] = useState<string | null>(null);
   const [activeReviewId, setActiveReviewId] = useState<string | null>(null);
+  const [reviewDirection, setReviewDirection] = useState<-1 | 0 | 1>(0);
   const [isPicking, setIsPicking] = useState(false);
   const [isCropping, setIsCropping] = useState(false);
   const [isRecognizing, setIsRecognizing] = useState(false);
@@ -254,6 +257,7 @@ export function GarmentIntakeFlow({
   // Initialize activeReviewId when entering confirm step
   useEffect(() => {
     if (stepIndex === "confirm_params" && recognizedItems.length > 0 && !activeReviewId) {
+      setReviewDirection(0);
       setActiveReviewId(recognizedItems[0].id);
     }
   }, [stepIndex, recognizedItems, activeReviewId]);
@@ -668,6 +672,7 @@ export function GarmentIntakeFlow({
     if (stepIndex === "confirm_params") {
       setStepIndex("select_photo");
       setActiveReviewId(null);
+      setReviewDirection(0);
     }
   }
 
@@ -779,14 +784,23 @@ export function GarmentIntakeFlow({
 
   function handlePrevReview() {
     if (activeReviewIndex > 0) {
+      setReviewDirection(-1);
       setActiveReviewId(recognizedItems[activeReviewIndex - 1].id);
     }
   }
 
   function handleNextReview() {
     if (activeReviewIndex < recognizedItems.length - 1) {
+      setReviewDirection(1);
       setActiveReviewId(recognizedItems[activeReviewIndex + 1].id);
     }
+  }
+
+  function handleSelectReview(reviewId: string) {
+    const nextIndex = recognizedItems.findIndex((item) => item.id === reviewId);
+    if (nextIndex < 0 || nextIndex === activeReviewIndex) return;
+    setReviewDirection(nextIndex > activeReviewIndex ? 1 : -1);
+    setActiveReviewId(reviewId);
   }
 
   const stepIndexNumber = stepIndex === "select_photo" ? 0 : 1;
@@ -862,10 +876,11 @@ export function GarmentIntakeFlow({
           successCount={successCount}
           activeReviewId={activeReviewId}
           activeReviewIndex={activeReviewIndex}
+          reviewDirection={reviewDirection}
           onPatchDraft={patchReviewDraft}
           onPrev={handlePrevReview}
           onNext={handleNextReview}
-          onSelectItem={setActiveReviewId}
+          onSelectItem={handleSelectReview}
           onRetryCurrent={handleRetryCurrentItem}
           retryingReviewId={retryingReviewId}
           flowKind={flowKind}
@@ -1198,6 +1213,7 @@ function MultiImageReviewStep({
   successCount,
   activeReviewId,
   activeReviewIndex,
+  reviewDirection,
   onPatchDraft,
   onPrev,
   onNext,
@@ -1211,6 +1227,7 @@ function MultiImageReviewStep({
   successCount: number;
   activeReviewId: string | null;
   activeReviewIndex: number;
+  reviewDirection: -1 | 0 | 1;
   onPatchDraft: (patch: Partial<GarmentIntakeDraft>) => void;
   onPrev: () => void;
   onNext: () => void;
@@ -1220,6 +1237,7 @@ function MultiImageReviewStep({
   flowKind: "garment" | "wishlist";
   locations: ClosetLocation[];
 }) {
+  const reduceMotion = Boolean(useReducedMotion());
   const activeItem = recognizedItems.find((item) => item.id === activeReviewId);
   const draft = activeItem?.draft;
   const visibleNeedsReviewFields = draft ? countStep3VisibleNeedsReviewFields(draft) : 0;
@@ -1271,10 +1289,15 @@ function MultiImageReviewStep({
       >
         {previewDataUrl ? (
           <div className="ui-inner-card mb-3 overflow-hidden bg-mist">
-            <img
+            <motion.img
+              key={activeItem?.id ?? previewDataUrl}
               src={previewDataUrl}
               alt={`当前${flowNoun}图片`}
               className="h-[min(48dvh,420px)] w-full object-contain"
+              data-review-direction={reviewDirection}
+              initial={reduceMotion ? false : { opacity: 0.96, x: reviewDirection * 10 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={reduceMotion ? { duration: 0 } : { duration: duration.fast, ease: ease.out }}
             />
           </div>
         ) : null}

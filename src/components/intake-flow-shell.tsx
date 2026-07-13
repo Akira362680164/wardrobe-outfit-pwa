@@ -19,6 +19,14 @@ export type IntakeSubmitState =
   | { status: "failed"; message: string; retryLabel: string }
   | { status: "succeeded"; message: string };
 
+export const INTAKE_BACK_PRIORITY = [
+  "cropper",
+  "image-source",
+  "field-overlay",
+  "exit-confirm",
+  "page",
+] as const;
+
 export interface IntakeFlowShellProps {
   title: string;
   steps: IntakeFlowStep[];
@@ -157,6 +165,9 @@ export function IntakeFlowShell({
           data-overlay-layer={overlayId}
           data-overlay-kind="fullscreen"
           data-overlay-topmost={isTopmost ? "true" : "false"}
+          data-intake-current-step={currentStep?.id ?? "unknown"}
+          data-intake-back-priority={INTAKE_BACK_PRIORITY.join(">")}
+          data-intake-root-back-override={rootBackOverridesExit ? "true" : "false"}
           aria-hidden={isTopmost ? undefined : "true"}
           inert={isTopmost ? undefined : true}
           className="app-ambient-bg fixed inset-0 z-[90] flex h-[100dvh] flex-col overflow-hidden outline-none"

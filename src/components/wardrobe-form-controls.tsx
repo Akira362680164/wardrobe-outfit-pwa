@@ -189,29 +189,65 @@ export function RangeField({ label, value, onChange }: { label: string; value: n
   const min = 1;
   const max = 5;
   const trackRef = useRef<HTMLDivElement>(null);
+  const valueRef = useRef(value);
+  valueRef.current = value;
+  const dragRef = useRef<{
+    pointerId: number;
+    startX: number;
+    startY: number;
+    grabOffsetX: number;
+    intent: "pending" | "horizontal" | "vertical";
+  } | null>(null);
   const clampedValue = clampNumber(value, min, max);
   const percent = ((clampedValue - min) / (max - min)) * 100;
 
-  function updateFromClientX(clientX: number) {
+  function emitValue(nextValue: number) {
+    if (nextValue === valueRef.current) return;
+    valueRef.current = nextValue;
+    onChange(nextValue);
+  }
+
+  function updateFromClientX(clientX: number, grabOffsetX: number) {
     const rect = trackRef.current?.getBoundingClientRect();
     if (!rect || rect.width <= 0) return;
-    const nextPercent = clampNumber((clientX - rect.left) / rect.width, 0, 1);
+    const nextPercent = clampNumber((clientX - grabOffsetX - rect.left) / rect.width, 0, 1);
     const nextValue = clampNumber(Math.round(min + nextPercent * (max - min)), min, max);
-    if (nextValue !== value) onChange(nextValue);
+    emitValue(nextValue);
   }
 
   function handleThumbPointerDown(event: React.PointerEvent<HTMLButtonElement>) {
-    event.preventDefault();
-    event.currentTarget.focus();
+    if (event.pointerType === "mouse" && event.button !== 0) return;
+    if (!event.isPrimary || dragRef.current) return;
+    event.stopPropagation();
+    const thumbRect = event.currentTarget.getBoundingClientRect();
+    dragRef.current = {
+      pointerId: event.pointerId,
+      startX: event.clientX,
+      startY: event.clientY,
+      grabOffsetX: event.clientX - (thumbRect.left + thumbRect.width / 2),
+      intent: "pending",
+    };
     try { event.currentTarget.setPointerCapture(event.pointerId); } catch {}
   }
 
   function handleThumbPointerMove(event: React.PointerEvent<HTMLButtonElement>) {
-    if (!event.currentTarget.hasPointerCapture(event.pointerId)) return;
-    updateFromClientX(event.clientX);
+    const drag = dragRef.current;
+    if (!drag || drag.pointerId !== event.pointerId) return;
+    if (drag.intent === "pending") {
+      const dx = event.clientX - drag.startX;
+      const dy = event.clientY - drag.startY;
+      if (Math.max(Math.abs(dx), Math.abs(dy)) < 8) return;
+      drag.intent = Math.abs(dx) > Math.abs(dy) ? "horizontal" : "vertical";
+    }
+    if (drag.intent !== "horizontal") return;
+    event.preventDefault();
+    updateFromClientX(event.clientX, drag.grabOffsetX);
   }
 
   function handleThumbPointerEnd(event: React.PointerEvent<HTMLButtonElement>) {
+    const drag = dragRef.current;
+    if (!drag || drag.pointerId !== event.pointerId) return;
+    dragRef.current = null;
     try {
       if (event.currentTarget.hasPointerCapture(event.pointerId)) {
         event.currentTarget.releasePointerCapture(event.pointerId);
@@ -220,15 +256,15 @@ export function RangeField({ label, value, onChange }: { label: string; value: n
   }
 
   function handleThumbKeyDown(event: React.KeyboardEvent<HTMLButtonElement>) {
-    let nextValue = value;
-    if (event.key === "ArrowLeft" || event.key === "ArrowDown") nextValue = value - 1;
-    if (event.key === "ArrowRight" || event.key === "ArrowUp") nextValue = value + 1;
+    let nextValue = valueRef.current;
+    if (event.key === "ArrowLeft" || event.key === "ArrowDown") nextValue = valueRef.current - 1;
+    if (event.key === "ArrowRight" || event.key === "ArrowUp") nextValue = valueRef.current + 1;
     if (event.key === "Home") nextValue = min;
     if (event.key === "End") nextValue = max;
     nextValue = clampNumber(nextValue, min, max);
-    if (nextValue !== value) {
+    if (nextValue !== valueRef.current) {
       event.preventDefault();
-      onChange(nextValue);
+      emitValue(nextValue);
     }
   }
 
@@ -238,7 +274,7 @@ export function RangeField({ label, value, onChange }: { label: string; value: n
         {label}
         <span className="text-xs text-ink/54">{value}/5</span>
       </span>
-      <span ref={trackRef} className="relative block h-8 touch-pan-y">
+      <span ref={trackRef} className="relative block h-8 touch-pan-y" data-slider-intent-lock="8px-pan-y">
         <span aria-hidden="true" className="absolute inset-x-0 top-1/2 h-1.5 -translate-y-1/2 rounded-full bg-mist" />
         <span aria-hidden="true" className="absolute left-0 top-1/2 h-1.5 -translate-y-1/2 rounded-full bg-denim" style={{ width: `${percent}%` }} />
         <button
@@ -255,7 +291,7 @@ export function RangeField({ label, value, onChange }: { label: string; value: n
           onPointerCancel={handleThumbPointerEnd}
           onKeyDown={handleThumbKeyDown}
           className="absolute top-1/2 grid h-10 w-10 -translate-x-1/2 -translate-y-1/2 place-items-center rounded-full border border-denim/35 bg-white shadow-sm outline-none ring-denim/20 transition focus:ring-4"
-          style={{ left: `${percent}%`, touchAction: "none" }}
+          style={{ left: `${percent}%`, touchAction: "pan-y" }}
         >
           <span className="h-2.5 w-2.5 rounded-full bg-denim" />
         </button>

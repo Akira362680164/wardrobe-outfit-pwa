@@ -14,9 +14,11 @@
 // - 蒙层: rgba(0,0,0,0.4) (从 0.55 降到 0.4, 减暗)
 // - 9 宫格: 保留
 // ============================================================
+import { animate, useReducedMotion } from "motion/react";
 import { forwardRef, useCallback, useEffect, useImperativeHandle, useMemo, useRef, useState, type ReactNode } from "react";
 import { OverlayPortal, useOverlayLayer } from "@/components/overlay-root";
 import { cropFromOriginal } from "@/lib/image";
+import { spring } from "@/lib/motion-tokens";
 import { useScrollLock } from "@/lib/use-scroll-lock";
 import {
   applyCropFrameDrag,
@@ -64,6 +66,105 @@ export interface ImageCropEditorProps {
 }
 
 interface PointerSnapshot { x: number; y: number; }
+
+interface CropDragState {
+  pointerId: number;
+  handle: CropFrameHandle;
+  origin: PointerSnapshot;
+  rawFrame: CropFrame;
+}
+
+const CROP_EDGE_RESISTANCE = 0.55;
+
+function framesAlmostEqual(a: CropFrame, b: CropFrame, epsilon = 0.1): boolean {
+  return Math.abs(a.x - b.x) <= epsilon
+    && Math.abs(a.y - b.y) <= epsilon
+    && Math.abs(a.width - b.width) <= epsilon
+    && Math.abs(a.height - b.height) <= epsilon;
+}
+
+function cropResistanceLimit(imageRect: ImageFitRect): number {
+  const shortEdge = Math.max(1, Math.min(imageRect.width, imageRect.height));
+  return Math.max(18, Math.min(44, shortEdge * 0.12));
+}
+
+/** Progressive edge resistance used only for the cropper's presentation value. */
+export function rubberBandCropDistance(distance: number, imageRect: ImageFitRect): number {
+  if (!Number.isFinite(distance) || distance === 0) return 0;
+  const limit = cropResistanceLimit(imageRect);
+  const magnitude = Math.abs(distance);
+  const resisted = limit * (1 - 1 / (magnitude * CROP_EDGE_RESISTANCE / limit + 1));
+  return Math.sign(distance) * resisted;
+}
+
+function unRubberBandCropDistance(distance: number, imageRect: ImageFitRect): number {
+  if (!Number.isFinite(distance) || distance === 0) return 0;
+  const limit = cropResistanceLimit(imageRect);
+  const ratio = Math.min(Math.abs(distance) / limit, 0.999);
+  const magnitude = (ratio / Math.max(1 - ratio, 0.001)) * limit / CROP_EDGE_RESISTANCE;
+  return Math.sign(distance) * magnitude;
+}
+
+function restoreRawCropFrame(
+  presentation: CropFrame,
+  legal: CropFrame,
+  imageRect: ImageFitRect,
+): CropFrame {
+  return {
+    x: legal.x + unRubberBandCropDistance(presentation.x - legal.x, imageRect),
+    y: legal.y + unRubberBandCropDistance(presentation.y - legal.y, imageRect),
+    width: Math.max(0, legal.width + unRubberBandCropDistance(presentation.width - legal.width, imageRect)),
+    height: Math.max(0, legal.height + unRubberBandCropDistance(presentation.height - legal.height, imageRect)),
+  };
+}
+
+export function resolveCropDragFrame({
+  handle,
+  dx,
+  dy,
+  rawFrame,
+  imageRect,
+  aspectRatio,
+}: {
+  handle: CropFrameHandle;
+  dx: number;
+  dy: number;
+  rawFrame: CropFrame;
+  imageRect: ImageFitRect;
+  aspectRatio: AspectRatio;
+}): { presentation: CropFrame; legal: CropFrame; raw: CropFrame } {
+  const extent = Math.max(
+    4096,
+    imageRect.width * 4,
+    imageRect.height * 4,
+    Math.abs(dx) * 2,
+    Math.abs(dy) * 2,
+  );
+  const expandedImageRect: ImageFitRect = {
+    x: imageRect.x - extent,
+    y: imageRect.y - extent,
+    width: imageRect.width + extent * 2,
+    height: imageRect.height + extent * 2,
+  };
+  const raw = applyCropFrameDrag(handle, dx, dy, rawFrame, expandedImageRect, aspectRatio);
+  const legal = clampCropFrameToImage(raw, imageRect, aspectRatio);
+  const presentation = {
+    x: legal.x + rubberBandCropDistance(raw.x - legal.x, imageRect),
+    y: legal.y + rubberBandCropDistance(raw.y - legal.y, imageRect),
+    width: Math.max(1, legal.width + rubberBandCropDistance(raw.width - legal.width, imageRect)),
+    height: Math.max(1, legal.height + rubberBandCropDistance(raw.height - legal.height, imageRect)),
+  };
+  return { presentation, legal, raw };
+}
+
+function interpolateCropFrame(from: CropFrame, to: CropFrame, progress: number): CropFrame {
+  return {
+    x: from.x + (to.x - from.x) * progress,
+    y: from.y + (to.y - from.y) * progress,
+    width: from.width + (to.width - from.width) * progress,
+    height: from.height + (to.height - from.height) * progress,
+  };
+}
 
 export const ImageCropEditor = forwardRef<ImageCropEditorHandle, ImageCropEditorProps>(function ImageCropEditor({
   source,
@@ -120,17 +221,57 @@ export const ImageCropEditor = forwardRef<ImageCropEditorHandle, ImageCropEditor
 
   // === 裁切框 ===
   const [cropFrame, setCropFrame] = useState<CropFrame>({ x: 0, y: 0, width: 0, height: 0 });
+  const cropFrameRef = useRef<CropFrame>(cropFrame);
+  const legalCropFrameRef = useRef<CropFrame>(cropFrame);
+  const settleAnimationRef = useRef<{ stop: () => void } | null>(null);
   const initialized = useRef(false);
+  const reduceMotion = Boolean(useReducedMotion());
 
   // === 手势状态 ===
-  const pointers = useRef<Map<number, PointerSnapshot>>(new Map());
-  const dragMode = useRef<CropFrameHandle | null>(null);
+  const dragStateRef = useRef<CropDragState | null>(null);
   const [isInteracting, setIsInteracting] = useState(false);
   const effectiveAspectRatio = isEmbedded ? aspectRatio : fullscreenAspectRatio;
+
+  const stopSettleAnimation = useCallback(() => {
+    settleAnimationRef.current?.stop();
+    settleAnimationRef.current = null;
+  }, []);
+
+  const updateCropPresentation = useCallback((next: CropFrame) => {
+    cropFrameRef.current = next;
+    setCropFrame(next);
+  }, []);
+
+  const setLegalCropFrame = useCallback((next: CropFrame) => {
+    legalCropFrameRef.current = next;
+    updateCropPresentation(next);
+  }, [updateCropPresentation]);
+
+  const settleCropFrame = useCallback(() => {
+    const from = cropFrameRef.current;
+    const target = clampCropFrameToImage(legalCropFrameRef.current, imageRect, effectiveAspectRatio);
+    legalCropFrameRef.current = target;
+    stopSettleAnimation();
+    if (reduceMotion || framesAlmostEqual(from, target)) {
+      updateCropPresentation(target);
+      return;
+    }
+    settleAnimationRef.current = animate(0, 1, {
+      ...spring.control,
+      onUpdate: (progress) => updateCropPresentation(interpolateCropFrame(from, target, progress)),
+      onComplete: () => {
+        settleAnimationRef.current = null;
+        updateCropPresentation(target);
+      },
+    });
+  }, [effectiveAspectRatio, imageRect, reduceMotion, stopSettleAnimation, updateCropPresentation]);
+
+  useEffect(() => () => stopSettleAnimation(), [stopSettleAnimation]);
 
   // source prop 变化时 reset 所有内部 state
   const lastSourceRef = useRef(source);
   if (lastSourceRef.current !== source) {
+    stopSettleAnimation();
     lastSourceRef.current = source;
     setSourceUrl(source);
     setFullscreenAspectRatio(aspectRatio);
@@ -138,9 +279,10 @@ export const ImageCropEditor = forwardRef<ImageCropEditorHandle, ImageCropEditor
     setActiveCropBox(initialCropBox);
     initialized.current = false;
     setNaturalSize({ w: 0, h: 0 });
-    setCropFrame({ x: 0, y: 0, width: 0, height: 0 });
-    pointers.current.clear();
-    dragMode.current = null;
+    const emptyFrame = { x: 0, y: 0, width: 0, height: 0 };
+    legalCropFrameRef.current = emptyFrame;
+    updateCropPresentation(emptyFrame);
+    dragStateRef.current = null;
     setIsInteracting(false);
   }
 
@@ -157,17 +299,18 @@ export const ImageCropEditor = forwardRef<ImageCropEditorHandle, ImageCropEditor
       const h = activeCropBox.height * ih;
       const x = imageRect.x + activeCropBox.x * iw;
       const y = imageRect.y + activeCropBox.y * ih;
-      setCropFrame(clampCropFrameToImage({ x, y, width: w, height: h }, imageRect, effectiveAspectRatio));
+      setLegalCropFrame(clampCropFrameToImage({ x, y, width: w, height: h }, imageRect, effectiveAspectRatio));
     } else {
-      setCropFrame(getInitialCropFrameInImage(imageRect, effectiveAspectRatio));
+      setLegalCropFrame(getInitialCropFrameInImage(imageRect, effectiveAspectRatio));
     }
-  }, [imageRect, activeCropBox, effectiveAspectRatio]);
+  }, [imageRect, activeCropBox, effectiveAspectRatio, setLegalCropFrame]);
 
   useEffect(() => {
     if (!initialized.current) return;
     if (imageRect.width === 0 || imageRect.height === 0) return;
-    setCropFrame((f) => clampCropFrameToImage(f, imageRect, effectiveAspectRatio));
-  }, [imageRect, effectiveAspectRatio]);
+    stopSettleAnimation();
+    setLegalCropFrame(clampCropFrameToImage(cropFrameRef.current, imageRect, effectiveAspectRatio));
+  }, [imageRect, effectiveAspectRatio, setLegalCropFrame, stopSettleAnimation]);
 
   // === 触摸屏幕坐标 → 容器坐标 ===
   const toLocal = useCallback((clientX: number, clientY: number): PointerSnapshot => {
@@ -194,45 +337,61 @@ export const ImageCropEditor = forwardRef<ImageCropEditorHandle, ImageCropEditor
   // === Pointer 事件 ===
   const onPointerDown = useCallback((e: React.PointerEvent) => {
     if (e.pointerType === "mouse" && e.button !== 0) return;
-    e.preventDefault();
-    (e.target as Element).setPointerCapture(e.pointerId);
+    if (!e.isPrimary || dragStateRef.current) return;
     const local = toLocal(e.clientX, e.clientY);
-    pointers.current.set(e.pointerId, local);
+    const currentPresentation = cropFrameRef.current;
+    const handle = hitTest(local.x, local.y, currentPresentation);
+    if (!handle) return;
+    e.preventDefault();
+    stopSettleAnimation();
+    const legal = clampCropFrameToImage(currentPresentation, imageRect, effectiveAspectRatio);
+    legalCropFrameRef.current = legal;
+    dragStateRef.current = {
+      pointerId: e.pointerId,
+      handle,
+      origin: local,
+      rawFrame: restoreRawCropFrame(currentPresentation, legal, imageRect),
+    };
     setIsInteracting(true);
-
-    if (pointers.current.size === 1) {
-      const hit = hitTest(local.x, local.y, cropFrame);
-      dragMode.current = hit;
+    try {
+      e.currentTarget.setPointerCapture(e.pointerId);
+    } catch {
+      // Pointer capture can fail when the browser has already cancelled the gesture.
     }
-  }, [toLocal, hitTest, cropFrame]);
+  }, [effectiveAspectRatio, hitTest, imageRect, stopSettleAnimation, toLocal]);
 
   const onPointerMove = useCallback((e: React.PointerEvent) => {
     if (e.pointerType === "mouse" && e.button !== 0) return;
-    if (!pointers.current.has(e.pointerId)) return;
+    const drag = dragStateRef.current;
+    if (!drag || drag.pointerId !== e.pointerId) return;
     e.preventDefault();
     const local = toLocal(e.clientX, e.clientY);
-    const prev = pointers.current.get(e.pointerId)!;
-    const dx = local.x - prev.x;
-    const dy = local.y - prev.y;
-    pointers.current.set(e.pointerId, local);
-
-    if (pointers.current.size === 1 && dragMode.current) {
-      const handle = dragMode.current;
-      setCropFrame((f) => applyCropFrameDrag(handle, dx, dy, f, imageRect, effectiveAspectRatio));
-    }
-  }, [toLocal, imageRect, effectiveAspectRatio]);
+    const resolved = resolveCropDragFrame({
+      handle: drag.handle,
+      dx: local.x - drag.origin.x,
+      dy: local.y - drag.origin.y,
+      rawFrame: drag.rawFrame,
+      imageRect,
+      aspectRatio: effectiveAspectRatio,
+    });
+    legalCropFrameRef.current = resolved.legal;
+    updateCropPresentation(resolved.presentation);
+  }, [effectiveAspectRatio, imageRect, toLocal, updateCropPresentation]);
 
   const onPointerUp = useCallback((e: React.PointerEvent) => {
-    if (!pointers.current.has(e.pointerId)) return;
-    pointers.current.delete(e.pointerId);
-    if (pointers.current.size === 0) {
-      setIsInteracting(false);
-      dragMode.current = null;
-    } else if (pointers.current.size === 1) {
-      const remaining = Array.from(pointers.current.values())[0];
-      dragMode.current = hitTest(remaining.x, remaining.y, cropFrame);
+    const drag = dragStateRef.current;
+    if (!drag || drag.pointerId !== e.pointerId) return;
+    dragStateRef.current = null;
+    setIsInteracting(false);
+    try {
+      if (e.currentTarget.hasPointerCapture(e.pointerId)) {
+        e.currentTarget.releasePointerCapture(e.pointerId);
+      }
+    } catch {
+      // Ignore browsers that release capture before pointerup/pointercancel.
     }
-  }, [hitTest, cropFrame]);
+    settleCropFrame();
+  }, [settleCropFrame]);
 
   const ready = vp.width > 0 && naturalSize.w > 0 && cropFrame.width > 0 && cropFrame.height > 0;
 
@@ -244,9 +403,14 @@ export const ImageCropEditor = forwardRef<ImageCropEditorHandle, ImageCropEditor
   const runConfirm = useCallback(async () => {
     if (confirming || rotating) return;
     if (!ready) return;
+    const legalFrame = clampCropFrameToImage(cropFrameRef.current, imageRect, effectiveAspectRatio);
+    legalCropFrameRef.current = legalFrame;
+    stopSettleAnimation();
+    updateCropPresentation(legalFrame);
+    if (legalFrame.width <= 0 || legalFrame.height <= 0) return;
     setConfirming(true);
     try {
-      const box = screenFrameToCropBox(cropFrame, imageRect);
+      const box = screenFrameToCropBox(legalFrame, imageRect);
       const cropped = await cropFromOriginal(sourceUrl, box);
       await onConfirm(cropped, box);
     } catch (err) {
@@ -254,24 +418,27 @@ export const ImageCropEditor = forwardRef<ImageCropEditorHandle, ImageCropEditor
     } finally {
       setConfirming(false);
     }
-  }, [cropFrame, imageRect, sourceUrl, onConfirm, onError, confirming, rotating, ready]);
+  }, [confirming, effectiveAspectRatio, imageRect, onConfirm, onError, ready, rotating, sourceUrl, stopSettleAnimation, updateCropPresentation]);
 
   // === 还原 ===
   const handleReset = useCallback(() => {
+    stopSettleAnimation();
     setSourceUrl(source);
     setFullscreenAspectRatio(aspectRatio);
     rotatedRef.current = 0;
     setActiveCropBox(initialCropBox);
     initialized.current = false;
     setNaturalSize({ w: 0, h: 0 });
-    setCropFrame({ x: 0, y: 0, width: 0, height: 0 });
-    pointers.current.clear();
-    dragMode.current = null;
+    const emptyFrame = { x: 0, y: 0, width: 0, height: 0 };
+    legalCropFrameRef.current = emptyFrame;
+    updateCropPresentation(emptyFrame);
+    dragStateRef.current = null;
     setIsInteracting(false);
-  }, [source, initialCropBox, aspectRatio]);
+  }, [aspectRatio, initialCropBox, source, stopSettleAnimation, updateCropPresentation]);
 
   const rotateBy = useCallback((degrees: -90 | 90) => {
     if (rotating || !sourceUrl || naturalSize.w === 0) return;
+    stopSettleAnimation();
     setRotating(true);
     const img = new Image();
     img.crossOrigin = "anonymous";
@@ -294,9 +461,10 @@ export const ImageCropEditor = forwardRef<ImageCropEditorHandle, ImageCropEditor
       setActiveCropBox(undefined);
       initialized.current = false;
       setNaturalSize({ w: 0, h: 0 });
-      setCropFrame({ x: 0, y: 0, width: 0, height: 0 });
-      pointers.current.clear();
-      dragMode.current = null;
+      const emptyFrame = { x: 0, y: 0, width: 0, height: 0 };
+      legalCropFrameRef.current = emptyFrame;
+      updateCropPresentation(emptyFrame);
+      dragStateRef.current = null;
       setIsInteracting(false);
       setRotating(false);
     };
@@ -305,7 +473,7 @@ export const ImageCropEditor = forwardRef<ImageCropEditorHandle, ImageCropEditor
       setRotating(false);
     };
     img.src = sourceUrl;
-  }, [rotating, sourceUrl, naturalSize.w]);
+  }, [naturalSize.w, rotating, sourceUrl, stopSettleAnimation, updateCropPresentation]);
 
   const handleRotateLeft = useCallback(() => rotateBy(-90), [rotateBy]);
   const handleRotateRight = useCallback(() => rotateBy(90), [rotateBy]);
@@ -335,8 +503,10 @@ export const ImageCropEditor = forwardRef<ImageCropEditorHandle, ImageCropEditor
     else return;
     e.preventDefault();
     e.stopPropagation();
-    setCropFrame((f) => applyCropFrameDrag("CENTER", dx, dy, f, imageRect, effectiveAspectRatio));
-  }, [cropFrame.width, imageRect, effectiveAspectRatio]);
+    stopSettleAnimation();
+    const next = applyCropFrameDrag("CENTER", dx, dy, legalCropFrameRef.current, imageRect, effectiveAspectRatio);
+    setLegalCropFrame(next);
+  }, [cropFrame.width, effectiveAspectRatio, imageRect, setLegalCropFrame, stopSettleAnimation]);
 
   // === 渲染 ===
   // ===== Canvas 区域 (图片 + 裁切框 + 4 角 L + 4 边短横 + 蒙层 + 9 宫格) =====
@@ -345,6 +515,7 @@ export const ImageCropEditor = forwardRef<ImageCropEditorHandle, ImageCropEditor
       ref={containerRef}
       className={`relative w-full overflow-hidden focus:outline-none focus-visible:ring-2 focus-visible:ring-white/40 ${isEmbedded ? "h-full" : "flex-1"}`}
       style={{ touchAction: "none", ...(isEmbedded ? {} : { minHeight: 0 }) }}
+      data-crop-gesture="progressive-resistance"
       data-parity-id="parity.app.app.src.components.image.crop.editor.7c2a9a0b59" onPointerDown={onPointerDown}
       onPointerMove={onPointerMove}
       onPointerUp={onPointerUp}
@@ -380,6 +551,8 @@ export const ImageCropEditor = forwardRef<ImageCropEditorHandle, ImageCropEditor
       {ready && (
         <div
           className="pointer-events-none absolute"
+          data-crop-frame="presentation"
+          data-crop-interacting={isInteracting ? "true" : "false"}
           style={{
             left: cropFrame.x,
             top: cropFrame.y,
@@ -458,7 +631,7 @@ export const ImageCropEditor = forwardRef<ImageCropEditorHandle, ImageCropEditor
               onClick={() => setFullscreenAspectRatio(option.value)}
               disabled={confirming || rotating}
               className={`rounded-[12px] text-sm font-semibold transition-colors disabled:opacity-55 ${
-                fullscreenAspectRatio === option.value ? "bg-[#355c7d] text-[#fffffc]" : "text-white/72"
+                fullscreenAspectRatio === option.value ? "bg-denim text-white" : "text-white/72"
               }`}
             >
               {option.label}
@@ -485,7 +658,7 @@ export const ImageCropEditor = forwardRef<ImageCropEditorHandle, ImageCropEditor
             type="button"
             onClick={runConfirm}
             disabled={confirming || rotating || !ready}
-            className="h-12 ui-control-radius bg-[#355c7d] text-sm font-semibold text-[#fffffc] disabled:opacity-45"
+            className="h-12 ui-control-radius bg-denim text-sm font-semibold text-white disabled:opacity-45"
           >
             {confirming ? "应用中" : "应用"}
           </button>

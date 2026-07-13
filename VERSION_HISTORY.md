@@ -1,3 +1,16 @@
+## 2026-07-13 / v2.1.18-test / Codex Subagent B4 — 录入裁切、滑条与中断恢复
+
+- **执行 Agent**：Codex 实施 Subagent B4，使用 `apple-design` 技能；独立分支 `codex/motion-b4-intake-gestures-20260713`、独立 worktree `/Users/fangzheng/Documents/wardrobe-motion-b4-intake-gestures-20260713`，基于 Wave 3 冻结提交 `a1d6137a05890d81b4f6ab420bfe85e99f746496`；未合入 integration / `main`，未推送。本 Session 由主集成 Agent 分派，未再触发下级 subagent。
+- **目的与版本**：按直接操控、渐进阻力、可中断收口、纵向滚动优先和 reduced-motion 原则，修复录入裁切与滑条的触摸弱点，并给批量逐件确认增加克制方向反馈；版本保持 `2.1.18-test`，不改 API、业务字段、存储、服务端、小程序，不构建 APK。
+- **裁切物理与颜色**：`ImageCropEditor` 把 raw / presentation / legal crop frame 分离；图片边缘使用 nonlinear rubber-band，松手从当前呈现值通过公共无回弹 `spring.control` 回到合法框，新 pointerdown 可停止收口并从当前呈现值接管。确认导出强制 clamp legal frame，越界展示值不会进入裁切数据；全屏比例与应用按钮移除 `#355c7d/#fffffc`，改用现有 `denim/white` 语义 token，未改工具栏结构或共享 `cropper-math`。
+- **滑条与逐件反馈**：温度双端滑条和通用 `RangeField` 只从 knob 起拖，pointerdown 保存手指相对 knob 中心的 grab offset 且不瞬移；`touch-action: pan-y` 配合 `8px` 横纵意图锁，纵向和纵向占优手势不改值，pointer capture 保证横向拖出边界仍跟手。ref 在父级重渲染前去重相同整数 `onChange`。批量逐件切换只对当前预览图执行 `10px` 方向进入，表单、字段卡和保存栏不 key、不重播整页；reduced-motion 下取消位移。
+- **Back 与中断状态**：录入 Shell 固化并暴露 `cropper > image-source > field-overlay > exit-confirm > page` 优先级；嵌入式裁切继续通过 root back override 一次只关闭裁切，其他工具层由 OverlayStack topmost 先消费。相册空结果、裁切取消、识别失败和保存失败沿用现有 `imageItems` / 当前步骤 / 当前确认单品 / 幂等提交状态，不清空内存草稿；专项合同补齐四类中断断言。
+- **改动文件**：`garment-intake-flow.tsx`、`intake-flow-shell.tsx`、`image-crop-editor.tsx`、`temperature-range-slider.tsx`、`wardrobe-form-controls.tsx`；cropper / temperature / intake 三类合同脚本与新增 `scripts/test-intake-gesture-harness.ts`；UI 规范 B4 命名小节、生成 HTML 与本记录。
+- **自动化验证**：`test:logic:cropper` `56/56`、`test:logic:temperature-confidence`、`test:logic:intake`、`test:logic:garment-intake-multi-image` `72/72`、`test:logic:intake-entry-crop-regression` `72/72`、`test:logic:intake-fullscreen-layout` `37/37`、`docs:ui-spec:build/check`、根 `typecheck`、Next `build` 与 `git diff --check` 通过。
+- **390px 触摸与视觉验证**：Chromium Playwright `390×844`、`hasTouch=true` 实际覆盖轨道不起拖、knob pointerdown 不跳值、纵滑不改温度、横拖出 knob 后继续跟手、相同整数不重复 `onChange`、裁切越界呈现受 `44px` 上限约束和 release 回到合法图片边；页面无运行时错误。截图 `/tmp/wardrobe-b4-intake-gesture-390.png` 已目检，未见裁切框错位或横向溢出。
+- **冻结基线测试修正**：`test:logic:garment-intake-multi-image` 在未改代码的冻结基线为 `68/69`，旧断言把全仓任意 `async function saveDraft*` 都当成废弃单草稿录入逻辑，误伤当前其他路由合法的 `saveDraftAndMaybeBack`。B4 在授权测试范围内把合同收紧为 `GarmentIntakeFlow` 不含单草稿 `saveDraft/draft state` 且必须走 `onSaveBatch(drafts)`；修正后真实批量录入约束仍完整并通过。
+- **风险门禁与未验证项**：`high`（裁切与滑条是高频移动端手势）。额外 `test:logic:ui-token-contract` 已不再报告 `image-crop-editor.tsx`，仍只报告 B4 不拥有的三处冻结基线硬编码：`auth/account-views.tsx`、`item/edit-image-action-card.tsx`、`src/app/site.css`，本分支不越界修改。未在 Android 真机/模拟器、WebView、TalkBack/VoiceOver、系统字体放大或真实相册/相机上做最终验收；Android 返回键、真实设备帧时序和 360/430px 覆盖留给 D / 集成 Wave。
+
 ## 2026-07-13 / v2.1.18-test / Codex 主集成 — Motion Wave 3 归并与陈旧合同同步
 
 - **执行与版本**：主 Agent 按 B1 → B2 → B3 顺序归并三项独立提交，保全并重生成 UI 规范；版本保持 `2.1.18-test`，未进入 APK 交付。
