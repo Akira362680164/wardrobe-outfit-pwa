@@ -8,6 +8,8 @@ const search = fs.readFileSync("apps/wechat-miniprogram/pages/wardrobe/search/in
 const stats = fs.readFileSync("apps/wechat-miniprogram/pages/wardrobe/statistics/index.ts", "utf8");
 const statistics = fs.readFileSync("apps/wechat-miniprogram/utils/wear-statistics.ts", "utf8");
 const card = fs.readFileSync("apps/wechat-miniprogram/components/domain/catalog-card/index.wxml", "utf8");
+const edit = fs.readFileSync("apps/wechat-miniprogram/pages/wardrobe/edit/index.ts", "utf8");
+const intakeReview = fs.readFileSync("apps/wechat-miniprogram/pages/intake/review/index.ts", "utf8");
 
 for (const page of ["pages/wardrobe/search/index", "pages/wardrobe/statistics/index"]) assert.ok(app.pages.includes(page));
 assert.doesNotMatch(indexTs, /搜索暂未开放/);
@@ -26,5 +28,13 @@ assert.match(card, /bindlongpress="onLongPress"/);
 assert.match(indexTs, /confirmBatchDelete/);
 assert.match(indexTs, /deleteWorkspaceEntity/);
 assert.match(indexTs, /await this\.loadGarments\(\)/);
+assert.match(indexTs, /runRuntimeDomainRefresh\(\s*["']garments["']/);
+assert.match(indexTs, /initialLoading/);
+assert.match(indexTs, /refreshing/);
+assert.doesNotMatch(indexTs.match(/onLoad\(\)[\s\S]*?\n\s*},/)?.[0] ?? "", /loadGarments/);
+assert.doesNotMatch(indexTs.match(/catch \(error\) \{[\s\S]*?\n\s*}/)?.[0] ?? "", /garments:\s*\[\]/);
+assert.match(indexWxml, /wx:if="\{\{garments\.length > 0\}\}" class="garment-grid"/);
+assert.match(edit, /markRuntimeDomainDirty\("garments"\)/);
+assert.match(intakeReview, /markRuntimeDomainDirty\(kind === "wishlist" \? "wishlist" : "garments"\)/);
 for (const state of ["diagnosisLoading", "diagnosisExpanded", "diagnosisError", "closeDiagnosis", "runDiagnosis"]) assert.match(indexTs + indexWxml, new RegExp(state));
 console.log("mini wardrobe regression passed");

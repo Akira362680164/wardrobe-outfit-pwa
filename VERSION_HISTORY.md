@@ -15,6 +15,16 @@
 - **改动说明**：底栏以 `selected=-1` 启动并在当前路由首轮 `setData` 回调后才启用过渡，删除全部 0/300ms 定时同步；切换时不提前修改旧实例选中态，并增加单飞与失败恢复。公共动效移除 `transition: all`，按钮、筛选、FAB、卡片和图标按钮只做 120ms 轻位移/缩放，不再降低整控件及图片透明度，并保留 reduced-motion。
 - **验证结果**：小程序 typecheck、既有 `test:logic:miniprogram-shell`、新增导航运行时/静态动效合同、`git diff --check` 通过；微信开发者工具完成 TabBar 与 tag WXML、TabBar/button/icon-button/tag WXSS 编译，衣橱页面模拟器编译打开成功。
 - **未验证风险**：未在微信真机对四个 Tab 快速连点、按住滑出、弱网切换和系统 reduced-motion 做录屏；模拟器只完成编译打开，真实触摸手感留最终集成回归确认。本批不上传体验版。
+## 2026-07-13 / v2.1.18-test / Codex subagent — 小程序衣橱与种草主 Tab 静默刷新
+
+- **执行 Agent**：Codex subagent；在独立 `codex/flicker-main-tabs` worktree 实施，基于已提交的共享运行期基础 `5240cac9`，与导航、套装/详情/日历批次并行开发。
+- **目的与边界**：消除衣橱和种草首页 `onLoad + onShow` 首次双请求；已有卡片时改为后台刷新并保留列表，短时未脏返回直接复用当前页面数据，失败时保留旧内容；不修改图片缓存、共享刷新协调器、自定义底栏和套装页面。
+- **改动文件**：衣橱/种草首页 TS 与 WXML、衣物/种草编辑保存、录入确认、衣橱批量删除写入路径，以及衣橱/种草定向合同测试。
+- **改动说明**：首页仅在 `onShow` 通过 `runRuntimeDomainRefresh` 发起领域读取，拆分 `initialLoading` 与 `refreshing`；只接收当前 generation 的结果，相同列表不再整数组 `setData`；已有数据读取失败只显示可重试提示，不卸载卡片；新增、编辑、批量删除成功后按 `garments` / `wishlist` 标记 dirty，确保返回时绕过 30 秒新鲜度立即读取服务器。
+- **验证结果**：`npm --prefix apps/wechat-miniprogram run typecheck`、`npm run test:logic:miniprogram-runtime-refresh`、`npm run test:logic:miniprogram-wardrobe`、`npm run test:logic:miniprogram-wishlist`、`git diff --check` 通过。独立 worktree 首次缺少 `tsc`，已用 `npm install --prefer-offline --no-audit --no-fund` 恢复依赖链接，未产生 lockfile 改动。
+- **风险门禁**：`high`（主 Tab 生命周期、服务器刷新时序与多条写入回流）；用户已明确通知使用 subagent，本批由并行 subagent 实施，最终由主 Agent 串行集成审查。
+- **未验证风险**：本 subagent 未单独运行微信开发者工具模拟器或真机录屏；底栏选中态、套装/详情/日历协同和真实账号弱网视觉表现留待三个批次集成后统一验收。
+
 ## 2026-07-13 / v2.1.18-test / Codex — 小程序闪烁修复共享运行期基础
 
 - **执行 Agent**：Codex；在独立 `codex/miniprogram-flicker-fix-20260713` 集成 worktree 实施，作为三个并行 subagent 的已提交共同基线。

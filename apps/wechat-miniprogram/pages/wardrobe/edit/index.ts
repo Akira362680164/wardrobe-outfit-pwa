@@ -13,6 +13,7 @@ import { uploadPreparedImageAssets, type AssetMutation } from "../../../services
 import { createClientMutationId } from "../../../services/workspace";
 import { consumeCropResult, startCropJob, type CropResult } from "../../../stores/crop-job";
 import type { IntakeCropBox, IntakeCropRatio } from "../../../stores/intake";
+import { markRuntimeDomainDirty } from "../../../utils/runtime-refresh";
 
 const COLOR_MODES = [
   { value: "single", label: "单主色" },
@@ -265,6 +266,7 @@ Page({
         aiTag: item.rawPayload.aiRecognition as Record<string, unknown> | undefined,
         assetMutations: this.data.imageAssetMutations,
       });
+      markRuntimeDomainDirty("garments");
       wx.showToast({ title: "已保存", icon: "success" });
       wx.redirectTo({ url: `/pages/wardrobe/detail/index?id=${encodeURIComponent(item.id)}` });
     } catch (error) {

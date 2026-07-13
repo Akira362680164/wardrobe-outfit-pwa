@@ -18,6 +18,7 @@ import {
 } from "../../../stores/intake";
 import { clearCropWorkflow } from "../../../stores/crop-job";
 import { getCapsuleGeometry } from "../../../utils/capsule-layout";
+import { markRuntimeDomainDirty } from "../../../utils/runtime-refresh";
 
 const intakeCategories = MINI_CATEGORY_CATALOG.map((category) => ({ value: category.id, label: category.label }));
 
@@ -287,6 +288,7 @@ Page({
       failedItemIds,
     });
     setLastCreatedGarmentId(kind === "garment" ? savedIds[0] ?? "" : "");
+    if (savedIds.length) markRuntimeDomainDirty(kind === "wishlist" ? "wishlist" : "garments");
     this.setData({ saving: false });
     this.refreshQueue(this.data.currentIndex);
     clearSavedIntakeQueueItems();

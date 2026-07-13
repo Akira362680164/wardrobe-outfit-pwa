@@ -6,21 +6,21 @@
     </view>
   </view>
 
-  <view wx:if="{{loading}}" class="status-card">正在读取种草...</view>
+  <view wx:if="{{initialLoading}}" class="status-card">正在读取种草...</view>
 
-  <view wx:elif="{{error}}" class="status-card">
+  <view wx:if="{{!initialLoading && error}}" class="status-card">
     <view class="status-title">读取失败</view>
     <view class="status-copy">{{error}}</view>
     <button class="mini-button" bindtap="loadWishlist">重试</button>
   </view>
 
-  <view wx:elif="{{items.length === 0}}" class="status-card">
+  <view wx:if="{{!initialLoading && !error && items.length === 0}}" class="status-card">
     <view class="status-title">{{emptyTitle || '还没有种草'}}</view>
     <view class="status-copy">先记录名称、价格、链接和商品图；AI 评估后续再接。</view>
     <button class="mini-button" bindtap="handleEmptyAction">{{emptyAction || '新增种草'}}</button>
   </view>
 
-  <view wx:else>
+  <view wx:if="{{items.length > 0}}">
     <scroll-view class="status-chips" scroll-x enable-flex>
       <button
         wx:for="{{statusChips}}"

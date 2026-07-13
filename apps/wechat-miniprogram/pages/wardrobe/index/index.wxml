@@ -47,26 +47,26 @@
     </view>
   </scroll-view>
 
-  <view wx:if="{{loading}}" class="status-card">正在读取衣橱...</view>
+  <view wx:if="{{initialLoading}}" class="status-card">正在读取衣橱...</view>
 
   <view wx:if="{{diagnosisLoading || diagnosisSummary || diagnosisError}}" class="status-card">
     <view class="diagnosis-head"><view class="status-title" bindtap="toggleDiagnosis">AI 衣橱诊断 {{diagnosisExpanded ? '⌃' : '⌄'}}</view><button class="diagnosis-close" bindtap="closeDiagnosis">关闭</button></view>
     <block wx:if="{{diagnosisExpanded}}"><view class="status-copy">{{diagnosisLoading ? '正在生成诊断...' : diagnosisError || diagnosisSummary}}</view><view wx:for="{{diagnosisTips}}" wx:key="*this" class="status-copy">· {{item}}</view><button wx:if="{{diagnosisError}}" class="mini-button" bindtap="runDiagnosis">重试</button><button wx:elif="{{diagnosisSummary && !diagnosisLoading}}" class="mini-button" bindtap="runDiagnosis">重新生成</button></block>
   </view>
 
-  <view wx:if="{{!loading && error}}" class="status-card">
+  <view wx:if="{{!initialLoading && error}}" class="status-card">
     <view class="status-title">读取失败</view>
     <view class="status-copy">{{error}}</view>
     <button class="mini-button" bindtap="loadGarments">重试</button>
   </view>
 
-  <view wx:if="{{!loading && !error && garments.length === 0}}" class="status-card">
+  <view wx:if="{{!initialLoading && !error && garments.length === 0}}" class="status-card">
     <view class="status-title">{{emptyTitle || '还没有衣物'}}</view>
     <view class="status-copy">添加第一件衣物后，这里会显示图片、名称、分类、颜色和穿着摘要。</view>
     <button class="mini-button" bindtap="handleEmptyAction">{{emptyAction || '添加衣物'}}</button>
   </view>
 
-  <view wx:if="{{!loading && !error && garments.length > 0}}" class="garment-grid">
+  <view wx:if="{{garments.length > 0}}" class="garment-grid">
     <catalog-card
       wx:for="{{visibleGarments}}"
       wx:key="id"

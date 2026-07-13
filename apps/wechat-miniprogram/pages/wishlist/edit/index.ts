@@ -12,6 +12,7 @@ import { createClientMutationId } from "../../../services/workspace";
 import { HttpError } from "../../../services/http";
 import { consumeCropResult, startCropJob, type CropResult } from "../../../stores/crop-job";
 import type { IntakeCropBox, IntakeCropRatio } from "../../../stores/intake";
+import { markRuntimeDomainDirty } from "../../../utils/runtime-refresh";
 
 const COLOR_MODES = [
   { value: "single", label: "单主色" },
@@ -282,6 +283,7 @@ Page({
         assetMutations: this.data.imageAssetMutations,
         clientMutationId: this.data.draftMutationId || createClientMutationId(),
       });
+      markRuntimeDomainDirty("wishlist");
       wx.showToast({ title: "已保存", icon: "success" });
       wx.redirectTo({ url: `/pages/wishlist/detail/index?id=${encodeURIComponent(item.id)}` });
     } catch (error) {

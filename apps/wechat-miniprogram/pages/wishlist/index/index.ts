@@ -1,6 +1,7 @@
 import { fetchWishlist, getWorkspaceReadState, type MiniWishlistItem } from "../../../services/workspace";
 import { getCapsuleGeometry } from "../../../utils/capsule-layout";
 import { selectCustomTab } from "../../../utils/custom-tab-bar";
+import { runRuntimeDomainRefresh } from "../../../utils/runtime-refresh";
 
 interface WishlistStatusChip {
   key: string;
@@ -35,7 +36,8 @@ function buildSummaryText(items: MiniWishlistItem[]): string {
 
 Page({
   data: {
-    loading: false,
+    initialLoading: false,
+    refreshing: false,
     items: [] as MiniWishlistItem[],
     filteredItems: [] as MiniWishlistItem[],
     activeStatus: "all",
@@ -54,7 +56,6 @@ Page({
     wx.setNavigationBarTitle({ title: "种草" });
     this.setData({ titleTopRpx: getTitleTopRpx() });
     selectCustomTab(this, 2);
-    void this.loadWishlist();
   },
 
   onShow() {
@@ -66,11 +67,12 @@ Page({
     selectCustomTab(this, 2);
   },
 
-  async loadWishlist() {
+  async loadWishlist(this: any, options: { force?: boolean } = {}) {
     const state = getWorkspaceReadState();
     if (state !== "ready") {
       this.setData({
-        loading: false,
+        initialLoading: false,
+        refreshing: false,
         items: [],
         filteredItems: [],
         statusChips: buildStatusChips([]),
@@ -82,23 +84,40 @@ Page({
       return;
     }
 
-    this.setData({ loading: true, error: "" });
+    const hasData = this.data.items.length > 0;
     try {
-      const items = await fetchWishlist();
+      const result = await runRuntimeDomainRefresh(
+        "wishlist",
+        async () => {
+          this.setData({ initialLoading: !hasData, refreshing: hasData, error: "" });
+          return fetchWishlist();
+        },
+        { force: Boolean(options.force), hasData },
+      );
+      if (result.status !== "fulfilled" || !result.accepted) {
+        this.setData({ initialLoading: false, refreshing: false });
+        return;
+      }
+      const items = result.value;
+      if (sameList(items, this.data.items)) {
+        this.setData({ initialLoading: false, refreshing: false, error: "", emptyTitle: "", emptyAction: "" });
+        return;
+      }
       this.setData({
         items,
         filteredItems: filterItems(items, this.data.activeStatus, this.data.activeEvaluation),
         statusChips: buildStatusChips(items),
         summaryText: buildSummaryText(items),
-        loading: false,
+        initialLoading: false,
+        refreshing: false,
+        error: "",
+        emptyTitle: "",
+        emptyAction: "",
       });
     } catch (error) {
       this.setData({
-        loading: false,
-        items: [],
-        filteredItems: [],
-        statusChips: buildStatusChips([]),
-        summaryText: "0 件",
+        initialLoading: false,
+        refreshing: false,
         error: error instanceof Error ? error.message : "读取种草失败",
       });
     }
@@ -151,4 +170,8 @@ Page({
 
 function getTitleTopRpx() {
   return getCapsuleGeometry().topRpx;
+}
+
+function sameList<T>(left: T[], right: T[]): boolean {
+  return left === right || JSON.stringify(left) === JSON.stringify(right);
 }

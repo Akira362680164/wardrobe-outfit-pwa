@@ -2,6 +2,7 @@ import { aiEnhance, hasMiniMaxKey } from "../../../services/ai";
 import { MINI_CATEGORY_LABELS } from "../../../generated/catalogs";
 import { deleteWorkspaceEntity, fetchClosetLocations, fetchGarments, fetchOutfits, getWorkspaceReadState, type MiniClosetLocation, type MiniGarment } from "../../../services/workspace";
 import { selectCustomTab } from "../../../utils/custom-tab-bar";
+import { markRuntimeDomainDirty, runRuntimeDomainRefresh } from "../../../utils/runtime-refresh";
 
 type CategoryChip = {
   key: string;
@@ -17,7 +18,8 @@ type LocationOption = {
 };
 Page({
   data: {
-    loading: false,
+    initialLoading: false,
+    refreshing: false,
     garments: [] as MiniGarment[],
     visibleGarments: [] as MiniGarment[],
     locations: [] as MiniClosetLocation[],
@@ -50,7 +52,6 @@ Page({
   onLoad() {
     wx.setNavigationBarTitle({ title: "衣橱" });
     selectCustomTab(this, 0);
-    void this.loadGarments();
   },
 
   onShow() {
@@ -62,11 +63,12 @@ Page({
     selectCustomTab(this, 0);
   },
 
-  async loadGarments() {
+  async loadGarments(this: any, options: { force?: boolean } = {}) {
     const state = getWorkspaceReadState();
     if (state !== "ready") {
       this.setData({
-        loading: false,
+        initialLoading: false,
+        refreshing: false,
         garments: [],
         visibleGarments: [],
         locations: [],
@@ -84,17 +86,32 @@ Page({
       return;
     }
 
-    this.setData({ loading: true, error: "" });
+    const hasData = this.data.garments.length > 0;
     try {
-      const [garments, locations] = await Promise.all([fetchGarments(), fetchClosetLocations().catch(() => [])]);
-      this.applyGarments(garments, locations);
+      const result = await runRuntimeDomainRefresh(
+        "garments",
+        async () => {
+          this.setData({ initialLoading: !hasData, refreshing: hasData, error: "" });
+          const [garments, locations] = await Promise.all([fetchGarments(), fetchClosetLocations().catch(() => [])]);
+          return { garments, locations };
+        },
+        { force: Boolean(options.force), hasData },
+      );
+      if (result.status === "fulfilled" && result.accepted) this.applyGarments(result.value.garments, result.value.locations);
+      else this.setData({ initialLoading: false, refreshing: false });
     } catch (error) {
-      this.setData({ loading: false, garments: [], visibleGarments: [], error: error instanceof Error ? error.message : "读取衣橱失败" });
+      this.setData({ initialLoading: false, refreshing: false, error: error instanceof Error ? error.message : "读取衣橱失败" });
     }
   },
 
   applyGarments(this: any, garments: MiniGarment[], locations?: MiniClosetLocation[]) {
     const currentLocations = locations ?? this.data.locations;
+    if ((this.data.garments.length > 0 || this.data.locations.length > 0)
+      && sameList(garments, this.data.garments)
+      && sameList(currentLocations, this.data.locations)) {
+      this.setData({ initialLoading: false, refreshing: false, error: "", emptyTitle: "", emptyAction: "" });
+      return;
+    }
     const current = this.data.activeCategory;
     const wardrobeScope = this.data.wardrobeScope;
     const locationOptions = buildLocationOptions(garments, currentLocations);
@@ -106,7 +123,9 @@ Page({
     const totalCount = garments.length;
     const scopeLabel = locationOptions.find((option) => option.id === activeScope)?.name ?? "全部衣橱";
     this.setData({
-      loading: false,
+      initialLoading: false,
+      refreshing: false,
+      error: "",
       garments,
       locations: currentLocations,
       locationOptions,
@@ -286,7 +305,10 @@ Page({
     try {
       for (const id of this.data.selectedIds as string[]) {
         const item = (this.data.garments as MiniGarment[]).find((entry) => entry.id === id);
-        if (item) await deleteWorkspaceEntity("garments", item.id, item.revision);
+        if (item) {
+          await deleteWorkspaceEntity("garments", item.id, item.revision);
+          markRuntimeDomainDirty("garments");
+        }
       }
       this.cancelSelection();
       await this.loadGarments();
@@ -346,4 +368,8 @@ function diagnosisTips(result: Record<string, unknown>): string[] {
       });
     })
     .filter((item) => item.length > 0);
+}
+
+function sameList<T>(left: T[], right: T[]): boolean {
+  return left === right || JSON.stringify(left) === JSON.stringify(right);
 }
