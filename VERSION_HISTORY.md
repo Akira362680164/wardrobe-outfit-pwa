@@ -3,7 +3,7 @@
 - **执行与版本**：主 Agent 完成 `apple-design` 审查方案的 Wave 0–6 并行归并，将版本从 `2.1.18-test` 递增到 `2.1.19-test`；同步 `package-lock.json` 与小程序生成 build-info，不修改小程序运行时或业务契约。
 - **交付范围**：统一 Overlay/Back、按压与状态反馈、图片轮播/Lightbox、周历/月历、录入裁切/滑条、主导航与滚动恢复、三类详情、套装/计划/设置/账号/种草深层流程，以及 reduced-motion、透明度、高对比、低端 Android、可访问命名与严格静态门禁。线上唯一数据源、API、领域字段和 MiniMax 隐私边界保持不变。
 - **自动化与构建验证**：Wave 6 合流后的 `test:logic:all`、根 `typecheck`、Next `build`、严格 UI contracts 和确定性 C2 连续性门禁通过；严格 motion scanner 覆盖 `198` 个运行时源码文件、`0` 违规。`npm run android:apk` 成功生成固定签名 APK，`android:verify:full` 与最终 Android 动效 evidence runner 均通过。
-- **APK 交付**：最终产物 `app-release-27615001.apk` 为 `10,068,457` bytes，SHA-256 `22f1faf02ca52ee4f83c3e1b80f21dcf010de752927d15d3d8f333beb8f80394`；包名 `com.wardrobe.outfit`、`versionName=2.1.19-test`、`versionCode=20119`、签名 `CN=fangzheng`。正式目录交付文件在主分支集成后命名为 `衣橱穿搭助手-v2.1.19-test.apk`。
+- **APK 交付**：同步合入并复验最新 `main` 的推荐引擎 1A 后，最终产物 `app-release-fd68c14c.apk` 为 `10,068,425` bytes，SHA-256 `c453acb090b45800da469c64a674a93965e5e6339d8a712e9e52be688bda054b`；包名 `com.wardrobe.outfit`、`versionName=2.1.19-test`、`versionCode=20119`、签名 `CN=fangzheng`。正式目录交付文件在主分支集成后命名为 `衣橱穿搭助手-v2.1.19-test.apk`。
 - **Android 现场**：Android 15 / API 35 `wardrobe-test` 模拟器以同一最终 APK 覆盖安装、启动、前台窗口、竖屏、系统 Back、重启、清数据再启动和三轮 fatal logcat 扫描，fatal 均为 `0`。最终 runner 的 `390×844` 十项源码/浏览器矩阵全部通过，覆盖浮层 Back、图片反向接管、日历斜滑、滑条纵滚、C1/C3 路由中断与 reduced-motion。
 - **未验证风险**：清数据后的最终 APK 停留在无账号登录壳；未使用生产账号或生产业务数据，因此六项需要登录后真实数据页面的 WebView 手势行未冒充为设备通过，仍保留为“主 Agent 最终复测”。Android 15 的系统三项动画比例设为 `0` 时，当前 WebView 124 的 `matchMedia('(prefers-reduced-motion: reduce)')` 仍返回 `false`；本轮 reduced-motion 以同源码 Chromium 媒体仿真及合同门禁验证，未声称系统开关映射已被 Android WebView 现场证明。TalkBack、真实软键盘与物理设备仍未覆盖。
 
