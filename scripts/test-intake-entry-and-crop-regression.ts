@@ -89,7 +89,7 @@ check("GarmentIntakeFlow 步骤2不再强制保存并下一张", !/handleSaveCur
 check("GarmentIntakeFlow 部分保存确认复用 ConfirmActionSheet", /<ConfirmActionSheet[\s\S]{0,260}pendingSaveDrafts/.test(garmentIntakeFlow) && !/fixed inset-0 z-\[110\]/.test(garmentIntakeFlow));
 check("GarmentIntakeFlow 允许未裁切直接开始识别", !/请先裁切所有图片/.test(garmentIntakeFlow) && /imageToProcess =[\s\S]{0,120}item\.croppedImageDataUrl \?\? item\.displayDataUrl \?\? item\.originalDataUrl/.test(garmentIntakeFlow));
 check("GarmentIntakeFlow 相册/拍照取消直接返回空结果", /catch \(error\) \{[\s\S]{0,80}isImagePickerCancelError\(error\)[\s\S]{0,40}return \[\]/.test(wardrobeApp));
-check("GarmentIntakeFlow 相册空结果不清空现有 imageItems", /if \(picked\.length > 0\) \{[\s\S]{0,520}appendGarmentIntakeImages/.test(garmentIntakeFlow));
+check("GarmentIntakeFlow 相册空结果不清空现有 imageItems", /if \(picked\.length > 0\) \{[\s\S]{0,700}setImageItems\(\(prev\) => \[\.\.\.prev, \.\.\.created\]/.test(garmentIntakeFlow));
 check("GarmentIntakeFlow 裁切取消只关闭工具层", /onCancel=\{\(\) => setIsCropping\(false\)\}/.test(garmentIntakeFlow));
 check("GarmentIntakeFlow 识别失败原位生成待确认草稿", /setGarmentIntakeImageRecognitionFailure/.test(garmentIntakeFlow) && /buildFailedRecognitionDraft/.test(garmentIntakeFlow));
 check("GarmentIntakeFlow 保存失败保留当前页与草稿", /catch \(err\) \{[\s\S]{0,260}setSubmitState\(\{ status: "failed"/.test(garmentIntakeFlow) && !/catch \(err\) \{[\s\S]{0,260}setImageItems\(\[\]\)/.test(garmentIntakeFlow));

@@ -35,6 +35,7 @@ export interface LocalImageProcessingResult {
   aiTag?: import("./types").GarmentTagResult;
   aiSourceImageDataUrl?: string;
   aiFallback?: boolean;
+  aiSecondaryCropBox?: { x: number; y: number; width: number; height: number };
 }
 
 export interface BuildLocalGarmentDraftInput extends LocalImageProcessingResult {

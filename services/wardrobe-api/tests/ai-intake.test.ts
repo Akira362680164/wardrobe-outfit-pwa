@@ -87,11 +87,13 @@ describe("AI intake routes", () => {
           {
             clientItemId: "image-1",
             imageDataUrl: "data:image/png;base64,AAAA",
+            gridImageDataUrl: "data:image/png;base64,AAAA",
             fallbackName: "shirt.jpg",
           },
           {
             clientItemId: "image-2",
             imageDataUrl: "data:image/png;base64,BBBB",
+            gridImageDataUrl: "data:image/png;base64,BBBB",
             fallbackName: "pants.jpg",
           },
         ],
@@ -231,6 +233,7 @@ describe("AI intake routes", () => {
     expect(response.statusCode).toBe(200);
     expect(response.json()).toMatchObject({
       imageDataUrl: "data:image/jpeg;base64,dGVzdA==",
+      gridImageDataUrl: "data:image/jpeg;base64,dGVzdA==",
     });
     const invalid = await app.inject({
       method: "POST",
@@ -266,6 +269,7 @@ function fakeAiService(calls: unknown[] = []): MiniMaxIntakeServiceLike {
   return {
     generateTryOn: async () => ({
       imageDataUrl: "data:image/jpeg;base64,dGVzdA==",
+      gridImageDataUrl: "data:image/jpeg;base64,dGVzdA==",
     }),
     recognizeGarment: async (input) => {
       calls.push(input);
@@ -335,6 +339,7 @@ function garmentPayload() {
       timeoutMs: 60000,
     },
     imageDataUrl: "data:image/png;base64,AAAA",
+    gridImageDataUrl: "data:image/png;base64,AAAA",
     fallbackName: "shirt.jpg",
   };
 }

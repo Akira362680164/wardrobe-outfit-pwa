@@ -85,6 +85,8 @@ import { GarmentImage } from "@/components/garment-image";
 import { ConfirmActionSheet, NoticeSheet } from "@/components/dialogs";
 import { OnlineInlineNotice } from "@/components/online/online-inline-notice";
 import { getAuthUserDisplayName } from "@/lib/auth-session-store";
+import { requestImageCropSuggestion } from "@/lib/online/online-image-crop-client";
+import { createTenByTenGridDataUrl } from "@/lib/image-grid";
 
 // v1.1.23 six-page design: 共享的 item/ 编辑/详情展示小组件。
 import { ItemField } from "@/components/item/field";
@@ -642,6 +644,7 @@ export function WardrobeApp({ cloudAuth }: { cloudAuth?: WardrobeCloudAuth } = {
     aiTag?: import("@/lib/types").GarmentTagResult;
     aiSourceImageDataUrl?: string;
     aiFallback?: boolean;
+    aiSecondaryCropBox?: NormalizedCropBox;
   }> {
     const { imageDataUrl, sourceImageDataUrl } = input;
     // v1.1.31 commit2: 真实 fileName（来源于 picked image），禁止固定 "garment.jpg"。
@@ -654,14 +657,16 @@ export function WardrobeApp({ cloudAuth }: { cloudAuth?: WardrobeCloudAuth } = {
     // issue 路径，绝不返回默认"成功"草稿伪装为可编辑。
     const file = await dataUrlToFile(aiInputImage, fileName).catch(() => null);
     const aiRequestDataUrl = file ? await fileToAiRequestDataUrl(file).catch(() => aiInputImage) : aiInputImage;
+    const gridImageDataUrl = await createTenByTenGridDataUrl(aiRequestDataUrl);
     const recognition = await withKeepAwake(() =>
-      recognizeGarmentOnServer({ aiRequestDataUrl, originalDataUrl: sourceImageDataUrl ?? imageDataUrl, fileName, settings: miniMaxSettings }),
+      recognizeGarmentOnServer({ aiRequestDataUrl, gridImageDataUrl, originalDataUrl: sourceImageDataUrl ?? imageDataUrl, fileName, settings: miniMaxSettings }),
     );
     return {
       transparentBackgroundStatus: "skipped",
       qualityWarnings: [],
       aiTag: recognition.tag,
       aiSourceImageDataUrl: recognition.sourceImageDataUrl,
+      aiSecondaryCropBox: recognition.cropNeedsReview ? undefined : recognition.secondaryCropBox,
     };
   }
 
@@ -672,12 +677,14 @@ export function WardrobeApp({ cloudAuth }: { cloudAuth?: WardrobeCloudAuth } = {
         const aiInputImage = await createTemporaryCroppedImage({ originalImage: input.imageDataUrl, cropBox: input.cropBox });
         const file = await dataUrlToFile(aiInputImage, fileName).catch(() => null);
         const aiRequestDataUrl = file ? await fileToAiRequestDataUrl(file).catch(() => aiInputImage) : aiInputImage;
+        const gridImageDataUrl = await createTenByTenGridDataUrl(aiRequestDataUrl);
         return {
           kind: "ready" as const,
           imageItemId: input.imageItemId,
           aiRequestDataUrl,
           originalDataUrl: input.sourceImageDataUrl ?? input.imageDataUrl,
           fileName,
+          gridImageDataUrl,
         };
       } catch (error) {
         return {
@@ -698,6 +705,7 @@ export function WardrobeApp({ cloudAuth }: { cloudAuth?: WardrobeCloudAuth } = {
             aiRequestDataUrl: item.aiRequestDataUrl,
             originalDataUrl: item.originalDataUrl,
             fileName: item.fileName,
+            gridImageDataUrl: item.gridImageDataUrl,
           })),
           settings: miniMaxSettings,
         }))
@@ -712,6 +720,7 @@ export function WardrobeApp({ cloudAuth }: { cloudAuth?: WardrobeCloudAuth } = {
             qualityWarnings: [],
             aiTag: item.result.tag,
             aiSourceImageDataUrl: item.result.sourceImageDataUrl,
+            aiSecondaryCropBox: item.result.cropNeedsReview ? undefined : item.result.secondaryCropBox,
           },
         };
       })].map((item) => [item.imageItemId, item]),
@@ -1001,6 +1010,8 @@ export function WardrobeApp({ cloudAuth }: { cloudAuth?: WardrobeCloudAuth } = {
                 // 这里调 MiniMax 单件属性识别, 失败 throw 由 flow catch 处理。
                 onProcessImage={processGarmentIntakeImage}
                 onProcessImages={processGarmentIntakeImages}
+                hasMiniMaxKey={hasDeviceMiniMaxKey(miniMaxSettings)}
+                onSuggestCrop={requestImageCropSuggestion}
                 onSaveBatch={(drafts, context) => saveBatchGarmentIntakeDrafts(drafts, context)}
                 onExit={() => {
                   setShowGarmentIntakeFlow(false);
@@ -2067,8 +2078,9 @@ function WardrobeView(props: WardrobeViewProps) {
       const croppedSource = await createTemporaryCroppedImage({ originalImage: source, cropBox: editDraft.localCropBox });
       const file = await dataUrlToFile(croppedSource, `${editDraft.name || "garment"}.jpg`).catch(() => null);
       const aiRequestDataUrl = file ? await fileToAiRequestDataUrl(file).catch(() => croppedSource) : croppedSource;
+      const gridImageDataUrl = await createTenByTenGridDataUrl(aiRequestDataUrl);
       const recognition = await withKeepAwake(() =>
-        recognizeGarmentOnServer({ aiRequestDataUrl, originalDataUrl: source, fileName: editDraft.name || "garment.jpg", settings: miniMaxSettings }),
+        recognizeGarmentOnServer({ aiRequestDataUrl, gridImageDataUrl, originalDataUrl: source, fileName: editDraft.name || "garment.jpg", settings: miniMaxSettings }),
       );
       const tag = recognition.tag;
       const patch = buildWardrobeEditRecognitionPatch(tag, {

@@ -46,7 +46,9 @@ import {
   buildLocalGarmentDraft,
   type LocalImageProcessingResult,
 } from "@/lib/intake-local-draft";
-import { fileToCompressedDataUrl, rotateImageDataUrl } from "@/lib/image";
+import { cropFromOriginal, fileToCompressedDataUrl, rotateImageDataUrl } from "@/lib/image";
+import type { ImageCropSuggestionResponse } from "@wardrobe/cloud-contracts";
+import { composeNestedCropBoxes, FULL_IMAGE_CROP_BOX } from "@wardrobe/cloud-contracts";
 import { GarmentRecognitionError } from "@/lib/device-minimax";
 import { createGarmentThumbnailFromOriginal, generateThumbnailSafe } from "@/lib/thumbnail-runtime";
 import { recordDiagnosticEvent } from "@/lib/diagnostic-log";
@@ -68,7 +70,6 @@ import {
 import {
   GARMENT_INTAKE_MAX_IMAGES,
   createGarmentIntakeImageItem,
-  appendGarmentIntakeImages,
   removeGarmentIntakeImage,
   setGarmentIntakeImageCrop,
   setGarmentIntakeImageDraft,
@@ -120,6 +121,8 @@ export interface GarmentIntakeFlowProps {
   onPickImages: (source: GarmentImageSource, remaining: number) => IntakeAsyncResult<GarmentIntakePickedImage[]>;
   onProcessImage?: (input: GarmentImageProcessingInput) => IntakeAsyncResult<LocalImageProcessingResult>;
   onProcessImages?: (inputs: GarmentImageBatchProcessingInput[]) => IntakeAsyncResult<GarmentImageBatchProcessingResult[]>;
+  hasMiniMaxKey?: boolean;
+  onSuggestCrop?: (input: { clientItemId: string; revision: number; imageDataUrl: string }) => IntakeAsyncResult<ImageCropSuggestionResponse>;
   onEnhanceDraft?: (draft: GarmentIntakeDraft) => IntakeAsyncResult<GarmentIntakeDraft>;
   onDraftChange?: (drafts: GarmentIntakeDraft[]) => void;
   onSaveBatch: (drafts: GarmentIntakeDraft[], context?: IntakeSaveBatchContext) => IntakeAsyncResult<void | IntakeBatchSaveResult>;
@@ -199,6 +202,8 @@ export function GarmentIntakeFlow({
   onPickImages,
   onProcessImage,
   onProcessImages,
+  hasMiniMaxKey = true,
+  onSuggestCrop,
   onEnhanceDraft: _onEnhanceDraft,
   onDraftChange,
   onSaveBatch,
@@ -218,6 +223,7 @@ export function GarmentIntakeFlow({
   const [isCropping, setIsCropping] = useState(false);
   const [isRecognizing, setIsRecognizing] = useState(false);
   const [recognitionProgress, setRecognitionProgress] = useState<{ current: number; total: number } | null>(null);
+  const cropProgress = useMemo(() => ({ completed: imageItems.filter((item) => item.cropCompleted).length, total: imageItems.length }), [imageItems]);
   const [isSavingBatch, setIsSavingBatch] = useState(false);
   const [submitState, setSubmitState] = useState<IntakeSubmitState>({ status: "idle" });
   const [error, setError] = useState("");
@@ -286,7 +292,9 @@ export function GarmentIntakeFlow({
         if (picked.length > remaining) {
           setError(`最多一次录入 ${GARMENT_INTAKE_MAX_IMAGES} 张图片，已截断`);
         }
-        setImageItems((prev) => appendGarmentIntakeImages(prev, toAdd));
+        const created = toAdd.map((image) => createGarmentIntakeImageItem(image));
+        setImageItems((prev) => [...prev, ...created].slice(0, GARMENT_INTAKE_MAX_IMAGES));
+        if (!hasMiniMaxKey) void runAutomaticCrop(created);
       }
     } catch (err) {
       setError(formatIntakeError(err, "图片读取失败，请重试"));
@@ -307,13 +315,48 @@ export function GarmentIntakeFlow({
         if (picked.length > remaining) {
           setError(`最多一次录入 ${GARMENT_INTAKE_MAX_IMAGES} 张图片，已截断`);
         }
-        setImageItems((prev) => appendGarmentIntakeImages(prev, toAdd));
+        const created = toAdd.map((image) => createGarmentIntakeImageItem(image));
+        setImageItems((prev) => [...prev, ...created].slice(0, GARMENT_INTAKE_MAX_IMAGES));
+        if (!hasMiniMaxKey) void runAutomaticCrop(created);
       }
     } catch (err) {
       setError(formatIntakeError(err, "图片读取失败，请重试"));
     } finally {
       setIsPicking(false);
     }
+  }
+
+  async function runAutomaticCrop(items: GarmentIntakeImageItem[]) {
+    if (!onSuggestCrop || !items.length) return;
+    const queue = items.map((item) => ({ ...item, revision: item.cropRevision + 1 }));
+    const revisions = new Map(queue.map((item) => [item.id, item.revision]));
+    setImageItems((current) => current.map((item) => revisions.has(item.id) ? { ...item, cropState: "queued" as const, cropRevision: revisions.get(item.id)!, cropCompleted: false } : item));
+    let cursor = 0;
+    const worker = async () => {
+      while (cursor < queue.length) {
+        const entry = queue[cursor++]!;
+        setImageItems((current) => current.map((item) => item.id === entry.id && item.cropRevision === entry.revision ? { ...item, cropState: "processing" as const } : item));
+        try {
+          const response = await onSuggestCrop({ clientItemId: entry.id, revision: entry.revision, imageDataUrl: entry.originalDataUrl });
+          const preview = await cropFromOriginal(entry.originalDataUrl, response.suggestion.cropBox);
+          const thumb = await createGarmentThumbnailFromOriginal({ originalDataUrl: entry.originalDataUrl, cropBox: response.suggestion.cropBox });
+          setImageItems((current) => current.map((item) => item.id === entry.id && item.cropRevision === response.revision && item.cropState !== "manual" ? { ...item, displayDataUrl: preview, croppedImageDataUrl: preview, thumbnailDataUrl: thumb.thumbnailDataUrl, cropBox: response.suggestion.cropBox, cropSuggestion: response.suggestion, cropState: "applied" as const, cropCompleted: true } : item));
+        } catch {
+          setImageItems((current) => current.map((item) => item.id === entry.id && item.cropRevision === entry.revision && item.cropState !== "manual" ? { ...item, cropState: "failed" as const, cropCompleted: true } : item));
+        }
+      }
+    };
+    await Promise.all(Array.from({ length: Math.min(3, queue.length) }, worker));
+  }
+
+  function prepareManualDrafts() {
+    setImageItems((current) => current.map((item) => {
+      if (item.draft) return item;
+      const result = fallbackImageProcessingResult(item.croppedImageDataUrl ?? item.displayDataUrl, flowKind === "wishlist" ? "product_photo" : "garment");
+      const draft = buildLocalGarmentDraft({ ...result, imageDataUrl: item.originalDataUrl, croppedImageDataUrl: item.croppedImageDataUrl ?? item.displayDataUrl, cropBox: item.cropBox, thumbnailDataUrl: item.thumbnailDataUrl, locationId: defaultLocationId });
+      return { ...item, draft, status: "failed" as const, error: undefined };
+    }));
+    setStepIndex("confirm_params");
   }
 
   function handleRemoveImage(id: string) {
@@ -358,7 +401,9 @@ export function GarmentIntakeFlow({
   const handleRotate = useCallback(async (direction: "left" | "right") => {
     if (!activeImageId || !activeImage) return;
     try {
-      const rotated = await rotateImageDataUrl(activeImage.originalDataUrl, direction === "left" ? 270 : 90);
+      const delta = direction === "left" ? 270 : 90;
+      const nextRotation = ((activeImage.rotationDeg + delta) % 360) as 0 | 90 | 180 | 270;
+      const rotated = nextRotation === 0 ? activeImage.sourceOriginalDataUrl : await rotateImageDataUrl(activeImage.sourceOriginalDataUrl, nextRotation);
       const thumbnailDataUrl = await generateThumbnailSafe(rotated);
       setImageItems((prev) =>
         prev.map((item) => {
@@ -366,11 +411,14 @@ export function GarmentIntakeFlow({
           return {
             ...item,
             originalDataUrl: rotated,
-            rotationDeg: 0,
+            rotationDeg: nextRotation,
             displayDataUrl: rotated,
             croppedImageDataUrl: undefined,
             thumbnailDataUrl: thumbnailDataUrl.thumbnailDataUrl,
             cropBox: undefined,
+            preCropBox: undefined,
+            preCropRevision: item.preCropRevision + 1,
+            cropRevision: item.cropRevision + 1,
             draft: undefined,
             error: undefined,
             status: "selected" as const,
@@ -455,7 +503,7 @@ export function GarmentIntakeFlow({
           imageDataUrl: item.originalDataUrl,
           sourceImageDataUrl: item.originalDataUrl,
           fileName: item.fileName,
-          cropBox: item.cropBox,
+          cropBox: item.preCropBox ?? FULL_IMAGE_CROP_BOX,
         }));
         const outputs = await Promise.resolve(onProcessImages(batchInputs)).catch((err: unknown) => pendingItems.map((item): GarmentImageBatchProcessingResult => ({
           imageItemId: item.id,
@@ -532,7 +580,7 @@ export function GarmentIntakeFlow({
     const processed = await onProcessImage({
       imageDataUrl: item.originalDataUrl,
       fileName: item.fileName,
-      cropBox: item.cropBox,
+      cropBox: item.preCropBox ?? FULL_IMAGE_CROP_BOX,
     });
     return buildDraftFromProcessingResult(item, processed);
   }
@@ -559,7 +607,7 @@ export function GarmentIntakeFlow({
         : undefined,
       imageDataUrl: item.originalDataUrl,
       croppedImageDataUrl: imageToProcess,
-      cropBox: item.cropBox,
+      cropBox: composeNestedCropBoxes(item.preCropBox ?? FULL_IMAGE_CROP_BOX, processed.aiSecondaryCropBox),
       thumbnailDataUrl: item.thumbnailDataUrl,
       locationId: defaultLocationId,
     });
@@ -685,7 +733,8 @@ export function GarmentIntakeFlow({
         return;
       }
       // P2-01: 直接进入 AI 识别加载状态，跳过独立编辑步骤
-      await processAllImagesForRecognition();
+      if (hasMiniMaxKey) await processAllImagesForRecognition();
+      else prepareManualDrafts();
       return;
     }
     if (stepIndex === "confirm_params") {
@@ -807,7 +856,7 @@ export function GarmentIntakeFlow({
 
   const nextLabel =
     stepIndex === "select_photo"
-      ? "下一步（AI 识别）"
+      ? hasMiniMaxKey ? "下一步（AI 识别）" : "下一步（填写属性）"
       : `保存 ${savableItems.length} 件${flowNoun}`;
 
   const nextDisabled =
@@ -867,6 +916,7 @@ export function GarmentIntakeFlow({
             isPicking={isPicking}
             flowKind={flowKind}
             onCropActive={() => { if (activeImage) setIsCropping(true); }}
+            cropProgress={!hasMiniMaxKey ? cropProgress : undefined}
           />
         )
       ) : null}
@@ -919,6 +969,7 @@ function MultiImageSelectStep({
   isPicking,
   flowKind,
   onCropActive,
+  cropProgress,
 }: {
   imageItems: GarmentIntakeImageItem[];
   onAddFromCamera: () => void;
@@ -930,6 +981,7 @@ function MultiImageSelectStep({
   isPicking: boolean;
   flowKind: "garment" | "wishlist";
   onCropActive?: () => void;
+  cropProgress?: { completed: number; total: number };
 }) {
   const hasImages = imageItems.length > 0;
   const displayItems = imageItems;
@@ -956,6 +1008,9 @@ function MultiImageSelectStep({
           />
         )}
       </div>
+      {cropProgress && cropProgress.completed < cropProgress.total ? (
+        <p className="mb-3 text-center text-xs text-ink/55">正在自动裁切，进度 {cropProgress.completed}/{cropProgress.total}</p>
+      ) : null}
       {/* Thumbnail row */}
       <div className="relative flex gap-2 mb-3 overflow-x-auto overflow-y-visible pt-14 pb-1">
         {displayItems.map((item, idx) => (

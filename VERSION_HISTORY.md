@@ -1,3 +1,11 @@
+## 2026-07-14 / v2.1.20-test / Codex — 图片自动裁切双路线正式开发与验证
+
+- **共享合同与两条路线**：App / 微信小程序、衣橱 / 种草四入口统一归一化坐标、EXIF、每侧 20% 安全外扩、pre/secondary/final 组合、revision/manual-wins 与独立裁切状态。MiniMax Key 仅在设备侧使用，步骤 1零 UI 差异并保留预裁切/旋转；无 Key 才显示逐张进度及“下一步（填写属性）”，步骤 2结构不变。
+- **服务端与小程序**：Wardrobe API 新增鉴权单图裁切建议接口，落实 MIME/签名、大小/像素、损坏图、超时、队列并发和 Sidecar 崩溃边界；私有 u2netp sidecar 不联网、不持久化。小程序以可记录几何的现有入口替换无法返回坐标的 `wx.cropImage`，Canvas 从会话原图应用裁切；生成检查保证两端合同一致。
+- **真实验证**：26 张去重语料中选 10 张真实走 API + CPU u2netp，`0/10` 失败、墙钟 `7481.5ms`、P50 `2182.3ms`、P95 `4108.8ms`；3 张先手工预裁切后真实调用 MiniMax，确认发送的是预裁切图、属性/框独立降级且 final 框映射回原图。详细 imageId/SHA、矩阵与风险见 `docs/testing/image-crop-dual-route-20260714.md`。
+- **门禁与交付**：根/合同/API/小程序 typecheck、API `180/180`、共享 10 向量、录入状态机与四入口合同、Next/Android release 构建通过。固定签名 APK `衣橱穿搭助手-v2.1.20-test.apk`（versionCode `20120`，SHA-256 `b98762ab2522b954db030cae47122605a8c4ee050bd7ee64ebe00a276b903a23`）在 Android 15 模拟器完成冷启动、360dp、Back 与 fatal 筛查。
+- **生产与未覆盖**：权重未入 Git；正式启用必须先完成权重分发许可审核、部署 checksum、私网常驻 sidecar/容量/ready 门禁。本 Session 不合 main、不部署。两客户端模拟器缺测试账号，未完成登录后 UI 内四入口 10 图截图/真机验证，未将自动合同或后端实图结果冒充为该项通过。
+
 ## 2026-07-14 / v2.1.19-test / Codex 主集成 — 全量动效修复与 Android 交付
 
 - **执行与版本**：主 Agent 完成 `apple-design` 审查方案的 Wave 0–6 并行归并，将版本从 `2.1.18-test` 递增到 `2.1.19-test`；同步 `package-lock.json` 与小程序生成 build-info，不修改小程序运行时或业务契约。

@@ -1,6 +1,6 @@
 {
   "name": "wardrobe-outfit-pwa",
-  "version": "2.1.19-test",
+  "version": "2.1.20-test",
   "private": true,
   "workspaces": [
     "packages/domain-catalog",
@@ -33,6 +33,8 @@
     "docs:ui-spec:check": "node scripts/generate-ui-spec-preview.mjs --check",
     "catalog:miniprogram:generate": "npm run build --workspace @wardrobe/domain-catalog && node scripts/generate-miniprogram-catalogs.mjs",
     "catalog:miniprogram:check": "npm run build --workspace @wardrobe/domain-catalog && node scripts/generate-miniprogram-catalogs.mjs --check",
+    "image-crop:miniprogram:generate": "node scripts/generate-miniprogram-image-crop.mjs",
+    "image-crop:miniprogram:check": "node scripts/generate-miniprogram-image-crop.mjs --check",
     "test:logic:domain-catalog": "tsx scripts/test-domain-catalog.ts",
     "test:logic:miniprogram-catalog": "tsx scripts/test-miniprogram-catalog-consistency.ts",
     "test:logic:miniprogram-wear-statistics": "tsx scripts/test-miniprogram-wear-statistics.ts",
@@ -52,6 +54,7 @@
     "test:logic:website": "tsx scripts/test-wardora-compliance-site.ts",
     "test:website:visual": "tsx scripts/verify-wardora-website.ts",
     "test:logic:cropper": "tsx scripts/test-cropper-math.ts",
+    "test:logic:image-crop-dual-route": "tsx scripts/test-image-crop-dual-route.ts",
     "test:logic:images": "tsx scripts/test-garment-image-source.ts",
     "test:logic:temperature-confidence": "tsx scripts/test-temperature-confidence-global.ts",
     "test:logic:urgent-account": "tsx scripts/test-account-management-urgent.ts && tsx scripts/test-settings-account-c3.ts",
