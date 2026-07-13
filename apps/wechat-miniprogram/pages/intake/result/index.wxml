@@ -1,7 +1,7 @@
 <view class="page-shell result-page">
+  <sub-page-top-bar title="导入结果" />
   <view class="result-card surface-panel">
     <view class="result-mark">处理完成</view>
-    <view class="page-title">批量导入结果</view>
     <view class="page-copy">保存成功的{{kindLabel}}会从服务器重新读取；失败项仍保留，可继续处理。</view>
 
     <view class="result-stats">

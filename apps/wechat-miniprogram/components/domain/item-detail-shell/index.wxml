@@ -1,13 +1,8 @@
 <view class="item-detail-shell">
-  <view class="item-detail-shell__topbar">
-    <navigator class="item-detail-shell__back" open-type="navigateBack" aria-label="返回">
-      <ui-icon name="chevron-left" size="44" tone="ink" />
-    </navigator>
-    <view class="item-detail-shell__top-title">{{topTitle || title}}</view>
-  </view>
+  <sub-page-top-bar title="{{topTitle || title}}"><view slot="right"><slot name="topRight" /></view></sub-page-top-bar>
 
   <view class="item-detail-shell__hero">
-    <view class="item-detail-shell__hero-action"><slot name="topRight" /></view>
+    <view class="item-detail-shell__hero-action"><slot name="heroAction" /></view>
     <view wx:if="{{heroLabel}}" class="item-detail-shell__badge">{{heroLabel}}</view>
     <image wx:if="{{imageUrl}}" class="item-detail-shell__image" mode="aspectFit" src="{{imageUrl}}" />
     <view wx:else class="item-detail-shell__fallback">{{heroFallback}}</view>

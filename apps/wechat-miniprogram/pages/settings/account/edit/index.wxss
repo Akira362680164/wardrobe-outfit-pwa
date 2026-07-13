@@ -1,4 +1,4 @@
-.account-edit-page { min-height: 100vh; padding-bottom: calc(96rpx + env(safe-area-inset-bottom)); }
+.account-edit-page { min-height: 100vh; padding: 0 32rpx calc(96rpx + env(safe-area-inset-bottom)); }
 .form-card { margin-top: 24rpx; padding: 28rpx; border: 1rpx solid rgba(29,34,40,.1); border-radius: 28rpx; background: rgba(255,255,252,.92); }
 .field-label { color: var(--color-ink); font-size: 26rpx; font-weight: 800; }.field-label--spaced { margin-top: 26rpx; }
 .current-value { margin-top: 12rpx; color: var(--color-muted); font-size: 28rpx; }.helper { margin-top: 16rpx; color: var(--color-muted); font-size: 22rpx; line-height: 1.5; }

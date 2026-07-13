@@ -1,5 +1,5 @@
 <view class="page-shell account-edit-page">
-  <view class="page-title">{{title}}</view>
+  <sub-page-top-bar title="{{title}}" />
   <view class="page-copy">{{description}}</view>
   <view wx:if="{{errorMessage}}" class="form-error">{{errorMessage}}</view>
 

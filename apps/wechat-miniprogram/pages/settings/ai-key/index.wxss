@@ -1,4 +1,4 @@
-.settings-page { padding: calc(env(safe-area-inset-top) + 152rpx) 32rpx calc(env(safe-area-inset-bottom) + 80rpx); }
+.settings-page { padding: 0 32rpx calc(env(safe-area-inset-bottom) + 80rpx); }
 
 .info-card {
   margin-top: 32rpx;

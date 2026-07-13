@@ -1,14 +1,6 @@
 <view class="compose-page">
-  <view class="compose-header" style="padding-top: {{capsuleTopRpx}}rpx;">
-    <view class="nav-row" style="height: {{capsuleHeightRpx}}rpx;">
-      <button class="nav-button nav-button--back {{step === 0 ? 'is-disabled' : ''}}" disabled="{{step === 0 || saving || generating}}" bindtap="previousStep" aria-label="返回上一步">
-        <ui-icon name="chevron-left" size="40" tone="ink" />
-      </button>
-      <view class="nav-title">{{editing ? '编辑套装' : '创建套装'}}</view>
-      <button class="nav-button nav-button--close" style="right: {{capsuleRightInsetRpx + 16}}rpx;" bindtap="requestExit" aria-label="退出录入">
-        <ui-icon name="x" size="36" tone="ink" />
-      </button>
-    </view>
+  <view class="compose-header">
+    <sub-page-top-bar title="{{editing ? '编辑套装' : '创建套装'}}" show-back="{{step !== 0}}" guarded-back bind:back="previousStep"><button slot="right" class="compose-close-button" bindtap="requestExit" aria-label="退出录入"><ui-icon name="x" size="34" tone="ink" /></button></sub-page-top-bar>
     <view class="step-copy">步骤 {{step + 1}} / 2 · {{step === 0 ? (editing ? '编辑组成' : '选择衣物') : '确认套装'}}</view>
     <view class="progress-track"><view class="progress-fill {{step === 1 ? 'is-complete' : ''}}"></view></view>
   </view>

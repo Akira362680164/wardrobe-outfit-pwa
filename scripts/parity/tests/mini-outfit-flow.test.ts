@@ -20,7 +20,7 @@ assert.match(trips, /fetchPlanningSnapshot/);
 assert.match(trips, /deleteCalendarPlan/);
 for (const action of ["createPlan", "openPlan", "editPlan", "deletePlan"]) assert.match(tripsWxml, new RegExp(action));
 assert.doesNotMatch(tripsWxml, /页面骨架|后续批次/);
-assert.match(detailWxml, /信息/); assert.match(detailWxml, /单品/); assert.match(detailWxml, /实穿/); assert.match(detailWxml, /建议/);
+assert.match(detailWxml, /信息/); assert.match(detailWxml, /组成/); assert.match(detailWxml, /实穿/); assert.match(detailWxml, /AI建议/);
 assert.match(detail, /uploadPreparedImageAssets/); assert.match(detail, /kind: "remove"/); assert.match(detail, /updateOutfit/);
 assert.match(workspace, /actualWornPhotos/);
 assert.match(composeWxml, /步骤 \{\{step \+ 1\}\} \/ 2/);

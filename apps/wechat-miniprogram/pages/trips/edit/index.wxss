@@ -1,38 +1,8 @@
 .plan-edit {
+  padding-top: 0;
   padding-right: 32rpx;
   padding-bottom: calc(env(safe-area-inset-bottom) + 96rpx);
   padding-left: 32rpx;
-}
-
-.edit-top {
-  display: flex;
-  align-items: center;
-  min-height: 96rpx;
-  border-bottom: 1rpx solid var(--color-line);
-}
-
-.top-left {
-  display: flex;
-  align-items: center;
-  min-width: 0;
-  flex: 1;
-}
-
-.top-back {
-  margin-right: 18rpx;
-  color: var(--color-ink);
-  font-size: 52rpx;
-  font-weight: 700;
-  line-height: 1;
-}
-
-.top-title {
-  overflow: hidden;
-  color: var(--color-ink);
-  font-size: var(--font-section);
-  font-weight: 800;
-  text-overflow: ellipsis;
-  white-space: nowrap;
 }
 
 .save-button {

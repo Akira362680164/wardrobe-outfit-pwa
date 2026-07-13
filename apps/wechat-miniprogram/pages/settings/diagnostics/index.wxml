@@ -1,5 +1,5 @@
 <view class="settings-page page-shell">
-  <view class="page-title">诊断</view>
+  <sub-page-top-bar title="诊断" />
   <view class="page-copy">遇到问题时可主动上传脱敏诊断数据，并将工单编号提供给开发者。</view>
 
   <view class="info-card">

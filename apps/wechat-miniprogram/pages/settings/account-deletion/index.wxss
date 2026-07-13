@@ -1,7 +1,7 @@
 .deletion-page {
   min-height: 100vh;
   box-sizing: border-box;
-  padding: calc(env(safe-area-inset-top) + 32rpx) 32rpx calc(env(safe-area-inset-bottom) + 56rpx);
+  padding: 0 32rpx calc(env(safe-area-inset-bottom) + 56rpx);
   background: #fbfbf8;
   color: #1f2933;
 }

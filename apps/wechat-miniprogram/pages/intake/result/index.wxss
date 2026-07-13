@@ -1,4 +1,4 @@
-.result-page { padding: calc(env(safe-area-inset-top) + 152rpx) 32rpx calc(env(safe-area-inset-bottom) + 260rpx); }
+.result-page { padding: 0 32rpx calc(env(safe-area-inset-bottom) + 260rpx); }
 .result-card { box-sizing: border-box; width: 100%; padding: 48rpx 32rpx; border-radius: var(--radius-card); text-align: center; }
 .result-mark { display: inline-flex; align-items: center; justify-content: center; min-width: 128rpx; height: 72rpx; margin-bottom: 28rpx; padding: 0 24rpx; border-radius: var(--radius-control); color: var(--color-surface); background: var(--color-success); font-size: var(--font-caption); font-weight: 800; line-height: 72rpx; }
 .result-stats { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18rpx; margin-top: 30rpx; }

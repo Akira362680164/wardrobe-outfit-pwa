@@ -1,1 +1,1 @@
-{ "navigationBarTitleText": "穿衣画像" }
+{ "navigationBarTitleText": "穿衣画像", "usingComponents": { "sub-page-top-bar": "/components/domain/sub-page-top-bar/index" } }

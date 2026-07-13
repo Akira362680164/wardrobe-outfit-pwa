@@ -1,1 +1,1 @@
-{ "navigationBarTitleText": "搜索衣橱", "usingComponents": { "catalog-card": "/components/domain/catalog-card/index" } }
+{ "navigationBarTitleText": "搜索衣橱", "usingComponents": { "catalog-card": "/components/domain/catalog-card/index", "sub-page-top-bar": "/components/domain/sub-page-top-bar/index" } }

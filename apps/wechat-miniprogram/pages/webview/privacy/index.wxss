@@ -1,4 +1,5 @@
 .legal-page {
+  padding-top: 0;
   padding-bottom: calc(env(safe-area-inset-bottom) + 64rpx);
 }
 

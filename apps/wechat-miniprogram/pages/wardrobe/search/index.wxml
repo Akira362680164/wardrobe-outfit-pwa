@@ -1,4 +1,5 @@
-<view class="page-shell search-page" style="padding-top: {{contentTopRpx}}rpx;">
+<view class="page-shell search-page">
+  <sub-page-top-bar title="搜索衣橱" />
   <view class="search-bar"><input value="{{query}}" placeholder="搜索衣服名称、颜色" confirm-type="search" bindinput="updateQuery" bindconfirm="applySearch" /><button bindtap="applySearch">搜索</button></view>
   <view class="scope-copy">搜索全部 {{garments.length}} 件衣物 · 范围：全部衣橱</view>
   <view wx:if="{{history.length}}" class="history"><view class="section-head"><text>最近搜索</text><text bindtap="clearHistory">清空</text></view><view class="chip-row"><view wx:for="{{history}}" wx:key="*this" data-value="{{item}}" bindtap="useHistory" class="chip">{{item}}</view></view></view>

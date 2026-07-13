@@ -2,6 +2,44 @@
   padding: 0 32rpx calc(env(safe-area-inset-bottom) + 64rpx);
 }
 
+.more-button {
+  width: 88rpx;
+  height: 72rpx;
+  margin: 0;
+  padding: 0;
+  border-radius: 999rpx;
+  color: var(--color-muted);
+  background: rgba(255, 255, 252, 0.78);
+  font-size: 34rpx;
+  font-weight: 800;
+  line-height: 62rpx;
+  letter-spacing: 4rpx;
+}
+
+.more-button::after,
+.hero-worn-action::after,
+.advice-inline-button::after {
+  border: 0;
+}
+
+.hero-worn-action {
+  max-width: 300rpx;
+  min-width: 220rpx;
+  height: 72rpx;
+  margin: 0;
+  padding: 0 24rpx;
+  overflow: hidden;
+  border-radius: 999rpx;
+  color: var(--color-ink);
+  background: rgba(255, 255, 252, 0.92);
+  box-shadow: 0 10rpx 26rpx rgba(29, 34, 40, 0.12);
+  font-size: var(--font-caption);
+  font-weight: 800;
+  line-height: 72rpx;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .status-card,
 .notice-card,
 .info-card {
@@ -151,6 +189,71 @@
 
 .action-button[disabled] {
   opacity: 0.58;
+}
+
+.detail-tabs {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10rpx;
+  margin-top: 30rpx;
+  padding: 10rpx;
+  border-radius: var(--radius-card-secondary);
+  background: rgba(244, 245, 243, 0.78);
+}
+
+.detail-tab {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 0;
+  height: 78rpx;
+  border-radius: var(--radius-control);
+  color: var(--color-muted);
+  font-size: var(--font-caption);
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.detail-tab.is-active {
+  color: var(--color-ink);
+  background: rgba(255, 255, 252, 0.92);
+  box-shadow: 0 12rpx 34rpx rgba(29, 34, 40, 0.08);
+}
+
+.ai-advice-card__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16rpx;
+}
+
+.ai-advice-card {
+  box-sizing: border-box;
+  margin-top: 28rpx;
+  padding: 28rpx;
+  border: 1rpx solid rgba(53, 92, 125, 0.16);
+  border-radius: var(--radius-card-inner);
+  background: linear-gradient(135deg, rgba(53, 92, 125, 0.1), rgba(255, 255, 252, 0.88));
+  box-shadow: var(--shadow-card);
+}
+
+.advice-inline-button {
+  flex: 0 0 auto;
+  height: 66rpx;
+  margin: 0;
+  padding: 0 20rpx;
+  border-radius: 999rpx;
+  color: var(--color-primary);
+  background: rgba(53, 92, 125, 0.1);
+  font-size: var(--font-caption);
+  font-weight: 800;
+  line-height: 66rpx;
+  white-space: nowrap;
+}
+
+@media (max-width: 380px) {
+  .detail-tab { font-size: 22rpx; }
+  .hero-worn-action { min-width: 196rpx; padding: 0 18rpx; }
 }
 
 .check-dot {

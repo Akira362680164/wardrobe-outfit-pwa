@@ -1,5 +1,5 @@
 <view class="settings-page page-shell">
-  <view class="page-title">隐私</view>
+  <sub-page-top-bar title="隐私" />
   <view class="page-copy">这里先明确小程序的数据边界；正式协议页面走 WebView 入口。</view>
 
   <view class="info-card">

@@ -1,5 +1,5 @@
 <view class="settings-page page-shell">
-  <view class="page-title">AI Key</view>
+  <sub-page-top-bar title="AI Key" />
   <view class="page-copy">MiniMax Key 只保存在本机微信存储；小程序发给后端代理完成当次 AI 调用，识别结果由后端解析后再返回。</view>
 
   <view class="info-card">

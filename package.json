@@ -87,6 +87,7 @@
     "test:logic:miniprogram-wardrobe": "tsx scripts/parity/tests/mini-wardrobe-regression.test.ts",
     "test:logic:miniprogram-wishlist": "tsx scripts/parity/tests/mini-wishlist-state-regression.test.ts",
     "test:logic:miniprogram-outfit-flow": "tsx scripts/parity/tests/mini-outfit-flow.test.ts",
+    "test:logic:miniprogram-outfit-calendar-ui": "tsx scripts/parity/tests/mini-outfit-calendar-ui.test.ts",
     "build-info:miniprogram:generate": "tsx scripts/generate-miniprogram-build-info.ts",
     "build-info:miniprogram:check": "tsx scripts/generate-miniprogram-build-info.ts --check",
     "icons:miniprogram:generate": "node scripts/generate-miniprogram-icons.mjs",

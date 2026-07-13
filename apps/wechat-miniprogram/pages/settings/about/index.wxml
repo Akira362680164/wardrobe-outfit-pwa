@@ -1,5 +1,5 @@
 <view class="settings-page page-shell">
-  <view class="page-title">关于</view>
+  <sub-page-top-bar title="关于" />
   <view class="page-copy">衣橱穿搭助手微信小程序。</view>
 
   <view class="info-card">

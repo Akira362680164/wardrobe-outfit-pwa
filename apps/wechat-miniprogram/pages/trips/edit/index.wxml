@@ -1,10 +1,5 @@
-<view class="page-shell plan-edit" style="padding-top: {{titleTopRpx}}rpx;">
-  <view class="edit-top">
-    <view class="top-left" bindtap="goBack">
-      <ui-icon class="top-back" name="chevron-left" size="36" tone="ink" />
-      <text class="top-title">{{pageTitle}}</text>
-    </view>
-  </view>
+<view class="page-shell plan-edit">
+  <sub-page-top-bar title="{{pageTitle}}" />
 
   <view wx:if="{{loading}}" class="status-card">正在读取计划...</view>
   <view wx:else class="form-stack">

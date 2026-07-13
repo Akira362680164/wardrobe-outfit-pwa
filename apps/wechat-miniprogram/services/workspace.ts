@@ -1194,7 +1194,7 @@ export async function updateWishlistStatus(input: {
 }
 
 export async function deleteWorkspaceEntity(
-  resource: "garments" | "outfits" | "wishlist",
+  resource: "garments" | "outfits" | "wishlist" | "outfit-plans",
   id: string,
   expectedRevision: number,
 ): Promise<void> {

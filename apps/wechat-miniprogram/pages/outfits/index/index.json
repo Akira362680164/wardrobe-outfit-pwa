@@ -1,6 +1,8 @@
 {
   "usingComponents": {
     "create-sheet": "/components/domain/create-sheet/index",
+    "outfit-plan-day-card": "/components/domain/outfit-plan-day-card/index",
+    "plan-tone-strip": "/components/domain/plan-tone-strip/index",
     "ui-sheet": "/components/ui/sheet/index",
     "ui-icon": "/components/ui/icon/index"
   }

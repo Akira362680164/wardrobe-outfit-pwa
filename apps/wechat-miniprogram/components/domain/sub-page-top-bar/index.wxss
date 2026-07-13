@@ -1,0 +1,75 @@
+@import "../../../styles/index.wxss";
+
+.sub-page-top-bar {
+  position: relative;
+  z-index: 10;
+  margin: 0 -32rpx 28rpx;
+  padding: 0 32rpx 20rpx;
+  background: rgba(251, 251, 248, 0.78);
+  -webkit-backdrop-filter: blur(60rpx) saturate(1.5);
+  backdrop-filter: blur(60rpx) saturate(1.5);
+}
+
+.sub-page-top-bar__nav {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 0;
+}
+
+.sub-page-top-bar__back {
+  position: absolute;
+  left: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 80rpx;
+  height: 80rpx;
+  border-radius: 50%;
+  background: rgba(255, 255, 252, 0.9);
+  color: var(--color-ink);
+  text-decoration: none;
+}
+
+.sub-page-top-bar__back::after { border: 0; }
+
+.sub-page-top-bar__title {
+  position: absolute;
+  right: 220rpx;
+  left: 96rpx;
+  box-sizing: border-box;
+  width: auto;
+  min-width: 0;
+  max-width: none;
+  overflow: hidden;
+  padding: 0;
+  color: var(--color-ink);
+  font-size: 32rpx;
+  font-weight: 800;
+  line-height: 1.25;
+  text-align: center;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sub-page-top-bar__right {
+  position: absolute;
+  top: 0;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  min-width: 72rpx;
+  height: 100%;
+}
+
+.sub-page-top-bar__subtitle {
+  max-width: 100%;
+  overflow: hidden;
+  color: var(--color-muted);
+  font-size: var(--font-caption);
+  line-height: 1.4;
+  text-align: center;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}

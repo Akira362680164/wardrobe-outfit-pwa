@@ -1,5 +1,6 @@
 .settings-page {
   min-height: 100vh;
+  padding-top: 0;
   padding-bottom: calc(96rpx + env(safe-area-inset-bottom));
   background: #fbfbf8;
 }

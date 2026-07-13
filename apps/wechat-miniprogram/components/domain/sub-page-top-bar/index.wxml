@@ -1,0 +1,14 @@
+<view class="sub-page-top-bar">
+  <view class="sub-page-top-bar__safe" style="height: {{topRpx}}rpx;"></view>
+  <view class="sub-page-top-bar__nav" style="height: {{heightRpx}}rpx;">
+    <button wx:if="{{showBack && guardedBack}}" class="sub-page-top-bar__back" bindtap="requestBack" aria-label="返回">
+      <ui-icon name="chevron-left" size="44" tone="ink" />
+    </button>
+    <navigator wx:elif="{{showBack}}" class="sub-page-top-bar__back" open-type="navigateBack" aria-label="返回">
+      <ui-icon name="chevron-left" size="44" tone="ink" />
+    </navigator>
+    <view class="sub-page-top-bar__title">{{title}}</view>
+    <view class="sub-page-top-bar__right" style="right: {{rightSlotRpx}}rpx;"><slot name="right" /></view>
+  </view>
+  <view wx:if="{{subtitle}}" class="sub-page-top-bar__subtitle">{{subtitle}}</view>
+</view>

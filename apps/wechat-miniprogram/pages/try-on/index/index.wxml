@@ -1,6 +1,6 @@
-<view class="page-shell tryon-page" style="padding-top: {{contentTopRpx}}rpx;"
-  ><view class="page-title">AI 试穿</view
-  ><view class="page-copy"
+<view class="page-shell tryon-page">
+  <sub-page-top-bar title="AI 试穿" />
+  <view class="page-copy"
     >只有点击生成后才会把所选参考照和衣物图发送给 MiniMax。</view
   ><view class="reference"
     ><image
