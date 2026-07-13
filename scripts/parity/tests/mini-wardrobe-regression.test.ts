@@ -31,6 +31,8 @@ assert.match(indexTs, /await this\.loadGarments\(\)/);
 assert.match(indexTs, /runRuntimeDomainRefresh\(\s*["']garments["']/);
 assert.match(indexTs, /initialLoading/);
 assert.match(indexTs, /refreshing/);
+assert.match(indexTs, /hasLoadedGarments/, "an empty but successfully loaded wardrobe must remain fresh");
+assert.match(indexTs, /getRuntimeSessionScope/, "switching accounts must clear the previous user's cards");
 assert.doesNotMatch(indexTs.match(/onLoad\(\)[\s\S]*?\n\s*},/)?.[0] ?? "", /loadGarments/);
 assert.doesNotMatch(indexTs.match(/catch \(error\) \{[\s\S]*?\n\s*}/)?.[0] ?? "", /garments:\s*\[\]/);
 assert.match(indexWxml, /wx:if="\{\{garments\.length > 0\}\}" class="garment-grid"/);

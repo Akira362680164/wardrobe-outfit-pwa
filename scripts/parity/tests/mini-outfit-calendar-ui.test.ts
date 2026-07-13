@@ -49,11 +49,13 @@ assert.match(monthTs, /deleteWorkspaceEntity\("outfit-plans"/);
 assert.doesNotMatch(weekTs.match(/onLoad\(\)[\s\S]*?onShow\(\)/)?.[0] || "", /loadOutfits\(/, "outfit tab must not load in both onLoad and onShow");
 for (const source of [weekTs, monthTs]) {
   assert.match(source, /runRuntimeDomainRefresh\("planning"/);
+  assert.match(source, /hasLoadedPlanning/, "an empty but successfully loaded planning snapshot must remain fresh");
   assert.match(source, /initialLoading:\s*!hasData/);
   assert.match(source, /refreshing:\s*hasData/);
   assert.match(source, /markRuntimeDomainDirty\("planning"\)/);
   assert.match(source, /getRuntimeRefreshSnapshot\("planning"\)\.dirty/, "a stale in-flight snapshot must be retried before rendering");
 }
+assert.match(weekTs, /getRuntimeSessionScope/, "switching accounts must clear the previous user's outfits");
 assert.match(weekWxml, /wx:if="\{\{initialLoading\}\}"/);
 assert.match(monthWxml, /wx:if="\{\{initialLoading\}\}"/);
 assert.match(detailWxml, /<item-detail-shell/);

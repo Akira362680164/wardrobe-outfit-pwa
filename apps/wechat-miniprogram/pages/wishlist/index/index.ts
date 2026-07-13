@@ -1,7 +1,8 @@
 import { fetchWishlist, getWorkspaceReadState, type MiniWishlistItem } from "../../../services/workspace";
+import { getRuntimeSessionScope } from "../../../stores/session";
 import { getCapsuleGeometry } from "../../../utils/capsule-layout";
 import { selectCustomTab } from "../../../utils/custom-tab-bar";
-import { runRuntimeDomainRefresh } from "../../../utils/runtime-refresh";
+import { markRuntimeDomainDirty, runRuntimeDomainRefresh } from "../../../utils/runtime-refresh";
 
 interface WishlistStatusChip {
   key: string;
@@ -59,6 +60,7 @@ Page({
   },
 
   onShow() {
+    this.resetForRuntimeSession();
     selectCustomTab(this, 2);
     void this.loadWishlist();
   },
@@ -67,9 +69,19 @@ Page({
     selectCustomTab(this, 2);
   },
 
+  resetForRuntimeSession(this: any) {
+    const scope = getRuntimeSessionScope();
+    if (this.runtimeSessionScope && this.runtimeSessionScope !== scope) {
+      this.hasLoadedWishlist = false;
+      this.setData({ items: [], filteredItems: [], statusChips: buildStatusChips([]), summaryText: "0 件" });
+    }
+    this.runtimeSessionScope = scope;
+  },
+
   async loadWishlist(this: any, options: { force?: boolean } = {}) {
     const state = getWorkspaceReadState();
     if (state !== "ready") {
+      (this as any).hasLoadedWishlist = false;
       this.setData({
         initialLoading: false,
         refreshing: false,
@@ -84,7 +96,7 @@ Page({
       return;
     }
 
-    const hasData = this.data.items.length > 0;
+    const hasData = Boolean((this as any).hasLoadedWishlist);
     try {
       const result = await runRuntimeDomainRefresh(
         "wishlist",
@@ -99,6 +111,7 @@ Page({
         return;
       }
       const items = result.value;
+      (this as any).hasLoadedWishlist = true;
       if (sameList(items, this.data.items)) {
         this.setData({ initialLoading: false, refreshing: false, error: "", emptyTitle: "", emptyAction: "" });
         return;
@@ -115,6 +128,7 @@ Page({
         emptyAction: "",
       });
     } catch (error) {
+      markRuntimeDomainDirty("wishlist");
       this.setData({
         initialLoading: false,
         refreshing: false,

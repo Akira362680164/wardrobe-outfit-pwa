@@ -12,6 +12,7 @@ import {
   type MiniOutfitPlanEntry,
 } from "../../../services/workspace";
 import { getCapsuleGeometry } from "../../../utils/capsule-layout";
+import { getRuntimeSessionScope } from "../../../stores/session";
 import {
   getDisplayOutfitId,
   getOutfitPlanDateRelation,
@@ -92,6 +93,7 @@ Page({
   },
 
   onShow() {
+    this.resetForRuntimeSession();
     selectCustomTab(this, 1);
     void this.loadOutfits();
   },
@@ -104,9 +106,21 @@ Page({
     selectCustomTab(this, 1);
   },
 
+  resetForRuntimeSession(this: any) {
+    const scope = getRuntimeSessionScope();
+    if (this.runtimeSessionScope && this.runtimeSessionScope !== scope) {
+      this.hasLoadedPlanning = false;
+      this.snapshotSignature = "";
+      this.setData({ outfits: [], filteredOutfits: [], calendarPlans: [], outfitPlanEntries: [], outfitCountLabel: "0 套" });
+      this.rebuildWeek();
+    }
+    this.runtimeSessionScope = scope;
+  },
+
   async loadOutfits(options: { force?: boolean } = {}): Promise<boolean> {
     const state = getWorkspaceReadState();
     if (state !== "ready") {
+      (this as any).hasLoadedPlanning = false;
       this.setData({
         initialLoading: false,
         refreshing: false,
@@ -120,7 +134,7 @@ Page({
       return false;
     }
 
-    const hasData = this.data.outfits.length > 0 || this.data.calendarPlans.length > 0 || this.data.outfitPlanEntries.length > 0;
+    const hasData = Boolean((this as any).hasLoadedPlanning);
     this.setData({ initialLoading: !hasData, refreshing: hasData, error: "" });
     try {
       const result = await runRuntimeDomainRefresh("planning", fetchPlanningSnapshot, {
@@ -137,6 +151,7 @@ Page({
       }
       if (getRuntimeRefreshSnapshot("planning").dirty) return this.loadOutfits({ force: true });
       const snapshot = result.value;
+      (this as any).hasLoadedPlanning = true;
       const signature = planningSnapshotSignature(snapshot);
       if ((this as any).snapshotSignature === signature) {
         this.setData({ initialLoading: false, refreshing: false });
@@ -155,6 +170,7 @@ Page({
       this.rebuildWeek();
       return true;
     } catch (error) {
+      markRuntimeDomainDirty("planning");
       this.setData({ initialLoading: false, refreshing: false, error: error instanceof Error ? error.message : "读取套装失败" });
       if (hasData) wx.showToast({ title: "套装刷新失败，已保留当前内容", icon: "none" });
       return false;

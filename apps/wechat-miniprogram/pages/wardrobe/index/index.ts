@@ -1,6 +1,7 @@
 import { aiEnhance, hasMiniMaxKey } from "../../../services/ai";
 import { MINI_CATEGORY_LABELS } from "../../../generated/catalogs";
 import { deleteWorkspaceEntity, fetchClosetLocations, fetchGarments, fetchOutfits, getWorkspaceReadState, type MiniClosetLocation, type MiniGarment } from "../../../services/workspace";
+import { getRuntimeSessionScope } from "../../../stores/session";
 import { selectCustomTab } from "../../../utils/custom-tab-bar";
 import { markRuntimeDomainDirty, runRuntimeDomainRefresh } from "../../../utils/runtime-refresh";
 
@@ -55,6 +56,7 @@ Page({
   },
 
   onShow() {
+    this.resetForRuntimeSession();
     selectCustomTab(this, 0);
     void this.loadGarments();
   },
@@ -63,9 +65,19 @@ Page({
     selectCustomTab(this, 0);
   },
 
+  resetForRuntimeSession(this: any) {
+    const scope = getRuntimeSessionScope();
+    if (this.runtimeSessionScope && this.runtimeSessionScope !== scope) {
+      this.hasLoadedGarments = false;
+      this.setData({ garments: [], visibleGarments: [], locations: [], locationOptions: [], categoryChips: [], totalCount: 0, scopeCount: 0 });
+    }
+    this.runtimeSessionScope = scope;
+  },
+
   async loadGarments(this: any, options: { force?: boolean } = {}) {
     const state = getWorkspaceReadState();
     if (state !== "ready") {
+      (this as any).hasLoadedGarments = false;
       this.setData({
         initialLoading: false,
         refreshing: false,
@@ -86,7 +98,7 @@ Page({
       return;
     }
 
-    const hasData = this.data.garments.length > 0;
+    const hasData = Boolean((this as any).hasLoadedGarments);
     try {
       const result = await runRuntimeDomainRefresh(
         "garments",
@@ -97,9 +109,13 @@ Page({
         },
         { force: Boolean(options.force), hasData },
       );
-      if (result.status === "fulfilled" && result.accepted) this.applyGarments(result.value.garments, result.value.locations);
+      if (result.status === "fulfilled" && result.accepted) {
+        (this as any).hasLoadedGarments = true;
+        this.applyGarments(result.value.garments, result.value.locations);
+      }
       else this.setData({ initialLoading: false, refreshing: false });
     } catch (error) {
+      markRuntimeDomainDirty("garments");
       this.setData({ initialLoading: false, refreshing: false, error: error instanceof Error ? error.message : "读取衣橱失败" });
     }
   },

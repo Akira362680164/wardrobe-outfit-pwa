@@ -348,6 +348,7 @@ Page({
   async loadPlanning(options: { force?: boolean } = {}): Promise<boolean> {
     const state = getWorkspaceReadState();
     if (state !== "ready") {
+      (this as any).hasLoadedPlanning = false;
       this.setData({
         initialLoading: false,
         refreshing: false,
@@ -362,7 +363,7 @@ Page({
       return false;
     }
 
-    const hasData = this.data.outfits.length > 0 || this.data.calendarPlans.length > 0 || this.data.outfitPlanEntries.length > 0;
+    const hasData = Boolean((this as any).hasLoadedPlanning);
     this.setData({ initialLoading: !hasData, refreshing: hasData, error: "" });
     try {
       const result = await runRuntimeDomainRefresh("planning", fetchPlanningSnapshot, {
@@ -379,6 +380,7 @@ Page({
       }
       if (getRuntimeRefreshSnapshot("planning").dirty) return this.loadPlanning({ force: true });
       const snapshot = result.value;
+      (this as any).hasLoadedPlanning = true;
       const signature = planningSnapshotSignature(snapshot);
       if ((this as any).snapshotSignature === signature) {
         this.setData({ initialLoading: false, refreshing: false });
@@ -396,6 +398,7 @@ Page({
       this.rebuildCalendar();
       return true;
     } catch (error) {
+      markRuntimeDomainDirty("planning");
       this.setData({ initialLoading: false, refreshing: false, error: error instanceof Error ? error.message : "读取穿搭计划失败", statusActionLabel: "重试" });
       if (hasData) wx.showToast({ title: "计划刷新失败，已保留当前内容", icon: "none" });
       return false;

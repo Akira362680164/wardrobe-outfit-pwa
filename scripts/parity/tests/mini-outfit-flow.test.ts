@@ -18,6 +18,14 @@ const workspace = fs.readFileSync("apps/wechat-miniprogram/services/workspace.ts
 
 assert.match(trips, /fetchPlanningSnapshot/);
 assert.match(trips, /deleteCalendarPlan/);
+assert.match(trips, /runRuntimeDomainRefresh\(\s*["']planning["']/);
+assert.match(trips, /hasLoadedPlans/);
+assert.doesNotMatch(trips.match(/onLoad\(\)[\s\S]*?onShow\(\)/)?.[0] ?? "", /this\.load\(/, "trip list must not load in both onLoad and onShow");
+assert.match(tripsWxml, /wx:if="\{\{loading\}\}"/);
+assert.match(tripsWxml, /wx:elif="\{\{error\}\}"/);
+assert.match(tripsWxml, /wx:else class="plan-list"/);
+assert.match(tripsWxml, /<sub-page-top-bar title="旅行计划"/);
+assert.match(tripsWxml, /<view slot="right" class="create-action"/);
 for (const action of ["createPlan", "openPlan", "editPlan", "deletePlan"]) assert.match(tripsWxml, new RegExp(action));
 assert.doesNotMatch(tripsWxml, /页面骨架|后续批次/);
 assert.match(detailWxml, /信息/); assert.match(detailWxml, /组成/); assert.match(detailWxml, /实穿/); assert.match(detailWxml, /AI建议/);

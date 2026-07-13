@@ -267,6 +267,8 @@ Page({
         assetMutations: this.data.imageAssetMutations,
       });
       markRuntimeDomainDirty("garments");
+      markRuntimeDomainDirty("outfits");
+      markRuntimeDomainDirty("planning");
       wx.showToast({ title: "已保存", icon: "success" });
       wx.redirectTo({ url: `/pages/wardrobe/detail/index?id=${encodeURIComponent(item.id)}` });
     } catch (error) {

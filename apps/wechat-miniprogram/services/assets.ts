@@ -70,9 +70,11 @@ export class ImageSelectionCanceledError extends Error {
 }
 
 const downloadedAssetImages = new Map<string, Promise<string>>();
+let downloadedAssetSessionScope = "";
 
 export function clearDownloadedAssetImageCache(): void {
   downloadedAssetImages.clear();
+  downloadedAssetSessionScope = "";
 }
 
 export async function chooseSingleImage(sourceType: Array<"album" | "camera"> = ["album", "camera"]): Promise<string> {
@@ -131,7 +133,12 @@ export async function downloadAssetImage(ref?: AssetRef, variant: "thumbnail" | 
   const baseUrl = getConfiguredApiBaseUrl();
   if (!baseUrl) return "";
   const targetVariant = ref.variants?.includes(variant) ? variant : "original";
-  const cacheKey = `${getRuntimeSessionScope()}:${ref.assetId}:${targetVariant}`;
+  const sessionScope = getRuntimeSessionScope();
+  if (downloadedAssetSessionScope !== sessionScope) {
+    downloadedAssetImages.clear();
+    downloadedAssetSessionScope = sessionScope;
+  }
+  const cacheKey = `${sessionScope}:${ref.assetId}:${targetVariant}`;
   const cached = downloadedAssetImages.get(cacheKey);
   if (cached) return cached;
   const download = new Promise<string>((resolve) => {

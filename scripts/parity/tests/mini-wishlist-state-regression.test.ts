@@ -21,6 +21,8 @@ assert.match(indexWxml, /evaluationFilters/);
 assert.match(indexTs, /runRuntimeDomainRefresh\(\s*["']wishlist["']/);
 assert.match(indexTs, /initialLoading/);
 assert.match(indexTs, /refreshing/);
+assert.match(indexTs, /hasLoadedWishlist/, "an empty but successfully loaded wishlist must remain fresh");
+assert.match(indexTs, /getRuntimeSessionScope/, "switching accounts must clear the previous user's cards");
 assert.doesNotMatch(indexTs.match(/onLoad\(\)[\s\S]*?\n\s*},/)?.[0] ?? "", /loadWishlist/);
 assert.doesNotMatch(indexTs.match(/catch \(error\) \{[\s\S]*?\n\s*}/)?.[0] ?? "", /items:\s*\[\]/);
 assert.match(indexWxml, /wx:if="\{\{items\.length > 0\}\}"/);
