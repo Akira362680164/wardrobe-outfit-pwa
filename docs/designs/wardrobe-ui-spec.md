@@ -333,6 +333,16 @@ Icon-only 按钮必须有 `aria-label`；图标与文字组合时图标使用 `a
 - 若全局“+”Sheet 的 fixed-body 锁仍在退出期，读取 `body.top` 对应的真实呈现位置，并只把最终恢复推迟到锁释放的同一绘制帧；不得让锁滚回写覆盖目标 route。选择“单品 / 套装 / 种草”时，关闭 Sheet、录入 trigger 与 intake push 必须在同一用户事件内提交，不添加空等定时器，使 Sheet 退出与录入页进入自然重叠。
 - C1 只负责 AppRoute 外层导航、主 Tab、全局“+”衔接和 route scrollY。卡片 source anchor、Lightbox 来源动画与三类详情内部连续性仍属于 C2；深层计划、设置和种草子页的统一路由化仍属于 C3。
 
+##### 6.1.9 C3-Outfit 套装与计划深层流程
+
+- 套装模块内部子页复用 C1 的空间语义，但不创建第二个 `AppRoute` 所有者：前进使用 `push`，返回/取消/保存成功使用 `pop`，非层级外部 route 同步使用 `replace`。页面仍以 `AnimatePresence mode="sync"` 叠在同一 grid cell；push 为新页右侧 `24px` 进入、旧页后退 `-6px`，pop 完全反向，退出页必须 `inert/aria-hidden`。reduced-motion 只保留短 opacity，不运行横向位移或 spring。
+- 套装层级固定为首页/来源页 → 详情 → 编辑、组成或实图；组成保存只 pop 一层并在详情原位读回，实图查看、说明表单、删除确认继续由统一 OverlayStack 决定 topmost。创建套装沿用 `OutfitIntakeFlow` 的“选择衣物 → 确认套装”两步草稿事实，步骤返回不清空已选组成或表单草稿，C3 不复制第二份创建状态。
+- 计划层级固定为月历 → 新增计划 → 计划详情 → 打包清单；计划编辑从详情 push、保存后 pop。新增计划保存成功后进入该计划详情，详情 Back 回月历，打包清单 Back 只回详情，任何一次 Back 只消费当前一层。快速连续 Back 使用同步呈现 route ref 判定，不能重复读取上一帧闭包或越级写错滚动上下文。
+- 每个深层子页和对象只在当前 App 会话内保存独立的 window/内部 scroll offset；导航提交前读取实际仍在呈现的页，目标页在首帧绘制前恢复。若上一层 Sheet 的 fixed-body 锁仍处于退出期，沿用 C1 的锁释放恢复路径。失败不触发导航或重挂载，因此表单、错误位置和滚动原位保留。
+- 保存套装/实图/计划、删除套装/计划/实图、添加或批量更新打包清单、重置勾选都必须有同步 busy gate。busy 期间页面 Back、按钮返回、Overlay backdrop、Escape 和拖拽关闭均不得中断；确认层继续显示原位 pending，失败在原层展示错误并允许重试。
+- 写成功的视觉确认只允许发生在服务器事务成功并完成 `onRefresh` / `onPlanDataChange` 读回之后。计划表单回调不得吞掉失败；新计划、编辑计划和打包操作都保留线上唯一数据源、幂等与现有共享契约，不新增本地缓存、乐观成功或后台补写。
+- C3-Outfit 最低交互证据为 `390 x 844`：覆盖月历 → 新增 → 详情 → 打包的连续 push/pop、深滚动返回、同一 tick 快速多次 Back、退出页 inert、单一 current page，以及 reduced-motion 下 transform 归零。
+
 #### 6.2 并行 Wave 规范所有权
 
 并行 Session 对运行时文件实行独占所有权；规范只允许修改下列命名小节。生成的 HTML 与 `VERSION_HISTORY.md` 在每个 Wave 合入后由主 Agent 保全并重生成。

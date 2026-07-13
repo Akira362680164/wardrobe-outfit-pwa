@@ -1,3 +1,14 @@
+## 2026-07-13 / v2.1.18-test / Codex Subagent C3-Outfit — 套装与计划深层空间连续性
+
+- **执行与版本**：Codex Subagent C3-Outfit 使用 `apple-design` 技能，在独立分支 `codex/motion-c3-outfit-20260713`、独立 worktree `/Users/fangzheng/Documents/wardrobe-motion-c3-outfit-20260713` 上基于冻结提交 `7a2a9ece21429daa757dff25c75e697ca1d3fa38` 实施；版本保持 `2.1.18-test`，未合入 integration / `main`、未推送、未构建 APK，本 Session 未再分派下级 subagent。
+- **方向与可中断性**：套装模块新增单一 C3 deep-flow presenter，复用 C1 的 push/pop 空间语义和 `spring.panel`：前进时新页从右侧 `24px` 进入、旧页后退 `-6px`，返回完全反向；`AnimatePresence mode="sync"` 的 custom variants 让退出页始终消费最新方向，连续操作可从当前呈现状态接管。退出页立即 `inert/aria-hidden` 且禁用 pointer；reduced-motion 仅保留短 opacity。全屏 `OutfitIntakeFlow` 继续由 OverlayPortal 拥有，不复制第二个创建状态或 AppRoute 所有者。
+- **层级与滚动事实**：固定套装首页 → 详情 → 编辑/组成/实图，以及月历 → 新增/详情 → 编辑/打包的逐层 push/pop；快速连续 Back 通过同步 route ref 一次消费一层，不读取上一帧闭包。每个子页/实体只在当前会话保存独立 window 与内部 scroll offset，导航前读取实际呈现页、目标首帧前恢复，并沿用 C1 fixed-body lock 释放路径；过期 DOM 不会把旧页 offset 写入已前进的 key。C2 `DetailTabContent`、来源返回和 OverlayStack topmost 语义保持不变。
+- **写入与失败连续性**：套装编辑/组成/实图、计划新增/编辑/删除和打包添加/切换/全选/重置均在提交期阻止页面 Back 与重复点击；Confirm/Sheet 继续原位 pending。成功只在服务器事务与 `onRefresh` / `onPlanDataChange` 读回后 pop；新计划读回后进入对应详情而非跳回月历。失败不导航、不重挂载，保留表单草稿、滚动位置和原层错误；计划回调不再吞掉失败。
+- **改动文件**：`src/components/outfit-list-view.tsx`、`outfit-plan-add-view.tsx`、`outfit-plan-detail-view.tsx`、`plan-packing-checklist-view.tsx`；新增 `scripts/test-outfit-deep-flow-motion-browser.mjs`，补充套装计划与详情壳合同；更新 UI 规范 C3-Outfit 命名小节、生成 HTML 与本记录。
+- **自动化验证**：`test:logic:outfit-planning` 通过（日历 `57/57`、计划 `88/88`、打包 `40/40`）；`test:logic:outfit-intake-confirm-contract`、`test:logic:ui-overflow`、`test:logic:back-priority-regression`、`test:logic:detail-shell`、`test:logic:outfit-plan-wear-state` `36/36`、`test:logic:followup-navigation` `82/82`、`docs:ui-spec:build/check`、`test:logic:ui-spec-preview`、根 `typecheck`、Next `build` 与 `git diff --check` 通过。详情壳旧合同同步为新的方向化 `navigateSubPage("library", "pop")`，仍断言删除失败不得离开详情。
+- **390px 浏览器证据**：Playwright Chromium `390×844`、移动触摸上下文实测 push 旧页 `x<0`、pop 旧页 `x>0`、退出页 inert、计划详情 ↔ 打包深滚动恢复、同 tick 连续 Back、连续 push 后单一 current page，以及 reduced-motion transform 归零；无 console error，截图 `/tmp/wardrobe-c3-outfit-deep-flow-390.png` 已人工检查，无横向溢出或叠页误触。
+- **风险与未验证项**：`high`（套装/计划高频深层导航、滚动和写入中断）。未在 Android 真机/模拟器、WebView、TalkBack/VoiceOver、生产账号或真实线上长列表做最终回归；未构建 APK。Android 返回键真实帧时序、360/430px 设备、系统字体放大及跨 Wave 集成后的完整业务链路留给 D Wave / 主集成验收。
+
 ## 2026-07-13 / v2.1.18-test / Codex Subagent B4 — 录入裁切、滑条与中断恢复
 
 - **执行 Agent**：Codex 实施 Subagent B4，使用 `apple-design` 技能；独立分支 `codex/motion-b4-intake-gestures-20260713`、独立 worktree `/Users/fangzheng/Documents/wardrobe-motion-b4-intake-gestures-20260713`，基于 Wave 3 冻结提交 `a1d6137a05890d81b4f6ab420bfe85e99f746496`；未合入 integration / `main`，未推送。本 Session 由主集成 Agent 分派，未再触发下级 subagent。

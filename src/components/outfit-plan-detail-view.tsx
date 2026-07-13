@@ -9,6 +9,7 @@ import { getOutfitCover } from "@/lib/outfit-cover";
 import { OutfitCover } from "@/components/outfit-cover";
 import { AppSubPageTopBar } from "@/components/app-sub-page-top-bar";
 import { ConfirmActionSheet } from "@/components/dialogs";
+import { useStableBackHandler } from "@/lib/use-stable-back-handler";
 
 interface OutfitPlanDetailViewProps {
   calendarPlan: OutfitCalendarPlan;
@@ -76,15 +77,21 @@ export function OutfitPlanDetailView({
     }
   }
 
+  useStableBackHandler(() => true, deleting, 20);
+
+  function handleBack() {
+    if (!deleting) onBack();
+  }
+
   return (
-    <div className="flex flex-col h-full">
+    <div className="flex flex-col h-full" aria-busy={deleting || undefined}>
       {/* Header */}
       <AppSubPageTopBar
         title={calendarPlan.type === "custom" ? "计划" : `${typeLabel}计划`}
-        onBack={onBack}
+        onBack={handleBack}
       />
 
-      <div className="flex-1 overflow-y-auto">
+      <div className="flex-1 overflow-y-auto" data-outfit-scroll-region="plan-detail">
         {/* Plan summary card */}
         <section className="mx-4 mt-4 rounded-3xl bg-white p-5 shadow-soft border border-ink/5">
           <div className="flex items-start justify-between gap-3">
@@ -120,10 +127,10 @@ export function OutfitPlanDetailView({
           ) : null}
 
           <div className="mt-5 grid grid-cols-2 gap-2">
-            <button type="button" data-parity-id="parity.app.app.src.components.outfit.plan.detail.view.98e1061a39" onClick={onEdit} className="h-11 rounded-full bg-denim text-sm font-semibold text-white active:scale-[0.98]">
+            <button type="button" disabled={deleting} data-parity-id="parity.app.app.src.components.outfit.plan.detail.view.98e1061a39" onClick={onEdit} className="h-11 rounded-full bg-denim text-sm font-semibold text-white active:scale-[0.98] disabled:opacity-40">
               编辑计划
             </button>
-            <button type="button" data-parity-id="parity.app.app.src.components.outfit.plan.detail.view.563a0bc152" onClick={() => setShowDeleteConfirm(true)} className="h-11 rounded-full border border-red-200 bg-white text-sm font-semibold text-red-600 active:scale-[0.98]">
+            <button type="button" disabled={deleting} data-parity-id="parity.app.app.src.components.outfit.plan.detail.view.563a0bc152" onClick={() => setShowDeleteConfirm(true)} className="h-11 rounded-full border border-red-200 bg-white text-sm font-semibold text-red-600 active:scale-[0.98] disabled:opacity-40">
               删除计划
             </button>
           </div>

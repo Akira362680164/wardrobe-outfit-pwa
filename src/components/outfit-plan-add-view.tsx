@@ -36,12 +36,17 @@ export function OutfitPlanAddView({ type, initialPlan, onBack, onSave, onMessage
   const [showDiscard, setShowDiscard] = useState(false);
 
   const dirty = useMemo(() => {
-    if (!initialPlan) return title.trim() !== "" || destination.trim() !== "" || activities.length > 0 || weatherNote.trim() !== "" || notes.trim() !== "";
+    if (!initialPlan) {
+      const defaultTone: OutfitCalendarPlanTone = type === "travel" ? "clay" : type === "business" ? "moss" : "denim";
+      return title.trim() !== "" || destination.trim() !== "" || activities.length > 0 || activityInput.trim() !== ""
+        || weatherNote.trim() !== "" || notes.trim() !== "" || startDate !== today || endDate !== today
+        || tone !== defaultTone || packingEnabled !== (type !== "custom");
+    }
     return title !== initialPlan.title || startDate !== initialPlan.startDate || endDate !== initialPlan.endDate ||
       destination !== (initialPlan.destination ?? "") || JSON.stringify(activities) !== JSON.stringify(initialPlan.activities ?? []) ||
       weatherNote !== (initialPlan.weatherNote ?? "") || notes !== (initialPlan.notes ?? "") ||
       tone !== initialPlan.tone || packingEnabled !== (initialPlan.packingEnabled ?? false);
-  }, [initialPlan, title, startDate, endDate, destination, activities, weatherNote, notes, tone, packingEnabled]);
+  }, [initialPlan, title, startDate, endDate, destination, activities, activityInput, weatherNote, notes, tone, packingEnabled, today, type]);
 
   const titleLabel = initialPlan
     ? (type === "travel" ? "编辑旅行计划" : type === "business" ? "编辑出差计划" : "编辑自定义计划")
@@ -60,6 +65,7 @@ export function OutfitPlanAddView({ type, initialPlan, onBack, onSave, onMessage
   }, true, 20);
 
   const handleSave = useCallback(async () => {
+    if (saving) return;
     setError("");
     if (!startDate || !endDate) { setError("请选择日期范围"); return; }
     if (startDate > endDate) { setError("结束日期不能早于开始日期"); return; }
@@ -82,12 +88,14 @@ export function OutfitPlanAddView({ type, initialPlan, onBack, onSave, onMessage
       });
       if (initialPlan) { plan.id = initialPlan.id; plan.createdAt = initialPlan.createdAt; }
       await onSave(plan);
-    } catch (e) {
-      onMessage("计划保存失败，请重试", "error");
+    } catch (saveError) {
+      const message = saveError instanceof Error ? saveError.message : "计划保存失败，请重试";
+      setError(message);
+      onMessage(message, "error");
     } finally {
       setSaving(false);
     }
-  }, [type, title, startDate, endDate, tone, destination, activities, weatherNote, notes, packingEnabled, initialPlan, onSave, onMessage]);
+  }, [saving, type, title, startDate, endDate, tone, destination, activities, weatherNote, notes, packingEnabled, initialPlan, onSave, onMessage]);
 
   function addActivity() {
     const v = activityInput.trim();
@@ -97,7 +105,7 @@ export function OutfitPlanAddView({ type, initialPlan, onBack, onSave, onMessage
   }
 
   return (
-    <div className="flex flex-col h-full">
+    <div className="flex flex-col h-full" aria-busy={saving || undefined}>
       {/* Header */}
       <div className="flex items-center justify-between px-4 py-3 border-b border-ink/5">
         <button type="button" disabled={saving} className="flex items-center gap-1 text-sm font-medium text-ink/70 disabled:opacity-40" data-parity-id="parity.app.app.src.components.outfit.plan.add.view.aa70f14388" onClick={handleBack}>
@@ -117,7 +125,8 @@ export function OutfitPlanAddView({ type, initialPlan, onBack, onSave, onMessage
       {error && <div className="mx-4 mt-2 rounded-lg bg-clay/10 border border-clay/20 px-3 py-2 text-xs text-clay">{error}</div>}
 
       {/* Form */}
-      <div className="flex-1 overflow-y-auto px-4 py-4 space-y-4">
+      <div className="flex-1 overflow-y-auto px-4 py-4 space-y-4" data-outfit-scroll-region="plan-form">
+        <fieldset className="contents" disabled={saving}>
         {/* Title */}
         <div>
           <label className="text-xs font-medium text-ink/60">计划名称</label>
@@ -238,6 +247,7 @@ export function OutfitPlanAddView({ type, initialPlan, onBack, onSave, onMessage
             <span className={`absolute top-0.5 h-5 w-5 rounded-full bg-white shadow-sm transition-transform ${packingEnabled ? "translate-x-[22px]" : "translate-x-0.5"}`} />
           </button>
         </div>
+        </fieldset>
       </div>
 
       {/* Discard confirmation */}
