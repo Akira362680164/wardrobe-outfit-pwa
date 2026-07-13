@@ -380,7 +380,7 @@ export function OutfitWeeklyPlanStrip({
         onClickCapture={suppressSyntheticClick}
       >
         <motion.div
-          className="flex will-change-transform"
+          className="flex"
           style={{ x: trackX, visibility: trackWidth > 0 ? "visible" : "hidden" }}
         >
           {pageAnchors.map(({ pageOffset, anchorDate: pageAnchorDate }) => {
@@ -426,7 +426,7 @@ export function OutfitWeeklyPlanStrip({
                             layoutId={`weekly-date-selection-${pageAnchorDate}`}
                             aria-hidden="true"
                             className="absolute inset-0 -z-10 rounded-lg bg-denim/8 ring-1 ring-inset ring-denim/30"
-                            transition={reduceMotion ? { duration: 0 } : spring.snappy}
+                            transition={reduceMotion ? { duration: 0 } : spring.control}
                           />
                         ) : null}
                         <span className="relative z-10 text-[10px] text-ink/40">{WEEKDAY_LABELS[new Date(

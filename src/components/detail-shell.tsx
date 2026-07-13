@@ -365,7 +365,7 @@ export function DetailTabs<T extends string>({
 /**
  * Shared same-level detail content transition. `popLayout` removes the old
  * panel from layout immediately, so a Tab switch never animates a large
- * `height:auto` surface or stacks both panel heights in document flow.
+ * intrinsic-height animation surface or stacks both panel heights in document flow.
  */
 export function DetailTabContent({
   activeKey,

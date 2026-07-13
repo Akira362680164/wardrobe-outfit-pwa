@@ -6,15 +6,12 @@ import { X } from "lucide-react";
 
 import React, { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 
-import { duration, ease, pop, scaleModal, slideRight, slideRightExit, slideUp, spring, toastDrop } from "@/lib/motion-tokens";
+import { duration, ease, slideRight, slideRightExit, slideUp, spring, toastDrop } from "@/lib/motion-tokens";
 import { useScrollLock } from "@/lib/use-scroll-lock";
 import { OriginalCroppedImage } from "@/components/original-cropped-image";
-import { OverlayPortal, useOverlayLayer } from "@/components/overlay-root";
+import { OverlayPortal, useOverlayFocusScope, useOverlayLayer } from "@/components/overlay-root";
 import { useLightboxDragDismiss } from "@/components/use-lightbox-drag-dismiss";
 import type { OverlayDismissReason } from "@/lib/overlay-stack";
-
-const FOCUSABLE_SELECTOR =
-  'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])';
 
 const subtleOverlayScale = {
   initial: { opacity: 0, scale: 0.98 },
@@ -44,59 +41,15 @@ const anchoredPopoverScale = {
   },
 };
 
-function getFocusableElements(scope: HTMLElement): HTMLElement[] {
-  return Array.from(scope.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR)).filter(
-    (node) => !node.hasAttribute("disabled") && node.getAttribute("aria-disabled") !== "true" && node.tabIndex !== -1,
-  );
-}
-
-/**
- * Shared focus lifecycle for modal overlays. Only the current topmost layer can
- * receive initial focus or keep Tab navigation inside itself.
- */
+/** Compatibility name retained for the existing overlay contract. */
 function useTopmostFocusScope(
   scopeRef: React.RefObject<HTMLElement | null>,
   isTopmost: boolean,
   initialFocusSelector?: string,
 ): void {
-  const didInitialFocusRef = useRef(false);
-
-  useLayoutEffect(() => {
-    if (!isTopmost || didInitialFocusRef.current) return;
-    const scope = scopeRef.current;
-    if (!scope) return;
-    didInitialFocusRef.current = true;
-    const preferred = initialFocusSelector
-      ? scope.querySelector<HTMLElement>(initialFocusSelector)
-      : null;
-    (preferred ?? getFocusableElements(scope)[0] ?? scope).focus({ preventScroll: true });
-  });
-
-  useEffect(() => {
-    if (!isTopmost) return;
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key !== "Tab") return;
-      const scope = scopeRef.current;
-      if (!scope) return;
-      const focusable = getFocusableElements(scope);
-      if (focusable.length === 0) {
-        event.preventDefault();
-        scope.focus();
-        return;
-      }
-      const first = focusable[0];
-      const last = focusable[focusable.length - 1];
-      if (event.shiftKey && (document.activeElement === first || !scope.contains(document.activeElement))) {
-        event.preventDefault();
-        last.focus();
-      } else if (!event.shiftKey && (document.activeElement === last || !scope.contains(document.activeElement))) {
-        event.preventDefault();
-        first.focus();
-      }
-    };
-    document.addEventListener("keydown", onKeyDown, true);
-    return () => document.removeEventListener("keydown", onKeyDown, true);
-  }, [isTopmost, scopeRef]);
+  // OverlayRoot owns the implementation: `event.key !== "Tab"` is ignored,
+  // and `preventDefault()` is applied only at focus-loop boundaries.
+  useOverlayFocusScope(scopeRef, isTopmost, initialFocusSelector);
 }
 
 /* ------------------------------------------------------------------ */
@@ -113,7 +66,10 @@ interface AnimatedPageProps {
 }
 
 export function AnimatedPage({ children, className, direction = "push", as = "div" }: AnimatedPageProps) {
-  const variants = direction === "pop" ? slideRightExit : slideRight;
+  const prefersReducedMotion = useReducedMotion();
+  const variants = prefersReducedMotion
+    ? { initial: { opacity: 0 }, in: { opacity: 1 }, out: { opacity: 0 } }
+    : direction === "pop" ? slideRightExit : slideRight;
   const Comp = as === "section" ? motion.section : motion.div;
   return (
     <Comp
@@ -122,29 +78,14 @@ export function AnimatedPage({ children, className, direction = "push", as = "di
       initial="initial"
       animate="in"
       exit="out"
-      transition={{ duration: duration.panel, ease: ease.app }}
+      transition={{
+        duration: prefersReducedMotion ? duration.fast : duration.panel,
+        ease: prefersReducedMotion ? ease.out : ease.app,
+      }}
     >
       {children}
     </Comp>
   );
-}
-
-/* ------------------------------------------------------------------ */
-/*  AnimatedPresenceShell – single child enter/exit wrapper            */
-/* ------------------------------------------------------------------ */
-
-interface AnimatedPresenceShellProps {
-  children: React.ReactNode;
-  mode?: "wait" | "popLayout" | "sync";
-  /** If true, runs the exit animation before the enter. Default true. */
-  exitBeforeEnter?: boolean;
-}
-
-export function AnimatedPresenceShell({
-  children,
-  mode = "wait",
-}: AnimatedPresenceShellProps) {
-  return <AnimatePresence mode={mode}>{children}</AnimatePresence>;
 }
 
 /* ------------------------------------------------------------------ */
@@ -191,6 +132,7 @@ function MotionSheetLayer({
   // Keep scroll locked through AnimatePresence exit, not only until `open`
   // flips false. The layer unregisters after its visual exit completes.
   useScrollLock(true);
+  const prefersReducedMotion = useReducedMotion();
 
   const panelRef = useRef<HTMLDivElement | null>(null);
   const [blockedAnnouncement, setBlockedAnnouncement] = useState("");
@@ -224,6 +166,9 @@ function MotionSheetLayer({
   useTopmostFocusScope(panelRef, isTopmost);
 
   const bottomPresentation = preferBottom && (variant === "action" || variant === "form");
+  const panelVariants = prefersReducedMotion
+    ? { initial: { opacity: 0 }, in: { opacity: 1 }, out: { opacity: 0 } }
+    : bottomPresentation ? slideUp : subtleOverlayScale;
 
   return (
     <OverlayPortal>
@@ -259,11 +204,14 @@ function MotionSheetLayer({
           aria-busy={!dismissible || undefined}
           tabIndex={-1}
           className={`${bottomPresentation ? "absolute bottom-0 inset-x-0 mx-auto rounded-t-2xl" : "relative mx-auto w-full max-w-lg rounded-2xl"} max-h-[92vh] w-full overflow-y-auto overscroll-contain bg-paper p-4 shadow-2xl outline-none ${panelClassName ?? ""}`}
-          variants={bottomPresentation ? slideUp : subtleOverlayScale}
+          variants={panelVariants}
           initial="initial"
           animate="in"
           exit="out"
-          transition={{ duration: duration.panel, ease: ease.app }}
+          transition={{
+            duration: prefersReducedMotion ? duration.fast : duration.panel,
+            ease: prefersReducedMotion ? ease.out : ease.app,
+          }}
           data-overlay-variant={variant}
           data-parity-id="parity.app.app.src.components.motion.common.3ff559809b" onClick={stopProp}
         >
@@ -596,55 +544,7 @@ export function AppPressable({
   );
 }
 
-/* Compatibility wrapper for callers that have not yet adopted AppPressable. */
-interface PressableMotionButtonProps extends Omit<AppPressableProps, "feedback"> {}
-
-export function PressableMotionButton(props: PressableMotionButtonProps) {
-  return <AppPressable feedback="control" {...props} />;
-}
-
-/* ------------------------------------------------------------------ */
-/*  MotionCard – shared card press feedback                            */
-/* ------------------------------------------------------------------ */
-
-interface MotionCardProps {
-  children: React.ReactNode;
-  className?: string;
-  onClick?: () => void;
-  onContextMenu?: (e: React.MouseEvent) => void;
-  /** Extra class when the card is "selected" (used for appearance). */
-  selected?: boolean;
-  /** When true, disables tap scale (e.g. in multi-select mode). */
-  disableTap?: boolean;
-  layoutId?: string;
-}
-
-export function MotionCard({
-  children,
-  className,
-  onClick,
-  onContextMenu,
-  selected = false,
-  disableTap = false,
-  layoutId,
-}: MotionCardProps) {
-  const base = `overflow-hidden rounded-lg border ${selected ? "border-denim ring-1 ring-denim" : "border-ink/10"} bg-white shadow-sm ${className ?? ""}`;
-
-  return (
-    <AppPressable
-      type="button"
-      feedback="card"
-      pressDisabled={disableTap}
-      layoutId={layoutId}
-      className={`${base} w-full text-left`}
-      aria-pressed={selected || undefined}
-      data-parity-id="parity.app.app.src.components.motion.common.3e04f7dca0" onClick={onClick}
-      onContextMenu={onContextMenu}
-    >
-      {children}
-    </AppPressable>
-  );
-}
+/* Compatibility wrapper retired: all callers use AppPressable directly. */
 
 /* ------------------------------------------------------------------ */
 /*  MotionImageLightbox – scale + opacity transition                  */
@@ -937,35 +837,6 @@ export function MotionImageLightbox(props: MotionImageLightboxProps) {
 }
 
 /* ------------------------------------------------------------------ */
-/*  MotionCheckBadge – pop-in checkmark icon                          */
-/* ------------------------------------------------------------------ */
-
-interface MotionCheckBadgeProps {
-  visible: boolean;
-  children: React.ReactNode;
-  className?: string;
-}
-
-export function MotionCheckBadge({ visible, children, className }: MotionCheckBadgeProps) {
-  return (
-    <AnimatePresence>
-      {visible ? (
-        <motion.div
-          className={className}
-          variants={pop}
-          initial="initial"
-          animate="animate"
-          exit="exit"
-          transition={spring.snappy}
-        >
-          {children}
-        </motion.div>
-      ) : null}
-    </AnimatePresence>
-  );
-}
-
-/* ------------------------------------------------------------------ */
 /*  MotionPopoverMenu – opacity + scale from anchor                   */
 /* ------------------------------------------------------------------ */
 
@@ -1045,6 +916,7 @@ function MotionPopoverMenuLayer({
   preferAbove,
 }: MotionPopoverMenuLayerProps) {
   useScrollLock(true);
+  const prefersReducedMotion = useReducedMotion();
   const popoverRef = useRef<HTMLDivElement | null>(null);
   const pointerSequenceCleanupRef = useRef<(() => void) | null>(null);
   const { overlayId, isTopmost, requestDismiss } = useOverlayLayer({
@@ -1186,10 +1058,13 @@ function MotionPopoverMenuLayer({
         tabIndex={-1}
         className={`fixed z-[70] min-w-[120px] max-w-[calc(100vw-16px)] rounded-lg border border-ink/10 bg-white py-1 shadow-lg outline-none ${className ?? ""}`}
         style={{ top: -9999, left: -9999, transformOrigin: "100% 0" }}
-        variants={anchoredPopoverScale}
+        variants={prefersReducedMotion
+          ? { initial: { opacity: 0 }, in: { opacity: 1 }, out: { opacity: 0 } }
+          : anchoredPopoverScale}
         initial="initial"
         animate="in"
         exit="out"
+        transition={{ duration: duration.fast, ease: ease.out }}
         data-overlay-layer={overlayId}
         data-overlay-kind="popover"
         data-overlay-topmost={isTopmost ? "true" : "false"}
@@ -1286,7 +1161,12 @@ export function AiTaskProgressCard({
       </div>
       <div
         className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-denim/15"
-        aria-hidden="true"
+        role="progressbar"
+        aria-label={`${label}进度`}
+        aria-valuemin={0}
+        aria-valuemax={100}
+        aria-valuenow={Math.round(clamped)}
+        aria-valuetext={stage}
       >
         <div
           className="h-full rounded-full bg-denim"
@@ -1358,22 +1238,23 @@ export function MotionAccordion({
   animateHeight = true,
 }: MotionAccordionProps) {
   const prefersReducedMotion = useReducedMotion();
+  // Compatibility prop: older callers can still request the richer reveal,
+  // but no path interpolates intrinsic height. This avoids repeated layout on
+  // image-heavy content and makes the reduced-motion branch opacity-only.
   const shouldAnimateHeight = animateHeight && !prefersReducedMotion;
-  const heightAnim = shouldAnimateHeight
-    ? { height: 0 as const, opacity: 0 }
-    : prefersReducedMotion ? { opacity: 0 } : { opacity: 0, y: 8 };
-  const heightAnimIn = shouldAnimateHeight
-    ? { height: "auto" as const, opacity: 1 }
-    : prefersReducedMotion ? { opacity: 1 } : { opacity: 1, y: 0 };
+  const revealFrom = prefersReducedMotion
+    ? { opacity: 0 }
+    : shouldAnimateHeight ? { opacity: 0, y: 8 } : { opacity: 0, y: 4 };
+  const revealTo = prefersReducedMotion ? { opacity: 1 } : { opacity: 1, y: 0 };
 
   return (
     <AnimatePresence initial={false}>
       {expanded ? (
         <motion.div
           className={`overflow-hidden ${className ?? ""}`}
-          initial={heightAnim}
-          animate={heightAnimIn}
-          exit={heightAnim}
+          initial={revealFrom}
+          animate={revealTo}
+          exit={revealFrom}
           transition={{
             duration: prefersReducedMotion ? duration.fast : duration.normal,
             ease: ease.app,
@@ -1389,36 +1270,4 @@ export function MotionAccordion({
 /* ------------------------------------------------------------------ */
 /*  MotionTransition – wraps keyed content with AnimatePresence       */
 /* ------------------------------------------------------------------ */
-
-interface MotionTransitionProps {
-  children: React.ReactNode;
-  /** Key that triggers enter/exit when it changes. */
-  transitionKey: string;
-  className?: string;
-  /** "horizontal" for slide-right push/pop. "fade" for simple crossfade. */
-  variant?: "horizontal" | "fade";
-}
-
-export function MotionTransition({
-  children,
-  transitionKey,
-  className,
-  variant = "horizontal",
-}: MotionTransitionProps) {
-  const variants = variant === "horizontal" ? slideRight : scaleModal;
-  return (
-    <AnimatePresence mode="wait">
-      <motion.div
-        key={transitionKey}
-        className={className}
-        variants={variants}
-        initial="initial"
-        animate="in"
-        exit="out"
-        transition={{ duration: duration.panel, ease: ease.app }}
-      >
-        {children}
-      </motion.div>
-    </AnimatePresence>
-  );
-}
+/* Retired duplicate API: use NavigationMotion or SettingsSubpageMotion. */

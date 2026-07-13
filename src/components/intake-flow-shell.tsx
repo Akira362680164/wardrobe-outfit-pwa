@@ -178,7 +178,7 @@ export function IntakeFlowShell({
             type="button"
             data-parity-id="parity.app.app.src.components.intake.flow.shell.d60ca7f723" onClick={onBack}
             disabled={backDisabled || busy || !onBack}
-            className="grid h-10 w-10 shrink-0 place-items-center ui-control-radius bg-transparent text-ink/70 active:scale-95 disabled:opacity-35"
+            className="grid h-10 w-10 shrink-0 place-items-center ui-control-radius bg-transparent text-ink/70 app-press-feedback disabled:opacity-35"
             aria-label="返回上一步"
           >
             <ChevronLeft size={21} aria-hidden="true" />
@@ -193,7 +193,7 @@ export function IntakeFlowShell({
             type="button"
             data-parity-id="parity.app.app.src.components.intake.flow.shell.ef4e5e19ad" onClick={requestExit}
             disabled={busy}
-            className="grid h-10 w-10 shrink-0 place-items-center ui-control-radius bg-transparent text-ink/60 active:scale-95"
+            className="grid h-10 w-10 shrink-0 place-items-center ui-control-radius bg-transparent text-ink/60 app-press-feedback"
             aria-label="退出录入"
           >
             <X size={18} aria-hidden="true" />

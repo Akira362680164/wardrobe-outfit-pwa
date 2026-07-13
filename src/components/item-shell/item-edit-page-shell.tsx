@@ -58,7 +58,7 @@ export function ItemEditPageShell({
             label="保存"
             loadingLabel="保存中"
             icon={<SaveAll size={15} aria-hidden="true" />}
-            className="h-9 rounded-lg active:scale-[0.98] transition-transform"
+            className="h-9 rounded-lg app-press-feedback transition-transform"
           />
         }
       />

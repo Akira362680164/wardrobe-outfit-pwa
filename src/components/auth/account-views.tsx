@@ -528,7 +528,7 @@ export function ChangePasswordView({
 function SubPageHeader({ title, onBack, disabled = false }: { title: string; onBack: () => void; disabled?: boolean }) {
   return (
     <header className="flex h-14 items-center gap-2 px-1 pt-2">
-      <button type="button" data-parity-id="parity.app.app.src.components.auth.account.views.c6bfc649ca" onClick={onBack} disabled={disabled} className="grid h-10 w-10 place-items-center ui-control-radius bg-transparent text-ink/65 active:scale-95 disabled:opacity-45" aria-label="返回">
+      <button type="button" data-parity-id="parity.app.app.src.components.auth.account.views.c6bfc649ca" onClick={onBack} disabled={disabled} className="grid h-10 w-10 place-items-center ui-control-radius bg-transparent text-ink/65 app-press-feedback disabled:opacity-45" aria-label="返回">
         <ChevronLeft size={20} aria-hidden="true" />
       </button>
       <h1 className="min-w-0 truncate text-xl font-bold tracking-tight">{title}</h1>

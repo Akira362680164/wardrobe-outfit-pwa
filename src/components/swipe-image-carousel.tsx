@@ -212,7 +212,7 @@ function SwipeAddPage({ slide, onClickAdd }: SwipeAddPageProps) {
       <button
         type="button"
         data-parity-id="parity.app.app.src.components.swipe.image.carousel.b229c3c0fc" onClick={(e) => { onClickAdd(slide); e.stopPropagation(); }}
-        className="grid max-w-[260px] place-items-center gap-3 rounded-2xl border border-ink/8 bg-white px-6 py-7 text-center shadow-soft transition-transform active:scale-[0.98]"
+        className="grid max-w-[260px] place-items-center gap-3 rounded-2xl border border-ink/8 bg-white px-6 py-7 text-center shadow-soft transition-transform app-press-feedback"
         aria-label={slide.title}
       >
         <span className="grid h-12 w-12 place-items-center rounded-full bg-denim/10 text-denim">
