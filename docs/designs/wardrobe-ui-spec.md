@@ -361,6 +361,15 @@ Icon-only 按钮必须有 `aria-label`；图标与文字组合时图标使用 `a
 - 首页与详情的 More 菜单必须各自持有当前可见触发器的独立 `anchorRef`。同步 push / pop 重叠期间，退出详情的 ref 清理不得清空已进入首页的菜单锚点；焦点恢复、键盘操作与 OverlayStack 优先级继续遵守 A2 / C2 公共契约。
 - 390px 竖屏验收至少覆盖：筛选并滚动列表 → 详情 → 加入衣橱失败 → 返回恢复；详情 → 编辑失败并保留图片 / 表单 → 放弃确认；已买列表 → 撤销购买 busy 锁定 → 失败保留确认与列表滚动。不得以只检查静态 DOM 或单个 happy path 代替深层流程验证。
 
+##### 6.1.12 D1-Android 最终动效验收
+
+- Android 动效验收固定使用 `390 × 844` 竖屏矩阵，至少覆盖浮层 Back、图片反向接管、日历斜滑、滑条纵向滚动、路由中断和 reduced-motion。浏览器 harness / 逻辑合同只证明冻结源码行为，不能替代 WebView、系统 Back、触摸仲裁和最终 APK 帧时序。
+- 每个 APK 先以 `aapt` / `apksigner` 核对 `com.wardrobe.outfit`、`versionName/versionCode`、固定签名 `CN=fangzheng` 和 SHA-256。Wave 6 之前的 APK 只允许标作 `pre-wave-control`，用于验证 ADB、安装、启动、前台窗口和 logcat 链路；只有 `final-wave6` APK 具备最终动效复测资格。
+- 浮层 Back 必须由 Android 系统 Back 实际触发，一次只关闭或拒绝一个 topmost 状态；图片、日历和路由的反向手势必须从当前呈现位置接管，不能跳回旧目标后重新开始。日历与滑条的纵向占优手势必须继续页面滚动，不得误改月份或数值。
+- reduced-motion 验收先确认 WebView 的 `matchMedia('(prefers-reduced-motion: reduce)')` 为真。直接操控仍应跟手，但释放收口、路由、选中和展开不得运行大位移或 spring；关闭系统设置后还要恢复常规速度，检查默认动效没有被测试环境永久禁用。
+- 每行证据至少包含操作前、接管中和收口后三个时点、结构化结论与目标进程 logcat。原始截图、视频和日志只留在忽略目录 `test-results/`；Git 中的 `artifacts/motion-repair-*` 仅保存非敏感索引，不得包含 APK、签名文件、设备序列号、Token、用户照片或正式业务数据。
+- 最终判定必须来自同一个 Wave 6 APK SHA-256，并在六行全部通过、无目标进程 fatal 后由主 Agent 记录。D1-Android 冻结 Session 只能把未覆盖项标为“主 Agent 最终复测”，不得宣称已经验收尚未合入的 D1-Runtime / D1-Contracts 或最终 APK。
+
 #### 6.2 并行 Wave 规范所有权
 
 并行 Session 对运行时文件实行独占所有权；规范只允许修改下列命名小节。生成的 HTML 与 `VERSION_HISTORY.md` 在每个 Wave 合入后由主 Agent 保全并重生成。
