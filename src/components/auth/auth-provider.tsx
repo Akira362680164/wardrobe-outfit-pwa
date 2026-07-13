@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import {
   clearAuthTokens,
   clearDeletedAccountSession,
@@ -48,6 +48,9 @@ interface AuthContextValue {
 
 const AuthContext = createContext<AuthContextValue | null>(null);
 
+const REFRESH_RETRY_WINDOW_MS = 5 * 60 * 1000;
+let refreshPromise: Promise<AuthSessionSnapshot | null> | null = null;
+
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [phase, setPhase] = useState<AuthPhase>("initializing");
   const [session, setSession] = useState<AuthSessionSnapshot | null>(null);
@@ -55,6 +58,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [isBusy, setIsBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [connectivity, setConnectivity] = useState<ConnectivityState>("unknown");
+  const authOperationGeneration = useRef(0);
 
   const updateConnectivity = useCallback(async () => {
     setConnectivity("probing");
@@ -72,29 +76,58 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const refreshSession = useCallback(async (options: { force?: boolean } = {}) => {
-    const current = session ?? await loadAuthSessionSnapshot();
-    if (!options.force && isAccessTokenFresh(current)) return current;
-    if (!current.refreshToken) return null;
-    const cloud = await updateConnectivity();
-    if (cloud !== "cloud_ready") return current.user ? current : null;
-    try {
-      const tokens = await authApi.refreshWithMutex({
-        refreshToken: current.refreshToken,
-        refreshRequestId: createRefreshRequestId(),
-        deviceId: current.deviceId,
-      });
-      return setTokenSession(current, tokens);
-    } catch (err) {
-      if (isAuthInvalidError(err)) {
-        const cleared = await clearAuthTokens(current);
-        setSession(cleared);
-        setBlocked(null);
-        setPhase("anonymous");
-        return null;
+    if (refreshPromise) return refreshPromise;
+    const generation = authOperationGeneration.current;
+    refreshPromise = (async () => {
+      // Always read the latest persisted snapshot. React state can lag behind
+      // a previous refresh while a visibility/appState callback is running.
+      const current = await loadAuthSessionSnapshot();
+      if (!options.force && isAccessTokenFresh(current)) return current;
+      if (!current.refreshToken) return null;
+      const cloud = await updateConnectivity();
+      if (cloud !== "cloud_ready") return current.user ? current : null;
+
+      const pending = current.pendingRefresh;
+      const pendingIsReusable = pending
+        && pending.refreshTokenPrefix === current.refreshToken.slice(0, 16)
+        && Date.parse(pending.startedAt) + REFRESH_RETRY_WINDOW_MS > Date.now();
+      const refreshRequestId = pendingIsReusable ? pending.requestId : createRefreshRequestId();
+      const prepared: AuthSessionSnapshot = {
+        ...current,
+        pendingRefresh: {
+          requestId: refreshRequestId,
+          refreshTokenPrefix: current.refreshToken.slice(0, 16),
+          startedAt: pendingIsReusable ? pending.startedAt : new Date().toISOString(),
+        },
+      };
+      try {
+        await saveAuthSessionSnapshot(prepared);
+        const tokens = await authApi.refreshWithMutex({
+          refreshToken: current.refreshToken,
+          refreshRequestId,
+          deviceId: current.deviceId,
+        });
+        if (generation !== authOperationGeneration.current) return null;
+        return await setTokenSession(prepared, tokens);
+      } catch (err) {
+        if (generation !== authOperationGeneration.current) return null;
+        if (isAuthInvalidError(err)) {
+          const cleared = await clearAuthTokens(current);
+          setSession(cleared);
+          setBlocked(null);
+          setPhase("anonymous");
+          return null;
+        }
+        // Keep pendingRefresh for network, rate-limit and storage failures.
+        // A retry must use the same request id while the server can replay the
+        // original rotated response.
+        return current.user ? current : null;
       }
-      return current.user ? current : null;
-    }
-  }, [session, setTokenSession, updateConnectivity]);
+    })().finally(() => {
+      refreshPromise = null;
+    });
+    return refreshPromise;
+  }, [setTokenSession, updateConnectivity]);
 
   useEffect(() => registerAuthSessionRecovery(({ force }) => refreshSession({ force })), [refreshSession]);
 
@@ -104,14 +137,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const handleVisibility = () => {
       if (document.visibilityState !== "visible") return;
       void updateConnectivity();
-      if (session?.refreshToken && !isAccessTokenFresh(session)) void refreshSession();
+      // refreshSession reads the latest secure snapshot and is a no-op while
+      // the access token is still fresh. This avoids a stale React closure
+      // racing with the Capacitor appState callback.
+      void refreshSession();
     };
     document.addEventListener("visibilitychange", handleVisibility);
     return () => {
       listener.disconnect();
       document.removeEventListener("visibilitychange", handleVisibility);
     };
-  }, [refreshSession, session, updateConnectivity]);
+  }, [refreshSession, updateConnectivity]);
 
   useEffect(() => {
     let cancelled = false;
@@ -136,22 +172,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           const cloud = await updateConnectivity();
           if (cancelled) return;
           if (cloud === "cloud_ready") {
-            try {
-              const tokens = await authApi.refreshWithMutex({
-                refreshToken: loaded.refreshToken,
-                refreshRequestId: createRefreshRequestId(),
-                deviceId: loaded.deviceId,
-              });
-              if (!cancelled) await setTokenSession(loaded, tokens);
+            const recovered = await refreshSession({ force: true });
+            if (recovered) {
+              if (!cancelled) setPhase("authenticated");
               return;
-            } catch (err) {
-              if (isAuthInvalidError(err)) {
-                const cleared = await clearAuthTokens(loaded);
-                if (!cancelled) setSession(cleared);
-              } else if (loaded.user) {
-                if (!cancelled) setPhase("authenticated");
-                return;
-              }
             }
           } else if (loaded.user) {
             setPhase("authenticated");
@@ -169,9 +193,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return () => {
       cancelled = true;
     };
-  }, [setTokenSession, updateConnectivity]);
+  }, [refreshSession, setTokenSession, updateConnectivity]);
 
   const login = useCallback(async (account: string, password: string) => {
+    authOperationGeneration.current += 1;
     setIsBusy(true);
     setError(null);
     try {
@@ -194,6 +219,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [session, setTokenSession, updateConnectivity]);
 
   const register = useCallback(async (input: { email: string; emailCode: string; password: string; phone?: string }) => {
+    authOperationGeneration.current += 1;
     setIsBusy(true);
     setError(null);
     try {
@@ -217,28 +243,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [session, setTokenSession, updateConnectivity]);
 
   const logout = useCallback(async () => {
+    authOperationGeneration.current += 1;
     setIsBusy(true);
     setError(null);
     try {
-      const current = session ?? await loadAuthSessionSnapshot();
-      if (current.accessToken) {
-        if (!isAccessTokenFresh(current)) {
-          try {
-            if (current.refreshToken) {
-              const tokens = await authApi.refreshWithMutex({
-                refreshToken: current.refreshToken,
-                refreshRequestId: createRefreshRequestId(),
-                deviceId: current.deviceId,
-              });
-              await authApi.logout(tokens.accessToken);
-            }
-          } catch {
-            await authApi.logout(current.accessToken).catch(() => undefined);
-          }
-        } else {
-          await authApi.logout(current.accessToken).catch(() => undefined);
-        }
+      const inFlightRefresh = refreshPromise;
+      if (inFlightRefresh) await inFlightRefresh.catch(() => null);
+      const current = await loadAuthSessionSnapshot();
+      let accessToken = current.accessToken;
+      if (current.refreshToken && !isAccessTokenFresh(current)) {
+        const recovered = await refreshSession({ force: true });
+        accessToken = recovered?.accessToken ?? accessToken;
       }
+      if (accessToken) await authApi.logout(accessToken).catch(() => undefined);
       const cleared = await clearAuthTokens(current);
       setSession(cleared);
       setBlocked(null);
@@ -246,14 +263,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     } finally {
       setIsBusy(false);
     }
-  }, [session]);
+  }, [refreshSession]);
 
   const logoutAll = useCallback(async () => {
+    authOperationGeneration.current += 1;
     setIsBusy(true);
     setError(null);
     try {
-      const current = session ?? await loadAuthSessionSnapshot();
-      if (current.accessToken) await authApi.logoutAll(current.accessToken).catch(() => undefined);
+      const inFlightRefresh = refreshPromise;
+      if (inFlightRefresh) await inFlightRefresh.catch(() => null);
+      const current = await loadAuthSessionSnapshot();
+      let accessToken = current.accessToken;
+      if (current.refreshToken && !isAccessTokenFresh(current)) {
+        const recovered = await refreshSession({ force: true });
+        accessToken = recovered?.accessToken ?? accessToken;
+      }
+      if (accessToken) await authApi.logoutAll(accessToken).catch(() => undefined);
       const cleared = await clearAuthTokens(current);
       setSession(cleared);
       setBlocked(null);
@@ -264,9 +289,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     } finally {
       setIsBusy(false);
     }
-  }, [session]);
+  }, [refreshSession]);
 
   const completeAccountDeletion = useCallback(async () => {
+    authOperationGeneration.current += 1;
     const current = session ?? await loadAuthSessionSnapshot();
     clearMiniMaxSettings();
     const cleared = await clearDeletedAccountSession(current);
@@ -296,6 +322,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [refreshSession, session]);
 
   const returnToLoginFromBlocked = useCallback(async () => {
+    authOperationGeneration.current += 1;
     const current = session ?? await loadAuthSessionSnapshot();
     if (current.pendingRegistration) {
       authApi.cancelRegistration({
@@ -378,5 +405,10 @@ function toUserMessage(error: unknown): string {
 }
 
 function isAuthInvalidError(error: unknown): boolean {
-  return error instanceof authApi.CloudAuthApiError && (error.status === 401 || error.status === 403);
+  return error instanceof authApi.CloudAuthApiError && [
+    "AUTH_SESSION_REVOKED",
+    "AUTH_REFRESH_REUSED",
+    "AUTH_TOKEN_INVALID",
+    "account_deleted",
+  ].includes(error.code);
 }

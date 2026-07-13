@@ -1,7 +1,10 @@
 import { createCipheriv, createDecipheriv, randomBytes, timingSafeEqual } from "node:crypto";
 import { readFile } from "node:fs/promises";
 
-export const REFRESH_IDEMPOTENCY_WINDOW_MS = 60_000;
+// Keep a lost-response replay recoverable across Android background/network
+// transitions. The payload is encrypted and scoped to the session, old token,
+// request id and device, so this does not make a different-token replay valid.
+export const REFRESH_IDEMPOTENCY_WINDOW_MS = 5 * 60_000;
 export const REFRESH_IDEMPOTENCY_KEY_PATH = "/run/secrets/refresh-idempotency.key";
 
 export interface RefreshIdempotencyScope {

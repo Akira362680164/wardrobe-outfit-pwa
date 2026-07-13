@@ -33,6 +33,7 @@ export class HttpError extends Error {
 
 let apiBaseUrl = "";
 let refreshPromise: Promise<SessionState> | null = null;
+const REFRESH_RETRY_WINDOW_MS = 5 * 60 * 1000;
 
 export function configureHttp(options: { baseUrl: string }): void {
   apiBaseUrl = options.baseUrl.replace(/\/$/, "");
@@ -155,15 +156,29 @@ export async function recoverSession(force = false): Promise<SessionState> {
   if (!session?.refreshToken || !session.deviceId) throw new HttpError(401, "AUTH_SESSION_MISSING", "请重新登录后继续");
   if (!force && session.expiresAt && session.expiresAt > Date.now() + 60_000) return session;
   if (refreshPromise) return refreshPromise;
-  refreshPromise = rawRefresh(session).finally(() => { refreshPromise = null; });
+  const pending = session.pendingRefresh;
+  const pendingIsReusable = pending
+    && pending.refreshTokenPrefix === session.refreshToken.slice(0, 16)
+    && pending.startedAt + REFRESH_RETRY_WINDOW_MS > Date.now();
+  const refreshRequestId = pendingIsReusable ? pending.requestId : createUuid();
+  const prepared: SessionState = {
+    ...session,
+    pendingRefresh: {
+      requestId: refreshRequestId,
+      refreshTokenPrefix: session.refreshToken.slice(0, 16),
+      startedAt: pendingIsReusable ? pending.startedAt : Date.now(),
+    },
+  };
+  setSession(prepared);
+  refreshPromise = rawRefresh(prepared, refreshRequestId).finally(() => { refreshPromise = null; });
   return refreshPromise;
 }
 
-function rawRefresh(session: SessionState): Promise<SessionState> {
+function rawRefresh(session: SessionState, refreshRequestId: string): Promise<SessionState> {
   return new Promise((resolve, reject) => {
     wx.request<Record<string, any>>({
       url: buildUrl("/api/auth/refresh"), method: "POST",
-      data: { refreshToken: session.refreshToken, refreshRequestId: createUuid(), deviceId: session.deviceId },
+      data: { refreshToken: session.refreshToken, refreshRequestId, deviceId: session.deviceId },
       header: { Accept: "application/json", "Content-Type": "application/json" }, timeout: 30000,
       success: (result) => {
         const body = normalizeErrorBody(result.data);
