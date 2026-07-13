@@ -5,3 +5,4 @@ export * from "./diagnostics/contracts.js";
 export * from "./auth/contracts.js";
 export * from "./workspace/contracts.js";
 export * from "./workspace/assets.js";
+export * from "./recommendations/contracts.js";

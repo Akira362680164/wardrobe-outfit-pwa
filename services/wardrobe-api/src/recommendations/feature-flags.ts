@@ -1,0 +1,23 @@
+export const RECOMMENDATION_FEATURE_DEFAULTS = Object.freeze({
+  DAILY_RECOMMENDATIONS_ENABLED: false,
+  PAW_DATE_CONTEXT_ENABLED: false,
+  PAW_CANDIDATE_EVALUATOR_ENABLED: false,
+  PAW_INTAKE_CANONICALIZER_ENABLED: false,
+});
+
+export interface RecommendationFeatureFlags {
+  DAILY_RECOMMENDATIONS_ENABLED: boolean;
+  PAW_DATE_CONTEXT_ENABLED: boolean;
+  PAW_CANDIDATE_EVALUATOR_ENABLED: boolean;
+  PAW_INTAKE_CANONICALIZER_ENABLED: boolean;
+}
+
+export function readRecommendationFeatureFlags(environment: NodeJS.ProcessEnv): RecommendationFeatureFlags {
+  const enabled = (name: keyof RecommendationFeatureFlags): boolean => environment[name] === "true";
+  return Object.freeze({
+    DAILY_RECOMMENDATIONS_ENABLED: enabled("DAILY_RECOMMENDATIONS_ENABLED"),
+    PAW_DATE_CONTEXT_ENABLED: enabled("PAW_DATE_CONTEXT_ENABLED"),
+    PAW_CANDIDATE_EVALUATOR_ENABLED: enabled("PAW_CANDIDATE_EVALUATOR_ENABLED"),
+    PAW_INTAKE_CANONICALIZER_ENABLED: enabled("PAW_INTAKE_CANONICALIZER_ENABLED"),
+  });
+}
