@@ -1,3 +1,14 @@
+## 2026-07-13 / v2.1.17-test / Codex — 生产 UUID 数据迁移与 API 部署
+
+- **执行 Agent**：Codex（未触发 subagent；基于已合入 `main` 的提交 `cb80aed6` 执行生产发布）。
+- **目的**：上线日历穿搭 canonical UUID 修复，迁移既有生产套装/穿搭计划关系并部署对应 API；本批不上传小程序、不重新发布 APK。
+- **版本变更**：无，保持 `2.1.17-test`；生产 API 镜像从 `wardrobe-api:c2c3569` 切换为 `wardrobe-api:cb80aed6`。
+- **迁移前只读审计**：生产有效套装 4、有效穿搭计划 3、有效旅行计划 2；2 条穿搭计划需要从旧套装标识回填 UUID。旧套装标识重复组、无法解析的套装/实际穿搭/旅行计划引用、关系列与 payload 冲突均为 0，满足 `0017_outfit_plan_canonical_uuid.sql` 阻断门禁。
+- **备份与恢复演练**：生产数据库、`.env` 和 `compose.production.yaml` 已备份到 `/opt/wardrobe-cloud/backups/outfit-uuid-20260713-182537/`；SQL 转储 `wardrobe-before-0017.sql` 为 717,295 bytes，SHA-256 `c3a08ff2ba70038b5105dc98ad723bf84a24379e2e1d88baa0348f94e20819cb`。转储已恢复到隔离临时库并核对核心表计数 `outfits=11`、`outfit_plans=12`、`trip_plans=6`，随后清理临时库；回滚镜像保留为 `wardrobe-api:c2c3569`。
+- **生产迁移**：使用新镜像的一次性容器执行 Drizzle 迁移成功，最新迁移记录为 17；`actual_outfit_id` 列、外键和索引均存在。套装、穿搭计划和旅行计划旧标识字段剩余 0；3 条有效计划的 `outfit_id` 与 payload UUID 全部一致，无未解析引用；1 条旅行计划关系与 UUID payload 一致。
+- **API 部署与验证**：生产源码快照位于 `/opt/wardrobe-cloud/releases/cb80aed6`，镜像 ID `sha256:42c8e31dd1e19860cd1e69eaf69145b60ad491b63e9848d5fe39c4125183ad23`。容器切换后为 healthy、重启次数 0，启动日志未检出 fatal/unhandled/migration error；公网 `/api/health`、`/api/ready`、`/api/version` 均通过，数据库、存储、JWT、邮件、微信依赖均为 `ready`，版本返回 `gitCommit=cb80aed6`，受保护 workspace 接口未授权烟测返回预期 HTTP 401。
+- **构建说明与风险**：服务端镜像 TypeScript 构建通过；`npm audit` 仍报告既有生产依赖 5 个 moderate、1 个 high 漏洞，本批未做可能引入破坏性变化的依赖升级。旧版客户端若继续写入 `legacyOutfitId` 等字段会被新 API 拒绝，需尽快发布 `v2.1.17-test` App/小程序并完成 App→小程序、小程序→App 的真实账号双向读回验收；本批未执行客户端发布和生产账号业务写入。
+
 ## 2026-07-13 / v2.1.17-test / Codex — 日历穿搭关系 canonical UUID 修复
 
 - **执行 Agent**：Codex（未触发 subagent；在独立 `codex/outfit-plan-uuid-repair-20260713` worktree 实施）。
