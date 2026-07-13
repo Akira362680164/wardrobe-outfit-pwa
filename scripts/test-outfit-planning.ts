@@ -1,4 +1,6 @@
 // v1.1.0-dev: 穿搭计划逻辑单元测试
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import type { OutfitPlanEntry, OutfitCalendarPlan } from "../src/lib/types";
 import {
   getPlanEntryForDate,
@@ -29,6 +31,13 @@ const entry2 = createOutfitPlanEntry({ date: "2026-06-13", outfitId: "outfit-2",
 const plan1: OutfitCalendarPlan = createOutfitCalendarPlan({ type: "travel", title: "新疆", startDate: "2026-06-15", endDate: "2026-06-18", now });
 const plan2: OutfitCalendarPlan = createOutfitCalendarPlan({ type: "business", title: "出差", startDate: "2026-06-16", endDate: "2026-06-20", now });
 const plan3: OutfitCalendarPlan = createOutfitCalendarPlan({ type: "custom", title: "单日", startDate: "2026-06-12", endDate: "2026-06-12", now });
+const root = join(__dirname, "..");
+const outfitListViewSource = readFileSync(join(root, "src/components/outfit-list-view.tsx"), "utf8");
+const planAddSource = readFileSync(join(root, "src/components/outfit-plan-add-view.tsx"), "utf8");
+const planDaySource = readFileSync(join(root, "src/components/outfit-plan-day-card.tsx"), "utf8");
+const planDetailSource = readFileSync(join(root, "src/components/outfit-plan-detail-view.tsx"), "utf8");
+const planSelectSource = readFileSync(join(root, "src/components/outfit-plan-select-sheet.tsx"), "utf8");
+const packingSource = readFileSync(join(root, "src/components/plan-packing-checklist-view.tsx"), "utf8");
 
 // --- getPlanEntryForDate ---
 console.log("\n=== getPlanEntryForDate ===");
@@ -176,6 +185,17 @@ console.log("\n=== 365 day range ===");
 }
 
 // --- SUMMARY ---
+console.log("\n=== A2-Flows overlay contracts ===");
+check("day card actions use shared action sheet", /<MotionSheet[\s\S]{0,180}variant="action"[\s\S]{0,120}ariaLabel=/.test(planDaySource));
+check("day card delete uses busy-safe confirm", /<ConfirmActionSheet[\s\S]{0,260}submitting=\{deleting\}/.test(planDaySource));
+check("day card has no private full-screen overlay", !/fixed inset-0/.test(planDaySource));
+check("plan detail delete uses busy-safe confirm and keeps errors", /<ConfirmActionSheet[\s\S]{0,300}submitting=\{deleting\}[\s\S]{0,80}error=\{deleteError\}/.test(planDetailSource));
+check("plan add guards busy back and uses shared discard confirm", /useStableBackHandler\([\s\S]{0,180}if \(saving\) return true/.test(planAddSource) && /<ConfirmActionSheet[\s\S]{0,220}tone="danger"/.test(planAddSource));
+check("plan selector has form semantics", /<MotionSheet[^>]*variant="form"[^>]*ariaLabel=\{sheetTitle\}/.test(planSelectSource));
+check("packing add sheet is busy-safe and shared across empty state", /const addManualSheet = \([\s\S]{0,380}<MotionSheet[\s\S]{0,260}dismissible=\{!saving\}/.test(packingSource) && (packingSource.match(/\{addManualSheet\}/g) ?? []).length === 2);
+check("packing reset uses busy-safe confirm", /<ConfirmActionSheet[\s\S]{0,280}submitting=\{saving\}[\s\S]{0,80}error=\{resetError\}/.test(packingSource));
+check("add-plan chooser uses shared action sheet", /<MotionSheet[\s\S]{0,220}open=\{addPlanSheetOpen\}[\s\S]{0,180}variant="action"[\s\S]{0,80}ariaLabel="添加穿搭计划"/.test(outfitListViewSource));
+
 console.log(`\n=== 总计: ${pass} pass / ${fail} fail ===`);
 if (fail > 0) {
   console.error(failures.join("\n"));

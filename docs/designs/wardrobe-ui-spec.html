@@ -2,7 +2,7 @@
 <!--
   DO NOT EDIT BY HAND.
   Generated from docs/designs/wardrobe-ui-spec.md by scripts/generate-ui-spec-preview.mjs.
-  Source SHA256: af5d55cc82c6f36b5108fe0b81eb85d1ac2b550ffbdbf637eb73d242609f3e37
+  Source SHA256: 3c1a7760ef37287ab40db5741a743b5d9f634fa8b2cd8951eb6910e706a118e3
 -->
 <html lang="zh-CN">
 <head>
@@ -838,7 +838,7 @@
           <div class="meta-row">
             <span class="pill active">v0.2-final</span>
             <span class="pill">Markdown 唯一事实源</span>
-            <span class="pill">Source SHA256 af5d55cc82c6</span>
+            <span class="pill">Source SHA256 3c1a7760ef37</span>
           </div>
           <h1>衣橱穿搭助手 UI 规范</h1>
           <p>本页由规范 Markdown 自动生成，用于快速走查页面框架、组件契约、通知样式和验收映射。</p>
@@ -988,6 +988,8 @@
 <p><code>MotionPopoverMenu</code> 必须持有真实 trigger ref，按 anchor 计算 transform origin，打开后聚焦首项，支持 Arrow/Home/End/Escape，关闭后恢复触发器。<code>MotionImageLightbox</code> 和 Cropper 使用相同 topmost/focus/scroll-lock 生命周期。</p>
 <p>##### 6.1.1 A1 运行时基线</p>
 <ul><li><code>src/components/overlay-root.tsx</code> 在 <code>MotionProvider</code> 内只挂载一次，并在 <code>document.body</code> 下创建 <code>#wardrobe-overlay-root</code>；注册的 Sheet 通过 <code>OverlayPortal</code> 进入该根。</li><li><code>src/lib/overlay-stack.ts</code> 是浮层注册顺序、topmost、关闭拒绝和焦点恢复的唯一状态源。只有 topmost 能处理 Back、Escape、backdrop 和 Tab；下层浮层与 App 内容同步设置 <code>inert</code>、<code>aria-hidden</code>。</li><li><code>src/lib/back-coordinator.ts</code> 先请求关闭 topmost overlay，再按 <code>priority + registration order</code> 查询页面 handler；浮层关闭或拒绝关闭后均不得继续执行页面返回。<code>useStableBackHandler</code> 只登记回调，不再创建 Capacitor listener。</li><li><code>dismissible=false</code> 或 <code>closeOnEscape/closeOnBackdrop=false</code> 的关闭请求保持当前层，触发 <code>onDismissBlocked</code>，并提供“操作进行中”读屏状态；Toast 继续留在栈外。</li><li>A1 只建立共享 Sheet 与顶层返回基线；Lightbox、Popover、Cropper 和遗留页面私有 Back listener 的全面迁移属于 A2，不得把 A1 的局部接入误报为全 App 浮层迁移完成。</li></ul>
+<p>##### 6.1.2 A2-Flows 业务流浮层迁移</p>
+<ul><li>详情、穿搭计划、打包清单、种草和录入流程的操作面板、表单面板与危险确认统一使用 <code>MotionSheet</code>、<code>MotionPopoverMenu</code>、<code>ConfirmActionSheet</code>；业务组件不再用私有 <code>fixed inset-0</code> 遮罩模拟 Dialog/Sheet，也不自行抢占 Back/Escape。</li><li><code>IntakeFlowShell</code> 以 <code>kind=fullscreen</code>、全屏 <code>ImageCropEditor</code> 以 <code>kind=cropper</code> 注册到 OverlayStack，并复用共享 Portal、滚动锁、topmost、焦点圈定、<code>inert/aria-hidden</code> 与触发器焦点恢复生命周期；嵌入式裁切仍属于录入 Shell 内容，不重复注册。</li><li>上传、保存、删除、重置、种草转衣橱或裁切应用进行中时，当前层保持 <code>dismissible=false</code>；Android Back、Escape、遮罩和显式关闭不得中断事务，关闭请求提供“操作进行中”反馈。失败后保留当前确认层、输入草稿与重试入口，成功仅在服务器提交并读回后关闭。</li><li>Popover 的 <code>anchorRef</code> 必须指向当前可见的触发按钮。种草首页菜单、种草详情菜单、套装详情菜单与穿搭实图菜单不得复用不可见页或无关表单控件的 ref。</li><li>页面级 <code>useStableBackHandler</code> 只负责选择模式、未保存草稿和子页导航；OverlayStack 先处理 Sheet、Dialog、Popover、Lightbox、Cropper。一次返回事件只关闭或拒绝一个 topmost 状态，不继续穿透到页面导航。</li><li>本节只迁移浮层生命周期和 busy 安全，不改轮播/日历轨道、裁切阻尼、手势物理或路由导航结构；相关连续性与手势优化仍由后续专属 Wave 实施。</li></ul>
 <p>#### 6.2 并行 Wave 规范所有权</p>
 <p>并行 Session 对运行时文件实行独占所有权；规范只允许修改下列命名小节。生成的 HTML 与 <code>VERSION_HISTORY.md</code> 在每个 Wave 合入后由主 Agent 保全并重生成。</p>
 <div class="table-wrap"><table><thead><tr><th>Wave</th><th>规范小节所有者</th></tr></thead><tbody><tr><td>A1</td><td>OverlayRoot、OverlayStack、BackCoordinator 公共契约</td></tr><tr><td>A2-Core / App / Flows</td><td>共享浮层组件 / App 壳与账号 / 业务流浮层</td></tr><tr><td>B1 / B2 / B3</td><td>即时反馈 / 图片手势 / 周历月历手势</td></tr><tr><td>B4 / C1 / C2</td><td>录入手势 / 路由运动 / 详情连续性</td></tr><tr><td>C3-Outfit / Settings / Wishlist</td><td>穿搭计划 / 设置账号 / 种草深层流程</td></tr><tr><td>D1-Runtime / Contracts / Android</td><td>偏好与性能 / 防回归合同 / Android 验收</td></tr></tbody></table></div></div></section>

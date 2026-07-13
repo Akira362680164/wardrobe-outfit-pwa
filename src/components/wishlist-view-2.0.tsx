@@ -2,7 +2,6 @@
 // v0.9.49-dev 种草 2.0: 种草首页 + 详情页 + 子页面
 
 import React, { useState, useMemo, useCallback, useEffect, useRef, type ReactNode } from "react";
-import { AnimatePresence, motion } from "motion/react";
 import { MotionPopoverMenu, MotionSheet } from "@/components/motion-common";
 import { ConfirmActionSheet, NoticeSheet } from "@/components/dialogs";
 import { OnlineAssetImage } from "@/components/online/online-asset-image";
@@ -264,68 +263,52 @@ export function WishlistView20({
     return current !== formInitialSnapshotRef.current;
   };
 
-  // Subagent F: Android 返回键处理 — 稳定 handler，只注册一次
-  // 注：expandedImage（图片放大层）由父级 wardrobe-app 的 backButton handler 关闭（line ~503），
-  // 父级 handler 在 shoppingSubPageActive 时返回但不消费事件，子的 handler 随后执行；
-  // 此时 expandedImage 已由父级关闭，子的 handler 不需要重复处理。
+  // A2-Flows: OverlayStack 统一处理图片层、菜单、Sheet 与 Dialog；此处只注册页面级返回决策。
   const isSubPage = subPage !== "home";
   useStableBackHandler(() => {
-    // 0. 批量删除确认 Sheet / 选择模式优先
-    if (wishlistBulkDelete.deleteOpen) {
-      if (wishlistBulkDelete.deleting) return true;
-      wishlistBulkDelete.cancelDelete();
-      return true;
-    }
+    // OverlayStack 先处理所有 Sheet / Dialog / Popover；这里只保留页面级返回决策。
+    if (isFormSaving || convertingId !== null) return true;
     if (wishlistSelection.selectionMode) {
       wishlistSelection.clear();
       return true;
     }
-    // 1. 衣橱点选 sheet 关闭
-    if (showLocationSheet) { setShowLocationSheet(false); return true; }
-    // 2. 各种确认弹窗优先关闭 (子页有弹窗时按返回键只关弹窗)
-    //    顺序: 撤销购买 / 删除记录 / 不再考虑 / 放弃修改
-    if (showConvertedItemDeletedNotice) { setShowConvertedItemDeletedNotice(false); return true; }
-    if (showUndoPurchaseConfirm) { setShowUndoPurchaseConfirm(false); return true; }
-    if (showDeleteRecordConfirm) { setShowDeleteRecordConfirm(false); return true; }
-    if (showRejectConfirm) { setShowRejectConfirm(false); return true; }
-    if (showDiscardConfirm) { setShowDiscardConfirm(false); return true; }
-    // 3. 种草录入页直接返回种草首页, 同步关闭外层 create flow 状态
+    // 1. 种草录入页直接返回种草首页, 同步关闭外层 create flow 状态
     if (subPage === "intake") {
       closeWishlistIntake();
       return true;
     }
-    // 4. add_edit 页面有未保存修改时打开放弃修改确认
+    // 2. add_edit 页面有未保存修改时打开放弃修改确认
     if (subPage === "add_edit" && checkFormDirty()) {
       setShowDiscardConfirm(true);
       return true;
     }
-    // 5. add_edit 页面无未保存修改时返回 home
+    // 3. add_edit 页面无未保存修改时返回 home
     if (subPage === "add_edit") {
       resetForm();
       setSubPage("home");
       setSelectedItem(null);
       return true;
     }
-    // 6. convert_confirm 返回详情页
+    // 4. convert_confirm 返回详情页
     if (subPage === "convert_confirm") {
       setSubPage("detail");
       return true;
     }
-    // 7. detail 返回 home
+    // 5. detail 返回 home
     if (subPage === "detail") {
       setSubPage("home");
       setSelectedItem(null);
       setMenuOpen(false);
       return true;
     }
-    // 8. purchased、rejected、archived 返回 home
+    // 6. purchased、rejected、archived 返回 home
     if (subPage === "purchased" || subPage === "rejected" || subPage === "archived") {
       setSubPage("home");
       setSelectedItem(null);
       return true;
     }
     return false;
-  }, isSubPage);
+  }, isSubPage || wishlistSelection.selectionMode || isFormSaving);
 
   const [showRejectConfirm, setShowRejectConfirm] = useState(false);
   const [showUndoPurchaseConfirm, setShowUndoPurchaseConfirm] = useState(false);
@@ -911,6 +894,7 @@ export function WishlistView20({
   /* ---- back navigation ---- */
 
   const goBack = useCallback(() => {
+    if (isFormSaving || convertingId !== null) return;
     if (subPage === "intake") {
       closeWishlistIntake();
       return;
@@ -926,7 +910,7 @@ export function WishlistView20({
     setSubPage("home");
     setSelectedItem(null);
     setMenuOpen(false);
-  }, [subPage, resetForm, closeWishlistIntake]);
+  }, [closeWishlistIntake, convertingId, isFormSaving, resetForm, subPage]);
 
   /* ================================================================ */
   /*  ADD / EDIT FORM PAGE                                            */
@@ -1145,7 +1129,7 @@ export function WishlistView20({
       <div className="flex flex-col h-full">
         {/* Header */}
         <div className="flex items-center justify-between px-4 py-3 border-b border-ink/10">
-          <button type="button" data-parity-id="parity.app.app.src.components.wishlist.view.2.0.f1cd95ffec" onClick={() => { setSubPage("detail"); setSelectedItem(item); }} className="inline-flex items-center gap-1 text-sm">
+          <button type="button" disabled={convertingId === item.id} data-parity-id="parity.app.app.src.components.wishlist.view.2.0.f1cd95ffec" onClick={() => { if (convertingId) return; setSubPage("detail"); setSelectedItem(item); }} className="inline-flex items-center gap-1 text-sm disabled:opacity-40">
             <ChevronLeft size={18} /> 返回
           </button>
           <h2 className="text-base font-semibold">加入衣橱</h2>
@@ -1178,7 +1162,6 @@ export function WishlistView20({
           <div className="px-1">
             <div className="text-[13px] text-ink/55 mb-2">加入到</div>
             <button
-              ref={menuAnchorRef}
               type="button"
               data-parity-id="parity.app.app.src.components.wishlist.view.2.0.200d5034ed" onClick={() => setShowLocationSheet(true)}
               className="w-full h-12 rounded-2xl border border-ink/10 bg-white px-4 flex items-center justify-between"
@@ -1194,7 +1177,7 @@ export function WishlistView20({
 
         {/* Bottom actions */}
         <div className="grid grid-cols-2 gap-3 p-4 border-t border-ink/10">
-          <button type="button" data-parity-id="parity.app.app.src.components.wishlist.view.2.0.a5a11401d7" onClick={() => { setSubPage("detail"); setSelectedItem(item); }} className="h-11 rounded-xl border border-ink/10 text-sm">取消</button>
+          <button type="button" disabled={convertingId === item.id} data-parity-id="parity.app.app.src.components.wishlist.view.2.0.a5a11401d7" onClick={() => { if (convertingId) return; setSubPage("detail"); setSelectedItem(item); }} className="h-11 rounded-xl border border-ink/10 text-sm disabled:opacity-40">取消</button>
           <button type="button" data-parity-id="parity.app.app.src.components.wishlist.view.2.0.ac69c93ea7" onClick={handleConfirmConvert} disabled={convertingId === item.id}
             className="h-11 rounded-xl bg-denim text-sm font-semibold text-white disabled:opacity-50">
             {convertingId === item.id ? "处理中..." : "确认加入衣橱"}
@@ -1204,7 +1187,12 @@ export function WishlistView20({
         {/* Location selector sheet */}
         <MotionSheet
           open={showLocationSheet}
-          onClose={() => setShowLocationSheet(false)}
+          onClose={() => { if (!convertingId) setShowLocationSheet(false); }}
+          variant="form"
+          ariaLabel="选择加入的衣橱"
+          dismissible={convertingId === null}
+          closeOnBackdrop={convertingId === null}
+          closeOnEscape={convertingId === null}
           panelClassName="!max-w-sm"
         >
           <div className="px-4 py-3 border-b border-ink/10">
@@ -1583,6 +1571,7 @@ export function WishlistView20({
           </div>
           <div className="relative flex shrink-0 items-center gap-2">
             <button
+              ref={menuAnchorRef}
               type="button"
               data-parity-id="parity.app.app.src.components.wishlist.view.2.0.212406c3d0"
               onClick={() => setMenuOpen((v) => !v)}

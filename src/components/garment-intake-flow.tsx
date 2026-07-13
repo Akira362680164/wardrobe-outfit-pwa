@@ -17,12 +17,14 @@ import {
   Tag,
   Trash2,
 } from "lucide-react";
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ChangeEvent, type ReactNode, type RefObject } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type ChangeEvent, type ReactNode, type RefObject } from "react";
 import {
   IntakeFlowShell,
   type IntakeFlowStep,
   type IntakeSubmitState,
 } from "@/components/intake-flow-shell";
+import { ConfirmActionSheet } from "@/components/dialogs";
+import { MotionPopoverMenu } from "@/components/motion-common";
 import { ImageCropEditor, type ImageCropEditorHandle } from "@/components/image-crop-editor";
 import { CategorySubcategoryPicker } from "@/components/category-subcategory-picker";
 import { FitGenderChips } from "@/components/fit-gender-chips";
@@ -870,32 +872,22 @@ export function GarmentIntakeFlow({
           locations={locations}
         />
       ) : null}
-      {pendingSaveDrafts ? (
-        <div className="fixed inset-0 z-[110] grid place-items-center bg-black/35 px-4" data-parity-id="parity.app.app.src.components.garment.intake.flow.95d649b378" onClick={() => setPendingSaveDrafts(null)}>
-          <div className="w-full max-w-sm rounded-2xl bg-white p-5 shadow-xl" data-parity-id="parity.app.app.src.components.garment.intake.flow.d5d698d703" onClick={(event) => event.stopPropagation()}>
-            <h2 className="text-base font-semibold">还有 {recognizedItems.length - pendingSaveDrafts.length} 件{flowNoun}尚未完成确认</h2>
-            <p className="mt-2 text-sm leading-relaxed text-ink/58">
-              本次将保存 {pendingSaveDrafts.length} 件，未完成的 {recognizedItems.length - pendingSaveDrafts.length} 件不会入库。
-            </p>
-            <div className="mt-5 grid grid-cols-2 gap-2">
-              <button type="button" data-parity-id="parity.app.app.src.components.garment.intake.flow.46f80c328e" onClick={() => setPendingSaveDrafts(null)} className="h-11 rounded-lg border border-ink/10 bg-white text-sm font-semibold">
-                继续修改
-              </button>
-              <button
-                type="button"
-                data-parity-id="parity.app.app.src.components.garment.intake.flow.cabc2ebbf1" onClick={async () => {
-                  const drafts = pendingSaveDrafts;
-                  setPendingSaveDrafts(null);
-                  await submitDrafts(drafts);
-                }}
-                className="h-11 rounded-lg bg-denim text-sm font-semibold text-white"
-              >
-                保存 {pendingSaveDrafts.length} 件
-              </button>
-            </div>
-          </div>
-        </div>
-      ) : null}
+      <ConfirmActionSheet
+        open={pendingSaveDrafts !== null}
+        title={`还有 ${recognizedItems.length - (pendingSaveDrafts?.length ?? 0)} 件${flowNoun}尚未完成确认`}
+        description={pendingSaveDrafts
+          ? `本次将保存 ${pendingSaveDrafts.length} 件，未完成的 ${recognizedItems.length - pendingSaveDrafts.length} 件不会入库。`
+          : undefined}
+        confirmLabel={`保存 ${pendingSaveDrafts?.length ?? 0} 件`}
+        cancelLabel="继续修改"
+        onClose={() => setPendingSaveDrafts(null)}
+        onConfirm={async () => {
+          const drafts = pendingSaveDrafts;
+          if (!drafts) return;
+          setPendingSaveDrafts(null);
+          await submitDrafts(drafts);
+        }}
+      />
     </IntakeFlowShell>
   );
 }
@@ -927,8 +919,8 @@ function MultiImageSelectStep({
   const hasImages = imageItems.length > 0;
   const displayItems = imageItems;
   const flowNoun = flowKind === "wishlist" ? "种草" : "单品";
-  const thumbRowRef = useRef<HTMLDivElement | null>(null);
-  const activeThumbRef = useRef<HTMLDivElement | null>(null);
+  const activeThumbRef = useRef<HTMLButtonElement | null>(null);
+  const [thumbnailActionsOpen, setThumbnailActionsOpen] = useState(false);
 
   // Custom preview: shown inside IntakeStepSection when images are selected
   const previewNode = hasImages ? (
@@ -950,17 +942,20 @@ function MultiImageSelectStep({
         )}
       </div>
       {/* Thumbnail row */}
-      <div ref={thumbRowRef} className="relative flex gap-2 mb-3 overflow-x-auto overflow-y-visible pt-14 pb-1">
+      <div className="relative flex gap-2 mb-3 overflow-x-auto overflow-y-visible pt-14 pb-1">
         {displayItems.map((item, idx) => (
           <div
             key={item.id}
-            ref={item.id === activeImageId ? activeThumbRef : undefined}
             className="relative h-14 w-14 shrink-0 overflow-visible"
           >
             <button
+              ref={item.id === activeImageId ? activeThumbRef : undefined}
               data-parity-id={`parity.app.app.src.components.garment.intake.flow.e453a4f807.${item.id}`}
               type="button"
-              onClick={() => onSelectImage(item.id)}
+              onClick={() => {
+                onSelectImage(item.id);
+                setThumbnailActionsOpen(true);
+              }}
               className={`relative block h-full w-full overflow-hidden ui-control-radius border-2 ${
                 item.id === activeImageId ? "border-denim" : "border-transparent"
               }`}
@@ -981,11 +976,18 @@ function MultiImageSelectStep({
         ))}
         {activeImageId && onCropActive ? (
           <ThumbnailActionPopover
-            rowRef={thumbRowRef}
+            key={activeImageId}
             targetRef={activeThumbRef}
-            activeId={activeImageId}
-            onCrop={onCropActive}
-            onRemove={() => onRemoveImage(activeImageId)}
+            visible={thumbnailActionsOpen}
+            onClose={() => setThumbnailActionsOpen(false)}
+            onCrop={() => {
+              setThumbnailActionsOpen(false);
+              onCropActive();
+            }}
+            onRemove={() => {
+              setThumbnailActionsOpen(false);
+              onRemoveImage(activeImageId);
+            }}
           />
         ) : null}
       </div>
@@ -1034,74 +1036,37 @@ function MultiImageSelectStep({
 }
 
 function ThumbnailActionPopover({
-  rowRef,
   targetRef,
-  activeId,
+  visible,
+  onClose,
   onCrop,
   onRemove,
 }: {
-  rowRef: RefObject<HTMLDivElement | null>;
-  targetRef: RefObject<HTMLDivElement | null>;
-  activeId: string;
+  targetRef: RefObject<HTMLButtonElement | null>;
+  visible: boolean;
+  onClose: () => void;
   onCrop: () => void;
   onRemove: () => void;
 }) {
-  const WIDTH = 212;
-  const ARROW_SAFE = 18;
-  const [layout, setLayout] = useState<{ left: number; arrowLeft: number } | null>(null);
-
-  useLayoutEffect(() => {
-    const row = rowRef.current;
-    const target = targetRef.current;
-    if (!row || !target) return;
-
-    const update = () => {
-      const selectedCenter = target.offsetLeft + target.offsetWidth / 2;
-      const minLeft = row.scrollLeft;
-      const maxLeft = Math.max(minLeft, row.scrollLeft + row.clientWidth - WIDTH);
-      const left = Math.max(minLeft, Math.min(selectedCenter - WIDTH / 2, maxLeft));
-      const arrowLeft = Math.max(ARROW_SAFE, Math.min(selectedCenter - left, WIDTH - ARROW_SAFE));
-      setLayout({ left, arrowLeft });
-    };
-
-    update();
-    row.addEventListener("scroll", update, { passive: true });
-    window.addEventListener("resize", update);
-    const ro = new ResizeObserver(update);
-    ro.observe(row);
-    ro.observe(target);
-    return () => {
-      row.removeEventListener("scroll", update);
-      window.removeEventListener("resize", update);
-      ro.disconnect();
-    };
-  }, [activeId, rowRef, targetRef]);
-
   return (
-    <div
-      className="absolute top-1 z-20 grid w-[212px] grid-cols-[1fr_74px] gap-1 rounded-[16px] border border-[rgba(29,34,40,0.10)] bg-[rgba(255,255,252,0.88)] p-1 shadow-lg backdrop-blur-xl"
-      style={{ left: layout?.left ?? 0, visibility: layout ? "visible" : "hidden" }}
-    >
-      <button
-        type="button"
-        data-parity-id="parity.app.app.src.components.garment.intake.flow.043ef37fcf" onClick={onCrop}
-        className="flex h-9 items-center justify-center gap-1 rounded-[12px] px-2 text-[12px] font-semibold text-[#1d2228] active:bg-[#f4f5f3] whitespace-nowrap"
-      >
-        <Scissors size={13} aria-hidden="true" /> 裁切/旋转
-      </button>
-      <button
-        type="button"
-        data-parity-id="parity.app.app.src.components.garment.intake.flow.338f4bc324" onClick={onRemove}
-        className="flex h-9 items-center justify-center gap-1 rounded-[12px] px-2 text-[12px] font-semibold text-[#b97155] active:bg-[#b97155]/8 whitespace-nowrap"
-      >
-        <Trash2 size={13} aria-hidden="true" /> 删除
-      </button>
-      <span
-        className="absolute top-full h-2 w-2 -translate-x-1/2 -translate-y-1/2 rotate-45 border-b border-r border-[rgba(29,34,40,0.10)] bg-[rgba(255,255,252,0.88)]"
-        style={{ left: layout?.arrowLeft ?? WIDTH / 2 }}
-        aria-hidden="true"
-      />
-    </div>
+    <MotionPopoverMenu visible={visible} onClose={onClose} anchorRef={targetRef as RefObject<HTMLElement | null>}>
+      <div className="grid w-[212px] grid-cols-[1fr_74px] gap-1 p-1">
+        <button
+          type="button"
+          data-parity-id="parity.app.app.src.components.garment.intake.flow.043ef37fcf" onClick={onCrop}
+          className="flex h-9 items-center justify-center gap-1 rounded-[12px] px-2 text-[12px] font-semibold text-[#1d2228] active:bg-[#f4f5f3] whitespace-nowrap"
+        >
+          <Scissors size={13} aria-hidden="true" /> 裁切/旋转
+        </button>
+        <button
+          type="button"
+          data-parity-id="parity.app.app.src.components.garment.intake.flow.338f4bc324" onClick={onRemove}
+          className="flex h-9 items-center justify-center gap-1 rounded-[12px] px-2 text-[12px] font-semibold text-[#b97155] active:bg-[#b97155]/8 whitespace-nowrap"
+        >
+          <Trash2 size={13} aria-hidden="true" /> 删除
+        </button>
+      </div>
+    </MotionPopoverMenu>
   );
 }
 

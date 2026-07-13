@@ -3,6 +3,8 @@
 import { Sparkles } from "lucide-react";
 import { useState } from "react";
 import type { OutfitCalendarPlan, OutfitPlanEntry, SavedOutfit, WardrobeItem } from "@/lib/types";
+import { ConfirmActionSheet } from "@/components/dialogs";
+import { MotionSheet } from "@/components/motion-common";
 import { OutfitCover } from "@/components/outfit-cover";
 import { PLAN_TONE_CLASS_MAP, resolvePrimaryDisplayEntryForDate } from "@/lib/outfit-planning";
 
@@ -231,63 +233,57 @@ export function OutfitPlanDayCard({
             </div>
           );
         })()}
-        {showChangeDeleteSheet && primaryEntry ? (
-          <div className="fixed inset-0 z-[90] flex items-end justify-center bg-ink/35 px-4 pb-[calc(env(safe-area-inset-bottom)+1rem)]" data-parity-id="parity.app.app.src.components.outfit.plan.day.card.542c3ba025" onClick={() => setShowChangeDeleteSheet(false)}>
-            <div className="w-full max-w-sm rounded-3xl bg-white p-5 shadow-xl" data-parity-id="parity.app.app.src.components.outfit.plan.day.card.1d5272c0b0" onClick={(e) => e.stopPropagation()}>
-              <h3 className="text-base font-semibold text-ink mb-3">{dateLabel}</h3>
-              <button
-                type="button"
-                className="w-full rounded-xl border border-ink/10 bg-white p-3 text-left hover:bg-ink/2 mb-2"
-                data-parity-id="parity.app.app.src.components.outfit.plan.day.card.0707484004" onClick={() => { setShowChangeDeleteSheet(false); onChangeOutfit?.(); }}
-              >
-                <p className="text-sm font-semibold text-denim">更改计划</p>
-                <p className="text-[11px] text-ink/45 mt-0.5">从套装列表中选择新的套装替换当前计划</p>
-              </button>
-              <button
-                type="button"
-                className="w-full rounded-xl border border-red-200 bg-white p-3 text-left hover:bg-red-50"
-                data-parity-id="parity.app.app.src.components.outfit.plan.day.card.d54549f3cd" onClick={() => { setShowChangeDeleteSheet(false); setShowDeleteConfirm(true); }}
-              >
-                <p className="text-sm font-semibold text-red-600">删除计划</p>
-                <p className="text-[11px] text-ink/45 mt-0.5">删除当天的这条穿搭安排</p>
-              </button>
-              <button
-                type="button"
-                className="w-full h-11 rounded-full border border-ink/10 text-sm font-medium text-ink/50 mt-3"
-                data-parity-id="parity.app.app.src.components.outfit.plan.day.card.dab51c6b09" onClick={() => setShowChangeDeleteSheet(false)}
-              >取消</button>
-            </div>
-          </div>
-        ) : null}
-        {showDeleteConfirm && primaryEntry ? (
-          <div className="fixed inset-0 z-[90] flex items-center justify-center bg-ink/35 px-4" data-parity-id="parity.app.app.src.components.outfit.plan.day.card.019e9fd1a3" onClick={() => setShowDeleteConfirm(false)}>
-            <div className="w-full max-w-sm rounded-3xl bg-white p-5 shadow-xl" data-parity-id="parity.app.app.src.components.outfit.plan.day.card.f325b05f82" onClick={(e) => e.stopPropagation()}>
-              <h3 className="text-base font-semibold text-ink">删除当天穿搭？</h3>
-              <p className="mt-1 text-sm text-ink/55">只会删除 {dateLabel} 的这条穿搭记录。</p>
-              <div className="mt-4 grid grid-cols-2 gap-3">
-                <button type="button" className="h-11 rounded-full border border-ink/10 text-sm font-medium text-ink/70" data-parity-id="parity.app.app.src.components.outfit.plan.day.card.9ed272735f" onClick={() => setShowDeleteConfirm(false)}>取消</button>
-                <button
-                  type="button"
-                  disabled={deleting}
-                  className="h-11 rounded-full bg-red-600 text-sm font-semibold text-white disabled:opacity-50"
-                  data-parity-id="parity.app.app.src.components.outfit.plan.day.card.52b940dcf6"
-                  onClick={async () => {
-                    if (!onDeleteEntry) return;
-                    setDeleting(true);
-                    try {
-                      await onDeleteEntry(primaryEntry);
-                      setShowDeleteConfirm(false);
-                    } catch {
-                      // The parent reports the repository error; keep this confirmation open for retry.
-                    } finally {
-                      setDeleting(false);
-                    }
-                  }}
-                >{deleting ? "删除中..." : "删除穿搭"}</button>
-              </div>
-            </div>
-          </div>
-        ) : null}
+        <MotionSheet
+          open={showChangeDeleteSheet && !!primaryEntry}
+          onClose={() => setShowChangeDeleteSheet(false)}
+          variant="action"
+          ariaLabel={`${dateLabel}穿搭操作`}
+          panelClassName="sm:max-w-sm"
+        >
+          <h3 className="mb-3 text-base font-semibold text-ink">{dateLabel}</h3>
+          <button
+            type="button"
+            className="mb-2 w-full rounded-xl border border-ink/10 bg-white p-3 text-left hover:bg-ink/2"
+            data-parity-id="parity.app.app.src.components.outfit.plan.day.card.0707484004" onClick={() => { setShowChangeDeleteSheet(false); onChangeOutfit?.(); }}
+          >
+            <p className="text-sm font-semibold text-denim">更改计划</p>
+            <p className="mt-0.5 text-[11px] text-ink/45">从套装列表中选择新的套装替换当前计划</p>
+          </button>
+          <button
+            type="button"
+            className="w-full rounded-xl border border-red-200 bg-white p-3 text-left hover:bg-red-50"
+            data-parity-id="parity.app.app.src.components.outfit.plan.day.card.d54549f3cd" onClick={() => { setShowChangeDeleteSheet(false); setShowDeleteConfirm(true); }}
+          >
+            <p className="text-sm font-semibold text-red-600">删除计划</p>
+            <p className="mt-0.5 text-[11px] text-ink/45">删除当天的这条穿搭安排</p>
+          </button>
+          <button
+            type="button"
+            className="mt-3 h-11 w-full rounded-full border border-ink/10 text-sm font-medium text-ink/50"
+            data-parity-id="parity.app.app.src.components.outfit.plan.day.card.dab51c6b09" onClick={() => setShowChangeDeleteSheet(false)}
+          >取消</button>
+        </MotionSheet>
+        <ConfirmActionSheet
+          open={showDeleteConfirm && !!primaryEntry}
+          title="删除当天穿搭？"
+          description={`只会删除 ${dateLabel} 的这条穿搭记录。`}
+          confirmLabel="删除穿搭"
+          tone="danger"
+          submitting={deleting}
+          onClose={() => setShowDeleteConfirm(false)}
+          onConfirm={async () => {
+            if (!onDeleteEntry || !primaryEntry) return;
+            setDeleting(true);
+            try {
+              await onDeleteEntry(primaryEntry);
+              setShowDeleteConfirm(false);
+            } catch {
+              // The parent reports the repository error; keep this confirmation open for retry.
+            } finally {
+              setDeleting(false);
+            }
+          }}
+        />
       </div>
     );
   }

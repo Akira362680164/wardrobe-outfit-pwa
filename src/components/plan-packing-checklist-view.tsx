@@ -5,8 +5,10 @@ import { useCallback, useMemo, useState } from "react";
 import type { OutfitCalendarPlan, OutfitPlanEntry, PlanPackingChecklistItem, SavedOutfit, WardrobeItem } from "@/lib/types";
 import { buildPackingItemsFromPlan, groupPackingItemsByCategory, formatPackingDateUsage } from "@/lib/plan-packing";
 import { AppSubPageTopBar } from "@/components/app-sub-page-top-bar";
+import { ConfirmActionSheet } from "@/components/dialogs";
 import { MotionSheet } from "@/components/motion-common";
 import { GarmentImage } from "@/components/garment-image";
+import { useStableBackHandler } from "@/lib/use-stable-back-handler";
 
 interface PlanPackingChecklistViewProps {
   calendarPlan: OutfitCalendarPlan;
@@ -41,6 +43,7 @@ export function PlanPackingChecklistView({
   const [manualQuantity, setManualQuantity] = useState(1);
   const [showReset, setShowReset] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [resetError, setResetError] = useState<string | null>(null);
 
   const packingItems = useMemo(
     () => buildPackingItemsFromPlan({ calendarPlan, entries, outfits, items, existingChecklistItems: checklistItems }),
@@ -71,12 +74,54 @@ export function PlanPackingChecklistView({
     finally { setSaving(false); }
   }, [manualLabel, manualCategory, manualQuantity, onAddManual, onMessage]);
 
+  const handleBack = useCallback(() => {
+    if (saving) return;
+    onBack();
+  }, [onBack, saving]);
+
+  useStableBackHandler(() => true, saving, 20);
+
+  const addManualSheet = (
+    <MotionSheet
+      open={showAddManual}
+      onClose={() => {
+        if (!saving) setShowAddManual(false);
+      }}
+      variant="form"
+      ariaLabel="添加自定义打包物品"
+      dismissible={!saving}
+      closeOnBackdrop={!saving}
+      closeOnEscape={!saving}
+    >
+      <div>
+        <h3 className="mb-3 text-base font-semibold text-ink">添加自定义物品</h3>
+        <div className="space-y-3">
+          <div>
+            <label className="text-xs font-medium text-ink/60">名称</label>
+            <input type="text" value={manualLabel} data-parity-id="parity.app.app.src.components.plan.packing.checklist.view.d026691b40" onChange={(e) => setManualLabel(e.target.value)} placeholder="如 充电器" className="mt-1 w-full rounded-xl border border-ink/10 bg-mist/30 px-3 py-2 text-sm text-ink focus:outline-none focus:ring-2 focus:ring-denim/30" />
+          </div>
+          <div>
+            <label className="text-xs font-medium text-ink/60">分类</label>
+            <input type="text" value={manualCategory} data-parity-id="parity.app.app.src.components.plan.packing.checklist.view.658082cc90" onChange={(e) => setManualCategory(e.target.value)} placeholder="手动新增" className="mt-1 w-full rounded-xl border border-ink/10 bg-mist/30 px-3 py-2 text-sm text-ink focus:outline-none focus:ring-2 focus:ring-denim/30" />
+          </div>
+          <div>
+            <label className="text-xs font-medium text-ink/60">数量</label>
+            <input type="number" value={manualQuantity} min={1} max={99} data-parity-id="parity.app.app.src.components.plan.packing.checklist.view.054ae02d13" onChange={(e) => setManualQuantity(Math.max(1, Math.min(99, parseInt(e.target.value) || 1)))} className="mt-1 w-24 rounded-xl border border-ink/10 bg-mist/30 px-3 py-2 text-sm text-ink focus:outline-none focus:ring-2 focus:ring-denim/30" />
+          </div>
+          <button type="button" disabled={saving} className="w-full rounded-full bg-denim py-2 text-sm font-semibold text-white disabled:opacity-50" data-parity-id="parity.app.app.src.components.plan.packing.checklist.view.bba5519b83" onClick={handleAddManual}>
+            {saving ? "添加中..." : "添加"}
+          </button>
+        </div>
+      </div>
+    </MotionSheet>
+  );
+
   // Empty state
   if (totalCount === 0) {
     return (
       <div className="flex flex-col h-full">
         <div className="flex items-center justify-between px-4 py-3 border-b border-ink/5">
-          <button type="button" className="flex items-center gap-1 text-sm font-medium text-ink/70" data-parity-id="parity.app.app.src.components.plan.packing.checklist.view.9740a00338" onClick={onBack}>
+          <button type="button" disabled={saving} className="flex items-center gap-1 text-sm font-medium text-ink/70 disabled:opacity-40" data-parity-id="parity.app.app.src.components.plan.packing.checklist.view.9740a00338" onClick={handleBack}>
             <ChevronLeft size={18} /> 计划详情
           </button>
         </div>
@@ -84,10 +129,11 @@ export function PlanPackingChecklistView({
           <p className="text-sm text-ink/50">还没有可自动汇总的衣物</p>
           <p className="text-xs text-ink/35 mt-1">先为这个计划安排每日穿搭，或手动添加打包物品。</p>
           <div className="flex items-center gap-2 mt-3">
-            <button type="button" className="rounded-full border border-ink/10 py-1.5 px-4 text-xs font-medium text-ink/60" data-parity-id="parity.app.app.src.components.plan.packing.checklist.view.f9b217acd8" onClick={onBack}>去安排穿搭</button>
+            <button type="button" className="rounded-full border border-ink/10 py-1.5 px-4 text-xs font-medium text-ink/60" data-parity-id="parity.app.app.src.components.plan.packing.checklist.view.f9b217acd8" onClick={handleBack}>去安排穿搭</button>
             <button type="button" className="rounded-full bg-denim py-1.5 px-4 text-xs font-semibold text-white" data-parity-id="parity.app.app.src.components.plan.packing.checklist.view.a49d5b0b4b" onClick={() => setShowAddManual(true)}>+ 添加自定义物品</button>
           </div>
         </div>
+        {addManualSheet}
       </div>
     );
   }
@@ -97,7 +143,7 @@ export function PlanPackingChecklistView({
       {/* Header */}
       <AppSubPageTopBar
         title="打包清单"
-        onBack={onBack}
+        onBack={handleBack}
       />
 
       {/* Summary card */}
@@ -170,41 +216,35 @@ export function PlanPackingChecklistView({
         </div>
       </div>
 
-      {/* Add manual sheet */}
-      <MotionSheet open={showAddManual} onClose={() => setShowAddManual(false)}>
-        <div>
-          <h3 className="text-base font-semibold text-ink mb-3">添加自定义物品</h3>
-          <div className="space-y-3">
-            <div>
-              <label className="text-xs font-medium text-ink/60">名称</label>
-              <input type="text" value={manualLabel} data-parity-id="parity.app.app.src.components.plan.packing.checklist.view.d026691b40" onChange={(e) => setManualLabel(e.target.value)} placeholder="如 充电器" className="mt-1 w-full rounded-xl border border-ink/10 bg-mist/30 px-3 py-2 text-sm text-ink focus:outline-none focus:ring-2 focus:ring-denim/30" />
-            </div>
-            <div>
-              <label className="text-xs font-medium text-ink/60">分类</label>
-              <input type="text" value={manualCategory} data-parity-id="parity.app.app.src.components.plan.packing.checklist.view.658082cc90" onChange={(e) => setManualCategory(e.target.value)} placeholder="手动新增" className="mt-1 w-full rounded-xl border border-ink/10 bg-mist/30 px-3 py-2 text-sm text-ink focus:outline-none focus:ring-2 focus:ring-denim/30" />
-            </div>
-            <div>
-              <label className="text-xs font-medium text-ink/60">数量</label>
-              <input type="number" value={manualQuantity} min={1} max={99} data-parity-id="parity.app.app.src.components.plan.packing.checklist.view.054ae02d13" onChange={(e) => setManualQuantity(Math.max(1, Math.min(99, parseInt(e.target.value) || 1)))} className="mt-1 w-24 rounded-xl border border-ink/10 bg-mist/30 px-3 py-2 text-sm text-ink focus:outline-none focus:ring-2 focus:ring-denim/30" />
-            </div>
-            <button type="button" disabled={saving} className="w-full rounded-full bg-denim py-2 text-sm font-semibold text-white disabled:opacity-50" data-parity-id="parity.app.app.src.components.plan.packing.checklist.view.bba5519b83" onClick={handleAddManual}>
-              {saving ? "添加中..." : "添加"}
-            </button>
-          </div>
-        </div>
-      </MotionSheet>
+      {addManualSheet}
 
       {/* Reset confirmation */}
-      <MotionSheet open={showReset} onClose={() => setShowReset(false)}>
-        <div className="text-center">
-          <h3 className="text-base font-semibold text-ink">重置勾选？</h3>
-          <p className="text-sm text-ink/55 mt-1">所有物品将标记为未打包。</p>
-          <div className="flex items-center gap-3 mt-4">
-            <button type="button" className="flex-1 rounded-full border border-ink/10 py-2 text-sm font-medium text-ink/70" data-parity-id="parity.app.app.src.components.plan.packing.checklist.view.cc4a562ad5" onClick={() => setShowReset(false)}>取消</button>
-            <button type="button" disabled={saving} className="flex-1 rounded-full bg-moss py-2 text-sm font-semibold text-white disabled:opacity-50" data-parity-id="parity.app.app.src.components.plan.packing.checklist.view.32237cea90" onClick={async () => { setSaving(true); try { await onResetAll(); setShowReset(false); onMessage("已重置"); } catch { onMessage("操作失败", "error"); } finally { setSaving(false); } }}>{saving ? "重置中..." : "重置"}</button>
-          </div>
-        </div>
-      </MotionSheet>
+      <ConfirmActionSheet
+        open={showReset}
+        title="重置勾选？"
+        description="所有物品将标记为未打包。"
+        confirmLabel="重置"
+        submitting={saving}
+        error={resetError}
+        onClose={() => {
+          setShowReset(false);
+          setResetError(null);
+        }}
+        onConfirm={async () => {
+          setSaving(true);
+          setResetError(null);
+          try {
+            await onResetAll();
+            setShowReset(false);
+            onMessage("已重置");
+          } catch {
+            setResetError("操作失败，请重试");
+            onMessage("操作失败", "error");
+          } finally {
+            setSaving(false);
+          }
+        }}
+      />
     </div>
   );
 }
