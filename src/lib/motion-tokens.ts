@@ -20,13 +20,43 @@ export const ease = {
   accelerate: [0.4, 0.0, 1.0, 1.0] as const,
 };
 
+const controlSpring = {
+  type: "spring" as const,
+  stiffness: 420,
+  damping: 41,
+  mass: 1,
+  bounce: 0,
+};
+
+const panelSpring = {
+  type: "spring" as const,
+  stiffness: 320,
+  damping: 36,
+  mass: 1,
+  bounce: 0,
+};
+
+const momentumSpring = {
+  type: "spring" as const,
+  stiffness: 320,
+  damping: 27,
+  mass: 1,
+  bounce: 0.12,
+};
+
 export const spring = {
-  /** Snappy for button taps, icon scale, checkmarks. */
-  snappy: { type: "spring" as const, stiffness: 500, damping: 32 },
-  /** Softer for panel entrances, card stagger. */
-  soft: { type: "spring" as const, stiffness: 240, damping: 24 },
-  /** Very soft for large area transitions. */
-  gentle: { type: "spring" as const, stiffness: 120, damping: 18 },
+  /** Critically damped feedback for buttons, indicators, and ordinary state changes. */
+  control: controlSpring,
+  /** Non-bouncing, interruptible movement for panels and page-level surfaces. */
+  panel: panelSpring,
+  /** Reserved for velocity-carrying drag/flick release; never use on ordinary controls. */
+  momentum: momentumSpring,
+  /** @deprecated Compatibility alias. Prefer `spring.control`. */
+  snappy: controlSpring,
+  /** @deprecated Compatibility alias. Prefer `spring.panel`. */
+  soft: panelSpring,
+  /** @deprecated Compatibility alias. Prefer `spring.panel`. */
+  gentle: panelSpring,
 };
 
 /** Shared opacity transition */

@@ -295,6 +295,15 @@ Icon-only 按钮必须有 `aria-label`；图标与文字组合时图标使用 `a
 - 页面级 `useStableBackHandler` 只负责选择模式、未保存草稿和子页导航；OverlayStack 先处理 Sheet、Dialog、Popover、Lightbox、Cropper。一次返回事件只关闭或拒绝一个 topmost 状态，不继续穿透到页面导航。
 - 本节只迁移浮层生命周期和 busy 安全，不改轮播/日历轨道、裁切阻尼、手势物理或路由导航结构；相关连续性与手势优化仍由后续专属 Wave 实施。
 
+##### 6.1.5 B1 即时按压与状态反馈
+
+- `AppPressable` 是普通按钮、图标按钮和可点击卡片的统一按压入口。主指针按下必须同帧进入 pressed 状态；位移超过 `10px`、拖离命中区、`pointercancel`、失去 pointer capture 或失焦时立即撤销，且同一手势不得继续触发 click。Space / Enter 必须获得同等反馈。
+- 三种反馈只允许使用公共档位：`control` 用于普通控件、`icon` 用于图标控件、`card` 用于可点击卡片。三者统一使用无弹跳 `spring.control`；选择模式只改变边框、遮罩和 check，不缩放整张卡片。`spring.snappy/soft/gentle` 仅作为兼容别名，新增代码使用 `control/panel/momentum` 语义名。
+- reduced-motion 下按压取消 scale 与 spring，只保留即时透明度反馈；普通按钮、Tab、Toast、check 和状态切换不得使用回弹。`spring.momentum` 只允许用于真实 drag/flick 释放后的速度继承。
+- Toast 分为 success、info、error、action：success 短时自动消失，info 保留较长阅读时间，error / action 必须由用户关闭或完成动作；自动消失倒计时在页面隐藏、窗口失焦、鼠标悬停、焦点进入或触摸按住期间暂停，对应状态解除后继续剩余时长。
+- 进度条以左侧为原点通过 `transform: scaleX()` 更新，禁止逐百分比改 `width` 触发布局；可见百分比与读屏播报分离，live region 只在阶段文案变化时播报。Shimmer 只动画 transform，reduced-motion 下显示静态占位。
+- B1 只收口共享反馈原语、AI 进度、衣橱 App 的 Toast/FAB/底部导航，以及三个目录首页共用的卡片壳与选择组件；不得借机修改图片轮播、详情壳、周历/月历或录入手势。
+
 #### 6.2 并行 Wave 规范所有权
 
 并行 Session 对运行时文件实行独占所有权；规范只允许修改下列命名小节。生成的 HTML 与 `VERSION_HISTORY.md` 在每个 Wave 合入后由主 Agent 保全并重生成。

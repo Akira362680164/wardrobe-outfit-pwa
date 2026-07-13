@@ -2,7 +2,7 @@
 <!--
   DO NOT EDIT BY HAND.
   Generated from docs/designs/wardrobe-ui-spec.md by scripts/generate-ui-spec-preview.mjs.
-  Source SHA256: 6f437053cf7f3ff2814feed5e08d6233dc57b59e5e481e4836c8ece2a8034ed5
+  Source SHA256: bc67b2421f260c0835dc56d563903fee658427da41ddb412182602a275aeae12
 -->
 <html lang="zh-CN">
 <head>
@@ -838,7 +838,7 @@
           <div class="meta-row">
             <span class="pill active">v0.2-final</span>
             <span class="pill">Markdown 唯一事实源</span>
-            <span class="pill">Source SHA256 6f437053cf7f</span>
+            <span class="pill">Source SHA256 bc67b2421f26</span>
           </div>
           <h1>衣橱穿搭助手 UI 规范</h1>
           <p>本页由规范 Markdown 自动生成，用于快速走查页面框架、组件契约、通知样式和验收映射。</p>
@@ -994,6 +994,8 @@
 <ul><li>App 全局“新建 / 退出”、Auth 登录壳邮箱验证码与退出确认、设置诊断描述 / 成功 / 失败，以及设置内衣橱增删改统一使用冻结 <code>MotionSheet</code> 变体；这些区域不得再创建私有 <code>fixed inset-0</code> 对话框。</li><li>Auth、设置首页、穿衣画像、参考照片、MiniMax、衣橱列表、账号安全、改密和注销页只通过 <code>useStableBackHandler</code> 登记页面决策；<code>OverlayRoot</code> 仍是唯一原生 Android Back / document Escape listener。Overlay 优先于页面，页面优先于 App 根退出 fallback。</li><li>表单、确认和危险确认必须提供可访问名称；打开时焦点进入 topmost，底层 App 与下层浮层保持 <code>inert/aria-hidden</code>，关闭后恢复原触发器。诊断遮罩按既有产品语义不关闭，Back / Escape 仍只关闭当前诊断层。</li><li>衣橱新增、编辑、迁移、删除，画像 / 参考照 / MiniMax 保存，账号改绑 / 改密与最终注销在请求完成和服务端读回前保持当前页面或 Sheet；busy 时 <code>dismissible=false</code>，Back、Escape、backdrop、取消和重复提交均不得中断事务。</li><li>本小节只声明 A2-App 独占区域完成迁移；衣橱列表 / 详情、套装、种草、录入、Lightbox、Popover 与 Cropper 的遗留 listener 或私有覆盖层由 A2-Core / A2-Flows 及后续命名 Wave 负责，不得据此宣称全 App 已无遗留层。</li></ul>
 <p>##### 6.1.4 A2-Flows 业务流浮层迁移</p>
 <ul><li>详情、穿搭计划、打包清单、种草和录入流程的操作面板、表单面板与危险确认统一使用 <code>MotionSheet</code>、<code>MotionPopoverMenu</code>、<code>ConfirmActionSheet</code>；业务组件不再用私有 <code>fixed inset-0</code> 遮罩模拟 Dialog/Sheet，也不自行抢占 Back/Escape。</li><li><code>IntakeFlowShell</code> 以 <code>kind=fullscreen</code>、全屏 <code>ImageCropEditor</code> 以 <code>kind=cropper</code> 注册到 OverlayStack，并复用共享 Portal、滚动锁、topmost、焦点圈定、<code>inert/aria-hidden</code> 与触发器焦点恢复生命周期；嵌入式裁切仍属于录入 Shell 内容，不重复注册。</li><li>上传、保存、删除、重置、种草转衣橱或裁切应用进行中时，当前层保持 <code>dismissible=false</code>；Android Back、Escape、遮罩和显式关闭不得中断事务，关闭请求提供“操作进行中”反馈。失败后保留当前确认层、输入草稿与重试入口，成功仅在服务器提交并读回后关闭。</li><li>Popover 的 <code>anchorRef</code> 必须指向当前可见的触发按钮。种草首页菜单、种草详情菜单、套装详情菜单与穿搭实图菜单不得复用不可见页或无关表单控件的 ref。</li><li>页面级 <code>useStableBackHandler</code> 只负责选择模式、未保存草稿和子页导航；OverlayStack 先处理 Sheet、Dialog、Popover、Lightbox、Cropper。一次返回事件只关闭或拒绝一个 topmost 状态，不继续穿透到页面导航。</li><li>本节只迁移浮层生命周期和 busy 安全，不改轮播/日历轨道、裁切阻尼、手势物理或路由导航结构；相关连续性与手势优化仍由后续专属 Wave 实施。</li></ul>
+<p>##### 6.1.5 B1 即时按压与状态反馈</p>
+<ul><li><code>AppPressable</code> 是普通按钮、图标按钮和可点击卡片的统一按压入口。主指针按下必须同帧进入 pressed 状态；位移超过 <code>10px</code>、拖离命中区、<code>pointercancel</code>、失去 pointer capture 或失焦时立即撤销，且同一手势不得继续触发 click。Space / Enter 必须获得同等反馈。</li><li>三种反馈只允许使用公共档位：<code>control</code> 用于普通控件、<code>icon</code> 用于图标控件、<code>card</code> 用于可点击卡片。三者统一使用无弹跳 <code>spring.control</code>；选择模式只改变边框、遮罩和 check，不缩放整张卡片。<code>spring.snappy/soft/gentle</code> 仅作为兼容别名，新增代码使用 <code>control/panel/momentum</code> 语义名。</li><li>reduced-motion 下按压取消 scale 与 spring，只保留即时透明度反馈；普通按钮、Tab、Toast、check 和状态切换不得使用回弹。<code>spring.momentum</code> 只允许用于真实 drag/flick 释放后的速度继承。</li><li>Toast 分为 success、info、error、action：success 短时自动消失，info 保留较长阅读时间，error / action 必须由用户关闭或完成动作；自动消失倒计时在页面隐藏、窗口失焦、鼠标悬停、焦点进入或触摸按住期间暂停，对应状态解除后继续剩余时长。</li><li>进度条以左侧为原点通过 <code>transform: scaleX()</code> 更新，禁止逐百分比改 <code>width</code> 触发布局；可见百分比与读屏播报分离，live region 只在阶段文案变化时播报。Shimmer 只动画 transform，reduced-motion 下显示静态占位。</li><li>B1 只收口共享反馈原语、AI 进度、衣橱 App 的 Toast/FAB/底部导航，以及三个目录首页共用的卡片壳与选择组件；不得借机修改图片轮播、详情壳、周历/月历或录入手势。</li></ul>
 <p>#### 6.2 并行 Wave 规范所有权</p>
 <p>并行 Session 对运行时文件实行独占所有权；规范只允许修改下列命名小节。生成的 HTML 与 <code>VERSION_HISTORY.md</code> 在每个 Wave 合入后由主 Agent 保全并重生成。</p>
 <div class="table-wrap"><table><thead><tr><th>Wave</th><th>规范小节所有者</th></tr></thead><tbody><tr><td>A1</td><td>OverlayRoot、OverlayStack、BackCoordinator 公共契约</td></tr><tr><td>A2-Core / App / Flows</td><td>共享浮层组件 / App 壳与账号 / 业务流浮层</td></tr><tr><td>B1 / B2 / B3</td><td>即时反馈 / 图片手势 / 周历月历手势</td></tr><tr><td>B4 / C1 / C2</td><td>录入手势 / 路由运动 / 详情连续性</td></tr><tr><td>C3-Outfit / Settings / Wishlist</td><td>穿搭计划 / 设置账号 / 种草深层流程</td></tr><tr><td>D1-Runtime / Contracts / Android</td><td>偏好与性能 / 防回归合同 / Android 验收</td></tr></tbody></table></div></div></section>

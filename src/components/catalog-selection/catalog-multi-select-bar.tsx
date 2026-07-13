@@ -1,4 +1,5 @@
 import { Trash2 } from "lucide-react";
+import { AppPressable } from "@/components/motion-common";
 
 export interface CatalogMultiSelectBarProps {
   selectedCount: number;
@@ -18,21 +19,23 @@ export function CatalogMultiSelectBar({
   return (
     <div className="app-glass-bottom safe-bottom fixed inset-x-0 bottom-0 z-40 px-4 py-3">
       <div className="mx-auto grid max-w-md grid-cols-2 gap-2">
-        <button
+        <AppPressable
           type="button"
+          feedback="control"
           data-parity-id="parity.app.app.src.components.catalog.selection.catalog.multi.select.bar.0a08cacfc9" onClick={onCancel}
           className="inline-flex h-12 items-center justify-center ui-control-radius border border-ink/10 bg-white/76 text-sm font-semibold text-ink/70"
         >
           取消
-        </button>
-        <button
+        </AppPressable>
+        <AppPressable
           type="button"
+          feedback="control"
           data-parity-id="parity.app.app.src.components.catalog.selection.catalog.multi.select.bar.0390f9a9fd" onClick={onDelete}
           className="inline-flex h-12 items-center justify-center gap-2 ui-control-radius bg-red-600 text-sm font-semibold text-white"
         >
           <Trash2 size={16} />
           {deleteLabel} {selectedCount} 件
-        </button>
+        </AppPressable>
       </div>
     </div>
   );
