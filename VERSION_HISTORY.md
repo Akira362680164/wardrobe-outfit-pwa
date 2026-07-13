@@ -1,3 +1,11 @@
+## 2026-07-14 / v2.1.18-test / Codex — 小程序毛玻璃导航与一级卡片统一
+
+- **执行与版本**：Codex 在独立 `codex/glass-nav-mini-20260714` worktree 基于正式 `wechat/miniprogram` 实施；版本保持 `2.1.18-test`，不上传体验版、不提交审核、不修改服务端、共享契约、业务字段或持久化边界。
+- **视觉结果**：自定义底栏与 App 使用同一视觉参数映射：`rgba(255,255,252,0.40)`、`blur(68rpx) saturate(1.5) brightness(1.05)`，并用相同斜向边缘高光和内暗边增强背景散射；单品、套装、种草、设置及主 Tab 状态等现有浅色一级卡片统一为 `rgba(255,255,252,0.52)`、`blur(60rpx) saturate(1.35) brightness(1.04)`，保留原卡片圆角、布局、交互与 `shadow-card` 外阴影，二级卡片不变。
+- **改动文件**：`apps/wechat-miniprogram/custom-tab-bar/index.wxss`、`styles/glass.wxss`、公共 `ui/card`、`domain/catalog-card`、衣橱/套装/种草/设置首页 WXSS、`scripts/test-miniprogram-navigation-motion.ts`、UI 规范 Markdown/生成 HTML 与本记录。
+- **验证结果**：UI 规范 build/check、小程序导航动效合同、shell 合同、catalog 生成一致性、小程序 typecheck 与 `git diff --check` 通过；合同固定两端等效透明度、Frost、饱和度、亮度和斜向边缘层，防止后续只改单端。
+- **未验证风险**：本机新版微信开发者工具 Nightly 已移除既有 `wechatide-skill`，其内置 TypeScript 编译在加载首个页面前即报 `pages/login/index.js` 不存在，因此未形成本批模拟器页面截图；该失败发生在 WXSS 页面加载前，未通过修改项目编译配置绕过。未执行微信真机预览、体验版上传或正式发布。
+
 ## 2026-07-13 / v2.1.18-test / Codex — 小程序全链路闪烁修复集成收口
 
 - **执行方式**：主 Agent 在 `codex/miniprogram-flicker-fix-20260713` 独立 worktree 先提交图片/刷新共享基础，再串行集成三个用户明确通知的并行 subagent 提交：主 Tab `245512d0`、详情/日历 `33d20b1e`、导航/按压 `7c526c22`。

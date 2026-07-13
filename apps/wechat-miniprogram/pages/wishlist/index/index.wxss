@@ -33,8 +33,10 @@
 .status-card {
   box-sizing: border-box;
   border: 1rpx solid var(--color-line);
-  background: rgba(255, 255, 252, 0.78);
-  box-shadow: var(--shadow-card);
+  background: rgba(255, 255, 252, 0.52);
+  -webkit-backdrop-filter: blur(60rpx) saturate(1.35) brightness(1.04);
+  backdrop-filter: blur(60rpx) saturate(1.35) brightness(1.04);
+  box-shadow: var(--shadow-card), inset 0 1rpx 0 rgba(255, 255, 255, 0.64), inset 0 -1rpx 0 rgba(29, 34, 40, 0.10);
 }
 
 .status-card {

@@ -2,7 +2,7 @@
 <!--
   DO NOT EDIT BY HAND.
   Generated from docs/designs/wardrobe-ui-spec.md by scripts/generate-ui-spec-preview.mjs.
-  Source SHA256: 179f6f62cbaf088dbc66c6289adcb0ac9333ee36466c488a1a8716002e5fbe5a
+  Source SHA256: f1c410b8ad6c1760237a3844c770adb2a4c2a5dfdabe6c4df1740bb73ad6a46d
 -->
 <html lang="zh-CN">
 <head>
@@ -838,7 +838,7 @@
           <div class="meta-row">
             <span class="pill active">v0.2-final</span>
             <span class="pill">Markdown 唯一事实源</span>
-            <span class="pill">Source SHA256 179f6f62cbaf</span>
+            <span class="pill">Source SHA256 f1c410b8ad6c</span>
           </div>
           <h1>衣橱穿搭助手 UI 规范</h1>
           <p>本页由规范 Markdown 自动生成，用于快速走查页面框架、组件契约、通知样式和验收映射。</p>
@@ -895,7 +895,7 @@
         </div>
         <div class="shadow-samples"><span>soft</span><span>card</span><span>deep</span></div>
       </div>
-<div class="table-wrap"><table><thead><tr><th>Token</th><th>目标规范</th><th>当前代码事实</th></tr></thead><tbody><tr><td><code>glass.top.bg</code></td><td><code>rgba(251,251,248,0.75)</code></td><td>多处仍为 <code>#fbfbf8/95</code> 或实色</td></tr><tr><td><code>glass.top.blur</code></td><td><code>blur(30px) saturate(1.5)</code></td><td><code>backdrop-blur-xl</code> / <code>.surface blur(18px)</code></td></tr><tr><td><code>glass.bottom.bg</code></td><td><code>rgba(255,255,252,0.75)</code></td><td>底部导航当前 <code>#fbfbf8/94</code></td></tr><tr><td><code>glass.toast.bg</code></td><td><code>rgba(255,255,252,0.88)</code></td><td>Toast 应比页面卡片更浮，但不能变成实心白卡</td></tr><tr><td><code>shadow.soft</code></td><td><code>0 18px 50px rgba(29,34,40,0.10)</code></td><td>Tailwind <code>shadow.soft</code></td></tr><tr><td><code>shadow.card</code></td><td><code>0 18px 50px rgba(29,34,40,0.08)</code></td><td><code>.surface</code></td></tr></tbody></table></div>
+<div class="table-wrap"><table><thead><tr><th>Token</th><th>目标规范</th><th>当前代码事实</th></tr></thead><tbody><tr><td><code>glass.top.bg</code></td><td><code>rgba(251,251,248,0.75)</code></td><td>多处仍为 <code>#fbfbf8/95</code> 或实色</td></tr><tr><td><code>glass.top.blur</code></td><td><code>blur(30px) saturate(1.5)</code></td><td><code>backdrop-blur-xl</code> / <code>.surface blur(18px)</code></td></tr><tr><td><code>glass.bottom.bg</code></td><td><code>rgba(255,255,252,0.40)</code></td><td>底部导航使用更高透明度，让滚动内容自然透色</td></tr><tr><td><code>glass.bottom.filter</code></td><td><code>blur(34px) saturate(1.5) brightness(1.05)</code></td><td>加强 Frost 与背景色扩散；不使用真实位移滤镜</td></tr><tr><td><code>glass.bottom.edge</code></td><td><code>-45deg / refraction 31 / depth 20 / light 45</code></td><td>以斜向内高光、内暗边和窄阴影近似折射、厚度与受光；<code>dispersion=0</code></td></tr><tr><td><code>glass.card.bg</code></td><td><code>rgba(255,255,252,0.52)</code></td><td>所有使用一级卡片 token 的浅色卡片统一使用；二级内嵌卡片不变</td></tr><tr><td><code>glass.card.filter</code></td><td><code>blur(30px) saturate(1.35) brightness(1.04)</code></td><td>复用上一轮已确认的导航玻璃参数，覆盖单品、套装、种草与设置一级卡片</td></tr><tr><td><code>glass.toast.bg</code></td><td><code>rgba(255,255,252,0.88)</code></td><td>Toast 应比页面卡片更浮，但不能变成实心白卡</td></tr><tr><td><code>shadow.soft</code></td><td><code>0 18px 50px rgba(29,34,40,0.10)</code></td><td>Tailwind <code>shadow.soft</code></td></tr><tr><td><code>shadow.card</code></td><td><code>0 18px 50px rgba(29,34,40,0.08)</code></td><td><code>.surface</code></td></tr></tbody></table></div>
 <p>新组件不要裸写新的 glass 参数；如果当前代码未统一，规范记录为“目标契约”，后续改代码时逐步收敛。</p>
 <h3>2.4 Motion</h3>
       <div class="part-visual" data-visual="motion-token">

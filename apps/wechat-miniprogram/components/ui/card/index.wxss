@@ -1,7 +1,7 @@
 @import "../../../styles/index.wxss";
 .ui-card { min-width: 0; padding: 32rpx; border-radius: var(--radius-card); box-sizing: border-box; }
-.ui-card--surface { background: rgba(255, 255, 252, 0.86); border: 1rpx solid var(--color-line); box-shadow: var(--shadow-card); }
-.ui-card--glass { background: rgba(255, 255, 252, 0.75); -webkit-backdrop-filter: blur(60rpx) saturate(1.5); backdrop-filter: blur(60rpx) saturate(1.5); border: 1rpx solid var(--color-line); box-shadow: var(--shadow-card); }
+.ui-card--surface,
+.ui-card--glass { background: rgba(255, 255, 252, 0.52); -webkit-backdrop-filter: blur(60rpx) saturate(1.35) brightness(1.04); backdrop-filter: blur(60rpx) saturate(1.35) brightness(1.04); border: 1rpx solid var(--color-line); box-shadow: var(--shadow-card), inset 0 1rpx 0 rgba(255, 255, 255, 0.64), inset 0 -1rpx 0 rgba(29, 34, 40, 0.10); }
 .ui-card--plain { background: transparent; border: 1rpx solid var(--color-line); }
 .ui-card__header { display: flex; min-width: 0; align-items: flex-start; justify-content: space-between; gap: 20rpx; margin-bottom: 24rpx; }
 .ui-card__title-block { min-width: 0; flex: 1; }

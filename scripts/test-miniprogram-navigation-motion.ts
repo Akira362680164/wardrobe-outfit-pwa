@@ -6,6 +6,12 @@ import ts from "typescript";
 const tabTs = read("apps/wechat-miniprogram/custom-tab-bar/index.ts");
 const tabWxml = read("apps/wechat-miniprogram/custom-tab-bar/index.wxml");
 const tabWxss = read("apps/wechat-miniprogram/custom-tab-bar/index.wxss");
+const catalogCardWxss = read("apps/wechat-miniprogram/components/domain/catalog-card/index.wxss");
+const sharedGlassWxss = read("apps/wechat-miniprogram/styles/glass.wxss");
+const outfitIndexWxss = read("apps/wechat-miniprogram/pages/outfits/index/index.wxss");
+const settingsIndexWxss = read("apps/wechat-miniprogram/pages/settings/index/index.wxss");
+const wardrobeIndexWxss = read("apps/wechat-miniprogram/pages/wardrobe/index/index.wxss");
+const wishlistIndexWxss = read("apps/wechat-miniprogram/pages/wishlist/index/index.wxss");
 const tabUtils = read("apps/wechat-miniprogram/utils/custom-tab-bar.ts");
 const motion = read("apps/wechat-miniprogram/styles/motion.wxss");
 const button = read("apps/wechat-miniprogram/components/ui/button/index.wxss");
@@ -32,6 +38,13 @@ assert.match(tabWxml, /mini-tab--motion-ready/);
 assert.match(tabWxml, /hover-stay-time="80"/);
 assert.match(tabWxss, /mini-tab--motion-ready \.mini-tab__item/);
 assert.match(tabWxss, /prefers-reduced-motion:\s*reduce/);
+assert.match(tabWxss, /background:\s*rgba\(255,\s*255,\s*252,\s*0\.40\)/, "custom tab bar must expose more of the frosted backdrop");
+assert.match(tabWxss, /backdrop-filter:\s*blur\(68rpx\) saturate\(1\.5\) brightness\(1\.05\)/, "custom tab bar must use stronger background diffusion");
+assert.match(tabWxss, /\.mini-tab::before[\s\S]{0,500}linear-gradient\(135deg[\s\S]{0,300}inset 0 0 0 1rpx/, "custom tab bar must simulate angled edge refraction and depth");
+for (const cardMaterial of [catalogCardWxss, sharedGlassWxss, outfitIndexWxss, settingsIndexWxss, wardrobeIndexWxss, wishlistIndexWxss]) {
+  assert.match(cardMaterial, /background:\s*rgba\(255,\s*255,\s*252,\s*0\.52\)/, "primary mini-program cards must share the approved glass background");
+  assert.match(cardMaterial, /backdrop-filter:\s*blur\(60rpx\) saturate\(1\.35\) brightness\(1\.04\)/, "primary mini-program cards must share the approved glass filter");
+}
 
 assert.doesNotMatch(motion, /transition:\s*all|transition-property:\s*all/, "shared motion must list only intended properties");
 assert.doesNotMatch(motion, /\.pressable:active\s*\{[^}]*opacity/s, "pressing a card must not fade its image subtree");

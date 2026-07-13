@@ -38,8 +38,10 @@
   padding: 30rpx;
   border: 1rpx solid var(--color-line);
   border-radius: var(--radius-card-inner);
-  background: rgba(255, 255, 252, 0.78);
-  box-shadow: var(--shadow-card);
+  background: rgba(255, 255, 252, 0.52);
+  -webkit-backdrop-filter: blur(60rpx) saturate(1.35) brightness(1.04);
+  backdrop-filter: blur(60rpx) saturate(1.35) brightness(1.04);
+  box-shadow: var(--shadow-card), inset 0 1rpx 0 rgba(255, 255, 255, 0.64), inset 0 -1rpx 0 rgba(29, 34, 40, 0.10);
 }
 
 .settings-row-card {
