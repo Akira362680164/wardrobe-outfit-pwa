@@ -19,6 +19,10 @@ const monthWxss = read("apps/wechat-miniprogram/pages/outfits/calendar/index.wxs
 const stripWxss = read("apps/wechat-miniprogram/components/domain/plan-tone-strip/index.wxss");
 const dayCardWxss = read("apps/wechat-miniprogram/components/domain/outfit-plan-day-card/index.wxss");
 const detailWxml = read("apps/wechat-miniprogram/pages/outfits/detail/index.wxml");
+const detailTs = read("apps/wechat-miniprogram/pages/outfits/detail/index.ts");
+const composeTs = read("apps/wechat-miniprogram/pages/outfits/compose/index.ts");
+const tripEditTs = read("apps/wechat-miniprogram/pages/trips/edit/index.ts");
+const tripDetailTs = read("apps/wechat-miniprogram/pages/trips/detail/index.ts");
 
 for (const source of [weekWxml, monthWxml]) {
   assert.match(source, /<plan-tone-strip/);
@@ -42,8 +46,25 @@ assert.match(monthWxss, /\.calendar-day > plan-tone-strip[\s\S]*width:\s*64rpx/)
 assert.doesNotMatch(monthWxss, /\.calendar-day--active[\s\S]*height:\s*160rpx/);
 assert.match(weekTs, /deleteWorkspaceEntity\("outfit-plans"/);
 assert.match(monthTs, /deleteWorkspaceEntity\("outfit-plans"/);
+assert.doesNotMatch(weekTs.match(/onLoad\(\)[\s\S]*?onShow\(\)/)?.[0] || "", /loadOutfits\(/, "outfit tab must not load in both onLoad and onShow");
+for (const source of [weekTs, monthTs]) {
+  assert.match(source, /runRuntimeDomainRefresh\("planning"/);
+  assert.match(source, /initialLoading:\s*!hasData/);
+  assert.match(source, /refreshing:\s*hasData/);
+  assert.match(source, /markRuntimeDomainDirty\("planning"\)/);
+  assert.match(source, /getRuntimeRefreshSnapshot\("planning"\)\.dirty/, "a stale in-flight snapshot must be retried before rendering");
+}
+assert.match(weekWxml, /wx:if="\{\{initialLoading\}\}"/);
+assert.match(monthWxml, /wx:if="\{\{initialLoading\}\}"/);
 assert.match(detailWxml, /<item-detail-shell/);
 assert.doesNotMatch(detailWxml, /<detail-shell/);
+assert.match(detailWxml, /wx:if="\{\{initialLoading\}\}"/);
+assert.match(detailTs, /detailRequestId/);
+assert.match(detailTs, /getRuntimeRefreshSnapshot\("outfits"\)\.version/);
+assert.match(composeTs, /markRuntimeDomainDirty\("outfits"\)/);
+assert.match(composeTs, /markRuntimeDomainDirty\("planning"\)/);
+assert.match(tripEditTs, /markRuntimeDomainDirty\("planning"\)/);
+assert.match(tripDetailTs, /detailRequestId/);
 for (const label of ["信息", "组成", "AI建议", "记录"]) assert.match(detailWxml, new RegExp(label));
 
 const plans = Array.from({ length: 5 }, (_, index) => plan(index + 1));

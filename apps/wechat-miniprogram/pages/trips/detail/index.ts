@@ -8,6 +8,7 @@ import {
   type MiniOutfitPlanEntry,
 } from "../../../services/workspace";
 import { enumerateDateRange, formatDateWithWeek } from "../../../utils/calendar";
+import { getRuntimeRefreshSnapshot, markRuntimeDomainDirty } from "../../../utils/runtime-refresh";
 
 type DayArrangement = {
   date: string;
@@ -46,7 +47,8 @@ Page({
     planId: "",
     plan: null as PlanDetailView | null,
     rows: [] as DayArrangement[],
-    loading: true,
+    initialLoading: true,
+    refreshing: false,
     deleting: false,
     deleteSheetOpen: false,
     error: "",
@@ -56,7 +58,7 @@ Page({
   onLoad(query?: { id?: string }) {
     wx.setNavigationBarTitle({ title: "计划详情" });
     if (!query?.id) {
-      this.setData({ loading: false, error: "缺少计划 ID" });
+      this.setData({ initialLoading: false, error: "缺少计划 ID" });
       return;
     }
     this.setData({ planId: query.id });
@@ -64,7 +66,9 @@ Page({
   },
 
   onShow() {
-    if (this.data.planId) void this.loadPlan(this.data.planId, true);
+    if (this.data.plan && getRuntimeRefreshSnapshot("planning").version !== (this as any).detailDomainVersion) {
+      void this.loadPlan(this.data.planId);
+    }
   },
 
   retryLoad() {
@@ -80,25 +84,32 @@ Page({
     if (this.data.planId) void this.loadPlan(this.data.planId);
   },
 
-  async loadPlan(id: string, silent = false) {
+  async loadPlan(id: string) {
     const state = getWorkspaceReadState();
     if (state !== "ready") {
       this.setData({
-        loading: false,
+        initialLoading: false,
+        refreshing: false,
         error: state === "logged_out" ? "请先登录后查看衣橱数据" : "请先配置后端 API 域名",
         statusActionLabel: state === "logged_out" ? "去登录" : "去设置",
       });
       return;
     }
 
-    if (!silent) this.setData({ loading: true });
-    this.setData({ error: "" });
+    const requestId = ((this as any).detailRequestId || 0) + 1;
+    (this as any).detailRequestId = requestId;
+    const hasData = Boolean(this.data.plan);
+    this.setData({ initialLoading: !hasData, refreshing: hasData, error: "" });
     try {
       const [plan, snapshot] = await Promise.all([fetchCalendarPlanDetail(id), fetchPlanningSnapshot()]);
+      if (requestId !== (this as any).detailRequestId) return;
       const rows = buildRows(plan, snapshot.outfitPlanEntries, snapshot.outfits);
-      this.setData({ plan: toPlanView(plan), rows, loading: false });
+      (this as any).detailDomainVersion = getRuntimeRefreshSnapshot("planning").version;
+      this.setData({ plan: toPlanView(plan), rows, initialLoading: false, refreshing: false });
     } catch (error) {
-      this.setData({ loading: false, error: error instanceof Error ? error.message : "读取计划详情失败", statusActionLabel: "重试" });
+      if (requestId !== (this as any).detailRequestId) return;
+      this.setData({ initialLoading: false, refreshing: false, error: error instanceof Error ? error.message : "读取计划详情失败", statusActionLabel: "重试" });
+      if (hasData) wx.showToast({ title: "计划刷新失败，已保留当前内容", icon: "none" });
     }
   },
 
@@ -121,6 +132,7 @@ Page({
     this.setData({ deleting: true });
     try {
       await deleteCalendarPlan(plan.id, plan.revision);
+      markRuntimeDomainDirty("planning");
       wx.showToast({ title: "计划已删除", icon: "success" });
       this.setData({ deleteSheetOpen: false });
       wx.navigateBack({ delta: 1 });

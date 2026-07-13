@@ -1,6 +1,5 @@
 <view class="page-shell detail-page">
-  <view wx:if="{{loading}}" class="status-card">正在读取套装...</view>
-  <view wx:elif="{{error}}" class="status-card">读取失败：{{error}}</view>
+  <view wx:if="{{initialLoading}}" class="status-card">正在读取套装...</view>
   <item-detail-shell wx:elif="{{outfit}}" top-title="套装详情" title="{{outfit.name}}" meta="{{outfit.itemCount}}件 · {{outfit.seasonText}} · {{outfit.sceneText}}" eyebrow="{{outfit.wearSummary}}" image-url="{{outfit.imageUrl}}" hero-label="主图" hero-fallback="套装示意">
     <button slot="topRight" class="more-button" bindtap="openMenu" aria-label="更多操作">•••</button>
     <button slot="heroAction" class="hero-worn-action" loading="{{actioning === 'worn'}}" bindtap="toggleTodayWorn">{{outfit.wornToday ? '删除已穿' : '标记今天穿了'}}</button>
@@ -26,6 +25,7 @@
     <view wx:elif="{{activeTab === 'advice'}}" class="info-card"><view class="card-title">完整 AI 建议</view><button class="action-button ai" loading="{{adviceLoading}}" bindtap="generateAdvice">{{adviceSummary ? '重新生成建议' : '生成 AI 建议'}}</button><view class="section-copy">{{adviceLoading ? '正在生成建议...' : adviceSummary}}</view><view wx:for="{{adviceTips}}" wx:key="*this" class="section-copy">· {{item}}</view></view>
     <view wx:else class="info-card"><view class="card-title">实穿记录</view><view class="info-row"><text>穿着次数</text><text>{{outfit.wornDates.length}} 次</text></view><item-media-section image-url="" inspiration-images="{{outfit.wornPhotos}}" bind:add="addWornPhoto" bind:preview="previewPhoto" bind:remove="removeWornPhoto" /></view>
   </item-detail-shell>
+  <view wx:else class="status-card">读取失败：{{error}}</view>
   <ui-sheet open="{{menuOpen}}" title="套装操作" bind:close="closeMenu"><view class="delete-actions"><button class="sheet-button" bindtap="editOutfit">编辑套装</button><button class="sheet-button" bindtap="toggleFavorite">{{outfit.favorite ? '取消收藏' : '收藏'}}</button><button class="sheet-button sheet-button--danger" bindtap="openDeleteSheet">删除套装</button></view></ui-sheet>
   <ui-sheet open="{{deleteSheetOpen}}" title="删除这套穿搭？" description="衣橱单品不会被删除。" bind:close="closeDeleteSheet"><view class="delete-actions"><button class="sheet-button sheet-button--danger" loading="{{deleting}}" bindtap="confirmDelete">确认删除</button><button class="sheet-button" bindtap="closeDeleteSheet">取消</button></view></ui-sheet>
 </view>

@@ -1,6 +1,6 @@
 <view class="page-shell detail-page">
-  <view wx:if="{{loading}}" class="status-card">正在读取种草...</view>
-  <view wx:elif="{{error}}" class="status-card"><view class="status-title">读取失败</view><view class="status-copy">{{error}}</view></view>
+  <view wx:if="{{initialLoading}}" class="status-card">正在读取种草...</view>
+  <view wx:elif="{{error && !item}}" class="status-card"><view class="status-title">读取失败</view><view class="status-copy">{{error}}</view></view>
   <item-detail-shell wx:elif="{{item}}" top-title="种草详情" title="{{item.name}}" meta="{{item.meta}}" eyebrow="{{item.statusText}}" image-url="{{item.imageUrl}}" hero-label="商品图" hero-fallback="{{item.categoryLabel}}">
     <button slot="topRight" class="more-button" bindtap="openMenu" aria-label="更多操作">•••</button>
     <view slot="afterHero"><item-media-section image-url="{{item.imageUrl}}" inspiration-images="{{item.inspirationImages}}" bind:add="addInspiration" bind:preview="previewMedia" bind:remove="removeInspiration" /></view>

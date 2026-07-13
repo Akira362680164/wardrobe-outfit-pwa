@@ -1,8 +1,8 @@
 <view class="page-shell plan-detail">
   <sub-page-top-bar title="计划详情" />
 
-  <view wx:if="{{loading}}" class="status-card">正在读取计划...</view>
-  <view wx:elif="{{error}}" class="status-card status-card--error">
+  <view wx:if="{{initialLoading}}" class="status-card">正在读取计划...</view>
+  <view wx:elif="{{error && !plan}}" class="status-card status-card--error">
     <view>{{error}}</view>
     <button class="retry-button" bindtap="retryLoad">{{statusActionLabel || '重试'}}</button>
   </view>

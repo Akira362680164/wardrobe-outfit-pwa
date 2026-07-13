@@ -11,10 +11,12 @@ import {
   createClientMutationId,
   type MiniOutfitDetail,
 } from "../../../services/workspace";
+import { getRuntimeRefreshSnapshot, markRuntimeDomainDirty } from "../../../utils/runtime-refresh";
 
 Page({
   data: {
-    loading: false,
+    initialLoading: false,
+    refreshing: false,
     deleting: false,
     actioning: "",
     adviceLoading: false,
@@ -35,6 +37,7 @@ Page({
     try {
       const next = await setOutfitFavorite(outfit.id, outfit.revision, !outfit.favorite);
       this.setData({ outfit: next, menuOpen: false });
+      acknowledgeOutfitMutation(this);
       wx.showToast({ title: next.favorite ? "已收藏" : "已取消收藏", icon: "success" });
     } catch (error) {
       wx.showToast({ title: error instanceof Error ? error.message : "更新收藏失败", icon: "none" });
@@ -52,6 +55,8 @@ Page({
         ? await cancelOutfitWornToday(outfit.id, outfit.revision)
         : await markOutfitWornToday(outfit.id, outfit.revision);
       this.setData({ outfit: next });
+      markRuntimeDomainDirty("planning");
+      acknowledgeOutfitMutation(this);
       wx.showToast({ title: next.wornToday ? "已记录穿着" : "已撤销穿着", icon: "success" });
     } catch (error) {
       wx.showToast({ title: error instanceof Error ? error.message : "更新穿着失败", icon: "none" });
@@ -87,28 +92,43 @@ Page({
   openMenu(this: any) { if (!this.data.actioning && !this.data.deleting) this.setData({ menuOpen: true }); },
   closeMenu(this: any) { if (!this.data.actioning && !this.data.deleting) this.setData({ menuOpen: false }); },
   previewPhoto(this: any, event: any) { const outfit = this.data.outfit as MiniOutfitDetail | null; if (!outfit) return; const urls = outfit.wornPhotos.map((photo) => photo.imageUrl).filter(Boolean); (wx as typeof wx & { previewImage: (options: { current?: string; urls: string[] }) => void }).previewImage({ current: event.detail.url || urls[0], urls }); },
-  async addWornPhoto(this: any) { const outfit = this.data.outfit as MiniOutfitDetail | null; if (!outfit) return; try { const images = await chooseImages(["album", "camera"], Math.max(1, 9 - outfit.wornPhotos.length)); if (!images.length) return; const now = new Date().toISOString(); const refs = photoMetadata(outfit); const mutations: AssetMutation[] = []; for (const image of images) { const id = createClientMutationId(); const fieldName = `actualWornPhoto.${id}`; const uploaded = await uploadPreparedImageAssets({ clientMutationId: createClientMutationId(), entityType: "outfit", fieldName, originalPath: image.imagePath, processedPath: image.stablePath }); mutations.push(...uploaded.assetMutations); refs.push({ id, fieldName, caption: "", createdAt: now, updatedAt: now }); } this.setData({ outfit: await updateOutfit({ id: outfit.id, expectedRevision: outfit.revision, currentPayload: outfit.rawPayload, patch: { actualWornPhotos: refs }, assetMutations: mutations }) }); } catch (error) { wx.showToast({ title: error instanceof Error ? error.message : "添加实穿照片失败", icon: "none" }); } },
-  async removeWornPhoto(this: any, event: any) { const outfit = this.data.outfit as MiniOutfitDetail | null; const id = event.detail.id; if (!outfit || !id) return; const target = outfit.wornPhotos.find((photo) => photo.id === id); if (!target) return; this.setData({ outfit: await updateOutfit({ id: outfit.id, expectedRevision: outfit.revision, currentPayload: outfit.rawPayload, patch: { actualWornPhotos: photoMetadata(outfit).filter((photo) => photo.id !== id) }, assetMutations: [{ kind: "remove", fieldName: target.fieldName }] }) }); },
+  async addWornPhoto(this: any) { const outfit = this.data.outfit as MiniOutfitDetail | null; if (!outfit) return; try { const images = await chooseImages(["album", "camera"], Math.max(1, 9 - outfit.wornPhotos.length)); if (!images.length) return; const now = new Date().toISOString(); const refs = photoMetadata(outfit); const mutations: AssetMutation[] = []; for (const image of images) { const id = createClientMutationId(); const fieldName = `actualWornPhoto.${id}`; const uploaded = await uploadPreparedImageAssets({ clientMutationId: createClientMutationId(), entityType: "outfit", fieldName, originalPath: image.imagePath, processedPath: image.stablePath }); mutations.push(...uploaded.assetMutations); refs.push({ id, fieldName, caption: "", createdAt: now, updatedAt: now }); } this.setData({ outfit: await updateOutfit({ id: outfit.id, expectedRevision: outfit.revision, currentPayload: outfit.rawPayload, patch: { actualWornPhotos: refs }, assetMutations: mutations }) }); acknowledgeOutfitMutation(this); } catch (error) { wx.showToast({ title: error instanceof Error ? error.message : "添加实穿照片失败", icon: "none" }); } },
+  async removeWornPhoto(this: any, event: any) { const outfit = this.data.outfit as MiniOutfitDetail | null; const id = event.detail.id; if (!outfit || !id) return; const target = outfit.wornPhotos.find((photo) => photo.id === id); if (!target) return; this.setData({ outfit: await updateOutfit({ id: outfit.id, expectedRevision: outfit.revision, currentPayload: outfit.rawPayload, patch: { actualWornPhotos: photoMetadata(outfit).filter((photo) => photo.id !== id) }, assetMutations: [{ kind: "remove", fieldName: target.fieldName }] }) }); acknowledgeOutfitMutation(this); },
 
   onLoad(query?: { id?: string }) {
     wx.setNavigationBarTitle({ title: "套装详情" });
-    if (query?.id) void this.loadDetail(query.id);
+    if (query?.id) {
+      (this as any).detailId = query.id;
+      void this.loadDetail(query.id);
+    }
     else this.setData({ error: "缺少套装 ID" });
   },
 
+  onShow(this: any) {
+    const outfit = this.data.outfit as MiniOutfitDetail | null;
+    if (outfit && getRuntimeRefreshSnapshot("outfits").version !== this.detailDomainVersion) void this.loadDetail(outfit.id);
+  },
+
   async loadDetail(this: any, id: string) {
-    this.setData({ loading: true, error: "" });
+    const requestId = (this.detailRequestId || 0) + 1;
+    this.detailRequestId = requestId;
+    const hasData = Boolean(this.data.outfit);
+    this.setData({ initialLoading: !hasData, refreshing: hasData, error: "" });
     try {
       const [outfit, garments] = await Promise.all([fetchOutfitDetail(id), fetchGarments()]);
+      if (requestId !== this.detailRequestId) return;
       const itemCards = outfit.itemIds.map((legacyItemId) => garments.find((item) => item.legacyItemId === legacyItemId)).filter(Boolean).map((item) => ({
         id: item!.id,
         name: item!.name,
         categoryLabel: item!.categoryLabel,
         imageUrl: item!.imageUrl,
       }));
-      this.setData({ outfit, itemCards, loading: false });
+      this.detailDomainVersion = getRuntimeRefreshSnapshot("outfits").version;
+      this.setData({ outfit, itemCards, initialLoading: false, refreshing: false });
     } catch (error) {
-      this.setData({ loading: false, error: error instanceof Error ? error.message : "读取套装失败" });
+      if (requestId !== this.detailRequestId) return;
+      this.setData({ initialLoading: false, refreshing: false, error: error instanceof Error ? error.message : "读取套装失败" });
+      if (hasData) wx.showToast({ title: "套装刷新失败，已保留当前内容", icon: "none" });
     }
   },
 
@@ -141,6 +161,8 @@ Page({
     this.setData({ deleting: true });
     try {
       await deleteWorkspaceEntity("outfits", outfit.id, outfit.revision);
+      markRuntimeDomainDirty("outfits");
+      markRuntimeDomainDirty("planning");
       wx.showToast({ title: "已删除", icon: "success" });
       wx.navigateBack({ delta: 1 });
     } catch (error) {
@@ -154,3 +176,4 @@ function stringList(value: unknown): string[] {
   return Array.isArray(value) ? value.filter((item): item is string => typeof item === "string" && item.length > 0) : [];
 }
 function photoMetadata(outfit: MiniOutfitDetail): Array<{ id: string; fieldName: string; caption?: string; createdAt?: string; updatedAt?: string }> { return Array.isArray(outfit.rawPayload.actualWornPhotos) ? outfit.rawPayload.actualWornPhotos.filter((entry): entry is { id: string; fieldName: string } => Boolean(entry && typeof entry === "object" && "id" in entry && "fieldName" in entry)) : []; }
+function acknowledgeOutfitMutation(page: any) { page.detailRequestId = (page.detailRequestId || 0) + 1; markRuntimeDomainDirty("outfits"); page.detailDomainVersion = getRuntimeRefreshSnapshot("outfits").version; }

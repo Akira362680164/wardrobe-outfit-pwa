@@ -1,4 +1,5 @@
 import { deleteCalendarPlan, fetchPlanningSnapshot, getWorkspaceReadState, type MiniCalendarPlan } from "../../../services/workspace";
+import { markRuntimeDomainDirty } from "../../../utils/runtime-refresh";
 
 Page({
   data: { loading:false,error:"",plans:[] as MiniCalendarPlan[],deletingId:"",deleteConfirmOpen:false,deleteConfirmTitle:"",deleteConfirmPlan:null as MiniCalendarPlan|null },
@@ -8,5 +9,5 @@ Page({
   deletePlan(this:any,event:any){const id=event.currentTarget.dataset.id;const plan=(this.data.plans as MiniCalendarPlan[]).find((item)=>item.id===id);if(!plan)return;this.setData({deleteConfirmOpen:true,deleteConfirmTitle:plan.title,deleteConfirmPlan:plan});},
   closeDeleteConfirm(this:any){if(!this.data.deletingId)this.setData({deleteConfirmOpen:false,deleteConfirmPlan:null});},
   confirmDeleteFromSheet(this:any){const plan=this.data.deleteConfirmPlan as MiniCalendarPlan|null;if(!plan)return;this.setData({deleteConfirmOpen:false,deleteConfirmPlan:null});void this.confirmDelete(plan);},
-  async confirmDelete(this:any,plan:MiniCalendarPlan){this.setData({deletingId:plan.id});try{await deleteCalendarPlan(plan.id,plan.revision);await this.load();}catch(error){wx.showToast({title:error instanceof Error?error.message:"删除失败",icon:"none"})}finally{this.setData({deletingId:""})}},
+  async confirmDelete(this:any,plan:MiniCalendarPlan){this.setData({deletingId:plan.id});try{await deleteCalendarPlan(plan.id,plan.revision);markRuntimeDomainDirty("planning");await this.load();}catch(error){wx.showToast({title:error instanceof Error?error.message:"删除失败",icon:"none"})}finally{this.setData({deletingId:""})}},
 });

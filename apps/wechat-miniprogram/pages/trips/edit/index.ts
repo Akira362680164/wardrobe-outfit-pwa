@@ -6,6 +6,7 @@ import {
   type MiniCalendarPlanType,
 } from "../../../services/workspace";
 import { enumerateDateRange, localDateKey } from "../../../utils/calendar";
+import { markRuntimeDomainDirty } from "../../../utils/runtime-refresh";
 
 type ToneOption = { tone: MiniCalendarPlanTone; className: string };
 type DatasetEvent = { currentTarget: { dataset: Record<string, unknown> } };
@@ -142,6 +143,7 @@ Page({
         notes: this.data.type === "travel" ? undefined : this.data.noteValue,
         packingEnabled: this.data.packingEnabled,
       });
+      markRuntimeDomainDirty("planning");
       wx.showToast({ title: "计划已保存", icon: "success" });
       wx.navigateBack({ delta: 1 });
     } catch (error) {

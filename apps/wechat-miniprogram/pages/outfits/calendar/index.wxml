@@ -46,10 +46,10 @@
     </block>
   </view>
 
-  <view wx:if="{{loading}}" class="month-empty">
+  <view wx:if="{{initialLoading}}" class="month-empty">
     <view class="month-empty__title">正在读取穿搭计划...</view>
   </view>
-  <view wx:elif="{{error}}" class="plan-card">
+  <view wx:elif="{{error && !monthHasData}}" class="plan-card">
     <view class="plan-card__title">读取失败</view>
     <view class="state-copy">{{error}}</view>
     <button class="primary-button retry-button" bindtap="handleStatusAction">{{statusActionLabel || '重试'}}</button>

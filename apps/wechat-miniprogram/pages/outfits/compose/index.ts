@@ -12,6 +12,7 @@ import {
   type MiniGarment,
   type MiniOutfitDetail,
 } from "../../../services/workspace";
+import { markRuntimeDomainDirty } from "../../../utils/runtime-refresh";
 import {
   activeSelectableGarments,
   analyzeComposition,
@@ -443,6 +444,8 @@ Page({
           },
         });
         await fetchOutfitDetail(result.id);
+        markRuntimeDomainDirty("outfits");
+        markRuntimeDomainDirty("planning");
         wx.showToast({ title: "套装已更新", icon: "success" });
         wx.navigateBack({ delta: 1 });
         return;
@@ -459,6 +462,8 @@ Page({
         clientMutationId: this.data.draftMutationId,
       });
       await fetchOutfitDetail(created.id);
+      markRuntimeDomainDirty("outfits");
+      markRuntimeDomainDirty("planning");
       wx.showToast({ title: "套装已保存", icon: "success" });
       wx.switchTab({ url: "/pages/outfits/index/index" });
     } catch (error) {

@@ -25,6 +25,15 @@ assert.match(wishlistTs, /uploadPreparedImageAssets/);
 assert.match(garmentTs, /kind: "remove"/);
 assert.match(wishlistTs, /toggleArchived/);
 assert.match(wishlistTs, /openConvertedGarment/);
+for (const source of [garmentTs, wishlistTs]) {
+  assert.match(source, /initialLoading/);
+  assert.match(source, /refreshing/);
+  assert.match(source, /detailRequestId/);
+  assert.match(source, /getRuntimeRefreshSnapshot/);
+  assert.match(source, /markRuntimeDomainDirty/);
+}
+assert.doesNotMatch(garmentTs, /onShow[\s\S]{0,180}if \(item\) void this\.loadDetail/, "garment detail must not reload on every onShow");
+assert.doesNotMatch(wishlistTs, /onShow[\s\S]{0,180}if \(item\) void this\.loadDetail/, "wishlist detail must not reload on every onShow");
 for (const edit of [garmentEdit, wishlistEdit]) {
   assert.match(edit, /bindtap="recropImage"/);
   assert.match(edit, /bindtap="reRecognize"/);

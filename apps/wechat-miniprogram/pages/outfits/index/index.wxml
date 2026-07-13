@@ -43,9 +43,9 @@
     />
   </view>
 
-  <view wx:if="{{loading}}" class="status-card">正在读取套装...</view>
+  <view wx:if="{{initialLoading}}" class="status-card">正在读取套装...</view>
 
-  <view wx:elif="{{error}}" class="status-card">
+  <view wx:elif="{{error && outfits.length === 0}}" class="status-card">
     <view class="status-title">读取失败</view>
     <view class="status-copy">{{error}}</view>
     <button class="mini-button primary-button" bindtap="loadOutfits">重试</button>

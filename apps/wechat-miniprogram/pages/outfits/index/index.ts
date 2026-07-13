@@ -26,6 +26,11 @@ import {
   toPlanToneViews,
   type OutfitPlanDayCardView,
 } from "../../../utils/outfit-plan-day";
+import {
+  getRuntimeRefreshSnapshot,
+  markRuntimeDomainDirty,
+  runRuntimeDomainRefresh,
+} from "../../../utils/runtime-refresh";
 
 type DatasetEvent = { currentTarget: { dataset: Record<string, unknown> } };
 type TouchLikeEvent = { touches?: Array<{ clientX: number }>; changedTouches?: Array<{ clientX: number }> };
@@ -45,7 +50,8 @@ const PLAN_OPTIONS: Array<{ type: MiniCalendarPlanType; label: string; desc: str
 ];
 Page({
   data: {
-    loading: false,
+    initialLoading: false,
+    refreshing: false,
     savingEntry: false,
     outfits: [] as MiniOutfit[],
     filteredOutfits: [] as MiniOutfit[],
@@ -83,7 +89,6 @@ Page({
     this.setData({ titleTopRpx: getTitleTopRpx() });
     selectCustomTab(this, 1);
     this.rebuildWeek();
-    void this.loadOutfits();
   },
 
   onShow() {
@@ -99,11 +104,12 @@ Page({
     selectCustomTab(this, 1);
   },
 
-  async loadOutfits(): Promise<boolean> {
+  async loadOutfits(options: { force?: boolean } = {}): Promise<boolean> {
     const state = getWorkspaceReadState();
     if (state !== "ready") {
       this.setData({
-        loading: false,
+        initialLoading: false,
+        refreshing: false,
         outfits: [],
         filteredOutfits: [],
         error: "",
@@ -114,22 +120,43 @@ Page({
       return false;
     }
 
-    this.setData({ loading: true, error: "" });
+    const hasData = this.data.outfits.length > 0 || this.data.calendarPlans.length > 0 || this.data.outfitPlanEntries.length > 0;
+    this.setData({ initialLoading: !hasData, refreshing: hasData, error: "" });
     try {
-      const snapshot = await fetchPlanningSnapshot();
+      const result = await runRuntimeDomainRefresh("planning", fetchPlanningSnapshot, {
+        force: options.force,
+        hasData,
+      });
+      if (result.status === "skipped") {
+        this.setData({ initialLoading: false, refreshing: false });
+        return true;
+      }
+      if (!result.accepted) {
+        this.setData({ initialLoading: false, refreshing: false });
+        return false;
+      }
+      if (getRuntimeRefreshSnapshot("planning").dirty) return this.loadOutfits({ force: true });
+      const snapshot = result.value;
+      const signature = planningSnapshotSignature(snapshot);
+      if ((this as any).snapshotSignature === signature) {
+        this.setData({ initialLoading: false, refreshing: false });
+        return true;
+      }
+      (this as any).snapshotSignature = signature;
       this.setData({
         outfits: snapshot.outfits,
         filteredOutfits: snapshot.outfits,
         calendarPlans: snapshot.calendarPlans,
         outfitPlanEntries: snapshot.outfitPlanEntries,
-        loading: false,
+        initialLoading: false,
+        refreshing: false,
         outfitCountLabel: `${snapshot.outfits.length} 套`,
       });
       this.rebuildWeek();
       return true;
     } catch (error) {
-      this.setData({ loading: false, outfits: [], filteredOutfits: [], outfitCountLabel: "0 套", error: error instanceof Error ? error.message : "读取套装失败" });
-      this.rebuildWeek();
+      this.setData({ initialLoading: false, refreshing: false, error: error instanceof Error ? error.message : "读取套装失败" });
+      if (hasData) wx.showToast({ title: "套装刷新失败，已保留当前内容", icon: "none" });
       return false;
     }
   },
@@ -301,7 +328,9 @@ Page({
           title: outfit.name,
         });
       }
-      if (!await this.loadOutfits()) throw new Error("已保存，但重新读取失败，请稍后重试");
+      markRuntimeDomainDirty("planning");
+      markRuntimeDomainDirty("outfits");
+      if (!await this.loadOutfits({ force: true })) throw new Error("已保存，但重新读取失败，请稍后重试");
       setCustomTabHidden(this, false);
       this.setData({ selectSheetOpen: false, outfitSearch: "" });
       wx.showToast({ title: mode === "worn" ? "已补记穿搭" : mode === "backup" ? "已添加备选穿搭" : mode === "replace" ? "已更改主计划" : "已安排主穿搭", icon: "success" });
@@ -347,7 +376,9 @@ Page({
       } else {
         await markOutfitWornOnDate(outfit.id, outfit.revision, this.data.selectedDate);
       }
-      if (!await this.loadOutfits()) throw new Error("已保存，但重新读取失败，请稍后重试");
+      markRuntimeDomainDirty("planning");
+      markRuntimeDomainDirty("outfits");
+      if (!await this.loadOutfits({ force: true })) throw new Error("已保存，但重新读取失败，请稍后重试");
       wx.showToast({ title: action === "delete_worn" ? "已删除已穿记录" : "已记录穿着", icon: "success" });
     } catch (error) {
       wx.showToast({ title: error instanceof Error ? error.message : "更新穿着失败", icon: "none" });
@@ -366,7 +397,8 @@ Page({
     this.setData({ savingEntry: true });
     try {
       await deleteWorkspaceEntity("outfit-plans", entry.id, entry.revision);
-      if (!await this.loadOutfits()) throw new Error("已删除，但重新读取失败，请稍后重试");
+      markRuntimeDomainDirty("planning");
+      if (!await this.loadOutfits({ force: true })) throw new Error("已删除，但重新读取失败，请稍后重试");
       wx.showToast({ title: "已删除备选", icon: "success" });
     } catch (error) {
       wx.showToast({ title: error instanceof Error ? error.message : "删除备选失败", icon: "none" });
@@ -491,5 +523,13 @@ function getTitleTopRpx() {
 function confirmAction(title: string, content: string): Promise<boolean> {
   return new Promise((resolve) => {
     wx.showModal({ title, content, success: (result) => resolve(result.confirm === true), fail: () => resolve(false) });
+  });
+}
+
+function planningSnapshotSignature(snapshot: Awaited<ReturnType<typeof fetchPlanningSnapshot>>): string {
+  return JSON.stringify({
+    outfits: snapshot.outfits.map((item) => [item.id, item.revision, item.updatedAt, item.imageUrl, item.itemImages]),
+    plans: snapshot.calendarPlans.map((item) => [item.id, item.revision, item.updatedAt]),
+    entries: snapshot.outfitPlanEntries.map((item) => [item.id, item.revision, item.updatedAt, item.outfitId, item.actualOutfitId]),
   });
 }

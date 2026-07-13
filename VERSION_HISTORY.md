@@ -1,3 +1,13 @@
+## 2026-07-13 / v2.1.18-test / Codex subagent — 小程序套装、详情与日历闪烁修复
+
+- **执行 Agent**：Codex subagent；独立 worktree `codex/flicker-detail-calendar`，基于共享运行期基础提交 `5240cac9`，用户已明确通知并行 subagent 执行。
+- **目的与边界**：修复套装首页首次 `onLoad + onShow` 双请求、周历/月历返回时整块 loading、单品/套装/种草/计划详情返回即全量刷新、旧请求覆盖新写入结果，以及新增/编辑/删除后页面不知道应刷新等闪烁根因；只使用进程内 refresh domain 和图片临时路径复用，不增加持久化缓存、离线业务副本或后台同步。
+- **改动文件**：`pages/outfits/{index,calendar,detail,compose}/`、`pages/{wardrobe,wishlist}/detail/`、`pages/trips/{index,detail,edit}/`、套装日历与单品详情合同测试、`VERSION_HISTORY.md`。
+- **改动说明**：套装首页只从 `onShow` 发起一次 overview，并以 `planning` 单领域去重；已有数据时保持列表、周历、月历与详情壳挂载，后台刷新失败保留旧内容；相同快照签名不重复 `setData` 图片数组；写入后标记 `outfits/planning/garments/wishlist` dirty 并强制读回；详情页按 domain version 决定是否刷新，以页面 request generation 拒绝旧响应；写入撞上旧 in-flight overview 时检测仍为 dirty 并再读一次，避免旧快照覆盖新结果。
+- **验证结果**：根与小程序 typecheck、套装/旅行流程、周月历 UI、单品详情、衣橱、种草、壳层、runtime refresh、图片 session cache、catalog 同步检查及 `git diff --check` 全部通过；微信开发者工具对本 worktree 的套装首页、月历、套装/单品/种草/计划详情 WXML/WXSS 编译命令退出码为 0。
+- **风险门禁**：`high`（跨 17 个运行时/测试文件，涉及页面生命周期、写入读回和移动端闪烁）；用户已明确触发三个并行 subagent，本记录为详情/日历批次结果。
+- **未验证风险**：微信开发者工具 `project_import` 仍返回 `PROJECT_IMPORT_NOT_IN_LIST`，因此未形成该 worktree 的模拟器交互或截图；未使用真实微信账号覆盖弱网、前后台恢复和真机连续切换，需集成分支完成最终录屏验收。
+
 ## 2026-07-13 / v2.1.18-test / Codex — 小程序闪烁修复共享运行期基础
 
 - **执行 Agent**：Codex；在独立 `codex/miniprogram-flicker-fix-20260713` 集成 worktree 实施，作为三个并行 subagent 的已提交共同基线。
