@@ -1,3 +1,9 @@
+## 2026-07-14 / v2.1.19-test / Codex 主集成 — 全量动效修复与 Android 交付
+
+- **执行与版本**：主 Agent 完成 `apple-design` 审查方案的 Wave 0–6 并行归并，将版本从 `2.1.18-test` 递增到 `2.1.19-test`；同步 `package-lock.json` 与小程序生成 build-info，不修改小程序运行时或业务契约。
+- **交付范围**：统一 Overlay/Back、按压与状态反馈、图片轮播/Lightbox、周历/月历、录入裁切/滑条、主导航与滚动恢复、三类详情、套装/计划/设置/账号/种草深层流程，以及 reduced-motion、透明度、高对比、低端 Android、可访问命名与严格静态门禁。线上唯一数据源、API、领域字段和 MiniMax 隐私边界保持不变。
+- **验证状态**：Wave 6 合流后的 `test:logic:all`、根 `typecheck`、Next `build`、严格 UI contracts 和确定性 C2 连续性门禁已通过。固定签名 APK 构建、`android:verify:full`、Android 15 最终同 APK 六项矩阵、logcat 与 gfxinfo 仍在执行；完成前本记录不宣称最终设备验收。
+
 ## 2026-07-14 / v2.1.18-test / Codex 主集成 — Motion Wave 6 归并与确定性首帧门禁
 
 - **执行与版本**：主 Agent 按 D1-Runtime → D1-Contracts → D1-Android 顺序归并三项独立提交并重生成 UI 规范；版本保持 `2.1.18-test`，最终 APK 版本递增在全量门禁后统一执行。
