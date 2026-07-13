@@ -1,9 +1,12 @@
 "use client";
 
-import { App } from "@capacitor/app";
 import { AlertCircle, ChevronLeft, Loader2, X } from "lucide-react";
-import { useEffect, useState } from "react";
-import { createPortal } from "react-dom";
+import { useCallback, useEffect, useRef, useState } from "react";
+
+import { ConfirmActionSheet } from "@/components/dialogs";
+import { OverlayPortal, useOverlayLayer } from "@/components/overlay-root";
+import type { OverlayDismissReason } from "@/lib/overlay-stack";
+import { useScrollLock } from "@/lib/use-scroll-lock";
 
 export interface IntakeFlowStep {
   id: string;
@@ -60,74 +63,110 @@ export function IntakeFlowShell({
   onStopWaiting,
 }: IntakeFlowShellProps) {
   const [confirmExit, setConfirmExit] = useState(false);
-  const [mounted, setMounted] = useState(false);
+  const [blockedAnnouncement, setBlockedAnnouncement] = useState("");
+  const shellRef = useRef<HTMLDivElement | null>(null);
+  const didInitialFocusRef = useRef(false);
   const safeIndex = Math.min(Math.max(currentStepIndex, 0), Math.max(steps.length - 1, 0));
   const currentStep = steps[safeIndex];
   const isSubmitting = submitState.status === "submitting";
   const busy = isProcessing || isSubmitting;
   const progress = steps.length === 0 ? 0 : ((safeIndex + 1) / steps.length) * 100;
 
-  useEffect(() => {
-    setMounted(true);
-  }, []);
+  useScrollLock(true);
 
-  // v1.1.31 commit1: 锁定 body 滚动 + 还原。Portal 期间禁止主页面滚动。
-  useEffect(() => {
-    if (typeof document === "undefined") return;
-    const previous = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-    return () => {
-      document.body.style.overflow = previous;
-    };
-  }, []);
-
-  function requestExit() {
-    if (hasUnsavedDraft || busy) {
+  const handleDismiss = useCallback((reason: OverlayDismissReason) => {
+    if (reason !== "backdrop" && (safeIndex > 0 || rootBackOverridesExit) && onBack && !backDisabled) {
+      onBack();
+      return;
+    }
+    if (hasUnsavedDraft) {
       setConfirmExit(true);
       return;
     }
     onExit?.();
-  }
+  }, [backDisabled, hasUnsavedDraft, onBack, onExit, rootBackOverridesExit, safeIndex]);
+
+  const handleDismissBlocked = useCallback(() => {
+    setBlockedAnnouncement("操作进行中，暂时无法退出录入");
+  }, []);
+
+  const { overlayId, isTopmost, requestDismiss } = useOverlayLayer({
+    kind: "fullscreen",
+    dismissible: !busy,
+    onDismiss: handleDismiss,
+    onDismissBlocked: handleDismissBlocked,
+  });
+
+  const requestExit = useCallback(() => {
+    requestDismiss("backdrop");
+  }, [requestDismiss]);
 
   useEffect(() => {
-    let removed = false;
-    let active = true;
-    let handle: { remove: () => void } | null = null;
-    App.addListener("backButton", () => {
-      if (!active || removed) return;
-      if (busy) {
-        setConfirmExit(true);
-        return;
-      }
-      if ((safeIndex > 0 || rootBackOverridesExit) && onBack && !backDisabled) {
-        onBack();
-        return;
-      }
-      if (hasUnsavedDraft) {
-        setConfirmExit(true);
-        return;
-      }
-      onExit?.();
-    }).then((nextHandle) => {
-      if (!removed && active) handle = nextHandle;
+    if (!isTopmost || didInitialFocusRef.current) return;
+    didInitialFocusRef.current = true;
+    const frame = window.requestAnimationFrame(() => {
+      const shell = shellRef.current;
+      if (!shell) return;
+      const focusable = shell.querySelector<HTMLElement>(
+        'button:not([disabled]), [href], input, select, textarea, [tabindex]:not([tabindex="-1"])',
+      );
+      (focusable ?? shell).focus();
     });
-    return () => {
-      active = false;
-      removed = true;
-      handle?.remove();
+    return () => window.cancelAnimationFrame(frame);
+  }, [isTopmost]);
+
+  useEffect(() => {
+    if (!isTopmost) return;
+    const handleTab = (event: KeyboardEvent) => {
+      if (event.key !== "Tab") return;
+      const shell = shellRef.current;
+      if (!shell) return;
+      const focusable = Array.from(
+        shell.querySelectorAll<HTMLElement>(
+          'button:not([disabled]), [href], input, select, textarea, [tabindex]:not([tabindex="-1"])',
+        ),
+      ).filter((node) => node.tabIndex !== -1);
+      if (focusable.length === 0) {
+        event.preventDefault();
+        shell.focus();
+        return;
+      }
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+      if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault();
+        first.focus();
+      }
     };
-  }, [backDisabled, busy, hasUnsavedDraft, onBack, onExit, rootBackOverridesExit, safeIndex]);
+    document.addEventListener("keydown", handleTab, true);
+    return () => document.removeEventListener("keydown", handleTab, true);
+  }, [isTopmost]);
 
-  if (!mounted || typeof document === "undefined") return null;
-
-  return createPortal(
-    <div className="app-ambient-bg fixed inset-0 z-[90] flex h-[100dvh] flex-col overflow-hidden">
+  return (
+    <OverlayPortal>
+      <>
+        <div
+          ref={shellRef}
+          role="dialog"
+          aria-modal="true"
+          aria-label={title}
+          tabIndex={-1}
+          data-overlay-layer={overlayId}
+          data-overlay-kind="fullscreen"
+          data-overlay-topmost={isTopmost ? "true" : "false"}
+          aria-hidden={isTopmost ? undefined : "true"}
+          inert={isTopmost ? undefined : true}
+          className="app-ambient-bg fixed inset-0 z-[90] flex h-[100dvh] flex-col overflow-hidden outline-none"
+        >
       <header className="app-glass-top sticky top-0 z-30 px-4 pb-3" style={{ paddingTop: "calc(max(env(safe-area-inset-top, 0px), var(--android-safe-area-top, 0px)) + 0.5rem)" }}>
         <div className="flex h-10 items-center justify-between gap-2">
           <button
             type="button"
             data-parity-id="parity.app.app.src.components.intake.flow.shell.d60ca7f723" onClick={onBack}
-            disabled={backDisabled || !onBack}
+            disabled={backDisabled || busy || !onBack}
             className="grid h-10 w-10 shrink-0 place-items-center ui-control-radius bg-transparent text-ink/70 active:scale-95 disabled:opacity-35"
             aria-label="返回上一步"
           >
@@ -142,6 +181,7 @@ export function IntakeFlowShell({
           <button
             type="button"
             data-parity-id="parity.app.app.src.components.intake.flow.shell.ef4e5e19ad" onClick={requestExit}
+            disabled={busy}
             className="grid h-10 w-10 shrink-0 place-items-center ui-control-radius bg-transparent text-ink/60 active:scale-95"
             aria-label="退出录入"
           >
@@ -216,25 +256,22 @@ export function IntakeFlowShell({
         </footer>
       ) : null}
 
-      {confirmExit ? (
-        <div className="fixed inset-0 z-[120] grid place-items-center bg-black/35 px-4" data-parity-id="parity.app.app.src.components.intake.flow.shell.5b79e8be27" onClick={() => setConfirmExit(false)}>
-          <div className="w-full max-w-sm rounded-2xl bg-white p-5 shadow-xl" data-parity-id="parity.app.app.src.components.intake.flow.shell.22bbc5829c" onClick={(event) => event.stopPropagation()}>
-            <h2 className="text-base font-semibold">{busy ? "退出录入？" : "退出本次录入？"}</h2>
-            <p className="mt-2 text-sm leading-relaxed text-ink/58">
-              {busy ? "正在处理本次录入，退出只会停止等待，已发送的请求可能仍会在服务器完成。" : "当前草稿尚未保存，退出后会丢失本次录入进度。"}
-            </p>
-            <div className="mt-5 grid grid-cols-2 gap-2">
-              <button type="button" data-parity-id="parity.app.app.src.components.intake.flow.shell.b6d832856a" onClick={() => setConfirmExit(false)} className="h-11 ui-control-radius border border-ink/10 bg-white text-sm font-semibold">
-                继续录入
-              </button>
-              <button type="button" data-parity-id="parity.app.app.src.components.intake.flow.shell.3983bb7aec" onClick={onExit} className="h-11 ui-control-radius bg-clay text-sm font-semibold text-white">
-                退出
-              </button>
-            </div>
-          </div>
+          <span className="sr-only" role="status" aria-live="polite">{blockedAnnouncement}</span>
         </div>
-      ) : null}
-    </div>,
-    document.body,
+        <ConfirmActionSheet
+          open={confirmExit}
+          title="退出本次录入？"
+          description="当前草稿尚未保存，退出后会丢失本次录入进度。"
+          confirmLabel="退出"
+          cancelLabel="继续录入"
+          tone="danger"
+          onConfirm={() => {
+            setConfirmExit(false);
+            onExit?.();
+          }}
+          onClose={() => setConfirmExit(false)}
+        />
+      </>
+    </OverlayPortal>
   );
 }

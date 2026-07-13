@@ -17,6 +17,17 @@
 - **验证结果**：`docs:ui-spec:build`、`docs:ui-spec:check`、`test:logic:ui-spec-preview`、`test:logic:ui-overlay-contract`、`test:logic:back-priority-regression`、`test:logic:urgent-account`、`test:logic:account-deletion-app`、`test:logic:auth-flow-v2-0-1`、`test:logic:auth-client-shell`、`test:logic:wardrobe-app-split`、`test:logic:ui-overflow`、根 `typecheck`、Next `build` 与 `git diff --check` 通过。
 - **风险门禁与未验证项**：`high`（认证、全局返回和线上写入关闭时机）。A2-App 范围内已无私有 `App.addListener("backButton")` 或 raw fixed dialog；`wardrobe-app.tsx` 的衣橱列表 / 统计 / 详情编辑区域仍有 5 处本批禁止触碰的遗留 listener，归 A2-Flows / 后续所有者，不能宣称全 App 已完成迁移。未做 Android 真机 / 模拟器、TalkBack、物理键盘焦点、窄屏触摸或退出动画慢放；未运行或修复既有 UI token 基线失败，最终 APK / Android 验收由主集成 Agent 收口。
 
+## 2026-07-13 / v2.1.18-test / Codex Subagent A2-Flows — 业务流浮层与 busy 返回安全迁移
+
+- **执行 Agent**：Codex 实施 Subagent A2-Flows；独立分支 `codex/motion-a2-flows-20260713`、独立 worktree `/Users/fangzheng/Documents/wardrobe-motion-a2-flows-20260713`，基于批次提交 `10d9e4176216ba3f7dcd3b47289294e9ad70e230`；未合入 integration / `main`，未推送。
+- **目的与版本**：按 `apple-design` 的可预测层级、可中断动画与“一个返回只推进一层状态”原则，把详情、穿搭计划、打包、种草、录入和裁切的业务浮层接入 A1 Overlay API；版本保持 `2.1.18-test`，本批不构建 APK、不修改 API/存储/小程序，也不实现轮播、日历、裁切阻尼或路由动画。
+- **浮层迁移**：`IntakeFlowShell` 与全屏 `ImageCropEditor` 分别以 `fullscreen` / `cropper` 注册 OverlayStack，统一 Portal、滚动锁、topmost、焦点圈定、`inert/aria-hidden` 和关闭拒绝反馈；删除录入 Shell 私有 Capacitor Back listener。部分保存、录入退出、计划删除/放弃、打包重置、套装/实图删除全部复用共享确认层；计划操作、衣橱位置、打包新增和实图说明复用带语义的共享 Sheet；录入缩略图和穿搭实图的私有菜单改为真实触发器锚定的 `MotionPopoverMenu`。
+- **写入安全与状态保持**：上传/保存/删除/重置/种草转衣橱/裁切处理中阻断 Back、Escape、遮罩和显式关闭；失败时保留确认层、说明草稿和重试入口，成功仅在服务端提交与读回后关闭。修正种草首页菜单 `anchorRef` 原先错误落在转衣橱位置控件的问题，并让打包清单空状态也能实际打开“添加自定义物品”Sheet。
+- **页面返回边界**：种草页移除对 Sheet/Dialog/Popover 的重复页面级关闭分支，只保留多选、未保存草稿和子页导航；计划编辑、打包与种草写入中的页面级 Back 使用共享协调器消费。业务回调、草稿、`clientMutationId` 与服务器读回链路保持原有边界。
+- **改动文件**：`intake-flow-shell.tsx`、`image-crop-editor.tsx`、`garment-intake-flow.tsx`、`garment-detail-3.0.tsx`、`outfit-list-view.tsx`、`outfit-plan-*.tsx`、`plan-packing-checklist-view.tsx`、`wishlist-view-2.0.tsx`；对应录入/详情/计划/种草专项合同；UI 规范 `6.1.2 A2-Flows` 命名小节及生成 HTML。
+- **验证结果**：`docs:ui-spec:build`、`docs:ui-spec:check`、`test:logic:ui-spec-preview`、`test:logic:ui-overlay-contract`、`test:logic:back-priority-regression`、`test:logic:detail-shell`、`test:logic:wishlist`、`test:logic:outfit-planning`、`test:logic:ui-overflow`、`test:logic:cropper`、`test:logic:intake-entry-crop-regression`、`test:logic:intake-fullscreen-layout`、根 `typecheck`、Next `build` 和 `git diff --check` 通过。按并行文件所有权未修改 A2-Core 独占的 overlay/back 合同脚本，也未处理既有 `ui-token-contract` 基线债务。
+- **风险门禁与未验证项**：`high`（全屏录入/裁切、删除与 Android 返回行为）。未做 Android 真机/模拟器、TalkBack、软键盘、窄屏触摸、真实图片裁切或线上写入现场回归；A2-Core 的 Lightbox/Popover 共享实现和 A2-App 壳层迁移尚未合并到本 worktree，最终交互与 APK 验收须在三支 A2 合流后由主 Agent 执行。
+
 ## 2026-07-13 / v2.1.18-test / Codex Subagent A1 — OverlayStack 与单一 Back/Escape 基线
 
 - **执行 Agent**：Codex 实施 Subagent A1；独立分支 `codex/motion-a1-overlay-back-20260713`、独立 worktree `/Users/fangzheng/Documents/wardrobe-motion-a1-overlay-back-20260713`，基于批次提交 `8fdb07f7d17e9578f18f90f04d68f8cd8308d1a8`；未合入 integration / `main`，未推送。

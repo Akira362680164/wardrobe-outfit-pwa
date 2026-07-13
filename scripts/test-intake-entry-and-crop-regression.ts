@@ -57,6 +57,11 @@ check("ImageCropEditor 图片 onLoad 写入 naturalSize", /onLoad=\{\(e\) => \{[
 check("ImageCropEditor 初始化默认裁切框使用当前比例", /setCropFrame\(getInitialCropFrameInImage\(imageRect, effectiveAspectRatio\)\)/.test(imageCropEditor));
 check("ImageCropEditor 全屏支持自由与 3:4 比例切换", /setFullscreenAspectRatio/.test(imageCropEditor) && /label:\s*"自由"[\s\S]{0,120}label:\s*"3:4"[\s\S]{0,120}value:\s*0\.75/.test(imageCropEditor));
 check("ImageCropEditor 暴露左转和右转", /rotateLeft:\s*handleRotateLeft/.test(imageCropEditor) && /rotateRight:\s*handleRotateRight/.test(imageCropEditor));
+check("ImageCropEditor 全屏层接入统一 OverlayPortal", /OverlayPortal, useOverlayLayer/.test(imageCropEditor) && /<OverlayPortal>/.test(imageCropEditor));
+check("ImageCropEditor 注册 cropper OverlayLayer", /useOverlayLayer\(\{[\s\S]{0,160}kind:\s*"cropper"/.test(imageCropEditor));
+check("ImageCropEditor 处理期间不可关闭", /dismissible:\s*!busy/.test(imageCropEditor) && /disabled=\{confirming \|\| rotating\}/.test(imageCropEditor));
+check("ImageCropEditor 不再直连 document.body Portal", !/createPortal|from\s*"react-dom"/.test(imageCropEditor));
+check("ImageCropEditor 全屏层具备 modal 与 inert 契约", /data-overlay-kind="cropper"/.test(imageCropEditor) && /aria-modal="true"/.test(imageCropEditor) && /inert=\{isTopmost \? undefined : true\}/.test(imageCropEditor));
 check("自由裁切默认框是图片显示区域 80%x80%", /aspectRatio === "free"[\s\S]{0,120}width = iw \* 0\.8[\s\S]{0,80}height = ih \* 0\.8/.test(cropperMath));
 
 check("GarmentIntakeFlow 裁切 ready 使用 state，而不是直接读 ref 触发 disabled", /const \[cropReady, setCropReady\] = useState\(false\)/.test(garmentIntakeFlow));
@@ -71,9 +76,11 @@ check("GarmentIntakeFlow 裁切页支持自由和 3:4 比例", /label:\s*"自由
 check("GarmentIntakeFlow 裁切页左右 90° 分别调用父级旋转", /onRotate\("left"\)/.test(garmentIntakeFlow) && /onRotate\("right"\)/.test(garmentIntakeFlow));
 check("GarmentIntakeFlow 裁切页支持重置", /function handleResetAll\(\)[\s\S]{0,180}onReset\(\)/.test(garmentIntakeFlow));
 check("GarmentIntakeFlow 裁切页隐藏上一步下一步底栏", /immersiveContent=\{isCropping\}/.test(garmentIntakeFlow));
-check("GarmentIntakeFlow 缩略图浮层固定宽度并禁止文字换行", /function ThumbnailActionPopover/.test(garmentIntakeFlow) && /w-\[212px\]/.test(garmentIntakeFlow) && /whitespace-nowrap/.test(garmentIntakeFlow));
-check("GarmentIntakeFlow 缩略图浮层箭头按选中缩略图中心定位", /arrowLeft/.test(garmentIntakeFlow) && /selectedCenter/.test(garmentIntakeFlow));
+check("GarmentIntakeFlow 缩略图操作复用共享 Popover", /function ThumbnailActionPopover/.test(garmentIntakeFlow) && /<MotionPopoverMenu[\s\S]{0,160}anchorRef=\{targetRef/.test(garmentIntakeFlow));
+check("GarmentIntakeFlow 缩略图 Popover 锚定当前可见按钮", /const activeThumbRef = useRef<HTMLButtonElement/.test(garmentIntakeFlow) && /ref=\{item\.id === activeImageId \? activeThumbRef/.test(garmentIntakeFlow));
+check("GarmentIntakeFlow 缩略图浮层保留紧凑宽度并禁止文字换行", /w-\[212px\]/.test(garmentIntakeFlow) && /whitespace-nowrap/.test(garmentIntakeFlow));
 check("GarmentIntakeFlow 步骤2不再强制保存并下一张", !/handleSaveCurrentAndContinue|保存并下一张/.test(garmentIntakeFlow));
+check("GarmentIntakeFlow 部分保存确认复用 ConfirmActionSheet", /<ConfirmActionSheet[\s\S]{0,260}pendingSaveDrafts/.test(garmentIntakeFlow) && !/fixed inset-0 z-\[110\]/.test(garmentIntakeFlow));
 check("GarmentIntakeFlow 允许未裁切直接开始识别", !/请先裁切所有图片/.test(garmentIntakeFlow) && /imageToProcess =[\s\S]{0,120}item\.croppedImageDataUrl \?\? item\.displayDataUrl \?\? item\.originalDataUrl/.test(garmentIntakeFlow));
 check("GarmentIntakeFlow 相册/拍照取消直接返回空结果", /catch \(error\) \{[\s\S]{0,80}isImagePickerCancelError\(error\)[\s\S]{0,40}return \[\]/.test(wardrobeApp));
 check("GarmentIntakeFlow 相册 fallback 超时会清理 pendingGalleryResolverRef", /const finish = \(files: File\[\] \| null\)[\s\S]+?pendingGalleryResolverRef\.current = null[\s\S]+?timeout = setTimeout\(\(\) => finish\(null\), 30000\)/.test(wardrobeApp));

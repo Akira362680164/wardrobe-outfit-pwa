@@ -14,9 +14,10 @@
 // - 蒙层: rgba(0,0,0,0.4) (从 0.55 降到 0.4, 减暗)
 // - 9 宫格: 保留
 // ============================================================
-import { createPortal } from "react-dom";
-import { forwardRef, useCallback, useEffect, useImperativeHandle, useMemo, useRef, useState } from "react";
+import { forwardRef, useCallback, useEffect, useImperativeHandle, useMemo, useRef, useState, type ReactNode } from "react";
+import { OverlayPortal, useOverlayLayer } from "@/components/overlay-root";
 import { cropFromOriginal } from "@/lib/image";
+import { useScrollLock } from "@/lib/use-scroll-lock";
 import {
   applyCropFrameDrag,
   clampCropFrameToImage,
@@ -423,23 +424,19 @@ export const ImageCropEditor = forwardRef<ImageCropEditorHandle, ImageCropEditor
     { label: "3:4", value: 0.75 },
   ];
 
-  // ===== Fullscreen 模式: 包外层 fixed + 顶部/底部工具栏 =====
-  // v0.9.37-dev P0 §5: fullscreen 模式用 createPortal 渲染到 document.body,
-  // 绕开外层 (motion.div transform-gpu + main 流的 padding / scroll)
-  // 对 fixed containing block 的限制, 让 fixed inset-0 真正对齐到 viewport 0,0。
-  // 项目里 MotionToast (wardrobe-app.tsx) 已经在用这个模式, 验证过。
-  const fullscreen = (
+  // ===== Fullscreen 模式: 接入统一 OverlayStack，由单一 BackCoordinator 处理返回键 =====
+  const renderFullscreen = (requestCancel: () => void) => (
     <div
-      className="fixed inset-0 z-[120] flex h-[100dvh] w-screen flex-col overflow-hidden bg-black text-white select-none"
-      style={{ touchAction: "none" }}
+      className="flex h-full w-full flex-col overflow-hidden bg-black text-white select-none"
     >
       <div className="flex shrink-0 items-center justify-between px-4 pb-2 pt-[calc(env(safe-area-inset-top)+0.5rem)]">
         <button
           data-parity-id={`parity.app.app.src.components.image.crop.editor.0d95cfb1ff.${source.length}.${source.slice(-16)}`}
           type="button"
-          onClick={onCancel}
+          onClick={requestCancel}
+          disabled={confirming || rotating}
           aria-label="取消"
-          className="grid h-10 w-10 place-items-center ui-control-radius bg-white/15 text-base font-bold text-white backdrop-blur-sm hover:bg-white/25 transition-colors"
+          className="grid h-10 w-10 place-items-center ui-control-radius bg-white/15 text-base font-bold text-white backdrop-blur-sm hover:bg-white/25 transition-colors disabled:opacity-55"
         >
           ✕
         </button>
@@ -477,7 +474,7 @@ export const ImageCropEditor = forwardRef<ImageCropEditorHandle, ImageCropEditor
           <button
             data-parity-id={`parity.app.app.src.components.image.crop.editor.1366916fc1.${source.length}.${source.slice(-16)}`}
             type="button"
-            onClick={onCancel}
+            onClick={requestCancel}
             disabled={confirming || rotating}
             className="h-12 ui-control-radius border border-white/15 bg-white/10 text-sm font-semibold text-white/85 disabled:opacity-55"
           >
@@ -497,11 +494,105 @@ export const ImageCropEditor = forwardRef<ImageCropEditorHandle, ImageCropEditor
     </div>
   );
 
-  if (typeof document !== "undefined") {
-    return createPortal(fullscreen, document.body);
-  }
-  return fullscreen;
+  return (
+    <FullscreenCropperLayer busy={confirming || rotating} onCancel={onCancel}>
+      {renderFullscreen}
+    </FullscreenCropperLayer>
+  );
 });
+
+function FullscreenCropperLayer({
+  busy,
+  onCancel,
+  children,
+}: {
+  busy: boolean;
+  onCancel: () => void;
+  children: (requestCancel: () => void) => ReactNode;
+}) {
+  useScrollLock(true);
+  const layerRef = useRef<HTMLDivElement | null>(null);
+  const didInitialFocusRef = useRef(false);
+  const [blockedAnnouncement, setBlockedAnnouncement] = useState("");
+  const handleBlockedDismiss = useCallback(() => {
+    setBlockedAnnouncement("正在处理图片，暂时无法关闭裁切器");
+  }, []);
+  const { overlayId, isTopmost, requestDismiss } = useOverlayLayer({
+    kind: "cropper",
+    dismissible: !busy,
+    onDismiss: onCancel,
+    onDismissBlocked: handleBlockedDismiss,
+  });
+  const requestCancel = useCallback(() => {
+    requestDismiss("backdrop");
+  }, [requestDismiss]);
+
+  useEffect(() => {
+    if (!isTopmost || didInitialFocusRef.current) return;
+    didInitialFocusRef.current = true;
+    const frame = window.requestAnimationFrame(() => {
+      const layer = layerRef.current;
+      if (!layer) return;
+      const focusable = layer.querySelector<HTMLElement>(
+        'button:not([disabled]), [href], input, select, textarea, [tabindex]:not([tabindex="-1"])',
+      );
+      (focusable ?? layer).focus();
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, [isTopmost]);
+
+  useEffect(() => {
+    if (!isTopmost) return;
+    const handleTab = (event: KeyboardEvent) => {
+      if (event.key !== "Tab") return;
+      const layer = layerRef.current;
+      if (!layer) return;
+      const focusable = Array.from(
+        layer.querySelectorAll<HTMLElement>(
+          'button:not([disabled]), [href], input, select, textarea, [tabindex]:not([tabindex="-1"])',
+        ),
+      ).filter((node) => node.tabIndex !== -1);
+      if (focusable.length === 0) {
+        event.preventDefault();
+        layer.focus();
+        return;
+      }
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+      if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault();
+        first.focus();
+      }
+    };
+    document.addEventListener("keydown", handleTab, true);
+    return () => document.removeEventListener("keydown", handleTab, true);
+  }, [isTopmost]);
+
+  return (
+    <OverlayPortal>
+      <div
+        ref={layerRef}
+        role="dialog"
+        aria-modal="true"
+        aria-label="裁切衣物图片"
+        tabIndex={-1}
+        data-overlay-layer={overlayId}
+        data-overlay-kind="cropper"
+        data-overlay-topmost={isTopmost ? "true" : "false"}
+        aria-hidden={isTopmost ? undefined : "true"}
+        inert={isTopmost ? undefined : true}
+        className="fixed inset-0 z-[120] h-[100dvh] w-screen overflow-hidden bg-black outline-none"
+        style={{ touchAction: "none" }}
+      >
+        {children(requestCancel)}
+        <span className="sr-only" role="status" aria-live="polite">{blockedAnnouncement}</span>
+      </div>
+    </OverlayPortal>
+  );
+}
 
 function CornerHandle({ corner }: { corner: "TL" | "TR" | "BL" | "BR" }) {
   // 按微信截图样式: 4 角 L 把手 (白色横 + 白色竖, 18px)

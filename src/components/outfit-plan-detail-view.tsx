@@ -8,7 +8,7 @@ import { getEntriesForDate, resolvePrimaryDisplayEntryForDate, PLAN_TONE_CLASS_M
 import { getOutfitCover } from "@/lib/outfit-cover";
 import { OutfitCover } from "@/components/outfit-cover";
 import { AppSubPageTopBar } from "@/components/app-sub-page-top-bar";
-import { MotionSheet } from "@/components/motion-common";
+import { ConfirmActionSheet } from "@/components/dialogs";
 
 interface OutfitPlanDetailViewProps {
   calendarPlan: OutfitCalendarPlan;
@@ -52,6 +52,7 @@ export function OutfitPlanDetailView({
 }: OutfitPlanDetailViewProps) {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
   const dateRange = enumerateDateRange(calendarPlan.startDate, calendarPlan.endDate);
   const days = dateRange.length;
   const typeLabel = planTypeLabel(calendarPlan.type);
@@ -62,12 +63,16 @@ export function OutfitPlanDetailView({
     : `${calendarPlan.startDate} 至 ${calendarPlan.endDate}`;
 
   async function confirmDelete() {
+    if (deleting) return;
     setDeleting(true);
+    setDeleteError(null);
     try {
       await onDelete();
+      setShowDeleteConfirm(false);
+    } catch (error) {
+      setDeleteError(error instanceof Error ? error.message : "删除失败，请重试");
     } finally {
       setDeleting(false);
-      setShowDeleteConfirm(false);
     }
   }
 
@@ -238,18 +243,20 @@ export function OutfitPlanDetailView({
         <div className="h-[calc(env(safe-area-inset-bottom)+4rem)]" />
       </div>
 
-      <MotionSheet open={showDeleteConfirm} onClose={() => setShowDeleteConfirm(false)}>
-        <div className="text-center">
-          <h3 className="text-base font-semibold text-ink">删除{calendarPlan.type === "custom" ? "" : typeLabel}计划？</h3>
-          <p className="mt-1 text-sm text-ink/55">只会删除{calendarPlan.type === "custom" ? "" : typeLabel}计划和它的打包清单，每日穿搭安排会保留。</p>
-          <div className="mt-4 grid grid-cols-2 gap-3">
-            <button type="button" className="h-11 rounded-full border border-ink/10 text-sm font-medium text-ink/70" data-parity-id="parity.app.app.src.components.outfit.plan.detail.view.1492018fc9" onClick={() => setShowDeleteConfirm(false)}>取消</button>
-            <button type="button" className="h-11 rounded-full bg-red-600 text-sm font-semibold text-white disabled:opacity-50" disabled={deleting} data-parity-id="parity.app.app.src.components.outfit.plan.detail.view.1d2ed2125a" onClick={confirmDelete}>
-              {deleting ? "删除中..." : "删除计划"}
-            </button>
-          </div>
-        </div>
-      </MotionSheet>
+      <ConfirmActionSheet
+        open={showDeleteConfirm}
+        title={`删除${calendarPlan.type === "custom" ? "" : typeLabel}计划？`}
+        description={`只会删除${calendarPlan.type === "custom" ? "" : typeLabel}计划和它的打包清单，每日穿搭安排会保留。`}
+        confirmLabel="删除计划"
+        tone="danger"
+        submitting={deleting}
+        error={deleteError}
+        onConfirm={confirmDelete}
+        onClose={() => {
+          setShowDeleteConfirm(false);
+          setDeleteError(null);
+        }}
+      />
     </div>
   );
 }

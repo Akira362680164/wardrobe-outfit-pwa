@@ -84,6 +84,9 @@ const parentDeleteBlock = outfitListView.slice(parentDeleteStart, parentDeleteEn
 const detailDeleteStart = outfitListView.indexOf("async function handleDeleteOutfit() {", parentDeleteEnd);
 const detailDeleteEnd = outfitListView.indexOf("async function saveAiSuggestion", detailDeleteStart);
 const detailDeleteBlock = outfitListView.slice(detailDeleteStart, detailDeleteEnd);
+const realImageViewStart = outfitListView.indexOf("function RealImageView(");
+const realImageViewEnd = outfitListView.indexOf("function OutfitInfoForm(", realImageViewStart);
+const realImageViewBlock = outfitListView.slice(realImageViewStart, realImageViewEnd);
 const outfitCardStart = outfitListView.indexOf('<div className="grid grid-cols-2 gap-3">');
 const outfitCardEnd = outfitListView.indexOf("{/* padding for global + */}", outfitCardStart);
 const outfitCardBlock = outfitListView.slice(outfitCardStart, outfitCardEnd);
@@ -96,6 +99,13 @@ assert.match(parentDeleteBlock, /onCloseOutfitDetail\?\.\(\)/);
 assert.match(parentDeleteBlock, /onMessage\("删除失败，请重试", "error"\)/);
 assert.doesNotMatch(parentDeleteBlock.slice(parentDeleteBlock.indexOf("catch")), /setViewingOutfitId\(null\)|setSubPage\("library"\)/);
 assert.match(detailDeleteBlock, /await onDeleteOutfit\(\)/);
+assert.match(detailDeleteBlock, /setDeleteSubmitting\(true\)/, "套装删除确认必须进入 busy 状态");
+assert.match(outfitListView, /<ConfirmActionSheet[\s\S]{0,320}submitting=\{deleteSubmitting\}/, "套装删除期间确认层必须不可 dismiss");
+assert.match(realImageViewBlock, /<MotionPopoverMenu[\s\S]{0,180}anchorRef=\{menuRef/, "实图菜单必须锚定当前更多按钮");
+assert.match(realImageViewBlock, /<MotionSheet[\s\S]{0,320}ariaLabel="编辑穿搭实图说明"[\s\S]{0,160}dismissible=\{!captionSaving\}/, "实图说明编辑必须接入可锁定的共享 Sheet");
+assert.match(realImageViewBlock, /submitting=\{deleteSubmitting\}/, "实图删除期间确认层必须不可 dismiss");
+assert.doesNotMatch(realImageViewBlock, /fixed inset-0|absolute right-4 z-50/, "实图页不得保留私有 dialog 或 popover");
+assert.match(garmentDetail, /<MotionSheet open onClose=\{onClose\} variant="form" ariaLabel="移动衣物"/, "移动衣物必须使用有语义的共享 Sheet");
 
 const wardrobeAppForBackfill = readFileSync(join(root, "src/components/wardrobe-app.tsx"), "utf8");
 

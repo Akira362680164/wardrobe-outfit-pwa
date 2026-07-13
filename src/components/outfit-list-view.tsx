@@ -679,6 +679,7 @@ export function OutfitListView({
 		      onMessage("已删除旅行计划");
 		    } catch (error) {
 		      onMessage(error instanceof Error ? error.message : "操作失败，请重试", "error");
+		      throw error;
 		    }
 		  }
 
@@ -1358,7 +1359,7 @@ export function OutfitListView({
 	      )}
 
 	      {/* Add Plan Sheet */}
-	      <MotionSheet open={addPlanSheetOpen} onClose={() => setAddPlanSheetOpen(false)}>
+	      <MotionSheet open={addPlanSheetOpen} onClose={() => setAddPlanSheetOpen(false)} variant="action" ariaLabel="添加穿搭计划">
 	        <div className="text-center">
 	          <h3 className="text-base font-semibold text-ink mb-3">添加计划</h3>
 	          <div className="space-y-2">
@@ -1453,6 +1454,8 @@ function OutfitDetailView({
 }) {
   const [menuOpen, setMenuOpen] = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState(false);
+  const [deleteSubmitting, setDeleteSubmitting] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
   const [detailTab, setDetailTab] = useState<OutfitDetailTab>(initialTab ?? "info");
   const [isGeneratingAdvice, setIsGeneratingAdvice] = useState(false);
   const [adviceError, setAdviceError] = useState("");
@@ -1501,12 +1504,18 @@ function OutfitDetailView({
   const activeFilmstripId = activeSlideData?.kind === "real" ? activeSlideData.image.id : "cover";
 
   async function handleDeleteOutfit() {
+    if (deleteSubmitting) return;
     setMenuOpen(false);
+    setDeleteSubmitting(true);
+    setDeleteError(null);
     try {
       await onDeleteOutfit();
       setDeleteConfirm(false);
-    } catch {
+    } catch (error) {
+      setDeleteError(error instanceof Error ? error.message : "删除失败，请重试");
       // 父层负责 toast；失败时保留详情页和确认弹窗。
+    } finally {
+      setDeleteSubmitting(false);
     }
   }
 
@@ -1583,7 +1592,20 @@ function OutfitDetailView({
             <button type="button" data-parity-id="parity.app.app.src.components.outfit.list.view.db73d8b142" onClick={() => { setMenuOpen(false); setDeleteConfirm(true); }} className="flex w-full items-center gap-2 rounded-lg px-3 py-2.5 text-sm text-red-600 hover:bg-red-50"><Trash2 size={14} />删除套装</button>
           </div>
         </MotionPopoverMenu>
-        <ConfirmActionSheet open={deleteConfirm} title={`删除「${outfit.name}」？`} description="删除后不会影响套装内的衣物，套装实图也会一并删除。" confirmLabel="删除" tone="danger" onConfirm={handleDeleteOutfit} onClose={() => setDeleteConfirm(false)} />
+        <ConfirmActionSheet
+          open={deleteConfirm}
+          title={`删除「${outfit.name}」？`}
+          description="删除后不会影响套装内的衣物，套装实图也会一并删除。"
+          confirmLabel="删除"
+          tone="danger"
+          submitting={deleteSubmitting}
+          error={deleteError}
+          onConfirm={handleDeleteOutfit}
+          onClose={() => {
+            setDeleteConfirm(false);
+            setDeleteError(null);
+          }}
+        />
       </>}
     >
 
@@ -1873,14 +1895,18 @@ function RealImageView({
 }: {
   image: OutfitRealImage;
   onBack: () => void;
-  onDelete: () => void;
-  onSaveCaption: (caption: string) => void;
+  onDelete: () => void | Promise<void>;
+  onSaveCaption: (caption: string) => void | Promise<void>;
   onExpandImage: (image: { src: string; alt: string }) => void;
 }) {
   const [menuOpen, setMenuOpen] = useState(false);
   const [editingCaption, setEditingCaption] = useState(false);
   const [captionDraft, setCaptionDraft] = useState(image.caption ?? "");
   const [deleteConfirm, setDeleteConfirm] = useState(false);
+  const [deleteSubmitting, setDeleteSubmitting] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
+  const [captionSaving, setCaptionSaving] = useState(false);
+  const [captionError, setCaptionError] = useState<string | null>(null);
   const menuRef = useRef<HTMLButtonElement>(null);
 
   return (
@@ -1892,8 +1918,8 @@ function RealImageView({
         </button>
       </div>
 
-      {menuOpen && (
-        <div className="absolute right-4 z-50 mt-1 w-40 rounded-xl border border-ink/8 bg-white py-1 shadow-lg">
+      <MotionPopoverMenu visible={menuOpen} onClose={() => setMenuOpen(false)} anchorRef={menuRef as React.RefObject<HTMLElement | null>}>
+        <div className="w-40 py-1">
           <button type="button" data-parity-id="parity.app.app.src.components.outfit.list.view.fc53cffe40" onClick={() => { setMenuOpen(false); setEditingCaption(true); setCaptionDraft(image.caption ?? ""); }} className="flex w-full items-center gap-2 px-4 py-2.5 text-sm hover:bg-milk-darker/40">
             <Pencil size={14} />编辑说明
           </button>
@@ -1901,15 +1927,54 @@ function RealImageView({
             <Trash2 size={14} />删除实图
           </button>
         </div>
-      )}
+      </MotionPopoverMenu>
 
       {/* Delete confirm */}
-      <ConfirmActionSheet open={deleteConfirm} title="删除这张穿搭实图？" description="删除后不会影响套装内的衣物，也不会删除套装。" confirmLabel="删除" tone="danger" onConfirm={onDelete} onClose={() => setDeleteConfirm(false)} />
+      <ConfirmActionSheet
+        open={deleteConfirm}
+        title="删除这张穿搭实图？"
+        description="删除后不会影响套装内的衣物，也不会删除套装。"
+        confirmLabel="删除"
+        tone="danger"
+        submitting={deleteSubmitting}
+        error={deleteError}
+        onConfirm={async () => {
+          if (deleteSubmitting) return;
+          setDeleteSubmitting(true);
+          setDeleteError(null);
+          try {
+            await onDelete();
+            setDeleteConfirm(false);
+          } catch (error) {
+            setDeleteError(error instanceof Error ? error.message : "删除失败，请重试");
+          } finally {
+            setDeleteSubmitting(false);
+          }
+        }}
+        onClose={() => {
+          setDeleteConfirm(false);
+          setDeleteError(null);
+        }}
+      />
 
       {/* Caption edit */}
-      {editingCaption && (
-        <div className="fixed inset-0 z-70 flex items-center justify-center bg-black/30" data-parity-id="parity.app.app.src.components.outfit.list.view.e384998688" onClick={() => setEditingCaption(false)}>
-          <div className="mx-4 w-full max-w-sm rounded-2xl bg-white p-6" data-parity-id="parity.app.app.src.components.outfit.list.view.aa4b7fd200" onClick={(e) => e.stopPropagation()}>
+      <MotionSheet
+        open={editingCaption}
+        onClose={() => {
+          if (!captionSaving) {
+            setEditingCaption(false);
+            setCaptionError(null);
+          }
+        }}
+        variant="form"
+        preferBottom={false}
+        ariaLabel="编辑穿搭实图说明"
+        dismissible={!captionSaving}
+        closeOnBackdrop={!captionSaving}
+        closeOnEscape={!captionSaving}
+        panelClassName="sm:max-w-sm"
+      >
+          <div>
             <p className="text-sm font-medium">编辑说明</p>
             <input
               type="text"
@@ -1917,13 +1982,31 @@ function RealImageView({
               data-parity-id="parity.app.app.src.components.outfit.list.view.55c593c654" onChange={(e) => setCaptionDraft(e.target.value)}
               className="mt-2 w-full rounded-xl border border-ink/10 px-3 py-2 text-sm"
             />
+            {captionError ? <p role="alert" className="mt-2 text-xs text-red-600">{captionError}</p> : null}
             <div className="mt-4 flex gap-3">
-              <button type="button" data-parity-id="parity.app.app.src.components.outfit.list.view.c67aaefef9" onClick={() => setEditingCaption(false)} className="flex-1 rounded-full border border-ink/10 py-2 text-sm">取消</button>
-              <button type="button" data-parity-id="parity.app.app.src.components.outfit.list.view.822ac5a1bc" onClick={() => { onSaveCaption(captionDraft); setEditingCaption(false); }} className="flex-1 rounded-full bg-denim py-2 text-sm font-medium text-white">保存</button>
+              <button type="button" disabled={captionSaving} data-parity-id="parity.app.app.src.components.outfit.list.view.c67aaefef9" onClick={() => setEditingCaption(false)} className="flex-1 rounded-full border border-ink/10 py-2 text-sm disabled:opacity-50">取消</button>
+              <button
+                type="button"
+                disabled={captionSaving}
+                data-parity-id="parity.app.app.src.components.outfit.list.view.822ac5a1bc"
+                onClick={async () => {
+                  if (captionSaving) return;
+                  setCaptionSaving(true);
+                  setCaptionError(null);
+                  try {
+                    await onSaveCaption(captionDraft);
+                    setEditingCaption(false);
+                  } catch (error) {
+                    setCaptionError(error instanceof Error ? error.message : "保存失败，请重试");
+                  } finally {
+                    setCaptionSaving(false);
+                  }
+                }}
+                className="flex-1 rounded-full bg-denim py-2 text-sm font-medium text-white disabled:opacity-50"
+              >{captionSaving ? "保存中..." : "保存"}</button>
             </div>
           </div>
-        </div>
-      )}
+      </MotionSheet>
 
       {/* Large image */}
       <OnlineAssetImage asset={image.image.asset} variant="original" alt={image.caption ?? "穿搭实图"} className="max-h-[60vh] w-full rounded-xl" onOpen={(url) => onExpandImage({ src: url, alt: image.caption ?? "穿搭实图" })} />

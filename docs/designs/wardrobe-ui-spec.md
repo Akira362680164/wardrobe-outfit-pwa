@@ -286,6 +286,15 @@ Icon-only 按钮必须有 `aria-label`；图标与文字组合时图标使用 `a
 - 衣橱新增、编辑、迁移、删除，画像 / 参考照 / MiniMax 保存，账号改绑 / 改密与最终注销在请求完成和服务端读回前保持当前页面或 Sheet；busy 时 `dismissible=false`，Back、Escape、backdrop、取消和重复提交均不得中断事务。
 - 本小节只声明 A2-App 独占区域完成迁移；衣橱列表 / 详情、套装、种草、录入、Lightbox、Popover 与 Cropper 的遗留 listener 或私有覆盖层由 A2-Core / A2-Flows 及后续命名 Wave 负责，不得据此宣称全 App 已无遗留层。
 
+##### 6.1.4 A2-Flows 业务流浮层迁移
+
+- 详情、穿搭计划、打包清单、种草和录入流程的操作面板、表单面板与危险确认统一使用 `MotionSheet`、`MotionPopoverMenu`、`ConfirmActionSheet`；业务组件不再用私有 `fixed inset-0` 遮罩模拟 Dialog/Sheet，也不自行抢占 Back/Escape。
+- `IntakeFlowShell` 以 `kind=fullscreen`、全屏 `ImageCropEditor` 以 `kind=cropper` 注册到 OverlayStack，并复用共享 Portal、滚动锁、topmost、焦点圈定、`inert/aria-hidden` 与触发器焦点恢复生命周期；嵌入式裁切仍属于录入 Shell 内容，不重复注册。
+- 上传、保存、删除、重置、种草转衣橱或裁切应用进行中时，当前层保持 `dismissible=false`；Android Back、Escape、遮罩和显式关闭不得中断事务，关闭请求提供“操作进行中”反馈。失败后保留当前确认层、输入草稿与重试入口，成功仅在服务器提交并读回后关闭。
+- Popover 的 `anchorRef` 必须指向当前可见的触发按钮。种草首页菜单、种草详情菜单、套装详情菜单与穿搭实图菜单不得复用不可见页或无关表单控件的 ref。
+- 页面级 `useStableBackHandler` 只负责选择模式、未保存草稿和子页导航；OverlayStack 先处理 Sheet、Dialog、Popover、Lightbox、Cropper。一次返回事件只关闭或拒绝一个 topmost 状态，不继续穿透到页面导航。
+- 本节只迁移浮层生命周期和 busy 安全，不改轮播/日历轨道、裁切阻尼、手势物理或路由导航结构；相关连续性与手势优化仍由后续专属 Wave 实施。
+
 #### 6.2 并行 Wave 规范所有权
 
 并行 Session 对运行时文件实行独占所有权；规范只允许修改下列命名小节。生成的 HTML 与 `VERSION_HISTORY.md` 在每个 Wave 合入后由主 Agent 保全并重生成。
