@@ -1,3 +1,12 @@
+## 2026-07-13 / v2.1.18-test / Codex — Wardora 审计修复收口
+
+- **执行 Agent**：Codex（独立收口分支 `codex/wardora-closeout-20260713`；修复提交 `8fe94d73` 已纳入，未触碰正式工作区中的既有未跟踪文件）。
+- **版本变更**：App `2.1.17-test` → `2.1.18-test`，Android `versionCode=20118`；小程序体验版随最新 main 同步。
+- **范围**：会话续期幂等与代际保护、工作区并发/事务约束、0018 数据约束迁移、请求竞态防旧响应覆盖、删除 in-progress 读回、profile singleton、小程序全量分页、撤销购买属性继承；不包含新版推荐首页、QWeather 或 PAW。
+- **本地验证**：根/App、cloud contracts、API、小程序 typecheck 通过；Next build 通过；API 测试 `115/115`；会话/在线写入/canonical UUID/主计划/撤销购买/profile singleton/小程序 refresh 与分页合同通过；空库完整迁移和生产备份恢复副本的 0018 成功、profile 重复 fail-fast/回滚演练通过。日期主计划合同已同步到统一日期锁 helper。
+- **服务器规则**：已将“服务端/迁移/云契约/生产配置改动合入 main 后，必须用最新 main 构建并更新生产 API，部署后核对迁移、health、ready、version 和未授权边界”加入正式根 `AGENTS.md`。
+- **当前状态**：生产 0018、API 部署、固定签名 APK 构建/安装和小程序体验版上传仍待本轮串行收口；未提交微信正式审核或正式发布。
+
 ## 2026-07-13 / v2.1.17-test / Codex — 会话续期、工作区并发一致性与撤销购买语义修复
 
 - **执行 Agent**：Codex（独立 worktree `codex/session-repair-20260713`；未触发 subagent；未修改正式 `main`、小程序正式分支或生产环境）。
