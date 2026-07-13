@@ -1,3 +1,11 @@
+## 2026-07-13 / v2.1.18-test / Codex — Wardora 审计修复正式小程序集成与体验版
+
+- **基线**：`wechat/miniprogram` 已串行合入正式 `main` 的 Wardora 修复；保留该分支既有套装首页、周历/月历布局改动，并纳入 refresh pending ID、会话代际保护和衣物/套装/种草全量 cursor 分页。
+- **验证**：小程序 typecheck、build-info/catalog check、长会话/refresh、衣橱/种草/套装旅行/日历 UI、资产生命周期、撤销购买属性继承和 canonical UUID 定向测试通过；微信开发者工具 `simulator_open_page` 对衣橱、穿搭月历、种草页成功，WXML/WXSS 编译通过。当前 skill 不提供 `compile_js`，TS 由 typecheck 覆盖。
+- **体验版**：上传版本 `2.1.18`（包内 `2.1.18-test`），上传成功，代码包 `808,752` bytes；预览二维码生成成功，代码包生成摘要 `780,200` bytes，二维码为 [衣橱穿搭助手-小程序-v2.1.18-预览二维码.jpg](/Users/fangzheng/Downloads/衣橱穿搭助手-小程序-v2.1.18-预览二维码.jpg)，46,923 bytes，SHA-256 `d08a542e3f9fcc3d1141830543b7ded2f7096d3c7ac4bed3274dd1c0bd23e4a0`。
+- **服务器规则与收口**：正式根 `AGENTS.md` 已要求任何服务端相关改动合入 `main` 后必须用最新 main 构建并更新生产 API；本轮生产 API 已更新到 `aff43975`，0018、health/ready/version/401 门禁通过。未提交微信正式审核或正式发布。
+- **剩余风险**：未覆盖微信真机账号下的长会话、真实业务写入读回和窄屏触摸回归；二维码/体验版仅代表开发者预览，不是正式线上版本。
+
 ## 2026-07-13 / v2.1.17-test / Codex — 小程序套装首页与月历布局收口
 
 - **执行 Agent**：Codex；在独立 `codex/mini-calendar-layout-20260713` worktree 实施，正式集成目标为 `wechat/miniprogram`。

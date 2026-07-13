@@ -6,6 +6,7 @@ const indexTs = fs.readFileSync("apps/wechat-miniprogram/pages/wardrobe/index/in
 const indexWxml = fs.readFileSync("apps/wechat-miniprogram/pages/wardrobe/index/index.wxml", "utf8");
 const search = fs.readFileSync("apps/wechat-miniprogram/pages/wardrobe/search/index.ts", "utf8");
 const stats = fs.readFileSync("apps/wechat-miniprogram/pages/wardrobe/statistics/index.ts", "utf8");
+const statistics = fs.readFileSync("apps/wechat-miniprogram/utils/wear-statistics.ts", "utf8");
 const card = fs.readFileSync("apps/wechat-miniprogram/components/domain/catalog-card/index.wxml", "utf8");
 
 for (const page of ["pages/wardrobe/search/index", "pages/wardrobe/statistics/index"]) assert.ok(app.pages.includes(page));
@@ -17,9 +18,10 @@ assert.match(search, /locationId === this\.data\.scope/);
 assert.match(search, /item\.category === this\.data\.category/);
 assert.match(stats, /monthlyOutfitCount/);
 assert.match(stats, /monthlyItemCount/);
-assert.match(stats, /days >= 45/);
-assert.match(stats, /convertedGarmentId/);
-assert.match(stats, /usesPer30Days|per30/);
+assert.match(stats, /idleCount/);
+assert.match(statistics, /days >= 45/);
+assert.match(statistics, /convertedGarmentId/);
+assert.match(statistics, /usesPer30Days|per30/);
 assert.match(card, /bindlongpress="onLongPress"/);
 assert.match(indexTs, /confirmBatchDelete/);
 assert.match(indexTs, /deleteWorkspaceEntity/);
