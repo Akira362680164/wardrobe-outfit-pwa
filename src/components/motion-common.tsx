@@ -10,6 +10,7 @@ import { duration, ease, pop, scaleModal, slideRight, slideRightExit, slideUp, s
 import { useScrollLock } from "@/lib/use-scroll-lock";
 import { OriginalCroppedImage } from "@/components/original-cropped-image";
 import { OverlayPortal, useOverlayLayer } from "@/components/overlay-root";
+import { useLightboxDragDismiss } from "@/components/use-lightbox-drag-dismiss";
 import type { OverlayDismissReason } from "@/lib/overlay-stack";
 
 const FOCUSABLE_SELECTOR =
@@ -649,6 +650,65 @@ export function MotionCard({
 /*  MotionImageLightbox – scale + opacity transition                  */
 /* ------------------------------------------------------------------ */
 
+interface PendingLightboxSourceAnchor {
+  element: HTMLElement;
+  capturedAt: number;
+}
+
+let pendingLightboxSourceAnchor: PendingLightboxSourceAnchor | null = null;
+
+/**
+ * Records the concrete image surface that is about to open the shared
+ * Lightbox. Keeping this as a one-shot presentation hint avoids widening the
+ * persisted image model or the app navigation contract with DOM references.
+ */
+export function rememberLightboxSourceAnchor(element: HTMLElement | null): void {
+  if (!element?.isConnected) return;
+  pendingLightboxSourceAnchor = { element, capturedAt: Date.now() };
+}
+
+function consumeLightboxSourceAnchor(): HTMLElement | null {
+  const pending = pendingLightboxSourceAnchor;
+  pendingLightboxSourceAnchor = null;
+  if (!pending || Date.now() - pending.capturedAt > 2_000 || !pending.element.isConnected) return null;
+  return pending.element;
+}
+
+function getVisibleSourceRect(element: HTMLElement | null): DOMRect | null {
+  if (!element?.isConnected) return null;
+  const style = window.getComputedStyle(element);
+  if (style.display === "none" || style.visibility === "hidden" || Number(style.opacity) <= 0.01) return null;
+  const rect = element.getBoundingClientRect();
+  if (rect.width <= 1 || rect.height <= 1) return null;
+  const visualViewport = window.visualViewport;
+  const left = visualViewport?.offsetLeft ?? 0;
+  const top = visualViewport?.offsetTop ?? 0;
+  const right = left + (visualViewport?.width ?? window.innerWidth);
+  const bottom = top + (visualViewport?.height ?? window.innerHeight);
+  if (rect.right <= left || rect.left >= right || rect.bottom <= top || rect.top >= bottom) return null;
+  return rect;
+}
+
+function getSourceTransform(sourceRect: DOMRect, targetRect: DOMRect): string {
+  const sourceCenterX = sourceRect.left + sourceRect.width / 2;
+  const sourceCenterY = sourceRect.top + sourceRect.height / 2;
+  const targetCenterX = targetRect.left + targetRect.width / 2;
+  const targetCenterY = targetRect.top + targetRect.height / 2;
+  const scaleX = Math.max(0.02, sourceRect.width / Math.max(1, targetRect.width));
+  const scaleY = Math.max(0.02, sourceRect.height / Math.max(1, targetRect.height));
+  return `translate3d(${sourceCenterX - targetCenterX}px, ${sourceCenterY - targetCenterY}px, 0) scale(${scaleX}, ${scaleY})`;
+}
+
+function runLightboxElementAnimation(
+  element: HTMLElement | null,
+  keyframes: Keyframe[],
+  options: KeyframeAnimationOptions,
+): Promise<void> {
+  if (!element || typeof element.animate !== "function") return Promise.resolve();
+  const animation = element.animate(keyframes, options);
+  return animation.finished.then(() => undefined, () => undefined);
+}
+
 interface MotionImageLightboxProps {
   open: boolean;
   onClose: () => void;
@@ -658,6 +718,10 @@ interface MotionImageLightboxProps {
   cropBox?: { x: number; y: number; width: number; height: number };
   displayMode?: "original-cropped";
   ariaLabel?: string;
+  /** Down-drag is disabled while a zoom implementation owns pan gestures. */
+  zoomScale?: number;
+  isPanning?: boolean;
+  dragDismissEnabled?: boolean;
 }
 
 function MotionImageLightboxLayer({
@@ -668,19 +732,125 @@ function MotionImageLightboxLayer({
   cropBox,
   displayMode,
   ariaLabel,
+  zoomScale = 1,
+  isPanning = false,
+  dragDismissEnabled = true,
 }: Omit<MotionImageLightboxProps, "open">) {
   // Keep both the stack entry and scroll lock alive until the exit animation
   // has completed, so a closing image cannot briefly expose the page below.
   useScrollLock(true);
   const layerRef = useRef<HTMLDivElement | null>(null);
+  const backdropEntranceRef = useRef<HTMLDivElement | null>(null);
+  const anchorTransitionRef = useRef<HTMLDivElement | null>(null);
+  const sourceAnchorRef = useRef<HTMLElement | null>(null);
+  const sourceVisibilityRef = useRef("");
+  const closingRef = useRef(false);
+  const prefersReducedMotion = useReducedMotion();
+  const onCloseRef = useRef(onClose);
+  onCloseRef.current = onClose;
+
+  const restoreSourceVisibility = useCallback(() => {
+    const source = sourceAnchorRef.current;
+    if (!source?.isConnected) return;
+    source.style.visibility = sourceVisibilityRef.current;
+  }, []);
+
+  const finishClose = useCallback(() => {
+    restoreSourceVisibility();
+    onCloseRef.current();
+  }, [restoreSourceVisibility]);
+
+  const dragDismiss = useLightboxDragDismiss({
+    onDismiss: finishClose,
+    enabled: dragDismissEnabled,
+    zoomScale,
+    isPanning,
+  });
+
+  const beginClose = useCallback(async () => {
+    if (closingRef.current) return;
+    closingRef.current = true;
+    dragDismiss.y.set(0);
+
+    const source = sourceAnchorRef.current;
+    let sourceRect: DOMRect | null = null;
+    if (source?.isConnected) {
+      const hiddenVisibility = source.style.visibility;
+      source.style.visibility = sourceVisibilityRef.current;
+      sourceRect = getVisibleSourceRect(source);
+      source.style.visibility = hiddenVisibility;
+    }
+    const target = anchorTransitionRef.current;
+    const targetPresentation = target ? window.getComputedStyle(target) : null;
+    const targetStartTransform = targetPresentation?.transform && targetPresentation.transform !== "none"
+      ? targetPresentation.transform
+      : "translate3d(0, 0, 0) scale(1, 1)";
+    const targetStartBorderRadius = targetPresentation?.borderRadius || "0px";
+    const targetStartOpacity = Number(targetPresentation?.opacity ?? 1);
+    target?.getAnimations().forEach((animation) => animation.cancel());
+    const targetRect = target?.getBoundingClientRect();
+    const canReturnToSource = !prefersReducedMotion && sourceRect && targetRect && targetRect.width > 1 && targetRect.height > 1;
+
+    if (target) target.dataset.lightboxSourceTransition = canReturnToSource ? "source" : "fade";
+    const durationMs = canReturnToSource ? 240 : prefersReducedMotion ? 100 : 120;
+    const targetAnimation = canReturnToSource && sourceRect && targetRect
+      ? runLightboxElementAnimation(target, [
+          { transform: targetStartTransform, borderRadius: targetStartBorderRadius, opacity: targetStartOpacity },
+          { transform: getSourceTransform(sourceRect, targetRect), borderRadius: "16px", opacity: 0.92 },
+        ], { duration: durationMs, easing: "cubic-bezier(0.4, 0, 1, 1)", fill: "forwards" })
+      : runLightboxElementAnimation(target, prefersReducedMotion
+        ? [{ opacity: targetStartOpacity }, { opacity: 0 }]
+        : [
+            { transform: targetStartTransform, opacity: targetStartOpacity },
+            { transform: "scale(0.985)", opacity: 0 },
+          ], { duration: durationMs, easing: "cubic-bezier(0.4, 0, 1, 1)", fill: "forwards" });
+    const backdrop = backdropEntranceRef.current;
+    const backdropStartOpacity = Number(backdrop ? window.getComputedStyle(backdrop).opacity : 1);
+    backdrop?.getAnimations().forEach((animation) => animation.cancel());
+    const backdropAnimation = runLightboxElementAnimation(backdropEntranceRef.current, [
+      { opacity: backdropStartOpacity },
+      { opacity: 0 },
+    ], { duration: durationMs, easing: "cubic-bezier(0.4, 0, 1, 1)", fill: "forwards" });
+    await Promise.all([targetAnimation, backdropAnimation]);
+    finishClose();
+  }, [dragDismiss.y, finishClose, prefersReducedMotion]);
+
   const { overlayId, isTopmost, requestDismiss } = useOverlayLayer({
     kind: "lightbox",
-    onDismiss: () => onClose(),
+    onDismiss: () => { void beginClose(); },
   });
   useTopmostFocusScope(layerRef, isTopmost, '[data-lightbox-close="true"]');
   const handleDismiss = useCallback(() => {
     requestDismiss("backdrop");
   }, [requestDismiss]);
+
+  useLayoutEffect(() => {
+    const source = consumeLightboxSourceAnchor();
+    sourceAnchorRef.current = source;
+    const target = anchorTransitionRef.current;
+    const sourceRect = getVisibleSourceRect(source);
+    const targetRect = target?.getBoundingClientRect();
+    const canUseSource = !prefersReducedMotion && sourceRect && targetRect && targetRect.width > 1 && targetRect.height > 1;
+    if (target) target.dataset.lightboxSourceTransition = canUseSource ? "source" : "fade";
+    if (source) sourceVisibilityRef.current = source.style.visibility;
+
+    if (source && canUseSource) {
+      source.style.visibility = "hidden";
+      void runLightboxElementAnimation(target, [
+        { transform: getSourceTransform(sourceRect, targetRect), borderRadius: "16px", opacity: 0.88 },
+        { transform: "translate3d(0, 0, 0) scale(1, 1)", borderRadius: "0px", opacity: 1 },
+      ], { duration: 280, easing: "cubic-bezier(0, 0, 0, 1)", fill: "both" });
+    } else {
+      void runLightboxElementAnimation(target, prefersReducedMotion
+        ? [{ opacity: 0 }, { opacity: 1 }]
+        : [
+            { transform: "scale(0.985)", opacity: 0 },
+            { transform: "scale(1)", opacity: 1 },
+          ], { duration: prefersReducedMotion ? 100 : 140, easing: "cubic-bezier(0, 0, 0, 1)", fill: "both" });
+    }
+
+    return restoreSourceVisibility;
+  }, [prefersReducedMotion, restoreSourceVisibility]);
 
   return (
     <OverlayPortal>
@@ -692,48 +862,67 @@ function MotionImageLightboxLayer({
         aria-hidden={isTopmost ? undefined : "true"}
         inert={isTopmost ? undefined : true}
         tabIndex={-1}
-        className="fixed inset-0 z-[80] grid min-h-[100dvh] place-items-center bg-black p-4 outline-none"
+        className="fixed inset-0 z-[80] grid min-h-[100dvh] place-items-center p-4 outline-none"
         variants={{ in: { opacity: 1 }, out: { opacity: 0 } }}
         initial="out"
         animate="in"
         exit="out"
-        transition={{ duration: duration.fast }}
+        transition={{ duration: 0.01 }}
         data-overlay-layer={overlayId}
         data-overlay-kind="lightbox"
         data-overlay-topmost={isTopmost ? "true" : "false"}
         data-parity-id="parity.app.app.src.components.motion.common.4584c58a8f"
         onClick={handleDismiss}
       >
+        <motion.div
+          ref={backdropEntranceRef}
+          className="absolute inset-0"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: duration.fast, ease: ease.decelerate }}
+          aria-hidden="true"
+        >
+          <motion.div className="absolute inset-0 bg-black" style={{ opacity: dragDismiss.backdropOpacity }} />
+        </motion.div>
         {/* Image container intentionally bubbles clicks: the established
             lightbox interaction lets users tap the image or backdrop to close. */}
-        <motion.div
-          className="relative max-h-[88dvh] max-w-4xl overflow-hidden rounded-lg bg-black"
-          variants={subtleOverlayScale}
-          initial="initial"
-          animate="in"
-          exit="out"
+        <div
+          ref={anchorTransitionRef}
+          className="relative z-10 h-[88dvh] w-[min(92vw,64rem)] origin-center"
+          data-lightbox-source-transition="pending"
         >
-          {/* eslint-disable-next-line @next/next/no-img-element -- lightbox renders local data-URL images, not static assets */}
-          {displayMode === "original-cropped" ? (
-            <OriginalCroppedImage originalSrc={src} thumbnailSrc={thumbnailSrc} cropBox={cropBox} alt={alt} className="h-[88dvh] w-[min(92vw,64rem)]" />
-          ) : (
-            <img loading="lazy" decoding="async" src={src} alt={alt} className="max-h-[88dvh] w-full object-contain" />
-          )}
-
-          <button
-            type="button"
-            className="absolute top-2 right-2 z-10 grid h-11 w-11 place-items-center rounded-full bg-black/55 text-white shadow-md backdrop-blur-sm transition-colors hover:bg-black/75 active:bg-black/80"
-            data-lightbox-close="true"
-            data-parity-id="parity.app.app.src.components.motion.common.c59e73fe7f"
+          <motion.div
+            className="relative h-full w-full overflow-hidden bg-black"
+            style={{ y: dragDismiss.y, scale: dragDismiss.imageScale, touchAction: "none" }}
+            data-lightbox-drag-enabled={dragDismiss.isEnabled ? "true" : "false"}
+            {...dragDismiss.bindings}
+            onDragStart={(event) => event.preventDefault()}
             onClick={(event) => {
-              event.stopPropagation();
-              handleDismiss();
+              if (!dragDismiss.isEnabled) event.stopPropagation();
             }}
-            aria-label="关闭图片预览"
           >
-            <X size={20} strokeWidth={2.4} aria-hidden="true" />
-          </button>
-        </motion.div>
+            {/* eslint-disable-next-line @next/next/no-img-element -- lightbox renders local data-URL images, not static assets */}
+            {displayMode === "original-cropped" ? (
+              <OriginalCroppedImage originalSrc={src} thumbnailSrc={thumbnailSrc} cropBox={cropBox} alt={alt} className="h-full w-full" />
+            ) : (
+              <img loading="lazy" decoding="async" draggable={false} src={src} alt={alt} className="h-full w-full object-contain" />
+            )}
+
+            <button
+              type="button"
+              className="absolute top-2 right-2 z-10 grid h-11 w-11 place-items-center rounded-full bg-black/55 text-white shadow-md backdrop-blur-sm transition-colors hover:bg-black/75 active:bg-black/80"
+              data-lightbox-close="true"
+              data-parity-id="parity.app.app.src.components.motion.common.c59e73fe7f"
+              onClick={(event) => {
+                event.stopPropagation();
+                handleDismiss();
+              }}
+              aria-label="关闭图片预览"
+            >
+              <X size={20} strokeWidth={2.4} aria-hidden="true" />
+            </button>
+          </motion.div>
+        </div>
       </motion.div>
     </OverlayPortal>
   );

@@ -50,6 +50,7 @@ import {
   DetailHeroGallery,
   DetailInfoRow,
   DetailSurfaceCard,
+  DetailTabContent,
   DetailTabs,
   DetailTitleMetaBlock,
   DetailTopBar,
@@ -1472,6 +1473,10 @@ function OutfitDetailView({
     { kind: "add" as const, label: "+套装示意" },
   ];
   const [activeSlide, setActiveSlide] = useState(0);
+  useEffect(() => {
+    setDetailTab(initialTab ?? "info");
+    setActiveSlide(0);
+  }, [initialTab, outfit.id]);
  const activeSlideData = allSlides[activeSlide];
  const sceneLabels = (outfit.sceneTags ?? []).join(" · ");
  // v1.0: 风格标签展示层中文化 (labelOutfitStyleTags 处理可能存在的英文枚举)
@@ -1609,8 +1614,9 @@ function OutfitDetailView({
       </>}
     >
 
-      {detailTab === "info" ? (
-        <div className="px-4 mt-3 pb-8 space-y-4">
+      <DetailTabContent activeKey={detailTab}>
+        {detailTab === "info" ? (
+          <div className="px-4 mt-3 pb-8 space-y-4">
           <DetailAiCard
             title="AI套装建议"
             summary={aiSuggestion?.summary}
@@ -1646,49 +1652,50 @@ function OutfitDetailView({
           <DetailSurfaceCard title="备注">
             <p className="text-sm leading-relaxed text-ink/65">{outfit.notes || "未填写"}</p>
           </DetailSurfaceCard>
-        </div>
-      ) : null}
-
-      {detailTab === "items" ? (
-        <div className="px-4 mt-4 pb-8">
-          <OutfitCompositionTab
-            outfit={outfit}
-            items={items}
-            allItems={allItems}
-            onEditComposition={onEditComposition}
-            suggestion={aiSuggestion}
-            replacementItemId={replacementItemId}
-            onToggleReplacement={(itemId) => setReplacementItemId((current) => current === itemId ? null : itemId)}
-          />
-        </div>
-      ) : null}
-
-      {detailTab === "ai" ? (
-        <div className="px-4 mt-3 pb-8">
-          <OutfitAiSuggestionDetail suggestion={aiSuggestion} allItems={allItems} onGenerate={handleGenerateAdvice} isLoading={isGeneratingAdvice} />
-        </div>
-      ) : null}
-
-      {detailTab === "records" ? (
-        <div className="px-4 mt-3 pb-8 space-y-3 rounded-lg border border-ink/8 bg-white p-3">
-          <InfoRow label="穿着次数" value={`${(outfit.wornDates ?? []).length} 次`} />
-          <InfoRow label="最近穿着" value={(outfit.wornDates ?? []).at(-1) ?? "暂无记录"} />
-          <div>
-            <p className="mb-2 text-xs font-medium text-ink/40">穿搭实图</p>
-            {realImages.length > 0 ? (
-              <div className="flex gap-2 overflow-x-auto">
-                {realImages.map((image) => (
-                  <button key={image.id} type="button" data-parity-id={`parity.app.app.src.components.outfit.list.view.70ee9ec3bb.${image.id}`} onClick={() => onViewRealImage(image)} className="h-20 w-16 shrink-0 overflow-hidden rounded-lg bg-milk-darker">
-                    <OnlineAssetImage asset={image.image.asset} variant="thumbnail" alt={image.caption ?? "穿搭实图"} className="h-full w-full" imageClassName="object-cover" />
-                  </button>
-                ))}
-              </div>
-            ) : (
-              <p className="text-xs text-ink/40">还没有实图记录。</p>
-            )}
           </div>
-        </div>
-      ) : null}
+        ) : null}
+
+        {detailTab === "items" ? (
+          <div className="px-4 mt-4 pb-8">
+            <OutfitCompositionTab
+              outfit={outfit}
+              items={items}
+              allItems={allItems}
+              onEditComposition={onEditComposition}
+              suggestion={aiSuggestion}
+              replacementItemId={replacementItemId}
+              onToggleReplacement={(itemId) => setReplacementItemId((current) => current === itemId ? null : itemId)}
+            />
+          </div>
+        ) : null}
+
+        {detailTab === "ai" ? (
+          <div className="px-4 mt-3 pb-8">
+            <OutfitAiSuggestionDetail suggestion={aiSuggestion} allItems={allItems} onGenerate={handleGenerateAdvice} isLoading={isGeneratingAdvice} />
+          </div>
+        ) : null}
+
+        {detailTab === "records" ? (
+          <div className="px-4 mt-3 pb-8 space-y-3 rounded-lg border border-ink/8 bg-white p-3">
+            <InfoRow label="穿着次数" value={`${(outfit.wornDates ?? []).length} 次`} />
+            <InfoRow label="最近穿着" value={(outfit.wornDates ?? []).at(-1) ?? "暂无记录"} />
+            <div>
+              <p className="mb-2 text-xs font-medium text-ink/40">穿搭实图</p>
+              {realImages.length > 0 ? (
+                <div className="flex gap-2 overflow-x-auto">
+                  {realImages.map((image) => (
+                    <button key={image.id} type="button" data-parity-id={`parity.app.app.src.components.outfit.list.view.70ee9ec3bb.${image.id}`} onClick={() => onViewRealImage(image)} className="h-20 w-16 shrink-0 overflow-hidden rounded-lg bg-milk-darker">
+                      <OnlineAssetImage asset={image.image.asset} variant="thumbnail" alt={image.caption ?? "穿搭实图"} className="h-full w-full" imageClassName="object-cover" />
+                    </button>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-xs text-ink/40">还没有实图记录。</p>
+              )}
+            </div>
+          </div>
+        ) : null}
+      </DetailTabContent>
     </ItemDetailPageShell>
   );
 }
