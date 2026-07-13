@@ -1,3 +1,12 @@
+## 2026-07-13 / v2.1.16-test / Codex — App 与小程序套装组成编辑入口
+
+- **目的**：补齐 App 套装详情「组成」页签、App 编辑套装页和小程序套装详情的组成单品编辑入口。
+- **改动文件**：App `src/components/outfit-list-view.tsx`；小程序 `apps/wechat-miniprogram/pages/outfits/detail/index.ts`、`index.wxml`、`index.wxss`、`apps/wechat-miniprogram/pages/outfits/compose/index.ts`、`index.wxml`、`index.wxss`。
+- **改动内容**：两端共用“预选当前组成 → 筛选/搜索调整 → 至少 2 件校验 → 服务端更新后读回”的流程；App 组成页签支持快速保存，编辑页保留草稿到最终保存；小程序创建/编辑共用两步选择器；组成变化清除旧 AI 建议并同步组成 ID。
+- **验证结果**：App typecheck/build、App UI/套装定向测试、小程序 typecheck、catalog check、shell/outfit/intake 定向测试、git diff check 通过；临时 worktree 的微信 CLI 编译超过 60 秒未返回，已停止。
+- **风险门禁**：`medium`；未触发 subagent：用户未通知（仅按技能要求完成只读布局/机械扫描）。
+- **未验证风险**：正式小程序目录尚未完成本次页面的 `compile_wxml`/`compile_wxss`、模拟器/真机点击和服务端真实编辑读回；App 未执行 Android 真机触摸回归；既有 UI token 合同的历史硬编码颜色失败未处理。
+
 ## 2026-07-13 / v2.1.16-test / Codex — 代码审查四项问题修复
 
 - **执行 Agent**：Codex（未触发 subagent：用户未通知）。
