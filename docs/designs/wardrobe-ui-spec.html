@@ -2,7 +2,7 @@
 <!--
   DO NOT EDIT BY HAND.
   Generated from docs/designs/wardrobe-ui-spec.md by scripts/generate-ui-spec-preview.mjs.
-  Source SHA256: a27a29a2fafa21255163fb68b8b85ddec57cc5af756c16a357dd130c0c24e702
+  Source SHA256: 759c15e31387b3aafe0207ca4019deff3ffb452f536963144bb29173ceb106dc
 -->
 <html lang="zh-CN">
 <head>
@@ -838,7 +838,7 @@
           <div class="meta-row">
             <span class="pill active">v0.2-final</span>
             <span class="pill">Markdown 唯一事实源</span>
-            <span class="pill">Source SHA256 a27a29a2fafa</span>
+            <span class="pill">Source SHA256 759c15e31387</span>
           </div>
           <h1>衣橱穿搭助手 UI 规范</h1>
           <p>本页由规范 Markdown 自动生成，用于快速走查页面框架、组件契约、通知样式和验收映射。</p>
@@ -884,7 +884,7 @@
         <div class="radius-demo outer"><div class="radius-demo inner"></div></div>
         <div class="radius-stack"><span>一级卡片 28px</span><span>内层图片 = 外框半径 - 内边距</span><span>选中按钮与外框弧度一致</span></div>
       </div>
-<div class="table-wrap"><table><thead><tr><th>对象</th><th>半径</th><th>规则</th></tr></thead><tbody><tr><td>手机容器</td><td><code>32px</code></td><td>预览画板使用，生产容器不强制包一层手机壳</td></tr><tr><td>一级卡片</td><td><code>28px</code> 目标 / 当前代码多为 <code>rounded-2xl</code></td><td>主要内容容器，后续应逐步统一</td></tr><tr><td>一级卡片内图片</td><td><code>卡片半径 - 内边距</code></td><td>图片与外框保持同心圆角，不同半径但弧度一致</td></tr><tr><td>二级卡片</td><td><code>18px-20px</code></td><td>一级卡片内部的选择块、空状态、预览块</td></tr><tr><td>普通控件</td><td><code>12px-14px</code></td><td>筛选、输入、普通按钮</td></tr><tr><td>底部菜单外框</td><td><code>26px</code></td><td>悬浮毛玻璃圆角矩形</td></tr><tr><td>底部菜单选中项</td><td><code>外框半径 - 内边距</code></td><td>不使用圆形激活按钮；选中项色块弧线必须与外框同心</td></tr><tr><td>缩略图</td><td><code>8px-12px</code></td><td>详情胶片栏、录入缩略图、队列图</td></tr></tbody></table></div>
+<div class="table-wrap"><table><thead><tr><th>对象</th><th>半径</th><th>规则</th></tr></thead><tbody><tr><td>手机容器</td><td><code>32px</code></td><td>预览画板使用，生产容器不强制包一层手机壳</td></tr><tr><td>一级卡片</td><td><code>28px</code> 目标 / 当前代码多为 <code>rounded-2xl</code></td><td>主要内容容器，后续应逐步统一</td></tr><tr><td>一级卡片内图片</td><td><code>卡片半径 - 内边距</code></td><td>图片与外框保持同心圆角，不同半径但弧度一致</td></tr><tr><td>二级卡片</td><td><code>18px-20px</code></td><td>一级卡片内部的选择块、空状态、预览块</td></tr><tr><td>普通控件</td><td><code>12px-14px</code></td><td>筛选、输入、普通按钮</td></tr><tr><td>底部菜单外框</td><td><code>26px</code></td><td>悬浮毛玻璃圆角矩形</td></tr><tr><td>居中确认框外框</td><td><code>28px</code></td><td>与一级卡片共用 <code>--ui-radius-card</code>；内部按钮继续使用 <code>16px</code> 控件圆角</td></tr><tr><td>底部菜单选中项</td><td><code>外框半径 - 内边距</code></td><td>不使用圆形激活按钮；选中项色块弧线必须与外框同心</td></tr><tr><td>缩略图</td><td><code>8px-12px</code></td><td>详情胶片栏、录入缩略图、队列图</td></tr></tbody></table></div>
 <p>判断标准：外框和内层按钮的弧线要像同一组同心圆。不要把外框做圆角矩形、内层做正圆，除非是明确的 FAB。</p>
 <p>底部 4 个功能切换按钮的预览与实现都按同一公式：<code>activeRadius = outerRadius - inset</code>。例如外框 <code>28px</code>、内边距 <code>8px</code> 时，选中项为 <code>20px</code>；不得使用 <code>rounded-full</code> 或固定圆形激活态。</p>
 <h3>2.3 Glass、阴影与层级</h3>

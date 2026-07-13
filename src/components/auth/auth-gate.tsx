@@ -781,7 +781,7 @@ function ExitDialog({ open, onClose }: { open: boolean; onClose: () => void }) {
       onClose={onClose}
       variant="confirm"
       ariaLabel="确认退出应用"
-      panelClassName="!max-w-xs px-5 py-5"
+      panelClassName="!max-w-xs !rounded-[var(--ui-radius-card)] px-5 py-5"
     >
       <h2 className="text-base font-bold text-ink">退出应用</h2>
       <p className="mt-2 text-sm text-ink/65">确定要退出衣橱穿搭助手吗？</p>
