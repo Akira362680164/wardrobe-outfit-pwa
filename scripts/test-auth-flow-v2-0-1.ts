@@ -67,7 +67,7 @@ check("auth-gate 使用 history.pushState 管理导航", /pushState/.test(authGa
 check("history state 只存 authView 不含密码", /HISTORY_KEY/.test(authGate) && !/pushState.*password/i.test(authGate));
 
 // 9. Android back button
-check("auth-gate 注册 backButton 监听", /backButton/.test(authGate) && /App\.addListener/.test(authGate));
+check("auth-gate 通过统一协调器处理 Back", /useStableBackHandler/.test(authGate) && !/App\.addListener\("backButton"/.test(authGate));
 check("登录页 back 弹出退出确认", /showExitDialog/.test(authGate));
 check("退出确认调用 App.exitApp", /App\.exitApp/.test(authGate));
 

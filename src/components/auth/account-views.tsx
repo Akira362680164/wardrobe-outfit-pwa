@@ -4,6 +4,7 @@ import { useEffect, useState, type ReactNode } from "react";
 import { ChevronLeft, ChevronRight, Loader2, Lock, LogOut, Mail, MessageCircle, Phone, Smartphone, User } from "lucide-react";
 import { getAuthUserDisplayName, type AuthUserSnapshot } from "@/lib/auth-session-store";
 import * as authApi from "@/lib/cloud-auth-api";
+import { useStableBackHandler } from "@/lib/use-stable-back-handler";
 
 export interface WardrobeCloudAuth {
   user: AuthUserSnapshot;
@@ -66,6 +67,24 @@ export function AccountManagementView({
 
   const emailMasked = security?.email.masked ?? auth.user.emailMasked;
   const phoneMasked = security?.phone.masked ?? auth.user.phoneMasked ?? auth.user.maskedPhone;
+
+  const handleBack = () => {
+    if (auth.isBusy || editSaving || editSending) return;
+    if (editMode) {
+      setEditMode(null);
+      return;
+    }
+    if (confirmingLogout) {
+      setConfirmingLogout(false);
+      return;
+    }
+    onBack();
+  };
+
+  useStableBackHandler(() => {
+    handleBack();
+    return true;
+  }, true, 100);
 
   const openBindingEditor = (mode: "email" | "phone") => {
     setEditMode(mode);
@@ -141,7 +160,7 @@ export function AccountManagementView({
 
   return (
     <div className="grid min-w-0 grid-cols-[minmax(0,1fr)] gap-3.5 pb-[calc(112px+env(safe-area-inset-bottom))]">
-      <SubPageHeader title="账号安全" onBack={onBack} />
+      <SubPageHeader title="账号安全" onBack={handleBack} />
       <article className="surface rounded-lg px-4 py-3.5">
         <div className="flex items-start gap-3">
           <div className="grid h-10 w-10 shrink-0 place-items-center rounded-lg bg-denim/10 text-denim">
@@ -244,7 +263,7 @@ export function AccountManagementView({
               <button type="button" data-parity-id="parity.app.app.src.components.auth.account.views.6d20ff8799" onClick={() => setConfirmingLogout(false)} disabled={auth.isBusy} className="h-10 rounded-lg border border-ink/10 text-sm disabled:opacity-60">取消</button>
               <button
                 type="button"
-                data-parity-id="parity.app.app.src.components.auth.account.views.fe4acff3e3" onClick={async () => { setConfirmingLogout(false); await auth.onLogout(); }}
+                data-parity-id="parity.app.app.src.components.auth.account.views.fe4acff3e3" onClick={async () => { await auth.onLogout(); setConfirmingLogout(false); }}
                 disabled={auth.isBusy}
                 className="inline-flex h-10 items-center justify-center gap-2 rounded-lg bg-clay text-sm font-semibold text-white disabled:opacity-60"
               >
@@ -340,6 +359,7 @@ export function ChangePasswordView({
   const [confirmPassword, setConfirmPassword] = useState("");
   const [codeSent, setCodeSent] = useState(false);
   const [sendingCode, setSendingCode] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
   const [countdown, setCountdown] = useState(0);
   const [message, setMessage] = useState<string | null>(null);
   const emailMasked = auth.user.emailMasked;
@@ -365,6 +385,16 @@ export function ChangePasswordView({
     }
   };
 
+  const handleBack = () => {
+    if (auth.isBusy || sendingCode || submitting) return;
+    onBack();
+  };
+
+  useStableBackHandler(() => {
+    handleBack();
+    return true;
+  }, true, 100);
+
   return (
     <form
       className="grid min-w-0 grid-cols-[minmax(0,1fr)] gap-3.5"
@@ -379,20 +409,22 @@ export function ChangePasswordView({
           setMessage("两次输入的新密码不一致");
           return;
         }
+        if (mode === "email" && !auth.accessToken) {
+          setMessage("请重新登录后再修改密码");
+          return;
+        }
+        const accessToken = auth.accessToken;
+        setSubmitting(true);
         try {
           if (mode === "current") {
             await auth.onChangePassword(currentPassword, newPassword);
           } else {
-            if (!auth.accessToken) {
-              setMessage("请重新登录后再修改密码");
-              return;
-            }
             if (!/^\d{6}$/.test(emailCode.trim())) {
               setMessage("请输入 6 位邮箱验证码");
               return;
             }
             await authApi.changePasswordWithEmailCode({
-              accessToken: auth.accessToken,
+              accessToken: accessToken!,
               emailCode: emailCode.trim(),
               newPassword,
             });
@@ -401,10 +433,12 @@ export function ChangePasswordView({
         } catch (error) {
           const msg = toAccountAuthMessage(error, "修改失败，请稍后再试");
           setMessage(msg === "Invalid phone or password" ? "当前密码不正确，请重试" : msg);
+        } finally {
+          setSubmitting(false);
         }
       }}
     >
-      <SubPageHeader title="修改密码" onBack={onBack} />
+      <SubPageHeader title="修改密码" onBack={handleBack} />
       {message ? <p className="rounded-lg bg-clay/10 px-3 py-2 text-sm text-clay">{message}</p> : null}
       <div className="grid grid-cols-2 gap-2 rounded-lg bg-white p-1">
         <button
@@ -458,10 +492,10 @@ export function ChangePasswordView({
       <PasswordField label="确认新密码" value={confirmPassword} data-parity-id="parity.app.app.src.components.auth.account.views.a097e02bc6" onChange={setConfirmPassword} autoComplete="new-password" />
       <button
         type="submit"
-        disabled={auth.isBusy}
+        disabled={auth.isBusy || submitting}
         className="inline-flex h-11 items-center justify-center gap-2 rounded-lg bg-denim text-sm font-semibold text-white disabled:opacity-60"
       >
-        {auth.isBusy ? <Loader2 size={16} className="animate-spin" aria-hidden="true" /> : <Lock size={16} aria-hidden="true" />}
+        {auth.isBusy || submitting ? <Loader2 size={16} className="animate-spin" aria-hidden="true" /> : <Lock size={16} aria-hidden="true" />}
         保存新密码
       </button>
     </form>
