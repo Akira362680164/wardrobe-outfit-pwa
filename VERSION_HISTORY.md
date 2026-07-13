@@ -1,3 +1,11 @@
+## 2026-07-13 / v2.1.17-test / Codex — 小程序体验版与固定签名 APK 交付
+
+- **执行 Agent**：Codex（未触发 subagent；小程序基于正式 `wechat/miniprogram`，APK 基于正式 `main` 提交 `07d416c7` 构建）。
+- **版本变更**：无，保持 App `2.1.17-test`、Android `versionCode=20117`；小程序上传版本 `2.1.17`。
+- **小程序发布**：微信开发者工具登录态和内置 skill `0.2.5` 核验通过；正式项目 typecheck、套装/旅行流程测试、日历 UI 合同、周历/月历 WXML/WXSS 编译通过。体验版上传成功，代码包 807,666 bytes；预览二维码生成成功，保存为 `/Users/fangzheng/Downloads/衣橱穿搭助手-小程序-v2.1.17-预览二维码.jpg`，47,121 bytes，SHA-256 `0a3facb958e200540698cf574d969d7b20aea63185b3c356f42a38fec5eefdbd`。本批未提交微信审核，尚不是审核通过后的正式线上版本。
+- **APK 交付**：`npm run android:apk` 完整通过，云环境指向 `https://api.zhengfangapps.cloud`；根目录产物 `衣橱穿搭助手-v2.1.17-test.apk`，10,031,019 bytes，SHA-256 `4a438d14c575c165dea9a135653ae7782fcfa12912a35d8bb2764a052d225dab`，包名 `com.wardrobe.outfit`，固定签名 `CN=fangzheng`。
+- **Android 验证**：Android 15 / API 35 `wardrobe-test` 模拟器 `adb install -r` 成功；冷启动 `MainActivity`、前台窗口、进程、竖屏登录页和返回键通过，未检出 `FATAL EXCEPTION`；验证完成后已关闭模拟器。未使用生产账号执行日历穿搭双端写入读回。
+
 ## 2026-07-13 / v2.1.17-test / Codex — 生产 UUID 数据迁移与 API 部署
 
 - **执行 Agent**：Codex（未触发 subagent；基于已合入 `main` 的提交 `cb80aed6` 执行生产发布）。
