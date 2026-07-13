@@ -320,8 +320,8 @@ check(
   /case\s*"add_wishlist_item"[\s\S]{0,400}navigation\.openRoute\(\{\s*name:\s*"intake_wishlist"/.test(wardrobeApp),
 );
 check(
-  "wardrobe-app motion.div key={route.name} 替换 activeView (方案 C)",
-  /key=\{route\.name\}/.test(wardrobeApp),
+  "wardrobe-app 使用 NavigationMotion + controller transition 替换 activeView",
+  /<NavigationMotion\s+transition=\{navigation\.transition\}>/.test(wardrobeApp),
 );
 check(
   "wardrobe-app 渲染分支改为基于 route.name (outfit_home/outfit_detail/outfit_calendar/intake_outfit)",
@@ -355,8 +355,8 @@ check(
   /closeViewingItemByReturnTarget[\s\S]{0,600}onReturnToRoute\?\.\(target\)/.test(wardrobeApp),
 );
 check(
-  "Bug 2: wardrobe-app 给 WardrobeView 传 onReturnToRoute={(route) => navigation.openRoute(route)}",
-  /onReturnToRoute=\{[\s\S]{0,80}navigation\.openRoute/.test(wardrobeApp),
+  "Bug 2: wardrobe-app 给 WardrobeView 传 onReturnToRoute={(route) => navigation.popToRoute(route)}",
+  /onReturnToRoute=\{[\s\S]{0,80}navigation\.popToRoute/.test(wardrobeApp),
 );
 
 console.log(`\nfollowup-navigation tests: ${pass} passed, ${fail} failed`);

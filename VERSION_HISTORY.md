@@ -1,3 +1,13 @@
+## 2026-07-13 / v2.1.18-test / Codex Subagent C1 — 方向化路由运动与首帧滚动恢复
+
+- **执行与版本**：Codex Subagent C1 使用 `apple-design` 原则，在独立分支 `codex/motion-c1-navigation-20260713`、独立 worktree `/Users/fangzheng/Documents/wardrobe-motion-c1-navigation-20260713` 上基于冻结提交 `a1d6137a05890d81b4f6ab420bfe85e99f746496` 实施；版本保持 `2.1.18-test`，未合入 integration / `main`，未推送，未构建 APK，本 Session 未再触发下级 subagent。
+- **导航与运动**：`NavigationController` 现在把 route 与 `fromRoute/toRoute/source/direction` transition 原子提交，Tab / push / pop / replace 分别表达平级、前进、返回和替换；重复同 route 不创建动画。新增唯一 `NavigationMotion`：Tab 使用 `opacity 0.96→1 + y 4→0` 短交叉淡化，push 采用“新页 +24px / 旧页 -6px”，pop 完全反向，`AnimatePresence mode="sync"` 允许连续操作中断；退出页 `inert/aria-hidden` 且不接收 pointer，reduced-motion 只保留短 opacity。旧 `mode="wait"`、全路由统一 opacity+y、常驻 `transform-gpu` 已移除。
+- **滚动与录入衔接**：路由按首页、详情实体和录入来源使用独立会话内 scroll key；`useLayoutEffect` 保存实际已呈现 route 的位置，并在目标首帧前同步恢复，替换原动画完成后的双/三重 rAF 链。Sheet/fullscreen fixed-body 锁退出期间读取 `body.top` 的真实位置，先把新 route 对齐目标位置，再在锁释放同一绘制帧覆盖锁滚回写。全局“+”关闭 Sheet、录入 trigger 与 intake push 同一事件提交；套装创建移除额外 parent effect，避免中间首页帧。衣物详情来源返回与改密完成改用 pop 方向；精确卡片 source anchor 仍留给 C2。
+- **底栏反馈与边界**：桌面 / 移动主 Tab 选中胶囊通过各自共享 `layoutId` 平移，底栏继续复用 B1 `AppPressable` 和 `spring.control`，未叠加第二套按压缩放；未修改 `motion-common.tsx`、B4 录入手势或 C2 详情组件。
+- **改动文件**：`app-route.ts`、`use-app-navigation-controller.ts`、新增 `navigation-motion.tsx`、`wardrobe-app.tsx` 路由/底栏/创建衔接；C1 纯逻辑与 390px Playwright browser harness、后续导航静态合同、`package.json`；UI 规范 C1 命名小节、生成 HTML 与本记录。
+- **自动化与浏览器验证**：`test:logic:app-route` 通过（原路由 46/46 + C1 29/29），`test:logic:followup-navigation` 82/82、`test:logic:wardrobe-app-split` 47/47、`test:logic:back-priority-regression`、`test:logic:diagnostic-events` 54/54、`docs:ui-spec:build/check`、`test:logic:ui-spec-preview`、根 `typecheck`、Next `build` 均通过。隔离 Playwright `390×844` 实测 Tab 独立滚动、同步四连切、detail push/pop、Sheet 锁滚到 intake 再 pop、退出页交互归属和 reduced-motion；无 console error，截图 `/tmp/wardrobe-c1-navigation-390.png` 已人工核对无白屏、叠层溢出或位置跳闪。
+- **风险与未验证项**：`high`（App 主壳高频导航、滚动和 Overlay 交接）。未在 Android 真机/模拟器、WebView、TalkBack/VoiceOver、生产 API 或真实长列表异步增高场景做最终验收；本批不交付 APK。详情卡片精确 anchor、Lightbox 来源连续性由 C2 接续，Android 返回键与真实设备帧时序留给 D/最终集成 Wave。
+
 ## 2026-07-13 / v2.1.18-test / Codex 主集成 — Motion Wave 3 归并与陈旧合同同步
 
 - **执行与版本**：主 Agent 按 B1 → B2 → B3 顺序归并三项独立提交，保全并重生成 UI 规范；版本保持 `2.1.18-test`，未进入 APK 交付。

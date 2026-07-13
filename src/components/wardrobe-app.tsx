@@ -4,6 +4,7 @@ import { App } from "@capacitor/app";
 import { KeepAwake } from "@capacitor-community/keep-awake";
 import { Capacitor } from "@capacitor/core";
 import { useAppNavigationController } from "@/components/use-app-navigation-controller";
+import { NavigationMotion } from "@/components/navigation-motion";
 import type { AppRoute } from "@/lib/app-route";
 import { getBackRoute, isDetailRoute, isGlobalCreateAllowedRoute, isIntakeRouteName } from "@/lib/app-route";
 import { useStableBackHandler } from "@/lib/use-stable-back-handler";
@@ -72,7 +73,7 @@ import {
   MotionSheet,
   MotionToast,
 } from "@/components/motion-common";
-import { ease } from "@/lib/motion-tokens";
+import { ease, spring } from "@/lib/motion-tokens";
 import { createGarmentThumbnailFromOriginal, generateThumbnailSafe } from "@/lib/thumbnail-runtime";
 import { ensureGarmentIntakeDraftThumbnail, isIntakeThumbnailGenerationError } from "@/lib/intake-thumbnail";
 import { GarmentImage } from "@/components/garment-image";
@@ -172,9 +173,6 @@ import { buildColorInfo, emptyColorInfo, getAccentColors, getAllColors, getPrima
 import type { GarmentIntakeDraft } from "@/lib/intake-draft";
 
 const MINIMAX_KEY_MISSING_MESSAGE = "尚未配置 MiniMax Key，AI 识别和推荐功能暂不可用。";
-
-// ViewKey now imported from wardrobe-create-actions
-type PendingCreateAction = "add_single_item" | "create_outfit" | "add_wishlist_item";
 
 export type CaptureMode = "item" | "outfit";
 
@@ -313,7 +311,6 @@ export function WardrobeApp({ cloudAuth }: { cloudAuth?: WardrobeCloudAuth } = {
   const [createOutfitTrigger, setCreateOutfitTrigger] = useState(0);
   const [createWishlistTrigger, setCreateWishlistTrigger] = useState(0);
   const [createOutfitPlanTrigger, setCreateOutfitPlanTrigger] = useState(0);
-  const [pendingCreateAction, setPendingCreateAction] = useState<PendingCreateAction | null>(null);
   // v1.1.20-dev (方案 C): createOriginViewRef 不再需要 — 加号弹窗按 activeViewForCreateActions 高亮。
   // 保留 ref stub 以避免下游依赖断裂, 后续 commit 清理。
   const _createOriginViewRef = useRef<ViewKey>("wardrobe");
@@ -376,43 +373,8 @@ export function WardrobeApp({ cloudAuth }: { cloudAuth?: WardrobeCloudAuth } = {
 	 const [showExitDialog, setShowExitDialog] = useState(false);
 	 const [showCreateSheet, setShowCreateSheet] = useState(false);
 
-  // v0.9.31-dev: 共享 window 全局滚动容器 + scroll 恢复逻辑保留。
-  // v1.1.20-dev (方案 C): key 从 ViewKey 改为 AppRouteName — 每个 route (含 wardrobe/outfit/wishlist
-  // 子页 + intake_*) 独立保存滚动位置。
-  //
-  // 历史 4 个关键点 + 1 个 I-1 加固保留:
-  //  1. **保存时机**: switchView (现 setRouteByView) 同步在 setRoute 之前保存旧 route 的 scrollY
-  //  2. **消除 inherit 闪动**: switchView 入口先 scrollTo(0, 0)
-  //  3. **恢复时机**: motion.div onAnimationComplete 触发
-  //  4. **race 防御**: pendingRestoreViewRef 当 generation 计数器
-  //  5. **transition 字段区分 enter/exit**: 不依赖 opacity 数值
-  const viewScrollPositionsRef = useRef<Record<string, number>>({});
-  // v1.1.20-dev (方案 C): activeViewRef 删除 — view 现在从 route 派生, controller 内已有 routeRef。
-  // 待恢复的 view key: pendingRestoreViewRef 用 route.name 作为 key (覆盖 wardrobe/outfit/wishlist 子页 + intake_*)。
-  // 仍然当 generation 计数器防 race。
-  const pendingRestoreViewRef = useRef<string | null>(null);
-  // 恢复动作进行中的标记 (subagent I-4: 保留用于未来加全局 scroll listener 守护,
-  // 当前 scrollTo 之前/之后 rAF 内不需要重复 check 这个 flag — 简化为只 set/clear)。
-  const isRestoringScrollRef = useRef(false);
-  // 跟踪最近一次 switchView 序号, 防御 onAnimationComplete 同步 check 跟 rAF2 之间
-  // 的细缝 (subagent C-1 修法 1 备选)。当前用 pendingRestoreViewRef 已够, 保留
-  // 备用 — 如果未来 onAnimationComplete 改成不同步 check 即可启用。
-  const restoreFrameIdRef = useRef<number | null>(null);
   // 用于 GarmentIntakeFlow 多图录入时的 Web fallback 回调
   const pendingGalleryResolverRef = useRef<((files: File[] | null) => void) | null>(null);
-
-  // v1.1.20-dev (方案 C): switchView 改为基于 navigation.openRoute 派生 view。
-  // 旧版 setActiveView 会让 activeView 偏离 mainTab (Bug 1 根因), 现改为 setRoute。
-  // view 派生自 route.name, motion + AnimatePresence 自动根据 key={route.name} 重 mount。
-
-  // v0.9.31-dev: 卸载时清理残留的 restore rAF id, 防止 WardrobeApp 卸载后
-  // rAF 回调仍访问 ref。
-  useEffect(() => () => {
-    if (restoreFrameIdRef.current !== null) {
-      window.cancelAnimationFrame(restoreFrameIdRef.current);
-      restoreFrameIdRef.current = null;
-    }
-  }, []);
 
   useEffect(() => {
     setMiniMaxSettings(loadMiniMaxSettings());
@@ -436,14 +398,6 @@ export function WardrobeApp({ cloudAuth }: { cloudAuth?: WardrobeCloudAuth } = {
     showMessage(MINIMAX_KEY_MISSING_MESSAGE, "action");
   }, [isReady, miniMaxSettings, showMessage]);
 
-  // v1.1.20-dev (方案 C): 删除 v0.9.31-dev "activeViewRef 同步" useEffect — activeViewRef 不再存在。
-  // v0.9.31-dev: pendingRestoreViewRef 单一入口 (subagent I-2 修法 B)。
-  // v1.1.20-dev: 改为监听 route.name — 每个 route 独立保存滚动位置 generation 计数器,
-  // 防 race (快速连点 tab 时旧 onAnimationComplete 在新 route 切换后到达会被 cancel)。
-  useLayoutEffect(() => {
-    pendingRestoreViewRef.current = route.name;
-  }, [route.name]);
-
   const handleTopLevelBack = useCallback(() => {
     // v1.1.20-dev commit2 (P0 诊断): top_level_back_triggered
     // Android 返回键 / Escape 每按一次都打点 — handler 字段标明在哪一层被吃掉。
@@ -461,14 +415,12 @@ export function WardrobeApp({ cloudAuth }: { cloudAuth?: WardrobeCloudAuth } = {
     }
     if (showCreateSheet) {
       setShowCreateSheet(false);
-      setPendingCreateAction(null);
       logTopLevelBack("createSheet");
       return true;
     }
     if (showImageSourceSheet) {
       setShowImageSourceSheet(false);
       setImageIntakePurpose(null);
-      setPendingCreateAction(null);
       logTopLevelBack("imageSourceSheet");
       return true;
     }
@@ -891,22 +843,9 @@ export function WardrobeApp({ cloudAuth }: { cloudAuth?: WardrobeCloudAuth } = {
     !showExitDialog &&
     !showCreateSheet;
 
-  // v1.1.20-dev (方案 C): create_outfit 现在在 handleCreateAction 同步调用 setRoute({name: "intake_outfit"}),
-  // 不再需要等 view 切到 recommend 才触发 createTrigger。但 OutfitListView 的 createTrigger
-  // 仍需要触发一次 — 保留这个 useEffect,去掉 activeView gate,只要 pendingCreateAction 设置就立即触发。
-  useEffect(() => {
-    if (!pendingCreateAction) return;
-    if (pendingCreateAction === "create_outfit") {
-      setCreateOutfitTrigger((n) => n + 1);
-      setPendingCreateAction(null);
-      return;
-    }
-  }, [pendingCreateAction]);
-
   type CreateActionType = "add_single_item" | "create_outfit" | "add_wishlist_item";
   // P0 收口: 全局加号菜单的衣橱单品 / 种草正式录入不再走 openImageSourceSheet + 多图队列。
   // add_single_item 与 add_wishlist_item 都走 GarmentIntakeFlow（wishlist 模式靠 flowKind="wishlist" 区分）;
-  // create_outfit 仍然使用 pendingCreateAction 等待 view 切换 (不属于本次收口范围)。
   // v1.1.20-dev (方案 C): switchView("capture") / switchView("recommend") / switchView("shopping")
   //   改为 setRoute({name: "intake_*", returnTo: route.name})。Bug 1 根因之一 — 旧版让
   //   activeView 切到非原 tab, closeCreateFlow 时 useEffect 同值 bail out → activeView 卡住。
@@ -916,7 +855,6 @@ export function WardrobeApp({ cloudAuth }: { cloudAuth?: WardrobeCloudAuth } = {
     setCaptureQueueIndex(0);
     setShowImageSourceSheet(false);
     setImageIntakePurpose(null);
-    setPendingCreateAction(null);
     rememberCreateReturnRoute();
     recordDiagnosticEvent("create_single_item_started", { activeView: activeViewForCreateActions, route });
     navigation.openRoute({ name: "intake_single_item", returnTo: route.name });
@@ -932,16 +870,16 @@ export function WardrobeApp({ cloudAuth }: { cloudAuth?: WardrobeCloudAuth } = {
       case "create_outfit":
         rememberCreateReturnRoute();
         recordDiagnosticEvent("create_outfit_started", { activeView: activeViewForCreateActions, route });
-        setPendingCreateAction("create_outfit");
+        // Route and trigger commit together so the Sheet exit overlaps the
+        // intake push without an intermediate outfit-home frame.
+        setCreateOutfitTrigger((n) => n + 1);
         navigation.openRoute({ name: "intake_outfit", returnTo: route.name });
-        // pendingCreateAction 会在 useEffect (line 1670) 里触发 createOutfitTrigger, OutfitListView 看到 trigger 打开 intake subPage。
         break;
       case "add_wishlist_item":
         setCaptureImageQueue([]);
         setCaptureQueueIndex(0);
         setShowImageSourceSheet(false);
         setImageIntakePurpose(null);
-        setPendingCreateAction(null);
         rememberCreateReturnRoute();
         recordDiagnosticEvent("create_wishlist_item_started", { activeView: activeViewForCreateActions, route });
         navigation.openRoute({ name: "intake_wishlist", returnTo: route.name });
@@ -967,7 +905,7 @@ export function WardrobeApp({ cloudAuth }: { cloudAuth?: WardrobeCloudAuth } = {
           <div className="surface sticky top-4 p-3">
             <nav className="grid gap-1">
               {viewItems.map((view) => (
-                <NavButton key={view.key} data-parity-id={`parity.app.app.src.components.wardrobe.app.1f8eaa7f23.${view.key}`} parityId={`parity.app.app.src.components.wardrobe.app.1f8eaa7f23.${view.key}`} view={view} active={navigation.mainTab === view.key} onClick={() => {
+                <NavButton key={view.key} data-parity-id={`parity.app.app.src.components.wardrobe.app.1f8eaa7f23.${view.key}`} parityId={`parity.app.app.src.components.wardrobe.app.1f8eaa7f23.${view.key}`} selectionLayoutId="desktop-main-tab-indicator" view={view} active={navigation.mainTab === view.key} onClick={() => {
                   const routeBefore = navigation.route;
                   const fromMainTab = navigation.mainTab;
                   recordDiagnosticEvent("nav_clicked", {
@@ -998,43 +936,7 @@ export function WardrobeApp({ cloudAuth }: { cloudAuth?: WardrobeCloudAuth } = {
             <div className="mb-3"><OnlineInlineNotice message={wardrobeData.onlineState.message} tone="error" onRetry={() => void refreshState().catch(() => undefined)} /></div>
           ) : null}
 
-<AnimatePresence mode="wait" initial={false}>
-            <motion.div
-              key={route.name}
-              className="min-w-0 transform-gpu"
-              initial={{ opacity: 0.92, y: 6 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -6, transition: { duration: 0.08, ease: ease.app } }}
-              transition={{ duration: 0.14, ease: ease.app }}
-              // v1.1.20-dev (方案 C): motion key 改用 route.name — view 现在完全从 route 派生。
-              // onAnimationComplete 逻辑保留 subagent I-3 transition 字段检测 + race 防御。
-              onAnimationComplete={(definition) => {
-                const isEnter = typeof definition === "object"
-                  && definition !== null
-                  && !("transition" in (definition as Record<string, unknown>));
-                if (isEnter) {
-                  if (pendingRestoreViewRef.current !== route.name) return;
-                  const targetView = route.name;
-                  const targetScrollY = viewScrollPositionsRef.current[targetView] ?? 0;
-                  isRestoringScrollRef.current = true;
-                  requestAnimationFrame(() => {
-                    requestAnimationFrame(() => {
-                      if (pendingRestoreViewRef.current === targetView) {
-                        window.scrollTo({ top: targetScrollY, left: 0, behavior: "instant" as ScrollBehavior });
-                      }
-                      pendingRestoreViewRef.current = null;
-                      requestAnimationFrame(() => {
-                        isRestoringScrollRef.current = false;
-                      });
-                    });
-                  });
-                } else {
-                  if (document.body.style.position !== "fixed") {
-                    window.scrollTo({ top: 0, left: 0, behavior: "instant" as ScrollBehavior });
-                  }
-                }
-              }}
-            >
+          <NavigationMotion transition={navigation.transition}>
           {route.name === "wardrobe_home" || route.name === "garment_detail" ? (
             <WardrobeView
               items={homeFilteredItems} allItems={items} locations={locations} locationNameById={locationNameById}
@@ -1064,10 +966,10 @@ export function WardrobeApp({ cloudAuth }: { cloudAuth?: WardrobeCloudAuth } = {
               }}
               onReturnToWishlistOwned={() => {
                 setWishlistInitialSubPage("purchased");
-                navigation.openRoute({ name: "wishlist_purchased" });
+                navigation.popToRoute({ name: "wishlist_purchased" });
               }}
               // v1.1.20-dev (Bug 2 修复): 衣物详情关闭时跳回原 route。
-              onReturnToRoute={(route) => navigation.openRoute(route)}
+              onReturnToRoute={(route) => navigation.popToRoute(route)}
             />
           ) : null}
 
@@ -1214,12 +1116,11 @@ export function WardrobeApp({ cloudAuth }: { cloudAuth?: WardrobeCloudAuth } = {
               onBack={() => navigation.goBack()}
               onDone={() => {
                 showMessage("密码已更新");
-                navigation.openRoute({ name: "account_management" });
+                navigation.goBack();
               }}
             />
           ) : null}
-          </motion.div>
-          </AnimatePresence>
+          </NavigationMotion>
         </section>
       </div>
 
@@ -1258,7 +1159,6 @@ export function WardrobeApp({ cloudAuth }: { cloudAuth?: WardrobeCloudAuth } = {
           open={showCreateSheet}
           onClose={() => {
             setShowCreateSheet(false);
-            setPendingCreateAction(null);
           }}
           variant="action"
           ariaLabel="新建内容"
@@ -1306,7 +1206,7 @@ export function WardrobeApp({ cloudAuth }: { cloudAuth?: WardrobeCloudAuth } = {
 
 	      {!hideMobileNav ? <nav className="app-floating-nav fixed z-30 lg:hidden">
         <div className="grid grid-cols-4 gap-1">
-          {viewItems.map((view) => (<MobileNavButton key={view.key} data-parity-id={`parity.app.app.src.components.wardrobe.app.cdedbdd588.${view.key}`} parityId={`parity.app.app.src.components.wardrobe.app.cdedbdd588.${view.key}`} view={view} active={navigation.mainTab === view.key} onClick={() => {
+          {viewItems.map((view) => (<MobileNavButton key={view.key} data-parity-id={`parity.app.app.src.components.wardrobe.app.cdedbdd588.${view.key}`} parityId={`parity.app.app.src.components.wardrobe.app.cdedbdd588.${view.key}`} selectionLayoutId="mobile-main-tab-indicator" view={view} active={navigation.mainTab === view.key} onClick={() => {
             const routeBefore = navigation.route;
             const fromMainTab = navigation.mainTab;
             recordDiagnosticEvent("nav_clicked", {
@@ -2288,7 +2188,7 @@ function WardrobeView(props: WardrobeViewProps) {
   // v1.1.20-dev (Bug 2 修复): closeViewingItemByReturnTarget 现在用完整 AppRoute 作为 returnTarget,
   // 支持从 wardrobe_home / outfit_home / outfit_detail / outfit_calendar / wishlist_* / settings_home
   // 等任意来源打开的衣物详情关闭时回到原页面。
-  // 通过 onReturnToRoute 回调通知 wardrobe-app 切换 route — wardrobe-app 内调 navigation.openRoute。
+  // 通过 onReturnToRoute 回调通知 wardrobe-app 按 pop 方向回到来源 route。
   // v1.1.20-dev commit2 (P0 诊断): garment_detail_closed
   // Bug 2 复现必备 — 确认关闭衣物详情时跳回了哪个 route, 走了哪条回调路径。
   const closeViewingItemByReturnTarget = useCallback(() => {
@@ -5680,27 +5580,35 @@ function clampNumber(value: number, min: number, max: number) {
   return Math.max(min, Math.min(max, value));
 }
 
-function NavButton({ view, active, onClick, parityId }: { view: (typeof viewItems)[number]; active: boolean; onClick: () => void; parityId?: string }) {
+function NavButton({ view, active, onClick, parityId, selectionLayoutId }: { view: (typeof viewItems)[number]; active: boolean; onClick: () => void; parityId?: string; selectionLayoutId: string }) {
   const Icon = view.icon;
   return (
     <AppPressable
       type="button"
       feedback="control"
       data-parity-id={parityId ?? "parity.app.app.src.components.wardrobe.app.a6275d2a93"} onClick={onClick}
-      className={`flex h-11 items-center gap-3 ui-control-radius px-3 text-sm font-semibold transition-colors duration-150 ${
-        active ? "bg-denim text-white" : "text-ink/68 hover:bg-ink/5"
+      className={`relative isolate flex h-11 items-center gap-3 overflow-hidden ui-control-radius px-3 text-sm font-semibold transition-colors duration-150 ${
+        active ? "text-white" : "text-ink/68 hover:bg-ink/5"
       }`}
       aria-current={active ? "page" : undefined}
     >
-      <span className="inline-flex">
+      {active ? (
+        <motion.span
+          layoutId={selectionLayoutId}
+          className="pointer-events-none absolute inset-0 z-0 bg-denim"
+          transition={spring.control}
+          aria-hidden="true"
+        />
+      ) : null}
+      <span className="relative z-10 inline-flex">
         <Icon size={17} aria-hidden="true" />
       </span>
-      {view.label}
+      <span className="relative z-10">{view.label}</span>
     </AppPressable>
   );
 }
 
-function MobileNavButton({ view, active, onClick, compact, parityId }: { view: (typeof viewItems)[number]; active: boolean; onClick: () => void; compact?: boolean; parityId?: string }) {
+function MobileNavButton({ view, active, onClick, compact, parityId, selectionLayoutId }: { view: (typeof viewItems)[number]; active: boolean; onClick: () => void; compact?: boolean; parityId?: string; selectionLayoutId: string }) {
   const Icon = view.icon;
   return (
     <AppPressable
@@ -5708,16 +5616,24 @@ function MobileNavButton({ view, active, onClick, compact, parityId }: { view: (
       feedback="control"
       data-parity-id={parityId ?? "parity.app.app.src.components.wardrobe.app.1d7efe6be5"} onClick={onClick}
       aria-current={active ? "page" : undefined}
-      className={`grid ${compact ? "h-10 ui-control-radius" : "h-14 rounded-[var(--ui-radius-nav-active)]"} place-content-center justify-items-center gap-1 px-1 text-[11px] font-semibold transition-colors duration-150 ${
-        active ? "bg-denim text-white" : "text-ink/62"
+      className={`relative isolate grid ${compact ? "h-10 ui-control-radius" : "h-14 rounded-[var(--ui-radius-nav-active)]"} place-content-center justify-items-center gap-1 overflow-hidden px-1 text-[11px] font-semibold transition-colors duration-150 ${
+        active ? "text-white" : "text-ink/62"
       }`}
     >
+      {active ? (
+        <motion.span
+          layoutId={selectionLayoutId}
+          className="pointer-events-none absolute inset-0 z-0 bg-denim"
+          transition={spring.control}
+          aria-hidden="true"
+        />
+      ) : null}
       {!compact && (
-        <span className="inline-flex">
+        <span className="relative z-10 inline-flex">
           <Icon size={17} aria-hidden="true" />
         </span>
       )}
-      <span className={compact ? "leading-none" : "leading-tight"}>{view.label}</span>
+      <span className={`relative z-10 ${compact ? "leading-none" : "leading-tight"}`}>{view.label}</span>
     </AppPressable>
   );
 }
