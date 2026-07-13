@@ -34,7 +34,7 @@ check("<WishlistGlobalDialogs> props 显式传入 showUndoPurchaseConfirm 与 sh
 // 3. A2 后四类确认层统一由 ConfirmActionSheet -> MotionSheet -> OverlayStack
 // 按 topmost 顺序关闭；页面级 handler 不得再重复按状态字面量抢占返回事件。
 const backHandlerStart = wishlist.indexOf("useStableBackHandler(() => {");
-const backHandlerEnd = wishlist.indexOf("}, isSubPage || wishlistSelection.selectionMode || isFormSaving);", backHandlerStart);
+const backHandlerEnd = wishlist.indexOf("const [showRejectConfirm", backHandlerStart);
 const backHandler = wishlist.slice(backHandlerStart, backHandlerEnd);
 const dialogFlags = ["showUndoPurchaseConfirm", "showDeleteRecordConfirm", "showRejectConfirm", "showDiscardConfirm"];
 const dialogStatesStayOutOfPageBackHandler = dialogFlags.every((flag) => !backHandler.includes(flag));
@@ -80,11 +80,11 @@ check(
   !/<ConfirmDialog\b/.test(detailBlock),
 );
 
-// 8. handler 顺序闭合 (Purchased / Rejected / Archived 都返回 home)
+// 8. C3 深层栈：Purchased / Rejected / Archived 都只 pop 一层，由来源 frame 决定 home。
 const subPageBack =
-  /if \(subPage === "purchased" \|\| subPage === "rejected" \|\| subPage === "archived"\)[\s\S]{0,200}return true;/.test(wishlist);
+  /subPage === "purchased" \|\| subPage === "rejected" \|\| subPage === "archived"\)[\s\S]{0,120}popWishlistPage\(\);[\s\S]{0,80}return true;/.test(wishlist);
 check(
-  "Android 返回键对 purchased / rejected / archived 子页统一返回种草首页",
+  "Android 返回键对 purchased / rejected / archived 子页统一 pop 来源 frame",
   subPageBack,
 );
 
@@ -109,8 +109,9 @@ check(
   /await\s+onDataChanged\?\.\(\)/.test(undoHandler),
 );
 check(
-  "handleUndoPurchase 成功后 setSubPage(\"home\")",
-  /setSubPage\("home"\)/.test(undoHandler),
+  "handleUndoPurchase 成功后按详情/列表来源收口，不硬跳 home",
+  /subPage === "detail"\) popWishlistPage\(\)/.test(undoHandler) &&
+    !/setSubPage\("home"\)/.test(undoHandler),
 );
 check(
   "handleUndoPurchase 成功后 setSelectedItem(null)",
@@ -353,6 +354,56 @@ check(
   "种草首页空状态使用 flex flex-col items-center justify-center py-20 text-center (与套装一致)",
   /flex flex-col items-center justify-center py-20 text-center/.test(wishlist) &&
     /还没有种草单品/.test(wishlist),
+);
+
+/* ------------------------------------------------------------------ */
+/*  C3-Wishlist 深层导航、滚动和失败上下文                            */
+/* ------------------------------------------------------------------ */
+
+check(
+  "C3 深层页面使用显式 frame stack 和 C1 directional states",
+  /navigationStackRef = useRef<WishlistNavigationFrame\[]>/.test(wishlist) &&
+    /pushWishlistPage/.test(wishlist) && /popWishlistPage/.test(wishlist) &&
+    /getNavigationMotionStates\(direction, reduceMotion\)/.test(wishlist),
+);
+check(
+  "首页与管理列表进入详情都走 push，返回不再硬清 home",
+  /onOpen=\{\(\) => openDetail\(w\)\}/.test(wishlist) &&
+    /aria-label=\{`查看\$\{w\.name \|\| "种草单品"\}详情`\}/.test(wishlist) &&
+    /pushWishlistPage\("detail", item\)/.test(wishlist),
+);
+check(
+  "切页前保存真实 scrollTop，目标页在 layout effect 首帧恢复",
+  /saveCurrentNavigationScroll/.test(wishlist) &&
+    /navigationScrollPositionsRef\.current\[getWishlistFrameScrollKey\(currentFrame\)\] = scrollRegion\.scrollTop/.test(wishlist) &&
+    /useLayoutEffect\(\(\) => \{[\s\S]{0,260}scrollRegion\.scrollTop = restoreScrollTop/.test(wishlist),
+);
+check(
+  "编辑保存成功与放弃只 pop 回详情；保存失败不清图片、表单或来源栈",
+  /已更新种草单品[\s\S]{0,180}popWishlistPage\(\);[\s\S]{0,80}resetForm\(\)/.test(wishlist) &&
+    /const discardForm[\s\S]{0,180}resetForm\(\);[\s\S]{0,80}popWishlistPage\(\)/.test(wishlist) &&
+    /catch \(error\) \{[\s\S]{0,180}更新种草失败，请重试/.test(wishlist),
+);
+const convertHandlerStart = wishlist.indexOf("const handleConfirmConvert = useCallback");
+const convertHandlerEnd = wishlist.indexOf("/* ---- undo purchase", convertHandlerStart);
+const convertHandlerBlock = wishlist.slice(convertHandlerStart, convertHandlerEnd);
+const convertCatchStart = convertHandlerBlock.indexOf("catch");
+const convertCatchEnd = convertHandlerBlock.indexOf("\n    }\n  },", convertCatchStart);
+const convertCatch = convertHandlerBlock.slice(convertCatchStart, convertCatchEnd);
+check(
+  "转衣橱失败保留 confirm、位置和来源 frame",
+  /加入衣橱失败，请重试/.test(convertCatch) &&
+    !/replaceWishlistStack|popWishlistPage|setSelectedItem\(null\)|setSelectedLocationId/.test(convertCatch),
+);
+check(
+  "一次性 intake handoff 只含 page/filter/scroll，消费或 owner cleanup 后清空",
+  /interface WishlistIntakeNavigationHandoff \{[\s\S]{0,180}sourcePage:[\s\S]{0,80}mainFilter:[\s\S]{0,80}scrollTop:/.test(wishlist) &&
+    !/interface WishlistIntakeNavigationHandoff \{[\s\S]{0,220}itemId/.test(wishlist) &&
+    /const pendingHandoff = createTrigger > 0 \? null : peekWishlistIntakeNavigationHandoff\(\)/.test(wishlist) &&
+    /useLayoutEffect\(\(\) => \{[\s\S]{0,180}consumeWishlistIntakeNavigationHandoff\(initialNavigation\.handoffToken\)/.test(wishlist) &&
+    /export function consumeWishlistIntakeNavigationHandoff[\s\S]{0,420}pendingWishlistIntakeNavigationHandoff = null/.test(wishlist) &&
+    /useEffect\(\(\) => \(\) => \{[\s\S]{0,180}clearWishlistIntakeNavigationHandoff/.test(wishlist) &&
+    !/sessionStorage|localStorage|WeakMap/.test(wishlist),
 );
 
 console.log(`\nfollowup-wishlist-management tests: ${pass} passed, ${fail} failed`);
