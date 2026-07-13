@@ -20,6 +20,18 @@
 - **自动化与 390px 验证**：`test:logic:urgent-account`（含新增 C3 `29/29`）、`test:logic:account-deletion-app`、`test:logic:wardrobe-app-split` `47/47`、`test:logic:ui-overflow`、UI spec build/check/preview、根 `typecheck`、Next `build`、`git diff --check` 通过。Chromium Playwright `390×844` 实测设置内 push/pop、列表滚动恢复、快速 push/pop/push、设置→账号→改密外层路由、busy 注销 Sheet 的 backdrop/Escape/Back 拒绝、失败保留路由与输入、写响应后继续等待读回、读回后才关闭、reduced-motion 与横向溢出；无 console error，截图 `/tmp/wardrobe-c3-settings-account-390.png` 已目检通过。
 - **风险门禁与未验证项**：`high`（账号改密/注销、设置写入与深层返回）。额外 `test:logic:ui-token-contract` 已不再报告 C3 所有的 `auth/account-views.tsx`，仍只报告本 Session 不拥有的冻结基线两处：`src/components/item/edit-image-action-card.tsx` 与 `src/app/site.css`，未越界修改。未在 Android 真机/模拟器、WebView、TalkBack/VoiceOver、生产账号、真实服务端写入或 live MiniMax 上执行最终回归；本批不构建 APK，Android 返回键与真实设备帧时序留给 D / 主集成 Wave。
 
+## 2026-07-13 / v2.1.18-test / Codex Subagent C3-Wishlist — 种草深层流程与返回连续性
+
+- **执行 Agent**：Codex 实施 Wave 5 / C3-Wishlist，使用 `apple-design` 技能；独立分支 `codex/motion-c3-wishlist-20260713`、独立 worktree `/Users/fangzheng/Documents/wardrobe-motion-c3-wishlist-20260713`，基于冻结提交 `7a2a9ece21429daa757dff25c75e697ca1d3fa38`；未合入 integration / `main`，未推送、未清理。本 Session 由主集成 Agent 分派，未再调用下级 subagent。
+- **目的与版本**：把种草首页、管理子列表、详情、编辑与加入衣橱串成方向一致、可返回来源的组件内深层导航，保留筛选、滚动和失败草稿；版本保持 `2.1.18-test`，不改 API、业务字段、存储、服务端、小程序、共享 `motion-common/navigation-motion` 或 APK 版本。
+- **导航与滚动**：新增组件内 page frame stack，直接消费 C1 `push/pop/replace` 状态和公共 `spring.panel`；同步进退期间退出页 `inert/aria-hidden` 且不接收 pointer，reduced-motion 退化为短淡化。首页与已买 / 不感兴趣 / 已归档列表都能进入详情；详情 → 编辑 / 加入衣橱为 push，取消、返回和放弃确认为反向 pop。每帧离开前读取实际 `scrollTop`，目标页在 `useLayoutEffect` 首帧恢复，首页筛选与各列表滚动相互独立。
+- **录入交接与锚点修复**：`intake_wishlist` 外层 route 重挂载使用显式 owner token 的一次性交接，快照仅含来源页、首页筛选和滚动；render 只读 peek，目标提交后的 layout effect 按 token 消费即清，避免 Strict Mode / 放弃渲染提前清空；关闭 / 保存时 arm，owner 放弃时清除，不写 storage、`WeakMap`、itemId 或长期业务缓存。首页与详情 More 菜单拆为独立可见 trigger ref，避免 sync push/pop 重叠时退出详情清理 ref、误将当前首页 Popover 锚点置空。
+- **忙碌与失败保留**：编辑保存、加入衣橱、撤销购买和确认层 busy 时，Back / Escape / 遮罩 / 顶部返回 / 显式取消不再中断写入；加入衣橱失败保留位置、确认页和来源栈，编辑失败保留字段与新选图片，撤销失败保留确认层，所有失败都保留筛选和列表滚动。成功仍等待服务器提交和读回，未改写 C2 `DetailTabContent` / source return、A2 `OverlayStack` 或 B4 `GarmentIntakeFlow` 接口。
+- **改动文件**：`src/components/wishlist-view-2.0.tsx`；Wishlist 逻辑 / 管理合同与新增 `scripts/test-wishlist-deep-navigation-c3.ts`、`scripts/test-wishlist-deep-flow-harness.ts`；UI 规范 C3-Wishlist 命名小节、生成 HTML 与本记录。
+- **自动化验证**：`test:logic:wishlist` `107/107`、`test:logic:wishlist-management-followup` `60/60`、`test:logic:wishlist-intake-confirm-contract`、C3 一次性交接测试、`test:logic:ui-overflow`、`docs:ui-spec:build/check`、`test:logic:ui-spec-preview`、根 `typecheck`、Next `build` 与 `git diff --check` 通过。
+- **390px 深层流程验证**：Chromium Playwright `390×844`、mobile/touch、React Strict Mode 实际覆盖一次性交接消费与重复挂载无泄漏、首页筛选/滚动 → 详情 → 加入衣橱失败 → 反向返回恢复、详情 → 编辑 busy/失败保留表单与 SVG 图片 → 放弃确认、已买列表 → 撤销购买 busy Back/遮罩锁定 → 失败保留确认和滚动；无 page error。截图 `/tmp/wardrobe-c3-wishlist-deep-flow-390.png` 已目检，未见深层页横向溢出或遮罩层错位。
+- **风险门禁与未验证项**：`high`（种草高频深层导航、写入与返回上下文）。未在 Android 真机/模拟器、WebView、TalkBack/VoiceOver、输入法顶起、系统字体放大、真实服务器数据或生产图片上做最终验收；本批不构建 APK，Android 返回键真实设备帧序、网络中断后的服务端读回和 360/430px 覆盖留给 D Wave / 主集成最终验收。
+
 ## 2026-07-13 / v2.1.18-test / Codex Subagent B4 — 录入裁切、滑条与中断恢复
 
 - **执行 Agent**：Codex 实施 Subagent B4，使用 `apple-design` 技能；独立分支 `codex/motion-b4-intake-gestures-20260713`、独立 worktree `/Users/fangzheng/Documents/wardrobe-motion-b4-intake-gestures-20260713`，基于 Wave 3 冻结提交 `a1d6137a05890d81b4f6ab420bfe85e99f746496`；未合入 integration / `main`，未推送。本 Session 由主集成 Agent 分派，未再触发下级 subagent。
