@@ -12,6 +12,7 @@ export type GarmentIntakeImageStatus =
   | "cropped"
   | "recognizing"
   | "recognized"
+  | "manual"
   | "failed";
 
 export interface GarmentIntakeImageItem {
@@ -195,7 +196,7 @@ export function getSavableGarmentIntakeImages(
   // v1.1.31 commit2: 改为依赖 canSave，避免失败草稿 + 缺失字段被误判可保存。
   return current.filter((item) => {
     if (!item.draft) return false;
-    if (item.status !== "recognized" && item.status !== "failed") return false;
+    if (item.status !== "recognized" && item.status !== "manual" && item.status !== "failed") return false;
     return calculateDraftReviewSummary(item.draft).canSave;
   });
 }
@@ -228,7 +229,7 @@ export function getReviewableGarmentIntakeImages(
   current: GarmentIntakeImageItem[],
 ): GarmentIntakeImageItem[] {
   return current.filter(
-    (item) => (item.status === "recognized" || item.status === "failed") && Boolean(item.draft),
+    (item) => (item.status === "recognized" || item.status === "manual" || item.status === "failed") && Boolean(item.draft),
   );
 }
 

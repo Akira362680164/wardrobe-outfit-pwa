@@ -354,7 +354,7 @@ export function GarmentIntakeFlow({
       if (item.draft) return item;
       const result = fallbackImageProcessingResult(item.croppedImageDataUrl ?? item.displayDataUrl, flowKind === "wishlist" ? "product_photo" : "garment");
       const draft = buildLocalGarmentDraft({ ...result, imageDataUrl: item.originalDataUrl, croppedImageDataUrl: item.croppedImageDataUrl ?? item.displayDataUrl, cropBox: item.cropBox, thumbnailDataUrl: item.thumbnailDataUrl, locationId: defaultLocationId });
-      return { ...item, draft, status: "failed" as const, error: undefined };
+      return { ...item, draft, status: "manual" as const, error: undefined };
     }));
     setStepIndex("confirm_params");
   }
@@ -647,6 +647,10 @@ export function GarmentIntakeFlow({
   // v1.1.31 commit2: 确认信息阶段重新识别当前件。
   async function handleRetryCurrentItem(reviewId: string) {
     if (retryingReviewId) return; // 防重复点击
+    if (!hasMiniMaxKey) {
+      setError("尚未配置 MiniMax Key，请直接填写或修改属性");
+      return;
+    }
     const item = imageItems.find((it) => it.id === reviewId);
     if (!item) return;
     setRetryingReviewId(reviewId);
@@ -933,6 +937,7 @@ export function GarmentIntakeFlow({
           onSelectItem={handleSelectReview}
           onRetryCurrent={handleRetryCurrentItem}
           retryingReviewId={retryingReviewId}
+          hasMiniMaxKey={hasMiniMaxKey}
           flowKind={flowKind}
           locations={locations}
         />
@@ -1275,6 +1280,7 @@ function MultiImageReviewStep({
   onSelectItem,
   onRetryCurrent,
   retryingReviewId,
+  hasMiniMaxKey,
   flowKind,
   locations,
 }: {
@@ -1289,6 +1295,7 @@ function MultiImageReviewStep({
   onSelectItem: (id: string) => void;
   onRetryCurrent: (reviewId: string) => void;
   retryingReviewId: string | null;
+  hasMiniMaxKey: boolean;
   flowKind: "garment" | "wishlist";
   locations: ClosetLocation[];
 }) {
@@ -1312,11 +1319,11 @@ function MultiImageReviewStep({
         </div>
       ) : null}
       <IntakeStepSection
-        title={
-          successCount < recognizedItems.length
+        title={!hasMiniMaxKey
+          ? `待填写 ${recognizedItems.length} 件${flowNoun}`
+          : successCount < recognizedItems.length
             ? `已识别 ${successCount} / ${recognizedItems.length} 件${flowNoun}`
-            : `已识别 ${recognizedItems.length} 件${flowNoun}`
-        }
+            : `已识别 ${recognizedItems.length} 件${flowNoun}`}
         icon={<Tag size={16} aria-hidden="true" />}
         right={
           activeReviewId ? (

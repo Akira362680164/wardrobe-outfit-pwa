@@ -79,6 +79,9 @@ check("getRecognizedGarmentIntakeImages 只返回 recognized", /status\s*===\s*"
 
 // getSavableGarmentIntakeImages only returns items with draft
 check("getSavableGarmentIntakeImages 只返回带 draft 的项", /\.draft/.test(multiImage));
+check("无 Key 手工填写状态与 AI 失败状态正交", /\|\s*"manual"/.test(multiImage) && /status:\s*"manual" as const/.test(garmentIntakeFlow));
+check("无 Key 步骤 2 不伪装成 AI 识别失败", /待填写 \$\{recognizedItems\.length\}/.test(garmentIntakeFlow) && /!hasMiniMaxKey/.test(garmentIntakeFlow));
+check("无 Key 重新识别保留手工草稿", /尚未配置 MiniMax Key，请直接填写或修改属性/.test(garmentIntakeFlow));
 
 // GarmentIntakeFlowProps uses onPickImages
 check("GarmentIntakeFlowProps 使用 onPickImages", /onPickImages:\s*\(source:\s*GarmentImageSource/.test(garmentIntakeFlow));
