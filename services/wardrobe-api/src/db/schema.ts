@@ -73,6 +73,7 @@ export const accountDeletionJobStatus = pgEnum("account_deletion_job_status", [
 
 export const recommendationReadiness = pgEnum("recommendation_readiness", ["ready", "limited", "not_ready"]);
 export const recommendationGenerationMode = pgEnum("recommendation_generation_mode", ["rule_only", "paw_enhanced", "rule_fallback"]);
+export const recommendationJobRunStatus = pgEnum("recommendation_job_run_status", ["running", "completed", "completed_with_errors", "failed"]);
 
 export const users = pgTable("users", {
   id: uuid("id").primaryKey().defaultRandom(),
@@ -505,6 +506,26 @@ export const dailyRecommendations = pgTable(
     fingerprintFormat: check("daily_recommendations_fingerprint_format", sql`${table.payloadFingerprint} ~ '^[a-f0-9]{64}$'`),
     currentSupersededState: check("daily_recommendations_current_superseded_state", sql`(${table.isCurrent} AND ${table.supersededAt} IS NULL) OR (NOT ${table.isCurrent} AND ${table.supersededAt} IS NOT NULL)`),
   }),
+);
+
+export const recommendationJobRuns = pgTable(
+  "recommendation_job_runs",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    scheduledFor: timestamp("scheduled_for", { withTimezone: true }).notNull(),
+    startedAt: timestamp("started_at", { withTimezone: true }).notNull(),
+    finishedAt: timestamp("finished_at", { withTimezone: true }),
+    status: recommendationJobRunStatus("status").notNull().default("running"),
+    targetTaskCount: integer("target_task_count").notNull().default(0),
+    readyCount: integer("ready_count").notNull().default(0),
+    fallbackCount: integer("fallback_count").notNull().default(0),
+    failedCount: integer("failed_count").notNull().default(0),
+    algorithmVersion: text("algorithm_version").notNull(),
+    pawProgramVersions: jsonb("paw_program_versions").notNull(),
+    errorCodeCounts: jsonb("error_code_counts").notNull().default({}),
+    ...timestamps,
+  },
+  (table) => ({ scheduledIdx: index("recommendation_job_runs_scheduled_idx").on(table.scheduledFor), statusIdx: index("recommendation_job_runs_status_idx").on(table.status) }),
 );
 
 export const profiles = pgTable(

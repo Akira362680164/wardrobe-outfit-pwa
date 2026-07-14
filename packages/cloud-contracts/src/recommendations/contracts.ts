@@ -222,6 +222,34 @@ export const DailyRecommendationRecordSchema = z.object({
   if (Date.parse(value.expiresAt) <= Date.parse(value.generatedAt)) issue(ctx, ["expiresAt"], "expiresAt must be after generatedAt");
 });
 
+export const RecommendationJobRunStatusSchema = z.enum(["running", "completed", "completed_with_errors", "failed"]);
+export const RecommendationJobErrorCodeSchema = z.enum(["weather_unavailable", "wardrobe_not_ready", "date_context_failed", "candidate_generation_failed", "paw_timeout", "persistence_failed", "unknown"]);
+export const RecommendationJobRunSummarySchema = z.object({
+  id: z.string().uuid(), scheduledFor: z.string().datetime(), startedAt: z.string().datetime(), finishedAt: z.string().datetime().nullable(), status: RecommendationJobRunStatusSchema,
+  targetTaskCount: z.number().int().nonnegative(), readyCount: z.number().int().nonnegative(), fallbackCount: z.number().int().nonnegative(), failedCount: z.number().int().nonnegative(),
+  algorithmVersion: z.string().trim().min(1).max(80), pawProgramVersions: RecommendationPawProgramVersionsSchema,
+  errorCodeCounts: z.record(RecommendationJobErrorCodeSchema, z.number().int().nonnegative()),
+}).strict();
+
+export const RecommendationReadQuerySchema = z.object({
+  startDate: RealDateSchema, endDate: RealDateSchema,
+}).strict().superRefine((value, ctx) => {
+  if (value.endDate < value.startDate) issue(ctx, ["endDate"], "endDate must not precede startDate");
+  const days = Math.round((Date.parse(`${value.endDate}T00:00:00Z`) - Date.parse(`${value.startDate}T00:00:00Z`)) / 86_400_000);
+  if (days > 31) issue(ctx, ["endDate"], "date range must not exceed 31 days");
+});
+export const RecommendationDisplayItemSchema = z.object({
+  recommendationId: z.string().uuid(), targetDate: RealDateSchema, generationBatchId: z.string().uuid(), readiness: RecommendationReadinessSchema, generationMode: RecommendationGenerationModeSchema,
+  generatedAt: z.string().datetime(), expiresAt: z.string().datetime(), weatherEvidence: WeatherEvidenceSchema,
+  recommendations: z.array(z.object({ candidateId: z.string().uuid(), objective: RecommendationObjectiveSchema, garmentIds: z.array(z.string().uuid()).min(2).max(9), source: CandidateSourceSchema, reasonCodes: z.array(RecommendationReasonCodeSchema).max(12), riskCodes: z.array(SceneRiskCodeSchema).max(12), finalScore: Score0To100Schema }).strict()).max(3),
+}).strict();
+export const RecommendationReadResponseSchema = z.object({
+  timezone: TimeZoneSchema, pairConsistent: z.boolean(), items: z.array(RecommendationDisplayItemSchema).max(32),
+}).strict().superRefine((value, ctx) => {
+  const firstTwo = value.items.slice(0, 2);
+  if (value.pairConsistent && firstTwo.length === 2 && firstTwo[0]!.generationBatchId !== firstTwo[1]!.generationBatchId) issue(ctx, ["items"], "consistent pair must share generationBatchId");
+});
+
 export type SceneType = z.infer<typeof SceneTypeSchema>;
 export type GarmentSlot = z.infer<typeof GarmentSlotSchema>;
 export type AvoidRule = z.infer<typeof AvoidRuleSchema>;
@@ -249,3 +277,6 @@ export type RecommendationEngineOutput = z.infer<typeof RecommendationEngineOutp
 export type RecommendationPayload = z.infer<typeof RecommendationPayloadSchema>;
 export type PublishDailyRecommendationCommand = z.infer<typeof PublishDailyRecommendationCommandSchema>;
 export type DailyRecommendationRecord = z.infer<typeof DailyRecommendationRecordSchema>;
+export type RecommendationJobRunSummary = z.infer<typeof RecommendationJobRunSummarySchema>;
+export type RecommendationJobErrorCode = z.infer<typeof RecommendationJobErrorCodeSchema>;
+export type RecommendationReadResponse = z.infer<typeof RecommendationReadResponseSchema>;
