@@ -44,8 +44,9 @@ check("GarmentIntakeFlow 衣橱位置下拉使用 locations", /options=\{\(locat
 check("wardrobe-app GarmentIntakeFlow 传 locations", /<GarmentIntakeFlow[\s\S]*?locations=\{locations\}/.test(wardrobe));
 check("wishview GarmentIntakeFlow 传 locations", /<GarmentIntakeFlow[\s\S]*?locations=\{locations\}/.test(wishlist));
 check("intake shell 不再依赖 min-h-[100dvh] 外层", !/<div className="min-h-\[100dvh\]/.test(intakeShell));
-check("IntakeStepOneImagePicker 有预览时不渲染大号拍照/图库卡片", /\{!previewNode \? \([\s\S]*grid grid-cols-2 gap-4[\s\S]*min-h-\[144px\][\s\S]*\) : null\}/.test(garmentIntake));
-check("IntakeStepOneImagePicker 拍照/图库入口使用新版圆角矩形", /min-h-\[144px\][^"]*ui-control-radius[^"]*bg-white\/82[^"]*shadow-sm/.test(garmentIntake));
+check("IntakeStepOneImagePicker 有预览时不渲染初始拍照/图库入口", /\{!previewNode \? \([\s\S]*grid grid-cols-2 gap-4[\s\S]*<IntakeImageSourceButton[\s\S]*\) : null\}/.test(garmentIntake));
+check("IntakeStepOneImagePicker 拍照/图库入口复用系统圆角矩形", /function IntakeImageSourceButton[\s\S]*h-16 px-3 text-sm[\s\S]*ui-control-radius border border-ink\/10 bg-white\/82[\s\S]*ui-control-radius bg-denim\/10/.test(garmentIntake));
+check("IntakeFlowShell 顶部只消费共享录入安全区一次", /paddingTop:\s*"calc\(var\(--intake-safe-area-top, 0px\) \+ 0\.5rem\)"/.test(intakeShell) && !/paddingTop:\s*"[^"]*--android-safe-area-top/.test(intakeShell));
 check("GarmentIntakeFlow 已选图预览高度收敛到一屏", /h-\[min\(34dvh,280px\)\]/.test(garmentIntake));
 check("GarmentIntakeFlow 裁切页不再使用嵌套 calc 固定高度", !/height:\s*"calc\(100dvh - 280px\)"/.test(garmentIntake));
 check("GarmentIntakeFlow 裁切工具栏使用短标签", /自由/.test(garmentIntake) && /3:4/.test(garmentIntake) && /左转90°/.test(garmentIntake) && /右转90°/.test(garmentIntake) && /重置/.test(garmentIntake));

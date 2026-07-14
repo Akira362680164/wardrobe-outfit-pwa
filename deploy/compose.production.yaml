@@ -62,10 +62,11 @@ services:
       - /srv/wardrobe/storage:/var/lib/wardrobe-api/storage
       - /opt/wardrobe-cloud/models/u2netp.onnx:/opt/wardrobe-models/u2netp.onnx:ro
     healthcheck:
-      test: ["CMD-SHELL", "node -e \"fetch('http://127.0.0.1:3000/api/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))\""]
+      test: ["CMD-SHELL", "node -e \"fetch('http://127.0.0.1:3000/api/ready').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))\""]
       interval: 5s
       timeout: 5s
-      retries: 10
+      retries: 20
+      start_period: 90s
     networks:
       - wardrobe-cloud
 

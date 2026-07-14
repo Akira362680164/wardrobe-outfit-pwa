@@ -44,12 +44,14 @@
 | 小程序衣橱 | 现有文案/UI、几何可记录裁切层 | 逐张裁切、填写属性 | typecheck、等价 JS 开发者工具编译通过 |
 | 小程序种草 | 现有文案/UI、几何可记录裁切层 | 逐张裁切、填写属性 | typecheck、等价 JS 开发者工具编译通过 |
 
-- 固定签名 APK：最终 v2.1.21-test 产物与摘要在提交后构建并补记；包名保持 `com.wardrobe.outfit`，versionCode `20121`。
+- 固定签名 APK：`衣橱穿搭助手-v2.1.22-test.apk`；包名 `com.wardrobe.outfit`，versionCode `20122`。最终提交后构建的文件摘要在交付回复中记录。
 - Android 15 / API 35 `wardrobe-test`：使用测试账号真实选择 10 张。初始 10 张原图立即显示，随后截图记录 `1/10`、`4/10`、`8/10`，完成态为 `10/10` 后进度消失；生产访问日志对应 10 次 HTTP 200。证据仅留本机 `/tmp/wardora-intake-10-*.png`，不提交原图或截图。现场发现并修复无 Key 项目误显示“失败”的状态耦合，`manual` 与识别失败现已正交。
+- 用户截图指出的录入页顶部留白和图片来源控件已在共享层修复：运行时测得旧 header `padding-top=56px`（其中 Android inset 为 48px，WebView viewport 已避开状态栏），修后步骤 1/步骤 2共用单次安全区；“拍照 / 从图库选择”改为 64px 横向系统圆角矩形。最终本机证据 `/tmp/wardora-v2.1.22-intake-step1.png`、`/tmp/wardora-v2.1.22-intake-step2.png`；真实裁切请求后敏感 logcat 与 fatal 均 0 命中。
 - 微信开发者工具 Nightly `2.02.2607132`：仓库 TS 项目因工具未生成入口 JS 而报缺文件；在 `/tmp/wardora-mini-compile.AEi8E8` 生成等价 JS 副本后普通编译成功、问题面板 0，并进入登录页。控制台只有工具自身 `appid missing`/安全信息超时。
 
 ## 生产门禁与未覆盖风险
 
 - 不提交或再分发模型权重。项目所有者已明确批准在个人、非商业 Wardora 部署中原样使用该上游 u2netp 权重；固定 SHA-256 为 `309c8469258dda742793dce0ebea8e6dd393174f89934733ecc8b14c76f4ddd8`。部署通过只读挂载注入，并配置私有 sidecar、无公网、硬超时、并发/队列与健康检查。
 - API 已部署为 `wardrobe-api:0e3165a5`；部署前备份 `/opt/wardrobe-cloud/backups/postgres/wardrobe-20260714-081950.sql`，保留前序镜像用于回滚。`/api/health`、`/api/ready`（含 `imageCrop`）和 `/api/version` 通过；容器复测无重启/OOM，10 图后日志无 Base64、Bearer、本机路径或 5xx。
+- 长驻 worker 后续批次把原“每请求启动并加载模型”改为“容器启动加载一次并预热”：Python 通过私有 stdio NDJSON循环处理，API 只有在收到 ready 握手后才报告 `imageCrop=ready`；崩溃/超时自动重启并重新预热。生产 healthcheck 改为 `/api/ready`，并发/队列/单图超时保持 `1/20/45s`。最终部署镜像、重启后首张、连续 10 张和内存数据在本 Session 部署复测后补入交付回复。
 - 自动测试覆盖 App/小程序 × 衣橱/种草 × Key/无 Key、乱序/失败/删除/追加/重试/手工抢占。Android 已补齐衣橱无 Key 10 图现场证据；其余 UI 现场项和小程序模拟器结果按本记录最终收口状态报告，不以自动合同冒充真机通过。物理 Android、微信真机 OffscreenCanvas、相机入口与弱网仍是独立风险。

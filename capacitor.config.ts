@@ -4,6 +4,7 @@ const config: CapacitorConfig = {
   appId: "com.wardrobe.outfit",
   appName: "衣橱穿搭助手",
   webDir: "out",
+  loggingBehavior: "none",
   plugins: {
     CapacitorHttp: {
       enabled: true,

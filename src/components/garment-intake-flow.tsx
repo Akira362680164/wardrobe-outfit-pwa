@@ -1067,23 +1067,22 @@ function MultiImageSelectStep({
         ) : null}
       </div>
       <div className="flex gap-2">
-        <button
-          data-parity-id={`parity.app.app.src.components.garment.intake.flow.2f02d078d9.${activeImageId ?? "none"}`}
-          type="button"
+        <IntakeImageSourceButton
+          parityId={`parity.app.app.src.components.garment.intake.flow.2f02d078d9.${activeImageId ?? "none"}`}
+          label="继续拍照"
+          icon={<Camera size={16} aria-hidden="true" />}
           onClick={onAddFromCamera}
           disabled={isPicking}
-          className="flex-1 h-10 ui-control-radius border border-ink/10 bg-white/82 text-sm font-semibold disabled:opacity-35 flex items-center justify-center gap-1 shadow-sm"
-        >
-          <Camera size={14} /> 继续拍照
-        </button>
-        <button
-          type="button"
-          data-parity-id="parity.app.app.src.components.garment.intake.flow.95ecf9c92a" onClick={onAddFromAlbum}
+          compact
+        />
+        <IntakeImageSourceButton
+          parityId="parity.app.app.src.components.garment.intake.flow.95ecf9c92a"
+          label="继续从图库选择"
+          icon={<ImageIcon size={16} aria-hidden="true" />}
+          onClick={onAddFromAlbum}
           disabled={isPicking}
-          className="flex-1 h-10 ui-control-radius border border-ink/10 bg-white/82 text-sm font-semibold disabled:opacity-35 flex items-center justify-center gap-1 shadow-sm"
-        >
-          <ImageIcon size={14} /> 继续从图库选择
-        </button>
+          compact
+        />
       </div>
       <button
         type="button"
@@ -1408,7 +1407,9 @@ function MultiImageReviewStep({
             }
           >
             <p className="text-xs leading-relaxed text-ink/50">
-              核对 AI 识别结果，红色“待确认”字段建议手动确认后再保存。
+              {hasMiniMaxKey
+                ? "核对 AI 识别结果，红色“待确认”字段建议手动确认后再保存。"
+                : "填写或修改属性，红色“待确认”字段请手动确认后再保存。"}
             </p>
           </EditSectionCard>
 
@@ -1899,24 +1900,20 @@ export function IntakeStepOneImagePicker({
       </IntakeStepSection>
       {!previewNode ? (
         <div className="grid grid-cols-2 gap-4">
-          <button
-            type="button"
-            data-parity-id="parity.app.app.src.components.garment.intake.flow.3e301f728c" onClick={onCameraClick}
+          <IntakeImageSourceButton
+            parityId="parity.app.app.src.components.garment.intake.flow.3e301f728c"
+            label="拍照"
+            icon={<Camera size={20} aria-hidden="true" />}
+            onClick={onCameraClick}
             disabled={disabled}
-            className="min-h-[144px] ui-control-radius border border-ink/10 bg-white/82 text-sm font-semibold flex flex-col items-center justify-center gap-2 shadow-sm"
-          >
-            <Camera size={24} className="text-denim" />
-            拍照
-          </button>
-          <button
-            type="button"
-            data-parity-id="parity.app.app.src.components.garment.intake.flow.8b349a35cd" onClick={onGalleryClick}
+          />
+          <IntakeImageSourceButton
+            parityId="parity.app.app.src.components.garment.intake.flow.8b349a35cd"
+            label="从图库选择"
+            icon={<ImageIcon size={20} aria-hidden="true" />}
+            onClick={onGalleryClick}
             disabled={disabled}
-            className="min-h-[144px] ui-control-radius border border-ink/10 bg-white/82 text-sm font-semibold flex flex-col items-center justify-center gap-2 shadow-sm"
-          >
-            <ImageIcon size={24} className="text-denim" />
-            从图库选择
-          </button>
+          />
         </div>
       ) : null}
       <p className="text-[10px] text-ink/40 text-center">
@@ -1926,6 +1923,37 @@ export function IntakeStepOneImagePicker({
         支持一次选择多张，最多 {maxCount} 张
       </p>
     </div>
+  );
+}
+
+function IntakeImageSourceButton({
+  parityId,
+  label,
+  icon,
+  onClick,
+  disabled,
+  compact = false,
+}: {
+  parityId: string;
+  label: string;
+  icon: ReactNode;
+  onClick: () => void;
+  disabled?: boolean;
+  compact?: boolean;
+}) {
+  return (
+    <button
+      type="button"
+      data-parity-id={parityId}
+      onClick={onClick}
+      disabled={disabled}
+      className={`${compact ? "h-12 px-2 text-xs" : "h-16 px-3 text-sm"} app-press-feedback flex min-w-0 flex-1 items-center justify-center gap-2 ui-control-radius border border-ink/10 bg-white/82 font-semibold text-ink disabled:opacity-35`}
+    >
+      <span className={`${compact ? "h-8 w-8" : "h-10 w-10"} grid shrink-0 place-items-center ui-control-radius bg-denim/10 text-denim`}>
+        {icon}
+      </span>
+      <span className="min-w-0 text-center leading-tight">{label}</span>
+    </button>
   );
 }
 

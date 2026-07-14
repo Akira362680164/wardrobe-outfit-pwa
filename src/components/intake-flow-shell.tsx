@@ -172,7 +172,7 @@ export function IntakeFlowShell({
           inert={isTopmost ? undefined : true}
           className="app-ambient-bg fixed inset-0 z-[90] flex h-[100dvh] flex-col overflow-hidden outline-none"
         >
-      <header className="app-glass-top sticky top-0 z-30 px-4 pb-3" style={{ paddingTop: "calc(max(env(safe-area-inset-top, 0px), var(--android-safe-area-top, 0px)) + 0.5rem)" }}>
+      <header className="app-glass-top sticky top-0 z-30 px-4 pb-3" style={{ paddingTop: "calc(var(--intake-safe-area-top, 0px) + 0.5rem)" }}>
         <div className="flex h-10 items-center justify-between gap-2">
           <button
             type="button"
