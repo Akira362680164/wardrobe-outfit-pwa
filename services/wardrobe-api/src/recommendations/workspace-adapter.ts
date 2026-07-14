@@ -1,6 +1,7 @@
 import { createHash, randomUUID } from "node:crypto";
 import type { Pool } from "pg";
 import { RecommendationEngineInputSchema, type RecommendationEngineInput, type SceneType, type WeatherEvidence } from "@wardrobe/cloud-contracts";
+import { isSystemColor } from "@wardrobe/domain-catalog";
 
 const RECOMMENDATION_CATEGORIES = new Set(["tops", "pants", "skirts", "one_piece", "shoes", "bags", "hats", "jewelry", "accessories"]);
 const ACTIVE_STATUSES = new Set(["active", "available", "clean", "in_wardrobe"]);
@@ -100,7 +101,7 @@ function seasonalRange(date: string) { const month = Number(date.slice(5, 7)); r
 function isoWeekday(date: string) { const day = new Date(`${date}T00:00:00Z`).getUTCDay(); return day === 0 ? 7 : day; }
 function dateInZone(value: Date, timezone: string) { return new Intl.DateTimeFormat("en-CA", { timeZone: timezone, year: "numeric", month: "2-digit", day: "2-digit" }).format(value); }
 function strings(value: unknown): string[] { if (Array.isArray(value)) return value.filter((v): v is string => typeof v === "string" && v.trim().length > 0); if (typeof value === "string" && value.trim()) return value.split(/[,，、]/).map((v) => v.trim()).filter(Boolean); return []; }
-function colorsOf(value: unknown): string[] { const direct = strings(value); if (direct.length) return direct; const color = record(value); if (color.mode === "single") return strings(color.primary); if (color.mode === "main_with_accent") return [...strings(color.primary), ...strings(color.accents)]; if (color.mode === "multicolor") return strings(color.primaries); return []; }
+function colorsOf(value: unknown): string[] { const direct = strings(value); const color = record(value); const values = direct.length ? direct : color.mode === "single" ? strings(color.primary) : color.mode === "main_with_accent" ? [...strings(color.primary), ...strings(color.accents)] : color.mode === "multicolor" ? strings(color.primaries) : []; return [...new Set(values)].filter(isSystemColor); }
 function text(value: unknown): string | undefined { return typeof value === "string" && value.trim() ? value.trim() : undefined; }
 function number(value: unknown): number | undefined { const n = typeof value === "number" ? value : typeof value === "string" && value.trim() ? Number(value) : NaN; return Number.isFinite(n) ? n : undefined; }
 function integer(value: unknown, min: number, max: number) { const n = number(value); return n !== undefined && Number.isInteger(n) && n >= min && n <= max ? n : undefined; }
