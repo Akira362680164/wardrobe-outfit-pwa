@@ -1,3 +1,13 @@
+## 2026-07-14 / v2.1.22-test / Codex — 推荐后端 1B 严格合同与原子版本化持久化
+
+- **执行与边界**：Codex 在独立 `codex/recommendation-backend-1b-20260714` worktree 完成，未使用 subagent。本批只做后端暗部署：不注册公开推荐路由、不加 workspace overview、不开启 `DAILY_RECOMMENDATIONS_ENABLED`，不引入 `recommendation_actions` / job runs / Worker / QWeather / PAW 真实调用，不修改 App、小程序 UI 或 1F 图片裁切。
+- **严格合同与 1A 补口**：`packages/cloud-contracts` 新增由 Zod 推导的引擎输入/输出、排除项、候选审计、发布命令与 `DailyRecommendationRecord` 合同；未知字段、非法 UUID/真实日期/枚举/分数、自由 `pawScores` / `itemIds` 及候选交叉不一致均拒绝。硬过滤回归改为按目标 `garmentId` 精确比对 exclusion codes，不再使用全局出现即通过的弱断言。
+- **持久化模型**：迁移 `0019_daily_recommendations.sql` 只新增一张 `daily_recommendations`，候选与审计 payload 经严格 Schema 验证后以 JSONB 保存，衣物关系只保留服务端 UUID。表内分开 readiness、generation mode 与 current/superseded 生命周期，包含用户/日期/时区/revision/批次/请求/fingerprint/版本/完整 payload 与全部时间字段；落实 revision 唯一、请求幂等唯一、每用户每日唯一 current partial index、revision/过期/生命周期约束与用户级联删除。
+- **发布与幂等**：`RecommendationPersistenceService` 在事务外严格解析并生成 canonical SHA-256 fingerprint；事务内首先获取 `recommendation-current:<userId>:<targetDate>` advisory transaction lock，再分配 revision、插入 non-current、降级旧 current、提升新 current 并读回。同 generation request + 同 fingerprint 返回原记录（即使已 superseded），不同 fingerprint 稳定冲突且数据库不变，旧请求重放不会复活 current。生成异常不写入残缺 failed 行。
+- **真实 PostgreSQL 证据**：独立 PostgreSQL 16 schema、多连接门禁 `18/18` 通过；覆盖首发/替换/旧 revision 保留，12 个不同请求并发时 revision 不重复且仅一 current，12 个同请求并发只产生一行，冲突/旧键重放/MVCC 提交前后可见性，插入后、旧 current 降级后、新 current 提升后、提交前注错与终止 writer backend 的整体回滚，用户/日期/时区隔离、写前/读后 Schema、索引/约束/级联/清理，以及空库全迁移和 `0018 → 0019` 升级回放。
+- **验证与真实衣橱门禁**：cloud contracts/API/根/小程序 typecheck，API 全量 `194/194`，推荐合同 `12/12`，引擎 `49/49`，根 `test:logic` 与 production build 通过。现有授权测试账号的生产口令已失效，本机也无可复用会话，因此未将合成数据冒充真实衣橱；可读影子验收明确记为“阻塞 1C，但不阻塞 1B 核心持久化”。
+- **剩余边界**：`generationBatchId` 在 1B 仅记录跨日期批次关系；今日/明日同批次读取与发布策略、失败摘要/job runs、调度和公开 API 均保留给 1C。生产备份、隔离恢复/迁移演练、部署后路由/开关门禁与最终镜像证据在本 Session 合入最新 `main` 后连续执行并于最终交付中报告。
+
 ## 2026-07-14 / v2.1.22-test / Codex — 强制清理 Session 临时分支与 worktree
 
 - **规则更新**：本机根 `AGENTS.md` 明确把临时 Git 清理纳入开发完成定义；每个 Agent、子 Agent和独立 Session 在成果合入并推送正式基线后，必须删除自己创建的本地/远端临时分支和临时 worktree，不得遗留给后续 Session。

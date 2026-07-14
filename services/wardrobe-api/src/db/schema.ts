@@ -1,6 +1,8 @@
 import {
   bigint,
   boolean,
+  check,
+  date,
   index,
   integer,
   jsonb,
@@ -68,6 +70,9 @@ export const accountDeletionJobStatus = pgEnum("account_deletion_job_status", [
   "completed",
   "failed",
 ]);
+
+export const recommendationReadiness = pgEnum("recommendation_readiness", ["ready", "limited", "not_ready"]);
+export const recommendationGenerationMode = pgEnum("recommendation_generation_mode", ["rule_only", "paw_enhanced", "rule_fallback"]);
 
 export const users = pgTable("users", {
   id: uuid("id").primaryKey().defaultRandom(),
@@ -462,6 +467,43 @@ export const outfitPlans = pgTable(
       .where(sql`${table.deletedAt} IS NULL AND ${table.planDate} IS NOT NULL AND ${table.payload}->>'status' = 'planned' AND ${table.payload}->>'isPrimary' = 'true'`),
     oneActualPrimaryPerDay: uniqueIndex("outfit_plans_one_actual_primary_per_day").on(table.userId, table.planDate)
       .where(sql`${table.deletedAt} IS NULL AND ${table.planDate} IS NOT NULL AND ${table.payload}->>'status' = 'worn' AND ${table.payload}->>'isPrimaryActual' = 'true'`),
+  }),
+);
+
+export const dailyRecommendations = pgTable(
+  "daily_recommendations",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: uuid("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+    targetDate: date("target_date", { mode: "string" }).notNull(),
+    targetTimezone: text("target_timezone").notNull(),
+    revision: integer("revision").notNull(),
+    generationBatchId: uuid("generation_batch_id").notNull(),
+    generationRequestId: uuid("generation_request_id").notNull(),
+    payloadFingerprint: text("payload_fingerprint").notNull(),
+    readiness: recommendationReadiness("readiness").notNull(),
+    generationMode: recommendationGenerationMode("generation_mode").notNull(),
+    isCurrent: boolean("is_current").notNull().default(false),
+    supersededAt: timestamp("superseded_at", { withTimezone: true }),
+    payload: jsonb("payload").notNull(),
+    algorithmVersion: text("algorithm_version").notNull(),
+    ruleVersion: text("rule_version").notNull(),
+    pawProgramVersions: jsonb("paw_program_versions").notNull(),
+    generatedAt: timestamp("generated_at", { withTimezone: true }).notNull(),
+    expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+    ...timestamps,
+  },
+  (table) => ({
+    userDateRevisionUnique: uniqueIndex("daily_recommendations_user_date_revision_unique").on(table.userId, table.targetDate, table.revision),
+    generationRequestUnique: uniqueIndex("daily_recommendations_generation_request_unique").on(table.userId, table.generationRequestId),
+    oneCurrentPerDate: uniqueIndex("daily_recommendations_one_current_per_date").on(table.userId, table.targetDate).where(sql`${table.isCurrent} = true`),
+    userDateIdx: index("daily_recommendations_user_date_idx").on(table.userId, table.targetDate),
+    batchIdx: index("daily_recommendations_batch_idx").on(table.userId, table.generationBatchId),
+    expiryIdx: index("daily_recommendations_expiry_idx").on(table.expiresAt),
+    revisionPositive: check("daily_recommendations_revision_positive", sql`${table.revision} > 0`),
+    expiryAfterGeneration: check("daily_recommendations_expiry_after_generation", sql`${table.expiresAt} > ${table.generatedAt}`),
+    fingerprintFormat: check("daily_recommendations_fingerprint_format", sql`${table.payloadFingerprint} ~ '^[a-f0-9]{64}$'`),
+    currentSupersededState: check("daily_recommendations_current_superseded_state", sql`(${table.isCurrent} AND ${table.supersededAt} IS NULL) OR (NOT ${table.isCurrent} AND ${table.supersededAt} IS NOT NULL)`),
   }),
 );
 

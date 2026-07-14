@@ -3,6 +3,8 @@ import { createHash } from "node:crypto";
 import {
   CandidateEvaluationInputSchema,
   CandidateRuleScoresSchema,
+  RecommendationEngineInputSchema,
+  RecommendationEngineOutputSchema,
   RecommendationReadinessReportSchema,
   type CandidateEvaluation,
   type DateContext,
@@ -525,6 +527,7 @@ function buildReadiness(
 }
 
 export async function generateRecommendations(input: RecommendationEngineInput, evaluator?: CandidateEvaluatorFunction): Promise<RecommendationEngineOutput> {
+  input = RecommendationEngineInputSchema.parse(input);
   const context = await new RuleDateContextResolver().resolve(input.dateContextInput);
   const filtered = hardFilterGarments(input.garments, context, input);
   const grouped = pruneGarmentsBySlot(filtered.eligible, context, input);
@@ -555,7 +558,7 @@ export async function generateRecommendations(input: RecommendationEngineInput, 
   }
   const recommendations = selectDiverse(evaluated);
   const readiness = buildReadiness(input, grouped, scored.length, recommendations.length);
-  return {
+  return RecommendationEngineOutputSchema.parse({
     ruleVersion: input.ruleVersion,
     dateContext: context,
     recommendations: readiness.status === "not_ready" ? [] : recommendations,
@@ -563,7 +566,7 @@ export async function generateRecommendations(input: RecommendationEngineInput, 
     readiness,
     exclusions: filtered.exclusions,
     metrics: { eligibleGarmentCount: filtered.eligible.length, rawCandidateCount: raw.candidates.length, ruleScoredCandidateCount: scored.length, maxBeamObserved: raw.maxBeamObserved },
-  };
+  });
 }
 
 export function canonicalizeOutput(output: RecommendationEngineOutput): string {

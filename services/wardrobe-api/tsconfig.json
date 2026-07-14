@@ -11,5 +11,5 @@
     "skipLibCheck": true,
     "types": ["node", "vitest"]
   },
-  "include": ["src/**/*.ts", "tests/**/*.ts", "drizzle.config.ts"]
+  "include": ["src/**/*.ts", "tests/**/*.ts", "drizzle.config.ts", "vitest.postgres.config.ts"]
 }

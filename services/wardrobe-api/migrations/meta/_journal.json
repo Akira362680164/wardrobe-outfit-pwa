@@ -134,6 +134,13 @@
       "when": 1783900800001,
       "tag": "0018_workspace_invariants",
       "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "7",
+      "when": 1783987200000,
+      "tag": "0019_daily_recommendations",
+      "breakpoints": true
     }
   ]
 }
