@@ -1,6 +1,6 @@
 # Wardora 1C 代表性测试衣橱推荐验收
 
-本报告只描述隔离测试 schema 中的非个人测试衣橱，不包含账号、密码、令牌、原图、用户标识或自由错误堆栈。测试图片字段使用项目授权测试资产占位，不引入外部图片。
+本报告只描述测试服务器中的专用非个人测试衣橱，不包含账号、密码、令牌、原图、用户标识或自由错误堆栈。测试图片通过正式资产 API 使用项目已有授权测试素材，不引入外部图片。
 
 ## 衣橱与上下文
 
@@ -17,13 +17,15 @@
 
 ## 受控结果
 
-- 今日 readiness：`ready`；今日与明日 current 使用同一 `generationBatchId`。
+- 2026-07-14 最终 run-once 用时 `1.662s`，容量峰值 `64`，峰值 RSS `139227136` bytes；完整批次 `146` 个 user-date 中 `ready=14`、`fallback=118`、`failed=14`，单项失败未阻断其他用户/日期。
+- 本测试衣橱生成 7 个 current 日期，readiness 均为 `ready`、每日期 3 套；今日与明日 current 使用同一 `generationBatchId`，全库混合首页 pair 为 `0`。
 - 远期出差的空日期被纳入任务；已确认 primary 与实际已穿日期被跳过。
 - 归档衣物排除码：`unavailable_status`。
 - 缺主图衣物排除码：`missing_primary_image`。
 - 缺必要字段衣物排除码：`missing_required_field`。
 - 空衣橱/缺鞋等边界由同批隔离用户覆盖 `not_ready`，不会生成伪推荐；候选不足由既有 1A Fixture 覆盖 `limited`。
 - 天气来源只可能为 `plan_semantic_inference`、`seasonal_inference` 或 `layering_default`；测试未声称接入 QWeather 或真实 forecast。
+- 鉴权读取成功为 `200`，无凭据为 `401`，同令牌配错误设备为 `403`；响应不含 shortlist、完整评分审计、自由错误栈、账号或令牌。
 
 ## 风险与未覆盖
 
