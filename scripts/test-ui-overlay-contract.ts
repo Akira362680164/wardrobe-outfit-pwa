@@ -97,6 +97,11 @@ assert.match(topBar, /<MoreHorizontal size=\{20\} strokeWidth=\{2\.6\}/, "more i
 
 assert.match(globals, /--ui-radius-nav-active:\s*22px;/, "bottom nav active radius has concentric token");
 assert.match(globals, /\.app-glass-top\s*\{[\s\S]{0,160}background:\s*rgba\(255,\s*255,\s*255,\s*0\.01\);[\s\S]{0,160}box-shadow:\s*none;/, "top glass keeps blur but removes visible white strip");
+assert.match(globals, /\.app-floating-nav\s*\{[\s\S]{0,700}background:\s*rgba\(255,\s*255,\s*252,\s*0\.4\);[\s\S]{0,400}backdrop-filter:\s*blur\(34px\) saturate\(1\.5\) brightness\(1\.05\);/, "bottom nav uses the approved higher-transparency glass material");
+assert.match(globals, /\.app-floating-nav::before\s*\{[\s\S]{0,800}linear-gradient\([\s\S]{0,120}135deg[\s\S]{0,500}inset 0 0 0 1px/, "bottom nav simulates angled edge refraction and depth without a displacement filter");
+assert.match(globals, /data-reduced-transparency[\s\S]{0,260}\.app-floating-nav[\s\S]{0,180}backdrop-filter:\s*none;/, "bottom nav has a reduced-transparency fallback");
+assert.match(globals, /--ui-card-bg:\s*rgba\(255,\s*255,\s*252,\s*0\.52\);[\s\S]{0,100}--ui-card-filter:\s*blur\(30px\) saturate\(1\.35\) brightness\(1\.04\);/, "all first-level cards reuse the previous glass material");
+assert.match(globals, /\.ui-card\s*\{[\s\S]{0,500}backdrop-filter:\s*var\(--ui-card-filter\);/, "the shared first-level card token owns glass rendering");
 assert.ok(!wardrobe.includes("bottom-2 left-2 top-2 w-1"), "runtime toast does not use a full-height status strip");
 assert.ok(wardrobe.includes("WebkitLineClamp: 3"), "runtime toast clamps body copy to three lines");
 assert.ok(wardrobe.includes("rounded-[var(--ui-radius-nav-active)]"), "mobile nav active item uses concentric nav radius");

@@ -6,6 +6,15 @@
 - **门禁与交付**：根/合同/API/小程序 typecheck、API `180/180`、共享 10 向量、录入状态机与四入口合同、Next/Android release 构建通过。固定签名 APK `衣橱穿搭助手-v2.1.20-test.apk`（versionCode `20120`，SHA-256 `b98762ab2522b954db030cae47122605a8c4ee050bd7ee64ebe00a276b903a23`）在 Android 15 模拟器完成冷启动、360dp、Back 与 fatal 筛查。
 - **生产与未覆盖**：权重未入 Git；正式启用必须先完成权重分发许可审核、部署 checksum、私网常驻 sidecar/容量/ready 门禁。本 Session 不合 main、不部署。两客户端模拟器缺测试账号，未完成登录后 UI 内四入口 10 图截图/真机验证，未将自动合同或后端实图结果冒充为该项通过。
 
+## 2026-07-14 / v2.1.20-test / Codex — App 毛玻璃导航与一级卡片统一
+
+- **执行与版本**：Codex 在独立 `codex/glass-nav-app-20260714` worktree 实施；版本从 `2.1.19-test` 递增到 `2.1.20-test`，同步 `package-lock.json` 与小程序生成 build-info。本批只调整视觉 token、规范与防回归合同，不修改信息架构、业务字段、线上数据源、API 或 MiniMax 边界。
+- **视觉结果**：App 浮动底栏改为 `rgba(255,255,252,0.40)`、`blur(34px) saturate(1.5) brightness(1.05)`，使用斜向内高光、内暗边和窄阴影近似 Figma Glass 的折射、厚度与受光，保持 `dispersion=0`；所有现有浅色一级 `.ui-card` 统一为 `rgba(255,255,252,0.52)`、`blur(30px) saturate(1.35) brightness(1.04)`，覆盖单品、套装、种草与设置等一级卡片，保留原圆角、间距和外阴影，二级内嵌卡片不变。登录壳“退出应用”居中确认框同步改用 `28px` 一级卡片圆角，内部按钮继续沿用 `16px` 控件圆角。reduced-transparency、高对比和不支持 backdrop-filter 时继续回退为近实色。
+- **改动文件**：`src/app/globals.css`、`src/components/auth/auth-gate.tsx`、`scripts/test-ui-overlay-contract.ts`、`scripts/test-account-management-urgent.ts`、`docs/designs/wardrobe-ui-spec.md`、生成的 `docs/designs/wardrobe-ui-spec.html`、`package.json`、`package-lock.json`、`apps/wechat-miniprogram/generated/build-info.ts` 与本记录。
+- **验证结果**：UI 规范 build/check、overlay/token/shared item shell、账号管理与认证壳合同、根 typecheck、Next build 与 `git diff --check` 通过；另以 `390×844` 移动触摸浏览器预览检查一级卡片和底栏层次。`npm run android:apk` 成功；固定签名 APK `衣橱穿搭助手-v2.1.20-test.apk` 为 `10,068,813` bytes，SHA-256 `90a7f23b0d061908700d767e17ac9b3d5cf03500a8a40b4f153b4d0143aa7b80`，包名 `com.wardrobe.outfit`、`versionCode=20120`、签名 `CN=fangzheng`。
+- **Android 现场**：Android 15 / API 35 `wardrobe-test` 模拟器完成覆盖安装、启动、前台窗口、系统 Back、竖屏截图、清数据再启动和 fatal logcat 扫描，未检出致命崩溃；竖屏截图确认“退出应用”确认框四角已按 `28px` 圆角呈现，验证后已关闭模拟器。
+- **未验证风险**：清数据后 APK 停留在登录壳，未使用生产账号或真实业务数据，因此登录后的真实长列表底栏与卡片透色以同源码移动浏览器视觉检查和静态合同覆盖，未冒充为 Android 登录后设备实测；物理 Android 真机、系统字体放大和 TalkBack 未覆盖。
+
 ## 2026-07-14 / v2.1.19-test / Codex 主集成 — 全量动效修复与 Android 交付
 
 - **执行与版本**：主 Agent 完成 `apple-design` 审查方案的 Wave 0–6 并行归并，将版本从 `2.1.18-test` 递增到 `2.1.19-test`；同步 `package-lock.json` 与小程序生成 build-info，不修改小程序运行时或业务契约。

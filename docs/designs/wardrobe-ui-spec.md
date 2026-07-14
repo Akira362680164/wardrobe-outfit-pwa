@@ -62,6 +62,7 @@ lastReviewedAt: 2026-07-07
 | 二级卡片 | `18px-20px` | 一级卡片内部的选择块、空状态、预览块 |
 | 普通控件 | `12px-14px` | 筛选、输入、普通按钮 |
 | 底部菜单外框 | `26px` | 悬浮毛玻璃圆角矩形 |
+| 居中确认框外框 | `28px` | 与一级卡片共用 `--ui-radius-card`；内部按钮继续使用 `16px` 控件圆角 |
 | 底部菜单选中项 | `外框半径 - 内边距` | 不使用圆形激活按钮；选中项色块弧线必须与外框同心 |
 | 缩略图 | `8px-12px` | 详情胶片栏、录入缩略图、队列图 |
 
@@ -75,7 +76,11 @@ lastReviewedAt: 2026-07-07
 | --- | --- | --- |
 | `glass.top.bg` | `rgba(251,251,248,0.75)` | 多处仍为 `#fbfbf8/95` 或实色 |
 | `glass.top.blur` | `blur(30px) saturate(1.5)` | `backdrop-blur-xl` / `.surface blur(18px)` |
-| `glass.bottom.bg` | `rgba(255,255,252,0.75)` | 底部导航当前 `#fbfbf8/94` |
+| `glass.bottom.bg` | `rgba(255,255,252,0.40)` | 底部导航使用更高透明度，让滚动内容自然透色 |
+| `glass.bottom.filter` | `blur(34px) saturate(1.5) brightness(1.05)` | 加强 Frost 与背景色扩散；不使用真实位移滤镜 |
+| `glass.bottom.edge` | `-45deg / refraction 31 / depth 20 / light 45` | 以斜向内高光、内暗边和窄阴影近似折射、厚度与受光；`dispersion=0` |
+| `glass.card.bg` | `rgba(255,255,252,0.52)` | 所有使用一级 `.ui-card` token 的浅色卡片统一使用；二级内嵌卡片不变 |
+| `glass.card.filter` | `blur(30px) saturate(1.35) brightness(1.04)` | 复用上一轮已确认的导航玻璃参数，覆盖单品、套装、种草与设置一级卡片 |
 | `glass.toast.bg` | `rgba(255,255,252,0.88)` | Toast 应比页面卡片更浮，但不能变成实心白卡 |
 | `shadow.soft` | `0 18px 50px rgba(29,34,40,0.10)` | Tailwind `shadow.soft` |
 | `shadow.card` | `0 18px 50px rgba(29,34,40,0.08)` | `.surface` |

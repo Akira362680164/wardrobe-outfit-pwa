@@ -28,6 +28,7 @@ assert.ok(!authGate.includes('className="fixed inset-0'), "Auth 不得保留私�
 assert.ok(!authGate.includes('App.addListener("backButton"'), "Auth 不得保留私有原生 Back listener");
 assert.match(authGate, /function ConfirmEmailDialog[\s\S]*?<MotionSheet/, "邮箱确认必须复用 MotionSheet");
 assert.match(authGate, /function ExitDialog[\s\S]*?<MotionSheet/, "登录壳退出确认必须复用 MotionSheet");
+assert.match(authGate, /function ExitDialog[\s\S]*?panelClassName="!max-w-xs !rounded-\[var\(--ui-radius-card\)\] px-5 py-5"/, "退出应用确认框必须使用一级卡片圆角 token");
 assert.match(authGate, /dismissible=\{!busy\}/, "邮箱请求 busy 时必须拒绝协调关闭");
 assert.match(accountDeletion, /variant="destructive"[\s\S]{0,220}dismissible=\{!busy\}/, "注销最终确认 busy 时必须保持栈顶");
 
