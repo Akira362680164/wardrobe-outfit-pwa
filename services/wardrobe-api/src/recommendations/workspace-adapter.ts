@@ -50,7 +50,7 @@ export class RecommendationWorkspaceAdapter {
         id: row.id, userId: row.user_id, deleted: Boolean(row.deleted_at), status: ACTIVE_STATUSES.has(rawStatus) ? "active" as const : (["laundry", "repair", "archived"].includes(rawStatus) ? rawStatus as "laundry" | "repair" | "archived" : "archived" as const),
         hasPrimaryImage: imageIds.has(row.id) || Boolean(text(p.primaryImageUrl) ?? text(p.imageUrl) ?? text(p.image)),
         ...(category ? { category } : {}), ...(text(p.subcategory) ? { subcategory: text(p.subcategory)! } : {}),
-        colors: strings(p.colors ?? p.color).slice(0, 4), seasons: strings(p.seasons ?? p.season).slice(0, 4), styles: strings(p.styles ?? p.style).slice(0, 8),
+        colors: colorsOf(p.colors ?? p.color).slice(0, 4), seasons: strings(p.seasons ?? p.season).slice(0, 4), styles: strings(p.styles ?? p.style).slice(0, 8),
         ...(integer(p.formality, 1, 5) ? { formality: integer(p.formality, 1, 5)! } : {}), ...(integer(p.warmth, 1, 5) ? { warmth: integer(p.warmth, 1, 5)! } : {}),
         ...(text(p.material) ? { material: text(p.material)! } : {}),
         ...(number(p.temperatureMinC ?? range.min ?? range.minC) !== undefined ? { temperatureMinC: number(p.temperatureMinC ?? range.min ?? range.minC)! } : {}),
@@ -100,6 +100,7 @@ function seasonalRange(date: string) { const month = Number(date.slice(5, 7)); r
 function isoWeekday(date: string) { const day = new Date(`${date}T00:00:00Z`).getUTCDay(); return day === 0 ? 7 : day; }
 function dateInZone(value: Date, timezone: string) { return new Intl.DateTimeFormat("en-CA", { timeZone: timezone, year: "numeric", month: "2-digit", day: "2-digit" }).format(value); }
 function strings(value: unknown): string[] { if (Array.isArray(value)) return value.filter((v): v is string => typeof v === "string" && v.trim().length > 0); if (typeof value === "string" && value.trim()) return value.split(/[,，、]/).map((v) => v.trim()).filter(Boolean); return []; }
+function colorsOf(value: unknown): string[] { const direct = strings(value); if (direct.length) return direct; const color = record(value); if (color.mode === "single") return strings(color.primary); if (color.mode === "main_with_accent") return [...strings(color.primary), ...strings(color.accents)]; if (color.mode === "multicolor") return strings(color.primaries); return []; }
 function text(value: unknown): string | undefined { return typeof value === "string" && value.trim() ? value.trim() : undefined; }
 function number(value: unknown): number | undefined { const n = typeof value === "number" ? value : typeof value === "string" && value.trim() ? Number(value) : NaN; return Number.isFinite(n) ? n : undefined; }
 function integer(value: unknown, min: number, max: number) { const n = number(value); return n !== undefined && Number.isInteger(n) && n >= min && n <= max ? n : undefined; }
