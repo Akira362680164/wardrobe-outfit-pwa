@@ -1,2 +1,4 @@
 #!/usr/bin/env node
-process.stdin.resume(); setTimeout(() => {}, 60_000);
+import readline from "node:readline";
+process.stdout.write(JSON.stringify({ type: "ready" }) + "\n");
+readline.createInterface({ input: process.stdin }).on("line", () => {});

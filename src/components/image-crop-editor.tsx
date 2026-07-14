@@ -602,7 +602,7 @@ export const ImageCropEditor = forwardRef<ImageCropEditorHandle, ImageCropEditor
     <div
       className="flex h-full w-full flex-col overflow-hidden bg-black text-white select-none"
     >
-      <div className="flex shrink-0 items-center justify-between px-4 pb-2 pt-[calc(env(safe-area-inset-top)+0.5rem)]">
+      <div className="flex shrink-0 items-center justify-between px-4 pb-2 pt-[calc(var(--intake-safe-area-top,0px)+0.5rem)]">
         <button
           data-parity-id={`parity.app.app.src.components.image.crop.editor.0d95cfb1ff.${source.length}.${source.slice(-16)}`}
           type="button"

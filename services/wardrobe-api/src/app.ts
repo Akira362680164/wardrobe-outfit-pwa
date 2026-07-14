@@ -38,7 +38,7 @@ import { registerWorkspaceRoutes } from "./workspace/routes.js";
 import { WorkspaceQueryService } from "./workspace/query-service.js";
 import { WorkspaceCommandService } from "./workspace/command-service.js";
 import { registerImageCropRoutes } from "./image-crop/routes.js";
-import { ImageCropService, isImageCropReady } from "./image-crop/service.js";
+import { ImageCropService } from "./image-crop/service.js";
 
 export type ReadinessCheck = () => Promise<{ database: "ready" }>;
 
@@ -70,6 +70,8 @@ export function buildApp(options: BuildAppOptions = {}): FastifyInstance {
     ? options.storageProvider ?? null
     : createStorageProviderFromEnv();
   const storage = configuredStorage ?? new UnavailableStorageProvider();
+  const imageCropService = options.imageCropService ?? new ImageCropService();
+  if (!options.imageCropService && !options.imageCropReadinessCheck) imageCropService.start();
   const app = Fastify({
     trustProxy: true,
     logger: process.env.NODE_ENV !== "test"
@@ -126,7 +128,7 @@ export function buildApp(options: BuildAppOptions = {}): FastifyInstance {
     deps.email = emailReady ? "ready" : "unavailable";
     const wechatReady = checkWechatReady();
     deps.wechat = wechatReady ? "ready" : "unavailable";
-    const imageCropReady = await (options.imageCropReadinessCheck ?? isImageCropReady)();
+    const imageCropReady = await (options.imageCropReadinessCheck ?? (async () => imageCropService.isReady()))();
     deps.imageCrop = imageCropReady ? "ready" : "unavailable";
 
     const allReady = deps.database === "ready" && deps.storage === "ready" && jwtReady && emailReady && wechatReady && imageCropReady;
@@ -200,7 +202,8 @@ export function buildApp(options: BuildAppOptions = {}): FastifyInstance {
     sharedSessionService ?? new SessionService(),
   );
   registerAiIntakeRoutes(app, sharedSessionService ?? new SessionService(), options.miniMaxIntakeService ?? new MiniMaxIntakeService());
-  registerImageCropRoutes(app, sharedSessionService ?? new SessionService(), options.imageCropService ?? new ImageCropService());
+  registerImageCropRoutes(app, sharedSessionService ?? new SessionService(), imageCropService);
+  app.addHook("onClose", async () => imageCropService.close());
   const diagnosticService = options.diagnosticService ?? new DiagnosticService(storage);
   registerDiagnosticRoutes(app, sharedSessionService ?? new SessionService(), diagnosticService);
   registerDiagnosticAdminRoutes(app, diagnosticService);

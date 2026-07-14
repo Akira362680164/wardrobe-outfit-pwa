@@ -48,13 +48,21 @@ describe("image crop suggestion route", () => {
 });
 
 describe("private crop sidecar boundary", () => {
-  it("applies the fixed per-side expansion and clamps", async () => { configureFixture("crop-sidecar-success.mjs", 5000); const result = await new ProcessCropSidecar().suggest({ clientItemId: "x", mimeType: "image/png", image: Buffer.from("x") }); expect(result.cropBox).toEqual({ x: .15, y: .15, width: .7, height: .7 }); });
-  it("contains a sidecar crash", async () => { configureFixture("crop-sidecar-crash.mjs", 5000); await expect(new ProcessCropSidecar().suggest({ clientItemId: "x", mimeType: "image/png", image: Buffer.from("x") })).rejects.toThrow(); });
-  it("contains EPIPE when a crashed sidecar closes during a large request write", async () => { configureFixture("crop-sidecar-crash.mjs", 5000); await expect(new ProcessCropSidecar().suggest({ clientItemId: "x", mimeType: "image/png", image: Buffer.alloc(7_500_000) })).rejects.toThrow(); });
-  it("kills a timed-out sidecar", async () => { configureFixture("crop-sidecar-timeout.mjs", 25); await expect(new ProcessCropSidecar().suggest({ clientItemId: "x", mimeType: "image/png", image: Buffer.from("x") })).rejects.toMatchObject({ statusCode: 504 }); });
+  it("loads once, serves multiple requests, and applies fixed per-side expansion", async () => {
+    configureFixture("crop-sidecar-success.mjs", 5000); const sidecar = new ProcessCropSidecar(); sidecar.start(); await waitReady(sidecar);
+    const first = await sidecar.suggest({ clientItemId: "x", mimeType: "image/png", image: Buffer.from("x") });
+    const second = await sidecar.suggest({ clientItemId: "y", mimeType: "image/png", image: Buffer.from("y") });
+    expect(first.cropBox).toEqual({ x: .15, y: .15, width: .7, height: .7 });
+    expect(first.modelVersion.split("-")[1]).toBe(second.modelVersion.split("-")[1]);
+    expect(second.modelVersion.endsWith("-2")).toBe(true); await sidecar.close();
+  });
+  it("contains a sidecar crash and automatically restarts to ready", async () => { configureFixture("crop-sidecar-crash.mjs", 5000); const sidecar = new ProcessCropSidecar(); sidecar.start(); await waitReady(sidecar); await expect(sidecar.suggest({ clientItemId: "x", mimeType: "image/png", image: Buffer.from("x") })).rejects.toThrow(); expect(sidecar.isReady()).toBe(false); await waitReady(sidecar, 2000); expect(sidecar.isReady()).toBe(true); await sidecar.close(); });
+  it("contains EPIPE when a crashed sidecar closes during a large request write", async () => { configureFixture("crop-sidecar-crash.mjs", 5000); const sidecar = new ProcessCropSidecar(); sidecar.start(); await waitReady(sidecar); await expect(sidecar.suggest({ clientItemId: "x", mimeType: "image/png", image: Buffer.alloc(7_500_000) })).rejects.toThrow(); await sidecar.close(); });
+  it("kills a timed-out sidecar and restarts", async () => { configureFixture("crop-sidecar-timeout.mjs", 25); const sidecar = new ProcessCropSidecar(); sidecar.start(); await waitReady(sidecar); await expect(sidecar.suggest({ clientItemId: "x", mimeType: "image/png", image: Buffer.from("x") })).rejects.toMatchObject({ statusCode: 504 }); await waitReady(sidecar, 2000); expect(sidecar.isReady()).toBe(true); await sidecar.close(); });
 });
 
 function configureFixture(name: string, timeoutMs: number) { process.env.IMAGE_CROP_SIDECAR_COMMAND = path.resolve("tests/fixtures", name); process.env.IMAGE_CROP_MODEL_PATH = path.resolve("tests/fixtures/fake.onnx"); process.env.IMAGE_CROP_TIMEOUT_MS = String(timeoutMs); }
+async function waitReady(sidecar: ProcessCropSidecar, timeoutMs = 1000) { const deadline = Date.now() + timeoutMs; while (!sidecar.isReady() && Date.now() < deadline) await new Promise((resolve) => setTimeout(resolve, 10)); expect(sidecar.isReady()).toBe(true); }
 
 const route = "/api/workspace/images/crop-suggestion";
 function payload() { return { clientItemId: "item-1", revision: 7, mimeType: "image/png", imageBase64: png }; }
