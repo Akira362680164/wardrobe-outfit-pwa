@@ -567,6 +567,9 @@ export interface SingleItemRecognition {
  tag: GarmentTagResult;
  imageDataUrl: string;
  sourceImageDataUrl: string;
+ secondaryCropBox?: { x: number; y: number; width: number; height: number };
+ cropConfidence?: number;
+ cropNeedsReview?: boolean;
 }
 
 export async function recognizeSingleItemFromDataUrl(

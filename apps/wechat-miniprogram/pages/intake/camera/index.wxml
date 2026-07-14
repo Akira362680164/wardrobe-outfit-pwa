@@ -10,6 +10,7 @@
       <view class="section-title">已选照片</view>
       <view class="count-pill">{{totalCount}} / {{maxCount}}</view>
     </view>
+    <view wx:if="{{autoCropEnabled && cropCompleted < cropTotal}}" class="auto-crop-progress">正在自动裁切，进度 {{cropCompleted}}/{{cropTotal}}</view>
     <view wx:if="{{current}}" class="hero-wrap">
       <image class="hero-image" mode="aspectFit" src="{{current.processedPath || current.stablePath || current.imagePath}}" />
       <view wx:if="{{uploadingCount}}" class="hero-progress">正在准备图片 {{readyCount + failedCount}} / {{totalCount}}</view>
@@ -45,4 +46,15 @@
     <view class="bottom-action bottom-action--secondary" bindtap="cancel">取消</view>
     <view class="bottom-action bottom-action--primary {{selecting || uploadingCount || !totalCount ? 'bottom-action--disabled' : ''}}" bindtap="goReview">{{nextText}}</view>
   </view>
+</view>
+<view wx:if="{{cropEditorOpen}}" class="geometry-crop-overlay">
+  <view class="geometry-crop-stage-shell">
+  <view class="geometry-crop-stage" style="{{editStageStyle}}">
+    <image class="geometry-crop-image" mode="scaleToFill" src="{{editSourcePath}}" />
+    <view class="geometry-crop-box" style="left:{{editCropBox.x * 100}}%;top:{{editCropBox.y * 100}}%;width:{{editCropBox.width * 100}}%;height:{{editCropBox.height * 100}}%" data-handle="move" catchtouchstart="startCropGesture" catchtouchmove="moveCropGesture" catchtouchend="endCropGesture">
+      <view wx:for="{{['nw','ne','sw','se']}}" wx:key="*this" class="geometry-handle geometry-handle--{{item}}" data-handle="{{item}}" catchtouchstart="startCropGesture" catchtouchmove="moveCropGesture" catchtouchend="endCropGesture"></view>
+    </view>
+  </view>
+  </view>
+  <view class="geometry-crop-actions"><button data-degrees="270" bindtap="rotateCropSource">向左旋转</button><button bindtap="closeCropEditor">取消</button><button data-degrees="90" bindtap="rotateCropSource">向右旋转</button><button bindtap="confirmCropEditor">完成</button></view>
 </view>

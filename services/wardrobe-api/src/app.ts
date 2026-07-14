@@ -37,6 +37,8 @@ import { registerTestFaultInjection } from "./test/fault-injection.js";
 import { registerWorkspaceRoutes } from "./workspace/routes.js";
 import { WorkspaceQueryService } from "./workspace/query-service.js";
 import { WorkspaceCommandService } from "./workspace/command-service.js";
+import { registerImageCropRoutes } from "./image-crop/routes.js";
+import { ImageCropService, isImageCropReady } from "./image-crop/service.js";
 
 export type ReadinessCheck = () => Promise<{ database: "ready" }>;
 
@@ -57,6 +59,8 @@ export interface BuildAppOptions {
   emailVerificationService?: EmailVerificationService;
   accountPasswordAuthService?: AccountPasswordAuthService;
   accountDeletionService?: AccountDeletionService;
+  imageCropService?: ImageCropService;
+  imageCropReadinessCheck?: () => Promise<boolean>;
 }
 
 export function buildApp(options: BuildAppOptions = {}): FastifyInstance {
@@ -105,6 +109,7 @@ export function buildApp(options: BuildAppOptions = {}): FastifyInstance {
     jwt: "unavailable",
     email: "unavailable",
     wechat: "unavailable",
+    imageCrop: "unavailable",
     };
 
     try {
@@ -121,8 +126,10 @@ export function buildApp(options: BuildAppOptions = {}): FastifyInstance {
     deps.email = emailReady ? "ready" : "unavailable";
     const wechatReady = checkWechatReady();
     deps.wechat = wechatReady ? "ready" : "unavailable";
+    const imageCropReady = await (options.imageCropReadinessCheck ?? isImageCropReady)();
+    deps.imageCrop = imageCropReady ? "ready" : "unavailable";
 
-    const allReady = deps.database === "ready" && deps.storage === "ready" && jwtReady && emailReady && wechatReady;
+    const allReady = deps.database === "ready" && deps.storage === "ready" && jwtReady && emailReady && wechatReady && imageCropReady;
     if (!allReady) {
       reply.code(503);
       return ReadyResponseSchema.parse({
@@ -136,7 +143,7 @@ export function buildApp(options: BuildAppOptions = {}): FastifyInstance {
 
     return ReadyResponseSchema.parse({
       status: "ok",
-      dependencies: { database: "ready", storage: "ready", jwt: "ready", email: "ready", wechat: "ready" },
+      dependencies: { database: "ready", storage: "ready", jwt: "ready", email: "ready", wechat: "ready", imageCrop: "ready" },
       serverTime,
     });
   });
@@ -193,6 +200,7 @@ export function buildApp(options: BuildAppOptions = {}): FastifyInstance {
     sharedSessionService ?? new SessionService(),
   );
   registerAiIntakeRoutes(app, sharedSessionService ?? new SessionService(), options.miniMaxIntakeService ?? new MiniMaxIntakeService());
+  registerImageCropRoutes(app, sharedSessionService ?? new SessionService(), options.imageCropService ?? new ImageCropService());
   const diagnosticService = options.diagnosticService ?? new DiagnosticService(storage);
   registerDiagnosticRoutes(app, sharedSessionService ?? new SessionService(), diagnosticService);
   registerDiagnosticAdminRoutes(app, diagnosticService);

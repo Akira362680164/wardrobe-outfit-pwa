@@ -1,0 +1,12 @@
+[
+  { "name": "full-frame", "operation": "compose", "pre": { "x": 0, "y": 0, "width": 1, "height": 1 }, "secondary": { "x": 0, "y": 0, "width": 1, "height": 1 }, "expected": { "x": 0, "y": 0, "width": 1, "height": 1 } },
+  { "name": "center", "operation": "compose", "pre": { "x": 0.1, "y": 0.2, "width": 0.5, "height": 0.6 }, "secondary": { "x": 0.2, "y": 0.25, "width": 0.4, "height": 0.5 }, "expected": { "x": 0.2, "y": 0.35, "width": 0.2, "height": 0.3 } },
+  { "name": "touching-edge", "operation": "compose", "pre": { "x": 0.7, "y": 0.75, "width": 0.3, "height": 0.25 }, "secondary": { "x": 0, "y": 0, "width": 1, "height": 1 }, "expected": { "x": 0.7, "y": 0.75, "width": 0.3, "height": 0.25 } },
+  { "name": "floating-point", "operation": "compose", "pre": { "x": 0.123456, "y": 0.234567, "width": 0.54321, "height": 0.4321 }, "secondary": { "x": 0.111111, "y": 0.222222, "width": 0.333333, "height": 0.444444 }, "expected": { "x": 0.18381260631, "y": 0.3305891262, "width": 0.18106981893, "height": 0.1920442524 } },
+  { "name": "invalid-secondary-falls-back", "operation": "compose", "pre": { "x": 0.1, "y": 0.2, "width": 0.5, "height": 0.6 }, "secondary": { "x": 0.8, "y": 0, "width": 0.4, "height": 1 }, "expected": { "x": 0.1, "y": 0.2, "width": 0.5, "height": 0.6 } },
+  { "name": "twenty-percent-each-side", "operation": "expand", "box": { "x": 0.3, "y": 0.3, "width": 0.2, "height": 0.25 }, "expected": { "x": 0.26, "y": 0.25, "width": 0.28, "height": 0.35 } },
+  { "name": "edge-expansion-clamp", "operation": "expand", "box": { "x": 0, "y": 0.9, "width": 0.2, "height": 0.1 }, "expected": { "x": 0, "y": 0.88, "width": 0.24, "height": 0.12 } },
+  { "name": "rotation-90-exif-normalized", "operation": "rotate", "degrees": 90, "box": { "x": 0.1, "y": 0.2, "width": 0.3, "height": 0.4 }, "expected": { "x": 0.4, "y": 0.1, "width": 0.4, "height": 0.3 } },
+  { "name": "rotation-180", "operation": "rotate", "degrees": 180, "box": { "x": 0.1, "y": 0.2, "width": 0.3, "height": 0.4 }, "expected": { "x": 0.6, "y": 0.4, "width": 0.3, "height": 0.4 } },
+  { "name": "rotation-270", "operation": "rotate", "degrees": 270, "box": { "x": 0.1, "y": 0.2, "width": 0.3, "height": 0.4 }, "expected": { "x": 0.2, "y": 0.6, "width": 0.4, "height": 0.3 } }
+]

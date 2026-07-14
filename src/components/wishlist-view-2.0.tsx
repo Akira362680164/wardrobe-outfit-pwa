@@ -67,6 +67,7 @@ import {
   ensureLocalImageThumbnail,
   isIntakeThumbnailGenerationError,
 } from "@/lib/intake-thumbnail";
+import { requestImageCropSuggestion } from "@/lib/online/online-image-crop-client";
 import { useStableBackHandler } from "@/lib/use-stable-back-handler";
 import { TemperatureRangeSlider } from "@/components/temperature-range-slider";
 import { normalizeTemperatureRange } from "@/lib/temperature-range";
@@ -1460,6 +1461,8 @@ export function WishlistView20({
         onPickImages={onPickIntakeImages}
         onProcessImage={onProcessIntakeImage}
         onProcessImages={onProcessIntakeImages}
+        hasMiniMaxKey={hasDeviceMiniMaxKey(settings)}
+        onSuggestCrop={requestImageCropSuggestion}
         onSaveBatch={handleSaveIntakeDrafts}
         onExit={closeWishlistIntake}
       />

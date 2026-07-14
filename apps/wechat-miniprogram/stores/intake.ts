@@ -53,6 +53,12 @@ export interface IntakeQueueItem {
   assetMutations: AssetMutation[];
   draft: IntakeDraft;
   serverEntityId?: string;
+  cropState: "idle" | "queued" | "processing" | "applied" | "failed" | "manual";
+  cropRevision: number;
+  cropCompleted: boolean;
+  preCropBox: { x: number; y: number; width: number; height: number };
+  preCropRevision: number;
+  finalCropBox?: { x: number; y: number; width: number; height: number };
 }
 
 let queue: IntakeQueueItem[] = [];
@@ -125,6 +131,11 @@ function draftToQueueItem(draft: IntakeDraft): IntakeQueueItem {
     status: "selected",
     error: "",
     assetMutations: [],
+    cropState: "idle",
+    cropRevision: 0,
+    cropCompleted: false,
+    preCropBox: { x: 0, y: 0, width: 1, height: 1 },
+    preCropRevision: 0,
     draft: { ...draft, stablePath },
   };
 }
