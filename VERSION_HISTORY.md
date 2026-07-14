@@ -1,3 +1,10 @@
+## 2026-07-15 / v2.1.24-test / Codex — 生产 Docker 历史镜像清理
+
+- **占用结论**：清理前根盘 `69G / 46G used / 21G available / 69%`；数据库备份目录仅 `32M`，实际占用来自连续生产构建留下的 Docker 镜像链：Docker images `40.57GB`，另有两个失败的临时构建容器约 `846MB`。清理前确认无 Docker build / BuildKit / npm / pip 安装进程。
+- **精确保留与清理**：保留当前生产 `wardrobe-api:3d1634d`（同镜像 ID 的发布标签 `8c343d4`，`sha256:defc31db...`）、已验证回滚 `wardrobe-api:9353c6d`（同镜像 ID 的修复标签 `0ede447`，`sha256:a0f07a2d...`）、`postgres:16`、`node:22-bookworm-slim` 和生产数据卷；精确移除 39 个旧 Wardora 标签、两个已退出的失败构建容器及其未引用中间镜像链。未执行 `docker system prune -a --volumes`，未删除 release tree、数据库备份、Secret、用户资产或数据卷。
+- **清理结果与生产复验**：根盘降至 `69G / 14G used / 53G available / 20%`，约释放 `32GB`；Docker 最终为 4 个镜像对象、3 个运行容器、0 build cache，API / Worker 继续指向当前镜像且重启数均为 0，PostgreSQL healthy。迁移计数保持 `23`；内网及公网 `/api/health`、`/api/ready`、`/api/version` 均为 200 且版本 `3d1634d`，未授权 workspace 与 recommendations 为 401，未注册 `/api/recommendations/current` 保持 404。备份目录仍为 `32M / 200 files`。
+- **范围**：仅执行服务器 Docker 生命周期清理并记录生产证据；未修改客户端、服务端代码、Compose、数据库 schema、生产配置、App、小程序或版本号。未触发 subagent：用户未通知。
+
 ## 2026-07-15 / v2.1.24-test / Codex — UI Skill 双路由与 GitHub 专项收敛
 
 - **UI 与动效路由**：本机根 `AGENTS.md` 明确要求 UI 设计、重构、审查、打磨和响应式/无障碍优化先按 `impeccable` Skill 执行；涉及动画、手势、拖拽/滑动、Sheet、弹簧、速度继承、可中断转场、空间连续性或 reduced-motion 时再同时使用 `apple-design` Skill。两者都必须先读各自 `SKILL.md` 并完成规定 setup，且不得覆盖项目 UI 规范、真实截图结构和现有 motion token。
