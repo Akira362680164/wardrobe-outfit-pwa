@@ -39,6 +39,8 @@ import { WorkspaceQueryService } from "./workspace/query-service.js";
 import { WorkspaceCommandService } from "./workspace/command-service.js";
 import { registerImageCropRoutes } from "./image-crop/routes.js";
 import { ImageCropService } from "./image-crop/service.js";
+import { registerRecommendationRoutes } from "./recommendations/routes.js";
+import { RecommendationReadService } from "./recommendations/read-service.js";
 
 export type ReadinessCheck = () => Promise<{ database: "ready" }>;
 
@@ -61,6 +63,7 @@ export interface BuildAppOptions {
   accountDeletionService?: AccountDeletionService;
   imageCropService?: ImageCropService;
   imageCropReadinessCheck?: () => Promise<boolean>;
+  recommendationReadService?: RecommendationReadService;
 }
 
 export function buildApp(options: BuildAppOptions = {}): FastifyInstance {
@@ -203,6 +206,7 @@ export function buildApp(options: BuildAppOptions = {}): FastifyInstance {
   );
   registerAiIntakeRoutes(app, sharedSessionService ?? new SessionService(), options.miniMaxIntakeService ?? new MiniMaxIntakeService());
   registerImageCropRoutes(app, sharedSessionService ?? new SessionService(), imageCropService);
+  registerRecommendationRoutes(app, sharedSessionService ?? new SessionService(), options.recommendationReadService ?? new RecommendationReadService());
   app.addHook("onClose", async () => imageCropService.close());
   const diagnosticService = options.diagnosticService ?? new DiagnosticService(storage);
   registerDiagnosticRoutes(app, sharedSessionService ?? new SessionService(), diagnosticService);

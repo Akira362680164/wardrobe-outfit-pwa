@@ -16,6 +16,8 @@
     "pretest:recommendation:persistence:postgres": "npm --workspace @wardrobe/cloud-contracts run build",
     "test:recommendation:persistence:postgres": "vitest run --config vitest.postgres.config.ts --maxWorkers=1",
     "reset:test-data": "node dist/cli/reset-test-data.js",
+    "recommendation-worker": "node dist/recommendations/worker-entry.js",
+    "recommendation-worker:run-once": "node dist/recommendations/worker-entry.js --run-once",
     "start": "node dist/server.js"
   },
   "dependencies": {

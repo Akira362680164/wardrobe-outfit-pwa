@@ -74,6 +74,21 @@ export class RecommendationPersistenceRepository {
     const result = await client.query("delete from daily_recommendations where is_current = false and expires_at < $1", [beforeIso]);
     return result.rowCount ?? 0;
   }
+
+  async findLatestConsistentPair(client: PoolClient, userId: string, dates: readonly [string, string], nowIso: string): Promise<DailyRecommendationRecord[]> {
+    const result = await client.query(`
+      select d.* from daily_recommendations d
+      join (select generation_batch_id from daily_recommendations where user_id = $1 and target_date = any($2::date[]) and expires_at > $3 group by generation_batch_id having count(distinct target_date) = 2 order by max(generated_at) desc limit 1) b
+        on b.generation_batch_id = d.generation_batch_id
+      where d.user_id = $1 and d.target_date = any($2::date[]) order by d.target_date
+    `, [userId, dates, nowIso]);
+    return result.rows.map(parseRow);
+  }
+
+  async findLatestValid(client: PoolClient, userId: string, targetDate: string, nowIso: string): Promise<DailyRecommendationRecord | null> {
+    const result = await client.query("select * from daily_recommendations where user_id = $1 and target_date = $2 and expires_at > $3 order by is_current desc, generated_at desc limit 1", [userId, targetDate, nowIso]);
+    return result.rows[0] ? parseRow(result.rows[0]) : null;
+  }
 }
 
 function iso(value: unknown): string {
