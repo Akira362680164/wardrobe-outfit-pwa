@@ -1,3 +1,11 @@
+## 2026-07-14 / v2.1.22-test / Codex — 推荐后端 1D-A.2 contextSummary 单点收口
+
+- **合同修复与边界**：仅在 Payload V2 的 `locationless` / `weather_fallback` 模式交叉校验中，要求 `engineOutput.dateContext.contextSummary` 严格等于 ``${sceneType}:layer:none``；采用确定性结构等值而非中英文天气关键词黑名单。未修改算法、Fixture/Golden、V1 Payload/V1 引擎、forecast 委托与深度相等、Worker、路由、数据库、PAW 或客户端。
+- **测试先行**：先新增 locationless 与 weather_fallback 两条伪天气 summary 反例，真实红灯为 V2 专项 `2 failed / 38 passed`；修复后 `40/40`。business 与 casual 两种不同 sceneType 的合法确定性 summary 均通过。
+- **本地门禁**：推荐 V1/V2/contracts/Worker/routes `108/108`，API 全量 `241/241`，cloud contracts/API/root typecheck、根 `test:logic`、穿搭计划 `57+88+40`、manifest、原 24 Fixture shadow check、production build 与 `git diff --check` 全部通过。小程序 typecheck 在正式分支同步阶段执行；未构建 APK、未上传小程序体验版。
+- **集成与部署**：开发提交、正式双分支同步及生产镜像证据在本记录后续收口补齐。
+- **风险门禁**：`high`（共享合同与生产 API 重部署）；QWeather、地点/天气持久化、V2 Worker/current 写入、推荐读取、PAW 调用及 UI 仍明确不在本批。
+
 ## 2026-07-14 / v2.1.22-test / Codex — 推荐后端 1D-A.1 验收收口修复
 
 - **严格合同修复**：Payload V1 与 V2 `forecast` 现在同时拒绝 `adaptable_conditions`；`locationless` / `weather_fallback` 对 shortlist/display 的外层及 `pawEvaluation` 嵌套 reason/risk 做逐项天气审计，并锁定 `thermalStrategy=layer`、`rainStrategy=none`、`confidence=low`，拒绝四项天气派生 avoidRules，保留活动派生 `avoid_high_heels`。未改 V1 引擎、forecast 委托、Worker、读取路由、PAW 入口或 UI。

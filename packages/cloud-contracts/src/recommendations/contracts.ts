@@ -317,6 +317,7 @@ export const RecommendationPayloadV2Schema = z.object({
     if (dateContext.thermalStrategy !== "layer") issue(ctx, ["engineOutput", "dateContext", "thermalStrategy"], "generic modes require layer thermal strategy");
     if (dateContext.rainStrategy !== "none") issue(ctx, ["engineOutput", "dateContext", "rainStrategy"], "generic modes require no rain strategy");
     if (dateContext.confidence !== "low") issue(ctx, ["engineOutput", "dateContext", "confidence"], "generic modes require low confidence");
+    if (dateContext.contextSummary !== `${dateContext.sceneType}:layer:none`) issue(ctx, ["engineOutput", "dateContext", "contextSummary"], "generic modes require deterministic context summary");
     if (dateContext.avoidRules.some((code) => genericWeatherAvoidRules.has(code))) issue(ctx, ["engineOutput", "dateContext", "avoidRules"], "generic modes forbid weather-derived avoid rules");
   }
 });

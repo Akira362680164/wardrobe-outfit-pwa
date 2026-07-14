@@ -239,6 +239,46 @@ describe("V1/V2 strict payload compatibility", () => {
   });
 
   it.each([
+    ["locationless", buildLocationlessInput],
+    ["weather_fallback", buildFallbackInput],
+  ])("rejects fake weather contextSummary in %s", async (_mode, buildInput) => {
+    const input = buildInput();
+    const payload: any = {
+      schemaVersion: 2,
+      resolvedContext: input.resolvedContext,
+      dateContextInput: input.dateContextInput,
+      engineOutput: await generateRecommendationsV2(input),
+    };
+    payload.engineOutput.dateContext.contextSummary = "北京暴雨且气温 35°C";
+    expect(() => RecommendationPayloadV2Schema.parse(payload)).toThrow();
+  });
+
+  it.each([
+    ["business", () => {
+      const input = clone(buildLocationlessInput());
+      input.dateContextInput.userProfile.workdayScene = "business";
+      return input;
+    }],
+    ["casual", () => {
+      const input = clone(buildFallbackInput());
+      input.dateContextInput.dayType = "rest_day";
+      input.dateContextInput.userProfile.restDayScene = "casual";
+      return input;
+    }],
+  ])("accepts deterministic generic contextSummary for %s scene", async (sceneType, buildInput) => {
+    const input = buildInput();
+    const engineOutput = await generateRecommendationsV2(input);
+    expect(engineOutput.dateContext.sceneType).toBe(sceneType);
+    expect(engineOutput.dateContext.contextSummary).toBe(`${sceneType}:layer:none`);
+    expect(() => RecommendationPayloadV2Schema.parse({
+      schemaVersion: 2,
+      resolvedContext: input.resolvedContext,
+      dateContextInput: input.dateContextInput,
+      engineOutput,
+    })).not.toThrow();
+  });
+
+  it.each([
     ["locationless with location", (input: any) => { input.resolvedContext = fallbackContext(); input.resolvedContext.contextMode = "locationless"; }],
     ["locationless temperature", (input: any) => { input.dateContextInput.weatherEvidence.temperatureMinC = 10; input.dateContextInput.weatherEvidence.temperatureMaxC = 20; }],
     ["locationless rain", (input: any) => { input.dateContextInput.weatherEvidence.rainProbability = 10; }],
