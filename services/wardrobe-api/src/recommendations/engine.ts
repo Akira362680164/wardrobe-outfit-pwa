@@ -4,6 +4,7 @@ import {
   CandidateEvaluationInputSchema,
   CandidateRuleScoresSchema,
   RecommendationEngineInputSchema,
+  RecommendationEngineInputV2Schema,
   RecommendationEngineOutputSchema,
   RecommendationReadinessReportSchema,
   type CandidateEvaluation,
@@ -11,6 +12,7 @@ import {
   type GarmentSlot,
   type RecommendationExclusionCode,
   type RecommendationReasonCode,
+  type RecommendationEngineInputV2,
 } from "@wardrobe/cloud-contracts";
 
 import { adaptCandidateEvaluator, createNeutralEvaluation, RuleDateContextResolver } from "./ports.js";
@@ -110,6 +112,87 @@ function inferredGarmentRange(garment: RecommendationGarment): [number, number] 
   return ranges[garment.warmth];
 }
 
+const RANGE_WIDTH_CAP_C = 20;
+const CANDIDATE_COVERAGE_CAP_C = 30;
+const REMOVABLE_LAYER_TEMPLATES = new Set<RecommendationCandidate["template"]>(["T2", "T4", "T6"]);
+const CORE_ROLES = new Set<GarmentSlot>(["tops", "pants", "skirts", "one_piece"]);
+const WEARABLE_ROLES = new Set<GarmentSlot>(["tops", "pants", "skirts", "one_piece", "outerwear", "shoes"]);
+
+function warmthScore(garment: RecommendationGarment): number {
+  return garment.warmth === 1 || garment.warmth === 5 ? 0 : garment.warmth === 2 || garment.warmth === 4 ? 75 : garment.warmth === 3 ? 100 : 50;
+}
+
+function seasonBreadthScore(garment: RecommendationGarment): number {
+  if (garment.seasons.includes("all")) return 100;
+  const count = new Set(garment.seasons.filter((season) => season !== "all")).size;
+  return clampScore(count * 25);
+}
+
+function environmentCompletenessScore(garment: RecommendationGarment): number {
+  const count = Number(garment.warmth !== undefined) + Number(garment.seasons.length > 0) + Number(garment.temperatureMinC !== undefined && garment.temperatureMaxC !== undefined);
+  return clampScore(count / 3 * 100);
+}
+
+export function calculateItemAdaptabilityFit(garment: RecommendationGarment): number {
+  const role = mapGarmentRole(garment);
+  if (role && ["bag", "hat", "accessory"].includes(role)) return 50;
+  const range = inferredGarmentRange(garment);
+  const rangeWidthScore = range ? clampScore(Math.min(range[1] - range[0], RANGE_WIDTH_CAP_C) / RANGE_WIDTH_CAP_C * 100) : 0;
+  return clampScore(
+    0.35 * rangeWidthScore
+    + 0.30 * warmthScore(garment)
+    + 0.20 * seasonBreadthScore(garment)
+    + 0.15 * environmentCompletenessScore(garment),
+  );
+}
+
+function intervalWidth(interval: [number, number]): number {
+  return Math.max(0, interval[1] - interval[0]);
+}
+
+function unionWidth(left: [number, number], right?: [number, number]): number {
+  if (!right) return intervalWidth(left);
+  const overlap = Math.max(0, Math.min(left[1], right[1]) - Math.max(left[0], right[0]));
+  return intervalWidth(left) + intervalWidth(right) - overlap;
+}
+
+export function calculateCandidateAdaptabilityFit(
+  garments: readonly RecommendationGarment[],
+  template: RecommendationCandidate["template"],
+): number {
+  const withRoles = garments.map((garment) => ({ garment, role: mapGarmentRole(garment) }));
+  const core = withRoles.filter((item) => item.role && CORE_ROLES.has(item.role)).map((item) => item.garment);
+  const wearable = withRoles.filter((item) => item.role && WEARABLE_ROLES.has(item.role)).map((item) => item.garment);
+  const coreRanges = core.map(inferredGarmentRange);
+  let baseRange: [number, number] | undefined;
+  if (core.length > 0 && coreRanges.every((range): range is [number, number] => Boolean(range))) {
+    const min = Math.max(...coreRanges.map((range) => range![0]));
+    const max = Math.min(...coreRanges.map((range) => range![1]));
+    if (min <= max) baseRange = [min, max];
+  }
+  const outerwear = withRoles.find((item) => item.role === "outerwear")?.garment;
+  const removableLayer = Boolean(baseRange && outerwear && REMOVABLE_LAYER_TEMPLATES.has(template));
+  const outerRange = removableLayer && outerwear ? inferredGarmentRange(outerwear) : undefined;
+  const coverageScore = baseRange ? clampScore(Math.min(unionWidth(baseRange, outerRange), CANDIDATE_COVERAGE_CAP_C) / CANDIDATE_COVERAGE_CAP_C * 100) : 0;
+  const layeringScore = removableLayer ? 100 : baseRange ? 50 : 0;
+  const versatilityScore = clampScore(
+    0.40 * average(wearable.map(seasonBreadthScore))
+    + 0.40 * average(wearable.map(warmthScore))
+    + 0.20 * layeringScore,
+  );
+  const informationCompleteness = average(wearable.map(environmentCompletenessScore));
+  const hotExtreme = (garment: RecommendationGarment) => garment.warmth === 1 || (inferredGarmentRange(garment)?.[0] ?? -Infinity) >= 25;
+  const coldExtreme = (garment: RecommendationGarment) => garment.warmth === 5 || (inferredGarmentRange(garment)?.[1] ?? Infinity) <= 8;
+  const extremeSingleCombinationPenalty = !outerwear && core.length > 0 && (core.every(hotExtreme) || core.every(coldExtreme)) ? 20 : 0;
+  return clampScore(
+    0.35 * coverageScore
+    + 0.30 * layeringScore
+    + 0.20 * versatilityScore
+    + 0.15 * informationCompleteness
+    - extremeSingleCombinationPenalty,
+  );
+}
+
 function intervalDistance(left: [number, number], right: [number, number]): number {
   if (left[1] < right[0]) return right[0] - left[1];
   if (right[1] < left[0]) return left[0] - right[1];
@@ -133,6 +216,7 @@ export function hardFilterGarments(
   garments: readonly RecommendationGarment[],
   context: DateContext,
   input: RecommendationEngineInput,
+  contextMode: "forecast" | "generic" = "forecast",
 ): { eligible: RecommendationGarment[]; exclusions: Array<{ garmentId: string; codes: RecommendationExclusionCode[] }> } {
   const target = targetTemperatureRange(context, input);
   const eligible: RecommendationGarment[] = [];
@@ -150,7 +234,7 @@ export function hardFilterGarments(
     else if (!Number.isInteger(garment.formality) || garment.formality < 1 || garment.formality > 5) codes.push("invalid_formality");
     else if (Math.abs(garment.formality - context.formalityTarget) >= 3) codes.push("formality_mismatch");
     const range = inferredGarmentRange(garment);
-    if (range && role && !["outerwear", "bag", "hat", "accessory"].includes(role) && intervalDistance(range, target) > 8) codes.push("temperature_mismatch");
+    if (contextMode === "forecast" && range && role && !["outerwear", "bag", "hat", "accessory"].includes(role) && intervalDistance(range, target) > 8) codes.push("temperature_mismatch");
     if (avoidRuleHit(garment, context)) codes.push("avoid_rule");
     if (garment.recommendationBlocked) codes.push("recommendation_blocked");
     const unique = [...new Set(codes)];
@@ -193,7 +277,7 @@ function informationCompleteness(garment: RecommendationGarment): number {
   return clampScore((fields.filter(Boolean).length / fields.length) * 100);
 }
 
-export function preScoreGarment(garment: RecommendationGarment, context: DateContext, input: RecommendationEngineInput): ScoredGarment {
+export function preScoreGarment(garment: RecommendationGarment, context: DateContext, input: RecommendationEngineInput, contextMode: "forecast" | "generic" = "forecast"): ScoredGarment {
   const days = daysSinceBucket(latestWearDays(garment.id, input));
   const feedback = feedbackForGarment(garment.id, context, input);
   const positiveCount = feedback.filter((entry) => entry.sentiment === "positive").length;
@@ -201,7 +285,7 @@ export function preScoreGarment(garment: RecommendationGarment, context: DateCon
   const historicalPreference = clampScore(50 + positiveCount * 10 - negativeCount * 15);
   const negativeFeedbackPenalty = feedback.some((entry) => entry.sentiment === "severe_negative") ? 20 : feedback.some((entry) => entry.sentiment === "moderate_negative") ? 10 : 0;
   const audit = {
-    weatherFit: weatherFit(garment, context, input),
+    weatherFit: contextMode === "forecast" ? weatherFit(garment, context, input) : calculateItemAdaptabilityFit(garment),
     sceneFit: sceneFit(garment, context),
     formalityFit: clampScore(100 - Math.abs((garment.formality ?? context.formalityTarget) - context.formalityTarget) * 25),
     activityComfort: activityComfort(garment, context),
@@ -219,11 +303,12 @@ export function pruneGarmentsBySlot(
   garments: readonly RecommendationGarment[],
   context: DateContext,
   input: RecommendationEngineInput,
+  contextMode: "forecast" | "generic" = "forecast",
 ): Partial<Record<GarmentSlot, ScoredGarment[]>> {
-  const { eligible } = hardFilterGarments(garments, context, input);
+  const { eligible } = hardFilterGarments(garments, context, input, contextMode);
   const grouped: Partial<Record<GarmentSlot, ScoredGarment[]>> = {};
   for (const garment of eligible) {
-    const scored = preScoreGarment(garment, context, input);
+    const scored = preScoreGarment(garment, context, input, contextMode);
     (grouped[scored.role] ??= []).push(scored);
   }
   for (const slot of Object.keys(grouped) as GarmentSlot[]) {
@@ -346,7 +431,7 @@ function styleCoherence(items: readonly ScoredGarment[]): number {
   return clampScore((maximum / items.length) * 100);
 }
 
-function scoreCandidate(raw: RawCandidate, byId: Map<string, ScoredGarment>, context: DateContext, input: RecommendationEngineInput): RecommendationCandidate {
+function scoreCandidate(raw: RawCandidate, byId: Map<string, ScoredGarment>, context: DateContext, input: RecommendationEngineInput, contextMode: "forecast" | "generic"): RecommendationCandidate {
   const items = raw.garmentIds.map((id) => byId.get(id)!);
   const history = candidateHistory(raw.garmentIds, input);
   const feedback = matchingFeedback(raw.garmentIds, context, input);
@@ -361,7 +446,9 @@ function scoreCandidate(raw: RawCandidate, byId: Map<string, ScoredGarment>, con
   const completeness = average(items.map((item) => item.scoreAudit.informationCompleteness));
   const rain = input.dateContextInput.weatherEvidence.rainProbability ?? 0;
   const hasRainLayer = items.some((item) => item.role === "outerwear" && ["trench_coat", "jacket"].includes(item.subcategory ?? ""));
-  const weatherWithStrategy = clampScore(weather + (rain >= 50 && hasRainLayer ? 12 : 0));
+  const weatherWithStrategy = contextMode === "forecast"
+    ? clampScore(weather + (rain >= 50 && hasRainLayer ? 12 : 0))
+    : calculateCandidateAdaptabilityFit(items, raw.template);
   const ruleTotal = clampScore(0.25 * weatherWithStrategy + 0.20 * scene + 0.15 * 100 + 0.15 * colorHarmony(items) + 0.10 * styleCoherence(items) + 0.10 * activity + 0.05 * rotationValue + successBonus - repeatPenalty - feedbackPenalty);
   const ruleScores = CandidateRuleScoresSchema.parse({ weatherFit: weatherWithStrategy, sceneFit: scene, structure: 100, colorHarmony: colorHarmony(items), styleCoherence: styleCoherence(items), activityComfort: activity, rotationValue, informationCompleteness: completeness, ruleTotal });
   const seen = history.some((entry) => entry.exact);
@@ -370,8 +457,9 @@ function scoreCandidate(raw: RawCandidate, byId: Map<string, ScoredGarment>, con
   if (context.sceneType === "commute") reasonCodes.push("good_for_commute");
   if (["business", "formal"].includes(context.sceneType)) reasonCodes.push("good_for_business");
   if (context.sceneType === "travel") reasonCodes.push("good_for_travel");
-  if (weatherWithStrategy >= 75) reasonCodes.push("weather_fit");
-  if (rain >= 50 && hasRainLayer) reasonCodes.push("rain_ready");
+  if (contextMode === "forecast" && weatherWithStrategy >= 75) reasonCodes.push("weather_fit");
+  if (contextMode === "generic" && weatherWithStrategy >= 75) reasonCodes.push("adaptable_conditions");
+  if (contextMode === "forecast" && rain >= 50 && hasRainLayer) reasonCodes.push("rain_ready");
   if (activity >= 80) reasonCodes.push("activity_comfort");
   if ((saved?.successfulWearCount ?? 0) > 0) reasonCodes.push("historical_success");
   if (rotationValue >= 70) reasonCodes.push("rotation_value");
@@ -528,12 +616,16 @@ function buildReadiness(
 
 export async function generateRecommendations(input: RecommendationEngineInput, evaluator?: CandidateEvaluatorFunction): Promise<RecommendationEngineOutput> {
   input = RecommendationEngineInputSchema.parse(input);
+  return generateRecommendationsInternal(input, "forecast", evaluator);
+}
+
+async function generateRecommendationsInternal(input: RecommendationEngineInput, contextMode: "forecast" | "generic", evaluator?: CandidateEvaluatorFunction): Promise<RecommendationEngineOutput> {
   const context = await new RuleDateContextResolver().resolve(input.dateContextInput);
-  const filtered = hardFilterGarments(input.garments, context, input);
-  const grouped = pruneGarmentsBySlot(filtered.eligible, context, input);
+  const filtered = hardFilterGarments(input.garments, context, input, contextMode);
+  const grouped = pruneGarmentsBySlot(filtered.eligible, context, input, contextMode);
   const byId = new Map(Object.values(grouped).flatMap((items) => items ?? []).map((item) => [item.id, item]));
   const raw = buildRawCandidates(grouped, context, input);
-  const scored = raw.candidates.map((candidate) => scoreCandidate(candidate, byId, context, input)).sort(compareScoreThenId((item) => item.ruleScores.ruleTotal)).slice(0, MAX_RULE_SCORED_CANDIDATES);
+  const scored = raw.candidates.map((candidate) => scoreCandidate(candidate, byId, context, input, contextMode)).sort(compareScoreThenId((item) => item.ruleScores.ruleTotal)).slice(0, MAX_RULE_SCORED_CANDIDATES);
   const shortlist = buildShortlist(scored);
   const evaluated: RecommendationCandidate[] = [];
   for (let index = 0; index < shortlist.length; index += 4) {
@@ -567,6 +659,14 @@ export async function generateRecommendations(input: RecommendationEngineInput, 
     exclusions: filtered.exclusions,
     metrics: { eligibleGarmentCount: filtered.eligible.length, rawCandidateCount: raw.candidates.length, ruleScoredCandidateCount: scored.length, maxBeamObserved: raw.maxBeamObserved },
   });
+}
+
+export async function generateRecommendationsV2(input: RecommendationEngineInputV2): Promise<RecommendationEngineOutput> {
+  const parsed = RecommendationEngineInputV2Schema.parse(input);
+  const { resolvedContext, ...v1Shape } = parsed;
+  const v1Input = RecommendationEngineInputSchema.parse(v1Shape);
+  if (resolvedContext.contextMode === "forecast") return generateRecommendations(v1Input);
+  return generateRecommendationsInternal(v1Input, "generic");
 }
 
 export function canonicalizeOutput(output: RecommendationEngineOutput): string {
