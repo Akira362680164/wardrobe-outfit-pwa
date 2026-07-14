@@ -133,6 +133,13 @@ export const itemAdaptabilityVectors = [
     }),
     expected: 50,
   },
+  {
+    id: "explicit-range-width-cap",
+    garment: vectorGarment("91000000-0000-4000-8000-000000000005", "tops", {
+      temperatureMinC: 0, temperatureMaxC: 40, warmth: 1, seasons: [],
+    }),
+    expected: 45,
+  },
 ] as const;
 
 const baseWearable = (id: string, category: RecommendationGarment["category"]) =>
@@ -180,6 +187,21 @@ export const v2ScenarioFixtures = [
   { id: "locationless-normal", input: buildLocationlessInput(), expectedStatus: "ready" },
   { id: "weather-fallback-normal", input: buildFallbackInput(), expectedStatus: "ready" },
   { id: "forecast-delegation", input: buildForecastInput(), expectedStatus: "ready" },
-  { id: "dress-and-shoes-ready", input: buildLocationlessInput({ garments: buildFixtureInput().garments.filter((item) => item.id === IDS.dress || item.id === IDS.loafers) }), expectedStatus: "limited" },
+  { id: "one-dress-one-shoe-limited", input: buildLocationlessInput({ garments: buildFixtureInput().garments.filter((item) => item.id === IDS.dress || item.id === IDS.loafers) }), expectedStatus: "limited" },
+  {
+    id: "dress-and-shoes-ready",
+    input: buildLocationlessInput({
+      garments: [
+        buildFixtureInput().garments.find((item) => item.id === IDS.dress)!,
+        vectorGarment("95000000-0000-4000-8000-000000000001", "one_piece", {
+          subcategory: "dress", colors: ["米"], styles: ["elegant"], formality: 4,
+          temperatureMinC: 14, temperatureMaxC: 30, warmth: 2, seasons: ["all"],
+        }),
+        buildFixtureInput().garments.find((item) => item.id === IDS.loafers)!,
+        buildFixtureInput().garments.find((item) => item.id === IDS.heels)!,
+      ],
+    }),
+    expectedStatus: "ready",
+  },
   { id: "empty-wardrobe-normal", input: buildLocationlessInput({ garments: [] }), expectedStatus: "not_ready" },
 ] as const;

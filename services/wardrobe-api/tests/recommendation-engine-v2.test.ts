@@ -35,10 +35,10 @@ const clone = <T>(value: T): T => structuredClone(value);
 
 describe("recommendation 1D-A hand-reviewed fixtures", () => {
   it("keeps the new fixture corpus explicit and separate from the 24 V1 fixtures", () => {
-    expect(v2ScenarioFixtures).toHaveLength(5);
-    expect(itemAdaptabilityVectors).toHaveLength(4);
+    expect(v2ScenarioFixtures).toHaveLength(6);
+    expect(itemAdaptabilityVectors).toHaveLength(5);
     expect(candidateAdaptabilityVectors).toHaveLength(3);
-    expect(new Set(v2ScenarioFixtures.map((fixture) => fixture.id)).size).toBe(5);
+    expect(new Set(v2ScenarioFixtures.map((fixture) => fixture.id)).size).toBe(6);
   });
 
   it.each(itemAdaptabilityVectors)("matches frozen item vector $id", ({ garment, expected }) => {
@@ -80,8 +80,16 @@ describe("V2 context modes and deterministic algorithm", () => {
     expect(output.exclusions.flatMap((entry) => entry.codes)).not.toContain("temperature_mismatch");
     const reasons = output.shortlist.flatMap((candidate) => candidate.reasonCodes);
     const risks = output.shortlist.flatMap((candidate) => candidate.riskCodes);
-    expect(reasons).not.toEqual(expect.arrayContaining(["weather_fit", "rain_ready", "needs_evening_layer"]));
-    expect(risks).not.toEqual(expect.arrayContaining(["too_hot", "too_cold", "rain_exposure", "wind_exposure", "missing_required_layer"]));
+    const pawReasons = output.shortlist.flatMap((candidate) => candidate.pawEvaluation.reasonCodes);
+    const pawRisks = output.shortlist.flatMap((candidate) => candidate.pawEvaluation.sceneRisks);
+    for (const code of ["weather_fit", "rain_ready", "needs_evening_layer"]) {
+      expect(reasons).not.toContain(code);
+      expect(pawReasons).not.toContain(code);
+    }
+    for (const code of ["too_hot", "too_cold", "rain_exposure", "wind_exposure", "missing_required_layer"]) {
+      expect(risks).not.toContain(code);
+      expect(pawRisks).not.toContain(code);
+    }
   });
 
   it("is month-agnostic in locationless heat handling", async () => {
@@ -144,6 +152,90 @@ describe("V1/V2 strict payload compatibility", () => {
     const v2Payload = { schemaVersion: 2, resolvedContext: v2Input.resolvedContext, dateContextInput: v2Input.dateContextInput, engineOutput: v2Output };
     expect(RecommendationPayloadV2Schema.parse(v2Payload)).toEqual(v2Payload);
     expect(RecommendationPayloadSchema.parse(v2Payload)).toEqual(v2Payload);
+  });
+
+  it("rejects adaptable_conditions in V1 and forecast payloads", async () => {
+    const v1Input = buildFixtureInput();
+    const v1Payload: any = {
+      engineOutput: await generateRecommendations(v1Input),
+      dateContextInput: v1Input.dateContextInput,
+    };
+    v1Payload.engineOutput.shortlist[0].reasonCodes.push("adaptable_conditions");
+    const v1Display = v1Payload.engineOutput.recommendations.find(
+      (candidate: any) => candidate.candidateId === v1Payload.engineOutput.shortlist[0].candidateId,
+    );
+    if (v1Display) v1Display.reasonCodes.push("adaptable_conditions");
+    expect(() => RecommendationPayloadV1Schema.parse(v1Payload)).toThrow();
+
+    const forecastInput = buildForecastInput();
+    const forecastPayload: any = {
+      schemaVersion: 2,
+      resolvedContext: forecastInput.resolvedContext,
+      dateContextInput: forecastInput.dateContextInput,
+      engineOutput: await generateRecommendationsV2(forecastInput),
+    };
+    forecastPayload.engineOutput.shortlist[0].reasonCodes.push("adaptable_conditions");
+    const forecastDisplay = forecastPayload.engineOutput.recommendations.find(
+      (candidate: any) => candidate.candidateId === forecastPayload.engineOutput.shortlist[0].candidateId,
+    );
+    if (forecastDisplay) forecastDisplay.reasonCodes.push("adaptable_conditions");
+    expect(() => RecommendationPayloadV2Schema.parse(forecastPayload)).toThrow();
+  });
+
+  it("rejects generic fake weather in outer and nested audits", async () => {
+    const input = buildLocationlessInput();
+    const output = await generateRecommendationsV2(input);
+    const base: any = {
+      schemaVersion: 2,
+      resolvedContext: input.resolvedContext,
+      dateContextInput: input.dateContextInput,
+      engineOutput: output,
+    };
+    const mutations: Array<[string, (candidate: any) => void]> = [
+      ...["weather_fit", "rain_ready", "needs_evening_layer"].flatMap((code) => [
+        [`outer reason ${code}`, (candidate: any) => candidate.reasonCodes.push(code)],
+        [`nested reason ${code}`, (candidate: any) => candidate.pawEvaluation.reasonCodes.push(code)],
+      ] as Array<[string, (candidate: any) => void]>),
+      ...["too_hot", "too_cold", "rain_exposure", "wind_exposure", "missing_required_layer"].flatMap((code) => [
+        [`outer risk ${code}`, (candidate: any) => candidate.riskCodes.push(code)],
+        [`nested risk ${code}`, (candidate: any) => candidate.pawEvaluation.sceneRisks.push(code)],
+      ] as Array<[string, (candidate: any) => void]>),
+    ];
+    for (const [_name, mutate] of mutations) {
+      const invalid = clone(base);
+      const audit = invalid.engineOutput.shortlist[0];
+      mutate(audit);
+      const display = invalid.engineOutput.recommendations.find(
+        (candidate: any) => candidate.candidateId === audit.candidateId,
+      );
+      if (display) mutate(display);
+      expect(() => RecommendationPayloadV2Schema.parse(invalid)).toThrow();
+    }
+  });
+
+  it("rejects generic weather-derived DateContext conclusions", async () => {
+    const input = buildLocationlessInput();
+    const base: any = {
+      schemaVersion: 2,
+      resolvedContext: input.resolvedContext,
+      dateContextInput: input.dateContextInput,
+      engineOutput: await generateRecommendationsV2(input),
+    };
+    for (const mutate of [
+      (value: any) => { value.engineOutput.dateContext.thermalStrategy = "cooling"; },
+      (value: any) => { value.engineOutput.dateContext.rainStrategy = "full_rain_protection"; },
+      (value: any) => { value.engineOutput.dateContext.confidence = "high"; },
+      ...["avoid_suede", "avoid_heavy_outerwear", "avoid_non_breathable", "avoid_open_toe_shoes"].map(
+        (code) => (value: any) => { value.engineOutput.dateContext.avoidRules.push(code); },
+      ),
+    ]) {
+      const invalid = clone(base);
+      mutate(invalid);
+      expect(() => RecommendationPayloadV2Schema.parse(invalid)).toThrow();
+    }
+    const activityRule = clone(base);
+    activityRule.engineOutput.dateContext.avoidRules.push("avoid_high_heels");
+    expect(() => RecommendationPayloadV2Schema.parse(activityRule)).not.toThrow();
   });
 
   it.each([
