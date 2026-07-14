@@ -14,7 +14,12 @@ COPY services/wardrobe-api/package.json services/wardrobe-api/package.json
 COPY services/image-crop-sidecar/requirements.txt services/image-crop-sidecar/requirements.txt
 
 RUN npm ci --ignore-scripts
-RUN /opt/crop-venv/bin/pip install --no-cache-dir -r services/image-crop-sidecar/requirements.txt
+RUN /opt/crop-venv/bin/pip install \
+  --index-url https://pypi.tuna.tsinghua.edu.cn/simple \
+  --timeout 120 \
+  --retries 5 \
+  --no-cache-dir \
+  -r services/image-crop-sidecar/requirements.txt
 
 COPY packages/cloud-contracts packages/cloud-contracts
 COPY packages/domain-catalog packages/domain-catalog

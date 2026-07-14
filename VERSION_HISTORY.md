@@ -2,6 +2,7 @@
 
 - **产品授权**：项目所有者明确批准个人、非商业 Wardora 部署原样使用上游 u2netp 权重；权重继续不进入 Git、不由仓库再分发，部署只接受固定 SHA-256 `309c8469258dda742793dce0ebea8e6dd393174f89934733ecc8b14c76f4ddd8`。
 - **生产镜像与门禁**：API 镜像新增隔离 Python venv 与锁定依赖，私有 worker 不暴露端口；生产 Compose 只读挂载 `/opt/wardrobe-cloud/models/u2netp.onnx`，配置 12 秒硬超时、2 并发和 20 队列。`/api/ready` 新增 `dependencies.imageCrop`，worker 不可执行或权重不可读时整体 readiness 返回 degraded。
+- **构建网络**：腾讯云到 PyPI 官方文件源实测下载超时，旧服务未切换；镜像构建改用可达的清华 HTTPS PyPI 镜像并保留精确版本、120 秒超时和 5 次重试，避免生产构建依赖不可用链路。
 - **验证**：最新 `main` 已合入本任务分支；API typecheck、合同 typecheck、API 全量 `181/181`、部署脚本语法和 `git diff --check` 通过。生产备份、镜像构建、部署及登录后真实 10 图复测在本记录后续收口。
 
 ## 2026-07-14 / v2.1.20-test / Codex — 图片自动裁切双路线正式开发与验证
