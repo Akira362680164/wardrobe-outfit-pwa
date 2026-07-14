@@ -35,4 +35,10 @@ describe("recommendation read contract", () => {
     const base = { recommendationId: "10000000-0000-4000-8000-000000000001", targetDate: "2026-07-14", generationBatchId: "20000000-0000-4000-8000-000000000001", readiness: "not_ready", generationMode: "rule_only", generatedAt: "2026-07-14T00:00:00.000Z", expiresAt: "2026-08-14T00:00:00.000Z", weatherEvidence: { weatherSource: "seasonal_inference", weatherConfidence: 0.3, weatherUpdatedAt: "2026-07-14T00:00:00.000Z", summary: "季节推断" }, recommendations: [] };
     expect(() => RecommendationReadResponseSchema.parse({ timezone: "Asia/Shanghai", pairConsistent: true, items: [base, { ...base, recommendationId: "10000000-0000-4000-8000-000000000002", targetDate: "2026-07-15", generationBatchId: "20000000-0000-4000-8000-000000000002" }] })).toThrow();
   });
+  it("keeps old V1 display rows parseable while accepting the strict V2 display union", () => {
+    const v1 = { recommendationId: "10000000-0000-4000-8000-000000000001", targetDate: "2026-07-14", generationBatchId: "20000000-0000-4000-8000-000000000001", readiness: "not_ready", generationMode: "rule_only", generatedAt: "2026-07-14T00:00:00.000Z", expiresAt: "2026-08-14T00:00:00.000Z", weatherEvidence: { weatherSource: "seasonal_inference", weatherConfidence: 0.3, weatherUpdatedAt: "2026-07-14T00:00:00.000Z", summary: "季节推断" }, recommendations: [] };
+    const v2 = { ...v1, recommendationId: "10000000-0000-4000-8000-000000000002", contextMode: "locationless", targetTimezone: "Asia/Shanghai", contextResolvedAt: "2026-07-14T00:00:00.000Z", algorithmVersion: "wardora-recommendation-1d-a-v2", ruleVersion: "wardora-rules-locationless-1", availabilityReason: "locationless", endpointFreshness: [] };
+    const parsed = RecommendationReadResponseSchema.parse({ timezone: "Asia/Shanghai", pairConsistent: false, items: [v1, v2] });
+    expect(parsed.items).toHaveLength(2);
+  });
 });

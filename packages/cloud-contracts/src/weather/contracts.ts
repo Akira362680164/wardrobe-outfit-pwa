@@ -133,11 +133,14 @@ export const WeatherCacheKeySchema = z.object({
 
 export const WeatherCachePayloadSchema = z.union([
   NormalizedWeatherNowSchema,
-  z.array(NormalizedWeatherHourSchema).max(168),
-  z.array(NormalizedWeatherDaySchema).max(30),
+  z.array(NormalizedWeatherHourSchema).min(1).max(168),
+  z.array(NormalizedWeatherDaySchema).min(1).max(30),
 ]);
-export const WeatherCacheEntrySchema = WeatherCacheKeySchema.extend({
-  payload: WeatherCachePayloadSchema,
+const WeatherCacheEntryMetadataSchema = z.object({
+  provider: WeatherProviderIdSchema,
+  locationId: z.string().trim().min(1).max(80),
+  lang: WeatherLanguageSchema,
+  unit: WeatherUnitSchema,
   providerUpdatedAt: DateTimeSchema,
   fetchedAt: DateTimeSchema,
   expiresAt: DateTimeSchema,
@@ -147,8 +150,73 @@ export const WeatherCacheEntrySchema = WeatherCacheKeySchema.extend({
   targetLocalDate: RealDateSchema,
   status: z.literal("positive"),
 }).strict();
+export const WeatherCacheNowEntrySchema = WeatherCacheEntryMetadataSchema.extend({
+  endpoint: z.literal("now"),
+  payload: NormalizedWeatherNowSchema,
+}).strict();
+export const WeatherCacheHourlyEntrySchema = WeatherCacheEntryMetadataSchema.extend({
+  endpoint: z.literal("hourly"),
+  payload: z.array(NormalizedWeatherHourSchema).min(1).max(168),
+}).strict();
+export const WeatherCacheDailyEntrySchema = WeatherCacheEntryMetadataSchema.extend({
+  endpoint: z.literal("daily"),
+  payload: z.array(NormalizedWeatherDaySchema).min(1).max(30),
+}).strict();
+export const WeatherCacheEntrySchema = z.discriminatedUnion("endpoint", [
+  WeatherCacheNowEntrySchema,
+  WeatherCacheHourlyEntrySchema,
+  WeatherCacheDailyEntrySchema,
+]);
 
 export const WeatherCacheFreshnessSchema = z.enum(["fresh", "stale"]);
+export const WeatherAvailabilityReasonSchema = z.enum([
+  "available", "locationless", "forecast_out_of_range", "provider_unavailable", "insufficient_evidence",
+]);
+export const WeatherEndpointEvidenceSchema = z.object({
+  endpoint: WeatherEndpointSchema,
+  freshness: WeatherCacheFreshnessSchema,
+  providerUpdatedAt: DateTimeSchema,
+  fetchedAt: DateTimeSchema,
+  expiresAt: DateTimeSchema,
+  staleUntil: DateTimeSchema,
+}).strict();
+export const WeatherOverviewQuerySchema = z.object({ date: RealDateSchema }).strict();
+export const WeatherOverviewSchema = z.object({
+  targetDate: RealDateSchema,
+  contextMode: z.enum(["forecast", "locationless", "weather_fallback"]),
+  resolvedLocation: WeatherLocationRefSchema.optional(),
+  locationSource: z.enum(["travel", "temporary_override", "home_city"]).optional(),
+  targetTimezone: TimeZoneSchema,
+  contextResolvedAt: DateTimeSchema,
+  weatherEvidence: z.object({
+    weatherSource: z.enum(["forecast", "layering_default"]),
+    weatherConfidence: z.number().finite().min(0).max(1),
+    weatherUpdatedAt: DateTimeSchema,
+    temperatureMinC: z.number().finite().min(-60).max(60).optional(),
+    temperatureMaxC: z.number().finite().min(-60).max(60).optional(),
+    feelsLikeMinC: z.number().finite().min(-80).max(80).optional(),
+    feelsLikeMaxC: z.number().finite().min(-80).max(80).optional(),
+    rainProbability: z.number().finite().min(0).max(100).optional(),
+    windLevel: z.number().int().min(0).max(12).optional(),
+    summary: z.string().trim().min(1).max(120),
+  }).strict(),
+  endpointFreshness: z.array(WeatherEndpointEvidenceSchema).max(3),
+  availabilityReason: WeatherAvailabilityReasonSchema,
+  attribution: QWeatherAttributionSchema.optional(),
+}).strict().superRefine((value, ctx) => {
+  const hasLocation = value.resolvedLocation !== undefined;
+  const hasSource = value.locationSource !== undefined;
+  if (hasLocation !== hasSource) ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["resolvedLocation"], message: "resolved location and source must appear together" });
+  if (value.contextMode === "locationless") {
+    if (hasLocation || value.targetTimezone !== "Asia/Shanghai" || value.attribution || value.endpointFreshness.length) ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["contextMode"], message: "locationless overview cannot contain provider evidence" });
+  } else if (!hasLocation) ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["resolvedLocation"], message: "located overview requires a location" });
+  const weather = value.weatherEvidence;
+  if ((weather.temperatureMinC === undefined) !== (weather.temperatureMaxC === undefined)) ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["weatherEvidence"], message: "temperature range must be complete" });
+  if ((weather.feelsLikeMinC === undefined) !== (weather.feelsLikeMaxC === undefined)) ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["weatherEvidence"], message: "feels-like range must be complete" });
+  if (value.contextMode !== "forecast" && ["temperatureMinC", "temperatureMaxC", "feelsLikeMinC", "feelsLikeMaxC", "rainProbability", "windLevel"].some((field) => weather[field as keyof typeof weather] !== undefined)) {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["weatherEvidence"], message: "fallback modes cannot expose weather values" });
+  }
+});
 
 export type WeatherLanguage = z.infer<typeof WeatherLanguageSchema>;
 export type WeatherUnit = z.infer<typeof WeatherUnitSchema>;
@@ -167,3 +235,5 @@ export type NormalizedWeatherHour = z.infer<typeof NormalizedWeatherHourSchema>;
 export type NormalizedWeatherDay = z.infer<typeof NormalizedWeatherDaySchema>;
 export type WeatherCacheKey = z.infer<typeof WeatherCacheKeySchema>;
 export type WeatherCacheEntry = z.infer<typeof WeatherCacheEntrySchema>;
+export type WeatherOverview = z.infer<typeof WeatherOverviewSchema>;
+export type WeatherEndpointEvidence = z.infer<typeof WeatherEndpointEvidenceSchema>;

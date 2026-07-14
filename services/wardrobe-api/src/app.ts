@@ -41,10 +41,12 @@ import { registerImageCropRoutes } from "./image-crop/routes.js";
 import { ImageCropService } from "./image-crop/service.js";
 import { registerRecommendationRoutes } from "./recommendations/routes.js";
 import { RecommendationReadService } from "./recommendations/read-service.js";
+import { RecommendationRegenerationService } from "./recommendations/regeneration-service.js";
 import { FixedWindowRateLimiter } from "./auth/rate-limit.js";
 import { WeatherLocationService, type WeatherLocationServiceLike } from "./weather/location-service.js";
 import { createQWeatherProviderFromEnv } from "./weather/qweather-provider.js";
-import { registerWeatherLocationRoutes } from "./weather/routes.js";
+import { registerWeatherLocationRoutes, registerWeatherOverviewRoute } from "./weather/routes.js";
+import { WeatherOverviewService } from "./weather/overview-service.js";
 
 export type ReadinessCheck = () => Promise<{ database: "ready" }>;
 
@@ -68,7 +70,9 @@ export interface BuildAppOptions {
   imageCropService?: ImageCropService;
   imageCropReadinessCheck?: () => Promise<boolean>;
   recommendationReadService?: RecommendationReadService;
+  recommendationRegenerationService?: RecommendationRegenerationService;
   weatherLocationService?: WeatherLocationServiceLike;
+  weatherOverviewService?: WeatherOverviewService;
   locationCostLimiter?: FixedWindowRateLimiter;
 }
 
@@ -212,9 +216,14 @@ export function buildApp(options: BuildAppOptions = {}): FastifyInstance {
   );
   registerAiIntakeRoutes(app, sharedSessionService ?? new SessionService(), options.miniMaxIntakeService ?? new MiniMaxIntakeService());
   registerImageCropRoutes(app, sharedSessionService ?? new SessionService(), imageCropService);
-  registerRecommendationRoutes(app, sharedSessionService ?? new SessionService(), options.recommendationReadService ?? new RecommendationReadService());
+  let defaultRegeneration: RecommendationRegenerationService | undefined;
+  const regeneration = options.recommendationRegenerationService ?? ({ enqueueExplicit: (...args: Parameters<RecommendationRegenerationService["enqueueExplicit"]>) => (defaultRegeneration ??= new RecommendationRegenerationService()).enqueueExplicit(...args) } as RecommendationRegenerationService);
+  registerRecommendationRoutes(app, sharedSessionService ?? new SessionService(), options.recommendationReadService ?? new RecommendationReadService(), regeneration);
   const qweather = createQWeatherProviderFromEnv();
   registerWeatherLocationRoutes(app, sharedSessionService ?? new SessionService(), options.weatherLocationService ?? new WeatherLocationService(undefined, qweather), options.locationCostLimiter);
+  let defaultOverview: WeatherOverviewService | undefined;
+  const overview = options.weatherOverviewService ?? ({ get: (...args: Parameters<WeatherOverviewService["get"]>) => (defaultOverview ??= new WeatherOverviewService({ provider: qweather })).get(...args) } as WeatherOverviewService);
+  registerWeatherOverviewRoute(app, sharedSessionService ?? new SessionService(), overview);
   app.addHook("onClose", async () => imageCropService.close());
   const diagnosticService = options.diagnosticService ?? new DiagnosticService(storage);
   registerDiagnosticRoutes(app, sharedSessionService ?? new SessionService(), diagnosticService);

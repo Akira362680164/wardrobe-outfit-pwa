@@ -38,7 +38,7 @@ describe("PostgreSQL weather cache policy", () => {
   it("forces daily revalidation across destination local midnight", async () => {
     const repo = new MemoryRepository(); let calls = 0; let now = new Date("2026-07-14T15:59:00.000Z"); const service = new WeatherCacheService(repo, () => now);
     const key = { ...WEATHER_CACHE_KEY, endpoint: "daily" as const };
-    const loader = async () => { calls += 1; return { data: [], updatedAt: "2026-07-14T20:00:00.000+08:00", sources: ["QWeather"], license: ["QWeather Developers License"] }; };
+    const loader = async () => { calls += 1; return { data: [{ date: "2026-07-15", temperatureMinC: 26, temperatureMaxC: 33, dayWeatherCode: "101", dayWeatherText: "多云", nightWeatherCode: "150", nightWeatherText: "晴" }], updatedAt: "2026-07-14T20:00:00.000+08:00", sources: ["QWeather"], license: ["QWeather Developers License"] }; };
     await service.get(key, "Asia/Shanghai", loader); now = new Date("2026-07-14T16:01:00.000Z"); await service.get(key, "Asia/Shanghai", loader); expect(calls).toBe(2);
   });
 
@@ -49,5 +49,22 @@ describe("PostgreSQL weather cache policy", () => {
     const loader = async () => { calls += 1; await new Promise((resolve) => setTimeout(resolve, 5)); return { data: payload, updatedAt: "2026-07-14T20:00:00.000+08:00", sources: ["QWeather"], license: ["QWeather Developers License"] }; };
     await Promise.all(Array.from({ length: 12 }, () => service.get(WEATHER_CACHE_KEY, "Asia/Shanghai", loader)));
     expect(calls).toBe(1);
+  });
+
+  it("does not return a fresh cache row whose payload belongs to another endpoint", async () => {
+    const repo = new MemoryRepository(); let calls = 0;
+    repo.row = {
+      payload: [{ time: "2026-07-14T21:00:00.000+08:00", temperatureC: 30, weatherCode: "101", weatherText: "多云" }],
+      providerUpdatedAt: new Date("2026-07-14T12:00:00.000Z"), fetchedAt: new Date("2026-07-14T12:00:00.000Z"),
+      expiresAt: new Date("2026-07-14T12:20:00.000Z"), staleUntil: new Date("2026-07-14T14:00:00.000Z"),
+      sources: ["QWeather"], license: ["QWeather Developers License"], targetLocalDate: "2026-07-14",
+    };
+    const service = new WeatherCacheService(repo, () => new Date("2026-07-14T12:10:00.000Z"));
+    const result = await service.get(WEATHER_CACHE_KEY, "Asia/Shanghai", async () => {
+      calls += 1;
+      return { data: payload, updatedAt: "2026-07-14T20:00:00.000+08:00", sources: ["QWeather"], license: ["QWeather Developers License"] };
+    });
+    expect(calls).toBe(1);
+    expect(result.data).toEqual(payload);
   });
 });

@@ -11,7 +11,8 @@ if (process.argv.includes("--run-once")) {
   await closeDatabase();
   process.exit(result.acquired && result.job?.status !== "failed" ? 0 : 1);
 }
-if (!readRecommendationFeatureFlags(process.env).DAILY_RECOMMENDATIONS_ENABLED) throw new Error("DAILY_RECOMMENDATIONS_ENABLED must be true for daemon mode");
+const flags = readRecommendationFeatureFlags(process.env);
+if (!flags.DAILY_RECOMMENDATIONS_ENABLED && !flags.RECOMMENDATION_V2_SHADOW_ENABLED && !flags.RECOMMENDATION_V2_WORKER_ENABLED) throw new Error("a recommendation worker flag must be true for daemon mode");
 let stopping = false;
 const stop = () => { stopping = true; };
 process.on("SIGINT", stop); process.on("SIGTERM", stop);

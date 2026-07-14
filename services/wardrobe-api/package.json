@@ -18,6 +18,7 @@
     "reset:test-data": "node dist/cli/reset-test-data.js",
     "recommendation-worker": "node dist/recommendations/worker-entry.js",
     "recommendation-worker:run-once": "node dist/recommendations/worker-entry.js --run-once",
+    "recommendation-readiness:1d-c": "node dist/recommendations/readiness-entry.js",
     "qweather:smoke": "tsx scripts/qweather-1d-b-smoke.ts",
     "start": "node dist/server.js"
   },

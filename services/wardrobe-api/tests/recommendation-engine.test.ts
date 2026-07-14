@@ -293,6 +293,9 @@ describe("DateContext and canonicalizer port boundaries", () => {
   it("keeps all production recommendation and PAW flags disabled by default", () => {
     expect(RECOMMENDATION_FEATURE_DEFAULTS).toEqual({
       DAILY_RECOMMENDATIONS_ENABLED: false,
+      RECOMMENDATION_V2_SHADOW_ENABLED: false,
+      RECOMMENDATION_V2_CURRENT_ENABLED: false,
+      RECOMMENDATION_V2_WORKER_ENABLED: false,
       PAW_DATE_CONTEXT_ENABLED: false,
       PAW_CANDIDATE_EVALUATOR_ENABLED: false,
       PAW_INTAKE_CANONICALIZER_ENABLED: false,

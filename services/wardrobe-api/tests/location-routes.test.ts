@@ -5,6 +5,7 @@ import { FixedWindowRateLimiter } from "../src/auth/rate-limit.js";
 import type { SessionService } from "../src/auth/session.js";
 import type { ImageCropService } from "../src/image-crop/service.js";
 import type { WeatherLocationServiceLike } from "../src/weather/location-service.js";
+import type { WeatherOverviewService } from "../src/weather/overview-service.js";
 import { SHANGHAI_LOCATION } from "./fixtures/weather/qweather.js";
 
 const USER = "10000000-0000-4000-8000-000000000001";
@@ -54,6 +55,18 @@ describe("authenticated location settings and GeoAPI routes", () => {
     const app = buildApp({ storageProvider: null, imageCropService: { close: async () => {} } as ImageCropService, sessionService: session() });
     const response = await app.inject({ method: "GET", url: "/api/weather/locations/search?q=上海", headers });
     expect(response.statusCode).toBe(503); expect(response.json()).toMatchObject({ code: "weather_unavailable" });
+    await app.close();
+  });
+
+  it("protects WeatherOverview with auth, strict date query, and the authenticated user", async () => {
+    const calls: unknown[] = [];
+    const overview = { targetDate: "2026-07-14", contextMode: "locationless", targetTimezone: "Asia/Shanghai", contextResolvedAt: "2026-07-14T12:00:00.000Z", weatherEvidence: { weatherSource: "layering_default", weatherConfidence: 0, weatherUpdatedAt: "2026-07-14T12:00:00.000Z", summary: "未设置城市，采用通用分层推荐" }, endpointFreshness: [], availabilityReason: "locationless" };
+    const app = buildApp({ storageProvider: null, imageCropService: { close: async () => {} } as ImageCropService, sessionService: session(), weatherLocationService: service([]), weatherOverviewService: { get: async (...args: unknown[]) => { calls.push(args); return overview; } } as unknown as WeatherOverviewService });
+    expect((await app.inject({ method: "GET", url: "/api/weather/overview?date=2026-07-14" })).statusCode).toBe(401);
+    expect((await app.inject({ method: "GET", url: "/api/weather/overview?date=2026-07-14&extra=true", headers })).statusCode).toBe(400);
+    expect((await app.inject({ method: "GET", url: "/api/weather/overview?date=2026-02-30", headers })).statusCode).toBe(400);
+    expect((await app.inject({ method: "GET", url: "/api/weather/overview?date=2026-07-14", headers })).statusCode).toBe(200);
+    expect(calls).toEqual([[USER, "2026-07-14"]]);
     await app.close();
   });
 });

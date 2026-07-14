@@ -12,6 +12,7 @@ import type {
   WorkspaceStateCommand,
   WorkspaceUpdateCommand,
 } from "@wardrobe/cloud-contracts";
+import { WeatherLocationRefSchema } from "@wardrobe/cloud-contracts";
 
 import { getDb } from "../db/client.js";
 import { assetBindings, assets, profiles, syncChanges, syncMutations } from "../db/schema.js";
@@ -960,6 +961,12 @@ async function canonicalWorkspacePayload(
 ): Promise<Record<string, unknown>> {
   const payload = normalizeWorkspacePayload(resource, sanitizePayload(rawPayload));
   assertNoLegacyIdentifiers(payload);
+  if (resource === "trip-plans") {
+    if (!Object.prototype.hasOwnProperty.call(payload, "weatherLocation")) return payload;
+    const weatherLocation = WeatherLocationRefSchema.safeParse(payload.weatherLocation);
+    if (!weatherLocation.success) throw new WorkspaceApiError(422, "invalid_request", "行程天气地点必须是已确认的标准地点");
+    return { ...payload, weatherLocation: weatherLocation.data };
+  }
   if (resource === "outfits") return payload;
   if (resource !== "outfit-plans") return payload;
 

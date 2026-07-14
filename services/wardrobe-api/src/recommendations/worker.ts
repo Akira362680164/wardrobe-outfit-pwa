@@ -3,6 +3,9 @@ import type { Pool } from "pg";
 import type { RecommendationJobErrorCode, RecommendationJobRunSummary } from "@wardrobe/cloud-contracts";
 import { BoundedAsyncQueue } from "./bounded-queue.js";
 import { RecommendationGenerationService, RECOMMENDATION_ALGORITHM_VERSION } from "./generation-service.js";
+import { RecommendationGenerationServiceV2 } from "./generation-service-v2.js";
+import { readRecommendationFeatureFlags } from "./feature-flags.js";
+import { RecommendationRegenerationService } from "./regeneration-service.js";
 import { RecommendationJobRepository } from "./job-repository.js";
 
 export interface RecommendationTask { userId: string; targetDate: string; asOfDate: string; timezone: string; homePair: boolean; }
@@ -11,12 +14,18 @@ export interface WorkerRunResult { acquired: boolean; job: RecommendationJobRunS
 export class RecommendationWorker {
   private readonly jobs: RecommendationJobRepository;
   private readonly generation: RecommendationGenerationService;
-  constructor(private readonly pool: Pool, private readonly capacity = 64) { this.jobs = new RecommendationJobRepository(pool); this.generation = new RecommendationGenerationService(pool); }
+  private readonly generationV2: RecommendationGenerationServiceV2;
+  private readonly regeneration: RecommendationRegenerationService;
+  constructor(private readonly pool: Pool, private readonly capacity = 64) { this.jobs = new RecommendationJobRepository(pool); this.generation = new RecommendationGenerationService(pool); this.generationV2 = new RecommendationGenerationServiceV2(pool); this.regeneration = new RecommendationRegenerationService(pool, this.generationV2); }
 
   async runOnce(scheduledFor = new Date().toISOString()): Promise<WorkerRunResult> {
     const lock = await this.jobs.tryAcquireGlobalLock();
     if (!lock) return { acquired: false, job: null, peakQueueSize: 0, peakRssBytes: process.memoryUsage().rss };
-    const jobId = await this.jobs.start(scheduledFor, RECOMMENDATION_ALGORITHM_VERSION);
+    const flags = readRecommendationFeatureFlags(process.env);
+    const useV2 = flags.RECOMMENDATION_V2_SHADOW_ENABLED || flags.RECOMMENDATION_V2_WORKER_ENABLED;
+    const publishV2 = flags.RECOMMENDATION_V2_WORKER_ENABLED && flags.RECOMMENDATION_V2_CURRENT_ENABLED;
+    const service = useV2 ? this.generationV2 : this.generation;
+    const jobId = await this.jobs.start(scheduledFor, useV2 ? "wardora-recommendation-1d-a-v2" : RECOMMENDATION_ALGORITHM_VERSION);
     let peakRssBytes = process.memoryUsage().rss;
     const counts = { targetTaskCount: 0, readyCount: 0, fallbackCount: 0, failedCount: 0, errorCodeCounts: {} as Partial<Record<RecommendationJobErrorCode, number>> };
     const queue = new BoundedAsyncQueue<RecommendationTask>(this.capacity);
@@ -30,16 +39,25 @@ export class RecommendationWorker {
         if (pair.length !== 2) { for (const task of pair) await queue.push(task); continue; }
         try {
           const batchId = randomUUID();
-          const prepared = await Promise.all(pair.map((task) => this.generation.prepare(task.userId, task.targetDate, task.asOfDate, task.timezone, batchId)));
+          const prepared = await Promise.all(pair.map((task) => service.prepare(task.userId, task.targetDate, task.asOfDate, task.timezone, batchId)));
           if (prepared.some((value) => value.skipReason)) continue;
-          const records = await this.generation.persistence.publishHomePair([prepared[0]!.command!, prepared[1]!.command!]);
+          if (useV2 && !publishV2) { for (const value of prepared) value.command!.readiness === "ready" ? counts.readyCount++ : counts.fallbackCount++; continue; }
+          const records = await service.persistence.publishHomePair([prepared[0]!.command!, prepared[1]!.command!]);
           for (const record of records) record.readiness === "ready" ? counts.readyCount++ : counts.fallbackCount++;
         } catch { counts.failedCount += 2; increment(counts.errorCodeCounts, "persistence_failed", 2); }
       }
-      const consumer = (async () => { for (;;) { const task = await queue.shift(); if (!task) break; try { const record = await this.generation.generateAndPublish(task.userId, task.targetDate, task.asOfDate, task.timezone); if (record) record.readiness === "ready" ? counts.readyCount++ : counts.fallbackCount++; } catch (error) { counts.failedCount++; increment(counts.errorCodeCounts, classify(error)); } peakRssBytes = Math.max(peakRssBytes, process.memoryUsage().rss); } })();
+      const consumer = (async () => { for (;;) { const task = await queue.shift(); if (!task) break; try { const prepared = await service.prepare(task.userId, task.targetDate, task.asOfDate, task.timezone, randomUUID()); const record = prepared.command && (!useV2 || publishV2) ? await service.persistence.publish(prepared.command) : null; const readiness = record?.readiness ?? prepared.command?.readiness; if (readiness) readiness === "ready" ? counts.readyCount++ : counts.fallbackCount++; } catch (error) { counts.failedCount++; increment(counts.errorCodeCounts, classify(error)); } peakRssBytes = Math.max(peakRssBytes, process.memoryUsage().rss); } })();
       for (const task of tasks.filter((value) => !value.homePair)) await queue.push(task);
       queue.close();
       await consumer;
+      if (publishV2) {
+        try {
+          for (let processed = 0; processed < 256; processed++) if (!await this.regeneration.processNext()) break;
+        } catch {
+          counts.failedCount++;
+          increment(counts.errorCodeCounts, "persistence_failed");
+        }
+      }
       await this.generation.persistence.cleanupExpiredNonCurrent(new Date().toISOString());
       await this.jobs.finish(jobId, counts);
       return { acquired: true, job: await this.jobs.get(jobId), peakQueueSize: queue.peakSize, peakRssBytes };

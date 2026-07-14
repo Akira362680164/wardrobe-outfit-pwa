@@ -76,6 +76,7 @@ export const accountDeletionJobStatus = pgEnum("account_deletion_job_status", [
 export const recommendationReadiness = pgEnum("recommendation_readiness", ["ready", "limited", "not_ready"]);
 export const recommendationGenerationMode = pgEnum("recommendation_generation_mode", ["rule_only", "paw_enhanced", "rule_fallback"]);
 export const recommendationJobRunStatus = pgEnum("recommendation_job_run_status", ["running", "completed", "completed_with_errors", "failed"]);
+export const recommendationRegenerationStatus = pgEnum("recommendation_regeneration_status", ["pending", "processing", "completed", "failed"]);
 
 export const users = pgTable("users", {
   id: uuid("id").primaryKey().defaultRandom(),
@@ -529,6 +530,24 @@ export const recommendationJobRuns = pgTable(
   },
   (table) => ({ scheduledIdx: index("recommendation_job_runs_scheduled_idx").on(table.scheduledFor), statusIdx: index("recommendation_job_runs_status_idx").on(table.status) }),
 );
+
+export const recommendationRegenerationRequests = pgTable("recommendation_regeneration_requests", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  userId: uuid("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  targetDate: date("target_date", { mode: "string" }).notNull(),
+  reasons: text("reasons").array().notNull(),
+  clientMutationIds: uuid("client_mutation_ids").array().notNull().default([]),
+  contentFingerprint: text("content_fingerprint").notNull(),
+  status: recommendationRegenerationStatus("status").notNull().default("pending"),
+  attemptCount: integer("attempt_count").notNull().default(0),
+  maxAttempts: integer("max_attempts").notNull().default(5),
+  nextAttemptAt: timestamp("next_attempt_at", { withTimezone: true }).notNull().defaultNow(),
+  lockedAt: timestamp("locked_at", { withTimezone: true }),
+  lastErrorCode: text("last_error_code"),
+  resultRecommendationId: uuid("result_recommendation_id").references(() => dailyRecommendations.id, { onDelete: "set null" }),
+  completedAt: timestamp("completed_at", { withTimezone: true }),
+  ...timestamps,
+});
 
 const locationRevisionColumns = {
   userId: uuid("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),

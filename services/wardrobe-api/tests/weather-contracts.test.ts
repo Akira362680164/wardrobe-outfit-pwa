@@ -42,4 +42,21 @@ describe("weather and location strict contracts", () => {
       sources: ["QWeather"], license: ["QWeather Developers License"], targetLocalDate: "2026-07-14", status: "positive",
     }).status).toBe("positive");
   });
+
+  it("rejects all endpoint and payload shape mismatches", () => {
+    const metadata = {
+      provider: "qweather" as const, locationId: "101020100", lang: "zh" as const, unit: "m" as const,
+      providerUpdatedAt: "2026-07-14T20:00:00.000+08:00", fetchedAt: "2026-07-14T12:00:00.000Z",
+      expiresAt: "2026-07-14T12:20:00.000Z", staleUntil: "2026-07-14T14:00:00.000Z",
+      sources: ["QWeather"], license: ["QWeather Developers License"], targetLocalDate: "2026-07-14", status: "positive" as const,
+    };
+    const now = { observedAt: "2026-07-14T19:54:00.000+08:00", temperatureC: 31, weatherCode: "101", weatherText: "多云" };
+    const hour = { time: "2026-07-14T21:00:00.000+08:00", temperatureC: 30, weatherCode: "101", weatherText: "多云" };
+    const day = { date: "2026-07-14", temperatureMinC: 26, temperatureMaxC: 33, dayWeatherCode: "101", dayWeatherText: "多云", nightWeatherCode: "150", nightWeatherText: "晴" };
+
+    expect(() => WeatherCacheEntrySchema.parse({ ...metadata, endpoint: "now", payload: [hour] })).toThrow();
+    expect(() => WeatherCacheEntrySchema.parse({ ...metadata, endpoint: "hourly", payload: [day] })).toThrow();
+    expect(() => WeatherCacheEntrySchema.parse({ ...metadata, endpoint: "daily", payload: [hour] })).toThrow();
+    expect(() => WeatherCacheEntrySchema.parse({ ...metadata, endpoint: "hourly", payload: now })).toThrow();
+  });
 });

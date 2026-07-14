@@ -1,10 +1,13 @@
 import type { FastifyInstance } from "fastify";
 import { RecommendationReadQuerySchema } from "@wardrobe/cloud-contracts";
+import { ReassessRecommendationCommandSchema, RecommendationRegenerationRequestSchema } from "@wardrobe/cloud-contracts";
 import { SessionService } from "../auth/session.js";
 import { sendWorkspaceError, WorkspaceApiError } from "../workspace/errors.js";
 import { RecommendationReadError, RecommendationReadService } from "./read-service.js";
+import { RecommendationRegenerationConflictError, RecommendationRegenerationService } from "./regeneration-service.js";
+import { FixedWindowRateLimiter } from "../auth/rate-limit.js";
 
-export function registerRecommendationRoutes(app: FastifyInstance, sessionService: SessionService, service: RecommendationReadService) {
+export function registerRecommendationRoutes(app: FastifyInstance, sessionService: SessionService, service: RecommendationReadService, regeneration = new RecommendationRegenerationService(), reassessLimiter = new FixedWindowRateLimiter({ maxAttempts: 30, windowMs: 60 * 60_000 })) {
   app.get("/api/recommendations", async (request, reply) => {
     try {
       const claims = await sessionService.authenticate(request.headers.authorization);
@@ -17,4 +20,27 @@ export function registerRecommendationRoutes(app: FastifyInstance, sessionServic
       return sendWorkspaceError(reply, error);
     }
   });
+  app.post("/api/recommendations/daily/:date/reassess", async (request, reply) => {
+    try {
+      const claims = await sessionService.authenticate(request.headers.authorization);
+      const device = request.headers["x-wardrobe-device-id"];
+      if (typeof device !== "string" || device !== claims.deviceId) throw new WorkspaceApiError(403, "auth", "设备标识与登录会话不一致");
+      const limit = reassessLimiter.take(`recommendation-reassess:${claims.userId}`);
+      if (!limit.allowed) return reply.header("Retry-After", String(limit.retryAfterSeconds)).code(429).send({ code: "rate_limited", message: "请求过于频繁", retryable: true, retryAfterSeconds: limit.retryAfterSeconds });
+      const date = (request.params as { date?: string }).date;
+      assertReassessDate(date ?? "");
+      const value = await regeneration.enqueueExplicit(claims.userId, date ?? "", ReassessRecommendationCommandSchema.parse(request.body));
+      return RecommendationRegenerationRequestSchema.parse(value);
+    } catch (error) {
+      if (error instanceof RecommendationRegenerationConflictError) return reply.code(409).send({ code: "conflict", message: error.code, retryable: false });
+      return sendWorkspaceError(reply, error);
+    }
+  });
+}
+
+function assertReassessDate(date: string) {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) throw new WorkspaceApiError(400, "invalid_request", "日期格式无效");
+  const today = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Shanghai", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date());
+  const last = new Date(`${today}T12:00:00Z`); last.setUTCDate(last.getUTCDate() + 366);
+  if (date < today || date > last.toISOString().slice(0, 10)) throw new WorkspaceApiError(422, "invalid_request", "日期超出可重评范围");
 }
