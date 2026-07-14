@@ -1,12 +1,15 @@
 "use client";
 
-import type { ReactNode } from "react";
+import { useId, useRef, type ReactNode, type SyntheticEvent } from "react";
 import type { RefObject } from "react";
+import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { Loader2, Plus, RefreshCw, Sparkles } from "lucide-react";
 import { AppSubPageTopBar } from "@/components/app-sub-page-top-bar";
+import { rememberLightboxSourceAnchor } from "@/components/motion-common";
 import { SwipeImageCarousel, type SwipeImageSlide } from "@/components/swipe-image-carousel";
 import { DetailSectionCard } from "@/components/item-shell/detail-section-card";
 import { OnlineAssetImage } from "@/components/online/online-asset-image";
+import { duration, ease, spring } from "@/lib/motion-tokens";
 import type { ImageAssetReference } from "@/lib/types";
 
 export type DetailSlideKind = "garment_main" | "garment_reference" | "outfit_cover" | "outfit_real" | "wishlist_product";
@@ -46,6 +49,22 @@ export interface DetailQuickAction {
 export interface DetailTabItem<T extends string> {
   key: T;
   label: string;
+}
+
+export const DETAIL_CONTINUITY_MOTION = {
+  tabFadeSeconds: duration.fast,
+  sourceEnterMilliseconds: 280,
+  sourceExitMilliseconds: 240,
+  sourceFallbackMilliseconds: 120,
+} as const;
+
+function rememberDetailImageSource(
+  event: SyntheticEvent<HTMLDivElement>,
+  source: HTMLElement | null,
+): void {
+  const target = event.target instanceof Element ? event.target : null;
+  const image = target?.closest("img") ?? target?.closest("button")?.querySelector("img");
+  if (image) rememberLightboxSourceAnchor(source);
 }
 
 export function buildDetailMetaText(parts: Array<string | null | undefined | false>): string {
@@ -116,6 +135,7 @@ export function DetailHeroGallery({
   emptyIcon?: ReactNode;
   emptyText?: string;
 }) {
+  const sourceAnchorRef = useRef<HTMLDivElement>(null);
   const safeIndex = Math.min(Math.max(currentIndex, 0), Math.max(slides.length - 1, 0));
   const activeSlide = slides[safeIndex];
   const imageSlides: SwipeImageSlide[] = slides.map((slide) => ({
@@ -137,10 +157,13 @@ export function DetailHeroGallery({
   return (
     <div className="mt-3">
       <div
+        ref={sourceAnchorRef}
         role="region"
         aria-label="详情图片"
         className="ui-inner-card relative mx-auto overflow-hidden bg-mist"
         style={{ height: "clamp(300px, 52dvh, 500px)" }}
+        data-lightbox-source-anchor="detail-hero"
+        onClickCapture={onExpandImage ? (event) => rememberDetailImageSource(event, sourceAnchorRef.current) : undefined}
       >
         {activeSlide ? (
           <SwipeImageCarousel
@@ -302,21 +325,75 @@ export function DetailTabs<T extends string>({
   activeTab: T;
   onChange: (tab: T) => void;
 }) {
+  const indicatorId = useId();
+  const prefersReducedMotion = useReducedMotion();
   return (
     <div className="mt-4">
-      <div className="grid rounded-2xl bg-mist p-1" style={{ gridTemplateColumns: `repeat(${tabs.length}, minmax(0, 1fr))` }}>
+      <div
+        role="tablist"
+        aria-label="详情分区"
+        className="grid rounded-2xl bg-mist p-1"
+        style={{ gridTemplateColumns: `repeat(${tabs.length}, minmax(0, 1fr))` }}
+      >
         {tabs.map((tab) => (
           <button
             data-parity-id={`parity.app.app.src.components.detail.shell.1d27688359.${tab.key}`}
             key={tab.key}
             type="button"
+            role="tab"
+            aria-selected={activeTab === tab.key}
             onClick={() => onChange(tab.key)}
-            className={`h-11 rounded-xl text-sm font-semibold transition ${activeTab === tab.key ? "bg-white text-ink shadow-sm" : "text-ink/40 hover:text-ink/60"}`}
+            className={`relative isolate h-11 rounded-xl text-sm font-semibold transition-colors ${activeTab === tab.key ? "text-ink" : "text-ink/40 hover:text-ink/60"}`}
           >
-            {tab.label}
+            {activeTab === tab.key ? (
+              <motion.span
+                layoutId={`detail-tab-indicator-${indicatorId}`}
+                className="absolute inset-0 -z-10 rounded-xl bg-white shadow-sm"
+                transition={prefersReducedMotion ? { duration: 0 } : spring.control}
+                data-detail-tab-indicator="true"
+                aria-hidden="true"
+              />
+            ) : null}
+            <span className="relative z-10">{tab.label}</span>
           </button>
         ))}
       </div>
+    </div>
+  );
+}
+
+/**
+ * Shared same-level detail content transition. `popLayout` removes the old
+ * panel from layout immediately, so a Tab switch never animates a large
+ * intrinsic-height animation surface or stacks both panel heights in document flow.
+ */
+export function DetailTabContent({
+  activeKey,
+  children,
+  className = "",
+}: {
+  activeKey: string;
+  children: ReactNode;
+  className?: string;
+}) {
+  const prefersReducedMotion = useReducedMotion();
+  return (
+    <div className={`relative ${className}`} data-detail-tab-content="true">
+      <AnimatePresence mode="popLayout" initial={false}>
+        <motion.div
+          key={activeKey}
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          transition={{
+            duration: prefersReducedMotion ? 0.1 : DETAIL_CONTINUITY_MOTION.tabFadeSeconds,
+            ease: ease.app,
+          }}
+          data-detail-tab-panel={activeKey}
+        >
+          {children}
+        </motion.div>
+      </AnimatePresence>
     </div>
   );
 }

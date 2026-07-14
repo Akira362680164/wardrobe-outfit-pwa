@@ -1,5 +1,6 @@
 import { calculateDraftReviewSummary, type GarmentIntakeDraft } from "@/lib/intake-draft";
 import type { NormalizedCropBox } from "@/lib/image";
+import type { ImageCropSuggestion } from "@wardrobe/cloud-contracts";
 
 export const GARMENT_INTAKE_MAX_IMAGES = 20;
 
@@ -11,6 +12,7 @@ export type GarmentIntakeImageStatus =
   | "cropped"
   | "recognizing"
   | "recognized"
+  | "manual"
   | "failed";
 
 export interface GarmentIntakeImageItem {
@@ -18,12 +20,19 @@ export interface GarmentIntakeImageItem {
   fileName: string;
   source: GarmentIntakeImageSource;
   originalDataUrl: string;
+  sourceOriginalDataUrl: string;
   displayDataUrl: string;
   croppedImageDataUrl?: string;
   thumbnailDataUrl?: string;
   cropBox?: NormalizedCropBox;
+  preCropBox?: NormalizedCropBox;
+  preCropRevision: number;
   rotationDeg: 0 | 90 | 180 | 270;
   status: GarmentIntakeImageStatus;
+  cropState: "idle" | "queued" | "processing" | "applied" | "failed" | "manual";
+  cropRevision: number;
+  cropCompleted: boolean;
+  cropSuggestion?: ImageCropSuggestion;
   draft?: GarmentIntakeDraft;
   error?: string;
   createdAt: string;
@@ -53,9 +62,14 @@ export function createGarmentIntakeImageItem(
     fileName: input.fileName,
     source: input.source,
     originalDataUrl: input.dataUrl,
+    sourceOriginalDataUrl: input.dataUrl,
     displayDataUrl: input.dataUrl,
     rotationDeg: 0,
     status: "selected",
+    cropState: "idle",
+    cropRevision: 0,
+    cropCompleted: false,
+    preCropRevision: 0,
     createdAt: timestamp,
     updatedAt: timestamp,
   };
@@ -119,10 +133,16 @@ export function setGarmentIntakeImageCrop(
       ...item,
       croppedImageDataUrl: patch.croppedImageDataUrl,
       cropBox: patch.cropBox,
+      preCropBox: patch.cropBox,
+      preCropRevision: item.preCropRevision + 1,
       thumbnailDataUrl: patch.thumbnailDataUrl,
       rotationDeg: patch.rotationDeg ?? item.rotationDeg,
       displayDataUrl: patch.croppedImageDataUrl,
       status: "cropped" as const,
+      cropState: "manual" as const,
+      cropRevision: item.cropRevision + 1,
+      cropCompleted: true,
+      cropSuggestion: undefined,
       draft: undefined,
       error: undefined,
       updatedAt: now,
@@ -176,7 +196,7 @@ export function getSavableGarmentIntakeImages(
   // v1.1.31 commit2: 改为依赖 canSave，避免失败草稿 + 缺失字段被误判可保存。
   return current.filter((item) => {
     if (!item.draft) return false;
-    if (item.status !== "recognized" && item.status !== "failed") return false;
+    if (item.status !== "recognized" && item.status !== "manual" && item.status !== "failed") return false;
     return calculateDraftReviewSummary(item.draft).canSave;
   });
 }
@@ -209,7 +229,7 @@ export function getReviewableGarmentIntakeImages(
   current: GarmentIntakeImageItem[],
 ): GarmentIntakeImageItem[] {
   return current.filter(
-    (item) => (item.status === "recognized" || item.status === "failed") && Boolean(item.draft),
+    (item) => (item.status === "recognized" || item.status === "manual" || item.status === "failed") && Boolean(item.draft),
   );
 }
 

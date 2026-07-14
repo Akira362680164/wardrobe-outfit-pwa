@@ -72,7 +72,7 @@ check("AuthView 包含 login/register/forgot_password/terms/privacy", /"login" \
 check("客户端包含邮箱验证码、修改密码验证码与账号安全接口", /sendEmailCode/.test(authApi) && /requestPasswordReset/.test(authApi) && /requestPasswordChangeCode/.test(authApi) && /getAccountSecurity/.test(authApi));
 check("注册页使用邮箱验证码二次确认和服务端倒计时", /发送邮箱验证码/.test(authGate) && /确认发送/.test(authGate) && /setCountdown\(response\.cooldownSeconds\)/.test(authGate));
 check("登录页包含退出确认弹窗", /showExitDialog/.test(authGate) && /退出应用/.test(authGate) && /App\.exitApp/.test(authGate));
-check("auth-gate 包含 backButton 监听", /backButton/.test(authGate) && /App\.addListener/.test(authGate));
+check("auth-gate 通过统一协调器处理 Back", /useStableBackHandler/.test(authGate) && !/App\.addListener\("backButton"/.test(authGate));
 check("旧 pendingRegistration 会被清理", /pendingRegistration/.test(authProvider) && /_removed/.test(authProvider));
 check("密码不写入 storage 和 history state", !/setItem.*password/.test(authGate) && !/JSON\.stringify.*password/.test(authGate));
 

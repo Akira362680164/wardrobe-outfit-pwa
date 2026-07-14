@@ -1,4 +1,6 @@
 // v1.1.0-dev: 穿搭计划逻辑单元测试
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import type { OutfitPlanEntry, OutfitCalendarPlan } from "../src/lib/types";
 import {
   getPlanEntryForDate,
@@ -29,6 +31,16 @@ const entry2 = createOutfitPlanEntry({ date: "2026-06-13", outfitId: "outfit-2",
 const plan1: OutfitCalendarPlan = createOutfitCalendarPlan({ type: "travel", title: "新疆", startDate: "2026-06-15", endDate: "2026-06-18", now });
 const plan2: OutfitCalendarPlan = createOutfitCalendarPlan({ type: "business", title: "出差", startDate: "2026-06-16", endDate: "2026-06-20", now });
 const plan3: OutfitCalendarPlan = createOutfitCalendarPlan({ type: "custom", title: "单日", startDate: "2026-06-12", endDate: "2026-06-12", now });
+const root = join(__dirname, "..");
+const outfitListViewSource = readFileSync(join(root, "src/components/outfit-list-view.tsx"), "utf8");
+const planAddSource = readFileSync(join(root, "src/components/outfit-plan-add-view.tsx"), "utf8");
+const planDaySource = readFileSync(join(root, "src/components/outfit-plan-day-card.tsx"), "utf8");
+const planDetailSource = readFileSync(join(root, "src/components/outfit-plan-detail-view.tsx"), "utf8");
+const planSelectSource = readFileSync(join(root, "src/components/outfit-plan-select-sheet.tsx"), "utf8");
+const packingSource = readFileSync(join(root, "src/components/plan-packing-checklist-view.tsx"), "utf8");
+const weeklyPlanSource = readFileSync(join(root, "src/components/outfit-weekly-plan-strip.tsx"), "utf8");
+const planningCalendarSource = readFileSync(join(root, "src/components/outfit-planning-calendar-view.tsx"), "utf8");
+const calendarTrackGestureSource = readFileSync(join(root, "src/lib/calendar-track-gesture.ts"), "utf8");
 
 // --- getPlanEntryForDate ---
 console.log("\n=== getPlanEntryForDate ===");
@@ -176,6 +188,49 @@ console.log("\n=== 365 day range ===");
 }
 
 // --- SUMMARY ---
+console.log("\n=== A2-Flows overlay contracts ===");
+check("day card actions use shared action sheet", /<MotionSheet[\s\S]{0,180}variant="action"[\s\S]{0,120}ariaLabel=/.test(planDaySource));
+check("day card delete uses busy-safe confirm", /<ConfirmActionSheet[\s\S]{0,260}submitting=\{deleting\}/.test(planDaySource));
+check("day card has no private full-screen overlay", !/fixed inset-0/.test(planDaySource));
+check("plan detail delete uses busy-safe confirm and keeps errors", /<ConfirmActionSheet[\s\S]{0,300}submitting=\{deleting\}[\s\S]{0,80}error=\{deleteError\}/.test(planDetailSource));
+check("plan add guards busy back and uses shared discard confirm", /useStableBackHandler\([\s\S]{0,180}if \(saving\) return true/.test(planAddSource) && /<ConfirmActionSheet[\s\S]{0,220}tone="danger"/.test(planAddSource));
+check("plan selector has form semantics", /<MotionSheet[^>]*variant="form"[^>]*ariaLabel=\{sheetTitle\}/.test(planSelectSource));
+check("packing add sheet is busy-safe and shared across empty state", /const addManualSheet = \([\s\S]{0,380}<MotionSheet[\s\S]{0,260}dismissible=\{!saving\}/.test(packingSource) && (packingSource.match(/\{addManualSheet\}/g) ?? []).length === 2);
+check("packing reset uses busy-safe confirm", /<ConfirmActionSheet[\s\S]{0,280}submitting=\{saving\}[\s\S]{0,80}error=\{resetError\}/.test(packingSource));
+check("add-plan chooser uses shared action sheet", /<MotionSheet[\s\S]{0,220}open=\{addPlanSheetOpen\}[\s\S]{0,180}variant="action"[\s\S]{0,80}ariaLabel="添加穿搭计划"/.test(outfitListViewSource));
+
+console.log("\n=== C3-Outfit deep-flow motion contracts ===");
+check("deep pages share C1 push/pop motion instead of static replacement", /function OutfitDeepFlowMotion\([\s\S]{0,1300}<AnimatePresence mode="sync"/.test(outfitListViewSource) && /getNavigationMotionStates\(activeDirection, reduceMotion\)/.test(outfitListViewSource));
+check("exiting deep page consumes the newest direction through variants", /custom=\{transition\.direction\}/.test(outfitListViewSource) && /exit: \(activeDirection: OutfitDeepFlowDirection\)/.test(outfitListViewSource) && /<AnimatePresence mode="sync" initial=\{false\} custom=\{transition\.direction\}>/.test(outfitListViewSource));
+check("deep-flow pages make exiting surfaces inert", /data-outfit-deep-presence=\{isPresent \? "current" : "exiting"\}/.test(outfitListViewSource) && /inert=\{isPresent \? undefined : true\}/.test(outfitListViewSource));
+check("deep-flow motion reuses panel token and reduced-motion path", /\.\.\.spring\.panel/.test(outfitListViewSource) && /if \(reduceMotion \|\| direction === "replace"\)/.test(outfitListViewSource));
+check("deep-flow scroll is route-keyed and restored before paint", /deepFlowScrollPositionsRef/.test(outfitListViewSource) && /restoreWindowScrollBeforePaint\(transition\.restoreScroll\.windowY\)/.test(outfitListViewSource) && /data-outfit-scroll-region/.test(planAddSource + planDetailSource + packingSource));
+check("rapid Back never assigns stale presented scroll to an advanced key", /currentPage\?\.dataset\.outfitDeepPage !== expectedPage/.test(outfitListViewSource) && /subPageRef\.current = to/.test(outfitListViewSource));
+check("planning hierarchy pops one level at a time", /case "packing_list": return "plan_detail"/.test(outfitListViewSource) && /case "plan_detail": return "planning_calendar"/.test(outfitListViewSource) && /case "planning_calendar": return "library"/.test(outfitListViewSource));
+check("new plan readback enters detail instead of jumping to calendar", /await onPlanDataChange\(\);[\s\S]{0,220}navigateSubPage\([\s\S]{0,80}"plan_detail"/.test(outfitListViewSource) && /wasEditing \? "pop" : "push"/.test(outfitListViewSource));
+check("outfit write busy blocks page Back and form controls", /if \(writeBusyRef\.current\) return true/.test(outfitListViewSource) && /isSaving=\{writingOutfitId === editingOutfit\.id\}/.test(outfitListViewSource) && /realImageSaving \? "保存中\.\.\."/.test(outfitListViewSource));
+check("plan form failure stays mounted with scroll and busy-safe Back", /data-outfit-scroll-region="plan-form"/.test(planAddSource) && /setError\(message\)/.test(planAddSource) && /if \(saving\) return true/.test(planAddSource));
+check("delete and reset remain topmost and non-dismissible while submitting", /useStableBackHandler\(\(\) => true, deleting, 20\)/.test(planDetailSource) && /submitting=\{deleting\}/.test(planDetailSource) && /submitting=\{saving\}/.test(packingSource));
+check("packing mutations share one synchronous busy gate", /savingRef\.current = true/.test(packingSource) && /runPackingMutation\("toggle"/.test(packingSource) && /runPackingMutation\("all"/.test(packingSource) && /runPackingMutation\("reset"/.test(packingSource));
+check("C2 outfit detail tab continuity remains intact", /<DetailTabContent activeKey=\{detailTab\}>/.test(outfitListViewSource));
+check("deep outfit surfaces do not reintroduce wait-mode animation", !/mode="wait"/.test(outfitListViewSource + planAddSource + planDetailSource + packingSource));
+
+console.log("\n=== B3 week/month direct-manipulation contracts ===");
+check("week track keeps resident previous/current/next pages", /\(\[-1, 0, 1\] as const\)\.map\(\(pageOffset\)/.test(weeklyPlanSource));
+check("month track keeps resident previous/current/next pages", /\(\[-1, 0, 1\] as const\)\.map\(\(pageOffset\)/.test(planningCalendarSource));
+check("week and month both expose pan-y touch action", /data-calendar-track="week"[\s\S]{0,180}touchAction: "pan-y"/.test(weeklyPlanSource) && /data-calendar-track="month"[\s\S]{0,180}touchAction: "pan-y"/.test(planningCalendarSource));
+check("horizontal intent alone captures the pointer", /if \(result\.justClaimedHorizontal\) \{[\s\S]{0,100}setPointerCapture/.test(weeklyPlanSource) && /if \(result\.justClaimedHorizontal\) \{[\s\S]{0,100}setPointerCapture/.test(planningCalendarSource));
+check("legacy weak drag and wait replacement animations are removed", !/drag="x"|dragElastic|mode="wait"|touch-none/.test(weeklyPlanSource + planningCalendarSource));
+check("both surfaces use shared pure intent/rubber-band/projection helper", /updateCalendarTrackGestureSession/.test(weeklyPlanSource) && /updateCalendarTrackGestureSession/.test(planningCalendarSource) && /resolveCalendarTrackAxisIntent/.test(calendarTrackGestureSource) && /rubberBandDistance/.test(calendarTrackGestureSource) && /projectCalendarTrackPosition/.test(calendarTrackGestureSource));
+check("week arrows and drag feed the same snap function", /onClick=\{\(\) => requestWeekShift\(-1\)\}/.test(weeklyPlanSource) && /animateTrackToPage\(result\.pageOffset, result\.velocity\)/.test(weeklyPlanSource));
+check("month arrows and drag feed the same snap function", /onClick=\{\(\) => requestMonthShift\(-1\)\}/.test(planningCalendarSource) && /animateTrackToPage\(result\.pageOffset, result\.velocity\)/.test(planningCalendarSource));
+check("same-direction arrow input is queued instead of discarded", /queuedWeekStepsRef\.current \+ delta/.test(weeklyPlanSource) && /queuedMonthStepsRef\.current \+ delta/.test(planningCalendarSource));
+check("opposite arrow redirects the current presentation to center", /activePageOffset === -delta[\s\S]{0,100}animateTrackToPage\(0, 0\)/.test(weeklyPlanSource) && /activePageOffset === -delta[\s\S]{0,100}animateTrackToPage\(0, 0\)/.test(planningCalendarSource));
+check("week and month selected-date surfaces use layout indicators", /layoutId=\{`weekly-date-selection-/.test(weeklyPlanSource) && /layoutId=\{`month-date-selection-/.test(planningCalendarSource));
+check("calendar detail never animates height:auto", !/height:\s*["']auto["']/.test(planningCalendarSource));
+check("reduced motion renders calendar detail without layout spring", /reduceMotion \? \([\s\S]{0,500}showDayDetail \? \([\s\S]{0,500}dayDetailCard/.test(planningCalendarSource));
+check("calendar return context stays in explicit parent month/date state", /const \[planningMonthDate, setPlanningMonthDate\]/.test(outfitListViewSource) && /const \[selectedPlanDate, setSelectedPlanDate\]/.test(outfitListViewSource) && /openOutfitDetail\(outfitId, "planning_calendar"\)/.test(outfitListViewSource));
+
 console.log(`\n=== 总计: ${pass} pass / ${fail} fail ===`);
 if (fail > 0) {
   console.error(failures.join("\n"));

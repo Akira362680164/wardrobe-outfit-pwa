@@ -1,9 +1,20 @@
 "use client";
 
 import { Plus } from "lucide-react";
-import { motion } from "motion/react";
+import { animate, motion, useMotionValue, useReducedMotion } from "motion/react";
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
-import { clampCarouselIndex, getSwipeNextIndex, resolveCarouselImageSource } from "@/lib/carousel-logic";
+import {
+  applyCarouselDragDelta,
+  clampCarouselIndex,
+  estimateGestureVelocity,
+  getCarouselSnapX,
+  recordGestureVelocitySample,
+  resolveCarouselImageSource,
+  resolveCarouselRelease,
+  resolveGestureAxisIntent,
+  type GestureAxisIntent,
+  type GestureVelocitySample,
+} from "@/lib/carousel-logic";
 import { GarmentImage } from "@/components/garment-image";
 import { OnlineAssetImage, OnlineCroppedAssetImage } from "@/components/online/online-asset-image";
 import { OriginalCroppedImage } from "@/components/original-cropped-image";
@@ -97,23 +108,27 @@ function toInternalSlides(
 }
 
 interface PointerStart {
+  pointerId: number;
   x: number;
   y: number;
-  time: number;
-  horizontal: boolean;
+  presentationX: number;
+  committedIndex: number;
+  inheritedVelocityX: number;
+  intent: GestureAxisIntent;
+  captured: boolean;
+  samples: GestureVelocitySample[];
 }
 
 // v0.9.44-dev: 单页内容子组件 (image / add)。提取出来是为了让
 // fallback 状态机按 slide.id 独立 (Track 模式下多 slide 并排渲染)。
 interface SwipeImagePageProps {
   slide: SwipeImageSlide;
-  isDragging: boolean;
   imageFitClass: string;
   onClickImage: (slide: SwipeImageSlide) => void;
   variant: SwipeImageCarouselVariant;
 }
 
-function SwipeImagePage({ slide, isDragging, imageFitClass, onClickImage, variant }: SwipeImagePageProps) {
+function SwipeImagePage({ slide, imageFitClass, onClickImage, variant }: SwipeImagePageProps) {
   const mode = slide.displayMode ?? "thumbnail";
 
   if (slide.asset) {
@@ -150,7 +165,6 @@ function SwipeImagePage({ slide, isDragging, imageFitClass, onClickImage, varian
 
   const src = resolveCarouselImageSource({
     variant,
-    isDragging,
     imageDataUrl: slide.imageDataUrl ?? "",
     thumbnailSrc: slide.thumbnailSrc,
     displaySrc: slide.displaySrc,
@@ -198,7 +212,7 @@ function SwipeAddPage({ slide, onClickAdd }: SwipeAddPageProps) {
       <button
         type="button"
         data-parity-id="parity.app.app.src.components.swipe.image.carousel.b229c3c0fc" onClick={(e) => { onClickAdd(slide); e.stopPropagation(); }}
-        className="grid max-w-[260px] place-items-center gap-3 rounded-2xl border border-ink/8 bg-white px-6 py-7 text-center shadow-soft transition-transform active:scale-[0.98]"
+        className="grid max-w-[260px] place-items-center gap-3 rounded-2xl border border-ink/8 bg-white px-6 py-7 text-center shadow-soft transition-transform app-press-feedback"
         aria-label={slide.title}
       >
         <span className="grid h-12 w-12 place-items-center rounded-full bg-denim/10 text-denim">
@@ -259,17 +273,18 @@ export function SwipeImageCarousel({
   variant = "detail",
 }: SwipeImageCarouselProps) {
   const [internalIndex, setInternalIndex] = useState(defaultIndex);
-  // v0.9.44-dev: 拖动位移 (像素), 0 = 当前页在视口中央
-  const [dragOffset, setDragOffset] = useState(0);
-  // v0.9.44-dev 批次 6: isDragging 驱动 thumbnail/display 切换 + 抑制 spring 动画
-  const [isDragging, setIsDragging] = useState(false);
+  const trackX = useMotionValue(0);
+  const reduceMotion = useReducedMotion();
   const pointerStartRef = useRef<PointerStart | null>(null);
-  const suppressClickRef = useRef(false);
-  const suppressTimerRef = useRef<number | null>(null);
-  // v0.9.44-dev: 容器宽度 (用于 Track 像素位移)
+  const trackAnimationRef = useRef<{ stop: () => void } | null>(null);
+  const animationPresentationRef = useRef({ position: 0, velocity: 0, time: 0 });
+  const animationTargetIndexRef = useRef<number | null>(null);
+  const measuredWidthRef = useRef(0);
+  const suppressedClickPointerRef = useRef<number | null>(null);
+  const clickClearFrameRef = useRef<number | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+  const trackRef = useRef<HTMLDivElement>(null);
   const [containerWidth, setContainerWidth] = useState(0);
-  // v0.9.43-dev 批次 6: 相邻缩略图预加载
   const preloadedUrlsRef = useRef<Set<string>>(new Set());
 
   const slides = useMemo(
@@ -278,10 +293,77 @@ export function SwipeImageCarousel({
   );
   const currentIndex = controlledIndex ?? internalIndex;
   const safeIndex = clampCarouselIndex(currentIndex, slides.length);
+  const previousSafeIndexRef = useRef(safeIndex);
+  const renderFromIndex = previousSafeIndexRef.current;
   const currentSlide = slides[safeIndex];
   const canSwipe = enableSwipe ?? slides.length > 1;
   const defaultImageFit = variant === "card" ? "object-cover" : "object-contain";
   const imageFitClass = imageClassName || defaultImageFit;
+
+  useLayoutEffect(() => {
+    previousSafeIndexRef.current = safeIndex;
+  }, [safeIndex]);
+
+  const stopTrackAnimation = useCallback(() => {
+    trackAnimationRef.current?.stop();
+    trackAnimationRef.current = null;
+  }, []);
+
+  const animateTrackTo = useCallback((targetX: number, velocityX = 0) => {
+    stopTrackAnimation();
+    if (reduceMotion) {
+      trackX.set(targetX);
+      animationPresentationRef.current = { position: targetX, velocity: 0, time: performance.now() };
+      return;
+    }
+    let previousPosition = trackX.get();
+    let previousTime = performance.now();
+    animationPresentationRef.current = { position: previousPosition, velocity: velocityX, time: previousTime };
+    trackAnimationRef.current = animate(trackX, targetX, {
+      type: "spring",
+      stiffness: 360,
+      damping: 32,
+      mass: 0.9,
+      velocity: velocityX,
+      restDelta: 0.35,
+      restSpeed: 8,
+      onUpdate: (position) => {
+        const now = performance.now();
+        const elapsed = now - previousTime;
+        const velocity = elapsed > 0 ? ((position - previousPosition) / elapsed) * 1000 : 0;
+        animationPresentationRef.current = { position, velocity, time: now };
+        previousPosition = position;
+        previousTime = now;
+      },
+    });
+  }, [reduceMotion, stopTrackAnimation, trackX]);
+
+  const readTrackPresentationX = useCallback(() => {
+    const track = trackRef.current;
+    const container = containerRef.current;
+    if (!track || !container) return trackX.get();
+    return track.getBoundingClientRect().left - container.getBoundingClientRect().left;
+  }, [trackX]);
+
+  const clearSuppressedClick = useCallback(() => {
+    suppressedClickPointerRef.current = null;
+    if (clickClearFrameRef.current !== null) {
+      window.cancelAnimationFrame(clickClearFrameRef.current);
+      clickClearFrameRef.current = null;
+    }
+  }, []);
+
+  const armClickSuppression = useCallback((pointerId: number) => {
+    suppressedClickPointerRef.current = pointerId;
+  }, []);
+
+  const clearSuppressionAfterSequence = useCallback(() => {
+    if (clickClearFrameRef.current !== null) window.cancelAnimationFrame(clickClearFrameRef.current);
+    clickClearFrameRef.current = window.requestAnimationFrame(() => {
+      suppressedClickPointerRef.current = null;
+      clickClearFrameRef.current = null;
+    });
+  }, []);
 
   // v0.9.44-dev: 测量容器宽度 (mount + resize). 用 useLayoutEffect 避免首帧空白
   useLayoutEffect(() => {
@@ -336,96 +418,181 @@ export function SwipeImageCarousel({
     if (slides.length > 0 && currentIndex !== safeIndex) commitIndex(safeIndex);
   }, [commitIndex, currentIndex, safeIndex, slides.length]);
 
-  useEffect(() => () => {
-    if (suppressTimerRef.current !== null) window.clearTimeout(suppressTimerRef.current);
-  }, []);
+  // Width changes are geometry changes, not navigation. Rebase immediately so
+  // rotation/resize never leaves a half-page transform behind.
+  useLayoutEffect(() => {
+    if (containerWidth <= 0 || measuredWidthRef.current === containerWidth) return;
+    measuredWidthRef.current = containerWidth;
+    if (pointerStartRef.current) return;
+    stopTrackAnimation();
+    const snapX = getCarouselSnapX(safeIndex, slides.length, containerWidth);
+    trackX.set(snapX);
+    animationPresentationRef.current = { position: snapX, velocity: 0, time: performance.now() };
+    animationTargetIndexRef.current = safeIndex;
+  }, [containerWidth, safeIndex, slides.length, stopTrackAnimation, trackX]);
 
-  const markSwipe = useCallback(() => {
-    suppressClickRef.current = true;
-    if (suppressTimerRef.current !== null) window.clearTimeout(suppressTimerRef.current);
-    suppressTimerRef.current = window.setTimeout(() => {
-      suppressClickRef.current = false;
-      suppressTimerRef.current = null;
-    }, 350);
-  }, []);
+  // Thumbnail/filmstrip selection reuses the same track spring as a swipe.
+  useEffect(() => {
+    if (containerWidth <= 0 || pointerStartRef.current) return;
+    if (animationTargetIndexRef.current === safeIndex) return;
+    animationTargetIndexRef.current = safeIndex;
+    animateTrackTo(getCarouselSnapX(safeIndex, slides.length, containerWidth));
+  }, [animateTrackTo, containerWidth, safeIndex, slides.length]);
+
+  useEffect(() => () => {
+    stopTrackAnimation();
+    if (clickClearFrameRef.current !== null) window.cancelAnimationFrame(clickClearFrameRef.current);
+  }, [stopTrackAnimation]);
 
   const handlePointerDown = useCallback((event: React.PointerEvent<HTMLDivElement>) => {
     if (!canSwipe || slides.length <= 1) return;
     if (event.pointerType === "mouse" && event.button !== 0) return;
+    // A new pointer sequence can never inherit click suppression from the last
+    // one, even when the browser reuses the same pointerId for every mouse click.
+    clearSuppressedClick();
+    const presentationX = readTrackPresentationX();
+    const inheritedVelocityX = animationPresentationRef.current.time > 0
+      ? animationPresentationRef.current.velocity
+      : trackX.getVelocity();
+    stopTrackAnimation();
+    trackX.set(presentationX);
+    animationPresentationRef.current = { position: presentationX, velocity: inheritedVelocityX, time: performance.now() };
     pointerStartRef.current = {
+      pointerId: event.pointerId,
       x: event.clientX,
       y: event.clientY,
-      time: performance.now(),
-      horizontal: false,
+      presentationX,
+      committedIndex: safeIndex,
+      inheritedVelocityX,
+      intent: "pending",
+      captured: false,
+      samples: [{ position: presentationX, time: performance.now() }],
     };
-    setIsDragging(true);
-    event.currentTarget.setPointerCapture(event.pointerId);
-  }, [canSwipe, slides.length]);
+  }, [canSwipe, clearSuppressedClick, readTrackPresentationX, safeIndex, slides.length, stopTrackAnimation, trackX]);
 
   const handlePointerMove = useCallback((event: React.PointerEvent<HTMLDivElement>) => {
     const start = pointerStartRef.current;
-    if (!start || !canSwipe || slides.length <= 1) return;
+    if (!start || start.pointerId !== event.pointerId || !canSwipe || slides.length <= 1) return;
     const dx = event.clientX - start.x;
     const dy = event.clientY - start.y;
-    if (!start.horizontal && Math.abs(dx) > 8 && Math.abs(dx) > Math.abs(dy) * 1.2) {
-      start.horizontal = true;
+
+    if (start.intent === "pending") {
+      const nextIntent = resolveGestureAxisIntent(dx, dy);
+      if (nextIntent === "pending") return;
+      start.intent = nextIntent;
+      armClickSuppression(event.pointerId);
+      if (nextIntent === "vertical") {
+        animationTargetIndexRef.current = start.committedIndex;
+        animateTrackTo(
+          getCarouselSnapX(start.committedIndex, slides.length, containerWidth),
+          start.inheritedVelocityX,
+        );
+        return;
+      }
+      try {
+        event.currentTarget.setPointerCapture(event.pointerId);
+        start.captured = true;
+      } catch {
+        // A cancelled native gesture may make capture unavailable; the next
+        // pointercancel still restores the committed snap point.
+      }
     }
-    if (!start.horizontal) return;
+
+    if (start.intent !== "horizontal") return;
     event.preventDefault();
-    // v0.9.44-dev 问题 4: 边界阻尼 — 第一张右滑 / 最后一张左滑, 位移压到 25%
-    const isAtStart = safeIndex === 0 && dx > 0;
-    const isAtEnd = safeIndex === slides.length - 1 && dx < 0;
-    setDragOffset(isAtStart || isAtEnd ? dx * 0.25 : dx);
-  }, [canSwipe, safeIndex, slides.length]);
+    const presentationX = applyCarouselDragDelta(
+      start.presentationX,
+      dx,
+      slides.length,
+      containerWidth,
+    );
+    trackX.set(presentationX);
+    recordGestureVelocitySample(start.samples, {
+      position: presentationX,
+      time: performance.now(),
+    });
+  }, [animateTrackTo, armClickSuppression, canSwipe, containerWidth, slides.length, trackX]);
 
   const handlePointerEnd = useCallback((event: React.PointerEvent<HTMLDivElement>) => {
     const start = pointerStartRef.current;
+    if (!start || start.pointerId !== event.pointerId) return;
     pointerStartRef.current = null;
-    setIsDragging(false);
-    if (!start || !canSwipe || slides.length <= 1) {
-      setDragOffset(0);
+    if (start.captured) {
+      try {
+        if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+          event.currentTarget.releasePointerCapture(event.pointerId);
+        }
+      } catch {
+        // Pointer capture can already be gone after a browser-level cancel.
+      }
+    }
+
+    if (!canSwipe || slides.length <= 1 || start.intent !== "horizontal") {
+      animationTargetIndexRef.current = start.committedIndex;
+      animateTrackTo(
+        getCarouselSnapX(start.committedIndex, slides.length, containerWidth),
+        start.intent === "pending" ? start.inheritedVelocityX : 0,
+      );
+      if (start.intent === "vertical") clearSuppressionAfterSequence();
       return;
     }
-    const dx = event.clientX - start.x;
-    const dy = event.clientY - start.y;
-    const dt = Math.max(1, performance.now() - start.time);
-    const velocity = dx / dt;
-    const horizontal = start.horizontal || (Math.abs(dx) > 20 && Math.abs(dx) > Math.abs(dy) * 1.2);
-    if (horizontal && Math.abs(dx) > 5) markSwipe();
-    if (horizontal && (Math.abs(dx) > 56 || Math.abs(velocity) > 0.65)) {
-      commitIndex(getSwipeNextIndex(safeIndex, dx < 0 ? "next" : "previous", slides.length));
-    }
-    setDragOffset(0);
-  }, [canSwipe, commitIndex, markSwipe, safeIndex, slides.length]);
+
+    const finalX = applyCarouselDragDelta(
+      start.presentationX,
+      event.clientX - start.x,
+      slides.length,
+      containerWidth,
+    );
+    trackX.set(finalX);
+    recordGestureVelocitySample(start.samples, { position: finalX, time: performance.now() });
+    const sampledVelocity = estimateGestureVelocity(start.samples);
+    const releaseVelocity = Math.abs(sampledVelocity) > 1
+      ? sampledVelocity
+      : start.inheritedVelocityX;
+    const release = resolveCarouselRelease({
+      positionX: finalX,
+      velocityX: releaseVelocity,
+      currentIndex: start.committedIndex,
+      slideCount: slides.length,
+      pageWidth: containerWidth,
+    });
+    animationTargetIndexRef.current = release.targetIndex;
+    animateTrackTo(release.targetX, release.releaseVelocityX);
+    commitIndex(release.targetIndex);
+    clearSuppressionAfterSequence();
+  }, [animateTrackTo, canSwipe, clearSuppressionAfterSequence, commitIndex, containerWidth, slides.length, trackX]);
+
+  const handlePointerCancel = useCallback((event: React.PointerEvent<HTMLDivElement>) => {
+    const start = pointerStartRef.current;
+    if (!start || start.pointerId !== event.pointerId) return;
+    pointerStartRef.current = null;
+    clearSuppressedClick();
+    animationTargetIndexRef.current = start.committedIndex;
+    animateTrackTo(
+      getCarouselSnapX(start.committedIndex, slides.length, containerWidth),
+      0,
+    );
+  }, [animateTrackTo, clearSuppressedClick, containerWidth, slides.length]);
 
   const suppressBubbledClick = useCallback((event: React.MouseEvent<HTMLDivElement>) => {
-    if (!suppressClickRef.current) return;
+    const suppressedPointerId = suppressedClickPointerRef.current;
+    if (suppressedPointerId === null) return;
+    const nativePointerId = (event.nativeEvent as MouseEvent & { pointerId?: number }).pointerId;
+    if (nativePointerId !== undefined && nativePointerId !== suppressedPointerId) return;
     event.preventDefault();
     event.stopPropagation();
-    suppressClickRef.current = false;
-  }, []);
+    clearSuppressedClick();
+  }, [clearSuppressedClick]);
 
   const handleImageClick = useCallback((slide: SwipeImageSlide) => {
-    if (suppressClickRef.current) {
-      suppressClickRef.current = false;
-      return;
-    }
     onImageClick?.(slide, safeIndex);
   }, [onImageClick, safeIndex]);
 
   const handleAddClick = useCallback((slide: SwipeAddSlide) => {
-    if (suppressClickRef.current) {
-      suppressClickRef.current = false;
-      return;
-    }
     onAddClick?.(slide, safeIndex);
   }, [onAddClick, safeIndex]);
 
   const handleCustomClick = useCallback((slide: SwipeCustomSlide) => {
-    if (suppressClickRef.current) {
-      suppressClickRef.current = false;
-      return;
-    }
     onCustomClick?.(slide, safeIndex);
   }, [onCustomClick, safeIndex]);
 
@@ -443,22 +610,18 @@ export function SwipeImageCarousel({
     );
   }
 
-  // v0.9.44-dev 问题 3: Track 像素位移 = -safeIndex * containerWidth + dragOffset。
-  // - 拖动时 (isDragging=true): transition.duration=0, 跟手
-  // - 释放时: spring 回弹到 -safeIndex * containerWidth
-  // - 边界阻尼已在 handlePointerMove 里 (dragOffset = dx * 0.25)
-  const trackX = -safeIndex * containerWidth + dragOffset;
-  // v0.9.44-dev 问题 3 性能: 只渲染当前 ± 1 邻居, 其余渲染占位 div 撑宽度。
-  // 这样三页紧邻 (prev/current/next) 都已挂载, 拖动时能立刻看到。
+  // Current ±1 stays mounted and visible so an interrupted spring can expose
+  // either neighbour without a blank frame. Non-current pages remain inert.
   const renderSlide = (i: number) => {
-    if (i < safeIndex - 1 || i > safeIndex + 1) return null;
+    const firstVisibleIndex = Math.min(renderFromIndex, safeIndex) - 1;
+    const lastVisibleIndex = Math.max(renderFromIndex, safeIndex) + 1;
+    if (i < firstVisibleIndex || i > lastVisibleIndex) return null;
     const slide = slides[i];
     if (!slide) return null;
     if (slide.kind === "image") {
       return (
         <SwipeImagePage
           slide={slide}
-          isDragging={isDragging}
           imageFitClass={imageFitClass}
           onClickImage={handleImageClick}
           variant={variant}
@@ -482,25 +645,24 @@ export function SwipeImageCarousel({
       data-parity-id="parity.app.app.src.components.swipe.image.carousel.65182710d3" onPointerDown={handlePointerDown}
       onPointerMove={handlePointerMove}
       onPointerUp={handlePointerEnd}
-      onPointerCancel={handlePointerEnd}
+      onPointerCancel={handlePointerCancel}
       onClickCapture={suppressBubbledClick}
+      onDragStart={(event) => event.preventDefault()}
+      data-carousel-index={safeIndex}
+      data-carousel-width={containerWidth || undefined}
+      data-app-press-gesture-owner="true"
     >
       <motion.div
+        ref={trackRef}
         className="absolute inset-y-0 left-0 flex h-full"
-        style={{ width: `${slides.length * 100}%` }}
-        // 问题 5: initial={false} → 挂载时不跑 x:±10 入场动画 (静态出现)
+        style={{ width: `${slides.length * 100}%`, x: trackX }}
         initial={false}
-        animate={{ x: containerWidth > 0 ? trackX : 0 }}
-        transition={isDragging
-          ? { duration: 0 }
-          : { type: "spring", stiffness: 360, damping: 34 }}
+        data-carousel-track="true"
       >
         {slides.map((slide, i) => {
           const isCurrent = i === safeIndex;
-          // 拖动时邻居 (±1) 可见, 静态时只有当前页可见
-          // - 避免 Playwright 把 off-screen 兄弟误判为可点击
-          // - 避免 a11y 把隐藏的图片纳入 tab/screen-reader 序列
-          const isVisible = isCurrent || (isDragging && Math.abs(i - safeIndex) <= 1);
+          const isVisible = i >= Math.min(renderFromIndex, safeIndex) - 1
+            && i <= Math.max(renderFromIndex, safeIndex) + 1;
           return (
             <div
               key={slide.id}

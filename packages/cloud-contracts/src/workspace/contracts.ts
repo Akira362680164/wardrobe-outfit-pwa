@@ -232,16 +232,21 @@ export const AiGarmentRecognitionRequestSchema = z.object({
   miniMax: MiniMaxRuntimeSettingsSchema,
   imageDataUrl: z.string().regex(/^data:image\/[a-z0-9.+-]+;base64,/i),
   fallbackName: z.string().min(1).max(160).default("garment.jpg"),
+  gridImageDataUrl: z.string().regex(/^data:image\/[a-z0-9.+-]+;base64,/i),
 });
 
 export const AiGarmentRecognitionResponseSchema = z.object({
   tag: AiGarmentTagSchema,
+  secondaryCropBox: z.object({ x: z.number(), y: z.number(), width: z.number(), height: z.number() }).optional(),
+  cropConfidence: z.number().min(0).max(1).optional(),
+  cropNeedsReview: z.boolean().optional(),
 });
 
 export const AiGarmentRecognitionBatchItemSchema = z.object({
   clientItemId: z.string().min(1).max(160),
   imageDataUrl: z.string().regex(/^data:image\/[a-z0-9.+-]+;base64,/i),
   fallbackName: z.string().min(1).max(160).default("garment.jpg"),
+  gridImageDataUrl: z.string().regex(/^data:image\/[a-z0-9.+-]+;base64,/i),
 });
 
 export const AiGarmentRecognitionBatchRequestSchema = z.object({
@@ -256,6 +261,9 @@ export const AiGarmentRecognitionBatchResponseItemSchema = z.discriminatedUnion(
       clientItemId: z.string().min(1),
       status: z.literal("succeeded"),
       tag: AiGarmentTagSchema,
+      secondaryCropBox: z.object({ x: z.number(), y: z.number(), width: z.number(), height: z.number() }).optional(),
+      cropConfidence: z.number().min(0).max(1).optional(),
+      cropNeedsReview: z.boolean().optional(),
     }),
     z.object({
       clientItemId: z.string().min(1),

@@ -1,4 +1,5 @@
 node_modules
+services/image-crop-sidecar/models/
 .next
 .next-website
 out

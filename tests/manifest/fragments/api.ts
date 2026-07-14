@@ -9,4 +9,5 @@ export const apiTests: TestEntry[] = [
   { testId: 'api:diagnostics', layer: 'api', filePath: 'services/wardrobe-api/tests/diagnostics.test.ts', tags: ['full'], blocking: false },
   { testId: 'api:security', layer: 'api', filePath: 'services/wardrobe-api/tests/security.test.ts', tags: ['full'], blocking: false },
   { testId: 'api:reset-test-data', layer: 'api', filePath: 'services/wardrobe-api/tests/reset-test-data.test.ts', tags: ['full'], blocking: false },
+  { testId: 'api:recommendation-engine-1a', layer: 'api', filePath: 'services/wardrobe-api/tests/recommendation-engine.test.ts', description: 'Deterministic recommendation contracts, 24 fixtures, PAW fallbacks, caps and diversity', tags: ['critical'], blocking: true, executionPolicy: 'scheduled', executionNodes: [{ name: 'local' }], inputDescription: 'Synthetic structured wardrobes, history, feedback and invalid PAW batches', expectedOutput: 'Stable rule-only shortlist and honest readiness', expectedEvidence: 'Vitest assertions and committed shadow audit' },
 ];

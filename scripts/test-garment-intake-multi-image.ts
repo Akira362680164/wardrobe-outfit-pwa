@@ -79,6 +79,10 @@ check("getRecognizedGarmentIntakeImages 只返回 recognized", /status\s*===\s*"
 
 // getSavableGarmentIntakeImages only returns items with draft
 check("getSavableGarmentIntakeImages 只返回带 draft 的项", /\.draft/.test(multiImage));
+check("无 Key 手工填写状态与 AI 失败状态正交", /\|\s*"manual"/.test(multiImage) && /status:\s*"manual" as const/.test(garmentIntakeFlow));
+check("无 Key 步骤 2 不伪装成 AI 识别失败", /待填写 \$\{recognizedItems\.length\}/.test(garmentIntakeFlow) && /!hasMiniMaxKey/.test(garmentIntakeFlow));
+check("无 Key 步骤 2说明不伪装成 AI 识别结果", /hasMiniMaxKey[\s\S]{0,120}核对 AI 识别结果[\s\S]{0,160}填写或修改属性/.test(garmentIntakeFlow));
+check("无 Key 重新识别保留手工草稿", /尚未配置 MiniMax Key，请直接填写或修改属性/.test(garmentIntakeFlow));
 
 // GarmentIntakeFlowProps uses onPickImages
 check("GarmentIntakeFlowProps 使用 onPickImages", /onPickImages:\s*\(source:\s*GarmentImageSource/.test(garmentIntakeFlow));
@@ -100,9 +104,9 @@ check("GarmentIntakeFlow 展示「已选择 X 张」", /已选择\s*\{imageItems
 
 // GarmentIntakeFlow keeps compact add actions after images are selected.
 check("GarmentIntakeFlow 展示小按钮「继续从图库选择」", /继续从图库选择/.test(garmentIntakeFlow));
-check("IntakeStepOneImagePicker 有预览时隐藏大号拍照/图库卡片", /\{!previewNode \? \([\s\S]*min-h-\[144px\][\s\S]*\) : null\}/.test(garmentIntakeFlow));
-check("IntakeStepOneImagePicker 拍照/图库入口接入新版圆角矩形", /min-h-\[144px\][^"]*ui-control-radius[^"]*bg-white\/82[^"]*shadow-sm/.test(garmentIntakeFlow));
-check("GarmentIntakeFlow 已选图追加入口接入新版圆角矩形", /bg-white\/82[\s\S]{0,120}shadow-sm[\s\S]{0,120}继续拍照/.test(garmentIntakeFlow) && /bg-white\/82[\s\S]{0,120}shadow-sm[\s\S]{0,120}继续从图库选择/.test(garmentIntakeFlow));
+check("IntakeStepOneImagePicker 有预览时隐藏初始拍照/图库入口", /\{!previewNode \? \([\s\S]*<IntakeImageSourceButton[\s\S]*\) : null\}/.test(garmentIntakeFlow));
+check("IntakeStepOneImagePicker 拍照/图库入口接入共享系统圆角矩形", /function IntakeImageSourceButton[\s\S]*ui-control-radius border border-ink\/10 bg-white\/82[\s\S]*ui-control-radius bg-denim\/10/.test(garmentIntakeFlow));
+check("GarmentIntakeFlow 已选图追加入口复用相同圆角矩形", /label="继续拍照"[\s\S]{0,240}compact/.test(garmentIntakeFlow) && /label="继续从图库选择"[\s\S]{0,240}compact/.test(garmentIntakeFlow));
 
 // GarmentIntakeFlow selected thumbnail actions
 check("GarmentIntakeFlow 缩略图浮层展示「裁切/旋转」", /裁切\/旋转/.test(garmentIntakeFlow));
@@ -138,8 +142,14 @@ check("WardrobeApp 接入 onSaveBatch 并透传幂等上下文", /onSaveBatch=\{
 // Old CaptureView single-item mode does not exist
 check("旧 CaptureView 单衣物模式不存在", !/function CaptureView/.test(wardrobeApp) || wardrobeApp.split("function CaptureView").length === 1);
 
-// Old saveDraft does not exist
-check("旧 saveDraft 不存在", !/async function saveDraft/.test(wardrobeApp) || wardrobeApp.split("async function saveDraft").length === 1);
+// The old single-garment intake saveDraft must not return inside GarmentIntakeFlow.
+// Other routes may legitimately use a scoped saveDraftAndMaybeBack helper.
+check(
+  "录入流不存在旧单草稿 saveDraft",
+  !/async function saveDraft\s*\(/.test(garmentIntakeFlow)
+    && !/const \[draft,\s*setDraft\]/.test(garmentIntakeFlow)
+    && /onSaveBatch\(drafts/.test(garmentIntakeFlow),
+);
 
 // Old BatchReviewView single-item branch does not exist
 check("旧 BatchReviewView 单品分支不存在", !/captureMode\s*!==\s*"outfit"\s*[\s\S]{0,50}<BatchReviewView/.test(wardrobeApp) || !/BatchReviewView/.test(wardrobeApp));
@@ -157,6 +167,9 @@ check("GarmentIntakeFlow 使用 imageItems 状态", /imageItems:\s*GarmentIntake
 check("GarmentIntakeFlow 状态机含 recognizing 字段", /"recognizing"/.test(garmentIntakeFlow));
 check("GarmentIntakeFlow 失败草稿顶部 banner 显示「AI 识别失败」", /AI 识别失败，已生成待确认草稿/.test(garmentIntakeFlow));
 check("GarmentIntakeFlow 缩略图 strip 显示「识别中」loading", /item\.status === "recognizing"[\s\S]+?识别中/.test(garmentIntakeFlow));
+check("GarmentIntakeFlow 逐件确认记录前后方向", /setReviewDirection\(-1\)/.test(garmentIntakeFlow) && /setReviewDirection\(1\)/.test(garmentIntakeFlow));
+check("GarmentIntakeFlow 只给当前预览 10px 方向提示", /<motion\.img[\s\S]{0,420}x:\s*reviewDirection \* 10/.test(garmentIntakeFlow));
+check("GarmentIntakeFlow 不 key 整份确认表单", !/<EditSectionCard[^>]*key=/.test(garmentIntakeFlow) && !/<MultiImageReviewStep[^>]*key=/.test(garmentIntakeFlow));
 check("GarmentIntakeFlow 把 aiTag 映射到 buildLocalGarmentDraft", /mapAiTagToGarmentDraftInput/.test(garmentIntakeFlow));
 check("wardrobe-app GarmentIntakeFlow wiring 传 onProcessImage", /<GarmentIntakeFlow[\s\S]+?onProcessImage=\{processGarmentIntakeImage\}/.test(wardrobeApp));
 check("wardrobe-app processGarmentIntakeImage 调后端录入识别", /processGarmentIntakeImage[\s\S]+?recognizeGarmentOnServer\(/.test(wardrobeApp));

@@ -8,6 +8,7 @@ import { MotionSheet } from "@/components/motion-common";
 import type { WardrobeCloudAuth } from "@/components/auth/account-views";
 import * as authApi from "@/lib/cloud-auth-api";
 import { clearMiniMaxSettings } from "@/lib/device-minimax";
+import { useStableBackHandler } from "@/lib/use-stable-back-handler";
 
 type DeletionStage = "notice" | "verify-choice" | "verify-email" | "verify-password" | "final" | "processing" | "completed" | "failed";
 
@@ -101,13 +102,28 @@ export function AccountDeletionView({ auth, onBack }: { auth: WardrobeCloudAuth;
       const result = await authApi.confirmAccountDeletion({ accessToken: auth.accessToken, authorizationToken });
       clearMiniMaxSettings();
       setReceiptToken(result.receiptToken);
-      setStage(result.status === "completed" ? "completed" : "processing");
+      setStage("processing");
     } catch (error) {
       setMessage(toDeletionMessage(error));
     } finally {
       setBusy(false);
     }
   };
+
+  const pageBackBlocked = busy || sendingCode || stage === "processing" || stage === "completed" || stage === "failed";
+  const handlePageBack = () => {
+    if (pageBackBlocked) return;
+    if (stage === "notice") {
+      onBack();
+      return;
+    }
+    setStage(previousStage(stage));
+  };
+
+  useStableBackHandler(() => {
+    handlePageBack();
+    return true;
+  }, true, 100);
 
   if (stage === "processing") {
     return (
@@ -140,7 +156,7 @@ export function AccountDeletionView({ auth, onBack }: { auth: WardrobeCloudAuth;
 
   return (
     <div className="grid min-w-0 gap-4 pb-[calc(112px+env(safe-area-inset-bottom))]">
-      <AppSubPageTopBar title="注销账号" onBack={stage === "notice" ? onBack : () => setStage(previousStage(stage))} />
+      <AppSubPageTopBar title="注销账号" onBack={handlePageBack} />
       {message ? <p role="alert" className="rounded-lg bg-red-50 px-3 py-2 text-sm leading-relaxed text-red-700">{message}</p> : null}
 
       {stage === "notice" ? (
@@ -195,12 +211,12 @@ export function AccountDeletionView({ auth, onBack }: { auth: WardrobeCloudAuth;
           <div className="rounded-2xl border border-ink/10 bg-white/85 p-4">
             <h1 className="text-base font-bold">邮箱验证码</h1>
             <p className="mt-1 text-sm text-ink/55">验证码将发送至 {security?.email.masked ?? "已绑定邮箱"}</p>
-            <button type="button" data-parity-id="parity.app.app.src.components.auth.account.deletion.view.ff82dde1d8" onClick={() => void sendEmailCode()} disabled={sendingCode || countdown > 0} className="mt-4 h-10 rounded-lg bg-denim px-4 text-sm font-semibold text-white disabled:opacity-45">
+            <button type="button" data-parity-id="parity.app.app.src.components.auth.account.deletion.view.ff82dde1d8" onClick={() => void sendEmailCode()} disabled={busy || sendingCode || countdown > 0} className="mt-4 h-10 rounded-lg bg-denim px-4 text-sm font-semibold text-white disabled:opacity-45">
               {sendingCode ? "发送中" : countdown > 0 ? `${countdown}s 后可重发` : "发送验证码"}
             </button>
           </div>
           <label className="grid gap-1.5 text-sm font-medium">邮箱验证码
-            <input value={emailCode} data-parity-id="parity.app.app.src.components.auth.account.deletion.view.dfe54ee639" onChange={(event) => setEmailCode(event.target.value.replace(/\D/g, "").slice(0, 6))} inputMode="numeric" autoComplete="one-time-code" className="h-12 rounded-lg border border-ink/10 bg-white px-3 text-base outline-none focus:border-denim" />
+            <input value={emailCode} data-parity-id="parity.app.app.src.components.auth.account.deletion.view.dfe54ee639" onChange={(event) => setEmailCode(event.target.value.replace(/\D/g, "").slice(0, 6))} disabled={busy || sendingCode} inputMode="numeric" autoComplete="one-time-code" className="h-12 rounded-lg border border-ink/10 bg-white px-3 text-base outline-none focus:border-denim disabled:opacity-55" />
           </label>
           <button type="button" data-parity-id="parity.app.app.src.components.auth.account.deletion.view.2c508eadc2" onClick={() => void verify({ method: "email", emailCode })} disabled={busy || !/^\d{6}$/.test(emailCode)} className="h-12 rounded-lg bg-red-600 text-sm font-semibold text-white disabled:opacity-40">
             {busy ? "验证中" : "验证并继续"}
@@ -215,7 +231,7 @@ export function AccountDeletionView({ auth, onBack }: { auth: WardrobeCloudAuth;
             <p className="mt-1 text-sm text-ink/55">请输入当前账号密码验证身份。</p>
           </div>
           <label className="grid gap-1.5 text-sm font-medium">当前密码
-            <input value={currentPassword} data-parity-id="parity.app.app.src.components.auth.account.deletion.view.8e5777f7b1" onChange={(event) => setCurrentPassword(event.target.value)} type="password" autoComplete="current-password" className="h-12 rounded-lg border border-ink/10 bg-white px-3 text-base outline-none focus:border-denim" />
+            <input value={currentPassword} data-parity-id="parity.app.app.src.components.auth.account.deletion.view.8e5777f7b1" onChange={(event) => setCurrentPassword(event.target.value)} disabled={busy} type="password" autoComplete="current-password" className="h-12 rounded-lg border border-ink/10 bg-white px-3 text-base outline-none focus:border-denim disabled:opacity-55" />
           </label>
           <button type="button" data-parity-id="parity.app.app.src.components.auth.account.deletion.view.3ff839def8" onClick={() => void verify({ method: "password", currentPassword })} disabled={busy || currentPassword.length < 8} className="h-12 rounded-lg bg-red-600 text-sm font-semibold text-white disabled:opacity-40">
             {busy ? "验证中" : "验证并继续"}
@@ -223,7 +239,17 @@ export function AccountDeletionView({ auth, onBack }: { auth: WardrobeCloudAuth;
         </section>
       ) : null}
 
-      <MotionSheet open={stage === "final"} onClose={() => { if (!busy) setStage("verify-choice"); }} closeOnBackdrop={!busy} closeOnEscape={!busy} role="alertdialog" ariaLabel="最后确认永久注销" panelClassName="pb-[calc(16px+env(safe-area-inset-bottom))]">
+      <MotionSheet
+        open={stage === "final"}
+        onClose={busy ? () => undefined : () => setStage("verify-choice")}
+        variant="destructive"
+        role="alertdialog"
+        ariaLabel="最后确认永久注销"
+        dismissible={!busy}
+        closeOnBackdrop={!busy}
+        closeOnEscape={!busy}
+        panelClassName="pb-[calc(16px+env(safe-area-inset-bottom))]"
+      >
         <div className="grid gap-4">
           <div className="mx-auto grid h-12 w-12 place-items-center rounded-2xl bg-red-50 text-red-600"><ShieldAlert size={24} aria-hidden="true" /></div>
           <div className="text-center">
@@ -232,7 +258,7 @@ export function AccountDeletionView({ auth, onBack }: { auth: WardrobeCloudAuth;
           </div>
           {message ? <p role="alert" className="rounded-lg bg-red-50 p-3 text-sm text-red-700">{message}</p> : null}
           <label className="flex min-h-12 items-center gap-3 rounded-lg border border-red-200 bg-red-50/60 px-3 text-sm leading-relaxed">
-            <input type="checkbox" checked={confirmed} data-parity-id="parity.app.app.src.components.auth.account.deletion.view.c6843a05e4" onChange={(event) => setConfirmed(event.target.checked)} className="h-5 w-5 accent-red-600" />
+            <input type="checkbox" checked={confirmed} data-parity-id="parity.app.app.src.components.auth.account.deletion.view.c6843a05e4" onChange={(event) => setConfirmed(event.target.checked)} disabled={busy} className="h-5 w-5 accent-red-600 disabled:opacity-45" />
             我确认不再需要此账号及其中的数据
           </label>
           <div className="grid grid-cols-2 gap-2">

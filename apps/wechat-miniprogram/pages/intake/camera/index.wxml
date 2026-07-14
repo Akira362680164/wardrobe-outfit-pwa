@@ -17,6 +17,7 @@
         <view class="section-title">已选照片</view>
         <view class="count-pill">{{totalCount}} / {{maxCount}}</view>
       </view>
+      <view wx:if="{{autoCropEnabled && cropCompleted < cropTotal}}" class="auto-crop-progress">正在自动裁切，进度 {{cropCompleted}}/{{cropTotal}}</view>
       <view wx:if="{{current}}" class="hero-area" bindtap="closePopover">
         <view class="hero-wrap">
           <image class="hero-image" mode="aspectFit" src="{{current.processedPath || current.sourcePath}}" />

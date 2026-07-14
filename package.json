@@ -1,6 +1,6 @@
 {
   "name": "wardrobe-outfit-pwa",
-  "version": "2.1.18-test",
+  "version": "2.1.22-test",
   "private": true,
   "workspaces": [
     "packages/domain-catalog",
@@ -207,10 +207,20 @@
     "parity:report": "tsx scripts/parity/report.ts",
     "parity:bfs": "tsx scripts/parity/cli.ts bfs-import",
     "parity:bfs:test": "npx tsx --test scripts/parity/tests/bfs-runner.test.ts",
-    "parity:vitest": "vitest run --root scripts/parity --config vitest.config.ts"
+    "parity:vitest": "vitest run --root scripts/parity --config vitest.config.ts",
+    "image-crop:miniprogram:generate": "node scripts/generate-miniprogram-image-crop.mjs",
+    "image-crop:miniprogram:check": "node scripts/generate-miniprogram-image-crop.mjs --check",
+    "test:logic:motion-feedback-b1": "tsx scripts/test-motion-feedback-b1.ts",
+    "test:logic:ui-motion-contract": "tsx scripts/test-ui-motion-contract.ts",
+    "test:logic:ui-contracts": "npm run test:logic:ui-motion-contract && npm run test:logic:ui-spec-preview && npm run test:logic:ui-token-contract && npm run test:logic:ui-overlay-contract && npm run test:logic:back-priority-regression && npm run test:logic:ui-overflow && npm run test:logic:component-reuse",
+    "test:logic:recommendation-engine": "npm --workspace @wardrobe/wardrobe-api run test -- tests/recommendation-engine.test.ts",
+    "recommendations:shadow:write": "tsx scripts/generate-recommendation-shadow-report.ts --write",
+    "recommendations:shadow:check": "tsx scripts/generate-recommendation-shadow-report.ts --check",
+    "test:logic:image-crop-dual-route": "tsx scripts/test-image-crop-dual-route.ts",
+    "test:browser:navigation-motion-c1": "node scripts/test-navigation-motion-browser.mjs",
+    "test:browser:settings-account-c3": "node scripts/test-settings-account-c3-browser.mjs"
   },
   "dependencies": {
-    "@wardrobe/domain-catalog": "file:packages/domain-catalog",
     "@capacitor-community/keep-awake": "^8.0.1",
     "@capacitor/android": "^8.3.4",
     "@capacitor/app": "^8.1.0",
@@ -218,6 +228,7 @@
     "@capacitor/cli": "^8.3.4",
     "@capacitor/core": "^8.3.4",
     "@capacitor/filesystem": "^8.1.2",
+    "@wardrobe/domain-catalog": "file:packages/domain-catalog",
     "dexie": "^4.0.11",
     "heic2any": "^0.0.4",
     "lucide-react": "^0.468.0",

@@ -384,6 +384,17 @@ function renderPartVisual(title) {
       </div>`;
   }
 
+  if (title.includes("Android edge-to-edge")) {
+    return `
+      <div class="part-visual" data-visual="android-edge-to-edge">
+        <div class="safe-phone">
+          <div class="visual-status"><span>动态顶部 inset</span><span>Android</span></div>
+          <div class="visual-card"><b>WebView 内容延伸到系统栏下方</b><span>标题、滚动区和底部操作分别消费真实 system bar / keyboard inset。</span></div>
+          <div class="visual-note-row"><span>透明系统栏</span><span>动态 safe area</span><span>竖屏优先</span></div>
+        </div>
+      </div>`;
+  }
+
   return `<div class="part-visual" data-visual="generic-part"><div class="visual-card"><b>${escapeHtml(title)}</b><span>此小节必须配合对应视觉示意。</span></div></div>`;
 }
 

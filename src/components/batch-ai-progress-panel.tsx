@@ -1,6 +1,8 @@
 "use client";
 
 import { AlertTriangle, Check, Circle, Loader2, Pencil, RotateCcw } from "lucide-react";
+import { useReducedMotion } from "motion/react";
+import { AppPressable } from "@/components/motion-common";
 import type { BatchAiItemStatus, BatchIntakeItem } from "@/lib/intake-draft";
 import { summarizeBatchIntakeItems } from "@/lib/intake-draft";
 
@@ -33,6 +35,7 @@ export function BatchAiProgressPanel({
   onManualReview,
   onOpenItem,
 }: BatchAiProgressPanelProps) {
+  const prefersReducedMotion = useReducedMotion();
   const summary = summarizeBatchIntakeItems(items);
   if (items.length === 0) {
     return <div className="rounded-lg border border-dashed border-ink/12 bg-white/70 p-4 text-center text-xs text-ink/45">{emptyText}</div>;
@@ -52,9 +55,30 @@ export function BatchAiProgressPanel({
         </span>
       </div>
 
-      <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-mist">
-        <div className="h-full rounded-full bg-denim transition-[width]" style={{ width: `${summary.progressPercent}%` }} />
+      <div
+        className="mt-3 h-1.5 overflow-hidden rounded-full bg-mist"
+        role="progressbar"
+        aria-label={`${title}进度`}
+        aria-valuemin={0}
+        aria-valuemax={100}
+        aria-valuenow={summary.progressPercent}
+        aria-valuetext={`${summary.completed} / ${summary.total} 已完成`}
+      >
+        <div
+          className="h-full rounded-full bg-denim transition-transform duration-300 ease-out motion-reduce:transition-none"
+          style={{
+            transform: `scaleX(${summary.progressPercent / 100})`,
+            transformOrigin: "left center",
+            willChange: summary.isProcessing ? "transform" : undefined,
+          }}
+          aria-hidden="true"
+        />
       </div>
+      <span className="sr-only" role="status" aria-live="polite" aria-atomic="true">
+        {summary.isProcessing
+          ? `${title}：${summary.completed} / ${summary.total} 已完成`
+          : `${title}：处理结束，${summary.failed} 张失败，${summary.needsReview} 张需确认`}
+      </span>
 
       <div className="mt-3 grid gap-2">
         {items.map((item) => (
@@ -64,6 +88,7 @@ export function BatchAiProgressPanel({
             onRetry={onRetry}
             onManualReview={onManualReview}
             onOpenItem={onOpenItem}
+            prefersReducedMotion={!!prefersReducedMotion}
           />
         ))}
       </div>
@@ -82,11 +107,13 @@ function BatchProgressRow({
   onRetry,
   onManualReview,
   onOpenItem,
+  prefersReducedMotion,
 }: {
   item: BatchIntakeItem;
   onRetry?: (item: BatchIntakeItem) => void;
   onManualReview?: (item: BatchIntakeItem) => void;
   onOpenItem?: (item: BatchIntakeItem) => void;
+  prefersReducedMotion: boolean;
 }) {
   const meta = statusMeta[item.status];
   const title = item.draft.kind === "wishlist"
@@ -96,9 +123,9 @@ function BatchProgressRow({
       : item.draft.name.value;
 
   return (
-    <article className="flex min-w-0 gap-2 rounded-lg border border-ink/8 bg-[#fbfbf8] p-2.5">
-      <div className="mt-0.5 shrink-0">{renderStatusIcon(item.status)}</div>
-      <button type="button" data-parity-id="parity.app.app.src.components.batch.ai.progress.panel.c965b183bd" onClick={() => onOpenItem?.(item)} className="min-w-0 flex-1 text-left">
+    <article className="flex min-w-0 gap-2 rounded-lg border border-ink/8 bg-paper p-2.5">
+      <div className="mt-0.5 shrink-0">{renderStatusIcon(item.status, prefersReducedMotion)}</div>
+      <AppPressable type="button" feedback="control" data-parity-id="parity.app.app.src.components.batch.ai.progress.panel.c965b183bd" onClick={() => onOpenItem?.(item)} className="min-w-0 flex-1 text-left">
         <div className="flex min-w-0 items-center gap-2">
           <p className="min-w-0 flex-1 truncate text-sm font-medium">第 {item.index + 1} 张 · {title}</p>
           <span className={`shrink-0 text-[11px] font-medium ${meta.tone}`}>{meta.label}</span>
@@ -106,18 +133,18 @@ function BatchProgressRow({
         <p className="mt-0.5 truncate text-[11px] text-ink/45">
           {item.error ?? statusDescription(item.status)}
         </p>
-      </button>
+      </AppPressable>
       {item.status === "failed" ? (
         <div className="flex shrink-0 items-center gap-1">
           {onRetry ? (
-            <button type="button" data-parity-id="parity.app.app.src.components.batch.ai.progress.panel.94dc69a1a7" onClick={() => onRetry(item)} className="grid h-8 w-8 place-items-center rounded-md bg-white text-denim" aria-label="重试">
+            <AppPressable type="button" feedback="icon" data-parity-id="parity.app.app.src.components.batch.ai.progress.panel.94dc69a1a7" onClick={() => onRetry(item)} className="grid h-8 w-8 place-items-center rounded-md bg-white text-denim" aria-label="重试">
               <RotateCcw size={14} aria-hidden="true" />
-            </button>
+            </AppPressable>
           ) : null}
           {onManualReview ? (
-            <button type="button" data-parity-id="parity.app.app.src.components.batch.ai.progress.panel.42fcfa49f0" onClick={() => onManualReview(item)} className="grid h-8 w-8 place-items-center rounded-md bg-white text-ink/60" aria-label="手动校对">
+            <AppPressable type="button" feedback="icon" data-parity-id="parity.app.app.src.components.batch.ai.progress.panel.42fcfa49f0" onClick={() => onManualReview(item)} className="grid h-8 w-8 place-items-center rounded-md bg-white text-ink/60" aria-label="手动校对">
               <Pencil size={14} aria-hidden="true" />
-            </button>
+            </AppPressable>
           ) : null}
         </div>
       ) : null}
@@ -125,8 +152,8 @@ function BatchProgressRow({
   );
 }
 
-function renderStatusIcon(status: BatchAiItemStatus) {
-  if (status === "ai_running") return <Loader2 size={15} className="animate-spin text-denim" aria-hidden="true" />;
+function renderStatusIcon(status: BatchAiItemStatus, prefersReducedMotion: boolean) {
+  if (status === "ai_running") return <Loader2 size={15} className={prefersReducedMotion ? "text-denim" : "animate-spin text-denim"} aria-hidden="true" />;
   if (status === "failed") return <AlertTriangle size={15} className="text-red-500" aria-hidden="true" />;
   if (status === "ai_done" || status === "confirmed") return <Check size={15} className="text-moss" aria-hidden="true" />;
   if (status === "needs_review") return <AlertTriangle size={15} className="text-clay" aria-hidden="true" />;

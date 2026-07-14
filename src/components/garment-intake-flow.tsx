@@ -17,12 +17,15 @@ import {
   Tag,
   Trash2,
 } from "lucide-react";
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ChangeEvent, type ReactNode, type RefObject } from "react";
+import { motion, useReducedMotion } from "motion/react";
+import { useCallback, useEffect, useMemo, useRef, useState, type ChangeEvent, type ReactNode, type RefObject } from "react";
 import {
   IntakeFlowShell,
   type IntakeFlowStep,
   type IntakeSubmitState,
 } from "@/components/intake-flow-shell";
+import { ConfirmActionSheet } from "@/components/dialogs";
+import { MotionPopoverMenu } from "@/components/motion-common";
 import { ImageCropEditor, type ImageCropEditorHandle } from "@/components/image-crop-editor";
 import { CategorySubcategoryPicker } from "@/components/category-subcategory-picker";
 import { FitGenderChips } from "@/components/fit-gender-chips";
@@ -43,10 +46,13 @@ import {
   buildLocalGarmentDraft,
   type LocalImageProcessingResult,
 } from "@/lib/intake-local-draft";
-import { fileToCompressedDataUrl, rotateImageDataUrl } from "@/lib/image";
+import { cropFromOriginal, fileToCompressedDataUrl, rotateImageDataUrl } from "@/lib/image";
+import type { ImageCropSuggestionResponse } from "@wardrobe/cloud-contracts";
+import { composeNestedCropBoxes, FULL_IMAGE_CROP_BOX, IMAGE_CROP_MAX_IN_FLIGHT } from "@wardrobe/cloud-contracts";
 import { GarmentRecognitionError } from "@/lib/device-minimax";
 import { createGarmentThumbnailFromOriginal, generateThumbnailSafe } from "@/lib/thumbnail-runtime";
 import { recordDiagnosticEvent } from "@/lib/diagnostic-log";
+import { duration, ease } from "@/lib/motion-tokens";
 import {
   FIT_NOTES_MAX_LEN,
   SEASON_LABELS,
@@ -64,7 +70,6 @@ import {
 import {
   GARMENT_INTAKE_MAX_IMAGES,
   createGarmentIntakeImageItem,
-  appendGarmentIntakeImages,
   removeGarmentIntakeImage,
   setGarmentIntakeImageCrop,
   setGarmentIntakeImageDraft,
@@ -116,6 +121,8 @@ export interface GarmentIntakeFlowProps {
   onPickImages: (source: GarmentImageSource, remaining: number) => IntakeAsyncResult<GarmentIntakePickedImage[]>;
   onProcessImage?: (input: GarmentImageProcessingInput) => IntakeAsyncResult<LocalImageProcessingResult>;
   onProcessImages?: (inputs: GarmentImageBatchProcessingInput[]) => IntakeAsyncResult<GarmentImageBatchProcessingResult[]>;
+  hasMiniMaxKey?: boolean;
+  onSuggestCrop?: (input: { clientItemId: string; revision: number; imageDataUrl: string }) => IntakeAsyncResult<ImageCropSuggestionResponse>;
   onEnhanceDraft?: (draft: GarmentIntakeDraft) => IntakeAsyncResult<GarmentIntakeDraft>;
   onDraftChange?: (drafts: GarmentIntakeDraft[]) => void;
   onSaveBatch: (drafts: GarmentIntakeDraft[], context?: IntakeSaveBatchContext) => IntakeAsyncResult<void | IntakeBatchSaveResult>;
@@ -195,6 +202,8 @@ export function GarmentIntakeFlow({
   onPickImages,
   onProcessImage,
   onProcessImages,
+  hasMiniMaxKey = true,
+  onSuggestCrop,
   onEnhanceDraft: _onEnhanceDraft,
   onDraftChange,
   onSaveBatch,
@@ -209,10 +218,12 @@ export function GarmentIntakeFlow({
   });
   const [activeImageId, setActiveImageId] = useState<string | null>(null);
   const [activeReviewId, setActiveReviewId] = useState<string | null>(null);
+  const [reviewDirection, setReviewDirection] = useState<-1 | 0 | 1>(0);
   const [isPicking, setIsPicking] = useState(false);
   const [isCropping, setIsCropping] = useState(false);
   const [isRecognizing, setIsRecognizing] = useState(false);
   const [recognitionProgress, setRecognitionProgress] = useState<{ current: number; total: number } | null>(null);
+  const cropProgress = useMemo(() => ({ completed: imageItems.filter((item) => item.cropCompleted).length, total: imageItems.length }), [imageItems]);
   const [isSavingBatch, setIsSavingBatch] = useState(false);
   const [submitState, setSubmitState] = useState<IntakeSubmitState>({ status: "idle" });
   const [error, setError] = useState("");
@@ -252,6 +263,7 @@ export function GarmentIntakeFlow({
   // Initialize activeReviewId when entering confirm step
   useEffect(() => {
     if (stepIndex === "confirm_params" && recognizedItems.length > 0 && !activeReviewId) {
+      setReviewDirection(0);
       setActiveReviewId(recognizedItems[0].id);
     }
   }, [stepIndex, recognizedItems, activeReviewId]);
@@ -280,7 +292,9 @@ export function GarmentIntakeFlow({
         if (picked.length > remaining) {
           setError(`最多一次录入 ${GARMENT_INTAKE_MAX_IMAGES} 张图片，已截断`);
         }
-        setImageItems((prev) => appendGarmentIntakeImages(prev, toAdd));
+        const created = toAdd.map((image) => createGarmentIntakeImageItem(image));
+        setImageItems((prev) => [...prev, ...created].slice(0, GARMENT_INTAKE_MAX_IMAGES));
+        if (!hasMiniMaxKey) void runAutomaticCrop(created);
       }
     } catch (err) {
       setError(formatIntakeError(err, "图片读取失败，请重试"));
@@ -301,13 +315,48 @@ export function GarmentIntakeFlow({
         if (picked.length > remaining) {
           setError(`最多一次录入 ${GARMENT_INTAKE_MAX_IMAGES} 张图片，已截断`);
         }
-        setImageItems((prev) => appendGarmentIntakeImages(prev, toAdd));
+        const created = toAdd.map((image) => createGarmentIntakeImageItem(image));
+        setImageItems((prev) => [...prev, ...created].slice(0, GARMENT_INTAKE_MAX_IMAGES));
+        if (!hasMiniMaxKey) void runAutomaticCrop(created);
       }
     } catch (err) {
       setError(formatIntakeError(err, "图片读取失败，请重试"));
     } finally {
       setIsPicking(false);
     }
+  }
+
+  async function runAutomaticCrop(items: GarmentIntakeImageItem[]) {
+    if (!onSuggestCrop || !items.length) return;
+    const queue = items.map((item) => ({ ...item, revision: item.cropRevision + 1 }));
+    const revisions = new Map(queue.map((item) => [item.id, item.revision]));
+    setImageItems((current) => current.map((item) => revisions.has(item.id) ? { ...item, cropState: "queued" as const, cropRevision: revisions.get(item.id)!, cropCompleted: false } : item));
+    let cursor = 0;
+    const worker = async () => {
+      while (cursor < queue.length) {
+        const entry = queue[cursor++]!;
+        setImageItems((current) => current.map((item) => item.id === entry.id && item.cropRevision === entry.revision ? { ...item, cropState: "processing" as const } : item));
+        try {
+          const response = await onSuggestCrop({ clientItemId: entry.id, revision: entry.revision, imageDataUrl: entry.originalDataUrl });
+          const preview = await cropFromOriginal(entry.originalDataUrl, response.suggestion.cropBox);
+          const thumb = await createGarmentThumbnailFromOriginal({ originalDataUrl: entry.originalDataUrl, cropBox: response.suggestion.cropBox });
+          setImageItems((current) => current.map((item) => item.id === entry.id && item.cropRevision === response.revision && item.cropState !== "manual" ? { ...item, displayDataUrl: preview, croppedImageDataUrl: preview, thumbnailDataUrl: thumb.thumbnailDataUrl, cropBox: response.suggestion.cropBox, cropSuggestion: response.suggestion, cropState: "applied" as const, cropCompleted: true } : item));
+        } catch {
+          setImageItems((current) => current.map((item) => item.id === entry.id && item.cropRevision === entry.revision && item.cropState !== "manual" ? { ...item, cropState: "failed" as const, cropCompleted: true } : item));
+        }
+      }
+    };
+    await Promise.all(Array.from({ length: Math.min(IMAGE_CROP_MAX_IN_FLIGHT, queue.length) }, worker));
+  }
+
+  function prepareManualDrafts() {
+    setImageItems((current) => current.map((item) => {
+      if (item.draft) return item;
+      const result = fallbackImageProcessingResult(item.croppedImageDataUrl ?? item.displayDataUrl, flowKind === "wishlist" ? "product_photo" : "garment");
+      const draft = buildLocalGarmentDraft({ ...result, imageDataUrl: item.originalDataUrl, croppedImageDataUrl: item.croppedImageDataUrl ?? item.displayDataUrl, cropBox: item.cropBox, thumbnailDataUrl: item.thumbnailDataUrl, locationId: defaultLocationId });
+      return { ...item, draft, status: "manual" as const, error: undefined };
+    }));
+    setStepIndex("confirm_params");
   }
 
   function handleRemoveImage(id: string) {
@@ -352,7 +401,9 @@ export function GarmentIntakeFlow({
   const handleRotate = useCallback(async (direction: "left" | "right") => {
     if (!activeImageId || !activeImage) return;
     try {
-      const rotated = await rotateImageDataUrl(activeImage.originalDataUrl, direction === "left" ? 270 : 90);
+      const delta = direction === "left" ? 270 : 90;
+      const nextRotation = ((activeImage.rotationDeg + delta) % 360) as 0 | 90 | 180 | 270;
+      const rotated = nextRotation === 0 ? activeImage.sourceOriginalDataUrl : await rotateImageDataUrl(activeImage.sourceOriginalDataUrl, nextRotation);
       const thumbnailDataUrl = await generateThumbnailSafe(rotated);
       setImageItems((prev) =>
         prev.map((item) => {
@@ -360,11 +411,14 @@ export function GarmentIntakeFlow({
           return {
             ...item,
             originalDataUrl: rotated,
-            rotationDeg: 0,
+            rotationDeg: nextRotation,
             displayDataUrl: rotated,
             croppedImageDataUrl: undefined,
             thumbnailDataUrl: thumbnailDataUrl.thumbnailDataUrl,
             cropBox: undefined,
+            preCropBox: undefined,
+            preCropRevision: item.preCropRevision + 1,
+            cropRevision: item.cropRevision + 1,
             draft: undefined,
             error: undefined,
             status: "selected" as const,
@@ -449,7 +503,7 @@ export function GarmentIntakeFlow({
           imageDataUrl: item.originalDataUrl,
           sourceImageDataUrl: item.originalDataUrl,
           fileName: item.fileName,
-          cropBox: item.cropBox,
+          cropBox: item.preCropBox ?? FULL_IMAGE_CROP_BOX,
         }));
         const outputs = await Promise.resolve(onProcessImages(batchInputs)).catch((err: unknown) => pendingItems.map((item): GarmentImageBatchProcessingResult => ({
           imageItemId: item.id,
@@ -526,7 +580,7 @@ export function GarmentIntakeFlow({
     const processed = await onProcessImage({
       imageDataUrl: item.originalDataUrl,
       fileName: item.fileName,
-      cropBox: item.cropBox,
+      cropBox: item.preCropBox ?? FULL_IMAGE_CROP_BOX,
     });
     return buildDraftFromProcessingResult(item, processed);
   }
@@ -553,7 +607,7 @@ export function GarmentIntakeFlow({
         : undefined,
       imageDataUrl: item.originalDataUrl,
       croppedImageDataUrl: imageToProcess,
-      cropBox: item.cropBox,
+      cropBox: composeNestedCropBoxes(item.preCropBox ?? FULL_IMAGE_CROP_BOX, processed.aiSecondaryCropBox),
       thumbnailDataUrl: item.thumbnailDataUrl,
       locationId: defaultLocationId,
     });
@@ -593,6 +647,10 @@ export function GarmentIntakeFlow({
   // v1.1.31 commit2: 确认信息阶段重新识别当前件。
   async function handleRetryCurrentItem(reviewId: string) {
     if (retryingReviewId) return; // 防重复点击
+    if (!hasMiniMaxKey) {
+      setError("尚未配置 MiniMax Key，请直接填写或修改属性");
+      return;
+    }
     const item = imageItems.find((it) => it.id === reviewId);
     if (!item) return;
     setRetryingReviewId(reviewId);
@@ -666,6 +724,7 @@ export function GarmentIntakeFlow({
     if (stepIndex === "confirm_params") {
       setStepIndex("select_photo");
       setActiveReviewId(null);
+      setReviewDirection(0);
     }
   }
 
@@ -678,7 +737,8 @@ export function GarmentIntakeFlow({
         return;
       }
       // P2-01: 直接进入 AI 识别加载状态，跳过独立编辑步骤
-      await processAllImagesForRecognition();
+      if (hasMiniMaxKey) await processAllImagesForRecognition();
+      else prepareManualDrafts();
       return;
     }
     if (stepIndex === "confirm_params") {
@@ -777,21 +837,30 @@ export function GarmentIntakeFlow({
 
   function handlePrevReview() {
     if (activeReviewIndex > 0) {
+      setReviewDirection(-1);
       setActiveReviewId(recognizedItems[activeReviewIndex - 1].id);
     }
   }
 
   function handleNextReview() {
     if (activeReviewIndex < recognizedItems.length - 1) {
+      setReviewDirection(1);
       setActiveReviewId(recognizedItems[activeReviewIndex + 1].id);
     }
+  }
+
+  function handleSelectReview(reviewId: string) {
+    const nextIndex = recognizedItems.findIndex((item) => item.id === reviewId);
+    if (nextIndex < 0 || nextIndex === activeReviewIndex) return;
+    setReviewDirection(nextIndex > activeReviewIndex ? 1 : -1);
+    setActiveReviewId(reviewId);
   }
 
   const stepIndexNumber = stepIndex === "select_photo" ? 0 : 1;
 
   const nextLabel =
     stepIndex === "select_photo"
-      ? "下一步（AI 识别）"
+      ? hasMiniMaxKey ? "下一步（AI 识别）" : "下一步（填写属性）"
       : `保存 ${savableItems.length} 件${flowNoun}`;
 
   const nextDisabled =
@@ -851,6 +920,7 @@ export function GarmentIntakeFlow({
             isPicking={isPicking}
             flowKind={flowKind}
             onCropActive={() => { if (activeImage) setIsCropping(true); }}
+            cropProgress={!hasMiniMaxKey ? cropProgress : undefined}
           />
         )
       ) : null}
@@ -860,42 +930,34 @@ export function GarmentIntakeFlow({
           successCount={successCount}
           activeReviewId={activeReviewId}
           activeReviewIndex={activeReviewIndex}
+          reviewDirection={reviewDirection}
           onPatchDraft={patchReviewDraft}
           onPrev={handlePrevReview}
           onNext={handleNextReview}
-          onSelectItem={setActiveReviewId}
+          onSelectItem={handleSelectReview}
           onRetryCurrent={handleRetryCurrentItem}
           retryingReviewId={retryingReviewId}
+          hasMiniMaxKey={hasMiniMaxKey}
           flowKind={flowKind}
           locations={locations}
         />
       ) : null}
-      {pendingSaveDrafts ? (
-        <div className="fixed inset-0 z-[110] grid place-items-center bg-black/35 px-4" data-parity-id="parity.app.app.src.components.garment.intake.flow.95d649b378" onClick={() => setPendingSaveDrafts(null)}>
-          <div className="w-full max-w-sm rounded-2xl bg-white p-5 shadow-xl" data-parity-id="parity.app.app.src.components.garment.intake.flow.d5d698d703" onClick={(event) => event.stopPropagation()}>
-            <h2 className="text-base font-semibold">还有 {recognizedItems.length - pendingSaveDrafts.length} 件{flowNoun}尚未完成确认</h2>
-            <p className="mt-2 text-sm leading-relaxed text-ink/58">
-              本次将保存 {pendingSaveDrafts.length} 件，未完成的 {recognizedItems.length - pendingSaveDrafts.length} 件不会入库。
-            </p>
-            <div className="mt-5 grid grid-cols-2 gap-2">
-              <button type="button" data-parity-id="parity.app.app.src.components.garment.intake.flow.46f80c328e" onClick={() => setPendingSaveDrafts(null)} className="h-11 rounded-lg border border-ink/10 bg-white text-sm font-semibold">
-                继续修改
-              </button>
-              <button
-                type="button"
-                data-parity-id="parity.app.app.src.components.garment.intake.flow.cabc2ebbf1" onClick={async () => {
-                  const drafts = pendingSaveDrafts;
-                  setPendingSaveDrafts(null);
-                  await submitDrafts(drafts);
-                }}
-                className="h-11 rounded-lg bg-denim text-sm font-semibold text-white"
-              >
-                保存 {pendingSaveDrafts.length} 件
-              </button>
-            </div>
-          </div>
-        </div>
-      ) : null}
+      <ConfirmActionSheet
+        open={pendingSaveDrafts !== null}
+        title={`还有 ${recognizedItems.length - (pendingSaveDrafts?.length ?? 0)} 件${flowNoun}尚未完成确认`}
+        description={pendingSaveDrafts
+          ? `本次将保存 ${pendingSaveDrafts.length} 件，未完成的 ${recognizedItems.length - pendingSaveDrafts.length} 件不会入库。`
+          : undefined}
+        confirmLabel={`保存 ${pendingSaveDrafts?.length ?? 0} 件`}
+        cancelLabel="继续修改"
+        onClose={() => setPendingSaveDrafts(null)}
+        onConfirm={async () => {
+          const drafts = pendingSaveDrafts;
+          if (!drafts) return;
+          setPendingSaveDrafts(null);
+          await submitDrafts(drafts);
+        }}
+      />
     </IntakeFlowShell>
   );
 }
@@ -912,6 +974,7 @@ function MultiImageSelectStep({
   isPicking,
   flowKind,
   onCropActive,
+  cropProgress,
 }: {
   imageItems: GarmentIntakeImageItem[];
   onAddFromCamera: () => void;
@@ -923,12 +986,13 @@ function MultiImageSelectStep({
   isPicking: boolean;
   flowKind: "garment" | "wishlist";
   onCropActive?: () => void;
+  cropProgress?: { completed: number; total: number };
 }) {
   const hasImages = imageItems.length > 0;
   const displayItems = imageItems;
   const flowNoun = flowKind === "wishlist" ? "种草" : "单品";
-  const thumbRowRef = useRef<HTMLDivElement | null>(null);
-  const activeThumbRef = useRef<HTMLDivElement | null>(null);
+  const activeThumbRef = useRef<HTMLButtonElement | null>(null);
+  const [thumbnailActionsOpen, setThumbnailActionsOpen] = useState(false);
 
   // Custom preview: shown inside IntakeStepSection when images are selected
   const previewNode = hasImages ? (
@@ -949,18 +1013,24 @@ function MultiImageSelectStep({
           />
         )}
       </div>
+      {cropProgress && cropProgress.completed < cropProgress.total ? (
+        <p className="mb-3 text-center text-xs text-ink/55">正在自动裁切，进度 {cropProgress.completed}/{cropProgress.total}</p>
+      ) : null}
       {/* Thumbnail row */}
-      <div ref={thumbRowRef} className="relative flex gap-2 mb-3 overflow-x-auto overflow-y-visible pt-14 pb-1">
+      <div className="relative flex gap-2 mb-3 overflow-x-auto overflow-y-visible pt-14 pb-1">
         {displayItems.map((item, idx) => (
           <div
             key={item.id}
-            ref={item.id === activeImageId ? activeThumbRef : undefined}
             className="relative h-14 w-14 shrink-0 overflow-visible"
           >
             <button
+              ref={item.id === activeImageId ? activeThumbRef : undefined}
               data-parity-id={`parity.app.app.src.components.garment.intake.flow.e453a4f807.${item.id}`}
               type="button"
-              onClick={() => onSelectImage(item.id)}
+              onClick={() => {
+                onSelectImage(item.id);
+                setThumbnailActionsOpen(true);
+              }}
               className={`relative block h-full w-full overflow-hidden ui-control-radius border-2 ${
                 item.id === activeImageId ? "border-denim" : "border-transparent"
               }`}
@@ -981,32 +1051,38 @@ function MultiImageSelectStep({
         ))}
         {activeImageId && onCropActive ? (
           <ThumbnailActionPopover
-            rowRef={thumbRowRef}
+            key={activeImageId}
             targetRef={activeThumbRef}
-            activeId={activeImageId}
-            onCrop={onCropActive}
-            onRemove={() => onRemoveImage(activeImageId)}
+            visible={thumbnailActionsOpen}
+            onClose={() => setThumbnailActionsOpen(false)}
+            onCrop={() => {
+              setThumbnailActionsOpen(false);
+              onCropActive();
+            }}
+            onRemove={() => {
+              setThumbnailActionsOpen(false);
+              onRemoveImage(activeImageId);
+            }}
           />
         ) : null}
       </div>
       <div className="flex gap-2">
-        <button
-          data-parity-id={`parity.app.app.src.components.garment.intake.flow.2f02d078d9.${activeImageId ?? "none"}`}
-          type="button"
+        <IntakeImageSourceButton
+          parityId={`parity.app.app.src.components.garment.intake.flow.2f02d078d9.${activeImageId ?? "none"}`}
+          label="继续拍照"
+          icon={<Camera size={16} aria-hidden="true" />}
           onClick={onAddFromCamera}
           disabled={isPicking}
-          className="flex-1 h-10 ui-control-radius border border-ink/10 bg-white/82 text-sm font-semibold disabled:opacity-35 flex items-center justify-center gap-1 shadow-sm"
-        >
-          <Camera size={14} /> 继续拍照
-        </button>
-        <button
-          type="button"
-          data-parity-id="parity.app.app.src.components.garment.intake.flow.95ecf9c92a" onClick={onAddFromAlbum}
+          compact
+        />
+        <IntakeImageSourceButton
+          parityId="parity.app.app.src.components.garment.intake.flow.95ecf9c92a"
+          label="继续从图库选择"
+          icon={<ImageIcon size={16} aria-hidden="true" />}
+          onClick={onAddFromAlbum}
           disabled={isPicking}
-          className="flex-1 h-10 ui-control-radius border border-ink/10 bg-white/82 text-sm font-semibold disabled:opacity-35 flex items-center justify-center gap-1 shadow-sm"
-        >
-          <ImageIcon size={14} /> 继续从图库选择
-        </button>
+          compact
+        />
       </div>
       <button
         type="button"
@@ -1034,74 +1110,37 @@ function MultiImageSelectStep({
 }
 
 function ThumbnailActionPopover({
-  rowRef,
   targetRef,
-  activeId,
+  visible,
+  onClose,
   onCrop,
   onRemove,
 }: {
-  rowRef: RefObject<HTMLDivElement | null>;
-  targetRef: RefObject<HTMLDivElement | null>;
-  activeId: string;
+  targetRef: RefObject<HTMLButtonElement | null>;
+  visible: boolean;
+  onClose: () => void;
   onCrop: () => void;
   onRemove: () => void;
 }) {
-  const WIDTH = 212;
-  const ARROW_SAFE = 18;
-  const [layout, setLayout] = useState<{ left: number; arrowLeft: number } | null>(null);
-
-  useLayoutEffect(() => {
-    const row = rowRef.current;
-    const target = targetRef.current;
-    if (!row || !target) return;
-
-    const update = () => {
-      const selectedCenter = target.offsetLeft + target.offsetWidth / 2;
-      const minLeft = row.scrollLeft;
-      const maxLeft = Math.max(minLeft, row.scrollLeft + row.clientWidth - WIDTH);
-      const left = Math.max(minLeft, Math.min(selectedCenter - WIDTH / 2, maxLeft));
-      const arrowLeft = Math.max(ARROW_SAFE, Math.min(selectedCenter - left, WIDTH - ARROW_SAFE));
-      setLayout({ left, arrowLeft });
-    };
-
-    update();
-    row.addEventListener("scroll", update, { passive: true });
-    window.addEventListener("resize", update);
-    const ro = new ResizeObserver(update);
-    ro.observe(row);
-    ro.observe(target);
-    return () => {
-      row.removeEventListener("scroll", update);
-      window.removeEventListener("resize", update);
-      ro.disconnect();
-    };
-  }, [activeId, rowRef, targetRef]);
-
   return (
-    <div
-      className="absolute top-1 z-20 grid w-[212px] grid-cols-[1fr_74px] gap-1 rounded-[16px] border border-[rgba(29,34,40,0.10)] bg-[rgba(255,255,252,0.88)] p-1 shadow-lg backdrop-blur-xl"
-      style={{ left: layout?.left ?? 0, visibility: layout ? "visible" : "hidden" }}
-    >
-      <button
-        type="button"
-        data-parity-id="parity.app.app.src.components.garment.intake.flow.043ef37fcf" onClick={onCrop}
-        className="flex h-9 items-center justify-center gap-1 rounded-[12px] px-2 text-[12px] font-semibold text-[#1d2228] active:bg-[#f4f5f3] whitespace-nowrap"
-      >
-        <Scissors size={13} aria-hidden="true" /> 裁切/旋转
-      </button>
-      <button
-        type="button"
-        data-parity-id="parity.app.app.src.components.garment.intake.flow.338f4bc324" onClick={onRemove}
-        className="flex h-9 items-center justify-center gap-1 rounded-[12px] px-2 text-[12px] font-semibold text-[#b97155] active:bg-[#b97155]/8 whitespace-nowrap"
-      >
-        <Trash2 size={13} aria-hidden="true" /> 删除
-      </button>
-      <span
-        className="absolute top-full h-2 w-2 -translate-x-1/2 -translate-y-1/2 rotate-45 border-b border-r border-[rgba(29,34,40,0.10)] bg-[rgba(255,255,252,0.88)]"
-        style={{ left: layout?.arrowLeft ?? WIDTH / 2 }}
-        aria-hidden="true"
-      />
-    </div>
+    <MotionPopoverMenu visible={visible} onClose={onClose} anchorRef={targetRef as RefObject<HTMLElement | null>}>
+      <div className="grid w-[212px] grid-cols-[1fr_74px] gap-1 p-1">
+        <button
+          type="button"
+          data-parity-id="parity.app.app.src.components.garment.intake.flow.043ef37fcf" onClick={onCrop}
+          className="flex h-9 items-center justify-center gap-1 rounded-[12px] px-2 text-[12px] font-semibold text-[#1d2228] active:bg-[#f4f5f3] whitespace-nowrap"
+        >
+          <Scissors size={13} aria-hidden="true" /> 裁切/旋转
+        </button>
+        <button
+          type="button"
+          data-parity-id="parity.app.app.src.components.garment.intake.flow.338f4bc324" onClick={onRemove}
+          className="flex h-9 items-center justify-center gap-1 rounded-[12px] px-2 text-[12px] font-semibold text-[#b97155] active:bg-[#b97155]/8 whitespace-nowrap"
+        >
+          <Trash2 size={13} aria-hidden="true" /> 删除
+        </button>
+      </div>
+    </MotionPopoverMenu>
   );
 }
 
@@ -1233,12 +1272,14 @@ function MultiImageReviewStep({
   successCount,
   activeReviewId,
   activeReviewIndex,
+  reviewDirection,
   onPatchDraft,
   onPrev,
   onNext,
   onSelectItem,
   onRetryCurrent,
   retryingReviewId,
+  hasMiniMaxKey,
   flowKind,
   locations,
 }: {
@@ -1246,15 +1287,18 @@ function MultiImageReviewStep({
   successCount: number;
   activeReviewId: string | null;
   activeReviewIndex: number;
+  reviewDirection: -1 | 0 | 1;
   onPatchDraft: (patch: Partial<GarmentIntakeDraft>) => void;
   onPrev: () => void;
   onNext: () => void;
   onSelectItem: (id: string) => void;
   onRetryCurrent: (reviewId: string) => void;
   retryingReviewId: string | null;
+  hasMiniMaxKey: boolean;
   flowKind: "garment" | "wishlist";
   locations: ClosetLocation[];
 }) {
+  const reduceMotion = Boolean(useReducedMotion());
   const activeItem = recognizedItems.find((item) => item.id === activeReviewId);
   const draft = activeItem?.draft;
   const visibleNeedsReviewFields = draft ? countStep3VisibleNeedsReviewFields(draft) : 0;
@@ -1274,11 +1318,11 @@ function MultiImageReviewStep({
         </div>
       ) : null}
       <IntakeStepSection
-        title={
-          successCount < recognizedItems.length
+        title={!hasMiniMaxKey
+          ? `待填写 ${recognizedItems.length} 件${flowNoun}`
+          : successCount < recognizedItems.length
             ? `已识别 ${successCount} / ${recognizedItems.length} 件${flowNoun}`
-            : `已识别 ${recognizedItems.length} 件${flowNoun}`
-        }
+            : `已识别 ${recognizedItems.length} 件${flowNoun}`}
         icon={<Tag size={16} aria-hidden="true" />}
         right={
           activeReviewId ? (
@@ -1306,10 +1350,15 @@ function MultiImageReviewStep({
       >
         {previewDataUrl ? (
           <div className="ui-inner-card mb-3 overflow-hidden bg-mist">
-            <img
+            <motion.img
+              key={activeItem?.id ?? previewDataUrl}
               src={previewDataUrl}
               alt={`当前${flowNoun}图片`}
               className="h-[min(48dvh,420px)] w-full object-contain"
+              data-review-direction={reviewDirection}
+              initial={reduceMotion ? false : { opacity: 0.96, x: reviewDirection * 10 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={reduceMotion ? { duration: 0 } : { duration: duration.fast, ease: ease.out }}
             />
           </div>
         ) : null}
@@ -1358,7 +1407,9 @@ function MultiImageReviewStep({
             }
           >
             <p className="text-xs leading-relaxed text-ink/50">
-              核对 AI 识别结果，红色“待确认”字段建议手动确认后再保存。
+              {hasMiniMaxKey
+                ? "核对 AI 识别结果，红色“待确认”字段建议手动确认后再保存。"
+                : "填写或修改属性，红色“待确认”字段请手动确认后再保存。"}
             </p>
           </EditSectionCard>
 
@@ -1849,24 +1900,20 @@ export function IntakeStepOneImagePicker({
       </IntakeStepSection>
       {!previewNode ? (
         <div className="grid grid-cols-2 gap-4">
-          <button
-            type="button"
-            data-parity-id="parity.app.app.src.components.garment.intake.flow.3e301f728c" onClick={onCameraClick}
+          <IntakeImageSourceButton
+            parityId="parity.app.app.src.components.garment.intake.flow.3e301f728c"
+            label="拍照"
+            icon={<Camera size={20} aria-hidden="true" />}
+            onClick={onCameraClick}
             disabled={disabled}
-            className="min-h-[144px] ui-control-radius border border-ink/10 bg-white/82 text-sm font-semibold flex flex-col items-center justify-center gap-2 shadow-sm"
-          >
-            <Camera size={24} className="text-denim" />
-            拍照
-          </button>
-          <button
-            type="button"
-            data-parity-id="parity.app.app.src.components.garment.intake.flow.8b349a35cd" onClick={onGalleryClick}
+          />
+          <IntakeImageSourceButton
+            parityId="parity.app.app.src.components.garment.intake.flow.8b349a35cd"
+            label="从图库选择"
+            icon={<ImageIcon size={20} aria-hidden="true" />}
+            onClick={onGalleryClick}
             disabled={disabled}
-            className="min-h-[144px] ui-control-radius border border-ink/10 bg-white/82 text-sm font-semibold flex flex-col items-center justify-center gap-2 shadow-sm"
-          >
-            <ImageIcon size={24} className="text-denim" />
-            从图库选择
-          </button>
+          />
         </div>
       ) : null}
       <p className="text-[10px] text-ink/40 text-center">
@@ -1876,6 +1923,37 @@ export function IntakeStepOneImagePicker({
         支持一次选择多张，最多 {maxCount} 张
       </p>
     </div>
+  );
+}
+
+function IntakeImageSourceButton({
+  parityId,
+  label,
+  icon,
+  onClick,
+  disabled,
+  compact = false,
+}: {
+  parityId: string;
+  label: string;
+  icon: ReactNode;
+  onClick: () => void;
+  disabled?: boolean;
+  compact?: boolean;
+}) {
+  return (
+    <button
+      type="button"
+      data-parity-id={parityId}
+      onClick={onClick}
+      disabled={disabled}
+      className={`${compact ? "h-12 px-2 text-xs" : "h-16 px-3 text-sm"} app-press-feedback flex min-w-0 flex-1 items-center justify-center gap-2 ui-control-radius border border-ink/10 bg-white/82 font-semibold text-ink disabled:opacity-35`}
+    >
+      <span className={`${compact ? "h-8 w-8" : "h-10 w-10"} grid shrink-0 place-items-center ui-control-radius bg-denim/10 text-denim`}>
+        {icon}
+      </span>
+      <span className="min-w-0 text-center leading-tight">{label}</span>
+    </button>
   );
 }
 

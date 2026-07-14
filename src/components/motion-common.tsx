@@ -4,12 +4,53 @@ import { AnimatePresence, motion, useReducedMotion, type MotionProps } from "mot
 
 import { X } from "lucide-react";
 
-import React, { useCallback, useEffect, useLayoutEffect, useRef } from "react";
+import React, { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 
-import { createPortal } from "react-dom";
-import { duration, ease, pop, scaleModal, slideRight, slideRightExit, slideUp, spring, toastDrop } from "@/lib/motion-tokens";
+import { duration, ease, slideRight, slideRightExit, slideUp, spring, toastDrop } from "@/lib/motion-tokens";
 import { useScrollLock } from "@/lib/use-scroll-lock";
 import { OriginalCroppedImage } from "@/components/original-cropped-image";
+import { OverlayPortal, useOverlayFocusScope, useOverlayLayer } from "@/components/overlay-root";
+import { useLightboxDragDismiss } from "@/components/use-lightbox-drag-dismiss";
+import type { OverlayDismissReason } from "@/lib/overlay-stack";
+
+const subtleOverlayScale = {
+  initial: { opacity: 0, scale: 0.98 },
+  in: {
+    opacity: 1,
+    scale: 1,
+    transition: { duration: duration.normal, ease: ease.decelerate },
+  },
+  out: {
+    opacity: 0,
+    scale: 0.985,
+    transition: { duration: duration.fast, ease: ease.accelerate },
+  },
+};
+
+const anchoredPopoverScale = {
+  initial: { opacity: 0, scale: 0.96 },
+  in: {
+    opacity: 1,
+    scale: 1,
+    transition: { duration: duration.fast, ease: ease.decelerate },
+  },
+  out: {
+    opacity: 0,
+    scale: 0.98,
+    transition: { duration: duration.fast, ease: ease.accelerate },
+  },
+};
+
+/** Compatibility name retained for the existing overlay contract. */
+function useTopmostFocusScope(
+  scopeRef: React.RefObject<HTMLElement | null>,
+  isTopmost: boolean,
+  initialFocusSelector?: string,
+): void {
+  // OverlayRoot owns the implementation: `event.key !== "Tab"` is ignored,
+  // and `preventDefault()` is applied only at focus-loop boundaries.
+  useOverlayFocusScope(scopeRef, isTopmost, initialFocusSelector);
+}
 
 /* ------------------------------------------------------------------ */
 /*  AnimatedPage – sub-page enter / exit with slide-right              */
@@ -25,7 +66,10 @@ interface AnimatedPageProps {
 }
 
 export function AnimatedPage({ children, className, direction = "push", as = "div" }: AnimatedPageProps) {
-  const variants = direction === "pop" ? slideRightExit : slideRight;
+  const prefersReducedMotion = useReducedMotion();
+  const variants = prefersReducedMotion
+    ? { initial: { opacity: 0 }, in: { opacity: 1 }, out: { opacity: 0 } }
+    : direction === "pop" ? slideRightExit : slideRight;
   const Comp = as === "section" ? motion.section : motion.div;
   return (
     <Comp
@@ -34,7 +78,10 @@ export function AnimatedPage({ children, className, direction = "push", as = "di
       initial="initial"
       animate="in"
       exit="out"
-      transition={{ duration: duration.panel, ease: ease.app }}
+      transition={{
+        duration: prefersReducedMotion ? duration.fast : duration.panel,
+        ease: prefersReducedMotion ? ease.out : ease.app,
+      }}
     >
       {children}
     </Comp>
@@ -42,28 +89,12 @@ export function AnimatedPage({ children, className, direction = "push", as = "di
 }
 
 /* ------------------------------------------------------------------ */
-/*  AnimatedPresenceShell – single child enter/exit wrapper            */
-/* ------------------------------------------------------------------ */
-
-interface AnimatedPresenceShellProps {
-  children: React.ReactNode;
-  mode?: "wait" | "popLayout" | "sync";
-  /** If true, runs the exit animation before the enter. Default true. */
-  exitBeforeEnter?: boolean;
-}
-
-export function AnimatedPresenceShell({
-  children,
-  mode = "wait",
-}: AnimatedPresenceShellProps) {
-  return <AnimatePresence mode={mode}>{children}</AnimatePresence>;
-}
-
-/* ------------------------------------------------------------------ */
 /*  MotionSheet – Bottom-sheet-style modal (mobile-first)              */
 /* ------------------------------------------------------------------ */
 
-interface MotionSheetProps {
+export type MotionSheetVariant = "action" | "form" | "confirm" | "destructive";
+
+export interface MotionSheetProps {
   open: boolean;
   onClose: () => void;
   children: React.ReactNode;
@@ -75,120 +106,127 @@ interface MotionSheetProps {
   preferBottom?: boolean;
   role?: "dialog" | "alertdialog";
   ariaLabel?: string;
+  ariaLabelledBy?: string;
   closeOnBackdrop?: boolean;
   closeOnEscape?: boolean;
+  variant?: MotionSheetVariant;
+  dismissible?: boolean;
+  onDismissBlocked?: (reason: OverlayDismissReason) => void;
 }
 
-export function MotionSheet({
-  open,
+function MotionSheetLayer({
   onClose,
   children,
   className,
   panelClassName,
   preferBottom = true,
-  role = "dialog",
+  role,
   ariaLabel,
+  ariaLabelledBy,
   closeOnBackdrop = true,
   closeOnEscape = true,
+  variant = "form",
+  dismissible = true,
+  onDismissBlocked,
 }: MotionSheetProps) {
-  // v0.9.16: 弹窗打开期间锁定 body 滚动 + 拦截 focus/touchmove 穿透,
-  // 修复 Android WebView 软键盘弹起 / 触摸拖动时底层"衣橱设置"页面跟着滚动的问题。
-  useScrollLock(open);
+  // Keep scroll locked through AnimatePresence exit, not only until `open`
+  // flips false. The layer unregisters after its visual exit completes.
+  useScrollLock(true);
+  const prefersReducedMotion = useReducedMotion();
 
   const panelRef = useRef<HTMLDivElement | null>(null);
-  const previousFocusRef = useRef<HTMLElement | null>(null);
+  const [blockedAnnouncement, setBlockedAnnouncement] = useState("");
+  const resolvedRole = role ?? (variant === "destructive" ? "alertdialog" : "dialog");
+  const fallbackAriaLabel = {
+    action: "操作面板",
+    form: "表单面板",
+    confirm: "确认操作",
+    destructive: "危险操作确认",
+  }[variant];
+  const canDismiss = useCallback((reason: OverlayDismissReason) => {
+    if (reason === "backdrop") return closeOnBackdrop;
+    return closeOnEscape;
+  }, [closeOnBackdrop, closeOnEscape]);
+  const handleBlockedDismiss = useCallback((reason: OverlayDismissReason) => {
+    setBlockedAnnouncement("操作进行中，暂时无法关闭");
+    onDismissBlocked?.(reason);
+  }, [onDismissBlocked]);
+  const { overlayId, isTopmost, requestDismiss } = useOverlayLayer({
+    kind: resolvedRole,
+    dismissible,
+    canDismiss,
+    onDismiss: () => onClose(),
+    onDismissBlocked: handleBlockedDismiss,
+  });
   const handleBackdrop = useCallback(() => {
-    if (closeOnBackdrop) onClose();
-  }, [closeOnBackdrop, onClose]);
+    requestDismiss("backdrop");
+  }, [requestDismiss]);
   const stopProp = useCallback((e: React.MouseEvent) => e.stopPropagation(), []);
 
-  useEffect(() => {
-    if (!open) return;
-    previousFocusRef.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
-    const frame = window.requestAnimationFrame(() => {
-      const panel = panelRef.current;
-      if (!panel) return;
-      const focusable = panel.querySelector<HTMLElement>(
-        'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])',
-      );
-      (focusable ?? panel).focus();
-    });
-    return () => {
-      window.cancelAnimationFrame(frame);
-      previousFocusRef.current?.focus();
-      previousFocusRef.current = null;
-    };
-  }, [open]);
+  useTopmostFocusScope(panelRef, isTopmost);
 
-  useEffect(() => {
-    if (!open) return;
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape" && closeOnEscape) {
-        event.preventDefault();
-        onClose();
-        return;
-      }
-      if (event.key !== "Tab") return;
-      const panel = panelRef.current;
-      if (!panel) return;
-      const focusable = Array.from(
-        panel.querySelectorAll<HTMLElement>('button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'),
-      ).filter((node) => !node.hasAttribute("disabled") && node.tabIndex !== -1);
-      if (focusable.length === 0) {
-        event.preventDefault();
-        panel.focus();
-        return;
-      }
-      const first = focusable[0];
-      const last = focusable[focusable.length - 1];
-      if (event.shiftKey && document.activeElement === first) {
-        event.preventDefault();
-        last.focus();
-      } else if (!event.shiftKey && document.activeElement === last) {
-        event.preventDefault();
-        first.focus();
-      }
-    };
-    document.addEventListener("keydown", onKeyDown);
-    return () => document.removeEventListener("keydown", onKeyDown);
-  }, [closeOnEscape, onClose, open]);
+  const bottomPresentation = preferBottom && (variant === "action" || variant === "form");
+  const panelVariants = prefersReducedMotion
+    ? { initial: { opacity: 0 }, in: { opacity: 1 }, out: { opacity: 0 } }
+    : bottomPresentation ? slideUp : subtleOverlayScale;
 
   return (
+    <OverlayPortal>
+      <div
+        className={`fixed inset-0 z-50 ${bottomPresentation ? "" : "grid place-items-center p-4"} ${className ?? ""}`}
+        data-overlay-layer={overlayId}
+        data-overlay-kind={resolvedRole}
+        data-overlay-topmost={isTopmost ? "true" : "false"}
+        aria-hidden={isTopmost ? undefined : "true"}
+        inert={isTopmost ? undefined : true}
+      >
+        {/* Backdrop — touch-none(CSS touch-action:none) 禁止该层处理触摸手势.
+            wheel/touchmove 全局拦截由 useScrollLock 在 capture 阶段完成,
+            不在此处挂 onWheel/onTouchMove 避免 React 19 passive listener 警告. */}
+        <motion.div
+          className="absolute inset-0 bg-ink/40 touch-none"
+          aria-hidden="true"
+          variants={{ in: { opacity: 1 }, out: { opacity: 0 } }}
+          initial="out"
+          animate="in"
+          exit="out"
+          transition={{ duration: duration.fast }}
+          data-parity-id="parity.app.app.src.components.motion.common.d07c4d282a" onClick={handleBackdrop}
+        />
+        {/* Sheet panel — overscroll-behavior:contain 阻止弹窗内部滚到边界时
+            链式触发底层 body 滚动; useScrollLock 同步锁定底层滚动容器 */}
+        <motion.div
+          ref={panelRef}
+          role={resolvedRole}
+          aria-modal="true"
+          aria-label={ariaLabelledBy ? undefined : (ariaLabel ?? fallbackAriaLabel)}
+          aria-labelledby={ariaLabelledBy}
+          aria-busy={!dismissible || undefined}
+          tabIndex={-1}
+          className={`${bottomPresentation ? "absolute bottom-0 inset-x-0 mx-auto rounded-t-2xl" : "relative mx-auto w-full max-w-lg rounded-2xl"} max-h-[92vh] w-full overflow-y-auto overscroll-contain bg-paper p-4 shadow-2xl outline-none ${panelClassName ?? ""}`}
+          variants={panelVariants}
+          initial="initial"
+          animate="in"
+          exit="out"
+          transition={{
+            duration: prefersReducedMotion ? duration.fast : duration.panel,
+            ease: prefersReducedMotion ? ease.out : ease.app,
+          }}
+          data-overlay-variant={variant}
+          data-parity-id="parity.app.app.src.components.motion.common.3ff559809b" onClick={stopProp}
+        >
+          {children}
+          <span className="sr-only" role="status" aria-live="polite">{blockedAnnouncement}</span>
+        </motion.div>
+      </div>
+    </OverlayPortal>
+  );
+}
+
+export function MotionSheet(props: MotionSheetProps) {
+  return (
     <AnimatePresence>
-      {open ? (
-        <div className={`fixed inset-0 z-50 ${className ?? ""}`}>
-          {/* Backdrop — touch-none(CSS touch-action:none) 禁止该层处理触摸手势.
-              wheel/touchmove 全局拦截由 useScrollLock 在 capture 阶段完成,
-              不在此处挂 onWheel/onTouchMove 避免 React 19 passive listener 警告. */}
-          <motion.div
-            className="absolute inset-0 bg-ink/40 touch-none"
-            variants={{ in: { opacity: 1 }, out: { opacity: 0 } }}
-            initial="out"
-            animate="in"
-            exit="out"
-            transition={{ duration: duration.fast }}
-            data-parity-id="parity.app.app.src.components.motion.common.d07c4d282a" onClick={handleBackdrop}
-          />
-          {/* Sheet panel — overscroll-behavior:contain 阻止弹窗内部滚到边界时
-              链式触发底层 body 滚动; useScrollLock 同步锁定底层滚动容器 */}
-          <motion.div
-            ref={panelRef}
-            role={role}
-            aria-modal="true"
-            aria-label={ariaLabel}
-            tabIndex={-1}
-            className={`absolute bottom-0 inset-x-0 mx-auto w-full max-h-[92vh] overflow-y-auto overscroll-contain rounded-t-2xl bg-paper p-4 shadow-2xl outline-none ${preferBottom ? "" : "sm:top-1/2 sm:bottom-auto sm:inset-x-4 sm:max-w-lg sm:mx-auto sm:rounded-lg sm:-translate-y-1/2"} ${panelClassName ?? ""}`}
-            variants={preferBottom ? slideUp : scaleModal}
-            initial="initial"
-            animate="in"
-            exit="out"
-            transition={{ duration: duration.panel, ease: ease.app }}
-            data-parity-id="parity.app.app.src.components.motion.common.3ff559809b" onClick={stopProp}
-          >
-            {children}
-          </motion.div>
-        </div>
-      ) : null}
+      {props.open ? <MotionSheetLayer key="motion-sheet-layer" {...props} /> : null}
     </AnimatePresence>
   );
 }
@@ -211,15 +249,18 @@ interface MotionToastProps {
    * - "error" → role="alert" + aria-live="assertive" (用户必须立刻知道失败)
    * - "success" / "info" / undefined → role="status" + aria-live="polite" (延后播报即可)
    */
-  type?: "success" | "error" | "info";
+  type?: "success" | "error" | "info" | "action";
 }
 
 export function MotionToast({ visible, children, className, placement = "bottom", type }: MotionToastProps) {
-  const variants = placement === "top" ? toastDrop : slideUp;
+  const prefersReducedMotion = useReducedMotion();
+  const variants = prefersReducedMotion
+    ? { initial: { opacity: 0 }, in: { opacity: 1 }, out: { opacity: 0 } }
+    : placement === "top" ? toastDrop : slideUp;
   const isError = type === "error";
   const ariaProps = isError
-    ? { role: "alert" as const, "aria-live": "assertive" as const }
-    : { role: "status" as const, "aria-live": "polite" as const };
+    ? { role: "alert" as const, "aria-live": "assertive" as const, "aria-atomic": true as const }
+    : { role: "status" as const, "aria-live": "polite" as const, "aria-atomic": true as const };
   return (
     <AnimatePresence>
       {visible ? (
@@ -229,7 +270,10 @@ export function MotionToast({ visible, children, className, placement = "bottom"
           initial="initial"
           animate="in"
           exit="out"
-          transition={{ ...spring.snappy, opacity: { duration: duration.fast } }}
+          transition={prefersReducedMotion
+            ? { duration: duration.fast, ease: ease.out }
+            : { ...spring.control, opacity: { duration: duration.fast, ease: ease.out } }}
+          data-toast-type={type ?? "info"}
         >
           <div {...ariaProps}>{children}</div>
         </motion.div>
@@ -239,28 +283,259 @@ export function MotionToast({ visible, children, className, placement = "bottom"
 }
 
 /* ------------------------------------------------------------------ */
-/*  PressableMotionButton – tap-scale feedback                        */
+/*  AppPressable – pointer-first, cancelable press feedback            */
 /* ------------------------------------------------------------------ */
 
-interface PressableMotionButtonProps
+export type AppPressableFeedback = "control" | "icon" | "card";
+
+const PRESS_CANCEL_DISTANCE_PX = 10;
+const PRESS_FEEDBACK_SCALE: Record<AppPressableFeedback, number> = {
+  control: 0.985,
+  icon: 0.98,
+  card: 0.99,
+};
+
+interface ActivePressPointer {
+  pointerId: number;
+  startX: number;
+  startY: number;
+  canceled: boolean;
+}
+
+export interface AppPressableProps
   extends Omit<React.ButtonHTMLAttributes<HTMLButtonElement>, "children"> {
   children: React.ReactNode;
   className?: string;
-  /** Scale target while pressed. Default 0.97 */
-  scale?: number;
+  /** Shared, restrained feedback preset. */
+  feedback?: AppPressableFeedback;
+  /** Keep the control clickable while suppressing press scale, e.g. selection mode. */
+  pressDisabled?: boolean;
+  layoutId?: MotionProps["layoutId"];
 }
 
-export function PressableMotionButton({
+export function AppPressable({
   children,
   className,
-  scale = 0.97,
+  feedback = "control",
+  pressDisabled = false,
+  disabled = false,
+  type = "button",
+  layoutId,
+  style,
+  onBlur,
+  onClick,
+  onContextMenu,
+  onKeyDown,
+  onKeyUp,
+  onLostPointerCapture,
+  onPointerCancel,
+  onPointerDown,
+  onPointerLeave,
+  onPointerMove,
+  onPointerUp,
+  "aria-disabled": ariaDisabled,
   ...rest
-}: PressableMotionButtonProps) {
+}: AppPressableProps) {
+  const prefersReducedMotion = useReducedMotion();
+  const [pressed, setPressed] = useState(false);
+  const activePointerRef = useRef<ActivePressPointer | null>(null);
+  const keyboardPressedRef = useRef(false);
+  const suppressClickRef = useRef(false);
+  const suppressionTimerRef = useRef<number | null>(null);
+  const interactionDisabled = disabled || ariaDisabled === true || ariaDisabled === "true";
+
+  const clearClickSuppression = useCallback(() => {
+    suppressClickRef.current = false;
+    if (suppressionTimerRef.current !== null && typeof window !== "undefined") {
+      window.clearTimeout(suppressionTimerRef.current);
+      suppressionTimerRef.current = null;
+    }
+  }, []);
+
+  const releaseClickSuppressionAfterSequence = useCallback(() => {
+    if (!suppressClickRef.current || typeof window === "undefined") return;
+    if (suppressionTimerRef.current !== null) window.clearTimeout(suppressionTimerRef.current);
+    suppressionTimerRef.current = window.setTimeout(() => {
+      suppressClickRef.current = false;
+      suppressionTimerRef.current = null;
+    }, 0);
+  }, []);
+
+  const cancelCurrentPress = useCallback(() => {
+    const activePointer = activePointerRef.current;
+    if (activePointer) activePointer.canceled = true;
+    suppressClickRef.current = true;
+    setPressed(false);
+  }, []);
+
+  useEffect(() => () => {
+    if (suppressionTimerRef.current !== null) window.clearTimeout(suppressionTimerRef.current);
+  }, []);
+
+  const handlePointerDown = useCallback((event: React.PointerEvent<HTMLButtonElement>) => {
+    onPointerDown?.(event);
+    if (
+      event.defaultPrevented ||
+      interactionDisabled ||
+      pressDisabled ||
+      event.button !== 0 ||
+      !event.isPrimary
+    ) return;
+    clearClickSuppression();
+    activePointerRef.current = {
+      pointerId: event.pointerId,
+      startX: event.clientX,
+      startY: event.clientY,
+      canceled: false,
+    };
+    setPressed(true);
+    const eventTarget = event.target instanceof Element ? event.target : null;
+    const nestedGestureOwner = eventTarget?.closest(
+      '[data-app-press-gesture-owner="true"], [aria-roledescription="carousel"]',
+    );
+    if (nestedGestureOwner && nestedGestureOwner !== event.currentTarget) return;
+    try {
+      event.currentTarget.setPointerCapture(event.pointerId);
+    } catch {
+      // Some WebViews may end the sequence before capture; the remaining
+      // pointer/blur handlers still restore the visual state safely.
+    }
+  }, [clearClickSuppression, interactionDisabled, onPointerDown, pressDisabled]);
+
+  const handlePointerMove = useCallback((event: React.PointerEvent<HTMLButtonElement>) => {
+    const activePointer = activePointerRef.current;
+    if (activePointer?.pointerId === event.pointerId && !activePointer.canceled) {
+      const distance = Math.hypot(
+        event.clientX - activePointer.startX,
+        event.clientY - activePointer.startY,
+      );
+      const rect = event.currentTarget.getBoundingClientRect();
+      const outside = event.clientX < rect.left || event.clientX > rect.right ||
+        event.clientY < rect.top || event.clientY > rect.bottom;
+      if (distance > PRESS_CANCEL_DISTANCE_PX || outside) cancelCurrentPress();
+    }
+    onPointerMove?.(event);
+  }, [cancelCurrentPress, onPointerMove]);
+
+  const handlePointerLeave = useCallback((event: React.PointerEvent<HTMLButtonElement>) => {
+    if (activePointerRef.current?.pointerId === event.pointerId) cancelCurrentPress();
+    onPointerLeave?.(event);
+  }, [cancelCurrentPress, onPointerLeave]);
+
+  const handlePointerUp = useCallback((event: React.PointerEvent<HTMLButtonElement>) => {
+    const activePointer = activePointerRef.current;
+    if (activePointer?.pointerId === event.pointerId) {
+      const rect = event.currentTarget.getBoundingClientRect();
+      if (event.clientX < rect.left || event.clientX > rect.right ||
+        event.clientY < rect.top || event.clientY > rect.bottom) {
+        cancelCurrentPress();
+      }
+      const canceled = activePointer.canceled;
+      activePointerRef.current = null;
+      setPressed(false);
+      try {
+        if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+          event.currentTarget.releasePointerCapture(event.pointerId);
+        }
+      } catch {
+        // Pointer capture may already have been released by the browser.
+      }
+      if (canceled || suppressClickRef.current) releaseClickSuppressionAfterSequence();
+    }
+    onPointerUp?.(event);
+  }, [cancelCurrentPress, onPointerUp, releaseClickSuppressionAfterSequence]);
+
+  const handlePointerCancel = useCallback((event: React.PointerEvent<HTMLButtonElement>) => {
+    if (activePointerRef.current?.pointerId === event.pointerId) {
+      cancelCurrentPress();
+      activePointerRef.current = null;
+      releaseClickSuppressionAfterSequence();
+    }
+    onPointerCancel?.(event);
+  }, [cancelCurrentPress, onPointerCancel, releaseClickSuppressionAfterSequence]);
+
+  const handleLostPointerCapture = useCallback((event: React.PointerEvent<HTMLButtonElement>) => {
+    if (activePointerRef.current?.pointerId === event.pointerId) {
+      cancelCurrentPress();
+      activePointerRef.current = null;
+      releaseClickSuppressionAfterSequence();
+    }
+    onLostPointerCapture?.(event);
+  }, [cancelCurrentPress, onLostPointerCapture, releaseClickSuppressionAfterSequence]);
+
+  const handleKeyDown = useCallback((event: React.KeyboardEvent<HTMLButtonElement>) => {
+    onKeyDown?.(event);
+    if (event.defaultPrevented || interactionDisabled || pressDisabled || event.repeat) return;
+    if (event.key === "Enter" || event.key === " " || event.key === "Spacebar") {
+      clearClickSuppression();
+      keyboardPressedRef.current = true;
+      setPressed(true);
+    }
+  }, [clearClickSuppression, interactionDisabled, onKeyDown, pressDisabled]);
+
+  const handleKeyUp = useCallback((event: React.KeyboardEvent<HTMLButtonElement>) => {
+    if (keyboardPressedRef.current && (event.key === "Enter" || event.key === " " || event.key === "Spacebar")) {
+      keyboardPressedRef.current = false;
+      setPressed(false);
+    }
+    onKeyUp?.(event);
+  }, [onKeyUp]);
+
+  const handleBlur = useCallback((event: React.FocusEvent<HTMLButtonElement>) => {
+    keyboardPressedRef.current = false;
+    if (activePointerRef.current) {
+      cancelCurrentPress();
+      activePointerRef.current = null;
+      releaseClickSuppressionAfterSequence();
+    } else {
+      setPressed(false);
+    }
+    onBlur?.(event);
+  }, [cancelCurrentPress, onBlur, releaseClickSuppressionAfterSequence]);
+
+  const handleContextMenu = useCallback((event: React.MouseEvent<HTMLButtonElement>) => {
+    if (activePointerRef.current) cancelCurrentPress();
+    onContextMenu?.(event);
+  }, [cancelCurrentPress, onContextMenu]);
+
+  const handleClick = useCallback((event: React.MouseEvent<HTMLButtonElement>) => {
+    if (interactionDisabled || suppressClickRef.current) {
+      event.preventDefault();
+      event.stopPropagation();
+      clearClickSuppression();
+      return;
+    }
+    onClick?.(event);
+  }, [clearClickSuppression, interactionDisabled, onClick]);
+
   return (
     <motion.button
       className={className}
-      whileTap={{ scale }}
-      transition={{ duration: duration.fast }}
+      type={type}
+      disabled={disabled}
+      aria-disabled={ariaDisabled}
+      layoutId={layoutId}
+      data-pressed={pressed ? "true" : undefined}
+      data-press-feedback={feedback}
+      animate={{
+        scale: pressed && !prefersReducedMotion ? PRESS_FEEDBACK_SCALE[feedback] : 1,
+        opacity: pressed ? 0.78 : 1,
+      }}
+      transition={prefersReducedMotion
+        ? { duration: 0 }
+        : { ...spring.control, opacity: { duration: 0.06, ease: ease.out } }}
+      style={{ transformOrigin: "center", ...style }}
+      onBlur={handleBlur}
+      onClick={handleClick}
+      onContextMenu={handleContextMenu}
+      onKeyDown={handleKeyDown}
+      onKeyUp={handleKeyUp}
+      onLostPointerCapture={handleLostPointerCapture}
+      onPointerCancel={handlePointerCancel}
+      onPointerDown={handlePointerDown}
+      onPointerLeave={handlePointerLeave}
+      onPointerMove={handlePointerMove}
+      onPointerUp={handlePointerUp}
       {...(rest as MotionProps &
         React.ButtonHTMLAttributes<HTMLButtonElement>)}
     >
@@ -269,51 +544,70 @@ export function PressableMotionButton({
   );
 }
 
-/* ------------------------------------------------------------------ */
-/*  MotionCard – whileTap + optional hover for garment cards           */
-/* ------------------------------------------------------------------ */
-
-interface MotionCardProps {
-  children: React.ReactNode;
-  className?: string;
-  onClick?: () => void;
-  onContextMenu?: (e: React.MouseEvent) => void;
-  /** Extra class when the card is "selected" (used for appearance). */
-  selected?: boolean;
-  /** When true, disables tap scale (e.g. in multi-select mode). */
-  disableTap?: boolean;
-  layoutId?: string;
-}
-
-export function MotionCard({
-  children,
-  className,
-  onClick,
-  onContextMenu,
-  selected = false,
-  disableTap = false,
-  layoutId,
-}: MotionCardProps) {
-  const base = `overflow-hidden rounded-lg border ${selected ? "border-denim ring-1 ring-denim" : "border-ink/10"} bg-white shadow-sm ${className ?? ""}`;
-
-  return (
-    <motion.article
-      layoutId={layoutId}
-      className={base}
-      data-parity-id="parity.app.app.src.components.motion.common.3e04f7dca0" onClick={onClick}
-      onContextMenu={onContextMenu}
-      whileTap={disableTap ? undefined : { scale: 0.97 }}
-      whileHover={{}}
-      transition={{ duration: duration.fast }}
-    >
-      {children}
-    </motion.article>
-  );
-}
+/* Compatibility wrapper retired: all callers use AppPressable directly. */
 
 /* ------------------------------------------------------------------ */
 /*  MotionImageLightbox – scale + opacity transition                  */
 /* ------------------------------------------------------------------ */
+
+interface PendingLightboxSourceAnchor {
+  element: HTMLElement;
+  capturedAt: number;
+}
+
+let pendingLightboxSourceAnchor: PendingLightboxSourceAnchor | null = null;
+
+/**
+ * Records the concrete image surface that is about to open the shared
+ * Lightbox. Keeping this as a one-shot presentation hint avoids widening the
+ * persisted image model or the app navigation contract with DOM references.
+ */
+export function rememberLightboxSourceAnchor(element: HTMLElement | null): void {
+  if (!element?.isConnected) return;
+  pendingLightboxSourceAnchor = { element, capturedAt: Date.now() };
+}
+
+function consumeLightboxSourceAnchor(): HTMLElement | null {
+  const pending = pendingLightboxSourceAnchor;
+  pendingLightboxSourceAnchor = null;
+  if (!pending || Date.now() - pending.capturedAt > 2_000 || !pending.element.isConnected) return null;
+  return pending.element;
+}
+
+function getVisibleSourceRect(element: HTMLElement | null): DOMRect | null {
+  if (!element?.isConnected) return null;
+  const style = window.getComputedStyle(element);
+  if (style.display === "none" || style.visibility === "hidden" || Number(style.opacity) <= 0.01) return null;
+  const rect = element.getBoundingClientRect();
+  if (rect.width <= 1 || rect.height <= 1) return null;
+  const visualViewport = window.visualViewport;
+  const left = visualViewport?.offsetLeft ?? 0;
+  const top = visualViewport?.offsetTop ?? 0;
+  const right = left + (visualViewport?.width ?? window.innerWidth);
+  const bottom = top + (visualViewport?.height ?? window.innerHeight);
+  if (rect.right <= left || rect.left >= right || rect.bottom <= top || rect.top >= bottom) return null;
+  return rect;
+}
+
+function getSourceTransform(sourceRect: DOMRect, targetRect: DOMRect): string {
+  const sourceCenterX = sourceRect.left + sourceRect.width / 2;
+  const sourceCenterY = sourceRect.top + sourceRect.height / 2;
+  const targetCenterX = targetRect.left + targetRect.width / 2;
+  const targetCenterY = targetRect.top + targetRect.height / 2;
+  const scaleX = Math.max(0.02, sourceRect.width / Math.max(1, targetRect.width));
+  const scaleY = Math.max(0.02, sourceRect.height / Math.max(1, targetRect.height));
+  return `translate3d(${sourceCenterX - targetCenterX}px, ${sourceCenterY - targetCenterY}px, 0) scale(${scaleX}, ${scaleY})`;
+}
+
+function runLightboxElementAnimation(
+  element: HTMLElement | null,
+  keyframes: Keyframe[],
+  options: KeyframeAnimationOptions,
+): Promise<void> {
+  if (!element || typeof element.animate !== "function") return Promise.resolve();
+  const animation = element.animate(keyframes, options);
+  return animation.finished.then(() => undefined, () => undefined);
+}
 
 interface MotionImageLightboxProps {
   open: boolean;
@@ -323,91 +617,221 @@ interface MotionImageLightboxProps {
   thumbnailSrc?: string;
   cropBox?: { x: number; y: number; width: number; height: number };
   displayMode?: "original-cropped";
+  ariaLabel?: string;
+  /** Down-drag is disabled while a zoom implementation owns pan gestures. */
+  zoomScale?: number;
+  isPanning?: boolean;
+  dragDismissEnabled?: boolean;
 }
 
-export function MotionImageLightbox({
-  open,
+function MotionImageLightboxLayer({
   onClose,
   src,
   alt,
   thumbnailSrc,
   cropBox,
   displayMode,
-}: MotionImageLightboxProps) {
-  useScrollLock(open);
+  ariaLabel,
+  zoomScale = 1,
+  isPanning = false,
+  dragDismissEnabled = true,
+}: Omit<MotionImageLightboxProps, "open">) {
+  // Keep both the stack entry and scroll lock alive until the exit animation
+  // has completed, so a closing image cannot briefly expose the page below.
+  useScrollLock(true);
+  const layerRef = useRef<HTMLDivElement | null>(null);
+  const backdropEntranceRef = useRef<HTMLDivElement | null>(null);
+  const anchorTransitionRef = useRef<HTMLDivElement | null>(null);
+  const sourceAnchorRef = useRef<HTMLElement | null>(null);
+  const sourceVisibilityRef = useRef("");
+  const closingRef = useRef(false);
+  const prefersReducedMotion = useReducedMotion();
+  const onCloseRef = useRef(onClose);
+  onCloseRef.current = onClose;
+
+  const restoreSourceVisibility = useCallback(() => {
+    const source = sourceAnchorRef.current;
+    if (!source?.isConnected) return;
+    source.style.visibility = sourceVisibilityRef.current;
+  }, []);
+
+  const finishClose = useCallback(() => {
+    restoreSourceVisibility();
+    onCloseRef.current();
+  }, [restoreSourceVisibility]);
+
+  const dragDismiss = useLightboxDragDismiss({
+    onDismiss: finishClose,
+    enabled: dragDismissEnabled,
+    zoomScale,
+    isPanning,
+  });
+
+  const beginClose = useCallback(async () => {
+    if (closingRef.current) return;
+    closingRef.current = true;
+    dragDismiss.y.set(0);
+
+    const source = sourceAnchorRef.current;
+    let sourceRect: DOMRect | null = null;
+    if (source?.isConnected) {
+      const hiddenVisibility = source.style.visibility;
+      source.style.visibility = sourceVisibilityRef.current;
+      sourceRect = getVisibleSourceRect(source);
+      source.style.visibility = hiddenVisibility;
+    }
+    const target = anchorTransitionRef.current;
+    const targetPresentation = target ? window.getComputedStyle(target) : null;
+    const targetStartTransform = targetPresentation?.transform && targetPresentation.transform !== "none"
+      ? targetPresentation.transform
+      : "translate3d(0, 0, 0) scale(1, 1)";
+    const targetStartBorderRadius = targetPresentation?.borderRadius || "0px";
+    const targetStartOpacity = Number(targetPresentation?.opacity ?? 1);
+    target?.getAnimations().forEach((animation) => animation.cancel());
+    const targetRect = target?.getBoundingClientRect();
+    const canReturnToSource = !prefersReducedMotion && sourceRect && targetRect && targetRect.width > 1 && targetRect.height > 1;
+
+    if (target) target.dataset.lightboxSourceTransition = canReturnToSource ? "source" : "fade";
+    const durationMs = canReturnToSource ? 240 : prefersReducedMotion ? 100 : 120;
+    const targetAnimation = canReturnToSource && sourceRect && targetRect
+      ? runLightboxElementAnimation(target, [
+          { transform: targetStartTransform, borderRadius: targetStartBorderRadius, opacity: targetStartOpacity },
+          { transform: getSourceTransform(sourceRect, targetRect), borderRadius: "16px", opacity: 0.92 },
+        ], { duration: durationMs, easing: "cubic-bezier(0.4, 0, 1, 1)", fill: "forwards" })
+      : runLightboxElementAnimation(target, prefersReducedMotion
+        ? [{ opacity: targetStartOpacity }, { opacity: 0 }]
+        : [
+            { transform: targetStartTransform, opacity: targetStartOpacity },
+            { transform: "scale(0.985)", opacity: 0 },
+          ], { duration: durationMs, easing: "cubic-bezier(0.4, 0, 1, 1)", fill: "forwards" });
+    const backdrop = backdropEntranceRef.current;
+    const backdropStartOpacity = Number(backdrop ? window.getComputedStyle(backdrop).opacity : 1);
+    backdrop?.getAnimations().forEach((animation) => animation.cancel());
+    const backdropAnimation = runLightboxElementAnimation(backdropEntranceRef.current, [
+      { opacity: backdropStartOpacity },
+      { opacity: 0 },
+    ], { duration: durationMs, easing: "cubic-bezier(0.4, 0, 1, 1)", fill: "forwards" });
+    await Promise.all([targetAnimation, backdropAnimation]);
+    finishClose();
+  }, [dragDismiss.y, finishClose, prefersReducedMotion]);
+
+  const { overlayId, isTopmost, requestDismiss } = useOverlayLayer({
+    kind: "lightbox",
+    onDismiss: () => { void beginClose(); },
+  });
+  useTopmostFocusScope(layerRef, isTopmost, '[data-lightbox-close="true"]');
+  const handleDismiss = useCallback(() => {
+    requestDismiss("backdrop");
+  }, [requestDismiss]);
+
+  useLayoutEffect(() => {
+    const source = consumeLightboxSourceAnchor();
+    sourceAnchorRef.current = source;
+    const target = anchorTransitionRef.current;
+    const sourceRect = getVisibleSourceRect(source);
+    const targetRect = target?.getBoundingClientRect();
+    const canUseSource = !prefersReducedMotion && sourceRect && targetRect && targetRect.width > 1 && targetRect.height > 1;
+    if (target) target.dataset.lightboxSourceTransition = canUseSource ? "source" : "fade";
+    if (source) sourceVisibilityRef.current = source.style.visibility;
+
+    if (source && canUseSource) {
+      source.style.visibility = "hidden";
+      void runLightboxElementAnimation(target, [
+        { transform: getSourceTransform(sourceRect, targetRect), borderRadius: "16px", opacity: 0.88 },
+        { transform: "translate3d(0, 0, 0) scale(1, 1)", borderRadius: "0px", opacity: 1 },
+      ], { duration: 280, easing: "cubic-bezier(0, 0, 0, 1)", fill: "both" });
+    } else {
+      void runLightboxElementAnimation(target, prefersReducedMotion
+        ? [{ opacity: 0 }, { opacity: 1 }]
+        : [
+            { transform: "scale(0.985)", opacity: 0 },
+            { transform: "scale(1)", opacity: 1 },
+          ], { duration: prefersReducedMotion ? 100 : 140, easing: "cubic-bezier(0, 0, 0, 1)", fill: "both" });
+    }
+
+    return restoreSourceVisibility;
+  }, [prefersReducedMotion, restoreSourceVisibility]);
 
   return (
-    <AnimatePresence>
-      {open ? (
+    <OverlayPortal>
+      <motion.div
+        ref={layerRef}
+        role="dialog"
+        aria-modal="true"
+        aria-label={ariaLabel ?? (alt ? `查看图片：${alt}` : "查看图片")}
+        aria-hidden={isTopmost ? undefined : "true"}
+        inert={isTopmost ? undefined : true}
+        tabIndex={-1}
+        className="fixed inset-0 z-[80] grid min-h-[100dvh] place-items-center p-4 outline-none"
+        variants={{ in: { opacity: 1 }, out: { opacity: 0 } }}
+        initial="out"
+        animate="in"
+        exit="out"
+        transition={{ duration: 0.01 }}
+        data-overlay-layer={overlayId}
+        data-overlay-kind="lightbox"
+        data-overlay-topmost={isTopmost ? "true" : "false"}
+        data-parity-id="parity.app.app.src.components.motion.common.4584c58a8f"
+        onClick={handleDismiss}
+      >
         <motion.div
-          className="fixed inset-0 z-[80] grid place-items-center bg-black p-4"
-          variants={{ in: { opacity: 1 }, out: { opacity: 0 } }}
-          initial="out"
-          animate="in"
-          exit="out"
-          transition={{ duration: duration.fast }}
-          data-parity-id="parity.app.app.src.components.motion.common.4584c58a8f" onClick={onClose}
+          ref={backdropEntranceRef}
+          className="absolute inset-0"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: duration.fast, ease: ease.decelerate }}
+          aria-hidden="true"
         >
-          {/* Image container: 自身也算可点击区域, 点击图片任意位置也可关闭 */}
+          <motion.div className="absolute inset-0 bg-black" style={{ opacity: dragDismiss.backdropOpacity }} />
+        </motion.div>
+        {/* Image container intentionally bubbles clicks: the established
+            lightbox interaction lets users tap the image or backdrop to close. */}
+        <div
+          ref={anchorTransitionRef}
+          className="relative z-10 h-[88dvh] w-[min(92vw,64rem)] origin-center"
+          data-lightbox-source-transition="pending"
+        >
           <motion.div
-            className="relative max-h-[88vh] max-w-4xl overflow-hidden rounded-lg bg-black"
-            variants={scaleModal}
-            initial="initial"
-            animate="in"
-            exit="out"
-            transition={{ duration: duration.normal, ease: ease.app }}
+            className="relative h-full w-full overflow-hidden bg-black"
+            style={{ y: dragDismiss.y, scale: dragDismiss.imageScale, touchAction: "none" }}
+            data-lightbox-drag-enabled={dragDismiss.isEnabled ? "true" : "false"}
+            {...dragDismiss.bindings}
+            onDragStart={(event) => event.preventDefault()}
+            onClick={(event) => {
+              if (!dragDismiss.isEnabled) event.stopPropagation();
+            }}
           >
             {/* eslint-disable-next-line @next/next/no-img-element -- lightbox renders local data-URL images, not static assets */}
             {displayMode === "original-cropped" ? (
-              <OriginalCroppedImage originalSrc={src} thumbnailSrc={thumbnailSrc} cropBox={cropBox} alt={alt} className="h-[88vh] w-[min(92vw,64rem)]" />
+              <OriginalCroppedImage originalSrc={src} thumbnailSrc={thumbnailSrc} cropBox={cropBox} alt={alt} className="h-full w-full" />
             ) : (
-              <img loading="lazy" decoding="async" src={src} alt={alt} className="max-h-[88vh] w-full object-contain" />
+              <img loading="lazy" decoding="async" draggable={false} src={src} alt={alt} className="h-full w-full object-contain" />
             )}
 
-            {/* 关闭按钮: 放在图片右上角 (与图片一起缩放, 不会因屏幕尺寸错位) */}
             <button
               type="button"
-              className="absolute top-2 right-2 z-10 grid h-11 w-11 place-items-center rounded-full bg-black/55 text-white shadow-md backdrop-blur-sm hover:bg-black/75 active:scale-95 transition-all"
-              data-parity-id="parity.app.app.src.components.motion.common.c59e73fe7f" onClick={(event) => {
+              className="absolute top-2 right-2 z-10 grid h-11 w-11 place-items-center rounded-full bg-black/55 text-white shadow-md backdrop-blur-sm transition-colors hover:bg-black/75 active:bg-black/80"
+              data-lightbox-close="true"
+              data-parity-id="parity.app.app.src.components.motion.common.c59e73fe7f"
+              onClick={(event) => {
                 event.stopPropagation();
-                onClose();
+                handleDismiss();
               }}
-              aria-label="关闭"
+              aria-label="关闭图片预览"
             >
               <X size={20} strokeWidth={2.4} aria-hidden="true" />
             </button>
           </motion.div>
-        </motion.div>
-      ) : null}
-    </AnimatePresence>
+        </div>
+      </motion.div>
+    </OverlayPortal>
   );
 }
 
-/* ------------------------------------------------------------------ */
-/*  MotionCheckBadge – pop-in checkmark icon                          */
-/* ------------------------------------------------------------------ */
-
-interface MotionCheckBadgeProps {
-  visible: boolean;
-  children: React.ReactNode;
-  className?: string;
-}
-
-export function MotionCheckBadge({ visible, children, className }: MotionCheckBadgeProps) {
+export function MotionImageLightbox(props: MotionImageLightboxProps) {
   return (
     <AnimatePresence>
-      {visible ? (
-        <motion.div
-          className={className}
-          variants={pop}
-          initial="initial"
-          animate="animate"
-          exit="exit"
-          transition={spring.snappy}
-        >
-          {children}
-        </motion.div>
-      ) : null}
+      {props.open ? <MotionImageLightboxLayer key="motion-image-lightbox" {...props} /> : null}
     </AnimatePresence>
   );
 }
@@ -416,19 +840,242 @@ export function MotionCheckBadge({ visible, children, className }: MotionCheckBa
 /*  MotionPopoverMenu – opacity + scale from anchor                   */
 /* ------------------------------------------------------------------ */
 
+const MENU_ITEM_SELECTOR =
+  'button, a[href], [role="menuitem"], [role="menuitemcheckbox"], [role="menuitemradio"]';
+
+function getEnabledMenuItems(menu: HTMLElement): HTMLElement[] {
+  return Array.from(menu.querySelectorAll<HTMLElement>(MENU_ITEM_SELECTOR)).filter(
+    (node) => !node.hasAttribute("disabled") && node.getAttribute("aria-disabled") !== "true" && node.tabIndex !== -1,
+  );
+}
+
+/**
+ * Guard only the click generated by one outside pointer sequence. The guard
+ * releases on that click, pointer cancellation, or the first frame after the
+ * matching pointerup; it never leaves a time-based global suppression window.
+ */
+function suppressClickForPointerSequence(pointerId: number): () => void {
+  let active = true;
+  let releaseFrame: number | null = null;
+
+  const cleanup = () => {
+    if (!active) return;
+    active = false;
+    if (releaseFrame !== null) window.cancelAnimationFrame(releaseFrame);
+    document.removeEventListener("click", handleClick, true);
+    document.removeEventListener("pointerup", handlePointerUp, true);
+    document.removeEventListener("pointercancel", handlePointerCancel, true);
+  };
+  const handleClick = (event: MouseEvent) => {
+    event.preventDefault();
+    event.stopImmediatePropagation();
+    cleanup();
+  };
+  const handlePointerUp = (event: PointerEvent) => {
+    if (event.pointerId !== pointerId) return;
+    // A click from this sequence is dispatched before the next animation frame.
+    // If no click is generated (drag/cancel), release without delaying input.
+    releaseFrame = window.requestAnimationFrame(cleanup);
+  };
+  const handlePointerCancel = (event: PointerEvent) => {
+    if (event.pointerId === pointerId) cleanup();
+  };
+
+  document.addEventListener("click", handleClick, true);
+  document.addEventListener("pointerup", handlePointerUp, true);
+  document.addEventListener("pointercancel", handlePointerCancel, true);
+  return cleanup;
+}
+
 interface MotionPopoverMenuProps {
   visible: boolean;
   onClose: () => void;
   children: React.ReactNode;
   className?: string;
+  ariaLabel?: string;
   /**
-   * v0.9.42-dev C-1: Anchor element to position the popover relative to.
-   * When provided + visible, the popover renders via createPortal to document.body
-   * with fixed positioning computed from anchor.getBoundingClientRect().
-   * When omitted, falls back to legacy `absolute bottom-full right-0` mode
-   * (clipped by ancestor overflow-hidden / transform-gpu — used for back-compat).
+   * The trigger used for spatial positioning and focus restoration. Existing
+   * callers may omit it; a local marker preserves the old bottom-right anchor
+   * while the menu still renders through the shared OverlayPortal.
    */
   anchorRef?: React.RefObject<HTMLElement | null>;
+}
+
+interface MotionPopoverMenuLayerProps extends Omit<MotionPopoverMenuProps, "visible"> {
+  positioningAnchorRef: React.RefObject<HTMLElement | null>;
+  preferAbove: boolean;
+}
+
+function MotionPopoverMenuLayer({
+  onClose,
+  children,
+  className,
+  ariaLabel,
+  anchorRef,
+  positioningAnchorRef,
+  preferAbove,
+}: MotionPopoverMenuLayerProps) {
+  useScrollLock(true);
+  const prefersReducedMotion = useReducedMotion();
+  const popoverRef = useRef<HTMLDivElement | null>(null);
+  const pointerSequenceCleanupRef = useRef<(() => void) | null>(null);
+  const { overlayId, isTopmost, requestDismiss } = useOverlayLayer({
+    kind: "popover",
+    onDismiss: () => onClose(),
+    restoreFocusTo: anchorRef,
+  });
+
+  // Existing call sites provide native buttons. Promote them into menu items
+  // without forcing a breaking children API migration.
+  useLayoutEffect(() => {
+    const menu = popoverRef.current;
+    if (!menu) return;
+    const candidates = Array.from(menu.querySelectorAll<HTMLElement>(MENU_ITEM_SELECTOR));
+    candidates.forEach((candidate) => {
+      if (!candidate.hasAttribute("role")) candidate.setAttribute("role", "menuitem");
+      if (candidate.hasAttribute("disabled")) candidate.setAttribute("aria-disabled", "true");
+    });
+  }, [children]);
+
+  useTopmostFocusScope(popoverRef, isTopmost, '[role="menuitem"]:not([aria-disabled="true"])');
+
+  useLayoutEffect(() => {
+    let retryFrame: number | null = null;
+    const update = (): boolean => {
+      const anchorEl = positioningAnchorRef.current;
+      const popoverEl = popoverRef.current;
+      if (!anchorEl || !popoverEl) return false;
+      const rect = anchorEl.getBoundingClientRect();
+      const popoverH = popoverEl.offsetHeight;
+      const popoverW = popoverEl.offsetWidth;
+      const visualViewport = window.visualViewport;
+      const viewportLeft = visualViewport?.offsetLeft ?? 0;
+      const viewportTop = visualViewport?.offsetTop ?? 0;
+      const viewportWidth = visualViewport?.width ?? window.innerWidth;
+      const viewportHeight = visualViewport?.height ?? window.innerHeight;
+      const viewportRight = viewportLeft + viewportWidth;
+      const viewportBottom = viewportTop + viewportHeight;
+      const margin = 8;
+      const gap = 8;
+
+      let top: number;
+      let placement: "above" | "below";
+      const belowSpace = viewportBottom - rect.bottom - gap - margin;
+      const aboveSpace = rect.top - viewportTop - gap - margin;
+      if ((preferAbove && aboveSpace >= popoverH) || belowSpace < popoverH) {
+        placement = "above";
+        top = rect.top - popoverH - gap;
+      } else {
+        placement = "below";
+        top = rect.bottom + gap;
+      }
+      const maxTop = Math.max(viewportTop + margin, viewportBottom - popoverH - margin);
+      top = Math.max(viewportTop + margin, Math.min(maxTop, top));
+
+      let left = rect.right - popoverW;
+      const maxLeft = Math.max(viewportLeft + margin, viewportRight - popoverW - margin);
+      left = Math.max(viewportLeft + margin, Math.min(maxLeft, left));
+
+      const originX = Math.max(0, Math.min(popoverW, rect.left + rect.width / 2 - left));
+      const originY = Math.max(0, Math.min(popoverH, rect.top + rect.height / 2 - top));
+
+      popoverEl.style.top = `${top}px`;
+      popoverEl.style.left = `${left}px`;
+      popoverEl.style.transformOrigin = `${originX}px ${originY}px`;
+      popoverEl.dataset.placement = placement;
+      return true;
+    };
+    if (!update()) retryFrame = window.requestAnimationFrame(update);
+    window.addEventListener("scroll", update, true);
+    window.addEventListener("resize", update);
+    window.visualViewport?.addEventListener("resize", update);
+    window.visualViewport?.addEventListener("scroll", update);
+    return () => {
+      if (retryFrame !== null) window.cancelAnimationFrame(retryFrame);
+      window.removeEventListener("scroll", update, true);
+      window.removeEventListener("resize", update);
+      window.visualViewport?.removeEventListener("resize", update);
+      window.visualViewport?.removeEventListener("scroll", update);
+    };
+  }, [positioningAnchorRef, preferAbove]);
+
+  useEffect(() => {
+    if (!isTopmost) return;
+    const handleDocumentPointerDown = (event: PointerEvent) => {
+      const target = event.target as Node | null;
+      if (!target) return;
+      const popoverEl = popoverRef.current;
+      const anchorEl = positioningAnchorRef.current;
+      if (popoverEl && popoverEl.contains(target)) return;
+      if (anchorEl && anchorEl.contains(target)) return;
+      const result = requestDismiss("backdrop");
+      if (!result.handled) return;
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      pointerSequenceCleanupRef.current?.();
+      pointerSequenceCleanupRef.current = suppressClickForPointerSequence(event.pointerId);
+    };
+    document.addEventListener("pointerdown", handleDocumentPointerDown, true);
+    return () => {
+      document.removeEventListener("pointerdown", handleDocumentPointerDown, true);
+      pointerSequenceCleanupRef.current?.();
+      pointerSequenceCleanupRef.current = null;
+    };
+  }, [isTopmost, positioningAnchorRef, requestDismiss]);
+
+  const handleMenuKeyDown = useCallback((event: React.KeyboardEvent<HTMLDivElement>) => {
+    if (!isTopmost) return;
+    if (event.key === "Escape") {
+      event.preventDefault();
+      event.stopPropagation();
+      requestDismiss("escape");
+      return;
+    }
+    if (!["ArrowDown", "ArrowUp", "Home", "End"].includes(event.key)) return;
+    const menu = popoverRef.current;
+    if (!menu) return;
+    const items = getEnabledMenuItems(menu);
+    if (items.length === 0) return;
+    event.preventDefault();
+    const currentIndex = items.indexOf(document.activeElement as HTMLElement);
+    let nextIndex: number;
+    if (event.key === "Home") nextIndex = 0;
+    else if (event.key === "End") nextIndex = items.length - 1;
+    else if (event.key === "ArrowUp") nextIndex = currentIndex <= 0 ? items.length - 1 : currentIndex - 1;
+    else nextIndex = currentIndex < 0 || currentIndex === items.length - 1 ? 0 : currentIndex + 1;
+    items[nextIndex]?.focus();
+  }, [isTopmost, requestDismiss]);
+
+  return (
+    <OverlayPortal>
+      <motion.div
+        ref={popoverRef}
+        role="menu"
+        aria-label={ariaLabel ?? "更多操作"}
+        aria-orientation="vertical"
+        aria-hidden={isTopmost ? undefined : "true"}
+        inert={isTopmost ? undefined : true}
+        tabIndex={-1}
+        className={`fixed z-[70] min-w-[120px] max-w-[calc(100vw-16px)] rounded-lg border border-ink/10 bg-white py-1 shadow-lg outline-none ${className ?? ""}`}
+        style={{ top: -9999, left: -9999, transformOrigin: "100% 0" }}
+        variants={prefersReducedMotion
+          ? { initial: { opacity: 0 }, in: { opacity: 1 }, out: { opacity: 0 } }
+          : anchoredPopoverScale}
+        initial="initial"
+        animate="in"
+        exit="out"
+        transition={{ duration: duration.fast, ease: ease.out }}
+        data-overlay-layer={overlayId}
+        data-overlay-kind="popover"
+        data-overlay-topmost={isTopmost ? "true" : "false"}
+        data-parity-id="parity.app.app.src.components.motion.common.8e918697ef"
+        onKeyDown={handleMenuKeyDown}
+        onClick={(event: React.MouseEvent) => event.stopPropagation()}
+      >
+        {children}
+      </motion.div>
+    </OverlayPortal>
+  );
 }
 
 export function MotionPopoverMenu({
@@ -436,153 +1083,38 @@ export function MotionPopoverMenu({
   onClose,
   children,
   className,
+  ariaLabel,
   anchorRef,
 }: MotionPopoverMenuProps) {
-  const popoverRef = useRef<HTMLDivElement>(null);
-  const usePortal = !!anchorRef;
+  const legacyAnchorRef = useRef<HTMLSpanElement | null>(null);
+  const positioningAnchorRef = (anchorRef ?? legacyAnchorRef) as React.RefObject<HTMLElement | null>;
 
-  // v0.9.42-dev C-1: 在 portal 模式下, 用 anchor.getBoundingClientRect() 算 popover 的
-  // top/left (等价于 absolute bottom-full right-0, 但用 fixed 相对 viewport, 绕开 overflow-hidden ancestor)。
-  // 监听 window scroll/resize, popover 跟随 anchor 位置。
-  useLayoutEffect(() => {
-    if (!visible || !usePortal) return;
-    const anchorEl = anchorRef?.current;
-    const popoverEl = popoverRef.current;
-    if (!anchorEl || !popoverEl) return;
-
-    const update = () => {
-      const rect = anchorEl.getBoundingClientRect();
-      const popoverH = popoverEl.offsetHeight;
-      const popoverW = popoverEl.offsetWidth;
-      const vw = window.innerWidth;
-      const vh = window.innerHeight;
-      const MARGIN = 8;
-
-      // v0.9.52-dev: viewport clamping — 优先放下方，空间不足放上方
-      let top: number;
-      const belowSpace = vh - rect.bottom - MARGIN;
-      const aboveSpace = rect.top - MARGIN;
-      if (belowSpace >= popoverH + MARGIN) {
-        // 放在 anchor 下方
-        top = rect.bottom + MARGIN;
-      } else if (aboveSpace >= popoverH + MARGIN) {
-        // 放在 anchor 上方
-        top = rect.top - popoverH - MARGIN;
-      } else {
-        // 都不够 — 放下方并 clamp
-        top = Math.max(MARGIN, Math.min(vh - popoverH - MARGIN, rect.bottom + MARGIN));
-      }
-
-      // left: 右对齐 anchor，但 clamp 到 viewport 内
-      let left = rect.right - popoverW;
-      if (left < MARGIN) left = MARGIN;
-      if (left + popoverW > vw - MARGIN) left = vw - popoverW - MARGIN;
-
-      popoverEl.style.top = `${top}px`;
-      popoverEl.style.left = `${left}px`;
-    };
-    update();
-    window.addEventListener("scroll", update, true);
-    window.addEventListener("resize", update);
-    return () => {
-      window.removeEventListener("scroll", update, true);
-      window.removeEventListener("resize", update);
-    };
-  }, [visible, usePortal, anchorRef]);
-
-  // v0.9.44-dev 问题 1: 文档级 pointerdown 监听代替"全屏 backdrop button"。
-  // - pointerdown 在 click 之前触发, 先一步关闭, 不会"先 onClick 再 onClose"
-  // - 仅当 target 既不在 popover 也不在 anchor (3-dot 按钮) 内时关闭
-  // - 关闭后用 once 性 click 拦截器 (capture 阶段) 吞掉本次 click, 避免事件穿透到底层卡片
-  //   触发进详情/多选等; 但相邻 3-dot 按钮 是 anchor 之外的 button, 同一次 pointer 序列
-  //   也只产生 1 个 click → 吞掉就吞掉, 相邻菜单按钮需用户再点一次 (与原 backdrop 行为一致)
-  // - capture 阶段挂载, 比目标节点的 onPointerDown 更早跑, 避免被 stopPropagation 漏掉
-  useEffect(() => {
-    if (!visible) return;
-    if (typeof document === "undefined") return;
-    const handleDocPointerDown = (e: PointerEvent) => {
-      const target = e.target as Node | null;
-      if (!target) return;
-      const popoverEl = popoverRef.current;
-      const anchorEl = anchorRef?.current ?? null;
-      if (popoverEl && popoverEl.contains(target)) return;
-      if (anchorEl && anchorEl.contains(target)) return;
-      onClose();
-      // 吞掉接下来同序列的 click, 防止穿透到底层卡片
-      const suppressClick = (ce: MouseEvent) => {
-        ce.stopPropagation();
-        ce.preventDefault();
-        document.removeEventListener("click", suppressClick, true);
-      };
-      document.addEventListener("click", suppressClick, true);
-      // 兜底: 若本次 pointerdown 因故没产生 click (拖动 / cancel), 100ms 后摘掉拦截器
-      window.setTimeout(() => {
-        document.removeEventListener("click", suppressClick, true);
-      }, 400);
-    };
-    document.addEventListener("pointerdown", handleDocPointerDown, true);
-    const handleDocKeyDown = (e: KeyboardEvent) => {
-      if (e.key !== "Escape") return;
-      e.preventDefault();
-      e.stopPropagation();
-      onClose();
-    };
-    document.addEventListener("keydown", handleDocKeyDown, true);
-    return () => {
-      document.removeEventListener("pointerdown", handleDocPointerDown, true);
-      document.removeEventListener("keydown", handleDocKeyDown, true);
-    };
-  }, [visible, anchorRef, onClose]);
-
-  // Legacy 模式: absolute bottom-full right-0 (在父级内, 受 ancestor overflow-hidden 约束)
-  if (!usePortal) {
-    return (
+  return (
+    <>
+      {!anchorRef ? (
+        <span
+          ref={legacyAnchorRef}
+          className="pointer-events-none absolute right-0 top-0 h-px w-px"
+          aria-hidden="true"
+          data-popover-legacy-anchor="true"
+        />
+      ) : null}
       <AnimatePresence>
         {visible ? (
-          <motion.div
-            ref={popoverRef}
-            className={`absolute bottom-full right-0 z-[70] mb-1 min-w-[120px] rounded-lg border border-ink/10 bg-white py-1 shadow-lg ${className ?? ""}`}
-            variants={scaleModal}
-            initial="initial"
-            animate="in"
-            exit="out"
-            transition={{ duration: duration.fast, ease: ease.accelerate }}
-            // popover 内部点击不冒泡到外层卡片 (但 document 级 pointerdown 已识别 contains 跳过)
-            data-parity-id="parity.app.app.src.components.motion.common.307ed3f33d" onClick={(e: React.MouseEvent) => e.stopPropagation()}
+          <MotionPopoverMenuLayer
+            key="motion-popover-menu"
+            onClose={onClose}
+            className={className}
+            ariaLabel={ariaLabel}
+            anchorRef={anchorRef}
+            positioningAnchorRef={positioningAnchorRef}
+            preferAbove={!anchorRef}
           >
             {children}
-          </motion.div>
+          </MotionPopoverMenuLayer>
         ) : null}
       </AnimatePresence>
-    );
-  }
-
-  // v0.9.42-dev C-1 Portal 模式: createPortal 到 body, fixed 定位, 绕开 ancestor overflow-hidden
-  return (
-    <AnimatePresence>
-      {visible ? (
-        <>
-          {typeof document !== "undefined"
-            ? createPortal(
-                <motion.div
-                  ref={popoverRef}
-                  className={`fixed z-[70] min-w-[120px] rounded-lg border border-ink/10 bg-white py-1 shadow-lg ${className ?? ""}`}
-                  style={{ top: -9999, left: -9999 }}
-                  variants={scaleModal}
-                  initial="initial"
-                  animate="in"
-                  exit="out"
-                  transition={{ duration: duration.fast, ease: ease.accelerate }}
-                  data-parity-id="parity.app.app.src.components.motion.common.8e918697ef" onClick={(e: React.MouseEvent) => e.stopPropagation()}
-                >
-                  {children}
-                </motion.div>,
-                document.body,
-              )
-            : null}
-        </>
-      ) : null}
-    </AnimatePresence>
+    </>
   );
 }
 
@@ -615,8 +1147,7 @@ export function AiTaskProgressCard({
   return (
     <div
       className="rounded-lg border border-denim/20 bg-denim/5 p-3"
-      role="status"
-      aria-live="polite"
+      aria-busy={clamped < 100 || undefined}
     >
       <div className="flex items-center justify-between gap-3">
         <div className="min-w-0 flex-1">
@@ -630,16 +1161,26 @@ export function AiTaskProgressCard({
       </div>
       <div
         className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-denim/15"
-        aria-hidden="true"
+        role="progressbar"
+        aria-label={`${label}进度`}
+        aria-valuemin={0}
+        aria-valuemax={100}
+        aria-valuenow={Math.round(clamped)}
+        aria-valuetext={stage}
       >
         <div
           className="h-full rounded-full bg-denim"
           style={{
-            width: `${clamped}%`,
-            transition: prefersReducedMotion ? "none" : "width 0.3s ease-out",
+            transform: `scaleX(${clamped / 100})`,
+            transformOrigin: "left center",
+            transition: prefersReducedMotion ? "none" : "transform 0.3s ease-out",
+            willChange: clamped > 0 && clamped < 100 ? "transform" : undefined,
           }}
         />
       </div>
+      <span className="sr-only" role="status" aria-live="polite" aria-atomic="true">
+        {label}：{stage}
+      </span>
     </div>
   );
 }
@@ -667,9 +1208,10 @@ export function MotionShimmer({ className }: MotionShimmerProps) {
           style={{
             background:
               "linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.45) 50%, transparent 100%)",
-            backgroundSize: "200% 100%",
+            willChange: "transform",
           }}
-          animate={{ backgroundPosition: ["200% 0", "-200% 0"] }}
+          initial={{ x: "-100%" }}
+          animate={{ x: "100%" }}
           transition={{ repeat: Infinity, duration: 1.8, ease: "linear" }}
         />
       )}
@@ -695,22 +1237,28 @@ export function MotionAccordion({
   className,
   animateHeight = true,
 }: MotionAccordionProps) {
-  const heightAnim = animateHeight
-    ? { height: 0 as const, opacity: 0 }
-    : { opacity: 0, y: 8 };
-  const heightAnimIn = animateHeight
-    ? { height: "auto" as const, opacity: 1 }
-    : { opacity: 1, y: 0 };
+  const prefersReducedMotion = useReducedMotion();
+  // Compatibility prop: older callers can still request the richer reveal,
+  // but no path interpolates intrinsic height. This avoids repeated layout on
+  // image-heavy content and makes the reduced-motion branch opacity-only.
+  const shouldAnimateHeight = animateHeight && !prefersReducedMotion;
+  const revealFrom = prefersReducedMotion
+    ? { opacity: 0 }
+    : shouldAnimateHeight ? { opacity: 0, y: 8 } : { opacity: 0, y: 4 };
+  const revealTo = prefersReducedMotion ? { opacity: 1 } : { opacity: 1, y: 0 };
 
   return (
     <AnimatePresence initial={false}>
       {expanded ? (
         <motion.div
           className={`overflow-hidden ${className ?? ""}`}
-          initial={heightAnim}
-          animate={heightAnimIn}
-          exit={heightAnim}
-          transition={{ duration: duration.normal, ease: ease.app }}
+          initial={revealFrom}
+          animate={revealTo}
+          exit={revealFrom}
+          transition={{
+            duration: prefersReducedMotion ? duration.fast : duration.normal,
+            ease: ease.app,
+          }}
         >
           {children}
         </motion.div>
@@ -722,36 +1270,4 @@ export function MotionAccordion({
 /* ------------------------------------------------------------------ */
 /*  MotionTransition – wraps keyed content with AnimatePresence       */
 /* ------------------------------------------------------------------ */
-
-interface MotionTransitionProps {
-  children: React.ReactNode;
-  /** Key that triggers enter/exit when it changes. */
-  transitionKey: string;
-  className?: string;
-  /** "horizontal" for slide-right push/pop. "fade" for simple crossfade. */
-  variant?: "horizontal" | "fade";
-}
-
-export function MotionTransition({
-  children,
-  transitionKey,
-  className,
-  variant = "horizontal",
-}: MotionTransitionProps) {
-  const variants = variant === "horizontal" ? slideRight : scaleModal;
-  return (
-    <AnimatePresence mode="wait">
-      <motion.div
-        key={transitionKey}
-        className={className}
-        variants={variants}
-        initial="initial"
-        animate="in"
-        exit="out"
-        transition={{ duration: duration.panel, ease: ease.app }}
-      >
-        {children}
-      </motion.div>
-    </AnimatePresence>
-  );
-}
+/* Retired duplicate API: use NavigationMotion or SettingsSubpageMotion. */

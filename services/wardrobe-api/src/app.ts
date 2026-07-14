@@ -37,6 +37,8 @@ import { registerTestFaultInjection } from "./test/fault-injection.js";
 import { registerWorkspaceRoutes } from "./workspace/routes.js";
 import { WorkspaceQueryService } from "./workspace/query-service.js";
 import { WorkspaceCommandService } from "./workspace/command-service.js";
+import { registerImageCropRoutes } from "./image-crop/routes.js";
+import { ImageCropService } from "./image-crop/service.js";
 
 export type ReadinessCheck = () => Promise<{ database: "ready" }>;
 
@@ -57,6 +59,8 @@ export interface BuildAppOptions {
   emailVerificationService?: EmailVerificationService;
   accountPasswordAuthService?: AccountPasswordAuthService;
   accountDeletionService?: AccountDeletionService;
+  imageCropService?: ImageCropService;
+  imageCropReadinessCheck?: () => Promise<boolean>;
 }
 
 export function buildApp(options: BuildAppOptions = {}): FastifyInstance {
@@ -66,6 +70,8 @@ export function buildApp(options: BuildAppOptions = {}): FastifyInstance {
     ? options.storageProvider ?? null
     : createStorageProviderFromEnv();
   const storage = configuredStorage ?? new UnavailableStorageProvider();
+  const imageCropService = options.imageCropService ?? new ImageCropService();
+  if (!options.imageCropService && !options.imageCropReadinessCheck) imageCropService.start();
   const app = Fastify({
     trustProxy: true,
     logger: process.env.NODE_ENV !== "test"
@@ -105,6 +111,7 @@ export function buildApp(options: BuildAppOptions = {}): FastifyInstance {
     jwt: "unavailable",
     email: "unavailable",
     wechat: "unavailable",
+    imageCrop: "unavailable",
     };
 
     try {
@@ -121,8 +128,10 @@ export function buildApp(options: BuildAppOptions = {}): FastifyInstance {
     deps.email = emailReady ? "ready" : "unavailable";
     const wechatReady = checkWechatReady();
     deps.wechat = wechatReady ? "ready" : "unavailable";
+    const imageCropReady = await (options.imageCropReadinessCheck ?? (async () => imageCropService.isReady()))();
+    deps.imageCrop = imageCropReady ? "ready" : "unavailable";
 
-    const allReady = deps.database === "ready" && deps.storage === "ready" && jwtReady && emailReady && wechatReady;
+    const allReady = deps.database === "ready" && deps.storage === "ready" && jwtReady && emailReady && wechatReady && imageCropReady;
     if (!allReady) {
       reply.code(503);
       return ReadyResponseSchema.parse({
@@ -136,7 +145,7 @@ export function buildApp(options: BuildAppOptions = {}): FastifyInstance {
 
     return ReadyResponseSchema.parse({
       status: "ok",
-      dependencies: { database: "ready", storage: "ready", jwt: "ready", email: "ready", wechat: "ready" },
+      dependencies: { database: "ready", storage: "ready", jwt: "ready", email: "ready", wechat: "ready", imageCrop: "ready" },
       serverTime,
     });
   });
@@ -193,6 +202,8 @@ export function buildApp(options: BuildAppOptions = {}): FastifyInstance {
     sharedSessionService ?? new SessionService(),
   );
   registerAiIntakeRoutes(app, sharedSessionService ?? new SessionService(), options.miniMaxIntakeService ?? new MiniMaxIntakeService());
+  registerImageCropRoutes(app, sharedSessionService ?? new SessionService(), imageCropService);
+  app.addHook("onClose", async () => imageCropService.close());
   const diagnosticService = options.diagnosticService ?? new DiagnosticService(storage);
   registerDiagnosticRoutes(app, sharedSessionService ?? new SessionService(), diagnosticService);
   registerDiagnosticAdminRoutes(app, diagnosticService);

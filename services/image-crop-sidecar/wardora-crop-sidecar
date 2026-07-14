@@ -1,0 +1,53 @@
+#!/usr/bin/env python3
+"""Private persistent u2netp crop worker. NDJSON over stdio; no network or files."""
+import argparse, base64, io, json, os, sys
+from pathlib import Path
+import numpy as np
+from PIL import Image, ImageOps
+from rembg import new_session
+from scipy import ndimage
+
+MODEL_VERSION = "u2netp-rembg-v0.0.0-sha256-309c8469"
+
+def infer(session, image):
+    inputs = session.normalize(image, (0.485, 0.456, 0.406), (0.229, 0.224, 0.225), (320, 320))
+    scores = np.squeeze(session.inner_session.run(None, inputs)[0][:, 0, :, :]).astype(np.float32)
+    low, high = float(scores.min()), float(scores.max())
+    if high - low < 1e-8: raise RuntimeError("empty_foreground")
+    scores = (scores - low) / (high - low); binary = scores >= 0.5
+    labels, count = ndimage.label(binary); areas = np.bincount(labels.ravel(), minlength=count + 1); largest = int(areas[1:].max()) if count else 0
+    keep = np.zeros_like(binary, dtype=bool); minimum = max(int(binary.size * .001), int(largest * .03))
+    for component in range(1, count + 1):
+        if areas[component] >= minimum: keep |= labels == component
+    ys, xs = np.nonzero(keep)
+    if not len(xs): raise RuntimeError("empty_foreground")
+    height, width = keep.shape; x1, y1, x2, y2 = int(xs.min()), int(ys.min()), int(xs.max()) + 1, int(ys.max()) + 1
+    confidence = float(scores[keep].mean())
+    return {"cropBox":{"x":x1/width,"y":y1/height,"width":(x2-x1)/width,"height":(y2-y1)/height},"confidence":confidence,"needsReview":confidence < .6,"reasonCodes":["low_confidence"] if confidence < .6 else [],"modelVersion":MODEL_VERSION}
+
+def emit(value):
+    sys.stdout.write(json.dumps(value, separators=(",", ":")) + "\n"); sys.stdout.flush()
+
+def main():
+    parser = argparse.ArgumentParser(); parser.add_argument("--model", required=True); parser.add_argument("--persistent", action="store_true"); args = parser.parse_args()
+    model = Path(args.model).resolve()
+    if not model.is_file(): raise RuntimeError("model_not_found")
+    os.environ["U2NET_HOME"] = str(model.parent); os.environ["MODEL_CHECKSUM_DISABLED"] = "1"
+    session = new_session("u2netp", providers=["CPUExecutionProvider"])
+    # Force ONNX graph initialization before readiness. The synthetic output is discarded.
+    warm = Image.new("RGB", (320, 320), (127, 127, 127))
+    inputs = session.normalize(warm, (0.485, 0.456, 0.406), (0.229, 0.224, 0.225), (320, 320))
+    session.inner_session.run(None, inputs)
+    emit({"type":"ready","modelVersion":MODEL_VERSION})
+    for line in sys.stdin:
+        request_id = ""
+        try:
+            request = json.loads(line); request_id = request.get("requestId", "")
+            raw = base64.b64decode(request["imageBase64"], validate=True)
+            with Image.open(io.BytesIO(raw)) as source: image = ImageOps.exif_transpose(source).convert("RGB")
+            if image.width * image.height > 40_000_000: raise RuntimeError("pixel_limit")
+            emit({"type":"result","requestId":request_id,**infer(session, image)})
+        except Exception:
+            emit({"type":"error","requestId":request_id,"code":"inference_failed"})
+
+if __name__ == "__main__": main()

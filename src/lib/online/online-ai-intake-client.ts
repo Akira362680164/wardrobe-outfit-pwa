@@ -25,6 +25,7 @@ export interface RecognizeGarmentsBatchServerItem {
   aiRequestDataUrl: string;
   originalDataUrl: string;
   fileName: string;
+  gridImageDataUrl: string;
 }
 
 export interface RecognizeGarmentsBatchServerResult {
@@ -38,6 +39,7 @@ export async function recognizeGarmentOnServer(input: {
   originalDataUrl: string;
   fileName: string;
   settings: DeviceMiniMaxSettings;
+  gridImageDataUrl: string;
 }): Promise<SingleItemRecognition> {
   const response = await onlineRequest<AiGarmentRecognitionResponse>("/api/workspace/ai/intake/garment-recognition", {
     method: "POST",
@@ -45,6 +47,7 @@ export async function recognizeGarmentOnServer(input: {
     body: {
       miniMax: toRuntimeSettings(input.settings),
       imageDataUrl: input.aiRequestDataUrl,
+      gridImageDataUrl: input.gridImageDataUrl,
       fallbackName: input.fileName,
     },
   });
@@ -52,6 +55,9 @@ export async function recognizeGarmentOnServer(input: {
     tag: response.tag,
     imageDataUrl: input.originalDataUrl,
     sourceImageDataUrl: input.originalDataUrl,
+    secondaryCropBox: response.secondaryCropBox,
+    cropConfidence: response.cropConfidence,
+    cropNeedsReview: response.cropNeedsReview,
   };
 }
 
@@ -76,6 +82,7 @@ export async function recognizeGarmentsBatchOnServer(input: {
           items: chunk.map((item) => ({
             clientItemId: item.imageItemId,
             imageDataUrl: item.aiRequestDataUrl,
+            gridImageDataUrl: item.gridImageDataUrl,
             fallbackName: item.fileName,
           })),
         },
@@ -91,6 +98,9 @@ export async function recognizeGarmentsBatchOnServer(input: {
             tag: matched.tag,
             imageDataUrl: item.originalDataUrl,
             sourceImageDataUrl: item.originalDataUrl,
+            secondaryCropBox: matched.secondaryCropBox,
+            cropConfidence: matched.cropConfidence,
+            cropNeedsReview: matched.cropNeedsReview,
           },
         };
       }));
@@ -153,6 +163,7 @@ function recognitionBatchBodySize(items: RecognizeGarmentsBatchServerItem[], set
     items: items.map((item) => ({
       clientItemId: item.imageItemId,
       imageDataUrl: item.aiRequestDataUrl,
+      gridImageDataUrl: item.gridImageDataUrl,
       fallbackName: item.fileName,
     })),
   };

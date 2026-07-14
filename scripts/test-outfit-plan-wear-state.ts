@@ -189,7 +189,7 @@ console.log("\n=== isPrimaryActual 修复 ===");
 // planned entry 确认转为 worn 时设置 isPrimaryActual
 check(
   "planned entry 在服务端事务中转为 worn 时设置 isPrimaryActual",
-  /isPrimaryActual: Boolean\(payload\.isPrimary\)/.test(workspaceCommandService),
+  /isPrimaryActual: wantsPrimaryActual/.test(workspaceCommandService),
 );
 
 // ============================================================

@@ -5,6 +5,9 @@
 :root {
   --android-safe-area-top: 0px;
   --android-safe-area-bottom: 0px;
+  /* Full-screen intake lives inside the WebView viewport. On Android that
+     viewport already starts below the status bar; iOS exposes its inset here. */
+  --intake-safe-area-top: env(safe-area-inset-top, 0px);
   color-scheme: light;
   --color-ink: #1d2228;
   --color-paper: #fbfbf8;
@@ -25,16 +28,23 @@
   --ui-glass-bg: rgba(251, 251, 248, 0.75);
   --ui-glass-border: rgba(29, 34, 40, 0.08);
   --ui-soft-shadow: 0 18px 50px rgba(29, 34, 40, 0.09);
+  --ui-surface-bg: rgba(255, 255, 252, 0.78);
+  --ui-card-bg: rgba(255, 255, 252, 0.52);
+  --ui-card-filter: blur(30px) saturate(1.35) brightness(1.04);
+  --ui-inner-card-bg: rgba(251, 251, 248, 0.72);
+  --ui-glass-top-bg: rgba(255, 255, 255, 0.01);
+  --ui-material-filter: blur(24px) saturate(1.15);
+  --ui-surface-filter: blur(22px) saturate(1.1);
+  --site-garment-neutral: rgb(216 213 203);
+  --site-garment-shirt: rgb(170 185 189);
+  --site-garment-trousers: rgb(78 89 98);
+  --site-clay-light: rgb(216 176 159);
   background: #f4f5f3;
   color: #1d2228;
 }
 
 * {
   box-sizing: border-box;
-}
-
-html {
-  scroll-behavior: smooth;
 }
 
 body {
@@ -68,10 +78,10 @@ button {
 .surface {
   border: 1px solid var(--ui-glass-border);
   border-radius: var(--ui-radius-card);
-  background: rgba(255, 255, 252, 0.78);
+  background: var(--ui-surface-bg);
   box-shadow: var(--ui-soft-shadow);
-  -webkit-backdrop-filter: blur(22px) saturate(1.1);
-  backdrop-filter: blur(22px) saturate(1.1);
+  -webkit-backdrop-filter: var(--ui-surface-filter);
+  backdrop-filter: var(--ui-surface-filter);
 }
 
 .app-ambient-bg {
@@ -81,14 +91,19 @@ button {
 .ui-card {
   border: 1px solid var(--ui-glass-border);
   border-radius: var(--ui-radius-card);
-  background: rgba(255, 255, 252, 0.82);
-  box-shadow: 0 14px 38px rgba(29, 34, 40, 0.07);
+  background: var(--ui-card-bg);
+  box-shadow:
+    0 14px 38px rgba(29, 34, 40, 0.07),
+    inset 0 1px 0 rgba(255, 255, 255, 0.64),
+    inset 0 -1px 0 rgba(29, 34, 40, 0.1);
+  -webkit-backdrop-filter: var(--ui-card-filter);
+  backdrop-filter: var(--ui-card-filter);
 }
 
 .ui-inner-card {
   border: 1px solid rgba(29, 34, 40, 0.06);
   border-radius: var(--ui-radius-inner);
-  background: rgba(251, 251, 248, 0.72);
+  background: var(--ui-inner-card-bg);
 }
 
 .ui-control-radius {
@@ -100,10 +115,10 @@ button {
 .app-floating-nav,
 .app-toast {
   border: 1px solid var(--ui-glass-border);
-  background: rgba(251, 251, 248, 0.75);
+  background: var(--ui-glass-bg);
   box-shadow: 0 16px 46px rgba(29, 34, 40, 0.1);
-  -webkit-backdrop-filter: blur(24px) saturate(1.15);
-  backdrop-filter: blur(24px) saturate(1.15);
+  -webkit-backdrop-filter: var(--ui-material-filter);
+  backdrop-filter: var(--ui-material-filter);
 }
 
 .app-glass-top {
@@ -124,7 +139,41 @@ button {
   max-width: 28rem;
   margin-inline: auto;
   padding: 0.5rem;
+  overflow: hidden;
+  isolation: isolate;
+  border: 0;
   border-radius: var(--ui-radius-nav);
+  background: rgba(255, 255, 252, 0.4);
+  box-shadow:
+    0 6px 8px rgba(29, 34, 40, 0.08),
+    inset 0 1px 0 rgba(255, 255, 255, 0.64),
+    inset 0 -1px 0 rgba(29, 34, 40, 0.1);
+  -webkit-backdrop-filter: blur(34px) saturate(1.5) brightness(1.05);
+  backdrop-filter: blur(34px) saturate(1.5) brightness(1.05);
+}
+
+.app-floating-nav::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  border-radius: inherit;
+  background: linear-gradient(
+    135deg,
+    rgba(255, 255, 255, 0.46) 0%,
+    rgba(255, 255, 255, 0.2) 26%,
+    transparent 58%,
+    rgba(29, 34, 40, 0.05) 100%
+  );
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 255, 255, 0.42),
+    inset 0 0 12px rgba(255, 255, 255, 0.12);
+  pointer-events: none;
+}
+
+.app-floating-nav > * {
+  position: relative;
+  z-index: 1;
 }
 
 .app-toast {
@@ -141,14 +190,161 @@ button {
   display: none;
 }
 
+/* One cancellable press language for native buttons that do not need the
+   pointer state machine in AppPressable. Individual `scale` composes with
+   Tailwind translate/rotate transforms and never changes hit-target geometry. */
+.app-press-feedback {
+  transition-property: opacity, scale;
+  transition-duration: 120ms;
+  transition-timing-function: cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .app-press-feedback:active:not(:disabled):not([aria-disabled="true"]) {
+    scale: 0.98;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .app-press-feedback:active:not(:disabled):not([aria-disabled="true"]) {
+    opacity: 0.78;
+  }
+}
+
+/* Material remains legible when transparency is reduced, contrast is raised,
+   backdrop-filter is unavailable, or a constrained Android device opts out of
+   large composited blur layers. */
+:root[data-reduced-transparency],
+:root[data-motion-effects="reduced"] {
+  --ui-glass-bg: rgba(251, 251, 248, 0.98);
+  --ui-glass-top-bg: rgba(251, 251, 248, 0.98);
+  --ui-surface-bg: rgba(255, 255, 252, 0.98);
+  --ui-card-bg: rgba(255, 255, 252, 0.98);
+  --ui-card-filter: none;
+  --ui-inner-card-bg: rgba(251, 251, 248, 0.98);
+  --ui-material-filter: none;
+  --ui-surface-filter: none;
+}
+
+:root[data-reduced-transparency] .app-glass-top,
+:root[data-high-contrast] .app-glass-top,
+:root[data-motion-effects="reduced"] .app-glass-top {
+  background: var(--ui-glass-top-bg);
+}
+
+:root[data-reduced-transparency] .app-floating-nav,
+:root[data-high-contrast] .app-floating-nav {
+  background: var(--ui-glass-bg);
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+}
+
+:root[data-high-contrast] {
+  --ui-glass-bg: rgb(251 251 248);
+  --ui-glass-top-bg: rgb(251 251 248);
+  --ui-surface-bg: rgb(255 255 252);
+  --ui-card-bg: rgb(255 255 252);
+  --ui-card-filter: none;
+  --ui-inner-card-bg: rgb(251 251 248);
+  --ui-glass-border: rgba(29, 34, 40, 0.28);
+  --ui-material-filter: none;
+  --ui-surface-filter: none;
+  --ui-soft-shadow: 0 10px 28px rgba(29, 34, 40, 0.16);
+}
+
+:root[data-reduced-transparency] [class*="backdrop-blur"],
+:root[data-high-contrast] [class*="backdrop-blur"],
+:root[data-motion-effects="reduced"] [class*="backdrop-blur"] {
+  -webkit-backdrop-filter: none !important;
+  backdrop-filter: none !important;
+}
+
+@media (prefers-reduced-transparency: reduce) {
+  :root {
+    --ui-glass-bg: rgba(251, 251, 248, 0.98);
+    --ui-glass-top-bg: rgba(251, 251, 248, 0.98);
+    --ui-surface-bg: rgba(255, 255, 252, 0.98);
+    --ui-card-bg: rgba(255, 255, 252, 0.98);
+    --ui-card-filter: none;
+    --ui-inner-card-bg: rgba(251, 251, 248, 0.98);
+    --ui-material-filter: none;
+    --ui-surface-filter: none;
+  }
+
+  [class*="backdrop-blur"] {
+    -webkit-backdrop-filter: none !important;
+    backdrop-filter: none !important;
+  }
+
+  .app-glass-top {
+    background: var(--ui-glass-top-bg);
+  }
+
+  .app-floating-nav {
+    background: var(--ui-glass-bg);
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+  }
+}
+
+@media (prefers-contrast: more) {
+  :root {
+    --ui-glass-bg: rgb(251 251 248);
+    --ui-glass-top-bg: rgb(251 251 248);
+    --ui-surface-bg: rgb(255 255 252);
+    --ui-card-bg: rgb(255 255 252);
+    --ui-card-filter: none;
+    --ui-inner-card-bg: rgb(251 251 248);
+    --ui-glass-border: rgba(29, 34, 40, 0.28);
+    --ui-material-filter: none;
+    --ui-surface-filter: none;
+    --ui-soft-shadow: 0 10px 28px rgba(29, 34, 40, 0.16);
+  }
+
+
+  [class*="backdrop-blur"] {
+    -webkit-backdrop-filter: none !important;
+    backdrop-filter: none !important;
+  }
+
+
+  .app-glass-top {
+    background: var(--ui-glass-top-bg);
+  }
+
+  .app-floating-nav {
+    background: var(--ui-glass-bg);
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+  }
+}
+
+@supports not ((-webkit-backdrop-filter: blur(1px)) or (backdrop-filter: blur(1px))) {
+  :root {
+    --ui-glass-bg: rgb(251 251 248);
+    --ui-glass-top-bg: rgb(251 251 248);
+    --ui-surface-bg: rgb(255 255 252);
+    --ui-card-bg: rgb(255 255 252);
+    --ui-card-filter: none;
+    --ui-material-filter: none;
+    --ui-surface-filter: none;
+  }
+
+  .app-glass-top {
+    background: var(--ui-glass-top-bg);
+  }
+
+  .app-floating-nav {
+    background: var(--ui-glass-bg);
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+  }
+}
+
 /* CSS animations replaced by Motion for React.
    Keep reduced-motion guard for CSS transitions (Tailwind, etc.) */
 
 @media (prefers-reduced-motion: reduce) {
-  html {
-    scroll-behavior: auto;
-  }
-
   *,
   *::before,
   *::after {

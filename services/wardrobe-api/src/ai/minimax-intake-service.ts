@@ -88,17 +88,20 @@ export class MiniMaxIntakeService implements MiniMaxIntakeServiceLike {
           content: [
             { type: "text", text: buildGarmentPrompt(input.fallbackName) },
             { type: "image_url", image_url: { url: input.imageDataUrl } },
+            { type: "image_url", image_url: { url: input.gridImageDataUrl } },
           ],
         },
       ],
       0.1,
-      900,
+      20_000,
     );
+    const parsed = parseJsonObject(content);
     const tag = normalizeGarmentTag(
-      parseJsonObject(content),
+      parsed,
       input.fallbackName,
     );
-    return AiGarmentRecognitionResponseSchema.parse({ tag });
+    const crop = normalizeRecognitionCrop(parsed);
+    return AiGarmentRecognitionResponseSchema.parse({ tag, ...crop });
   }
 
   async recognizeGarments(
@@ -112,12 +115,16 @@ export class MiniMaxIntakeService implements MiniMaxIntakeServiceLike {
           const response = await this.recognizeGarment({
             miniMax: input.miniMax,
             imageDataUrl: item.imageDataUrl,
+            gridImageDataUrl: item.gridImageDataUrl,
             fallbackName: item.fallbackName,
           });
           return {
             clientItemId: item.clientItemId,
             status: "succeeded" as const,
             tag: response.tag,
+            secondaryCropBox: response.secondaryCropBox,
+            cropConfidence: response.cropConfidence,
+            cropNeedsReview: response.cropNeedsReview,
           };
         } catch (error) {
           return {
@@ -527,6 +534,9 @@ async function postMiniMax<T>(
 function buildGarmentPrompt(fallbackName: string): string {
   return [
     "请识别图片中的单件衣物或配饰。只输出严格 JSON，不要 Markdown，不要解释文字。",
+    "你会收到原图和同图10×10坐标网格版。原图用于属性，网格版用于定位完整可见主体边界。",
+    "secondaryCropBox 使用本次识别输入图的归一化左上坐标（输入图可能已由用户预裁切），必须包含肩带、吊带、提手、裙摆、裤脚和包底；输出前在每一侧各安全外扩检测框宽高的20%并clamp到0..1。",
+    "cropConfidence只表示框的几何可靠性，与属性confidence独立；遮挡、贴边或归属不确定时 cropNeedsReview=true 且 cropConfidence<0.6。",
     "不得把文件名当作衣物名称；文件名仅供排错参考：" + fallbackName,
     "candidateNames[0] 必须是具体中文衣物名称，不能是 garment、clothes、item、单品、衣物、衣服、服装。",
     "短裤/长裤必须按真实裤脚位置判断；工装裤按贴袋、多口袋、抽绳等功能结构判断。",
@@ -554,8 +564,22 @@ function buildGarmentPrompt(fallbackName: string): string {
       notes: "20到80字中文备注，只描述图片中可见信息",
       fitGender: "menswear|womenswear|unisex|unknown",
       fitNotes: "一句话说明判断原因",
+      secondaryCropBox: { x: 0.1, y: 0.1, width: 0.8, height: 0.8 },
+      cropConfidence: 0.8,
+      cropNeedsReview: false,
     }),
   ].join("\n");
+}
+
+function normalizeRecognitionCrop(data: Record<string, unknown>): { secondaryCropBox?: { x: number; y: number; width: number; height: number }; cropConfidence?: number; cropNeedsReview?: boolean } {
+  const candidate = data.secondaryCropBox;
+  if (!candidate || typeof candidate !== "object") return { cropNeedsReview: true };
+  const box = candidate as Record<string, unknown>;
+  const x = Number(box.x); const y = Number(box.y); const width = Number(box.width); const height = Number(box.height);
+  const confidence = Number(data.cropConfidence);
+  const valid = [x, y, width, height].every(Number.isFinite) && x >= 0 && y >= 0 && width > 0 && height > 0 && x + width <= 1.000001 && y + height <= 1.000001;
+  if (!valid || !Number.isFinite(confidence) || confidence < 0.6 || data.cropNeedsReview === true) return { cropConfidence: Number.isFinite(confidence) ? Math.max(0, Math.min(1, confidence)) : undefined, cropNeedsReview: true };
+  return { secondaryCropBox: { x, y, width, height }, cropConfidence: confidence, cropNeedsReview: false };
 }
 
 function buildOutfitSystemPrompt(): string {

@@ -18,7 +18,7 @@ const onlineAssetImage = read("src/components/online/online-asset-image.tsx");
 const bootstrapEffect = wardrobeApp.match(/useEffect\(\(\) => \{\n    setMiniMaxSettings[\s\S]*?\n  \}, \[\]\);/)?.[0] ?? "";
 assert.ok(bootstrapEffect, "WardrobeApp bootstrap effect is present");
 assert.ok(!bootstrapEffect.includes("refreshState("), "WardrobeApp does not duplicate the controller Overview request");
-assert.ok(controller.includes("repository.getOverview()"), "data controller remains the Overview request owner");
+assert.ok(controller.includes("repository.getOverview("), "data controller remains the Overview request owner");
 assert.ok(wishlist.includes("<MotionPopoverMenu"), "wishlist menus use MotionPopoverMenu");
 assert.ok(!garment.includes('className="fixed inset-0 z-[55]'), "garment move sheet has no private fixed overlay");
 assert.ok(!garment.includes('className="fixed inset-0 z-[60]'), "garment delete confirmation has no private fixed overlay");

@@ -8,7 +8,8 @@ import { getEntriesForDate, resolvePrimaryDisplayEntryForDate, PLAN_TONE_CLASS_M
 import { getOutfitCover } from "@/lib/outfit-cover";
 import { OutfitCover } from "@/components/outfit-cover";
 import { AppSubPageTopBar } from "@/components/app-sub-page-top-bar";
-import { MotionSheet } from "@/components/motion-common";
+import { ConfirmActionSheet } from "@/components/dialogs";
+import { useStableBackHandler } from "@/lib/use-stable-back-handler";
 
 interface OutfitPlanDetailViewProps {
   calendarPlan: OutfitCalendarPlan;
@@ -52,6 +53,7 @@ export function OutfitPlanDetailView({
 }: OutfitPlanDetailViewProps) {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
   const dateRange = enumerateDateRange(calendarPlan.startDate, calendarPlan.endDate);
   const days = dateRange.length;
   const typeLabel = planTypeLabel(calendarPlan.type);
@@ -62,24 +64,34 @@ export function OutfitPlanDetailView({
     : `${calendarPlan.startDate} 至 ${calendarPlan.endDate}`;
 
   async function confirmDelete() {
+    if (deleting) return;
     setDeleting(true);
+    setDeleteError(null);
     try {
       await onDelete();
+      setShowDeleteConfirm(false);
+    } catch (error) {
+      setDeleteError(error instanceof Error ? error.message : "删除失败，请重试");
     } finally {
       setDeleting(false);
-      setShowDeleteConfirm(false);
     }
   }
 
+  useStableBackHandler(() => true, deleting, 20);
+
+  function handleBack() {
+    if (!deleting) onBack();
+  }
+
   return (
-    <div className="flex flex-col h-full">
+    <div className="flex flex-col h-full" aria-busy={deleting || undefined}>
       {/* Header */}
       <AppSubPageTopBar
         title={calendarPlan.type === "custom" ? "计划" : `${typeLabel}计划`}
-        onBack={onBack}
+        onBack={handleBack}
       />
 
-      <div className="flex-1 overflow-y-auto">
+      <div className="flex-1 overflow-y-auto" data-outfit-scroll-region="plan-detail">
         {/* Plan summary card */}
         <section className="mx-4 mt-4 rounded-3xl bg-white p-5 shadow-soft border border-ink/5">
           <div className="flex items-start justify-between gap-3">
@@ -115,10 +127,10 @@ export function OutfitPlanDetailView({
           ) : null}
 
           <div className="mt-5 grid grid-cols-2 gap-2">
-            <button type="button" data-parity-id="parity.app.app.src.components.outfit.plan.detail.view.98e1061a39" onClick={onEdit} className="h-11 rounded-full bg-denim text-sm font-semibold text-white active:scale-[0.98]">
+            <button type="button" disabled={deleting} data-parity-id="parity.app.app.src.components.outfit.plan.detail.view.98e1061a39" onClick={onEdit} className="h-11 rounded-full bg-denim text-sm font-semibold text-white app-press-feedback disabled:opacity-40">
               编辑计划
             </button>
-            <button type="button" data-parity-id="parity.app.app.src.components.outfit.plan.detail.view.563a0bc152" onClick={() => setShowDeleteConfirm(true)} className="h-11 rounded-full border border-red-200 bg-white text-sm font-semibold text-red-600 active:scale-[0.98]">
+            <button type="button" disabled={deleting} data-parity-id="parity.app.app.src.components.outfit.plan.detail.view.563a0bc152" onClick={() => setShowDeleteConfirm(true)} className="h-11 rounded-full border border-red-200 bg-white text-sm font-semibold text-red-600 app-press-feedback disabled:opacity-40">
               删除计划
             </button>
           </div>
@@ -156,7 +168,7 @@ export function OutfitPlanDetailView({
 
                   {hasOutfit && outfit ? (
                     <div className="flex items-start gap-3">
-                      <button type="button" data-parity-id={`parity.app.app.src.components.outfit.plan.detail.view.a1592c9e67.${outfit.id}`} onClick={() => onViewOutfit(outfit.id)} className="h-14 w-14 shrink-0 overflow-hidden rounded-2xl bg-milk-darker/40 active:scale-95" aria-label="查看套装">
+                      <button type="button" data-parity-id={`parity.app.app.src.components.outfit.plan.detail.view.a1592c9e67.${outfit.id}`} onClick={() => onViewOutfit(outfit.id)} className="h-14 w-14 shrink-0 overflow-hidden rounded-2xl bg-milk-darker/40 app-press-feedback" aria-label="查看套装">
                         <OutfitCover outfit={outfit} items={items} size="card" />
                       </button>
                       <div className="flex-1 min-w-0">
@@ -238,18 +250,20 @@ export function OutfitPlanDetailView({
         <div className="h-[calc(env(safe-area-inset-bottom)+4rem)]" />
       </div>
 
-      <MotionSheet open={showDeleteConfirm} onClose={() => setShowDeleteConfirm(false)}>
-        <div className="text-center">
-          <h3 className="text-base font-semibold text-ink">删除{calendarPlan.type === "custom" ? "" : typeLabel}计划？</h3>
-          <p className="mt-1 text-sm text-ink/55">只会删除{calendarPlan.type === "custom" ? "" : typeLabel}计划和它的打包清单，每日穿搭安排会保留。</p>
-          <div className="mt-4 grid grid-cols-2 gap-3">
-            <button type="button" className="h-11 rounded-full border border-ink/10 text-sm font-medium text-ink/70" data-parity-id="parity.app.app.src.components.outfit.plan.detail.view.1492018fc9" onClick={() => setShowDeleteConfirm(false)}>取消</button>
-            <button type="button" className="h-11 rounded-full bg-red-600 text-sm font-semibold text-white disabled:opacity-50" disabled={deleting} data-parity-id="parity.app.app.src.components.outfit.plan.detail.view.1d2ed2125a" onClick={confirmDelete}>
-              {deleting ? "删除中..." : "删除计划"}
-            </button>
-          </div>
-        </div>
-      </MotionSheet>
+      <ConfirmActionSheet
+        open={showDeleteConfirm}
+        title={`删除${calendarPlan.type === "custom" ? "" : typeLabel}计划？`}
+        description={`只会删除${calendarPlan.type === "custom" ? "" : typeLabel}计划和它的打包清单，每日穿搭安排会保留。`}
+        confirmLabel="删除计划"
+        tone="danger"
+        submitting={deleting}
+        error={deleteError}
+        onConfirm={confirmDelete}
+        onClose={() => {
+          setShowDeleteConfirm(false);
+          setDeleteError(null);
+        }}
+      />
     </div>
   );
 }

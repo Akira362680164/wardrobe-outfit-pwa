@@ -1,8 +1,17 @@
 // src/components/wishlist-view-2.0.tsx
 // v0.9.49-dev 种草 2.0: 种草首页 + 详情页 + 子页面
 
-import React, { useState, useMemo, useCallback, useEffect, useRef, type ReactNode } from "react";
-import { AnimatePresence, motion } from "motion/react";
+import React, {
+  useState,
+  useMemo,
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  type MutableRefObject,
+  type ReactNode,
+} from "react";
+import { AnimatePresence, motion, useIsPresent, useReducedMotion, type Variants } from "motion/react";
 import { MotionPopoverMenu, MotionSheet } from "@/components/motion-common";
 import { ConfirmActionSheet, NoticeSheet } from "@/components/dialogs";
 import { OnlineAssetImage } from "@/components/online/online-asset-image";
@@ -58,6 +67,7 @@ import {
   ensureLocalImageThumbnail,
   isIntakeThumbnailGenerationError,
 } from "@/lib/intake-thumbnail";
+import { requestImageCropSuggestion } from "@/lib/online/online-image-crop-client";
 import { useStableBackHandler } from "@/lib/use-stable-back-handler";
 import { TemperatureRangeSlider } from "@/components/temperature-range-slider";
 import { normalizeTemperatureRange } from "@/lib/temperature-range";
@@ -73,6 +83,7 @@ import {
   DetailAiCard,
   DetailHeroGallery,
   DetailQuickActions,
+  DetailTabContent,
   DetailTabs,
   DetailTitleMetaBlock,
   DetailTopBar,
@@ -90,6 +101,9 @@ import { ItemColorFields } from "@/components/item/color-fields";
 import { ItemDetailPageShell } from "@/components/item-shell/item-detail-page-shell";
 import { ItemEditPageShell } from "@/components/item-shell/item-edit-page-shell";
 import { wardrobeRepository } from "@/lib/repository/wardrobe-repository";
+import { getNavigationMotionStates } from "@/components/navigation-motion";
+import type { NavigationDirection } from "@/lib/app-route";
+import { duration, ease, spring } from "@/lib/motion-tokens";
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                             */
@@ -104,6 +118,229 @@ type SubPage =
   | "rejected"
   | "archived"
   | "convert_confirm";
+
+type WishlistListPage = "home" | "purchased" | "rejected" | "archived";
+
+interface WishlistNavigationFrame {
+  page: SubPage;
+  itemId?: string;
+}
+
+interface WishlistNavigationTransition {
+  id: number;
+  direction: Extract<NavigationDirection, "push" | "pop" | "replace">;
+}
+
+export interface WishlistIntakeNavigationHandoff {
+  sourcePage: WishlistListPage;
+  mainFilter: WishlistMainFilter;
+  scrollTop: number;
+}
+
+interface PendingWishlistIntakeNavigationHandoff {
+  token: number;
+  snapshot: WishlistIntakeNavigationHandoff;
+  armed: boolean;
+}
+
+let nextWishlistIntakeHandoffToken = 1;
+let pendingWishlistIntakeNavigationHandoff: PendingWishlistIntakeNavigationHandoff | null = null;
+
+/**
+ * One-shot UI-only handoff for the outer `intake_wishlist` route remount.
+ * It never stores item ids or business data and is cleared on consume or owner unmount.
+ */
+export function captureWishlistIntakeNavigationHandoff(
+  snapshot: WishlistIntakeNavigationHandoff,
+): number {
+  const token = nextWishlistIntakeHandoffToken++;
+  pendingWishlistIntakeNavigationHandoff = {
+    token,
+    snapshot: {
+      sourcePage: snapshot.sourcePage,
+      mainFilter: snapshot.mainFilter,
+      scrollTop: Math.max(0, Number.isFinite(snapshot.scrollTop) ? snapshot.scrollTop : 0),
+    },
+    armed: false,
+  };
+  return token;
+}
+
+export function armWishlistIntakeNavigationHandoff(token: number): void {
+  if (pendingWishlistIntakeNavigationHandoff?.token !== token) return;
+  pendingWishlistIntakeNavigationHandoff.armed = true;
+}
+
+function peekWishlistIntakeNavigationHandoff(): PendingWishlistIntakeNavigationHandoff | null {
+  if (!pendingWishlistIntakeNavigationHandoff?.armed) return null;
+  return pendingWishlistIntakeNavigationHandoff;
+}
+
+export function consumeWishlistIntakeNavigationHandoff(token?: number): WishlistIntakeNavigationHandoff | null {
+  if (!pendingWishlistIntakeNavigationHandoff?.armed) return null;
+  if (token != null && pendingWishlistIntakeNavigationHandoff.token !== token) return null;
+  const snapshot = pendingWishlistIntakeNavigationHandoff.snapshot;
+  pendingWishlistIntakeNavigationHandoff = null;
+  return snapshot;
+}
+
+export function clearWishlistIntakeNavigationHandoff(token?: number): void {
+  if (token != null && pendingWishlistIntakeNavigationHandoff?.token !== token) return;
+  pendingWishlistIntakeNavigationHandoff = null;
+}
+
+export function hasPendingWishlistIntakeNavigationHandoff(): boolean {
+  return pendingWishlistIntakeNavigationHandoff !== null;
+}
+
+function isWishlistListPage(value: string | undefined): value is WishlistListPage {
+  return value === "home" || value === "purchased" || value === "rejected" || value === "archived";
+}
+
+function getWishlistFrameScrollKey(frame: WishlistNavigationFrame): string {
+  return frame.itemId ? `${frame.page}:${frame.itemId}` : frame.page;
+}
+
+function findWishlistScrollRegion(root: HTMLElement | null): HTMLElement | null {
+  if (!root) return null;
+  return root.querySelector<HTMLElement>("[data-wishlist-scroll-region]")
+    ?? root.querySelector<HTMLElement>("main");
+}
+
+function readOutgoingWishlistNavigationHandoff(): WishlistIntakeNavigationHandoff | null {
+  if (typeof document === "undefined") return null;
+  const outgoing = Array.from(document.querySelectorAll<HTMLElement>(
+    '[data-navigation-presence="exiting"] [data-wishlist-navigation-presence="current"]',
+  )).at(-1);
+  if (!outgoing) return null;
+  const sourcePage = outgoing.dataset.wishlistListSource;
+  const mainFilter = outgoing.dataset.wishlistMainFilter as WishlistMainFilter | undefined;
+  if (!isWishlistListPage(sourcePage) || !mainFilter) return null;
+  const sourceScrollRegion = outgoing.querySelector<HTMLElement>(
+    `[data-wishlist-scroll-region="${sourcePage}"]`,
+  );
+  return {
+    sourcePage,
+    mainFilter,
+    scrollTop: sourceScrollRegion?.scrollTop ?? 0,
+  };
+}
+
+function getWishlistPageTransition(
+  direction: WishlistNavigationTransition["direction"],
+  reduceMotion: boolean,
+) {
+  if (reduceMotion || direction === "replace") {
+    return { duration: duration.fast, ease: ease.app };
+  }
+  return {
+    ...spring.panel,
+    opacity: { duration: 0.14, ease: ease.app },
+  };
+}
+
+function WishlistNavigationPage({
+  transition,
+  frame,
+  listSource,
+  mainFilter,
+  restoreScrollTop,
+  currentRootRef,
+  children,
+}: {
+  transition: WishlistNavigationTransition;
+  frame: WishlistNavigationFrame;
+  listSource: WishlistListPage;
+  mainFilter: WishlistMainFilter;
+  restoreScrollTop: number;
+  currentRootRef: MutableRefObject<HTMLDivElement | null>;
+  children: ReactNode;
+}) {
+  const isPresent = useIsPresent();
+  const reduceMotion = Boolean(useReducedMotion());
+  const localRootRef = useRef<HTMLDivElement | null>(null);
+  const variants = useMemo<Variants>(() => ({
+    enter: (direction: WishlistNavigationTransition["direction"]) => ({
+      ...getNavigationMotionStates(direction, reduceMotion).enter,
+      transition: getWishlistPageTransition(direction, reduceMotion),
+    }),
+    center: (direction: WishlistNavigationTransition["direction"]) => ({
+      ...getNavigationMotionStates(direction, reduceMotion).center,
+      transition: getWishlistPageTransition(direction, reduceMotion),
+    }),
+    exit: (direction: WishlistNavigationTransition["direction"]) => ({
+      ...getNavigationMotionStates(direction, reduceMotion).exit,
+      transition: getWishlistPageTransition(direction, reduceMotion),
+    }),
+  }), [reduceMotion]);
+
+  useLayoutEffect(() => {
+    if (!isPresent) return;
+    currentRootRef.current = localRootRef.current;
+    const scrollRegion = findWishlistScrollRegion(localRootRef.current);
+    if (scrollRegion) scrollRegion.scrollTop = restoreScrollTop;
+    return () => {
+      if (currentRootRef.current === localRootRef.current) currentRootRef.current = null;
+    };
+  }, [currentRootRef, frame.page, isPresent, restoreScrollTop]);
+
+  return (
+    <motion.div
+      ref={localRootRef}
+      className="relative h-full min-h-0 min-w-0"
+      style={{ gridArea: "1 / 1", pointerEvents: isPresent ? "auto" : "none" }}
+      custom={transition.direction}
+      variants={variants}
+      initial="enter"
+      animate="center"
+      exit="exit"
+      aria-hidden={isPresent ? undefined : true}
+      inert={isPresent ? undefined : true}
+      data-wishlist-navigation-page={frame.page}
+      data-wishlist-list-source={listSource}
+      data-wishlist-main-filter={mainFilter}
+      data-wishlist-navigation-presence={isPresent ? "current" : "exiting"}
+    >
+      {children}
+    </motion.div>
+  );
+}
+
+function WishlistNavigationMotion({
+  transition,
+  frame,
+  listSource,
+  mainFilter,
+  restoreScrollTop,
+  currentRootRef,
+  children,
+}: {
+  transition: WishlistNavigationTransition;
+  frame: WishlistNavigationFrame;
+  listSource: WishlistListPage;
+  mainFilter: WishlistMainFilter;
+  restoreScrollTop: number;
+  currentRootRef: MutableRefObject<HTMLDivElement | null>;
+  children: ReactNode;
+}) {
+  return (
+    <div className="grid h-full min-h-0 min-w-0" data-wishlist-navigation-direction={transition.direction}>
+      <AnimatePresence mode="sync" initial={false} custom={transition.direction}>
+        <WishlistNavigationPage
+          key={transition.id}
+          transition={transition}
+          frame={frame}
+          listSource={listSource}
+          mainFilter={mainFilter}
+          restoreScrollTop={restoreScrollTop}
+          currentRootRef={currentRootRef}
+        >
+          {children}
+        </WishlistNavigationPage>
+      </AnimatePresence>
+    </div>
+  );
+}
 
 interface WishlistView20Props {
   wishlistItems: WishlistItem[];
@@ -195,16 +432,117 @@ export function WishlistView20({
   onProcessIntakeImages,
   onDataChanged,
 }: WishlistView20Props) {
-  const [subPage, setSubPage] = useState<SubPage>("home");
+  const initialNavigationRef = useRef<{
+    page: WishlistListPage;
+    mainFilter: WishlistMainFilter;
+    handoff: WishlistIntakeNavigationHandoff | null;
+    handoffToken: number | null;
+  } | undefined>(undefined);
+  if (!initialNavigationRef.current) {
+    // Peek during render so React Strict Mode or an abandoned render cannot
+    // consume the one-shot handoff. The committed mount clears it below.
+    const pendingHandoff = createTrigger > 0 ? null : peekWishlistIntakeNavigationHandoff();
+    const handoff = pendingHandoff?.snapshot ?? null;
+    initialNavigationRef.current = {
+      page: initialSubPage ?? handoff?.sourcePage ?? "home",
+      mainFilter: handoff?.mainFilter ?? "all",
+      handoff,
+      handoffToken: pendingHandoff?.token ?? null,
+    };
+  }
+  const initialNavigation = initialNavigationRef.current;
+  const [subPage, setSubPage] = useState<SubPage>(initialNavigation.page);
   const [selectedItem, setSelectedItem] = useState<WishlistItem | null>(null);
   const [isFormSaving, setIsFormSaving] = useState(false);
   const [showRevisionConflict, setShowRevisionConflict] = useState(false);
+  const [convertingId, setConvertingId] = useState<string | null>(null);
   const formMutationRef = useRef<{ fingerprint: string; clientMutationId: string } | null>(null);
   // v1.1.6 followup Commit 2: 用变量赋值替代早期 return, 让全局 dialogs 能在所有子页生效
   let subPageNode: React.ReactNode = null;
-  const [mainFilter, setMainFilter] = useState<WishlistMainFilter>("all");
+  const [mainFilter, setMainFilter] = useState<WishlistMainFilter>(initialNavigation.mainFilter);
   const [menuOpen, setMenuOpen] = useState(false);
-  const menuAnchorRef = useRef<HTMLButtonElement>(null);
+  // Home and detail overlap briefly during push/pop. Separate refs prevent an
+  // exiting detail ref cleanup from nulling the current home Popover anchor.
+  const homeMenuAnchorRef = useRef<HTMLButtonElement>(null);
+  const detailMenuAnchorRef = useRef<HTMLButtonElement>(null);
+  const currentNavigationRootRef = useRef<HTMLDivElement | null>(null);
+  const navigationStackRef = useRef<WishlistNavigationFrame[]>([{ page: initialNavigation.page }]);
+  const navigationScrollPositionsRef = useRef<Record<string, number>>(
+    initialNavigation.handoff
+      ? { [initialNavigation.handoff.sourcePage]: initialNavigation.handoff.scrollTop }
+      : {},
+  );
+  const nextNavigationTransitionIdRef = useRef(1);
+  const [navigationTransition, setNavigationTransition] = useState<WishlistNavigationTransition>({
+    id: 0,
+    direction: "replace",
+  });
+  const intakeHandoffTokenRef = useRef<number | null>(null);
+  const intakeSourceSnapshotRef = useRef<WishlistIntakeNavigationHandoff | null>(null);
+
+  useLayoutEffect(() => {
+    if (initialNavigation.handoffToken !== null) {
+      consumeWishlistIntakeNavigationHandoff(initialNavigation.handoffToken);
+    }
+  }, [initialNavigation]);
+
+  const saveCurrentNavigationScroll = useCallback(() => {
+    const currentFrame = navigationStackRef.current.at(-1) ?? { page: subPage };
+    const scrollRegion = findWishlistScrollRegion(currentNavigationRootRef.current);
+    if (!scrollRegion) return;
+    navigationScrollPositionsRef.current[getWishlistFrameScrollKey(currentFrame)] = scrollRegion.scrollTop;
+  }, [subPage]);
+
+  const commitWishlistNavigation = useCallback((
+    frame: WishlistNavigationFrame,
+    direction: WishlistNavigationTransition["direction"],
+  ) => {
+    setNavigationTransition({ id: nextNavigationTransitionIdRef.current++, direction });
+    setSubPage(frame.page);
+  }, []);
+
+  const pushWishlistPage = useCallback((page: SubPage, item?: WishlistItem | null) => {
+    saveCurrentNavigationScroll();
+    const frame: WishlistNavigationFrame = { page, ...(item ? { itemId: item.id } : {}) };
+    navigationStackRef.current = [...navigationStackRef.current, frame];
+    if (item) setSelectedItem(item);
+    commitWishlistNavigation(frame, "push");
+  }, [commitWishlistNavigation, saveCurrentNavigationScroll]);
+
+  const replaceWishlistStack = useCallback((
+    frames: WishlistNavigationFrame[],
+    direction: WishlistNavigationTransition["direction"] = "replace",
+  ) => {
+    saveCurrentNavigationScroll();
+    const safeFrames = frames.length > 0 ? frames : [{ page: "home" as const }];
+    navigationStackRef.current = safeFrames;
+    const target = safeFrames.at(-1)!;
+    const targetItem = target.itemId ? wishlistItems.find((item) => item.id === target.itemId) ?? null : null;
+    setSelectedItem(targetItem);
+    commitWishlistNavigation(target, direction);
+  }, [commitWishlistNavigation, saveCurrentNavigationScroll, wishlistItems]);
+
+  const popWishlistPage = useCallback(() => {
+    saveCurrentNavigationScroll();
+    const currentStack = navigationStackRef.current;
+    const nextStack = currentStack.length > 1 ? currentStack.slice(0, -1) : [{ page: "home" as const }];
+    navigationStackRef.current = nextStack;
+    const target = nextStack.at(-1)!;
+    const targetItem = target.itemId ? wishlistItems.find((item) => item.id === target.itemId) ?? null : null;
+    setSelectedItem(targetItem);
+    setMenuOpen(false);
+    commitWishlistNavigation(target, "pop");
+    return target;
+  }, [commitWishlistNavigation, saveCurrentNavigationScroll, wishlistItems]);
+
+  const currentNavigationFrame = navigationStackRef.current.at(-1) ?? { page: subPage };
+  const currentListSource = [...navigationStackRef.current]
+    .reverse()
+    .find((frame): frame is WishlistNavigationFrame & { page: WishlistListPage } => isWishlistListPage(frame.page))
+    ?.page ?? "home";
+  const currentRestoreScrollTop = navigationScrollPositionsRef.current[
+    getWishlistFrameScrollKey(currentNavigationFrame)
+  ] ?? 0;
 
   type WishlistId = WishlistItem["id"];
   const wishlistSelection = useCatalogMultiSelect<WishlistId>();
@@ -230,21 +568,42 @@ export function WishlistView20({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [subPage]);
 
-  // P1-03 fix: use ref to ensure initialSubPage is consumed exactly once
+  // P1-03 fix: use ref to ensure initialSubPage is consumed exactly once.
+  // The initial render already starts on the requested list, avoiding a home flash.
   const initialSubPageConsumedRef = useRef(false);
   useEffect(() => {
     if (!initialSubPage || initialSubPageConsumedRef.current) return;
     initialSubPageConsumedRef.current = true;
-    setSubPage(initialSubPage);
+    if (subPage !== initialSubPage) replaceWishlistStack([{ page: "home" }, { page: initialSubPage }]);
     onInitialSubPageConsumed?.();
-  }, [initialSubPage, onInitialSubPageConsumed]);
+  }, [initialSubPage, onInitialSubPageConsumed, replaceWishlistStack, subPage]);
+
+  // C3-Wishlist: the outer App route remounts WishlistView for intake. During
+  // that transition the outgoing Wishlist page still exists, so capture one
+  // UI-only handoff from its real DOM. Other tabs have no matching outgoing
+  // node and therefore cannot leak a stale Wishlist source into the flow.
+  useLayoutEffect(() => {
+    if (createTrigger <= 0 || intakeHandoffTokenRef.current !== null) return;
+    const snapshot = readOutgoingWishlistNavigationHandoff();
+    if (!snapshot) return;
+    intakeSourceSnapshotRef.current = snapshot;
+    intakeHandoffTokenRef.current = captureWishlistIntakeNavigationHandoff(snapshot);
+  }, [createTrigger]);
+
+  useEffect(() => () => {
+    if (intakeHandoffTokenRef.current !== null) {
+      clearWishlistIntakeNavigationHandoff(intakeHandoffTokenRef.current);
+    }
+  }, []);
 
   const closeWishlistIntake = useCallback(() => {
-    setSubPage("home");
-    setSelectedItem(null);
-    setMenuOpen(false);
+    if (intakeHandoffTokenRef.current !== null) {
+      armWishlistIntakeNavigationHandoff(intakeHandoffTokenRef.current);
+    }
+    const sourcePage = intakeSourceSnapshotRef.current?.sourcePage ?? "home";
+    replaceWishlistStack([{ page: sourcePage }], "pop");
     onCreateClosed?.();
-  }, [onCreateClosed]);
+  }, [onCreateClosed, replaceWishlistStack]);
 
   // Subagent F: 通过快照比较判断表单是否有未保存修改（定义在 handler 之前，以便 handler 引用）
   const checkFormDirty = () => {
@@ -264,68 +623,38 @@ export function WishlistView20({
     return current !== formInitialSnapshotRef.current;
   };
 
-  // Subagent F: Android 返回键处理 — 稳定 handler，只注册一次
-  // 注：expandedImage（图片放大层）由父级 wardrobe-app 的 backButton handler 关闭（line ~503），
-  // 父级 handler 在 shoppingSubPageActive 时返回但不消费事件，子的 handler 随后执行；
-  // 此时 expandedImage 已由父级关闭，子的 handler 不需要重复处理。
+  // A2-Flows: OverlayStack 统一处理图片层、菜单、Sheet 与 Dialog；此处只注册页面级返回决策。
   const isSubPage = subPage !== "home";
   useStableBackHandler(() => {
-    // 0. 批量删除确认 Sheet / 选择模式优先
-    if (wishlistBulkDelete.deleteOpen) {
-      if (wishlistBulkDelete.deleting) return true;
-      wishlistBulkDelete.cancelDelete();
-      return true;
-    }
+    // OverlayStack 先处理所有 Sheet / Dialog / Popover；这里只保留页面级返回决策。
+    if (isFormSaving || convertingId !== null) return true;
     if (wishlistSelection.selectionMode) {
       wishlistSelection.clear();
       return true;
     }
-    // 1. 衣橱点选 sheet 关闭
-    if (showLocationSheet) { setShowLocationSheet(false); return true; }
-    // 2. 各种确认弹窗优先关闭 (子页有弹窗时按返回键只关弹窗)
-    //    顺序: 撤销购买 / 删除记录 / 不再考虑 / 放弃修改
-    if (showConvertedItemDeletedNotice) { setShowConvertedItemDeletedNotice(false); return true; }
-    if (showUndoPurchaseConfirm) { setShowUndoPurchaseConfirm(false); return true; }
-    if (showDeleteRecordConfirm) { setShowDeleteRecordConfirm(false); return true; }
-    if (showRejectConfirm) { setShowRejectConfirm(false); return true; }
-    if (showDiscardConfirm) { setShowDiscardConfirm(false); return true; }
-    // 3. 种草录入页直接返回种草首页, 同步关闭外层 create flow 状态
+    // 1. 种草录入页直接返回种草首页, 同步关闭外层 create flow 状态
     if (subPage === "intake") {
       closeWishlistIntake();
       return true;
     }
-    // 4. add_edit 页面有未保存修改时打开放弃修改确认
+    // 2. add_edit 页面有未保存修改时打开放弃修改确认
     if (subPage === "add_edit" && checkFormDirty()) {
       setShowDiscardConfirm(true);
       return true;
     }
-    // 5. add_edit 页面无未保存修改时返回 home
+    // 3. add_edit 页面无未保存修改时 pop 回来源详情
     if (subPage === "add_edit") {
       resetForm();
-      setSubPage("home");
-      setSelectedItem(null);
+      popWishlistPage();
       return true;
     }
-    // 6. convert_confirm 返回详情页
-    if (subPage === "convert_confirm") {
-      setSubPage("detail");
-      return true;
-    }
-    // 7. detail 返回 home
-    if (subPage === "detail") {
-      setSubPage("home");
-      setSelectedItem(null);
-      setMenuOpen(false);
-      return true;
-    }
-    // 8. purchased、rejected、archived 返回 home
-    if (subPage === "purchased" || subPage === "rejected" || subPage === "archived") {
-      setSubPage("home");
-      setSelectedItem(null);
+    // 4. confirm/detail/list 都只 pop 一层，来源 frame 决定目标。
+    if (subPage === "convert_confirm" || subPage === "detail" || subPage === "purchased" || subPage === "rejected" || subPage === "archived") {
+      popWishlistPage();
       return true;
     }
     return false;
-  }, isSubPage);
+  }, isSubPage || wishlistSelection.selectionMode || isFormSaving || convertingId !== null);
 
   const [showRejectConfirm, setShowRejectConfirm] = useState(false);
   const [showUndoPurchaseConfirm, setShowUndoPurchaseConfirm] = useState(false);
@@ -337,7 +666,6 @@ export function WishlistView20({
   const formDirtyRef = useRef(false);
   // Subagent F: 表单初始快照，用于精确 dirty 检测（序列化所有字段用于比较）
   const formInitialSnapshotRef = useRef<string>("");
-  const [convertingId, setConvertingId] = useState<string | null>(null);
   const [assessingId, setAssessingId] = useState<string | null>(null);
   // v0.9.49-dev auto-fix: 防 stale 写入 (b4614c9 I4 同款问题, 本次重新出现)。
   // 用户快速连续点 2 个不同种草单品, 第一次响应晚到时, runId 检查可阻止覆盖第二次的写入。
@@ -478,7 +806,19 @@ export function WishlistView20({
     formInitialSnapshotRef.current = "";
   }, []);
 
-  const openIntakeFlow = useCallback(() => { setSelectedItem(null); setMenuOpen(false); setSubPage("intake"); }, []);
+  const openIntakeFlow = useCallback(() => {
+    const sourceSnapshot = intakeSourceSnapshotRef.current;
+    const sourcePage = sourceSnapshot?.sourcePage ?? "home";
+    if (sourceSnapshot) {
+      setMainFilter(sourceSnapshot.mainFilter);
+      navigationScrollPositionsRef.current[sourcePage] = sourceSnapshot.scrollTop;
+    }
+    const intakeFrame: WishlistNavigationFrame = { page: "intake" };
+    navigationStackRef.current = [{ page: sourcePage }, intakeFrame];
+    setSelectedItem(null);
+    setMenuOpen(false);
+    commitWishlistNavigation(intakeFrame, "push");
+  }, [commitWishlistNavigation]);
 
   useEffect(() => {
     if (createTrigger > 0) {
@@ -539,8 +879,8 @@ export function WishlistView20({
       status: item.status ?? "interested",
     });
     formDirtyRef.current = false;
-    setSubPage("add_edit");
-  }, []);
+    pushWishlistPage("add_edit", item);
+  }, [pushWishlistPage]);
 
   const handleSaveForm = useCallback(async () => {
     if (isFormSaving) return;
@@ -600,7 +940,7 @@ export function WishlistView20({
       onMessage("已更新种草单品");
       await onDataChanged?.();
       formMutationRef.current = null;
-      setSubPage("home");
+      popWishlistPage();
       resetForm();
     } catch (error) {
       onMessage(isIntakeThumbnailGenerationError(error)
@@ -609,7 +949,7 @@ export function WishlistView20({
     } finally {
       setIsFormSaving(false);
     }
-  }, [editId, formName, formImageDataUrl, formSourceImageDataUrl, formCropBox, formThumbnailDataUrl, formCategory, formSubcategory, formColorMode, formPrimaryColors, formMainColor, formAccentColors, formSeasons, formStyles, formTemperatureRange, formFitGender, formFitNotes, formPrice, formProductUrl, formFormality, formWarmth, formMaterial, formNote, formStatus, isFormSaving, onDataChanged, onMessage, resetForm, wishlistItems]);
+  }, [editId, formName, formImageDataUrl, formSourceImageDataUrl, formCropBox, formThumbnailDataUrl, formCategory, formSubcategory, formColorMode, formPrimaryColors, formMainColor, formAccentColors, formSeasons, formStyles, formTemperatureRange, formFitGender, formFitNotes, formPrice, formProductUrl, formFormality, formWarmth, formMaterial, formNote, formStatus, isFormSaving, onDataChanged, onMessage, popWishlistPage, resetForm, wishlistItems]);
 
   const handleSaveIntakeDrafts = useCallback(async (
     drafts: GarmentIntakeDraft[],
@@ -656,13 +996,12 @@ export function WishlistView20({
     const failed = results.filter((item) => item.status === "failed").length;
     if (failed === 0) {
       onMessage(drafts.length > 1 ? `已添加 ${drafts.length} 件种草单品` : "已添加种草单品");
-      setSubPage("home");
-      onCreateClosed?.();
+      closeWishlistIntake();
     } else {
       onMessage(`${failed} 件保存失败，草稿已保留`, "error");
     }
     return { items: results };
-  }, [onCreateClosed, onDataChanged, onMessage]);
+  }, [closeWishlistIntake, onDataChanged, onMessage]);
 
   const handleAddImage = useCallback(async (file: File | undefined) => {
     if (!file) return;
@@ -785,10 +1124,9 @@ export function WishlistView20({
   /* ---- convert to wardrobe ---- */
 
   const openConvertConfirm = useCallback((item: WishlistItem) => {
-    setSelectedItem(item);
     setSelectedLocationId(fallbackLocationId);
-    setSubPage("convert_confirm");
-  }, [fallbackLocationId]);
+    pushWishlistPage("convert_confirm", item);
+  }, [fallbackLocationId, pushWishlistPage]);
 
   const handleConfirmConvert = useCallback(async () => {
     if (!selectedItem) return;
@@ -797,16 +1135,15 @@ export function WishlistView20({
       const result = await wardrobeRepository.convertWishlistItem(selectedItem, selectedLocationId);
       if (!result.ok || !result.data) throw new Error(result.error ?? "加入衣橱失败");
       await onDataChanged?.();
-      setSubPage("home");
-      setSelectedItem(null);
       setConvertingId(null);
       onMessage("已加入衣橱", "success");
+      replaceWishlistStack([{ page: "home" }], "pop");
       onWishlistConvertedToWardrobe?.(result.data);
     } catch (e) {
       setConvertingId(null);
       onMessage("加入衣橱失败，请重试", "error");
     }
-  }, [selectedItem, selectedLocationId, onDataChanged, onMessage, onWishlistConvertedToWardrobe]);
+  }, [selectedItem, selectedLocationId, onDataChanged, onMessage, onWishlistConvertedToWardrobe, replaceWishlistStack]);
 
   /* ---- undo purchase ---- */
 
@@ -822,21 +1159,20 @@ export function WishlistView20({
       if (!result.ok) throw new Error(result.error ?? "撤销购买失败");
       await onDataChanged?.();
       setShowUndoPurchaseConfirm(false);
-      setSubPage("home");
-      setSelectedItem(null);
+      if (subPage === "detail") popWishlistPage();
+      else setSelectedItem(null);
       onMessage("已撤销购买，已同步删除衣橱单品");
     } catch (e) {
       onMessage("撤销购买失败", "error");
     }
-  }, [selectedItem, isConvertedLinkDeleted, showDeletedConvertedItemNotice, onMessage, onDataChanged]);
+  }, [selectedItem, isConvertedLinkDeleted, showDeletedConvertedItemNotice, onMessage, onDataChanged, popWishlistPage, subPage]);
 
   // v1.1.6 followup Commit 2: 全局「放弃修改」回调, 与 showDiscardConfirm 状态联动
   const discardForm = useCallback(() => {
     setShowDiscardConfirm(false);
     resetForm();
-    setSubPage("home");
-    setSelectedItem(null);
-  }, [resetForm]);
+    popWishlistPage();
+  }, [popWishlistPage, resetForm]);
 
   /* ---- AI assessment ---- */
 
@@ -892,9 +1228,9 @@ export function WishlistView20({
     if (!result.ok) { onMessage(result.error ?? "删除失败，请重试", "error"); return; }
     await onDataChanged?.();
     onMessage("已删除记录");
-    setSubPage("home");
-    setSelectedItem(null);
-  }, [onMessage, onDataChanged]);
+    if (subPage === "detail") popWishlistPage();
+    else setSelectedItem(null);
+  }, [onMessage, onDataChanged, popWishlistPage, subPage]);
 
   /* ---- view detail ---- */
 
@@ -903,14 +1239,14 @@ export function WishlistView20({
       showDeletedConvertedItemNotice(item);
       return;
     }
-    setSelectedItem(item);
     setDetailTab("assessment");
-    setSubPage("detail");
-  }, [isConvertedLinkDeleted, showDeletedConvertedItemNotice]);
+    pushWishlistPage("detail", item);
+  }, [isConvertedLinkDeleted, pushWishlistPage, showDeletedConvertedItemNotice]);
 
   /* ---- back navigation ---- */
 
   const goBack = useCallback(() => {
+    if (isFormSaving || convertingId !== null) return;
     if (subPage === "intake") {
       closeWishlistIntake();
       return;
@@ -923,10 +1259,8 @@ export function WishlistView20({
     if (subPage === "add_edit") {
       resetForm();
     }
-    setSubPage("home");
-    setSelectedItem(null);
-    setMenuOpen(false);
-  }, [subPage, resetForm, closeWishlistIntake]);
+    popWishlistPage();
+  }, [closeWishlistIntake, convertingId, isFormSaving, popWishlistPage, resetForm, subPage]);
 
   /* ================================================================ */
   /*  ADD / EDIT FORM PAGE                                            */
@@ -1127,6 +1461,8 @@ export function WishlistView20({
         onPickImages={onPickIntakeImages}
         onProcessImage={onProcessIntakeImage}
         onProcessImages={onProcessIntakeImages}
+        hasMiniMaxKey={hasDeviceMiniMaxKey(settings)}
+        onSuggestCrop={requestImageCropSuggestion}
         onSaveBatch={handleSaveIntakeDrafts}
         onExit={closeWishlistIntake}
       />
@@ -1145,14 +1481,14 @@ export function WishlistView20({
       <div className="flex flex-col h-full">
         {/* Header */}
         <div className="flex items-center justify-between px-4 py-3 border-b border-ink/10">
-          <button type="button" data-parity-id="parity.app.app.src.components.wishlist.view.2.0.f1cd95ffec" onClick={() => { setSubPage("detail"); setSelectedItem(item); }} className="inline-flex items-center gap-1 text-sm">
+          <button type="button" disabled={convertingId === item.id} data-parity-id="parity.app.app.src.components.wishlist.view.2.0.f1cd95ffec" onClick={goBack} className="inline-flex items-center gap-1 text-sm disabled:opacity-40">
             <ChevronLeft size={18} /> 返回
           </button>
           <h2 className="text-base font-semibold">加入衣橱</h2>
           <div className="w-16" />
         </div>
 
-        <div className="flex-1 overflow-y-auto px-4 py-4 space-y-4">
+        <div className="flex-1 overflow-y-auto px-4 py-4 space-y-4" data-wishlist-scroll-region="convert_confirm">
           {/* Main card */}
           <div className="surface rounded-xl p-4">
             <div className="flex gap-3">
@@ -1178,10 +1514,10 @@ export function WishlistView20({
           <div className="px-1">
             <div className="text-[13px] text-ink/55 mb-2">加入到</div>
             <button
-              ref={menuAnchorRef}
               type="button"
               data-parity-id="parity.app.app.src.components.wishlist.view.2.0.200d5034ed" onClick={() => setShowLocationSheet(true)}
-              className="w-full h-12 rounded-2xl border border-ink/10 bg-white px-4 flex items-center justify-between"
+              disabled={convertingId === item.id}
+              className="w-full h-12 rounded-2xl border border-ink/10 bg-white px-4 flex items-center justify-between disabled:opacity-40"
             >
               <span className="text-sm font-medium truncate">{selectedLocationName}</span>
               <ChevronDown size={18} className="text-ink/40 shrink-0" />
@@ -1194,7 +1530,7 @@ export function WishlistView20({
 
         {/* Bottom actions */}
         <div className="grid grid-cols-2 gap-3 p-4 border-t border-ink/10">
-          <button type="button" data-parity-id="parity.app.app.src.components.wishlist.view.2.0.a5a11401d7" onClick={() => { setSubPage("detail"); setSelectedItem(item); }} className="h-11 rounded-xl border border-ink/10 text-sm">取消</button>
+          <button type="button" disabled={convertingId === item.id} data-parity-id="parity.app.app.src.components.wishlist.view.2.0.a5a11401d7" onClick={goBack} className="h-11 rounded-xl border border-ink/10 text-sm disabled:opacity-40">取消</button>
           <button type="button" data-parity-id="parity.app.app.src.components.wishlist.view.2.0.ac69c93ea7" onClick={handleConfirmConvert} disabled={convertingId === item.id}
             className="h-11 rounded-xl bg-denim text-sm font-semibold text-white disabled:opacity-50">
             {convertingId === item.id ? "处理中..." : "确认加入衣橱"}
@@ -1204,7 +1540,12 @@ export function WishlistView20({
         {/* Location selector sheet */}
         <MotionSheet
           open={showLocationSheet}
-          onClose={() => setShowLocationSheet(false)}
+          onClose={() => { if (!convertingId) setShowLocationSheet(false); }}
+          variant="form"
+          ariaLabel="选择加入的衣橱"
+          dismissible={convertingId === null}
+          closeOnBackdrop={convertingId === null}
+          closeOnEscape={convertingId === null}
           panelClassName="!max-w-sm"
         >
           <div className="px-4 py-3 border-b border-ink/10">
@@ -1216,11 +1557,12 @@ export function WishlistView20({
                 key={loc.id}
                 data-parity-id={`parity.app.app.src.components.wishlist.view.2.0.90b9b18c7e.${loc.id}`}
                 type="button"
+                disabled={convertingId === item.id}
                 onClick={() => {
                   setSelectedLocationId(loc.id);
                   setShowLocationSheet(false);
                 }}
-                className="w-full h-[52px] px-4 flex items-center justify-between hover:bg-mist/50"
+                className="w-full h-[52px] px-4 flex items-center justify-between hover:bg-mist/50 disabled:opacity-40"
               >
                 <span className="text-sm">{loc.name}</span>
                 {loc.id === selectedLocationId && <Check size={18} className="text-denim" />}
@@ -1232,7 +1574,8 @@ export function WishlistView20({
               type="button"
               data-parity-id="parity.app.app.src.components.wishlist.view.2.0.9d134cfa04"
               onClick={() => setShowLocationSheet(false)}
-              className="w-full h-11 rounded-xl border border-ink/10 text-sm"
+              disabled={convertingId === item.id}
+              className="w-full h-11 rounded-xl border border-ink/10 text-sm disabled:opacity-40"
             >
               取消
             </button>
@@ -1259,13 +1602,13 @@ export function WishlistView20({
     subPageNode = (
       <div className="flex flex-col h-full">
         <div className="flex h-[60px] items-center gap-2 px-4 border-b border-ink/10">
-          <button type="button" data-parity-id="parity.app.app.src.components.wishlist.view.2.0.c6265d689d" onClick={goBack} className="grid h-11 w-11 shrink-0 place-items-center ui-control-radius bg-transparent text-ink/70 active:scale-95" aria-label="返回">
+          <button type="button" data-parity-id="parity.app.app.src.components.wishlist.view.2.0.c6265d689d" onClick={goBack} className="grid h-11 w-11 shrink-0 place-items-center ui-control-radius bg-transparent text-ink/70 app-press-feedback" aria-label="返回">
             <ChevronLeft size={20} />
           </button>
           <h2 className="text-base font-semibold">{title}</h2>
         </div>
 
-        <div className="flex-1 overflow-y-auto px-4 py-4">
+        <div className="flex-1 overflow-y-auto px-4 py-4" data-wishlist-scroll-region={subPage}>
           <p className="text-sm text-ink/50 mb-4">{hint}</p>
 
           {list.length === 0 ? (
@@ -1277,29 +1620,36 @@ export function WishlistView20({
                 const convertedLinkDeleted = isConvertedLinkDeleted(w);
                 return (
                   <div key={w.id} className="rounded-3xl border border-ink/5 bg-white p-3 shadow-soft">
-                    <div className="flex gap-3">
-                    {w.mainImage ? (
-                      <div className="h-[72px] w-[72px] shrink-0 overflow-hidden rounded-2xl bg-mist">
-                        <OnlineAssetImage asset={w.mainImage.asset} variant="thumbnail" alt={w.name} className="h-full w-full" imageClassName="object-cover" />
+                    <button
+                      type="button"
+                      onClick={() => openDetail(w)}
+                      className="block w-full rounded-2xl text-left outline-none focus-visible:ring-2 focus-visible:ring-denim/45"
+                      aria-label={`查看${w.name || "种草单品"}详情`}
+                    >
+                      <div className="flex gap-3">
+                      {w.mainImage ? (
+                        <div className="h-[72px] w-[72px] shrink-0 overflow-hidden rounded-2xl bg-mist">
+                          <OnlineAssetImage asset={w.mainImage.asset} variant="thumbnail" alt={w.name} className="h-full w-full" imageClassName="object-cover" />
+                        </div>
+                      ) : (
+                        <div className="grid h-[72px] w-[72px] shrink-0 place-items-center rounded-2xl bg-mist text-ink/30">
+                          <ImageIcon size={20} />
+                        </div>
+                      )}
+                      <div className="flex min-w-0 flex-1 flex-col">
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm font-semibold truncate">{w.name}</span>
+                          <StatusCapsule state={state} />
+                        </div>
+                        <div className="text-[11px] text-ink/50 mt-0.5">
+                          {subPage === "purchased" && convertedLinkDeleted ? "关联单品已删除" : ""}
+                          {subPage === "purchased" && !convertedLinkDeleted && w.convertedAt ? `已加入衣橱 · ${w.convertedAt.slice(0, 10)}` : ""}
+                          {subPage === "rejected" ? `${w.updatedAt.slice(0, 10)} 标记` : ""}
+                          {subPage === "archived" ? `${w.updatedAt.slice(0, 10)} 归档` : ""}
+                        </div>
                       </div>
-                    ) : (
-                      <div className="grid h-[72px] w-[72px] shrink-0 place-items-center rounded-2xl bg-mist text-ink/30">
-                        <ImageIcon size={20} />
                       </div>
-                    )}
-                    <div className="flex min-w-0 flex-1 flex-col">
-                      <div className="flex items-center gap-2">
-                        <span className="text-sm font-semibold truncate">{w.name}</span>
-                        <StatusCapsule state={state} />
-                      </div>
-                      <div className="text-[11px] text-ink/50 mt-0.5">
-                        {subPage === "purchased" && convertedLinkDeleted ? "关联单品已删除" : ""}
-                        {subPage === "purchased" && !convertedLinkDeleted && w.convertedAt ? `已加入衣橱 · ${w.convertedAt.slice(0, 10)}` : ""}
-                        {subPage === "rejected" ? `${w.updatedAt.slice(0, 10)} 标记` : ""}
-                        {subPage === "archived" ? `${w.updatedAt.slice(0, 10)} 归档` : ""}
-                      </div>
-                    </div>
-                    </div>
+                    </button>
                       <div className="mt-3 flex gap-2">
                         {subPage === "purchased" && w.convertedItemId && (
                           <>
@@ -1394,15 +1744,16 @@ export function WishlistView20({
     subPageNode = (
       <ItemDetailPageShell
         contentClassName="mx-auto w-full max-w-4xl pb-[calc(env(safe-area-inset-bottom)+24px)]"
-        topBar={<DetailTopBar title="" onBack={goBack} onMore={() => setMenuOpen((v) => !v)} moreButtonRef={menuAnchorRef} />}
+        topBar={<DetailTopBar title="" onBack={goBack} onMore={() => setMenuOpen((v) => !v)} moreButtonRef={detailMenuAnchorRef} />}
         hero={<DetailHeroGallery slides={productSlides} currentIndex={0} onIndexChange={() => undefined} emptyIcon={<ImageIcon size={36} />} emptyText="暂无商品图" />}
         quickActions={<DetailQuickActions actions={quickActions} layout="grid" />}
         titleBlock={<DetailTitleMetaBlock title={item.name} metaParts={[statusLabel, categoryLabel, subcategoryLabel, seasonLabel, styleLabel]} />}
         tabs={<DetailTabs tabs={[{ key: "assessment", label: "信息" }, { key: "pairing", label: "搭配" }, { key: "record", label: "记录" }]} activeTab={detailTab} data-parity-id="parity.app.app.src.components.wishlist.view.2.0.37c3979a6c" onChange={setDetailTab} />}
-        overlays={<MotionPopoverMenu visible={menuOpen} onClose={() => setMenuOpen(false)} anchorRef={menuAnchorRef}><div className="min-w-[176px] p-1"><button type="button" data-parity-id="parity.app.app.src.components.wishlist.view.2.0.bfa7a5961e" onClick={() => { setMenuOpen(false); openEditForm(item); }} className="flex items-center gap-2 w-full rounded-lg px-3 py-2.5 text-sm hover:bg-mist/50"><Edit3 size={15} /> 编辑种草单品</button>{item.convertedItemId ? <button type="button" data-parity-id="parity.app.app.src.components.wishlist.view.2.0.b8324ff5d5" onClick={() => { setMenuOpen(false); requestUndoPurchase(item); }} className="flex items-center gap-2 w-full rounded-lg px-3 py-2.5 text-sm hover:bg-mist/50 text-red-500"><RotateCcw size={15} /> 撤销购买</button> : null}<button type="button" data-parity-id="parity.app.app.src.components.wishlist.view.2.0.7560657dff" onClick={() => { setMenuOpen(false); handleArchive(item); }} className="flex items-center gap-2 w-full rounded-lg px-3 py-2.5 text-sm hover:bg-mist/50"><Package size={15} /> 归档</button><button type="button" data-parity-id="parity.app.app.src.components.wishlist.view.2.0.a64cb8e7c5" onClick={() => { setMenuOpen(false); setSelectedItem(item); setShowDeleteRecordConfirm(true); }} className="flex items-center gap-2 w-full rounded-lg px-3 py-2.5 text-sm hover:bg-mist/50 text-red-500"><Trash2 size={15} /> 删除记录</button></div></MotionPopoverMenu>}
+        overlays={<MotionPopoverMenu visible={menuOpen} onClose={() => setMenuOpen(false)} anchorRef={detailMenuAnchorRef}><div className="min-w-[176px] p-1"><button type="button" data-parity-id="parity.app.app.src.components.wishlist.view.2.0.bfa7a5961e" onClick={() => { setMenuOpen(false); openEditForm(item); }} className="flex items-center gap-2 w-full rounded-lg px-3 py-2.5 text-sm hover:bg-mist/50"><Edit3 size={15} /> 编辑种草单品</button>{item.convertedItemId ? <button type="button" data-parity-id="parity.app.app.src.components.wishlist.view.2.0.b8324ff5d5" onClick={() => { setMenuOpen(false); requestUndoPurchase(item); }} className="flex items-center gap-2 w-full rounded-lg px-3 py-2.5 text-sm hover:bg-mist/50 text-red-500"><RotateCcw size={15} /> 撤销购买</button> : null}<button type="button" data-parity-id="parity.app.app.src.components.wishlist.view.2.0.7560657dff" onClick={() => { setMenuOpen(false); handleArchive(item); }} className="flex items-center gap-2 w-full rounded-lg px-3 py-2.5 text-sm hover:bg-mist/50"><Package size={15} /> 归档</button><button type="button" data-parity-id="parity.app.app.src.components.wishlist.view.2.0.a64cb8e7c5" onClick={() => { setMenuOpen(false); setSelectedItem(item); setShowDeleteRecordConfirm(true); }} className="flex items-center gap-2 w-full rounded-lg px-3 py-2.5 text-sm hover:bg-mist/50 text-red-500"><Trash2 size={15} /> 删除记录</button></div></MotionPopoverMenu>}
       >
-            {detailTab === "assessment" && (
-              <div className="space-y-4">
+            <DetailTabContent activeKey={detailTab}>
+              {detailTab === "assessment" && (
+                <div className="space-y-4">
                 <ItemDetailSections
                   name={item.name}
                   categoryLabel={item.category ? CATEGORY_LABELS[item.category] : undefined}
@@ -1421,11 +1772,11 @@ export function WishlistView20({
                   fitNotes={item.fitNotes}
                   notes={item.notes}
                 />
-              </div>
-            )}
+                </div>
+              )}
 
-            {detailTab === "pairing" && (
-              <div className="space-y-5">
+              {detailTab === "pairing" && (
+                <div className="space-y-5">
                 {/* Recommended pairings */}
                 <div>
                   <h4 className="text-sm font-semibold mb-3">可搭配已有单品</h4>
@@ -1503,19 +1854,20 @@ export function WishlistView20({
                     </ul>
                   </div>
                 )}
-              </div>
-            )}
+                </div>
+              )}
 
-            {detailTab === "record" && (
-              <div className="space-y-3 text-sm">
-                <RowItem label="创建时间" value={item.createdAt.slice(0, 10)} />
-                <RowItem label="更新时间" value={item.updatedAt.slice(0, 10)} />
-                <RowItem label="评估时间" value={item.aiAssessment?.generatedAt?.slice(0, 10) || "未评估"} />
-                {item.convertedAt && <RowItem label="加入衣橱时间" value={item.convertedAt.slice(0, 10)} />}
-                {item.convertedItemDeletedAt && <RowItem label="衣橱单品" value={`已删除 · ${item.convertedItemDeletedAt.slice(0, 10)}`} />}
-                <RowItem label="备注" value={item.notes || "未识别"} />
-              </div>
-            )}
+              {detailTab === "record" && (
+                <div className="space-y-3 text-sm">
+                  <RowItem label="创建时间" value={item.createdAt.slice(0, 10)} />
+                  <RowItem label="更新时间" value={item.updatedAt.slice(0, 10)} />
+                  <RowItem label="评估时间" value={item.aiAssessment?.generatedAt?.slice(0, 10) || "未评估"} />
+                  {item.convertedAt && <RowItem label="加入衣橱时间" value={item.convertedAt.slice(0, 10)} />}
+                  {item.convertedItemDeletedAt && <RowItem label="衣橱单品" value={`已删除 · ${item.convertedItemDeletedAt.slice(0, 10)}`} />}
+                  <RowItem label="备注" value={item.notes || "未识别"} />
+                </div>
+              )}
+            </DetailTabContent>
       </ItemDetailPageShell>
     );
   }
@@ -1583,6 +1935,7 @@ export function WishlistView20({
           </div>
           <div className="relative flex shrink-0 items-center gap-2">
             <button
+              ref={homeMenuAnchorRef}
               type="button"
               data-parity-id="parity.app.app.src.components.wishlist.view.2.0.212406c3d0"
               onClick={() => setMenuOpen((v) => !v)}
@@ -1592,17 +1945,17 @@ export function WishlistView20({
             >
               <MoreVertical size={18} />
             </button>
-            <MotionPopoverMenu visible={menuOpen} onClose={() => setMenuOpen(false)} anchorRef={menuAnchorRef}>
+            <MotionPopoverMenu visible={menuOpen} onClose={() => setMenuOpen(false)} anchorRef={homeMenuAnchorRef}>
                   <div className="min-w-[176px] p-1">
-                    <button type="button" disabled={purchasedCount === 0} data-parity-id="parity.app.app.src.components.wishlist.view.2.0.30df29552a" onClick={() => { setMenuOpen(false); setSubPage("purchased"); }}
+                    <button type="button" disabled={purchasedCount === 0} data-parity-id="parity.app.app.src.components.wishlist.view.2.0.30df29552a" onClick={() => { setMenuOpen(false); pushWishlistPage("purchased"); }}
                       className="flex items-center justify-between w-full px-4 py-2.5 text-sm hover:bg-mist/50 disabled:opacity-30">
                       已买单品 <span className="text-ink/30 text-xs">{purchasedCount}</span>
                     </button>
-                    <button type="button" disabled={rejectedCount === 0} data-parity-id="parity.app.app.src.components.wishlist.view.2.0.c4bf8aafc6" onClick={() => { setMenuOpen(false); setSubPage("rejected"); }}
+                    <button type="button" disabled={rejectedCount === 0} data-parity-id="parity.app.app.src.components.wishlist.view.2.0.c4bf8aafc6" onClick={() => { setMenuOpen(false); pushWishlistPage("rejected"); }}
                       className="flex items-center justify-between w-full px-4 py-2.5 text-sm hover:bg-mist/50 disabled:opacity-30">
                       不感兴趣 <span className="text-ink/30 text-xs">{rejectedCount}</span>
                     </button>
-                    <button type="button" disabled={archivedCount === 0} data-parity-id="parity.app.app.src.components.wishlist.view.2.0.58eaef33c8" onClick={() => { setMenuOpen(false); setSubPage("archived"); }}
+                    <button type="button" disabled={archivedCount === 0} data-parity-id="parity.app.app.src.components.wishlist.view.2.0.58eaef33c8" onClick={() => { setMenuOpen(false); pushWishlistPage("archived"); }}
                       className="flex items-center justify-between w-full px-4 py-2.5 text-sm hover:bg-mist/50 disabled:opacity-30">
                       已归档 <span className="text-ink/30 text-xs">{archivedCount}</span>
                     </button>
@@ -1622,7 +1975,7 @@ export function WishlistView20({
             { key: "consider", label: "再考虑", count: mainStatCounts.consider },
             { key: "not_recommended", label: "不建议", count: mainStatCounts.notRecommended },
           ] as const).map(({ key, label, count }) => (
-            <button key={key} type="button" data-parity-id="parity.app.app.src.components.wishlist.view.2.0.a01176f31e" onClick={() => setMainFilter(key)}
+            <button key={key} type="button" data-parity-id="parity.app.app.src.components.wishlist.view.2.0.a01176f31e" onClick={() => setMainFilter(key)} aria-pressed={mainFilter === key}
               className={`shrink-0 rounded-full px-3 py-1 text-xs font-medium transition-colors flex items-center gap-1.5 ${
                 mainFilter === key
                   ? "bg-denim/10 text-denim border border-denim/30"
@@ -1639,7 +1992,7 @@ export function WishlistView20({
               - 空状态: 与 outfit-list-view.tsx "还没有保存套装" 居中块一致
                 (flex flex-col items-center justify-center py-20 text-center + 图标圆背景 + 双行文案)。
         */}
-        <div className="flex-1 overflow-y-auto min-w-0">
+        <div className="flex-1 overflow-y-auto min-w-0" data-wishlist-scroll-region="home">
           {mainItems.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-20 text-center">
               <div className="mb-3 rounded-full bg-milk-darker/60 p-4">
@@ -1708,7 +2061,16 @@ export function WishlistView20({
   );
   return (
     <>
-      {subPageNode ?? homeNode}
+      <WishlistNavigationMotion
+        transition={navigationTransition}
+        frame={currentNavigationFrame}
+        listSource={currentListSource}
+        mainFilter={mainFilter}
+        restoreScrollTop={currentRestoreScrollTop}
+        currentRootRef={currentNavigationRootRef}
+      >
+        {subPageNode ?? homeNode}
+      </WishlistNavigationMotion>
 
       <WishlistGlobalDialogs
         selectedItem={selectedItem}

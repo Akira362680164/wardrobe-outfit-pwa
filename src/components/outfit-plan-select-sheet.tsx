@@ -41,11 +41,11 @@ export function OutfitPlanSelectSheet({ open, onClose, outfits, items, todayKey,
     : "选择的套装置入日历计划。";
 
   return (
-    <MotionSheet open={open} onClose={onClose}>
+    <MotionSheet open={open} onClose={onClose} variant="form" ariaLabel={sheetTitle}>
       <div className="flex flex-col max-h-[75vh]">
         <div className="flex items-center justify-between mb-3">
           <h2 className="text-base font-semibold text-ink">{sheetTitle}</h2>
-          <button type="button" className="grid h-8 w-8 place-items-center rounded-full hover:bg-ink/5" data-parity-id="parity.app.app.src.components.outfit.plan.select.sheet.bbbf433f0d" onClick={onClose}><X size={18} /></button>
+          <button type="button" aria-label="关闭套装选择" className="grid h-8 w-8 place-items-center rounded-full hover:bg-ink/5" data-parity-id="parity.app.app.src.components.outfit.plan.select.sheet.bbbf433f0d" onClick={onClose}><X size={18} aria-hidden="true" /></button>
         </div>
 
         {/* Hint */}

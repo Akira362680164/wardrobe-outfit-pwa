@@ -18,6 +18,7 @@ Use the fixed production directory:
     jwt-public.pem
     refresh-idempotency.key
   backups/
+  models/u2netp.onnx
 /srv/wardrobe/storage/
 ```
 
@@ -142,6 +143,19 @@ journalctl -u caddy --since "20 minutes ago" --no-pager
 For the 2026-06-26 A6 drill, Caddy was active and the API was healthy internally, but ACME failed because Let's Encrypt HTTP-01 reached a DNSPod webblock page for `api.zhengfangapps.cloud`, and TLS-ALPN-01 reported `111.231.98.86: Connection reset by peer`. Repeated retries then hit the Let's Encrypt failed-authorization rate limit. In this state, do not keep reloading Caddy. Fix the domain/DNS/ICP/webblock path first, or switch to a DNS-01 flow with explicit DNS credentials.
 
 ## Deploy
+
+The image-crop model stays outside Git and is mounted read-only from
+`/opt/wardrobe-cloud/models/u2netp.onnx`. Before building or deploying, verify:
+
+```bash
+sha256sum /opt/wardrobe-cloud/models/u2netp.onnx
+# 309c8469258dda742793dce0ebea8e6dd393174f89934733ecc8b14c76f4ddd8
+```
+
+The API image contains the private Python worker and CPU runtime. The worker is
+not published as a port and cannot be called without passing through the
+authenticated Wardrobe API. Deployment is ready only when `/api/ready` reports
+`dependencies.imageCrop: "ready"`.
 
 `WARDROBE_API_IMAGE` must point to a built API image. The stage 1A deployment script can build the local server image from `/opt/wardrobe-cloud/source`:
 

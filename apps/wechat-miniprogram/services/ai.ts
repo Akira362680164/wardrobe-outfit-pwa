@@ -1,4 +1,5 @@
 import { request } from "./http";
+import { createTenByTenGridFile } from "./image-crop";
 
 export interface MiniMaxSettings {
   apiKey: string;
@@ -54,13 +55,14 @@ export interface RecognizeGarmentImageInput {
 }
 
 export type RecognizeGarmentImageResult =
-  | { clientItemId: string; status: "succeeded"; tag: AiGarmentTag }
+  | { clientItemId: string; status: "succeeded"; tag: AiGarmentTag; secondaryCropBox?: { x: number; y: number; width: number; height: number }; cropConfidence?: number; cropNeedsReview?: boolean }
   | { clientItemId: string; status: "failed"; error: string };
 
 type PreparedBatchItem = {
   clientItemId: string;
   imageDataUrl: string;
   fallbackName: string;
+  gridImageDataUrl: string;
 };
 
 const STORAGE_KEY = "wardrobe-miniprogram-minimax-settings";
@@ -114,12 +116,14 @@ export function hasMiniMaxKey(): boolean {
 export async function recognizeGarmentImage(
   filePath: string,
 ): Promise<AiGarmentTag> {
+  const gridImageDataUrl = await imageSourceToDataUrl(await createTenByTenGridFile(filePath));
   const response = await request<{ tag: AiGarmentTag }>({
     method: "POST",
     path: "/api/workspace/ai/intake/garment-recognition",
     data: {
       miniMax: runtimeSettings(),
       imageDataUrl: await imageSourceToDataUrl(filePath),
+      gridImageDataUrl,
       fallbackName: fileNameFromPath(filePath),
     },
     timeoutMs: 120000,
@@ -140,6 +144,7 @@ export async function recognizeGarmentImages(
         clientItemId: item.clientItemId,
         imageDataUrl: await imageSourceToDataUrl(item.stablePath),
         fallbackName: item.fallbackName || fileNameFromPath(item.stablePath),
+        gridImageDataUrl: await imageSourceToDataUrl(await createTenByTenGridFile(item.stablePath)),
       });
     } catch (error) {
       results.push({

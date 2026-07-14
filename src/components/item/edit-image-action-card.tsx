@@ -40,17 +40,17 @@ export function EditImageActionCard({
   return (
     <EditSectionCard className="p-4">
       <div className="flex items-center gap-4">
-        <div className="relative aspect-[3/4] w-28 shrink-0 overflow-hidden rounded-[20px] border border-[rgba(29,34,40,0.06)] bg-[#f4f5f3] p-2" aria-label="图片预览">
+        <div className="relative aspect-[3/4] w-28 shrink-0 overflow-hidden rounded-[20px] border border-ink/6 bg-mist p-2" aria-label="图片预览">
           {hasImage ? (
             <>
-              <div className="h-full w-full overflow-hidden rounded-[12px] bg-[#fffffc]">
-                <GarmentImage src={imageUrl} asset={asset} alt={alt} fallbackSize={34} imageClassName="bg-[#fffffc] object-cover" />
+              <div className="h-full w-full overflow-hidden rounded-[12px] bg-surface">
+                <GarmentImage src={imageUrl} asset={asset} alt={alt} fallbackSize={34} imageClassName="bg-surface object-cover" />
               </div>
               {onRemove ? (
                 <button
                   type="button"
                   data-parity-id="parity.app.app.src.components.item.edit.image.action.card.1d8f79eab7" onClick={onRemove}
-                  className="absolute right-2 top-2 grid h-7 w-7 place-items-center rounded-[12px] bg-black/55 text-white active:scale-95 transition-transform"
+                  className="app-press-feedback absolute right-2 top-2 grid h-7 w-7 place-items-center rounded-[12px] bg-black/55 text-white"
                   aria-label="移除图片"
                 >
                   <X size={14} aria-hidden="true" />
@@ -61,7 +61,7 @@ export function EditImageActionCard({
             <button
               type="button"
               data-parity-id="parity.app.app.src.components.item.edit.image.action.card.c743eb5523" onClick={onAdd}
-              className="grid h-full w-full place-items-center rounded-[12px] bg-[#fffffc] text-[#1d2228]/40"
+              className="grid h-full w-full place-items-center rounded-[12px] bg-surface text-ink/40"
               aria-label={addLabel}
             >
               <span className="grid place-items-center gap-1 text-center text-[11px] font-semibold">
@@ -77,7 +77,7 @@ export function EditImageActionCard({
             type="button"
             data-parity-id="parity.app.app.src.components.item.edit.image.action.card.ee383bd490" onClick={onCrop}
             disabled={cropDisabled || !hasImage || !onCrop}
-            className="inline-flex h-11 items-center justify-center gap-2 ui-control-radius border border-[rgba(29,34,40,0.10)] bg-[#fffffc] px-3 text-sm font-semibold text-[#1d2228]/70 disabled:opacity-45 whitespace-nowrap"
+            className="inline-flex h-11 items-center justify-center gap-2 ui-control-radius border border-ink/10 bg-surface px-3 text-sm font-semibold text-ink/70 disabled:opacity-45 whitespace-nowrap"
           >
             <Crop size={15} aria-hidden="true" />
             重新裁切
@@ -86,7 +86,7 @@ export function EditImageActionCard({
             type="button"
             data-parity-id="parity.app.app.src.components.item.edit.image.action.card.ecce54371d" onClick={onRecognize}
             disabled={recognizeDisabled || recognizing || !hasImage}
-            className="inline-flex h-11 items-center justify-center gap-2 ui-control-radius bg-[#355c7d] px-3 text-sm font-semibold text-[#fffffc] disabled:opacity-60 whitespace-nowrap"
+            className="inline-flex h-11 items-center justify-center gap-2 ui-control-radius bg-denim px-3 text-sm font-semibold text-surface disabled:opacity-60 whitespace-nowrap"
           >
             {recognizing ? <Loader2 size={15} className="animate-spin" aria-hidden="true" /> : <RefreshCw size={15} aria-hidden="true" />}
             {recognizing ? "识别中" : "重新识别"}

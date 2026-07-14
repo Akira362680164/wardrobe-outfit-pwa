@@ -1,5 +1,8 @@
 import { chooseImages, uploadImagesForCreate, type ChosenImage } from "../../../services/assets";
 import { colorLabel, recognizeGarmentImages } from "../../../services/ai";
+import { hasMiniMaxKey } from "../../../services/ai";
+import { applyCropBoxToOriginal, requestCropSuggestion } from "../../../services/image-crop";
+import { composeNestedCropBoxes, IMAGE_CROP_MAX_IN_FLIGHT } from "../../../generated/image-crop";
 import { createClientMutationId } from "../../../services/workspace";
 import { clearCropWorkflow, consumeCropResult, startCropJob, type CropResult } from "../../../stores/crop-job";
 import {
@@ -14,6 +17,7 @@ import {
   type IntakeQueueItem,
 } from "../../../stores/intake";
 import { getCapsuleGeometry } from "../../../utils/capsule-layout";
+import { rotateCropBox } from "../../../utils/crop-math";
 
 declare const getCurrentPages: () => unknown[];
 
@@ -43,6 +47,9 @@ Page({
     navTopRpx: 0,
     navHeightRpx: 64,
     navRightRpx: 0,
+    autoCropEnabled: false,
+    cropCompleted: 0,
+    cropTotal: 0,
   },
 
   onLoad(this: any, query?: { kind?: string }) {
@@ -50,6 +57,7 @@ Page({
     beginIntakeSession(kind);
     clearCropWorkflow();
     const capsule = getCapsuleGeometry();
+    const autoCropEnabled = !hasMiniMaxKey();
     this.setData({
       kind,
       pageTitle: kind === "wishlist" ? "新增种草" : "添加单品",
@@ -59,6 +67,8 @@ Page({
       navHeightRpx: capsule.heightRpx,
       navRightRpx: capsule.rightInsetRpx + 12,
       leaveGuardActive: true,
+      autoCropEnabled,
+      ...(autoCropEnabled ? { nextText: "下一步（填写属性）" } : {}),
     });
     wx.setNavigationBarTitle({ title: kind === "wishlist" ? "新增种草" : "添加衣物" });
     this.refreshQueue();
@@ -74,12 +84,18 @@ Page({
     if (!result.targetId) return;
     const item = getIntakeQueue().find((entry) => entry.clientItemId === result.targetId);
     if (!item) return;
+    const preCropBox = mapRotatedBoxToOriginal(result.cropBox, result.rotationDeg);
     updateIntakeQueueItem(item.clientItemId, {
       processedPath: result.processedPath,
       imagePath: result.processedPath,
       cropBox: result.cropBox,
       rotationDeg: result.rotationDeg,
       cropRatio: result.cropRatio,
+      cropState: "manual",
+      cropRevision: item.cropRevision + 1,
+      cropCompleted: true,
+      preCropBox,
+      preCropRevision: item.preCropRevision + 1,
       status: "selected",
       error: "",
       assetMutations: [],
@@ -114,6 +130,7 @@ Page({
       const items = images.map((image) => createQueueItem(image, getIntakeKind()));
       setIntakeQueue([...getIntakeQueue(), ...items].slice(0, MAX_IMAGES));
       this.refreshQueue();
+      if (!hasMiniMaxKey()) void this.runAutomaticCrop(items);
     } catch (error) {
       this.setData({ error: error instanceof Error ? error.message : "选择图片失败" });
     } finally {
@@ -243,8 +260,33 @@ Page({
     }
     if (selected.length) await this.prepareAssets(selected);
     if (!getIntakeQueue().some((item) => item.status === "ready")) return;
-    await this.recognizeBeforeReview();
+    if (hasMiniMaxKey()) await this.recognizeBeforeReview();
+    else getIntakeQueue().forEach((item) => updateIntakeQueueItem(item.clientItemId, { status: "needs_confirm", error: "", draft: { ...item.draft, source: "manual", imagePath: item.processedPath, stablePath: item.processedPath } }));
     wx.navigateTo({ url: `/pages/intake/review/index?kind=${getIntakeKind()}` });
+  },
+
+  async runAutomaticCrop(this: any, added: IntakeQueueItem[]) {
+    const planned = added.map((item) => ({ id: item.clientItemId, revision: item.cropRevision + 1, sourcePath: item.sourcePath }));
+    planned.forEach((entry) => updateIntakeQueueItem(entry.id, { cropState: "queued", cropRevision: entry.revision, cropCompleted: false }));
+    this.refreshQueue();
+    let cursor = 0;
+    const worker = async () => {
+      while (cursor < planned.length) {
+        const entry = planned[cursor++]!;
+        updateIntakeQueueItem(entry.id, { cropState: "processing" }); this.refreshQueue();
+        try {
+          const response = await requestCropSuggestion({ clientItemId: entry.id, revision: entry.revision, filePath: entry.sourcePath });
+          const preview = await applyCropBoxToOriginal(entry.sourcePath, response.suggestion.cropBox);
+          const current = getIntakeQueue().find((item) => item.clientItemId === entry.id);
+          if (current && current.cropRevision === response.revision && current.cropState !== "manual") updateIntakeQueueItem(entry.id, { processedPath: preview, imagePath: preview, cropState: "applied", cropCompleted: true, draft: { ...current.draft, imagePath: preview, stablePath: preview } });
+        } catch {
+          const current = getIntakeQueue().find((item) => item.clientItemId === entry.id);
+          if (current && current.cropRevision === entry.revision && current.cropState !== "manual") updateIntakeQueueItem(entry.id, { cropState: "failed", cropCompleted: true });
+        }
+        this.refreshQueue();
+      }
+    };
+    await Promise.all(Array.from({ length: Math.min(IMAGE_CROP_MAX_IN_FLIGHT, planned.length) }, worker));
   },
 
   async recognizeBeforeReview(this: any) {
@@ -260,8 +302,15 @@ Page({
           updateIntakeQueueItem(item.clientItemId, { status: "needs_confirm", error: result.error || "AI识别失败，请手工确认" });
         } else {
           const tag = result.tag;
-          updateIntakeQueueItem(item.clientItemId, { status: "confirmed", error: "", draft: {
+          const secondaryCropBox = result.cropNeedsReview || !result.secondaryCropBox
+            ? undefined
+            : mapRotatedBoxToOriginal(result.secondaryCropBox, item.rotationDeg);
+          const finalCropBox = composeNestedCropBoxes(item.preCropBox, secondaryCropBox);
+          const finalPreview = await applyCropBoxToOriginal(item.sourcePath, finalCropBox).catch(() => item.processedPath);
+          updateIntakeQueueItem(item.clientItemId, { status: "confirmed", error: "", processedPath: finalPreview, finalCropBox, draft: {
             ...item.draft,
+            imagePath: finalPreview,
+            stablePath: finalPreview,
             name: tag.candidateNames.find(Boolean) ?? item.draft.name,
             category: tag.category || item.draft.category,
             color: colorLabel(tag.colors),
@@ -307,6 +356,8 @@ Page({
       readyCount: queue.filter((item) => item.status === "ready").length,
       failedCount: queue.filter((item) => item.status === "failed").length,
       uploadingCount: queue.filter((item) => item.status === "uploading").length,
+      cropCompleted: queue.filter((item) => item.cropCompleted).length,
+      cropTotal: queue.length,
     });
     if (activePopoverItemId) setTimeout(() => this.refreshPopoverPosition(), 0);
   },
@@ -379,6 +430,21 @@ function createQueueItem(image: ChosenImage, kind: IntakeKind): IntakeQueueItem 
     status: "selected",
     error: "",
     assetMutations: [],
+    cropState: "idle",
+    cropRevision: 0,
+    cropCompleted: false,
+    preCropBox: { x: 0, y: 0, width: 1, height: 1 },
+    preCropRevision: 0,
     draft,
   };
+}
+
+function mapRotatedBoxToOriginal(
+  box: IntakeQueueItem["preCropBox"],
+  rotationDeg: 0 | 90 | 180 | 270,
+): IntakeQueueItem["preCropBox"] {
+  if (rotationDeg === 90) return rotateCropBox(box, "left");
+  if (rotationDeg === 180) return rotateCropBox(rotateCropBox(box, "left"), "left");
+  if (rotationDeg === 270) return rotateCropBox(box, "right");
+  return box;
 }

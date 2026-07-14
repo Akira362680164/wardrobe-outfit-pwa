@@ -62,6 +62,7 @@ lastReviewedAt: 2026-07-07
 | 二级卡片 | `18px-20px` | 一级卡片内部的选择块、空状态、预览块 |
 | 普通控件 | `12px-14px` | 筛选、输入、普通按钮 |
 | 底部菜单外框 | `26px` | 悬浮毛玻璃圆角矩形 |
+| 居中确认框外框 | `28px` | 与一级卡片共用 `--ui-radius-card`；内部按钮继续使用 `16px` 控件圆角 |
 | 底部菜单选中项 | `外框半径 - 内边距` | 不使用圆形激活按钮；选中项色块弧线必须与外框同心 |
 | 缩略图 | `8px-12px` | 详情胶片栏、录入缩略图、队列图 |
 
@@ -78,7 +79,7 @@ lastReviewedAt: 2026-07-07
 | `glass.bottom.bg` | `rgba(255,255,252,0.40)` | 底部导航使用更高透明度，让滚动内容自然透色 |
 | `glass.bottom.filter` | `blur(34px) saturate(1.5) brightness(1.05)` | 加强 Frost 与背景色扩散；不使用真实位移滤镜 |
 | `glass.bottom.edge` | `-45deg / refraction 31 / depth 20 / light 45` | 以斜向内高光、内暗边和窄阴影近似折射、厚度与受光；`dispersion=0` |
-| `glass.card.bg` | `rgba(255,255,252,0.52)` | 所有使用一级卡片 token 的浅色卡片统一使用；二级内嵌卡片不变 |
+| `glass.card.bg` | `rgba(255,255,252,0.52)` | 所有使用一级 `.ui-card` token 的浅色卡片统一使用；二级内嵌卡片不变 |
 | `glass.card.filter` | `blur(30px) saturate(1.35) brightness(1.04)` | 复用上一轮已确认的导航玻璃参数，覆盖单品、套装、种草与设置一级卡片 |
 | `glass.toast.bg` | `rgba(255,255,252,0.88)` | Toast 应比页面卡片更浮，但不能变成实心白卡 |
 | `shadow.soft` | `0 18px 50px rgba(29,34,40,0.10)` | Tailwind `shadow.soft` |
@@ -97,12 +98,30 @@ lastReviewedAt: 2026-07-07
 | `duration.panel` | `0.32s`，Sheet、页面推进 |
 | `duration.slow` | `0.45s`，大面积过渡 |
 | `ease.app/out` | `[0.2, 0.8, 0.2, 1]` |
-| `spring.snappy` | 按钮、Toast、checkmark |
-| `spring.soft` | 面板、卡片进入 |
-| `spring.gentle` | 大面积转场 |
-| 变体 | `fade`、`slideUp`、`toastDrop`、`slideRight`、`slideRightExit`、`scaleModal`、`tabFade`、`staggerReveal`、`pop` |
+| `spring.control` | 无弹跳控件、选中指示器、Toast |
+| `spring.panel` | 无弹跳面板和页面层级运动 |
+| `spring.momentum` | 仅真实 drag/flick 释放后的速度继承 |
+| 兼容别名 | `spring.snappy/soft/gentle` 只保留旧调用兼容；新增调用禁止使用 |
+| 共享变体 | `slideUp`、`toastDrop`、`slideRight`、`slideRightExit`；其余重复/未使用变体已移除 |
 
 所有动画必须遵守 reduced-motion；减少大位移，保留必要的显隐和状态反馈。
+
+#### 2.4.1 动效修复目标契约（Wave 0 冻结）
+
+本节是 2026-07-13 动效修复批次的公共接口契约。并行 Session 只能实现或消费这些语义，不得在各页面另造一套 token、速度投影或返回优先级。
+
+| 语义 | 目标行为 |
+| --- | --- |
+| `spring.control` | 无弹跳、临界阻尼；按钮、选中指示器和普通状态反馈 |
+| `spring.panel` | 无弹跳、可中断；Sheet、Dialog 和页面层级运动 |
+| `spring.momentum` | 仅用于真实 drag/flick 释放，继承手指速度并允许轻微回弹 |
+| `motionDistance` | `near=4px`、`page=12px`、`panel=24px`；禁止单页新增随意位移档位 |
+| `projectGesture` | 使用释放前短历史速度投影终点，再选择 snap point；不得只看释放位置 |
+| `rubberBand` | 越界阻力随距离渐增；不得固定比例硬折损或直接硬停止 |
+
+手势驱动表面必须从当前屏幕呈现值接管，Pointer Events 使用 pointer capture，横纵意图阈值为 `8–10px`，拖动阶段由 MotionValue/transform 驱动而不是逐帧 React state。释放动画继承真实速度；快速反向必须从当前 x/y 与 velocity 重定向。
+
+reduced-motion 下取消大位移、spring、stagger、smooth scroll 和 `height:auto` 补间，保留 `120–160ms` cross-fade 或即时状态反馈。reduced-transparency、高对比或不支持 backdrop-filter 时，浮动材料改为近实心背景和清晰边界。
 
 ### 2.5 Icon
 
@@ -237,6 +256,158 @@ Icon-only 按钮必须有 `aria-label`；图标与文字组合时图标使用 `a
 - 遮罩点击是否关闭必须逐组件声明。
 - 危险操作必须有取消和结果明确的确认按钮，例如“删除 3 件”，不要只写“确定”。
 
+#### 6.1 OverlayRoot / OverlayStack 公共接口
+
+- `OverlayRoot` 在 App 壳层只挂载一次，所有 Sheet、Dialog、Popover、Lightbox、Cropper 都 portal 到该根；不得继续受路由 transformed ancestor 限制。
+- `OverlayStack` 的 entry 至少包含 `id/kind/dismissible/onDismiss/restoreFocusTo`。注册返回注销函数；只有 topmost entry 能消费 Escape、Android Back、Tab trap 和 backdrop。
+- Toast 不注册进 OverlayStack；不可取消的保存、删除、重置事务保留在栈顶，但 `dismissible=false`，关闭请求只反馈“操作进行中”。
+- Back/Escape 只有一个全局协调入口。一次事件最多发生一次状态转移；页面私有监听器必须迁移后删除。
+- 打开顶层覆盖层时，底层覆盖层及 App 内容设置 inert/不可被辅助技术浏览；关闭后焦点返回原触发器。
+
+`MotionSheet` 的冻结 props：`open/onClose/children`、`variant: action | form | confirm | destructive`、`role`、`ariaLabel | ariaLabelledBy`（二选一）、`closeOnBackdrop`、`closeOnEscape`、`dismissible`、`panelClassName`。共享实现必须保持迁移期向后兼容，业务 Session 不得修改该接口。
+
+`MotionPopoverMenu` 必须持有真实 trigger ref，按 anchor 计算 transform origin，打开后聚焦首项，支持 Arrow/Home/End/Escape，关闭后恢复触发器。`MotionImageLightbox` 和 Cropper 使用相同 topmost/focus/scroll-lock 生命周期。
+
+##### 6.1.1 A1 运行时基线
+
+- `src/components/overlay-root.tsx` 在 `MotionProvider` 内只挂载一次，并在 `document.body` 下创建 `#wardrobe-overlay-root`；注册的 Sheet 通过 `OverlayPortal` 进入该根。
+- `src/lib/overlay-stack.ts` 是浮层注册顺序、topmost、关闭拒绝和焦点恢复的唯一状态源。只有 topmost 能处理 Back、Escape、backdrop 和 Tab；下层浮层与 App 内容同步设置 `inert`、`aria-hidden`。
+- `src/lib/back-coordinator.ts` 先请求关闭 topmost overlay，再按 `priority + registration order` 查询页面 handler；浮层关闭或拒绝关闭后均不得继续执行页面返回。`useStableBackHandler` 只登记回调，不再创建 Capacitor listener。
+- `dismissible=false` 或 `closeOnEscape/closeOnBackdrop=false` 的关闭请求保持当前层，触发 `onDismissBlocked`，并提供“操作进行中”读屏状态；Toast 继续留在栈外。
+- A1 只建立共享 Sheet 与顶层返回基线；Lightbox、Popover、Cropper 和遗留页面私有 Back listener 的全面迁移属于 A2，不得把 A1 的局部接入误报为全 App 浮层迁移完成。
+
+##### 6.1.2 A2-Core 共享浮层组件
+
+- `MotionSheet` 延续 A1 冻结接口，Portal、OverlayStack、退出期锁滚和 topmost 焦点圈保持同一生命周期；居中 Dialog 只使用轻微缩放与透明度，不使用弹跳。`dismissible=false` 同时暴露 `aria-busy` 和关闭拒绝播报，不得在事务进行中被 backdrop、Escape 或 Android Back 打断。
+- `MotionImageLightbox` 统一进入 `OverlayPortal` 和 `OverlayStack(kind=lightbox)`，使用 `100dvh`、`role=dialog`、`aria-modal`、可访问名称、首焦点与 Tab 圈；关闭动画完成前持续锁滚，低层 Lightbox 必须 `inert/aria-hidden`。
+- `MotionPopoverMenu` 统一进入 `OverlayPortal` 和 `OverlayStack(kind=popover)`；真实 trigger ref 同时用于定位、按锚点中心计算 `transform-origin` 和关闭后焦点恢复。打开即聚焦首个可用菜单项，支持 ArrowUp/ArrowDown/Home/End，并由 OverlayStack 消费 Escape。
+- Popover 外点关闭在 pointerdown capture 阶段完成。防点击穿只绑定当前 `pointerId`，并在对应 click、pointercancel 或 pointerup 后首帧释放；禁止再使用 400ms 等全局定时点击抑制窗口。
+- 共享 Notice Dialog 必须提供可访问名称；危险确认使用 `alertdialog`，异步提交期间必须不可取消。A2-Core 不引入 Sheet 拖拽，拖拽关闭仍由后续手势 Wave 按速度投影和 rubber-band 契约实现。
+
+##### 6.1.3 A2-App 壳层、设置与账号迁移
+
+- App 全局“新建 / 退出”、Auth 登录壳邮箱验证码与退出确认、设置诊断描述 / 成功 / 失败，以及设置内衣橱增删改统一使用冻结 `MotionSheet` 变体；这些区域不得再创建私有 `fixed inset-0` 对话框。
+- Auth、设置首页、穿衣画像、参考照片、MiniMax、衣橱列表、账号安全、改密和注销页只通过 `useStableBackHandler` 登记页面决策；`OverlayRoot` 仍是唯一原生 Android Back / document Escape listener。Overlay 优先于页面，页面优先于 App 根退出 fallback。
+- 表单、确认和危险确认必须提供可访问名称；打开时焦点进入 topmost，底层 App 与下层浮层保持 `inert/aria-hidden`，关闭后恢复原触发器。诊断遮罩按既有产品语义不关闭，Back / Escape 仍只关闭当前诊断层。
+- 衣橱新增、编辑、迁移、删除，画像 / 参考照 / MiniMax 保存，账号改绑 / 改密与最终注销在请求完成和服务端读回前保持当前页面或 Sheet；busy 时 `dismissible=false`，Back、Escape、backdrop、取消和重复提交均不得中断事务。
+- 本小节只声明 A2-App 独占区域完成迁移；衣橱列表 / 详情、套装、种草、录入、Lightbox、Popover 与 Cropper 的遗留 listener 或私有覆盖层由 A2-Core / A2-Flows 及后续命名 Wave 负责，不得据此宣称全 App 已无遗留层。
+
+##### 6.1.4 A2-Flows 业务流浮层迁移
+
+- 详情、穿搭计划、打包清单、种草和录入流程的操作面板、表单面板与危险确认统一使用 `MotionSheet`、`MotionPopoverMenu`、`ConfirmActionSheet`；业务组件不再用私有 `fixed inset-0` 遮罩模拟 Dialog/Sheet，也不自行抢占 Back/Escape。
+- `IntakeFlowShell` 以 `kind=fullscreen`、全屏 `ImageCropEditor` 以 `kind=cropper` 注册到 OverlayStack，并复用共享 Portal、滚动锁、topmost、焦点圈定、`inert/aria-hidden` 与触发器焦点恢复生命周期；嵌入式裁切仍属于录入 Shell 内容，不重复注册。
+- 上传、保存、删除、重置、种草转衣橱或裁切应用进行中时，当前层保持 `dismissible=false`；Android Back、Escape、遮罩和显式关闭不得中断事务，关闭请求提供“操作进行中”反馈。失败后保留当前确认层、输入草稿与重试入口，成功仅在服务器提交并读回后关闭。
+- Popover 的 `anchorRef` 必须指向当前可见的触发按钮。种草首页菜单、种草详情菜单、套装详情菜单与穿搭实图菜单不得复用不可见页或无关表单控件的 ref。
+- 页面级 `useStableBackHandler` 只负责选择模式、未保存草稿和子页导航；OverlayStack 先处理 Sheet、Dialog、Popover、Lightbox、Cropper。一次返回事件只关闭或拒绝一个 topmost 状态，不继续穿透到页面导航。
+- 本节只迁移浮层生命周期和 busy 安全，不改轮播/日历轨道、裁切阻尼、手势物理或路由导航结构；相关连续性与手势优化仍由后续专属 Wave 实施。
+
+##### 6.1.5 B1 即时按压与状态反馈
+
+- `AppPressable` 是普通按钮、图标按钮和可点击卡片的统一按压入口。主指针按下必须同帧进入 pressed 状态；位移超过 `10px`、拖离命中区、`pointercancel`、失去 pointer capture 或失焦时立即撤销，且同一手势不得继续触发 click。Space / Enter 必须获得同等反馈。
+- 三种反馈只允许使用公共档位：`control` 用于普通控件、`icon` 用于图标控件、`card` 用于可点击卡片。三者统一使用无弹跳 `spring.control`；选择模式只改变边框、遮罩和 check，不缩放整张卡片。`spring.snappy/soft/gentle` 仅作为兼容别名，新增代码使用 `control/panel/momentum` 语义名。
+- reduced-motion 下按压取消 scale 与 spring，只保留即时透明度反馈；普通按钮、Tab、Toast、check 和状态切换不得使用回弹。`spring.momentum` 只允许用于真实 drag/flick 释放后的速度继承。
+- Toast 分为 success、info、error、action：success 短时自动消失，info 保留较长阅读时间，error / action 必须由用户关闭或完成动作；自动消失倒计时在页面隐藏、窗口失焦、鼠标悬停、焦点进入或触摸按住期间暂停，对应状态解除后继续剩余时长。
+- 进度条以左侧为原点通过 `transform: scaleX()` 更新，禁止逐百分比改 `width` 触发布局；可见百分比与读屏播报分离，live region 只在阶段文案变化时播报。Shimmer 只动画 transform，reduced-motion 下显示静态占位。
+- B1 只收口共享反馈原语、AI 进度、衣橱 App 的 Toast/FAB/底部导航，以及三个目录首页共用的卡片壳与选择组件；不得借机修改图片轮播、详情壳、周历/月历或录入手势。
+
+##### 6.1.6 B3 周计划 / 月历直接操控
+
+- 周计划条与月历都常驻“上一页 / 当前页 / 下一页”三页轨道。拖动和释放阶段只更新横向 `MotionValue/transform`；提交单页后再更新父级日期事实并无缝回中，五行与六行月份都不得先卸载当前页或闪空。
+- 轨道固定 `touch-action: pan-y`，横纵意图阈值为 `9px`；纵向或纵向占优的斜向手势不得抢占页面滚动，只有横向意图成立后才 pointer capture。拖动阶段保持手指与轨道 `1:1`，仅在三页外缘使用随越界距离渐增的 nonlinear rubber-band。
+- 周计划与月历共用 `calendar-track-gesture.ts` 的短历史速度和 snap 计算：只采最近 `110ms`，按 `0.2s` 投影终点，并把结果限制为上一页 / 当前页 / 下一页，单次 flick 不得跨两页。释放使用无弹跳、可中断 spring；新 pointerdown 从当前呈现 x 接管，途中反向不得先跳回旧目标。
+- 左右箭头与拖动必须进入同一 snap 状态机。连续同向点击按顺序执行且不吞步；动画中点击反向箭头先重定向当前轨道，不能并发启动第二套月 / 周切换动画。
+- 日期选中态使用共享 `layoutId` 的背景层移动，不以旧背景消失、新背景重新淡入伪装连续性。月历日期详情使用位置布局、透明度与裁切显隐；不得补间 `height:auto`。reduced-motion 下切页、选中和详情展开即时完成，不运行 spring 或大位移。
+- `monthDate/selectedDate` 与周计划对应日期仍由父级持有；组件重挂载时从父级选中日期恢复展开详情，不增加模块级缓存、隐藏持久化或第二份返回上下文。日卡按钮、busy 写入和服务器读回边界保持原有业务语义。
+
+##### 6.1.7 B4 录入裁切、滑条与中断恢复
+
+- 裁切框拖动继续使用 pointer capture，但展示值与合法值分离：越过图片边缘时按距离施加渐进阻尼，松手后使用公共无弹跳 `spring.control` 从当前呈现值回到合法框。新 pointerdown 必须能从正在收口的呈现值接管；确认导出只读取 clamp 后的合法框，禁止把越界展示值写入业务草稿。
+- 温度双端滑条和通用数值滑条只允许从 knob 的 44px 命中区起拖。pointerdown 记录手指相对 knob 中心的 grab offset，不立即跳值；控件固定 `touch-action: pan-y` 并在首个 `8px` 内判断横纵意图，纵向或纵向占优的手势不得修改数值。
+- 滑条拖动、键盘和边界夹紧统一按最终整数去重；父组件尚未重渲染时也不得对相同整数重复调用 `onChange`。拖出 knob 或轨道边界后仍通过 pointer capture 连续跟手，释放或 `pointercancel` 必须清空本次手势状态。
+- 批量逐件确认只在当前单品预览图上提供 `10px` 左右的轻方向提示，上一件向右、下一件向左进入；表单容器、字段分组和保存栏不得因切换单品重新播放整页或大位移动画。reduced-motion 下方向位移即时归零。
+- 录入返回优先级固定为：裁切器 > 图片来源 > 字段浮层 > 退出确认 > 录入页面返回。统一 OverlayStack 只消费一次 topmost 状态；嵌入式裁切通过录入 Shell 的 root back override 关闭，不能同时退步骤或打开退出确认。
+- 相册或相机取消、裁切取消、识别失败、保存失败都保留当前 `imageItems`、当前步骤、当前确认单品和内存草稿；失败只在原位置展示错误与重试入口。保存仍须等待服务端提交和读回，B4 不改变 API、字段、幂等 ID 或线上唯一数据源规则。
+- 裁切器沿用现有黑色工作台与 Denim 主操作层级，运行时代码必须消费 `denim/white/ink/mist` 等既有语义 token；不得继续以硬编码十六进制颜色复制基线，也不得借动效改造重排裁切工具栏或表单信息架构。
+
+##### 6.1.8 C1 路由运动与滚动连续性
+
+- 导航控制器必须把 `fromRoute/toRoute/source/direction` 与目标 route 原子提交；`direction` 只使用 `tab/push/pop/replace`。Tab 重置为 `tab`，前进为 `push`，返回及录入关闭为 `pop`，非层级替换为 `replace`；同 route 重复点击不得创建新 transition 或排队动画。
+- 四个主 Tab 是平级关系：新内容以 `opacity 0.96 → 1`、`y 4px → 0` 短交叉淡化，使用 `AnimatePresence mode="sync"`，快速连续切换必须中断当前呈现状态，不得使用 `mode="wait"`。底栏选中胶囊使用共享 `layoutId` 在 Tab 间移动；按钮继续只使用 B1 `AppPressable`，不得叠加第二层按压缩放。
+- push 时新页从右侧 `24px` 进入、旧页向后 `-6px`；pop 完全沿相反路径返回。退出页在动画期间必须 `inert/aria-hidden` 且不接收 pointer；reduced-motion 只保留短 opacity 变化，不保留 x/y 位移或 spring。
+- 路由容器不得常驻 `transform-gpu`、`will-change` 或统一 opacity+y 模板。页面叠层使用同一 grid cell，退出与进入可同步呈现而不把文档高度相加；方向、层级与交互归属由唯一 `NavigationMotion` 决定。
+- 滚动位置只保存在当前 App 会话内的 route-specific 内存表。每次提交在 `useLayoutEffect` 中保存实际已呈现 route 的 scrollY，并在浏览器首帧绘制前恢复目标 route；四个 Tab 相互独立，详情 pop 回列表恢复列表位置，不等待动画完成或双/三重 `requestAnimationFrame`。
+- 若全局“+”Sheet 的 fixed-body 锁仍在退出期，读取 `body.top` 对应的真实呈现位置，并只把最终恢复推迟到锁释放的同一绘制帧；不得让锁滚回写覆盖目标 route。选择“单品 / 套装 / 种草”时，关闭 Sheet、录入 trigger 与 intake push 必须在同一用户事件内提交，不添加空等定时器，使 Sheet 退出与录入页进入自然重叠。
+- C1 只负责 AppRoute 外层导航、主 Tab、全局“+”衔接和 route scrollY。卡片 source anchor、Lightbox 来源动画与三类详情内部连续性仍属于 C2；深层计划、设置和种草子页的统一路由化仍属于 C3。
+
+##### 6.1.9 C3-Outfit 套装与计划深层流程
+
+- 套装模块内部子页复用 C1 的空间语义，但不创建第二个 `AppRoute` 所有者：前进使用 `push`，返回/取消/保存成功使用 `pop`，非层级外部 route 同步使用 `replace`。页面仍以 `AnimatePresence mode="sync"` 叠在同一 grid cell；push 为新页右侧 `24px` 进入、旧页后退 `-6px`，pop 完全反向，退出页必须 `inert/aria-hidden`。reduced-motion 只保留短 opacity，不运行横向位移或 spring。
+- 套装层级固定为首页/来源页 → 详情 → 编辑、组成或实图；组成保存只 pop 一层并在详情原位读回，实图查看、说明表单、删除确认继续由统一 OverlayStack 决定 topmost。创建套装沿用 `OutfitIntakeFlow` 的“选择衣物 → 确认套装”两步草稿事实，步骤返回不清空已选组成或表单草稿，C3 不复制第二份创建状态。
+- 计划层级固定为月历 → 新增计划 → 计划详情 → 打包清单；计划编辑从详情 push、保存后 pop。新增计划保存成功后进入该计划详情，详情 Back 回月历，打包清单 Back 只回详情，任何一次 Back 只消费当前一层。快速连续 Back 使用同步呈现 route ref 判定，不能重复读取上一帧闭包或越级写错滚动上下文。
+- 每个深层子页和对象只在当前 App 会话内保存独立的 window/内部 scroll offset；导航提交前读取实际仍在呈现的页，目标页在首帧绘制前恢复。若上一层 Sheet 的 fixed-body 锁仍处于退出期，沿用 C1 的锁释放恢复路径。失败不触发导航或重挂载，因此表单、错误位置和滚动原位保留。
+- 保存套装/实图/计划、删除套装/计划/实图、添加或批量更新打包清单、重置勾选都必须有同步 busy gate。busy 期间页面 Back、按钮返回、Overlay backdrop、Escape 和拖拽关闭均不得中断；确认层继续显示原位 pending，失败在原层展示错误并允许重试。
+- 写成功的视觉确认只允许发生在服务器事务成功并完成 `onRefresh` / `onPlanDataChange` 读回之后。计划表单回调不得吞掉失败；新计划、编辑计划和打包操作都保留线上唯一数据源、幂等与现有共享契约，不新增本地缓存、乐观成功或后台补写。
+- C3-Outfit 最低交互证据为 `390 x 844`：覆盖月历 → 新增 → 详情 → 打包的连续 push/pop、深滚动返回、同一 tick 快速多次 Back、退出页 inert、单一 current page，以及 reduced-motion 下 transform 归零。
+
+##### 6.1.10 C3-Settings 设置、画像与账号深层流程
+
+- 设置首页、穿衣画像、参考照片、MiniMax 与衣橱位置共用唯一原子 `SettingsPageTransition`，同时提交 `fromPage/toPage/direction`。进入子页沿用 C1 push 的“新页 `+24px` / 旧页 `-6px`”，返回完全反向；`AnimatePresence mode="sync"` 允许快速 push/pop/push 从当前呈现状态接管，退出页必须 `inert/aria-hidden` 且不接收 pointer。reduced-motion 只保留短 opacity，不运行 x 位移。
+- 设置内层只保存 `settings_home` 的会话内滚动位置。进入子页前读取实际呈现 scrollY，返回首页时在 `useLayoutEffect` 中于首帧绘制前恢复；子页从页首开始。账号安全、改密与注销继续使用 C1 外层 AppRoute，不再套第二层设置位移动画，避免双重滑动。
+- 画像、参考照片、MiniMax、衣橱位置、诊断上传、账号改绑、改密、验证码重置和最终注销的异步事务，在提交及服务端读回期间必须保持当前页面或 topmost Sheet。Back、Escape、backdrop、显式取消、重复提交和表单控件都不得中断 busy 事务；关闭请求继续通过共享 OverlayStack 播报“操作进行中”。
+- 请求失败必须保留当前子页、确认层、字段值、图片草稿和重试入口，不得弹回设置首页或清空输入。请求成功也不能以写响应直接结束：画像 / 参考照 / 衣橱采用保存后的服务端实体或 overview 读回，账号改绑 / 改密读取最新 security 状态，注销轮询完成状态后，才允许关闭当前层并显示成功。
+- MiniMax 设置先对内存草稿执行真实连接验证，通过后才写入设备设置并 pop；验证失败时不覆盖既有 Key、不离开当前页。诊断上传把构建、授权和上传视为一笔不可取消事务，失败仍保留问题描述。
+- 390px 深层流程验收至少覆盖：设置内 push/pop 与列表滚动恢复、快速方向反转、设置→账号→改密的外层路由、注销 Sheet 的 backdrop/Escape/Back 拒绝、失败保留路由与输入、写入确认后仍等待读回、读回成功才关闭，以及 reduced-motion 无位移和无横向溢出。
+
+##### 6.1.11 C3-Wishlist 种草深层流程连续性
+
+- 种草首页、已买 / 不感兴趣 / 已归档子列表、详情、编辑与加入衣橱使用组件内页面帧栈；进入详情、编辑和加入衣橱为 `push`，返回来源为 `pop`，非层级重置才允许 `replace`。运动参数直接复用 C1 的 push / pop 状态：新页从右侧进入、来源页轻退后，返回完全反向；退出页必须 `inert/aria-hidden` 且不接收 pointer，reduced-motion 下只保留短 opacity 变化。
+- 每个帧只保存本次 App 会话内的页面、来源 item 和实际滚动位置。离开前读取当前滚动容器的 `scrollTop`，返回时在 `useLayoutEffect` 首帧绘制前恢复；首页筛选、首页滚动和三个子列表滚动彼此独立。编辑成功、确认放弃以及取消加入衣橱都只弹回原详情 / 列表来源，不得在这些返回动作中硬跳种草首页；加入衣橱成功仍遵守既有业务收口目标。
+- `intake_wishlist` 跨外层 route 重挂载只允许一个明确命名的一次性导航交接：快照仅含来源页、首页筛选和滚动位置，关闭 / 保存时显式 arm，目标实例初始化时消费并立即清除；所有者放弃或离开其他 Tab 时必须清除。禁止写入 `sessionStorage/localStorage`、`WeakMap`、长期模块缓存或携带 itemId，失败及重复挂载不得泄漏旧来源。
+- 加入衣橱、编辑保存、撤销购买和危险确认进入 busy 后，Android Back、Escape、遮罩、顶部返回和显式取消都不得关闭当前页或浮层；失败留在原位置并保留已选图片、表单、位置、确认状态、筛选、滚动与返回来源，成功仍以服务器提交和读回为关闭边界。
+- 首页与详情的 More 菜单必须各自持有当前可见触发器的独立 `anchorRef`。同步 push / pop 重叠期间，退出详情的 ref 清理不得清空已进入首页的菜单锚点；焦点恢复、键盘操作与 OverlayStack 优先级继续遵守 A2 / C2 公共契约。
+- 390px 竖屏验收至少覆盖：筛选并滚动列表 → 详情 → 加入衣橱失败 → 返回恢复；详情 → 编辑失败并保留图片 / 表单 → 放弃确认；已买列表 → 撤销购买 busy 锁定 → 失败保留确认与列表滚动。不得以只检查静态 DOM 或单个 happy path 代替深层流程验证。
+
+##### 6.1.12 D1-Runtime 动效偏好、无障碍与性能收口
+
+- `MotionConfig reducedMotion="user"` 是全局基线，`AnimatedPage`、`MotionSheet`、`MotionPopoverMenu`、Toast、进度与可展开内容仍必须在组件内显式选择 reduced 分支。reduced-motion 下只允许短 opacity / 即时状态反馈；取消大位移、spring、列表 stagger、intrinsic-height 补间和无条件 smooth scroll。全局 `html` 不设置 smooth，用户触发的局部滚动必须同一表达式选择 `reduceMotion ? "auto" : "smooth"`。
+- 原生按钮若不需要 `AppPressable` 的 pointer capture / cancel 状态机，只能使用共享 `app-press-feedback`。标准偏好用 individual `scale` 合成已有 translate/rotate，不改变命中区；reduced-motion 取消 scale，只保留 opacity。页面不得再出现 `active:scale-*`、`whileTap` 或第二套私有按压反馈。
+- `.surface`、一级/二级卡片、顶部/底部 glass、浮动导航与 Toast 使用统一 material CSS variables。`prefers-reduced-transparency: reduce`、`prefers-contrast: more`、不支持 backdrop-filter 时改为近实心背景、清晰边界并关闭 blur。`MotionProvider` 只在 Android 明确暴露 `deviceMemory <= 4GB` 或 `hardwareConcurrency <= 4` 时设置 `data-motion-effects="reduced"`；缺失信号或高规格设备不猜测降级。
+- `OverlayRoot` 是唯一 Capacitor `backButton` owner。搜索、统计、批量选择、详情、编辑和批量评审只登记 `useStableBackHandler`，返回 true 后一次事件只发生一个状态转移。图片队列评审必须进入 `OverlayPortal`、注册 `useOverlayLayer`、具备动态 dialog 名称、topmost focus scope、App 背景 `inert/aria-hidden`、busy 关闭拒绝和读屏提示；分类 More 菜单复用 `MotionPopoverMenu`，不再维护私有 portal / 定位 / 外点监听。
+- 所有 `MotionSheet` / dialog / menu 调用点必须显式提供业务名称；不可只依赖“操作面板”一类共享 fallback。视觉进度条使用 `role="progressbar"`、可访问名称、`aria-valuemin/max/now` 与阶段 `aria-valuetext`；百分比不进入 live region，阶段变化继续由独立 polite status 播报。
+- 手势轨道、进度条与 Shimmer 只在真实动画期间创建 transform layer；不得常驻 `will-change-transform`。已无调用方的 wrapper、卡片、badge、transition API 和未使用 motion variants 必须删除，页面不得复制共享浮层或导航实现。
+- D1-Runtime 最低证据为：严格全仓 motion contract `0` 违规、`scripts/test-motion-runtime-d1.ts`、`scripts/test-motion-runtime-d1-browser.mjs` 的 `390 x 844` mobile/touch harness、UI spec build/check/preview、overlay/back/token/overflow/reuse 门禁、根 typecheck 与 Next build。浏览器 harness 必须覆盖 low-end Android、reduced-motion、减少透明度、高对比、dialog/menu 名称与焦点隔离、progress 语义和横向溢出。
+
+##### 6.1.13 D1-Contracts 动效与浮层防回归扫描
+
+- `test:logic:ui-motion-contract` 对 `src/app`、`src/components`、`src/lib` 全量扫描，不使用“当前文件清单”作为债务白名单；可用 `MOTION_CONTRACT_ROOT=<worktree>` 只读扫描待集成 Runtime worktree，普通 npm 入口仍以当前仓库根目录运行并校验 package scripts。任何新增 `fixed inset-0` JSX surface 只有在它实际位于 `<OverlayPortal>…</OverlayPortal>` 区间且所属文件调用 `useOverlayLayer` 时才允许；Toast、底栏等非全屏 fixed chrome 不误判，已注册的录入 Shell 与全屏裁切器继续通过。
+- Capacitor `backButton` 原生 listener 的唯一所有者是 `OverlayRoot`，且仓库中必须恰好存在一个。页面、详情、选择模式和业务流程只能注册 `useStableBackHandler`；静态合同与 `back-priority-regression` 同时保证 Overlay topmost → 页面高优先级 → App 根 fallback 的一次一层消费。
+- 每个 `MotionSheet` 调用必须显式传 `ariaLabel` 或 `ariaLabelledBy`；直接声明 `role=dialog/alertdialog/menu` 的 JSX 节点也必须在同一节点显式命名。扫描不把共享组件的通用 fallback、可见但未绑定的标题或注释当作可访问名称。
+- 普通点击反馈禁止散落 `active:scale-*`、CSS `:active { transform: scale(...) }` 或 `whileTap`；统一使用 `AppPressable` / `app-press-feedback`，由公共实现处理 pointer cancel、键盘、disabled 与 reduced-motion。该规则不禁止轮播/裁切的直接操控 transform、Lightbox source transform、选择 check 或公共 motion token 的非按压 scale。
+- reduced-motion 扫描阻止未就地分支的程序化 smooth scroll、Motion `height:auto`、stagger 和无限循环。JS 的 smooth / repeat 必须在相邻的 reduced-motion 条件中提供 instant / static 路径；CSS smooth 必须有 `prefers-reduced-motion: reduce` 的 auto/initial 覆盖。禁止仅依赖远处的全局开关掩盖局部大位移动画。
+- `test:logic:ui-contracts` 是组合入口，必须串行覆盖 motion scan、UI 规范预览、token、overlay、Back 优先级、360/390px overflow 与共享组件复用，并由 `test:logic:all` 调用。扫描命中运行时缺陷时由对应 Runtime 所有者修复；Contracts 不修改运行时代码，也不得新增例外、缩小目录或弱化正则来换取绿色结果。
+
+##### 6.1.14 D1-Android 最终动效验收
+
+- Android 动效验收固定使用 `390 × 844` 竖屏矩阵，至少覆盖浮层 Back、图片反向接管、日历斜滑、滑条纵向滚动、路由中断和 reduced-motion。浏览器 harness / 逻辑合同只证明冻结源码行为，不能替代 WebView、系统 Back、触摸仲裁和最终 APK 帧时序。
+- 每个 APK 先以 `aapt` / `apksigner` 核对 `com.wardrobe.outfit`、`versionName/versionCode`、固定签名 `CN=fangzheng` 和 SHA-256。Wave 6 之前的 APK 只允许标作 `pre-wave-control`，用于验证 ADB、安装、启动、前台窗口和 logcat 链路；只有 `final-wave6` APK 具备最终动效复测资格。
+- 浮层 Back 必须由 Android 系统 Back 实际触发，一次只关闭或拒绝一个 topmost 状态；图片、日历和路由的反向手势必须从当前呈现位置接管，不能跳回旧目标后重新开始。日历与滑条的纵向占优手势必须继续页面滚动，不得误改月份或数值。
+- reduced-motion 验收先确认 WebView 的 `matchMedia('(prefers-reduced-motion: reduce)')` 为真。直接操控仍应跟手，但释放收口、路由、选中和展开不得运行大位移或 spring；关闭系统设置后还要恢复常规速度，检查默认动效没有被测试环境永久禁用。
+- 每行证据至少包含操作前、接管中和收口后三个时点、结构化结论与目标进程 logcat。原始截图、视频和日志只留在忽略目录 `test-results/`；Git 中的 `artifacts/motion-repair-*` 仅保存非敏感索引，不得包含 APK、签名文件、设备序列号、Token、用户照片或正式业务数据。
+- 最终判定必须来自同一个 Wave 6 APK SHA-256，并在六行全部通过、无目标进程 fatal 后由主 Agent 记录。D1-Android 冻结 Session 只能把未覆盖项标为“主 Agent 最终复测”，不得宣称已经验收尚未合入的 D1-Runtime / D1-Contracts 或最终 APK。
+
+#### 6.2 并行 Wave 规范所有权
+
+并行 Session 对运行时文件实行独占所有权；规范只允许修改下列命名小节。生成的 HTML 与 `VERSION_HISTORY.md` 在每个 Wave 合入后由主 Agent 保全并重生成。
+
+| Wave | 规范小节所有者 |
+| --- | --- |
+| A1 | OverlayRoot、OverlayStack、BackCoordinator 公共契约 |
+| A2-Core / App / Flows | 共享浮层组件 / App 壳与账号 / 业务流浮层 |
+| B1 / B2 / B3 | 即时反馈 / 图片手势 / 周历月历手势 |
+| B4 / C1 / C2 | 录入手势 / 路由运动 / 详情连续性 |
+| C3-Outfit / Settings / Wishlist | 穿搭计划 / 设置账号 / 种草深层流程 |
+| D1-Runtime / Contracts / Android | 偏好与性能 / 防回归合同 / Android 验收 |
+
 ## 7. 核心组件 Contract
 
 生产 UI 优先复用下列组件；重复私有实现视为设计债务。
@@ -250,8 +421,9 @@ Icon-only 按钮必须有 `aria-label`；图标与文字组合时图标使用 `a
 | `ItemColorFields` | `src/components/item/color-fields.tsx` | 颜色展示和编辑唯一入口 |
 | `TemperatureRangeSlider` | `src/components/temperature-range-slider.tsx` | 温度范围编辑唯一入口 |
 | `MotionToast` | `src/components/motion-common.tsx` | 动画和播报语义；视觉由调用方提供 |
-| `MotionSheet` | `src/components/motion-common.tsx` | 移动端底部抽屉、锁滚、最高 92vh |
+| `MotionSheet` | `src/components/motion-common.tsx` | 移动端底部抽屉、锁滚、最高 92vh、显式业务名称与 reduced opacity-only |
 | `MotionImageLightbox` | `src/components/motion-common.tsx` | 全屏图片预览、锁滚、关闭按钮 44px |
+| `WardrobeSelectedImagesReviewPortal` | `src/components/wardrobe-selected-images-review-portal.tsx` | 图片队列全屏 dialog、OverlayStack、焦点圈、busy 返回保护 |
 | `IntakeFlowShell` | `src/components/intake-flow-shell.tsx` | 录入全屏容器、步骤文案、底部操作、安全区 |
 
 ### 7.1 详情媒体
@@ -265,6 +437,23 @@ Icon-only 按钮必须有 `aria-label`；图标与文字组合时图标使用 `a
 | `wishlist_product` | 商品图 | 种草商品图 | 当前否 |
 
 空图必须保持 hero 框架稳定并显示 fallback。
+
+#### 7.1.1 B2 图片轮播与预览手势
+
+- `SwipeImageCarousel` 的轨道位移只能由一个 `MotionValue` 驱动；`pointermove` 不得逐帧写 React state。轮播在 `9px` 死区后锁定横纵意图，横向确认后才 pointer capture，纵向意图保持 `touch-action: pan-y` 并交还页面滚动。
+- 手势开始必须停止当前轨道动画并读取真实屏幕 presentation x；释放使用最近 `80–120ms`、且只保留最新同方向尾段的速度样本，按 Apple 指数衰减投影终点、选择相邻 snap point，并把 release velocity 传入 momentum spring。动画中的快速反向从当前 x 与 velocity 接管，不允许跳到逻辑终点后再开始。
+- 第一张向右、最后一张向左时使用随越界距离渐增的 rubber-band 曲线；新 pointer 中断边缘回弹时先反解当前阻尼值，首个有效移动仍保持 1:1，不得重复施加阻尼造成跳变。
+- pointerdown 不得把详情/评审原图切换成缩略图。横向滑图产生的 click suppression 只属于同一 pointer 序列；该序列后的下一次独立点击必须立即可用。轮播根保留 `aria-roledescription="carousel"` 与 `data-app-press-gesture-owner="true"`，避免外层卡片按压抢占手势。
+- reduced-motion 下保留手指直接操控，释放后即时吸附目标页，不运行 momentum spring。胶片栏或受控 index 变化复用同一轨道吸附；跨多张选择期间必须保留源页到目标页的可见轨道，不能出现空白帧。
+- Lightbox 下拖关闭的可复用 controller 由 `useLightboxDragDismiss` 提供：返回 `y`、`imageScale`、`backdropOpacity`、Pointer bindings、`reset` 与 `isEnabled`；下拖同样使用 presentation value、速度投影和 release spring。`zoomScale > 1.01` 或 `isPanning=true` 时必须关闭下拖退出，让放大图片优先平移。本 Wave 只交付 controller 与独立验证，不修改共享 `MotionImageLightbox`；运行时接线和 source-anchor 展开/收回统一留给 C2，禁止提前复制私有 Lightbox。
+
+#### 7.1.2 C2 三类详情与来源连续性
+
+- 衣物、套装、种草三类详情只使用共享 `DetailTabs` 与 `DetailTabContent`。选中背景由唯一 `layoutId` 指示器在 Tab 间平移，内容使用 `AnimatePresence(mode="popLayout")` 和 `120ms` 透明度交叉淡化；不得用 `height:auto`、大面积上下位移或同时叠加两份正文高度。
+- `MotionImageLightbox` 运行时直接消费 B2 的 `useLightboxDragDismiss`。手势层与 source-anchor 外层 transform 分离；下拖 1:1 跟手并联动图片轻缩放与背景透明度，释放使用速度投影和 spring。原生图片 drag 必须禁用，避免浏览器发出 `pointercancel` 抢走下拖序列；`zoomScale > 1.01` 或 `isPanning=true` 时下拖关闭保持禁用。
+- 详情 Hero 只在有效图片 click 序列登记一次、最长 `2s` 有效的 DOM 展示锚点，不在 pointerdown 阶段预登记，也不把 DOM ref 写入路由、领域实体、API 或持久状态。来源仍连接、可见且与视口相交时，Lightbox 以 `280ms` 从来源展开、以 `240ms` 收回并在覆盖期间隐藏来源；进入尚未完成时立即关闭，必须从当前 presentation transform 反向接管，不能先跳到完全展开态。来源隐藏、断连、离开视口或无法测量时，进入/退出退化为不超过 `140ms` 的短 fade。reduced-motion 下不运行 source FLIP 或 scale，只保留 `100ms` opacity fade，也不隐藏来源。
+- `MotionPopoverMenu` 必须使用当前可见 More 按钮的真实 `anchorRef`，按 anchor 中心计算 `transform-origin`，打开后聚焦首个有效菜单项，支持 ArrowUp/ArrowDown/Home/End，Escape 只关闭 topmost 菜单，关闭后焦点恢复到同一触发器。三类详情不得复制私有 Lightbox、Popover 或键盘 listener。
+- 返回来源保持四条既有业务路线：衣橱详情返回 `wardrobe_home`；已买种草打开的衣物详情返回 `wishlist_purchased`；套装首页详情返回 `outfit_home`；月历详情返回 `outfit_calendar`，并由父级继续持有月份、选中日期和展开上下文。C2 只冻结详情端的 `returnTo/returnRoute` 契约；路由方向、列表首帧滚动恢复和 Tab 级滚动恢复由 C1 单一负责，不在详情组件保存第二份导航上下文。
 
 ### 7.2 瀑布流与多选
 
@@ -414,7 +603,7 @@ Step 1 顶部必须使用透明底 + 毛玻璃层，不得在标题、步骤说�
 - 选择态不能只靠颜色，必须有勾选、边框、文本或 `aria-pressed`。
 - 表单 focus 必须可见。
 - 错误、低置信、待确认必须有文字提示。
-- Sheet / Lightbox / 裁切器打开时锁定底层滚动；目标是补齐 `role="dialog"`、`aria-modal` 和焦点管理。
+- Sheet / Dialog / Lightbox / 裁切器打开时锁定底层滚动，并具备 `role`、`aria-modal`、显式名称、topmost 焦点圈和背景隔离。
 
 当前事实：`AppSubPageTopBar` 外层按钮命中区为 `48x48`，内层视觉圆为 `40x40`；后续改动不得回退成只有 `40x40` 命中区。
 
@@ -432,7 +621,7 @@ Step 1 顶部必须使用透明底 + 毛玻璃层，不得在标题、步骤说�
 
 | ID | 文件 | 当前事实 | 目标契约 | 处理版本 | 验收 |
 | --- | --- | --- | --- | --- | --- |
-| UI-DEBT-001 | `src/app/globals.css` | `.surface` 仍使用局部 glass 参数 | 统一到 token 命名 | v0.3 | `test:logic:ui-token-contract` |
+| UI-DEBT-001 | `src/app/globals.css` | `.surface`、glass、卡片与 Toast 已统一到 material variables，并提供透明度/对比/低端降级 | 统一到 token 命名 | closed in D1-Runtime | `test:logic:ui-token-contract`、D1 runtime harness |
 | UI-DEBT-002 | `src/components/motion-common.tsx` | `MotionSheet` 已在 v0.2-final 补齐 dialog 语义与焦点管理 | `role/dialog`、`aria-modal`、锁滚、焦点进入和恢复 | closed in v0.2-final | `test:logic:ui-overlay-contract` |
 | UI-DEBT-003 | `src/components/wardrobe-image-source-sheet.tsx` | 图片来源弹层已在 v0.2-final 委托 `MotionSheet` | 统一 Sheet 行为 | closed in v0.2-final | `test:logic:ui-overlay-contract` |
 | UI-DEBT-004 | `src/components/app-sub-page-top-bar.tsx` | 顶部栏按钮已在 v0.2-final 对齐外层 48px 热区、内层 40px 视觉圆 | 外层 48px 热区，内层 40px 视觉圆 | closed in v0.2-final | `test:logic:ui-a11y-contract` |
@@ -483,6 +672,7 @@ PR 规则：
 | 录入流程 | `npm run test:logic:garment-intake-multi-image`、`npm run test:logic:intake-entry-crop-regression`、`npm run test:logic:intake-fullscreen-layout` |
 | 多选/批量删除 | `npm run test:logic:catalog-multi-select`、`npm run test:logic:catalog-multi-select-integration` |
 | 设置页窄屏 | `npm run test:logic:ui-overflow` |
+| 动效偏好与运行时 | `npx tsx scripts/test-motion-runtime-d1.ts`、`node scripts/test-motion-runtime-d1-browser.mjs`、严格 motion contract |
 | 静态 HTML 规范 | Playwright 打开 `docs/designs/wardrobe-ui-spec.html`，检查桌面和 390px 无横向溢出 |
 
 人工视觉检查至少覆盖：

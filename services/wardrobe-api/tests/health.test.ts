@@ -11,6 +11,7 @@ describe("cloud API skeleton", () => {
       storageProvider: readyStorage(),
       jwtReadinessCheck: async () => true,
       emailReadinessCheck: () => true,
+      imageCropReadinessCheck: async () => true,
     });
 
     const response = await app.inject({ method: "GET", url: "/api/health" });
@@ -28,6 +29,7 @@ describe("cloud API skeleton", () => {
       readinessCheck: async () => ({ database: "ready" }),
       storageProvider: readyStorage(),
       jwtReadinessCheck: async () => true,
+      imageCropReadinessCheck: async () => true,
     });
 
     const response = await app.inject({ method: "GET", url: "/api/ready" });
@@ -35,7 +37,7 @@ describe("cloud API skeleton", () => {
     expect(response.statusCode).toBe(200);
     expect(response.json()).toMatchObject({
       status: "ok",
-      dependencies: { database: "ready", storage: "ready", jwt: "ready", email: "ready" },
+      dependencies: { database: "ready", storage: "ready", jwt: "ready", email: "ready", imageCrop: "ready" },
     });
 
     await app.close();
@@ -47,6 +49,7 @@ describe("cloud API skeleton", () => {
       storageProvider: readyStorage(),
       jwtReadinessCheck: async () => true,
       emailReadinessCheck: () => false,
+      imageCropReadinessCheck: async () => true,
     });
 
     const response = await app.inject({ method: "GET", url: "/api/ready" });
@@ -57,6 +60,20 @@ describe("cloud API skeleton", () => {
       dependencies: { email: "unavailable" },
     });
 
+    await app.close();
+  });
+
+  it("returns degraded ready when the crop worker or model is unavailable", async () => {
+    const app = buildApp({
+      readinessCheck: async () => ({ database: "ready" }),
+      storageProvider: readyStorage(),
+      jwtReadinessCheck: async () => true,
+      imageCropReadinessCheck: async () => false,
+    });
+
+    const response = await app.inject({ method: "GET", url: "/api/ready" });
+    expect(response.statusCode).toBe(503);
+    expect(response.json()).toMatchObject({ status: "degraded", dependencies: { imageCrop: "unavailable" } });
     await app.close();
   });
 
