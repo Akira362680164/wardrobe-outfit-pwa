@@ -66,8 +66,9 @@ describe("recommendation fixture baseline", () => {
     for (const code of fixture.expected.reasonCodes ?? []) {
       expect(output.recommendations.some((candidate) => candidate.reasonCodes.includes(code))).toBe(true);
     }
-    for (const code of fixture.expected.exclusionCodes ?? []) {
-      expect(output.exclusions.some((entry) => entry.codes.includes(code))).toBe(true);
+    for (const [garmentId, codes] of Object.entries(fixture.expected.expectedExclusions ?? {})) {
+      const exclusion = output.exclusions.find((entry) => entry.garmentId === garmentId);
+      expect(exclusion?.codes, `exact exclusion codes for ${garmentId}`).toEqual(codes);
     }
     for (const code of fixture.expected.missingSlotCodes ?? []) {
       expect(output.readiness.missingSlotCodes).toContain(code);
@@ -336,7 +337,7 @@ describe("readiness and stable performance guard", () => {
     const base = buildFixtureInput();
     const categories = ["tops", "pants", "skirts", "one_piece", "shoes", "bags", "hats", "accessories"] as const;
     const large = Array.from({ length: 800 }, (_, index) =>
-      buildFixtureGarment(`80000000-0000-4000-8000-${String(index + 1).padStart(12, "0")}`, categories[index % categories.length]!, { formality: 2 + (index % 2), colors: index % 3 === 0 ? ["black"] : ["white"] }),
+      buildFixtureGarment(`80000000-0000-4000-8000-${String(index + 1).padStart(12, "0")}`, categories[index % categories.length]!, { formality: 2 + (index % 2), colors: index % 3 === 0 ? ["黑"] : ["白"] }),
     );
     const started = performance.now();
     const output = await generateRecommendations({ ...base, garments: large });

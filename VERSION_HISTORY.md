@@ -69,6 +69,283 @@
 - **改动说明**：首页“+计划”恢复 `164rpx` 蓝色实心按钮；周历/月历彩条宿主统一为 `64rpx`，扣除组件左右内边距后实际彩色线约 `56rpx`；月历日期格移除额外 `160rpx` 选中高度，恢复 `136rpx` 紧凑槽位；月历顶栏启用专用居中标题模式，“+计划”移动到月份文字与右箭头之间，并同步修正空状态文案；共享顶部栏默认行为保持不变。
 - **验证结果**：`npm --prefix apps/wechat-miniprogram run typecheck`、`npm run test:logic:miniprogram-outfit-calendar-ui`、`npm run test:logic:miniprogram-outfit-flow`、`git diff --check` 通过；微信开发者工具 `compile_wxml`（周历/月历，`codeLength=32400`）和 `compile_wxss`（周历/月历/共享顶部栏，`files=2`、`totalCodeLength=34090`）通过。
 - **未验证风险**：微信开发者工具项目窗口可打开，但 `simulator_open_page` 无有效返回，自动化运行时和截图接口均因 `waitForAutomatorReady timeout` 失败；因此本批未形成模拟器截图证据，未覆盖真实账号数据下的周历/月历视觉与触摸回归，需在开发者工具自动化恢复或真机预览后补验。
+## 2026-07-14 / v2.1.22-test / Codex — 推荐后端 1B 严格合同与原子版本化持久化
+
+- **执行与边界**：Codex 在独立 `codex/recommendation-backend-1b-20260714` worktree 完成，未使用 subagent。本批只做后端暗部署：不注册公开推荐路由、不加 workspace overview、不开启 `DAILY_RECOMMENDATIONS_ENABLED`，不引入 `recommendation_actions` / job runs / Worker / QWeather / PAW 真实调用，不修改 App、小程序 UI 或 1F 图片裁切。
+- **严格合同与 1A 补口**：`packages/cloud-contracts` 新增由 Zod 推导的引擎输入/输出、排除项、候选审计、发布命令与 `DailyRecommendationRecord` 合同；未知字段、非法 UUID/真实日期/枚举/分数、自由 `pawScores` / `itemIds` 及候选交叉不一致均拒绝。硬过滤回归改为按目标 `garmentId` 精确比对 exclusion codes，不再使用全局出现即通过的弱断言。
+- **持久化模型**：迁移 `0019_daily_recommendations.sql` 只新增一张 `daily_recommendations`，候选与审计 payload 经严格 Schema 验证后以 JSONB 保存，衣物关系只保留服务端 UUID。表内分开 readiness、generation mode 与 current/superseded 生命周期，包含用户/日期/时区/revision/批次/请求/fingerprint/版本/完整 payload 与全部时间字段；落实 revision 唯一、请求幂等唯一、每用户每日唯一 current partial index、revision/过期/生命周期约束与用户级联删除。
+- **发布与幂等**：`RecommendationPersistenceService` 在事务外严格解析并生成 canonical SHA-256 fingerprint；事务内首先获取 `recommendation-current:<userId>:<targetDate>` advisory transaction lock，再分配 revision、插入 non-current、降级旧 current、提升新 current 并读回。同 generation request + 同 fingerprint 返回原记录（即使已 superseded），不同 fingerprint 稳定冲突且数据库不变，旧请求重放不会复活 current。生成异常不写入残缺 failed 行。
+- **真实 PostgreSQL 证据**：独立 PostgreSQL 16 schema、多连接门禁 `18/18` 通过；覆盖首发/替换/旧 revision 保留，12 个不同请求并发时 revision 不重复且仅一 current，12 个同请求并发只产生一行，冲突/旧键重放/MVCC 提交前后可见性，插入后、旧 current 降级后、新 current 提升后、提交前注错与终止 writer backend 的整体回滚，用户/日期/时区隔离、写前/读后 Schema、索引/约束/级联/清理，以及空库全迁移和 `0018 → 0019` 升级回放。
+- **验证与真实衣橱门禁**：cloud contracts/API/根/小程序 typecheck，API 全量 `194/194`，推荐合同 `12/12`，引擎 `49/49`，根 `test:logic` 与 production build 通过。现有授权测试账号的生产口令已失效，本机也无可复用会话，因此未将合成数据冒充真实衣橱；可读影子验收明确记为“阻塞 1C，但不阻塞 1B 核心持久化”。
+- **剩余边界**：`generationBatchId` 在 1B 仅记录跨日期批次关系；今日/明日同批次读取与发布策略、失败摘要/job runs、调度和公开 API 均保留给 1C。生产备份、隔离恢复/迁移演练、部署后路由/开关门禁与最终镜像证据在本 Session 合入最新 `main` 后连续执行并于最终交付中报告。
+
+## 2026-07-14 / v2.1.22-test / Codex — 强制清理 Session 临时分支与 worktree
+
+- **规则更新**：本机根 `AGENTS.md` 明确把临时 Git 清理纳入开发完成定义；每个 Agent、子 Agent和独立 Session 在成果合入并推送正式基线后，必须删除自己创建的本地/远端临时分支和临时 worktree，不得遗留给后续 Session。
+- **安全边界**：清理前逐个确认工作区干净、成果已合入且无人依赖；不得删除他人工作区或未合入成果，worktree 目录继续遵守移入废纸篓的项目删除规则。
+- **收口核对**：最终回复前必须检查 worktree 列表、本地与远端临时分支、正式目录状态；正常情况下只长期保留 `main`、`wechat/miniprogram` 及两个正式集成目录。
+- **风险与验证**：风险门禁 `low`，仅修改治理文档；通过规则关键词检查、`git diff --check` 和 staged diff 核对。未触发 subagent：用户未通知。根 `AGENTS.md` 按仓库既有 `.gitignore` 规则仅保存在本机，不强制加入 Git。
+
+## 2026-07-14 / v2.1.22-test / Codex — 录入页共享安全区、系统圆角入口与 release 日志脱敏
+
+- **共享顶部修复**：Android WebView 运行时证据显示其可视 viewport 已从状态栏下方开始，而录入壳又消费了 48 CSS px 的 Android inset，标题栏最终 `padding-top=56px`。现由 `IntakeFlowShell` 统一只消费一次 `--intake-safe-area-top`，衣橱/种草的步骤 1、步骤 2与内嵌裁切一次生效；独立全屏裁切器同步复用该变量，没有逐页负 margin 或机型常量。
+- **图片来源控件**：步骤 1现有“拍照 / 从图库选择”入口从 144px 方卡收敛为 64px 横向系统圆角矩形，使用同心圆角图标槽；选图后的“继续拍照 / 继续从图库选择”复用同一组件与紧凑变体，不新增入口、卡片、按钮或步骤。
+- **无 Key 文案**：步骤 2继续保持原结构，仅在无 Key 时显示“待填写”及“填写或修改属性”，不再把手工填写路径描述成 AI 结果；有 Key 文案与交互不变。
+- **隐私修复**：Capacitor release 原生日志设为 `none`，阻止鉴权头和图片请求体进入 logcat。真实生产单图请求后筛查 `Bearer`、`imageBase64`、`CapacitorHttp methodData` 与 fatal 均为 0 命中。
+- **长驻裁切 worker**：u2netp Sidecar 改为私有 stdio NDJSON 长驻进程，服务启动时只创建一次 ONNX Session并以合成输入预热；API 路由与 `/api/ready` 共享同一 worker，收到预热握手后才 ready。单机推理并发继续为 `1`、队列 `20`、单图硬超时 `45s`；超时/崩溃会拒绝当前请求、自动拉起并重新预热，内部进程无公网端口。
+- **10 请求并发**：App 与小程序从共享合同读取 `IMAGE_CROP_MAX_IN_FLIGHT=10`，选择 10 张后同时发出 10 个独立单图请求并继续逐张响应/替换；生产推理仍由单个长驻 Session按队列顺序执行，避免在 3.6 GiB 主机上复制 10 份模型运行时。
+- **部署门禁**：生产 Compose healthcheck 改查 `/api/ready`，增加 90 秒 start period，并把部署等待扩到 120 秒；保留 `/api/health` 只表示 Node 进程存活。长驻进程复用、崩溃恢复、EPIPE、超时重启和 ready 降级均有自动回归，生产首张/连续 10 张/内存与回滚结果见专项测试记录。
+- **生产结果**：镜像 `wardrobe-api:32c60f9b` 重启后 `5259ms` 完成预热，首张 `2450.1ms`；10 请求同时在途的墙钟 `8090.6ms`、P50 `4965.1ms`、P95 `8052.2ms`、失败 `0/10`，峰值内存 `837MiB / 3.637GiB`。人工杀死内部 worker 后 `/ready` 降级并在 `2369ms` 内自动恢复，容器未重启、未 OOM；恢复后 10 图再次零失败。旧镜像 `wardrobe-api:0e3165a5` 保留回滚。
+- **验证**：`impeccable` 独立视觉审计与机械布局扫描完成，scanner `0` 项；Android 安全区合同、录入全屏布局、录入状态机、根 typecheck 与 release APK 构建通过。Android 15 最终 APK 截图证明步骤 1标题栏紧贴系统安全区、两个入口为横向圆角矩形，步骤 2采用同一顶栏规则。
+
+## 2026-07-14 / v2.1.21-test / Codex — 自动裁切生产部署、真机流转与无 Key 状态修正
+
+- **生产部署**：鉴权单图裁切接口已随 API 镜像 `wardrobe-api:0e3165a5` 部署；上线前备份 PostgreSQL 与环境配置，模型以只读文件挂载并校验 SHA-256 `309c8469258dda742793dce0ebea8e6dd393174f89934733ecc8b14c76f4ddd8`。`/api/health`、`/api/ready`（含 `imageCrop`）和 `/api/version` 均通过，旧镜像保留用于回滚。
+- **生产实图结果**：使用测试账号鉴权、10 张授权语料逐张调用生产 ONNX 路线，HTTP/合同成功 `10/10`、失败率 `0%`、墙钟 `62700.6ms`、P50 `4076.4ms`、P95 `46404.5ms`；前两张包含冷启动与队列等待，热态单张约 `3.9–4.2s`。日志复核未出现令牌、Base64、本机路径或图片内容。
+- **Android 现场与修复**：Android 15 模拟器真实登录并选择 10 张，确认原图立即全部出现、裁切结果按 `1/10 → 4/10 → 8/10 → 10/10` 逐张替换，完成后进度文案消失且按钮为“下一步（填写属性）”。现场发现无 Key 草稿被旧识别状态误标为“AI 识别失败”，现新增正交 `manual` 状态并把步骤 2标题改为“待填写”，不再显示错误失败横幅或失败角标；新增三项回归断言。
+- **客户端边界**：有 Key 的步骤 1继续零 UI 差异，保留预裁切/旋转入口；无 Key 只增加运行中的进度小字和按钮文案变化。两条路线均从会话原图裁切，自动结果受 revision/manual-wins 约束，步骤 2结构不变。
+- **验证与交付**：裁切双路线、共享坐标向量、四入口 Key/无 Key 合同、录入/裁切回归、根 typecheck 与 Next build 通过。最终固定签名 APK、小程序开发者工具现场结果与分支同步状态见 `docs/testing/image-crop-dual-route-20260714.md`。
+
+## 2026-07-14 / v2.1.20-test / Codex — 自动裁切生产启用准备
+
+- **产品授权**：项目所有者明确批准个人、非商业 Wardora 部署原样使用上游 u2netp 权重；权重继续不进入 Git、不由仓库再分发，部署只接受固定 SHA-256 `309c8469258dda742793dce0ebea8e6dd393174f89934733ecc8b14c76f4ddd8`。
+- **生产镜像与门禁**：API 镜像新增隔离 Python venv 与锁定依赖，私有 worker 不暴露端口；生产 Compose 只读挂载 `/opt/wardrobe-cloud/models/u2netp.onnx`，按当前 3.6 GiB 单机容量收口为 45 秒单图硬超时、1 并发和 20 队列。`/api/ready` 新增 `dependencies.imageCrop`，worker 不可执行或权重不可读时整体 readiness 返回 degraded。
+- **构建网络**：腾讯云到 PyPI 官方文件源实测下载超时，旧服务未切换；镜像构建改用可达的清华 HTTPS PyPI 镜像并保留精确版本、120 秒超时和 5 次重试，避免生产构建依赖不可用链路。
+- **生产实测修复**：登录后首轮真实并发测试发现 Sidecar 超时关闭管道时未消费 `EPIPE`，会使 Node API 进程退出；现已显式收口 stdin 管道错误，并以 7.5 MB 在途写入回归测试固定。新增无凭据生产 10 图脚本，只输出 imageId、SHA、状态、延迟和进度，不记录令牌、图片内容或本机文件名。
+- **验证**：最新 `main` 已合入本任务分支；API typecheck、合同 typecheck、API 全量 `181/181`、新增 EPIPE 回归、部署脚本语法和 `git diff --check` 通过。生产备份、镜像构建和首轮部署已完成；修复镜像、登录后真实 10 图复测及两端 UI 现场验证在本记录后续收口。
+
+## 2026-07-14 / v2.1.20-test / Codex — 图片自动裁切双路线正式开发与验证
+
+- **共享合同与两条路线**：App / 微信小程序、衣橱 / 种草四入口统一归一化坐标、EXIF、每侧 20% 安全外扩、pre/secondary/final 组合、revision/manual-wins 与独立裁切状态。MiniMax Key 仅在设备侧使用，步骤 1零 UI 差异并保留预裁切/旋转；无 Key 才显示逐张进度及“下一步（填写属性）”，步骤 2结构不变。
+- **服务端与小程序**：Wardrobe API 新增鉴权单图裁切建议接口，落实 MIME/签名、大小/像素、损坏图、超时、队列并发和 Sidecar 崩溃边界；私有 u2netp sidecar 不联网、不持久化。小程序以可记录几何的现有入口替换无法返回坐标的 `wx.cropImage`，Canvas 从会话原图应用裁切；生成检查保证两端合同一致。
+- **真实验证**：26 张去重语料中选 10 张真实走 API + CPU u2netp，`0/10` 失败、墙钟 `7481.5ms`、P50 `2182.3ms`、P95 `4108.8ms`；3 张先手工预裁切后真实调用 MiniMax，确认发送的是预裁切图、属性/框独立降级且 final 框映射回原图。详细 imageId/SHA、矩阵与风险见 `docs/testing/image-crop-dual-route-20260714.md`。
+- **门禁与交付**：根/合同/API/小程序 typecheck、API `180/180`、共享 10 向量、录入状态机与四入口合同、Next/Android release 构建通过。固定签名 APK `衣橱穿搭助手-v2.1.20-test.apk`（versionCode `20120`，SHA-256 `b98762ab2522b954db030cae47122605a8c4ee050bd7ee64ebe00a276b903a23`）在 Android 15 模拟器完成冷启动、360dp、Back 与 fatal 筛查。
+- **生产与未覆盖**：权重未入 Git；正式启用必须先完成权重分发许可审核、部署 checksum、私网常驻 sidecar/容量/ready 门禁。本 Session 不合 main、不部署。两客户端模拟器缺测试账号，未完成登录后 UI 内四入口 10 图截图/真机验证，未将自动合同或后端实图结果冒充为该项通过。
+
+## 2026-07-14 / v2.1.20-test / Codex — App 毛玻璃导航与一级卡片统一
+
+- **执行与版本**：Codex 在独立 `codex/glass-nav-app-20260714` worktree 实施；版本从 `2.1.19-test` 递增到 `2.1.20-test`，同步 `package-lock.json` 与小程序生成 build-info。本批只调整视觉 token、规范与防回归合同，不修改信息架构、业务字段、线上数据源、API 或 MiniMax 边界。
+- **视觉结果**：App 浮动底栏改为 `rgba(255,255,252,0.40)`、`blur(34px) saturate(1.5) brightness(1.05)`，使用斜向内高光、内暗边和窄阴影近似 Figma Glass 的折射、厚度与受光，保持 `dispersion=0`；所有现有浅色一级 `.ui-card` 统一为 `rgba(255,255,252,0.52)`、`blur(30px) saturate(1.35) brightness(1.04)`，覆盖单品、套装、种草与设置等一级卡片，保留原圆角、间距和外阴影，二级内嵌卡片不变。登录壳“退出应用”居中确认框同步改用 `28px` 一级卡片圆角，内部按钮继续沿用 `16px` 控件圆角。reduced-transparency、高对比和不支持 backdrop-filter 时继续回退为近实色。
+- **改动文件**：`src/app/globals.css`、`src/components/auth/auth-gate.tsx`、`scripts/test-ui-overlay-contract.ts`、`scripts/test-account-management-urgent.ts`、`docs/designs/wardrobe-ui-spec.md`、生成的 `docs/designs/wardrobe-ui-spec.html`、`package.json`、`package-lock.json`、`apps/wechat-miniprogram/generated/build-info.ts` 与本记录。
+- **验证结果**：UI 规范 build/check、overlay/token/shared item shell、账号管理与认证壳合同、根 typecheck、Next build 与 `git diff --check` 通过；另以 `390×844` 移动触摸浏览器预览检查一级卡片和底栏层次。`npm run android:apk` 成功；固定签名 APK `衣橱穿搭助手-v2.1.20-test.apk` 为 `10,068,813` bytes，SHA-256 `90a7f23b0d061908700d767e17ac9b3d5cf03500a8a40b4f153b4d0143aa7b80`，包名 `com.wardrobe.outfit`、`versionCode=20120`、签名 `CN=fangzheng`。
+- **Android 现场**：Android 15 / API 35 `wardrobe-test` 模拟器完成覆盖安装、启动、前台窗口、系统 Back、竖屏截图、清数据再启动和 fatal logcat 扫描，未检出致命崩溃；竖屏截图确认“退出应用”确认框四角已按 `28px` 圆角呈现，验证后已关闭模拟器。
+- **未验证风险**：清数据后 APK 停留在登录壳，未使用生产账号或真实业务数据，因此登录后的真实长列表底栏与卡片透色以同源码移动浏览器视觉检查和静态合同覆盖，未冒充为 Android 登录后设备实测；物理 Android 真机、系统字体放大和 TalkBack 未覆盖。
+
+## 2026-07-14 / v2.1.19-test / Codex 主集成 — 全量动效修复与 Android 交付
+
+- **执行与版本**：主 Agent 完成 `apple-design` 审查方案的 Wave 0–6 并行归并，将版本从 `2.1.18-test` 递增到 `2.1.19-test`；同步 `package-lock.json` 与小程序生成 build-info，不修改小程序运行时或业务契约。
+- **交付范围**：统一 Overlay/Back、按压与状态反馈、图片轮播/Lightbox、周历/月历、录入裁切/滑条、主导航与滚动恢复、三类详情、套装/计划/设置/账号/种草深层流程，以及 reduced-motion、透明度、高对比、低端 Android、可访问命名与严格静态门禁。线上唯一数据源、API、领域字段和 MiniMax 隐私边界保持不变。
+- **自动化与构建验证**：Wave 6 合流后的 `test:logic:all`、根 `typecheck`、Next `build`、严格 UI contracts 和确定性 C2 连续性门禁通过；严格 motion scanner 覆盖 `198` 个运行时源码文件、`0` 违规。`npm run android:apk` 成功生成固定签名 APK，`android:verify:full` 与最终 Android 动效 evidence runner 均通过。
+- **APK 交付**：同步合入并复验最新 `main` 的推荐引擎 1A 后，最终产物 `app-release-fd68c14c.apk` 为 `10,068,425` bytes，SHA-256 `c453acb090b45800da469c64a674a93965e5e6339d8a712e9e52be688bda054b`；包名 `com.wardrobe.outfit`、`versionName=2.1.19-test`、`versionCode=20119`、签名 `CN=fangzheng`。正式目录交付文件在主分支集成后命名为 `衣橱穿搭助手-v2.1.19-test.apk`。
+- **Android 现场**：Android 15 / API 35 `wardrobe-test` 模拟器以同一最终 APK 覆盖安装、启动、前台窗口、竖屏、系统 Back、重启、清数据再启动和三轮 fatal logcat 扫描，fatal 均为 `0`。最终 runner 的 `390×844` 十项源码/浏览器矩阵全部通过，覆盖浮层 Back、图片反向接管、日历斜滑、滑条纵滚、C1/C3 路由中断与 reduced-motion。
+- **未验证风险**：清数据后的最终 APK 停留在无账号登录壳；未使用生产账号或生产业务数据，因此六项需要登录后真实数据页面的 WebView 手势行未冒充为设备通过，仍保留为“主 Agent 最终复测”。Android 15 的系统三项动画比例设为 `0` 时，当前 WebView 124 的 `matchMedia('(prefers-reduced-motion: reduce)')` 仍返回 `false`；本轮 reduced-motion 以同源码 Chromium 媒体仿真及合同门禁验证，未声称系统开关映射已被 Android WebView 现场证明。TalkBack、真实软键盘与物理设备仍未覆盖。
+
+## 2026-07-14 / v2.1.18-test / Codex 主集成 — Motion Wave 6 归并与确定性首帧门禁
+
+- **执行与版本**：主 Agent 按 D1-Runtime → D1-Contracts → D1-Android 顺序归并三项独立提交并重生成 UI 规范；版本保持 `2.1.18-test`，最终 APK 版本递增在全量门禁后统一执行。
+- **门禁修正**：`test-detail-continuity-browser.mjs` 原先用两次 Playwright 协议调用比较仍在运行的入口动画与 Escape 退出首帧，冻结矩阵累计出现 `2/8` 相邻帧字符串差异。现改为在浏览器同一 WAAPI 时间轴暂停入口、固定 `currentTime=45` 后读取 presentation，再走真实 Escape 并继续对退出 `keyframe[0]` 做字符串严格相等；不使用 retry、容差或弱化连续性语义。
+- **验证与风险**：确定性 C2 浏览器门禁连续 `5/5` 通过；完整 `test:logic:all`、token / overlay / Back / overflow / reuse 与严格 motion contract（`198` 个源码文件、`0` 违规）通过。首轮全量测试发现并同步两条 C3-Outfit 日历旧静态断言及一条 C3-Wishlist 录入旧静态断言，修正后全量入口转绿。根 typecheck、最终构建、Android 动效矩阵和最终 APK/设备六项继续执行；完成前不宣称最终验收。
+
+## 2026-07-14 / v2.1.18-test / Codex Subagent D1-Runtime — 动效偏好、无障碍与性能收口
+
+- **执行与版本**：Codex Subagent D1-Runtime 使用 `apple-design` 技能，在独立分支 `codex/motion-d1-runtime-20260713`、独立 worktree `/Users/fangzheng/Documents/wardrobe-motion-d1-runtime-20260713` 上基于冻结提交 `99af582da5537b7d400878d0ecc56aca5131a2c9` 实施；版本保持 `2.1.18-test`，未合入 integration / `main`、未推送、未构建 APK，本 Session 未再分派下级 subagent。
+- **偏好与性能降级**：`MotionConfig reducedMotion="user"` 保持全局基线，页面、Sheet、Popover、Toast、Accordion、按压与局部滚动补齐显式 reduced 分支；取消大位移、spring、无条件 smooth scroll、intrinsic-height、列表 stagger 和常驻 `will-change-transform`。新增统一 material variables，以及 reduced-transparency、high-contrast、backdrop-filter 不支持和明确低配 Android 的近实心 / 关闭 blur 降级；缺失硬件信号时不猜测设备等级。
+- **浮层、返回与可访问语义**：焦点圈实现集中到 `OverlayRoot`，图片队列评审迁入 `OverlayPortal` / `OverlayStack`，补齐动态 dialog 名称、topmost focus trap、背景 `inert/aria-hidden`、busy 关闭拒绝和 polite 播报；分类 More 菜单改用具名 `MotionPopoverMenu`，遗留衣橱 / 统计 / 详情 / 编辑 / 批量评审原生 Back listener 全部改为带优先级的 `useStableBackHandler`，`OverlayRoot` 成为唯一 Capacitor Back owner。AI / 批量识别进度补齐 `progressbar` 的名称、范围、当前值和阶段文本。
+- **按压、token 与 API 清理**：全仓原生按钮的 `active:scale-*` / `whileTap` 收口到 `app-press-feedback`；标准偏好使用 individual scale，reduced-motion 仅 opacity，disabled 不触发。修复 `edit-image-action-card.tsx` 与 `site.css` 的严格 token 债务；移除无调用方的 motion wrapper / card / badge / transition API 和未使用 variants，同时保留旧 spring 名称兼容别名。UI 规范新增 D1-Runtime 受控小节并同步生成 HTML。
+- **自动化验证**：严格跨 worktree motion contract 通过（`198` 个运行时文件、`0` 违规）；`scripts/test-motion-runtime-d1.ts` 通过（`199` 个源码文件）；`docs:ui-spec:build/check`、`test:logic:ui-spec-preview`、`test:logic:ui-token-contract`、`test:logic:ui-overlay-contract`、`test:logic:back-priority-regression`、`test:logic:ui-overflow`、`test:logic:component-reuse`、`test:logic:motion-feedback-b1`、根 `typecheck`、Next `build` 与 `git diff --check` 通过。
+- **390px 触摸证据**：Playwright Chromium `390×844`、mobile / `hasTouch=true`、低配 Android UA 与 4GB / 4 核信号实测；以真实 `tap()` 覆盖 Sheet / Menu，验证 reduced-motion transform 归零、reduced-transparency / high-contrast / 低配 blur 关闭、dialog / menu 名称与焦点、背景隔离、Escape、progress 语义、按压 reduced CSS 分支、无横向溢出及无 console error。截图 `/tmp/wardrobe-motion-d1-runtime-390.png` 已人工检查。
+- **风险与未验证项**：`high`（全局 motion / material / Overlay / Back 运行时收口）。未在 Android 真机 / 模拟器、WebView、TalkBack / VoiceOver、系统字体放大、软键盘、生产账号或真实长列表上做最终回归；本批按任务边界不递增版本、不构建 APK、不修改契约扫描脚本或 Android 验收脚本。真实 Android 返回键、系统“减少动态效果 / 提高对比度”映射和跨 Wave 集成由 D1-Android / 主集成最终验收。
+
+## 2026-07-14 / v2.1.18-test / Codex Subagent D1-Contracts — 动效、浮层与返回防回归门禁
+
+- **执行与版本**：Codex Subagent D1-Contracts 使用 `apple-design` 技能，在独立分支 `codex/motion-d1-contracts-20260713`、独立 worktree `/Users/fangzheng/Documents/wardrobe-motion-d1-contracts-20260713` 上基于冻结提交 `99af582da5537b7d400878d0ecc56aca5131a2c9` 实施；版本保持 `2.1.18-test`，未修改运行时代码、API、业务字段、存储、小程序或 Android 工程，未合入 integration / `main`、未推送、未构建 APK。
+- **严格动效扫描**：新增 `test-ui-motion-contract.ts`，以 TypeScript AST 和 CSS 扫描覆盖 `src/app`、`src/components`、`src/lib`；禁止未进入 `OverlayPortal` 且未登记 `useOverlayLayer` 的 `fixed inset-0` 浮层、`OverlayRoot` 之外的 Capacitor Back listener、未显式命名的 `MotionSheet` / dialog / alertdialog / menu、散落的 `active:scale-*` / `whileTap` / CSS active scale，以及没有相邻 reduced-motion 静态路径的 smooth scroll、`height:auto`、stagger 和无限循环。扫描自测同时覆盖违规与合法共享实现，不使用现存文件白名单。
+- **跨 worktree 与独立合同**：扫描根目录支持 `MOTION_CONTRACT_ROOT=<worktree>`，便于在合入前只读验证 Runtime 分支；正常仓库入口仍校验 package scripts。`back-priority-regression` 另行全量断言全仓只有一个原生 Back owner，避免只验证 `OverlayRoot` 文件自身；UI spec preview 合同固定 D1 规则必须同时存在于 Markdown 与生成 HTML。
+- **组合入口与规范**：新增 `test:logic:ui-motion-contract`、`test:logic:ui-contracts`，组合入口串行覆盖 motion、UI spec preview、token、overlay、Back、360/390px overflow 与 component reuse，并接入 `test:logic:all`。UI 规范新增 D1-Contracts 命名小节并重生成 HTML，明确 full-screen surface、可访问命名、统一按压反馈、reduced-motion 和无白名单边界。
+- **改动文件**：`scripts/test-ui-motion-contract.ts`、`scripts/test-back-priority-regression.ts`、`scripts/test-ui-spec-preview-contract.ts`、`package.json`、`docs/designs/wardrobe-ui-spec.md`、生成的 `docs/designs/wardrobe-ui-spec.html` 与本记录；未越界编辑 D1-Runtime 所有的任何 `src/**` 文件。
+- **已通过验证**：`docs:ui-spec:build/check`、`test:logic:ui-spec-preview`、`test:logic:ui-overlay-contract`、`test:logic:ui-overflow`、`test:logic:component-reuse`、根 `typecheck` 与 `git diff --check` 通过；新 scanner 的正反 fixture 均先于仓库扫描通过。使用本分支 scanner 配合 `MOTION_CONTRACT_ROOT` 对 D1-Runtime worktree 交叉复验为 `ui motion contract: passed (198 source files scanned)`，证明 Runtime 已把上述 50 项降到零，且没有通过修改 Contracts scanner 规避规则。
+- **冻结基线红灯与交接**：严格 motion 门禁在冻结基线确定性报告 `50` 处运行时债务：`32` 处散落按压 scale、`6` 个额外 Back owner、`2` 个 raw full-screen fixed surface、`5` 个未命名浮层/菜单、`3` 个未保护 smooth scroll、`1` 个 stagger、`1` 个 motion `height:auto`。增强后的 Back 门禁同步报告共 `7` 个 owner（唯一允许者为 `OverlayRoot`）；token 门禁仍只报告 `edit-image-action-card.tsx` 与 `site.css` 两组既有硬编码。全部精确位置已立即交给 D1-Runtime；Contracts 未通过白名单、缩小扫描目录或修改 runtime 换取绿色，最终 `ui-contracts` / `test:logic:all` 必须在合流后复跑为零。
+- **风险与未验证项**：`high`（门禁刻意阻断当前冻结 runtime，只有与 D1-Runtime 合流后才应全绿）。本分支不改变用户可见行为，因此未做 Android 真机/模拟器、TalkBack/VoiceOver、触摸或 APK 验证；跨 Wave 合流后的完整 logic/typecheck/build、Android 返回键、reduced-motion 和窄屏现场验收由主集成与 D1-Android 收口。
+
+## 2026-07-14 / v2.1.18-test / Codex Subagent D1-Android — Android 动效验收资产与冻结源码证据
+
+- **执行与版本**：Codex Subagent D1-Android 使用 `apple-design` 技能，在独立分支 `codex/motion-d1-android-20260713`、独立 worktree `/Users/fangzheng/Documents/wardrobe-motion-d1-android-20260713` 上基于 Wave 6 冻结提交 `99af582da5537b7d400878d0ecc56aca5131a2c9` 实施；版本保持 `2.1.18-test`，未修改运行时代码、API、业务字段、存储、小程序或版本号，未构建/提交新 APK，未合入 integration / `main`、未推送。本 Session 由主 Agent 分派，未再调用下级 subagent。
+- **验收资产**：新增 `scripts/android-motion-acceptance.ts`，以显式 `frozen/final` 与 `pre-wave-control/final-wave6` 来源标签编排 390×844 冻结源码矩阵、ADB/AVD/固定签名/APK preflight 和模拟器控制面入口；设备执行只接受显式 `emulator-*`，防止误装物理设备，报告永不自动宣称六项最终动效通过。新增 `docs/testing/android-motion-acceptance-checklist.md`，固化浮层 Back、图片反向接管、日历斜滑、滑条纵向滚动、路由中断与 reduced-motion 的操作、帧证据、日志、隐私和最终判定标准。
+- **环境与旧 APK 控制面**：ADB platform-tools `37.0.0` 可用，`wardrobe-test` / `wardrobe-visible-test` / `wardrobe-account-deletion` AVD 可列出；冻结 worktree 未携带敏感签名文件，正式集成目录的固定 jks/properties 存在，Gradle 缺配置即停止且 debug/release 均引用 `wardrobeFixed`。现有 v2.1.18-test APK 仅作为 `pre-wave-control` 样本：包名 `com.wardrobe.outfit`、versionCode `20118`、固定签名 `CN=fangzheng`、SHA-256 `dcbc995a059e1974ce740f681642cf0abe0ccbdc394b4be618976e1edb03a256` 通过；Android 15 / API 35 `wardrobe-test` 模拟器覆盖安装、冷启动、前台 `MainActivity`、系统 Back 注入、重新启动、竖屏截图、版本与进程检查通过，两次目标 fatal 筛选均为空。竖屏图已目检为无账号内容的登录壳，无明显裁切或横向溢出；验证后模拟器已关闭。该 APK 早于 Wave 动效，未计入动效验收。
+- **冻结源码 390px 证据**：验收 runner 在提交 `99af582d` 上三轮执行 10 项矩阵，BackCoordinator / Overlay、Carousel、B3 日历、B4 slider、C1 与三个 C3 深层路由等 9 项均稳定通过；C2 `test-detail-continuity-browser.mjs:330` 对 Escape 前 transform 与退出首 keyframe 做字符串严格相等，出现可复现定时波动。两轮完整矩阵全绿、最新一轮 `9/10`；加入 5 次隔离复测后 C2 合计 `6/8` 通过、`2/8` 失败，两次失败均为相邻帧矩阵差异。D1-Android 未跨所有权改 C2 runtime / 既有 harness，也未用 retry 吞掉失败；主 Agent 已确认在 Wave 6 合流后改为同一事件帧的确定性连续性断言并复跑最终矩阵。精确矩阵与失败日志哈希已写入证据索引，原始日志/截图只留在忽略目录 `test-results/motion-repair-android/`；Git 索引不含 APK、签名、序列号、用户数据或 Token。
+- **规范与验证**：UI 规范新增 D1-Android 命名小节并重生成 HTML；`docs:ui-spec:build/check`、`test:logic:ui-spec-preview`、根 `typecheck`、Next `build`、Android metadata/interaction 控制面和 `git diff --check` 通过。验收 runner 对任何单项失败保持非零退出；最新整轮因上述 C2 定时断言按设计为红。构建仍使用冻结版本，仅证明源码可构建，不代表生成了本 Wave APK。
+- **风险与主 Agent 最终复测**：`high`（Android Back、WebView 触摸仲裁、系统 reduced-motion 和帧时序只能由最终 APK 证明）。D1-Runtime / D1-Contracts 与本 Session 从同一冻结 HEAD 并行，尚未合流；六项设备矩阵全部明确保留为“主 Agent 最终复测”。主 Agent 必须在 Wave 6 按 `Runtime → Contracts → Android` 合入、统一递增版本并构建新的固定签名 APK 后，用同一个最终 APK SHA-256 重跑六行；本记录不得解释为最终动效已验收。
+
+## 2026-07-13 / v2.1.18-test / Codex Subagent C3-Outfit — 套装与计划深层空间连续性
+
+- **执行与版本**：Codex Subagent C3-Outfit 使用 `apple-design` 技能，在独立分支 `codex/motion-c3-outfit-20260713`、独立 worktree `/Users/fangzheng/Documents/wardrobe-motion-c3-outfit-20260713` 上基于冻结提交 `7a2a9ece21429daa757dff25c75e697ca1d3fa38` 实施；版本保持 `2.1.18-test`，未合入 integration / `main`、未推送、未构建 APK，本 Session 未再分派下级 subagent。
+- **方向与可中断性**：套装模块新增单一 C3 deep-flow presenter，复用 C1 的 push/pop 空间语义和 `spring.panel`：前进时新页从右侧 `24px` 进入、旧页后退 `-6px`，返回完全反向；`AnimatePresence mode="sync"` 的 custom variants 让退出页始终消费最新方向，连续操作可从当前呈现状态接管。退出页立即 `inert/aria-hidden` 且禁用 pointer；reduced-motion 仅保留短 opacity。全屏 `OutfitIntakeFlow` 继续由 OverlayPortal 拥有，不复制第二个创建状态或 AppRoute 所有者。
+- **层级与滚动事实**：固定套装首页 → 详情 → 编辑/组成/实图，以及月历 → 新增/详情 → 编辑/打包的逐层 push/pop；快速连续 Back 通过同步 route ref 一次消费一层，不读取上一帧闭包。每个子页/实体只在当前会话保存独立 window 与内部 scroll offset，导航前读取实际呈现页、目标首帧前恢复，并沿用 C1 fixed-body lock 释放路径；过期 DOM 不会把旧页 offset 写入已前进的 key。C2 `DetailTabContent`、来源返回和 OverlayStack topmost 语义保持不变。
+- **写入与失败连续性**：套装编辑/组成/实图、计划新增/编辑/删除和打包添加/切换/全选/重置均在提交期阻止页面 Back 与重复点击；Confirm/Sheet 继续原位 pending。成功只在服务器事务与 `onRefresh` / `onPlanDataChange` 读回后 pop；新计划读回后进入对应详情而非跳回月历。失败不导航、不重挂载，保留表单草稿、滚动位置和原层错误；计划回调不再吞掉失败。
+- **改动文件**：`src/components/outfit-list-view.tsx`、`outfit-plan-add-view.tsx`、`outfit-plan-detail-view.tsx`、`plan-packing-checklist-view.tsx`；新增 `scripts/test-outfit-deep-flow-motion-browser.mjs`，补充套装计划与详情壳合同；更新 UI 规范 C3-Outfit 命名小节、生成 HTML 与本记录。
+- **自动化验证**：`test:logic:outfit-planning` 通过（日历 `57/57`、计划 `88/88`、打包 `40/40`）；`test:logic:outfit-intake-confirm-contract`、`test:logic:ui-overflow`、`test:logic:back-priority-regression`、`test:logic:detail-shell`、`test:logic:outfit-plan-wear-state` `36/36`、`test:logic:followup-navigation` `82/82`、`docs:ui-spec:build/check`、`test:logic:ui-spec-preview`、根 `typecheck`、Next `build` 与 `git diff --check` 通过。详情壳旧合同同步为新的方向化 `navigateSubPage("library", "pop")`，仍断言删除失败不得离开详情。
+- **390px 浏览器证据**：Playwright Chromium `390×844`、移动触摸上下文实测 push 旧页 `x<0`、pop 旧页 `x>0`、退出页 inert、计划详情 ↔ 打包深滚动恢复、同 tick 连续 Back、连续 push 后单一 current page，以及 reduced-motion transform 归零；无 console error，截图 `/tmp/wardrobe-c3-outfit-deep-flow-390.png` 已人工检查，无横向溢出或叠页误触。
+- **风险与未验证项**：`high`（套装/计划高频深层导航、滚动和写入中断）。未在 Android 真机/模拟器、WebView、TalkBack/VoiceOver、生产账号或真实线上长列表做最终回归；未构建 APK。Android 返回键真实帧时序、360/430px 设备、系统字体放大及跨 Wave 集成后的完整业务链路留给 D Wave / 主集成验收。
+
+## 2026-07-13 / v2.1.18-test / Codex Subagent C3-Settings — 设置、画像与账号深层流程
+
+- **执行 Agent**：Codex Subagent C3-Settings 使用 `apple-design` 技能；独立分支 `codex/motion-c3-settings-20260713`、独立 worktree `/Users/fangzheng/Documents/wardrobe-motion-c3-settings-20260713`，基于 Wave 5 冻结提交 `7a2a9ece21429daa757dff25c75e697ca1d3fa38`；未合入 integration / `main`，未推送、未清理。本 Session 由主集成 Agent 分派，未再调用下级 subagent。
+- **目的与版本**：统一设置首页到穿衣画像、参考照片、MiniMax 与衣橱位置的 push/pop 和滚动连续性，并收紧设置、账号、改密、找回密码与注销的事务中断边界；版本保持 `2.1.18-test`，不改 API、业务字段、服务端、存储策略、小程序或 APK 版本。
+- **设置内层连续性**：新增唯一 `SettingsSubpageMotion` 和原子 `SettingsPageTransition`；push 复用 C1 的“新页 `+24px` / 旧页 `-6px`”，pop 完全反向，`AnimatePresence mode="sync"` 支持快速打断，退出页 `inert/aria-hidden` 且不接收 pointer，reduced-motion 只保留 opacity。设置首页 scrollY 在进入子页前保存，并在返回的 `useLayoutEffect` 首帧前恢复；账号、改密与注销继续走 C1 外层 AppRoute，未叠加第二套页面动画。
+- **设置事务与读回**：衣橱位置入口和共享 Sheet 恢复为可达状态，增改迁删期间页面、表单、Back、Escape、backdrop 与取消均锁定，操作成功只在既有 overview 读回完成后关闭。画像、参考照片、诊断上传和首页参考图开关沿用服务端实体/读回结果；诊断构建、授权、上传阶段保持不可取消进度层，失败保留问题描述。MiniMax 改为先验证内存草稿，再持久化并 pop，验证失败不覆盖既有设置、不离开子页。
+- **账号安全事务**：账号改绑、改密、找回密码和最终注销共享各自唯一 busy 事实，事务期间禁用 Back、模式切换、取消、输入与重复提交。AuthProvider 在长会话刷新后把本次改密实际使用的 fresh token 返回页面，改绑和改密用有效 token 读取最新 account security；写响应成功但读回失败时明确提示“已提交、尚未确认”并保留当前页，避免把已生效操作误报成可直接重试的普通失败。注销无论提交响应是否已标 completed，都继续用 receipt 轮询 deletion status 后才完成。账号模式按钮的冻结硬编码主色已替换为既有 `denim` 语义 token。
+- **改动文件**：`wardrobe-app.tsx`、新增 `auth/settings-subpage-motion.tsx`、`auth/account-views.tsx`、`auth/auth-provider.tsx`、`auth/auth-gate.tsx`、`auth/account-deletion-view.tsx`；新增 C3 静态合同和 390px browser harness、`package.json`；UI 规范 C3-Settings 命名小节、生成 HTML 与本记录。未修改 C1 导航控制器、底栏/全局创建衔接、穿搭计划或种草深层流程。
+- **自动化与 390px 验证**：`test:logic:urgent-account`（含新增 C3 `29/29`）、`test:logic:account-deletion-app`、`test:logic:wardrobe-app-split` `47/47`、`test:logic:ui-overflow`、UI spec build/check/preview、根 `typecheck`、Next `build`、`git diff --check` 通过。Chromium Playwright `390×844` 实测设置内 push/pop、列表滚动恢复、快速 push/pop/push、设置→账号→改密外层路由、busy 注销 Sheet 的 backdrop/Escape/Back 拒绝、失败保留路由与输入、写响应后继续等待读回、读回后才关闭、reduced-motion 与横向溢出；无 console error，截图 `/tmp/wardrobe-c3-settings-account-390.png` 已目检通过。
+- **风险门禁与未验证项**：`high`（账号改密/注销、设置写入与深层返回）。额外 `test:logic:ui-token-contract` 已不再报告 C3 所有的 `auth/account-views.tsx`，仍只报告本 Session 不拥有的冻结基线两处：`src/components/item/edit-image-action-card.tsx` 与 `src/app/site.css`，未越界修改。未在 Android 真机/模拟器、WebView、TalkBack/VoiceOver、生产账号、真实服务端写入或 live MiniMax 上执行最终回归；本批不构建 APK，Android 返回键与真实设备帧时序留给 D / 主集成 Wave。
+
+## 2026-07-13 / v2.1.18-test / Codex Subagent C3-Wishlist — 种草深层流程与返回连续性
+
+- **执行 Agent**：Codex 实施 Wave 5 / C3-Wishlist，使用 `apple-design` 技能；独立分支 `codex/motion-c3-wishlist-20260713`、独立 worktree `/Users/fangzheng/Documents/wardrobe-motion-c3-wishlist-20260713`，基于冻结提交 `7a2a9ece21429daa757dff25c75e697ca1d3fa38`；未合入 integration / `main`，未推送、未清理。本 Session 由主集成 Agent 分派，未再调用下级 subagent。
+- **目的与版本**：把种草首页、管理子列表、详情、编辑与加入衣橱串成方向一致、可返回来源的组件内深层导航，保留筛选、滚动和失败草稿；版本保持 `2.1.18-test`，不改 API、业务字段、存储、服务端、小程序、共享 `motion-common/navigation-motion` 或 APK 版本。
+- **导航与滚动**：新增组件内 page frame stack，直接消费 C1 `push/pop/replace` 状态和公共 `spring.panel`；同步进退期间退出页 `inert/aria-hidden` 且不接收 pointer，reduced-motion 退化为短淡化。首页与已买 / 不感兴趣 / 已归档列表都能进入详情；详情 → 编辑 / 加入衣橱为 push，取消、返回和放弃确认为反向 pop。每帧离开前读取实际 `scrollTop`，目标页在 `useLayoutEffect` 首帧恢复，首页筛选与各列表滚动相互独立。
+- **录入交接与锚点修复**：`intake_wishlist` 外层 route 重挂载使用显式 owner token 的一次性交接，快照仅含来源页、首页筛选和滚动；render 只读 peek，目标提交后的 layout effect 按 token 消费即清，避免 Strict Mode / 放弃渲染提前清空；关闭 / 保存时 arm，owner 放弃时清除，不写 storage、`WeakMap`、itemId 或长期业务缓存。首页与详情 More 菜单拆为独立可见 trigger ref，避免 sync push/pop 重叠时退出详情清理 ref、误将当前首页 Popover 锚点置空。
+- **忙碌与失败保留**：编辑保存、加入衣橱、撤销购买和确认层 busy 时，Back / Escape / 遮罩 / 顶部返回 / 显式取消不再中断写入；加入衣橱失败保留位置、确认页和来源栈，编辑失败保留字段与新选图片，撤销失败保留确认层，所有失败都保留筛选和列表滚动。成功仍等待服务器提交和读回，未改写 C2 `DetailTabContent` / source return、A2 `OverlayStack` 或 B4 `GarmentIntakeFlow` 接口。
+- **改动文件**：`src/components/wishlist-view-2.0.tsx`；Wishlist 逻辑 / 管理合同与新增 `scripts/test-wishlist-deep-navigation-c3.ts`、`scripts/test-wishlist-deep-flow-harness.ts`；UI 规范 C3-Wishlist 命名小节、生成 HTML 与本记录。
+- **自动化验证**：`test:logic:wishlist` `107/107`、`test:logic:wishlist-management-followup` `60/60`、`test:logic:wishlist-intake-confirm-contract`、C3 一次性交接测试、`test:logic:ui-overflow`、`docs:ui-spec:build/check`、`test:logic:ui-spec-preview`、根 `typecheck`、Next `build` 与 `git diff --check` 通过。
+- **390px 深层流程验证**：Chromium Playwright `390×844`、mobile/touch、React Strict Mode 实际覆盖一次性交接消费与重复挂载无泄漏、首页筛选/滚动 → 详情 → 加入衣橱失败 → 反向返回恢复、详情 → 编辑 busy/失败保留表单与 SVG 图片 → 放弃确认、已买列表 → 撤销购买 busy Back/遮罩锁定 → 失败保留确认和滚动；无 page error。截图 `/tmp/wardrobe-c3-wishlist-deep-flow-390.png` 已目检，未见深层页横向溢出或遮罩层错位。
+- **风险门禁与未验证项**：`high`（种草高频深层导航、写入与返回上下文）。未在 Android 真机/模拟器、WebView、TalkBack/VoiceOver、输入法顶起、系统字体放大、真实服务器数据或生产图片上做最终验收；本批不构建 APK，Android 返回键真实设备帧序、网络中断后的服务端读回和 360/430px 覆盖留给 D Wave / 主集成最终验收。
+
+## 2026-07-13 / v2.1.18-test / Codex Subagent B4 — 录入裁切、滑条与中断恢复
+
+- **执行 Agent**：Codex 实施 Subagent B4，使用 `apple-design` 技能；独立分支 `codex/motion-b4-intake-gestures-20260713`、独立 worktree `/Users/fangzheng/Documents/wardrobe-motion-b4-intake-gestures-20260713`，基于 Wave 3 冻结提交 `a1d6137a05890d81b4f6ab420bfe85e99f746496`；未合入 integration / `main`，未推送。本 Session 由主集成 Agent 分派，未再触发下级 subagent。
+- **目的与版本**：按直接操控、渐进阻力、可中断收口、纵向滚动优先和 reduced-motion 原则，修复录入裁切与滑条的触摸弱点，并给批量逐件确认增加克制方向反馈；版本保持 `2.1.18-test`，不改 API、业务字段、存储、服务端、小程序，不构建 APK。
+- **裁切物理与颜色**：`ImageCropEditor` 把 raw / presentation / legal crop frame 分离；图片边缘使用 nonlinear rubber-band，松手从当前呈现值通过公共无回弹 `spring.control` 回到合法框，新 pointerdown 可停止收口并从当前呈现值接管。确认导出强制 clamp legal frame，越界展示值不会进入裁切数据；全屏比例与应用按钮移除 `#355c7d/#fffffc`，改用现有 `denim/white` 语义 token，未改工具栏结构或共享 `cropper-math`。
+- **滑条与逐件反馈**：温度双端滑条和通用 `RangeField` 只从 knob 起拖，pointerdown 保存手指相对 knob 中心的 grab offset 且不瞬移；`touch-action: pan-y` 配合 `8px` 横纵意图锁，纵向和纵向占优手势不改值，pointer capture 保证横向拖出边界仍跟手。ref 在父级重渲染前去重相同整数 `onChange`。批量逐件切换只对当前预览图执行 `10px` 方向进入，表单、字段卡和保存栏不 key、不重播整页；reduced-motion 下取消位移。
+- **Back 与中断状态**：录入 Shell 固化并暴露 `cropper > image-source > field-overlay > exit-confirm > page` 优先级；嵌入式裁切继续通过 root back override 一次只关闭裁切，其他工具层由 OverlayStack topmost 先消费。相册空结果、裁切取消、识别失败和保存失败沿用现有 `imageItems` / 当前步骤 / 当前确认单品 / 幂等提交状态，不清空内存草稿；专项合同补齐四类中断断言。
+- **改动文件**：`garment-intake-flow.tsx`、`intake-flow-shell.tsx`、`image-crop-editor.tsx`、`temperature-range-slider.tsx`、`wardrobe-form-controls.tsx`；cropper / temperature / intake 三类合同脚本与新增 `scripts/test-intake-gesture-harness.ts`；UI 规范 B4 命名小节、生成 HTML 与本记录。
+- **自动化验证**：`test:logic:cropper` `56/56`、`test:logic:temperature-confidence`、`test:logic:intake`、`test:logic:garment-intake-multi-image` `72/72`、`test:logic:intake-entry-crop-regression` `72/72`、`test:logic:intake-fullscreen-layout` `37/37`、`docs:ui-spec:build/check`、根 `typecheck`、Next `build` 与 `git diff --check` 通过。
+- **390px 触摸与视觉验证**：Chromium Playwright `390×844`、`hasTouch=true` 实际覆盖轨道不起拖、knob pointerdown 不跳值、纵滑不改温度、横拖出 knob 后继续跟手、相同整数不重复 `onChange`、裁切越界呈现受 `44px` 上限约束和 release 回到合法图片边；页面无运行时错误。截图 `/tmp/wardrobe-b4-intake-gesture-390.png` 已目检，未见裁切框错位或横向溢出。
+- **冻结基线测试修正**：`test:logic:garment-intake-multi-image` 在未改代码的冻结基线为 `68/69`，旧断言把全仓任意 `async function saveDraft*` 都当成废弃单草稿录入逻辑，误伤当前其他路由合法的 `saveDraftAndMaybeBack`。B4 在授权测试范围内把合同收紧为 `GarmentIntakeFlow` 不含单草稿 `saveDraft/draft state` 且必须走 `onSaveBatch(drafts)`；修正后真实批量录入约束仍完整并通过。
+- **风险门禁与未验证项**：`high`（裁切与滑条是高频移动端手势）。额外 `test:logic:ui-token-contract` 已不再报告 `image-crop-editor.tsx`，仍只报告 B4 不拥有的三处冻结基线硬编码：`auth/account-views.tsx`、`item/edit-image-action-card.tsx`、`src/app/site.css`，本分支不越界修改。未在 Android 真机/模拟器、WebView、TalkBack/VoiceOver、系统字体放大或真实相册/相机上做最终验收；Android 返回键、真实设备帧时序和 360/430px 覆盖留给 D / 集成 Wave。
+
+## 2026-07-13 / v2.1.18-test / Codex Subagent C1 — 方向化路由运动与首帧滚动恢复
+
+- **执行与版本**：Codex Subagent C1 使用 `apple-design` 原则，在独立分支 `codex/motion-c1-navigation-20260713`、独立 worktree `/Users/fangzheng/Documents/wardrobe-motion-c1-navigation-20260713` 上基于冻结提交 `a1d6137a05890d81b4f6ab420bfe85e99f746496` 实施；版本保持 `2.1.18-test`，未合入 integration / `main`，未推送，未构建 APK，本 Session 未再触发下级 subagent。
+- **导航与运动**：`NavigationController` 现在把 route 与 `fromRoute/toRoute/source/direction` transition 原子提交，Tab / push / pop / replace 分别表达平级、前进、返回和替换；重复同 route 不创建动画。新增唯一 `NavigationMotion`：Tab 使用 `opacity 0.96→1 + y 4→0` 短交叉淡化，push 采用“新页 +24px / 旧页 -6px”，pop 完全反向，`AnimatePresence mode="sync"` 允许连续操作中断；退出页 `inert/aria-hidden` 且不接收 pointer，reduced-motion 只保留短 opacity。旧 `mode="wait"`、全路由统一 opacity+y、常驻 `transform-gpu` 已移除。
+- **滚动与录入衔接**：路由按首页、详情实体和录入来源使用独立会话内 scroll key；`useLayoutEffect` 保存实际已呈现 route 的位置，并在目标首帧前同步恢复，替换原动画完成后的双/三重 rAF 链。Sheet/fullscreen fixed-body 锁退出期间读取 `body.top` 的真实位置，先把新 route 对齐目标位置，再在锁释放同一绘制帧覆盖锁滚回写。全局“+”关闭 Sheet、录入 trigger 与 intake push 同一事件提交；套装创建移除额外 parent effect，避免中间首页帧。衣物详情来源返回与改密完成改用 pop 方向；精确卡片 source anchor 仍留给 C2。
+- **底栏反馈与边界**：桌面 / 移动主 Tab 选中胶囊通过各自共享 `layoutId` 平移，底栏继续复用 B1 `AppPressable` 和 `spring.control`，未叠加第二套按压缩放；未修改 `motion-common.tsx`、B4 录入手势或 C2 详情组件。
+- **改动文件**：`app-route.ts`、`use-app-navigation-controller.ts`、新增 `navigation-motion.tsx`、`wardrobe-app.tsx` 路由/底栏/创建衔接；C1 纯逻辑与 390px Playwright browser harness、后续导航静态合同、`package.json`；UI 规范 C1 命名小节、生成 HTML 与本记录。
+- **自动化与浏览器验证**：`test:logic:app-route` 通过（原路由 46/46 + C1 29/29），`test:logic:followup-navigation` 82/82、`test:logic:wardrobe-app-split` 47/47、`test:logic:back-priority-regression`、`test:logic:diagnostic-events` 54/54、`docs:ui-spec:build/check`、`test:logic:ui-spec-preview`、根 `typecheck`、Next `build` 均通过。隔离 Playwright `390×844` 实测 Tab 独立滚动、同步四连切、detail push/pop、Sheet 锁滚到 intake 再 pop、退出页交互归属和 reduced-motion；无 console error，截图 `/tmp/wardrobe-c1-navigation-390.png` 已人工核对无白屏、叠层溢出或位置跳闪。
+- **风险与未验证项**：`high`（App 主壳高频导航、滚动和 Overlay 交接）。未在 Android 真机/模拟器、WebView、TalkBack/VoiceOver、生产 API 或真实长列表异步增高场景做最终验收；本批不交付 APK。详情卡片精确 anchor、Lightbox 来源连续性由 C2 接续，Android 返回键与真实设备帧时序留给 D/最终集成 Wave。
+
+## 2026-07-13 / v2.1.18-test / Codex Subagent C2 — 三类详情、来源锚定与共享预览连续性
+
+- **执行 Agent**：Codex 实施 Wave 4 / C2，使用 `apple-design` 技能；独立分支 `codex/motion-c2-detail-continuity-20260713`、独立 worktree `/Users/fangzheng/Documents/wardrobe-motion-c2-detail-continuity-20260713`，基于冻结提交 `a1d6137a05890d81b4f6ab420bfe85e99f746496`；未合入 integration / `main`，未推送、未清理。本 Session 由主集成 Agent 分派，未再调用下级 subagent。
+- **目的与版本**：统一衣物、套装、种草详情的 Tab 内容运动、Popover 锚点与 Lightbox 来源连续性，并把 B2 下拖 controller 接入共享运行时；版本保持 `2.1.18-test`，不改 API、服务端、存储、领域字段、小程序或 APK 版本。
+- **详情与返回契约**：共享 `DetailTabs` 使用唯一 layout indicator 平移，`DetailTabContent` 使用 `popLayout + 120ms opacity`，不补间 `height:auto`；三类详情全部接入。套装切换实体时同步复位 Tab/hero。静态契约覆盖衣橱 → `wardrobe_home`、已买种草 → `wishlist_purchased`、套装首页 → `outfit_home`、月历 → `outfit_calendar`，月份、选中日期与嵌套 `returnRoute` 仍由既有父级持有，C1 继续单独负责路由方向和滚动恢复。
+- **Lightbox 与 Popover**：详情 Hero 只在有效图片 click 时登记一次性 DOM source hint；可见来源按 `280ms` 展开、`240ms` 收回并恢复可见性/焦点，不可见或断连来源以短 fade 降级，reduced-motion 仅 `100ms` opacity。快速关闭从当前 presentation matrix 反向接管。共享 Lightbox 消费 B2 `useLightboxDragDismiss`，保留 1:1 下拖、速度投影、背景联动与 zoom/pan 双门；同时禁用原生图片 drag，修复浏览器 `pointercancel` 抢走手势。三类详情继续使用真实 More trigger 的共享 Popover；anchor transform-origin、Arrow/Home/End、Escape 与焦点恢复均已实际验证。
+- **改动文件**：`detail-shell.tsx`、`garment-detail-3.0.tsx`、`garment-immersive-detail.tsx`、`outfit-list-view.tsx` 详情区、`wishlist-view-2.0.tsx` 详情区、`motion-common.tsx` Lightbox；新增 C2 静态与 390px 浏览器脚本；同步 Wishlist 陈旧返回合同、UI 规范 MD/生成 HTML 与本记录。冻结基线的 `test-wishlist-management-followup` 仍要求页面 handler 字面关闭四类 Dialog，已更新为现行 `ConfirmActionSheet → MotionSheet → OverlayStack topmost` 契约，并继续逐一覆盖 undo/delete/reject/discard。
+- **验证结果**：`test:logic:detail-shell`、`test:logic:wishlist`（107/107）、`test:logic:wishlist-management-followup`（54/54）、`test:logic:shared-item-shells`、`test:logic:followup-navigation`（82/82）、`test:logic:ui-overlay-contract`、C2 静态契约、UI spec build/check/preview、根 `typecheck`、Next `build` 与 `git diff --check` 通过。390×844 Playwright 实测 source enter/exit、快速反向与焦点恢复、隐藏来源 fade、慢拖 `80px → 80px`、快速 `48px` flick 关闭、zoom/pan 均 `y=0`、Popover 键盘/回焦、Tab indicator 移动约 `113.8px` 和 reduced-motion 纯淡化；截图 `/tmp/wardrobe-c2-detail-continuity-390.png` 已人工核对。
+- **风险门禁与未验证项**：`high`（共享 Lightbox、触摸手势与三类高频详情）。本批未在 Android 真机/模拟器、WebView、TalkBack/VoiceOver、生产账号或真实线上图片上执行最终回归，也未构建 APK；Android 返回键、真实触摸帧率、辅助技术和 APK 业务链路由 D Wave / 主集成最终验收。
+
+## 2026-07-13 / v2.1.18-test / Codex 主集成 — Motion Wave 3 归并与陈旧合同同步
+
+- **执行与版本**：主 Agent 按 B1 → B2 → B3 顺序归并三项独立提交，保全并重生成 UI 规范；版本保持 `2.1.18-test`，未进入 APK 交付。
+- **集成修正**：`scripts/test-outfit-plan-wear-state.ts` 的服务端源码合同从旧表达式 `Boolean(payload.isPrimary)` 同步为当前基线已采用的 `wantsPrimaryActual`，只修测试字面量，不改变服务端业务逻辑。
+- **验证与风险**：轮播/Lightbox、反馈、详情壳、共享壳、穿搭规划、日历状态、wear-state、后续导航、窄屏、UI 规范、根 `typecheck` 与 Next `build` 组合门禁通过。`ui-token-contract` 仍只报告冻结基线四处硬编码色值，将由后续拥有对应文件的 B4、C2、C3-Settings 与 D1-Contracts 收口；Android/WebView 和辅助技术留在 D Wave 与最终 APK 验收。
+
+## 2026-07-13 / v2.1.18-test / Codex Subagent B3 — 周计划与月历三页轨道直接操控
+
+- **执行 Agent**：Codex 实施 Subagent B3；独立分支 `codex/motion-b3-calendar-gestures-20260713`、独立 worktree `/Users/fangzheng/Documents/wardrobe-motion-b3-calendar-gestures-20260713`，基于批次提交 `00398302ae7ee8f320030f20f93048f74392591d`；未合入 integration / `main`，未推送。本 Session 由主集成 Agent 分派，未再触发下级 subagent。
+- **目的与版本**：依照 `apple-design` 的直接操控、空间连续性、可中断性和 reduced-motion 原则，修复周计划条与月历“松手后替换内容”的弱手势，使手指、轨道、箭头和选中详情共享可预测的物理状态；版本保持 `2.1.18-test`，不改业务/API/存储/小程序，不构建 APK。
+- **运行时实现**：新增纯函数 `calendar-track-gesture.ts`，统一 `9px` 横纵意图、nonlinear rubber-band、最近 `110ms` 速度、`0.2s` 终点投影和单页 snap。周计划与月历常驻前/中/后三页，使用 `touch-action: pan-y`，横向成立后才 pointer capture；拖动保持 `1:1`，释放使用无弹跳 spring。pointerdown 会停止当前 spring 并从实时 x 接管，连续同向箭头按序排队，反向箭头重定向现有轨道，提交后只更新父级日期事实并无缝回中。
+- **选中与详情连续性**：周/月选中背景改为共享 `layoutId` 移位；月历详情使用位置布局、透明度和 clip-path，不再补间 `height:auto`。reduced-motion 下切页和详情立即完成。`monthDate/selectedDate` 仍由 `OutfitListView` 父状态持有，月历重挂载从 `selectedDate` 恢复展开；未加入模块缓存或持久化。`OutfitPlanDayCard` 的按钮、busy 写入和服务端读回边界已复核，无需为 B3 强制改动。
+- **改动文件**：`src/lib/calendar-track-gesture.ts`、`outfit-weekly-plan-strip.tsx`、`outfit-planning-calendar-view.tsx`；日历/计划/返回上下文三项合同脚本；UI 规范 B3 命名小节、生成 HTML 与本记录。
+- **自动化验证**：`test:logic:outfit-planning` 通过（手势/日历 `57/57`、计划 `74/74`、打包 `40/40`），`test:logic:outfit-calendar-state-regression` `32/32`、`test:logic:followup-navigation` `82/82`、`test:logic:ui-overflow` 通过；`docs:ui-spec:build/check`、`test:logic:ui-spec-preview`、根 `typecheck`、Next `build` 与 `git diff --check` 通过。
+- **390px 触摸与视觉验证**：在隔离本地 E2E API / 测试数据库上用 Chromium Playwright `390×844`、touch Pointer Events 完成 17 项回归：周/月三页常驻、`pan-y`、纵向与纵向占优斜向不改 x、水平拖动 `1:1`、半途反向、spring 途中反向接管、一次释放只翻一页、连续三次箭头不吞步、2026-08 六行月历、选中背景 layout 移位，以及 reduced-motion 详情无行内高度/过渡。视觉截图 `/tmp/wardrobe-b3-calendar-390.png` 已人工核对无横向溢出、空页闪白或详情遮挡。in-app Browser 当前无可用 browser 实例，按 skill 故障流程确认 `browsers=[]` 后使用仓库 Playwright 回退；未向生产 API 写入。
+- **既有门禁失败证据**：要求执行的 `test:logic:outfit-plan-wear-state` 为 `35/36`；唯一失败脚本仍断言 `isPrimaryActual: Boolean(payload.isPrimary)`，但 B3 基线 `00398302` 的 `command-service.ts:484` 已是 `isPrimaryActual: wantsPrimaryActual`。测试与服务端均非 B3 所有权，且失败可在未改基线复现，本分支不越界改写；主集成 Agent 应单独同步陈旧合同后复验。
+- **风险门禁与未验证项**：`high`（周/月高频手势与日期上下文）。未在 Android 真机/模拟器、WebView、TalkBack/VoiceOver、系统高对比或生产业务数据上做最终回归；本批不交付 APK，Android 返回键、帧时序和真实 360px/412px 设备验收留给 D/集成 Wave。
+
+## 2026-07-13 / v2.1.18-test / Codex Subagent B2 — 图片轮播物理与 Lightbox 下拖 Controller
+
+- **执行 Agent**：Codex 实施 Subagent B2，使用 `apple-design` 技能；独立分支 `codex/motion-b2-image-gestures-20260713`、独立 worktree `/Users/fangzheng/Documents/wardrobe-motion-b2-image-gestures-20260713`，基于 Wave 2 冻结提交 `00398302ae7ee8f320030f20f93048f74392591d`；未合入 integration / `main`，未推送。本 Session 由主集成 Agent 分派，未再触发下级 subagent（用户未通知）。
+- **目的与版本**：把卡片、衣物详情、套装详情和种草详情共用的 `SwipeImageCarousel` 改为 Apple 式 1:1、速度连续、可中断手势；版本保持 `2.1.18-test`，本批不改 API、存储、业务字段、小程序、共享 Overlay / Back 或 `motion-common.tsx`，不构建 APK。
+- **轮播物理**：轨道改为单一 `MotionValue`，pointermove 不再逐帧 `setState`；`9px` 横纵意图锁后仅横向 capture，纵向保持 `pan-y`。pointerdown 停止当前动画并读取 DOM 真实 presentation x；spring 用主线程 `onUpdate` 保留呈现速度，避免 Motion 加速动画的逻辑终点领先屏幕位置。释放读取最近 100ms 最新同方向速度尾巴，Apple 指数投影相邻 snap point，并把 release velocity 传入轻微 momentum spring；快速反向可从当前 x/velocity 接管。
+- **边界与输入所有权**：首尾使用渐进 rubber-band，并提供阻尼反解以保证中断边缘回弹时首段不跳；pointerdown 不再把详情/评审原图切成缩略图。滑动 click suppression 仅绑定同一 pointer 序列并在下一帧释放，新 pointerdown 会先清旧序列；下一次独立点击立即可用。轮播保留 `aria-roledescription="carousel"` 并新增 `data-app-press-gesture-owner="true"`，与 B1 外层 `AppPressable` 手势所有权互补；受控胶片栏跨页切换保留源页到目标页轨道，避免空白帧。reduced-motion 下保留直接操控、释放即时吸附。
+- **Lightbox Controller ready**：新增 `useLightboxDragDismiss`，C2 可直接消费 `y`、`imageScale`、`backdropOpacity`、Pointer `bindings`、`reset` 和 `isEnabled`；controller 已包含 presentation y 接管、速度投影、回弹/退出 spring、同序列 click 抑制，以及 `zoomScale > 1.01` / `isPanning=true` 禁用下拖的门禁。本 Wave 按并行所有权不修改共享 `MotionImageLightbox`，因此 App 运行时下拖关闭尚未接线；C2 必须从 Wave 3 合入基线接入，并同时处理 source-anchor，不能复制私有 Lightbox。
+- **改动文件**：修改 `src/components/swipe-image-carousel.tsx`、`src/lib/carousel-logic.ts`、`scripts/test-carousel-logic.ts`；新增 `src/components/use-lightbox-drag-dismiss.ts`、`scripts/test-lightbox-drag-dismiss.ts`、`scripts/test-carousel-gestures-browser.mjs`；更新 UI 规范 B2 命名小节、生成 HTML 与本记录。衣物/套装/种草详情通过既有 `DetailHeroGallery → SwipeImageCarousel` 共用链路自动接入，无需改动三个业务组件；未触碰 B1/B3/B4/C2 独占运行时文件。
+- **验证结果**：轮播纯逻辑 `31/31` 与 Lightbox gate/projection/reversal 脚本通过；`test:logic:images`、`test:logic:detail-shell`、`test:logic:shared-item-shells`、UI spec build/check/preview、根 `typecheck`、Next `build` 和 `git diff --check` 通过。390×844 Playwright 真浏览器 harness 实测：慢拖 `-50px` 呈现 `-50px`、fast flick 到 index 1、动画中反向首段 `+12px` 呈现 `+12px`、首屏越界 150px 呈现 68.095px、滑动 click 被抑制且下一独立 click 生效、真实 touch compositor 纵向滚动约 180px且不切页/误点、pointerdown 原图 src 不变；Lightbox controller 慢拖 80px 呈现 80px、flick 触发一次 dismiss、zoom=2 时 y=0；独立 reduced-motion context 释放后即时吸附。
+- **风险门禁与未验证项**：`high`（高频图片手势、触摸/滚动竞争和后续全屏预览接线）。未在 Android 真机/模拟器、真实线上图片、TalkBack/VoiceOver 或低端 WebView 做最终回归，未测试 C2 尚未完成的 Lightbox 运行时组合、缩放/平移实现和 source-anchor 动画；最终 Android 竖屏、WebView 帧率、真实图片点击/返回及辅助技术验收由 C2/D/集成 Wave 完成。
+
+## 2026-07-13 / v2.1.18-test / Codex Subagent B1 — 即时按压、Toast、Progress 与 Shimmer 收口
+
+- **执行 Agent**：Codex 实施 Subagent B1；独立分支 `codex/motion-b1-feedback-20260713`、独立 worktree `/Users/fangzheng/Documents/wardrobe-motion-b1-feedback-20260713`，基于 Wave 2 集成提交 `00398302ae7ee8f320030f20f93048f74392591d`；未合入 integration / `main`，未推送。本 Session 由主集成 Agent 分派，未再触发下级 subagent。
+- **目的与版本**：按 `apple-design` 的同帧直接反馈、可取消输入、克制物理与 reduced-motion 原则完成 Wave 3 / B1；版本保持 `2.1.18-test`，不改 API、存储、服务端、小程序、图片轮播、日历或录入手势，不构建 APK。
+- **公共反馈原语**：`motion-tokens.ts` 新增无弹跳 `spring.control`、无弹跳 `spring.panel` 与仅供真实 drag/flick 的轻回弹 `spring.momentum`，旧 `snappy/soft/gentle` 保留兼容别名。`AppPressable` 统一 control / icon / card 三档克制反馈；主指针按下同帧进入 pressed，使用 pointer capture，位移超过 10px、拖离、pointercancel、失去 capture、失焦或 contextmenu 即取消并只抑制本次 click；Space / Enter、disabled 与 reduced-motion 同步覆盖。后代 Carousel / gesture owner 不被父层抢 capture，选择模式不缩放整卡。
+- **高频入口迁移**：三个目录首页共用的 `CatalogWaterfallCardShell`、选择 check / 底栏 / 删除操作、批量 AI 行操作，以及 App 全局 FAB、新建 action、Toast 动作/关闭、桌面与移动底部导航统一接入 `AppPressable`；普通控件不再叠加私有 `whileTap` 或回弹，专项合同同时检查无嵌套 `AppPressable` 重复缩放。
+- **Toast 与加载反馈**：success 2.8s、info 4s，error / action 不自动消失；隐藏、失焦、悬停、焦点进入和触摸按住暂停剩余倒计时。MiniMax Key 缺失改为 action 语义。AI 和批量进度改为左原点 `scaleX`，百分比展示与阶段 live region 分离；软进度从逐帧 rAF 改为 100ms 定时更新。Shimmer 只动画 transform，reduced-motion 静态化；Accordion 在 reduced-motion 下不再做 `height:auto` 补间。
+- **改动文件**：`src/lib/motion-tokens.ts`、`src/lib/use-soft-ai-progress.ts`、`src/components/motion-common.tsx`、`src/components/use-wardrobe-message-controller.ts`、`src/components/batch-ai-progress-panel.tsx`、`src/components/item-shell/catalog-waterfall-card-shell.tsx`、三个 `src/components/catalog-selection/` 反馈组件、`src/components/wardrobe-app.tsx` 的 B1 独占区域、`scripts/test-motion-feedback-b1.ts`、`package.json`、UI 规范及生成 HTML、本记录。
+- **验证结果**：`docs:ui-spec:build/check`、`test:logic:ui-spec-preview`、`test:logic:motion-feedback-b1`、`test:logic:component-reuse`、`test:logic:intake`、`test:logic:catalog-multi-select`、`test:logic:catalog-multi-select-integration`、`test:logic:ui-overflow`、根 `typecheck`、Next `build` 与 `git diff --check` 通过。B1 JSDOM harness 实际覆盖 pointerdown、阈值内移动、超过 10px 取消、拖离、pointercancel、后续独立点击恢复、Space 键反馈和嵌套 Carousel 不抢 capture。
+- **基线失败与风险门禁**：`high`（共享按压、全局 Toast 与进度反馈）。`test:logic:ui-token-contract` 仍仅报告冻结基线四处：`auth/account-views.tsx`、`image-crop-editor.tsx`、`item/edit-image-action-card.tsx`、`src/app/site.css`；均不属于 B1 修改范围，B1 新增 diff 无 hex 色值，批量进度旧 `bg-[#fbfbf8]` 已改语义 token。未做 Android 真机/模拟器、TalkBack/VoiceOver、低端 WebView 帧率或 360/390/430px 视觉慢放；最终跨 Wave 触摸、读屏与性能验收由后续 D / 集成 Wave 完成。
+
+## 2026-07-13 / v2.1.18-test / Codex Subagent A2-Core — 共享 Lightbox、Popover 与 Dialog 浮层收口
+
+- **执行 Agent**：Codex 实施 Subagent A2-Core；独立分支 `codex/motion-a2-core-20260713`、独立 worktree `/Users/fangzheng/Documents/wardrobe-motion-a2-core-20260713`，基于批次提交 `10d9e4176216ba3f7dcd3b47289294e9ad70e230`；未合入 integration / `main`，未推送。
+- **目的与版本**：按 Apple 式空间连续性、直接响应和可预测焦点原则，完成 A1 共享浮层组件层的 A2 迁移；版本保持 `2.1.18-test`，本批不改业务/API/存储/小程序，不构建 APK，也不提前实现 Sheet 拖拽。
+- **改动文件**：修改 `src/components/motion-common.tsx`、`src/components/dialogs/notice-sheet.tsx`、`scripts/test-ui-overlay-contract.ts`、`docs/designs/wardrobe-ui-spec.md`、生成的 `docs/designs/wardrobe-ui-spec.html` 与本记录；A1 的 `overlay-root.tsx`、`overlay-stack.ts`、`back-coordinator.ts` 公共接口保持兼容，无需追加运行时代码改动。
+- **实现摘要**：抽出 topmost-only 首焦点与 Tab 圈；`MotionSheet` 保持冻结 props，居中层改为轻微非弹跳缩放，`dismissible=false` 暴露 `aria-busy`。`MotionImageLightbox` 改为退出期持续存在的 `OverlayPortal + OverlayStack(kind=lightbox)` 层，补 `100dvh`、dialog 名称、首焦点、低层 inert 与锁滚。`MotionPopoverMenu` 在兼容原 props 的前提下全部进入共享 Portal/Stack，真实 anchor 同时决定 fixed 定位、transform origin 与焦点恢复，补 menu/menuitem、首项焦点、Arrow/Home/End/Escape；外点关闭的 400ms 全局 click 拦截改为仅绑定当前 `pointerId`、在 click/pointercancel/pointerup 后首帧释放的序列级保护。Notice Dialog 补齐可访问名称；危险提交确认继续使用 `alertdialog + dismissible=false`。
+- **验证结果**：`docs:ui-spec:build`、`docs:ui-spec:check`、`test:logic:ui-spec-preview`、`test:logic:ui-overlay-contract`、`test:logic:back-priority-regression`、`test:logic:component-reuse`、`test:logic:detail-shell`、`test:logic:ui-overflow`、根 `typecheck`、Next `build` 与 `git diff --check` 通过。额外用不落盘 React/JSDOM harness 真实渲染共享层：Popover 首项焦点、ArrowDown、Escape、触发器焦点恢复、外点同序列防穿透及下一次点击立即可用通过；Lightbox dialog 名称、关闭按钮首焦点、Escape、触发器焦点恢复、打开锁滚与退出释放通过。
+- **风险门禁与未验证项**：`high`（共享浮层、焦点和输入协调）。未在 Android 真机/模拟器、TalkBack/VoiceOver 或生产业务数据上做最终窄屏触摸回归；JSDOM 可验证 DOM/焦点/输入生命周期，但不替代像素、软键盘和真实 WebView 动画帧验收。最终 Android 与辅助技术验收由后续 D/集成 Wave 完成；本批明确不包含 Sheet 拖拽。
+
+## 2026-07-13 / v2.1.18-test / Codex Subagent A2-App — App 壳、设置与账号浮层 / Back 迁移
+
+- **执行 Agent**：Codex 实施 Subagent A2-App；独立分支 `codex/motion-a2-app-20260713`、独立 worktree `/Users/fangzheng/Documents/wardrobe-motion-a2-app-20260713`，基于 A1 后批次提交 `10d9e4176216ba3f7dcd3b47289294e9ad70e230`；未合入 integration / `main`，未推送。本 Session 由主集成 Agent 分派，未再触发下级 subagent。
+- **目的与版本**：依照 Apple 式可预测层级、可中断性与无障碍焦点原则，把 A2-App 独占范围接入 A1 冻结 Overlay / Back API；版本保持 `2.1.18-test`，本批不构建 APK、不修改共享 Overlay API、业务契约、服务端、存储或小程序。
+- **改动范围**：修改 `wardrobe-app.tsx` 的 App 全局新建 / 退出、SettingsView、诊断和四个设置子页；修改 `auth-gate.tsx`、`account-views.tsx`、`account-deletion-view.tsx`；更新账号 / 认证专项合同、UI 规范及生成 HTML。未修改 A1/Core 所有的 `motion-common.tsx`、`overlay-root.tsx`、OverlayStack / BackCoordinator 与其共享测试，也未触碰套装、种草、录入和详情组件。
+- **实现摘要**：Auth 邮箱验证码与退出确认、诊断描述 / 成功 / 失败和设置内衣橱增删改不再自建 fixed dialog，统一使用具名 `MotionSheet` 变体；Auth、设置首页、画像、参考照、MiniMax、衣橱列表、账号安全、改密和注销页删除私有 Capacitor Back listener，改为带优先级的 `useStableBackHandler`。Overlay 先于页面、页面先于 App 根 fallback；焦点进入、背景 inert、topmost 和焦点恢复由 A1 共享层统一提供。
+- **事务保护**：衣橱新增 / 编辑 / 迁移 / 删除等待线上操作和 `refreshState` 完成后才关闭 Sheet，失败保留当前表单；画像、参考照和 MiniMax 保存等待服务端 / Key 校验完成；账号改绑、改密与永久注销 busy 时拒绝 Back / Escape / backdrop，禁用取消和重复提交，注销 processing / completed / failed 状态不返回业务页。
+- **验证结果**：`docs:ui-spec:build`、`docs:ui-spec:check`、`test:logic:ui-spec-preview`、`test:logic:ui-overlay-contract`、`test:logic:back-priority-regression`、`test:logic:urgent-account`、`test:logic:account-deletion-app`、`test:logic:auth-flow-v2-0-1`、`test:logic:auth-client-shell`、`test:logic:wardrobe-app-split`、`test:logic:ui-overflow`、根 `typecheck`、Next `build` 与 `git diff --check` 通过。
+- **风险门禁与未验证项**：`high`（认证、全局返回和线上写入关闭时机）。A2-App 范围内已无私有 `App.addListener("backButton")` 或 raw fixed dialog；`wardrobe-app.tsx` 的衣橱列表 / 统计 / 详情编辑区域仍有 5 处本批禁止触碰的遗留 listener，归 A2-Flows / 后续所有者，不能宣称全 App 已完成迁移。未做 Android 真机 / 模拟器、TalkBack、物理键盘焦点、窄屏触摸或退出动画慢放；未运行或修复既有 UI token 基线失败，最终 APK / Android 验收由主集成 Agent 收口。
+
+## 2026-07-13 / v2.1.18-test / Codex Subagent A2-Flows — 业务流浮层与 busy 返回安全迁移
+
+- **执行 Agent**：Codex 实施 Subagent A2-Flows；独立分支 `codex/motion-a2-flows-20260713`、独立 worktree `/Users/fangzheng/Documents/wardrobe-motion-a2-flows-20260713`，基于批次提交 `10d9e4176216ba3f7dcd3b47289294e9ad70e230`；未合入 integration / `main`，未推送。
+- **目的与版本**：按 `apple-design` 的可预测层级、可中断动画与“一个返回只推进一层状态”原则，把详情、穿搭计划、打包、种草、录入和裁切的业务浮层接入 A1 Overlay API；版本保持 `2.1.18-test`，本批不构建 APK、不修改 API/存储/小程序，也不实现轮播、日历、裁切阻尼或路由动画。
+- **浮层迁移**：`IntakeFlowShell` 与全屏 `ImageCropEditor` 分别以 `fullscreen` / `cropper` 注册 OverlayStack，统一 Portal、滚动锁、topmost、焦点圈定、`inert/aria-hidden` 和关闭拒绝反馈；删除录入 Shell 私有 Capacitor Back listener。部分保存、录入退出、计划删除/放弃、打包重置、套装/实图删除全部复用共享确认层；计划操作、衣橱位置、打包新增和实图说明复用带语义的共享 Sheet；录入缩略图和穿搭实图的私有菜单改为真实触发器锚定的 `MotionPopoverMenu`。
+- **写入安全与状态保持**：上传/保存/删除/重置/种草转衣橱/裁切处理中阻断 Back、Escape、遮罩和显式关闭；失败时保留确认层、说明草稿和重试入口，成功仅在服务端提交与读回后关闭。修正种草首页菜单 `anchorRef` 原先错误落在转衣橱位置控件的问题，并让打包清单空状态也能实际打开“添加自定义物品”Sheet。
+- **页面返回边界**：种草页移除对 Sheet/Dialog/Popover 的重复页面级关闭分支，只保留多选、未保存草稿和子页导航；计划编辑、打包与种草写入中的页面级 Back 使用共享协调器消费。业务回调、草稿、`clientMutationId` 与服务器读回链路保持原有边界。
+- **改动文件**：`intake-flow-shell.tsx`、`image-crop-editor.tsx`、`garment-intake-flow.tsx`、`garment-detail-3.0.tsx`、`outfit-list-view.tsx`、`outfit-plan-*.tsx`、`plan-packing-checklist-view.tsx`、`wishlist-view-2.0.tsx`；对应录入/详情/计划/种草专项合同；UI 规范 `6.1.2 A2-Flows` 命名小节及生成 HTML。
+- **验证结果**：`docs:ui-spec:build`、`docs:ui-spec:check`、`test:logic:ui-spec-preview`、`test:logic:ui-overlay-contract`、`test:logic:back-priority-regression`、`test:logic:detail-shell`、`test:logic:wishlist`、`test:logic:outfit-planning`、`test:logic:ui-overflow`、`test:logic:cropper`、`test:logic:intake-entry-crop-regression`、`test:logic:intake-fullscreen-layout`、根 `typecheck`、Next `build` 和 `git diff --check` 通过。按并行文件所有权未修改 A2-Core 独占的 overlay/back 合同脚本，也未处理既有 `ui-token-contract` 基线债务。
+- **风险门禁与未验证项**：`high`（全屏录入/裁切、删除与 Android 返回行为）。未做 Android 真机/模拟器、TalkBack、软键盘、窄屏触摸、真实图片裁切或线上写入现场回归；A2-Core 的 Lightbox/Popover 共享实现和 A2-App 壳层迁移尚未合并到本 worktree，最终交互与 APK 验收须在三支 A2 合流后由主 Agent 执行。
+
+## 2026-07-13 / v2.1.18-test / Codex Subagent A1 — OverlayStack 与单一 Back/Escape 基线
+
+- **执行 Agent**：Codex 实施 Subagent A1；独立分支 `codex/motion-a1-overlay-back-20260713`、独立 worktree `/Users/fangzheng/Documents/wardrobe-motion-a1-overlay-back-20260713`，基于批次提交 `8fdb07f7d17e9578f18f90f04d68f8cd8308d1a8`；未合入 integration / `main`，未推送。
+- **目的与版本**：按 Apple 式“用户一次返回只推进一层状态”的可预测性原则，建立 Wave 1 浮层与返回基础；版本保持 `2.1.18-test`，本批不构建 APK、不修改业务/API/存储/小程序，也不实现 Sheet 拖拽、路由动画或全页面浮层迁移。
+- **改动文件**：新增 `src/lib/overlay-stack.ts`、`src/lib/back-coordinator.ts`、`src/components/overlay-root.tsx`；修改 `motion-provider.tsx`、`motion-common.tsx`、`use-stable-back-handler.ts`、`wardrobe-app.tsx` 顶层返回挂载、共享确认 Sheet、两项 overlay/back 回归脚本、UI 规范及生成预览。
+- **实现摘要**：`MotionProvider` 只挂载一个 body Portal 根；OverlayStack 统一注册/注销、topmost、按原因拒绝关闭、退出后焦点恢复，App 内容和低层浮层同步 `inert/aria-hidden`；BackCoordinator 是共享 Sheet 和已登记页面 handler 的唯一 Capacitor Back / document Escape 入口，浮层消费或拒绝后不再落到页面。`MotionSheet` 向后兼容新增 `action/form/confirm/destructive`、`ariaLabelledBy`、`dismissible` 和关闭拒绝反馈，Toast 不入栈；共享提交中确认层用 `dismissible=false` 阻止 busy 状态误关。
+- **验证结果**：`docs:ui-spec:build`、`docs:ui-spec:check`、`test:logic:ui-spec-preview`、`test:logic:ui-overlay-contract`、`test:logic:back-priority-regression`、根 `typecheck`、Next `build` 和 `git diff --check` 通过；Back 回归以可执行 store 测试证明 overlay、不可取消事务和页面 handler 任一路径一次请求最多一次状态转移，并覆盖 topmost、关闭拒绝和焦点恢复。
+- **既有门禁失败证据**：`npm run test:logic:component-reuse` 失败于未改动的 `scripts/test-component-reuse-contract.ts:21`：静态断言要求字面量 `repository.getOverview()`，基线 `use-wardrobe-data-controller.ts` 已是 `repository.getOverview({ signal: controller.signal })`。测试与被测文件均为 base `8fdb07f7` 原状，属于既有 stale 合同；按文件所有权未在 A1 越界修正，交由主集成 Agent 在 Wave 1 合入后单独更新并复验。
+- **风险门禁与未验证项**：`high`（全局浮层/Android 返回基础）。本 Session 即 Wave 1 实施 subagent。A1 仅自动接入共享 `MotionSheet` 和 `useStableBackHandler`；Lightbox、Popover、Cropper、Auth 及遗留页面私有 `App.addListener` 留给 A2，不能宣称全 App 已完成单 listener 迁移。未做 Android 真机/模拟器、TalkBack、窄屏触摸或退出动画慢放；最终 APK/Android 验收由后续 Wave 和主 Agent 完成。
+- **集成补充**：主 Agent 合入后将 `test-component-reuse-contract.ts` 的 Overview 所有权断言从过期的零参数字面量放宽为方法调用前缀，以兼容基线已存在的 AbortSignal 参数；不改变运行时行为。修正后 `test:logic:component-reuse` 纳入 Wave 1 集成门禁。
+
+## 2026-07-13 / v2.1.18-test / Codex — 动效修复并行批次 Wave 0 基线
+
+- **执行 Agent**：Codex 主集成 Agent；独立集成分支 `codex/motion-repair-integration-20260713`，本记录未修改正式 `main`。
+- **目的**：把已审核的 Apple 风格动效改良方案固化进仓库，并冻结 Overlay、Back、手势物理、导航和无障碍公共契约，为后续最多三个 Subagent 同波并行实施建立无歧义基线。
+- **版本变更**：无；保持 `2.1.18-test`，最终进入 APK 前统一递增。
+- **改动文件**：两份动效方案文档、`docs/designs/wardrobe-ui-spec.md`、生成的 UI 规范 HTML、预览生成器、`VERSION_HISTORY.md`。
+- **改动说明**：明确运行时代码同波零重叠、共享规范受控归并、Wave 合入门禁；冻结 `OverlayRoot/OverlayStack`、单一 Back/Escape 消费、`MotionSheet` 变体和可访问命名、语义 spring、速度投影、rubber-band、reduced-motion/transparency/contrast 目标；补上既有 Android edge-to-edge 规范小节的具体视觉模块，修复预览合同中的 generic-part 基线失败。
+- **验证结果**：UI 规范 build/check、预览合同/渲染、overlay 合同、Back 优先级 20 项、根 typecheck 和 Next build 通过。`test:logic:ui-token-contract` 记录为基线既有失败：账号、裁切器、编辑图片卡和公开站点仍有 10 处硬编码颜色；本批未把该历史视觉债务误算为动效回归。
+- **未验证风险**：Wave 0 只建立文档与接口基线，运行时问题尚未修复；不得据此宣称动效、Android 返回键或手势体验已经改善。最终收口前仍须处理或重新判定上述 token 合同失败。
+## 2026-07-13 / v2.1.18-test / Codex — Wardora 推荐后端 1A 测试基线与确定性规则内核
+
+- **执行 Agent**：Codex（独立 worktree / 分支 `codex/recommendation-engine-1a-20260713`；未触发 subagent：用户未通知）。
+- **版本与功能开关**：保持 `2.1.18-test`；`DAILY_RECOMMENDATIONS_ENABLED` 与三个 PAW 开关默认全为 `false`。本批未替换 `src/lib/recommendations.ts`，未改 App/小程序 UI，未新增生产 API 路由、数据表、迁移、worker、队列或真实 QWeather / PAW 调用。
+- **测试先行证据**：先写入 24 个结构化手工 Fixture 与自动断言，首次可运行红灯明确失败于尚不存在的 `src/recommendations/index.js`，后续才实现合同和内核；Fixture expected 只能人工修改，影子报告生成器不会覆盖 expected。
+- **共享合同与边界**：新增 `packages/cloud-contracts/src/recommendations/contracts.ts`，同源定义 DateContext、CandidateEvaluation、Canonicalizer、readiness、safe/fresh/comfort 分项及受控 reason/risk/missing/exclusion code；服务端实现 `RuleDateContextResolver`、neutral evaluator、确定性 canonicalizer 与三端口整体回退。PAW 候选每批最多 4 套、默认串行，候选/DateContext 硬超时 30 秒、用户/日期总预算合同 90 秒、canonicalizer 硬超时 5 秒；非法 JSON/枚举/分值/未知、缺失或重复 candidate 均当前整批 neutral 回退。
+- **确定性算法**：实现角色映射、硬过滤、readiness、单品预评分与 slot 剪枝，T1–T8、已保存套装/单角色 Top 3 替换/锚点/新组合，`BEAM_WIDTH=48`、`MAX_RAW_CANDIDATES=120`、`MAX_RULE_SCORED_CANDIDATES=60`，12–18 套分层短名单，三目标固定权重和 Jaccard `0.50 → 0.67` 放宽。纯内核只使用显式 `asOfDate/date/timezone/ruleVersion`，不读当前时间、系统时区或随机数。
+- **Fixture 与人工影子验收**：24 个场景覆盖雨天通勤、高温休闲、冬季低温、正式会议、旅行户外、连衣裙、保存成功套装、重复/从未穿/正负反馈、所有指定硬过滤原因及 `ready/limited/not_ready`。产物为 `tests/reports/recommendations/SHADOW_ACCEPTANCE.md` 和 `shadow-audit.json`，全部使用合成数据。
+- **自动验证**：新专项 49/49 通过，包含同 Fixture 100 次字节等价、五类输入乱序不变、UUID/归属/硬过滤/模板/去重、温差 8℃、正式度差 3、日期分桶、Jaccard、上限、三目标反算、PAW 关闭/超时/八类非法批次回退与少候选诚实返回。800 件固定大衣橱 Fixture 本轮全量 API 测试中约 10.71ms，仅报告不作唯一 CI 判据。
+- **项目门禁**：`cloud:contracts:typecheck`、`api:typecheck`、根 `typecheck`、API 全量 19 文件 164/164、既有 `test:logic`、穿搭计划/打包 125 项、`test:manifest`、`recommendations:shadow:check`、Next `build` 均通过；`git diff --check` 通过。
+- **生产 API 收口**：服务端与 cloud contracts 合入 `main` 后，以合并提交 `7f993758` 构建并切换镜像 `wardrobe-api:7f993758`（镜像 ID `sha256:ba3a78a708daaf2fe1418ec5f80e6871b0c137372ceb7b3d67efe611259f9de8`），配置备份位于 `/opt/wardrobe-cloud/backups/recommendation-engine-1a-20260713-234616/`，旧镜像 `wardrobe-api:aff43975` 保留为回滚点。本批无数据库结构变更，未执行迁移，迁移记录仍为 18；容器 healthy、重启次数 0，启动日志未检出 fatal/unhandled/migration error，本机与公网 `/api/health`、`/api/ready`、`/api/version` 均通过且版本返回 `gitCommit=7f993758`，未授权 workspace 返回 401。生产容器未设置四个推荐/PAW 环境开关（代码默认关闭），`/api/recommendations` 返回 404，确认未暴露本批明确排除的生产路由。
+- **风险门禁**：`high`（新共享合同与大规模确定性服务端逻辑）。仍待产品确认的最小假设已独立冻结在 `docs/recommendations/rule-engine-1a-assumptions.md`：未冻结原语的温度/颜色/风格基础分、warm/full-rain 外套必需语义、连体装/裙装对 body slot 的替代关系、PAW DTO 缺 warmth 时的 adapter-only 中性值。未做真实用户衣橱影子运行、真实 PAW/QWeather、数据库持久化、worker/队列、生产功能开启或新 UI；这些均在本批明确范围外。
+
 ## 2026-07-13 / v2.1.18-test / Codex — Wardora 审计修复收口
 
 - **执行 Agent**：Codex（独立收口分支 `codex/wardora-closeout-20260713`；修复提交 `8fe94d73` 已纳入，未触碰正式工作区中的既有未跟踪文件）。

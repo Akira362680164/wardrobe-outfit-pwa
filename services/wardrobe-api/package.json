@@ -13,6 +13,8 @@
     "typecheck": "tsc --noEmit -p tsconfig.json",
     "pretest": "npm --workspace @wardrobe/cloud-contracts run build",
     "test": "vitest run",
+    "pretest:recommendation:persistence:postgres": "npm --workspace @wardrobe/cloud-contracts run build",
+    "test:recommendation:persistence:postgres": "vitest run --config vitest.postgres.config.ts --maxWorkers=1",
     "reset:test-data": "node dist/cli/reset-test-data.js",
     "start": "node dist/server.js"
   },
