@@ -5,8 +5,8 @@ Total output lines: 1548
 
 - **严格合同修复**：Payload V1 与 V2 `forecast` 现在同时拒绝 `adaptable_conditions`；`locationless` / `weather_fallback` 对 shortlist/display 的外层及 `pawEvaluation` 嵌套 reason/risk 做逐项天气审计，并锁定 `thermalStrategy=layer`、`rainStrategy=none`、`confidence=low`，拒绝四项天气派生 avoidRules，保留活动派生 `avoid_high_heels`。未改 V1 引擎、forecast 委托、Worker、读取路由、PAW 入口或 UI。
 - **测试先行与 Fixture**：先手写反例后得到真实红灯 `3 failed / 33 passed`，分别证明旧 Schema 接受 V1/forecast 专用原因码、generic 嵌套伪天气和错误 DateContext；修复后 V2 专项 `36/36`。在原 24 个 V1 Fixture/Golden 零改动基础上，保留一套连衣裙+鞋为 `limited`，新增两件连衣裙×两双鞋达到 `ready`，并以 `[0,40]` 非配饰向量冻结 20℃ cap；1D-A 手写 expected 总数由 12 增至 14。
-- **本地验证**：推荐 V1/V2/contracts/Worker/routes `104/104`，API 全量 `237/237`，cloud contracts/API/root typecheck、根 `test:logic`、穿搭计划 `57+88+40`、manifest、原 24 Fixture shadow check、production build 与 `git diff --check` 全部通过。小程序 typecheck 在正式分支同步阶段执行；未构建 APK、未发布小程序体验版。
-- **集成与部署**：开发提交、`main` / `wechat/miniprogram` 同步、生产镜像与运行证据在本记录后续收口补齐。
+- **本地验证**：推荐 V1/V2/contracts/Worker/routes `104/104`，API 全量 `237/237`，cloud contracts/API/root/小程序 typecheck、根 `test:logic`、穿搭计划 `57+88+40`、manifest、原 24 Fixture shadow check、production build 与 `git diff --check` 全部通过。未构建 APK、未发布小程序体验版。
+- **集成与部署**：开发提交 `53bd5a1` 已串行合入并推送 `main` 合并提交 `3a2fae5`；最新 `main` 同步至 `wechat/miniprogram` 提交 `b58e5a9`。生产备份位于 `/opt/wardrobe-cloud/backups/recommendation-1d-a1-20260714-185410/`，数据库 SHA-256 为 `940897b631ce66271c7a489482421a0ccaf4a98b4e707388ee26ef543b8c28fb`；API 与现有 V1 Worker 已切换到 `wardrobe-api:3a2fae5`（镜像 ID `sha256:dbd2cc0404a0171482bb849672609dbdf4d95de3f0ca3182519edaa3da40c356`），旧镜像 `wardrobe-api:cbae222` 保留。迁移保持 `20`，两容器重启数均 `0`，本机/公网 health、ready、version、未授权 `401` 及 V2 路由 `404` 通过；库内 current `132`、V2 总记录 `0`、V2 current `0`。现有 V1 Worker 正常等待 03:30 调度，`DAILY_RECOMMENDATIONS_ENABLED=true`，三个 PAW 开关均为 `false`，未启用 V2 Worker/current 写入。
 - **风险门禁**：`high`（共享合同与生产 API 重新部署）；QWeather、GeoAPI、地点/天气持久化、V2 Worker/current 写入、推荐读取路由、PAW 真实调用和客户端展示仍明确不在本批。
 
 ## 2026-07-14 / v2.1.22-test / Codex — 推荐后端 1D-A 三模式严格合同与纯算法
