@@ -1,3 +1,12 @@
+## 2026-07-14 / v2.1.23-test / Codex — 推荐后端 1D-C A/B/C 本地实现与生产门禁准备
+
+- **A 地点与天气**：补严 weather_cache endpoint 判别 union 与 repository/service 双重校验；新增 user-date resolver、严格旅行 `weatherLocation` 写入边界、WeatherOverview 和鉴权 API。优先级固定为 travel > temporary override > home city > locationless；旧 destination 不猜测，7 日外保留旅行地点但返回 `forecast_out_of_range`。
+- **B V2 生成与读取**：新增独立 V2 generation、shadow/worker/current 三开关、Worker 原子 home pair 和严格 V1/V2 display union。shadow 只生成统计不写 current；关闭 V2 时 V1/旧 current 仍可读，today 即时回退按 current 开关选 V1/V2。
+- **C 持久化重算**：迁移 0022 新增 `recommendation_regeneration_requests`、触发合并、SKIP LOCKED claim、有限退避与幂等 clientMutationId；新增鉴权 reassess API。V2 current 未启用时不消费队列，成功切换前旧 current 保持可读。
+- **测试先行与本地门禁**：手写 endpoint 错配/污染缓存/四级地点/天气聚合/兼容/重算预期并取得真实红灯；API 全量 `284/284`，真实 PostgreSQL `32/32`，V1 `49/49`、V2 `40/40`（含 100 次确定性），原 24 Fixture/Golden 零改动且 shadow 匹配。cloud/API/root/小程序 typecheck、根 `test:logic:all`、穿搭计划 `57+88+40`、manifest、production build 通过；本地新增 QWeather 上游调用 `0`。
+- **生产 shadow 阻断修复**：首次隔离恢复报告在 `146` 个 user-date 中准确拦下 `14` 个旧中文/非法 style 枚举异常；workspace adapter 改用共享 catalog normalizer，让旧非法枚举降级为空 evidence 而非整日失败，并把真实 PostgreSQL 回归从容忍失败收紧为 Worker `failedCount=0`。V2/current 在修复复验前保持关闭。
+- **边界与下一门禁**：版本递增至 `2.1.23-test`；未改 UI、未构建 APK、未上传小程序、未启用 PAW/alerts/historical climate。脱敏实现证据见 `docs/recommendations/RECOMMENDATION_1D_C_EVIDENCE.md`；生产备份/恢复、shadow、V2 current、双分支与清理另行在同一任务收口。
+
 ## 2026-07-14 / v2.1.22-test / Codex — 推荐后端 1D-B 地点与 QWeather 基础设施
 
 - **严格合同与范围**：复用 WeatherLocationRef，新增地点候选、profile/override command/response、normalized now/hourly/daily、attribution、cache freshness 与结构化错误的 Zod 合同；未改 1D-A 算法、V1/V2 Worker/读取、推荐重算、PAW 或 App/小程序 UI。

@@ -304,6 +304,11 @@ export const RecommendationPayloadV2Schema = z.object({
   resolvedContext: ResolvedRecommendationContextSchema,
   dateContextInput: DateContextInputSchema,
   engineOutput: RecommendationEngineOutputSchema,
+  weatherContext: z.object({
+    availabilityReason: z.enum(["available", "locationless", "forecast_out_of_range", "provider_unavailable", "insufficient_evidence"]),
+    endpointFreshness: z.array(z.object({ endpoint: z.enum(["now", "hourly", "daily"]), freshness: z.enum(["fresh", "stale"]), providerUpdatedAt: z.string().datetime(), fetchedAt: z.string().datetime(), expiresAt: z.string().datetime(), staleUntil: z.string().datetime() }).strict()).max(3),
+    attribution: z.object({ label: z.literal("天气服务由 QWeather 提供"), url: z.literal("https://www.qweather.com"), sources: z.array(z.string().trim().min(1).max(160)).max(16), license: z.array(z.string().trim().min(1).max(160)).max(16) }).strict().optional(),
+  }).strict().optional(),
 }).strict().superRefine((value, ctx) => {
   refineV2Context(value, ctx);
   if (value.engineOutput.readiness.status === "not_ready" && value.engineOutput.recommendations.length !== 0) issue(ctx, ["engineOutput", "recommendations"], "not_ready output must not display recommendations");
@@ -383,13 +388,27 @@ export const RecommendationDisplayItemV2Schema = RecommendationDisplayItemSchema
   locationSource: RecommendationLocationSourceSchema.optional(),
   algorithmVersion: z.literal(RECOMMENDATION_ALGORITHM_VERSION_V2),
   ruleVersion: z.union([z.literal(RECOMMENDATION_FORECAST_RULE_VERSION), z.literal(RECOMMENDATION_LOCATIONLESS_RULE_VERSION)]),
+  availabilityReason: z.enum(["available", "locationless", "forecast_out_of_range", "provider_unavailable", "insufficient_evidence"]),
+  endpointFreshness: z.array(z.object({ endpoint: z.enum(["now", "hourly", "daily"]), freshness: z.enum(["fresh", "stale"]), providerUpdatedAt: z.string().datetime(), fetchedAt: z.string().datetime(), expiresAt: z.string().datetime(), staleUntil: z.string().datetime() }).strict()).max(3),
+  attribution: z.object({ label: z.literal("天气服务由 QWeather 提供"), url: z.literal("https://www.qweather.com"), sources: z.array(z.string().trim().min(1).max(160)).max(16), license: z.array(z.string().trim().min(1).max(160)).max(16) }).strict().optional(),
 }).strict();
 export const RecommendationReadResponseSchema = z.object({
-  timezone: TimeZoneSchema, pairConsistent: z.boolean(), items: z.array(RecommendationDisplayItemSchema).max(32),
+  timezone: TimeZoneSchema, pairConsistent: z.boolean(), items: z.array(z.union([RecommendationDisplayItemV2Schema, RecommendationDisplayItemSchema])).max(32),
 }).strict().superRefine((value, ctx) => {
   const firstTwo = value.items.slice(0, 2);
   if (value.pairConsistent && firstTwo.length === 2 && firstTwo[0]!.generationBatchId !== firstTwo[1]!.generationBatchId) issue(ctx, ["items"], "consistent pair must share generationBatchId");
 });
+export const RecommendationRegenerationReasonSchema = z.enum(["home_city_changed", "temporary_city_changed", "travel_changed", "garment_changed", "weather_changed", "explicit_reassess"]);
+export const RecommendationRegenerationStatusSchema = z.enum(["pending", "processing", "completed", "failed"]);
+export const ReassessRecommendationCommandSchema = z.object({ clientMutationId: z.string().uuid() }).strict();
+export const RecommendationRegenerationRequestSchema = z.object({
+  id: z.string().uuid(), userId: z.string().uuid(), targetDate: RealDateSchema,
+  reasons: z.array(RecommendationRegenerationReasonSchema).min(1).max(6),
+  clientMutationIds: z.array(z.string().uuid()).max(32), status: RecommendationRegenerationStatusSchema,
+  attemptCount: z.number().int().nonnegative(), maxAttempts: z.number().int().min(1).max(10),
+  nextAttemptAt: z.string().datetime(), lockedAt: z.string().datetime().nullable(), lastErrorCode: z.enum(["weather_unavailable", "wardrobe_not_ready", "candidate_generation_failed", "persistence_failed", "protected_plan", "unknown"]).nullable(),
+  resultRecommendationId: z.string().uuid().nullable(), createdAt: z.string().datetime(), updatedAt: z.string().datetime(), completedAt: z.string().datetime().nullable(),
+}).strict();
 
 export type SceneType = z.infer<typeof SceneTypeSchema>;
 export type GarmentSlot = z.infer<typeof GarmentSlotSchema>;
@@ -428,3 +447,5 @@ export type DailyRecommendationRecord = z.infer<typeof DailyRecommendationRecord
 export type RecommendationJobRunSummary = z.infer<typeof RecommendationJobRunSummarySchema>;
 export type RecommendationJobErrorCode = z.infer<typeof RecommendationJobErrorCodeSchema>;
 export type RecommendationReadResponse = z.infer<typeof RecommendationReadResponseSchema>;
+export type RecommendationRegenerationRequest = z.infer<typeof RecommendationRegenerationRequestSchema>;
+export type ReassessRecommendationCommand = z.infer<typeof ReassessRecommendationCommandSchema>;

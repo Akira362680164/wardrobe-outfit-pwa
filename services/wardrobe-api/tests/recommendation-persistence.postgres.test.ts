@@ -89,15 +89,16 @@ afterAll(async () => {
 }, 30_000);
 
 describe("daily recommendation real PostgreSQL migration", () => {
-  it("replays the empty database and upgrades the current 0018 baseline through 0020", async () => {
+  it("replays the empty database and upgrades the current 0018 baseline through 0022", async () => {
     const full = await pool.query("select count(*)::int as count from information_schema.tables where table_schema = $1 and table_name = 'daily_recommendations'", [schema]);
     expect(full.rows[0].count).toBe(1);
     await createSchema(upgradeSchema);
-    await applyMigrations(upgradeSchema, migrationFiles.filter((file) => !file.startsWith("0019_") && !file.startsWith("0020_")));
+    await applyMigrations(upgradeSchema, migrationFiles.filter((file) => !file.startsWith("0019_") && !file.startsWith("0020_") && !file.startsWith("0022_")));
     expect((await admin.query("select to_regclass($1) as table_name", [`${upgradeSchema}.daily_recommendations`])).rows[0].table_name).toBeNull();
-    await applyMigrations(upgradeSchema, migrationFiles.filter((file) => file.startsWith("0019_") || file.startsWith("0020_")));
+    await applyMigrations(upgradeSchema, migrationFiles.filter((file) => file.startsWith("0019_") || file.startsWith("0020_") || file.startsWith("0022_")));
     expect((await admin.query("select to_regclass($1) as table_name", [`${upgradeSchema}.daily_recommendations`])).rows[0].table_name).toBe("daily_recommendations");
     expect((await admin.query("select to_regclass($1) as table_name", [`${upgradeSchema}.recommendation_job_runs`])).rows[0].table_name).toBe("recommendation_job_runs");
+    expect((await admin.query("select to_regclass($1) as table_name", [`${upgradeSchema}.recommendation_regeneration_requests`])).rows[0].table_name).toBe("recommendation_regeneration_requests");
   }, 120_000);
 });
 
@@ -314,7 +315,7 @@ describe("recommendation worker real PostgreSQL end to end", () => {
     const invalidLegacyUser = await createUser();
     await pool.query("insert into garments (user_id, origin_device_id, payload) values ($1, 'test', $2::jsonb)", [invalidLegacyUser, JSON.stringify({ status: "active", category: "tops", colors: ["legacy-unknown-color"], seasons: ["all"], styles: ["legacy-unknown-style"], formality: 2, warmth: 2, imageUrl: "authorized-test-asset" })]);
     const result = await new RecommendationWorker(pool).runOnce("2026-07-13T19:30:00.000Z");
-    expect(result.acquired).toBe(true); expect(result.job?.status).toBe("completed_with_errors"); expect(result.job!.failedCount).toBeGreaterThanOrEqual(7); expect(result.peakQueueSize).toBeLessThanOrEqual(64);
+    expect(result.acquired).toBe(true); expect(result.job?.status).toBe("completed"); expect(result.job!.failedCount).toBe(0); expect(result.peakQueueSize).toBeLessThanOrEqual(64);
     const current = await pool.query<{ target_date: string; generation_batch_id: string }>("select target_date::text, generation_batch_id::text from daily_recommendations where user_id = $1 and is_current order by target_date", [userId]);
     expect(current.rows.map((row) => row.target_date)).toEqual(expect.arrayContaining(["2026-07-14", "2026-07-15", "2026-08-01", "2026-08-02"]));
     expect(current.rows.map((row) => row.target_date)).not.toContain("2026-07-16"); expect(current.rows.map((row) => row.target_date)).not.toContain("2026-07-17");

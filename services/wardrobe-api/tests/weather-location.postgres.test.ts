@@ -34,15 +34,17 @@ beforeAll(async () => {
 afterAll(async () => { await pool?.end(); await admin.query(`drop schema if exists ${quote(schema)} cascade`); await admin.query(`drop schema if exists ${quote(upgradeSchema)} cascade`); await admin.end(); }, 30_000);
 
 describe("1D-B fresh and 0020 upgrade migrations", () => {
-  it("creates all three tables from fresh and from 0020", async () => {
+  it("creates location/weather/regeneration tables from fresh and upgrades 0020 through 0022", async () => {
     const journal = JSON.parse(readFileSync(resolve(migrationsDir, "meta/_journal.json"), "utf8"));
-    expect(journal.entries.at(-1)).toMatchObject({ idx: 21, tag: "0021_location_weather_infrastructure" });
-    expect(journal.entries).toHaveLength(22);
+    expect(journal.entries.at(-1)).toMatchObject({ idx: 22, tag: "0022_recommendation_regeneration" });
+    expect(journal.entries).toHaveLength(23);
     for (const table of ["user_location_profiles", "location_date_overrides", "weather_cache"]) expect((await pool.query("select to_regclass($1) as name", [table])).rows[0].name).toBe(table);
-    await createSchema(upgradeSchema); await applyMigrations(upgradeSchema, migrationFiles.filter((file) => !file.startsWith("0021_")));
+    expect((await pool.query("select to_regclass($1) as name", ["recommendation_regeneration_requests"])).rows[0].name).toBe("recommendation_regeneration_requests");
+    await createSchema(upgradeSchema); await applyMigrations(upgradeSchema, migrationFiles.filter((file) => !file.startsWith("0021_") && !file.startsWith("0022_")));
     expect((await admin.query("select to_regclass($1) as name", [`${upgradeSchema}.weather_cache`])).rows[0].name).toBeNull();
-    await applyMigrations(upgradeSchema, migrationFiles.filter((file) => file.startsWith("0021_")));
+    await applyMigrations(upgradeSchema, migrationFiles.filter((file) => file.startsWith("0021_") || file.startsWith("0022_")));
     expect((await admin.query("select to_regclass($1) as name", [`${upgradeSchema}.weather_cache`])).rows[0].name).toBe("weather_cache");
+    expect((await admin.query("select to_regclass($1) as name", [`${upgradeSchema}.recommendation_regeneration_requests`])).rows[0].name).toBe("recommendation_regeneration_requests");
   }, 120_000);
 });
 

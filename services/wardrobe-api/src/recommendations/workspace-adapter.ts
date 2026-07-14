@@ -1,7 +1,7 @@
 import { createHash, randomUUID } from "node:crypto";
 import type { Pool } from "pg";
 import { RecommendationEngineInputSchema, type RecommendationEngineInput, type SceneType, type WeatherEvidence } from "@wardrobe/cloud-contracts";
-import { isSystemColor } from "@wardrobe/domain-catalog";
+import { isSystemColor, normalizeSeasonList, normalizeStyleList } from "@wardrobe/domain-catalog";
 
 const RECOMMENDATION_CATEGORIES = new Set(["tops", "pants", "skirts", "one_piece", "shoes", "bags", "hats", "jewelry", "accessories"]);
 const ACTIVE_STATUSES = new Set(["active", "available", "clean", "in_wardrobe"]);
@@ -51,7 +51,7 @@ export class RecommendationWorkspaceAdapter {
         id: row.id, userId: row.user_id, deleted: Boolean(row.deleted_at), status: ACTIVE_STATUSES.has(rawStatus) ? "active" as const : (["laundry", "repair", "archived"].includes(rawStatus) ? rawStatus as "laundry" | "repair" | "archived" : "archived" as const),
         hasPrimaryImage: imageIds.has(row.id) || Boolean(text(p.primaryImageUrl) ?? text(p.imageUrl) ?? text(p.image)),
         ...(category ? { category } : {}), ...(text(p.subcategory) ? { subcategory: text(p.subcategory)! } : {}),
-        colors: colorsOf(p.colors ?? p.color).slice(0, 4), seasons: strings(p.seasons ?? p.season).slice(0, 4), styles: strings(p.styles ?? p.style).slice(0, 8),
+        colors: colorsOf(p.colors ?? p.color).slice(0, 4), seasons: normalizeSeasonList(strings(p.seasons ?? p.season)).slice(0, 4), styles: normalizeStyleList(strings(p.styles ?? p.style)).slice(0, 8),
         ...(integer(p.formality, 1, 5) ? { formality: integer(p.formality, 1, 5)! } : {}), ...(integer(p.warmth, 1, 5) ? { warmth: integer(p.warmth, 1, 5)! } : {}),
         ...(text(p.material) ? { material: text(p.material)! } : {}),
         ...(number(p.temperatureMinC ?? range.min ?? range.minC) !== undefined ? { temperatureMinC: number(p.temperatureMinC ?? range.min ?? range.minC)! } : {}),

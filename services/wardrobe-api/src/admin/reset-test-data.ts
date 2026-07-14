@@ -6,6 +6,7 @@ import type { StorageProvider } from "../storage/provider.js";
 export const RESET_CONFIRMATION = "RESET_WARDROBE_TEST_DATA";
 
 export const USER_DATA_TABLES = [
+  "recommendation_regeneration_requests",
   "weather_cache",
   "location_date_overrides",
   "user_location_profiles",
