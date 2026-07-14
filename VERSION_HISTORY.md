@@ -1,3 +1,12 @@
+## 2026-07-14 / v2.1.22-test / Codex — 推荐后端 1D-B 地点与 QWeather 基础设施
+
+- **严格合同与范围**：复用 WeatherLocationRef，新增地点候选、profile/override command/response、normalized now/hourly/daily、attribution、cache freshness 与结构化错误的 Zod 合同；未改 1D-A 算法、V1/V2 Worker/读取、推荐重算、PAW 或 App/小程序 UI。
+- **地点持久化与 API**：迁移 0021 新增 user_location_profiles、location_date_overrides、weather_cache；profile/override 实现 revision、mutation 幂等/冲突、tombstone 清除、用户隔离与账户级联。新增 8 个鉴权地点 API；PUT 只信任 LocationID 并经 GeoAPI 复核，设备坐标在请求前粗化两位且不持久化/记日志。
+- **Provider 与缓存**：使用 Node crypto 生成短期 Ed25519 JWT，生产仅支持 QWEATHER_PRIVATE_KEY_FILE；严格限制 HTTPS 专属 Host、禁止重定向、硬超时并严格解析 Geo/now/72h/7d。PostgreSQL cache 实现 20m/2h、1h/6h、3h/12h TTL/max-stale、daily 当地跨日重验、负缓存和跨进程 advisory-lock single-flight。
+- **测试先行与真实联调**：手写 Fixture/expected 后先得到合同/Provider/cache 模块缺失、API 404、PostgreSQL 服务缺失的真实红灯；专项转绿为 32/32，真实 PostgreSQL 29/29。真实 QWeather 受控请求严格 5/5 且全为 HTTP 200；now/hourly/daily 各二次 repository 读取均命中 fresh cache，上游计数不增。脱敏证据见 docs/recommendations/QWEATHER_1D_B_EVIDENCE.md。
+- **部署边界**：生产 Compose 仅向 API 注入 QWeather 配置并只读挂载私钥，Worker 不获得 QWeather 环境；QWEATHER_ALERTS_ENABLED=false。生产备份、镜像、迁移、开关、回滚与 V1/V2/PAW 最终核验在上线后补记。
+- **风险门禁**：high（新增共享合同、数据库迁移、鉴权 API 与生产外部 Provider）；未触发 subagent：用户未通知。
+
 ## 2026-07-14 / v2.1.22-test / Codex — 推荐后端 1D-A.2 contextSummary 单点收口
 
 - **合同修复与边界**：仅在 Payload V2 的 `locationless` / `weather_fallback` 模式交叉校验中，要求 `engineOutput.dateContext.contextSummary` 严格等于 ``${sceneType}:layer:none``；采用确定性结构等值而非中英文天气关键词黑名单。未修改算法、Fixture/Golden、V1 Payload/V1 引擎、forecast 委托与深度相等、Worker、路由、数据库、PAW 或客户端。
