@@ -311,8 +311,10 @@ describe("recommendation worker real PostgreSQL end to end", () => {
     await pool.query("insert into wear_events (user_id, outfit_id, worn_at, origin_device_id, payload) values ($1, $2, '2026-07-01T08:00:00Z', 'test', $3::jsonb)", [userId, outfitId, JSON.stringify({ sceneType: "commute", sentiment: "positive" })]);
     await pool.query("insert into trip_plans (user_id, start_date, end_date, origin_device_id, payload) values ($1, '2026-08-01', '2026-08-02', 'test', $2::jsonb)", [userId, JSON.stringify({ title: "测试出差", destination: "测试城市", activities: ["business meeting"] })]);
     await pool.query("insert into outfit_plans (user_id, plan_date, origin_device_id, payload) values ($1, '2026-07-16', 'test', $2::jsonb), ($1, '2026-07-17', 'test', $3::jsonb)", [userId, JSON.stringify({ status: "planned", isPrimary: true }), JSON.stringify({ status: "worn", isPrimaryActual: true })]);
+    const invalidLegacyUser = await createUser();
+    await pool.query("insert into garments (user_id, origin_device_id, payload) values ($1, 'test', $2::jsonb)", [invalidLegacyUser, JSON.stringify({ status: "active", category: "tops", colors: ["legacy-unknown-color"], seasons: ["all"], styles: ["legacy-unknown-style"], formality: 2, warmth: 2, imageUrl: "authorized-test-asset" })]);
     const result = await new RecommendationWorker(pool).runOnce("2026-07-13T19:30:00.000Z");
-    expect(result.acquired).toBe(true); expect(result.job?.status).not.toBe("failed"); expect(result.peakQueueSize).toBeLessThanOrEqual(64);
+    expect(result.acquired).toBe(true); expect(result.job?.status).toBe("completed_with_errors"); expect(result.job!.failedCount).toBeGreaterThanOrEqual(7); expect(result.peakQueueSize).toBeLessThanOrEqual(64);
     const current = await pool.query<{ target_date: string; generation_batch_id: string }>("select target_date::text, generation_batch_id::text from daily_recommendations where user_id = $1 and is_current order by target_date", [userId]);
     expect(current.rows.map((row) => row.target_date)).toEqual(expect.arrayContaining(["2026-07-14", "2026-07-15", "2026-08-01", "2026-08-02"]));
     expect(current.rows.map((row) => row.target_date)).not.toContain("2026-07-16"); expect(current.rows.map((row) => row.target_date)).not.toContain("2026-07-17");
