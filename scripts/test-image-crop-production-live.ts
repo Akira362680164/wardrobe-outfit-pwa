@@ -1,6 +1,7 @@
 import { createHash, randomUUID } from "node:crypto";
 import { readFile } from "node:fs/promises";
 import path from "node:path";
+import { IMAGE_CROP_MAX_IN_FLIGHT } from "@wardrobe/cloud-contracts";
 
 const selectedIds = [
   "real-01-backpack",
@@ -43,7 +44,7 @@ async function main() {
 
   let completed = 0;
   const started = performance.now();
-  const results = await runLimited(cases, 2, async (entry, index) => {
+  const results = await runLimited(cases, IMAGE_CROP_MAX_IN_FLIGHT, async (entry, index) => {
     const bytes = await readFile(path.join(sourceDir, entry.fileName));
     const sha256 = createHash("sha256").update(bytes).digest("hex");
     if (sha256 !== entry.sha256) throw new Error(`sha mismatch: ${entry.caseId}`);

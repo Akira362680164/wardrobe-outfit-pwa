@@ -54,4 +54,5 @@
 - 不提交或再分发模型权重。项目所有者已明确批准在个人、非商业 Wardora 部署中原样使用该上游 u2netp 权重；固定 SHA-256 为 `309c8469258dda742793dce0ebea8e6dd393174f89934733ecc8b14c76f4ddd8`。部署通过只读挂载注入，并配置私有 sidecar、无公网、硬超时、并发/队列与健康检查。
 - API 已部署为 `wardrobe-api:0e3165a5`；部署前备份 `/opt/wardrobe-cloud/backups/postgres/wardrobe-20260714-081950.sql`，保留前序镜像用于回滚。`/api/health`、`/api/ready`（含 `imageCrop`）和 `/api/version` 通过；容器复测无重启/OOM，10 图后日志无 Base64、Bearer、本机路径或 5xx。
 - 长驻 worker 后续批次把原“每请求启动并加载模型”改为“容器启动加载一次并预热”：Python 通过私有 stdio NDJSON循环处理，API 只有在收到 ready 握手后才报告 `imageCrop=ready`；崩溃/超时自动重启并重新预热。生产 healthcheck 改为 `/api/ready`，并发/队列/单图超时保持 `1/20/45s`。最终部署镜像、重启后首张、连续 10 张和内存数据在本 Session 部署复测后补入交付回复。
+- 长驻批次已部署为 `wardrobe-api:32c60f9b`：容器重启到模型预热 ready 为 `5259ms`，ready 后首张真实图 `2450.1ms`，不再出现 44–46 秒用户可见冷启动。10 个独立请求同时在途、逐张回复的实测为 HTTP/合同成功 `10/10`、墙钟 `8090.6ms`、P50 `4965.1ms`、P95 `8052.2ms`、失败 `0`；压力重复峰值 `837MiB / 3.637GiB`，`restart=0`、`OOM=false`。人工杀死内部 Python worker 后 `/ready` 确认降级，`2369ms` 自动拉起并重新预热，恢复后 10 图再次 `0` 失败。回滚镜像为 `wardrobe-api:0e3165a5`。
 - 自动测试覆盖 App/小程序 × 衣橱/种草 × Key/无 Key、乱序/失败/删除/追加/重试/手工抢占。Android 已补齐衣橱无 Key 10 图现场证据；其余 UI 现场项和小程序模拟器结果按本记录最终收口状态报告，不以自动合同冒充真机通过。物理 Android、微信真机 OffscreenCanvas、相机入口与弱网仍是独立风险。
