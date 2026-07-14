@@ -50,6 +50,7 @@ describe("image crop suggestion route", () => {
 describe("private crop sidecar boundary", () => {
   it("applies the fixed per-side expansion and clamps", async () => { configureFixture("crop-sidecar-success.mjs", 5000); const result = await new ProcessCropSidecar().suggest({ clientItemId: "x", mimeType: "image/png", image: Buffer.from("x") }); expect(result.cropBox).toEqual({ x: .15, y: .15, width: .7, height: .7 }); });
   it("contains a sidecar crash", async () => { configureFixture("crop-sidecar-crash.mjs", 5000); await expect(new ProcessCropSidecar().suggest({ clientItemId: "x", mimeType: "image/png", image: Buffer.from("x") })).rejects.toThrow(); });
+  it("contains EPIPE when a crashed sidecar closes during a large request write", async () => { configureFixture("crop-sidecar-crash.mjs", 5000); await expect(new ProcessCropSidecar().suggest({ clientItemId: "x", mimeType: "image/png", image: Buffer.alloc(7_500_000) })).rejects.toThrow(); });
   it("kills a timed-out sidecar", async () => { configureFixture("crop-sidecar-timeout.mjs", 25); await expect(new ProcessCropSidecar().suggest({ clientItemId: "x", mimeType: "image/png", image: Buffer.from("x") })).rejects.toMatchObject({ statusCode: 504 }); });
 });
 
