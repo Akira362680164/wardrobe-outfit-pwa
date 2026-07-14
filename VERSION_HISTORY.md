@@ -1,3 +1,10 @@
+## 2026-07-15 / v2.1.24-test / Codex — AGENTS 任务路由瘦身与生产镜像生命周期治理
+
+- **本机治理入口**：把本机根 `AGENTS.md` 从 541 行收敛为 152 行，顶部新增按 Git、生产部署、Android、UI、审查协作和代码导出分类的任务路由；主文件只保留指令优先级、Session 隔离、线上唯一数据源、删除/隐私、共享契约、UI/小程序、APK、生产和协作等不可违反的硬边界。`AGENTS.md` 继续遵守既有 `.gitignore`，仅保存在本机，不强制进入 Git。
+- **专项文档**：新增 `docs/development/android-verification.md`、`docs/development/agent-review-workflow.md`、`docs/development/codebase-export-workflows.md`，分别承接 APK/ADB/E2E、风险门禁/subagent/交接、ChatGPT 审查包与公开 GitHub 发布细则；根路由要求任务同时命中多类时全部读取，链接缺失或冲突时停止高风险操作。
+- **Docker 生命周期**：`deploy/docs/production-deploy.md` 增加生产镜像与 release 保留策略：API/Worker 共用当前 Wardora 镜像，长期只保留当前和一个已验证回滚镜像；构建/部署/回滚/清理串行，活跃构建时禁止清理，按真实 image ID 和逐项白名单处理，明确禁止 `docker system prune -a --volumes`，保护 PostgreSQL 镜像/数据卷、Secret、备份和回滚锚点。
+- **范围与验证**：仅治理和运维文档，不修改运行时代码、部署脚本、Compose、数据库、客户端、小程序、版本号或生产服务器。风险门禁 `low`；通过 Markdown 路由链接检查、关键硬规则覆盖检查、`git diff --check`、文档 diff 和工作区范围核对。未触发 subagent：用户未通知。
+
 ## 2026-07-15 / v2.1.24-test / Codex — 推荐后端 1D-C.1 重算一致性与今日天气聚合收口
 
 - **原子重算与快速消费**：今天/明天重算共享 `generationBatchId`，先 prepare 后经带 fencing 的 `publishHomePair` 单事务切换；任一日期受 actual/confirmed primary 保护或生成失败时，两日旧 current 均继续可读。独立 Worker 保留 Asia/Shanghai 03:30 全量跑批，同时每 15 秒消费 due regeneration，使正常请求在白天 60 秒 SLA 内开始，`next_attempt_at` 退避到期后无需等待次日。

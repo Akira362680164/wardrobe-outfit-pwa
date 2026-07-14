@@ -213,6 +213,84 @@ deploy/scripts/wardrobe-cloud.sh rollback-image <previous-image>
 deploy/scripts/wardrobe-cloud.sh health
 ```
 
+## Docker image and release lifecycle
+
+Production needs one current `wardrobe-api` image for both the API and the
+recommendation worker, plus one verified previous image for rollback. The
+PostgreSQL image and its data volume are independent and must not be included
+in application-image cleanup.
+
+Image cleanup is part of deployment closeout, but it is allowed only after the
+new release has passed migration, health, readiness, version, authorization,
+feature-flag, and route-boundary checks.
+
+### Safety boundary
+
+- Only one production build, deployment, rollback, or cleanup operation may run
+  at a time. If `docker build`, BuildKit, package installation, migration, or
+  another deployment process is active, stop the cleanup workflow without
+  changing Docker state.
+- Keep the image IDs referenced by every running container, the current
+  `WARDROBE_API_IMAGE`, and one explicitly verified previous Wardora image.
+- Never remove the PostgreSQL image, a running container, a named volume, the
+  current release tree, secrets, database backups, or the selected rollback
+  release as part of image cleanup.
+- Do not use broad destructive commands such as
+  `docker system prune -a --volumes`. Volumes are outside the application-image
+  retention policy.
+- Do not treat a tag as proof of safety. Resolve image IDs and container
+  references before selecting cleanup candidates.
+- Cleanup must be a reviewed allowlist of exact container IDs, image IDs/tags,
+  and release paths. If ownership or rollback value is uncertain, keep the
+  object and report it.
+
+### Preflight inventory
+
+Run these checks read-only before and after every production release:
+
+```bash
+df -h /
+df -ih /
+docker system df
+docker ps -a --size
+docker image ls -a --no-trunc
+docker inspect wardrobe-cloud-wardrobe-api-1 \
+  --format 'image={{.Config.Image}} image_id={{.Image}} status={{.State.Status}}'
+docker inspect wardrobe-cloud-recommendation-worker-1 \
+  --format 'image={{.Config.Image}} image_id={{.Image}} status={{.State.Status}}'
+ps -eo pid,lstart,cmd | grep -E \
+  '[d]ocker (build|run)|[b]uildkit|[b]uildx|[n]pm ci|[p]ip install'
+```
+
+Also record the current `.env` image tag without printing secrets, the previous
+known-good image ID, and the current/previous release directories under
+`/opt/wardrobe-cloud/releases`.
+
+### Retention sequence
+
+1. Finish the new image build and deploy it through the normal migration and
+   health gates.
+2. Confirm both Wardora containers reference the intended current image ID and
+   have zero unexpected restarts.
+3. Select exactly one previous image that is known to match a usable database
+   and configuration rollback point.
+4. List stopped build containers. Remove only exact IDs proven to be failed or
+   completed temporary build containers and unrelated to an active operation.
+5. List Wardora image tags and dangling intermediate images. Remove only exact
+   candidates outside the current/previous allowlist. Do not run cleanup while
+   another image build is changing the list.
+6. Keep only the current and selected rollback release trees. Release-tree
+   removal must follow the project Trash/deletion safety policy; do not use
+   recursive force deletion.
+7. Re-run disk, Docker, container, health, ready, version, migration, and
+   authorization checks. Record before/after usage and retained rollback IDs in
+   `VERSION_HISTORY.md` or the release evidence document.
+
+The deployment script should eventually implement this as a targeted command
+that accepts the current and rollback image IDs explicitly. Until that command
+exists and is validated, lifecycle cleanup remains a deliberate reviewed
+closeout step rather than an unconditional `prune` hook.
+
 ## Local Checks
 
 ```bash
