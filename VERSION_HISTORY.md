@@ -77,7 +77,8 @@
 - **发布与幂等**：`RecommendationPersistenceService` 在事务外严格解析并生成 canonical SHA-256 fingerprint；事务内首先获取 `recommendation-current:<userId>:<targetDate>` advisory transaction lock，再分配 revision、插入 non-current、降级旧 current、提升新 current 并读回。同 generation request + 同 fingerprint 返回原记录（即使已 superseded），不同 fingerprint 稳定冲突且数据库不变，旧请求重放不会复活 current。生成异常不写入残缺 failed 行。
 - **真实 PostgreSQL 证据**：独立 PostgreSQL 16 schema、多连接门禁 `18/18` 通过；覆盖首发/替换/旧 revision 保留，12 个不同请求并发时 revision 不重复且仅一 current，12 个同请求并发只产生一行，冲突/旧键重放/MVCC 提交前后可见性，插入后、旧 current 降级后、新 current 提升后、提交前注错与终止 writer backend 的整体回滚，用户/日期/时区隔离、写前/读后 Schema、索引/约束/级联/清理，以及空库全迁移和 `0018 → 0019` 升级回放。
 - **验证与真实衣橱门禁**：cloud contracts/API/根/小程序 typecheck，API 全量 `194/194`，推荐合同 `12/12`，引擎 `49/49`，根 `test:logic` 与 production build 通过。现有授权测试账号的生产口令已失效，本机也无可复用会话，因此未将合成数据冒充真实衣橱；可读影子验收明确记为“阻塞 1C，但不阻塞 1B 核心持久化”。
-- **剩余边界**：`generationBatchId` 在 1B 仅记录跨日期批次关系；今日/明日同批次读取与发布策略、失败摘要/job runs、调度和公开 API 均保留给 1C。生产备份、隔离恢复/迁移演练、部署后路由/开关门禁与最终镜像证据在本 Session 合入最新 `main` 后连续执行并于最终交付中报告。
+- **生产收口**：部署前备份 `/opt/wardrobe-cloud/backups/postgres/wardrobe-20260714-123949.sql`，成功恢复到隔离库 `wardrobe_restore_1b_20260714` 并用新镜像将 Drizzle 迁移记录从 `18` 升至 `19`。正式库上线后迁移为 `19`、新表为空，索引/检查/FK 与 current partial unique 均存在；最终收口镜像为 `wardrobe-api:recommendation-1b-final`，旧镜像 `wardrobe-api:32c60f9b` 保留回滚。`/api/health`、`/api/ready`、`/api/version` 通过，workspace overview 未授权为 `401`，`/api/recommendations` 与 `/api/recommendations/current` 仍为 `404`，`DAILY_RECOMMENDATIONS_ENABLED` 未设置。
+- **剩余边界**：`generationBatchId` 在 1B 仅记录跨日期批次关系；今日/明日同批次读取与发布策略、失败摘要/job runs、调度和公开 API 均保留给 1C。
 
 ## 2026-07-14 / v2.1.22-test / Codex — 强制清理 Session 临时分支与 worktree
 
