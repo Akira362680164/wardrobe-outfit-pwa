@@ -1,3 +1,10 @@
+## 2026-07-14 / v2.1.22-test / Codex — 强制清理 Session 临时分支与 worktree
+
+- **规则更新**：本机根 `AGENTS.md` 明确把临时 Git 清理纳入开发完成定义；每个 Agent、子 Agent和独立 Session 在成果合入并推送正式基线后，必须删除自己创建的本地/远端临时分支和临时 worktree，不得遗留给后续 Session。
+- **安全边界**：清理前逐个确认工作区干净、成果已合入且无人依赖；不得删除他人工作区或未合入成果，worktree 目录继续遵守移入废纸篓的项目删除规则。
+- **收口核对**：最终回复前必须检查 worktree 列表、本地与远端临时分支、正式目录状态；正常情况下只长期保留 `main`、`wechat/miniprogram` 及两个正式集成目录。
+- **风险与验证**：风险门禁 `low`，仅修改治理文档；通过规则关键词检查、`git diff --check` 和 staged diff 核对。未触发 subagent：用户未通知。根 `AGENTS.md` 按仓库既有 `.gitignore` 规则仅保存在本机，不强制加入 Git。
+
 ## 2026-07-14 / v2.1.22-test / Codex — 录入页共享安全区、系统圆角入口与 release 日志脱敏
 
 - **共享顶部修复**：Android WebView 运行时证据显示其可视 viewport 已从状态栏下方开始，而录入壳又消费了 48 CSS px 的 Android inset，标题栏最终 `padding-top=56px`。现由 `IntakeFlowShell` 统一只消费一次 `--intake-safe-area-top`，衣橱/种草的步骤 1、步骤 2与内嵌裁切一次生效；独立全屏裁切器同步复用该变量，没有逐页负 margin 或机型常量。
