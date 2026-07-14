@@ -12,6 +12,7 @@ Expected 均人工手写，未从实现反向生成。
 - A 红灯：resolver、Overview 与鉴权路由在实现前分别表现为模块不存在或 404；新增四级地点矩阵、旧 trip 自由文本、locationless 零天气调用、today/tomorrow/day3-7/out-of-range 与 freshness 测试后转绿。
 - B 红灯：独立 V2 generation/Worker/read union 与 shadow/current 双开关在实现前不存在；转绿后 V2 引擎 40/40，其中包含连续 100 次字节一致和输入数组乱序不变，V1 引擎 49/49。
 - C 红灯：0022 表、数据库幂等和 reassess 路由在实现前不存在；实现中真实 PostgreSQL 先后捕获 `digest` search_path、重试 SQL 参数类型、DATE 时区和 V2 未启用时错误消费队列问题，逐项修复后转绿。
+- 首次生产恢复 shadow 正确阻断灰度：146 个 user-date 中 14 个因旧 payload 的中文/非法 style 枚举生成异常；定位后在 workspace adapter 使用共享 catalog normalizer，把旧非法枚举降为缺省证据而非令整日失败，并把 PostgreSQL 回归从“容忍 7+ 失败”收紧为失败必须为 0。
 - 最终 API 全量 32 files / 284 tests；真实 PostgreSQL 3 files / 32 tests（推荐持久化 22、地点天气 7、重算 3）；原 24 个 V1 fixture shadow 完全匹配。
 
 ## A：地点、天气证据与 Overview
