@@ -2,7 +2,7 @@ import { chooseImages, uploadImagesForCreate, type ChosenImage } from "../../../
 import { colorLabel, recognizeGarmentImages } from "../../../services/ai";
 import { hasMiniMaxKey } from "../../../services/ai";
 import { applyCropBoxToOriginal, requestCropSuggestion, rotateOriginalFile } from "../../../services/image-crop";
-import { composeNestedCropBoxes } from "../../../generated/image-crop";
+import { composeNestedCropBoxes, IMAGE_CROP_MAX_IN_FLIGHT } from "../../../generated/image-crop";
 import { createClientMutationId } from "../../../services/workspace";
 import { clearIntakeDraft, getIntakeKind, getIntakeQueue, setIntakeKind, setIntakeQueue, updateIntakeQueueItem, type IntakeDraft, type IntakeKind, type IntakeQueueItem } from "../../../stores/intake";
 
@@ -234,7 +234,7 @@ Page({
         this.refreshQueue();
       }
     };
-    await Promise.all(Array.from({ length: Math.min(3, planned.length) }, worker));
+    await Promise.all(Array.from({ length: Math.min(IMAGE_CROP_MAX_IN_FLIGHT, planned.length) }, worker));
   },
 
   async recognizeBeforeReview(this: any) {

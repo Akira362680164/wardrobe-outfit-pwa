@@ -5,6 +5,7 @@
 - **无 Key 文案**：步骤 2继续保持原结构，仅在无 Key 时显示“待填写”及“填写或修改属性”，不再把手工填写路径描述成 AI 结果；有 Key 文案与交互不变。
 - **隐私修复**：Capacitor release 原生日志设为 `none`，阻止鉴权头和图片请求体进入 logcat。真实生产单图请求后筛查 `Bearer`、`imageBase64`、`CapacitorHttp methodData` 与 fatal 均为 0 命中。
 - **长驻裁切 worker**：u2netp Sidecar 改为私有 stdio NDJSON 长驻进程，服务启动时只创建一次 ONNX Session并以合成输入预热；API 路由与 `/api/ready` 共享同一 worker，收到预热握手后才 ready。单机推理并发继续为 `1`、队列 `20`、单图硬超时 `45s`；超时/崩溃会拒绝当前请求、自动拉起并重新预热，内部进程无公网端口。
+- **10 请求并发**：App 与小程序从共享合同读取 `IMAGE_CROP_MAX_IN_FLIGHT=10`，选择 10 张后同时发出 10 个独立单图请求并继续逐张响应/替换；生产推理仍由单个长驻 Session按队列顺序执行，避免在 3.6 GiB 主机上复制 10 份模型运行时。
 - **部署门禁**：生产 Compose healthcheck 改查 `/api/ready`，增加 90 秒 start period，并把部署等待扩到 120 秒；保留 `/api/health` 只表示 Node 进程存活。长驻进程复用、崩溃恢复、EPIPE、超时重启和 ready 降级均有自动回归，生产首张/连续 10 张/内存与回滚结果见专项测试记录。
 - **验证**：`impeccable` 独立视觉审计与机械布局扫描完成，scanner `0` 项；Android 安全区合同、录入全屏布局、录入状态机、根 typecheck 与 release APK 构建通过。Android 15 最终 APK 截图证明步骤 1标题栏紧贴系统安全区、两个入口为横向圆角矩形，步骤 2采用同一顶栏规则。
 

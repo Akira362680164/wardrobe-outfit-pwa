@@ -2,6 +2,7 @@ import { readFileSync, writeFileSync } from "node:fs";
 
 const target = new URL("../apps/wechat-miniprogram/generated/image-crop.ts", import.meta.url);
 const output = `// Generated from packages/cloud-contracts/src/image-crop/contracts.ts. Do not edit by hand.
+export const IMAGE_CROP_MAX_IN_FLIGHT = 10;
 export interface NormalizedCropBox { x: number; y: number; width: number; height: number }
 export function expandCropBoxEachSide(box: NormalizedCropBox, ratio = .2): NormalizedCropBox { const x = Math.max(0, box.x - box.width * ratio); const y = Math.max(0, box.y - box.height * ratio); const right = Math.min(1, box.x + box.width + box.width * ratio); const bottom = Math.min(1, box.y + box.height + box.height * ratio); return { x, y, width: right - x, height: bottom - y }; }
 export function composeNestedCropBoxes(pre: NormalizedCropBox, secondary?: NormalizedCropBox): NormalizedCropBox {
