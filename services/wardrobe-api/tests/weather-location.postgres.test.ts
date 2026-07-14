@@ -35,6 +35,9 @@ afterAll(async () => { await pool?.end(); await admin.query(`drop schema if exis
 
 describe("1D-B fresh and 0020 upgrade migrations", () => {
   it("creates all three tables from fresh and from 0020", async () => {
+    const journal = JSON.parse(readFileSync(resolve(migrationsDir, "meta/_journal.json"), "utf8"));
+    expect(journal.entries.at(-1)).toMatchObject({ idx: 21, tag: "0021_location_weather_infrastructure" });
+    expect(journal.entries).toHaveLength(22);
     for (const table of ["user_location_profiles", "location_date_overrides", "weather_cache"]) expect((await pool.query("select to_regclass($1) as name", [table])).rows[0].name).toBe(table);
     await createSchema(upgradeSchema); await applyMigrations(upgradeSchema, migrationFiles.filter((file) => !file.startsWith("0021_")));
     expect((await admin.query("select to_regclass($1) as name", [`${upgradeSchema}.weather_cache`])).rows[0].name).toBeNull();
