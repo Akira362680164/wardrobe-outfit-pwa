@@ -53,6 +53,10 @@ services:
       IMAGE_CROP_TIMEOUT_MS: ${IMAGE_CROP_TIMEOUT_MS:-45000}
       IMAGE_CROP_CONCURRENCY: ${IMAGE_CROP_CONCURRENCY:-1}
       IMAGE_CROP_QUEUE_LIMIT: ${IMAGE_CROP_QUEUE_LIMIT:-20}
+      DAILY_RECOMMENDATIONS_ENABLED: ${DAILY_RECOMMENDATIONS_ENABLED:-true}
+      PAW_DATE_CONTEXT_ENABLED: "false"
+      PAW_CANDIDATE_EVALUATOR_ENABLED: "false"
+      PAW_INTAKE_CANONICALIZER_ENABLED: "false"
     ports:
       - "127.0.0.1:3000:3000"
     volumes:
@@ -67,6 +71,29 @@ services:
       timeout: 5s
       retries: 20
       start_period: 90s
+    networks:
+      - wardrobe-cloud
+
+  recommendation-worker:
+    image: ${WARDROBE_API_IMAGE}
+    restart: unless-stopped
+    command: ["node", "dist/recommendations/worker-entry.js"]
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    pids_limit: 128
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: ${DATABASE_URL}
+      GIT_COMMIT: ${GIT_COMMIT:-unknown}
+      DAILY_RECOMMENDATIONS_ENABLED: ${DAILY_RECOMMENDATIONS_ENABLED:-true}
+      PAW_DATE_CONTEXT_ENABLED: "false"
+      PAW_CANDIDATE_EVALUATOR_ENABLED: "false"
+      PAW_INTAKE_CANONICALIZER_ENABLED: "false"
     networks:
       - wardrobe-cloud
 

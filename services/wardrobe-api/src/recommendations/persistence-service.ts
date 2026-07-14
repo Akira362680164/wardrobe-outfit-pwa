@@ -62,6 +62,42 @@ export class RecommendationPersistenceService {
     }
   }
 
+  async publishHomePair(inputs: readonly [unknown, unknown]): Promise<readonly [DailyRecommendationRecord, DailyRecommendationRecord]> {
+    const commands = inputs.map((input) => PublishDailyRecommendationCommandSchema.parse(input)).sort((a, b) => a.targetDate.localeCompare(b.targetDate));
+    if (commands[0]!.userId !== commands[1]!.userId || commands[0]!.generationBatchId !== commands[1]!.generationBatchId || commands[0]!.targetDate === commands[1]!.targetDate) throw new Error("home pair must contain two dates for one user and batch");
+    const client = await this.pool.connect();
+    try {
+      await client.query("begin");
+      try {
+        for (const command of commands) await this.repository.acquireCurrentLock(client, command.userId, command.targetDate);
+        const records: DailyRecommendationRecord[] = [];
+        for (const command of commands) {
+          await this.repository.acquireGenerationRequestLock(client, command.userId, command.generationRequestId);
+          const fingerprint = recommendationPayloadFingerprint(command);
+          const replay = await this.repository.findByGenerationRequest(client, command.userId, command.generationRequestId);
+          if (replay) {
+            if (replay.payloadFingerprint !== fingerprint) throw new RecommendationGenerationConflictError();
+            records.push(replay);
+            continue;
+          }
+          const revision = await this.repository.nextRevision(client, command.userId, command.targetDate);
+          const recordId = await this.repository.insertNonCurrent(client, { command, revision, fingerprint });
+          await this.faultHook?.("afterInsert", { client, recordId });
+          records.push(await this.repository.findById(client, recordId));
+        }
+        const replayOnly = records.every((record) => record.isCurrent);
+        if (!replayOnly) {
+          for (const record of records) await this.repository.supersedeCurrent(client, record.userId, record.targetDate, record.id, record.generatedAt);
+          for (const record of records) await this.repository.promote(client, record.id);
+        }
+        const current = await Promise.all(records.map((record) => this.repository.findById(client, record.id)));
+        await this.faultHook?.("beforeCommit", { client, recordId: current[1]!.id });
+        await client.query("commit");
+        return current as [DailyRecommendationRecord, DailyRecommendationRecord];
+      } catch (error) { await client.query("rollback").catch(() => undefined); throw error; }
+    } finally { client.release(); }
+  }
+
   async findCurrent(userId: string, targetDate: string): Promise<DailyRecommendationRecord | null> {
     const validUserId = z.string().uuid().parse(userId);
     const validDate = RealDateSchema.parse(targetDate);
@@ -92,6 +128,13 @@ export class RecommendationPersistenceService {
     } finally {
       client.release();
     }
+  }
+
+  async findLatestConsistentPair(userId: string, dates: readonly [string, string], nowIso = new Date().toISOString()) {
+    const client = await this.pool.connect(); try { return await this.repository.findLatestConsistentPair(client, z.string().uuid().parse(userId), [RealDateSchema.parse(dates[0]), RealDateSchema.parse(dates[1])], z.string().datetime().parse(nowIso)); } finally { client.release(); }
+  }
+  async findLatestValid(userId: string, targetDate: string, nowIso = new Date().toISOString()) {
+    const client = await this.pool.connect(); try { return await this.repository.findLatestValid(client, z.string().uuid().parse(userId), RealDateSchema.parse(targetDate), z.string().datetime().parse(nowIso)); } finally { client.release(); }
   }
 }
 

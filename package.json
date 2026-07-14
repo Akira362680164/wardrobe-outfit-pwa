@@ -25,6 +25,8 @@
     "cloud:contracts:typecheck": "npm --workspace @wardrobe/cloud-contracts run typecheck",
     "api:typecheck": "npm --workspace @wardrobe/wardrobe-api run typecheck",
     "api:test": "npm --workspace @wardrobe/wardrobe-api run test",
+    "api:recommendation-worker": "npm --workspace @wardrobe/wardrobe-api run recommendation-worker",
+    "api:recommendation-worker:run-once": "npm --workspace @wardrobe/wardrobe-api run recommendation-worker:run-once",
     "diagnosis:list": "tsx scripts/diagnosis-list.ts",
     "diagnosis:latest": "tsx scripts/diagnosis-latest.ts",
     "diagnosis:pull": "tsx scripts/diagnosis-pull.ts",

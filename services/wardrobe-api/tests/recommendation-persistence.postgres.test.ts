@@ -5,7 +5,7 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { Pool, type PoolClient } from "pg";
 import { PublishDailyRecommendationCommandSchema, type PublishDailyRecommendationCommand } from "@wardrobe/cloud-contracts";
 
-import { generateRecommendations, RecommendationGenerationConflictError, RecommendationPersistenceService, type RecommendationPublishStage } from "../src/recommendations/index.js";
+import { generateRecommendations, RecommendationGenerationConflictError, RecommendationJobRepository, RecommendationPersistenceService, RecommendationWorker, type RecommendationPublishStage } from "../src/recommendations/index.js";
 import { buildFixtureInput } from "./fixtures/recommendations/scenarios.js";
 
 const databaseUrl = process.env.WARDROBE_RECOMMENDATION_TEST_DATABASE_URL ?? "postgresql:///wardrobe_test";
@@ -89,18 +89,41 @@ afterAll(async () => {
 }, 30_000);
 
 describe("daily recommendation real PostgreSQL migration", () => {
-  it("replays the empty database and upgrades the current 0018 baseline to 0019", async () => {
+  it("replays the empty database and upgrades the current 0018 baseline through 0020", async () => {
     const full = await pool.query("select count(*)::int as count from information_schema.tables where table_schema = $1 and table_name = 'daily_recommendations'", [schema]);
     expect(full.rows[0].count).toBe(1);
     await createSchema(upgradeSchema);
-    await applyMigrations(upgradeSchema, migrationFiles.filter((file) => !file.startsWith("0019_")));
+    await applyMigrations(upgradeSchema, migrationFiles.filter((file) => !file.startsWith("0019_") && !file.startsWith("0020_")));
     expect((await admin.query("select to_regclass($1) as table_name", [`${upgradeSchema}.daily_recommendations`])).rows[0].table_name).toBeNull();
-    await applyMigrations(upgradeSchema, migrationFiles.filter((file) => file.startsWith("0019_")));
+    await applyMigrations(upgradeSchema, migrationFiles.filter((file) => file.startsWith("0019_") || file.startsWith("0020_")));
     expect((await admin.query("select to_regclass($1) as table_name", [`${upgradeSchema}.daily_recommendations`])).rows[0].table_name).toBe("daily_recommendations");
+    expect((await admin.query("select to_regclass($1) as table_name", [`${upgradeSchema}.recommendation_job_runs`])).rows[0].table_name).toBe("recommendation_job_runs");
   }, 120_000);
 });
 
 describe("daily recommendation atomic publication and idempotency", () => {
+  it("publishes today and tomorrow atomically with one batch and never exposes a mixed pair", async () => {
+    const userId = await createUser();
+    const oldBatch = randomUUID();
+    await service.publishHomePair([command({ userId, targetDate: "2026-07-14", generationBatchId: oldBatch }), command({ userId, targetDate: "2026-07-15", generationBatchId: oldBatch })]);
+    let reached!: () => void; let release!: () => void;
+    const blocked = new Promise<void>((resolve) => { reached = resolve; }); const proceed = new Promise<void>((resolve) => { release = resolve; });
+    const publishing = new RecommendationPersistenceService(pool, undefined, async (stage) => { if (stage === "beforeCommit") { reached(); await proceed; } });
+    const nextBatch = randomUUID();
+    const pending = publishing.publishHomePair([command({ userId, targetDate: "2026-07-14", generationBatchId: nextBatch }), command({ userId, targetDate: "2026-07-15", generationBatchId: nextBatch })]);
+    await blocked;
+    expect(new Set((await service.listCurrent(userId, ["2026-07-14", "2026-07-15"])).map((row) => row.generationBatchId))).toEqual(new Set([oldBatch]));
+    release(); await pending;
+    expect(new Set((await service.listCurrent(userId, ["2026-07-14", "2026-07-15"])).map((row) => row.generationBatchId))).toEqual(new Set([nextBatch]));
+  });
+
+  it("rolls back both home dates when pair activation fails", async () => {
+    const userId = await createUser(); const oldBatch = randomUUID();
+    await service.publishHomePair([command({ userId, targetDate: "2026-07-14", generationBatchId: oldBatch }), command({ userId, targetDate: "2026-07-15", generationBatchId: oldBatch })]);
+    const failed = new RecommendationPersistenceService(pool, undefined, (stage) => { if (stage === "beforeCommit") throw new Error("pair-failed"); }); const nextBatch = randomUUID();
+    await expect(failed.publishHomePair([command({ userId, targetDate: "2026-07-14", generationBatchId: nextBatch }), command({ userId, targetDate: "2026-07-15", generationBatchId: nextBatch })])).rejects.toThrow("pair-failed");
+    expect(new Set((await service.listCurrent(userId, ["2026-07-14", "2026-07-15"])).map((row) => row.generationBatchId))).toEqual(new Set([oldBatch]));
+  });
   it("publishes first revision, replaces sequentially, and preserves old revisions", async () => {
     const userId = await createUser();
     const first = await service.publish(command({ userId }));
@@ -262,4 +285,41 @@ describe("daily recommendation isolation, validation, constraints, and retention
     expect((await pool.query("select count(*)::int as count from daily_recommendations where id = $1", [old.id])).rows[0].count).toBe(0);
     expect((await service.findCurrent(userId, baseCommand.targetDate))?.id).toBe(current.id);
   });
+});
+
+describe("recommendation worker real PostgreSQL end to end", () => {
+  it("allows only one global worker lock", async () => {
+    const firstRepo = new RecommendationJobRepository(pool); const secondRepo = new RecommendationJobRepository(pool);
+    const first = await firstRepo.tryAcquireGlobalLock(); expect(first).not.toBeNull();
+    expect(await secondRepo.tryAcquireGlobalLock()).toBeNull();
+    await firstRepo.releaseGlobalLock(first!);
+    const after = await secondRepo.tryAcquireGlobalLock(); expect(after).not.toBeNull(); await secondRepo.releaseGlobalLock(after!);
+  });
+
+  it("adapts representative workspace data, skips actual and primary dates, includes far travel, and records a controlled job", async () => {
+    const userId = await createUser();
+    await pool.query("insert into profiles (user_id, origin_device_id, payload) values ($1, 'test', $2::jsonb)", [userId, JSON.stringify({ profileType: "preferences", timezone: "Asia/Shanghai", workdayScene: "commute", restDayScene: "casual", thermalBias: "normal" })]);
+    const garments = [
+      ["tops", "shirt", "白", "commute", 4, 2], ["tops", "t_shirt", "黑", "casual", 2, 1], ["pants", "suit_pants", "黑", "commute", 4, 2], ["pants", "casual_pants", "蓝", "casual", 2, 2], ["shoes", "loafers", "黑", "commute", 4, 2], ["shoes", "sneakers", "白", "casual", 2, 1],
+    ];
+    const ids: string[] = [];
+    for (const [category, subcategory, color, style, formality, warmth] of garments) { const id = randomUUID(); ids.push(id); await pool.query("insert into garments (id, user_id, origin_device_id, payload) values ($1, $2, 'test', $3::jsonb)", [id, userId, JSON.stringify({ name: `${category}-${subcategory}`, status: "active", category, subcategory, colors: [color], seasons: ["all"], styles: [style], formality, warmth, temperatureMinC: 5, temperatureMaxC: 35, imageUrl: "authorized-test-asset" })]); }
+    const excludedIds = [randomUUID(), randomUUID(), randomUUID()];
+    await pool.query("insert into garments (id, user_id, origin_device_id, payload) values ($1, $4, 'test', $5::jsonb), ($2, $4, 'test', $6::jsonb), ($3, $4, 'test', $7::jsonb)", [excludedIds[0], excludedIds[1], excludedIds[2], userId, JSON.stringify({ name: "归档测试衣物", status: "archived", category: "tops", colors: ["黑"], seasons: ["all"], formality: 2, warmth: 2, imageUrl: "authorized-test-asset" }), JSON.stringify({ name: "缺主图测试衣物", status: "active", category: "tops", colors: ["黑"], seasons: ["all"], formality: 2, warmth: 2 }), JSON.stringify({ name: "缺字段测试衣物", status: "active", imageUrl: "authorized-test-asset" })]);
+    const outfitId = randomUUID(); await pool.query("insert into outfits (id, user_id, origin_device_id, payload) values ($1, $2, 'test', $3::jsonb)", [outfitId, userId, JSON.stringify({ name: "代表性通勤套装" })]);
+    for (const [index, garmentId] of [ids[0], ids[2], ids[4]].entries()) await pool.query("insert into outfit_items (user_id, outfit_id, garment_id, origin_device_id, sort_order) values ($1, $2, $3, 'test', $4)", [userId, outfitId, garmentId, index]);
+    await pool.query("insert into wear_events (user_id, outfit_id, worn_at, origin_device_id, payload) values ($1, $2, '2026-07-01T08:00:00Z', 'test', $3::jsonb)", [userId, outfitId, JSON.stringify({ sceneType: "commute", sentiment: "positive" })]);
+    await pool.query("insert into trip_plans (user_id, start_date, end_date, origin_device_id, payload) values ($1, '2026-08-01', '2026-08-02', 'test', $2::jsonb)", [userId, JSON.stringify({ title: "测试出差", destination: "测试城市", activities: ["business meeting"] })]);
+    await pool.query("insert into outfit_plans (user_id, plan_date, origin_device_id, payload) values ($1, '2026-07-16', 'test', $2::jsonb), ($1, '2026-07-17', 'test', $3::jsonb)", [userId, JSON.stringify({ status: "planned", isPrimary: true }), JSON.stringify({ status: "worn", isPrimaryActual: true })]);
+    const result = await new RecommendationWorker(pool).runOnce("2026-07-13T19:30:00.000Z");
+    expect(result.acquired).toBe(true); expect(result.job?.status).not.toBe("failed"); expect(result.peakQueueSize).toBeLessThanOrEqual(64);
+    const current = await pool.query<{ target_date: string; generation_batch_id: string }>("select target_date::text, generation_batch_id::text from daily_recommendations where user_id = $1 and is_current order by target_date", [userId]);
+    expect(current.rows.map((row) => row.target_date)).toEqual(expect.arrayContaining(["2026-07-14", "2026-07-15", "2026-08-01", "2026-08-02"]));
+    expect(current.rows.map((row) => row.target_date)).not.toContain("2026-07-16"); expect(current.rows.map((row) => row.target_date)).not.toContain("2026-07-17");
+    expect(current.rows[0]!.generation_batch_id).toBe(current.rows[1]!.generation_batch_id);
+    const todayPayload = (await pool.query<{ payload: { engineOutput: { readiness: { status: string }; exclusions: Array<{ garmentId: string; codes: string[] }> } } }>("select payload from daily_recommendations where user_id = $1 and target_date = '2026-07-14' and is_current", [userId])).rows[0]!.payload;
+    expect(todayPayload.engineOutput.readiness.status).toBe("ready");
+    expect(Object.fromEntries(todayPayload.engineOutput.exclusions.map((entry) => [entry.garmentId, entry.codes]))).toMatchObject({ [excludedIds[0]!]: ["unavailable_status"], [excludedIds[1]!]: ["missing_primary_image"], [excludedIds[2]!]: ["missing_required_field"] });
+    expect(result.job?.errorCodeCounts).not.toHaveProperty("freeStack");
+  }, 30_000);
 });

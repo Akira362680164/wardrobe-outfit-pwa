@@ -1518,3 +1518,10 @@
 - **验证结果**：`npm run typecheck`、`npm run build`、`test:logic:ui-overflow`、`test:logic:detail-shell`、`test:logic:component-reuse`、`test:logic:outfit`、`test:logic:ui-overlay-contract`、`test:logic:outfit-cover-consistency`、`git diff --check`、impeccable layout detector 均通过。
 - **风险门禁**：`medium`；未触发 subagent：用户未通知（仅按技能要求做只读布局/机械扫描）。
 - **未验证风险**：未在 Android 真机/模拟器执行本次新增编辑组成的实际触摸路径；既有 `test:logic:ui-token-contract` 仍因历史 4 项硬编码颜色失败，本批未修改相关文件。
+# 2026-07-14 / v2.1.22-test / Codex — Wardora 推荐后端 1C 完整 Worker、批次读取与规则模式启用
+
+- **范围与边界**：在 1A 确定性规则引擎和 1B 原子持久化上完成 workspace→engine 共用 adapter、独立 `recommendation-worker`、`recommendation_job_runs`、03:30 Asia/Shanghai 调度、PostgreSQL 全局锁、容量 64/默认并发 1 背压队列、user-date 失败隔离、今天至 +6 与远期旅行任务选择、actual/primary 跳过、今日/明日同事务激活、鉴权读取 API 和当前日期规则-only 即时回退。未改 App/小程序 UI，未构建 APK；QWeather、真实 forecast、recommendation_actions 和 PAW 仍不在本批。
+- **真实数据与天气口径**：Worker、即时回退和测试共用 `RecommendationWorkspaceAdapter`，关系以 UUID/`outfit_items` 为准，映射状态、主图、领域字段、套装、穿着、反馈、锚点、偏好与旅行计划；规则降级只标记 `plan_semantic_inference`、`seasonal_inference` 或 `layering_default`，不伪装 forecast。代表性隔离 PostgreSQL 衣橱包含 6 件可用衣物、保存套装、正反馈穿着、远期出差、已安排/已穿跳过及归档/缺主图/缺字段排除，脱敏结果见 `docs/recommendations/REPRESENTATIVE_TEST_WARDROBE_1C.md`。
+- **数据库与并发证据**：新增 `0020_recommendation_worker.sql` 和 Drizzle schema；job 仅保存受控计数/错误码。真实 PostgreSQL 22/22 通过，覆盖空库全链、0018→0020 升级、MVCC、双日期原子可见、失败回滚、旧 current 保留、12 并发 revision、同键重放、连接终止、全局锁、完整 adapter→1A→1B→read 数据链和 30 天非 current 清理；reset/账户级联清单同步。
+- **本地门禁**：cloud contracts/API/root/小程序 typecheck、API 全量 201/201、Worker/读取专项 7/7、真实 PostgreSQL 22/22、根 `test:logic`、Next build、共享字典兼容与 `git diff --check` 通过。风险门禁 `high`；未触发 subagent：用户未通知。
+- **启用与隐私**：部署合同新增独立 Worker 服务；`DAILY_RECOMMENDATIONS_ENABLED=true`，`PAW_DATE_CONTEXT_ENABLED=false`、`PAW_CANDIDATE_EVALUATOR_ENABLED=false`、`PAW_INTAKE_CANONICALIZER_ENABLED=false`。API 不返回 shortlist/完整审计/自由模型文本；job summary 不保存图片、密钥、个人字段或自由堆栈。按日期关闭推荐尚无现有持久化来源，本批未编造前端实体，仅保留该后端合同边界。

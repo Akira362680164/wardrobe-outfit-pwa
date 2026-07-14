@@ -1,0 +1,13 @@
+import type { Pool, PoolClient } from "pg";
+import { RecommendationJobRunSummarySchema, type RecommendationJobErrorCode, type RecommendationJobRunSummary } from "@wardrobe/cloud-contracts";
+
+export const WORKER_LOCK_KEY = "wardora:recommendation-worker:daily";
+
+export class RecommendationJobRepository {
+  constructor(private readonly pool: Pool) {}
+  async tryAcquireGlobalLock(): Promise<PoolClient | null> { const client = await this.pool.connect(); const result = await client.query<{ acquired: boolean }>("select pg_try_advisory_lock(hashtextextended($1, 0)) as acquired", [WORKER_LOCK_KEY]); if (!result.rows[0]?.acquired) { client.release(); return null; } return client; }
+  async releaseGlobalLock(client: PoolClient) { await client.query("select pg_advisory_unlock(hashtextextended($1, 0))", [WORKER_LOCK_KEY]).finally(() => client.release()); }
+  async start(scheduledFor: string, algorithmVersion: string): Promise<string> { const result = await this.pool.query<{ id: string }>("insert into recommendation_job_runs (scheduled_for, started_at, algorithm_version, paw_program_versions) values ($1, now(), $2, $3::jsonb) returning id", [scheduledFor, algorithmVersion, JSON.stringify({ dateContext: "disabled", candidateEvaluator: "disabled" })]); return result.rows[0]!.id; }
+  async finish(id: string, input: { targetTaskCount: number; readyCount: number; fallbackCount: number; failedCount: number; errorCodeCounts: Partial<Record<RecommendationJobErrorCode, number>>; fatal?: boolean }) { const status = input.fatal ? "failed" : input.failedCount > 0 ? "completed_with_errors" : "completed"; await this.pool.query("update recommendation_job_runs set finished_at = now(), status = $2, target_task_count = $3, ready_count = $4, fallback_count = $5, failed_count = $6, error_code_counts = $7::jsonb, updated_at = now() where id = $1", [id, status, input.targetTaskCount, input.readyCount, input.fallbackCount, input.failedCount, JSON.stringify(input.errorCodeCounts)]); }
+  async get(id: string): Promise<RecommendationJobRunSummary> { const result = await this.pool.query("select * from recommendation_job_runs where id = $1", [id]); const row = result.rows[0]; return RecommendationJobRunSummarySchema.parse({ id: row.id, scheduledFor: new Date(row.scheduled_for).toISOString(), startedAt: new Date(row.started_at).toISOString(), finishedAt: row.finished_at ? new Date(row.finished_at).toISOString() : null, status: row.status, targetTaskCount: row.target_task_count, readyCount: row.ready_count, fallbackCount: row.fallback_count, failedCount: row.failed_count, algorithmVersion: row.algorithm_version, pawProgramVersions: row.paw_program_versions, errorCodeCounts: row.error_code_counts }); }
+}
