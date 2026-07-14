@@ -57,6 +57,12 @@ services:
       PAW_DATE_CONTEXT_ENABLED: "false"
       PAW_CANDIDATE_EVALUATOR_ENABLED: "false"
       PAW_INTAKE_CANONICALIZER_ENABLED: "false"
+      QWEATHER_ENABLED: ${QWEATHER_ENABLED:-false}
+      QWEATHER_API_HOST: ${QWEATHER_API_HOST:-}
+      QWEATHER_PROJECT_ID: ${QWEATHER_PROJECT_ID:-}
+      QWEATHER_CREDENTIAL_ID: ${QWEATHER_CREDENTIAL_ID:-}
+      QWEATHER_PRIVATE_KEY_FILE: /run/secrets/qweather/ed25519-private.pem
+      QWEATHER_ALERTS_ENABLED: "false"
     ports:
       - "127.0.0.1:3000:3000"
     volumes:
@@ -65,6 +71,7 @@ services:
       - /opt/wardrobe-cloud/secrets/refresh-idempotency.key:/run/secrets/refresh-idempotency.key:ro
       - /srv/wardrobe/storage:/var/lib/wardrobe-api/storage
       - /opt/wardrobe-cloud/models/u2netp.onnx:/opt/wardrobe-models/u2netp.onnx:ro
+      - /opt/wardrobe-cloud/secrets/qweather/ed25519-private.pem:/run/secrets/qweather/ed25519-private.pem:ro
     healthcheck:
       test: ["CMD-SHELL", "node -e \"fetch('http://127.0.0.1:3000/api/ready').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))\""]
       interval: 5s

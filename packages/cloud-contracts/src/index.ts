@@ -8,3 +8,4 @@ export * from "./workspace/assets.js";
 export * from "./recommendations/contracts.js";
 export * from "./image-crop/contracts.js";
 export * from "./image-crop/state.js";
+export * from "./weather/contracts.js";
