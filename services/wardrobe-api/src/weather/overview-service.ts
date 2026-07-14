@@ -53,22 +53,32 @@ export class WeatherOverviewService {
     }));
     const daily = (results.get("daily")?.data as NormalizedWeatherDay[] | undefined)?.find((day) => day.date === targetDate);
     if (!daily) return fallback(context, results.size ? "insufficient_evidence" : "provider_unavailable", [...results.entries()]);
-    const hours = ((results.get("hourly")?.data as NormalizedWeatherHour[] | undefined) ?? []).filter((hour) => localDate(new Date(hour.time), context.targetTimezone) === targetDate);
+    const nowInstant = this.clock().getTime();
+    const hours = ((results.get("hourly")?.data as NormalizedWeatherHour[] | undefined) ?? []).filter((hour) =>
+      localDate(new Date(hour.time), context.targetTimezone) === targetDate && (offset !== 0 || Date.parse(hour.time) >= nowInstant),
+    );
     const now = offset === 0 ? results.get("now")?.data as NormalizedWeatherNow | undefined : undefined;
-    const rainValues = hours.map((hour) => hour.rainProbability).filter((value): value is number => value !== undefined);
-    const windValues = hours.map((hour) => windLevel(hour.windScale)).filter((value): value is number => value !== undefined);
+    const rainValues = [
+      ...(now?.precipitationMm !== undefined && now.precipitationMm > 0 ? [100] : isRainCode(now?.weatherCode) ? [100] : []),
+      ...hours.map((hour) => hour.rainProbability).filter((value): value is number => value !== undefined),
+    ];
+    const windValues = [windLevel(now?.windScale), ...hours.map((hour) => windLevel(hour.windScale))].filter((value): value is number => value !== undefined);
     const used = [...results.entries()];
+    const participatingEndpoints: WeatherEndpoint[] = ["daily"];
+    if (now) participatingEndpoints.push("now");
+    if (hours.length) participatingEndpoints.push("hourly");
     const attribution = attributionOf(used);
     return WeatherOverviewSchema.parse({
       targetDate, contextMode: "forecast", resolvedLocation: context.resolvedLocation, locationSource: context.locationSource,
       targetTimezone: context.targetTimezone, contextResolvedAt: context.contextResolvedAt,
       weatherEvidence: {
-        weatherSource: "forecast", weatherConfidence: results.get("daily")?.freshness === "stale" ? 0.7 : 1,
+        weatherSource: "forecast", weatherConfidence: participatingEndpoints.some((endpoint) => results.get(endpoint)?.freshness === "stale") ? 0.7 : 1,
         weatherUpdatedAt: latestUpdatedAt(used), temperatureMinC: daily.temperatureMinC, temperatureMaxC: daily.temperatureMaxC,
         ...(now?.feelsLikeC === undefined ? {} : { feelsLikeMinC: now.feelsLikeC, feelsLikeMaxC: now.feelsLikeC }),
         ...(rainValues.length ? { rainProbability: Math.max(...rainValues) } : {}),
         ...(windValues.length ? { windLevel: Math.max(...windValues) } : {}),
-        summary: daily.dayWeatherText === daily.nightWeatherText ? daily.dayWeatherText : `${daily.dayWeatherText}转${daily.nightWeatherText}`,
+        ...(now ? { weatherCode: now.weatherCode } : {}),
+        summary: now ? `${now.weatherText}，${daily.dayWeatherText === daily.nightWeatherText ? daily.dayWeatherText : `${daily.dayWeatherText}转${daily.nightWeatherText}`}` : daily.dayWeatherText === daily.nightWeatherText ? daily.dayWeatherText : `${daily.dayWeatherText}转${daily.nightWeatherText}`,
       },
       endpointFreshness: endpointEvidence(used), availabilityReason: "available", ...(attribution ? { attribution } : {}),
     });
@@ -92,5 +102,6 @@ function attributionOf(results: Array<[WeatherEndpoint, WeatherCacheResult<any>]
 }
 function latestUpdatedAt(results: Array<[WeatherEndpoint, WeatherCacheResult<any>]>) { return results.map(([, value]) => value.updatedAt).sort().at(-1)!; }
 function windLevel(value: string | undefined) { if (!value) return undefined; const match = value.match(/\d+/g)?.map(Number); return match?.length ? Math.min(12, Math.max(...match)) : undefined; }
+function isRainCode(value: string | undefined) { return value !== undefined && /^3\d{2}$/.test(value); }
 function daysBetween(from: string, to: string) { return Math.round((Date.parse(`${to}T12:00:00Z`) - Date.parse(`${from}T12:00:00Z`)) / 86_400_000); }
 function localDate(value: Date, timezone: string) { return new Intl.DateTimeFormat("en-CA", { timeZone: timezone, year: "numeric", month: "2-digit", day: "2-digit" }).format(value); }

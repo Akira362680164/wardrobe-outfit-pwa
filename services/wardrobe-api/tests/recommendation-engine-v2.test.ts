@@ -282,6 +282,7 @@ describe("V1/V2 strict payload compatibility", () => {
     ["locationless with location", (input: any) => { input.resolvedContext = fallbackContext(); input.resolvedContext.contextMode = "locationless"; }],
     ["locationless temperature", (input: any) => { input.dateContextInput.weatherEvidence.temperatureMinC = 10; input.dateContextInput.weatherEvidence.temperatureMaxC = 20; }],
     ["locationless rain", (input: any) => { input.dateContextInput.weatherEvidence.rainProbability = 10; }],
+    ["locationless weather code", (input: any) => { input.dateContextInput.weatherEvidence.weatherCode = "305"; }],
     ["wrong locationless summary", (input: any) => { input.dateContextInput.weatherEvidence.summary = "fallback"; }],
     ["wrong target date", (input: any) => { input.resolvedContext.targetDate = "2026-07-15"; }],
     ["wrong target timezone", (input: any) => { input.resolvedContext.targetTimezone = "Asia/Tokyo"; }],

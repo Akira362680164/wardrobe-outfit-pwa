@@ -1,5 +1,36 @@
 # Wardora 推荐后端 1D-C 脱敏证据
 
+## 1D-C.1：重算一致性与今日天气聚合
+
+### 红绿证据与冻结边界
+
+- 所有新增 expected 人工手写。首轮纯逻辑专项为 15 tests / 4 failed：过去 hourly 污染今日风、now 天气代码未进入 evidence、mixed freshness 错误保持高置信、重叠行程借用旧 weatherLocation；首轮 PostgreSQL 专项为 7 tests / 3 failed：trigger-first 重放冲突、today 未自动组成 home pair、无 lease claim 边界。实现后相关纯逻辑 56/56 转绿，真实 PostgreSQL覆盖扩展为 pair/竞争/lease/fencing/dirty/idempotency/backoff/升级回放。
+- V1 24 个 Fixture/Golden expected 零修改；V2 同一 Fixture连续 100 次一致及输入乱序不变继续通过。不改推荐模板、权重、Beam、Jaccard、UI、PAW 或额外天气 API。
+
+### 队列、原子发布与幂等
+
+- 0023 为 `recommendation_regeneration_requests` 增加 `claim_token`、`lease_expires_at`、`generation_batch_id`、`trigger_version`、`claimed_trigger_version` 与受控 mutation fingerprint map。Worker 以 `FOR UPDATE SKIP LOCKED` claim，lease 到期可回收；publish 与 claim 完成在同一事务验证 token、lease、状态和 batch，过期 Worker 不能覆盖新结果。
+- 对今天或明天的 due 请求，claim 会补齐并成组锁定 Shanghai home pair，两日共用 generationBatchId；两日均 prepare 成功后才单事务切换。失败、actual 或 confirmed primary 保护均保留既有 pair，读取不会出现混批或明日丢失。
+- processing 期间的数据库触发不覆盖当前 claimed generation，而是递增 triggerVersion；当前完成后请求重新成为 pending。显式 reassess 在触发入队后写入 `clientMutationId → 内容 fingerprint`，相同重放返回同一请求，不同日期/内容冲突。
+- Worker 全量跑批仍为 Asia/Shanghai 03:30；daemon 另以 15 秒周期检查 due 队列，正常请求 60 秒内开始，退避按 `next_attempt_at` 重新可见。
+
+### 今日天气、置信度与时间
+
+- 今日 evidence 只纳入实时 now、daily 与目标地点时区下当前时刻至当晚的 hourly；过去小时先过滤。now 的 precipitation、weatherCode、wind 参与今日摘要与 V2 evidence；明日不读取 now，避免跨日污染。
+- `weatherConfidence` 由实际参与聚合的 endpoint freshness 共同决定；任一参与 endpoint 为 stale 时，混合证据不再伪装为全 fresh。fallback/locationless 仍清空天气值与 attribution。
+- 普通首页日期、临时覆盖范围和 Worker 调度/业务日期固定 Asia/Shanghai；WeatherLocationRef.timezone 仅用于供应商目标日期、hourly 跨日过滤和旅行天气。重叠行程先选唯一权威行程，场景与天气地点来自同一行。
+
+### 受控真实联调
+
+- 新增 `qweather:smoke:1d-c1`：仅允许在明确隔离数据库中创建合成测试账号，最多调用 now/hourly/daily 三类各一次，然后证明标准城市 → shared PostgreSQL cache → WeatherOverview → V2 today/tomorrow 同批 current → read，并重复 Overview 证明上游计数不增长。
+- 脚本仅输出 endpoint 请求数、cache 行数、contextMode、pair/read 一致性等聚合结果；不输出 JWT、PEM、项目/凭据 ID、坐标、LocationID、用户或上游 body。最终生产联调结果与缓存复用计数在完成恢复演练后追加。
+
+### 1D-C.1 合并前全量门禁
+
+- API full：32 files / 288 tests；其中 V1 49/49、V2 41/41（含 100 次确定性和乱序不变）、Worker 7/7、WeatherOverview 4/4。
+- 真实 PostgreSQL：3 files / 39 tests（推荐持久化 24、地点天气 7、重算一致性 8），包含 fresh schema 与 0022→0023 升级、双 Worker、lease 回收、旧 claim fencing、dirty successor、丢响应幂等和退避到期。
+- cloud contracts、API、根项目和小程序 typecheck、根 `test:logic:all`、24 fixture shadow、manifest、API/Next production build 与 `git diff --check` 全部通过。manifest 仅报告既有 Android/真机人工项未纳入自动 gate；本批明确不构建 APK。
+
 ## 范围与冻结项
 
 本批完成 1D-C-A、1D-C-B、1D-C-C：日期地点解析、WeatherOverview、V2 shadow/Worker/current/read、持久化失效重算与 reassess。App/小程序 UI、APK、体验版、PAW、分钟降水、空气质量、天气指数、预警、辐照和历史气候均未进入本批；原 V1 模板、权重、Beam、Jaccard 与 24 个 Golden 未修改。
