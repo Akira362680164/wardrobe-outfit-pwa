@@ -3,11 +3,13 @@ import {
   boolean,
   check,
   date,
+  doublePrecision,
   index,
   integer,
   jsonb,
   pgEnum,
   pgTable,
+  primaryKey,
   text,
   timestamp,
   uniqueIndex,
@@ -527,6 +529,40 @@ export const recommendationJobRuns = pgTable(
   },
   (table) => ({ scheduledIdx: index("recommendation_job_runs_scheduled_idx").on(table.scheduledFor), statusIdx: index("recommendation_job_runs_status_idx").on(table.status) }),
 );
+
+const locationRevisionColumns = {
+  userId: uuid("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  locationId: text("location_id"), displayName: text("display_name"), timezone: text("timezone"),
+  centroidLatitude: doublePrecision("centroid_latitude"), centroidLongitude: doublePrecision("centroid_longitude"),
+  revision: integer("revision").notNull(), clientMutationId: uuid("client_mutation_id").notNull(), mutationFingerprint: text("mutation_fingerprint").notNull(),
+  isCurrent: boolean("is_current").notNull().default(true), supersededAt: timestamp("superseded_at", { withTimezone: true }), ...timestamps,
+};
+export const userLocationProfiles = pgTable(
+  "user_location_profiles",
+  { id: uuid("id").primaryKey().defaultRandom(), ...locationRevisionColumns },
+  (table) => ({
+    revisionUnique: uniqueIndex("user_location_profiles_user_revision_unique").on(table.userId, table.revision),
+    mutationUnique: uniqueIndex("user_location_profiles_user_mutation_unique").on(table.userId, table.clientMutationId),
+    oneCurrent: uniqueIndex("user_location_profiles_one_current").on(table.userId).where(sql`${table.isCurrent} = true`),
+  }),
+);
+export const locationDateOverrides = pgTable("location_date_overrides", {
+  id: uuid("id").primaryKey().defaultRandom(), ...locationRevisionColumns,
+  effectiveFrom: date("effective_from", { mode: "string" }), effectiveThrough: date("effective_through", { mode: "string" }), source: text("source"), confirmedAt: timestamp("confirmed_at", { withTimezone: true }),
+}, (table) => ({
+  revisionUnique: uniqueIndex("location_date_overrides_user_revision_unique").on(table.userId, table.revision),
+  mutationUnique: uniqueIndex("location_date_overrides_user_mutation_unique").on(table.userId, table.clientMutationId),
+  oneCurrentDevice: uniqueIndex("location_date_overrides_one_current_device").on(table.userId).where(sql`${table.isCurrent} = true`),
+}));
+export const weatherCache = pgTable("weather_cache", {
+  provider: text("provider").notNull(), locationId: text("location_id").notNull(), endpoint: text("endpoint").notNull(), lang: text("lang").notNull(), unit: text("unit").notNull(),
+  payload: jsonb("payload"), providerUpdatedAt: timestamp("provider_updated_at", { withTimezone: true }), fetchedAt: timestamp("fetched_at", { withTimezone: true }), expiresAt: timestamp("expires_at", { withTimezone: true }), staleUntil: timestamp("stale_until", { withTimezone: true }),
+  sources: jsonb("sources").$type<string[]>().notNull().default([]), license: jsonb("license").$type<string[]>().notNull().default([]), targetLocalDate: date("target_local_date", { mode: "string" }), status: text("status").notNull().default("negative"), negativeCode: text("negative_code"), negativeUntil: timestamp("negative_until", { withTimezone: true }), ...timestamps,
+}, (table) => ({
+  pk: primaryKey({ columns: [table.provider, table.locationId, table.endpoint, table.lang, table.unit] }),
+  expiryIdx: index("weather_cache_expiry_idx").on(table.expiresAt),
+  negativeIdx: index("weather_cache_negative_idx").on(table.negativeUntil),
+}));
 
 export const profiles = pgTable(
   "profiles",

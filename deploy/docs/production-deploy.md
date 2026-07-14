@@ -17,12 +17,27 @@ Use the fixed production directory:
     jwt-private.pem
     jwt-public.pem
     refresh-idempotency.key
+    qweather/ed25519-private.pem
   backups/
   models/u2netp.onnx
 /srv/wardrobe/storage/
 ```
 
 Do not print `.env` or secret file contents in logs.
+
+## QWeather
+
+QWeather is optional for overall readiness. When enabled, only the API container receives the dedicated HTTPS host, project/credential IDs, and a read-only private-key file; the recommendation worker intentionally receives none of them in 1D-B. Keep alerts disabled:
+
+```text
+QWEATHER_ENABLED=true
+QWEATHER_API_HOST=https://<dedicated-host>.qweatherapi.com
+QWEATHER_PROJECT_ID=<project-id>
+QWEATHER_CREDENTIAL_ID=<credential-id>
+QWEATHER_ALERTS_ENABLED=false
+```
+
+Install the Ed25519 private key as `/opt/wardrobe-cloud/secrets/qweather/ed25519-private.pem`, owned by root with mode `0400`. Compose mounts it read-only at `/run/secrets/qweather/ed25519-private.pem`; never put PEM text in `.env`, logs, fixtures, images, or source control. A missing or invalid QWeather configuration makes only the location/weather capability unavailable and must not degrade `/api/ready`.
 
 ## Compose
 
