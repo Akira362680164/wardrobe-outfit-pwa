@@ -12,6 +12,7 @@ import { RecommendationPersistenceRepository } from "./persistence-repository.js
 
 export type RecommendationPublishStage = "afterInsert" | "afterSupersede" | "afterPromote" | "beforeCommit";
 export type RecommendationPublishFaultHook = (stage: RecommendationPublishStage, context: { client: PoolClient; recordId: string }) => void | Promise<void>;
+export interface RecommendationPublishFence { requestIds: string[]; claimToken: string; generationBatchId: string }
 
 export class RecommendationGenerationConflictError extends Error {
   readonly code = "RECOMMENDATION_GENERATION_REQUEST_CONFLICT";
@@ -27,13 +28,14 @@ export class RecommendationPersistenceService {
     private readonly faultHook?: RecommendationPublishFaultHook,
   ) {}
 
-  async publish(input: unknown): Promise<DailyRecommendationRecord> {
+  async publish(input: unknown, fence?: RecommendationPublishFence): Promise<DailyRecommendationRecord> {
     const command = PublishDailyRecommendationCommandSchema.parse(input);
     const fingerprint = recommendationPayloadFingerprint(command);
     const client = await this.pool.connect();
     try {
       await client.query("begin");
       try {
+        if (fence) await assertPublishFence(client, fence);
         await this.repository.acquireCurrentLock(client, command.userId, command.targetDate);
         await this.repository.acquireGenerationRequestLock(client, command.userId, command.generationRequestId);
         const replay = await this.repository.findByGenerationRequest(client, command.userId, command.generationRequestId);
@@ -62,13 +64,18 @@ export class RecommendationPersistenceService {
     }
   }
 
-  async publishHomePair(inputs: readonly [unknown, unknown]): Promise<readonly [DailyRecommendationRecord, DailyRecommendationRecord]> {
+  async publishGuarded(input: unknown, fence: RecommendationPublishFence): Promise<DailyRecommendationRecord> {
+    return this.publish(input, fence);
+  }
+
+  async publishHomePair(inputs: readonly [unknown, unknown], fence?: RecommendationPublishFence): Promise<readonly [DailyRecommendationRecord, DailyRecommendationRecord]> {
     const commands = inputs.map((input) => PublishDailyRecommendationCommandSchema.parse(input)).sort((a, b) => a.targetDate.localeCompare(b.targetDate));
     if (commands[0]!.userId !== commands[1]!.userId || commands[0]!.generationBatchId !== commands[1]!.generationBatchId || commands[0]!.targetDate === commands[1]!.targetDate) throw new Error("home pair must contain two dates for one user and batch");
     const client = await this.pool.connect();
     try {
       await client.query("begin");
       try {
+        if (fence) await assertPublishFence(client, fence);
         for (const command of commands) await this.repository.acquireCurrentLock(client, command.userId, command.targetDate);
         const records: DailyRecommendationRecord[] = [];
         for (const command of commands) {
@@ -96,6 +103,10 @@ export class RecommendationPersistenceService {
         return current as [DailyRecommendationRecord, DailyRecommendationRecord];
       } catch (error) { await client.query("rollback").catch(() => undefined); throw error; }
     } finally { client.release(); }
+  }
+
+  async publishHomePairGuarded(inputs: readonly [unknown, unknown], fence: RecommendationPublishFence): Promise<readonly [DailyRecommendationRecord, DailyRecommendationRecord]> {
+    return this.publishHomePair(inputs, fence);
   }
 
   async findCurrent(userId: string, targetDate: string): Promise<DailyRecommendationRecord | null> {
@@ -136,6 +147,13 @@ export class RecommendationPersistenceService {
   async findLatestValid(userId: string, targetDate: string, nowIso = new Date().toISOString()) {
     const client = await this.pool.connect(); try { return await this.repository.findLatestValid(client, z.string().uuid().parse(userId), RealDateSchema.parse(targetDate), z.string().datetime().parse(nowIso)); } finally { client.release(); }
   }
+}
+
+async function assertPublishFence(client: PoolClient, fence: RecommendationPublishFence): Promise<void> {
+  const result = await client.query(`select id from recommendation_regeneration_requests
+    where id=any($1::uuid[]) and status='processing' and claim_token=$2 and generation_batch_id=$3 and lease_expires_at>now()
+    order by id for update`, [fence.requestIds, fence.claimToken, fence.generationBatchId]);
+  if (result.rows.length !== fence.requestIds.length) throw new Error("recommendation regeneration claim fenced");
 }
 
 export function recommendationPayloadFingerprint(command: PublishDailyRecommendationCommand): string {

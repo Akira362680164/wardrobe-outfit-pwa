@@ -28,7 +28,7 @@ export class RecommendationReadService {
         else { pairConsistent = false; records = records.filter((record) => record.targetDate !== pairDates[1]); }
       }
     }
-    const today = dateInZone(new Date(), user.timezone);
+    const today = dateInZone(new Date(), "Asia/Shanghai");
     if (dates.includes(today) && !records.some((record) => record.targetDate === today)) {
       const old = await this.generation.persistence.findLatestValid(userId, today);
       if (old) records.push(old);
@@ -36,13 +36,13 @@ export class RecommendationReadService {
         const batchId = deterministicRequestId(`instant-batch:${userId}:${today}`);
         const flags = readRecommendationFeatureFlags(process.env);
         const generated = await (flags.RECOMMENDATION_V2_CURRENT_ENABLED
-          ? this.generationV2.generateAndPublish(userId, today, today, user.timezone, batchId, "instant")
-          : this.generation.generateAndPublish(userId, today, today, user.timezone, batchId, "instant")).catch(() => null);
+          ? this.generationV2.generateAndPublish(userId, today, today, "Asia/Shanghai", batchId, "instant")
+          : this.generation.generateAndPublish(userId, today, today, "Asia/Shanghai", batchId, "instant")).catch(() => null);
         if (generated) records.push(generated);
       }
     }
     records.sort((a, b) => a.targetDate.localeCompare(b.targetDate));
-    return RecommendationReadResponseSchema.parse({ timezone: user.timezone, pairConsistent, items: records.map(display) });
+    return RecommendationReadResponseSchema.parse({ timezone: "Asia/Shanghai", pairConsistent, items: records.map(display) });
   }
 }
 

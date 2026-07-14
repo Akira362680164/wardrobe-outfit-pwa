@@ -68,6 +68,7 @@ export const WeatherEvidenceSchema = z.object({
   feelsLikeMaxC: z.number().finite().min(-80).max(80).optional(),
   rainProbability: z.number().finite().min(0).max(100).optional(),
   windLevel: z.number().int().min(0).max(12).optional(),
+  weatherCode: z.string().regex(/^\d{3}$/).optional(),
   summary: z.string().trim().min(1).max(120),
 }).strict().superRefine((value, ctx) => {
   if (value.temperatureMinC !== undefined && value.temperatureMaxC !== undefined && value.temperatureMinC > value.temperatureMaxC) issue(ctx, ["temperatureMinC"], "temperatureMinC must be <= temperatureMaxC");
@@ -191,7 +192,7 @@ const refineEngineInput = (value: z.infer<typeof RecommendationEngineInputObject
 };
 export const RecommendationEngineInputSchema = RecommendationEngineInputObjectSchema.superRefine(refineEngineInput);
 
-const forbiddenWeatherFields = ["temperatureMinC", "temperatureMaxC", "feelsLikeMinC", "feelsLikeMaxC", "rainProbability", "windLevel"] as const;
+const forbiddenWeatherFields = ["temperatureMinC", "temperatureMaxC", "feelsLikeMinC", "feelsLikeMaxC", "rainProbability", "windLevel", "weatherCode"] as const;
 const refineV2Context = (value: { resolvedContext: z.infer<typeof ResolvedRecommendationContextSchema>; dateContextInput: z.infer<typeof DateContextInputSchema> }, ctx: z.RefinementCtx) => {
   const resolved = value.resolvedContext;
   const dateInput = value.dateContextInput;

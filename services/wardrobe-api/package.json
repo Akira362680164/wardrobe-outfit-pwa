@@ -8,7 +8,7 @@
     "dev": "tsx watch src/server.ts",
     "dev:e2e": "tsx src/server.ts",
     "prebuild": "npm --workspace @wardrobe/cloud-contracts run build",
-    "build": "tsc -p tsconfig.build.json",
+    "build": "tsc -p tsconfig.build.json && tsc -p tsconfig.smoke.json",
     "pretypecheck": "npm --workspace @wardrobe/cloud-contracts run build",
     "typecheck": "tsc --noEmit -p tsconfig.json",
     "pretest": "npm --workspace @wardrobe/cloud-contracts run build",
@@ -20,6 +20,7 @@
     "recommendation-worker:run-once": "node dist/recommendations/worker-entry.js --run-once",
     "recommendation-readiness:1d-c": "node dist/recommendations/readiness-entry.js",
     "qweather:smoke": "tsx scripts/qweather-1d-b-smoke.ts",
+    "qweather:smoke:1d-c1": "node dist-smoke/scripts/qweather-1d-c1-smoke.js",
     "start": "node dist/server.js"
   },
   "dependencies": {

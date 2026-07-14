@@ -23,7 +23,7 @@ export class RecommendationGenerationServiceV2 {
     const overview = await this.overview.get(userId, targetDate);
     const ruleVersion = overview.contextMode === "forecast" ? RECOMMENDATION_FORECAST_RULE_VERSION : RECOMMENDATION_LOCATIONLESS_RULE_VERSION;
     const generationRequestId = deterministicRequestId(`v2:${mode}:${userId}:${targetDate}:${generationBatchId}:${ruleVersion}:${overview.contextResolvedAt}`);
-    const workspace = await this.adapter.load(userId, targetDate, asOfDate, overview.targetTimezone, generationRequestId);
+    const workspace = await this.adapter.load(userId, targetDate, asOfDate, "Asia/Shanghai", generationRequestId);
     if (workspace.skipReason) return { command: null, skipReason: workspace.skipReason };
     const resolvedContext = {
       targetDate, targetTimezone: overview.targetTimezone, contextResolvedAt: overview.contextResolvedAt, contextMode: overview.contextMode,

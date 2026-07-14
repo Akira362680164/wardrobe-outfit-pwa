@@ -1,13 +1,18 @@
 import { describe, expect, it } from "vitest";
 import { BoundedAsyncQueue } from "../src/recommendations/bounded-queue.js";
 import { inferWeatherEvidence } from "../src/recommendations/workspace-adapter.js";
-import { nextShanghaiSchedule } from "../src/recommendations/worker.js";
+import { REGENERATION_POLL_INTERVAL_MS, nextShanghaiSchedule } from "../src/recommendations/worker.js";
 import { RecommendationReadQuerySchema, RecommendationReadResponseSchema } from "@wardrobe/cloud-contracts";
 
 describe("recommendation worker scheduling and bounded queue", () => {
   it("computes the next 03:30 Asia/Shanghai boundary before and after today's trigger", () => {
     expect(nextShanghaiSchedule(new Date("2026-07-13T19:29:00.000Z")).toISOString()).toBe("2026-07-13T19:30:00.000Z");
     expect(nextShanghaiSchedule(new Date("2026-07-13T19:31:00.000Z")).toISOString()).toBe("2026-07-14T19:30:00.000Z");
+  });
+
+  it("polls daytime regeneration comfortably inside the 60 second SLA", () => {
+    expect(REGENERATION_POLL_INTERVAL_MS).toBeGreaterThan(0);
+    expect(REGENERATION_POLL_INTERVAL_MS).toBeLessThanOrEqual(30_000);
   });
 
   it("applies producer backpressure at capacity 64 with concurrency one and loses no tasks", async () => {

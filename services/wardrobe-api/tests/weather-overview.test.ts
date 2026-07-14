@@ -19,17 +19,39 @@ describe("WeatherOverview evidence aggregation", () => {
   it("uses today now/hourly/daily without leaking now into tomorrow", async () => {
     const endpoints: string[] = [];
     const data: Record<string, unknown> = {
-      now: { observedAt: "2026-07-14T19:54:00.000+08:00", temperatureC: 31, feelsLikeC: 34, weatherCode: "101", weatherText: "多云" },
-      hourly: [{ time: "2026-07-14T21:00:00.000+08:00", temperatureC: 30, weatherCode: "305", weatherText: "小雨", rainProbability: 60, windScale: "3-4" }, { time: "2026-07-15T09:00:00.000+08:00", temperatureC: 29, weatherCode: "101", weatherText: "多云", rainProbability: 10 }],
+      now: { observedAt: "2026-07-14T19:54:00.000+08:00", temperatureC: 31, feelsLikeC: 34, weatherCode: "305", weatherText: "小雨", precipitationMm: 0.8, windScale: "5-6" },
+      hourly: [
+        { time: "2026-07-14T19:00:00.000+08:00", temperatureC: 32, weatherCode: "399", weatherText: "过去的暴雨", rainProbability: 100, windScale: "11-12" },
+        { time: "2026-07-14T21:00:00.000+08:00", temperatureC: 30, weatherCode: "101", weatherText: "多云", rainProbability: 20, windScale: "3-4" },
+        { time: "2026-07-15T09:00:00.000+08:00", temperatureC: 29, weatherCode: "101", weatherText: "多云", rainProbability: 10 },
+      ],
       daily: [{ date: "2026-07-14", temperatureMinC: 26, temperatureMaxC: 33, dayWeatherCode: "101", dayWeatherText: "多云", nightWeatherCode: "305", nightWeatherText: "小雨" }, { date: "2026-07-15", temperatureMinC: 25, temperatureMaxC: 32, dayWeatherCode: "100", dayWeatherText: "晴", nightWeatherCode: "150", nightWeatherText: "晴" }],
     };
-    const service = new WeatherOverviewService({ resolver: { resolve: async (_u, date) => ({ ...context, targetDate: date }) }, cache: { get: async (key: any) => { endpoints.push(key.endpoint); return { data: data[key.endpoint], ...meta }; } }, provider: {} as any, clock: () => new Date("2026-07-14T04:00:00.000Z") });
+    const service = new WeatherOverviewService({ resolver: { resolve: async (_u, date) => ({ ...context, targetDate: date }) }, cache: { get: async (key: any) => { endpoints.push(key.endpoint); return { data: data[key.endpoint], ...meta }; } }, provider: {} as any, clock: () => new Date("2026-07-14T12:00:00.000Z") });
     const today = await service.get("user", "2026-07-14");
-    expect(today).toMatchObject({ contextMode: "forecast", weatherEvidence: { temperatureMinC: 26, temperatureMaxC: 33, feelsLikeMinC: 34, rainProbability: 60, windLevel: 4 } });
+    expect(today).toMatchObject({ contextMode: "forecast", weatherEvidence: { temperatureMinC: 26, temperatureMaxC: 33, feelsLikeMinC: 34, rainProbability: 100, windLevel: 6, weatherCode: "305" } });
+    expect(today.weatherEvidence.summary).toContain("小雨");
     endpoints.length = 0;
     const tomorrow = await service.get("user", "2026-07-15");
     expect(endpoints.sort()).toEqual(["daily", "hourly"]);
     expect(tomorrow.weatherEvidence).not.toHaveProperty("feelsLikeMinC");
+    expect(tomorrow.weatherEvidence).not.toHaveProperty("weatherCode");
+    expect(tomorrow.weatherEvidence.rainProbability).toBe(10);
+  });
+
+  it("reduces confidence when any participating endpoint is stale", async () => {
+    const data: Record<string, unknown> = {
+      now: { observedAt: "2026-07-14T19:54:00.000+08:00", temperatureC: 31, weatherCode: "101", weatherText: "多云" },
+      hourly: [{ time: "2026-07-14T21:00:00.000+08:00", temperatureC: 30, weatherCode: "305", weatherText: "小雨", rainProbability: 60 }],
+      daily: [{ date: "2026-07-14", temperatureMinC: 26, temperatureMaxC: 33, dayWeatherCode: "101", dayWeatherText: "多云", nightWeatherCode: "305", nightWeatherText: "小雨" }],
+    };
+    const service = new WeatherOverviewService({
+      resolver: { resolve: async () => context },
+      cache: { get: async (key: any) => ({ data: data[key.endpoint], ...meta, freshness: key.endpoint === "hourly" ? "stale" as const : "fresh" as const }) },
+      provider: {} as any,
+      clock: () => new Date("2026-07-14T12:00:00.000Z"),
+    });
+    expect((await service.get("user", "2026-07-14")).weatherEvidence.weatherConfidence).toBe(0.7);
   });
 
   it("keeps travel context but clears weather values beyond the seven-day window", async () => {

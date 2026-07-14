@@ -6,6 +6,8 @@ import { Pool, type PoolClient } from "pg";
 import { PublishDailyRecommendationCommandSchema, type PublishDailyRecommendationCommand } from "@wardrobe/cloud-contracts";
 
 import { generateRecommendations, RecommendationGenerationConflictError, RecommendationJobRepository, RecommendationPersistenceService, RecommendationWorker, type RecommendationPublishStage } from "../src/recommendations/index.js";
+import { RecommendationRegenerationService } from "../src/recommendations/regeneration-service.js";
+import { RecommendationReadService } from "../src/recommendations/read-service.js";
 import { buildFixtureInput } from "./fixtures/recommendations/scenarios.js";
 
 const databaseUrl = process.env.WARDROBE_RECOMMENDATION_TEST_DATABASE_URL ?? "postgresql:///wardrobe_test";
@@ -89,13 +91,13 @@ afterAll(async () => {
 }, 30_000);
 
 describe("daily recommendation real PostgreSQL migration", () => {
-  it("replays the empty database and upgrades the current 0018 baseline through 0022", async () => {
+  it("replays the empty database and upgrades the current 0018 baseline through 0023", async () => {
     const full = await pool.query("select count(*)::int as count from information_schema.tables where table_schema = $1 and table_name = 'daily_recommendations'", [schema]);
     expect(full.rows[0].count).toBe(1);
     await createSchema(upgradeSchema);
-    await applyMigrations(upgradeSchema, migrationFiles.filter((file) => !file.startsWith("0019_") && !file.startsWith("0020_") && !file.startsWith("0022_")));
+    await applyMigrations(upgradeSchema, migrationFiles.filter((file) => !file.startsWith("0019_") && !file.startsWith("0020_") && !file.startsWith("0022_") && !file.startsWith("0023_")));
     expect((await admin.query("select to_regclass($1) as table_name", [`${upgradeSchema}.daily_recommendations`])).rows[0].table_name).toBeNull();
-    await applyMigrations(upgradeSchema, migrationFiles.filter((file) => file.startsWith("0019_") || file.startsWith("0020_") || file.startsWith("0022_")));
+    await applyMigrations(upgradeSchema, migrationFiles.filter((file) => file.startsWith("0019_") || file.startsWith("0020_") || file.startsWith("0022_") || file.startsWith("0023_")));
     expect((await admin.query("select to_regclass($1) as table_name", [`${upgradeSchema}.daily_recommendations`])).rows[0].table_name).toBe("daily_recommendations");
     expect((await admin.query("select to_regclass($1) as table_name", [`${upgradeSchema}.recommendation_job_runs`])).rows[0].table_name).toBe("recommendation_job_runs");
     expect((await admin.query("select to_regclass($1) as table_name", [`${upgradeSchema}.recommendation_regeneration_requests`])).rows[0].table_name).toBe("recommendation_regeneration_requests");
@@ -103,6 +105,29 @@ describe("daily recommendation real PostgreSQL migration", () => {
 });
 
 describe("daily recommendation atomic publication and idempotency", () => {
+  it("lets only one worker claim a request and rejects a stale lease token before current publication", async () => {
+    await pool.query("update recommendation_regeneration_requests set status='completed',claim_token=null,lease_expires_at=null,generation_batch_id=null,locked_at=null,completed_at=now() where status in ('pending','processing')");
+    const userId = await createUser();
+    const targetDate = "2026-07-18";
+    const regeneration = new RecommendationRegenerationService(pool, {} as any);
+    await regeneration.enqueueExplicit(userId, targetDate, { clientMutationId: randomUUID() });
+    const [left, right] = await Promise.all([regeneration.claimNext("2026-07-14"), regeneration.claimNext("2026-07-14")]);
+    const oldClaim = left ?? right;
+    expect([left, right].filter(Boolean)).toHaveLength(1);
+    await pool.query("update recommendation_regeneration_requests set lease_expires_at=now()-interval '1 second' where id=$1", [oldClaim!.requests[0]!.id]);
+    const newClaim = await regeneration.claimNext("2026-07-14");
+    expect(newClaim?.claimToken).not.toBe(oldClaim?.claimToken);
+    await expect(service.publishGuarded(command({ userId, targetDate, generationBatchId: oldClaim!.generationBatchId }), {
+      requestIds: oldClaim!.requests.map((request) => request.id), claimToken: oldClaim!.claimToken, generationBatchId: oldClaim!.generationBatchId,
+    })).rejects.toThrow(/claim fenced/);
+    expect(await service.findCurrent(userId, targetDate)).toBeNull();
+    const record = await service.publishGuarded(command({ userId, targetDate, generationBatchId: newClaim!.generationBatchId }), {
+      requestIds: newClaim!.requests.map((request) => request.id), claimToken: newClaim!.claimToken, generationBatchId: newClaim!.generationBatchId,
+    });
+    expect((await service.findCurrent(userId, targetDate))?.id).toBe(record.id);
+    expect(await regeneration.finishClaim(newClaim!, [record.id])).toBe(true);
+  });
+
   it("publishes today and tomorrow atomically with one batch and never exposes a mixed pair", async () => {
     const userId = await createUser();
     const oldBatch = randomUUID();
@@ -295,6 +320,16 @@ describe("recommendation worker real PostgreSQL end to end", () => {
     expect(await secondRepo.tryAcquireGlobalLock()).toBeNull();
     await firstRepo.releaseGlobalLock(first!);
     const after = await secondRepo.tryAcquireGlobalLock(); expect(after).not.toBeNull(); await secondRepo.releaseGlobalLock(after!);
+  });
+
+  it("uses Asia/Shanghai for ordinary worker business dates regardless of profile timezone", async () => {
+    const userId = await createUser();
+    await pool.query("insert into profiles (user_id, origin_device_id, payload) values ($1, 'test', $2::jsonb)", [userId, JSON.stringify({ timezone: "America/Los_Angeles" })]);
+    const tasks = (await new RecommendationWorker(pool).selectTasks(new Date("2026-07-14T18:00:00.000Z"))).filter((task) => task.userId === userId);
+    expect(tasks.filter((task) => task.homePair).map((task) => task.targetDate)).toEqual(["2026-07-15", "2026-07-16"]);
+    expect(new Set(tasks.map((task) => task.asOfDate))).toEqual(new Set(["2026-07-15"]));
+    expect(new Set(tasks.map((task) => task.timezone))).toEqual(new Set(["Asia/Shanghai"]));
+    expect((await new RecommendationReadService(pool).read(userId, "2026-08-20", "2026-08-20")).timezone).toBe("Asia/Shanghai");
   });
 
   it("adapts representative workspace data, skips actual and primary dates, includes far travel, and records a controlled job", async () => {

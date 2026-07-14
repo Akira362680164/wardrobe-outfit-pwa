@@ -1,3 +1,28 @@
+## 2026-07-15 / v2.1.24-test / Codex — UI Skill 双路由与 GitHub 专项收敛
+
+- **UI 与动效路由**：本机根 `AGENTS.md` 明确要求 UI 设计、重构、审查、打磨和响应式/无障碍优化先按 `impeccable` Skill 执行；涉及动画、手势、拖拽/滑动、Sheet、弹簧、速度继承、可中断转场、空间连续性或 reduced-motion 时再同时使用 `apple-design` Skill。两者都必须先读各自 `SKILL.md` 并完成规定 setup，且不得覆盖项目 UI 规范、真实截图结构和现有 motion token。
+- **GitHub 单一专项**：删除治理路由和专项文档中的 ChatGPT 审查包部分，将 `docs/development/codebase-export-workflows.md` 收敛并重命名为 `docs/development/public-github-workflow.md`；当前专项只保留公开仓库的 main 脱敏导出、独立 staging、敏感排除、验证、提交、推送和私有仓库记录流程。
+- **范围与验证**：仅修改本机治理入口、专项文档和版本历史，不修改 UI 运行时代码、动效 token、导出脚本、package script、客户端、服务端、小程序或生产环境。风险门禁 `low`；通过 Skill 规则核对、路由目标检查、ChatGPT 审查包关键词清零、`git diff --check` 和提交范围核对。未触发 subagent：用户未通知。
+
+## 2026-07-15 / v2.1.24-test / Codex — AGENTS 任务路由瘦身与生产镜像生命周期治理
+
+- **本机治理入口**：把本机根 `AGENTS.md` 从 541 行收敛为 152 行，顶部新增按 Git、生产部署、Android、UI、审查协作和代码导出分类的任务路由；主文件只保留指令优先级、Session 隔离、线上唯一数据源、删除/隐私、共享契约、UI/小程序、APK、生产和协作等不可违反的硬边界。`AGENTS.md` 继续遵守既有 `.gitignore`，仅保存在本机，不强制进入 Git。
+- **专项文档**：新增 `docs/development/android-verification.md`、`docs/development/agent-review-workflow.md`、`docs/development/codebase-export-workflows.md`，分别承接 APK/ADB/E2E、风险门禁/subagent/交接、ChatGPT 审查包与公开 GitHub 发布细则；根路由要求任务同时命中多类时全部读取，链接缺失或冲突时停止高风险操作。
+- **Docker 生命周期**：`deploy/docs/production-deploy.md` 增加生产镜像与 release 保留策略：API/Worker 共用当前 Wardora 镜像，长期只保留当前和一个已验证回滚镜像；构建/部署/回滚/清理串行，活跃构建时禁止清理，按真实 image ID 和逐项白名单处理，明确禁止 `docker system prune -a --volumes`，保护 PostgreSQL 镜像/数据卷、Secret、备份和回滚锚点。
+- **范围与验证**：仅治理和运维文档，不修改运行时代码、部署脚本、Compose、数据库、客户端、小程序、版本号或生产服务器。风险门禁 `low`；通过 Markdown 路由链接检查、关键硬规则覆盖检查、`git diff --check`、文档 diff 和工作区范围核对。未触发 subagent：用户未通知。
+
+## 2026-07-15 / v2.1.24-test / Codex — 推荐后端 1D-C.1 重算一致性与今日天气聚合收口
+
+- **原子重算与快速消费**：今天/明天重算共享 `generationBatchId`，先 prepare 后经带 fencing 的 `publishHomePair` 单事务切换；任一日期受 actual/confirmed primary 保护或生成失败时，两日旧 current 均继续可读。独立 Worker 保留 Asia/Shanghai 03:30 全量跑批，同时每 15 秒消费 due regeneration，使正常请求在白天 60 秒 SLA 内开始，`next_attempt_at` 退避到期后无需等待次日。
+- **lease、fencing 与不丢触发**：迁移 0023 为 processing 增加有限 lease、claim token、批次与 trigger generation；过期 claim 可被回收，旧 Worker 的 publish/fail/complete 均被数据库事务内 fencing 拒绝。processing 期间再次触发会递增 trigger generation，当前 claim 完成后留下可见 pending 后继，不吞地点、衣物或天气变化。
+- **显式 reassess 幂等**：改为 trigger-first 且持久化 `clientMutationId → request fingerprint`；首次提交成功但响应丢失后，同用户、同 key、同内容重放返回同一逻辑请求，不同日期或内容仍稳定 409。数据库仍负责去重，前端防重复不是一致性边界。
+- **天气与时间口径**：今日严格聚合实时 now、daily 与目标时区当前小时至今晚 hourly，排除过去小时；now 降雨、天气代码和风进入摘要/穿搭 evidence，明日不混 now。`weatherConfidence` 按所有实际参与 endpoint 计算，fresh/stale 混合降为受控低置信。首页、临时覆盖与 Worker 业务日期固定 Asia/Shanghai，地点 timezone 仅用于供应商目标日与跨日天气。
+- **行程一致性**：重叠行程先按权威顺序选定唯一行程，再从同一行程读取场景语义与严格 `weatherLocation`；较新权威行程无标准地点时不会借用较旧行程天气地点，旧自由文本仍不自动地理编码。
+- **测试先行**：人工手写预期先得到纯逻辑 `4 failed` 与真实 PostgreSQL `3 failed` 红灯；转绿覆盖 pair、双 Worker 竞争、lease 回收、旧 claim fencing、处理中再触发、trigger-first 丢响应重放、退避调度、now 雨风/天气代码、过去小时排除、明日隔离、mixed freshness、上海业务日期与重叠行程。原 24 Golden 未修改，V2 100 次确定性与乱序不变继续通过。
+- **联调与边界**：新增只面向隔离库/合成账号的受控 QWeather 1D-C.1 烟测，硬上限 now/hourly/daily 各 1 次，随后重复 Overview 必须复用 shared PostgreSQL cache；输出不含用户、坐标、LocationID、JWT、PEM 或上游 body。未改 UI、未启用 PAW/alerts/historical climate、未增加天气 API、未构建 APK/上传体验版。
+- **生产收口**：代码提交 `45f460f`、smoke 修复 `c20ef15`，runtime main=`8c343d4`。备份 `backups/recommendation-1d-c1-20260715-002652/` 的数据库为 3,445,849 bytes / SHA-256 `2476486c20fec59b66d71a1215c623bb1beebd506a3ef1b7448f71df3b5f1620`；隔离恢复正式 migrator 22→23、旧镜像 migrator 兼容。受控 QWeather 新增严格为 3 次（now/hourly/daily 各 1），缓存复读增量 0；生产 shadow 146 dates / failed 0 / budget 0，正式批次 146 targets / failed 0，午夜后原 18 组混批降为 0。due 合成请求 9 秒开始、2 dates / 1 batch，清理残留 0。
+- **生产镜像与门禁**：API/Worker=`wardrobe-api:8c343d4`，镜像 ID `sha256:defc31dbfb95a83d172a98304a04c93d58090feac5a245605a735603daea006f`；回滚 `wardrobe-api:9353c6d` / `sha256:a0f07a2dde3741d4cf6acf26a98ccf71723eda56d4ce67c3f4d635f0e2ccfda4`。迁移 23，API/Worker 重启 0，内外 health/ready/version 与三条无授权 401 通过；两容器 V2 三开关 true，PAW/alerts/historical=false，Secret root:root 0400 且 RW=false，敏感/标识/致命日志匹配 0。
+
 ## 2026-07-14 / v2.1.23-test / Codex — 推荐后端 1D-C A/B/C 本地实现与生产门禁准备
 
 - **A 地点与天气**：补严 weather_cache endpoint 判别 union 与 repository/service 双重校验；新增 user-date resolver、严格旅行 `weatherLocation` 写入边界、WeatherOverview 和鉴权 API。优先级固定为 travel > temporary override > home city > locationless；旧 destination 不猜测，7 日外保留旅行地点但返回 `forecast_out_of_range`。

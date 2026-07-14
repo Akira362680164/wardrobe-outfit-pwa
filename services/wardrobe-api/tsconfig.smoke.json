@@ -1,0 +1,9 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "rootDir": ".",
+    "outDir": "dist-smoke",
+    "noEmit": false
+  },
+  "include": ["src/**/*.ts", "scripts/qweather-1d-c1-smoke.ts"]
+}
