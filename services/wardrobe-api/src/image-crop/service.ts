@@ -56,6 +56,12 @@ export class ProcessCropSidecar implements CropSidecar {
         chunks.push(chunk);
       });
       child.on("error", reject);
+      child.stdin.on("error", (error: NodeJS.ErrnoException) => {
+        // A timeout/crash can close the pipe while a large image request is still
+        // being written. The child close/timeout path owns the user-facing error;
+        // consuming EPIPE here prevents it from crashing the API process.
+        if (error.code !== "EPIPE") reject(error);
+      });
       child.on("close", (code) => {
         clearTimeout(timer);
         if (code !== 0 || outputBytes > 64 * 1024) return reject(new Error("crop sidecar failed"));
