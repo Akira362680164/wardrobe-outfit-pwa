@@ -5,7 +5,8 @@
 - **C 持久化重算**：迁移 0022 新增 `recommendation_regeneration_requests`、触发合并、SKIP LOCKED claim、有限退避与幂等 clientMutationId；新增鉴权 reassess API。V2 current 未启用时不消费队列，成功切换前旧 current 保持可读。
 - **测试先行与本地门禁**：手写 endpoint 错配/污染缓存/四级地点/天气聚合/兼容/重算预期并取得真实红灯；API 全量 `284/284`，真实 PostgreSQL `32/32`，V1 `49/49`、V2 `40/40`（含 100 次确定性），原 24 Fixture/Golden 零改动且 shadow 匹配。cloud/API/root/小程序 typecheck、根 `test:logic:all`、穿搭计划 `57+88+40`、manifest、production build 通过；本地新增 QWeather 上游调用 `0`。
 - **生产 shadow 阻断修复**：首次隔离恢复报告在 `146` 个 user-date 中准确拦下 `14` 个旧中文/非法 style 枚举异常；workspace adapter 改用共享 catalog normalizer，让旧非法枚举降级为空 evidence 而非整日失败，并把真实 PostgreSQL 回归从容忍失败收紧为 Worker `failedCount=0`。V2/current 在修复复验前保持关闭。
-- **边界与下一门禁**：版本递增至 `2.1.23-test`；未改 UI、未构建 APK、未上传小程序、未启用 PAW/alerts/historical climate。脱敏实现证据见 `docs/recommendations/RECOMMENDATION_1D_C_EVIDENCE.md`；生产备份/恢复、shadow、V2 current、双分支与清理另行在同一任务收口。
+- **边界**：版本递增至 `2.1.23-test`；未改 UI、未构建 APK、未上传小程序、未启用 PAW/alerts/historical climate。完整脱敏证据见 `docs/recommendations/RECOMMENDATION_1D_C_EVIDENCE.md`。
+- **生产收口**：备份 `/opt/wardrobe-cloud/backups/recommendation-1d-c-20260714-220702/` 后，隔离恢复由迁移 21→22，并验证旧 `011e4d9` 镜像兼容。首次 shadow 拦下 14 个旧 style 失败，提交 `0ede447` 修复并复跑两套 shadow 为 146 dates / failed 0 / upstream budget 0。正式批次 completed：V2 current 146（ready 14、not_ready 132、全 locationless），V1 历史 710 保留，home pair 混批、current 重复、重算卡死均 0；API/Worker 零重启，Secret root:root 0400/只读，PAW/alerts/historical=false，秘密日志匹配 0。首轮 main→wechat 同步为 `25b8181` 且小程序 typecheck 通过。
 
 ## 2026-07-14 / v2.1.22-test / Codex — 推荐后端 1D-B 地点与 QWeather 基础设施
 

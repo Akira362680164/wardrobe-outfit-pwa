@@ -48,7 +48,14 @@ Expected 均人工手写，未从实现反向生成。
 
 ## 生产证据
 
-生产备份、隔离恢复迁移、暗部署、shadow 分布、正式 V2 current 灰度、镜像/回滚、开关、Secret 权限和双分支收口证据将在生产门禁通过后追加；任何门禁失败均保留 V1 current 与旧镜像。
+- 生产切换前核对旧镜像 `wardrobe-api:011e4d9`、迁移 21、V1 current 132、V2 total/current 0/0。备份目录 `/opt/wardrobe-cloud/backups/recommendation-1d-c-20260714-220702/`；数据库 2,898,984 bytes，SHA-256 `2d872b7a998aa850adc3a2358ec1b71dc1e458dceb2dcbb09f7fb17f6e226d6f`；脱敏部署环境与 compose SHA 分别为 `7d7f1846f87e599c32b466311efc5f96b0a49a3b74931cf734a95d9aeeca61cc`、`5e6229bb8d173e438cc141c6734b474465e623271aa6ffbc2edc5d77691c54ee`。
+- 生产备份恢复到 `wardrobe_restore_1dc_20260714`，正式 migrator 成功 21→22；新表、4 个索引、5 个触发器存在，21 个用户和 710 条推荐记录保持。旧镜像 `011e4d9` 能直接读取迁移后库，证明加法迁移的镜像回滚路径可用。
+- 首次 `ccba6dc` 暗部署保持 V2 三开关 false；隔离 shadow 的 14 个旧 style 失败触发门禁，未写 current。修复提交 `0ede447` 后，隔离恢复与受控生产报告均为：21 用户、146 user-date、user ready/not_ready=2/19、date ready/not_ready=14/132、failed=0、locationless=146、唯一 location/cache key=0、上游请求上限=0。
+- 全门禁复跑后启用 V2 shadow/worker/current 并运行一次受控批次：job `completed`，targets=146、ready=14、fallback=132、failed=0；V2 total/current=146/146，context 全为 locationless，V1 710 条历史行保留、V1 current=0。current 重复组 0；today/tomorrow home pair 20 组、混批 0；重算请求 total/stuck/active-duplicate 均为 0。
+- 正式代码镜像 `wardrobe-api:0ede447`，镜像 ID `sha256:a0f07a2dde3741d4cf6acf26a98ccf71723eda56d4ce67c3f4d635f0e2ccfda4`；回滚镜像 `wardrobe-api:011e4d9`，镜像 ID `sha256:24a0c94d6d26a9a7f46a711e32c7dd36aab505f35e027c91bc63de42fcd11b30`。API/Worker 重启数 0，内外网 health/ready/version 通过，version=`0ede447`；Overview/read/reassess 无凭据均 401。
+- API/Worker 的 V2 三开关均 true；三个 PAW、alerts、historical climate 均 false。两容器各持 6 个 QWeather 配置键，私钥在宿主/API/Worker 均为 root:root 0400、mount RW=false。秘密/JWT/坐标/Project ID/Credential ID/fatal 日志匹配均为 0。
+- 生产没有标准地点记录，因此本批真实新增 QWeather 上游请求严格为 0，天气 cache 行保持 0；费用硬上限预计算为 0。未用无意义的重复上游调用制造验收证据。
+- 共享合同先入 `main`；首轮正式同步后 `wechat/miniprogram=25b8181`，小程序 typecheck 通过，未上传体验版。最终文档提交、分支同步与临时 worktree/分支清理在同一任务最后执行。
 
 ## 未覆盖范围
 
