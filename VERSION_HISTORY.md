@@ -1,3 +1,37 @@
+Warning: truncated output (original token count: 71716)
+Total output lines: 1548
+
+## 2026-07-14 / v2.1.22-test / Codex — 推荐后端 1D-A.1 验收收口修复
+
+- **严格合同修复**：Payload V1 与 V2 `forecast` 现在同时拒绝 `adaptable_conditions`；`locationless` / `weather_fallback` 对 shortlist/display 的外层及 `pawEvaluation` 嵌套 reason/risk 做逐项天气审计，并锁定 `thermalStrategy=layer`、`rainStrategy=none`、`confidence=low`，拒绝四项天气派生 avoidRules，保留活动派生 `avoid_high_heels`。未改 V1 引擎、forecast 委托、Worker、读取路由、PAW 入口或 UI。
+- **测试先行与 Fixture**：先手写反例后得到真实红灯 `3 failed / 33 passed`，分别证明旧 Schema 接受 V1/forecast 专用原因码、generic 嵌套伪天气和错误 DateContext；修复后 V2 专项 `36/36`。在原 24 个 V1 Fixture/Golden 零改动基础上，保留一套连衣裙+鞋为 `limited`，新增两件连衣裙×两双鞋达到 `ready`，并以 `[0,40]` 非配饰向量冻结 20℃ cap；1D-A 手写 expected 总数由 12 增至 14。
+- **本地验证**：推荐 V1/V2/contracts/Worker/routes `104/104`，API 全量 `237/237`，cloud contracts/API/root typecheck、根 `test:logic`、穿搭计划 `57+88+40`、manifest、原 24 Fixture shadow check、production build 与 `git diff --check` 全部通过。小程序 typecheck 在正式分支同步阶段执行；未构建 APK、未发布小程序体验版。
+- **集成与部署**：开发提交、`main` / `wechat/miniprogram` 同步、生产镜像与运行证据在本记录后续收口补齐。
+- **风险门禁**：`high`（共享合同与生产 API 重新部署）；QWeather、GeoAPI、地点/天气持久化、V2 Worker/current 写入、推荐读取路由、PAW 真实调用和客户端展示仍明确不在本批。
+
+## 2026-07-14 / v2.1.22-test / Codex — 推荐后端 1D-A 三模式严格合同与纯算法
+
+- **执行与边界**：Codex 在独立 `codex/recommendation-backend-1d-a` worktree 按 v0.7.3-integrated 第 8/9/13/15 章测试先行实施。原样保留 Payload V1、`generateRecommendations`、workspace adapter、generation service、worker 和读路由；本批不做 QWeather/GeoAPI、地点与天气持久化、UI/位置权限、PAW 调用或 V2 current 写入。
+- **严格合同**：新增 `ResolvedRecommendationContext`、`RecommendationEngineInputV2Schema`、固定 `schemaVersion=2` 的 Payload V2 及 `V2 | V1` union；发布命令和持久化记录同时解析新旧 payload，并以 `superRefine` 交叉校验日期、时区、地点、天气字段、固定 summary、解析时间、ruleVersion 和 V2 algorithmVersion。
+- **纯算法**：`forecast` 完全委托 V1 并通过完整 `engineOutput` 深度相等门禁；`locationless` / `weather_fallback` 不做温度和降雨硬过滤，严格实现单品和候选适应性公式、区间并集、可脱外层、极端单组合惩罚与 `adaptable_conditions >= 75` 边界，禁止天气型 reason/risk。
+- **Fixture 与红绿灯**：现有 24 个 1A Fixture/Golden 未修改、未生成覆盖；独立手写 5 个 V2 模式/readiness 场景和 7 个冻结验算向量，共 12 个新 expected。依赖恢复后的真实红灯为 V2 专项 `20 failed / 11 passed`，失败指向未存在的 V2 Schema/引擎/评分函数；实现后 `31/31` 通过。
+- **验证**：V1 引擎 `49/49`，V1/V2 + contracts/worker/routes 联合 `99/99`，API 全量 `232/232`；cloud contracts/API/根项目/小程序 typecheck、根 `test:logic`、穿搭计划 `57+88+40`、manifest、原 24 Fixture shadow check 和 production build 全部通过。证据见 `docs/recommendations/RECOMMENDATION_1D_A_EVIDENCE.md`。
+- **集成、部署与开关**：开发提交 `57281ab`已串行合入并推送 `main` 合并提交 `cbae222`；共享合同同步至 `wechat/miniprogram` 提交 `8407ed0`，小程序 typecheck 通过，未发布体验版。生产前备份位于 `/opt/wardrobe-cloud/backups/recommendation-1d-a-20260714-180208/`，数据库转储 SHA-256 为 `ab81a766aadc1b5dcf0be7b99df4838756cef4015775328dd18f57c8412a9300`；API 与现有 V1 worker 已切换镜像 `wardrobe-api:cbae222`（镜像 ID `sha256:2cdf1429768d46c7d2a2674d6dd01cdacf8a3da988e1eb92f4c2b829f779d39d`），旧镜像 `wardrobe-api:60df9beb` 保留回滚。迁移记录保持 `20`，容器重启数均为 `0`，本机/公网 health、ready、version 和未授权 `401` 通过，V2 路由为 `404`；库内 current `132`、V2 总记录 `0`、V2 current `0`。`DAILY_RECOMMENDATIONS_ENABLED=true` 继续表示现有 1C worker，三个 PAW 开关均为 `false`，未增加或启用 V2 worker 入口。
+- **风险门禁**：`high`（共享合同与推荐纯引擎变更）；未触发 subagent：用户未通知。未覆盖真实 QWeather、生产 V2 写入/读取、客户端展示或真实用户衣橱，均属后续 1D-B/1D-C/2A–4 边界。
+
+## 2026-07-14 / v2.1.22-test / Codex — Wardora 推荐后端 1C 完整 Worker、批次读取与规则模式启用
+
+- **范围与边界**：在 1A 确定性规则引擎和 1B 原子持久化上完成 workspace→engine 共用 adapter、独立 `recommendation-worker`、`recommendation_job_runs`、03:30 Asia/Shanghai 调度、PostgreSQL 全局锁、容量 64/默认并发 1 背压队列、user-date 失败隔离、今天至 +6 与远期旅行任务选择、actual/primary 跳过、今日/明日同事务激活、鉴权读取 API 和当前日期规则-only 即时回退。未改 App/小程序 UI，未构建 APK；QWeather、真实 forecast、recommendation_actions 和 PAW 仍不在本批。
+- **真实数据与天气口径**：Worker、即时回退和测试共用 `RecommendationWorkspaceAdapter`，关系以 UUID/`outfit_items` 为准，映射状态、主图、领域字段、套装、穿着、反馈、锚点、偏好与旅行计划；规则降级只标记 `plan_semantic_inference`、`seasonal_inference` 或 `layering_default`，不伪装 forecast。代表性隔离 PostgreSQL 衣橱包含 6 件可用衣物、保存套装、正反馈穿着、远期出差、已安排/已穿跳过及归档/缺主图/缺字段排除，脱敏结果见 `docs/recommendations/REPRESENTATIVE_TEST_WARDROBE_1C.md`。
+- **数据库与并发证据**：新增 `0020_recommendation_worker.sql` 和 Drizzle schema；job 仅保存受控计数/错误码。真实 PostgreSQL 22/22 通过，覆盖空库全链、0018→0020 升级、MVCC、双日期原子可见、失败回滚、旧 current 保留、12 并发 revision、同键重放、连接终止、全局锁、完整 adapter→1A→1B→read 数据链和 30 天非 current 清理；reset/账户级联清单同步。
+- **本地门禁**：cloud contracts/API/root/小程序 typecheck、API 全量 201/201、Worker/读取专项 7/7、真实 PostgreSQL 22/22、根 `test:logic`、Next build、共享字典兼容与 `git diff --check` 通过。风险门禁 `high`；未触发 subagent：用户未通知。
+- **启用与隐私**：部署合同新增独立 Worker 服务；`DAILY_RECOMMENDATIONS_ENABLED=true`，`PAW_DATE_CONTEXT_ENABLED=false`、`PAW_CANDIDATE_EVALUATOR_ENABLED=false`、`PAW_INTAKE_CANONICALIZER_ENABLED=false`。API 不返回 shortlist/完整审计/自由模型文本；job summary 不保存图片、密钥、个人字段或自由堆栈。按日期关闭推荐尚无现有持久化来源，本批未编造前端实体，仅保留该后端合同边界。
+- **测试服务器实跑**：上线前备份 PostgreSQL 到 `/opt/wardrobe-cloud/backups/postgres/wardrobe-20260714-145551.sql`，并在隔离恢复库完成 `19 → 20` 迁移回放；最终服务镜像 `wardrobe-api:60df9beb`，API 与独立 Worker 均零重启且健康，Worker 正等待下一次 `2026-07-15 03:30 Asia/Shanghai`。手动 run-once `e83440b5-12f3-46a8-8d8f-ea1b2417b546` 在 `1.662s` 内处理 `146` 个 user-date：`ready=14`、`fallback=118`、`failed=14`、峰值队列 `64`、峰值 RSS `139227136` bytes；失败均隔离并只记录受控 `persistence_failed` / `candidate_generation_failed` 计数，未中止其余用户。
+- **代表性衣橱与读取证据**：通过正式 API 写入专用非个人测试账号的 9 件边界衣物、套装、正反馈穿着、远期出差和两类跳过计划；完整链路生成 7 个 current 日期，全部 `ready` 且每日期返回 3 套。今日/明日 `generationBatchId` 相同，全库混批 pair 为 `0`；远期旅行日期命中，primary/actual 日期未返回。鉴权读取为 `200`，无凭据为 `401`，错误设备为 `403`；天气证据只出现 `seasonal_inference` / `plan_semantic_inference`，未声称接入 QWeather。
+
+Warning: truncated output (original token count: 80054)
+Total output lines: 1726
+
 ## 2026-07-14 / v2.1.18-test / Codex — 小程序毛玻璃导航与一级卡片统一
 
 - **执行与版本**：Codex 在独立 `codex/glass-nav-mini-20260714` worktree 基于正式 `wechat/miniprogram` 实施；版本保持 `2.1.18-test`，不上传体验版、不提交审核、不修改服务端、共享契约、业务字段或持久化边界。
@@ -1706,21 +1740,3 @@
 - **验证结果**：`npm run typecheck`、`npm run build`、`test:logic:ui-overflow`、`test:logic:detail-shell`、`test:logic:component-reuse`、`test:logic:outfit`、`test:logic:ui-overlay-contract`、`test:logic:outfit-cover-consistency`、`git diff --check`、impeccable layout detector 均通过。
 - **风险门禁**：`medium`；未触发 subagent：用户未通知（仅按技能要求做只读布局/机械扫描）。
 - **未验证风险**：未在 Android 真机/模拟器执行本次新增编辑组成的实际触摸路径；既有 `test:logic:ui-token-contract` 仍因历史 4 项硬编码颜色失败，本批未修改相关文件。
-# 2026-07-14 / v2.1.22-test / Codex — Wardora 推荐后端 1C 完整 Worker、批次读取与规则模式启用
-
-- **范围与边界**：在 1A 确定性规则引擎和 1B 原子持久化上完成 workspace→engine 共用 adapter、独立 `recommendation-worker`、`recommendation_job_runs`、03:30 Asia/Shanghai 调度、PostgreSQL 全局锁、容量 64/默认并发 1 背压队列、user-date 失败隔离、今天至 +6 与远期旅行任务选择、actual/primary 跳过、今日/明日同事务激活、鉴权读取 API 和当前日期规则-only 即时回退。未改 App/小程序 UI，未构建 APK；QWeather、真实 forecast、recommendation_actions 和 PAW 仍不在本批。
-- **真实数据与天气口径**：Worker、即时回退和测试共用 `RecommendationWorkspaceAdapter`，关系以 UUID/`outfit_items` 为准，映射状态、主图、领域字段、套装、穿着、反馈、锚点、偏好与旅行计划；规则降级只标记 `plan_semantic_inference`、`seasonal_inference` 或 `layering_default`，不伪装 forecast。代表性隔离 PostgreSQL 衣橱包含 6 件可用衣物、保存套装、正反馈穿着、远期出差、已安排/已穿跳过及归档/缺主图/缺字段排除，脱敏结果见 `docs/recommendations/REPRESENTATIVE_TEST_WARDROBE_1C.md`。
-- **数据库与并发证据**：新增 `0020_recommendation_worker.sql` 和 Drizzle schema；job 仅保存受控计数/错误码。真实 PostgreSQL 22/22 通过，覆盖空库全链、0018→0020 升级、MVCC、双日期原子可见、失败回滚、旧 current 保留、12 并发 revision、同键重放、连接终止、全局锁、完整 adapter→1A→1B→read 数据链和 30 天非 current 清理；reset/账户级联清单同步。
-- **本地门禁**：cloud contracts/API/root/小程序 typecheck、API 全量 201/201、Worker/读取专项 7/7、真实 PostgreSQL 22/22、根 `test:logic`、Next build、共享字典兼容与 `git diff --check` 通过。风险门禁 `high`；未触发 subagent：用户未通知。
-- **启用与隐私**：部署合同新增独立 Worker 服务；`DAILY_RECOMMENDATIONS_ENABLED=true`，`PAW_DATE_CONTEXT_ENABLED=false`、`PAW_CANDIDATE_EVALUATOR_ENABLED=false`、`PAW_INTAKE_CANONICALIZER_ENABLED=false`。API 不返回 shortlist/完整审计/自由模型文本；job summary 不保存图片、密钥、个人字段或自由堆栈。按日期关闭推荐尚无现有持久化来源，本批未编造前端实体，仅保留该后端合同边界。
-- **测试服务器实跑**：上线前备份 PostgreSQL 到 `/opt/wardrobe-cloud/backups/postgres/wardrobe-20260714-145551.sql`，并在隔离恢复库完成 `19 → 20` 迁移回放；最终服务镜像 `wardrobe-api:60df9beb`，API 与独立 Worker 均零重启且健康，Worker 正等待下一次 `2026-07-15 03:30 Asia/Shanghai`。手动 run-once `e83440b5-12f3-46a8-8d8f-ea1b2417b546` 在 `1.662s` 内处理 `146` 个 user-date：`ready=14`、`fallback=118`、`failed=14`、峰值队列 `64`、峰值 RSS `139227136` bytes；失败均隔离并只记录受控 `persistence_failed` / `candidate_generation_failed` 计数，未中止其余用户。
-- **代表性衣橱与读取证据**：通过正式 API 写入专用非个人测试账号的 9 件边界衣物、套装、正反馈穿着、远期出差和两类跳过计划；完整链路生成 7 个 current 日期，全部 `ready` 且每日期返回 3 套。今日/明日 `generationBatchId` 相同，全库混批 pair 为 `0`；远期旅行日期命中，primary/actual 日期未返回。鉴权读取为 `200`，无凭据为 `401`，错误设备为 `403`；天气证据只出现 `seasonal_inference` / `plan_semantic_inference`，未声称接入 QWeather。
-## 2026-07-14 / v2.1.22-test / Codex — 推荐后端 1D-A 三模式严格合同与纯算法
-
-- **执行与边界**：Codex 在独立 `codex/recommendation-backend-1d-a` worktree 按 v0.7.3-integrated 第 8/9/13/15 章测试先行实施。原样保留 Payload V1、`generateRecommendations`、workspace adapter、generation service、worker 和读路由；本批不做 QWeather/GeoAPI、地点与天气持久化、UI/位置权限、PAW 调用或 V2 current 写入。
-- **严格合同**：新增 `ResolvedRecommendationContext`、`RecommendationEngineInputV2Schema`、固定 `schemaVersion=2` 的 Payload V2 及 `V2 | V1` union；发布命令和持久化记录同时解析新旧 payload，并以 `superRefine` 交叉校验日期、时区、地点、天气字段、固定 summary、解析时间、ruleVersion 和 V2 algorithmVersion。
-- **纯算法**：`forecast` 完全委托 V1 并通过完整 `engineOutput` 深度相等门禁；`locationless` / `weather_fallback` 不做温度和降雨硬过滤，严格实现单品和候选适应性公式、区间并集、可脱外层、极端单组合惩罚与 `adaptable_conditions >= 75` 边界，禁止天气型 reason/risk。
-- **Fixture 与红绿灯**：现有 24 个 1A Fixture/Golden 未修改、未生成覆盖；独立手写 5 个 V2 模式/readiness 场景和 7 个冻结验算向量，共 12 个新 expected。依赖恢复后的真实红灯为 V2 专项 `20 failed / 11 passed`，失败指向未存在的 V2 Schema/引擎/评分函数；实现后 `31/31` 通过。
-- **验证**：V1 引擎 `49/49`，V1/V2 + contracts/worker/routes 联合 `99/99`，API 全量 `232/232`；cloud contracts/API/根项目/小程序 typecheck、根 `test:logic`、穿搭计划 `57+88+40`、manifest、原 24 Fixture shadow check 和 production build 全部通过。证据见 `docs/recommendations/RECOMMENDATION_1D_A_EVIDENCE.md`。
-- **集成、部署与开关**：开发提交 `57281ab`已串行合入并推送 `main` 合并提交 `cbae222`；共享合同同步至 `wechat/miniprogram` 提交 `8407ed0`，小程序 typecheck 通过，未发布体验版。生产前备份位于 `/opt/wardrobe-cloud/backups/recommendation-1d-a-20260714-180208/`，数据库转储 SHA-256 为 `ab81a766aadc1b5dcf0be7b99df4838756cef4015775328dd18f57c8412a9300`；API 与现有 V1 worker 已切换镜像 `wardrobe-api:cbae222`（镜像 ID `sha256:2cdf1429768d46c7d2a2674d6dd01cdacf8a3da988e1eb92f4c2b829f779d39d`），旧镜像 `wardrobe-api:60df9beb` 保留回滚。迁移记录保持 `20`，容器重启数均为 `0`，本机/公网 health、ready、version 和未授权 `401` 通过，V2 路由为 `404`；库内 current `132`、V2 总记录 `0`、V2 current `0`。`DAILY_RECOMMENDATIONS_ENABLED=true` 继续表示现有 1C worker，三个 PAW 开关均为 `false`，未增加或启用 V2 worker 入口。
-- **风险门禁**：`high`（共享合同与推荐纯引擎变更）；未触发 subagent：用户未通知。未覆盖真实 QWeather、生产 V2 写入/读取、客户端展示或真实用户衣橱，均属后续 1D-B/1D-C/2A–4 边界。
