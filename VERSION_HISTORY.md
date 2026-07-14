@@ -4,7 +4,9 @@
 - **地点持久化与 API**：迁移 0021 新增 user_location_profiles、location_date_overrides、weather_cache；profile/override 实现 revision、mutation 幂等/冲突、tombstone 清除、用户隔离与账户级联。新增 8 个鉴权地点 API；PUT 只信任 LocationID 并经 GeoAPI 复核，设备坐标在请求前粗化两位且不持久化/记日志。
 - **Provider 与缓存**：使用 Node crypto 生成短期 Ed25519 JWT，生产仅支持 QWEATHER_PRIVATE_KEY_FILE；严格限制 HTTPS 专属 Host、禁止重定向、硬超时并严格解析 Geo/now/72h/7d。PostgreSQL cache 实现 20m/2h、1h/6h、3h/12h TTL/max-stale、daily 当地跨日重验、负缓存和跨进程 advisory-lock single-flight。
 - **测试先行与真实联调**：手写 Fixture/expected 后先得到合同/Provider/cache 模块缺失、API 404、PostgreSQL 服务缺失的真实红灯；专项转绿为 32/32，真实 PostgreSQL 29/29。真实 QWeather 受控请求严格 5/5 且全为 HTTP 200；now/hourly/daily 各二次 repository 读取均命中 fresh cache，上游计数不增。脱敏证据见 docs/recommendations/QWEATHER_1D_B_EVIDENCE.md。
-- **部署边界**：生产 Compose 仅向 API 注入 QWeather 配置并只读挂载私钥，Worker 不获得 QWeather 环境；QWEATHER_ALERTS_ENABLED=false。生产备份、镜像、迁移、开关、回滚与 V1/V2/PAW 最终核验在上线后补记。
+- **迁移阻断与修复**：首次隔离恢复演练准确发现 0021 SQL 已存在但 Drizzle journal 未登记，正式 migrator 保持 20 且生产尚未切换；补丁提交 29f544e 增加 journal 条目与回归断言，二次合并 main 为 011e4d9。重建镜像后，同一生产转储在隔离库由正式 migrator 成功 20→21，三张表存在，随后清理恢复库。
+- **生产部署与回滚**：备份目录 /opt/wardrobe-cloud/backups/recommendation-1d-b-20260714-201914/，数据库转储 2,888,751 bytes、SHA-256 74ff7a2012b97d3975a5e579a561dc09e757bd1abd830b5d44a0cbdfab222dbe。API 与现有 V1 Worker 已切换到 wardrobe-api:011e4d9（镜像 ID sha256:24a0c94d6d26a9a7f46a711e32c7dd36aab505f35e027c91bc63de42fcd11b30），保留 wardrobe-api:2bb2b8b 回滚；生产迁移 21、新三表初始 0/0/0，容器重启数 0。
+- **生产开关与验收**：QWEATHER_ENABLED=true、QWEATHER_ALERTS_ENABLED=false；私钥 root:root 0400 且容器挂载 RW=false，API 持有 6 个 QWeather 配置键并可本地签名 JWT，Worker 持有 0 个。日志中 JWT/PEM/ID 与 fatal/unhandled/migration error 均 0；本机/公网 health/ready 均 200，version=011e4d9，8 个新端点无凭据均 401。V2 total/current=0/0，V1 current=132，现有 V1 Worker 等待 Asia/Shanghai 03:30，DAILY_RECOMMENDATIONS_ENABLED=true，三个 PAW=false。
 - **风险门禁**：high（新增共享合同、数据库迁移、鉴权 API 与生产外部 Provider）；未触发 subagent：用户未通知。
 
 ## 2026-07-14 / v2.1.22-test / Codex — 推荐后端 1D-A.2 contextSummary 单点收口

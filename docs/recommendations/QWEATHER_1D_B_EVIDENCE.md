@@ -52,6 +52,15 @@ Expected 全部手写，未由实现生成。
 
 now/hourly/daily 各再走一次 repository 读取，均为 fresh + cacheHit=true，上游请求总数仍为 5。
 
+## 生产迁移与部署
+
+- 首次隔离恢复演练发现迁移 journal 未登记 0021；正式 migrator 保持 20，生产尚未切换。补齐 journal 与测试断言后重建镜像，生产转储在隔离库由正式 migrator 成功 20→21，三张表均存在，演练库随后清理。
+- 备份目录：/opt/wardrobe-cloud/backups/recommendation-1d-b-20260714-201914/。数据库转储 2,888,751 bytes，SHA-256 为 74ff7a2012b97d3975a5e579a561dc09e757bd1abd830b5d44a0cbdfab222dbe。
+- 生产镜像 wardrobe-api:011e4d9，镜像 ID sha256:24a0c94d6d26a9a7f46a711e32c7dd36aab505f35e027c91bc63de42fcd11b30；旧镜像 wardrobe-api:2bb2b8b 保留回滚。API/Worker 重启数均为 0，迁移记录 21，新三表初始行数为 0/0/0。
+- QWeather 在生产仅对 API 启用，alerts=false；Worker QWeather 环境键计数为 0。私钥宿主与容器内均为 root:root 0400，Docker mount RW=false；容器内仅验证 JWT 可签名，未输出 token，也未增加上游调用。
+- 本机/公网 health、ready 均为 200，version gitCommit=011e4d9；8 个新地点端点无凭据均为 401。日志秘密匹配与 fatal/unhandled/migration error 匹配均为 0。
+- V2 total/current=0/0，V1 current=132；现有 V1 Worker 正常等待 Asia/Shanghai 03:30，三个 PAW 开关为 false。QWeather 不属于 readiness 依赖，瞬时故障只会令本能力 unavailable，不会令整体 ready 失败。
+
 ## 未覆盖范围
 
 未实现行程>临时>常驻>无城市 resolver、Worker V2/V2 current、推荐读取 DTO/失效重算/行动、WeatherOverview/reassess、App/小程序位置 UI、PAW；也未调用分钟降水、空气质量、天气指数、预警或辐照 API。
