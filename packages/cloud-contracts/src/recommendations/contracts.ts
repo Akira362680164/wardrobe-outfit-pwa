@@ -270,11 +270,35 @@ export const RecommendationEngineOutputSchema = z.object({
   });
 });
 
+type RecommendationEngineOutputValue = z.infer<typeof RecommendationEngineOutputSchema>;
+const refineForbiddenAuditCodes = (
+  engineOutput: RecommendationEngineOutputValue,
+  ctx: z.RefinementCtx,
+  forbiddenReasonCodes: ReadonlySet<string>,
+  forbiddenRiskCodes: ReadonlySet<string>,
+) => {
+  for (const [collectionName, candidates] of [
+    ["shortlist", engineOutput.shortlist],
+    ["recommendations", engineOutput.recommendations],
+  ] as const) {
+    candidates.forEach((candidate, index) => {
+      if (candidate.reasonCodes.some((code) => forbiddenReasonCodes.has(code))) issue(ctx, ["engineOutput", collectionName, index, "reasonCodes"], "context mode forbids these reason codes");
+      if (candidate.pawEvaluation.reasonCodes.some((code) => forbiddenReasonCodes.has(code))) issue(ctx, ["engineOutput", collectionName, index, "pawEvaluation", "reasonCodes"], "context mode forbids these PAW reason codes");
+      if (candidate.riskCodes.some((code) => forbiddenRiskCodes.has(code))) issue(ctx, ["engineOutput", collectionName, index, "riskCodes"], "context mode forbids these risk codes");
+      if (candidate.pawEvaluation.sceneRisks.some((code) => forbiddenRiskCodes.has(code))) issue(ctx, ["engineOutput", collectionName, index, "pawEvaluation", "sceneRisks"], "context mode forbids these PAW risk codes");
+    });
+  }
+};
+
+const adaptableConditionsReasonCodes = new Set(["adaptable_conditions"]);
+const noRiskCodes = new Set<string>();
 export const RecommendationPayloadV1Schema = z.object({ engineOutput: RecommendationEngineOutputSchema, dateContextInput: DateContextInputSchema }).strict().superRefine((value, ctx) => {
   if (value.engineOutput.readiness.status === "not_ready" && value.engineOutput.recommendations.length !== 0) issue(ctx, ["engineOutput", "recommendations"], "not_ready output must not display recommendations");
+  refineForbiddenAuditCodes(value.engineOutput, ctx, adaptableConditionsReasonCodes, noRiskCodes);
 });
 const genericWeatherReasonCodes = new Set(["weather_fit", "rain_ready", "needs_evening_layer"]);
 const genericWeatherRiskCodes = new Set(["too_hot", "too_cold", "rain_exposure", "wind_exposure", "missing_required_layer"]);
+const genericWeatherAvoidRules = new Set(["avoid_suede", "avoid_heavy_outerwear", "avoid_non_breathable", "avoid_open_toe_shoes"]);
 export const RecommendationPayloadV2Schema = z.object({
   schemaVersion: z.literal(2),
   resolvedContext: ResolvedRecommendationContextSchema,
@@ -285,11 +309,15 @@ export const RecommendationPayloadV2Schema = z.object({
   if (value.engineOutput.readiness.status === "not_ready" && value.engineOutput.recommendations.length !== 0) issue(ctx, ["engineOutput", "recommendations"], "not_ready output must not display recommendations");
   const expectedRuleVersion = value.resolvedContext.contextMode === "forecast" ? RECOMMENDATION_FORECAST_RULE_VERSION : RECOMMENDATION_LOCATIONLESS_RULE_VERSION;
   if (value.engineOutput.ruleVersion !== expectedRuleVersion) issue(ctx, ["engineOutput", "ruleVersion"], "engine ruleVersion must match V2 context mode");
-  if (value.resolvedContext.contextMode !== "forecast") {
-    for (const [index, candidate] of value.engineOutput.shortlist.entries()) {
-      if (candidate.reasonCodes.some((code) => genericWeatherReasonCodes.has(code))) issue(ctx, ["engineOutput", "shortlist", index, "reasonCodes"], "generic modes forbid weather reason codes");
-      if (candidate.riskCodes.some((code) => genericWeatherRiskCodes.has(code))) issue(ctx, ["engineOutput", "shortlist", index, "riskCodes"], "generic modes forbid weather risk codes");
-    }
+  if (value.resolvedContext.contextMode === "forecast") {
+    refineForbiddenAuditCodes(value.engineOutput, ctx, adaptableConditionsReasonCodes, noRiskCodes);
+  } else {
+    refineForbiddenAuditCodes(value.engineOutput, ctx, genericWeatherReasonCodes, genericWeatherRiskCodes);
+    const dateContext = value.engineOutput.dateContext;
+    if (dateContext.thermalStrategy !== "layer") issue(ctx, ["engineOutput", "dateContext", "thermalStrategy"], "generic modes require layer thermal strategy");
+    if (dateContext.rainStrategy !== "none") issue(ctx, ["engineOutput", "dateContext", "rainStrategy"], "generic modes require no rain strategy");
+    if (dateContext.confidence !== "low") issue(ctx, ["engineOutput", "dateContext", "confidence"], "generic modes require low confidence");
+    if (dateContext.avoidRules.some((code) => genericWeatherAvoidRules.has(code))) issue(ctx, ["engineOutput", "dateContext", "avoidRules"], "generic modes forbid weather-derived avoid rules");
   }
 });
 export const RecommendationPayloadSchema = z.union([RecommendationPayloadV2Schema, RecommendationPayloadV1Schema]);
