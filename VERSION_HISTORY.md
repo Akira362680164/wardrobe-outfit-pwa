@@ -14,7 +14,8 @@
 - **行程一致性**：重叠行程先按权威顺序选定唯一行程，再从同一行程读取场景语义与严格 `weatherLocation`；较新权威行程无标准地点时不会借用较旧行程天气地点，旧自由文本仍不自动地理编码。
 - **测试先行**：人工手写预期先得到纯逻辑 `4 failed` 与真实 PostgreSQL `3 failed` 红灯；转绿覆盖 pair、双 Worker 竞争、lease 回收、旧 claim fencing、处理中再触发、trigger-first 丢响应重放、退避调度、now 雨风/天气代码、过去小时排除、明日隔离、mixed freshness、上海业务日期与重叠行程。原 24 Golden 未修改，V2 100 次确定性与乱序不变继续通过。
 - **联调与边界**：新增只面向隔离库/合成账号的受控 QWeather 1D-C.1 烟测，硬上限 now/hourly/daily 各 1 次，随后重复 Overview 必须复用 shared PostgreSQL cache；输出不含用户、坐标、LocationID、JWT、PEM 或上游 body。未改 UI、未启用 PAW/alerts/historical climate、未增加天气 API、未构建 APK/上传体验版。
-- **生产状态**：本条先记录本地实现；最终 commit、测试计数、备份 SHA、恢复迁移、受控上游次数、新/回滚镜像、健康门禁、队列延迟与分支同步证据在生产验证完成后补齐。
+- **生产收口**：代码提交 `45f460f`、smoke 修复 `c20ef15`，runtime main=`8c343d4`。备份 `backups/recommendation-1d-c1-20260715-002652/` 的数据库为 3,445,849 bytes / SHA-256 `2476486c20fec59b66d71a1215c623bb1beebd506a3ef1b7448f71df3b5f1620`；隔离恢复正式 migrator 22→23、旧镜像 migrator 兼容。受控 QWeather 新增严格为 3 次（now/hourly/daily 各 1），缓存复读增量 0；生产 shadow 146 dates / failed 0 / budget 0，正式批次 146 targets / failed 0，午夜后原 18 组混批降为 0。due 合成请求 9 秒开始、2 dates / 1 batch，清理残留 0。
+- **生产镜像与门禁**：API/Worker=`wardrobe-api:8c343d4`，镜像 ID `sha256:defc31dbfb95a83d172a98304a04c93d58090feac5a245605a735603daea006f`；回滚 `wardrobe-api:9353c6d` / `sha256:a0f07a2dde3741d4cf6acf26a98ccf71723eda56d4ce67c3f4d635f0e2ccfda4`。迁移 23，API/Worker 重启 0，内外 health/ready/version 与三条无授权 401 通过；两容器 V2 三开关 true，PAW/alerts/historical=false，Secret root:root 0400 且 RW=false，敏感/标识/致命日志匹配 0。
 
 ## 2026-07-14 / v2.1.23-test / Codex — 推荐后端 1D-C A/B/C 本地实现与生产门禁准备
 
