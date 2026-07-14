@@ -1,3 +1,9 @@
+## 2026-07-15 / v2.1.24-test / Codex — UI Skill 双路由与 GitHub 专项收敛
+
+- **UI 与动效路由**：本机根 `AGENTS.md` 明确要求 UI 设计、重构、审查、打磨和响应式/无障碍优化先按 `impeccable` Skill 执行；涉及动画、手势、拖拽/滑动、Sheet、弹簧、速度继承、可中断转场、空间连续性或 reduced-motion 时再同时使用 `apple-design` Skill。两者都必须先读各自 `SKILL.md` 并完成规定 setup，且不得覆盖项目 UI 规范、真实截图结构和现有 motion token。
+- **GitHub 单一专项**：删除治理路由和专项文档中的 ChatGPT 审查包部分，将 `docs/development/codebase-export-workflows.md` 收敛并重命名为 `docs/development/public-github-workflow.md`；当前专项只保留公开仓库的 main 脱敏导出、独立 staging、敏感排除、验证、提交、推送和私有仓库记录流程。
+- **范围与验证**：仅修改本机治理入口、专项文档和版本历史，不修改 UI 运行时代码、动效 token、导出脚本、package script、客户端、服务端、小程序或生产环境。风险门禁 `low`；通过 Skill 规则核对、路由目标检查、ChatGPT 审查包关键词清零、`git diff --check` 和提交范围核对。未触发 subagent：用户未通知。
+
 ## 2026-07-15 / v2.1.24-test / Codex — AGENTS 任务路由瘦身与生产镜像生命周期治理
 
 - **本机治理入口**：把本机根 `AGENTS.md` 从 541 行收敛为 152 行，顶部新增按 Git、生产部署、Android、UI、审查协作和代码导出分类的任务路由；主文件只保留指令优先级、Session 隔离、线上唯一数据源、删除/隐私、共享契约、UI/小程序、APK、生产和协作等不可违反的硬边界。`AGENTS.md` 继续遵守既有 `.gitignore`，仅保存在本机，不强制进入 Git。

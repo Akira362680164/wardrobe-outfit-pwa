@@ -1,43 +1,8 @@
-# 代码审查导出与公开仓库发布
+# 公开 GitHub 仓库发布流程
 
-本文承接本机根 `AGENTS.md` 的 ChatGPT 审查包和公开 GitHub 仓库操作细则。这两类流程都只能在用户明确要求时执行，不属于普通开发收口。
+本文承接本机根 `AGENTS.md` 的公开 GitHub 仓库操作细则。只有用户明确要求上传或更新公开仓库时执行，不属于普通开发收口。
 
-## 1. ChatGPT 审查用代码库导出
-
-触发语义包括“给 ChatGPT 打包代码”“导出 ChatGPT 审查包”“更新桌面 ChatGPT 导出目录”等。默认不执行。
-
-固定入口：
-
-- 脚本：`scripts/export-chatgpt-codebase.mjs`
-- npm：`npm run export:chatgpt`
-- 输出：`$HOME/Desktop/wardrobe-chatgpt-codebase`
-- 输出不进 Git，也不打 ZIP。
-
-预期文件：
-
-```text
-00-PROJECT_MAP.md
-01-CODEBASE_MERGED.md
-02-CODEBASE_MAP.md
-03-GIT_STATE.md
-04-VALIDATION_REPORT.md
-05-CHANGED_FILES_MERGED.md
-06-CHANGED_FILES_MAP.md
-README_FOR_CHATGPT.md
-```
-
-执行流程：
-
-1. 读取根治理、README、package、最新版本历史和本次范围。
-2. 用 `git status --short` 记录导出时的真实工作区状态。
-3. 运行 `node scripts/export-chatgpt-codebase.mjs`。脚本应保留已有 `04-VALIDATION_REPORT.md`，避免覆盖真实验证记录。
-4. 按任务风险运行验证；完整审查包默认记录 `typecheck`、相关逻辑测试、`test:logic:all` 和 `build` 的命令、时间、退出码和摘要。
-5. 检查 8 个文件存在，并用 `wc -l` 确认合并包非空。
-6. 在 `VERSION_HISTORY.md` 记录刷新目的、源码是否变化、验证和 low 风险门禁。
-
-可提交脚本、npm 配置和版本历史；禁止提交桌面导出目录、合并包、APK、签名文件和构建产物。纯刷新桌面目录不需要源码 commit，但仍需按用户任务记录交付状态。
-
-## 2. 公开 GitHub 仓库发布原则
+## 1. 公开 GitHub 仓库发布原则
 
 只有用户明确要求上传或更新公开仓库时执行。
 
@@ -81,7 +46,7 @@ VERSION_HISTORY.md.precompact*.bak
 
 用户明确要求公开 Agent 规则时才可例外包含入口文件；即使包含，也必须重新做敏感扫描。
 
-## 3. 公开版五阶段流程
+## 2. 公开版五阶段流程
 
 ### 阶段 A：正式基线检查
 
