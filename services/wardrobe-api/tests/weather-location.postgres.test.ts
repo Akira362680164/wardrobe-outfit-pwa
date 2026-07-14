@@ -34,17 +34,23 @@ beforeAll(async () => {
 afterAll(async () => { await pool?.end(); await admin.query(`drop schema if exists ${quote(schema)} cascade`); await admin.query(`drop schema if exists ${quote(upgradeSchema)} cascade`); await admin.end(); }, 30_000);
 
 describe("1D-B fresh and 0020 upgrade migrations", () => {
-  it("creates location/weather/regeneration tables from fresh and upgrades 0020 through 0022", async () => {
+  it("creates location/weather/regeneration tables from fresh and upgrades 0020 through 0023", async () => {
     const journal = JSON.parse(readFileSync(resolve(migrationsDir, "meta/_journal.json"), "utf8"));
-    expect(journal.entries.at(-1)).toMatchObject({ idx: 22, tag: "0022_recommendation_regeneration" });
-    expect(journal.entries).toHaveLength(23);
+    expect(journal.entries.at(-1)).toMatchObject({ idx: 23, tag: "0023_recommendation_regeneration_consistency" });
+    expect(journal.entries).toHaveLength(24);
     for (const table of ["user_location_profiles", "location_date_overrides", "weather_cache"]) expect((await pool.query("select to_regclass($1) as name", [table])).rows[0].name).toBe(table);
     expect((await pool.query("select to_regclass($1) as name", ["recommendation_regeneration_requests"])).rows[0].name).toBe("recommendation_regeneration_requests");
-    await createSchema(upgradeSchema); await applyMigrations(upgradeSchema, migrationFiles.filter((file) => !file.startsWith("0021_") && !file.startsWith("0022_")));
+    await createSchema(upgradeSchema); await applyMigrations(upgradeSchema, migrationFiles.filter((file) => !file.startsWith("0021_") && !file.startsWith("0022_") && !file.startsWith("0023_")));
     expect((await admin.query("select to_regclass($1) as name", [`${upgradeSchema}.weather_cache`])).rows[0].name).toBeNull();
     await applyMigrations(upgradeSchema, migrationFiles.filter((file) => file.startsWith("0021_") || file.startsWith("0022_")));
+    const upgradeUser = randomUUID(); const oldMutation = randomUUID();
+    await admin.query(`insert into ${quote(upgradeSchema)}.users(id) values($1)`, [upgradeUser]);
+    await admin.query(`insert into ${quote(upgradeSchema)}.recommendation_regeneration_requests(user_id,target_date,reasons,client_mutation_ids,content_fingerprint) values($1,'2026-07-20',ARRAY['explicit_reassess'],$2::uuid[],$3)`, [upgradeUser, [oldMutation], "c".repeat(64)]);
+    await applyMigrations(upgradeSchema, migrationFiles.filter((file) => file.startsWith("0023_")));
     expect((await admin.query("select to_regclass($1) as name", [`${upgradeSchema}.weather_cache`])).rows[0].name).toBe("weather_cache");
     expect((await admin.query("select to_regclass($1) as name", [`${upgradeSchema}.recommendation_regeneration_requests`])).rows[0].name).toBe("recommendation_regeneration_requests");
+    expect((await admin.query("select count(*)::int count from information_schema.columns where table_schema=$1 and table_name='recommendation_regeneration_requests' and column_name in ('claim_token','lease_expires_at','trigger_version','client_mutation_fingerprints')", [upgradeSchema])).rows[0].count).toBe(4);
+    expect((await admin.query(`select client_mutation_fingerprints ? $1 as replayable from ${quote(upgradeSchema)}.recommendation_regeneration_requests where user_id=$2`, [oldMutation, upgradeUser])).rows[0].replayable).toBe(true);
   }, 120_000);
 });
 

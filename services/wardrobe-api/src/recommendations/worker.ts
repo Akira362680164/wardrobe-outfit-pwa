@@ -10,6 +10,7 @@ import { RecommendationJobRepository } from "./job-repository.js";
 
 export interface RecommendationTask { userId: string; targetDate: string; asOfDate: string; timezone: string; homePair: boolean; }
 export interface WorkerRunResult { acquired: boolean; job: RecommendationJobRunSummary | null; peakQueueSize: number; peakRssBytes: number; }
+export const REGENERATION_POLL_INTERVAL_MS = 15_000;
 
 export class RecommendationWorker {
   private readonly jobs: RecommendationJobRepository;
@@ -52,7 +53,7 @@ export class RecommendationWorker {
       await consumer;
       if (publishV2) {
         try {
-          for (let processed = 0; processed < 256; processed++) if (!await this.regeneration.processNext()) break;
+          await this.processDueRegeneration(256);
         } catch {
           counts.failedCount++;
           increment(counts.errorCodeCounts, "persistence_failed");
@@ -65,11 +66,17 @@ export class RecommendationWorker {
     finally { await this.jobs.releaseGlobalLock(lock); }
   }
 
+  async processDueRegeneration(limit = 32): Promise<number> {
+    let processed = 0;
+    while (processed < limit && await this.regeneration.processNext(shanghaiDate(new Date()))) processed++;
+    return processed;
+  }
+
   async selectTasks(now: Date): Promise<RecommendationTask[]> {
     const users = await this.generation.adapter.listEnabledUsers();
     const tasks: RecommendationTask[] = [];
     for (const user of users) {
-      const today = dateInZone(now, user.timezone);
+      const today = dateInZone(now, "Asia/Shanghai");
       const dates = new Set<string>();
       for (let offset = 0; offset <= 6; offset++) dates.add(addDays(today, offset));
       const trips = await this.pool.query<{ start_date: string; end_date: string }>("select start_date, end_date from trip_plans where user_id = $1 and deleted_at is null and end_date > $2 and start_date is not null and end_date is not null", [user.userId, addDays(today, 6)]);
@@ -79,7 +86,7 @@ export class RecommendationWorker {
           select 1 from outfit_plans where user_id = $1 and deleted_at is null and plan_date = $2
           and (actual_outfit_id is not null or payload->>'status' in ('worn', 'actual') or (payload->>'status' = 'planned' and payload->>'isPrimary' = 'true'))
         ) as skip`, [user.userId, targetDate]);
-        if (!skip.rows[0]?.skip) tasks.push({ userId: user.userId, targetDate, asOfDate: today, timezone: user.timezone, homePair: targetDate === today || targetDate === addDays(today, 1) });
+        if (!skip.rows[0]?.skip) tasks.push({ userId: user.userId, targetDate, asOfDate: today, timezone: "Asia/Shanghai", homePair: targetDate === today || targetDate === addDays(today, 1) });
       }
     }
     return tasks;
@@ -88,6 +95,7 @@ export class RecommendationWorker {
 
 export function nextShanghaiSchedule(now = new Date()): Date { const parts = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Shanghai", year: "numeric", month: "2-digit", day: "2-digit" }).formatToParts(now); const map = Object.fromEntries(parts.map((p) => [p.type, p.value])); let target = new Date(`${map.year}-${map.month}-${map.day}T03:30:00+08:00`); if (target <= now) target = new Date(target.getTime() + 86_400_000); return target; }
 function dateInZone(value: Date, timezone: string) { return new Intl.DateTimeFormat("en-CA", { timeZone: timezone, year: "numeric", month: "2-digit", day: "2-digit" }).format(value); }
+function shanghaiDate(value: Date) { return dateInZone(value, "Asia/Shanghai"); }
 function addDays(date: string, count: number) { const d = new Date(`${date}T12:00:00Z`); d.setUTCDate(d.getUTCDate() + count); return d.toISOString().slice(0, 10); }
 function increment(target: Partial<Record<RecommendationJobErrorCode, number>>, code: RecommendationJobErrorCode, amount = 1) { target[code] = (target[code] ?? 0) + amount; }
 function classify(error: unknown): RecommendationJobErrorCode { const message = error instanceof Error ? error.message : ""; if (message.includes("weather")) return "weather_unavailable"; if (message.includes("persist") || message.includes("recommendation")) return "persistence_failed"; return "candidate_generation_failed"; }

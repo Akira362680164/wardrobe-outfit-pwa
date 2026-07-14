@@ -5,6 +5,7 @@ services/image-crop-sidecar/models/
 out
 out-website
 dist
+dist-smoke
 coverage
 
 # Generated Android/build outputs

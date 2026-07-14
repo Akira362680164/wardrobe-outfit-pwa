@@ -31,6 +31,15 @@ describe("pure user-date recommendation context resolver", () => {
     expect(resolveRecommendationContextSnapshot({ ...base, profiles, travelPlans: [invalid] }).locationSource).toBe("home_city");
   });
 
+  it("selects one authoritative overlapping trip before resolving weather", () => {
+    const newerWithoutLocation = { id: "b", userId: USER, startDate: "2026-07-15", endDate: "2026-07-16", deletedAt: null, updatedAt: new Date("2026-07-14T13:00:00.000Z"), payload: { destination: "杭州", activities: ["展览"] } };
+    const olderWithLocation = { id: "a", userId: USER, startDate: "2026-07-15", endDate: "2026-07-16", deletedAt: null, updatedAt: new Date("2026-07-14T12:00:00.000Z"), payload: { destination: "北京", activities: ["会议"], weatherLocation: travel } };
+    const profiles = [{ userId: USER, isCurrent: true, supersededAt: null, location: home }];
+    const resolved = resolveRecommendationContextSnapshot({ ...base, profiles, travelPlans: [olderWithLocation, newerWithoutLocation] });
+    expect(resolved.locationSource).toBe("home_city");
+    expect(resolved.resolvedLocation?.locationId).toBe(home.locationId);
+  });
+
   it("excludes boundary misses, tombstones, non-current and other-user rows", () => {
     const overrides = [
       { userId: USER, effectiveFrom: "2026-07-13", effectiveThrough: "2026-07-14", isCurrent: true, supersededAt: null, location: override },

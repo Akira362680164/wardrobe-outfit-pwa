@@ -1,7 +1,7 @@
 import { closeDatabase, getPostgresPool } from "../db/client.js";
 import { runMigrations } from "../db/migrate.js";
 import { readRecommendationFeatureFlags } from "./feature-flags.js";
-import { nextShanghaiSchedule, RecommendationWorker } from "./worker.js";
+import { REGENERATION_POLL_INTERVAL_MS, nextShanghaiSchedule, RecommendationWorker } from "./worker.js";
 
 await runMigrations();
 const worker = new RecommendationWorker(getPostgresPool());
@@ -16,10 +16,18 @@ if (!flags.DAILY_RECOMMENDATIONS_ENABLED && !flags.RECOMMENDATION_V2_SHADOW_ENAB
 let stopping = false;
 const stop = () => { stopping = true; };
 process.on("SIGINT", stop); process.on("SIGTERM", stop);
+let next = nextShanghaiSchedule();
+process.stdout.write(`${JSON.stringify({ event: "recommendation_worker_waiting", nextScheduledFor: next.toISOString(), timezone: "Asia/Shanghai", regenerationPollMs: REGENERATION_POLL_INTERVAL_MS })}\n`);
 while (!stopping) {
-  const next = nextShanghaiSchedule();
-  process.stdout.write(`${JSON.stringify({ event: "recommendation_worker_waiting", nextScheduledFor: next.toISOString(), timezone: "Asia/Shanghai" })}\n`);
-  while (!stopping && Date.now() < next.getTime()) await new Promise<void>((resolve) => setTimeout(resolve, Math.min(next.getTime() - Date.now(), 60_000)));
-  if (!stopping && Date.now() >= next.getTime()) process.stdout.write(`${JSON.stringify(await worker.runOnce(next.toISOString()))}\n`);
+  if (flags.RECOMMENDATION_V2_WORKER_ENABLED && flags.RECOMMENDATION_V2_CURRENT_ENABLED) {
+    const processed = await worker.processDueRegeneration();
+    if (processed > 0) process.stdout.write(`${JSON.stringify({ event: "recommendation_regeneration_processed", processed })}\n`);
+  }
+  if (!stopping && Date.now() >= next.getTime()) {
+    process.stdout.write(`${JSON.stringify(await worker.runOnce(next.toISOString()))}\n`);
+    next = nextShanghaiSchedule();
+    process.stdout.write(`${JSON.stringify({ event: "recommendation_worker_waiting", nextScheduledFor: next.toISOString(), timezone: "Asia/Shanghai", regenerationPollMs: REGENERATION_POLL_INTERVAL_MS })}\n`);
+  }
+  if (!stopping) await new Promise<void>((resolve) => setTimeout(resolve, Math.min(REGENERATION_POLL_INTERVAL_MS, Math.max(1, next.getTime() - Date.now()))));
 }
 await closeDatabase();

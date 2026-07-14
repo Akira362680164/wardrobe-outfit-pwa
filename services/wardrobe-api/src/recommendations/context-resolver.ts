@@ -7,6 +7,7 @@ import {
 } from "@wardrobe/cloud-contracts";
 
 export interface TravelLocationSnapshot {
+  id?: string;
   userId: string;
   startDate: string | null;
   endDate: string | null;
@@ -37,11 +38,10 @@ export function resolveRecommendationContextSnapshot(input: {
   overrides: OverrideLocationSnapshot[];
   profiles: ProfileLocationSnapshot[];
 }): ResolvedRecommendationContext {
-  const travel = input.travelPlans
+  const authoritativeTravel = input.travelPlans
     .filter((row) => row.userId === input.userId && !row.deletedAt && row.startDate !== null && row.endDate !== null && row.startDate <= input.targetDate && row.endDate >= input.targetDate)
-    .sort((a, b) => b.updatedAt.getTime() - a.updatedAt.getTime())
-    .map((row) => strictLocation(row.payload.weatherLocation))
-    .find((location): location is WeatherLocationRef => location !== null);
+    .sort((a, b) => b.updatedAt.getTime() - a.updatedAt.getTime() || (b.id ?? "").localeCompare(a.id ?? ""))[0];
+  const travel = strictLocation(authoritativeTravel?.payload.weatherLocation);
   if (travel) return located(input.targetDate, input.contextResolvedAt, travel, "travel");
   const override = input.overrides
     .filter((row) => row.userId === input.userId && row.isCurrent && !row.supersededAt && row.effectiveFrom !== null && row.effectiveThrough !== null && row.effectiveFrom <= input.targetDate && row.effectiveThrough >= input.targetDate)
@@ -61,14 +61,14 @@ export class RecommendationContextResolver {
 
   async resolve(userId: string, targetDate: string): Promise<ResolvedRecommendationContext> {
     const [travel, override, profile] = await Promise.all([
-      this.pool.query(`select user_id, start_date::text, end_date::text, deleted_at, updated_at, payload from trip_plans where user_id=$1 and deleted_at is null and start_date <= $2 and end_date >= $2 order by updated_at desc`, [userId, targetDate]),
+      this.pool.query(`select id, user_id, start_date::text, end_date::text, deleted_at, updated_at, payload from trip_plans where user_id=$1 and deleted_at is null and start_date <= $2 and end_date >= $2 order by updated_at desc,id desc`, [userId, targetDate]),
       this.pool.query(`select user_id, effective_from::text, effective_through::text, is_current, superseded_at, location_id, display_name, timezone, centroid_latitude, centroid_longitude from location_date_overrides where user_id=$1 and is_current=true and superseded_at is null and effective_from <= $2 and effective_through >= $2`, [userId, targetDate]),
       this.pool.query(`select user_id, is_current, superseded_at, location_id, display_name, timezone, centroid_latitude, centroid_longitude from user_location_profiles where user_id=$1 and is_current=true and superseded_at is null`, [userId]),
     ]);
     const location = (row: any) => row.location_id ? { locationId: row.location_id, displayName: row.display_name, timezone: row.timezone, ...(row.centroid_latitude === null ? {} : { centroidLatitude: row.centroid_latitude }), ...(row.centroid_longitude === null ? {} : { centroidLongitude: row.centroid_longitude }) } : null;
     return resolveRecommendationContextSnapshot({
       userId, targetDate, contextResolvedAt: this.clock().toISOString(),
-      travelPlans: travel.rows.map((row: any) => ({ userId: row.user_id, startDate: row.start_date, endDate: row.end_date, deletedAt: row.deleted_at, updatedAt: row.updated_at, payload: row.payload })),
+      travelPlans: travel.rows.map((row: any) => ({ id: row.id, userId: row.user_id, startDate: row.start_date, endDate: row.end_date, deletedAt: row.deleted_at, updatedAt: row.updated_at, payload: row.payload })),
       overrides: override.rows.map((row: any) => ({ userId: row.user_id, effectiveFrom: row.effective_from, effectiveThrough: row.effective_through, isCurrent: row.is_current, supersededAt: row.superseded_at, location: location(row) })),
       profiles: profile.rows.map((row: any) => ({ userId: row.user_id, isCurrent: row.is_current, supersededAt: row.superseded_at, location: location(row) })),
     });
