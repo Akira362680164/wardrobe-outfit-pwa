@@ -1,3 +1,9 @@
+## 2026-07-14 / v2.1.20-test / Codex — 自动裁切生产启用准备
+
+- **产品授权**：项目所有者明确批准个人、非商业 Wardora 部署原样使用上游 u2netp 权重；权重继续不进入 Git、不由仓库再分发，部署只接受固定 SHA-256 `309c8469258dda742793dce0ebea8e6dd393174f89934733ecc8b14c76f4ddd8`。
+- **生产镜像与门禁**：API 镜像新增隔离 Python venv 与锁定依赖，私有 worker 不暴露端口；生产 Compose 只读挂载 `/opt/wardrobe-cloud/models/u2netp.onnx`，配置 12 秒硬超时、2 并发和 20 队列。`/api/ready` 新增 `dependencies.imageCrop`，worker 不可执行或权重不可读时整体 readiness 返回 degraded。
+- **验证**：最新 `main` 已合入本任务分支；API typecheck、合同 typecheck、API 全量 `181/181`、部署脚本语法和 `git diff --check` 通过。生产备份、镜像构建、部署及登录后真实 10 图复测在本记录后续收口。
+
 ## 2026-07-14 / v2.1.20-test / Codex — 图片自动裁切双路线正式开发与验证
 
 - **共享合同与两条路线**：App / 微信小程序、衣橱 / 种草四入口统一归一化坐标、EXIF、每侧 20% 安全外扩、pre/secondary/final 组合、revision/manual-wins 与独立裁切状态。MiniMax Key 仅在设备侧使用，步骤 1零 UI 差异并保留预裁切/旋转；无 Key 才显示逐张进度及“下一步（填写属性）”，步骤 2结构不变。

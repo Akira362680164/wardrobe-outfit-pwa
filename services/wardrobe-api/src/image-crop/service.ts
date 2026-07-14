@@ -1,4 +1,6 @@
 import { spawn } from "node:child_process";
+import { access } from "node:fs/promises";
+import { constants } from "node:fs";
 import { ImageCropSuggestionSchema, expandCropBoxEachSide, type ImageCropSuggestion } from "@wardrobe/cloud-contracts";
 import { WorkspaceApiError } from "../workspace/errors.js";
 
@@ -65,6 +67,18 @@ export class ProcessCropSidecar implements CropSidecar {
       });
       child.stdin.end(JSON.stringify({ clientItemId: input.clientItemId, mimeType: input.mimeType, imageBase64: input.image.toString("base64") }));
     });
+  }
+}
+
+export async function isImageCropReady(): Promise<boolean> {
+  const command = process.env.IMAGE_CROP_SIDECAR_COMMAND;
+  const modelPath = process.env.IMAGE_CROP_MODEL_PATH;
+  if (!command || !modelPath) return false;
+  try {
+    await Promise.all([access(command, constants.X_OK), access(modelPath, constants.R_OK)]);
+    return true;
+  } catch {
+    return false;
   }
 }
 

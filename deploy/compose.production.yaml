@@ -48,6 +48,11 @@ services:
       TENCENT_SES_FROM: ${TENCENT_SES_FROM:-}
       TENCENT_SES_REPLY_TO: ${TENCENT_SES_REPLY_TO:-}
       TENCENT_SES_VERIFY_TEMPLATE_ID: ${TENCENT_SES_VERIFY_TEMPLATE_ID:-}
+      IMAGE_CROP_SIDECAR_COMMAND: /app/services/image-crop-sidecar/wardora-crop-sidecar
+      IMAGE_CROP_MODEL_PATH: /opt/wardrobe-models/u2netp.onnx
+      IMAGE_CROP_TIMEOUT_MS: ${IMAGE_CROP_TIMEOUT_MS:-12000}
+      IMAGE_CROP_CONCURRENCY: ${IMAGE_CROP_CONCURRENCY:-2}
+      IMAGE_CROP_QUEUE_LIMIT: ${IMAGE_CROP_QUEUE_LIMIT:-20}
     ports:
       - "127.0.0.1:3000:3000"
     volumes:
@@ -55,6 +60,7 @@ services:
       - /opt/wardrobe-cloud/secrets/jwt-public.pem:/run/secrets/jwt-public.pem:ro
       - /opt/wardrobe-cloud/secrets/refresh-idempotency.key:/run/secrets/refresh-idempotency.key:ro
       - /srv/wardrobe/storage:/var/lib/wardrobe-api/storage
+      - /opt/wardrobe-cloud/models/u2netp.onnx:/opt/wardrobe-models/u2netp.onnx:ro
     healthcheck:
       test: ["CMD-SHELL", "node -e \"fetch('http://127.0.0.1:3000/api/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))\""]
       interval: 5s
