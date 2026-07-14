@@ -1,5 +1,10 @@
-Warning: truncated output (original token count: 71716)
-Total output lines: 1548
+## 2026-07-14 / v2.1.22-test / Codex — 推荐后端 1D-A.2 contextSummary 单点收口
+
+- **合同修复与边界**：仅在 Payload V2 的 `locationless` / `weather_fallback` 模式交叉校验中，要求 `engineOutput.dateContext.contextSummary` 严格等于 ``${sceneType}:layer:none``；采用确定性结构等值而非中英文天气关键词黑名单。未修改算法、Fixture/Golden、V1 Payload/V1 引擎、forecast 委托与深度相等、Worker、路由、数据库、PAW 或客户端。
+- **测试先行**：先新增 locationless 与 weather_fallback 两条伪天气 summary 反例，真实红灯为 V2 专项 `2 failed / 38 passed`；修复后 `40/40`。business 与 casual 两种不同 sceneType 的合法确定性 summary 均通过。
+- **本地门禁**：推荐 V1/V2/contracts/Worker/routes `108/108`，API 全量 `241/241`，cloud contracts/API/root typecheck、根 `test:logic`、穿搭计划 `57+88+40`、manifest、原 24 Fixture shadow check、production build 与 `git diff --check` 全部通过。小程序 typecheck 在正式分支同步阶段执行；未构建 APK、未上传小程序体验版。
+- **集成与部署**：开发提交、正式双分支同步及生产镜像证据在本记录后续收口补齐。
+- **风险门禁**：`high`（共享合同与生产 API 重部署）；QWeather、地点/天气持久化、V2 Worker/current 写入、推荐读取、PAW 调用及 UI 仍明确不在本批。
 
 ## 2026-07-14 / v2.1.22-test / Codex — 推荐后端 1D-A.1 验收收口修复
 
@@ -28,9 +33,6 @@ Total output lines: 1548
 - **启用与隐私**：部署合同新增独立 Worker 服务；`DAILY_RECOMMENDATIONS_ENABLED=true`，`PAW_DATE_CONTEXT_ENABLED=false`、`PAW_CANDIDATE_EVALUATOR_ENABLED=false`、`PAW_INTAKE_CANONICALIZER_ENABLED=false`。API 不返回 shortlist/完整审计/自由模型文本；job summary 不保存图片、密钥、个人字段或自由堆栈。按日期关闭推荐尚无现有持久化来源，本批未编造前端实体，仅保留该后端合同边界。
 - **测试服务器实跑**：上线前备份 PostgreSQL 到 `/opt/wardrobe-cloud/backups/postgres/wardrobe-20260714-145551.sql`，并在隔离恢复库完成 `19 → 20` 迁移回放；最终服务镜像 `wardrobe-api:60df9beb`，API 与独立 Worker 均零重启且健康，Worker 正等待下一次 `2026-07-15 03:30 Asia/Shanghai`。手动 run-once `e83440b5-12f3-46a8-8d8f-ea1b2417b546` 在 `1.662s` 内处理 `146` 个 user-date：`ready=14`、`fallback=118`、`failed=14`、峰值队列 `64`、峰值 RSS `139227136` bytes；失败均隔离并只记录受控 `persistence_failed` / `candidate_generation_failed` 计数，未中止其余用户。
 - **代表性衣橱与读取证据**：通过正式 API 写入专用非个人测试账号的 9 件边界衣物、套装、正反馈穿着、远期出差和两类跳过计划；完整链路生成 7 个 current 日期，全部 `ready` 且每日期返回 3 套。今日/明日 `generationBatchId` 相同，全库混批 pair 为 `0`；远期旅行日期命中，primary/actual 日期未返回。鉴权读取为 `200`，无凭据为 `401`，错误设备为 `403`；天气证据只出现 `seasonal_inference` / `plan_semantic_inference`，未声称接入 QWeather。
-
-Warning: truncated output (original token count: 80054)
-Total output lines: 1726
 
 ## 2026-07-14 / v2.1.18-test / Codex — 小程序毛玻璃导航与一级卡片统一
 
