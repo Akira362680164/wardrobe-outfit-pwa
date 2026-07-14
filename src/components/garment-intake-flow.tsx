@@ -48,7 +48,7 @@ import {
 } from "@/lib/intake-local-draft";
 import { cropFromOriginal, fileToCompressedDataUrl, rotateImageDataUrl } from "@/lib/image";
 import type { ImageCropSuggestionResponse } from "@wardrobe/cloud-contracts";
-import { composeNestedCropBoxes, FULL_IMAGE_CROP_BOX } from "@wardrobe/cloud-contracts";
+import { composeNestedCropBoxes, FULL_IMAGE_CROP_BOX, IMAGE_CROP_MAX_IN_FLIGHT } from "@wardrobe/cloud-contracts";
 import { GarmentRecognitionError } from "@/lib/device-minimax";
 import { createGarmentThumbnailFromOriginal, generateThumbnailSafe } from "@/lib/thumbnail-runtime";
 import { recordDiagnosticEvent } from "@/lib/diagnostic-log";
@@ -346,7 +346,7 @@ export function GarmentIntakeFlow({
         }
       }
     };
-    await Promise.all(Array.from({ length: Math.min(3, queue.length) }, worker));
+    await Promise.all(Array.from({ length: Math.min(IMAGE_CROP_MAX_IN_FLIGHT, queue.length) }, worker));
   }
 
   function prepareManualDrafts() {

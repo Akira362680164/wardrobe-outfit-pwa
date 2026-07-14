@@ -1,5 +1,8 @@
 import { z } from "zod";
 
+/** Clients may issue up to ten independent single-image requests at once. */
+export const IMAGE_CROP_MAX_IN_FLIGHT = 10;
+
 export const NormalizedCropBoxSchema = z.object({
   x: z.number().min(0).max(1),
   y: z.number().min(0).max(1),
