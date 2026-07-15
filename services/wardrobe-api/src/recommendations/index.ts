@@ -17,3 +17,4 @@ export * from "./read-service.js";
 export * from "./regeneration-service.js";
 export * from "./input-fingerprint.js";
 export * from "./coordinator.js";
+export * from "./accept-service.js";

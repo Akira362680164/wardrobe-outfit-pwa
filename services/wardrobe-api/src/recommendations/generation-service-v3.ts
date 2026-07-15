@@ -9,7 +9,8 @@ import {
   type PublishDailyRecommendationCommand,
 } from "@wardrobe/cloud-contracts";
 import { WeatherOverviewService } from "../weather/overview-service.js";
-import { generateRecommendationsV3 } from "./engine.js";
+import { generateRecommendationsV3, hardFilterGarments } from "./engine.js";
+import { RuleDateContextResolver } from "./ports.js";
 import { recommendationInputFingerprint } from "./input-fingerprint.js";
 import { RecommendationPersistenceService } from "./persistence-service.js";
 import { deterministicRequestId, RecommendationWorkspaceAdapter } from "./workspace-adapter.js";
@@ -27,7 +28,6 @@ export class RecommendationGenerationServiceV3 {
     const legacyRuleVersion = overview.contextMode === "forecast" ? RECOMMENDATION_FORECAST_RULE_VERSION : RECOMMENDATION_LOCATIONLESS_RULE_VERSION;
     const provisionalRequestId = deterministicRequestId(`v3-input:${userId}:${targetDate}:${generationBatchId}`);
     const workspace = await this.adapter.load(userId, targetDate, asOfDate, "Asia/Shanghai", provisionalRequestId);
-    if (workspace.skipReason) return { command: null, skipReason: workspace.skipReason };
     const resolvedContext = {
       targetDate, targetTimezone: overview.targetTimezone, contextResolvedAt: overview.contextResolvedAt, contextMode: overview.contextMode,
       ...(overview.resolvedLocation ? { resolvedLocation: overview.resolvedLocation, locationSource: overview.locationSource } : {}),
@@ -36,6 +36,13 @@ export class RecommendationGenerationServiceV3 {
       ...workspace.input, ruleVersion: legacyRuleVersion, resolvedContext,
       dateContextInput: { ...workspace.input.dateContextInput, date: targetDate, timezone: overview.targetTimezone, weatherEvidence: overview.weatherEvidence },
     });
+    if (workspace.skipReason) {
+      const context = await new RuleDateContextResolver().resolve(input.dateContextInput);
+      const excluded = new Map(hardFilterGarments(input.garments, context, input, overview.contextMode === "forecast" ? "forecast" : "generic").exclusions.map((entry) => [entry.garmentId, entry.codes]));
+      const garmentIds = Array.isArray(workspace.protectedPlan?.payload.garmentIds) ? workspace.protectedPlan.payload.garmentIds.filter((id): id is string => typeof id === "string") : [];
+      const planRiskCodes = [...new Set(garmentIds.flatMap((id) => (excluded.get(id) ?? []).map((code) => code === "temperature_mismatch" ? "severe_temperature_mismatch" as const : code === "formality_mismatch" || code === "invalid_formality" ? "severe_formality_mismatch" as const : code === "avoid_rule" ? "rain_incompatible" as const : "missing_required_slot" as const)))];
+      return { command: null, skipReason: workspace.skipReason, ...(workspace.protectedPlan ? { protectedPlanEntryId: workspace.protectedPlan.id } : {}), ...(planRiskCodes.length ? { planRiskCodes } : {}) };
+    }
     const inputFingerprint = recommendationInputFingerprint(input);
     const generationRequestId = deterministicRequestId(`v3:${userId}:${targetDate}:${forceMutationId ?? generationBatchId}`);
     const output = await generateRecommendationsV3({ ...input, requestId: generationRequestId });

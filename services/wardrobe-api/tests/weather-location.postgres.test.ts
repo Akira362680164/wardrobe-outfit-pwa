@@ -36,8 +36,8 @@ afterAll(async () => { await pool?.end(); await admin.query(`drop schema if exis
 describe("1D-B fresh and 0020 upgrade migrations", () => {
   it("creates location/weather/regeneration tables from fresh and registers realtime migration 0024", async () => {
     const journal = JSON.parse(readFileSync(resolve(migrationsDir, "meta/_journal.json"), "utf8"));
-    expect(journal.entries.at(-1)).toMatchObject({ idx: 24, tag: "0024_realtime_recommendations" });
-    expect(journal.entries).toHaveLength(25);
+    expect(journal.entries.at(-1)).toMatchObject({ idx: 25, tag: "0025_recommendation_accept" });
+    expect(journal.entries).toHaveLength(26);
     for (const table of ["user_location_profiles", "location_date_overrides", "weather_cache"]) expect((await pool.query("select to_regclass($1) as name", [table])).rows[0].name).toBe(table);
     expect((await pool.query("select to_regclass($1) as name", ["recommendation_regeneration_requests"])).rows[0].name).toBe("recommendation_regeneration_requests");
     await createSchema(upgradeSchema); await applyMigrations(upgradeSchema, migrationFiles.filter((file) => !file.startsWith("0021_") && !file.startsWith("0022_") && !file.startsWith("0023_")));

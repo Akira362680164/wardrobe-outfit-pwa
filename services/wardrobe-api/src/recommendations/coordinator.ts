@@ -6,6 +6,7 @@ import {
   type PublishDailyRecommendationCommand,
   type ResolveRecommendationsCommand,
   type ResolveRecommendationsResponse,
+  type DeterministicRiskCode,
 } from "@wardrobe/cloud-contracts";
 import { displayRecommendationRecord } from "./read-service.js";
 
@@ -13,7 +14,7 @@ export interface PreparedRealtimeRecommendation {
   command: PublishDailyRecommendationCommand | null;
   skipReason: "actual" | "primary_plan" | string | null;
   protectedPlanEntryId?: string;
-  planRiskCodes?: string[];
+  planRiskCodes?: DeterministicRiskCode[];
 }
 export interface RecommendationCoordinatorDependencies {
   prepare(userId: string, targetDate: string, asOfDate: string, generationBatchId: string, source: "foreground" | "worker", forceMutationId?: string): Promise<PreparedRealtimeRecommendation>;
@@ -37,8 +38,8 @@ export class RecommendationGenerationCoordinator {
 
     for (let index = 0; index < dates.length; index++) {
       const item = prepared[index]!;
-      if (item.skipReason === "actual") results[index] = { targetDate: dates[index]!, status: "actual_wear", ...(item.protectedPlanEntryId ? { protectedPlanEntryId: item.protectedPlanEntryId } : {}), ...(item.planRiskCodes ? { planRiskCodes: item.planRiskCodes as any } : {}) };
-      else if (item.skipReason === "primary_plan") results[index] = { targetDate: dates[index]!, status: "protected_plan", ...(item.protectedPlanEntryId ? { protectedPlanEntryId: item.protectedPlanEntryId } : {}), ...(item.planRiskCodes ? { planRiskCodes: item.planRiskCodes as any } : {}) };
+      if (item.skipReason === "actual") results[index] = { targetDate: dates[index]!, status: "actual_wear", ...(item.protectedPlanEntryId ? { protectedPlanEntryId: item.protectedPlanEntryId } : {}), ...(item.planRiskCodes ? { planRiskCodes: item.planRiskCodes } : {}) };
+      else if (item.skipReason === "primary_plan") results[index] = { targetDate: dates[index]!, status: "protected_plan", ...(item.protectedPlanEntryId ? { protectedPlanEntryId: item.protectedPlanEntryId } : {}), ...(item.planRiskCodes ? { planRiskCodes: item.planRiskCodes } : {}) };
       else if (!publishIndexes.includes(index) && current[index]) results[index] = resolvedResult(current[index]!, "reused");
     }
 

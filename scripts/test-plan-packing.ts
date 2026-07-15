@@ -59,6 +59,18 @@ console.log("\n=== buildPackingItemsFromPlan ===");
 }
 
 // --- buildPackingItemsFromPlan: empty entries ---
+{
+  const recommendationItems = items.map((item) => ({ ...item, serverEntityId: `garment-${item.id}`, serverRevision: 1 }));
+  const recommendationEntries: OutfitPlanEntry[] = [{
+    id: "recommendation-entry", serverEntityId: "recommendation-entry", serverRevision: 1, date: "2026-06-15",
+    sourceType: "daily_recommendation", garmentIds: ["garment-1", "garment-2"], itemIds: [999], status: "planned", createdAt: now, updatedAt: now,
+  }];
+  const result = buildPackingItemsFromPlan({ calendarPlan: plan, entries: recommendationEntries, outfits: [], items: recommendationItems, now });
+  const wardrobeIds = result.filter((entry) => entry.source === "wardrobe").map((entry) => entry.itemId).sort();
+  check("recommendation packing resolves canonical garment UUIDs before stale itemIds", JSON.stringify(wardrobeIds) === JSON.stringify([1, 2]));
+}
+
+// --- buildPackingItemsFromPlan: empty entries ---
 console.log("\n=== buildPackingItemsFromPlan: empty ===");
 {
   const result = buildPackingItemsFromPlan({ calendarPlan: plan, entries: [], outfits, items, now });

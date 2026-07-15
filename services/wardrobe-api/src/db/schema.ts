@@ -514,6 +514,24 @@ export const dailyRecommendations = pgTable(
   }),
 );
 
+export const recommendationActions = pgTable(
+  "recommendation_actions",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: uuid("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+    recommendationId: uuid("recommendation_id").references(() => dailyRecommendations.id, { onDelete: "set null" }),
+    planEntryId: uuid("plan_entry_id").references(() => outfitPlans.id, { onDelete: "set null" }),
+    action: text("action").notNull(), candidateId: uuid("candidate_id").notNull(), clientMutationId: uuid("client_mutation_id").notNull(),
+    payload: jsonb("payload").notNull().default({}), createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => ({
+    userMutationUnique: uniqueIndex("recommendation_actions_user_mutation_unique").on(table.userId, table.clientMutationId),
+    userCreatedIdx: index("recommendation_actions_user_created_idx").on(table.userId, table.createdAt),
+    recommendationIdx: index("recommendation_actions_recommendation_idx").on(table.recommendationId),
+    planIdx: index("recommendation_actions_plan_idx").on(table.planEntryId),
+  }),
+);
+
 export const recommendationJobRuns = pgTable(
   "recommendation_job_runs",
   {

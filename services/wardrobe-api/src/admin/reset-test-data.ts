@@ -11,6 +11,7 @@ export const USER_DATA_TABLES = [
   "location_date_overrides",
   "user_location_profiles",
   "recommendation_job_runs",
+  "recommendation_actions",
   "daily_recommendations",
   "diagnostic_case_request_traces",
   "diagnostic_access_audits",

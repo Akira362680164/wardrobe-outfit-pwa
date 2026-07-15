@@ -107,17 +107,18 @@ afterAll(async () => {
 }, 30_000);
 
 describe("daily recommendation real PostgreSQL migration", () => {
-  it("replays the empty database and upgrades the current 0018 baseline through 0024", async () => {
+  it("replays the empty database and upgrades the current 0018 baseline through 0025", async () => {
     const full = await pool.query("select count(*)::int as count from information_schema.tables where table_schema = $1 and table_name = 'daily_recommendations'", [schema]);
     expect(full.rows[0].count).toBe(1);
     await createSchema(upgradeSchema);
-    await applyMigrations(upgradeSchema, migrationFiles.filter((file) => !file.startsWith("0019_") && !file.startsWith("0020_") && !file.startsWith("0022_") && !file.startsWith("0023_") && !file.startsWith("0024_")));
+    await applyMigrations(upgradeSchema, migrationFiles.filter((file) => !file.startsWith("0019_") && !file.startsWith("0020_") && !file.startsWith("0022_") && !file.startsWith("0023_") && !file.startsWith("0024_") && !file.startsWith("0025_")));
     expect((await admin.query("select to_regclass($1) as table_name", [`${upgradeSchema}.daily_recommendations`])).rows[0].table_name).toBeNull();
-    await applyMigrations(upgradeSchema, migrationFiles.filter((file) => file.startsWith("0019_") || file.startsWith("0020_") || file.startsWith("0022_") || file.startsWith("0023_") || file.startsWith("0024_")));
+    await applyMigrations(upgradeSchema, migrationFiles.filter((file) => file.startsWith("0019_") || file.startsWith("0020_") || file.startsWith("0022_") || file.startsWith("0023_") || file.startsWith("0024_") || file.startsWith("0025_")));
     expect((await admin.query("select to_regclass($1) as table_name", [`${upgradeSchema}.daily_recommendations`])).rows[0].table_name).toBe("daily_recommendations");
     expect((await admin.query("select to_regclass($1) as table_name", [`${upgradeSchema}.recommendation_job_runs`])).rows[0].table_name).toBe("recommendation_job_runs");
     expect((await admin.query("select to_regclass($1) as table_name", [`${upgradeSchema}.recommendation_regeneration_requests`])).rows[0].table_name).toBe("recommendation_regeneration_requests");
     expect((await admin.query("select column_name from information_schema.columns where table_schema=$1 and table_name='daily_recommendations' and column_name='input_fingerprint'", [upgradeSchema])).rowCount).toBe(1);
+    expect((await admin.query("select to_regclass($1) as table_name", [`${upgradeSchema}.recommendation_actions`])).rows[0].table_name).toBe("recommendation_actions");
   }, 120_000);
 });
 

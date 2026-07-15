@@ -505,6 +505,38 @@ export const ResolveRecommendationsResponseSchema = z.object({
     planRiskCodes: z.array(DeterministicRiskCodeSchema).max(24).optional(),
   }).strict()).min(1).max(2),
 }).strict();
+export const AcceptRecommendationCommandSchema = z.object({
+  clientMutationId: z.string().uuid(),
+  recommendationId: z.string().uuid(),
+  expectedRecommendationRevision: z.number().int().positive(),
+  candidateId: z.string().uuid(),
+  selectedGarmentIds: z.array(z.string().uuid()).min(2).max(9),
+  replaceExistingPrimary: z.object({ planEntryId: z.string().uuid(), expectedRevision: z.number().int().positive() }).strict().optional(),
+}).strict().superRefine((value, ctx) => {
+  if (!unique(value.selectedGarmentIds)) issue(ctx, ["selectedGarmentIds"], "selectedGarmentIds must be unique");
+});
+export const GarmentDisplaySnapshotSchema = z.object({
+  garmentId: z.string().uuid(), legacyItemId: z.number().int().optional(), name: z.string().trim().min(1).max(120),
+  role: GarmentSlotSchema, category: z.enum(GARMENT_CATEGORY_IDS), imageAssetId: z.string().uuid().optional(),
+}).strict();
+export const RecommendationDisplaySnapshotSchema = z.object({
+  candidateId: z.string().uuid(), objective: RecommendationObjectiveSchema.optional(), finalScore: Score0To100Schema.optional(),
+  reasonCodes: z.array(RecommendationReasonCodeSchema).max(12), riskCodes: z.array(DeterministicRiskCodeSchema).max(24),
+}).strict();
+export const RecommendationPlanPayloadSchema = z.object({
+  sourceType: z.literal("daily_recommendation"), date: RealDateSchema, garmentIds: z.array(z.string().uuid()).min(2).max(9), itemIds: z.array(z.number().int()).max(9),
+  recommendationId: z.string().uuid(), recommendationRevision: z.number().int().positive(), recommendationCandidateId: z.string().uuid(),
+  recommendationInputFingerprint: z.string().regex(/^[a-f0-9]{64}$/), algorithmVersion: z.string().trim().min(1).max(80),
+  sourceVariant: z.enum(["original", "item_replaced"]), originalGarmentIds: z.array(z.string().uuid()).min(2).max(9),
+  garmentSnapshots: z.array(GarmentDisplaySnapshotSchema).min(2).max(9), recommendationSnapshot: RecommendationDisplaySnapshotSchema,
+  snapshotVersion: z.literal(1), selectedAt: z.string().datetime(), status: z.literal("planned"), isPrimary: z.literal(true), role: z.literal("primary"),
+}).strict();
+export const AcceptRecommendationResponseSchema = z.object({
+  status: z.literal("committed"), idempotentReplay: z.boolean(), plan: z.object({
+    id: z.string().uuid(), revision: z.number().int().positive(), payload: RecommendationPlanPayloadSchema,
+    createdAt: z.string().datetime(), updatedAt: z.string().datetime(), assetRefs: z.record(z.unknown()).optional(),
+  }).strict(),
+}).strict();
 export const RecommendationRegenerationReasonSchema = z.enum(["home_city_changed", "temporary_city_changed", "travel_changed", "garment_changed", "weather_changed", "explicit_reassess"]);
 export const RecommendationRegenerationStatusSchema = z.enum(["pending", "processing", "completed", "failed"]);
 export const ReassessRecommendationCommandSchema = z.object({ clientMutationId: z.string().uuid() }).strict();
@@ -563,5 +595,8 @@ export type RecommendationReadResponse = z.infer<typeof RecommendationReadRespon
 export type RecommendationDisplayItemV3 = z.infer<typeof RecommendationDisplayItemV3Schema>;
 export type ResolveRecommendationsCommand = z.infer<typeof ResolveRecommendationsCommandSchema>;
 export type ResolveRecommendationsResponse = z.infer<typeof ResolveRecommendationsResponseSchema>;
+export type AcceptRecommendationCommand = z.infer<typeof AcceptRecommendationCommandSchema>;
+export type RecommendationPlanPayload = z.infer<typeof RecommendationPlanPayloadSchema>;
+export type AcceptRecommendationResponse = z.infer<typeof AcceptRecommendationResponseSchema>;
 export type RecommendationRegenerationRequest = z.infer<typeof RecommendationRegenerationRequestSchema>;
 export type ReassessRecommendationCommand = z.infer<typeof ReassessRecommendationCommandSchema>;

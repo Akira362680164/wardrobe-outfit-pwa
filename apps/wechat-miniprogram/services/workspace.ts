@@ -294,6 +294,12 @@ export interface MiniOutfitPlanEntry {
   revision: number;
   date: string;
   outfitId: string;
+  sourceType: "saved_outfit" | "daily_recommendation" | "manual_items";
+  garmentIds: string[];
+  itemIds: number[];
+  garmentSnapshots: Array<Record<string, unknown>>;
+  unavailableGarmentIds: string[];
+  availability: "available" | "blocked" | "historical";
   actualOutfitId: string;
   calendarPlanId: string;
   status: MiniOutfitPlanEntryStatus;
@@ -1571,6 +1577,12 @@ function toMiniOutfitPlanEntry(entity: WorkspaceEntity): MiniOutfitPlanEntry {
     revision: entity.revision,
     date: firstString(payload.date, payload.planDate),
     outfitId: firstString(payload.outfitId),
+    sourceType: outfitPlanSourceType(payload.sourceType, payload.outfitId),
+    garmentIds: stringList(payload.garmentIds),
+    itemIds: numberList(payload.itemIds),
+    garmentSnapshots: Array.isArray(payload.garmentSnapshots) ? payload.garmentSnapshots.filter((value): value is Record<string, unknown> => Boolean(value) && typeof value === "object" && !Array.isArray(value)) : [],
+    unavailableGarmentIds: stringList(payload.unavailableGarmentIds),
+    availability: payload.availability === "blocked" ? "blocked" : payload.availability === "historical" ? "historical" : "available",
     actualOutfitId: firstString(payload.actualOutfitId),
     calendarPlanId: firstString(payload.calendarPlanId, payload.tripPlanId),
     status: planEntryStatus(payload.status),
@@ -1586,6 +1598,10 @@ function toMiniOutfitPlanEntry(entity: WorkspaceEntity): MiniOutfitPlanEntry {
     createdAt: entity.createdAt,
     updatedAt: entity.updatedAt,
   };
+}
+
+function outfitPlanSourceType(value: unknown, outfitId: unknown): MiniOutfitPlanEntry["sourceType"] {
+  return value === "daily_recommendation" || value === "manual_items" || value === "saved_outfit" ? value : typeof outfitId === "string" && outfitId ? "saved_outfit" : "manual_items";
 }
 
 async function resolveImageUrl(

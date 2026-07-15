@@ -15,6 +15,12 @@
 - **最近交付**：自动裁切双路线与 Android 真机闭环、全量动效/浮层/返回栈修复、App/小程序跨端一致性审计、微信登录与账号注销、固定签名 APK 和小程序体验版均已有历史验证记录。
 - **接手要求**：编辑前仍须结合 Git、任务相关 evidence、真实源码与生产现场复核；本摘要不是跳过迁移、部署、Android 或小程序验证的依据。
 
+## 2026-07-15 / v2.1.24-test / Codex — 实时推荐 2A-3 计划采用事务
+
+- 新增独立 accept 合同、路由与 0025 加法迁移；同一事务内完成幂等、日期锁、旧 primary 降 backup、无 outfitId 计划、衣物/推荐快照、图片 binding、action 和 sync change，提交后再按主键读回。
+- 采用时重读当前衣物并重跑硬过滤；允许仍合法的 superseded 候选，拒绝跨用户/失效衣物、模板变化和超过一件的替换。App/小程序读合同已支持 `garmentIds` 且无 `outfitId`，旅行打包 UUID 优先。
+- 删除衣物不再从推荐计划中删 UUID/快照；未来计划标记 blocked，历史计划保留展示语义。真实 PostgreSQL 双连接并发、幂等、降级与四阶段故障注入 `7/7`；accept 开关仍默认关闭。
+
 ## 2026-07-15 / v2.1.24-test / Codex — 实时推荐 2A-0 Fixture 冻结
 
 - 手写冻结 Recommendation V3 的 forecast/locationless/weather_fallback 场景、三目标精确 expected、0/7/30/90/180/365 天轮换边界及“从未穿过/久未穿”口径；保留 V1/V2 兼容读取断言。
