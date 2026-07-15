@@ -10,7 +10,7 @@
 ## 当前接力基线（2026-07-15）
 
 - **版本与平台**：`package.json` 为 `2.1.24-test`；正式开发基线为 App/API/共享代码 `main` 与小程序 `wechat/miniprogram`。App 仍以 Android 竖屏、线上唯一数据源和固定签名 APK 为交付边界。
-- **生产 API**：运行代码提交/镜像 `6fb576e`，API/Worker 零重启；已验证直接回滚镜像为 `wardrobe-api:4148541`，数据库迁移数 `26`。最近核验内外网 health/ready/version 200、鉴权边界 401。
+- **生产 API**：运行代码提交/镜像 `3db5335`，API/Worker 零重启；已验证直接回滚镜像为 `wardrobe-api:6fb576e`，数据库迁移数 `26`。最近核验内外网 health/ready/version 200、鉴权边界 401。
 - **生产能力**：推荐 V2 与 QWeather 保持启用，V3 realtime/accept 已分阶段启用；PAW、天气预警和历史气候保持关闭。当前推荐链覆盖只读 GET、实时 resolve、今日/明日 worker 预热、事务 accept、原子双日发布、lease/fencing、上海业务日期和共享天气缓存。
 - **最近交付**：自动裁切双路线与 Android 真机闭环、全量动效/浮层/返回栈修复、App/小程序跨端一致性审计、微信登录与账号注销、固定签名 APK 和小程序体验版均已有历史验证记录。
 - **接手要求**：编辑前仍须结合 Git、任务相关 evidence、真实源码与生产现场复核；本摘要不是跳过迁移、部署、Android 或小程序验证的依据。
@@ -20,6 +20,7 @@
 - 默认 accept validator 对已清洗/归档、blocked、缺主图或其他当前硬过滤失效改抛明确领域错误；service 只将该错误映射为 `409 conflict` 和 `details.reasonCode=recommendation_no_longer_valid`。
 - 取消事务内 validator 的 blanket catch；数据库、天气、解析等非业务异常保持原有 5xx/重试语义，失效采用仍不产生计划、action、mutation、资产 binding 或 primary 变更。
 - 红灯为 `5 failed / 17 passed`；修复后真实 PostgreSQL accept `22/22`、推荐合同/路由/实时专项 `20/20`、API full `327/327`及 API/root typecheck 通过。风险等级 High；未触发 subagent：用户未通知。
+- 生产备份、部署及 Bearer+device 合成账号 HTTP 验证通过：失效 accept 为 409 且零半状态，恢复后合法 accept/幂等不退化，清理残留为 0；realtime/accept 仍为 `true`。
 
 ## 2026-07-15 / v2.1.24-test / Codex — 实时推荐 2A-5 accept/readiness 收口
 

@@ -135,3 +135,25 @@ secrets, coordinates, or real wardrobe data.
   Fastify HTTP injection and zero plan/action/mutation/outfit-plan binding on
   every invalidation. Recommendation contract/realtime/route tests passed
   `20 / 20`, API full passed `327 / 327`, and API/root typecheck passed.
+- Main implementation `3db5335` was pushed before deployment. Production backup
+  `/opt/wardrobe-cloud/backups/postgres/wardrobe-20260715-231716.sql` completed;
+  no migration changed and the production migration count remains 26.
+- Production API and worker run `wardrobe-api:3db5335`, image ID
+  `sha256:9e86f97112e548251e883f286ae43f9728d028d69f4c0738ff496a8696d7a639`.
+  Both have zero restarts; public health/ready/version returned 200, unauthenticated
+  workspace and accept returned 401, and realtime/accept flags remained `true`.
+- The authenticated production Fastify smoke first made one selected garment
+  recommendation-blocked, then observed HTTP 409 with
+  `details.reasonCode=recommendation_no_longer_valid` and zero plan, action,
+  mutation, outfit-plan binding, or primary rows. After restoring the synthetic
+  garment, legal accept committed, replay was idempotent, and account cleanup
+  reported zero residual rows. No credential, token, coordinate, or user data
+  was printed.
+- The standard Dockerfile retry again stalled in Debian `apt-get update`. Its
+  remote process survived the initial SSH interrupt and briefly overlapped the
+  first overlay attempt; both exact build processes were terminated and that
+  image was discarded. After confirming zero active builds and no dependency,
+  system-package, shared-package, or migration changes, the recorded overlay
+  method was rerun alone with `--no-cache`; only this second image was deployed.
+  The retained risk is that this remains a verified-runtime overlay rather than
+  a clean base-image rebuild.
