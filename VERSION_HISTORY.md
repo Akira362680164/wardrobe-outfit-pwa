@@ -10,7 +10,7 @@
 ## 当前接力基线（2026-07-15）
 
 - **版本与平台**：`package.json` 为 `2.1.24-test`；正式开发基线为 App/API/共享代码 `main` 与小程序 `wechat/miniprogram`。App 仍以 Android 竖屏、线上唯一数据源和固定签名 APK 为交付边界。
-- **生产 API**：运行提交/镜像 `4148541`，API/Worker 零重启；已验证回滚镜像为 `wardrobe-api:3d1634d`，数据库迁移数 `26`。最近核验内外网 health/ready/version 200、鉴权边界 401。
+- **生产 API**：运行代码提交/镜像 `6fb576e`，API/Worker 零重启；已验证直接回滚镜像为 `wardrobe-api:4148541`，数据库迁移数 `26`。最近核验内外网 health/ready/version 200、鉴权边界 401。
 - **生产能力**：推荐 V2 与 QWeather 保持启用，V3 realtime/accept 已分阶段启用；PAW、天气预警和历史气候保持关闭。当前推荐链覆盖只读 GET、实时 resolve、今日/明日 worker 预热、事务 accept、原子双日发布、lease/fencing、上海业务日期和共享天气缓存。
 - **最近交付**：自动裁切双路线与 Android 真机闭环、全量动效/浮层/返回栈修复、App/小程序跨端一致性审计、微信登录与账号注销、固定签名 APK 和小程序体验版均已有历史验证记录。
 - **接手要求**：编辑前仍须结合 Git、任务相关 evidence、真实源码与生产现场复核；本摘要不是跳过迁移、部署、Android 或小程序验证的依据。
@@ -21,6 +21,7 @@
 - 稳定指纹规范化衣物内部集合并排除展示 summary；协调器先查 current，同指纹复用的引擎调用为 0，prepare/天气/输入/引擎失败纳入合法 current 的 served_stale 边界。
 - App/小程序现有计划页面改为直接展示无 outfitId 推荐快照和未来不可用提示；无需伪造 SavedOutfit 即可确认/取消已穿，事务写入 actualGarmentIds/snapshots 并同步衣物统计。
 - 新增当前上下文、指纹/复用、跨端展示状态和真实 PostgreSQL 竞态/穿着回滚回归；本批不包含新首页、推荐详情、动画、APK、体验版或 PAW。
+- 代码主线 `6fb576e`与小程序 `0e2b81d` 已推送；生产保持 realtime/accept 双开关为 `true`，真实 Bearer+device HTTP 链的生成/复用/采用/幂等/无 outfitId 计划读回/已穿统计与零残留清理通过。
 
 ## 2026-07-15 / v2.1.24-test / Codex — 实时推荐生产清理边界
 
