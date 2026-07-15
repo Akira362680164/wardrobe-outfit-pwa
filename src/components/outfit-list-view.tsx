@@ -27,7 +27,7 @@ import { getWearSummary, hasWornDate } from "@/lib/wear-records";
 import { useLocalDateKey } from "@/lib/use-local-date-key";
 import { addOutfitToDate, recordActualOutfitWear, cancelActualOutfitWearForDate, formatOutfitWearSyncError } from "@/lib/outfit-wear-sync";
 import { wardrobeRepository } from "@/lib/repository/wardrobe-repository";
-import { rethrowIfFailed, upsertOutfit, upsertTripPlan, repoUpdateOutfit, repoUpdateOutfitPlanEntry, repoSetOutfitPlanPrimary, repoDeleteOutfitPlanEntry, repoDeleteTripPlan, repoUpdatePackingChecklist } from "@/lib/repository/wardrobe-repository";
+import { rethrowIfFailed, upsertOutfit, upsertTripPlan, repoUpdateOutfit, repoUpdateOutfitPlanEntry, repoSetOutfitPlanPrimary, repoDeleteOutfitPlanEntry, repoDeleteTripPlan, repoUpdatePackingChecklist, repoMarkPlanWorn, repoCancelPlanWorn } from "@/lib/repository/wardrobe-repository";
 import { OutfitCover } from "@/components/outfit-cover";
 import { OutfitWeeklyPlanStrip } from "@/components/outfit-weekly-plan-strip";
 import { OutfitPlanningCalendarView } from "@/components/outfit-planning-calendar-view";
@@ -1002,9 +1002,10 @@ export function OutfitListView({
 	  // v1.1.0 fix:统一使用 recordActualOutfitWear，不限于 Today
 	  async function handleMarkPlanEntryWorn(entry: OutfitPlanEntry) {
 	    const outfitId = entry.outfitId ?? entry.actualOutfitId;
-	    if (!outfitId) return;
 	    try {
-	      const result = await recordActualOutfitWear({ dateKey: entry.date, outfitId, todayKey, mode: "worn", snapshot: wearSnapshot }); await onPlanDataChange();
+	      if (outfitId) await recordActualOutfitWear({ dateKey: entry.date, outfitId, todayKey, mode: "worn", snapshot: wearSnapshot });
+	      else rethrowIfFailed(await repoMarkPlanWorn(entry, `${entry.date}T12:00:00.000Z`), "标记已穿失败");
+	      await onPlanDataChange();
 	      onMessage(entry.date === todayKey ? "已记录今天穿了" : "已补记穿搭");
 	    } catch (error) {
 	      onMessage(formatOutfitWearSyncError(error), "error");
@@ -1043,7 +1044,13 @@ export function OutfitListView({
 	  // v1.1.0 fix: 新增取消实际穿着
 	  async function handleCancelOutfitWearForDate(dateKey: string, outfitId: string) {
 	    try {
-	      const result = await cancelActualOutfitWearForDate({ dateKey, outfitId, todayKey, snapshot: wearSnapshot }); await onPlanDataChange();
+	      if (outfitId) await cancelActualOutfitWearForDate({ dateKey, outfitId, todayKey, snapshot: wearSnapshot });
+	      else {
+	        const entry = outfitPlanEntries.find((item) => item.date === dateKey && item.status === "worn" && item.sourceType === "daily_recommendation" && !item.outfitId);
+	        if (!entry) throw new Error("找不到已穿推荐计划");
+	        rethrowIfFailed(await repoCancelPlanWorn(entry), "取消已穿失败");
+	      }
+	      await onPlanDataChange();
 	      onMessage(dateKey === todayKey ? "已取消今天穿着记录" : "已取消该日穿着记录");
 	    } catch (error) {
 	      onMessage(formatOutfitWearSyncError(error), "error");

@@ -9,6 +9,7 @@ import {
 } from "../../../services/workspace";
 import { enumerateDateRange, formatDateWithWeek } from "../../../utils/calendar";
 import { getRuntimeRefreshSnapshot, markRuntimeDomainDirty } from "../../../utils/runtime-refresh";
+import { getRecommendationPlanAvailabilityMessage, getRecommendationPlanSnapshotNames, isSnapshotRecommendationPlan } from "../../../utils/outfit-plan-state";
 
 type DayArrangement = {
   date: string;
@@ -183,11 +184,11 @@ function buildRows(plan: MiniCalendarPlan, entries: MiniOutfitPlanEntry[], outfi
       label: formatDateWithWeek(date),
       statusLabel: entry ? statusLabel(entry) : "",
       outfitId: outfit?.id || "",
-      outfitName: entry?.title || outfit?.name || "",
-      outfitMeta: outfit ? `${outfit.itemCount}件 · ${outfit.sceneText}` : entry?.scene || "",
+      outfitName: entry?.title || outfit?.name || (entry && isSnapshotRecommendationPlan(entry) ? getRecommendationPlanSnapshotNames(entry).join(" · ") : ""),
+      outfitMeta: outfit ? `${outfit.itemCount}件 · ${outfit.sceneText}` : entry && isSnapshotRecommendationPlan(entry) ? getRecommendationPlanAvailabilityMessage(entry, new Date().toISOString().slice(0, 10)) || `${entry.garmentSnapshots.length}件推荐衣物` : entry?.scene || "",
       imageUrl: outfit?.imageUrl || "",
-      empty: !entry || !outfit,
-      broken: Boolean(entry && !outfit),
+      empty: !entry || (!outfit && !isSnapshotRecommendationPlan(entry)),
+      broken: Boolean(entry && !outfit && !isSnapshotRecommendationPlan(entry)),
     };
   });
 }

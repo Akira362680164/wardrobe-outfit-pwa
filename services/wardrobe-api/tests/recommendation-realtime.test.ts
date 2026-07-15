@@ -7,8 +7,10 @@ import {
   RecommendationGenerationCoordinator,
   RecommendationReadService,
   recommendationInputFingerprint,
+  validateRecommendationCandidateCurrent,
 } from "../src/recommendations/index.js";
 import { buildLocationlessInput } from "./fixtures/recommendations/v2-scenarios.js";
+import { IDS } from "./fixtures/recommendations/scenarios.js";
 
 const USER = "10000000-0000-4000-8000-000000000001";
 const TODAY = "2026-07-15";
@@ -30,6 +32,24 @@ describe("realtime recommendation input fingerprint", () => {
       anchorGarmentIds: [...input.anchorGarmentIds].reverse(),
     };
     expect(recommendationInputFingerprint(changedRequestOnly)).toBe(first);
+  });
+
+  it("normalizes semantic garment sets and ignores display-only weather summary", () => {
+    const input = buildLocationlessInput();
+    const changedPresentationOnly = {
+      ...input,
+      garments: input.garments.map((item, index) => index === 0 ? {
+        ...item,
+        colors: [...item.colors].reverse(),
+        seasons: [...item.seasons].reverse(),
+        styles: [...item.styles].reverse(),
+      } : item),
+      dateContextInput: {
+        ...input.dateContextInput,
+        weatherEvidence: { ...input.dateContextInput.weatherEvidence, summary: "仅展示文案变化" },
+      },
+    };
+    expect(recommendationInputFingerprint(changedPresentationOnly)).toBe(recommendationInputFingerprint(input));
   });
 
   it("changes for garment state, location, weather evidence, plan protection, or algorithm version", () => {
@@ -63,6 +83,30 @@ describe("realtime recommendation coordinator", () => {
     expect(calls).toEqual(["prepare"]);
   });
 
+  it("does not materialize or invoke the engine when current is reusable", async () => {
+    let engineCalls = 0;
+    const current = record("a".repeat(64), TODAY);
+    const coordinator = new RecommendationGenerationCoordinator({
+      prepare: async () => ({ ...prepared(current.inputFingerprint!, TODAY), materialize: async () => { engineCalls += 1; return prepared(current.inputFingerprint!, TODAY).command; } }),
+      findCurrent: async () => current,
+      publish: async () => current,
+      publishHomePair: async () => [current, record("b".repeat(64), TOMORROW)],
+    } as any);
+    expect((await coordinator.resolve(USER, { dates: [TODAY] })).results[0]?.status).toBe("reused");
+    expect(engineCalls).toBe(0);
+  });
+
+  it("serves a valid current stale when prepare fails before generation", async () => {
+    const current = record("a".repeat(64), TODAY);
+    const coordinator = new RecommendationGenerationCoordinator({
+      prepare: async () => { throw new Error("weather unavailable"); },
+      findCurrent: async () => current,
+      publish: async () => current,
+      publishHomePair: async () => [current, current],
+    } as any);
+    expect((await coordinator.resolve(USER, { dates: [TODAY] })).results[0]?.status).toBe("served_stale");
+  });
+
   it("publishes today and tomorrow as one batch and returns no mixed generation", async () => {
     const calls: string[] = [];
     const coordinator = new RecommendationGenerationCoordinator({
@@ -80,6 +124,27 @@ describe("realtime recommendation coordinator", () => {
     expect(() => ResolveRecommendationsCommandSchema.parse({ dates: [TODAY], force: true })).toThrow();
     expect(() => ResolveRecommendationsCommandSchema.parse({ dates: [TODAY, TOMORROW, "2026-07-17"] })).toThrow();
     expect(() => ResolveRecommendationsResponseSchema.parse({ timezone: "Asia/Shanghai", results: [{ targetDate: TODAY, status: "not_ready" }] })).not.toThrow();
+  });
+});
+
+describe("accept current candidate context", () => {
+  const ordinary = [IDS.shirt, IDS.pants, IDS.loafers];
+  it("rejects old travel T8 after travel is cancelled", async () => {
+    const input = buildLocationlessInput();
+    await expect(validateRecommendationCandidateCurrent(input, { template: "T8" }, [...ordinary, IDS.hat])).rejects.toThrow("recommendation_no_longer_valid");
+  });
+  it("rejects a candidate missing newly-required outerwear after cold or heavy-rain context", async () => {
+    const base = buildLocationlessInput();
+    const input = { ...base, resolvedContext: { ...base.resolvedContext, contextMode: "forecast" as const }, dateContextInput: { ...base.dateContextInput, weatherEvidence: { ...base.dateContextInput.weatherEvidence, weatherSource: "forecast" as const, weatherConfidence: 0.9, temperatureMinC: 0, temperatureMaxC: 8, rainProbability: 90 } } };
+    await expect(validateRecommendationCandidateCurrent(input, { template: "T1" }, ordinary)).rejects.toThrow("recommendation_no_longer_valid");
+  });
+  it("rejects a template that is no longer available for the current scene", async () => {
+    const base = buildLocationlessInput();
+    const input = { ...base, dateContextInput: { ...base.dateContextInput, dayType: "rest_day" as const, userProfile: { ...base.dateContextInput.userProfile, restDayScene: "casual" as const } } };
+    await expect(validateRecommendationCandidateCurrent(input, { template: "T7" }, [...ordinary, IDS.bag])).rejects.toThrow("recommendation_no_longer_valid");
+  });
+  it("rejects current candidate-level blocking risk", async () => {
+    await expect(validateRecommendationCandidateCurrent(buildLocationlessInput(), { template: "T1", deterministicRiskAssessment: { blockingCodes: ["missing_required_slot"] } }, ordinary)).rejects.toThrow("recommendation_no_longer_valid");
   });
 });
 

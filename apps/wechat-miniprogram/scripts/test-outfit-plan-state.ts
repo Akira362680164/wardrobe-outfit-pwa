@@ -5,6 +5,9 @@ import {
   getOutfitPlanDateRelation,
   hasDuplicatePlannedOutfit,
   resolvePrimaryOutfitPlanEntry,
+  getRecommendationPlanAvailabilityMessage,
+  getRecommendationPlanSnapshotNames,
+  isSnapshotRecommendationPlan,
 } from "../utils/outfit-plan-state";
 import type { MiniOutfitPlanEntry } from "../services/workspace";
 
@@ -18,6 +21,8 @@ function entry(overrides: Partial<MiniOutfitPlanEntry>): MiniOutfitPlanEntry {
     garmentIds: [],
     itemIds: [],
     garmentSnapshots: [],
+    actualGarmentIds: [],
+    actualGarmentSnapshots: [],
     unavailableGarmentIds: [],
     availability: "available",
     actualOutfitId: "",
@@ -55,4 +60,12 @@ assert.equal(hasDuplicatePlannedOutfit([primary, backup], "2026-07-10", "outfit-
 assert.equal(hasDuplicatePlannedOutfit([primary, backup], "2026-07-10", "outfit-primary", "replace", primary), false);
 assert.equal(hasDuplicatePlannedOutfit([primary, backup], "2026-07-10", "outfit-primary", "worn", primary), false);
 
-console.log("wechat outfit plan state: 11 assertions passed");
+const recommendation = entry({ outfitId: "", sourceType: "daily_recommendation", garmentIds: ["garment-a"], garmentSnapshots: [{ garmentId: "garment-a", name: "白衬衫", role: "tops", imageAssetId: "asset-a" }] });
+assert.equal(isSnapshotRecommendationPlan(recommendation), true);
+assert.deepEqual(getRecommendationPlanSnapshotNames(recommendation), ["白衬衫"]);
+assert.equal(getRecommendationPlanAvailabilityMessage({ ...recommendation, availability: "blocked" }, "2026-07-10"), "部分衣物当前不可用，请替换后再穿");
+assert.equal(getRecommendationPlanAvailabilityMessage({ ...recommendation, date: "2026-07-09", availability: "blocked" }, "2026-07-10"), "");
+const wornRecommendation = { ...recommendation, status: "worn" as const, actualGarmentSnapshots: [{ garmentId: "garment-a", name: "当时白衬衫" }] };
+assert.deepEqual(getRecommendationPlanSnapshotNames(wornRecommendation), ["当时白衬衫"]);
+
+console.log("wechat outfit plan state: 16 assertions passed");

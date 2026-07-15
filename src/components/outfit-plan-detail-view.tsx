@@ -10,6 +10,7 @@ import { OutfitCover } from "@/components/outfit-cover";
 import { AppSubPageTopBar } from "@/components/app-sub-page-top-bar";
 import { ConfirmActionSheet } from "@/components/dialogs";
 import { useStableBackHandler } from "@/lib/use-stable-back-handler";
+import { isSnapshotRecommendationPlan, recommendationPlanAvailabilityMessage, recommendationPlanSnapshotNames } from "@/lib/recommendation-plan-presentation";
 
 interface OutfitPlanDetailViewProps {
   calendarPlan: OutfitCalendarPlan;
@@ -193,6 +194,12 @@ export function OutfitPlanDetailView({
                           </button>
                         </div>
                       </div>
+                    </div>
+                  ) : primaryEntry && isSnapshotRecommendationPlan(primaryEntry) ? (
+                    <div className="rounded-2xl border border-ink/8 bg-mist/25 p-3">
+                      <p className="text-xs font-semibold text-ink">{primaryEntry.title || recommendationPlanSnapshotNames(primaryEntry).join(" · ")}</p>
+                      <div className="mt-2 flex flex-wrap gap-1.5">{(primaryEntry.garmentSnapshots ?? []).map((snapshot) => <span key={snapshot.garmentId} className="rounded-full bg-white px-2 py-1 text-[10px] text-ink/60">{snapshot.name}</span>)}</div>
+                      {recommendationPlanAvailabilityMessage(primaryEntry, todayKey) ? <p className="mt-2 text-[10px] font-medium text-amber-700">{recommendationPlanAvailabilityMessage(primaryEntry, todayKey)}</p> : null}
                     </div>
                   ) : primaryEntry ? (
                     <div className="flex items-center justify-between gap-2 rounded-2xl border border-amber-200 bg-amber-50/70 p-3">

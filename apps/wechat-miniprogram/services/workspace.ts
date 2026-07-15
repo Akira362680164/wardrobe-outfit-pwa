@@ -299,6 +299,8 @@ export interface MiniOutfitPlanEntry {
   garmentIds: string[];
   itemIds: number[];
   garmentSnapshots: Array<Record<string, unknown>>;
+  actualGarmentIds: string[];
+  actualGarmentSnapshots: Array<Record<string, unknown>>;
   unavailableGarmentIds: string[];
   availability: "available" | "blocked" | "historical";
   actualOutfitId: string;
@@ -1141,6 +1143,14 @@ export async function cancelOutfitWornToday(
   return fetchOutfitDetail(id);
 }
 
+export async function markOutfitPlanWorn(entry: MiniOutfitPlanEntry, dateKey: string): Promise<void> {
+  await request<WorkspaceCommandResponse>({ method: "POST", path: `/api/workspace/outfit-plans/${encodeURIComponent(entry.id)}/mark-worn`, data: { clientMutationId: createClientMutationId(), expectedRevision: entry.revision, wornAt: `${dateKey}T12:00:00.000Z`, ...(entry.outfitId ? { outfitId: entry.outfitId } : {}) } });
+}
+
+export async function cancelOutfitPlanWorn(entry: MiniOutfitPlanEntry, dateKey: string): Promise<void> {
+  await request<WorkspaceCommandResponse>({ method: "POST", path: `/api/workspace/outfit-plans/${encodeURIComponent(entry.id)}/cancel-worn`, data: { clientMutationId: createClientMutationId(), expectedRevision: entry.revision, date: dateKey, payload: {} } });
+}
+
 export async function convertWishlistToWardrobe(
   id: string,
   expectedRevision: number,
@@ -1598,6 +1608,8 @@ function toMiniOutfitPlanEntry(entity: WorkspaceEntity): MiniOutfitPlanEntry {
     garmentIds: stringList(payload.garmentIds),
     itemIds: numberList(payload.itemIds),
     garmentSnapshots: Array.isArray(payload.garmentSnapshots) ? payload.garmentSnapshots.filter((value): value is Record<string, unknown> => Boolean(value) && typeof value === "object" && !Array.isArray(value)) : [],
+    actualGarmentIds: stringList(payload.actualGarmentIds),
+    actualGarmentSnapshots: Array.isArray(payload.actualGarmentSnapshots) ? payload.actualGarmentSnapshots.filter((value): value is Record<string, unknown> => Boolean(value) && typeof value === "object" && !Array.isArray(value)) : [],
     unavailableGarmentIds: stringList(payload.unavailableGarmentIds),
     availability: payload.availability === "blocked" ? "blocked" : payload.availability === "historical" ? "historical" : "available",
     actualOutfitId: firstString(payload.actualOutfitId),

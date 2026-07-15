@@ -12,6 +12,7 @@ import { displayRecommendationRecord } from "./read-service.js";
 
 export interface PreparedRealtimeRecommendation {
   command: PublishDailyRecommendationCommand | null;
+  materialize?: () => Promise<PublishDailyRecommendationCommand>;
   skipReason: "actual" | "primary_plan" | string | null;
   protectedPlanEntryId?: string;
   planRiskCodes?: DeterministicRiskCode[];
@@ -31,8 +32,16 @@ export class RecommendationGenerationCoordinator {
     const dates = [...command.dates].sort();
     const asOfDate = shanghaiDate(this.clock());
     const batchId = randomUUID();
-    const prepared = await Promise.all(dates.map((date) => this.dependencies.prepare(userId, date, asOfDate, batchId, source, command.clientMutationId)));
     const current = await Promise.all(dates.map((date) => this.dependencies.findCurrent(userId, date)));
+    let prepared: PreparedRealtimeRecommendation[];
+    try {
+      prepared = await Promise.all(dates.map((date) => this.dependencies.prepare(userId, date, asOfDate, batchId, source, command.clientMutationId)));
+    } catch (error) {
+      if (current.every((item) => validCurrent(item, this.clock()))) {
+        return ResolveRecommendationsResponseSchema.parse({ timezone: "Asia/Shanghai", results: current.map((item) => resolvedResult(item!, "served_stale")) });
+      }
+      throw error;
+    }
     const results: ResolveRecommendationsResponse["results"] = [];
     const publishIndexes = prepared.map((value, index) => value.command && (command.force || !reusable(current[index], value.command, this.clock())) ? index : -1).filter((index) => index >= 0);
 
@@ -46,11 +55,15 @@ export class RecommendationGenerationCoordinator {
     try {
       const publishable = publishIndexes.filter((index) => prepared[index]!.command !== null);
       if (dates.length === 2 && publishable.length > 0 && prepared.every((item) => item.command !== null)) {
-        const records = await this.dependencies.publishHomePair([prepared[0]!.command!, prepared[1]!.command!]);
+        const commands = await Promise.all(prepared.map((item) => item.materialize ? item.materialize() : item.command!));
+        const records = await this.dependencies.publishHomePair([commands[0]!, commands[1]!]);
         results[0] = resolvedResult(records[0], "generated");
         results[1] = resolvedResult(records[1], "generated");
       } else {
-        for (const index of publishable) results[index] = resolvedResult(await this.dependencies.publish(prepared[index]!.command!), "generated");
+        for (const index of publishable) {
+          const item = prepared[index]!;
+          results[index] = resolvedResult(await this.dependencies.publish(item.materialize ? await item.materialize() : item.command!), "generated");
+        }
       }
     } catch (error) {
       for (const index of publishIndexes) {
@@ -61,6 +74,10 @@ export class RecommendationGenerationCoordinator {
     for (let index = 0; index < dates.length; index++) results[index] ??= { targetDate: dates[index]!, status: "not_ready" };
     return ResolveRecommendationsResponseSchema.parse({ timezone: "Asia/Shanghai", results });
   }
+}
+
+function validCurrent(current: DailyRecommendationRecord | null, now: Date): current is DailyRecommendationRecord {
+  return Boolean(current?.isCurrent && Date.parse(current.expiresAt) > now.getTime());
 }
 
 function reusable(current: DailyRecommendationRecord | null, command: PublishDailyRecommendationCommand, now: Date): boolean {

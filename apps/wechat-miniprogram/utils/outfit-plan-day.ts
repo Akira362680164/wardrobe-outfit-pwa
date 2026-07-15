@@ -7,6 +7,9 @@ import {
   getBackupOutfitPlanEntries,
   getDisplayOutfitId,
   getOutfitPlanDateRelation,
+  getRecommendationPlanAvailabilityMessage,
+  getRecommendationPlanSnapshotNames,
+  isSnapshotRecommendationPlan,
   resolvePrimaryOutfitPlanEntry,
 } from "./outfit-plan-state";
 import { formatDateLabel, formatDateWithWeek } from "./calendar";
@@ -89,21 +92,22 @@ export function buildOutfitPlanDayCard(input: {
   const relation = getOutfitPlanDateRelation(input.dateKey, input.todayKey);
   const mainPlan = input.plans[0];
   const primaryEntry = resolvePrimaryOutfitPlanEntry(input.entries);
-  const visiblePrimaryEntry = relation === "past" && primaryEntry?.status !== "worn" ? undefined : primaryEntry;
+  const visiblePrimaryEntry = primaryEntry;
   const primaryOutfit = visiblePrimaryEntry
     ? input.outfits.find((outfit) => outfit.id === getDisplayOutfitId(visiblePrimaryEntry))
     : undefined;
-  const hasBrokenPrimary = Boolean(visiblePrimaryEntry && !primaryOutfit);
+  const snapshotPrimary = Boolean(visiblePrimaryEntry && isSnapshotRecommendationPlan(visiblePrimaryEntry));
+  const hasBrokenPrimary = Boolean(visiblePrimaryEntry && !primaryOutfit && !snapshotPrimary);
   const dateLabel = formatDateLabel(input.dateKey);
   const weekdayLabel = formatDateWithWeek(input.dateKey).split(" ")[1] || "";
-  const primary = visiblePrimaryEntry && primaryOutfit
+  const primary = visiblePrimaryEntry && (primaryOutfit || snapshotPrimary)
     ? {
         entryId: visiblePrimaryEntry.id,
-        outfitId: primaryOutfit.id,
-        name: visiblePrimaryEntry.title || primaryOutfit.name,
-        imageUrl: primaryOutfit.imageUrl,
-        itemImages: primaryOutfit.itemImages,
-        meta: `${primaryOutfit.itemCount}件 · ${primaryOutfit.sceneText}`,
+        outfitId: primaryOutfit?.id || "",
+        name: visiblePrimaryEntry.title || primaryOutfit?.name || getRecommendationPlanSnapshotNames(visiblePrimaryEntry).join(" · "),
+        imageUrl: primaryOutfit?.imageUrl || "",
+        itemImages: primaryOutfit?.itemImages || [],
+        meta: primaryOutfit ? `${primaryOutfit.itemCount}件 · ${primaryOutfit.sceneText}` : getRecommendationPlanAvailabilityMessage(visiblePrimaryEntry, input.todayKey) || `${visiblePrimaryEntry.garmentSnapshots.length}件推荐衣物`,
         statusLabel: visiblePrimaryEntry.status === "worn"
           ? "实际已穿"
           : visiblePrimaryEntry.status === "changed"
@@ -133,13 +137,13 @@ export function buildOutfitPlanDayCard(input: {
   const backups = getBackupOutfitPlanEntries(input.entries, visiblePrimaryEntry)
     .map((entry) => {
       const outfit = input.outfits.find((item) => item.id === getDisplayOutfitId(entry));
-      return outfit
+      return outfit || isSnapshotRecommendationPlan(entry)
         ? {
             entryId: entry.id,
-            outfitId: outfit.id,
-            name: entry.title || outfit.name,
-            imageUrl: outfit.imageUrl,
-            itemImages: outfit.itemImages,
+            outfitId: outfit?.id || "",
+            name: entry.title || outfit?.name || getRecommendationPlanSnapshotNames(entry).join(" · "),
+            imageUrl: outfit?.imageUrl || "",
+            itemImages: outfit?.itemImages || [],
           }
         : null;
     })

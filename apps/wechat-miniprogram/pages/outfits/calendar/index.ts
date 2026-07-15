@@ -5,6 +5,8 @@ import {
   fetchPlanningSnapshot,
   getWorkspaceReadState,
   markOutfitWornOnDate,
+  markOutfitPlanWorn,
+  cancelOutfitPlanWorn,
   updateOutfitPlanEntry,
   type MiniCalendarPlan,
   type MiniCalendarPlanType,
@@ -284,14 +286,15 @@ Page({
     const primary = this.data.selectedDayCard?.primary;
     if (!primary) return;
     const outfit = this.data.outfits.find((item) => item.id === primary.outfitId);
-    if (!outfit) return;
+    const planEntry = this.data.outfitPlanEntries.find((item) => item.id === primary.entryId);
+    if (!outfit && !planEntry) return;
     if (action === "delete_worn" && !await confirmAction("删除这天的已穿记录？", "删除后只会移除当天穿着记录，套装本身会保留。")) return;
     this.setData({ savingEntry: true });
     try {
       if (action === "delete_worn") {
-        await cancelOutfitWornOnDate(outfit.id, outfit.revision, this.data.selectedDate);
+        if (outfit) await cancelOutfitWornOnDate(outfit.id, outfit.revision, this.data.selectedDate); else await cancelOutfitPlanWorn(planEntry!, this.data.selectedDate);
       } else {
-        await markOutfitWornOnDate(outfit.id, outfit.revision, this.data.selectedDate);
+        if (outfit) await markOutfitWornOnDate(outfit.id, outfit.revision, this.data.selectedDate); else await markOutfitPlanWorn(planEntry!, this.data.selectedDate);
       }
       markRuntimeDomainDirty("planning");
       markRuntimeDomainDirty("outfits");

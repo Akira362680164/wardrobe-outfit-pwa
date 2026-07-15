@@ -5,6 +5,8 @@ import {
   fetchPlanningSnapshot,
   getWorkspaceReadState,
   markOutfitWornOnDate,
+  markOutfitPlanWorn,
+  cancelOutfitPlanWorn,
   updateOutfitPlanEntry,
   type MiniCalendarPlan,
   type MiniCalendarPlanType,
@@ -15,6 +17,9 @@ import { getCapsuleGeometry } from "../../../utils/capsule-layout";
 import { getRuntimeSessionScope } from "../../../stores/session";
 import {
   getDisplayOutfitId,
+  getRecommendationPlanAvailabilityMessage,
+  getRecommendationPlanSnapshotNames,
+  isSnapshotRecommendationPlan,
   getOutfitPlanDateRelation,
   hasDuplicatePlannedOutfit,
   resolvePrimaryOutfitPlanEntry,
@@ -380,7 +385,8 @@ Page({
     const selected = this.data.selectedDayCard?.primary;
     if (!selected) return;
     const outfit = this.data.outfits.find((item) => item.id === selected.outfitId);
-    if (!outfit) return;
+    const planEntry = this.data.outfitPlanEntries.find((item) => item.id === selected.entryId);
+    if (!outfit && !planEntry) return;
     if (action === "delete_worn") {
       const confirmed = await confirmAction("删除这天的已穿记录？", "删除后只会移除当天穿着记录，套装本身会保留。");
       if (!confirmed) return;
@@ -388,9 +394,9 @@ Page({
     this.setData({ savingEntry: true });
     try {
       if (action === "delete_worn") {
-        await cancelOutfitWornOnDate(outfit.id, outfit.revision, this.data.selectedDate);
+        if (outfit) await cancelOutfitWornOnDate(outfit.id, outfit.revision, this.data.selectedDate); else await cancelOutfitPlanWorn(planEntry!, this.data.selectedDate);
       } else {
-        await markOutfitWornOnDate(outfit.id, outfit.revision, this.data.selectedDate);
+        if (outfit) await markOutfitWornOnDate(outfit.id, outfit.revision, this.data.selectedDate); else await markOutfitPlanWorn(planEntry!, this.data.selectedDate);
       }
       markRuntimeDomainDirty("planning");
       markRuntimeDomainDirty("outfits");

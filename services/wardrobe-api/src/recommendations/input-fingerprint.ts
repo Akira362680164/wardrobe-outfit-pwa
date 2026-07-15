@@ -14,6 +14,7 @@ export function recommendationInputFingerprint(input: FingerprintInput): string 
   const generic = input.resolvedContext.contextMode !== "forecast";
   const weather = { ...input.dateContextInput.weatherEvidence } as Record<string, unknown>;
   if (generic) delete weather.weatherUpdatedAt;
+  delete weather.summary;
   const normalized = {
     algorithmVersion: input.algorithmVersion ?? RECOMMENDATION_ALGORITHM_VERSION_V3,
     ruleVersion: RECOMMENDATION_REALTIME_RULE_VERSION,
@@ -33,7 +34,12 @@ export function recommendationInputFingerprint(input: FingerprintInput): string 
       travelPlan: input.dateContextInput.travelPlan,
       userProfile: input.dateContextInput.userProfile,
     },
-    garments: sortBy(input.garments, (item) => item.id),
+    garments: sortBy(input.garments.map((item) => ({
+      ...item,
+      colors: [...item.colors].sort(),
+      seasons: [...item.seasons].sort(),
+      styles: [...item.styles].sort(),
+    })), (item) => item.id),
     savedOutfits: sortBy(input.savedOutfits.map((item) => ({ ...item, garmentIds: [...item.garmentIds].sort() })), (item) => item.id),
     wearHistory: sortBy(input.wearHistory.map((item) => ({ ...item, garmentIds: [...item.garmentIds].sort() })), (item) => `${item.wornDate}:${item.sceneType}:${item.garmentIds.join(",")}`),
     feedback: sortBy(input.feedback.map((item) => ({ ...item, garmentIds: [...item.garmentIds].sort() })), (item) => `${item.sceneType}:${item.sentiment}:${item.garmentIds.join(",")}`),
