@@ -53,8 +53,9 @@ secrets, coordinates, or real wardrobe data.
 - Backups were written before both migration deployments. The final backup used
   for the 0026 drill is `wardrobe-20260715-202445.sql`; it restored into an
   isolated database, migrated from 25 to 26, and passed an account-plus-garment
-  cascade deletion. The earlier 0024/0025 drill also passed the previous-image
-  health/version compatibility check.
+  cascade deletion. The earlier 0024/0025 drill passed the previous-image
+  health/version check, and the retained `3d1634d` migrator also read the final
+  26-migration schema without error.
 - Production runs `wardrobe-api:4148541` for API and worker. Both containers are
   running with zero restarts; internal and public health/ready/version are 200,
   the version endpoint reports `4148541`, and unauthenticated GET/resolve/accept
