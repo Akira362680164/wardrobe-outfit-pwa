@@ -38,8 +38,10 @@ export const RecommendationGenerationModeSchema = z.enum(["rule_only", "paw_enha
 
 export const RECOMMENDATION_ALGORITHM_VERSION_V1 = "wardora-recommendation-1c";
 export const RECOMMENDATION_ALGORITHM_VERSION_V2 = "wardora-recommendation-1d-a-v2";
+export const RECOMMENDATION_ALGORITHM_VERSION_V3 = "wardora-recommendation-realtime-v1";
 export const RECOMMENDATION_FORECAST_RULE_VERSION = "wardora-rules-1a";
 export const RECOMMENDATION_LOCATIONLESS_RULE_VERSION = "wardora-rules-locationless-1";
+export const RECOMMENDATION_REALTIME_RULE_VERSION = "wardora-rules-realtime-1";
 export const RecommendationContextModeSchema = z.enum(["forecast", "locationless", "weather_fallback"]);
 export const RecommendationLocationSourceSchema = z.enum(["travel", "temporary_override", "home_city"]);
 export const WeatherLocationRefSchema = z.object({
@@ -238,6 +240,24 @@ export const RecommendationEngineInputV2Schema = RecommendationEngineInputObject
 });
 
 export const RecommendationObjectiveScoresSchema = z.object({ safe: Score0To100Schema, fresh: Score0To100Schema, comfort: Score0To100Schema }).strict();
+export const DeterministicRiskCodeSchema = z.enum([
+  "missing_required_slot",
+  "severe_temperature_mismatch",
+  "severe_formality_mismatch",
+  "rain_incompatible",
+  "shoe_activity_mismatch",
+  "wind_rain_exposure",
+  "outerwear_recommended",
+  "evening_layer_recommended",
+]);
+export const DeterministicRiskAssessmentSchema = z.object({
+  blockingCodes: z.array(DeterministicRiskCodeSchema).max(8),
+  warningCodes: z.array(DeterministicRiskCodeSchema).max(8),
+  advisoryCodes: z.array(DeterministicRiskCodeSchema).max(8),
+}).strict().superRefine((value, ctx) => {
+  const all = [...value.blockingCodes, ...value.warningCodes, ...value.advisoryCodes];
+  if (!unique(all)) issue(ctx, [], "deterministic risk codes must be unique across severities");
+});
 const RecommendationAuditCandidateObjectSchema = z.object({
   candidateId: z.string().uuid(), garmentIds: z.array(z.string().uuid()).min(2).max(9), source: CandidateSourceSchema, sourceOutfitId: z.string().uuid().optional(), template: z.enum(["T1", "T2", "T3", "T4", "T5", "T6", "T7", "T8"]), ruleScores: CandidateRuleScoresSchema, combinationNovelty: Score0To100Schema, longUnwornValue: Score0To100Schema, savedOrHistoricalSuccess: Score0To100Schema, styleVariation: Score0To100Schema, historicalThermalAndDiscomfortFit: Score0To100Schema, shoeAndOuterwearRationality: Score0To100Schema, pawEvaluation: CandidateEvaluationSchema, objectiveScores: RecommendationObjectiveScoresSchema, reasonCodes: z.array(RecommendationReasonCodeSchema).max(12), riskCodes: z.array(SceneRiskCodeSchema).max(12), missingSlotCodes: z.array(GarmentSlotSchema).max(9),
 }).strict();
@@ -265,6 +285,40 @@ export const RecommendationEngineOutputSchema = z.object({
     const audit = shortlist.get(display.candidateId);
     if (!audit) return issue(ctx, ["recommendations", index, "candidateId"], "display candidate must exist in shortlist");
     for (const key of ["garmentIds", "source", "sourceOutfitId", "template", "ruleScores", "pawEvaluation", "objectiveScores", "reasonCodes", "riskCodes", "missingSlotCodes"] as const) {
+      if (JSON.stringify(display[key]) !== JSON.stringify(audit[key])) issue(ctx, ["recommendations", index, key], `display ${key} must match shortlist audit`);
+    }
+    if (display.finalScore !== display.objectiveScores[display.objective]) issue(ctx, ["recommendations", index, "finalScore"], "finalScore must equal selected objective score");
+  });
+});
+
+const RecommendationAuditCandidateV3ObjectSchema = z.object({
+  candidateId: z.string().uuid(), garmentIds: z.array(z.string().uuid()).min(2).max(9), source: CandidateSourceSchema, sourceOutfitId: z.string().uuid().optional(), template: z.enum(["T1", "T2", "T3", "T4", "T5", "T6", "T7", "T8"]), ruleScores: CandidateRuleScoresSchema, combinationNovelty: Score0To100Schema, rotationValue: Score0To100Schema, savedOrHistoricalSuccess: Score0To100Schema, styleVariation: Score0To100Schema, historicalThermalAndDiscomfortFit: Score0To100Schema, shoeAndOuterwearRationality: Score0To100Schema, deterministicRiskAssessment: DeterministicRiskAssessmentSchema, objectiveScores: RecommendationObjectiveScoresSchema, reasonCodes: z.array(RecommendationReasonCodeSchema).max(12), missingSlotCodes: z.array(GarmentSlotSchema).max(9),
+}).strict();
+const refineV3Candidate = (value: z.infer<typeof RecommendationAuditCandidateV3ObjectSchema>, ctx: z.RefinementCtx) => {
+  if (!unique(value.garmentIds)) issue(ctx, ["garmentIds"], "garmentIds must be unique");
+  if (!unique(value.reasonCodes)) issue(ctx, ["reasonCodes"], "reasonCodes must be unique");
+  if (!unique(value.missingSlotCodes)) issue(ctx, ["missingSlotCodes"], "missingSlotCodes must be unique");
+};
+export const RecommendationAuditCandidateV3Schema = RecommendationAuditCandidateV3ObjectSchema.superRefine(refineV3Candidate);
+export const DisplayRecommendationV3Schema = RecommendationAuditCandidateV3ObjectSchema.extend({ objective: RecommendationObjectiveSchema, finalScore: Score0To100Schema }).strict().superRefine(refineV3Candidate);
+export const RecommendationEngineOutputV3Schema = z.object({
+  algorithmVersion: z.literal(RECOMMENDATION_ALGORITHM_VERSION_V3),
+  ruleVersion: z.literal(RECOMMENDATION_REALTIME_RULE_VERSION),
+  dateContext: DateContextSchema,
+  recommendations: z.array(DisplayRecommendationV3Schema).max(3),
+  shortlist: z.array(RecommendationAuditCandidateV3Schema).max(18),
+  readiness: RecommendationReadinessReportSchema,
+  exclusions: z.array(RecommendationExclusionSchema).max(5000),
+  metrics: z.object({ eligibleGarmentCount: z.number().int().nonnegative(), rawCandidateCount: z.number().int().nonnegative().max(120), ruleScoredCandidateCount: z.number().int().nonnegative().max(60), maxBeamObserved: z.number().int().nonnegative().max(48) }).strict(),
+}).strict().superRefine((value, ctx) => {
+  const shortlist = new Map(value.shortlist.map((candidate) => [candidate.candidateId, candidate]));
+  if (shortlist.size !== value.shortlist.length) issue(ctx, ["shortlist"], "shortlist candidateId must be unique");
+  if (!unique(value.recommendations.map((display) => display.candidateId))) issue(ctx, ["recommendations"], "display candidateId must be unique");
+  if (!unique(value.recommendations.map((display) => display.objective))) issue(ctx, ["recommendations"], "display objective must be unique");
+  value.recommendations.forEach((display, index) => {
+    const audit = shortlist.get(display.candidateId);
+    if (!audit) return issue(ctx, ["recommendations", index, "candidateId"], "display candidate must exist in shortlist");
+    for (const key of ["garmentIds", "source", "sourceOutfitId", "template", "ruleScores", "rotationValue", "deterministicRiskAssessment", "objectiveScores", "reasonCodes", "missingSlotCodes"] as const) {
       if (JSON.stringify(display[key]) !== JSON.stringify(audit[key])) issue(ctx, ["recommendations", index, key], `display ${key} must match shortlist audit`);
     }
     if (display.finalScore !== display.objectiveScores[display.objective]) issue(ctx, ["recommendations", index, "finalScore"], "finalScore must equal selected objective score");
@@ -327,16 +381,40 @@ export const RecommendationPayloadV2Schema = z.object({
     if (dateContext.avoidRules.some((code) => genericWeatherAvoidRules.has(code))) issue(ctx, ["engineOutput", "dateContext", "avoidRules"], "generic modes forbid weather-derived avoid rules");
   }
 });
-export const RecommendationPayloadSchema = z.union([RecommendationPayloadV2Schema, RecommendationPayloadV1Schema]);
+export const RecommendationPayloadV3Schema = z.object({
+  schemaVersion: z.literal(3),
+  resolvedContext: ResolvedRecommendationContextSchema,
+  dateContextInput: DateContextInputSchema,
+  engineOutput: RecommendationEngineOutputV3Schema,
+  weatherContext: z.object({
+    availabilityReason: z.enum(["available", "locationless", "forecast_out_of_range", "provider_unavailable", "insufficient_evidence"]),
+    endpointFreshness: z.array(z.object({ endpoint: z.enum(["now", "hourly", "daily"]), freshness: z.enum(["fresh", "stale"]), providerUpdatedAt: z.string().datetime(), fetchedAt: z.string().datetime(), expiresAt: z.string().datetime(), staleUntil: z.string().datetime() }).strict()).max(3),
+    attribution: z.object({ label: z.literal("天气服务由 QWeather 提供"), url: z.literal("https://www.qweather.com"), sources: z.array(z.string().trim().min(1).max(160)).max(16), license: z.array(z.string().trim().min(1).max(160)).max(16) }).strict().optional(),
+  }).strict().optional(),
+}).strict().superRefine((value, ctx) => {
+  refineV2Context(value, ctx);
+  if (value.engineOutput.readiness.status === "not_ready" && value.engineOutput.recommendations.length !== 0) issue(ctx, ["engineOutput", "recommendations"], "not_ready output must not display recommendations");
+  if (value.resolvedContext.contextMode !== "forecast") {
+    const context = value.engineOutput.dateContext;
+    if (context.thermalStrategy !== "layer" || context.rainStrategy !== "none" || context.confidence !== "low") issue(ctx, ["engineOutput", "dateContext"], "generic V3 context must use deterministic layering fallback");
+    if (context.contextSummary !== `${context.sceneType}:layer:none`) issue(ctx, ["engineOutput", "dateContext", "contextSummary"], "generic V3 context summary must be deterministic");
+  }
+});
+export const RecommendationPayloadSchema = z.union([RecommendationPayloadV3Schema, RecommendationPayloadV2Schema, RecommendationPayloadV1Schema]);
 export const RecommendationPawProgramVersionsSchema = z.object({ dateContext: z.union([z.literal("disabled"), z.string().trim().min(1).max(80)]), candidateEvaluator: z.union([z.literal("disabled"), z.string().trim().min(1).max(80)]) }).strict();
 export const PublishDailyRecommendationCommandSchema = z.object({
-  userId: z.string().uuid(), targetDate: RealDateSchema, targetTimezone: TimeZoneSchema, generationBatchId: z.string().uuid(), generationRequestId: z.string().uuid(), readiness: RecommendationReadinessSchema, generationMode: RecommendationGenerationModeSchema, payload: RecommendationPayloadSchema, algorithmVersion: z.string().trim().min(1).max(80), ruleVersion: z.string().trim().min(1).max(80), pawProgramVersions: RecommendationPawProgramVersionsSchema, generatedAt: z.string().datetime(), expiresAt: z.string().datetime(),
+  userId: z.string().uuid(), targetDate: RealDateSchema, targetTimezone: TimeZoneSchema, generationBatchId: z.string().uuid(), generationRequestId: z.string().uuid(), inputFingerprint: z.string().regex(/^[a-f0-9]{64}$/).optional(), generationSource: z.enum(["foreground", "worker"]).optional(), forceRefresh: z.boolean().optional(), readiness: RecommendationReadinessSchema, generationMode: RecommendationGenerationModeSchema, payload: RecommendationPayloadSchema, algorithmVersion: z.string().trim().min(1).max(80), ruleVersion: z.string().trim().min(1).max(80), pawProgramVersions: RecommendationPawProgramVersionsSchema, generatedAt: z.string().datetime(), expiresAt: z.string().datetime(),
 }).strict().superRefine((value, ctx) => {
   if (value.readiness !== value.payload.engineOutput.readiness.status) issue(ctx, ["readiness"], "readiness must match payload");
   if (value.ruleVersion !== value.payload.engineOutput.ruleVersion) issue(ctx, ["ruleVersion"], "ruleVersion must match payload");
   if (value.targetDate !== value.payload.dateContextInput.date) issue(ctx, ["targetDate"], "targetDate must match payload DateContext input");
   if (value.targetTimezone !== value.payload.dateContextInput.timezone) issue(ctx, ["targetTimezone"], "targetTimezone must match payload DateContext input");
-  if ("schemaVersion" in value.payload) {
+  if ("schemaVersion" in value.payload && value.payload.schemaVersion === 3) {
+    if (value.algorithmVersion !== RECOMMENDATION_ALGORITHM_VERSION_V3 || value.ruleVersion !== RECOMMENDATION_REALTIME_RULE_VERSION) issue(ctx, ["algorithmVersion"], "V3 command must use realtime versions");
+    if (value.generationMode !== "rule_only") issue(ctx, ["generationMode"], "V3 writes must be rule_only");
+    if (value.pawProgramVersions.dateContext !== "disabled" || value.pawProgramVersions.candidateEvaluator !== "disabled") issue(ctx, ["pawProgramVersions"], "V3 writes require PAW disabled");
+    if (!value.inputFingerprint || !value.generationSource) issue(ctx, ["inputFingerprint"], "V3 writes require input fingerprint and generation source");
+  } else if ("schemaVersion" in value.payload) {
     if (value.targetDate !== value.payload.resolvedContext.targetDate) issue(ctx, ["targetDate"], "targetDate must match resolved context");
     if (value.targetTimezone !== value.payload.resolvedContext.targetTimezone) issue(ctx, ["targetTimezone"], "targetTimezone must match resolved context");
     if (value.algorithmVersion !== RECOMMENDATION_ALGORITHM_VERSION_V2) issue(ctx, ["algorithmVersion"], "V2 command must use the frozen V2 algorithm version");
@@ -344,7 +422,7 @@ export const PublishDailyRecommendationCommandSchema = z.object({
   if (Date.parse(value.expiresAt) <= Date.parse(value.generatedAt)) issue(ctx, ["expiresAt"], "expiresAt must be after generatedAt");
 });
 export const DailyRecommendationRecordSchema = z.object({
-  id: z.string().uuid(), userId: z.string().uuid(), targetDate: RealDateSchema, targetTimezone: TimeZoneSchema, revision: z.number().int().positive(), generationBatchId: z.string().uuid(), generationRequestId: z.string().uuid(), payloadFingerprint: z.string().regex(/^[a-f0-9]{64}$/), readiness: RecommendationReadinessSchema, generationMode: RecommendationGenerationModeSchema, isCurrent: z.boolean(), lifecycle: z.enum(["current", "superseded"]), supersededAt: z.string().datetime().nullable(), payload: RecommendationPayloadSchema, algorithmVersion: z.string().trim().min(1).max(80), ruleVersion: z.string().trim().min(1).max(80), pawProgramVersions: RecommendationPawProgramVersionsSchema, generatedAt: z.string().datetime(), expiresAt: z.string().datetime(), createdAt: z.string().datetime(), updatedAt: z.string().datetime(),
+  id: z.string().uuid(), userId: z.string().uuid(), targetDate: RealDateSchema, targetTimezone: TimeZoneSchema, revision: z.number().int().positive(), generationBatchId: z.string().uuid(), generationRequestId: z.string().uuid(), payloadFingerprint: z.string().regex(/^[a-f0-9]{64}$/), inputFingerprint: z.string().regex(/^[a-f0-9]{64}$/).optional(), generationSource: z.enum(["foreground", "worker"]).optional(), readiness: RecommendationReadinessSchema, generationMode: RecommendationGenerationModeSchema, isCurrent: z.boolean(), lifecycle: z.enum(["current", "superseded"]), supersededAt: z.string().datetime().nullable(), payload: RecommendationPayloadSchema, algorithmVersion: z.string().trim().min(1).max(80), ruleVersion: z.string().trim().min(1).max(80), pawProgramVersions: RecommendationPawProgramVersionsSchema, generatedAt: z.string().datetime(), expiresAt: z.string().datetime(), createdAt: z.string().datetime(), updatedAt: z.string().datetime(),
 }).strict().superRefine((value, ctx) => {
   if (value.lifecycle !== (value.isCurrent ? "current" : "superseded")) issue(ctx, ["lifecycle"], "lifecycle must match isCurrent");
   if (value.isCurrent !== (value.supersededAt === null)) issue(ctx, ["supersededAt"], "current records must not have supersededAt");
@@ -352,7 +430,10 @@ export const DailyRecommendationRecordSchema = z.object({
   if (value.ruleVersion !== value.payload.engineOutput.ruleVersion) issue(ctx, ["ruleVersion"], "ruleVersion must match payload");
   if (value.targetDate !== value.payload.dateContextInput.date) issue(ctx, ["targetDate"], "targetDate must match payload DateContext input");
   if (value.targetTimezone !== value.payload.dateContextInput.timezone) issue(ctx, ["targetTimezone"], "targetTimezone must match payload DateContext input");
-  if ("schemaVersion" in value.payload) {
+  if ("schemaVersion" in value.payload && value.payload.schemaVersion === 3) {
+    if (value.algorithmVersion !== RECOMMENDATION_ALGORITHM_VERSION_V3 || value.ruleVersion !== RECOMMENDATION_REALTIME_RULE_VERSION) issue(ctx, ["algorithmVersion"], "V3 record must use realtime versions");
+    if (value.generationMode !== "rule_only" || !value.inputFingerprint || !value.generationSource) issue(ctx, ["inputFingerprint"], "V3 record must be a fingerprinted rule-only write");
+  } else if ("schemaVersion" in value.payload) {
     if (value.targetDate !== value.payload.resolvedContext.targetDate) issue(ctx, ["targetDate"], "targetDate must match resolved context");
     if (value.targetTimezone !== value.payload.resolvedContext.targetTimezone) issue(ctx, ["targetTimezone"], "targetTimezone must match resolved context");
     if (value.algorithmVersion !== RECOMMENDATION_ALGORITHM_VERSION_V2) issue(ctx, ["algorithmVersion"], "V2 record must use the frozen V2 algorithm version");
@@ -393,12 +474,69 @@ export const RecommendationDisplayItemV2Schema = RecommendationDisplayItemSchema
   endpointFreshness: z.array(z.object({ endpoint: z.enum(["now", "hourly", "daily"]), freshness: z.enum(["fresh", "stale"]), providerUpdatedAt: z.string().datetime(), fetchedAt: z.string().datetime(), expiresAt: z.string().datetime(), staleUntil: z.string().datetime() }).strict()).max(3),
   attribution: z.object({ label: z.literal("天气服务由 QWeather 提供"), url: z.literal("https://www.qweather.com"), sources: z.array(z.string().trim().min(1).max(160)).max(16), license: z.array(z.string().trim().min(1).max(160)).max(16) }).strict().optional(),
 }).strict();
+export const RecommendationDisplayItemV3Schema = z.object({
+  recommendationId: z.string().uuid(), recommendationRevision: z.number().int().positive(), inputFingerprint: z.string().regex(/^[a-f0-9]{64}$/), targetDate: RealDateSchema, generationBatchId: z.string().uuid(), readiness: RecommendationReadinessSchema, generationMode: z.literal("rule_only"), generatedAt: z.string().datetime(), expiresAt: z.string().datetime(), weatherEvidence: WeatherEvidenceSchema,
+  recommendations: z.array(z.object({ candidateId: z.string().uuid(), objective: RecommendationObjectiveSchema, garmentIds: z.array(z.string().uuid()).min(2).max(9), source: CandidateSourceSchema, reasonCodes: z.array(RecommendationReasonCodeSchema).max(12), riskCodes: z.array(DeterministicRiskCodeSchema).max(24), finalScore: Score0To100Schema }).strict()).max(3),
+  contextMode: RecommendationContextModeSchema, targetTimezone: TimeZoneSchema, contextResolvedAt: z.string().datetime(), resolvedLocation: WeatherLocationRefSchema.optional(), locationSource: RecommendationLocationSourceSchema.optional(), algorithmVersion: z.literal(RECOMMENDATION_ALGORITHM_VERSION_V3), ruleVersion: z.literal(RECOMMENDATION_REALTIME_RULE_VERSION), availabilityReason: z.enum(["available", "locationless", "forecast_out_of_range", "provider_unavailable", "insufficient_evidence"]), endpointFreshness: z.array(z.object({ endpoint: z.enum(["now", "hourly", "daily"]), freshness: z.enum(["fresh", "stale"]), providerUpdatedAt: z.string().datetime(), fetchedAt: z.string().datetime(), expiresAt: z.string().datetime(), staleUntil: z.string().datetime() }).strict()).max(3), attribution: z.object({ label: z.literal("天气服务由 QWeather 提供"), url: z.literal("https://www.qweather.com"), sources: z.array(z.string().trim().min(1).max(160)).max(16), license: z.array(z.string().trim().min(1).max(160)).max(16) }).strict().optional(),
+}).strict();
 export const RecommendationReadResponseSchema = z.object({
-  timezone: TimeZoneSchema, pairConsistent: z.boolean(), items: z.array(z.union([RecommendationDisplayItemV2Schema, RecommendationDisplayItemSchema])).max(32),
+  timezone: TimeZoneSchema, pairConsistent: z.boolean(), items: z.array(z.union([RecommendationDisplayItemV3Schema, RecommendationDisplayItemV2Schema, RecommendationDisplayItemSchema])).max(32),
 }).strict().superRefine((value, ctx) => {
   const firstTwo = value.items.slice(0, 2);
   if (value.pairConsistent && firstTwo.length === 2 && firstTwo[0]!.generationBatchId !== firstTwo[1]!.generationBatchId) issue(ctx, ["items"], "consistent pair must share generationBatchId");
 });
+export const ResolveRecommendationsCommandSchema = z.object({
+  dates: z.array(RealDateSchema).min(1).max(2),
+  force: z.boolean().optional(),
+  clientMutationId: z.string().uuid().optional(),
+}).strict().superRefine((value, ctx) => {
+  if (!unique(value.dates)) issue(ctx, ["dates"], "resolve dates must be unique");
+  if (value.force === true && !value.clientMutationId) issue(ctx, ["clientMutationId"], "force resolve requires clientMutationId");
+  if (value.force !== true && value.clientMutationId) issue(ctx, ["clientMutationId"], "clientMutationId is only valid for force resolve");
+});
+export const ResolveStatusSchema = z.enum(["reused", "generated", "served_stale", "protected_plan", "actual_wear", "not_ready"]);
+export const ResolveRecommendationsResponseSchema = z.object({
+  timezone: z.literal("Asia/Shanghai"),
+  results: z.array(z.object({
+    targetDate: RealDateSchema,
+    status: ResolveStatusSchema,
+    recommendation: RecommendationDisplayItemV3Schema.optional(),
+    protectedPlanEntryId: z.string().uuid().optional(),
+    planRiskCodes: z.array(DeterministicRiskCodeSchema).max(24).optional(),
+  }).strict()).min(1).max(2),
+}).strict();
+export const AcceptRecommendationCommandSchema = z.object({
+  clientMutationId: z.string().uuid(),
+  recommendationId: z.string().uuid(),
+  expectedRecommendationRevision: z.number().int().positive(),
+  candidateId: z.string().uuid(),
+  selectedGarmentIds: z.array(z.string().uuid()).min(2).max(9),
+  replaceExistingPrimary: z.object({ planEntryId: z.string().uuid(), expectedRevision: z.number().int().positive() }).strict().optional(),
+}).strict().superRefine((value, ctx) => {
+  if (!unique(value.selectedGarmentIds)) issue(ctx, ["selectedGarmentIds"], "selectedGarmentIds must be unique");
+});
+export const GarmentDisplaySnapshotSchema = z.object({
+  garmentId: z.string().uuid(), legacyItemId: z.number().int().optional(), name: z.string().trim().min(1).max(120),
+  role: GarmentSlotSchema, category: z.enum(GARMENT_CATEGORY_IDS), imageAssetId: z.string().uuid().optional(),
+}).strict();
+export const RecommendationDisplaySnapshotSchema = z.object({
+  candidateId: z.string().uuid(), objective: RecommendationObjectiveSchema.optional(), finalScore: Score0To100Schema.optional(),
+  reasonCodes: z.array(RecommendationReasonCodeSchema).max(12), riskCodes: z.array(DeterministicRiskCodeSchema).max(24),
+}).strict();
+export const RecommendationPlanPayloadSchema = z.object({
+  sourceType: z.literal("daily_recommendation"), date: RealDateSchema, garmentIds: z.array(z.string().uuid()).min(2).max(9), itemIds: z.array(z.number().int()).max(9),
+  recommendationId: z.string().uuid(), recommendationRevision: z.number().int().positive(), recommendationCandidateId: z.string().uuid(),
+  recommendationInputFingerprint: z.string().regex(/^[a-f0-9]{64}$/), algorithmVersion: z.string().trim().min(1).max(80),
+  sourceVariant: z.enum(["original", "item_replaced"]), originalGarmentIds: z.array(z.string().uuid()).min(2).max(9),
+  garmentSnapshots: z.array(GarmentDisplaySnapshotSchema).min(2).max(9), recommendationSnapshot: RecommendationDisplaySnapshotSchema,
+  snapshotVersion: z.literal(1), selectedAt: z.string().datetime(), status: z.literal("planned"), isPrimary: z.literal(true), role: z.literal("primary"),
+}).strict();
+export const AcceptRecommendationResponseSchema = z.object({
+  status: z.literal("committed"), idempotentReplay: z.boolean(), plan: z.object({
+    id: z.string().uuid(), revision: z.number().int().positive(), payload: RecommendationPlanPayloadSchema,
+    createdAt: z.string().datetime(), updatedAt: z.string().datetime(), assetRefs: z.record(z.unknown()).optional(),
+  }).strict(),
+}).strict();
 export const RecommendationRegenerationReasonSchema = z.enum(["home_city_changed", "temporary_city_changed", "travel_changed", "garment_changed", "weather_changed", "explicit_reassess"]);
 export const RecommendationRegenerationStatusSchema = z.enum(["pending", "processing", "completed", "failed"]);
 export const ReassessRecommendationCommandSchema = z.object({ clientMutationId: z.string().uuid() }).strict();
@@ -440,13 +578,25 @@ export type ResolvedRecommendationContext = z.infer<typeof ResolvedRecommendatio
 export type RecommendationAuditCandidate = z.infer<typeof RecommendationAuditCandidateSchema>;
 export type DisplayRecommendation = z.infer<typeof DisplayRecommendationSchema>;
 export type RecommendationEngineOutput = z.infer<typeof RecommendationEngineOutputSchema>;
+export type DeterministicRiskCode = z.infer<typeof DeterministicRiskCodeSchema>;
+export type DeterministicRiskAssessment = z.infer<typeof DeterministicRiskAssessmentSchema>;
+export type RecommendationAuditCandidateV3 = z.infer<typeof RecommendationAuditCandidateV3Schema>;
+export type DisplayRecommendationV3 = z.infer<typeof DisplayRecommendationV3Schema>;
+export type RecommendationEngineOutputV3 = z.infer<typeof RecommendationEngineOutputV3Schema>;
 export type RecommendationPayload = z.infer<typeof RecommendationPayloadSchema>;
 export type RecommendationPayloadV1 = z.infer<typeof RecommendationPayloadV1Schema>;
 export type RecommendationPayloadV2 = z.infer<typeof RecommendationPayloadV2Schema>;
+export type RecommendationPayloadV3 = z.infer<typeof RecommendationPayloadV3Schema>;
 export type PublishDailyRecommendationCommand = z.infer<typeof PublishDailyRecommendationCommandSchema>;
 export type DailyRecommendationRecord = z.infer<typeof DailyRecommendationRecordSchema>;
 export type RecommendationJobRunSummary = z.infer<typeof RecommendationJobRunSummarySchema>;
 export type RecommendationJobErrorCode = z.infer<typeof RecommendationJobErrorCodeSchema>;
 export type RecommendationReadResponse = z.infer<typeof RecommendationReadResponseSchema>;
+export type RecommendationDisplayItemV3 = z.infer<typeof RecommendationDisplayItemV3Schema>;
+export type ResolveRecommendationsCommand = z.infer<typeof ResolveRecommendationsCommandSchema>;
+export type ResolveRecommendationsResponse = z.infer<typeof ResolveRecommendationsResponseSchema>;
+export type AcceptRecommendationCommand = z.infer<typeof AcceptRecommendationCommandSchema>;
+export type RecommendationPlanPayload = z.infer<typeof RecommendationPlanPayloadSchema>;
+export type AcceptRecommendationResponse = z.infer<typeof AcceptRecommendationResponseSchema>;
 export type RecommendationRegenerationRequest = z.infer<typeof RecommendationRegenerationRequestSchema>;
 export type ReassessRecommendationCommand = z.infer<typeof ReassessRecommendationCommandSchema>;

@@ -44,8 +44,10 @@ export function buildPackingItemsFromPlan(input: {
   const dateRange = enumerateDateRange(calendarPlan.startDate, calendarPlan.endDate);
   const outfitMap = new Map(outfits.map((o) => [o.id, o]));
   const itemMap = new Map<number, WardrobeItem>();
+  const itemEntityMap = new Map<string, WardrobeItem>();
   for (const item of items) {
     if (typeof item.id === "number") itemMap.set(item.id, item);
+    if (item.serverEntityId) itemEntityMap.set(item.serverEntityId, item);
   }
 
   // Collect wardrobe items across all dates.
@@ -57,6 +59,18 @@ export function buildPackingItemsFromPlan(input: {
   for (const date of dateRange) {
     const dayEntries = entries.filter((e) => e.date === date && (e.calendarPlanId === calendarPlan.id || !e.calendarPlanId));
     for (const entry of dayEntries) {
+      // Recommendation plans intentionally have no outfitId. UUIDs are the
+      // authority; legacy numeric ids are only a migration fallback.
+      if (entry.status !== "changed" && entry.sourceType === "daily_recommendation" && entry.garmentIds?.length) {
+        for (const garmentId of entry.garmentIds) {
+          const item = itemEntityMap.get(garmentId);
+          if (!item || item.status !== "active" || typeof item.id !== "number") continue;
+          const existing = itemDateMap.get(item.id);
+          if (existing) { if (!existing.includes(date)) existing.push(date); }
+          else itemDateMap.set(item.id, [date]);
+        }
+        continue;
+      }
       // 决定本 entry 用于打包清单的目标 outfitId
       let targetOutfitId: string | undefined;
       if (entry.status === "changed") {

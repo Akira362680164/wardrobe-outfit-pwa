@@ -485,6 +485,8 @@ export const dailyRecommendations = pgTable(
     generationBatchId: uuid("generation_batch_id").notNull(),
     generationRequestId: uuid("generation_request_id").notNull(),
     payloadFingerprint: text("payload_fingerprint").notNull(),
+    inputFingerprint: text("input_fingerprint"),
+    generationSource: text("generation_source"),
     readiness: recommendationReadiness("readiness").notNull(),
     generationMode: recommendationGenerationMode("generation_mode").notNull(),
     isCurrent: boolean("is_current").notNull().default(false),
@@ -502,12 +504,31 @@ export const dailyRecommendations = pgTable(
     generationRequestUnique: uniqueIndex("daily_recommendations_generation_request_unique").on(table.userId, table.generationRequestId),
     oneCurrentPerDate: uniqueIndex("daily_recommendations_one_current_per_date").on(table.userId, table.targetDate).where(sql`${table.isCurrent} = true`),
     userDateIdx: index("daily_recommendations_user_date_idx").on(table.userId, table.targetDate),
+    userDateInputIdx: index("daily_recommendations_user_date_input_idx").on(table.userId, table.targetDate, table.inputFingerprint),
     batchIdx: index("daily_recommendations_batch_idx").on(table.userId, table.generationBatchId),
     expiryIdx: index("daily_recommendations_expiry_idx").on(table.expiresAt),
     revisionPositive: check("daily_recommendations_revision_positive", sql`${table.revision} > 0`),
     expiryAfterGeneration: check("daily_recommendations_expiry_after_generation", sql`${table.expiresAt} > ${table.generatedAt}`),
     fingerprintFormat: check("daily_recommendations_fingerprint_format", sql`${table.payloadFingerprint} ~ '^[a-f0-9]{64}$'`),
     currentSupersededState: check("daily_recommendations_current_superseded_state", sql`(${table.isCurrent} AND ${table.supersededAt} IS NULL) OR (NOT ${table.isCurrent} AND ${table.supersededAt} IS NOT NULL)`),
+  }),
+);
+
+export const recommendationActions = pgTable(
+  "recommendation_actions",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: uuid("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+    recommendationId: uuid("recommendation_id").references(() => dailyRecommendations.id, { onDelete: "set null" }),
+    planEntryId: uuid("plan_entry_id").references(() => outfitPlans.id, { onDelete: "set null" }),
+    action: text("action").notNull(), candidateId: uuid("candidate_id").notNull(), clientMutationId: uuid("client_mutation_id").notNull(),
+    payload: jsonb("payload").notNull().default({}), createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => ({
+    userMutationUnique: uniqueIndex("recommendation_actions_user_mutation_unique").on(table.userId, table.clientMutationId),
+    userCreatedIdx: index("recommendation_actions_user_created_idx").on(table.userId, table.createdAt),
+    recommendationIdx: index("recommendation_actions_recommendation_idx").on(table.recommendationId),
+    planIdx: index("recommendation_actions_plan_idx").on(table.planEntryId),
   }),
 );
 

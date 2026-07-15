@@ -48,6 +48,15 @@ describe("garment reference cascade payload cleanup", () => {
     expect(result.deleteEntity).toBe(false);
   });
 
+  it("preserves recommendation UUIDs and snapshots and marks the accepted plan blocked", () => {
+    const snapshot = { garmentId, name: "白衬衫", role: "tops", category: "tops" };
+    const result = removeGarmentReferences("outfit-plans", {
+      sourceType: "daily_recommendation", date: "2026-07-20", garmentIds: [garmentId, otherGarmentId], itemIds: [legacyItemId, 402],
+      garmentSnapshots: [snapshot], status: "planned",
+    }, garmentId, legacyItemId, deletedAt);
+    expect(result.payload).toMatchObject({ garmentIds: [garmentId, otherGarmentId], itemIds: [legacyItemId, 402], garmentSnapshots: [snapshot], unavailableGarmentIds: [garmentId], availability: "blocked", unavailableSince: deletedAt });
+  });
+
   it("preserves purchased wishlist history without retaining converted garment identifiers", () => {
     const result = removeGarmentReferences("wishlist", {
       name: "已买上衣",

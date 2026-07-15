@@ -35,11 +35,11 @@ export class RecommendationPersistenceRepository {
     const result = await client.query<{ id: string }>(`
       insert into daily_recommendations (
         user_id, target_date, target_timezone, revision, generation_batch_id, generation_request_id,
-        payload_fingerprint, readiness, generation_mode, is_current, superseded_at, payload,
+        payload_fingerprint, input_fingerprint, generation_source, readiness, generation_mode, is_current, superseded_at, payload,
         algorithm_version, rule_version, paw_program_versions, generated_at, expires_at
-      ) values ($1, $2, $3, $4, $5, $6, $7, $8, $9, false, $10, $11::jsonb, $12, $13, $14::jsonb, $15, $16)
+      ) values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, false, $12, $13::jsonb, $14, $15, $16::jsonb, $17, $18)
       returning id
-    `, [command.userId, command.targetDate, command.targetTimezone, input.revision, command.generationBatchId, command.generationRequestId, input.fingerprint, command.readiness, command.generationMode, command.generatedAt, JSON.stringify(command.payload), command.algorithmVersion, command.ruleVersion, JSON.stringify(command.pawProgramVersions), command.generatedAt, command.expiresAt]);
+    `, [command.userId, command.targetDate, command.targetTimezone, input.revision, command.generationBatchId, command.generationRequestId, input.fingerprint, command.inputFingerprint ?? null, command.generationSource ?? null, command.readiness, command.generationMode, command.generatedAt, JSON.stringify(command.payload), command.algorithmVersion, command.ruleVersion, JSON.stringify(command.pawProgramVersions), command.generatedAt, command.expiresAt]);
     return result.rows[0]!.id;
   }
 
@@ -106,6 +106,8 @@ function parseRow(row: QueryResultRow): DailyRecommendationRecord {
     generationBatchId: row.generation_batch_id,
     generationRequestId: row.generation_request_id,
     payloadFingerprint: row.payload_fingerprint,
+    ...(row.input_fingerprint ? { inputFingerprint: row.input_fingerprint } : {}),
+    ...(row.generation_source ? { generationSource: row.generation_source } : {}),
     readiness: row.readiness,
     generationMode: row.generation_mode,
     isCurrent: row.is_current,

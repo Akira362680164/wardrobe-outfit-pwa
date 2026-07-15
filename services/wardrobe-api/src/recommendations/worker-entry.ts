@@ -12,14 +12,14 @@ if (process.argv.includes("--run-once")) {
   process.exit(result.acquired && result.job?.status !== "failed" ? 0 : 1);
 }
 const flags = readRecommendationFeatureFlags(process.env);
-if (!flags.DAILY_RECOMMENDATIONS_ENABLED && !flags.RECOMMENDATION_V2_SHADOW_ENABLED && !flags.RECOMMENDATION_V2_WORKER_ENABLED) throw new Error("a recommendation worker flag must be true for daemon mode");
+if (!flags.DAILY_RECOMMENDATIONS_ENABLED && !flags.RECOMMENDATION_V2_SHADOW_ENABLED && !flags.RECOMMENDATION_V2_WORKER_ENABLED && !flags.RECOMMENDATION_REALTIME_ENABLED) throw new Error("a recommendation worker flag must be true for daemon mode");
 let stopping = false;
 const stop = () => { stopping = true; };
 process.on("SIGINT", stop); process.on("SIGTERM", stop);
 let next = nextShanghaiSchedule();
 process.stdout.write(`${JSON.stringify({ event: "recommendation_worker_waiting", nextScheduledFor: next.toISOString(), timezone: "Asia/Shanghai", regenerationPollMs: REGENERATION_POLL_INTERVAL_MS })}\n`);
 while (!stopping) {
-  if (flags.RECOMMENDATION_V2_WORKER_ENABLED && flags.RECOMMENDATION_V2_CURRENT_ENABLED) {
+  if (flags.RECOMMENDATION_REALTIME_ENABLED || (flags.RECOMMENDATION_V2_WORKER_ENABLED && flags.RECOMMENDATION_V2_CURRENT_ENABLED)) {
     const processed = await worker.processDueRegeneration();
     if (processed > 0) process.stdout.write(`${JSON.stringify({ event: "recommendation_regeneration_processed", processed })}\n`);
   }

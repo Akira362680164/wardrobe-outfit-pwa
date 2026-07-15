@@ -63,6 +63,7 @@ describe("test data reset guard", () => {
       "diagnostic_cases",
       "api_request_traces",
       "daily_recommendations",
+      "recommendation_actions",
       "user_location_profiles",
       "location_date_overrides",
       "weather_cache",
@@ -70,10 +71,10 @@ describe("test data reset guard", () => {
     ]) {
       expect(USER_DATA_TABLES).toContain(table);
     }
-    expect(USER_DATA_TABLES).toHaveLength(38);
+    expect(USER_DATA_TABLES).toHaveLength(39);
   });
 
-  it("clears all 38 isolated-schema tables and referenced assets without touching public", async () => {
+  it("clears all 39 isolated-schema tables and referenced assets without touching public", async () => {
     const counts = Object.fromEntries(
       USER_DATA_TABLES.map((table) => [table, 1]),
     );
@@ -132,9 +133,9 @@ describe("test data reset guard", () => {
     });
     expect(report.databaseCleared).toBe(true);
     expect(report.storageCleared).toBe(true);
-    expect(Object.keys(report.tableCountsBefore)).toHaveLength(38);
-    expect(Object.values(report.tableCountsBefore)).toEqual(Array(38).fill(1));
-    expect(Object.values(report.tableCountsAfter)).toEqual(Array(38).fill(0));
+    expect(Object.keys(report.tableCountsBefore)).toHaveLength(39);
+    expect(Object.values(report.tableCountsBefore)).toEqual(Array(39).fill(1));
+    expect(Object.values(report.tableCountsAfter)).toEqual(Array(39).fill(0));
     expect(deleted).toHaveLength(2);
     expect(publicSentinel.rows).toBe(7);
     expect(

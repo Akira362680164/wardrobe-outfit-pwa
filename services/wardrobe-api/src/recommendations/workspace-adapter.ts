@@ -13,6 +13,7 @@ export interface RecommendationWorkspaceContext {
   input: RecommendationEngineInput;
   skipReason: "actual" | "primary_plan" | null;
   plan: Record<string, unknown> | null;
+  protectedPlan: { id: string; payload: Record<string, unknown> } | null;
 }
 
 export class RecommendationWorkspaceAdapter {
@@ -83,9 +84,10 @@ export class RecommendationWorkspaceAdapter {
         userProfile: { ...(sceneOrUndefined(profile.workdayScene) ? { workdayScene: sceneOrUndefined(profile.workdayScene) } : {}), ...(sceneOrUndefined(profile.restDayScene) ? { restDayScene: sceneOrUndefined(profile.restDayScene) } : {}), thermalBias: (["cold_sensitive", "normal", "heat_sensitive"].includes(text(profile.thermalBias) ?? "") ? text(profile.thermalBias) : "normal"), stylePreferences: strings(profile.stylePreferences).slice(0, 12) } },
       garments, savedOutfits, wearHistory, feedback, anchorGarmentIds: strings(profile.anchorGarmentIds).filter((id) => activeGarments.has(id)).slice(0, 9), pawCandidateEvaluatorEnabled: false,
     });
-    const actual = planResult.rows.some((row) => row.actual_outfit_id || ["worn", "actual"].includes(text(row.payload.status) ?? ""));
-    const primary = planResult.rows.some((row) => row.payload.status === "planned" && row.payload.isPrimary === true);
-    return { input, skipReason: actual ? "actual" : primary ? "primary_plan" : null, plan };
+    const actualRow = planResult.rows.find((row) => row.actual_outfit_id || ["worn", "actual"].includes(text(row.payload.status) ?? ""));
+    const primaryRow = planResult.rows.find((row) => row.payload.status === "planned" && row.payload.isPrimary === true);
+    const protectedRow = actualRow ?? primaryRow;
+    return { input, skipReason: actualRow ? "actual" : primaryRow ? "primary_plan" : null, plan, protectedPlan: protectedRow ? { id: protectedRow.id, payload: protectedRow.payload } : null };
   }
 }
 

@@ -4,6 +4,8 @@ import { AuthApiError } from "../src/auth/registrations.js";
 import type { SessionService } from "../src/auth/session.js";
 import type { RecommendationReadService } from "../src/recommendations/read-service.js";
 import type { RecommendationRegenerationService } from "../src/recommendations/regeneration-service.js";
+import type { RecommendationGenerationCoordinator } from "../src/recommendations/coordinator.js";
+import type { RecommendationAcceptService } from "../src/recommendations/accept-service.js";
 import type { ImageCropService } from "../src/image-crop/service.js";
 
 const USER = "10000000-0000-4000-8000-000000000001";
@@ -37,6 +39,44 @@ describe("authenticated recommendation read API", () => {
     expect((await app.inject({ method: "POST", url: `/api/recommendations/daily/${TODAY}/reassess`, payload: { clientMutationId: request.clientMutationIds[0], paw: true }, headers })).statusCode).toBe(400);
     expect((await app.inject({ method: "POST", url: `/api/recommendations/daily/${TODAY}/reassess`, payload: { clientMutationId: request.clientMutationIds[0] } })).statusCode).toBe(401);
     await app.close();
+  });
+  it("keeps resolve behind the realtime flag and validates force idempotency", async () => {
+    const previous = process.env.RECOMMENDATION_REALTIME_ENABLED;
+    const calls: unknown[] = [];
+    const coordinator = { resolve: async (...args: unknown[]) => { calls.push(args); return { timezone: "Asia/Shanghai", results: [{ targetDate: TODAY, status: "not_ready" }] }; } } as RecommendationGenerationCoordinator;
+    const headers = { authorization: "Bearer ok", "x-wardrobe-device-id": "device-1" };
+    try {
+      process.env.RECOMMENDATION_REALTIME_ENABLED = "false";
+      let app = buildApp({ storageProvider: null, imageCropService: { close: async () => {} } as ImageCropService, sessionService: session(), recommendationReadService: { read: async () => EMPTY } as unknown as RecommendationReadService, recommendationGenerationCoordinator: coordinator });
+      expect((await app.inject({ method: "POST", url: "/api/recommendations/resolve", payload: { dates: [TODAY] }, headers })).statusCode).toBe(404);
+      await app.close();
+      process.env.RECOMMENDATION_REALTIME_ENABLED = "true";
+      app = buildApp({ storageProvider: null, imageCropService: { close: async () => {} } as ImageCropService, sessionService: session(), recommendationReadService: { read: async () => EMPTY } as unknown as RecommendationReadService, recommendationGenerationCoordinator: coordinator });
+      expect((await app.inject({ method: "POST", url: "/api/recommendations/resolve", payload: { dates: [TODAY], force: true }, headers })).statusCode).toBe(400);
+      expect((await app.inject({ method: "POST", url: "/api/recommendations/resolve", payload: { dates: [TODAY] }, headers })).statusCode).toBe(200);
+      expect(calls).toHaveLength(1);
+      await app.close();
+    } finally {
+      if (previous === undefined) delete process.env.RECOMMENDATION_REALTIME_ENABLED; else process.env.RECOMMENDATION_REALTIME_ENABLED = previous;
+    }
+  });
+  it("keeps accept behind its independent flag and forwards authenticated device identity", async () => {
+    const previous = process.env.RECOMMENDATION_ACCEPT_ENABLED; const calls: unknown[][] = [];
+    const recommendationId = "50000000-0000-4000-8000-000000000001"; const candidateId = "50000000-0000-4000-8000-000000000002";
+    const garmentIds = ["50000000-0000-4000-8000-000000000003", "50000000-0000-4000-8000-000000000004"];
+    const mutationId = "50000000-0000-4000-8000-000000000005"; const selectedAt = "2026-07-15T12:00:00.000Z";
+    const payload = { sourceType: "daily_recommendation", date: TODAY, garmentIds, itemIds: [3, 4], recommendationId, recommendationRevision: 1, recommendationCandidateId: candidateId, recommendationInputFingerprint: "a".repeat(64), algorithmVersion: "wardora-recommendation-realtime-v1", sourceVariant: "original", originalGarmentIds: garmentIds, garmentSnapshots: [{ garmentId: garmentIds[0], legacyItemId: 3, name: "top", role: "tops", category: "tops" }, { garmentId: garmentIds[1], legacyItemId: 4, name: "pants", role: "pants", category: "pants" }], recommendationSnapshot: { candidateId, reasonCodes: [], riskCodes: [] }, snapshotVersion: 1, selectedAt, status: "planned", isPrimary: true, role: "primary" } as const;
+    const accept = { accept: async (...args: unknown[]) => { calls.push(args); return { status: "committed", idempotentReplay: false, plan: { id: "50000000-0000-4000-8000-000000000006", revision: 1, payload, createdAt: selectedAt, updatedAt: selectedAt } }; } } as unknown as RecommendationAcceptService;
+    const headers = { authorization: "Bearer ok", "x-wardrobe-device-id": "device-1" };
+    try {
+      process.env.RECOMMENDATION_ACCEPT_ENABLED = "false";
+      let app = buildApp({ storageProvider: null, imageCropService: { close: async () => {} } as ImageCropService, sessionService: session(), recommendationReadService: { read: async () => EMPTY } as unknown as RecommendationReadService, recommendationAcceptService: accept });
+      expect((await app.inject({ method: "POST", url: `/api/recommendations/daily/${TODAY}/accept`, headers, payload: { clientMutationId: mutationId, recommendationId, expectedRecommendationRevision: 1, candidateId, selectedGarmentIds: garmentIds } })).statusCode).toBe(404); await app.close();
+      process.env.RECOMMENDATION_ACCEPT_ENABLED = "true";
+      app = buildApp({ storageProvider: null, imageCropService: { close: async () => {} } as ImageCropService, sessionService: session(), recommendationReadService: { read: async () => EMPTY } as unknown as RecommendationReadService, recommendationAcceptService: accept });
+      expect((await app.inject({ method: "POST", url: `/api/recommendations/daily/${TODAY}/accept`, headers, payload: { clientMutationId: mutationId, recommendationId, expectedRecommendationRevision: 1, candidateId, selectedGarmentIds: garmentIds } })).statusCode).toBe(200);
+      expect(calls[0]?.slice(0, 3)).toEqual([USER, "device-1", TODAY]); await app.close();
+    } finally { if (previous === undefined) delete process.env.RECOMMENDATION_ACCEPT_ENABLED; else process.env.RECOMMENDATION_ACCEPT_ENABLED = previous; }
   });
 });
 

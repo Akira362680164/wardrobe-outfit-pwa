@@ -6,17 +6,23 @@ import {
   RecommendationEngineInputSchema,
   RecommendationEngineInputV2Schema,
   RecommendationEngineOutputSchema,
+  RecommendationEngineOutputV3Schema,
   RecommendationReadinessReportSchema,
+  RECOMMENDATION_ALGORITHM_VERSION_V3,
+  RECOMMENDATION_REALTIME_RULE_VERSION,
   type CandidateEvaluation,
   type DateContext,
   type GarmentSlot,
   type RecommendationExclusionCode,
   type RecommendationReasonCode,
   type RecommendationEngineInputV2,
+  type RecommendationAuditCandidateV3,
+  type DisplayRecommendationV3,
+  type RecommendationEngineOutputV3,
 } from "@wardrobe/cloud-contracts";
 
 import { adaptCandidateEvaluator, createNeutralEvaluation, RuleDateContextResolver } from "./ports.js";
-import { calculateObjectiveScores, clampScore, daysSinceBucket, jaccardSimilarity } from "./scoring.js";
+import { calculateObjectiveScores, calculateObjectiveScoresV3, clampScore, daysSinceBucket, daysSinceBucketV3, jaccardSimilarity } from "./scoring.js";
 import type {
   DisplayRecommendation,
   RecommendationCandidate,
@@ -277,8 +283,8 @@ function informationCompleteness(garment: RecommendationGarment): number {
   return clampScore((fields.filter(Boolean).length / fields.length) * 100);
 }
 
-export function preScoreGarment(garment: RecommendationGarment, context: DateContext, input: RecommendationEngineInput, contextMode: "forecast" | "generic" = "forecast"): ScoredGarment {
-  const days = daysSinceBucket(latestWearDays(garment.id, input));
+export function preScoreGarment(garment: RecommendationGarment, context: DateContext, input: RecommendationEngineInput, contextMode: "forecast" | "generic" = "forecast", scoringVersion: "legacy" | "v3" = "legacy"): ScoredGarment {
+  const days = scoringVersion === "v3" ? daysSinceBucketV3(latestWearDays(garment.id, input)) : daysSinceBucket(latestWearDays(garment.id, input));
   const feedback = feedbackForGarment(garment.id, context, input);
   const positiveCount = feedback.filter((entry) => entry.sentiment === "positive").length;
   const negativeCount = feedback.filter((entry) => entry.sentiment !== "positive").length;
@@ -304,11 +310,12 @@ export function pruneGarmentsBySlot(
   context: DateContext,
   input: RecommendationEngineInput,
   contextMode: "forecast" | "generic" = "forecast",
+  scoringVersion: "legacy" | "v3" = "legacy",
 ): Partial<Record<GarmentSlot, ScoredGarment[]>> {
   const { eligible } = hardFilterGarments(garments, context, input, contextMode);
   const grouped: Partial<Record<GarmentSlot, ScoredGarment[]>> = {};
   for (const garment of eligible) {
-    const scored = preScoreGarment(garment, context, input, contextMode);
+    const scored = preScoreGarment(garment, context, input, contextMode, scoringVersion);
     (grouped[scored.role] ??= []).push(scored);
   }
   for (const slot of Object.keys(grouped) as GarmentSlot[]) {
@@ -537,6 +544,74 @@ function withEvaluation(candidate: RecommendationCandidate, evaluation: Candidat
   };
 }
 
+function deterministicRiskAssessment(items: readonly ScoredGarment[], context: DateContext, input: RecommendationEngineInput) {
+  const warningCodes: Array<"shoe_activity_mismatch" | "wind_rain_exposure"> = [];
+  const advisoryCodes: Array<"outerwear_recommended" | "evening_layer_recommended"> = [];
+  const shoes = items.find((item) => item.role === "shoes");
+  const hasOuterwear = items.some((item) => item.role === "outerwear");
+  const weather = input.dateContextInput.weatherEvidence;
+  if (shoes && shoes.scoreAudit.activityComfort < 60) warningCodes.push("shoe_activity_mismatch");
+  if (!hasOuterwear && ((weather.windLevel ?? 0) >= 6 || (weather.rainProbability ?? 0) >= 40)) warningCodes.push("wind_rain_exposure");
+  if (!hasOuterwear && ["layer", "warm"].includes(context.thermalStrategy)) advisoryCodes.push("outerwear_recommended");
+  if (!hasOuterwear && context.optionalSlots.includes("outerwear")) advisoryCodes.push("evening_layer_recommended");
+  return { blockingCodes: [], warningCodes: [...new Set(warningCodes)], advisoryCodes: [...new Set(advisoryCodes)] };
+}
+
+function toV3Candidate(candidate: RecommendationCandidate, byId: Map<string, ScoredGarment>, context: DateContext, input: RecommendationEngineInput): RecommendationAuditCandidateV3 {
+  const items = candidate.garmentIds.map((id) => byId.get(id)!);
+  const weatherAndActivityFit = clampScore(0.6 * candidate.ruleScores.weatherFit + 0.4 * candidate.ruleScores.activityComfort);
+  const objectiveScores = calculateObjectiveScoresV3({
+    ruleScore: candidate.ruleScores.ruleTotal,
+    savedOrHistoricalSuccess: candidate.savedOrHistoricalSuccess,
+    informationCompleteness: candidate.ruleScores.informationCompleteness,
+    rotationValue: candidate.ruleScores.rotationValue,
+    combinationNovelty: candidate.combinationNovelty,
+    styleVariation: candidate.styleVariation,
+    weatherAndActivityFit,
+    historicalThermalAndDiscomfortFit: candidate.historicalThermalAndDiscomfortFit,
+    shoeAndOuterwearRationality: candidate.shoeAndOuterwearRationality,
+  });
+  return {
+    candidateId: candidate.candidateId,
+    garmentIds: candidate.garmentIds,
+    source: candidate.source,
+    ...(candidate.sourceOutfitId ? { sourceOutfitId: candidate.sourceOutfitId } : {}),
+    template: candidate.template,
+    ruleScores: candidate.ruleScores,
+    combinationNovelty: candidate.combinationNovelty,
+    rotationValue: candidate.ruleScores.rotationValue,
+    savedOrHistoricalSuccess: candidate.savedOrHistoricalSuccess,
+    styleVariation: candidate.styleVariation,
+    historicalThermalAndDiscomfortFit: candidate.historicalThermalAndDiscomfortFit,
+    shoeAndOuterwearRationality: candidate.shoeAndOuterwearRationality,
+    deterministicRiskAssessment: deterministicRiskAssessment(items, context, input),
+    objectiveScores,
+    reasonCodes: candidate.reasonCodes.filter((code) => code !== "rule_fallback"),
+    missingSlotCodes: candidate.missingSlotCodes,
+  };
+}
+
+function selectV3AtThreshold(candidates: readonly RecommendationAuditCandidateV3[], threshold: number): DisplayRecommendationV3[] {
+  const order = (objective: "safe" | "fresh" | "comfort") => (a: RecommendationAuditCandidateV3, b: RecommendationAuditCandidateV3) =>
+    b.objectiveScores[objective] - a.objectiveScores[objective] ||
+    (objective === "fresh" ? b.rotationValue - a.rotationValue : 0) ||
+    (objective === "comfort" ? b.ruleScores.activityComfort - a.ruleScores.activityComfort : 0) ||
+    a.candidateId.localeCompare(b.candidateId);
+  const safe = [...candidates].sort(order("safe"))[0];
+  if (!safe) return [];
+  const selected: DisplayRecommendationV3[] = [{ ...safe, objective: "safe", finalScore: safe.objectiveScores.safe }];
+  const fresh = [...candidates].filter((item) => item.candidateId !== safe.candidateId && jaccardSimilarity(item.garmentIds, safe.garmentIds) <= threshold).sort(order("fresh"))[0];
+  if (fresh) selected.push({ ...fresh, objective: "fresh", finalScore: fresh.objectiveScores.fresh });
+  const comfort = [...candidates].filter((item) => !selected.some((chosen) => chosen.candidateId === item.candidateId) && selected.every((chosen) => jaccardSimilarity(item.garmentIds, chosen.garmentIds) <= threshold)).sort(order("comfort"))[0];
+  if (comfort) selected.push({ ...comfort, objective: "comfort", finalScore: comfort.objectiveScores.comfort });
+  return selected;
+}
+
+function selectDiverseV3(candidates: readonly RecommendationAuditCandidateV3[]): DisplayRecommendationV3[] {
+  const strict = selectV3AtThreshold(candidates, 0.50);
+  return strict.length === 3 ? strict : selectV3AtThreshold(candidates, 0.67);
+}
+
 function selectAtThreshold(candidates: readonly RecommendationCandidate[], threshold: number): DisplayRecommendation[] {
   const objectiveOrder = (objective: "safe" | "fresh" | "comfort") => (a: RecommendationCandidate, b: RecommendationCandidate): number => {
     const scoreDifference = b.objectiveScores[objective] - a.objectiveScores[objective];
@@ -669,6 +744,32 @@ export async function generateRecommendationsV2(input: RecommendationEngineInput
   return generateRecommendationsInternal(v1Input, "generic");
 }
 
-export function canonicalizeOutput(output: RecommendationEngineOutput): string {
+export async function generateRecommendationsV3(input: RecommendationEngineInputV2): Promise<RecommendationEngineOutputV3> {
+  const parsed = RecommendationEngineInputV2Schema.parse(input);
+  const { resolvedContext, ...legacyShape } = parsed;
+  const contextMode = resolvedContext.contextMode === "forecast" ? "forecast" as const : "generic" as const;
+  const v1Input = RecommendationEngineInputSchema.parse({ ...legacyShape, ruleVersion: RECOMMENDATION_REALTIME_RULE_VERSION });
+  const context = await new RuleDateContextResolver().resolve(v1Input.dateContextInput);
+  const filtered = hardFilterGarments(v1Input.garments, context, v1Input, contextMode);
+  const grouped = pruneGarmentsBySlot(filtered.eligible, context, v1Input, contextMode, "v3");
+  const byId = new Map(Object.values(grouped).flatMap((items) => items ?? []).map((item) => [item.id, item]));
+  const raw = buildRawCandidates(grouped, context, v1Input);
+  const scored = raw.candidates.map((candidate) => scoreCandidate(candidate, byId, context, v1Input, contextMode)).sort(compareScoreThenId((item) => item.ruleScores.ruleTotal)).slice(0, MAX_RULE_SCORED_CANDIDATES);
+  const shortlist = buildShortlist(scored).map((candidate) => toV3Candidate(candidate, byId, context, v1Input));
+  const recommendations = selectDiverseV3(shortlist);
+  const readiness = buildReadiness(v1Input, grouped, scored.length, recommendations.length);
+  return RecommendationEngineOutputV3Schema.parse({
+    algorithmVersion: RECOMMENDATION_ALGORITHM_VERSION_V3,
+    ruleVersion: RECOMMENDATION_REALTIME_RULE_VERSION,
+    dateContext: context,
+    recommendations: readiness.status === "not_ready" ? [] : recommendations,
+    shortlist,
+    readiness,
+    exclusions: filtered.exclusions,
+    metrics: { eligibleGarmentCount: filtered.eligible.length, rawCandidateCount: raw.candidates.length, ruleScoredCandidateCount: scored.length, maxBeamObserved: raw.maxBeamObserved },
+  });
+}
+
+export function canonicalizeOutput(output: unknown): string {
   return JSON.stringify(output);
 }

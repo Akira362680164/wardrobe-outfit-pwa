@@ -4,6 +4,7 @@ import type { RecommendationJobErrorCode, RecommendationJobRunSummary } from "@w
 import { BoundedAsyncQueue } from "./bounded-queue.js";
 import { RecommendationGenerationService, RECOMMENDATION_ALGORITHM_VERSION } from "./generation-service.js";
 import { RecommendationGenerationServiceV2 } from "./generation-service-v2.js";
+import { RecommendationGenerationServiceV3 } from "./generation-service-v3.js";
 import { readRecommendationFeatureFlags } from "./feature-flags.js";
 import { RecommendationRegenerationService } from "./regeneration-service.js";
 import { RecommendationJobRepository } from "./job-repository.js";
@@ -16,17 +17,22 @@ export class RecommendationWorker {
   private readonly jobs: RecommendationJobRepository;
   private readonly generation: RecommendationGenerationService;
   private readonly generationV2: RecommendationGenerationServiceV2;
+  private readonly generationV3: RecommendationGenerationServiceV3;
   private readonly regeneration: RecommendationRegenerationService;
-  constructor(private readonly pool: Pool, private readonly capacity = 64) { this.jobs = new RecommendationJobRepository(pool); this.generation = new RecommendationGenerationService(pool); this.generationV2 = new RecommendationGenerationServiceV2(pool); this.regeneration = new RecommendationRegenerationService(pool, this.generationV2); }
+  constructor(private readonly pool: Pool, private readonly capacity = 64) { this.jobs = new RecommendationJobRepository(pool); this.generation = new RecommendationGenerationService(pool); this.generationV2 = new RecommendationGenerationServiceV2(pool); this.generationV3 = new RecommendationGenerationServiceV3(pool); this.regeneration = new RecommendationRegenerationService(pool, this.realtimeAdapter() as RecommendationGenerationServiceV2); }
+
+  private realtimeAdapter() { return { persistence: this.generationV3.persistence, prepare: (userId: string, targetDate: string, asOfDate: string, _timezone: string, generationBatchId: string) => this.generationV3.prepare(userId, targetDate, asOfDate, generationBatchId, "worker") }; }
 
   async runOnce(scheduledFor = new Date().toISOString()): Promise<WorkerRunResult> {
     const lock = await this.jobs.tryAcquireGlobalLock();
     if (!lock) return { acquired: false, job: null, peakQueueSize: 0, peakRssBytes: process.memoryUsage().rss };
     const flags = readRecommendationFeatureFlags(process.env);
+    const useRealtime = flags.RECOMMENDATION_REALTIME_ENABLED;
     const useV2 = flags.RECOMMENDATION_V2_SHADOW_ENABLED || flags.RECOMMENDATION_V2_WORKER_ENABLED;
     const publishV2 = flags.RECOMMENDATION_V2_WORKER_ENABLED && flags.RECOMMENDATION_V2_CURRENT_ENABLED;
-    const service = useV2 ? this.generationV2 : this.generation;
-    const jobId = await this.jobs.start(scheduledFor, useV2 ? "wardora-recommendation-1d-a-v2" : RECOMMENDATION_ALGORITHM_VERSION);
+    const service = useRealtime ? this.realtimeAdapter() : useV2 ? this.generationV2 : this.generation;
+    const publishCurrent = useRealtime || publishV2;
+    const jobId = await this.jobs.start(scheduledFor, useRealtime ? "wardora-recommendation-realtime-v1" : useV2 ? "wardora-recommendation-1d-a-v2" : RECOMMENDATION_ALGORITHM_VERSION);
     let peakRssBytes = process.memoryUsage().rss;
     const counts = { targetTaskCount: 0, readyCount: 0, fallbackCount: 0, failedCount: 0, errorCodeCounts: {} as Partial<Record<RecommendationJobErrorCode, number>> };
     const queue = new BoundedAsyncQueue<RecommendationTask>(this.capacity);
@@ -42,16 +48,16 @@ export class RecommendationWorker {
           const batchId = randomUUID();
           const prepared = await Promise.all(pair.map((task) => service.prepare(task.userId, task.targetDate, task.asOfDate, task.timezone, batchId)));
           if (prepared.some((value) => value.skipReason)) continue;
-          if (useV2 && !publishV2) { for (const value of prepared) value.command!.readiness === "ready" ? counts.readyCount++ : counts.fallbackCount++; continue; }
+          if (useV2 && !useRealtime && !publishV2) { for (const value of prepared) value.command!.readiness === "ready" ? counts.readyCount++ : counts.fallbackCount++; continue; }
           const records = await service.persistence.publishHomePair([prepared[0]!.command!, prepared[1]!.command!]);
           for (const record of records) record.readiness === "ready" ? counts.readyCount++ : counts.fallbackCount++;
         } catch { counts.failedCount += 2; increment(counts.errorCodeCounts, "persistence_failed", 2); }
       }
-      const consumer = (async () => { for (;;) { const task = await queue.shift(); if (!task) break; try { const prepared = await service.prepare(task.userId, task.targetDate, task.asOfDate, task.timezone, randomUUID()); const record = prepared.command && (!useV2 || publishV2) ? await service.persistence.publish(prepared.command) : null; const readiness = record?.readiness ?? prepared.command?.readiness; if (readiness) readiness === "ready" ? counts.readyCount++ : counts.fallbackCount++; } catch (error) { counts.failedCount++; increment(counts.errorCodeCounts, classify(error)); } peakRssBytes = Math.max(peakRssBytes, process.memoryUsage().rss); } })();
+      const consumer = (async () => { for (;;) { const task = await queue.shift(); if (!task) break; try { const prepared = await service.prepare(task.userId, task.targetDate, task.asOfDate, task.timezone, randomUUID()); const record = prepared.command && (!useV2 || publishCurrent) ? await service.persistence.publish(prepared.command) : null; const readiness = record?.readiness ?? prepared.command?.readiness; if (readiness) readiness === "ready" ? counts.readyCount++ : counts.fallbackCount++; } catch (error) { counts.failedCount++; increment(counts.errorCodeCounts, classify(error)); } peakRssBytes = Math.max(peakRssBytes, process.memoryUsage().rss); } })();
       for (const task of tasks.filter((value) => !value.homePair)) await queue.push(task);
       queue.close();
       await consumer;
-      if (publishV2) {
+      if (publishCurrent) {
         try {
           await this.processDueRegeneration(256);
         } catch {
@@ -77,10 +83,7 @@ export class RecommendationWorker {
     const tasks: RecommendationTask[] = [];
     for (const user of users) {
       const today = dateInZone(now, "Asia/Shanghai");
-      const dates = new Set<string>();
-      for (let offset = 0; offset <= 6; offset++) dates.add(addDays(today, offset));
-      const trips = await this.pool.query<{ start_date: string; end_date: string }>("select start_date, end_date from trip_plans where user_id = $1 and deleted_at is null and end_date > $2 and start_date is not null and end_date is not null", [user.userId, addDays(today, 6)]);
-      for (const trip of trips.rows) for (let date = trip.start_date; date <= trip.end_date && dates.size < 400; date = addDays(date, 1)) dates.add(date);
+      const dates = new Set<string>([today, addDays(today, 1)]);
       for (const targetDate of [...dates].sort()) {
         const skip = await this.pool.query<{ skip: boolean }>(`select exists(
           select 1 from outfit_plans where user_id = $1 and deleted_at is null and plan_date = $2

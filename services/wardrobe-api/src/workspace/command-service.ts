@@ -703,6 +703,13 @@ export function removeGarmentReferences(
     return { changed: referencesGarment, deleteEntity: referencesGarment, payload };
   }
 
+  if (resource === "outfit-plans" && payload.sourceType === "daily_recommendation" && Array.isArray(payload.garmentIds) && payload.garmentIds.includes(garmentId)) {
+    const unavailableGarmentIds = [...new Set([...(Array.isArray(payload.unavailableGarmentIds) ? payload.unavailableGarmentIds.filter((id): id is string => typeof id === "string") : []), garmentId])];
+    const deletionDate = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Shanghai", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date(deletedAt));
+    const isFutureOrToday = typeof payload.date === "string" && payload.date >= deletionDate;
+    return { changed: true, deleteEntity: false, payload: { ...payload, unavailableGarmentIds, availability: isFutureOrToday ? "blocked" : "historical", unavailableSince: deletedAt } };
+  }
+
   const next = { ...payload };
   let changed = false;
   for (const key of ["itemIds", "legacyItemIds", "garmentIds", "legacyGarmentIds"] as const) {
@@ -971,9 +978,23 @@ async function canonicalWorkspacePayload(
   if (resource !== "outfit-plans") return payload;
 
   const canonical = { ...payload };
-  const outfitId = requireUuid(canonical.outfitId, "穿搭计划缺少有效的套装 UUID");
-  await ownedActiveRow(tx, WORKSPACE_RESOURCES.outfits.table as AnyPgTable & Record<string, any>, outfitId, userId);
-  canonical.outfitId = outfitId;
+  const sourceType = canonical.sourceType ?? (canonical.outfitId ? "saved_outfit" : undefined);
+  if (sourceType === "daily_recommendation" || sourceType === "manual_items") {
+    const garmentIds = Array.isArray(canonical.garmentIds) ? [...new Set(canonical.garmentIds.filter((id): id is string => typeof id === "string"))] : [];
+    const minimum = sourceType === "daily_recommendation" ? 2 : 1;
+    if (garmentIds.length < minimum || (sourceType === "daily_recommendation" && (typeof canonical.recommendationId !== "string" || typeof canonical.recommendationCandidateId !== "string"))) {
+      throw new WorkspaceApiError(422, "invalid_request", "计划来源与衣物 UUID 不完整");
+    }
+    for (const garmentId of garmentIds) await ownedActiveRow(tx, WORKSPACE_RESOURCES.garments.table as AnyPgTable & Record<string, any>, requireUuid(garmentId, "计划衣物 UUID 无效"), userId);
+    canonical.sourceType = sourceType;
+    canonical.garmentIds = garmentIds;
+    delete canonical.outfitId;
+  } else {
+    canonical.sourceType = "saved_outfit";
+    const outfitId = requireUuid(canonical.outfitId, "穿搭计划缺少有效的套装 UUID");
+    await ownedActiveRow(tx, WORKSPACE_RESOURCES.outfits.table as AnyPgTable & Record<string, any>, outfitId, userId);
+    canonical.outfitId = outfitId;
+  }
 
   if (canonical.actualOutfitId !== undefined && canonical.actualOutfitId !== null && canonical.actualOutfitId !== "") {
     const actualOutfitId = requireUuid(canonical.actualOutfitId, "实际穿着缺少有效的套装 UUID");
