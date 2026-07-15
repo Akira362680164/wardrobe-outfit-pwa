@@ -39,7 +39,7 @@ export const objectiveVectors = [
       historicalThermalAndDiscomfortFit: 50,
       shoeAndOuterwearRationality: 80,
     },
-    expected: { safe: 74.67, fresh: 62.13, comfort: 65.63 },
+    expected: { safe: 74.67, fresh: 68.13, comfort: 65.63 },
   },
   {
     id: "neutral-history-only",

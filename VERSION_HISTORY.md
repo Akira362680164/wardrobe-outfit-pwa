@@ -21,6 +21,12 @@
 - 新增 V3 rule-only、无 `pawEvaluation`、确定性风险、100 次字节一致和输入乱序不变的红灯测试；真实红灯为 `20 failed / 1 passed`，失败点均为 V3 合同、计分与生成入口尚未实现。
 - 风险等级 High（推荐共享合同与算法）；未触发 subagent：用户未通知。当前未修改生产、数据库、App/小程序 UI 或功能开关。
 
+## 2026-07-15 / v2.1.24-test / Codex — 实时推荐 2A-1 规则 V3
+
+- 新增只写 `rule_only` 的 Recommendation Payload V3：候选删除 `pawEvaluation/longUnwornValue`，改用 `rotationValue`、受控确定性风险分级和归一化后三目标；V1/V2 继续原样只读兼容。
+- 冻结 T1–T8、Beam/候选上限和 Jaccard 0.50/0.67；V3 使用 0/20/40/60/80/100 轮换阶梯，只有 365 天进入 `long_unworn`，从未穿过单独标记。
+- 专项合同、V1/V2/V3 引擎、路由与 API typecheck 通过（`126/126`）；风险等级 High，未触发 subagent：用户未通知。生产与功能开关尚未变更。
+
 ## 2026-07-15 / v2.1.24-test / Codex — VERSION_HISTORY 二次压缩
 
 - 将 `VERSION_HISTORY.md` 从 `1609` 行、约 `304 KB` 收敛为当前基线、近期关键记录和分阶段索引，纠正旧记录在文件尾部再次倒序追加的问题。

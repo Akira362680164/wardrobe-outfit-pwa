@@ -71,3 +71,15 @@ export interface ObjectiveScoreInput {
   pawSceneRiskAvoidance: number;
   shoeAndOuterwearRationality: number;
 }
+
+export interface ObjectiveScoreInputV3 {
+  ruleScore: number;
+  savedOrHistoricalSuccess: number;
+  informationCompleteness: number;
+  rotationValue: number;
+  combinationNovelty: number;
+  styleVariation: number;
+  weatherAndActivityFit: number;
+  historicalThermalAndDiscomfortFit: number;
+  shoeAndOuterwearRationality: number;
+}
