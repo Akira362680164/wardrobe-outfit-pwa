@@ -42,6 +42,9 @@ import { ImageCropService } from "./image-crop/service.js";
 import { registerRecommendationRoutes } from "./recommendations/routes.js";
 import { RecommendationReadService } from "./recommendations/read-service.js";
 import { RecommendationRegenerationService } from "./recommendations/regeneration-service.js";
+import { RecommendationGenerationCoordinator } from "./recommendations/coordinator.js";
+import { RecommendationGenerationServiceV3 } from "./recommendations/generation-service-v3.js";
+import { getPostgresPool } from "./db/client.js";
 import { FixedWindowRateLimiter } from "./auth/rate-limit.js";
 import { WeatherLocationService, type WeatherLocationServiceLike } from "./weather/location-service.js";
 import { createQWeatherProviderFromEnv } from "./weather/qweather-provider.js";
@@ -71,6 +74,7 @@ export interface BuildAppOptions {
   imageCropReadinessCheck?: () => Promise<boolean>;
   recommendationReadService?: RecommendationReadService;
   recommendationRegenerationService?: RecommendationRegenerationService;
+  recommendationGenerationCoordinator?: RecommendationGenerationCoordinator;
   weatherLocationService?: WeatherLocationServiceLike;
   weatherOverviewService?: WeatherOverviewService;
   locationCostLimiter?: FixedWindowRateLimiter;
@@ -218,7 +222,9 @@ export function buildApp(options: BuildAppOptions = {}): FastifyInstance {
   registerImageCropRoutes(app, sharedSessionService ?? new SessionService(), imageCropService);
   let defaultRegeneration: RecommendationRegenerationService | undefined;
   const regeneration = options.recommendationRegenerationService ?? ({ enqueueExplicit: (...args: Parameters<RecommendationRegenerationService["enqueueExplicit"]>) => (defaultRegeneration ??= new RecommendationRegenerationService()).enqueueExplicit(...args) } as RecommendationRegenerationService);
-  registerRecommendationRoutes(app, sharedSessionService ?? new SessionService(), options.recommendationReadService ?? new RecommendationReadService(), regeneration);
+  let defaultRealtime: RecommendationGenerationCoordinator | undefined;
+  const realtime = options.recommendationGenerationCoordinator ?? (process.env.RECOMMENDATION_REALTIME_ENABLED === "true" ? (defaultRealtime ??= (() => { const generation = new RecommendationGenerationServiceV3(getPostgresPool()); return new RecommendationGenerationCoordinator({ prepare: (...args) => generation.prepare(...args), findCurrent: (...args) => generation.persistence.findCurrent(...args), publish: (...args) => generation.persistence.publish(...args), publishHomePair: (...args) => generation.persistence.publishHomePair(...args) }); })()) : undefined);
+  registerRecommendationRoutes(app, sharedSessionService ?? new SessionService(), options.recommendationReadService ?? new RecommendationReadService(), regeneration, realtime);
   const qweather = createQWeatherProviderFromEnv();
   registerWeatherLocationRoutes(app, sharedSessionService ?? new SessionService(), options.weatherLocationService ?? new WeatherLocationService(undefined, qweather), options.locationCostLimiter);
   let defaultOverview: WeatherOverviewService | undefined;

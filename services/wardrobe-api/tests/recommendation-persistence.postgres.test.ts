@@ -5,10 +5,11 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { Pool, type PoolClient } from "pg";
 import { PublishDailyRecommendationCommandSchema, type PublishDailyRecommendationCommand } from "@wardrobe/cloud-contracts";
 
-import { generateRecommendations, RecommendationGenerationConflictError, RecommendationJobRepository, RecommendationPersistenceService, RecommendationWorker, type RecommendationPublishStage } from "../src/recommendations/index.js";
+import { generateRecommendations, generateRecommendationsV3, RecommendationGenerationConflictError, RecommendationJobRepository, RecommendationPersistenceService, RecommendationWorker, type RecommendationPublishStage } from "../src/recommendations/index.js";
 import { RecommendationRegenerationService } from "../src/recommendations/regeneration-service.js";
 import { RecommendationReadService } from "../src/recommendations/read-service.js";
 import { buildFixtureInput } from "./fixtures/recommendations/scenarios.js";
+import { buildLocationlessInput } from "./fixtures/recommendations/v2-scenarios.js";
 
 const databaseUrl = process.env.WARDROBE_RECOMMENDATION_TEST_DATABASE_URL ?? "postgresql:///wardrobe_test";
 const schema = `run_recommendation_1b_${process.pid}`;
@@ -17,6 +18,7 @@ const admin = new Pool({ connectionString: databaseUrl, max: 4 });
 let pool: Pool;
 let service: RecommendationPersistenceService;
 let baseCommand: PublishDailyRecommendationCommand;
+let baseV3Command: PublishDailyRecommendationCommand;
 
 const quote = (value: string) => `"${value.replaceAll('"', '""')}"`;
 const migrationsDir = resolve(process.cwd(), "migrations");
@@ -54,6 +56,10 @@ function command(overrides: Partial<PublishDailyRecommendationCommand> = {}): Pu
   return PublishDailyRecommendationCommandSchema.parse(candidate);
 }
 
+function v3Command(overrides: Partial<PublishDailyRecommendationCommand> = {}): PublishDailyRecommendationCommand {
+  return PublishDailyRecommendationCommandSchema.parse({ ...structuredClone(baseV3Command), generationRequestId: randomUUID(), generationBatchId: randomUUID(), ...overrides });
+}
+
 async function rows(userId: string, targetDate: string) {
   return (await pool.query("select id, revision, generation_request_id, is_current, superseded_at from daily_recommendations where user_id = $1 and target_date = $2 order by revision", [userId, targetDate])).rows;
 }
@@ -81,6 +87,16 @@ beforeAll(async () => {
     generatedAt: "2026-07-13T23:30:00.000Z",
     expiresAt: "2026-08-13T23:30:00.000Z",
   });
+  const v3Input = buildLocationlessInput();
+  const v3Output = await generateRecommendationsV3(v3Input);
+  baseV3Command = PublishDailyRecommendationCommandSchema.parse({
+    userId: v3Input.userId, targetDate: v3Input.dateContextInput.date, targetTimezone: v3Input.dateContextInput.timezone,
+    generationBatchId: randomUUID(), generationRequestId: randomUUID(), inputFingerprint: "a".repeat(64), generationSource: "foreground",
+    readiness: v3Output.readiness.status, generationMode: "rule_only",
+    payload: { schemaVersion: 3, resolvedContext: v3Input.resolvedContext, dateContextInput: v3Input.dateContextInput, engineOutput: v3Output },
+    algorithmVersion: "wardora-recommendation-realtime-v1", ruleVersion: "wardora-rules-realtime-1",
+    pawProgramVersions: { dateContext: "disabled", candidateEvaluator: "disabled" }, generatedAt: "2026-07-14T00:00:00.000Z", expiresAt: "2026-08-14T00:00:00.000Z",
+  });
 }, 120_000);
 
 afterAll(async () => {
@@ -91,20 +107,39 @@ afterAll(async () => {
 }, 30_000);
 
 describe("daily recommendation real PostgreSQL migration", () => {
-  it("replays the empty database and upgrades the current 0018 baseline through 0023", async () => {
+  it("replays the empty database and upgrades the current 0018 baseline through 0024", async () => {
     const full = await pool.query("select count(*)::int as count from information_schema.tables where table_schema = $1 and table_name = 'daily_recommendations'", [schema]);
     expect(full.rows[0].count).toBe(1);
     await createSchema(upgradeSchema);
-    await applyMigrations(upgradeSchema, migrationFiles.filter((file) => !file.startsWith("0019_") && !file.startsWith("0020_") && !file.startsWith("0022_") && !file.startsWith("0023_")));
+    await applyMigrations(upgradeSchema, migrationFiles.filter((file) => !file.startsWith("0019_") && !file.startsWith("0020_") && !file.startsWith("0022_") && !file.startsWith("0023_") && !file.startsWith("0024_")));
     expect((await admin.query("select to_regclass($1) as table_name", [`${upgradeSchema}.daily_recommendations`])).rows[0].table_name).toBeNull();
-    await applyMigrations(upgradeSchema, migrationFiles.filter((file) => file.startsWith("0019_") || file.startsWith("0020_") || file.startsWith("0022_") || file.startsWith("0023_")));
+    await applyMigrations(upgradeSchema, migrationFiles.filter((file) => file.startsWith("0019_") || file.startsWith("0020_") || file.startsWith("0022_") || file.startsWith("0023_") || file.startsWith("0024_")));
     expect((await admin.query("select to_regclass($1) as table_name", [`${upgradeSchema}.daily_recommendations`])).rows[0].table_name).toBe("daily_recommendations");
     expect((await admin.query("select to_regclass($1) as table_name", [`${upgradeSchema}.recommendation_job_runs`])).rows[0].table_name).toBe("recommendation_job_runs");
     expect((await admin.query("select to_regclass($1) as table_name", [`${upgradeSchema}.recommendation_regeneration_requests`])).rows[0].table_name).toBe("recommendation_regeneration_requests");
+    expect((await admin.query("select column_name from information_schema.columns where table_schema=$1 and table_name='daily_recommendations' and column_name='input_fingerprint'", [upgradeSchema])).rowCount).toBe(1);
   }, 120_000);
 });
 
 describe("daily recommendation atomic publication and idempotency", () => {
+  it("reuses one V3 current for concurrent same-input publishers across connections", async () => {
+    const userId = await createUser();
+    const published = await Promise.all(Array.from({ length: 12 }, () => service.publish(v3Command({ userId }))));
+    expect(new Set(published.map((record) => record.id)).size).toBe(1);
+    expect(published[0]?.inputFingerprint).toBe("a".repeat(64));
+    expect((await rows(userId, baseV3Command.targetDate))).toHaveLength(1);
+  }, 30_000);
+
+  it("makes force refresh mutation idempotent and rejects same key with changed input", async () => {
+    const userId = await createUser();
+    const generationRequestId = randomUUID();
+    const first = v3Command({ userId, generationRequestId, forceRefresh: true });
+    const created = await service.publish(first);
+    const replay = await service.publish({ ...structuredClone(first), generationBatchId: randomUUID(), generatedAt: "2026-07-14T00:01:00.000Z", expiresAt: "2026-08-14T00:01:00.000Z" });
+    expect(replay.id).toBe(created.id);
+    await expect(service.publish({ ...structuredClone(first), inputFingerprint: "b".repeat(64) })).rejects.toBeInstanceOf(RecommendationGenerationConflictError);
+    expect((await rows(userId, first.targetDate))).toHaveLength(1);
+  });
   it("lets only one worker claim a request and rejects a stale lease token before current publication", async () => {
     await pool.query("update recommendation_regeneration_requests set status='completed',claim_token=null,lease_expires_at=null,generation_batch_id=null,locked_at=null,completed_at=now() where status in ('pending','processing')");
     const userId = await createUser();
@@ -332,7 +367,8 @@ describe("recommendation worker real PostgreSQL end to end", () => {
     expect((await new RecommendationReadService(pool).read(userId, "2026-08-20", "2026-08-20")).timezone).toBe("Asia/Shanghai");
   });
 
-  it("adapts representative workspace data, skips actual and primary dates, includes far travel, and records a controlled job", async () => {
+  it("adapts representative workspace data, skips protected dates, and prewarms only today and tomorrow", async () => {
+    await pool.query("update users set disabled_at=now() where disabled_at is null");
     const userId = await createUser();
     await pool.query("insert into profiles (user_id, origin_device_id, payload) values ($1, 'test', $2::jsonb)", [userId, JSON.stringify({ profileType: "preferences", timezone: "Asia/Shanghai", workdayScene: "commute", restDayScene: "casual", thermalBias: "normal" })]);
     const garments = [
@@ -352,7 +388,7 @@ describe("recommendation worker real PostgreSQL end to end", () => {
     const result = await new RecommendationWorker(pool).runOnce("2026-07-13T19:30:00.000Z");
     expect(result.acquired).toBe(true); expect(result.job?.status).toBe("completed"); expect(result.job!.failedCount).toBe(0); expect(result.peakQueueSize).toBeLessThanOrEqual(64);
     const current = await pool.query<{ target_date: string; generation_batch_id: string }>("select target_date::text, generation_batch_id::text from daily_recommendations where user_id = $1 and is_current order by target_date", [userId]);
-    expect(current.rows.map((row) => row.target_date)).toEqual(expect.arrayContaining(["2026-07-14", "2026-07-15", "2026-08-01", "2026-08-02"]));
+    expect(current.rows.map((row) => row.target_date)).toEqual(["2026-07-14", "2026-07-15"]);
     expect(current.rows.map((row) => row.target_date)).not.toContain("2026-07-16"); expect(current.rows.map((row) => row.target_date)).not.toContain("2026-07-17");
     expect(current.rows[0]!.generation_batch_id).toBe(current.rows[1]!.generation_batch_id);
     const todayPayload = (await pool.query<{ payload: { engineOutput: { readiness: { status: string }; exclusions: Array<{ garmentId: string; codes: string[] }> } } }>("select payload from daily_recommendations where user_id = $1 and target_date = '2026-07-14' and is_current", [userId])).rows[0]!.payload;

@@ -169,6 +169,13 @@
       "when": 1784073600003,
       "tag": "0023_recommendation_regeneration_consistency",
       "breakpoints": true
+    },
+    {
+      "idx": 24,
+      "version": "7",
+      "when": 1784073600004,
+      "tag": "0024_realtime_recommendations",
+      "breakpoints": true
     }
   ]
 }

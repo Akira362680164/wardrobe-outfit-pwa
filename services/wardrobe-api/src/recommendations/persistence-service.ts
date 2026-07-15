@@ -40,9 +40,15 @@ export class RecommendationPersistenceService {
         await this.repository.acquireGenerationRequestLock(client, command.userId, command.generationRequestId);
         const replay = await this.repository.findByGenerationRequest(client, command.userId, command.generationRequestId);
         if (replay) {
+          if (command.forceRefresh && replay.inputFingerprint === command.inputFingerprint) { await client.query("commit"); return replay; }
           if (replay.payloadFingerprint !== fingerprint) throw new RecommendationGenerationConflictError();
           await client.query("commit");
           return replay;
+        }
+        const current = await this.repository.findCurrent(client, command.userId, command.targetDate);
+        if (!command.forceRefresh && command.inputFingerprint && current?.inputFingerprint === command.inputFingerprint && current.algorithmVersion === command.algorithmVersion && current.ruleVersion === command.ruleVersion && Date.parse(current.expiresAt) > Date.parse(command.generatedAt)) {
+          await client.query("commit");
+          return current;
         }
         const revision = await this.repository.nextRevision(client, command.userId, command.targetDate);
         const recordId = await this.repository.insertNonCurrent(client, { command, revision, fingerprint });
@@ -77,12 +83,18 @@ export class RecommendationPersistenceService {
       try {
         if (fence) await assertPublishFence(client, fence);
         for (const command of commands) await this.repository.acquireCurrentLock(client, command.userId, command.targetDate);
+        const existingPair = await Promise.all(commands.map((command) => this.repository.findCurrent(client, command.userId, command.targetDate)));
+        if (commands.every((command, index) => !command.forceRefresh && command.inputFingerprint && existingPair[index]?.inputFingerprint === command.inputFingerprint && existingPair[index]?.algorithmVersion === command.algorithmVersion && existingPair[index]?.ruleVersion === command.ruleVersion && Date.parse(existingPair[index]!.expiresAt) > Date.parse(command.generatedAt))) {
+          await client.query("commit");
+          return existingPair as [DailyRecommendationRecord, DailyRecommendationRecord];
+        }
         const records: DailyRecommendationRecord[] = [];
         for (const command of commands) {
           await this.repository.acquireGenerationRequestLock(client, command.userId, command.generationRequestId);
           const fingerprint = recommendationPayloadFingerprint(command);
           const replay = await this.repository.findByGenerationRequest(client, command.userId, command.generationRequestId);
           if (replay) {
+            if (command.forceRefresh && replay.inputFingerprint === command.inputFingerprint) { records.push(replay); continue; }
             if (replay.payloadFingerprint !== fingerprint) throw new RecommendationGenerationConflictError();
             records.push(replay);
             continue;

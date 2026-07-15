@@ -403,7 +403,7 @@ export const RecommendationPayloadV3Schema = z.object({
 export const RecommendationPayloadSchema = z.union([RecommendationPayloadV3Schema, RecommendationPayloadV2Schema, RecommendationPayloadV1Schema]);
 export const RecommendationPawProgramVersionsSchema = z.object({ dateContext: z.union([z.literal("disabled"), z.string().trim().min(1).max(80)]), candidateEvaluator: z.union([z.literal("disabled"), z.string().trim().min(1).max(80)]) }).strict();
 export const PublishDailyRecommendationCommandSchema = z.object({
-  userId: z.string().uuid(), targetDate: RealDateSchema, targetTimezone: TimeZoneSchema, generationBatchId: z.string().uuid(), generationRequestId: z.string().uuid(), inputFingerprint: z.string().regex(/^[a-f0-9]{64}$/).optional(), generationSource: z.enum(["foreground", "worker"]).optional(), readiness: RecommendationReadinessSchema, generationMode: RecommendationGenerationModeSchema, payload: RecommendationPayloadSchema, algorithmVersion: z.string().trim().min(1).max(80), ruleVersion: z.string().trim().min(1).max(80), pawProgramVersions: RecommendationPawProgramVersionsSchema, generatedAt: z.string().datetime(), expiresAt: z.string().datetime(),
+  userId: z.string().uuid(), targetDate: RealDateSchema, targetTimezone: TimeZoneSchema, generationBatchId: z.string().uuid(), generationRequestId: z.string().uuid(), inputFingerprint: z.string().regex(/^[a-f0-9]{64}$/).optional(), generationSource: z.enum(["foreground", "worker"]).optional(), forceRefresh: z.boolean().optional(), readiness: RecommendationReadinessSchema, generationMode: RecommendationGenerationModeSchema, payload: RecommendationPayloadSchema, algorithmVersion: z.string().trim().min(1).max(80), ruleVersion: z.string().trim().min(1).max(80), pawProgramVersions: RecommendationPawProgramVersionsSchema, generatedAt: z.string().datetime(), expiresAt: z.string().datetime(),
 }).strict().superRefine((value, ctx) => {
   if (value.readiness !== value.payload.engineOutput.readiness.status) issue(ctx, ["readiness"], "readiness must match payload");
   if (value.ruleVersion !== value.payload.engineOutput.ruleVersion) issue(ctx, ["ruleVersion"], "ruleVersion must match payload");
@@ -485,6 +485,26 @@ export const RecommendationReadResponseSchema = z.object({
   const firstTwo = value.items.slice(0, 2);
   if (value.pairConsistent && firstTwo.length === 2 && firstTwo[0]!.generationBatchId !== firstTwo[1]!.generationBatchId) issue(ctx, ["items"], "consistent pair must share generationBatchId");
 });
+export const ResolveRecommendationsCommandSchema = z.object({
+  dates: z.array(RealDateSchema).min(1).max(2),
+  force: z.boolean().optional(),
+  clientMutationId: z.string().uuid().optional(),
+}).strict().superRefine((value, ctx) => {
+  if (!unique(value.dates)) issue(ctx, ["dates"], "resolve dates must be unique");
+  if (value.force === true && !value.clientMutationId) issue(ctx, ["clientMutationId"], "force resolve requires clientMutationId");
+  if (value.force !== true && value.clientMutationId) issue(ctx, ["clientMutationId"], "clientMutationId is only valid for force resolve");
+});
+export const ResolveStatusSchema = z.enum(["reused", "generated", "served_stale", "protected_plan", "actual_wear", "not_ready"]);
+export const ResolveRecommendationsResponseSchema = z.object({
+  timezone: z.literal("Asia/Shanghai"),
+  results: z.array(z.object({
+    targetDate: RealDateSchema,
+    status: ResolveStatusSchema,
+    recommendation: RecommendationDisplayItemV3Schema.optional(),
+    protectedPlanEntryId: z.string().uuid().optional(),
+    planRiskCodes: z.array(DeterministicRiskCodeSchema).max(24).optional(),
+  }).strict()).min(1).max(2),
+}).strict();
 export const RecommendationRegenerationReasonSchema = z.enum(["home_city_changed", "temporary_city_changed", "travel_changed", "garment_changed", "weather_changed", "explicit_reassess"]);
 export const RecommendationRegenerationStatusSchema = z.enum(["pending", "processing", "completed", "failed"]);
 export const ReassessRecommendationCommandSchema = z.object({ clientMutationId: z.string().uuid() }).strict();
@@ -541,5 +561,7 @@ export type RecommendationJobRunSummary = z.infer<typeof RecommendationJobRunSum
 export type RecommendationJobErrorCode = z.infer<typeof RecommendationJobErrorCodeSchema>;
 export type RecommendationReadResponse = z.infer<typeof RecommendationReadResponseSchema>;
 export type RecommendationDisplayItemV3 = z.infer<typeof RecommendationDisplayItemV3Schema>;
+export type ResolveRecommendationsCommand = z.infer<typeof ResolveRecommendationsCommandSchema>;
+export type ResolveRecommendationsResponse = z.infer<typeof ResolveRecommendationsResponseSchema>;
 export type RecommendationRegenerationRequest = z.infer<typeof RecommendationRegenerationRequestSchema>;
 export type ReassessRecommendationCommand = z.infer<typeof ReassessRecommendationCommandSchema>;

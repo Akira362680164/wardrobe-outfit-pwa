@@ -27,6 +27,12 @@
 - 冻结 T1–T8、Beam/候选上限和 Jaccard 0.50/0.67；V3 使用 0/20/40/60/80/100 轮换阶梯，只有 365 天进入 `long_unworn`，从未穿过单独标记。
 - 专项合同、V1/V2/V3 引擎、路由与 API typecheck 通过（`126/126`）；风险等级 High，未触发 subagent：用户未通知。生产与功能开关尚未变更。
 
+## 2026-07-15 / v2.1.24-test / Codex — 实时推荐 2A-2 resolve 与 worker 收口
+
+- 新增稳定 `inputFingerprint`、V3 生成服务和共享协调器；GET 推荐严格只读，POST resolve 支持同指纹复用、force 幂等、今日/明日同批发布、旧 current 保留和前台/worker 同锁发布。
+- 迁移 0024 增加输入指纹/生成来源与索引，天气 dirty 只覆盖今日、明日及已有 current；worker 只预热今日/明日，远期旅行改为按需 resolve，功能开关 `RECOMMENDATION_REALTIME_ENABLED/RECOMMENDATION_ACCEPT_ENABLED` 默认关闭。
+- 真实 PostgreSQL fresh/0018→0024、双连接并发、force 冲突、pair 原子、lease/fencing、故障注入与天气缓存门禁 `41/41`，realtime/路由/worker 专项 `87/87`，API typecheck 通过。风险等级 High；未触发 subagent：用户未通知。
+
 ## 2026-07-15 / v2.1.24-test / Codex — VERSION_HISTORY 二次压缩
 
 - 将 `VERSION_HISTORY.md` 从 `1609` 行、约 `304 KB` 收敛为当前基线、近期关键记录和分阶段索引，纠正旧记录在文件尾部再次倒序追加的问题。
