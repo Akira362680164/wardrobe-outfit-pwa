@@ -21,6 +21,11 @@
 - 采用时重读当前衣物并重跑硬过滤；允许仍合法的 superseded 候选，拒绝跨用户/失效衣物、模板变化和超过一件的替换。App/小程序读合同已支持 `garmentIds` 且无 `outfitId`，旅行打包 UUID 优先。
 - 删除衣物不再从推荐计划中删 UUID/快照；未来计划标记 blocked，历史计划保留展示语义。真实 PostgreSQL 双连接并发、幂等、降级与四阶段故障注入 `7/7`；accept 开关仍默认关闭。
 
+## 2026-07-15 / v2.1.24-test / Codex — 实时推荐 2A-4 本地门禁与性能基线
+
+- 双 Node 进程同时加压近似双核：同指纹复用 P95 `0.20ms`，缓存天气+规则 `12.10ms`，天气降级后规则 `12.06ms`，500 件内核 `12.10ms`，均通过任务书建议阈值。
+- 可执行基准与本地/生产证据入口见 `docs/recommendations/RECOMMENDATION_REALTIME_V074_EVIDENCE.md`；此时 realtime/accept 仍默认关闭，生产备份、恢复、旧镜像兼容、受控账号和 QWeather 计费缓存证据需在 main 集成后补齐。
+
 ## 2026-07-15 / v2.1.24-test / Codex — 实时推荐 2A-0 Fixture 冻结
 
 - 手写冻结 Recommendation V3 的 forecast/locationless/weather_fallback 场景、三目标精确 expected、0/7/30/90/180/365 天轮换边界及“从未穿过/久未穿”口径；保留 V1/V2 兼容读取断言。
