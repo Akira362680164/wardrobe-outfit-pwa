@@ -15,6 +15,12 @@
 - **最近交付**：自动裁切双路线与 Android 真机闭环、全量动效/浮层/返回栈修复、App/小程序跨端一致性审计、微信登录与账号注销、固定签名 APK 和小程序体验版均已有历史验证记录。
 - **接手要求**：编辑前仍须结合 Git、任务相关 evidence、真实源码与生产现场复核；本摘要不是跳过迁移、部署、Android 或小程序验证的依据。
 
+## 2026-07-15 / v2.1.24-test / Codex — 实时推荐 2A-0 Fixture 冻结
+
+- 手写冻结 Recommendation V3 的 forecast/locationless/weather_fallback 场景、三目标精确 expected、0/7/30/90/180/365 天轮换边界及“从未穿过/久未穿”口径；保留 V1/V2 兼容读取断言。
+- 新增 V3 rule-only、无 `pawEvaluation`、确定性风险、100 次字节一致和输入乱序不变的红灯测试；真实红灯为 `20 failed / 1 passed`，失败点均为 V3 合同、计分与生成入口尚未实现。
+- 风险等级 High（推荐共享合同与算法）；未触发 subagent：用户未通知。当前未修改生产、数据库、App/小程序 UI 或功能开关。
+
 ## 2026-07-15 / v2.1.24-test / Codex — VERSION_HISTORY 二次压缩
 
 - 将 `VERSION_HISTORY.md` 从 `1609` 行、约 `304 KB` 收敛为当前基线、近期关键记录和分阶段索引，纠正旧记录在文件尾部再次倒序追加的问题。
