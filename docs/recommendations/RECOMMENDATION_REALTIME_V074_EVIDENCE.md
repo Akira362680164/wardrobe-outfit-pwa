@@ -119,3 +119,19 @@ secrets, coordinates, or real wardrobe data.
   compiled API `dist` on the verified `4148541` image. This is the retained
   deployment risk; application gates, restore/old-image compatibility, and the
   authenticated production HTTP transaction all passed on the deployed image.
+
+## 2A-5.1 invalid-candidate error boundary
+
+- The hand-written PostgreSQL/Fastify red phase was `5 failed / 17 passed`:
+  unavailable status, `recommendationBlocked`, and missing primary image leaked
+  a plain error; the real HTTP route returned 500; and the transaction validator
+  converted a controlled infrastructure error into a false 409.
+- `RecommendationCandidateInvalidError` now identifies only current-candidate
+  business invalidation. Prevalidation and in-transaction validation translate
+  that domain error to HTTP `409 conflict` with
+  `details.reasonCode=recommendation_no_longer_valid`; unrelated errors are
+  rethrown without semantic rewriting.
+- The focused real PostgreSQL accept suite passed `22 / 22`, including real
+  Fastify HTTP injection and zero plan/action/mutation/outfit-plan binding on
+  every invalidation. Recommendation contract/realtime/route tests passed
+  `20 / 20`, API full passed `327 / 327`, and API/root typecheck passed.

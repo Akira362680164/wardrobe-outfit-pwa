@@ -15,7 +15,7 @@ import {
 import { getPostgresPool } from "../db/client.js";
 import { WorkspaceApiError } from "../workspace/errors.js";
 import { WeatherOverviewService } from "../weather/overview-service.js";
-import { mapGarmentRole, validateRecommendationCandidateCurrent } from "./engine.js";
+import { mapGarmentRole, RecommendationCandidateInvalidError, validateRecommendationCandidateCurrent } from "./engine.js";
 import { RecommendationWorkspaceAdapter } from "./workspace-adapter.js";
 
 export type RecommendationAcceptStage = "afterPrevalidation" | "afterValidation" | "afterPlan" | "afterBindings" | "afterAction" | "beforeCommit";
@@ -52,7 +52,11 @@ export class RecommendationAcceptService {
       if (replayBeforeValidation.rows[0].payload?.acceptFingerprint !== fingerprint) throw conflict("mutation_payload_conflict");
       return this.readCommittedPlan(userId, (replayBeforeValidation.rows[0].response_json as AcceptRecommendationResponse).plan.id, true);
     }
-    const preselection = this.prevalidateCurrent ? await this.validateSelection(userId, date, command.selectedGarmentIds) : null;
+    let preselection: Selection[] | null = null;
+    if (this.prevalidateCurrent) {
+      try { preselection = await this.validateSelection(userId, date, command.selectedGarmentIds); }
+      catch (error) { rethrowSelectionValidation(error); }
+    }
     if (preselection) await this.fault?.("afterPrevalidation");
     const client = await this.pool.connect();
     let planId = "";
@@ -85,7 +89,7 @@ export class RecommendationAcceptService {
       const bindingRows = await client.query("select owner_entity_id,asset_id,field_name from asset_bindings where user_id=$1 and owner_entity_type='garment' and owner_entity_id=any($2::uuid[]) for share", [userId, command.selectedGarmentIds]);
       let selection: Selection[];
       try { selection = await this.validateSelection(userId, date, command.selectedGarmentIds, candidate); }
-      catch { throw conflict("recommendation_no_longer_valid"); }
+      catch (error) { rethrowSelectionValidation(error); }
       validateReplacement(candidate, command.selectedGarmentIds, selection);
       const boundIds = new Set(bindingRows.rows.filter((row) => ["primaryImage", "image", "cover"].includes(row.field_name)).map((row) => row.owner_entity_id));
       if (selectedRows.rowCount !== command.selectedGarmentIds.length || selectedRows.rows.some((row) => {
@@ -188,7 +192,14 @@ async function appendChange(client: PoolClient, userId: string, entityType: stri
   await client.query("insert into sync_changes(user_id,change_seq,entity_type,entity_id,operation,revision,payload) select $1,coalesce(max(change_seq),0)+1,$2,$3,$4,$5,$6::jsonb from sync_changes where user_id=$1", [userId, entityType, entityId, operation, revision, JSON.stringify(payload)]);
 }
 function response(id: string, payload: unknown, now: string, replay: boolean): AcceptRecommendationResponse { return AcceptRecommendationResponseSchema.parse({ status: "committed", idempotentReplay: replay, plan: { id, revision: 1, payload, createdAt: now, updatedAt: now } }); }
-function conflict(code: string) { return new WorkspaceApiError(409, "conflict", code, false, { reasonCode: code }); }
+function conflict(code: string) {
+  const details = { reasonCode: code };
+  return new WorkspaceApiError(409, "conflict", code, false, details, details);
+}
+function rethrowSelectionValidation(error: unknown): never {
+  if (error instanceof RecommendationCandidateInvalidError) throw conflict(error.reasonCode);
+  throw error;
+}
 function hash(value: unknown) { return createHash("sha256").update(JSON.stringify(value)).digest("hex"); }
 function sameSet(a: readonly string[], b: readonly string[]) { return a.length === b.length && a.every((value) => b.includes(value)); }
 function sameStrings(value: unknown, expected: readonly string[]) {

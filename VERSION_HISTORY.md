@@ -15,6 +15,12 @@
 - **最近交付**：自动裁切双路线与 Android 真机闭环、全量动效/浮层/返回栈修复、App/小程序跨端一致性审计、微信登录与账号注销、固定签名 APK 和小程序体验版均已有历史验证记录。
 - **接手要求**：编辑前仍须结合 Git、任务相关 evidence、真实源码与生产现场复核；本摘要不是跳过迁移、部署、Android 或小程序验证的依据。
 
+## 2026-07-15 / v2.1.24-test / Codex — 实时推荐 2A-5.1 accept 失效错误边界
+
+- 默认 accept validator 对已清洗/归档、blocked、缺主图或其他当前硬过滤失效改抛明确领域错误；service 只将该错误映射为 `409 conflict` 和 `details.reasonCode=recommendation_no_longer_valid`。
+- 取消事务内 validator 的 blanket catch；数据库、天气、解析等非业务异常保持原有 5xx/重试语义，失效采用仍不产生计划、action、mutation、资产 binding 或 primary 变更。
+- 红灯为 `5 failed / 17 passed`；修复后真实 PostgreSQL accept `22/22`、推荐合同/路由/实时专项 `20/20`、API full `327/327`及 API/root typecheck 通过。风险等级 High；未触发 subagent：用户未通知。
+
 ## 2026-07-15 / v2.1.24-test / Codex — 实时推荐 2A-5 accept/readiness 收口
 
 - accept 在事务锁后重验当前模板/场景、required slots、阻塞风险与全量硬过滤字段；预校验后材质、颜色、季节、主图 binding、状态或 blocked 发生竞态变更时 409 且零半状态。

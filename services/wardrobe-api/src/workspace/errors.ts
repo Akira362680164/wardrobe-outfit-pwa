@@ -10,6 +10,7 @@ export class WorkspaceApiError extends Error {
     message: string,
     readonly retryable = false,
     readonly serverData?: unknown,
+    readonly details?: unknown,
   ) {
     super(message);
   }
@@ -24,6 +25,7 @@ export function sendWorkspaceError(reply: FastifyReply, error: unknown) {
       retryable: error.retryable,
       ...(requestId ? { requestId: String(requestId) } : {}),
       ...(error.serverData === undefined ? {} : { serverData: error.serverData }),
+      ...(error.details === undefined ? {} : { details: error.details }),
     });
   }
   if (error instanceof AuthApiError) {

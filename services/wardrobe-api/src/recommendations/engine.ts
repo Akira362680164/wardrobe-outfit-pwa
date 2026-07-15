@@ -347,6 +347,15 @@ export async function satisfiesCurrentRequiredSlots(slots: readonly GarmentSlot[
   return satisfiesRequiredSlots(slots, await new RuleDateContextResolver().resolve(input.dateContextInput));
 }
 
+export class RecommendationCandidateInvalidError extends Error {
+  readonly reasonCode = "recommendation_no_longer_valid";
+
+  constructor() {
+    super("recommendation_no_longer_valid");
+    this.name = "RecommendationCandidateInvalidError";
+  }
+}
+
 export async function validateRecommendationCandidateCurrent(
   input: RecommendationEngineInputV2,
   candidate: { template?: string; deterministicRiskAssessment?: { blockingCodes?: readonly string[] } },
@@ -357,7 +366,7 @@ export async function validateRecommendationCandidateCurrent(
   const selection = selectedIds.map((id) => {
     const garment = eligible.get(id);
     const role = garment && mapGarmentRole(garment);
-    if (!garment || !role) throw new Error("recommendation_no_longer_valid");
+    if (!garment || !role) throw new RecommendationCandidateInvalidError();
     return { garment, role };
   });
   if (!candidate.template) return selection;
@@ -367,7 +376,7 @@ export async function validateRecommendationCandidateCurrent(
     || JSON.stringify(roles) !== JSON.stringify([...definition.slots].sort())
     || !satisfiesRequiredSlots(roles, context)
     || (candidate.deterministicRiskAssessment?.blockingCodes?.length ?? 0) > 0) {
-    throw new Error("recommendation_no_longer_valid");
+    throw new RecommendationCandidateInvalidError();
   }
   return selection;
 }
