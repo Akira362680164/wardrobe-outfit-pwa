@@ -19,7 +19,7 @@
 
 - 受控合成账号烟测发现：账号删除级联衣物时，衣物 AFTER DELETE 触发器会给已删除用户重新写 dirty 请求并触发外键失败；先以真实 PostgreSQL 回归测试稳定复现，再新增 0026 加法迁移。
 - `enqueue_recommendation_regeneration` 现在会在用户已不存在时直接返回，保留正常衣物/旅行 dirty 行为，同时允许账号数据和 recommendation dirty 请求安全级联清理。
-- 增加可清理的 V3 生产烟测脚本，覆盖今日/明日生成与复用、accept 提交/幂等读回、无 outfitId 快照及图片 binding；不包含坐标、密钥或真实用户数据。
+- 增加可清理的 V3 生产烟测脚本，覆盖今日/明日生成与复用、accept 提交/幂等读回、无 outfitId 快照及图片 binding；烟测同时补出并修复默认 accept 硬过滤缺失上下文规则版本的问题，不包含坐标、密钥或真实用户数据。
 
 ## 2026-07-15 / v2.1.24-test / Codex — 实时推荐 2A-3 计划采用事务
 

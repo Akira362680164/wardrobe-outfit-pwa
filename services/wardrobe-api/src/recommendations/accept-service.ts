@@ -2,6 +2,8 @@ import { createHash, randomUUID } from "node:crypto";
 import type { Pool, PoolClient } from "pg";
 import {
   AcceptRecommendationResponseSchema,
+  RECOMMENDATION_FORECAST_RULE_VERSION,
+  RECOMMENDATION_LOCATIONLESS_RULE_VERSION,
   RecommendationEngineInputV2Schema,
   RecommendationPlanPayloadSchema,
   type AcceptRecommendationCommand,
@@ -151,7 +153,12 @@ export class RecommendationAcceptService {
     return async (userId, date, selectedIds) => {
       const current = await overview.get(userId, date);
       const workspace = await adapter.load(userId, date, shanghaiDate(this.clock()), "Asia/Shanghai");
-      const input = RecommendationEngineInputV2Schema.parse({ ...workspace.input, resolvedContext: { targetDate: date, targetTimezone: current.targetTimezone, contextResolvedAt: current.contextResolvedAt, contextMode: current.contextMode, ...(current.resolvedLocation ? { resolvedLocation: current.resolvedLocation, locationSource: current.locationSource } : {}) }, dateContextInput: { ...workspace.input.dateContextInput, weatherEvidence: current.weatherEvidence } });
+      const input = RecommendationEngineInputV2Schema.parse({
+        ...workspace.input,
+        ruleVersion: current.contextMode === "forecast" ? RECOMMENDATION_FORECAST_RULE_VERSION : RECOMMENDATION_LOCATIONLESS_RULE_VERSION,
+        resolvedContext: { targetDate: date, targetTimezone: current.targetTimezone, contextResolvedAt: current.contextResolvedAt, contextMode: current.contextMode, ...(current.resolvedLocation ? { resolvedLocation: current.resolvedLocation, locationSource: current.locationSource } : {}) },
+        dateContextInput: { ...workspace.input.dateContextInput, weatherEvidence: current.weatherEvidence },
+      });
       const context = await resolver.resolve(input.dateContextInput);
       const eligible = new Map(hardFilterGarments(input.garments, context, input, current.contextMode === "forecast" ? "forecast" : "generic").eligible.map((garment) => [garment.id, garment]));
       return selectedIds.map((id) => { const garment = eligible.get(id); const role = garment && mapGarmentRole(garment); if (!garment || !role) throw conflict("recommendation_no_longer_valid"); return { garment, role }; });

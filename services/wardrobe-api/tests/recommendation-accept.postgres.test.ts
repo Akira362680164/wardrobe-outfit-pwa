@@ -69,6 +69,13 @@ describe("recommendation accept real PostgreSQL transaction", () => {
     await expect(service.accept(s.userId, "device-a", s.input.dateContextInput.date, { ...s.accept, candidateId: randomUUID() })).rejects.toMatchObject({ statusCode: 409 });
   });
 
+  it("runs the real locationless hard-filter validator before accepting", async () => {
+    const s = await seed();
+    const accepted = await new RecommendationAcceptService(pool, { clock: () => new Date("2026-07-14T01:00:00.000Z") }).accept(s.userId, "device-a", s.input.dateContextInput.date, s.accept);
+    expect(accepted).toMatchObject({ status: "committed", idempotentReplay: false });
+    expect(accepted.plan.payload.garmentIds).toEqual(s.accept.selectedGarmentIds);
+  });
+
   it("serializes two devices and demotes an explicitly replaced primary to backup", async () => {
     const s = await seed(); const service = new RecommendationAcceptService(pool, { validateSelection: s.validateSelection });
     const first = await service.accept(s.userId, "device-a", s.input.dateContextInput.date, s.accept);
