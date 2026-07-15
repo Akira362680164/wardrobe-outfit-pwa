@@ -353,6 +353,9 @@ export class WorkspaceCommandService {
       }
       const row = await ownedActiveRow(tx, table, input.entityId, input.userId);
       assertRevision(row.revision, input.command.expectedRevision, row);
+      if (input.resource === "outfit-plans" && !input.command.outfitId && !uuidOrNull(asRecord(row.payload).outfitId)) {
+        return markGarmentPlanWornTransaction(tx, input, row);
+      }
       const wearEventId = randomUUID();
       const now = new Date();
       const wearPayload = input.resource === "garments"
@@ -380,6 +383,9 @@ export class WorkspaceCommandService {
       }
       const row = await ownedActiveRow(tx, table, input.entityId, input.userId);
       assertRevision(row.revision, input.command.expectedRevision, row);
+      if (input.resource === "outfit-plans" && stringList(asRecord(row.payload).actualGarmentIds).length) {
+        return cancelGarmentPlanWornTransaction(tx, input, row);
+      }
       const payload = asRecord(row.payload);
       const wearEventId = uuidOrNull(payload.wearEventId);
       const now = new Date();
@@ -423,6 +429,59 @@ export class WorkspaceCommandService {
   }
 
   private database(): Db { return this.injectedDb ?? getDb(); }
+}
+
+async function markGarmentPlanWornTransaction(tx: Tx, input: { entityId: string; command: WorkspaceDeleteCommand & { wornAt: string }; userId: string; deviceId: string }, row: any) {
+  const garmentTable = WORKSPACE_RESOURCES.garments.table as AnyPgTable & Record<string, any>;
+  const planTable = WORKSPACE_RESOURCES["outfit-plans"].table as AnyPgTable & Record<string, any>;
+  const payload = asRecord(row.payload);
+  const garmentIds = stringList(payload.garmentIds);
+  if (!garmentIds.length) throw new WorkspaceApiError(409, "conflict", "计划没有可确认的衣物");
+  const now = new Date();
+  const dateKey = input.command.wornAt.slice(0, 10);
+  const garments = await tx.select().from(garmentTable).where(and(eq(garmentTable.userId, input.userId), isNull(garmentTable.deletedAt))) as any[];
+  const current = garments.filter((garment) => garmentIds.includes(garment.id));
+  const snapshots = Array.isArray(payload.garmentSnapshots) ? payload.garmentSnapshots : [];
+  for (const garment of current) {
+    const garmentPayload = asRecord(garment.payload);
+    const next = normalizeGarmentPayload({ ...garmentPayload, wornDates: addDate(garmentPayload.wornDates, dateKey), updatedAt: now.toISOString() });
+    await tx.update(garmentTable).set({ revision: garment.revision + 1, originDeviceId: input.deviceId, payload: next, updatedAt: now }).where(eq(garmentTable.id, garment.id));
+    await appendChange(tx, input.userId, "garment", garment.id, "update", garment.revision + 1, next);
+    await createWearEvent(tx, { userId: input.userId, deviceId: input.deviceId, now, payload: { garmentId: garment.id, sourcePlanId: input.entityId, wornAt: input.command.wornAt } });
+  }
+  const nextPayload = { ...payload, status: "worn", wornDateLinked: dateKey, wearOrigin: "planned_confirmed", plannedBeforeWorn: true, isPrimaryActual: Boolean(payload.isPrimary), actualGarmentIds: garmentIds, actualGarmentSnapshots: snapshots, updatedAt: now.toISOString() };
+  const revision = row.revision + 1;
+  await tx.update(planTable).set({ revision, originDeviceId: input.deviceId, payload: nextPayload, updatedAt: now }).where(eq(planTable.id, input.entityId));
+  await appendChange(tx, input.userId, "outfitPlan", input.entityId, "update", revision, nextPayload);
+  return { entity: toEntity({ id: input.entityId, revision, payload: nextPayload, createdAt: row.createdAt, updatedAt: now }), revision };
+}
+
+async function cancelGarmentPlanWornTransaction(tx: Tx, input: { entityId: string; command: WorkspaceStateCommand; userId: string; deviceId: string }, row: any) {
+  const garmentTable = WORKSPACE_RESOURCES.garments.table as AnyPgTable & Record<string, any>;
+  const planTable = WORKSPACE_RESOURCES["outfit-plans"].table as AnyPgTable & Record<string, any>;
+  const wearTable = WORKSPACE_RESOURCES["wear-events"].table as AnyPgTable & Record<string, any>;
+  const payload = asRecord(row.payload);
+  const dateKey = String(payload.wornDateLinked ?? payload.date ?? input.command.date ?? "");
+  const ids = stringList(payload.actualGarmentIds);
+  const now = new Date();
+  const garments = await tx.select().from(garmentTable).where(and(eq(garmentTable.userId, input.userId), isNull(garmentTable.deletedAt))) as any[];
+  for (const garment of garments.filter((item) => ids.includes(item.id))) {
+    const garmentPayload = asRecord(garment.payload);
+    const next = normalizeGarmentPayload({ ...garmentPayload, wornDates: removeDate(garmentPayload.wornDates, dateKey), updatedAt: now.toISOString() });
+    await tx.update(garmentTable).set({ revision: garment.revision + 1, originDeviceId: input.deviceId, payload: next, updatedAt: now }).where(eq(garmentTable.id, garment.id));
+    await appendChange(tx, input.userId, "garment", garment.id, "update", garment.revision + 1, next);
+  }
+  const events = await tx.select().from(wearTable).where(and(eq(wearTable.userId, input.userId), isNull(wearTable.deletedAt))) as any[];
+  for (const event of events.filter((item) => asRecord(item.payload).sourcePlanId === input.entityId)) {
+    await tx.update(wearTable).set({ revision: event.revision + 1, deletedAt: now, updatedAt: now }).where(eq(wearTable.id, event.id));
+    await appendChange(tx, input.userId, "wearEvent", event.id, "delete", event.revision + 1, {});
+  }
+  const { wornDateLinked: _wornDateLinked, wearOrigin: _wearOrigin, plannedBeforeWorn: _plannedBeforeWorn, isPrimaryActual: _isPrimaryActual, actualGarmentIds: _actualGarmentIds, actualGarmentSnapshots: _actualGarmentSnapshots, ...restored } = payload;
+  const nextPayload = { ...restored, status: "planned", updatedAt: now.toISOString() };
+  const revision = row.revision + 1;
+  await tx.update(planTable).set({ revision, originDeviceId: input.deviceId, payload: nextPayload, updatedAt: now }).where(eq(planTable.id, input.entityId));
+  await appendChange(tx, input.userId, "outfitPlan", input.entityId, "update", revision, nextPayload);
+  return { entity: toEntity({ id: input.entityId, revision, payload: nextPayload, createdAt: row.createdAt, updatedAt: now }), revision };
 }
 
 async function markOutfitWearTransaction(

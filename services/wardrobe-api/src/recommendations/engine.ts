@@ -343,6 +343,35 @@ function satisfiesRequiredSlots(slots: readonly GarmentSlot[], context: DateCont
   });
 }
 
+export async function satisfiesCurrentRequiredSlots(slots: readonly GarmentSlot[], input: RecommendationEngineInputV2): Promise<boolean> {
+  return satisfiesRequiredSlots(slots, await new RuleDateContextResolver().resolve(input.dateContextInput));
+}
+
+export async function validateRecommendationCandidateCurrent(
+  input: RecommendationEngineInputV2,
+  candidate: { template?: string; deterministicRiskAssessment?: { blockingCodes?: readonly string[] } },
+  selectedIds: readonly string[],
+): Promise<Array<{ garment: RecommendationGarment; role: GarmentSlot }>> {
+  const context = await new RuleDateContextResolver().resolve(input.dateContextInput);
+  const eligible = new Map(hardFilterGarments(input.garments, context, input, input.resolvedContext.contextMode === "forecast" ? "forecast" : "generic").eligible.map((garment) => [garment.id, garment]));
+  const selection = selectedIds.map((id) => {
+    const garment = eligible.get(id);
+    const role = garment && mapGarmentRole(garment);
+    if (!garment || !role) throw new Error("recommendation_no_longer_valid");
+    return { garment, role };
+  });
+  if (!candidate.template) return selection;
+  const definition = TEMPLATE_SLOTS.find((item) => item.template === candidate.template);
+  const roles = selection.map((item) => item.role).sort();
+  if (!definition || (definition.scenes && !definition.scenes.includes(context.sceneType))
+    || JSON.stringify(roles) !== JSON.stringify([...definition.slots].sort())
+    || !satisfiesRequiredSlots(roles, context)
+    || (candidate.deterministicRiskAssessment?.blockingCodes?.length ?? 0) > 0) {
+    throw new Error("recommendation_no_longer_valid");
+  }
+  return selection;
+}
+
 interface RawCandidate {
   garmentIds: string[];
   source: RecommendationCandidate["source"];

@@ -37,10 +37,11 @@ const command = PublishDailyRecommendationCommandSchema.parse({
   algorithmVersion: "wardora-recommendation-realtime-v1", ruleVersion: "wardora-rules-realtime-1", pawProgramVersions: { dateContext: "disabled", candidateEvaluator: "disabled" }, generatedAt: now, expiresAt: "2026-08-15T00:00:00.000Z",
 });
 const record = DailyRecommendationRecordSchema.parse({ id: randomUUID(), ...command, revision: 1, payloadFingerprint: "b".repeat(64), isCurrent: true, lifecycle: "current", supersededAt: null, createdAt: now, updatedAt: now });
-const coordinator = new RecommendationGenerationCoordinator({ prepare: async () => ({ command, skipReason: null }), findCurrent: async () => record, publish: async () => { throw new Error("unexpected publish"); }, publishHomePair: async () => { throw new Error("unexpected publish"); } }, () => new Date("2026-07-15T01:00:00.000Z"));
+let reuseEngineCalls = 0;
+const coordinator = new RecommendationGenerationCoordinator({ prepare: async () => ({ command, skipReason: null, materialize: async () => { reuseEngineCalls += 1; return command; } }), findCurrent: async () => record, publish: async () => { throw new Error("unexpected publish"); }, publishHomePair: async () => { throw new Error("unexpected publish"); } }, () => new Date("2026-07-15T01:00:00.000Z"));
 const reuse = await samples(100, () => coordinator.resolve(forecastInput.userId, { dates: [forecastInput.dateContextInput.date] }));
 
-const result = { lane, loadModel: "two simultaneous Node processes", samples: { reuse: reuse.length, cachedRule: cachedRule.length, fallbackRule: fallbackRule.length }, p95Ms: { reuse: p95(reuse), cachedRule: p95(cachedRule), weatherFallback: p95(fallbackRule), kernel500: p95(cachedRule) }, thresholdsMs: { reuse: 300, cachedRule: 800, weatherFallback: 2000, kernel500: 300 } };
-const failed = result.p95Ms.reuse > 300 || result.p95Ms.cachedRule > 800 || result.p95Ms.weatherFallback > 2000 || result.p95Ms.kernel500 > 300;
+const result = { lane, loadModel: "two simultaneous Node processes", samples: { reuse: reuse.length, cachedRule: cachedRule.length, fallbackRule: fallbackRule.length }, reuseEngineCalls, p95Ms: { reuse: p95(reuse), cachedRule: p95(cachedRule), weatherFallback: p95(fallbackRule), kernel500: p95(cachedRule) }, thresholdsMs: { reuse: 300, cachedRule: 800, weatherFallback: 2000, kernel500: 300 } };
+const failed = reuseEngineCalls !== 0 || result.p95Ms.reuse > 300 || result.p95Ms.cachedRule > 800 || result.p95Ms.weatherFallback > 2000 || result.p95Ms.kernel500 > 300;
 console.log(JSON.stringify({ ...result, passed: !failed }));
 if (failed) process.exitCode = 1;
