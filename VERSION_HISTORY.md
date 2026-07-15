@@ -10,8 +10,8 @@
 ## 当前接力基线（2026-07-15）
 
 - **版本与平台**：`package.json` 为 `2.1.24-test`；正式开发基线为 App/API/共享代码 `main` 与小程序 `wechat/miniprogram`。App 仍以 Android 竖屏、线上唯一数据源和固定签名 APK 为交付边界。
-- **生产 API**：运行提交 `3d1634d`，API/Worker 镜像 ID `sha256:defc31db...`，回滚镜像 `wardrobe-api:9353c6d` / `sha256:a0f07a2d...`；数据库迁移数 `23`。最近核验内外网 health/ready/version 200、鉴权边界 401、API/Worker 零重启。
-- **生产能力**：推荐 V2 shadow/current/worker 与 QWeather 已启用；PAW、天气预警和历史气候保持关闭。当前推荐链覆盖确定性规则、版本化持久化、原子双日发布、重算 lease/fencing、上海业务日期和共享天气缓存。
+- **生产 API**：运行提交/镜像 `4148541`，API/Worker 零重启；已验证回滚镜像为 `wardrobe-api:3d1634d`，数据库迁移数 `26`。最近核验内外网 health/ready/version 200、鉴权边界 401。
+- **生产能力**：推荐 V2 与 QWeather 保持启用，V3 realtime/accept 已分阶段启用；PAW、天气预警和历史气候保持关闭。当前推荐链覆盖只读 GET、实时 resolve、今日/明日 worker 预热、事务 accept、原子双日发布、lease/fencing、上海业务日期和共享天气缓存。
 - **最近交付**：自动裁切双路线与 Android 真机闭环、全量动效/浮层/返回栈修复、App/小程序跨端一致性审计、微信登录与账号注销、固定签名 APK 和小程序体验版均已有历史验证记录。
 - **接手要求**：编辑前仍须结合 Git、任务相关 evidence、真实源码与生产现场复核；本摘要不是跳过迁移、部署、Android 或小程序验证的依据。
 
@@ -20,6 +20,12 @@
 - 受控合成账号烟测发现：账号删除级联衣物时，衣物 AFTER DELETE 触发器会给已删除用户重新写 dirty 请求并触发外键失败；先以真实 PostgreSQL 回归测试稳定复现，再新增 0026 加法迁移。
 - `enqueue_recommendation_regeneration` 现在会在用户已不存在时直接返回，保留正常衣物/旅行 dirty 行为，同时允许账号数据和 recommendation dirty 请求安全级联清理。
 - 增加可清理的 V3 生产烟测脚本，覆盖今日/明日生成与复用、accept 提交/幂等读回、无 outfitId 快照及图片 binding；烟测同时补出并修复默认 accept 硬过滤缺失上下文规则版本的问题，不包含坐标、密钥或真实用户数据。
+
+## 2026-07-15 / v2.1.24-test / Codex — 实时推荐 2A 生产收口
+
+- main `4148541` 与小程序 `c98a2c1` 已推送；生产备份、隔离恢复 25→26、旧镜像兼容、真实 QWeather 计费上限/缓存复用、合成账号 resolve/accept/读回/清理均通过。
+- 生产 API/Worker 运行 `wardrobe-api:4148541`、迁移 26、零重启；realtime 与 accept 已按顺序启用，PAW/预警/历史气候仍关闭，详细证据见 `docs/recommendations/RECOMMENDATION_REALTIME_V074_EVIDENCE.md`。
+- 生产仅保留当前镜像与已验证回滚镜像 `wardrobe-api:3d1634d`；隔离库和合成账号已清理，根盘约 24% 已用、51 GiB 可用。本批未实现新首页/详情 UI、天气动画、APK 或小程序体验版。
 
 ## 2026-07-15 / v2.1.24-test / Codex — 实时推荐 2A-3 计划采用事务
 
