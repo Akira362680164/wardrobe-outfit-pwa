@@ -183,6 +183,13 @@
       "when": 1784073600005,
       "tag": "0025_recommendation_accept",
       "breakpoints": true
+    },
+    {
+      "idx": 26,
+      "version": "7",
+      "when": 1784073600006,
+      "tag": "0026_recommendation_account_delete",
+      "breakpoints": true
     }
   ]
 }
