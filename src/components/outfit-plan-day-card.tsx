@@ -7,6 +7,7 @@ import { ConfirmActionSheet } from "@/components/dialogs";
 import { MotionSheet } from "@/components/motion-common";
 import { OutfitCover } from "@/components/outfit-cover";
 import { PLAN_TONE_CLASS_MAP, resolvePrimaryDisplayEntryForDate } from "@/lib/outfit-planning";
+import { isSnapshotRecommendationPlan, recommendationPlanAvailabilityMessage, recommendationPlanSnapshotNames } from "@/lib/recommendation-plan-presentation";
 
 interface OutfitPlanDayCardProps {
   dateKey: string;
@@ -79,6 +80,19 @@ export function OutfitPlanDayCard({
   const isWorn = primaryEntry?.status === "worn";
   const isChanged = primaryEntry?.status === "changed";
   const isPlanned = primaryEntry?.status === "planned";
+
+  if (primaryEntry && !outfit && isSnapshotRecommendationPlan(primaryEntry)) {
+    const unavailable = recommendationPlanAvailabilityMessage(primaryEntry, todayKey);
+    return (
+      <div className="min-w-0 rounded-3xl border border-ink/5 bg-white p-4">
+        <div className="flex items-center gap-2"><span className="text-xs font-semibold text-ink">{dateLabel}</span><span className="text-[10px] font-medium text-denim/70">推荐计划</span></div>
+        <p className="mt-2 text-sm font-semibold text-ink">{primaryEntry.title || recommendationPlanSnapshotNames(primaryEntry).join(" · ")}</p>
+        <div className="mt-2 flex flex-wrap gap-1.5">{(primaryEntry.garmentSnapshots ?? []).map((snapshot) => <span key={snapshot.garmentId} className="rounded-full bg-mist/50 px-2 py-1 text-[10px] text-ink/65">{snapshot.name}</span>)}</div>
+        {unavailable ? <p className="mt-2 text-[11px] font-medium text-amber-700">{unavailable}</p> : null}
+        <div className="mt-3 flex gap-2">{!isFuture ? primaryEntry.status === "worn" && onCancelWear ? <button type="button" className="rounded-full border border-ink/10 bg-white px-3 py-1 text-[11px] font-medium text-ink/55" onClick={() => onCancelWear("") }>取消已穿</button> : <button type="button" className="rounded-full bg-moss px-3 py-1 text-[11px] font-semibold text-white" onClick={onMarkWornToday}>{isPast ? "补记已穿" : "今天穿了"}</button> : null}<button type="button" className="rounded-full border border-denim/20 bg-denim/5 px-3 py-1 text-[11px] font-medium text-denim" onClick={onSelectOutfit}>{unavailable ? "替换衣物" : "添加备选"}</button></div>
+      </div>
+    );
+  }
 
   if (primaryEntry && !outfit) {
     return (

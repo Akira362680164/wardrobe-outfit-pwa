@@ -13,6 +13,20 @@ export function getDisplayOutfitId(entry: MiniOutfitPlanEntry): string {
   return entry.status === "worn" ? entry.actualOutfitId || entry.outfitId : entry.outfitId;
 }
 
+export function isSnapshotRecommendationPlan(entry: MiniOutfitPlanEntry): boolean {
+  return entry.sourceType === "daily_recommendation" && entry.garmentIds.length > 0 && entry.garmentSnapshots.length > 0;
+}
+
+export function getRecommendationPlanAvailabilityMessage(entry: MiniOutfitPlanEntry, todayKey: string): string {
+  if (entry.date < todayKey) return "";
+  return entry.availability === "blocked" || entry.unavailableGarmentIds.length > 0 ? "部分衣物当前不可用，请替换后再穿" : "";
+}
+
+export function getRecommendationPlanSnapshotNames(entry: MiniOutfitPlanEntry): string[] {
+  const values = entry.status === "worn" && entry.actualGarmentSnapshots.length ? entry.actualGarmentSnapshots : entry.garmentSnapshots;
+  return values.map((item) => typeof item.name === "string" && item.name ? item.name : "未命名衣物");
+}
+
 export function resolvePrimaryOutfitPlanEntry(entries: MiniOutfitPlanEntry[]): MiniOutfitPlanEntry | undefined {
   const active = entries.filter((entry) => entry.status !== "skipped");
   const worn = active.filter((entry) => entry.status === "worn").sort(compareWornEntries);

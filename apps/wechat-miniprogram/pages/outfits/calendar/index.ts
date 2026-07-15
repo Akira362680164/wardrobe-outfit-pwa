@@ -4,6 +4,8 @@ import {
   fetchPlanningSnapshot,
   getWorkspaceReadState,
   markOutfitWornOnDate,
+  markOutfitPlanWorn,
+  cancelOutfitPlanWorn,
   updateOutfitPlanEntry,
   type MiniCalendarPlan,
   type MiniCalendarPlanTone,
@@ -15,6 +17,9 @@ import { getCapsuleGeometry } from "../../../utils/capsule-layout";
 import {
   getBackupOutfitPlanEntries,
   getDisplayOutfitId,
+  getRecommendationPlanAvailabilityMessage,
+  getRecommendationPlanSnapshotNames,
+  isSnapshotRecommendationPlan,
   getOutfitPlanDateRelation,
   hasDuplicatePlannedOutfit,
   resolvePrimaryOutfitPlanEntry,
@@ -296,14 +301,15 @@ Page({
     const primary = this.data.selectedPrimaryEntry;
     if (!primary || !primary.primaryAction || this.data.savingEntry) return;
     const outfit = this.data.outfits.find((item) => item.id === primary.outfitId);
-    if (!outfit) return;
+    const planEntry = this.data.outfitPlanEntries.find((item) => item.id === primary.id);
+    if (!outfit && !planEntry) return;
 
     this.setData({ savingEntry: true });
     try {
       if (primary.primaryAction === "mark_worn") {
-        await markOutfitWornOnDate(outfit.id, outfit.revision, this.data.selectedDate);
+        if (outfit) await markOutfitWornOnDate(outfit.id, outfit.revision, this.data.selectedDate); else await markOutfitPlanWorn(planEntry!, this.data.selectedDate);
       } else {
-        await cancelOutfitWornOnDate(outfit.id, outfit.revision, this.data.selectedDate);
+        if (outfit) await cancelOutfitWornOnDate(outfit.id, outfit.revision, this.data.selectedDate); else await cancelOutfitPlanWorn(planEntry!, this.data.selectedDate);
       }
       if (!await this.loadPlanning()) throw new Error("已保存，但重新读取失败，请稍后重试");
       const relation = getOutfitPlanDateRelation(this.data.selectedDate, this.data.todayKey);
@@ -417,13 +423,13 @@ Page({
         return outfit ? { id: entry.id, outfitId: outfit.id, name: entry.title || outfit.name, imageUrl: outfit.imageUrl, itemImages: outfit.itemImages } : null;
       })
       .filter((entry): entry is BackupEntryView => entry !== null);
-    const selectedPrimaryEntry = primaryEntry && primaryOutfit ? {
+    const selectedPrimaryEntry = primaryEntry && (primaryOutfit || isSnapshotRecommendationPlan(primaryEntry)) ? {
       id: primaryEntry.id,
-      outfitId: primaryOutfit.id,
-      name: primaryEntry.title || primaryOutfit.name,
-      imageUrl: primaryOutfit.imageUrl,
-      itemImages: primaryOutfit.itemImages,
-      meta: `${primaryOutfit.itemCount}件 · ${primaryOutfit.sceneText}`,
+      outfitId: primaryOutfit?.id || "",
+      name: primaryEntry.title || primaryOutfit?.name || getRecommendationPlanSnapshotNames(primaryEntry).join(" · "),
+      imageUrl: primaryOutfit?.imageUrl || "",
+      itemImages: primaryOutfit?.itemImages || [],
+      meta: primaryOutfit ? `${primaryOutfit.itemCount}件 · ${primaryOutfit.sceneText}` : getRecommendationPlanAvailabilityMessage(primaryEntry, this.data.todayKey) || `${primaryEntry.garmentSnapshots.length}件推荐衣物`,
       statusLabel: primaryEntry.status === "worn" ? "实际已穿" : primaryEntry.status === "changed" ? "已变更" : relation === "past" ? "计划未确认" : "计划",
       statusClass: primaryEntry.status === "worn" ? "is-worn" : primaryEntry.status === "changed" ? "is-changed" : "is-planned",
       primaryAction,
@@ -439,14 +445,14 @@ Page({
       selectedPrimaryEntry,
       selectedBackupEntries,
       monthHasData,
-      selectedEmptyTitle: primaryEntry && !primaryOutfit
+      selectedEmptyTitle: primaryEntry && !primaryOutfit && !isSnapshotRecommendationPlan(primaryEntry)
         ? "计划关联的套装已失效"
         : relation === "past"
         ? `${formatDateWithWeek(this.data.selectedDate)}还没有穿着记录`
         : relation === "today"
           ? "今天还没有安排穿搭"
           : `${formatDateWithWeek(this.data.selectedDate)}还没有安排穿搭`,
-      selectedEmptyCopy: primaryEntry && !primaryOutfit
+      selectedEmptyCopy: primaryEntry && !primaryOutfit && !isSnapshotRecommendationPlan(primaryEntry)
         ? "该计划无法找到对应套装，请重新选择。"
         : relation === "past" ? "可以补记当天实际穿过的套装。" : "可以先把想穿的套装放进计划。",
       selectedActionLabel: primaryEntry && !primaryOutfit ? "重新选择套装" : relation === "past" ? "补记已穿" : "安排穿搭",

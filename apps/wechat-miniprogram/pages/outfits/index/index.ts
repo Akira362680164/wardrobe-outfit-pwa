@@ -4,6 +4,8 @@ import {
   fetchPlanningSnapshot,
   getWorkspaceReadState,
   markOutfitWornOnDate,
+  markOutfitPlanWorn,
+  cancelOutfitPlanWorn,
   updateOutfitPlanEntry,
   type MiniCalendarPlan,
   type MiniCalendarPlanTone,
@@ -15,6 +17,9 @@ import { getCapsuleGeometry } from "../../../utils/capsule-layout";
 import {
   getBackupOutfitPlanEntries,
   getDisplayOutfitId,
+  getRecommendationPlanAvailabilityMessage,
+  getRecommendationPlanSnapshotNames,
+  isSnapshotRecommendationPlan,
   getOutfitPlanDateRelation,
   hasDuplicatePlannedOutfit,
   resolvePrimaryOutfitPlanEntry,
@@ -56,6 +61,7 @@ type SelectedWeekEntry = {
   canChangePlan: boolean;
   canAddBackup: boolean;
   backups: BackupWeekEntry[];
+  availabilityMessage: string;
 };
 
 const PLAN_OPTIONS: Array<{ type: MiniCalendarPlanType; label: string; desc: string }> = [
@@ -346,14 +352,15 @@ Page({
     const selected = this.data.selectedWeekEntry;
     if (!selected || !selected.primaryAction || this.data.savingEntry) return;
     const outfit = this.data.outfits.find((item) => item.id === selected.outfitId);
-    if (!outfit) return;
+    const planEntry = this.data.outfitPlanEntries.find((item) => item.id === selected.id);
+    if (!outfit && !planEntry) return;
 
     this.setData({ savingEntry: true });
     try {
       if (selected.primaryAction === "mark_worn") {
-        await markOutfitWornOnDate(outfit.id, outfit.revision, this.data.selectedDate);
+        if (outfit) await markOutfitWornOnDate(outfit.id, outfit.revision, this.data.selectedDate); else await markOutfitPlanWorn(planEntry!, this.data.selectedDate);
       } else {
-        await cancelOutfitWornOnDate(outfit.id, outfit.revision, this.data.selectedDate);
+        if (outfit) await cancelOutfitWornOnDate(outfit.id, outfit.revision, this.data.selectedDate); else await cancelOutfitPlanWorn(planEntry!, this.data.selectedDate);
       }
       if (!await this.loadOutfits()) throw new Error("已保存，但重新读取失败，请稍后重试");
       const relation = getOutfitPlanDateRelation(this.data.selectedDate, localDateKey());
@@ -431,18 +438,18 @@ Page({
       weekDays,
       weekRangeLabel: formatWeekRange(this.data.weekStart, weekEnd),
       selectedDateLabel: formatDateWithWeek(this.data.selectedDate),
-      selectedEmptyTitle: selectedEntry && !selectedOutfit ? "计划关联的套装已失效" : relation === "past" ? `${formatDateWithWeek(this.data.selectedDate)}还没有穿着记录` : `${formatDateWithWeek(this.data.selectedDate)}还没有安排穿搭`,
-      selectedEmptyCopy: selectedEntry && !selectedOutfit ? "该计划无法找到对应套装，请重新选择。" : relation === "past" ? "可以补记当天实际穿过的套装。" : "先安排主计划，再添加备选穿搭。",
+      selectedEmptyTitle: selectedEntry && !selectedOutfit && !isSnapshotRecommendationPlan(selectedEntry) ? "计划关联的套装已失效" : relation === "past" ? `${formatDateWithWeek(this.data.selectedDate)}还没有穿着记录` : `${formatDateWithWeek(this.data.selectedDate)}还没有安排穿搭`,
+      selectedEmptyCopy: selectedEntry && !selectedOutfit && !isSnapshotRecommendationPlan(selectedEntry) ? "该计划无法找到对应套装，请重新选择。" : relation === "past" ? "可以补记当天实际穿过的套装。" : "先安排主计划，再添加备选穿搭。",
       selectedEmptyAction: selectedEntry && !selectedOutfit ? "重新选择套装" : relation === "past" ? "补记已穿" : "安排主穿搭",
-      selectedWeekEntry: selectedEntry && selectedOutfit ? {
+      selectedWeekEntry: selectedEntry && (selectedOutfit || isSnapshotRecommendationPlan(selectedEntry)) ? {
         id: selectedEntry.id,
-        outfitId: selectedOutfit.id,
+        outfitId: selectedOutfit?.id || "",
         planId: selectedPlan?.id || "",
         planTitle: selectedPlan?.title || "单日穿搭",
         planTypeLabel: selectedPlan?.typeLabel || "计划",
-        name: selectedEntry.title || selectedOutfit.name,
-        imageUrl: selectedOutfit.imageUrl,
-        itemImages: selectedOutfit.itemImages,
+        name: selectedEntry.title || selectedOutfit?.name || getRecommendationPlanSnapshotNames(selectedEntry).join(" · "),
+        imageUrl: selectedOutfit?.imageUrl || "",
+        itemImages: selectedOutfit?.itemImages || [],
         statusLabel: selectedEntry.status === "worn" ? "实际已穿" : selectedEntry.status === "changed" ? "已变更" : relation === "past" ? "计划未确认" : "计划",
         statusClass: selectedEntry.status === "worn" ? "is-worn" : selectedEntry.status === "changed" ? "is-changed" : "is-planned",
         primaryAction: relation === "future" ? "" : selectedEntry.status === "worn" ? "cancel_worn" : "mark_worn",
@@ -450,6 +457,7 @@ Page({
         canChangePlan: relation === "future" && selectedEntry.status === "planned",
         canAddBackup: relation !== "past",
         backups,
+        availabilityMessage: getRecommendationPlanAvailabilityMessage(selectedEntry, todayKey),
       } : null,
     });
   },

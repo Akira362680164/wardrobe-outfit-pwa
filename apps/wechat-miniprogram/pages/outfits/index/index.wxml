@@ -51,6 +51,7 @@
         </view>
         <view class="week-plan__main">
           <view class="week-plan__name">{{selectedWeekEntry.name}}</view>
+          <view wx:if="{{selectedWeekEntry.availabilityMessage}}" class="page-copy">{{selectedWeekEntry.availabilityMessage}}</view>
           <view class="week-plan__actions">
             <button wx:if="{{selectedWeekEntry.primaryAction}}" class="worn-button {{selectedWeekEntry.statusClass}}" loading="{{savingEntry}}" disabled="{{savingEntry}}" bindtap="handlePrimaryAction">{{selectedWeekEntry.primaryActionLabel}}</button>
             <button wx:if="{{selectedWeekEntry.canChangePlan}}" class="secondary-button" disabled="{{savingEntry}}" bindtap="openChangeSelector">更改计划</button>

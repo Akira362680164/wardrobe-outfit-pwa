@@ -512,6 +512,8 @@ export interface OutfitPlanEntry extends ServerEntityMetadata {
   sourceType?: "saved_outfit" | "daily_recommendation" | "manual_items";
   garmentIds?: string[];
   garmentSnapshots?: Array<{ garmentId: string; legacyItemId?: number; name: string; role: string; category: string; imageAssetId?: string }>;
+  actualGarmentIds?: string[];
+  actualGarmentSnapshots?: Array<{ garmentId: string; legacyItemId?: number; name: string; role: string; category: string; imageAssetId?: string }>;
   recommendationId?: string;
   recommendationRevision?: number;
   recommendationCandidateId?: string;
