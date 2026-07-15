@@ -68,6 +68,14 @@ describe("persistent recommendation regeneration requests", () => {
     expect((await pool.query("select count(*)::int count from recommendation_regeneration_requests where user_id=$1", [userId])).rows[0].count).toBe(0);
   });
 
+  it("does not enqueue garment dirtiness while account deletion cascades garments", async () => {
+    const userId = await user();
+    await pool.query("insert into garments(user_id,origin_device_id,payload) values($1,'account-delete-test',$2::jsonb)", [userId, JSON.stringify({ status: "active", category: "tops" })]);
+    await expect(pool.query("delete from users where id=$1", [userId])).resolves.toBeDefined();
+    expect((await pool.query("select count(*)::int count from garments where user_id=$1", [userId])).rows[0].count).toBe(0);
+    expect((await pool.query("select count(*)::int count from recommendation_regeneration_requests where user_id=$1", [userId])).rows[0].count).toBe(0);
+  });
+
   it("claims with SKIP LOCKED, bounds retries, and keeps controlled errors", async () => {
     await pool.query("update recommendation_regeneration_requests set status='completed',claim_token=null,lease_expires_at=null,generation_batch_id=null,locked_at=null,completed_at=now() where status in ('pending','processing')");
     const userId = await user();

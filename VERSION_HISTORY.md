@@ -15,6 +15,12 @@
 - **最近交付**：自动裁切双路线与 Android 真机闭环、全量动效/浮层/返回栈修复、App/小程序跨端一致性审计、微信登录与账号注销、固定签名 APK 和小程序体验版均已有历史验证记录。
 - **接手要求**：编辑前仍须结合 Git、任务相关 evidence、真实源码与生产现场复核；本摘要不是跳过迁移、部署、Android 或小程序验证的依据。
 
+## 2026-07-15 / v2.1.24-test / Codex — 实时推荐生产清理边界
+
+- 受控合成账号烟测发现：账号删除级联衣物时，衣物 AFTER DELETE 触发器会给已删除用户重新写 dirty 请求并触发外键失败；先以真实 PostgreSQL 回归测试稳定复现，再新增 0026 加法迁移。
+- `enqueue_recommendation_regeneration` 现在会在用户已不存在时直接返回，保留正常衣物/旅行 dirty 行为，同时允许账号数据和 recommendation dirty 请求安全级联清理。
+- 增加可清理的 V3 生产烟测脚本，覆盖今日/明日生成与复用、accept 提交/幂等读回、无 outfitId 快照及图片 binding；不包含坐标、密钥或真实用户数据。
+
 ## 2026-07-15 / v2.1.24-test / Codex — 实时推荐 2A-3 计划采用事务
 
 - 新增独立 accept 合同、路由与 0025 加法迁移；同一事务内完成幂等、日期锁、旧 primary 降 backup、无 outfitId 计划、衣物/推荐快照、图片 binding、action 和 sync change，提交后再按主键读回。
