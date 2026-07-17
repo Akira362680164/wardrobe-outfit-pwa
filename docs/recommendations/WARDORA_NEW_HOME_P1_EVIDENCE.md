@@ -35,6 +35,21 @@
 - 一次性设备定位属于 P3；计划采用/替换/取消/已穿写事务属于 P2；生产默认首页切换与正式候选发布属于 P5。
 - Android 业务交互来自模拟器和合成 Fixture 账号，不是物理真机或真实用户数据；正式生产 API 只执行部署后的受控健康/鉴权/功能开关门禁。
 
+## P1.3 收口（2.1.28-test）
+
+### 红灯与修复
+
+- 重试地点按钮与重连路径从 `loadLocation(false)` 切为 `loadLocation(true)`，修复地点首次失败后不再触发天气/推荐刷新的卡死问题。
+- 天气写入与推荐写入增加 account/location/workspace 上下文与 requestGate 生效校验，晚到错误响应不再覆盖当前目标上下文；`workspaceRevision` 采用 `OnlineWorkspaceSnapshot.serverRevision`，避免本地实体 max-revision 导致重读缺失。
+- `clear home city` 的网络失败与 409 提示迁移到 `settings` 页面确认 `alertdialog` 内，使用 `role="alert"` + `aria-live="assertive"`，背景页不再承载错误承载点；保存期间保持不可关闭，失败后可在同层重试或取消。
+
+### 验收
+
+- `npm run test:logic:home-feed-p1`（含 `p13`）与 `npm run test:logic:home-feed-p13` 均通过。
+- 浏览器真实 Fixture（`npm run test:browser:home-feed-p11/p12/p13`）通过：360/375/390/412/430px 横向溢出 0、130% 字体场景下关键区块可见、重试地点、账号切换、无障碍文本可见，截图保存在 `test-results/home-feed-browser-20260718/`。该脚本未直接覆盖 Back/Escape 与 409/网络失败返回态，保留为待补齐项。
+- Android APK 重建尝试：`npm run android:build:candidate` 在 `NEXT_PUBLIC_WARDROBE_API_BASE_URL=https://api.zhengfangapps.cloud` 下启动，但失败于本地环境缺少固定签名文件 `android/signing/wardrobe-signing.properties`，未产出正式 APK；`npm run android:verify:metadata` 因无 APK 同步失败。
+- 版本与目标核验项：`package.json` 版本更新为 `2.1.28-test`（通过 `build` 计算 versionCode 为 `20128`），packageName 未改（`com.wardrobe.outfit`）与目标签名主体 `CN=fangzheng` 为待签署约束项，当前未能在当前工作树完成证书链路。
+
 ## P1.2 收口（2.1.27-test）
 
 ### 红灯与根因

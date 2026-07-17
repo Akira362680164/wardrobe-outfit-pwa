@@ -861,10 +861,7 @@ export function WardrobeApp({ cloudAuth }: { cloudAuth?: WardrobeCloudAuth } = {
     revision: entry.serverRevision,
     garmentIds: entry.status === "worn" && entry.actualGarmentIds?.length ? entry.actualGarmentIds : entry.garmentIds ?? [],
   })), [outfitPlanEntries]);
-  const homeWorkspaceRevision = useMemo(() => Math.max(0,
-    ...items.map((item) => item.serverRevision),
-    ...outfitPlanEntries.map((entry) => entry.serverRevision),
-  ), [items, outfitPlanEntries]);
+  const homeWorkspaceRevision = wardrobeData.workspaceRevision;
   const homeFeed = useHomeFeedController({
     active: homeFeedEnabled && route.name === "home_feed",
     locationActive: homeFeedEnabled && (route.name === "home_feed" || route.name === "settings_home"),

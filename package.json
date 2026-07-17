@@ -1,6 +1,6 @@
 {
   "name": "wardrobe-outfit-pwa",
-  "version": "2.1.27-test",
+  "version": "2.1.28-test",
   "private": true,
   "workspaces": [
     "packages/domain-catalog",
@@ -84,10 +84,12 @@
     "test:publish": "npm run typecheck && npm run cloud:contracts:typecheck && npm run api:typecheck && npm run api:test",
     "test:logic:data-repo": "tsx scripts/test-data-repo.ts",
     "test:logic:app-route": "tsx scripts/test-app-route-navigation.ts && tsx scripts/test-navigation-motion-c1.ts",
-    "test:logic:home-feed-p1": "tsx scripts/test-home-feed-p1.ts && tsx scripts/test-home-feed-p11.tsx && tsx scripts/test-home-feed-p12.tsx",
+    "test:logic:home-feed-p1": "tsx scripts/test-home-feed-p1.ts && tsx scripts/test-home-feed-p11.tsx && tsx scripts/test-home-feed-p12.tsx && tsx scripts/test-home-feed-p13.tsx",
+    "test:logic:home-feed-p13": "tsx scripts/test-home-feed-p13.tsx",
     "test:logic:home-feed-p12": "tsx scripts/test-home-feed-p12.tsx",
     "test:browser:home-feed-p11": "node scripts/test-home-feed-p11-browser.mjs",
     "test:browser:home-feed-p12": "node scripts/test-home-feed-p11-browser.mjs",
+    "test:browser:home-feed-p13": "node scripts/test-home-feed-p11-browser.mjs",
     "test:browser:navigation-motion-c1": "node scripts/test-navigation-motion-browser.mjs",
     "test:browser:settings-account-c3": "node scripts/test-settings-account-c3-browser.mjs",
     "test:logic:auth-client-shell": "tsx scripts/test-auth-client-shell.ts",
@@ -222,7 +224,6 @@
     "parity:vitest": "vitest run --root scripts/parity --config vitest.config.ts"
   },
   "dependencies": {
-    "@wardrobe/domain-catalog": "file:packages/domain-catalog",
     "@capacitor-community/keep-awake": "^8.0.1",
     "@capacitor/android": "^8.3.4",
     "@capacitor/app": "^8.1.0",
@@ -230,6 +231,7 @@
     "@capacitor/cli": "^8.3.4",
     "@capacitor/core": "^8.3.4",
     "@capacitor/filesystem": "^8.1.2",
+    "@wardrobe/domain-catalog": "file:packages/domain-catalog",
     "dexie": "^4.0.11",
     "heic2any": "^0.0.4",
     "lucide-react": "^0.468.0",
