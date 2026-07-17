@@ -188,9 +188,9 @@ Icon-only 按钮必须有 `aria-label`；图标与文字组合时图标使用 `a
 | `shopping` | 种草 | 购物袋 | `wishlist_home` |
 | `settings` | 设置 | 齿轮 | `settings_home` |
 
-**新首页生产目标（P0 规范冻结，P1 才切路由）**
+**新首页生产目标（P1 已有内部只读 route，生产默认仍未切换）**
 
-当前运行时仍保持上表的衣橱/套装/种草/设置，不在 P0 修改。后续新首页切换后的底部结构固定为四个功能 Tab 加一个中央创建按钮；中央 `+` 不是第五个 Tab，不持有选中态，也不改变当前功能 Tab。
+生产默认仍保持上表的衣橱/套装/种草/设置。P1 已登记独立 `home_feed` route，并只在 `NEXT_PUBLIC_WARDORA_HOME_FEED_P1=true` 时从设置显示内部预览入口；不得据此把登录默认 route 从 `wardrobe_home` 切走。内部新首页的底部结构固定为四个功能 Tab 加一个中央创建按钮；中央 `+` 不是第五个 Tab，不持有选中态，也不改变当前功能 Tab。
 
 | 位置 | 目标 Tab / 动作 | 内容与行为 | 计划保护 |
 | --- | --- | --- | --- |
@@ -217,13 +217,50 @@ Icon-only 按钮必须有 `aria-label`；图标与文字组合时图标使用 `a
 
 计划保护是首页的最高展示优先级：存在主计划时先显示“当日穿搭”，存在已穿事实时显示“今天已穿”；天气、城市、worker 或推荐 revision 变化只能更新未采用推荐或提示风险，不能自动替换、降级、取消或隐藏主计划。取消 primary 与可选提升 backup 必须等待同一服务端事务提交并读回后更新 UI，失败时保持原状态。
 
+### 4.1 新首页 P0.1 状态、请求与静态天气保护
+
+**单一地点入口与天气卡跳转**
+
+- 首页只有一个权威地点入口，文案只能是“城市 · 常驻 / 临时 / 行程 ›”或“未设置城市 ›”；问候区、天气卡和推荐卡不重复创建地点入口。
+- 点击今日或明日天气卡只切换对应业务日期并滚动到推荐区；不重挂页面，不重播整页入场。
+
+**四种正常状态与模块错误**
+
+| 冻结 ID | 衣橱 | 城市 | 天气 | 推荐 |
+| --- | --- | --- | --- | --- |
+| `home-empty-locationless` | 空/未就绪 | 无 | 中性地点空状态 | 录入引导 |
+| `home-empty-forecast` | 空/未就绪 | 有 | 合法天气 | 缺失角色 |
+| `home-ready-locationless` | 已就绪 | 无 | 中性地点空状态 | `locationless` 推荐 |
+| `home-ready-forecast` | 已就绪 | 有 | 合法天气 | `forecast` 推荐 |
+
+- 工作区失败使用 `home-workspace-error` 真实整页错误，禁止映射为空衣橱。
+- 工作区成功后，天气使用 `home-weather-error`、推荐使用 `home-recommendation-error`；两者分别保留自己的 loading / error / retry，一个模块失败不遮蔽另一个。
+
+**未来七日按需加载与旧请求取消**
+
+- 首次只并行预读今天与明天；第 3–7 天只在用户选中后 resolve，远期行程日期单列并按需加载。
+- 日期切换、重复刷新、切后台、跨上海午夜、账号切换和会话失效都必须 abort 旧读请求并递增 generation token；只有当前 token 与当前账号/日期同时匹配时允许更新 ViewModel。
+
+**静态天气、Canvas 预留与运行时保护**
+
+- P1 只渲染静态天气层，Canvas 位置使用非阻塞占位；文字、归因、按钮与滚动不依赖 Canvas 成功。
+- P3 若启用 Canvas，全页最多一个 `requestAnimationFrame` 调度器，目标约 `29 FPS`，`devicePixelRatio` 上限 `2`；今日可动，明日始终静态。
+- Canvas 在卡片离屏、页面隐藏、App 进后台、锁屏或路由卸载时暂停/销毁；初始化或绘制故障后本会话直接保持静态，禁止循环重启。
+- `prefers-reduced-motion: reduce` 下禁止循环、粒子、闪电、spring 和大位移，只保留 `120–160ms` 交叉淡化或即时反馈。
+- QWeather `999`、任意未来未知 code、`weather_fallback`、超过 max-stale 和 Canvas 故障都使用中性静态降级，不触发循环动画，不显示伪数字或伪降雨。
+
+**计划保护**
+
+- `protected_plan` 和 `actual_wear` 始终高于天气/推荐 revision；新结果只能更新未采用推荐或显示风险，不能自动替换、取消、降级或隐藏已有计划/已穿事实。
+
 ## 5. Route 与页面状态矩阵
 
 代码事实源是 `src/lib/app-route.ts` 的 `AppRouteName`。画板可覆盖更多“页面级状态”，但不能替代路由事实。
 
 | Route | 所属 Tab | 类型 | 底部导航 | 顶部栏 | 全局创建 | 默认返回 |
 | --- | --- | --- | --- | --- | --- | --- |
-| `wardrobe_home` | 衣橱 | 主页面 | 是 | 主页面自有顶部区 | 是 | 停留 / 退出确认 |
+| `home_feed` | 首页（内部 P1） | 主页面 / 只读推荐 | 是，四 Tab + 中央动作 | 主页面自有顶部区 | 中央 `+` 动作 | 停留 / 退出确认 |
+| `wardrobe_home` | 衣橱 | 主页面 / 生产默认回退 | 是 | 主页面自有顶部区 | 是 | 停留 / 退出确认 |
 | `garment_detail` | 衣橱或种草来源 | 详情 | 否 | `AppSubPageTopBar` | 否 | `returnRoute` 或来源页 |
 | `outfit_home` | 套装 | 主页面 | 是 | 主页面自有顶部区 | 是 | 停留 / 退出确认 |
 | `outfit_detail` | 套装 | 详情 | 否 | `AppSubPageTopBar` | 否 | `outfit_home` 或 `outfit_calendar` |
@@ -240,7 +277,7 @@ Icon-only 按钮必须有 `aria-label`；图标与文字组合时图标使用 `a
 | `intake_outfit` | 套装 | 录入流 | 否 | `IntakeFlowShell` | 否 | `returnTo` |
 | `intake_wishlist` | 种草 | 录入流 | 否 | `IntakeFlowShell` | 否 | `returnTo` |
 
-P1 计划新增独立新首页 route 与 HomeFeed controller；在该 route 真正进入代码前，上表仍是当前路由事实。未来首页 route 必须登记“推荐/衣橱”分栏、所选业务日期、天气模块状态、推荐模块状态、主/备选计划和 Android Back 主层退出语义，不得把这些状态塞回 `wardrobe_home` 或主大组件。
+P1 已新增独立 `home_feed` route、`useHomeFeedController` 与 HomeFeed ViewModel：登记“推荐/衣橱”分栏、所选上海业务日期、天气模块状态、推荐模块状态、主计划/已穿事实和 Android Back 主层退出语义。生产默认仍为 `wardrobe_home`，P5 前必须保留该回退；P1 不得出现采用、替换、取消或确认已穿写操作。
 
 | Route 类型 | 顶部栏 |
 | --- | --- |

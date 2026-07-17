@@ -25,6 +25,7 @@ import {
   FileJson,
   GalleryVerticalEnd,
   Info,
+  House,
   KeyRound,
   Loader2,
   Lock,
@@ -56,6 +57,8 @@ import { WearStatisticsView } from "@/components/wear-statistics-view";
 import { getRecommendedPairingItemsForItem } from "@/lib/garment-detail-pairing";
 import { garmentDraftToWardrobeItem } from "@/lib/intake-save-adapters";
 import { useWardrobeDataController } from "@/components/use-wardrobe-data-controller";
+import { useHomeFeedController } from "@/components/home/use-home-feed-controller";
+import { WardoraHomeView } from "@/components/home/wardora-home-view";
 import { useWardrobeMessageController } from "@/components/use-wardrobe-message-controller";
 import { useWardrobeLightboxController } from "@/components/use-wardrobe-lightbox-controller";
 import { WardrobeImageSourceSheet } from "@/components/wardrobe-image-source-sheet";
@@ -841,6 +844,35 @@ export function WardrobeApp({ cloudAuth }: { cloudAuth?: WardrobeCloudAuth } = {
   const locationNameById = useMemo(() => {
     return locations.reduce<Record<string, string>>((r, l) => { r[l.id] = l.name; return r; }, {});
   }, [locations]);
+  const homeFeedEnabled = process.env.NEXT_PUBLIC_WARDORA_HOME_FEED_P1 === "true";
+  const homeFeedGarments = useMemo(() => items.map((item) => ({
+    id: item.serverEntityId,
+    name: item.name,
+    category: item.category,
+    status: item.status,
+    hasImage: Boolean(item.mainImage?.asset.assetId),
+  })), [items]);
+  const homeFeedPlans = useMemo(() => outfitPlanEntries.map((entry) => ({
+    id: entry.serverEntityId,
+    date: entry.date,
+    status: entry.status,
+    role: entry.role ?? (entry.isPrimary ? "primary" : "other"),
+    revision: entry.serverRevision,
+    garmentIds: entry.status === "worn" && entry.actualGarmentIds?.length ? entry.actualGarmentIds : entry.garmentIds ?? [],
+  })), [outfitPlanEntries]);
+  const homeWorkspaceRevision = useMemo(() => Math.max(0,
+    ...items.map((item) => item.serverRevision),
+    ...outfitPlanEntries.map((entry) => entry.serverRevision),
+  ), [items, outfitPlanEntries]);
+  const homeFeed = useHomeFeedController({
+    active: homeFeedEnabled && route.name === "home_feed",
+    accountId: cloudAuth?.user.id ?? "signed-out",
+    accessToken: cloudAuth?.accessToken,
+    deviceId: cloudAuth?.deviceId ?? "",
+    workspaceRevision: homeWorkspaceRevision,
+    garments: homeFeedGarments,
+    plans: homeFeedPlans,
+  });
   // v0.9.38-dev P0 §6: hideMobileNav 补全 (md 模板)
   // - wardrobeSubPageActive 已包含 viewingItem / editingItem / viewingItemCropJob 三态
   //     (WardrobeView 内部 useEffect line 1690 显式声明), 衣物详情页裁切不需重复加
@@ -864,6 +896,7 @@ export function WardrobeApp({ cloudAuth }: { cloudAuth?: WardrobeCloudAuth } = {
   // v1.1.20-dev (方案 C): 改为基于 route 派生 — activeView 独立 state 已删除。
   const shouldShowGlobalCreate =
     !hideMobileNav &&
+    route.name !== "home_feed" &&
     isGlobalCreateAllowedRoute(route.name) &&
     !outfitSubPageActive &&
     !showExitDialog &&
@@ -914,6 +947,41 @@ export function WardrobeApp({ cloudAuth }: { cloudAuth?: WardrobeCloudAuth } = {
     }
   }
 
+  const renderWardrobeCapability = (activeGarmentRoute?: Extract<AppRoute, { name: "garment_detail" }>) => (
+    <WardrobeView
+      items={homeFilteredItems} allItems={items} locations={locations} locationNameById={locationNameById}
+      wardrobeScope={wardrobeScope} setWardrobeScope={setWardrobeScope}
+      homeCategoryFilter={homeCategoryFilter} setHomeCategoryFilter={setHomeCategoryFilter}
+      query={query} setQuery={setQuery}
+      onStartGarmentIntake={startGarmentIntakeFlow} onSeed={seedDemoItems}
+      onStatusChange={updateItemStatus}
+      onDeleteItems={async (ids) => {
+        const validIds = ids.filter((id) => typeof id === "number" && Number.isFinite(id));
+        if (validIds.length === 0) { showMessage("请选择要删除的衣物", "info"); return; }
+        const selectedItems = items.filter((item) => typeof item.id === "number" && validIds.includes(item.id));
+        rethrowIfFailed(await repoDeleteGarments(selectedItems, "manual_delete"), "删除单品失败");
+        await refreshState();
+      }}
+      outfits={outfits} wishlistItems={wishlistItems} setOutfits={setOutfits} setWishlistItems={setWishlistItems} miniMaxSettings={miniMaxSettings}
+      setItems={setItems}
+      onMessage={showMessage}
+      onExpandImage={lightbox.openExpandedImage}
+      onSubPageChange={setWardrobeSubPageActive}
+      activeGarmentRoute={activeGarmentRoute}
+      pendingViewingItemId={pendingViewingItemId}
+      pendingViewingItemReturnTarget={pendingViewingItemReturnTarget}
+      onPendingViewingItemConsumed={() => {
+        setPendingViewingItemId(null);
+        setPendingViewingItemReturnTarget("wardrobe_home");
+      }}
+      onReturnToWishlistOwned={() => {
+        setWishlistInitialSubPage("purchased");
+        navigation.popToRoute({ name: "wishlist_purchased" });
+      }}
+      onReturnToRoute={(nextRoute) => navigation.popToRoute(nextRoute)}
+    />
+  );
+
   if (!isReady) {
     return (
       <main className="flex min-h-screen items-center justify-center px-6">
@@ -963,40 +1031,15 @@ export function WardrobeApp({ cloudAuth }: { cloudAuth?: WardrobeCloudAuth } = {
           ) : null}
 
           <NavigationMotion transition={navigation.transition}>
-          {route.name === "wardrobe_home" || route.name === "garment_detail" ? (
-            <WardrobeView
-              items={homeFilteredItems} allItems={items} locations={locations} locationNameById={locationNameById}
-              wardrobeScope={wardrobeScope} setWardrobeScope={setWardrobeScope}
-              homeCategoryFilter={homeCategoryFilter} setHomeCategoryFilter={setHomeCategoryFilter}
-              query={query} setQuery={setQuery}
-              onStartGarmentIntake={startGarmentIntakeFlow} onSeed={seedDemoItems}
-              onStatusChange={updateItemStatus}
-              onDeleteItems={async (ids) => {
-                const validIds = ids.filter((id) => typeof id === "number" && Number.isFinite(id));
-                if (validIds.length === 0) { showMessage("请选择要删除的衣物", "info"); return; }
-                const selectedItems = items.filter((item) => typeof item.id === "number" && validIds.includes(item.id));
-                rethrowIfFailed(await repoDeleteGarments(selectedItems, "manual_delete"), "删除单品失败");
-                await refreshState();
-              }}
-              outfits={outfits} wishlistItems={wishlistItems} setOutfits={setOutfits} setWishlistItems={setWishlistItems} miniMaxSettings={miniMaxSettings}
-              setItems={setItems}
-              onMessage={showMessage}
-              onExpandImage={lightbox.openExpandedImage}
-              onSubPageChange={setWardrobeSubPageActive}
-              activeGarmentRoute={route.name === "garment_detail" ? route : undefined}
-              pendingViewingItemId={pendingViewingItemId}
-              pendingViewingItemReturnTarget={pendingViewingItemReturnTarget}
-              onPendingViewingItemConsumed={() => {
-                setPendingViewingItemId(null);
-                setPendingViewingItemReturnTarget("wardrobe_home");
-              }}
-              onReturnToWishlistOwned={() => {
-                setWishlistInitialSubPage("purchased");
-                navigation.popToRoute({ name: "wishlist_purchased" });
-              }}
-              // v1.1.20-dev (Bug 2 修复): 衣物详情关闭时跳回原 route。
-              onReturnToRoute={(route) => navigation.popToRoute(route)}
+          {route.name === "home_feed" && homeFeedEnabled ? (
+            <WardoraHomeView
+              controller={homeFeed}
+              garments={homeFeedGarments}
+              wardrobeContent={renderWardrobeCapability()}
             />
+          ) : null}
+          {route.name === "wardrobe_home" || route.name === "garment_detail" ? (
+            renderWardrobeCapability(route.name === "garment_detail" ? route : undefined)
           ) : null}
 
            {route.name === "intake_single_item" ? (
@@ -1087,6 +1130,7 @@ export function WardrobeApp({ cloudAuth }: { cloudAuth?: WardrobeCloudAuth } = {
 	              items={items} locations={locations} outfits={outfits} wishlistItems={wishlistItems} activeView={activeViewForCreateActions} route={route}
               cloudAuth={cloudAuth}
               onOpenAccount={() => navigation.openRoute({ name: "account_management" })}
+              onOpenHomePreview={homeFeedEnabled ? () => navigation.openRoute({ name: "home_feed" }) : undefined}
               openMiniMaxRequest={settingsMiniMaxOpenRequest}
               onMiniMaxRequestConsumed={() => setSettingsMiniMaxOpenRequest(0)}
 	              miniMaxSettings={miniMaxSettings} onSaveMiniMaxSettings={saveSettings}
@@ -1232,7 +1276,17 @@ export function WardrobeApp({ cloudAuth }: { cloudAuth?: WardrobeCloudAuth } = {
         onGalleryClick={imageIntake.triggerGalleryInput}
       />
 
-	      {!hideMobileNav ? <nav className="app-floating-nav fixed z-30 lg:hidden">
+	      {!hideMobileNav && route.name === "home_feed" ? (
+        <nav className="app-floating-nav fixed z-30 lg:hidden" aria-label="Wardora 主导航" data-testid="home-feed-navigation">
+          <div className="grid grid-cols-5 items-end gap-1">
+            <HomeFeedNavButton label="首页" icon={House} active onClick={() => undefined} />
+            <HomeFeedNavButton label="穿搭" icon={Sparkles} onClick={() => navigation.resetToMainTab("recommend")} />
+            <AppPressable feedback="icon" className="mx-auto grid h-12 w-12 -translate-y-3 place-items-center rounded-full bg-denim text-white shadow-lg" onClick={() => setShowCreateSheet(true)} aria-label="创建内容" data-testid="home-feed-create"><Plus size={23} /></AppPressable>
+            <HomeFeedNavButton label="种草" icon={ShoppingBag} onClick={() => navigation.resetToMainTab("shopping")} />
+            <HomeFeedNavButton label="设置" icon={Settings} onClick={() => navigation.resetToMainTab("settings")} />
+          </div>
+        </nav>
+      ) : !hideMobileNav ? <nav className="app-floating-nav fixed z-30 lg:hidden">
         <div className="grid grid-cols-4 gap-1">
           {viewItems.map((view) => (<MobileNavButton key={view.key} data-parity-id={`parity.app.app.src.components.wardrobe.app.cdedbdd588.${view.key}`} parityId={`parity.app.app.src.components.wardrobe.app.cdedbdd588.${view.key}`} selectionLayoutId="mobile-main-tab-indicator" view={view} active={navigation.mainTab === view.key} onClick={() => {
             const routeBefore = navigation.route;
@@ -3771,6 +3825,7 @@ function SettingsView({
   route,
   cloudAuth,
   onOpenAccount,
+  onOpenHomePreview,
   openMiniMaxRequest,
   onMiniMaxRequestConsumed,
 	  miniMaxSettings,
@@ -3792,6 +3847,7 @@ function SettingsView({
   route: AppRoute;
   cloudAuth?: WardrobeCloudAuth;
   onOpenAccount?: () => void;
+  onOpenHomePreview?: () => void;
   openMiniMaxRequest?: number;
   onMiniMaxRequestConsumed?: () => void;
 	  miniMaxSettings: DeviceMiniMaxSettings;
@@ -4118,6 +4174,17 @@ function SettingsView({
           >
       {/* Header - 与 AppSubPageTopBar / 衣橱首页按钮行 / 套装/种草首页 header 一致 h-14 (56px) */}
       <h1 className="flex h-14 items-center px-4 pt-2 text-xl font-bold tracking-tight">设置</h1>
+
+      {onOpenHomePreview ? (
+        <AppPressable
+          className="ui-card flex min-h-14 w-full items-center justify-between px-4 py-3 text-left"
+          onClick={onOpenHomePreview}
+          data-testid="open-home-feed-preview"
+        >
+          <span><span className="block text-sm font-semibold">Wardora 新首页预览</span><span className="block text-xs text-ink/50">内部只读入口，不改变默认首页</span></span>
+          <ChevronRight size={17} aria-hidden="true" />
+        </AppPressable>
+      ) : null}
 
       {cloudAuth ? (
         <article className="ui-card px-4 py-3.5">
@@ -5699,6 +5766,20 @@ function MobileNavButton({ view, active, onClick, compact, parityId, selectionLa
         </span>
       )}
       <span className={`relative z-10 ${compact ? "leading-none" : "leading-tight"}`}>{view.label}</span>
+    </AppPressable>
+  );
+}
+
+function HomeFeedNavButton({ label, icon: Icon, active = false, onClick }: { label: string; icon: typeof Shirt; active?: boolean; onClick: () => void }) {
+  return (
+    <AppPressable
+      feedback="control"
+      className={`grid min-h-14 place-content-center justify-items-center gap-1 rounded-2xl px-1 text-[11px] font-semibold ${active ? "bg-denim text-white" : "text-ink/62"}`}
+      onClick={onClick}
+      aria-current={active ? "page" : undefined}
+    >
+      <Icon size={18} aria-hidden="true" />
+      <span>{label}</span>
     </AppPressable>
   );
 }

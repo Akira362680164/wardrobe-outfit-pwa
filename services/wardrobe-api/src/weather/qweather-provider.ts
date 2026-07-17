@@ -232,14 +232,7 @@ function encode(value: object) { return Buffer.from(JSON.stringify(value)).toStr
 function numeric(value: string, min: number, max: number) { if (!/^-?(?:\d+|\d+\.\d+)$/.test(value)) throw new QWeatherProviderError("invalid_response"); const number = Number(value); if (!Number.isFinite(number) || number < min || number > max) throw new QWeatherProviderError("invalid_response"); return number; }
 function optionalNumeric(value: string | null | undefined, min: number, max: number) { return value === null || value === undefined || value === "" ? undefined : numeric(value, min, max); }
 function optionalText(value: string | null | undefined) { const trimmed = value?.trim(); return trimmed ? trimmed : undefined; }
-const KNOWN_WEATHER_CODES = new Set([
-  100, 101, 102, 103, 104, 150, 151, 152, 153,
-  300, 301, 302, 303, 304, 305, 306, 307, 308, 309, 310, 311, 312, 313, 314, 315, 316, 317, 318, 350, 351, 399,
-  400, 401, 402, 403, 404, 405, 406, 407, 408, 409, 410, 456, 457, 499,
-  500, 501, 502, 503, 504, 507, 508, 509, 510, 511, 512, 513, 514, 515,
-  900, 901,
-]);
-function assertWeatherCode(code: string) { if (!/^\d{3}$/.test(code) || !KNOWN_WEATHER_CODES.has(Number(code))) throw new QWeatherProviderError("invalid_response"); }
+function assertWeatherCode(code: string) { if (!/^\d{3}$/.test(code)) throw new QWeatherProviderError("invalid_response"); }
 function assertSuccessCode(code: string) { if (code === "200") return; if (code === "401" || code === "403") throw new QWeatherProviderError("auth_failed"); if (code === "429") throw new QWeatherProviderError("rate_limited"); if (/^5\d\d$/.test(code)) throw new QWeatherProviderError("upstream_unavailable"); throw new QWeatherProviderError("invalid_response"); }
 function attribution(refer: z.infer<typeof ReferSchema>) { return { sources: refer.sources ?? [], license: refer.license ?? [] }; }
 function normalizeParseError(error: unknown) { return error instanceof QWeatherProviderError ? error : new QWeatherProviderError("invalid_response"); }

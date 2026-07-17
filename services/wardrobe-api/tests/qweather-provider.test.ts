@@ -34,9 +34,12 @@ describe("QWeather strict upstream parsing", () => {
     expect(parseQWeatherDaily(DAILY_SUCCESS).data).toHaveLength(2);
     expect(parseQWeatherDaily(DAILY_SUCCESS).data[1]).toMatchObject({ sunrise: undefined, sunset: undefined });
   });
+  it("keeps official 999 and future three-digit codes as neutral downstream evidence", () => {
+    expect(parseQWeatherNow({ ...NOW_SUCCESS, now: { ...NOW_SUCCESS.now, icon: "999" } }).data.weatherCode).toBe("999");
+    expect(parseQWeatherNow({ ...NOW_SUCCESS, now: { ...NOW_SUCCESS.now, icon: "916" } }).data.weatherCode).toBe("916");
+  });
   it.each([
-    ["unknown weather code", { ...NOW_SUCCESS, now: { ...NOW_SUCCESS.now, icon: "999" } }],
-    ["unassigned weather code inside a numeric gap", { ...NOW_SUCCESS, now: { ...NOW_SUCCESS.now, icon: "505" } }],
+    ["malformed weather code", { ...NOW_SUCCESS, now: { ...NOW_SUCCESS.now, icon: "future" } }],
     ["empty required value", { ...NOW_SUCCESS, now: { ...NOW_SUCCESS.now, text: "" } }],
     ["illegal numeric string", { ...NOW_SUCCESS, now: { ...NOW_SUCCESS.now, temp: "31C" } }],
     ["malformed shape", { code: "200", now: [] }],

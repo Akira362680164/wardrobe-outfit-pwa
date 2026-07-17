@@ -22,6 +22,11 @@ async function checkViewport(width: number, height: number) {
     assert.ok(await page.locator('[data-visual="color-fields"]').count(), "color fields visual exists");
     assert.ok(await page.locator('[data-visual="temperature-range"]').count(), "temperature range visual exists");
     assert.ok(await page.locator('[data-visual="icon-library"] .demo-icon').count(), "icon library visual exists");
+    assert.equal(await page.locator('[data-visual="home-p01-contract"] [data-home-state]').count(), 4, "four normal home states render");
+    assert.equal(await page.locator('[data-visual="home-p01-contract"] [data-home-error]').count(), 3, "workspace/weather/recommendation errors render independently");
+    for (const contract of ["single-location-entry", "weather-card-navigation", "seven-day-abort", "weather-runtime", "reduced-motion", "plan-protection"]) {
+      assert.equal(await page.locator(`[data-visual="home-p01-contract"] [data-home-contract="${contract}"]`).count(), 1, `home contract renders: ${contract}`);
+    }
     assert.ok(await page.locator(".phone-preview .production-shot img").count(), "hero uses production screenshot");
     assert.ok(await page.locator(".temperature-view-window").count(), "temperature view window exists");
     assert.ok(await page.locator(".production-shot-grid .production-shot img").count() >= 12, "product practice uses production screenshots");

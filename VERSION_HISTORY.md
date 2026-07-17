@@ -7,6 +7,22 @@
 - 查看某次提交详情：`git show <commit>`
 - 新记录继续置顶，默认控制在 3–5 条短 bullet；原始测试日志、命令输出和长证据写入专项 evidence 文档或交由 Git 保存。
 
+## 2026-07-17 / v2.1.25-test / Codex — Wardora 新首页 P1 只读骨架与手工城市
+
+- 新建隐藏 `home_feed` route、独立 controller/ViewModel、线上 client 与页面组件；生产默认仍是旧衣橱首页，P5 前保留回退。新首页显示四 Tab 与无选中态的中央创建按钮，推荐卡严格只读。
+- 工作区先决、天气/推荐独立状态、AbortController + generation、上海业务日期/前后台/跨午夜、账号切换清屏及计划/已穿事实优先均由手写 Fixture 冻结；客户端不增加业务持久缓存、不重排推荐、不覆盖已采用计划。
+- 手工城市复用服务端搜索、常驻/临时/清除/恢复合同，稳定 mutation ID + revision，提交并读回后更新；未申请定位权限、未实现 Canvas 或 P2 计划写事务。静态天气仅展示 WeatherOverview 的合法证据。
+- 真实浏览器覆盖 360/375/390/412/430px、字体放大、城市 Sheet、明日证据、请求取消与模块断网；Android Fixture APK 覆盖隐藏入口、城市读回、系统 Back、前后台、断网独立错误和账号切换清屏，固定签名基础门禁无 fatal。
+- 风险等级 High（新首页数据编排与 Android 路径）；详细证据见 `docs/recommendations/WARDORA_NEW_HOME_P1_EVIDENCE.md`。生产默认入口保持关闭；P2/P3/P4 仍明确未实现。
+
+## 2026-07-17 / v2.1.24-test / Codex — Wardora 新首页 P0.1 合同小收口
+
+- WeatherOverview 今日 daily 单点失败时保留合法 now/hourly 实时证据，不泄漏无证据的日高低温或日夜 code；明日/远期仍不使用今日 now 冒充。
+- 官方 `999` 和未来三位天气 code 统一进入中性静态降级；小程序生成字典同步。取消 primary Fixture 显式冻结 cancel-only/提升前后态、ID 对应、revision 递增、幂等重放与全部冲突码。
+- UI spec 与生成 preview 补齐单一地点入口、天气卡跳转、四种正常状态、模块错误、七日 abort/generation、单 rAF/29 FPS/DPR2、后台/离屏、reduced-motion、Canvas 故障和计划保护的可视 DOM Fixture。
+- 新增脱敏 P0 evidence，纠正旧“当前接力基线”为历史快照，并区分“新 schema 接受旧 payload”与“旧已发布客户端解析新响应”；后者未冒充已证明。
+- 风险等级 High（共享天气字典与服务端降级）；专项 `33/33`、API full `341/341`、root/cloud/API typecheck、domain catalog/小程序生成一致性、UI spec build/check/render 通过。本提交前未重跑生产部署或 QWeather 上游调用；未触发 subagent：用户未通知。
+
 ## 2026-07-17 / v2.1.24-test / Codex — Wardora 新首页生产实施 P0 合同收口
 
 - WeatherOverview 向后兼容增加当前温度/体感与日夜天气码，真实映射 QWeather now/daily；locationless、weather fallback、超出最大 stale 均不泄漏伪天气字段。
@@ -22,10 +38,10 @@
 - 将“设为当日穿搭、更换、取消安排、确认已穿、撤销已穿、保存正式套装”拆为独立业务事务，并确定下一步先做生产前置合同收口。
 - 本次为 Low 风险纯文档，不修改运行时代码、数据库、生产环境、App 版本或小程序；本轮未新增 subagent，复用上一轮 App/小程序只读盘点结果。
 
-## 当前接力基线（2026-07-15）
+## 历史快照（2026-07-15，不是当前生产锚点）
 
 - **版本与平台**：`package.json` 为 `2.1.24-test`；正式开发基线为 App/API/共享代码 `main` 与小程序 `wechat/miniprogram`。App 仍以 Android 竖屏、线上唯一数据源和固定签名 APK 为交付边界。
-- **生产 API**：运行代码提交/镜像 `3db5335`，API/Worker 零重启；已验证直接回滚镜像为 `wardrobe-api:6fb576e`，数据库迁移数 `26`。最近核验内外网 health/ready/version 200、鉴权边界 401。
+- **当时生产 API**：本快照当时运行 `3db5335`，已被 2026-07-17 P0 切换的 `wardrobe-api:320bf3d` 取代；当前已验证回滚镜像为 `wardrobe-api:3db5335`，数据库迁移数 `26`。详细当前证据见 `docs/recommendations/WARDORA_NEW_HOME_P0_EVIDENCE.md`。
 - **生产能力**：推荐 V2 与 QWeather 保持启用，V3 realtime/accept 已分阶段启用；PAW、天气预警和历史气候保持关闭。当前推荐链覆盖只读 GET、实时 resolve、今日/明日 worker 预热、事务 accept、原子双日发布、lease/fencing、上海业务日期和共享天气缓存。
 - **最近交付**：自动裁切双路线与 Android 真机闭环、全量动效/浮层/返回栈修复、App/小程序跨端一致性审计、微信登录与账号注销、固定签名 APK 和小程序体验版均已有历史验证记录。
 - **接手要求**：编辑前仍须结合 Git、任务相关 evidence、真实源码与生产现场复核；本摘要不是跳过迁移、部署、Android 或小程序验证的依据。

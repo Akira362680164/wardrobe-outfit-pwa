@@ -16,8 +16,10 @@ describe("QWeather visual catalog frozen from accepted v0.2.3 prototype", () => 
     expect(resolveQWeatherVisual("508")).toMatchObject({ family: "dust", severity: 4, windDrift: 1.55, visibility: 0.14 });
   });
 
-  it("maps unknown 998 to a static neutral fallback without pretending it is official", () => {
+  it("keeps official 999 and synthetic/future unknown codes neutral and static", () => {
+    expect(resolveQWeatherVisual("999")).toEqual(expect.objectContaining({ code: "999", family: "unknown", severity: 0, static: true }));
     expect(QWEATHER_VISUAL_CODES).not.toContain("998");
     expect(resolveQWeatherVisual("998")).toEqual(expect.objectContaining({ code: "998", family: "unknown", static: true, unknownCode: "998" }));
+    expect(resolveQWeatherVisual("916")).toEqual(expect.objectContaining({ code: "916", family: "unknown", static: true, unknownCode: "916" }));
   });
 });

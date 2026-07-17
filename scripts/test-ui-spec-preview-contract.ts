@@ -52,13 +52,37 @@ assert.ok(!html.includes(".spec-toast .toast-copy strong"), "toast visual must n
 assert.ok(!html.includes("mini-toast"), "legacy mini toast visual must not remain");
 assert.ok(html.includes("background: transparent;"), "topbar demo must not draw a solid white strip");
 for (const marker of [
-  "新首页生产目标（P0 规范冻结，P1 才切路由）",
+  "新首页生产目标（P1 已有内部只读 route，生产默认仍未切换）",
+  "<code>home_feed</code>",
+  "生产默认仍为 <code>wardrobe_home</code>",
   "首页内部只保留“推荐 / 衣橱”",
   "今天使用 <code>now.weatherCode</code>",
   "明天始终静态",
   "计划保护是首页的最高展示优先级",
   "取消 primary 与可选提升 backup",
 ]) assert.ok(html.includes(marker), `missing new-home P0 UI contract: ${marker}`);
+
+for (const marker of [
+  "单一地点入口与天气卡跳转",
+  "home-empty-locationless", "home-empty-forecast", "home-ready-locationless", "home-ready-forecast",
+  "home-workspace-error", "home-weather-error", "home-recommendation-error",
+  "未来七日按需加载与旧请求取消",
+  "today/tomorrow 预读", "abort + generation token",
+  "today 可动 / tomorrow 静态", "1 rAF", "~29 FPS", "DPR ≤ 2",
+  "reduced-motion → 120–160ms cross-fade / static",
+  "protected_plan / actual_wear 优先",
+  "QWeather <code>999</code>", "Canvas 故障",
+]) assert.ok(html.includes(marker), `missing concrete new-home P0.1 contract: ${marker}`);
+
+for (const selector of [
+  'data-visual="home-p01-contract"',
+  'data-home-contract="single-location-entry"',
+  'data-home-contract="weather-card-navigation"',
+  'data-home-contract="seven-day-abort"',
+  'data-home-contract="weather-runtime"',
+  'data-home-contract="reduced-motion"',
+  'data-home-contract="plan-protection"',
+]) assert.ok(html.includes(selector), `missing rendered P0.1 preview fixture: ${selector}`);
 
 const productionScreenshots = [
   "auth_login_390_top.png",
