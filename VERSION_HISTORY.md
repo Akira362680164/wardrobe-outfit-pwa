@@ -13,7 +13,7 @@
 - 从已验收原型 SHA-256 `30c97e315d2efd0d9bfcf10125177d58cf9edb479b8d9310476752277cbe37db` 冻结 62/62 纯数据视觉字典、`998` 静态降级和小程序生成输出；未复制 Canvas、假数据或 localStorage。
 - App/小程序 HTTP 错误层保留 status/code/retryable/Retry-After/reasonCode/requestId；新增 Asia/Shanghai 业务日期纯函数，以及取消 primary + 可选提升 backup 的严格合同、冲突码和手写事务不变量 Fixture，未提前实现 P2 UI 或服务端事务。
 - UI 唯一规范与生成预览冻结未来五入口、推荐/衣橱分栏、四种正常状态、模块级错误、today 动态/tomorrow 静态、reduced-motion 与计划保护；P0 未切路由、未实现可见 UI/Canvas、未构建 APK 或上传体验版。
-- 风险等级 High（共享合同、服务端天气与跨端 HTTP）；API full `337/337`、专项 `20/20`、cloud/API/root/小程序 typecheck、domain catalog/生成一致性、App production build、UI spec build/check/render 与 diff check 通过。未触发 subagent：用户未通知；生产部署和双主线同步待本提交进入 main 后执行。
+- 风险等级 High（共享合同、服务端天气与跨端 HTTP）；API full `338/338`、专项 `20/20`、cloud/API/root/小程序 typecheck、domain catalog/生成一致性、App production build、UI spec build/check/render 与 diff check 通过。生产备份 `wardrobe-20260717-114624.sql`、隔离恢复、新旧镜像 migrator 与迁移 26 通过；API/Worker 已切 `wardrobe-api:320bf3d`，内外 health/ready/version、401/404、开关和零重启通过，保留 `3db5335` 回滚镜像。QWeather 专项严格为 now/hourly/daily 各 1 次、缓存 3 行、重复读取上游增量 0；旧 C1 全链脚本的同一天气证据通过，但合成推荐未产出 current，保留为非 P0 天气风险。未触发 subagent：用户未通知。
 
 ## 2026-07-17 / v2.1.24-test / Codex — 新首页生产构建与业务闭环 PRD
 
