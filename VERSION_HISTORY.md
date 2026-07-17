@@ -7,6 +7,19 @@
 - 查看某次提交详情：`git show <commit>`
 - 新记录继续置顶，默认控制在 3–5 条短 bullet；原始测试日志、命令输出和长证据写入专项 evidence 文档或交由 Git 保存。
 
+## 2026-07-18 / v2.1.28-test / P1.3.1-B — 浏览器验收与 APK 固定签名收口
+
+- 新增 `scripts/test-home-feed-p13-browser.mjs`，覆盖首次地点读取失败重试、清除常驻城市 pending 期间不可关闭、网络失败/409 维持 `MotionSheet(alertdialog)`、重试成功回读、130% 字体与 360/375/390/412/430px 无横向溢出、pageerror/console/request fatal 均为 0。
+- 以本地 fixture 与 `wardrobe-test` 完成 Android 验收：系统 Back 在 pending 与遮罩场景不关闭、断网后保留 Sheet 错误、409 重试后继续保留、清除成功后关闭并读回“未设置城市”、前后台恢复、130% 字体无穿越。
+- 完成正式 `https://api.zhengfangapps.cloud` 重建，确保 `package=com.wardrobe.outfit`、`versionName=2.1.28-test`、`versionCode=20128`、签名主体 `CN=fangzheng`，产物为 `衣橱穿搭助手-v2.1.28-test.apk`。
+- 本批未改业务实现，仅补齐验收脚本、证据与交付清单。
+
+## 2026-07-18 / v2.1.28-test / P1.3 — 首页推荐与地点错误承载收口
+
+- 约束范围：只修复“服饰写入后 Overview/serverRevision 未刷新导致首页推荐陈旧”与地点清除错误承载。
+- `WardrobeView` 与主路径写入改回服务器快照驱动重读，`Home` 的 `retryLocation` 改为重试加载天气/推荐联动。
+- `scripts/test-home-feed-p13.tsx` 覆盖 `workspaceRevision` 变化重读、旧候选清理、同 key 遥测响应延迟保护，以及设置页清除常驻城市 409/网络错误承载。
+
 ## 2026-07-17 / v2.1.27-test / Codex — Wardora 新首页 P1.2 地点一致性与设置收口
 
 - 地点成功/409/前台恢复统一应用服务端快照；天气缓存按账号、有效地点 revision/key、日期隔离，未采用推荐再叠加 workspaceRevision，地点或衣橱 revision 变化不会展示旧城市天气/推荐。地点 mutation 与读取 effect 分离，日期/工作区刷新不再锁死保存状态；UUID fallback 优先随机源并覆盖冻结时间碰撞回归。

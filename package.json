@@ -89,7 +89,7 @@
     "test:logic:home-feed-p12": "tsx scripts/test-home-feed-p12.tsx",
     "test:browser:home-feed-p11": "node scripts/test-home-feed-p11-browser.mjs",
     "test:browser:home-feed-p12": "node scripts/test-home-feed-p11-browser.mjs",
-    "test:browser:home-feed-p13": "node scripts/test-home-feed-p11-browser.mjs",
+    "test:browser:home-feed-p13": "node scripts/test-home-feed-p13-browser.mjs",
     "test:browser:navigation-motion-c1": "node scripts/test-navigation-motion-browser.mjs",
     "test:browser:settings-account-c3": "node scripts/test-settings-account-c3-browser.mjs",
     "test:logic:auth-client-shell": "tsx scripts/test-auth-client-shell.ts",

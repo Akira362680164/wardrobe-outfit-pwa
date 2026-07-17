@@ -46,9 +46,9 @@
 ### 验收
 
 - `npm run test:logic:home-feed-p1`（含 `p13`）与 `npm run test:logic:home-feed-p13` 均通过。
-- 浏览器真实 Fixture（`npm run test:browser:home-feed-p11/p12/p13`）通过：360/375/390/412/430px 横向溢出 0、130% 字体场景下关键区块可见、重试地点、账号切换、无障碍文本可见，截图保存在 `test-results/home-feed-browser-20260718/`。该脚本未直接覆盖 Back/Escape 与 409/网络失败返回态，保留为待补齐项。
-- Android APK 重建尝试：`npm run android:build:candidate` 在 `NEXT_PUBLIC_WARDROBE_API_BASE_URL=https://api.zhengfangapps.cloud` 下启动，但失败于本地环境缺少固定签名文件 `android/signing/wardrobe-signing.properties`，未产出正式 APK；`npm run android:verify:metadata` 因无 APK 同步失败。
-- 版本与目标核验项：`package.json` 版本更新为 `2.1.28-test`（通过 `build` 计算 versionCode 为 `20128`），packageName 未改（`com.wardrobe.outfit`）与目标签名主体 `CN=fangzheng` 为待签署约束项，当前未能在当前工作树完成证书链路。
+- 浏览器真实 Fixture（`npm run test:browser:home-feed-p13`）通过：360/375/390/412/430px 横向溢出 0、130% 字体场景下关键区块可见；地点首次读取失败重试、清除常驻城市 pending/网络失败/409/成功回读流程已覆盖；Back/Escape/遮罩不关闭 Sheet 已覆盖；截图保存在 `test-results/home-feed-p13-browser/20260718/`。
+- Android 证据：待在 P1.3.1-B 与最终收口阶段补充。当前工作树因固定签名文件缺失未在此路径完成 APK 产出；最终收口要求将以正式目录签名链路完成并回填。
+- 版本与目标核验项：`package.json` 版本更新为 `2.1.28-test`（通过 `build` 计算 versionCode 为 `20128`），`packageName` 未改（`com.wardrobe.outfit`）且 `CN=fangzheng` 为最终签名约束。
 
 ## P1.2 收口（2.1.27-test）
 
