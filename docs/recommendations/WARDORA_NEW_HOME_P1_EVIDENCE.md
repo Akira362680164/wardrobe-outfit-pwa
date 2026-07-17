@@ -50,7 +50,7 @@
 - Android Fixture 证据：在 `wardrobe-test` Android 15/API 35 安装固定签名 APK，实际版本为 `2.1.28-test` / `20128` / `com.wardrobe.outfit` / `CN=fangzheng`，APK 内 API 为 `10.0.2.2:4174`，不作为正式交付包。
 - Android WebView + ADB 通过：清除常驻城市 pending 期间系统 Back/遮罩不关闭；受控 Fixture 按 503→409→200 返回，失败与冲突均保留 Sheet 且可重试，成功后关闭并读回“未设置城市”；前后台恢复、130% 字体下首页/设置横向溢出 0、runtime exception/loading failure/fatal 均为 0。脱敏证据位于 `test-results/home-feed-p13-android/20260718/`。
 - Android 本轮没有重复触发“首次地点读取失败后重试”（隐藏 controller 预加载已消费首次 Fixture 503）；该项只按上述真实浏览器门禁记录，不冒充 Android 覆盖。
-- 正式 APK 仍待本批串行合入最新 `main` 后，使用正式目录现有 `.env` 重建并核验生产域名、排除 Fixture/回环地址；完成前不写为已交付。
+- 正式 APK 已在本批首次串行合入后，从 `main@9cdba05` 使用正式目录现有 `.env` 重建。根目录 `衣橱穿搭助手-v2.1.28-test.apk` 为 `com.wardrobe.outfit` / `2.1.28-test` / `20128` / `CN=fangzheng`，解压内容含 `https://api.zhengfangapps.cloud`，不含 `10.0.2.2` / `127.0.0.1` / `localhost`；SHA-256 为 `c0dd62291a60ecf892715dbf45c66ea33ede48c0addef4bb391e85b8ad7ebf54`。正式 APK 未对生产账号执行写入烟测，不用 Fixture 结论代替生产业务验证。
 
 ## P1.2 收口（2.1.27-test）
 

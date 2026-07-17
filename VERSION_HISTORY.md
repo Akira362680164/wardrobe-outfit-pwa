@@ -11,7 +11,7 @@
 
 - 保留并复核 `scripts/test-home-feed-p13-browser.mjs`：360/375/390/412/430px、130% 字体、地点重试及清除常驻城市 503→409→200 全链通过，`pageErrors`/`consoleErrors`/`requestFailures` 均为 0。
 - 隔离 Fixture APK 在 `wardrobe-test` Android 15/API 35 通过：`2.1.28-test` / `20128` / `CN=fangzheng`，ADB 系统 Back 和遮罩在 pending 时不关闭，网络失败/409 保留 Sheet 且可重试，成功后关闭并读回“未设置城市”；前后台、130% 字体和 fatal=0 通过。
-- 本批不改服务端、共享合同、小程序或新首页产品范围；正式 APK 必须在本批合入最新 `main` 后使用正式目录现有 `.env` 重建，此时尚未写成完。
+- 本批不改服务端、共享合同、小程序或新首页产品范围。正式 APK 已从合入后 `main@9cdba05` 使用正式目录现有 `.env` 重建：`com.wardrobe.outfit` / `2.1.28-test` / `20128` / `CN=fangzheng`，只含生产域名，根目录产物为 `衣橱穿搭助手-v2.1.28-test.apk`。
 
 ## 2026-07-18 / v2.1.28-test / P1.3.1-A — 首页推荐重读闭环
 
