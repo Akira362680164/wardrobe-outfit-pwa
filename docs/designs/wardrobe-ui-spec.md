@@ -2,8 +2,8 @@
 title: 衣橱穿搭助手 UI 规范
 version: v0.2-final
 status: final
-appVersion: 2.1.7-test
-validatedAgainstAppCommit: 46e1aabf6a94da22406915a3fcbd35936dec6801
+appVersion: 2.1.24-test
+validatedAgainstAppCommit: 0b5b7a1a3f2becf078c7c46b1a7bbc72de1312df
 sourceOfTruth: docs/designs/wardrobe-ui-spec.md
 generatedPreview: docs/designs/wardrobe-ui-spec.html
 previewGenerator: scripts/generate-ui-spec-preview.mjs
@@ -12,7 +12,7 @@ appliesTo:
   - Capacitor Android WebView
   - mobile portrait only
   - 3:4 garment media
-lastReviewedAt: 2026-07-07
+lastReviewedAt: 2026-07-17
 ---
 
 # 衣橱穿搭助手 UI 规范
@@ -188,6 +188,35 @@ Icon-only 按钮必须有 `aria-label`；图标与文字组合时图标使用 `a
 | `shopping` | 种草 | 购物袋 | `wishlist_home` |
 | `settings` | 设置 | 齿轮 | `settings_home` |
 
+**新首页生产目标（P0 规范冻结，P1 才切路由）**
+
+当前运行时仍保持上表的衣橱/套装/种草/设置，不在 P0 修改。后续新首页切换后的底部结构固定为四个功能 Tab 加一个中央创建按钮；中央 `+` 不是第五个 Tab，不持有选中态，也不改变当前功能 Tab。
+
+| 位置 | 目标 Tab / 动作 | 内容与行为 | 计划保护 |
+| --- | --- | --- | --- |
+| 左一 | 首页 | 天气、当日穿搭、每日推荐和首页内衣橱分栏；登录后默认进入 | 已确认的主计划或已穿事实优先于推荐 |
+| 左二 | 穿搭 | 周计划、月历、正式套装、旅行计划和打包 | 只通过显式事务动作更换或取消计划 |
+| 中央 | `+` | 打开新增单品、套装或种草的创建菜单 | 不是 Tab，不重置首页日期或分栏 |
+| 右二 | 种草 | 买前评估、已买、不感兴趣和归档 | 不参与当日主计划自动变化 |
+| 右一 | 设置 | 账号、MiniMax、穿衣画像、城市与诊断 | 城市变化只刷新未采用推荐，不覆盖计划 |
+
+首页内部只保留“推荐 / 衣橱”一个分段控件，默认选中推荐；原 `wardrobe_home` 的完整衣橱能力迁入“衣橱”分栏，不并存两套长期首页。中央创建菜单关闭后焦点返回 `+`，Android Back 在首页主层沿用退出确认。
+
+首页必须按模块组合状态，不得用一个整页 `loading/success/error` 代替。工作区读取失败是整页错误；工作区成功后，天气和推荐各自 loading、error、retry，任一模块失败都不能遮蔽另一模块或把未知衣橱误显示为空。
+
+| 衣橱 | 城市 | 天气模块 | 推荐模块 | 正常主操作 |
+| --- | --- | --- | --- | --- |
+| 空/未就绪 | 无城市 | 中性设置地点空状态 | 录入引导 | 录入第一件衣物 |
+| 空/未就绪 | 有城市 | 正常天气 | 显示缺失角色 | 继续录入 |
+| 已就绪 | 无城市 | 中性设置地点空状态 | `locationless` 通用推荐 | 查看或采用 |
+| 已就绪 | 有城市 | 正常天气 | `forecast` 天气增强推荐 | 查看或采用 |
+
+天气视觉只做装饰，合法文字、温度、地点、更新时间、attribution 和操作由原生控件承载。今天使用 `now.weatherCode` 与当前温度，可在 P3 使用动态 Canvas；明天使用 `daily.dayWeatherCode`，保持静态。无城市、`weather_fallback`、超过最大 stale、未知代码 `998` 或 Canvas 初始化失败时使用中性静态降级，不显示伪温度、伪降雨或伪天气图形。
+
+动效遵守“状态而非演出”：今天的循环天气只在页面可见、卡片可见且非 reduced-motion 时运行；明天始终静态；后台、离屏和离开首页立即暂停。`prefers-reduced-motion: reduce` 下禁止循环、粒子、闪电和大位移，只保留静态天气帧与 `120–160ms` 交叉淡化。页面内容默认可见，Canvas 故障不影响滚动、文字和按钮。
+
+计划保护是首页的最高展示优先级：存在主计划时先显示“当日穿搭”，存在已穿事实时显示“今天已穿”；天气、城市、worker 或推荐 revision 变化只能更新未采用推荐或提示风险，不能自动替换、降级、取消或隐藏主计划。取消 primary 与可选提升 backup 必须等待同一服务端事务提交并读回后更新 UI，失败时保持原状态。
+
 ## 5. Route 与页面状态矩阵
 
 代码事实源是 `src/lib/app-route.ts` 的 `AppRouteName`。画板可覆盖更多“页面级状态”，但不能替代路由事实。
@@ -210,6 +239,8 @@ Icon-only 按钮必须有 `aria-label`；图标与文字组合时图标使用 `a
 | `intake_single_item` | 衣橱 | 录入流 | 否 | `IntakeFlowShell` | 否 | `returnTo` |
 | `intake_outfit` | 套装 | 录入流 | 否 | `IntakeFlowShell` | 否 | `returnTo` |
 | `intake_wishlist` | 种草 | 录入流 | 否 | `IntakeFlowShell` | 否 | `returnTo` |
+
+P1 计划新增独立新首页 route 与 HomeFeed controller；在该 route 真正进入代码前，上表仍是当前路由事实。未来首页 route 必须登记“推荐/衣橱”分栏、所选业务日期、天气模块状态、推荐模块状态、主/备选计划和 Android Back 主层退出语义，不得把这些状态塞回 `wardrobe_home` 或主大组件。
 
 | Route 类型 | 顶部栏 |
 | --- | --- |

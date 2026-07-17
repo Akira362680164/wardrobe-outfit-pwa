@@ -51,6 +51,14 @@ assert.ok(html.includes("当前页面草稿已完整保留"), "three-line toast 
 assert.ok(!html.includes(".spec-toast .toast-copy strong"), "toast visual must not use title/body strong styling");
 assert.ok(!html.includes("mini-toast"), "legacy mini toast visual must not remain");
 assert.ok(html.includes("background: transparent;"), "topbar demo must not draw a solid white strip");
+for (const marker of [
+  "新首页生产目标（P0 规范冻结，P1 才切路由）",
+  "首页内部只保留“推荐 / 衣橱”",
+  "今天使用 <code>now.weatherCode</code>",
+  "明天始终静态",
+  "计划保护是首页的最高展示优先级",
+  "取消 primary 与可选提升 backup",
+]) assert.ok(html.includes(marker), `missing new-home P0 UI contract: ${marker}`);
 
 const productionScreenshots = [
   "auth_login_390_top.png",
