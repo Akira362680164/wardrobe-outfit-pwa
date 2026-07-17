@@ -47,8 +47,10 @@
 
 - `npm run test:logic:home-feed-p1`（含 `p13`）与 `npm run test:logic:home-feed-p13` 均通过。
 - 浏览器真实 Fixture（`npm run test:browser:home-feed-p13`）通过：360/375/390/412/430px 横向溢出 0、130% 字体场景下关键区块可见；地点首次读取失败重试、清除常驻城市 pending/网络失败/409/成功回读流程已覆盖；Back/Escape/遮罩不关闭 Sheet 已覆盖；截图保存在 `test-results/home-feed-p13-browser/20260718/`。
-- Android 证据：待在 P1.3.1-B 与最终收口阶段补充。当前工作树因固定签名文件缺失未在此路径完成 APK 产出；最终收口要求将以正式目录签名链路完成并回填。
-- 版本与目标核验项：`package.json` 版本更新为 `2.1.28-test`（通过 `build` 计算 versionCode 为 `20128`），`packageName` 未改（`com.wardrobe.outfit`）且 `CN=fangzheng` 为最终签名约束。
+- Android Fixture 证据：在 `wardrobe-test` Android 15/API 35 安装固定签名 APK，实际版本为 `2.1.28-test` / `20128` / `com.wardrobe.outfit` / `CN=fangzheng`，APK 内 API 为 `10.0.2.2:4174`，不作为正式交付包。
+- Android WebView + ADB 通过：清除常驻城市 pending 期间系统 Back/遮罩不关闭；受控 Fixture 按 503→409→200 返回，失败与冲突均保留 Sheet 且可重试，成功后关闭并读回“未设置城市”；前后台恢复、130% 字体下首页/设置横向溢出 0、runtime exception/loading failure/fatal 均为 0。脱敏证据位于 `test-results/home-feed-p13-android/20260718/`。
+- Android 本轮没有重复触发“首次地点读取失败后重试”（隐藏 controller 预加载已消费首次 Fixture 503）；该项只按上述真实浏览器门禁记录，不冒充 Android 覆盖。
+- 正式 APK 仍待本批串行合入最新 `main` 后，使用正式目录现有 `.env` 重建并核验生产域名、排除 Fixture/回环地址；完成前不写为已交付。
 
 ## P1.2 收口（2.1.27-test）
 

@@ -7,39 +7,28 @@
 - 查看某次提交详情：`git show <commit>`
 - 新记录继续置顶，默认控制在 3–5 条短 bullet；原始测试日志、命令输出和长证据写入专项 evidence 文档或交由 Git 保存。
 
-## 2026-07-18 / v2.1.28-test / P1.3.1-B — 浏览器验收与 APK 固定签名收口
+## 2026-07-18 / v2.1.28-test / P1.3.1-B — 浏览器与 Android Fixture 收口
 
-- 新增 `scripts/test-home-feed-p13-browser.mjs`，覆盖首次地点读取失败重试、清除常驻城市 pending 期间不可关闭、网络失败/409 维持 `MotionSheet(alertdialog)`、重试成功回读、130% 字体与 360/375/390/412/430px 无横向溢出、pageerror/console/request fatal 均为 0。
-- 以本地 fixture 与 `wardrobe-test` 完成 Android 验收：系统 Back 在 pending 与遮罩场景不关闭、断网后保留 Sheet 错误、409 重试后继续保留、清除成功后关闭并读回“未设置城市”、前后台恢复、130% 字体无穿越。
-- 完成正式 `https://api.zhengfangapps.cloud` 重建，确保 `package=com.wardrobe.outfit`、`versionName=2.1.28-test`、`versionCode=20128`、签名主体 `CN=fangzheng`，产物为 `衣橱穿搭助手-v2.1.28-test.apk`。
-- 本批未改业务实现，仅补齐验收脚本、证据与交付清单。
+- 保留并复核 `scripts/test-home-feed-p13-browser.mjs`：360/375/390/412/430px、130% 字体、地点重试及清除常驻城市 503→409→200 全链通过，`pageErrors`/`consoleErrors`/`requestFailures` 均为 0。
+- 隔离 Fixture APK 在 `wardrobe-test` Android 15/API 35 通过：`2.1.28-test` / `20128` / `CN=fangzheng`，ADB 系统 Back 和遮罩在 pending 时不关闭，网络失败/409 保留 Sheet 且可重试，成功后关闭并读回“未设置城市”；前后台、130% 字体和 fatal=0 通过。
+- 本批不改服务端、共享合同、小程序或新首页产品范围；正式 APK 必须在本批合入最新 `main` 后使用正式目录现有 `.env` 重建，此时尚未写成完。
 
-## 2026-07-18 / v2.1.28-test / P1.3 — 首页推荐与地点错误承载收口
+## 2026-07-18 / v2.1.28-test / P1.3.1-A — 首页推荐重读闭环
 
-- 约束范围：只修复“服饰写入后 Overview/serverRevision 未刷新导致首页推荐陈旧”与地点清除错误承载。
-- `WardrobeView` 与主路径写入改回服务器快照驱动重读，`Home` 的 `retryLocation` 改为重试加载天气/推荐联动。
-- `scripts/test-home-feed-p13.tsx` 覆盖 `workspaceRevision` 变化重读、旧候选清理、同 key 遥测响应延迟保护，以及设置页清除常驻城市 409/网络错误承载。
+- 统一服饰写入后服务器快照刷新入口，避免局部 `setItems` 导致首页继续使用陈旧 `serverRevision`。
+- 手写 Fixture 覆盖 `workspaceRevision` 不变不重读、提升后重读且清理旧 candidate，以及天气/current-read/resolve 同 key 迟到响应不覆盖新结果。
+
+## 2026-07-18 / v2.1.28-test / P1.3 — 缓存与地点错误承载收口
+
+- 地点重试强制联动刷新天气/未采用推荐；缓存写入校验 account/location/workspace/ticket，`workspaceRevision` 消费服务器 `serverRevision`，迟到响应不污染当前上下文。
+- 设置页清除常驻城市的网络失败与 409 改在确认 `alertdialog` 内承载；保存期间不可关闭，失败后保留同层重试/取消。
+- 默认首页仍为 `wardrobe_home`，未新增定位、Canvas、计划写事务、业务持久缓存或小程序页面。
 
 ## 2026-07-17 / v2.1.27-test / Codex — Wardora 新首页 P1.2 地点一致性与设置收口
 
 - 地点成功/409/前台恢复统一应用服务端快照；天气缓存按账号、有效地点 revision/key、日期隔离，未采用推荐再叠加 workspaceRevision，地点或衣橱 revision 变化不会展示旧城市天气/推荐。地点 mutation 与读取 effect 分离，日期/工作区刷新不再锁死保存状态；UUID fallback 优先随机源并覆盖冻结时间碰撞回归。
 - 首页地点 Sheet 移除清除常驻城市命令；设置页新增天气地点管理与明确二次确认，Android Back 先关确认层。保留临时城市恢复流程、44px 点击目标、reduced-motion 与窄屏/字体放大约束；默认旧首页、P2 写事务、定位、Canvas 和小程序均未改变。
 - P1.2 手写 Fixture、Strict Mode 资源上限复测、真实浏览器与 `wardrobe-test` Android Fixture 通过；正式 APK 以 `https://api.zhengfangapps.cloud` 重建为 `2.1.27-test` / versionCode `20127` / 固定 `CN=fangzheng`。本批仅 App 客户端，不部署 API、不迁移、不调用 QWeather、不合入小程序。
-
-## 2026-07-18 / v2.1.28-test / P1.3.1-A — 首页推荐重读闭环收口
-
-- 仅修 P1.3.1-A：统一服饰写入后服务器快照刷新入口，避免 `setItems` / `replaceItemInLocalState` 单点更新导致首页推荐使用陈旧 `serverRevision`。
-- 增补 `scripts/test-home-feed-p13.tsx` 红灯与回归：`workspaceRevision` 不变不重读、提升后重读且不保留旧 candidate；以及天气/current-read/resolve 同 key 迟到响应不覆盖新结果。
-
-## 2026-07-18 / v2.1.28-test / Codex — Wardora 新首页 P1.3 缓存与错误承载收口
-
-- 约束范围：只修复“服饰写入后 Overview/serverRevision 未刷新导致首页推荐陈旧”。
-- 统一 `WardrobeView` 服饰写入成功/409 路径的 `refreshState` 流转到 `onPostWriteRefresh`；优先调用 Overview 刷新后回传 `serverRevision`，并保留服务端返回实体。
-- 补充 `scripts/test-home-feed-p13.tsx` 的红灯与回归：`workspaceRevision` 变化驱动重读、旧 candidate 不保留、同 key 的天气/current-read/resolve 迟到响应不覆盖新结果；并补全“保存成功但首页未刷新”文案场景预期。
-
-- 地点重试改为“重新加载时触发天气/推荐联动”的强制刷新分支；`retryLocation` 返回的重试动作不再只读缓存，失败后恢复后可立即触发目标日期请求，不阻塞页面。天气与推荐写入缓存均增加 ticket/account/location（及 workspaceRevision）校验，晚到旧响应不会污染当前目标。
-- 主页 `workspaceRevision` 改为消费 `OnlineWorkspaceSnapshot.serverRevision`，取消以本地实体 max revision 拼接的伪造口径，确保高 revision 服务器快照变化触发推荐重读；账号切换/刷新/保留快照语义保持不变，不引入本地业务缓存。
-- 设置页清除常驻城市失败与冲突错误移入确认 `MotionSheet(alertdialog)` 内承载，增加 `role="alert"` 与 `aria-live="assertive"` 语义，保存期间保持不可关闭、失败后保留二次确认并支持重试/取消；同时补充 P1.3 fixture 与 Back 优先级回归。
 
 ## 2026-07-17 / v2.1.26-test / Codex — Wardora 新首页 P1.1 并发与交互收口
 
