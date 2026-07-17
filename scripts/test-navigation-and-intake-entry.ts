@@ -66,11 +66,13 @@ check(
 );
 check(
   "父层在 garment_detail route 下仍渲染 WardrobeView",
-  /route\.name === "wardrobe_home" \|\| route\.name === "garment_detail"[\s\S]+?<WardrobeView/.test(wardrobeApp),
+  /const renderWardrobeCapability[\s\S]+?<WardrobeView/.test(wardrobeApp)
+    && /route\.name === "wardrobe_home" \|\| route\.name === "garment_detail"[\s\S]+?renderWardrobeCapability\(/.test(wardrobeApp),
 );
 check(
   "WardrobeView 接收 activeGarmentRoute 打开衣物详情",
-  /activeGarmentRoute=\{route\.name === "garment_detail" \? route : undefined\}/.test(wardrobeApp),
+  /activeGarmentRoute=\{activeGarmentRoute\}/.test(wardrobeApp)
+    && /renderWardrobeCapability\(route\.name === "garment_detail" \? route : undefined\)/.test(wardrobeApp),
 );
 check(
   "历史套装点击打开 outfit_detail 并携带 garment_detail pairing returnRoute",

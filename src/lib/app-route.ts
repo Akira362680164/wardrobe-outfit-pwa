@@ -7,6 +7,7 @@ export type NavigationSource = "user" | "back" | "create" | "nav" | "system";
 export type NavigationDirection = "tab" | "push" | "pop" | "replace";
 
 export type AppRouteName =
+  | "home_feed"
   | "wardrobe_home"
   | "garment_detail"
   | "outfit_home"
@@ -27,6 +28,7 @@ export type AppRouteName =
 export type GarmentDetailTab = "info" | "inspiration" | "pairing";
 
 export type AppRoute =
+  | { name: "home_feed" }
   | { name: "wardrobe_home" }
   | { name: "garment_detail"; itemId: number; returnTo: AppRouteName; initialTab?: GarmentDetailTab; returnRoute?: AppRoute }
   | { name: "outfit_home" }
@@ -84,6 +86,7 @@ export function getRouteScrollKey(route: AppRoute): string {
 }
 
 const GLOBAL_CREATE_ALLOWED_ROUTE_NAMES: ReadonlySet<AppRouteName> = new Set([
+  "home_feed",
   "wardrobe_home",
   "outfit_home",
   "wishlist_home",
@@ -95,6 +98,7 @@ export function isGlobalCreateAllowedRoute(name: AppRouteName): boolean {
 
 export function getMainTabFromRoute(route: AppRoute): MainTabKey {
   switch (route.name) {
+    case "home_feed":
     case "wardrobe_home":
       return "wardrobe";
     case "garment_detail":
@@ -154,6 +158,7 @@ export function getBackRoute(route: AppRoute): AppRoute {
       // 录入流返回到用户进入录入前的具体 route（由创建时记录的 returnTo 决定）。
       return { name: route.returnTo } as AppRoute;
     case "wardrobe_home":
+    case "home_feed":
     case "outfit_home":
     case "wishlist_home":
     case "settings_home":
@@ -190,6 +195,7 @@ export function resolveCreateFallbackRoute(route: AppRoute): AppRoute {
 
 export function routeToDebugLabel(route: AppRoute): string {
   switch (route.name) {
+    case "home_feed": return "Wardora 新首页";
     case "wardrobe_home": return "衣橱首页";
     case "garment_detail": return `衣物详情(${route.itemId})`;
     case "outfit_home": return "套装首页";

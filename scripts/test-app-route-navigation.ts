@@ -19,6 +19,7 @@ function check(name: string, cond: boolean, detail?: string) {
 
 // ===== getMainTabFromRoute =====
 console.log("\n=== getMainTabFromRoute ===");
+check("home_feed → wardrobe (hidden route keeps legacy fallback)", getMainTabFromRoute({ name: "home_feed" }) === "wardrobe");
 check("wardrobe_home → wardrobe", getMainTabFromRoute({ name: "wardrobe_home" }) === "wardrobe");
 check("garment_detail returnTo wardrobe_home → wardrobe", getMainTabFromRoute({ name: "garment_detail", itemId: 1, returnTo: "wardrobe_home" }) === "wardrobe");
 check("garment_detail returnTo wishlist_purchased → shopping", getMainTabFromRoute({ name: "garment_detail", itemId: 2, returnTo: "wishlist_purchased" }) === "shopping");
@@ -36,6 +37,7 @@ check("change_password → settings", getMainTabFromRoute({ name: "change_passwo
 
 // ===== getBackRoute =====
 console.log("\n=== getBackRoute ===");
+check("home_feed → home_feed", JSON.stringify(getBackRoute({ name: "home_feed" })) === JSON.stringify({ name: "home_feed" }));
 check("garment_detail + wishlist_purchased → wishlist_purchased",
   JSON.stringify(getBackRoute({ name: "garment_detail", itemId: 10, returnTo: "wishlist_purchased" })) === JSON.stringify({ name: "wishlist_purchased" }));
 check("garment_detail + wishlist_rejected → wishlist_rejected",
@@ -96,6 +98,7 @@ check("outfit_home is not wishlist", isWishlistRouteName("outfit_home") === fals
 // ===== routeToDebugLabel =====
 console.log("\n=== routeToDebugLabel ===");
 check("debug label returns string", typeof routeToDebugLabel({ name: "wardrobe_home" }) === "string");
+check("debug label home_feed", routeToDebugLabel({ name: "home_feed" }) === "Wardora 新首页");
 check("debug label garment_detail includes itemId", routeToDebugLabel({ name: "garment_detail", itemId: 42, returnTo: "wardrobe_home" }).includes("42"));
 check("debug label outfit_detail includes outfitId", routeToDebugLabel({ name: "outfit_detail", outfitId: "abc", returnTo: "outfit_home" }).includes("abc"));
 check("debug label account_management", routeToDebugLabel({ name: "account_management" }) === "账号管理");

@@ -1,6 +1,6 @@
 {
   "name": "wardrobe-outfit-pwa",
-  "version": "2.1.24-test",
+  "version": "2.1.25-test",
   "private": true,
   "workspaces": [
     "packages/domain-catalog",
@@ -84,6 +84,7 @@
     "test:publish": "npm run typecheck && npm run cloud:contracts:typecheck && npm run api:typecheck && npm run api:test",
     "test:logic:data-repo": "tsx scripts/test-data-repo.ts",
     "test:logic:app-route": "tsx scripts/test-app-route-navigation.ts && tsx scripts/test-navigation-motion-c1.ts",
+    "test:logic:home-feed-p1": "tsx scripts/test-home-feed-p1.ts",
     "test:browser:navigation-motion-c1": "node scripts/test-navigation-motion-browser.mjs",
     "test:browser:settings-account-c3": "node scripts/test-settings-account-c3-browser.mjs",
     "test:logic:auth-client-shell": "tsx scripts/test-auth-client-shell.ts",

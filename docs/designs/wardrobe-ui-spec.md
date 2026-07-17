@@ -188,9 +188,9 @@ Icon-only 按钮必须有 `aria-label`；图标与文字组合时图标使用 `a
 | `shopping` | 种草 | 购物袋 | `wishlist_home` |
 | `settings` | 设置 | 齿轮 | `settings_home` |
 
-**新首页生产目标（P0 规范冻结，P1 才切路由）**
+**新首页生产目标（P1 已有内部只读 route，生产默认仍未切换）**
 
-当前运行时仍保持上表的衣橱/套装/种草/设置，不在 P0 修改。后续新首页切换后的底部结构固定为四个功能 Tab 加一个中央创建按钮；中央 `+` 不是第五个 Tab，不持有选中态，也不改变当前功能 Tab。
+生产默认仍保持上表的衣橱/套装/种草/设置。P1 已登记独立 `home_feed` route，并只在 `NEXT_PUBLIC_WARDORA_HOME_FEED_P1=true` 时从设置显示内部预览入口；不得据此把登录默认 route 从 `wardrobe_home` 切走。内部新首页的底部结构固定为四个功能 Tab 加一个中央创建按钮；中央 `+` 不是第五个 Tab，不持有选中态，也不改变当前功能 Tab。
 
 | 位置 | 目标 Tab / 动作 | 内容与行为 | 计划保护 |
 | --- | --- | --- | --- |
@@ -259,7 +259,8 @@ Icon-only 按钮必须有 `aria-label`；图标与文字组合时图标使用 `a
 
 | Route | 所属 Tab | 类型 | 底部导航 | 顶部栏 | 全局创建 | 默认返回 |
 | --- | --- | --- | --- | --- | --- | --- |
-| `wardrobe_home` | 衣橱 | 主页面 | 是 | 主页面自有顶部区 | 是 | 停留 / 退出确认 |
+| `home_feed` | 首页（内部 P1） | 主页面 / 只读推荐 | 是，四 Tab + 中央动作 | 主页面自有顶部区 | 中央 `+` 动作 | 停留 / 退出确认 |
+| `wardrobe_home` | 衣橱 | 主页面 / 生产默认回退 | 是 | 主页面自有顶部区 | 是 | 停留 / 退出确认 |
 | `garment_detail` | 衣橱或种草来源 | 详情 | 否 | `AppSubPageTopBar` | 否 | `returnRoute` 或来源页 |
 | `outfit_home` | 套装 | 主页面 | 是 | 主页面自有顶部区 | 是 | 停留 / 退出确认 |
 | `outfit_detail` | 套装 | 详情 | 否 | `AppSubPageTopBar` | 否 | `outfit_home` 或 `outfit_calendar` |
@@ -276,7 +277,7 @@ Icon-only 按钮必须有 `aria-label`；图标与文字组合时图标使用 `a
 | `intake_outfit` | 套装 | 录入流 | 否 | `IntakeFlowShell` | 否 | `returnTo` |
 | `intake_wishlist` | 种草 | 录入流 | 否 | `IntakeFlowShell` | 否 | `returnTo` |
 
-P1 计划新增独立新首页 route 与 HomeFeed controller；在该 route 真正进入代码前，上表仍是当前路由事实。未来首页 route 必须登记“推荐/衣橱”分栏、所选业务日期、天气模块状态、推荐模块状态、主/备选计划和 Android Back 主层退出语义，不得把这些状态塞回 `wardrobe_home` 或主大组件。
+P1 已新增独立 `home_feed` route、`useHomeFeedController` 与 HomeFeed ViewModel：登记“推荐/衣橱”分栏、所选上海业务日期、天气模块状态、推荐模块状态、主计划/已穿事实和 Android Back 主层退出语义。生产默认仍为 `wardrobe_home`，P5 前必须保留该回退；P1 不得出现采用、替换、取消或确认已穿写操作。
 
 | Route 类型 | 顶部栏 |
 | --- | --- |

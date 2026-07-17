@@ -7,6 +7,14 @@
 - 查看某次提交详情：`git show <commit>`
 - 新记录继续置顶，默认控制在 3–5 条短 bullet；原始测试日志、命令输出和长证据写入专项 evidence 文档或交由 Git 保存。
 
+## 2026-07-17 / v2.1.25-test / Codex — Wardora 新首页 P1 只读骨架与手工城市
+
+- 新建隐藏 `home_feed` route、独立 controller/ViewModel、线上 client 与页面组件；生产默认仍是旧衣橱首页，P5 前保留回退。新首页显示四 Tab 与无选中态的中央创建按钮，推荐卡严格只读。
+- 工作区先决、天气/推荐独立状态、AbortController + generation、上海业务日期/前后台/跨午夜、账号切换清屏及计划/已穿事实优先均由手写 Fixture 冻结；客户端不增加业务持久缓存、不重排推荐、不覆盖已采用计划。
+- 手工城市复用服务端搜索、常驻/临时/清除/恢复合同，稳定 mutation ID + revision，提交并读回后更新；未申请定位权限、未实现 Canvas 或 P2 计划写事务。静态天气仅展示 WeatherOverview 的合法证据。
+- 真实浏览器覆盖 360/375/390/412/430px、字体放大、城市 Sheet、明日证据、请求取消与模块断网；Android Fixture APK 覆盖隐藏入口、城市读回、系统 Back、前后台、断网独立错误和账号切换清屏，固定签名基础门禁无 fatal。
+- 风险等级 High（新首页数据编排与 Android 路径）；详细证据见 `docs/recommendations/WARDORA_NEW_HOME_P1_EVIDENCE.md`。生产默认入口保持关闭；P2/P3/P4 仍明确未实现。
+
 ## 2026-07-17 / v2.1.24-test / Codex — Wardora 新首页 P0.1 合同小收口
 
 - WeatherOverview 今日 daily 单点失败时保留合法 now/hourly 实时证据，不泄漏无证据的日高低温或日夜 code；明日/远期仍不使用今日 now 冒充。

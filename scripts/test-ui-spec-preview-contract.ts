@@ -52,7 +52,9 @@ assert.ok(!html.includes(".spec-toast .toast-copy strong"), "toast visual must n
 assert.ok(!html.includes("mini-toast"), "legacy mini toast visual must not remain");
 assert.ok(html.includes("background: transparent;"), "topbar demo must not draw a solid white strip");
 for (const marker of [
-  "新首页生产目标（P0 规范冻结，P1 才切路由）",
+  "新首页生产目标（P1 已有内部只读 route，生产默认仍未切换）",
+  "<code>home_feed</code>",
+  "生产默认仍为 <code>wardrobe_home</code>",
   "首页内部只保留“推荐 / 衣橱”",
   "今天使用 <code>now.weatherCode</code>",
   "明天始终静态",
