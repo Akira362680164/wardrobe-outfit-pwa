@@ -8,12 +8,18 @@ import {
   COLOR_OPTIONS,
   COLOR_SWATCHES,
   GARMENT_CATEGORY_CATALOG,
+  QWEATHER_VISUAL_CODES,
+  QWEATHER_VISUAL_DICTIONARY,
+  QWEATHER_VISUAL_SOURCE_SHA256,
 } from "../packages/domain-catalog/src/index";
 import {
   MINI_CATEGORY_CATALOG,
   MINI_CATEGORY_LABELS,
   MINI_COLOR_SWATCHES,
   MINI_SUBCATEGORY_LABELS,
+  MINI_QWEATHER_VISUAL_CODES,
+  MINI_QWEATHER_VISUAL_DICTIONARY,
+  MINI_QWEATHER_VISUAL_SOURCE_SHA256,
 } from "../apps/wechat-miniprogram/generated/catalogs";
 
 const root = process.cwd();
@@ -29,6 +35,9 @@ assert.equal(MINI_CATEGORY_LABELS.jewelry, CATEGORY_LABELS.jewelry);
 assert.equal(MINI_CATEGORY_LABELS.tops, CATEGORY_LABELS.tops);
 assert.equal(MINI_CATEGORY_LABELS.one_piece, CATEGORY_LABELS.one_piece);
 assert.ok(COLOR_OPTIONS.every((color) => MINI_COLOR_SWATCHES[color]?.bg === COLOR_SWATCHES[color].bg));
+assert.deepEqual(MINI_QWEATHER_VISUAL_CODES, QWEATHER_VISUAL_CODES);
+assert.deepEqual(MINI_QWEATHER_VISUAL_DICTIONARY, QWEATHER_VISUAL_DICTIONARY);
+assert.equal(MINI_QWEATHER_VISUAL_SOURCE_SHA256, QWEATHER_VISUAL_SOURCE_SHA256);
 
 for (const group of GARMENT_CATEGORY_CATALOG) {
   for (const subcategory of group.subcategories) {

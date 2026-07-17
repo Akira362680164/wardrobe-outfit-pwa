@@ -86,7 +86,7 @@ async function performOnlineRequest<T>(
         readTimeout: timeoutMs,
       });
       const responseHeaders = normalizeHeaders(response.headers);
-      if (response.status >= 400) throw toOnlineRequestError(response.status, response.data, header(responseHeaders, "x-wardrobe-request-id") ?? requestId);
+      if (response.status >= 400) throw toOnlineRequestError(response.status, response.data, header(responseHeaders, "x-wardrobe-request-id") ?? requestId, header(responseHeaders, "retry-after"));
       const data = responseType === "blob"
         ? nativeBase64ToBlob(String(response.data), header(responseHeaders, "content-type") ?? "application/octet-stream")
         : response.data;
@@ -137,7 +137,7 @@ async function requestWithFetch<T>(
     const responseHeaders = Object.fromEntries(response.headers.entries());
     const data = options.responseType === "blob" ? await response.blob() : await parseJson(response);
     const serverRequestId = header(responseHeaders, "x-wardrobe-request-id") ?? requestId;
-    if (!response.ok) throw toOnlineRequestError(response.status, data, serverRequestId);
+    if (!response.ok) throw toOnlineRequestError(response.status, data, serverRequestId, header(responseHeaders, "retry-after"));
     return { data: data as T, status: response.status, headers: responseHeaders, requestId: serverRequestId };
   } catch (error) {
     if (error instanceof OnlineRequestError) throw error;

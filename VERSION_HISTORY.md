@@ -7,6 +7,14 @@
 - 查看某次提交详情：`git show <commit>`
 - 新记录继续置顶，默认控制在 3–5 条短 bullet；原始测试日志、命令输出和长证据写入专项 evidence 文档或交由 Git 保存。
 
+## 2026-07-17 / v2.1.24-test / Codex — Wardora 新首页生产实施 P0 合同收口
+
+- WeatherOverview 向后兼容增加当前温度/体感与日夜天气码，真实映射 QWeather now/daily；locationless、weather fallback、超出最大 stale 均不泄漏伪天气字段。
+- 从已验收原型 SHA-256 `30c97e315d2efd0d9bfcf10125177d58cf9edb479b8d9310476752277cbe37db` 冻结 62/62 纯数据视觉字典、`998` 静态降级和小程序生成输出；未复制 Canvas、假数据或 localStorage。
+- App/小程序 HTTP 错误层保留 status/code/retryable/Retry-After/reasonCode/requestId；新增 Asia/Shanghai 业务日期纯函数，以及取消 primary + 可选提升 backup 的严格合同、冲突码和手写事务不变量 Fixture，未提前实现 P2 UI 或服务端事务。
+- UI 唯一规范与生成预览冻结未来五入口、推荐/衣橱分栏、四种正常状态、模块级错误、today 动态/tomorrow 静态、reduced-motion 与计划保护；P0 未切路由、未实现可见 UI/Canvas、未构建 APK 或上传体验版。
+- 风险等级 High（共享合同、服务端天气与跨端 HTTP）；API full `337/337`、专项 `20/20`、cloud/API/root/小程序 typecheck、domain catalog/生成一致性、App production build、UI spec build/check/render 与 diff check 通过。未触发 subagent：用户未通知；生产部署和双主线同步待本提交进入 main 后执行。
+
 ## 2026-07-17 / v2.1.24-test / Codex — 新首页生产构建与业务闭环 PRD
 
 - 新增 v0.7.5 新首页生产实施文档，收口首页信息架构、模块交互、地点/天气/推荐数据流、七日按需加载和跨端 Canvas 边界。

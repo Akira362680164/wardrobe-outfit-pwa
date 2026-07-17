@@ -537,6 +537,40 @@ export const AcceptRecommendationResponseSchema = z.object({
     createdAt: z.string().datetime(), updatedAt: z.string().datetime(), assetRefs: z.record(z.unknown()).optional(),
   }).strict(),
 }).strict();
+export const CancelPrimaryPlanConflictReasonSchema = z.enum([
+  "mutation_payload_conflict",
+  "primary_plan_changed",
+  "backup_plan_changed",
+  "plan_already_worn",
+  "plan_date_mismatch",
+  "backup_not_available",
+]);
+const PlanRevisionRefSchema = z.object({
+  planEntryId: z.string().uuid(),
+  expectedRevision: z.number().int().positive(),
+}).strict();
+export const CancelPrimaryPlanCommandSchema = z.object({
+  clientMutationId: z.string().uuid(),
+  targetDate: RealDateSchema,
+  primary: PlanRevisionRefSchema,
+  promoteBackup: PlanRevisionRefSchema.optional(),
+}).strict().superRefine((value, ctx) => {
+  if (value.promoteBackup?.planEntryId === value.primary.planEntryId) issue(ctx, ["promoteBackup", "planEntryId"], "backup must differ from primary");
+});
+const CommittedPlanRefSchema = z.object({
+  planEntryId: z.string().uuid(),
+  revision: z.number().int().positive(),
+}).strict();
+export const CancelPrimaryPlanResponseSchema = z.object({
+  status: z.literal("committed"),
+  idempotentReplay: z.boolean(),
+  targetDate: RealDateSchema,
+  canceledPrimary: CommittedPlanRefSchema,
+  activePrimary: CommittedPlanRefSchema.nullable(),
+  requestId: z.string().trim().min(1).max(160).optional(),
+}).strict().superRefine((value, ctx) => {
+  if (value.activePrimary?.planEntryId === value.canceledPrimary.planEntryId) issue(ctx, ["activePrimary", "planEntryId"], "active primary must differ from canceled primary");
+});
 export const RecommendationRegenerationReasonSchema = z.enum(["home_city_changed", "temporary_city_changed", "travel_changed", "garment_changed", "weather_changed", "explicit_reassess"]);
 export const RecommendationRegenerationStatusSchema = z.enum(["pending", "processing", "completed", "failed"]);
 export const ReassessRecommendationCommandSchema = z.object({ clientMutationId: z.string().uuid() }).strict();
@@ -598,5 +632,8 @@ export type ResolveRecommendationsResponse = z.infer<typeof ResolveRecommendatio
 export type AcceptRecommendationCommand = z.infer<typeof AcceptRecommendationCommandSchema>;
 export type RecommendationPlanPayload = z.infer<typeof RecommendationPlanPayloadSchema>;
 export type AcceptRecommendationResponse = z.infer<typeof AcceptRecommendationResponseSchema>;
+export type CancelPrimaryPlanConflictReason = z.infer<typeof CancelPrimaryPlanConflictReasonSchema>;
+export type CancelPrimaryPlanCommand = z.infer<typeof CancelPrimaryPlanCommandSchema>;
+export type CancelPrimaryPlanResponse = z.infer<typeof CancelPrimaryPlanResponseSchema>;
 export type RecommendationRegenerationRequest = z.infer<typeof RecommendationRegenerationRequestSchema>;
 export type ReassessRecommendationCommand = z.infer<typeof ReassessRecommendationCommandSchema>;

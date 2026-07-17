@@ -26,6 +26,9 @@ export class HttpError extends Error {
     public readonly code: string,
     message: string,
     public readonly requestId?: string,
+    public readonly retryable = false,
+    public readonly retryAfterSeconds?: number,
+    public readonly details?: { reasonCode: string },
   ) {
     super(message);
   }
@@ -135,8 +138,7 @@ async function handleResponse<T>(
   if (statusCode < 400) return data;
 
   const body = normalizeErrorBody(data);
-  const requestId = header?.["X-Wardrobe-Request-Id"] ?? header?.["x-wardrobe-request-id"] ?? fallbackRequestId;
-  const error = new HttpError(statusCode, body.code, body.message, requestId);
+  const error = httpErrorFromResponse(statusCode, data, header, fallbackRequestId);
   if (statusCode === 401 && auth && !replayed) {
     await recoverSession(true);
     return RETRY_AFTER_REFRESH;
@@ -181,20 +183,20 @@ function rawRefresh(session: SessionState, refreshRequestId: string): Promise<Se
       data: { refreshToken: session.refreshToken, refreshRequestId, deviceId: session.deviceId },
       header: { Accept: "application/json", "Content-Type": "application/json" }, timeout: 30000,
       success: (result) => {
-        const body = normalizeErrorBody(result.data);
         if (result.statusCode >= 400) {
-          if (isExplicitRevocation(body.code)) {
+          const error = httpErrorFromResponse(result.statusCode, result.data, result.header, refreshRequestId);
+          if (isExplicitRevocation(error.code)) {
             clearSession();
             wx.redirectTo({ url: "/pages/login/index" });
           }
-          reject(new HttpError(result.statusCode, body.code, body.message));
+          reject(error);
           return;
         }
         const data = result.data;
         resolve(setSession({ token: data.accessToken, refreshToken: data.refreshToken, deviceId: session.deviceId,
           expiresAt: Date.parse(data.accessTokenExpiresAt), refreshTokenExpiresAt: Date.parse(data.refreshTokenExpiresAt), user: data.user }));
       },
-      fail: () => reject(new HttpError(0, "network", "网络连接失败，请检查网络后重试")),
+      fail: () => reject(new HttpError(0, "network", "网络连接失败，请检查网络后重试", refreshRequestId, true)),
     });
   });
 }
@@ -210,15 +212,53 @@ function createUuid(): string {
   });
 }
 
-function normalizeErrorBody(data: unknown): { code: string; message: string } {
+function normalizeErrorBody(data: unknown): { code: string; message: string; retryable: boolean; retryAfterSeconds?: number; requestId?: string; details?: { reasonCode: string } } {
   if (data && typeof data === "object") {
     const record = data as Record<string, unknown>;
+    const details = controlledDetails(record.details);
     return {
       code: typeof record.code === "string" ? record.code : "request_failed",
       message: typeof record.message === "string" ? record.message : "请求失败，请稍后重试",
+      retryable: typeof record.retryable === "boolean" ? record.retryable : false,
+      ...(positiveInteger(record.retryAfterSeconds) === undefined ? {} : { retryAfterSeconds: positiveInteger(record.retryAfterSeconds) }),
+      ...(typeof record.requestId === "string" && record.requestId ? { requestId: record.requestId } : {}),
+      ...(details ? { details } : {}),
     };
   }
-  return { code: "request_failed", message: "请求失败，请稍后重试" };
+  return { code: "request_failed", message: "请求失败，请稍后重试", retryable: false };
+}
+
+export function httpErrorFromResponse(statusCode: number, data: unknown, header: Record<string, string> | undefined, fallbackRequestId: string): HttpError {
+  const body = normalizeErrorBody(data);
+  const headerRequestId = headerValue(header, "x-wardrobe-request-id");
+  return new HttpError(
+    statusCode, body.code, body.message, body.requestId ?? headerRequestId ?? fallbackRequestId,
+    body.retryable, body.retryAfterSeconds ?? parseRetryAfter(headerValue(header, "retry-after")), body.details,
+  );
+}
+
+function controlledDetails(value: unknown): { reasonCode: string } | undefined {
+  if (!value || typeof value !== "object") return undefined;
+  const reasonCode = (value as Record<string, unknown>).reasonCode;
+  return typeof reasonCode === "string" && reasonCode.length > 0 && reasonCode.length <= 120 ? { reasonCode } : undefined;
+}
+
+function positiveInteger(value: unknown): number | undefined {
+  return typeof value === "number" && Number.isInteger(value) && value > 0 ? value : undefined;
+}
+
+function headerValue(header: Record<string, string> | undefined, name: string): string | undefined {
+  if (!header) return undefined;
+  const key = Object.keys(header).find((candidate) => candidate.toLowerCase() === name.toLowerCase());
+  return key ? header[key] : undefined;
+}
+
+function parseRetryAfter(value: string | undefined, now = Date.now()): number | undefined {
+  if (!value) return undefined;
+  const seconds = Number(value);
+  if (Number.isFinite(seconds) && seconds > 0) return Math.ceil(seconds);
+  const date = Date.parse(value);
+  return Number.isFinite(date) && date > now ? Math.ceil((date - now) / 1000) : undefined;
 }
 
 function toNetworkError(error: unknown, requestId: string, toast: boolean): HttpError {

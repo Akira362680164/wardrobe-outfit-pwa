@@ -38,6 +38,7 @@
     "image-crop:miniprogram:generate": "node scripts/generate-miniprogram-image-crop.mjs",
     "image-crop:miniprogram:check": "node scripts/generate-miniprogram-image-crop.mjs --check",
     "test:logic:domain-catalog": "tsx scripts/test-domain-catalog.ts",
+    "test:logic:http-error-envelope": "tsx scripts/test-http-error-envelope.ts",
     "test:logic:miniprogram-catalog": "tsx scripts/test-miniprogram-catalog-consistency.ts",
     "test:logic:miniprogram-wear-statistics": "tsx scripts/test-miniprogram-wear-statistics.ts",
     "v03-alpha:capture": "tsx scripts/capture-v03-alpha-screenshots.ts",
