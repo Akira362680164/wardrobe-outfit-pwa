@@ -13,6 +13,12 @@
 - 首页地点 Sheet 移除清除常驻城市命令；设置页新增天气地点管理与明确二次确认，Android Back 先关确认层。保留临时城市恢复流程、44px 点击目标、reduced-motion 与窄屏/字体放大约束；默认旧首页、P2 写事务、定位、Canvas 和小程序均未改变。
 - P1.2 手写 Fixture、Strict Mode 资源上限复测、真实浏览器与 `wardrobe-test` Android Fixture 通过；正式 APK 以 `https://api.zhengfangapps.cloud` 重建为 `2.1.27-test` / versionCode `20127` / 固定 `CN=fangzheng`。本批仅 App 客户端，不部署 API、不迁移、不调用 QWeather、不合入小程序。
 
+## 2026-07-18 / v2.1.28-test / Codex — Wardora 新首页 P1.3 缓存与错误承载收口
+
+- 地点重试改为“重新加载时触发天气/推荐联动”的强制刷新分支；`retryLocation` 返回的重试动作不再只读缓存，失败后恢复后可立即触发目标日期请求，不阻塞页面。天气与推荐写入缓存均增加 ticket/account/location（及 workspaceRevision）校验，晚到旧响应不会污染当前目标。
+- 主页 `workspaceRevision` 改为消费 `OnlineWorkspaceSnapshot.serverRevision`，取消以本地实体 max revision 拼接的伪造口径，确保高 revision 服务器快照变化触发推荐重读；账号切换/刷新/保留快照语义保持不变，不引入本地业务缓存。
+- 设置页清除常驻城市失败与冲突错误移入确认 `MotionSheet(alertdialog)` 内承载，增加 `role="alert"` 与 `aria-live="assertive"` 语义，保存期间保持不可关闭、失败后保留二次确认并支持重试/取消；同时补充 P1.3 fixture 与 Back 优先级回归。
+
 ## 2026-07-17 / v2.1.26-test / Codex — Wardora 新首页 P1.1 并发与交互收口
 
 - 城市写入按账号/会话、动作、地点与 revision 复用稳定 `clientMutationId`；响应丢失可原样重放，409 读取最新服务端快照并显示冲突，route/账号失活后旧响应不得回写。写入期间显示明确保存状态。

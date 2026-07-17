@@ -166,6 +166,7 @@ export function useHomeFeedController(input: HomeFeedControllerInput) {
     if (!feedActiveRef.current || !session.accessToken) return;
     const locationRevision = homeLocationRevisionKey(snapshot);
     const ticket = weatherGate.current.begin(accountId, `${selected}:${locationRevision}`);
+    const cachedLocationRevision = locationRevision;
     const businessWindow = windowRef.current;
     const dates = selected === businessWindow.today ? [businessWindow.today, businessWindow.tomorrow] : [selected];
     const cached = cache.current.getWeather(accountId, snapshot, selected);
@@ -173,13 +174,19 @@ export function useHomeFeedController(input: HomeFeedControllerInput) {
     else if (mountedRef.current) setWeather({ status: "loading" });
     const missingDates = dates.filter((date) => !cache.current.getWeather(accountId, snapshot, date));
     if (missingDates.length === 0) return;
+    const isWeatherContextCurrent = () =>
+      weatherGate.current.isCurrent(ticket)
+      && accountRef.current === accountId
+      && locationSnapshotRef.current !== null
+      && homeLocationRevisionKey(locationSnapshotRef.current) === cachedLocationRevision;
     try {
       const settled = await loadHomeWeatherDates(
         missingDates,
         (date) => clientsRef.current.readHomeWeather(date, session, ticket.signal),
         (date, result) => {
+          if (!isWeatherContextCurrent()) return;
           if (result.status === "fulfilled") cache.current.setWeather(accountId, snapshot, date, result.value);
-          if (!weatherGate.current.isCurrent(ticket) || selectedDateRef.current !== selected || accountRef.current !== accountId || !mountedRef.current) return;
+          if (date !== selected || !mountedRef.current) return;
           if (date === selected) {
             setWeather(result.status === "fulfilled"
               ? { status: "ready", data: result.value }
@@ -187,12 +194,12 @@ export function useHomeFeedController(input: HomeFeedControllerInput) {
           }
         },
       );
-      if (!weatherGate.current.isCurrent(ticket) || selectedDateRef.current !== selected || accountRef.current !== accountId || !mountedRef.current) return;
+      if (!isWeatherContextCurrent() || selectedDateRef.current !== selected || !mountedRef.current) return;
       const next = cache.current.getWeather(accountId, snapshot, selected);
       if (next) setWeather({ status: "ready", data: next });
       else setWeather({ status: "error", message: onlineErrorMessage(settled.errors.get(selected) ?? new Error("天气响应缺少目标日期")) });
     } catch (error) {
-      if (weatherGate.current.isCurrent(ticket) && selectedDateRef.current === selected && mountedRef.current) {
+      if (isWeatherContextCurrent() && selectedDateRef.current === selected && mountedRef.current) {
         setWeather({ status: "error", message: onlineErrorMessage(error) });
       }
     }
@@ -202,7 +209,15 @@ export function useHomeFeedController(input: HomeFeedControllerInput) {
     const accountId = accountRef.current;
     const session = sessionRef.current;
     if (!feedActiveRef.current || !session.accessToken) return;
-    const ticket = recommendationGate.current.begin(accountId, `${selected}:${homeLocationRevisionKey(snapshot)}:${workspaceRevision}`);
+    const locationRevision = homeLocationRevisionKey(snapshot);
+    const cachedWorkspaceRevision = workspaceRevision;
+    const ticket = recommendationGate.current.begin(accountId, `${selected}:${locationRevision}:${workspaceRevision}`);
+    const isRecommendationContextCurrent = () =>
+      recommendationGate.current.isCurrent(ticket)
+      && accountRef.current === accountId
+      && workspaceRevisionRef.current === cachedWorkspaceRevision
+      && locationSnapshotRef.current !== null
+      && homeLocationRevisionKey(locationSnapshotRef.current) === locationRevision;
     const cached = cache.current.getRecommendation(accountId, snapshot, workspaceRevision, selected);
     if (cached) {
       if (mountedRef.current) setRecommendation({ status: "ready", data: cached });
@@ -214,8 +229,10 @@ export function useHomeFeedController(input: HomeFeedControllerInput) {
     try {
       try {
         const current = await clientsRef.current.readHomeRecommendations(dates[0]!, dates.at(-1)!, session, ticket.signal);
+        if (!isRecommendationContextCurrent()) return;
         current.items.forEach((existing) => {
           if (!("recommendationRevision" in existing)) return;
+          if (!isRecommendationContextCurrent()) return;
           cache.current.setRecommendation(accountId, snapshot, workspaceRevision, existing.targetDate, {
             status: "reused",
             recommendation: {
@@ -236,7 +253,7 @@ export function useHomeFeedController(input: HomeFeedControllerInput) {
         });
         const currentResult = cache.current.getRecommendation(accountId, snapshot, workspaceRevision, selected);
         if (currentResult) {
-          if (recommendationGate.current.isCurrent(ticket) && selectedDateRef.current === selected && accountRef.current === accountId && mountedRef.current) {
+          if (isRecommendationContextCurrent() && selectedDateRef.current === selected && mountedRef.current) {
             setRecommendation({ status: "ready", data: currentResult });
           }
           return;
@@ -245,8 +262,9 @@ export function useHomeFeedController(input: HomeFeedControllerInput) {
         if (!(readError instanceof OnlineRequestError) || readError.status !== 404) throw readError;
       }
       const response = await clientsRef.current.resolveHomeRecommendations(dates, session, ticket.signal);
-      if (!recommendationGate.current.isCurrent(ticket) || accountRef.current !== accountId) return;
+      if (!isRecommendationContextCurrent()) return;
       response.results.forEach((result) => {
+        if (!isRecommendationContextCurrent()) return;
         const mapped: HomeRecommendationResult = result.status === "protected_plan" || result.status === "actual_wear"
           ? { status: result.status, protectedPlanEntryId: result.protectedPlanEntryId }
           : result.status === "not_ready" || !result.recommendation
@@ -270,12 +288,12 @@ export function useHomeFeedController(input: HomeFeedControllerInput) {
               };
         cache.current.setRecommendation(accountId, snapshot, workspaceRevision, result.targetDate, mapped);
       });
-      if (!recommendationGate.current.isCurrent(ticket) || selectedDateRef.current !== selected || accountRef.current !== accountId || !mountedRef.current) return;
+      if (!isRecommendationContextCurrent() || selectedDateRef.current !== selected || !mountedRef.current) return;
       const result = cache.current.getRecommendation(accountId, snapshot, workspaceRevision, selected);
       if (!result) throw new Error("推荐响应缺少目标日期");
       setRecommendation({ status: "ready", data: result });
     } catch (error) {
-      if (recommendationGate.current.isCurrent(ticket) && selectedDateRef.current === selected && mountedRef.current) {
+      if (isRecommendationContextCurrent() && selectedDateRef.current === selected && mountedRef.current) {
         setRecommendation({ status: "error", message: onlineErrorMessage(error) });
       }
     }
@@ -495,7 +513,8 @@ export function useHomeFeedController(input: HomeFeedControllerInput) {
   return {
     window, selectedDate, setSelectedDate, viewModel,
     locationState, locationSnapshot,
-    retryLocation: loadLocation, retryWeather, retryRecommendation, refresh,
+    retryLocation: () => loadLocation(true),
+    retryWeather, retryRecommendation, refresh,
     cityOpen, setCityOpen, cityQuery, cityCandidates, citySearchState, citySearchMessage, citySearchRetryAfter,
     searchCities, startCityComposition, endCityComposition,
     cityMutation, cityMutationError, cityMutationConflict, commitLocation,
