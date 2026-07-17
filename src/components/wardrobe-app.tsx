@@ -401,6 +401,14 @@ export function WardrobeApp({ cloudAuth }: { cloudAuth?: WardrobeCloudAuth } = {
     navigation.openRoute({ name: "settings_home" });
   }, [clearMessage, navigation]);
 
+  const refreshOverviewAfterGarmentWrite = useCallback(async ({ shouldWarnOnFailure = true }: { shouldWarnOnFailure?: boolean } = {}) => {
+    try {
+      await refreshState();
+    } catch {
+      if (shouldWarnOnFailure) showMessage("衣物已保存，但首页推荐尚未刷新，可稍后重试", "error");
+    }
+  }, [refreshState, showMessage]);
+
   useEffect(() => {
     if (!isReady) return;
     if (hasDeviceMiniMaxKey(miniMaxSettings)) return;
@@ -774,7 +782,7 @@ export function WardrobeApp({ cloudAuth }: { cloudAuth?: WardrobeCloudAuth } = {
     if (!item.id) return;
     const updatedAt = new Date().toISOString();
     rethrowIfFailed(await repoUpdateGarment(item, { status, updatedAt }), "更新单品失败");
-    await refreshState();
+    await refreshOverviewAfterGarmentWrite();
   }
 
   async function saveSettings(nextSettings: DeviceMiniMaxSettings): Promise<boolean> {
@@ -969,6 +977,7 @@ export function WardrobeApp({ cloudAuth }: { cloudAuth?: WardrobeCloudAuth } = {
       activeGarmentRoute={activeGarmentRoute}
       pendingViewingItemId={pendingViewingItemId}
       pendingViewingItemReturnTarget={pendingViewingItemReturnTarget}
+      onGarmentWriteRefresh={refreshOverviewAfterGarmentWrite}
       onPendingViewingItemConsumed={() => {
         setPendingViewingItemId(null);
         setPendingViewingItemReturnTarget("wardrobe_home");
@@ -1558,6 +1567,7 @@ interface WardrobeViewProps {
   onStartGarmentIntake: () => void; onSeed: () => void;
   onStatusChange: (item: WardrobeItem, status: GarmentStatus) => Promise<void>;
   onDeleteItems: (ids: number[]) => Promise<void>;
+  onGarmentWriteRefresh: (options?: { shouldWarnOnFailure?: boolean }) => Promise<void>;
   outfits: SavedOutfit[];
   wishlistItems: WishlistItem[];
   /** v0.9.33-dev: 详情页 saved_outfit 派生图裁切 (subagent critical finding #1 修法) 需要更新 outfits 表,
@@ -1587,6 +1597,7 @@ function WardrobeView(props: WardrobeViewProps) {
     items, allItems, locations, locationNameById, wardrobeScope, setWardrobeScope,
     homeCategoryFilter, setHomeCategoryFilter,
     query, setQuery, onStartGarmentIntake, onSeed, onStatusChange, onDeleteItems,
+    onGarmentWriteRefresh,
     outfits, wishlistItems, setOutfits, setWishlistItems, setItems, miniMaxSettings, onMessage, onExpandImage, onSubPageChange,
     activeGarmentRoute,
     pendingViewingItemId, pendingViewingItemReturnTarget, onPendingViewingItemConsumed, onReturnToWishlistOwned,
@@ -1763,9 +1774,10 @@ function WardrobeView(props: WardrobeViewProps) {
     const now = new Date().toISOString();
     const savedItem = rethrowIfFailed(await repoUpdateGarment(viewingItem, { wornDates: nextDates, updatedAt: now }), "更新单品失败");
     replaceItemInLocalState(savedItem);
+    await onGarmentWriteRefresh();
     const summary = getWearSummary(nextDates, todayKey);
     onMessage(summary.hasToday ? "已记录今天穿着" : "已取消今天穿着记录", "success");
-  }, [viewingItem, replaceItemInLocalState, onMessage, todayKey]);
+  }, [onGarmentWriteRefresh, viewingItem, replaceItemInLocalState, onMessage, todayKey]);
 
   // v0.9.45-dev 详情页 2.0: 生成/刷新 AI 建议
   const handleGenerateAdvice = useCallback(async () => {
@@ -1782,6 +1794,7 @@ function WardrobeView(props: WardrobeViewProps) {
       const now = new Date().toISOString();
       const savedItem = rethrowIfFailed(await repoUpdateGarment(viewingItem, { aiStyleAdvice: advice, updatedAt: now }), "更新单品失败");
       replaceItemInLocalState(savedItem);
+      await onGarmentWriteRefresh();
       setAiAdviceState("success");
       onMessage("AI 建议已生成", "success");
     } catch (error) {
@@ -1789,7 +1802,7 @@ function WardrobeView(props: WardrobeViewProps) {
       setAiAdviceState("error");
       onMessage(getErrorMessage(error), "error");
     }
-  }, [viewingItem, miniMaxSettings, replaceItemInLocalState, onMessage]);
+  }, [viewingItem, miniMaxSettings, onGarmentWriteRefresh, replaceItemInLocalState, onMessage]);
 
   // v0.9.47-dev 详情页 3.0: 移动衣物
   const handleMoveItem = useCallback(async (locationId: string) => {
@@ -1799,9 +1812,10 @@ function WardrobeView(props: WardrobeViewProps) {
     await syncEditedItemReferences({ ...viewingItem, ...patch }, now);
     const savedItem = rethrowIfFailed(await repoUpdateGarment(viewingItem, patch), "更新单品失败");
     replaceItemInLocalState(savedItem);
+    await onGarmentWriteRefresh();
     const locName = locations.find((l) => l.id === locationId)?.name ?? locationId;
     onMessage(`已移动到 ${locName}`, "success");
-  }, [viewingItem, locations, syncEditedItemReferences, replaceItemInLocalState, onMessage]);
+  }, [viewingItem, locations, syncEditedItemReferences, replaceItemInLocalState, onGarmentWriteRefresh, onMessage]);
   const [diagnosis, setDiagnosis] = useState<WardrobeDiagnosis | null>(null);
   // AI 衣橱诊断卡片状态机 (v0.9.19: 统一为 6 态, 卡片内自管 loading/error, 不再走顶部独立进度条):
   //   "hidden"           - 卡片隐藏；顶部入口负责唤起
@@ -2186,6 +2200,7 @@ function WardrobeView(props: WardrobeViewProps) {
             setItems((prev) => prev.map((item) => (item.id === viewingItem.id ? result.latestData! : item)));
             setViewingItem(result.latestData ?? viewingItem);
           }
+          await onGarmentWriteRefresh();
           setShowEditConflict(true);
           return;
         }
@@ -2199,6 +2214,7 @@ function WardrobeView(props: WardrobeViewProps) {
       setEditInitialSnapshot(editSnapshotFromDraft(normalizeDraftForEdit(updatedItem)));
       setEditingItem(false);
       setEditDraft(null);
+      await onGarmentWriteRefresh();
       onMessage("衣物信息已保存", "success");
     } catch (error) {
       onMessage(getErrorMessage(error), "error");
@@ -2521,6 +2537,7 @@ function WardrobeView(props: WardrobeViewProps) {
                 replaceItemInLocalState(savedItem);
                 setViewingImageIndex(existing.length + 1);
                 if (referenceOutfitGalleryInputRef.current) referenceOutfitGalleryInputRef.current.value = "";
+                await onGarmentWriteRefresh();
                 onMessage(failedHeic > 0 ? `已添加 ${refs.length} 张灵感图，部分 HEIC 图片转换失败` : `已添加 ${refs.length} 张灵感图`, failedHeic > 0 ? "info" : "success");
               }}
             />
@@ -2544,6 +2561,7 @@ function WardrobeView(props: WardrobeViewProps) {
                     replaceItemInLocalState(savedItem);
                     setViewingRefDeleteConfirm(null);
                     setViewingImageIndex((current) => Math.max(0, Math.min(current, remaining.length)));
+                    await onGarmentWriteRefresh();
                     onMessage("已删除灵感图", "success");
                   }}
                   className="h-10 rounded-lg bg-red-600 text-sm font-semibold text-white"
@@ -2586,6 +2604,7 @@ function WardrobeView(props: WardrobeViewProps) {
                         );
                         const savedItem = rethrowIfFailed(await repoUpdateGarment(viewingItem, { referenceOutfitImages: updatedRefs, updatedAt: now }), "更新单品失败");
                         replaceItemInLocalState(savedItem);
+                        void onGarmentWriteRefresh();
                         setEditingRefCaption(null);
                         onMessage(caption ? "已更新说明" : "已清除说明", "success");
                       }}
@@ -2676,29 +2695,30 @@ function WardrobeView(props: WardrobeViewProps) {
                 }
                 return;
               }
-   // v0.9.32-dev: 参考穿搭图裁切 (target="detail" + refId)
-   if (viewingItemCropJob.refId && typeof viewingItem.id === "number") {
-   const refId = viewingItemCropJob.refId;
-   const now = new Date().toISOString();
-   // v0.9.43-dev 批次 2: 参考图裁切后同步更新缩略图。
-   // 失败时保留旧 thumbnail 字段 (只标 status="failed"), 详情页 fallback 到 imageDataUrl (批次 2 §5 纪律)。
-   const thumb = await generateThumbnailSafe(newImageDataUrl);
-   const updatedRefs = (viewingItem.referenceOutfitImages ?? []).map((r) => r.id === refId
-   ? {
-   ...r,
-   localOriginalDataUrl: newImageDataUrl,
-   localCroppedPreviewDataUrl: newImageDataUrl,
-   localCropBox: cropBox,
-   updatedAt: now,
-   ...(thumb.thumbnailDataUrl ? { localThumbnailDataUrl: thumb.thumbnailDataUrl } : {}),
-   }
-   : r);
-   const savedItem = rethrowIfFailed(await repoUpdateGarment(viewingItem, { referenceOutfitImages: updatedRefs, updatedAt: now }), "更新单品失败");
-   replaceItemInLocalState(savedItem);
-   setViewingItemCropJob(null);
-   onMessage("灵感图裁切完成", "success");
-   return;
-   }
+              // v0.9.32-dev: 参考穿搭图裁切 (target="detail" + refId)
+              if (viewingItemCropJob.refId && typeof viewingItem.id === "number") {
+                const refId = viewingItemCropJob.refId;
+                const now = new Date().toISOString();
+                // v0.9.43-dev 批次 2: 参考图裁切后同步更新缩略图。
+                // 失败时保留旧 thumbnail 字段 (只标 status="failed"), 详情页 fallback 到 imageDataUrl (批次 2 §5 纪律)。
+                const thumb = await generateThumbnailSafe(newImageDataUrl);
+                const updatedRefs = (viewingItem.referenceOutfitImages ?? []).map((r) => r.id === refId
+                  ? {
+                    ...r,
+                    localOriginalDataUrl: newImageDataUrl,
+                    localCroppedPreviewDataUrl: newImageDataUrl,
+                    localCropBox: cropBox,
+                    updatedAt: now,
+                    ...(thumb.thumbnailDataUrl ? { localThumbnailDataUrl: thumb.thumbnailDataUrl } : {}),
+                  }
+                  : r);
+                const savedItem = rethrowIfFailed(await repoUpdateGarment(viewingItem, { referenceOutfitImages: updatedRefs, updatedAt: now }), "更新单品失败");
+                replaceItemInLocalState(savedItem);
+                void onGarmentWriteRefresh();
+                setViewingItemCropJob(null);
+                onMessage("灵感图裁切完成", "success");
+                return;
+              }
   // v0.9.33-dev: SavedOutfit 派生图裁切 (CRITICAL FIX — 修 v0.9.32-dev subagent finding #1)
   // 场景: 详情页横滑到 saved_outfit 派生图(idx>=1, source=saved_outfit)→ 长按"重新裁切" → 之前
   //   onConfirm fallback 会把结果写到 viewingItem.imageDataUrl,覆写当前衣物主图,且不可恢复。
@@ -2722,27 +2742,28 @@ function WardrobeView(props: WardrobeViewProps) {
     }
     return;
   }
- if (typeof viewingItem.id !== "number") {
- setViewingItemCropJob(null);
- return;
- }
- const now = new Date().toISOString();
- if (!viewingItemOriginal.url) {
-   setViewingItemCropJob(null);
-   onMessage("原图尚未加载，请稍后重试", "info");
-   return;
- }
- const thumb = await createGarmentThumbnailFromOriginal({ originalDataUrl: viewingItemOriginal.url, cropBox });
- const patch: Partial<WardrobeItemDraft> = {
- localCropBox: cropBox,
- ...(thumb.thumbnailDataUrl ? { localThumbnailDataUrl: thumb.thumbnailDataUrl } : {}),
- updatedAt: now,
- };
- const updatedItem = rethrowIfFailed(await repoUpdateGarment(viewingItem, patch), "更新单品失败");
- await syncEditedItemReferences(updatedItem, now);
- replaceItemInLocalState(updatedItem);
- setViewingItemCropJob(null);
- onMessage("裁切完成", "success");
+              if (typeof viewingItem.id !== "number") {
+                setViewingItemCropJob(null);
+                return;
+              }
+              const now = new Date().toISOString();
+              if (!viewingItemOriginal.url) {
+                setViewingItemCropJob(null);
+                onMessage("原图尚未加载，请稍后重试", "info");
+                return;
+              }
+              const thumb = await createGarmentThumbnailFromOriginal({ originalDataUrl: viewingItemOriginal.url, cropBox });
+              const patch: Partial<WardrobeItemDraft> = {
+                localCropBox: cropBox,
+                ...(thumb.thumbnailDataUrl ? { localThumbnailDataUrl: thumb.thumbnailDataUrl } : {}),
+                updatedAt: now,
+              };
+              const updatedItem = rethrowIfFailed(await repoUpdateGarment(viewingItem, patch), "更新单品失败");
+              await syncEditedItemReferences(updatedItem, now);
+              replaceItemInLocalState(updatedItem);
+              await onGarmentWriteRefresh();
+              setViewingItemCropJob(null);
+              onMessage("裁切完成", "success");
             }}
             onError={(msg) => onMessage(msg, "error")}
           />
