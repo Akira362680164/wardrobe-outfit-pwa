@@ -2,7 +2,7 @@
 <!--
   DO NOT EDIT BY HAND.
   Generated from docs/designs/wardrobe-ui-spec.md by scripts/generate-ui-spec-preview.mjs.
-  Source SHA256: b6c82601b2c83180f8da66e4edca253b87deb41aec85ba08604dad749735f21f
+  Source SHA256: 76446eebe9771f5dff1ff744fdd0ce743067aca96a457a6c6b1db91227ad8868
 -->
 <html lang="zh-CN">
 <head>
@@ -839,7 +839,7 @@
           <div class="meta-row">
             <span class="pill active">v0.2-final</span>
             <span class="pill">Markdown 唯一事实源</span>
-            <span class="pill">Source SHA256 b6c82601b2c8</span>
+            <span class="pill">Source SHA256 76446eebe977</span>
           </div>
           <h1>衣橱穿搭助手 UI 规范</h1>
           <p>本页由规范 Markdown 自动生成，用于快速走查页面框架、组件契约、通知样式和验收映射。</p>
@@ -973,7 +973,7 @@
         </div>
       </div>
 <p><strong>单一地点入口与天气卡跳转</strong></p>
-<ul><li>首页只有一个权威地点入口，文案只能是“城市 · 常驻 / 临时 / 行程 ›”或“未设置城市 ›”；问候区、天气卡和推荐卡不重复创建地点入口。</li><li>点击今日或明日天气卡只切换对应业务日期并滚动到推荐区；不重挂页面，不重播整页入场。</li></ul>
+<ul><li>首页只有一个权威地点入口，文案只能是“城市 · 常驻 / 临时 / 行程 ›”或“未设置城市 ›”；问候区、天气卡和推荐卡不重复创建地点入口。</li><li>点击今日或明日天气卡只切换对应业务日期并滚动到推荐区；不重挂页面，不重播整页入场。</li><li>首页地点 Sheet 只允许搜索、明确设置常驻/临时城市和恢复常驻城市，不提供“清除常驻城市”破坏性入口。清除常驻城市只放在设置 → 天气地点，并使用独立 <code>alertdialog</code> 二次确认；Android Back 先关闭确认层，再返回天气地点页。</li></ul>
 <p><strong>四种正常状态与模块错误</strong></p>
 <div class="table-wrap"><table><thead><tr><th>冻结 ID</th><th>衣橱</th><th>城市</th><th>天气</th><th>推荐</th></tr></thead><tbody><tr><td><code>home-empty-locationless</code></td><td>空/未就绪</td><td>无</td><td>中性地点空状态</td><td>录入引导</td></tr><tr><td><code>home-empty-forecast</code></td><td>空/未就绪</td><td>有</td><td>合法天气</td><td>缺失角色</td></tr><tr><td><code>home-ready-locationless</code></td><td>已就绪</td><td>无</td><td>中性地点空状态</td><td><code>locationless</code> 推荐</td></tr><tr><td><code>home-ready-forecast</code></td><td>已就绪</td><td>有</td><td>合法天气</td><td><code>forecast</code> 推荐</td></tr></tbody></table></div>
 <ul><li>工作区失败使用 <code>home-workspace-error</code> 真实整页错误，禁止映射为空衣橱。</li><li>工作区成功后，天气使用 <code>home-weather-error</code>、推荐使用 <code>home-recommendation-error</code>；两者分别保留自己的 loading / error / retry，一个模块失败不遮蔽另一个。</li></ul>

@@ -13,6 +13,7 @@ import {
   type HomePlan,
   type HomeRecommendationResult,
 } from "@/lib/home/home-feed-model";
+import { HomeFeedSessionCache, homeLocationRevisionKey } from "@/lib/home/home-feed-cache";
 import {
   HomeCitySearchSession,
   HomeLocationMutationSession,
@@ -35,15 +36,26 @@ import {
 } from "@/lib/online/online-home-client";
 import { OnlineRequestError, onlineErrorMessage } from "@/lib/online/online-error";
 
+const defaultHomeClients = {
+  clearHomeCity, clearTemporaryCity, readHomeLocation, readHomeRecommendations, readHomeWeather,
+  resolveHomeRecommendations, searchHomeCities, setHomeCity, setTemporaryCity,
+};
+
+type HomeFeedClients = typeof defaultHomeClients;
+
 interface HomeFeedControllerInput {
   active: boolean;
+  locationActive?: boolean;
   accountId: string;
   accessToken?: string;
   deviceId: string;
   workspaceRevision: number;
   garments: readonly HomeGarment[];
   plans: readonly HomePlan[];
+  clients?: Partial<HomeFeedClients>;
 }
+
+export type HomeLocationCommitStatus = "committed" | "conflict" | "conflict_unresolved" | "failed" | "stale";
 
 const idle = { status: "idle" } as const;
 
@@ -63,136 +75,155 @@ export function useHomeFeedController(input: HomeFeedControllerInput) {
   const [cityMutation, setCityMutation] = useState<string | null>(null);
   const [cityMutationError, setCityMutationError] = useState<string | null>(null);
   const [cityMutationConflict, setCityMutationConflict] = useState(false);
+
+  const mountedRef = useRef(true);
   const accountRef = useRef(input.accountId);
+  const identityRef = useRef("");
+  const lifecycleActiveRef = useRef(false);
+  const feedActiveRef = useRef(input.active);
+  const locationActiveRef = useRef(input.locationActive ?? input.active);
+  const selectedDateRef = useRef(selectedDate);
+  const windowRef = useRef(window);
+  const workspaceRevisionRef = useRef(input.workspaceRevision);
+  const locationSnapshotRef = useRef<HomeLocationSnapshot | null>(null);
+  const cityMutationRef = useRef<string | null>(null);
+  const sessionRef = useRef({ accessToken: input.accessToken, deviceId: input.deviceId });
+  const clientsRef = useRef<HomeFeedClients>({ ...defaultHomeClients, ...input.clients });
   const locationGate = useRef(new HomeRequestGate());
   const weatherGate = useRef(new HomeRequestGate());
   const recommendationGate = useRef(new HomeRequestGate());
   const mutationSession = useRef(new HomeLocationMutationSession());
   const mutationAbort = useRef<AbortController | null>(null);
-  const weatherCache = useRef(new Map<string, WeatherOverview>());
-  const recommendationCache = useRef(new Map<string, HomeRecommendationResult>());
+  const cache = useRef(new HomeFeedSessionCache<WeatherOverview, HomeRecommendationResult>());
+  const refreshFeedRef = useRef<() => void>(() => undefined);
 
-  const session = useMemo(() => ({ accessToken: input.accessToken, deviceId: input.deviceId }), [input.accessToken, input.deviceId]);
-  const citySearch = useMemo(() => new HomeCitySearchSession({
-    request: (query, signal) => searchHomeCities(query, session, signal),
-    onState: (state) => {
-      setCityQuery(state.query);
-      setCityCandidates(state.candidates);
-      setCitySearchState(state.status === "ready" ? "idle" : state.status);
-      setCitySearchMessage("message" in state ? state.message : null);
-      setCitySearchRetryAfter(state.status === "rate_limited" ? state.retryAfterSeconds ?? null : null);
-    },
-  }), [session]);
+  feedActiveRef.current = input.active;
+  locationActiveRef.current = input.locationActive ?? input.active;
+  selectedDateRef.current = selectedDate;
+  windowRef.current = window;
+  workspaceRevisionRef.current = input.workspaceRevision;
+  sessionRef.current = { accessToken: input.accessToken, deviceId: input.deviceId };
+  clientsRef.current = { ...defaultHomeClients, ...input.clients };
 
-  const loadLocation = useCallback(async () => {
-    if (!input.active || !session.accessToken) return;
-    const ticket = locationGate.current.begin(input.accountId, selectedDate);
-    setLocationState({ status: "loading" });
-    try {
-      const next = await readHomeLocation(session, ticket.signal);
-      if (!locationGate.current.isCurrent(ticket)) return;
-      setLocationSnapshot(next);
-      setLocationState({ status: "ready", data: next });
-    } catch (error) {
-      if (!locationGate.current.isCurrent(ticket)) return;
-      setLocationState({ status: "error", message: onlineErrorMessage(error) });
+  const citySearchRef = useRef<HomeCitySearchSession | null>(null);
+  if (!citySearchRef.current) {
+    citySearchRef.current = new HomeCitySearchSession({
+      request: (query, signal) => clientsRef.current.searchHomeCities(query, sessionRef.current, signal),
+      onState: (state) => {
+        if (!mountedRef.current) return;
+        setCityQuery(state.query);
+        setCityCandidates(state.candidates);
+        setCitySearchState(state.status === "ready" ? "idle" : state.status);
+        setCitySearchMessage("message" in state ? state.message : null);
+        setCitySearchRetryAfter(state.status === "rate_limited" ? state.retryAfterSeconds ?? null : null);
+      },
+    });
+  }
+  const citySearch = citySearchRef.current;
+
+  const applyServerLocationSnapshot = useCallback((next: HomeLocationSnapshot, refreshDependencies: boolean) => {
+    const previous = locationSnapshotRef.current;
+    const changed = previous === null || homeLocationRevisionKey(previous) !== homeLocationRevisionKey(next);
+    locationSnapshotRef.current = next;
+    if (!mountedRef.current) return changed;
+    setLocationSnapshot(next);
+    setLocationState({ status: "ready", data: next });
+    if (changed) {
+      cache.current.clear();
+      weatherGate.current.cancel();
+      recommendationGate.current.cancel();
+      if (feedActiveRef.current) {
+        setWeather({ status: "loading" });
+        setRecommendation({ status: "loading" });
+      }
+      if (refreshDependencies && feedActiveRef.current) queueMicrotask(() => refreshFeedRef.current());
     }
-  }, [input.accountId, input.active, selectedDate, session]);
+    return changed;
+  }, []);
 
-  const loadWeather = useCallback(async () => {
-    if (!input.active || !session.accessToken) return;
-    const ticket = weatherGate.current.begin(input.accountId, selectedDate);
-    const dates = selectedDate === window.today ? [window.today, window.tomorrow] : [selectedDate];
-    const cached = weatherCache.current.get(selectedDate);
-    if (cached) setWeather({ status: "ready", data: cached });
-    else setWeather({ status: "loading" });
-    const missingDates = dates.filter((date) => !weatherCache.current.has(date));
+  const loadLocation = useCallback(async (refreshDependencies = false): Promise<HomeLocationSnapshot | null> => {
+    const accountId = accountRef.current;
+    const session = sessionRef.current;
+    if (!locationActiveRef.current || !session.accessToken) return null;
+    const ticket = locationGate.current.begin(accountId, selectedDateRef.current);
+    if (mountedRef.current) setLocationState({ status: "loading" });
+    try {
+      const next = await clientsRef.current.readHomeLocation(session, ticket.signal);
+      if (!locationGate.current.isCurrent(ticket) || accountRef.current !== accountId) return null;
+      applyServerLocationSnapshot(next, refreshDependencies);
+      return next;
+    } catch (error) {
+      if (locationGate.current.isCurrent(ticket) && mountedRef.current) {
+        setLocationState({ status: "error", message: onlineErrorMessage(error) });
+      }
+      return null;
+    }
+  }, [applyServerLocationSnapshot]);
+
+  const loadWeatherFor = useCallback(async (snapshot: HomeLocationSnapshot, selected: string) => {
+    const accountId = accountRef.current;
+    const session = sessionRef.current;
+    if (!feedActiveRef.current || !session.accessToken) return;
+    const locationRevision = homeLocationRevisionKey(snapshot);
+    const ticket = weatherGate.current.begin(accountId, `${selected}:${locationRevision}`);
+    const businessWindow = windowRef.current;
+    const dates = selected === businessWindow.today ? [businessWindow.today, businessWindow.tomorrow] : [selected];
+    const cached = cache.current.getWeather(accountId, snapshot, selected);
+    if (cached && mountedRef.current) setWeather({ status: "ready", data: cached });
+    else if (mountedRef.current) setWeather({ status: "loading" });
+    const missingDates = dates.filter((date) => !cache.current.getWeather(accountId, snapshot, date));
     if (missingDates.length === 0) return;
     try {
       const settled = await loadHomeWeatherDates(
         missingDates,
-        (date) => readHomeWeather(date, session, ticket.signal),
+        (date) => clientsRef.current.readHomeWeather(date, session, ticket.signal),
         (date, result) => {
-          if (!weatherGate.current.isCurrent(ticket)) return;
-          if (result.status === "fulfilled") {
-            weatherCache.current.set(result.value.targetDate, result.value);
-            if (date === selectedDate) setWeather({ status: "ready", data: result.value });
-          } else if (date === selectedDate) {
-            setWeather({ status: "error", message: onlineErrorMessage(result.reason) });
+          if (result.status === "fulfilled") cache.current.setWeather(accountId, snapshot, date, result.value);
+          if (!weatherGate.current.isCurrent(ticket) || selectedDateRef.current !== selected || accountRef.current !== accountId || !mountedRef.current) return;
+          if (date === selected) {
+            setWeather(result.status === "fulfilled"
+              ? { status: "ready", data: result.value }
+              : { status: "error", message: onlineErrorMessage(result.reason) });
           }
         },
       );
-      if (!weatherGate.current.isCurrent(ticket)) return;
-      settled.values.forEach((value) => weatherCache.current.set(value.targetDate, value));
-      const next = weatherCache.current.get(selectedDate);
-      if (next) {
-        setWeather({ status: "ready", data: next });
-        return;
-      }
-      setWeather({ status: "error", message: onlineErrorMessage(settled.errors.get(selectedDate) ?? new Error("天气响应缺少目标日期")) });
+      if (!weatherGate.current.isCurrent(ticket) || selectedDateRef.current !== selected || accountRef.current !== accountId || !mountedRef.current) return;
+      const next = cache.current.getWeather(accountId, snapshot, selected);
+      if (next) setWeather({ status: "ready", data: next });
+      else setWeather({ status: "error", message: onlineErrorMessage(settled.errors.get(selected) ?? new Error("天气响应缺少目标日期")) });
     } catch (error) {
-      if (weatherGate.current.isCurrent(ticket)) setWeather({ status: "error", message: onlineErrorMessage(error) });
+      if (weatherGate.current.isCurrent(ticket) && selectedDateRef.current === selected && mountedRef.current) {
+        setWeather({ status: "error", message: onlineErrorMessage(error) });
+      }
     }
-  }, [input.accountId, input.active, selectedDate, session, window.today, window.tomorrow]);
+  }, []);
 
-  const loadRecommendation = useCallback(async () => {
-    if (!input.active || !session.accessToken) return;
-    const ticket = recommendationGate.current.begin(input.accountId, selectedDate);
-    const cached = recommendationCache.current.get(selectedDate);
+  const loadRecommendationFor = useCallback(async (snapshot: HomeLocationSnapshot, selected: string, workspaceRevision: number) => {
+    const accountId = accountRef.current;
+    const session = sessionRef.current;
+    if (!feedActiveRef.current || !session.accessToken) return;
+    const ticket = recommendationGate.current.begin(accountId, `${selected}:${homeLocationRevisionKey(snapshot)}:${workspaceRevision}`);
+    const cached = cache.current.getRecommendation(accountId, snapshot, workspaceRevision, selected);
     if (cached) {
-      setRecommendation({ status: "ready", data: cached });
+      if (mountedRef.current) setRecommendation({ status: "ready", data: cached });
       return;
     }
-    setRecommendation({ status: "loading" });
+    if (mountedRef.current) setRecommendation({ status: "loading" });
+    const businessWindow = windowRef.current;
+    const dates = selected === businessWindow.today ? [businessWindow.today, businessWindow.tomorrow] : [selected];
     try {
-      const dates = selectedDate === window.today ? [window.today, window.tomorrow] : [selectedDate];
       try {
-        const current = await readHomeRecommendations(dates[0]!, dates.at(-1)!, session, ticket.signal);
+        const current = await clientsRef.current.readHomeRecommendations(dates[0]!, dates.at(-1)!, session, ticket.signal);
         current.items.forEach((existing) => {
-          if ("recommendationRevision" in existing) {
-            recommendationCache.current.set(existing.targetDate, {
-              status: "reused",
-              recommendation: {
-                recommendationId: existing.recommendationId,
-                recommendationRevision: existing.recommendationRevision,
-                targetDate: existing.targetDate,
-                contextMode: existing.contextMode,
-                recommendations: existing.recommendations.map((candidate) => ({
-                  candidateId: candidate.candidateId,
-                  objective: candidate.objective,
-                  garmentIds: candidate.garmentIds,
-                  reasonCodes: candidate.reasonCodes,
-                  riskCodes: candidate.riskCodes,
-                  finalScore: candidate.finalScore,
-                })),
-              },
-            });
-          }
-        });
-        const currentResult = recommendationCache.current.get(selectedDate);
-        if (currentResult) {
-          if (!recommendationGate.current.isCurrent(ticket)) return;
-          setRecommendation({ status: "ready", data: currentResult });
-          return;
-        }
-      } catch (readError) {
-        if (!(readError instanceof OnlineRequestError) || readError.status !== 404) throw readError;
-      }
-      const response = await resolveHomeRecommendations(dates, session, ticket.signal);
-      if (!recommendationGate.current.isCurrent(ticket)) return;
-      response.results.forEach((result) => {
-        const mapped: HomeRecommendationResult = result.status === "protected_plan" || result.status === "actual_wear"
-          ? { status: result.status, protectedPlanEntryId: result.protectedPlanEntryId }
-          : result.status === "not_ready" || !result.recommendation
-            ? { status: "not_ready" }
-            : {
-            status: result.status,
+          if (!("recommendationRevision" in existing)) return;
+          cache.current.setRecommendation(accountId, snapshot, workspaceRevision, existing.targetDate, {
+            status: "reused",
             recommendation: {
-              recommendationId: result.recommendation.recommendationId,
-              recommendationRevision: result.recommendation.recommendationRevision,
-              targetDate: result.recommendation.targetDate,
-              contextMode: result.recommendation.contextMode,
-              recommendations: result.recommendation.recommendations.map((candidate) => ({
+              recommendationId: existing.recommendationId,
+              recommendationRevision: existing.recommendationRevision,
+              targetDate: existing.targetDate,
+              contextMode: existing.contextMode,
+              recommendations: existing.recommendations.map((candidate) => ({
                 candidateId: candidate.candidateId,
                 objective: candidate.objective,
                 garmentIds: candidate.garmentIds,
@@ -201,92 +232,143 @@ export function useHomeFeedController(input: HomeFeedControllerInput) {
                 finalScore: candidate.finalScore,
               })),
             },
-          };
-        recommendationCache.current.set(result.targetDate, mapped);
+          });
+        });
+        const currentResult = cache.current.getRecommendation(accountId, snapshot, workspaceRevision, selected);
+        if (currentResult) {
+          if (recommendationGate.current.isCurrent(ticket) && selectedDateRef.current === selected && accountRef.current === accountId && mountedRef.current) {
+            setRecommendation({ status: "ready", data: currentResult });
+          }
+          return;
+        }
+      } catch (readError) {
+        if (!(readError instanceof OnlineRequestError) || readError.status !== 404) throw readError;
+      }
+      const response = await clientsRef.current.resolveHomeRecommendations(dates, session, ticket.signal);
+      if (!recommendationGate.current.isCurrent(ticket) || accountRef.current !== accountId) return;
+      response.results.forEach((result) => {
+        const mapped: HomeRecommendationResult = result.status === "protected_plan" || result.status === "actual_wear"
+          ? { status: result.status, protectedPlanEntryId: result.protectedPlanEntryId }
+          : result.status === "not_ready" || !result.recommendation
+            ? { status: "not_ready" }
+            : {
+                status: result.status,
+                recommendation: {
+                  recommendationId: result.recommendation.recommendationId,
+                  recommendationRevision: result.recommendation.recommendationRevision,
+                  targetDate: result.recommendation.targetDate,
+                  contextMode: result.recommendation.contextMode,
+                  recommendations: result.recommendation.recommendations.map((candidate) => ({
+                    candidateId: candidate.candidateId,
+                    objective: candidate.objective,
+                    garmentIds: candidate.garmentIds,
+                    reasonCodes: candidate.reasonCodes,
+                    riskCodes: candidate.riskCodes,
+                    finalScore: candidate.finalScore,
+                  })),
+                },
+              };
+        cache.current.setRecommendation(accountId, snapshot, workspaceRevision, result.targetDate, mapped);
       });
-      const result = recommendationCache.current.get(selectedDate);
+      if (!recommendationGate.current.isCurrent(ticket) || selectedDateRef.current !== selected || accountRef.current !== accountId || !mountedRef.current) return;
+      const result = cache.current.getRecommendation(accountId, snapshot, workspaceRevision, selected);
       if (!result) throw new Error("推荐响应缺少目标日期");
       setRecommendation({ status: "ready", data: result });
     } catch (error) {
-      if (recommendationGate.current.isCurrent(ticket)) setRecommendation({ status: "error", message: onlineErrorMessage(error) });
+      if (recommendationGate.current.isCurrent(ticket) && selectedDateRef.current === selected && mountedRef.current) {
+        setRecommendation({ status: "error", message: onlineErrorMessage(error) });
+      }
     }
-  }, [input.accountId, input.active, selectedDate, session, window.today, window.tomorrow]);
+  }, []);
+
+  const refreshFeed = useCallback(() => {
+    const snapshot = locationSnapshotRef.current;
+    if (!snapshot || !feedActiveRef.current) return;
+    const latestDate = selectedDateRef.current;
+    void loadWeatherFor(snapshot, latestDate);
+    void loadRecommendationFor(snapshot, latestDate, workspaceRevisionRef.current);
+  }, [loadRecommendationFor, loadWeatherFor]);
+  refreshFeedRef.current = refreshFeed;
 
   const refresh = useCallback(() => {
-    weatherCache.current.clear();
-    recommendationCache.current.clear();
-    void loadLocation();
-    void loadWeather();
-    void loadRecommendation();
-  }, [loadLocation, loadRecommendation, loadWeather]);
+    cache.current.clear();
+    void loadLocation(false).then((snapshot) => {
+      if (snapshot) refreshFeedRef.current();
+    });
+  }, [loadLocation]);
 
   const retryWeather = useCallback(() => {
-    weatherCache.current.delete(selectedDate);
-    void loadWeather();
-  }, [loadWeather, selectedDate]);
+    const snapshot = locationSnapshotRef.current;
+    if (!snapshot) return;
+    cache.current.deleteWeather(accountRef.current, snapshot, selectedDateRef.current);
+    void loadWeatherFor(snapshot, selectedDateRef.current);
+  }, [loadWeatherFor]);
 
   const retryRecommendation = useCallback(() => {
-    recommendationCache.current.delete(selectedDate);
-    void loadRecommendation();
-  }, [loadRecommendation, selectedDate]);
+    const snapshot = locationSnapshotRef.current;
+    if (!snapshot) return;
+    cache.current.deleteRecommendation(accountRef.current, snapshot, workspaceRevisionRef.current, selectedDateRef.current);
+    void loadRecommendationFor(snapshot, selectedDateRef.current, workspaceRevisionRef.current);
+  }, [loadRecommendationFor]);
 
-  useLayoutEffect(() => {
-    if (!input.active) {
-      locationGate.current.cancel();
-      weatherGate.current.cancel();
-      recommendationGate.current.cancel();
-      citySearch.reset(input.accountId);
-      mutationAbort.current?.abort();
-      mutationAbort.current = null;
-      mutationSession.current.reset();
-      setCityOpen(false);
-      setCityMutation(null);
-      setCityMutationError(null);
-      setCityMutationConflict(false);
-      return;
-    }
-    void loadLocation();
-    void loadWeather();
-    void loadRecommendation();
-    return () => {
-      locationGate.current.cancel();
-      weatherGate.current.cancel();
-      recommendationGate.current.cancel();
-      mutationAbort.current?.abort();
-      mutationAbort.current = null;
-      mutationSession.current.reset();
-    };
-  }, [citySearch, input.accountId, input.active, input.workspaceRevision, loadLocation, loadRecommendation, loadWeather]);
-
-  useLayoutEffect(() => {
-    if (accountRef.current === input.accountId) return;
-    accountRef.current = input.accountId;
+  const deactivateLocationLifecycle = useCallback((nextAccountId: string) => {
     locationGate.current.cancel();
     weatherGate.current.cancel();
     recommendationGate.current.cancel();
-    citySearch.reset(input.accountId);
+    citySearch.reset(nextAccountId);
     mutationAbort.current?.abort();
     mutationAbort.current = null;
     mutationSession.current.reset();
+    cityMutationRef.current = null;
+    locationSnapshotRef.current = null;
+    cache.current.clear();
+    if (!mountedRef.current) return;
     setLocationSnapshot(null);
     setLocationState(idle);
     setWeather(idle);
     setRecommendation(idle);
-    setCityCandidates([]);
-    setCityQuery("");
-    setCitySearchMessage(null);
-    setCitySearchRetryAfter(null);
+    setCityOpen(false);
     setCityMutation(null);
     setCityMutationError(null);
     setCityMutationConflict(false);
-    setCityOpen(false);
-    weatherCache.current.clear();
-    recommendationCache.current.clear();
-    if (input.active) queueMicrotask(refresh);
-  }, [citySearch, input.accountId, input.active, refresh]);
+  }, [citySearch]);
+
+  useLayoutEffect(() => {
+    const locationActive = input.locationActive ?? input.active;
+    const identity = `${input.accountId}\u0000${input.deviceId}`;
+    const identityChanged = identityRef.current !== identity;
+    const becameActive = locationActive && !lifecycleActiveRef.current;
+    if (!locationActive) {
+      if (lifecycleActiveRef.current || identityChanged) deactivateLocationLifecycle(input.accountId);
+      lifecycleActiveRef.current = false;
+      identityRef.current = identity;
+      accountRef.current = input.accountId;
+      return;
+    }
+    if (identityChanged || becameActive) {
+      deactivateLocationLifecycle(input.accountId);
+      lifecycleActiveRef.current = true;
+      identityRef.current = identity;
+      accountRef.current = input.accountId;
+      void loadLocation(false).then((snapshot) => {
+        if (snapshot && feedActiveRef.current) refreshFeedRef.current();
+      });
+    }
+  }, [deactivateLocationLifecycle, input.accountId, input.active, input.deviceId, input.locationActive, loadLocation]);
+
+  useLayoutEffect(() => {
+    if (!input.active) {
+      weatherGate.current.cancel();
+      recommendationGate.current.cancel();
+      return;
+    }
+    const snapshot = locationSnapshotRef.current;
+    if (snapshot) refreshFeedRef.current();
+    else void loadLocation(false).then((next) => { if (next) refreshFeedRef.current(); });
+  }, [input.accessToken, input.active, input.workspaceRevision, loadLocation, selectedDate, window.today, window.tomorrow]);
 
   useEffect(() => {
-    if (!input.active || typeof document === "undefined") return;
+    if (!(input.locationActive ?? input.active) || typeof document === "undefined") return;
     const onVisibility = () => {
       if (document.hidden) {
         weatherGate.current.cancel();
@@ -295,18 +377,20 @@ export function useHomeFeedController(input: HomeFeedControllerInput) {
         return;
       }
       const next = homeBusinessWindow(new Date());
-      if (next.today !== window.today) {
-        weatherCache.current.clear();
-        recommendationCache.current.clear();
+      if (next.today !== windowRef.current.today) {
+        cache.current.clear();
         setWindow(next);
         setSelectedDate(next.today);
-      } else {
-        refresh();
+        return;
       }
+      cache.current.clear();
+      void loadLocation(false).then((snapshot) => {
+        if (snapshot && feedActiveRef.current) refreshFeedRef.current();
+      });
     };
     document.addEventListener("visibilitychange", onVisibility);
     return () => document.removeEventListener("visibilitychange", onVisibility);
-  }, [citySearch, input.accountId, input.active, refresh, window.today]);
+  }, [citySearch, input.accountId, input.active, input.locationActive, loadLocation]);
 
   const activeLocation = useMemo<HomeFeedInput["location"]>(() => {
     const override = locationSnapshot?.override.override;
@@ -331,21 +415,22 @@ export function useHomeFeedController(input: HomeFeedControllerInput) {
 
   const searchCities = useCallback((query: string) => {
     setCityQuery(query);
-    if (session.accessToken) citySearch.update(input.accountId, query);
-  }, [citySearch, input.accountId, session.accessToken]);
-
+    if (sessionRef.current.accessToken) citySearch.update(accountRef.current, query);
+  }, [citySearch]);
   const startCityComposition = useCallback(() => citySearch.startComposition(), [citySearch]);
-  const endCityComposition = useCallback((query: string) => citySearch.endComposition(input.accountId, query), [citySearch, input.accountId]);
+  const endCityComposition = useCallback((query: string) => citySearch.endComposition(accountRef.current, query), [citySearch]);
 
-  const commitLocation = useCallback(async (kind: HomeLocationAction, locationId?: string) => {
-    if (!session.accessToken || cityMutation) return;
+  const commitLocation = useCallback(async (kind: HomeLocationAction, locationId?: string): Promise<HomeLocationCommitStatus> => {
+    const session = sessionRef.current;
+    const snapshot = locationSnapshotRef.current;
+    if (!session.accessToken || cityMutationRef.current || !snapshot) return "stale";
+    cityMutationRef.current = kind;
     setCityMutation(kind);
     setCityMutationError(null);
     setCityMutationConflict(false);
-    const expectedRevision = kind === "home" || kind === "clear_home" ? locationSnapshot?.profile.revision ?? 0 : locationSnapshot?.override.revision ?? 0;
-    const command: HomeLocationCommand = { accountId: input.accountId, sessionId: input.deviceId, action: kind, locationId, expectedRevision };
+    const expectedRevision = kind === "home" || kind === "clear_home" ? snapshot.profile.revision : snapshot.override.revision;
+    const command: HomeLocationCommand = { accountId: accountRef.current, sessionId: session.deviceId, action: kind, locationId, expectedRevision };
     const controller = new AbortController();
-    mutationAbort.current?.abort();
     mutationAbort.current = controller;
     try {
       const result = await commitHomeLocation({
@@ -353,48 +438,59 @@ export function useHomeFeedController(input: HomeFeedControllerInput) {
         command,
         signal: controller.signal,
         mutate: (clientMutationId, signal) => kind === "home"
-          ? setHomeCity(locationId!, expectedRevision, clientMutationId, session, signal)
+          ? clientsRef.current.setHomeCity(locationId!, expectedRevision, clientMutationId, session, signal)
           : kind === "temporary"
-            ? setTemporaryCity(locationId!, expectedRevision, clientMutationId, session, signal)
+            ? clientsRef.current.setTemporaryCity(locationId!, expectedRevision, clientMutationId, session, signal)
             : kind === "clear_home"
-              ? clearHomeCity(expectedRevision, clientMutationId, session, signal)
-              : clearTemporaryCity(expectedRevision, clientMutationId, session, signal),
-        readLatest: (signal) => readHomeLocation(session, signal),
+              ? clientsRef.current.clearHomeCity(expectedRevision, clientMutationId, session, signal)
+              : clientsRef.current.clearTemporaryCity(expectedRevision, clientMutationId, session, signal),
+        readLatest: (signal) => clientsRef.current.readHomeLocation(session, signal),
       });
-      if (result.status === "stale") return;
+      if (result.status === "stale") return "stale";
       if (result.status === "conflict_unresolved") {
         setCityMutationConflict(true);
         setCityMutationError(`地点设置发生冲突，读取最新设置失败：${onlineErrorMessage(result.error)}`);
-        return;
+        return "conflict_unresolved";
       }
-      setCityMutation(null);
-      setLocationSnapshot(result.snapshot);
-      setLocationState({ status: "ready", data: result.snapshot });
+      applyServerLocationSnapshot(result.snapshot, true);
       if (result.status === "conflict") {
         setCityMutationConflict(true);
         setCityMutationError("地点已在其他设备更新，已加载最新设置，请确认后重试。");
-        return;
+        return "conflict";
       }
       setCityOpen(false);
       setCityQuery("");
       setCityCandidates([]);
-      weatherCache.current.clear();
-      recommendationCache.current.clear();
-      void loadWeather();
-      void loadRecommendation();
+      return "committed";
     } catch (error) {
-      if (!controller.signal.aborted) setCityMutationError(onlineErrorMessage(error));
+      if (!controller.signal.aborted && mountedRef.current) setCityMutationError(onlineErrorMessage(error));
+      return controller.signal.aborted ? "stale" : "failed";
     } finally {
-      if (!controller.signal.aborted) setCityMutation(null);
+      if (!controller.signal.aborted && mountedRef.current) {
+        cityMutationRef.current = null;
+        setCityMutation(null);
+      }
       if (mutationAbort.current === controller) mutationAbort.current = null;
     }
-  }, [cityMutation, input.accountId, input.deviceId, loadRecommendation, loadWeather, locationSnapshot, session]);
+  }, [applyServerLocationSnapshot]);
 
-  useEffect(() => () => {
-    citySearch.dispose();
-    mutationAbort.current?.abort();
-    mutationSession.current.reset();
-  }, [citySearch]);
+  useEffect(() => {
+    mountedRef.current = true;
+    if (locationActiveRef.current && !locationSnapshotRef.current) {
+      void loadLocation(false).then((snapshot) => {
+        if (snapshot && feedActiveRef.current) refreshFeedRef.current();
+      });
+    }
+    return () => {
+      mountedRef.current = false;
+      citySearch.dispose();
+      locationGate.current.cancel();
+      weatherGate.current.cancel();
+      recommendationGate.current.cancel();
+      mutationAbort.current?.abort();
+      mutationSession.current.reset();
+    };
+  }, [citySearch, loadLocation]);
 
   return {
     window, selectedDate, setSelectedDate, viewModel,

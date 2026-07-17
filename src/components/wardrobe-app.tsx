@@ -57,8 +57,9 @@ import { WearStatisticsView } from "@/components/wear-statistics-view";
 import { getRecommendedPairingItemsForItem } from "@/lib/garment-detail-pairing";
 import { garmentDraftToWardrobeItem } from "@/lib/intake-save-adapters";
 import { useWardrobeDataController } from "@/components/use-wardrobe-data-controller";
-import { useHomeFeedController } from "@/components/home/use-home-feed-controller";
+import { useHomeFeedController, type HomeFeedController } from "@/components/home/use-home-feed-controller";
 import { WardoraHomeView } from "@/components/home/wardora-home-view";
+import { HomeLocationSettingsPage } from "@/components/home/home-location-settings-page";
 import { useWardrobeMessageController } from "@/components/use-wardrobe-message-controller";
 import { useWardrobeLightboxController } from "@/components/use-wardrobe-lightbox-controller";
 import { WardrobeImageSourceSheet } from "@/components/wardrobe-image-source-sheet";
@@ -866,6 +867,7 @@ export function WardrobeApp({ cloudAuth }: { cloudAuth?: WardrobeCloudAuth } = {
   ), [items, outfitPlanEntries]);
   const homeFeed = useHomeFeedController({
     active: homeFeedEnabled && route.name === "home_feed",
+    locationActive: homeFeedEnabled && (route.name === "home_feed" || route.name === "settings_home"),
     accountId: cloudAuth?.user.id ?? "signed-out",
     accessToken: cloudAuth?.accessToken,
     deviceId: cloudAuth?.deviceId ?? "",
@@ -1131,6 +1133,7 @@ export function WardrobeApp({ cloudAuth }: { cloudAuth?: WardrobeCloudAuth } = {
               cloudAuth={cloudAuth}
               onOpenAccount={() => navigation.openRoute({ name: "account_management" })}
               onOpenHomePreview={homeFeedEnabled ? () => navigation.openRoute({ name: "home_feed" }) : undefined}
+              homeLocationController={homeFeedEnabled ? homeFeed : undefined}
               openMiniMaxRequest={settingsMiniMaxOpenRequest}
               onMiniMaxRequestConsumed={() => setSettingsMiniMaxOpenRequest(0)}
 	              miniMaxSettings={miniMaxSettings} onSaveMiniMaxSettings={saveSettings}
@@ -3826,6 +3829,7 @@ function SettingsView({
   cloudAuth,
   onOpenAccount,
   onOpenHomePreview,
+  homeLocationController,
   openMiniMaxRequest,
   onMiniMaxRequestConsumed,
 	  miniMaxSettings,
@@ -3848,6 +3852,7 @@ function SettingsView({
   cloudAuth?: WardrobeCloudAuth;
   onOpenAccount?: () => void;
   onOpenHomePreview?: () => void;
+  homeLocationController?: HomeFeedController;
   openMiniMaxRequest?: number;
   onMiniMaxRequestConsumed?: () => void;
 	  miniMaxSettings: DeviceMiniMaxSettings;
@@ -4166,6 +4171,8 @@ function SettingsView({
             onAdd={() => setShowAddWardrobe(true)}
             onEdit={(loc) => setEditWardrobeTarget(loc)}
           />
+        ) : subPage === "weather_location" && homeLocationController ? (
+          <HomeLocationSettingsPage controller={homeLocationController} onBack={popSettingsPage} />
         ) : (
           <div
             className="grid min-w-0 grid-cols-[minmax(0,1fr)] gap-3.5 [&>.surface]:shadow-none"
@@ -4182,6 +4189,17 @@ function SettingsView({
           data-testid="open-home-feed-preview"
         >
           <span><span className="block text-sm font-semibold">Wardora 新首页预览</span><span className="block text-xs text-ink/50">内部只读入口，不改变默认首页</span></span>
+          <ChevronRight size={17} aria-hidden="true" />
+        </AppPressable>
+      ) : null}
+
+      {homeLocationController ? (
+        <AppPressable
+          className="ui-card flex min-h-14 w-full items-center justify-between px-4 py-3 text-left"
+          onClick={() => navigateSettingsPage("weather_location")}
+          data-testid="open-weather-location-settings"
+        >
+          <span><span className="block text-sm font-semibold">天气地点</span><span className="block text-xs text-ink/50">管理常驻城市与临时城市</span></span>
           <ChevronRight size={17} aria-hidden="true" />
         </AppPressable>
       ) : null}

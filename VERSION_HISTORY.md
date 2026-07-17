@@ -7,6 +7,12 @@
 - 查看某次提交详情：`git show <commit>`
 - 新记录继续置顶，默认控制在 3–5 条短 bullet；原始测试日志、命令输出和长证据写入专项 evidence 文档或交由 Git 保存。
 
+## 2026-07-17 / v2.1.27-test / Codex — Wardora 新首页 P1.2 地点一致性与设置收口
+
+- 地点成功/409/前台恢复统一应用服务端快照；天气缓存按账号、有效地点 revision/key、日期隔离，未采用推荐再叠加 workspaceRevision，地点或衣橱 revision 变化不会展示旧城市天气/推荐。地点 mutation 与读取 effect 分离，日期/工作区刷新不再锁死保存状态；UUID fallback 优先随机源并覆盖冻结时间碰撞回归。
+- 首页地点 Sheet 移除清除常驻城市命令；设置页新增天气地点管理与明确二次确认，Android Back 先关确认层。保留临时城市恢复流程、44px 点击目标、reduced-motion 与窄屏/字体放大约束；默认旧首页、P2 写事务、定位、Canvas 和小程序均未改变。
+- P1.2 手写 Fixture、Strict Mode 资源上限复测、真实浏览器与 `wardrobe-test` Android Fixture 通过；正式 APK 以 `https://api.zhengfangapps.cloud` 重建为 `2.1.27-test` / versionCode `20127` / 固定 `CN=fangzheng`。本批仅 App 客户端，不部署 API、不迁移、不调用 QWeather、不合入小程序。
+
 ## 2026-07-17 / v2.1.26-test / Codex — Wardora 新首页 P1.1 并发与交互收口
 
 - 城市写入按账号/会话、动作、地点与 revision 复用稳定 `clientMutationId`；响应丢失可原样重放，409 读取最新服务端快照并显示冲突，route/账号失活后旧响应不得回写。写入期间显示明确保存状态。

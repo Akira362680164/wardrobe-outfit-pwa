@@ -1,6 +1,7 @@
 import type { WeatherLocationRef } from "@wardrobe/cloud-contracts";
 
 import { OnlineRequestError, onlineErrorMessage } from "@/lib/online/online-error";
+import { createUuid } from "@/lib/uuid";
 
 export type HomeLocationAction = "home" | "temporary" | "clear_home" | "clear_temporary";
 
@@ -215,5 +216,5 @@ function commandKey(command: HomeLocationCommand): string {
 }
 
 function defaultMutationId(): string {
-  return globalThis.crypto?.randomUUID?.() ?? `00000000-0000-4000-8000-${String(Date.now()).padStart(12, "0").slice(-12)}`;
+  return createUuid();
 }

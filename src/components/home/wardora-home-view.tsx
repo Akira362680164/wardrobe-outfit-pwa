@@ -143,14 +143,15 @@ export function WardoraHomeView({ controller, garments, renderWardrobeContent }:
       </section>
       )} />
 
-      <CitySheet controller={controller} />
+      <HomeCitySheet controller={controller} />
     </div>
   );
 }
 
-function CitySheet({ controller }: { controller: HomeFeedController }) {
+export function HomeCitySheet({ controller }: { controller: HomeFeedController }) {
   const profile = controller.locationSnapshot?.profile;
   const override = controller.locationSnapshot?.override.override;
+  const locationActions = homeCitySheetLocationActions(Boolean(override));
   return (
     <MotionSheet open={controller.cityOpen} onClose={() => controller.setCityOpen(false)} ariaLabel="选择天气城市" variant="form" panelClassName="!max-w-md">
       <div className="px-4 pb-[calc(16px+env(safe-area-inset-bottom))]" data-testid="home-city-sheet">
@@ -193,12 +194,15 @@ function CitySheet({ controller }: { controller: HomeFeedController }) {
           ))}
         </div>
         <div className="mt-4 grid gap-2 border-t border-ink/10 pt-4">
-          {override ? <AppPressable className="min-h-11 rounded-xl bg-mist px-3 text-sm" disabled={!!controller.cityMutation} onClick={() => void controller.commitLocation("clear_temporary")}><Check className="mr-2 inline" size={16} />恢复常驻城市{profile?.homeCity ? ` · ${profile.homeCity.displayName}` : ""}</AppPressable> : null}
-          {profile?.homeCity ? <AppPressable className="min-h-11 rounded-xl px-3 text-sm text-clay ring-1 ring-clay/20" disabled={!!controller.cityMutation} onClick={() => void controller.commitLocation("clear_home")}>清除常驻城市</AppPressable> : null}
+          {locationActions.includes("clear_temporary") ? <AppPressable className="min-h-11 rounded-xl bg-mist px-3 text-sm" disabled={!!controller.cityMutation} onClick={() => void controller.commitLocation("clear_temporary")}><Check className="mr-2 inline" size={16} />恢复常驻城市{profile?.homeCity ? ` · ${profile.homeCity.displayName}` : ""}</AppPressable> : null}
         </div>
       </div>
     </MotionSheet>
   );
+}
+
+export function homeCitySheetLocationActions(hasTemporaryOverride: boolean): readonly ("clear_temporary")[] {
+  return hasTemporaryOverride ? ["clear_temporary"] : [];
 }
 
 function ModuleLoading({ label }: { label: string }) { return <div className="flex min-h-28 items-center justify-center gap-2 text-sm text-ink/55"><Loader2 className="animate-spin motion-reduce:animate-none" size={18} />{label}</div>; }
