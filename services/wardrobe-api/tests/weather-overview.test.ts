@@ -62,6 +62,42 @@ describe("WeatherOverview evidence aggregation", () => {
     expect((await service.get("user", "2026-07-14")).weatherEvidence.weatherConfidence).toBe(0.7);
   });
 
+  it("keeps legal realtime evidence when today's daily endpoint fails", async () => {
+    const data: Record<string, unknown> = {
+      now: { observedAt: "2026-07-14T19:54:00.000+08:00", temperatureC: 31, feelsLikeC: 34, weatherCode: "305", weatherText: "小雨", precipitationMm: 0.8, windScale: "5-6" },
+      hourly: [
+        { time: "2026-07-14T21:00:00.000+08:00", temperatureC: 30, weatherCode: "101", weatherText: "多云", rainProbability: 20, windScale: "3-4" },
+      ],
+    };
+    const service = new WeatherOverviewService({
+      resolver: { resolve: async () => context },
+      cache: { get: async (key: any) => {
+        if (key.endpoint === "daily") throw new Error("daily unavailable");
+        return { data: data[key.endpoint], ...meta };
+      } },
+      provider: {} as any,
+      clock: () => new Date("2026-07-14T12:00:00.000Z"),
+    });
+
+    const result = await service.get("user", "2026-07-14");
+    expect(result).toMatchObject({
+      contextMode: "forecast",
+      availabilityReason: "available",
+      weatherEvidence: {
+        currentTemperatureC: 31,
+        currentFeelsLikeC: 34,
+        weatherCode: "305",
+        rainProbability: 100,
+        windLevel: 6,
+        summary: "小雨",
+      },
+    });
+    for (const field of ["temperatureMinC", "temperatureMaxC", "dayWeatherCode", "nightWeatherCode"]) {
+      expect(result.weatherEvidence).not.toHaveProperty(field);
+    }
+    expect(result.endpointFreshness.map((entry) => entry.endpoint).sort()).toEqual(["hourly", "now"]);
+  });
+
   it("keeps travel context but clears weather values beyond the seven-day window", async () => {
     let calls = 0;
     const service = new WeatherOverviewService({ resolver: { resolve: async () => ({ ...context, targetDate: "2026-07-22", locationSource: "travel" }) }, cache: { get: async () => { calls++; throw new Error(); } }, provider: {} as any, clock: () => new Date("2026-07-14T04:00:00.000Z") });

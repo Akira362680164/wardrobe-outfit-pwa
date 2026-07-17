@@ -41,7 +41,7 @@ export const QWEATHER_VISUAL_DICTIONARY = Object.freeze({
   "500": v("500", "薄雾", null, "fog", 1, { visibility: 0.8 }), "501": v("501", "雾", null, "fog", 2, { visibility: 0.62 }), "502": v("502", "霾", null, "haze", 2, { visibility: 0.62 }), "503": v("503", "扬沙", null, "dust", 2, { visibility: 0.58, windDrift: 0.7 }), "504": v("504", "浮尘", null, "dust", 1, { visibility: 0.72, windDrift: 0.25 }),
   "507": v("507", "沙尘暴", null, "dust", 3, { visibility: 0.3, windDrift: 1 }), "508": v("508", "强沙尘暴", null, "dust", 4, { visibility: 0.14, windDrift: 1.55 }), "509": v("509", "浓雾", null, "fog", 3, { visibility: 0.42 }), "510": v("510", "强浓雾", null, "fog", 4, { visibility: 0.24 }),
   "511": v("511", "中度霾", null, "haze", 2, { visibility: 0.56 }), "512": v("512", "重度霾", null, "haze", 3, { visibility: 0.34 }), "513": v("513", "严重霾", null, "haze", 4, { visibility: 0.2 }), "514": v("514", "大雾", null, "fog", 3.5, { visibility: 0.3 }), "515": v("515", "特强浓雾", null, "fog", 4, { visibility: 0.12 }),
-  "900": v("900", "热", null, "hot", 2), "901": v("901", "冷", null, "cold", 2), "999": v("999", "未知", null, "unknown", 0),
+  "900": v("900", "热", null, "hot", 2), "901": v("901", "冷", null, "cold", 2), "999": v("999", "未知", null, "unknown", 0, { static: true }),
 } satisfies Readonly<Record<string, QWeatherVisualDefinition>>);
 
 export const QWEATHER_VISUAL_CODES = Object.freeze(Object.keys(QWEATHER_VISUAL_DICTIONARY)) as readonly (keyof typeof QWEATHER_VISUAL_DICTIONARY)[];

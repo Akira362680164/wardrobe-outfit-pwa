@@ -256,6 +256,31 @@ function referenceShotGrid() {
 }
 
 function renderPartVisual(title) {
+  if (title.includes("新首页 P0.1")) {
+    return `
+      <div class="part-visual" data-visual="home-p01-contract">
+        <div class="home-location-entry" data-home-contract="single-location-entry">上海 · 常驻 ›</div>
+        <div class="home-weather-links" data-home-contract="weather-card-navigation"><button>今日</button><button>明日</button><span>切换日期 → 推荐区</span></div>
+        <div class="home-state-grid">
+          <span data-home-state="home-empty-locationless">空衣橱 · 无城市</span>
+          <span data-home-state="home-empty-forecast">空衣橱 · 有城市</span>
+          <span data-home-state="home-ready-locationless">已就绪 · locationless</span>
+          <span data-home-state="home-ready-forecast">已就绪 · forecast</span>
+        </div>
+        <div class="home-error-grid">
+          <span data-home-error="home-workspace-error">工作区整页错误</span>
+          <span data-home-error="home-weather-error">天气独立重试</span>
+          <span data-home-error="home-recommendation-error">推荐独立重试</span>
+        </div>
+        <div class="home-contract-row">
+          <span data-home-contract="seven-day-abort">today/tomorrow 预读 · 3–7 按需 · abort + generation token</span>
+          <span data-home-contract="weather-runtime">today 可动 / tomorrow 静态 · 1 rAF · ~29 FPS · DPR ≤ 2</span>
+          <span data-home-contract="reduced-motion">reduced-motion → 120–160ms cross-fade / static</span>
+          <span data-home-contract="plan-protection">protected_plan / actual_wear 优先</span>
+        </div>
+      </div>`;
+  }
+
   if (/2\.1\s+颜色/.test(title)) {
     return `
       <div class="part-visual" data-visual="color-token-palette">

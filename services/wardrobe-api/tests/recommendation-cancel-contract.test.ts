@@ -18,10 +18,39 @@ describe("cancel primary and optional backup promotion frozen contract", () => {
     expect(CancelPrimaryPlanCommandSchema.safeParse({ ...CANCEL_PRIMARY_FIXTURE.command, promoteBackup: { planEntryId: CANCEL_PRIMARY_FIXTURE.command.primary.planEntryId, expectedRevision: 2 } }).success).toBe(false);
   });
 
-  it("supports cancel without promotion and freezes rollback/idempotency invariants", () => {
-    const { promoteBackup: _backup, ...cancelOnly } = CANCEL_PRIMARY_FIXTURE.command;
-    expect(CancelPrimaryPlanCommandSchema.parse(cancelOnly)).toEqual(cancelOnly);
-    expect(CancelPrimaryPlanResponseSchema.parse({ ...CANCEL_PRIMARY_FIXTURE.response, activePrimary: null })).toMatchObject({ activePrimary: null });
-    expect(CANCEL_PRIMARY_FIXTURE.transactionInvariants).toHaveLength(6);
+  it("freezes cancel-only state without mutating the untouched backup", () => {
+    expect(CancelPrimaryPlanCommandSchema.parse(CANCEL_PRIMARY_FIXTURE.cancelOnlyCommand)).toEqual(CANCEL_PRIMARY_FIXTURE.cancelOnlyCommand);
+    expect(CancelPrimaryPlanResponseSchema.parse(CANCEL_PRIMARY_FIXTURE.cancelOnlyResponse)).toEqual(CANCEL_PRIMARY_FIXTURE.cancelOnlyResponse);
+    expect(CANCEL_PRIMARY_FIXTURE.afterCancelOnly.primary.revision).toBe(CANCEL_PRIMARY_FIXTURE.before.primary.revision + 1);
+    expect(CANCEL_PRIMARY_FIXTURE.afterCancelOnly.primary.status).toBe("canceled");
+    expect(CANCEL_PRIMARY_FIXTURE.afterCancelOnly.backup).toEqual(CANCEL_PRIMARY_FIXTURE.before.backup);
+    expect(CANCEL_PRIMARY_FIXTURE.cancelOnlyResponse.activePrimary).toBeNull();
+  });
+
+  it("freezes promotion ids, roles, revisions and response correspondence", () => {
+    const { command, response, before, afterPromotion } = CANCEL_PRIMARY_FIXTURE;
+    expect(command.primary.planEntryId).not.toBe(command.promoteBackup.planEntryId);
+    expect(command.promoteBackup.planEntryId).toBe(response.activePrimary?.planEntryId);
+    expect(command.primary.planEntryId).toBe(response.canceledPrimary.planEntryId);
+    expect(afterPromotion.primary.revision).toBe(before.primary.revision + 1);
+    expect(afterPromotion.backup.revision).toBe(before.backup.revision + 1);
+    expect(afterPromotion.primary.status).toBe("canceled");
+    expect(afterPromotion.backup.role).toBe("primary");
+    expect(response.canceledPrimary.revision).toBe(afterPromotion.primary.revision);
+    expect(response.activePrimary?.revision).toBe(afterPromotion.backup.revision);
+  });
+
+  it("freezes idempotent replay and every stable conflict code", () => {
+    expect(CancelPrimaryPlanResponseSchema.parse(CANCEL_PRIMARY_FIXTURE.idempotentReplayResponse)).toEqual(CANCEL_PRIMARY_FIXTURE.idempotentReplayResponse);
+    expect(CANCEL_PRIMARY_FIXTURE.idempotentReplayResponse.canceledPrimary).toEqual(CANCEL_PRIMARY_FIXTURE.response.canceledPrimary);
+    expect(CANCEL_PRIMARY_FIXTURE.idempotentReplayResponse.activePrimary).toEqual(CANCEL_PRIMARY_FIXTURE.response.activePrimary);
+    expect(CANCEL_PRIMARY_FIXTURE.conflictReasonCodes).toEqual([
+      "mutation_payload_conflict", "primary_plan_changed", "backup_plan_changed",
+      "plan_already_worn", "plan_date_mismatch", "backup_not_available",
+    ]);
+    for (const code of CANCEL_PRIMARY_FIXTURE.conflictReasonCodes) expect(CancelPrimaryPlanConflictReasonSchema.parse(code)).toBe(code);
+    expect(Object.keys(CANCEL_PRIMARY_FIXTURE.transactionInvariants)).toEqual([
+      "lockScope", "validateBeforeWrite", "wornRollback", "atomicPromotion", "auditBeforeCommit", "fullRollback",
+    ]);
   });
 });

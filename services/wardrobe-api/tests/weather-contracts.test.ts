@@ -61,7 +61,7 @@ describe("weather and location strict contracts", () => {
     expect(() => WeatherCacheEntrySchema.parse({ ...metadata, endpoint: "hourly", payload: now })).toThrow();
   });
 
-  it("keeps old overview readers compatible while accepting the new display evidence", () => {
+  it("accepts a legacy payload in the new schema without claiming old-client parsing", () => {
     const base = {
       targetDate: "2026-07-14", contextMode: "forecast" as const,
       resolvedLocation: { locationId: "101020100", displayName: "上海", timezone: "Asia/Shanghai" },
@@ -71,6 +71,9 @@ describe("weather and location strict contracts", () => {
     const legacy = { ...base, weatherEvidence: { weatherSource: "forecast" as const, weatherConfidence: 1, weatherUpdatedAt: "2026-07-14T12:00:00.000Z", temperatureMinC: 26, temperatureMaxC: 33, weatherCode: "101", summary: "多云" } };
     expect(WeatherOverviewSchema.parse(legacy)).toEqual(legacy);
     expect(WeatherOverviewSchema.parse({ ...base, weatherEvidence: { ...legacy.weatherEvidence, currentTemperatureC: 31, currentFeelsLikeC: 34, dayWeatherCode: "101", nightWeatherCode: "305" } }).weatherEvidence).toMatchObject({ currentTemperatureC: 31, currentFeelsLikeC: 34, dayWeatherCode: "101", nightWeatherCode: "305" });
+    // This proves only that the newly published schema accepts an old payload.
+    // An old released client parsing a new response is the opposite direction and
+    // requires its frozen parser/binary or a real prior-client integration test.
   });
 
   it("rejects pseudo display evidence in locationless and weather fallback modes", () => {

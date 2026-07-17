@@ -217,6 +217,42 @@ Icon-only 按钮必须有 `aria-label`；图标与文字组合时图标使用 `a
 
 计划保护是首页的最高展示优先级：存在主计划时先显示“当日穿搭”，存在已穿事实时显示“今天已穿”；天气、城市、worker 或推荐 revision 变化只能更新未采用推荐或提示风险，不能自动替换、降级、取消或隐藏主计划。取消 primary 与可选提升 backup 必须等待同一服务端事务提交并读回后更新 UI，失败时保持原状态。
 
+### 4.1 新首页 P0.1 状态、请求与静态天气保护
+
+**单一地点入口与天气卡跳转**
+
+- 首页只有一个权威地点入口，文案只能是“城市 · 常驻 / 临时 / 行程 ›”或“未设置城市 ›”；问候区、天气卡和推荐卡不重复创建地点入口。
+- 点击今日或明日天气卡只切换对应业务日期并滚动到推荐区；不重挂页面，不重播整页入场。
+
+**四种正常状态与模块错误**
+
+| 冻结 ID | 衣橱 | 城市 | 天气 | 推荐 |
+| --- | --- | --- | --- | --- |
+| `home-empty-locationless` | 空/未就绪 | 无 | 中性地点空状态 | 录入引导 |
+| `home-empty-forecast` | 空/未就绪 | 有 | 合法天气 | 缺失角色 |
+| `home-ready-locationless` | 已就绪 | 无 | 中性地点空状态 | `locationless` 推荐 |
+| `home-ready-forecast` | 已就绪 | 有 | 合法天气 | `forecast` 推荐 |
+
+- 工作区失败使用 `home-workspace-error` 真实整页错误，禁止映射为空衣橱。
+- 工作区成功后，天气使用 `home-weather-error`、推荐使用 `home-recommendation-error`；两者分别保留自己的 loading / error / retry，一个模块失败不遮蔽另一个。
+
+**未来七日按需加载与旧请求取消**
+
+- 首次只并行预读今天与明天；第 3–7 天只在用户选中后 resolve，远期行程日期单列并按需加载。
+- 日期切换、重复刷新、切后台、跨上海午夜、账号切换和会话失效都必须 abort 旧读请求并递增 generation token；只有当前 token 与当前账号/日期同时匹配时允许更新 ViewModel。
+
+**静态天气、Canvas 预留与运行时保护**
+
+- P1 只渲染静态天气层，Canvas 位置使用非阻塞占位；文字、归因、按钮与滚动不依赖 Canvas 成功。
+- P3 若启用 Canvas，全页最多一个 `requestAnimationFrame` 调度器，目标约 `29 FPS`，`devicePixelRatio` 上限 `2`；今日可动，明日始终静态。
+- Canvas 在卡片离屏、页面隐藏、App 进后台、锁屏或路由卸载时暂停/销毁；初始化或绘制故障后本会话直接保持静态，禁止循环重启。
+- `prefers-reduced-motion: reduce` 下禁止循环、粒子、闪电、spring 和大位移，只保留 `120–160ms` 交叉淡化或即时反馈。
+- QWeather `999`、任意未来未知 code、`weather_fallback`、超过 max-stale 和 Canvas 故障都使用中性静态降级，不触发循环动画，不显示伪数字或伪降雨。
+
+**计划保护**
+
+- `protected_plan` 和 `actual_wear` 始终高于天气/推荐 revision；新结果只能更新未采用推荐或显示风险，不能自动替换、取消、降级或隐藏已有计划/已穿事实。
+
 ## 5. Route 与页面状态矩阵
 
 代码事实源是 `src/lib/app-route.ts` 的 `AppRouteName`。画板可覆盖更多“页面级状态”，但不能替代路由事实。

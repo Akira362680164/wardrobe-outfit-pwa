@@ -1882,7 +1882,7 @@ export const MINI_QWEATHER_VISUAL_DICTIONARY = {
     "mixed": false,
     "visibility": 1,
     "windDrift": 0,
-    "static": false
+    "static": true
   }
 } as const;
 

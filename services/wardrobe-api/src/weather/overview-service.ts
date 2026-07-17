@@ -52,19 +52,22 @@ export class WeatherOverviewService {
       } catch { /* endpoint unavailability is represented by the aggregate fallback below */ }
     }));
     const daily = (results.get("daily")?.data as NormalizedWeatherDay[] | undefined)?.find((day) => day.date === targetDate);
-    if (!daily) return fallback(context, results.size ? "insufficient_evidence" : "provider_unavailable", [...results.entries()]);
     const nowInstant = this.clock().getTime();
     const hours = ((results.get("hourly")?.data as NormalizedWeatherHour[] | undefined) ?? []).filter((hour) =>
       localDate(new Date(hour.time), context.targetTimezone) === targetDate && (offset !== 0 || Date.parse(hour.time) >= nowInstant),
     );
     const now = offset === 0 ? results.get("now")?.data as NormalizedWeatherNow | undefined : undefined;
+    if (!daily && !(offset === 0 && (now || hours.length))) {
+      return fallback(context, results.size ? "insufficient_evidence" : "provider_unavailable", [...results.entries()]);
+    }
     const rainValues = [
       ...(now?.precipitationMm !== undefined && now.precipitationMm > 0 ? [100] : isRainCode(now?.weatherCode) ? [100] : []),
       ...hours.map((hour) => hour.rainProbability).filter((value): value is number => value !== undefined),
     ];
     const windValues = [windLevel(now?.windScale), ...hours.map((hour) => windLevel(hour.windScale))].filter((value): value is number => value !== undefined);
     const used = [...results.entries()];
-    const participatingEndpoints: WeatherEndpoint[] = ["daily"];
+    const participatingEndpoints: WeatherEndpoint[] = [];
+    if (daily) participatingEndpoints.push("daily");
     if (now) participatingEndpoints.push("now");
     if (hours.length) participatingEndpoints.push("hourly");
     const attribution = attributionOf(used);
@@ -73,15 +76,16 @@ export class WeatherOverviewService {
       targetTimezone: context.targetTimezone, contextResolvedAt: context.contextResolvedAt,
       weatherEvidence: {
         weatherSource: "forecast", weatherConfidence: participatingEndpoints.some((endpoint) => results.get(endpoint)?.freshness === "stale") ? 0.7 : 1,
-        weatherUpdatedAt: latestUpdatedAt(used), temperatureMinC: daily.temperatureMinC, temperatureMaxC: daily.temperatureMaxC,
+        weatherUpdatedAt: latestUpdatedAt(used),
+        ...(daily ? { temperatureMinC: daily.temperatureMinC, temperatureMaxC: daily.temperatureMaxC } : {}),
         ...(now ? { currentTemperatureC: now.temperatureC } : {}),
         ...(now?.feelsLikeC === undefined ? {} : { feelsLikeMinC: now.feelsLikeC, feelsLikeMaxC: now.feelsLikeC }),
         ...(now?.feelsLikeC === undefined ? {} : { currentFeelsLikeC: now.feelsLikeC }),
         ...(rainValues.length ? { rainProbability: Math.max(...rainValues) } : {}),
         ...(windValues.length ? { windLevel: Math.max(...windValues) } : {}),
         ...(now ? { weatherCode: now.weatherCode } : {}),
-        dayWeatherCode: daily.dayWeatherCode, nightWeatherCode: daily.nightWeatherCode,
-        summary: now ? `${now.weatherText}，${daily.dayWeatherText === daily.nightWeatherText ? daily.dayWeatherText : `${daily.dayWeatherText}转${daily.nightWeatherText}`}` : daily.dayWeatherText === daily.nightWeatherText ? daily.dayWeatherText : `${daily.dayWeatherText}转${daily.nightWeatherText}`,
+        ...(daily ? { dayWeatherCode: daily.dayWeatherCode, nightWeatherCode: daily.nightWeatherCode } : {}),
+        summary: weatherSummary(now, hours, daily),
       },
       endpointFreshness: endpointEvidence(used), availabilityReason: "available", ...(attribution ? { attribution } : {}),
     });
@@ -104,6 +108,11 @@ function attributionOf(results: Array<[WeatherEndpoint, WeatherCacheResult<any>]
   return results.length ? { label: "天气服务由 QWeather 提供" as const, url: "https://www.qweather.com" as const, sources, license } : undefined;
 }
 function latestUpdatedAt(results: Array<[WeatherEndpoint, WeatherCacheResult<any>]>) { return results.map(([, value]) => value.updatedAt).sort().at(-1)!; }
+function weatherSummary(now: NormalizedWeatherNow | undefined, hours: NormalizedWeatherHour[], daily: NormalizedWeatherDay | undefined) {
+  const dailySummary = daily ? daily.dayWeatherText === daily.nightWeatherText ? daily.dayWeatherText : `${daily.dayWeatherText}转${daily.nightWeatherText}` : undefined;
+  if (now) return dailySummary ? `${now.weatherText}，${dailySummary}` : now.weatherText;
+  return dailySummary ?? hours[0]?.weatherText ?? "实时天气可用";
+}
 function windLevel(value: string | undefined) { if (!value) return undefined; const match = value.match(/\d+/g)?.map(Number); return match?.length ? Math.min(12, Math.max(...match)) : undefined; }
 function isRainCode(value: string | undefined) { return value !== undefined && /^3\d{2}$/.test(value); }
 function daysBetween(from: string, to: string) { return Math.round((Date.parse(`${to}T12:00:00Z`) - Date.parse(`${from}T12:00:00Z`)) / 86_400_000); }
