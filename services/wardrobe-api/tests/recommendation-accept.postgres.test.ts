@@ -10,6 +10,10 @@ import { generateRecommendationsV3, RecommendationAcceptService, RecommendationP
 import { PublishDailyRecommendationCommandSchema, type AcceptRecommendationCommand, type RecommendationGarment } from "@wardrobe/cloud-contracts";
 import { buildLocationlessInput } from "./fixtures/recommendations/v2-scenarios.js";
 import { mapGarmentRole } from "../src/recommendations/engine.js";
+import { buildApp } from "../src/app.js";
+import type { SessionService } from "../src/auth/session.js";
+import type { RecommendationReadService } from "../src/recommendations/read-service.js";
+import type { ImageCropService } from "../src/image-crop/service.js";
 
 const url = process.env.WARDROBE_RECOMMENDATION_TEST_DATABASE_URL ?? "postgresql:///wardrobe_test";
 const schema = `run_recommendation_accept_${process.pid}`;
@@ -95,6 +99,52 @@ describe("recommendation accept real PostgreSQL transaction", () => {
     const accepted = await new RecommendationAcceptService(pool, { clock: () => new Date("2026-07-14T01:00:00.000Z") }).accept(s.userId, "device-a", s.input.dateContextInput.date, s.accept);
     expect(accepted).toMatchObject({ status: "committed", idempotentReplay: false });
     expect(accepted.plan.payload.garmentIds).toEqual(s.accept.selectedGarmentIds);
+  });
+
+  for (const invalidation of [
+    { name: "unavailable status", sql: "payload=jsonb_set(payload,'{status}','\"laundry\"')" },
+    { name: "recommendation blocked", sql: "payload=jsonb_set(payload,'{recommendationBlocked}','true')" },
+    { name: "missing primary image", sql: "payload=payload-'primaryImageUrl'" },
+  ]) it(`maps prevalidation ${invalidation.name} to recommendation_no_longer_valid without partial state`, async () => {
+    const s = await seed();
+    await pool.query(`update garments set ${invalidation.sql} where id=$1`, [s.accept.selectedGarmentIds[0]]);
+    const error = await new RecommendationAcceptService(pool, { clock: () => new Date("2026-07-14T01:00:00.000Z") })
+      .accept(s.userId, "device-invalid", s.input.dateContextInput.date, s.accept).catch((value) => value);
+    expect(error).toMatchObject({ statusCode: 409, code: "conflict", serverData: { reasonCode: "recommendation_no_longer_valid" }, details: { reasonCode: "recommendation_no_longer_valid" } });
+    for (const table of ["outfit_plans", "recommendation_actions", "sync_mutations"]) expect((await pool.query(`select count(*)::int n from ${table} where user_id=$1`, [s.userId])).rows[0].n).toBe(0);
+    expect((await pool.query("select count(*)::int n from asset_bindings where user_id=$1 and owner_entity_type='outfitPlan'", [s.userId])).rows[0].n).toBe(0);
+  });
+
+  it("returns the prevalidation conflict through the real Fastify HTTP accept route", async () => {
+    const previous = process.env.RECOMMENDATION_ACCEPT_ENABLED;
+    const s = await seed();
+    await pool.query("update garments set payload=jsonb_set(payload,'{recommendationBlocked}','true') where id=$1", [s.accept.selectedGarmentIds[0]]);
+    process.env.RECOMMENDATION_ACCEPT_ENABLED = "true";
+    const session = { authenticate: async () => ({ userId: s.userId, sessionId: "session-1", deviceId: "device-http" }) } as unknown as SessionService;
+    const app = buildApp({
+      storageProvider: null,
+      imageCropService: { close: async () => {} } as ImageCropService,
+      sessionService: session,
+      recommendationReadService: { read: async () => ({ timezone: "Asia/Shanghai", pairConsistent: false, items: [] }) } as unknown as RecommendationReadService,
+      recommendationAcceptService: new RecommendationAcceptService(pool, { clock: () => new Date("2026-07-14T01:00:00.000Z") }),
+    });
+    try {
+      const response = await app.inject({ method: "POST", url: `/api/recommendations/daily/${s.input.dateContextInput.date}/accept`, headers: { authorization: "Bearer controlled", "x-wardrobe-device-id": "device-http" }, payload: s.accept });
+      expect(response.statusCode).toBe(409);
+      expect(response.json()).toMatchObject({ code: "conflict", details: { reasonCode: "recommendation_no_longer_valid" } });
+      for (const table of ["outfit_plans", "recommendation_actions", "sync_mutations"]) expect((await pool.query(`select count(*)::int n from ${table} where user_id=$1`, [s.userId])).rows[0].n).toBe(0);
+    } finally {
+      await app.close();
+      if (previous === undefined) delete process.env.RECOMMENDATION_ACCEPT_ENABLED; else process.env.RECOMMENDATION_ACCEPT_ENABLED = previous;
+    }
+  });
+
+  it("does not disguise validator infrastructure failures as recommendation conflicts", async () => {
+    const s = await seed();
+    const infrastructure = new Error("controlled-database-unavailable");
+    const service = new RecommendationAcceptService(pool, { validateSelection: async () => { throw infrastructure; } });
+    await expect(service.accept(s.userId, "device-error", s.input.dateContextInput.date, s.accept)).rejects.toBe(infrastructure);
+    for (const table of ["outfit_plans", "recommendation_actions", "sync_mutations"]) expect((await pool.query(`select count(*)::int n from ${table} where user_id=$1`, [s.userId])).rows[0].n).toBe(0);
   });
 
   it("serializes two devices and demotes an explicitly replaced primary to backup", async () => {

@@ -194,11 +194,15 @@ export const WeatherOverviewSchema = z.object({
     weatherUpdatedAt: DateTimeSchema,
     temperatureMinC: z.number().finite().min(-60).max(60).optional(),
     temperatureMaxC: z.number().finite().min(-60).max(60).optional(),
+    currentTemperatureC: z.number().finite().min(-80).max(80).optional(),
     feelsLikeMinC: z.number().finite().min(-80).max(80).optional(),
     feelsLikeMaxC: z.number().finite().min(-80).max(80).optional(),
+    currentFeelsLikeC: z.number().finite().min(-100).max(100).optional(),
     rainProbability: z.number().finite().min(0).max(100).optional(),
     windLevel: z.number().int().min(0).max(12).optional(),
     weatherCode: z.string().regex(/^\d{3}$/).optional(),
+    dayWeatherCode: z.string().regex(/^\d{3}$/).optional(),
+    nightWeatherCode: z.string().regex(/^\d{3}$/).optional(),
     summary: z.string().trim().min(1).max(120),
   }).strict(),
   endpointFreshness: z.array(WeatherEndpointEvidenceSchema).max(3),
@@ -214,7 +218,7 @@ export const WeatherOverviewSchema = z.object({
   const weather = value.weatherEvidence;
   if ((weather.temperatureMinC === undefined) !== (weather.temperatureMaxC === undefined)) ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["weatherEvidence"], message: "temperature range must be complete" });
   if ((weather.feelsLikeMinC === undefined) !== (weather.feelsLikeMaxC === undefined)) ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["weatherEvidence"], message: "feels-like range must be complete" });
-  if (value.contextMode !== "forecast" && ["temperatureMinC", "temperatureMaxC", "feelsLikeMinC", "feelsLikeMaxC", "rainProbability", "windLevel", "weatherCode"].some((field) => weather[field as keyof typeof weather] !== undefined)) {
+  if (value.contextMode !== "forecast" && ["temperatureMinC", "temperatureMaxC", "currentTemperatureC", "feelsLikeMinC", "feelsLikeMaxC", "currentFeelsLikeC", "rainProbability", "windLevel", "weatherCode", "dayWeatherCode", "nightWeatherCode"].some((field) => weather[field as keyof typeof weather] !== undefined)) {
     ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["weatherEvidence"], message: "fallback modes cannot expose weather values" });
   }
 });

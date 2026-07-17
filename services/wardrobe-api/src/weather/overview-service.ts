@@ -74,10 +74,13 @@ export class WeatherOverviewService {
       weatherEvidence: {
         weatherSource: "forecast", weatherConfidence: participatingEndpoints.some((endpoint) => results.get(endpoint)?.freshness === "stale") ? 0.7 : 1,
         weatherUpdatedAt: latestUpdatedAt(used), temperatureMinC: daily.temperatureMinC, temperatureMaxC: daily.temperatureMaxC,
+        ...(now ? { currentTemperatureC: now.temperatureC } : {}),
         ...(now?.feelsLikeC === undefined ? {} : { feelsLikeMinC: now.feelsLikeC, feelsLikeMaxC: now.feelsLikeC }),
+        ...(now?.feelsLikeC === undefined ? {} : { currentFeelsLikeC: now.feelsLikeC }),
         ...(rainValues.length ? { rainProbability: Math.max(...rainValues) } : {}),
         ...(windValues.length ? { windLevel: Math.max(...windValues) } : {}),
         ...(now ? { weatherCode: now.weatherCode } : {}),
+        dayWeatherCode: daily.dayWeatherCode, nightWeatherCode: daily.nightWeatherCode,
         summary: now ? `${now.weatherText}，${daily.dayWeatherText === daily.nightWeatherText ? daily.dayWeatherText : `${daily.dayWeatherText}转${daily.nightWeatherText}`}` : daily.dayWeatherText === daily.nightWeatherText ? daily.dayWeatherText : `${daily.dayWeatherText}转${daily.nightWeatherText}`,
       },
       endpointFreshness: endpointEvidence(used), availabilityReason: "available", ...(attribution ? { attribution } : {}),

@@ -7,13 +7,35 @@
 - 查看某次提交详情：`git show <commit>`
 - 新记录继续置顶，默认控制在 3–5 条短 bullet；原始测试日志、命令输出和长证据写入专项 evidence 文档或交由 Git 保存。
 
+## 2026-07-17 / v2.1.24-test / Codex — Wardora 新首页生产实施 P0 合同收口
+
+- WeatherOverview 向后兼容增加当前温度/体感与日夜天气码，真实映射 QWeather now/daily；locationless、weather fallback、超出最大 stale 均不泄漏伪天气字段。
+- 从已验收原型 SHA-256 `30c97e315d2efd0d9bfcf10125177d58cf9edb479b8d9310476752277cbe37db` 冻结 62/62 纯数据视觉字典、`998` 静态降级和小程序生成输出；未复制 Canvas、假数据或 localStorage。
+- App/小程序 HTTP 错误层保留 status/code/retryable/Retry-After/reasonCode/requestId；新增 Asia/Shanghai 业务日期纯函数，以及取消 primary + 可选提升 backup 的严格合同、冲突码和手写事务不变量 Fixture，未提前实现 P2 UI 或服务端事务。
+- UI 唯一规范与生成预览冻结未来五入口、推荐/衣橱分栏、四种正常状态、模块级错误、today 动态/tomorrow 静态、reduced-motion 与计划保护；P0 未切路由、未实现可见 UI/Canvas、未构建 APK 或上传体验版。
+- 风险等级 High（共享合同、服务端天气与跨端 HTTP）；API full `338/338`、专项 `20/20`、cloud/API/root/小程序 typecheck、domain catalog/生成一致性、App production build、UI spec build/check/render 与 diff check 通过。生产备份 `wardrobe-20260717-114624.sql`、隔离恢复、新旧镜像 migrator 与迁移 26 通过；API/Worker 已切 `wardrobe-api:320bf3d`，内外 health/ready/version、401/404、开关和零重启通过，保留 `3db5335` 回滚镜像。QWeather 专项严格为 now/hourly/daily 各 1 次、缓存 3 行、重复读取上游增量 0；旧 C1 全链脚本的同一天气证据通过，但合成推荐未产出 current，保留为非 P0 天气风险。未触发 subagent：用户未通知。
+
+## 2026-07-17 / v2.1.24-test / Codex — 新首页生产构建与业务闭环 PRD
+
+- 新增 v0.7.5 新首页生产实施文档，收口首页信息架构、模块交互、地点/天气/推荐数据流、七日按需加载和跨端 Canvas 边界。
+- 明确新注册、换手机、重装、多设备并发、会话过期、跨午夜、天气/推荐/图片失败等状态，以及空状态与真实错误的区分。
+- 将“设为当日穿搭、更换、取消安排、确认已穿、撤销已穿、保存正式套装”拆为独立业务事务，并确定下一步先做生产前置合同收口。
+- 本次为 Low 风险纯文档，不修改运行时代码、数据库、生产环境、App 版本或小程序；本轮未新增 subagent，复用上一轮 App/小程序只读盘点结果。
+
 ## 当前接力基线（2026-07-15）
 
 - **版本与平台**：`package.json` 为 `2.1.24-test`；正式开发基线为 App/API/共享代码 `main` 与小程序 `wechat/miniprogram`。App 仍以 Android 竖屏、线上唯一数据源和固定签名 APK 为交付边界。
-- **生产 API**：运行代码提交/镜像 `6fb576e`，API/Worker 零重启；已验证直接回滚镜像为 `wardrobe-api:4148541`，数据库迁移数 `26`。最近核验内外网 health/ready/version 200、鉴权边界 401。
+- **生产 API**：运行代码提交/镜像 `3db5335`，API/Worker 零重启；已验证直接回滚镜像为 `wardrobe-api:6fb576e`，数据库迁移数 `26`。最近核验内外网 health/ready/version 200、鉴权边界 401。
 - **生产能力**：推荐 V2 与 QWeather 保持启用，V3 realtime/accept 已分阶段启用；PAW、天气预警和历史气候保持关闭。当前推荐链覆盖只读 GET、实时 resolve、今日/明日 worker 预热、事务 accept、原子双日发布、lease/fencing、上海业务日期和共享天气缓存。
 - **最近交付**：自动裁切双路线与 Android 真机闭环、全量动效/浮层/返回栈修复、App/小程序跨端一致性审计、微信登录与账号注销、固定签名 APK 和小程序体验版均已有历史验证记录。
 - **接手要求**：编辑前仍须结合 Git、任务相关 evidence、真实源码与生产现场复核；本摘要不是跳过迁移、部署、Android 或小程序验证的依据。
+
+## 2026-07-15 / v2.1.24-test / Codex — 实时推荐 2A-5.1 accept 失效错误边界
+
+- 默认 accept validator 对已清洗/归档、blocked、缺主图或其他当前硬过滤失效改抛明确领域错误；service 只将该错误映射为 `409 conflict` 和 `details.reasonCode=recommendation_no_longer_valid`。
+- 取消事务内 validator 的 blanket catch；数据库、天气、解析等非业务异常保持原有 5xx/重试语义，失效采用仍不产生计划、action、mutation、资产 binding 或 primary 变更。
+- 红灯为 `5 failed / 17 passed`；修复后真实 PostgreSQL accept `22/22`、推荐合同/路由/实时专项 `20/20`、API full `327/327`及 API/root typecheck 通过。风险等级 High；未触发 subagent：用户未通知。
+- 生产备份、部署及 Bearer+device 合成账号 HTTP 验证通过：失效 accept 为 409 且零半状态，恢复后合法 accept/幂等不退化，清理残留为 0；realtime/accept 仍为 `true`。
 
 ## 2026-07-15 / v2.1.24-test / Codex — 实时推荐 2A-5 accept/readiness 收口
 

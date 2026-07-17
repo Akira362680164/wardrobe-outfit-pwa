@@ -13,6 +13,7 @@ describe("WeatherOverview evidence aggregation", () => {
       clock: () => new Date("2026-07-14T12:00:00.000Z"),
     });
     expect(await service.get("user", "2026-07-14")).toMatchObject({ contextMode: "locationless", availabilityReason: "locationless", endpointFreshness: [] });
+    expect((await service.get("user", "2026-07-14")).weatherEvidence).not.toHaveProperty("currentTemperatureC");
     expect(calls).toBe(0);
   });
 
@@ -29,13 +30,20 @@ describe("WeatherOverview evidence aggregation", () => {
     };
     const service = new WeatherOverviewService({ resolver: { resolve: async (_u, date) => ({ ...context, targetDate: date }) }, cache: { get: async (key: any) => { endpoints.push(key.endpoint); return { data: data[key.endpoint], ...meta }; } }, provider: {} as any, clock: () => new Date("2026-07-14T12:00:00.000Z") });
     const today = await service.get("user", "2026-07-14");
-    expect(today).toMatchObject({ contextMode: "forecast", weatherEvidence: { temperatureMinC: 26, temperatureMaxC: 33, feelsLikeMinC: 34, rainProbability: 100, windLevel: 6, weatherCode: "305" } });
+    expect(today).toMatchObject({ contextMode: "forecast", weatherEvidence: {
+      temperatureMinC: 26, temperatureMaxC: 33, currentTemperatureC: 31,
+      feelsLikeMinC: 34, currentFeelsLikeC: 34, rainProbability: 100, windLevel: 6,
+      weatherCode: "305", dayWeatherCode: "101", nightWeatherCode: "305",
+    } });
     expect(today.weatherEvidence.summary).toContain("小雨");
     endpoints.length = 0;
     const tomorrow = await service.get("user", "2026-07-15");
     expect(endpoints.sort()).toEqual(["daily", "hourly"]);
     expect(tomorrow.weatherEvidence).not.toHaveProperty("feelsLikeMinC");
+    expect(tomorrow.weatherEvidence).not.toHaveProperty("currentTemperatureC");
+    expect(tomorrow.weatherEvidence).not.toHaveProperty("currentFeelsLikeC");
     expect(tomorrow.weatherEvidence).not.toHaveProperty("weatherCode");
+    expect(tomorrow.weatherEvidence).toMatchObject({ dayWeatherCode: "100", nightWeatherCode: "150" });
     expect(tomorrow.weatherEvidence.rainProbability).toBe(10);
   });
 
@@ -60,6 +68,23 @@ describe("WeatherOverview evidence aggregation", () => {
     const result = await service.get("user", "2026-07-22");
     expect(result).toMatchObject({ contextMode: "weather_fallback", locationSource: "travel", availabilityReason: "forecast_out_of_range" });
     expect(result.weatherEvidence).not.toHaveProperty("temperatureMinC");
+    expect(result.weatherEvidence).not.toHaveProperty("currentTemperatureC");
+    expect(result.weatherEvidence).not.toHaveProperty("currentFeelsLikeC");
+    expect(result.weatherEvidence).not.toHaveProperty("dayWeatherCode");
+    expect(result.weatherEvidence).not.toHaveProperty("nightWeatherCode");
     expect(calls).toBe(0);
+  });
+
+  it("does not leak pseudo fields after every cached endpoint is beyond max stale", async () => {
+    const service = new WeatherOverviewService({
+      resolver: { resolve: async () => context },
+      cache: { get: async () => { throw new Error("max stale expired"); } }, provider: {} as any,
+      clock: () => new Date("2026-07-14T12:00:00.000Z"),
+    });
+    const result = await service.get("user", "2026-07-14");
+    expect(result).toMatchObject({ contextMode: "weather_fallback", availabilityReason: "provider_unavailable" });
+    for (const field of ["currentTemperatureC", "currentFeelsLikeC", "weatherCode", "dayWeatherCode", "nightWeatherCode"]) {
+      expect(result.weatherEvidence).not.toHaveProperty(field);
+    }
   });
 });

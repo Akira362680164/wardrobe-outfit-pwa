@@ -26,13 +26,21 @@ export const WorkspaceErrorCodeSchema = z.enum([
   "image_upload",
   "invalid_request",
   "mutation_in_progress",
+  "rate_limited",
+  "weather_unavailable",
 ]);
+
+export const WorkspaceErrorDetailsSchema = z.object({
+  reasonCode: z.string().trim().min(1).max(120),
+}).strict();
 
 export const WorkspaceErrorResponseSchema = z.object({
   code: WorkspaceErrorCodeSchema,
   message: z.string().min(1),
   retryable: z.boolean(),
+  retryAfterSeconds: z.number().int().positive().optional(),
   requestId: z.string().min(1).optional(),
+  details: WorkspaceErrorDetailsSchema.optional(),
   serverData: z.unknown().optional(),
 });
 

@@ -15,6 +15,9 @@ import {
   normalizeStyleList,
   normalizeSubcategoryForCategory,
   normalizeSystemColorValue,
+  QWEATHER_VISUAL_CODES,
+  QWEATHER_VISUAL_DICTIONARY,
+  resolveQWeatherVisual,
 } from "../packages/domain-catalog/src/index";
 
 assert.equal(COLOR_CATALOG.length, COLOR_OPTIONS.length, "color options must derive from the catalog");
@@ -49,5 +52,10 @@ assert.deepEqual(normalizeStyleList(["casual", "invalid", "casual"]), ["casual"]
 assert.equal(normalizeSystemColorValue("黑色"), "黑");
 assert.equal(normalizeSystemColorValue("丹宁蓝"), "牛仔蓝");
 assert.equal(normalizeSystemColorValue("不存在颜色"), null);
+assert.equal(QWEATHER_VISUAL_CODES.length, 62, "QWeather visual catalog must cover 62 official codes");
+assert.equal(new Set(QWEATHER_VISUAL_CODES).size, 62, "QWeather visual codes must be unique");
+assert.deepEqual(Object.keys(QWEATHER_VISUAL_DICTIONARY), [...QWEATHER_VISUAL_CODES]);
+assert.equal(resolveQWeatherVisual("998").static, true);
+assert.equal(resolveQWeatherVisual("998").unknownCode, "998");
 
 console.log("domain catalog tests passed");

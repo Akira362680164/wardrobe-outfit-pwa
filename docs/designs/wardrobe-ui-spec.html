@@ -2,7 +2,7 @@
 <!--
   DO NOT EDIT BY HAND.
   Generated from docs/designs/wardrobe-ui-spec.md by scripts/generate-ui-spec-preview.mjs.
-  Source SHA256: 759c15e31387b3aafe0207ca4019deff3ffb452f536963144bb29173ceb106dc
+  Source SHA256: c090d744a957c7cdd5c38225e425881e7a5778f5649c0c0d5b75ac77c5477c30
 -->
 <html lang="zh-CN">
 <head>
@@ -375,7 +375,7 @@
       right: 14px;
       bottom: 14px;
       display: grid;
-      grid-template-columns: repeat(4, 1fr);
+      grid-template-columns: 1fr 1fr 56px 1fr 1fr;
       gap: 6px;
       border: 1px solid rgba(53,92,125,.18);
       border-radius: var(--nav-radius);
@@ -397,6 +397,7 @@
     .visual-floating-nav .nav-tab b { font-size: 11px; font-weight: 950; }
     .visual-floating-nav .demo-icon { width: 18px; height: 18px; }
     .visual-floating-nav .active { background: var(--denim); color: white; }
+    .visual-floating-nav .nav-tab:nth-child(3) { align-self: center; min-height: 48px; border-radius: 50%; background: var(--clay); color: white; }
     .route-chain, .pipeline, .step-flow {
       display: flex;
       flex-wrap: wrap;
@@ -838,7 +839,7 @@
           <div class="meta-row">
             <span class="pill active">v0.2-final</span>
             <span class="pill">Markdown 唯一事实源</span>
-            <span class="pill">Source SHA256 759c15e31387</span>
+            <span class="pill">Source SHA256 c090d744a957</span>
           </div>
           <h1>衣橱穿搭助手 UI 规范</h1>
           <p>本页由规范 Markdown 自动生成，用于快速走查页面框架、组件契约、通知样式和验收映射。</p>
@@ -944,18 +945,28 @@
         </div>
         <div class="visual-scroll-cards"><span></span><span></span><span></span></div>
         <div class="visual-floating-nav" data-visual="bottom-nav-concentric">
-          <span class="nav-tab active"><svg class="demo-icon" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 4 4 6l2 4 2-1v11h8V9l2 1 2-4-4-2-2 3h-4L8 4z"></path></svg><b>衣橱</b></span>
-          <span class="nav-tab"><svg class="demo-icon" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m12 3 8 4-8 4-8-4 8-4z"></path><path d="m4 12 8 4 8-4"></path><path d="m4 17 8 4 8-4"></path></svg><b>套装</b></span>
+          <span class="nav-tab active"><svg class="demo-icon" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m3 11 9-8 9 8"></path><path d="M5 10v10h14V10"></path><path d="M9 20v-6h6v6"></path></svg><b>首页</b></span>
+          <span class="nav-tab"><svg class="demo-icon" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m12 3 8 4-8 4-8-4 8-4z"></path><path d="m4 12 8 4 8-4"></path><path d="m4 17 8 4 8-4"></path></svg><b>穿搭</b></span>
+          <span class="nav-tab"><svg class="demo-icon" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14"></path><path d="M5 12h14"></path></svg><b>创建</b></span>
           <span class="nav-tab"><svg class="demo-icon" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 8h12l-1 13H7L6 8z"></path><path d="M9 8a3 3 0 0 1 6 0"></path></svg><b>种草</b></span>
           <span class="nav-tab"><svg class="demo-icon" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M19 12a7 7 0 0 0-.1-1l2-1.5-2-3.4-2.4 1a7 7 0 0 0-1.7-1L14.5 3h-5l-.4 3.1a7 7 0 0 0-1.7 1l-2.4-1-2 3.4L5.1 11a7 7 0 0 0 0 2l-2 1.5 2 3.4 2.4-1a7 7 0 0 0 1.7 1l.4 3.1h5l.4-3.1a7 7 0 0 0 1.7-1l2.4 1 2-3.4-2.1-1.5a7 7 0 0 0 .1-1z"></path></svg><b>设置</b></span>
         </div>
       </div>
-      <div class="production-shot-grid"><figure class="production-shot"><img src="v03-alpha-real-screenshots/wardrobe_home_390_top.png" alt="衣橱 Shell"><figcaption><b>衣橱 Shell</b><span>顶部控件、Toast、圆形 FAB 和底部 Tab 以生产截图为准</span></figcaption></figure><figure class="production-shot"><img src="v03-alpha-real-screenshots/settings_home_390_top.png" alt="设置 Shell"><figcaption><b>设置 Shell</b><span>设置页同一底部 Tab，不重新设计页面结构</span></figcaption></figure></div></div><div class="module-copy"><p>每个页面由以下层组成：</p>
+      <div class="production-shot-grid"><figure class="production-shot"><img src="v03-alpha-real-screenshots/wardrobe_home_390_top.png" alt="当前衣橱 Shell"><figcaption><b>当前衣橱 Shell</b><span>P0 保留现状；P1 将完整衣橱能力迁入新首页衣橱分栏</span></figcaption></figure><figure class="production-shot"><img src="v03-alpha-real-screenshots/settings_home_390_top.png" alt="当前设置 Shell"><figcaption><b>当前设置 Shell</b><span>P0 只生成未来五入口预览，不切换当前生产导航</span></figcaption></figure></div></div><div class="module-copy"><p>每个页面由以下层组成：</p>
 <ol><li>基础页面容器。</li><li>独立顶部层：状态栏安全区、标题、返回/关闭、必要筛选或统计。</li><li>可滚动内容区。</li><li>可选 FAB。</li><li>可选底部导航或底部操作栏。</li><li>可选覆盖层：Toast、Popover、Sheet、Dialog、Lightbox、Cropper。</li></ol>
 <p>顶部层不加硬边框和额外渐变过渡区。滚动内容可经过顶部层下方，但应被 glass 背景遮住。</p>
 <p>二级和三级页面的 <code>AppSubPageTopBar</code> 必须是透明底 + 毛玻璃层：只保留页面顶部整体 glass，不允许在标题区域下方再画独立矩形条、固定高度色带、实心白色矩形或白色条块；返回、关闭、更多按钮可以保留自己的圆角按钮背景。录入流顶部同样遵守该规则，标题、步骤说明和进度条叠在 glass 层上。</p>
 <p>底部导航固定 4 项：</p>
-<div class="table-wrap"><table><thead><tr><th>Tab key</th><th>显示</th><th>图标语义</th><th>首页 route</th></tr></thead><tbody><tr><td><code>wardrobe</code></td><td>衣橱</td><td>衣物</td><td><code>wardrobe_home</code></td></tr><tr><td><code>recommend</code></td><td>套装</td><td>套装/推荐</td><td><code>outfit_home</code></td></tr><tr><td><code>shopping</code></td><td>种草</td><td>购物袋</td><td><code>wishlist_home</code></td></tr><tr><td><code>settings</code></td><td>设置</td><td>齿轮</td><td><code>settings_home</code></td></tr></tbody></table></div></div></section>
+<div class="table-wrap"><table><thead><tr><th>Tab key</th><th>显示</th><th>图标语义</th><th>首页 route</th></tr></thead><tbody><tr><td><code>wardrobe</code></td><td>衣橱</td><td>衣物</td><td><code>wardrobe_home</code></td></tr><tr><td><code>recommend</code></td><td>套装</td><td>套装/推荐</td><td><code>outfit_home</code></td></tr><tr><td><code>shopping</code></td><td>种草</td><td>购物袋</td><td><code>wishlist_home</code></td></tr><tr><td><code>settings</code></td><td>设置</td><td>齿轮</td><td><code>settings_home</code></td></tr></tbody></table></div>
+<p><strong>新首页生产目标（P0 规范冻结，P1 才切路由）</strong></p>
+<p>当前运行时仍保持上表的衣橱/套装/种草/设置，不在 P0 修改。后续新首页切换后的底部结构固定为四个功能 Tab 加一个中央创建按钮；中央 <code>+</code> 不是第五个 Tab，不持有选中态，也不改变当前功能 Tab。</p>
+<div class="table-wrap"><table><thead><tr><th>位置</th><th>目标 Tab / 动作</th><th>内容与行为</th><th>计划保护</th></tr></thead><tbody><tr><td>左一</td><td>首页</td><td>天气、当日穿搭、每日推荐和首页内衣橱分栏；登录后默认进入</td><td>已确认的主计划或已穿事实优先于推荐</td></tr><tr><td>左二</td><td>穿搭</td><td>周计划、月历、正式套装、旅行计划和打包</td><td>只通过显式事务动作更换或取消计划</td></tr><tr><td>中央</td><td><code>+</code></td><td>打开新增单品、套装或种草的创建菜单</td><td>不是 Tab，不重置首页日期或分栏</td></tr><tr><td>右二</td><td>种草</td><td>买前评估、已买、不感兴趣和归档</td><td>不参与当日主计划自动变化</td></tr><tr><td>右一</td><td>设置</td><td>账号、MiniMax、穿衣画像、城市与诊断</td><td>城市变化只刷新未采用推荐，不覆盖计划</td></tr></tbody></table></div>
+<p>首页内部只保留“推荐 / 衣橱”一个分段控件，默认选中推荐；原 <code>wardrobe_home</code> 的完整衣橱能力迁入“衣橱”分栏，不并存两套长期首页。中央创建菜单关闭后焦点返回 <code>+</code>，Android Back 在首页主层沿用退出确认。</p>
+<p>首页必须按模块组合状态，不得用一个整页 <code>loading/success/error</code> 代替。工作区读取失败是整页错误；工作区成功后，天气和推荐各自 loading、error、retry，任一模块失败都不能遮蔽另一模块或把未知衣橱误显示为空。</p>
+<div class="table-wrap"><table><thead><tr><th>衣橱</th><th>城市</th><th>天气模块</th><th>推荐模块</th><th>正常主操作</th></tr></thead><tbody><tr><td>空/未就绪</td><td>无城市</td><td>中性设置地点空状态</td><td>录入引导</td><td>录入第一件衣物</td></tr><tr><td>空/未就绪</td><td>有城市</td><td>正常天气</td><td>显示缺失角色</td><td>继续录入</td></tr><tr><td>已就绪</td><td>无城市</td><td>中性设置地点空状态</td><td><code>locationless</code> 通用推荐</td><td>查看或采用</td></tr><tr><td>已就绪</td><td>有城市</td><td>正常天气</td><td><code>forecast</code> 天气增强推荐</td><td>查看或采用</td></tr></tbody></table></div>
+<p>天气视觉只做装饰，合法文字、温度、地点、更新时间、attribution 和操作由原生控件承载。今天使用 <code>now.weatherCode</code> 与当前温度，可在 P3 使用动态 Canvas；明天使用 <code>daily.dayWeatherCode</code>，保持静态。无城市、<code>weather_fallback</code>、超过最大 stale、未知代码 <code>998</code> 或 Canvas 初始化失败时使用中性静态降级，不显示伪温度、伪降雨或伪天气图形。</p>
+<p>动效遵守“状态而非演出”：今天的循环天气只在页面可见、卡片可见且非 reduced-motion 时运行；明天始终静态；后台、离屏和离开首页立即暂停。<code>prefers-reduced-motion: reduce</code> 下禁止循环、粒子、闪电和大位移，只保留静态天气帧与 <code>120–160ms</code> 交叉淡化。页面内容默认可见，Canvas 故障不影响滚动、文字和按钮。</p>
+<p>计划保护是首页的最高展示优先级：存在主计划时先显示“当日穿搭”，存在已穿事实时显示“今天已穿”；天气、城市、worker 或推荐 revision 变化只能更新未采用推荐或提示风险，不能自动替换、降级、取消或隐藏主计划。取消 primary 与可选提升 backup 必须等待同一服务端事务提交并读回后更新 UI，失败时保持原状态。</p></div></section>
 <section class="section" id="5-route-与页面状态矩阵"><h2>5. Route 与页面状态矩阵</h2><div class="module-visual" aria-label="5. Route 与页面状态矩阵 视觉示意">
       <div class="route-chain">
         <span>首页</span><i></i><span>搜索</span><i></i><span>详情</span><i></i><span>编辑</span>
@@ -964,6 +975,7 @@
         <span>Tab 主页面</span><span>详情页</span><span>子页面</span><span>录入流</span>
       </div></div><div class="module-copy"><p>代码事实源是 <code>src/lib/app-route.ts</code> 的 <code>AppRouteName</code>。画板可覆盖更多“页面级状态”，但不能替代路由事实。</p>
 <div class="table-wrap"><table><thead><tr><th>Route</th><th>所属 Tab</th><th>类型</th><th>底部导航</th><th>顶部栏</th><th>全局创建</th><th>默认返回</th></tr></thead><tbody><tr><td><code>wardrobe_home</code></td><td>衣橱</td><td>主页面</td><td>是</td><td>主页面自有顶部区</td><td>是</td><td>停留 / 退出确认</td></tr><tr><td><code>garment_detail</code></td><td>衣橱或种草来源</td><td>详情</td><td>否</td><td><code>AppSubPageTopBar</code></td><td>否</td><td><code>returnRoute</code> 或来源页</td></tr><tr><td><code>outfit_home</code></td><td>套装</td><td>主页面</td><td>是</td><td>主页面自有顶部区</td><td>是</td><td>停留 / 退出确认</td></tr><tr><td><code>outfit_detail</code></td><td>套装</td><td>详情</td><td>否</td><td><code>AppSubPageTopBar</code></td><td>否</td><td><code>outfit_home</code> 或 <code>outfit_calendar</code></td></tr><tr><td><code>outfit_calendar</code></td><td>套装</td><td>子页面</td><td>否</td><td><code>AppSubPageTopBar</code></td><td>否</td><td><code>outfit_home</code></td></tr><tr><td><code>wishlist_home</code></td><td>种草</td><td>主页面</td><td>是</td><td>主页面自有顶部区</td><td>是</td><td>停留 / 退出确认</td></tr><tr><td><code>wishlist_purchased</code></td><td>种草</td><td>子页面</td><td>否</td><td><code>AppSubPageTopBar</code></td><td>否</td><td><code>wishlist_home</code></td></tr><tr><td><code>wishlist_rejected</code></td><td>种草</td><td>子页面</td><td>否</td><td><code>AppSubPageTopBar</code></td><td>否</td><td><code>wishlist_home</code></td></tr><tr><td><code>wishlist_archived</code></td><td>种草</td><td>子页面</td><td>否</td><td><code>AppSubPageTopBar</code></td><td>否</td><td><code>wishlist_home</code></td></tr><tr><td><code>settings_home</code></td><td>设置</td><td>主页面</td><td>是</td><td>主页面自有顶部区</td><td>否</td><td>停留 / 退出确认</td></tr><tr><td><code>account_management</code></td><td>设置</td><td>子页面</td><td>否</td><td><code>AppSubPageTopBar</code></td><td>否</td><td><code>settings_home</code></td></tr><tr><td><code>account_deletion</code></td><td>设置</td><td>子页面 / 最终确认 Sheet</td><td>否</td><td><code>AppSubPageTopBar</code></td><td>否</td><td><code>account_management</code>；处理中不可返回业务页</td></tr><tr><td><code>change_password</code></td><td>设置</td><td>子页面</td><td>否</td><td><code>AppSubPageTopBar</code></td><td>否</td><td><code>account_management</code></td></tr><tr><td><code>intake_single_item</code></td><td>衣橱</td><td>录入流</td><td>否</td><td><code>IntakeFlowShell</code></td><td>否</td><td><code>returnTo</code></td></tr><tr><td><code>intake_outfit</code></td><td>套装</td><td>录入流</td><td>否</td><td><code>IntakeFlowShell</code></td><td>否</td><td><code>returnTo</code></td></tr><tr><td><code>intake_wishlist</code></td><td>种草</td><td>录入流</td><td>否</td><td><code>IntakeFlowShell</code></td><td>否</td><td><code>returnTo</code></td></tr></tbody></table></div>
+<p>P1 计划新增独立新首页 route 与 HomeFeed controller；在该 route 真正进入代码前，上表仍是当前路由事实。未来首页 route 必须登记“推荐/衣橱”分栏、所选业务日期、天气模块状态、推荐模块状态、主/备选计划和 Android Back 主层退出语义，不得把这些状态塞回 <code>wardrobe_home</code> 或主大组件。</p>
 <div class="table-wrap"><table><thead><tr><th>Route 类型</th><th>顶部栏</th></tr></thead><tbody><tr><td>主页面</td><td>主页面自有顶部区</td></tr><tr><td>详情页</td><td><code>AppSubPageTopBar</code></td></tr><tr><td>子页面</td><td><code>AppSubPageTopBar</code></td></tr><tr><td>录入流</td><td><code>IntakeFlowShell</code></td></tr><tr><td>覆盖层</td><td>Overlay 自带标题栏</td></tr></tbody></table></div>
 <p>视觉画板可以按“页面级状态”覆盖约 36 个状态：衣橱首页、搜索、统计、衣物详情、编辑衣物、裁切/旋转、单品录入两步、套装首页/详情/编辑/实图、套装录入两步、月历、计划增改查、打包清单、种草首页/详情/编辑/录入/加入衣橱/已买/不感兴趣/归档、设置、试穿画像、参考照片、MiniMax、位置、账号、注销、改密。它们是视觉覆盖清单，不是 route 枚举。</p>
 <p>账号注销入口固定在账号安全页内容最底端，位于退出登录之后，以红色下划线文字呈现，不使用边框、背景或圆角按钮外观；语义控件仍保留至少 44px 点击热区。注销流程依次为风险告知、已有身份任选一种核验、最终永久注销 Sheet。App 只展示邮箱验证码和当前密码，小程序可额外展示当前已绑定微信。最终确认后的处理中与成功状态不得返回业务页面，且只有服务端确认数据库及图片删除完成后才能展示“账号已注销”。</p></div></section>

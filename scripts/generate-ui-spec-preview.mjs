@@ -198,6 +198,8 @@ function icon(name) {
     layers: '<path d="m12 3 8 4-8 4-8-4 8-4z"></path><path d="m4 12 8 4 8-4"></path><path d="m4 17 8 4 8-4"></path>',
     bag: '<path d="M6 8h12l-1 13H7L6 8z"></path><path d="M9 8a3 3 0 0 1 6 0"></path>',
     settings: '<circle cx="12" cy="12" r="3"></circle><path d="M19 12a7 7 0 0 0-.1-1l2-1.5-2-3.4-2.4 1a7 7 0 0 0-1.7-1L14.5 3h-5l-.4 3.1a7 7 0 0 0-1.7 1l-2.4-1-2 3.4L5.1 11a7 7 0 0 0 0 2l-2 1.5 2 3.4 2.4-1a7 7 0 0 0 1.7 1l.4 3.1h5l.4-3.1a7 7 0 0 0 1.7-1l2.4 1 2-3.4-2.1-1.5a7 7 0 0 0 .1-1z"></path>',
+    home: '<path d="m3 11 9-8 9 8"></path><path d="M5 10v10h14V10"></path><path d="M9 20v-6h6v6"></path>',
+    plus: '<path d="M12 5v14"></path><path d="M5 12h14"></path>',
     chevronLeft: '<path d="m15 18-6-6 6-6"></path>',
     chevronDown: '<path d="m6 9 6 6 6-6"></path>',
     check: '<path d="M20 6 9 17l-5-5"></path>',
@@ -453,15 +455,16 @@ function renderSectionVisual(section) {
         </div>
         <div class="visual-scroll-cards"><span></span><span></span><span></span></div>
         <div class="visual-floating-nav" data-visual="bottom-nav-concentric">
-          <span class="nav-tab active">${icon("shirt")}<b>衣橱</b></span>
-          <span class="nav-tab">${icon("layers")}<b>套装</b></span>
+          <span class="nav-tab active">${icon("home")}<b>首页</b></span>
+          <span class="nav-tab">${icon("layers")}<b>穿搭</b></span>
+          <span class="nav-tab">${icon("plus")}<b>创建</b></span>
           <span class="nav-tab">${icon("bag")}<b>种草</b></span>
           <span class="nav-tab">${icon("settings")}<b>设置</b></span>
         </div>
       </div>
       ${productionShotGrid([
-        ["wardrobe_home_390_top.png", "衣橱 Shell", "顶部控件、Toast、圆形 FAB 和底部 Tab 以生产截图为准"],
-        ["settings_home_390_top.png", "设置 Shell", "设置页同一底部 Tab，不重新设计页面结构"],
+        ["wardrobe_home_390_top.png", "当前衣橱 Shell", "P0 保留现状；P1 将完整衣橱能力迁入新首页衣橱分栏"],
+        ["settings_home_390_top.png", "当前设置 Shell", "P0 只生成未来五入口预览，不切换当前生产导航"],
       ])}`;
   }
 
@@ -1018,7 +1021,7 @@ function renderHtml({ frontMatter, sections, colorTokens, sourceHash }) {
       right: 14px;
       bottom: 14px;
       display: grid;
-      grid-template-columns: repeat(4, 1fr);
+      grid-template-columns: 1fr 1fr 56px 1fr 1fr;
       gap: 6px;
       border: 1px solid rgba(53,92,125,.18);
       border-radius: var(--nav-radius);
@@ -1040,6 +1043,7 @@ function renderHtml({ frontMatter, sections, colorTokens, sourceHash }) {
     .visual-floating-nav .nav-tab b { font-size: 11px; font-weight: 950; }
     .visual-floating-nav .demo-icon { width: 18px; height: 18px; }
     .visual-floating-nav .active { background: var(--denim); color: white; }
+    .visual-floating-nav .nav-tab:nth-child(3) { align-self: center; min-height: 48px; border-radius: 50%; background: var(--clay); color: white; }
     .route-chain, .pipeline, .step-flow {
       display: flex;
       flex-wrap: wrap;

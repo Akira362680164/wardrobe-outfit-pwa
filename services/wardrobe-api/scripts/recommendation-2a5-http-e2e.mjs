@@ -55,6 +55,20 @@ try {
     candidateId: candidate.candidateId,
     selectedGarmentIds: candidate.garmentIds,
   };
+  const invalidGarmentId = candidate.garmentIds[0];
+  await pool.query("update garments set payload=jsonb_set(payload,'{recommendationBlocked}','true') where user_id=$1 and id=$2", [userId, invalidGarmentId]);
+  const invalid = await httpResult("POST", `/api/recommendations/daily/${today}/accept`, { ...command, clientMutationId: randomUUID() });
+  const invalidPartial = (await pool.query(`select
+    (select count(*)::int from outfit_plans where user_id=$1) plans,
+    (select count(*)::int from recommendation_actions where user_id=$1) actions,
+    (select count(*)::int from sync_mutations where user_id=$1 and entity_type='outfitPlan') mutations,
+    (select count(*)::int from asset_bindings where user_id=$1 and owner_entity_type='outfitPlan') bindings,
+    (select count(*)::int from outfit_plans where user_id=$1 and payload->>'isPrimary'='true') primaries`, [userId])).rows[0];
+  const invalidConflict = invalid.status === 409
+    && invalid.value?.code === "conflict"
+    && invalid.value?.details?.reasonCode === "recommendation_no_longer_valid"
+    && Object.values(invalidPartial).every((value) => Number(value) === 0);
+  await pool.query("update garments set payload=payload-'recommendationBlocked' where user_id=$1 and id=$2", [userId, invalidGarmentId]);
   const accepted = await http("POST", `/api/recommendations/daily/${today}/accept`, command);
   const replay = await http("POST", `/api/recommendations/daily/${today}/accept`, command);
   const plans = await http("GET", `/api/workspace/outfit-plans?startDate=${today}&endDate=${tomorrow}&limit=50`);
@@ -73,11 +87,13 @@ try {
   const expectedGarments = acceptedPayload.garmentIds ?? [];
   const baselineCache = cacheBefore.length > 0 ? cacheBefore : cacheAfterFirst;
   const cacheReused = baselineCache.length > 0 && JSON.stringify(baselineCache) === JSON.stringify(cacheAfter);
+  const requireWeatherCache = process.env.HTTP_E2E_SKIP_WEATHER_CACHE_GATE !== "true";
   const wearCountsUpdated = expectedGarments.every((id) => Number(wearSummary.garmentWearCounts?.[id]) === 1);
   const passed = first.results?.length === 2
     && first.results.every((result) => ["generated", "reused", "served_stale"].includes(result.status))
     && second.results?.every((result) => ["reused", "served_stale"].includes(result.status))
     && read.pairConsistent === true
+    && invalidConflict
     && accepted.status === "committed" && accepted.idempotentReplay === false
     && replay.idempotentReplay === true && replay.plan?.id === accepted.plan?.id
     && !Object.hasOwn(acceptedPayload, "outfitId")
@@ -86,7 +102,7 @@ try {
     && arraysEqual(wornPayload.actualGarmentIds, expectedGarments)
     && wornPayload.actualGarmentSnapshots?.length === expectedGarments.length
     && wearCountsUpdated
-    && cacheReused;
+    && (!requireWeatherCache || cacheReused);
 
   process.stdout.write(`${JSON.stringify({
     passed,
@@ -95,6 +111,9 @@ try {
     firstStatuses: first.results.map((result) => result.status),
     secondStatuses: second.results.map((result) => result.status),
     pairConsistent: read.pairConsistent,
+    invalidAcceptStatus: invalid.status,
+    invalidReasonCodeMatched: invalid.value?.details?.reasonCode === "recommendation_no_longer_valid",
+    invalidAcceptZeroPartialState: Object.values(invalidPartial).every((value) => Number(value) === 0),
     acceptCommitted: accepted.status === "committed",
     idempotentReplay: replay.idempotentReplay,
     planHasOutfitId: Object.hasOwn(acceptedPayload, "outfitId"),
@@ -103,6 +122,7 @@ try {
     wearCountsUpdated,
     qweatherCacheAvailable: baselineCache.length > 0,
     qweatherCacheReusedWithoutFetchChange: cacheReused,
+    qweatherCacheGateRequired: requireWeatherCache,
   })}\n`);
   if (!passed) exitCode = 2;
 } catch (error) {
@@ -132,7 +152,7 @@ async function seedWardrobe(locationId) {
   if (locationId) {
     await pool.query(`insert into user_location_profiles
       (user_id,location_id,display_name,timezone,revision,client_mutation_id,mutation_fingerprint)
-      values($1,$2,'controlled-cache-location','Asia/Shanghai',1,$3,$4)`, [userId, locationId, randomUUID(), "controlled-http-e2e"]);
+      values($1,$2,'controlled-cache-location','Asia/Shanghai',1,$3,$4)`, [userId, locationId, randomUUID(), "a".repeat(64)]);
   }
   const garments = [
     ["tops", "shirt", "白", "commute", 4, 2], ["tops", "sweater", "黑", "casual", 3, 4],
@@ -181,12 +201,17 @@ async function residualCount() {
 }
 
 async function http(method, path, body, authenticated = true) {
+  const result = await httpResult(method, path, body, authenticated);
+  if (result.status < 200 || result.status >= 300) throw controlled(typeof result.value?.code === "string" ? `http_${result.status}_${result.value.code}` : `http_${result.status}`);
+  return result.value;
+}
+
+async function httpResult(method, path, body, authenticated = true) {
   const headers = { "content-type": "application/json", "x-wardrobe-device-id": deviceId };
   if (authenticated) headers.authorization = `Bearer ${requiredString(accessToken, "authentication_missing")}`;
   const response = await fetch(`${baseUrl}${path}`, { method, headers, ...(body === undefined ? {} : { body: JSON.stringify(body) }) });
   const value = await response.json().catch(() => ({}));
-  if (!response.ok) throw controlled(typeof value?.code === "string" ? `http_${response.status}_${value.code}` : `http_${response.status}`);
-  return value;
+  return { status: response.status, value };
 }
 
 function arraysEqual(left, right) { return Array.isArray(left) && Array.isArray(right) && left.length === right.length && left.every((value, index) => value === right[index]); }
