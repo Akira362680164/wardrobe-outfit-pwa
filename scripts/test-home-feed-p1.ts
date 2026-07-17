@@ -146,9 +146,9 @@ const controllerSource = readFileSync(join(root, "src/components/home/use-home-f
 const clientSource = readFileSync(join(root, "src/lib/online/online-home-client.ts"), "utf8");
 const pageSource = readFileSync(join(root, "src/components/home/wardora-home-view.tsx"), "utf8");
 assert.match(controllerSource, /readHomeRecommendations[\s\S]*resolveHomeRecommendations/, "current read must precede resolve");
-assert.match(controllerSource, /Promise\.all\(dates\.map/, "today and tomorrow weather must prefetch concurrently");
+assert.match(controllerSource, /loadHomeWeatherDates\(\s*missingDates/, "today and tomorrow weather must settle independently");
 assert.match(controllerSource, /useLayoutEffect[\s\S]*setLocationSnapshot\(null\)/, "account changes must clear previous account data before paint");
-assert.match(clientSource, /await onlineRequest[\s\S]*return readHomeLocation\(session\)/, "city mutations must commit then read back");
+assert.match(clientSource, /await onlineRequest[\s\S]*return readHomeLocation\(session, signal\)/, "city mutations must commit then read back");
 assert.doesNotMatch(controllerSource + clientSource, /localStorage|indexedDB|Outbox|optimistic/i, "home feed must not add local business persistence");
 assert.doesNotMatch(pageSource, /设为今日穿搭|替换计划|取消计划|确认已穿/, "P1 recommendation card must remain read-only");
 assert.doesNotMatch(pageSource, /navigator\.geolocation|getCurrentPosition|watchPosition|<canvas/i, "P1 must not request location or add Canvas runtime");

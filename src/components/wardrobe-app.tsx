@@ -1035,7 +1035,7 @@ export function WardrobeApp({ cloudAuth }: { cloudAuth?: WardrobeCloudAuth } = {
             <WardoraHomeView
               controller={homeFeed}
               garments={homeFeedGarments}
-              wardrobeContent={renderWardrobeCapability()}
+              renderWardrobeContent={() => renderWardrobeCapability()}
             />
           ) : null}
           {route.name === "wardrobe_home" || route.name === "garment_detail" ? (

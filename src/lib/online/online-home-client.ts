@@ -63,30 +63,30 @@ export async function searchHomeCities(query: string, session: Session, signal?:
   return WeatherLocationCandidatesResponseSchema.parse(value).candidates;
 }
 
-export async function setHomeCity(locationId: string, expectedRevision: number, clientMutationId: string, session: Session): Promise<HomeLocationSnapshot> {
+export async function setHomeCity(locationId: string, expectedRevision: number, clientMutationId: string, session: Session, signal?: AbortSignal): Promise<HomeLocationSnapshot> {
   await onlineRequest("/api/settings/location-profile", {
-    method: "PUT", body: { locationId, expectedRevision, clientMutationId }, session,
+    method: "PUT", body: { locationId, expectedRevision, clientMutationId }, session, signal,
   });
-  return readHomeLocation(session);
+  return readHomeLocation(session, signal);
 }
 
-export async function clearHomeCity(expectedRevision: number, clientMutationId: string, session: Session): Promise<HomeLocationSnapshot> {
+export async function clearHomeCity(expectedRevision: number, clientMutationId: string, session: Session, signal?: AbortSignal): Promise<HomeLocationSnapshot> {
   await onlineRequest("/api/settings/location-profile", {
-    method: "DELETE", body: { expectedRevision, clientMutationId }, session,
+    method: "DELETE", body: { expectedRevision, clientMutationId }, session, signal,
   });
-  return readHomeLocation(session);
+  return readHomeLocation(session, signal);
 }
 
-export async function setTemporaryCity(locationId: string, expectedRevision: number, clientMutationId: string, session: Session): Promise<HomeLocationSnapshot> {
+export async function setTemporaryCity(locationId: string, expectedRevision: number, clientMutationId: string, session: Session, signal?: AbortSignal): Promise<HomeLocationSnapshot> {
   await onlineRequest("/api/settings/location-override", {
-    method: "PUT", body: { locationId, expectedRevision, clientMutationId }, session,
+    method: "PUT", body: { locationId, expectedRevision, clientMutationId }, session, signal,
   });
-  return readHomeLocation(session);
+  return readHomeLocation(session, signal);
 }
 
-export async function clearTemporaryCity(expectedRevision: number, clientMutationId: string, session: Session): Promise<HomeLocationSnapshot> {
+export async function clearTemporaryCity(expectedRevision: number, clientMutationId: string, session: Session, signal?: AbortSignal): Promise<HomeLocationSnapshot> {
   await onlineRequest("/api/settings/location-override", {
-    method: "DELETE", body: { expectedRevision, clientMutationId }, session,
+    method: "DELETE", body: { expectedRevision, clientMutationId }, session, signal,
   });
-  return readHomeLocation(session);
+  return readHomeLocation(session, signal);
 }

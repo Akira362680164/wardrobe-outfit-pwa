@@ -5,13 +5,14 @@ import { AlertCircle, Check, ChevronRight, CloudSun, Loader2, MapPin, RefreshCw,
 import { useReducedMotion } from "motion/react";
 
 import type { HomeFeedController } from "@/components/home/use-home-feed-controller";
+import { HomeFeedTabPanels } from "@/components/home/home-feed-tab-panels";
 import { AppPressable, MotionSheet } from "@/components/motion-common";
 import type { HomeGarment } from "@/lib/home/home-feed-model";
 
-export function WardoraHomeView({ controller, garments, wardrobeContent }: {
+export function WardoraHomeView({ controller, garments, renderWardrobeContent }: {
   controller: HomeFeedController;
   garments: readonly HomeGarment[];
-  wardrobeContent: ReactNode;
+  renderWardrobeContent: () => ReactNode;
 }) {
   const recommendationRef = useRef<HTMLDivElement>(null);
   const [feedTab, setFeedTab] = useState<"recommendation" | "wardrobe">("recommendation");
@@ -100,11 +101,12 @@ export function WardoraHomeView({ controller, garments, wardrobeContent }: {
       </section>
 
       <div className="grid min-h-11 grid-cols-2 rounded-2xl bg-ink/5 p-1" role="tablist" aria-label="首页内容">
-        <AppPressable className={`rounded-xl text-sm font-semibold ${feedTab === "recommendation" ? "bg-white text-denim shadow-sm" : "text-ink/55"}`} role="tab" aria-selected={feedTab === "recommendation"} onClick={() => setFeedTab("recommendation")}>推荐</AppPressable>
-        <AppPressable className={`rounded-xl text-sm font-semibold ${feedTab === "wardrobe" ? "bg-white text-denim shadow-sm" : "text-ink/55"}`} role="tab" aria-selected={feedTab === "wardrobe"} onClick={() => setFeedTab("wardrobe")}>衣橱</AppPressable>
+        <AppPressable id="home-recommendation-tab" aria-controls="home-recommendation-panel" className={`rounded-xl text-sm font-semibold ${feedTab === "recommendation" ? "bg-white text-denim shadow-sm" : "text-ink/55"}`} role="tab" aria-selected={feedTab === "recommendation"} onClick={() => setFeedTab("recommendation")}>推荐</AppPressable>
+        <AppPressable id="home-wardrobe-tab" aria-controls="home-wardrobe-panel" className={`rounded-xl text-sm font-semibold ${feedTab === "wardrobe" ? "bg-white text-denim shadow-sm" : "text-ink/55"}`} role="tab" aria-selected={feedTab === "wardrobe"} onClick={() => setFeedTab("wardrobe")}>衣橱</AppPressable>
       </div>
 
-      <section ref={recommendationRef} hidden={feedTab !== "recommendation"} className="scroll-mt-4 rounded-[24px] bg-white/90 p-4 shadow-sm ring-1 ring-ink/8" data-testid="home-recommendation-module">
+      <HomeFeedTabPanels activeTab={feedTab} recommendation={(
+      <section ref={recommendationRef} className="scroll-mt-4 rounded-[24px] bg-white/90 p-4 shadow-sm ring-1 ring-ink/8" data-testid="home-recommendation-module">
         <div className="mb-3 flex items-center justify-between gap-3">
           <div>
             <p className="text-xs text-ink/50">今日建议</p>
@@ -130,14 +132,16 @@ export function WardoraHomeView({ controller, garments, wardrobeContent }: {
           </div>
         ) : null}
       </section>
+      )} renderWardrobe={() => (
 
-      <section hidden={feedTab !== "wardrobe"} className="rounded-[22px] bg-white/80 p-4 ring-1 ring-ink/8" data-testid="home-wardrobe-column">
+      <section className="rounded-[22px] bg-white/80 p-4 ring-1 ring-ink/8" data-testid="home-wardrobe-column">
         <div className="flex min-h-11 items-center justify-between font-semibold">
           <span className="flex items-center gap-2"><Shirt size={19} />我的衣橱</span>
           <span className="text-sm font-normal text-ink/50">{garments.length} 件</span>
         </div>
-        <div className="pt-3">{wardrobeContent}</div>
+        <div className="pt-3">{renderWardrobeContent()}</div>
       </section>
+      )} />
 
       <CitySheet controller={controller} />
     </div>
@@ -162,11 +166,21 @@ function CitySheet({ controller }: { controller: HomeFeedController }) {
         ) : null}
         <label className="flex min-h-12 items-center gap-2 rounded-2xl bg-mist px-3 ring-1 ring-ink/8">
           <Search size={18} aria-hidden="true" />
-          <input className="min-w-0 flex-1 bg-transparent text-base outline-none" value={controller.cityQuery} onChange={(event) => void controller.searchCities(event.target.value)} placeholder="搜索城市" aria-label="搜索城市" />
+          <input
+            className="min-w-0 flex-1 bg-transparent text-base outline-none"
+            value={controller.cityQuery}
+            onChange={(event) => controller.searchCities(event.target.value)}
+            onCompositionStart={controller.startCityComposition}
+            onCompositionEnd={(event) => controller.endCityComposition(event.currentTarget.value)}
+            placeholder="至少输入 2 个字搜索城市"
+            aria-label="搜索城市"
+          />
           {controller.citySearchState === "loading" ? <Loader2 className="animate-spin" size={17} aria-label="搜索中" /> : null}
         </label>
-        {controller.citySearchState === "error" ? <p className="mt-2 text-sm text-clay">城市搜索失败，请修改关键词重试。</p> : null}
-        {controller.cityMutationError ? <p className="mt-2 text-sm text-clay" role="alert">{controller.cityMutationError}</p> : null}
+        {controller.citySearchState === "error" ? <p className="mt-2 text-sm text-clay" role="alert">{controller.citySearchMessage ?? "城市搜索失败，请修改关键词重试。"}</p> : null}
+        {controller.citySearchState === "rate_limited" ? <p className="mt-2 text-sm text-clay" role="alert">搜索请求过于频繁{controller.citySearchRetryAfter ? `，请在 ${controller.citySearchRetryAfter} 秒后手动重试` : "，请稍后手动重试"}。</p> : null}
+        {controller.cityMutation ? <p className="mt-2 flex min-h-11 items-center gap-2 text-sm text-denim" role="status"><Loader2 className="animate-spin motion-reduce:animate-none" size={17} />正在保存地点，完成后会读取服务器结果…</p> : null}
+        {controller.cityMutationError ? <p className="mt-2 text-sm text-clay" role="alert" data-conflict={controller.cityMutationConflict || undefined}>{controller.cityMutationError}</p> : null}
         <div className="mt-3 grid max-h-[34vh] gap-2 overflow-y-auto">
           {controller.cityCandidates.map((city) => (
             <div key={city.locationId} className="rounded-2xl border border-ink/10 bg-white p-3">

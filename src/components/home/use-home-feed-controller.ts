@@ -14,6 +14,14 @@ import {
   type HomeRecommendationResult,
 } from "@/lib/home/home-feed-model";
 import {
+  HomeCitySearchSession,
+  HomeLocationMutationSession,
+  commitHomeLocation,
+  loadHomeWeatherDates,
+  type HomeLocationAction,
+  type HomeLocationCommand,
+} from "@/lib/home/home-feed-operations";
+import {
   clearHomeCity,
   clearTemporaryCity,
   readHomeLocation,
@@ -49,18 +57,32 @@ export function useHomeFeedController(input: HomeFeedControllerInput) {
   const [cityOpen, setCityOpen] = useState(false);
   const [cityQuery, setCityQuery] = useState("");
   const [cityCandidates, setCityCandidates] = useState<readonly WeatherLocationRef[]>([]);
-  const [citySearchState, setCitySearchState] = useState<"idle" | "loading" | "error">("idle");
+  const [citySearchState, setCitySearchState] = useState<"idle" | "loading" | "error" | "rate_limited">("idle");
+  const [citySearchMessage, setCitySearchMessage] = useState<string | null>(null);
+  const [citySearchRetryAfter, setCitySearchRetryAfter] = useState<number | null>(null);
   const [cityMutation, setCityMutation] = useState<string | null>(null);
   const [cityMutationError, setCityMutationError] = useState<string | null>(null);
+  const [cityMutationConflict, setCityMutationConflict] = useState(false);
   const accountRef = useRef(input.accountId);
   const locationGate = useRef(new HomeRequestGate());
   const weatherGate = useRef(new HomeRequestGate());
   const recommendationGate = useRef(new HomeRequestGate());
-  const searchGate = useRef(new HomeRequestGate());
+  const mutationSession = useRef(new HomeLocationMutationSession());
+  const mutationAbort = useRef<AbortController | null>(null);
   const weatherCache = useRef(new Map<string, WeatherOverview>());
   const recommendationCache = useRef(new Map<string, HomeRecommendationResult>());
 
   const session = useMemo(() => ({ accessToken: input.accessToken, deviceId: input.deviceId }), [input.accessToken, input.deviceId]);
+  const citySearch = useMemo(() => new HomeCitySearchSession({
+    request: (query, signal) => searchHomeCities(query, session, signal),
+    onState: (state) => {
+      setCityQuery(state.query);
+      setCityCandidates(state.candidates);
+      setCitySearchState(state.status === "ready" ? "idle" : state.status);
+      setCitySearchMessage("message" in state ? state.message : null);
+      setCitySearchRetryAfter(state.status === "rate_limited" ? state.retryAfterSeconds ?? null : null);
+    },
+  }), [session]);
 
   const loadLocation = useCallback(async () => {
     if (!input.active || !session.accessToken) return;
@@ -80,19 +102,34 @@ export function useHomeFeedController(input: HomeFeedControllerInput) {
   const loadWeather = useCallback(async () => {
     if (!input.active || !session.accessToken) return;
     const ticket = weatherGate.current.begin(input.accountId, selectedDate);
+    const dates = selectedDate === window.today ? [window.today, window.tomorrow] : [selectedDate];
     const cached = weatherCache.current.get(selectedDate);
-    if (cached) {
-      setWeather({ status: "ready", data: cached });
-      return;
-    }
-    setWeather({ status: "loading" });
+    if (cached) setWeather({ status: "ready", data: cached });
+    else setWeather({ status: "loading" });
+    const missingDates = dates.filter((date) => !weatherCache.current.has(date));
+    if (missingDates.length === 0) return;
     try {
-      const dates = selectedDate === window.today ? [window.today, window.tomorrow] : [selectedDate];
-      const values = await Promise.all(dates.map((date) => readHomeWeather(date, session, ticket.signal)));
+      const settled = await loadHomeWeatherDates(
+        missingDates,
+        (date) => readHomeWeather(date, session, ticket.signal),
+        (date, result) => {
+          if (!weatherGate.current.isCurrent(ticket)) return;
+          if (result.status === "fulfilled") {
+            weatherCache.current.set(result.value.targetDate, result.value);
+            if (date === selectedDate) setWeather({ status: "ready", data: result.value });
+          } else if (date === selectedDate) {
+            setWeather({ status: "error", message: onlineErrorMessage(result.reason) });
+          }
+        },
+      );
       if (!weatherGate.current.isCurrent(ticket)) return;
-      values.forEach((value) => weatherCache.current.set(value.targetDate, value));
+      settled.values.forEach((value) => weatherCache.current.set(value.targetDate, value));
       const next = weatherCache.current.get(selectedDate);
-      if (next) setWeather({ status: "ready", data: next });
+      if (next) {
+        setWeather({ status: "ready", data: next });
+        return;
+      }
+      setWeather({ status: "error", message: onlineErrorMessage(settled.errors.get(selectedDate) ?? new Error("天气响应缺少目标日期")) });
     } catch (error) {
       if (weatherGate.current.isCurrent(ticket)) setWeather({ status: "error", message: onlineErrorMessage(error) });
     }
@@ -198,6 +235,14 @@ export function useHomeFeedController(input: HomeFeedControllerInput) {
       locationGate.current.cancel();
       weatherGate.current.cancel();
       recommendationGate.current.cancel();
+      citySearch.reset(input.accountId);
+      mutationAbort.current?.abort();
+      mutationAbort.current = null;
+      mutationSession.current.reset();
+      setCityOpen(false);
+      setCityMutation(null);
+      setCityMutationError(null);
+      setCityMutationConflict(false);
       return;
     }
     void loadLocation();
@@ -207,8 +252,11 @@ export function useHomeFeedController(input: HomeFeedControllerInput) {
       locationGate.current.cancel();
       weatherGate.current.cancel();
       recommendationGate.current.cancel();
+      mutationAbort.current?.abort();
+      mutationAbort.current = null;
+      mutationSession.current.reset();
     };
-  }, [input.active, input.workspaceRevision, loadLocation, loadRecommendation, loadWeather]);
+  }, [citySearch, input.accountId, input.active, input.workspaceRevision, loadLocation, loadRecommendation, loadWeather]);
 
   useLayoutEffect(() => {
     if (accountRef.current === input.accountId) return;
@@ -216,17 +264,26 @@ export function useHomeFeedController(input: HomeFeedControllerInput) {
     locationGate.current.cancel();
     weatherGate.current.cancel();
     recommendationGate.current.cancel();
-    searchGate.current.cancel();
+    citySearch.reset(input.accountId);
+    mutationAbort.current?.abort();
+    mutationAbort.current = null;
+    mutationSession.current.reset();
     setLocationSnapshot(null);
     setLocationState(idle);
     setWeather(idle);
     setRecommendation(idle);
     setCityCandidates([]);
+    setCityQuery("");
+    setCitySearchMessage(null);
+    setCitySearchRetryAfter(null);
+    setCityMutation(null);
+    setCityMutationError(null);
+    setCityMutationConflict(false);
     setCityOpen(false);
     weatherCache.current.clear();
     recommendationCache.current.clear();
     if (input.active) queueMicrotask(refresh);
-  }, [input.accountId, input.active, refresh]);
+  }, [citySearch, input.accountId, input.active, refresh]);
 
   useEffect(() => {
     if (!input.active || typeof document === "undefined") return;
@@ -234,7 +291,7 @@ export function useHomeFeedController(input: HomeFeedControllerInput) {
       if (document.hidden) {
         weatherGate.current.cancel();
         recommendationGate.current.cancel();
-        searchGate.current.cancel();
+        citySearch.reset(input.accountId);
         return;
       }
       const next = homeBusinessWindow(new Date());
@@ -249,7 +306,7 @@ export function useHomeFeedController(input: HomeFeedControllerInput) {
     };
     document.addEventListener("visibilitychange", onVisibility);
     return () => document.removeEventListener("visibilitychange", onVisibility);
-  }, [input.active, refresh, window.today]);
+  }, [citySearch, input.accountId, input.active, refresh, window.today]);
 
   const activeLocation = useMemo<HomeFeedInput["location"]>(() => {
     const override = locationSnapshot?.override.override;
@@ -272,42 +329,52 @@ export function useHomeFeedController(input: HomeFeedControllerInput) {
     plans: input.plans,
   }), [activeLocation, input.garments, input.plans, input.workspaceRevision, recommendation, selectedDate, weather, window.today]);
 
-  const searchCities = useCallback(async (query: string) => {
+  const searchCities = useCallback((query: string) => {
     setCityQuery(query);
-    const trimmed = query.trim();
-    if (!trimmed || !session.accessToken) {
-      searchGate.current.cancel();
-      setCityCandidates([]);
-      setCitySearchState("idle");
-      return;
-    }
-    const ticket = searchGate.current.begin(input.accountId, trimmed);
-    setCitySearchState("loading");
-    try {
-      const candidates = await searchHomeCities(trimmed, session, ticket.signal);
-      if (!searchGate.current.isCurrent(ticket)) return;
-      setCityCandidates(candidates);
-      setCitySearchState("idle");
-    } catch {
-      if (searchGate.current.isCurrent(ticket)) setCitySearchState("error");
-    }
-  }, [input.accountId, session]);
+    if (session.accessToken) citySearch.update(input.accountId, query);
+  }, [citySearch, input.accountId, session.accessToken]);
 
-  const commitLocation = useCallback(async (kind: "home" | "temporary" | "clear_home" | "clear_temporary", locationId?: string) => {
+  const startCityComposition = useCallback(() => citySearch.startComposition(), [citySearch]);
+  const endCityComposition = useCallback((query: string) => citySearch.endComposition(input.accountId, query), [citySearch, input.accountId]);
+
+  const commitLocation = useCallback(async (kind: HomeLocationAction, locationId?: string) => {
     if (!session.accessToken || cityMutation) return;
     setCityMutation(kind);
     setCityMutationError(null);
-    const mutationId = globalThis.crypto?.randomUUID?.() ?? `00000000-0000-4000-8000-${String(Date.now()).padStart(12, "0").slice(-12)}`;
+    setCityMutationConflict(false);
+    const expectedRevision = kind === "home" || kind === "clear_home" ? locationSnapshot?.profile.revision ?? 0 : locationSnapshot?.override.revision ?? 0;
+    const command: HomeLocationCommand = { accountId: input.accountId, sessionId: input.deviceId, action: kind, locationId, expectedRevision };
+    const controller = new AbortController();
+    mutationAbort.current?.abort();
+    mutationAbort.current = controller;
     try {
-      const next = kind === "home"
-        ? await setHomeCity(locationId!, locationSnapshot?.profile.revision ?? 0, mutationId, session)
-        : kind === "temporary"
-          ? await setTemporaryCity(locationId!, locationSnapshot?.override.revision ?? 0, mutationId, session)
-          : kind === "clear_home"
-            ? await clearHomeCity(locationSnapshot?.profile.revision ?? 0, mutationId, session)
-            : await clearTemporaryCity(locationSnapshot?.override.revision ?? 0, mutationId, session);
-      setLocationSnapshot(next);
-      setLocationState({ status: "ready", data: next });
+      const result = await commitHomeLocation({
+        session: mutationSession.current,
+        command,
+        signal: controller.signal,
+        mutate: (clientMutationId, signal) => kind === "home"
+          ? setHomeCity(locationId!, expectedRevision, clientMutationId, session, signal)
+          : kind === "temporary"
+            ? setTemporaryCity(locationId!, expectedRevision, clientMutationId, session, signal)
+            : kind === "clear_home"
+              ? clearHomeCity(expectedRevision, clientMutationId, session, signal)
+              : clearTemporaryCity(expectedRevision, clientMutationId, session, signal),
+        readLatest: (signal) => readHomeLocation(session, signal),
+      });
+      if (result.status === "stale") return;
+      if (result.status === "conflict_unresolved") {
+        setCityMutationConflict(true);
+        setCityMutationError(`地点设置发生冲突，读取最新设置失败：${onlineErrorMessage(result.error)}`);
+        return;
+      }
+      setCityMutation(null);
+      setLocationSnapshot(result.snapshot);
+      setLocationState({ status: "ready", data: result.snapshot });
+      if (result.status === "conflict") {
+        setCityMutationConflict(true);
+        setCityMutationError("地点已在其他设备更新，已加载最新设置，请确认后重试。");
+        return;
+      }
       setCityOpen(false);
       setCityQuery("");
       setCityCandidates([]);
@@ -316,17 +383,26 @@ export function useHomeFeedController(input: HomeFeedControllerInput) {
       void loadWeather();
       void loadRecommendation();
     } catch (error) {
-      setCityMutationError(onlineErrorMessage(error));
+      if (!controller.signal.aborted) setCityMutationError(onlineErrorMessage(error));
     } finally {
-      setCityMutation(null);
+      if (!controller.signal.aborted) setCityMutation(null);
+      if (mutationAbort.current === controller) mutationAbort.current = null;
     }
-  }, [cityMutation, loadRecommendation, loadWeather, locationSnapshot, session]);
+  }, [cityMutation, input.accountId, input.deviceId, loadRecommendation, loadWeather, locationSnapshot, session]);
+
+  useEffect(() => () => {
+    citySearch.dispose();
+    mutationAbort.current?.abort();
+    mutationSession.current.reset();
+  }, [citySearch]);
 
   return {
     window, selectedDate, setSelectedDate, viewModel,
     locationState, locationSnapshot,
     retryLocation: loadLocation, retryWeather, retryRecommendation, refresh,
-    cityOpen, setCityOpen, cityQuery, cityCandidates, citySearchState, searchCities, cityMutation, cityMutationError, commitLocation,
+    cityOpen, setCityOpen, cityQuery, cityCandidates, citySearchState, citySearchMessage, citySearchRetryAfter,
+    searchCities, startCityComposition, endCityComposition,
+    cityMutation, cityMutationError, cityMutationConflict, commitLocation,
   };
 }
 

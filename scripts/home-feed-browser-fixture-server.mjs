@@ -3,6 +3,7 @@ import http from "node:http";
 const PORT = Number(process.env.HOME_FEED_FIXTURE_PORT ?? 4174);
 const HOST = process.env.HOME_FEED_FIXTURE_HOST ?? "127.0.0.1";
 const APP_ORIGIN = process.env.HOME_FEED_APP_ORIGIN ?? "http://127.0.0.1:4173";
+const MUTATION_DELAY_MS = Number(process.env.HOME_FEED_MUTATION_DELAY_MS ?? 0);
 const city = { locationId: "101020100", displayName: "上海", timezone: "Asia/Shanghai" };
 let profile = { homeCity: null, revision: 0, updatedAt: null };
 let overrideState = { override: null, revision: 0, updatedAt: null };
@@ -25,6 +26,11 @@ function send(response, status, data) {
   response.end(JSON.stringify(data));
 }
 
+function sendMutation(response, data) {
+  if (MUTATION_DELAY_MS > 0) setTimeout(() => send(response, 200, data), MUTATION_DELAY_MS);
+  else send(response, 200, data);
+}
+
 http.createServer((request, response) => {
   if (request.method === "OPTIONS") return send(response, 204, {});
   let body = "";
@@ -35,6 +41,10 @@ http.createServer((request, response) => {
     if (path === "/api/auth/login" && request.method === "POST") {
       let account = "";
       try { account = JSON.parse(body).account ?? ""; } catch { /* malformed login stays on fixture account A */ }
+      if (account.includes("222")) {
+        profile = { homeCity: null, revision: 0, updatedAt: null };
+        overrideState = { override: null, revision: 0, updatedAt: null };
+      }
       return send(response, 200, {
       accessToken: "browser-fixture-access-token",
       accessTokenExpiresAt: "2099-01-01T00:00:00.000Z",
@@ -52,11 +62,11 @@ http.createServer((request, response) => {
     if (path === "/api/weather/locations/search") return send(response, 200, { candidates: [city] });
     if (path === "/api/settings/location-profile" && request.method === "PUT") {
       profile = { homeCity: city, revision: profile.revision + 1, updatedAt: now() };
-      return send(response, 200, profile);
+      return sendMutation(response, profile);
     }
     if (path === "/api/settings/location-profile" && request.method === "DELETE") {
       profile = { homeCity: null, revision: profile.revision + 1, updatedAt: now() };
-      return send(response, 200, profile);
+      return sendMutation(response, profile);
     }
     if (path === "/api/settings/location-override" && request.method === "PUT") {
       const revision = overrideState.revision + 1;
@@ -68,11 +78,11 @@ http.createServer((request, response) => {
         },
         revision, updatedAt: now(),
       };
-      return send(response, 200, overrideState);
+      return sendMutation(response, overrideState);
     }
     if (path === "/api/settings/location-override" && request.method === "DELETE") {
       overrideState = { override: null, revision: overrideState.revision + 1, updatedAt: now() };
-      return send(response, 200, overrideState);
+      return sendMutation(response, overrideState);
     }
     if (path === "/api/weather/overview") {
       const targetDate = url.searchParams.get("date");
