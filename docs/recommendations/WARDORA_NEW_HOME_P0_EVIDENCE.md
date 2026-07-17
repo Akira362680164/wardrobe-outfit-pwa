@@ -7,49 +7,36 @@
 - P0 共享合同实现提交：`68273f6`；App/API/共享主线合并提交：`320bf3d`。
 - P0 生产收口记录：`05fb39b`，为 P0.1 开始时 `main` / `origin/main` 基线。
 - 小程序串行合入提交：`8f2b0c4`，为 P0.1 开始时 `wechat/miniprogram` / `origin/wechat/miniprogram` 基线。
-- P0.1 在独立 worktree 和 `codex/wardora-home-p01-p1-20260717` 分支开发；两个 PAW PoC worktree 不在本任务范围。
+- P0.1 实现提交：`ef9e59d`；P1 实现提交：`15bdd9c`；正式 `main` 已串行推送，小程序共享同步提交为 `2b14e4d`。
+- 实施使用独立 worktree；两个 PAW PoC worktree 未读取、修改或清理。
 
 ## 本地测试证据
-
-P0 已记录的完整门禁（P0.1 未重跑时均视为历史证据）：
-
-- API full：`338/338`；P0 专项：`20/20`。
-- cloud contracts、API、root 与小程序 typecheck 通过。
-- domain catalog / 小程序生成一致性、App production build、UI spec build/check/render 和 `git diff --check` 通过。
 
 P0.1 当前轮已重新执行：
 
 - WeatherOverview 部分 endpoint、天气未知 code、取消 primary 合同专项：`33/33`。
 - UI spec preview build/check/contract/render 通过，已冻结四种正常状态、三种错误、单一地点入口、七日取消、today/tomorrow、rAF/FPS/DPR、reduced-motion 与计划保护。
+- API full `341/341`，cloud contracts、API/root/小程序 typecheck、root logic/build、domain catalog、小程序生成一致性、review gate 与 `git diff --check` 通过。
 
 ## 备份、迁移与生产镜像
 
-以下是 `05fb39b` 中已经记录的 P0 生产现场证据，本文档创建时未重新执行：
-
-- 脱敏备份标识：`wardrobe-20260717-114624.sql`；已在隔离数据库完成恢复。
-- 新旧镜像 migrator 均能读取迁移 26；没有执行逆向迁移。
-- 当时 API 与 recommendation worker 运行 `wardrobe-api:320bf3d`，零非预期重启。
-- 当时保留的单一已验证回滚镜像为 `wardrobe-api:3db5335`。
-- 生产变更只保留当前镜像和一个已验证回滚镜像；不将 PostgreSQL 镜像、volume、备份或 Secret 纳入清理。
-
-P0.1 如以新的服务端/共享代码进入 `main`，上述历史证据不代替新一轮备份、隔离恢复/兼容门禁、部署与镜像留存复核。
+- 当前脱敏备份标识：`wardrobe-20260717-192148.sql`，大小 `4,550,897` bytes、权限 `0600`；摘要只在部署日志留存。
+- 备份已恢复到隔离数据库；旧镜像 `320bf3d` 与新镜像 `15bdd9c` 的 migrator 均读取迁移 `26`，未执行逆向迁移。隔离数据库已删除。
+- API 与 recommendation worker 当前共同运行 `wardrobe-api:15bdd9c`，镜像 ID `d4aa5fe91380`，均为 running、零重启。
+- 单一回滚镜像为部署前当前版本 `wardrobe-api:320bf3d`；更旧 `3db5335` 已在确认无容器引用后精确移除。PostgreSQL 镜像、volume、备份和 Secret 未纳入清理。
 
 ## 生产 HTTP 与开关
 
-以下为 P0 已记录、P0.1 文档创建时未重新执行的现场结果：
-
-- 内部与公网 `health`、`ready`、`version` 均为 HTTP 200，version 指向 `320bf3d`。
+- 内部与公网 `health`、`ready`、`version` 均为 HTTP 200，version 指向 `15bdd9c`。
 - 未鉴权的受保护路由返回 401；不存在的路由返回 404，不泄漏内部详情。
-- recommendation V2、realtime、accept 保持启用；PAW、天气预警与历史气候保持关闭。
+- recommendation V2 shadow/current/worker、realtime、accept 与 QWeather 保持启用；三项 PAW、天气预警与历史气候保持关闭。
 
 ## QWeather 受控证据
 
-以下为 P0 已记录、P0.1 文档创建时未重新执行的受控调用：
-
-- `now`、`hourly`、`daily` 各调用 1 次，共写入 3 条共享缓存证据。
+- 本轮生产严格只执行一次受控脚本：`now`、`hourly`、`daily` 各调用 1 次，共写入 3 条隔离 schema 缓存证据。
 - 相同 Overview 重复读取的上游增量为 0，证明缓存复用。
 - 未调用分钟降水、空气质量、天气指数、预警、辐照或历史气候 API。
-- 旧 C1 全链脚本的天气证据通过，但合成推荐未产出 current；该项不影响 P0 天气合同结论，仍作为推荐全链未重验风险保留。
+- 脚本的 forecast/缓存/调用上限证据通过；附带的合成推荐仍未产出 current，因此整体退出码为 2。没有为改变结果重复计费调用；该项作为非 P0 天气风险保留。
 
 ## 向后兼容结论
 
@@ -57,6 +44,8 @@ P0.1 如以新的服务端/共享代码进入 `main`，上述历史证据不代�
 - 该断言不能证明“旧已发布客户端能解析新响应”；后者需要冻结的旧客户端 parser/binary 或真实旧版集成测试。
 - P0.1 不把方向相反的 schema 断言写成旧客户端实测证明。
 
-## 未重新执行的证据
+## 未重新执行的边界
 
-文档创建时，以下项目仍只是 `05fb39b` 记录的历史证据：生产备份/恢复、迁移 26、镜像 migrator、生产部署、内外 health/ready/version、401/404、功能开关、零重启和 QWeather 受控上游调用。只有在 P0.1 代码进入正式 `main` 后现场重跑，才可以把它们更新为本轮当前证据。
+- 没有用真实用户账号、坐标或图片做生产业务烟测；P1 的城市/首页交互在浏览器与 Android 合成 Fixture 中验证。
+- 没有冻结旧已发布二进制或 parser，因此仍不宣称“旧客户端实际解析新响应”已证明。
+- 没有上传小程序体验版，也没有启用额外收费天气 API。
