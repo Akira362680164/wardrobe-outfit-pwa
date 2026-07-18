@@ -10,6 +10,7 @@ import {
   homeBusinessWindow,
   shouldRequestMiniLocationPermission,
 } from "../apps/wechat-miniprogram/pages/home/model";
+import { MiniAbortController } from "../apps/wechat-miniprogram/utils/request-cancellation";
 
 const window = homeBusinessWindow(new Date("2026-07-18T15:59:59.000Z"));
 assert.deepEqual(window, {
@@ -71,4 +72,32 @@ assert.match(markup, /scroll-x/);
 assert.match(markup, /canvas[^>]+type="2d"/);
 assert.doesNotMatch(styles, />\s*\*/, "WXSS does not accept a universal child selector");
 
-console.log("miniprogram home P4 fixture tests passed");
+void testRequestCancellation()
+  .then(() => console.log("miniprogram home P4 fixture tests passed"))
+  .catch((error) => {
+    console.error(error);
+    process.exitCode = 1;
+  });
+
+async function testRequestCancellation() {
+  let requestTaskAborted = false;
+  (globalThis as any).getApp = () => ({ globalData: { apiBaseUrl: "https://api.example.test" } });
+  (globalThis as any).wx = {
+    getStorageSync: () => "",
+    setStorageSync: () => undefined,
+    removeStorageSync: () => undefined,
+    showToast: () => undefined,
+    request: (options: any) => ({
+      abort() {
+        requestTaskAborted = true;
+        options.fail({ errMsg: "request:fail abort" });
+      },
+    }),
+  };
+  const { request } = await import("../apps/wechat-miniprogram/services/http");
+  const requestController = new MiniAbortController();
+  const pendingRequest = request({ path: "/api/test", toast: false, signal: requestController.signal });
+  requestController.abort();
+  await assert.rejects(pendingRequest, /请求已取消/);
+  assert.equal(requestTaskAborted, true, "generation cancellation must abort the underlying wx.request task");
+}
