@@ -301,6 +301,24 @@ function renderPartVisual(title) {
       </div>`;
   }
 
+  if (title.includes("新首页 P2")) {
+    return `
+      <div class="part-visual" data-visual="home-p2-write-loop">
+        <div class="home-state-grid">
+          <span>设为今日 / 明日 / 未来日期穿搭</span>
+          <span>替换一件 · 服务端复验</span>
+          <span>确认已穿 / 撤销已穿</span>
+          <span>取消 primary + 恢复 backup</span>
+        </div>
+        <div class="home-contract-row">
+          <span>pending → transaction → readback → success</span>
+          <span>同草稿 mutation ID 稳定 · 草稿变化才更新</span>
+          <span>保存套装独立事务 · 失败不回滚计划</span>
+          <span>409 / timeout / multi-device 不产生半状态</span>
+        </div>
+      </div>`;
+  }
+
   if (/2\.1\s+颜色/.test(title)) {
     return `
       <div class="part-visual" data-visual="color-token-palette">

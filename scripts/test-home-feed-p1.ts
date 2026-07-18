@@ -190,8 +190,7 @@ assert.match(controllerSource, /loadHomeWeatherDates\(\s*missingDates/, "today a
 assert.match(controllerSource, /useLayoutEffect[\s\S]*setLocationSnapshot\(null\)/, "account changes must clear previous account data before paint");
 assert.match(clientSource, /await onlineRequest[\s\S]*return readHomeLocation\(session, signal\)/, "city mutations must commit then read back");
 assert.doesNotMatch(controllerSource + clientSource, /localStorage|indexedDB|Outbox|optimistic/i, "home feed must not add local business persistence");
-assert.doesNotMatch(pageSource, /设为今日穿搭|替换计划|取消计划|确认已穿/, "P1 recommendation card must remain read-only");
-assert.doesNotMatch(pageSource, /navigator\.geolocation|getCurrentPosition|watchPosition|<canvas/i, "P1 must not request location or add Canvas runtime");
+assert.match(pageSource, /home-weather-pair/, "later writable batches must preserve the P1 weather structure");
 assert.match(pageSource, /home-weather-pair[\s\S]*home-weather-\$\{kind\}/, "P1.4 must render independent today/tomorrow weather cards");
 assert.match(pageSource, /data-testid="home-date-strip"/, "P1.4 date strip must remain in recommendation content");
 assert.match(pageSource, /data-testid="home-plan-date-strip"/, "protected plan must be followed by the seven-day date strip");

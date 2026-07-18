@@ -2,7 +2,7 @@
 <!--
   DO NOT EDIT BY HAND.
   Generated from docs/designs/wardrobe-ui-spec.md by scripts/generate-ui-spec-preview.mjs.
-  Source SHA256: 57c447b5f84d2c483aafc6ff888ee04632353a446edad3c5ee701c2c472cde26
+  Source SHA256: b9b7e05a80b513e32548b9d880c0fb2dc65973e795c9c4b8ac183f683cfeca7a
 -->
 <html lang="zh-CN">
 <head>
@@ -839,7 +839,7 @@
           <div class="meta-row">
             <span class="pill active">v0.2-final</span>
             <span class="pill">Markdown 唯一事实源</span>
-            <span class="pill">Source SHA256 57c447b5f84d</span>
+            <span class="pill">Source SHA256 b9b7e05a80b5</span>
           </div>
           <h1>衣橱穿搭助手 UI 规范</h1>
           <p>本页由规范 Markdown 自动生成，用于快速走查页面框架、组件契约、通知样式和验收映射。</p>
@@ -1000,7 +1000,23 @@
           <span>静态 QWeather visual family · 无 Canvas / 定位</span>
         </div>
       </div>
-<ul><li>首屏顺序固定为：Asia/Shanghai 时间语义问候与业务日期 → 天气模块内唯一地点入口 → 今日/明日并排双天气卡 → 推荐/衣橱分栏 → 当前分栏内容。不显示“WARDORA”眉题或自创“今天穿什么”标题。</li><li>今日卡只使用 <code>now/current</code> 证据展示当前温度、高低温、摘要、体感/风；明日卡只使用目标日 <code>daily</code> 证据展示高低温和日间摘要。两卡分别承载 loading/error/fallback，不用今日 now 冒充明日。</li><li>P1.4 只使用共享 QWeather visual family 驱动的静态色调，不创建 Canvas、<code>requestAnimationFrame</code>、粒子或系统定位。点击今天/明天只切换推荐日期并滚到推荐区，不重挂页面。</li><li>七日日期条只存在于“推荐”分栏：无当日主计划时位于推荐内容上方；有主计划或已穿事实时先显示事实卡，日期条紧随事实卡之后且继续允许切换第 3–7 天，不能因计划保护而消失。</li><li>地点文案按所选业务日期使用服务端 <code>resolvedLocation/locationSource</code>，映射为“城市 · 行程/临时/常驻”；旅行日即使没有常驻城市，也不得显示 locationless 或隐藏合法旅行天气。推荐卡来源摘要同步保留合法地点与来源。</li><li>使用供应商天气证据时显示紧凑 QWeather 归属和更新时间；任一合法 stale endpoint 必须明确标注“缓存”和更新时间。locationless、weather fallback 或没有 attribution 的响应不得伪造供应商归属。</li><li>主计划与已穿事实的只读投影保留 garment snapshots、actual snapshots、availability 与 unavailable garment ids；实体仍存在时显示服务器图片，实体已删除时以快照名称回放，未来 blocked 或包含不可用衣物时显示风险提示。</li><li>ready 推荐是原生横向滚动轨道，卡片层级为目标（稳妥/变化/舒适）、服务器衣物缩略图与名称、理由、风险、上下文来源。缺图只显示中性衣物 fallback；禁止使用原型色块假装真实图片。</li><li>横轨使用浏览器/WebView 原生滚动与 <code>touch-action: pan-y</code>，不增加抢手势的 drag controller；所有可点区至少 <code>48dp</code>，按压反馈复用 <code>AppPressable</code>，reduced-motion 取消 smooth scroll 与缩放 spring。</li><li>P1.4 严格只读：不显示采用、替换、取消、已穿或保存套装按钮。新用户“无城市 + 衣橱空”使用中性正常空状态，不使用警告色或“系统异常”。</li><li>视觉对照门禁以 v0.2.3 <code>390x844</code> 为并排基准，同时覆盖 <code>360/390/430px</code> 和 <code>100%/130%</code> 字体，必须核对问候、地点、双天气卡、分栏、日期条位置、横向推荐卡和底栏，并保证页面横向溢出、文字遮挡与非预期 runtime/console/page error 均为 0。</li></ul></div></section>
+<ul><li>首屏顺序固定为：Asia/Shanghai 时间语义问候与业务日期 → 天气模块内唯一地点入口 → 今日/明日并排双天气卡 → 推荐/衣橱分栏 → 当前分栏内容。不显示“WARDORA”眉题或自创“今天穿什么”标题。</li><li>今日卡只使用 <code>now/current</code> 证据展示当前温度、高低温、摘要、体感/风；明日卡只使用目标日 <code>daily</code> 证据展示高低温和日间摘要。两卡分别承载 loading/error/fallback，不用今日 now 冒充明日。</li><li>P1.4 只使用共享 QWeather visual family 驱动的静态色调，不创建 Canvas、<code>requestAnimationFrame</code>、粒子或系统定位。点击今天/明天只切换推荐日期并滚到推荐区，不重挂页面。</li><li>七日日期条只存在于“推荐”分栏：无当日主计划时位于推荐内容上方；有主计划或已穿事实时先显示事实卡，日期条紧随事实卡之后且继续允许切换第 3–7 天，不能因计划保护而消失。</li><li>地点文案按所选业务日期使用服务端 <code>resolvedLocation/locationSource</code>，映射为“城市 · 行程/临时/常驻”；旅行日即使没有常驻城市，也不得显示 locationless 或隐藏合法旅行天气。推荐卡来源摘要同步保留合法地点与来源。</li><li>使用供应商天气证据时显示紧凑 QWeather 归属和更新时间；任一合法 stale endpoint 必须明确标注“缓存”和更新时间。locationless、weather fallback 或没有 attribution 的响应不得伪造供应商归属。</li><li>主计划与已穿事实的只读投影保留 garment snapshots、actual snapshots、availability 与 unavailable garment ids；实体仍存在时显示服务器图片，实体已删除时以快照名称回放，未来 blocked 或包含不可用衣物时显示风险提示。</li><li>ready 推荐是原生横向滚动轨道，卡片层级为目标（稳妥/变化/舒适）、服务器衣物缩略图与名称、理由、风险、上下文来源。缺图只显示中性衣物 fallback；禁止使用原型色块假装真实图片。</li><li>横轨使用浏览器/WebView 原生滚动与 <code>touch-action: pan-y</code>，不增加抢手势的 drag controller；所有可点区至少 <code>48dp</code>，按压反馈复用 <code>AppPressable</code>，reduced-motion 取消 smooth scroll 与缩放 spring。</li><li>P1.4 严格只读：不显示采用、替换、取消、已穿或保存套装按钮。新用户“无城市 + 衣橱空”使用中性正常空状态，不使用警告色或“系统异常”。</li><li>视觉对照门禁以 v0.2.3 <code>390x844</code> 为并排基准，同时覆盖 <code>360/390/430px</code> 和 <code>100%/130%</code> 字体，必须核对问候、地点、双天气卡、分栏、日期条位置、横向推荐卡和底栏，并保证页面横向溢出、文字遮挡与非预期 runtime/console/page error 均为 0。</li></ul>
+<h3>4.3 新首页 P2 计划与穿着写入合同</h3>
+      <div class="part-visual" data-visual="home-p2-write-loop">
+        <div class="home-state-grid">
+          <span>设为今日 / 明日 / 未来日期穿搭</span>
+          <span>替换一件 · 服务端复验</span>
+          <span>确认已穿 / 撤销已穿</span>
+          <span>取消 primary + 恢复 backup</span>
+        </div>
+        <div class="home-contract-row">
+          <span>pending → transaction → readback → success</span>
+          <span>同草稿 mutation ID 稳定 · 草稿变化才更新</span>
+          <span>保存套装独立事务 · 失败不回滚计划</span>
+          <span>409 / timeout / multi-device 不产生半状态</span>
+        </div>
+      </div>
+<ul><li>推荐卡在原有信息层级之后提供结果明确的主按钮；今天、明天和未来日期分别写“设为今日穿搭”“设为明日穿搭”和“安排到 M 月 D 日”。详情 Sheet 承载替换一件、不喜欢和保存为套装，不通过隐藏手势触发。</li><li>“替换一件”每次只允许一个原始位置变化，候选只来自当前工作区中 active、具备主图且同类别的衣物；最终组合仍由推荐采用事务校验模板、归属、状态、天气和最多替换一件。</li><li>所有写入使用稳定 <code>clientMutationId</code>。草稿内容不变的失败重试复用同一 ID，草稿、目标备选或所选衣物变化后才生成新 ID；提交中当前 Sheet 不可关闭，成功并完成服务端工作区读回后才更新事实卡。</li><li>当日穿搭卡提供“确认今天穿了这套 / 更换穿搭 / 取消安排”；blocked 风险存在时不允许无提示确认已穿。已穿事实卡只提供“撤销已穿”，不能直接更换或取消计划。</li><li>更换穿搭必须携带当前 primary ID/revision；新 primary 与旧 primary 降 backup 在同一推荐采用事务完成。取消安排使用专用原子合同，取消 current primary 与可选提升 backup 同一事务提交，失败时保持当前卡片和备选状态。</li><li>采用成功后的“保存到我的套装 / 仅本次使用”是非阻塞 Sheet；保存套装走独立事务，失败不回滚已经成功的计划。推荐详情直接保存套装不创建计划。</li><li>pending、409、未知结果、网络失败和重试错误必须留在当前承载层，保留组合、滚动位置和 mutation ID；不做乐观状态、不新增业务缓存、Outbox 或隐藏队列。</li><li>P2 新增控件继续使用 <code>AppPressable</code>，命中区至少 <code>48dp</code>。Sheet 遵守 safe area、键盘、OverlayStack、Android Back 和 reduced-motion；360–430px、130% 字体不得遮挡主操作或产生横向溢出。</li></ul></div></section>
 <section class="section" id="5-route-与页面状态矩阵"><h2>5. Route 与页面状态矩阵</h2><div class="module-visual" aria-label="5. Route 与页面状态矩阵 视觉示意">
       <div class="route-chain">
         <span>首页</span><i></i><span>搜索</span><i></i><span>详情</span><i></i><span>编辑</span>

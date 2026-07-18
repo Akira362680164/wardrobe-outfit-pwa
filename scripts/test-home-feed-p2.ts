@@ -1,0 +1,34 @@
+import { strict as assert } from "node:assert";
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
+import { buildHomeFeedViewModel, type HomeFeedInput } from "../src/lib/home/home-feed-model";
+
+const date = "2026-07-18";
+const primary = { id: "20000000-0000-4000-8000-000000000001", date, status: "planned" as const, role: "primary", revision: 4, garmentIds: ["a", "b", "c"] };
+const backup = { id: "20000000-0000-4000-8000-000000000002", date, status: "planned" as const, role: "backup", revision: 2, garmentIds: ["d", "e", "f"] };
+const input: HomeFeedInput = { businessDate: date, selectedDate: date, workspace: { status: "ready", revision: 1 }, garments: [], location: { kind: "none", revision: 0 }, weather: { status: "idle" }, recommendation: { status: "ready", data: { status: "protected_plan", protectedPlanEntryId: primary.id } }, plans: [primary, backup] };
+const vm = buildHomeFeedViewModel(input);
+assert.equal(vm.plan?.id, primary.id);
+assert.deepEqual(vm.backupPlans.map((item) => item.id), [backup.id]);
+
+const root = join(import.meta.dirname, "..");
+const page = readFileSync(join(root, "src/components/home/wardora-home-view.tsx"), "utf8");
+const controller = readFileSync(join(root, "src/components/home/use-home-feed-controller.ts"), "utf8");
+const client = readFileSync(join(root, "src/lib/online/online-home-client.ts"), "utf8");
+const cancel = readFileSync(join(root, "services/wardrobe-api/src/recommendations/cancel-service.ts"), "utf8");
+assert.match(page, /设为今日穿搭/);
+assert.match(page, /更换当日穿搭/);
+assert.match(page, /取消并恢复备选/);
+assert.match(page, /确认今天穿了这套/);
+assert.match(page, /plan\.date === today/, "future plans must not expose the worn action");
+assert.match(page, /撤销已穿/);
+assert.match(page, /保存到我的套装/);
+assert.match(page, /ReplacementPicker/);
+assert.match(controller, /businessMutationIds\.current\.get\(key\)/, "unchanged drafts must reuse a mutation id");
+assert.match(controller, /businessMutationIds\.current\.delete\(key\)/, "committed drafts must release their mutation id");
+assert.match(client, /cancelHomePrimaryPlan[\s\S]*\/api\/recommendations\/plans\/cancel-primary/);
+assert.match(cancel, /workspace-plan-date:/);
+assert.match(cancel, /afterPrimaryCancel/);
+assert.match(cancel, /rollback/);
+assert.doesNotMatch(page + controller + client, /localStorage|indexedDB|Outbox/i);
+console.log("home feed P2 fixtures: passed");

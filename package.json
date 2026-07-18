@@ -1,6 +1,6 @@
 {
   "name": "wardrobe-outfit-pwa",
-  "version": "2.1.30-test",
+  "version": "2.1.31-test",
   "private": true,
   "workspaces": [
     "packages/domain-catalog",
@@ -85,6 +85,7 @@
     "test:logic:data-repo": "tsx scripts/test-data-repo.ts",
     "test:logic:app-route": "tsx scripts/test-app-route-navigation.ts && tsx scripts/test-navigation-motion-c1.ts",
     "test:logic:home-feed-p1": "tsx scripts/test-home-feed-p1.ts && tsx scripts/test-home-feed-p11.tsx && tsx scripts/test-home-feed-p12.tsx && tsx scripts/test-home-feed-p13.tsx",
+    "test:logic:home-feed-p2": "tsx scripts/test-home-feed-p2.ts",
     "test:logic:home-feed-p13": "tsx scripts/test-home-feed-p13.tsx",
     "test:logic:home-feed-p12": "tsx scripts/test-home-feed-p12.tsx",
     "test:browser:home-feed-p11": "node scripts/test-home-feed-p11-browser.mjs",

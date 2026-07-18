@@ -1,14 +1,14 @@
 "use client";
 
 import { useMemo, useRef, useState, type ReactNode } from "react";
-import { AlertCircle, Check, ChevronRight, CloudSun, Loader2, MapPin, RefreshCw, Search, Shirt, X } from "lucide-react";
+import { AlertCircle, Check, ChevronRight, CloudSun, Loader2, MapPin, RefreshCw, RotateCcw, Save, Search, Shirt, ThumbsDown, X } from "lucide-react";
 import { useReducedMotion } from "motion/react";
 
 import type { HomeFeedController } from "@/components/home/use-home-feed-controller";
 import { HomeFeedTabPanels } from "@/components/home/home-feed-tab-panels";
 import { AppPressable, MotionSheet } from "@/components/motion-common";
 import { OnlineAssetImage } from "@/components/online/online-asset-image";
-import type { HomeFeedViewModel, HomeGarment, HomeRecommendationCandidate, HomeWeatherViewModel } from "@/lib/home/home-feed-model";
+import type { HomeFeedViewModel, HomeGarment, HomePlan, HomeRecommendationCandidate, HomeWeatherViewModel } from "@/lib/home/home-feed-model";
 import { recommendationPlanAvailabilityMessage, recommendationPlanSnapshotNames } from "@/lib/recommendation-plan-presentation";
 
 export function WardoraHomeView({ controller, garments, renderWardrobeContent }: {
@@ -18,6 +18,7 @@ export function WardoraHomeView({ controller, garments, renderWardrobeContent }:
 }) {
   const recommendationRef = useRef<HTMLDivElement>(null);
   const [feedTab, setFeedTab] = useState<"recommendation" | "wardrobe">("recommendation");
+  const [replaceMode, setReplaceMode] = useState(false);
   const reducedMotion = useReducedMotion();
   const garmentById = useMemo(() => new Map(garments.map((item) => [item.id, item])), [garments]);
   const dates = useMemo(() => Array.from({ length: 7 }, (_, index) => addDays(controller.window.today, index)), [controller.window.today]);
@@ -71,8 +72,9 @@ export function WardoraHomeView({ controller, garments, renderWardrobeContent }:
         {vm.plan ? (
           <div>
             <SectionHeading title={vm.plan.kind === "actual_wear" ? "今天已穿" : "当日穿搭"} subtitle={`${formatShortDate(controller.selectedDate)} · ${vm.plan.kind === "actual_wear" ? "实际穿着已记录" : "计划保护中"}`} />
-            <ReadOnlyPlan plan={vm.plan} garmentById={garmentById} today={controller.window.today} />
+            <CurrentPlanCard plan={vm.plan} backups={vm.backupPlans} garmentById={garmentById} today={controller.window.today} controller={controller} onReplace={() => setReplaceMode(true)} />
             <div className="mt-3" data-testid="home-plan-date-strip"><DateStrip dates={dates} selectedDate={controller.selectedDate} onSelect={controller.setSelectedDate} /></div>
+            {replaceMode ? <div className="mt-3"><SectionHeading title="更换当日穿搭" subtitle="新安排成功后，当前穿搭会保留为备选" action={<AppPressable className="min-h-12 rounded-xl px-3 text-sm font-semibold text-ink/60" onClick={() => setReplaceMode(false)}>取消更换</AppPressable>} /></div> : null}
           </div>
         ) : (
           <div className="mb-2.5 grid grid-cols-[auto_minmax(0,1fr)] items-end gap-3" data-testid="home-recommendation-toolbar">
@@ -80,18 +82,18 @@ export function WardoraHomeView({ controller, garments, renderWardrobeContent }:
             <DateStrip dates={dates} selectedDate={controller.selectedDate} onSelect={controller.setSelectedDate} />
           </div>
         )}
-        {!vm.plan && (vm.recommendation.status === "loading" || vm.recommendation.status === "idle") ? (
+        {(!vm.plan || replaceMode) && (vm.recommendation.status === "loading" || vm.recommendation.status === "idle") ? (
           <ModuleLoading label="正在整理穿搭建议" />
-        ) : !vm.plan && vm.recommendation.status === "error" ? (
+        ) : (!vm.plan || replaceMode) && vm.recommendation.status === "error" ? (
           <RecommendationState title="这次没有拿到新建议" message={vm.recommendation.message} />
-        ) : !vm.plan && vm.recommendation.status === "not_ready" ? (
+        ) : (!vm.plan || replaceMode) && vm.recommendation.status === "not_ready" ? (
           <EmptyRecommendation wardrobeReady={vm.wardrobeReady} />
-        ) : !vm.plan && vm.recommendation.status === "protected" ? (
+        ) : (!vm.plan || replaceMode) && vm.recommendation.status === "protected" ? (
           <RecommendationState title="当日穿搭已保护" message="天气或推荐变化不会自动覆盖已有安排。" />
-        ) : !vm.plan && readyRecommendation ? (
+        ) : (!vm.plan || replaceMode) && readyRecommendation ? (
           <div className="no-scrollbar flex snap-x snap-mandatory gap-2.5 overflow-x-auto pb-2 pt-0.5 [touch-action:pan-x_pan-y]" aria-label="穿搭推荐，横向滚动" data-testid="home-recommendation-rail">
             {readyRecommendation.candidates.map((candidate) => (
-              <RecommendationCard key={candidate.candidateId} candidate={candidate} garmentById={garmentById} contextMode={readyRecommendation.contextMode} sourceSummary={recommendationSourceSummary(readyRecommendation)} />
+              <RecommendationCard key={candidate.candidateId} candidate={candidate} garmentById={garmentById} allGarments={garments} contextMode={readyRecommendation.contextMode} sourceSummary={recommendationSourceSummary(readyRecommendation)} controller={controller} replacePlan={replaceMode ? vm.plan ?? undefined : undefined} />
             ))}
           </div>
         ) : null}
@@ -210,10 +212,15 @@ function SectionHeading({ title, subtitle, action, compact = false }: { title: s
   return <div className={`${compact ? "" : "mb-2.5"} flex min-h-11 items-end justify-between gap-3`}><div><h2 className="text-[18px] font-bold leading-[1.2] tracking-[-0.015em]">{title}</h2><p className="mt-[3px] max-w-[12ch] text-[11px] leading-[1.4] text-ink/55">{subtitle}</p></div>{action}</div>;
 }
 
-function RecommendationCard({ candidate, garmentById, contextMode, sourceSummary }: { candidate: HomeRecommendationCandidate; garmentById: ReadonlyMap<string, HomeGarment>; contextMode: "forecast" | "locationless" | "weather_fallback"; sourceSummary: string }) {
+function RecommendationCard({ candidate, garmentById, allGarments, contextMode, sourceSummary, controller, replacePlan }: { candidate: HomeRecommendationCandidate; garmentById: ReadonlyMap<string, HomeGarment>; allGarments: readonly HomeGarment[]; contextMode: "forecast" | "locationless" | "weather_fallback"; sourceSummary: string; controller: HomeFeedController; replacePlan?: NonNullable<HomeFeedViewModel["plan"]> }) {
+  const [detailOpen, setDetailOpen] = useState(false);
+  const [postAcceptOpen, setPostAcceptOpen] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<readonly string[]>(candidate.garmentIds);
   const garments = candidate.garmentIds.map((id) => garmentById.get(id)).filter((item): item is HomeGarment => Boolean(item));
   const target = objectiveLabel(candidate.objective);
-  return <article className="ui-card grid w-[310px] min-w-[310px] max-w-[calc(100vw-50px)] basis-[310px] snap-start grid-rows-[18px_78px_20px_16px_34px_32px] gap-y-1.5 px-[17px] pb-[17px] pt-[21px] !shadow-none" data-testid="home-recommendation-card">
+  const pending = controller.homeMutation?.status === "pending";
+  const accept = async () => { if (await controller.acceptCandidate(candidate, selectedIds, replacePlan)) { setDetailOpen(false); setPostAcceptOpen(true); } };
+  return <><article className="ui-card grid w-[310px] min-w-[310px] max-w-[calc(100vw-50px)] basis-[310px] snap-start gap-y-1.5 px-[17px] pb-[17px] pt-[21px] !shadow-none" data-testid="home-recommendation-card">
     <div data-rec-row="target" className="flex h-[18px] items-center justify-between gap-3"><span className="text-[13px] font-bold leading-[18px] text-denim" data-testid="home-recommendation-target-label">{target}</span><span className="max-w-[17ch] truncate text-[10px] font-medium leading-[18px] text-ink/55" data-testid="home-recommendation-source">{sourceSummary}</span></div>
     <div className="grid h-[78px] grid-cols-[1.15fr_.9fr_.72fr] gap-1.5" aria-label={garments.map((item) => item.name).join("、")}>
       {garments.slice(0, 3).map((item) => <div key={item.id} className="relative min-w-0 overflow-hidden rounded-[11px] bg-mist"><OnlineAssetImage asset={item.imageAsset} variant="thumbnail" alt={item.name} className="h-full w-full" imageClassName="object-cover" fallback={<div className="grid h-full place-items-center text-ink/25"><Shirt size={25} /></div>} /><span className="absolute inset-x-0 bottom-0 truncate bg-gradient-to-t from-black/55 to-transparent px-2 pb-1.5 pt-5 text-[10px] font-semibold text-white">{item.name}</span></div>)}
@@ -222,15 +229,36 @@ function RecommendationCard({ candidate, garmentById, contextMode, sourceSummary
     <p data-rec-row="garments" className="truncate text-[11px] leading-4 text-ink/55">{garments.map((item) => item.name).join(" · ") || "推荐衣物正在同步"}</p>
     <p data-rec-row="reason" className="line-clamp-2 h-[34px] text-[12px] leading-[17px]">{reasonLabel(candidate.reasonCodes?.[0], contextMode)}</p>
     <p data-rec-row="risk" className="line-clamp-2 flex h-8 gap-1.5 overflow-hidden text-[11px] leading-4 text-ink/70"><span className="mt-1 h-[7px] w-[7px] shrink-0 rounded-full bg-clay" aria-hidden="true" /><span>{riskLabel(candidate.riskCodes?.[0], contextMode)}</span></p>
-  </article>;
+    <div className="mt-1 grid grid-cols-[1fr_48px] gap-2"><AppPressable className="min-h-12 rounded-[14px] bg-denim px-3 text-sm font-semibold text-white" disabled={pending} onClick={() => void accept()}>{pending ? "提交中…" : replacePlan ? "更换当日穿搭" : arrangementLabel(controller.selectedDate, controller.window.today)}</AppPressable><AppPressable feedback="icon" className="grid min-h-12 place-items-center rounded-[14px] bg-mist text-denim" onClick={() => setDetailOpen(true)} aria-label="查看推荐详情"><ChevronRight size={20} /></AppPressable></div>
+    {controller.homeMutation?.status === "error" ? <p className="text-xs leading-5 text-clay" role="alert">{controller.homeMutation.message}；草稿已保留，可原样重试。</p> : null}
+  </article>
+  <MotionSheet open={detailOpen} onClose={() => !pending && setDetailOpen(false)} dismissible={!pending} ariaLabel="推荐详情与操作" variant="form" panelClassName="!max-w-md">
+    <div className="grid max-h-[86dvh] gap-4 overflow-y-auto px-4 pb-[calc(16px+env(safe-area-inset-bottom))]"><div className="flex min-h-12 items-center justify-between"><div><h2 className="text-lg font-semibold">{target}搭配</h2><p className="text-xs text-ink/55">可替换一件，服务器提交前会重新校验</p></div><AppPressable feedback="icon" className="grid h-12 w-12 place-items-center rounded-full bg-mist" onClick={() => setDetailOpen(false)} aria-label="关闭推荐详情"><X size={20} /></AppPressable></div>
+      <ReplacementPicker originalIds={candidate.garmentIds} selectedIds={selectedIds} allGarments={allGarments} onChange={setSelectedIds} />
+      <AppPressable className="min-h-12 rounded-[14px] bg-denim px-4 font-semibold text-white" disabled={pending} onClick={() => void accept()}>{pending ? "正在提交并读回…" : replacePlan ? "更换当日穿搭" : arrangementLabel(controller.selectedDate, controller.window.today)}</AppPressable>
+      <div className="grid grid-cols-2 gap-2"><AppPressable className="min-h-12 rounded-[14px] bg-mist px-3 text-sm font-semibold" disabled={pending} onClick={() => void controller.rejectCandidate(candidate)}><ThumbsDown className="mr-1.5 inline" size={17} />不喜欢</AppPressable><AppPressable className="min-h-12 rounded-[14px] bg-mist px-3 text-sm font-semibold" disabled={pending} onClick={() => void controller.saveCandidateOutfit(candidate, selectedIds)}><Save className="mr-1.5 inline" size={17} />保存为套装</AppPressable></div>
+    </div>
+  </MotionSheet>
+  <MotionSheet open={postAcceptOpen} onClose={() => setPostAcceptOpen(false)} ariaLabel="穿搭已安排" variant="action" panelClassName="!max-w-md"><div className="grid gap-3 px-4 pb-[calc(16px+env(safe-area-inset-bottom))]"><h2 className="text-lg font-semibold">穿搭已安排</h2><p className="text-sm leading-6 text-ink/60">计划已由服务器提交并读回。保存为我的套装是独立事务，失败不会撤销安排。</p><AppPressable className="min-h-12 rounded-[14px] bg-denim font-semibold text-white" onClick={() => void controller.saveCandidateOutfit(candidate, selectedIds)}>保存到我的套装</AppPressable><AppPressable className="min-h-12 rounded-[14px] bg-mist font-semibold" onClick={() => setPostAcceptOpen(false)}>仅本次使用</AppPressable></div></MotionSheet></>;
 }
 
-function ReadOnlyPlan({ plan, garmentById, today }: { plan: NonNullable<HomeFeedViewModel["plan"]>; garmentById: ReadonlyMap<string, HomeGarment>; today: string }) {
+function CurrentPlanCard({ plan, backups, garmentById, today, controller, onReplace }: { plan: NonNullable<HomeFeedViewModel["plan"]>; backups: readonly HomePlan[]; garmentById: ReadonlyMap<string, HomeGarment>; today: string; controller: HomeFeedController; onReplace: () => void }) {
+  const [cancelOpen, setCancelOpen] = useState(false);
+  const [backupId, setBackupId] = useState(backups[0]?.id ?? "");
   const snapshotNames = recommendationPlanSnapshotNames(plan);
   const snapshotList = plan.kind === "actual_wear" && plan.actualGarmentSnapshots?.length ? plan.actualGarmentSnapshots : plan.garmentSnapshots;
   const displayItems = (snapshotList?.length ? snapshotList : plan.garmentIds.map((garmentId) => ({ garmentId, name: garmentById.get(garmentId)?.name ?? "已删除衣物", role: "", category: "" }))).slice(0, 3);
   const risk = recommendationPlanAvailabilityMessage(plan, today);
-  return <article className="ui-card p-4" data-testid={plan.kind === "actual_wear" ? "home-actual-wear" : "home-protected-plan"}><div className="grid grid-cols-3 gap-2">{displayItems.map((snapshot) => { const garment = garmentById.get(snapshot.garmentId); return <div key={snapshot.garmentId} className="relative aspect-[3/4] overflow-hidden rounded-[13px] bg-mist"><OnlineAssetImage asset={garment?.imageAsset} variant="thumbnail" alt={snapshot.name} className="h-full w-full" imageClassName="object-cover" fallback={<div className="grid h-full place-items-center px-2 text-center text-xs text-ink/45"><Shirt className="mb-1" size={25} /><span>{snapshot.name}</span></div>} /></div>; })}</div><p className="mt-3 text-sm leading-6 text-ink/65">{snapshotNames.join(" · ") || displayItems.map((item) => item.name).join(" · ") || "计划衣物快照已保留"}</p>{risk ? <p className="mt-2 text-sm font-semibold text-clay" role="status" data-testid="home-plan-availability-risk">{risk}</p> : null}<p className="mt-2 text-sm font-medium text-denim">{plan.kind === "actual_wear" ? "已穿事实优先，推荐不会覆盖" : "主计划已保护，天气变化只提示风险"}</p></article>;
+  const pending = controller.homeMutation?.status === "pending";
+  const selectedBackup = backups.find((item) => item.id === backupId);
+  return <><article className="ui-card p-4" data-testid={plan.kind === "actual_wear" ? "home-actual-wear" : "home-protected-plan"}><div className="grid grid-cols-3 gap-2">{displayItems.map((snapshot) => { const garment = garmentById.get(snapshot.garmentId); return <div key={snapshot.garmentId} className="relative aspect-[3/4] overflow-hidden rounded-[13px] bg-mist"><OnlineAssetImage asset={garment?.imageAsset} variant="thumbnail" alt={snapshot.name} className="h-full w-full" imageClassName="object-cover" fallback={<div className="grid h-full place-items-center px-2 text-center text-xs text-ink/45"><Shirt className="mb-1" size={25} /><span>{snapshot.name}</span></div>} /></div>; })}</div><p className="mt-3 text-sm leading-6 text-ink/65">{snapshotNames.join(" · ") || displayItems.map((item) => item.name).join(" · ") || "计划衣物快照已保留"}</p>{risk ? <p className="mt-2 text-sm font-semibold text-clay" role="status" data-testid="home-plan-availability-risk">{risk}</p> : null}<p className="mt-2 text-sm font-medium text-denim">{plan.kind === "actual_wear" ? "已穿事实优先，推荐不会覆盖" : "主计划已保护，天气变化只提示风险"}</p>
+    <div className="mt-3 grid gap-2">{plan.kind === "actual_wear" ? <AppPressable className="min-h-12 rounded-[14px] bg-mist font-semibold text-denim" disabled={pending} onClick={() => void controller.undoPlanWorn(plan)}><RotateCcw className="mr-2 inline" size={17} />撤销已穿</AppPressable> : <>{plan.date === today ? <AppPressable className="min-h-12 rounded-[14px] bg-denim font-semibold text-white" disabled={pending || Boolean(risk)} onClick={() => void controller.markPlanWorn(plan)}>确认今天穿了这套</AppPressable> : null}<div className="grid grid-cols-2 gap-2"><AppPressable className="min-h-12 rounded-[14px] bg-mist text-sm font-semibold" disabled={pending} onClick={onReplace}>更换穿搭</AppPressable><AppPressable className="min-h-12 rounded-[14px] bg-mist text-sm font-semibold text-clay" disabled={pending} onClick={() => setCancelOpen(true)}>取消安排</AppPressable></div></>}</div>
+    {controller.homeMutation?.status === "error" ? <p className="mt-2 text-sm text-clay" role="alert">{controller.homeMutation.message}；当前事实未改变，可原样重试。</p> : null}</article>
+    <MotionSheet open={cancelOpen} onClose={() => !pending && setCancelOpen(false)} dismissible={!pending} ariaLabel="取消当日安排" role="alertdialog" variant="confirm" panelClassName="!max-w-md"><div className="grid gap-3 px-4 pb-[calc(16px+env(safe-area-inset-bottom))]"><h2 className="text-lg font-semibold">取消当日安排</h2><p className="text-sm leading-6 text-ink/60">{backups.length ? "当前安排会取消，并在同一事务中恢复你选择的备选。" : "取消后当天将没有已安排穿搭。"}</p>{backups.length ? <div className="grid gap-2">{backups.map((backup, index) => <AppPressable key={backup.id} className={`min-h-12 rounded-[14px] px-3 text-left text-sm ${backupId === backup.id ? "bg-denim text-white" : "bg-mist"}`} aria-pressed={backupId === backup.id} onClick={() => setBackupId(backup.id)}>恢复备选 {index + 1}</AppPressable>)}</div> : null}<AppPressable className="min-h-12 rounded-[14px] bg-clay font-semibold text-white" disabled={pending} onClick={async () => { if (await controller.cancelPrimary(plan, selectedBackup)) setCancelOpen(false); }}>{pending ? "正在提交并读回…" : backups.length ? "取消并恢复备选" : "取消后不再安排"}</AppPressable><AppPressable className="min-h-12 rounded-[14px] bg-mist font-semibold" disabled={pending} onClick={() => setCancelOpen(false)}>保留当前安排</AppPressable></div></MotionSheet></>;
+}
+
+function ReplacementPicker({ originalIds, selectedIds, allGarments, onChange }: { originalIds: readonly string[]; selectedIds: readonly string[]; allGarments: readonly HomeGarment[]; onChange: (ids: readonly string[]) => void }) {
+  return <div className="grid gap-3">{originalIds.map((id, index) => { const current = allGarments.find((item) => item.id === id); const options = allGarments.filter((item) => item.status === "active" && item.hasImage && item.category === current?.category); return <label key={id} className="grid gap-1 text-sm font-medium"><span>{current?.name ?? "已失效衣物"}</span><select className="min-h-12 rounded-[14px] bg-mist px-3" value={selectedIds[index] ?? id} onChange={(event) => onChange(originalIds.map((value, itemIndex) => itemIndex === index ? event.target.value : value))} disabled={!current}><option value={id}>保留当前衣物</option>{options.filter((item) => item.id !== id).map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</select></label>; })}</div>;
 }
 
 function RecommendationState({ title, message }: { title: string; message: string }) { return <div className="ui-card p-4"><h3 className="font-semibold">{title}</h3><p className="mt-2 text-sm leading-6 text-ink/60">{message}</p></div>; }
@@ -251,6 +279,7 @@ function businessGreeting() { const hour = Number(new Intl.DateTimeFormat("en-GB
 function formatBusinessDate(date: string) { return new Intl.DateTimeFormat("zh-CN", { timeZone: "Asia/Shanghai", month: "long", day: "numeric", weekday: "short" }).format(new Date(`${date}T12:00:00+08:00`)); }
 function formatShortDate(date: string) { return new Intl.DateTimeFormat("zh-CN", { timeZone: "Asia/Shanghai", month: "numeric", day: "numeric", weekday: "short" }).format(new Date(`${date}T12:00:00+08:00`)); }
 function dateHeading(date: string, today: string) { return date === today ? "今天" : date === addDays(today, 1) ? "明天" : formatShortDate(date); }
+function arrangementLabel(date: string, today: string) { return date === today ? "设为今日穿搭" : date === addDays(today, 1) ? "设为明日穿搭" : `安排到 ${formatShortDate(date)}`; }
 function recommendationSubtitle(state: HomeFeedViewModel["recommendation"]) { return state.status === "ready" ? contextLabel(state.contextMode) : "天气与衣橱分别准备，互不阻塞"; }
 function objectiveLabel(objective?: string) { return objective === "fresh" ? "变化" : objective === "comfort" ? "舒适" : "稳妥"; }
 function contextLabel(mode: "forecast" | "locationless" | "weather_fallback") { return mode === "forecast" ? "天气增强" : mode === "locationless" ? "通用建议" : "天气回退"; }

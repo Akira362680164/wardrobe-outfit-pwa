@@ -2,7 +2,7 @@
 title: 衣橱穿搭助手 UI 规范
 version: v0.2-final
 status: final
-appVersion: 2.1.30-test
+appVersion: 2.1.31-test
 validatedAgainstAppCommit: aff3831766a37705a0706a2ae3886381e6b4422d
 sourceOfTruth: docs/designs/wardrobe-ui-spec.md
 generatedPreview: docs/designs/wardrobe-ui-spec.html
@@ -267,6 +267,17 @@ Icon-only 按钮必须有 `aria-label`；图标与文字组合时图标使用 `a
 - 横轨使用浏览器/WebView 原生滚动与 `touch-action: pan-y`，不增加抢手势的 drag controller；所有可点区至少 `48dp`，按压反馈复用 `AppPressable`，reduced-motion 取消 smooth scroll 与缩放 spring。
 - P1.4 严格只读：不显示采用、替换、取消、已穿或保存套装按钮。新用户“无城市 + 衣橱空”使用中性正常空状态，不使用警告色或“系统异常”。
 - 视觉对照门禁以 v0.2.3 `390x844` 为并排基准，同时覆盖 `360/390/430px` 和 `100%/130%` 字体，必须核对问候、地点、双天气卡、分栏、日期条位置、横向推荐卡和底栏，并保证页面横向溢出、文字遮挡与非预期 runtime/console/page error 均为 0。
+
+### 4.3 新首页 P2 计划与穿着写入合同
+
+- 推荐卡在原有信息层级之后提供结果明确的主按钮；今天、明天和未来日期分别写“设为今日穿搭”“设为明日穿搭”和“安排到 M 月 D 日”。详情 Sheet 承载替换一件、不喜欢和保存为套装，不通过隐藏手势触发。
+- “替换一件”每次只允许一个原始位置变化，候选只来自当前工作区中 active、具备主图且同类别的衣物；最终组合仍由推荐采用事务校验模板、归属、状态、天气和最多替换一件。
+- 所有写入使用稳定 `clientMutationId`。草稿内容不变的失败重试复用同一 ID，草稿、目标备选或所选衣物变化后才生成新 ID；提交中当前 Sheet 不可关闭，成功并完成服务端工作区读回后才更新事实卡。
+- 当日穿搭卡提供“确认今天穿了这套 / 更换穿搭 / 取消安排”；blocked 风险存在时不允许无提示确认已穿。已穿事实卡只提供“撤销已穿”，不能直接更换或取消计划。
+- 更换穿搭必须携带当前 primary ID/revision；新 primary 与旧 primary 降 backup 在同一推荐采用事务完成。取消安排使用专用原子合同，取消 current primary 与可选提升 backup 同一事务提交，失败时保持当前卡片和备选状态。
+- 采用成功后的“保存到我的套装 / 仅本次使用”是非阻塞 Sheet；保存套装走独立事务，失败不回滚已经成功的计划。推荐详情直接保存套装不创建计划。
+- pending、409、未知结果、网络失败和重试错误必须留在当前承载层，保留组合、滚动位置和 mutation ID；不做乐观状态、不新增业务缓存、Outbox 或隐藏队列。
+- P2 新增控件继续使用 `AppPressable`，命中区至少 `48dp`。Sheet 遵守 safe area、键盘、OverlayStack、Android Back 和 reduced-motion；360–430px、130% 字体不得遮挡主操作或产生横向溢出。
 
 ## 5. Route 与页面状态矩阵
 

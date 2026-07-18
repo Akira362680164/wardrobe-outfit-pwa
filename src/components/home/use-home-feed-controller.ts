@@ -11,8 +11,10 @@ import {
   type HomeFeedInput,
   type HomeGarment,
   type HomePlan,
+  type HomeRecommendationCandidate,
   type HomeRecommendationResult,
 } from "@/lib/home/home-feed-model";
+import { createUuid } from "@/lib/uuid";
 import { HomeFeedSessionCache, homeLocationRevisionKey } from "@/lib/home/home-feed-cache";
 import {
   HomeCitySearchSession,
@@ -24,10 +26,15 @@ import {
 } from "@/lib/home/home-feed-operations";
 import {
   clearHomeCity,
+  acceptHomeRecommendation,
+  cancelHomePlanWorn,
+  cancelHomePrimaryPlan,
   clearTemporaryCity,
   readHomeLocation,
   readHomeRecommendations,
   readHomeWeather,
+  markHomePlanWorn,
+  rejectHomeRecommendation,
   resolveHomeRecommendations,
   searchHomeCities,
   setHomeCity,
@@ -37,7 +44,8 @@ import {
 import { OnlineRequestError, onlineErrorMessage } from "@/lib/online/online-error";
 
 const defaultHomeClients = {
-  clearHomeCity, clearTemporaryCity, readHomeLocation, readHomeRecommendations, readHomeWeather,
+  acceptHomeRecommendation, cancelHomePlanWorn, cancelHomePrimaryPlan, clearHomeCity, clearTemporaryCity,
+  markHomePlanWorn, readHomeLocation, readHomeRecommendations, readHomeWeather, rejectHomeRecommendation,
   resolveHomeRecommendations, searchHomeCities, setHomeCity, setTemporaryCity,
 };
 
@@ -52,6 +60,8 @@ interface HomeFeedControllerInput {
   workspaceRevision: number;
   garments: readonly HomeGarment[];
   plans: readonly HomePlan[];
+  onWorkspaceRefresh?: () => Promise<unknown>;
+  onSaveOutfit?: (input: { name: string; garmentIds: readonly string[]; clientMutationId: string }) => Promise<unknown>;
   clients?: Partial<HomeFeedClients>;
 }
 
@@ -76,6 +86,7 @@ export function useHomeFeedController(input: HomeFeedControllerInput) {
   const [cityMutation, setCityMutation] = useState<string | null>(null);
   const [cityMutationError, setCityMutationError] = useState<string | null>(null);
   const [cityMutationConflict, setCityMutationConflict] = useState(false);
+  const [homeMutation, setHomeMutation] = useState<{ kind: string; key: string; status: "pending" | "error" | "success"; message?: string } | null>(null);
 
   const mountedRef = useRef(true);
   const accountRef = useRef(input.accountId);
@@ -97,6 +108,7 @@ export function useHomeFeedController(input: HomeFeedControllerInput) {
   const mutationAbort = useRef<AbortController | null>(null);
   const cache = useRef(new HomeFeedSessionCache<WeatherOverview, HomeRecommendationResult>());
   const refreshFeedRef = useRef<() => void>(() => undefined);
+  const businessMutationIds = useRef(new Map<string, string>());
 
   feedActiveRef.current = input.active;
   locationActiveRef.current = input.locationActive ?? input.active;
@@ -350,6 +362,74 @@ export function useHomeFeedController(input: HomeFeedControllerInput) {
     });
   }, [loadLocation]);
 
+  const mutationIdFor = useCallback((key: string) => {
+    const current = businessMutationIds.current.get(key);
+    if (current) return current;
+    const next = createUuid();
+    businessMutationIds.current.set(key, next);
+    return next;
+  }, []);
+
+  const finishBusinessMutation = useCallback(async (kind: string, key: string, task: (clientMutationId: string) => Promise<unknown>) => {
+    const clientMutationId = mutationIdFor(key);
+    setHomeMutation({ kind, key, status: "pending" });
+    try {
+      await task(clientMutationId);
+      await input.onWorkspaceRefresh?.();
+      businessMutationIds.current.delete(key);
+      cache.current.clear();
+      setHomeMutation({ kind, key, status: "success" });
+      queueMicrotask(() => refreshFeedRef.current());
+      return true;
+    } catch (error) {
+      setHomeMutation({ kind, key, status: "error", message: onlineErrorMessage(error) });
+      return false;
+    }
+  }, [input, mutationIdFor]);
+
+  const acceptCandidate = useCallback((candidate: HomeRecommendationCandidate, selectedGarmentIds: readonly string[], replacePlan?: HomePlan) => {
+    const state = recommendation.status === "ready" ? recommendation.data : null;
+    if (!state || !(state.status === "generated" || state.status === "reused" || state.status === "served_stale")) return Promise.resolve(false);
+    const rec = state.recommendation;
+    const key = `accept:${selectedDateRef.current}:${rec.recommendationId}:${rec.recommendationRevision}:${candidate.candidateId}:${[...selectedGarmentIds].sort().join(",")}:${replacePlan?.id ?? "none"}:${replacePlan?.revision ?? 0}`;
+    return finishBusinessMutation("accept", key, (clientMutationId) => clientsRef.current.acceptHomeRecommendation(selectedDateRef.current, {
+      clientMutationId, recommendationId: rec.recommendationId, expectedRecommendationRevision: rec.recommendationRevision,
+      candidateId: candidate.candidateId, selectedGarmentIds: [...selectedGarmentIds],
+      ...(replacePlan ? { replaceExistingPrimary: { planEntryId: replacePlan.id, expectedRevision: replacePlan.revision } } : {}),
+    }, sessionRef.current));
+  }, [finishBusinessMutation, recommendation]);
+
+  const rejectCandidate = useCallback((candidate: HomeRecommendationCandidate) => {
+    const state = recommendation.status === "ready" ? recommendation.data : null;
+    if (!state || !(state.status === "generated" || state.status === "reused" || state.status === "served_stale")) return Promise.resolve(false);
+    const rec = state.recommendation;
+    const key = `reject:${rec.recommendationId}:${rec.recommendationRevision}:${candidate.candidateId}:not_for_me`;
+    return finishBusinessMutation("reject", key, (clientMutationId) => clientsRef.current.rejectHomeRecommendation({ clientMutationId, recommendationId: rec.recommendationId, expectedRecommendationRevision: rec.recommendationRevision, candidateId: candidate.candidateId, reason: "not_for_me" }, sessionRef.current));
+  }, [finishBusinessMutation, recommendation]);
+
+  const cancelPrimary = useCallback((primary: HomePlan, backup?: HomePlan) => {
+    const key = `cancel:${primary.id}:${primary.revision}:${backup?.id ?? "none"}:${backup?.revision ?? 0}`;
+    return finishBusinessMutation("cancel", key, (clientMutationId) => clientsRef.current.cancelHomePrimaryPlan({ clientMutationId, targetDate: primary.date, primary: { planEntryId: primary.id, expectedRevision: primary.revision }, ...(backup ? { promoteBackup: { planEntryId: backup.id, expectedRevision: backup.revision } } : {}) }, sessionRef.current));
+  }, [finishBusinessMutation]);
+
+  const markPlanWorn = useCallback((plan: HomePlan) => {
+    const key = `wear:${plan.id}:${plan.revision}`;
+    return finishBusinessMutation("wear", key, (clientMutationId) => clientsRef.current.markHomePlanWorn(plan.id, plan.revision, clientMutationId, `${plan.date}T12:00:00.000Z`, sessionRef.current));
+  }, [finishBusinessMutation]);
+
+  const undoPlanWorn = useCallback((plan: HomePlan) => {
+    const key = `unwear:${plan.id}:${plan.revision}`;
+    return finishBusinessMutation("unwear", key, (clientMutationId) => clientsRef.current.cancelHomePlanWorn(plan.id, plan.revision, clientMutationId, sessionRef.current));
+  }, [finishBusinessMutation]);
+
+  const saveCandidateOutfit = useCallback((candidate: HomeRecommendationCandidate, garmentIds: readonly string[]) => {
+    const key = `save-outfit:${candidate.candidateId}:${[...garmentIds].sort().join(",")}`;
+    return finishBusinessMutation("save_outfit", key, async (clientMutationId) => {
+      if (!input.onSaveOutfit) throw new Error("当前版本未连接套装保存能力");
+      await input.onSaveOutfit({ name: `${selectedDateRef.current} ${candidate.objective === "fresh" ? "变化" : candidate.objective === "comfort" ? "舒适" : "稳妥"}搭配`, garmentIds, clientMutationId });
+    });
+  }, [finishBusinessMutation, input]);
+
   const retryWeather = useCallback((date: string) => {
     const snapshot = locationSnapshotRef.current;
     if (!snapshot) return;
@@ -555,6 +635,7 @@ export function useHomeFeedController(input: HomeFeedControllerInput) {
     cityOpen, setCityOpen, cityQuery, cityCandidates, citySearchState, citySearchMessage, citySearchRetryAfter,
     searchCities, startCityComposition, endCityComposition,
     cityMutation, cityMutationError, cityMutationConflict, commitLocation,
+    homeMutation, acceptCandidate, rejectCandidate, cancelPrimary, markPlanWorn, undoPlanWorn, saveCandidateOutfit,
   };
 }
 

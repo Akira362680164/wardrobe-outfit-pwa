@@ -15,6 +15,7 @@ export interface HomeGarment {
   status: string;
   hasImage: boolean;
   imageAsset?: ImageAssetReference;
+  serverRevision?: number;
 }
 
 export interface HomePlan {
@@ -104,6 +105,7 @@ export interface HomeFeedViewModel {
     | { status: "error"; message: string }
     | { status: "ready"; contextMode: "forecast" | "locationless" | "weather_fallback"; resolvedLocation?: WeatherLocationRef; locationSource?: HomeLocationSource; weatherUpdatedAt?: string; stale: boolean; attribution?: WeatherOverview["attribution"]; candidates: readonly HomeRecommendationCandidate[] };
   plan: (HomePlan & { kind: "protected_plan" | "actual_wear" }) | null;
+  backupPlans: readonly HomePlan[];
 }
 
 export type HomeWeatherViewModel =
@@ -201,11 +203,7 @@ export function buildHomeFeedViewModel(input: HomeFeedInput): HomeFeedViewModel 
     ?? (input.selectedDate === tomorrow ? input.weather : idleWeather);
 
   let recommendation: HomeFeedViewModel["recommendation"];
-  if (protectedPlan || (input.recommendation.status === "ready" && (
-    input.recommendation.data.status === "protected_plan" || input.recommendation.data.status === "actual_wear"
-  ))) {
-    recommendation = { status: "protected" };
-  } else if (input.recommendation.status !== "ready") {
+  if (input.recommendation.status !== "ready") {
     recommendation = input.recommendation;
   } else if (input.recommendation.data.status === "not_ready") {
     recommendation = { status: "not_ready" };
@@ -238,6 +236,7 @@ export function buildHomeFeedViewModel(input: HomeFeedInput): HomeFeedViewModel 
     tomorrowWeather: buildHomeWeatherView(tomorrowWeather, tomorrow, input.businessDate),
     recommendation,
     plan: protectedPlan,
+    backupPlans: input.plans.filter((entry) => entry.date === input.selectedDate && entry.role === "backup" && entry.status === "planned"),
   };
 }
 
