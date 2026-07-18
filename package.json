@@ -35,6 +35,7 @@
     "docs:ui-spec:check": "node scripts/generate-ui-spec-preview.mjs --check",
     "catalog:miniprogram:generate": "npm run build --workspace @wardrobe/domain-catalog && node scripts/generate-miniprogram-catalogs.mjs",
     "catalog:miniprogram:check": "npm run build --workspace @wardrobe/domain-catalog && node scripts/generate-miniprogram-catalogs.mjs --check",
+    "prepare:wechat-devtools-validation": "tsx scripts/prepare-wechat-devtools-validation.ts",
     "test:logic:domain-catalog": "tsx scripts/test-domain-catalog.ts",
     "test:logic:http-error-envelope": "tsx scripts/test-http-error-envelope.ts",
     "test:logic:miniprogram-catalog": "tsx scripts/test-miniprogram-catalog-consistency.ts",

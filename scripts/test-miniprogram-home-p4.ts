@@ -76,6 +76,7 @@ assert.doesNotMatch(page, /主计划已保护|服务器读回|自动更换|推�
 assert.match(page, /暂时无法获取位置，请稍后重试或搜索城市/);
 assert.doesNotMatch(page, /locationMessage:\s*messageOf\(error,[^\n]+位置/, "raw location plugin errors must not reach the UI");
 assert.doesNotMatch(styles, />\s*\*/, "WXSS does not accept a universal child selector");
+assert.equal(page.match(/\n\s*openIntake\(/g)?.length, 1, "home must expose one intake handler");
 
 void testRequestCancellation()
   .then(() => console.log("miniprogram home P4 fixture tests passed"))
