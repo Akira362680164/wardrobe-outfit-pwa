@@ -177,6 +177,18 @@ button {
 }
 
 /* Wardora v0.2.3 ambient palette rendered as static P1.4 backgrounds. Canvas remains a P3 concern. */
+.home-weather-shell {
+  background: var(--color-surface);
+  box-shadow: none;
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+}
+
+.home-weather-day-card {
+  border-radius: var(--ui-radius-inner);
+  box-shadow: none;
+}
+
 .home-weather-static[data-weather-family="clear"] {
   background: radial-gradient(circle at 102% 10%, rgba(224, 164, 62, 0.72), rgba(241, 197, 118, 0.34) 40%, transparent 78%), linear-gradient(135deg, #bfd5d9 0%, #f2dfb7 62%, #fbf2dc 100%);
 }

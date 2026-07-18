@@ -132,10 +132,15 @@ try {
     const recommendationToolbar = document.querySelector('[data-testid="home-recommendation-toolbar"]');
     const card = document.querySelector('[data-testid="home-recommendation-card"]');
     const target = card?.querySelector('[data-rec-row="target"]');
+    const targetLabel = card?.querySelector('[data-testid="home-recommendation-target-label"]');
     const nav = document.querySelector('[data-testid="home-feed-navigation"]');
     const activeNav = nav?.querySelector('[aria-current="page"]');
     const navRect = nav?.getBoundingClientRect();
     const activeNavRect = activeNav?.getBoundingClientRect();
+    const weatherShell = document.querySelector('[data-testid="home-weather-module"]');
+    const weatherDay = document.querySelector('[data-testid="home-weather-today"]');
+    const locationLabel = weatherShell?.querySelector('[data-testid="home-location-label"]');
+    const weatherShellStyle = weatherShell ? getComputedStyle(weatherShell) : null;
     const number = (value) => Number.parseFloat(value || "0");
     return {
       weatherRowsAligned: aligned('[data-testid^="home-weather-"]', ['data-weather-row="label"', 'data-weather-row="temperature"', 'data-weather-row="summary"', 'data-weather-row="meta"']),
@@ -145,7 +150,9 @@ try {
       toolbarLeft: recommendationToolbar?.getBoundingClientRect().left,
       cardLeft: card?.getBoundingClientRect().left,
       cardInnerInset: card && target ? target.getBoundingClientRect().left - card.getBoundingClientRect().left : 0,
-      cardTitleTopInset: card && target ? target.getBoundingClientRect().top - card.getBoundingClientRect().top : 0,
+      cardTitleTopInset: card && targetLabel ? targetLabel.getBoundingClientRect().top - card.getBoundingClientRect().top : 0,
+      locationLabelTopInset: weatherShell && locationLabel ? locationLabel.getBoundingClientRect().top - weatherShell.getBoundingClientRect().top : 0,
+      weatherMaterial: weatherShellStyle ? { background: weatherShellStyle.backgroundColor, shadow: weatherShellStyle.boxShadow, filter: weatherShellStyle.backdropFilter, webkitFilter: weatherShellStyle.getPropertyValue("-webkit-backdrop-filter") || "none", outerRadius: number(weatherShellStyle.borderTopLeftRadius), innerRadius: weatherDay ? number(getComputedStyle(weatherDay).borderTopLeftRadius) : 0 } : null,
       navRadii: nav && activeNav && navRect && activeNavRect ? { outer: number(getComputedStyle(nav).borderTopLeftRadius), active: number(getComputedStyle(activeNav).borderTopLeftRadius), inset: activeNavRect.left - navRect.left } : null,
     };
   });
@@ -154,7 +161,9 @@ try {
   assert(visualGeometry.shadows.every((value) => value === "none" || !/rgba\([^)]*,\s*(?:0\.\d*[1-9]\d*|1)\)/.test(value)), `unexpected card shadow: ${visualGeometry.shadows.join(" | ")}`);
   assert(Math.abs(visualGeometry.toolbarLeft - 17) <= 1 && Math.abs(visualGeometry.cardLeft - 17) <= 1, `first-level recommendation inset invalid: ${JSON.stringify(visualGeometry)}`);
   assert(visualGeometry.cardInnerInset >= 16, `recommendation card inner padding invalid: ${visualGeometry.cardInnerInset}`);
-  assert(visualGeometry.cardTitleTopInset >= 24 && visualGeometry.cardTitleTopInset <= 30, `recommendation title enters the rounded-corner zone: ${visualGeometry.cardTitleTopInset}`);
+  assert(Math.abs(visualGeometry.cardTitleTopInset - visualGeometry.locationLabelTopInset) <= 1, `recommendation title does not follow the location label inset: ${JSON.stringify(visualGeometry)}`);
+  assert(visualGeometry.weatherMaterial && visualGeometry.weatherMaterial.shadow === "none" && visualGeometry.weatherMaterial.filter === "none" && visualGeometry.weatherMaterial.webkitFilter === "none", `weather shell retains an unexplained material shadow: ${JSON.stringify(visualGeometry.weatherMaterial)}`);
+  assert(visualGeometry.weatherMaterial && visualGeometry.weatherMaterial.background === "rgb(255, 255, 252)" && visualGeometry.weatherMaterial.outerRadius === 28 && visualGeometry.weatherMaterial.innerRadius === 22, `weather card radius/material tokens diverged: ${JSON.stringify(visualGeometry.weatherMaterial)}`);
   assert(visualGeometry.navRadii && Math.abs((visualGeometry.navRadii.outer - visualGeometry.navRadii.active) - visualGeometry.navRadii.inset) <= 1, `bottom-nav radii are not concentric: ${JSON.stringify(visualGeometry.navRadii)}`);
 
   const rail = page.getByTestId("home-recommendation-rail");

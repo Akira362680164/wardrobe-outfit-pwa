@@ -35,16 +35,16 @@ export function WardoraHomeView({ controller, garments, renderWardrobeContent }:
         <p className="mt-[7px] text-[13px] font-medium leading-[1.35] text-ink/55" data-testid="home-business-date">{formatBusinessDate(controller.window.today)}</p>
       </header>
 
-      <section className="ui-card overflow-hidden p-3.5 !shadow-none" aria-label="今日和明日天气" data-testid="home-weather-module">
+      <section className="home-weather-shell ui-card overflow-hidden p-3.5" aria-label="今日和明日天气" data-testid="home-weather-module">
         <AppPressable
           feedback="control"
-          className="-ml-2 -mt-2 mb-0.5 flex min-h-12 max-w-full items-center gap-1.5 rounded-xl px-2 text-left text-[13px] font-semibold text-denim"
+          className="-ml-2 -mt-2 mb-0.5 flex min-h-12 max-w-full items-center gap-1.5 rounded-xl px-2 text-left text-[13px] font-semibold leading-[18px] text-denim"
           onClick={() => controller.setCityOpen(true)}
           aria-label="选择天气地点"
           data-testid="home-location-entry"
         >
           <MapPin size={21} aria-hidden="true" />
-          <span className="truncate">{locationLabel(vm.location)}</span>
+          <span className="truncate" data-testid="home-location-label">{locationLabel(vm.location)}</span>
           <ChevronRight className="shrink-0" size={20} aria-hidden="true" />
         </AppPressable>
         {vm.location.kind === "none" ? (
@@ -167,8 +167,8 @@ export function homeCitySheetLocationActions(hasTemporaryOverride: boolean): rea
 }
 
 function WeatherDayCard({ kind, weather, onClick, onRetry }: { kind: "today" | "tomorrow"; weather: HomeWeatherViewModel; onClick: () => void; onRetry: () => unknown }) {
-  if (weather.status === "loading" || weather.status === "idle") return <div className="grid min-h-[108px] place-items-center rounded-[13px] bg-mist/75 px-2 text-center text-xs text-ink/55"><Loader2 className="animate-spin motion-reduce:animate-none" size={19} /><span>{kind === "today" ? "正在读取今天" : "正在读取明天"}</span></div>;
-  if (weather.status === "error") return <div className="grid min-h-[108px] content-center rounded-[13px] bg-mist/75 px-2 text-center"><AlertCircle className="mx-auto text-clay" size={18} /><p className="mt-1 line-clamp-2 text-[11px] text-ink/65">{weather.message}</p><AppPressable className="mx-auto min-h-11 px-3 text-xs font-semibold text-denim" onClick={() => void onRetry()}>重试</AppPressable></div>;
+  if (weather.status === "loading" || weather.status === "idle") return <div className="home-weather-day-card grid min-h-[108px] place-items-center bg-mist/75 px-2 text-center text-xs text-ink/55"><Loader2 className="animate-spin motion-reduce:animate-none" size={19} /><span>{kind === "today" ? "正在读取今天" : "正在读取明天"}</span></div>;
+  if (weather.status === "error") return <div className="home-weather-day-card grid min-h-[108px] content-center bg-mist/75 px-2 text-center"><AlertCircle className="mx-auto text-clay" size={18} /><p className="mt-1 line-clamp-2 text-[11px] text-ink/65">{weather.message}</p><AppPressable className="mx-auto min-h-11 px-3 text-xs font-semibold text-denim" onClick={() => void onRetry()}>重试</AppPressable></div>;
   if (weather.status !== "ready") return null;
   const isToday = kind === "today";
   const temperature = isToday && weather.temperatureC !== undefined
@@ -177,7 +177,7 @@ function WeatherDayCard({ kind, weather, onClick, onRetry }: { kind: "today" | "
   return (
     <AppPressable
       feedback="card"
-      className="home-weather-static relative h-[113px] overflow-hidden rounded-[13px] px-[9px] pb-[5px] pt-[7px] text-left"
+      className="home-weather-day-card home-weather-static relative h-[113px] overflow-hidden px-[9px] pb-[5px] pt-[7px] text-left"
       onClick={onClick}
       aria-label={`${isToday ? "今天" : "明天"}天气，切换到${isToday ? "今日" : "明日"}推荐`}
       data-testid={`home-weather-${kind}`}
@@ -210,8 +210,8 @@ function SectionHeading({ title, subtitle, action, compact = false }: { title: s
 function RecommendationCard({ candidate, garmentById, contextMode }: { candidate: HomeRecommendationCandidate; garmentById: ReadonlyMap<string, HomeGarment>; contextMode: "forecast" | "locationless" | "weather_fallback" }) {
   const garments = candidate.garmentIds.map((id) => garmentById.get(id)).filter((item): item is HomeGarment => Boolean(item));
   const target = objectiveLabel(candidate.objective);
-  return <article className="ui-card grid w-[310px] min-w-[310px] max-w-[calc(100vw-50px)] basis-[310px] snap-start grid-rows-[18px_78px_20px_16px_34px_32px] gap-y-1.5 px-[17px] pb-[17px] pt-[26px] !shadow-none" data-testid="home-recommendation-card">
-    <div data-rec-row="target" className="flex h-[18px] items-center justify-between gap-3"><span className="text-[13px] font-bold leading-[18px] text-denim">{target}</span><span className="text-[10px] font-medium leading-[18px] text-ink/55">{contextLabel(contextMode)}</span></div>
+  return <article className="ui-card grid w-[310px] min-w-[310px] max-w-[calc(100vw-50px)] basis-[310px] snap-start grid-rows-[18px_78px_20px_16px_34px_32px] gap-y-1.5 px-[17px] pb-[17px] pt-[21px] !shadow-none" data-testid="home-recommendation-card">
+    <div data-rec-row="target" className="flex h-[18px] items-center justify-between gap-3"><span className="text-[13px] font-bold leading-[18px] text-denim" data-testid="home-recommendation-target-label">{target}</span><span className="text-[10px] font-medium leading-[18px] text-ink/55">{contextLabel(contextMode)}</span></div>
     <div className="grid h-[78px] grid-cols-[1.15fr_.9fr_.72fr] gap-1.5" aria-label={garments.map((item) => item.name).join("、")}>
       {garments.slice(0, 3).map((item) => <div key={item.id} className="relative min-w-0 overflow-hidden rounded-[11px] bg-mist"><OnlineAssetImage asset={item.imageAsset} variant="thumbnail" alt={item.name} className="h-full w-full" imageClassName="object-cover" fallback={<div className="grid h-full place-items-center text-ink/25"><Shirt size={25} /></div>} /><span className="absolute inset-x-0 bottom-0 truncate bg-gradient-to-t from-black/55 to-transparent px-2 pb-1.5 pt-5 text-[10px] font-semibold text-white">{item.name}</span></div>)}
     </div>
