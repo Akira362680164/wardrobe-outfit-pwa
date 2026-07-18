@@ -73,6 +73,8 @@ assert.match(markup, /scroll-x/);
 assert.match(markup, /canvas[^>]+type="2d"/);
 assert.doesNotMatch(markup, /主计划|保护|覆盖|自动更换|服务端|事务|读回|正式合同/, "home copy must not expose defensive or implementation terms");
 assert.doesNotMatch(page, /主计划已保护|服务器读回|自动更换|推荐不会覆盖/, "home state copy must describe only the user-visible state");
+assert.match(page, /暂时无法获取位置，请稍后重试或搜索城市/);
+assert.doesNotMatch(page, /locationMessage:\s*messageOf\(error,[^\n]+位置/, "raw location plugin errors must not reach the UI");
 assert.doesNotMatch(styles, />\s*\*/, "WXSS does not accept a universal child selector");
 
 void testRequestCancellation()

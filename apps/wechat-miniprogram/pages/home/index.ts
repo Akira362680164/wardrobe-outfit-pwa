@@ -293,8 +293,14 @@ Page({
         locationMessage: candidates.length ? "请确认候选城市，再选择临时或常驻。坐标不会保存。" : "未解析到城市，请使用手工搜索。",
       });
     } catch (error) {
-      const message = messageOf(error, "无法获取位置，仍可手工搜索城市。");
-      this.setData({ locationBusy: false, locationMessage: message, locationNeedsSettings: /deny|denied|auth|permission/i.test(message) });
+      const denied = isLocationPermissionDenied(error);
+      this.setData({
+        locationBusy: false,
+        locationMessage: denied
+          ? "位置权限未允许，你仍可搜索城市；如需使用当前位置，请前往微信设置。"
+          : "暂时无法获取位置，请稍后重试或搜索城市。",
+        locationNeedsSettings: denied,
+      });
     }
   },
   openLocationSettings(this: any) {
@@ -443,6 +449,12 @@ function riskLabel(value: string | undefined, mode: string): string {
   return `风险提示：${value}`;
 }
 function messageOf(error: unknown, fallback: string): string { return error instanceof Error && error.message ? error.message : fallback; }
+function isLocationPermissionDenied(error: unknown): boolean {
+  const message = error instanceof Error
+    ? error.message
+    : error && typeof error === "object" && "errMsg" in error ? String((error as { errMsg?: unknown }).errMsg ?? "") : "";
+  return /deny|denied|auth|permission/i.test(message);
+}
 
 async function requirePrivacyAuthorization(): Promise<void> {
   const api = wx as any;
