@@ -7,7 +7,7 @@
         <text wx:if="{{title}}" class="ui-sheet__title text-one-line">{{title}}</text>
         <text wx:if="{{description}}" class="ui-sheet__description text-wrap-safe">{{description}}</text>
       </view>
-      <ui-icon-button wx:if="{{showClose}}" icon="x" label="关闭" size="sm" bind:tap="onClose" />
+      <view wx:if="{{showClose}}" class="ui-sheet__close"><ui-icon-button icon="x" label="关闭" size="sm" bind:tap="onClose" /></view>
     </view>
     <view class="ui-sheet__body"><slot /></view>
   </view>

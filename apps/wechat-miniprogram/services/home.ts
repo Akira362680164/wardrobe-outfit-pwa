@@ -1,19 +1,29 @@
 import {
   EmptyUserLocationProfileSchema,
+  AcceptRecommendationResponseSchema,
+  CancelPrimaryPlanResponseSchema,
   LocationDateOverrideStateSchema,
   RecommendationReadResponseSchema,
   ResolveRecommendationsResponseSchema,
+  RejectRecommendationResponseSchema,
   UserLocationProfileSchema,
   WeatherLocationCandidatesResponseSchema,
   WeatherOverviewSchema,
+  WorkspaceCommandResponseSchema,
+  type AcceptRecommendationCommand,
+  type AcceptRecommendationResponse,
+  type CancelPrimaryPlanCommand,
+  type CancelPrimaryPlanResponse,
   type LocationDateOverrideState,
   type RecommendationReadResponse,
   type ResolveRecommendationsResponse,
+  type RejectRecommendationCommand,
+  type RejectRecommendationResponse,
   type UserLocationProfile,
   type WeatherLocationCandidate,
   type WeatherLocationRef,
   type WeatherOverview,
-} from "@wardrobe/cloud-contracts";
+} from "../generated/wardora-home-contracts";
 
 import { request } from "./http";
 import type { MiniAbortSignal } from "../utils/request-cancellation";
@@ -51,6 +61,50 @@ export async function readMiniHomeRecommendations(startDate: string, endDate: st
 export async function resolveMiniHomeRecommendations(dates: readonly string[], signal?: MiniAbortSignal): Promise<ResolveRecommendationsResponse> {
   const value = await request<unknown>({ method: "POST", path: "/api/recommendations/resolve", data: { dates }, toast: false, signal });
   return ResolveRecommendationsResponseSchema.parse(value);
+}
+
+export async function acceptMiniHomeRecommendation(date: string, command: AcceptRecommendationCommand): Promise<AcceptRecommendationResponse> {
+  const value = await request<unknown>({
+    method: "POST",
+    path: `/api/recommendations/daily/${encodeURIComponent(date)}/accept`,
+    data: command,
+    toast: false,
+  });
+  return AcceptRecommendationResponseSchema.parse(value);
+}
+
+export async function cancelMiniHomePrimaryPlan(command: CancelPrimaryPlanCommand): Promise<CancelPrimaryPlanResponse> {
+  const value = await request<unknown>({
+    method: "POST", path: "/api/recommendations/plans/cancel-primary", data: command, toast: false,
+  });
+  return CancelPrimaryPlanResponseSchema.parse(value);
+}
+
+export async function rejectMiniHomeRecommendation(command: RejectRecommendationCommand): Promise<RejectRecommendationResponse> {
+  const value = await request<unknown>({
+    method: "POST", path: "/api/recommendations/actions/reject", data: command, toast: false,
+  });
+  return RejectRecommendationResponseSchema.parse(value);
+}
+
+export async function markMiniHomePlanWorn(planId: string, expectedRevision: number, clientMutationId: string, wornAt: string): Promise<void> {
+  const value = await request<unknown>({
+    method: "POST",
+    path: `/api/workspace/outfit-plans/${encodeURIComponent(planId)}/mark-worn`,
+    data: { clientMutationId, expectedRevision, wornAt },
+    toast: false,
+  });
+  WorkspaceCommandResponseSchema.parse(value);
+}
+
+export async function undoMiniHomePlanWorn(planId: string, expectedRevision: number, clientMutationId: string): Promise<void> {
+  const value = await request<unknown>({
+    method: "POST",
+    path: `/api/workspace/outfit-plans/${encodeURIComponent(planId)}/cancel-worn`,
+    data: { clientMutationId, expectedRevision, payload: {} },
+    toast: false,
+  });
+  WorkspaceCommandResponseSchema.parse(value);
 }
 
 export async function searchMiniHomeCities(query: string): Promise<readonly WeatherLocationCandidate[]> {

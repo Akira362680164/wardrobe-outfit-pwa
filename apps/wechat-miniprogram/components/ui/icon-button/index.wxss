@@ -1,8 +1,8 @@
 @import "../../../styles/index.wxss";
-.ui-icon-button { display: inline-flex; align-items: center; justify-content: center; width: 80rpx; height: 80rpx; padding: 0; border: 0; border-radius: var(--radius-pill); color: var(--color-ink); background: rgba(255, 255, 252, 0.72); transition: transform 120ms cubic-bezier(0.2, 0.8, 0.2, 1); }
+.ui-icon-button { box-sizing: border-box; display: inline-flex; align-items: center; justify-content: center; width: 80rpx; min-width: 0; max-width: 80rpx; height: 80rpx; margin: 0; padding: 0; border: 0; border-radius: var(--radius-pill); color: var(--color-ink); background: rgba(255, 255, 252, 0.72); transition: transform 120ms cubic-bezier(0.2, 0.8, 0.2, 1); }
 .ui-icon-button::after { border: 0; }
-.ui-icon-button--sm { width: 72rpx; height: 72rpx; }
-.ui-icon-button--lg { width: 96rpx; height: 96rpx; }
+.ui-icon-button--sm { width: 72rpx; max-width: 72rpx; height: 72rpx; }
+.ui-icon-button--lg { width: 96rpx; max-width: 96rpx; height: 96rpx; }
 .ui-icon-button--primary { color: var(--color-surface); background: var(--color-primary); }
 .ui-icon-button--ghost { color: var(--color-ink); background: rgba(29, 34, 40, 0.05); }
 .ui-icon-button--danger { color: var(--color-danger); background: rgba(220, 38, 38, 0.10); }

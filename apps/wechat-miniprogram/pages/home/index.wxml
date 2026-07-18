@@ -14,23 +14,23 @@
 
   <block wx:else>
     <view class="weather-shell">
-      <button class="location-entry" hover-class="pressable" bindtap="openLocationSheet" aria-label="当前地点 {{locationLabel}}，打开地点设置">
+      <view class="location-entry" role="button" hover-class="pressable" bindtap="openLocationSheet" aria-label="当前地点 {{locationLabel}}，打开地点设置">
         <ui-icon name="home" size="34" tone="primary" />
         <text class="location-entry__label">{{locationLabel}}</text>
         <ui-icon name="chevron-right" size="30" tone="muted" />
-      </button>
-      <view class="weather-canvas-host {{canvasStaticFallback ? 'is-static' : ''}}">
-        <canvas wx:if="{{canvasVisible}}" id="home-weather-canvas" class="weather-canvas" type="2d" aria-hidden="true" />
       </view>
       <view class="weather-grid">
-        <button class="weather-card weather-card--today" data-date="today" bindtap="selectWeatherDate" aria-label="今天天气，切换到今日推荐">
-          <view class="weather-row"><text>{{todayWeather.label}}</text><text wx:if="{{todayWeather.stale}}" class="stale-badge">缓存</text></view>
-          <view class="weather-temperature">{{todayWeather.temperature}}</view>
-          <view class="weather-summary">{{todayWeather.summary}}</view>
-          <view class="weather-meta">{{todayWeather.meta}}</view>
-        </button>
+        <view class="weather-card weather-card--today {{canvasStaticFallback ? 'is-static' : ''}}" role="button" data-date="today" bindtap="selectWeatherDate" aria-label="今天天气，切换到今日推荐">
+          <canvas wx:if="{{canvasVisible}}" id="home-weather-canvas" class="weather-canvas-host weather-canvas" type="2d" aria-hidden="true" />
+          <cover-view class="weather-copy-overlay">
+            <cover-view class="weather-copy-overlay__row"><cover-view>{{todayWeather.label}}</cover-view><cover-view wx:if="{{todayWeather.stale}}" class="stale-badge">较早天气</cover-view></cover-view>
+            <cover-view class="weather-copy-overlay__temperature">{{todayWeather.temperature}}</cover-view>
+            <cover-view class="weather-copy-overlay__summary">{{todayWeather.summary}}</cover-view>
+            <cover-view class="weather-copy-overlay__meta">{{todayWeather.meta}}</cover-view>
+          </cover-view>
+        </view>
         <button class="weather-card weather-card--tomorrow" data-date="tomorrow" bindtap="selectWeatherDate" aria-label="明天天气，切换到明日推荐">
-          <view class="weather-row"><text>{{tomorrowWeather.label}}</text><text wx:if="{{tomorrowWeather.stale}}" class="stale-badge">缓存</text></view>
+          <view class="weather-row"><text>{{tomorrowWeather.label}}</text><text wx:if="{{tomorrowWeather.stale}}" class="stale-badge">较早天气</text></view>
           <view class="weather-temperature weather-temperature--small">{{tomorrowWeather.temperature}}</view>
           <view class="weather-summary">{{tomorrowWeather.summary}}</view>
           <view class="weather-meta">{{tomorrowWeather.meta}}</view>
@@ -49,9 +49,28 @@
         <view class="section-heading"><view class="section-title">{{plan.title}}</view></view>
         <view class="plan-images"><view wx:for="{{plan.garments}}" wx:key="id" class="plan-image"><image wx:if="{{item.imageUrl}}" src="{{item.imageUrl}}" mode="aspectFill"/><view wx:else class="image-fallback">{{item.name}}</view></view></view>
         <view wx:if="{{plan.risk}}" class="plan-risk">{{plan.risk}}</view>
+        <view wx:if="{{planActionHint}}" class="action-message">{{planActionHint}}</view>
+        <view class="plan-actions">
+          <button wx:if="{{plan.status === 'worn'}}" disabled="{{actionBusy}}" bindtap="undoCurrentPlanWorn">撤销已穿</button>
+          <block wx:else>
+            <button disabled="{{actionBusy}}" bindtap="beginChangePlan">更换穿搭</button>
+            <button disabled="{{actionBusy}}" bindtap="openCancelPlanSheet">取消安排</button>
+            <button class="is-primary" disabled="{{actionBusy || plan.availability === 'blocked'}}" bindtap="markCurrentPlanWorn">确认今天穿了这套</button>
+          </block>
+        </view>
       </view>
 
-      <scroll-view class="date-strip" scroll-x enable-flex aria-label="选择推荐日期">
+      <view wx:if="{{!plan}}" class="recommendation-toolbar">
+        <view class="recommendation-heading"><view class="section-title">{{recommendationHeading}}</view><view class="section-subtitle">{{recommendationSubtitle}}</view></view>
+        <scroll-view class="date-strip" scroll-x enable-flex aria-label="选择推荐日期">
+          <view class="date-strip__row">
+            <button wx:for="{{dateItems}}" wx:key="date" class="date-chip {{selectedDate === item.date ? 'is-active' : ''}}" data-date="{{item.date}}" bindtap="selectDate" aria-pressed="{{selectedDate === item.date}}">
+              <text class="date-chip__relative">{{item.relativeLabel}}</text><text class="date-chip__date">{{item.shortDate}}</text>
+            </button>
+          </view>
+        </scroll-view>
+      </view>
+      <scroll-view wx:else class="date-strip date-strip--after-plan" scroll-x enable-flex aria-label="选择推荐日期">
         <view class="date-strip__row">
           <button wx:for="{{dateItems}}" wx:key="date" class="date-chip {{selectedDate === item.date ? 'is-active' : ''}}" data-date="{{item.date}}" bindtap="selectDate" aria-pressed="{{selectedDate === item.date}}">
             <text class="date-chip__relative">{{item.relativeLabel}}</text><text class="date-chip__date">{{item.shortDate}}</text>
@@ -66,9 +85,13 @@
       <scroll-view wx:if="{{recommendationCards.length}}" class="recommendation-scroll" scroll-x enable-flex enhanced show-scrollbar="false">
         <view class="recommendation-row">
           <view wx:for="{{recommendationCards}}" wx:key="candidateId" class="recommendation-card {{item.blocked ? 'recommendation-card--blocked' : ''}}">
-            <view class="recommendation-card__top"><text class="recommendation-objective">{{item.objective}}</text><text class="recommendation-mode">{{recommendationMode === 'forecast' ? '天气增强' : recommendationMode === 'locationless' ? '通用建议' : '天气回退'}}</text></view>
+            <view class="recommendation-card__top"><text class="recommendation-objective">{{item.objective}}</text><text class="recommendation-mode">{{recommendationMode === 'forecast' ? '结合天气' : '通用建议'}}</text></view>
             <view class="recommendation-images"><view wx:for="{{item.garments}}" wx:for-item="garment" wx:key="id" class="recommendation-image" data-id="{{garment.id}}" bindtap="openGarment"><image wx:if="{{garment.imageUrl}}" src="{{garment.imageUrl}}" mode="aspectFill"/><view wx:else class="image-fallback">{{garment.name}}</view><text>{{garment.name}}</text></view></view>
             <view class="recommendation-title">{{item.title}}</view><view class="recommendation-reason">{{item.reason}}</view><view class="recommendation-risk">{{item.risk}}</view>
+            <view class="recommendation-actions">
+              <button class="recommendation-action" data-candidate="{{item.candidateId}}" disabled="{{actionBusy || item.blocked}}" bindtap="applyRecommendation">{{actionBusy ? '提交中…' : recommendationActionLabel}}</button>
+              <button class="recommendation-detail-action" data-candidate="{{item.candidateId}}" disabled="{{actionBusy}}" bindtap="openRecommendationSheet" aria-label="查看推荐详情"><ui-icon name="chevron-right" size="34" tone="primary" /></button>
+            </view>
           </view>
         </view>
       </scroll-view>
@@ -85,8 +108,31 @@
     </view>
   </block>
 
-  <button class="content-fab home-fab" aria-label="新建" bindtap="openCreateSheet"><ui-icon name="plus" size="48" tone="surface" /></button>
   <create-sheet open="{{createSheetOpen}}" active="add_single_item" bind:close="closeCreateSheet" />
+
+  <ui-sheet open="{{recommendationSheetOpen}}" title="穿搭详情" description="确认后才会更新安排。提交期间会保留当前选择。" close-on-mask="{{!actionBusy}}" bind:close="closeRecommendationSheet">
+    <view wx:if="{{selectedRecommendation}}" class="action-sheet-body">
+      <view class="action-outfit-images"><view wx:for="{{selectedRecommendation.garments}}" wx:key="id" class="plan-image"><image wx:if="{{item.imageUrl}}" src="{{item.imageUrl}}" mode="aspectFill"/><view wx:else class="image-fallback">{{item.name}}</view></view></view>
+      <view class="action-field"><view class="action-label">替换哪一件</view><picker disabled="{{actionBusy}}" range="{{replacementSourceLabels}}" value="{{replacementSourceIndex}}" bindchange="selectReplacementSource"><view class="action-picker"><text>{{replacementSourceLabels[replacementSourceIndex]}}</text><ui-icon name="chevron-down" size="28" tone="muted" /></view></picker></view>
+      <view class="action-field"><view class="action-label">换成</view><picker disabled="{{actionBusy}}" range="{{replacementChoices}}" range-key="label" value="{{replacementChoiceIndex}}" bindchange="selectReplacementChoice"><view class="action-picker"><text>{{replacementChoices[replacementChoiceIndex].label}}</text><ui-icon name="chevron-down" size="28" tone="muted" /></view></picker></view>
+      <view wx:if="{{actionMessage}}" class="action-message">{{actionMessage}}</view>
+      <button class="sheet-primary-action" loading="{{actionBusy}}" disabled="{{actionBusy || selectedRecommendation.blocked}}" bindtap="applySelectedRecommendation">{{selectedDate === today ? '设为今日穿搭' : selectedDate === tomorrow ? '设为明日穿搭' : '安排到所选日期'}}</button>
+      <view class="sheet-secondary-actions"><button disabled="{{actionBusy}}" bindtap="rejectSelectedRecommendation">不喜欢</button><button disabled="{{actionBusy}}" bindtap="saveSelectedOutfit">保存为我的套装</button></view>
+    </view>
+  </ui-sheet>
+
+  <ui-sheet open="{{postAcceptSheetOpen}}" title="已安排" description="这次安排已经确认。你也可以把它保存到套装，方便以后直接使用。" close-on-mask="{{!actionBusy}}" bind:close="closePostAcceptSheet">
+    <view class="action-sheet-body"><view wx:if="{{actionMessage}}" class="action-message">{{actionMessage}}</view><button class="sheet-primary-action" loading="{{actionBusy}}" disabled="{{actionBusy}}" bindtap="saveSelectedOutfit">保存到我的套装</button><button class="sheet-quiet-action" disabled="{{actionBusy}}" bindtap="closePostAcceptSheet">仅本次使用</button></view>
+  </ui-sheet>
+
+  <ui-sheet open="{{cancelSheetOpen}}" title="取消安排" description="可以只取消，也可以恢复一套备选穿搭。确认后才会更新。" close-on-mask="{{!actionBusy}}" bind:close="closeCancelPlanSheet">
+    <view class="action-sheet-body">
+      <button class="backup-choice {{cancelBackupId === '' ? 'is-selected' : ''}}" data-id="" bindtap="chooseCancelBackup">只取消当前安排</button>
+      <button wx:for="{{planBackups}}" wx:key="id" class="backup-choice {{cancelBackupId === item.id ? 'is-selected' : ''}}" data-id="{{item.id}}" bindtap="chooseCancelBackup">恢复备选：{{item.garments[0].name}}</button>
+      <view wx:if="{{actionMessage}}" class="action-message">{{actionMessage}}</view>
+      <button class="sheet-primary-action" loading="{{actionBusy}}" disabled="{{actionBusy}}" bindtap="cancelCurrentPlan">确认取消</button>
+    </view>
+  </ui-sheet>
 
   <ui-sheet open="{{locationSheetOpen}}" title="地点与天气" description="仅在你主动选择后获取一次粗略位置，用来解析城市；坐标仅用于本次解析，不会保存。" close-on-mask="{{!locationBusy}}" bind:close="closeLocationSheet">
     <view class="location-sheet-body">

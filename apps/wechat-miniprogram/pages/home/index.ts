@@ -1,19 +1,34 @@
-import type { RecommendationDisplayItemV3, WeatherLocationCandidate, WeatherOverview } from "@wardrobe/cloud-contracts";
+import type {
+  AcceptRecommendationCommand,
+  CancelPrimaryPlanCommand,
+  RecommendationDisplayItemV3,
+  RejectRecommendationCommand,
+  WeatherLocationCandidate,
+  WeatherOverview,
+} from "../../generated/wardora-home-contracts";
 
 import { getRuntimeSessionScope, getSession } from "../../stores/session";
+import { selectCustomTab, setCustomTabHidden } from "../../utils/custom-tab-bar";
 import {
   clearMiniTemporaryCity,
+  acceptMiniHomeRecommendation,
+  cancelMiniHomePrimaryPlan,
+  markMiniHomePlanWorn,
   putMiniHomeCity,
   readMiniHomeLocation,
   readMiniHomeRecommendations,
   readMiniHomeWeather,
   resolveMiniDeviceLocation,
   resolveMiniHomeRecommendations,
+  rejectMiniHomeRecommendation,
   searchMiniHomeCities,
+  undoMiniHomePlanWorn,
   type MiniHomeLocationSnapshot,
 } from "../../services/home";
 import {
   fetchGarments,
+  createOutfit,
+  fetchOutfits,
   fetchPlanningSnapshot,
   getWorkspaceReadState,
   type MiniGarment,
@@ -30,6 +45,14 @@ import {
   homeBusinessWindow,
   shouldRequestMiniLocationPermission,
 } from "./model";
+import { createMiniWeatherCanvasRuntime } from "./weather-canvas-runtime";
+import {
+  buildReplacementChoices,
+  hasAcceptedPlanReadback,
+  hasWornStateReadback,
+  homeActionErrorMessage,
+  isPlanCanceledReadback,
+} from "./p2-model";
 
 type WeatherCard = {
   status: "loading" | "ready" | "error" | "unavailable";
@@ -49,13 +72,17 @@ type HomeRecommendationCard = {
   title: string;
   reason: string;
   risk: string;
-  garments: Array<{ id: string; name: string; imageUrl: string }>;
+  garments: Array<{ id: string; legacyItemId: number; name: string; imageUrl: string; category: string }>;
+  garmentIds: string[];
   blocked: boolean;
 };
 
 const readGate = new HomeGenerationGate();
 const dateGate = new HomeGenerationGate();
 const locationMutations = createStableMutationSession<{ kind: string; locationId?: string; expectedRevision: number }>();
+const recommendationMutations = createStableMutationSession<Record<string, unknown>>();
+const planMutations = createStableMutationSession<Record<string, unknown>>();
+const outfitMutations = createStableMutationSession<Record<string, unknown>>();
 
 Page({
   data: {
@@ -66,6 +93,9 @@ Page({
     today: "",
     tomorrow: "",
     selectedDate: "",
+    recommendationHeading: "今天",
+    recommendationSubtitle: "天气增强推荐 · 横向滑动",
+    recommendationActionLabel: "设为今日穿搭",
     dateItems: [] as ReturnType<typeof buildHomeDateStrip>,
     activeSection: "recommendation" as "recommendation" | "wardrobe",
     locationLabel: "未设置城市",
@@ -86,11 +116,25 @@ Page({
     recommendationCards: [] as HomeRecommendationCard[],
     travelDates: [] as Array<{ date: string; title: string; destination: string; dateLabel: string }>,
     plan: null as ReturnType<typeof mapPlan> | null,
+    planBackups: [] as ReturnType<typeof mapBackupPlans>,
     garments: [] as MiniGarment[],
     wardrobeEmpty: false,
     createSheetOpen: false,
     canvasVisible: false,
     canvasStaticFallback: true,
+    recommendationSheetOpen: false,
+    selectedRecommendation: null as HomeRecommendationCard | null,
+    actionBusy: false,
+    actionMessage: "",
+    replacementSourceIndex: 0,
+    replacementSourceLabels: [] as string[],
+    replacementChoiceIndex: 0,
+    replacementChoices: [] as Array<{ id: string; label: string }>,
+    cancelSheetOpen: false,
+    cancelBackupId: "",
+    postAcceptSheetOpen: false,
+    postAcceptRecommendation: null as HomeRecommendationCard | null,
+    planActionHint: "",
   },
 
   onLoad(this: any) {
@@ -98,6 +142,7 @@ Page({
     const window = homeBusinessWindow(new Date());
     this.sessionScope = getRuntimeSessionScope();
     this.planning = null;
+    this.canvasGeneration = 0;
     this.setData({
       greeting: buildHomeGreeting(new Date()),
       businessDateLabel: formatHomeBusinessDate(window.today),
@@ -109,6 +154,9 @@ Page({
   },
 
   onShow(this: any) {
+    selectCustomTab(this, 0);
+    setCustomTabHidden(this, Boolean(this.data.recommendationSheetOpen || this.data.postAcceptSheetOpen || this.data.cancelSheetOpen || this.data.locationSheetOpen || this.data.createSheetOpen));
+    this.canvasForeground = true;
     const nextScope = getRuntimeSessionScope();
     const nextWindow = homeBusinessWindow(new Date());
     const crossedMidnight = this.data.today && this.data.today !== nextWindow.today;
@@ -117,10 +165,15 @@ Page({
       readGate.reset(nextScope);
       dateGate.reset(nextScope);
       locationMutations.clear();
+      recommendationMutations.clear();
+      planMutations.clear();
+      outfitMutations.clear();
       this.sessionScope = nextScope;
       this.planning = null;
       this.setData({
         selectedDate: nextWindow.today,
+        recommendationHeading: recommendationHeading(nextWindow.today, nextWindow.today, nextWindow.tomorrow),
+        recommendationActionLabel: recommendationActionLabel(nextWindow.today, nextWindow.today, nextWindow.tomorrow),
         today: nextWindow.today,
         tomorrow: nextWindow.tomorrow,
         dateItems: buildHomeDateStrip(nextWindow),
@@ -128,18 +181,22 @@ Page({
         garments: [],
         recommendationCards: [],
         plan: null,
+        planBackups: [],
       });
     }
     this.loadHome(accountChanged || crossedMidnight || !this.data.garments.length);
     this.resumeWeatherCanvas();
   },
 
-  onHide(this: any) { this.pauseWeatherCanvas(); },
+  onHide(this: any) { this.canvasForeground = false; this.pauseWeatherCanvas(); },
   onUnload(this: any) {
     readGate.reset();
     dateGate.reset();
     locationMutations.clear();
-    this.pauseWeatherCanvas();
+    recommendationMutations.clear();
+    planMutations.clear();
+    outfitMutations.clear();
+    this.destroyWeatherCanvas();
   },
 
   async loadHome(this: any, force = false) {
@@ -184,7 +241,13 @@ Page({
     const accountId = getSession()?.user?.id ?? getRuntimeSessionScope();
     const ticket = dateGate.begin(accountId, date);
     const dates = preloadPair && date === this.data.today ? [this.data.today, this.data.tomorrow] : [date];
-    this.setData({ selectedDate: date, recommendationLoading: true, recommendationError: "" });
+    this.setData({
+      selectedDate: date,
+      recommendationHeading: recommendationHeading(date, this.data.today, this.data.tomorrow),
+      recommendationActionLabel: recommendationActionLabel(date, this.data.today, this.data.tomorrow),
+      recommendationLoading: true,
+      recommendationError: "",
+    });
     const weatherResults = await Promise.allSettled(dates.map((target) => readMiniHomeWeather(target, ticket.signal)));
     if (!dateGate.isCurrent(ticket)) return;
     const weatherPatch: Record<string, unknown> = {};
@@ -202,7 +265,10 @@ Page({
       weatherPatch.weatherAttribution = overview.attribution?.label ?? "";
       weatherPatch.canvasVisible = date === this.data.today && overview.availabilityReason === "available";
     }
-    this.setData(weatherPatch);
+    this.setData(weatherPatch, () => {
+      if (selectedWeather?.status === "fulfilled" && date === this.data.today) this.syncWeatherCanvas(selectedWeather.value);
+      else if (date === this.data.today) this.destroyWeatherCanvas(true);
+    });
 
     try {
       let item: RecommendationDisplayItemV3 | undefined;
@@ -220,19 +286,24 @@ Page({
           this.setData({
             recommendationLoading: false,
             recommendationMode: result.status,
+            recommendationSubtitle: "已有安排 · 可继续切换日期",
             recommendationCards: [],
             plan: mapPlan(findPlan(this.planning, date, result.protectedPlanEntryId), this.data.garments),
+            planBackups: mapBackupPlans(this.planning, date, this.data.garments),
           });
           return;
         }
         item = result?.recommendation;
       }
       if (!dateGate.isCurrent(ticket)) return;
+      const mode = item?.contextMode ?? (selectedWeather?.status === "fulfilled" ? selectedWeather.value.contextMode : "weather_fallback");
       this.setData({
         recommendationLoading: false,
-        recommendationMode: item?.contextMode ?? (selectedWeather?.status === "fulfilled" ? selectedWeather.value.contextMode : "weather_fallback"),
+        recommendationMode: mode,
+        recommendationSubtitle: recommendationSubtitle(mode),
         recommendationCards: item ? mapRecommendationCards(item, this.data.garments) : [],
         plan: mapPlan(findPlan(this.planning, date), this.data.garments),
+        planBackups: mapBackupPlans(this.planning, date, this.data.garments),
       });
     } catch (error) {
       if (!dateGate.isCurrent(ticket)) return;
@@ -261,10 +332,225 @@ Page({
   openCreateSheet(this: any) { this.setData({ createSheetOpen: true }); },
   closeCreateSheet(this: any) { this.setData({ createSheetOpen: false }); },
 
+  openRecommendationSheet(this: any, event: any) {
+    const candidateId = String(event.currentTarget.dataset.candidate || "");
+    const selected = (this.data.recommendationCards as HomeRecommendationCard[]).find((card) => card.candidateId === candidateId);
+    if (!selected) return;
+    setCustomTabHidden(this, true);
+    this.setData({
+      recommendationSheetOpen: true,
+      selectedRecommendation: selected,
+      actionMessage: "",
+      replacementSourceIndex: 0,
+      replacementSourceLabels: selected.garments.map((garment) => garment.name),
+      replacementChoiceIndex: 0,
+      replacementChoices: buildReplacementChoices(selected, 0, this.data.garments),
+    });
+  },
+  closeRecommendationSheet(this: any) {
+    if (!this.data.actionBusy) {
+      setCustomTabHidden(this, false);
+      this.setData({ recommendationSheetOpen: false, selectedRecommendation: null, actionMessage: "" });
+    }
+  },
+  async applyRecommendation(this: any, event: any) {
+    const candidateId = String(event.currentTarget.dataset.candidate || "");
+    const selected = (this.data.recommendationCards as HomeRecommendationCard[]).find((card) => card.candidateId === candidateId);
+    if (!selected || selected.blocked) return;
+    await this.commitRecommendation(selected, selected.garmentIds.slice());
+  },
+  selectReplacementSource(this: any, event: any) {
+    const selected = this.data.selectedRecommendation as HomeRecommendationCard | null;
+    if (!selected) return;
+    const index = Number(event.detail.value) || 0;
+    this.setData({ replacementSourceIndex: index, replacementChoiceIndex: 0, replacementChoices: buildReplacementChoices(selected, index, this.data.garments) });
+  },
+  selectReplacementChoice(this: any, event: any) { this.setData({ replacementChoiceIndex: Number(event.detail.value) || 0 }); },
+  async applySelectedRecommendation(this: any) {
+    const selected = this.data.selectedRecommendation as HomeRecommendationCard | null;
+    if (!selected || selected.blocked) return;
+    const selectedGarmentIds = selected.garmentIds.slice();
+    const replacement = this.data.replacementChoices[this.data.replacementChoiceIndex] as { id: string } | undefined;
+    if (replacement?.id) selectedGarmentIds[this.data.replacementSourceIndex] = replacement.id;
+    await this.commitRecommendation(selected, selectedGarmentIds);
+  },
+  async commitRecommendation(this: any, selected: HomeRecommendationCard, selectedGarmentIds: string[]) {
+    const currentPlan = this.data.plan as ReturnType<typeof mapPlan> | null;
+    const draft = {
+      kind: "accept",
+      targetDate: this.data.selectedDate,
+      recommendationId: selected.recommendationId,
+      revision: selected.revision,
+      candidateId: selected.candidateId,
+      selectedGarmentIds,
+      replacePlanId: currentPlan?.status === "planned" ? currentPlan.id : "",
+      replaceRevision: currentPlan?.status === "planned" ? currentPlan.revision : 0,
+    };
+    const clientMutationId = recommendationMutations.idFor(draft);
+    const command: AcceptRecommendationCommand = {
+      clientMutationId,
+      recommendationId: selected.recommendationId,
+      expectedRecommendationRevision: selected.revision,
+      candidateId: selected.candidateId,
+      selectedGarmentIds,
+      ...(currentPlan?.status === "planned" ? { replaceExistingPrimary: { planEntryId: currentPlan.id, expectedRevision: currentPlan.revision } } : {}),
+    };
+    this.setData({ actionBusy: true, actionMessage: "正在安排，确认后显示…" });
+    try {
+      let committedPlanId = "";
+      try {
+        committedPlanId = (await acceptMiniHomeRecommendation(this.data.selectedDate, command)).plan.id;
+      } catch (error) {
+        const recovered = await fetchPlanningSnapshot();
+        if (!hasAcceptedPlanReadback(recovered, this.data.selectedDate, selected.candidateId, selectedGarmentIds)) throw error;
+      }
+      const planning = await this.refreshPlanningReadback();
+      if (!hasAcceptedPlanReadback(planning, this.data.selectedDate, selected.candidateId, selectedGarmentIds, committedPlanId)) throw new Error("readback_missing");
+      recommendationMutations.confirm(draft);
+      setCustomTabHidden(this, true);
+      this.setData({
+        actionBusy: false,
+        actionMessage: "",
+        recommendationSheetOpen: false,
+        selectedRecommendation: null,
+        postAcceptSheetOpen: true,
+        postAcceptRecommendation: cardWithGarmentIds(selected, selectedGarmentIds, this.data.garments),
+        planActionHint: "",
+      });
+    } catch (error) {
+      this.setData({ actionBusy: false, actionMessage: homeActionErrorMessage(error) });
+    }
+  },
+  async rejectSelectedRecommendation(this: any) {
+    const selected = this.data.selectedRecommendation as HomeRecommendationCard | null;
+    if (!selected) return;
+    const draft = { kind: "reject", recommendationId: selected.recommendationId, revision: selected.revision, candidateId: selected.candidateId, reason: "not_for_me" };
+    const command: RejectRecommendationCommand = {
+      clientMutationId: recommendationMutations.idFor(draft), recommendationId: selected.recommendationId,
+      expectedRecommendationRevision: selected.revision, candidateId: selected.candidateId, reason: "not_for_me",
+    };
+    this.setData({ actionBusy: true, actionMessage: "正在记录…" });
+    try {
+      await rejectMiniHomeRecommendation(command);
+      await this.loadSelectedDate(this.data.selectedDate, false);
+      recommendationMutations.confirm(draft);
+      setCustomTabHidden(this, false);
+      this.setData({ actionBusy: false, recommendationSheetOpen: false, selectedRecommendation: null, actionMessage: "" });
+      wx.showToast({ title: "已记录", icon: "success" });
+    } catch (error) {
+      this.setData({ actionBusy: false, actionMessage: homeActionErrorMessage(error) });
+    }
+  },
+  async saveSelectedOutfit(this: any) {
+    let selected = (this.data.selectedRecommendation || this.data.postAcceptRecommendation) as HomeRecommendationCard | null;
+    if (!selected) return;
+    if (this.data.selectedRecommendation) {
+      const selectedGarmentIds = selected.garmentIds.slice();
+      const replacement = this.data.replacementChoices[this.data.replacementChoiceIndex] as { id: string } | undefined;
+      if (replacement?.id) selectedGarmentIds[this.data.replacementSourceIndex] = replacement.id;
+      selected = cardWithGarmentIds(selected, selectedGarmentIds, this.data.garments);
+    }
+    const draft = { kind: "save_outfit", candidateId: selected.candidateId, garmentIds: selected.garmentIds };
+    const clientMutationId = outfitMutations.idFor(draft);
+    this.setData({ actionBusy: true, actionMessage: "正在保存套装…" });
+    try {
+      const entity = await createOutfit({
+        name: `${formatHomeBusinessDate(this.data.selectedDate)}穿搭`,
+        legacyItemIds: selected.garments.map((garment) => garment.legacyItemId).filter((id) => Number.isInteger(id)),
+        notes: "来自 Wardora 首页推荐",
+        clientMutationId,
+      });
+      const outfits = await fetchOutfits(200);
+      if (!outfits.some((outfit) => outfit.id === entity.id)) throw new Error("readback_missing");
+      outfitMutations.confirm(draft);
+      setCustomTabHidden(this, false);
+      this.setData({ actionBusy: false, actionMessage: "", recommendationSheetOpen: false, selectedRecommendation: null, postAcceptSheetOpen: false, postAcceptRecommendation: null });
+      wx.showToast({ title: "已保存到套装", icon: "success" });
+    } catch (error) {
+      this.setData({ actionBusy: false, actionMessage: homeActionErrorMessage(error) });
+    }
+  },
+  closePostAcceptSheet(this: any) {
+    if (!this.data.actionBusy) {
+      setCustomTabHidden(this, false);
+      this.setData({ postAcceptSheetOpen: false, postAcceptRecommendation: null, actionMessage: "" });
+    }
+  },
+  beginChangePlan(this: any) {
+    const first = (this.data.recommendationCards as HomeRecommendationCard[])[0];
+    if (!first) { this.setData({ planActionHint: "当前没有可用于更换的建议，请稍后重试。" }); return; }
+    this.setData({ planActionHint: "选择建议并确认后，原穿搭会保留为备选。" });
+    this.openRecommendationSheet({ currentTarget: { dataset: { candidate: first.candidateId } } });
+  },
+  openCancelPlanSheet(this: any) {
+    const plan = this.data.plan as ReturnType<typeof mapPlan> | null;
+    if (!plan || plan.status === "worn") return;
+    setCustomTabHidden(this, true);
+    this.setData({ cancelSheetOpen: true, cancelBackupId: "", actionMessage: "" });
+  },
+  closeCancelPlanSheet(this: any) { if (!this.data.actionBusy) { setCustomTabHidden(this, false); this.setData({ cancelSheetOpen: false, actionMessage: "" }); } },
+  chooseCancelBackup(this: any, event: any) { if (!this.data.actionBusy) this.setData({ cancelBackupId: String(event.currentTarget.dataset.id || "") }); },
+  async cancelCurrentPlan(this: any) {
+    const plan = this.data.plan as ReturnType<typeof mapPlan> | null;
+    if (!plan || plan.status === "worn") return;
+    const backup = (this.data.planBackups as ReturnType<typeof mapBackupPlans>).find((item) => item.id === this.data.cancelBackupId);
+    const draft = { kind: "cancel_plan", date: this.data.selectedDate, planId: plan.id, revision: plan.revision, backupId: backup?.id ?? "", backupRevision: backup?.revision ?? 0 };
+    const command: CancelPrimaryPlanCommand = {
+      clientMutationId: planMutations.idFor(draft), targetDate: this.data.selectedDate,
+      primary: { planEntryId: plan.id, expectedRevision: plan.revision },
+      ...(backup ? { promoteBackup: { planEntryId: backup.id, expectedRevision: backup.revision } } : {}),
+    };
+    this.setData({ actionBusy: true, actionMessage: "正在取消安排…" });
+    try {
+      try { await cancelMiniHomePrimaryPlan(command); } catch (error) {
+        const recovered = await fetchPlanningSnapshot();
+        if (!isPlanCanceledReadback(recovered, this.data.selectedDate, plan.id, backup?.id)) throw error;
+      }
+      const planning = await this.refreshPlanningReadback();
+      if (!isPlanCanceledReadback(planning, this.data.selectedDate, plan.id, backup?.id)) throw new Error("readback_missing");
+      planMutations.confirm(draft);
+      setCustomTabHidden(this, false);
+      this.setData({ actionBusy: false, actionMessage: "", cancelSheetOpen: false, cancelBackupId: "" });
+    } catch (error) { this.setData({ actionBusy: false, actionMessage: homeActionErrorMessage(error) }); }
+  },
+  async markCurrentPlanWorn(this: any) { await this.setCurrentPlanWornState(true); },
+  async undoCurrentPlanWorn(this: any) { await this.setCurrentPlanWornState(false); },
+  async setCurrentPlanWornState(this: any, worn: boolean) {
+    const plan = this.data.plan as ReturnType<typeof mapPlan> | null;
+    if (!plan || (worn && plan.availability === "blocked")) return;
+    const draft = { kind: worn ? "mark_worn" : "undo_worn", planId: plan.id, revision: plan.revision, date: this.data.selectedDate };
+    const clientMutationId = planMutations.idFor(draft);
+    this.setData({ actionBusy: true, planActionHint: worn ? "正在确认穿着…" : "正在撤销穿着记录…" });
+    try {
+      try {
+        if (worn) await markMiniHomePlanWorn(plan.id, plan.revision, clientMutationId, `${this.data.selectedDate}T12:00:00.000Z`);
+        else await undoMiniHomePlanWorn(plan.id, plan.revision, clientMutationId);
+      } catch (error) {
+        const recovered = await fetchPlanningSnapshot();
+        if (!hasWornStateReadback(recovered, plan.id, worn)) throw error;
+      }
+      const planning = await this.refreshPlanningReadback();
+      if (!hasWornStateReadback(planning, plan.id, worn)) throw new Error("readback_missing");
+      planMutations.confirm(draft);
+      this.setData({ actionBusy: false, planActionHint: "" });
+    } catch (error) { this.setData({ actionBusy: false, planActionHint: homeActionErrorMessage(error) }); }
+  },
+  async refreshPlanningReadback(this: any) {
+    const planning = await fetchPlanningSnapshot();
+    this.planning = planning;
+    this.setData({
+      plan: mapPlan(findPlan(planning, this.data.selectedDate), this.data.garments),
+      planBackups: mapBackupPlans(planning, this.data.selectedDate, this.data.garments),
+      travelDates: buildFarTravelDates(planning, this.data.dateItems),
+    });
+    return planning;
+  },
+
   openLocationSheet(this: any) {
+    setCustomTabHidden(this, true);
     this.setData({ locationSheetOpen: true, locationMessage: "", locationNeedsSettings: false });
   },
-  closeLocationSheet(this: any) { if (!this.data.locationBusy) this.setData({ locationSheetOpen: false }); },
+  closeLocationSheet(this: any) { if (!this.data.locationBusy) { setCustomTabHidden(this, false); this.setData({ locationSheetOpen: false }); } },
   inputCityQuery(this: any, event: any) { this.setData({ cityQuery: event.detail.value }); },
   async searchCity(this: any) {
     const query = String(this.data.cityQuery || "").trim();
@@ -336,6 +622,7 @@ Page({
     try {
       const next = await putMiniHomeCity(kind, location, expectedRevision, clientMutationId);
       locationMutations.confirm(draft);
+      setCustomTabHidden(this, false);
       this.setData({ locationBusy: false, locationSheetOpen: false, locationSnapshot: next, locationLabel: profileLocationLabel(next), cityCandidates: [], cityQuery: "" });
       this.loadSelectedDate(this.data.selectedDate, this.data.selectedDate === this.data.today);
     } catch (error) {
@@ -351,6 +638,7 @@ Page({
     try {
       const next = await clearMiniTemporaryCity(snapshot.override.revision, clientMutationId);
       locationMutations.confirm(draft);
+      setCustomTabHidden(this, false);
       this.setData({ locationBusy: false, locationSheetOpen: false, locationSnapshot: next, locationLabel: profileLocationLabel(next) });
       this.loadSelectedDate(this.data.selectedDate, this.data.selectedDate === this.data.today);
     } catch (error) {
@@ -359,10 +647,45 @@ Page({
   },
 
   resumeWeatherCanvas(this: any) {
-    // P3 shared engine is attached after the main dependency lands. The host stays static until then.
-    this.weatherCanvasRuntime?.resume?.();
+    this.weatherCanvasRuntime?.setForeground?.(true);
   },
-  pauseWeatherCanvas(this: any) { this.weatherCanvasRuntime?.pause?.(); },
+  pauseWeatherCanvas(this: any) { this.weatherCanvasRuntime?.setForeground?.(false); },
+  async syncWeatherCanvas(this: any, overview: WeatherOverview) {
+    const evidence = overview.weatherEvidence;
+    const code = evidence.weatherCode ?? "998";
+    const stale = overview.endpointFreshness.some((entry) => entry.freshness === "stale");
+    const forecast = overview.availabilityReason === "available" && overview.contextMode === "forecast";
+    if (!forecast || stale) { this.destroyWeatherCanvas(true); return; }
+    const generation = ++this.canvasGeneration;
+    this.weatherCanvasRuntime?.destroy?.();
+    this.canvasObserver?.disconnect?.();
+    this.weatherCanvasRuntime = null;
+    this.setData({ canvasVisible: true, canvasStaticFallback: false }, async () => {
+      try {
+        const runtime = await createMiniWeatherCanvasRuntime({
+          page: this, code, stale, forecast, reducedMotion: prefersReducedMotion(),
+          copy: this.data.todayWeather,
+          onFailure: () => { if (generation === this.canvasGeneration) this.destroyWeatherCanvas(true); },
+        });
+        if (generation !== this.canvasGeneration) { runtime.destroy(); return; }
+        this.weatherCanvasRuntime = runtime;
+        runtime.setForeground(this.canvasForeground !== false);
+        this.canvasObserver = this.createIntersectionObserver({ thresholds: [0, .01] })
+          .relativeToViewport()
+          .observe(".weather-card--today", (result: any) => runtime.setVisible(Number(result?.intersectionRatio ?? 0) > 0));
+      } catch {
+        if (generation === this.canvasGeneration) this.destroyWeatherCanvas(true);
+      }
+    });
+  },
+  destroyWeatherCanvas(this: any, fallback = false) {
+    this.canvasGeneration = (this.canvasGeneration ?? 0) + 1;
+    this.weatherCanvasRuntime?.destroy?.();
+    this.canvasObserver?.disconnect?.();
+    this.weatherCanvasRuntime = null;
+    this.canvasObserver = null;
+    if (fallback) this.setData({ canvasVisible: false, canvasStaticFallback: true });
+  },
 });
 
 function mapWeather(value: WeatherOverview, label: string, today: boolean): WeatherCard {
@@ -397,9 +720,22 @@ function mapRecommendationCards(item: RecommendationDisplayItemV3, garments: Min
     title: `${objectiveLabel(candidate.objective)}搭配`,
     reason: reasonLabel(candidate.reasonCodes[0]),
     risk: riskLabel(candidate.riskCodes[0], item.contextMode),
-    garments: candidate.garmentIds.map((id) => byId.get(id)).filter((garment): garment is MiniGarment => Boolean(garment)).map((garment) => ({ id: garment.id, name: garment.name, imageUrl: garment.imageUrl })),
+    garments: candidate.garmentIds.map((id) => byId.get(id)).filter((garment): garment is MiniGarment => Boolean(garment)).map((garment) => ({ id: garment.id, legacyItemId: garment.legacyItemId, name: garment.name, imageUrl: garment.imageUrl, category: garment.category })),
+    garmentIds: candidate.garmentIds.slice(),
     blocked: candidate.riskCodes.some((code) => String(code).includes("blocked") || String(code).includes("severe")),
   }));
+}
+
+function cardWithGarmentIds(card: HomeRecommendationCard, garmentIds: string[], garments: MiniGarment[]): HomeRecommendationCard {
+  const byId = new Map(garments.map((garment) => [garment.id, garment]));
+  return {
+    ...card,
+    garmentIds: garmentIds.slice(),
+    garments: garmentIds
+      .map((id) => byId.get(id))
+      .filter((garment): garment is MiniGarment => Boolean(garment))
+      .map((garment) => ({ id: garment.id, legacyItemId: garment.legacyItemId, name: garment.name, imageUrl: garment.imageUrl, category: garment.category })),
+  };
 }
 
 function findPlan(planning: PlanningSnapshot | null, date: string, id?: string): MiniOutfitPlanEntry | undefined {
@@ -426,10 +762,26 @@ function mapPlan(plan: MiniOutfitPlanEntry | undefined, garments: MiniGarment[])
   const ids = plan.status === "worn" && plan.actualGarmentIds.length ? plan.actualGarmentIds : plan.garmentIds;
   return {
     id: plan.id,
+    revision: plan.revision,
+    status: plan.status,
+    availability: plan.availability,
     title: plan.status === "worn" ? "已记录穿着" : "已安排",
     risk: plan.availability === "blocked" ? "部分衣物已不可用，请先调整穿搭。" : plan.availability === "historical" ? "当前显示历史快照。" : "",
     garments: ids.slice(0, 3).map((id) => ({ id, name: byId.get(id)?.name ?? "已删除衣物", imageUrl: byId.get(id)?.imageUrl ?? "" })),
   };
+}
+
+function mapBackupPlans(planning: PlanningSnapshot | null, date: string, garments: MiniGarment[]) {
+  return (planning?.outfitPlanEntries ?? [])
+    .filter((entry) => entry.date === date && entry.role === "backup" && entry.status !== "worn")
+    .map((entry) => ({ ...mapPlan(entry, garments)!, id: entry.id, revision: entry.revision }));
+}
+
+function prefersReducedMotion(): boolean {
+  try {
+    const info = (wx as any).getSystemInfoSync?.() ?? {};
+    return info.reduceMotionEnabled === true || info.isReduceMotionEnabled === true;
+  } catch { return false; }
 }
 
 function profileLocationLabel(snapshot: MiniHomeLocationSnapshot | null): string {
@@ -440,6 +792,21 @@ function profileLocationLabel(snapshot: MiniHomeLocationSnapshot | null): string
 }
 
 function objectiveLabel(value: string): string { return value === "fresh" ? "变化" : value === "comfort" ? "舒适" : "稳妥"; }
+function recommendationHeading(date: string, today: string, tomorrow: string): string {
+  if (date === today) return "今天";
+  if (date === tomorrow) return "明天";
+  return date.slice(5).replace("-", "/");
+}
+function recommendationActionLabel(date: string, today: string, tomorrow: string): string {
+  if (date === today) return "设为今日穿搭";
+  if (date === tomorrow) return "设为明日穿搭";
+  return `安排到 ${date.slice(5).replace("-", "/")}`;
+}
+function recommendationSubtitle(mode: string): string {
+  if (mode === "locationless") return "通用建议 · 横向滑动";
+  if (mode === "weather_fallback") return "通用建议 · 天气暂不可用";
+  return "天气增强推荐 · 横向滑动";
+}
 function reasonLabel(value?: string): string {
   const labels: Record<string, string> = { weather_fit: "与当前天气证据匹配。", rain_ready: "已考虑降雨与路面情况。", activity_comfort: "活动空间与舒适度更充足。", new_combination: "在可靠结构中加入新的组合变化。", rotation_value: "优先带回近期较少穿着的衣物。" };
   return labels[value ?? ""] ?? "结合场景与衣橱状态整理。";

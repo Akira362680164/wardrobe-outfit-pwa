@@ -1,4 +1,4 @@
-import { wardoraBusinessDate } from "@wardrobe/cloud-contracts";
+import { wardoraBusinessDate } from "../../generated/wardora-home-contracts";
 import { MiniAbortController, type MiniAbortSignal } from "../../utils/request-cancellation";
 
 export interface HomeBusinessWindow {
