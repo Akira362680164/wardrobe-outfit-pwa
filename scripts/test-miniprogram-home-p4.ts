@@ -66,6 +66,7 @@ const markup = readFileSync("apps/wechat-miniprogram/pages/home/index.wxml", "ut
 const styles = readFileSync("apps/wechat-miniprogram/pages/home/index.wxss", "utf8");
 assert.doesNotMatch(page, /openWardrobe\(\);/, "home must no longer redirect to the wardrobe tab");
 assert.doesNotMatch(page, /on(?:Load|Show)[\s\S]{0,900}getLocation\s*\(/, "home lifecycle must not automatically request location");
+assert.match(page, /openSetting[\s\S]+再次主动点击“使用当前位置”/, "settings return must not trigger an automatic location read");
 assert.match(markup, /推荐/);
 assert.match(markup, /衣橱/);
 assert.match(markup, /scroll-x/);

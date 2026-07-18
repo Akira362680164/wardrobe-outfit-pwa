@@ -297,7 +297,26 @@ Page({
       this.setData({ locationBusy: false, locationMessage: message, locationNeedsSettings: /deny|denied|auth|permission/i.test(message) });
     }
   },
-  openLocationSettings() { (wx as any).openSetting?.({}); },
+  openLocationSettings(this: any) {
+    const openSetting = (wx as any).openSetting;
+    if (typeof openSetting !== "function") {
+      this.setData({ locationMessage: "当前微信版本无法打开设置，请使用手工城市搜索。" });
+      return;
+    }
+    this.setData({ locationMessage: "请在微信设置中允许位置；返回后仍需再次主动点击“使用当前位置”。" });
+    openSetting({
+      success: (result: any) => {
+        const allowed = result?.authSetting?.["scope.userLocation"] === true;
+        this.setData({
+          locationNeedsSettings: !allowed,
+          locationMessage: allowed
+            ? "位置权限已允许。请再次点击“使用当前位置”，首页不会自动获取。"
+            : "位置权限仍未允许，手工城市搜索和无城市推荐可继续使用。",
+        });
+      },
+      fail: () => this.setData({ locationMessage: "无法打开微信设置，请使用手工城市搜索。" }),
+    });
+  },
   async chooseCity(this: any, event: any) {
     const locationId = String(event.currentTarget.dataset.id || "");
     const kind = event.currentTarget.dataset.kind === "temporary" ? "temporary" : "home";
