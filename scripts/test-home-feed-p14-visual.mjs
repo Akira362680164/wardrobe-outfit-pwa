@@ -145,6 +145,7 @@ try {
       toolbarLeft: recommendationToolbar?.getBoundingClientRect().left,
       cardLeft: card?.getBoundingClientRect().left,
       cardInnerInset: card && target ? target.getBoundingClientRect().left - card.getBoundingClientRect().left : 0,
+      cardTitleTopInset: card && target ? target.getBoundingClientRect().top - card.getBoundingClientRect().top : 0,
       navRadii: nav && activeNav && navRect && activeNavRect ? { outer: number(getComputedStyle(nav).borderTopLeftRadius), active: number(getComputedStyle(activeNav).borderTopLeftRadius), inset: activeNavRect.left - navRect.left } : null,
     };
   });
@@ -153,6 +154,7 @@ try {
   assert(visualGeometry.shadows.every((value) => value === "none" || !/rgba\([^)]*,\s*(?:0\.\d*[1-9]\d*|1)\)/.test(value)), `unexpected card shadow: ${visualGeometry.shadows.join(" | ")}`);
   assert(Math.abs(visualGeometry.toolbarLeft - 17) <= 1 && Math.abs(visualGeometry.cardLeft - 17) <= 1, `first-level recommendation inset invalid: ${JSON.stringify(visualGeometry)}`);
   assert(visualGeometry.cardInnerInset >= 16, `recommendation card inner padding invalid: ${visualGeometry.cardInnerInset}`);
+  assert(visualGeometry.cardTitleTopInset >= 24 && visualGeometry.cardTitleTopInset <= 30, `recommendation title enters the rounded-corner zone: ${visualGeometry.cardTitleTopInset}`);
   assert(visualGeometry.navRadii && Math.abs((visualGeometry.navRadii.outer - visualGeometry.navRadii.active) - visualGeometry.navRadii.inset) <= 1, `bottom-nav radii are not concentric: ${JSON.stringify(visualGeometry.navRadii)}`);
 
   const rail = page.getByTestId("home-recommendation-rail");
