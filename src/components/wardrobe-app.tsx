@@ -374,7 +374,6 @@ export function WardrobeApp({ cloudAuth }: { cloudAuth?: WardrobeCloudAuth } = {
   const tagProgress = useSoftAiProgress("garment_detection", { label: "AI 识别衣物" });
 	  const [miniMaxSettings, setMiniMaxSettings] = useState<DeviceMiniMaxSettings>(() => defaultMiniMaxSettings());
   const [settingsMiniMaxOpenRequest, setSettingsMiniMaxOpenRequest] = useState(0);
-  const minimaxMissingToastShownRef = useRef(false);
   const [showGarmentIntakeFlow, setShowGarmentIntakeFlow] = useState(false);
   // v1.1.20-dev (方案 C): 删除 v1.1.7 4A 的 route.mainTab → activeView useEffect 同步逻辑。
   // 旧逻辑是 Bug 1 根因之一 — useEffect 异步同步 + showGarmentIntakeFlow guard + React 18 同值 bail out
@@ -408,14 +407,6 @@ export function WardrobeApp({ cloudAuth }: { cloudAuth?: WardrobeCloudAuth } = {
       if (shouldWarnOnFailure) showMessage("衣物已保存，但首页推荐尚未刷新，可稍后重试", "error");
     }
   }, [refreshState, showMessage]);
-
-  useEffect(() => {
-    if (!isReady) return;
-    if (hasDeviceMiniMaxKey(miniMaxSettings)) return;
-    if (minimaxMissingToastShownRef.current) return;
-    minimaxMissingToastShownRef.current = true;
-    showMessage(MINIMAX_KEY_MISSING_MESSAGE, "action");
-  }, [isReady, miniMaxSettings, showMessage]);
 
   const handleTopLevelBack = useCallback(() => {
     // v1.1.20-dev commit2 (P0 诊断): top_level_back_triggered
@@ -860,6 +851,7 @@ export function WardrobeApp({ cloudAuth }: { cloudAuth?: WardrobeCloudAuth } = {
     category: item.category,
     status: item.status,
     hasImage: Boolean(item.mainImage?.asset.assetId),
+    imageAsset: item.mainImage?.asset,
   })), [items]);
   const homeFeedPlans = useMemo(() => outfitPlanEntries.map((entry) => ({
     id: entry.serverEntityId,

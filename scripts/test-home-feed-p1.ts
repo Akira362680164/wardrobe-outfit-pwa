@@ -125,6 +125,19 @@ const tomorrowWeather = buildHomeFeedViewModel(input({
 assert.equal(tomorrowWeather.weather.status === "ready" ? tomorrowWeather.weather.temperatureC : -1, undefined);
 assert.equal(tomorrowWeather.weather.status === "ready" ? tomorrowWeather.weather.visual?.code : null, "305");
 
+const dualWeather = buildHomeFeedViewModel(input({
+  garments: [...readyGarments], location,
+  weather: { status: "ready", data: forecast },
+  weatherByDate: {
+    [date]: { status: "ready", data: forecast },
+    "2026-07-18": { status: "ready", data: { ...forecast, targetDate: "2026-07-18", weatherEvidence: { ...forecast.weatherEvidence, currentTemperatureC: 35, weatherCode: "101", dayWeatherCode: "305", temperatureMinC: 22, temperatureMaxC: 29, summary: "小雨" } } },
+  },
+}));
+assert.equal(dualWeather.todayWeather.status === "ready" ? dualWeather.todayWeather.temperatureC : null, 30);
+assert.equal(dualWeather.todayWeather.status === "ready" ? dualWeather.todayWeather.visual?.code : null, "101");
+assert.equal(dualWeather.tomorrowWeather.status === "ready" ? dualWeather.tomorrowWeather.temperatureC : null, undefined);
+assert.equal(dualWeather.tomorrowWeather.status === "ready" ? dualWeather.tomorrowWeather.visual?.code : null, "305");
+
 const gate = new HomeRequestGate();
 const first = gate.begin("account-a", date);
 const second = gate.begin("account-a", "2026-07-18");
@@ -152,5 +165,9 @@ assert.match(clientSource, /await onlineRequest[\s\S]*return readHomeLocation\(s
 assert.doesNotMatch(controllerSource + clientSource, /localStorage|indexedDB|Outbox|optimistic/i, "home feed must not add local business persistence");
 assert.doesNotMatch(pageSource, /设为今日穿搭|替换计划|取消计划|确认已穿/, "P1 recommendation card must remain read-only");
 assert.doesNotMatch(pageSource, /navigator\.geolocation|getCurrentPosition|watchPosition|<canvas/i, "P1 must not request location or add Canvas runtime");
+assert.match(pageSource, /home-weather-pair[\s\S]*home-weather-\$\{kind\}/, "P1.4 must render independent today/tomorrow weather cards");
+assert.match(pageSource, /data-testid="home-date-strip"/, "P1.4 date strip must remain in recommendation content");
+assert.match(pageSource, /data-testid="home-recommendation-rail"/, "P1.4 ready candidates must remain in the native rail");
+assert.match(pageSource, /OnlineAssetImage[\s\S]*variant="thumbnail"/, "P1.4 recommendation cards must reuse the server thumbnail chain");
 
 console.log("home feed P1 fixtures: passed");

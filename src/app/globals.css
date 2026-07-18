@@ -176,6 +176,23 @@ button {
   z-index: 1;
 }
 
+/* Wardora v0.2.3 ambient palette rendered as static P1.4 backgrounds. Canvas remains a P3 concern. */
+.home-weather-static[data-weather-family="clear"] {
+  background: radial-gradient(circle at 102% 10%, rgba(224, 164, 62, 0.72), rgba(241, 197, 118, 0.34) 40%, transparent 78%), linear-gradient(135deg, #bfd5d9 0%, #f2dfb7 62%, #fbf2dc 100%);
+}
+.home-weather-static[data-weather-family="cloud"] {
+  background: radial-gradient(circle at 102% 10%, rgba(224, 164, 62, 0.54), rgba(241, 197, 118, 0.26) 40%, transparent 78%), linear-gradient(135deg, #bfd5d9 0%, #f2dfb7 62%, #fbf2dc 100%);
+}
+.home-weather-static[data-weather-family="overcast"] { background: linear-gradient(135deg, #9eacb1 0%, #d5d9d6 62%, #fbf2dc 100%); }
+.home-weather-static[data-weather-family="rain"] { background: linear-gradient(135deg, rgb(156, 174, 181) 0%, rgb(199, 210, 209) 62%, rgb(224, 228, 224) 100%); }
+.home-weather-static:is([data-weather-family="thunder"], [data-weather-family="hail"]) { background: linear-gradient(135deg, rgb(94, 121, 137) 0%, rgb(145, 166, 171) 62%, rgb(184, 198, 199) 100%); }
+.home-weather-static[data-weather-family="snow"] { background: linear-gradient(135deg, rgb(157, 181, 191) 0%, rgb(202, 215, 216) 62%, rgb(222, 228, 225) 100%); }
+.home-weather-static[data-weather-family="blizzard"] { background: linear-gradient(135deg, rgb(116, 148, 165) 0%, rgb(168, 189, 195) 62%, rgb(196, 210, 211) 100%); }
+.home-weather-static[data-weather-family="sleet"] { background: linear-gradient(135deg, rgb(139, 168, 182) 0%, rgb(188, 204, 207) 62%, rgb(211, 220, 219) 100%); }
+.home-weather-static:is([data-weather-family="fog"], [data-weather-family="haze"]) { background: linear-gradient(135deg, #b6b4a9 0%, #e6e1d4 62%, #fbf2dc 100%); }
+.home-weather-static[data-weather-family="dust"] { background: linear-gradient(135deg, #b48156 0%, #d8b78e 62%, #fbf2dc 100%); }
+.home-weather-static:is([data-weather-family="hot"], [data-weather-family="cold"], [data-weather-family="unknown"]) { background: linear-gradient(135deg, #bdc5c5 0%, #ebe9df 62%, #fbf2dc 100%); }
+
 .app-toast {
   width: min(calc(100vw - 2rem), 28rem);
   border-radius: var(--ui-radius-nav);

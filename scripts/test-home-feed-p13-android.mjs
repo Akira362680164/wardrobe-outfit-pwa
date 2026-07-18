@@ -156,8 +156,9 @@ async function criticalViewportState(cdp) {
   return cdp.value(`(() => {
     const visible=${visible};
     const exact=(text)=>[...document.querySelectorAll("h1,button,[role=tab],span")].find(e=>visible(e)&&e.textContent.trim()===text);
+    const contains=(text)=>[...document.querySelectorAll("h1,button,[role=tab],span")].find(e=>visible(e)&&e.textContent.includes(text));
     const items={
-      title: exact("今天穿什么"),
+      title: contains("好，今天穿得"),
       location: document.querySelector('[data-testid="home-location-entry"]'),
       today: exact("今天")?.closest("button"),
       recommendationTab: document.querySelector('[role="tab"][aria-controls="home-recommendation-panel"]'),
@@ -287,10 +288,10 @@ try {
   await waitFor(() => hasTestId(cdp, "open-home-feed-preview"), "Preview entry missing after clear");
   assert(await clickTestId(cdp, "open-home-feed-preview"), "Preview entry click failed after clear");
   await waitFor(async () => (await textOfTestId(cdp, "home-location-entry")).includes("未设置城市"), "Unset city readback missing");
-  await waitFor(async () => (await textOfTestId(cdp, "home-weather-card")).includes("未设置城市"), "Locationless weather card missing");
+  await waitFor(async () => (await textOfTestId(cdp, "home-weather-module")).includes("设置地点后可查看天气"), "Locationless weather module missing");
   await waitFor(() => cdp.value(`(() => { const visible=${visible}; return ![...document.querySelectorAll("h2,span")].some(e=>visible(e)&&e.textContent.trim()==="账号与服务") && !document.querySelector('[data-overlay-layer]'); })()`), "Old settings transition or overlay remained visible");
-  const locationlessWeatherText = await textOfTestId(cdp, "home-weather-card");
-  assert(locationlessWeatherText.includes("暂无可信温度"), `Locationless weather did not show legal empty temperature: ${locationlessWeatherText}`);
+  const locationlessWeatherText = await textOfTestId(cdp, "home-weather-module");
+  assert(!/\d+°/.test(locationlessWeatherText), `Locationless weather leaked a fake temperature: ${locationlessWeatherText}`);
   assert(!/Zod|schema|fallback modes cannot expose weather values|invalid_type|\{\s*"/i.test(locationlessWeatherText), `Locationless weather exposed raw schema text: ${locationlessWeatherText}`);
   await cdp.value(`window.scrollTo(0,0)`);
   await settleVisual(cdp, 1200);

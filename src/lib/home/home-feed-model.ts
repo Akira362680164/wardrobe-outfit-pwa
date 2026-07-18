@@ -1,6 +1,7 @@
 import type { WeatherOverview } from "@wardrobe/cloud-contracts";
 import { wardoraBusinessDate } from "@wardrobe/cloud-contracts";
 import { resolveQWeatherVisual, type QWeatherVisualDefinition } from "@wardrobe/domain-catalog";
+import type { ImageAssetReference } from "@/lib/types";
 
 export type HomeAsyncState<T> =
   | { status: "idle" | "loading" }
@@ -13,6 +14,7 @@ export interface HomeGarment {
   category: string;
   status: string;
   hasImage: boolean;
+  imageAsset?: ImageAssetReference;
 }
 
 export interface HomePlan {
@@ -56,6 +58,7 @@ export interface HomeFeedInput {
     | { kind: "none"; revision: number }
     | { kind: "home_city" | "temporary_city"; displayName: string; revision: number };
   weather: HomeAsyncState<WeatherOverview>;
+  weatherByDate?: Readonly<Record<string, HomeAsyncState<WeatherOverview>>>;
   recommendation: HomeAsyncState<HomeRecommendationResult>;
   plans: readonly HomePlan[];
 }
@@ -71,7 +74,17 @@ export interface HomeFeedViewModel {
   workspace: HomeFeedInput["workspace"];
   wardrobeReady: boolean;
   location: HomeFeedInput["location"];
-  weather:
+  weather: HomeWeatherViewModel;
+  todayWeather: HomeWeatherViewModel;
+  tomorrowWeather: HomeWeatherViewModel;
+  recommendation:
+    | { status: "idle" | "loading" | "protected" | "not_ready" }
+    | { status: "error"; message: string }
+    | { status: "ready"; contextMode: "forecast" | "locationless" | "weather_fallback"; candidates: readonly HomeRecommendationCandidate[] };
+  plan: (HomePlan & { kind: "protected_plan" | "actual_wear" }) | null;
+}
+
+export type HomeWeatherViewModel =
     | { status: "idle" | "loading" }
     | { status: "error"; message: string }
     | {
@@ -80,17 +93,14 @@ export interface HomeFeedViewModel {
         summary?: string;
         temperatureC?: number;
         feelsLikeC?: number;
+        windLevel?: number;
         minTemperatureC?: number;
         maxTemperatureC?: number;
         visual?: QWeatherVisualDefinition;
         stale: boolean;
       };
-  recommendation:
-    | { status: "idle" | "loading" | "protected" | "not_ready" }
-    | { status: "error"; message: string }
-    | { status: "ready"; contextMode: "forecast" | "locationless" | "weather_fallback"; candidates: readonly HomeRecommendationCandidate[] };
-  plan: (HomePlan & { kind: "protected_plan" | "actual_wear" }) | null;
-}
+
+const idleWeather = { status: "idle" } as const;
 
 function hasReadyWardrobe(garments: readonly HomeGarment[]): boolean {
   const categories = new Set(
@@ -102,16 +112,20 @@ function hasReadyWardrobe(garments: readonly HomeGarment[]): boolean {
   );
 }
 
-function weatherView(input: HomeFeedInput): HomeFeedViewModel["weather"] {
-  if (input.weather.status !== "ready") return input.weather;
-  const overview = input.weather.data;
+export function buildHomeWeatherView(
+  state: HomeAsyncState<WeatherOverview>,
+  date: string,
+  businessDate: string,
+): HomeWeatherViewModel {
+  if (state.status !== "ready") return state;
+  const overview = state.data;
   const stale = overview.endpointFreshness.some((endpoint) => endpoint.freshness === "stale");
   if (overview.contextMode !== "forecast") {
     return { status: "ready", availabilityReason: overview.availabilityReason, stale };
   }
 
   const evidence = overview.weatherEvidence;
-  const today = input.selectedDate === input.businessDate;
+  const today = date === businessDate;
   const code = today ? evidence.weatherCode : evidence.dayWeatherCode;
   return {
     status: "ready",
@@ -119,6 +133,7 @@ function weatherView(input: HomeFeedInput): HomeFeedViewModel["weather"] {
     summary: evidence.summary,
     temperatureC: today ? evidence.currentTemperatureC : undefined,
     feelsLikeC: today ? evidence.currentFeelsLikeC : undefined,
+    windLevel: today ? evidence.windLevel : undefined,
     minTemperatureC: evidence.temperatureMinC,
     maxTemperatureC: evidence.temperatureMaxC,
     visual: code ? resolveQWeatherVisual(code) : undefined,
@@ -133,6 +148,11 @@ export function buildHomeFeedViewModel(input: HomeFeedInput): HomeFeedViewModel 
   const protectedPlan = plan
     ? { ...plan, kind: plan.status === "worn" ? "actual_wear" as const : "protected_plan" as const }
     : null;
+  const tomorrow = addBusinessDays(input.businessDate, 1);
+  const todayWeather = input.weatherByDate?.[input.businessDate]
+    ?? (input.selectedDate === input.businessDate ? input.weather : idleWeather);
+  const tomorrowWeather = input.weatherByDate?.[tomorrow]
+    ?? (input.selectedDate === tomorrow ? input.weather : idleWeather);
 
   let recommendation: HomeFeedViewModel["recommendation"];
   if (protectedPlan || (input.recommendation.status === "ready" && (
@@ -162,7 +182,9 @@ export function buildHomeFeedViewModel(input: HomeFeedInput): HomeFeedViewModel 
     workspace: input.workspace,
     wardrobeReady,
     location: input.location,
-    weather: weatherView(input),
+    weather: buildHomeWeatherView(input.weather, input.selectedDate, input.businessDate),
+    todayWeather: buildHomeWeatherView(todayWeather, input.businessDate, input.businessDate),
+    tomorrowWeather: buildHomeWeatherView(tomorrowWeather, tomorrow, input.businessDate),
     recommendation,
     plan: protectedPlan,
   };

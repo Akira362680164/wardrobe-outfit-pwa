@@ -2,8 +2,8 @@
 title: 衣橱穿搭助手 UI 规范
 version: v0.2-final
 status: final
-appVersion: 2.1.24-test
-validatedAgainstAppCommit: 0b5b7a1a3f2becf078c7c46b1a7bbc72de1312df
+appVersion: 2.1.29-test
+validatedAgainstAppCommit: pending-p1.4-merge
 sourceOfTruth: docs/designs/wardrobe-ui-spec.md
 generatedPreview: docs/designs/wardrobe-ui-spec.html
 previewGenerator: scripts/generate-ui-spec-preview.mjs
@@ -253,6 +253,17 @@ Icon-only 按钮必须有 `aria-label`；图标与文字组合时图标使用 `a
 **计划保护**
 
 - `protected_plan` 和 `actual_wear` 始终高于天气/推荐 revision；新结果只能更新未采用推荐或显示风险，不能自动替换、取消、降级或隐藏已有计划/已穿事实。
+
+### 4.2 新首页 P1.4 视觉骨架合同
+
+- 首屏顺序固定为：Asia/Shanghai 时间语义问候与业务日期 → 天气模块内唯一地点入口 → 今日/明日并排双天气卡 → 推荐/衣橱分栏 → 当前分栏内容。不显示“WARDORA”眉题或自创“今天穿什么”标题。
+- 今日卡只使用 `now/current` 证据展示当前温度、高低温、摘要、体感/风；明日卡只使用目标日 `daily` 证据展示高低温和日间摘要。两卡分别承载 loading/error/fallback，不用今日 now 冒充明日。
+- P1.4 只使用共享 QWeather visual family 驱动的静态色调，不创建 Canvas、`requestAnimationFrame`、粒子或系统定位。点击今天/明天只切换推荐日期并滚到推荐区，不重挂页面。
+- 七日日期条只存在于“推荐”分栏：无当日主计划时位于推荐内容上方；有主计划或已穿事实时先显示事实卡，不用日期条将它挤到后面。
+- ready 推荐是原生横向滚动轨道，卡片层级为目标（稳妥/变化/舒适）、服务器衣物缩略图与名称、理由、风险、上下文来源。缺图只显示中性衣物 fallback；禁止使用原型色块假装真实图片。
+- 横轨使用浏览器/WebView 原生滚动与 `touch-action: pan-y`，不增加抢手势的 drag controller；所有可点区至少 `48dp`，按压反馈复用 `AppPressable`，reduced-motion 取消 smooth scroll 与缩放 spring。
+- P1.4 严格只读：不显示采用、替换、取消、已穿或保存套装按钮。新用户“无城市 + 衣橱空”使用中性正常空状态，不使用警告色或“系统异常”。
+- 视觉对照门禁以 v0.2.3 `390x844` 为并排基准，同时覆盖 `360/390/430px` 和 `100%/130%` 字体，必须核对问候、地点、双天气卡、分栏、日期条位置、横向推荐卡和底栏，并保证页面横向溢出、文字遮挡与非预期 runtime/console/page error 均为 0。
 
 ## 5. Route 与页面状态矩阵
 

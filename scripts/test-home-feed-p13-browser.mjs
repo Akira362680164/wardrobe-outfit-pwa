@@ -320,7 +320,7 @@ await withFixtureAndApp(async () => {
     await page.setViewportSize({ width: 390, height: 844 });
     await page.getByTestId("wardora-home-feed").scrollIntoViewIfNeeded();
     await settleVisual(page);
-    await assertViewportVisible(page.getByRole("heading", { name: "今天穿什么" }), "首页标题");
+    await assertViewportVisible(page.getByRole("heading", { name: /早上好|中午好|下午好|晚上好/ }), "时间语义问候");
     await assertViewportVisible(page.getByTestId("home-location-entry"), "地点入口");
     await assertViewportVisible(page.getByText("今天", { exact: true }).first(), "今天日期");
     await assertViewportVisible(page.getByRole("tab", { name: "推荐" }), "推荐 Tab");
@@ -412,9 +412,9 @@ await withFixtureAndApp(async () => {
     await page.getByTestId("open-home-feed-preview").click();
     const finalLocationText = await getText(page.getByTestId("home-location-entry"));
     assert("清除后未读回“未设置城市”", finalLocationText.includes("未设置城市"));
-    await waitForCondition(async () => (await getText(page.getByTestId("home-weather-card"))).includes("未设置城市"), 12_000, "locationless 天气卡未进入合法空状态");
-    const finalWeatherText = await getText(page.getByTestId("home-weather-card"));
-    assert("locationless 天气卡缺少合法空温度状态", finalWeatherText.includes("暂无可信温度"));
+    await waitForCondition(async () => (await getText(page.getByTestId("home-weather-module"))).includes("设置地点后可查看天气"), 12_000, "locationless 天气模块未进入合法空状态");
+    const finalWeatherText = await getText(page.getByTestId("home-weather-module"));
+    assert("locationless 天气模块泄露伪温度", !/\d+°/.test(finalWeatherText));
     assert("locationless 天气卡泄露原始 schema 文本", !/Zod|schema|fallback modes cannot expose weather values|invalid_type|\{\s*"/i.test(finalWeatherText));
     await settleVisual(page);
     await page.screenshot({ path: `${EVIDENCE_DIR}/p13-final-home.png`, fullPage: true });

@@ -2,7 +2,7 @@
 <!--
   DO NOT EDIT BY HAND.
   Generated from docs/designs/wardrobe-ui-spec.md by scripts/generate-ui-spec-preview.mjs.
-  Source SHA256: 76446eebe9771f5dff1ff744fdd0ce743067aca96a457a6c6b1db91227ad8868
+  Source SHA256: 8ad2e93ce9ac89cb4c570b4050ea4a69973ee42f93f59045ed1ef82ef28a6269
 -->
 <html lang="zh-CN">
 <head>
@@ -839,7 +839,7 @@
           <div class="meta-row">
             <span class="pill active">v0.2-final</span>
             <span class="pill">Markdown 唯一事实源</span>
-            <span class="pill">Source SHA256 76446eebe977</span>
+            <span class="pill">Source SHA256 8ad2e93ce9ac</span>
           </div>
           <h1>衣橱穿搭助手 UI 规范</h1>
           <p>本页由规范 Markdown 自动生成，用于快速走查页面框架、组件契约、通知样式和验收映射。</p>
@@ -982,7 +982,25 @@
 <p><strong>静态天气、Canvas 预留与运行时保护</strong></p>
 <ul><li>P1 只渲染静态天气层，Canvas 位置使用非阻塞占位；文字、归因、按钮与滚动不依赖 Canvas 成功。</li><li>P3 若启用 Canvas，全页最多一个 <code>requestAnimationFrame</code> 调度器，目标约 <code>29 FPS</code>，<code>devicePixelRatio</code> 上限 <code>2</code>；今日可动，明日始终静态。</li><li>Canvas 在卡片离屏、页面隐藏、App 进后台、锁屏或路由卸载时暂停/销毁；初始化或绘制故障后本会话直接保持静态，禁止循环重启。</li><li><code>prefers-reduced-motion: reduce</code> 下禁止循环、粒子、闪电、spring 和大位移，只保留 <code>120–160ms</code> 交叉淡化或即时反馈。</li><li>QWeather <code>999</code>、任意未来未知 code、<code>weather_fallback</code>、超过 max-stale 和 Canvas 故障都使用中性静态降级，不触发循环动画，不显示伪数字或伪降雨。</li></ul>
 <p><strong>计划保护</strong></p>
-<ul><li><code>protected_plan</code> 和 <code>actual_wear</code> 始终高于天气/推荐 revision；新结果只能更新未采用推荐或显示风险，不能自动替换、取消、降级或隐藏已有计划/已穿事实。</li></ul></div></section>
+<ul><li><code>protected_plan</code> 和 <code>actual_wear</code> 始终高于天气/推荐 revision；新结果只能更新未采用推荐或显示风险，不能自动替换、取消、降级或隐藏已有计划/已穿事实。</li></ul>
+<h3>4.2 新首页 P1.4 视觉骨架合同</h3>
+      <div class="part-visual" data-visual="home-p14-skeleton">
+        <div class="home-location-entry">上海 · 常驻 ›</div>
+        <div class="home-weather-links"><button>今天 31°</button><button>明天 30°/22°</button></div>
+        <div class="home-state-grid">
+          <span>推荐 / 衣橱</span>
+          <span>日期条仅在推荐内容内</span>
+          <span>真实图片横向卡轨</span>
+          <span>只读 · 无 P2 操作</span>
+        </div>
+        <div class="home-contract-row">
+          <span>问候 → 地点 → 双天气卡 → 分栏 → 内容</span>
+          <span>360 / 390 / 430 · 100% / 130%</span>
+          <span>原生横滑 · 纵向页面滚动优先</span>
+          <span>静态 QWeather visual family · 无 Canvas / 定位</span>
+        </div>
+      </div>
+<ul><li>首屏顺序固定为：Asia/Shanghai 时间语义问候与业务日期 → 天气模块内唯一地点入口 → 今日/明日并排双天气卡 → 推荐/衣橱分栏 → 当前分栏内容。不显示“WARDORA”眉题或自创“今天穿什么”标题。</li><li>今日卡只使用 <code>now/current</code> 证据展示当前温度、高低温、摘要、体感/风；明日卡只使用目标日 <code>daily</code> 证据展示高低温和日间摘要。两卡分别承载 loading/error/fallback，不用今日 now 冒充明日。</li><li>P1.4 只使用共享 QWeather visual family 驱动的静态色调，不创建 Canvas、<code>requestAnimationFrame</code>、粒子或系统定位。点击今天/明天只切换推荐日期并滚到推荐区，不重挂页面。</li><li>七日日期条只存在于“推荐”分栏：无当日主计划时位于推荐内容上方；有主计划或已穿事实时先显示事实卡，不用日期条将它挤到后面。</li><li>ready 推荐是原生横向滚动轨道，卡片层级为目标（稳妥/变化/舒适）、服务器衣物缩略图与名称、理由、风险、上下文来源。缺图只显示中性衣物 fallback；禁止使用原型色块假装真实图片。</li><li>横轨使用浏览器/WebView 原生滚动与 <code>touch-action: pan-y</code>，不增加抢手势的 drag controller；所有可点区至少 <code>48dp</code>，按压反馈复用 <code>AppPressable</code>，reduced-motion 取消 smooth scroll 与缩放 spring。</li><li>P1.4 严格只读：不显示采用、替换、取消、已穿或保存套装按钮。新用户“无城市 + 衣橱空”使用中性正常空状态，不使用警告色或“系统异常”。</li><li>视觉对照门禁以 v0.2.3 <code>390x844</code> 为并排基准，同时覆盖 <code>360/390/430px</code> 和 <code>100%/130%</code> 字体，必须核对问候、地点、双天气卡、分栏、日期条位置、横向推荐卡和底栏，并保证页面横向溢出、文字遮挡与非预期 runtime/console/page error 均为 0。</li></ul></div></section>
 <section class="section" id="5-route-与页面状态矩阵"><h2>5. Route 与页面状态矩阵</h2><div class="module-visual" aria-label="5. Route 与页面状态矩阵 视觉示意">
       <div class="route-chain">
         <span>首页</span><i></i><span>搜索</span><i></i><span>详情</span><i></i><span>编辑</span>

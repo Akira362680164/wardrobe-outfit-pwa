@@ -1,0 +1,39 @@
+{
+  "schemaVersion": 1,
+  "task": "wardora-new-home-p1.4-visual-skeleton",
+  "date": "2026-07-18",
+  "appVersion": "2.1.29-test",
+  "prototype": {
+    "name": "Wardora_新首页_天气Canvas_高级动效验证_v0.2.3.html",
+    "sha256": "30c97e315d2efd0d9bfcf10125177d58cf9edb479b8d9310476752277cbe37db"
+  },
+  "comparison": "v023-vs-app-390x844.png",
+  "viewportMatrix": [360, 390, 430],
+  "fontScaleMatrix": [100, 130],
+  "states": [
+    "ready_forecast_real_candidates",
+    "empty_locationless",
+    "weather_fallback",
+    "protected_plan",
+    "actual_wear"
+  ],
+  "checklist": [
+    "time_semantic_greeting_and_business_date",
+    "single_authoritative_location_entry",
+    "independent_today_tomorrow_weather_cards",
+    "recommendation_wardrobe_segment",
+    "date_strip_subordinate_to_recommendation",
+    "native_horizontal_real_image_candidate_rail",
+    "bottom_navigation",
+    "no_horizontal_page_overflow",
+    "vertical_page_pan_preserved",
+    "zero_unexpected_console_page_runtime_errors"
+  ],
+  "excluded": [
+    "p2_write_transactions",
+    "p3_canvas_animation",
+    "system_geolocation",
+    "wechat_miniprogram_p4",
+    "server_database_deployment"
+  ]
+}
