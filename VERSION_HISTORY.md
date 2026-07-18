@@ -7,6 +7,13 @@
 - 查看某次提交详情：`git show <commit>`
 - 新记录继续置顶，默认控制在 3–5 条短 bullet；原始测试日志、命令输出和长证据写入专项 evidence 文档或交由 Git 保存。
 
+## 2026-07-18 / v2.1.28-test / Codex — PRD 天气 Canvas 迁移口径收口
+
+- 将新首页生产 PRD 更新为 `v0.7.5.1-integrated`：App 必须直接提取已验收 v0.2.3 HTML 的视觉参数、场景/粒子生成、事件时序和绘制顺序，不得另起炉灶重画天气动画。
+- 明确只将原型 DOM、Fixture 和调试外壳替换为 React/Capacitor 生产宿主；小程序复用同源参数与时序，仅做微信 Canvas 2D 和页面生命周期适配。
+- 新增固定 code/seed/clock 并排对照验收，冻结 `304/403/508/512/998` 标志性效果、今日动态/明日静帧、后台/离屏停止和 reduced-motion 降级。
+- 本次为 Low 风险纯文档修订，不修改运行时、服务端、数据库、App 版本或小程序；未触发 subagent：用户未通知。
+
 ## 2026-07-18 / v2.1.28-test / P1.3.1-C — 证据补强与稳定态清理
 
 - 修正 locationless Fixture 的非法天气码，并以 `WeatherOverviewSchema` 在响应边界校验；新增只含方法、固定路径、状态码与序号的测试 trace，浏览器/Android manifest 均以真实服务端流水核对。
