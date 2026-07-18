@@ -45,6 +45,8 @@ import { RecommendationRegenerationService } from "./recommendations/regeneratio
 import { RecommendationGenerationCoordinator } from "./recommendations/coordinator.js";
 import { RecommendationGenerationServiceV3 } from "./recommendations/generation-service-v3.js";
 import { RecommendationAcceptService } from "./recommendations/accept-service.js";
+import { RecommendationPlanCancelService } from "./recommendations/cancel-service.js";
+import { RecommendationActionService } from "./recommendations/action-service.js";
 import { getPostgresPool } from "./db/client.js";
 import { FixedWindowRateLimiter } from "./auth/rate-limit.js";
 import { WeatherLocationService, type WeatherLocationServiceLike } from "./weather/location-service.js";
@@ -77,6 +79,8 @@ export interface BuildAppOptions {
   recommendationRegenerationService?: RecommendationRegenerationService;
   recommendationGenerationCoordinator?: RecommendationGenerationCoordinator;
   recommendationAcceptService?: RecommendationAcceptService;
+  recommendationPlanCancelService?: RecommendationPlanCancelService;
+  recommendationActionService?: RecommendationActionService;
   weatherLocationService?: WeatherLocationServiceLike;
   weatherOverviewService?: WeatherOverviewService;
   locationCostLimiter?: FixedWindowRateLimiter;
@@ -227,7 +231,11 @@ export function buildApp(options: BuildAppOptions = {}): FastifyInstance {
   let defaultRealtime: RecommendationGenerationCoordinator | undefined;
   const realtime = options.recommendationGenerationCoordinator ?? (process.env.RECOMMENDATION_REALTIME_ENABLED === "true" ? (defaultRealtime ??= (() => { const generation = new RecommendationGenerationServiceV3(getPostgresPool()); return new RecommendationGenerationCoordinator({ prepare: (...args) => generation.prepare(...args), findCurrent: (...args) => generation.persistence.findCurrent(...args), publish: (...args) => generation.persistence.publish(...args), publishHomePair: (...args) => generation.persistence.publishHomePair(...args) }); })()) : undefined);
   const accept = options.recommendationAcceptService ?? (process.env.RECOMMENDATION_ACCEPT_ENABLED === "true" ? new RecommendationAcceptService(getPostgresPool()) : undefined);
-  registerRecommendationRoutes(app, sharedSessionService ?? new SessionService(), options.recommendationReadService ?? new RecommendationReadService(), regeneration, realtime, accept);
+  let defaultCancel: RecommendationPlanCancelService | undefined;
+  let defaultActions: RecommendationActionService | undefined;
+  const cancel = options.recommendationPlanCancelService ?? (process.env.RECOMMENDATION_ACCEPT_ENABLED === "true" ? ({ cancel: (...args: Parameters<RecommendationPlanCancelService["cancel"]>) => (defaultCancel ??= new RecommendationPlanCancelService(getPostgresPool())).cancel(...args) } as RecommendationPlanCancelService) : undefined);
+  const actions = options.recommendationActionService ?? (process.env.RECOMMENDATION_ACCEPT_ENABLED === "true" ? ({ reject: (...args: Parameters<RecommendationActionService["reject"]>) => (defaultActions ??= new RecommendationActionService(getPostgresPool())).reject(...args) } as RecommendationActionService) : undefined);
+  registerRecommendationRoutes(app, sharedSessionService ?? new SessionService(), options.recommendationReadService ?? new RecommendationReadService(), regeneration, realtime, accept, cancel, actions);
   const qweather = createQWeatherProviderFromEnv();
   registerWeatherLocationRoutes(app, sharedSessionService ?? new SessionService(), options.weatherLocationService ?? new WeatherLocationService(undefined, qweather), options.locationCostLimiter);
   let defaultOverview: WeatherOverviewService | undefined;

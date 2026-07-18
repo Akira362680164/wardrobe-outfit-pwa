@@ -15,6 +15,20 @@
 - 新增只写 `/tmp` 的开发者工具验收副本生成器，机械打包 TypeScript 以绕过 Nightly 全新 worktree 不产出页面 JS 的工具缺陷；源码目录不落派生 JS，不调用预览或上传。
 - 本阶段明确不猜 P2 写合同，Canvas 仅保留微信 2D 宿主且继续静态；等 P2/P3 最新 main 合入后再接同源内核和正式写闭环。风险等级 High（小程序默认主路径）。
 
+## 2026-07-18 / v2.1.31-test / Codex — 新首页 P3 天气 Canvas 与大致位置
+
+- 今日天气卡直接移植验收原型 v0.2.3 的 `wardora-v023` seed/clock、完整场景参数、绘制顺序和雷光/冰雹事件；固定 code/clock 像素门禁覆盖动态事件，明日、未知、fallback、stale 和故障均静态。
+- 单调度器目标 29 FPS、DPR≤2，离屏/后台/锁屏/卸载停止且恢复不补帧；reduced-motion 保留 clock 0 静帧，Canvas 例外自动回退当前静态卡。
+- 地点 Sheet 只在用户阅读用途并确认后请求 Capacitor 前台大致位置；坐标仅当次解析城市候选，用户再确认临时/常驻；界面移除“主计划、保护、服务端、事务、不会自动更换”等实现说明和底层英文错误。
+- 原型 SHA、固定 code/clock 并排像素、浏览器调度/定位与 Android 证据见 `docs/recommendations/WARDORA_NEW_HOME_P3_EVIDENCE.md`；独立视觉 subagent 结论在冻结提交后补录。
+
+## 2026-07-18 / v2.1.31-test / Codex — 新首页 P2 计划与穿着闭环
+
+- App 推荐卡接通采用、最多替换一件、受控不喜欢与独立保存套装；当日事实卡接通更换主计划、确认/撤销已穿和原子取消/恢复备选，全部等待服务端提交与工作区读回，不做乐观更新。
+- 补齐 `CancelPrimaryPlan` 真实服务、鉴权路由和事务：日期锁、revision、worn 保护、幂等重放、双设备竞争、同步审计与故障注入均由真实 PostgreSQL 覆盖；补最小严格 rejected action 合同，不写本地假记录。
+- P2 使用稳定草稿 mutation ID，失败保留原组合并原 ID 重试；保存套装失败不回滚已成功计划。共享合同先进入 main，小程序由 P4 从最新 main 串行同步，本批不修改 `apps/wechat-miniprogram`。
+- 风险 High；P2 本地合同、API 路由、真实 PostgreSQL、App 逻辑/typecheck/build、UI spec 与旧 P1 回归见 `docs/recommendations/WARDORA_NEW_HOME_P2_EVIDENCE.md`。P3 Canvas 尚未进入本提交。
+
 ## 2026-07-18 / v2.1.30-test / P1.4.1 — 新首页验收缺陷收口
 
 - 首页按所选业务日期保留服务端 `resolvedLocation/locationSource`，无常驻城市的旅行日仍显示“城市 · 行程”；推荐来源同时保留地点来源，不再只显示泛化天气标签。

@@ -11,8 +11,11 @@ import {
   type HomeFeedInput,
   type HomeGarment,
   type HomePlan,
+  type HomeRecommendationCandidate,
   type HomeRecommendationResult,
 } from "@/lib/home/home-feed-model";
+import { createUuid } from "@/lib/uuid";
+import { readCoarseDeviceCoordinates, sanitizeResolvedLocationCandidates } from "@/lib/home/device-location";
 import { HomeFeedSessionCache, homeLocationRevisionKey } from "@/lib/home/home-feed-cache";
 import {
   HomeCitySearchSession,
@@ -24,21 +27,45 @@ import {
 } from "@/lib/home/home-feed-operations";
 import {
   clearHomeCity,
+  acceptHomeRecommendation,
+  cancelHomePlanWorn,
+  cancelHomePrimaryPlan,
   clearTemporaryCity,
   readHomeLocation,
   readHomeRecommendations,
   readHomeWeather,
+  markHomePlanWorn,
+  rejectHomeRecommendation,
+  resolveDeviceLocation,
   resolveHomeRecommendations,
   searchHomeCities,
   setHomeCity,
   setTemporaryCity,
   type HomeLocationSnapshot,
 } from "@/lib/online/online-home-client";
-import { OnlineRequestError, onlineErrorMessage } from "@/lib/online/online-error";
+import { OnlineRequestError } from "@/lib/online/online-error";
+
+function homeErrorMessage(error: unknown): string {
+  if (!(error instanceof OnlineRequestError)) return "暂时无法完成，请稍后重试。";
+  switch (error.code) {
+    case "network": return "网络连接失败，请检查网络后重试。";
+    case "timeout": return "请求超时，请稍后重试。";
+    case "auth": return "登录状态已失效，请重新登录。";
+    case "conflict": return "内容已更新，请刷新后重试。";
+    case "not_found": return "内容不存在或已被删除。";
+    case "invalid_request": return "提交内容有误，请检查后重试。";
+    case "mutation_in_progress": return "正在保存，请稍后再试。";
+    case "rate_limited": return "操作过于频繁，请稍后重试。";
+    case "weather_unavailable": return "天气暂时不可用，请稍后重试。";
+    case "image_upload": return "图片处理失败，请重新选择后重试。";
+    case "server": return "暂时无法完成，请稍后重试。";
+  }
+}
 
 const defaultHomeClients = {
-  clearHomeCity, clearTemporaryCity, readHomeLocation, readHomeRecommendations, readHomeWeather,
-  resolveHomeRecommendations, searchHomeCities, setHomeCity, setTemporaryCity,
+  acceptHomeRecommendation, cancelHomePlanWorn, cancelHomePrimaryPlan, clearHomeCity, clearTemporaryCity,
+  markHomePlanWorn, readHomeLocation, readHomeRecommendations, readHomeWeather, rejectHomeRecommendation,
+  resolveDeviceLocation, resolveHomeRecommendations, searchHomeCities, setHomeCity, setTemporaryCity,
 };
 
 type HomeFeedClients = typeof defaultHomeClients;
@@ -52,6 +79,8 @@ interface HomeFeedControllerInput {
   workspaceRevision: number;
   garments: readonly HomeGarment[];
   plans: readonly HomePlan[];
+  onWorkspaceRefresh?: () => Promise<unknown>;
+  onSaveOutfit?: (input: { name: string; garmentIds: readonly string[]; clientMutationId: string }) => Promise<unknown>;
   clients?: Partial<HomeFeedClients>;
 }
 
@@ -76,6 +105,8 @@ export function useHomeFeedController(input: HomeFeedControllerInput) {
   const [cityMutation, setCityMutation] = useState<string | null>(null);
   const [cityMutationError, setCityMutationError] = useState<string | null>(null);
   const [cityMutationConflict, setCityMutationConflict] = useState(false);
+  const [deviceLocation, setDeviceLocation] = useState<{ status: "idle" | "requesting" | "ready" | "denied" | "error"; candidates: readonly WeatherLocationRef[]; message?: string }>({ status: "idle", candidates: [] });
+  const [homeMutation, setHomeMutation] = useState<{ kind: string; key: string; status: "pending" | "error" | "success"; message?: string } | null>(null);
 
   const mountedRef = useRef(true);
   const accountRef = useRef(input.accountId);
@@ -97,6 +128,7 @@ export function useHomeFeedController(input: HomeFeedControllerInput) {
   const mutationAbort = useRef<AbortController | null>(null);
   const cache = useRef(new HomeFeedSessionCache<WeatherOverview, HomeRecommendationResult>());
   const refreshFeedRef = useRef<() => void>(() => undefined);
+  const businessMutationIds = useRef(new Map<string, string>());
 
   feedActiveRef.current = input.active;
   locationActiveRef.current = input.locationActive ?? input.active;
@@ -156,7 +188,7 @@ export function useHomeFeedController(input: HomeFeedControllerInput) {
       return next;
     } catch (error) {
       if (locationGate.current.isCurrent(ticket) && mountedRef.current) {
-        setLocationState({ status: "error", message: onlineErrorMessage(error) });
+        setLocationState({ status: "error", message: homeErrorMessage(error) });
       }
       return null;
     }
@@ -203,13 +235,13 @@ export function useHomeFeedController(input: HomeFeedControllerInput) {
           if (mountedRef.current) {
             setWeatherByDate((current) => ({ ...current, [date]: result.status === "fulfilled"
               ? { status: "ready", data: result.value }
-              : { status: "error", message: onlineErrorMessage(result.reason) } }));
+              : { status: "error", message: homeErrorMessage(result.reason) } }));
           }
           if (date !== selected || !mountedRef.current) return;
           if (date === selected) {
             setWeather(result.status === "fulfilled"
               ? { status: "ready", data: result.value }
-              : { status: "error", message: onlineErrorMessage(result.reason) });
+              : { status: "error", message: homeErrorMessage(result.reason) });
           }
         },
       );
@@ -217,13 +249,13 @@ export function useHomeFeedController(input: HomeFeedControllerInput) {
       const next = cache.current.getWeather(accountId, snapshot, selected);
       if (next) setWeather({ status: "ready", data: next });
       else {
-        const message = onlineErrorMessage(settled.errors.get(selected) ?? new Error("天气响应缺少目标日期"));
+        const message = homeErrorMessage(settled.errors.get(selected) ?? new Error("天气响应缺少目标日期"));
         setWeather({ status: "error", message });
         setWeatherByDate((current) => ({ ...current, [selected]: { status: "error", message } }));
       }
     } catch (error) {
       if (isWeatherContextCurrent() && selectedDateRef.current === selected && mountedRef.current) {
-        const message = onlineErrorMessage(error);
+        const message = homeErrorMessage(error);
         setWeather({ status: "error", message });
         setWeatherByDate((current) => ({ ...current, [selected]: { status: "error", message } }));
       }
@@ -329,7 +361,7 @@ export function useHomeFeedController(input: HomeFeedControllerInput) {
       setRecommendation({ status: "ready", data: result });
     } catch (error) {
       if (isRecommendationContextCurrent() && selectedDateRef.current === selected && mountedRef.current) {
-        setRecommendation({ status: "error", message: onlineErrorMessage(error) });
+        setRecommendation({ status: "error", message: homeErrorMessage(error) });
       }
     }
   }, []);
@@ -349,6 +381,74 @@ export function useHomeFeedController(input: HomeFeedControllerInput) {
       if (snapshot) refreshFeedRef.current();
     });
   }, [loadLocation]);
+
+  const mutationIdFor = useCallback((key: string) => {
+    const current = businessMutationIds.current.get(key);
+    if (current) return current;
+    const next = createUuid();
+    businessMutationIds.current.set(key, next);
+    return next;
+  }, []);
+
+  const finishBusinessMutation = useCallback(async (kind: string, key: string, task: (clientMutationId: string) => Promise<unknown>) => {
+    const clientMutationId = mutationIdFor(key);
+    setHomeMutation({ kind, key, status: "pending" });
+    try {
+      await task(clientMutationId);
+      await input.onWorkspaceRefresh?.();
+      businessMutationIds.current.delete(key);
+      cache.current.clear();
+      setHomeMutation({ kind, key, status: "success" });
+      queueMicrotask(() => refreshFeedRef.current());
+      return true;
+    } catch (error) {
+      setHomeMutation({ kind, key, status: "error", message: homeErrorMessage(error) });
+      return false;
+    }
+  }, [input, mutationIdFor]);
+
+  const acceptCandidate = useCallback((candidate: HomeRecommendationCandidate, selectedGarmentIds: readonly string[], replacePlan?: HomePlan) => {
+    const state = recommendation.status === "ready" ? recommendation.data : null;
+    if (!state || !(state.status === "generated" || state.status === "reused" || state.status === "served_stale")) return Promise.resolve(false);
+    const rec = state.recommendation;
+    const key = `accept:${selectedDateRef.current}:${rec.recommendationId}:${rec.recommendationRevision}:${candidate.candidateId}:${[...selectedGarmentIds].sort().join(",")}:${replacePlan?.id ?? "none"}:${replacePlan?.revision ?? 0}`;
+    return finishBusinessMutation("accept", key, (clientMutationId) => clientsRef.current.acceptHomeRecommendation(selectedDateRef.current, {
+      clientMutationId, recommendationId: rec.recommendationId, expectedRecommendationRevision: rec.recommendationRevision,
+      candidateId: candidate.candidateId, selectedGarmentIds: [...selectedGarmentIds],
+      ...(replacePlan ? { replaceExistingPrimary: { planEntryId: replacePlan.id, expectedRevision: replacePlan.revision } } : {}),
+    }, sessionRef.current));
+  }, [finishBusinessMutation, recommendation]);
+
+  const rejectCandidate = useCallback((candidate: HomeRecommendationCandidate) => {
+    const state = recommendation.status === "ready" ? recommendation.data : null;
+    if (!state || !(state.status === "generated" || state.status === "reused" || state.status === "served_stale")) return Promise.resolve(false);
+    const rec = state.recommendation;
+    const key = `reject:${rec.recommendationId}:${rec.recommendationRevision}:${candidate.candidateId}:not_for_me`;
+    return finishBusinessMutation("reject", key, (clientMutationId) => clientsRef.current.rejectHomeRecommendation({ clientMutationId, recommendationId: rec.recommendationId, expectedRecommendationRevision: rec.recommendationRevision, candidateId: candidate.candidateId, reason: "not_for_me" }, sessionRef.current));
+  }, [finishBusinessMutation, recommendation]);
+
+  const cancelPrimary = useCallback((primary: HomePlan, backup?: HomePlan) => {
+    const key = `cancel:${primary.id}:${primary.revision}:${backup?.id ?? "none"}:${backup?.revision ?? 0}`;
+    return finishBusinessMutation("cancel", key, (clientMutationId) => clientsRef.current.cancelHomePrimaryPlan({ clientMutationId, targetDate: primary.date, primary: { planEntryId: primary.id, expectedRevision: primary.revision }, ...(backup ? { promoteBackup: { planEntryId: backup.id, expectedRevision: backup.revision } } : {}) }, sessionRef.current));
+  }, [finishBusinessMutation]);
+
+  const markPlanWorn = useCallback((plan: HomePlan) => {
+    const key = `wear:${plan.id}:${plan.revision}`;
+    return finishBusinessMutation("wear", key, (clientMutationId) => clientsRef.current.markHomePlanWorn(plan.id, plan.revision, clientMutationId, `${plan.date}T12:00:00.000Z`, sessionRef.current));
+  }, [finishBusinessMutation]);
+
+  const undoPlanWorn = useCallback((plan: HomePlan) => {
+    const key = `unwear:${plan.id}:${plan.revision}`;
+    return finishBusinessMutation("unwear", key, (clientMutationId) => clientsRef.current.cancelHomePlanWorn(plan.id, plan.revision, clientMutationId, sessionRef.current));
+  }, [finishBusinessMutation]);
+
+  const saveCandidateOutfit = useCallback((candidate: HomeRecommendationCandidate, garmentIds: readonly string[]) => {
+    const key = `save-outfit:${candidate.candidateId}:${[...garmentIds].sort().join(",")}`;
+    return finishBusinessMutation("save_outfit", key, async (clientMutationId) => {
+      if (!input.onSaveOutfit) throw new Error("当前版本未连接套装保存能力");
+      await input.onSaveOutfit({ name: `${selectedDateRef.current} ${candidate.objective === "fresh" ? "变化" : candidate.objective === "comfort" ? "舒适" : "稳妥"}搭配`, garmentIds, clientMutationId });
+    });
+  }, [finishBusinessMutation, input]);
 
   const retryWeather = useCallback((date: string) => {
     const snapshot = locationSnapshotRef.current;
@@ -475,6 +575,30 @@ export function useHomeFeedController(input: HomeFeedControllerInput) {
   const startCityComposition = useCallback(() => citySearch.startComposition(), [citySearch]);
   const endCityComposition = useCallback((query: string) => citySearch.endComposition(accountRef.current, query), [citySearch]);
 
+  const requestDeviceLocation = useCallback(async () => {
+    const session = sessionRef.current;
+    if (!session.accessToken) { setDeviceLocation({ status: "error", candidates: [], message: "请先登录后使用当前位置。" }); return; }
+    setDeviceLocation({ status: "requesting", candidates: [] });
+    let coordinates: { longitude: number; latitude: number } | undefined;
+    try {
+      const result = await readCoarseDeviceCoordinates();
+      coordinates = result.coordinates;
+      if (result.permission !== "granted" || !coordinates) {
+        setDeviceLocation({ status: "denied", candidates: [], message: "未获得大致位置权限。你仍可搜索城市，或在系统设置开启后重试。" });
+        return;
+      }
+      const resolved = await clientsRef.current.resolveDeviceLocation(coordinates.longitude, coordinates.latitude, session);
+      const candidates = sanitizeResolvedLocationCandidates(resolved);
+      setDeviceLocation(candidates.length ? { status: "ready", candidates } : { status: "error", candidates: [], message: "没有解析到可确认的城市，请手动搜索。" });
+    } catch (error) {
+      const message = homeErrorMessage(error);
+      const denied = /permission|denied|restricted|权限|拒绝/i.test(message);
+      setDeviceLocation({ status: denied ? "denied" : "error", candidates: [], message: denied ? "大致位置权限被拒绝或受限。请在系统设置中调整后返回重试。" : "暂时无法获取位置，请稍后重试或搜索城市。" });
+    } finally {
+      coordinates = undefined;
+    }
+  }, []);
+
   const commitLocation = useCallback(async (kind: HomeLocationAction, locationId?: string): Promise<HomeLocationCommitStatus> => {
     const session = sessionRef.current;
     const snapshot = locationSnapshotRef.current;
@@ -504,7 +628,7 @@ export function useHomeFeedController(input: HomeFeedControllerInput) {
       if (result.status === "stale") return "stale";
       if (result.status === "conflict_unresolved") {
         setCityMutationConflict(true);
-        setCityMutationError(`地点设置发生冲突，读取最新设置失败：${onlineErrorMessage(result.error)}`);
+        setCityMutationError(`地点设置发生冲突，读取最新设置失败：${homeErrorMessage(result.error)}`);
         return "conflict_unresolved";
       }
       applyServerLocationSnapshot(result.snapshot, true);
@@ -516,9 +640,10 @@ export function useHomeFeedController(input: HomeFeedControllerInput) {
       setCityOpen(false);
       setCityQuery("");
       setCityCandidates([]);
+      setDeviceLocation({ status: "idle", candidates: [] });
       return "committed";
     } catch (error) {
-      if (!controller.signal.aborted && mountedRef.current) setCityMutationError(onlineErrorMessage(error));
+      if (!controller.signal.aborted && mountedRef.current) setCityMutationError(homeErrorMessage(error));
       return controller.signal.aborted ? "stale" : "failed";
     } finally {
       if (!controller.signal.aborted && mountedRef.current) {
@@ -555,6 +680,8 @@ export function useHomeFeedController(input: HomeFeedControllerInput) {
     cityOpen, setCityOpen, cityQuery, cityCandidates, citySearchState, citySearchMessage, citySearchRetryAfter,
     searchCities, startCityComposition, endCityComposition,
     cityMutation, cityMutationError, cityMutationConflict, commitLocation,
+    deviceLocation, requestDeviceLocation,
+    homeMutation, acceptCandidate, rejectCandidate, cancelPrimary, markPlanWorn, undoPlanWorn, saveCandidateOutfit,
   };
 }
 
