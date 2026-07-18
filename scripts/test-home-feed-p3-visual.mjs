@@ -28,25 +28,39 @@ const prototypePage = await browser.newPage({ viewport: { width: 390, height: 84
 await appPage.emulateMedia({ reducedMotion: "reduce" });
 const results = [];
 try {
-  for (const code of ["304", "403", "508", "512", "998"]) {
+  const cases = [
+    { code: "304", kind: "scene", clock: 0 }, { code: "304", kind: "lightning", clock: .03 }, { code: "304", kind: "lightning", clock: .32 },
+    { code: "304", kind: "hail", clock: .40 }, { code: "304", kind: "hail", clock: .70 }, { code: "304", kind: "hail", clock: .90 },
+    { code: "403", kind: "scene", clock: 0 }, { code: "403", kind: "scene", clock: 2.5 },
+    { code: "508", kind: "scene", clock: 0 }, { code: "508", kind: "scene", clock: 4 },
+    { code: "512", kind: "scene", clock: 0 }, { code: "512", kind: "scene", clock: 8 },
+    { code: "998", kind: "static", clock: 0 },
+  ];
+  for (const sample of cases) {
+    const { code, kind, clock } = sample;
     await setCode(code); await openHome(appPage); await appPage.waitForTimeout(350);
     await appPage.addStyleTag({ content: '[data-testid="home-weather-today"] > :not(canvas){visibility:hidden!important}' });
-    const prototypeUrl = `${pathToFileURL(prototypePath).href}?today=${code}&tomorrow=103&reduced=1&blind=1`;
+    if (code !== "998" && (kind !== "scene" || clock !== 0)) await appPage.evaluate(({ kind, clock }) => window.__wardoraWeatherCanvasTest.preview(kind, clock), { kind, clock });
+    const preview = code !== "998" && (kind !== "scene" || clock !== 0) ? `&preview=${kind}&phase=${clock}` : "&reduced=1";
+    const prototypeUrl = `${pathToFileURL(prototypePath).href}?today=${code}&tomorrow=103&blind=1${preview}`;
     await prototypePage.goto(prototypeUrl, { waitUntil: "load" }); await prototypePage.locator('[data-weather-card="today"]').waitFor(); await prototypePage.waitForTimeout(150);
     const prototypeTarget = code === "998" ? prototypePage.locator('[data-weather-card="today"]') : prototypePage.locator('[data-weather-canvas="today"]');
     const appTarget = code === "998" ? appPage.getByTestId("home-weather-today") : appPage.locator('[data-weather-canvas="today"]');
     if (code !== "998") await appTarget.waitFor();
-    const prototypeShot = `${evidenceDir}/${code}-prototype.png`, appShot = `${evidenceDir}/${code}-production.png`, sideBySide = `${evidenceDir}/${code}-side-by-side.png`;
+    const label = `${code}-${kind}-${String(clock).replace(".", "p")}`;
+    const prototypeShot = `${evidenceDir}/${label}-prototype.png`, appShot = `${evidenceDir}/${label}-production.png`, sideBySide = `${evidenceDir}/${label}-side-by-side.png`;
     await prototypeTarget.screenshot({ path: prototypeShot }); await appTarget.screenshot({ path: appShot });
     const mae = await compare(prototypeShot, appShot, sideBySide);
     const structure = await appPage.evaluate(() => ({ diagnostics: window.__wardoraWeatherCanvas ?? null, todayCanvas: document.querySelectorAll('[data-weather-canvas="today"]').length, tomorrowCanvas: document.querySelectorAll('[data-weather-canvas="tomorrow"]').length, todayFamily: document.querySelector('[data-testid="home-weather-today"]')?.getAttribute("data-weather-family"), overflow: document.documentElement.scrollWidth - document.documentElement.clientWidth }));
     if (structure.tomorrowCanvas !== 0) throw new Error(`${code}: tomorrow must remain static`);
     if (code === "998" && structure.todayCanvas !== 0) throw new Error("998 must be static");
     if (code !== "998" && structure.todayCanvas !== 1) throw new Error(`${code}: dynamic today canvas missing`);
-    results.push({ code, mae, structure, prototypeShot, appShot, sideBySide });
+    const threshold = code === "998" ? .03 : .08;
+    if (mae > threshold) throw new Error(`${label}: MAE ${mae} exceeded ${threshold}`);
+    results.push({ code, kind, clock, mae, threshold, structure, prototypeShot, appShot, sideBySide });
   }
-  await writeFile(`${evidenceDir}/comparison.json`, JSON.stringify({ prototypeSha256: "30c97e315d2efd0d9bfcf10125177d58cf9edb479b8d9310476752277cbe37db", fixedClock: 0, reducedMotion: true, results }, null, 2));
-  console.log(JSON.stringify({ evidenceDir, results: results.map(({ code, mae, structure }) => ({ code, mae, structure })) }));
+  await writeFile(`${evidenceDir}/comparison.json`, JSON.stringify({ prototypeSha256: "30c97e315d2efd0d9bfcf10125177d58cf9edb479b8d9310476752277cbe37db", fixedClocks: true, hardThresholds: true, results }, null, 2));
+  console.log(JSON.stringify({ evidenceDir, results: results.map(({ code, kind, clock, mae, threshold, structure }) => ({ code, kind, clock, mae, threshold, structure })) }));
 } finally {
   await browser.close();
   for (const process of processes) process.kill("SIGTERM");

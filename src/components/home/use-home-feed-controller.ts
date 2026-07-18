@@ -576,7 +576,7 @@ export function useHomeFeedController(input: HomeFeedControllerInput) {
     } catch (error) {
       const message = onlineErrorMessage(error);
       const denied = /permission|denied|restricted|权限|拒绝/i.test(message);
-      setDeviceLocation({ status: denied ? "denied" : "error", candidates: [], message: denied ? "大致位置权限被拒绝或受限。请在系统设置中调整后返回重试。" : message });
+      setDeviceLocation({ status: denied ? "denied" : "error", candidates: [], message: denied ? "大致位置权限被拒绝或受限。请在系统设置中调整后返回重试。" : "暂时无法获取位置，请稍后重试或搜索城市。" });
     } finally {
       coordinates = undefined;
     }

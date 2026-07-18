@@ -18,7 +18,7 @@ const client = readFileSync(join(root, "src/lib/online/online-home-client.ts"), 
 const cancel = readFileSync(join(root, "services/wardrobe-api/src/recommendations/cancel-service.ts"), "utf8");
 assert.match(page, /设为今日穿搭/);
 assert.match(page, /更换当日穿搭/);
-assert.match(page, /取消并恢复备选/);
+assert.match(page, /取消并换回所选穿搭/);
 assert.match(page, /确认今天穿了这套/);
 assert.match(page, /plan\.date === today/, "future plans must not expose the worn action");
 assert.match(page, /撤销已穿/);
@@ -31,4 +31,5 @@ assert.match(cancel, /workspace-plan-date:/);
 assert.match(cancel, /afterPrimaryCancel/);
 assert.match(cancel, /rollback/);
 assert.doesNotMatch(page + controller + client, /localStorage|indexedDB|Outbox/i);
+assert.doesNotMatch(page, /主计划已保护|天气变化只提示风险|不会自动更换|服务端|服务器|同一事务|当前事实/);
 console.log("home feed P2 fixtures: passed");

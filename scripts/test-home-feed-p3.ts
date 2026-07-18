@@ -19,7 +19,8 @@ assert.equal(canvasEligibility({ kind: "today", code: "304", forecast: true, sta
 assert.equal(canvasEligibility({ kind: "today", code: "304", forecast: true, stale: false }), "dynamic_today");
 
 const frames: number[] = [];
-const scheduler = createWeatherFrameScheduler((time) => frames.push(time));
+const resumes: boolean[] = [];
+const scheduler = createWeatherFrameScheduler((time, resumed) => { frames.push(time); resumes.push(resumed); });
 scheduler.setVisible(true);
 scheduler.setForeground(true);
 scheduler.advanceForTest(0);
@@ -31,6 +32,7 @@ scheduler.advanceForTest(2000);
 scheduler.setForeground(true);
 scheduler.advanceForTest(2040);
 assert.equal(frames.length, 2, "resume must not catch up or replay missed frames");
+assert.equal(resumes.at(-1), true, "resume frame must be identified so scene clock uses zero delta");
 scheduler.setReducedMotion(true);
 scheduler.advanceForTest(2080);
 assert.equal(frames.length, 2, "reduced motion has no loop frames");

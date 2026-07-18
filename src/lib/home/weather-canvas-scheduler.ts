@@ -8,7 +8,7 @@ export interface WeatherFrameScheduler {
   destroy(): void;
 }
 
-export function createWeatherFrameScheduler(draw: (time: number) => void): WeatherFrameScheduler {
+export function createWeatherFrameScheduler(draw: (time: number, resumed: boolean) => void): WeatherFrameScheduler {
   let visible = false;
   let foreground = true;
   let reducedMotion = false;
@@ -30,7 +30,7 @@ export function createWeatherFrameScheduler(draw: (time: number) => void): Weath
     if (!runnable()) return;
     if (lastTime === null) {
       lastTime = time;
-      if (started && resumePending) budget = FRAME_INTERVAL_MS;
+      if (started && resumePending) draw(time, true);
       resumePending = false;
     } else {
       budget += Math.min(100, Math.max(0, time - lastTime));
@@ -39,7 +39,7 @@ export function createWeatherFrameScheduler(draw: (time: number) => void): Weath
     if (budget >= FRAME_INTERVAL_MS) {
       budget -= FRAME_INTERVAL_MS;
       started = true;
-      draw(time);
+      draw(time, false);
     }
   };
   const tick = (time: number) => {

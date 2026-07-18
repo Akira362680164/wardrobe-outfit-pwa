@@ -9,9 +9,9 @@
 
 ## 2026-07-18 / v2.1.31-test / Codex — 新首页 P3 天气 Canvas 与大致位置
 
-- 今日天气卡从验收原型 v0.2.3 提取 `wardora-v023` seed/clock、场景参数、绘制顺序和雷光/冰雹事件；复用 62/62 共享天气字典，明日、未知、fallback、stale 和故障均静态。
+- 今日天气卡直接移植验收原型 v0.2.3 的 `wardora-v023` seed/clock、完整场景参数、绘制顺序和雷光/冰雹事件；固定 code/clock 像素门禁覆盖动态事件，明日、未知、fallback、stale 和故障均静态。
 - 单调度器目标 29 FPS、DPR≤2，离屏/后台/锁屏/卸载停止且恢复不补帧；reduced-motion 保留 clock 0 静帧，Canvas 例外自动回退当前静态卡。
-- 地点 Sheet 只在用户阅读用途并确认后请求 Capacitor 前台大致位置；坐标仅当次传服务端解析，页面只保留无坐标城市候选，用户再确认临时/常驻。
+- 地点 Sheet 只在用户阅读用途并确认后请求 Capacitor 前台大致位置；坐标仅当次解析城市候选，用户再确认临时/常驻；界面移除“主计划、保护、服务端、事务、不会自动更换”等实现说明和底层英文错误。
 - 原型 SHA、固定 code/clock 并排像素、浏览器调度/定位与 Android 证据见 `docs/recommendations/WARDORA_NEW_HOME_P3_EVIDENCE.md`；独立视觉 subagent 结论在冻结提交后补录。
 
 ## 2026-07-18 / v2.1.31-test / Codex — 新首页 P2 计划与穿着闭环
