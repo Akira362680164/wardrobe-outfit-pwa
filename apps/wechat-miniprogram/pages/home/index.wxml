@@ -46,9 +46,9 @@
 
     <view wx:if="{{activeSection === 'recommendation'}}" class="recommendation-section">
       <view wx:if="{{plan}}" class="plan-card {{plan.risk ? 'plan-card--risk' : ''}}">
-        <view class="section-heading"><view><view class="section-title">{{plan.title}}</view><view class="section-subtitle">已安排，不会自动更换</view></view></view>
+        <view class="section-heading"><view class="section-title">{{plan.title}}</view></view>
         <view class="plan-images"><view wx:for="{{plan.garments}}" wx:key="id" class="plan-image"><image wx:if="{{item.imageUrl}}" src="{{item.imageUrl}}" mode="aspectFill"/><view wx:else class="image-fallback">{{item.name}}</view></view></view>
-        <view wx:if="{{plan.risk}}" class="plan-risk">{{plan.risk}}</view><view class="plan-state">{{plan.stateText}}</view>
+        <view wx:if="{{plan.risk}}" class="plan-risk">{{plan.risk}}</view>
       </view>
 
       <scroll-view class="date-strip" scroll-x enable-flex aria-label="选择推荐日期">
@@ -69,7 +69,6 @@
             <view class="recommendation-card__top"><text class="recommendation-objective">{{item.objective}}</text><text class="recommendation-mode">{{recommendationMode === 'forecast' ? '天气增强' : recommendationMode === 'locationless' ? '通用建议' : '天气回退'}}</text></view>
             <view class="recommendation-images"><view wx:for="{{item.garments}}" wx:for-item="garment" wx:key="id" class="recommendation-image" data-id="{{garment.id}}" bindtap="openGarment"><image wx:if="{{garment.imageUrl}}" src="{{garment.imageUrl}}" mode="aspectFill"/><view wx:else class="image-fallback">{{garment.name}}</view><text>{{garment.name}}</text></view></view>
             <view class="recommendation-title">{{item.title}}</view><view class="recommendation-reason">{{item.reason}}</view><view class="recommendation-risk">{{item.risk}}</view>
-            <view class="read-only-note">写操作将在 P2 正式合同同步后启用</view>
           </view>
         </view>
       </scroll-view>
@@ -89,7 +88,7 @@
   <button class="content-fab home-fab" aria-label="新建" bindtap="openCreateSheet"><ui-icon name="plus" size="48" tone="surface" /></button>
   <create-sheet open="{{createSheetOpen}}" active="add_single_item" bind:close="closeCreateSheet" />
 
-  <ui-sheet open="{{locationSheetOpen}}" title="地点与天气" description="仅在你主动选择后获取一次粗略位置，用来解析城市；坐标只发给 Wardora 服务端且不保存。" close-on-mask="{{!locationBusy}}" bind:close="closeLocationSheet">
+  <ui-sheet open="{{locationSheetOpen}}" title="地点与天气" description="仅在你主动选择后获取一次粗略位置，用来解析城市；坐标仅用于本次解析，不会保存。" close-on-mask="{{!locationBusy}}" bind:close="closeLocationSheet">
     <view class="location-sheet-body">
       <button class="current-location-action" loading="{{locationBusy}}" disabled="{{locationBusy}}" bindtap="useCurrentLocation"><ui-icon name="home" size="34" tone="surface"/><text>使用当前位置</text></button>
       <view class="privacy-note">首页不会自动弹出位置权限。拒绝或永久拒绝后，手工城市搜索始终可用，也不阻塞无城市推荐。</view>

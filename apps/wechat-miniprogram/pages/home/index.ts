@@ -420,8 +420,7 @@ function mapPlan(plan: MiniOutfitPlanEntry | undefined, garments: MiniGarment[])
   const ids = plan.status === "worn" && plan.actualGarmentIds.length ? plan.actualGarmentIds : plan.garmentIds;
   return {
     id: plan.id,
-    title: plan.status === "worn" ? "今天已穿" : "当日穿搭",
-    stateText: plan.status === "worn" ? "已经确认穿过，之后的建议不会覆盖" : "这套已安排；天气有变化时会提醒你，不会自动更换",
+    title: plan.status === "worn" ? "已记录穿着" : "已安排",
     risk: plan.availability === "blocked" ? "部分衣物已不可用，请先调整穿搭。" : plan.availability === "historical" ? "当前显示历史快照。" : "",
     garments: ids.slice(0, 3).map((id) => ({ id, name: byId.get(id)?.name ?? "已删除衣物", imageUrl: byId.get(id)?.imageUrl ?? "" })),
   };
