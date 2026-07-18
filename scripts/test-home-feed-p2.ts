@@ -32,4 +32,7 @@ assert.match(cancel, /afterPrimaryCancel/);
 assert.match(cancel, /rollback/);
 assert.doesNotMatch(page + controller + client, /localStorage|indexedDB|Outbox/i);
 assert.doesNotMatch(page, /主计划已保护|天气变化只提示风险|不会自动更换|服务端|服务器|同一事务|当前事实/);
+assert.doesNotMatch(page, /天气回退|天气增强|至少输入 2 个字搜索城市/);
+assert.match(controller, /暂时无法完成，请稍后重试/);
+assert.match(controller, /网络连接失败，请检查网络后重试/);
 console.log("home feed P2 fixtures: passed");

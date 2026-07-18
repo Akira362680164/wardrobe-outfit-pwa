@@ -88,15 +88,13 @@ function installShanghaiMockLocation() {
 }
 function setFixtureNetworkBlocked(blocked) {
   const rule = ["-p", "tcp", "-d", "10.0.2.2", "--dport", "4184", "-j", "REJECT"];
-  if (!blocked) {
-    adb(["shell", "su", "0", "sh", "-c", "iptables -D OUTPUT -p tcp -d 10.0.2.2 --dport 4184 -j REJECT >/dev/null 2>&1 || true"]);
-    return;
-  }
-  setFixtureNetworkBlocked(false);
-  adb(["shell", "su", "0", "iptables", "-I", "OUTPUT", ...rule]);
+  while (adb(["shell", "su", "0", "iptables", "-S", "OUTPUT"]).includes("-d 10.0.2.2/32") && adb(["shell", "su", "0", "iptables", "-S", "OUTPUT"]).includes("--dport 4184")) adb(["shell", "su", "0", "iptables", "-D", "OUTPUT", ...rule]);
+  if (blocked) adb(["shell", "su", "0", "iptables", "-I", "OUTPUT", ...rule]);
 }
 
 await mkdir(evidenceDir, { recursive: true });
+adb(["shell", "input", "keyevent", "KEYCODE_WAKEUP"]);
+adb(["shell", "wm", "dismiss-keyguard"]);
 adb(["shell", "pm", "clear", packageName]);
 adb(["logcat", "-c"]);
 adb(["shell", "am", "start", "-W", "-n", `${packageName}/.MainActivity`]);
@@ -213,14 +211,15 @@ try {
 
   const clockBeforeLock = await cdp.value(`window.__wardoraWeatherCanvas?.clock ?? 0`);
   adb(["shell", "input", "keyevent", "KEYCODE_POWER"]);
-  await sleep(750);
-  assert(/Display Power: state=OFF|mWakefulness=Asleep/.test(adb(["shell", "dumpsys", "power"])), "Emulator did not enter lock/screen-off state");
+  await waitFor(() => /mWakefulness=Asleep/.test(adb(["shell", "dumpsys", "power"])), "Emulator did not enter lock/screen-off state", 4_000);
   adb(["shell", "input", "keyevent", "KEYCODE_POWER"]);
   adb(["shell", "wm", "dismiss-keyguard"]);
   adb(["shell", "am", "start", "-W", "-n", `${packageName}/.MainActivity`]);
   await waitFor(() => hasTestId(cdp, "wardora-home-feed"), "Lock-screen restore lost home feed");
   const clockAfterLock = await cdp.value(`window.__wardoraWeatherCanvas?.clock ?? 0`);
   assert(clockAfterLock - clockBeforeLock < 1.25, `Canvas replayed locked time: ${clockBeforeLock} -> ${clockAfterLock}`);
+  const lockscreenGeometry = await cdp.value(`({overflow:document.documentElement.scrollWidth-document.documentElement.clientWidth,rootScrollLeft:document.scrollingElement.scrollLeft})`);
+  assert(lockscreenGeometry.overflow <= 1 && lockscreenGeometry.rootScrollLeft === 0, `Lock-screen restore shifted the page ${JSON.stringify(lockscreenGeometry)}`);
   await screenshot("05a-lockscreen-restore");
 
   async function reloadHomeFor(mode) {
@@ -310,7 +309,7 @@ try {
     installedVersionCode: Number(packageDump.match(/versionCode=(\d+)/)?.[1] ?? 0),
     viewport,
     initial,
-    checks: { p3Canvas: { running: canvasRunning, runtimeReduced: canvasReduced, resumedWithoutCatchup: canvasResumed, lockscreenWithoutReplay: { clockBeforeLock, clockAfterLock }, failureFallback: canvasFailureFallback }, p3LocationPermission: { noAutomaticPrompt: true, purposeBeforePermission: true, permanentDenied: true, applicationSettingsReturn: true, coarseGranted: coarseLocationGranted(), confirmedCandidate: "上海" }, p2Business: { accept: true, offlineWriteKeptPlan: true, wear: true, unwearPlanPreserved: true, cancel: true, tracePaths: p2Paths.filter((value) => /recommendations|outfit-plans/.test(value)) }, todayTomorrowSwitchAndScroll: true, horizontalScrollLeft, verticalScrollTop, locationSheetSystemBack: true, fontScalePercent: 130, font130, foregroundRestore: true, lockscreenRestore: true, targetedP141: { travel, stale, protectedPlan, partialWeather, partialWeatherRecovered, thirdDayAfterProtectedPlan: true } },
+    checks: { p3Canvas: { running: canvasRunning, runtimeReduced: canvasReduced, resumedWithoutCatchup: canvasResumed, lockscreenWithoutReplay: { clockBeforeLock, clockAfterLock, geometry: lockscreenGeometry }, failureFallback: canvasFailureFallback }, p3LocationPermission: { noAutomaticPrompt: true, purposeBeforePermission: true, permanentDenied: true, applicationSettingsReturn: true, coarseGranted: coarseLocationGranted(), confirmedCandidate: "上海" }, p2Business: { accept: true, offlineWriteKeptPlan: true, wear: true, unwearPlanPreserved: true, cancel: true, tracePaths: p2Paths.filter((value) => /recommendations|outfit-plans/.test(value)) }, todayTomorrowSwitchAndScroll: true, horizontalScrollLeft, verticalScrollTop, locationSheetSystemBack: true, fontScalePercent: 130, font130, foregroundRestore: true, lockscreenRestore: true, targetedP141: { travel, stale, protectedPlan, partialWeather, partialWeatherRecovered, thirdDayAfterProtectedPlan: true } },
     runtimeExceptions,
     loadingFailures,
     fatalCount: fatalMatches.length

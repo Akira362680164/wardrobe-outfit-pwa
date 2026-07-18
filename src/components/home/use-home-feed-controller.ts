@@ -45,6 +45,13 @@ import {
 } from "@/lib/online/online-home-client";
 import { OnlineRequestError, onlineErrorMessage } from "@/lib/online/online-error";
 
+function homeErrorMessage(error: unknown): string {
+  if (!(error instanceof OnlineRequestError)) return "暂时无法完成，请稍后重试。";
+  if (error.code === "server") return "暂时无法完成，请稍后重试。";
+  if (error.code === "network") return "网络连接失败，请检查网络后重试。";
+  return onlineErrorMessage(error);
+}
+
 const defaultHomeClients = {
   acceptHomeRecommendation, cancelHomePlanWorn, cancelHomePrimaryPlan, clearHomeCity, clearTemporaryCity,
   markHomePlanWorn, readHomeLocation, readHomeRecommendations, readHomeWeather, rejectHomeRecommendation,
@@ -171,7 +178,7 @@ export function useHomeFeedController(input: HomeFeedControllerInput) {
       return next;
     } catch (error) {
       if (locationGate.current.isCurrent(ticket) && mountedRef.current) {
-        setLocationState({ status: "error", message: onlineErrorMessage(error) });
+        setLocationState({ status: "error", message: homeErrorMessage(error) });
       }
       return null;
     }
@@ -218,13 +225,13 @@ export function useHomeFeedController(input: HomeFeedControllerInput) {
           if (mountedRef.current) {
             setWeatherByDate((current) => ({ ...current, [date]: result.status === "fulfilled"
               ? { status: "ready", data: result.value }
-              : { status: "error", message: onlineErrorMessage(result.reason) } }));
+              : { status: "error", message: homeErrorMessage(result.reason) } }));
           }
           if (date !== selected || !mountedRef.current) return;
           if (date === selected) {
             setWeather(result.status === "fulfilled"
               ? { status: "ready", data: result.value }
-              : { status: "error", message: onlineErrorMessage(result.reason) });
+              : { status: "error", message: homeErrorMessage(result.reason) });
           }
         },
       );
@@ -232,13 +239,13 @@ export function useHomeFeedController(input: HomeFeedControllerInput) {
       const next = cache.current.getWeather(accountId, snapshot, selected);
       if (next) setWeather({ status: "ready", data: next });
       else {
-        const message = onlineErrorMessage(settled.errors.get(selected) ?? new Error("天气响应缺少目标日期"));
+        const message = homeErrorMessage(settled.errors.get(selected) ?? new Error("天气响应缺少目标日期"));
         setWeather({ status: "error", message });
         setWeatherByDate((current) => ({ ...current, [selected]: { status: "error", message } }));
       }
     } catch (error) {
       if (isWeatherContextCurrent() && selectedDateRef.current === selected && mountedRef.current) {
-        const message = onlineErrorMessage(error);
+        const message = homeErrorMessage(error);
         setWeather({ status: "error", message });
         setWeatherByDate((current) => ({ ...current, [selected]: { status: "error", message } }));
       }
@@ -344,7 +351,7 @@ export function useHomeFeedController(input: HomeFeedControllerInput) {
       setRecommendation({ status: "ready", data: result });
     } catch (error) {
       if (isRecommendationContextCurrent() && selectedDateRef.current === selected && mountedRef.current) {
-        setRecommendation({ status: "error", message: onlineErrorMessage(error) });
+        setRecommendation({ status: "error", message: homeErrorMessage(error) });
       }
     }
   }, []);
@@ -385,7 +392,7 @@ export function useHomeFeedController(input: HomeFeedControllerInput) {
       queueMicrotask(() => refreshFeedRef.current());
       return true;
     } catch (error) {
-      setHomeMutation({ kind, key, status: "error", message: onlineErrorMessage(error) });
+      setHomeMutation({ kind, key, status: "error", message: homeErrorMessage(error) });
       return false;
     }
   }, [input, mutationIdFor]);
@@ -574,7 +581,7 @@ export function useHomeFeedController(input: HomeFeedControllerInput) {
       const candidates = sanitizeResolvedLocationCandidates(resolved);
       setDeviceLocation(candidates.length ? { status: "ready", candidates } : { status: "error", candidates: [], message: "没有解析到可确认的城市，请手动搜索。" });
     } catch (error) {
-      const message = onlineErrorMessage(error);
+      const message = homeErrorMessage(error);
       const denied = /permission|denied|restricted|权限|拒绝/i.test(message);
       setDeviceLocation({ status: denied ? "denied" : "error", candidates: [], message: denied ? "大致位置权限被拒绝或受限。请在系统设置中调整后返回重试。" : "暂时无法获取位置，请稍后重试或搜索城市。" });
     } finally {
@@ -611,7 +618,7 @@ export function useHomeFeedController(input: HomeFeedControllerInput) {
       if (result.status === "stale") return "stale";
       if (result.status === "conflict_unresolved") {
         setCityMutationConflict(true);
-        setCityMutationError(`地点设置发生冲突，读取最新设置失败：${onlineErrorMessage(result.error)}`);
+        setCityMutationError(`地点设置发生冲突，读取最新设置失败：${homeErrorMessage(result.error)}`);
         return "conflict_unresolved";
       }
       applyServerLocationSnapshot(result.snapshot, true);
@@ -626,7 +633,7 @@ export function useHomeFeedController(input: HomeFeedControllerInput) {
       setDeviceLocation({ status: "idle", candidates: [] });
       return "committed";
     } catch (error) {
-      if (!controller.signal.aborted && mountedRef.current) setCityMutationError(onlineErrorMessage(error));
+      if (!controller.signal.aborted && mountedRef.current) setCityMutationError(homeErrorMessage(error));
       return controller.signal.aborted ? "stale" : "failed";
     } finally {
       if (!controller.signal.aborted && mountedRef.current) {

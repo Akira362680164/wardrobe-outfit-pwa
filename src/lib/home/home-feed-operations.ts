@@ -1,6 +1,13 @@
 import type { WeatherLocationRef } from "@wardrobe/cloud-contracts";
 
 import { OnlineRequestError, onlineErrorMessage } from "@/lib/online/online-error";
+
+function homeOperationErrorMessage(error: unknown): string {
+  if (!(error instanceof OnlineRequestError)) return "暂时无法完成，请稍后重试。";
+  if (error.code === "server") return "暂时无法完成，请稍后重试。";
+  if (error.code === "network") return "网络连接失败，请检查网络后重试。";
+  return onlineErrorMessage(error);
+}
 import { createUuid } from "@/lib/uuid";
 
 export type HomeLocationAction = "home" | "temporary" | "clear_home" | "clear_temporary";
@@ -171,7 +178,7 @@ export class HomeCitySearchSession {
       if (error instanceof OnlineRequestError && error.status === 429) {
         this.options.onState({ status: "rate_limited", query, candidates: [], message: error.message, retryAfterSeconds: error.retryAfterSeconds });
       } else {
-        this.options.onState({ status: "error", query, candidates: [], message: onlineErrorMessage(error) });
+        this.options.onState({ status: "error", query, candidates: [], message: homeOperationErrorMessage(error) });
       }
     } finally {
       if (this.controller === controller) this.controller = null;
