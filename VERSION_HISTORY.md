@@ -14,6 +14,7 @@
 - 同源生成 App P3 Canvas 内核并仅增加微信 Canvas 2D 宿主：29 FPS、DPR≤2、单调度器、后台/离屏暂停、恢复不补帧、异常静态和 reduced-motion；62 个 QWeather code 与 304/403/508/512/998 固定场景保持同源。
 - 地点 Sheet 不自动申请权限；用户看完用途并主动点击后才请求一次粗略位置，坐标只发 `resolve-device` 且不持久化，候选确认后才设临时/常驻，永久拒绝仍可手工搜索并使用 locationless 推荐。
 - WeChat DevTools Nightly 覆盖 360/390/430、100%/131%、完整状态与 P2 Sheet；关闭地点对齐、整卡 Canvas/双卡圆角、分段与日期条、三套横向卡、正式操作按钮和四 Tab + 中央加号偏差，并删除旧右下 FAB。证据见 `docs/recommendations/WARDORA_NEW_HOME_P4_WECHAT_EVIDENCE.md`；未 preview/upload、云写入或部署，物理微信真机仍列为发布前风险。
+- 首轮独立视觉审计发现的静态天气空白与 Sheet 底栏遮挡已修复：当前温度和最高温与 App 对齐，Canvas failure/stale/locationless 保留原生文案，地点、详情、取消和中央创建 Sheet 均隐藏四 Tab；关键状态重新覆盖 360/390/430 与 131% 字体。
 
 ## 2026-07-18 / v2.1.31-test / Codex — 新首页 P3 天气 Canvas 与大致位置
 

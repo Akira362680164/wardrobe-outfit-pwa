@@ -22,8 +22,8 @@
       <view class="weather-grid">
         <view class="weather-card weather-card--today {{canvasStaticFallback ? 'is-static' : ''}}" role="button" data-date="today" bindtap="selectWeatherDate" aria-label="今天天气，切换到今日推荐">
           <canvas wx:if="{{canvasVisible}}" id="home-weather-canvas" class="weather-canvas-host weather-canvas" type="2d" aria-hidden="true" />
-          <cover-view class="weather-copy-overlay">
-            <cover-view class="weather-copy-overlay__row"><cover-view>{{todayWeather.label}}</cover-view><cover-view wx:if="{{todayWeather.stale}}" class="stale-badge">较早天气</cover-view></cover-view>
+          <cover-view class="weather-copy-overlay {{canvasVisible ? 'is-canvas-copy' : ''}}">
+            <cover-view class="weather-copy-overlay__row"><cover-view>{{todayWeather.label}}</cover-view><cover-view class="{{todayWeather.stale ? 'stale-badge' : ''}}">{{todayWeather.stale ? '较早天气' : todayWeather.high}}</cover-view></cover-view>
             <cover-view class="weather-copy-overlay__temperature">{{todayWeather.temperature}}</cover-view>
             <cover-view class="weather-copy-overlay__summary">{{todayWeather.summary}}</cover-view>
             <cover-view class="weather-copy-overlay__meta">{{todayWeather.meta}}</cover-view>

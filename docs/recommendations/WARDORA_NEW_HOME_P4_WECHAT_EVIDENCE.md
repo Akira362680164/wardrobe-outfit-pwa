@@ -26,11 +26,12 @@ P2/P3 依赖：`main@88e2ef768b5d3b58a35910c30b5fbd797f1e42ab`
 - 客户端：WeChat DevTools Nightly `2.02.2607132`，基础库 `3.15.2`，已登录真实客户端。
 - 正式源码保持 TypeScript；验收生成器只向 `/tmp/wardora-p4-devtools-validation-*` 写机械 CJS 副本，避免 Nightly 对全新 worktree 不产出页面 JS 的工具缺陷。源码目录没有派生 JS。
 - 手写 Fixture controller 仅在 `/tmp` 验收副本中临时替换真实 `pages/home/index.js`，因此截图仍运行正式首页 WXML/WXSS、真实四 Tab + 中央创建按钮和共享组件；生产 `app.json`、页面 controller 与网络服务不存在 Fixture 路由或 Fixture 分支。
-- 最终状态截图使用 `*-final.png`，位于 `artifacts/home-feed-p4-wechat/`：normal、loading、empty、error、locationless、stale、partial weather、travel、planned、worn、blocked、recommendation details、cancel/backup、permission/settings、city candidates、reduced-motion。
+- 全状态首轮截图使用 `*-final.png`；独立审计修复后的关键状态使用 `*-audit2.png`，位于 `artifacts/home-feed-p4-wechat/`。第二轮重新覆盖 normal、partial weather、stale、locationless、Canvas failure、permission/settings 与 center-create Sheet。
 - 尺寸覆盖：iPhone 12/13 Pro `390×844`、iPhone 14 Pro Max `430×932`、Nexus 5 `360×640`；字体 `16` 与 `21`，即 `21/16=131.25%`。地点 Sheet、P2 Sheet、日期条、事实卡和长文案无横向裁切。
-- Canvas 实测见 `artifacts/home-feed-p4-wechat/devtools-metrics.json`：DPR `2`，目标 `29 FPS`；暂停 0.9 秒帧数保持 `220`，恢复 1.2 秒增加 `34` 帧且不补跑暂停帧；reduced-motion 只绘制初始 1 帧。
-- 今日同源 Canvas 覆盖完整天气卡并由宿主在每次内核绘制后补绘可见文字；同内容 `cover-view` 保留原生语义与辅助访问。宿主用 Canvas clip 固定 13px 四角，明日保持静态圆角卡；异常、stale、locationless 与 reduced-motion 静态降级，避免雪墙、竖板和沙墙回归。
+- Canvas 实测见 `artifacts/home-feed-p4-wechat/devtools-metrics.json`：DPR `2`，目标 `29 FPS`；暂停 0.9 秒帧数保持 `162`，恢复 1.2 秒增加 `34` 帧且不补跑暂停帧；reduced-motion 只绘制初始 1 帧。
+- 今日同源 Canvas 覆盖完整天气卡并由宿主在每次内核绘制后补绘当前温度、最高温和摘要；同内容 `cover-view` 仅在 Canvas 可见时隐藏重复视觉层，异常、stale、locationless 与 Canvas failure 会显示原生静态文案。宿主用 Canvas clip 固定 13px 四角，明日保持静态圆角卡，避免雪墙、竖板和沙墙回归。
 - 用户指出的首轮视觉偏差已关闭：地点左对齐、天气壳移除渐变底座、双卡四角完整、分段控件 52/44px 与 14/11px 圆角、App 同排日期工具栏、三套横向推荐、主操作 + 48px 详情按钮、四 Tab + 中央加号；旧右下 FAB 已删除，Sheet 打开时底栏隐藏避免遮挡。
+- 首轮独立视觉审计发现并关闭两项 P1：静态天气文案不可见，以及 permission/center-create Sheet 仍可能露出底栏。`360/390/430 × 100%` 与 `360 × 131.25%` 的 `*-audit2.png` 均使用稳定等待后重拍；partial weather 未再出现 Canvas 原生层错位。
 
 ## 权限、生命周期与失败分支
 

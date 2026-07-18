@@ -1,28 +1,28 @@
 {
-  "capturedAt": "2026-07-18T16:02:23Z",
+  "capturedAt": "2026-07-18T16:25:41Z",
   "tool": "WeChat DevTools Nightly 2.02.2607132",
   "library": "3.15.2",
   "device": {
-    "model": "iPhone 12/13 (Pro)",
-    "width": 390,
-    "height": 844,
+    "model": "iPhone 14 Pro Max",
+    "width": 430,
+    "height": 932,
     "fontSizeSetting": 16,
     "devicePixelRatio": 3
   },
   "canvas": {
     "beforePause": {
       "dpr": 2,
-      "frames": 220,
+      "frames": 162,
       "targetFps": 29
     },
     "paused": {
       "dpr": 2,
-      "frames": 220,
+      "frames": 162,
       "targetFps": 29
     },
     "resumed": {
       "dpr": 2,
-      "frames": 254,
+      "frames": 196,
       "targetFps": 29
     },
     "reduced": {

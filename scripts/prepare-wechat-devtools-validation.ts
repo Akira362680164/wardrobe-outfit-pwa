@@ -88,6 +88,7 @@ Page({
     this.setData(scene);
   },
   async onReady() {
+    this.syncTabVisibility();
     if (!this.data.canvasVisible) return;
     try {
       this.weatherRuntime = await createMiniWeatherCanvasRuntime({
@@ -97,25 +98,30 @@ Page({
         forecast: true,
         reducedMotion: this.data.reducedMotion === true,
         copy: this.data.todayWeather,
-        onFailure: (error) => this.setData({ canvasStaticFallback: true, canvasFailure: String(error && error.message || error || "render_failed") }),
+        onFailure: (error) => this.setData({ canvasVisible: false, canvasStaticFallback: true, canvasFailure: String(error && error.message || error || "render_failed") }),
       });
     } catch (_) {
-      this.setData({ canvasStaticFallback: true, canvasFailure: "measure_failed" });
+      this.setData({ canvasVisible: false, canvasStaticFallback: true, canvasFailure: "measure_failed" });
     }
   },
-  onShow() { if (this.weatherRuntime) this.weatherRuntime.setForeground(true); const tab = this.getTabBar && this.getTabBar(); if (tab && tab.selectTab) tab.selectTab(0); if (tab && tab.setData) tab.setData({ hidden: Boolean(this.data.recommendationSheetOpen || this.data.postAcceptSheetOpen || this.data.cancelSheetOpen || this.data.locationSheetOpen) }); },
+  onShow() { if (this.weatherRuntime) this.weatherRuntime.setForeground(true); const tab = this.getTabBar && this.getTabBar(); if (tab && tab.selectTab) tab.selectTab(0); this.syncTabVisibility(); },
   onHide() { if (this.weatherRuntime) this.weatherRuntime.setForeground(false); },
   onUnload() { if (this.weatherRuntime) this.weatherRuntime.destroy(); },
   canvasMetrics() { return this.weatherRuntime ? this.weatherRuntime.metrics : null; },
+  syncTabVisibility() {
+    const tab = this.getTabBar && this.getTabBar();
+    if (tab && tab.setData) tab.setData({ hidden: Boolean(this.data.recommendationSheetOpen || this.data.postAcceptSheetOpen || this.data.cancelSheetOpen || this.data.locationSheetOpen || this.data.createSheetOpen) });
+  },
+  setSheet(name, open) { this.setData({ [name]: open }, () => this.syncTabVisibility()); },
   setSection(event) { this.setData({ activeSection: event.currentTarget.dataset.section }); },
-  openRecommendationSheet() { this.setData({ recommendationSheetOpen: true }); },
-  closeRecommendationSheet() { this.setData({ recommendationSheetOpen: false }); },
-  openLocationSheet() { this.setData({ locationSheetOpen: true }); },
-  closeLocationSheet() { this.setData({ locationSheetOpen: false }); },
-  openCancelPlanSheet() { this.setData({ cancelSheetOpen: true }); },
-  closeCancelPlanSheet() { this.setData({ cancelSheetOpen: false }); },
-  closePostAcceptSheet() { this.setData({ postAcceptSheetOpen: false }); },
-  openCreateSheet() { this.setData({ createSheetOpen: true }); }, closeCreateSheet() { this.setData({ createSheetOpen: false }); }, retryHome() {}, retrySelectedDate() {},
+  openRecommendationSheet() { this.setSheet("recommendationSheetOpen", true); },
+  closeRecommendationSheet() { this.setSheet("recommendationSheetOpen", false); },
+  openLocationSheet() { this.setSheet("locationSheetOpen", true); },
+  closeLocationSheet() { this.setSheet("locationSheetOpen", false); },
+  openCancelPlanSheet() { this.setSheet("cancelSheetOpen", true); },
+  closeCancelPlanSheet() { this.setSheet("cancelSheetOpen", false); },
+  closePostAcceptSheet() { this.setSheet("postAcceptSheetOpen", false); },
+  openCreateSheet() { this.setSheet("createSheetOpen", true); }, closeCreateSheet() { this.setSheet("createSheetOpen", false); }, retryHome() {}, retrySelectedDate() {},
   selectWeatherDate() {}, selectDate() {}, selectTravelDate() {}, openGarment() {}, openIntake() {},
   beginChangePlan() {}, markCurrentPlanWorn() {}, undoCurrentPlanWorn() {},
   selectReplacementSource() {}, selectReplacementChoice() {}, applyRecommendation() {}, applySelectedRecommendation() {},

@@ -58,6 +58,7 @@ type WeatherCard = {
   status: "loading" | "ready" | "error" | "unavailable";
   label: string;
   temperature: string;
+  high: string;
   summary: string;
   meta: string;
   stale: boolean;
@@ -329,8 +330,8 @@ Page({
   setSection(this: any, event: any) { this.setData({ activeSection: event.currentTarget.dataset.section }); },
   openGarment(this: any, event: any) { wx.navigateTo({ url: `/pages/wardrobe/detail/index?id=${encodeURIComponent(event.currentTarget.dataset.id)}` }); },
   openIntake() { wx.navigateTo({ url: "/pages/intake/camera/index" }); },
-  openCreateSheet(this: any) { this.setData({ createSheetOpen: true }); },
-  closeCreateSheet(this: any) { this.setData({ createSheetOpen: false }); },
+  openCreateSheet(this: any) { setCustomTabHidden(this, true); this.setData({ createSheetOpen: true }); },
+  closeCreateSheet(this: any) { setCustomTabHidden(this, false); this.setData({ createSheetOpen: false }); },
 
   openRecommendationSheet(this: any, event: any) {
     const candidateId = String(event.currentTarget.dataset.candidate || "");
@@ -697,7 +698,7 @@ function mapWeather(value: WeatherOverview, label: string, today: boolean): Weat
       ? `${Math.round(evidence.temperatureMaxC)}°/${Math.round(evidence.temperatureMinC)}°`
       : "--°";
   return {
-    status: "ready", label, temperature, summary: evidence.summary,
+    status: "ready", label, temperature, high: evidence.temperatureMaxC !== undefined ? `最高 ${Math.round(evidence.temperatureMaxC)}°` : "", summary: evidence.summary,
     meta: today
       ? [evidence.currentFeelsLikeC !== undefined ? `体感 ${Math.round(evidence.currentFeelsLikeC)}°` : "", evidence.windLevel !== undefined ? `${evidence.windLevel} 级风` : ""].filter(Boolean).join(" · ")
       : evidence.temperatureMinC !== undefined ? `最低 ${Math.round(evidence.temperatureMinC)}° · 日间预报` : "日间预报",
@@ -706,9 +707,9 @@ function mapWeather(value: WeatherOverview, label: string, today: boolean): Weat
   };
 }
 
-function loadingWeather(label: string): WeatherCard { return { status: "loading", label, temperature: "--°", summary: "正在读取", meta: "", stale: false, code: "998" }; }
-function errorWeather(label: string): WeatherCard { return { status: "error", label, temperature: "--°", summary: "天气读取失败", meta: "点击重试", stale: false, code: "998" }; }
-function unavailableWeather(label: string, summary: string): WeatherCard { return { status: "unavailable", label, temperature: "--°", summary, meta: "使用通用推荐", stale: false, code: "998" }; }
+function loadingWeather(label: string): WeatherCard { return { status: "loading", label, temperature: "--°", high: "", summary: "正在读取", meta: "", stale: false, code: "998" }; }
+function errorWeather(label: string): WeatherCard { return { status: "error", label, temperature: "--°", high: "", summary: "天气读取失败", meta: "点击重试", stale: false, code: "998" }; }
+function unavailableWeather(label: string, summary: string): WeatherCard { return { status: "unavailable", label, temperature: "--°", high: "", summary, meta: "使用通用推荐", stale: false, code: "998" }; }
 
 function mapRecommendationCards(item: RecommendationDisplayItemV3, garments: MiniGarment[]): HomeRecommendationCard[] {
   const byId = new Map(garments.map((garment) => [garment.id, garment]));

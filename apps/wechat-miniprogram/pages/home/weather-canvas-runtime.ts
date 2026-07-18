@@ -22,7 +22,7 @@ export interface MiniWeatherCanvasRuntime {
   readonly metrics: { dpr: number; frames: number; targetFps: number };
 }
 
-type WeatherCanvasCopy = { label: string; temperature: string; summary: string; meta: string; stale: boolean };
+type WeatherCanvasCopy = { label: string; temperature: string; high: string; summary: string; meta: string; stale: boolean };
 
 export async function createMiniWeatherCanvasRuntime(input: {
   page: object;
@@ -141,6 +141,12 @@ function drawWeatherCopy(context: CanvasRenderingContext2D, width: number, heigh
     context.font = `650 ${Math.round(9 * scale)}px sans-serif`;
     context.fillStyle = "#805428";
     context.fillText("较早天气", width - x, 8, maxWidth * .55);
+    context.textAlign = "left";
+  } else if (copy.high) {
+    context.textAlign = "right";
+    context.font = `650 ${Math.round(10 * scale)}px sans-serif`;
+    context.fillStyle = "rgba(29,34,40,.58)";
+    context.fillText(copy.high, width - x, 8, maxWidth * .55);
     context.textAlign = "left";
   }
   context.fillStyle = "#1d2228";
