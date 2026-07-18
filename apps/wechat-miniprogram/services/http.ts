@@ -1,4 +1,5 @@
 import { clearSession, getAccessToken, getSession, setSession, type SessionState } from "../stores/session";
+import type { MiniAbortSignal } from "../utils/request-cancellation";
 
 export type HttpMethod = "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
 
@@ -9,7 +10,7 @@ export interface RequestOptions {
   auth?: boolean;
   toast?: boolean;
   timeoutMs?: number;
-  signal?: AbortSignal;
+  signal?: MiniAbortSignal;
 }
 
 export interface UploadOptions {

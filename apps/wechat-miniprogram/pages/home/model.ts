@@ -1,4 +1,5 @@
 import { wardoraBusinessDate } from "@wardrobe/cloud-contracts";
+import { MiniAbortController, type MiniAbortSignal } from "../../utils/request-cancellation";
 
 export interface HomeBusinessWindow {
   today: string;
@@ -54,17 +55,17 @@ export interface HomeGenerationTicket {
   readonly generation: number;
   readonly accountId: string;
   readonly date: string;
-  readonly signal: AbortSignal;
+  readonly signal: MiniAbortSignal;
 }
 
 export class HomeGenerationGate {
   private generation = 0;
   private accountId = "";
-  private controller: AbortController | null = null;
+  private controller: MiniAbortController | null = null;
 
   begin(accountId: string, date: string): HomeGenerationTicket {
     this.controller?.abort();
-    this.controller = new AbortController();
+    this.controller = new MiniAbortController();
     this.accountId = accountId;
     return { generation: ++this.generation, accountId, date, signal: this.controller.signal };
   }

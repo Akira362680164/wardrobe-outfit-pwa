@@ -37,6 +37,17 @@ gate.reset("account-b");
 assert.equal(gate.isCurrent(second), false, "account switch must invalidate previous account results");
 assert.equal(second.signal.aborted, true, "account switch must abort the previous account request task");
 
+const nativeAbortController = globalThis.AbortController;
+try {
+  (globalThis as { AbortController?: typeof AbortController }).AbortController = undefined;
+  const miniRuntimeGate = new HomeGenerationGate();
+  const miniRuntimeTicket = miniRuntimeGate.begin("account-mini", "2026-07-18");
+  miniRuntimeGate.reset();
+  assert.equal(miniRuntimeTicket.signal.aborted, true, "cancellation must work without a browser AbortController global");
+} finally {
+  (globalThis as { AbortController?: typeof AbortController }).AbortController = nativeAbortController;
+}
+
 let mutationCounter = 0;
 const mutations = createStableMutationSession(() => `00000000-0000-4000-8000-${String(++mutationCounter).padStart(12, "0")}`);
 const draft = { kind: "accept", recommendationId: "r1", candidateId: "c1" } as const;
