@@ -15,6 +15,7 @@ import {
   type HomeRecommendationResult,
 } from "@/lib/home/home-feed-model";
 import { createUuid } from "@/lib/uuid";
+import { readCoarseDeviceCoordinates, sanitizeResolvedLocationCandidates } from "@/lib/home/device-location";
 import { HomeFeedSessionCache, homeLocationRevisionKey } from "@/lib/home/home-feed-cache";
 import {
   HomeCitySearchSession,
@@ -35,6 +36,7 @@ import {
   readHomeWeather,
   markHomePlanWorn,
   rejectHomeRecommendation,
+  resolveDeviceLocation,
   resolveHomeRecommendations,
   searchHomeCities,
   setHomeCity,
@@ -46,7 +48,7 @@ import { OnlineRequestError, onlineErrorMessage } from "@/lib/online/online-erro
 const defaultHomeClients = {
   acceptHomeRecommendation, cancelHomePlanWorn, cancelHomePrimaryPlan, clearHomeCity, clearTemporaryCity,
   markHomePlanWorn, readHomeLocation, readHomeRecommendations, readHomeWeather, rejectHomeRecommendation,
-  resolveHomeRecommendations, searchHomeCities, setHomeCity, setTemporaryCity,
+  resolveDeviceLocation, resolveHomeRecommendations, searchHomeCities, setHomeCity, setTemporaryCity,
 };
 
 type HomeFeedClients = typeof defaultHomeClients;
@@ -86,6 +88,7 @@ export function useHomeFeedController(input: HomeFeedControllerInput) {
   const [cityMutation, setCityMutation] = useState<string | null>(null);
   const [cityMutationError, setCityMutationError] = useState<string | null>(null);
   const [cityMutationConflict, setCityMutationConflict] = useState(false);
+  const [deviceLocation, setDeviceLocation] = useState<{ status: "idle" | "requesting" | "ready" | "denied" | "error"; candidates: readonly WeatherLocationRef[]; message?: string }>({ status: "idle", candidates: [] });
   const [homeMutation, setHomeMutation] = useState<{ kind: string; key: string; status: "pending" | "error" | "success"; message?: string } | null>(null);
 
   const mountedRef = useRef(true);
@@ -555,6 +558,30 @@ export function useHomeFeedController(input: HomeFeedControllerInput) {
   const startCityComposition = useCallback(() => citySearch.startComposition(), [citySearch]);
   const endCityComposition = useCallback((query: string) => citySearch.endComposition(accountRef.current, query), [citySearch]);
 
+  const requestDeviceLocation = useCallback(async () => {
+    const session = sessionRef.current;
+    if (!session.accessToken) { setDeviceLocation({ status: "error", candidates: [], message: "请先登录后使用当前位置。" }); return; }
+    setDeviceLocation({ status: "requesting", candidates: [] });
+    let coordinates: { longitude: number; latitude: number } | undefined;
+    try {
+      const result = await readCoarseDeviceCoordinates();
+      coordinates = result.coordinates;
+      if (result.permission !== "granted" || !coordinates) {
+        setDeviceLocation({ status: "denied", candidates: [], message: "未获得大致位置权限。你仍可搜索城市，或在系统设置开启后重试。" });
+        return;
+      }
+      const resolved = await clientsRef.current.resolveDeviceLocation(coordinates.longitude, coordinates.latitude, session);
+      const candidates = sanitizeResolvedLocationCandidates(resolved);
+      setDeviceLocation(candidates.length ? { status: "ready", candidates } : { status: "error", candidates: [], message: "没有解析到可确认的城市，请手动搜索。" });
+    } catch (error) {
+      const message = onlineErrorMessage(error);
+      const denied = /permission|denied|restricted|权限|拒绝/i.test(message);
+      setDeviceLocation({ status: denied ? "denied" : "error", candidates: [], message: denied ? "大致位置权限被拒绝或受限。请在系统设置中调整后返回重试。" : message });
+    } finally {
+      coordinates = undefined;
+    }
+  }, []);
+
   const commitLocation = useCallback(async (kind: HomeLocationAction, locationId?: string): Promise<HomeLocationCommitStatus> => {
     const session = sessionRef.current;
     const snapshot = locationSnapshotRef.current;
@@ -596,6 +623,7 @@ export function useHomeFeedController(input: HomeFeedControllerInput) {
       setCityOpen(false);
       setCityQuery("");
       setCityCandidates([]);
+      setDeviceLocation({ status: "idle", candidates: [] });
       return "committed";
     } catch (error) {
       if (!controller.signal.aborted && mountedRef.current) setCityMutationError(onlineErrorMessage(error));
@@ -635,6 +663,7 @@ export function useHomeFeedController(input: HomeFeedControllerInput) {
     cityOpen, setCityOpen, cityQuery, cityCandidates, citySearchState, citySearchMessage, citySearchRetryAfter,
     searchCities, startCityComposition, endCityComposition,
     cityMutation, cityMutationError, cityMutationConflict, commitLocation,
+    deviceLocation, requestDeviceLocation,
     homeMutation, acceptCandidate, rejectCandidate, cancelPrimary, markPlanWorn, undoPlanWorn, saveCandidateOutfit,
   };
 }

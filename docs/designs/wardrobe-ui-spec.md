@@ -279,6 +279,14 @@ Icon-only 按钮必须有 `aria-label`；图标与文字组合时图标使用 `a
 - pending、409、未知结果、网络失败和重试错误必须留在当前承载层，保留组合、滚动位置和 mutation ID；不做乐观状态、不新增业务缓存、Outbox 或隐藏队列。
 - P2 新增控件继续使用 `AppPressable`，命中区至少 `48dp`。Sheet 遵守 safe area、键盘、OverlayStack、Android Back 和 reduced-motion；360–430px、130% 字体不得遮挡主操作或产生横向溢出。
 
+### 4.4 新首页 P3 天气 Canvas 与一次性定位合同
+
+- 今日 Canvas 直接使用 v0.2.3 冻结的 `wardora-v023` seed、clock、粒子参数、分层顺序与雷光/冰雹事件；QWeather 62 个法定 code 仅从共享 visual dictionary 解析。明日、`998/999`、未知 code、locationless、weather fallback、stale 与 Canvas 故障全部保持静态。
+- 全页只有一个今日调度器，目标 `29 FPS`、DPR 不高于 `2`。IntersectionObserver、document visibility、Capacitor app state 和组件卸载共同闸控；恢复时不补帧、不重放事件。reduced-motion 只绘制 clock 0 平静帧，不运行循环。
+- 用户点地点入口后仍不请求系统权限；只有再点“使用当前位置”、阅读用途说明并主动继续，才请求前台大致位置。不请求精确位置、后台位置或分钟级降水。
+- 坐标只作为当次 `/weather/locations/resolve-device` 请求入参，响应进入 UI 前删除 centroid/坐标。用户必须在 Sheet 中确认城市，并选择“设为常驻”或“临时至明日”后才执行现有服务端地点事务。
+- 拒绝、受限或永久拒绝时保留城市搜索，提供“前往系统设置 / 返回后重试”；新设备始终以本机 OS 权限为准，不从账号或旧设备同步权限结果。
+
 ## 5. Route 与页面状态矩阵
 
 代码事实源是 `src/lib/app-route.ts` 的 `AppRouteName`。画板可覆盖更多“页面级状态”，但不能替代路由事实。

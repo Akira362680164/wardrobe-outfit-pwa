@@ -21,6 +21,7 @@ public class MainActivity extends BridgeActivity {
         registerPlugin(NativeHeicConverterPlugin.class);
         registerPlugin(LongTermBackupPlugin.class);
         registerPlugin(WardrobeSecureStoragePlugin.class);
+        registerPlugin(WardoraSettingsPlugin.class);
         super.onCreate(savedInstanceState);
         configureEdgeToEdgeInsets();
     }

@@ -6,10 +6,12 @@ import { useReducedMotion } from "motion/react";
 
 import type { HomeFeedController } from "@/components/home/use-home-feed-controller";
 import { HomeFeedTabPanels } from "@/components/home/home-feed-tab-panels";
+import { HomeWeatherCanvas } from "@/components/home/home-weather-canvas";
 import { AppPressable, MotionSheet } from "@/components/motion-common";
 import { OnlineAssetImage } from "@/components/online/online-asset-image";
 import type { HomeFeedViewModel, HomeGarment, HomePlan, HomeRecommendationCandidate, HomeWeatherViewModel } from "@/lib/home/home-feed-model";
 import { recommendationPlanAvailabilityMessage, recommendationPlanSnapshotNames } from "@/lib/recommendation-plan-presentation";
+import { openApplicationSettings } from "@/lib/home/device-location";
 
 export function WardoraHomeView({ controller, garments, renderWardrobeContent }: {
   controller: HomeFeedController;
@@ -115,6 +117,7 @@ export function WardoraHomeView({ controller, garments, renderWardrobeContent }:
 }
 
 export function HomeCitySheet({ controller }: { controller: HomeFeedController }) {
+  const [purposeOpen, setPurposeOpen] = useState(false);
   const profile = controller.locationSnapshot?.profile;
   const override = controller.locationSnapshot?.override.override;
   const locationActions = homeCitySheetLocationActions(Boolean(override));
@@ -131,6 +134,10 @@ export function HomeCitySheet({ controller }: { controller: HomeFeedController }
             <AppPressable className="min-h-11 shrink-0 rounded-xl bg-white px-3 font-semibold" onClick={() => void controller.retryLocation()}>重试</AppPressable>
           </div>
         ) : null}
+        <AppPressable className="mb-3 flex min-h-12 w-full items-center justify-center gap-2 rounded-2xl bg-denim/10 px-3 text-sm font-semibold text-denim" disabled={controller.deviceLocation.status === "requesting"} onClick={() => setPurposeOpen(true)} data-testid="home-use-current-location"><MapPin size={18} />{controller.deviceLocation.status === "requesting" ? "正在获取大致位置…" : "使用当前位置"}</AppPressable>
+        {controller.deviceLocation.status === "denied" ? <div className="mb-3 rounded-2xl bg-clay/10 p-3 text-sm leading-6 text-clay" role="alert"><p>{controller.deviceLocation.message}</p><div className="mt-2 grid grid-cols-2 gap-2"><AppPressable className="min-h-12 rounded-xl bg-white px-2 font-semibold" onClick={() => void openApplicationSettings()}>前往系统设置</AppPressable><AppPressable className="min-h-12 rounded-xl bg-white px-2 font-semibold" onClick={() => void controller.requestDeviceLocation()}>返回后重试</AppPressable></div></div> : null}
+        {controller.deviceLocation.status === "error" ? <p className="mb-3 text-sm leading-6 text-clay" role="alert">{controller.deviceLocation.message}</p> : null}
+        {controller.deviceLocation.status === "ready" ? <div className="mb-3 grid gap-2" data-testid="home-device-location-candidates"><p className="text-sm font-semibold">请确认城市，然后选择本次或常驻</p>{controller.deviceLocation.candidates.map((city) => <div key={city.locationId} className="rounded-2xl border border-denim/20 bg-white p-3"><div className="font-medium">{city.displayName}</div><div className="mt-2 grid grid-cols-2 gap-2"><AppPressable className="min-h-12 rounded-xl bg-denim px-2 text-sm font-semibold text-white" disabled={!!controller.cityMutation} onClick={() => void controller.commitLocation("home", city.locationId)}>设为常驻</AppPressable><AppPressable className="min-h-12 rounded-xl bg-mist px-2 text-sm font-semibold" disabled={!!controller.cityMutation} onClick={() => void controller.commitLocation("temporary", city.locationId)}>临时至明日</AppPressable></div></div>)}</div> : null}
         <label className="flex min-h-12 items-center gap-2 rounded-2xl bg-mist px-3 ring-1 ring-ink/8">
           <Search size={18} aria-hidden="true" />
           <input
@@ -163,6 +170,7 @@ export function HomeCitySheet({ controller }: { controller: HomeFeedController }
           {locationActions.includes("clear_temporary") ? <AppPressable className="min-h-11 rounded-xl bg-mist px-3 text-sm" disabled={!!controller.cityMutation} onClick={() => void controller.commitLocation("clear_temporary")}><Check className="mr-2 inline" size={16} />恢复常驻城市{profile?.homeCity ? ` · ${profile.homeCity.displayName}` : ""}</AppPressable> : null}
         </div>
       </div>
+      <MotionSheet open={purposeOpen} onClose={() => setPurposeOpen(false)} ariaLabel="使用当前位置说明" variant="confirm" panelClassName="!max-w-md"><div className="grid gap-3 px-4 pb-[calc(16px+env(safe-area-inset-bottom))]"><h2 className="text-lg font-semibold">用大致位置找城市</h2><p className="text-sm leading-6 text-ink/60">Wardora 只用本次大致坐标向服务器换取城市候选。不需要精确位置，不会在客户端保存坐标；你确认城市和临时/常驻后才会保存。</p><AppPressable className="min-h-12 rounded-[14px] bg-denim font-semibold text-white" onClick={() => { setPurposeOpen(false); void controller.requestDeviceLocation(); }}>继续使用大致位置</AppPressable><AppPressable className="min-h-12 rounded-[14px] bg-mist font-semibold" onClick={() => setPurposeOpen(false)}>暂不使用</AppPressable></div></MotionSheet>
     </MotionSheet>
   );
 }
@@ -188,6 +196,7 @@ function WeatherDayCard({ kind, weather, onClick, onRetry }: { kind: "today" | "
       data-testid={`home-weather-${kind}`}
       data-weather-family={weather.visual?.family ?? "unknown"}
     >
+      {isToday && weather.visual ? <HomeWeatherCanvas visual={weather.visual} forecast={weather.availabilityReason === "available"} stale={weather.stale} /> : null}
       <div className="relative z-10 grid h-full grid-rows-[17px_28px_35px_16px]">
         <div data-weather-row="label" className="flex items-baseline justify-between gap-1 self-start text-[12px] font-medium leading-[17px] text-ink/55"><span>{isToday ? "今天" : "明天"}</span><span className="truncate">{weather.maxTemperatureC !== undefined ? `最高 ${Math.round(weather.maxTemperatureC)}°` : ""}</span></div>
         <p data-weather-row="temperature" className={`self-start whitespace-nowrap leading-[28px] tracking-[-0.025em] ${isToday ? "text-[24px] font-bold" : "text-[22px] font-semibold"}`}>{temperature}</p>

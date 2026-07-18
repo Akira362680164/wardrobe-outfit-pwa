@@ -319,6 +319,25 @@ function renderPartVisual(title) {
       </div>`;
   }
 
+  if (title.includes("新首页 P3")) {
+    return `
+      <div class="part-visual" data-visual="home-p3-canvas-location">
+        <div class="home-weather-links"><button>今日 Canvas · 29 FPS</button><button>明日 · 静态</button></div>
+        <div class="home-state-grid">
+          <span>62/62 visual dictionary</span>
+          <span>DPR ≤ 2 · 离屏/后台停止</span>
+          <span>reduced-motion · clock 0</span>
+          <span>998 / fallback / stale · 静态</span>
+        </div>
+        <div class="home-contract-row">
+          <span>点地点 → 使用当前位置 → 用途确认 → 系统权限</span>
+          <span>大致坐标 → 服务端城市候选 → 用户确认</span>
+          <span>临时 / 常驻二次确认后才提交</span>
+          <span>拒绝 / 受限 → 系统设置 / 手动搜索</span>
+        </div>
+      </div>`;
+  }
+
   if (/2\.1\s+颜色/.test(title)) {
     return `
       <div class="part-visual" data-visual="color-token-palette">

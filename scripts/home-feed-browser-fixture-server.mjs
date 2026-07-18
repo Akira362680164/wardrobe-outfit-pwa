@@ -22,6 +22,7 @@ let traceSequence = 0;
 let forcedProfileReadFailures = 0;
 let p14Mode = "ready";
 let partialWeatherFailuresRemaining = 0;
+let weatherVisualCode = "304";
 
 function makeDefaultState() {
   return {
@@ -127,6 +128,10 @@ http.createServer(async (request, response) => {
 
   if (path === "/__fixture/control" && request.method === "POST") {
     const body = await readBody(request);
+    if (SCENARIO === "p14" && body.action === "set-weather-code" && /^\d{3}$/.test(String(body.code))) {
+      weatherVisualCode = String(body.code);
+      return send(response, 200, { weatherVisualCode });
+    }
     if (SCENARIO === "p14" && body.action === "set-p14-mode" && ["ready", "locationless", "fallback", "protected", "actual", "travel", "stale", "protected-plan-with-date-strip", "partial-weather-error"].includes(body.mode)) {
       p14Mode = body.mode;
       partialWeatherFailuresRemaining = body.mode === "partial-weather-error" ? 1 : 0;
@@ -217,6 +222,10 @@ http.createServer(async (request, response) => {
 
   if (path === "/api/weather/locations/search") {
     return send(response, 200, { candidates: [city] });
+  }
+
+  if (path === "/api/weather/locations/resolve-device" && request.method === "POST") {
+    return sendTraced(request, response, 200, { candidates: [city] });
   }
 
   if (path === "/api/settings/location-profile" && request.method === "PUT") {
@@ -332,8 +341,8 @@ http.createServer(async (request, response) => {
         currentTemperatureC: targetDate === today ? 31 : undefined,
         currentFeelsLikeC: targetDate === today ? 34 : undefined,
         windLevel: targetDate === today ? 3 : undefined,
-        weatherCode: targetDate === today ? "304" : undefined,
-        dayWeatherCode: targetDate === today ? "304" : "103",
+        weatherCode: targetDate === today ? weatherVisualCode : undefined,
+        dayWeatherCode: targetDate === today ? weatherVisualCode : "103",
         nightWeatherCode: targetDate === today ? "305" : "150",
         summary: targetDate === today ? "雷阵雨伴有冰雹，注意避险" : "云量变化，间有阳光",
       },

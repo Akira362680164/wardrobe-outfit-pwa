@@ -7,6 +7,13 @@
 - 查看某次提交详情：`git show <commit>`
 - 新记录继续置顶，默认控制在 3–5 条短 bullet；原始测试日志、命令输出和长证据写入专项 evidence 文档或交由 Git 保存。
 
+## 2026-07-18 / v2.1.31-test / Codex — 新首页 P3 天气 Canvas 与大致位置
+
+- 今日天气卡从验收原型 v0.2.3 提取 `wardora-v023` seed/clock、场景参数、绘制顺序和雷光/冰雹事件；复用 62/62 共享天气字典，明日、未知、fallback、stale 和故障均静态。
+- 单调度器目标 29 FPS、DPR≤2，离屏/后台/锁屏/卸载停止且恢复不补帧；reduced-motion 保留 clock 0 静帧，Canvas 例外自动回退当前静态卡。
+- 地点 Sheet 只在用户阅读用途并确认后请求 Capacitor 前台大致位置；坐标仅当次传服务端解析，页面只保留无坐标城市候选，用户再确认临时/常驻。
+- 原型 SHA、固定 code/clock 并排像素、浏览器调度/定位与 Android 证据见 `docs/recommendations/WARDORA_NEW_HOME_P3_EVIDENCE.md`；独立视觉 subagent 结论在冻结提交后补录。
+
 ## 2026-07-18 / v2.1.31-test / Codex — 新首页 P2 计划与穿着闭环
 
 - App 推荐卡接通采用、最多替换一件、受控不喜欢与独立保存套装；当日事实卡接通更换主计划、确认/撤销已穿和原子取消/恢复备选，全部等待服务端提交与工作区读回，不做乐观更新。
