@@ -201,26 +201,63 @@ try {
 
   await reloadMode(page, "protected");
   assert(await page.getByTestId("home-protected-plan").isVisible(), "protected primary plan is not first-class");
-  assert((await page.getByTestId("home-date-strip").count()) === 0, "date strip incorrectly precedes protected plan");
+  assert((await page.getByTestId("home-plan-date-strip").count()) === 1, "protected plan must be followed by the date strip");
   await capture(page, "protected-plan-390");
 
   await reloadMode(page, "actual");
   assert(await page.getByTestId("home-actual-wear").isVisible(), "actual wear fact is not first-class");
-  assert((await page.getByTestId("home-date-strip").count()) === 0, "date strip incorrectly precedes actual wear");
+  assert((await page.getByTestId("home-plan-date-strip").count()) === 1, "actual wear must be followed by the date strip");
   await capture(page, "actual-wear-390");
 
+  await reloadMode(page, "travel");
+  assert((await page.getByTestId("home-location-entry").innerText()).includes("北京 · 行程"), "travel forecast was incorrectly projected as locationless");
+  assert((await page.getByTestId("home-recommendation-source").first().innerText()).includes("北京 · 行程"), "recommendation source omitted travel authority");
+  assert((await homeState(page)).includes("home-ready-forecast"), "travel without home city must remain forecast-ready");
+  await capture(page, "travel-390-font100");
+
+  await reloadMode(page, "stale");
+  const staleAttribution = await page.getByTestId("home-weather-attribution").innerText();
+  assert(staleAttribution.includes("QWeather") && staleAttribution.includes("缓存"), "stale provider evidence must be labeled as cached QWeather data");
+  await page.setViewportSize({ width: 360, height: 780 });
+  await page.evaluate(() => { document.documentElement.style.fontSize = "20.8px"; });
+  await noOverflow(page, "stale-360-font130");
+  await capture(page, "stale-360-font130");
+  await page.evaluate(() => { document.documentElement.style.fontSize = "16px"; });
+  await page.setViewportSize({ width: 390, height: 844 });
+
+  await reloadMode(page, "protected-plan-with-date-strip");
+  assert(await page.getByTestId("home-plan-availability-risk").isVisible(), "blocked plan risk is not visible");
+  assert((await page.getByTestId("home-protected-plan").innerText()).includes("已删除的旅行外套"), "deleted garment snapshot name was not retained");
+  await capture(page, "protected-plan-with-date-strip-390");
+  const thirdDay = page.getByTestId("home-date-strip").locator("button").nth(2);
+  await thirdDay.click();
+  assert(await thirdDay.getAttribute("aria-pressed") === "true", "third day remains inaccessible after protected plan");
+  await capture(page, "protected-plan-future-day-390");
+
+  await reloadMode(page, "partial-weather-error");
+  assert(await page.getByTestId("home-weather-today").isVisible(), "successful today card disappeared during partial failure");
+  assert((await page.getByTestId("home-weather-tomorrow").innerText()).includes("重试"), "failed tomorrow card lacks its own retry");
+  await page.setViewportSize({ width: 430, height: 932 });
+  await page.evaluate(() => { document.documentElement.style.fontSize = "20.8px"; });
+  await noOverflow(page, "partial-weather-error-430-font130");
+  await capture(page, "partial-weather-error-430-font130");
+  await page.evaluate(() => { document.documentElement.style.fontSize = "16px"; });
+  await page.setViewportSize({ width: 390, height: 844 });
+
   const unexpectedFailures = requestFailures.filter((failure) => !/ERR_ABORTED|canceled/i.test(failure.error));
+  const expectedPartialWeatherConsoleErrors = consoleErrors.filter((entry) => entry.url.startsWith(`${fixtureOrigin}/api/weather/overview`) && entry.text.includes("503"));
+  const unexpectedConsoleErrors = consoleErrors.filter((entry) => !expectedPartialWeatherConsoleErrors.includes(entry));
   assert(pageErrors.length === 0, `page errors: ${JSON.stringify(pageErrors)}`);
-  assert(consoleErrors.length === 0, `console errors: ${JSON.stringify(consoleErrors)}`);
+  assert(unexpectedConsoleErrors.length === 0, `unexpected console errors: ${JSON.stringify(unexpectedConsoleErrors)}`);
   assert(unexpectedFailures.length === 0, `request failures: ${JSON.stringify(unexpectedFailures)}`);
 
   await writeFile(`${evidenceDir}/manifest.json`, JSON.stringify({
     scenario: "wardora-home-p1.4-visual",
     viewportMatrix: [360, 390, 430],
     fontScaleMatrix: [100, 130],
-    states: ["ready_forecast_real_candidates", "empty_locationless", "weather_fallback", "protected_plan", "actual_wear"],
-    checklist: { greeting: true, singleLocation: true, dualWeatherCards: true, segmentedTabs: true, dateStripInRecommendation: true, horizontalRecommendationRail: true, bottomNavigation: true, realServerImages: true, alignedTextRows: visualGeometry, noPageOverflow: true, verticalPanPriority: true },
-    screenshots, pageErrors, consoleErrors, requestFailures, responseErrors, unexpectedRequestFailures: unexpectedFailures,
+    states: ["ready_forecast_real_candidates", "empty_locationless", "weather_fallback", "protected_plan", "actual_wear", "travel_forecast_without_home", "stale_qweather_attribution", "protected_plan_with_date_strip", "partial_weather_error"],
+    checklist: { greeting: true, singleLocation: true, travelAuthority: true, staleAttribution: true, dualWeatherCards: true, segmentedTabs: true, dateStripInRecommendation: true, dateStripAfterPlan: true, horizontalRecommendationRail: true, bottomNavigation: true, serverImageChainFixture: true, alignedTextRows: visualGeometry, noPageOverflow: true, verticalPanPriority: true },
+    screenshots, pageErrors, consoleErrors, expectedPartialWeatherConsoleErrors, unexpectedConsoleErrors, requestFailures, responseErrors, unexpectedRequestFailures: unexpectedFailures,
   }, null, 2));
   console.log(`home feed P1.4 visual gate passed: ${evidenceDir}`);
 } finally {

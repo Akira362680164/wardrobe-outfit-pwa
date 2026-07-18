@@ -138,6 +138,33 @@ assert.equal(dualWeather.todayWeather.status === "ready" ? dualWeather.todayWeat
 assert.equal(dualWeather.tomorrowWeather.status === "ready" ? dualWeather.tomorrowWeather.temperatureC : null, undefined);
 assert.equal(dualWeather.tomorrowWeather.status === "ready" ? dualWeather.tomorrowWeather.visual?.code : null, "305");
 
+const travelForecast = buildHomeFeedViewModel(input({
+  garments: [...readyGarments],
+  location: { kind: "none", revision: 0 },
+  weather: { status: "ready", data: { ...forecast, resolvedLocation: { locationId: "101010100", displayName: "北京", timezone: "Asia/Shanghai" }, locationSource: "travel" } },
+  recommendation: { status: "ready", data: { ...recommendation, recommendation: { ...recommendation.recommendation, resolvedLocation: { locationId: "101010100", displayName: "北京", timezone: "Asia/Shanghai" }, locationSource: "travel", weatherUpdatedAt: forecast.weatherEvidence.weatherUpdatedAt, endpointFreshness: [], attribution: forecast.attribution } } },
+}));
+assert.equal(travelForecast.location.kind, "travel", "行程天气必须覆盖缺失的常驻城市投影");
+assert.equal(travelForecast.location.kind === "travel" ? travelForecast.location.displayName : "", "北京");
+assert.equal(travelForecast.normalState, "home-ready-forecast", "合法行程地点不能被标为 locationless");
+assert.equal(travelForecast.recommendation.status === "ready" ? travelForecast.recommendation.locationSource : null, "travel");
+
+const staleAttribution = buildHomeFeedViewModel(input({
+  location,
+  weather: { status: "ready", data: { ...forecast, attribution: { label: "天气服务由 QWeather 提供", url: "https://www.qweather.com", sources: ["fixture"], license: ["test"] }, endpointFreshness: [{ endpoint: "now", freshness: "stale", providerUpdatedAt: "2026-07-16T22:00:00.000Z", fetchedAt: "2026-07-16T22:00:00.000Z", expiresAt: "2026-07-16T23:00:00.000Z", staleUntil: "2026-07-17T02:00:00.000Z" }] } },
+}));
+assert.equal(staleAttribution.weather.status === "ready" ? staleAttribution.weather.stale : false, true);
+assert.equal(staleAttribution.weather.status === "ready" ? staleAttribution.weather.attribution?.label : null, "天气服务由 QWeather 提供");
+assert.equal(staleAttribution.weather.status === "ready" ? staleAttribution.weather.weatherUpdatedAt : null, "2026-07-17T00:00:00.000Z");
+
+const snapshotPlan = buildHomeFeedViewModel(input({
+  selectedDate: "2026-07-19",
+  plans: [{ id: "plan-snapshot", date: "2026-07-19", status: "planned", role: "primary", revision: 1, garmentIds: ["deleted-garment"], garmentSnapshots: [{ garmentId: "deleted-garment", name: "已删除的蓝衬衫", role: "tops", category: "tops" }], unavailableGarmentIds: ["deleted-garment"], availability: "blocked" }],
+}));
+assert.equal(snapshotPlan.plan?.garmentSnapshots?.[0]?.name, "已删除的蓝衬衫");
+assert.equal(snapshotPlan.plan?.availability, "blocked");
+assert.deepEqual(snapshotPlan.plan?.unavailableGarmentIds, ["deleted-garment"]);
+
 const gate = new HomeRequestGate();
 const first = gate.begin("account-a", date);
 const second = gate.begin("account-a", "2026-07-18");
@@ -167,6 +194,9 @@ assert.doesNotMatch(pageSource, /设为今日穿搭|替换计划|取消计划|�
 assert.doesNotMatch(pageSource, /navigator\.geolocation|getCurrentPosition|watchPosition|<canvas/i, "P1 must not request location or add Canvas runtime");
 assert.match(pageSource, /home-weather-pair[\s\S]*home-weather-\$\{kind\}/, "P1.4 must render independent today/tomorrow weather cards");
 assert.match(pageSource, /data-testid="home-date-strip"/, "P1.4 date strip must remain in recommendation content");
+assert.match(pageSource, /data-testid="home-plan-date-strip"/, "protected plan must be followed by the seven-day date strip");
+assert.match(pageSource, /home-weather-attribution/, "provider attribution and freshness must remain visible for legitimate forecast evidence");
+assert.match(pageSource, /home-plan-availability-risk/, "blocked future plan must expose its availability risk");
 assert.match(pageSource, /data-testid="home-recommendation-rail"/, "P1.4 ready candidates must remain in the native rail");
 assert.match(pageSource, /OnlineAssetImage[\s\S]*variant="thumbnail"/, "P1.4 recommendation cards must reuse the server thumbnail chain");
 

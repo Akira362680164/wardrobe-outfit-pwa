@@ -174,10 +174,10 @@ export function useHomeFeedController(input: HomeFeedControllerInput) {
     const cached = cache.current.getWeather(accountId, snapshot, selected);
     if (cached && mountedRef.current) {
       const ready = { status: "ready", data: cached } as const;
-      setWeather(ready);
+      if (selectedDateRef.current === selected) setWeather(ready);
       setWeatherByDate((current) => ({ ...current, [selected]: ready }));
     } else if (mountedRef.current) {
-      setWeather({ status: "loading" });
+      if (selectedDateRef.current === selected) setWeather({ status: "loading" });
       setWeatherByDate((current) => ({ ...current, [selected]: { status: "loading" } }));
     }
     if (mountedRef.current) {
@@ -265,6 +265,11 @@ export function useHomeFeedController(input: HomeFeedControllerInput) {
               recommendationRevision: existing.recommendationRevision,
               targetDate: existing.targetDate,
               contextMode: existing.contextMode,
+              resolvedLocation: existing.resolvedLocation,
+              locationSource: existing.locationSource,
+              weatherUpdatedAt: existing.weatherEvidence?.weatherUpdatedAt,
+              endpointFreshness: existing.endpointFreshness ?? [],
+              attribution: existing.attribution,
               recommendations: existing.recommendations.map((candidate) => ({
                 candidateId: candidate.candidateId,
                 objective: candidate.objective,
@@ -301,6 +306,11 @@ export function useHomeFeedController(input: HomeFeedControllerInput) {
                   recommendationRevision: result.recommendation.recommendationRevision,
                   targetDate: result.recommendation.targetDate,
                   contextMode: result.recommendation.contextMode,
+                  resolvedLocation: result.recommendation.resolvedLocation,
+                  locationSource: result.recommendation.locationSource,
+                  weatherUpdatedAt: result.recommendation.weatherEvidence?.weatherUpdatedAt,
+                  endpointFreshness: result.recommendation.endpointFreshness ?? [],
+                  attribution: result.recommendation.attribution,
                   recommendations: result.recommendation.recommendations.map((candidate) => ({
                     candidateId: candidate.candidateId,
                     objective: candidate.objective,
@@ -340,11 +350,11 @@ export function useHomeFeedController(input: HomeFeedControllerInput) {
     });
   }, [loadLocation]);
 
-  const retryWeather = useCallback(() => {
+  const retryWeather = useCallback((date: string) => {
     const snapshot = locationSnapshotRef.current;
     if (!snapshot) return;
-    cache.current.deleteWeather(accountRef.current, snapshot, selectedDateRef.current);
-    void loadWeatherFor(snapshot, selectedDateRef.current);
+    cache.current.deleteWeather(accountRef.current, snapshot, date);
+    void loadWeatherFor(snapshot, date);
   }, [loadWeatherFor]);
 
   const retryRecommendation = useCallback(() => {

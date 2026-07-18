@@ -255,9 +255,9 @@ async function weatherSameKeyLateFixture(dom: JSDOM) {
   assert.equal(controller.viewModel.weather.status, "ready", "初始启动应读取一次天气");
 
   await act(async () => {
-    controller.retryWeather();
+    controller.retryWeather(controller.selectedDate);
     await sleep(1);
-    controller.retryWeather();
+    controller.retryWeather(controller.selectedDate);
     await sleep(10);
   });
   if (releaseFirstPrimaryWeather) {
@@ -668,6 +668,44 @@ function clearConfirmationBackFixture() {
   assert.equal(result.source, "overlay");
 }
 
+async function directedWeatherRetryFixture(dom: JSDOM) {
+  const host = dom.window.document.getElementById("root")!;
+  const calls: string[] = [];
+  const attempts = new Map<string, number>();
+  let controller!: HomeFeedController;
+  const clients = {
+    readHomeLocation: async () => city("101020100", "上海", 4),
+    readHomeWeather: async (targetDate: string) => {
+      calls.push(targetDate);
+      const attempt = (attempts.get(targetDate) ?? 0) + 1;
+      attempts.set(targetDate, attempt);
+      if (controller && targetDate === controller.window.today && attempt === 1) throw new Error("today partial failure");
+      return { targetDate, contextMode: "forecast", contextResolvedAt: "2026-07-18T00:00:00.000Z", resolvedLocation: { locationId: "101020100", displayName: "上海", timezone: "Asia/Shanghai" }, locationSource: "home_city", targetTimezone: "Asia/Shanghai", endpointFreshness: [], weatherEvidence: { weatherSource: "forecast", weatherConfidence: 1, weatherUpdatedAt: "2026-07-18T00:00:00.000Z", weatherCode: "100", dayWeatherCode: "100", summary: `retry-${targetDate}` }, availabilityReason: "available" } as never;
+    },
+    readHomeRecommendations: async () => ({ items: [] } as never),
+    resolveHomeRecommendations: async (dates: readonly string[]) => ({ results: dates.map((targetDate) => ({ targetDate, status: "not_ready" as const })) } as never),
+    searchHomeCities: async () => [] as never[],
+    setHomeCity: async () => city("101020100", "上海", 4),
+    setTemporaryCity: async () => city("101020100", "上海", 4),
+  };
+  function Harness() {
+    controller = useHomeFeedController({ active: true, accountId: "account-retry-date", accessToken: "token", deviceId: "device-retry-date", workspaceRevision: 1, garments: [], plans: [], clients });
+    return <div />;
+  }
+  const root = createRoot(host);
+  await act(async () => { root.render(<Harness />); await sleep(30); });
+  const today = controller.window.today;
+  const tomorrow = controller.window.tomorrow;
+  assert.equal(controller.viewModel.todayWeather.status, "error", "fixture 必须先形成今天单日失败");
+  assert.equal(controller.viewModel.tomorrowWeather.status, "ready", "明天应独立成功");
+  await act(async () => { controller.setSelectedDate(tomorrow); await sleep(20); });
+  await act(async () => { controller.retryWeather(today); await sleep(30); });
+  assert.equal(controller.selectedDate, tomorrow, "定向重试不得改写用户已选中的明天");
+  assert.equal(calls.at(-1), today, "重试参数必须锁定失败的今天，而非 selectedDateRef 当前值");
+  assert.equal(controller.viewModel.todayWeather.status === "ready" ? controller.viewModel.todayWeather.summary : "", `retry-${today}`);
+  await act(async () => { root.unmount(); });
+}
+
 async function main() {
   const dom = installDom();
   await workspaceRevisionRefreshFixture(dom);
@@ -677,6 +715,7 @@ async function main() {
   await clearHomeErrorFixture(dom);
   clearConfirmationBackFixture();
   await retryLocationFixture(dom);
+  await directedWeatherRetryFixture(dom);
   dom.window.close();
   console.log("home feed P1.3 behavior fixtures passed");
 }

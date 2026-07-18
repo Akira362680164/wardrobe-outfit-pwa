@@ -860,6 +860,10 @@ export function WardrobeApp({ cloudAuth }: { cloudAuth?: WardrobeCloudAuth } = {
     role: entry.role ?? (entry.isPrimary ? "primary" : "other"),
     revision: entry.serverRevision,
     garmentIds: entry.status === "worn" && entry.actualGarmentIds?.length ? entry.actualGarmentIds : entry.garmentIds ?? [],
+    garmentSnapshots: entry.garmentSnapshots,
+    actualGarmentSnapshots: entry.actualGarmentSnapshots,
+    unavailableGarmentIds: entry.unavailableGarmentIds,
+    availability: entry.availability,
   })), [outfitPlanEntries]);
   const homeWorkspaceRevision = wardrobeData.workspaceRevision;
   const homeFeed = useHomeFeedController({
