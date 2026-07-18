@@ -34,7 +34,7 @@ Page({
       const session = await (app.globalData?.sessionReady ?? Promise.resolve(null));
       if (session && isLoggedIn()) {
         this.sessionRedirected = true;
-        wx.switchTab({ url: "/pages/wardrobe/index/index" });
+        wx.switchTab({ url: "/pages/home/index" });
         return;
       }
     } finally {
@@ -52,7 +52,7 @@ Page({
     try {
       const result = await loginWithWechatOpenId();
       if (result.status === "logged_in") {
-        wx.switchTab({ url: "/pages/wardrobe/index/index" });
+        wx.switchTab({ url: "/pages/home/index" });
         return;
       }
       wx.navigateTo({ url: `/pages/login/connect-account/index?ticket=${encodeURIComponent(result.bindingTicket)}` });

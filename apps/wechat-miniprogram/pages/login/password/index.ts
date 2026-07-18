@@ -59,7 +59,7 @@ Page({
     this.setData({ submitting: true, errorMessage: "" });
     try {
       await loginWithPassword(account, password);
-      wx.switchTab({ url: "/pages/wardrobe/index/index" });
+      wx.switchTab({ url: "/pages/home/index" });
     } catch (error) {
       this.setData({ errorMessage: loginErrorMessage(error) });
     } finally {

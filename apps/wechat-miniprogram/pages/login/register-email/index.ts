@@ -131,7 +131,7 @@ Page({
         password: this.data.password,
         phone: phone || undefined,
       });
-      wx.switchTab({ url: "/pages/wardrobe/index/index" });
+      wx.switchTab({ url: "/pages/home/index" });
     } catch (error) {
       this.setData({ errorMessage: errorMessage(error) });
     } finally {

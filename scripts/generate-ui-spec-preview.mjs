@@ -301,6 +301,26 @@ function renderPartVisual(title) {
       </div>`;
   }
 
+  if (title.includes("新首页 P4")) {
+    return `
+      <div class="part-visual" data-visual="home-p4-wechat-host">
+        <div class="home-location-entry">杭州 · 临时 ›</div>
+        <div class="home-weather-links"><button>今日动态 Canvas 2D</button><button>明日静态</button></div>
+        <div class="home-state-grid">
+          <span>首页 / 穿搭 / + / 种草 / 设置</span>
+          <span>计划事实 → 七日按需</span>
+          <span>服务器 UUID → 真实图片</span>
+          <span>远期出行单列</span>
+        </div>
+        <div class="home-contract-row">
+          <span>用途说明 → 主动定位 → resolve-device → 用户确认</span>
+          <span>无坐标持久化 · 手工城市始终可用</span>
+          <span>P3 同源内核 · 微信宿主仅适配生命周期</span>
+          <span>服务器提交并读回后才更新成功态</span>
+        </div>
+      </div>`;
+  }
+
   if (/2\.1\s+颜色/.test(title)) {
     return `
       <div class="part-visual" data-visual="color-token-palette">

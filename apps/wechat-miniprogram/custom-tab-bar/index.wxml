@@ -1,6 +1,7 @@
 <view wx:if="{{!hidden}}" class="mini-tab-shell">
   <view class="mini-tab bottom-glass-bar {{motionReady ? 'mini-tab--motion-ready' : ''}}">
     <block wx:for="{{tabs}}" wx:key="key">
+      <button wx:if="{{index === 2}}" class="mini-tab__create" hover-class="mini-tab__create--hover" aria-label="新建" bindtap="openCreate"><ui-icon name="plus" size="44" tone="surface" /></button>
       <button class="mini-tab__item {{selected === index ? 'mini-tab__item--active' : ''}}" data-index="{{index}}" data-url="{{item.url}}" hover-class="mini-tab__item--hover" hover-start-time="0" hover-stay-time="80" aria-label="{{item.label}}" bindtap="switchTab">
         <view class="mini-tab__icon-wrap"><ui-icon name="{{item.icon}}" size="38" tone="{{selected === index ? 'surface' : 'ink'}}" /></view>
         <text class="mini-tab__label text-one-line">{{item.label}}</text>

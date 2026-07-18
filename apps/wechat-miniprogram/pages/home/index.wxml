@@ -1,41 +1,103 @@
-<view class="page-shell">
-  <view class="hero">
-    <view class="eyebrow">WARDROBE</view>
-    <view class="page-title">今天从衣橱开始</view>
-    <view class="page-copy">数据直接来自服务器，当前页面不保存本地业务缓存。</view>
+<view class="home-page">
+  <view class="home-header">
+    <view class="home-greeting">{{greeting}}</view>
+    <view class="home-date">{{businessDateLabel}}</view>
   </view>
 
-  <view wx:if="{{loading}}" class="status-card">正在读取衣橱数据...</view>
-
-  <view wx:elif="{{error}}" class="status-card">
-    <view class="status-title">读取失败</view>
-    <view class="status-copy">{{error}}</view>
-    <button class="mini-button" bindtap="loadSummary">重试</button>
+  <view wx:if="{{loading}}" class="home-skeleton" aria-label="正在读取首页">
+    <view class="skeleton-line skeleton-line--wide"/><view class="skeleton-weather"/><view class="skeleton-line"/>
+  </view>
+  <view wx:elif="{{error}}" class="module-state module-state--error">
+    <view class="module-title">首页暂时无法读取</view><view class="module-copy">{{error}}</view>
+    <button class="inline-action" bindtap="retryHome">重试</button>
   </view>
 
-  <view wx:elif="{{summary}}" class="summary-grid">
-    <view class="metric-card">
-      <view class="metric-value">{{summary.garmentCount}}</view>
-      <view class="metric-label">衣物</view>
+  <block wx:else>
+    <view class="weather-shell">
+      <button class="location-entry" hover-class="pressable" bindtap="openLocationSheet" aria-label="当前地点 {{locationLabel}}，打开地点设置">
+        <ui-icon name="home" size="34" tone="primary" />
+        <text class="location-entry__label">{{locationLabel}}</text>
+        <ui-icon name="chevron-right" size="30" tone="muted" />
+      </button>
+      <view class="weather-canvas-host {{canvasStaticFallback ? 'is-static' : ''}}">
+        <canvas wx:if="{{canvasVisible}}" id="home-weather-canvas" class="weather-canvas" type="2d" aria-hidden="true" />
+      </view>
+      <view class="weather-grid">
+        <button class="weather-card weather-card--today" data-date="today" bindtap="selectWeatherDate" aria-label="今天天气，切换到今日推荐">
+          <view class="weather-row"><text>{{todayWeather.label}}</text><text wx:if="{{todayWeather.stale}}" class="stale-badge">缓存</text></view>
+          <view class="weather-temperature">{{todayWeather.temperature}}</view>
+          <view class="weather-summary">{{todayWeather.summary}}</view>
+          <view class="weather-meta">{{todayWeather.meta}}</view>
+        </button>
+        <button class="weather-card weather-card--tomorrow" data-date="tomorrow" bindtap="selectWeatherDate" aria-label="明天天气，切换到明日推荐">
+          <view class="weather-row"><text>{{tomorrowWeather.label}}</text><text wx:if="{{tomorrowWeather.stale}}" class="stale-badge">缓存</text></view>
+          <view class="weather-temperature weather-temperature--small">{{tomorrowWeather.temperature}}</view>
+          <view class="weather-summary">{{tomorrowWeather.summary}}</view>
+          <view class="weather-meta">{{tomorrowWeather.meta}}</view>
+        </button>
+      </view>
+      <view wx:if="{{weatherAttribution}}" class="weather-attribution">{{weatherAttribution}}</view>
     </view>
-    <view class="metric-card">
-      <view class="metric-value">{{summary.outfitCount}}</view>
-      <view class="metric-label">套装</view>
-    </view>
-    <view class="metric-card">
-      <view class="metric-value">{{summary.wishlistCount}}</view>
-      <view class="metric-label">种草</view>
-    </view>
-  </view>
 
-  <view wx:if="{{!loading && !error && !summary}}" class="status-card">
-    <view class="status-title">{{emptyTitle}}</view>
-    <view class="status-copy">完成后这里会显示衣物、套装和种草摘要。</view>
-    <button class="mini-button" bindtap="handlePrimaryAction">{{emptyAction}}</button>
-  </view>
+    <view class="section-switch" role="tablist">
+      <button class="section-switch__item {{activeSection === 'recommendation' ? 'is-active' : ''}}" data-section="recommendation" bindtap="setSection" aria-selected="{{activeSection === 'recommendation'}}">推荐</button>
+      <button class="section-switch__item {{activeSection === 'wardrobe' ? 'is-active' : ''}}" data-section="wardrobe" bindtap="setSection" aria-selected="{{activeSection === 'wardrobe'}}">衣橱</button>
+    </view>
 
-  <view wx:if="{{summary}}" class="action-row">
-    <button class="primary-action" bindtap="openIntake">添加衣物</button>
-    <button class="secondary-action" bindtap="openWardrobe">查看衣橱</button>
-  </view>
+    <view wx:if="{{activeSection === 'recommendation'}}" class="recommendation-section">
+      <view wx:if="{{plan}}" class="plan-card {{plan.risk ? 'plan-card--risk' : ''}}">
+        <view class="section-heading"><view><view class="section-title">{{plan.title}}</view><view class="section-subtitle">计划事实优先</view></view></view>
+        <view class="plan-images"><view wx:for="{{plan.garments}}" wx:key="id" class="plan-image"><image wx:if="{{item.imageUrl}}" src="{{item.imageUrl}}" mode="aspectFill"/><view wx:else class="image-fallback">{{item.name}}</view></view></view>
+        <view wx:if="{{plan.risk}}" class="plan-risk">{{plan.risk}}</view><view class="plan-state">{{plan.stateText}}</view>
+      </view>
+
+      <scroll-view class="date-strip" scroll-x enable-flex aria-label="选择推荐日期">
+        <view class="date-strip__row">
+          <button wx:for="{{dateItems}}" wx:key="date" class="date-chip {{selectedDate === item.date ? 'is-active' : ''}}" data-date="{{item.date}}" bindtap="selectDate" aria-pressed="{{selectedDate === item.date}}">
+            <text class="date-chip__relative">{{item.relativeLabel}}</text><text class="date-chip__date">{{item.shortDate}}</text>
+          </button>
+        </view>
+      </scroll-view>
+
+      <view wx:if="{{recommendationLoading}}" class="module-state"><view class="module-title">正在整理服务端建议</view><view class="module-copy">天气、计划和衣橱分别读取，不会互相阻塞。</view></view>
+      <view wx:elif="{{recommendationError}}" class="module-state module-state--error"><view class="module-title">推荐暂时无法读取</view><view class="module-copy">{{recommendationError}}</view><button class="inline-action" bindtap="retrySelectedDate">重试</button></view>
+      <view wx:elif="{{!plan && recommendationCards.length === 0}}" class="module-state"><view class="module-title">{{wardrobeEmpty ? '衣橱还是空的' : '暂时没有可展示的建议'}}</view><view class="module-copy">{{wardrobeEmpty ? '先添加上装、下装和鞋履；未设置城市也可以生成通用建议。' : '服务端没有返回可采用组合，你仍可正常浏览衣橱。'}}</view><button wx:if="{{wardrobeEmpty}}" class="inline-action" bindtap="openIntake">添加衣物</button></view>
+
+      <scroll-view wx:if="{{recommendationCards.length}}" class="recommendation-scroll" scroll-x enable-flex enhanced show-scrollbar="false">
+        <view class="recommendation-row">
+          <view wx:for="{{recommendationCards}}" wx:key="candidateId" class="recommendation-card {{item.blocked ? 'recommendation-card--blocked' : ''}}">
+            <view class="recommendation-card__top"><text class="recommendation-objective">{{item.objective}}</text><text class="recommendation-mode">{{recommendationMode === 'forecast' ? '天气增强' : recommendationMode === 'locationless' ? '通用建议' : '天气回退'}}</text></view>
+            <view class="recommendation-images"><view wx:for="{{item.garments}}" wx:for-item="garment" wx:key="id" class="recommendation-image" data-id="{{garment.id}}" bindtap="openGarment"><image wx:if="{{garment.imageUrl}}" src="{{garment.imageUrl}}" mode="aspectFill"/><view wx:else class="image-fallback">{{garment.name}}</view><text>{{garment.name}}</text></view></view>
+            <view class="recommendation-title">{{item.title}}</view><view class="recommendation-reason">{{item.reason}}</view><view class="recommendation-risk">{{item.risk}}</view>
+            <view class="read-only-note">写操作将在 P2 正式合同同步后启用</view>
+          </view>
+        </view>
+      </scroll-view>
+      <view wx:if="{{travelDates.length}}" class="travel-recommendations">
+        <view class="section-heading"><view><view class="section-title">出行推荐</view><view class="section-subtitle">远期行程单列，点击后按需读取</view></view></view>
+        <button wx:for="{{travelDates}}" wx:key="date" class="travel-row" data-date="{{item.date}}" bindtap="selectTravelDate"><view><view class="travel-row__title">{{item.destination}} · {{item.title}}</view><view class="travel-row__date">{{item.dateLabel}}</view></view><ui-icon name="chevron-right" size="30" tone="muted"/></button>
+      </view>
+    </view>
+
+    <view wx:else class="wardrobe-section">
+      <view class="section-heading"><view><view class="section-title">我的衣橱</view><view class="section-subtitle">{{garments.length}} 件服务器衣物</view></view><button class="text-action" bindtap="openIntake">添加衣物</button></view>
+      <view wx:if="{{wardrobeEmpty}}" class="module-state"><view class="module-title">衣橱还是空的</view><view class="module-copy">添加第一件衣物后，首页会使用真实图片生成建议。</view><button class="inline-action" bindtap="openIntake">添加衣物</button></view>
+      <view wx:else class="home-wardrobe-grid"><catalog-card wx:for="{{garments}}" wx:key="id" item-id="{{item.id}}" image-url="{{item.imageUrl}}" fallback="{{item.categoryLabel}}" title="{{item.name}}" category-label="{{item.categoryLabel}}" colors="{{item.cardColors}}" summary="{{item.wearSummary}}" tone="primary" bind:select="openGarment" /></view>
+    </view>
+  </block>
+
+  <button class="content-fab home-fab" aria-label="新建" bindtap="openCreateSheet"><ui-icon name="plus" size="48" tone="surface" /></button>
+  <create-sheet open="{{createSheetOpen}}" active="add_single_item" bind:close="closeCreateSheet" />
+
+  <ui-sheet open="{{locationSheetOpen}}" title="地点与天气" description="仅在你主动选择后获取一次粗略位置，用来解析城市；坐标只发给 Wardora 服务端且不保存。" close-on-mask="{{!locationBusy}}" bind:close="closeLocationSheet">
+    <view class="location-sheet-body">
+      <button class="current-location-action" loading="{{locationBusy}}" disabled="{{locationBusy}}" bindtap="useCurrentLocation"><ui-icon name="home" size="34" tone="surface"/><text>使用当前位置</text></button>
+      <view class="privacy-note">首页不会自动弹出位置权限。拒绝或永久拒绝后，手工城市搜索始终可用，也不阻塞无城市推荐。</view>
+      <button wx:if="{{locationNeedsSettings}}" class="settings-action" bindtap="openLocationSettings">前往微信设置</button>
+      <view class="city-search"><input value="{{cityQuery}}" placeholder="至少输入 2 个字搜索城市" bindinput="inputCityQuery" confirm-type="search" bindconfirm="searchCity"/><button loading="{{citySearching}}" disabled="{{citySearching}}" bindtap="searchCity">搜索</button></view>
+      <view wx:if="{{locationMessage}}" class="location-message">{{locationMessage}}</view>
+      <view class="city-candidates"><view wx:for="{{cityCandidates}}" wx:key="locationId" class="city-candidate"><view class="city-candidate__name">{{item.displayName}}</view><view class="city-candidate__actions"><button data-id="{{item.locationId}}" data-kind="temporary" disabled="{{locationBusy}}" bindtap="chooseCity">临时至明日</button><button class="is-primary" data-id="{{item.locationId}}" data-kind="home" disabled="{{locationBusy}}" bindtap="chooseCity">设为常驻</button></view></view></view>
+      <button wx:if="{{locationSnapshot.override.override}}" class="clear-temporary" disabled="{{locationBusy}}" bindtap="clearTemporary">恢复常驻城市</button>
+    </view>
+  </ui-sheet>
 </view>

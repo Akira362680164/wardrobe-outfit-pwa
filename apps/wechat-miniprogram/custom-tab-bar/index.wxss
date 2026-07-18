@@ -9,7 +9,10 @@
 .mini-tab__item--hover { transform: translateY(1rpx) scale(0.97); }
 .mini-tab__icon-wrap { display: grid; place-items: center; width: 48rpx; height: 48rpx; }
 .mini-tab__label { display: block; max-width: 100%; font-size: 20rpx; font-weight: 700; line-height: 1.1; }
+.mini-tab__create { position: relative; z-index: 2; display: grid; flex: 0 0 88rpx; width: 88rpx; height: 88rpx; min-height: 88rpx; margin: -38rpx 8rpx 0; padding: 0; place-items: center; border: 0; border-radius: 50%; background: var(--color-ink); box-shadow: 0 12rpx 26rpx rgba(29,34,40,.24), inset 0 1rpx 0 rgba(255,255,255,.2); }
+.mini-tab__create::after { border: 0; }.mini-tab__create--hover { transform: scale(.96); }
 @media (prefers-reduced-motion: reduce) {
   .mini-tab--motion-ready .mini-tab__item { transition: none; }
   .mini-tab__item--hover { transform: none; }
+  .mini-tab__create--hover { transform: none; }
 }
