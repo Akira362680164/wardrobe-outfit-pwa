@@ -34,7 +34,7 @@ export function HomeLocationSettingsPage({ controller, onBack }: {
         <AppPressable feedback="icon" className="grid h-12 w-12 place-items-center rounded-full" onClick={onBack} aria-label="返回设置">
           <ChevronLeft size={22} aria-hidden="true" />
         </AppPressable>
-        <div><h1 className="text-lg font-semibold">天气地点</h1><p className="text-xs text-ink/50">常驻城市与临时城市由服务器保存</p></div>
+        <div><h1 className="text-lg font-semibold">天气地点</h1><p className="text-xs text-ink/50">管理常驻城市和临时城市</p></div>
       </header>
 
       <article className="ui-card mt-3 px-4 py-4">
@@ -64,7 +64,7 @@ export function HomeLocationSettingsPage({ controller, onBack }: {
         </div>
       </article>
 
-      {controller.locationState.status === "loading" ? <p className="mt-3 flex min-h-11 items-center gap-2 text-sm text-denim" role="status"><Loader2 className="animate-spin motion-reduce:animate-none" size={17} />正在读取服务端地点…</p> : null}
+      {controller.locationState.status === "loading" ? <p className="mt-3 flex min-h-11 items-center gap-2 text-sm text-denim" role="status"><Loader2 className="animate-spin motion-reduce:animate-none" size={17} />正在读取已保存的地点…</p> : null}
       {controller.locationState.status === "error" ? <p className="mt-3 flex min-h-11 items-center gap-2 text-sm text-clay" role="alert"><AlertCircle size={17} />{controller.locationState.message}</p> : null}
       <MotionSheet
         open={confirmClearHome}
@@ -78,7 +78,7 @@ export function HomeLocationSettingsPage({ controller, onBack }: {
         panelClassName="!max-w-sm"
       >
         <h2 className="text-lg font-semibold">清除常驻城市？</h2>
-        <p className="mt-2 text-sm leading-6 text-ink/60">清除后，未使用临时城市的日期将不再显示城市天气；已有主计划和已穿事实不会被更改。</p>
+        <p className="mt-2 text-sm leading-6 text-ink/60">清除后，未使用临时城市的日期将不再显示城市天气；已安排的穿搭和穿着记录不会改变。</p>
         {controller.cityMutationError ? (
           <p
             className="mt-3 rounded-md border border-clay/20 bg-clay/5 p-2 text-sm text-clay"
@@ -91,7 +91,7 @@ export function HomeLocationSettingsPage({ controller, onBack }: {
             {controller.cityMutationError}
           </p>
         ) : null}
-        {saving ? <p className="mt-3 flex min-h-11 items-center gap-2 text-sm text-denim" role="status"><Loader2 className="animate-spin motion-reduce:animate-none" size={17} />正在清除并读取服务器结果…</p> : null}
+        {saving ? <p className="mt-3 flex min-h-11 items-center gap-2 text-sm text-denim" role="status"><Loader2 className="animate-spin motion-reduce:animate-none" size={17} />正在清除地点…</p> : null}
         <div className="mt-5 grid grid-cols-2 gap-3">
           <AppPressable className="min-h-11 rounded-xl bg-mist px-3 text-sm font-semibold" onClick={() => dispatchClearFlow({ type: "cancel" })} disabled={saving}>保留城市</AppPressable>
           <AppPressable className="min-h-11 rounded-xl bg-red-700 px-3 text-sm font-semibold text-white" onClick={() => void clearHomeCity()} disabled={saving} data-testid="confirm-clear-home-city">确认清除</AppPressable>

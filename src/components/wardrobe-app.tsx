@@ -125,7 +125,7 @@ import {
 } from "@/components/selected-images-review";
 import { isAccessTokenFresh, loadAuthSessionSnapshot } from "@/lib/auth-session-store";
 import { wardrobeRepository } from "@/lib/repository/wardrobe-repository";
-import { rethrowIfFailed, upsertOutfit, upsertLocation, deleteLocation, repoUpdateWishlistItem, repoCreateGarment, repoCreateGarmentsBatch, repoUpdateGarment, repoUpdateOutfit, repoDeleteGarments, repoDeleteLocation, repoSaveProfile } from "@/lib/repository/wardrobe-repository";
+import { rethrowIfFailed, upsertOutfit, upsertLocation, deleteLocation, repoUpdateWishlistItem, repoCreateGarment, repoCreateGarmentsBatch, repoCreateOutfit, repoUpdateGarment, repoUpdateOutfit, repoDeleteGarments, repoDeleteLocation, repoSaveProfile } from "@/lib/repository/wardrobe-repository";
 import {
  defaultMiniMaxSettings,
  hasDeviceMiniMaxKey,
@@ -852,6 +852,7 @@ export function WardrobeApp({ cloudAuth }: { cloudAuth?: WardrobeCloudAuth } = {
     status: item.status,
     hasImage: Boolean(item.mainImage?.asset.assetId),
     imageAsset: item.mainImage?.asset,
+    serverRevision: item.serverRevision,
   })), [items]);
   const homeFeedPlans = useMemo(() => outfitPlanEntries.map((entry) => ({
     id: entry.serverEntityId,
@@ -875,6 +876,15 @@ export function WardrobeApp({ cloudAuth }: { cloudAuth?: WardrobeCloudAuth } = {
     workspaceRevision: homeWorkspaceRevision,
     garments: homeFeedGarments,
     plans: homeFeedPlans,
+    onWorkspaceRefresh: refreshState,
+    onSaveOutfit: async ({ name, garmentIds, clientMutationId }) => {
+      const selected = garmentIds.map((garmentId) => items.find((item) => item.serverEntityId === garmentId)).filter((item): item is WardrobeItem => Boolean(item));
+      if (selected.length !== garmentIds.length) throw new Error("套装中的衣物已变化，请刷新后重试");
+      const now = new Date().toISOString();
+      const itemIds = selected.map((item) => item.id).filter((id): id is number => typeof id === "number");
+      if (itemIds.length !== selected.length) throw new Error("套装中的衣物缺少服务端兼容标识，请刷新后重试");
+      rethrowIfFailed(await repoCreateOutfit({ name, itemIds, favorite: false, createdAt: now, updatedAt: now, source: "manual" }, { clientMutationId }), "保存套装失败");
+    },
   });
   // v0.9.38-dev P0 §6: hideMobileNav 补全 (md 模板)
   // - wardrobeSubPageActive 已包含 viewingItem / editingItem / viewingItemCropJob 三态

@@ -571,6 +571,19 @@ export const CancelPrimaryPlanResponseSchema = z.object({
 }).strict().superRefine((value, ctx) => {
   if (value.activePrimary?.planEntryId === value.canceledPrimary.planEntryId) issue(ctx, ["activePrimary", "planEntryId"], "active primary must differ from canceled primary");
 });
+export const RejectRecommendationCommandSchema = z.object({
+  clientMutationId: z.string().uuid(),
+  recommendationId: z.string().uuid(),
+  expectedRecommendationRevision: z.number().int().positive(),
+  candidateId: z.string().uuid(),
+  reason: z.enum(["not_for_me", "style", "weather", "occasion", "already_wore_similar"]).default("not_for_me"),
+}).strict();
+export const RejectRecommendationResponseSchema = z.object({
+  status: z.literal("committed"),
+  idempotentReplay: z.boolean(),
+  actionId: z.string().uuid(),
+  requestId: z.string().trim().min(1).max(160).optional(),
+}).strict();
 export const RecommendationRegenerationReasonSchema = z.enum(["home_city_changed", "temporary_city_changed", "travel_changed", "garment_changed", "weather_changed", "explicit_reassess"]);
 export const RecommendationRegenerationStatusSchema = z.enum(["pending", "processing", "completed", "failed"]);
 export const ReassessRecommendationCommandSchema = z.object({ clientMutationId: z.string().uuid() }).strict();
@@ -635,5 +648,7 @@ export type AcceptRecommendationResponse = z.infer<typeof AcceptRecommendationRe
 export type CancelPrimaryPlanConflictReason = z.infer<typeof CancelPrimaryPlanConflictReasonSchema>;
 export type CancelPrimaryPlanCommand = z.infer<typeof CancelPrimaryPlanCommandSchema>;
 export type CancelPrimaryPlanResponse = z.infer<typeof CancelPrimaryPlanResponseSchema>;
+export type RejectRecommendationCommand = z.infer<typeof RejectRecommendationCommandSchema>;
+export type RejectRecommendationResponse = z.infer<typeof RejectRecommendationResponseSchema>;
 export type RecommendationRegenerationRequest = z.infer<typeof RecommendationRegenerationRequestSchema>;
 export type ReassessRecommendationCommand = z.infer<typeof ReassessRecommendationCommandSchema>;

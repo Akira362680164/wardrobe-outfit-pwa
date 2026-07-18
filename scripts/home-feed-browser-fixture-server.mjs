@@ -22,6 +22,7 @@ let traceSequence = 0;
 let forcedProfileReadFailures = 0;
 let p14Mode = "ready";
 let partialWeatherFailuresRemaining = 0;
+let weatherVisualCode = "304";
 
 function makeDefaultState() {
   return {
@@ -31,6 +32,7 @@ function makeDefaultState() {
       clearHomeAttempts: 0,
       hasProfileLoadedAfterFailure: false,
     },
+    p2: { plans: [], outfits: [], mutations: new Map() },
   };
 }
 
@@ -127,6 +129,10 @@ http.createServer(async (request, response) => {
 
   if (path === "/__fixture/control" && request.method === "POST") {
     const body = await readBody(request);
+    if (SCENARIO === "p14" && body.action === "set-weather-code" && /^\d{3}$/.test(String(body.code))) {
+      weatherVisualCode = String(body.code);
+      return send(response, 200, { weatherVisualCode });
+    }
     if (SCENARIO === "p14" && body.action === "set-p14-mode" && ["ready", "locationless", "fallback", "protected", "actual", "travel", "stale", "protected-plan-with-date-strip", "partial-weather-error"].includes(body.mode)) {
       p14Mode = body.mode;
       partialWeatherFailuresRemaining = body.mode === "partial-weather-error" ? 1 : 0;
@@ -147,7 +153,7 @@ http.createServer(async (request, response) => {
     const token = `browser-fixture-${account || "anon"}-${Math.floor(Math.random() * 1000000)}`;
     const state = getSessionState(token);
     if (SCENARIO === "p13" || SCENARIO === "p14") {
-      state.profile = account.includes("222") ? { homeCity: null, revision: 0, updatedAt: now() } : { homeCity: city, revision: 4, updatedAt: now() };
+      state.profile = account.includes("222") ? { homeCity: null, revision: 0, updatedAt: null } : { homeCity: city, revision: 4, updatedAt: now() };
       state.overrideState = { override: null, revision: 0, updatedAt: null };
       state.p13.clearHomeAttempts = 0;
       state.p13.hasProfileLoadedAfterFailure = false;
@@ -180,8 +186,9 @@ http.createServer(async (request, response) => {
       }));
       const planMode = p14Mode === "protected" || p14Mode === "actual" || p14Mode === "protected-plan-with-date-strip";
       const blocked = p14Mode === "protected-plan-with-date-strip";
-      const outfitPlans = planMode ? [{ id: "40000000-0000-4000-8000-000000000001", revision: 2, createdAt: now(), updatedAt: now(), payload: { date: businessDate(), status: p14Mode === "actual" ? "worn" : "planned", role: "primary", isPrimary: true, garmentIds: blocked ? ["10000000-0000-4000-8000-000000000099", ...GARMENT_IDS.slice(1, 3)] : GARMENT_IDS.slice(0, 3), garmentSnapshots: blocked ? [{ garmentId: "10000000-0000-4000-8000-000000000099", name: "已删除的旅行外套", role: "outerwear", category: "tops" }, { garmentId: GARMENT_IDS[1], name: "卡其直筒长裤", role: "bottoms", category: "pants" }, { garmentId: GARMENT_IDS[2], name: "黑色乐福鞋", role: "shoes", category: "shoes" }] : undefined, actualGarmentIds: p14Mode === "actual" ? GARMENT_IDS.slice(0, 3) : undefined, unavailableGarmentIds: blocked ? ["10000000-0000-4000-8000-000000000099"] : [], availability: blocked ? "blocked" : "available" } }] : [];
-      return send(response, 200, { garments: p14Mode === "locationless" ? [] : garments, outfits: [], wishlistItems: [], locations: [], tripPlans: [], outfitPlans, wearEvents: [], profiles: [], serverRevision: 8, requestId: "home-feed-p14-fixture" });
+      const fixturePlans = planMode ? [{ id: "40000000-0000-4000-8000-000000000001", revision: 2, createdAt: now(), updatedAt: now(), payload: { date: businessDate(), status: p14Mode === "actual" ? "worn" : "planned", role: "primary", isPrimary: true, garmentIds: blocked ? ["10000000-0000-4000-8000-000000000099", ...GARMENT_IDS.slice(1, 3)] : GARMENT_IDS.slice(0, 3), garmentSnapshots: blocked ? [{ garmentId: "10000000-0000-4000-8000-000000000099", name: "已删除的旅行外套", role: "outerwear", category: "tops" }, { garmentId: GARMENT_IDS[1], name: "卡其直筒长裤", role: "bottoms", category: "pants" }, { garmentId: GARMENT_IDS[2], name: "黑色乐福鞋", role: "shoes", category: "shoes" }] : undefined, actualGarmentIds: p14Mode === "actual" ? GARMENT_IDS.slice(0, 3) : undefined, unavailableGarmentIds: blocked ? ["10000000-0000-4000-8000-000000000099"] : [], availability: blocked ? "blocked" : "available" } }] : [];
+      const outfitPlans = planMode ? fixturePlans : state.p2.plans;
+      return send(response, 200, { garments: p14Mode === "locationless" ? [] : garments, outfits: state.p2.outfits, wishlistItems: [], locations: [], tripPlans: [], outfitPlans, wearEvents: [], profiles: [], serverRevision: 8 + state.p2.plans.length + state.p2.outfits.length, requestId: "home-feed-p14-fixture" });
     }
     return send(response, 200, {
       garments: [], outfits: [], wishlistItems: [], locations: [], tripPlans: [], outfitPlans: [], wearEvents: [], profiles: [],
@@ -217,6 +224,10 @@ http.createServer(async (request, response) => {
 
   if (path === "/api/weather/locations/search") {
     return send(response, 200, { candidates: [city] });
+  }
+
+  if (path === "/api/weather/locations/resolve-device" && request.method === "POST") {
+    return sendTraced(request, response, 200, { candidates: [city] });
   }
 
   if (path === "/api/settings/location-profile" && request.method === "PUT") {
@@ -332,8 +343,8 @@ http.createServer(async (request, response) => {
         currentTemperatureC: targetDate === today ? 31 : undefined,
         currentFeelsLikeC: targetDate === today ? 34 : undefined,
         windLevel: targetDate === today ? 3 : undefined,
-        weatherCode: targetDate === today ? "304" : undefined,
-        dayWeatherCode: targetDate === today ? "304" : "103",
+        weatherCode: targetDate === today ? weatherVisualCode : undefined,
+        dayWeatherCode: targetDate === today ? weatherVisualCode : "103",
         nightWeatherCode: targetDate === today ? "305" : "150",
         summary: targetDate === today ? "雷阵雨伴有冰雹，注意避险" : "云量变化，间有阳光",
       },
@@ -361,6 +372,84 @@ http.createServer(async (request, response) => {
       return send(response, 200, { timezone: "Asia/Shanghai", pairConsistent: dates.length === 2, items: dates.map((targetDate) => ({ recommendationId: targetDate === businessDate() ? "20000000-0000-4000-8000-000000000001" : "20000000-0000-4000-8000-000000000002", recommendationRevision: 1, inputFingerprint: "a".repeat(64), targetDate, generationBatchId: "21000000-0000-4000-8000-000000000001", readiness: "ready", generationMode: "rule_only", generatedAt: now(), expiresAt: "2099-01-01T00:00:00.000Z", weatherEvidence: hasForecast ? { weatherSource: "forecast", weatherConfidence: 1, weatherUpdatedAt: stale ? "2026-07-18T00:00:00.000Z" : now(), temperatureMinC: 22, temperatureMaxC: 32, rainProbability: 70, windLevel: 3, weatherCode: "304", summary: "雷阵雨" } : { weatherSource: "layering_default", weatherConfidence: 0, weatherUpdatedAt: now(), summary: "通用分层推荐" }, recommendations: candidates, contextMode, targetTimezone: "Asia/Shanghai", contextResolvedAt: now(), ...(located ? { resolvedLocation: resolvedCity, locationSource: travel ? "travel" : "home_city" } : {}), algorithmVersion: "wardora-recommendation-realtime-v1", ruleVersion: "wardora-rules-realtime-1", availabilityReason: contextMode === "locationless" ? "locationless" : contextMode === "weather_fallback" ? "provider_unavailable" : "available", endpointFreshness: stale ? [{ endpoint: "daily", freshness: "stale", providerUpdatedAt: "2026-07-18T00:00:00.000Z", fetchedAt: "2026-07-18T00:05:00.000Z", expiresAt: "2026-07-18T00:35:00.000Z", staleUntil: "2099-01-01T00:00:00.000Z" }] : [], ...(hasForecast ? { attribution: { label: "天气服务由 QWeather 提供", url: "https://www.qweather.com", sources: ["browser fixture"], license: ["test"] } } : {}) })) });
     }
     return send(response, 404, { code: "not_found", message: "fixture has no current recommendation", retryable: false });
+  }
+
+  const acceptMatch = path.match(/^\/api\/recommendations\/daily\/(\d{4}-\d{2}-\d{2})\/accept$/);
+  if (SCENARIO === "p14" && acceptMatch && request.method === "POST") {
+    const body = await readBody(request);
+    const replay = state.p2.mutations.get(body.clientMutationId);
+    if (replay) return sendTraced(request, response, 200, { ...replay, idempotentReplay: true });
+    const selected = Array.isArray(body.selectedGarmentIds) ? body.selectedGarmentIds : GARMENT_IDS.slice(0, 3);
+    if (body.replaceExistingPrimary) {
+      const old = state.p2.plans.find((plan) => plan.id === body.replaceExistingPrimary.planEntryId);
+      if (old) { old.revision += 1; old.updatedAt = now(); old.payload = { ...old.payload, role: "backup", isPrimary: false }; }
+    }
+    const plan = {
+      id: `40000000-0000-4000-8000-${String(state.p2.plans.length + 101).padStart(12, "0")}`,
+      revision: 1, createdAt: now(), updatedAt: now(),
+      payload: {
+        sourceType: "daily_recommendation", date: acceptMatch[1], garmentIds: selected, itemIds: selected.map((id) => GARMENT_IDS.indexOf(id) + 1),
+        recommendationId: body.recommendationId, recommendationRevision: body.expectedRecommendationRevision,
+        recommendationCandidateId: body.candidateId, recommendationInputFingerprint: "a".repeat(64),
+        algorithmVersion: "wardora-recommendation-realtime-v1", sourceVariant: selected.join() === GARMENT_IDS.slice(0, 3).join() ? "original" : "item_replaced",
+        originalGarmentIds: GARMENT_IDS.slice(0, 3),
+        garmentSnapshots: selected.map((garmentId) => ({ garmentId, name: ["浅灰通勤短袖", "卡其直筒长裤", "黑色乐福鞋", "雾蓝轻薄衬衫", "米色半裙"][GARMENT_IDS.indexOf(garmentId)] ?? "合法衣物", role: ["tops", "pants", "shoes", "tops", "skirts"][GARMENT_IDS.indexOf(garmentId)] ?? "tops", category: ["tops", "pants", "shoes", "tops", "skirts"][GARMENT_IDS.indexOf(garmentId)] ?? "tops" })),
+        recommendationSnapshot: { candidateId: body.candidateId, reasonCodes: ["rain_ready"], riskCodes: ["outerwear_recommended"] },
+        snapshotVersion: 1, selectedAt: now(), status: "planned", isPrimary: true, role: "primary",
+      },
+    };
+    state.p2.plans.push(plan);
+    const result = { status: "committed", idempotentReplay: false, plan };
+    state.p2.mutations.set(body.clientMutationId, result);
+    return sendTraced(request, response, 200, result);
+  }
+
+  if (SCENARIO === "p14" && path === "/api/recommendations/actions/reject" && request.method === "POST") {
+    const body = await readBody(request);
+    const replay = state.p2.mutations.get(body.clientMutationId);
+    if (replay) return sendTraced(request, response, 200, { ...replay, idempotentReplay: true });
+    const result = { status: "committed", idempotentReplay: false, actionId: "50000000-0000-4000-8000-000000000001", requestId: "fixture-reject" };
+    state.p2.mutations.set(body.clientMutationId, result);
+    return sendTraced(request, response, 200, result);
+  }
+
+  if (SCENARIO === "p14" && path === "/api/recommendations/plans/cancel-primary" && request.method === "POST") {
+    const body = await readBody(request);
+    const replay = state.p2.mutations.get(body.clientMutationId);
+    if (replay) return sendTraced(request, response, 200, { ...replay, idempotentReplay: true });
+    const primary = state.p2.plans.find((plan) => plan.id === body.primary?.planEntryId);
+    if (!primary || primary.payload.status === "worn") return sendTraced(request, response, 409, { code: "conflict", message: "已穿事实不能被取消安排绕过", retryable: false, details: { reasonCode: "plan_already_worn" } });
+    primary.revision += 1; primary.updatedAt = now(); primary.payload = { ...primary.payload, status: "canceled", role: "other", isPrimary: false };
+    const backup = body.promoteBackup ? state.p2.plans.find((plan) => plan.id === body.promoteBackup.planEntryId) : undefined;
+    if (backup) { backup.revision += 1; backup.updatedAt = now(); backup.payload = { ...backup.payload, role: "primary", isPrimary: true }; }
+    const result = { status: "committed", idempotentReplay: false, targetDate: body.targetDate, canceledPrimary: { planEntryId: primary.id, revision: primary.revision }, activePrimary: backup ? { planEntryId: backup.id, revision: backup.revision } : null, requestId: "fixture-cancel" };
+    state.p2.mutations.set(body.clientMutationId, result);
+    return sendTraced(request, response, 200, result);
+  }
+
+  const planActionMatch = path.match(/^\/api\/workspace\/outfit-plans\/([^/]+)\/(mark-worn|cancel-worn)$/);
+  if (SCENARIO === "p14" && planActionMatch && request.method === "POST") {
+    const body = await readBody(request);
+    const plan = state.p2.plans.find((item) => item.id === planActionMatch[1]);
+    if (!plan || plan.revision !== body.expectedRevision) return sendTraced(request, response, 409, { code: "conflict", message: "计划已更新", retryable: true });
+    plan.revision += 1; plan.updatedAt = now();
+    plan.payload = planActionMatch[2] === "mark-worn"
+      ? { ...plan.payload, status: "worn", actualGarmentIds: [...plan.payload.garmentIds], actualGarmentSnapshots: [...plan.payload.garmentSnapshots], wornAt: body.wornAt }
+      : Object.fromEntries(Object.entries({ ...plan.payload, status: "planned" }).filter(([key]) => !["actualGarmentIds", "actualGarmentSnapshots", "wornAt"].includes(key)));
+    return sendTraced(request, response, 200, { status: "committed", entity: plan, revision: plan.revision, requestId: "fixture-wear" });
+  }
+
+  if (SCENARIO === "p14" && path === "/api/workspace/outfits" && request.method === "POST") {
+    const body = await readBody(request);
+    const outfit = { id: `60000000-0000-4000-8000-${String(state.p2.outfits.length + 1).padStart(12, "0")}`, revision: 1, createdAt: now(), updatedAt: now(), payload: body.payload ?? {}, assetRefs: {} };
+    state.p2.outfits.push(outfit);
+    return sendTraced(request, response, 200, { status: "committed", entity: outfit, revision: 1, requestId: "fixture-save-outfit" });
+  }
+
+  const outfitReadMatch = path.match(/^\/api\/workspace\/outfits\/([^/]+)$/);
+  if (SCENARIO === "p14" && outfitReadMatch && request.method === "GET") {
+    const outfit = state.p2.outfits.find((item) => item.id === outfitReadMatch[1]);
+    return outfit ? sendTraced(request, response, 200, { data: outfit }) : sendTraced(request, response, 404, { code: "not_found", message: "outfit missing", retryable: false });
   }
 
   if (path === "/api/recommendations/resolve" && request.method === "POST") {

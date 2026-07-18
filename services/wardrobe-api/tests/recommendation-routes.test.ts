@@ -6,6 +6,8 @@ import type { RecommendationReadService } from "../src/recommendations/read-serv
 import type { RecommendationRegenerationService } from "../src/recommendations/regeneration-service.js";
 import type { RecommendationGenerationCoordinator } from "../src/recommendations/coordinator.js";
 import type { RecommendationAcceptService } from "../src/recommendations/accept-service.js";
+import type { RecommendationPlanCancelService } from "../src/recommendations/cancel-service.js";
+import type { RecommendationActionService } from "../src/recommendations/action-service.js";
 import type { ImageCropService } from "../src/image-crop/service.js";
 
 const USER = "10000000-0000-4000-8000-000000000001";
@@ -76,6 +78,24 @@ describe("authenticated recommendation read API", () => {
       app = buildApp({ storageProvider: null, imageCropService: { close: async () => {} } as ImageCropService, sessionService: session(), recommendationReadService: { read: async () => EMPTY } as unknown as RecommendationReadService, recommendationAcceptService: accept });
       expect((await app.inject({ method: "POST", url: `/api/recommendations/daily/${TODAY}/accept`, headers, payload: { clientMutationId: mutationId, recommendationId, expectedRecommendationRevision: 1, candidateId, selectedGarmentIds: garmentIds } })).statusCode).toBe(200);
       expect(calls[0]?.slice(0, 3)).toEqual([USER, "device-1", TODAY]); await app.close();
+    } finally { if (previous === undefined) delete process.env.RECOMMENDATION_ACCEPT_ENABLED; else process.env.RECOMMENDATION_ACCEPT_ENABLED = previous; }
+  });
+  it("routes atomic cancel and controlled rejection through the authenticated device", async () => {
+    const previous = process.env.RECOMMENDATION_ACCEPT_ENABLED;
+    const primary = "60000000-0000-4000-8000-000000000001", backup = "60000000-0000-4000-8000-000000000002", mutation = "60000000-0000-4000-8000-000000000003";
+    const recommendation = "60000000-0000-4000-8000-000000000004", candidate = "60000000-0000-4000-8000-000000000005", action = "60000000-0000-4000-8000-000000000006";
+    const cancelCalls: unknown[][] = [], actionCalls: unknown[][] = [];
+    const cancelService = { cancel: async (...args: unknown[]) => { cancelCalls.push(args); return { status: "committed", idempotentReplay: false, targetDate: TODAY, canceledPrimary: { planEntryId: primary, revision: 5 }, activePrimary: { planEntryId: backup, revision: 3 } }; } } as unknown as RecommendationPlanCancelService;
+    const actionService = { reject: async (...args: unknown[]) => { actionCalls.push(args); return { status: "committed", idempotentReplay: false, actionId: action }; } } as unknown as RecommendationActionService;
+    const headers = { authorization: "Bearer ok", "x-wardrobe-device-id": "device-1" };
+    try {
+      process.env.RECOMMENDATION_ACCEPT_ENABLED = "true";
+      const app = buildApp({ storageProvider: null, imageCropService: { close: async () => {} } as ImageCropService, sessionService: session(), recommendationReadService: { read: async () => EMPTY } as unknown as RecommendationReadService, recommendationPlanCancelService: cancelService, recommendationActionService: actionService, recommendationAcceptService: { accept: async () => { throw new Error("unused"); } } as unknown as RecommendationAcceptService });
+      expect((await app.inject({ method: "POST", url: "/api/recommendations/plans/cancel-primary", headers, payload: { clientMutationId: mutation, targetDate: TODAY, primary: { planEntryId: primary, expectedRevision: 4 }, promoteBackup: { planEntryId: backup, expectedRevision: 2 } } })).statusCode).toBe(200);
+      expect((await app.inject({ method: "POST", url: "/api/recommendations/actions/reject", headers, payload: { clientMutationId: mutation, recommendationId: recommendation, expectedRecommendationRevision: 2, candidateId: candidate, reason: "style" } })).statusCode).toBe(200);
+      expect(cancelCalls[0]?.slice(0, 2)).toEqual([USER, "device-1"]);
+      expect(actionCalls[0]?.[0]).toBe(USER);
+      await app.close();
     } finally { if (previous === undefined) delete process.env.RECOMMENDATION_ACCEPT_ENABLED; else process.env.RECOMMENDATION_ACCEPT_ENABLED = previous; }
   });
 });
