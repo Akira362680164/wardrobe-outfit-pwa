@@ -17,7 +17,7 @@ import {
 import type { NavigationDirection } from "@/lib/app-route";
 import { duration, ease, spring } from "@/lib/motion-tokens";
 
-export type SettingsPageName = "home" | "profile" | "photos" | "minimax" | "wardrobes";
+export type SettingsPageName = "home" | "profile" | "photos" | "minimax" | "wardrobes" | "weather_location";
 
 export interface SettingsPageTransition {
   id: number;
@@ -32,6 +32,7 @@ const SETTINGS_PAGE_LABELS: Record<SettingsPageName, string> = {
   photos: "AI 试穿参考照片",
   minimax: "MiniMax 设置",
   wardrobes: "衣橱位置",
+  weather_location: "天气地点",
 };
 
 export function createSettingsPageTransition(
@@ -133,7 +134,7 @@ export function SettingsSubpageMotion({
 
   return (
     <div
-      className="grid min-w-0"
+      className="grid min-w-0 overflow-x-clip"
       data-settings-navigation-direction={transition.direction}
       data-settings-navigation-from={transition.fromPage}
       data-settings-navigation-to={transition.toPage}

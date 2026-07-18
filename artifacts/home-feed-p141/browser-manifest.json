@@ -1,0 +1,182 @@
+{
+  "scenario": "wardora-home-p1.4-visual",
+  "viewportMatrix": [
+    360,
+    390,
+    430
+  ],
+  "fontScaleMatrix": [
+    100,
+    130
+  ],
+  "states": [
+    "ready_forecast_real_candidates",
+    "empty_locationless",
+    "weather_fallback",
+    "protected_plan",
+    "actual_wear",
+    "travel_forecast_without_home",
+    "stale_qweather_attribution",
+    "protected_plan_with_date_strip",
+    "partial_weather_error"
+  ],
+  "affectedStateMatrix": {
+    "travel": {
+      "viewports": [
+        360,
+        390,
+        430
+      ],
+      "fontScales": [
+        100,
+        130
+      ]
+    },
+    "stale": {
+      "viewports": [
+        360,
+        390,
+        430
+      ],
+      "fontScales": [
+        100,
+        130
+      ]
+    },
+    "protected-plan-with-date-strip": {
+      "viewports": [
+        360,
+        390,
+        430
+      ],
+      "fontScales": [
+        100,
+        130
+      ]
+    },
+    "partial-weather-error": {
+      "viewports": [
+        360,
+        390,
+        430
+      ],
+      "fontScales": [
+        100,
+        130
+      ]
+    }
+  },
+  "checklist": {
+    "greeting": true,
+    "singleLocation": true,
+    "travelAuthority": true,
+    "staleAttribution": true,
+    "dualWeatherCards": true,
+    "segmentedTabs": true,
+    "dateStripInRecommendation": true,
+    "dateStripAfterPlan": true,
+    "futureDatesAccessed": [
+      3,
+      4,
+      5,
+      6,
+      7
+    ],
+    "partialWeatherRetryRecoveredTomorrowOnly": true,
+    "horizontalRecommendationRail": true,
+    "bottomNavigation": true,
+    "serverImageChainFixture": true,
+    "alignedTextRows": {
+      "weatherRowsAligned": true,
+      "recommendationRowsAligned": true,
+      "shadows": [
+        "none",
+        "rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px",
+        "rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px",
+        "rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px"
+      ],
+      "firstLevelLeft": 16,
+      "toolbarLeft": 17,
+      "cardLeft": 17,
+      "cardInnerInset": 18,
+      "cardTitleTopInset": 22,
+      "locationLabelTopInset": 22,
+      "weatherMaterial": {
+        "background": "rgb(255, 255, 252)",
+        "shadow": "none",
+        "filter": "none",
+        "webkitFilter": "none",
+        "outerRadius": 28,
+        "innerRadius": 22
+      },
+      "navRadii": {
+        "outer": 30,
+        "active": 22,
+        "inset": 8
+      }
+    },
+    "noPageOverflow": true,
+    "verticalPanPriority": true
+  },
+  "screenshots": [
+    "test-results/home-feed-p14-visual/20260718/ready-360-font100.png",
+    "test-results/home-feed-p14-visual/20260718/ready-360-font130.png",
+    "test-results/home-feed-p14-visual/20260718/ready-390-font100.png",
+    "test-results/home-feed-p14-visual/20260718/ready-390-viewport-font100.png",
+    "test-results/home-feed-p14-visual/20260718/ready-390-font130.png",
+    "test-results/home-feed-p14-visual/20260718/ready-430-font100.png",
+    "test-results/home-feed-p14-visual/20260718/ready-430-font130.png",
+    "test-results/home-feed-p14-visual/20260718/locationless-empty-390.png",
+    "test-results/home-feed-p14-visual/20260718/weather-fallback-390.png",
+    "test-results/home-feed-p14-visual/20260718/protected-plan-390.png",
+    "test-results/home-feed-p14-visual/20260718/actual-wear-390.png",
+    "test-results/home-feed-p14-visual/20260718/travel-360-font100.png",
+    "test-results/home-feed-p14-visual/20260718/travel-360-font130.png",
+    "test-results/home-feed-p14-visual/20260718/travel-390-font100.png",
+    "test-results/home-feed-p14-visual/20260718/travel-390-font130.png",
+    "test-results/home-feed-p14-visual/20260718/travel-430-font100.png",
+    "test-results/home-feed-p14-visual/20260718/travel-430-font130.png",
+    "test-results/home-feed-p14-visual/20260718/stale-360-font100.png",
+    "test-results/home-feed-p14-visual/20260718/stale-360-font130.png",
+    "test-results/home-feed-p14-visual/20260718/stale-390-font100.png",
+    "test-results/home-feed-p14-visual/20260718/stale-390-font130.png",
+    "test-results/home-feed-p14-visual/20260718/stale-430-font100.png",
+    "test-results/home-feed-p14-visual/20260718/stale-430-font130.png",
+    "test-results/home-feed-p14-visual/20260718/protected-plan-with-date-strip-360-font100.png",
+    "test-results/home-feed-p14-visual/20260718/protected-plan-with-date-strip-360-font130.png",
+    "test-results/home-feed-p14-visual/20260718/protected-plan-with-date-strip-390-font100.png",
+    "test-results/home-feed-p14-visual/20260718/protected-plan-with-date-strip-390-font130.png",
+    "test-results/home-feed-p14-visual/20260718/protected-plan-with-date-strip-430-font100.png",
+    "test-results/home-feed-p14-visual/20260718/protected-plan-with-date-strip-430-font130.png",
+    "test-results/home-feed-p14-visual/20260718/protected-plan-future-days-390-font100.png",
+    "test-results/home-feed-p14-visual/20260718/partial-weather-error-360-font100.png",
+    "test-results/home-feed-p14-visual/20260718/partial-weather-error-360-font130.png",
+    "test-results/home-feed-p14-visual/20260718/partial-weather-error-390-font100.png",
+    "test-results/home-feed-p14-visual/20260718/partial-weather-error-390-font130.png",
+    "test-results/home-feed-p14-visual/20260718/partial-weather-error-430-font100.png",
+    "test-results/home-feed-p14-visual/20260718/partial-weather-error-430-font130.png",
+    "test-results/home-feed-p14-visual/20260718/partial-weather-retry-recovered-390-font100.png"
+  ],
+  "pageErrors": [],
+  "consoleErrors": [
+    {
+      "text": "Failed to load resource: the server responded with a status of 503 (Service Unavailable)",
+      "url": "http://127.0.0.1:4184/api/weather/overview?date=2026-07-19"
+    }
+  ],
+  "expectedPartialWeatherConsoleErrors": [
+    {
+      "text": "Failed to load resource: the server responded with a status of 503 (Service Unavailable)",
+      "url": "http://127.0.0.1:4184/api/weather/overview?date=2026-07-19"
+    }
+  ],
+  "unexpectedConsoleErrors": [],
+  "requestFailures": [],
+  "responseErrors": [
+    {
+      "status": 503,
+      "url": "http://127.0.0.1:4184/api/weather/overview?date=2026-07-19"
+    }
+  ],
+  "unexpectedRequestFailures": []
+}

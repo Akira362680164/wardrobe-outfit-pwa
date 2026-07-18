@@ -281,6 +281,26 @@ function renderPartVisual(title) {
       </div>`;
   }
 
+  if (title.includes("新首页 P1.4")) {
+    return `
+      <div class="part-visual" data-visual="home-p14-skeleton">
+        <div class="home-location-entry">上海 · 常驻 ›</div>
+        <div class="home-weather-links"><button>今天 31°</button><button>明天 30°/22°</button></div>
+        <div class="home-state-grid">
+          <span>推荐 / 衣橱</span>
+          <span>日期条仅在推荐内容内</span>
+          <span>真实图片横向卡轨</span>
+          <span>只读 · 无 P2 操作</span>
+        </div>
+        <div class="home-contract-row">
+          <span>问候 → 地点 → 双天气卡 → 分栏 → 内容</span>
+          <span>360 / 390 / 430 · 100% / 130%</span>
+          <span>原生横滑 · 纵向页面滚动优先</span>
+          <span>静态 QWeather visual family · 无 Canvas / 定位</span>
+        </div>
+      </div>`;
+  }
+
   if (/2\.1\s+颜色/.test(title)) {
     return `
       <div class="part-visual" data-visual="color-token-palette">

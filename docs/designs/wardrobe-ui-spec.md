@@ -2,8 +2,8 @@
 title: 衣橱穿搭助手 UI 规范
 version: v0.2-final
 status: final
-appVersion: 2.1.24-test
-validatedAgainstAppCommit: 0b5b7a1a3f2becf078c7c46b1a7bbc72de1312df
+appVersion: 2.1.30-test
+validatedAgainstAppCommit: aff3831766a37705a0706a2ae3886381e6b4422d
 sourceOfTruth: docs/designs/wardrobe-ui-spec.md
 generatedPreview: docs/designs/wardrobe-ui-spec.html
 previewGenerator: scripts/generate-ui-spec-preview.mjs
@@ -12,7 +12,7 @@ appliesTo:
   - Capacitor Android WebView
   - mobile portrait only
   - 3:4 garment media
-lastReviewedAt: 2026-07-17
+lastReviewedAt: 2026-07-18
 ---
 
 # 衣橱穿搭助手 UI 规范
@@ -223,6 +223,7 @@ Icon-only 按钮必须有 `aria-label`；图标与文字组合时图标使用 `a
 
 - 首页只有一个权威地点入口，文案只能是“城市 · 常驻 / 临时 / 行程 ›”或“未设置城市 ›”；问候区、天气卡和推荐卡不重复创建地点入口。
 - 点击今日或明日天气卡只切换对应业务日期并滚动到推荐区；不重挂页面，不重播整页入场。
+- 首页地点 Sheet 只允许搜索、明确设置常驻/临时城市和恢复常驻城市，不提供“清除常驻城市”破坏性入口。清除常驻城市只放在设置 → 天气地点，并使用独立 `alertdialog` 二次确认；Android Back 先关闭确认层，再返回天气地点页。
 
 **四种正常状态与模块错误**
 
@@ -252,6 +253,20 @@ Icon-only 按钮必须有 `aria-label`；图标与文字组合时图标使用 `a
 **计划保护**
 
 - `protected_plan` 和 `actual_wear` 始终高于天气/推荐 revision；新结果只能更新未采用推荐或显示风险，不能自动替换、取消、降级或隐藏已有计划/已穿事实。
+
+### 4.2 新首页 P1.4 视觉骨架合同
+
+- 首屏顺序固定为：Asia/Shanghai 时间语义问候与业务日期 → 天气模块内唯一地点入口 → 今日/明日并排双天气卡 → 推荐/衣橱分栏 → 当前分栏内容。不显示“WARDORA”眉题或自创“今天穿什么”标题。
+- 今日卡只使用 `now/current` 证据展示当前温度、高低温、摘要、体感/风；明日卡只使用目标日 `daily` 证据展示高低温和日间摘要。两卡分别承载 loading/error/fallback，不用今日 now 冒充明日。
+- P1.4 只使用共享 QWeather visual family 驱动的静态色调，不创建 Canvas、`requestAnimationFrame`、粒子或系统定位。点击今天/明天只切换推荐日期并滚到推荐区，不重挂页面。
+- 七日日期条只存在于“推荐”分栏：无当日主计划时位于推荐内容上方；有主计划或已穿事实时先显示事实卡，日期条紧随事实卡之后且继续允许切换第 3–7 天，不能因计划保护而消失。
+- 地点文案按所选业务日期使用服务端 `resolvedLocation/locationSource`，映射为“城市 · 行程/临时/常驻”；旅行日即使没有常驻城市，也不得显示 locationless 或隐藏合法旅行天气。推荐卡来源摘要同步保留合法地点与来源。
+- 使用供应商天气证据时显示紧凑 QWeather 归属和更新时间；任一合法 stale endpoint 必须明确标注“缓存”和更新时间。locationless、weather fallback 或没有 attribution 的响应不得伪造供应商归属。
+- 主计划与已穿事实的只读投影保留 garment snapshots、actual snapshots、availability 与 unavailable garment ids；实体仍存在时显示服务器图片，实体已删除时以快照名称回放，未来 blocked 或包含不可用衣物时显示风险提示。
+- ready 推荐是原生横向滚动轨道，卡片层级为目标（稳妥/变化/舒适）、服务器衣物缩略图与名称、理由、风险、上下文来源。缺图只显示中性衣物 fallback；禁止使用原型色块假装真实图片。
+- 横轨使用浏览器/WebView 原生滚动与 `touch-action: pan-y`，不增加抢手势的 drag controller；所有可点区至少 `48dp`，按压反馈复用 `AppPressable`，reduced-motion 取消 smooth scroll 与缩放 spring。
+- P1.4 严格只读：不显示采用、替换、取消、已穿或保存套装按钮。新用户“无城市 + 衣橱空”使用中性正常空状态，不使用警告色或“系统异常”。
+- 视觉对照门禁以 v0.2.3 `390x844` 为并排基准，同时覆盖 `360/390/430px` 和 `100%/130%` 字体，必须核对问候、地点、双天气卡、分栏、日期条位置、横向推荐卡和底栏，并保证页面横向溢出、文字遮挡与非预期 runtime/console/page error 均为 0。
 
 ## 5. Route 与页面状态矩阵
 

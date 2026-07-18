@@ -1,8 +1,8 @@
 ---
 title: Wardora 新首页生产构建、交互、数据流与业务闭环 PRD
-version: v0.7.5-integrated
+version: v0.7.5.2-integrated
 status: 评审版 / 后续生产实施基线
-date: 2026-07-17
+date: 2026-07-18
 baselinePolicy: 实施时以最新正式 main 与 wechat/miniprogram 为准，不绑定固定 App 小版本
 authority:
   product: Wardora v0.7.3-integrated
@@ -11,10 +11,12 @@ authority:
 visualPrototypeSha256: 30c97e315d2efd0d9bfcf10125177d58cf9edb479b8d9310476752277cbe37db
 ---
 
-# Wardora v0.7.5-integrated：新首页生产构建与完整业务流程
+# Wardora v0.7.5.2-integrated：新首页生产构建与完整业务流程
 
 | 版本 | 日期 | 修订人 | 说明 |
 |---|---|---|---|
+| v0.7.5.2-integrated | 2026-07-18 | Codex | 新增 UI/视觉/动效修复的独立视觉验收门禁，由执行 Session 对冻结 commit 自行启动只读 subagent |
+| v0.7.5.1-integrated | 2026-07-18 | Codex | 明确 App 必须迁移 v0.2.3 HTML 的 Canvas 绘制内核，仅替换生产宿主与平台生命周期；补充小程序适配边界与视觉同源验收 |
 | v0.7.5-integrated | 2026-07-17 | Codex | 将新首页原型、实时推荐、天气、地点和计划采用收口为生产 PRD |
 
 ## 0. 文档定位与结论
@@ -72,6 +74,8 @@ visualPrototypeSha256: 30c97e315d2efd0d9bfcf10125177d58cf9edb479b8d9310476752277
 12. 天气 Canvas 只负责装饰，地点、温度、天气摘要、风险和操作必须由原生文字与控件承载。
 13. 首页采用模块级加载和模块级错误；天气失败不能阻断衣橱，推荐失败不能阻断天气。
 14. 所有正式业务写入必须等待服务器事务提交并读回后再显示成功，不做乐观更新。
+15. App 天气 Canvas 必须以已验收的 v0.2.3 HTML 为源代码基准，直接提取其视觉参数、场景生成、粒子、事件时序和绘制顺序；不得另起炉灶重画雨雪、雷电、冰雹、雾霾或沙尘效果。
+16. 所有 UI/视觉/动效修复在合入前必须完成独立视觉验收：执行 Session 冻结待审 commit 后自行启动一个独立只读 subagent，审查者不承接实现推理与自我评价，仅根据权威原型/规范、冻结代码和实际证据出具结论。
 
 ## 一、产品概述
 
@@ -116,7 +120,7 @@ Wardora 当前已经拥有衣橱管理、穿搭计划、正式套装、种草和
 - 用户早晨必须填写冷热、满意度或不适原因；
 - 未实现后端支持前就展示“假按钮”；
 - 在客户端保存正式衣橱、计划、推荐或图片缓存；
-- 将 HTML 原型脚本整体复制进生产组件；
+- 将 HTML 原型的 Fixture、调试面板、手工天气选择器、`localStorage` 和直接 DOM 挂载外壳整体复制进生产组件；本条不限制绘制内核的直接迁移和模块化。
 - 为 App 和小程序各自维护一套天气代码口径。
 
 ### 1.4 名词说明
@@ -503,8 +507,9 @@ flowchart TD
 Canvas 生产规则：
 
 - QWeather 62 个 code 映射到共享的 `scene / palette / intensity / staticFallback`；
-- App 使用 DOM Canvas，小程序使用微信 Canvas 2D；
-- 两端共享纯数据视觉字典，不强行共享绘图运行时；
+- App 使用 DOM Canvas，必须从 v0.2.3 HTML 直接提取并 TypeScript 模块化绘制内核，不重新设计各天气场景；
+- 小程序使用微信 Canvas 2D，复用同一组视觉参数、随机种子、粒子初始化、事件时序和绘制顺序，仅替换 Canvas API 和页面生命周期适配；
+- 两端共享纯数据视觉字典与无 DOM 场景逻辑；宿主运行时分平台实现，不为了共享而引入 DOM 兼容层或逐帧 `setData`；
 - 今日最多一个动态 Canvas，明日静态；
 - 使用单一 `requestAnimationFrame` 调度，目标约 29 FPS；
 - DPR 上限 2；
@@ -512,7 +517,37 @@ Canvas 生产规则：
 - reduced-motion、Canvas 不支持、初始化异常和低端设备进入静态模式；
 - Canvas 位于天气文字下方或后方，不遮挡文字和点击区域；
 - 文字、按钮和风险不通过 Canvas 绘制；
-- 视觉基准以 v0.2.3 HTML 及其 SHA-256 为准，不复制原型中的假数据、localStorage 或调试控件。
+- 视觉基准以 v0.2.3 HTML 及其 SHA-256 为准；必须复用其绘制内核，但不复制原型中的假数据、`localStorage`、诊断面板或调试控件。
+
+#### 5.5.1 v0.2.3 绘制内核迁移边界
+
+以下内容是已验收的视觉产品成果，App 生产实现必须直接迁移，不得用新的 CSS 渐变、天气图标、简化粒子或另一套 Canvas 仿写替代：
+
+- 天气家族参数、昼夜和强度差异；
+- 可重现的随机种子、场景和粒子初始化；
+- 大气层、体积天气、降水、雪暴、冰雹、闪电、沙尘、雾霾及文字保护的绘制函数；
+- 绘制层次与混合顺序；
+- 冰雹进入、下落、撞击、反弹、衰减和闪电分相等事件时序；
+- 今日动态、明日静帧与 `998` 安全静态降级的行为。
+
+以下内容必须改为生产宿主，不属于视觉重设计：
+
+- 原型的全局变量、DOM 查询和 `innerHTML` 挂载改为 React props、ref 与 effect 清理；
+- 手工选择天气 code 改为读取服务端 `WeatherOverview`，代码解析以共享视觉字典为权威；
+- `IntersectionObserver`、`ResizeObserver`、`visibilitychange` 与 Capacitor `appStateChange` 由运行时适配层管理；
+- Fixture 选择器、诊断面板、手动故障开关和测试文案仅存在于测试入口，不进入用户生产界面；
+- 视觉文字避让改为基于稳定 ref 计算的安全区域，不改变原型的避让结果。
+
+生产代码建议分为：
+
+```text
+weather-canvas-engine.ts       # 从 v0.2.3 迁移的纯场景、粒子、事件和绘制内核
+weather-canvas-runtime.ts      # 单 rAF、可见性、前后台、尺寸和故障降级
+home-weather-canvas.tsx        # React Canvas 宿主、真实天气输入与静态文字叠层
+wechat-weather-canvas-adapter  # 微信 Canvas 2D 和页面生命周期适配
+```
+
+若 Android WebView 或微信 Canvas 出现性能问题，可分档减少粒子数量或贴图分辨率，但不得改变天气家族、主构图、运动方向、色调、标志性事件或强度差异。任何视觉参数偏离都必须在验收证据中单独说明，不得由开发默认改写。
 
 ### 5.6 天气故障
 
@@ -982,6 +1017,7 @@ App 与小程序客户端必须保留：
 - cloud contracts 与严格 Schema；
 - 首页状态机和纯选择器；
 - QWeather 62 码视觉字典；
+- 从 v0.2.3 提取的无 DOM 视觉参数、随机种子、粒子初始化、事件时序和绘制顺序；
 - 推荐原因、风险和目标中文映射；
 - 上海业务日期工具；
 - Fixture、验收矩阵和接口语义；
@@ -992,7 +1028,7 @@ App 与小程序客户端必须保留：
 | 能力 | App | 微信小程序 |
 |---|---|---|
 | HTTP | 既有 onlineRequest / CapacitorHttp | `wx.request` 服务层 |
-| Canvas | React + DOM Canvas | WXML Canvas 2D |
+| Canvas | React + DOM Canvas 宿主；复用 v0.2.3 绘制内核 | WXML Canvas 2D 适配器；保留同源参数、时序与绘制顺序 |
 | 定位 | Capacitor 粗略前台位置 | 微信模糊位置 |
 | 生命周期 | visibility、route、Capacitor App | onShow/onHide/onUnload |
 | 安全区 | CSS env + Android Insets | 胶囊与 safe area |
@@ -1119,22 +1155,25 @@ src/lib/online/online-recommendation-client.ts
 
 ### 13.4 批次 P3：App 天气 Canvas 与一次性定位
 
-- 将 v0.2.3 视觉系统拆成生产 Canvas 模块；
+- 以 v0.2.3 HTML 及冻结 SHA-256 为唯一视觉源，直接提取其绘制内核为 TypeScript 模块；禁止重新设计或仿写各天气动画；
+- 将原型 DOM/Fixture 外壳替换为 React Canvas 宿主和 Capacitor 生命周期适配，不改动视觉参数、绘制顺序与标志性事件；
 - 完成 today-only 动态、tomorrow 静态、29 FPS、DPR2；
 - 完成后台/离屏暂停、异常恢复和 reduced-motion；
 - 加入 Capacitor 粗略位置权限；
 - 完成定位用途说明、候选确认、临时/常驻选择；
-- 必须构建签名 APK做 Android 真机验证。
+- 必须构建签名 APK 做 Android 真机验证，并以固定 code、seed、clock 的原型/App 对照证据证明它是同一视觉内核的生产迁移，不是二次重画。
+- 首轮实现和本地门禁完成后，执行 Session 必须对冻结 commit 启动独立只读视觉验证 subagent，根据报告收口后才能合入。
 
 ### 13.5 批次 P4：微信小程序完整对齐
 
 - 最新 main 共享合同进入 `wechat/miniprogram`；
 - 新首页替换休眠 home 跳转页；
 - 接入天气、地点、推荐、计划和图片 join；
-- 实现微信 Canvas 2D 适配，不逐帧 `setData`；
+- 以 App 已迁移的 v0.2.3 绘制内核为语义基准，实现微信 Canvas 2D 适配；不重画天气场景，不逐帧 `setData`；
 - 接入模糊位置和隐私声明；
 - 覆盖 onShow/onHide/onUnload；
 - 微信开发者工具和真机验证；
+- 小程序截图/录屏证据同样由执行 Session 启动独立只读视觉验证 subagent 审查；
 - 上传体验版仍需用户明确授权。
 
 ### 13.6 批次 P5：切换与发布
@@ -1172,10 +1211,14 @@ src/lib/online/online-recommendation-client.ts
 
 - 今天使用实时 code 和当前温度，明天使用日间 code；
 - 62 个 QWeather code 都能解析，未知 code 静态降级；
+- App 的天气构图、色调、粒子运动方向、强度分级和标志性事件必须与 v0.2.3 HTML 同源，不得出现同天气 code 却使用新动画的情况；
+- 在统一 viewport、DPR、code、seed 和 clock 下生成原型/App 并排对照证据；至少覆盖 `304` 雷阵雨并伴有冰雹、`403` 暴雪、`508` 沙尘暴、`512` 严重霾与 `998` 未知静态降级；
+- `304` 的双闪分层回暗与冰雹进入/下落/撞击/反弹/衰减、`403` 的蓝灰雪雾与不规则雪屑、`508` 的体积尘雾、`512` 的低频灰黄空气层必须可辨，且不遮挡文字；
 - 无城市、天气失效和 Canvas 失败时不显示伪天气；
 - 今日动态、明日静态；
 - reduced-motion 下没有循环动画；
 - 低端 Android WebView 不因 Canvas 阻塞滚动或按钮；
+- 离开首页、卡片离屏、App 进后台、锁屏和组件卸载后动画调度停止，恢复时不快进补帧或重播整页入场；
 - QWeather attribution 和更新时间口径正确。
 
 ### 14.3 推荐
@@ -1224,6 +1267,17 @@ Android 真机 Canvas、权限、Back、前后台和断网恢复
 微信开发者工具与真机定位/Canvas 生命周期
 git diff --check
 ```
+
+### 14.7 独立视觉验收门禁
+
+- 适用范围：首页、天气 Canvas、推荐卡、底部导航、Sheet、弹窗、字体、布局、色彩、响应式、触摸与动效的新增或修复；
+- 启动时机：执行 Session 完成首轮实现、自测与证据生成，并提交待审冻结 commit 之后；
+- 责任归属：必须由执行 Session 自行启动审查 subagent，不由上层协调 Session 代替它完成自己的验收门禁；
+- 独立性：审查 subagent 使用独立分支/worktree，默认只读，不修改代码；不接收执行 Session 的实现推理、自我评价或预设通过结论；
+- 审查输入：权威 HTML/截图、PRD/UI 规范、冻结 commit、改动范围、验收矩阵、已生成截图/录屏/manifest 和可重现命令；
+- 审查内容：实际页面与原型的结构、比例、排版、色彩、图片、字体、窄屏、放大字体、滚动/溢出、触摸区、动效、reduced-motion 及 loading/empty/error/permission 状态；
+- 输出结论：按 P0–P3 列出可复现问题、用户影响、证据、未验证项和“建议交付 / 修复后再交付”结论；
+- 收口规则：P0/P1 未关闭不得合入；本轮范围内 P2 必须关闭或经用户明确接受；P3 可记入后续打磨清单。
 
 ## 十五、当前实施结论
 

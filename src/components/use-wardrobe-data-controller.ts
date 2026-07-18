@@ -42,6 +42,7 @@ export function useWardrobeDataController() {
   const [outfitCalendarPlans, setOutfitCalendarPlans] = useState<OutfitCalendarPlan[]>(snapshot?.outfitCalendarPlans ?? []);
   const [planPackingChecklistItems, setPlanPackingChecklistItems] = useState<PlanPackingChecklistItem[]>(snapshot?.planPackingChecklistItems ?? []);
   const [tryOnProfile, setTryOnProfile] = useState<TryOnProfile | undefined>(snapshot?.tryOnProfile);
+  const workspaceRevision = onlineState.data?.serverRevision ?? 0;
 
   const applySnapshot = useCallback((next: OnlineWorkspaceSnapshot) => {
     setItems(next.items);
@@ -102,6 +103,7 @@ export function useWardrobeDataController() {
     tryOnProfile, setTryOnProfile,
     loading: onlineState.status === "loading",
     onlineState,
+    workspaceRevision,
     onlineRepository: repository,
     refreshState,
   };
