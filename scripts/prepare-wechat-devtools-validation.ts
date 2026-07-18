@@ -97,7 +97,6 @@ Page({
         stale: this.data.todayWeather.stale,
         forecast: true,
         reducedMotion: this.data.reducedMotion === true,
-        copy: this.data.todayWeather,
         onFailure: (error) => this.setData({ canvasVisible: false, canvasStaticFallback: true, canvasFailure: String(error && error.message || error || "render_failed") }),
       });
     } catch (_) {

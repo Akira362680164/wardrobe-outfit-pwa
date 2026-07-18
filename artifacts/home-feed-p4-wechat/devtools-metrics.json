@@ -1,12 +1,12 @@
 {
-  "capturedAt": "2026-07-18T16:25:41Z",
+  "capturedAt": "2026-07-18T16:58:21Z",
   "tool": "WeChat DevTools Nightly 2.02.2607132",
   "library": "3.15.2",
   "device": {
-    "model": "iPhone 14 Pro Max",
-    "width": 430,
-    "height": 932,
-    "fontSizeSetting": 16,
+    "model": "Nexus 5",
+    "width": 360,
+    "height": 640,
+    "fontSizeSetting": 21,
     "devicePixelRatio": 3
   },
   "canvas": {
@@ -22,7 +22,7 @@
     },
     "resumed": {
       "dpr": 2,
-      "frames": 196,
+      "frames": 197,
       "targetFps": 29
     },
     "reduced": {

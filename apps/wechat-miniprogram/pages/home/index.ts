@@ -59,6 +59,7 @@ type WeatherCard = {
   label: string;
   temperature: string;
   high: string;
+  highCompact: string;
   summary: string;
   meta: string;
   stale: boolean;
@@ -263,7 +264,7 @@ Page({
       weatherPatch.locationLabel = overview.resolvedLocation && overview.locationSource
         ? buildHomeLocationLabel({ displayName: overview.resolvedLocation.displayName, source: overview.locationSource })
         : this.data.locationLabel;
-      weatherPatch.weatherAttribution = overview.attribution?.label ?? "";
+      weatherPatch.weatherAttribution = weatherAttributionLabel(overview);
       weatherPatch.canvasVisible = date === this.data.today && overview.availabilityReason === "available";
     }
     this.setData(weatherPatch, () => {
@@ -665,7 +666,6 @@ Page({
       try {
         const runtime = await createMiniWeatherCanvasRuntime({
           page: this, code, stale, forecast, reducedMotion: prefersReducedMotion(),
-          copy: this.data.todayWeather,
           onFailure: () => { if (generation === this.canvasGeneration) this.destroyWeatherCanvas(true); },
         });
         if (generation !== this.canvasGeneration) { runtime.destroy(); return; }
@@ -697,19 +697,37 @@ function mapWeather(value: WeatherOverview, label: string, today: boolean): Weat
     : evidence.temperatureMinC !== undefined && evidence.temperatureMaxC !== undefined
       ? `${Math.round(evidence.temperatureMaxC)}°/${Math.round(evidence.temperatureMinC)}°`
       : "--°";
+  const stale = value.endpointFreshness.some((entry) => entry.freshness === "stale");
+  const baseMeta = today
+    ? [evidence.currentFeelsLikeC !== undefined ? `体感 ${Math.round(evidence.currentFeelsLikeC)}°` : "", evidence.windLevel !== undefined ? `${evidence.windLevel} 级风` : ""].filter(Boolean).join(" · ")
+    : evidence.temperatureMinC !== undefined ? `最低 ${Math.round(evidence.temperatureMinC)}° · 日间预报` : "日间预报";
   return {
-    status: "ready", label, temperature, high: evidence.temperatureMaxC !== undefined ? `最高 ${Math.round(evidence.temperatureMaxC)}°` : "", summary: evidence.summary,
-    meta: today
-      ? [evidence.currentFeelsLikeC !== undefined ? `体感 ${Math.round(evidence.currentFeelsLikeC)}°` : "", evidence.windLevel !== undefined ? `${evidence.windLevel} 级风` : ""].filter(Boolean).join(" · ")
-      : evidence.temperatureMinC !== undefined ? `最低 ${Math.round(evidence.temperatureMinC)}° · 日间预报` : "日间预报",
-    stale: value.endpointFreshness.some((entry) => entry.freshness === "stale"),
+    status: "ready", label, temperature, high: evidence.temperatureMaxC !== undefined ? `最高 ${Math.round(evidence.temperatureMaxC)}°` : "", highCompact: evidence.temperatureMaxC !== undefined ? `高 ${Math.round(evidence.temperatureMaxC)}°` : "", summary: evidence.summary,
+    meta: baseMeta,
+    stale,
     code: (today ? evidence.weatherCode : evidence.dayWeatherCode) ?? "998",
   };
 }
 
-function loadingWeather(label: string): WeatherCard { return { status: "loading", label, temperature: "--°", high: "", summary: "正在读取", meta: "", stale: false, code: "998" }; }
-function errorWeather(label: string): WeatherCard { return { status: "error", label, temperature: "--°", high: "", summary: "天气读取失败", meta: "点击重试", stale: false, code: "998" }; }
-function unavailableWeather(label: string, summary: string): WeatherCard { return { status: "unavailable", label, temperature: "--°", high: "", summary, meta: "使用通用推荐", stale: false, code: "998" }; }
+function latestWeatherUpdate(value: WeatherOverview): string {
+  return value.endpointFreshness.map((entry) => entry.providerUpdatedAt).sort().at(-1) ?? value.weatherEvidence.weatherUpdatedAt;
+}
+
+function formatWeatherTime(value: string): string {
+  try { return new Intl.DateTimeFormat("zh-CN", { timeZone: "Asia/Shanghai", month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit", hour12: false }).format(new Date(value)); }
+  catch { return ""; }
+}
+
+function weatherAttributionLabel(value: WeatherOverview): string {
+  if (!value.attribution) return "";
+  const updatedAt = latestWeatherUpdate(value);
+  const stale = value.endpointFreshness.some((entry) => entry.freshness === "stale");
+  return `${value.attribution.label}${updatedAt ? ` · ${stale ? "缓存" : "更新"} ${formatWeatherTime(updatedAt)}` : ""}`;
+}
+
+function loadingWeather(label: string): WeatherCard { return { status: "loading", label, temperature: "--°", high: "", highCompact: "", summary: "正在读取", meta: "", stale: false, code: "998" }; }
+function errorWeather(label: string): WeatherCard { return { status: "error", label, temperature: "--°", high: "", highCompact: "", summary: "天气读取失败", meta: "点击重试", stale: false, code: "998" }; }
+function unavailableWeather(label: string, summary: string): WeatherCard { return { status: "unavailable", label, temperature: "--°", high: "", highCompact: "", summary, meta: "使用通用推荐", stale: false, code: "998" }; }
 
 function mapRecommendationCards(item: RecommendationDisplayItemV3, garments: MiniGarment[]): HomeRecommendationCard[] {
   const byId = new Map(garments.map((garment) => [garment.id, garment]));

@@ -22,15 +22,12 @@ export interface MiniWeatherCanvasRuntime {
   readonly metrics: { dpr: number; frames: number; targetFps: number };
 }
 
-type WeatherCanvasCopy = { label: string; temperature: string; high: string; summary: string; meta: string; stale: boolean };
-
 export async function createMiniWeatherCanvasRuntime(input: {
   page: object;
   code: string;
   stale: boolean;
   forecast: boolean;
   reducedMotion: boolean;
-  copy: WeatherCanvasCopy;
   onFailure: (error?: unknown) => void;
 }): Promise<MiniWeatherCanvasRuntime> {
   const eligibility = canvasEligibility({ kind: "today", code: input.code, forecast: input.forecast, stale: input.stale });
@@ -44,8 +41,6 @@ export async function createMiniWeatherCanvasRuntime(input: {
   const context = canvas.getContext("2d");
   context.scale(dpr, dpr);
   clipRoundedCard(context, width, height, 13);
-  const fontSizeSetting = Number((wx as any).getAppBaseInfo?.().fontSizeSetting ?? 16);
-  const fontScale = Math.min(1.18, Math.max(1, fontSizeSetting / 16));
   const scene = createWeatherScene(input.code, "today");
   scene.safeRects = safeRects(width, height);
 
@@ -68,8 +63,7 @@ export async function createMiniWeatherCanvasRuntime(input: {
   };
   const draw = (time: number, animate: boolean) => {
     try {
-      renderWeatherScene(context, scene, width, height, time, animate, !dynamic);
-      drawWeatherCopy(context, width, height, input.copy, fontScale);
+      renderWeatherScene(context, scene, width, height, time, animate, !dynamic, true);
       frames += 1;
     } catch (error) {
       fail(error);
@@ -126,38 +120,6 @@ function clipRoundedCard(context: CanvasRenderingContext2D, width: number, heigh
   context.quadraticCurveTo(0, 0, r, 0);
   context.closePath();
   context.clip();
-}
-
-function drawWeatherCopy(context: CanvasRenderingContext2D, width: number, height: number, copy: WeatherCanvasCopy, scale: number): void {
-  const x = 9;
-  const maxWidth = Math.max(1, width - 18);
-  context.save();
-  context.textBaseline = "top";
-  context.fillStyle = "rgba(29,34,40,.62)";
-  context.font = `700 ${Math.round(12 * scale)}px sans-serif`;
-  context.fillText(copy.label, x, 7, maxWidth);
-  if (copy.stale) {
-    context.textAlign = "right";
-    context.font = `650 ${Math.round(9 * scale)}px sans-serif`;
-    context.fillStyle = "#805428";
-    context.fillText("较早天气", width - x, 8, maxWidth * .55);
-    context.textAlign = "left";
-  } else if (copy.high) {
-    context.textAlign = "right";
-    context.font = `650 ${Math.round(10 * scale)}px sans-serif`;
-    context.fillStyle = "rgba(29,34,40,.58)";
-    context.fillText(copy.high, width - x, 8, maxWidth * .55);
-    context.textAlign = "left";
-  }
-  context.fillStyle = "#1d2228";
-  context.font = `800 ${Math.round(24 * scale)}px sans-serif`;
-  context.fillText(copy.temperature, x, 27, maxWidth);
-  context.font = `700 ${Math.round(12 * scale)}px sans-serif`;
-  context.fillText(copy.summary, x, 60, maxWidth);
-  context.fillStyle = "rgba(29,34,40,.58)";
-  context.font = `500 ${Math.round(11 * scale)}px sans-serif`;
-  context.fillText(copy.meta, x, Math.max(86, height - Math.round(18 * scale)), maxWidth);
-  context.restore();
 }
 
 function measureCanvas(page: object): Promise<{ node: MiniCanvasNode; width: number; height: number }> {

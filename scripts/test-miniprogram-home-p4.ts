@@ -84,7 +84,8 @@ assert.match(markup, /推荐/);
 assert.match(markup, /衣橱/);
 assert.match(markup, /scroll-x/);
 assert.match(markup, /canvas[^>]+type="2d"/);
-assert.match(markup, /weather-copy-overlay \{\{canvasVisible \? 'is-canvas-copy' : ''\}\}/, "native weather copy must remain visible whenever Canvas is unavailable");
+assert.match(markup, /cover-view class="weather-copy-overlay/, "native weather copy must remain visible above decorative Canvas");
+assert.doesNotMatch(markup, /weather-copy-overlay \{\{canvasVisible/, "Canvas visibility must never hide legal weather text");
 assert.match(markup, /class="recommendation-toolbar"/, "no-plan recommendation heading and date strip must share the App toolbar");
 assert.match(markup, /class="recommendation-actions"/, "recommendation cards must expose the App primary and detail action pair");
 assert.match(markup, /bindtap="applyRecommendation"/, "the card primary action must submit directly instead of masquerading as a detail button");
@@ -103,7 +104,7 @@ assert.match(styles, /\.weather-canvas-host[^}]+z-index:\s*0/, "Canvas must rema
 assert.match(styles, /\.location-entry[^}]+justify-content:\s*flex-start/, "the single city entry must align to the App's left edge");
 assert.match(styles, /\.weather-canvas-host[^}]+inset:\s*0/, "today Canvas must fill the complete weather card");
 assert.match(styles, /\.weather-copy-overlay\s*\{[^}]+opacity:\s*1/, "static and fallback weather states must retain native copy");
-assert.match(styles, /\.weather-copy-overlay\.is-canvas-copy\s*\{[^}]+opacity:\s*0/, "dynamic Canvas may hide only the duplicate native copy");
+assert.doesNotMatch(styles, /weather-copy-overlay\.is-canvas-copy|weather-copy-overlay[^}]+opacity:\s*0/, "native weather text must never be hidden behind Canvas");
 assert.match(styles, /\.weather-shell[^}]+background:\s*var\(--color-surface\)/, "the weather module must use the App surface without a gradient pedestal");
 assert.match(styles, /\.section-switch[^}]+height:\s*104rpx[^}]+border-radius:\s*28rpx/, "the segmented control shell must match App 52px height and 14px radius");
 assert.match(styles, /\.section-switch__item[^}]+height:\s*88rpx[^}]+border-radius:\s*22rpx/, "the segmented buttons must match App 44px height and 11px radius");
@@ -113,6 +114,8 @@ assert.match(visualFixture, /recommendationCards:\s*\[recommendationStable, reco
 assert.match(visualFixture, /temperature:\s*"31°",\s*high:\s*"最高 32°"/, "today fixture must use current temperature plus the App high-temperature row");
 assert.match(visualFixture, /"canvas-failure"[\s\S]+canvasVisible:\s*false/, "visual evidence must cover Canvas failure with native copy");
 assert.match(visualFixture, /create:\s*\{[\s\S]+createSheetOpen:\s*true/, "visual evidence must cover the center create sheet without the tab bar");
+assert.match(visualFixture, /stale:[\s\S]+high:\s*"最高 32°"[\s\S]+weatherAttribution:\s*"[^"]*缓存 7\/18 22:10"/, "stale evidence must retain the high and cache update time");
+assert.match(visualFixture, /locationless:[\s\S]+tomorrowWeather:[\s\S]+status:\s*"unavailable"[\s\S]+weatherAttribution:\s*""/, "locationless evidence must remove provider weather from both days");
 assert.match(styles, /\.city-search input\s*\{[^}]+box-sizing:\s*border-box/, "city search must not overflow narrow sheets");
 assert.equal(page.match(/\n\s*openIntake\(/g)?.length, 1, "home must expose one intake handler");
 assert.doesNotMatch(model, /from "@wardrobe\//, "mini runtime must consume the generated shared bridge");
@@ -134,7 +137,8 @@ assert.match(markup, /恢复备选/);
 assert.doesNotMatch(markup, /天气回退|服务端|事务|读回|主计划|保护|不会自动更换/);
 assert.match(canvasRuntime, /WEATHER_CANVAS_TARGET_FPS/);
 assert.match(canvasRuntime, /Math\.min\(WEATHER_CANVAS_MAX_DPR/);
-assert.match(canvasRuntime, /drawWeatherCopy\(context, width, height, input\.copy/, "the full-card native Canvas host must redraw visible copy after each engine frame");
+assert.doesNotMatch(canvasRuntime, /drawWeatherCopy|input\.copy/, "the shared Canvas host must draw decoration only; native controls own legal weather copy");
+assert.match(canvasRuntime, /renderWeatherScene\(context, scene, width, height, time, animate, !dynamic, true\)/, "mini host must preserve the shared effect order on a transparent ambient layer");
 assert.doesNotMatch(canvasRuntime, /setData/);
 
 const replacementFixture = buildReplacementChoices(
