@@ -65,7 +65,7 @@ export function WardoraHomeView({ controller, garments, renderWardrobeContent }:
       </div>
 
       <HomeFeedTabPanels activeTab={feedTab} recommendation={(
-      <section ref={recommendationRef} className="scroll-mt-4 min-w-0 py-1" data-testid="home-recommendation-module">
+      <section ref={recommendationRef} className="scroll-mt-4 min-w-0 px-px py-1" data-testid="home-recommendation-module">
         {vm.plan ? (
           <div>
             <SectionHeading title={vm.plan.kind === "actual_wear" ? "今天已穿" : "当日穿搭"} subtitle={`${formatShortDate(controller.selectedDate)} · ${vm.plan.kind === "actual_wear" ? "实际穿着已记录" : "计划保护中"}`} />
@@ -86,7 +86,7 @@ export function WardoraHomeView({ controller, garments, renderWardrobeContent }:
         ) : !vm.plan && vm.recommendation.status === "protected" ? (
           <RecommendationState title="当日穿搭已保护" message="天气或推荐变化不会自动覆盖已有安排。" />
         ) : !vm.plan && readyRecommendation ? (
-          <div className="no-scrollbar -mx-4 flex snap-x snap-mandatory gap-2.5 overflow-x-auto px-4 pb-2 pt-0.5 [touch-action:pan-x_pan-y]" aria-label="穿搭推荐，横向滚动" data-testid="home-recommendation-rail">
+          <div className="no-scrollbar flex snap-x snap-mandatory gap-2.5 overflow-x-auto pb-2 pt-0.5 [touch-action:pan-x_pan-y]" aria-label="穿搭推荐，横向滚动" data-testid="home-recommendation-rail">
             {readyRecommendation.candidates.map((candidate) => (
               <RecommendationCard key={candidate.candidateId} candidate={candidate} garmentById={garmentById} contextMode={readyRecommendation.contextMode} />
             ))}
@@ -210,7 +210,7 @@ function SectionHeading({ title, subtitle, action, compact = false }: { title: s
 function RecommendationCard({ candidate, garmentById, contextMode }: { candidate: HomeRecommendationCandidate; garmentById: ReadonlyMap<string, HomeGarment>; contextMode: "forecast" | "locationless" | "weather_fallback" }) {
   const garments = candidate.garmentIds.map((id) => garmentById.get(id)).filter((item): item is HomeGarment => Boolean(item));
   const target = objectiveLabel(candidate.objective);
-  return <article className="ui-card grid w-[310px] min-w-[310px] max-w-[calc(100vw-50px)] basis-[310px] snap-start grid-rows-[18px_78px_20px_16px_34px_32px] gap-y-1.5 p-3.5 !shadow-none" data-testid="home-recommendation-card">
+  return <article className="ui-card grid w-[310px] min-w-[310px] max-w-[calc(100vw-50px)] basis-[310px] snap-start grid-rows-[18px_78px_20px_16px_34px_32px] gap-y-1.5 p-[17px] !shadow-none" data-testid="home-recommendation-card">
     <div data-rec-row="target" className="flex h-[18px] items-center justify-between gap-3"><span className="text-[13px] font-bold leading-[18px] text-denim">{target}</span><span className="text-[10px] font-medium leading-[18px] text-ink/55">{contextLabel(contextMode)}</span></div>
     <div className="grid h-[78px] grid-cols-[1.15fr_.9fr_.72fr] gap-1.5" aria-label={garments.map((item) => item.name).join("、")}>
       {garments.slice(0, 3).map((item) => <div key={item.id} className="relative min-w-0 overflow-hidden rounded-[11px] bg-mist"><OnlineAssetImage asset={item.imageAsset} variant="thumbnail" alt={item.name} className="h-full w-full" imageClassName="object-cover" fallback={<div className="grid h-full place-items-center text-ink/25"><Shirt size={25} /></div>} /><span className="absolute inset-x-0 bottom-0 truncate bg-gradient-to-t from-black/55 to-transparent px-2 pb-1.5 pt-5 text-[10px] font-semibold text-white">{item.name}</span></div>)}

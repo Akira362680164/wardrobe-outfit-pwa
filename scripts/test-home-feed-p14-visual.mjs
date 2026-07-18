@@ -128,15 +128,32 @@ try {
       return tops.length > 1 && Math.max(...tops) - Math.min(...tops) <= 1;
     });
     const shadows = [...document.querySelectorAll('[data-testid="home-weather-module"], [data-testid="home-recommendation-card"]')].map((element) => getComputedStyle(element).boxShadow);
+    const recommendation = document.querySelector('[data-testid="home-recommendation-module"]');
+    const recommendationToolbar = document.querySelector('[data-testid="home-recommendation-toolbar"]');
+    const card = document.querySelector('[data-testid="home-recommendation-card"]');
+    const target = card?.querySelector('[data-rec-row="target"]');
+    const nav = document.querySelector('[data-testid="home-feed-navigation"]');
+    const activeNav = nav?.querySelector('[aria-current="page"]');
+    const navRect = nav?.getBoundingClientRect();
+    const activeNavRect = activeNav?.getBoundingClientRect();
+    const number = (value) => Number.parseFloat(value || "0");
     return {
       weatherRowsAligned: aligned('[data-testid^="home-weather-"]', ['data-weather-row="label"', 'data-weather-row="temperature"', 'data-weather-row="summary"', 'data-weather-row="meta"']),
       recommendationRowsAligned: aligned('[data-testid="home-recommendation-rail"]', ['data-rec-row="target"', 'data-rec-row="title"', 'data-rec-row="garments"', 'data-rec-row="reason"', 'data-rec-row="risk"']),
       shadows,
+      firstLevelLeft: recommendation?.getBoundingClientRect().left,
+      toolbarLeft: recommendationToolbar?.getBoundingClientRect().left,
+      cardLeft: card?.getBoundingClientRect().left,
+      cardInnerInset: card && target ? target.getBoundingClientRect().left - card.getBoundingClientRect().left : 0,
+      navRadii: nav && activeNav && navRect && activeNavRect ? { outer: number(getComputedStyle(nav).borderTopLeftRadius), active: number(getComputedStyle(activeNav).borderTopLeftRadius), inset: activeNavRect.left - navRect.left } : null,
     };
   });
   assert(visualGeometry.weatherRowsAligned, "weather text rows are not aligned");
   assert(visualGeometry.recommendationRowsAligned, "recommendation text rows are not aligned");
   assert(visualGeometry.shadows.every((value) => value === "none" || !/rgba\([^)]*,\s*(?:0\.\d*[1-9]\d*|1)\)/.test(value)), `unexpected card shadow: ${visualGeometry.shadows.join(" | ")}`);
+  assert(Math.abs(visualGeometry.toolbarLeft - 17) <= 1 && Math.abs(visualGeometry.cardLeft - 17) <= 1, `first-level recommendation inset invalid: ${JSON.stringify(visualGeometry)}`);
+  assert(visualGeometry.cardInnerInset >= 16, `recommendation card inner padding invalid: ${visualGeometry.cardInnerInset}`);
+  assert(visualGeometry.navRadii && Math.abs((visualGeometry.navRadii.outer - visualGeometry.navRadii.active) - visualGeometry.navRadii.inset) <= 1, `bottom-nav radii are not concentric: ${JSON.stringify(visualGeometry.navRadii)}`);
 
   const rail = page.getByTestId("home-recommendation-rail");
   assert((await rail.evaluate((node) => getComputedStyle(node).touchAction)).includes("pan-y"), "recommendation rail does not preserve vertical pan");

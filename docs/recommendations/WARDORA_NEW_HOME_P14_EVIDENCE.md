@@ -32,6 +32,7 @@
 - 尺寸/字体：360、390、430px；100%、130%。
 - 状态：ready forecast（真实候选与图片）、empty locationless、weather fallback、protected plan、actual wear。
 - 检查项：问候、唯一地点、双天气卡、分栏、日期条从属位置、横向推荐卡、底栏、页面横向溢出、文字遮挡、纵向滚动优先、console/page/runtime unexpected error。
+- 视觉几何附加断言：天气/推荐固定文字行轨道；一级推荐工具栏与首卡左边距 `17px`；推荐卡内容内缩至少 `16px`；底栏激活项满足 `activeRadius = outerRadius - inset`；天气和推荐卡不存在可见 box-shadow 横带。
 - 独立只读视觉复审：首轮旧图 FAIL；整改后严格 390×844 ready 首屏 PASS，剩余矩阵由自动化和 Android 门禁继续验证。
 
 ## Android Fixture 门禁

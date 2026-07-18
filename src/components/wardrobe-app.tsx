@@ -5802,7 +5802,7 @@ function HomeFeedNavButton({ label, icon: Icon, active = false, onClick }: { lab
   return (
     <AppPressable
       feedback="control"
-      className={`grid min-h-14 place-content-center justify-items-center gap-1 rounded-2xl px-1 text-[11px] font-semibold ${active ? "bg-denim text-white" : "text-ink/62"}`}
+      className={`grid min-h-14 place-content-center justify-items-center gap-1 rounded-[var(--ui-radius-nav-active)] px-1 text-[11px] font-semibold ${active ? "bg-denim text-white" : "text-ink/62"}`}
       onClick={onClick}
       aria-current={active ? "page" : undefined}
     >
