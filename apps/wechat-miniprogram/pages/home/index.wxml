@@ -97,7 +97,7 @@
       <view class="city-search"><input value="{{cityQuery}}" placeholder="至少输入 2 个字搜索城市" bindinput="inputCityQuery" confirm-type="search" bindconfirm="searchCity"/><button loading="{{citySearching}}" disabled="{{citySearching}}" bindtap="searchCity">搜索</button></view>
       <view wx:if="{{locationMessage}}" class="location-message">{{locationMessage}}</view>
       <view class="city-candidates"><view wx:for="{{cityCandidates}}" wx:key="locationId" class="city-candidate"><view class="city-candidate__name">{{item.displayName}}</view><view class="city-candidate__actions"><button data-id="{{item.locationId}}" data-kind="temporary" disabled="{{locationBusy}}" bindtap="chooseCity">临时至明日</button><button class="is-primary" data-id="{{item.locationId}}" data-kind="home" disabled="{{locationBusy}}" bindtap="chooseCity">设为常驻</button></view></view></view>
-      <button wx:if="{{locationSnapshot.override.override}}" class="clear-temporary" disabled="{{locationBusy}}" bindtap="clearTemporary">恢复常驻城市</button>
+      <button wx:if="{{locationSnapshot && locationSnapshot.override && locationSnapshot.override.override}}" class="clear-temporary" disabled="{{locationBusy}}" bindtap="clearTemporary">恢复常驻城市</button>
     </view>
   </ui-sheet>
 </view>
