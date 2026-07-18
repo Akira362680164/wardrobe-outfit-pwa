@@ -7,6 +7,13 @@
 - 查看某次提交详情：`git show <commit>`
 - 新记录继续置顶，默认控制在 3–5 条短 bullet；原始测试日志、命令输出和长证据写入专项 evidence 文档或交由 Git 保存。
 
+## 2026-07-18 / v2.1.28-test / P1.3.1-C — 证据补强与稳定态清理
+
+- 修正 locationless Fixture 的非法天气码，并以 `WeatherOverviewSchema` 在响应边界校验；新增只含方法、固定路径、状态码与序号的测试 trace，浏览器/Android manifest 均以真实服务端流水核对。
+- 浏览器与 `wardrobe-test` Android 15/API 35 重新覆盖首次地点失败→用户重试→上海恢复、清除城市真实 DELETE `503→409→200`、pending Back/遮罩保护、人类可读错误、合法 locationless 空天气卡、前后台恢复及稳定 130% 截图；runtime/loading/fatal 与非预期浏览器失败均为 0。
+- `test:logic:home-feed-p1`、`test:logic:home-feed-p13`、`typecheck`、UI contracts、browser P1.3、Android Fixture 均通过。风险等级 High（Android/网络故障证据）；未触发 subagent：用户未通知。
+- 正式 APK 未重建或覆盖；仅复核 `com.wardrobe.outfit` / `2.1.28-test` / `20128` / `CN=fangzheng` / SHA-256 `c0dd62291a60ecf892715dbf45c66ea33ede48c0addef4bb391e85b8ad7ebf54`，业务 API URL 仅为生产域名，未发现指向 Fixture/回环地址的业务 API URL。本批不改 `src/**`、服务端、共享合同、小程序、数据库或生产部署。
+
 ## 2026-07-18 / v2.1.28-test / P1.3.1-B — 浏览器与 Android Fixture 收口
 
 - 保留并复核 `scripts/test-home-feed-p13-browser.mjs`：360/375/390/412/430px、130% 字体、地点重试及清除常驻城市 503→409→200 全链通过，`pageErrors`/`consoleErrors`/`requestFailures` 均为 0。

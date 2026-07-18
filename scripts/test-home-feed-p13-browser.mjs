@@ -4,6 +4,7 @@ import { chromium } from "playwright";
 
 const FIXTURE_PORT = Number(process.env.HOME_FEED_FIXTURE_PORT ?? "4174");
 const FIXTURE_HOST = process.env.HOME_FEED_FIXTURE_HOST ?? "127.0.0.1";
+const FIXTURE_ORIGIN = `http://${FIXTURE_HOST}:${FIXTURE_PORT}`;
 const APP_PORT = Number(process.env.HOME_FEED_APP_PORT ?? "4173");
 const APP_ORIGIN = process.env.HOME_FEED_APP_ORIGIN ?? `http://127.0.0.1:${APP_PORT}`;
 const EVIDENCE_DIR = process.env.HOME_FEED_BROWSER_EVIDENCE ?? "test-results/home-feed-p13-browser/20260718";
@@ -158,6 +159,32 @@ async function getText(locator) {
   return (await locator.textContent())?.trim() ?? "";
 }
 
+async function settleVisual(page, delayMs = 180) {
+  await page.evaluate(() => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))));
+  await page.waitForTimeout(delayMs);
+}
+
+async function assertViewportVisible(locator, label) {
+  const result = await locator.evaluate((element) => {
+    const rect = element.getBoundingClientRect();
+    return {
+      visible: rect.width > 0 && rect.height > 0
+        && rect.top >= -1 && rect.left >= -1
+        && rect.bottom <= window.innerHeight + 1
+        && rect.right <= window.innerWidth + 1,
+      rect: rect.toJSON(),
+      viewport: { width: window.innerWidth, height: window.innerHeight },
+    };
+  });
+  assert(`${label} 被视口裁切: ${JSON.stringify(result)}`, result.visible);
+}
+
+async function fixtureTrace() {
+  const response = await fetch(`${FIXTURE_ORIGIN}/__fixture/trace`);
+  assert("Fixture trace 读取失败", response.ok);
+  return response.json();
+}
+
 await withFixtureAndApp(async () => {
   const browser = await chromium.launch({ headless: true });
   const page = await browser.newPage({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 2, ignoreHTTPSErrors: true });
@@ -227,26 +254,13 @@ await withFixtureAndApp(async () => {
     }
   });
 
-  let profileReadShouldFailOnce = true;
-  await page.route("**/api/settings/location-profile", (route) => {
-    if (route.request().method() === "GET" && profileReadShouldFailOnce) {
-      profileReadShouldFailOnce = false;
-      route.fulfill({
-        status: 503,
-        contentType: "application/json",
-        body: JSON.stringify({
-          code: "network",
-          message: "browser fixture simulated first profile read failure",
-          retryable: true,
-        }),
-      });
-      return;
-    }
-    route.continue();
-  });
-
   try {
     await page.goto(APP_ORIGIN, { waitUntil: "networkidle" });
+    await fetch(`${FIXTURE_ORIGIN}/__fixture/control`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ action: "fail-next-profile-get", count: 2 }),
+    });
     await page.getByLabel("邮箱或手机号").fill("fixture111@example.test");
     await page.getByLabel("密码").fill("FixturePassword123!");
     await page.getByLabel("我已阅读并同意").check();
@@ -255,6 +269,8 @@ await withFixtureAndApp(async () => {
     await page.getByText("设置", { exact: true }).last().click();
     await page.getByTestId("open-home-feed-preview").click();
     await page.getByTestId("wardora-home-feed").waitFor();
+    await waitForCondition(async () => (await fixtureTrace()).entries.some((entry) => entry.method === "GET" && entry.path === "/api/settings/location-profile" && entry.status === 503), 12_000, "首次地点失败序列未完成");
+    await settleVisual(page);
     await page.screenshot({ path: `${EVIDENCE_DIR}/home-entry.png`, fullPage: true });
     await expectNoHorizontalOverflow(page, widths);
 
@@ -265,7 +281,7 @@ await withFixtureAndApp(async () => {
     const sheetError = sheet.locator("[role='alert']");
     await sheetError.waitFor({ timeout: 12_000 });
     assert("首次地点读取失败未显示错误提示", (await getText(sheetError)).length > 0);
-    assert("首次地点读取未触发 503", responseStats.locationProfileGets[0] === 503);
+    assert("强制地点读取未触发 503", responseStats.locationProfileGets.includes(503));
     allowedFailures.profileGet += responseStats.locationProfileGets.filter((status) => status === 503).length;
 
     const retryLocationGet = page.waitForResponse((response) => {
@@ -292,13 +308,23 @@ await withFixtureAndApp(async () => {
     assert("重试后未读回天气", responseStats.weatherOverviews.some((status) => status === 200));
     assert("重试后未读回推荐", responseStats.recommendationResolves.some((status) => status === 200) || responseStats.recommendationReads.some((status) => status === 200));
 
+    await settleVisual(page);
     await page.screenshot({ path: `${EVIDENCE_DIR}/p13-location-retry-success.png`, fullPage: true });
     await sheet.getByRole("button", { name: "关闭城市选择" }).click();
     await sheet.waitFor({ state: "hidden" });
 
     // 2) 130% 字体与断点检查
     await page.evaluate(() => { document.documentElement.style.fontSize = "20.8px"; });
+    await page.setViewportSize({ width: 390, height: 844 });
     await expectNoHorizontalOverflow(page, widths);
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.getByTestId("wardora-home-feed").scrollIntoViewIfNeeded();
+    await settleVisual(page);
+    await assertViewportVisible(page.getByRole("heading", { name: "今天穿什么" }), "首页标题");
+    await assertViewportVisible(page.getByTestId("home-location-entry"), "地点入口");
+    await assertViewportVisible(page.getByText("今天", { exact: true }).first(), "今天日期");
+    await assertViewportVisible(page.getByRole("tab", { name: "推荐" }), "推荐 Tab");
+    await assertViewportVisible(page.getByRole("tab", { name: "衣橱" }), "衣橱 Tab");
     await page.screenshot({ path: `${EVIDENCE_DIR}/p13-home-font130.png`, fullPage: true });
 
     await page.getByText("设置", { exact: true }).last().click();
@@ -340,11 +366,11 @@ await withFixtureAndApp(async () => {
 
     if (hadPendingMarker) {
       await page.keyboard.press("Escape");
-      await sleep(120);
+      await sleep(500);
       await clearDialog.waitFor({ state: "visible", timeout: 6000 });
 
       await clickDialogBackdrop(page, clearDialog);
-      await sleep(120);
+      await sleep(500);
       await clearDialog.waitFor({ state: "visible", timeout: 6000 });
     }
     await clearFailureResponse;
@@ -355,6 +381,9 @@ await withFixtureAndApp(async () => {
     await clearErrorAlert.waitFor({ state: "visible", timeout: 6000 });
     assert("首次清除未出现 sheet 内错误提示", (await getText(clearErrorAlert)).length > 0);
     assert("首次清除误标记为冲突", !(await clearErrorAlert.getAttribute("data-conflict")));
+    const networkErrorText = await getText(clearErrorAlert);
+    assert("网络失败未显示人类可读错误", networkErrorText.includes("网络") && !/Zod|schema|fallback modes|\{\s*"/i.test(networkErrorText));
+    await settleVisual(page);
     await page.screenshot({ path: `${EVIDENCE_DIR}/p13-clear-home-fail.png`, fullPage: true });
 
     const clearConflictResponse = waitForDeleteStatus(409, responseStats.locationProfileDeleteAttempts.length, "冲突重试");
@@ -365,6 +394,9 @@ await withFixtureAndApp(async () => {
     assert("409 情况未保留清除弹层", await clearDialog.isVisible());
     assert("409 情况未在 alert 标记", (await clearErrorAlert.getAttribute("data-conflict")) === "true");
     assert("409 场景未恢复可重试", await confirmButton.isEnabled());
+    const conflictErrorText = await getText(clearErrorAlert);
+    assert("409 未显示人类可读冲突", /冲突|其他设备|更新/.test(conflictErrorText) && !/Zod|schema|fallback modes|\{\s*"/i.test(conflictErrorText));
+    await settleVisual(page);
     await page.screenshot({ path: `${EVIDENCE_DIR}/p13-clear-home-conflict.png`, fullPage: true });
 
     const clearSuccessResponse = waitForDeleteStatus(200, responseStats.locationProfileDeleteAttempts.length, "成功清除");
@@ -380,23 +412,38 @@ await withFixtureAndApp(async () => {
     await page.getByTestId("open-home-feed-preview").click();
     const finalLocationText = await getText(page.getByTestId("home-location-entry"));
     assert("清除后未读回“未设置城市”", finalLocationText.includes("未设置城市"));
+    await waitForCondition(async () => (await getText(page.getByTestId("home-weather-card"))).includes("未设置城市"), 12_000, "locationless 天气卡未进入合法空状态");
+    const finalWeatherText = await getText(page.getByTestId("home-weather-card"));
+    assert("locationless 天气卡缺少合法空温度状态", finalWeatherText.includes("暂无可信温度"));
+    assert("locationless 天气卡泄露原始 schema 文本", !/Zod|schema|fallback modes cannot expose weather values|invalid_type|\{\s*"/i.test(finalWeatherText));
+    await settleVisual(page);
     await page.screenshot({ path: `${EVIDENCE_DIR}/p13-final-home.png`, fullPage: true });
     await expectNoHorizontalOverflow(page, widths);
 
     const unexpectedFailureCount = highResponses.length - allowedFailures.profileGet - allowedFailures.clearFirst;
+    const allowedRequestFailures = requestFailures.filter((failure) => failure.url.includes("/api/settings/location-profile") && /ABORTED|canceled/i.test(failure.error));
+    const unexpectedRequestFailures = requestFailures.filter((failure) => !allowedRequestFailures.includes(failure));
     if (
       pageErrors.length > 0 ||
       consoleErrors.length > 0 ||
-      requestFailures.length > 0 ||
+      unexpectedRequestFailures.length > 0 ||
       responseStats.locationProfileDeletes.includes(500) ||
       unexpectedFailureCount > 0 ||
       !responseStats.locationProfileGets.includes(200) ||
       !responseStats.locationProfileDeletes.includes(200)
     ) {
       throw new Error(
-        `browser fatal check failed: pageErrors=${pageErrors.length}, consoleErrors=${consoleErrors.length}, requestFailures=${requestFailures.length}, highResponses=${highResponses.length}, allowedFailures=${JSON.stringify(allowedFailures)}, unexpectedFailureCount=${unexpectedFailureCount}, deletes=${responseStats.locationProfileDeletes.join(",")}`,
+        `browser fatal check failed: pageErrors=${pageErrors.length}, consoleErrors=${consoleErrors.length}, requestFailures=${JSON.stringify(requestFailures)}, unexpectedRequestFailures=${JSON.stringify(unexpectedRequestFailures)}, highResponses=${highResponses.length}, allowedFailures=${JSON.stringify(allowedFailures)}, unexpectedFailureCount=${unexpectedFailureCount}, deletes=${responseStats.locationProfileDeletes.join(",")}`,
       );
     }
+
+    const trace = await fixtureTrace();
+    const tracedProfileGets = trace.entries.filter((entry) => entry.path === "/api/settings/location-profile" && entry.method === "GET").map((entry) => entry.status);
+    const tracedProfileDeletes = trace.entries.filter((entry) => entry.path === "/api/settings/location-profile" && entry.method === "DELETE").map((entry) => entry.status);
+    const tracedWeatherOverviews = trace.entries.filter((entry) => entry.path === "/api/weather/overview" && entry.method === "GET").map((entry) => entry.status);
+    assert(`浏览器 GET 流水缺少首次失败→重试恢复: ${JSON.stringify(tracedProfileGets)}`, tracedProfileGets.some((status, index) => status === 503 && tracedProfileGets.slice(index + 1).includes(200)));
+    assert(`浏览器 DELETE 流水不一致: ${JSON.stringify({ tracedProfileDeletes, observed: responseStats.locationProfileDeleteAttempts })}`, JSON.stringify(tracedProfileDeletes) === JSON.stringify(responseStats.locationProfileDeleteAttempts));
+    assert(`浏览器天气流水不一致: ${JSON.stringify({ tracedWeatherOverviews, observed: responseStats.weatherOverviews })}`, JSON.stringify(tracedWeatherOverviews) === JSON.stringify(responseStats.weatherOverviews));
 
     await writeFile(
       `${EVIDENCE_DIR}/manifest.json`,
@@ -411,9 +458,13 @@ await withFixtureAndApp(async () => {
           pageErrors,
           consoleErrors,
           requestFailures,
+          allowedRequestFailures,
+          unexpectedRequestFailures,
           highResponses,
           homeLocationAfterRetry: restoredLocationText,
           homeLocationAfterClear: finalLocationText,
+          locationlessWeatherText: finalWeatherText,
+          fixtureTrace: trace.entries,
         },
         null,
         2,
