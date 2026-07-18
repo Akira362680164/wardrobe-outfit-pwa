@@ -65,4 +65,4 @@ button::after { border: 0; }
 .home-skeleton { display: grid; gap: 18rpx; }.skeleton-line,.skeleton-weather { border-radius: 18rpx; background: rgba(29,34,40,.08); animation: home-pulse 1.2s ease-in-out infinite alternate; }.skeleton-line { width: 48%; height: 42rpx; }.skeleton-line--wide { width: 72%; }.skeleton-weather { height: 248rpx; border-radius: 34rpx; }
 @keyframes home-pulse { from { opacity: .45; } to { opacity: .82; } }
 
-@media (prefers-reduced-motion: reduce) { .pressable { transform: none; }.home-skeleton > * { animation: none; }.section-switch__item,.date-chip { transition: none; } }
+@media (prefers-reduced-motion: reduce) { .pressable { transform: none; }.skeleton-line,.skeleton-weather { animation: none; }.section-switch__item,.date-chip { transition: none; } }

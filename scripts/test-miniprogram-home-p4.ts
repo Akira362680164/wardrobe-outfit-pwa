@@ -62,11 +62,13 @@ assert.equal(shouldRequestMiniLocationPermission({ sheetOpened: false, purposeSe
 
 const page = readFileSync("apps/wechat-miniprogram/pages/home/index.ts", "utf8");
 const markup = readFileSync("apps/wechat-miniprogram/pages/home/index.wxml", "utf8");
+const styles = readFileSync("apps/wechat-miniprogram/pages/home/index.wxss", "utf8");
 assert.doesNotMatch(page, /openWardrobe\(\);/, "home must no longer redirect to the wardrobe tab");
 assert.doesNotMatch(page, /on(?:Load|Show)[\s\S]{0,900}getLocation\s*\(/, "home lifecycle must not automatically request location");
 assert.match(markup, /推荐/);
 assert.match(markup, /衣橱/);
 assert.match(markup, /scroll-x/);
 assert.match(markup, /canvas[^>]+type="2d"/);
+assert.doesNotMatch(styles, />\s*\*/, "WXSS does not accept a universal child selector");
 
 console.log("miniprogram home P4 fixture tests passed");
