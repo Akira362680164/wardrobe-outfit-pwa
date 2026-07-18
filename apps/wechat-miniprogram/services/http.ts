@@ -1,4 +1,5 @@
 import { clearSession, getAccessToken, getSession, setSession, type SessionState } from "../stores/session";
+import type { MiniAbortSignal } from "../utils/request-cancellation";
 
 export type HttpMethod = "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
 
@@ -9,6 +10,7 @@ export interface RequestOptions {
   auth?: boolean;
   toast?: boolean;
   timeoutMs?: number;
+  signal?: MiniAbortSignal;
 }
 
 export interface UploadOptions {
@@ -60,20 +62,37 @@ async function performRequest<T>(options: RequestOptions, replayed: boolean): Pr
   const header = buildHeaders(options.auth !== false, requestId);
 
   return new Promise<T>((resolve, reject) => {
-    wx.request<T>({
+    if (options.signal?.aborted) {
+      reject(new Error("请求已取消"));
+      return;
+    }
+    let settled = false;
+    const cleanup = () => options.signal?.removeEventListener("abort", abort);
+    const task = wx.request<T>({
       url: buildUrl(options.path),
       method: options.method ?? "GET",
       data: options.data,
       header,
       timeout: options.timeoutMs ?? 30000,
       success: (result) => {
+        settled = true;
+        cleanup();
         handleResponse(result.statusCode, result.data, result.header, requestId, options.toast !== false, options.auth !== false, replayed)
           .then(async (data): Promise<T> => data === RETRY_AFTER_REFRESH ? performRequest<T>(options, true) : data)
           .then(resolve)
           .catch(reject);
       },
-      fail: (error) => reject(toNetworkError(error, requestId, options.toast !== false)),
+      fail: (error) => {
+        settled = true;
+        cleanup();
+        reject(options.signal?.aborted ? new Error("请求已取消") : toNetworkError(error, requestId, options.toast !== false));
+      },
     });
+    function abort() {
+      if (settled) return;
+      task.abort();
+    }
+    options.signal?.addEventListener("abort", abort, { once: true });
   });
 }
 

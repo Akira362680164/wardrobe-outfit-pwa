@@ -131,7 +131,7 @@ declare const wx: {
     timeout?: number;
     success(result: WechatMiniprogram.RequestSuccessCallbackResult<T>): void;
     fail(error: unknown): void;
-  }): void;
+  }): { abort(): void };
   uploadFile(options: {
     url: string;
     filePath: string;

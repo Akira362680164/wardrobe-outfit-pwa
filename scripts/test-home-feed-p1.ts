@@ -125,6 +125,46 @@ const tomorrowWeather = buildHomeFeedViewModel(input({
 assert.equal(tomorrowWeather.weather.status === "ready" ? tomorrowWeather.weather.temperatureC : -1, undefined);
 assert.equal(tomorrowWeather.weather.status === "ready" ? tomorrowWeather.weather.visual?.code : null, "305");
 
+const dualWeather = buildHomeFeedViewModel(input({
+  garments: [...readyGarments], location,
+  weather: { status: "ready", data: forecast },
+  weatherByDate: {
+    [date]: { status: "ready", data: forecast },
+    "2026-07-18": { status: "ready", data: { ...forecast, targetDate: "2026-07-18", weatherEvidence: { ...forecast.weatherEvidence, currentTemperatureC: 35, weatherCode: "101", dayWeatherCode: "305", temperatureMinC: 22, temperatureMaxC: 29, summary: "小雨" } } },
+  },
+}));
+assert.equal(dualWeather.todayWeather.status === "ready" ? dualWeather.todayWeather.temperatureC : null, 30);
+assert.equal(dualWeather.todayWeather.status === "ready" ? dualWeather.todayWeather.visual?.code : null, "101");
+assert.equal(dualWeather.tomorrowWeather.status === "ready" ? dualWeather.tomorrowWeather.temperatureC : null, undefined);
+assert.equal(dualWeather.tomorrowWeather.status === "ready" ? dualWeather.tomorrowWeather.visual?.code : null, "305");
+
+const travelForecast = buildHomeFeedViewModel(input({
+  garments: [...readyGarments],
+  location: { kind: "none", revision: 0 },
+  weather: { status: "ready", data: { ...forecast, resolvedLocation: { locationId: "101010100", displayName: "北京", timezone: "Asia/Shanghai" }, locationSource: "travel" } },
+  recommendation: { status: "ready", data: { ...recommendation, recommendation: { ...recommendation.recommendation, resolvedLocation: { locationId: "101010100", displayName: "北京", timezone: "Asia/Shanghai" }, locationSource: "travel", weatherUpdatedAt: forecast.weatherEvidence.weatherUpdatedAt, endpointFreshness: [], attribution: forecast.attribution } } },
+}));
+assert.equal(travelForecast.location.kind, "travel", "行程天气必须覆盖缺失的常驻城市投影");
+assert.equal(travelForecast.location.kind === "travel" ? travelForecast.location.displayName : "", "北京");
+assert.equal(travelForecast.normalState, "home-ready-forecast", "合法行程地点不能被标为 locationless");
+assert.equal(travelForecast.recommendation.status === "ready" ? travelForecast.recommendation.locationSource : null, "travel");
+
+const staleAttribution = buildHomeFeedViewModel(input({
+  location,
+  weather: { status: "ready", data: { ...forecast, attribution: { label: "天气服务由 QWeather 提供", url: "https://www.qweather.com", sources: ["fixture"], license: ["test"] }, endpointFreshness: [{ endpoint: "now", freshness: "stale", providerUpdatedAt: "2026-07-16T22:00:00.000Z", fetchedAt: "2026-07-16T22:00:00.000Z", expiresAt: "2026-07-16T23:00:00.000Z", staleUntil: "2026-07-17T02:00:00.000Z" }] } },
+}));
+assert.equal(staleAttribution.weather.status === "ready" ? staleAttribution.weather.stale : false, true);
+assert.equal(staleAttribution.weather.status === "ready" ? staleAttribution.weather.attribution?.label : null, "天气服务由 QWeather 提供");
+assert.equal(staleAttribution.weather.status === "ready" ? staleAttribution.weather.weatherUpdatedAt : null, "2026-07-17T00:00:00.000Z");
+
+const snapshotPlan = buildHomeFeedViewModel(input({
+  selectedDate: "2026-07-19",
+  plans: [{ id: "plan-snapshot", date: "2026-07-19", status: "planned", role: "primary", revision: 1, garmentIds: ["deleted-garment"], garmentSnapshots: [{ garmentId: "deleted-garment", name: "已删除的蓝衬衫", role: "tops", category: "tops" }], unavailableGarmentIds: ["deleted-garment"], availability: "blocked" }],
+}));
+assert.equal(snapshotPlan.plan?.garmentSnapshots?.[0]?.name, "已删除的蓝衬衫");
+assert.equal(snapshotPlan.plan?.availability, "blocked");
+assert.deepEqual(snapshotPlan.plan?.unavailableGarmentIds, ["deleted-garment"]);
+
 const gate = new HomeRequestGate();
 const first = gate.begin("account-a", date);
 const second = gate.begin("account-a", "2026-07-18");
@@ -146,11 +186,17 @@ const controllerSource = readFileSync(join(root, "src/components/home/use-home-f
 const clientSource = readFileSync(join(root, "src/lib/online/online-home-client.ts"), "utf8");
 const pageSource = readFileSync(join(root, "src/components/home/wardora-home-view.tsx"), "utf8");
 assert.match(controllerSource, /readHomeRecommendations[\s\S]*resolveHomeRecommendations/, "current read must precede resolve");
-assert.match(controllerSource, /Promise\.all\(dates\.map/, "today and tomorrow weather must prefetch concurrently");
+assert.match(controllerSource, /loadHomeWeatherDates\(\s*missingDates/, "today and tomorrow weather must settle independently");
 assert.match(controllerSource, /useLayoutEffect[\s\S]*setLocationSnapshot\(null\)/, "account changes must clear previous account data before paint");
-assert.match(clientSource, /await onlineRequest[\s\S]*return readHomeLocation\(session\)/, "city mutations must commit then read back");
+assert.match(clientSource, /await onlineRequest[\s\S]*return readHomeLocation\(session, signal\)/, "city mutations must commit then read back");
 assert.doesNotMatch(controllerSource + clientSource, /localStorage|indexedDB|Outbox|optimistic/i, "home feed must not add local business persistence");
-assert.doesNotMatch(pageSource, /设为今日穿搭|替换计划|取消计划|确认已穿/, "P1 recommendation card must remain read-only");
-assert.doesNotMatch(pageSource, /navigator\.geolocation|getCurrentPosition|watchPosition|<canvas/i, "P1 must not request location or add Canvas runtime");
+assert.match(pageSource, /home-weather-pair/, "later writable batches must preserve the P1 weather structure");
+assert.match(pageSource, /home-weather-pair[\s\S]*home-weather-\$\{kind\}/, "P1.4 must render independent today/tomorrow weather cards");
+assert.match(pageSource, /data-testid="home-date-strip"/, "P1.4 date strip must remain in recommendation content");
+assert.match(pageSource, /data-testid="home-plan-date-strip"/, "protected plan must be followed by the seven-day date strip");
+assert.match(pageSource, /home-weather-attribution/, "provider attribution and freshness must remain visible for legitimate forecast evidence");
+assert.match(pageSource, /home-plan-availability-risk/, "blocked future plan must expose its availability risk");
+assert.match(pageSource, /data-testid="home-recommendation-rail"/, "P1.4 ready candidates must remain in the native rail");
+assert.match(pageSource, /OnlineAssetImage[\s\S]*variant="thumbnail"/, "P1.4 recommendation cards must reuse the server thumbnail chain");
 
 console.log("home feed P1 fixtures: passed");

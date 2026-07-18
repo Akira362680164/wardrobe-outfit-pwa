@@ -57,8 +57,9 @@ import { WearStatisticsView } from "@/components/wear-statistics-view";
 import { getRecommendedPairingItemsForItem } from "@/lib/garment-detail-pairing";
 import { garmentDraftToWardrobeItem } from "@/lib/intake-save-adapters";
 import { useWardrobeDataController } from "@/components/use-wardrobe-data-controller";
-import { useHomeFeedController } from "@/components/home/use-home-feed-controller";
+import { useHomeFeedController, type HomeFeedController } from "@/components/home/use-home-feed-controller";
 import { WardoraHomeView } from "@/components/home/wardora-home-view";
+import { HomeLocationSettingsPage } from "@/components/home/home-location-settings-page";
 import { useWardrobeMessageController } from "@/components/use-wardrobe-message-controller";
 import { useWardrobeLightboxController } from "@/components/use-wardrobe-lightbox-controller";
 import { WardrobeImageSourceSheet } from "@/components/wardrobe-image-source-sheet";
@@ -124,7 +125,7 @@ import {
 } from "@/components/selected-images-review";
 import { isAccessTokenFresh, loadAuthSessionSnapshot } from "@/lib/auth-session-store";
 import { wardrobeRepository } from "@/lib/repository/wardrobe-repository";
-import { rethrowIfFailed, upsertOutfit, upsertLocation, deleteLocation, repoUpdateWishlistItem, repoCreateGarment, repoCreateGarmentsBatch, repoUpdateGarment, repoUpdateOutfit, repoDeleteGarments, repoDeleteLocation, repoSaveProfile } from "@/lib/repository/wardrobe-repository";
+import { rethrowIfFailed, upsertOutfit, upsertLocation, deleteLocation, repoUpdateWishlistItem, repoCreateGarment, repoCreateGarmentsBatch, repoCreateOutfit, repoUpdateGarment, repoUpdateOutfit, repoDeleteGarments, repoDeleteLocation, repoSaveProfile } from "@/lib/repository/wardrobe-repository";
 import {
  defaultMiniMaxSettings,
  hasDeviceMiniMaxKey,
@@ -373,7 +374,6 @@ export function WardrobeApp({ cloudAuth }: { cloudAuth?: WardrobeCloudAuth } = {
   const tagProgress = useSoftAiProgress("garment_detection", { label: "AI 识别衣物" });
 	  const [miniMaxSettings, setMiniMaxSettings] = useState<DeviceMiniMaxSettings>(() => defaultMiniMaxSettings());
   const [settingsMiniMaxOpenRequest, setSettingsMiniMaxOpenRequest] = useState(0);
-  const minimaxMissingToastShownRef = useRef(false);
   const [showGarmentIntakeFlow, setShowGarmentIntakeFlow] = useState(false);
   // v1.1.20-dev (方案 C): 删除 v1.1.7 4A 的 route.mainTab → activeView useEffect 同步逻辑。
   // 旧逻辑是 Bug 1 根因之一 — useEffect 异步同步 + showGarmentIntakeFlow guard + React 18 同值 bail out
@@ -400,13 +400,13 @@ export function WardrobeApp({ cloudAuth }: { cloudAuth?: WardrobeCloudAuth } = {
     navigation.openRoute({ name: "settings_home" });
   }, [clearMessage, navigation]);
 
-  useEffect(() => {
-    if (!isReady) return;
-    if (hasDeviceMiniMaxKey(miniMaxSettings)) return;
-    if (minimaxMissingToastShownRef.current) return;
-    minimaxMissingToastShownRef.current = true;
-    showMessage(MINIMAX_KEY_MISSING_MESSAGE, "action");
-  }, [isReady, miniMaxSettings, showMessage]);
+  const refreshOverviewAfterGarmentWrite = useCallback(async ({ shouldWarnOnFailure = true }: { shouldWarnOnFailure?: boolean } = {}) => {
+    try {
+      await refreshState();
+    } catch {
+      if (shouldWarnOnFailure) showMessage("衣物已保存，但首页推荐尚未刷新，可稍后重试", "error");
+    }
+  }, [refreshState, showMessage]);
 
   const handleTopLevelBack = useCallback(() => {
     // v1.1.20-dev commit2 (P0 诊断): top_level_back_triggered
@@ -773,7 +773,7 @@ export function WardrobeApp({ cloudAuth }: { cloudAuth?: WardrobeCloudAuth } = {
     if (!item.id) return;
     const updatedAt = new Date().toISOString();
     rethrowIfFailed(await repoUpdateGarment(item, { status, updatedAt }), "更新单品失败");
-    await refreshState();
+    await refreshOverviewAfterGarmentWrite();
   }
 
   async function saveSettings(nextSettings: DeviceMiniMaxSettings): Promise<boolean> {
@@ -851,6 +851,8 @@ export function WardrobeApp({ cloudAuth }: { cloudAuth?: WardrobeCloudAuth } = {
     category: item.category,
     status: item.status,
     hasImage: Boolean(item.mainImage?.asset.assetId),
+    imageAsset: item.mainImage?.asset,
+    serverRevision: item.serverRevision,
   })), [items]);
   const homeFeedPlans = useMemo(() => outfitPlanEntries.map((entry) => ({
     id: entry.serverEntityId,
@@ -859,19 +861,30 @@ export function WardrobeApp({ cloudAuth }: { cloudAuth?: WardrobeCloudAuth } = {
     role: entry.role ?? (entry.isPrimary ? "primary" : "other"),
     revision: entry.serverRevision,
     garmentIds: entry.status === "worn" && entry.actualGarmentIds?.length ? entry.actualGarmentIds : entry.garmentIds ?? [],
+    garmentSnapshots: entry.garmentSnapshots,
+    actualGarmentSnapshots: entry.actualGarmentSnapshots,
+    unavailableGarmentIds: entry.unavailableGarmentIds,
+    availability: entry.availability,
   })), [outfitPlanEntries]);
-  const homeWorkspaceRevision = useMemo(() => Math.max(0,
-    ...items.map((item) => item.serverRevision),
-    ...outfitPlanEntries.map((entry) => entry.serverRevision),
-  ), [items, outfitPlanEntries]);
+  const homeWorkspaceRevision = wardrobeData.workspaceRevision;
   const homeFeed = useHomeFeedController({
     active: homeFeedEnabled && route.name === "home_feed",
+    locationActive: homeFeedEnabled && (route.name === "home_feed" || route.name === "settings_home"),
     accountId: cloudAuth?.user.id ?? "signed-out",
     accessToken: cloudAuth?.accessToken,
     deviceId: cloudAuth?.deviceId ?? "",
     workspaceRevision: homeWorkspaceRevision,
     garments: homeFeedGarments,
     plans: homeFeedPlans,
+    onWorkspaceRefresh: refreshState,
+    onSaveOutfit: async ({ name, garmentIds, clientMutationId }) => {
+      const selected = garmentIds.map((garmentId) => items.find((item) => item.serverEntityId === garmentId)).filter((item): item is WardrobeItem => Boolean(item));
+      if (selected.length !== garmentIds.length) throw new Error("套装中的衣物已变化，请刷新后重试");
+      const now = new Date().toISOString();
+      const itemIds = selected.map((item) => item.id).filter((id): id is number => typeof id === "number");
+      if (itemIds.length !== selected.length) throw new Error("套装中的衣物缺少服务端兼容标识，请刷新后重试");
+      rethrowIfFailed(await repoCreateOutfit({ name, itemIds, favorite: false, createdAt: now, updatedAt: now, source: "manual" }, { clientMutationId }), "保存套装失败");
+    },
   });
   // v0.9.38-dev P0 §6: hideMobileNav 补全 (md 模板)
   // - wardrobeSubPageActive 已包含 viewingItem / editingItem / viewingItemCropJob 三态
@@ -970,6 +983,7 @@ export function WardrobeApp({ cloudAuth }: { cloudAuth?: WardrobeCloudAuth } = {
       activeGarmentRoute={activeGarmentRoute}
       pendingViewingItemId={pendingViewingItemId}
       pendingViewingItemReturnTarget={pendingViewingItemReturnTarget}
+      onGarmentWriteRefresh={refreshOverviewAfterGarmentWrite}
       onPendingViewingItemConsumed={() => {
         setPendingViewingItemId(null);
         setPendingViewingItemReturnTarget("wardrobe_home");
@@ -1035,7 +1049,7 @@ export function WardrobeApp({ cloudAuth }: { cloudAuth?: WardrobeCloudAuth } = {
             <WardoraHomeView
               controller={homeFeed}
               garments={homeFeedGarments}
-              wardrobeContent={renderWardrobeCapability()}
+              renderWardrobeContent={() => renderWardrobeCapability()}
             />
           ) : null}
           {route.name === "wardrobe_home" || route.name === "garment_detail" ? (
@@ -1131,6 +1145,7 @@ export function WardrobeApp({ cloudAuth }: { cloudAuth?: WardrobeCloudAuth } = {
               cloudAuth={cloudAuth}
               onOpenAccount={() => navigation.openRoute({ name: "account_management" })}
               onOpenHomePreview={homeFeedEnabled ? () => navigation.openRoute({ name: "home_feed" }) : undefined}
+              homeLocationController={homeFeedEnabled ? homeFeed : undefined}
               openMiniMaxRequest={settingsMiniMaxOpenRequest}
               onMiniMaxRequestConsumed={() => setSettingsMiniMaxOpenRequest(0)}
 	              miniMaxSettings={miniMaxSettings} onSaveMiniMaxSettings={saveSettings}
@@ -1558,6 +1573,7 @@ interface WardrobeViewProps {
   onStartGarmentIntake: () => void; onSeed: () => void;
   onStatusChange: (item: WardrobeItem, status: GarmentStatus) => Promise<void>;
   onDeleteItems: (ids: number[]) => Promise<void>;
+  onGarmentWriteRefresh: (options?: { shouldWarnOnFailure?: boolean }) => Promise<void>;
   outfits: SavedOutfit[];
   wishlistItems: WishlistItem[];
   /** v0.9.33-dev: 详情页 saved_outfit 派生图裁切 (subagent critical finding #1 修法) 需要更新 outfits 表,
@@ -1587,6 +1603,7 @@ function WardrobeView(props: WardrobeViewProps) {
     items, allItems, locations, locationNameById, wardrobeScope, setWardrobeScope,
     homeCategoryFilter, setHomeCategoryFilter,
     query, setQuery, onStartGarmentIntake, onSeed, onStatusChange, onDeleteItems,
+    onGarmentWriteRefresh,
     outfits, wishlistItems, setOutfits, setWishlistItems, setItems, miniMaxSettings, onMessage, onExpandImage, onSubPageChange,
     activeGarmentRoute,
     pendingViewingItemId, pendingViewingItemReturnTarget, onPendingViewingItemConsumed, onReturnToWishlistOwned,
@@ -1763,9 +1780,10 @@ function WardrobeView(props: WardrobeViewProps) {
     const now = new Date().toISOString();
     const savedItem = rethrowIfFailed(await repoUpdateGarment(viewingItem, { wornDates: nextDates, updatedAt: now }), "更新单品失败");
     replaceItemInLocalState(savedItem);
+    await onGarmentWriteRefresh();
     const summary = getWearSummary(nextDates, todayKey);
     onMessage(summary.hasToday ? "已记录今天穿着" : "已取消今天穿着记录", "success");
-  }, [viewingItem, replaceItemInLocalState, onMessage, todayKey]);
+  }, [onGarmentWriteRefresh, viewingItem, replaceItemInLocalState, onMessage, todayKey]);
 
   // v0.9.45-dev 详情页 2.0: 生成/刷新 AI 建议
   const handleGenerateAdvice = useCallback(async () => {
@@ -1782,6 +1800,7 @@ function WardrobeView(props: WardrobeViewProps) {
       const now = new Date().toISOString();
       const savedItem = rethrowIfFailed(await repoUpdateGarment(viewingItem, { aiStyleAdvice: advice, updatedAt: now }), "更新单品失败");
       replaceItemInLocalState(savedItem);
+      await onGarmentWriteRefresh();
       setAiAdviceState("success");
       onMessage("AI 建议已生成", "success");
     } catch (error) {
@@ -1789,7 +1808,7 @@ function WardrobeView(props: WardrobeViewProps) {
       setAiAdviceState("error");
       onMessage(getErrorMessage(error), "error");
     }
-  }, [viewingItem, miniMaxSettings, replaceItemInLocalState, onMessage]);
+  }, [viewingItem, miniMaxSettings, onGarmentWriteRefresh, replaceItemInLocalState, onMessage]);
 
   // v0.9.47-dev 详情页 3.0: 移动衣物
   const handleMoveItem = useCallback(async (locationId: string) => {
@@ -1799,9 +1818,10 @@ function WardrobeView(props: WardrobeViewProps) {
     await syncEditedItemReferences({ ...viewingItem, ...patch }, now);
     const savedItem = rethrowIfFailed(await repoUpdateGarment(viewingItem, patch), "更新单品失败");
     replaceItemInLocalState(savedItem);
+    await onGarmentWriteRefresh();
     const locName = locations.find((l) => l.id === locationId)?.name ?? locationId;
     onMessage(`已移动到 ${locName}`, "success");
-  }, [viewingItem, locations, syncEditedItemReferences, replaceItemInLocalState, onMessage]);
+  }, [viewingItem, locations, syncEditedItemReferences, replaceItemInLocalState, onGarmentWriteRefresh, onMessage]);
   const [diagnosis, setDiagnosis] = useState<WardrobeDiagnosis | null>(null);
   // AI 衣橱诊断卡片状态机 (v0.9.19: 统一为 6 态, 卡片内自管 loading/error, 不再走顶部独立进度条):
   //   "hidden"           - 卡片隐藏；顶部入口负责唤起
@@ -2186,6 +2206,7 @@ function WardrobeView(props: WardrobeViewProps) {
             setItems((prev) => prev.map((item) => (item.id === viewingItem.id ? result.latestData! : item)));
             setViewingItem(result.latestData ?? viewingItem);
           }
+          await onGarmentWriteRefresh();
           setShowEditConflict(true);
           return;
         }
@@ -2199,6 +2220,7 @@ function WardrobeView(props: WardrobeViewProps) {
       setEditInitialSnapshot(editSnapshotFromDraft(normalizeDraftForEdit(updatedItem)));
       setEditingItem(false);
       setEditDraft(null);
+      await onGarmentWriteRefresh();
       onMessage("衣物信息已保存", "success");
     } catch (error) {
       onMessage(getErrorMessage(error), "error");
@@ -2521,6 +2543,7 @@ function WardrobeView(props: WardrobeViewProps) {
                 replaceItemInLocalState(savedItem);
                 setViewingImageIndex(existing.length + 1);
                 if (referenceOutfitGalleryInputRef.current) referenceOutfitGalleryInputRef.current.value = "";
+                await onGarmentWriteRefresh();
                 onMessage(failedHeic > 0 ? `已添加 ${refs.length} 张灵感图，部分 HEIC 图片转换失败` : `已添加 ${refs.length} 张灵感图`, failedHeic > 0 ? "info" : "success");
               }}
             />
@@ -2544,6 +2567,7 @@ function WardrobeView(props: WardrobeViewProps) {
                     replaceItemInLocalState(savedItem);
                     setViewingRefDeleteConfirm(null);
                     setViewingImageIndex((current) => Math.max(0, Math.min(current, remaining.length)));
+                    await onGarmentWriteRefresh();
                     onMessage("已删除灵感图", "success");
                   }}
                   className="h-10 rounded-lg bg-red-600 text-sm font-semibold text-white"
@@ -2586,6 +2610,7 @@ function WardrobeView(props: WardrobeViewProps) {
                         );
                         const savedItem = rethrowIfFailed(await repoUpdateGarment(viewingItem, { referenceOutfitImages: updatedRefs, updatedAt: now }), "更新单品失败");
                         replaceItemInLocalState(savedItem);
+                        void onGarmentWriteRefresh();
                         setEditingRefCaption(null);
                         onMessage(caption ? "已更新说明" : "已清除说明", "success");
                       }}
@@ -2676,29 +2701,30 @@ function WardrobeView(props: WardrobeViewProps) {
                 }
                 return;
               }
-   // v0.9.32-dev: 参考穿搭图裁切 (target="detail" + refId)
-   if (viewingItemCropJob.refId && typeof viewingItem.id === "number") {
-   const refId = viewingItemCropJob.refId;
-   const now = new Date().toISOString();
-   // v0.9.43-dev 批次 2: 参考图裁切后同步更新缩略图。
-   // 失败时保留旧 thumbnail 字段 (只标 status="failed"), 详情页 fallback 到 imageDataUrl (批次 2 §5 纪律)。
-   const thumb = await generateThumbnailSafe(newImageDataUrl);
-   const updatedRefs = (viewingItem.referenceOutfitImages ?? []).map((r) => r.id === refId
-   ? {
-   ...r,
-   localOriginalDataUrl: newImageDataUrl,
-   localCroppedPreviewDataUrl: newImageDataUrl,
-   localCropBox: cropBox,
-   updatedAt: now,
-   ...(thumb.thumbnailDataUrl ? { localThumbnailDataUrl: thumb.thumbnailDataUrl } : {}),
-   }
-   : r);
-   const savedItem = rethrowIfFailed(await repoUpdateGarment(viewingItem, { referenceOutfitImages: updatedRefs, updatedAt: now }), "更新单品失败");
-   replaceItemInLocalState(savedItem);
-   setViewingItemCropJob(null);
-   onMessage("灵感图裁切完成", "success");
-   return;
-   }
+              // v0.9.32-dev: 参考穿搭图裁切 (target="detail" + refId)
+              if (viewingItemCropJob.refId && typeof viewingItem.id === "number") {
+                const refId = viewingItemCropJob.refId;
+                const now = new Date().toISOString();
+                // v0.9.43-dev 批次 2: 参考图裁切后同步更新缩略图。
+                // 失败时保留旧 thumbnail 字段 (只标 status="failed"), 详情页 fallback 到 imageDataUrl (批次 2 §5 纪律)。
+                const thumb = await generateThumbnailSafe(newImageDataUrl);
+                const updatedRefs = (viewingItem.referenceOutfitImages ?? []).map((r) => r.id === refId
+                  ? {
+                    ...r,
+                    localOriginalDataUrl: newImageDataUrl,
+                    localCroppedPreviewDataUrl: newImageDataUrl,
+                    localCropBox: cropBox,
+                    updatedAt: now,
+                    ...(thumb.thumbnailDataUrl ? { localThumbnailDataUrl: thumb.thumbnailDataUrl } : {}),
+                  }
+                  : r);
+                const savedItem = rethrowIfFailed(await repoUpdateGarment(viewingItem, { referenceOutfitImages: updatedRefs, updatedAt: now }), "更新单品失败");
+                replaceItemInLocalState(savedItem);
+                void onGarmentWriteRefresh();
+                setViewingItemCropJob(null);
+                onMessage("灵感图裁切完成", "success");
+                return;
+              }
   // v0.9.33-dev: SavedOutfit 派生图裁切 (CRITICAL FIX — 修 v0.9.32-dev subagent finding #1)
   // 场景: 详情页横滑到 saved_outfit 派生图(idx>=1, source=saved_outfit)→ 长按"重新裁切" → 之前
   //   onConfirm fallback 会把结果写到 viewingItem.imageDataUrl,覆写当前衣物主图,且不可恢复。
@@ -2722,27 +2748,28 @@ function WardrobeView(props: WardrobeViewProps) {
     }
     return;
   }
- if (typeof viewingItem.id !== "number") {
- setViewingItemCropJob(null);
- return;
- }
- const now = new Date().toISOString();
- if (!viewingItemOriginal.url) {
-   setViewingItemCropJob(null);
-   onMessage("原图尚未加载，请稍后重试", "info");
-   return;
- }
- const thumb = await createGarmentThumbnailFromOriginal({ originalDataUrl: viewingItemOriginal.url, cropBox });
- const patch: Partial<WardrobeItemDraft> = {
- localCropBox: cropBox,
- ...(thumb.thumbnailDataUrl ? { localThumbnailDataUrl: thumb.thumbnailDataUrl } : {}),
- updatedAt: now,
- };
- const updatedItem = rethrowIfFailed(await repoUpdateGarment(viewingItem, patch), "更新单品失败");
- await syncEditedItemReferences(updatedItem, now);
- replaceItemInLocalState(updatedItem);
- setViewingItemCropJob(null);
- onMessage("裁切完成", "success");
+              if (typeof viewingItem.id !== "number") {
+                setViewingItemCropJob(null);
+                return;
+              }
+              const now = new Date().toISOString();
+              if (!viewingItemOriginal.url) {
+                setViewingItemCropJob(null);
+                onMessage("原图尚未加载，请稍后重试", "info");
+                return;
+              }
+              const thumb = await createGarmentThumbnailFromOriginal({ originalDataUrl: viewingItemOriginal.url, cropBox });
+              const patch: Partial<WardrobeItemDraft> = {
+                localCropBox: cropBox,
+                ...(thumb.thumbnailDataUrl ? { localThumbnailDataUrl: thumb.thumbnailDataUrl } : {}),
+                updatedAt: now,
+              };
+              const updatedItem = rethrowIfFailed(await repoUpdateGarment(viewingItem, patch), "更新单品失败");
+              await syncEditedItemReferences(updatedItem, now);
+              replaceItemInLocalState(updatedItem);
+              await onGarmentWriteRefresh();
+              setViewingItemCropJob(null);
+              onMessage("裁切完成", "success");
             }}
             onError={(msg) => onMessage(msg, "error")}
           />
@@ -3826,6 +3853,7 @@ function SettingsView({
   cloudAuth,
   onOpenAccount,
   onOpenHomePreview,
+  homeLocationController,
   openMiniMaxRequest,
   onMiniMaxRequestConsumed,
 	  miniMaxSettings,
@@ -3848,6 +3876,7 @@ function SettingsView({
   cloudAuth?: WardrobeCloudAuth;
   onOpenAccount?: () => void;
   onOpenHomePreview?: () => void;
+  homeLocationController?: HomeFeedController;
   openMiniMaxRequest?: number;
   onMiniMaxRequestConsumed?: () => void;
 	  miniMaxSettings: DeviceMiniMaxSettings;
@@ -4166,6 +4195,8 @@ function SettingsView({
             onAdd={() => setShowAddWardrobe(true)}
             onEdit={(loc) => setEditWardrobeTarget(loc)}
           />
+        ) : subPage === "weather_location" && homeLocationController ? (
+          <HomeLocationSettingsPage controller={homeLocationController} onBack={popSettingsPage} />
         ) : (
           <div
             className="grid min-w-0 grid-cols-[minmax(0,1fr)] gap-3.5 [&>.surface]:shadow-none"
@@ -4182,6 +4213,17 @@ function SettingsView({
           data-testid="open-home-feed-preview"
         >
           <span><span className="block text-sm font-semibold">Wardora 新首页预览</span><span className="block text-xs text-ink/50">内部只读入口，不改变默认首页</span></span>
+          <ChevronRight size={17} aria-hidden="true" />
+        </AppPressable>
+      ) : null}
+
+      {homeLocationController ? (
+        <AppPressable
+          className="ui-card flex min-h-14 w-full items-center justify-between px-4 py-3 text-left"
+          onClick={() => navigateSettingsPage("weather_location")}
+          data-testid="open-weather-location-settings"
+        >
+          <span><span className="block text-sm font-semibold">天气地点</span><span className="block text-xs text-ink/50">管理常驻城市与临时城市</span></span>
           <ChevronRight size={17} aria-hidden="true" />
         </AppPressable>
       ) : null}
@@ -5774,7 +5816,7 @@ function HomeFeedNavButton({ label, icon: Icon, active = false, onClick }: { lab
   return (
     <AppPressable
       feedback="control"
-      className={`grid min-h-14 place-content-center justify-items-center gap-1 rounded-2xl px-1 text-[11px] font-semibold ${active ? "bg-denim text-white" : "text-ink/62"}`}
+      className={`grid min-h-14 place-content-center justify-items-center gap-1 rounded-[var(--ui-radius-nav-active)] px-1 text-[11px] font-semibold ${active ? "bg-denim text-white" : "text-ink/62"}`}
       onClick={onClick}
       aria-current={active ? "page" : undefined}
     >

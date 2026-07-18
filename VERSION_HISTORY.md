@@ -7,6 +7,95 @@
 - 查看某次提交详情：`git show <commit>`
 - 新记录继续置顶，默认控制在 3–5 条短 bullet；原始测试日志、命令输出和长证据写入专项 evidence 文档或交由 Git 保存。
 
+## 2026-07-18 / v2.1.31-test / P4 — 微信小程序新首页完整对齐
+
+- 小程序休眠首页替换为与 App P1.4.1 同构的服务器权威首页：时间问候、今日/明日天气、推荐/衣橱、七日按需、远期出行，以及计划/已穿/blocked/历史快照；不增加业务缓存、Outbox、隐藏队列或乐观更新。
+- 串行同步 `main@88e2ef76` 的 P2/P3：接通采用/替换一件/不喜欢/保存套装、取消并原子恢复备选、确认/撤销已穿；稳定 `clientMutationId`、提交与服务端读回、409/超时/幂等/并发均沿用共享正式合同。
+- 同源生成 App P3 Canvas 内核并仅增加微信 Canvas 2D 宿主：29 FPS、DPR≤2、单调度器、后台/离屏暂停、恢复不补帧、异常静态和 reduced-motion；62 个 QWeather code 与 304/403/508/512/998 固定场景保持同源。
+- 地点 Sheet 不自动申请权限；用户看完用途并主动点击后才请求一次粗略位置，坐标只发 `resolve-device` 且不持久化，候选确认后才设临时/常驻，永久拒绝仍可手工搜索并使用 locationless 推荐。
+- WeChat DevTools Nightly 覆盖 360/390/430、100%/131%、完整状态与 P2 Sheet；关闭地点对齐、整卡 Canvas/双卡圆角、分段与日期条、三套横向卡、正式操作按钮和四 Tab + 中央加号偏差，并删除旧右下 FAB。证据见 `docs/recommendations/WARDORA_NEW_HOME_P4_WECHAT_EVIDENCE.md`；未 preview/upload、云写入或部署，物理微信真机仍列为发布前风险。
+- 首轮独立视觉审计发现的静态天气空白与 Sheet 底栏遮挡已修复：当前温度和最高温与 App 对齐，Canvas failure/stale/locationless 保留原生文案，地点、详情、取消和中央创建 Sheet 均隐藏四 Tab；关键状态重新覆盖 360/390/430 与 131% 字体。
+- 第二轮审计进一步把天气合法文案全部移回原生控件，Canvas 只保留同源透明装饰；stale 补最高温、较早状态和缓存时间，无城市今日/明日同时移除供应商天气。第三轮关键状态覆盖 360/390/430，冻结提交 `af912a2` 经独立只读审计 P0/P1/P2 全为 0，建议集成；仅保留物理微信真机 P3 风险。
+
+## 2026-07-18 / v2.1.31-test / Codex — 新首页 P3 天气 Canvas 与大致位置
+
+- 今日天气卡直接移植验收原型 v0.2.3 的 `wardora-v023` seed/clock、完整场景参数、绘制顺序和雷光/冰雹事件；固定 code/clock 像素门禁覆盖动态事件，明日、未知、fallback、stale 和故障均静态。
+- 单调度器目标 29 FPS、DPR≤2，离屏/后台/锁屏/卸载停止且恢复不补帧；reduced-motion 保留 clock 0 静帧，Canvas 例外自动回退当前静态卡。
+- 地点 Sheet 只在用户阅读用途并确认后请求 Capacitor 前台大致位置；坐标仅当次解析城市候选，用户再确认临时/常驻；界面移除“主计划、保护、服务端、事务、不会自动更换”等实现说明和底层英文错误。
+- 原型 SHA、固定 code/clock 并排像素、浏览器调度/定位与 Android 证据见 `docs/recommendations/WARDORA_NEW_HOME_P3_EVIDENCE.md`；独立视觉 subagent 结论在冻结提交后补录。
+
+## 2026-07-18 / v2.1.31-test / Codex — 新首页 P2 计划与穿着闭环
+
+- App 推荐卡接通采用、最多替换一件、受控不喜欢与独立保存套装；当日事实卡接通更换主计划、确认/撤销已穿和原子取消/恢复备选，全部等待服务端提交与工作区读回，不做乐观更新。
+- 补齐 `CancelPrimaryPlan` 真实服务、鉴权路由和事务：日期锁、revision、worn 保护、幂等重放、双设备竞争、同步审计与故障注入均由真实 PostgreSQL 覆盖；补最小严格 rejected action 合同，不写本地假记录。
+- P2 使用稳定草稿 mutation ID，失败保留原组合并原 ID 重试；保存套装失败不回滚已成功计划。共享合同先进入 main，小程序由 P4 从最新 main 串行同步，本批不修改 `apps/wechat-miniprogram`。
+- 风险 High；P2 本地合同、API 路由、真实 PostgreSQL、App 逻辑/typecheck/build、UI spec 与旧 P1 回归见 `docs/recommendations/WARDORA_NEW_HOME_P2_EVIDENCE.md`。P3 Canvas 尚未进入本提交。
+
+## 2026-07-18 / v2.1.30-test / P1.4.1 — 新首页验收缺陷收口
+
+- 首页按所选业务日期保留服务端 `resolvedLocation/locationSource`，无常驻城市的旅行日仍显示“城市 · 行程”；推荐来源同时保留地点来源，不再只显示泛化天气标签。
+- QWeather 归属、更新时间和 stale 缓存语义进入只读 ViewModel；今日/明日各自按显式日期重试，不依赖当前选中日期。
+- 计划/已穿投影保留衣物快照与可用性：删除衣物继续显示当时名称，blocked 风险明确提示；事实卡之后保留七日日期条，可继续浏览未来日期。
+- 本批仅修 App 只读投影与受影响视觉状态，不改服务端、共享合同、推荐算法、PAW、P2 写事务、Canvas、定位或小程序。
+
+## 2026-07-18 / v2.1.28-test / Codex — 视觉修复独立 subagent 验收门禁
+
+- 用户已给予本项目后续 UI/视觉/动效修复的常驻明确授权：执行 Session 必须在冻结待审 commit 后自行启动独立只读视觉验证 subagent，不再每次询问。
+- 审查 subagent 仅获取权威原型/规范、冻结 commit、验收矩阵和实际证据，不承接执行 Session 的实现推理与自我评价；默认只读，按 P0–P3 出具是否建议交付的结论。
+- 新首页 PRD 更新为 `v0.7.5.2-integrated`，将该门禁纳入 App Canvas、页面视觉与小程序对齐的正式验收；P0/P1 未关闭不得合入。
+- 本次为 Low 风险纯文档/流程规范修订；未另行启动 subagent，当前 P1.4 执行 Session 已收到并将执行新门禁。
+
+## 2026-07-18 / v2.1.28-test / Codex — PRD 天气 Canvas 迁移口径收口
+
+- 将新首页生产 PRD 更新为 `v0.7.5.1-integrated`：App 必须直接提取已验收 v0.2.3 HTML 的视觉参数、场景/粒子生成、事件时序和绘制顺序，不得另起炉灶重画天气动画。
+- 明确只将原型 DOM、Fixture 和调试外壳替换为 React/Capacitor 生产宿主；小程序复用同源参数与时序，仅做微信 Canvas 2D 和页面生命周期适配。
+- 新增固定 code/seed/clock 并排对照验收，冻结 `304/403/508/512/998` 标志性效果、今日动态/明日静帧、后台/离屏停止和 reduced-motion 降级。
+- 本次为 Low 风险纯文档修订，不修改运行时、服务端、数据库、App 版本或小程序；未触发 subagent：用户未通知。
+
+## 2026-07-18 / v2.1.29-test / P1.4 — 新首页视觉骨架对齐
+
+- 新首页按 v0.2.3 恢复时间语义问候、天气模块内唯一地点入口、今日/明日双卡、推荐/衣橱分栏，并将七日选择收进推荐工具栏；天气静态色取自原型 ambient/fallback 参数，不引入 Canvas、rAF、粒子或定位。
+- 推荐 ready 态改为真实服务端衣物图片与名称组成的原生横向卡轨，保留稳妥/变化/舒适、理由、风险和来源层级；计划/已穿事实优先，严格只读且不提前加入 P2 写操作。
+- 视觉门禁覆盖 360/390/430px、100%/130% 与 ready/locationless/weather fallback/protected/actual-wear；v0.2.3 对照图和专项 manifest 见 `artifacts/home-feed-p14/`。风险等级 High（首页主路径、Android 与签名 APK）。
+- 冻结 commit `fca8489` 经独立只读视觉 subagent 复审，P0/P1/P2 均为 0，结论建议交付；本轮不改算法、服务端、数据库、生产部署、PAW 或小程序，Canvas/定位/P2 写事务/P4 小程序仍未实现。
+
+## 2026-07-18 / v2.1.28-test / P1.3.1-C — 证据补强与稳定态清理
+
+- 修正 locationless Fixture 的非法天气码，并以 `WeatherOverviewSchema` 在响应边界校验；新增只含方法、固定路径、状态码与序号的测试 trace，浏览器/Android manifest 均以真实服务端流水核对。
+- 浏览器与 `wardrobe-test` Android 15/API 35 重新覆盖首次地点失败→用户重试→上海恢复、清除城市真实 DELETE `503→409→200`、pending Back/遮罩保护、人类可读错误、合法 locationless 空天气卡、前后台恢复及稳定 130% 截图；runtime/loading/fatal 与非预期浏览器失败均为 0。
+- `test:logic:home-feed-p1`、`test:logic:home-feed-p13`、`typecheck`、UI contracts、browser P1.3、Android Fixture 均通过。风险等级 High（Android/网络故障证据）；未触发 subagent：用户未通知。
+- 正式 APK 未重建或覆盖；仅复核 `com.wardrobe.outfit` / `2.1.28-test` / `20128` / `CN=fangzheng` / SHA-256 `c0dd62291a60ecf892715dbf45c66ea33ede48c0addef4bb391e85b8ad7ebf54`，业务 API URL 仅为生产域名，未发现指向 Fixture/回环地址的业务 API URL。本批不改 `src/**`、服务端、共享合同、小程序、数据库或生产部署。
+
+## 2026-07-18 / v2.1.28-test / P1.3.1-B — 浏览器与 Android Fixture 收口
+
+- 保留并复核 `scripts/test-home-feed-p13-browser.mjs`：360/375/390/412/430px、130% 字体、地点重试及清除常驻城市 503→409→200 全链通过，`pageErrors`/`consoleErrors`/`requestFailures` 均为 0。
+- 隔离 Fixture APK 在 `wardrobe-test` Android 15/API 35 通过：`2.1.28-test` / `20128` / `CN=fangzheng`，ADB 系统 Back 和遮罩在 pending 时不关闭，网络失败/409 保留 Sheet 且可重试，成功后关闭并读回“未设置城市”；前后台、130% 字体和 fatal=0 通过。
+- 本批不改服务端、共享合同、小程序或新首页产品范围。正式 APK 已从合入后 `main@9cdba05` 使用正式目录现有 `.env` 重建：`com.wardrobe.outfit` / `2.1.28-test` / `20128` / `CN=fangzheng`，只含生产域名，根目录产物为 `衣橱穿搭助手-v2.1.28-test.apk`。
+
+## 2026-07-18 / v2.1.28-test / P1.3.1-A — 首页推荐重读闭环
+
+- 统一服饰写入后服务器快照刷新入口，避免局部 `setItems` 导致首页继续使用陈旧 `serverRevision`。
+- 手写 Fixture 覆盖 `workspaceRevision` 不变不重读、提升后重读且清理旧 candidate，以及天气/current-read/resolve 同 key 迟到响应不覆盖新结果。
+
+## 2026-07-18 / v2.1.28-test / P1.3 — 缓存与地点错误承载收口
+
+- 地点重试强制联动刷新天气/未采用推荐；缓存写入校验 account/location/workspace/ticket，`workspaceRevision` 消费服务器 `serverRevision`，迟到响应不污染当前上下文。
+- 设置页清除常驻城市的网络失败与 409 改在确认 `alertdialog` 内承载；保存期间不可关闭，失败后保留同层重试/取消。
+- 默认首页仍为 `wardrobe_home`，未新增定位、Canvas、计划写事务、业务持久缓存或小程序页面。
+
+## 2026-07-17 / v2.1.27-test / Codex — Wardora 新首页 P1.2 地点一致性与设置收口
+
+- 地点成功/409/前台恢复统一应用服务端快照；天气缓存按账号、有效地点 revision/key、日期隔离，未采用推荐再叠加 workspaceRevision，地点或衣橱 revision 变化不会展示旧城市天气/推荐。地点 mutation 与读取 effect 分离，日期/工作区刷新不再锁死保存状态；UUID fallback 优先随机源并覆盖冻结时间碰撞回归。
+- 首页地点 Sheet 移除清除常驻城市命令；设置页新增天气地点管理与明确二次确认，Android Back 先关确认层。保留临时城市恢复流程、44px 点击目标、reduced-motion 与窄屏/字体放大约束；默认旧首页、P2 写事务、定位、Canvas 和小程序均未改变。
+- P1.2 手写 Fixture、Strict Mode 资源上限复测、真实浏览器与 `wardrobe-test` Android Fixture 通过；正式 APK 以 `https://api.zhengfangapps.cloud` 重建为 `2.1.27-test` / versionCode `20127` / 固定 `CN=fangzheng`。本批仅 App 客户端，不部署 API、不迁移、不调用 QWeather、不合入小程序。
+
+## 2026-07-17 / v2.1.26-test / Codex — Wardora 新首页 P1.1 并发与交互收口
+
+- 城市写入按账号/会话、动作、地点与 revision 复用稳定 `clientMutationId`；响应丢失可原样重放，409 读取最新服务端快照并显示冲突，route/账号失活后旧响应不得回写。写入期间显示明确保存状态。
+- GeoAPI 搜索增加约 400ms 防抖、IME 保护、至少 2 字触发、规范化 query 会话缓存、账号/清空清理与 429 `Retry-After` 提示；不会立即自动重试或把 Abort 当作免计费证明。
+- 今日/明日天气改为逐日期独立结算与缓存，预取失败不再连坐当前成功日期；衣橱能力树首次进入分栏才挂载，之后保留内部状态，并补齐 tab/tabpanel 关联语义。
+- 风险等级 High（网络写入幂等、隐藏首页 UI 与 Android APK）；手写行为 Fixture 覆盖重放/冲突、搜索控制、部分日期失败、旧请求失效与懒挂载。本批未修改服务端或共享合同，不部署 API、不调用 QWeather、不合入小程序；未触发 subagent：用户未通知。
+
 ## 2026-07-17 / v2.1.25-test / Codex — Wardora 新首页 P1 只读骨架与手工城市
 
 - 新建隐藏 `home_feed` route、独立 controller/ViewModel、线上 client 与页面组件；生产默认仍是旧衣橱首页，P5 前保留回退。新首页显示四 Tab 与无选中态的中央创建按钮，推荐卡严格只读。

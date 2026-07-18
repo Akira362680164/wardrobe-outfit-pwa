@@ -2,8 +2,8 @@
 title: 衣橱穿搭助手 UI 规范
 version: v0.2-final
 status: final
-appVersion: 2.1.24-test
-validatedAgainstAppCommit: 0b5b7a1a3f2becf078c7c46b1a7bbc72de1312df
+appVersion: 2.1.31-test
+validatedAgainstAppCommit: aff3831766a37705a0706a2ae3886381e6b4422d
 sourceOfTruth: docs/designs/wardrobe-ui-spec.md
 generatedPreview: docs/designs/wardrobe-ui-spec.html
 previewGenerator: scripts/generate-ui-spec-preview.mjs
@@ -12,7 +12,7 @@ appliesTo:
   - Capacitor Android WebView
   - mobile portrait only
   - 3:4 garment media
-lastReviewedAt: 2026-07-17
+lastReviewedAt: 2026-07-18
 ---
 
 # 衣橱穿搭助手 UI 规范
@@ -223,6 +223,7 @@ Icon-only 按钮必须有 `aria-label`；图标与文字组合时图标使用 `a
 
 - 首页只有一个权威地点入口，文案只能是“城市 · 常驻 / 临时 / 行程 ›”或“未设置城市 ›”；问候区、天气卡和推荐卡不重复创建地点入口。
 - 点击今日或明日天气卡只切换对应业务日期并滚动到推荐区；不重挂页面，不重播整页入场。
+- 首页地点 Sheet 只允许搜索、明确设置常驻/临时城市和恢复常驻城市，不提供“清除常驻城市”破坏性入口。清除常驻城市只放在设置 → 天气地点，并使用独立 `alertdialog` 二次确认；Android Back 先关闭确认层，再返回天气地点页。
 
 **四种正常状态与模块错误**
 
@@ -251,7 +252,52 @@ Icon-only 按钮必须有 `aria-label`；图标与文字组合时图标使用 `a
 
 **计划保护**
 
+- “主计划”“保护”“服务端”“服务器”“事务”“读回”“revision”“不会自动更换”“天气回退”等均为实现语义，不得直接显示给用户。事实卡只说明当前状态和可执行动作，例如“已安排”“已记录穿着”“更换当日穿搭”“取消安排”；没有对应用户决策的信息不增加解释性提示。底层异常、英文插件错误、schema/JSON 文本必须映射为可执行的人类文案，不得原样展示。
+
 - `protected_plan` 和 `actual_wear` 始终高于天气/推荐 revision；新结果只能更新未采用推荐或显示风险，不能自动替换、取消、降级或隐藏已有计划/已穿事实。
+
+### 4.2 新首页 P1.4 视觉骨架合同
+
+- 首屏顺序固定为：Asia/Shanghai 时间语义问候与业务日期 → 天气模块内唯一地点入口 → 今日/明日并排双天气卡 → 推荐/衣橱分栏 → 当前分栏内容。不显示“WARDORA”眉题或自创“今天穿什么”标题。
+- 今日卡只使用 `now/current` 证据展示当前温度、高低温、摘要、体感/风；明日卡只使用目标日 `daily` 证据展示高低温和日间摘要。两卡分别承载 loading/error/fallback，不用今日 now 冒充明日。
+- P1.4 只使用共享 QWeather visual family 驱动的静态色调，不创建 Canvas、`requestAnimationFrame`、粒子或系统定位。点击今天/明天只切换推荐日期并滚到推荐区，不重挂页面。
+- 七日日期条只存在于“推荐”分栏：无当日主计划时位于推荐内容上方；有主计划或已穿事实时先显示事实卡，日期条紧随事实卡之后且继续允许切换第 3–7 天，不能因计划保护而消失。
+- 地点文案按所选业务日期使用服务端 `resolvedLocation/locationSource`，映射为“城市 · 行程/临时/常驻”；旅行日即使没有常驻城市，也不得显示 locationless 或隐藏合法旅行天气。推荐卡来源摘要同步保留合法地点与来源。
+- 使用供应商天气证据时显示紧凑 QWeather 归属和更新时间；任一合法 stale endpoint 必须明确标注“缓存”和更新时间。locationless、weather fallback 或没有 attribution 的响应不得伪造供应商归属。
+- 主计划与已穿事实的只读投影保留 garment snapshots、actual snapshots、availability 与 unavailable garment ids；实体仍存在时显示服务器图片，实体已删除时以快照名称回放，未来 blocked 或包含不可用衣物时显示风险提示。
+- ready 推荐是原生横向滚动轨道，卡片层级为目标（稳妥/变化/舒适）、服务器衣物缩略图与名称、理由、风险、上下文来源。缺图只显示中性衣物 fallback；禁止使用原型色块假装真实图片。
+- 横轨使用浏览器/WebView 原生滚动与 `touch-action: pan-y`，不增加抢手势的 drag controller；所有可点区至少 `48dp`，按压反馈复用 `AppPressable`，reduced-motion 取消 smooth scroll 与缩放 spring。
+- P1.4 严格只读：不显示采用、替换、取消、已穿或保存套装按钮。新用户“无城市 + 衣橱空”使用中性正常空状态，不使用警告色或“系统异常”。
+- 视觉对照门禁以 v0.2.3 `390x844` 为并排基准，同时覆盖 `360/390/430px` 和 `100%/130%` 字体，必须核对问候、地点、双天气卡、分栏、日期条位置、横向推荐卡和底栏，并保证页面横向溢出、文字遮挡与非预期 runtime/console/page error 均为 0。
+
+### 4.3 新首页 P2 计划与穿着写入合同
+
+- 推荐卡在原有信息层级之后提供结果明确的主按钮；今天、明天和未来日期分别写“设为今日穿搭”“设为明日穿搭”和“安排到 M 月 D 日”。详情 Sheet 承载替换一件、不喜欢和保存为套装，不通过隐藏手势触发。
+- “替换一件”每次只允许一个原始位置变化，候选只来自当前工作区中 active、具备主图且同类别的衣物；最终组合仍由推荐采用事务校验模板、归属、状态、天气和最多替换一件。
+- 所有写入使用稳定 `clientMutationId`。草稿内容不变的失败重试复用同一 ID，草稿、目标备选或所选衣物变化后才生成新 ID；提交中当前 Sheet 不可关闭，成功并完成服务端工作区读回后才更新事实卡。
+- 当日穿搭卡提供“确认今天穿了这套 / 更换穿搭 / 取消安排”；blocked 风险存在时不允许无提示确认已穿。已穿事实卡只提供“撤销已穿”，不能直接更换或取消计划。
+- 更换穿搭必须携带当前 primary ID/revision；新 primary 与旧 primary 降 backup 在同一推荐采用事务完成。取消安排使用专用原子合同，取消 current primary 与可选提升 backup 同一事务提交，失败时保持当前卡片和备选状态。
+- 采用成功后的“保存到我的套装 / 仅本次使用”是非阻塞 Sheet；保存套装走独立事务，失败不回滚已经成功的计划。推荐详情直接保存套装不创建计划。
+- pending、409、未知结果、网络失败和重试错误必须留在当前承载层，保留组合、滚动位置和 mutation ID；不做乐观状态、不新增业务缓存、Outbox 或隐藏队列。
+- P2 新增控件继续使用 `AppPressable`，命中区至少 `48dp`。Sheet 遵守 safe area、键盘、OverlayStack、Android Back 和 reduced-motion；360–430px、130% 字体不得遮挡主操作或产生横向溢出。
+
+### 4.4 新首页 P3 天气 Canvas 与一次性定位合同
+
+- 今日 Canvas 直接使用 v0.2.3 冻结的 `wardora-v023` seed、clock、粒子参数、分层顺序与雷光/冰雹事件；QWeather 62 个法定 code 仅从共享 visual dictionary 解析。明日、`998/999`、未知 code、locationless、weather fallback、stale 与 Canvas 故障全部保持静态。
+- 全页只有一个今日调度器，目标 `29 FPS`、DPR 不高于 `2`。IntersectionObserver、document visibility、Capacitor app state 和组件卸载共同闸控；恢复时不补帧、不重放事件。reduced-motion 只绘制 clock 0 平静帧，不运行循环。
+- 用户点地点入口后仍不请求系统权限；只有再点“使用当前位置”、阅读用途说明并主动继续，才请求前台大致位置。不请求精确位置、后台位置或分钟级降水。
+- 坐标只作为当次 `/weather/locations/resolve-device` 请求入参，响应进入 UI 前删除 centroid/坐标。用户必须在 Sheet 中确认城市，并选择“设为常驻”或“临时至明日”后才执行现有服务端地点事务。
+- 拒绝、受限或永久拒绝时保留城市搜索，提供“前往系统设置 / 返回后重试”；新设备始终以本机 OS 权限为准，不从账号或旧设备同步权限结果。
+
+### 4.5 新首页 P4 微信小程序宿主合同
+
+- 小程序 `pages/home/index` 不再跳转旧衣橱 Tab；登录成功默认进入首页，底栏为“首页 / 穿搭 / 中央 + / 种草 / 设置”，衣橱作为首页内分栏。
+- 信息顺序与 App 一致：上海业务时间问候与日期 → 天气模块内唯一地点入口 → 今日/明日双卡 → 推荐/衣橱分栏 → 计划事实、七日条与服务器推荐。已有主计划或已穿事实时，事实卡必须位于七日条之前。
+- 今天/明天首次并行读取，第 3–7 天和远期出行仅点击后按需读取；远期行程使用独立“出行推荐”列表，不混入普通七日条。快速切日期、账号切换、前后台与跨上海午夜均用 account/date generation 拒绝旧响应。
+- 推荐卡使用服务器 candidate garment UUID 与小程序工作区图片 URL join；历史/删除衣物使用服务器快照名称，blocked 明确呈现风险，不用色块假冒真实图片。
+- 首页生命周期禁止自动调用定位。用户点击地点入口后先看到用途，只有再主动点击“使用当前位置”才调用微信隐私/位置权限。坐标只发送 `resolve-device`，候选城市由用户确认后再设为临时或常驻；拒绝或永久拒绝时手工搜索始终可用。
+- Canvas 宿主只能适配 P3 进入 main 的同源绘制内核；未获得该内核、未知/`998`、fallback、reduced-motion 或绘制异常时必须保持静态，不得在小程序端另写一套雨雪粒子。
+- 小程序不持久化首页业务数据、坐标、推荐或写入队列；写操作只在共享 P2 严格合同同步后启用，复用稳定 `clientMutationId`，服务器提交并读回成功前不更新成功态。
 
 ## 5. Route 与页面状态矩阵
 

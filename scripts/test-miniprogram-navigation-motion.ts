@@ -88,17 +88,17 @@ const tabInstance: any = {
 componentDefinition.lifetimes.attached.call(tabInstance);
 assert.equal(tabInstance.data.selected, 3, "first paint must select the current route, not wardrobe");
 assert.equal(tabInstance.data.motionReady, true);
-const wardrobeTap = { currentTarget: { dataset: { index: 0, url: "/pages/wardrobe/index/index" } } };
-tabInstance.switchTab(wardrobeTap);
+const homeTap = { currentTarget: { dataset: { index: 0, url: "/pages/home/index" } } };
+tabInstance.switchTab(homeTap);
 assert.equal(tabInstance.data.selected, 3, "the outgoing instance must retain its selected tab");
 assert.equal(switchCalls.length, 1);
-tabInstance.switchTab(wardrobeTap);
+tabInstance.switchTab(homeTap);
 assert.equal(switchCalls.length, 1, "rapid taps must be single-flight");
 
 componentDefinition.pageLifetimes.show.call(tabInstance);
-tabInstance.switchTab(wardrobeTap);
+tabInstance.switchTab(homeTap);
 assert.equal(switchCalls.length, 2, "showing the page again must release the single-flight guard");
-currentRoute = "pages/wardrobe/index/index";
+currentRoute = "pages/home/index";
 componentDefinition.pageLifetimes.show.call(tabInstance);
 assert.equal(tabInstance.data.selected, 0);
 

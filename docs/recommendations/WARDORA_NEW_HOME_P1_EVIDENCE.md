@@ -34,3 +34,78 @@
 - 本批无 Canvas 运行时，UI spec 中的单 rAF、约 29 FPS、DPR 上限、后台/离屏暂停与故障保护是后续 P4 合同，不是当前运行时结论。
 - 一次性设备定位属于 P3；计划采用/替换/取消/已穿写事务属于 P2；生产默认首页切换与正式候选发布属于 P5。
 - Android 业务交互来自模拟器和合成 Fixture 账号，不是物理真机或真实用户数据；正式生产 API 只执行部署后的受控健康/鉴权/功能开关门禁。
+
+## P1.3.1-C 证据补强（2.1.28-test）
+
+- Fixture 的 locationless `WeatherOverview` 已移除 `weatherCode`、温度、降水等 forecast 专属字段；每次 Overview 响应都经过 `WeatherOverviewSchema.parse`，浏览器与 Android 清除城市后的天气卡均显示“暂无可信温度 / 未设置城市”，且不含 Zod、JSON 或 raw schema 文本。
+- Fixture 新增脱敏测试 trace，只记录序号、HTTP 方法、固定 pathname 与状态码，不记录 token、请求体、账号或坐标。浏览器 manifest 写入真实 trace 并核对天气与 DELETE 流水；Android manifest 的 `responses.profileGets/profileDeletes` 直接来自服务端 trace，不再用硬编码序列冒充。
+- 浏览器 `npm run test:browser:home-feed-p13` 通过：首次地点读取失败后用户点击重试恢复上海；服务端 GET trace 为 `503→503（HomeRequestGate 取消的重复读取）→200`，DELETE 为 `503→409→200`。360/375/390/412/430px 无横向溢出，130% 下标题、今天日期、地点与双 Tab 可见，非预期 request failure、page error、console error 均为 0。
+- Android Fixture 在 `wardrobe-test` Android 15/API 35、固定签名 `2.1.28-test` / `20128` / `com.wardrobe.outfit` / `CN=fangzheng` 上通过：首次地点错误与“重试”真实出现并恢复上海；真实 DELETE 为 `503→409→200`；pending 时 ADB Back 与遮罩点击后各等待 550ms，Sheet 仍在；网络失败、409 与成功读回截图分别显示人类可读状态，成功态为“未设置城市”且无原始 schema 文本。
+- Android 130% 截图在 Sheet/转场退出后以双 rAF 加合成等待拍摄；除首页/设置 overflow=0 外，标题、地点、今天日期、推荐/衣橱 Tab 均断言在视口内。前后台恢复通过，runtime exception、loading failure、fatal 均为 0。证据位于忽略目录 `test-results/home-feed-p13-android/20260718/`；这是模拟器与合成 Fixture 账号验证，不是物理真机、生产账号或生产写事务验证。
+- 独立复跑 `test:logic:home-feed-p1`、`test:logic:home-feed-p13`、`typecheck`、UI contracts、browser P1.3 与 Android Fixture 均通过。旧 `762c` 工作树 HEAD 已确认进入 main，两处废弃 dirty diff 未合入；完整目录已移入 macOS 废纸篓并 prune，临时分支已删除，可从废纸篓恢复。两条 PAW 工作树未触碰。
+- 正式目录现有 `衣橱穿搭助手-v2.1.28-test.apk` 未覆盖、未重建：复核为 `com.wardrobe.outfit` / `2.1.28-test` / `20128` / `CN=fangzheng`，SHA-256 `c0dd62291a60ecf892715dbf45c66ea33ede48c0addef4bb391e85b8ad7ebf54`。其业务 API 基址仅为 `https://api.zhengfangapps.cloud`，未发现指向 `10.0.2.2`、`127.0.0.1` 或 `localhost` 的业务 API URL；不对 APK 内任意非业务字符串作“完全不含 localhost”的绝对声明。
+
+## P1.3 收口（2.1.28-test，历史记录）
+
+### 红灯与修复
+
+- 重试地点按钮与重连路径从 `loadLocation(false)` 切为 `loadLocation(true)`，修复地点首次失败后不再触发天气/推荐刷新的卡死问题。
+- 天气写入与推荐写入增加 account/location/workspace 上下文与 requestGate 生效校验，晚到错误响应不再覆盖当前目标上下文；`workspaceRevision` 采用 `OnlineWorkspaceSnapshot.serverRevision`，避免本地实体 max-revision 导致重读缺失。
+- `clear home city` 的网络失败与 409 提示迁移到 `settings` 页面确认 `alertdialog` 内，使用 `role="alert"` + `aria-live="assertive"`，背景页不再承载错误承载点；保存期间保持不可关闭，失败后可在同层重试或取消。
+
+### 验收
+
+- `npm run test:logic:home-feed-p1`（含 `p13`）与 `npm run test:logic:home-feed-p13` 均通过。
+- 浏览器真实 Fixture（`npm run test:browser:home-feed-p13`）通过：360/375/390/412/430px 横向溢出 0、130% 字体场景下关键区块可见；地点首次读取失败重试、清除常驻城市 pending/网络失败/409/成功回读流程已覆盖；Back/Escape/遮罩不关闭 Sheet 已覆盖；截图保存在 `test-results/home-feed-p13-browser/20260718/`。
+- Android Fixture 证据：在 `wardrobe-test` Android 15/API 35 安装固定签名 APK，实际版本为 `2.1.28-test` / `20128` / `com.wardrobe.outfit` / `CN=fangzheng`，APK 内 API 为 `10.0.2.2:4174`，不作为正式交付包。
+- Android WebView + ADB 通过：清除常驻城市 pending 期间系统 Back/遮罩不关闭；受控 Fixture 按 503→409→200 返回，失败与冲突均保留 Sheet 且可重试，成功后关闭并读回“未设置城市”；前后台恢复、130% 字体下首页/设置横向溢出 0、runtime exception/loading failure/fatal 均为 0。脱敏证据位于 `test-results/home-feed-p13-android/20260718/`。
+- 本段是 P1.3.1-B 当时的历史覆盖；首次地点失败的 Android 缺口、真实服务端流水与 APK 口径已由上方 P1.3.1-C 补强并取代。正式 APK 未对生产账号执行写入烟测，不用 Fixture 结论代替生产业务验证。
+
+## P1.2 收口（2.1.27-test）
+
+### 红灯与根因
+
+- `scripts/test-home-feed-p12.tsx` 先以手写 expected 冻结地点 revision/cache、mutation 生命周期、UUID fallback、设置确认/Back 和首页 Sheet 命令边界；实现前红灯包含冻结 `Date.now` 时 fallback UUID 碰撞、地点 revision/workspaceRevision 旧缓存命中、日期/工作区变化清除 pending mutation、首页暴露 `clear_home` 等行为。实现后在 React Strict Mode 下全绿。
+- 资源告警根因不是生产首页循环，而是旧 Fixture 用 JSDOM 真实挂载 `MotionSheet`/`AnimatePresence` 驱动开关，动画卸载与 React act 反复重入，导致测试不收敛。Fixture 改为纯 reducer/OverlayStack/Back 行为断言，保留 controller 的真实 React 生命周期；`NODE_OPTIONS=--max-old-space-size=256` + 20s alarm 复测：1.32s 完成、最大 RSS 约 248MiB、峰值 footprint 约 47.6MiB、swap 0，未留 P1.2 进程。
+
+### 实现边界
+
+- 成功提交、409 读回、前台恢复和多设备地点 revision 变化均经过同一服务端快照应用路径；天气缓存键为 account + effective location revision/key + date，推荐缓存再加 workspaceRevision。地点上下文变化只刷新天气与未采用推荐，主计划/已穿事实不被覆盖。
+- 地点写事务生命周期独立于日期/工作区读取 effect；普通刷新不清 pending mutation 或稳定 ID，未知响应可同 ID 重试，账号/route 失活和卸载使晚到响应失效但不假设 Abort 撤销服务端事务。`src/lib/uuid.ts` 依次使用 `crypto.randomUUID`、`getRandomValues` 和带计数/随机量兼容 fallback。
+- 首页地点 Sheet 只保留搜索、常驻、临时至明日和恢复常驻；清除常驻城市仅在设置页，需明确二次确认并等待服务端提交/读回。新首页仍是隐藏 feature flag，旧默认首页未切换；不含定位、Canvas、计划/穿着写操作、业务持久缓存或小程序页面。
+
+### 验收证据
+
+- 行为/工程：`npm run test:logic:home-feed-p1`、root `typecheck`、app route/navigation、Back priority、UI overflow、UI contracts、domain catalog、miniprogram catalog consistency、cloud contracts typecheck、`npm --prefix apps/wechat-miniprogram run typecheck`、隐藏入口 production build、`git diff --check` 与 High-risk review gate 通过。UI spec build/check/render 在 UI contracts 中通过。
+- 真实浏览器：`scripts/test-home-feed-p11-browser.mjs` 以 Fixture API 完成 360/375/390/412/430px、130% 字体、搜索防抖/缓存、保存中日期切换、清除确认/Escape、账号切换；搜索上游请求数为 1，fatal=0。脱敏截图在 `test-results/home-feed-p12-browser/20260717/`（忽略目录）。
+- Android：`wardrobe-test` Android 15/API 35，固定签名 Fixture APK `2.1.27-test` / versionCode `20127` / package `com.wardrobe.outfit`。ADB/真实 WebView 交互覆盖保存期间切明日、前后台重建、断网真实整页错误与恢复、设置页清除二次确认、系统 Back 先关确认层、账号 B 清屏、130% 字体；WebView fatal=0。截图在 `test-results/android-home-feed-p12/20260717/`（忽略目录）。409/cache 一致性由手写 Fixture 覆盖，Android Fixture 不冒充生产业务。
+- 最终 APK 从正式 `.env` 重建，API 为 `https://api.zhengfangapps.cloud`，无 `127.0.0.1:4274`/`localhost:4274` Fixture 地址；包名、versionName/versionCode 与固定 `CN=fangzheng` 签名已核验。交付文件为仓库根目录 `衣橱穿搭助手-v2.1.27-test.apk`，SHA-256 在最终交接报告中记录。
+- 本批没有服务端/共享合同修改：生产 API/Worker 继续 `wardrobe-api:15bdd9c`，未部署、未迁移、未调用 QWeather；`wechat/miniprogram` 未改动、未合入、未上传体验版。
+
+### P1.2 保留风险
+
+- Android 证据来自 `wardrobe-test` 模拟器与脱敏 Fixture 账号；不能替代真实生产城市成本/GeoAPI 20 次每小时限制、生产地点事务或真实用户账号切换证明。正式 APK 仅完成元数据/正式 URL 验证，未连接生产业务做写入烟测。
+- Canvas runtime、一次性定位、计划采用/替换/取消/确认已穿、生产默认首页切换和正式发布候选均未实现，分别留在 P4、P3、P2、P5 边界。
+
+## P1.1 收口（2.1.26-test）
+
+### 行为 Fixture
+
+- 红灯：依赖恢复后，新增 P1.1 脚本因 `home-feed-operations` 尚不存在而以 `MODULE_NOT_FOUND` 失败；原 P1 Fixture 先通过，证明红灯来自新增行为而非旧基线。
+- 绿灯：稳定 mutation ID 覆盖网络失败/响应丢失后的同命令重放、revision 改变、提交读回、409 后读取最新地点及账号/卸载 generation 失效。
+- 城市搜索覆盖“上→上海”仅一次上游请求、IME composition 期间零请求、约 400ms 生产防抖、同一规范化 query 缓存命中、查询变化取消旧结果、账号切换清缓存以及 429 保留 `retryAfterSeconds` 且不自动重试。
+- 天气读取覆盖 today 200 + tomorrow 503、反向失败、成功日期独立缓存，以及既有 `HomeRequestGate` 日期/账号 generation 晚到保护；衣橱分栏使用真实 React DOM Fixture 证明推荐首屏无衣橱树、首次切换才挂载、返回推荐后内部输入状态保留。
+
+### 实现与边界
+
+- 城市命令键只包含脱敏语义字段：账号 ID、设备会话 ID、动作、地点 ID 与 expected revision；不记录 token、坐标或用户数据。Abort 只用于使客户端等待和晚到回写失效，不作为服务端事务已撤销或 GeoAPI 未计费的证据。
+- 409 会再次读取服务端地点快照并显示明确冲突；若最新快照也读取失败，保留原 pending mutation 供同 ID 重试，并显示“冲突且读回失败”，不降格为普通网络错误。
+- `home_feed` 仍是 feature flag 隐藏 route，默认 `wardrobe_home` 未改变；没有新增定位、Canvas、计划/穿着写入、业务持久缓存或小程序页面。
+- 本批仅 App 客户端与测试/文档变更：生产 API/Worker 保持既有镜像，本批不部署服务端、不执行 migration、不调用 QWeather、不合入 `wechat/miniprogram`。
+
+### P1.1 验收证据
+
+- 工程门禁：P1/P1.1 Fixture、root typecheck、App route/navigation、Back priority、UI overflow、UI spec build/check/render、production build、`git diff --check` 与 High-risk review gate 通过；完整命令输出保留在本任务运行记录。
+- 真实浏览器：360/375/390/412/430px 页面级横向溢出为 0；125% 字体、推荐/衣橱懒挂载、城市 Sheet、保存中状态、同 query 缓存及账号 A 退出后账号 B 的“未设置城市”清屏均通过。截图位于忽略目录 `test-results/home-feed-p11-browser/20260717/`。
+- Android：固定签名 Fixture APK 为 `2.1.26-test` / versionCode `20126` / `com.wardrobe.outfit` / signer `CN=fangzheng`。`wardrobe-test`（Android 15 / API 35）覆盖隐藏入口、`s→shanghai` 连续输入后的单次候选、保存中状态、系统 Back 先关 Sheet、前后台、断网独立错误、恢复联网、130% 字体及第二账号无旧城市；fatal scan 为 0。
+- Android Fixture 通过回环测试地址验证交互，不能证明生产搜索成本、真实城市事务或生产账号切换；最终交付 APK 使用正式 API 配置、内部隐藏入口开启、默认首页不变。生产 API/Worker 仍保持既有镜像 `wardrobe-api:15bdd9c`，本批没有部署、migration 或 QWeather live 调用。

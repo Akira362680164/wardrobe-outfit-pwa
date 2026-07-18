@@ -1,5 +1,5 @@
 import type { FastifyInstance } from "fastify";
-import { AcceptRecommendationCommandSchema, AcceptRecommendationResponseSchema, RecommendationReadQuerySchema, ResolveRecommendationsCommandSchema, ResolveRecommendationsResponseSchema } from "@wardrobe/cloud-contracts";
+import { AcceptRecommendationCommandSchema, AcceptRecommendationResponseSchema, CancelPrimaryPlanCommandSchema, CancelPrimaryPlanResponseSchema, RecommendationReadQuerySchema, RejectRecommendationCommandSchema, RejectRecommendationResponseSchema, ResolveRecommendationsCommandSchema, ResolveRecommendationsResponseSchema } from "@wardrobe/cloud-contracts";
 import { ReassessRecommendationCommandSchema, RecommendationRegenerationRequestSchema } from "@wardrobe/cloud-contracts";
 import { SessionService } from "../auth/session.js";
 import { sendWorkspaceError, WorkspaceApiError } from "../workspace/errors.js";
@@ -9,8 +9,10 @@ import { FixedWindowRateLimiter } from "../auth/rate-limit.js";
 import { RecommendationGenerationCoordinator } from "./coordinator.js";
 import { readRecommendationFeatureFlags } from "./feature-flags.js";
 import { RecommendationAcceptService } from "./accept-service.js";
+import { RecommendationPlanCancelService } from "./cancel-service.js";
+import { RecommendationActionService } from "./action-service.js";
 
-export function registerRecommendationRoutes(app: FastifyInstance, sessionService: SessionService, service: RecommendationReadService, regeneration = new RecommendationRegenerationService(), coordinator?: RecommendationGenerationCoordinator, acceptService?: RecommendationAcceptService, reassessLimiter = new FixedWindowRateLimiter({ maxAttempts: 30, windowMs: 60 * 60_000 }), forceLimiter = new FixedWindowRateLimiter({ maxAttempts: 12, windowMs: 60 * 60_000 })) {
+export function registerRecommendationRoutes(app: FastifyInstance, sessionService: SessionService, service: RecommendationReadService, regeneration = new RecommendationRegenerationService(), coordinator?: RecommendationGenerationCoordinator, acceptService?: RecommendationAcceptService, cancelService?: RecommendationPlanCancelService, actionService?: RecommendationActionService, reassessLimiter = new FixedWindowRateLimiter({ maxAttempts: 30, windowMs: 60 * 60_000 }), forceLimiter = new FixedWindowRateLimiter({ maxAttempts: 12, windowMs: 60 * 60_000 })) {
   app.get("/api/recommendations", async (request, reply) => {
     try {
       const claims = await sessionService.authenticate(request.headers.authorization);
@@ -32,6 +34,24 @@ export function registerRecommendationRoutes(app: FastifyInstance, sessionServic
       const date = (request.params as { date?: string }).date ?? "";
       if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) throw new WorkspaceApiError(400, "invalid_request", "日期格式无效");
       return AcceptRecommendationResponseSchema.parse(await acceptService.accept(claims.userId, device, date, AcceptRecommendationCommandSchema.parse(request.body)));
+    } catch (error) { return sendWorkspaceError(reply, error); }
+  });
+  app.post("/api/recommendations/plans/cancel-primary", async (request, reply) => {
+    try {
+      const claims = await sessionService.authenticate(request.headers.authorization);
+      const device = request.headers["x-wardrobe-device-id"];
+      if (typeof device !== "string" || device !== claims.deviceId) throw new WorkspaceApiError(403, "auth", "设备标识与登录会话不一致");
+      if (!readRecommendationFeatureFlags(process.env).RECOMMENDATION_ACCEPT_ENABLED || !cancelService) return reply.code(404).send({ code: "not_found", message: "接口未启用", retryable: false });
+      return CancelPrimaryPlanResponseSchema.parse(await cancelService.cancel(claims.userId, device, CancelPrimaryPlanCommandSchema.parse(request.body)));
+    } catch (error) { return sendWorkspaceError(reply, error); }
+  });
+  app.post("/api/recommendations/actions/reject", async (request, reply) => {
+    try {
+      const claims = await sessionService.authenticate(request.headers.authorization);
+      const device = request.headers["x-wardrobe-device-id"];
+      if (typeof device !== "string" || device !== claims.deviceId) throw new WorkspaceApiError(403, "auth", "设备标识与登录会话不一致");
+      if (!readRecommendationFeatureFlags(process.env).RECOMMENDATION_ACCEPT_ENABLED || !actionService) return reply.code(404).send({ code: "not_found", message: "接口未启用", retryable: false });
+      return RejectRecommendationResponseSchema.parse(await actionService.reject(claims.userId, RejectRecommendationCommandSchema.parse(request.body)));
     } catch (error) { return sendWorkspaceError(reply, error); }
   });
   app.post("/api/recommendations/resolve", async (request, reply) => {

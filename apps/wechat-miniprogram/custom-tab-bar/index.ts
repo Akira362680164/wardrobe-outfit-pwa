@@ -2,8 +2,8 @@ declare const Component: any;
 declare function getCurrentPages(): Array<{ route?: string }>;
 
 const tabs = [
-  { key: "wardrobe", label: "衣橱", url: "/pages/wardrobe/index/index", icon: "wardrobe" },
-  { key: "outfits", label: "套装", url: "/pages/outfits/index/index", icon: "sparkles" },
+  { key: "home", label: "首页", url: "/pages/home/index", icon: "home" },
+  { key: "outfits", label: "穿搭", url: "/pages/outfits/index/index", icon: "sparkles" },
   { key: "wishlist", label: "种草", url: "/pages/wishlist/index/index", icon: "shopping-bag" },
   { key: "settings", label: "设置", url: "/pages/settings/index/index", icon: "settings" },
 ];
@@ -64,6 +64,15 @@ Component({
           this.switchingTab = false;
         },
       });
+    },
+    openCreate(this: any) {
+      const pages = getCurrentPages() as Array<{ openCreateSheet?: () => void }>;
+      const page = pages[pages.length - 1];
+      if (typeof page?.openCreateSheet === "function") {
+        page.openCreateSheet();
+        return;
+      }
+      wx.navigateTo({ url: "/pages/intake/camera/index" });
     },
   },
 });

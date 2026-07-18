@@ -281,6 +281,83 @@ function renderPartVisual(title) {
       </div>`;
   }
 
+  if (title.includes("新首页 P1.4")) {
+    return `
+      <div class="part-visual" data-visual="home-p14-skeleton">
+        <div class="home-location-entry">上海 · 常驻 ›</div>
+        <div class="home-weather-links"><button>今天 31°</button><button>明天 30°/22°</button></div>
+        <div class="home-state-grid">
+          <span>推荐 / 衣橱</span>
+          <span>日期条仅在推荐内容内</span>
+          <span>真实图片横向卡轨</span>
+          <span>只读 · 无 P2 操作</span>
+        </div>
+        <div class="home-contract-row">
+          <span>问候 → 地点 → 双天气卡 → 分栏 → 内容</span>
+          <span>360 / 390 / 430 · 100% / 130%</span>
+          <span>原生横滑 · 纵向页面滚动优先</span>
+          <span>静态 QWeather visual family · 无 Canvas / 定位</span>
+        </div>
+      </div>`;
+  }
+
+  if (title.includes("新首页 P2")) {
+    return `
+      <div class="part-visual" data-visual="home-p2-write-loop">
+        <div class="home-state-grid">
+          <span>设为今日 / 明日 / 未来日期穿搭</span>
+          <span>替换一件 · 服务端复验</span>
+          <span>确认已穿 / 撤销已穿</span>
+          <span>取消 primary + 恢复 backup</span>
+        </div>
+        <div class="home-contract-row">
+          <span>pending → transaction → readback → success</span>
+          <span>同草稿 mutation ID 稳定 · 草稿变化才更新</span>
+          <span>保存套装独立事务 · 失败不回滚计划</span>
+          <span>409 / timeout / multi-device 不产生半状态</span>
+        </div>
+      </div>`;
+  }
+
+  if (title.includes("新首页 P3")) {
+    return `
+      <div class="part-visual" data-visual="home-p3-canvas-location">
+        <div class="home-weather-links"><button>今日 Canvas · 29 FPS</button><button>明日 · 静态</button></div>
+        <div class="home-state-grid">
+          <span>62/62 visual dictionary</span>
+          <span>DPR ≤ 2 · 离屏/后台停止</span>
+          <span>reduced-motion · clock 0</span>
+          <span>998 / fallback / stale · 静态</span>
+        </div>
+        <div class="home-contract-row">
+          <span>点地点 → 使用当前位置 → 用途确认 → 系统权限</span>
+          <span>大致坐标 → 服务端城市候选 → 用户确认</span>
+          <span>临时 / 常驻二次确认后才提交</span>
+          <span>拒绝 / 受限 → 系统设置 / 手动搜索</span>
+        </div>
+      </div>`;
+  }
+
+  if (title.includes("新首页 P4")) {
+    return `
+      <div class="part-visual" data-visual="home-p4-wechat-host">
+        <div class="home-location-entry">杭州 · 临时 ›</div>
+        <div class="home-weather-links"><button>今日动态 Canvas 2D</button><button>明日静态</button></div>
+        <div class="home-state-grid">
+          <span>首页 / 穿搭 / + / 种草 / 设置</span>
+          <span>计划事实 → 七日按需</span>
+          <span>服务器 UUID → 真实图片</span>
+          <span>远期出行单列</span>
+        </div>
+        <div class="home-contract-row">
+          <span>用途说明 → 主动定位 → resolve-device → 用户确认</span>
+          <span>无坐标持久化 · 手工城市始终可用</span>
+          <span>P3 同源内核 · 微信宿主仅适配生命周期</span>
+          <span>服务器提交并读回后才更新成功态</span>
+        </div>
+      </div>`;
+  }
+
   if (/2\.1\s+颜色/.test(title)) {
     return `
       <div class="part-visual" data-visual="color-token-palette">
