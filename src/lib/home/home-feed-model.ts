@@ -1,4 +1,4 @@
-import type { WeatherOverview } from "@wardrobe/cloud-contracts";
+import type { WeatherLocationRef, WeatherOverview } from "@wardrobe/cloud-contracts";
 import { wardoraBusinessDate } from "@wardrobe/cloud-contracts";
 import { resolveQWeatherVisual, type QWeatherVisualDefinition } from "@wardrobe/domain-catalog";
 import type { ImageAssetReference } from "@/lib/types";
@@ -20,11 +20,28 @@ export interface HomeGarment {
 export interface HomePlan {
   id: string;
   date: string;
-  status: string;
+  status: "planned" | "worn" | "skipped" | "changed";
   role: string;
   revision: number;
   garmentIds: readonly string[];
+  garmentSnapshots?: readonly HomeGarmentSnapshot[];
+  actualGarmentSnapshots?: readonly HomeGarmentSnapshot[];
+  unavailableGarmentIds?: readonly string[];
+  availability?: "available" | "blocked" | "historical";
 }
+
+export interface HomeGarmentSnapshot {
+  garmentId: string;
+  name: string;
+  role: string;
+  category: string;
+  imageAssetId?: string;
+}
+
+export type HomeLocationSource = "travel" | "temporary_override" | "home_city";
+export type HomeResolvedLocation =
+  | { kind: "none"; revision: number }
+  | { kind: HomeLocationSource; displayName: string; revision: number };
 
 export interface HomeRecommendationCandidate {
   candidateId: string;
@@ -44,6 +61,11 @@ export type HomeRecommendationResult =
         recommendationRevision: number;
         targetDate: string;
         contextMode: "forecast" | "locationless" | "weather_fallback";
+        resolvedLocation?: WeatherLocationRef;
+        locationSource?: HomeLocationSource;
+        weatherUpdatedAt?: string;
+        endpointFreshness?: WeatherOverview["endpointFreshness"];
+        attribution?: WeatherOverview["attribution"];
         recommendations: readonly HomeRecommendationCandidate[];
       };
     }
@@ -73,14 +95,14 @@ export interface HomeFeedViewModel {
   normalState: HomeNormalState | null;
   workspace: HomeFeedInput["workspace"];
   wardrobeReady: boolean;
-  location: HomeFeedInput["location"];
+  location: HomeResolvedLocation;
   weather: HomeWeatherViewModel;
   todayWeather: HomeWeatherViewModel;
   tomorrowWeather: HomeWeatherViewModel;
   recommendation:
     | { status: "idle" | "loading" | "protected" | "not_ready" }
     | { status: "error"; message: string }
-    | { status: "ready"; contextMode: "forecast" | "locationless" | "weather_fallback"; candidates: readonly HomeRecommendationCandidate[] };
+    | { status: "ready"; contextMode: "forecast" | "locationless" | "weather_fallback"; resolvedLocation?: WeatherLocationRef; locationSource?: HomeLocationSource; weatherUpdatedAt?: string; stale: boolean; attribution?: WeatherOverview["attribution"]; candidates: readonly HomeRecommendationCandidate[] };
   plan: (HomePlan & { kind: "protected_plan" | "actual_wear" }) | null;
 }
 
@@ -98,6 +120,10 @@ export type HomeWeatherViewModel =
         maxTemperatureC?: number;
         visual?: QWeatherVisualDefinition;
         stale: boolean;
+        weatherUpdatedAt?: string;
+        attribution?: WeatherOverview["attribution"];
+        resolvedLocation?: WeatherLocationRef;
+        locationSource?: HomeLocationSource;
       };
 
 const idleWeather = { status: "idle" } as const;
@@ -138,12 +164,32 @@ export function buildHomeWeatherView(
     maxTemperatureC: evidence.temperatureMaxC,
     visual: code ? resolveQWeatherVisual(code) : undefined,
     stale,
+    weatherUpdatedAt: evidence.weatherUpdatedAt,
+    attribution: overview.attribution,
+    resolvedLocation: overview.resolvedLocation,
+    locationSource: overview.locationSource,
   };
 }
 
 export function buildHomeFeedViewModel(input: HomeFeedInput): HomeFeedViewModel {
   const wardrobeReady = hasReadyWardrobe(input.garments);
-  const hasCity = input.location.kind !== "none";
+  const recommendationData = input.recommendation.status === "ready"
+    && (input.recommendation.data.status === "generated" || input.recommendation.data.status === "reused" || input.recommendation.data.status === "served_stale")
+    ? input.recommendation.data.recommendation
+    : null;
+  const weatherLocation = input.weather.status === "ready" && input.weather.data.resolvedLocation && input.weather.data.locationSource
+    ? { kind: input.weather.data.locationSource, displayName: input.weather.data.resolvedLocation.displayName, revision: input.location.revision }
+    : null;
+  const recommendationLocation = recommendationData?.resolvedLocation && recommendationData.locationSource
+    ? { kind: recommendationData.locationSource, displayName: recommendationData.resolvedLocation.displayName, revision: input.location.revision }
+    : null;
+  const profileLocation: HomeResolvedLocation = input.location.kind === "none"
+    ? input.location
+    : input.location.kind === "temporary_city"
+      ? { kind: "temporary_override", displayName: input.location.displayName, revision: input.location.revision }
+      : { kind: "home_city", displayName: input.location.displayName, revision: input.location.revision };
+  const resolvedLocation = weatherLocation ?? recommendationLocation ?? profileLocation;
+  const hasCity = resolvedLocation.kind !== "none";
   const plan = input.plans.find((entry) => entry.date === input.selectedDate && entry.role === "primary");
   const protectedPlan = plan
     ? { ...plan, kind: plan.status === "worn" ? "actual_wear" as const : "protected_plan" as const }
@@ -169,6 +215,11 @@ export function buildHomeFeedViewModel(input: HomeFeedInput): HomeFeedViewModel 
     recommendation = {
       status: "ready",
       contextMode: input.recommendation.data.recommendation.contextMode,
+      resolvedLocation: input.recommendation.data.recommendation.resolvedLocation,
+      locationSource: input.recommendation.data.recommendation.locationSource,
+      weatherUpdatedAt: input.recommendation.data.recommendation.weatherUpdatedAt,
+      stale: input.recommendation.data.recommendation.endpointFreshness?.some((entry) => entry.freshness === "stale") ?? input.recommendation.data.status === "served_stale",
+      attribution: input.recommendation.data.recommendation.attribution,
       candidates: input.recommendation.data.recommendation.recommendations,
     };
   } else {
@@ -181,7 +232,7 @@ export function buildHomeFeedViewModel(input: HomeFeedInput): HomeFeedViewModel 
       : null,
     workspace: input.workspace,
     wardrobeReady,
-    location: input.location,
+    location: resolvedLocation,
     weather: buildHomeWeatherView(input.weather, input.selectedDate, input.businessDate),
     todayWeather: buildHomeWeatherView(todayWeather, input.businessDate, input.businessDate),
     tomorrowWeather: buildHomeWeatherView(tomorrowWeather, tomorrow, input.businessDate),

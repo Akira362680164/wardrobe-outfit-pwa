@@ -4,6 +4,7 @@ import { mkdir, writeFile } from "node:fs/promises";
 const serial = process.env.ANDROID_SERIAL ?? "emulator-5554";
 const packageName = "com.wardrobe.outfit";
 const evidenceDir = process.env.HOME_FEED_ANDROID_EVIDENCE ?? "test-results/home-feed-p14-android/20260718";
+const fixtureOrigin = process.env.HOME_FEED_FIXTURE_ORIGIN ?? "http://127.0.0.1:4184";
 
 function adb(args, encoding = "utf8") {
   return execFileSync("adb", ["-s", serial, ...args], { encoding, maxBuffer: 20 * 1024 * 1024 });
@@ -71,6 +72,10 @@ async function clickTestId(cdp, id) { return cdp.value(`(() => { const e=${testI
 async function clickText(cdp, text, last = false) { return cdp.value(`(() => { const es=[...document.querySelectorAll("button,a,[role=button]")].filter(e=>e.textContent.trim()===${JSON.stringify(text)}); const e=es[${last ? "es.length-1" : "0"}]; if(!e)return false; e.click(); return true; })()`); }
 async function settle(cdp, ms = 220) { await cdp.value(`new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(()=>setTimeout(resolve,${ms}))))`); }
 async function screenshot(name) { await writeFile(`${evidenceDir}/${name}.png`, adb(["exec-out", "screencap", "-p"], "buffer")); }
+async function setFixtureMode(mode) {
+  const response = await fetch(`${fixtureOrigin}/__fixture/control`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ action: "set-p14-mode", mode }) });
+  assert(response.ok, `Fixture mode ${mode} failed`);
+}
 
 await mkdir(evidenceDir, { recursive: true });
 adb(["shell", "pm", "clear", packageName]);
@@ -149,6 +154,46 @@ try {
   assert(await hasTestId(cdp, "wardora-home-feed"), "Foreground restore lost home feed");
   await screenshot("05-foreground-restore");
 
+  async function reloadHomeFor(mode) {
+    await setFixtureMode(mode);
+    await cdp.value("location.reload()");
+    await waitFor(() => clickText(cdp, "设置", true), `${mode}: Settings tab missing`);
+    await waitFor(() => hasTestId(cdp, "open-home-feed-preview"), `${mode}: Home preview entry missing`);
+    assert(await clickTestId(cdp, "open-home-feed-preview"), `${mode}: Home preview click failed`);
+    await waitFor(() => hasTestId(cdp, "wardora-home-feed"), `${mode}: Home feed missing`);
+    await settle(cdp, 1200);
+  }
+
+  await reloadHomeFor("travel");
+  const travel = await cdp.value(`({location:${testId("home-location-entry")}.textContent,source:${testId("home-recommendation-source")}?.textContent,state:${testId("wardora-home-feed")}.dataset.homeState,overflow:document.documentElement.scrollWidth-document.documentElement.clientWidth})`);
+  assert(travel.location.includes("北京 · 行程") && travel.source.includes("北京 · 行程") && travel.state === "home-ready-forecast" && travel.overflow <= 1, `Travel state invalid ${JSON.stringify(travel)}`);
+  await screenshot("06-travel-authority");
+
+  await reloadHomeFor("stale");
+  await cdp.value('document.documentElement.style.fontSize="20.8px"');
+  await settle(cdp, 300);
+  const stale = await cdp.value(`({attribution:${testId("home-weather-attribution")}?.textContent,overflow:document.documentElement.scrollWidth-document.documentElement.clientWidth})`);
+  assert(stale.attribution.includes("QWeather") && stale.attribution.includes("缓存") && stale.overflow <= 1, `Stale attribution invalid ${JSON.stringify(stale)}`);
+  await screenshot("07-stale-font130");
+  await cdp.value('document.documentElement.style.fontSize="16px"');
+
+  await reloadHomeFor("protected-plan-with-date-strip");
+  const protectedPlan = await cdp.value(`({plan:Boolean(${testId("home-protected-plan")}),risk:${testId("home-plan-availability-risk")}?.textContent,dateStrip:Boolean(${testId("home-plan-date-strip")}),snapshot:${testId("home-protected-plan")}?.textContent,overflow:document.documentElement.scrollWidth-document.documentElement.clientWidth})`);
+  assert(protectedPlan.plan && protectedPlan.dateStrip && protectedPlan.risk && protectedPlan.snapshot.includes("已删除的旅行外套") && protectedPlan.overflow <= 1, `Protected plan state invalid ${JSON.stringify(protectedPlan)}`);
+  await screenshot("08-protected-plan-date-strip");
+  assert(await cdp.value(`(() => { const b=${testId("home-date-strip")}.querySelectorAll("button")[2]; b.click(); return true; })()`), "Third-day date button missing");
+  await waitFor(() => cdp.value(`${testId("home-date-strip")}.querySelectorAll("button")[2].getAttribute("aria-pressed")==="true"`), "Third-day selection failed after protected plan");
+
+  await reloadHomeFor("partial-weather-error");
+  const partialWeather = await cdp.value(`({today:${testId("home-weather-today")}?.textContent,tomorrow:${testId("home-weather-tomorrow")}?.textContent,overflow:document.documentElement.scrollWidth-document.documentElement.clientWidth})`);
+  assert(partialWeather.today.includes("31°") && partialWeather.tomorrow.includes("重试") && partialWeather.overflow <= 1, `Partial weather state invalid ${JSON.stringify(partialWeather)}`);
+  await screenshot("09-partial-weather-error");
+  assert(await cdp.value(`(() => { const b=${testId("home-weather-tomorrow")}?.querySelector("button"); if(!b)return false; b.click(); return true; })()`), "Tomorrow retry button missing");
+  await waitFor(() => cdp.value(`${testId("home-weather-tomorrow")}?.textContent.includes("30°/22°")`), "Tomorrow retry did not recover");
+  const partialWeatherRecovered = await cdp.value(`({today:${testId("home-weather-today")}?.textContent,tomorrow:${testId("home-weather-tomorrow")}?.textContent})`);
+  assert(partialWeatherRecovered.today === partialWeather.today && partialWeatherRecovered.tomorrow.includes("30°/22°"), `Directed Android retry changed the wrong day ${JSON.stringify(partialWeatherRecovered)}`);
+  await screenshot("10-partial-weather-recovered");
+
   const packageDump = adb(["shell", "dumpsys", "package", packageName]);
   const logcat = adb(["logcat", "-d", "-t", "1800"]);
   await writeFile(`${evidenceDir}/logcat.txt`, logcat);
@@ -166,7 +211,7 @@ try {
     installedVersionCode: Number(packageDump.match(/versionCode=(\d+)/)?.[1] ?? 0),
     viewport,
     initial,
-    checks: { todayTomorrowSwitchAndScroll: true, horizontalScrollLeft, verticalScrollTop, locationSheetSystemBack: true, fontScalePercent: 130, font130, foregroundRestore: true },
+    checks: { todayTomorrowSwitchAndScroll: true, horizontalScrollLeft, verticalScrollTop, locationSheetSystemBack: true, fontScalePercent: 130, font130, foregroundRestore: true, targetedP141: { travel, stale, protectedPlan, partialWeather, partialWeatherRecovered, thirdDayAfterProtectedPlan: true } },
     runtimeExceptions,
     loadingFailures,
     fatalCount: fatalMatches.length

@@ -21,6 +21,7 @@ const requestTrace = [];
 let traceSequence = 0;
 let forcedProfileReadFailures = 0;
 let p14Mode = "ready";
+let partialWeatherFailuresRemaining = 0;
 
 function makeDefaultState() {
   return {
@@ -126,9 +127,10 @@ http.createServer(async (request, response) => {
 
   if (path === "/__fixture/control" && request.method === "POST") {
     const body = await readBody(request);
-    if (SCENARIO === "p14" && body.action === "set-p14-mode" && ["ready", "locationless", "fallback", "protected", "actual"].includes(body.mode)) {
+    if (SCENARIO === "p14" && body.action === "set-p14-mode" && ["ready", "locationless", "fallback", "protected", "actual", "travel", "stale", "protected-plan-with-date-strip", "partial-weather-error"].includes(body.mode)) {
       p14Mode = body.mode;
-      for (const state of tokenStates.values()) state.profile = { homeCity: body.mode === "locationless" ? null : city, revision: state.profile.revision + 1, updatedAt: now() };
+      partialWeatherFailuresRemaining = body.mode === "partial-weather-error" ? 1 : 0;
+      for (const state of tokenStates.values()) state.profile = { homeCity: body.mode === "locationless" || body.mode === "travel" ? null : city, revision: state.profile.revision + 1, updatedAt: now() };
       return send(response, 200, { mode: p14Mode });
     }
     if (body.action !== "fail-next-profile-get") {
@@ -176,8 +178,9 @@ http.createServer(async (request, response) => {
         payload: { legacyItemId: index + 1, locationId: "home", name: names[index], status: "active", category: categories[index], colors: { mode: "single", primary: "#808080" }, seasons: ["spring_autumn"], styles: ["commute"] },
         assetRefs: { imageDataUrl: { assetId: ASSET_IDS[index], variants: ["original", "thumbnail"], sha256: garmentAssetSha[index], mimeType: "image/svg+xml", width: 240, height: 320, variantSha256: { original: garmentAssetSha[index], thumbnail: garmentAssetSha[index] } } },
       }));
-      const planMode = p14Mode === "protected" || p14Mode === "actual";
-      const outfitPlans = planMode ? [{ id: "40000000-0000-4000-8000-000000000001", revision: 2, createdAt: now(), updatedAt: now(), payload: { date: businessDate(), status: p14Mode === "actual" ? "worn" : "planned", role: "primary", isPrimary: true, garmentIds: GARMENT_IDS.slice(0, 3), actualGarmentIds: p14Mode === "actual" ? GARMENT_IDS.slice(0, 3) : undefined } }] : [];
+      const planMode = p14Mode === "protected" || p14Mode === "actual" || p14Mode === "protected-plan-with-date-strip";
+      const blocked = p14Mode === "protected-plan-with-date-strip";
+      const outfitPlans = planMode ? [{ id: "40000000-0000-4000-8000-000000000001", revision: 2, createdAt: now(), updatedAt: now(), payload: { date: businessDate(), status: p14Mode === "actual" ? "worn" : "planned", role: "primary", isPrimary: true, garmentIds: blocked ? ["10000000-0000-4000-8000-000000000099", ...GARMENT_IDS.slice(1, 3)] : GARMENT_IDS.slice(0, 3), garmentSnapshots: blocked ? [{ garmentId: "10000000-0000-4000-8000-000000000099", name: "已删除的旅行外套", role: "outerwear", category: "tops" }, { garmentId: GARMENT_IDS[1], name: "卡其直筒长裤", role: "bottoms", category: "pants" }, { garmentId: GARMENT_IDS[2], name: "黑色乐福鞋", role: "shoes", category: "shoes" }] : undefined, actualGarmentIds: p14Mode === "actual" ? GARMENT_IDS.slice(0, 3) : undefined, unavailableGarmentIds: blocked ? ["10000000-0000-4000-8000-000000000099"] : [], availability: blocked ? "blocked" : "available" } }] : [];
       return send(response, 200, { garments: p14Mode === "locationless" ? [] : garments, outfits: [], wishlistItems: [], locations: [], tripPlans: [], outfitPlans, wearEvents: [], profiles: [], serverRevision: 8, requestId: "home-feed-p14-fixture" });
     }
     return send(response, 200, {
@@ -282,7 +285,8 @@ http.createServer(async (request, response) => {
     const profile = state.profile;
     const today = businessDate();
 
-    if (!profile.homeCity) {
+    const travelMode = SCENARIO === "p14" && p14Mode === "travel";
+    if (!profile.homeCity && !travelMode) {
       const overview = WeatherOverviewSchema.parse({
         targetDate,
         contextMode: "locationless",
@@ -300,12 +304,18 @@ http.createServer(async (request, response) => {
       return sendTraced(request, response, 200, overview);
     }
 
+    if (SCENARIO === "p14" && p14Mode === "partial-weather-error" && targetDate === addDay(today, 1) && partialWeatherFailuresRemaining > 0) {
+      partialWeatherFailuresRemaining -= 1;
+      return sendTraced(request, response, 503, { code: "provider_unavailable", message: "明日天气暂时不可用", retryable: true });
+    }
     const fallback = SCENARIO === "p14" && p14Mode === "fallback";
+    const stale = SCENARIO === "p14" && p14Mode === "stale";
+    const resolvedCity = travelMode ? { ...city, locationId: "101010100", displayName: "北京" } : city;
     const overview = WeatherOverviewSchema.parse({
       targetDate,
       contextMode: fallback ? "weather_fallback" : "forecast",
-      resolvedLocation: city,
-      locationSource: state.overrideState.override ? "temporary_override" : "home_city",
+      resolvedLocation: resolvedCity,
+      locationSource: travelMode ? "travel" : state.overrideState.override ? "temporary_override" : "home_city",
       targetTimezone: "Asia/Shanghai",
       contextResolvedAt: now(),
       weatherEvidence: fallback ? {
@@ -327,7 +337,7 @@ http.createServer(async (request, response) => {
         nightWeatherCode: targetDate === today ? "305" : "150",
         summary: targetDate === today ? "雷阵雨伴有冰雹，注意避险" : "云量变化，间有阳光",
       },
-      endpointFreshness: [],
+      endpointFreshness: stale ? [{ endpoint: targetDate === today ? "now" : "daily", freshness: "stale", providerUpdatedAt: "2026-07-18T00:00:00.000Z", fetchedAt: "2026-07-18T00:05:00.000Z", expiresAt: "2026-07-18T00:35:00.000Z", staleUntil: "2099-01-01T00:00:00.000Z" }] : [],
       availabilityReason: fallback ? "provider_unavailable" : "available",
       ...(fallback ? {} : { attribution: { label: "天气服务由 QWeather 提供", url: "https://www.qweather.com", sources: ["browser fixture"], license: ["test"] } }),
     });
@@ -345,7 +355,10 @@ http.createServer(async (request, response) => {
       const contextMode = p14Mode === "locationless" ? "locationless" : p14Mode === "fallback" ? "weather_fallback" : "forecast";
       const located = contextMode !== "locationless";
       const hasForecast = contextMode === "forecast";
-      return send(response, 200, { timezone: "Asia/Shanghai", pairConsistent: dates.length === 2, items: dates.map((targetDate) => ({ recommendationId: targetDate === businessDate() ? "20000000-0000-4000-8000-000000000001" : "20000000-0000-4000-8000-000000000002", recommendationRevision: 1, inputFingerprint: "a".repeat(64), targetDate, generationBatchId: "21000000-0000-4000-8000-000000000001", readiness: "ready", generationMode: "rule_only", generatedAt: now(), expiresAt: "2099-01-01T00:00:00.000Z", weatherEvidence: hasForecast ? { weatherSource: "forecast", weatherConfidence: 1, weatherUpdatedAt: now(), temperatureMinC: 22, temperatureMaxC: 32, rainProbability: 70, windLevel: 3, weatherCode: "304", summary: "雷阵雨" } : { weatherSource: "layering_default", weatherConfidence: 0, weatherUpdatedAt: now(), summary: "通用分层推荐" }, recommendations: candidates, contextMode, targetTimezone: "Asia/Shanghai", contextResolvedAt: now(), ...(located ? { resolvedLocation: city, locationSource: "home_city" } : {}), algorithmVersion: "wardora-recommendation-realtime-v1", ruleVersion: "wardora-rules-realtime-1", availabilityReason: contextMode === "locationless" ? "locationless" : contextMode === "weather_fallback" ? "provider_unavailable" : "available", endpointFreshness: [], ...(hasForecast ? { attribution: { label: "天气服务由 QWeather 提供", url: "https://www.qweather.com", sources: ["browser fixture"], license: ["test"] } } : {}) })) });
+      const travel = p14Mode === "travel";
+      const stale = p14Mode === "stale";
+      const resolvedCity = travel ? { ...city, locationId: "101010100", displayName: "北京" } : city;
+      return send(response, 200, { timezone: "Asia/Shanghai", pairConsistent: dates.length === 2, items: dates.map((targetDate) => ({ recommendationId: targetDate === businessDate() ? "20000000-0000-4000-8000-000000000001" : "20000000-0000-4000-8000-000000000002", recommendationRevision: 1, inputFingerprint: "a".repeat(64), targetDate, generationBatchId: "21000000-0000-4000-8000-000000000001", readiness: "ready", generationMode: "rule_only", generatedAt: now(), expiresAt: "2099-01-01T00:00:00.000Z", weatherEvidence: hasForecast ? { weatherSource: "forecast", weatherConfidence: 1, weatherUpdatedAt: stale ? "2026-07-18T00:00:00.000Z" : now(), temperatureMinC: 22, temperatureMaxC: 32, rainProbability: 70, windLevel: 3, weatherCode: "304", summary: "雷阵雨" } : { weatherSource: "layering_default", weatherConfidence: 0, weatherUpdatedAt: now(), summary: "通用分层推荐" }, recommendations: candidates, contextMode, targetTimezone: "Asia/Shanghai", contextResolvedAt: now(), ...(located ? { resolvedLocation: resolvedCity, locationSource: travel ? "travel" : "home_city" } : {}), algorithmVersion: "wardora-recommendation-realtime-v1", ruleVersion: "wardora-rules-realtime-1", availabilityReason: contextMode === "locationless" ? "locationless" : contextMode === "weather_fallback" ? "provider_unavailable" : "available", endpointFreshness: stale ? [{ endpoint: "daily", freshness: "stale", providerUpdatedAt: "2026-07-18T00:00:00.000Z", fetchedAt: "2026-07-18T00:05:00.000Z", expiresAt: "2026-07-18T00:35:00.000Z", staleUntil: "2099-01-01T00:00:00.000Z" }] : [], ...(hasForecast ? { attribution: { label: "天气服务由 QWeather 提供", url: "https://www.qweather.com", sources: ["browser fixture"], license: ["test"] } } : {}) })) });
     }
     return send(response, 404, { code: "not_found", message: "fixture has no current recommendation", retryable: false });
   }

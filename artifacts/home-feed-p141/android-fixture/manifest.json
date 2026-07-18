@@ -1,0 +1,67 @@
+{
+  "scenario": "home-feed-p14-android-webview-adb-cdp",
+  "serial": "emulator-5554",
+  "androidRelease": "15",
+  "androidSdk": "35",
+  "packageName": "com.wardrobe.outfit",
+  "installedVersionName": "2.1.30-test",
+  "installedVersionCode": 20130,
+  "viewport": {
+    "width": 391,
+    "height": 756,
+    "dpr": 2.625
+  },
+  "initial": {
+    "overflow": 0,
+    "greeting": "晚上好，明天也穿得轻松一点",
+    "location": "上海 · 常驻",
+    "cards": 3,
+    "images": 9,
+    "touchAction": "pan-x pan-y"
+  },
+  "checks": {
+    "todayTomorrowSwitchAndScroll": true,
+    "horizontalScrollLeft": 592.7619018554688,
+    "verticalScrollTop": 106.28571319580078,
+    "locationSheetSystemBack": true,
+    "fontScalePercent": 130,
+    "font130": {
+      "overflow": 0,
+      "tomorrowText": "明天最高 30°30°/22°云量变化，间有阳光最低 22° · 日间预报",
+      "tomorrowWithin": true
+    },
+    "foregroundRestore": true,
+    "targetedP141": {
+      "travel": {
+        "location": "北京 · 行程",
+        "source": "北京 · 行程 · 天气增强",
+        "state": "home-ready-forecast",
+        "overflow": 0
+      },
+      "stale": {
+        "attribution": "天气服务由 QWeather 提供 · 缓存 7/18 19:25",
+        "overflow": 0
+      },
+      "protectedPlan": {
+        "plan": true,
+        "risk": "部分衣物当前不可用，请替换后再穿",
+        "dateStrip": true,
+        "snapshot": "已删除的旅行外套已删除的旅行外套 · 卡其直筒长裤 · 黑色乐福鞋部分衣物当前不可用，请替换后再穿主计划已保护，天气变化只提示风险",
+        "overflow": 0
+      },
+      "partialWeather": {
+        "today": "今天最高 32°31°雷阵雨伴有冰雹，注意避险体感 34° · 3 级风",
+        "tomorrow": "明日天气暂时不可用重试",
+        "overflow": 0
+      },
+      "partialWeatherRecovered": {
+        "today": "今天最高 32°31°雷阵雨伴有冰雹，注意避险体感 34° · 3 级风",
+        "tomorrow": "明天最高 30°30°/22°云量变化，间有阳光最低 22° · 日间预报"
+      },
+      "thirdDayAfterProtectedPlan": true
+    }
+  },
+  "runtimeExceptions": [],
+  "loadingFailures": [],
+  "fatalCount": 0
+}

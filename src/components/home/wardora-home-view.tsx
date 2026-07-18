@@ -9,6 +9,7 @@ import { HomeFeedTabPanels } from "@/components/home/home-feed-tab-panels";
 import { AppPressable, MotionSheet } from "@/components/motion-common";
 import { OnlineAssetImage } from "@/components/online/online-asset-image";
 import type { HomeFeedViewModel, HomeGarment, HomeRecommendationCandidate, HomeWeatherViewModel } from "@/lib/home/home-feed-model";
+import { recommendationPlanAvailabilityMessage, recommendationPlanSnapshotNames } from "@/lib/recommendation-plan-presentation";
 
 export function WardoraHomeView({ controller, garments, renderWardrobeContent }: {
   controller: HomeFeedController;
@@ -53,10 +54,11 @@ export function WardoraHomeView({ controller, garments, renderWardrobeContent }:
           <WeatherUnavailable title="天气服务暂时不可用" message="已切换为通用推荐，不使用过期温度或降雨结论；衣橱仍可正常浏览。" />
         ) : (
           <div className="mt-0.5 grid grid-cols-2 gap-1.5" data-testid="home-weather-pair">
-            <WeatherDayCard kind="today" weather={vm.todayWeather} onClick={() => scrollToRecommendations(controller.window.today)} onRetry={controller.retryWeather} />
-            <WeatherDayCard kind="tomorrow" weather={vm.tomorrowWeather} onClick={() => scrollToRecommendations(controller.window.tomorrow)} onRetry={controller.retryWeather} />
+            <WeatherDayCard kind="today" weather={vm.todayWeather} onClick={() => scrollToRecommendations(controller.window.today)} onRetry={() => controller.retryWeather(controller.window.today)} />
+            <WeatherDayCard kind="tomorrow" weather={vm.tomorrowWeather} onClick={() => scrollToRecommendations(controller.window.tomorrow)} onRetry={() => controller.retryWeather(controller.window.tomorrow)} />
           </div>
         )}
+        <WeatherAttribution weather={[vm.todayWeather, vm.tomorrowWeather]} />
       </section>
 
       <div className="grid min-h-[52px] grid-cols-2 gap-1 rounded-[14px] bg-ink/5 p-1" role="tablist" aria-label="首页内容">
@@ -69,7 +71,8 @@ export function WardoraHomeView({ controller, garments, renderWardrobeContent }:
         {vm.plan ? (
           <div>
             <SectionHeading title={vm.plan.kind === "actual_wear" ? "今天已穿" : "当日穿搭"} subtitle={`${formatShortDate(controller.selectedDate)} · ${vm.plan.kind === "actual_wear" ? "实际穿着已记录" : "计划保护中"}`} />
-            <ReadOnlyPlan garmentIds={vm.plan.garmentIds} garmentById={garmentById} kind={vm.plan.kind} />
+            <ReadOnlyPlan plan={vm.plan} garmentById={garmentById} today={controller.window.today} />
+            <div className="mt-3" data-testid="home-plan-date-strip"><DateStrip dates={dates} selectedDate={controller.selectedDate} onSelect={controller.setSelectedDate} /></div>
           </div>
         ) : (
           <div className="mb-2.5 grid grid-cols-[auto_minmax(0,1fr)] items-end gap-3" data-testid="home-recommendation-toolbar">
@@ -88,7 +91,7 @@ export function WardoraHomeView({ controller, garments, renderWardrobeContent }:
         ) : !vm.plan && readyRecommendation ? (
           <div className="no-scrollbar flex snap-x snap-mandatory gap-2.5 overflow-x-auto pb-2 pt-0.5 [touch-action:pan-x_pan-y]" aria-label="穿搭推荐，横向滚动" data-testid="home-recommendation-rail">
             {readyRecommendation.candidates.map((candidate) => (
-              <RecommendationCard key={candidate.candidateId} candidate={candidate} garmentById={garmentById} contextMode={readyRecommendation.contextMode} />
+              <RecommendationCard key={candidate.candidateId} candidate={candidate} garmentById={garmentById} contextMode={readyRecommendation.contextMode} sourceSummary={recommendationSourceSummary(readyRecommendation)} />
             ))}
           </div>
         ) : null}
@@ -167,8 +170,8 @@ export function homeCitySheetLocationActions(hasTemporaryOverride: boolean): rea
 }
 
 function WeatherDayCard({ kind, weather, onClick, onRetry }: { kind: "today" | "tomorrow"; weather: HomeWeatherViewModel; onClick: () => void; onRetry: () => unknown }) {
-  if (weather.status === "loading" || weather.status === "idle") return <div className="home-weather-day-card grid min-h-[108px] place-items-center bg-mist/75 px-2 text-center text-xs text-ink/55"><Loader2 className="animate-spin motion-reduce:animate-none" size={19} /><span>{kind === "today" ? "正在读取今天" : "正在读取明天"}</span></div>;
-  if (weather.status === "error") return <div className="home-weather-day-card grid min-h-[108px] content-center bg-mist/75 px-2 text-center"><AlertCircle className="mx-auto text-clay" size={18} /><p className="mt-1 line-clamp-2 text-[11px] text-ink/65">{weather.message}</p><AppPressable className="mx-auto min-h-11 px-3 text-xs font-semibold text-denim" onClick={() => void onRetry()}>重试</AppPressable></div>;
+  if (weather.status === "loading" || weather.status === "idle") return <div className="home-weather-day-card grid min-h-[108px] place-items-center bg-mist/75 px-2 text-center text-xs text-ink/55" data-testid={`home-weather-${kind}`}><Loader2 className="animate-spin motion-reduce:animate-none" size={19} /><span>{kind === "today" ? "正在读取今天" : "正在读取明天"}</span></div>;
+  if (weather.status === "error") return <div className="home-weather-day-card grid min-h-[108px] content-center bg-mist/75 px-2 text-center" data-testid={`home-weather-${kind}`}><AlertCircle className="mx-auto text-clay" size={18} /><p className="mt-1 line-clamp-2 text-[11px] text-ink/65">{weather.message}</p><AppPressable className="mx-auto min-h-11 px-3 text-xs font-semibold text-denim" onClick={() => void onRetry()}>重试</AppPressable></div>;
   if (weather.status !== "ready") return null;
   const isToday = kind === "today";
   const temperature = isToday && weather.temperatureC !== undefined
@@ -207,11 +210,11 @@ function SectionHeading({ title, subtitle, action, compact = false }: { title: s
   return <div className={`${compact ? "" : "mb-2.5"} flex min-h-11 items-end justify-between gap-3`}><div><h2 className="text-[18px] font-bold leading-[1.2] tracking-[-0.015em]">{title}</h2><p className="mt-[3px] max-w-[12ch] text-[11px] leading-[1.4] text-ink/55">{subtitle}</p></div>{action}</div>;
 }
 
-function RecommendationCard({ candidate, garmentById, contextMode }: { candidate: HomeRecommendationCandidate; garmentById: ReadonlyMap<string, HomeGarment>; contextMode: "forecast" | "locationless" | "weather_fallback" }) {
+function RecommendationCard({ candidate, garmentById, contextMode, sourceSummary }: { candidate: HomeRecommendationCandidate; garmentById: ReadonlyMap<string, HomeGarment>; contextMode: "forecast" | "locationless" | "weather_fallback"; sourceSummary: string }) {
   const garments = candidate.garmentIds.map((id) => garmentById.get(id)).filter((item): item is HomeGarment => Boolean(item));
   const target = objectiveLabel(candidate.objective);
   return <article className="ui-card grid w-[310px] min-w-[310px] max-w-[calc(100vw-50px)] basis-[310px] snap-start grid-rows-[18px_78px_20px_16px_34px_32px] gap-y-1.5 px-[17px] pb-[17px] pt-[21px] !shadow-none" data-testid="home-recommendation-card">
-    <div data-rec-row="target" className="flex h-[18px] items-center justify-between gap-3"><span className="text-[13px] font-bold leading-[18px] text-denim" data-testid="home-recommendation-target-label">{target}</span><span className="text-[10px] font-medium leading-[18px] text-ink/55">{contextLabel(contextMode)}</span></div>
+    <div data-rec-row="target" className="flex h-[18px] items-center justify-between gap-3"><span className="text-[13px] font-bold leading-[18px] text-denim" data-testid="home-recommendation-target-label">{target}</span><span className="max-w-[17ch] truncate text-[10px] font-medium leading-[18px] text-ink/55" data-testid="home-recommendation-source">{sourceSummary}</span></div>
     <div className="grid h-[78px] grid-cols-[1.15fr_.9fr_.72fr] gap-1.5" aria-label={garments.map((item) => item.name).join("、")}>
       {garments.slice(0, 3).map((item) => <div key={item.id} className="relative min-w-0 overflow-hidden rounded-[11px] bg-mist"><OnlineAssetImage asset={item.imageAsset} variant="thumbnail" alt={item.name} className="h-full w-full" imageClassName="object-cover" fallback={<div className="grid h-full place-items-center text-ink/25"><Shirt size={25} /></div>} /><span className="absolute inset-x-0 bottom-0 truncate bg-gradient-to-t from-black/55 to-transparent px-2 pb-1.5 pt-5 text-[10px] font-semibold text-white">{item.name}</span></div>)}
     </div>
@@ -222,9 +225,12 @@ function RecommendationCard({ candidate, garmentById, contextMode }: { candidate
   </article>;
 }
 
-function ReadOnlyPlan({ garmentIds, garmentById, kind }: { garmentIds: readonly string[]; garmentById: ReadonlyMap<string, HomeGarment>; kind: "protected_plan" | "actual_wear" }) {
-  const garments = garmentIds.map((id) => garmentById.get(id)).filter((item): item is HomeGarment => Boolean(item));
-  return <article className="ui-card p-4" data-testid={kind === "actual_wear" ? "home-actual-wear" : "home-protected-plan"}><div className="grid grid-cols-3 gap-2">{garments.slice(0, 3).map((item) => <div key={item.id} className="aspect-[3/4] overflow-hidden rounded-[13px] bg-mist"><OnlineAssetImage asset={item.imageAsset} variant="thumbnail" alt={item.name} className="h-full w-full" imageClassName="object-cover" fallback={<div className="grid h-full place-items-center text-ink/25"><Shirt size={25} /></div>} /></div>)}</div><p className="mt-3 text-sm leading-6 text-ink/65">{garments.map((item) => item.name).join(" · ") || "计划衣物快照已保留"}</p><p className="mt-2 text-sm font-medium text-denim">{kind === "actual_wear" ? "已穿事实优先，推荐不会覆盖" : "主计划已保护，天气变化只提示风险"}</p></article>;
+function ReadOnlyPlan({ plan, garmentById, today }: { plan: NonNullable<HomeFeedViewModel["plan"]>; garmentById: ReadonlyMap<string, HomeGarment>; today: string }) {
+  const snapshotNames = recommendationPlanSnapshotNames(plan);
+  const snapshotList = plan.kind === "actual_wear" && plan.actualGarmentSnapshots?.length ? plan.actualGarmentSnapshots : plan.garmentSnapshots;
+  const displayItems = (snapshotList?.length ? snapshotList : plan.garmentIds.map((garmentId) => ({ garmentId, name: garmentById.get(garmentId)?.name ?? "已删除衣物", role: "", category: "" }))).slice(0, 3);
+  const risk = recommendationPlanAvailabilityMessage(plan, today);
+  return <article className="ui-card p-4" data-testid={plan.kind === "actual_wear" ? "home-actual-wear" : "home-protected-plan"}><div className="grid grid-cols-3 gap-2">{displayItems.map((snapshot) => { const garment = garmentById.get(snapshot.garmentId); return <div key={snapshot.garmentId} className="relative aspect-[3/4] overflow-hidden rounded-[13px] bg-mist"><OnlineAssetImage asset={garment?.imageAsset} variant="thumbnail" alt={snapshot.name} className="h-full w-full" imageClassName="object-cover" fallback={<div className="grid h-full place-items-center px-2 text-center text-xs text-ink/45"><Shirt className="mb-1" size={25} /><span>{snapshot.name}</span></div>} /></div>; })}</div><p className="mt-3 text-sm leading-6 text-ink/65">{snapshotNames.join(" · ") || displayItems.map((item) => item.name).join(" · ") || "计划衣物快照已保留"}</p>{risk ? <p className="mt-2 text-sm font-semibold text-clay" role="status" data-testid="home-plan-availability-risk">{risk}</p> : null}<p className="mt-2 text-sm font-medium text-denim">{plan.kind === "actual_wear" ? "已穿事实优先，推荐不会覆盖" : "主计划已保护，天气变化只提示风险"}</p></article>;
 }
 
 function RecommendationState({ title, message }: { title: string; message: string }) { return <div className="ui-card p-4"><h3 className="font-semibold">{title}</h3><p className="mt-2 text-sm leading-6 text-ink/60">{message}</p></div>; }
@@ -235,7 +241,11 @@ function addDays(date: string, days: number) { const value = new Date(`${date}T1
 function weekday(date: string) { return new Intl.DateTimeFormat("zh-CN", { timeZone: "Asia/Shanghai", weekday: "short" }).format(new Date(`${date}T12:00:00+08:00`)); }
 function tempRange(min?: number, max?: number) { if (min !== undefined && max !== undefined) return `${Math.round(max)}°/${Math.round(min)}°`; if (min !== undefined || max !== undefined) return `${Math.round(min ?? max!)}°`; return "--°"; }
 function tempLowLabel(min?: number) { return min === undefined ? "" : `最低 ${Math.round(min)}°`; }
-function locationLabel(location: { kind: string; displayName?: string }) { return location.kind === "none" ? "未设置城市" : `${location.displayName} · ${location.kind === "temporary_city" ? "临时" : "常驻"}`; }
+function locationLabel(location: { kind: string; displayName?: string }) { return location.kind === "none" ? "未设置城市" : `${location.displayName} · ${location.kind === "travel" ? "行程" : location.kind === "temporary_override" || location.kind === "temporary_city" ? "临时" : "常驻"}`; }
+function locationSourceLabel(source?: string) { return source === "travel" ? "行程" : source === "temporary_override" ? "临时" : source === "home_city" ? "常驻" : ""; }
+function recommendationSourceSummary(state: Extract<HomeFeedViewModel["recommendation"], { status: "ready" }>) { const location = state.resolvedLocation ? `${state.resolvedLocation.displayName} · ${locationSourceLabel(state.locationSource)}` : null; return [location, contextLabel(state.contextMode), state.stale && state.weatherUpdatedAt ? `缓存 ${formatWeatherTime(state.weatherUpdatedAt)}` : null].filter(Boolean).join(" · "); }
+function WeatherAttribution({ weather }: { weather: readonly HomeWeatherViewModel[] }) { const supplied = weather.filter((item): item is Extract<HomeWeatherViewModel, { status: "ready" }> => item.status === "ready" && Boolean(item.attribution)); if (!supplied.length) return null; const latest = supplied.map((item) => item.weatherUpdatedAt).filter((item): item is string => Boolean(item)).sort().at(-1); return <p className="mt-2 truncate text-[10px] leading-4 text-ink/45" data-testid="home-weather-attribution">天气服务由 QWeather 提供{latest ? ` · ${supplied.some((item) => item.stale) ? "缓存" : "更新"} ${formatWeatherTime(latest)}` : ""}</p>; }
+function formatWeatherTime(value: string) { return new Intl.DateTimeFormat("zh-CN", { timeZone: "Asia/Shanghai", month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit", hourCycle: "h23" }).format(new Date(value)); }
 function bothWeatherUnavailable(today: HomeWeatherViewModel, tomorrow: HomeWeatherViewModel) { return today.status === "ready" && tomorrow.status === "ready" && today.availabilityReason !== "available" && tomorrow.availabilityReason !== "available"; }
 function businessGreeting() { const hour = Number(new Intl.DateTimeFormat("en-GB", { timeZone: "Asia/Shanghai", hour: "2-digit", hourCycle: "h23" }).format(new Date())); return hour < 11 ? "早上好，今天穿得轻松一点" : hour < 14 ? "中午好，今天穿得自在一点" : hour < 18 ? "下午好，今天穿得从容一点" : "晚上好，明天也穿得轻松一点"; }
 function formatBusinessDate(date: string) { return new Intl.DateTimeFormat("zh-CN", { timeZone: "Asia/Shanghai", month: "long", day: "numeric", weekday: "short" }).format(new Date(`${date}T12:00:00+08:00`)); }
