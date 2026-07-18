@@ -145,7 +145,7 @@ Page({
   async loadHome(this: any, force = false) {
     const state = getWorkspaceReadState();
     if (state !== "ready") {
-      this.setData({ loading: false, error: state === "logged_out" ? "登录后即可查看今日穿搭" : "请先配置后端 API 域名" });
+      this.setData({ loading: false, error: state === "logged_out" ? "登录后即可查看今日穿搭" : "服务暂未配置，请稍后再试" });
       return;
     }
     if (this.loadingHome && !force) return;
@@ -175,7 +175,7 @@ Page({
       travelDates: buildFarTravelDates(planningResult.value, this.data.dateItems),
       locationSnapshot: location,
       locationLabel: profileLocationLabel(location),
-      locationMessage: locationResult.status === "rejected" ? "地点暂时无法读取，天气与推荐仍可独立重试。" : "",
+      locationMessage: locationResult.status === "rejected" ? "地点暂时无法读取，你仍可重试天气与推荐。" : "",
     });
     await this.loadSelectedDate(this.data.selectedDate, true);
   },
@@ -326,7 +326,7 @@ Page({
     const expectedRevision = kind === "home" ? snapshot.profile.revision : snapshot.override.revision;
     const draft = { kind, locationId, expectedRevision };
     const clientMutationId = locationMutations.idFor(draft);
-    this.setData({ locationBusy: true, locationMessage: "正在保存，服务器读回后生效…" });
+    this.setData({ locationBusy: true, locationMessage: "正在保存，确认成功后生效…" });
     try {
       const next = await putMiniHomeCity(kind, location, expectedRevision, clientMutationId);
       locationMutations.confirm(draft);
@@ -421,7 +421,7 @@ function mapPlan(plan: MiniOutfitPlanEntry | undefined, garments: MiniGarment[])
   return {
     id: plan.id,
     title: plan.status === "worn" ? "今天已穿" : "当日穿搭",
-    stateText: plan.status === "worn" ? "已穿事实优先，推荐不会覆盖" : "主计划已保护，天气变化只提示风险",
+    stateText: plan.status === "worn" ? "已经确认穿过，之后的建议不会覆盖" : "这套已安排；天气有变化时会提醒你，不会自动更换",
     risk: plan.availability === "blocked" ? "部分衣物已不可用，请先调整穿搭。" : plan.availability === "historical" ? "当前显示历史快照。" : "",
     garments: ids.slice(0, 3).map((id) => ({ id, name: byId.get(id)?.name ?? "已删除衣物", imageUrl: byId.get(id)?.imageUrl ?? "" })),
   };

@@ -46,7 +46,7 @@
 
     <view wx:if="{{activeSection === 'recommendation'}}" class="recommendation-section">
       <view wx:if="{{plan}}" class="plan-card {{plan.risk ? 'plan-card--risk' : ''}}">
-        <view class="section-heading"><view><view class="section-title">{{plan.title}}</view><view class="section-subtitle">计划事实优先</view></view></view>
+        <view class="section-heading"><view><view class="section-title">{{plan.title}}</view><view class="section-subtitle">已安排，不会自动更换</view></view></view>
         <view class="plan-images"><view wx:for="{{plan.garments}}" wx:key="id" class="plan-image"><image wx:if="{{item.imageUrl}}" src="{{item.imageUrl}}" mode="aspectFill"/><view wx:else class="image-fallback">{{item.name}}</view></view></view>
         <view wx:if="{{plan.risk}}" class="plan-risk">{{plan.risk}}</view><view class="plan-state">{{plan.stateText}}</view>
       </view>
@@ -59,9 +59,9 @@
         </view>
       </scroll-view>
 
-      <view wx:if="{{recommendationLoading}}" class="module-state"><view class="module-title">正在整理服务端建议</view><view class="module-copy">天气、计划和衣橱分别读取，不会互相阻塞。</view></view>
+      <view wx:if="{{recommendationLoading}}" class="module-state"><view class="module-title">正在整理穿搭建议</view><view class="module-copy">正在结合天气、已有安排和衣橱，请稍候。</view></view>
       <view wx:elif="{{recommendationError}}" class="module-state module-state--error"><view class="module-title">推荐暂时无法读取</view><view class="module-copy">{{recommendationError}}</view><button class="inline-action" bindtap="retrySelectedDate">重试</button></view>
-      <view wx:elif="{{!plan && recommendationCards.length === 0}}" class="module-state"><view class="module-title">{{wardrobeEmpty ? '衣橱还是空的' : '暂时没有可展示的建议'}}</view><view class="module-copy">{{wardrobeEmpty ? '先添加上装、下装和鞋履；未设置城市也可以生成通用建议。' : '服务端没有返回可采用组合，你仍可正常浏览衣橱。'}}</view><button wx:if="{{wardrobeEmpty}}" class="inline-action" bindtap="openIntake">添加衣物</button></view>
+      <view wx:elif="{{!plan && recommendationCards.length === 0}}" class="module-state"><view class="module-title">{{wardrobeEmpty ? '衣橱还是空的' : '暂时没有合适的建议'}}</view><view class="module-copy">{{wardrobeEmpty ? '先添加上装、下装和鞋履；未设置城市也可以生成通用建议。' : '目前没有合适的可用组合，你仍可正常浏览衣橱。'}}</view><button wx:if="{{wardrobeEmpty}}" class="inline-action" bindtap="openIntake">添加衣物</button></view>
 
       <scroll-view wx:if="{{recommendationCards.length}}" class="recommendation-scroll" scroll-x enable-flex enhanced show-scrollbar="false">
         <view class="recommendation-row">
@@ -80,7 +80,7 @@
     </view>
 
     <view wx:else class="wardrobe-section">
-      <view class="section-heading"><view><view class="section-title">我的衣橱</view><view class="section-subtitle">{{garments.length}} 件服务器衣物</view></view><button class="text-action" bindtap="openIntake">添加衣物</button></view>
+      <view class="section-heading"><view><view class="section-title">我的衣橱</view><view class="section-subtitle">{{garments.length}} 件衣物</view></view><button class="text-action" bindtap="openIntake">添加衣物</button></view>
       <view wx:if="{{wardrobeEmpty}}" class="module-state"><view class="module-title">衣橱还是空的</view><view class="module-copy">添加第一件衣物后，首页会使用真实图片生成建议。</view><button class="inline-action" bindtap="openIntake">添加衣物</button></view>
       <view wx:else class="home-wardrobe-grid"><catalog-card wx:for="{{garments}}" wx:key="id" item-id="{{item.id}}" image-url="{{item.imageUrl}}" fallback="{{item.categoryLabel}}" title="{{item.name}}" category-label="{{item.categoryLabel}}" colors="{{item.cardColors}}" summary="{{item.wearSummary}}" tone="primary" bind:select="openGarment" /></view>
     </view>

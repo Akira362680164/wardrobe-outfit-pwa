@@ -71,6 +71,8 @@ assert.match(markup, /推荐/);
 assert.match(markup, /衣橱/);
 assert.match(markup, /scroll-x/);
 assert.match(markup, /canvas[^>]+type="2d"/);
+assert.doesNotMatch(markup, /主计划|服务端建议|服务器衣物/, "home copy must not expose internal implementation terms");
+assert.doesNotMatch(page, /主计划已保护|服务器读回/, "home state copy must describe the user outcome");
 assert.doesNotMatch(styles, />\s*\*/, "WXSS does not accept a universal child selector");
 
 void testRequestCancellation()
