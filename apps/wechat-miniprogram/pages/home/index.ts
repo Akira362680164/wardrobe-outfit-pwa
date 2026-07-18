@@ -154,7 +154,7 @@ Page({
     const ticket = readGate.begin(accountId, this.data.selectedDate);
     this.setData({ loading: true, error: "" });
     const [garmentsResult, planningResult, locationResult] = await Promise.allSettled([
-      fetchGarments(500), fetchPlanningSnapshot(), readMiniHomeLocation(),
+      fetchGarments(500), fetchPlanningSnapshot(), readMiniHomeLocation(ticket.signal),
     ]);
     this.loadingHome = false;
     if (!readGate.isCurrent(ticket)) return;
@@ -185,7 +185,7 @@ Page({
     const ticket = dateGate.begin(accountId, date);
     const dates = preloadPair && date === this.data.today ? [this.data.today, this.data.tomorrow] : [date];
     this.setData({ selectedDate: date, recommendationLoading: true, recommendationError: "" });
-    const weatherResults = await Promise.allSettled(dates.map((target) => readMiniHomeWeather(target)));
+    const weatherResults = await Promise.allSettled(dates.map((target) => readMiniHomeWeather(target, ticket.signal)));
     if (!dateGate.isCurrent(ticket)) return;
     const weatherPatch: Record<string, unknown> = {};
     dates.forEach((target, index) => {
@@ -207,13 +207,13 @@ Page({
     try {
       let item: RecommendationDisplayItemV3 | undefined;
       try {
-        const current = await readMiniHomeRecommendations(dates[0]!, dates[dates.length - 1]!);
+        const current = await readMiniHomeRecommendations(dates[0]!, dates[dates.length - 1]!, ticket.signal);
         item = current.items.find((entry): entry is RecommendationDisplayItemV3 => entry.targetDate === date && "recommendationRevision" in entry);
       } catch {
         // A missing current recommendation is resolved by the server coordinator below.
       }
       if (!item) {
-        const resolved = await resolveMiniHomeRecommendations(dates);
+        const resolved = await resolveMiniHomeRecommendations(dates, ticket.signal);
         const result = resolved.results.find((entry) => entry.targetDate === date);
         if (!dateGate.isCurrent(ticket)) return;
         if (result?.status === "protected_plan" || result?.status === "actual_wear") {

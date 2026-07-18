@@ -31,9 +31,11 @@ const gate = new HomeGenerationGate();
 const first = gate.begin("account-a", "2026-07-18");
 const second = gate.begin("account-a", "2026-07-19");
 assert.equal(gate.isCurrent(first), false, "rapid date switching must reject stale results");
+assert.equal(first.signal.aborted, true, "rapid date switching must abort the obsolete request task");
 assert.equal(gate.isCurrent(second), true);
 gate.reset("account-b");
 assert.equal(gate.isCurrent(second), false, "account switch must invalidate previous account results");
+assert.equal(second.signal.aborted, true, "account switch must abort the previous account request task");
 
 let mutationCounter = 0;
 const mutations = createStableMutationSession(() => `00000000-0000-4000-8000-${String(++mutationCounter).padStart(12, "0")}`);

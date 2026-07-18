@@ -22,10 +22,10 @@ export interface MiniHomeLocationSnapshot {
   override: LocationDateOverrideState;
 }
 
-export async function readMiniHomeLocation(): Promise<MiniHomeLocationSnapshot> {
+export async function readMiniHomeLocation(signal?: AbortSignal): Promise<MiniHomeLocationSnapshot> {
   const [profileValue, overrideValue] = await Promise.all([
-    request<unknown>({ path: "/api/settings/location-profile", toast: false }),
-    request<unknown>({ path: "/api/settings/location-override", toast: false }),
+    request<unknown>({ path: "/api/settings/location-profile", toast: false, signal }),
+    request<unknown>({ path: "/api/settings/location-override", toast: false, signal }),
   ]);
   const profileResult = UserLocationProfileSchema.safeParse(profileValue);
   return {
@@ -34,21 +34,21 @@ export async function readMiniHomeLocation(): Promise<MiniHomeLocationSnapshot> 
   };
 }
 
-export async function readMiniHomeWeather(date: string): Promise<WeatherOverview> {
-  const value = await request<unknown>({ path: `/api/weather/overview?date=${encodeURIComponent(date)}`, toast: false });
+export async function readMiniHomeWeather(date: string, signal?: AbortSignal): Promise<WeatherOverview> {
+  const value = await request<unknown>({ path: `/api/weather/overview?date=${encodeURIComponent(date)}`, toast: false, signal });
   return WeatherOverviewSchema.parse(value);
 }
 
-export async function readMiniHomeRecommendations(startDate: string, endDate: string): Promise<RecommendationReadResponse> {
+export async function readMiniHomeRecommendations(startDate: string, endDate: string, signal?: AbortSignal): Promise<RecommendationReadResponse> {
   const value = await request<unknown>({
     path: `/api/recommendations?startDate=${encodeURIComponent(startDate)}&endDate=${encodeURIComponent(endDate)}`,
-    toast: false,
+    toast: false, signal,
   });
   return RecommendationReadResponseSchema.parse(value);
 }
 
-export async function resolveMiniHomeRecommendations(dates: readonly string[]): Promise<ResolveRecommendationsResponse> {
-  const value = await request<unknown>({ method: "POST", path: "/api/recommendations/resolve", data: { dates }, toast: false });
+export async function resolveMiniHomeRecommendations(dates: readonly string[], signal?: AbortSignal): Promise<ResolveRecommendationsResponse> {
+  const value = await request<unknown>({ method: "POST", path: "/api/recommendations/resolve", data: { dates }, toast: false, signal });
   return ResolveRecommendationsResponseSchema.parse(value);
 }
 

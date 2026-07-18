@@ -54,18 +54,24 @@ export interface HomeGenerationTicket {
   readonly generation: number;
   readonly accountId: string;
   readonly date: string;
+  readonly signal: AbortSignal;
 }
 
 export class HomeGenerationGate {
   private generation = 0;
   private accountId = "";
+  private controller: AbortController | null = null;
 
   begin(accountId: string, date: string): HomeGenerationTicket {
+    this.controller?.abort();
+    this.controller = new AbortController();
     this.accountId = accountId;
-    return { generation: ++this.generation, accountId, date };
+    return { generation: ++this.generation, accountId, date, signal: this.controller.signal };
   }
 
   reset(accountId = ""): void {
+    this.controller?.abort();
+    this.controller = null;
     this.accountId = accountId;
     this.generation += 1;
   }
