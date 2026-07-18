@@ -1,6 +1,6 @@
 ---
 title: Wardora 新首页生产构建、交互、数据流与业务闭环 PRD
-version: v0.7.5.1-integrated
+version: v0.7.5.2-integrated
 status: 评审版 / 后续生产实施基线
 date: 2026-07-18
 baselinePolicy: 实施时以最新正式 main 与 wechat/miniprogram 为准，不绑定固定 App 小版本
@@ -11,10 +11,11 @@ authority:
 visualPrototypeSha256: 30c97e315d2efd0d9bfcf10125177d58cf9edb479b8d9310476752277cbe37db
 ---
 
-# Wardora v0.7.5.1-integrated：新首页生产构建与完整业务流程
+# Wardora v0.7.5.2-integrated：新首页生产构建与完整业务流程
 
 | 版本 | 日期 | 修订人 | 说明 |
 |---|---|---|---|
+| v0.7.5.2-integrated | 2026-07-18 | Codex | 新增 UI/视觉/动效修复的独立视觉验收门禁，由执行 Session 对冻结 commit 自行启动只读 subagent |
 | v0.7.5.1-integrated | 2026-07-18 | Codex | 明确 App 必须迁移 v0.2.3 HTML 的 Canvas 绘制内核，仅替换生产宿主与平台生命周期；补充小程序适配边界与视觉同源验收 |
 | v0.7.5-integrated | 2026-07-17 | Codex | 将新首页原型、实时推荐、天气、地点和计划采用收口为生产 PRD |
 
@@ -74,6 +75,7 @@ visualPrototypeSha256: 30c97e315d2efd0d9bfcf10125177d58cf9edb479b8d9310476752277
 13. 首页采用模块级加载和模块级错误；天气失败不能阻断衣橱，推荐失败不能阻断天气。
 14. 所有正式业务写入必须等待服务器事务提交并读回后再显示成功，不做乐观更新。
 15. App 天气 Canvas 必须以已验收的 v0.2.3 HTML 为源代码基准，直接提取其视觉参数、场景生成、粒子、事件时序和绘制顺序；不得另起炉灶重画雨雪、雷电、冰雹、雾霾或沙尘效果。
+16. 所有 UI/视觉/动效修复在合入前必须完成独立视觉验收：执行 Session 冻结待审 commit 后自行启动一个独立只读 subagent，审查者不承接实现推理与自我评价，仅根据权威原型/规范、冻结代码和实际证据出具结论。
 
 ## 一、产品概述
 
@@ -1160,6 +1162,7 @@ src/lib/online/online-recommendation-client.ts
 - 加入 Capacitor 粗略位置权限；
 - 完成定位用途说明、候选确认、临时/常驻选择；
 - 必须构建签名 APK 做 Android 真机验证，并以固定 code、seed、clock 的原型/App 对照证据证明它是同一视觉内核的生产迁移，不是二次重画。
+- 首轮实现和本地门禁完成后，执行 Session 必须对冻结 commit 启动独立只读视觉验证 subagent，根据报告收口后才能合入。
 
 ### 13.5 批次 P4：微信小程序完整对齐
 
@@ -1170,6 +1173,7 @@ src/lib/online/online-recommendation-client.ts
 - 接入模糊位置和隐私声明；
 - 覆盖 onShow/onHide/onUnload；
 - 微信开发者工具和真机验证；
+- 小程序截图/录屏证据同样由执行 Session 启动独立只读视觉验证 subagent 审查；
 - 上传体验版仍需用户明确授权。
 
 ### 13.6 批次 P5：切换与发布
@@ -1263,6 +1267,17 @@ Android 真机 Canvas、权限、Back、前后台和断网恢复
 微信开发者工具与真机定位/Canvas 生命周期
 git diff --check
 ```
+
+### 14.7 独立视觉验收门禁
+
+- 适用范围：首页、天气 Canvas、推荐卡、底部导航、Sheet、弹窗、字体、布局、色彩、响应式、触摸与动效的新增或修复；
+- 启动时机：执行 Session 完成首轮实现、自测与证据生成，并提交待审冻结 commit 之后；
+- 责任归属：必须由执行 Session 自行启动审查 subagent，不由上层协调 Session 代替它完成自己的验收门禁；
+- 独立性：审查 subagent 使用独立分支/worktree，默认只读，不修改代码；不接收执行 Session 的实现推理、自我评价或预设通过结论；
+- 审查输入：权威 HTML/截图、PRD/UI 规范、冻结 commit、改动范围、验收矩阵、已生成截图/录屏/manifest 和可重现命令；
+- 审查内容：实际页面与原型的结构、比例、排版、色彩、图片、字体、窄屏、放大字体、滚动/溢出、触摸区、动效、reduced-motion 及 loading/empty/error/permission 状态；
+- 输出结论：按 P0–P3 列出可复现问题、用户影响、证据、未验证项和“建议交付 / 修复后再交付”结论；
+- 收口规则：P0/P1 未关闭不得合入；本轮范围内 P2 必须关闭或经用户明确接受；P3 可记入后续打磨清单。
 
 ## 十五、当前实施结论
 
