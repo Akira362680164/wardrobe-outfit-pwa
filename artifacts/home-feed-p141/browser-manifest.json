@@ -20,6 +20,52 @@
     "protected_plan_with_date_strip",
     "partial_weather_error"
   ],
+  "affectedStateMatrix": {
+    "travel": {
+      "viewports": [
+        360,
+        390,
+        430
+      ],
+      "fontScales": [
+        100,
+        130
+      ]
+    },
+    "stale": {
+      "viewports": [
+        360,
+        390,
+        430
+      ],
+      "fontScales": [
+        100,
+        130
+      ]
+    },
+    "protected-plan-with-date-strip": {
+      "viewports": [
+        360,
+        390,
+        430
+      ],
+      "fontScales": [
+        100,
+        130
+      ]
+    },
+    "partial-weather-error": {
+      "viewports": [
+        360,
+        390,
+        430
+      ],
+      "fontScales": [
+        100,
+        130
+      ]
+    }
+  },
   "checklist": {
     "greeting": true,
     "singleLocation": true,
@@ -29,6 +75,14 @@
     "segmentedTabs": true,
     "dateStripInRecommendation": true,
     "dateStripAfterPlan": true,
+    "futureDatesAccessed": [
+      3,
+      4,
+      5,
+      6,
+      7
+    ],
+    "partialWeatherRetryRecoveredTomorrowOnly": true,
     "horizontalRecommendationRail": true,
     "bottomNavigation": true,
     "serverImageChainFixture": true,
@@ -76,11 +130,32 @@
     "test-results/home-feed-p14-visual/20260718/weather-fallback-390.png",
     "test-results/home-feed-p14-visual/20260718/protected-plan-390.png",
     "test-results/home-feed-p14-visual/20260718/actual-wear-390.png",
+    "test-results/home-feed-p14-visual/20260718/travel-360-font100.png",
+    "test-results/home-feed-p14-visual/20260718/travel-360-font130.png",
     "test-results/home-feed-p14-visual/20260718/travel-390-font100.png",
+    "test-results/home-feed-p14-visual/20260718/travel-390-font130.png",
+    "test-results/home-feed-p14-visual/20260718/travel-430-font100.png",
+    "test-results/home-feed-p14-visual/20260718/travel-430-font130.png",
+    "test-results/home-feed-p14-visual/20260718/stale-360-font100.png",
     "test-results/home-feed-p14-visual/20260718/stale-360-font130.png",
-    "test-results/home-feed-p14-visual/20260718/protected-plan-with-date-strip-390.png",
-    "test-results/home-feed-p14-visual/20260718/protected-plan-future-day-390.png",
-    "test-results/home-feed-p14-visual/20260718/partial-weather-error-430-font130.png"
+    "test-results/home-feed-p14-visual/20260718/stale-390-font100.png",
+    "test-results/home-feed-p14-visual/20260718/stale-390-font130.png",
+    "test-results/home-feed-p14-visual/20260718/stale-430-font100.png",
+    "test-results/home-feed-p14-visual/20260718/stale-430-font130.png",
+    "test-results/home-feed-p14-visual/20260718/protected-plan-with-date-strip-360-font100.png",
+    "test-results/home-feed-p14-visual/20260718/protected-plan-with-date-strip-360-font130.png",
+    "test-results/home-feed-p14-visual/20260718/protected-plan-with-date-strip-390-font100.png",
+    "test-results/home-feed-p14-visual/20260718/protected-plan-with-date-strip-390-font130.png",
+    "test-results/home-feed-p14-visual/20260718/protected-plan-with-date-strip-430-font100.png",
+    "test-results/home-feed-p14-visual/20260718/protected-plan-with-date-strip-430-font130.png",
+    "test-results/home-feed-p14-visual/20260718/protected-plan-future-days-390-font100.png",
+    "test-results/home-feed-p14-visual/20260718/partial-weather-error-360-font100.png",
+    "test-results/home-feed-p14-visual/20260718/partial-weather-error-360-font130.png",
+    "test-results/home-feed-p14-visual/20260718/partial-weather-error-390-font100.png",
+    "test-results/home-feed-p14-visual/20260718/partial-weather-error-390-font130.png",
+    "test-results/home-feed-p14-visual/20260718/partial-weather-error-430-font100.png",
+    "test-results/home-feed-p14-visual/20260718/partial-weather-error-430-font130.png",
+    "test-results/home-feed-p14-visual/20260718/partial-weather-retry-recovered-390-font100.png"
   ],
   "pageErrors": [],
   "consoleErrors": [

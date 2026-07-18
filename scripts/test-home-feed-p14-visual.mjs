@@ -80,6 +80,19 @@ async function captureViewport(page, name) {
   screenshots.push(path);
 }
 
+async function captureAffectedMatrix(page, label) {
+  for (const width of [360, 390, 430]) {
+    await page.setViewportSize({ width, height: width === 360 ? 780 : width === 390 ? 844 : 932 });
+    for (const [scale, fontSize] of [[100, "16px"], [130, "20.8px"]]) {
+      await page.evaluate((value) => { document.documentElement.style.fontSize = value; }, fontSize);
+      await noOverflow(page, `${label}-${width}-font${scale}`);
+      await capture(page, `${label}-${width}-font${scale}`);
+    }
+  }
+  await page.evaluate(() => { document.documentElement.style.fontSize = "16px"; });
+  await page.setViewportSize({ width: 390, height: 844 });
+}
+
 function assert(value, message) { if (!value) throw new Error(message); }
 
 start("node", ["scripts/home-feed-browser-fixture-server.mjs"], {
@@ -213,36 +226,34 @@ try {
   assert((await page.getByTestId("home-location-entry").innerText()).includes("北京 · 行程"), "travel forecast was incorrectly projected as locationless");
   assert((await page.getByTestId("home-recommendation-source").first().innerText()).includes("北京 · 行程"), "recommendation source omitted travel authority");
   assert((await homeState(page)).includes("home-ready-forecast"), "travel without home city must remain forecast-ready");
-  await capture(page, "travel-390-font100");
+  await captureAffectedMatrix(page, "travel");
 
   await reloadMode(page, "stale");
   const staleAttribution = await page.getByTestId("home-weather-attribution").innerText();
   assert(staleAttribution.includes("QWeather") && staleAttribution.includes("缓存"), "stale provider evidence must be labeled as cached QWeather data");
-  await page.setViewportSize({ width: 360, height: 780 });
-  await page.evaluate(() => { document.documentElement.style.fontSize = "20.8px"; });
-  await noOverflow(page, "stale-360-font130");
-  await capture(page, "stale-360-font130");
-  await page.evaluate(() => { document.documentElement.style.fontSize = "16px"; });
-  await page.setViewportSize({ width: 390, height: 844 });
+  await captureAffectedMatrix(page, "stale");
 
   await reloadMode(page, "protected-plan-with-date-strip");
   assert(await page.getByTestId("home-plan-availability-risk").isVisible(), "blocked plan risk is not visible");
   assert((await page.getByTestId("home-protected-plan").innerText()).includes("已删除的旅行外套"), "deleted garment snapshot name was not retained");
-  await capture(page, "protected-plan-with-date-strip-390");
-  const thirdDay = page.getByTestId("home-date-strip").locator("button").nth(2);
-  await thirdDay.click();
-  assert(await thirdDay.getAttribute("aria-pressed") === "true", "third day remains inaccessible after protected plan");
-  await capture(page, "protected-plan-future-day-390");
+  await captureAffectedMatrix(page, "protected-plan-with-date-strip");
+  for (let index = 2; index < 7; index += 1) {
+    const futureDay = page.getByTestId("home-date-strip").locator("button").nth(index);
+    await futureDay.click();
+    await page.waitForFunction((selectedIndex) => document.querySelectorAll('[data-testid="home-date-strip"] button')[selectedIndex]?.getAttribute("aria-pressed") === "true", index);
+  }
+  await capture(page, "protected-plan-future-days-390-font100");
 
   await reloadMode(page, "partial-weather-error");
   assert(await page.getByTestId("home-weather-today").isVisible(), "successful today card disappeared during partial failure");
   assert((await page.getByTestId("home-weather-tomorrow").innerText()).includes("重试"), "failed tomorrow card lacks its own retry");
-  await page.setViewportSize({ width: 430, height: 932 });
-  await page.evaluate(() => { document.documentElement.style.fontSize = "20.8px"; });
-  await noOverflow(page, "partial-weather-error-430-font130");
-  await capture(page, "partial-weather-error-430-font130");
-  await page.evaluate(() => { document.documentElement.style.fontSize = "16px"; });
-  await page.setViewportSize({ width: 390, height: 844 });
+  await captureAffectedMatrix(page, "partial-weather-error");
+  const todayBeforeRetry = await page.getByTestId("home-weather-today").innerText();
+  await page.getByTestId("home-weather-tomorrow").getByRole("button", { name: "重试" }).click();
+  await page.waitForFunction(() => !document.querySelector('[data-testid="home-weather-tomorrow"]')?.textContent?.includes("重试"));
+  assert((await page.getByTestId("home-weather-today").innerText()) === todayBeforeRetry, "retrying tomorrow changed the successful today card");
+  assert((await page.getByTestId("home-weather-tomorrow").innerText()).includes("30°/22°"), "tomorrow retry did not recover its own forecast");
+  await capture(page, "partial-weather-retry-recovered-390-font100");
 
   const unexpectedFailures = requestFailures.filter((failure) => !/ERR_ABORTED|canceled/i.test(failure.error));
   const expectedPartialWeatherConsoleErrors = consoleErrors.filter((entry) => entry.url.startsWith(`${fixtureOrigin}/api/weather/overview`) && entry.text.includes("503"));
@@ -256,7 +267,8 @@ try {
     viewportMatrix: [360, 390, 430],
     fontScaleMatrix: [100, 130],
     states: ["ready_forecast_real_candidates", "empty_locationless", "weather_fallback", "protected_plan", "actual_wear", "travel_forecast_without_home", "stale_qweather_attribution", "protected_plan_with_date_strip", "partial_weather_error"],
-    checklist: { greeting: true, singleLocation: true, travelAuthority: true, staleAttribution: true, dualWeatherCards: true, segmentedTabs: true, dateStripInRecommendation: true, dateStripAfterPlan: true, horizontalRecommendationRail: true, bottomNavigation: true, serverImageChainFixture: true, alignedTextRows: visualGeometry, noPageOverflow: true, verticalPanPriority: true },
+    affectedStateMatrix: Object.fromEntries(["travel", "stale", "protected-plan-with-date-strip", "partial-weather-error"].map((state) => [state, { viewports: [360, 390, 430], fontScales: [100, 130] }])),
+    checklist: { greeting: true, singleLocation: true, travelAuthority: true, staleAttribution: true, dualWeatherCards: true, segmentedTabs: true, dateStripInRecommendation: true, dateStripAfterPlan: true, futureDatesAccessed: [3, 4, 5, 6, 7], partialWeatherRetryRecoveredTomorrowOnly: true, horizontalRecommendationRail: true, bottomNavigation: true, serverImageChainFixture: true, alignedTextRows: visualGeometry, noPageOverflow: true, verticalPanPriority: true },
     screenshots, pageErrors, consoleErrors, expectedPartialWeatherConsoleErrors, unexpectedConsoleErrors, requestFailures, responseErrors, unexpectedRequestFailures: unexpectedFailures,
   }, null, 2));
   console.log(`home feed P1.4 visual gate passed: ${evidenceDir}`);

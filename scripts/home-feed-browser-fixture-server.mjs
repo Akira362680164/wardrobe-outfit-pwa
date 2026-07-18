@@ -21,6 +21,7 @@ const requestTrace = [];
 let traceSequence = 0;
 let forcedProfileReadFailures = 0;
 let p14Mode = "ready";
+let partialWeatherFailuresRemaining = 0;
 
 function makeDefaultState() {
   return {
@@ -128,6 +129,7 @@ http.createServer(async (request, response) => {
     const body = await readBody(request);
     if (SCENARIO === "p14" && body.action === "set-p14-mode" && ["ready", "locationless", "fallback", "protected", "actual", "travel", "stale", "protected-plan-with-date-strip", "partial-weather-error"].includes(body.mode)) {
       p14Mode = body.mode;
+      partialWeatherFailuresRemaining = body.mode === "partial-weather-error" ? 1 : 0;
       for (const state of tokenStates.values()) state.profile = { homeCity: body.mode === "locationless" || body.mode === "travel" ? null : city, revision: state.profile.revision + 1, updatedAt: now() };
       return send(response, 200, { mode: p14Mode });
     }
@@ -302,7 +304,10 @@ http.createServer(async (request, response) => {
       return sendTraced(request, response, 200, overview);
     }
 
-    if (SCENARIO === "p14" && p14Mode === "partial-weather-error" && targetDate === addDay(today, 1)) return sendTraced(request, response, 503, { code: "provider_unavailable", message: "明日天气暂时不可用", retryable: true });
+    if (SCENARIO === "p14" && p14Mode === "partial-weather-error" && targetDate === addDay(today, 1) && partialWeatherFailuresRemaining > 0) {
+      partialWeatherFailuresRemaining -= 1;
+      return sendTraced(request, response, 503, { code: "provider_unavailable", message: "明日天气暂时不可用", retryable: true });
+    }
     const fallback = SCENARIO === "p14" && p14Mode === "fallback";
     const stale = SCENARIO === "p14" && p14Mode === "stale";
     const resolvedCity = travelMode ? { ...city, locationId: "101010100", displayName: "北京" } : city;
