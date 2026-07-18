@@ -15,10 +15,10 @@ export function HomeFeedTabPanels({ activeTab, recommendation, renderWardrobe }:
 
   return (
     <>
-      <div id="home-recommendation-panel" role="tabpanel" aria-labelledby="home-recommendation-tab" hidden={activeTab !== "recommendation"}>
+      <div className="min-w-0 max-w-full" id="home-recommendation-panel" role="tabpanel" aria-labelledby="home-recommendation-tab" hidden={activeTab !== "recommendation"}>
         {recommendation}
       </div>
-      <div id="home-wardrobe-panel" role="tabpanel" aria-labelledby="home-wardrobe-tab" hidden={activeTab !== "wardrobe"}>
+      <div className="min-w-0 max-w-full" id="home-wardrobe-panel" role="tabpanel" aria-labelledby="home-wardrobe-tab" hidden={activeTab !== "wardrobe"}>
         {wardrobeMounted ? renderWardrobe() : null}
       </div>
     </>

@@ -1,4 +1,5 @@
 import http from "node:http";
+import { createHash } from "node:crypto";
 import { WeatherOverviewSchema } from "@wardrobe/cloud-contracts";
 
 const PORT = Number(process.env.HOME_FEED_FIXTURE_PORT ?? 4174);
@@ -10,9 +11,16 @@ const P13_FAILURE_DELAY_MS = Number(process.env.HOME_FEED_P13_FAILURE_DELAY_MS ?
 
 const city = { locationId: "101020100", displayName: "上海", timezone: "Asia/Shanghai", centroidLatitude: 31.2304, centroidLongitude: 121.4737 };
 const ANON_TOKEN = "browser-fixture-anon-token";
+const GARMENT_IDS = ["10000000-0000-4000-8000-000000000001", "10000000-0000-4000-8000-000000000002", "10000000-0000-4000-8000-000000000003", "10000000-0000-4000-8000-000000000004", "10000000-0000-4000-8000-000000000005"];
+const ASSET_IDS = ["11000000-0000-4000-8000-000000000001", "11000000-0000-4000-8000-000000000002", "11000000-0000-4000-8000-000000000003", "11000000-0000-4000-8000-000000000004", "11000000-0000-4000-8000-000000000005"];
+const garmentVisuals = [
+  ["#d8e1e2", "#738b91", "浅灰短袖"], ["#d8c8ac", "#9c805d", "卡其长裤"], ["#333b43", "#171b20", "黑色乐福鞋"], ["#b8cad6", "#66829a", "雾蓝衬衫"], ["#e5ddd0", "#a99d8b", "米色半裙"],
+].map(([background, ink, label]) => `<svg xmlns="http://www.w3.org/2000/svg" width="240" height="320" viewBox="0 0 240 320"><rect width="240" height="320" rx="24" fill="${background}"/><path d="M72 72l35-22h26l35 22 30 46-32 20-16-24v142H90V114l-16 24-32-20z" fill="${ink}" opacity=".9"/><text x="120" y="290" text-anchor="middle" font-family="sans-serif" font-size="18" fill="#1d2228">${label}</text></svg>`);
+const garmentAssetSha = garmentVisuals.map((value) => createHash("sha256").update(value).digest("hex"));
 const requestTrace = [];
 let traceSequence = 0;
 let forcedProfileReadFailures = 0;
+let p14Mode = "ready";
 
 function makeDefaultState() {
   return {
@@ -40,7 +48,7 @@ function getSessionState(token = ANON_TOKEN) {
   if (existing) return existing;
   const state = makeDefaultState();
   state.profile = { homeCity: null, revision: 1, updatedAt: now() };
-  if (SCENARIO === "p13") {
+  if (SCENARIO === "p13" || SCENARIO === "p14") {
     state.profile = { homeCity: city, revision: 4, updatedAt: now() };
   }
   tokenStates.set(token, state);
@@ -110,12 +118,19 @@ http.createServer(async (request, response) => {
   const url = new URL(request.url ?? "/", "http://fixture.invalid");
   const path = url.pathname;
 
+  if (path === "/api/health" || path === "/api/ready") return send(response, 200, { status: "ok", fixture: SCENARIO });
+
   if (path === "/__fixture/trace" && request.method === "GET") {
     return send(response, 200, { scenario: SCENARIO, entries: requestTrace });
   }
 
   if (path === "/__fixture/control" && request.method === "POST") {
     const body = await readBody(request);
+    if (SCENARIO === "p14" && body.action === "set-p14-mode" && ["ready", "locationless", "fallback", "protected", "actual"].includes(body.mode)) {
+      p14Mode = body.mode;
+      for (const state of tokenStates.values()) state.profile = { homeCity: body.mode === "locationless" ? null : city, revision: state.profile.revision + 1, updatedAt: now() };
+      return send(response, 200, { mode: p14Mode });
+    }
     if (body.action !== "fail-next-profile-get") {
       return send(response, 400, { error: "unsupported fixture control action" });
     }
@@ -129,7 +144,7 @@ http.createServer(async (request, response) => {
     const account = typeof body.account === "string" ? body.account : "";
     const token = `browser-fixture-${account || "anon"}-${Math.floor(Math.random() * 1000000)}`;
     const state = getSessionState(token);
-    if (SCENARIO === "p13") {
+    if (SCENARIO === "p13" || SCENARIO === "p14") {
       state.profile = account.includes("222") ? { homeCity: null, revision: 0, updatedAt: now() } : { homeCity: city, revision: 4, updatedAt: now() };
       state.overrideState = { override: null, revision: 0, updatedAt: null };
       state.p13.clearHomeAttempts = 0;
@@ -153,10 +168,31 @@ http.createServer(async (request, response) => {
   const state = getSessionState(token);
 
   if (path === "/api/workspace/overview") {
+    if (SCENARIO === "p14" && p14Mode !== "locationless") {
+      const names = ["浅灰通勤短袖", "卡其直筒长裤", "黑色乐福鞋", "雾蓝轻薄衬衫", "米色半裙"];
+      const categories = ["tops", "pants", "shoes", "tops", "skirts"];
+      const garments = GARMENT_IDS.map((id, index) => ({
+        id, revision: 1, createdAt: now(), updatedAt: now(),
+        payload: { legacyItemId: index + 1, locationId: "home", name: names[index], status: "active", category: categories[index], colors: { mode: "single", primary: "#808080" }, seasons: ["spring_autumn"], styles: ["commute"] },
+        assetRefs: { imageDataUrl: { assetId: ASSET_IDS[index], variants: ["original", "thumbnail"], sha256: garmentAssetSha[index], mimeType: "image/svg+xml", width: 240, height: 320, variantSha256: { original: garmentAssetSha[index], thumbnail: garmentAssetSha[index] } } },
+      }));
+      const planMode = p14Mode === "protected" || p14Mode === "actual";
+      const outfitPlans = planMode ? [{ id: "40000000-0000-4000-8000-000000000001", revision: 2, createdAt: now(), updatedAt: now(), payload: { date: businessDate(), status: p14Mode === "actual" ? "worn" : "planned", role: "primary", isPrimary: true, garmentIds: GARMENT_IDS.slice(0, 3), actualGarmentIds: p14Mode === "actual" ? GARMENT_IDS.slice(0, 3) : undefined } }] : [];
+      return send(response, 200, { garments: p14Mode === "locationless" ? [] : garments, outfits: [], wishlistItems: [], locations: [], tripPlans: [], outfitPlans, wearEvents: [], profiles: [], serverRevision: 8, requestId: "home-feed-p14-fixture" });
+    }
     return send(response, 200, {
       garments: [], outfits: [], wishlistItems: [], locations: [], tripPlans: [], outfitPlans: [], wearEvents: [], profiles: [],
       serverRevision: 1, requestId: "home-feed-browser-fixture",
     });
+  }
+
+  const assetMatch = path.match(/^\/api\/assets\/([^/]+)\/(original|thumbnail)\/content$/);
+  if (SCENARIO === "p14" && assetMatch) {
+    const index = ASSET_IDS.indexOf(assetMatch[1]);
+    if (index < 0) return send(response, 404, { code: "not_found", message: "asset missing", retryable: false });
+    response.writeHead(200, { "Content-Type": "image/svg+xml", "X-Asset-Sha256": garmentAssetSha[index], "Access-Control-Allow-Origin": APP_ORIGIN, "Access-Control-Expose-Headers": "X-Asset-Sha256" });
+    response.end(garmentVisuals[index]);
+    return;
   }
 
   if (path === "/api/settings/location-profile" && request.method === "GET") {
@@ -264,30 +300,53 @@ http.createServer(async (request, response) => {
       return sendTraced(request, response, 200, overview);
     }
 
+    const fallback = SCENARIO === "p14" && p14Mode === "fallback";
     const overview = WeatherOverviewSchema.parse({
       targetDate,
-      contextMode: "forecast",
+      contextMode: fallback ? "weather_fallback" : "forecast",
       resolvedLocation: city,
       locationSource: state.overrideState.override ? "temporary_override" : "home_city",
       targetTimezone: "Asia/Shanghai",
       contextResolvedAt: now(),
-      weatherEvidence: {
+      weatherEvidence: fallback ? {
+        weatherSource: "layering_default",
+        weatherConfidence: 0,
+        weatherUpdatedAt: now(),
+        summary: "天气暂不可用，采用通用分层推荐",
+      } : {
         weatherSource: "forecast",
         weatherConfidence: 1,
         weatherUpdatedAt: now(),
-        temperatureMinC: 24,
-        temperatureMaxC: 32,
-        weatherCode: "101",
-        summary: "多云",
+        temperatureMinC: targetDate === today ? 24 : 22,
+        temperatureMaxC: targetDate === today ? 32 : 30,
+        currentTemperatureC: targetDate === today ? 31 : undefined,
+        currentFeelsLikeC: targetDate === today ? 34 : undefined,
+        windLevel: targetDate === today ? 3 : undefined,
+        weatherCode: targetDate === today ? "304" : undefined,
+        dayWeatherCode: targetDate === today ? "304" : "103",
+        nightWeatherCode: targetDate === today ? "305" : "150",
+        summary: targetDate === today ? "雷阵雨伴有冰雹，注意避险" : "云量变化，间有阳光",
       },
       endpointFreshness: [],
-      availabilityReason: "available",
-      attribution: { label: "天气服务由 QWeather 提供", url: "https://www.qweather.com", sources: ["browser fixture"], license: ["test"] },
+      availabilityReason: fallback ? "provider_unavailable" : "available",
+      ...(fallback ? {} : { attribution: { label: "天气服务由 QWeather 提供", url: "https://www.qweather.com", sources: ["browser fixture"], license: ["test"] } }),
     });
     return sendTraced(request, response, 200, overview);
   }
 
   if (path === "/api/recommendations" && request.method === "GET") {
+    if (SCENARIO === "p14" && p14Mode === "locationless") return send(response, 200, { timezone: "Asia/Shanghai", pairConsistent: false, items: [] });
+    if (SCENARIO === "p14" && p14Mode !== "locationless") {
+      const start = url.searchParams.get("startDate") ?? businessDate();
+      const end = url.searchParams.get("endDate") ?? start;
+      const dates = start === end ? [start] : [start, end];
+      const objectives = ["safe", "fresh", "comfort"];
+      const candidates = objectives.map((objective, index) => ({ candidateId: `30000000-0000-4000-8000-00000000000${index + 1}`, objective, garmentIds: index === 1 ? [GARMENT_IDS[3], GARMENT_IDS[4], GARMENT_IDS[2]] : [GARMENT_IDS[0], GARMENT_IDS[1], GARMENT_IDS[2]], source: "generated", reasonCodes: [index === 1 ? "new_combination" : index === 2 ? "activity_comfort" : "rain_ready"], riskCodes: [index === 0 ? "outerwear_recommended" : index === 1 ? "evening_layer_recommended" : "wind_rain_exposure"], finalScore: 90 - index }));
+      const contextMode = p14Mode === "locationless" ? "locationless" : p14Mode === "fallback" ? "weather_fallback" : "forecast";
+      const located = contextMode !== "locationless";
+      const hasForecast = contextMode === "forecast";
+      return send(response, 200, { timezone: "Asia/Shanghai", pairConsistent: dates.length === 2, items: dates.map((targetDate) => ({ recommendationId: targetDate === businessDate() ? "20000000-0000-4000-8000-000000000001" : "20000000-0000-4000-8000-000000000002", recommendationRevision: 1, inputFingerprint: "a".repeat(64), targetDate, generationBatchId: "21000000-0000-4000-8000-000000000001", readiness: "ready", generationMode: "rule_only", generatedAt: now(), expiresAt: "2099-01-01T00:00:00.000Z", weatherEvidence: hasForecast ? { weatherSource: "forecast", weatherConfidence: 1, weatherUpdatedAt: now(), temperatureMinC: 22, temperatureMaxC: 32, rainProbability: 70, windLevel: 3, weatherCode: "304", summary: "雷阵雨" } : { weatherSource: "layering_default", weatherConfidence: 0, weatherUpdatedAt: now(), summary: "通用分层推荐" }, recommendations: candidates, contextMode, targetTimezone: "Asia/Shanghai", contextResolvedAt: now(), ...(located ? { resolvedLocation: city, locationSource: "home_city" } : {}), algorithmVersion: "wardora-recommendation-realtime-v1", ruleVersion: "wardora-rules-realtime-1", availabilityReason: contextMode === "locationless" ? "locationless" : contextMode === "weather_fallback" ? "provider_unavailable" : "available", endpointFreshness: [], ...(hasForecast ? { attribution: { label: "天气服务由 QWeather 提供", url: "https://www.qweather.com", sources: ["browser fixture"], license: ["test"] } } : {}) })) });
+    }
     return send(response, 404, { code: "not_found", message: "fixture has no current recommendation", retryable: false });
   }
 

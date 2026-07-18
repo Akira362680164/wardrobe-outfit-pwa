@@ -65,6 +65,7 @@ export function useHomeFeedController(input: HomeFeedControllerInput) {
   const [locationSnapshot, setLocationSnapshot] = useState<HomeLocationSnapshot | null>(null);
   const [locationState, setLocationState] = useState<HomeAsyncState<HomeLocationSnapshot>>(idle);
   const [weather, setWeather] = useState<HomeAsyncState<WeatherOverview>>(idle);
+  const [weatherByDate, setWeatherByDate] = useState<Record<string, HomeAsyncState<WeatherOverview>>>({});
   const [recommendation, setRecommendation] = useState<HomeAsyncState<HomeRecommendationResult>>(idle);
   const [cityOpen, setCityOpen] = useState(false);
   const [cityQuery, setCityQuery] = useState("");
@@ -130,6 +131,7 @@ export function useHomeFeedController(input: HomeFeedControllerInput) {
     setLocationState({ status: "ready", data: next });
     if (changed) {
       cache.current.clear();
+      setWeatherByDate({});
       weatherGate.current.cancel();
       recommendationGate.current.cancel();
       if (feedActiveRef.current) {
@@ -170,8 +172,20 @@ export function useHomeFeedController(input: HomeFeedControllerInput) {
     const businessWindow = windowRef.current;
     const dates = selected === businessWindow.today ? [businessWindow.today, businessWindow.tomorrow] : [selected];
     const cached = cache.current.getWeather(accountId, snapshot, selected);
-    if (cached && mountedRef.current) setWeather({ status: "ready", data: cached });
-    else if (mountedRef.current) setWeather({ status: "loading" });
+    if (cached && mountedRef.current) {
+      const ready = { status: "ready", data: cached } as const;
+      setWeather(ready);
+      setWeatherByDate((current) => ({ ...current, [selected]: ready }));
+    } else if (mountedRef.current) {
+      setWeather({ status: "loading" });
+      setWeatherByDate((current) => ({ ...current, [selected]: { status: "loading" } }));
+    }
+    if (mountedRef.current) {
+      for (const date of dates) {
+        const dayCached = cache.current.getWeather(accountId, snapshot, date);
+        setWeatherByDate((current) => ({ ...current, [date]: dayCached ? { status: "ready", data: dayCached } : { status: "loading" } }));
+      }
+    }
     const missingDates = dates.filter((date) => !cache.current.getWeather(accountId, snapshot, date));
     if (missingDates.length === 0) return;
     const isWeatherContextCurrent = () =>
@@ -186,6 +200,11 @@ export function useHomeFeedController(input: HomeFeedControllerInput) {
         (date, result) => {
           if (!isWeatherContextCurrent()) return;
           if (result.status === "fulfilled") cache.current.setWeather(accountId, snapshot, date, result.value);
+          if (mountedRef.current) {
+            setWeatherByDate((current) => ({ ...current, [date]: result.status === "fulfilled"
+              ? { status: "ready", data: result.value }
+              : { status: "error", message: onlineErrorMessage(result.reason) } }));
+          }
           if (date !== selected || !mountedRef.current) return;
           if (date === selected) {
             setWeather(result.status === "fulfilled"
@@ -197,10 +216,16 @@ export function useHomeFeedController(input: HomeFeedControllerInput) {
       if (!isWeatherContextCurrent() || selectedDateRef.current !== selected || !mountedRef.current) return;
       const next = cache.current.getWeather(accountId, snapshot, selected);
       if (next) setWeather({ status: "ready", data: next });
-      else setWeather({ status: "error", message: onlineErrorMessage(settled.errors.get(selected) ?? new Error("天气响应缺少目标日期")) });
+      else {
+        const message = onlineErrorMessage(settled.errors.get(selected) ?? new Error("天气响应缺少目标日期"));
+        setWeather({ status: "error", message });
+        setWeatherByDate((current) => ({ ...current, [selected]: { status: "error", message } }));
+      }
     } catch (error) {
       if (isWeatherContextCurrent() && selectedDateRef.current === selected && mountedRef.current) {
-        setWeather({ status: "error", message: onlineErrorMessage(error) });
+        const message = onlineErrorMessage(error);
+        setWeather({ status: "error", message });
+        setWeatherByDate((current) => ({ ...current, [selected]: { status: "error", message } }));
       }
     }
   }, []);
@@ -344,6 +369,7 @@ export function useHomeFeedController(input: HomeFeedControllerInput) {
     setLocationSnapshot(null);
     setLocationState(idle);
     setWeather(idle);
+    setWeatherByDate({});
     setRecommendation(idle);
     setCityOpen(false);
     setCityMutation(null);
@@ -427,9 +453,10 @@ export function useHomeFeedController(input: HomeFeedControllerInput) {
     garments: input.garments,
     location: activeLocation,
     weather,
+    weatherByDate,
     recommendation,
     plans: input.plans,
-  }), [activeLocation, input.garments, input.plans, input.workspaceRevision, recommendation, selectedDate, weather, window.today]);
+  }), [activeLocation, input.garments, input.plans, input.workspaceRevision, recommendation, selectedDate, weather, weatherByDate, window.today]);
 
   const searchCities = useCallback((query: string) => {
     setCityQuery(query);

@@ -7,7 +7,8 @@ import { useReducedMotion } from "motion/react";
 import type { HomeFeedController } from "@/components/home/use-home-feed-controller";
 import { HomeFeedTabPanels } from "@/components/home/home-feed-tab-panels";
 import { AppPressable, MotionSheet } from "@/components/motion-common";
-import type { HomeGarment } from "@/lib/home/home-feed-model";
+import { OnlineAssetImage } from "@/components/online/online-asset-image";
+import type { HomeFeedViewModel, HomeGarment, HomeRecommendationCandidate, HomeWeatherViewModel } from "@/lib/home/home-feed-model";
 
 export function WardoraHomeView({ controller, garments, renderWardrobeContent }: {
   controller: HomeFeedController;
@@ -17,124 +18,84 @@ export function WardoraHomeView({ controller, garments, renderWardrobeContent }:
   const recommendationRef = useRef<HTMLDivElement>(null);
   const [feedTab, setFeedTab] = useState<"recommendation" | "wardrobe">("recommendation");
   const reducedMotion = useReducedMotion();
-  const garmentNames = useMemo(() => new Map(garments.map((item) => [item.id, item.name])), [garments]);
+  const garmentById = useMemo(() => new Map(garments.map((item) => [item.id, item])), [garments]);
   const dates = useMemo(() => Array.from({ length: 7 }, (_, index) => addDays(controller.window.today, index)), [controller.window.today]);
   const vm = controller.viewModel;
-  const recommendationContext = vm.recommendation.status === "ready" ? vm.recommendation.contextMode : null;
+  const readyRecommendation = vm.recommendation.status === "ready" ? vm.recommendation : null;
+  const scrollToRecommendations = (date: string) => {
+    controller.setSelectedDate(date);
+    setFeedTab("recommendation");
+    requestAnimationFrame(() => recommendationRef.current?.scrollIntoView({ behavior: reducedMotion ? "auto" : "smooth", block: "start" }));
+  };
 
   return (
-    <div className="mx-auto grid w-full max-w-2xl gap-4 pb-6" data-testid="wardora-home-feed" data-home-state={vm.normalState ?? "workspace-error"}>
-      <header className="flex min-h-11 items-center justify-between gap-3 px-1">
-        <div>
-          <p className="text-xs font-semibold tracking-[0.14em] text-denim/70">WARDORA</p>
-          <h1 className="text-2xl font-semibold tracking-tight">今天穿什么</h1>
-        </div>
+    <div className="mx-auto grid min-w-0 w-full max-w-2xl gap-3 overflow-x-clip pb-6" data-testid="wardora-home-feed" data-home-state={vm.normalState ?? "workspace-error"}>
+      <header className="px-0.5 pb-1 pt-1">
+        <h1 className="text-[25px] font-bold leading-[1.12] tracking-[-0.025em] text-ink">{businessGreeting()}</h1>
+        <p className="mt-[7px] text-[13px] font-medium leading-[1.35] text-ink/55" data-testid="home-business-date">{formatBusinessDate(controller.window.today)}</p>
+      </header>
+
+      <section className="home-weather-shell ui-card overflow-hidden p-3.5" aria-label="今日和明日天气" data-testid="home-weather-module">
         <AppPressable
           feedback="control"
-          className="flex min-h-11 max-w-[55%] items-center gap-2 rounded-full bg-white/85 px-3 text-sm shadow-sm ring-1 ring-ink/10"
+          className="-ml-2 -mt-2 mb-0.5 flex min-h-12 max-w-full items-center gap-1.5 rounded-xl px-2 text-left text-[13px] font-semibold leading-[18px] text-denim"
           onClick={() => controller.setCityOpen(true)}
           aria-label="选择天气地点"
           data-testid="home-location-entry"
         >
-          <MapPin size={17} aria-hidden="true" />
-          <span className="truncate">{vm.location.kind === "none" ? "未设置城市" : `${vm.location.displayName} · ${vm.location.kind === "temporary_city" ? "临时" : "常驻"}`}</span>
-          <ChevronRight size={15} aria-hidden="true" />
+          <MapPin size={21} aria-hidden="true" />
+          <span className="truncate" data-testid="home-location-label">{locationLabel(vm.location)}</span>
+          <ChevronRight className="shrink-0" size={20} aria-hidden="true" />
         </AppPressable>
-      </header>
-
-      <div className="no-scrollbar flex gap-2 overflow-x-auto pb-1" aria-label="选择日期">
-        {dates.map((date, index) => (
-          <AppPressable
-            key={date}
-            feedback="control"
-            className={`min-h-11 min-w-[68px] rounded-2xl px-3 py-2 text-center text-sm ring-1 ${controller.selectedDate === date ? "bg-denim text-white ring-denim" : "bg-white/75 text-ink ring-ink/10"}`}
-            onClick={() => controller.setSelectedDate(date)}
-            aria-pressed={controller.selectedDate === date}
-          >
-            <span className="block text-[11px] opacity-70">{index === 0 ? "今天" : index === 1 ? "明天" : weekday(date)}</span>
-            <span className="font-semibold">{date.slice(5).replace("-", "/")}</span>
-          </AppPressable>
-        ))}
-      </div>
-
-      <section className="relative min-h-[190px] overflow-hidden rounded-[28px] bg-gradient-to-br from-denim/12 via-mist to-clay/12 p-5 shadow-sm ring-1 ring-white/70" data-testid="home-weather-card">
-        <div className="pointer-events-none absolute inset-0 opacity-55" aria-hidden="true">
-          <div className="absolute -right-10 -top-14 h-40 w-40 rounded-full bg-white/70 blur-2xl" />
-          <div className="absolute -bottom-20 left-4 h-36 w-64 rounded-[50%] bg-denim/10 blur-2xl" />
-        </div>
-        <div className="relative z-10">
-          {vm.weather.status === "loading" || vm.weather.status === "idle" ? <ModuleLoading label="正在读取天气" /> : null}
-          {vm.weather.status === "error" ? <ModuleError message={vm.weather.message} onRetry={controller.retryWeather} /> : null}
-          {vm.weather.status === "ready" ? (
-            <AppPressable
-              feedback="card"
-              className="block min-h-[150px] w-full text-left"
-              onClick={() => {
-                setFeedTab("recommendation");
-                requestAnimationFrame(() => recommendationRef.current?.scrollIntoView({ behavior: reducedMotion ? "auto" : "smooth", block: "start" }));
-              }}
-              aria-label="查看当日穿搭建议"
-            >
-              <div className="flex items-start justify-between gap-4">
-                <div>
-                  <p className="text-sm text-ink/60">{controller.selectedDate === controller.window.today ? "今日天气" : "天气预报"}</p>
-                  {vm.weather.temperatureC !== undefined ? <p className="mt-1 text-5xl font-light tracking-tight">{Math.round(vm.weather.temperatureC)}°</p> : null}
-                  {vm.weather.temperatureC === undefined && (vm.weather.minTemperatureC !== undefined || vm.weather.maxTemperatureC !== undefined) ? (
-                    <p className="mt-2 text-3xl font-light">{tempRange(vm.weather.minTemperatureC, vm.weather.maxTemperatureC)}</p>
-                  ) : null}
-                  {vm.weather.temperatureC === undefined && vm.weather.minTemperatureC === undefined && vm.weather.maxTemperatureC === undefined ? (
-                    <p className="mt-3 text-lg font-medium">暂无可信温度</p>
-                  ) : null}
-                </div>
-                <div className="grid min-h-14 min-w-14 place-items-center rounded-2xl bg-white/55">
-                  <CloudSun size={32} strokeWidth={1.6} aria-hidden="true" />
-                </div>
-              </div>
-              <div className="mt-5 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-ink/65">
-                <span>{vm.weather.summary ?? vm.weather.visual?.name ?? availabilityLabel(vm.weather.availabilityReason)}</span>
-                {vm.weather.feelsLikeC !== undefined ? <span>体感 {Math.round(vm.weather.feelsLikeC)}°</span> : null}
-                {vm.weather.stale ? <span className="rounded-full bg-amber-100 px-2 py-0.5 text-amber-900">缓存天气</span> : null}
-              </div>
-            </AppPressable>
-          ) : null}
-        </div>
+        {vm.location.kind === "none" ? (
+          <WeatherUnavailable title="设置地点后可查看天气" message="城市不是使用首页的前置条件；现在仍可获得不作天气结论的通用建议。" />
+        ) : bothWeatherUnavailable(vm.todayWeather, vm.tomorrowWeather) ? (
+          <WeatherUnavailable title="天气服务暂时不可用" message="已切换为通用推荐，不使用过期温度或降雨结论；衣橱仍可正常浏览。" />
+        ) : (
+          <div className="mt-0.5 grid grid-cols-2 gap-1.5" data-testid="home-weather-pair">
+            <WeatherDayCard kind="today" weather={vm.todayWeather} onClick={() => scrollToRecommendations(controller.window.today)} onRetry={controller.retryWeather} />
+            <WeatherDayCard kind="tomorrow" weather={vm.tomorrowWeather} onClick={() => scrollToRecommendations(controller.window.tomorrow)} onRetry={controller.retryWeather} />
+          </div>
+        )}
       </section>
 
-      <div className="grid min-h-11 grid-cols-2 rounded-2xl bg-ink/5 p-1" role="tablist" aria-label="首页内容">
-        <AppPressable id="home-recommendation-tab" aria-controls="home-recommendation-panel" className={`rounded-xl text-sm font-semibold ${feedTab === "recommendation" ? "bg-white text-denim shadow-sm" : "text-ink/55"}`} role="tab" aria-selected={feedTab === "recommendation"} onClick={() => setFeedTab("recommendation")}>推荐</AppPressable>
-        <AppPressable id="home-wardrobe-tab" aria-controls="home-wardrobe-panel" className={`rounded-xl text-sm font-semibold ${feedTab === "wardrobe" ? "bg-white text-denim shadow-sm" : "text-ink/55"}`} role="tab" aria-selected={feedTab === "wardrobe"} onClick={() => setFeedTab("wardrobe")}>衣橱</AppPressable>
+      <div className="grid min-h-[52px] grid-cols-2 gap-1 rounded-[14px] bg-ink/5 p-1" role="tablist" aria-label="首页内容">
+        <AppPressable id="home-recommendation-tab" aria-controls="home-recommendation-panel" className={`min-h-11 rounded-[11px] text-sm font-semibold ${feedTab === "recommendation" ? "bg-surface text-denim" : "text-ink/55"}`} role="tab" aria-selected={feedTab === "recommendation"} onClick={() => setFeedTab("recommendation")}>推荐</AppPressable>
+        <AppPressable id="home-wardrobe-tab" aria-controls="home-wardrobe-panel" className={`min-h-11 rounded-[11px] text-sm font-semibold ${feedTab === "wardrobe" ? "bg-surface text-denim" : "text-ink/55"}`} role="tab" aria-selected={feedTab === "wardrobe"} onClick={() => setFeedTab("wardrobe")}>衣橱</AppPressable>
       </div>
 
       <HomeFeedTabPanels activeTab={feedTab} recommendation={(
-      <section ref={recommendationRef} className="scroll-mt-4 rounded-[24px] bg-white/90 p-4 shadow-sm ring-1 ring-ink/8" data-testid="home-recommendation-module">
-        <div className="mb-3 flex items-center justify-between gap-3">
-          <div>
-            <p className="text-xs text-ink/50">今日建议</p>
-            <h2 className="text-lg font-semibold">穿搭推荐</h2>
-          </div>
-          {vm.recommendation.status === "error" ? <RetryIcon onClick={controller.retryRecommendation} label="重试推荐" /> : null}
-        </div>
+      <section ref={recommendationRef} className="scroll-mt-4 min-w-0 px-px py-1" data-testid="home-recommendation-module">
         {vm.plan ? (
-          <ReadOnlyOutfit title={vm.plan.kind === "actual_wear" ? "今天实际穿着" : "今日主计划"} garmentIds={vm.plan.garmentIds} garmentNames={garmentNames} badge={vm.plan.kind === "actual_wear" ? "已穿事实" : "计划已保护"} />
-        ) : vm.recommendation.status === "loading" || vm.recommendation.status === "idle" ? (
+          <div>
+            <SectionHeading title={vm.plan.kind === "actual_wear" ? "今天已穿" : "当日穿搭"} subtitle={`${formatShortDate(controller.selectedDate)} · ${vm.plan.kind === "actual_wear" ? "实际穿着已记录" : "计划保护中"}`} />
+            <ReadOnlyPlan garmentIds={vm.plan.garmentIds} garmentById={garmentById} kind={vm.plan.kind} />
+          </div>
+        ) : (
+          <div className="mb-2.5 grid grid-cols-[auto_minmax(0,1fr)] items-end gap-3" data-testid="home-recommendation-toolbar">
+            <SectionHeading compact title={dateHeading(controller.selectedDate, controller.window.today)} subtitle={recommendationSubtitle(vm.recommendation)} action={vm.recommendation.status === "error" ? <RetryIcon onClick={controller.retryRecommendation} label="重试推荐" /> : undefined} />
+            <DateStrip dates={dates} selectedDate={controller.selectedDate} onSelect={controller.setSelectedDate} />
+          </div>
+        )}
+        {!vm.plan && (vm.recommendation.status === "loading" || vm.recommendation.status === "idle") ? (
           <ModuleLoading label="正在整理穿搭建议" />
-        ) : vm.recommendation.status === "error" ? (
-          <p className="py-5 text-sm text-ink/60">{vm.recommendation.message}</p>
-        ) : vm.recommendation.status === "not_ready" ? (
+        ) : !vm.plan && vm.recommendation.status === "error" ? (
+          <RecommendationState title="这次没有拿到新建议" message={vm.recommendation.message} />
+        ) : !vm.plan && vm.recommendation.status === "not_ready" ? (
           <EmptyRecommendation wardrobeReady={vm.wardrobeReady} />
-        ) : vm.recommendation.status === "protected" ? (
-          <p className="py-5 text-sm text-ink/65">今日已有主计划，天气或推荐变化不会自动覆盖它。</p>
-        ) : vm.recommendation.status === "ready" ? (
-          <div className="grid gap-3">
-            {vm.recommendation.candidates.map((candidate, index) => (
-              <ReadOnlyOutfit key={candidate.candidateId} title={index === 0 ? "首选搭配" : `备选 ${index + 1}`} garmentIds={candidate.garmentIds} garmentNames={garmentNames} badge={recommendationContext === "locationless" ? "无城市建议" : recommendationContext === "weather_fallback" ? "静态保底" : "结合天气"} />
+        ) : !vm.plan && vm.recommendation.status === "protected" ? (
+          <RecommendationState title="当日穿搭已保护" message="天气或推荐变化不会自动覆盖已有安排。" />
+        ) : !vm.plan && readyRecommendation ? (
+          <div className="no-scrollbar flex snap-x snap-mandatory gap-2.5 overflow-x-auto pb-2 pt-0.5 [touch-action:pan-x_pan-y]" aria-label="穿搭推荐，横向滚动" data-testid="home-recommendation-rail">
+            {readyRecommendation.candidates.map((candidate) => (
+              <RecommendationCard key={candidate.candidateId} candidate={candidate} garmentById={garmentById} contextMode={readyRecommendation.contextMode} />
             ))}
           </div>
         ) : null}
       </section>
       )} renderWardrobe={() => (
 
-      <section className="rounded-[22px] bg-white/80 p-4 ring-1 ring-ink/8" data-testid="home-wardrobe-column">
+      <section className="ui-card p-4" data-testid="home-wardrobe-column">
         <div className="flex min-h-11 items-center justify-between font-semibold">
           <span className="flex items-center gap-2"><Shirt size={19} />我的衣橱</span>
           <span className="text-sm font-normal text-ink/50">{garments.length} 件</span>
@@ -205,12 +166,83 @@ export function homeCitySheetLocationActions(hasTemporaryOverride: boolean): rea
   return hasTemporaryOverride ? ["clear_temporary"] : [];
 }
 
+function WeatherDayCard({ kind, weather, onClick, onRetry }: { kind: "today" | "tomorrow"; weather: HomeWeatherViewModel; onClick: () => void; onRetry: () => unknown }) {
+  if (weather.status === "loading" || weather.status === "idle") return <div className="home-weather-day-card grid min-h-[108px] place-items-center bg-mist/75 px-2 text-center text-xs text-ink/55"><Loader2 className="animate-spin motion-reduce:animate-none" size={19} /><span>{kind === "today" ? "正在读取今天" : "正在读取明天"}</span></div>;
+  if (weather.status === "error") return <div className="home-weather-day-card grid min-h-[108px] content-center bg-mist/75 px-2 text-center"><AlertCircle className="mx-auto text-clay" size={18} /><p className="mt-1 line-clamp-2 text-[11px] text-ink/65">{weather.message}</p><AppPressable className="mx-auto min-h-11 px-3 text-xs font-semibold text-denim" onClick={() => void onRetry()}>重试</AppPressable></div>;
+  if (weather.status !== "ready") return null;
+  const isToday = kind === "today";
+  const temperature = isToday && weather.temperatureC !== undefined
+    ? `${Math.round(weather.temperatureC)}°`
+    : tempRange(weather.minTemperatureC, weather.maxTemperatureC);
+  return (
+    <AppPressable
+      feedback="card"
+      className="home-weather-day-card home-weather-static relative h-[113px] overflow-hidden px-[9px] pb-[5px] pt-[7px] text-left"
+      onClick={onClick}
+      aria-label={`${isToday ? "今天" : "明天"}天气，切换到${isToday ? "今日" : "明日"}推荐`}
+      data-testid={`home-weather-${kind}`}
+      data-weather-family={weather.visual?.family ?? "unknown"}
+    >
+      <div className="relative z-10 grid h-full grid-rows-[17px_28px_35px_16px]">
+        <div data-weather-row="label" className="flex items-baseline justify-between gap-1 self-start text-[12px] font-medium leading-[17px] text-ink/55"><span>{isToday ? "今天" : "明天"}</span><span className="truncate">{weather.maxTemperatureC !== undefined ? `最高 ${Math.round(weather.maxTemperatureC)}°` : ""}</span></div>
+        <p data-weather-row="temperature" className={`self-start whitespace-nowrap leading-[28px] tracking-[-0.025em] ${isToday ? "text-[24px] font-bold" : "text-[22px] font-semibold"}`}>{temperature}</p>
+        <p data-weather-row="summary" className="line-clamp-2 self-start text-[12px] font-medium leading-[17px]">{weather.summary ?? weather.visual?.name ?? "暂无完整天气摘要"}</p>
+        <p data-weather-row="meta" className="self-end truncate text-[11px] leading-4 text-ink/55">{isToday
+          ? [weather.feelsLikeC !== undefined ? `体感 ${Math.round(weather.feelsLikeC)}°` : null, weather.windLevel !== undefined ? `${weather.windLevel} 级风` : null].filter(Boolean).join(" · ") || tempLowLabel(weather.minTemperatureC)
+          : [tempLowLabel(weather.minTemperatureC), "日间预报"].filter(Boolean).join(" · ")}</p>
+      </div>
+    </AppPressable>
+  );
+}
+
+function WeatherUnavailable({ title, message }: { title: string; message: string }) {
+  return <div className="rounded-[16px] bg-mist/65 p-4"><CloudSun className="mb-3 text-denim/70" size={26} /><h2 className="font-semibold">{title}</h2><p className="mt-1 max-w-[34ch] text-sm leading-6 text-ink/60">{message}</p><span className="mt-3 inline-flex min-h-7 items-center rounded-full bg-moss/10 px-3 text-xs font-semibold text-moss">通用推荐 · 不使用温度和降雨</span></div>;
+}
+
+function DateStrip({ dates, selectedDate, onSelect }: { dates: readonly string[]; selectedDate: string; onSelect: (date: string) => void }) {
+  return <div className="no-scrollbar flex min-w-0 gap-1.5 overflow-x-auto pb-0.5" aria-label="选择推荐日期" data-testid="home-date-strip">{dates.map((date, index) => <AppPressable key={date} feedback="control" className={`min-h-12 min-w-[48px] rounded-[13px] px-1 py-1 text-center text-[10px] leading-[1.2] ${selectedDate === date ? "bg-denim text-white shadow-sm" : "bg-white/55 text-ink/60"}`} onClick={() => onSelect(date)} aria-pressed={selectedDate === date}><span className="block opacity-80">{index === 0 ? "今天" : index === 1 ? "明天" : weekday(date)}</span><span className="mt-0.5 block font-semibold">{date.slice(5).replace("-", "/")}</span></AppPressable>)}</div>;
+}
+
+function SectionHeading({ title, subtitle, action, compact = false }: { title: string; subtitle: string; action?: ReactNode; compact?: boolean }) {
+  return <div className={`${compact ? "" : "mb-2.5"} flex min-h-11 items-end justify-between gap-3`}><div><h2 className="text-[18px] font-bold leading-[1.2] tracking-[-0.015em]">{title}</h2><p className="mt-[3px] max-w-[12ch] text-[11px] leading-[1.4] text-ink/55">{subtitle}</p></div>{action}</div>;
+}
+
+function RecommendationCard({ candidate, garmentById, contextMode }: { candidate: HomeRecommendationCandidate; garmentById: ReadonlyMap<string, HomeGarment>; contextMode: "forecast" | "locationless" | "weather_fallback" }) {
+  const garments = candidate.garmentIds.map((id) => garmentById.get(id)).filter((item): item is HomeGarment => Boolean(item));
+  const target = objectiveLabel(candidate.objective);
+  return <article className="ui-card grid w-[310px] min-w-[310px] max-w-[calc(100vw-50px)] basis-[310px] snap-start grid-rows-[18px_78px_20px_16px_34px_32px] gap-y-1.5 px-[17px] pb-[17px] pt-[21px] !shadow-none" data-testid="home-recommendation-card">
+    <div data-rec-row="target" className="flex h-[18px] items-center justify-between gap-3"><span className="text-[13px] font-bold leading-[18px] text-denim" data-testid="home-recommendation-target-label">{target}</span><span className="text-[10px] font-medium leading-[18px] text-ink/55">{contextLabel(contextMode)}</span></div>
+    <div className="grid h-[78px] grid-cols-[1.15fr_.9fr_.72fr] gap-1.5" aria-label={garments.map((item) => item.name).join("、")}>
+      {garments.slice(0, 3).map((item) => <div key={item.id} className="relative min-w-0 overflow-hidden rounded-[11px] bg-mist"><OnlineAssetImage asset={item.imageAsset} variant="thumbnail" alt={item.name} className="h-full w-full" imageClassName="object-cover" fallback={<div className="grid h-full place-items-center text-ink/25"><Shirt size={25} /></div>} /><span className="absolute inset-x-0 bottom-0 truncate bg-gradient-to-t from-black/55 to-transparent px-2 pb-1.5 pt-5 text-[10px] font-semibold text-white">{item.name}</span></div>)}
+    </div>
+    <h3 data-rec-row="title" className="truncate text-[15px] font-bold leading-5">{target}搭配</h3>
+    <p data-rec-row="garments" className="truncate text-[11px] leading-4 text-ink/55">{garments.map((item) => item.name).join(" · ") || "推荐衣物正在同步"}</p>
+    <p data-rec-row="reason" className="line-clamp-2 h-[34px] text-[12px] leading-[17px]">{reasonLabel(candidate.reasonCodes?.[0], contextMode)}</p>
+    <p data-rec-row="risk" className="line-clamp-2 flex h-8 gap-1.5 overflow-hidden text-[11px] leading-4 text-ink/70"><span className="mt-1 h-[7px] w-[7px] shrink-0 rounded-full bg-clay" aria-hidden="true" /><span>{riskLabel(candidate.riskCodes?.[0], contextMode)}</span></p>
+  </article>;
+}
+
+function ReadOnlyPlan({ garmentIds, garmentById, kind }: { garmentIds: readonly string[]; garmentById: ReadonlyMap<string, HomeGarment>; kind: "protected_plan" | "actual_wear" }) {
+  const garments = garmentIds.map((id) => garmentById.get(id)).filter((item): item is HomeGarment => Boolean(item));
+  return <article className="ui-card p-4" data-testid={kind === "actual_wear" ? "home-actual-wear" : "home-protected-plan"}><div className="grid grid-cols-3 gap-2">{garments.slice(0, 3).map((item) => <div key={item.id} className="aspect-[3/4] overflow-hidden rounded-[13px] bg-mist"><OnlineAssetImage asset={item.imageAsset} variant="thumbnail" alt={item.name} className="h-full w-full" imageClassName="object-cover" fallback={<div className="grid h-full place-items-center text-ink/25"><Shirt size={25} /></div>} /></div>)}</div><p className="mt-3 text-sm leading-6 text-ink/65">{garments.map((item) => item.name).join(" · ") || "计划衣物快照已保留"}</p><p className="mt-2 text-sm font-medium text-denim">{kind === "actual_wear" ? "已穿事实优先，推荐不会覆盖" : "主计划已保护，天气变化只提示风险"}</p></article>;
+}
+
+function RecommendationState({ title, message }: { title: string; message: string }) { return <div className="ui-card p-4"><h3 className="font-semibold">{title}</h3><p className="mt-2 text-sm leading-6 text-ink/60">{message}</p></div>; }
 function ModuleLoading({ label }: { label: string }) { return <div className="flex min-h-28 items-center justify-center gap-2 text-sm text-ink/55"><Loader2 className="animate-spin motion-reduce:animate-none" size={18} />{label}</div>; }
-function ModuleError({ message, onRetry }: { message: string; onRetry: () => unknown }) { return <div className="grid min-h-28 place-items-center text-center"><div><AlertCircle className="mx-auto mb-2" size={22} /><p className="text-sm">{message}</p><AppPressable className="mt-3 min-h-11 rounded-full bg-white/70 px-4 text-sm font-semibold" onClick={() => void onRetry()}>重试天气</AppPressable></div></div>; }
-function RetryIcon({ onClick, label }: { onClick: () => unknown; label: string }) { return <AppPressable feedback="icon" className="grid h-11 w-11 place-items-center rounded-full bg-mist" onClick={() => void onClick()} aria-label={label}><RefreshCw size={17} /></AppPressable>; }
-function EmptyRecommendation({ wardrobeReady }: { wardrobeReady: boolean }) { return <div className="py-5 text-sm text-ink/60"><p>{wardrobeReady ? "暂时没有可展示的服务端推荐。" : "衣橱还未满足完整搭配条件。"}</p><p className="mt-1 text-xs">补齐上装、下装与鞋履后再刷新。</p></div>; }
-function ReadOnlyOutfit({ title, garmentIds, garmentNames, badge }: { title: string; garmentIds: readonly string[]; garmentNames: ReadonlyMap<string, string>; badge: string }) { return <article className="rounded-2xl bg-mist/70 p-3"><div className="flex items-center justify-between gap-3"><h3 className="font-semibold">{title}</h3><span className="rounded-full bg-white px-2 py-1 text-[11px] text-ink/55">{badge}</span></div><p className="mt-2 text-sm leading-6 text-ink/65">{garmentIds.map((id) => garmentNames.get(id) ?? "衣物").join(" · ")}</p></article>; }
+function RetryIcon({ onClick, label }: { onClick: () => unknown; label: string }) { return <AppPressable feedback="icon" className="grid h-12 w-12 place-items-center rounded-[15px] bg-mist" onClick={() => void onClick()} aria-label={label}><RefreshCw size={17} /></AppPressable>; }
+function EmptyRecommendation({ wardrobeReady }: { wardrobeReady: boolean }) { return <RecommendationState title={wardrobeReady ? "暂时没有可展示的服务端推荐" : "衣橱还未满足完整搭配条件"} message={wardrobeReady ? "稍后重新进入首页时会再试一次，你仍可正常浏览衣橱。" : "补齐上装、下装与鞋履后即可形成合法组合，不会为了凑数使用不适合的衣物。"} />; }
 function addDays(date: string, days: number) { const value = new Date(`${date}T12:00:00+08:00`); value.setUTCDate(value.getUTCDate() + days); return new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Shanghai" }).format(value); }
 function weekday(date: string) { return new Intl.DateTimeFormat("zh-CN", { timeZone: "Asia/Shanghai", weekday: "short" }).format(new Date(`${date}T12:00:00+08:00`)); }
-function tempRange(min?: number, max?: number) { if (min !== undefined && max !== undefined) return `${Math.round(min)}° / ${Math.round(max)}°`; return `${Math.round(min ?? max!)}°`; }
-function availabilityLabel(reason: string) { return reason === "locationless" ? "未设置城市" : reason === "provider_unavailable" ? "天气服务暂不可用" : "暂无完整天气"; }
+function tempRange(min?: number, max?: number) { if (min !== undefined && max !== undefined) return `${Math.round(max)}°/${Math.round(min)}°`; if (min !== undefined || max !== undefined) return `${Math.round(min ?? max!)}°`; return "--°"; }
+function tempLowLabel(min?: number) { return min === undefined ? "" : `最低 ${Math.round(min)}°`; }
+function locationLabel(location: { kind: string; displayName?: string }) { return location.kind === "none" ? "未设置城市" : `${location.displayName} · ${location.kind === "temporary_city" ? "临时" : "常驻"}`; }
+function bothWeatherUnavailable(today: HomeWeatherViewModel, tomorrow: HomeWeatherViewModel) { return today.status === "ready" && tomorrow.status === "ready" && today.availabilityReason !== "available" && tomorrow.availabilityReason !== "available"; }
+function businessGreeting() { const hour = Number(new Intl.DateTimeFormat("en-GB", { timeZone: "Asia/Shanghai", hour: "2-digit", hourCycle: "h23" }).format(new Date())); return hour < 11 ? "早上好，今天穿得轻松一点" : hour < 14 ? "中午好，今天穿得自在一点" : hour < 18 ? "下午好，今天穿得从容一点" : "晚上好，明天也穿得轻松一点"; }
+function formatBusinessDate(date: string) { return new Intl.DateTimeFormat("zh-CN", { timeZone: "Asia/Shanghai", month: "long", day: "numeric", weekday: "short" }).format(new Date(`${date}T12:00:00+08:00`)); }
+function formatShortDate(date: string) { return new Intl.DateTimeFormat("zh-CN", { timeZone: "Asia/Shanghai", month: "numeric", day: "numeric", weekday: "short" }).format(new Date(`${date}T12:00:00+08:00`)); }
+function dateHeading(date: string, today: string) { return date === today ? "今天" : date === addDays(today, 1) ? "明天" : formatShortDate(date); }
+function recommendationSubtitle(state: HomeFeedViewModel["recommendation"]) { return state.status === "ready" ? contextLabel(state.contextMode) : "天气与衣橱分别准备，互不阻塞"; }
+function objectiveLabel(objective?: string) { return objective === "fresh" ? "变化" : objective === "comfort" ? "舒适" : "稳妥"; }
+function contextLabel(mode: "forecast" | "locationless" | "weather_fallback") { return mode === "forecast" ? "天气增强" : mode === "locationless" ? "通用建议" : "天气回退"; }
+function reasonLabel(code: string | undefined, mode: "forecast" | "locationless" | "weather_fallback") { const labels: Record<string, string> = { good_for_commute: "适合日常通勤，整体组合清晰可靠。", good_for_business: "正式度与商务场景相符。", good_for_travel: "适合行程活动与移动需要。", weather_fit: "当前衣物与天气证据匹配。", rain_ready: "组合已考虑降雨与路面情况。", activity_comfort: "活动空间与舒适度更充足。", historical_success: "这类组合过去有良好穿着记录。", rotation_value: "优先带回近期较少穿着的衣物。", new_combination: "在可靠结构中加入新的组合变化。", shoe_rationality: "鞋履与今天的活动强度匹配。", outerwear_rationality: "外层便于应对室内外变化。", adaptable_conditions: "采用容易增减的通用分层。", needs_evening_layer: "晚间可按体感补充轻薄外层。" }; return labels[code ?? ""] ?? (mode === "forecast" ? "结合天气、场景与衣橱状态整理。" : "按场景与衣橱状态给出通用组合。"); }
+function riskLabel(code: string | undefined, mode: "forecast" | "locationless" | "weather_fallback") { const labels: Record<string, string> = { missing_required_slot: "组合存在缺失角色，采用前需要补齐。", severe_temperature_mismatch: "温度适配存在明显风险。", severe_formality_mismatch: "正式度与当前场景差异较大。", rain_incompatible: "降雨条件下部分衣物不够稳妥。", shoe_activity_mismatch: "鞋履可能不适合今天的活动强度。", wind_rain_exposure: "风雨暴露较高，建议增加保护层。", outerwear_recommended: "建议随身准备一件轻薄外层。", evening_layer_recommended: "晚间体感变化时建议补充外层。", too_cold: "部分衣物可能不够保暖。", too_hot: "部分衣物可能偏热。", rain_exposure: "有淋雨风险，请留意防水。", wind_exposure: "风力较强时需要额外防护。", shoe_discomfort: "长时间活动时鞋履舒适度需留意。", formality_mismatch: "正式度可能与场景不完全一致。", activity_mismatch: "活动强度与衣物组合可能不完全匹配。", missing_required_layer: "建议补充必要的外层。", style_conflict: "组合风格存在轻微冲突。" }; return labels[code ?? ""] ?? (mode === "forecast" ? "未发现需要特别提醒的天气风险。" : "通用建议不作温度或降雨判断，出门前请自行确认天气。"); }

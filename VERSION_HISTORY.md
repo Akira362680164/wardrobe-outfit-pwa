@@ -21,6 +21,13 @@
 - 新增固定 code/seed/clock 并排对照验收，冻结 `304/403/508/512/998` 标志性效果、今日动态/明日静帧、后台/离屏停止和 reduced-motion 降级。
 - 本次为 Low 风险纯文档修订，不修改运行时、服务端、数据库、App 版本或小程序；未触发 subagent：用户未通知。
 
+## 2026-07-18 / v2.1.29-test / P1.4 — 新首页视觉骨架对齐
+
+- 新首页按 v0.2.3 恢复时间语义问候、天气模块内唯一地点入口、今日/明日双卡、推荐/衣橱分栏，并将七日选择收进推荐工具栏；天气静态色取自原型 ambient/fallback 参数，不引入 Canvas、rAF、粒子或定位。
+- 推荐 ready 态改为真实服务端衣物图片与名称组成的原生横向卡轨，保留稳妥/变化/舒适、理由、风险和来源层级；计划/已穿事实优先，严格只读且不提前加入 P2 写操作。
+- 视觉门禁覆盖 360/390/430px、100%/130% 与 ready/locationless/weather fallback/protected/actual-wear；v0.2.3 对照图和专项 manifest 见 `artifacts/home-feed-p14/`。风险等级 High（首页主路径、Android 与签名 APK）。
+- 冻结 commit `fca8489` 经独立只读视觉 subagent 复审，P0/P1/P2 均为 0，结论建议交付；本轮不改算法、服务端、数据库、生产部署、PAW 或小程序，Canvas/定位/P2 写事务/P4 小程序仍未实现。
+
 ## 2026-07-18 / v2.1.28-test / P1.3.1-C — 证据补强与稳定态清理
 
 - 修正 locationless Fixture 的非法天气码，并以 `WeatherOverviewSchema` 在响应边界校验；新增只含方法、固定路径、状态码与序号的测试 trace，浏览器/Android manifest 均以真实服务端流水核对。
