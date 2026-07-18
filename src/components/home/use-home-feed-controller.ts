@@ -43,13 +43,23 @@ import {
   setTemporaryCity,
   type HomeLocationSnapshot,
 } from "@/lib/online/online-home-client";
-import { OnlineRequestError, onlineErrorMessage } from "@/lib/online/online-error";
+import { OnlineRequestError } from "@/lib/online/online-error";
 
 function homeErrorMessage(error: unknown): string {
   if (!(error instanceof OnlineRequestError)) return "暂时无法完成，请稍后重试。";
-  if (error.code === "server") return "暂时无法完成，请稍后重试。";
-  if (error.code === "network") return "网络连接失败，请检查网络后重试。";
-  return onlineErrorMessage(error);
+  switch (error.code) {
+    case "network": return "网络连接失败，请检查网络后重试。";
+    case "timeout": return "请求超时，请稍后重试。";
+    case "auth": return "登录状态已失效，请重新登录。";
+    case "conflict": return "内容已更新，请刷新后重试。";
+    case "not_found": return "内容不存在或已被删除。";
+    case "invalid_request": return "提交内容有误，请检查后重试。";
+    case "mutation_in_progress": return "正在保存，请稍后再试。";
+    case "rate_limited": return "操作过于频繁，请稍后重试。";
+    case "weather_unavailable": return "天气暂时不可用，请稍后重试。";
+    case "image_upload": return "图片处理失败，请重新选择后重试。";
+    case "server": return "暂时无法完成，请稍后重试。";
+  }
 }
 
 const defaultHomeClients = {

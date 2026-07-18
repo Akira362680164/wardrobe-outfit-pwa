@@ -14,6 +14,7 @@ assert.deepEqual(vm.backupPlans.map((item) => item.id), [backup.id]);
 const root = join(import.meta.dirname, "..");
 const page = readFileSync(join(root, "src/components/home/wardora-home-view.tsx"), "utf8");
 const controller = readFileSync(join(root, "src/components/home/use-home-feed-controller.ts"), "utf8");
+const homeOperations = readFileSync(join(root, "src/lib/home/home-feed-operations.ts"), "utf8");
 const client = readFileSync(join(root, "src/lib/online/online-home-client.ts"), "utf8");
 const cancel = readFileSync(join(root, "services/wardrobe-api/src/recommendations/cancel-service.ts"), "utf8");
 assert.match(page, /设为今日穿搭/);
@@ -35,4 +36,5 @@ assert.doesNotMatch(page, /主计划已保护|天气变化只提示风险|不会
 assert.doesNotMatch(page, /天气回退|天气增强|至少输入 2 个字搜索城市/);
 assert.match(controller, /暂时无法完成，请稍后重试/);
 assert.match(controller, /网络连接失败，请检查网络后重试/);
+assert.doesNotMatch(controller + homeOperations, /onlineErrorMessage|message:\s*error\.message/);
 console.log("home feed P2 fixtures: passed");
