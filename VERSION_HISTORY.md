@@ -11,8 +11,8 @@
 
 - workspace 分页统一限制单次 `limit<=200` 并跟随 `nextCursor` 完整读取；重复游标、重复实体和异常页数显式失败，关闭生产首页 `Workspace 请求格式不正确`。
 - 单品详情补齐服务器权威的“标记今天穿了”及取消读回，复用稳定 `clientMutationId`，不做乐观成功或本地队列；受控 POLO 往返后恢复未穿，8 件衣物未编辑、未删除。
-- 详情 hero 按 3:4 图片语义收敛 `aspectFit`、高度边界、缩略图与标题层级；“版型倾向/版型说明”拆分并支持长文案，衣橱筛选统一为全部/上衣/裤子/鞋。
-- TypeScript、分页/穿着手写测试、详情/衣橱/首页回归与正式源码 WeChat DevTools 360/390/430、约 144% 字体证据通过；详见 `apps/wechat-miniprogram/evidence/dual-end-fixes-20260724/REPORT.md`。
+- 详情 hero 按 3:4 图片语义收敛 `aspectFit`、明确 686×914.67rpx 容器、缩略图与标题层级；“版型倾向/版型说明”拆分并支持长文案，衣橱筛选统一为全部/上衣/裤子/鞋。
+- TypeScript、分页/穿着/系统字号手写测试、详情/衣橱/首页回归与正式源码 WeChat DevTools 360/390/430、实际约 144% 字号证据通过；首轮视觉审查问题修复重拍后，第二轮独立只读审查 P0/P1/P2/P3 全为 0、建议交付，详见 `apps/wechat-miniprogram/evidence/dual-end-fixes-20260724/REPORT.md`。
 - 本批只停在独立任务分支，未合入 `wechat/miniprogram`、未上传小程序、未部署 API；等待第一批 main/App/API 修复完成后再同步与串行集成。
 
 ## 2026-07-18 / v2.1.31-test / P4 — 微信小程序新首页完整对齐

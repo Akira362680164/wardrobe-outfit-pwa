@@ -1,4 +1,4 @@
-<view class="page-shell detail-page">
+<view class="page-shell detail-page" style="{{fontStyle}}">
   <view wx:if="{{initialLoading}}" class="status-card">正在读取单品...</view>
   <view wx:elif="{{error && !item}}" class="status-card"><view class="status-title">读取失败</view><view class="status-copy">{{error}}</view></view>
   <item-detail-shell wx:elif="{{item}}" top-title="单品详情" title="{{item.name}}" meta="{{item.meta}}" eyebrow="{{item.wearSummary}}" image-url="{{item.imageUrl}}" hero-label="主图" hero-fallback="{{item.categoryLabel}}">

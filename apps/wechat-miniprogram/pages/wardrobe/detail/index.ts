@@ -1,12 +1,13 @@
 import { aiEnhance, hasMiniMaxKey } from "../../../services/ai";
 import { chooseImages, uploadPreparedImageAssets, type AssetMutation } from "../../../services/assets";
 import { cancelGarmentWornOnDate, createClientMutationId, deleteWorkspaceEntity, fetchGarmentDetail, markGarmentWornOnDate, updateGarment, type MiniGarmentDetail } from "../../../services/workspace";
+import { currentAccessibilityFontStyle } from "../../../utils/accessibility-font";
 import { getRuntimeRefreshSnapshot, markRuntimeDomainDirty } from "../../../utils/runtime-refresh";
 
 type ReferenceMetadata = { id: string; fieldName: string; caption?: string; createdAt?: string; updatedAt?: string };
 
 Page({
-  data: { initialLoading: false, refreshing: false, deleting: false, wearActioning: false, wornToday: false, adviceLoading: false, adviceSummary: "", adviceTips: [] as string[], adviceSource: "", deleteSheetOpen: false, menuOpen: false, activeTab: "info", item: null as MiniGarmentDetail | null, error: "" },
+  data: { fontStyle: currentAccessibilityFontStyle(), initialLoading: false, refreshing: false, deleting: false, wearActioning: false, wornToday: false, adviceLoading: false, adviceSummary: "", adviceTips: [] as string[], adviceSource: "", deleteSheetOpen: false, menuOpen: false, activeTab: "info", item: null as MiniGarmentDetail | null, error: "" },
   onLoad(this: any, query?: { id?: string }) { wx.setNavigationBarTitle({ title: "单品详情" }); if (query?.id) { this.detailId = query.id; void this.loadDetail(query.id); } else this.setData({ error: "缺少单品 ID" }); },
   onShow(this: any) { const item = this.data.item as MiniGarmentDetail | null; if (item && getRuntimeRefreshSnapshot("garments").version !== this.detailDomainVersion) void this.loadDetail(item.id); },
   async loadDetail(this: any, id: string) { const requestId = (this.detailRequestId || 0) + 1; this.detailRequestId = requestId; const hasData = Boolean(this.data.item); this.setData({ initialLoading: !hasData, refreshing: hasData, error: "" }); try { const item = await fetchGarmentDetail(id); if (requestId !== this.detailRequestId) return; const advice = item.aiStyleAdvice; this.detailDomainVersion = getRuntimeRefreshSnapshot("garments").version; this.setData({ item, wornToday: item.wornDates.includes(localDateKey()), initialLoading: false, refreshing: false, adviceSummary: advice?.summary ?? "", adviceTips: advice ? [...advice.scenes, ...advice.pairingTips, ...advice.avoidTips].slice(0, 6) : [], adviceSource: advice ? "来自已保存的 AI 建议" : "" }); } catch (error) { if (requestId !== this.detailRequestId) return; this.setData({ initialLoading: false, refreshing: false, error: error instanceof Error ? error.message : "读取单品失败" }); if (hasData) wx.showToast({ title: "单品刷新失败，已保留当前内容", icon: "none" }); } },

@@ -44,9 +44,11 @@ assert.match(fields, /版型说明<\/text><text class="info-value">\{\{item\.fit
 assert.doesNotMatch(fields, /版型倾向<\/text><text class="info-value">\{\{item\.fitText\}\}/);
 assert.doesNotMatch(fieldsStyle, />text|:first-child|:last-child/);
 assert.match(detailShell, /mode="aspectFit"/);
-assert.match(detailShellStyle, /height:\s*52vh/);
-assert.match(detailShellStyle, /min-height:\s*600rpx/);
-assert.match(detailShellStyle, /max-height:\s*1000rpx/);
+assert.match(detailShellStyle, /height:\s*914\.67rpx/);
+assert.match(detailShellStyle, /aspect-ratio:\s*3\s*\/\s*4/);
+assert.doesNotMatch(detailShellStyle, /height:\s*52vh/);
+assert.match(garment, /style="\{\{fontStyle\}\}"/);
+assert.match(garmentTs, /currentAccessibilityFontStyle/);
 assert.match(wishlistTs, /toggleArchived/);
 assert.match(wishlistTs, /openConvertedGarment/);
 for (const source of [garmentTs, wishlistTs]) {

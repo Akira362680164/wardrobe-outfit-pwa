@@ -3,6 +3,7 @@ import { MINI_CATEGORY_LABELS } from "../../../generated/catalogs";
 import { deleteWorkspaceEntity, fetchClosetLocations, fetchGarments, fetchOutfits, getWorkspaceReadState, type MiniClosetLocation, type MiniGarment } from "../../../services/workspace";
 import { getRuntimeSessionScope } from "../../../stores/session";
 import { selectCustomTab } from "../../../utils/custom-tab-bar";
+import { currentAccessibilityFontStyle } from "../../../utils/accessibility-font";
 import { markRuntimeDomainDirty, runRuntimeDomainRefresh } from "../../../utils/runtime-refresh";
 
 type CategoryChip = {
@@ -19,6 +20,7 @@ type LocationOption = {
 };
 Page({
   data: {
+    fontStyle: currentAccessibilityFontStyle(),
     initialLoading: false,
     refreshing: false,
     garments: [] as MiniGarment[],
