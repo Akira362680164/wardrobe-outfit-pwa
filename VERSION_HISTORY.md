@@ -11,8 +11,9 @@
 
 - 推荐输入合同严格接纳 `WeatherOverview` 已批准的当前温度/体感与日夜天气码，同时继续禁止 locationless/fallback 携带天气值及任意未知字段；旧 payload 保持兼容读取。
 - 衣物主图 binding 统一以正式客户端 `imageDataUrl` 为权威，并兼容 `primaryImage/image/cover`；workspace eligibility、accept 竞态重验、计划快照与绑定链路使用同一字段集合。
-- Android 衣橱单图列表绕开不必要的通用轮播轨并直接请求正式 thumbnail；真机 WebView 进一步确认图片已成功解码但绝对定位媒体子项令父框宽度折叠为 0，现固定媒体框为卡片宽度减左右边距；图片客户端同时保留重复挂载取消、401 恢复与显式重试。
-- 版本递增至 `2.1.33-test`；固定签名 APK 与 Android 15 冷启动通过，8/8 正式缩略图均解码并获得非 0 布局宽度，隐藏入口可见且默认仍是旧首页；独立视觉审查 P0–P3 均无。专项天气 46/46、API 单 worker 全量 348/348、真实 PostgreSQL 72/72、App 图片/首页专项及 root/cloud/API typecheck/build 已通过；生产部署证据见 `docs/recommendations/DUAL_END_BLOCKER_FIX_20260724.md`。
+- Android 衣橱单图列表绕开不必要的通用轮播轨并直接请求正式 thumbnail；Android 15 AVD 的 WebView 进一步确认图片已成功解码但绝对定位媒体子项令父框宽度折叠为 0，现固定媒体框为卡片宽度减左右边距；图片客户端同时保留重复挂载取消、401 恢复与显式重试。
+- 版本递增至 `2.1.33-test`；固定签名 APK 与 Android 15 冷启动通过，8/8 正式缩略图均解码并获得非 0 布局宽度，隐藏入口可见且默认仍是旧首页；独立视觉审查 P0–P3 均无。专项天气 46/46、API 单 worker 全量 348/348、真实 PostgreSQL 72/72、App 图片/首页专项及 root/cloud/API typecheck/build 已通过。
+- `main@7ba22acd` 已推送并将同一新运行时镜像部署到 API+worker；隔离恢复/迁移、health/ready/version/401/404、上海真实 resolve/current 及 16/16 thumbnail + original 鉴权下载通过。生产使用已验证旧系统/依赖层覆盖本次精确 dist 的镜像，clean base rebuild 作为已知边界记录于 `docs/recommendations/DUAL_END_BLOCKER_FIX_20260724.md`。
 
 ## 2026-07-18 / v2.1.31-test / Codex — 新首页 P3 天气 Canvas 与大致位置
 
