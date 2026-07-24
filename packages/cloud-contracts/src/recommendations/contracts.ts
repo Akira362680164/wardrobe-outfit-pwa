@@ -66,11 +66,15 @@ export const WeatherEvidenceSchema = z.object({
   weatherUpdatedAt: z.string().datetime(),
   temperatureMinC: z.number().finite().min(-60).max(60).optional(),
   temperatureMaxC: z.number().finite().min(-60).max(60).optional(),
+  currentTemperatureC: z.number().finite().min(-80).max(80).optional(),
   feelsLikeMinC: z.number().finite().min(-80).max(80).optional(),
   feelsLikeMaxC: z.number().finite().min(-80).max(80).optional(),
+  currentFeelsLikeC: z.number().finite().min(-100).max(100).optional(),
   rainProbability: z.number().finite().min(0).max(100).optional(),
   windLevel: z.number().int().min(0).max(12).optional(),
   weatherCode: z.string().regex(/^\d{3}$/).optional(),
+  dayWeatherCode: z.string().regex(/^\d{3}$/).optional(),
+  nightWeatherCode: z.string().regex(/^\d{3}$/).optional(),
   summary: z.string().trim().min(1).max(120),
 }).strict().superRefine((value, ctx) => {
   if (value.temperatureMinC !== undefined && value.temperatureMaxC !== undefined && value.temperatureMinC > value.temperatureMaxC) issue(ctx, ["temperatureMinC"], "temperatureMinC must be <= temperatureMaxC");
@@ -194,7 +198,11 @@ const refineEngineInput = (value: z.infer<typeof RecommendationEngineInputObject
 };
 export const RecommendationEngineInputSchema = RecommendationEngineInputObjectSchema.superRefine(refineEngineInput);
 
-const forbiddenWeatherFields = ["temperatureMinC", "temperatureMaxC", "feelsLikeMinC", "feelsLikeMaxC", "rainProbability", "windLevel", "weatherCode"] as const;
+const forbiddenWeatherFields = [
+  "temperatureMinC", "temperatureMaxC", "currentTemperatureC",
+  "feelsLikeMinC", "feelsLikeMaxC", "currentFeelsLikeC",
+  "rainProbability", "windLevel", "weatherCode", "dayWeatherCode", "nightWeatherCode",
+] as const;
 const refineV2Context = (value: { resolvedContext: z.infer<typeof ResolvedRecommendationContextSchema>; dateContextInput: z.infer<typeof DateContextInputSchema> }, ctx: z.RefinementCtx) => {
   const resolved = value.resolvedContext;
   const dateInput = value.dateContextInput;
