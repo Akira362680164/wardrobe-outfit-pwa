@@ -7,6 +7,13 @@
 - 查看某次提交详情：`git show <commit>`
 - 新记录继续置顶，默认控制在 3–5 条短 bullet；原始测试日志、命令输出和长证据写入专项 evidence 文档或交由 Git 保存。
 
+## 2026-07-24 / v2.1.32-test / Codex — 双端验收 App/API 功能阻断首轮修复
+
+- 推荐输入合同严格接纳 `WeatherOverview` 已批准的当前温度/体感与日夜天气码，同时继续禁止 locationless/fallback 携带天气值及任意未知字段；旧 payload 保持兼容读取。
+- 衣物主图 binding 统一以正式客户端 `imageDataUrl` 为权威，并兼容 `primaryImage/image/cover`；workspace eligibility、accept 竞态重验、计划快照与绑定链路使用同一字段集合。
+- Android 衣橱单图列表绕开不必要的通用轮播轨，直接请求正式 thumbnail；图片客户端在最后一个订阅者卸载时取消未完成请求，避免重复挂载收到已撤销 URL，保留 401 恢复与显式重试。
+- 版本递增至 `2.1.32-test`；风险等级 High。专项天气 46/46、API 单 worker 全量 348/348、真实 PostgreSQL 72/72、App 图片/首页专项及 root/cloud/API typecheck、默认 production build 已通过；冻结 commit 后独立视觉审查、固定签名 APK 真机、生产部署与真实 located/image 链证据待下一批收口，详见 `docs/recommendations/DUAL_END_BLOCKER_FIX_20260724.md`。
+
 ## 2026-07-18 / v2.1.31-test / Codex — 新首页 P3 天气 Canvas 与大致位置
 
 - 今日天气卡直接移植验收原型 v0.2.3 的 `wardora-v023` seed/clock、完整场景参数、绘制顺序和雷光/冰雹事件；固定 code/clock 像素门禁覆盖动态事件，明日、未知、fallback、stale 和故障均静态。

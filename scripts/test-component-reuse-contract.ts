@@ -32,5 +32,10 @@ assert.ok(garment.includes("<OnlineAssetImage"), "garment detail requests origin
 assert.ok(wishlist.includes("<OnlineAssetImage"), "wishlist detail requests original assets on demand");
 assert.ok(outfit.includes("<OnlineAssetImage"), "outfit detail requests original assets on demand");
 assert.ok(!onlineRepository.includes('imageDataUrl: { refField: "imageDataUrl", variant: "original" }'), "catalog mappings do not eagerly download garment or wishlist originals");
+assert.match(
+  wardrobeApp,
+  /slides\.length === 1[\s\S]*?<OnlineAssetImage[\s\S]*?variant="thumbnail"/,
+  "single-image wardrobe cards render the authoritative server thumbnail without the carousel track",
+);
 
 console.log("✅ test-component-reuse-contract: all passed");

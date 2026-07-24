@@ -1,6 +1,12 @@
 import { createHash, randomUUID } from "node:crypto";
 import type { Pool } from "pg";
-import { RecommendationEngineInputSchema, type RecommendationEngineInput, type SceneType, type WeatherEvidence } from "@wardrobe/cloud-contracts";
+import {
+  GARMENT_PRIMARY_IMAGE_BINDING_FIELDS,
+  RecommendationEngineInputSchema,
+  type RecommendationEngineInput,
+  type SceneType,
+  type WeatherEvidence,
+} from "@wardrobe/cloud-contracts";
 import { isSystemColor, normalizeSeasonList, normalizeStyleList } from "@wardrobe/domain-catalog";
 
 const RECOMMENDATION_CATEGORIES = new Set(["tops", "pants", "skirts", "one_piece", "shoes", "bags", "hats", "jewelry", "accessories"]);
@@ -37,7 +43,10 @@ export class RecommendationWorkspaceAdapter {
       this.pool.query<WorkspaceRow & { plan_date: string | null; actual_outfit_id: string | null }>("select id, user_id, payload, deleted_at, plan_date, actual_outfit_id from outfit_plans where user_id = $1 and deleted_at is null and plan_date = $2", [userId, targetDate]),
       this.pool.query<WorkspaceRow & { start_date: string | null; end_date: string | null }>("select id, user_id, payload, deleted_at, start_date, end_date from trip_plans where user_id = $1 and deleted_at is null and start_date <= $2 and end_date >= $2 order by updated_at desc,id desc limit 1", [userId, targetDate]),
       this.pool.query<WorkspaceRow>("select id, user_id, payload, deleted_at from profiles where user_id = $1 and deleted_at is null order by updated_at desc limit 1", [userId]),
-      this.pool.query<{ owner_entity_id: string }>("select distinct owner_entity_id from asset_bindings where user_id = $1 and owner_entity_type = 'garment' and field_name in ('primaryImage', 'image', 'cover')", [userId]),
+      this.pool.query<{ owner_entity_id: string }>(
+        "select distinct owner_entity_id from asset_bindings where user_id = $1 and owner_entity_type = 'garment' and field_name = any($2::text[])",
+        [userId, GARMENT_PRIMARY_IMAGE_BINDING_FIELDS],
+      ),
     ]);
     const profile = profileResult.rows[0]?.payload ?? {};
     const outfitGarments = new Map<string, string[]>();
