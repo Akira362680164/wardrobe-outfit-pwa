@@ -23,10 +23,11 @@
 
 ### Android 衣橱列表缩略图
 
-受控 8 件衣物的 Workspace `assetRefs.imageDataUrl`、original/thumbnail 服务器内容和详情 original 均已证明有效，根因不在 binding。列表的单主图仍被包装进支持多页弹簧轨的通用 Carousel，同时图片订阅在重复挂载的最后释放时不会取消 pending 请求；请求可能在引用数为 0 时生成并立即撤销 URL，再把该失效 URL 返回给新挂载。修复分两层：
+受控 8 件衣物的 Workspace `assetRefs.imageDataUrl`、original/thumbnail 服务器内容和详情 original 均已证明有效，根因不在 binding。首版修复 APK 的 WebView CDP 证据进一步显示 8 个 `<img>` 均为 `complete=true`、`naturalWidth=384–453`、`naturalHeight=512`，但实际布局矩形统一为 `width=0`、`height=210`：`CatalogWaterfallCardShell` 的媒体框在 flex 卡片内使用 `w-auto`，唯一媒体子项又是绝对定位，Android WebView 因没有内在宽度把父框折叠为边框宽度，正好对应验收截图中的细竖线。同时，列表的单主图被包装进支持多页弹簧轨的通用 Carousel，图片订阅在重复挂载的最后释放时也不会取消 pending 请求。修复分三层：
 
-1. 单图衣橱卡直接使用 `OnlineAssetImage` 请求 thumbnail；只有真实多图时使用 Carousel。
-2. `OnlineImageClient.release` 在最后一个订阅者释放时取消并移除 pending 请求，后续挂载建立独立下载，不复用将被撤销的结果。
+1. 媒体框宽度固定为卡片宽度减左右 `0.75rem` 边距，不再依赖绝对定位子项贡献内在宽度；CDP 现场覆写同一计算值后 8 张正式图片立即可见。
+2. 单图衣橱卡直接使用 `OnlineAssetImage` 请求 thumbnail；只有真实多图时使用 Carousel。
+3. `OnlineImageClient.release` 在最后一个订阅者释放时取消并移除 pending 请求，后续挂载建立独立下载，不复用将被撤销的结果。
 
 没有新增本地业务缓存、图片持久缓存或离线队列。
 
