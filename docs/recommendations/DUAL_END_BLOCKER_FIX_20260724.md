@@ -43,9 +43,13 @@
 - 真实 PostgreSQL：6 files / 72 tests 全部通过；其中 accept 26/26，覆盖纯 `imageDataUrl` 候选、采用、快照及历史 binding。
 - root production build（默认 feature gate 关闭）：通过。
 
+## Android 与独立视觉门禁
+
+- 最终 APK：`衣橱穿搭助手-v2.1.33-test.apk`，构建提交 `02e55a3dd01924478eccb2de14256b389e73cb6e`，`com.wardrobe.outfit` / `versionName=2.1.33-test` / `versionCode=20133` / `CN=fangzheng`，SHA-256 `009fbcd1392883f073ebc9e9d4389561e13b8b6d48859d18ef436e2c14d73bee`。
+- 构建显式设置 `NEXT_PUBLIC_WARDORA_HOME_FEED_P1=true` 与正式 `https://api.zhengfangapps.cloud`；设置页真实显示“Wardora 新首页预览 / 内部只读入口，不改变默认首页”。冷启动仍进入旧 `wardrobe_home`，只有点击隐藏入口才进入新首页；未实现 P5。
+- 受控正式账号登录后，Android 15 / Pixel 6 AVD 冷启动成功，无目标进程 fatal。CDP 逐一核对 8 个正式 `<img>`：全部 `complete=true`、自然尺寸非 0，布局尺寸统一约 `157.05 × 210`，不再是宽度 0；首屏截图可见夹克、鞋和短裤真实图片。
+- 独立只读视觉 Agent 对冻结提交、权威 UI spec、原失败图及新截图审查：P0/P1/P2/P3 均无，判定“缩略图真实可见 + 隐藏入口真实可见”门禁通过，可进入集成。它保留的边界是：截图只直观看到首屏 4 件（其余 4 件由 CDP 数据证明）、未覆盖物理设备/多字号/其他屏宽，且部署前预览页仍显示旧生产 API 的推荐输入错误。
+
 ## 待收口
 
-- 以 `NEXT_PUBLIC_WARDORA_HOME_FEED_P1=true` 构建固定签名 APK，并核验元数据、生产域名、安装启动、隐藏入口与真实 8 件缩略图。
-- 对冻结 commit 启动独立只读视觉审查；P0/P1 清零后再集成。
-- 真实正式账号 located resolve/current/accept 回归。
 - main 串行集成、推送；生产备份、隔离恢复/迁移门禁、API+worker 同镜像部署与 HTTP 边界回归。
