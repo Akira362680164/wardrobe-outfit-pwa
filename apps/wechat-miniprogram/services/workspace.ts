@@ -18,6 +18,12 @@ import {
   normalizeCategoryId,
 } from "./category-catalog";
 import { request } from "./http";
+import { collectWorkspacePages } from "./workspace-pagination";
+import {
+  garmentWearState,
+  serverConfirmedGarmentCancel,
+  serverConfirmedGarmentMark,
+} from "./workspace-wear-state";
 
 type WorkspaceEntity = {
   id: string;
@@ -93,6 +99,9 @@ export interface MiniGarment {
   imageUrl: string;
   updatedAt: string;
   createdAt: string;
+  worn: boolean;
+  wornAt: string;
+  wearEventId: string;
   wornDates: string[];
 }
 
@@ -1118,6 +1127,51 @@ export async function markOutfitWornToday(
   return fetchOutfitDetail(id);
 }
 
+export async function markGarmentWornOnDate(
+  id: string,
+  expectedRevision: number,
+  dateKey: string,
+  clientMutationId: string,
+): Promise<MiniGarmentDetail> {
+  await request<WorkspaceCommandResponse>({
+    method: "POST",
+    path: `/api/workspace/garments/${encodeURIComponent(id)}/mark-worn`,
+    data: {
+      clientMutationId,
+      expectedRevision,
+      wornAt: `${dateKey}T12:00:00.000Z`,
+    },
+  });
+  const detail = await fetchGarmentDetail(id);
+  if (!serverConfirmedGarmentMark(detail.rawPayload, dateKey)) {
+    throw new Error("服务器未确认今天穿着记录，请重试");
+  }
+  return detail;
+}
+
+export async function cancelGarmentWornOnDate(
+  id: string,
+  expectedRevision: number,
+  dateKey: string,
+  clientMutationId: string,
+): Promise<MiniGarmentDetail> {
+  await request<WorkspaceCommandResponse>({
+    method: "POST",
+    path: `/api/workspace/garments/${encodeURIComponent(id)}/cancel-worn`,
+    data: {
+      clientMutationId,
+      expectedRevision,
+      date: dateKey,
+      payload: {},
+    },
+  });
+  const detail = await fetchGarmentDetail(id);
+  if (!serverConfirmedGarmentCancel(detail.rawPayload)) {
+    throw new Error("服务器未确认取消今天穿着记录，请重试");
+  }
+  return detail;
+}
+
 export async function cancelOutfitWornOnDate(
   id: string,
   expectedRevision: number,
@@ -1383,6 +1437,7 @@ async function workspaceRequest<T>(path: string): Promise<T> {
 
 async function toMiniGarment(entity: WorkspaceEntity): Promise<MiniGarment> {
   const payload = entity.payload;
+  const wearState = garmentWearState(payload);
   const category = normalizeCategoryId(
     stringValue(payload.category, "unknown"),
   );
@@ -1411,7 +1466,7 @@ async function toMiniGarment(entity: WorkspaceEntity): Promise<MiniGarment> {
     seasonsRaw: payload.seasons,
     seasons,
     seasonLabels: seasons.map((season) => MINI_SEASON_LABELS[season] ?? season),
-    wearSummary: formatWearSummary(payload.wornDates),
+    wearSummary: formatWearSummary(wearState.wornDates),
     seasonText: formatSeasons(payload.seasons),
     stylesRaw: payload.styles,
     styles,
@@ -1436,7 +1491,10 @@ async function toMiniGarment(entity: WorkspaceEntity): Promise<MiniGarment> {
     imageUrl: await resolveImageUrl(entity, "imageDataUrl", payload),
     updatedAt: entity.updatedAt,
     createdAt: entity.createdAt,
-    wornDates: stringList(payload.wornDates),
+    worn: wearState.worn,
+    wornAt: wearState.wornAt,
+    wearEventId: wearState.wearEventId,
+    wornDates: wearState.wornDates,
   };
 }
 
@@ -1742,22 +1800,12 @@ async function fetchGarmentsForOutfits(): Promise<MiniGarment[]> {
 }
 
 async function fetchAllWorkspaceEntities(resource: "garments" | "outfits" | "wishlist", limit: number): Promise<WorkspaceEntity[]> {
-  const items: WorkspaceEntity[] = [];
-  let cursor = "";
-  let pageCount = 0;
-  do {
-    const query = `limit=${encodeURIComponent(String(limit))}${cursor ? `&cursor=${encodeURIComponent(cursor)}` : ""}`;
-    const response = await workspaceRequest<WorkspaceListResponse>(
+  return collectWorkspacePages(limit, async ({ limit: pageLimit, cursor }) => {
+    const query = `limit=${encodeURIComponent(String(pageLimit))}${cursor ? `&cursor=${encodeURIComponent(cursor)}` : ""}`;
+    return workspaceRequest<WorkspaceListResponse>(
       `/api/workspace/${resource}?${query}`,
     );
-    items.push(...(response.items ?? []));
-    cursor = response.nextCursor ?? "";
-    pageCount += 1;
-    if (pageCount >= 1_000 && cursor) {
-      throw new Error("云端列表分页异常，请稍后重试");
-    }
-  } while (cursor);
-  return items;
+  });
 }
 
 function outfitItemImages(

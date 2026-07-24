@@ -26,7 +26,9 @@
   align-items: center;
   justify-content: center;
   width: 100%;
-  aspect-ratio: 3 / 4;
+  height: 52vh;
+  min-height: 600rpx;
+  max-height: 1000rpx;
   overflow: hidden;
   border-radius: var(--radius-card-inner);
   background: var(--color-mist);

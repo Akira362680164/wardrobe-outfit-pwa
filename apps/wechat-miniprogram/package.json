@@ -8,7 +8,9 @@
     "wechatide:preview": "node scripts/wechatide-preview.mjs",
     "wechatide:upload": "node scripts/wechatide-upload.mjs",
     "test:phone-smoke": "node scripts/wechat-phone-smoke.mjs",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "test:workspace-pagination": "npx tsx scripts/test-workspace-pagination.ts",
+    "test:workspace-wear-state": "npx tsx scripts/test-workspace-wear-state.ts"
   },
   "devDependencies": {}
 }

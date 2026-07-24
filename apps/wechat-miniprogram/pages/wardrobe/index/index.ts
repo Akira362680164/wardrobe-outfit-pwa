@@ -336,7 +336,15 @@ Page({
 function buildCategoryChips(garments: MiniGarment[]): CategoryChip[] {
   const counts = new Map<string, number>();
   for (const garment of garments) counts.set(garment.category, (counts.get(garment.category) ?? 0) + 1);
-  return Array.from(counts.entries()).map(([key, count]) => ({
+  const preferredOrder = ["tops", "pants", "shoes"];
+  return Array.from(counts.entries()).sort(([left], [right]) => {
+    const leftIndex = preferredOrder.indexOf(left);
+    const rightIndex = preferredOrder.indexOf(right);
+    if (leftIndex === -1 && rightIndex === -1) return (MINI_CATEGORY_LABELS[left] ?? left).localeCompare(MINI_CATEGORY_LABELS[right] ?? right, "zh-CN");
+    if (leftIndex === -1) return 1;
+    if (rightIndex === -1) return -1;
+    return leftIndex - rightIndex;
+  }).map(([key, count]) => ({
     key,
     count,
     label: MINI_CATEGORY_LABELS[key] ?? garments.find((garment) => garment.category === key)?.categoryLabel ?? key,
