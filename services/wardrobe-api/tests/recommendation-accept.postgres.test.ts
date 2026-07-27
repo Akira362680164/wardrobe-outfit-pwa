@@ -6,7 +6,7 @@ import { Pool } from "pg";
 import { drizzle } from "drizzle-orm/node-postgres";
 import * as dbSchema from "../src/db/schema.js";
 import { WorkspaceCommandService } from "../src/workspace/command-service.js";
-import { generateRecommendationsV3, RecommendationAcceptService, RecommendationPersistenceService, type RecommendationAcceptStage } from "../src/recommendations/index.js";
+import { generateRecommendationsV3, RecommendationAcceptService, RecommendationPersistenceService, RecommendationWorkspaceAdapter, type RecommendationAcceptStage } from "../src/recommendations/index.js";
 import { PublishDailyRecommendationCommandSchema, type AcceptRecommendationCommand, type RecommendationGarment } from "@wardrobe/cloud-contracts";
 import { buildLocationlessInput } from "./fixtures/recommendations/v2-scenarios.js";
 import { mapGarmentRole } from "../src/recommendations/engine.js";
@@ -99,6 +99,55 @@ describe("recommendation accept real PostgreSQL transaction", () => {
     const accepted = await new RecommendationAcceptService(pool, { clock: () => new Date("2026-07-14T01:00:00.000Z") }).accept(s.userId, "device-a", s.input.dateContextInput.date, s.accept);
     expect(accepted).toMatchObject({ status: "committed", idempotentReplay: false });
     expect(accepted.plan.payload.garmentIds).toEqual(s.accept.selectedGarmentIds);
+  });
+
+  it("generates, accepts and snapshots garments backed only by the authoritative imageDataUrl binding", async () => {
+    const s = await seed();
+    const assetByGarment = new Map<string, string>();
+    for (const garment of s.input.garments.filter((item) => item.hasPrimaryImage)) {
+      const assetId = randomUUID();
+      assetByGarment.set(garment.id, assetId);
+      await pool.query("update garments set payload=payload-'primaryImageUrl' where id=$1", [garment.id]);
+      await pool.query("insert into assets(id,owner_entity_type,owner_entity_id,user_id,origin_device_id,payload) values($1,'garment',$2,$3,'image-data-url-only','{}')", [assetId, garment.id, s.userId]);
+      await pool.query("insert into asset_bindings(user_id,asset_id,owner_entity_type,owner_entity_id,field_name) values($1,$2,'garment',$3,'imageDataUrl')", [s.userId, assetId, garment.id]);
+    }
+
+    const workspace = await new RecommendationWorkspaceAdapter(pool).load(
+      s.userId,
+      s.input.dateContextInput.date,
+      s.input.asOfDate,
+      "Asia/Shanghai",
+    );
+    expect(workspace.input.garments.filter((item) => item.hasPrimaryImage)).toHaveLength(
+      s.input.garments.filter((item) => item.hasPrimaryImage).length,
+    );
+    expect((await generateRecommendationsV3({ ...s.input, garments: workspace.input.garments })).recommendations.length).toBeGreaterThan(0);
+
+    const accepted = await new RecommendationAcceptService(pool, { clock: () => new Date("2026-07-14T01:00:00.000Z") })
+      .accept(s.userId, "device-image-data-url", s.input.dateContextInput.date, s.accept);
+    expect(accepted.plan.payload.garmentSnapshots).toEqual(expect.arrayContaining(
+      s.accept.selectedGarmentIds.map((garmentId) => expect.objectContaining({
+        garmentId,
+        imageAssetId: assetByGarment.get(garmentId),
+      })),
+    ));
+    expect((await pool.query(
+      "select field_name from asset_bindings where user_id=$1 and owner_entity_type='outfitPlan' and owner_entity_id=$2 order by field_name",
+      [s.userId, accepted.plan.id],
+    )).rows.map((row) => row.field_name)).toEqual(
+      s.accept.selectedGarmentIds.map((garmentId) => `garment:${garmentId}:imageDataUrl`).sort(),
+    );
+  });
+
+  it.each(["primaryImage", "image", "cover"])("keeps historical %s bindings recommendation-eligible", async (fieldName) => {
+    const s = await seed();
+    const target = s.accept.selectedGarmentIds[0]!;
+    const assetId = randomUUID();
+    await pool.query("update garments set payload=payload-'primaryImageUrl' where id=$1", [target]);
+    await pool.query("insert into assets(id,owner_entity_type,owner_entity_id,user_id,origin_device_id,payload) values($1,'garment',$2,$3,'legacy-binding','{}')", [assetId, target, s.userId]);
+    await pool.query("insert into asset_bindings(user_id,asset_id,owner_entity_type,owner_entity_id,field_name) values($1,$2,'garment',$3,$4)", [s.userId, assetId, target, fieldName]);
+    const workspace = await new RecommendationWorkspaceAdapter(pool).load(s.userId, s.input.dateContextInput.date, s.input.asOfDate, "Asia/Shanghai");
+    expect(workspace.input.garments.find((item) => item.id === target)?.hasPrimaryImage).toBe(true);
   });
 
   for (const invalidation of [

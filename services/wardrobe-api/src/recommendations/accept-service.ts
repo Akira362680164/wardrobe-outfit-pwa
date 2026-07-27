@@ -2,6 +2,7 @@ import { createHash, randomUUID } from "node:crypto";
 import type { Pool, PoolClient } from "pg";
 import {
   AcceptRecommendationResponseSchema,
+  GARMENT_PRIMARY_IMAGE_BINDING_FIELDS,
   RECOMMENDATION_FORECAST_RULE_VERSION,
   RECOMMENDATION_LOCATIONLESS_RULE_VERSION,
   RecommendationEngineInputV2Schema,
@@ -91,7 +92,7 @@ export class RecommendationAcceptService {
       try { selection = await this.validateSelection(userId, date, command.selectedGarmentIds, candidate); }
       catch (error) { rethrowSelectionValidation(error); }
       validateReplacement(candidate, command.selectedGarmentIds, selection);
-      const boundIds = new Set(bindingRows.rows.filter((row) => ["primaryImage", "image", "cover"].includes(row.field_name)).map((row) => row.owner_entity_id));
+      const boundIds = new Set(bindingRows.rows.filter((row) => isPrimaryImageBinding(row.field_name)).map((row) => row.owner_entity_id));
       if (selectedRows.rowCount !== command.selectedGarmentIds.length || selectedRows.rows.some((row) => {
         const expected = (preselection ?? selection).find((entry) => entry.garment.id === row.id)?.garment; const payload = row.payload ?? {};
         return !expected || !["active", "available", "clean", "in_wardrobe"].includes(String(payload.status ?? "active"))
@@ -124,7 +125,9 @@ export class RecommendationAcceptService {
       const roleById = new Map(selection.map((entry) => [entry.garment.id, entry.role]));
       const garmentSnapshots = command.selectedGarmentIds.map((garmentId) => {
         const row = byId.get(garmentId)!; const payload = row.payload ?? {};
-        const asset = bindingRows.rows.find((binding) => binding.owner_entity_id === garmentId && ["primaryImage", "image", "cover"].includes(binding.field_name));
+        const asset = GARMENT_PRIMARY_IMAGE_BINDING_FIELDS.flatMap((fieldName) =>
+          bindingRows.rows.filter((binding) => binding.owner_entity_id === garmentId && binding.field_name === fieldName),
+        )[0];
         return { garmentId, ...(Number.isInteger(payload.legacyItemId) ? { legacyItemId: payload.legacyItemId } : {}), name: String(payload.name ?? "未命名衣物").slice(0, 120), role: roleById.get(garmentId)!, category: selection.find((entry) => entry.garment.id === garmentId)!.garment.category!, ...(asset?.asset_id ? { imageAssetId: asset.asset_id } : {}) };
       });
       const originalIds = candidate.garmentIds as string[];
@@ -140,7 +143,7 @@ export class RecommendationAcceptService {
       await client.query("insert into outfit_plans(id,user_id,revision,origin_device_id,payload,plan_date,created_at,updated_at) values($1,$2,1,$3,$4::jsonb,$5,$6,$6)", [planId, userId, deviceId, JSON.stringify(payload), date, now]);
       await this.fault?.("afterPlan");
       for (const snapshot of garmentSnapshots) if (snapshot.imageAssetId) {
-        await client.query("insert into asset_bindings(user_id,asset_id,owner_entity_type,owner_entity_id,field_name,created_at,updated_at) values($1,$2,'outfitPlan',$3,$4,$5,$5)", [userId, snapshot.imageAssetId, planId, `garment:${snapshot.garmentId}:primaryImage`, now]);
+        await client.query("insert into asset_bindings(user_id,asset_id,owner_entity_type,owner_entity_id,field_name,created_at,updated_at) values($1,$2,'outfitPlan',$3,$4,$5,$5)", [userId, snapshot.imageAssetId, planId, `garment:${snapshot.garmentId}:imageDataUrl`, now]);
       }
       await this.fault?.("afterBindings");
       await client.query("insert into recommendation_actions(user_id,recommendation_id,plan_entry_id,action,candidate_id,client_mutation_id,payload) values($1,$2,$3,$4,$5,$6,$7::jsonb)", [userId, rec.id, planId, sourceVariant === "original" ? "accepted" : "item_replaced", candidate.candidateId, command.clientMutationId, JSON.stringify({ recommendationRevision: rec.revision, originalGarmentIds: originalIds, selectedGarmentIds: command.selectedGarmentIds })]);
@@ -201,6 +204,9 @@ function rethrowSelectionValidation(error: unknown): never {
   throw error;
 }
 function hash(value: unknown) { return createHash("sha256").update(JSON.stringify(value)).digest("hex"); }
+function isPrimaryImageBinding(value: string) {
+  return (GARMENT_PRIMARY_IMAGE_BINDING_FIELDS as readonly string[]).includes(value);
+}
 function sameSet(a: readonly string[], b: readonly string[]) { return a.length === b.length && a.every((value) => b.includes(value)); }
 function sameStrings(value: unknown, expected: readonly string[]) {
   const record = value && typeof value === "object" && !Array.isArray(value) ? value as Record<string, unknown> : {};

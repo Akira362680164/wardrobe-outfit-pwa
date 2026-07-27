@@ -5970,6 +5970,25 @@ function WaterfallCardImage({
   // Click handler for outfit custom slides: still navigate to item detail
   const handleCustomClick = useCallback(() => onClick?.(), [onClick]);
 
+ if (slides.length === 1 && slides[0]?.kind === "image" && slides[0].asset) {
+   return (
+     <button
+       type="button"
+       className="relative h-[210px] w-full shrink-0 overflow-hidden bg-mist"
+       onClick={(event) => { event.stopPropagation(); onClick?.(); }}
+       aria-label={`查看${item.name}`}
+     >
+       <OnlineAssetImage
+         asset={slides[0].asset}
+         variant="thumbnail"
+         alt={slides[0].alt ?? item.name}
+         className="h-full w-full"
+         imageClassName="object-cover"
+       />
+     </button>
+   );
+ }
+
  return (
  <div className="relative h-[210px] w-full shrink-0 overflow-hidden bg-mist">
  <SwipeImageCarousel

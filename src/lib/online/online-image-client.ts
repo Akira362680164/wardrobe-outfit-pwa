@@ -67,6 +67,12 @@ export class OnlineImageClient {
       return;
     }
     this.references.delete(key);
+    const pending = this.pending.get(key);
+    if (pending) {
+      this.pending.delete(key);
+      this.controllers.get(key)?.abort();
+      this.controllers.delete(key);
+    }
     const url = this.urls.get(key);
     if (url) this.revokeObjectUrl(url);
     this.urls.delete(key);

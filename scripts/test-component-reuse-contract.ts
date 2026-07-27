@@ -14,6 +14,7 @@ const editShell = read("src/components/item-shell/item-edit-page-shell.tsx");
 const confirmSheet = read("src/components/dialogs/confirm-action-sheet.tsx");
 const onlineRepository = read("src/lib/online/online-repository.ts");
 const onlineAssetImage = read("src/components/online/online-asset-image.tsx");
+const catalogWaterfallCardShell = read("src/components/item-shell/catalog-waterfall-card-shell.tsx");
 
 const bootstrapEffect = wardrobeApp.match(/useEffect\(\(\) => \{\n    setMiniMaxSettings[\s\S]*?\n  \}, \[\]\);/)?.[0] ?? "";
 assert.ok(bootstrapEffect, "WardrobeApp bootstrap effect is present");
@@ -32,5 +33,15 @@ assert.ok(garment.includes("<OnlineAssetImage"), "garment detail requests origin
 assert.ok(wishlist.includes("<OnlineAssetImage"), "wishlist detail requests original assets on demand");
 assert.ok(outfit.includes("<OnlineAssetImage"), "outfit detail requests original assets on demand");
 assert.ok(!onlineRepository.includes('imageDataUrl: { refField: "imageDataUrl", variant: "original" }'), "catalog mappings do not eagerly download garment or wishlist originals");
+assert.match(
+  wardrobeApp,
+  /slides\.length === 1[\s\S]*?<OnlineAssetImage[\s\S]*?variant="thumbnail"/,
+  "single-image wardrobe cards render the authoritative server thumbnail without the carousel track",
+);
+assert.match(
+  catalogWaterfallCardShell,
+  /w-\[calc\(100%-1\.5rem\)\]/,
+  "waterfall media frame retains card width when its media child is absolutely positioned",
+);
 
 console.log("✅ test-component-reuse-contract: all passed");

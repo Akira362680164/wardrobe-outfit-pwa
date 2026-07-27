@@ -57,7 +57,7 @@ export function CatalogWaterfallCardShell({
         selected ? "border-denim ring-2 ring-denim/30" : "border-ink/8"
       }`}
     >
-      <div className="ui-inner-card relative mx-3 mt-3 h-[194px] w-auto shrink-0 overflow-hidden">
+      <div className="ui-inner-card relative mx-3 mt-3 h-[194px] w-[calc(100%-1.5rem)] shrink-0 overflow-hidden">
         {media}
         {selected && <CatalogSelectionCheck />}
       </div>

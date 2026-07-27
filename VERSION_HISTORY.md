@@ -7,13 +7,21 @@
 - 查看某次提交详情：`git show <commit>`
 - 新记录继续置顶，默认控制在 3–5 条短 bullet；原始测试日志、命令输出和长证据写入专项 evidence 文档或交由 Git 保存。
 
-## 2026-07-24 / v2.1.31-test / Codex — 小程序双端验收 P0/P2/P3 修复
+## 2026-07-24 / v2.1.33-test / Codex — 双端验收 App/API 功能阻断首轮修复
+
+- 推荐输入合同严格接纳 `WeatherOverview` 已批准的当前温度/体感与日夜天气码，同时继续禁止 locationless/fallback 携带天气值及任意未知字段；旧 payload 保持兼容读取。
+- 衣物主图 binding 统一以正式客户端 `imageDataUrl` 为权威，并兼容 `primaryImage/image/cover`；workspace eligibility、accept 竞态重验、计划快照与绑定链路使用同一字段集合。
+- Android 衣橱单图列表绕开不必要的通用轮播轨并直接请求正式 thumbnail；Android 15 AVD 的 WebView 进一步确认图片已成功解码但绝对定位媒体子项令父框宽度折叠为 0，现固定媒体框为卡片宽度减左右边距；图片客户端同时保留重复挂载取消、401 恢复与显式重试。
+- 版本递增至 `2.1.33-test`；固定签名 APK 与 Android 15 冷启动通过，8/8 正式缩略图均解码并获得非 0 布局宽度，隐藏入口可见且默认仍是旧首页；独立视觉审查 P0–P3 均无。专项天气 46/46、API 单 worker 全量 348/348、真实 PostgreSQL 72/72、App 图片/首页专项及 root/cloud/API typecheck/build 已通过。
+- `main@7ba22acd` 已推送并将同一新运行时镜像部署到 API+worker；隔离恢复/迁移、health/ready/version/401/404、上海真实 resolve/current 及 16/16 thumbnail + original 鉴权下载通过。生产使用已验证旧系统/依赖层覆盖本次精确 dist 的镜像，clean base rebuild 作为已知边界记录于 `docs/recommendations/DUAL_END_BLOCKER_FIX_20260724.md`。
+
+## 2026-07-24 / v2.1.33-test / Codex — 小程序双端验收 P0/P2/P3 修复
 
 - workspace 分页统一限制单次 `limit<=200` 并跟随 `nextCursor` 完整读取；重复游标、重复实体和异常页数显式失败，关闭生产首页 `Workspace 请求格式不正确`。
 - 单品详情补齐服务器权威的“标记今天穿了”及取消读回，复用稳定 `clientMutationId`，不做乐观成功或本地队列；受控 POLO 往返后恢复未穿，8 件衣物未编辑、未删除。
 - 详情 hero 按 3:4 图片语义收敛 `aspectFit`、明确 686×914.67rpx 容器、缩略图与标题层级；“版型倾向/版型说明”拆分并支持长文案，衣橱筛选统一为全部/上衣/裤子/鞋。
 - TypeScript、分页/穿着/系统字号手写测试、详情/衣橱/首页回归与正式源码 WeChat DevTools 360/390/430、实际约 144% 字号证据通过；首轮视觉审查问题修复重拍后，第二轮独立只读审查 P0/P1/P2/P3 全为 0、建议交付，详见 `apps/wechat-miniprogram/evidence/dual-end-fixes-20260724/REPORT.md`。
-- 本批只停在独立任务分支，未合入 `wechat/miniprogram`、未上传小程序、未部署 API；等待第一批 main/App/API 修复完成后再同步与串行集成。
+- 本批先在独立任务分支完成修复并冻结；第二阶段按 main-first 顺序同步 `main@8db6794a`、复测并串行集成，未上传小程序、未部署 API。
 
 ## 2026-07-18 / v2.1.31-test / P4 — 微信小程序新首页完整对齐
 

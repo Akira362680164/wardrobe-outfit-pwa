@@ -4,7 +4,8 @@ import type { WorkspaceEntity } from "@wardrobe/cloud-contracts";
 
 import { OnlineImageClient } from "../src/lib/online/online-image-client";
 import { OnlineWorkspaceRepository } from "../src/lib/online/online-repository";
-import { nativeBase64ToBlob } from "../src/lib/online/online-request";
+import { registerAuthSessionRecovery } from "../src/lib/auth-session-recovery";
+import { nativeBase64ToBlob, onlineRequestRaw } from "../src/lib/online/online-request";
 import { beginOnlineLoad, failOnlineLoad, finishOnlineLoad, initialOnlineState } from "../src/lib/online/online-state";
 
 async function main() {
@@ -51,7 +52,52 @@ async function main() {
     assert.equal(fetchCount, 2, "a later subscription downloads the released image again");
     images.clear();
     assert.deepEqual(revoked, [first, retried], "logout/unmount cleanup should revoke all object URLs");
+
+    let finishRequest: ((response: Response) => void) | undefined;
+    globalThis.fetch = async (_input, init) => new Promise<Response>((resolve, reject) => {
+      finishRequest = resolve;
+      init?.signal?.addEventListener("abort", () => reject(new DOMException("Aborted", "AbortError")), { once: true });
+    });
+    const repeatedAssetId = "44444444-4444-4444-8444-444444444444";
+    const abandoned = images.acquire(repeatedAssetId, "thumbnail").catch((error) => error);
+    images.release(repeatedAssetId, "thumbnail");
+    const remounted = images.acquire(repeatedAssetId, "thumbnail");
+    await Promise.resolve();
+    finishRequest?.(new Response(new Blob(["thumbnail"], { type: "image/jpeg" }), {
+      status: 200,
+      headers: { "content-type": "image/jpeg" },
+    }));
+    assert.match(await remounted, /^blob:test-/, "a repeated mount receives a live replacement URL");
+    assert.ok(await abandoned instanceof Error, "the abandoned request is cancelled instead of returning a revoked URL");
+    images.release(repeatedAssetId, "thumbnail");
   } finally {
+    globalThis.fetch = originalFetch;
+  }
+
+  let authorizedRequests = 0;
+  globalThis.fetch = async (_input, init) => {
+    authorizedRequests += 1;
+    if (init?.headers && (init.headers as Record<string, string>).Authorization === "Bearer expired") {
+      return new Response(JSON.stringify({ code: "auth", message: "expired", retryable: false }), {
+        status: 401,
+        headers: { "content-type": "application/json" },
+      });
+    }
+    return new Response(new Blob(["recovered"], { type: "image/jpeg" }), {
+      status: 200,
+      headers: { "content-type": "image/jpeg" },
+    });
+  };
+  const unregisterRecovery = registerAuthSessionRecovery(async () => ({ accessToken: "fresh", deviceId: "device" } as any));
+  try {
+    const recovered = await onlineRequestRaw<Blob>("/api/assets/asset/original/content", {
+      responseType: "blob",
+      session: { accessToken: "expired", deviceId: "device" },
+    });
+    assert.equal(await recovered.data.text(), "recovered");
+    assert.equal(authorizedRequests, 2, "a 401 image response retries once with the recovered session");
+  } finally {
+    unregisterRecovery();
     globalThis.fetch = originalFetch;
   }
 

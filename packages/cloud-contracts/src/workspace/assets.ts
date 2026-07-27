@@ -3,6 +3,16 @@ import { z } from "zod";
 import { WorkspaceAssetReferenceSchema } from "./contracts.js";
 
 export const TemporaryAssetVariantSchema = z.enum(["original", "thumbnail"]);
+export const GARMENT_PRIMARY_IMAGE_BINDING_FIELDS = [
+  "imageDataUrl",
+  "primaryImage",
+  "image",
+  "cover",
+] as const;
+
+export function isGarmentPrimaryImageBindingField(value: string): boolean {
+  return (GARMENT_PRIMARY_IMAGE_BINDING_FIELDS as readonly string[]).includes(value);
+}
 
 export const TemporaryAssetSlotRequestSchema = z.object({
   fieldName: z.string().min(1),

@@ -303,6 +303,41 @@ describe("V1/V2 strict payload compatibility", () => {
     expect(() => RecommendationEngineInputV2Schema.parse(futureEvidence)).toThrow();
   });
 
+  it("accepts the complete WeatherOverview forecast evidence without weakening strict parsing", () => {
+    const input: any = clone(buildForecastInput());
+    Object.assign(input.dateContextInput.weatherEvidence, {
+      currentTemperatureC: 31,
+      currentFeelsLikeC: 34,
+      dayWeatherCode: "101",
+      nightWeatherCode: "305",
+    });
+    const parsed = RecommendationEngineInputV2Schema.parse(input);
+    expect(parsed.dateContextInput.weatherEvidence).toMatchObject({
+      currentTemperatureC: 31,
+      currentFeelsLikeC: 34,
+      dayWeatherCode: "101",
+      nightWeatherCode: "305",
+    });
+    expect(() => RecommendationEngineInputV2Schema.parse({
+      ...input,
+      dateContextInput: {
+        ...input.dateContextInput,
+        weatherEvidence: { ...input.dateContextInput.weatherEvidence, providerInternalField: "forbidden" },
+      },
+    })).toThrow();
+  });
+
+  it.each(["currentTemperatureC", "currentFeelsLikeC", "dayWeatherCode", "nightWeatherCode"])(
+    "keeps %s forbidden in locationless and fallback evidence",
+    (field) => {
+      for (const source of [buildLocationlessInput(), buildFallbackInput()] as any[]) {
+        const input = clone(source);
+        input.dateContextInput.weatherEvidence[field] = field.endsWith("Code") ? "101" : 20;
+        expect(() => RecommendationEngineInputV2Schema.parse(input)).toThrow();
+      }
+    },
+  );
+
   it("cross-checks V2 publish dates, timezone and algorithm version while old records remain readable", async () => {
     const input = buildLocationlessInput();
     const output = await generateRecommendationsV2(input);
