@@ -17,14 +17,14 @@ button::after { border: 0; }
 .weather-card { position: relative; display: grid; grid-template-rows: 34rpx 56rpx minmax(68rpx,auto) 32rpx; width: 100%; min-width: 0; height: 226rpx; min-height: 226rpx; margin: 0; padding: 14rpx 18rpx 10rpx; overflow: hidden; border: 0; border-radius: 26rpx; background: rgba(255,255,252,.54); color: var(--color-ink); box-sizing: border-box; text-align: left; line-height: normal; }
 .weather-card--tomorrow { border-radius: 26rpx; background: radial-gradient(circle at 102% 8%, rgba(224,164,62,.50), rgba(241,197,118,.24) 42%, transparent 78%), linear-gradient(135deg, #bfd5d9 0%, #f2dfb7 62%, #fbf2dc 100%); }
 .weather-copy-overlay { position: absolute; inset: 0; z-index: 999; display: flex; box-sizing: border-box; width: 100%; height: 100%; flex-direction: column; padding: 14rpx 18rpx 10rpx; overflow: hidden; background: transparent; opacity: 1; pointer-events: none; }
-.weather-copy-overlay--today { right: auto; width: calc((100% - 12rpx)/2); height: 226rpx; }
-.weather-copy-overlay__row { position: relative; display: flex; align-items: center; justify-content: space-between; min-height: 32rpx; color: rgba(29,34,40,.62); font-size: 23rpx; font-weight: 700; }
+.weather-copy-overlay--today { width: 100%; height: 226rpx; }
+.weather-copy-overlay__row { position: relative; display: flex; align-items: center; justify-content: space-between; min-height: 32rpx; color: rgba(29,34,40,.82); font-size: 24rpx; font-weight: 800; }
 .weather-copy-overlay__left { display: flex; min-width: 0; align-items: center; gap: 5rpx; }
 .weather-copy-overlay__right { position: absolute; right: 56rpx; width: 112rpx; overflow: hidden; text-align: left; text-overflow: clip; white-space: nowrap; }
 .weather-high-compact { display: none; }
-.weather-copy-overlay__temperature { margin-top: 8rpx; color: var(--color-ink); font-size: 42rpx; font-weight: 800; line-height: 1; letter-spacing: -.025em; white-space: nowrap; }
-.weather-copy-overlay__summary { min-height: 58rpx; margin-top: 9rpx; overflow: hidden; color: var(--color-ink); font-size: 24rpx; font-weight: 700; line-height: 34rpx; }
-.weather-copy-overlay__meta { margin-top: auto; overflow: hidden; color: rgba(29,34,40,.58); font-size: 20rpx; text-overflow: ellipsis; white-space: nowrap; }
+.weather-copy-overlay__temperature { margin-top: 7rpx; color: #1d2228; font-size: 46rpx; font-weight: 900; line-height: 1; letter-spacing: -.025em; white-space: nowrap; }
+.weather-copy-overlay__summary { min-height: 58rpx; margin-top: 8rpx; overflow: hidden; color: #1d2228; font-size: 26rpx; font-weight: 800; line-height: 34rpx; }
+.weather-copy-overlay__meta { margin-top: auto; overflow: hidden; color: rgba(29,34,40,.72); font-size: 22rpx; font-weight: 600; text-overflow: ellipsis; white-space: nowrap; }
 .weather-row { position: relative; z-index: 2; display: flex; align-items: center; justify-content: space-between; gap: 8rpx; color: rgba(29,34,40,.62); font-size: 23rpx; font-weight: 700; }
 .stale-badge { padding: 3rpx 10rpx; border-radius: var(--radius-pill); background: rgba(176,112,58,.13); color: #805428; font-size: 18rpx; }
 .weather-temperature { position: relative; z-index: 2; align-self: center; font-size: 52rpx; font-weight: 800; line-height: 1; letter-spacing: -.025em; }
