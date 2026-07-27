@@ -7,6 +7,13 @@
 - 查看某次提交详情：`git show <commit>`
 - 新记录继续置顶，默认控制在 3–5 条短 bullet；原始测试日志、命令输出和长证据写入专项 evidence 文档或交由 Git 保存。
 
+## 2026-07-27 / v2.1.33-test / Codex — Mobile MCP latest 烟测与 Android 使用规范
+
+- 使用 `@mobilenext/mobile-mcp@latest`（本次解析 `0.0.62`）在 `wardrobe-test` / Android 15 API 35 和固定签名 `2.1.33-test` APK 完成真实烟测；设备枚举、覆盖安装、截图、方向恢复、系统 Back、坐标点击与 ASCII 输入可用，目标 App 无 fatal。
+- 确认 Capacitor WebView 元素树只暴露 3 个容器节点，无法读取 Wardora 输入框、按钮和中文文案；`mobile_launch_app`、录屏和 crash 列表在当前环境失败，且部分失败只返回普通文本。Mobile MCP 因此定位为截图/坐标探索层，不能替代 ADB/CDP/E2E、logcat、签名或业务断言。
+- `docs/development/android-verification.md` 增加 `@latest` 安装、关闭遥测、专用测试设备/账号、单步截图复核、键盘后重算坐标、失败回退及推荐提示词；因实测增量价值有限，不加入本机 `AGENTS.md` 硬规则。
+- 风险 Low（治理与验证文档，不改运行时代码、版本、APK、生产或小程序）；文档命令、标题顺序、链接、`git diff --check` 和 smoke 结果复核。未触发 subagent：用户未通知。
+
 ## 2026-07-24 / v2.1.33-test / Codex — 双端验收 App/API 功能阻断首轮修复
 
 - 推荐输入合同严格接纳 `WeatherOverview` 已批准的当前温度/体感与日夜天气码，同时继续禁止 locationless/fallback 携带天气值及任意未知字段；旧 payload 保持兼容读取。
