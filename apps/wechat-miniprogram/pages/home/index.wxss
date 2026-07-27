@@ -22,9 +22,9 @@ button::after { border: 0; }
 .weather-copy-overlay__left { display: flex; min-width: 0; align-items: center; gap: 5rpx; }
 .weather-copy-overlay__right { position: absolute; right: 56rpx; width: 112rpx; overflow: hidden; text-align: left; text-overflow: clip; white-space: nowrap; }
 .weather-high-compact { display: none; }
-.weather-copy-overlay__temperature { margin-top: 8rpx; color: var(--color-ink); font-size: 39rpx; font-weight: 800; line-height: 1; letter-spacing: -.025em; white-space: nowrap; }
-.weather-copy-overlay__summary { min-height: 58rpx; margin-top: 9rpx; overflow: hidden; color: var(--color-ink); font-size: 22rpx; font-weight: 700; line-height: 28rpx; }
-.weather-copy-overlay__meta { margin-top: auto; overflow: hidden; color: rgba(29,34,40,.58); font-size: 18rpx; text-overflow: ellipsis; white-space: nowrap; }
+.weather-copy-overlay__temperature { margin-top: 8rpx; color: var(--color-ink); font-size: 42rpx; font-weight: 800; line-height: 1; letter-spacing: -.025em; white-space: nowrap; }
+.weather-copy-overlay__summary { min-height: 58rpx; margin-top: 9rpx; overflow: hidden; color: var(--color-ink); font-size: 24rpx; font-weight: 700; line-height: 34rpx; }
+.weather-copy-overlay__meta { margin-top: auto; overflow: hidden; color: rgba(29,34,40,.58); font-size: 20rpx; text-overflow: ellipsis; white-space: nowrap; }
 .weather-row { position: relative; z-index: 2; display: flex; align-items: center; justify-content: space-between; gap: 8rpx; color: rgba(29,34,40,.62); font-size: 23rpx; font-weight: 700; }
 .stale-badge { padding: 3rpx 10rpx; border-radius: var(--radius-pill); background: rgba(176,112,58,.13); color: #805428; font-size: 18rpx; }
 .weather-temperature { position: relative; z-index: 2; align-self: center; font-size: 52rpx; font-weight: 800; line-height: 1; letter-spacing: -.025em; }

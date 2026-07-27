@@ -99,6 +99,9 @@ assert.match(styles, /\.weather-grid\s*\{[^}]*grid-template-columns:\s*repeat\(2
 assert.match(styles, /\.weather-card\s*\{[^}]*width:\s*100%/, "each weather card must fill its equal grid column");
 assert.match(styles, /\.weather-card--today\s*\{[^}]*background:/, "today must retain a full-card background beneath Canvas");
 assert.doesNotMatch(styles, /\.weather-card--today\.is-static\s*\{/, "today's full-card background must not disappear when Canvas is active");
+assert.match(styles, /\.weather-copy-overlay__temperature\s*\{[^}]*font-size:\s*42rpx/, "today and tomorrow temperatures must share the same type size");
+assert.match(styles, /\.weather-copy-overlay__summary\s*\{[^}]*font-size:\s*24rpx[^}]*line-height:\s*34rpx/, "today and tomorrow summaries must share the same type scale");
+assert.match(styles, /\.weather-copy-overlay__meta\s*\{[^}]*font-size:\s*20rpx/, "today and tomorrow weather metadata must share the same type size");
 assert.doesNotMatch(markup, /home-fab|content-fab/, "home must use the shared four-tab plus-center-create bar, not a second floating FAB");
 assert.match(page, /selectCustomTab\(this,\s*0\)/, "home must select the shared bottom navigation's Home tab");
 assert.match(page, /openRecommendationSheet[\s\S]+setCustomTabHidden\(this, true\)/, "details sheets must not be covered by the shared bottom navigation");
