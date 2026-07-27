@@ -17,7 +17,8 @@ Component({
     topRpx: 0,
     heightRpx: 88,
     rightSlotRpx: 112,
-    titleInsetRpx: 96,
+    titleLeftRpx: 96,
+    titleRightRpx: 96,
   },
   lifetimes: {
     attached(this: any) {
@@ -41,7 +42,8 @@ Component({
         topRpx: geometry.topRpx,
         heightRpx: geometry.heightRpx,
         rightSlotRpx: layout.rightSlotRpx,
-        titleInsetRpx: layout.titleInsetRpx,
+        titleLeftRpx: layout.titleLeftRpx,
+        titleRightRpx: layout.titleRightRpx,
       });
     },
     requestBack(this: any) {

@@ -13,7 +13,8 @@ export interface CapsuleGeometryInput {
 
 export interface SubPageTopBarLayout {
   rightSlotRpx: number;
-  titleInsetRpx: number;
+  titleLeftRpx: number;
+  titleRightRpx: number;
 }
 
 export function calculateCapsuleGeometry(input: CapsuleGeometryInput): CapsuleGeometry {
@@ -38,10 +39,14 @@ export function calculateSubPageTopBarLayout(
   rightActionWidthRpx = 96,
 ): SubPageTopBarLayout {
   const rightSlotRpx = geometry.rightInsetRpx + 16;
-  const titleInsetRpx = hasRightAction
+  const safeRightRpx = hasRightAction
     ? rightSlotRpx + Math.max(72, rightActionWidthRpx) + 16
     : Math.max(96, rightSlotRpx);
-  return { rightSlotRpx, titleInsetRpx };
+  return {
+    rightSlotRpx,
+    titleLeftRpx: hasRightAction ? 96 : safeRightRpx,
+    titleRightRpx: safeRightRpx,
+  };
 }
 
 export function getCapsuleGeometry(): CapsuleGeometry {

@@ -50,20 +50,21 @@ for (const windowWidth of [360, 390, 430]) {
     menu: { top: 28, height: 32, left: windowWidth - 95 },
   });
   const layout = calculateSubPageTopBarLayout(geometry, true, 96);
-  const titleWidthRpx = 750 - layout.titleInsetRpx * 2;
   const actionLeftRpx = 750 - layout.rightSlotRpx - 96;
-  const titleRightRpx = 750 - layout.titleInsetRpx;
+  const titleRightRpx = 750 - layout.titleRightRpx;
+  const titleWidthRpx = titleRightRpx - layout.titleLeftRpx;
   assert.ok(titleWidthRpx > 0, `${windowWidth}px must retain a title region`);
   assert.equal(titleRightRpx + 16, actionLeftRpx, `${windowWidth}px must keep a 16rpx action gap`);
-  assert.equal(layout.titleInsetRpx, 750 - titleRightRpx, `${windowWidth}px title must remain visually centered`);
+  assert.equal(layout.titleLeftRpx, 96, `${windowWidth}px must preserve the back-button safe inset`);
+  assert.ok(titleWidthRpx >= 320, `${windowWidth}px must keep the four-character detail title readable`);
 }
 
 const topBarWxml = fs.readFileSync("components/domain/sub-page-top-bar/index.wxml", "utf8");
 const topBarWxss = fs.readFileSync("components/domain/sub-page-top-bar/index.wxss", "utf8");
 const detailShell = fs.readFileSync("components/domain/item-detail-shell/index.wxml", "utf8");
 const detailShellStyles = fs.readFileSync("components/domain/item-detail-shell/index.wxss", "utf8");
-assert.match(topBarWxml, /left: \{\{titleInsetRpx\}\}rpx/);
-assert.match(topBarWxml, /right: \{\{titleInsetRpx\}\}rpx/);
+assert.match(topBarWxml, /left: \{\{titleLeftRpx\}\}rpx/);
+assert.match(topBarWxml, /right: \{\{titleRightRpx\}\}rpx/);
 assert.doesNotMatch(topBarWxss, /right:\s*220rpx/);
 assert.match(detailShell, /has-right-action/);
 assert.match(detailShell, /item-detail-shell__top-action/);
