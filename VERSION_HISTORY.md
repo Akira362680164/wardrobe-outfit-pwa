@@ -11,7 +11,7 @@
 
 - 关闭发布门禁：详情“今天已穿”改用共享 `ui-icon/check`，首页接入系统字号 token，计划标题冻结为“当日穿搭 / 今天已穿”，详情与地点 Sheet 保持 44px 命中区；今天/明天天气卡使用严格等宽列并让今天卡在 Canvas 活跃时仍完整铺底，不改天气动效或业务语义。
 - 按 main-first 顺序同步 `origin/main@fa72503e51fbbe5c7ee0e068a5af540b2cd51b8e`，双方接力历史与 P4 小程序规范均保留；catalog/home-shared 重生成零语义差异，`generated/build-info.ts` 由脚本更新为根版本 `2.1.34-test`。
-- root/cloud/API/小程序 typecheck、build-info/catalog/home-shared/icon/UI 规范生成检查、shell、首页 P4/Canvas、导航、组件复用、详情、字号、分页、穿着、P2 与衣橱回归均通过；最终冻结源码继续执行 WeChat DevTools WXML/WXSS 与 console 复验。
+- root/cloud/API/小程序 typecheck、build-info/catalog/home-shared/icon/UI 规范生成检查、shell、首页 P4/Canvas、导航、组件复用、详情、字号、分页、穿着、P2 与衣橱回归均通过；最终冻结源码的 WeChat DevTools 首页/详情 WXML/WXSS 编译和 console 复验通过。
 - 现代设备证据仅采用 HUAWEI Mate 80 与 iPhone 15 Pro Max；独立 GPT-5.6 Sol / Medium 复验 P0/P1/P2/P3 全为 0，建议集成。未 preview/upload、云写入、部署或发布；物理微信真机与用户扫码仍未验证。
 
 ## 2026-07-27 / v2.1.33-test / Codex — 小程序 P5-C 发布门禁修复（第一阶段）
