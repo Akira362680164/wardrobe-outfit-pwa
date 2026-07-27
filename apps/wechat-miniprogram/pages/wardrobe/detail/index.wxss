@@ -296,7 +296,8 @@
   gap: 8rpx;
   box-sizing: border-box;
   min-width: 196rpx;
-  height: 72rpx;
+  height: 88rpx;
+  min-height: 88rpx;
   margin: 0;
   padding: 0 24rpx;
   border: 1rpx solid rgba(255, 255, 255, 0.72);

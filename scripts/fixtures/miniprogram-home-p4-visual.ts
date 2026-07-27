@@ -89,7 +89,7 @@ const planned = {
   revision: 4,
   status: "planned",
   availability: "available",
-  title: "已安排",
+  title: "当日穿搭",
   risk: "",
   garments: garments.slice(0, 3).map(({ id, name, imageUrl }) => ({ id, name, imageUrl })),
 };
@@ -106,7 +106,7 @@ export const miniHomeP4VisualFixtures: Record<string, Record<string, unknown>> =
   reduced: { ...base, reducedMotion: true },
   travel: { ...base, travelDates: [{ date: "2026-08-08", title: "周末出行", destination: "成都", dateLabel: "8 月 8 日 星期六" }] },
   planned: { ...base, plan: planned, recommendationCards: [] },
-  worn: { ...base, plan: { ...planned, status: "worn", title: "已记录穿着" }, recommendationCards: [] },
+  worn: { ...base, plan: { ...planned, status: "worn", title: "今天已穿" }, recommendationCards: [] },
   blocked: { ...base, plan: { ...planned, availability: "blocked", risk: "部分衣物已不可用，请先调整穿搭。" }, recommendationCards: [{ ...recommendationStable, blocked: true, risk: "衣物状态已变化，请先检查。" }] },
   permission: { ...base, locationSheetOpen: true, locationNeedsSettings: true, locationMessage: "位置权限未开启；你可以前往微信设置，或直接搜索城市。" },
   create: { ...base, createSheetOpen: true },

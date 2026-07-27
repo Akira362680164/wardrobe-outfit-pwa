@@ -24,8 +24,8 @@ export function accessibilityFontStyle(fontSizeSetting: number): string {
 
 export function currentAccessibilityFontStyle(): string {
   const systemInfo = (wx as typeof wx & {
-    getSystemInfoSync?: () => { fontSizeSetting?: number };
-  }).getSystemInfoSync?.();
+    getAppBaseInfo?: () => { fontSizeSetting?: number };
+  }).getAppBaseInfo?.();
   return accessibilityFontStyle(
     Number(systemInfo?.fontSizeSetting ?? DEFAULT_FONT_SIZE_SETTING),
   );

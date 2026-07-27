@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import fs from "node:fs";
 
 const garment = fs.readFileSync("apps/wechat-miniprogram/pages/wardrobe/detail/index.wxml", "utf8");
+const garmentStyle = fs.readFileSync("apps/wechat-miniprogram/pages/wardrobe/detail/index.wxss", "utf8");
 const wishlist = fs.readFileSync("apps/wechat-miniprogram/pages/wishlist/detail/index.wxml", "utf8");
 const fields = fs.readFileSync("apps/wechat-miniprogram/components/domain/item-field-sections/index.wxml", "utf8");
 const fieldsStyle = fs.readFileSync("apps/wechat-miniprogram/components/domain/item-field-sections/index.wxss", "utf8");
@@ -35,6 +36,11 @@ assert.match(garment, /<text>今天已穿<\/text>/, "the worn state must retain 
 assert.match(garment, /<text wx:else>标记今天穿了<\/text>/, "the normal state must retain its action text");
 assert.match(garment, /今天已穿，点击撤销穿着记录/, "the worn action must expose its full accessibility meaning");
 assert.doesNotMatch(garment, /✓/, "the worn state must not use a Unicode check icon");
+assert.match(
+  garmentStyle,
+  /\.wear-button[\s\S]*min-height:\s*88rpx/,
+  "the wear-state action must retain a 44px minimum hit target",
+);
 assert.match(garmentTs, /wearMutation\.key !== mutationKey/);
 assert.match(garmentTs, /markGarmentWornOnDate/);
 assert.match(garmentTs, /cancelGarmentWornOnDate/);

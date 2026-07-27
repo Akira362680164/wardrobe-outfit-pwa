@@ -90,6 +90,11 @@ assert.match(markup, /class="recommendation-toolbar"/, "no-plan recommendation h
 assert.match(markup, /class="recommendation-actions"/, "recommendation cards must expose the App primary and detail action pair");
 assert.match(markup, /bindtap="applyRecommendation"/, "the card primary action must submit directly instead of masquerading as a detail button");
 assert.match(markup, /ui-icon name="chevron-right"[^>]+/, "the recommendation detail action must use the shared chevron icon");
+assert.match(markup, /class="home-page" style="\{\{fontStyle\}\}"/, "home must bind the system accessibility font token");
+assert.match(page, /fontStyle:\s*currentAccessibilityFontStyle\(\)/, "home must initialize the system accessibility font token");
+assert.match(page, /plan\.status === "worn" \? "今天已穿" : "当日穿搭"/, "home plan states must retain the approved readable titles");
+assert.match(styles, /\.settings-action,[^{]+\{\s*min-height:\s*88rpx/, "location settings actions must retain a 44px minimum hit target");
+assert.match(styles, /\.city-search button\s*\{[\s\S]*min-height:\s*88rpx/, "location search must retain a 44px minimum hit target");
 assert.doesNotMatch(markup, /home-fab|content-fab/, "home must use the shared four-tab plus-center-create bar, not a second floating FAB");
 assert.match(page, /selectCustomTab\(this,\s*0\)/, "home must select the shared bottom navigation's Home tab");
 assert.match(page, /openRecommendationSheet[\s\S]+setCustomTabHidden\(this, true\)/, "details sheets must not be covered by the shared bottom navigation");
