@@ -4,6 +4,14 @@
   display: block;
 }
 
+.item-detail-shell__top-action {
+  display: flex;
+  width: 96rpx;
+  height: 100%;
+  align-items: center;
+  justify-content: flex-end;
+}
+
 .item-detail-shell__title,
 .item-detail-shell__meta,
 .item-detail-shell__eyebrow {

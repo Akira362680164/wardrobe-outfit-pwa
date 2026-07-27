@@ -61,10 +61,16 @@ for (const windowWidth of [360, 390, 430]) {
 const topBarWxml = fs.readFileSync("components/domain/sub-page-top-bar/index.wxml", "utf8");
 const topBarWxss = fs.readFileSync("components/domain/sub-page-top-bar/index.wxss", "utf8");
 const detailShell = fs.readFileSync("components/domain/item-detail-shell/index.wxml", "utf8");
+const detailShellStyles = fs.readFileSync("components/domain/item-detail-shell/index.wxss", "utf8");
 assert.match(topBarWxml, /left: \{\{titleInsetRpx\}\}rpx/);
 assert.match(topBarWxml, /right: \{\{titleInsetRpx\}\}rpx/);
 assert.doesNotMatch(topBarWxss, /right:\s*220rpx/);
 assert.match(detailShell, /has-right-action/);
+assert.match(detailShell, /item-detail-shell__top-action/);
+assert.match(
+  detailShellStyles.match(/\.item-detail-shell__top-action\s*\{([\s\S]*?)\}/)?.[1] ?? "",
+  /width:\s*96rpx/,
+);
 
 for (const detailStyle of [
   "pages/wardrobe/detail/index.wxss",
