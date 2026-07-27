@@ -53,6 +53,7 @@ import {
   homeActionErrorMessage,
   isPlanCanceledReadback,
 } from "./p2-model";
+import { recommendationRiskLabel } from "./risk-label";
 
 type WeatherCard = {
   status: "loading" | "ready" | "error" | "unavailable";
@@ -738,7 +739,7 @@ function mapRecommendationCards(item: RecommendationDisplayItemV3, garments: Min
     objective: objectiveLabel(candidate.objective),
     title: `${objectiveLabel(candidate.objective)}搭配`,
     reason: reasonLabel(candidate.reasonCodes[0]),
-    risk: riskLabel(candidate.riskCodes[0], item.contextMode),
+    risk: recommendationRiskLabel(candidate.riskCodes[0], item.contextMode),
     garments: candidate.garmentIds.map((id) => byId.get(id)).filter((garment): garment is MiniGarment => Boolean(garment)).map((garment) => ({ id: garment.id, legacyItemId: garment.legacyItemId, name: garment.name, imageUrl: garment.imageUrl, category: garment.category })),
     garmentIds: candidate.garmentIds.slice(),
     blocked: candidate.riskCodes.some((code) => String(code).includes("blocked") || String(code).includes("severe")),
@@ -829,10 +830,6 @@ function recommendationSubtitle(mode: string): string {
 function reasonLabel(value?: string): string {
   const labels: Record<string, string> = { weather_fit: "与当前天气证据匹配。", rain_ready: "已考虑降雨与路面情况。", activity_comfort: "活动空间与舒适度更充足。", new_combination: "在可靠结构中加入新的组合变化。", rotation_value: "优先带回近期较少穿着的衣物。" };
   return labels[value ?? ""] ?? "结合场景与衣橱状态整理。";
-}
-function riskLabel(value: string | undefined, mode: string): string {
-  if (!value) return mode === "forecast" ? "未发现需要特别提醒的天气风险。" : "通用建议不作温度或降雨判断。";
-  return `风险提示：${value}`;
 }
 function messageOf(error: unknown, fallback: string): string { return error instanceof Error && error.message ? error.message : fallback; }
 function isLocationPermissionDenied(error: unknown): boolean {

@@ -7,7 +7,7 @@
     <navigator wx:elif="{{showBack}}" class="sub-page-top-bar__back" open-type="navigateBack" aria-label="返回">
       <ui-icon name="chevron-left" size="44" tone="ink" />
     </navigator>
-    <view class="sub-page-top-bar__title {{centeredTitle ? 'sub-page-top-bar__title--centered' : ''}}">{{title}}</view>
+    <view class="sub-page-top-bar__title" style="right: {{titleInsetRpx}}rpx; left: {{titleInsetRpx}}rpx;">{{title}}</view>
     <view class="sub-page-top-bar__right" style="right: {{rightSlotRpx}}rpx;"><slot name="right" /></view>
   </view>
   <view wx:if="{{subtitle}}" class="sub-page-top-bar__subtitle">{{subtitle}}</view>
