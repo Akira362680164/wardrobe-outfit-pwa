@@ -64,6 +64,7 @@ export async function createMiniWeatherCanvasRuntime(input: {
   const draw = (time: number, animate: boolean) => {
     try {
       renderWeatherScene(context, scene, width, height, time, animate, !dynamic, true);
+      clearWeatherCopyLane(context, width, height);
       frames += 1;
     } catch (error) {
       fail(error);
@@ -104,6 +105,18 @@ export async function createMiniWeatherCanvasRuntime(input: {
     destroy() { destroyed = true; pause(); },
     get metrics() { return { dpr, frames, targetFps: WEATHER_CANVAS_TARGET_FPS }; },
   };
+}
+
+function clearWeatherCopyLane(context: CanvasRenderingContext2D, width: number, height: number): void {
+  context.save();
+  context.globalCompositeOperation = "destination-out";
+  const fade = context.createLinearGradient(0, 0, width, 0);
+  fade.addColorStop(0, "rgba(0,0,0,1)");
+  fade.addColorStop(.64, "rgba(0,0,0,1)");
+  fade.addColorStop(.88, "rgba(0,0,0,0)");
+  context.fillStyle = fade;
+  context.fillRect(0, 0, width, height);
+  context.restore();
 }
 
 function clipRoundedCard(context: CanvasRenderingContext2D, width: number, height: number, radius: number): void {

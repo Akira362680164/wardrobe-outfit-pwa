@@ -105,7 +105,10 @@ assert.match(styles, /\.weather-card--today\s*\{[^}]*background:/, "today must r
 assert.doesNotMatch(styles, /\.weather-card--today\.is-static\s*\{/, "today's full-card background must not disappear when Canvas is active");
 assert.match(styles, /\.weather-copy-overlay__temperature\s*\{[^}]*color:\s*#1d2228[^}]*font-size:\s*46rpx[^}]*font-weight:\s*900/, "today temperature must optically compensate for Canvas compositing");
 assert.match(styles, /\.weather-copy-overlay__summary\s*\{[^}]*color:\s*#1d2228[^}]*font-size:\s*26rpx[^}]*font-weight:\s*800[^}]*line-height:\s*34rpx/, "today summary must optically match tomorrow after Canvas compositing");
-assert.match(styles, /\.weather-copy-overlay__meta\s*\{[^}]*color:\s*rgba\(29,34,40,.72\)[^}]*font-size:\s*22rpx[^}]*font-weight:\s*600/, "today metadata must retain readable contrast after Canvas compositing");
+assert.match(canvasRuntime, /renderWeatherScene\([^;]+;\s*clearWeatherCopyLane\(context,\s*width,\s*height\)/, "every Canvas frame must clear the legal weather copy lane after drawing");
+assert.match(canvasRuntime, /globalCompositeOperation\s*=\s*"destination-out"[\s\S]+addColorStop\(\.64,\s*"rgba\(0,0,0,1\)"\)[\s\S]+addColorStop\(\.88,\s*"rgba\(0,0,0,0\)"\)/, "the copy lane must stay transparent through the text area and feather into the live weather edge");
+assert.match(styles, /\.weather-copy-overlay__row\s*\{[^}]*color:\s*#1d2228/, "today weather labels must not use low-contrast gray");
+assert.match(styles, /\.weather-copy-overlay__meta\s*\{[^}]*color:\s*rgba\(29,34,40,.82\)[^}]*font-size:\s*22rpx[^}]*font-weight:\s*700/, "today metadata must retain readable contrast after Canvas compositing");
 assert.match(styles, /\.weather-copy-overlay--today\s*\{[^}]*width:\s*100%/, "today weather copy must fill its equal-width card");
 assert.doesNotMatch(markup, /home-fab|content-fab/, "home must use the shared four-tab plus-center-create bar, not a second floating FAB");
 assert.match(page, /selectCustomTab\(this,\s*0\)/, "home must select the shared bottom navigation's Home tab");
