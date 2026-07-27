@@ -49,10 +49,6 @@ async function login(page) {
 }
 
 async function openHome(page) {
-  const settings = page.getByText("设置", { exact: true }).last();
-  await settings.waitFor({ state: "visible" });
-  await settings.click();
-  await page.getByTestId("open-home-feed-preview").click();
   await page.getByTestId("wardora-home-feed").waitFor({ state: "visible" });
   await page.waitForTimeout(700);
 }

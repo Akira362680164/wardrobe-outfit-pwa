@@ -7,12 +7,42 @@
 - 查看某次提交详情：`git show <commit>`
 - 新记录继续置顶，默认控制在 3–5 条短 bullet；原始测试日志、命令输出和长证据写入专项 evidence 文档或交由 Git 保存。
 
+## 2026-07-27 / v2.1.34-test / Codex — 小程序 P5-C 上传前候选收口
+
+- 关闭发布门禁：详情“今天已穿”改用共享 `ui-icon/check`，首页接入系统字号 token，计划标题冻结为“当日穿搭 / 今天已穿”，详情与地点 Sheet 保持 44px 命中区；今天/明天天气卡使用严格等宽列并让今天卡在 Canvas 活跃时仍完整铺底，不改天气动效或业务语义。
+- 按 main-first 顺序同步 `origin/main@fa72503e51fbbe5c7ee0e068a5af540b2cd51b8e`，双方接力历史与 P4 小程序规范均保留；catalog/home-shared 重生成零语义差异，`generated/build-info.ts` 由脚本更新为根版本 `2.1.34-test`。
+- root/cloud/API/小程序 typecheck、build-info/catalog/home-shared/icon/UI 规范生成检查、shell、首页 P4/Canvas、导航、组件复用、详情、字号、分页、穿着、P2 与衣橱回归均通过；最终冻结源码的 WeChat DevTools 首页/详情 WXML/WXSS 编译和 console 复验通过。
+- 现代设备证据仅采用 HUAWEI Mate 80 与 iPhone 15 Pro Max；独立 GPT-5.6 Sol / Medium 复验 P0/P1/P2/P3 全为 0，建议集成。未 preview/upload、云写入、部署或发布；物理微信真机与用户扫码仍未验证。
+
+## 2026-07-27 / v2.1.33-test / Codex — 小程序 P5-C 发布门禁修复（第一阶段）
+
+- 单品详情“今天已穿”状态移除可见 Unicode 对勾，改用既有共享 `ui-icon/check` SVG，同时保留完整中文文案、动态无障碍标签和服务器确认后才切换状态的点击行为。
+- 手写详情合同覆盖正常/已穿/提交状态、共享图标引用、文本语义、点击绑定及 mark/cancel 分支；shell 图标门禁不放宽、不删除、不跳过。
+- 首轮独立视觉审查 P0/P1=0、P2=3；按报告最小补齐首页系统字体 token、冻结“当日穿搭/今天已穿”状态文案，以及详情穿着按钮和地点 Sheet 次级操作的 44px 命中高度，等待重拍复审。
+- 用户现场指出今天卡视觉上窄于明天卡；天气网格改为两个显式 `minmax(0,1fr)` 等宽列，每张卡强制填满列宽，并让今天的基础背景在 Canvas 活跃时也完整铺底，不改 Canvas 动效或天气业务逻辑。
+- 风险等级 Medium（可见状态控件与发布门禁）；第一阶段冻结验证与独立视觉审查完成后补录证据。最终 build-info 必须等待 P5-A+B 的正式 `origin/main` 版本确定后由脚本生成，本阶段不手工修改。
+
 ## 2026-07-27 / v2.1.33-test / Codex — 小程序最终验收 P2 收口
 
 - 首页推荐风险码建立显式中文映射，覆盖当前 V3 与兼容风险枚举；未知码统一安全兜底，空值继续沿用 forecast/generic 原文案，上海实际推荐卡不再泄露内部 `snake_case`。
 - 通用次级页顶部栏按微信胶囊动态计算操作区与标题区；详情 slot 固定 96rpx 布局/点击面，标题在返回与右侧操作之间视觉居中，旅行计划和套装编辑等实际右侧调用方声明操作宽度。
 - 冻结实现 `cd18dd55` 通过小程序 typecheck、P2 手写测试、详情/首页/Canvas/组件复用/导航回归及 catalog/home-shared 检查；WeChat DevTools WXML/WXSS、console 与真实上海页面通过。
 - 新证据覆盖 360/390/430 详情、390 上海首页和旅行计划代表页；独立 GPT-5.6 Sol / Medium 只读审查 P0–P3 全为 0、两个原 P2 均关闭并建议交付。证据位于 `/Users/fangzheng/Downloads/Wardora_cross_end_acceptance_20260727/p2-mini-fix-evidence/`；未预览、上传或部署。
+
+## 2026-07-27 / v2.1.34-test / Codex — Wardora 新首页 P5-A 默认切换与 P5-B 候选准备
+
+- 登录、冷启动、底栏首页、根返回、详情返回和种草转衣橱统一进入 `home_feed`；无环境变量时正式默认开启，只有显式 `NEXT_PUBLIC_WARDORA_HOME_FEED_EMERGENCY_OFF=true` 才启动旧 `wardrobe_home` 紧急回滚。账号 ID 变化会重挂 App，避免前一账号的首页会话态短暂复用。
+- 设置页删除“Wardora 新首页预览 / 内部只读入口”，底栏收口为“首页 / 穿搭 / 种草 / 设置”，原衣橱完整能力继续位于首页“衣橱”分栏；修复该分栏瀑布流卡片的嵌套 button hydration 错误，不改天气 Canvas、推荐、地点、计划或服务端权威语义。
+- 版本递增为 `2.1.34-test` / versionCode `20134`，同步 package-lock 与 UI 规范；Android 同步阶段拒绝 fixture、loopback 和旧 P1 flag 字面量，并在不改变 URL polyfill 语义的前提下拆分其标准 `localhost` 常量。P5 手写 Fixture、P1/P2/P3、路由/Back、图片/组件、UI contracts、typecheck、正常/显式回滚 production build 和浏览器 `360/390/430px × 100%/130%` 通过。
+- 首轮独立视觉审查发现设置页采证时仍含退出路由、首页辅助文字对比不足和“推荐 / 衣橱”命中区仅 44px；现增加单一稳定路由断言，辅助文字统一提升至 `text-ink/65`，分栏命中区提升到 48px，并重新生成全矩阵截图交由独立审查复验。
+- 风险 High（默认首页、底栏、Android/APK）；独立只读视觉二轮复验 P0/P1/P2/P3 均为 0。固定签名候选 `2.1.34-test` 在 `wardrobe-test` Android 15/API 35 通过默认首页、推荐/衣橱、6/6 可见真实图片、详情 Back、根 Back、前后台、断网/恢复、Canvas 动态/静态降级、定位用途、设置入口移除及退出再登录；目标进程 fatal/runtime/loading failure 均为 0，受控账号未做业务写入，前后均为 8 件衣物、当日活跃计划 0。未修改小程序、服务端、数据库、共享合同、推荐算法或生产 API。
+
+## 2026-07-27 / v2.1.33-test / Codex — Mobile MCP latest 烟测与 Android 使用规范
+
+- 使用 `@mobilenext/mobile-mcp@latest`（本次解析 `0.0.62`）在 `wardrobe-test` / Android 15 API 35 和固定签名 `2.1.33-test` APK 完成真实烟测；设备枚举、覆盖安装、截图、方向恢复、系统 Back、坐标点击与 ASCII 输入可用，目标 App 无 fatal。
+- 确认 Capacitor WebView 元素树只暴露 3 个容器节点，无法读取 Wardora 输入框、按钮和中文文案；`mobile_launch_app`、录屏和 crash 列表在当前环境失败，且部分失败只返回普通文本。Mobile MCP 因此定位为截图/坐标探索层，不能替代 ADB/CDP/E2E、logcat、签名或业务断言。
+- `docs/development/android-verification.md` 增加 `@latest` 安装、关闭遥测、专用测试设备/账号、单步截图复核、键盘后重算坐标、失败回退及推荐提示词；因实测增量价值有限，不加入本机 `AGENTS.md` 硬规则。
+- 风险 Low（治理与验证文档，不改运行时代码、版本、APK、生产或小程序）；文档命令、标题顺序、链接、`git diff --check` 和 smoke 结果复核。未触发 subagent：用户未通知。
 
 ## 2026-07-24 / v2.1.33-test / Codex — 双端验收 App/API 功能阻断首轮修复
 

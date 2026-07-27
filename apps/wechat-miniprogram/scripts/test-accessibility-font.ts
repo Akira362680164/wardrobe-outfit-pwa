@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import fs from "node:fs";
 import { accessibilityFontStyle } from "../utils/accessibility-font";
 
 assert.equal(
@@ -11,5 +12,20 @@ assert.equal(
 );
 assert.equal(accessibilityFontStyle(80), accessibilityFontStyle(24));
 assert.equal(accessibilityFontStyle(Number.NaN), accessibilityFontStyle(16));
+
+const source = fs.readFileSync(
+  new URL("../utils/accessibility-font.ts", import.meta.url),
+  "utf8",
+);
+assert.match(
+  source,
+  /getAppBaseInfo/,
+  "the accessibility font token must use the current WeChat base-info API",
+);
+assert.doesNotMatch(
+  source,
+  /getSystemInfoSync/,
+  "the deprecated WeChat system-info API must not return",
+);
 
 console.log("miniprogram accessibility font scaling passed");

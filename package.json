@@ -1,6 +1,6 @@
 {
   "name": "wardrobe-outfit-pwa",
-  "version": "2.1.33-test",
+  "version": "2.1.34-test",
   "private": true,
   "workspaces": [
     "packages/domain-catalog",
@@ -85,6 +85,7 @@
     "test:logic:home-feed-p1": "tsx scripts/test-home-feed-p1.ts && tsx scripts/test-home-feed-p11.tsx && tsx scripts/test-home-feed-p12.tsx && tsx scripts/test-home-feed-p13.tsx",
     "test:logic:home-feed-p2": "tsx scripts/test-home-feed-p2.ts",
     "test:logic:home-feed-p3": "tsx scripts/test-home-feed-p3.ts",
+    "test:logic:home-feed-p5": "tsx scripts/test-home-feed-p5.ts",
     "test:visual:home-feed-p3": "node scripts/test-home-feed-p3-visual.mjs",
     "test:browser:home-feed-p3": "node scripts/test-home-feed-p3-browser.mjs",
     "test:logic:home-feed-p13": "tsx scripts/test-home-feed-p13.tsx",
@@ -93,6 +94,8 @@
     "test:browser:home-feed-p12": "node scripts/test-home-feed-p11-browser.mjs",
     "test:browser:home-feed-p13": "node scripts/test-home-feed-p13-browser.mjs",
     "test:browser:home-feed-p14": "node scripts/test-home-feed-p14-visual.mjs",
+    "test:browser:home-feed-p5": "node scripts/test-home-feed-p5-browser.mjs",
+    "test:browser:home-feed-p5-rollback": "node scripts/test-home-feed-p5-rollback-browser.mjs",
     "test:android:home-feed-p13": "node scripts/test-home-feed-p13-android.mjs",
     "test:android:home-feed-p14": "node scripts/test-home-feed-p14-android.mjs",
     "test:browser:navigation-motion-c1": "node scripts/test-navigation-motion-browser.mjs",

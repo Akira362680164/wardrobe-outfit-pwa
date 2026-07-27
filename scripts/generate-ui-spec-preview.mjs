@@ -565,8 +565,8 @@ function renderSectionVisual(section) {
         </div>
       </div>
       ${productionShotGrid([
-        ["wardrobe_home_390_top.png", "当前衣橱 Shell", "P0 保留现状；P1 将完整衣橱能力迁入新首页衣橱分栏"],
-        ["settings_home_390_top.png", "当前设置 Shell", "P0 只生成未来五入口预览，不切换当前生产导航"],
+        ["wardrobe_home_390_top.png", "旧衣橱 Shell", "P5-A 后仅供显式 emergency-off 紧急回滚；正常路径使用新首页衣橱分栏"],
+        ["settings_home_390_top.png", "设置 Shell", "P5-A 已移除新首页内部预览入口，不再并列两个首页"],
       ])}`;
   }
 

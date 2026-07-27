@@ -1,4 +1,4 @@
-<view class="home-page">
+<view class="home-page" style="{{fontStyle}}">
   <view class="home-header">
     <view class="home-greeting">{{greeting}}</view>
     <view class="home-date">{{businessDateLabel}}</view>

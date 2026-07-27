@@ -7,6 +7,7 @@ import { useAppNavigationController } from "@/components/use-app-navigation-cont
 import { NavigationMotion } from "@/components/navigation-motion";
 import type { AppRoute } from "@/lib/app-route";
 import { getBackRoute, isDetailRoute, isGlobalCreateAllowedRoute, isIntakeRouteName } from "@/lib/app-route";
+import { getWardoraHomeRoute, isWardoraHomeFeedEnabled } from "@/lib/home/home-feed-rollout";
 import { useStableBackHandler } from "@/lib/use-stable-back-handler";
 import {
   AlertCircle,
@@ -240,8 +241,8 @@ interface EditSnapshot {
 }
 
 const viewItems: Array<{ key: ViewKey; label: string; icon: typeof Shirt }> = [
-  { key: "wardrobe", label: "衣橱", icon: Shirt },
-  { key: "recommend", label: "套装", icon: Sparkles },
+  { key: "wardrobe", label: "首页", icon: House },
+  { key: "recommend", label: "穿搭", icon: Sparkles },
   { key: "shopping", label: "种草", icon: ShoppingBag },
   { key: "settings", label: "设置", icon: Settings },
 ];
@@ -300,6 +301,7 @@ export function WardrobeApp({ cloudAuth }: { cloudAuth?: WardrobeCloudAuth } = {
   // v1.1.7 4A: AppRoute navigation controller
   const navigation = useAppNavigationController();
   const route = navigation.route;
+  const defaultHomeRoute = getWardoraHomeRoute();
   const { rememberCreateReturnRoute, closeCreateFlow } = navigation;
   // v1.1.20-dev: activeViewForCreateActions 仅用于 (a) 加号弹窗按 view 高亮推荐 action,
   // (b) SettingsView 诊断日志导出。intake_* 三种录入 route 映射回兼容的 ViewKey。
@@ -329,7 +331,7 @@ export function WardrobeApp({ cloudAuth }: { cloudAuth?: WardrobeCloudAuth } = {
   const { items, setItems, locations, outfits, setOutfits, wishlistItems, setWishlistItems, outfitPlanEntries, outfitCalendarPlans, planPackingChecklistItems, tryOnProfile: savedTryOnProfile, setTryOnProfile: setSavedTryOnProfile, refreshState } = wardrobeData;
   // Subagent D: 待打开的衣物详情 ID（种草转换后触发）
   const [pendingViewingItemId, setPendingViewingItemId] = useState<number | null>(null);
-  const [pendingViewingItemReturnTarget, setPendingViewingItemReturnTarget] = useState<"wardrobe_home" | "wishlist_owned">("wardrobe_home");
+  const [pendingViewingItemReturnTarget, setPendingViewingItemReturnTarget] = useState<"home_feed" | "wardrobe_home" | "wishlist_owned">(defaultHomeRoute.name);
   const [wishlistInitialSubPage, setWishlistInitialSubPage] = useState<"purchased" | null>(null);
   const tryOnProfile: TryOnProfileState = savedTryOnProfile ?? { id: "default", enabled: false, fitGender: "unspecified", updatedAt: new Date().toISOString() };
   const [isReady, setIsReady] = useState(false);
@@ -844,7 +846,7 @@ export function WardrobeApp({ cloudAuth }: { cloudAuth?: WardrobeCloudAuth } = {
   const locationNameById = useMemo(() => {
     return locations.reduce<Record<string, string>>((r, l) => { r[l.id] = l.name; return r; }, {});
   }, [locations]);
-  const homeFeedEnabled = process.env.NEXT_PUBLIC_WARDORA_HOME_FEED_P1 === "true";
+  const homeFeedEnabled = isWardoraHomeFeedEnabled();
   const homeFeedGarments = useMemo(() => items.map((item) => ({
     id: item.serverEntityId,
     name: item.name,
@@ -960,7 +962,10 @@ export function WardrobeApp({ cloudAuth }: { cloudAuth?: WardrobeCloudAuth } = {
     }
   }
 
-  const renderWardrobeCapability = (activeGarmentRoute?: Extract<AppRoute, { name: "garment_detail" }>) => (
+  const renderWardrobeCapability = (
+    activeGarmentRoute?: Extract<AppRoute, { name: "garment_detail" }>,
+    wardrobeHomeRoute: AppRoute = defaultHomeRoute,
+  ) => (
     <WardrobeView
       items={homeFilteredItems} allItems={items} locations={locations} locationNameById={locationNameById}
       wardrobeScope={wardrobeScope} setWardrobeScope={setWardrobeScope}
@@ -981,12 +986,13 @@ export function WardrobeApp({ cloudAuth }: { cloudAuth?: WardrobeCloudAuth } = {
       onExpandImage={lightbox.openExpandedImage}
       onSubPageChange={setWardrobeSubPageActive}
       activeGarmentRoute={activeGarmentRoute}
+      wardrobeHomeRoute={wardrobeHomeRoute}
       pendingViewingItemId={pendingViewingItemId}
       pendingViewingItemReturnTarget={pendingViewingItemReturnTarget}
       onGarmentWriteRefresh={refreshOverviewAfterGarmentWrite}
       onPendingViewingItemConsumed={() => {
         setPendingViewingItemId(null);
-        setPendingViewingItemReturnTarget("wardrobe_home");
+        setPendingViewingItemReturnTarget(defaultHomeRoute.name);
       }}
       onReturnToWishlistOwned={() => {
         setWishlistInitialSubPage("purchased");
@@ -1021,7 +1027,7 @@ export function WardrobeApp({ cloudAuth }: { cloudAuth?: WardrobeCloudAuth } = {
                     fromMainTab,
                     toMainTab: view.key,
                     routeBefore,
-                    routeAfter: { name: view.key === "wardrobe" ? "wardrobe_home" : view.key === "recommend" ? "outfit_home" : view.key === "shopping" ? "wishlist_home" : "settings_home" },
+                    routeAfter: view.key === "wardrobe" ? defaultHomeRoute : { name: view.key === "recommend" ? "outfit_home" : view.key === "shopping" ? "wishlist_home" : "settings_home" },
                   });
                   navigation.resetToMainTab(view.key as "wardrobe" | "recommend" | "shopping" | "settings");
                 }} />
@@ -1049,7 +1055,7 @@ export function WardrobeApp({ cloudAuth }: { cloudAuth?: WardrobeCloudAuth } = {
             <WardoraHomeView
               controller={homeFeed}
               garments={homeFeedGarments}
-              renderWardrobeContent={() => renderWardrobeCapability()}
+              renderWardrobeContent={() => renderWardrobeCapability(undefined, defaultHomeRoute)}
             />
           ) : null}
           {route.name === "wardrobe_home" || route.name === "garment_detail" ? (
@@ -1127,13 +1133,13 @@ export function WardrobeApp({ cloudAuth }: { cloudAuth?: WardrobeCloudAuth } = {
                 await refreshState();
                 setPendingViewingItemReturnTarget("wishlist_owned");
                 setPendingViewingItemId(itemId);
-                navigation.openRoute({ name: "wardrobe_home" });
+                navigation.openRoute(defaultHomeRoute);
               }}
               onWishlistConvertedToWardrobe={async (newItemId) => {
                 await refreshState();
-                setPendingViewingItemReturnTarget("wardrobe_home");
+                setPendingViewingItemReturnTarget(defaultHomeRoute.name);
                 setPendingViewingItemId(newItemId);
-                navigation.openRoute({ name: "wardrobe_home" });
+                navigation.openRoute(defaultHomeRoute);
               }}
               onDataChanged={refreshState}
             />
@@ -1144,7 +1150,6 @@ export function WardrobeApp({ cloudAuth }: { cloudAuth?: WardrobeCloudAuth } = {
 	              items={items} locations={locations} outfits={outfits} wishlistItems={wishlistItems} activeView={activeViewForCreateActions} route={route}
               cloudAuth={cloudAuth}
               onOpenAccount={() => navigation.openRoute({ name: "account_management" })}
-              onOpenHomePreview={homeFeedEnabled ? () => navigation.openRoute({ name: "home_feed" }) : undefined}
               homeLocationController={homeFeedEnabled ? homeFeed : undefined}
               openMiniMaxRequest={settingsMiniMaxOpenRequest}
               onMiniMaxRequestConsumed={() => setSettingsMiniMaxOpenRequest(0)}
@@ -1311,7 +1316,7 @@ export function WardrobeApp({ cloudAuth }: { cloudAuth?: WardrobeCloudAuth } = {
               fromMainTab,
               toMainTab: view.key,
               routeBefore,
-              routeAfter: { name: view.key === "wardrobe" ? "wardrobe_home" : view.key === "recommend" ? "outfit_home" : view.key === "shopping" ? "wishlist_home" : "settings_home" },
+              routeAfter: view.key === "wardrobe" ? defaultHomeRoute : { name: view.key === "recommend" ? "outfit_home" : view.key === "shopping" ? "wishlist_home" : "settings_home" },
             });
             navigation.resetToMainTab(view.key as "wardrobe" | "recommend" | "shopping" | "settings");
           }} />))}
@@ -1586,9 +1591,10 @@ interface WardrobeViewProps {
   onExpandImage: (image: { src: string; alt: string }) => void;
   onSubPageChange?: (active: boolean) => void;
   activeGarmentRoute?: Extract<AppRoute, { name: "garment_detail" }>;
+  wardrobeHomeRoute?: AppRoute;
   /** Subagent D: 待打开的衣物详情 ID（种草转换后触发） */
   pendingViewingItemId?: number | null;
-  pendingViewingItemReturnTarget?: "wardrobe_home" | "wishlist_owned";
+  pendingViewingItemReturnTarget?: "home_feed" | "wardrobe_home" | "wishlist_owned";
   onPendingViewingItemConsumed?: () => void;
   onReturnToWishlistOwned?: () => void;
   // v1.1.20-dev (Bug 2 修复): WardrobeView 关闭衣物详情时调此回调跳回原 route。
@@ -1606,6 +1612,7 @@ function WardrobeView(props: WardrobeViewProps) {
     onGarmentWriteRefresh,
     outfits, wishlistItems, setOutfits, setWishlistItems, setItems, miniMaxSettings, onMessage, onExpandImage, onSubPageChange,
     activeGarmentRoute,
+    wardrobeHomeRoute = getWardoraHomeRoute(),
     pendingViewingItemId, pendingViewingItemReturnTarget, onPendingViewingItemConsumed, onReturnToWishlistOwned,
     onReturnToRoute,
   } = props;
@@ -1656,7 +1663,7 @@ function WardrobeView(props: WardrobeViewProps) {
   // 支持从 outfit_detail / outfit_calendar / wishlist_* 等任意来源打开衣物详情后
   // 关闭时准确回到原页面。旧版只有 wardrobe_home / wishlist_owned 两个枚举,其他场景全部
   // 落到 wardrobe 首页 — 这是用户报"前一个页面"无法返回的根因。
-  const [garmentDetailReturnTarget, setGarmentDetailReturnTarget] = useState<AppRoute>({ name: "wardrobe_home" });
+  const [garmentDetailReturnTarget, setGarmentDetailReturnTarget] = useState<AppRoute>(wardrobeHomeRoute);
   // v0.9.52-dev: 离开详情页返回衣橱、切换筛选或页面重新进入时重置瀑布流卡片横滑索引
   useEffect(() => {
     setWaterfallImageIndex({});
@@ -1673,7 +1680,11 @@ function WardrobeView(props: WardrobeViewProps) {
       // onReturnToRoute / 直接 openWardrobeItemDetail 传入完整 AppRoute。
       const targetRoute: AppRoute = pendingViewingItemReturnTarget === "wishlist_owned"
         ? { name: "wishlist_purchased" }
-        : { name: "wardrobe_home" };
+        : pendingViewingItemReturnTarget === "home_feed"
+          ? { name: "home_feed" }
+          : pendingViewingItemReturnTarget === "wardrobe_home"
+            ? { name: "wardrobe_home" }
+            : wardrobeHomeRoute;
       openWardrobeItemDetail(item, targetRoute);
       onPendingViewingItemConsumed?.();
       // v1.1.20-dev commit2 (P1 诊断): pending_viewing_item_consumed
@@ -2247,7 +2258,7 @@ function WardrobeView(props: WardrobeViewProps) {
     setViewingImageIndex(0);
     const target = garmentDetailReturnTarget;
     // 重置 returnTarget 为默认值,防止下次开新详情时残留上次的来源。
-    setGarmentDetailReturnTarget({ name: "wardrobe_home" });
+    setGarmentDetailReturnTarget(wardrobeHomeRoute);
     const viaWishlistCallback = target.name === "wishlist_purchased";
     if (viaWishlistCallback) {
       onReturnToWishlistOwned?.();
@@ -2260,7 +2271,7 @@ function WardrobeView(props: WardrobeViewProps) {
       returnedToRoute: target,
       viaWishlistCallback,
     });
-  }, [closeEditWithoutPrompt, garmentDetailReturnTarget, onReturnToWishlistOwned, onReturnToRoute, viewingItem?.id]);
+  }, [closeEditWithoutPrompt, garmentDetailReturnTarget, onReturnToWishlistOwned, onReturnToRoute, viewingItem?.id, wardrobeHomeRoute]);
 
   useStableBackHandler(() => {
     if (viewingItemCropJob) {
@@ -3338,7 +3349,7 @@ return (
   selected={isItemSelected}
   selectionMode={wardrobeSelection.selectionMode}
   ariaLabel={item.name?.trim() || "未命名单品"}
-  onOpen={() => openWardrobeItemDetail(item, { name: "wardrobe_home" })}
+  onOpen={() => openWardrobeItemDetail(item, wardrobeHomeRoute)}
   onToggleSelection={() => {
     if (item.id == null) return;
     if (!wardrobeSelection.selectionMode) {
@@ -3355,7 +3366,7 @@ return (
     currentIdx={currentIdx}
     allItems={allItems}
     outfits={outfits}
-    data-parity-id="parity.app.app.src.components.wardrobe.app.560d949754" onClick={() => openWardrobeItemDetail(item, { name: "wardrobe_home" })}
+    data-parity-id="parity.app.app.src.components.wardrobe.app.560d949754" onClick={() => openWardrobeItemDetail(item, wardrobeHomeRoute)}
     onSwipe={(next) => {
     if (!hasMultiple) return;
     setWaterfallImageIndex((prev) => ({ ...prev, [itemKey]: next }));
@@ -3852,7 +3863,6 @@ function SettingsView({
   route,
   cloudAuth,
   onOpenAccount,
-  onOpenHomePreview,
   homeLocationController,
   openMiniMaxRequest,
   onMiniMaxRequestConsumed,
@@ -3875,7 +3885,6 @@ function SettingsView({
   route: AppRoute;
   cloudAuth?: WardrobeCloudAuth;
   onOpenAccount?: () => void;
-  onOpenHomePreview?: () => void;
   homeLocationController?: HomeFeedController;
   openMiniMaxRequest?: number;
   onMiniMaxRequestConsumed?: () => void;
@@ -4205,17 +4214,6 @@ function SettingsView({
           >
       {/* Header - 与 AppSubPageTopBar / 衣橱首页按钮行 / 套装/种草首页 header 一致 h-14 (56px) */}
       <h1 className="flex h-14 items-center px-4 pt-2 text-xl font-bold tracking-tight">设置</h1>
-
-      {onOpenHomePreview ? (
-        <AppPressable
-          className="ui-card flex min-h-14 w-full items-center justify-between px-4 py-3 text-left"
-          onClick={onOpenHomePreview}
-          data-testid="open-home-feed-preview"
-        >
-          <span><span className="block text-sm font-semibold">Wardora 新首页预览</span><span className="block text-xs text-ink/50">内部只读入口，不改变默认首页</span></span>
-          <ChevronRight size={17} aria-hidden="true" />
-        </AppPressable>
-      ) : null}
 
       {homeLocationController ? (
         <AppPressable
@@ -5972,11 +5970,8 @@ function WaterfallCardImage({
 
  if (slides.length === 1 && slides[0]?.kind === "image" && slides[0].asset) {
    return (
-     <button
-       type="button"
+     <div
        className="relative h-[210px] w-full shrink-0 overflow-hidden bg-mist"
-       onClick={(event) => { event.stopPropagation(); onClick?.(); }}
-       aria-label={`查看${item.name}`}
      >
        <OnlineAssetImage
          asset={slides[0].asset}
@@ -5985,7 +5980,7 @@ function WaterfallCardImage({
          className="h-full w-full"
          imageClassName="object-cover"
        />
-     </button>
+     </div>
    );
  }
 

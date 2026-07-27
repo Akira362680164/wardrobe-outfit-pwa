@@ -8,6 +8,7 @@ import type {
 } from "../../generated/wardora-home-contracts";
 
 import { getRuntimeSessionScope, getSession } from "../../stores/session";
+import { currentAccessibilityFontStyle } from "../../utils/accessibility-font";
 import { selectCustomTab, setCustomTabHidden } from "../../utils/custom-tab-bar";
 import {
   clearMiniTemporaryCity,
@@ -89,6 +90,7 @@ const outfitMutations = createStableMutationSession<Record<string, unknown>>();
 
 Page({
   data: {
+    fontStyle: currentAccessibilityFontStyle(),
     loading: true,
     error: "",
     greeting: "",
@@ -785,7 +787,7 @@ function mapPlan(plan: MiniOutfitPlanEntry | undefined, garments: MiniGarment[])
     revision: plan.revision,
     status: plan.status,
     availability: plan.availability,
-    title: plan.status === "worn" ? "已记录穿着" : "已安排",
+    title: plan.status === "worn" ? "今天已穿" : "当日穿搭",
     risk: plan.availability === "blocked" ? "部分衣物已不可用，请先调整穿搭。" : plan.availability === "historical" ? "当前显示历史快照。" : "",
     garments: ids.slice(0, 3).map((id) => ({ id, name: byId.get(id)?.name ?? "已删除衣物", imageUrl: byId.get(id)?.imageUrl ?? "" })),
   };

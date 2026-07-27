@@ -10,6 +10,7 @@ import { useState, useCallback, useRef } from "react";
 import type { AppRoute, MainTabKey, NavigationDirection, NavigationTransition } from "@/lib/app-route";
 import { createNavigationTransition, getMainTabFromRoute, getBackRoute, resolveCreateFallbackRoute } from "@/lib/app-route";
 import { recordDiagnosticEvent } from "@/lib/diagnostic-log";
+import { getWardoraHomeRoute } from "@/lib/home/home-feed-rollout";
 
 export type RouteChangeSource = "user" | "back" | "create" | "nav" | "system";
 
@@ -35,7 +36,7 @@ export interface NavigationController {
   closeCreateFlow: () => void;
 }
 
-const DEFAULT_ROUTE: AppRoute = { name: "wardrobe_home" };
+const DEFAULT_ROUTE: AppRoute = getWardoraHomeRoute();
 
 function routeEquals(a: AppRoute, b: AppRoute): boolean {
   if (a.name !== b.name) return false;
@@ -148,7 +149,7 @@ export function useAppNavigationController(initialRoute?: AppRoute): NavigationC
   // resetToMainTab 之前主动打点 (因为 controller 不知道 fromMainTab), 这里只负责切换。
   const resetToMainTab = useCallback((tab: MainTabKey) => {
     switch (tab) {
-      case "wardrobe": setRoute({ name: "wardrobe_home" }, "nav", "tab"); break;
+      case "wardrobe": setRoute(getWardoraHomeRoute(), "nav", "tab"); break;
       case "recommend": setRoute({ name: "outfit_home" }, "nav", "tab"); break;
       case "shopping": setRoute({ name: "wishlist_home" }, "nav", "tab"); break;
       case "settings": setRoute({ name: "settings_home" }, "nav", "tab"); break;
@@ -156,7 +157,7 @@ export function useAppNavigationController(initialRoute?: AppRoute): NavigationC
   }, [setRoute]);
 
   const openGarmentDetailFromWardrobe = useCallback((itemId: number) => {
-    setRoute({ name: "garment_detail", itemId, returnTo: "wardrobe_home" }, "user", "push");
+    setRoute({ name: "garment_detail", itemId, returnTo: getWardoraHomeRoute().name }, "user", "push");
   }, [setRoute]);
 
   const openGarmentDetailFromWishlistPurchased = useCallback((itemId: number) => {

@@ -80,12 +80,13 @@ async function prepareHomeP4VisualPage(outputRoot: string): Promise<void> {
   await writeFile(join(visualRoot, "index.js"), `
 const fixtures = require("./fixtures");
 const { createMiniWeatherCanvasRuntime } = require("../home/weather-canvas-runtime");
+const { currentAccessibilityFontStyle } = require("../../utils/accessibility-font");
 
 Page({
   data: fixtures.normal,
   onLoad(options) {
     const scene = fixtures[options.scene] || fixtures.normal;
-    this.setData(scene);
+    this.setData({ ...scene, fontStyle: currentAccessibilityFontStyle() });
   },
   async onReady() {
     this.syncTabVisibility();
