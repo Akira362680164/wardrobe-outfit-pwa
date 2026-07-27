@@ -266,8 +266,6 @@ await withFixtureAndApp(async () => {
     await page.getByLabel("我已阅读并同意").check();
     await page.getByRole("button", { name: "登录", exact: true }).click();
 
-    await page.getByText("设置", { exact: true }).last().click();
-    await page.getByTestId("open-home-feed-preview").click();
     await page.getByTestId("wardora-home-feed").waitFor();
     await waitForCondition(async () => (await fixtureTrace()).entries.some((entry) => entry.method === "GET" && entry.path === "/api/settings/location-profile" && entry.status === 503), 12_000, "首次地点失败序列未完成");
     await settleVisual(page);
@@ -408,8 +406,7 @@ await withFixtureAndApp(async () => {
 
     // 4) 回读确认
     await page.goto(APP_ORIGIN, { waitUntil: "networkidle" });
-    await page.getByText("设置", { exact: true }).last().click();
-    await page.getByTestId("open-home-feed-preview").click();
+    await page.getByTestId("wardora-home-feed").waitFor();
     const finalLocationText = await getText(page.getByTestId("home-location-entry"));
     assert("清除后未读回“未设置城市”", finalLocationText.includes("未设置城市"));
     await waitForCondition(async () => (await getText(page.getByTestId("home-weather-module"))).includes("设置地点后可查看天气"), 12_000, "locationless 天气模块未进入合法空状态");

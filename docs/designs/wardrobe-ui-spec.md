@@ -183,14 +183,14 @@ Icon-only 按钮必须有 `aria-label`；图标与文字组合时图标使用 `a
 
 | Tab key | 显示 | 图标语义 | 首页 route |
 | --- | --- | --- | --- |
-| `wardrobe` | 衣橱 | 衣物 | `wardrobe_home` |
-| `recommend` | 套装 | 套装/推荐 | `outfit_home` |
+| `wardrobe` | 首页 | 首页 | `home_feed` |
+| `recommend` | 穿搭 | 套装/推荐 | `outfit_home` |
 | `shopping` | 种草 | 购物袋 | `wishlist_home` |
 | `settings` | 设置 | 齿轮 | `settings_home` |
 
-**新首页生产目标（P1 已有内部只读 route，生产默认仍未切换）**
+**新首页生产默认（P5-A）**
 
-生产默认仍保持上表的衣橱/套装/种草/设置。P1 已登记独立 `home_feed` route，并只在 `NEXT_PUBLIC_WARDORA_HOME_FEED_P1=true` 时从设置显示内部预览入口；不得据此把登录默认 route 从 `wardrobe_home` 切走。内部新首页的底部结构固定为四个功能 Tab 加一个中央创建按钮；中央 `+` 不是第五个 Tab，不持有选中态，也不改变当前功能 Tab。
+登录、冷启动、根返回和底栏“首页”正式默认进入 `home_feed`，不依赖构建环境额外开启。仅当构建时显式设置 `NEXT_PUBLIC_WARDORA_HOME_FEED_EMERGENCY_OFF=true`，才启动旧 `wardrobe_home` 紧急回滚实现；漏配或空值不得静默回滚。设置页不再提供新首页预览入口，正常产品路径不并列展示两个首页。底部结构固定为四个功能 Tab 加一个中央创建按钮；中央 `+` 不是第五个 Tab，不持有选中态，也不改变当前功能 Tab。
 
 | 位置 | 目标 Tab / 动作 | 内容与行为 | 计划保护 |
 | --- | --- | --- | --- |
@@ -295,8 +295,8 @@ Icon-only 按钮必须有 `aria-label`；图标与文字组合时图标使用 `a
 
 | Route | 所属 Tab | 类型 | 底部导航 | 顶部栏 | 全局创建 | 默认返回 |
 | --- | --- | --- | --- | --- | --- | --- |
-| `home_feed` | 首页（内部 P1） | 主页面 / 只读推荐 | 是，四 Tab + 中央动作 | 主页面自有顶部区 | 中央 `+` 动作 | 停留 / 退出确认 |
-| `wardrobe_home` | 衣橱 | 主页面 / 生产默认回退 | 是 | 主页面自有顶部区 | 是 | 停留 / 退出确认 |
+| `home_feed` | 首页 | 主页面 / 生产默认 | 是，四 Tab + 中央动作 | 主页面自有顶部区 | 中央 `+` 动作 | 停留 / 退出确认 |
+| `wardrobe_home` | 首页（紧急回滚） | 主页面 / emergency-off 专用 | 是 | 主页面自有顶部区 | 是 | 停留 / 退出确认 |
 | `garment_detail` | 衣橱或种草来源 | 详情 | 否 | `AppSubPageTopBar` | 否 | `returnRoute` 或来源页 |
 | `outfit_home` | 套装 | 主页面 | 是 | 主页面自有顶部区 | 是 | 停留 / 退出确认 |
 | `outfit_detail` | 套装 | 详情 | 否 | `AppSubPageTopBar` | 否 | `outfit_home` 或 `outfit_calendar` |
@@ -313,7 +313,7 @@ Icon-only 按钮必须有 `aria-label`；图标与文字组合时图标使用 `a
 | `intake_outfit` | 套装 | 录入流 | 否 | `IntakeFlowShell` | 否 | `returnTo` |
 | `intake_wishlist` | 种草 | 录入流 | 否 | `IntakeFlowShell` | 否 | `returnTo` |
 
-P1 已新增独立 `home_feed` route、`useHomeFeedController` 与 HomeFeed ViewModel：登记“推荐/衣橱”分栏、所选上海业务日期、天气模块状态、推荐模块状态、主计划/已穿事实和 Android Back 主层退出语义。生产默认仍为 `wardrobe_home`，P5 前必须保留该回退；P1 不得出现采用、替换、取消或确认已穿写操作。
+P1–P3 已建立 `home_feed` route、`useHomeFeedController`、HomeFeed ViewModel、计划/已穿事务和天气 Canvas。P5-A 将该 route 切为正式默认，并把详情、录入、底栏与根返回目标统一到正式首页。`wardrobe_home` 代码只作为显式 emergency-off 的紧急回滚实现保留，正常产品路径不可见。
 
 | Route 类型 | 顶部栏 |
 | --- | --- |

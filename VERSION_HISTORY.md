@@ -7,6 +7,14 @@
 - 查看某次提交详情：`git show <commit>`
 - 新记录继续置顶，默认控制在 3–5 条短 bullet；原始测试日志、命令输出和长证据写入专项 evidence 文档或交由 Git 保存。
 
+## 2026-07-27 / v2.1.34-test / Codex — Wardora 新首页 P5-A 默认切换与 P5-B 候选准备
+
+- 登录、冷启动、底栏首页、根返回、详情返回和种草转衣橱统一进入 `home_feed`；无环境变量时正式默认开启，只有显式 `NEXT_PUBLIC_WARDORA_HOME_FEED_EMERGENCY_OFF=true` 才启动旧 `wardrobe_home` 紧急回滚。账号 ID 变化会重挂 App，避免前一账号的首页会话态短暂复用。
+- 设置页删除“Wardora 新首页预览 / 内部只读入口”，底栏收口为“首页 / 穿搭 / 种草 / 设置”，原衣橱完整能力继续位于首页“衣橱”分栏；修复该分栏瀑布流卡片的嵌套 button hydration 错误，不改天气 Canvas、推荐、地点、计划或服务端权威语义。
+- 版本递增为 `2.1.34-test` / versionCode `20134`，同步 package-lock 与 UI 规范；Android 同步阶段拒绝 fixture、loopback 和旧 P1 flag 字面量，并在不改变 URL polyfill 语义的前提下拆分其标准 `localhost` 常量。P5 手写 Fixture、P1/P2/P3、路由/Back、图片/组件、UI contracts、typecheck、正常/显式回滚 production build 和浏览器 `360/390/430px × 100%/130%` 通过。
+- 首轮独立视觉审查发现设置页采证时仍含退出路由、首页辅助文字对比不足和“推荐 / 衣橱”命中区仅 44px；现增加单一稳定路由断言，辅助文字统一提升至 `text-ink/65`，分栏命中区提升到 48px，并重新生成全矩阵截图交由独立审查复验。
+- 风险 High（默认首页、底栏、Android/APK）；独立只读视觉二轮复验 P0/P1/P2/P3 均为 0。固定签名候选 `2.1.34-test` 在 `wardrobe-test` Android 15/API 35 通过默认首页、推荐/衣橱、6/6 可见真实图片、详情 Back、根 Back、前后台、断网/恢复、Canvas 动态/静态降级、定位用途、设置入口移除及退出再登录；目标进程 fatal/runtime/loading failure 均为 0，受控账号未做业务写入，前后均为 8 件衣物、当日活跃计划 0。未修改小程序、服务端、数据库、共享合同、推荐算法或生产 API。
+
 ## 2026-07-27 / v2.1.33-test / Codex — Mobile MCP latest 烟测与 Android 使用规范
 
 - 使用 `@mobilenext/mobile-mcp@latest`（本次解析 `0.0.62`）在 `wardrobe-test` / Android 15 API 35 和固定签名 `2.1.33-test` APK 完成真实烟测；设备枚举、覆盖安装、截图、方向恢复、系统 Back、坐标点击与 ASCII 输入可用，目标 App 无 fatal。

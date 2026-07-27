@@ -44,10 +44,10 @@ check("garment_detail + wishlist_rejected → wishlist_rejected",
   JSON.stringify(getBackRoute({ name: "garment_detail", itemId: 11, returnTo: "wishlist_rejected" })) === JSON.stringify({ name: "wishlist_rejected" }));
 check("garment_detail + wishlist_archived → wishlist_archived",
   JSON.stringify(getBackRoute({ name: "garment_detail", itemId: 12, returnTo: "wishlist_archived" })) === JSON.stringify({ name: "wishlist_archived" }));
-check("garment_detail + wardrobe_home → wardrobe_home",
-  JSON.stringify(getBackRoute({ name: "garment_detail", itemId: 13, returnTo: "wardrobe_home" })) === JSON.stringify({ name: "wardrobe_home" }));
-check("garment_detail + outfit_home → wardrobe_home",
-  JSON.stringify(getBackRoute({ name: "garment_detail", itemId: 14, returnTo: "outfit_home" })) === JSON.stringify({ name: "wardrobe_home" }));
+check("garment_detail + legacy wardrobe_home → production home_feed",
+  JSON.stringify(getBackRoute({ name: "garment_detail", itemId: 13, returnTo: "wardrobe_home" })) === JSON.stringify({ name: "home_feed" }));
+check("garment_detail + fallback source → production home_feed",
+  JSON.stringify(getBackRoute({ name: "garment_detail", itemId: 14, returnTo: "outfit_home" })) === JSON.stringify({ name: "home_feed" }));
 check("outfit_detail + outfit_calendar → outfit_calendar",
   JSON.stringify(getBackRoute({ name: "outfit_detail", outfitId: "o1", returnTo: "outfit_calendar" })) === JSON.stringify({ name: "outfit_calendar" }));
 check("outfit_detail + outfit_home → outfit_home",
