@@ -1,6 +1,6 @@
 <view class="compose-page">
   <view class="compose-header">
-    <sub-page-top-bar title="{{editing ? '编辑套装' : '创建套装'}}" show-back="{{step !== 0}}" guarded-back bind:back="previousStep"><button slot="right" class="compose-close-button" bindtap="requestExit" aria-label="退出录入"><ui-icon name="x" size="34" tone="ink" /></button></sub-page-top-bar>
+    <sub-page-top-bar title="{{editing ? '编辑套装' : '创建套装'}}" show-back="{{step !== 0}}" guarded-back has-right-action right-action-width-rpx="72" bind:back="previousStep"><button slot="right" class="compose-close-button" bindtap="requestExit" aria-label="退出录入"><ui-icon name="x" size="34" tone="ink" /></button></sub-page-top-bar>
     <view class="step-copy">步骤 {{step + 1}} / 2 · {{step === 0 ? (editing ? '编辑组成' : '选择衣物') : '确认套装'}}</view>
     <view class="progress-track"><view class="progress-fill {{step === 1 ? 'is-complete' : ''}}"></view></view>
   </view>

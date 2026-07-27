@@ -36,8 +36,6 @@
 
 .sub-page-top-bar__title {
   position: absolute;
-  right: 220rpx;
-  left: 96rpx;
   box-sizing: border-box;
   width: auto;
   min-width: 0;
@@ -51,10 +49,6 @@
   text-align: center;
   text-overflow: ellipsis;
   white-space: nowrap;
-}
-
-.sub-page-top-bar__title--centered {
-  right: 96rpx;
 }
 
 .sub-page-top-bar__right {

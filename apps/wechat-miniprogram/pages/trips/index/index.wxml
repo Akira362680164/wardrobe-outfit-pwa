@@ -1,5 +1,5 @@
 <view class="page-shell trips-page">
-  <sub-page-top-bar title="旅行计划" subtitle="目的地、日期和每日穿搭">
+  <sub-page-top-bar title="旅行计划" subtitle="目的地、日期和每日穿搭" has-right-action right-action-width-rpx="96">
     <view slot="right" class="create-action" bindtap="createPlan" aria-role="button" aria-label="新建旅行计划">+计划</view>
   </sub-page-top-bar>
 

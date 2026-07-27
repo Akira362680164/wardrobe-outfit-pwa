@@ -1,5 +1,5 @@
 <view class="item-detail-shell">
-  <sub-page-top-bar title="{{topTitle || title}}"><view slot="right"><slot name="topRight" /></view></sub-page-top-bar>
+  <sub-page-top-bar title="{{topTitle || title}}" has-right-action right-action-width-rpx="96"><view slot="right" class="item-detail-shell__top-action"><slot name="topRight" /></view></sub-page-top-bar>
 
   <view class="item-detail-shell__hero">
     <view class="item-detail-shell__hero-action"><slot name="heroAction" /></view>

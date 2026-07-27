@@ -3,8 +3,8 @@
 }
 
 .more-button {
-  width: 88rpx;
-  height: 72rpx;
+  width: 96rpx;
+  height: 96rpx;
   margin: 0;
   padding: 0;
   border-radius: 999rpx;
@@ -12,7 +12,7 @@
   background: rgba(255, 255, 252, 0.78);
   font-size: 34rpx;
   font-weight: 800;
-  line-height: 62rpx;
+  line-height: 88rpx;
   letter-spacing: 4rpx;
 }
 
