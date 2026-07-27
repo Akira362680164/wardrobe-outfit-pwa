@@ -293,6 +293,7 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  gap: 8rpx;
   box-sizing: border-box;
   min-width: 196rpx;
   height: 72rpx;

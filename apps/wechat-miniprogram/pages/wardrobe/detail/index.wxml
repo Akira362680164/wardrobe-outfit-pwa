@@ -3,7 +3,11 @@
   <view wx:elif="{{error && !item}}" class="status-card"><view class="status-title">读取失败</view><view class="status-copy">{{error}}</view></view>
   <item-detail-shell wx:elif="{{item}}" top-title="单品详情" title="{{item.name}}" meta="{{item.meta}}" eyebrow="{{item.wearSummary}}" image-url="{{item.imageUrl}}" hero-label="主图" hero-fallback="{{item.categoryLabel}}">
     <button slot="topRight" class="more-button" bindtap="openMenu" aria-label="更多操作">•••</button>
-    <button slot="heroAction" class="wear-button {{wornToday ? 'is-worn' : ''}}" loading="{{wearActioning}}" disabled="{{wearActioning}}" bindtap="toggleWornToday">{{wearActioning ? '提交中' : wornToday ? '✓ 今天已穿' : '标记今天穿了'}}</button>
+    <button slot="heroAction" class="wear-button {{wornToday ? 'is-worn' : ''}}" loading="{{wearActioning}}" disabled="{{wearActioning}}" aria-label="{{wearActioning ? '正在提交穿着状态' : wornToday ? '今天已穿，点击撤销穿着记录' : '标记今天穿了'}}" bindtap="toggleWornToday">
+      <text wx:if="{{wearActioning}}">提交中</text>
+      <block wx:elif="{{wornToday}}"><ui-icon name="check" size="24" tone="success" aria-hidden="true" /><text>今天已穿</text></block>
+      <text wx:else>标记今天穿了</text>
+    </button>
     <view slot="afterHero"><item-media-section image-url="{{item.imageUrl}}" inspiration-images="{{item.inspirationImages}}" bind:add="addInspiration" bind:preview="previewMedia" bind:remove="removeInspiration" /></view>
     <view slot="tabs" class="detail-tabs"><view class="detail-tab {{activeTab === 'info' ? 'is-active' : ''}}" data-tab="info" bindtap="switchTab">信息</view><view class="detail-tab {{activeTab === 'inspiration' ? 'is-active' : ''}}" data-tab="inspiration" bindtap="switchTab">灵感</view><view class="detail-tab {{activeTab === 'pairing' ? 'is-active' : ''}}" data-tab="pairing" bindtap="switchTab">搭配</view></view>
     <block wx:if="{{activeTab === 'info'}}"><view class="ai-advice-card"><view class="ai-advice-card__head"><view class="card-title">AI 单品建议</view><view wx:if="{{adviceSource}}" class="ai-advice-card__source">{{adviceSource}}</view></view><view class="section-copy">{{adviceLoading ? '正在生成建议...' : adviceSummary || '还没有针对这件单品的建议'}}</view><view wx:for="{{adviceTips}}" wx:key="*this" class="section-copy">· {{item}}</view><button wx:if="{{!adviceSummary && !adviceLoading}}" class="advice-button" bindtap="generateAdvice">生成 AI 建议</button><button wx:elif="{{adviceSummary && !adviceLoading}}" class="advice-button advice-button--secondary" bindtap="generateAdvice">更新 AI 建议</button></view><item-field-sections item="{{item}}" kind="garment" /></block>
