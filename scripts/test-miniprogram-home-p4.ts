@@ -95,6 +95,10 @@ assert.match(page, /fontStyle:\s*currentAccessibilityFontStyle\(\)/, "home must 
 assert.match(page, /plan\.status === "worn" \? "今天已穿" : "当日穿搭"/, "home plan states must retain the approved readable titles");
 assert.match(styles, /\.settings-action,[^{]+\{\s*min-height:\s*88rpx/, "location settings actions must retain a 44px minimum hit target");
 assert.match(styles, /\.city-search button\s*\{[\s\S]*min-height:\s*88rpx/, "location search must retain a 44px minimum hit target");
+assert.match(styles, /\.weather-grid\s*\{[^}]*grid-template-columns:\s*repeat\(2,minmax\(0,1fr\)\)/, "today and tomorrow weather cards must use equal resilient columns");
+assert.match(styles, /\.weather-card\s*\{[^}]*width:\s*100%/, "each weather card must fill its equal grid column");
+assert.match(styles, /\.weather-card--today\s*\{[^}]*background:/, "today must retain a full-card background beneath Canvas");
+assert.doesNotMatch(styles, /\.weather-card--today\.is-static\s*\{/, "today's full-card background must not disappear when Canvas is active");
 assert.doesNotMatch(markup, /home-fab|content-fab/, "home must use the shared four-tab plus-center-create bar, not a second floating FAB");
 assert.match(page, /selectCustomTab\(this,\s*0\)/, "home must select the shared bottom navigation's Home tab");
 assert.match(page, /openRecommendationSheet[\s\S]+setCustomTabHidden\(this, true\)/, "details sheets must not be covered by the shared bottom navigation");
