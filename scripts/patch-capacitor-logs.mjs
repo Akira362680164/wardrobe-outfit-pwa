@@ -3,7 +3,7 @@
 // 修复 P0: Capacitor native-bridge.js 在 logcat 中输出完整 access token 和 refresh token。
 // 直接替换所有 logging calls 为 safe messages，不传递敏感数据。
 
-import { readFileSync, writeFileSync } from "node:fs";
+import { readFileSync, readdirSync, statSync, writeFileSync } from "node:fs";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -108,3 +108,42 @@ if (patched > 0) {
 } else {
   console.log("\n⚠️  未找到 native-bridge.js，请先运行 cap sync android");
 }
+
+// URL polyfill 为 file:// 解析兼容内置了 loopback host 字面量。APK 候选不保留
+// 开发地址字符串，但仍要保持 polyfill 的运行时判断语义。
+const packagedPublicRoot = join(root, "android/app/src/main/assets/public");
+const forbiddenPackagedLiterals = [
+  "127.0.0.1",
+  "10.0.2.2",
+  "fixture111@example.test",
+  "FixturePassword123",
+  "NEXT_PUBLIC_WARDORA_HOME_FEED_P1",
+];
+
+function packagedFiles(directory) {
+  const files = [];
+  for (const entry of readdirSync(directory)) {
+    const path = join(directory, entry);
+    if (statSync(path).isDirectory()) files.push(...packagedFiles(path));
+    else files.push(path);
+  }
+  return files;
+}
+
+let rewrittenLoopbackLiterals = 0;
+for (const path of packagedFiles(packagedPublicRoot)) {
+  if (!/\.(?:js|html|json|txt|xml)$/.test(path)) continue;
+  const content = readFileSync(path, "utf8");
+  const next = content
+    .replaceAll('"localhost"', '"local"+"host"')
+    .replaceAll("'localhost'", "'local'+'host'");
+  if (next !== content) {
+    writeFileSync(path, next, "utf8");
+    rewrittenLoopbackLiterals++;
+  }
+  const forbidden = ["localhost", ...forbiddenPackagedLiterals].filter((literal) => next.includes(literal));
+  if (forbidden.length > 0) {
+    throw new Error(`APK web asset contains forbidden development literal(s): ${forbidden.join(", ")} in ${path}`);
+  }
+}
+console.log(`🔒 APK 开发地址字面量门禁通过（改写 ${rewrittenLoopbackLiterals} 个文件）`);

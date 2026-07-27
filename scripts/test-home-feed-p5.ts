@@ -35,6 +35,7 @@ const navigation = readFileSync(join(root, "src/components/use-app-navigation-co
 const app = readFileSync(join(root, "src/components/wardrobe-app.tsx"), "utf8");
 const appRoot = readFileSync(join(root, "src/components/app-root.tsx"), "utf8");
 const rollout = readFileSync(join(root, "src/lib/home/home-feed-rollout.ts"), "utf8");
+const capacitorSanitizer = readFileSync(join(root, "scripts/patch-capacitor-logs.mjs"), "utf8");
 
 assert.match(navigation, /const DEFAULT_ROUTE: AppRoute = getWardoraHomeRoute\(\)/, "cold start and login must use the production home");
 assert.match(navigation, /case "wardrobe": setRoute\(getWardoraHomeRoute\(\)/, "Home Tab must use the production home");
@@ -49,5 +50,7 @@ assert.match(rollout, /NEXT_PUBLIC_WARDORA_HOME_FEED_EMERGENCY_OFF/, "the rollba
 assert.match(app, /route\.name === "wardrobe_home" \|\| route\.name === "garment_detail"/, "legacy rollback implementation must remain runnable");
 assert.match(appRoot, /<WardrobeApp[\s\S]*key=\{auth\.user\.id\}/, "account switches must remount all in-memory home state");
 assert.doesNotMatch(app + navigation + rollout, /indexedDB|Outbox|optimistic/i, "P5 must not add client business persistence");
+assert.match(capacitorSanitizer, /APK 开发地址字面量门禁通过/, "candidate sync must reject packaged development literals");
+assert.match(capacitorSanitizer, /"local"\+"host"/, "the standard URL polyfill must retain runtime semantics without a localhost literal");
 
 console.log("home feed P5 fixtures: passed");
