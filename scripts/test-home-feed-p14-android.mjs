@@ -113,9 +113,6 @@ try {
   await waitFor(() => cdp.value(`document.querySelectorAll("input").length>=3`), "Login form missing");
   await cdp.value(`(() => { const set=Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,"value").set; const inputs=[...document.querySelectorAll("input")]; const email=inputs.find(e=>e.type==="text"||e.type==="email"); const password=inputs.find(e=>e.type==="password"); set.call(email,"fixture111@example.test"); email.dispatchEvent(new Event("input",{bubbles:true})); set.call(password,"FixturePassword123!"); password.dispatchEvent(new Event("input",{bubbles:true})); const check=inputs.find(e=>e.type==="checkbox"); if(check&&!check.checked)check.click(); })()`);
   assert(await clickText(cdp, "登录"), "Login button missing");
-  await waitFor(() => clickText(cdp, "设置", true), "Settings tab missing");
-  await waitFor(() => hasTestId(cdp, "open-home-feed-preview"), "Home preview entry missing");
-  assert(await clickTestId(cdp, "open-home-feed-preview"), "Home preview click failed");
   await waitFor(() => hasTestId(cdp, "home-recommendation-card"), "Ready recommendation card missing");
   await waitFor(() => cdp.value(`document.querySelectorAll('[data-testid="home-recommendation-card"] img').length>=9`), "Real recommendation thumbnails missing");
   await settle(cdp, 600);
@@ -225,9 +222,6 @@ try {
   async function reloadHomeFor(mode) {
     await setFixtureMode(mode);
     await cdp.value("location.reload()");
-    await waitFor(() => clickText(cdp, "设置", true), `${mode}: Settings tab missing`);
-    await waitFor(() => hasTestId(cdp, "open-home-feed-preview"), `${mode}: Home preview entry missing`);
-    assert(await clickTestId(cdp, "open-home-feed-preview"), `${mode}: Home preview click failed`);
     await waitFor(() => hasTestId(cdp, "wardora-home-feed"), `${mode}: Home feed missing`);
     await settle(cdp, 1200);
   }

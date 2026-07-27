@@ -90,8 +90,8 @@ check(
 // Test 4: 一次性消费 — pendingViewingItemId 在 useEffect 之外不能保留
 // 项目源码 onPendingViewingItemConsumed={ () => { 存在 "{" 与 "(" 之间的空格, 匹配允许.
 check(
-  "pendingViewingItemId 通过 onPendingViewingItemConsumed 一次性消费 (setPendingViewingItemId(null) + setPendingViewingItemReturnTarget('wardrobe_home'))",
-  /onPendingViewingItemConsumed\s*=\s*\{\s*\(\s*\)\s*=>\s*\{[\s\S]{0,200}setPendingViewingItemId\(null\);[\s\S]{0,80}setPendingViewingItemReturnTarget\("wardrobe_home"\)/.test(wardrobeApp),
+  "pendingViewingItemId 通过 onPendingViewingItemConsumed 一次性消费并重置为正式首页",
+  /onPendingViewingItemConsumed\s*=\s*\{\s*\(\s*\)\s*=>\s*\{[\s\S]{0,200}setPendingViewingItemId\(null\);[\s\S]{0,100}setPendingViewingItemReturnTarget\(defaultHomeRoute\.name\)/.test(wardrobeApp),
 );
 
 // Test 5: 常驻 input 入口存在性
@@ -238,8 +238,8 @@ check(
   !/item\.needsReview/.test(wardrobeCardBlock),
 );
 check(
-  "单品瀑布流卡片仍通过 openWardrobeItemDetail(item, { name: \"wardrobe_home\" }) 进入详情 (v1.1.20-dev: 升级为完整 AppRoute)",
-  /openWardrobeItemDetail\(item,\s*\{\s*name:\s*"wardrobe_home"\s*\}\s*\)/.test(wardrobeCardBlock),
+  "单品瀑布流卡片通过正式首页 route 进入详情",
+  /openWardrobeItemDetail\(item,\s*wardrobeHomeRoute\s*\)/.test(wardrobeCardBlock),
 );
 check(
   "单品列表仍保留批量删除工具条 (升级为 CatalogMultiSelectBar)",
@@ -346,7 +346,7 @@ check(
 // Bug 2 修复: garmentDetailReturnTarget 扩展为完整 AppRoute
 check(
   "Bug 2: garmentDetailReturnTarget 升级为 AppRoute 类型 (v1.1.20-dev)",
-  /useState<AppRoute>\(\{\s*name:\s*"wardrobe_home"\s*\}\)/.test(wardrobeApp),
+  /useState<AppRoute>\(wardrobeHomeRoute\)/.test(wardrobeApp),
 );
 check(
   "Bug 2: openWardrobeItemDetail 第二参数升级为 AppRoute",

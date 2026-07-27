@@ -1,6 +1,8 @@
 // v1.1.7 4A: AppRoute 导航模型 — 纯函数路由定义，不依赖 React/Dexie/window
 // v1.1.20-dev: 录入流路由化 — intake_* 三个 route 把 create flow 纳入同一套路由模型，
 // 消除 wardrobe-app 顶部 activeView 独立 state（参见方案 C：route 派生 view）。
+import { getWardoraHomeRoute } from "@/lib/home/home-feed-rollout";
+
 export type MainTabKey = "wardrobe" | "recommend" | "shopping" | "settings";
 
 export type NavigationSource = "user" | "back" | "create" | "nav" | "system";
@@ -133,7 +135,7 @@ export function getBackRoute(route: AppRoute): AppRoute {
       if (rt === "wishlist_purchased") return { name: "wishlist_purchased" };
       if (rt === "wishlist_rejected") return { name: "wishlist_rejected" };
       if (rt === "wishlist_archived") return { name: "wishlist_archived" };
-      return { name: "wardrobe_home" };
+      return getWardoraHomeRoute();
     }
     case "outfit_detail": {
       if (route.returnRoute) return route.returnRoute;
@@ -180,7 +182,7 @@ export function isDetailRoute(route: AppRoute): boolean {
 
 export function getMainTabHomeRoute(tab: MainTabKey): AppRoute {
   switch (tab) {
-    case "wardrobe": return { name: "wardrobe_home" };
+    case "wardrobe": return getWardoraHomeRoute();
     case "recommend": return { name: "outfit_home" };
     case "shopping": return { name: "wishlist_home" };
     case "settings": return { name: "settings_home" };

@@ -21,6 +21,7 @@ function AuthenticatedWardrobeApp() {
   return (
     <WorkspaceGate session={auth.session} onRecoverSession={auth.refreshSession}>
       <WardrobeApp
+        key={auth.user.id}
         cloudAuth={{
           user: auth.user,
           deviceId: auth.deviceId,

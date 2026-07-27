@@ -215,10 +215,7 @@ try {
   });
   await cdp.value(`(() => { const set=Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,"value").set; const inputs=[...document.querySelectorAll("input")]; const email=inputs.find(e=>e.type==="text"||e.type==="email"); const password=inputs.find(e=>e.type==="password"); set.call(email,"fixture111@example.test"); email.dispatchEvent(new Event("input",{bubbles:true})); set.call(password,"FixturePassword123!"); password.dispatchEvent(new Event("input",{bubbles:true})); const check=inputs.find(e=>e.type==="checkbox"); if(!check.checked) check.click(); return true; })()`);
   assert(await clickText(cdp, "登录"), "Login button missing");
-  await waitFor(() => clickText(cdp, "设置", true), "Settings tab missing", 25_000);
   if (await cdp.value(`Boolean(document.querySelector('[aria-label="关闭提示"]'))`)) await clickAria(cdp, "关闭提示");
-  await waitFor(() => hasTestId(cdp, "open-home-feed-preview"), "Home preview entry missing");
-  assert(await clickTestId(cdp, "open-home-feed-preview"), "Home preview click failed");
   await waitFor(() => hasTestId(cdp, "wardora-home-feed"), "Home feed missing");
   await waitForTrace("GET", "/api/settings/location-profile", [503], profileTraceOffset);
   assert(await clickTestId(cdp, "home-location-entry"), "Location entry click failed");
@@ -285,8 +282,7 @@ try {
   await waitFor(() => cdp.value(`!document.querySelector('[role="alertdialog"]')`), "Clear dialog did not close");
   assert(await clickAria(cdp, "返回设置"), "Return to settings button missing after clear");
   await waitFor(async () => !(await hasTestId(cdp, "weather-location-settings")), "Weather settings did not exit after clear");
-  await waitFor(() => hasTestId(cdp, "open-home-feed-preview"), "Preview entry missing after clear");
-  assert(await clickTestId(cdp, "open-home-feed-preview"), "Preview entry click failed after clear");
+  assert(await clickText(cdp, "首页", true), "Home Tab missing after clear");
   await waitFor(async () => (await textOfTestId(cdp, "home-location-entry")).includes("未设置城市"), "Unset city readback missing");
   await waitFor(async () => (await textOfTestId(cdp, "home-weather-module")).includes("设置地点后可查看天气"), "Locationless weather module missing");
   await waitFor(() => cdp.value(`(() => { const visible=${visible}; return ![...document.querySelectorAll("h2,span")].some(e=>visible(e)&&e.textContent.trim()==="账号与服务") && !document.querySelector('[data-overlay-layer]'); })()`), "Old settings transition or overlay remained visible");
