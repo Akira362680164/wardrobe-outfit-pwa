@@ -22,19 +22,19 @@
       <view class="weather-grid">
         <view class="weather-card weather-card--today {{canvasStaticFallback ? 'is-static' : ''}}" role="button" data-date="today" bindtap="selectWeatherDate" aria-label="今天天气，切换到今日推荐">
           <canvas wx:if="{{canvasVisible}}" id="home-weather-canvas" class="weather-canvas-host weather-canvas" type="2d" />
+          <cover-view class="weather-copy-overlay weather-copy-overlay--today">
+            <cover-view class="weather-copy-overlay__row"><cover-view class="weather-copy-overlay__left"><cover-view>{{todayWeather.label}}</cover-view><cover-view wx:if="{{todayWeather.stale}}" class="stale-badge">较早</cover-view></cover-view><cover-view class="weather-copy-overlay__right"><cover-view class="weather-high-full">{{todayWeather.high}}</cover-view><cover-view class="weather-high-compact">{{todayWeather.highCompact}}</cover-view></cover-view></cover-view>
+            <cover-view class="weather-copy-overlay__temperature">{{todayWeather.temperature}}</cover-view>
+            <cover-view class="weather-copy-overlay__summary">{{todayWeather.summary}}</cover-view>
+            <cover-view class="weather-copy-overlay__meta">{{todayWeather.meta}}</cover-view>
+          </cover-view>
         </view>
         <button class="weather-card weather-card--tomorrow" data-date="tomorrow" bindtap="selectWeatherDate" aria-label="明天天气，切换到明日推荐">
-          <view class="weather-row"><text>{{tomorrowWeather.label}}</text><text wx:if="{{tomorrowWeather.stale}}" class="stale-badge">较早天气</text></view>
-          <view class="weather-temperature weather-temperature--small">{{tomorrowWeather.temperature}}</view>
-          <view class="weather-summary">{{tomorrowWeather.summary}}</view>
-          <view class="weather-meta">{{tomorrowWeather.meta}}</view>
+          <cover-view class="weather-row"><cover-view>{{tomorrowWeather.label}}</cover-view><cover-view wx:if="{{tomorrowWeather.stale}}" class="stale-badge">较早天气</cover-view></cover-view>
+          <cover-view class="weather-temperature weather-temperature--small">{{tomorrowWeather.temperature}}</cover-view>
+          <cover-view class="weather-summary">{{tomorrowWeather.summary}}</cover-view>
+          <cover-view class="weather-meta">{{tomorrowWeather.meta}}</cover-view>
         </button>
-        <cover-view class="weather-copy-overlay weather-copy-overlay--today">
-          <cover-view class="weather-copy-overlay__row"><cover-view class="weather-copy-overlay__left"><cover-view>{{todayWeather.label}}</cover-view><cover-view wx:if="{{todayWeather.stale}}" class="stale-badge">较早</cover-view></cover-view><cover-view class="weather-copy-overlay__right"><cover-view class="weather-high-full">{{todayWeather.high}}</cover-view><cover-view class="weather-high-compact">{{todayWeather.highCompact}}</cover-view></cover-view></cover-view>
-          <cover-view class="weather-copy-overlay__temperature">{{todayWeather.temperature}}</cover-view>
-          <cover-view class="weather-copy-overlay__summary">{{todayWeather.summary}}</cover-view>
-          <cover-view class="weather-copy-overlay__meta">{{todayWeather.meta}}</cover-view>
-        </cover-view>
       </view>
       <view wx:if="{{weatherAttribution}}" class="weather-attribution">{{weatherAttribution}}</view>
     </view>
