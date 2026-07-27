@@ -63,9 +63,42 @@ git diff --check                                                   PASS
 
 首轮独立只读视觉审查结论为 P0 0 / P1 1 / P2 2 / P3 0，未建议交付；指出的三项分别为无效字体放大证据、hero 比例不足、360 截图带旧 401。修复并重拍后，第二轮独立只读视觉审查结论为 **P0 0 / P1 0 / P2 0 / P3 0，建议交付**；字体放大、3:4 hero、干净控制台、版型拆分和筛选顺序均已关闭。
 
+## 2026-07-27 main-first 串行收口
+
+- 正式同步锚点：`main@8db6794add276a759feb8fe11b4ca4250a8de651`，其中生产 API/worker 功能提交为 `7ba22acd1dd2a2d0eb98a42ea0a46d839f606007`；任务修复冻结提交为 `18138f8902b062db943e3aed5fe726a77200124d`。
+- 任务分支使用普通双亲 merge 同步 main，合并提交为 `6ae8de7aacad97a084420341683c51e313acacda`。唯一冲突为 `VERSION_HISTORY.md`，人工保留 App/API 与小程序双方接力；根 `package.json` 和 lock 均为 main 的 `2.1.33-test`。
+- 同步首次执行 `home-shared:miniprogram:check` 发现 generated 天气合同桥接已过期；使用正式生成器更新 `generated/wardora-home-contracts.js` 后复查通过。`online-workspace` 同时证明最新 `imageDataUrl` 主图字段映射保持有效。
+- `18138f89..6ae8de7` 对已审的详情 hero、属性区、衣橱、字号、首页与 workspace 小程序源码均无差异；之后仅生成合同桥接字节变化，不改变 WXML/WXSS、布局、手势或动效。因此复用上一阶段独立视觉审查结论，未重复启动 subagent。
+- 最终正式 `wechat/miniprogram` 提交以本任务完成后的该分支与 `origin/wechat/miniprogram` 对齐 HEAD 为准；Git commit 无法在自身内容中自引用，精确 SHA 在最终交接中记录。
+
+### 串行门禁
+
+```text
+npm run test:logic:domain-catalog                              PASS
+npm run catalog:miniprogram:check                              PASS
+npm run test:logic:miniprogram-catalog                         PASS
+npm run cloud:contracts:typecheck                              PASS
+npm run api:typecheck                                          PASS
+npm run typecheck                                              PASS
+npm --prefix apps/wechat-miniprogram run typecheck             PASS
+npm run home-shared:miniprogram:check                          PASS（更新生成桥接后）
+npm run test:logic:online-workspace                            PASS
+npm run test:logic:component-reuse                             PASS
+npm --prefix apps/wechat-miniprogram run test:workspace-pagination PASS
+npm --prefix apps/wechat-miniprogram run test:workspace-wear-state PASS
+npm --prefix apps/wechat-miniprogram run test:accessibility-font   PASS
+npm run test:logic:miniprogram-item-detail                     PASS
+npm run test:logic:miniprogram-wardrobe                        PASS
+npm run test:logic:miniprogram-home-p4                         PASS
+npm run build                                                  PASS
+git diff --check                                               PASS
+```
+
+WeChat DevTools Nightly `2.02.2607132` 直接打开 `.ts` 正式目录时仍触发既有工具链限制：未生成 `pages/login/index.js`。随后执行仓库正式 `prepare:wechat-devtools-validation`，从同一份正式源码生成无 Fixture、无 mock 的隔离逐文件 JS 验证目录；开发者工具日志确认 appservice launch success、pageframe 用户代码加载完成，并编译到 `pages/login/index`。验证目录已移入废纸篓，开发者工具已退出；没有执行 preview 或 upload。
+
 ## 限制与安全
 
 - 按用户内存要求，本阶段没有重新启动 Android 模拟器；跨端对照使用冻结验收包中的 App 权威截图和 UI spec。
 - 没有调用 `miniprogram_upload`，没有上传体验版，没有部署 API，没有修改云数据库、云存储或云函数。
-- 没有修改 `packages/cloud-contracts/**`、`services/wardrobe-api/**`、`src/**`、App 构建配置或生产部署文件。
+- 第一阶段没有修改 `packages/cloud-contracts/**`、`services/wardrobe-api/**`、`src/**`、App 构建配置或生产部署文件；第二阶段只通过 Git merge 纳入 main 已验收内容，没有在这些所有权外文件上另行开发。
 - 证据不含密码、token、Authorization header、私钥或 Keychain 内容。

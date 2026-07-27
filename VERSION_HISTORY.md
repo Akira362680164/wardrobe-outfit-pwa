@@ -21,7 +21,8 @@
 - 单品详情补齐服务器权威的“标记今天穿了”及取消读回，复用稳定 `clientMutationId`，不做乐观成功或本地队列；受控 POLO 往返后恢复未穿，8 件衣物未编辑、未删除。
 - 详情 hero 按 3:4 图片语义收敛 `aspectFit`、明确 686×914.67rpx 容器、缩略图与标题层级；“版型倾向/版型说明”拆分并支持长文案，衣橱筛选统一为全部/上衣/裤子/鞋。
 - TypeScript、分页/穿着/系统字号手写测试、详情/衣橱/首页回归与正式源码 WeChat DevTools 360/390/430、实际约 144% 字号证据通过；首轮视觉审查问题修复重拍后，第二轮独立只读审查 P0/P1/P2/P3 全为 0、建议交付，详见 `apps/wechat-miniprogram/evidence/dual-end-fixes-20260724/REPORT.md`。
-- 本批先在独立任务分支完成修复并冻结；第二阶段按 main-first 顺序同步 `main@8db6794a`、复测并串行集成，未上传小程序、未部署 API。
+- 第二阶段按 main-first 顺序以双亲 merge 同步 `main@8db6794a`，人工保留双方接力并采用根版本 `2.1.33-test`；同步发现并更新过期的天气 generated bridge，workspace `imageDataUrl` 映射保持通过。
+- 共享 catalog/cloud/API/root/小程序 typecheck、分页/穿着/字号/详情/衣橱/首页 P4、线上 workspace 映射、root build 与 WeChat DevTools 隔离正式源码编译通过；已审 UI 源码零漂移，复用独立视觉审查结论。未上传小程序、未部署 API，详见专项证据。
 
 ## 2026-07-18 / v2.1.31-test / P4 — 微信小程序新首页完整对齐
 
