@@ -7,6 +7,13 @@
 - 查看某次提交详情：`git show <commit>`
 - 新记录继续置顶，默认控制在 3–5 条短 bullet；原始测试日志、命令输出和长证据写入专项 evidence 文档或交由 Git 保存。
 
+## 2026-07-27 / v2.1.33-test / Codex — 小程序最终验收 P2 收口
+
+- 首页推荐风险码建立显式中文映射，覆盖当前 V3 与兼容风险枚举；未知码统一安全兜底，空值继续沿用 forecast/generic 原文案，上海实际推荐卡不再泄露内部 `snake_case`。
+- 通用次级页顶部栏按微信胶囊动态计算操作区与标题区；详情 slot 固定 96rpx 布局/点击面，标题在返回与右侧操作之间视觉居中，旅行计划和套装编辑等实际右侧调用方声明操作宽度。
+- 冻结实现 `cd18dd55` 通过小程序 typecheck、P2 手写测试、详情/首页/Canvas/组件复用/导航回归及 catalog/home-shared 检查；WeChat DevTools WXML/WXSS、console 与真实上海页面通过。
+- 新证据覆盖 360/390/430 详情、390 上海首页和旅行计划代表页；独立 GPT-5.6 Sol / Medium 只读审查 P0–P3 全为 0、两个原 P2 均关闭并建议交付。证据位于 `/Users/fangzheng/Downloads/Wardora_cross_end_acceptance_20260727/p2-mini-fix-evidence/`；未预览、上传或部署。
+
 ## 2026-07-24 / v2.1.33-test / Codex — 双端验收 App/API 功能阻断首轮修复
 
 - 推荐输入合同严格接纳 `WeatherOverview` 已批准的当前温度/体感与日夜天气码，同时继续禁止 locationless/fallback 携带天气值及任意未知字段；旧 payload 保持兼容读取。
