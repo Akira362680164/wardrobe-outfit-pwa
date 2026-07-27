@@ -1,4 +1,4 @@
-<view class="page-shell wardrobe-page" bindtap="closeOverlays">
+<view class="page-shell wardrobe-page" style="{{fontStyle}}" bindtap="closeOverlays">
   <view class="wardrobe-top">
     <view class="filter-wrap" catchtap="noop">
     <view class="filter-card glass-panel" bindtap="toggleLocationMenu">

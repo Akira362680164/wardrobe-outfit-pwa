@@ -289,3 +289,24 @@
 .more-button::after { border: 0; }
 .advice-button { width: 100%; margin-top: 18rpx; color: var(--color-primary); background: rgba(53,92,125,.10); font-weight: 800; }
 .advice-button::after { border: 0; }
+.wear-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  min-width: 196rpx;
+  height: 72rpx;
+  margin: 0;
+  padding: 0 24rpx;
+  border: 1rpx solid rgba(255, 255, 255, 0.72);
+  border-radius: var(--radius-control);
+  background: rgba(255, 255, 252, 0.82);
+  color: var(--color-ink);
+  font-size: var(--font-caption);
+  font-weight: 800;
+  line-height: 1;
+  -webkit-backdrop-filter: blur(24rpx);
+  backdrop-filter: blur(24rpx);
+}
+.wear-button.is-worn { color: var(--color-success); }
+.wear-button::after { border: 0; }
