@@ -34,6 +34,7 @@ const root = join(import.meta.dirname, "..");
 const navigation = readFileSync(join(root, "src/components/use-app-navigation-controller.ts"), "utf8");
 const app = readFileSync(join(root, "src/components/wardrobe-app.tsx"), "utf8");
 const appRoot = readFileSync(join(root, "src/components/app-root.tsx"), "utf8");
+const homeView = readFileSync(join(root, "src/components/home/wardora-home-view.tsx"), "utf8");
 const rollout = readFileSync(join(root, "src/lib/home/home-feed-rollout.ts"), "utf8");
 const capacitorSanitizer = readFileSync(join(root, "scripts/patch-capacitor-logs.mjs"), "utf8");
 
@@ -49,6 +50,9 @@ assert.doesNotMatch(app, /NEXT_PUBLIC_WARDORA_HOME_FEED_P1/, "the production hom
 assert.match(rollout, /NEXT_PUBLIC_WARDORA_HOME_FEED_EMERGENCY_OFF/, "the rollback switch must be explicit and named");
 assert.match(app, /route\.name === "wardrobe_home" \|\| route\.name === "garment_detail"/, "legacy rollback implementation must remain runnable");
 assert.match(appRoot, /<WardrobeApp[\s\S]*key=\{auth\.user\.id\}/, "account switches must remount all in-memory home state");
+assert.match(homeView, /home-recommendation-tab[\s\S]*min-h-12/, "home recommendation Tab must expose a 48px touch target");
+assert.match(homeView, /home-wardrobe-tab[\s\S]*min-h-12/, "home wardrobe Tab must expose a 48px touch target");
+assert.doesNotMatch(homeView, /text-ink\/(?:45|50|55)/, "home auxiliary copy must retain at least 4.5:1 contrast");
 assert.doesNotMatch(app + navigation + rollout, /indexedDB|Outbox|optimistic/i, "P5 must not add client business persistence");
 assert.match(capacitorSanitizer, /APK 开发地址字面量门禁通过/, "candidate sync must reject packaged development literals");
 assert.match(capacitorSanitizer, /"local"\+"host"/, "the standard URL polyfill must retain runtime semantics without a localhost literal");

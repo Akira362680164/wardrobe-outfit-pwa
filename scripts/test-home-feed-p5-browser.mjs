@@ -46,6 +46,18 @@ async function assertNoOverflow(page, label) {
   assert(overflow <= 1, `${label}: horizontal overflow ${overflow}px`);
 }
 
+async function waitForStableRoute(page, routeName) {
+  await page.locator(`[data-navigation-presence="current"]`).waitFor();
+  await page.waitForFunction((name) => {
+    const container = document.querySelector(`[data-navigation-to="${name}"]`);
+    return Boolean(
+      container
+      && container.querySelectorAll('[data-navigation-presence="current"]').length === 1
+      && container.querySelectorAll('[data-navigation-presence="exiting"]').length === 0,
+    );
+  }, routeName);
+}
+
 start("node", ["scripts/home-feed-browser-fixture-server.mjs"], {
   ...process.env,
   HOME_FEED_FIXTURE_PORT: String(fixturePort),
@@ -73,6 +85,7 @@ try {
   await page.getByLabel("我已阅读并同意").check();
   await page.getByRole("button", { name: "登录", exact: true }).click();
   await page.getByTestId("wardora-home-feed").waitFor();
+  await waitForStableRoute(page, "home_feed");
   assert((await page.getByTestId("home-feed-navigation").innerText()).includes("首页"), "Home navigation is not selected");
   assert((await page.getByTestId("open-home-feed-preview").count()) === 0, "legacy preview entry exists on the default home");
 
@@ -94,6 +107,7 @@ try {
 
   await page.getByText("设置", { exact: true }).last().click();
   await page.getByRole("heading", { name: "设置", exact: true }).waitFor();
+  await waitForStableRoute(page, "settings_home");
   const settingsText = await page.locator("main").innerText();
   assert(!settingsText.includes("Wardora 新首页预览") && !settingsText.includes("内部只读入口"), "legacy preview copy remains in Settings");
   assert((await page.getByTestId("open-home-feed-preview").count()) === 0, "legacy preview control remains in Settings");
