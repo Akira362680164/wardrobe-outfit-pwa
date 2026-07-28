@@ -362,10 +362,19 @@ export class WorkspaceCommandService {
         ? { garmentId: input.entityId, wornAt: input.command.wornAt }
         : { outfitPlanId: input.entityId, outfitId: input.command.outfitId ?? asRecord(row.payload).outfitId, wornAt: input.command.wornAt };
       await tx.insert(wearTable).values({ id: wearEventId, userId: input.userId, revision: 1, originDeviceId: input.deviceId, payload: wearPayload, ...specialColumns("wear-events", wearPayload), createdAt: now, updatedAt: now });
-      const rawNextPayload = { ...asRecord(row.payload), worn: true, wornAt: input.command.wornAt, wearEventId };
+      const currentPayload = asRecord(row.payload);
+      const rawNextPayload = {
+        ...currentPayload,
+        worn: true,
+        wornAt: input.command.wornAt,
+        wearEventId,
+        ...(input.resource === "garments"
+          ? { wornDates: addDate(currentPayload.wornDates, input.command.wornAt.slice(0, 10)) }
+          : {}),
+      };
       const nextPayload = input.resource === "garments" ? normalizeGarmentPayload(rawNextPayload) : rawNextPayload;
       const revision = row.revision + 1;
-      await tx.update(table).set({ revision, payload: nextPayload, updatedAt: now }).where(eq(table.id, input.entityId));
+      await tx.update(table).set({ revision, originDeviceId: input.deviceId, payload: nextPayload, updatedAt: now }).where(eq(table.id, input.entityId));
       await appendChange(tx, input.userId, "wearEvent", wearEventId, "create", 1, wearPayload);
       await appendChange(tx, input.userId, descriptor.entityType, input.entityId, "update", revision, nextPayload);
       return { entity: toEntity({ id: input.entityId, revision, payload: nextPayload, createdAt: row.createdAt, updatedAt: now }), revision };
@@ -386,6 +395,9 @@ export class WorkspaceCommandService {
       if (input.resource === "outfit-plans" && stringList(asRecord(row.payload).actualGarmentIds).length) {
         return cancelGarmentPlanWornTransaction(tx, input, row);
       }
+      if (input.resource === "garments") {
+        return cancelGarmentWearTransaction(tx, input, row);
+      }
       const payload = asRecord(row.payload);
       const wearEventId = uuidOrNull(payload.wearEventId);
       const now = new Date();
@@ -397,7 +409,7 @@ export class WorkspaceCommandService {
         }
       }
       const rawNextPayload = { ...payload, worn: false, wornAt: null, wearEventId: null };
-      const nextPayload = input.resource === "garments" ? normalizeGarmentPayload(rawNextPayload) : rawNextPayload;
+      const nextPayload = rawNextPayload;
       const revision = row.revision + 1;
       await tx.update(table).set({ revision, payload: nextPayload, updatedAt: now }).where(eq(table.id, input.entityId));
       await appendChange(tx, input.userId, descriptor.entityType, input.entityId, "update", revision, nextPayload);
@@ -482,6 +494,77 @@ async function cancelGarmentPlanWornTransaction(tx: Tx, input: { entityId: strin
   await tx.update(planTable).set({ revision, originDeviceId: input.deviceId, payload: nextPayload, updatedAt: now }).where(eq(planTable.id, input.entityId));
   await appendChange(tx, input.userId, "outfitPlan", input.entityId, "update", revision, nextPayload);
   return { entity: toEntity({ id: input.entityId, revision, payload: nextPayload, createdAt: row.createdAt, updatedAt: now }), revision };
+}
+
+async function cancelGarmentWearTransaction(
+  tx: Tx,
+  input: { entityId: string; command: WorkspaceStateCommand; userId: string; deviceId: string },
+  row: any,
+) {
+  const garmentTable = WORKSPACE_RESOURCES.garments.table as AnyPgTable & Record<string, any>;
+  const wearTable = WORKSPACE_RESOURCES["wear-events"].table as AnyPgTable & Record<string, any>;
+  const payload = asRecord(row.payload);
+  const dateKey = typeof input.command.date === "string" && input.command.date
+    ? input.command.date
+    : typeof payload.wornAt === "string"
+      ? payload.wornAt.slice(0, 10)
+      : "";
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(dateKey)) {
+    throw new WorkspaceApiError(400, "invalid_request", "缺少穿着日期");
+  }
+
+  const now = new Date();
+  const events = await tx.select().from(wearTable).where(and(
+    eq(wearTable.userId, input.userId),
+    eq(wearTable.garmentId, input.entityId),
+    isNull(wearTable.deletedAt),
+  )) as any[];
+  for (const event of events.filter((item) => String(asRecord(item.payload).wornAt ?? "").slice(0, 10) === dateKey)) {
+    await tx.update(wearTable).set({
+      revision: event.revision + 1,
+      originDeviceId: input.deviceId,
+      deletedAt: now,
+      updatedAt: now,
+    }).where(and(
+      eq(wearTable.id, event.id),
+      eq(wearTable.userId, input.userId),
+      eq(wearTable.revision, event.revision),
+      isNull(wearTable.deletedAt),
+    ));
+    await appendChange(tx, input.userId, "wearEvent", event.id, "delete", event.revision + 1, {});
+  }
+
+  const nextPayload = normalizeGarmentPayload({
+    ...payload,
+    ...(typeof payload.wornAt !== "string" || payload.wornAt.slice(0, 10) === dateKey
+      ? { worn: false, wornAt: null, wearEventId: null }
+      : {}),
+    wornDates: removeDate(payload.wornDates, dateKey),
+    updatedAt: now.toISOString(),
+  });
+  const revision = row.revision + 1;
+  await tx.update(garmentTable).set({
+    revision,
+    originDeviceId: input.deviceId,
+    payload: nextPayload,
+    updatedAt: now,
+  }).where(and(
+    eq(garmentTable.id, input.entityId),
+    eq(garmentTable.userId, input.userId),
+    eq(garmentTable.revision, row.revision),
+    isNull(garmentTable.deletedAt),
+  ));
+  await appendChange(tx, input.userId, "garment", input.entityId, "update", revision, nextPayload);
+  return {
+    entity: toEntity({
+      id: input.entityId,
+      revision,
+      payload: nextPayload,
+      createdAt: row.createdAt,
+      updatedAt: now,
+    }),
+    revision,
+  };
 }
 
 async function markOutfitWearTransaction(

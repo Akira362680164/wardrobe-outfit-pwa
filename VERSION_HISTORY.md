@@ -7,6 +7,53 @@
 - 查看某次提交详情：`git show <commit>`
 - 新记录继续置顶，默认控制在 3–5 条短 bullet；原始测试日志、命令输出和长证据写入专项 evidence 文档或交由 Git 保存。
 
+## 2026-07-28 / v2.1.35-test / Codex — 小程序天气 Canvas 销毁残影收口
+
+- 独立视觉复核在 430px 主页截图发现天气温度层出现在设备左上圆角；根因是天气 Canvas 由 `wx:if` 反复创建/移除，原生合成层可能在空帧提交前被拆下并留下孤立 surface。
+- Canvas 节点现在常驻，只用 `is-visible/is-hidden` 切换可见性；销毁时先取消帧调度、清屏，再把 backing store 重置为 `1×1`。天气文字改用 Canvas 2D 同层普通 `view`，不再建立额外 `cover-view` 原生层。
+- P4 门禁以红灯冻结“节点不得拆卸、隐藏类、backing store 重置、无天气 cover-view”合同；430px 同页 `normal → fallback → normal` 实况没有残影或双层文字。WeChat 截图接口仍会在画布外生成角落伪影，最终证据同时保留页面原图和开发者工具实况。
+- 风险 Medium（小程序 Canvas 生命周期）；未 preview/upload、云写入或生产数据操作，首页/Canvas/类型/编译与 366/390/430 证据完成后交由独立视觉 subagent 复核。
+
+## 2026-07-28 / v2.1.35-test / Codex — 小程序单品详情分段命中区收口
+
+- 独立视觉审查发现“信息 / 灵感 / 搭配”分段仅使用 `78rpx`，在 366–390px 设备会缩到约 38–41px；保留原视觉高度并增加共享 `--hit-target-min` 44px 下限，不改选中态、圆角、颜色或业务逻辑。
+- 详情合同先以旧实现复现红灯，再冻结 `78rpx + 44px min-height` 与共享 token；相关小程序类型、详情、字号、P2、shell 和 WeChat DevTools 编译在提交前复验。
+- 风险 Medium（窄屏触控与轻微纵向增高）；未 preview/upload、云写入、推送或部署，最终多尺寸截图继续由独立视觉审查验收。
+
+## 2026-07-28 / v2.1.35-test / Codex — 小程序 P5-C 最终 main-first 集成
+
+- 按共享代码收口顺序把最终 `main@33d5f69eb2649050c3fa633545fbeaf9be008baf` 串行合入小程序候选，完整带入服务端 `wornDates` 事务一致性、App P5-B 独立详情路由及居中确认框 28px 圆角收口；双方历史均保留。
+- 小程序 build-info 由生成脚本更新到根版本 `2.1.35-test`；domain catalog 与 home-shared 生成物检查均无语义差异，未手工修改生成文件。
+- 风险 High（跨端正式基线与服务端事务）；合入后继续执行 root/cloud/API/小程序类型与专项门禁、WeChat DevTools 编译、多尺寸/大字体截图和独立视觉复核。未 preview/upload、云写入、推送或生产部署。
+
+## 2026-07-28 / v2.1.35-test / Codex — Wardora P5-B 居中确认框圆角收口
+
+- `MotionSheet` 的居中 / 非 bottom 分支由 `16px` 收口到 UI 规范 `--ui-radius-card`（`28px`）；bottom sheet 继续保留 `rounded-t-2xl`，不改动效、接口、按钮或信息结构。
+- 手写 overlay 门禁同时冻结 centered 外框 `28px`、bottom sheet 顶部 `16px` 和真实退出确认内部按钮 `--ui-radius-control`（`16px`）；红灯精确命中旧 centered `rounded-2xl`，修复后转绿。
+- 风险 High（共享 MotionSheet / Dialog 视觉）；按主任务明确边界不构建 APK、不部署、不推送、不启动视觉 subagent。浏览器、Android WebView 与真机视觉仍由集成 Session 复核。
+
+## 2026-07-28 / v2.1.35-test / Codex — Wardora 新首页 P5-B Android 与跨账号收口
+
+- 首页“衣橱”卡片改为进入独立 `garment_detail` 外层路由，不再把详情嵌进天气与分栏下方；返回时恢复首页衣橱分栏。独立详情直接按 route 隐藏底栏，内部衣橱子页仍保留原状态边界。
+- 路由转场补齐与 App ambient 一致的不透明承载面，避免 `AnimatePresence mode="sync"` 的 home/settings 同屏文字碰撞；根 Back 退出确认按钮提升至 48dp。无裁切框图片的默认 cropBox 改为稳定引用，消除详情原图加载时的 React 最大更新深度警告。
+- P5 浏览器门禁新增独立详情 Back、退出登录、切换账号、再次登录及 nested-button/hydration 检查；360/390/430px、100%/130%、typecheck、P5 手写 Fixture、路由/Back 与浏览器全链通过，page/console error 均为 0。
+- 版本递增为 `2.1.35-test` / versionCode `20135`。风险 High（默认首页详情、路由动效、Android）；冻结提交后从该 SHA 重建固定签名 APK，并以 Android 15/API 35 复核详情顶部按钮、定位用途 Sheet、设置、根 Back、前后台和正常/reduced-motion 转场。独立只读视觉复验由主 Session 基于冻结 SHA 与证据包执行。
+
+## 2026-07-28 / v2.1.34-test / Codex — 单品取消当天穿着的服务端一致性修复
+
+- 单品 `mark-worn` 现在与计划、套装穿着使用同一权威统计口径，在服务端事务内同步写入去重后的 `wornDates`；不再只写 `worn/wornAt/wearEventId`。
+- 单品 `cancel-worn` 按明确日期移除目标衣物的 `wornDates`，并仅软删除该用户、该衣物、该日期的穿着事件；保留其他日期、其他衣物、其他用户及计划/套装本身的事实，响应读回不再可能“标志已取消但当天日期仍残留”。
+- 新增真实 PostgreSQL 回归，覆盖直接穿着、每日推荐计划来源、正式套装来源、同一 `clientMutationId` 幂等重放、旧 revision 冲突、其他日期保留和跨用户隔离；红灯为 `4 failed`，修复后专项 `4/4`、API 单元 `348/348`、真实 PostgreSQL `76/76`、API/root typecheck 与 API build 通过。
+- 风险 High（服务端穿着事务与 revision）；不改 schema、共享合同、小程序视觉或 App 版本。当前执行为主任务委派的独立后端子任务，未另启动额外 subagent；进入 `main` 后按生产流程更新 API/worker，并复验 health/ready/version、鉴权和真实读回。
+
+## 2026-07-28 / v2.1.34-test / Codex — 小程序 P5-C 状态栏与成功图标收口
+
+- 浅色自定义导航全局显式使用深色系统状态栏文字，关闭最终候选中时间、网络和电量信息在近白背景上不可读的问题；现有 UI 规范“浅色页面使用深色系统图标”保持唯一事实源。
+- 共享小程序图标生成合同复用既有 `color.success/#5f7058`，为 `success` tone 生成确定性 SVG 资产；单品详情“今天已穿”check 现在解析到真实成功色资源，不再静默回退为 `ink`。
+- 取消穿着的服务端读回门禁同时校验标量状态和目标日期已从 `wornDates` 消失；其他历史日期可以继续保留，避免计划/套装来源仍残留当天却被客户端误报“已撤销”。
+- 独立视觉审查发现 `rpx` 在 366–390px 下会把返回、撤销已穿、分段按钮、详情状态按钮和底栏创建入口缩到 44px 以下；新增共享 `--hit-target-min: 44px` 并让相关控件只在必要时扩展命中区，保持原有视觉尺寸、圆角和居中关系。
+- 门禁覆盖最终图标解析、状态栏、取消穿着读回与共享 44px 命中区；首轮 390px/16px 证据已通过状态栏、按钮圆角和图文对齐检查，最终同 SHA 的 430px、366px/大字体证据等待 main-first 集成后重采。风险 Medium；未 preview/upload、云写入或发布，物理微信真机仍未验证。
+
 ## 2026-07-27 / v2.1.34-test / Codex — 小程序 P5-C 上传前候选收口
 
 - 关闭发布门禁：详情“今天已穿”改用共享 `ui-icon/check`，首页接入系统字号 token，计划标题冻结为“当日穿搭 / 今天已穿”，详情与地点 Sheet 保持 44px 命中区；今天/明天天气卡使用严格等宽列、统一字号/行高与 `cover-view` 文本渲染层，并让今天卡在 Canvas 活跃时仍完整铺底，不改天气动效或业务语义。
@@ -29,7 +76,6 @@
 - 通用次级页顶部栏按微信胶囊动态计算操作区与标题区；详情 slot 固定 96rpx 布局/点击面，标题在返回与右侧操作之间视觉居中，旅行计划和套装编辑等实际右侧调用方声明操作宽度。
 - 冻结实现 `cd18dd55` 通过小程序 typecheck、P2 手写测试、详情/首页/Canvas/组件复用/导航回归及 catalog/home-shared 检查；WeChat DevTools WXML/WXSS、console 与真实上海页面通过。
 - 新证据覆盖 360/390/430 详情、390 上海首页和旅行计划代表页；独立 GPT-5.6 Sol / Medium 只读审查 P0–P3 全为 0、两个原 P2 均关闭并建议交付。证据位于 `/Users/fangzheng/Downloads/Wardora_cross_end_acceptance_20260727/p2-mini-fix-evidence/`；未预览、上传或部署。
-
 ## 2026-07-27 / v2.1.34-test / Codex — Wardora 新首页 P5-A 默认切换与 P5-B 候选准备
 
 - 登录、冷启动、底栏首页、根返回、详情返回和种草转衣橱统一进入 `home_feed`；无环境变量时正式默认开启，只有显式 `NEXT_PUBLIC_WARDORA_HOME_FEED_EMERGENCY_OFF=true` 才启动旧 `wardrobe_home` 紧急回滚。账号 ID 变化会重挂 App，避免前一账号的首页会话态短暂复用。

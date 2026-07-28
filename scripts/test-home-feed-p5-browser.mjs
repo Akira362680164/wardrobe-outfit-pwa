@@ -12,6 +12,7 @@ const children = [];
 const screenshots = [];
 const pageErrors = [];
 const consoleErrors = [];
+let phase = "startup";
 
 await mkdir(evidenceDir, { recursive: true });
 
@@ -58,6 +59,16 @@ async function waitForStableRoute(page, routeName) {
   }, routeName);
 }
 
+async function login(page, account) {
+  await page.getByLabel("邮箱或手机号").fill(account);
+  await page.getByLabel("密码").fill("FixturePassword123!");
+  const agreement = page.getByLabel("我已阅读并同意");
+  if (!(await agreement.isChecked())) await agreement.check();
+  await page.getByRole("button", { name: "登录", exact: true }).click();
+  await page.getByTestId("wardora-home-feed").waitFor();
+  await waitForStableRoute(page, "home_feed");
+}
+
 start("node", ["scripts/home-feed-browser-fixture-server.mjs"], {
   ...process.env,
   HOME_FEED_FIXTURE_PORT: String(fixturePort),
@@ -73,19 +84,28 @@ await waitFor(appOrigin);
 
 const browser = await chromium.launch({ headless: true });
 const page = await browser.newPage({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 1 });
-page.on("pageerror", (error) => pageErrors.push(error.message));
+await page.addInitScript(() => {
+  const original = console.error.bind(console);
+  Object.defineProperty(window, "__p5ConsoleErrors", { value: [], configurable: true });
+  console.error = (...args) => {
+    window.__p5ConsoleErrors.push(args.map((value) => {
+      if (value instanceof Error) return value.stack ?? value.message;
+      return typeof value === "string" ? value : JSON.stringify(value);
+    }).join(" | "));
+    original(...args);
+  };
+});
+page.on("pageerror", (error) => pageErrors.push(`[${phase}] ${error.message}`));
 page.on("console", (message) => {
-  if (message.type() === "error" && !/Failed to load resource/.test(message.text())) consoleErrors.push(message.text());
+  if (message.type() === "error" && !/Failed to load resource/.test(message.text())) {
+    consoleErrors.push(`[${phase}] ${message.text()} @ ${JSON.stringify(message.location())}`);
+  }
 });
 
 try {
   await page.goto(appOrigin, { waitUntil: "networkidle" });
-  await page.getByLabel("邮箱或手机号").fill("fixture111@example.test");
-  await page.getByLabel("密码").fill("FixturePassword123!");
-  await page.getByLabel("我已阅读并同意").check();
-  await page.getByRole("button", { name: "登录", exact: true }).click();
-  await page.getByTestId("wardora-home-feed").waitFor();
-  await waitForStableRoute(page, "home_feed");
+  phase = "initial-login";
+  await login(page, "fixture111@example.test");
   assert((await page.getByTestId("home-feed-navigation").innerText()).includes("首页"), "Home navigation is not selected");
   assert((await page.getByTestId("open-home-feed-preview").count()) === 0, "legacy preview entry exists on the default home");
 
@@ -100,12 +120,24 @@ try {
 
   await page.setViewportSize({ width: 390, height: 844 });
   await page.evaluate(() => { document.documentElement.style.fontSize = "16px"; });
+  phase = "garment-detail";
   await page.getByRole("tab", { name: "衣橱", exact: true }).click();
   await page.getByRole("tabpanel", { name: "衣橱" }).waitFor();
   await assertNoOverflow(page, "home-wardrobe");
   await capture(page, "home-wardrobe-390-font100");
 
-  await page.getByText("设置", { exact: true }).last().click();
+  const firstGarment = page.locator("button.ui-card[aria-label]").first();
+  await firstGarment.click();
+  await waitForStableRoute(page, "garment_detail");
+  await page.getByRole("button", { name: "返回", exact: true }).waitFor();
+  assert((await page.locator('[data-testid="wardora-home-feed"]').count()) === 0, "garment detail remained nested under the home shell");
+  assert((await page.locator("button button").count()) === 0, "nested interactive buttons remain after garment detail hydration");
+  await page.getByRole("button", { name: "返回", exact: true }).click();
+  await waitForStableRoute(page, "home_feed");
+  await page.getByRole("tab", { name: "衣橱" }).waitFor();
+
+  phase = "settings";
+  await page.locator("button").filter({ hasText: /^设置$/ }).last().click();
   await page.getByRole("heading", { name: "设置", exact: true }).waitFor();
   await waitForStableRoute(page, "settings_home");
   const settingsText = await page.locator("main").innerText();
@@ -127,8 +159,30 @@ try {
   await page.getByTestId("wardora-home-feed").waitFor();
   assert((await page.getByTestId("home-feed-navigation").innerText()).includes("首页"), "Home Tab did not return to home_feed");
 
+  phase = "account-switch";
+  await page.locator("button").filter({ hasText: /^设置$/ }).last().click();
+  await waitForStableRoute(page, "settings_home");
+  await page.getByRole("button", { name: "管理", exact: true }).click();
+  await waitForStableRoute(page, "account_management");
+  await page.getByRole("button", { name: "退出登录", exact: true }).click();
+  await page.getByRole("button", { name: "退出登录", exact: true }).click();
+  await page.getByLabel("邮箱或手机号").waitFor();
+  await login(page, "fixture222@example.test");
+  assert((await page.getByTestId("home-feed-navigation").innerText()).includes("首页"), "account switch did not remount into home_feed");
+  phase = "relogin";
+  await page.locator("button").filter({ hasText: /^设置$/ }).last().click();
+  await waitForStableRoute(page, "settings_home");
+  await page.getByRole("button", { name: "管理", exact: true }).click();
+  await waitForStableRoute(page, "account_management");
+  await page.getByRole("button", { name: "退出登录", exact: true }).click();
+  await page.getByRole("button", { name: "退出登录", exact: true }).click();
+  await page.getByLabel("邮箱或手机号").waitFor();
+  await login(page, "fixture111@example.test");
+  assert((await page.locator("button button").count()) === 0, "nested buttons or hydration repair appeared after logout/account-switch/relogin");
+
+  const browserConsoleErrors = await page.evaluate(() => window.__p5ConsoleErrors ?? []);
   assert(pageErrors.length === 0, `page errors: ${pageErrors.join(" | ")}`);
-  assert(consoleErrors.length === 0, `console errors: ${consoleErrors.join(" | ")}`);
+  assert(consoleErrors.length === 0, `console errors: ${consoleErrors.join(" | ")} | browser details: ${browserConsoleErrors.join(" | ")}`);
   await writeFile(`${evidenceDir}/manifest.json`, JSON.stringify({
     appOrigin,
     fixtureOrigin,
@@ -142,6 +196,9 @@ try {
       wardrobeTab: true,
       settingsPreviewEntryAbsent: true,
       homeTabReturn: true,
+      garmentDetailPromotedRouteAndBack: true,
+      logoutAccountSwitchRelogin: true,
+      nestedButtonCount: 0,
       overflow: 0,
     },
   }, null, 2));

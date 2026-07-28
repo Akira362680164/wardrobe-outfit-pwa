@@ -1166,7 +1166,7 @@ export async function cancelGarmentWornOnDate(
     },
   });
   const detail = await fetchGarmentDetail(id);
-  if (!serverConfirmedGarmentCancel(detail.rawPayload)) {
+  if (!serverConfirmedGarmentCancel(detail.rawPayload, dateKey)) {
     throw new Error("服务器未确认取消今天穿着记录，请重试");
   }
   return detail;

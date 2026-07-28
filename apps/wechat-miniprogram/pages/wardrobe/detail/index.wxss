@@ -146,6 +146,7 @@
   justify-content: center;
   min-width: 0;
   height: 78rpx;
+  min-height: var(--hit-target-min);
   border-radius: var(--radius-control);
   color: var(--color-muted);
   font-size: var(--font-body);
@@ -297,7 +298,7 @@
   box-sizing: border-box;
   min-width: 196rpx;
   height: 88rpx;
-  min-height: 88rpx;
+  min-height: var(--hit-target-min);
   margin: 0;
   padding: 0 24rpx;
   border: 1rpx solid rgba(255, 255, 255, 0.72);

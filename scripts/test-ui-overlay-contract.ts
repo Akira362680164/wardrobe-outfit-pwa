@@ -17,6 +17,8 @@ const topBar = read("src/components/app-sub-page-top-bar.tsx");
 const garmentFlow = read("src/components/garment-intake-flow.tsx");
 const globals = read("src/app/globals.css");
 const wardrobe = read("src/components/wardrobe-app.tsx");
+const exitDialogStart = wardrobe.indexOf('ariaLabel="确认退出应用"');
+const exitDialog = wardrobe.slice(exitDialogStart, exitDialogStart + 1_400);
 
 const motionSheetStart = motion.indexOf("function MotionSheetLayer");
 const motionSheetEnd = motion.indexOf("/* ------------------------------------------------------------------ */", motionSheetStart + 1);
@@ -45,6 +47,11 @@ assert.match(motion, /function useTopmostFocusScope[\s\S]{0,1600}event\.key !== 
 assert.match(motionSheet, /aria-hidden=\{isTopmost \? undefined : "true"\}/, "lower MotionSheet layers are hidden from assistive tech");
 assert.match(motionSheet, /inert=\{isTopmost \? undefined : true\}/, "lower MotionSheet layers are inert");
 assert.ok(motionSheet.includes("aria-busy={!dismissible || undefined}"), "non-dismissible dialog exposes busy semantics");
+assert.match(
+  motionSheet,
+  /bottomPresentation \? "absolute bottom-0 inset-x-0 mx-auto rounded-t-2xl" : "relative mx-auto w-full max-w-lg rounded-\[var\(--ui-radius-card\)\]"/,
+  "centered MotionSheet uses the 28px card radius while bottom sheets retain their top-only 16px radius",
+);
 
 assert.match(overlayRoot, /id = "wardrobe-overlay-root"[\s\S]{0,180}document\.body\.appendChild\(root\)/, "OverlayRoot mounts once under body");
 assert.match(overlayRoot, /data-overlay-app-content="true"[\s\S]{0,180}aria-hidden=\{hasOverlay[\s\S]{0,120}inert=\{hasOverlay/, "OverlayRoot isolates App content");
@@ -96,6 +103,8 @@ assert.match(topBar, /<span className="grid h-10 w-10 place-items-center ui-cont
 assert.match(topBar, /<MoreHorizontal size=\{20\} strokeWidth=\{2\.6\}/, "more icon is slightly larger and heavier after removing the white top strip");
 
 assert.match(globals, /--ui-radius-nav-active:\s*22px;/, "bottom nav active radius has concentric token");
+assert.match(globals, /--ui-radius-card:\s*28px;/, "centered dialog reuses the 28px first-level card radius");
+assert.match(globals, /--ui-radius-control:\s*16px;/, "dialog controls retain the 16px control radius");
 assert.match(globals, /\.app-glass-top\s*\{[\s\S]{0,160}background:\s*rgba\(255,\s*255,\s*255,\s*0\.01\);[\s\S]{0,160}box-shadow:\s*none;/, "top glass keeps blur but removes visible white strip");
 assert.match(globals, /\.app-floating-nav\s*\{[\s\S]{0,700}background:\s*rgba\(255,\s*255,\s*252,\s*0\.4\);[\s\S]{0,400}backdrop-filter:\s*blur\(34px\) saturate\(1\.5\) brightness\(1\.05\);/, "bottom nav uses the approved higher-transparency glass material");
 assert.match(globals, /\.app-floating-nav::before\s*\{[\s\S]{0,800}linear-gradient\([\s\S]{0,120}135deg[\s\S]{0,500}inset 0 0 0 1px/, "bottom nav simulates angled edge refraction and depth without a displacement filter");
@@ -105,6 +114,9 @@ assert.match(globals, /\.ui-card\s*\{[\s\S]{0,500}backdrop-filter:\s*var\(--ui-c
 assert.ok(!wardrobe.includes("bottom-2 left-2 top-2 w-1"), "runtime toast does not use a full-height status strip");
 assert.ok(wardrobe.includes("WebkitLineClamp: 3"), "runtime toast clamps body copy to three lines");
 assert.ok(wardrobe.includes("rounded-[var(--ui-radius-nav-active)]"), "mobile nav active item uses concentric nav radius");
+assert.ok(exitDialogStart >= 0, "centered exit confirmation remains present");
+assert.match(exitDialog, /className="min-h-12 ui-control-radius[^"]*">取消<\/button>/, "centered exit confirmation keeps its cancel button on the 16px control radius");
+assert.match(exitDialog, /className="min-h-12 ui-control-radius[^"]*">退出<\/button>/, "centered exit confirmation keeps its exit button on the 16px control radius");
 
 assert.ok(!garmentFlow.includes("Step 3"), "garment intake code must not mention Step 3");
 assert.ok(!garmentFlow.includes("步骤 3"), "garment intake code must not mention 步骤 3");
