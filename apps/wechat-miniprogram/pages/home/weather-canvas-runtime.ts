@@ -105,7 +105,11 @@ export async function createMiniWeatherCanvasRuntime(input: {
     destroy() {
       destroyed = true;
       pause();
-      try { context.clearRect(0, 0, width, height); } catch { /* native layer may already be detached */ }
+      try {
+        context.clearRect(0, 0, width, height);
+        canvas.width = 1;
+        canvas.height = 1;
+      } catch { /* the stable node may already belong to a closing page */ }
     },
     get metrics() { return { dpr, frames, targetFps: WEATHER_CANVAS_TARGET_FPS }; },
   };

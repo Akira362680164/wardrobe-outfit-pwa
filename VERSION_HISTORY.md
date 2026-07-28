@@ -9,10 +9,10 @@
 
 ## 2026-07-28 / v2.1.35-test / Codex — 小程序天气 Canvas 销毁残影收口
 
-- 独立视觉复核在 430px 主页稳定发现天气文字绘制层泄漏到设备左上圆角；根因是天气 Canvas 仅停止动画后立即由 `wx:if` 移除，未先清空原生合成层。
-- Canvas `destroy()` 现在先取消帧调度，再清空完整绘制区域，最后才由页面状态移除节点；不改天气动效、合法天气文字、接口、推荐或业务状态。
-- 手写 P4 门禁先复现红灯并冻结“销毁前 clearRect”合同；首页 P4、共享 Canvas Fixture、小程序类型、字号、P2、shell 与详情门禁通过后重采 366/390/430 视觉证据。
-- 风险 Medium（小程序原生 Canvas 生命周期）；未 preview/upload、云写入或生产数据操作，独立视觉复核基于新冻结提交重新执行。
+- 独立视觉复核在 430px 主页截图发现天气温度层出现在设备左上圆角；根因是天气 Canvas 由 `wx:if` 反复创建/移除，原生合成层可能在空帧提交前被拆下并留下孤立 surface。
+- Canvas 节点现在常驻，只用 `is-visible/is-hidden` 切换可见性；销毁时先取消帧调度、清屏，再把 backing store 重置为 `1×1`。天气文字改用 Canvas 2D 同层普通 `view`，不再建立额外 `cover-view` 原生层。
+- P4 门禁以红灯冻结“节点不得拆卸、隐藏类、backing store 重置、无天气 cover-view”合同；430px 同页 `normal → fallback → normal` 实况没有残影或双层文字。WeChat 截图接口仍会在画布外生成角落伪影，最终证据同时保留页面原图和开发者工具实况。
+- 风险 Medium（小程序 Canvas 生命周期）；未 preview/upload、云写入或生产数据操作，首页/Canvas/类型/编译与 366/390/430 证据完成后交由独立视觉 subagent 复核。
 
 ## 2026-07-28 / v2.1.35-test / Codex — 小程序单品详情分段命中区收口
 

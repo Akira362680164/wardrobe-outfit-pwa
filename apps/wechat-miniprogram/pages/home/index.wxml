@@ -21,19 +21,19 @@
       </view>
       <view class="weather-grid">
         <view class="weather-card weather-card--today {{canvasStaticFallback ? 'is-static' : ''}}" role="button" data-date="today" bindtap="selectWeatherDate" aria-label="今天天气，切换到今日推荐">
-          <canvas wx:if="{{canvasVisible}}" id="home-weather-canvas" class="weather-canvas-host weather-canvas" type="2d" />
-          <cover-view class="weather-copy-overlay weather-copy-overlay--today">
-            <cover-view class="weather-copy-overlay__row"><cover-view class="weather-copy-overlay__left"><cover-view>{{todayWeather.label}}</cover-view><cover-view wx:if="{{todayWeather.stale}}" class="stale-badge">较早</cover-view></cover-view><cover-view class="weather-copy-overlay__right"><cover-view class="weather-high-full">{{todayWeather.high}}</cover-view><cover-view class="weather-high-compact">{{todayWeather.highCompact}}</cover-view></cover-view></cover-view>
-            <cover-view class="weather-copy-overlay__temperature">{{todayWeather.temperature}}</cover-view>
-            <cover-view class="weather-copy-overlay__summary">{{todayWeather.summary}}</cover-view>
-            <cover-view class="weather-copy-overlay__meta">{{todayWeather.meta}}</cover-view>
-          </cover-view>
+          <canvas id="home-weather-canvas" class="weather-canvas-host weather-canvas {{canvasVisible ? 'is-visible' : 'is-hidden'}}" type="2d" />
+          <view class="weather-copy-overlay weather-copy-overlay--today">
+            <view class="weather-copy-overlay__row"><view class="weather-copy-overlay__left"><view>{{todayWeather.label}}</view><view wx:if="{{todayWeather.stale}}" class="stale-badge">较早</view></view><view class="weather-copy-overlay__right"><view class="weather-high-full">{{todayWeather.high}}</view><view class="weather-high-compact">{{todayWeather.highCompact}}</view></view></view>
+            <view class="weather-copy-overlay__temperature">{{todayWeather.temperature}}</view>
+            <view class="weather-copy-overlay__summary">{{todayWeather.summary}}</view>
+            <view class="weather-copy-overlay__meta">{{todayWeather.meta}}</view>
+          </view>
         </view>
         <button class="weather-card weather-card--tomorrow" data-date="tomorrow" bindtap="selectWeatherDate" aria-label="明天天气，切换到明日推荐">
-          <cover-view class="weather-row"><cover-view>{{tomorrowWeather.label}}</cover-view><cover-view wx:if="{{tomorrowWeather.stale}}" class="stale-badge">较早天气</cover-view></cover-view>
-          <cover-view class="weather-temperature weather-temperature--small">{{tomorrowWeather.temperature}}</cover-view>
-          <cover-view class="weather-summary">{{tomorrowWeather.summary}}</cover-view>
-          <cover-view class="weather-meta">{{tomorrowWeather.meta}}</cover-view>
+          <view class="weather-row"><view>{{tomorrowWeather.label}}</view><view wx:if="{{tomorrowWeather.stale}}" class="stale-badge">较早天气</view></view>
+          <view class="weather-temperature weather-temperature--small">{{tomorrowWeather.temperature}}</view>
+          <view class="weather-summary">{{tomorrowWeather.summary}}</view>
+          <view class="weather-meta">{{tomorrowWeather.meta}}</view>
         </button>
       </view>
       <view wx:if="{{weatherAttribution}}" class="weather-attribution">{{weatherAttribution}}</view>
