@@ -49,7 +49,7 @@ assert.match(garment, /今天已穿，点击撤销穿着记录/, "the worn actio
 assert.doesNotMatch(garment, /✓/, "the worn state must not use a Unicode check icon");
 assert.match(
   garmentStyle,
-  /\.wear-button[\s\S]*min-height:\s*88rpx/,
+  /\.wear-button[\s\S]*min-height:\s*var\(--hit-target-min\)/,
   "the wear-state action must retain a 44px minimum hit target",
 );
 assert.match(garmentTs, /wearMutation\.key !== mutationKey/);

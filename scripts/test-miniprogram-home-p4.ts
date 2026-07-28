@@ -76,6 +76,8 @@ const homeService = readFileSync("apps/wechat-miniprogram/services/home.ts", "ut
 const canvasRuntime = readFileSync("apps/wechat-miniprogram/pages/home/weather-canvas-runtime.ts", "utf8");
 const markup = readFileSync("apps/wechat-miniprogram/pages/home/index.wxml", "utf8");
 const styles = readFileSync("apps/wechat-miniprogram/pages/home/index.wxss", "utf8");
+const tokens = readFileSync("apps/wechat-miniprogram/styles/tokens.wxss", "utf8");
+const tabStyles = readFileSync("apps/wechat-miniprogram/custom-tab-bar/index.wxss", "utf8");
 const visualFixture = readFileSync("scripts/fixtures/miniprogram-home-p4-visual.ts", "utf8");
 assert.doesNotMatch(page, /openWardrobe\(\);/, "home must no longer redirect to the wardrobe tab");
 assert.doesNotMatch(page, /on(?:Load|Show)[\s\S]{0,900}getLocation\s*\(/, "home lifecycle must not automatically request location");
@@ -97,8 +99,10 @@ assert.match(markup, /ui-icon name="chevron-right"[^>]+/, "the recommendation de
 assert.match(markup, /class="home-page" style="\{\{fontStyle\}\}"/, "home must bind the system accessibility font token");
 assert.match(page, /fontStyle:\s*currentAccessibilityFontStyle\(\)/, "home must initialize the system accessibility font token");
 assert.match(page, /plan\.status === "worn" \? "今天已穿" : "当日穿搭"/, "home plan states must retain the approved readable titles");
-assert.match(styles, /\.settings-action,[^{]+\{\s*min-height:\s*88rpx/, "location settings actions must retain a 44px minimum hit target");
-assert.match(styles, /\.city-search button\s*\{[\s\S]*min-height:\s*88rpx/, "location search must retain a 44px minimum hit target");
+assert.match(tokens, /--hit-target-min:\s*44px/, "the shared mini-program touch target must not scale below 44px");
+assert.match(styles, /\.settings-action,[^{]+\{[^}]*min-height:\s*var\(--hit-target-min\)/, "location settings actions must retain the shared 44px minimum hit target");
+assert.match(styles, /\.city-search button\s*\{[^}]*min-height:\s*var\(--hit-target-min\)/, "location search must retain the shared 44px minimum hit target");
+assert.match(styles, /\.plan-actions button\s*\{[^}]*min-height:\s*var\(--hit-target-min\)/, "plan actions including cancel-worn must retain the shared 44px minimum hit target");
 assert.match(styles, /\.weather-grid\s*\{[^}]*grid-template-columns:\s*repeat\(2,minmax\(0,1fr\)\)/, "today and tomorrow weather cards must use equal resilient columns");
 assert.match(styles, /\.weather-card\s*\{[^}]*width:\s*100%/, "each weather card must fill its equal grid column");
 assert.match(styles, /\.weather-card--today\s*\{[^}]*background:/, "today must retain a full-card background beneath Canvas");
@@ -126,8 +130,9 @@ assert.match(styles, /\.weather-canvas-host[^}]+inset:\s*0/, "today Canvas must 
 assert.match(styles, /\.weather-copy-overlay\s*\{[^}]+opacity:\s*1/, "static and fallback weather states must retain native copy");
 assert.doesNotMatch(styles, /weather-copy-overlay\.is-canvas-copy|weather-copy-overlay[^}]+opacity:\s*0/, "native weather text must never be hidden behind Canvas");
 assert.match(styles, /\.weather-shell[^}]+background:\s*var\(--color-surface\)/, "the weather module must use the App surface without a gradient pedestal");
-assert.match(styles, /\.section-switch[^}]+height:\s*104rpx[^}]+border-radius:\s*28rpx/, "the segmented control shell must match App 52px height and 14px radius");
-assert.match(styles, /\.section-switch__item[^}]+height:\s*88rpx[^}]+border-radius:\s*22rpx/, "the segmented buttons must match App 44px height and 11px radius");
+assert.match(styles, /\.section-switch[^}]+height:\s*auto[^}]+min-height:\s*104rpx[^}]+border-radius:\s*28rpx/, "the segmented control shell must grow when the fixed touch target exceeds its rpx baseline");
+assert.match(styles, /\.section-switch__item[^}]+height:\s*88rpx[^}]+min-height:\s*var\(--hit-target-min\)[^}]+border-radius:\s*22rpx/, "the segmented buttons must never scale below the shared 44px hit target");
+assert.match(tabStyles, /\.mini-tab__create[^}]+min-width:\s*var\(--hit-target-min\)[^}]+min-height:\s*var\(--hit-target-min\)/, "the center create action must never scale below the shared 44px hit target");
 assert.match(styles, /\.recommendation-toolbar[^}]+grid-template-columns:\s*auto minmax\(0,1fr\)/, "date strip must sit beside the App heading when no plan exists");
 assert.match(styles, /\.recommendation-detail-action[^}]+width:\s*96rpx/, "recommendation detail must use the App 48px square control");
 assert.match(visualFixture, /recommendationCards:\s*\[recommendationStable, recommendationFresh, recommendationComfort\]/, "visual fixture must prove the three server recommendation cards");

@@ -25,7 +25,9 @@
   align-items: center;
   justify-content: center;
   width: 80rpx;
+  min-width: var(--hit-target-min);
   height: 80rpx;
+  min-height: var(--hit-target-min);
   border-radius: 50%;
   background: rgba(255, 255, 252, 0.9);
   color: var(--color-ink);

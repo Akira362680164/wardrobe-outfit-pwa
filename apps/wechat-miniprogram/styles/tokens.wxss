@@ -19,6 +19,7 @@ page {
   --radius-thumb: 20rpx;
   --radius-fab: 50%;
   --radius-pill: var(--radius-control);
+  --hit-target-min: 44px;
   --space-1: 4rpx;
   --space-2: 8rpx;
   --space-3: 12rpx;

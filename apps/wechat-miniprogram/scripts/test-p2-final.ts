@@ -66,6 +66,11 @@ const detailShellStyles = fs.readFileSync("components/domain/item-detail-shell/i
 assert.match(topBarWxml, /left: \{\{titleLeftRpx\}\}rpx/);
 assert.match(topBarWxml, /right: \{\{titleRightRpx\}\}rpx/);
 assert.doesNotMatch(topBarWxss, /right:\s*220rpx/);
+assert.match(
+  topBarWxss.match(/\.sub-page-top-bar__back\s*\{([\s\S]*?)\}/)?.[1] ?? "",
+  /min-width:\s*var\(--hit-target-min\)[\s\S]*min-height:\s*var\(--hit-target-min\)/,
+  "the shared back action must never scale below the 44px touch target",
+);
 assert.match(detailShell, /has-right-action/);
 assert.match(detailShell, /item-detail-shell__top-action/);
 assert.match(
