@@ -173,7 +173,13 @@ function NavigationMotionPage({
   return (
     <motion.div
       className="relative min-w-0"
-      style={{ gridArea: "1 / 1", pointerEvents: isPresent ? "auto" : "none" }}
+      style={{
+        gridArea: "1 / 1",
+        minHeight: "calc(100dvh - 2.5rem)",
+        background: "var(--app-ambient)",
+        backgroundAttachment: "fixed",
+        pointerEvents: isPresent ? "auto" : "none",
+      }}
       custom={direction}
       variants={variants}
       initial="enter"

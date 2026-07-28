@@ -43,7 +43,8 @@ assert.match(navigation, /case "wardrobe": setRoute\(getWardoraHomeRoute\(\)/, "
 assert.match(app, /label: "首页"/);
 assert.match(app, /label: "穿搭"/);
 assert.match(app, /renderWardrobeContent=\{\(\) => renderWardrobeCapability\(undefined, defaultHomeRoute\)\}/, "wardrobe must remain an internal home tab");
-assert.match(app, /onOpen=\{\(\) => openWardrobeItemDetail\(item, wardrobeHomeRoute\)\}/, "wardrobe details must retain the home return target");
+assert.match(app, /onOpenGarmentDetail\(item\.id, wardrobeHomeRoute\)/, "wardrobe cards must promote details to the App route while retaining the home return target");
+assert.match(app, /name: "garment_detail"[\s\S]*returnRoute/, "App must own the promoted garment detail route and its precise return route");
 assert.match(app, /navigation\.openRoute\(defaultHomeRoute\)/, "conversion flows must return to the production home");
 assert.doesNotMatch(app, /Wardora 新首页预览|内部只读入口|open-home-feed-preview|onOpenHomePreview/, "legacy preview entry and copy must be absent");
 assert.doesNotMatch(app, /NEXT_PUBLIC_WARDORA_HOME_FEED_P1/, "the production home must not depend on the P1 preview flag");

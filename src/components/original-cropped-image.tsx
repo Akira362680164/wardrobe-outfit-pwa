@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { getCroppedImageLayout, type CroppedImageLayout } from "@/lib/crop-render-math";
 
 interface OriginalCroppedImageProps {
@@ -28,9 +28,12 @@ export function OriginalCroppedImage({
   const [originalLoaded, setOriginalLoaded] = useState(false);
   const [originalFailed, setOriginalFailed] = useState(false);
 
-  const safeBox = cropBox && cropBox.width > 0 && cropBox.height > 0
-    ? cropBox
-    : { x: 0, y: 0, width: 1, height: 1 };
+  const safeBox = useMemo(
+    () => cropBox && cropBox.width > 0 && cropBox.height > 0
+      ? cropBox
+      : { x: 0, y: 0, width: 1, height: 1 },
+    [cropBox],
+  );
 
   useEffect(() => {
     const el = containerRef.current;

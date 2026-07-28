@@ -7,6 +7,26 @@
 - 查看某次提交详情：`git show <commit>`
 - 新记录继续置顶，默认控制在 3–5 条短 bullet；原始测试日志、命令输出和长证据写入专项 evidence 文档或交由 Git 保存。
 
+## 2026-07-28 / v2.1.35-test / Codex — Wardora P5-B 居中确认框圆角收口
+
+- `MotionSheet` 的居中 / 非 bottom 分支由 `16px` 收口到 UI 规范 `--ui-radius-card`（`28px`）；bottom sheet 继续保留 `rounded-t-2xl`，不改动效、接口、按钮或信息结构。
+- 手写 overlay 门禁同时冻结 centered 外框 `28px`、bottom sheet 顶部 `16px` 和真实退出确认内部按钮 `--ui-radius-control`（`16px`）；红灯精确命中旧 centered `rounded-2xl`，修复后转绿。
+- 风险 High（共享 MotionSheet / Dialog 视觉）；按主任务明确边界不构建 APK、不部署、不推送、不启动视觉 subagent。浏览器、Android WebView 与真机视觉仍由集成 Session 复核。
+
+## 2026-07-28 / v2.1.35-test / Codex — Wardora 新首页 P5-B Android 与跨账号收口
+
+- 首页“衣橱”卡片改为进入独立 `garment_detail` 外层路由，不再把详情嵌进天气与分栏下方；返回时恢复首页衣橱分栏。独立详情直接按 route 隐藏底栏，内部衣橱子页仍保留原状态边界。
+- 路由转场补齐与 App ambient 一致的不透明承载面，避免 `AnimatePresence mode="sync"` 的 home/settings 同屏文字碰撞；根 Back 退出确认按钮提升至 48dp。无裁切框图片的默认 cropBox 改为稳定引用，消除详情原图加载时的 React 最大更新深度警告。
+- P5 浏览器门禁新增独立详情 Back、退出登录、切换账号、再次登录及 nested-button/hydration 检查；360/390/430px、100%/130%、typecheck、P5 手写 Fixture、路由/Back 与浏览器全链通过，page/console error 均为 0。
+- 版本递增为 `2.1.35-test` / versionCode `20135`。风险 High（默认首页详情、路由动效、Android）；冻结提交后从该 SHA 重建固定签名 APK，并以 Android 15/API 35 复核详情顶部按钮、定位用途 Sheet、设置、根 Back、前后台和正常/reduced-motion 转场。独立只读视觉复验由主 Session 基于冻结 SHA 与证据包执行。
+
+## 2026-07-28 / v2.1.34-test / Codex — 单品取消当天穿着的服务端一致性修复
+
+- 单品 `mark-worn` 现在与计划、套装穿着使用同一权威统计口径，在服务端事务内同步写入去重后的 `wornDates`；不再只写 `worn/wornAt/wearEventId`。
+- 单品 `cancel-worn` 按明确日期移除目标衣物的 `wornDates`，并仅软删除该用户、该衣物、该日期的穿着事件；保留其他日期、其他衣物、其他用户及计划/套装本身的事实，响应读回不再可能“标志已取消但当天日期仍残留”。
+- 新增真实 PostgreSQL 回归，覆盖直接穿着、每日推荐计划来源、正式套装来源、同一 `clientMutationId` 幂等重放、旧 revision 冲突、其他日期保留和跨用户隔离；红灯为 `4 failed`，修复后专项 `4/4`、API 单元 `348/348`、真实 PostgreSQL `76/76`、API/root typecheck 与 API build 通过。
+- 风险 High（服务端穿着事务与 revision）；不改 schema、共享合同、小程序视觉或 App 版本。当前执行为主任务委派的独立后端子任务，未另启动额外 subagent；进入 `main` 后按生产流程更新 API/worker，并复验 health/ready/version、鉴权和真实读回。
+
 ## 2026-07-28 / v2.1.34-test / Codex — 小程序 P5-C 状态栏与成功图标收口
 
 - 浅色自定义导航全局显式使用深色系统状态栏文字，关闭最终候选中时间、网络和电量信息在近白背景上不可读的问题；现有 UI 规范“浅色页面使用深色系统图标”保持唯一事实源。
@@ -37,7 +57,6 @@
 - 通用次级页顶部栏按微信胶囊动态计算操作区与标题区；详情 slot 固定 96rpx 布局/点击面，标题在返回与右侧操作之间视觉居中，旅行计划和套装编辑等实际右侧调用方声明操作宽度。
 - 冻结实现 `cd18dd55` 通过小程序 typecheck、P2 手写测试、详情/首页/Canvas/组件复用/导航回归及 catalog/home-shared 检查；WeChat DevTools WXML/WXSS、console 与真实上海页面通过。
 - 新证据覆盖 360/390/430 详情、390 上海首页和旅行计划代表页；独立 GPT-5.6 Sol / Medium 只读审查 P0–P3 全为 0、两个原 P2 均关闭并建议交付。证据位于 `/Users/fangzheng/Downloads/Wardora_cross_end_acceptance_20260727/p2-mini-fix-evidence/`；未预览、上传或部署。
-
 ## 2026-07-27 / v2.1.34-test / Codex — Wardora 新首页 P5-A 默认切换与 P5-B 候选准备
 
 - 登录、冷启动、底栏首页、根返回、详情返回和种草转衣橱统一进入 `home_feed`；无环境变量时正式默认开启，只有显式 `NEXT_PUBLIC_WARDORA_HOME_FEED_EMERGENCY_OFF=true` 才启动旧 `wardrobe_home` 紧急回滚。账号 ID 变化会重挂 App，避免前一账号的首页会话态短暂复用。
