@@ -42,6 +42,7 @@ const tones = {
   ink: "#1d2228",
   surface: "#fffffc",
   primary: "#355c7d",
+  success: "#5f7058",
   danger: "#dc2626",
 };
 

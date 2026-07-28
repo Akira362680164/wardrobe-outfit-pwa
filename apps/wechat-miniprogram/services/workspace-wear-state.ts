@@ -49,10 +49,13 @@ export function serverConfirmedGarmentMark(
 
 export function serverConfirmedGarmentCancel(
   payload: Record<string, unknown>,
+  dateKey: string,
 ): boolean {
+  const state = garmentWearState(payload);
   return (
     payload.worn === false &&
     payload.wornAt === null &&
-    payload.wearEventId === null
+    payload.wearEventId === null &&
+    !state.wornDates.includes(dateKey)
   );
 }

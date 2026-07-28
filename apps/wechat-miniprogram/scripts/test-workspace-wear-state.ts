@@ -33,17 +33,33 @@ const cancelledPayload = {
   wearEventId: null,
   wornDates: [],
 };
-assert.equal(serverConfirmedGarmentCancel(cancelledPayload), true);
+assert.equal(serverConfirmedGarmentCancel(cancelledPayload, dateKey), true);
 assert.equal(
-  serverConfirmedGarmentCancel({ ...cancelledPayload, worn: true }),
+  serverConfirmedGarmentCancel({ ...cancelledPayload, worn: true }, dateKey),
   false,
 );
 assert.equal(
   serverConfirmedGarmentCancel({
     ...cancelledPayload,
     wornAt: `${dateKey}T12:00:00.000Z`,
-  }),
+  }, dateKey),
   false,
+);
+assert.equal(
+  serverConfirmedGarmentCancel({
+    ...cancelledPayload,
+    wornDates: [dateKey],
+  }, dateKey),
+  false,
+  "cancel readback must reject a payload that still retains the target date",
+);
+assert.equal(
+  serverConfirmedGarmentCancel({
+    ...cancelledPayload,
+    wornDates: ["2026-07-20"],
+  }, dateKey),
+  true,
+  "cancel readback must preserve unrelated wear dates",
 );
 
 assert.deepEqual(

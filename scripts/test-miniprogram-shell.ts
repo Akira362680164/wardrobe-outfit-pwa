@@ -15,6 +15,11 @@ const authSource = fs.readFileSync("apps/wechat-miniprogram/services/auth.ts", "
 const statsSource = fs.readFileSync("apps/wechat-miniprogram/utils/wear-statistics.ts", "utf8");
 
 assert.equal(app.tabBar.custom, true, "the glass custom tabBar must be the only visible owner");
+assert.equal(
+  app.window.navigationBarTextStyle,
+  "black",
+  "light custom-navigation pages must keep system status-bar text readable",
+);
 assert.equal(app.tabBar.list.length, 4);
 for (const item of app.tabBar.list) {
   assert.match(item.iconPath, /\.png$/);

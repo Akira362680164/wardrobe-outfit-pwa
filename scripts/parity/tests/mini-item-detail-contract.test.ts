@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import fs from "node:fs";
+import { ICON_PATHS, ICON_TONES } from "../../../apps/wechat-miniprogram/components/ui/icon/generated-icons";
 
 const garment = fs.readFileSync("apps/wechat-miniprogram/pages/wardrobe/detail/index.wxml", "utf8");
 const garmentStyle = fs.readFileSync("apps/wechat-miniprogram/pages/wardrobe/detail/index.wxss", "utf8");
@@ -32,6 +33,16 @@ assert.match(garment, /slot="heroAction"/);
 assert.match(garment, /bindtap="toggleWornToday"/, "the wear-state control must keep its click behavior");
 assert.match(garment, /wx:elif="\{\{wornToday\}\}"/, "the worn state must remain explicit");
 assert.match(garment, /<ui-icon name="check"[^>]+tone="success"[^>]+aria-hidden="true"/, "the worn state must use the shared SVG check icon");
+assert.ok(ICON_TONES.includes("success"), "the worn-state tone must be part of the generated icon contract");
+assert.equal(
+  ICON_PATHS.check.success,
+  "/assets/icons/check-success.svg",
+  "the worn-state icon must resolve to the generated success asset instead of falling back to ink",
+);
+assert.ok(
+  fs.existsSync(`apps/wechat-miniprogram${ICON_PATHS.check.success}`),
+  "the resolved worn-state success icon asset must exist",
+);
 assert.match(garment, /<text>今天已穿<\/text>/, "the worn state must retain readable Chinese text");
 assert.match(garment, /<text wx:else>标记今天穿了<\/text>/, "the normal state must retain its action text");
 assert.match(garment, /今天已穿，点击撤销穿着记录/, "the worn action must expose its full accessibility meaning");
@@ -49,7 +60,7 @@ assert.match(workspace, /\/api\/workspace\/garments\/\$\{encodeURIComponent\(id\
 assert.match(workspace, /\/api\/workspace\/garments\/\$\{encodeURIComponent\(id\)\}\/cancel-worn/);
 assert.match(workspace, /const detail = await fetchGarmentDetail\(id\)/);
 assert.match(workspace, /serverConfirmedGarmentMark\(detail\.rawPayload, dateKey\)/);
-assert.match(workspace, /serverConfirmedGarmentCancel\(detail\.rawPayload\)/);
+assert.match(workspace, /serverConfirmedGarmentCancel\(detail\.rawPayload,\s*dateKey\)/);
 assert.match(workspace, /服务器未确认今天穿着记录/);
 assert.match(workspace, /服务器未确认取消今天穿着记录/);
 assert.match(fields, /版型倾向<\/text><text class="info-value">\{\{item\.fitGenderText\}\}/);
