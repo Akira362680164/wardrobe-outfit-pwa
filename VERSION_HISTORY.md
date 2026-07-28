@@ -7,12 +7,19 @@
 - 查看某次提交详情：`git show <commit>`
 - 新记录继续置顶，默认控制在 3–5 条短 bullet；原始测试日志、命令输出和长证据写入专项 evidence 文档或交由 Git 保存。
 
+## 2026-07-28 / v2.1.35-test / Codex — Wardora 新首页 P5-B Android 与跨账号收口
+
+- 首页“衣橱”卡片改为进入独立 `garment_detail` 外层路由，不再把详情嵌进天气与分栏下方；返回时恢复首页衣橱分栏。独立详情直接按 route 隐藏底栏，内部衣橱子页仍保留原状态边界。
+- 路由转场补齐与 App ambient 一致的不透明承载面，避免 `AnimatePresence mode="sync"` 的 home/settings 同屏文字碰撞；根 Back 退出确认按钮提升至 48dp。无裁切框图片的默认 cropBox 改为稳定引用，消除详情原图加载时的 React 最大更新深度警告。
+- P5 浏览器门禁新增独立详情 Back、退出登录、切换账号、再次登录及 nested-button/hydration 检查；360/390/430px、100%/130%、typecheck、P5 手写 Fixture、路由/Back 与浏览器全链通过，page/console error 均为 0。
+- 版本递增为 `2.1.35-test` / versionCode `20135`。风险 High（默认首页详情、路由动效、Android）；冻结提交后从该 SHA 重建固定签名 APK，并以 Android 15/API 35 复核详情顶部按钮、定位用途 Sheet、设置、根 Back、前后台和正常/reduced-motion 转场。独立只读视觉复验由主 Session 基于冻结 SHA 与证据包执行。
+
 ## 2026-07-28 / v2.1.34-test / Codex — 单品取消当天穿着的服务端一致性修复
 
 - 单品 `mark-worn` 现在与计划、套装穿着使用同一权威统计口径，在服务端事务内同步写入去重后的 `wornDates`；不再只写 `worn/wornAt/wearEventId`。
 - 单品 `cancel-worn` 按明确日期移除目标衣物的 `wornDates`，并仅软删除该用户、该衣物、该日期的穿着事件；保留其他日期、其他衣物、其他用户及计划/套装本身的事实，响应读回不再可能“标志已取消但当天日期仍残留”。
 - 新增真实 PostgreSQL 回归，覆盖直接穿着、每日推荐计划来源、正式套装来源、同一 `clientMutationId` 幂等重放、旧 revision 冲突、其他日期保留和跨用户隔离；红灯为 `4 failed`，修复后专项 `4/4`、API 单元 `348/348`、真实 PostgreSQL `76/76`、API/root typecheck 与 API build 通过。
-- 风险 High（服务端穿着事务与 revision）；不改 schema、共享合同、小程序视觉或 App 版本。当前执行为主任务委派的独立后端子任务，未另启动额外 subagent；本提交尚未合入、推送或部署，进入 `main` 后必须按生产流程更新 API/worker 并复验 health/ready/version、鉴权和真实读回。
+- 风险 High（服务端穿着事务与 revision）；不改 schema、共享合同、小程序视觉或 App 版本。当前执行为主任务委派的独立后端子任务，未另启动额外 subagent；进入 `main` 后按生产流程更新 API/worker，并复验 health/ready/version、鉴权和真实读回。
 
 ## 2026-07-27 / v2.1.34-test / Codex — Wardora 新首页 P5-A 默认切换与 P5-B 候选准备
 
