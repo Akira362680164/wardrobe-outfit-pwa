@@ -15,6 +15,7 @@ const wishlistEdit = fs.readFileSync("apps/wechat-miniprogram/pages/wishlist/edi
 const workspace = fs.readFileSync("apps/wechat-miniprogram/services/workspace.ts", "utf8");
 const detailShell = fs.readFileSync("apps/wechat-miniprogram/components/domain/item-detail-shell/index.wxml", "utf8");
 const detailShellStyle = fs.readFileSync("apps/wechat-miniprogram/components/domain/item-detail-shell/index.wxss", "utf8");
+const tokens = fs.readFileSync("apps/wechat-miniprogram/styles/tokens.wxss", "utf8");
 
 for (const page of [garment, wishlist]) {
   assert.match(page, /<item-media-section/);
@@ -51,6 +52,12 @@ assert.match(
   garmentStyle,
   /\.wear-button[\s\S]*min-height:\s*var\(--hit-target-min\)/,
   "the wear-state action must retain a 44px minimum hit target",
+);
+assert.match(tokens, /--hit-target-min:\s*44px/, "the shared mini-program touch target must remain 44px");
+assert.match(
+  garmentStyle,
+  /\.detail-tab\s*\{[^}]*height:\s*78rpx;[^}]*min-height:\s*var\(--hit-target-min\);/,
+  "wardrobe detail tabs must keep their visual height while never scaling below the shared 44px touch target",
 );
 assert.match(garmentTs, /wearMutation\.key !== mutationKey/);
 assert.match(garmentTs, /markGarmentWornOnDate/);
