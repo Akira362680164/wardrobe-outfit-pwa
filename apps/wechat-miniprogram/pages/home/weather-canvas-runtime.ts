@@ -102,7 +102,11 @@ export async function createMiniWeatherCanvasRuntime(input: {
   return {
     setForeground(value) { foreground = value; if (runnable()) schedule(); else pause(); },
     setVisible(value) { visible = value; if (runnable()) schedule(); else pause(); },
-    destroy() { destroyed = true; pause(); },
+    destroy() {
+      destroyed = true;
+      pause();
+      try { context.clearRect(0, 0, width, height); } catch { /* native layer may already be detached */ }
+    },
     get metrics() { return { dpr, frames, targetFps: WEATHER_CANVAS_TARGET_FPS }; },
   };
 }

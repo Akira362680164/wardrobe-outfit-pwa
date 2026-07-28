@@ -111,6 +111,7 @@ assert.match(styles, /\.weather-copy-overlay__temperature\s*\{[^}]*color:\s*#1d2
 assert.match(styles, /\.weather-copy-overlay__summary\s*\{[^}]*color:\s*#1d2228[^}]*font-size:\s*26rpx[^}]*font-weight:\s*800[^}]*line-height:\s*34rpx/, "today summary must optically match tomorrow after Canvas compositing");
 assert.match(canvasRuntime, /renderWeatherScene\([^;]+;\s*clearWeatherCopyLane\(context,\s*width,\s*height\)/, "every Canvas frame must clear the legal weather copy lane after drawing");
 assert.match(canvasRuntime, /globalCompositeOperation\s*=\s*"destination-out"[\s\S]+addColorStop\(\.64,\s*"rgba\(0,0,0,1\)"\)[\s\S]+addColorStop\(\.88,\s*"rgba\(0,0,0,0\)"\)/, "the copy lane must stay transparent through the text area and feather into the live weather edge");
+assert.match(canvasRuntime, /destroy\(\)\s*\{[^}]*pause\(\);[^}]*clearRect\(0,\s*0,\s*width,\s*height\)/, "destroy must clear the native Canvas layer before wx:if removes it");
 assert.match(styles, /\.weather-copy-overlay__row\s*\{[^}]*color:\s*#1d2228/, "today weather labels must not use low-contrast gray");
 assert.match(styles, /\.weather-copy-overlay__meta\s*\{[^}]*color:\s*rgba\(29,34,40,.82\)[^}]*font-size:\s*22rpx[^}]*font-weight:\s*700/, "today metadata must retain readable contrast after Canvas compositing");
 assert.match(styles, /\.weather-copy-overlay--today\s*\{[^}]*width:\s*100%/, "today weather copy must fill its equal-width card");
