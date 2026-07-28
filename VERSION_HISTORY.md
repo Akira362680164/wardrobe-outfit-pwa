@@ -7,6 +7,12 @@
 - 查看某次提交详情：`git show <commit>`
 - 新记录继续置顶，默认控制在 3–5 条短 bullet；原始测试日志、命令输出和长证据写入专项 evidence 文档或交由 Git 保存。
 
+## 2026-07-28 / v2.1.35-test / Codex — 小程序 P5-C 最终 main-first 集成
+
+- 按共享代码收口顺序把最终 `main@33d5f69eb2649050c3fa633545fbeaf9be008baf` 串行合入小程序候选，完整带入服务端 `wornDates` 事务一致性、App P5-B 独立详情路由及居中确认框 28px 圆角收口；双方历史均保留。
+- 小程序 build-info 由生成脚本更新到根版本 `2.1.35-test`；domain catalog 与 home-shared 生成物检查均无语义差异，未手工修改生成文件。
+- 风险 High（跨端正式基线与服务端事务）；合入后继续执行 root/cloud/API/小程序类型与专项门禁、WeChat DevTools 编译、多尺寸/大字体截图和独立视觉复核。未 preview/upload、云写入、推送或生产部署。
+
 ## 2026-07-28 / v2.1.35-test / Codex — Wardora P5-B 居中确认框圆角收口
 
 - `MotionSheet` 的居中 / 非 bottom 分支由 `16px` 收口到 UI 规范 `--ui-radius-card`（`28px`）；bottom sheet 继续保留 `rounded-t-2xl`，不改动效、接口、按钮或信息结构。
