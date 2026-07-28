@@ -7,6 +7,13 @@
 - 查看某次提交详情：`git show <commit>`
 - 新记录继续置顶，默认控制在 3–5 条短 bullet；原始测试日志、命令输出和长证据写入专项 evidence 文档或交由 Git 保存。
 
+## 2026-07-28 / v2.1.35-test / Codex — Wardora 新首页 P5-B Android 与跨账号收口
+
+- 首页“衣橱”卡片改为进入独立 `garment_detail` 外层路由，不再把详情嵌进天气与分栏下方；返回时恢复首页衣橱分栏。独立详情直接按 route 隐藏底栏，内部衣橱子页仍保留原状态边界。
+- 路由转场补齐与 App ambient 一致的不透明承载面，避免 `AnimatePresence mode="sync"` 的 home/settings 同屏文字碰撞；根 Back 退出确认按钮提升至 48dp。无裁切框图片的默认 cropBox 改为稳定引用，消除详情原图加载时的 React 最大更新深度警告。
+- P5 浏览器门禁新增独立详情 Back、退出登录、切换账号、再次登录及 nested-button/hydration 检查；360/390/430px、100%/130%、typecheck、P5 手写 Fixture、路由/Back 与浏览器全链通过，page/console error 均为 0。
+- 版本递增为 `2.1.35-test` / versionCode `20135`。风险 High（默认首页详情、路由动效、Android）；冻结提交后从该 SHA 重建固定签名 APK，并以 Android 15/API 35 复核详情顶部按钮、定位用途 Sheet、设置、根 Back、前后台和正常/reduced-motion 转场。独立只读视觉复验由主 Session 基于冻结 SHA 与证据包执行。
+
 ## 2026-07-27 / v2.1.34-test / Codex — Wardora 新首页 P5-A 默认切换与 P5-B 候选准备
 
 - 登录、冷启动、底栏首页、根返回、详情返回和种草转衣橱统一进入 `home_feed`；无环境变量时正式默认开启，只有显式 `NEXT_PUBLIC_WARDORA_HOME_FEED_EMERGENCY_OFF=true` 才启动旧 `wardrobe_home` 紧急回滚。账号 ID 变化会重挂 App，避免前一账号的首页会话态短暂复用。

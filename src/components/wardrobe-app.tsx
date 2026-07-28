@@ -898,6 +898,7 @@ export function WardrobeApp({ cloudAuth }: { cloudAuth?: WardrobeCloudAuth } = {
   // v0.9.39-dev 统一加 onSubPageChange prop, 本轮范围控制。
   // v1.1.20-dev (方案 C): showGarmentIntakeFlow 改为 isIntakeRouteName(route.name), 与 route 状态同步。
   const hideMobileNav =
+    isDetailRoute(route) ||
     wardrobeSubPageActive ||
     outfitSubPageActive ||
     shoppingSubPageActive ||
@@ -984,7 +985,7 @@ export function WardrobeApp({ cloudAuth }: { cloudAuth?: WardrobeCloudAuth } = {
       setItems={setItems}
       onMessage={showMessage}
       onExpandImage={lightbox.openExpandedImage}
-      onSubPageChange={setWardrobeSubPageActive}
+      onSubPageChange={activeGarmentRoute ? undefined : setWardrobeSubPageActive}
       activeGarmentRoute={activeGarmentRoute}
       wardrobeHomeRoute={wardrobeHomeRoute}
       pendingViewingItemId={pendingViewingItemId}
@@ -998,6 +999,12 @@ export function WardrobeApp({ cloudAuth }: { cloudAuth?: WardrobeCloudAuth } = {
         setWishlistInitialSubPage("purchased");
         navigation.popToRoute({ name: "wishlist_purchased" });
       }}
+      onOpenGarmentDetail={(itemId, returnRoute) => navigation.openRoute({
+        name: "garment_detail",
+        itemId,
+        returnTo: returnRoute.name,
+        returnRoute,
+      })}
       onReturnToRoute={(nextRoute) => navigation.popToRoute(nextRoute)}
     />
   );
@@ -1356,8 +1363,8 @@ export function WardrobeApp({ cloudAuth }: { cloudAuth?: WardrobeCloudAuth } = {
         <p className="text-base font-semibold mb-1">是否退出应用？</p>
         <p className="text-xs text-ink/50 mb-4">退出应用后将丢失所有未保存内容</p>
         <div className="grid grid-cols-2 gap-2">
-          <button type="button" data-parity-id="parity.app.app.src.components.wardrobe.app.09e65fa5b3" onClick={() => setShowExitDialog(false)} className="h-10 rounded-lg border border-ink/10 text-sm">取消</button>
-          <button type="button" data-parity-id="parity.app.app.src.components.wardrobe.app.7cb1f8a008" onClick={() => { try { App.exitApp(); } catch { window.close(); } }} className="h-10 rounded-lg bg-red-600 text-sm font-semibold text-white">退出</button>
+          <button type="button" data-parity-id="parity.app.app.src.components.wardrobe.app.09e65fa5b3" onClick={() => setShowExitDialog(false)} className="min-h-12 ui-control-radius border border-ink/10 text-sm">取消</button>
+          <button type="button" data-parity-id="parity.app.app.src.components.wardrobe.app.7cb1f8a008" onClick={() => { try { App.exitApp(); } catch { window.close(); } }} className="min-h-12 ui-control-radius bg-red-600 text-sm font-semibold text-white">退出</button>
         </div>
       </MotionSheet>
 
@@ -1597,6 +1604,7 @@ interface WardrobeViewProps {
   pendingViewingItemReturnTarget?: "home_feed" | "wardrobe_home" | "wishlist_owned";
   onPendingViewingItemConsumed?: () => void;
   onReturnToWishlistOwned?: () => void;
+  onOpenGarmentDetail?: (itemId: number, returnRoute: AppRoute) => void;
   // v1.1.20-dev (Bug 2 修复): WardrobeView 关闭衣物详情时调此回调跳回原 route。
   // wardrobe-app 接收后调 navigation.openRoute,支持从任意来源 (outfit_detail / outfit_calendar /
   // wishlist_purchased 等) 进入衣物详情时准确返回。
@@ -1614,7 +1622,7 @@ function WardrobeView(props: WardrobeViewProps) {
     activeGarmentRoute,
     wardrobeHomeRoute = getWardoraHomeRoute(),
     pendingViewingItemId, pendingViewingItemReturnTarget, onPendingViewingItemConsumed, onReturnToWishlistOwned,
-    onReturnToRoute,
+    onOpenGarmentDetail, onReturnToRoute,
   } = props;
   const [isSearchOpen, setIsSearchOpen] = useState(false);
  const [showWearStatistics, setShowWearStatistics] = useState(false);
@@ -1715,12 +1723,23 @@ function WardrobeView(props: WardrobeViewProps) {
     setViewingItem(item);
   }
 
+  const syncedActiveGarmentRouteRef = useRef<string | null>(null);
   useEffect(() => {
-    if (!activeGarmentRoute) return;
+    if (!activeGarmentRoute) {
+      syncedActiveGarmentRouteRef.current = null;
+      return;
+    }
     const item = allItems.find((entry) => entry.id === activeGarmentRoute.itemId)
       ?? items.find((entry) => entry.id === activeGarmentRoute.itemId);
     if (!item) return;
     const returnTarget = getBackRoute(activeGarmentRoute);
+    const syncKey = JSON.stringify({
+      itemId: item.id,
+      returnTarget,
+      initialTab: activeGarmentRoute.initialTab ?? null,
+    });
+    if (syncedActiveGarmentRouteRef.current === syncKey) return;
+    syncedActiveGarmentRouteRef.current = syncKey;
     if (viewingItem?.id === item.id && JSON.stringify(garmentDetailReturnTarget) === JSON.stringify(returnTarget)) return;
     openWardrobeItemDetail(item, returnTarget);
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -3349,7 +3368,13 @@ return (
   selected={isItemSelected}
   selectionMode={wardrobeSelection.selectionMode}
   ariaLabel={item.name?.trim() || "未命名单品"}
-  onOpen={() => openWardrobeItemDetail(item, wardrobeHomeRoute)}
+  onOpen={() => {
+    if (typeof item.id === "number" && onOpenGarmentDetail) {
+      onOpenGarmentDetail(item.id, wardrobeHomeRoute);
+      return;
+    }
+    openWardrobeItemDetail(item, wardrobeHomeRoute);
+  }}
   onToggleSelection={() => {
     if (item.id == null) return;
     if (!wardrobeSelection.selectionMode) {
@@ -3366,7 +3391,13 @@ return (
     currentIdx={currentIdx}
     allItems={allItems}
     outfits={outfits}
-    data-parity-id="parity.app.app.src.components.wardrobe.app.560d949754" onClick={() => openWardrobeItemDetail(item, wardrobeHomeRoute)}
+    data-parity-id="parity.app.app.src.components.wardrobe.app.560d949754" onClick={() => {
+      if (typeof item.id === "number" && onOpenGarmentDetail) {
+        onOpenGarmentDetail(item.id, wardrobeHomeRoute);
+        return;
+      }
+      openWardrobeItemDetail(item, wardrobeHomeRoute);
+    }}
     onSwipe={(next) => {
     if (!hasMultiple) return;
     setWaterfallImageIndex((prev) => ({ ...prev, [itemKey]: next }));
