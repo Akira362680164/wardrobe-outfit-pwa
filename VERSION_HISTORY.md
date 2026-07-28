@@ -7,6 +7,12 @@
 - 查看某次提交详情：`git show <commit>`
 - 新记录继续置顶，默认控制在 3–5 条短 bullet；原始测试日志、命令输出和长证据写入专项 evidence 文档或交由 Git 保存。
 
+## 2026-07-28 / v2.1.35-test / Codex — Wardora P5-B 居中确认框圆角收口
+
+- `MotionSheet` 的居中 / 非 bottom 分支由 `16px` 收口到 UI 规范 `--ui-radius-card`（`28px`）；bottom sheet 继续保留 `rounded-t-2xl`，不改动效、接口、按钮或信息结构。
+- 手写 overlay 门禁同时冻结 centered 外框 `28px`、bottom sheet 顶部 `16px` 和真实退出确认内部按钮 `--ui-radius-control`（`16px`）；红灯精确命中旧 centered `rounded-2xl`，修复后转绿。
+- 风险 High（共享 MotionSheet / Dialog 视觉）；按主任务明确边界不构建 APK、不部署、不推送、不启动视觉 subagent。浏览器、Android WebView 与真机视觉仍由集成 Session 复核。
+
 ## 2026-07-28 / v2.1.35-test / Codex — Wardora 新首页 P5-B Android 与跨账号收口
 
 - 首页“衣橱”卡片改为进入独立 `garment_detail` 外层路由，不再把详情嵌进天气与分栏下方；返回时恢复首页衣橱分栏。独立详情直接按 route 隐藏底栏，内部衣橱子页仍保留原状态边界。

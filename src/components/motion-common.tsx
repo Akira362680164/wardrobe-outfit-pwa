@@ -203,7 +203,7 @@ function MotionSheetLayer({
           aria-labelledby={ariaLabelledBy}
           aria-busy={!dismissible || undefined}
           tabIndex={-1}
-          className={`${bottomPresentation ? "absolute bottom-0 inset-x-0 mx-auto rounded-t-2xl" : "relative mx-auto w-full max-w-lg rounded-2xl"} max-h-[92vh] w-full overflow-y-auto overscroll-contain bg-paper p-4 shadow-2xl outline-none ${panelClassName ?? ""}`}
+          className={`${bottomPresentation ? "absolute bottom-0 inset-x-0 mx-auto rounded-t-2xl" : "relative mx-auto w-full max-w-lg rounded-[var(--ui-radius-card)]"} max-h-[92vh] w-full overflow-y-auto overscroll-contain bg-paper p-4 shadow-2xl outline-none ${panelClassName ?? ""}`}
           variants={panelVariants}
           initial="initial"
           animate="in"
