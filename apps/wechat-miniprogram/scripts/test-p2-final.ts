@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import fs from "node:fs";
 
-import { recommendationRiskLabel } from "../pages/home/risk-label";
+import { recommendationReasonLabel, recommendationRiskLabel } from "../pages/home/risk-label";
 import {
   calculateCapsuleGeometry,
   calculateSubPageTopBarLayout,
@@ -28,20 +28,86 @@ const compatibleRiskCodes = [
   "missing_required_layer",
   "style_conflict",
 ];
+const reasonLabels = {
+  good_for_commute: "适合日常通勤，整体组合清晰可靠。",
+  good_for_business: "正式度与商务场景相符。",
+  good_for_travel: "适合行程活动与移动需要。",
+  weather_fit: "当前衣物与天气证据匹配。",
+  rain_ready: "组合已考虑降雨与路面情况。",
+  activity_comfort: "活动空间与舒适度更充足。",
+  historical_success: "这类组合过去有良好穿着记录。",
+  rotation_value: "优先带回近期较少穿着的衣物。",
+  new_combination: "在可靠结构中加入新的组合变化。",
+  shoe_rationality: "鞋履与今天的活动强度匹配。",
+  outerwear_rationality: "外层便于应对室内外变化。",
+  adaptable_conditions: "采用容易增减的通用分层。",
+  needs_evening_layer: "晚间可按体感补充轻薄外层。",
+} as const;
+const riskLabels = {
+  missing_required_slot: "组合存在缺失角色，采用前需要补齐。",
+  severe_temperature_mismatch: "温度适配存在明显风险。",
+  severe_formality_mismatch: "正式度与当前场景差异较大。",
+  rain_incompatible: "降雨条件下部分衣物不够稳妥。",
+  shoe_activity_mismatch: "鞋履可能不适合今天的活动强度。",
+  wind_rain_exposure: "风雨暴露较高，建议增加保护层。",
+  outerwear_recommended: "建议随身准备一件轻薄外层。",
+  evening_layer_recommended: "晚间体感变化时建议补充外层。",
+  too_cold: "部分衣物可能不够保暖。",
+  too_hot: "部分衣物可能偏热。",
+  rain_exposure: "有淋雨风险，请留意防水。",
+  wind_exposure: "风力较强时需要额外防护。",
+  shoe_discomfort: "长时间活动时鞋履舒适度需留意。",
+  formality_mismatch: "正式度可能与场景不完全一致。",
+  activity_mismatch: "活动强度与衣物组合可能不完全匹配。",
+  missing_required_layer: "建议补充必要的外层。",
+  style_conflict: "组合风格存在轻微冲突。",
+} as const;
 
 for (const code of [...currentRiskCodes, ...compatibleRiskCodes]) {
   const label = recommendationRiskLabel(code, "forecast");
+  assert.equal(label, riskLabels[code as keyof typeof riskLabels], `${code} must match the App canonical label`);
   assert.match(label, /[\u3400-\u9fff]/, `${code} must have a Chinese user label`);
   assert.doesNotMatch(label, /[a-z]+_[a-z_]+/i, `${code} must not expose an internal enum`);
   assert.ok(!label.includes(code), `${code} must not be echoed`);
 }
-assert.equal(recommendationRiskLabel("evening_layer_recommended", "forecast"), "晚间可能偏凉，建议带一件薄外套。");
+for (const [code, expected] of Object.entries(reasonLabels)) {
+  assert.equal(recommendationReasonLabel(code, "forecast"), expected, `${code} must match the App canonical label`);
+}
+assert.equal(recommendationReasonLabel("rule_fallback", "forecast"), "结合天气、场景与衣橱状态整理。");
+assert.equal(recommendationReasonLabel("future_internal_reason_code", "forecast"), "结合天气、场景与衣橱状态整理。");
+assert.equal(recommendationReasonLabel(undefined, "locationless"), "按场景与衣橱状态给出通用组合。");
 const unknownCode = "future_internal_risk_code";
 const unknownLabel = recommendationRiskLabel(unknownCode, "forecast");
 assert.ok(!unknownLabel.includes(unknownCode));
 assert.doesNotMatch(unknownLabel, /[a-z]+_[a-z_]+/i);
 assert.equal(recommendationRiskLabel(undefined, "forecast"), "未发现需要特别提醒的天气风险。");
-assert.equal(recommendationRiskLabel(undefined, "generic"), "通用建议不作温度或降雨判断。");
+assert.equal(recommendationRiskLabel(undefined, "locationless"), "通用建议不作温度或降雨判断，出门前请自行确认天气。");
+assert.equal(recommendationRiskLabel(undefined, "weather_fallback"), "通用建议不作温度或降雨判断，出门前请自行确认天气。");
+
+const homeMarkup = fs.readFileSync("pages/home/index.wxml", "utf8");
+const homeStyles = fs.readFileSync("pages/home/index.wxss", "utf8");
+const generatedIcons = fs.readFileSync("components/ui/icon/generated-icons.ts", "utf8");
+for (const selector of [
+  "\\.action-picker",
+  "\\.sheet-primary-action",
+  "\\.sheet-quiet-action",
+  "\\.sheet-secondary-actions button",
+  "\\.backup-choice",
+]) {
+  assert.match(homeStyles, new RegExp(`${selector}[^}]*min-height:\\s*48px`), `${selector} must retain a 48px runtime minimum`);
+}
+const fullWidthSheetActions = homeStyles.match(/\.sheet-primary-action,\.sheet-quiet-action\s*\{([^}]*)\}/)?.[1] ?? "";
+assert.match(fullWidthSheetActions, /min-width:\s*100%/);
+assert.match(fullWidthSheetActions, /max-width:\s*100%/);
+assert.match(homeStyles, /\.action-sheet-body[^}]*width:\s*calc\(100vw - 64rpx\)/);
+assert.match(homeStyles, /\.sheet-secondary-actions[^}]*grid-template-columns:\s*repeat\(2,minmax\(0,1fr\)\)/);
+assert.match(homeStyles, /\.sheet-secondary-actions button[^}]*min-width:\s*0/);
+assert.match(homeStyles, /\.backup-choice[^}]*min-width:\s*100%[^}]*max-width:\s*100%/);
+assert.match(homeMarkup, /title="\{\{selectedRecommendation \? selectedRecommendation\.title : '穿搭详情'\}\}"/);
+assert.doesNotMatch(homeMarkup, /保存为我的套装|保存到我的套装/);
+assert.match(homeMarkup, /保存为套装/);
+assert.match(homeMarkup, /ui-icon name="map-pin"/);
+assert.match(generatedIcons, /"map-pin":\s*\{/);
 
 for (const windowWidth of [360, 390, 430]) {
   const geometry = calculateCapsuleGeometry({

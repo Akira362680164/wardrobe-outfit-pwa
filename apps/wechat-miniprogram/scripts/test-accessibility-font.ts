@@ -10,6 +10,11 @@ assert.equal(
   accessibilityFontStyle(23),
   "--font-title:63.25rpx;--font-section:48.88rpx;--font-body:40.25rpx;--font-caption:34.5rpx;--font-label:31.63rpx",
 );
+assert.equal(
+  accessibilityFontStyle(20.8),
+  "--font-title:57.2rpx;--font-section:44.2rpx;--font-body:36.4rpx;--font-caption:31.2rpx;--font-label:28.6rpx",
+  "130% font scaling must remain deterministic",
+);
 assert.equal(accessibilityFontStyle(80), accessibilityFontStyle(24));
 assert.equal(accessibilityFontStyle(Number.NaN), accessibilityFontStyle(16));
 

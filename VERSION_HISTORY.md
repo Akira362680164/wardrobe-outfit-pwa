@@ -7,6 +7,14 @@
 - 查看某次提交详情：`git show <commit>`
 - 新记录继续置顶，默认控制在 3–5 条短 bullet；原始测试日志、命令输出和长证据写入专项 evidence 文档或交由 Git 保存。
 
+## 2026-07-30 / v2.1.35-test / Codex — Wardora P5 小程序首页视觉与展示口径收口
+
+- 小程序首页推荐卡按业务日期显示合法“城市 · 常驻/临时/行程”，locationless/weather fallback 保持通用文案；地点入口复用生成式 `ui-icon/map-pin`，推荐详情标题使用当前目标，“保存为套装”口径统一。
+- `reasonCode/riskCode` 与 App `main@33d5f69e` 当前全部 canonical 文案及 forecast/generic fallback 对齐并由手写回归冻结；未新增共享合同，也未修改 App、服务端、cloud-contracts 或 domain-catalog。
+- 推荐详情、已安排与取消安排 Sheet 的 Picker、主/安静/双列/备选按钮统一为至少 48px；430px 运行时实测主/安静/备选 `394×48px`、双列 `194×48px`、Picker `394×48px`，主/安静/单列备选占满内容宽度。
+- 小程序 P2/P4/130% 字体回归、图标生成检查、typecheck、WXML/WXSS 编译和 `git diff --check` 通过；WeChat DevTools 实测 360/390/430，360px + fontSizeSetting 21（约 131%）无溢出，console error/exception 与 network 4xx/5xx 均为 0。证据：`/Users/fangzheng/Downloads/Wardora_P5_miniprogram_visual_fix_20260730/`。
+- 风险 Medium（首页展示与 Sheet 布局）；未 preview/upload、云写入或生产部署，物理微信真机未验证。独立只读视觉 subagent 将基于首轮冻结提交与权威证据给出 P0–P3 结论，并在最终收口提交补录。
+
 ## 2026-07-28 / v2.1.35-test / Codex — 小程序天气 Canvas 销毁残影收口
 
 - 独立视觉复核在 430px 主页截图发现天气温度层出现在设备左上圆角；根因是天气 Canvas 由 `wx:if` 反复创建/移除，原生合成层可能在空帧提交前被拆下并留下孤立 surface。
