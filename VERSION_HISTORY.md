@@ -13,7 +13,7 @@
 - `reasonCode/riskCode` 与 App `main@33d5f69e` 当前全部 canonical 文案及 forecast/generic fallback 对齐并由手写回归冻结；未新增共享合同，也未修改 App、服务端、cloud-contracts 或 domain-catalog。
 - 推荐详情、已安排与取消安排 Sheet 的 Picker、主/安静/双列/备选按钮统一为至少 48px；430px 运行时实测主/安静/备选 `394×48px`、双列 `194×48px`、Picker `394×48px`，主/安静/单列备选占满内容宽度。
 - 小程序 P2/P4/130% 字体回归、图标生成检查、typecheck、WXML/WXSS 编译和 `git diff --check` 通过；WeChat DevTools 实测 360/390/430，360px + fontSizeSetting 21（约 131%）无溢出，console error/exception 与 network 4xx/5xx 均为 0。证据：`/Users/fangzheng/Downloads/Wardora_P5_miniprogram_visual_fix_20260730/`。
-- 风险 Medium（首页展示与 Sheet 布局）；未 preview/upload、云写入或生产部署，物理微信真机未验证。独立只读视觉 subagent 将基于首轮冻结提交与权威证据给出 P0–P3 结论，并在最终收口提交补录。
+- 风险 Medium（首页展示与 Sheet 布局）；未 preview/upload、云写入或生产部署，物理微信真机未验证。独立只读视觉 subagent 首审仅发现 360px 首页截图采集过早为空白（证据 P1）；同一冻结 SHA 补采 360px + fontSizeSetting 21 完整首页并复跑门禁后，复审 P0/P1/P2/P3 均为 0，建议集成。
 
 ## 2026-07-28 / v2.1.35-test / Codex — 小程序天气 Canvas 销毁残影收口
 
