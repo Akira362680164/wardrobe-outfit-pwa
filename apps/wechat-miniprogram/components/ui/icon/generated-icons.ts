@@ -9,6 +9,13 @@ export const ICON_PATHS = {
     success: "/assets/icons/home-success.svg",
     danger: "/assets/icons/home-danger.svg",
   },
+  "map-pin": {
+    ink: "/assets/icons/map-pin.svg",
+    surface: "/assets/icons/map-pin-surface.svg",
+    primary: "/assets/icons/map-pin-primary.svg",
+    success: "/assets/icons/map-pin-success.svg",
+    danger: "/assets/icons/map-pin-danger.svg",
+  },
   "wardrobe": {
     ink: "/assets/icons/wardrobe.svg",
     surface: "/assets/icons/wardrobe-surface.svg",

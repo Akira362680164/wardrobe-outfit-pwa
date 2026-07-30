@@ -54,7 +54,7 @@ import {
   homeActionErrorMessage,
   isPlanCanceledReadback,
 } from "./p2-model";
-import { recommendationRiskLabel } from "./risk-label";
+import { recommendationReasonLabel, recommendationRiskLabel } from "./risk-label";
 
 type WeatherCard = {
   status: "loading" | "ready" | "error" | "unavailable";
@@ -118,6 +118,7 @@ Page({
     recommendationLoading: true,
     recommendationError: "",
     recommendationMode: "",
+    recommendationSourceSummary: "通用建议",
     recommendationCards: [] as HomeRecommendationCard[],
     travelDates: [] as Array<{ date: string; title: string; destination: string; dateLabel: string }>,
     plan: null as ReturnType<typeof mapPlan> | null,
@@ -147,6 +148,7 @@ Page({
     const window = homeBusinessWindow(new Date());
     this.sessionScope = getRuntimeSessionScope();
     this.planning = null;
+    this.recommendationSourceByDate = {};
     this.canvasGeneration = 0;
     this.setData({
       greeting: buildHomeGreeting(new Date()),
@@ -175,6 +177,7 @@ Page({
       outfitMutations.clear();
       this.sessionScope = nextScope;
       this.planning = null;
+      this.recommendationSourceByDate = {};
       this.setData({
         selectedDate: nextWindow.today,
         recommendationHeading: recommendationHeading(nextWindow.today, nextWindow.today, nextWindow.tomorrow),
@@ -267,6 +270,10 @@ Page({
       weatherPatch.locationLabel = overview.resolvedLocation && overview.locationSource
         ? buildHomeLocationLabel({ displayName: overview.resolvedLocation.displayName, source: overview.locationSource })
         : this.data.locationLabel;
+      weatherPatch.recommendationSourceSummary = recommendationSourceSummary(overview.contextMode, overview, this.data.locationLabel);
+      if (overview.contextMode === "forecast" && overview.resolvedLocation && overview.locationSource) {
+        this.recommendationSourceByDate[date] = weatherPatch.recommendationSourceSummary;
+      }
       weatherPatch.weatherAttribution = weatherAttributionLabel(overview);
       weatherPatch.canvasVisible = date === this.data.today && overview.availabilityReason === "available";
     }
@@ -302,9 +309,18 @@ Page({
       }
       if (!dateGate.isCurrent(ticket)) return;
       const mode = item?.contextMode ?? (selectedWeather?.status === "fulfilled" ? selectedWeather.value.contextMode : "weather_fallback");
+      const travelSource = (this.data.travelDates as Array<{ date: string; destination: string }>)
+        .find((entry) => entry.date === date);
+      const cachedSource = this.recommendationSourceByDate[date]
+        ?? (travelSource ? `${travelSource.destination} · 行程` : this.data.locationLabel);
       this.setData({
         recommendationLoading: false,
         recommendationMode: mode,
+        recommendationSourceSummary: recommendationSourceSummary(
+          mode,
+          selectedWeather?.status === "fulfilled" ? selectedWeather.value : undefined,
+          cachedSource,
+        ),
         recommendationSubtitle: recommendationSubtitle(mode),
         recommendationCards: item ? mapRecommendationCards(item, this.data.garments) : [],
         plan: mapPlan(findPlan(this.planning, date), this.data.garments),
@@ -740,7 +756,7 @@ function mapRecommendationCards(item: RecommendationDisplayItemV3, garments: Min
     candidateId: candidate.candidateId,
     objective: objectiveLabel(candidate.objective),
     title: `${objectiveLabel(candidate.objective)}搭配`,
-    reason: reasonLabel(candidate.reasonCodes[0]),
+    reason: recommendationReasonLabel(candidate.reasonCodes[0], item.contextMode),
     risk: recommendationRiskLabel(candidate.riskCodes[0], item.contextMode),
     garments: candidate.garmentIds.map((id) => byId.get(id)).filter((garment): garment is MiniGarment => Boolean(garment)).map((garment) => ({ id: garment.id, legacyItemId: garment.legacyItemId, name: garment.name, imageUrl: garment.imageUrl, category: garment.category })),
     garmentIds: candidate.garmentIds.slice(),
@@ -829,9 +845,17 @@ function recommendationSubtitle(mode: string): string {
   if (mode === "weather_fallback") return "通用建议 · 天气暂不可用";
   return "天气增强推荐 · 横向滑动";
 }
-function reasonLabel(value?: string): string {
-  const labels: Record<string, string> = { weather_fit: "与当前天气证据匹配。", rain_ready: "已考虑降雨与路面情况。", activity_comfort: "活动空间与舒适度更充足。", new_combination: "在可靠结构中加入新的组合变化。", rotation_value: "优先带回近期较少穿着的衣物。" };
-  return labels[value ?? ""] ?? "结合场景与衣橱状态整理。";
+function recommendationSourceSummary(mode: string, overview: WeatherOverview | undefined, fallback: string): string {
+  if (mode !== "forecast") return "通用建议";
+  if (overview?.resolvedLocation && overview.locationSource) {
+    return buildHomeLocationLabel({
+      displayName: overview.resolvedLocation.displayName,
+      source: overview.locationSource,
+    });
+  }
+  return fallback && fallback !== "未设置城市" && fallback !== "通用建议"
+    ? fallback
+    : "通用建议";
 }
 function messageOf(error: unknown, fallback: string): string { return error instanceof Error && error.message ? error.message : fallback; }
 function isLocationPermissionDenied(error: unknown): boolean {

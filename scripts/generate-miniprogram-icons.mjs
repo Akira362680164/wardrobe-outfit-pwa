@@ -12,6 +12,7 @@ const manifestPath = path.join(repoRoot, "apps/wechat-miniprogram/components/ui/
 
 const icons = {
   home: "House",
+  "map-pin": "MapPin",
   wardrobe: "Shirt",
   camera: "Camera",
   "camera-plus": "ImagePlus",
