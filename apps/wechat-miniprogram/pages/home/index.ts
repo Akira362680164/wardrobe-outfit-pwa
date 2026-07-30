@@ -54,6 +54,10 @@ import {
   homeActionErrorMessage,
   isPlanCanceledReadback,
 } from "./p2-model";
+import {
+  recommendationSourceSummary,
+  shouldResolveRecommendationForWeather,
+} from "./recommendation-source";
 import { recommendationReasonLabel, recommendationRiskLabel } from "./risk-label";
 
 type WeatherCard = {
@@ -148,7 +152,6 @@ Page({
     const window = homeBusinessWindow(new Date());
     this.sessionScope = getRuntimeSessionScope();
     this.planning = null;
-    this.recommendationSourceByDate = {};
     this.canvasGeneration = 0;
     this.setData({
       greeting: buildHomeGreeting(new Date()),
@@ -177,7 +180,6 @@ Page({
       outfitMutations.clear();
       this.sessionScope = nextScope;
       this.planning = null;
-      this.recommendationSourceByDate = {};
       this.setData({
         selectedDate: nextWindow.today,
         recommendationHeading: recommendationHeading(nextWindow.today, nextWindow.today, nextWindow.tomorrow),
@@ -255,6 +257,8 @@ Page({
       recommendationActionLabel: recommendationActionLabel(date, this.data.today, this.data.tomorrow),
       recommendationLoading: true,
       recommendationError: "",
+      recommendationSourceSummary: "通用建议",
+      recommendationCards: [],
     });
     const weatherResults = await Promise.allSettled(dates.map((target) => readMiniHomeWeather(target, ticket.signal)));
     if (!dateGate.isCurrent(ticket)) return;
@@ -270,10 +274,6 @@ Page({
       weatherPatch.locationLabel = overview.resolvedLocation && overview.locationSource
         ? buildHomeLocationLabel({ displayName: overview.resolvedLocation.displayName, source: overview.locationSource })
         : this.data.locationLabel;
-      weatherPatch.recommendationSourceSummary = recommendationSourceSummary(overview.contextMode, overview, this.data.locationLabel);
-      if (overview.contextMode === "forecast" && overview.resolvedLocation && overview.locationSource) {
-        this.recommendationSourceByDate[date] = weatherPatch.recommendationSourceSummary;
-      }
       weatherPatch.weatherAttribution = weatherAttributionLabel(overview);
       weatherPatch.canvasVisible = date === this.data.today && overview.availabilityReason === "available";
     }
@@ -290,7 +290,10 @@ Page({
       } catch {
         // A missing current recommendation is resolved by the server coordinator below.
       }
-      if (!item) {
+      const weatherForSelectedDate = selectedWeather?.status === "fulfilled"
+        ? selectedWeather.value
+        : undefined;
+      if (!item || shouldResolveRecommendationForWeather(item, weatherForSelectedDate)) {
         const resolved = await resolveMiniHomeRecommendations(dates, ticket.signal);
         const result = resolved.results.find((entry) => entry.targetDate === date);
         if (!dateGate.isCurrent(ticket)) return;
@@ -305,22 +308,14 @@ Page({
           });
           return;
         }
-        item = result?.recommendation;
+        item = result?.recommendation ?? item;
       }
       if (!dateGate.isCurrent(ticket)) return;
       const mode = item?.contextMode ?? (selectedWeather?.status === "fulfilled" ? selectedWeather.value.contextMode : "weather_fallback");
-      const travelSource = (this.data.travelDates as Array<{ date: string; destination: string }>)
-        .find((entry) => entry.date === date);
-      const cachedSource = this.recommendationSourceByDate[date]
-        ?? (travelSource ? `${travelSource.destination} · 行程` : this.data.locationLabel);
       this.setData({
         recommendationLoading: false,
         recommendationMode: mode,
-        recommendationSourceSummary: recommendationSourceSummary(
-          mode,
-          selectedWeather?.status === "fulfilled" ? selectedWeather.value : undefined,
-          cachedSource,
-        ),
+        recommendationSourceSummary: recommendationSourceSummary(item),
         recommendationSubtitle: recommendationSubtitle(mode),
         recommendationCards: item ? mapRecommendationCards(item, this.data.garments) : [],
         plan: mapPlan(findPlan(this.planning, date), this.data.garments),
@@ -844,18 +839,6 @@ function recommendationSubtitle(mode: string): string {
   if (mode === "locationless") return "通用建议 · 横向滑动";
   if (mode === "weather_fallback") return "通用建议 · 天气暂不可用";
   return "天气增强推荐 · 横向滑动";
-}
-function recommendationSourceSummary(mode: string, overview: WeatherOverview | undefined, fallback: string): string {
-  if (mode !== "forecast") return "通用建议";
-  if (overview?.resolvedLocation && overview.locationSource) {
-    return buildHomeLocationLabel({
-      displayName: overview.resolvedLocation.displayName,
-      source: overview.locationSource,
-    });
-  }
-  return fallback && fallback !== "未设置城市" && fallback !== "通用建议"
-    ? fallback
-    : "通用建议";
 }
 function messageOf(error: unknown, fallback: string): string { return error instanceof Error && error.message ? error.message : fallback; }
 function isLocationPermissionDenied(error: unknown): boolean {

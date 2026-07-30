@@ -7,6 +7,13 @@
 - 查看某次提交详情：`git show <commit>`
 - 新记录继续置顶，默认控制在 3–5 条短 bullet；原始测试日志、命令输出和长证据写入专项 evidence 文档或交由 Git 保存。
 
+## 2026-07-30 / v2.1.35-test / Codex — Wardora P5 推荐来源真实性 P1 修复
+
+- 推荐卡来源改为只读取当前 `RecommendationDisplayItemV3` 自身的 `resolvedLocation/locationSource`；天气响应、跨日期缓存和全局地点不再能把旧推荐误标为新城市，locationless/weather fallback 继续显示“通用建议”。
+- 日期加载会先清空旧推荐卡与来源摘要；当当前 forecast 与推荐快照的 locationId/source 不一致时仅触发一次正常 resolve。新推荐就绪后显示新地点，尚未就绪则保留旧推荐及其真实旧地点。
+- 新增行为回归覆盖“旧上海推荐 + 北京天气 + 北京新推荐”、跨日期天气失败不继承城市，以及两类通用建议；P2、P4、130% 字体、图标生成、typecheck 与 `git diff --check` 全部通过。
+- 风险 Low（仅小程序首页数据展示与重算判定）；未修改 WXML/WXSS、App、服务端或共享合同，因此按任务要求未重跑视觉截图、未启动新视觉 subagent，也未 preview/upload、云写入或生产部署。
+
 ## 2026-07-30 / v2.1.35-test / Codex — Wardora P5 小程序首页视觉与展示口径收口
 
 - 小程序首页推荐卡按业务日期显示合法“城市 · 常驻/临时/行程”，locationless/weather fallback 保持通用文案；地点入口复用生成式 `ui-icon/map-pin`，推荐详情标题使用当前目标，“保存为套装”口径统一。
