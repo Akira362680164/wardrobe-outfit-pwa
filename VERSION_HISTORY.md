@@ -7,6 +7,13 @@
 - 查看某次提交详情：`git show <commit>`
 - 新记录继续置顶，默认控制在 3–5 条短 bullet；原始测试日志、命令输出和长证据写入专项 evidence 文档或交由 Git 保存。
 
+## 2026-07-30 / v2.1.35-test / Codex — Wardora P5 推荐上下文转换与门禁收口
+
+- 推荐重算判定由 forecast 特例改为完整上下文身份：模式变化立即 resolve；forecast/weather fallback 同模式时比较 locationId/source；同为 locationless、天气请求失败或同模式异常缺少地点快照时不重复触发。
+- 保留推荐快照作为来源文案唯一权威，forecast 仅展示 item 自身合法地点，locationless/weather fallback 继续为“通用建议”，不从天气或全局地点补写。
+- 完整转换矩阵合入标准 `test:p2-final`；该脚本现在先用独立测试 tsconfig 做 TypeScript 检查，再执行断言。旧实现已由标准门禁稳定复现红灯，修复后 P2、P4、130% 字体、图标生成、typecheck 与 diff 检查通过。
+- 风险 Low（小程序首页纯数据重算判定）；未修改 index/WXML/WXSS、App、服务端或共享合同，按任务要求未启动视觉 subagent、未重拍截图，也未 preview/upload、云写入或生产部署。
+
 ## 2026-07-30 / v2.1.35-test / Codex — Wardora P5 推荐来源真实性 P1 修复
 
 - 推荐卡来源改为只读取当前 `RecommendationDisplayItemV3` 自身的 `resolvedLocation/locationSource`；天气响应、跨日期缓存和全局地点不再能把旧推荐误标为新城市，locationless/weather fallback 继续显示“通用建议”。

@@ -1,11 +1,97 @@
 import assert from "node:assert/strict";
 import fs from "node:fs";
 
+import type { RecommendationDisplayItemV3 } from "../generated/wardora-home-contracts";
+import {
+  recommendationSourceSummary,
+  shouldResolveRecommendationForWeather,
+} from "../pages/home/recommendation-source";
 import { recommendationReasonLabel, recommendationRiskLabel } from "../pages/home/risk-label";
 import {
   calculateCapsuleGeometry,
   calculateSubPageTopBarLayout,
 } from "../utils/capsule-layout";
+
+type RecommendationContextSnapshot = Pick<
+  RecommendationDisplayItemV3,
+  "contextMode" | "resolvedLocation" | "locationSource"
+>;
+
+const shanghai = {
+  locationId: "101020100",
+  displayName: "上海",
+  timezone: "Asia/Shanghai",
+} as const;
+const beijing = {
+  locationId: "101010100",
+  displayName: "北京",
+  timezone: "Asia/Shanghai",
+} as const;
+const forecastShanghai: RecommendationContextSnapshot = {
+  contextMode: "forecast",
+  resolvedLocation: shanghai,
+  locationSource: "home_city",
+};
+const forecastBeijing: RecommendationContextSnapshot = {
+  contextMode: "forecast",
+  resolvedLocation: beijing,
+  locationSource: "home_city",
+};
+const forecastBeijingTemporary: RecommendationContextSnapshot = {
+  contextMode: "forecast",
+  resolvedLocation: beijing,
+  locationSource: "temporary_override",
+};
+const locationless: RecommendationContextSnapshot = {
+  contextMode: "locationless",
+};
+const fallbackShanghai: RecommendationContextSnapshot = {
+  contextMode: "weather_fallback",
+  resolvedLocation: shanghai,
+  locationSource: "home_city",
+};
+const fallbackBeijing: RecommendationContextSnapshot = {
+  contextMode: "weather_fallback",
+  resolvedLocation: beijing,
+  locationSource: "home_city",
+};
+const fallbackBeijingTemporary: RecommendationContextSnapshot = {
+  contextMode: "weather_fallback",
+  resolvedLocation: beijing,
+  locationSource: "temporary_override",
+};
+
+assert.equal(shouldResolveRecommendationForWeather(forecastShanghai, forecastBeijing), true);
+assert.equal(shouldResolveRecommendationForWeather(forecastBeijing, forecastBeijing), false);
+assert.equal(shouldResolveRecommendationForWeather(forecastBeijing, forecastBeijingTemporary), true);
+assert.equal(shouldResolveRecommendationForWeather(locationless, forecastBeijing), true);
+assert.equal(shouldResolveRecommendationForWeather(forecastBeijing, locationless), true);
+assert.equal(shouldResolveRecommendationForWeather(fallbackShanghai, forecastShanghai), true);
+assert.equal(shouldResolveRecommendationForWeather(forecastShanghai, fallbackShanghai), true);
+assert.equal(shouldResolveRecommendationForWeather(fallbackShanghai, fallbackBeijing), true);
+assert.equal(shouldResolveRecommendationForWeather(fallbackBeijing, fallbackBeijingTemporary), true);
+assert.equal(shouldResolveRecommendationForWeather(locationless, locationless), false);
+assert.equal(shouldResolveRecommendationForWeather(forecastShanghai, undefined), false);
+assert.equal(shouldResolveRecommendationForWeather(undefined, forecastShanghai), false);
+assert.equal(
+  shouldResolveRecommendationForWeather(
+    { contextMode: "forecast" },
+    { contextMode: "forecast" },
+  ),
+  false,
+  "malformed same-mode snapshots must not cause a repeated resolve loop",
+);
+
+assert.equal(forecastBeijing.resolvedLocation?.displayName, "北京");
+assert.equal(
+  recommendationSourceSummary(forecastShanghai),
+  "上海 · 常驻",
+  "a Beijing weather response cannot relabel the displayed Shanghai recommendation",
+);
+assert.equal(recommendationSourceSummary(forecastBeijing), "北京 · 常驻");
+assert.equal(recommendationSourceSummary(forecastBeijingTemporary), "北京 · 临时");
+assert.equal(recommendationSourceSummary(locationless), "通用建议");
+assert.equal(recommendationSourceSummary(fallbackShanghai), "通用建议");
 
 const currentRiskCodes = [
   "missing_required_slot",

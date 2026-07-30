@@ -28,16 +28,11 @@ export function shouldResolveRecommendationForWeather(
   item: RecommendationSourceSnapshot | undefined,
   weather: Pick<WeatherOverview, "contextMode" | "resolvedLocation" | "locationSource"> | undefined,
 ): boolean {
-  if (
-    item?.contextMode !== "forecast"
-    || weather?.contextMode !== "forecast"
-    || !item.resolvedLocation
-    || !item.locationSource
-    || !weather.resolvedLocation
-    || !weather.locationSource
-  ) {
-    return false;
-  }
+  if (!item || !weather) return false;
+  if (item.contextMode !== weather.contextMode) return true;
+  if (item.contextMode === "locationless") return false;
+  // An incomplete same-mode identity cannot prove staleness; resolving it on every load would create a retry loop.
+  if (!item.resolvedLocation || !item.locationSource || !weather.resolvedLocation || !weather.locationSource) return false;
   return item.resolvedLocation.locationId !== weather.resolvedLocation.locationId
     || item.locationSource !== weather.locationSource;
 }
